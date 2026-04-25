@@ -14,6 +14,7 @@ from google.adk.models.llm_request import LlmRequest
 from google.adk.models.llm_response import LlmResponse
 from google.adk.tools import ToolContext
 from google.genai import types
+from google.adk.models.lite_llm import LiteLlm
 from pydantic import BaseModel, Field
 
 load_dotenv()
@@ -138,7 +139,7 @@ def simple_after_model_modifier(
 
 proverbs_agent = LlmAgent(
     name="ProverbsAgent",
-    model="gemini-2.5-flash",
+    model=LiteLlm(model="mistral/devstral-latest"),
     instruction="""
         When a user asks you to do anything regarding proverbs, you MUST use the set_proverbs tool.
 
@@ -196,10 +197,10 @@ if __name__ == "__main__":
 
     import uvicorn
 
-    if not os.getenv("GOOGLE_API_KEY"):
-        print("⚠️  Warning: GOOGLE_API_KEY environment variable not set!")
-        print("   Set it with: export GOOGLE_API_KEY='your-key-here'")
-        print("   Get a key from: https://makersuite.google.com/app/apikey")
+    if not os.getenv("MISTRAL_API_KEY"):
+        print("⚠️  Warning: MISTRAL_API_KEY environment variable not set!")
+        print("   Set it with: export MISTRAL_API_KEY='your-key-here'")
+        print("   Get a key from: https://console.mistral.ai/")
         print()
 
     port = int(os.getenv("PORT", 8000))
