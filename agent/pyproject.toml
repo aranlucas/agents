@@ -1,7 +1,7 @@
 [project]
-name = "proverbs-agent"
+name = "flight-agent"
 version = "0.1.0"
-description = "ADK Proverbs Agent with shared state"
+description = "Flight search agent powered by fli MCP + Google ADK"
 requires-python = ">=3.12"
 dependencies = [
   "fastapi",
@@ -12,6 +12,7 @@ dependencies = [
   "google-genai",
   "ag-ui-adk",
   "litellm",
+  "flights[mcp] @ git+https://github.com/punitarani/fli.git",
 ]
 
 [project.optional-dependencies]

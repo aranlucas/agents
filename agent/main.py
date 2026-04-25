@@ -1,199 +1,69 @@
-"""Shared State feature."""
-
+"""Flight search agent powered by fli MCP server."""
 from __future__ import annotations
 
-import json
 import os
-from typing import Dict, Optional
 
-os.environ["LITELLM_LOG"] = "DEBUG"
-
-import litellm
 from ag_ui_adk import ADKAgent, add_adk_fastapi_endpoint
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from google.adk.agents import LlmAgent
-from google.adk.agents.callback_context import CallbackContext
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.models.llm_request import LlmRequest
-from google.adk.models.llm_response import LlmResponse
-from google.adk.tools import ToolContext
-from google.genai import types
-from pydantic import BaseModel, Field
+from google.adk.tools.mcp_tool import McpToolset
+from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
+from mcp import StdioServerParameters
 
 load_dotenv()
 
-
-class ProverbsState(BaseModel):
-    """List of the proverbs being written."""
-
-    proverbs: list[str] = Field(
-        default_factory=list,
-        description="The list of already written proverbs",
-    )
-
-
-def set_proverbs(tool_context: ToolContext, new_proverbs: list[str]) -> Dict[str, str]:
-    """
-    Set the list of provers using the provided new list.
-
-    Args:
-        "new_proverbs": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "The new list of proverbs to maintain",
-        }
-
-    Returns:
-        Dict indicating success status and message
-    """
-    try:
-        # Put this into a state object just to confirm the shape
-        new_state = {"proverbs": new_proverbs}
-        tool_context.state["proverbs"] = new_state["proverbs"]
-        return {"status": "success", "message": "Proverbs updated successfully"}
-
-    except Exception as e:
-        return {"status": "error", "message": f"Error updating proverbs: {str(e)}"}
-
-
-def get_weather(tool_context: ToolContext, location: str) -> Dict[str, str]:
-    """Get the weather for a given location. Ensure location is fully spelled out."""
-    return {"status": "success", "message": f"The weather in {location} is sunny."}
-
-
-def on_before_agent(callback_context: CallbackContext):
-    """
-    Initialize proverbs state if it doesn't exist.
-    """
-
-    if "proverbs" not in callback_context.state:
-        # Initialize with default recipe
-        default_proverbs = []
-        callback_context.state["proverbs"] = default_proverbs
-
-    return None
-
-
-# --- Define the Callback Function ---
-#  modifying the agent's system prompt to incude the current state of the proverbs list
-def before_model_modifier(
-    callback_context: CallbackContext, llm_request: LlmRequest
-) -> Optional[LlmResponse]:
-    """Inspects/modifies the LLM request or skips the call."""
-    agent_name = callback_context.agent_name
-    if agent_name == "ProverbsAgent":
-        proverbs_json = "No proverbs yet"
-        if (
-            "proverbs" in callback_context.state
-            and callback_context.state["proverbs"] is not None
-        ):
-            try:
-                proverbs_json = json.dumps(callback_context.state["proverbs"], indent=2)
-            except Exception as e:
-                proverbs_json = f"Error serializing proverbs: {str(e)}"
-        prefix = f"""You are a helpful assistant for maintaining a list of proverbs.
-        This is the current state of the list of proverbs: {proverbs_json}
-        When you modify the list of proverbs (wether to add, remove, or modify one or more proverbs), use the set_proverbs tool to update the list."""
-
-        # Extract existing system instruction as plain text (LiteLLM requires a
-        # string here — google.genai Content objects are not JSON-serializable by
-        # litellm when forwarding to non-Google providers).
-        existing = llm_request.config.system_instruction
-        if isinstance(existing, types.Content):
-            existing_text = "".join(
-                p.text or "" for p in (existing.parts or [])
-            )
-        elif isinstance(existing, str):
-            existing_text = existing
-        else:
-            existing_text = ""
-        llm_request.config.system_instruction = prefix + existing_text
-
-    return None
-
-
-# --- Define the Callback Function ---
-def simple_after_model_modifier(
-    callback_context: CallbackContext, llm_response: LlmResponse
-) -> Optional[LlmResponse]:
-    """Stop the consecutive tool calling of the agent"""
-    agent_name = callback_context.agent_name
-    # --- Inspection ---
-    if agent_name == "ProverbsAgent":
-        if llm_response.content and llm_response.content.parts:
-            # Assuming simple text response for this example
-            if (
-                llm_response.content.role == "model"
-                and llm_response.content.parts[0].text
-            ):
-                callback_context._invocation_context.end_invocation = True
-
-        elif llm_response.error_message:
-            return None
-        else:
-            return None  # Nothing to modify
-    return None
-
-
-proverbs_agent = LlmAgent(
-    name="ProverbsAgent",
+flight_agent = LlmAgent(
+    name="FlightAgent",
     model=LiteLlm(model="mistral/devstral-latest"),
-    instruction="""
-        When a user asks you to do anything regarding proverbs, you MUST use the set_proverbs tool.
+    instruction="""You are a weekend trip flight planner for someone based in Seattle, WA.
+The user's home airport is Seattle-Tacoma International (SEA). Always use SEA as the departure airport unless the user explicitly says otherwise.
 
-        IMPORTANT RULES ABOUT PROVERBS AND THE SET_PROVERBS TOOL:
-        1. Always use the set_proverbs tool for any proverbs-related requests
-        2. Always pass the COMPLETE LIST of proverbs to the set_proverbs tool. If the list had 5 proverbs and you removed one, you must pass the complete list of 4 remaining proverbs.
-        3. You can use existing proverbs if one is relevant to the user's request, but you can also create new proverbs as required.
-        4. Be creative and helpful in generating complete, practical proverbs
-        5. After using the tool, provide a brief summary of what you create, removed, or changed        7.
+Use the search_flights tool to find flights on a specific date between two airports.
+Use the search_dates tool to find the cheapest travel dates across a flexible date range.
 
-        Examples of when to use the set_proverbs tool:
-        - "Add a proverb about soap" → Use tool with an array containing the existing list of proverbs with the new proverb about soap at the end.
-        - "Remove the first proverb" → Use tool with an array containing the all of the existing proverbs except the first one"
-        - "Change any proverbs about cats to mention that they have 18 lives" → If no proverbs mention cats, do not use the tool. If one or more proverbs do mention cats, change them to mention cats having 18 lives, and use the tool with an array of all of the proverbs, including ones that were changed and ones that did not require changes.
-
-        Do your best to ensure proverbs plausibly make sense.
-
-
-        IMPORTANT RULES ABOUT WEATHER AND THE GET_WEATHER TOOL:
-        1. Only call the get_weather tool if the user asks you for the weather in a given location.
-        2. If the user does not specify a location, you can use the location "Everywhere ever in the whole wide world"
-
-        Examples of when to use the get_weather tool:
-        - "What's the weather today in Tokyo?" → Use the tool with the location "Tokyo"
-        - "Whats the weather right now" → Use the location "Everywhere ever in the whole wide world"
-        - Is it raining in London? → Use the tool with the location "London"
-        """,
-    tools=[set_proverbs, get_weather],
-    before_agent_callback=on_before_agent,
-    before_model_callback=before_model_modifier,
-    after_model_callback=simple_after_model_modifier,
+Guidelines:
+- Always use IATA airport codes (e.g. SEA, SFO, LAX, ORD, JFK, LAS, PDX)
+- If the user gives a city name, infer the primary airport code
+- Default departure is SEA (Seattle-Tacoma International)
+- For specific date queries, use search_flights
+- For flexible date queries ("cheapest weekend", "when is it cheapest"), use search_dates
+- Weekend trips are typically Friday–Sunday or Saturday–Sunday, so suggest nearby weekends when dates are vague
+- Ask only for the destination and preferred weekend if not provided — never ask for origin since it defaults to SEA
+- Present results conversationally — highlight best price, shortest flight, and direct options
+- Suggest popular weekend destinations from Seattle: San Francisco, Los Angeles, Las Vegas, Portland, Boise, Vancouver BC, Phoenix, Denver, New York
+- Mention stops, duration, and airline for the top results
+""",
+    tools=[
+        McpToolset(
+            connection_params=StdioConnectionParams(
+                server_params=StdioServerParameters(
+                    command="fli-mcp",
+                    args=[],
+                )
+            )
+        )
+    ],
 )
 
-# Create ADK middleware agent instance
-adk_proverbs_agent = ADKAgent(
-    adk_agent=proverbs_agent,
+adk_flight_agent = ADKAgent(
+    adk_agent=flight_agent,
     user_id="demo_user",
     session_timeout_seconds=3600,
     use_in_memory_services=True,
 )
 
-# Create FastAPI app
-app = FastAPI(title="ADK Middleware Proverbs Agent")
-
-# Add the ADK endpoint
-add_adk_fastapi_endpoint(app, adk_proverbs_agent, path="/")
+app = FastAPI(title="Flight Search Agent")
+add_adk_fastapi_endpoint(app, adk_flight_agent, path="/")
 
 
 @app.get("/health")
 async def health():
     return {"status": "ok"}
 
-if __name__ == "__main__":
-    import os
 
+if __name__ == "__main__":
     import uvicorn
 
     if not os.getenv("MISTRAL_API_KEY"):
