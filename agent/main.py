@@ -14,10 +14,12 @@ from google.adk.models.llm_request import LlmRequest
 from google.adk.models.llm_response import LlmResponse
 from google.adk.tools import ToolContext
 from google.genai import types
+import litellm
 from google.adk.models.lite_llm import LiteLlm
 from pydantic import BaseModel, Field
 
 load_dotenv()
+litellm.set_verbose = True
 
 
 class ProverbsState(BaseModel):
