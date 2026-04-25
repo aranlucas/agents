@@ -88,28 +88,23 @@ def before_model_modifier(
                 proverbs_json = json.dumps(callback_context.state["proverbs"], indent=2)
             except Exception as e:
                 proverbs_json = f"Error serializing proverbs: {str(e)}"
-        # --- Modification Example ---
-        # Add a prefix to the system instruction
-        original_instruction = llm_request.config.system_instruction or types.Content(
-            role="system", parts=[]
-        )
         prefix = f"""You are a helpful assistant for maintaining a list of proverbs.
         This is the current state of the list of proverbs: {proverbs_json}
         When you modify the list of proverbs (wether to add, remove, or modify one or more proverbs), use the set_proverbs tool to update the list."""
-        # Ensure system_instruction is Content and parts list exists
-        if not isinstance(original_instruction, types.Content):
-            # Handle case where it might be a string (though config expects Content)
-            original_instruction = types.Content(
-                role="system", parts=[types.Part(text=str(original_instruction))]
-            )
-        if not original_instruction.parts:
-            original_instruction.parts = [types.Part(text="")]
 
-        # Modify the text of the first part
-        if original_instruction.parts and len(original_instruction.parts) > 0:
-            modified_text = prefix + (original_instruction.parts[0].text or "")
-            original_instruction.parts[0].text = modified_text
-        llm_request.config.system_instruction = original_instruction
+        # Extract existing system instruction as plain text (LiteLLM requires a
+        # string here — google.genai Content objects are not JSON-serializable by
+        # litellm when forwarding to non-Google providers).
+        existing = llm_request.config.system_instruction
+        if isinstance(existing, types.Content):
+            existing_text = "".join(
+                p.text or "" for p in (existing.parts or [])
+            )
+        elif isinstance(existing, str):
+            existing_text = existing
+        else:
+            existing_text = ""
+        llm_request.config.system_instruction = prefix + existing_text
 
     return None
 
