@@ -6,6 +6,8 @@ import json
 import os
 from typing import Dict, Optional
 
+os.environ["LITELLM_LOG"] = "DEBUG"
+
 import litellm
 from ag_ui_adk import ADKAgent, add_adk_fastapi_endpoint
 from dotenv import load_dotenv
@@ -20,7 +22,6 @@ from google.genai import types
 from pydantic import BaseModel, Field
 
 load_dotenv()
-os.environ["LITELLM_LOG"] = "DEBUG"
 
 
 class ProverbsState(BaseModel):
