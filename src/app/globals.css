@@ -10,7 +10,7 @@
   --amber-bright: #f0b820;
   --blue: #7ec8e3;
   --cream: #e8e4d8;
-  --cream-muted: #6b6555;
+  --cream-muted: #9a9080;
   --green: #5fb88a;
   --red: #e86858;
   --border: #1c1e24;
@@ -135,9 +135,37 @@ body {
   --copilot-kit-response-button-color: var(--amber) !important;
   --copilot-kit-separator-color:       #1c1e24 !important;
   --copilot-kit-scrollbar-color:       #2a2c30 !important;
+  --copilot-kit-contrast-color:        #e8e4d8 !important;
+  --copilot-kit-muted-color:           #9a9080 !important;
   font-family: "Space Mono", monospace !important;
+  color: #e8e4d8 !important;
 }
 
 .copilotKitMessages {
   --copilot-kit-background-color: #0d0f12 !important;
+}
+
+/* Initial message text */
+.copilotKitSidebar .copilotKitInitialMessage,
+.copilotKitSidebar [class*="initial"],
+.copilotKitSidebar [class*="Initial"],
+.copilotKitSidebar [class*="placeholder"],
+.copilotKitSidebar [class*="empty"] {
+  color: #e8e4d8 !important;
+  opacity: 1 !important;
+}
+
+/* Suggestion chips */
+.copilotKitSidebar [class*="suggestion"],
+.copilotKitSidebar [class*="Suggestion"] {
+  background: #131619 !important;
+  border: 1px solid #2e3038 !important;
+  color: #e8e4d8 !important;
+  opacity: 1 !important;
+}
+
+.copilotKitSidebar [class*="suggestion"]:hover,
+.copilotKitSidebar [class*="Suggestion"]:hover {
+  border-color: var(--amber) !important;
+  color: var(--amber) !important;
 }
