@@ -9,7 +9,6 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/
 WORKDIR /app
 
 COPY agent/pyproject.toml ./pyproject.toml
-COPY agent/uv.lock ./uv.lock
 COPY agent/main.py ./main.py
 
 RUN uv pip install --system -e .

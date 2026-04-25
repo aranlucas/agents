@@ -145,19 +145,16 @@ body {
   --copilot-kit-background-color: #0d0f12 !important;
 }
 
-/* Initial message text */
-.copilotKitSidebar .copilotKitInitialMessage,
-.copilotKitSidebar [class*="initial"],
-.copilotKitSidebar [class*="Initial"],
-.copilotKitSidebar [class*="placeholder"],
-.copilotKitSidebar [class*="empty"] {
+/* Assistant messages (initial message + AI replies) */
+.copilotKitAssistantMessage,
+.copilotKitMessage {
   color: #e8e4d8 !important;
-  opacity: 1 !important;
 }
 
 /* Suggestion chips */
 .copilotKitSidebar [class*="suggestion"],
-.copilotKitSidebar [class*="Suggestion"] {
+.copilotKitSidebar [class*="Suggestion"],
+.copilotKitSuggestion {
   background: #131619 !important;
   border: 1px solid #2e3038 !important;
   color: #e8e4d8 !important;
@@ -165,7 +162,8 @@ body {
 }
 
 .copilotKitSidebar [class*="suggestion"]:hover,
-.copilotKitSidebar [class*="Suggestion"]:hover {
+.copilotKitSidebar [class*="Suggestion"]:hover,
+.copilotKitSuggestion:hover {
   border-color: var(--amber) !important;
   color: var(--amber) !important;
 }
