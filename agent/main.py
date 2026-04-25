@@ -3,23 +3,24 @@
 from __future__ import annotations
 
 import json
+import os
 from typing import Dict, Optional
 
+import litellm
 from ag_ui_adk import ADKAgent, add_adk_fastapi_endpoint
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
+from google.adk.models.lite_llm import LiteLlm
 from google.adk.models.llm_request import LlmRequest
 from google.adk.models.llm_response import LlmResponse
 from google.adk.tools import ToolContext
 from google.genai import types
-import litellm
-from google.adk.models.lite_llm import LiteLlm
 from pydantic import BaseModel, Field
 
 load_dotenv()
-litellm.set_verbose = True
+os.environ["LITELLM_LOG"] = "DEBUG"
 
 
 class ProverbsState(BaseModel):
