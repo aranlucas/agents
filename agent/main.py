@@ -15,7 +15,7 @@ from fastapi import FastAPI
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools.mcp_tool import McpToolset
-from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHttpConnectionParams
+from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
 from google.adk.tools import BaseTool, ToolContext
 
 MAX_STORED_FLIGHTS = 12
@@ -154,7 +154,7 @@ Weekend deal scan:
     tools=[
         get_current_date,
         McpToolset(
-            connection_params=StreamableHttpConnectionParams(
+            connection_params=StreamableHTTPConnectionParams(
                 url="https://trvl-production.up.railway.app/mcp",
                 timeout=30.0,
             ),
