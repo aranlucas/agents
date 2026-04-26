@@ -13,6 +13,7 @@ export type Flight = {
   price: number;
   currency: string;
   legs: FlightLeg[];
+  stops?: number;
 };
 
 export type FlightSearchResult = {

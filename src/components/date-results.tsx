@@ -2,7 +2,8 @@
 
 import { DateSearchResult, DatePrice } from "@/lib/types";
 
-function formatDate(dateStr: string): { day: string; month: string; weekday: string } {
+function formatDate(dateValue: string | string[]): { day: string; month: string; weekday: string } {
+  const dateStr = Array.isArray(dateValue) ? dateValue[0] : dateValue;
   try {
     const d = new Date(dateStr + "T12:00:00");
     return {
@@ -107,7 +108,7 @@ export function DateResults({
             const isCheapest = i === 0;
             return (
               <div
-                key={d.date}
+                key={Array.isArray(d.date) ? d.date.join(":") : d.date}
                 className="animate-boarding-pass"
                 style={{
                   animationDelay: `${i * 40}ms`,

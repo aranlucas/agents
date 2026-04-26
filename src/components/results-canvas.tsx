@@ -214,7 +214,7 @@ function LeaderboardCard({ state }: { state: AgentState }) {
               appendMessage(
                 new TextMessage({
                   role: MessageRole.User,
-                  content: `Find flights from ${info.origin} to ${dest} on ${fmtDate(info.date[0])}`,
+                  content: `Find flights from ${info.origin} to ${dest} on ${info.date[0]}`,
                 })
               )
             }
