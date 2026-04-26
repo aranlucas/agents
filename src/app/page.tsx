@@ -31,8 +31,6 @@ export default function Page() {
     initialState: {},
   });
 
-  const hasResults = getFlightResults(state).length > 0 || getDateResults(state).length > 0;
-
   return (
     <main style={{ minHeight: "100vh", background: "var(--bg)" }}>
       <CopilotSidebar
@@ -64,108 +62,7 @@ export default function Page() {
           },
         ]}
       >
-        {hasResults ? (
-          <ResultsCanvas state={state} />
-        ) : (
-          /* Globe is always visible; hero text overlaid on top */
-          <div style={{ position: "relative", width: "100%", height: "100vh" }}>
-            <GlobeCanvas arcs={EMPTY_ARCS} />
-
-            {/* Hero overlay */}
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: "4rem 2rem",
-                pointerEvents: "none",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.6rem",
-                  marginBottom: "1.25rem",
-                }}
-              >
-                <PlaneSvg />
-                <span
-                  style={{
-                    fontFamily: "var(--font-mono)",
-                    fontSize: "0.65rem",
-                    letterSpacing: "0.25em",
-                    color: "var(--amber)",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  SEA WEEKEND TRIPS
-                </span>
-              </div>
-
-              <h1
-                style={{
-                  fontFamily: "var(--font-display)",
-                  fontWeight: 300,
-                  fontSize: "clamp(3.5rem, 10vw, 6rem)",
-                  lineHeight: 0.9,
-                  letterSpacing: "-0.01em",
-                  color: "var(--cream)",
-                  textAlign: "center",
-                  marginBottom: "1.5rem",
-                  textShadow: "0 2px 20px rgba(0,0,0,0.8)",
-                }}
-              >
-                Escape
-                <br />
-                <em style={{ fontStyle: "italic", color: "var(--amber)" }}>
-                  this weekend.
-                </em>
-              </h1>
-
-              <p
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "0.7rem",
-                  color: "var(--cream-muted)",
-                  letterSpacing: "0.1em",
-                  textAlign: "center",
-                  maxWidth: "22rem",
-                  lineHeight: 1.8,
-                }}
-              >
-                Weekend trip planner flying out of Seattle.
-                Find cheap flights and the best travel dates.
-              </p>
-
-              <div
-                style={{
-                  marginTop: "3rem",
-                  display: "flex",
-                  gap: "1.5rem",
-                  opacity: 0.35,
-                }}
-              >
-                {["SEA", "SFO", "LAX", "LAS", "DEN", "ORD", "JFK"].map((code) => (
-                  <span
-                    key={code}
-                    style={{
-                      fontFamily: "var(--font-mono)",
-                      fontSize: "0.7rem",
-                      letterSpacing: "0.12em",
-                      color: "var(--amber)",
-                    }}
-                  >
-                    {code}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+        <ResultsCanvas state={state} />
       </CopilotSidebar>
     </main>
   );

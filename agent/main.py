@@ -1,4 +1,5 @@
 """Flight search agent powered by fli MCP server."""
+
 from __future__ import annotations
 
 import json
@@ -16,10 +17,9 @@ from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools.mcp_tool import McpToolset
 from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
 from mcp import StdioServerParameters
+from google.adk.tools import BaseTool, ToolContext
 
-MAX_STORED_RESULT_GROUPS = 8
 MAX_STORED_FLIGHTS = 12
-MAX_STORED_DATES = 48
 
 
 def get_current_date() -> str:
@@ -32,11 +32,17 @@ def _as_str(value: Any, default: str = "") -> str:
 
 
 def _as_int(value: Any, default: int = 0) -> int:
-    return value if isinstance(value, int) else default
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    return default
 
 
-def _normalize_args(args: dict[str, Any]) -> dict[str, str]:
-    return {str(k): str(v) for k, v in args.items() if isinstance(k, str) and v is not None}
+def _as_float(value: Any, default: float = 0.0) -> float:
+    if isinstance(value, (int, float)):
+        return float(value)
+    return default
 
 
 def _normalize_flights(raw_flights: list[Any]) -> list[dict[str, Any]]:
@@ -70,7 +76,7 @@ def _normalize_flights(raw_flights: list[Any]) -> list[dict[str, Any]]:
             continue
 
         flight: dict[str, Any] = {
-            "price": _as_int(raw_flight.get("price")),
+            "price": _as_float(raw_flight.get("price")),
             "currency": _as_str(raw_flight.get("currency"), "USD"),
             "legs": legs,
         }
@@ -82,35 +88,11 @@ def _normalize_flights(raw_flights: list[Any]) -> list[dict[str, Any]]:
     return flights
 
 
-def _normalize_dates(raw_dates: list[Any]) -> list[dict[str, Any]]:
-    dates: list[dict[str, Any]] = []
-    for raw_date in raw_dates[:MAX_STORED_DATES]:
-        if not isinstance(raw_date, dict):
-            continue
-
-        date_value = raw_date.get("date")
-        if not isinstance(date_value, list) or not all(isinstance(item, str) for item in date_value):
-            continue
-
-        dates.append(
-            {
-                "date": date_value,
-                "price": _as_int(raw_date.get("price")),
-                "currency": _as_str(raw_date.get("currency"), "USD"),
-                "return_date": raw_date.get("return_date")
-                if raw_date.get("return_date") is None or isinstance(raw_date.get("return_date"), str)
-                else None,
-            }
-        )
-
-    return dates
-
-
 async def after_tool_callback(
-    tool: Any,
-    args: dict[str, Any],
-    tool_context: Any,
-    tool_response: dict[str, Any],
+    tool: BaseTool,
+    args: dict,
+    tool_context: ToolContext,
+    tool_response: dict,
 ) -> Optional[dict[str, Any]]:
     if tool.name not in ("search_flights", "search_dates"):
         return None
@@ -124,41 +106,26 @@ async def after_tool_callback(
     if not data.get("success"):
         return None
 
-    # Sanitize args through JSON to strip any non-serializable ADK internals
-    try:
-        safe_args = _normalize_args(json.loads(json.dumps(args or {})))
-    except (TypeError, ValueError):
-        safe_args = {}
-
     if tool.name == "search_flights":
         key = "flight_results"
         flights = _normalize_flights(data.get("flights", []))
         entry = {
             "id": str(uuid4()),
-            "args": safe_args,
             "flights": flights,
             "ts": int(time.time()),
-        }
-    else:
-        key = "date_results"
-        dates = _normalize_dates(data.get("dates") or data.get("cheapest_dates") or [])
-        entry = {
-            "id": str(uuid4()),
-            "args": safe_args,
-            "dates": dates,
-            "ts": int(time.time()),
+            "args": args,
         }
 
     current = list(tool_context.state.get(key) or [])
     current.append(entry)
-    tool_context.state[key] = current[-MAX_STORED_RESULT_GROUPS:]
+    tool_context.state[key] = current
     return None
 
 
 load_dotenv()
 
 flight_agent = LlmAgent(
-    name="FlightAgent",
+    name="flight_agent",
     model=LiteLlm(model="mistral/devstral-latest"),
     after_tool_callback=after_tool_callback,
     instruction="""You are a weekend trip flight planner for someone based in Seattle, WA.
@@ -191,11 +158,10 @@ Weekend deal scan:
             connection_params=StdioConnectionParams(
                 server_params=StdioServerParameters(
                     command="fli-mcp",
-                    args=[],
                 ),
                 timeout=30.0,
             )
-        )
+        ),
     ],
 )
 
