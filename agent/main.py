@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+from datetime import date
 
 from ag_ui_adk import ADKAgent, add_adk_fastapi_endpoint
 from dotenv import load_dotenv
@@ -12,12 +13,18 @@ from google.adk.tools.mcp_tool import McpToolset
 from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
 from mcp import StdioServerParameters
 
+
+def get_current_date() -> str:
+    """Returns today's date as YYYY-MM-DD. Call this before any date calculation."""
+    return date.today().isoformat()
+
 load_dotenv()
 
 flight_agent = LlmAgent(
     name="FlightAgent",
     model=LiteLlm(model="mistral/devstral-latest"),
     instruction="""You are a weekend trip flight planner for someone based in Seattle, WA.
+Always call get_current_date at the start of every conversation to get today's date before calculating any weekend dates.
 The user's home airport is Seattle-Tacoma International (SEA). Always use SEA as the departure airport unless the user explicitly says otherwise.
 
 Use the search_flights tool to find flights on a specific date between two airports.
@@ -36,6 +43,7 @@ Guidelines:
 - Mention stops, duration, and airline for the top results
 """,
     tools=[
+        get_current_date,
         McpToolset(
             connection_params=StdioConnectionParams(
                 server_params=StdioServerParameters(
