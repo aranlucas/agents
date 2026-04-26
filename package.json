@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "install:agent": "./scripts/setup-agent.sh || scripts\\setup-agent.bat",
-    "postinstall": "npm run install:agent"
+    "postinstall": "[ \"$VERCEL\" = \"1\" ] || npm run install:agent"
   },
   "dependencies": {
     "@ag-ui/client": "0.0.52",
