@@ -53,6 +53,7 @@ export interface StoredDateResult {
 export interface AgentState {
   flight_results?: StoredFlightResult[];
   date_results?: StoredDateResult[];
+  [key: string]: unknown;
 }
 
 export interface ArcDatum {

@@ -1,18 +1,19 @@
 import { AgentState, ArcDatum, StoredFlightResult, StoredDateResult } from "./types";
 import { AIRPORTS } from "./airports";
+import { getDateResults, getFlightResults } from "./state";
 
 const SEA = AIRPORTS["SEA"];
 
 function priceColor(price: number | null): string {
-  if (price === null) return "rgba(255,255,255,0.5)";
+  if (price === null) return "#ffffff80";
   if (price < 150) return "#22c55e";
   if (price < 300) return "#f59e0b";
   return "#ef4444";
 }
 
 export function deriveArcs(state: AgentState): ArcDatum[] {
-  const flights = state.flight_results ?? [];
-  const dates = state.date_results ?? [];
+  const flights = getFlightResults(state);
+  const dates = getDateResults(state);
 
   type Entry = { id: string; dest: string; ts: number; minPrice: number | null };
 

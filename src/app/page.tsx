@@ -4,6 +4,7 @@ import { useCoAgent } from "@copilotkit/react-core";
 import { CopilotSidebar } from "@copilotkit/react-ui";
 import { GlobeCanvas } from "@/components/globe-canvas";
 import { ResultsCanvas } from "@/components/results-canvas";
+import { getDateResults, getFlightResults } from "@/lib/state";
 import type { AgentState, ArcDatum } from "@/lib/types";
 
 const EMPTY_ARCS: ArcDatum[] = [];
@@ -30,9 +31,7 @@ export default function Page() {
     initialState: {},
   });
 
-  const hasResults = !!(
-    state.flight_results?.length || state.date_results?.length
-  );
+  const hasResults = getFlightResults(state).length > 0 || getDateResults(state).length > 0;
 
   return (
     <main style={{ minHeight: "100vh", background: "var(--bg)" }}>

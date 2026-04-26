@@ -5,6 +5,7 @@ import { useCopilotChat } from "@copilotkit/react-core";
 import { TextMessage, MessageRole } from "@copilotkit/runtime-client-gql";
 import { AgentState, StoredFlightResult, StoredDateResult, DatePrice } from "@/lib/types";
 import { deriveArcs } from "@/lib/arcs";
+import { getDateResults, getFlightResults } from "@/lib/state";
 import { GlobeCanvas } from "./globe-canvas";
 import { FlightCard } from "./flight-card";
 
@@ -27,11 +28,11 @@ type ResultEntry =
   | { kind: "date"; data: StoredDateResult };
 
 function mergeAndSort(state: AgentState): ResultEntry[] {
-  const flights: ResultEntry[] = (state.flight_results ?? []).map((r) => ({
+  const flights: ResultEntry[] = getFlightResults(state).map((r) => ({
     kind: "flight",
     data: r,
   }));
-  const dates: ResultEntry[] = (state.date_results ?? []).map((r) => ({
+  const dates: ResultEntry[] = getDateResults(state).map((r) => ({
     kind: "date",
     data: r,
   }));
@@ -167,7 +168,7 @@ function priceColor(price: number): string {
 
 function LeaderboardCard({ state }: { state: AgentState }) {
   const { appendMessage } = useCopilotChat();
-  const dateResults = state.date_results ?? [];
+  const dateResults = getDateResults(state);
 
   // Build cheapest-price-per-destination map
   const byDest = new Map<string, { price: number; date: string[]; origin: string }>();
@@ -331,7 +332,9 @@ function FlightResultCard({ data, isLatest }: { data: StoredFlightResult; isLate
 export function ResultsCanvas({ state }: { state: AgentState }) {
   const entries = mergeAndSort(state);
   // Memoize so arc reference only changes when results change, not during text streaming
-  const arcs = useMemo(() => deriveArcs(state), [state.flight_results, state.date_results]);
+  const flightResults = getFlightResults(state);
+  const dateResults = getDateResults(state);
+  const arcs = useMemo(() => deriveArcs(state), [flightResults, dateResults, state]);
   const latestTs = entries.length > 0 ? entries[0].data.ts : null;
 
   return (

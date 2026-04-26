@@ -107,7 +107,8 @@ Weekend deal scan:
                 server_params=StdioServerParameters(
                     command="fli-mcp",
                     args=[],
-                )
+                ),
+                timeout=30.0,
             )
         )
     ],

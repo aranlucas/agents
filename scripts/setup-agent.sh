@@ -4,4 +4,6 @@
 
 cd "$(dirname "$0")/../agent" || exit 1
 
+export UV_CACHE_DIR="${UV_CACHE_DIR:-/tmp/doctor-adk-uv-cache}"
+
 uv sync
