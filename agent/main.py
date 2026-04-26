@@ -1,4 +1,4 @@
-"""Flight search agent powered by fli MCP server."""
+"""Weekend trip travel planner using Google ADK with MCP tools."""
 
 from __future__ import annotations
 
@@ -19,6 +19,8 @@ from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnecti
 from google.adk.tools import BaseTool, ToolContext
 
 MAX_STORED_FLIGHTS = 12
+
+TRVL_MCP_URL = os.getenv("TRVL_MCP_URL", "https://trvl-production.up.railway.app/mcp")
 
 
 def get_current_date() -> str:
@@ -93,6 +95,7 @@ async def after_tool_callback(
     tool_context: ToolContext,
     tool_response: dict,
 ) -> Optional[dict[str, Any]]:
+    """Callback to process tool results and update agent state."""
     if tool.name not in ("search_flights", "search_dates"):
         return None
 
@@ -114,6 +117,17 @@ async def after_tool_callback(
             "ts": int(time.time()),
             "args": args,
         }
+    elif tool.name == "search_dates":
+        key = "date_results"
+        dates = data.get("dates", [])
+        entry = {
+            "id": str(uuid4()),
+            "dates": dates,
+            "ts": int(time.time()),
+            "args": args,
+        }
+    else:
+        return None
 
     current = list(tool_context.state.get(key) or [])
     current.append(entry)
@@ -123,43 +137,54 @@ async def after_tool_callback(
 
 load_dotenv()
 
+SYSTEM_INSTRUCTION = """You are a weekend trip travel planner for someone based in Seattle, WA.
+
+## Your Capabilities (MCP Tools)
+You have access to the trvl MCP server with these tools:
+- **search_flights**: Search for flights between airports on specific dates
+- **search_dates**: Find cheapest travel dates across a flexible date range
+- **get_preferences**: Get user's home airport and flight preferences (call first!)
+
+## Important Rules
+1. Always call get_current_date at the start to get today's date before calculating weekend dates
+2. The user's home airport is Seattle-Tacoma International (SEA). Always use SEA as departure unless specified otherwise.
+3. Always use IATA airport codes (e.g., SEA, SFO, LAX, ORD, JFK, LAS, PDX)
+4. If the user gives a city name, infer the primary airport code
+
+## Tool Usage
+- For specific date queries: use search_flights
+- For flexible date queries ("cheapest weekend", "when is it cheapest"): use search_dates
+- Weekend trips are typically Friday–Sunday or Saturday–Sunday
+
+## Presentation
+- Present results conversationally — highlight best price, shortest flight, and direct options
+- Suggest popular weekend destinations from Seattle: San Francisco, Los Angeles, Las Vegas, Portland, Boise, Vancouver BC, Phoenix, Denver, New York
+- Mention stops, duration, and airline for the top results
+- Ask only for destination and preferred weekend if not provided
+
+## Weekend Deal Scan
+When the user asks for "best deals this weekend" or similar:
+1. Use search_dates for each destination: SFO, LAX, LAS, DEN, PHX, ORD
+2. Cover the next two weekends (Friday through Sunday)
+3. After all searches, summarize the top 3 cheapest destinations
+"""
+
+trvl_toolset = McpToolset(
+    connection_params=StreamableHTTPConnectionParams(
+        url=TRVL_MCP_URL,
+        timeout=30.0,
+    ),
+    use_mcp_resources=True,
+)
+
 flight_agent = LlmAgent(
     name="flight_agent",
     model=LiteLlm(model="mistral/devstral-latest"),
     after_tool_callback=after_tool_callback,
-    instruction="""You are a weekend trip flight planner for someone based in Seattle, WA.
-Always call get_current_date at the start of every conversation to get today's date before calculating any weekend dates.
-The user's home airport is Seattle-Tacoma International (SEA). Always use SEA as the departure airport unless the user explicitly says otherwise.
-
-Use the search_flights tool to find flights on a specific date between two airports.
-Use the search_dates tool to find the cheapest travel dates across a flexible date range.
-
-Guidelines:
-- Always use IATA airport codes (e.g. SEA, SFO, LAX, ORD, JFK, LAS, PDX)
-- If the user gives a city name, infer the primary airport code
-- Default departure is SEA (Seattle-Tacoma International)
-- For specific date queries, use search_flights
-- For flexible date queries ("cheapest weekend", "when is it cheapest"), use search_dates
-- Weekend trips are typically Friday–Sunday or Saturday–Sunday, so suggest nearby weekends when dates are vague
-- Ask only for the destination and preferred weekend if not provided — never ask for origin since it defaults to SEA
-- Present results conversationally — highlight best price, shortest flight, and direct options
-- Suggest popular weekend destinations from Seattle: San Francisco, Los Angeles, Las Vegas, Portland, Boise, Vancouver BC, Phoenix, Denver, New York
-- Mention stops, duration, and airline for the top results
-
-Weekend deal scan:
-- When the user asks for a scan or "best deals this weekend", search_dates for each destination one at a time: SFO, LAX, LAS, DEN, PHX, ORD
-- Use a date range covering the next two weekends (Friday through Sunday)
-- After all searches complete, summarize the top 3 cheapest destinations
-""",
+    instruction=SYSTEM_INSTRUCTION,
     tools=[
         get_current_date,
-        McpToolset(
-            connection_params=StreamableHTTPConnectionParams(
-                url="https://trvl-production.up.railway.app/mcp",
-                timeout=30.0,
-            ),
-            use_mcp_resources=True,
-        ),
+        trvl_toolset,
     ],
 )
 
@@ -170,7 +195,7 @@ adk_flight_agent = ADKAgent(
     use_in_memory_services=True,
 )
 
-app = FastAPI(title="Flight Search Agent")
+app = FastAPI(title="Weekend Trip Planner")
 add_adk_fastapi_endpoint(app, adk_flight_agent, path="/")
 
 
