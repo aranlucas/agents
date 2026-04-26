@@ -17,7 +17,6 @@ from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools.mcp_tool import McpToolset
 from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHttpConnectionParams
 from google.adk.tools import BaseTool, ToolContext
-from google.adk.agents import McpInstructionProvider
 
 MAX_STORED_FLIGHTS = 12
 
@@ -160,14 +159,6 @@ Weekend deal scan:
                 timeout=30.0,
             ),
             use_mcp_resources=True,
-        ),
-    ],
-    instruction_providers=[
-        McpInstructionProvider(
-            connection_params=StreamableHttpConnectionParams(
-                url="https://trvl-production.up.railway.app/mcp",
-                timeout=30.0,
-            ),
         ),
     ],
 )
