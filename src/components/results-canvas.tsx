@@ -10,14 +10,23 @@ import { GlobeCanvas } from "./globe-canvas";
 import { FlightCard } from "./flight-card";
 
 function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const value = typeof iso === "string" ? iso : "";
+  if (!value) return "Unknown";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 function formatDateRange(dates: string[]): string {
-  if (!dates.length) return "";
+  if (!Array.isArray(dates) || dates.length === 0) return "";
   if (dates.length === 1) return fmtDate(dates[0]);
   const d0 = new Date(dates[0]);
   const d1 = new Date(dates[1]);
+  if (Number.isNaN(d0.getTime()) || Number.isNaN(d1.getTime())) {
+    return dates.map(fmtDate).join(" - ");
+  }
   const month = d0.toLocaleDateString("en-US", { month: "short" });
   if (d0.getMonth() === d1.getMonth()) return `${month} ${d0.getDate()}–${d1.getDate()}`;
   return `${fmtDate(dates[0])} – ${fmtDate(dates[1])}`;
