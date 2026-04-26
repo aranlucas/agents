@@ -44,11 +44,11 @@ export function GlobeCanvas({ arcs }: GlobeCanvasProps) {
       globe.pointOfView({ lat: 47.45, lng: -122.31, altitude: 2.0 }, 0);
       const controls = globe.controls();
       if (controls) {
-        controls.autoRotate = true;
+        controls.autoRotate = arcs.length === 0;
         controls.autoRotateSpeed = 0.4;
       }
     }
-  }, []);
+  }, [arcs.length]);
 
   return (
     <div

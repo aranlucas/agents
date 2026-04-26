@@ -2,9 +2,9 @@ export type FlightLeg = {
   airline: string;
   flight_number: string;
   departure_airport: string;
-  departure_datetime: string;
+  departure_time: string;
   arrival_airport: string;
-  arrival_datetime: string;
+  arrival_time: string;
 };
 
 export type Flight = {

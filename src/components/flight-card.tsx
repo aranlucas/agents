@@ -56,8 +56,8 @@ export function FlightCard({
   const leg = flight.legs?.[0];
   if (!leg) return null;
 
-  const depTime = formatTime(leg.departure_datetime);
-  const arrTime = formatTime(leg.arrival_datetime);
+  const depTime = formatTime(leg.departure_time);
+  const arrTime = formatTime(leg.arrival_time);
   const duration = formatDuration(flight.duration_min);
   const stops = flight.stops ?? Math.max(0, (flight.legs?.length ?? 1) - 1);
   const stopsLabel =
