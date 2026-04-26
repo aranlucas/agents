@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { useCopilotChat } from "@copilotkit/react-core";
 import { TextMessage, MessageRole } from "@copilotkit/runtime-client-gql";
 import { AgentState, StoredFlightResult, StoredDateResult, DatePrice } from "@/lib/types";
-import { deriveArcs } from "@/lib/arcs";
+import { deriveArcsFromResults } from "@/lib/arcs";
 import { getDateResults, getFlightResults } from "@/lib/state";
 import { GlobeCanvas } from "./globe-canvas";
 import { FlightCard } from "./flight-card";
@@ -27,12 +27,15 @@ type ResultEntry =
   | { kind: "flight"; data: StoredFlightResult }
   | { kind: "date"; data: StoredDateResult };
 
-function mergeAndSort(state: AgentState): ResultEntry[] {
-  const flights: ResultEntry[] = getFlightResults(state).map((r) => ({
+function mergeAndSort(
+  flightsInput: StoredFlightResult[],
+  datesInput: StoredDateResult[]
+): ResultEntry[] {
+  const flights: ResultEntry[] = flightsInput.map((r) => ({
     kind: "flight",
     data: r,
   }));
-  const dates: ResultEntry[] = getDateResults(state).map((r) => ({
+  const dates: ResultEntry[] = datesInput.map((r) => ({
     kind: "date",
     data: r,
   }));
@@ -330,11 +333,13 @@ function FlightResultCard({ data, isLatest }: { data: StoredFlightResult; isLate
 }
 
 export function ResultsCanvas({ state }: { state: AgentState }) {
-  const entries = mergeAndSort(state);
-  // Memoize so arc reference only changes when results change, not during text streaming
-  const flightResults = getFlightResults(state);
-  const dateResults = getDateResults(state);
-  const arcs = useMemo(() => deriveArcs(state), [flightResults, dateResults, state]);
+  const flightResults = useMemo(() => getFlightResults(state), [state.flight_results]);
+  const dateResults = useMemo(() => getDateResults(state), [state.date_results]);
+  const entries = useMemo(() => mergeAndSort(flightResults, dateResults), [flightResults, dateResults]);
+  const arcs = useMemo(
+    () => deriveArcsFromResults(flightResults, dateResults),
+    [flightResults, dateResults]
+  );
   const latestTs = entries.length > 0 ? entries[0].data.ts : null;
 
   return (

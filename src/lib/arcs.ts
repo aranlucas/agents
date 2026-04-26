@@ -12,8 +12,13 @@ function priceColor(price: number | null): string {
 }
 
 export function deriveArcs(state: AgentState): ArcDatum[] {
-  const flights = getFlightResults(state);
-  const dates = getDateResults(state);
+  return deriveArcsFromResults(getFlightResults(state), getDateResults(state));
+}
+
+export function deriveArcsFromResults(
+  flights: StoredFlightResult[],
+  dates: StoredDateResult[]
+): ArcDatum[] {
 
   type Entry = { id: string; dest: string; ts: number; minPrice: number | null };
 
