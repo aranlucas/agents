@@ -2,6 +2,7 @@
 
 import { useCoAgent } from "@copilotkit/react-core";
 import { CopilotSidebar } from "@copilotkit/react-ui";
+import { GlobeCanvas } from "@/components/globe-canvas";
 import { ResultsCanvas } from "@/components/results-canvas";
 import type { AgentState } from "@/lib/types";
 
@@ -64,93 +65,102 @@ export default function Page() {
         {hasResults ? (
           <ResultsCanvas state={state} />
         ) : (
-          <div
-            style={{
-              minHeight: "100vh",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "4rem 2rem",
-            }}
-          >
+          /* Globe is always visible; hero text overlaid on top */
+          <div style={{ position: "relative", width: "100%", height: "100vh" }}>
+            <GlobeCanvas arcs={[]} />
+
+            {/* Hero overlay */}
             <div
               style={{
+                position: "absolute",
+                inset: 0,
                 display: "flex",
+                flexDirection: "column",
                 alignItems: "center",
-                gap: "0.6rem",
-                marginBottom: "1.25rem",
+                justifyContent: "center",
+                padding: "4rem 2rem",
+                pointerEvents: "none",
               }}
             >
-              <PlaneSvg />
-              <span
+              <div
                 style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "0.65rem",
-                  letterSpacing: "0.25em",
-                  color: "var(--amber)",
-                  textTransform: "uppercase",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.6rem",
+                  marginBottom: "1.25rem",
                 }}
               >
-                SEA WEEKEND TRIPS
-              </span>
-            </div>
-
-            <h1
-              style={{
-                fontFamily: "var(--font-display)",
-                fontWeight: 300,
-                fontSize: "clamp(3.5rem, 10vw, 6rem)",
-                lineHeight: 0.9,
-                letterSpacing: "-0.01em",
-                color: "var(--cream)",
-                textAlign: "center",
-                marginBottom: "1.5rem",
-              }}
-            >
-              Escape
-              <br />
-              <em style={{ fontStyle: "italic", color: "var(--amber)" }}>
-                this weekend.
-              </em>
-            </h1>
-
-            <p
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "0.7rem",
-                color: "var(--cream-muted)",
-                letterSpacing: "0.1em",
-                textAlign: "center",
-                maxWidth: "22rem",
-                lineHeight: 1.8,
-              }}
-            >
-              Weekend trip planner flying out of Seattle.
-              Find cheap flights and the best travel dates.
-            </p>
-
-            <div
-              style={{
-                marginTop: "3rem",
-                display: "flex",
-                gap: "1.5rem",
-                opacity: 0.35,
-              }}
-            >
-              {["SEA", "SFO", "LAX", "LAS", "DEN", "ORD", "JFK"].map((code) => (
+                <PlaneSvg />
                 <span
-                  key={code}
                   style={{
                     fontFamily: "var(--font-mono)",
-                    fontSize: "0.7rem",
-                    letterSpacing: "0.12em",
+                    fontSize: "0.65rem",
+                    letterSpacing: "0.25em",
                     color: "var(--amber)",
+                    textTransform: "uppercase",
                   }}
                 >
-                  {code}
+                  SEA WEEKEND TRIPS
                 </span>
-              ))}
+              </div>
+
+              <h1
+                style={{
+                  fontFamily: "var(--font-display)",
+                  fontWeight: 300,
+                  fontSize: "clamp(3.5rem, 10vw, 6rem)",
+                  lineHeight: 0.9,
+                  letterSpacing: "-0.01em",
+                  color: "var(--cream)",
+                  textAlign: "center",
+                  marginBottom: "1.5rem",
+                  textShadow: "0 2px 20px rgba(0,0,0,0.8)",
+                }}
+              >
+                Escape
+                <br />
+                <em style={{ fontStyle: "italic", color: "var(--amber)" }}>
+                  this weekend.
+                </em>
+              </h1>
+
+              <p
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "0.7rem",
+                  color: "var(--cream-muted)",
+                  letterSpacing: "0.1em",
+                  textAlign: "center",
+                  maxWidth: "22rem",
+                  lineHeight: 1.8,
+                }}
+              >
+                Weekend trip planner flying out of Seattle.
+                Find cheap flights and the best travel dates.
+              </p>
+
+              <div
+                style={{
+                  marginTop: "3rem",
+                  display: "flex",
+                  gap: "1.5rem",
+                  opacity: 0.35,
+                }}
+              >
+                {["SEA", "SFO", "LAX", "LAS", "DEN", "ORD", "JFK"].map((code) => (
+                  <span
+                    key={code}
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "0.7rem",
+                      letterSpacing: "0.12em",
+                      color: "var(--amber)",
+                    }}
+                  >
+                    {code}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
         )}

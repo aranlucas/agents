@@ -46,10 +46,14 @@ export function GlobeCanvas({ arcs }: GlobeCanvasProps) {
   }, [arcs.length]);
 
   const onGlobeReady = useCallback(() => {
-    const controls = globeRef.current?.controls();
-    if (controls) {
-      controls.autoRotate = true;
-      controls.autoRotateSpeed = 0.4;
+    const globe = globeRef.current;
+    if (globe) {
+      globe.pointOfView({ lat: 47.45, lng: -122.31, altitude: 2.0 }, 0);
+      const controls = globe.controls();
+      if (controls) {
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.4;
+      }
     }
   }, []);
 

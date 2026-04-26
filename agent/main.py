@@ -41,11 +41,17 @@ async def after_tool_callback(
     if not data.get("success"):
         return None
 
+    # Sanitize args through JSON to strip any non-serializable ADK internals
+    try:
+        safe_args = json.loads(json.dumps(args or {}))
+    except (TypeError, ValueError):
+        safe_args = {}
+
     if tool.name == "search_flights":
         key = "flight_results"
         entry = {
             "id": str(uuid4()),
-            "args": args,
+            "args": safe_args,
             "flights": data.get("flights", []),
             "ts": int(time.time()),
         }
@@ -53,7 +59,7 @@ async def after_tool_callback(
         key = "date_results"
         entry = {
             "id": str(uuid4()),
-            "args": args,
+            "args": safe_args,
             "dates": data.get("dates") or data.get("cheapest_dates") or [],
             "ts": int(time.time()),
         }
