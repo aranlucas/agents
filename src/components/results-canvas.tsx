@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useCopilotChat } from "@copilotkit/react-core";
 import { TextMessage, MessageRole } from "@copilotkit/runtime-client-gql";
 import { AgentState, StoredFlightResult, StoredDateResult, DatePrice } from "@/lib/types";
@@ -158,6 +159,128 @@ function DateCard({ data, isLatest }: { data: StoredDateResult; isLatest: boolea
   );
 }
 
+function priceColor(price: number): string {
+  if (price < 150) return "#22c55e";
+  if (price < 300) return "#f59e0b";
+  return "#ef4444";
+}
+
+function LeaderboardCard({ state }: { state: AgentState }) {
+  const { appendMessage } = useCopilotChat();
+  const dateResults = state.date_results ?? [];
+
+  // Build cheapest-price-per-destination map
+  const byDest = new Map<string, { price: number; date: string[]; origin: string }>();
+  for (const r of dateResults) {
+    const dest = r.args.destination ?? r.args.arrival_airport ?? "";
+    const origin = r.args.origin ?? r.args.departure_airport ?? "SEA";
+    if (!dest || !r.dates.length) continue;
+    const cheapest = r.dates.reduce((a, b) => (a.price < b.price ? a : b));
+    const existing = byDest.get(dest);
+    if (!existing || cheapest.price < existing.price) {
+      byDest.set(dest, { price: cheapest.price, date: cheapest.date, origin });
+    }
+  }
+
+  if (byDest.size < 2) return null;
+
+  const ranked = [...byDest.entries()].sort((a, b) => a[1].price - b[1].price);
+
+  return (
+    <div
+      style={{
+        background: "rgba(7,8,10,0.9)",
+        border: "1px solid var(--amber)",
+        borderRadius: "0.75rem",
+        padding: "1.1rem",
+      }}
+    >
+      <div
+        style={{
+          fontFamily: "var(--font-mono)",
+          fontSize: "0.6rem",
+          color: "var(--amber)",
+          letterSpacing: "0.2em",
+          marginBottom: "0.75rem",
+        }}
+      >
+        ✦ WEEKEND DEALS SCAN
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+        {ranked.map(([dest, info], i) => (
+          <button
+            key={dest}
+            onClick={() =>
+              appendMessage(
+                new TextMessage({
+                  role: MessageRole.User,
+                  content: `Find flights from ${info.origin} to ${dest} on ${fmtDate(info.date[0])}`,
+                })
+              )
+            }
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.6rem",
+              background: "var(--bg-card)",
+              border: "1px solid var(--border)",
+              borderRadius: "0.4rem",
+              padding: "0.45rem 0.65rem",
+              cursor: "pointer",
+              textAlign: "left",
+              transition: "border-color 0.15s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.borderColor = priceColor(info.price))}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
+          >
+            <span
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.6rem",
+                color: "var(--cream-muted)",
+                width: "1rem",
+              }}
+            >
+              {i + 1}
+            </span>
+            <span
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: "1rem",
+                fontWeight: 600,
+                color: "var(--cream)",
+                letterSpacing: "0.04em",
+                flex: 1,
+              }}
+            >
+              {dest}
+            </span>
+            <span
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.6rem",
+                color: "var(--cream-muted)",
+              }}
+            >
+              {formatDateRange(info.date)}
+            </span>
+            <span
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: "1rem",
+                fontWeight: 700,
+                color: priceColor(info.price),
+              }}
+            >
+              ${info.price}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function FlightResultCard({ data, isLatest }: { data: StoredFlightResult; isLatest: boolean }) {
   const { flights } = data;
   const cheapestPrice = flights.length
@@ -207,7 +330,8 @@ function FlightResultCard({ data, isLatest }: { data: StoredFlightResult; isLate
 
 export function ResultsCanvas({ state }: { state: AgentState }) {
   const entries = mergeAndSort(state);
-  const arcs = deriveArcs(state);
+  // Memoize so arc reference only changes when results change, not during text streaming
+  const arcs = useMemo(() => deriveArcs(state), [state.flight_results, state.date_results]);
   const latestTs = entries.length > 0 ? entries[0].data.ts : null;
 
   return (
@@ -226,6 +350,7 @@ export function ResultsCanvas({ state }: { state: AgentState }) {
           gap: "1rem",
         }}
       >
+        <LeaderboardCard state={state} />
         {entries.map((entry) => {
           const isLatest = entry.data.ts === latestTs;
           return entry.kind === "flight" ? (

@@ -94,6 +94,11 @@ Guidelines:
 - Present results conversationally — highlight best price, shortest flight, and direct options
 - Suggest popular weekend destinations from Seattle: San Francisco, Los Angeles, Las Vegas, Portland, Boise, Vancouver BC, Phoenix, Denver, New York
 - Mention stops, duration, and airline for the top results
+
+Weekend deal scan:
+- When the user asks for a scan or "best deals this weekend", search_dates for each destination one at a time: SFO, LAX, LAS, DEN, PHX, ORD
+- Use a date range covering the next two weekends (Friday through Sunday)
+- After all searches complete, summarize the top 3 cheapest destinations
 """,
     tools=[
         get_current_date,

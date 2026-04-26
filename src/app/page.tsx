@@ -4,7 +4,9 @@ import { useCoAgent } from "@copilotkit/react-core";
 import { CopilotSidebar } from "@copilotkit/react-ui";
 import { GlobeCanvas } from "@/components/globe-canvas";
 import { ResultsCanvas } from "@/components/results-canvas";
-import type { AgentState } from "@/lib/types";
+import type { AgentState, ArcDatum } from "@/lib/types";
+
+const EMPTY_ARCS: ArcDatum[] = [];
 
 function PlaneSvg() {
   return (
@@ -44,6 +46,11 @@ export default function Page() {
         }}
         suggestions={[
           {
+            title: "Best deals this weekend",
+            message:
+              "Scan the best weekend deals from Seattle this weekend — search cheapest dates to SFO, LAX, LAS, DEN, PHX, and ORD, one at a time. Wait 2 seconds between each search.",
+          },
+          {
             title: "Vegas this weekend",
             message: "Find flights from Seattle to Las Vegas this weekend",
           },
@@ -56,10 +63,6 @@ export default function Page() {
             title: "LA quick trip",
             message: "Direct flights from Seattle to Los Angeles next Saturday",
           },
-          {
-            title: "Denver escape",
-            message: "Find flights from Seattle to Denver for a weekend in May",
-          },
         ]}
       >
         {hasResults ? (
@@ -67,7 +70,7 @@ export default function Page() {
         ) : (
           /* Globe is always visible; hero text overlaid on top */
           <div style={{ position: "relative", width: "100%", height: "100vh" }}>
-            <GlobeCanvas arcs={[]} />
+            <GlobeCanvas arcs={EMPTY_ARCS} />
 
             {/* Hero overlay */}
             <div

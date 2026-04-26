@@ -2,24 +2,32 @@ import { AgentState, ArcDatum, StoredFlightResult, StoredDateResult } from "./ty
 import { AIRPORTS } from "./airports";
 
 const SEA = AIRPORTS["SEA"];
-const ARC_COLOR_LATEST = "#F59E0B";
-const ARC_COLOR_OLD = "rgba(255,255,255,0.2)";
+
+function priceColor(price: number | null): string {
+  if (price === null) return "rgba(255,255,255,0.5)";
+  if (price < 150) return "#22c55e";
+  if (price < 300) return "#f59e0b";
+  return "#ef4444";
+}
 
 export function deriveArcs(state: AgentState): ArcDatum[] {
   const flights = state.flight_results ?? [];
   const dates = state.date_results ?? [];
 
-  type Entry = { id: string; dest: string; ts: number };
+  type Entry = { id: string; dest: string; ts: number; minPrice: number | null };
+
   const entries: Entry[] = [
     ...flights.map((r: StoredFlightResult) => ({
       id: r.id,
       dest: r.args.destination ?? r.args.arrival_airport ?? "",
       ts: r.ts,
+      minPrice: r.flights.length ? Math.min(...r.flights.map((f) => f.price)) : null,
     })),
     ...dates.map((r: StoredDateResult) => ({
       id: r.id,
       dest: r.args.destination ?? r.args.arrival_airport ?? "",
       ts: r.ts,
+      minPrice: r.dates.length ? Math.min(...r.dates.map((d) => d.price)) : null,
     })),
   ];
 
@@ -31,6 +39,9 @@ export function deriveArcs(state: AgentState): ArcDatum[] {
     const dst = AIRPORTS[entry.dest.toUpperCase()];
     if (!dst) return [];
     const isLatest = entry.ts === maxTs;
+    const color = priceColor(entry.minPrice);
+    // Dim older arcs by appending hex alpha to the color string
+    const dimmed = color + "55";
     return [
       {
         id: entry.id,
@@ -38,8 +49,8 @@ export function deriveArcs(state: AgentState): ArcDatum[] {
         startLng: SEA.lng,
         endLat: dst.lat,
         endLng: dst.lng,
-        color: isLatest ? ARC_COLOR_LATEST : ARC_COLOR_OLD,
-        strokeWidth: isLatest ? 1.5 : 0.8,
+        color: isLatest ? color : dimmed,
+        strokeWidth: isLatest ? 1.5 : 0.7,
       },
     ];
   });
