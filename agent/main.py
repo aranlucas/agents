@@ -17,10 +17,93 @@ from google.adk.tools.mcp_tool import McpToolset
 from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
 from mcp import StdioServerParameters
 
+MAX_STORED_RESULT_GROUPS = 8
+MAX_STORED_FLIGHTS = 12
+MAX_STORED_DATES = 48
+
 
 def get_current_date() -> str:
     """Returns today's date as YYYY-MM-DD. Call this before any date calculation."""
     return date.today().isoformat()
+
+
+def _as_str(value: Any, default: str = "") -> str:
+    return value if isinstance(value, str) else default
+
+
+def _as_int(value: Any, default: int = 0) -> int:
+    return value if isinstance(value, int) else default
+
+
+def _normalize_args(args: dict[str, Any]) -> dict[str, str]:
+    return {str(k): str(v) for k, v in args.items() if isinstance(k, str) and v is not None}
+
+
+def _normalize_flights(raw_flights: list[Any]) -> list[dict[str, Any]]:
+    flights: list[dict[str, Any]] = []
+    for raw_flight in raw_flights[:MAX_STORED_FLIGHTS]:
+        if not isinstance(raw_flight, dict):
+            continue
+
+        raw_legs = raw_flight.get("legs")
+        if not isinstance(raw_legs, list):
+            continue
+
+        legs: list[dict[str, Any]] = []
+        for raw_leg in raw_legs:
+            if not isinstance(raw_leg, dict):
+                continue
+            legs.append(
+                {
+                    "airline": _as_str(raw_leg.get("airline")),
+                    "airline_code": _as_str(raw_leg.get("airline_code")),
+                    "flight_number": _as_str(raw_leg.get("flight_number")),
+                    "departure_airport": _as_str(raw_leg.get("departure_airport")),
+                    "departure_time": _as_str(raw_leg.get("departure_time")),
+                    "arrival_airport": _as_str(raw_leg.get("arrival_airport")),
+                    "arrival_time": _as_str(raw_leg.get("arrival_time")),
+                    "duration": _as_int(raw_leg.get("duration")),
+                }
+            )
+
+        if not legs:
+            continue
+
+        flight: dict[str, Any] = {
+            "price": _as_int(raw_flight.get("price")),
+            "currency": _as_str(raw_flight.get("currency"), "USD"),
+            "legs": legs,
+        }
+        stops = raw_flight.get("stops")
+        if isinstance(stops, int):
+            flight["stops"] = stops
+        flights.append(flight)
+
+    return flights
+
+
+def _normalize_dates(raw_dates: list[Any]) -> list[dict[str, Any]]:
+    dates: list[dict[str, Any]] = []
+    for raw_date in raw_dates[:MAX_STORED_DATES]:
+        if not isinstance(raw_date, dict):
+            continue
+
+        date_value = raw_date.get("date")
+        if not isinstance(date_value, list) or not all(isinstance(item, str) for item in date_value):
+            continue
+
+        dates.append(
+            {
+                "date": date_value,
+                "price": _as_int(raw_date.get("price")),
+                "currency": _as_str(raw_date.get("currency"), "USD"),
+                "return_date": raw_date.get("return_date")
+                if raw_date.get("return_date") is None or isinstance(raw_date.get("return_date"), str)
+                else None,
+            }
+        )
+
+    return dates
 
 
 async def after_tool_callback(
@@ -43,30 +126,32 @@ async def after_tool_callback(
 
     # Sanitize args through JSON to strip any non-serializable ADK internals
     try:
-        safe_args = json.loads(json.dumps(args or {}))
+        safe_args = _normalize_args(json.loads(json.dumps(args or {})))
     except (TypeError, ValueError):
         safe_args = {}
 
     if tool.name == "search_flights":
         key = "flight_results"
+        flights = _normalize_flights(data.get("flights", []))
         entry = {
             "id": str(uuid4()),
             "args": safe_args,
-            "flights": data.get("flights", []),
+            "flights": flights,
             "ts": int(time.time()),
         }
     else:
         key = "date_results"
+        dates = _normalize_dates(data.get("dates") or data.get("cheapest_dates") or [])
         entry = {
             "id": str(uuid4()),
             "args": safe_args,
-            "dates": data.get("dates") or data.get("cheapest_dates") or [],
+            "dates": dates,
             "ts": int(time.time()),
         }
 
     current = list(tool_context.state.get(key) or [])
     current.append(entry)
-    tool_context.state[key] = current
+    tool_context.state[key] = current[-MAX_STORED_RESULT_GROUPS:]
     return None
 
 

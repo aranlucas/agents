@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { ErrorBoundary, FallbackProps } from "react-error-boundary";
 import { useCopilotChat } from "@copilotkit/react-core";
 import { TextMessage, MessageRole } from "@copilotkit/runtime-client-gql";
 import { AgentState, StoredFlightResult, StoredDateResult, DatePrice } from "@/lib/types";
@@ -176,6 +177,42 @@ function priceColor(price: number): string {
   if (price < 150) return "#22c55e";
   if (price < 300) return "#f59e0b";
   return "#ef4444";
+}
+
+function CardRenderFallback({ error }: FallbackProps) {
+  return (
+    <div
+      style={{
+        background: "rgba(7,8,10,0.9)",
+        border: "1px solid var(--red)",
+        borderRadius: "0.75rem",
+        padding: "1rem",
+        color: "var(--cream)",
+      }}
+    >
+      <div
+        style={{
+          fontFamily: "var(--font-mono)",
+          fontSize: "0.65rem",
+          color: "var(--red)",
+          letterSpacing: "0.12em",
+          marginBottom: "0.5rem",
+        }}
+      >
+        CARD RENDER ERROR
+      </div>
+      <div
+        style={{
+          fontFamily: "var(--font-mono)",
+          fontSize: "0.7rem",
+          color: "var(--cream-muted)",
+          lineHeight: 1.5,
+        }}
+      >
+        {error instanceof Error ? error.message : "Unknown render error"}
+      </div>
+    </div>
+  );
 }
 
 function LeaderboardCard({ state }: { state: AgentState }) {
@@ -367,13 +404,30 @@ export function ResultsCanvas({ state }: { state: AgentState }) {
           gap: "1rem",
         }}
       >
-        <LeaderboardCard state={state} />
+        <ErrorBoundary
+          FallbackComponent={CardRenderFallback}
+          onError={(error) => {
+            console.error("RenderErrorBoundary(leaderboard)", error);
+          }}
+        >
+          <LeaderboardCard state={state} />
+        </ErrorBoundary>
         {entries.map((entry) => {
           const isLatest = entry.data.ts === latestTs;
-          return entry.kind === "flight" ? (
-            <FlightResultCard key={entry.data.id} data={entry.data} isLatest={isLatest} />
-          ) : (
-            <DateCard key={entry.data.id} data={entry.data} isLatest={isLatest} />
+          return (
+            <ErrorBoundary
+              key={entry.data.id}
+              FallbackComponent={CardRenderFallback}
+              onError={(error) => {
+                console.error(`RenderErrorBoundary(${entry.kind}:${entry.data.id})`, error);
+              }}
+            >
+              {entry.kind === "flight" ? (
+                <FlightResultCard data={entry.data} isLatest={isLatest} />
+              ) : (
+                <DateCard data={entry.data} isLatest={isLatest} />
+              )}
+            </ErrorBoundary>
           );
         })}
       </div>
