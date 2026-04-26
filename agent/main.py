@@ -1,8 +1,12 @@
 """Flight search agent powered by fli MCP server."""
 from __future__ import annotations
 
+import json
 import os
+import time
 from datetime import date
+from typing import Any, Optional
+from uuid import uuid4
 
 from ag_ui_adk import ADKAgent, add_adk_fastapi_endpoint
 from dotenv import load_dotenv
@@ -18,11 +22,54 @@ def get_current_date() -> str:
     """Returns today's date as YYYY-MM-DD. Call this before any date calculation."""
     return date.today().isoformat()
 
+
+async def after_tool_callback(
+    tool: Any,
+    args: dict[str, Any],
+    tool_context: Any,
+    tool_response: dict[str, Any],
+) -> Optional[dict[str, Any]]:
+    if tool.name not in ("search_flights", "search_dates"):
+        return None
+
+    try:
+        text = tool_response.get("content", [{}])[0].get("text", "{}")
+        data = json.loads(text)
+    except (json.JSONDecodeError, IndexError, KeyError, TypeError):
+        return None
+
+    if not data.get("success"):
+        return None
+
+    if tool.name == "search_flights":
+        key = "flight_results"
+        entry = {
+            "id": str(uuid4()),
+            "args": args,
+            "flights": data.get("flights", []),
+            "ts": int(time.time()),
+        }
+    else:
+        key = "date_results"
+        entry = {
+            "id": str(uuid4()),
+            "args": args,
+            "dates": data.get("dates") or data.get("cheapest_dates") or [],
+            "ts": int(time.time()),
+        }
+
+    current = list(tool_context.state.get(key) or [])
+    current.append(entry)
+    tool_context.state[key] = current
+    return None
+
+
 load_dotenv()
 
 flight_agent = LlmAgent(
     name="FlightAgent",
     model=LiteLlm(model="mistral/devstral-latest"),
+    after_tool_callback=after_tool_callback,
     instruction="""You are a weekend trip flight planner for someone based in Seattle, WA.
 Always call get_current_date at the start of every conversation to get today's date before calculating any weekend dates.
 The user's home airport is Seattle-Tacoma International (SEA). Always use SEA as the departure airport unless the user explicitly says otherwise.
