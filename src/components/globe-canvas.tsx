@@ -30,19 +30,12 @@ export function GlobeCanvas({ arcs }: GlobeCanvasProps) {
     return () => observer.disconnect();
   }, []);
 
-  // Pause auto-rotate for 3s when new arcs arrive, then resume
+  // Stop auto-rotate permanently once results arrive
   useEffect(() => {
     if (arcs.length === 0) return;
+    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
     const controls = globeRef.current?.controls();
     if (controls) controls.autoRotate = false;
-    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
-    resumeTimerRef.current = setTimeout(() => {
-      const c = globeRef.current?.controls();
-      if (c) c.autoRotate = true;
-    }, 3000);
-    return () => {
-      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
-    };
   }, [arcs.length]);
 
   const onGlobeReady = useCallback(() => {

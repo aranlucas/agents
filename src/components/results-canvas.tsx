@@ -159,6 +159,8 @@ function FlightResultCard({ data, isLatest }: { data: StoredFlightResult; isLate
               flight={flight}
               index={i}
               isCheapest={flight.price === cheapestPrice && i === 0}
+              originCode={data.args.origin ?? data.args.departure_airport ?? "SEA"}
+              destCode={data.args.destination ?? data.args.arrival_airport}
             />
           ))}
         </div>

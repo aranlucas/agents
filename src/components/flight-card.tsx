@@ -44,10 +44,14 @@ export function FlightCard({
   flight,
   index,
   isCheapest,
+  originCode,
+  destCode,
 }: {
   flight: Flight;
   index: number;
   isCheapest?: boolean;
+  originCode?: string;
+  destCode?: string;
 }) {
   const leg = flight.legs?.[0];
   if (!leg) return null;
@@ -55,14 +59,15 @@ export function FlightCard({
   const depTime = formatTime(leg.departure_datetime);
   const arrTime = formatTime(leg.arrival_datetime);
   const duration = formatDuration(flight.duration_min);
+  const stops = flight.stops ?? Math.max(0, (flight.legs?.length ?? 1) - 1);
   const stopsLabel =
-    flight.stops === 0
+    stops === 0
       ? "DIRECT"
-      : `${flight.stops} STOP${flight.stops > 1 ? "S" : ""}`;
+      : `${stops} STOP${stops > 1 ? "S" : ""}`;
   const stopsColor =
-    flight.stops === 0
+    stops === 0
       ? "var(--green)"
-      : flight.stops === 1
+      : stops === 1
       ? "var(--amber)"
       : "var(--red)";
 
@@ -166,7 +171,7 @@ export function FlightCard({
               letterSpacing: "-0.02em",
             }}
           >
-            {leg.departure_airport}
+            {originCode ?? leg.departure_airport}
           </div>
           <div
             style={{
@@ -272,7 +277,7 @@ export function FlightCard({
               letterSpacing: "-0.02em",
             }}
           >
-            {leg.arrival_airport}
+            {destCode ?? leg.arrival_airport}
           </div>
           <div
             style={{
