@@ -29,3 +29,34 @@ export type DateSearchResult = {
   cheapest_dates?: DatePrice[];
   error?: string;
 };
+
+// --- Shared agent state (useCoAgent) ---
+
+export interface StoredFlightResult {
+  id: string;
+  args: Record<string, string>;
+  flights: Flight[];
+  ts: number;
+}
+
+export interface StoredDateResult {
+  id: string;
+  args: Record<string, string>;
+  dates: DatePrice[];
+  ts: number;
+}
+
+export interface AgentState {
+  flight_results?: StoredFlightResult[];
+  date_results?: StoredDateResult[];
+}
+
+export interface ArcDatum {
+  id: string;
+  startLat: number;
+  startLng: number;
+  endLat: number;
+  endLng: number;
+  color: string;
+  strokeWidth: number;
+}
