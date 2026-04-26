@@ -103,16 +103,14 @@ async def after_tool_callback(
         return None
 
     try:
-        content = tool_response.get("content", [])
-        if not content:
-            return None
-        
-        text = content[0].get("text", "{}")
-        
         structured = tool_response.get("structuredContent")
         if structured:
             data = structured
         else:
+            content = tool_response.get("content", [])
+            if not content:
+                return None
+            text = content[0].get("text", "{}")
             data = json.loads(text)
     except (json.JSONDecodeError, IndexError, KeyError, TypeError, AttributeError):
         return None
