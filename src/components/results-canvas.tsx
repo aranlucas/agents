@@ -1,9 +1,25 @@
 "use client";
 
+import { useCopilotChat } from "@copilotkit/react-core";
+import { TextMessage, MessageRole } from "@copilotkit/runtime-client-gql";
 import { AgentState, StoredFlightResult, StoredDateResult, DatePrice } from "@/lib/types";
 import { deriveArcs } from "@/lib/arcs";
 import { GlobeCanvas } from "./globe-canvas";
 import { FlightCard } from "./flight-card";
+
+function fmtDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function formatDateRange(dates: string[]): string {
+  if (!dates.length) return "";
+  if (dates.length === 1) return fmtDate(dates[0]);
+  const d0 = new Date(dates[0]);
+  const d1 = new Date(dates[1]);
+  const month = d0.toLocaleDateString("en-US", { month: "short" });
+  if (d0.getMonth() === d1.getMonth()) return `${month} ${d0.getDate()}–${d1.getDate()}`;
+  return `${fmtDate(dates[0])} – ${fmtDate(dates[1])}`;
+}
 
 type ResultEntry =
   | { kind: "flight"; data: StoredFlightResult }
@@ -75,7 +91,19 @@ function RouteHeader({ args }: { args: Record<string, string> }) {
 }
 
 function DateCard({ data, isLatest }: { data: StoredDateResult; isLatest: boolean }) {
+  const { appendMessage } = useCopilotChat();
   const sorted = [...data.dates].sort((a: DatePrice, b: DatePrice) => a.price - b.price);
+  const origin = data.args.origin ?? data.args.departure_airport ?? "SEA";
+  const dest = data.args.destination ?? data.args.arrival_airport ?? "?";
+
+  function handleDateClick(d: DatePrice) {
+    const isRoundTrip = d.date.length > 1;
+    const content = isRoundTrip
+      ? `Find round-trip flights from ${origin} to ${dest} departing ${fmtDate(d.date[0])} returning ${fmtDate(d.date[1])}`
+      : `Find flights from ${origin} to ${dest} on ${fmtDate(d.date[0])}`;
+    appendMessage(new TextMessage({ role: MessageRole.User, content }));
+  }
+
   return (
     <div
       style={{
@@ -101,8 +129,9 @@ function DateCard({ data, isLatest }: { data: StoredDateResult; isLatest: boolea
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
         {sorted.slice(0, 6).map((d: DatePrice) => (
-          <div
-            key={d.date}
+          <button
+            key={d.date[0]}
+            onClick={() => handleDateClick(d)}
             style={{
               background: "var(--bg-card)",
               border: "1px solid var(--border)",
@@ -111,11 +140,18 @@ function DateCard({ data, isLatest }: { data: StoredDateResult; isLatest: boolea
               fontFamily: "var(--font-mono)",
               fontSize: "0.7rem",
               color: "var(--cream)",
+              cursor: "pointer",
+              display: "flex",
+              gap: "0.4rem",
+              alignItems: "center",
+              transition: "border-color 0.15s",
             }}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = "var(--amber)")}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--border)")}
           >
-            <span style={{ color: "var(--cream-muted)", marginRight: "0.4rem" }}>{d.date}</span>
+            <span style={{ color: "var(--cream-muted)" }}>{formatDateRange(d.date)}</span>
             <span style={{ color: "var(--amber-bright)", fontWeight: 700 }}>${d.price}</span>
-          </div>
+          </button>
         ))}
       </div>
     </div>

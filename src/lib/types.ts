@@ -1,16 +1,17 @@
 export type FlightLeg = {
   airline: string;
+  airline_code: string;
   flight_number: string;
   departure_airport: string;
   departure_time: string;
   arrival_airport: string;
   arrival_time: string;
+  duration: number; // minutes
 };
 
 export type Flight = {
   price: number;
-  duration_min: number;
-  stops: number;
+  currency: string;
   legs: FlightLeg[];
 };
 
@@ -20,8 +21,10 @@ export type FlightSearchResult = {
 };
 
 export type DatePrice = {
-  date: string;
+  date: string[]; // [departureISO] or [departureISO, returnISO]
   price: number;
+  currency: string;
+  return_date: string | null;
 };
 
 export type DateSearchResult = {
