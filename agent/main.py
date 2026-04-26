@@ -47,6 +47,7 @@ def _as_float(value: Any, default: float = 0.0) -> float:
 
 
 def _normalize_flights(raw_flights: list[Any]) -> list[dict[str, Any]]:
+    """Normalize flight data from MCP response to internal format."""
     flights: list[dict[str, Any]] = []
     for raw_flight in raw_flights[:MAX_STORED_FLIGHTS]:
         if not isinstance(raw_flight, dict):
@@ -60,18 +61,20 @@ def _normalize_flights(raw_flights: list[Any]) -> list[dict[str, Any]]:
         for raw_leg in raw_legs:
             if not isinstance(raw_leg, dict):
                 continue
-            legs.append(
-                {
-                    "airline": _as_str(raw_leg.get("airline")),
-                    "airline_code": _as_str(raw_leg.get("airline_code")),
-                    "flight_number": _as_str(raw_leg.get("flight_number")),
-                    "departure_airport": _as_str(raw_leg.get("departure_airport")),
-                    "departure_time": _as_str(raw_leg.get("departure_time")),
-                    "arrival_airport": _as_str(raw_leg.get("arrival_airport")),
-                    "arrival_time": _as_str(raw_leg.get("arrival_time")),
-                    "duration": _as_int(raw_leg.get("duration")),
-                }
-            )
+            
+            dep = raw_leg.get("departure_airport", {})
+            arr = raw_leg.get("arrival_airport", {})
+            
+            legs.append({
+                "airline": raw_leg.get("airline", ""),
+                "airline_code": raw_leg.get("airline_code", ""),
+                "flight_number": raw_leg.get("flight_number", ""),
+                "departure_airport": dep.get("code", "") if isinstance(dep, dict) else str(dep),
+                "departure_time": raw_leg.get("departure_time", ""),
+                "arrival_airport": arr.get("code", "") if isinstance(arr, dict) else str(arr),
+                "arrival_time": raw_leg.get("arrival_time", ""),
+                "duration": _as_int(raw_leg.get("duration")),
+            })
 
         if not legs:
             continue
@@ -95,14 +98,23 @@ async def after_tool_callback(
     tool_context: ToolContext,
     tool_response: dict,
 ) -> Optional[dict[str, Any]]:
-    """Callback to process tool results and update agent state."""
+    """Callback to process MCP tool results and update agent state."""
     if tool.name not in ("search_flights", "search_dates"):
         return None
 
     try:
-        text = tool_response.get("content", [{}])[0].get("text", "{}")
-        data = json.loads(text)
-    except (json.JSONDecodeError, IndexError, KeyError, TypeError):
+        content = tool_response.get("content", [])
+        if not content:
+            return None
+        
+        text = content[0].get("text", "{}")
+        
+        structured = tool_response.get("structuredContent")
+        if structured:
+            data = structured
+        else:
+            data = json.loads(text)
+    except (json.JSONDecodeError, IndexError, KeyError, TypeError, AttributeError):
         return None
 
     if not data.get("success"):
