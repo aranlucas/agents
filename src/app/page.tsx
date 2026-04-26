@@ -1,9 +1,9 @@
 "use client";
 
-import { useRenderToolCall } from "@copilotkit/react-core";
+import { useCoAgent } from "@copilotkit/react-core";
 import { CopilotSidebar } from "@copilotkit/react-ui";
-import { FlightResults } from "@/components/flight-results";
-import { DateResults } from "@/components/date-results";
+import { ResultsCanvas } from "@/components/results-canvas";
+import type { AgentState } from "@/lib/types";
 
 function PlaneSvg() {
   return (
@@ -22,39 +22,17 @@ function PlaneSvg() {
 }
 
 export default function Page() {
-  useRenderToolCall(
-    {
-      name: "search_flights",
-      render: ({ args, result }) => (
-        <FlightResults
-          args={args as Record<string, string>}
-          result={result as string | undefined}
-        />
-      ),
-    },
-    []
-  );
+  const { state } = useCoAgent<AgentState>({
+    name: "my_agent",
+    initialState: {},
+  });
 
-  useRenderToolCall(
-    {
-      name: "search_dates",
-      render: ({ args, result }) => (
-        <DateResults
-          args={args as Record<string, string>}
-          result={result as string | undefined}
-        />
-      ),
-    },
-    []
+  const hasResults = !!(
+    state.flight_results?.length || state.date_results?.length
   );
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        background: "var(--bg)",
-      }}
-    >
+    <main style={{ minHeight: "100vh", background: "var(--bg)" }}>
       <CopilotSidebar
         disableSystemMessage={true}
         clickOutsideToClose={false}
@@ -83,90 +61,84 @@ export default function Page() {
           },
         ]}
       >
-        {/* Main canvas — shown when no results rendered */}
-        <div
-          style={{
-            minHeight: "100vh",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "4rem 2rem",
-          }}
-        >
-          {/* Logo / wordmark */}
+        {hasResults ? (
+          <ResultsCanvas state={state} />
+        ) : (
           <div
             style={{
+              minHeight: "100vh",
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
-              gap: "0.6rem",
-              marginBottom: "1.25rem",
+              justifyContent: "center",
+              padding: "4rem 2rem",
             }}
           >
-            <PlaneSvg />
-            <span
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.6rem",
+                marginBottom: "1.25rem",
+              }}
+            >
+              <PlaneSvg />
+              <span
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "0.65rem",
+                  letterSpacing: "0.25em",
+                  color: "var(--amber)",
+                  textTransform: "uppercase",
+                }}
+              >
+                SEA WEEKEND TRIPS
+              </span>
+            </div>
+
+            <h1
+              style={{
+                fontFamily: "var(--font-display)",
+                fontWeight: 300,
+                fontSize: "clamp(3.5rem, 10vw, 6rem)",
+                lineHeight: 0.9,
+                letterSpacing: "-0.01em",
+                color: "var(--cream)",
+                textAlign: "center",
+                marginBottom: "1.5rem",
+              }}
+            >
+              Escape
+              <br />
+              <em style={{ fontStyle: "italic", color: "var(--amber)" }}>
+                this weekend.
+              </em>
+            </h1>
+
+            <p
               style={{
                 fontFamily: "var(--font-mono)",
-                fontSize: "0.65rem",
-                letterSpacing: "0.25em",
-                color: "var(--amber)",
-                textTransform: "uppercase",
+                fontSize: "0.7rem",
+                color: "var(--cream-muted)",
+                letterSpacing: "0.1em",
+                textAlign: "center",
+                maxWidth: "22rem",
+                lineHeight: 1.8,
               }}
             >
-              SEA WEEKEND TRIPS
-            </span>
-          </div>
+              Weekend trip planner flying out of Seattle.
+              Find cheap flights and the best travel dates.
+            </p>
 
-          <h1
-            style={{
-              fontFamily: "var(--font-display)",
-              fontWeight: 300,
-              fontSize: "clamp(3.5rem, 10vw, 6rem)",
-              lineHeight: 0.9,
-              letterSpacing: "-0.01em",
-              color: "var(--cream)",
-              textAlign: "center",
-              marginBottom: "1.5rem",
-            }}
-          >
-            Escape
-            <br />
-            <em
+            <div
               style={{
-                fontStyle: "italic",
-                color: "var(--amber)",
+                marginTop: "3rem",
+                display: "flex",
+                gap: "1.5rem",
+                opacity: 0.35,
               }}
             >
-              this weekend.
-            </em>
-          </h1>
-
-          <p
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: "0.7rem",
-              color: "var(--cream-muted)",
-              letterSpacing: "0.1em",
-              textAlign: "center",
-              maxWidth: "22rem",
-              lineHeight: 1.8,
-            }}
-          >
-            Weekend trip planner flying out of Seattle.
-            Find cheap flights and the best travel dates.
-          </p>
-
-          {/* Decorative departure board strip */}
-          <div
-            style={{
-              marginTop: "3rem",
-              display: "flex",
-              gap: "1.5rem",
-              opacity: 0.35,
-            }}
-          >
-            {["SEA", "SFO", "LAX", "LAS", "DEN", "ORD", "JFK"].map(
-              (code) => (
+              {["SEA", "SFO", "LAX", "LAS", "DEN", "ORD", "JFK"].map((code) => (
                 <span
                   key={code}
                   style={{
@@ -178,10 +150,10 @@ export default function Page() {
                 >
                   {code}
                 </span>
-              )
-            )}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </CopilotSidebar>
     </main>
   );
