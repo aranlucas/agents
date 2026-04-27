@@ -32,42 +32,36 @@ async def itinerary_after_tool_callback(
     if not data or data.get("isError"):
         return None
 
+    # Get or initialize active_trip in state (modifications are auto-tracked by ADK)
+    if "active_trip" not in tool_context.state:
+        tool_context.state["active_trip"] = {}
+
+    trip = tool_context.state["active_trip"]
+
     if tool.name == "create_trip":
-        # Initialize a fresh trip state
-        trip_id = data.get("id", "")
-        trip_name = data.get("name", "")
-        tool_context.state["active_trip"] = {
-            "id": trip_id,
-            "name": trip_name,
-            "legs": [],
-            "updated_at": int(time.time()),
-        }
+        trip["id"] = data.get("id", "")
+        trip["name"] = data.get("name", "")
+        trip["legs"] = []
+        trip["updated_at"] = int(time.time())
     elif tool.name == "add_trip_leg":
         new_leg = data.get("leg")
         if not new_leg:
             return None
         
-        # Get or initialize the active trip
-        current_trip = tool_context.state.get("active_trip", {})
-        if not current_trip:
-            current_trip = {"legs": []}
+        # Initialize legs list if needed
+        if "legs" not in trip or not isinstance(trip["legs"], list):
+            trip["legs"] = []
         
-        # Append the new leg
-        current_legs = current_trip.get("legs", [])
-        updated_legs = current_legs + [new_leg]
+        # Append new leg
+        trip["legs"].append(new_leg)
         
-        # Infer origin/destination from legs
-        origin = updated_legs[0].get("from", "") if updated_legs else ""
-        destination = updated_legs[-1].get("to", "") if updated_legs else ""
+        # Update origin/destination from legs
+        legs = trip["legs"]
+        if legs:
+            trip["origin"] = legs[0].get("from", "")
+            trip["destination"] = legs[-1].get("to", "")
         
-        # Update state directly
-        tool_context.state["active_trip"] = {
-            **current_trip,
-            "legs": updated_legs,
-            "origin": origin,
-            "destination": destination,
-            "updated_at": int(time.time()),
-        }
+        trip["updated_at"] = int(time.time())
 
     return None
 
