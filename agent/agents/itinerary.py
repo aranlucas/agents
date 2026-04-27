@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from typing import Optional
 import time
-from uuid import uuid4
 
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
@@ -36,10 +35,11 @@ async def itinerary_after_tool_callback(
         return None
 
     if tool.name == "create_trip":
-        update_active_trip(tool_context, tool.name, args, data.get("structuredContent", data))
+        # data is already structuredContent from parse_tool_response
+        update_active_trip(tool_context, tool.name, args, data)
     elif tool.name == "add_trip_leg":
-        result_data = data.get("structuredContent", data)
-        new_leg = result_data.get("leg")
+        # data is already structuredContent
+        new_leg = data.get("leg")
         if new_leg:
             current_trip = tool_context.state.get("active_trip", {})
             current_legs = current_trip.get("legs", [])
