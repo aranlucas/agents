@@ -15,5 +15,5 @@ profile_agent = LlmAgent(
     model=LiteLlm(model="mistral/devstral-latest"),
     instruction=PROFILE_INSTRUCTION,
     tools=[trvl_toolset(PROFILE_TOOLS)],
-    after_tool_callbacks=[filter_mcp_tool_response],
+    after_tool_callback=filter_mcp_tool_response,
 )

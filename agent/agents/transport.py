@@ -32,6 +32,11 @@ async def transport_after_tool_callback(
     tool_response: dict,
 ) -> Optional[dict[str, Any]]:
     """Handle transport-specific tool results: search_flights, search_route."""
+    # Always filter MCP responses first
+    filter_result = filter_mcp_tool_response(tool, args, tool_context, tool_response)
+    if filter_result is not None:
+        return filter_result
+    
     if tool.name not in ("search_flights", "search_route"):
         return None
 
@@ -47,7 +52,7 @@ async def transport_after_tool_callback(
 transport_agent = LlmAgent(
     name="transport_agent",
     model=LiteLlm(model="mistral/devstral-latest"),
-    after_tool_callbacks=[filter_mcp_tool_response, transport_after_tool_callback],
+    after_tool_callback=transport_after_tool_callback,
     instruction=TRANSPORT_INSTRUCTION,
     tools=[trvl_toolset(TRANSPORT_TOOLS)],
 )

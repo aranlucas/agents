@@ -36,6 +36,11 @@ async def itinerary_after_tool_callback(
     tool_response: dict,
 ) -> Optional[dict[str, Any]]:
     """Handle itinerary tool results: create_trip, add_trip_leg."""
+    # Always filter MCP responses first
+    filter_result = filter_mcp_tool_response(tool, args, tool_context, tool_response)
+    if filter_result is not None:
+        return filter_result
+    
     if tool.name not in ("create_trip", "add_trip_leg"):
         return None
 
@@ -94,5 +99,5 @@ itinerary_agent = LlmAgent(
     model=LiteLlm(model="mistral/devstral-latest"),
     instruction=ITINERARY_INSTRUCTION,
     tools=[trvl_toolset(ITINERARY_TOOLS)],
-    after_tool_callbacks=[filter_mcp_tool_response, itinerary_after_tool_callback],
+    after_tool_callback=itinerary_after_tool_callback,
 )

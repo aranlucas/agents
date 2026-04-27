@@ -30,6 +30,11 @@ async def discovery_after_tool_callback(
     tool_response: dict,
 ) -> Optional[dict[str, Any]]:
     """Handle discovery-specific tool results: search_dates."""
+    # Always filter MCP responses first
+    filter_result = filter_mcp_tool_response(tool, args, tool_context, tool_response)
+    if filter_result is not None:
+        return filter_result
+    
     if tool.name != "search_dates":
         return None
 
@@ -52,7 +57,7 @@ async def discovery_after_tool_callback(
 discovery_agent = LlmAgent(
     name="discovery_agent",
     model=LiteLlm(model="mistral/devstral-latest"),
-    after_tool_callbacks=[filter_mcp_tool_response, discovery_after_tool_callback],
+    after_tool_callback=discovery_after_tool_callback,
     instruction=DISCOVERY_INSTRUCTION,
     tools=[trvl_toolset(DISCOVERY_TOOLS)],
 )

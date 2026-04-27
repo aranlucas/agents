@@ -30,6 +30,11 @@ async def lodging_after_tool_callback(
     tool_response: dict,
 ) -> Optional[dict[str, Any]]:
     """Handle lodging-specific tool results: search_hotels."""
+    # Always filter MCP responses first
+    filter_result = filter_mcp_tool_response(tool, args, tool_context, tool_response)
+    if filter_result is not None:
+        return filter_result
+    
     if tool.name != "search_hotels":
         return None
 
@@ -57,7 +62,7 @@ async def lodging_after_tool_callback(
 lodging_agent = LlmAgent(
     name="lodging_agent",
     model=LiteLlm(model="mistral/devstral-latest"),
-    after_tool_callbacks=[filter_mcp_tool_response, lodging_after_tool_callback],
+    after_tool_callback=lodging_after_tool_callback,
     instruction=LODGING_INSTRUCTION,
     tools=[trvl_toolset(LODGING_TOOLS)],
 )

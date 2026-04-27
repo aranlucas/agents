@@ -30,6 +30,11 @@ async def viability_after_tool_callback(
     tool_response: dict,
 ) -> Optional[dict[str, Any]]:
     """Handle viability-specific tool results: assess_trip."""
+    # Always filter MCP responses first
+    filter_result = filter_mcp_tool_response(tool, args, tool_context, tool_response)
+    if filter_result is not None:
+        return filter_result
+    
     if tool.name != "assess_trip":
         return None
 
@@ -44,7 +49,7 @@ async def viability_after_tool_callback(
 viability_agent = LlmAgent(
     name="viability_agent",
     model=LiteLlm(model="mistral/devstral-latest"),
-    after_tool_callbacks=[filter_mcp_tool_response, viability_after_tool_callback],
+    after_tool_callback=viability_after_tool_callback,
     instruction=VIABILITY_INSTRUCTION,
     tools=[trvl_toolset(VIABILITY_TOOLS)],
 )
