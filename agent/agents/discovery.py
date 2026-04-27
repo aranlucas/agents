@@ -14,6 +14,7 @@ from utils import (
     trvl_toolset,
     parse_tool_response,
     update_legacy_results,
+    filter_mcp_tool_response,
 )
 
 
@@ -51,7 +52,7 @@ async def discovery_after_tool_callback(
 discovery_agent = LlmAgent(
     name="discovery_agent",
     model=LiteLlm(model="mistral/devstral-latest"),
-    after_tool_callback=discovery_after_tool_callback,
+    after_tool_callbacks=[filter_mcp_tool_response, discovery_after_tool_callback],
     instruction=DISCOVERY_INSTRUCTION,
     tools=[trvl_toolset(DISCOVERY_TOOLS)],
 )

@@ -12,6 +12,7 @@ from utils import (
     ITINERARY_TOOLS,
     trvl_toolset,
     parse_tool_response,
+    filter_mcp_tool_response,
 )
 
 ITINERARY_INSTRUCTION = """Maintain trip records and booking follow-through. 
@@ -93,5 +94,5 @@ itinerary_agent = LlmAgent(
     model=LiteLlm(model="mistral/devstral-latest"),
     instruction=ITINERARY_INSTRUCTION,
     tools=[trvl_toolset(ITINERARY_TOOLS)],
-    after_tool_callback=itinerary_after_tool_callback,
+    after_tool_callbacks=[filter_mcp_tool_response, itinerary_after_tool_callback],
 )

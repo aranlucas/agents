@@ -17,6 +17,7 @@ from utils import (
     parse_tool_response,
     update_legacy_results,
     update_active_trip,
+    filter_mcp_tool_response,
 )
 
 TRANSPORT_INSTRUCTION = """Plan transportation for trips from Seattle unless the user specifies
@@ -46,7 +47,7 @@ async def transport_after_tool_callback(
 transport_agent = LlmAgent(
     name="transport_agent",
     model=LiteLlm(model="mistral/devstral-latest"),
-    after_tool_callback=transport_after_tool_callback,
+    after_tool_callbacks=[filter_mcp_tool_response, transport_after_tool_callback],
     instruction=TRANSPORT_INSTRUCTION,
     tools=[trvl_toolset(TRANSPORT_TOOLS)],
 )

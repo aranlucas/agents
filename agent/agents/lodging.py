@@ -14,6 +14,7 @@ from utils import (
     trvl_toolset,
     parse_tool_response,
     update_active_trip,
+    filter_mcp_tool_response,
 )
 
 
@@ -56,7 +57,7 @@ async def lodging_after_tool_callback(
 lodging_agent = LlmAgent(
     name="lodging_agent",
     model=LiteLlm(model="mistral/devstral-latest"),
-    after_tool_callback=lodging_after_tool_callback,
+    after_tool_callbacks=[filter_mcp_tool_response, lodging_after_tool_callback],
     instruction=LODGING_INSTRUCTION,
     tools=[trvl_toolset(LODGING_TOOLS)],
 )

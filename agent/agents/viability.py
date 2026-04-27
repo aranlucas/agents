@@ -14,6 +14,7 @@ from utils import (
     trvl_toolset,
     parse_tool_response,
     update_active_trip,
+    filter_mcp_tool_response,
 )
 
 
@@ -43,7 +44,7 @@ async def viability_after_tool_callback(
 viability_agent = LlmAgent(
     name="viability_agent",
     model=LiteLlm(model="mistral/devstral-latest"),
-    after_tool_callback=viability_after_tool_callback,
+    after_tool_callbacks=[filter_mcp_tool_response, viability_after_tool_callback],
     instruction=VIABILITY_INSTRUCTION,
     tools=[trvl_toolset(VIABILITY_TOOLS)],
 )

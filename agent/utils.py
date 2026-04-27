@@ -180,6 +180,22 @@ def update_legacy_results(
     tool_context.state[key] = current
 
 
+def filter_mcp_tool_response(
+    tool: BaseTool,
+    args: dict,
+    tool_context: ToolContext,
+    tool_response: dict,
+) -> Optional[dict]:
+    """Filter MCP tool responses to only pass content to LLM when both content and structuredContent exist."""
+    if (
+        isinstance(tool_response, dict)
+        and "content" in tool_response
+        and "structuredContent" in tool_response
+    ):
+        return {"content": tool_response["content"]}
+    return None
+
+
 def update_active_trip(
     tool_context: ToolContext,
     tool_name: str,
