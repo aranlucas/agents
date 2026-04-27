@@ -30,17 +30,12 @@ async def discovery_after_tool_callback(
     tool_response: dict,
 ) -> Optional[dict[str, Any]]:
     """Handle discovery-specific tool results: search_dates."""
-    # Always filter MCP responses first
-    filter_result = filter_mcp_tool_response(tool, args, tool_context, tool_response)
-    if filter_result is not None:
-        return filter_result
-    
     if tool.name != "search_dates":
-        return None
+        return filter_mcp_tool_response(tool, args, tool_context, tool_response)
 
     data = parse_tool_response(tool_response)
     if not data or not data.get("success"):
-        return None
+        return filter_mcp_tool_response(tool, args, tool_context, tool_response)
 
     key = "date_results"
     dates = data.get("dates", [])
@@ -51,7 +46,7 @@ async def discovery_after_tool_callback(
         "args": args,
     }
     update_legacy_results(tool_context, key, entry)
-    return None
+    return filter_mcp_tool_response(tool, args, tool_context, tool_response)
 
 
 discovery_agent = LlmAgent(

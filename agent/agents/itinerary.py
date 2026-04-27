@@ -36,13 +36,8 @@ async def itinerary_after_tool_callback(
     tool_response: dict,
 ) -> Optional[dict[str, Any]]:
     """Handle itinerary tool results: create_trip, add_trip_leg."""
-    # Always filter MCP responses first
-    filter_result = filter_mcp_tool_response(tool, args, tool_context, tool_response)
-    if filter_result is not None:
-        return filter_result
-    
     if tool.name not in ("create_trip", "add_trip_leg"):
-        return None
+        return filter_mcp_tool_response(tool, args, tool_context, tool_response)
 
     data = parse_tool_response(tool_response)
     if not data or data.get("isError"):
@@ -91,7 +86,7 @@ async def itinerary_after_tool_callback(
         trip["updated_at"] = int(time.time())
         print(f"[itinerary_callback] Updated trip state: {trip}")
 
-    return None
+    return filter_mcp_tool_response(tool, args, tool_context, tool_response)
 
 
 itinerary_agent = LlmAgent(

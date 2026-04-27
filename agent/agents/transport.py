@@ -32,21 +32,16 @@ async def transport_after_tool_callback(
     tool_response: dict,
 ) -> Optional[dict[str, Any]]:
     """Handle transport-specific tool results: search_flights, search_route."""
-    # Always filter MCP responses first
-    filter_result = filter_mcp_tool_response(tool, args, tool_context, tool_response)
-    if filter_result is not None:
-        return filter_result
-    
     if tool.name not in ("search_flights", "search_route"):
-        return None
+        return filter_mcp_tool_response(tool, args, tool_context, tool_response)
 
     data = parse_tool_response(tool_response)
     if not data or not data.get("success"):
-        return None
+        return filter_mcp_tool_response(tool, args, tool_context, tool_response)
 
     # Update active_trip
     update_active_trip(tool_context, tool.name, args, data)
-    return None
+    return filter_mcp_tool_response(tool, args, tool_context, tool_response)
 
 
 transport_agent = LlmAgent(
