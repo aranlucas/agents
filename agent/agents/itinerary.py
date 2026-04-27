@@ -27,18 +27,28 @@ async def itinerary_after_tool_callback(
     tool_response: dict,
 ) -> Optional[dict[str, Any]]:
     """Handle itinerary tool results: create_trip, add_trip_leg."""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"[itinerary_callback] Tool: {tool.name}, args: {args}")
+    logger.info(f"[itinerary_callback] Response: {tool_response}")
+    
     if tool.name not in ("create_trip", "add_trip_leg"):
         return None
 
     data = parse_tool_response(tool_response)
+    logger.info(f"[itinerary_callback] Parsed data: {data}")
+    
     if not data or data.get("isError"):
+        logger.warning(f"[itinerary_callback] No data or isError")
         return None
 
     if tool.name == "create_trip":
-        # data is already structuredContent from parse_tool_response
+        logger.info(f"[itinerary_callback] Creating trip with data: {data}")
         update_active_trip(tool_context, tool.name, args, data)
+        logger.info(f"[itinerary_callback] Active trip after create: {tool_context.state.get('active_trip')}")
     elif tool.name == "add_trip_leg":
-        # data is already structuredContent
+        logger.info(f"[itinerary_callback] Adding trip leg with data: {data}")
         new_leg = data.get("leg")
         if new_leg:
             current_trip = tool_context.state.get("active_trip", {})
@@ -55,6 +65,7 @@ async def itinerary_after_tool_callback(
                 now=int(time.time()),
             )
             tool_context.state["active_trip"] = merged
+            logger.info(f"[itinerary_callback] Active trip after add_leg: {tool_context.state.get('active_trip')}")
 
     return None
 
