@@ -9,15 +9,25 @@ import { CITIES, type CityCoord } from "@/lib/cities";
 import type { ArcDatum } from "@/lib/types";
 
 function getCityCoords(city: string): CityCoord | null {
+  if (!city) return null;
+  
   // Try exact match first
   if (CITIES[city]) return CITIES[city];
   
   // Try matching by city name without state/province
-  const cityOnly = city.split(",")[0].trim();
+  const cityOnly = city.split(",")[0].trim().toLowerCase();
   const match = Object.entries(CITIES).find(([key]) => 
-    key.split(",")[0].trim() === cityOnly
+    key.split(",")[0].trim().toLowerCase() === cityOnly
   );
-  return match ? match[1] : null;
+  
+  if (match) return match[1];
+  
+  // Try partial match (e.g., "Vancouver" matches "Vancouver, BC")
+  const partialMatch = Object.entries(CITIES).find(([key]) => 
+    key.toLowerCase().includes(cityOnly) || cityOnly.includes(key.split(",")[0].trim().toLowerCase())
+  );
+  
+  return partialMatch ? partialMatch[1] : null;
 }
 
 function tripLegsToArcs(legs: TripLeg[]): ArcDatum[] {
