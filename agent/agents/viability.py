@@ -19,8 +19,9 @@ from utils import (
 
 
 VIABILITY_INSTRUCTION = """Assess whether a trip is practical. Use viability tools for cost,
-visa, points, booking optimization, travel hacks, trip windows, date optimization, and multi-city
-planning. Call out blockers and concrete next steps."""
+visa, points, restaurants, booking optimization, travel hacks, trip windows, date optimization, and
+multi-city planning. Use profile context only when missing passport, budget, party size, points, or
+personal constraints materially affect the verdict. Call out blockers and concrete next steps."""
 
 
 async def viability_after_tool_callback(

@@ -1,7 +1,7 @@
 """Itinerary agent with after_tool_callback for trip state updates."""
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 import time
 
 from google.adk.agents import LlmAgent
@@ -13,6 +13,7 @@ from utils import (
     trvl_toolset,
     parse_tool_response,
     filter_mcp_tool_response,
+    update_active_trip,
 )
 
 ITINERARY_INSTRUCTION = """Maintain trip records and booking follow-through. 
@@ -26,7 +27,9 @@ When creating multi-destination trips (e.g., Seattle -> Vancouver -> Whistler ->
 
 After adding all legs, confirm the trip is complete by listing all legs back to the user.
 
-Use itinerary tools to create, list, retrieve, update, mark booked, export calendars, and watch prices or rooms."""
+Use itinerary tools to create, list, retrieve, update, mark booked, export calendars, create price
+watches, list watches, check watches, and review watch opportunities. Use profile context only when
+saved preferences or booking history are needed to complete the itinerary accurately."""
 
 
 async def itinerary_after_tool_callback(
@@ -35,8 +38,8 @@ async def itinerary_after_tool_callback(
     tool_context: ToolContext,
     tool_response: dict,
 ) -> Optional[dict[str, Any]]:
-    """Handle itinerary tool results: create_trip, add_trip_leg."""
-    if tool.name not in ("create_trip", "add_trip_leg"):
+    """Handle itinerary tool results that update active_trip."""
+    if tool.name not in ("create_trip", "add_trip_leg", "get_trip", "mark_trip_booked"):
         return filter_mcp_tool_response(tool, args, tool_context, tool_response)
 
     data = parse_tool_response(tool_response)
@@ -49,7 +52,9 @@ async def itinerary_after_tool_callback(
 
     trip = tool_context.state["active_trip"]
 
-    if tool.name == "create_trip":
+    if tool.name in ("get_trip", "mark_trip_booked"):
+        update_active_trip(tool_context, tool.name, args, data)
+    elif tool.name == "create_trip":
         trip["id"] = data.get("id", "")
         trip["name"] = data.get("name", "")
         trip["legs"] = []

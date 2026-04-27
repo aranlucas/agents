@@ -2,8 +2,8 @@
 
 import {
   useFrontendTool,
-  CatchAllActionRenderProps,
 } from "@copilotkit/react-core/v2";
+import type { CatchAllActionRenderProps } from "@copilotkit/react-core";
 import McpToolCall from "./McpToolCall";
 
 export function ToolRenderer() {

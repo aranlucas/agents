@@ -13,6 +13,7 @@ import type {
   StoredHotelResult,
   StoredRouteResult,
   StoredViabilityResult,
+  TripLeg,
 } from "./types";
 
 const FLIGHT_RESULT_PREFIX = "flight_result:";
@@ -152,8 +153,11 @@ function isTripLeg(value: unknown): value is TripLeg {
     typeof value.type === "string" &&
     typeof value.from === "string" &&
     typeof value.to === "string" &&
-    typeof value.provider === "string" &&
-    typeof value.confirmed === "boolean"
+    (value.provider === undefined || typeof value.provider === "string") &&
+    typeof value.confirmed === "boolean" &&
+    (value.price === undefined || typeof value.price === "number") &&
+    (value.currency === undefined || typeof value.currency === "string") &&
+    (value.reference === undefined || typeof value.reference === "string")
   );
 }
 
@@ -162,10 +166,14 @@ function isActiveTrip(value: unknown): value is ActiveTrip {
     isRecord(value) &&
     (value.id === undefined || typeof value.id === "string") &&
     (value.name === undefined || typeof value.name === "string") &&
+    (value.status === undefined || typeof value.status === "string") &&
     (value.origin === undefined || typeof value.origin === "string") &&
     (value.destination === undefined || typeof value.destination === "string") &&
     (value.legs === undefined || (Array.isArray(value.legs) && value.legs.every(isTripLeg))) &&
-    (value.updated_at === undefined || typeof value.updated_at === "number")
+    (value.tags === undefined || (Array.isArray(value.tags) && value.tags.every((tag) => typeof tag === "string"))) &&
+    (value.notes === undefined || typeof value.notes === "string") &&
+    (value.source_updated_at === undefined || typeof value.source_updated_at === "string") &&
+    (value.updated_at === undefined || typeof value.updated_at === "number" || typeof value.updated_at === "string")
   );
 }
 

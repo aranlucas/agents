@@ -19,8 +19,10 @@ from utils import (
 
 
 DISCOVERY_INSTRUCTION = """Find destination and date ideas for weekend trips from Seattle. Use
-discovery tools for flexible dates, deals, destination context, weather, and events. Present the
-strongest options with timing and tradeoffs."""
+discovery tools for natural-language planning, flexible dates, deals, destination context, weather,
+events, nearby places, and broad trip plans. Use profile context only when missing personal defaults or
+preferences would materially change the recommendations. Present the strongest options with timing and
+tradeoffs."""
 
 
 async def discovery_after_tool_callback(

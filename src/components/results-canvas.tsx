@@ -2,7 +2,15 @@
 
 import { useMemo } from "react";
 import { ErrorBoundary, FallbackProps } from "react-error-boundary";
-import { AgentState, StoredDateResult, DatePrice, ActiveTrip, HotelOption, RouteOption } from "@/lib/types";
+import { useCopilotChat } from "@copilotkit/react-core";
+import { MessageRole, TextMessage } from "@copilotkit/runtime-client-gql";
+import {
+  AgentState,
+  StoredDateResult,
+  DatePrice,
+  ActiveTrip,
+  TripLeg,
+} from "@/lib/types";
 import { getDateResults, getActiveTrip } from "@/lib/state";
 import { GlobeCanvas } from "./globe-canvas";
 import { CITIES, type CityCoord } from "@/lib/cities";
@@ -190,11 +198,16 @@ function CardRenderFallback({ error }: FallbackProps) {
 function ActiveTripCard({ trip }: { trip: ActiveTrip }) {
   const origin = trip.origin || "???";
   const dest = trip.destination || "???";
-  const updated = trip.updated_at
-    ? new Date(trip.updated_at * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-    : "";
+  const updatedValue = trip.updated_at ?? trip.source_updated_at;
+  const updated =
+    typeof updatedValue === "number"
+      ? new Date(updatedValue * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      : typeof updatedValue === "string"
+      ? new Date(updatedValue).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      : "";
 
   const topFlight = trip.transport?.options?.[0];
+  const topRoute = trip.transport?.routes?.[0];
   const topHotel = trip.lodging?.options?.[0];
   const viability = trip.viability;
   const legs = trip.legs || [];
@@ -228,7 +241,7 @@ function ActiveTripCard({ trip }: { trip: ActiveTrip }) {
           alignItems: "center",
         }}
       >
-        ✦ ACTIVE TRIP
+        <span>ACTIVE TRIP{trip.status ? ` · ${trip.status.toUpperCase()}` : ""}</span>
         {updated && (
           <span style={{ color: "var(--cream-muted)", fontSize: "0.6rem" }}>
             Updated {updated}
@@ -316,12 +329,22 @@ function ActiveTripCard({ trip }: { trip: ActiveTrip }) {
             >
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: leg.hotels?.length ? "0.3rem" : 0 }}>
                 <span>
-                  {leg.type === "road_trip" ? "🚗" : "✈️"} {leg.from} → {leg.to}
+                  {leg.type === "road_trip" || leg.type === "bus" || leg.type === "train" ? "GROUND" : "FLIGHT"} · {leg.from} → {leg.to}
                 </span>
                 <span style={{ color: leg.confirmed ? "#22c55e" : "var(--amber)" }}>
                   {leg.confirmed ? "Confirmed" : "Pending"}
                 </span>
               </div>
+              {(leg.provider || leg.price) && (
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.6rem" }}>
+                  <span>{leg.provider || leg.type}</span>
+                  {leg.price !== undefined && (
+                    <span style={{ color: "var(--cream)" }}>
+                      ${leg.price} {leg.currency || ""}
+                    </span>
+                  )}
+                </div>
+              )}
               {leg.hotels && leg.hotels.length > 0 && (
                 <div style={{ marginLeft: "1rem", fontSize: "0.6rem", color: "var(--amber)" }}>
                   {leg.hotels.slice(0, 3).map((hotel, i) => (
@@ -389,6 +412,24 @@ function ActiveTripCard({ trip }: { trip: ActiveTrip }) {
             </span>
           </div>
         )}
+        {topRoute && (
+          <div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "0.65rem",
+              color: "var(--cream-muted)",
+              display: "flex",
+              justifyContent: "space-between",
+            }}
+          >
+            <span>
+              Top Route{topRoute.transfers !== undefined ? ` · ${topRoute.transfers} transfer${topRoute.transfers === 1 ? "" : "s"}` : ""}
+            </span>
+            <span style={{ color: "var(--amber-bright)" }}>
+              ${topRoute.price} {topRoute.currency}
+            </span>
+          </div>
+        )}
         {topHotel && (
           <div
             style={{
@@ -406,12 +447,29 @@ function ActiveTripCard({ trip }: { trip: ActiveTrip }) {
           </div>
         )}
       </div>
+
+      {(trip.tags?.length || trip.notes) && (
+        <div
+          style={{
+            borderTop: "1px solid rgba(255,255,255,0.06)",
+            marginTop: "0.75rem",
+            paddingTop: "0.75rem",
+            fontFamily: "var(--font-mono)",
+            fontSize: "0.6rem",
+            color: "var(--cream-muted)",
+            lineHeight: 1.5,
+          }}
+        >
+          {trip.tags?.length ? <div>{trip.tags.map((tag) => `#${tag}`).join(" ")}</div> : null}
+          {trip.notes ? <div>{trip.notes}</div> : null}
+        </div>
+      )}
     </div>
   );
 }
 
 export function ResultsCanvas({ state }: { state: AgentState }) {
-  const dateResults = useMemo(() => getDateResults(state), [state.date_results]);
+  const dateResults = useMemo(() => getDateResults(state), [state]);
   const activeTrip = useMemo(() => getActiveTrip(state), [state]);
   
   const tripArcs = useMemo(() => {

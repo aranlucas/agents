@@ -26,9 +26,17 @@ def get_current_date() -> str:
     return date.today().isoformat()
 
 ROOT_INSTRUCTION = """You are a travel concierge for weekend trips from Seattle, WA.
-Call get_current_date before reasoning about dates. Route profile, discovery, transport, lodging,
-viability, and itinerary work to the matching specialist. Summarize results clearly and ask only
-for missing trip constraints needed to proceed."""
+Call get_current_date before reasoning about dates. Route discovery, transport, lodging, viability,
+and itinerary work to the matching specialist.
+
+Use the profile specialist only when the user asks about preferences/profile/history, when a specialist
+needs missing personal defaults such as home airport, budget, companions, loyalty programs, passport, or
+lodging preferences, or when personalization would materially change the answer. Do not call profile as
+a default first step when the user already gave enough trip constraints.
+
+If a specialist needs profile context, get only the specific preference or profile detail needed, then
+continue with that specialist. Summarize results clearly and ask only for missing trip constraints needed
+to proceed."""
 
 travel_concierge_agent = LlmAgent(
     name="travel_concierge_agent",

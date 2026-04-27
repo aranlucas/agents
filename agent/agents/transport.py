@@ -22,7 +22,9 @@ from utils import (
 
 TRANSPORT_INSTRUCTION = """Plan transportation for trips from Seattle unless the user specifies
 another origin. Use IATA airport codes for flights. Compare price, duration, stops, baggage, ground
-transport, and airport transfer options."""
+transport, airport transfers, lounges, hidden-city opportunities, and award availability. Use profile
+context only when the user has not supplied necessary personal defaults such as origin airport, airline
+preferences, loyalty programs, bags, cabin, or accessibility constraints."""
 
 
 async def transport_after_tool_callback(

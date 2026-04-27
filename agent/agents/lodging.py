@@ -19,8 +19,9 @@ from utils import (
 
 
 LODGING_INSTRUCTION = """Find and compare lodging options. Use lodging tools for hotel search,
-room details, pricing, reviews, named properties, and accommodation hacks. Highlight location,
-value, and constraints."""
+room details, pricing, reviews, named properties, room availability watches, and accommodation hacks.
+Use profile context only when missing lodging preferences, budget, companions, or accessibility needs
+would materially change the search. Highlight location, value, and constraints."""
 
 
 async def lodging_after_tool_callback(

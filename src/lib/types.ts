@@ -72,7 +72,9 @@ export interface HotelOption {
 export interface RouteOption {
   price: number;
   currency: string;
-  legs?: FlightLeg[];
+  duration?: number;
+  transfers?: number;
+  legs?: unknown[];
   [key: string]: unknown;
 }
 
@@ -93,23 +95,31 @@ export interface TripLeg {
   type: string;
   from: string;
   to: string;
-  provider: string;
+  provider?: string;
   confirmed: boolean;
   start_time?: string;
   end_time?: string;
+  price?: number;
+  currency?: string;
+  reference?: string;
   hotels?: HotelOption[];
 }
 
 export interface ActiveTrip {
   id?: string;
   name?: string;
+  status?: string;
   origin?: string;
   destination?: string;
   legs?: TripLeg[];
-  transport?: { options: RouteOption[] };
+  transport?: { options?: RouteOption[]; routes?: RouteOption[] };
   lodging?: { options: HotelOption[] };
   viability?: ViabilityInfo;
-  updated_at?: number;
+  bookings?: unknown[];
+  tags?: string[];
+  notes?: string;
+  source_updated_at?: string;
+  updated_at?: number | string;
   [key: string]: unknown;
 }
 
