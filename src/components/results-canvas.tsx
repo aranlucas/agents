@@ -199,6 +199,14 @@ function ActiveTripCard({ trip }: { trip: ActiveTrip }) {
   const viability = trip.viability;
   const legs = trip.legs || [];
 
+  // Compute full route from legs
+  const fullRoute = legs.reduce<string[]>((route, leg) => {
+    if (route.length === 0) route.push(leg.from);
+    if (leg.to && !route.includes(leg.to)) route.push(leg.to);
+    return route;
+  }, []);
+  const displayRoute = fullRoute.length > 0 ? fullRoute : [origin, dest];
+
   return (
     <div
       style={{
@@ -245,34 +253,42 @@ function ActiveTripCard({ trip }: { trip: ActiveTrip }) {
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "0.5rem",
+          gap: "0.3rem",
           marginBottom: "0.75rem",
+          flexWrap: "wrap",
         }}
       >
-        <span
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: "1.4rem",
-            fontWeight: 600,
-            color: "var(--cream)",
-            letterSpacing: "0.04em",
-          }}
-        >
-          {origin}
-        </span>
-        <span style={{ color: "var(--amber)" }}>→</span>
-        <span
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: "1.4rem",
-            fontWeight: 600,
-            color: "var(--cream)",
-            letterSpacing: "0.04em",
-          }}
-        >
-          {dest}
-        </span>
+        {displayRoute.map((loc, i) => (
+          <span
+            key={i}
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: "1.1rem",
+              fontWeight: 600,
+              color: "var(--cream)",
+              letterSpacing: "0.04em",
+            }}
+          >
+            {loc}
+            {i < displayRoute.length - 1 && (
+              <span style={{ color: "var(--amber)", margin: "0 0.2rem" }}>→</span>
+            )}
+          </span>
+        ))}
       </div>
+
+      {trip.id && (
+        <div
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: "0.6rem",
+            color: "var(--cream-muted)",
+            marginBottom: "0.5rem",
+          }}
+        >
+          Trip ID: {trip.id}
+        </div>
+      )}
 
       {legs.length > 0 && (
         <div style={{ marginBottom: "0.75rem" }}>
