@@ -5,6 +5,51 @@ import { ErrorBoundary, FallbackProps } from "react-error-boundary";
 import { AgentState, StoredDateResult, DatePrice, ActiveTrip, HotelOption, RouteOption } from "@/lib/types";
 import { getDateResults, getActiveTrip } from "@/lib/state";
 import { GlobeCanvas } from "./globe-canvas";
+import { CITIES, type CityCoord } from "@/lib/cities";
+import type { ArcDatum } from "@/lib/types";
+
+function getCityCoords(city: string): CityCoord | null {
+  // Try exact match first
+  if (CITIES[city]) return CITIES[city];
+  
+  // Try matching by city name without state/province
+  const cityOnly = city.split(",")[0].trim();
+  const match = Object.entries(CITIES).find(([key]) => 
+    key.split(",")[0].trim() === cityOnly
+  );
+  return match ? match[1] : null;
+}
+
+function tripLegsToArcs(legs: TripLeg[]): ArcDatum[] {
+  return legs.map((leg, index) => {
+    const start = getCityCoords(leg.from);
+    const end = getCityCoords(leg.to);
+    
+    if (!start || !end) return null;
+    
+    const isRoadTrip = leg.type === "road_trip";
+    const isConfirmed = leg.confirmed;
+    
+    // Different colors: flights are amber, road trips are blue
+    // Confirmed legs are brighter/solid, pending are muted/dashed
+    let color: string;
+    if (isRoadTrip) {
+      color = isConfirmed ? "#3b82f6" : "#1d4ed8"; // blue shades
+    } else {
+      color = isConfirmed ? "#f59e0b" : "#92400e"; // amber shades
+    }
+    
+    return {
+      id: `leg-${index}`,
+      startLat: start.lat,
+      startLng: start.lng,
+      endLat: end.lat,
+      endLng: end.lng,
+      color: color,
+      strokeWidth: isConfirmed ? 2 : 1,
+    };
+  }).filter((arc): arc is ArcDatum => arc !== null);
+}
 
 function fmtDate(iso: string): string {
   const value = typeof iso === "string" ? iso : "";
@@ -142,6 +187,7 @@ function ActiveTripCard({ trip }: { trip: ActiveTrip }) {
   const topFlight = trip.transport?.options?.[0];
   const topHotel = trip.lodging?.options?.[0];
   const viability = trip.viability;
+  const legs = trip.legs || [];
 
   return (
     <div
@@ -171,6 +217,19 @@ function ActiveTripCard({ trip }: { trip: ActiveTrip }) {
           </span>
         )}
       </div>
+
+      {trip.name && (
+        <div
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: "0.7rem",
+            color: "var(--cream)",
+            marginBottom: "0.5rem",
+          }}
+        >
+          {trip.name}
+        </div>
+      )}
 
       <div
         style={{
@@ -204,6 +263,43 @@ function ActiveTripCard({ trip }: { trip: ActiveTrip }) {
           {dest}
         </span>
       </div>
+
+      {legs.length > 0 && (
+        <div style={{ marginBottom: "0.75rem" }}>
+          <div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "0.6rem",
+              color: "var(--cream-muted)",
+              letterSpacing: "0.1em",
+              marginBottom: "0.4rem",
+            }}
+          >
+            TRIP LEGS
+          </div>
+          {legs.map((leg, index) => (
+            <div
+              key={index}
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.65rem",
+                color: "var(--cream-muted)",
+                padding: "0.3rem 0",
+                borderBottom: index < legs.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
+                display: "flex",
+                justifyContent: "space-between",
+              }}
+            >
+              <span>
+                {leg.type === "road_trip" ? "🚗" : "✈️"} {leg.from} → {leg.to}
+              </span>
+              <span style={{ color: leg.confirmed ? "#22c55e" : "var(--amber)" }}>
+                {leg.confirmed ? "Confirmed" : "Pending"}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {viability && (
         <div
@@ -281,10 +377,15 @@ function ActiveTripCard({ trip }: { trip: ActiveTrip }) {
 export function ResultsCanvas({ state }: { state: AgentState }) {
   const dateResults = useMemo(() => getDateResults(state), [state.date_results]);
   const activeTrip = useMemo(() => getActiveTrip(state), [state]);
+  
+  const tripArcs = useMemo(() => {
+    if (!activeTrip?.legs?.length) return [];
+    return tripLegsToArcs(activeTrip.legs);
+  }, [activeTrip]);
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100vh", overflow: "hidden" }}>
-      <GlobeCanvas arcs={[]} />
+      <GlobeCanvas arcs={tripArcs} />
       <div
         style={{
           position: "absolute",

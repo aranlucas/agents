@@ -89,9 +89,22 @@ export interface ViabilityInfo {
   currency: string;
 }
 
+export interface TripLeg {
+  type: string;
+  from: string;
+  to: string;
+  provider: string;
+  confirmed: boolean;
+  start_time?: string;
+  end_time?: string;
+}
+
 export interface ActiveTrip {
+  id?: string;
+  name?: string;
   origin?: string;
   destination?: string;
+  legs?: TripLeg[];
   transport?: { options: RouteOption[] };
   lodging?: { options: HotelOption[] };
   viability?: ViabilityInfo;

@@ -146,11 +146,25 @@ function isViabilityInfo(value: unknown): value is ViabilityInfo {
   );
 }
 
+function isTripLeg(value: unknown): value is TripLeg {
+  return (
+    isRecord(value) &&
+    typeof value.type === "string" &&
+    typeof value.from === "string" &&
+    typeof value.to === "string" &&
+    typeof value.provider === "string" &&
+    typeof value.confirmed === "boolean"
+  );
+}
+
 function isActiveTrip(value: unknown): value is ActiveTrip {
   return (
     isRecord(value) &&
+    (value.id === undefined || typeof value.id === "string") &&
+    (value.name === undefined || typeof value.name === "string") &&
     (value.origin === undefined || typeof value.origin === "string") &&
     (value.destination === undefined || typeof value.destination === "string") &&
+    (value.legs === undefined || (Array.isArray(value.legs) && value.legs.every(isTripLeg))) &&
     (value.updated_at === undefined || typeof value.updated_at === "number")
   );
 }
