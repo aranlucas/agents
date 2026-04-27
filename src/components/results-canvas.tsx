@@ -296,16 +296,26 @@ function ActiveTripCard({ trip }: { trip: ActiveTrip }) {
                 color: "var(--cream-muted)",
                 padding: "0.3rem 0",
                 borderBottom: index < legs.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
-                display: "flex",
-                justifyContent: "space-between",
               }}
             >
-              <span>
-                {leg.type === "road_trip" ? "🚗" : "✈️"} {leg.from} → {leg.to}
-              </span>
-              <span style={{ color: leg.confirmed ? "#22c55e" : "var(--amber)" }}>
-                {leg.confirmed ? "Confirmed" : "Pending"}
-              </span>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: leg.hotels?.length ? "0.3rem" : 0 }}>
+                <span>
+                  {leg.type === "road_trip" ? "🚗" : "✈️"} {leg.from} → {leg.to}
+                </span>
+                <span style={{ color: leg.confirmed ? "#22c55e" : "var(--amber)" }}>
+                  {leg.confirmed ? "Confirmed" : "Pending"}
+                </span>
+              </div>
+              {leg.hotels && leg.hotels.length > 0 && (
+                <div style={{ marginLeft: "1rem", fontSize: "0.6rem", color: "var(--amber)" }}>
+                  {leg.hotels.slice(0, 3).map((hotel, i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "0.15rem 0" }}>
+                      <span>{hotel.name}</span>
+                      <span>${hotel.price} {hotel.currency}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>

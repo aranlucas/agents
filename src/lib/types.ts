@@ -97,6 +97,7 @@ export interface TripLeg {
   confirmed: boolean;
   start_time?: string;
   end_time?: string;
+  hotels?: HotelOption[];
 }
 
 export interface ActiveTrip {

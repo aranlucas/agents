@@ -37,6 +37,19 @@ async def lodging_after_tool_callback(
         return None
 
     update_active_trip(tool_context, tool.name, args, data)
+    
+    # Track hotels by destination for leg association
+    destination = args.get("location", args.get("destination", ""))
+    hotels = data.get("hotels", [])
+    if destination and hotels:
+        # Get or create hotels_by_destination dict in active_trip
+        trip = tool_context.state.get("active_trip", {})
+        if "hotels_by_destination" not in trip:
+            trip["hotels_by_destination"] = {}
+        # Store hotels for this destination
+        trip["hotels_by_destination"][destination] = hotels
+        tool_context.state["active_trip"] = trip
+    
     return None
 
 

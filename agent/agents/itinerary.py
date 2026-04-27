@@ -52,6 +52,12 @@ async def itinerary_after_tool_callback(
         if "legs" not in trip or not isinstance(trip["legs"], list):
             trip["legs"] = []
         
+        # Check if there are hotels for this destination
+        destination = new_leg.get("to", "")
+        hotels_by_dest = trip.get("hotels_by_destination", {})
+        if destination and destination in hotels_by_dest:
+            new_leg["hotels"] = hotels_by_dest[destination]
+        
         # Append new leg
         trip["legs"].append(new_leg)
         
