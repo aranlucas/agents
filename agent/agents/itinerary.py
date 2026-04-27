@@ -44,9 +44,14 @@ async def itinerary_after_tool_callback(
             current_trip = tool_context.state.get("active_trip", {})
             current_legs = current_trip.get("legs", [])
             updated_legs = current_legs + [new_leg]
+            # Infer origin/destination from legs
+            patch = {"legs": updated_legs}
+            if updated_legs:
+                patch["origin"] = updated_legs[0].get("from", "")
+                patch["destination"] = updated_legs[-1].get("to", "")
             merged = merge_active_trip(
                 current_trip,
-                {"legs": updated_legs},
+                patch,
                 now=int(time.time()),
             )
             tool_context.state["active_trip"] = merged
