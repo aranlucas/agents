@@ -12,8 +12,6 @@ from utils import (
     ITINERARY_TOOLS,
     trvl_toolset,
     parse_tool_response,
-    update_active_trip,
-    merge_active_trip,
 )
 
 ITINERARY_INSTRUCTION = """Maintain trip records and booking follow-through. Use itinerary tools
@@ -27,45 +25,49 @@ async def itinerary_after_tool_callback(
     tool_response: dict,
 ) -> Optional[dict[str, Any]]:
     """Handle itinerary tool results: create_trip, add_trip_leg."""
-    import logging
-    logger = logging.getLogger(__name__)
-    
-    logger.info(f"[itinerary_callback] Tool: {tool.name}, args: {args}")
-    logger.info(f"[itinerary_callback] Response: {tool_response}")
-    
     if tool.name not in ("create_trip", "add_trip_leg"):
         return None
 
     data = parse_tool_response(tool_response)
-    logger.info(f"[itinerary_callback] Parsed data: {data}")
-    
     if not data or data.get("isError"):
-        logger.warning(f"[itinerary_callback] No data or isError")
         return None
 
     if tool.name == "create_trip":
-        logger.info(f"[itinerary_callback] Creating trip with data: {data}")
-        update_active_trip(tool_context, tool.name, args, data)
-        logger.info(f"[itinerary_callback] Active trip after create: {tool_context.state.get('active_trip')}")
+        # Initialize a fresh trip state
+        trip_id = data.get("id", "")
+        trip_name = data.get("name", "")
+        tool_context.state["active_trip"] = {
+            "id": trip_id,
+            "name": trip_name,
+            "legs": [],
+            "updated_at": int(time.time()),
+        }
     elif tool.name == "add_trip_leg":
-        logger.info(f"[itinerary_callback] Adding trip leg with data: {data}")
         new_leg = data.get("leg")
-        if new_leg:
-            current_trip = tool_context.state.get("active_trip", {})
-            current_legs = current_trip.get("legs", [])
-            updated_legs = current_legs + [new_leg]
-            # Infer origin/destination from legs
-            patch = {"legs": updated_legs}
-            if updated_legs:
-                patch["origin"] = updated_legs[0].get("from", "")
-                patch["destination"] = updated_legs[-1].get("to", "")
-            merged = merge_active_trip(
-                current_trip,
-                patch,
-                now=int(time.time()),
-            )
-            tool_context.state["active_trip"] = merged
-            logger.info(f"[itinerary_callback] Active trip after add_leg: {tool_context.state.get('active_trip')}")
+        if not new_leg:
+            return None
+        
+        # Get or initialize the active trip
+        current_trip = tool_context.state.get("active_trip", {})
+        if not current_trip:
+            current_trip = {"legs": []}
+        
+        # Append the new leg
+        current_legs = current_trip.get("legs", [])
+        updated_legs = current_legs + [new_leg]
+        
+        # Infer origin/destination from legs
+        origin = updated_legs[0].get("from", "") if updated_legs else ""
+        destination = updated_legs[-1].get("to", "") if updated_legs else ""
+        
+        # Update state directly
+        tool_context.state["active_trip"] = {
+            **current_trip,
+            "legs": updated_legs,
+            "origin": origin,
+            "destination": destination,
+            "updated_at": int(time.time()),
+        }
 
     return None
 

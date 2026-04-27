@@ -151,13 +151,6 @@ def normalize_trip_patch(
         if routes:
             patch["transport"] = {"options": routes}
 
-    elif tool_name == "create_trip" and result.get("id"):
-        patch["id"] = result.get("id", "")
-        patch["name"] = result.get("name", "")
-        patch["origin"] = args.get("origin", "")
-        patch["destination"] = args.get("destination", "")
-        patch["legs"] = []
-
     return patch
 
 
