@@ -126,6 +126,14 @@ export interface ArcDatum {
   startLng: number;
   endLat: number;
   endLng: number;
-  color: string;
+  color: [string, string];
   strokeWidth: number;
+}
+
+export interface PointDatum {
+  id: string;
+  lat: number;
+  lng: number;
+  color: string;
+  label?: string;
 }
