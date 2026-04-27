@@ -2,16 +2,12 @@
 
 import { useMemo } from "react";
 import { ErrorBoundary, FallbackProps } from "react-error-boundary";
-import { useCopilotChat } from "@copilotkit/react-core";
-import { MessageRole, TextMessage } from "@copilotkit/runtime-client-gql";
 import {
   AgentState,
-  StoredDateResult,
-  DatePrice,
   ActiveTrip,
   TripLeg,
 } from "@/lib/types";
-import { getDateResults, getActiveTrip } from "@/lib/state";
+import { getActiveTrip } from "@/lib/state";
 import { GlobeCanvas } from "./globe-canvas";
 import { CITIES, type CityCoord } from "@/lib/cities";
 import type { ArcDatum } from "@/lib/types";
@@ -69,95 +65,6 @@ function tripLegsToArcs(legs: TripLeg[]): ArcDatum[] {
   }).filter((arc): arc is ArcDatum => arc !== null);
 }
 
-function fmtDate(iso: string): string {
-  const value = typeof iso === "string" ? iso : "";
-  if (!value) return "Unknown";
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-function formatDateRange(dates: string[]): string {
-  if (!Array.isArray(dates) || dates.length === 0) return "";
-  if (dates.length === 1) return fmtDate(dates[0]);
-  const d0 = new Date(dates[0]);
-  const d1 = new Date(dates[1]);
-  if (Number.isNaN(d0.getTime()) || Number.isNaN(d1.getTime())) {
-    return dates.map(fmtDate).join(" - ");
-  }
-  const month = d0.toLocaleDateString("en-US", { month: "short" });
-  if (d0.getMonth() === d1.getMonth()) return `${month} ${d0.getDate()}–${d1.getDate()}`;
-  return `${fmtDate(dates[0])} – ${fmtDate(dates[1])}`;
-}
-
-function DateCard({ data, isLatest }: { data: StoredDateResult; isLatest: boolean }) {
-  const { appendMessage } = useCopilotChat();
-  const sorted = [...data.dates].sort((a: DatePrice, b: DatePrice) => a.price - b.price);
-  const origin = data.args.origin ?? data.args.departure_airport ?? "SEA";
-  const dest = data.args.destination ?? data.args.arrival_airport ?? "?";
-
-  function handleDateClick(d: DatePrice) {
-    const isRoundTrip = d.date.length > 1;
-    const content = isRoundTrip
-      ? `Find round-trip flights from ${origin} to ${dest} departing ${fmtDate(d.date[0])} returning ${fmtDate(d.date[1])}`
-      : `Find flights from ${origin} to ${dest} on ${fmtDate(d.date[0])}`;
-    appendMessage(new TextMessage({ role: MessageRole.User, content }));
-  }
-
-  return (
-    <div
-      style={{
-        background: "rgba(7,8,10,0.82)",
-        border: `1px solid ${isLatest ? "var(--amber)" : "var(--border)"}`,
-        borderLeft: `2px solid ${isLatest ? "var(--amber)" : "transparent"}`,
-        borderRadius: "0.75rem",
-        padding: "1.1rem",
-        opacity: isLatest ? 1 : 0.5,
-      }}
-    >
-      <div
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: "0.6rem",
-          color: "var(--cream-muted)",
-          letterSpacing: "0.12em",
-          marginBottom: "0.75rem",
-        }}
-      >
-        CHEAPEST DATES
-      </div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
-        {sorted.slice(0, 6).map((d: DatePrice) => (
-          <button
-            key={d.date[0]}
-            onClick={() => handleDateClick(d)}
-            style={{
-              background: "var(--bg-card)",
-              border: "1px solid var(--border)",
-              borderRadius: "0.4rem",
-              padding: "0.35rem 0.6rem",
-              fontFamily: "var(--font-mono)",
-              fontSize: "0.7rem",
-              color: "var(--cream)",
-              cursor: "pointer",
-              display: "flex",
-              gap: "0.4rem",
-              alignItems: "center",
-              transition: "border-color 0.15s",
-            }}
-            onMouseEnter={e => (e.currentTarget.style.borderColor = "var(--amber)")}
-            onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--border)")}
-          >
-            <span style={{ color: "var(--cream-muted)" }}>{formatDateRange(d.date)}</span>
-            <span style={{ color: "var(--amber-bright)", fontWeight: 700 }}>${d.price}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function CardRenderFallback({ error }: FallbackProps) {
   return (
@@ -469,7 +376,6 @@ function ActiveTripCard({ trip }: { trip: ActiveTrip }) {
 }
 
 export function ResultsCanvas({ state }: { state: AgentState }) {
-  const dateResults = useMemo(() => getDateResults(state), [state]);
   const activeTrip = useMemo(() => getActiveTrip(state), [state]);
   
   const tripArcs = useMemo(() => {
@@ -503,17 +409,6 @@ export function ResultsCanvas({ state }: { state: AgentState }) {
             <ActiveTripCard trip={activeTrip} />
           </ErrorBoundary>
         )}
-        {dateResults.map((data) => (
-          <ErrorBoundary
-            key={data.id}
-            FallbackComponent={CardRenderFallback}
-            onError={(error) => {
-              console.error(`RenderErrorBoundary(date:${data.id})`, error);
-            }}
-          >
-            <DateCard data={data} isLatest={false} />
-          </ErrorBoundary>
-        ))}
       </div>
     </div>
   );

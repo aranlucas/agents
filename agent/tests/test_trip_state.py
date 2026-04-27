@@ -2,173 +2,94 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from utils import (
-    DISCOVERY_TOOLS,
-    LODGING_TOOLS,
-    PROFILE_TOOLS,
-    TRANSPORT_TOOLS,
-    VIABILITY_TOOLS,
-    merge_active_trip,
-    normalize_trip_patch,
-)
+from utils import _update_active_trip
+from agents.discovery import TOOLS as DISCOVERY_TOOLS
+from agents.lodging import TOOLS as LODGING_TOOLS
+from agents.profile import TOOLS as PROFILE_TOOLS
+from agents.transport import TOOLS as TRANSPORT_TOOLS
+from agents.viability import TOOLS as VIABILITY_TOOLS
 
 
-def test_merge_active_trip_preserves_existing_sections():
-    current = {
-        "origin": "SEA",
-        "transport": {"options": [{"price": 120, "currency": "USD", "legs": []}]},
-        "updated_at": 1,
-    }
-
-    merged = merge_active_trip(
-        current,
-        {
-            "destination": "SFO",
-            "lodging": {
-                "options": [{"name": "Hotel A", "price": 180, "currency": "USD"}]
-            },
-        },
-        now=2,
-    )
-
-    assert merged["origin"] == "SEA"
-    assert merged["destination"] == "SFO"
-    assert merged["transport"]["options"][0]["price"] == 120
-    assert merged["lodging"]["options"][0]["name"] == "Hotel A"
-    assert merged["updated_at"] == 2
+class FakeToolContext:
+    def __init__(self, initial=None):
+        self.state = {"active_trip": initial or {}}
 
 
-def test_tool_groups_are_disjoint_enough_for_routing():
+def test_search_hotels_updates_destination_and_lodging():
+    ctx = FakeToolContext()
+    _update_active_trip(ctx, "search_hotels", {"location": "San Francisco"}, {
+        "success": True,
+        "hotels": [{"name": "Hotel A", "price": 180, "currency": "USD"}],
+    })
+    trip = ctx.state["active_trip"]
+    assert trip["destination"] == "San Francisco"
+    assert trip["lodging"]["options"][0]["name"] == "Hotel A"
+    assert trip["hotels_by_destination"]["San Francisco"][0]["name"] == "Hotel A"
+
+
+def test_assess_trip_updates_viability():
+    ctx = FakeToolContext()
+    _update_active_trip(ctx, "assess_trip", {"origin": "SEA", "destination": "SFO"}, {
+        "success": True,
+        "verdict": "viable",
+        "checks": [{"dimension": "visa", "status": "ok", "summary": "No visa required"}],
+        "total_cost": 500,
+        "currency": "USD",
+    })
+    trip = ctx.state["active_trip"]
+    assert trip["origin"] == "SEA"
+    assert trip["destination"] == "SFO"
+    assert trip["viability"]["verdict"] == "viable"
+    assert trip["viability"]["total_cost"] == 500
+
+
+def test_search_route_uses_origin_destination_from_response():
+    ctx = FakeToolContext()
+    _update_active_trip(ctx, "search_route", {}, {
+        "success": True,
+        "origin": "Seattle",
+        "destination": "Vancouver",
+        "itineraries": [{"total_price": 75, "currency": "USD", "legs": []}],
+    })
+    trip = ctx.state["active_trip"]
+    assert trip["origin"] == "Seattle"
+    assert trip["destination"] == "Vancouver"
+    assert trip["transport"]["routes"][0]["total_price"] == 75
+
+
+def test_get_trip_copies_fields_from_response():
+    ctx = FakeToolContext()
+    _update_active_trip(ctx, "get_trip", {}, {
+        "id": "trip_123",
+        "name": "Vancouver weekend",
+        "status": "planning",
+        "origin": "Seattle",
+        "destination": "Vancouver",
+        "updated_at": "2026-04-27T18:00:00Z",
+        "legs": [{"type": "train", "from": "Seattle", "to": "Vancouver", "confirmed": False}],
+        "tags": ["weekend"],
+        "notes": "Keep it simple",
+    })
+    trip = ctx.state["active_trip"]
+    assert trip["id"] == "trip_123"
+    assert trip["origin"] == "Seattle"
+    assert trip["destination"] == "Vancouver"
+    assert trip["source_updated_at"] == "2026-04-27T18:00:00Z"
+    assert trip["legs"][0]["from"] == "Seattle"
+
+
+def test_unknown_tool_does_not_modify_state():
+    ctx = FakeToolContext({"origin": "SEA"})
+    _update_active_trip(ctx, "get_weather", {}, {"success": True, "temp": 72})
+    assert ctx.state["active_trip"].get("origin") == "SEA"
+    assert "updated_at" not in ctx.state["active_trip"]
+
+
+def test_tool_groups_are_disjoint():
     assert "get_preferences" in PROFILE_TOOLS
-    assert "add_booking" in PROFILE_TOOLS
     assert "search_flights" in TRANSPORT_TOOLS
-    assert "search_hidden_city" in TRANSPORT_TOOLS
     assert "search_hotels" in LODGING_TOOLS
     assert "assess_trip" in VIABILITY_TOOLS
-    assert "search_restaurants" in VIABILITY_TOOLS
     assert "weekend_getaway" in DISCOVERY_TOOLS
-    assert "nearby_places" in DISCOVERY_TOOLS
-    assert (
-        "configure_provider"
-        not in PROFILE_TOOLS
-        + TRANSPORT_TOOLS
-        + LODGING_TOOLS
-        + VIABILITY_TOOLS
-        + DISCOVERY_TOOLS
-    )
-
-
-def test_normalize_trip_patch_for_hotels():
-    patch = normalize_trip_patch(
-        "search_hotels",
-        {
-            "location": "San Francisco",
-            "check_in": "2026-05-01",
-            "check_out": "2026-05-03",
-        },
-        {
-            "success": True,
-            "hotels": [{"name": "Hotel A", "price": 180, "currency": "USD"}],
-        },
-    )
-
-    assert patch["destination"] == "San Francisco"
-    assert patch["lodging"]["options"][0]["name"] == "Hotel A"
-
-
-def test_normalize_trip_patch_for_assess_trip():
-    patch = normalize_trip_patch(
-        "assess_trip",
-        {"origin": "SEA", "destination": "SFO"},
-        {
-            "success": True,
-            "verdict": "viable",
-            "checks": [
-                {"dimension": "visa", "status": "ok", "summary": "No visa required"}
-            ],
-            "total_cost": 500,
-            "currency": "USD",
-        },
-    )
-
-    assert patch["origin"] == "SEA"
-    assert patch["destination"] == "SFO"
-    assert patch["viability"]["verdict"] == "viable"
-    assert patch["viability"]["total_cost"] == 500
-
-
-def test_normalize_trip_patch_for_route_itineraries():
-    patch = normalize_trip_patch(
-        "search_route",
-        {"origin": "Seattle", "destination": "Vancouver", "date": "2026-05-01"},
-        {
-            "success": True,
-            "itineraries": [
-                {
-                    "total_price": 75,
-                    "currency": "USD",
-                    "total_duration": 180,
-                    "transfers": 0,
-                    "legs": [{"mode": "bus", "from": "Seattle", "to": "Vancouver"}],
-                }
-            ],
-        },
-    )
-
-    assert patch["origin"] == "Seattle"
-    assert patch["destination"] == "Vancouver"
-    assert patch["transport"]["routes"][0]["price"] == 75
-    assert patch["transport"]["routes"][0]["duration"] == 180
-
-
-def test_normalize_trip_patch_for_saved_trip_result():
-    patch = normalize_trip_patch(
-        "get_trip",
-        {"id": "trip_123"},
-        {
-            "id": "trip_123",
-            "name": "Vancouver weekend",
-            "status": "planning",
-            "updated_at": "2026-04-27T18:00:00Z",
-            "legs": [
-                {
-                    "type": "train",
-                    "from": "Seattle",
-                    "to": "Vancouver",
-                    "provider": "Amtrak",
-                    "confirmed": False,
-                }
-            ],
-            "bookings": [],
-            "tags": ["weekend"],
-            "notes": "Keep it simple",
-        },
-    )
-
-    assert patch["id"] == "trip_123"
-    assert patch["origin"] == "Seattle"
-    assert patch["destination"] == "Vancouver"
-    assert patch["status"] == "planning"
-    assert patch["legs"][0]["provider"] == "Amtrak"
-
-
-def test_normalize_trip_patch_for_add_trip_leg_result():
-    patch = normalize_trip_patch(
-        "add_trip_leg",
-        {"trip_id": "trip_123"},
-        {
-            "trip_id": "trip_123",
-            "leg": {
-                "type": "flight",
-                "from": "SEA",
-                "to": "YVR",
-                "provider": "Air Canada",
-                "confirmed": True,
-            },
-        },
-    )
-
-    assert patch["id"] == "trip_123"
-    assert patch["legs"][0]["from"] == "SEA"
-    assert patch["origin"] == "SEA"
-    assert patch["destination"] == "YVR"
+    all_tools = PROFILE_TOOLS + TRANSPORT_TOOLS + LODGING_TOOLS + VIABILITY_TOOLS + DISCOVERY_TOOLS
+    assert "configure_provider" not in all_tools

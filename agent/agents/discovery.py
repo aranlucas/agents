@@ -1,22 +1,12 @@
-"""Discovery agent with dedicated callback for discovery tools."""
+"""Discovery agent."""
 from __future__ import annotations
-
-import time
-from typing import Optional
-from uuid import uuid4
 
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.tools import BaseTool, ToolContext
 
-from utils import (
-    DISCOVERY_TOOLS,
-    trvl_toolset,
-    parse_tool_response,
-    update_legacy_results,
-    filter_mcp_tool_response,
-)
+from utils import trvl_toolset, shared_after_tool_callback
 
+TOOLS = ["weekend_getaway", "suggest_dates", "search_dates", "search_deals", "destination_info", "travel_guide", "get_weather", "local_events", "nearby_places", "search_natural", "plan_trip"]
 
 DISCOVERY_INSTRUCTION = """Find destination and date ideas for weekend trips from Seattle. Use
 discovery tools for natural-language planning, flexible dates, deals, destination context, weather,
@@ -25,36 +15,10 @@ preferences would materially change the recommendations. Present the strongest o
 tradeoffs."""
 
 
-async def discovery_after_tool_callback(
-    tool: BaseTool,
-    args: dict,
-    tool_context: ToolContext,
-    tool_response: dict,
-) -> Optional[dict[str, Any]]:
-    """Handle discovery-specific tool results: search_dates."""
-    if tool.name != "search_dates":
-        return filter_mcp_tool_response(tool, args, tool_context, tool_response)
-
-    data = parse_tool_response(tool_response)
-    if not data or not data.get("success"):
-        return filter_mcp_tool_response(tool, args, tool_context, tool_response)
-
-    key = "date_results"
-    dates = data.get("dates", [])
-    entry = {
-        "id": str(uuid4()),
-        "dates": dates,
-        "ts": int(time.time()),
-        "args": args,
-    }
-    update_legacy_results(tool_context, key, entry)
-    return filter_mcp_tool_response(tool, args, tool_context, tool_response)
-
-
 discovery_agent = LlmAgent(
     name="discovery_agent",
     model=LiteLlm(model="mistral/devstral-latest"),
-    after_tool_callback=discovery_after_tool_callback,
+    after_tool_callback=shared_after_tool_callback,
     instruction=DISCOVERY_INSTRUCTION,
-    tools=[trvl_toolset(DISCOVERY_TOOLS)],
+    tools=[trvl_toolset(TOOLS)],
 )

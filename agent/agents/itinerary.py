@@ -1,21 +1,14 @@
-"""Itinerary agent with after_tool_callback for trip state updates."""
+"""Itinerary agent."""
 from __future__ import annotations
-
-from typing import Any, Optional
 
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.tools import BaseTool, ToolContext
 
-from utils import (
-    ITINERARY_TOOLS,
-    trvl_toolset,
-    parse_tool_response,
-    filter_mcp_tool_response,
-    update_active_trip,
-)
+from utils import trvl_toolset, shared_after_tool_callback
 
-ITINERARY_INSTRUCTION = """Maintain trip records and booking follow-through. 
+TOOLS = ["create_trip", "list_trips", "get_trip", "update_trip", "mark_trip_booked", "export_ics", "watch_price", "list_watches", "check_watches", "watch_opportunities", "list_opportunity_watches"]
+
+ITINERARY_INSTRUCTION = """Maintain trip records and booking follow-through.
 
 When creating multi-destination trips (e.g., Seattle -> Vancouver -> Whistler -> Seattle):
 1. Call create_trip first with a descriptive name
@@ -31,23 +24,10 @@ watches, list watches, check watches, and review watch opportunities. Use profil
 saved preferences or booking history are needed to complete the itinerary accurately."""
 
 
-async def itinerary_after_tool_callback(
-    tool: BaseTool,
-    args: dict,
-    tool_context: ToolContext,
-    tool_response: dict,
-) -> Optional[dict[str, Any]]:
-    """Handle itinerary tool results that update active_trip."""
-    data = parse_tool_response(tool_response)
-    if data and not data.get("isError"):
-        update_active_trip(tool_context, tool.name, args, data)
-    return filter_mcp_tool_response(tool, args, tool_context, tool_response)
-
-
 itinerary_agent = LlmAgent(
     name="itinerary_agent",
     model=LiteLlm(model="mistral/devstral-latest"),
     instruction=ITINERARY_INSTRUCTION,
-    tools=[trvl_toolset(ITINERARY_TOOLS)],
-    after_tool_callback=itinerary_after_tool_callback,
+    tools=[trvl_toolset(TOOLS)],
+    after_tool_callback=shared_after_tool_callback,
 )
