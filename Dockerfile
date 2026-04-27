@@ -12,13 +12,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/
 
 WORKDIR /app
 
-COPY agent/pyproject.toml ./pyproject.toml
-COPY agent/main.py ./main.py
-COPY agent/agents ./agents
-COPY agent/trip_state.py ./trip_state.py
-COPY agent/utils.py ./utils.py
-
-RUN uv pip install --system -e .
+COPY agent/ ./
 
 EXPOSE 8000
 
