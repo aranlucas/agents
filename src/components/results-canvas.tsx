@@ -10,7 +10,7 @@ import {
 import { getActiveTrip } from "@/lib/state";
 import { GlobeCanvas } from "./globe-canvas";
 import { CITIES, type CityCoord } from "@/lib/cities";
-import type { ArcDatum } from "@/lib/types";
+import type { ArcDatum, PointDatum } from "@/lib/types";
 
 function getCityCoords(city: string): CityCoord | null {
   if (!city) return null;
@@ -34,35 +34,50 @@ function getCityCoords(city: string): CityCoord | null {
   return partialMatch ? partialMatch[1] : null;
 }
 
+const OPACITY_CONFIRMED = 0.9;
+const OPACITY_PENDING = 0.4;
+
 function tripLegsToArcs(legs: TripLeg[]): ArcDatum[] {
   return legs.map((leg, index) => {
+    if (leg.type === "hotel") return null;
     const start = getCityCoords(leg.from);
     const end = getCityCoords(leg.to);
-    
     if (!start || !end) return null;
-    
-    const isRoadTrip = leg.type === "road_trip";
-    const isConfirmed = leg.confirmed;
-    
-    // Different colors: flights are amber, road trips are blue
-    // Confirmed legs are brighter/solid, pending are muted/dashed
-    let color: string;
-    if (isRoadTrip) {
-      color = isConfirmed ? "#3b82f6" : "#1d4ed8"; // blue shades
-    } else {
-      color = isConfirmed ? "#f59e0b" : "#92400e"; // amber shades
-    }
-    
+
+    const isRoadTrip = leg.type === "road_trip" || leg.type === "bus" || leg.type === "train";
+    const op = leg.confirmed ? OPACITY_CONFIRMED : OPACITY_PENDING;
+
+    const color: [string, string] = isRoadTrip
+      ? [`rgba(59,130,246,${op})`, `rgba(99,102,241,${op})`]   // blue → indigo
+      : [`rgba(245,158,11,${op})`, `rgba(239,68,68,${op})`];   // amber → red
+
     return {
       id: `leg-${index}`,
       startLat: start.lat,
       startLng: start.lng,
       endLat: end.lat,
       endLng: end.lng,
-      color: color,
-      strokeWidth: isConfirmed ? 2 : 1,
+      color,
+      strokeWidth: leg.confirmed ? 1.5 : 0.8,
     };
   }).filter((arc): arc is ArcDatum => arc !== null);
+}
+
+function tripLegsToAirportPoints(legs: TripLeg[]): PointDatum[] {
+  const seen = new Set<string>();
+  const points: PointDatum[] = [];
+  for (const leg of legs) {
+    if (leg.type === "hotel") continue;
+    for (const city of [leg.from, leg.to]) {
+      if (!city || seen.has(city)) continue;
+      seen.add(city);
+      const coords = getCityCoords(city);
+      if (coords) {
+        points.push({ id: city, lat: coords.lat, lng: coords.lng, color: "rgba(255,255,255,0.8)", label: city } as PointDatum);
+      }
+    }
+  }
+  return points;
 }
 
 
@@ -234,33 +249,61 @@ function ActiveTripCard({ trip }: { trip: ActiveTrip }) {
                 borderBottom: index < legs.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
               }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: leg.hotels?.length ? "0.3rem" : 0 }}>
-                <span>
-                  {leg.type === "road_trip" || leg.type === "bus" || leg.type === "train" ? "GROUND" : "FLIGHT"} · {leg.from} → {leg.to}
-                </span>
-                <span style={{ color: leg.confirmed ? "#22c55e" : "var(--amber)" }}>
-                  {leg.confirmed ? "Confirmed" : "Pending"}
-                </span>
-              </div>
-              {(leg.provider || leg.price) && (
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.6rem" }}>
-                  <span>{leg.provider || leg.type}</span>
-                  {leg.price !== undefined && (
-                    <span style={{ color: "var(--cream)" }}>
-                      ${leg.price} {leg.currency || ""}
+              {leg.type === "hotel" ? (
+                <>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.15rem" }}>
+                    <span style={{ color: "#a78bfa" }}>HOTEL · {leg.to || leg.from}</span>
+                    <span style={{ color: leg.confirmed ? "#22c55e" : "var(--amber)" }}>
+                      {leg.confirmed ? "Confirmed" : "Pending"}
                     </span>
-                  )}
-                </div>
-              )}
-              {leg.hotels && leg.hotels.length > 0 && (
-                <div style={{ marginLeft: "1rem", fontSize: "0.6rem", color: "var(--amber)" }}>
-                  {leg.hotels.slice(0, 3).map((hotel, i) => (
-                    <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "0.15rem 0" }}>
-                      <span>{hotel.name}</span>
-                      <span>${hotel.price} {hotel.currency}</span>
+                  </div>
+                  {leg.provider && (
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.6rem" }}>
+                      <span>{leg.provider}</span>
+                      {leg.price !== undefined && (
+                        <span style={{ color: "var(--cream)" }}>${leg.price} {leg.currency || ""}</span>
+                      )}
                     </div>
-                  ))}
-                </div>
+                  )}
+                  {(leg.start_time || leg.end_time) && (
+                    <div style={{ fontSize: "0.6rem", color: "var(--cream-muted)", marginTop: "0.1rem" }}>
+                      {leg.start_time && <span>Check-in: {leg.start_time}</span>}
+                      {leg.start_time && leg.end_time && <span> · </span>}
+                      {leg.end_time && <span>Check-out: {leg.end_time}</span>}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: leg.hotels?.length ? "0.3rem" : 0 }}>
+                    <span>
+                      {leg.type === "road_trip" || leg.type === "bus" || leg.type === "train" ? "GROUND" : "FLIGHT"} · {leg.from} → {leg.to}
+                    </span>
+                    <span style={{ color: leg.confirmed ? "#22c55e" : "var(--amber)" }}>
+                      {leg.confirmed ? "Confirmed" : "Pending"}
+                    </span>
+                  </div>
+                  {(leg.provider || leg.price) && (
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.6rem" }}>
+                      <span>{leg.provider || leg.type}</span>
+                      {leg.price !== undefined && (
+                        <span style={{ color: "var(--cream)" }}>
+                          ${leg.price} {leg.currency || ""}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {leg.hotels && leg.hotels.length > 0 && (
+                    <div style={{ marginLeft: "1rem", fontSize: "0.6rem", color: "var(--amber)" }}>
+                      {leg.hotels.slice(0, 3).map((hotel, i) => (
+                        <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "0.15rem 0" }}>
+                          <span>{hotel.name}</span>
+                          <span>${hotel.price} {hotel.currency}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           ))}
@@ -375,17 +418,43 @@ function ActiveTripCard({ trip }: { trip: ActiveTrip }) {
   );
 }
 
+function hotelLegsToPoints(legs: TripLeg[]): PointDatum[] {
+  return legs
+    .filter((leg) => leg.type === "hotel")
+    .map((leg, index) => {
+      const city = leg.to || leg.from;
+      const coords = getCityCoords(city);
+      if (!coords) return null;
+      return {
+        id: `hotel-${index}`,
+        lat: coords.lat,
+        lng: coords.lng,
+        color: leg.confirmed ? "#a78bfa" : "#6d28d9",
+        label: leg.provider ? `${leg.provider} · ${city}` : city,
+      } as PointDatum;
+    })
+    .filter((p): p is PointDatum => p !== null);
+}
+
 export function ResultsCanvas({ state }: { state: AgentState }) {
   const activeTrip = useMemo(() => getActiveTrip(state), [state]);
-  
+
   const tripArcs = useMemo(() => {
     if (!activeTrip?.legs?.length) return [];
     return tripLegsToArcs(activeTrip.legs);
   }, [activeTrip]);
 
+  const allPoints = useMemo(() => {
+    if (!activeTrip?.legs?.length) return [];
+    return [
+      ...tripLegsToAirportPoints(activeTrip.legs),
+      ...hotelLegsToPoints(activeTrip.legs),
+    ];
+  }, [activeTrip]);
+
   return (
     <div style={{ position: "relative", width: "100%", height: "100vh", overflow: "hidden" }}>
-      <GlobeCanvas arcs={tripArcs} />
+      <GlobeCanvas arcs={tripArcs} points={allPoints} />
       <div
         style={{
           position: "absolute",
