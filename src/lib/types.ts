@@ -53,7 +53,76 @@ export interface StoredDateResult {
 export interface AgentState {
   flight_results?: StoredFlightResult[];
   date_results?: StoredDateResult[];
+  active_trip?: ActiveTrip;
+  hotel_results?: StoredHotelResult[];
+  route_results?: StoredRouteResult[];
+  viability_results?: StoredViabilityResult[];
   [key: string]: unknown;
+}
+
+// --- Active Trip Types ---
+
+export interface HotelOption {
+  name: string;
+  price: number;
+  currency: string;
+  [key: string]: unknown;
+}
+
+export interface RouteOption {
+  price: number;
+  currency: string;
+  legs?: FlightLeg[];
+  [key: string]: unknown;
+}
+
+export interface ViabilityCheck {
+  dimension: string;
+  status: string;
+  summary: string;
+}
+
+export interface ViabilityInfo {
+  verdict: string;
+  checks: ViabilityCheck[];
+  total_cost: number;
+  currency: string;
+}
+
+export interface ActiveTrip {
+  origin?: string;
+  destination?: string;
+  transport?: { options: RouteOption[] };
+  lodging?: { options: HotelOption[] };
+  viability?: ViabilityInfo;
+  updated_at?: number;
+  [key: string]: unknown;
+}
+
+// --- Stored Result Types for New Categories ---
+
+export interface StoredHotelResult {
+  id: string;
+  args: Record<string, string>;
+  hotels: HotelOption[];
+  ts: number;
+}
+
+export interface StoredRouteResult {
+  id: string;
+  args: Record<string, string>;
+  routes: RouteOption[];
+  ts: number;
+}
+
+export interface StoredViabilityResult {
+  id: string;
+  args: Record<string, string>;
+  verdict: string;
+  checks: ViabilityCheck[];
+  total_cost: number;
+  currency: string;
+  ts: number;
 }
 
 export interface ArcDatum {

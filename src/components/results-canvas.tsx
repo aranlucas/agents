@@ -2,13 +2,9 @@
 
 import { useMemo } from "react";
 import { ErrorBoundary, FallbackProps } from "react-error-boundary";
-import { useCopilotChat } from "@copilotkit/react-core";
-import { TextMessage, MessageRole } from "@copilotkit/runtime-client-gql";
-import { AgentState, StoredFlightResult, StoredDateResult, DatePrice } from "@/lib/types";
-import { deriveArcsFromResults } from "@/lib/arcs";
-import { getDateResults, getFlightResults } from "@/lib/state";
+import { AgentState, StoredDateResult, DatePrice, ActiveTrip, HotelOption, RouteOption } from "@/lib/types";
+import { getDateResults, getActiveTrip } from "@/lib/state";
 import { GlobeCanvas } from "./globe-canvas";
-import { FlightCard } from "./flight-card";
 
 function fmtDate(iso: string): string {
   const value = typeof iso === "string" ? iso : "";
@@ -31,78 +27,6 @@ function formatDateRange(dates: string[]): string {
   const month = d0.toLocaleDateString("en-US", { month: "short" });
   if (d0.getMonth() === d1.getMonth()) return `${month} ${d0.getDate()}–${d1.getDate()}`;
   return `${fmtDate(dates[0])} – ${fmtDate(dates[1])}`;
-}
-
-type ResultEntry =
-  | { kind: "flight"; data: StoredFlightResult }
-  | { kind: "date"; data: StoredDateResult };
-
-function mergeAndSort(
-  flightsInput: StoredFlightResult[],
-  datesInput: StoredDateResult[]
-): ResultEntry[] {
-  const flights: ResultEntry[] = flightsInput.map((r) => ({
-    kind: "flight",
-    data: r,
-  }));
-  const dates: ResultEntry[] = datesInput.map((r) => ({
-    kind: "date",
-    data: r,
-  }));
-  return [...flights, ...dates].sort((a, b) => b.data.ts - a.data.ts);
-}
-
-function RouteHeader({ args }: { args: Record<string, string> }) {
-  const from = args.origin ?? args.departure_airport ?? "SEA";
-  const to = args.destination ?? args.arrival_airport ?? "???";
-  const date = args.departure_date ?? args.date ?? "";
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "0.5rem",
-        marginBottom: "0.75rem",
-      }}
-    >
-      <span
-        style={{
-          fontFamily: "var(--font-display)",
-          fontSize: "1.4rem",
-          fontWeight: 600,
-          color: "var(--cream)",
-          letterSpacing: "0.04em",
-        }}
-      >
-        {from}
-      </span>
-      <span style={{ color: "var(--amber)" }}>→</span>
-      <span
-        style={{
-          fontFamily: "var(--font-display)",
-          fontSize: "1.4rem",
-          fontWeight: 600,
-          color: "var(--cream)",
-          letterSpacing: "0.04em",
-        }}
-      >
-        {to}
-      </span>
-      {date && (
-        <span
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: "0.6rem",
-            color: "var(--cream-muted)",
-            letterSpacing: "0.08em",
-            marginLeft: "auto",
-          }}
-        >
-          {date}
-        </span>
-      )}
-    </div>
-  );
 }
 
 function DateCard({ data, isLatest }: { data: StoredDateResult; isLatest: boolean }) {
@@ -130,7 +54,6 @@ function DateCard({ data, isLatest }: { data: StoredDateResult; isLatest: boolea
         opacity: isLatest ? 1 : 0.5,
       }}
     >
-      <RouteHeader args={data.args} />
       <div
         style={{
           fontFamily: "var(--font-mono)",
@@ -173,12 +96,6 @@ function DateCard({ data, isLatest }: { data: StoredDateResult; isLatest: boolea
   );
 }
 
-function priceColor(price: number): string {
-  if (price < 150) return "#22c55e";
-  if (price < 300) return "#f59e0b";
-  return "#ef4444";
-}
-
 function CardRenderFallback({ error }: FallbackProps) {
   return (
     <div
@@ -215,26 +132,16 @@ function CardRenderFallback({ error }: FallbackProps) {
   );
 }
 
-function LeaderboardCard({ state }: { state: AgentState }) {
-  const { appendMessage } = useCopilotChat();
-  const dateResults = getDateResults(state);
+function ActiveTripCard({ trip }: { trip: ActiveTrip }) {
+  const origin = trip.origin || "???";
+  const dest = trip.destination || "???";
+  const updated = trip.updated_at
+    ? new Date(trip.updated_at * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : "";
 
-  // Build cheapest-price-per-destination map
-  const byDest = new Map<string, { price: number; date: string[]; origin: string }>();
-  for (const r of dateResults) {
-    const dest = r.args.destination ?? r.args.arrival_airport ?? "";
-    const origin = r.args.origin ?? r.args.departure_airport ?? "SEA";
-    if (!dest || !r.dates.length) continue;
-    const cheapest = r.dates.reduce((a, b) => (a.price < b.price ? a : b));
-    const existing = byDest.get(dest);
-    if (!existing || cheapest.price < existing.price) {
-      byDest.set(dest, { price: cheapest.price, date: cheapest.date, origin });
-    }
-  }
-
-  if (byDest.size < 2) return null;
-
-  const ranked = [...byDest.entries()].sort((a, b) => a[1].price - b[1].price);
+  const topFlight = trip.transport?.options?.[0];
+  const topHotel = trip.lodging?.options?.[0];
+  const viability = trip.viability;
 
   return (
     <div
@@ -252,145 +159,132 @@ function LeaderboardCard({ state }: { state: AgentState }) {
           color: "var(--amber)",
           letterSpacing: "0.2em",
           marginBottom: "0.75rem",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
         }}
       >
-        ✦ WEEKEND DEALS SCAN
+        ✦ ACTIVE TRIP
+        {updated && (
+          <span style={{ color: "var(--cream-muted)", fontSize: "0.6rem" }}>
+            Updated {updated}
+          </span>
+        )}
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
-        {ranked.map(([dest, info], i) => (
-          <button
-            key={dest}
-            onClick={() =>
-              appendMessage(
-                new TextMessage({
-                  role: MessageRole.User,
-                  content: `Find flights from ${info.origin} to ${dest} on ${info.date[0]}`,
-                })
-              )
-            }
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.6rem",
-              background: "var(--bg-card)",
-              border: "1px solid var(--border)",
-              borderRadius: "0.4rem",
-              padding: "0.45rem 0.65rem",
-              cursor: "pointer",
-              textAlign: "left",
-              transition: "border-color 0.15s",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.borderColor = priceColor(info.price))}
-            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
-          >
-            <span
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "0.6rem",
-                color: "var(--cream-muted)",
-                width: "1rem",
-              }}
-            >
-              {i + 1}
-            </span>
-            <span
-              style={{
-                fontFamily: "var(--font-display)",
-                fontSize: "1rem",
-                fontWeight: 600,
-                color: "var(--cream)",
-                letterSpacing: "0.04em",
-                flex: 1,
-              }}
-            >
-              {dest}
-            </span>
-            <span
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "0.6rem",
-                color: "var(--cream-muted)",
-              }}
-            >
-              {formatDateRange(info.date)}
-            </span>
-            <span
-              style={{
-                fontFamily: "var(--font-display)",
-                fontSize: "1rem",
-                fontWeight: 700,
-                color: priceColor(info.price),
-              }}
-            >
-              ${info.price}
-            </span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
 
-function FlightResultCard({ data, isLatest }: { data: StoredFlightResult; isLatest: boolean }) {
-  const { flights } = data;
-  const cheapestPrice = flights.length
-    ? Math.min(...flights.map((f) => f.price))
-    : null;
-
-  return (
-    <div
-      style={{
-        background: "rgba(7,8,10,0.82)",
-        border: `1px solid ${isLatest ? "var(--amber)" : "var(--border)"}`,
-        borderLeft: `2px solid ${isLatest ? "var(--amber)" : "transparent"}`,
-        borderRadius: "0.75rem",
-        padding: "1.1rem",
-        opacity: isLatest ? 1 : 0.5,
-      }}
-    >
-      <RouteHeader args={data.args} />
-      {flights.length === 0 ? (
-        <div
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.5rem",
+          marginBottom: "0.75rem",
+        }}
+      >
+        <span
           style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: "0.7rem",
-            color: "var(--cream-muted)",
-            letterSpacing: "0.08em",
+            fontFamily: "var(--font-display)",
+            fontSize: "1.4rem",
+            fontWeight: 600,
+            color: "var(--cream)",
+            letterSpacing: "0.04em",
           }}
         >
-          NO FLIGHTS FOUND
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-          {flights.slice(0, 5).map((flight, i) => (
-            <FlightCard
-              key={i}
-              flight={flight}
-              index={i}
-              isCheapest={flight.price === cheapestPrice && i === 0}
-              originCode={data.args.origin ?? data.args.departure_airport ?? "SEA"}
-              destCode={data.args.destination ?? data.args.arrival_airport}
-            />
-          ))}
+          {origin}
+        </span>
+        <span style={{ color: "var(--amber)" }}>→</span>
+        <span
+          style={{
+            fontFamily: "var(--font-display)",
+            fontSize: "1.4rem",
+            fontWeight: 600,
+            color: "var(--cream)",
+            letterSpacing: "0.04em",
+          }}
+        >
+          {dest}
+        </span>
+      </div>
+
+      {viability && (
+        <div
+          style={{
+            marginBottom: "0.75rem",
+            padding: "0.5rem",
+            background: viability.verdict === "viable" ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)",
+            borderRadius: "0.4rem",
+          }}
+        >
+          <div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "0.6rem",
+              color: viability.verdict === "viable" ? "#22c55e" : "#ef4444",
+              letterSpacing: "0.1em",
+              marginBottom: "0.25rem",
+            }}
+          >
+            VIABILITY: {viability.verdict.toUpperCase()}
+          </div>
+          {viability.total_cost > 0 && (
+            <div
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: "1.2rem",
+                fontWeight: 700,
+                color: "var(--amber-bright)",
+              }}
+            >
+              Est. ${viability.total_cost} {viability.currency}
+            </div>
+          )}
         </div>
       )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+        {topFlight && (
+          <div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "0.65rem",
+              color: "var(--cream-muted)",
+              display: "flex",
+              justifyContent: "space-between",
+            }}
+          >
+            <span>Top Flight</span>
+            <span style={{ color: "var(--amber-bright)" }}>
+              ${topFlight.price} {topFlight.currency}
+            </span>
+          </div>
+        )}
+        {topHotel && (
+          <div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "0.65rem",
+              color: "var(--cream-muted)",
+              display: "flex",
+              justifyContent: "space-between",
+            }}
+          >
+            <span>Top Hotel: {topHotel.name}</span>
+            <span style={{ color: "var(--amber-bright)" }}>
+              ${topHotel.price} {topHotel.currency}
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 export function ResultsCanvas({ state }: { state: AgentState }) {
-  const flightResults = useMemo(() => getFlightResults(state), [state.flight_results]);
   const dateResults = useMemo(() => getDateResults(state), [state.date_results]);
-  const entries = useMemo(() => mergeAndSort(flightResults, dateResults), [flightResults, dateResults]);
-  const arcs = useMemo(
-    () => deriveArcsFromResults(flightResults, dateResults),
-    [flightResults, dateResults]
-  );
-  const latestTs = entries.length > 0 ? entries[0].data.ts : null;
+  const activeTrip = useMemo(() => getActiveTrip(state), [state]);
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100vh", overflow: "hidden" }}>
-      <GlobeCanvas arcs={arcs} />
+      <GlobeCanvas arcs={[]} />
       <div
         style={{
           position: "absolute",
@@ -404,32 +298,27 @@ export function ResultsCanvas({ state }: { state: AgentState }) {
           gap: "1rem",
         }}
       >
-        <ErrorBoundary
-          FallbackComponent={CardRenderFallback}
-          onError={(error) => {
-            console.error("RenderErrorBoundary(leaderboard)", error);
-          }}
-        >
-          <LeaderboardCard state={state} />
-        </ErrorBoundary>
-        {entries.map((entry) => {
-          const isLatest = entry.data.ts === latestTs;
-          return (
-            <ErrorBoundary
-              key={entry.data.id}
-              FallbackComponent={CardRenderFallback}
-              onError={(error) => {
-                console.error(`RenderErrorBoundary(${entry.kind}:${entry.data.id})`, error);
-              }}
-            >
-              {entry.kind === "flight" ? (
-                <FlightResultCard data={entry.data} isLatest={isLatest} />
-              ) : (
-                <DateCard data={entry.data} isLatest={isLatest} />
-              )}
-            </ErrorBoundary>
-          );
-        })}
+        {activeTrip && (
+          <ErrorBoundary
+            FallbackComponent={CardRenderFallback}
+            onError={(error) => {
+              console.error("RenderErrorBoundary(activeTrip)", error);
+            }}
+          >
+            <ActiveTripCard trip={activeTrip} />
+          </ErrorBoundary>
+        )}
+        {dateResults.map((data) => (
+          <ErrorBoundary
+            key={data.id}
+            FallbackComponent={CardRenderFallback}
+            onError={(error) => {
+              console.error(`RenderErrorBoundary(date:${data.id})`, error);
+            }}
+          >
+            <DateCard data={data} isLatest={false} />
+          </ErrorBoundary>
+        ))}
       </div>
     </div>
   );
