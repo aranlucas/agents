@@ -17,7 +17,7 @@ DISCOVERY_TOOLS = ["weekend_getaway", "suggest_dates", "search_dates", "search_d
 TRANSPORT_TOOLS = ["search_flights", "plan_flight_bundle", "find_interactive", "search_route", "search_ground", "search_airport_transfers", "get_baggage_rules", "search_lounges", "search_hidden_city", "search_awards"]
 LODGING_TOOLS = ["search_hotels", "search_hotel_by_name", "hotel_rooms", "hotel_prices", "hotel_reviews", "detect_accommodation_hacks", "watch_room_availability"]
 VIABILITY_TOOLS = ["assess_trip", "calculate_trip_cost", "check_visa", "calculate_points_value", "detect_travel_hacks", "optimize_booking", "optimize_trip_dates", "find_trip_window", "optimize_multi_city", "search_restaurants"]
-ITINERARY_TOOLS = ["create_trip", "list_trips", "get_trip", "add_trip_leg", "mark_trip_booked", "export_ics", "watch_price", "list_watches", "check_watches", "watch_opportunities", "list_opportunity_watches"]
+ITINERARY_TOOLS = ["create_trip", "list_trips", "get_trip", "update_trip", "mark_trip_booked", "export_ics", "watch_price", "list_watches", "check_watches", "watch_opportunities", "list_opportunity_watches"]
 
 
 def trvl_toolset(names: list[str]) -> McpToolset:
@@ -219,7 +219,7 @@ def normalize_trip_patch(
             patch["name"] = result.get("name")
         patch["legs"] = []
 
-    elif tool_name == "get_trip":
+    elif tool_name in ("get_trip", "update_trip"):
         patch.update(_trip_patch_from_trip(result))
 
     elif tool_name == "mark_trip_booked":
@@ -227,15 +227,6 @@ def normalize_trip_patch(
             patch["id"] = result.get("trip_id")
         if result.get("status"):
             patch["status"] = result.get("status")
-
-    elif tool_name == "add_trip_leg":
-        leg = _normalize_trip_leg(result.get("leg"))
-        if result.get("trip_id"):
-            patch["id"] = result.get("trip_id")
-        if leg:
-            patch["legs"] = [leg]
-            patch["origin"] = leg.get("from", "")
-            patch["destination"] = leg.get("to", "")
 
     return patch
 
