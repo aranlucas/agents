@@ -31,23 +31,45 @@ export function GlobeCanvas({ arcs, points = [] }: GlobeCanvasProps) {
     return () => observer.disconnect();
   }, []);
 
-  // Stop auto-rotate permanently once results arrive
+  // Reposition globe to centroid of trip legs whenever arcs change
   useEffect(() => {
-    if (arcs.length === 0 && points.length === 0) return;
+    const globe = globeRef.current;
+    if (!globe) return;
+
+    if (arcs.length === 0) {
+      const controls = globe.controls();
+      if (controls) controls.autoRotate = true;
+      return;
+    }
+
     if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
-    const controls = globeRef.current?.controls();
+    const controls = globe.controls();
     if (controls) controls.autoRotate = false;
-  }, [arcs.length]);
+
+    const lats = arcs.flatMap((a) => [a.startLat, a.endLat]);
+    const lngs = arcs.flatMap((a) => [a.startLng, a.endLng]);
+    const centroidLat = lats.reduce((s, v) => s + v, 0) / lats.length;
+    const centroidLng = lngs.reduce((s, v) => s + v, 0) / lngs.length;
+
+    // Altitude scales with route spread so the whole trip fits in view
+    const latSpread = Math.max(...lats) - Math.min(...lats);
+    const lngSpread = Math.max(...lngs) - Math.min(...lngs);
+    const spread = Math.max(latSpread, lngSpread);
+    const altitude = Math.min(3.5, Math.max(1.2, spread / 45));
+
+    globe.pointOfView({ lat: centroidLat, lng: centroidLng, altitude }, 1200);
+  }, [arcs]);
 
   const onGlobeReady = useCallback(() => {
     const globe = globeRef.current;
-    if (globe) {
-      globe.pointOfView({ lat: 47.45, lng: -122.31, altitude: 2.0 }, 0);
-      const controls = globe.controls();
-      if (controls) {
-        controls.autoRotate = arcs.length === 0 && points.length === 0;
-        controls.autoRotateSpeed = 0.4;
-      }
+    if (!globe) return;
+    const controls = globe.controls();
+    if (controls) {
+      controls.autoRotate = arcs.length === 0 && points.length === 0;
+      controls.autoRotateSpeed = 0.4;
+    }
+    if (arcs.length === 0) {
+      globe.pointOfView({ lat: 20, lng: 0, altitude: 2.5 }, 0);
     }
   }, [arcs.length]);
 
