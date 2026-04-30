@@ -1,29 +1,18 @@
 "use client";
 
-import { useCoAgent } from "@copilotkit/react-core";
-import { CopilotSidebar } from "@copilotkit/react-ui";
-import { ResultsCanvas } from "@/components/results-canvas";
+import { CopilotChat } from "@copilotkit/react-ui";
 import { ToolRenderer } from "@/components/ToolRenderer";
-import type { AgentState } from "@/lib/types";
 
 export default function Page() {
-  const { state } = useCoAgent<AgentState>({
-    name: "my_agent",
-    initialState: {},
-  });
-
   return (
-    <main style={{ minHeight: "100vh", background: "var(--bg)" }}>
-      <CopilotSidebar
-        disableSystemMessage={true}
-        clickOutsideToClose={false}
-        defaultOpen={true}
-        labels={{
-          title: "Weekend Trips",
-        }}
-      >
-        <ResultsCanvas state={state} />
-      </CopilotSidebar>
+    <main style={{ minHeight: "100vh", background: "var(--bg)", padding: "1.25rem" }}>
+      <div style={{ height: "calc(100vh - 2.5rem)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: "0.75rem", overflow: "hidden" }}>
+        <CopilotChat
+          instructions="You are a travel planning copilot."
+          labels={{ title: "Weekend Trips" }}
+          className="h-full"
+        />
+      </div>
       <ToolRenderer />
     </main>
   );
