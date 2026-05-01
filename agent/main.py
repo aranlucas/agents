@@ -8,6 +8,7 @@ import os
 from ag_ui_adk import ADKAgent, add_adk_fastapi_endpoint
 from fastapi import FastAPI
 from google.adk.agents import LlmAgent
+from google.adk.agents.readonly_context import ReadonlyContext
 from google.adk.models.lite_llm import LiteLlm
 
 from agents import (
@@ -38,10 +39,22 @@ If a specialist needs profile context, get only the specific preference or profi
 continue with that specialist. Summarize results clearly and ask only for missing trip constraints needed
 to proceed."""
 
+
+def build_instruction(ctx: ReadonlyContext) -> str:
+    """Inject A2UI context from session state into the system prompt."""
+    instruction = ROOT_INSTRUCTION
+    a2ui_context = ctx.state.get("_ag_ui_context", [])
+    if a2ui_context:
+        instruction += "\n\n# UI Generation\n"
+        for item in a2ui_context:
+            instruction += f"\n## {item['description']}\n{item['value']}\n"
+    return instruction
+
+
 travel_concierge_agent = LlmAgent(
     name="travel_concierge_agent",
     model=LiteLlm(model="mistral/devstral-latest"),
-    instruction=ROOT_INSTRUCTION,
+    instruction=build_instruction,
     tools=[get_current_date],
     sub_agents=[
         profile_agent,
