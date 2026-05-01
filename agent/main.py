@@ -8,8 +8,11 @@ import os
 from ag_ui_adk import ADKAgent, add_adk_fastapi_endpoint
 from fastapi import FastAPI
 from google.adk.agents import LlmAgent
-from google.adk.agents.readonly_context import ReadonlyContext
 from google.adk.models.lite_llm import LiteLlm
+from a2ui.adk.send_a2ui_to_client_toolset import SendA2uiToClientToolset
+from a2ui.basic_catalog import BasicCatalog
+from a2ui.schema.constants import VERSION_0_9
+from a2ui.schema.manager import A2uiSchemaManager
 
 from agents import (
     profile_agent,
@@ -21,6 +24,11 @@ from agents import (
 )
 
 load_dotenv()
+
+_bc = BasicCatalog()
+_catalog_config = _bc.get_config(VERSION_0_9)
+_manager = A2uiSchemaManager(version=VERSION_0_9, catalogs=[_catalog_config])
+BASIC_CATALOG = _manager._supported_catalogs[0]
 
 def get_current_date() -> str:
     """Returns today's date as YYYY-MM-DD. Call this before any date calculation."""
@@ -37,25 +45,24 @@ a default first step when the user already gave enough trip constraints.
 
 If a specialist needs profile context, get only the specific preference or profile detail needed, then
 continue with that specialist. Summarize results clearly and ask only for missing trip constraints needed
-to proceed."""
+to proceed.
 
-
-def build_instruction(ctx: ReadonlyContext) -> str:
-    """Inject A2UI context from session state into the system prompt."""
-    instruction = ROOT_INSTRUCTION
-    a2ui_context = ctx.state.get("_ag_ui_context", [])
-    if a2ui_context:
-        instruction += "\n\n# UI Generation\n"
-        for item in a2ui_context:
-            instruction += f"\n## {item['description']}\n{item['value']}\n"
-    return instruction
+When responding to users, use send_a2ui_json_to_client to render rich UI cards for trip options,
+flights, hotels, itineraries, and similar structured results whenever possible."""
 
 
 travel_concierge_agent = LlmAgent(
     name="travel_concierge_agent",
     model=LiteLlm(model="mistral/devstral-latest"),
-    instruction=build_instruction,
-    tools=[get_current_date],
+    instruction=ROOT_INSTRUCTION,
+    tools=[
+        get_current_date,
+        SendA2uiToClientToolset(
+            a2ui_enabled=True,
+            a2ui_catalog=BASIC_CATALOG,
+            a2ui_examples="",
+        ),
+    ],
     sub_agents=[
         profile_agent,
         discovery_agent,
