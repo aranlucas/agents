@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Space_Mono, Cormorant_Garamond } from "next/font/google";
-import { CopilotKit } from "@copilotkit/react-core";
+import { CopilotKit } from "@copilotkit/react-core/v2";
 import "./globals.css";
-import "@copilotkit/react-ui/styles.css";
+import "@copilotkit/react-core/v2/styles.css";
 
 const spaceMono = Space_Mono({
   weight: ["400", "700"],
@@ -29,7 +29,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${spaceMono.variable} ${cormorant.variable}`}>
       <body className="antialiased">
-        <CopilotKit runtimeUrl="/api/copilotkit" agent="my_agent">
+        <CopilotKit runtimeUrl="/api/copilotkit" agent="my_agent" a2ui={{}}>
           {children}
         </CopilotKit>
       </body>
