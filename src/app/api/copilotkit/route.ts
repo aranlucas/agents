@@ -14,6 +14,9 @@ const runtime = new CopilotRuntime({
       url: process.env.AGENT_URL || "http://localhost:8000/",
     }),
   },
+  a2ui: {
+    injectA2UITool: true,
+  },
 });
 
 // 3. Build a Next.js API route that handles the CopilotKit runtime requests.

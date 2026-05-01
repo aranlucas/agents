@@ -29,7 +29,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${spaceMono.variable} ${cormorant.variable}`}>
       <body className="antialiased">
-        <CopilotKit runtimeUrl="/api/copilotkit" agent="my_agent">
+        <CopilotKit runtimeUrl="/api/copilotkit" agent="my_agent" a2ui={{}}>
           {children}
         </CopilotKit>
       </body>
