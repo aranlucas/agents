@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Space_Mono, Cormorant_Garamond } from "next/font/google";
-import { Providers } from "@/components/Providers";
+import { Providers } from "@/components/providers";
 import "./globals.css";
 import "@copilotkit/react-core/v2/styles.css";
 

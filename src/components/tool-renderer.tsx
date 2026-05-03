@@ -1,7 +1,7 @@
 "use client";
 
 import { useFrontendTool } from "@copilotkit/react-core/v2";
-import McpToolCall from "./McpToolCall";
+import McpToolCall from "./mcp-tool-call";
 
 export function ToolRenderer() {
   useFrontendTool({
