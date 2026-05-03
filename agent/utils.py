@@ -1,10 +1,11 @@
 """Shared utilities for travel agents."""
+
 from __future__ import annotations
 
 import json
 import os
 import time
-from typing import Optional
+from typing import Any, Optional
 
 from google.adk.tools import BaseTool, ToolContext
 from google.adk.tools.mcp_tool import McpToolset
@@ -38,7 +39,9 @@ def parse_tool_response(tool_response: dict) -> Optional[dict]:
         return None
 
 
-def _update_active_trip(tool_context: ToolContext, tool_name: str, args: dict, data: dict) -> None:
+def _update_active_trip(
+    tool_context: ToolContext, tool_name: str, args: dict, data: dict
+) -> None:
     trip = tool_context.state.get("active_trip", {})
 
     if tool_name == "search_flights" and data.get("success"):
@@ -58,18 +61,27 @@ def _update_active_trip(tool_context: ToolContext, tool_name: str, args: dict, d
         if hotels := data.get("hotels"):
             trip["lodging"] = {"options": hotels}
             if trip["destination"]:
-                trip.setdefault("hotels_by_destination", {})[trip["destination"]] = hotels
+                trip.setdefault("hotels_by_destination", {})[
+                    trip["destination"]
+                ] = hotels
 
     elif tool_name == "assess_trip" and data.get("success"):
         trip["origin"] = args.get("origin", "")
         trip["destination"] = args.get("destination", "")
-        trip["viability"] = {k: data[k] for k in ("verdict", "checks", "total_cost", "currency") if k in data}
+        trip["viability"] = {
+            k: data[k]
+            for k in ("verdict", "checks", "total_cost", "currency")
+            if k in data
+        }
 
     elif tool_name == "plan_trip" and data.get("success"):
         trip["origin"] = data["origin"]
         trip["destination"] = data["destination"]
         if (outbound := data.get("outbound_flights")) or data.get("return_flights"):
-            trip["transport"] = {"options": outbound or [], "return_options": data.get("return_flights") or []}
+            trip["transport"] = {
+                "options": outbound or [],
+                "return_options": data.get("return_flights") or [],
+            }
         if hotels := data.get("hotels"):
             trip["lodging"] = {"options": hotels}
 
@@ -79,7 +91,17 @@ def _update_active_trip(tool_context: ToolContext, tool_name: str, args: dict, d
         trip["legs"] = []
 
     elif tool_name in ("get_trip", "update_trip"):
-        for key in ("id", "name", "status", "origin", "destination", "legs", "bookings", "tags", "notes"):
+        for key in (
+            "id",
+            "name",
+            "status",
+            "origin",
+            "destination",
+            "legs",
+            "bookings",
+            "tags",
+            "notes",
+        ):
             if key in data:
                 trip[key] = data[key]
         if "updated_at" in data:
@@ -96,6 +118,14 @@ def _update_active_trip(tool_context: ToolContext, tool_name: str, args: dict, d
     tool_context.state["active_trip"] = trip
 
 
+def _save_removed_structured_content(
+    tool_context: ToolContext,
+    tool_name: str,
+    structured_content: Any,
+) -> None:
+    tool_context.state[tool_name] = structured_content
+
+
 async def shared_after_tool_callback(
     tool: BaseTool,
     args: dict,
@@ -104,6 +134,16 @@ async def shared_after_tool_callback(
 ) -> Optional[dict]:
     if data := parse_tool_response(tool_response):
         _update_active_trip(tool_context, tool.name, args, data)
-    if isinstance(tool_response, dict) and "content" in tool_response and "structuredContent" in tool_response:
+
+    if not isinstance(tool_response, dict):
+        return None
+
+    if "structuredContent" not in tool_response:
+        return None
+
+    _save_removed_structured_content(
+        tool_context, tool.name, tool_response["structuredContent"]
+    )
+    if "content" in tool_response:
         return {"content": tool_response["content"]}
     return None

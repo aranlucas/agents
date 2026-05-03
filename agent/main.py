@@ -10,6 +10,7 @@ from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
 from fastapi import FastAPI
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
+from google.adk.tools.base_toolset import BaseToolset
 
 from agents import (
     profile_agent,
@@ -19,6 +20,13 @@ from agents import (
     viability_agent,
     itinerary_agent,
 )
+from agents.discovery import TOOLS as DISCOVERY_TOOLS
+from agents.itinerary import TOOLS as ITINERARY_TOOLS
+from agents.lodging import TOOLS as LODGING_TOOLS
+from agents.profile import TOOLS as PROFILE_TOOLS
+from agents.transport import TOOLS as TRANSPORT_TOOLS
+from agents.viability import TOOLS as VIABILITY_TOOLS
+from utils import shared_after_tool_callback, trvl_toolset
 
 load_dotenv()
 
@@ -47,9 +55,15 @@ travel_concierge_agent = LlmAgent(
     name="travel_concierge_agent",
     model=LiteLlm(model="mistral/devstral-latest"),
     instruction=ROOT_INSTRUCTION,
+    after_tool_callback=shared_after_tool_callback,
     tools=[
         get_current_date,
-        AGUIToolset(),
+        trvl_toolset(PROFILE_TOOLS),
+        trvl_toolset(DISCOVERY_TOOLS),
+        trvl_toolset(TRANSPORT_TOOLS),
+        trvl_toolset(LODGING_TOOLS),
+        trvl_toolset(VIABILITY_TOOLS),
+        trvl_toolset(ITINERARY_TOOLS),
     ],
     sub_agents=[
         profile_agent,

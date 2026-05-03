@@ -1,8 +1,9 @@
+import asyncio
 import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from utils import _update_active_trip
+from utils import _update_active_trip, shared_after_tool_callback
 from agents.discovery import TOOLS as DISCOVERY_TOOLS
 from agents.lodging import TOOLS as LODGING_TOOLS
 from agents.profile import TOOLS as PROFILE_TOOLS
@@ -13,6 +14,23 @@ from agents.viability import TOOLS as VIABILITY_TOOLS
 class FakeToolContext:
     def __init__(self, initial=None):
         self.state = {"active_trip": initial or {}}
+
+
+class FakeTool:
+    name = "get_weather"
+
+
+def test_callback_saves_removed_structured_content():
+    ctx = FakeToolContext()
+    response = {
+        "structuredContent": {"success": True, "forecast": [{"date": "2026-05-03", "high": 72}]},
+        "content": [{"type": "text", "text": "{\"success\": true}"}],
+    }
+
+    result = asyncio.run(shared_after_tool_callback(FakeTool(), {"city": "San Francisco"}, ctx, response))
+
+    assert result == {"content": response["content"]}
+    assert ctx.state["get_weather"] == response["structuredContent"]
 
 
 def test_search_hotels_updates_destination_and_lodging():
