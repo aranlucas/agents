@@ -51,18 +51,31 @@ body {
 }
 
 @keyframes scanline {
-  from { transform: translateY(-100%); }
-  to   { transform: translateY(100vh); }
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(100vh);
+  }
 }
 
 @keyframes blink {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
 }
 
 @keyframes shimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position:  200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 .animate-boarding-pass {
@@ -98,8 +111,12 @@ body {
   top: -0.56rem;
 }
 
-.perforation::before { left: -0.56rem; }
-.perforation::after  { right: -0.56rem; }
+.perforation::before {
+  left: -0.56rem;
+}
+.perforation::after {
+  right: -0.56rem;
+}
 
 /* Route line */
 .route-line {
@@ -129,14 +146,14 @@ body {
 /* CopilotKit overrides — dark amber theme */
 .copilotKitSidebar,
 .copilotKitPopup {
-  --copilot-kit-primary-color:        var(--amber) !important;
-  --copilot-kit-background-color:     #0d0f12 !important;
+  --copilot-kit-primary-color: var(--amber) !important;
+  --copilot-kit-background-color: #0d0f12 !important;
   --copilot-kit-secondary-background-color: #131619 !important;
   --copilot-kit-response-button-color: var(--amber) !important;
-  --copilot-kit-separator-color:       #1c1e24 !important;
-  --copilot-kit-scrollbar-color:       #2a2c30 !important;
-  --copilot-kit-contrast-color:        #e8e4d8 !important;
-  --copilot-kit-muted-color:           #9a9080 !important;
+  --copilot-kit-separator-color: #1c1e24 !important;
+  --copilot-kit-scrollbar-color: #2a2c30 !important;
+  --copilot-kit-contrast-color: #e8e4d8 !important;
+  --copilot-kit-muted-color: #9a9080 !important;
   font-family: "Space Mono", monospace !important;
   color: #e8e4d8 !important;
 }

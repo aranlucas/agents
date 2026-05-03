@@ -1,29 +1,33 @@
 import {
   CopilotRuntime,
-  ExperimentalEmptyAdapter,
-  copilotRuntimeNextJSAppRouterEndpoint,
-} from "@copilotkit/runtime";
+  createCopilotRuntimeHandler,
+} from "@copilotkit/runtime/v2";
 import { HttpAgent } from "@ag-ui/client";
-import { NextRequest } from "next/server";
-
-const serviceAdapter = new ExperimentalEmptyAdapter();
 
 const runtime = new CopilotRuntime({
   agents: {
     my_agent: new HttpAgent({
       url: process.env.AGENT_URL || "http://localhost:8000/",
+      debug: process.env.COPILOTKIT_DEBUG !== "false",
     }),
   },
-  a2ui: { injectA2UITool: true },
+  debug: process.env.COPILOTKIT_DEBUG !== "false",
 });
 
-// 3. Build a Next.js API route that handles the CopilotKit runtime requests.
-export const POST = async (req: NextRequest) => {
-  const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
-    runtime,
-    serviceAdapter,
-    endpoint: "/api/copilotkit",
-  });
+const handler = createCopilotRuntimeHandler({
+  runtime,
+  mode: "single-route",
+  hooks: {
+    onBeforeHandler: ({ route }) => {
+      console.info("[copilotkit]", route);
+    },
+    onResponse: ({ route, response }) => {
+      console.info("[copilotkit]", route, response.status);
+    },
+    onError: ({ route, error }) => {
+      console.error("[copilotkit]", route ?? "unrouted", error);
+    },
+  },
+});
 
-  return handleRequest(req);
-};
+export const POST = handler;

@@ -13,7 +13,6 @@ dependencies = [
   "ag-ui-adk",
   "litellm",
   "flights[mcp] @ git+https://github.com/punitarani/fli.git",
-  "a2ui-agent-sdk",
   "a2a-sdk==0.3.26",
 ]
 
@@ -26,6 +25,3 @@ app = "main:app"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-
-[tool.uv.sources]
-a2ui-agent-sdk = { git = "https://github.com/google/A2UI.git", subdirectory = "agent_sdks/python" }

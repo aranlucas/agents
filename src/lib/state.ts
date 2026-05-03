@@ -16,10 +16,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isStringRecord(value: unknown): value is Record<string, string> {
-  return isRecord(value) && Object.values(value).every((item) => typeof item === "string");
+  return (
+    isRecord(value) &&
+    Object.values(value).every((item) => typeof item === "string")
+  );
 }
-
-
 
 function isHotelOption(value: unknown): value is HotelOption {
   return (
@@ -79,12 +80,19 @@ function isActiveTrip(value: unknown): value is ActiveTrip {
     (value.name === undefined || typeof value.name === "string") &&
     (value.status === undefined || typeof value.status === "string") &&
     (value.origin === undefined || typeof value.origin === "string") &&
-    (value.destination === undefined || typeof value.destination === "string") &&
-    (value.legs === undefined || (Array.isArray(value.legs) && value.legs.every(isTripLeg))) &&
-    (value.tags === undefined || (Array.isArray(value.tags) && value.tags.every((tag) => typeof tag === "string"))) &&
+    (value.destination === undefined ||
+      typeof value.destination === "string") &&
+    (value.legs === undefined ||
+      (Array.isArray(value.legs) && value.legs.every(isTripLeg))) &&
+    (value.tags === undefined ||
+      (Array.isArray(value.tags) &&
+        value.tags.every((tag) => typeof tag === "string"))) &&
     (value.notes === undefined || typeof value.notes === "string") &&
-    (value.source_updated_at === undefined || typeof value.source_updated_at === "string") &&
-    (value.updated_at === undefined || typeof value.updated_at === "number" || typeof value.updated_at === "string")
+    (value.source_updated_at === undefined ||
+      typeof value.source_updated_at === "string") &&
+    (value.updated_at === undefined ||
+      typeof value.updated_at === "number" ||
+      typeof value.updated_at === "string")
   );
 }
 
@@ -110,7 +118,9 @@ function isStoredRouteResult(value: unknown): value is StoredRouteResult {
   );
 }
 
-function isStoredViabilityResult(value: unknown): value is StoredViabilityResult {
+function isStoredViabilityResult(
+  value: unknown,
+): value is StoredViabilityResult {
   return (
     isRecord(value) &&
     typeof value.id === "string" &&
@@ -134,13 +144,21 @@ export function getActiveTrip(state: AgentState): ActiveTrip | null {
 }
 
 export function getHotelResults(state: AgentState): StoredHotelResult[] {
-  return Array.isArray(state.hotel_results) ? state.hotel_results.filter(isStoredHotelResult) : [];
+  return Array.isArray(state.hotel_results)
+    ? state.hotel_results.filter(isStoredHotelResult)
+    : [];
 }
 
 export function getRouteResults(state: AgentState): StoredRouteResult[] {
-  return Array.isArray(state.route_results) ? state.route_results.filter(isStoredRouteResult) : [];
+  return Array.isArray(state.route_results)
+    ? state.route_results.filter(isStoredRouteResult)
+    : [];
 }
 
-export function getViabilityResults(state: AgentState): StoredViabilityResult[] {
-  return Array.isArray(state.viability_results) ? state.viability_results.filter(isStoredViabilityResult) : [];
+export function getViabilityResults(
+  state: AgentState,
+): StoredViabilityResult[] {
+  return Array.isArray(state.viability_results)
+    ? state.viability_results.filter(isStoredViabilityResult)
+    : [];
 }

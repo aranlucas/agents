@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useCoAgent } from "@copilotkit/react-core";
+import { useAgent, UseAgentUpdate } from "@copilotkit/react-core/v2";
 import type { AgentState, TripLeg } from "@/lib/types";
 import { getActiveTrip } from "@/lib/state";
 import { GlobeCanvas } from "./globe-canvas";
@@ -98,10 +98,11 @@ function hotelLegsToPoints(legs: TripLeg[]): PointDatum[] {
 }
 
 export function TripGlobeView() {
-  const { state } = useCoAgent<AgentState>({
-    name: "my_agent",
-    initialState: {},
+  const { agent } = useAgent({
+    agentId: "my_agent",
+    updates: [UseAgentUpdate.OnStateChanged],
   });
+  const state = (agent?.state ?? {}) as AgentState;
 
   const activeTrip = useMemo(() => getActiveTrip(state), [state]);
 
@@ -112,11 +113,21 @@ export function TripGlobeView() {
 
   const allPoints = useMemo(() => {
     if (!activeTrip?.legs?.length) return [];
-    return [...tripLegsToAirportPoints(activeTrip.legs), ...hotelLegsToPoints(activeTrip.legs)];
+    return [
+      ...tripLegsToAirportPoints(activeTrip.legs),
+      ...hotelLegsToPoints(activeTrip.legs),
+    ];
   }, [activeTrip]);
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100vh", overflow: "hidden" }}>
+    <div
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100vh",
+        overflow: "hidden",
+      }}
+    >
       <GlobeCanvas arcs={tripArcs} points={allPoints} />
     </div>
   );

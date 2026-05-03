@@ -18,8 +18,8 @@ export function FlightResults({
     result == null
       ? null
       : typeof result === "string"
-      ? tryParse(result)
-      : result;
+        ? tryParse(result)
+        : result;
 
   const flights = parsed?.flights ?? [];
   const isLoading = result == null;
@@ -97,7 +97,9 @@ export function FlightResults({
 
       {/* Loading skeletons */}
       {isLoading && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+        <div
+          style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}
+        >
           {[0, 1, 2].map((i) => (
             <FlightCardSkeleton key={i} index={i} />
           ))}
@@ -124,7 +126,9 @@ export function FlightResults({
       )}
 
       {flights.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+        <div
+          style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}
+        >
           {flights.map((flight, i) => (
             <FlightCard
               key={i}

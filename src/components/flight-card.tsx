@@ -62,15 +62,9 @@ export function FlightCard({
   const duration = formatDuration(totalMin);
   const stops = flight.stops ?? Math.max(0, (flight.legs?.length ?? 1) - 1);
   const stopsLabel =
-    stops === 0
-      ? "DIRECT"
-      : `${stops} STOP${stops > 1 ? "S" : ""}`;
+    stops === 0 ? "DIRECT" : `${stops} STOP${stops > 1 ? "S" : ""}`;
   const stopsColor =
-    stops === 0
-      ? "var(--green)"
-      : stops === 1
-      ? "var(--amber)"
-      : "var(--red)";
+    stops === 0 ? "var(--green)" : stops === 1 ? "var(--amber)" : "var(--red)";
 
   return (
     <div
@@ -375,15 +369,36 @@ export function FlightCardSkeleton({ index }: { index: number }) {
     >
       <div
         className="loading-shimmer"
-        style={{ height: "1rem", width: "30%", borderRadius: "0.25rem", marginBottom: "1rem" }}
+        style={{
+          height: "1rem",
+          width: "30%",
+          borderRadius: "0.25rem",
+          marginBottom: "1rem",
+        }}
       />
-      <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1.1rem", alignItems: "center" }}>
-        <div className="loading-shimmer" style={{ height: "2.5rem", width: "4rem", borderRadius: "0.25rem" }} />
+      <div
+        style={{
+          display: "flex",
+          gap: "0.75rem",
+          marginBottom: "1.1rem",
+          alignItems: "center",
+        }}
+      >
+        <div
+          className="loading-shimmer"
+          style={{ height: "2.5rem", width: "4rem", borderRadius: "0.25rem" }}
+        />
         <div className="loading-shimmer" style={{ flex: 1, height: "1px" }} />
-        <div className="loading-shimmer" style={{ height: "2.5rem", width: "4rem", borderRadius: "0.25rem" }} />
+        <div
+          className="loading-shimmer"
+          style={{ height: "2.5rem", width: "4rem", borderRadius: "0.25rem" }}
+        />
       </div>
       <div className="perforation" style={{ marginBottom: "1rem" }} />
-      <div className="loading-shimmer" style={{ height: "0.8rem", width: "40%", borderRadius: "0.25rem" }} />
+      <div
+        className="loading-shimmer"
+        style={{ height: "0.8rem", width: "40%", borderRadius: "0.25rem" }}
+      />
     </div>
   );
 }

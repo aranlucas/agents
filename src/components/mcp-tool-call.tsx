@@ -34,8 +34,8 @@ export default function McpToolCall({
     status === "complete"
       ? "bg-green-400"
       : status === "inProgress" || status === "executing"
-      ? "bg-amber-400 animate-pulse"
-      : "bg-gray-500";
+        ? "bg-amber-400 animate-pulse"
+        : "bg-gray-500";
 
   return (
     <div

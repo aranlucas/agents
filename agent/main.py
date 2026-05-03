@@ -1,18 +1,15 @@
 """Weekend trip travel planner using Google ADK with MCP tools."""
+
 from __future__ import annotations
 
 from datetime import date
 from dotenv import load_dotenv
 import os
 
-from ag_ui_adk import ADKAgent, add_adk_fastapi_endpoint
+from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
 from fastapi import FastAPI
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
-from a2ui.adk.send_a2ui_to_client_toolset import SendA2uiToClientToolset
-from a2ui.basic_catalog import BasicCatalog
-from a2ui.schema.constants import VERSION_0_9
-from a2ui.schema.manager import A2uiSchemaManager
 
 from agents import (
     profile_agent,
@@ -25,14 +22,11 @@ from agents import (
 
 load_dotenv()
 
-_bc = BasicCatalog()
-_catalog_config = _bc.get_config(VERSION_0_9)
-_manager = A2uiSchemaManager(version=VERSION_0_9, catalogs=[_catalog_config])
-BASIC_CATALOG = _manager._supported_catalogs[0]
 
 def get_current_date() -> str:
     """Returns today's date as YYYY-MM-DD. Call this before any date calculation."""
     return date.today().isoformat()
+
 
 ROOT_INSTRUCTION = """You are a travel concierge for weekend trips from Seattle, WA.
 Call get_current_date before reasoning about dates. Route discovery, transport, lodging, viability,
@@ -46,9 +40,7 @@ a default first step when the user already gave enough trip constraints.
 If a specialist needs profile context, get only the specific preference or profile detail needed, then
 continue with that specialist. Summarize results clearly and ask only for missing trip constraints needed
 to proceed.
-
-When responding to users, use send_a2ui_json_to_client to render rich UI cards for trip options,
-flights, hotels, itineraries, and similar structured results whenever possible."""
+"""
 
 
 travel_concierge_agent = LlmAgent(
@@ -57,11 +49,7 @@ travel_concierge_agent = LlmAgent(
     instruction=ROOT_INSTRUCTION,
     tools=[
         get_current_date,
-        SendA2uiToClientToolset(
-            a2ui_enabled=True,
-            a2ui_catalog=BASIC_CATALOG,
-            a2ui_examples="",
-        ),
+        AGUIToolset(),
     ],
     sub_agents=[
         profile_agent,
