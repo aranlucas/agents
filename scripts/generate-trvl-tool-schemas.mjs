@@ -15,6 +15,28 @@ const rendererOutputPath = resolve(
 const raw = JSON.parse(readFileSync(referencePath, "utf8"));
 const tools = raw.result?.tools ?? raw.tools ?? [];
 
+// Maps tool name -> { componentName, importPath relative to the renderers output file }
+const DEDICATED_COMPONENTS = {
+  search_flights:          { name: "SearchFlightsToolCall",          path: "../tool-calls/search-flights" },
+  search_hotels:           { name: "SearchHotelsToolCall",           path: "../tool-calls/search-hotels" },
+  hotel_prices:            { name: "HotelPricesToolCall",            path: "../tool-calls/hotel-prices" },
+  search_hotel_by_name:    { name: "SearchHotelByNameToolCall",      path: "../tool-calls/search-hotel-by-name" },
+  hotel_rooms:             { name: "HotelRoomsToolCall",             path: "../tool-calls/hotel-rooms" },
+  search_route:            { name: "SearchRouteToolCall",            path: "../tool-calls/search-route" },
+  search_ground:           { name: "SearchGroundToolCall",           path: "../tool-calls/search-ground" },
+  search_airport_transfers:{ name: "SearchAirportTransfersToolCall", path: "../tool-calls/search-airport-transfers" },
+  search_awards:           { name: "SearchAwardsToolCall",           path: "../tool-calls/search-awards" },
+  search_deals:            { name: "SearchDealsToolCall",            path: "../tool-calls/search-deals" },
+  explore_destinations:    { name: "ExploreDestinationsToolCall",    path: "../tool-calls/explore-destinations" },
+  local_events:            { name: "LocalEventsToolCall",            path: "../tool-calls/local-events" },
+  search_restaurants:      { name: "SearchRestaurantsToolCall",      path: "../tool-calls/search-restaurants" },
+  weekend_getaway:         { name: "WeekendGetawayToolCall",         path: "../tool-calls/weekend-getaway" },
+  plan_flight_bundle:      { name: "PlanFlightBundleToolCall",       path: "../tool-calls/plan-flight-bundle" },
+  assess_trip:             { name: "AssessTripToolCall",             path: "../tool-calls/assess-trip" },
+  check_visa:              { name: "CheckVisaToolCall",              path: "../tool-calls/check-visa" },
+  plan_trip:               { name: "PlanTripToolCall",               path: "../tool-calls/plan-trip" },
+};
+
 const lines = [
   "import { z } from \"zod\";",
   "",
@@ -105,11 +127,24 @@ function enumToZod(values) {
 
 function renderersToSource(tools) {
   const schemaNames = tools.map((tool) => schemaExportName(tool.name));
+
+  // Collect deduplicated dedicated imports
+  const dedicatedImports = [];
+  const seenPaths = new Set();
+  for (const tool of tools) {
+    const dedicated = DEDICATED_COMPONENTS[tool.name];
+    if (dedicated && !seenPaths.has(dedicated.path)) {
+      seenPaths.add(dedicated.path);
+      dedicatedImports.push(`import { ${dedicated.name} } from "${dedicated.path}";`);
+    }
+  }
+
   const rendererLines = [
     "\"use client\";",
     "",
     "import { useRenderTool } from \"@copilotkit/react-core/v2\";",
     "import McpToolCall from \"../mcp-tool-call\";",
+    ...dedicatedImports,
     "import {",
     ...schemaNames.map((name) => `  ${name},`),
     "} from \"./generated-tool-schemas\";",
@@ -119,19 +154,16 @@ function renderersToSource(tools) {
 
   for (const tool of tools) {
     const schemaName = schemaExportName(tool.name);
+    const dedicated = DEDICATED_COMPONENTS[tool.name];
+    const componentName = dedicated ? dedicated.name : "McpToolCall";
     rendererLines.push(
       `  useRenderTool({`,
       `    name: ${JSON.stringify(tool.name)},`,
       `    parameters: ${schemaName},`,
-      "    render: ({ status, parameters, result }) => (",
-      "      <McpToolCall",
-      "        status={status}",
-      `        name=${JSON.stringify(tool.name)}`,
-      "        args={parameters}",
-      "        result={result}",
-      "      />",
-      "    ),",
-      "  }, []);",
+      `    render: ({ status, parameters, result }) => (`,
+      `      <${componentName} status={status} name=${JSON.stringify(tool.name)} args={parameters} result={result} />`,
+      `    ),`,
+      `  }, []);`,
       "",
     );
   }
