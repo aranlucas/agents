@@ -1,4 +1,5 @@
 """Discovery agent."""
+
 from __future__ import annotations
 
 from google.adk.agents import LlmAgent
@@ -43,7 +44,7 @@ Present the strongest options with timing and trade-offs."""
 
 discovery_agent = LlmAgent(
     name="discovery_agent",
-    model=LiteLlm(model="mistral/devstral-latest"),
+    model=LiteLlm(model="mistral/mistral-medium-latest"),
     after_tool_callback=shared_after_tool_callback,
     instruction=DISCOVERY_INSTRUCTION,
     tools=[trvl_toolset(TOOLS)],

@@ -67,7 +67,7 @@ Summarize results clearly. Ask only for missing trip constraints needed to proce
 
 travel_concierge_agent = LlmAgent(
     name="travel_concierge_agent",
-    model=LiteLlm(model="mistral/devstral-latest"),
+    model=LiteLlm(model="mistral/mistral-medium-latest"),
     instruction=ROOT_INSTRUCTION,
     after_tool_callback=shared_after_tool_callback,
     tools=[

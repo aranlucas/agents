@@ -1,4 +1,5 @@
 """Itinerary agent."""
+
 from __future__ import annotations
 
 from google.adk.agents import LlmAgent
@@ -43,7 +44,7 @@ itinerary accurately."""
 
 itinerary_agent = LlmAgent(
     name="itinerary_agent",
-    model=LiteLlm(model="mistral/devstral-latest"),
+    model=LiteLlm(model="mistral/mistral-medium-latest"),
     instruction=ITINERARY_INSTRUCTION,
     tools=[trvl_toolset(TOOLS)],
     after_tool_callback=shared_after_tool_callback,

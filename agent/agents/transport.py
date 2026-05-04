@@ -1,4 +1,5 @@
 """Transport agent."""
+
 from __future__ import annotations
 
 from google.adk.agents import LlmAgent
@@ -6,7 +7,18 @@ from google.adk.models.lite_llm import LiteLlm
 
 from utils import trvl_toolset, shared_after_tool_callback
 
-TOOLS = ["search_flights", "plan_flight_bundle", "find_interactive", "search_route", "search_ground", "search_airport_transfers", "get_baggage_rules", "search_lounges", "search_hidden_city", "search_awards"]
+TOOLS = [
+    "search_flights",
+    "plan_flight_bundle",
+    "find_interactive",
+    "search_route",
+    "search_ground",
+    "search_airport_transfers",
+    "get_baggage_rules",
+    "search_lounges",
+    "search_hidden_city",
+    "search_awards",
+]
 
 TRANSPORT_INSTRUCTION = """Search and compare transportation options for trips from Seattle unless
 the user specifies another origin. Requires a known origin, destination, and date — if any are
@@ -36,7 +48,7 @@ programs, bags, cabin class, or accessibility constraints."""
 
 transport_agent = LlmAgent(
     name="transport_agent",
-    model=LiteLlm(model="mistral/devstral-latest"),
+    model=LiteLlm(model="mistral/mistral-medium-latest"),
     after_tool_callback=shared_after_tool_callback,
     instruction=TRANSPORT_INSTRUCTION,
     tools=[trvl_toolset(TOOLS)],
