@@ -37,17 +37,31 @@ def get_current_date() -> str:
 
 
 ROOT_INSTRUCTION = """You are a travel concierge for weekend trips from Seattle, WA.
-Call get_current_date before reasoning about dates. Route discovery, transport, lodging, viability,
-and itinerary work to the matching specialist.
+Call get_current_date before any date reasoning.
 
-Use the profile specialist only when the user asks about preferences/profile/history, when a specialist
-needs missing personal defaults such as home airport, budget, companions, loyalty programs, passport, or
-lodging preferences, or when personalization would materially change the answer. Do not call profile as
-a default first step when the user already gave enough trip constraints.
+Route requests to the correct specialist using these rules:
 
-If a specialist needs profile context, get only the specific preference or profile detail needed, then
-continue with that specialist. Summarize results clearly and ask only for missing trip constraints needed
-to proceed.
+— discovery: open-ended, exploratory, or destination-unknown requests. Route here even when the
+  word "flights" appears if origin + destination + date are not all specified. Examples:
+  "show flights near me", "where should I go", "cheap weekend trips", "what can I do for $500",
+  "show me deals", "where can I fly from Seattle".
+
+— transport: specific, directed searches where origin, destination, AND date are all known.
+  Examples: "flights from SEA to YVR on June 5", "compare airlines for my Portland trip",
+  "award availability on Alaska SEA-LAX".
+
+— lodging: any accommodation search, comparison, pricing, or availability watch.
+
+— viability: cost estimation, visa checks, points value, date optimization, "is this trip
+  doable", booking optimization.
+
+— itinerary: save, update, retrieve, or export trips; price watches. Only after a plan exists.
+
+— profile: only when the user explicitly asks about preferences, or when a specialist needs a
+  specific missing default (home airport, budget, loyalty tier) that would materially change its
+  answer. Never call profile as a default first step.
+
+Summarize results clearly. Ask only for missing trip constraints needed to proceed.
 """
 
 
@@ -58,12 +72,6 @@ travel_concierge_agent = LlmAgent(
     after_tool_callback=shared_after_tool_callback,
     tools=[
         get_current_date,
-        trvl_toolset(PROFILE_TOOLS),
-        trvl_toolset(DISCOVERY_TOOLS),
-        trvl_toolset(TRANSPORT_TOOLS),
-        trvl_toolset(LODGING_TOOLS),
-        trvl_toolset(VIABILITY_TOOLS),
-        trvl_toolset(ITINERARY_TOOLS),
     ],
     sub_agents=[
         profile_agent,

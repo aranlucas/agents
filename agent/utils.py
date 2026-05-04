@@ -25,100 +25,17 @@ def trvl_toolset(names: list[str]) -> McpToolset:
     )
 
 
-def parse_tool_response(tool_response: dict) -> Optional[dict]:
+def parse_tool_response(tool_response: dict | str) -> Optional[dict]:
+    print(f"Tool response: {tool_response}")
     try:
-        structured = tool_response.get("structuredContent")
-        if structured:
-            return structured
-        content = tool_response.get("content", [])
-        if not content:
-            return None
-        text = content[0].get("text", "{}")
-        return json.loads(text)
+        if isinstance(tool_response, str):
+            return tool_response
+        return tool_response.get("structuredContent", tool_response.get("content", {}))
     except (json.JSONDecodeError, IndexError, KeyError, TypeError, AttributeError):
         return None
 
 
-def _update_active_trip(
-    tool_context: ToolContext, tool_name: str, args: dict, data: dict
-) -> None:
-    trip = tool_context.state.get("active_trip", {})
-
-    if tool_name == "search_flights" and data.get("success"):
-        trip["origin"] = args.get("origin", "")
-        trip["destination"] = args.get("destination", "")
-        if flights := data.get("flights"):
-            trip["transport"] = {"options": flights}
-
-    elif tool_name == "search_route" and data.get("success"):
-        trip["origin"] = data["origin"]
-        trip["destination"] = data["destination"]
-        if routes := data.get("itineraries"):
-            trip["transport"] = {"routes": routes}
-
-    elif tool_name == "search_hotels" and data.get("success"):
-        trip["destination"] = args.get("location", args.get("destination", ""))
-        if hotels := data.get("hotels"):
-            trip["lodging"] = {"options": hotels}
-            if trip["destination"]:
-                trip.setdefault("hotels_by_destination", {})[
-                    trip["destination"]
-                ] = hotels
-
-    elif tool_name == "assess_trip" and data.get("success"):
-        trip["origin"] = args.get("origin", "")
-        trip["destination"] = args.get("destination", "")
-        trip["viability"] = {
-            k: data[k]
-            for k in ("verdict", "checks", "total_cost", "currency")
-            if k in data
-        }
-
-    elif tool_name == "plan_trip" and data.get("success"):
-        trip["origin"] = data["origin"]
-        trip["destination"] = data["destination"]
-        if (outbound := data.get("outbound_flights")) or data.get("return_flights"):
-            trip["transport"] = {
-                "options": outbound or [],
-                "return_options": data.get("return_flights") or [],
-            }
-        if hotels := data.get("hotels"):
-            trip["lodging"] = {"options": hotels}
-
-    elif tool_name == "create_trip":
-        trip["id"] = data["id"]
-        trip["name"] = data["name"]
-        trip["legs"] = []
-
-    elif tool_name in ("get_trip", "update_trip"):
-        for key in (
-            "id",
-            "name",
-            "status",
-            "origin",
-            "destination",
-            "legs",
-            "bookings",
-            "tags",
-            "notes",
-        ):
-            if key in data:
-                trip[key] = data[key]
-        if "updated_at" in data:
-            trip["source_updated_at"] = data["updated_at"]
-
-    elif tool_name == "mark_trip_booked":
-        trip["id"] = data["trip_id"]
-        trip["status"] = data["status"]
-
-    else:
-        return
-
-    trip["updated_at"] = int(time.time())
-    tool_context.state["active_trip"] = trip
-
-
-def _save_removed_structured_content(
+def save_state(
     tool_context: ToolContext,
     tool_name: str,
     structured_content: Any,
@@ -132,18 +49,17 @@ async def shared_after_tool_callback(
     tool_context: ToolContext,
     tool_response: dict,
 ) -> Optional[dict]:
-    if data := parse_tool_response(tool_response):
-        _update_active_trip(tool_context, tool.name, args, data)
-
-    if not isinstance(tool_response, dict):
-        return None
-
-    if "structuredContent" not in tool_response:
-        return None
-
-    _save_removed_structured_content(
-        tool_context, tool.name, tool_response["structuredContent"]
+    save_state(
+        tool_context,
+        tool.name,
+        parse_tool_response(tool_response),
     )
-    if "content" in tool_response:
+
+    if (
+        isinstance(tool_response, dict)
+        and "content" in tool_response
+        and "structuredContent" in tool_response
+    ):
+        # Return only the part the LLM needs (strip structuredContent)
         return {"content": tool_response["content"]}
-    return None
+    return tool_response

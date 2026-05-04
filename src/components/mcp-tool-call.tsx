@@ -1,11 +1,11 @@
 "use client";
 
-import * as React from "react";
+import { useState } from "react";
 
 interface ToolCallProps {
   status: "complete" | "inProgress" | "executing";
   name?: string;
-  args?: any;
+  args?: unknown;
   result?: any;
 }
 
@@ -15,7 +15,7 @@ export default function McpToolCall({
   args,
   result,
 }: ToolCallProps) {
-  const [isOpen, setIsOpen] = React.useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   const format = (content: any): string => {
     if (!content) return "";
