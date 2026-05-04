@@ -6,13 +6,15 @@ export function ReviewingToolContext({
   toolName,
   label,
   args,
+  description,
 }: {
   toolName: string;
   label: string;
   args: unknown;
+  description?: string;
 }) {
   useAgentContext({
-    description: `User is currently reviewing the "${label}" tool result on screen.`,
+    description: description ?? `User is currently reviewing the "${label}" tool result on screen.`,
     value: { tool: toolName, args } as unknown as JsonSerializable,
   });
   return null;

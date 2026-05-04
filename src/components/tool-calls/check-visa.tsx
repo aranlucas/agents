@@ -14,6 +14,11 @@ interface VisaRequirement {
 
 const STATUS_STYLES: Record<string, { border: string; bg: string; text: string }> = {
   "visa-free": { border: "border-emerald-300", bg: "bg-emerald-50", text: "text-emerald-700" },
+  "freedom-of-movement": {
+    border: "border-emerald-300",
+    bg: "bg-emerald-50",
+    text: "text-emerald-700",
+  },
   evisa: { border: "border-sky-300", bg: "bg-sky-50", text: "text-sky-700" },
   on_arrival: { border: "border-amber-300", bg: "bg-amber-50", text: "text-amber-700" },
   required: { border: "border-red-300", bg: "bg-red-50", text: "text-red-700" },
@@ -23,10 +28,39 @@ function getVisaStyle(status: string) {
   return STATUS_STYLES[status] ?? STATUS_STYLES.required;
 }
 
-function renderVisaBody(parsedResult: unknown) {
+function getRequirement(parsedResult: unknown): VisaRequirement | null {
   const record = toRecord(parsedResult);
-  if (!record) return null;
-  const req = toRecord(record.requirement) as unknown as VisaRequirement | null;
+  const structured = toRecord(record?.requirement) as unknown as VisaRequirement | null;
+  if (structured) return structured;
+
+  if (typeof parsedResult !== "string") return null;
+  return parseVisaText(parsedResult);
+}
+
+function parseVisaText(text: string): VisaRequirement | null {
+  const titleMatch = text.match(/Visa requirements:\s*(.+?)\s*→\s*(.+?)(?:\n|$)/);
+  const statusMatch = text.match(/Status:\s*([^\n]+)/);
+  const stayMatch = text.match(/Max stay:\s*([^\n]+)/);
+  if (!titleMatch && !statusMatch && !stayMatch) return null;
+
+  const noteIndex = text.indexOf("Note:");
+  const notes = noteIndex >= 0 ? text.slice(noteIndex).trim() : "";
+
+  return {
+    passport: titleMatch?.[1]?.trim() ?? "?",
+    destination: titleMatch?.[2]?.trim() ?? "?",
+    status: normalizeStatus(statusMatch?.[1]?.trim() ?? "unknown"),
+    max_stay: stayMatch?.[1]?.trim() ?? "",
+    notes,
+  };
+}
+
+function normalizeStatus(status: string): string {
+  return status.toLowerCase().replace(/\s+/g, "-");
+}
+
+function renderVisaBody(parsedResult: unknown) {
+  const req = getRequirement(parsedResult);
   if (!req) return null;
 
   const style = getVisaStyle(req.status);
@@ -54,11 +88,10 @@ function renderVisaBody(parsedResult: unknown) {
 }
 
 function visaDescription(parsedResult: unknown): string {
-  const record = toRecord(parsedResult);
-  const req = toRecord(record?.requirement);
-  const passport = typeof req?.passport === "string" ? req.passport : "?";
-  const destination = typeof req?.destination === "string" ? req.destination : "?";
-  const status = typeof req?.status === "string" ? req.status : "unknown";
+  const req = getRequirement(parsedResult);
+  const passport = req?.passport ?? "?";
+  const destination = req?.destination ?? "?";
+  const status = req?.status ?? "unknown";
   return `User is reviewing visa requirements for ${passport} → ${destination} (status: ${status}).`;
 }
 

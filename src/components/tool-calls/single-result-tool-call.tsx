@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  useAgent,
+  UseAgentUpdate,
+} from "@copilotkit/react-core/v2";
 import { useMemo, useState } from "react";
 import { buildInputChips } from "../mcp-tool-call/summaries";
 import { getError, toRecord, unwrapResult } from "../mcp-tool-call/payload";
@@ -27,25 +31,38 @@ export function SingleResultToolCall({
 }: SingleResultToolCallProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showJson, setShowJson] = useState(false);
+  const { agent } = useAgent({
+    agentId: "my_agent",
+    updates: [UseAgentUpdate.OnStateChanged],
+  });
 
   const meta = getToolMeta(name);
   const parsedArgs = useMemo(() => toRecord(args), [args]);
-  const parsedResult = useMemo(() => unwrapResult(result), [result]);
+  const liveState = (agent?.state ?? {}) as Record<string, unknown>;
+  const liveStateResult = name ? liveState[name] : undefined;
+  const displayResult = liveStateResult ?? result;
+  const parsedResult = useMemo(() => unwrapResult(displayResult), [displayResult]);
   const running = status === "inProgress" || status === "executing";
   const error = getError(parsedResult);
   const chips = buildInputChips(parsedArgs);
 
-  const hasBody = running || error || status === "complete";
+  const hasResult = !running && displayResult != null;
+  const hasBody = running || error || hasResult;
 
   const contextDesc =
-    reviewingDescription && status === "complete" && !running
+    reviewingDescription && hasResult
       ? reviewingDescription(parsedResult)
       : undefined;
 
   return (
     <section className="w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       {isExpanded && contextDesc && (
-        <ReviewingToolContext toolName={name} label={contextDesc} args={args} />
+        <ReviewingToolContext
+          toolName={name}
+          label={meta.label}
+          args={args}
+          description={contextDesc}
+        />
       )}
 
       <button
@@ -93,7 +110,7 @@ export function SingleResultToolCall({
             </div>
           )}
 
-          {status === "complete" && !error && renderBody(parsedResult)}
+          {hasResult && !error && renderBody(parsedResult)}
 
           {isExpanded && (
             <div className="mt-3">
@@ -110,7 +127,7 @@ export function SingleResultToolCall({
               {showJson && (
                 <div className="mt-2 grid gap-2">
                   <PayloadBlock title="Parameters" value={args} />
-                  {status === "complete" && <PayloadBlock title="Result" value={result} />}
+                  {status === "complete" && <PayloadBlock title="Result" value={displayResult} />}
                 </div>
               )}
             </div>

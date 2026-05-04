@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  useAgent,
+  UseAgentUpdate,
+} from "@copilotkit/react-core/v2";
 import { useMemo, useState } from "react";
 import { buildInputChips } from "../mcp-tool-call/summaries";
 import { getError, toRecord, unwrapResult } from "../mcp-tool-call/payload";
@@ -39,22 +43,29 @@ export function SelectableListToolCall<TItem>({
   const [isExpanded, setIsExpanded] = useState(false);
   const [showJson, setShowJson] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const { agent } = useAgent({
+    agentId: "my_agent",
+    updates: [UseAgentUpdate.OnStateChanged],
+  });
 
   const meta = getToolMeta(name);
   const parsedArgs = useMemo(() => toRecord(args), [args]);
-  const parsedResult = useMemo(() => unwrapResult(result), [result]);
+  const liveState = (agent?.state ?? {}) as Record<string, unknown>;
+  const liveStateResult = name ? liveState[name] : undefined;
+  const displayResult = liveStateResult ?? result;
+  const parsedResult = useMemo(() => unwrapResult(displayResult), [displayResult]);
   const running = status === "inProgress" || status === "executing";
   const error = getError(parsedResult);
   const chips = buildInputChips(parsedArgs);
 
   const items = useMemo(() => {
-    if (status !== "complete") return [];
+    if (running || displayResult == null) return [];
     try {
       return extractItems(parsedResult);
     } catch {
       return [];
     }
-  }, [status, parsedResult, extractItems]);
+  }, [running, displayResult, parsedResult, extractItems]);
 
   const selectedIndex = selectedKey
     ? items.findIndex((item, i) => itemKey(item, i) === selectedKey)
@@ -181,7 +192,7 @@ export function SelectableListToolCall<TItem>({
               {showJson && (
                 <div className="mt-2 grid gap-2">
                   <PayloadBlock title="Parameters" value={args} />
-                  {status === "complete" && <PayloadBlock title="Result" value={result} />}
+                  {status === "complete" && <PayloadBlock title="Result" value={displayResult} />}
                 </div>
               )}
             </div>

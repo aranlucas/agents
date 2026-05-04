@@ -23,16 +23,20 @@ function extractDestinations(result: unknown): Destination[] {
 }
 
 function destKey(item: Destination): string {
-  return item.city_id;
+  return item.airport_code || item.city_id;
 }
 
 function destSummary(item: Destination) {
-  const name = [item.city_name ?? item.city_id, item.country].filter(Boolean).join(", ");
-  const subtitle = [item.airport_code, item.airline_name].filter(Boolean).join(" · ");
+  const title = item.city_name
+    ? [item.city_name, item.country].filter(Boolean).join(", ")
+    : item.airport_code
+      ? `Airport ${item.airport_code}`
+      : "Destination option";
+  const subtitle = [item.airline_name, item.airline_code].filter(Boolean).join(" · ");
   const stopStr = item.stops === 0 ? "Nonstop" : `${item.stops} stop${item.stops === 1 ? "" : "s"}`;
 
   return {
-    title: name,
+    title,
     subtitle: subtitle || undefined,
     detail: stopStr,
     price: formatMoney(item.price, "USD"),
@@ -40,7 +44,8 @@ function destSummary(item: Destination) {
 }
 
 function destLabel(item: Destination): string {
-  return `Destination: ${item.city_name ?? item.city_id} (${item.airport_code})`;
+  const visibleName = item.city_name ?? item.airport_code ?? "destination option";
+  return `Destination: ${visibleName}${item.airline_name ? ` via ${item.airline_name}` : ""}`;
 }
 
 export function ExploreDestinationsToolCall({
