@@ -26,7 +26,6 @@ def trvl_toolset(names: list[str]) -> McpToolset:
 
 
 def parse_tool_response(tool_response: dict | str) -> Optional[dict]:
-    print(f"Tool response: {tool_response}")
     try:
         if isinstance(tool_response, str):
             return tool_response
