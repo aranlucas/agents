@@ -17,6 +17,22 @@
   --border-dim: #14161a;
 }
 
+/* Thin scrollbars for canvas panels */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--amber-dim);
+}
+
 * {
   box-sizing: border-box;
 }
