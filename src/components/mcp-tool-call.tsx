@@ -30,7 +30,7 @@ export default function McpToolCall({
   const [isOpen, setIsOpen] = useState(false);
   const [showJson, setShowJson] = useState(false);
   const { agent } = useAgent({
-    agentId: "my_agent",
+    agentId: "default",
     updates: [UseAgentUpdate.OnStateChanged],
   });
 

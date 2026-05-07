@@ -6,7 +6,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <CopilotKit
       runtimeUrl="/api/copilotkit"
-      agent="my_agent"
+      agent="default"
       enableInspector={true}
       debug={true}
     >

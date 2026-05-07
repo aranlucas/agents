@@ -41,7 +41,7 @@ export default function Page() {
             mobileTab === "chat" ? "flex" : "hidden"
           } md:flex flex-col w-full md:w-[420px] lg:w-[460px] border-r border-[var(--border)] shrink-0 min-h-0`}
         >
-          <CopilotChat className="flex-1 min-h-0" />
+          <CopilotChat agentId="default" className="flex-1 min-h-0" />
           <ToolRenderer />
         </div>
 

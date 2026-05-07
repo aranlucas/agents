@@ -29,7 +29,7 @@ export function SingleResultToolCall({
   const [isExpanded, setIsExpanded] = useState(false);
   const [showJson, setShowJson] = useState(false);
   const { agent } = useAgent({
-    agentId: "my_agent",
+    agentId: "default",
     updates: [UseAgentUpdate.OnStateChanged],
   });
 

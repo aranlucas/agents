@@ -66,7 +66,7 @@ export function SearchFlightsToolCall({
   const [showJson, setShowJson] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const { agent } = useAgent({
-    agentId: "my_agent",
+    agentId: "default",
     updates: [UseAgentUpdate.OnStateChanged],
   });
 
