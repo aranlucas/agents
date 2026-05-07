@@ -24,8 +24,8 @@ function extractDestinations(result: unknown): Destination[] {
     : [];
 }
 
-function destKey(item: Destination): string {
-  return item.airport_code || item.city_id;
+function destKey(item: Destination, index: number): string {
+  return `${item.airport_code || item.city_id}-${index}`;
 }
 
 function destSummary(item: Destination) {

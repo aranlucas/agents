@@ -1,13 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { z } from "zod";
 import {
   useAgent,
   UseAgentUpdate,
   useAgentContext,
   useFrontendTool,
-  useCopilotKit,
 } from "@copilotkit/react-core/v2";
 import type {
   AgentState,
@@ -501,13 +500,37 @@ function ViabilityCard({ results }: { results: StoredViabilityResult[] }) {
   );
 }
 
-function EmptyState({ onSend }: { onSend: (msg: string) => void }) {
+function EmptyState({
+  onSend,
+  origin,
+  onOriginChange,
+  departDate,
+  onDepartDateChange,
+}: {
+  onSend: (msg: string) => void;
+  origin: string;
+  onOriginChange: (v: string) => void;
+  departDate: string;
+  onDepartDateChange: (v: string) => void;
+}) {
+  const from = origin.trim() || "anywhere";
+  const dateLabel = departDate
+    ? new Date(departDate + "T00:00:00").toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      })
+    : "any date";
+
   const prompts = [
-    "Find me a weekend deal from Seattle",
-    "Where can I go for under $800?",
-    "Flights to Tokyo next month",
-    "Surprise me with a destination ✨",
+    `Find me weekend deals from ${from}`,
+    `Where can I go from ${from} for under $800?`,
+    `Surprise me with a destination from ${from} ✨`,
+    departDate
+      ? `Best flights from ${from} on ${dateLabel}`
+      : `Cheapest month to fly from ${from}`,
   ];
+
+  const today = new Date().toISOString().slice(0, 10);
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-6 px-6 py-12">
@@ -520,6 +543,33 @@ function EmptyState({ onSend }: { onSend: (msg: string) => void }) {
           Your trip plan builds here as we plan together.
         </p>
       </div>
+
+      {/* Origin + date inputs */}
+      <div className="w-full max-w-sm flex gap-2">
+        <div className="flex-1 relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--amber)] text-xs pointer-events-none">
+            ✈
+          </span>
+          <input
+            type="text"
+            placeholder="Flying from…"
+            value={origin}
+            onChange={(e) => onOriginChange(e.target.value)}
+            className="w-full pl-7 pr-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-card)] text-sm font-mono text-[var(--cream)] placeholder:text-[var(--cream-muted)] focus:outline-none focus:border-[var(--amber-dim)] transition-colors"
+          />
+        </div>
+        <div className="relative">
+          <input
+            type="date"
+            min={today}
+            value={departDate}
+            onChange={(e) => onDepartDateChange(e.target.value)}
+            className="px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-card)] text-sm font-mono text-[var(--cream)] focus:outline-none focus:border-[var(--amber-dim)] transition-colors [color-scheme:dark]"
+          />
+        </div>
+      </div>
+
+      {/* Dynamic prompt suggestions */}
       <div className="w-full max-w-sm space-y-2">
         <p className="text-[0.6rem] font-mono uppercase tracking-[0.18em] text-[var(--cream-muted)] text-center mb-2">
           Try asking →
@@ -538,6 +588,41 @@ function EmptyState({ onSend }: { onSend: (msg: string) => void }) {
               {p}
             </span>
           </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SearchingState({ lastMessage }: { lastMessage?: string }) {
+  const steps = ["Searching flights", "Checking availability", "Comparing prices"];
+  const [step, setStep] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setStep((s) => (s + 1) % steps.length), 1400);
+    return () => clearInterval(t);
+  }, []);
+
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center gap-6 px-6 py-12">
+      <div className="text-center">
+        <div className="text-4xl mb-4 animate-bounce">✈️</div>
+        <h3 className="font-display text-xl text-[var(--cream)] tracking-wide mb-2">
+          {steps[step]}…
+        </h3>
+        {lastMessage && (
+          <p className="text-xs text-[var(--cream-muted)] font-mono leading-relaxed max-w-xs mt-2 truncate">
+            "{lastMessage}"
+          </p>
+        )}
+      </div>
+      <div className="flex gap-1.5">
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            className="w-1.5 h-1.5 rounded-full bg-[var(--amber)]"
+            style={{ animationDelay: `${i * 0.2}s`, animation: "pulse 1s ease-in-out infinite" }}
+          />
         ))}
       </div>
     </div>
@@ -623,13 +708,19 @@ function QuickActions({
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
-export function TripCanvas() {
+export function TripCanvas({
+  sendMessage,
+  threadId,
+}: {
+  sendMessage: (content: string) => void;
+  threadId?: string;
+}) {
   const { agent } = useAgent({
     agentId: "default",
-    updates: [UseAgentUpdate.OnRunStatusChanged],
+    threadId,
+    updates: [UseAgentUpdate.OnStateChanged, UseAgentUpdate.OnRunStatusChanged],
   });
 
-  const { copilotkit } = useCopilotKit();
   const state = (agent?.state ?? {}) as AgentState;
   const activeTrip = getActiveTrip(state);
   const routeResults = getRouteResults(state);
@@ -638,14 +729,13 @@ export function TripCanvas() {
 
   const [selectedRouteKey, setSelectedRouteKey] = useState<string | null>(null);
   const [selectedHotelKey, setSelectedHotelKey] = useState<string | null>(null);
+  const [origin, setOrigin] = useState("");
+  const [departDate, setDepartDate] = useState("");
+  const [lastSentMessage, setLastSentMessage] = useState<string | undefined>();
 
-  const sendMessage = async (content: string) => {
-    agent.addMessage({
-      id: crypto.randomUUID(),
-      role: "user",
-      content,
-    });
-    await copilotkit.runAgent({ agent });
+  const handleSend = (msg: string) => {
+    setLastSentMessage(msg);
+    sendMessage(msg);
   };
 
   const phase = resolvePhase(
@@ -676,6 +766,8 @@ export function TripCanvas() {
     description: "Trip planning canvas — current state and user selections",
     value: {
       phase,
+      preferred_origin: origin.trim() || null,
+      preferred_depart_date: departDate || null,
       selected_flight: selectedRoute
         ? {
             label: routeSummary(selectedRoute, 0),
@@ -723,6 +815,7 @@ export function TripCanvas() {
 
   const isEmpty =
     !activeTrip && routeResults.length === 0 && hotelResults.length === 0;
+  const isRunning = agent?.isRunning ?? false;
 
   return (
     <div className="flex flex-col h-full bg-[var(--bg)] p-4 gap-4 overflow-auto">
@@ -749,8 +842,16 @@ export function TripCanvas() {
         )}
       </div>
 
-      {isEmpty ? (
-        <EmptyState onSend={sendMessage} />
+      {isEmpty && isRunning ? (
+        <SearchingState lastMessage={lastSentMessage} />
+      ) : isEmpty ? (
+        <EmptyState
+          onSend={handleSend}
+          origin={origin}
+          onOriginChange={setOrigin}
+          departDate={departDate}
+          onDepartDateChange={setDepartDate}
+        />
       ) : (
         <>
           <PhaseBar phase={phase} />
@@ -829,7 +930,7 @@ export function TripCanvas() {
             activeTrip={activeTrip}
             hasRoutes={routeResults.length > 0}
             hasHotels={hotelResults.length > 0}
-            onSend={sendMessage}
+            onSend={handleSend}
           />
         </>
       )}
