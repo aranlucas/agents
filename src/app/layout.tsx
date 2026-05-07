@@ -19,8 +19,8 @@ const cormorant = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: "Flight Search",
-  description: "AI-powered flight search",
+  title: "Trip Planner · AI Concierge",
+  description: "Collaborative AI-powered trip planning",
 };
 
 export default function RootLayout({
