@@ -215,11 +215,13 @@ function FlightCard({
   index,
   selected,
   onToggle,
+  onBook,
 }: {
   route: RouteOption;
   index: number;
   selected: boolean;
   onToggle: () => void;
+  onBook: (msg: string) => void;
 }) {
   const legs = Array.isArray(route.legs) ? route.legs : [];
   const first = legs[0] as Record<string, unknown> | undefined;
@@ -278,9 +280,15 @@ function FlightCard({
         </div>
       </div>
       {selected && (
-        <p className="mt-2 text-[0.62rem] font-mono text-[var(--amber)] uppercase tracking-wide">
-          ✓ Selected — type "book it" in chat
-        </p>
+        <div className="mt-2 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onBook(`Book this flight: ${routeSummary(route, index)}`); }}
+            className="flex-1 text-[0.68rem] font-mono uppercase tracking-[0.14em] py-1.5 rounded bg-[var(--amber)] text-[var(--bg)] hover:bg-[var(--amber-bright)] transition-colors font-bold"
+          >
+            Use this flight →
+          </button>
+        </div>
       )}
     </button>
   );
@@ -291,11 +299,13 @@ function HotelCard({
   index,
   selected,
   onToggle,
+  onBook,
 }: {
   hotel: HotelOption;
   index: number;
   selected: boolean;
   onToggle: () => void;
+  onBook: (msg: string) => void;
 }) {
   const stars = typeof hotel.stars === "number" ? hotel.stars : null;
   const rating = typeof hotel.rating === "number" ? hotel.rating : null;
@@ -330,9 +340,15 @@ function HotelCard({
         </div>
       </div>
       {selected && (
-        <p className="mt-2 text-[0.62rem] font-mono text-[var(--blue)] uppercase tracking-wide">
-          ✓ Selected — type "book it" in chat
-        </p>
+        <div className="mt-2 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onBook(`Book ${hotel.name} at ${formatMoney(hotel.price, hotel.currency)}/night`); }}
+            className="flex-1 text-[0.68rem] font-mono uppercase tracking-[0.14em] py-1.5 rounded bg-[var(--blue)]/20 text-[var(--blue)] border border-[var(--blue)]/40 hover:bg-[var(--blue)]/30 transition-colors font-bold"
+          >
+            Use this hotel →
+          </button>
+        </div>
       )}
     </button>
   );
@@ -382,7 +398,7 @@ function ViabilityCard({ results }: { results: StoredViabilityResult[] }) {
   );
 }
 
-function EmptyState() {
+function EmptyState({ onSend }: { onSend: (msg: string) => void }) {
   const prompts = [
     "Find me a weekend deal from Seattle",
     "Where can I go for under $800?",
@@ -398,7 +414,7 @@ function EmptyState() {
           Where to next?
         </h3>
         <p className="text-sm text-[var(--cream-muted)] font-mono leading-relaxed max-w-xs">
-          Your trip plan builds here as we plan together. Start by asking anything in the chat.
+          Your trip plan builds here as we plan together.
         </p>
       </div>
       <div className="w-full max-w-sm space-y-2">
@@ -406,12 +422,15 @@ function EmptyState() {
           Try asking →
         </p>
         {prompts.map((p) => (
-          <div
+          <button
             key={p}
-            className="px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--bg-card)] text-sm font-mono text-[var(--cream-muted)]"
+            type="button"
+            onClick={() => onSend(p)}
+            className="w-full text-left px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--bg-card)] hover:border-[var(--amber-dim)] hover:bg-[var(--bg-card-hover)] transition-all group"
           >
-            <span className="text-[var(--amber)] mr-2">→</span>{p}
-          </div>
+            <span className="text-[var(--amber)] mr-2 group-hover:text-[var(--amber-bright)] transition-colors">→</span>
+            <span className="text-sm font-mono text-[var(--cream-muted)] group-hover:text-[var(--cream)] transition-colors">{p}</span>
+          </button>
         ))}
       </div>
     </div>
@@ -422,12 +441,12 @@ function QuickActions({
   activeTrip,
   hasRoutes,
   hasHotels,
-  phase,
+  onSend,
 }: {
   activeTrip: ActiveTrip | null;
   hasRoutes: boolean;
   hasHotels: boolean;
-  phase: Phase;
+  onSend: (msg: string) => void;
 }) {
   const dest = activeTrip?.destination;
   const origin = activeTrip?.origin ?? "Seattle";
@@ -459,21 +478,17 @@ function QuickActions({
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-4">
       <p className="text-[0.6rem] font-mono uppercase tracking-[0.18em] text-[var(--cream-muted)] mb-3">
-        Quick prompts — copy into chat
+        Quick actions
       </p>
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-wrap gap-2">
         {actions.map((a) => (
           <button
             key={a.prompt}
             type="button"
-            onClick={() => navigator.clipboard?.writeText(a.prompt)}
-            title={a.prompt}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] hover:border-[var(--amber-dim)] hover:bg-[var(--bg-card-hover)] transition-all text-xs font-mono text-left group"
+            onClick={() => onSend(a.prompt)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg)] hover:border-[var(--amber-dim)] hover:bg-[var(--bg-card-hover)] transition-all text-xs font-mono text-[var(--cream-muted)] hover:text-[var(--cream)] group"
           >
-            <span className="shrink-0">{a.label}</span>
-            <span className="text-[var(--cream-muted)] truncate group-hover:text-[var(--cream-muted)]">
-              — {a.prompt}
-            </span>
+            <span>{a.label}</span>
           </button>
         ))}
       </div>
@@ -497,6 +512,14 @@ export function TripCanvas() {
 
   const [selectedRouteKey, setSelectedRouteKey] = useState<string | null>(null);
   const [selectedHotelKey, setSelectedHotelKey] = useState<string | null>(null);
+
+  const sendMessage = (content: string) => {
+    agent?.addMessage({
+      id: crypto.randomUUID(),
+      role: "user",
+      content,
+    });
+  };
 
   const phase = resolvePhase(activeTrip, routeResults, hotelResults, viabilityResults);
   const latestRoutes = routeResults[routeResults.length - 1];
@@ -574,7 +597,7 @@ export function TripCanvas() {
       </div>
 
       {isEmpty ? (
-        <EmptyState />
+        <EmptyState onSend={sendMessage} />
       ) : (
         <>
           <PhaseBar phase={phase} />
@@ -601,14 +624,10 @@ export function TripCanvas() {
                       index={i}
                       selected={selectedRouteKey === key}
                       onToggle={() => { setSelectedRouteKey((p: string | null) => p === key ? null : key); }}
+                      onBook={sendMessage}
                     />
                   );
                 })}
-                {selectedRoute && (
-                  <p className="text-[0.62rem] font-mono text-[var(--amber)] px-1 pt-1">
-                    ↑ Agent sees your selection. Say "book it" or ask follow-up questions in chat.
-                  </p>
-                )}
               </div>
             </div>
           )}
@@ -633,14 +652,10 @@ export function TripCanvas() {
                       index={i}
                       selected={selectedHotelKey === key}
                       onToggle={() => { setSelectedHotelKey((p: string | null) => p === key ? null : key); }}
+                      onBook={sendMessage}
                     />
                   );
                 })}
-                {selectedHotel && (
-                  <p className="text-[0.62rem] font-mono text-[var(--blue)] px-1 pt-1">
-                    ↑ Agent sees your selection. Say "book it" or ask follow-up questions in chat.
-                  </p>
-                )}
               </div>
             </div>
           )}
@@ -651,7 +666,7 @@ export function TripCanvas() {
             activeTrip={activeTrip}
             hasRoutes={routeResults.length > 0}
             hasHotels={hotelResults.length > 0}
-            phase={phase}
+            onSend={sendMessage}
           />
         </>
       )}
