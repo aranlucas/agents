@@ -1,12 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import { CopilotChat } from "@copilotkit/react-core/v2";
+import {
+  CopilotChat,
+  useAgent,
+  UseAgentUpdate,
+  useCopilotKit,
+} from "@copilotkit/react-core/v2";
 import { ToolRenderer } from "@/components/tool-renderer";
 import { TripCanvas } from "@/components/trip-canvas";
 
-export default function Page() {
+function PageInner() {
   const [mobileTab, setMobileTab] = useState<"chat" | "plan">("chat");
+  const [threadId] = useState(() => crypto.randomUUID());
+  const { copilotkit } = useCopilotKit();
+  const { agent } = useAgent({
+    agentId: "default",
+    threadId,
+    updates: [UseAgentUpdate.OnRunStatusChanged],
+  });
+
+  const sendMessage = async (content: string) => {
+    if (!agent) return;
+    agent.addMessage({ id: crypto.randomUUID(), role: "user", content });
+    await copilotkit.runAgent({ agent });
+  };
 
   return (
     <main className="h-full flex flex-col overflow-hidden">
@@ -41,7 +59,11 @@ export default function Page() {
             mobileTab === "chat" ? "flex" : "hidden"
           } md:flex flex-col w-full md:w-[420px] lg:w-[460px] border-r border-[var(--border)] shrink-0 min-h-0`}
         >
-          <CopilotChat agentId="default" className="flex-1 min-h-0" />
+          <CopilotChat
+            agentId="default"
+            threadId={threadId}
+            className="flex-1 min-h-0"
+          />
           <ToolRenderer />
         </div>
 
@@ -51,9 +73,13 @@ export default function Page() {
             mobileTab === "plan" ? "flex" : "hidden"
           } md:flex flex-1 min-h-0 overflow-auto flex-col`}
         >
-          <TripCanvas />
+          <TripCanvas sendMessage={sendMessage} threadId={threadId} />
         </div>
       </div>
     </main>
   );
+}
+
+export default function Page() {
+  return <PageInner />;
 }
