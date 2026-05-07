@@ -18,7 +18,9 @@ interface Restaurant {
 function extractRestaurants(result: unknown): Restaurant[] {
   const record = toRecord(result);
   if (!record) return [];
-  return Array.isArray(record.restaurants) ? (record.restaurants as Restaurant[]) : [];
+  return Array.isArray(record.restaurants)
+    ? (record.restaurants as Restaurant[])
+    : [];
 }
 
 function restaurantKey(item: Restaurant, index: number): string {

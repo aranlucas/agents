@@ -21,7 +21,9 @@ function extractGetaways(result: unknown): Getaway[] {
   const record = toRecord(result);
   if (!record) return [];
   const inner = toRecord(record.result) ?? record;
-  return Array.isArray(inner.destinations) ? (inner.destinations as Getaway[]) : [];
+  return Array.isArray(inner.destinations)
+    ? (inner.destinations as Getaway[])
+    : [];
 }
 
 function getawayKey(item: Getaway): string {
@@ -30,8 +32,13 @@ function getawayKey(item: Getaway): string {
 
 function getawaySummary(item: Getaway) {
   const airline = item.airline_name ?? "";
-  const stopStr = item.stops === 0 ? "Nonstop" : `${item.stops} stop${item.stops === 1 ? "" : "s"}`;
-  const subtitle = [item.airport_code, airline, stopStr].filter(Boolean).join(" · ");
+  const stopStr =
+    item.stops === 0
+      ? "Nonstop"
+      : `${item.stops} stop${item.stops === 1 ? "" : "s"}`;
+  const subtitle = [item.airport_code, airline, stopStr]
+    .filter(Boolean)
+    .join(" · ");
   const hotelStr = item.hotel_name
     ? `Flight ${item.flight_price} + ${item.hotel_name} ${item.hotel_price}`
     : `Flight ${item.flight_price} + Hotel ${item.hotel_price}`;

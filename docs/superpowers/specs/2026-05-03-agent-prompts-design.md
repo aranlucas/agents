@@ -38,6 +38,7 @@ Keep: `get_current_date` call before any date reasoning. Keep: "ask only for mis
 **Scope:** Open-ended destination and date discovery. Handles queries with unspecified destination, flexible budget, or exploratory intent — including queries that mention "flights" without a specific route.
 
 **Tool chain:**
+
 - `explore_destinations` — first choice for "where can I fly from X" / "show me options" queries; returns destination list sorted by price
 - `weekend_getaway` — for curated getaway suggestions with flight+hotel bundled
 - `search_deals` — for price-driven browsing with flexible dates
@@ -46,6 +47,7 @@ Keep: `get_current_date` call before any date reasoning. Keep: "ask only for mis
 - `plan_trip` — for broad multi-step plans with a known origin+destination+dates
 
 **Result-conditional:**
+
 - `explore_destinations` returns destinations → if user wants to drill in, enrich with `destination_info` or `get_weather` before presenting
 - `weekend_getaway` or `search_deals` return options → user picks one → route to transport/lodging for specifics; or enrich with `travel_guide` / `local_events` if user wants destination context first
 - `suggest_dates` returns optimal windows → hand off dates to transport for specific flight search
@@ -55,6 +57,7 @@ Keep: `get_current_date` call before any date reasoning. Keep: "ask only for mis
 **Scope:** Specific, directed transportation searches. Requires a known origin, destination, and date. If any of these are missing, do not attempt to search — return to the concierge to ask.
 
 **Tool chain:**
+
 - `search_flights` — primary tool for flight search with known route and date
 - If `search_flights` returns 0 results or poor options → fall back to `find_interactive` for flexible/constraint-relaxing search
 - `plan_flight_bundle` — for multi-city or bundled itineraries
@@ -66,6 +69,7 @@ Keep: `get_current_date` call before any date reasoning. Keep: "ask only for mis
 - `search_awards` — when user asks about points/miles redemption on a specific route
 
 **Result-conditional:**
+
 - `search_flights` returns results → if user has lounge access, chain `search_lounges`; if user has no checked bags, surface `search_hidden_city`; if user mentions baggage, chain `get_baggage_rules`
 - `find_interactive` returns results → present with note that constraints were relaxed (show which ones)
 
@@ -74,6 +78,7 @@ Keep: `get_current_date` call before any date reasoning. Keep: "ask only for mis
 **Scope:** Accommodation search, comparison, pricing, reviews, and availability watching.
 
 **Tool chain:**
+
 - `search_hotels` — primary search by location and dates
 - After `search_hotels` → run `hotel_prices` on top 3 results to compare provider pricing
 - `hotel_reviews` — on demand or when user asks about quality/reputation
@@ -83,6 +88,7 @@ Keep: `get_current_date` call before any date reasoning. Keep: "ask only for mis
 - `watch_room_availability` — when a preferred property is sold out for the dates
 
 **Result-conditional:**
+
 - `search_hotels` returns 0 results → suggest expanding area or adjusting dates before giving up
 - `hotel_prices` shows significant provider price differences → call out the best provider explicitly
 - `detect_accommodation_hacks` finds savings → present before final recommendation
@@ -92,6 +98,7 @@ Keep: `get_current_date` call before any date reasoning. Keep: "ask only for mis
 **Scope:** Trip feasibility assessment — cost, visa, points optimization, booking optimization, and date/window optimization.
 
 **Tool chain:**
+
 - `calculate_trip_cost` — primary tool for total cost estimate
 - If cost exceeds user budget → chain `detect_travel_hacks` + `optimize_booking` to find savings
 - `check_visa` — whenever destination or user nationality is known; call proactively for international trips
@@ -103,6 +110,7 @@ Keep: `get_current_date` call before any date reasoning. Keep: "ask only for mis
 - `assess_trip` — for holistic go/no-go assessment combining multiple factors
 
 **Result-conditional:**
+
 - `calculate_trip_cost` over budget → chain `detect_travel_hacks` then `optimize_booking`; present concrete savings
 - `calculate_points_value` shows points redemption beats cash → recommend points path explicitly
 - `optimize_trip_dates` or `find_trip_window` returns optimal dates → hand off to transport for specific flight search
@@ -112,6 +120,7 @@ Keep: `get_current_date` call before any date reasoning. Keep: "ask only for mis
 **Scope:** Trip record management and booking follow-through. Only invoked after a concrete plan exists.
 
 **Tool chain (creating trips):**
+
 1. `create_trip` — first, with a descriptive name
 2. `update_trip` — for each leg in order; do not skip legs
    - Road trips: `type="road_trip"`, `provider="personal_car"` or `"rental_car"`
@@ -120,11 +129,13 @@ Keep: `get_current_date` call before any date reasoning. Keep: "ask only for mis
 4. `mark_trip_booked` — when user confirms they've booked
 
 **Tool chain (price watching):**
+
 - `watch_price` — for watching a specific flight price on a known route and date
 - `watch_opportunities` — for broader opportunity alerts (deals, significant price drops) across a trip
 - `list_opportunity_watches` — to review active watches; use instead of the non-existent `list_watches`
 
 **Tool chain (retrieval/export):**
+
 - `list_trips` → `get_trip` for detail on a specific trip
 - `export_ics` — after trip is finalized
 
@@ -135,6 +146,7 @@ Keep: `get_current_date` call before any date reasoning. Keep: "ask only for mis
 **Output contract:** Return only the specific fields requested, formatted as a flat key-value summary the calling specialist can use directly. Do not return the full profile when only one field is needed. Keep responses concise.
 
 **Tool selection:**
+
 - `get_preferences` — read current preferences; always call this before any write
 - `update_preferences` — targeted field updates
 - `build_profile` — infer preferences from conversation context
@@ -147,11 +159,13 @@ Keep: `get_current_date` call before any date reasoning. Keep: "ask only for mis
 ### 3. Tool list corrections (doctor-adk)
 
 **Remove (don't exist on live server):**
+
 - `search_natural` from `discovery_agent` TOOLS
 - `list_watches` from `itinerary_agent` TOOLS
 - `check_watches` from `itinerary_agent` TOOLS
 
 **Add:**
+
 - `explore_destinations` to `discovery_agent` TOOLS — must happen after Section 4 (trvl MCP registration)
 
 ---

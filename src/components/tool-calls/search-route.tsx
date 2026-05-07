@@ -29,7 +29,9 @@ interface Itinerary {
 function extractItineraries(result: unknown): Itinerary[] {
   const record = toRecord(result);
   if (!record) return [];
-  return Array.isArray(record.itineraries) ? (record.itineraries as Itinerary[]) : [];
+  return Array.isArray(record.itineraries)
+    ? (record.itineraries as Itinerary[])
+    : [];
 }
 
 function itineraryKey(item: Itinerary, index: number): string {
@@ -39,10 +41,19 @@ function itineraryKey(item: Itinerary, index: number): string {
 
 function itinerarySummary(item: Itinerary, args: unknown) {
   const record = toRecord(args);
-  const origin = typeof record?.origin === "string" ? record.origin : item.legs?.[0]?.from ?? "";
-  const dest = typeof record?.destination === "string" ? record.destination : item.legs?.[item.legs?.length - 1]?.to ?? "";
+  const origin =
+    typeof record?.origin === "string"
+      ? record.origin
+      : (item.legs?.[0]?.from ?? "");
+  const dest =
+    typeof record?.destination === "string"
+      ? record.destination
+      : (item.legs?.[item.legs?.length - 1]?.to ?? "");
   const modes = item.legs?.map((l) => l.mode).join(" + ") ?? "";
-  const transferStr = item.transfers === 0 ? "Direct" : `${item.transfers} transfer${item.transfers === 1 ? "" : "s"}`;
+  const transferStr =
+    item.transfers === 0
+      ? "Direct"
+      : `${item.transfers} transfer${item.transfers === 1 ? "" : "s"}`;
   const h = Math.floor(item.total_duration / 60);
   const m = item.total_duration % 60;
   const durStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
@@ -58,7 +69,8 @@ function itinerarySummary(item: Itinerary, args: unknown) {
 function itineraryLabel(item: Itinerary, args: unknown): string {
   const record = toRecord(args);
   const origin = typeof record?.origin === "string" ? record.origin : "";
-  const dest = typeof record?.destination === "string" ? record.destination : "";
+  const dest =
+    typeof record?.destination === "string" ? record.destination : "";
   const modes = item.legs?.map((l) => l.mode).join("+") ?? "";
   return `${origin}→${dest} via ${modes} @ ${item.total_price} ${item.currency}`;
 }

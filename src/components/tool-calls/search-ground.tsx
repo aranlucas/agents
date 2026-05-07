@@ -36,7 +36,10 @@ function routeSummary(item: GroundRoute) {
   const h = Math.floor(item.duration_minutes / 60);
   const m = item.duration_minutes % 60;
   const durStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
-  const transferStr = item.transfers === 0 ? "Direct" : `${item.transfers} transfer${item.transfers === 1 ? "" : "s"}`;
+  const transferStr =
+    item.transfers === 0
+      ? "Direct"
+      : `${item.transfers} transfer${item.transfers === 1 ? "" : "s"}`;
 
   return {
     title: `${item.provider} (${item.type})`,

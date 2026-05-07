@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  useAgent,
-  UseAgentUpdate,
-} from "@copilotkit/react-core/v2";
+import { useAgent, UseAgentUpdate } from "@copilotkit/react-core/v2";
 import { useMemo, useState } from "react";
 import { buildInputChips } from "../mcp-tool-call/summaries";
 import { getError, toRecord, unwrapResult } from "../mcp-tool-call/payload";
@@ -41,7 +38,10 @@ export function SingleResultToolCall({
   const liveState = (agent?.state ?? {}) as Record<string, unknown>;
   const liveStateResult = name ? liveState[name] : undefined;
   const displayResult = liveStateResult ?? result;
-  const parsedResult = useMemo(() => unwrapResult(displayResult), [displayResult]);
+  const parsedResult = useMemo(
+    () => unwrapResult(displayResult),
+    [displayResult],
+  );
   const running = status === "inProgress" || status === "executing";
   const error = getError(parsedResult);
   const chips = buildInputChips(parsedArgs);
@@ -70,7 +70,11 @@ export function SingleResultToolCall({
         className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-3 p-3 text-left transition-colors hover:bg-slate-50"
         onClick={() => setIsExpanded((open) => !open)}
       >
-        <StatusMark running={running} complete={status === "complete"} error={Boolean(error)} />
+        <StatusMark
+          running={running}
+          complete={status === "complete"}
+          error={Boolean(error)}
+        />
         <span className="min-w-0">
           <span className="flex flex-wrap items-center gap-2">
             <span
@@ -78,7 +82,9 @@ export function SingleResultToolCall({
             >
               {meta.category}
             </span>
-            <span className="truncate text-sm font-semibold text-slate-900">{meta.label}</span>
+            <span className="truncate text-sm font-semibold text-slate-900">
+              {meta.label}
+            </span>
           </span>
           <span className="mt-1 flex flex-wrap gap-1.5">
             {chips.slice(0, 5).map((chip) => (
@@ -127,7 +133,9 @@ export function SingleResultToolCall({
               {showJson && (
                 <div className="mt-2 grid gap-2">
                   <PayloadBlock title="Parameters" value={args} />
-                  {status === "complete" && <PayloadBlock title="Result" value={displayResult} />}
+                  {status === "complete" && (
+                    <PayloadBlock title="Result" value={displayResult} />
+                  )}
                 </div>
               )}
             </div>
@@ -155,7 +163,9 @@ function StatusMark({
 
   return (
     <span className={`relative h-3 w-3 rounded-full border ${classes}`}>
-      {running && <span className="absolute inset-[-5px] animate-ping rounded-full bg-amber-300/25" />}
+      {running && (
+        <span className="absolute inset-[-5px] animate-ping rounded-full bg-amber-300/25" />
+      )}
     </span>
   );
 }
@@ -164,7 +174,9 @@ function PayloadBlock({ title, value }: { title: string; value: unknown }) {
   if (value == null) return null;
   return (
     <div>
-      <div className="mb-1 text-[0.62rem] uppercase tracking-[0.14em] text-slate-400">{title}</div>
+      <div className="mb-1 text-[0.62rem] uppercase tracking-[0.14em] text-slate-400">
+        {title}
+      </div>
       <pre className="max-h-[260px] overflow-auto rounded-md border border-slate-200 bg-white p-2 text-xs leading-5 text-slate-700">
         {formatPayload(value)}
       </pre>

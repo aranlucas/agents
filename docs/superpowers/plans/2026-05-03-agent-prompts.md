@@ -13,6 +13,7 @@
 ## File Map
 
 **trvl (~/Projects/trvl)**
+
 - Modify: `mcp/tools_typed.go` — add `ExploreDestinationsArgs` struct
 - Modify: `mcp/tools_destinations.go` — add `handleExploreDestinations` handler + `exploreDestinationsSummary`
 - Modify: `mcp/run.go` — register `explore_destinations` tool
@@ -20,6 +21,7 @@
 - Modify: `mcp/prompts.go` — fix `packing-list` prompt (`trvl://preferences` → `get_preferences`)
 
 **doctor-adk (~/Projects/doctor-adk)**
+
 - Modify: `agent/main.py` — rewrite `ROOT_INSTRUCTION`
 - Modify: `agent/agents/discovery.py` — update `TOOLS` + `DISCOVERY_INSTRUCTION`
 - Modify: `agent/agents/transport.py` — update `TRANSPORT_INSTRUCTION`
@@ -36,6 +38,7 @@
 ### Task 1: Schema test (failing first)
 
 **Files:**
+
 - Modify: `mcp/schema_test.go:38-52`
 
 - [ ] **Step 1: Add `ExploreDestinationsArgs{}` to the argTypes slice**
@@ -74,6 +77,7 @@ Expected: compile error — `ExploreDestinationsArgs undefined`
 ### Task 2: Add `ExploreDestinationsArgs` to `tools_typed.go`
 
 **Files:**
+
 - Modify: `mcp/tools_typed.go`
 
 - [ ] **Step 1: Add the args struct**
@@ -102,6 +106,7 @@ Expected: PASS
 ### Task 3: Add `handleExploreDestinations` handler to `tools_destinations.go`
 
 **Files:**
+
 - Modify: `mcp/tools_destinations.go`
 
 - [ ] **Step 1: Add the import for the explore package**
@@ -231,6 +236,7 @@ Expected: no errors
 ### Task 4: Register `explore_destinations` in `run.go`
 
 **Files:**
+
 - Modify: `mcp/run.go`
 
 - [ ] **Step 1: Add the registration call**
@@ -274,6 +280,7 @@ git commit -m "feat(mcp): add explore_destinations tool"
 ### Task 5: Fix `packing-list` prompt in `prompts.go`
 
 **Files:**
+
 - Modify: `mcp/prompts.go`
 
 The `packing-list` prompt instructs the agent to read `trvl://preferences` resource (Step 3 of the prompt), but that resource is not registered — only `trvl://onboarding` exists. Fix it to call `get_preferences` tool instead.
@@ -315,6 +322,7 @@ git commit -m "fix(mcp): replace non-existent trvl://preferences with get_prefer
 ### Task 6: Add tool list correctness tests (failing first)
 
 **Files:**
+
 - Modify: `agent/tests/test_trip_state.py`
 
 - [ ] **Step 1: Add assertions for tool list correctness at the end of `test_trip_state.py`**
@@ -356,6 +364,7 @@ Expected: `test_discovery_tools_has_explore_destinations` FAIL, `test_discovery_
 ### Task 7: Fix `discovery_agent` tool list and instruction
 
 **Files:**
+
 - Modify: `agent/agents/discovery.py`
 
 - [ ] **Step 1: Update `TOOLS` and `DISCOVERY_INSTRUCTION`**
@@ -428,6 +437,7 @@ Expected: `test_discovery_tools_has_explore_destinations` PASS, `test_discovery_
 ### Task 8: Fix `itinerary_agent` tool list and instruction
 
 **Files:**
+
 - Modify: `agent/agents/itinerary.py`
 
 - [ ] **Step 1: Update `TOOLS` and `ITINERARY_INSTRUCTION`**
@@ -508,6 +518,7 @@ git commit -m "fix(agents): remove dead tool refs, add explore_destinations to d
 ### Task 9: Rewrite `ROOT_INSTRUCTION` in `main.py`
 
 **Files:**
+
 - Modify: `agent/main.py`
 
 - [ ] **Step 1: Replace `ROOT_INSTRUCTION`**
@@ -565,6 +576,7 @@ git commit -m "fix(agents): rewrite ROOT_INSTRUCTION with explicit routing rules
 ### Task 10: Update `transport_agent` instruction
 
 **Files:**
+
 - Modify: `agent/agents/transport.py`
 
 - [ ] **Step 1: Replace `TRANSPORT_INSTRUCTION`**
@@ -612,6 +624,7 @@ Expected: all PASS
 ### Task 11: Update `lodging_agent` instruction
 
 **Files:**
+
 - Modify: `agent/agents/lodging.py`
 
 - [ ] **Step 1: Replace `LODGING_INSTRUCTION`**
@@ -651,6 +664,7 @@ Expected: all PASS
 ### Task 12: Update `viability_agent` instruction
 
 **Files:**
+
 - Modify: `agent/agents/viability.py`
 
 - [ ] **Step 1: Replace `VIABILITY_INSTRUCTION`**
@@ -693,6 +707,7 @@ Expected: all PASS
 ### Task 13: Update `profile_agent` instruction
 
 **Files:**
+
 - Modify: `agent/agents/profile.py`
 
 - [ ] **Step 1: Replace `PROFILE_INSTRUCTION`**
@@ -753,6 +768,7 @@ git commit -m "feat(agents): sharpen sub-agent instructions with result-conditio
 **Context:** `shared_after_tool_callback` strips `structuredContent` from all tool responses — agents only see the text `content`. Summaries that show only 1 result prevent agents from reasoning about options.
 
 **Audit result — already rich (no change needed):**
+
 - `buildWeatherSummary` — full daily forecast ✓
 - `buildVisaSummary` — status, max stay, notes ✓
 - `buildBaggageSummaryOne/All` — full per-airline tables ✓
@@ -763,6 +779,7 @@ git commit -m "feat(agents): sharpen sub-agent instructions with result-conditio
 - `multiCitySummary`, `suggestDatesSummary`, `destinationSummary` ✓
 
 **Improved (commit `9f09606`):**
+
 - `flightSummary` → top 5 with price, airline, stops, duration, baggage indicators
 - `hotelSummary` → top 5 with price, rating, stars, neighborhood, cross-provider savings
 - `loungeSummary` → each lounge listed with name, terminal, hours, access cards

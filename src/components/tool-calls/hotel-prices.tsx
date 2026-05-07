@@ -14,7 +14,9 @@ interface HotelProvider {
 function extractProviders(result: unknown): HotelProvider[] {
   const record = toRecord(result);
   if (!record) return [];
-  return Array.isArray(record.providers) ? (record.providers as HotelProvider[]) : [];
+  return Array.isArray(record.providers)
+    ? (record.providers as HotelProvider[])
+    : [];
 }
 
 function providerKey(item: HotelProvider): string {

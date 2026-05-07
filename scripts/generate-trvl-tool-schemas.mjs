@@ -7,10 +7,7 @@ const outputPath = resolve(
   root,
   "src/components/mcp-tool-call/generated-tool-schemas.ts",
 );
-const rendererOutputPath = resolve(
-  root,
-  "src/components/tool-renderer.tsx",
-);
+const rendererOutputPath = resolve(root, "src/components/tool-renderer.tsx");
 const oldRendererOutputPath = resolve(
   root,
   "src/components/mcp-tool-call/generated-tool-renderers.tsx",
@@ -24,15 +21,30 @@ const raw = JSON.parse(readFileSync(referencePath, "utf8"));
 const tools = raw.result?.tools ?? raw.tools ?? [];
 
 const DEDICATED_COMPONENTS = {
-  assess_trip: { name: "AssessTripToolCall", path: "../../tool-calls/assess-trip" },
-  check_visa: { name: "CheckVisaToolCall", path: "../../tool-calls/check-visa" },
+  assess_trip: {
+    name: "AssessTripToolCall",
+    path: "../../tool-calls/assess-trip",
+  },
+  check_visa: {
+    name: "CheckVisaToolCall",
+    path: "../../tool-calls/check-visa",
+  },
   explore_destinations: {
     name: "ExploreDestinationsToolCall",
     path: "../../tool-calls/explore-destinations",
   },
-  hotel_prices: { name: "HotelPricesToolCall", path: "../../tool-calls/hotel-prices" },
-  hotel_rooms: { name: "HotelRoomsToolCall", path: "../../tool-calls/hotel-rooms" },
-  local_events: { name: "LocalEventsToolCall", path: "../../tool-calls/local-events" },
+  hotel_prices: {
+    name: "HotelPricesToolCall",
+    path: "../../tool-calls/hotel-prices",
+  },
+  hotel_rooms: {
+    name: "HotelRoomsToolCall",
+    path: "../../tool-calls/hotel-rooms",
+  },
+  local_events: {
+    name: "LocalEventsToolCall",
+    path: "../../tool-calls/local-events",
+  },
   plan_flight_bundle: {
     name: "PlanFlightBundleToolCall",
     path: "../../tool-calls/plan-flight-bundle",
@@ -42,27 +54,45 @@ const DEDICATED_COMPONENTS = {
     name: "SearchAirportTransfersToolCall",
     path: "../../tool-calls/search-airport-transfers",
   },
-  search_awards: { name: "SearchAwardsToolCall", path: "../../tool-calls/search-awards" },
-  search_deals: { name: "SearchDealsToolCall", path: "../../tool-calls/search-deals" },
-  search_flights: { name: "SearchFlightsToolCall", path: "../../tool-calls/search-flights" },
-  search_ground: { name: "SearchGroundToolCall", path: "../../tool-calls/search-ground" },
+  search_awards: {
+    name: "SearchAwardsToolCall",
+    path: "../../tool-calls/search-awards",
+  },
+  search_deals: {
+    name: "SearchDealsToolCall",
+    path: "../../tool-calls/search-deals",
+  },
+  search_flights: {
+    name: "SearchFlightsToolCall",
+    path: "../../tool-calls/search-flights",
+  },
+  search_ground: {
+    name: "SearchGroundToolCall",
+    path: "../../tool-calls/search-ground",
+  },
   search_hotel_by_name: {
     name: "SearchHotelByNameToolCall",
     path: "../../tool-calls/search-hotel-by-name",
   },
-  search_hotels: { name: "SearchHotelsToolCall", path: "../../tool-calls/search-hotels" },
+  search_hotels: {
+    name: "SearchHotelsToolCall",
+    path: "../../tool-calls/search-hotels",
+  },
   search_restaurants: {
     name: "SearchRestaurantsToolCall",
     path: "../../tool-calls/search-restaurants",
   },
-  search_route: { name: "SearchRouteToolCall", path: "../../tool-calls/search-route" },
-  weekend_getaway: { name: "WeekendGetawayToolCall", path: "../../tool-calls/weekend-getaway" },
+  search_route: {
+    name: "SearchRouteToolCall",
+    path: "../../tool-calls/search-route",
+  },
+  weekend_getaway: {
+    name: "WeekendGetawayToolCall",
+    path: "../../tool-calls/weekend-getaway",
+  },
 };
 
-const lines = [
-  "import { z } from \"zod\";",
-  "",
-];
+const lines = ['import { z } from "zod";', ""];
 
 for (const tool of tools) {
   lines.push(
@@ -79,13 +109,18 @@ rmSync(oldRendererOutputPath, { force: true });
 function schemaToZod(schema) {
   if (!schema || typeof schema !== "object") return "z.unknown()";
 
-  const types = Array.isArray(schema.type) ? schema.type : [schema.type].filter(Boolean);
+  const types = Array.isArray(schema.type)
+    ? schema.type
+    : [schema.type].filter(Boolean);
   const nullable = types.includes("null");
   const nonNullType = types.find((type) => type !== "null");
 
-  let expr = schema.enum ? enumToZod(schema.enum) : schemaForType(nonNullType, schema);
+  let expr = schema.enum
+    ? enumToZod(schema.enum)
+    : schemaForType(nonNullType, schema);
 
-  if (schema.description) expr += `.describe(${JSON.stringify(schema.description)})`;
+  if (schema.description)
+    expr += `.describe(${JSON.stringify(schema.description)})`;
   if (nullable) expr += ".nullable()";
   return expr;
 }
@@ -116,15 +151,21 @@ function objectToZod(schema) {
   const properties = Object.entries(schema.properties ?? {});
   const shape = properties
     .map(([key, child]) => {
-      const childExpr = required.has(key) ? schemaToZod(child) : `${schemaToZod(child)}.optional()`;
+      const childExpr = required.has(key)
+        ? schemaToZod(child)
+        : `${schemaToZod(child)}.optional()`;
       return `    ${JSON.stringify(key)}: ${childExpr}`;
     })
     .join(",\n");
 
-  let expr = properties.length > 0 ? `z.object({\n${shape}\n  })` : "z.object({})";
+  let expr =
+    properties.length > 0 ? `z.object({\n${shape}\n  })` : "z.object({})";
 
   if (schema.additionalProperties === false) return `${expr}.strict()`;
-  if (schema.additionalProperties && typeof schema.additionalProperties === "object") {
+  if (
+    schema.additionalProperties &&
+    typeof schema.additionalProperties === "object"
+  ) {
     return `${expr}.catchall(${schemaToZod(schema.additionalProperties)})`;
   }
   return `${expr}.passthrough()`;
@@ -151,7 +192,7 @@ function enumToZod(values) {
 
 function renderersToSource(tools) {
   const rendererLines = [
-    "\"use client\";",
+    '"use client";',
     "",
     ...tools.map((tool) => {
       const componentName = `${pascalCase(tool.name)}ToolRenderRegistration`;
@@ -165,9 +206,7 @@ function renderersToSource(tools) {
 
   for (const tool of tools) {
     const componentName = `${pascalCase(tool.name)}ToolRenderRegistration`;
-    rendererLines.push(
-      `      <${componentName} />`,
-    );
+    rendererLines.push(`      <${componentName} />`);
   }
 
   rendererLines.push("    </>", "  );", "}", "");
@@ -186,11 +225,11 @@ function writeToolRendererFiles(tools) {
     const toolComponentName = dedicated?.name ?? "McpToolCall";
     const componentImport = dedicated
       ? `import { ${dedicated.name} } from ${JSON.stringify(dedicated.path)};`
-      : "import McpToolCall from \"../../mcp-tool-call\";";
+      : 'import McpToolCall from "../../mcp-tool-call";';
     const lines = [
-      "\"use client\";",
+      '"use client";',
       "",
-      "import { useRenderTool } from \"@copilotkit/react-core/v2\";",
+      'import { useRenderTool } from "@copilotkit/react-core/v2";',
       componentImport,
       `import { ${schemaName} } from "../generated-tool-schemas";`,
       "",
@@ -208,7 +247,10 @@ function writeToolRendererFiles(tools) {
       "",
     ];
 
-    writeFileSync(resolve(rendererPartsDir, `${tool.name}.tsx`), lines.join("\n"));
+    writeFileSync(
+      resolve(rendererPartsDir, `${tool.name}.tsx`),
+      lines.join("\n"),
+    );
   }
 }
 

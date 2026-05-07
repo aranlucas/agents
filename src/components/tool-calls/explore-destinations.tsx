@@ -19,7 +19,9 @@ interface Destination {
 function extractDestinations(result: unknown): Destination[] {
   const record = toRecord(result);
   if (!record) return [];
-  return Array.isArray(record.destinations) ? (record.destinations as Destination[]) : [];
+  return Array.isArray(record.destinations)
+    ? (record.destinations as Destination[])
+    : [];
 }
 
 function destKey(item: Destination): string {
@@ -32,8 +34,13 @@ function destSummary(item: Destination) {
     : item.airport_code
       ? `Airport ${item.airport_code}`
       : "Destination option";
-  const subtitle = [item.airline_name, item.airline_code].filter(Boolean).join(" · ");
-  const stopStr = item.stops === 0 ? "Nonstop" : `${item.stops} stop${item.stops === 1 ? "" : "s"}`;
+  const subtitle = [item.airline_name, item.airline_code]
+    .filter(Boolean)
+    .join(" · ");
+  const stopStr =
+    item.stops === 0
+      ? "Nonstop"
+      : `${item.stops} stop${item.stops === 1 ? "" : "s"}`;
 
   return {
     title,
@@ -44,7 +51,8 @@ function destSummary(item: Destination) {
 }
 
 function destLabel(item: Destination): string {
-  const visibleName = item.city_name ?? item.airport_code ?? "destination option";
+  const visibleName =
+    item.city_name ?? item.airport_code ?? "destination option";
   return `Destination: ${visibleName}${item.airline_name ? ` via ${item.airline_name}` : ""}`;
 }
 

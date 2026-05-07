@@ -22,10 +22,25 @@ interface AssessResult {
   nights?: number;
 }
 
-const VERDICT_STYLES: Record<string, { border: string; bg: string; text: string }> = {
-  viable: { border: "border-emerald-300", bg: "bg-emerald-50", text: "text-emerald-700" },
-  borderline: { border: "border-amber-300", bg: "bg-amber-50", text: "text-amber-700" },
-  infeasible: { border: "border-red-300", bg: "bg-red-50", text: "text-red-700" },
+const VERDICT_STYLES: Record<
+  string,
+  { border: string; bg: string; text: string }
+> = {
+  viable: {
+    border: "border-emerald-300",
+    bg: "bg-emerald-50",
+    text: "text-emerald-700",
+  },
+  borderline: {
+    border: "border-amber-300",
+    bg: "bg-amber-50",
+    text: "text-amber-700",
+  },
+  infeasible: {
+    border: "border-red-300",
+    bg: "bg-red-50",
+    text: "text-red-700",
+  },
 };
 
 const CHECK_STATUS_ICON: Record<string, string> = {
@@ -50,19 +65,25 @@ function renderAssessBody(parsedResult: unknown) {
   return (
     <div className="space-y-3">
       <div className={`rounded-md border p-3 ${style.border} ${style.bg}`}>
-        <div className={`text-[0.62rem] uppercase tracking-[0.14em] font-semibold ${style.text}`}>
+        <div
+          className={`text-[0.62rem] uppercase tracking-[0.14em] font-semibold ${style.text}`}
+        >
           {verdict.toUpperCase()}
         </div>
         {data.total_cost != null && (
           <div className="mt-1 text-lg font-bold text-slate-900">
             {formatMoney(data.total_cost, data.currency ?? "")}
             {data.nights != null && (
-              <span className="ml-2 text-sm font-normal text-slate-500">· {data.nights} nights</span>
+              <span className="ml-2 text-sm font-normal text-slate-500">
+                · {data.nights} nights
+              </span>
             )}
           </div>
         )}
         {data.reason && (
-          <div className="mt-1 text-xs leading-5 text-slate-700">{data.reason}</div>
+          <div className="mt-1 text-xs leading-5 text-slate-700">
+            {data.reason}
+          </div>
         )}
       </div>
 
@@ -76,17 +97,23 @@ function renderAssessBody(parsedResult: unknown) {
                 key={i}
                 className="flex items-start gap-2 rounded-md border border-slate-200 bg-white p-2.5"
               >
-                <span className={`mt-px shrink-0 text-xs font-bold ${color}`}>{icon}</span>
+                <span className={`mt-px shrink-0 text-xs font-bold ${color}`}>
+                  {icon}
+                </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-semibold text-slate-800">{check.dimension}</span>
+                    <span className="text-xs font-semibold text-slate-800">
+                      {check.dimension}
+                    </span>
                     {check.cost != null && (
                       <span className="shrink-0 text-xs text-emerald-700">
                         {formatMoney(check.cost, check.currency ?? "")}
                       </span>
                     )}
                   </div>
-                  <div className="mt-0.5 text-xs text-slate-600">{check.summary}</div>
+                  <div className="mt-0.5 text-xs text-slate-600">
+                    {check.summary}
+                  </div>
                 </div>
               </div>
             );
@@ -99,7 +126,8 @@ function renderAssessBody(parsedResult: unknown) {
 
 function assessDescription(parsedResult: unknown): string {
   const record = toRecord(parsedResult);
-  const verdict = typeof record?.verdict === "string" ? record.verdict : "unknown";
+  const verdict =
+    typeof record?.verdict === "string" ? record.verdict : "unknown";
   return `User is currently reviewing trip viability assessment (verdict: ${verdict}).`;
 }
 

@@ -1,6 +1,9 @@
 "use client";
 
-import { useAgentContext, type JsonSerializable } from "@copilotkit/react-core/v2";
+import {
+  useAgentContext,
+  type JsonSerializable,
+} from "@copilotkit/react-core/v2";
 
 export function ReviewingToolContext({
   toolName,
@@ -14,7 +17,9 @@ export function ReviewingToolContext({
   description?: string;
 }) {
   useAgentContext({
-    description: description ?? `User is currently reviewing the "${label}" tool result on screen.`,
+    description:
+      description ??
+      `User is currently reviewing the "${label}" tool result on screen.`,
     value: { tool: toolName, args } as unknown as JsonSerializable,
   });
   return null;

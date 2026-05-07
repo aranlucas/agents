@@ -5,13 +5,21 @@ import { SearchAirportTransfersToolCall } from "../../tool-calls/search-airport-
 import { searchAirportTransfersSchema } from "../generated-tool-schemas";
 
 export function SearchAirportTransfersToolRenderRegistration() {
-  useRenderTool({
-    name: "search_airport_transfers",
-    parameters: searchAirportTransfersSchema,
-    render: ({ status, parameters, result }) => (
-      <SearchAirportTransfersToolCall status={status} name="search_airport_transfers" args={parameters} result={result} />
-    ),
-  }, []);
+  useRenderTool(
+    {
+      name: "search_airport_transfers",
+      parameters: searchAirportTransfersSchema,
+      render: ({ status, parameters, result }) => (
+        <SearchAirportTransfersToolCall
+          status={status}
+          name="search_airport_transfers"
+          args={parameters}
+          result={result}
+        />
+      ),
+    },
+    [],
+  );
 
   return null;
 }
