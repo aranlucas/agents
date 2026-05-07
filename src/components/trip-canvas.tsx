@@ -7,6 +7,7 @@ import {
   UseAgentUpdate,
   useAgentContext,
   useFrontendTool,
+  useCopilotKit,
 } from "@copilotkit/react-core/v2";
 import type {
   AgentState,
@@ -25,8 +26,6 @@ import {
   getViabilityResults,
 } from "@/lib/state";
 import { formatMoney } from "@/components/mcp-tool-call/format";
-
-// ─── Phase logic ─────────────────────────────────────────────────────────────
 
 type Phase = "discover" | "transport" | "lodging" | "verify" | "saved";
 
@@ -627,9 +626,10 @@ function QuickActions({
 export function TripCanvas() {
   const { agent } = useAgent({
     agentId: "default",
-    updates: [UseAgentUpdate.OnStateChanged],
+    updates: [UseAgentUpdate.OnRunStatusChanged],
   });
 
+  const { copilotkit } = useCopilotKit();
   const state = (agent?.state ?? {}) as AgentState;
   const activeTrip = getActiveTrip(state);
   const routeResults = getRouteResults(state);
@@ -639,12 +639,13 @@ export function TripCanvas() {
   const [selectedRouteKey, setSelectedRouteKey] = useState<string | null>(null);
   const [selectedHotelKey, setSelectedHotelKey] = useState<string | null>(null);
 
-  const sendMessage = (content: string) => {
-    agent?.addMessage({
+  const sendMessage = async (content: string) => {
+    agent.addMessage({
       id: crypto.randomUUID(),
       role: "user",
       content,
     });
+    await copilotkit.runAgent({ agent });
   };
 
   const phase = resolvePhase(
