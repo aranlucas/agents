@@ -17,7 +17,10 @@ const runtime = new CopilotRuntime({
 const handler = createCopilotRuntimeHandler({
   runtime,
   basePath: "/api/copilotkit",
-  mode: "single-route",
+  mode: "multi-route",
 });
 
+export const GET = handler;
 export const POST = handler;
+export const PATCH = handler;
+export const DELETE = handler;
