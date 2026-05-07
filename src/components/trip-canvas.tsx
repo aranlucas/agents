@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { z } from "zod";
 import {
   useAgent,
   UseAgentUpdate,
@@ -533,10 +534,10 @@ export function TripCanvas() {
   useFrontendTool({
     name: "highlight_canvas_item",
     description: "Highlight a flight or hotel in the trip canvas to draw the user's attention",
-    parameters: [
-      { name: "type", type: "string", description: "flight or hotel" },
-      { name: "index", type: "number", description: "zero-based index" },
-    ],
+    parameters: z.object({
+      type: z.string().describe("flight or hotel"),
+      index: z.number().describe("zero-based index of the item"),
+    }),
     handler: async ({ type, index }: { type: string; index: number }) => {
       if (type === "flight" && latestRoutes?.routes[index]) {
         setSelectedRouteKey(`r${index}-${latestRoutes.routes[index].price}`);
