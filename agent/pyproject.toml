@@ -12,7 +12,6 @@ dependencies = [
   "google-genai",
   "ag-ui-adk",
   "litellm",
-  "flights[mcp] @ git+https://github.com/punitarani/fli.git",
   "a2a-sdk==0.3.26",
 ]
 

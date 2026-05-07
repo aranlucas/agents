@@ -6,11 +6,10 @@ from datetime import date
 from dotenv import load_dotenv
 import os
 
-from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
+from ag_ui_adk import ADKAgent, add_adk_fastapi_endpoint
 from fastapi import FastAPI
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.tools.base_toolset import BaseToolset
 
 from agents import (
     profile_agent,
@@ -20,13 +19,7 @@ from agents import (
     viability_agent,
     itinerary_agent,
 )
-from agents.discovery import TOOLS as DISCOVERY_TOOLS
-from agents.itinerary import TOOLS as ITINERARY_TOOLS
-from agents.lodging import TOOLS as LODGING_TOOLS
-from agents.profile import TOOLS as PROFILE_TOOLS
-from agents.transport import TOOLS as TRANSPORT_TOOLS
-from agents.viability import TOOLS as VIABILITY_TOOLS
-from utils import shared_after_tool_callback, trvl_toolset
+from utils import shared_after_tool_callback
 
 load_dotenv()
 
