@@ -626,7 +626,7 @@ function QuickActions({
 
 export function TripCanvas() {
   const { agent } = useAgent({
-    agentId: "my_agent",
+    agentId: "default",
     updates: [UseAgentUpdate.OnStateChanged],
   });
 

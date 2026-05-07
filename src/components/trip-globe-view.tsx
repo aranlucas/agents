@@ -99,7 +99,7 @@ function hotelLegsToPoints(legs: TripLeg[]): PointDatum[] {
 
 export function TripGlobeView() {
   const { agent } = useAgent({
-    agentId: "my_agent",
+    agentId: "default",
     updates: [UseAgentUpdate.OnStateChanged],
   });
   const state = (agent?.state ?? {}) as AgentState;
