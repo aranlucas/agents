@@ -31,9 +31,15 @@ function dealKey(item: Deal, index: number): string {
 
 function dealSummary(item: Deal) {
   const route =
-    item.origin && item.destination ? `${item.origin} → ${item.destination}` : undefined;
+    item.origin && item.destination
+      ? `${item.origin} → ${item.destination}`
+      : undefined;
   const subtitle = route ?? item.type;
-  const detail = [item.airline, item.date_range, item.source ? `via ${item.source}` : ""]
+  const detail = [
+    item.airline,
+    item.date_range,
+    item.source ? `via ${item.source}` : "",
+  ]
     .filter(Boolean)
     .join(" · ");
 

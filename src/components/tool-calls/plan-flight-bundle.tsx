@@ -26,12 +26,15 @@ interface FlightBundle {
 function extractBundles(result: unknown): FlightBundle[] {
   const record = toRecord(result);
   if (!record) return [];
-  return Array.isArray(record.flights) ? (record.flights as FlightBundle[]) : [];
+  return Array.isArray(record.flights)
+    ? (record.flights as FlightBundle[])
+    : [];
 }
 
 function bundleKey(item: FlightBundle, index: number): string {
   const leg = item.legs?.[0];
-  if (leg) return `${leg.airline_code}${leg.flight_number}-${item.price}-${index}`;
+  if (leg)
+    return `${leg.airline_code}${leg.flight_number}-${item.price}-${index}`;
   return `bundle-${index}`;
 }
 
@@ -41,16 +44,23 @@ function bundleSummary(item: FlightBundle) {
   const origin = firstLeg?.departure_airport.code ?? "";
   const dest = lastLeg?.arrival_airport.code ?? "";
   const airline = firstLeg?.airline ?? item.provider ?? "";
-  const flightNum = firstLeg ? `${firstLeg.airline_code}${firstLeg.flight_number}` : "";
+  const flightNum = firstLeg
+    ? `${firstLeg.airline_code}${firstLeg.flight_number}`
+    : "";
   const title = [airline, flightNum].filter(Boolean).join(" ");
-  const stopStr = item.stops === 0 ? "Nonstop" : `${item.stops} stop${item.stops === 1 ? "" : "s"}`;
+  const stopStr =
+    item.stops === 0
+      ? "Nonstop"
+      : `${item.stops} stop${item.stops === 1 ? "" : "s"}`;
   const h = Math.floor(item.duration / 60);
   const m = item.duration % 60;
   const durStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
 
   return {
     title,
-    subtitle: [origin && dest ? `${origin} → ${dest}` : "", stopStr].filter(Boolean).join(" · "),
+    subtitle: [origin && dest ? `${origin} → ${dest}` : "", stopStr]
+      .filter(Boolean)
+      .join(" · "),
     detail: durStr + (item.self_connect ? " · ⚠ self-connect" : ""),
     price: formatMoney(item.price, item.currency),
   };
@@ -60,7 +70,9 @@ function bundleLabel(item: FlightBundle): string {
   const firstLeg = item.legs?.[0];
   const lastLeg = item.legs?.[item.legs?.length - 1];
   const airline = firstLeg?.airline ?? item.provider ?? "";
-  const flightNum = firstLeg ? `${firstLeg.airline_code}${firstLeg.flight_number}` : "";
+  const flightNum = firstLeg
+    ? `${firstLeg.airline_code}${firstLeg.flight_number}`
+    : "";
   const origin = firstLeg?.departure_airport.code ?? "";
   const dest = lastLeg?.arrival_airport.code ?? "";
   return `Flight bundle: ${airline} ${flightNum} ${origin}→${dest} @ ${item.price} ${item.currency}`;

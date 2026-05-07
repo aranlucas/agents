@@ -43,7 +43,8 @@ export function toRecord(value: unknown): JsonRecord | null {
 export function getError(value: unknown): string | null {
   const record = toRecord(value);
   if (!record) return null;
-  if (record.success === false && typeof record.error === "string") return record.error;
+  if (record.success === false && typeof record.error === "string")
+    return record.error;
   if (typeof record.error === "string") return record.error;
   return null;
 }

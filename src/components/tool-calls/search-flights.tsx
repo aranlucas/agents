@@ -73,13 +73,17 @@ export function SearchFlightsToolCall({
   const running = status === "inProgress" || status === "executing";
   const argsRecord = useMemo(() => toRecord(args), [args]);
   const liveState = (agent?.state ?? {}) as Record<string, unknown>;
-  const stateResult = toRecord(liveState.search_flights) as SearchFlightsState | null;
+  const stateResult = toRecord(
+    liveState.search_flights,
+  ) as SearchFlightsState | null;
   const parsedResult = useMemo(() => unwrapResult(result), [result]);
   const fallbackResult = toRecord(parsedResult) as SearchFlightsState | null;
   const data = stateResult ?? fallbackResult;
   const flights = Array.isArray(data?.flights) ? data.flights : [];
   const selectedIndex = selectedKey
-    ? flights.findIndex((flight, index) => flightKey(flight, index) === selectedKey)
+    ? flights.findIndex(
+        (flight, index) => flightKey(flight, index) === selectedKey,
+      )
     : -1;
   const selectedFlight = selectedIndex >= 0 ? flights[selectedIndex] : null;
   const chips = buildInputChips(argsRecord);
@@ -117,7 +121,9 @@ export function SearchFlightsToolCall({
               >
                 Transport
               </span>
-              <span className="truncate text-sm font-semibold text-slate-900">Search flights</span>
+              <span className="truncate text-sm font-semibold text-slate-900">
+                Search flights
+              </span>
             </span>
             <span className="mt-1 flex flex-wrap gap-1.5">
               {chips.slice(0, 5).map((chip) => (
@@ -131,7 +137,11 @@ export function SearchFlightsToolCall({
             </span>
           </span>
           <span className="text-xs uppercase tracking-[0.12em] text-slate-400">
-            {running ? "Running" : flights.length > 0 ? `${data?.count ?? flights.length} flights` : "Done"}
+            {running
+              ? "Running"
+              : flights.length > 0
+                ? `${data?.count ?? flights.length} flights`
+                : "Done"}
           </span>
         </button>
 
@@ -153,7 +163,9 @@ export function SearchFlightsToolCall({
                     <button
                       key={key}
                       type="button"
-                      onClick={() => setSelectedKey((prev) => (prev === key ? null : key))}
+                      onClick={() =>
+                        setSelectedKey((prev) => (prev === key ? null : key))
+                      }
                       className={`w-full rounded-md border p-3 text-left transition-colors ${
                         selected
                           ? "border-sky-300 bg-sky-50 ring-1 ring-sky-200"
@@ -165,22 +177,35 @@ export function SearchFlightsToolCall({
                           <div className="truncate text-sm font-semibold text-slate-900">
                             {summary.title}
                           </div>
-                          <div className="mt-0.5 text-xs text-slate-500">{summary.subtitle}</div>
+                          <div className="mt-0.5 text-xs text-slate-500">
+                            {summary.subtitle}
+                          </div>
                         </div>
                         <div className="shrink-0 text-right">
                           <div className="text-sm font-semibold text-emerald-700">
-                            {formatMoney(flight.price, flight.currency ?? "USD")}
+                            {formatMoney(
+                              flight.price,
+                              flight.currency ?? "USD",
+                            )}
                           </div>
-                          {flight.all_in_cost != null && flight.all_in_cost !== flight.price && (
-                            <div className="text-[0.68rem] text-slate-500">
-                              all-in {formatMoney(flight.all_in_cost, flight.currency ?? "USD")}
-                            </div>
-                          )}
+                          {flight.all_in_cost != null &&
+                            flight.all_in_cost !== flight.price && (
+                              <div className="text-[0.68rem] text-slate-500">
+                                all-in{" "}
+                                {formatMoney(
+                                  flight.all_in_cost,
+                                  flight.currency ?? "USD",
+                                )}
+                              </div>
+                            )}
                         </div>
                       </div>
                       <div className="mt-2 flex flex-wrap gap-1.5 text-[0.68rem] text-slate-600">
                         {summary.badges.map((badge) => (
-                          <span key={badge} className="rounded bg-slate-100 px-1.5 py-0.5">
+                          <span
+                            key={badge}
+                            className="rounded bg-slate-100 px-1.5 py-0.5"
+                          >
                             {badge}
                           </span>
                         ))}
@@ -221,13 +246,21 @@ function summarizeFlight(flight: Flight, index: number) {
   const legs = Array.isArray(flight.legs) ? flight.legs : [];
   const firstLeg = legs[0];
   const lastLeg = legs[legs.length - 1];
-  const airline = firstLeg?.airline ?? normalizeProvider(flight.provider) ?? `Option ${index + 1}`;
-  const flightNumber = [firstLeg?.airline_code, firstLeg?.flight_number].filter(Boolean).join("");
+  const airline =
+    firstLeg?.airline ??
+    normalizeProvider(flight.provider) ??
+    `Option ${index + 1}`;
+  const flightNumber = [firstLeg?.airline_code, firstLeg?.flight_number]
+    .filter(Boolean)
+    .join("");
   const origin = firstLeg?.departure_airport?.code;
   const destination = lastLeg?.arrival_airport?.code;
-  const route = origin && destination ? `${origin} → ${destination}` : "SEA → MIA";
+  const route =
+    origin && destination ? `${origin} → ${destination}` : "SEA → MIA";
   const stopText =
-    flight.stops === 0 ? "nonstop" : `${flight.stops ?? 0} stop${flight.stops === 1 ? "" : "s"}`;
+    flight.stops === 0
+      ? "nonstop"
+      : `${flight.stops ?? 0} stop${flight.stops === 1 ? "" : "s"}`;
   const duration = formatDuration(flight.duration);
   const bags =
     flight.checked_bags_included != null
@@ -251,7 +284,9 @@ function summarizeFlight(flight: Flight, index: number) {
 function flightKey(flight: Flight, index: number): string {
   const legs = Array.isArray(flight.legs) ? flight.legs : [];
   const firstLeg = legs[0];
-  const flightNumber = [firstLeg?.airline_code, firstLeg?.flight_number].filter(Boolean).join("");
+  const flightNumber = [firstLeg?.airline_code, firstLeg?.flight_number]
+    .filter(Boolean)
+    .join("");
   return `${flightNumber || flight.provider || "flight"}-${flight.price ?? "na"}-${flight.duration ?? "na"}-${index}`;
 }
 
@@ -272,16 +307,32 @@ function normalizeProvider(provider?: string): string | undefined {
     .join(" ");
 }
 
-function StatusMark({ running, complete }: { running: boolean; complete: boolean }) {
-  const classes = complete ? "border-emerald-300 bg-emerald-400/25" : "border-sky-300 bg-sky-400/25";
+function StatusMark({
+  running,
+  complete,
+}: {
+  running: boolean;
+  complete: boolean;
+}) {
+  const classes = complete
+    ? "border-emerald-300 bg-emerald-400/25"
+    : "border-sky-300 bg-sky-400/25";
   return (
     <span className={`relative h-3 w-3 rounded-full border ${classes}`}>
-      {running && <span className="absolute inset-[-5px] animate-ping rounded-full bg-sky-300/25" />}
+      {running && (
+        <span className="absolute inset-[-5px] animate-ping rounded-full bg-sky-300/25" />
+      )}
     </span>
   );
 }
 
-function FlightContext({ toolName, args }: { toolName: string; args: unknown }) {
+function FlightContext({
+  toolName,
+  args,
+}: {
+  toolName: string;
+  args: unknown;
+}) {
   useAgentContext({
     description: "User is currently reviewing flight search results on screen.",
     value: { tool: toolName, args } as unknown as JsonSerializable,

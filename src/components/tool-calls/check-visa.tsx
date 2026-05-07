@@ -12,15 +12,26 @@ interface VisaRequirement {
   notes: string;
 }
 
-const STATUS_STYLES: Record<string, { border: string; bg: string; text: string }> = {
-  "visa-free": { border: "border-emerald-300", bg: "bg-emerald-50", text: "text-emerald-700" },
+const STATUS_STYLES: Record<
+  string,
+  { border: string; bg: string; text: string }
+> = {
+  "visa-free": {
+    border: "border-emerald-300",
+    bg: "bg-emerald-50",
+    text: "text-emerald-700",
+  },
   "freedom-of-movement": {
     border: "border-emerald-300",
     bg: "bg-emerald-50",
     text: "text-emerald-700",
   },
   evisa: { border: "border-sky-300", bg: "bg-sky-50", text: "text-sky-700" },
-  on_arrival: { border: "border-amber-300", bg: "bg-amber-50", text: "text-amber-700" },
+  on_arrival: {
+    border: "border-amber-300",
+    bg: "bg-amber-50",
+    text: "text-amber-700",
+  },
   required: { border: "border-red-300", bg: "bg-red-50", text: "text-red-700" },
 };
 
@@ -30,7 +41,9 @@ function getVisaStyle(status: string) {
 
 function getRequirement(parsedResult: unknown): VisaRequirement | null {
   const record = toRecord(parsedResult);
-  const structured = toRecord(record?.requirement) as unknown as VisaRequirement | null;
+  const structured = toRecord(
+    record?.requirement,
+  ) as unknown as VisaRequirement | null;
   if (structured) return structured;
 
   if (typeof parsedResult !== "string") return null;
@@ -38,7 +51,9 @@ function getRequirement(parsedResult: unknown): VisaRequirement | null {
 }
 
 function parseVisaText(text: string): VisaRequirement | null {
-  const titleMatch = text.match(/Visa requirements:\s*(.+?)\s*→\s*(.+?)(?:\n|$)/);
+  const titleMatch = text.match(
+    /Visa requirements:\s*(.+?)\s*→\s*(.+?)(?:\n|$)/,
+  );
   const statusMatch = text.match(/Status:\s*([^\n]+)/);
   const stayMatch = text.match(/Max stay:\s*([^\n]+)/);
   if (!titleMatch && !statusMatch && !stayMatch) return null;
@@ -68,14 +83,18 @@ function renderVisaBody(parsedResult: unknown) {
   return (
     <div className="space-y-2">
       <div className={`rounded-md border p-3 ${style.border} ${style.bg}`}>
-        <div className={`text-[0.62rem] uppercase tracking-[0.14em] font-semibold ${style.text}`}>
+        <div
+          className={`text-[0.62rem] uppercase tracking-[0.14em] font-semibold ${style.text}`}
+        >
           {req.status.replace(/_/g, " ")}
         </div>
         <div className="mt-1 text-sm font-semibold text-slate-900">
           {req.passport} → {req.destination}
         </div>
         {req.max_stay && (
-          <div className="mt-1 text-xs text-slate-600">Max stay: {req.max_stay}</div>
+          <div className="mt-1 text-xs text-slate-600">
+            Max stay: {req.max_stay}
+          </div>
         )}
       </div>
       {req.notes && (

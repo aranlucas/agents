@@ -32,7 +32,10 @@ export function buildInputChips(args: JsonRecord | null): string[] {
     );
 }
 
-export function buildHighlights(name: string, result: unknown): ResultHighlight[] {
+export function buildHighlights(
+  name: string,
+  result: unknown,
+): ResultHighlight[] {
   const record = toRecord(result);
   if (!record) return [];
 
@@ -63,7 +66,9 @@ export function buildHighlights(name: string, result: unknown): ResultHighlight[
       label: String(label),
       value: String(count),
     })),
-    ...(price != null ? [{ label: "Cost", value: formatMoney(price, currency) }] : []),
+    ...(price != null
+      ? [{ label: "Cost", value: formatMoney(price, currency) }]
+      : []),
     ...(verdict != null
       ? [
           {
@@ -97,8 +102,12 @@ export function buildResultItems(name: string, result: unknown): ResultItem[] {
   if (source.length === 0 && name === "check_visa") {
     return [
       {
-        title: formatScalar(firstDefined(data.requirement, data.verdict, "Visa check")),
-        detail: formatScalar(firstDefined(data.notes, data.summary, data.reason, "")),
+        title: formatScalar(
+          firstDefined(data.requirement, data.verdict, "Visa check"),
+        ),
+        detail: formatScalar(
+          firstDefined(data.notes, data.summary, data.reason, ""),
+        ),
       },
     ];
   }
@@ -134,7 +143,12 @@ function summarizeItem(value: unknown): ResultItem {
     .filter(Boolean)
     .map(formatScalar)
     .join(" -> ");
-  const price = firstDefined(item.price, item.total_price, item.total, item.cost);
+  const price = firstDefined(
+    item.price,
+    item.total_price,
+    item.total,
+    item.cost,
+  );
   const currency = typeof item.currency === "string" ? item.currency : "";
   const detail = formatScalar(
     firstDefined(

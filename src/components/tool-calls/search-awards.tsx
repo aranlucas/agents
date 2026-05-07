@@ -33,7 +33,9 @@ interface SweetSpot {
 function extractSweetSpots(result: unknown): SweetSpot[] {
   const record = toRecord(result);
   if (!record) return [];
-  return Array.isArray(record.sweet_spots) ? (record.sweet_spots as SweetSpot[]) : [];
+  return Array.isArray(record.sweet_spots)
+    ? (record.sweet_spots as SweetSpot[])
+    : [];
 }
 
 function awardKey(item: SweetSpot, index: number): string {

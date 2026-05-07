@@ -73,7 +73,10 @@ function fmtDuration(mins: unknown): string {
 function fmtDate(iso: string | undefined): string {
   if (!iso) return "";
   try {
-    return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return new Date(iso).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
   } catch {
     return iso.slice(0, 10);
   }
@@ -87,8 +90,12 @@ function routeSummary(route: RouteOption, index: number): string {
     (first?.airline as string) ??
     (route.provider as string | undefined)?.replace(/_/g, " ") ??
     `Option ${index + 1}`;
-  const from = (first?.departure_airport as Record<string, unknown>)?.code as string | undefined;
-  const to = (last?.arrival_airport as Record<string, unknown>)?.code as string | undefined;
+  const from = (first?.departure_airport as Record<string, unknown>)?.code as
+    | string
+    | undefined;
+  const to = (last?.arrival_airport as Record<string, unknown>)?.code as
+    | string
+    | undefined;
   const price = formatMoney(route.price, (route.currency as string) ?? "USD");
   return `${airline}${from && to ? ` ${from}→${to}` : ""} ${price}`;
 }
@@ -119,14 +126,20 @@ function PhaseBar({ phase }: { phase: Phase }) {
               </div>
               <span
                 className={`text-[0.6rem] font-mono hidden sm:block ${
-                  i === current ? "text-[var(--amber)]" : i < current ? "text-[var(--green)]" : "text-[var(--cream-muted)]"
+                  i === current
+                    ? "text-[var(--amber)]"
+                    : i < current
+                      ? "text-[var(--green)]"
+                      : "text-[var(--cream-muted)]"
                 }`}
               >
                 {p.label}
               </span>
             </div>
             {i < PHASES.length - 1 && (
-              <div className={`h-px flex-1 mx-1 ${i < current ? "bg-[var(--green)]" : "bg-[var(--border)]"}`} />
+              <div
+                className={`h-px flex-1 mx-1 ${i < current ? "bg-[var(--green)]" : "bg-[var(--border)]"}`}
+              />
             )}
           </div>
         ))}
@@ -161,8 +174,12 @@ function TripCard({ trip }: { trip: ActiveTrip }) {
       {(trip.origin || trip.destination) && (
         <div className="px-4 py-3 flex items-center gap-3 border-b border-[var(--border-dim)]">
           <div className="text-center">
-            <p className="font-mono text-sm font-bold text-[var(--cream)]">{trip.origin ?? "—"}</p>
-            <p className="text-[0.6rem] text-[var(--cream-muted)] font-mono uppercase">Origin</p>
+            <p className="font-mono text-sm font-bold text-[var(--cream)]">
+              {trip.origin ?? "—"}
+            </p>
+            <p className="text-[0.6rem] text-[var(--cream-muted)] font-mono uppercase">
+              Origin
+            </p>
           </div>
           <div className="flex-1 flex items-center gap-1">
             <div className="h-px flex-1 bg-[var(--border)]" />
@@ -170,8 +187,12 @@ function TripCard({ trip }: { trip: ActiveTrip }) {
             <div className="h-px flex-1 bg-[var(--border)]" />
           </div>
           <div className="text-center">
-            <p className="font-mono text-sm font-bold text-[var(--cream)]">{trip.destination ?? "—"}</p>
-            <p className="text-[0.6rem] text-[var(--cream-muted)] font-mono uppercase">Dest.</p>
+            <p className="font-mono text-sm font-bold text-[var(--cream)]">
+              {trip.destination ?? "—"}
+            </p>
+            <p className="text-[0.6rem] text-[var(--cream-muted)] font-mono uppercase">
+              Dest.
+            </p>
           </div>
         </div>
       )}
@@ -179,18 +200,32 @@ function TripCard({ trip }: { trip: ActiveTrip }) {
       {legs.length > 0 && (
         <div className="px-4 py-3 space-y-2">
           {flightLegs.map((leg, i) => (
-            <div key={i} className="flex items-center gap-2 text-xs font-mono text-[var(--cream-muted)]">
+            <div
+              key={i}
+              className="flex items-center gap-2 text-xs font-mono text-[var(--cream-muted)]"
+            >
               <span className="text-[var(--amber)]">✈</span>
-              <span>{leg.from} → {leg.to}</span>
-              {leg.start_time && <span className="opacity-60">{fmtDate(leg.start_time)}</span>}
-              {leg.confirmed && <span className="text-[var(--green)] ml-auto">✓</span>}
+              <span>
+                {leg.from} → {leg.to}
+              </span>
+              {leg.start_time && (
+                <span className="opacity-60">{fmtDate(leg.start_time)}</span>
+              )}
+              {leg.confirmed && (
+                <span className="text-[var(--green)] ml-auto">✓</span>
+              )}
             </div>
           ))}
           {hotelLegs.map((leg, i) => (
-            <div key={`h${i}`} className="flex items-center gap-2 text-xs font-mono text-[var(--cream-muted)]">
+            <div
+              key={`h${i}`}
+              className="flex items-center gap-2 text-xs font-mono text-[var(--cream-muted)]"
+            >
               <span className="text-[var(--blue)]">🏨</span>
               <span>{leg.provider ?? leg.to ?? leg.from}</span>
-              {leg.confirmed && <span className="text-[var(--green)] ml-auto">✓</span>}
+              {leg.confirmed && (
+                <span className="text-[var(--green)] ml-auto">✓</span>
+              )}
             </div>
           ))}
         </div>
@@ -199,11 +234,18 @@ function TripCard({ trip }: { trip: ActiveTrip }) {
       {trip.viability && (
         <div
           className={`px-4 py-2 border-t border-[var(--border-dim)] flex items-center justify-between text-xs font-mono ${
-            trip.viability.verdict === "feasible" ? "text-[var(--green)]" : "text-[var(--amber)]"
+            trip.viability.verdict === "feasible"
+              ? "text-[var(--green)]"
+              : "text-[var(--amber)]"
           }`}
         >
-          <span className="uppercase tracking-wide">{trip.viability.verdict}</span>
-          <span>{formatMoney(trip.viability.total_cost, trip.viability.currency)} total est.</span>
+          <span className="uppercase tracking-wide">
+            {trip.viability.verdict}
+          </span>
+          <span>
+            {formatMoney(trip.viability.total_cost, trip.viability.currency)}{" "}
+            total est.
+          </span>
         </div>
       )}
     </div>
@@ -230,14 +272,27 @@ function FlightCard({
     (first?.airline as string) ??
     (route.provider as string | undefined)?.replace(/_/g, " ") ??
     `Flight ${index + 1}`;
-  const flightNum = [(first?.airline_code as string), (first?.flight_number as string)].filter(Boolean).join("");
-  const from = (first?.departure_airport as Record<string, unknown>)?.code as string | undefined;
-  const to = (last?.arrival_airport as Record<string, unknown>)?.code as string | undefined;
+  const flightNum = [
+    first?.airline_code as string,
+    first?.flight_number as string,
+  ]
+    .filter(Boolean)
+    .join("");
+  const from = (first?.departure_airport as Record<string, unknown>)?.code as
+    | string
+    | undefined;
+  const to = (last?.arrival_airport as Record<string, unknown>)?.code as
+    | string
+    | undefined;
   const stops =
     typeof route.stops === "number"
-      ? route.stops === 0 ? "Nonstop" : `${route.stops} stop${route.stops > 1 ? "s" : ""}`
+      ? route.stops === 0
+        ? "Nonstop"
+        : `${route.stops} stop${route.stops > 1 ? "s" : ""}`
       : typeof route.transfers === "number"
-        ? route.transfers === 0 ? "Nonstop" : `${route.transfers} stop${route.transfers > 1 ? "s" : ""}`
+        ? route.transfers === 0
+          ? "Nonstop"
+          : `${route.transfers} stop${route.transfers > 1 ? "s" : ""}`
         : null;
 
   return (
@@ -253,11 +308,19 @@ function FlightCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-sm font-bold text-[var(--cream)]">{airline}</span>
-            {flightNum && <span className="text-[0.6rem] font-mono text-[var(--cream-muted)]">{flightNum}</span>}
+            <span className="font-mono text-sm font-bold text-[var(--cream)]">
+              {airline}
+            </span>
+            {flightNum && (
+              <span className="text-[0.6rem] font-mono text-[var(--cream-muted)]">
+                {flightNum}
+              </span>
+            )}
           </div>
           {from && to && (
-            <p className="font-mono text-xs text-[var(--cream-muted)] mt-0.5">{from} → {to}</p>
+            <p className="font-mono text-xs text-[var(--cream-muted)] mt-0.5">
+              {from} → {to}
+            </p>
           )}
           <div className="flex gap-1.5 mt-1.5 flex-wrap">
             {stops && (
@@ -276,14 +339,19 @@ function FlightCard({
           <p className="font-mono text-base font-bold text-[var(--amber-bright)]">
             {formatMoney(route.price, (route.currency as string) ?? "USD")}
           </p>
-          <p className="text-[0.6rem] font-mono text-[var(--cream-muted)] uppercase">per person</p>
+          <p className="text-[0.6rem] font-mono text-[var(--cream-muted)] uppercase">
+            per person
+          </p>
         </div>
       </div>
       {selected && (
         <div className="mt-2 flex items-center gap-2">
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onBook(`Book this flight: ${routeSummary(route, index)}`); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onBook(`Book this flight: ${routeSummary(route, index)}`);
+            }}
             className="flex-1 text-[0.68rem] font-mono uppercase tracking-[0.14em] py-1.5 rounded bg-[var(--amber)] text-[var(--bg)] hover:bg-[var(--amber-bright)] transition-colors font-bold"
           >
             Use this flight →
@@ -309,7 +377,8 @@ function HotelCard({
 }) {
   const stars = typeof hotel.stars === "number" ? hotel.stars : null;
   const rating = typeof hotel.rating === "number" ? hotel.rating : null;
-  const neighborhood = (hotel.neighborhood as string) ?? (hotel.address as string) ?? null;
+  const neighborhood =
+    (hotel.neighborhood as string) ?? (hotel.address as string) ?? null;
 
   return (
     <button
@@ -323,27 +392,46 @@ function HotelCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-mono text-sm font-bold text-[var(--cream)] truncate">{hotel.name}</p>
+          <p className="font-mono text-sm font-bold text-[var(--cream)] truncate">
+            {hotel.name}
+          </p>
           <div className="flex items-center gap-2 mt-0.5">
-            {stars && <span className="text-[var(--amber)] text-xs">{"★".repeat(Math.min(stars, 5))}</span>}
-            {rating && <span className="text-[0.6rem] font-mono text-[var(--cream-muted)]">{rating}/10</span>}
+            {stars && (
+              <span className="text-[var(--amber)] text-xs">
+                {"★".repeat(Math.min(stars, 5))}
+              </span>
+            )}
+            {rating && (
+              <span className="text-[0.6rem] font-mono text-[var(--cream-muted)]">
+                {rating}/10
+              </span>
+            )}
           </div>
           {neighborhood && (
-            <p className="text-[0.65rem] font-mono text-[var(--cream-muted)] mt-1 truncate">{neighborhood}</p>
+            <p className="text-[0.65rem] font-mono text-[var(--cream-muted)] mt-1 truncate">
+              {neighborhood}
+            </p>
           )}
         </div>
         <div className="text-right shrink-0">
           <p className="font-mono text-base font-bold text-[var(--blue)]">
             {formatMoney(hotel.price, hotel.currency)}
           </p>
-          <p className="text-[0.6rem] font-mono text-[var(--cream-muted)] uppercase">/night</p>
+          <p className="text-[0.6rem] font-mono text-[var(--cream-muted)] uppercase">
+            /night
+          </p>
         </div>
       </div>
       {selected && (
         <div className="mt-2 flex items-center gap-2">
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onBook(`Book ${hotel.name} at ${formatMoney(hotel.price, hotel.currency)}/night`); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onBook(
+                `Book ${hotel.name} at ${formatMoney(hotel.price, hotel.currency)}/night`,
+              );
+            }}
             className="flex-1 text-[0.68rem] font-mono uppercase tracking-[0.14em] py-1.5 rounded bg-[var(--blue)]/20 text-[var(--blue)] border border-[var(--blue)]/40 hover:bg-[var(--blue)]/30 transition-colors font-bold"
           >
             Use this hotel →
@@ -359,8 +447,11 @@ function ViabilityCard({ results }: { results: StoredViabilityResult[] }) {
   if (!latest) return null;
 
   const verdictColor =
-    latest.verdict === "feasible" ? "text-[var(--green)]" :
-    latest.verdict === "tight" ? "text-[var(--amber)]" : "text-[var(--red)]";
+    latest.verdict === "feasible"
+      ? "text-[var(--green)]"
+      : latest.verdict === "tight"
+        ? "text-[var(--amber)]"
+        : "text-[var(--red)]";
 
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] overflow-hidden">
@@ -368,28 +459,41 @@ function ViabilityCard({ results }: { results: StoredViabilityResult[] }) {
         <p className="text-[0.6rem] font-mono uppercase tracking-[0.18em] text-[var(--cream-muted)]">
           Viability check
         </p>
-        <span className={`text-sm font-mono font-bold uppercase ${verdictColor}`}>
+        <span
+          className={`text-sm font-mono font-bold uppercase ${verdictColor}`}
+        >
           {latest.verdict}
         </span>
       </div>
       <div className="px-4 py-3 space-y-2">
         {(latest.checks as ViabilityCheck[]).map((check, i) => (
           <div key={i} className="flex items-start gap-3">
-            <span className={`text-xs mt-0.5 shrink-0 ${
-              check.status === "ok" || check.status === "green" ? "text-[var(--green)]" :
-              check.status === "yellow" ? "text-[var(--amber)]" : "text-[var(--red)]"
-            }`}>
+            <span
+              className={`text-xs mt-0.5 shrink-0 ${
+                check.status === "ok" || check.status === "green"
+                  ? "text-[var(--green)]"
+                  : check.status === "yellow"
+                    ? "text-[var(--amber)]"
+                    : "text-[var(--red)]"
+              }`}
+            >
               {check.status === "ok" || check.status === "green" ? "✓" : "⚠"}
             </span>
             <div>
-              <p className="text-[0.65rem] font-mono text-[var(--cream)] uppercase tracking-wide">{check.dimension}</p>
-              <p className="text-[0.68rem] text-[var(--cream-muted)] leading-relaxed">{check.summary}</p>
+              <p className="text-[0.65rem] font-mono text-[var(--cream)] uppercase tracking-wide">
+                {check.dimension}
+              </p>
+              <p className="text-[0.68rem] text-[var(--cream-muted)] leading-relaxed">
+                {check.summary}
+              </p>
             </div>
           </div>
         ))}
       </div>
       <div className="px-4 py-2 border-t border-[var(--border-dim)] flex items-center justify-between">
-        <span className="text-[0.6rem] font-mono text-[var(--cream-muted)] uppercase">Total estimate</span>
+        <span className="text-[0.6rem] font-mono text-[var(--cream-muted)] uppercase">
+          Total estimate
+        </span>
         <span className="font-mono text-sm font-bold text-[var(--cream)]">
           {formatMoney(latest.total_cost, latest.currency)}
         </span>
@@ -428,8 +532,12 @@ function EmptyState({ onSend }: { onSend: (msg: string) => void }) {
             onClick={() => onSend(p)}
             className="w-full text-left px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--bg-card)] hover:border-[var(--amber-dim)] hover:bg-[var(--bg-card-hover)] transition-all group"
           >
-            <span className="text-[var(--amber)] mr-2 group-hover:text-[var(--amber-bright)] transition-colors">→</span>
-            <span className="text-sm font-mono text-[var(--cream-muted)] group-hover:text-[var(--cream)] transition-colors">{p}</span>
+            <span className="text-[var(--amber)] mr-2 group-hover:text-[var(--amber-bright)] transition-colors">
+              →
+            </span>
+            <span className="text-sm font-mono text-[var(--cream-muted)] group-hover:text-[var(--cream)] transition-colors">
+              {p}
+            </span>
           </button>
         ))}
       </div>
@@ -454,22 +562,40 @@ function QuickActions({
   const actions: { label: string; prompt: string }[] = [];
   if (!dest) {
     actions.push(
-      { label: "🔥 Show deals", prompt: "Show me the best weekend deals from Seattle" },
-      { label: "💸 Under $500", prompt: "Where can I fly from Seattle for under $500?" },
+      {
+        label: "🔥 Show deals",
+        prompt: "Show me the best weekend deals from Seattle",
+      },
+      {
+        label: "💸 Under $500",
+        prompt: "Where can I fly from Seattle for under $500?",
+      },
     );
   } else if (!hasRoutes) {
     actions.push(
-      { label: "✈️ Search flights", prompt: `Search flights from ${origin} to ${dest}` },
-      { label: "📅 Cheapest dates", prompt: `Find cheapest dates to fly to ${dest}` },
+      {
+        label: "✈️ Search flights",
+        prompt: `Search flights from ${origin} to ${dest}`,
+      },
+      {
+        label: "📅 Cheapest dates",
+        prompt: `Find cheapest dates to fly to ${dest}`,
+      },
     );
   } else if (!hasHotels) {
     actions.push(
       { label: "🏨 Find hotels", prompt: `Search hotels in ${dest}` },
-      { label: "⭐ Best value", prompt: `Find best value 4-star hotels in ${dest}` },
+      {
+        label: "⭐ Best value",
+        prompt: `Find best value 4-star hotels in ${dest}`,
+      },
     );
   } else {
     actions.push(
-      { label: "💰 Check budget", prompt: "Estimate the total cost of this trip" },
+      {
+        label: "💰 Check budget",
+        prompt: "Estimate the total cost of this trip",
+      },
       { label: "🛂 Visa check", prompt: `Do I need a visa to visit ${dest}?` },
       { label: "💾 Save trip", prompt: "Save this trip plan" },
     );
@@ -521,17 +647,28 @@ export function TripCanvas() {
     });
   };
 
-  const phase = resolvePhase(activeTrip, routeResults, hotelResults, viabilityResults);
+  const phase = resolvePhase(
+    activeTrip,
+    routeResults,
+    hotelResults,
+    viabilityResults,
+  );
   const latestRoutes = routeResults[routeResults.length - 1];
   const latestHotels = hotelResults[hotelResults.length - 1];
 
-  const selectedRoute = selectedRouteKey && latestRoutes
-    ? latestRoutes.routes.find((r, i) => `r${i}-${r.price}` === selectedRouteKey) ?? null
-    : null;
+  const selectedRoute =
+    selectedRouteKey && latestRoutes
+      ? (latestRoutes.routes.find(
+          (r, i) => `r${i}-${r.price}` === selectedRouteKey,
+        ) ?? null)
+      : null;
 
-  const selectedHotel = selectedHotelKey && latestHotels
-    ? latestHotels.hotels.find((h, i) => `h${i}-${h.name}` === selectedHotelKey) ?? null
-    : null;
+  const selectedHotel =
+    selectedHotelKey && latestHotels
+      ? (latestHotels.hotels.find(
+          (h, i) => `h${i}-${h.name}` === selectedHotelKey,
+        ) ?? null)
+      : null;
 
   // Share what user is looking at with the agent
   useAgentContext({
@@ -539,10 +676,18 @@ export function TripCanvas() {
     value: {
       phase,
       selected_flight: selectedRoute
-        ? { label: routeSummary(selectedRoute, 0), price: selectedRoute.price, currency: selectedRoute.currency }
+        ? {
+            label: routeSummary(selectedRoute, 0),
+            price: selectedRoute.price,
+            currency: selectedRoute.currency,
+          }
         : null,
       selected_hotel: selectedHotel
-        ? { name: selectedHotel.name, price: selectedHotel.price, currency: selectedHotel.currency }
+        ? {
+            name: selectedHotel.name,
+            price: selectedHotel.price,
+            currency: selectedHotel.currency,
+          }
         : null,
       available_flights: latestRoutes
         ? { count: latestRoutes.routes.length, search: latestRoutes.args }
@@ -556,7 +701,8 @@ export function TripCanvas() {
   // Agent can highlight canvas items
   useFrontendTool({
     name: "highlight_canvas_item",
-    description: "Highlight a flight or hotel in the trip canvas to draw the user's attention",
+    description:
+      "Highlight a flight or hotel in the trip canvas to draw the user's attention",
     parameters: z.object({
       type: z.string().describe("flight or hotel"),
       index: z.number().describe("zero-based index of the item"),
@@ -574,7 +720,8 @@ export function TripCanvas() {
     },
   });
 
-  const isEmpty = !activeTrip && routeResults.length === 0 && hotelResults.length === 0;
+  const isEmpty =
+    !activeTrip && routeResults.length === 0 && hotelResults.length === 0;
 
   return (
     <div className="flex flex-col h-full bg-[var(--bg)] p-4 gap-4 overflow-auto">
@@ -585,13 +732,18 @@ export function TripCanvas() {
             Trip planner
           </p>
           <h2 className="font-display text-xl text-[var(--cream)] tracking-wide">
-            {activeTrip?.name ?? (activeTrip?.destination ? `→ ${activeTrip.destination}` : "Your Journey")}
+            {activeTrip?.name ??
+              (activeTrip?.destination
+                ? `→ ${activeTrip.destination}`
+                : "Your Journey")}
           </h2>
         </div>
         {agent && (
           <div className="flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full bg-[var(--green)] animate-pulse" />
-            <span className="text-[0.6rem] font-mono text-[var(--cream-muted)] uppercase tracking-wide">Live</span>
+            <span className="text-[0.6rem] font-mono text-[var(--cream-muted)] uppercase tracking-wide">
+              Live
+            </span>
           </div>
         )}
       </div>
@@ -623,7 +775,11 @@ export function TripCanvas() {
                       route={route}
                       index={i}
                       selected={selectedRouteKey === key}
-                      onToggle={() => { setSelectedRouteKey((p: string | null) => p === key ? null : key); }}
+                      onToggle={() => {
+                        setSelectedRouteKey((p: string | null) =>
+                          p === key ? null : key,
+                        );
+                      }}
                       onBook={sendMessage}
                     />
                   );
@@ -651,7 +807,11 @@ export function TripCanvas() {
                       hotel={hotel}
                       index={i}
                       selected={selectedHotelKey === key}
-                      onToggle={() => { setSelectedHotelKey((p: string | null) => p === key ? null : key); }}
+                      onToggle={() => {
+                        setSelectedHotelKey((p: string | null) =>
+                          p === key ? null : key,
+                        );
+                      }}
                       onBook={sendMessage}
                     />
                   );
@@ -660,7 +820,9 @@ export function TripCanvas() {
             </div>
           )}
 
-          {viabilityResults.length > 0 && <ViabilityCard results={viabilityResults} />}
+          {viabilityResults.length > 0 && (
+            <ViabilityCard results={viabilityResults} />
+          )}
 
           <QuickActions
             activeTrip={activeTrip}

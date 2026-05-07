@@ -1,6 +1,8 @@
 export function formatPayload(content: unknown): string {
   const text =
-    typeof content === "object" ? JSON.stringify(content, null, 2) : String(content);
+    typeof content === "object"
+      ? JSON.stringify(content, null, 2)
+      : String(content);
   return text
     .replace(/\\n/g, "\n")
     .replace(/\\t/g, "\t")
