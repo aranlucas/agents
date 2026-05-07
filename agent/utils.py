@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-import time
 from typing import Any, Optional
 
 from google.adk.tools import BaseTool, ToolContext
