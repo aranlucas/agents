@@ -1,33 +1,31 @@
 import type { Metadata } from "next";
-import { Space_Mono, Cormorant_Garamond } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
 import "./globals.css";
-import "@copilotkit/react-core/v2/styles.css";
 
-const spaceMono = Space_Mono({
-  weight: ["400", "700"],
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+const jetbrains = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
   display: "swap",
 });
 
-const cormorant = Cormorant_Garamond({
-  weight: ["300", "400", "600"],
-  subsets: ["latin"],
-  variable: "--font-display",
-  display: "swap",
-});
-
 export const metadata: Metadata = {
-  title: "Trip Planner · AI Concierge",
-  description: "Collaborative AI-powered trip planning",
+  title: "Collab Studio · Human + Agent Writing",
+  description:
+    "A beautiful real-time collaboration surface for humans and AI agents — built on CopilotKit + Google ADK.",
 };
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${spaceMono.variable} ${cormorant.variable}`}>
+    <html lang="en" className={`${inter.variable} ${jetbrains.variable}`}>
       <body className="antialiased">
         <Providers>{children}</Providers>
       </body>

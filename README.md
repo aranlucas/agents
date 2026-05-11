@@ -1,133 +1,108 @@
-# CopilotKit <> ADK Starter
+# Collab Studio — CopilotKit × Google ADK
 
-This is a starter template for building AI agents using Google's [ADK](https://google.github.io/adk-docs/) and [CopilotKit](https://copilotkit.ai). It provides a modern Next.js application with an integrated investment analyst agent that can research stocks, analyze market data, and provide investment insights.
+A beautiful real-time collaboration surface for humans and AI agents, built on
+[CopilotKit](https://copilotkit.ai) v2 + [Google ADK](https://google.github.io/adk-docs/)
+via the [AG-UI](https://docs.copilotkit.ai/ag-ui) protocol.
+
+Inspired by the patterns from the
+[CopilotKit `google-adk` showcase](https://github.com/CopilotKit/CopilotKit/tree/main/showcase/integrations/google-adk),
+this app demonstrates three complementary collaboration primitives in a
+single polished workspace.
+
+## What's collaborative about it
+
+* **Shared document state, agent → UI streaming.**
+  The agent calls `write_document(title, content)`. A `PredictStateMapping`
+  with `stream_tool_call=True` makes the document body stream token-by-token
+  into `state["document"]`, and the canvas renders it live.
+
+* **Shared document state, UI → agent.**
+  The operator can type directly in the canvas. Each keystroke updates
+  shared state via `agent.setState`, so the agent sees the operator's
+  edits on its next turn.
+
+* **Preferences from UI to agent (per-turn injection).**
+  The operator picks tone / audience / length / focus. The Python agent's
+  `before_model_callback` strips any stale block and prepends a fresh
+  `USER_PREFERENCES` block to the system instruction every turn, so the
+  model adapts immediately.
+
+* **Human-in-the-loop approval modal.**
+  The agent calls the frontend tool `request_user_approval` (registered via
+  `useFrontendTool`) before any destructive or public action. The UI opens
+  an in-app modal outside the chat surface, waits for Approve / Reject,
+  then resolves the pending tool Promise. The agent gets the decision as
+  the tool result.
+
+## Stack
+
+| Layer | Tech |
+| --- | --- |
+| Frontend | Next.js 16, React 19, Tailwind v4, CopilotKit `react-core/v2` + `react-ui/v2` |
+| Runtime  | CopilotKit Runtime v2 (Next.js route handler at `/api/copilotkit`) |
+| Protocol | AG-UI (HttpAgent) |
+| Agent    | Google ADK `LlmAgent`, Gemini 2.5 Flash (default) or Mistral via LiteLLM |
 
 ## Prerequisites
 
-- Node.js 18+
-- Python 3.12+
-- Google Makersuite API Key (for the ADK agent) (see https://makersuite.google.com/app/apikey)
-- Any of the following package managers:
-  - npm (default)
-  - [pnpm](https://pnpm.io/installation)
-  - [yarn](https://classic.yarnpkg.com/lang/en/docs/install/)
-  - [bun](https://bun.sh/)
+* Node.js 18+
+* Python 3.12+
+* Either a Google API key for Gemini, or Mistral (toggle via env)
+* `uv` (the script will use it; install via `pipx install uv` or `brew install uv`)
 
-## Getting Started
-
-1. Install dependencies using your preferred package manager:
+## Getting started
 
 ```bash
-# Using npm (default)
-npm install
-
-# Using pnpm
-pnpm install
-
-# Using yarn
-yarn install
-
-# Using bun
-bun install
-```
-
-2. Install Python dependencies for the ADK agent:
-
-```bash
-# Using npm (default)
-npm run install:agent
-
-# Using pnpm
-pnpm install:agent
-
-# Using yarn
-yarn install:agent
-
-# Using bun
-bun run install:agent
-```
-
-> **Note:** This will automatically setup a `.venv` (virtual environment) inside the `agent` directory.
->
-> To activate the virtual environment manually, you can run:
->
-> ```bash
-> source agent/.venv/bin/activate
-> ```
-
-3. Set up your Google API key:
-
-```bash
-export GOOGLE_API_KEY="your-google-api-key-here"
-```
-
-4. Start the development server:
-
-```bash
-# Using npm (default)
+npm install        # installs node deps and triggers `uv sync` for the agent
+export GOOGLE_API_KEY=...    # or set USE_MISTRAL=1 and MISTRAL_API_KEY=...
 npm run dev
-
-# Using pnpm
-pnpm dev
-
-# Using yarn
-yarn dev
-
-# Using bun
-bun run dev
 ```
 
-This will start both the UI and agent servers concurrently.
+`npm run dev` launches the Next.js UI on `http://localhost:3000` and the
+ADK agent server on `http://localhost:8000` concurrently. The
+`/api/copilotkit` route proxies AG-UI requests through to the agent.
 
-## Available Scripts
+## Project layout
 
-The following scripts can also be run using your preferred package manager:
-
-- `dev` - Starts both UI and agent servers in development mode
-- `dev:debug` - Starts development servers with debug logging enabled
-- `dev:ui` - Starts only the Next.js UI server
-- `dev:agent` - Starts only the ADK agent server
-- `build` - Builds the Next.js application for production
-- `start` - Starts the production server
-- `install:agent` - Installs Python dependencies for the agent
-
-## Documentation
-
-The main UI component is in `src/app/page.tsx`. You can:
-
-- Modify the theme colors and styling
-- Add new frontend actions
-- Customize the CopilotKit sidebar appearance
-
-## 📚 Documentation
-
-- [ADK Documentation](https://google.github.io/adk-docs/) - Learn more about the ADK and its features
-- [CopilotKit Documentation](https://docs.copilotkit.ai) - Explore CopilotKit's capabilities
-- [Next.js Documentation](https://nextjs.org/docs) - Learn about Next.js features and API
-
-## Contributing
-
-Feel free to submit issues and enhancement requests! This starter is designed to be easily extensible.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Troubleshooting
-
-### Agent Connection Issues
-
-If you see "I'm having trouble connecting to my tools", make sure:
-
-1. The ADK agent is running on port 8000
-2. Your Google API key is set correctly
-3. Both servers started successfully
-
-### Python Dependencies
-
-If you encounter Python import errors:
-
-```bash
-cd agent
-pip install -r requirements.txt
 ```
+agent/
+  main.py             # ADK LlmAgent + FastAPI mount + state injection
+src/
+  app/
+    page.tsx          # CollabStudio — wires everything together
+    layout.tsx        # Root layout with brand fonts
+    api/copilotkit/   # AG-UI runtime route
+  components/
+    document-canvas.tsx     # Editable, streaming document surface
+    preferences-panel.tsx   # UI → Agent shared-state form
+    approval-dialog.tsx     # HITL modal opened by request_user_approval
+    hero-header.tsx         # Status header
+    providers.tsx           # <CopilotKit> root
+```
+
+## Try it
+
+Once the dev server is up:
+
+1. Open the app and adjust the **Writing brief** on the left.
+2. Use one of the suggestion pills, or ask the agent:
+   *"Draft a 3-paragraph announcement for our new collaborative editor."*
+3. Watch the document stream into the canvas live.
+4. Edit a sentence directly in the canvas — the agent sees your edits next
+   turn.
+5. Ask: *"If the draft looks good, propose publishing it and ask for my
+   approval."* You'll see the approval modal appear.
+
+## Scripts
+
+* `dev` — UI + agent together
+* `dev:ui` — Next.js only (`next dev --turbopack`)
+* `dev:agent` — ADK agent server only (`uv run main.py`)
+* `build` — production Next.js build
+* `install:agent` — sets up the Python venv via `uv sync`
+
+## Acknowledgements
+
+The shared-state, streaming, beautiful-chat, and HITL patterns are direct
+adaptations of the CopilotKit
+[`google-adk` showcase agents](https://github.com/CopilotKit/CopilotKit/tree/main/showcase/integrations/google-adk/src/agents).
