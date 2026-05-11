@@ -1,17 +1,19 @@
-"""Collaborative Document Studio — agent backend.
+"""Collab Studio — Trip Planning agent backend.
 
-A single ADK agent that:
-  * streams document content into shared state token-by-token
+A single ADK agent that co-plans a trip with the operator:
+
+  * streams the day-by-day itinerary into shared state token-by-token
     (PredictStateMapping → live UI rendering),
-  * reads user-supplied preferences (tone, audience, length) and respects
-    them via a before-model callback that injects a preferences block into
-    the system instruction,
-  * requests human approval before "publishing" via a frontend tool
-    (request_user_approval) registered with useFrontendTool on the UI.
+  * reads operator preferences (home airport, budget tier, vibe, pace,
+    dietary, mobility) and respects them via a before-model callback
+    that injects a TRAVELER_BRIEF block into the system instruction
+    every turn,
+  * requests human approval before "locking" the trip via a frontend
+    tool (request_user_approval) registered with useFrontendTool.
 
-Backed by Gemini via LiteLLM (Mistral fallback supported). The FastAPI app
-mounts the agent at "/" via ag-ui-adk, plus a /health endpoint for the
-dev script.
+Backed by Gemini via the ADK (Mistral fallback supported). The FastAPI
+app mounts the agent at "/" via ag-ui-adk, plus a /health endpoint for
+the dev script.
 """
 
 from __future__ import annotations
@@ -46,45 +48,81 @@ def _get_model():
 
 
 # ---------------------------------------------------------------------------
-# Tools — written entirely against shared state.
+# Tools — all written against shared state. The UI re-renders on every
+# state delta, and `write_itinerary.body` is streamed token-by-token via
+# COLLAB_PREDICT_STATE below.
 # ---------------------------------------------------------------------------
-def write_document(tool_context: ToolContext, title: str, content: str) -> dict:
-    """Replace the working document with new title + body.
-
-    PredictStateMapping below makes `content` stream into state["document"]
-    token-by-token so the UI shows the agent typing live.
-    """
-    tool_context.state["document"] = content
-    tool_context.state["title"] = title
-    tool_context.state["status"] = "drafting"
-    return {"ok": True, "length": len(content)}
-
-
-def append_section(
-    tool_context: ToolContext, heading: str, content: str
+def set_trip_meta(
+    tool_context: ToolContext,
+    destination: str,
+    start_date: str,
+    end_date: str,
+    travelers: int = 1,
+    budget_usd: int = 0,
+    headline: str = "",
 ) -> dict:
-    """Append a new section to the existing document body."""
-    current = tool_context.state.get("document", "") or ""
-    sep = "\n\n" if current.strip() else ""
-    section = f"{sep}## {heading}\n\n{content}"
-    tool_context.state["document"] = current + section
+    """Set the high-level trip card (destination, dates, party size, budget).
+
+    Call this FIRST whenever the operator names a new trip. Dates are
+    ISO YYYY-MM-DD strings. `headline` is a one-line vibe summary the UI
+    pins under the destination ("Snow + sushi + onsen", etc.).
+    """
+    tool_context.state["destination"] = destination
+    tool_context.state["start_date"] = start_date
+    tool_context.state["end_date"] = end_date
+    tool_context.state["travelers"] = travelers
+    tool_context.state["budget_usd"] = budget_usd
+    tool_context.state["headline"] = headline
     tool_context.state["status"] = "drafting"
-    return {"ok": True, "length": len(tool_context.state["document"])}
+    return {"ok": True}
 
 
-def mark_ready_for_review(tool_context: ToolContext, summary: str) -> dict:
-    """Flag the document as ready for the operator to review."""
-    tool_context.state["status"] = "ready_for_review"
+def write_itinerary(
+    tool_context: ToolContext, summary: str, body: str
+) -> dict:
+    """Replace the full multi-day itinerary in shared state.
+
+    `summary` is a 1–2 sentence pitch shown above the day list. `body` is
+    the structured plan in markdown — use `## Day 1: <theme>` headings
+    followed by `- HH:MM — activity` bullets. Token-streams into the UI.
+    """
+    tool_context.state["itinerary"] = body
+    tool_context.state["summary"] = summary
+    tool_context.state["status"] = "drafting"
+    return {"ok": True, "length": len(body)}
+
+
+def add_day(
+    tool_context: ToolContext, day_number: int, theme: str, plan: str
+) -> dict:
+    """Append (or replace) a single day in the existing itinerary.
+
+    `plan` should be a list of `- HH:MM — activity` bullets. Use this for
+    incremental edits when the operator asks to add or rework one day
+    rather than the whole trip.
+    """
+    current = tool_context.state.get("itinerary", "") or ""
+    sep = "\n\n" if current.strip() else ""
+    block = f"{sep}## Day {day_number}: {theme}\n\n{plan}"
+    tool_context.state["itinerary"] = current + block
+    tool_context.state["status"] = "drafting"
+    return {"ok": True}
+
+
+def mark_ready_to_book(tool_context: ToolContext, summary: str) -> dict:
+    """Flag the trip as ready for the operator to lock in / book."""
+    tool_context.state["status"] = "ready_to_book"
     tool_context.state["review_summary"] = summary
     return {"ok": True}
 
 
 # ---------------------------------------------------------------------------
 # Preferences injection — UI writes state["preferences"]; we read it back
-# each turn and prepend a fresh preferences block to the system instruction.
+# each turn and prepend a fresh TRAVELER_BRIEF block to the system
+# instruction so the model adapts immediately.
 # ---------------------------------------------------------------------------
-_PREFS_MARK_START = "<<<USER_PREFERENCES>>>"
-_PREFS_MARK_END = "<<<END_USER_PREFERENCES>>>"
+_PREFS_MARK_START = "<<<TRAVELER_BRIEF>>>"
+_PREFS_MARK_END = "<<<END_TRAVELER_BRIEF>>>"
 
 
 def _build_prefs_block(prefs: dict) -> Optional[str]:
@@ -92,16 +130,25 @@ def _build_prefs_block(prefs: dict) -> Optional[str]:
         return None
 
     lines = [_PREFS_MARK_START]
-    if name := prefs.get("authorName"):
-        lines.append(f"- Author name: {name}")
-    if tone := prefs.get("tone"):
-        lines.append(f"- Tone: {tone}")
-    if audience := prefs.get("audience"):
-        lines.append(f"- Audience: {audience}")
-    if length := prefs.get("length"):
-        lines.append(f"- Target length: {length}")
-    if focus := prefs.get("focus"):
-        lines.append(f"- Focus: {focus}")
+    if name := prefs.get("travelerName"):
+        lines.append(f"- Traveler: {name}")
+    if airport := prefs.get("homeAirport"):
+        lines.append(f"- Home airport: {airport}")
+    if budget := prefs.get("budgetTier"):
+        lines.append(f"- Budget tier: {budget}")
+    if vibe := prefs.get("vibe"):
+        lines.append(f"- Vibe: {vibe}")
+    if pace := prefs.get("pace"):
+        lines.append(f"- Pace: {pace}")
+    if dietary := prefs.get("dietary"):
+        lines.append(f"- Dietary: {dietary}")
+    if mobility := prefs.get("mobility"):
+        lines.append(f"- Mobility: {mobility}")
+    if interests := prefs.get("interests"):
+        if isinstance(interests, list) and interests:
+            lines.append(f"- Interests: {', '.join(interests)}")
+        elif isinstance(interests, str) and interests.strip():
+            lines.append(f"- Interests: {interests}")
     lines.append(_PREFS_MARK_END)
 
     if len(lines) <= 2:
@@ -140,51 +187,60 @@ def _inject_preferences(
 # ---------------------------------------------------------------------------
 # Agent instruction — emphasizes collaboration patterns.
 # ---------------------------------------------------------------------------
-_INSTRUCTION = """You are a collaborative writing partner for the operator.
+_INSTRUCTION = """You are a collaborative trip-planning partner.
 
-Your job is to draft, revise, and improve a working document in shared state.
+Your job is to co-design a trip with the operator. The trip lives in
+shared state and the UI renders it live as you write.
 
 Rules:
-1. NEVER paste long-form content into chat. The document lives in
-   state["document"]. ALWAYS call `write_document` (full rewrite) or
-   `append_section` (additive) when producing content.
-2. After each tool call, reply with a SHORT (1–2 sentence) summary of
-   what changed and what you'll do next.
-3. Respect the USER_PREFERENCES block when present — tone, audience, and
-   target length materially change voice and structure.
-4. Before doing anything DESTRUCTIVE or PUBLIC — publishing, sharing,
-   sending, deleting, or charging — call the frontend tool
-   `request_user_approval` with a clear summary and wait for the user's
-   decision. Only proceed if approved.
-5. When the user says the draft looks good, call `mark_ready_for_review`
-   with a 1-sentence summary.
+1. NEVER paste the itinerary into chat. The plan lives in
+   state["itinerary"]. ALWAYS use the tools to write it:
+   - `set_trip_meta` FIRST whenever a destination, dates, party size,
+     or budget changes,
+   - `write_itinerary` to (re)draft the full multi-day plan,
+   - `add_day` for incremental edits to a single day.
+2. Day headings MUST follow the format `## Day N: <theme>` and each
+   activity MUST be a bullet `- HH:MM — activity` (24h time, em-dash).
+   The UI parses this — drift breaks rendering.
+3. Respect the TRAVELER_BRIEF when present. Budget tier, vibe, pace,
+   dietary, and mobility all materially change recommendations.
+4. After each tool call, reply with a SHORT (1–2 sentence) summary of
+   what changed and propose one concrete next move.
+5. Before doing anything that LOCKS IN the trip — booking flights,
+   reserving hotels, sharing the plan, or charging the operator — call
+   the frontend tool `request_user_approval` with a clear action +
+   reason and wait for the operator's decision. Only proceed if
+   approved.
+6. When the draft looks complete, call `mark_ready_to_book` with a
+   1-sentence wrap-up so the UI can highlight the trip is ready.
 
-Be concise, warm, and proactive. Suggest one concrete next move at the
-end of each turn.
+Be concise, warm, and proactive. Surface tradeoffs (budget vs. vibe,
+pace vs. coverage) instead of guessing silently.
 """
 
 
-collab_doc_agent = LlmAgent(
-    name="collab_doc_agent",
+collab_trip_agent = LlmAgent(
+    name="collab_trip_agent",
     model=_get_model(),
     instruction=_INSTRUCTION,
     before_model_callback=_inject_preferences,
     tools=[
-        write_document,
-        append_section,
-        mark_ready_for_review,
+        set_trip_meta,
+        write_itinerary,
+        add_day,
+        mark_ready_to_book,
         AGUIToolset(),
     ],
 )
 
 
-# Token-level streaming for the document body — the UI re-renders as each
-# token arrives, mimicking shared-state-streaming from the showcase.
+# Token-level streaming for the itinerary body — the UI re-renders as
+# each token arrives, mirroring the shared-state-streaming showcase.
 COLLAB_PREDICT_STATE = [
     PredictStateMapping(
-        state_key="document",
-        tool="write_document",
-        tool_argument="content",
+        state_key="itinerary",
+        tool="write_itinerary",
+        tool_argument="body",
         emit_confirm_tool=False,
         stream_tool_call=True,
     ),
@@ -195,14 +251,14 @@ COLLAB_PREDICT_STATE = [
 # FastAPI wiring.
 # ---------------------------------------------------------------------------
 adk_collab_agent = ADKAgent(
-    adk_agent=collab_doc_agent,
+    adk_agent=collab_trip_agent,
     user_id="demo_user",
     session_timeout_seconds=3600,
     use_in_memory_services=True,
     predict_state=COLLAB_PREDICT_STATE,
 )
 
-app = FastAPI(title="Collaborative Doc Studio")
+app = FastAPI(title="Collab Studio · Trip Planning")
 
 app.add_middleware(
     CORSMiddleware,

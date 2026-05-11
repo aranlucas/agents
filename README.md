@@ -1,38 +1,40 @@
-# Collab Studio — CopilotKit × Google ADK
+# Trip Studio — CopilotKit × Google ADK
 
-A beautiful real-time collaboration surface for humans and AI agents, built on
+A beautiful real-time trip-planning surface where a human and an AI agent
+share the same itinerary, built on
 [CopilotKit](https://copilotkit.ai) v2 + [Google ADK](https://google.github.io/adk-docs/)
 via the [AG-UI](https://docs.copilotkit.ai/ag-ui) protocol.
 
-Inspired by the patterns from the
+Inspired by patterns from the
 [CopilotKit `google-adk` showcase](https://github.com/CopilotKit/CopilotKit/tree/main/showcase/integrations/google-adk),
 this app demonstrates three complementary collaboration primitives in a
 single polished workspace.
 
 ## What's collaborative about it
 
-* **Shared document state, agent → UI streaming.**
-  The agent calls `write_document(title, content)`. A `PredictStateMapping`
-  with `stream_tool_call=True` makes the document body stream token-by-token
-  into `state["document"]`, and the canvas renders it live.
+* **Shared itinerary, agent → UI streaming.**
+  The agent calls `write_itinerary(summary, body)`. A
+  `PredictStateMapping` with `stream_tool_call=True` makes the
+  itinerary body stream token-by-token into `state["itinerary"]`, and
+  the trip canvas re-renders day-by-day as the agent types.
 
-* **Shared document state, UI → agent.**
-  The operator can type directly in the canvas. Each keystroke updates
-  shared state via `agent.setState`, so the agent sees the operator's
-  edits on its next turn.
+* **Shared itinerary, UI → agent.**
+  The operator can edit the destination, headline, or raw markdown
+  directly in the canvas. Each edit updates shared state via
+  `agent.setState`, so the agent sees the changes on its next turn.
 
-* **Preferences from UI to agent (per-turn injection).**
-  The operator picks tone / audience / length / focus. The Python agent's
-  `before_model_callback` strips any stale block and prepends a fresh
-  `USER_PREFERENCES` block to the system instruction every turn, so the
-  model adapts immediately.
+* **Traveler brief from UI to agent (per-turn injection).**
+  The operator picks home airport, budget tier, vibe, pace, dietary,
+  and mobility. The Python agent's `before_model_callback` strips any
+  stale block and prepends a fresh `TRAVELER_BRIEF` block to the system
+  instruction every turn, so the model adapts immediately.
 
 * **Human-in-the-loop approval modal.**
-  The agent calls the frontend tool `request_user_approval` (registered via
-  `useFrontendTool`) before any destructive or public action. The UI opens
-  an in-app modal outside the chat surface, waits for Approve / Reject,
-  then resolves the pending tool Promise. The agent gets the decision as
-  the tool result.
+  The agent calls the frontend tool `request_user_approval` (registered
+  via `useFrontendTool`) before booking flights, reserving hotels, or
+  sharing the trip. The UI opens an in-app modal outside the chat
+  surface, waits for Approve / Reject, then resolves the pending tool
+  Promise. The agent gets the decision as the tool result.
 
 ## Stack
 
@@ -66,32 +68,53 @@ ADK agent server on `http://localhost:8000` concurrently. The
 
 ```
 agent/
-  main.py             # ADK LlmAgent + FastAPI mount + state injection
+  main.py             # ADK LlmAgent + FastAPI mount + traveler-brief injection
 src/
   app/
-    page.tsx          # CollabStudio — wires everything together
+    page.tsx          # CollabStudio — wires preferences, canvas, chat, HITL
     layout.tsx        # Root layout with brand fonts
     api/copilotkit/   # AG-UI runtime route
   components/
-    document-canvas.tsx     # Editable, streaming document surface
-    preferences-panel.tsx   # UI → Agent shared-state form
+    document-canvas.tsx     # Itinerary canvas: trip header + day cards
+    preferences-panel.tsx   # Traveler brief: UI → agent shared-state form
     approval-dialog.tsx     # HITL modal opened by request_user_approval
     hero-header.tsx         # Status header
     providers.tsx           # <CopilotKit> root
 ```
 
+## Itinerary format
+
+The agent writes itineraries as markdown with strict structure so the
+canvas can render rich day cards:
+
+```
+## Day 1: Arrival
+- 14:00 — Land at HND, train to Shinjuku
+- 17:00 — Check in, walk the neighborhood
+- 19:30 — Tonkatsu at Maisen
+
+## Day 2: Old town
+- 09:00 — Asakusa + Senso-ji at opening
+- 12:00 — Ramen on Kappabashi
+- 15:00 — Tea + bookshop in Yanaka
+```
+
+The UI parses `## Day N: <theme>` and `- HH:MM — activity` lines and
+falls back gracefully on free-form bullets.
+
 ## Try it
 
 Once the dev server is up:
 
-1. Open the app and adjust the **Writing brief** on the left.
+1. Open the app and fill the **Traveler brief** on the left
+   (home airport, budget tier, vibe, pace, interests).
 2. Use one of the suggestion pills, or ask the agent:
-   *"Draft a 3-paragraph announcement for our new collaborative editor."*
-3. Watch the document stream into the canvas live.
-4. Edit a sentence directly in the canvas — the agent sees your edits next
-   turn.
-5. Ask: *"If the draft looks good, propose publishing it and ask for my
-   approval."* You'll see the approval modal appear.
+   *"Plan a 3-day weekend in Tokyo focused on food, late November."*
+3. Watch the trip header and day cards stream in live.
+4. Tweak the destination or a day directly in the canvas — the agent
+   sees your edits on the next turn.
+5. Ask: *"If the itinerary looks good, propose locking it in and ask
+   for my approval."* The approval modal appears.
 
 ## Scripts
 
