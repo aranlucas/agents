@@ -16,9 +16,9 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Collab Studio · Human + Agent Writing",
+  title: "Trip Studio · Co-plan with an AI partner",
   description:
-    "A beautiful real-time collaboration surface for humans and AI agents — built on CopilotKit + Google ADK.",
+    "A beautiful real-time trip-planning surface where a human and an AI agent share the same itinerary — built on CopilotKit + Google ADK.",
 };
 
 export default function RootLayout({
