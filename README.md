@@ -40,10 +40,20 @@ single polished workspace.
 
 | Layer | Tech |
 | --- | --- |
-| Frontend | Next.js 16, React 19, Tailwind v4, CopilotKit `react-core/v2` + `react-ui/v2` |
-| Runtime  | CopilotKit Runtime v2 (Next.js route handler at `/api/copilotkit`) |
+| Frontend | Next.js 16, React 19, Tailwind v4, **`@copilotkit/react-core/v2`** (prebuilt `CopilotSidebar`) |
+| Runtime  | `@copilotkit/runtime/v2` (Next.js route handler at `/api/copilotkit`) |
 | Protocol | AG-UI (HttpAgent) |
 | Agent    | Google ADK `LlmAgent`, Gemini 2.5 Flash (default) or Mistral via LiteLLM |
+
+## Layout
+
+A 2-column main view on desktop — the traveler brief sits in a 320px
+sticky left column, the trip canvas fills the rest, and the prebuilt
+`CopilotSidebar` overlays from the right when the operator opens it.
+
+On mobile the brief column is hidden by default; the **Brief** button
+in the hero toggles it. Chat is reached via the sidebar's built-in
+floating launcher, so the canvas owns the full viewport.
 
 ## Prerequisites
 
@@ -73,13 +83,13 @@ src/
   app/
     page.tsx          # CollabStudio — wires preferences, canvas, chat, HITL
     layout.tsx        # Root layout with brand fonts
-    api/copilotkit/   # AG-UI runtime route
+    api/copilotkit/   # AG-UI runtime route (v2)
   components/
     document-canvas.tsx     # Itinerary canvas: trip header + day cards
     preferences-panel.tsx   # Traveler brief: UI → agent shared-state form
     approval-dialog.tsx     # HITL modal opened by request_user_approval
-    hero-header.tsx         # Status header
-    providers.tsx           # <CopilotKit> root
+    hero-header.tsx         # Status header + mobile brief toggle
+    providers.tsx           # <CopilotKit> root (v2)
 ```
 
 ## Itinerary format
