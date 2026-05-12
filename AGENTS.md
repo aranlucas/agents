@@ -10,15 +10,28 @@ that aren't obvious from the code alone.
 ## Stack snapshot
 
 * **Frontend.** Next.js 16 (App Router, Turbopack), React 19, Tailwind v4.
-  CopilotKit v2 hooks: `useAgent`, `useFrontendTool`,
-  `useConfigureSuggestions`, `CopilotChat`. State enters the agent via
+  **CopilotKit v2 only** — all hooks and components come from
+  `@copilotkit/react-core/v2` (we use `CopilotSidebar`, `useAgent`,
+  `useFrontendTool`, `useConfigureSuggestions`). Styles come from
+  `@copilotkit/react-core/v2/styles.css`. State enters the agent via
   `agent.setState`; UI re-renders on `UseAgentUpdate.OnStateChanged`.
+  **Never import from non-v2 paths.**
 * **Runtime.** `@copilotkit/runtime/v2` mounted at
   `src/app/api/copilotkit`. Speaks AG-UI to a remote agent over HTTP.
 * **Agent.** Google ADK `LlmAgent` in `agent/main.py`. Default model is
   Gemini 2.5 Flash via the ADK; an opt-in `USE_MISTRAL=1` path uses
   LiteLLM. Hosted behind FastAPI by
   `ag_ui_adk.add_adk_fastapi_endpoint`.
+
+## Layout
+
+A 2-column main view (traveler-brief 320px | canvas) on desktop, plus
+the prebuilt `CopilotSidebar` overlaying from the right when opened.
+
+On mobile the brief column hides by default; the **Brief** button in
+the hero header toggles it open. Chat is reached via the sidebar's
+built-in floating launcher, so the canvas keeps the full mobile
+viewport. No tab switchers, no triple-pane.
 
 ## Collaboration primitives
 
@@ -83,7 +96,8 @@ src/app/page.tsx
   ├── useFrontendTool("request_user_approval")
   ├── useConfigureSuggestions(...)
   ├── observedOnce ref pattern (don't write preferences before reading state)
-  └── 3-column layout (traveler-brief | canvas | chat) with mobile tab switcher
+  ├── 2-column main: traveler-brief | canvas
+  └── <CopilotSidebar> for chat (mobile-friendly built-in launcher)
 
 src/components/
   ├── document-canvas.tsx     # Trip header + day cards (markdown parser)

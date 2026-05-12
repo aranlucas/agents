@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  CopilotChat,
+  CopilotSidebar,
   useAgent,
   UseAgentUpdate,
   useFrontendTool,
@@ -48,14 +48,14 @@ function asStatus(s: unknown): DocStatus {
 }
 
 export default function Page() {
-  return <CollabStudio />;
+  return <TripStudio />;
 }
 
-function CollabStudio() {
+function TripStudio() {
   const [preferences, setPreferences] = useState<Preferences>(
     DEFAULT_PREFERENCES,
   );
-  const [mobileTab, setMobileTab] = useState<"trip" | "chat">("trip");
+  const [briefOpenMobile, setBriefOpenMobile] = useState(false);
   const [pendingApprovals, setPendingApprovals] = useState<ApprovalRequest[]>(
     [],
   );
@@ -96,7 +96,6 @@ function CollabStudio() {
     agent.setState({ ...current, preferences });
   }, [agent, preferences]);
 
-  // Frontend tool — the agent calls this before locking the trip.
   useFrontendTool({
     name: "request_user_approval",
     description:
@@ -226,11 +225,9 @@ function CollabStudio() {
     });
   };
 
-  const labels = useMemo(
+  const sidebarLabels = useMemo(
     () => ({
-      title: "Trip planner",
-      initial:
-        "Hi! Tell me where you'd like to go — or paste a half-baked plan and I'll fill in the rest.",
+      modalHeaderTitle: "Trip Planner",
       chatInputPlaceholder:
         "Plan a trip, rework a day, or ask for tradeoffs…",
     }),
@@ -238,46 +235,24 @@ function CollabStudio() {
   );
 
   return (
-    <main className="h-full flex flex-col">
-      <HeroHeader isRunning={isRunning} />
+    <main className="min-h-full flex flex-col">
+      <HeroHeader
+        isRunning={isRunning}
+        onToggleBrief={() => setBriefOpenMobile((v) => !v)}
+        briefOpenMobile={briefOpenMobile}
+      />
 
-      <div className="md:hidden flex border-b border-[var(--border)] bg-[var(--surface)]">
-        <button
-          onClick={() => setMobileTab("trip")}
-          className={`flex-1 py-3 text-xs font-mono tracking-wider uppercase transition ${
-            mobileTab === "trip"
-              ? "text-[var(--accent-strong)] border-b-2 border-[var(--accent)]"
-              : "text-[var(--ink-mute)]"
-          }`}
-        >
-          Trip
-        </button>
-        <button
-          onClick={() => setMobileTab("chat")}
-          className={`flex-1 py-3 text-xs font-mono tracking-wider uppercase transition ${
-            mobileTab === "chat"
-              ? "text-[var(--accent-strong)] border-b-2 border-[var(--accent)]"
-              : "text-[var(--ink-mute)]"
-          }`}
-        >
-          Chat
-        </button>
-      </div>
-
-      <div className="flex-1 min-h-0 grid md:grid-cols-[300px_minmax(0,1fr)_440px] gap-4 p-4 md:p-6 max-w-[1500px] w-full mx-auto">
+      <div className="flex-1 min-h-0 grid md:grid-cols-[320px_minmax(0,1fr)] gap-4 p-4 md:p-6 max-w-[1400px] w-full mx-auto">
+        {/* Traveler brief — pinned left on desktop, collapsible on mobile */}
         <aside
           className={`${
-            mobileTab === "trip" ? "block" : "hidden"
-          } md:block min-h-0 overflow-y-auto`}
+            briefOpenMobile ? "block" : "hidden"
+          } md:block md:sticky md:top-6 md:self-start md:max-h-[calc(100vh-3rem)] md:overflow-y-auto`}
         >
           <PreferencesPanel value={preferences} onChange={setPreferences} />
         </aside>
 
-        <section
-          className={`${
-            mobileTab === "trip" ? "flex" : "hidden"
-          } md:flex flex-col min-h-0`}
-        >
+        <section className="flex flex-col min-h-[60vh] md:min-h-0">
           <DocumentCanvas
             destination={destination}
             startDate={startDate}
@@ -296,19 +271,14 @@ function CollabStudio() {
             onReset={onReset}
           />
         </section>
-
-        <aside
-          className={`${
-            mobileTab === "chat" ? "flex" : "hidden"
-          } md:flex flex-col min-h-0 rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-sm overflow-hidden`}
-        >
-          <CopilotChat
-            agentId="default"
-            className="flex-1 min-h-0"
-            labels={labels}
-          />
-        </aside>
       </div>
+
+      {/* Prebuilt sidebar — handles its own mobile-friendly launcher + overlay */}
+      <CopilotSidebar
+        agentId="default"
+        defaultOpen={false}
+        labels={sidebarLabels}
+      />
 
       {head && <ApprovalDialog key={head.id} request={head} />}
     </main>
