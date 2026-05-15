@@ -20,6 +20,9 @@ dev = ["pytest", "httpx"]
 [project.scripts]
 app = "main:app"
 
+[tool.setuptools]
+py-modules = ["main"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
