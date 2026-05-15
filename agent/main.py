@@ -11,9 +11,8 @@ A single ADK agent that co-plans a trip with the operator:
   * requests human approval before "locking" the trip via a frontend
     tool (request_user_approval) registered with useFrontendTool.
 
-Backed by Gemini via the ADK (Mistral fallback supported). The FastAPI
-app mounts the agent at "/" via ag-ui-adk, plus a /health endpoint for
-the dev script.
+Backed by Mistral via LiteLLM. The FastAPI app mounts the agent at "/"
+via ag-ui-adk, plus a /health endpoint for the dev script.
 """
 
 from __future__ import annotations
@@ -38,13 +37,8 @@ from google.genai import types as genai_types
 load_dotenv()
 
 
-# ---------------------------------------------------------------------------
-# Model selection — Gemini by default, Mistral via LiteLLM if requested.
-# ---------------------------------------------------------------------------
 def _get_model():
-    if os.getenv("USE_MISTRAL") == "1" and os.getenv("MISTRAL_API_KEY"):
-        return LiteLlm(model="mistral/mistral-medium-latest")
-    return os.getenv("ADK_MODEL", "gemini-2.5-flash")
+    return LiteLlm(model="mistral/mistral-medium-latest")
 
 
 # ---------------------------------------------------------------------------
