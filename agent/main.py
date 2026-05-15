@@ -34,7 +34,39 @@ from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import ToolContext
 from google.genai import types as genai_types
 
+from utils import trvl_toolset, shared_after_tool_callback
+
 load_dotenv()
+
+# All travel MCP tools surfaced to the agent.
+TRVL_TOOLS = [
+    # Discovery & destination research
+    "explore_destinations", "weekend_getaway", "suggest_dates", "search_dates",
+    "search_deals", "destination_info", "travel_guide", "get_weather",
+    "local_events", "nearby_places", "plan_trip",
+    # Flights & transport
+    "search_flights", "plan_flight_bundle", "find_interactive", "search_route",
+    "search_ground", "search_airport_transfers", "get_baggage_rules",
+    "search_lounges", "search_hidden_city", "search_awards",
+    # Lodging
+    "search_hotels", "search_hotel_by_name", "hotel_rooms", "hotel_prices",
+    "hotel_reviews", "detect_accommodation_hacks", "watch_room_availability",
+    # Viability & optimization
+    "assess_trip", "calculate_trip_cost", "check_visa", "calculate_points_value",
+    "detect_travel_hacks", "optimize_booking", "optimize_trip_dates",
+    "find_trip_window", "optimize_multi_city", "search_restaurants",
+    # Trip persistence & watches
+    "create_trip", "list_trips", "get_trip", "update_trip", "mark_trip_booked",
+    "export_ics", "watch_price", "watch_opportunities", "list_opportunity_watches",
+    # Loyalty & awards
+    "award_holds", "chat_awards", "configure_provider", "list_providers",
+    "list_sweet_spots", "partner_award_paths", "provider_health",
+    "remove_provider", "status_match_policy", "stopover_rules",
+    "suggest_providers", "transfer_bonuses", "transfer_path",
+    # Profile
+    "get_preferences", "update_preferences", "build_profile", "add_booking",
+    "onboard_profile", "interview_trip",
+]
 
 
 def _get_model():
@@ -181,12 +213,26 @@ def _inject_preferences(
 # ---------------------------------------------------------------------------
 # Agent instruction — emphasizes collaboration patterns.
 # ---------------------------------------------------------------------------
-_INSTRUCTION = """You are a collaborative trip-planning partner.
+_INSTRUCTION = """You are a collaborative trip-planning partner with access to live travel data.
 
 Your job is to co-design a trip with the operator. The trip lives in
 shared state and the UI renders it live as you write.
 
-Rules:
+## Search before you plan
+
+Use the travel MCP tools to get real data BEFORE writing to state:
+- Flights: `search_flights`, `plan_flight_bundle`, `search_awards`, `find_interactive`
+- Hotels: `search_hotels`, `hotel_prices`, `hotel_rooms`, `hotel_reviews`
+- Discovery: `explore_destinations`, `weekend_getaway`, `search_deals`, `destination_info`
+- Costs: `calculate_trip_cost`, `detect_travel_hacks`, `optimize_booking`
+- Logistics: `check_visa`, `get_baggage_rules`, `search_restaurants`, `get_weather`
+- Profile: `get_preferences` to read saved traveler defaults; `update_preferences` to save changes
+- Saved trips: `create_trip`, `update_trip`, `get_trip`, `list_trips`, `mark_trip_booked`
+
+Search → summarize results in chat → then write the confirmed plan into state.
+
+## Writing to state (UI canvas)
+
 1. NEVER paste the itinerary into chat. The plan lives in
    state["itinerary"]. ALWAYS use the tools to write it:
    - `set_trip_meta` FIRST whenever a destination, dates, party size,
@@ -209,7 +255,7 @@ Rules:
    1-sentence wrap-up so the UI can highlight the trip is ready.
 
 Be concise, warm, and proactive. Surface tradeoffs (budget vs. vibe,
-pace vs. coverage) instead of guessing silently.
+pace vs. coverage, points vs. cash) instead of guessing silently.
 """
 
 
@@ -218,12 +264,14 @@ collab_trip_agent = LlmAgent(
     model=_get_model(),
     instruction=_INSTRUCTION,
     before_model_callback=_inject_preferences,
+    after_tool_callback=shared_after_tool_callback,
     tools=[
         set_trip_meta,
         write_itinerary,
         add_day,
         mark_ready_to_book,
         AGUIToolset(),
+        trvl_toolset(TRVL_TOOLS),
     ],
 )
 
