@@ -1,7 +1,7 @@
 [project]
-name = "flight-agent"
+name = "collab-doc-agent"
 version = "0.1.0"
-description = "Flight search agent powered by fli MCP + Google ADK"
+description = "Collaborative document agent powered by Google ADK + CopilotKit AG-UI"
 requires-python = ">=3.12"
 dependencies = [
   "fastapi",
@@ -12,7 +12,6 @@ dependencies = [
   "google-genai",
   "ag-ui-adk",
   "litellm",
-  "a2a-sdk==0.3.26",
 ]
 
 [project.optional-dependencies]
