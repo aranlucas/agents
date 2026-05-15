@@ -1,133 +1,141 @@
-# CopilotKit <> ADK Starter
+# Trip Studio — CopilotKit × Google ADK
 
-This is a starter template for building AI agents using Google's [ADK](https://google.github.io/adk-docs/) and [CopilotKit](https://copilotkit.ai). It provides a modern Next.js application with an integrated investment analyst agent that can research stocks, analyze market data, and provide investment insights.
+A beautiful real-time trip-planning surface where a human and an AI agent
+share the same itinerary, built on
+[CopilotKit](https://copilotkit.ai) v2 + [Google ADK](https://google.github.io/adk-docs/)
+via the [AG-UI](https://docs.copilotkit.ai/ag-ui) protocol.
+
+Inspired by patterns from the
+[CopilotKit `google-adk` showcase](https://github.com/CopilotKit/CopilotKit/tree/main/showcase/integrations/google-adk),
+this app demonstrates three complementary collaboration primitives in a
+single polished workspace.
+
+## What's collaborative about it
+
+* **Shared itinerary, agent → UI streaming.**
+  The agent calls `write_itinerary(summary, body)`. A
+  `PredictStateMapping` with `stream_tool_call=True` makes the
+  itinerary body stream token-by-token into `state["itinerary"]`, and
+  the trip canvas re-renders day-by-day as the agent types.
+
+* **Shared itinerary, UI → agent.**
+  The operator can edit the destination, headline, or raw markdown
+  directly in the canvas. Each edit updates shared state via
+  `agent.setState`, so the agent sees the changes on its next turn.
+
+* **Traveler brief from UI to agent (per-turn injection).**
+  The operator picks home airport, budget tier, vibe, pace, dietary,
+  and mobility. The Python agent's `before_model_callback` strips any
+  stale block and prepends a fresh `TRAVELER_BRIEF` block to the system
+  instruction every turn, so the model adapts immediately.
+
+* **Human-in-the-loop approval modal.**
+  The agent calls the frontend tool `request_user_approval` (registered
+  via `useFrontendTool`) before booking flights, reserving hotels, or
+  sharing the trip. The UI opens an in-app modal outside the chat
+  surface, waits for Approve / Reject, then resolves the pending tool
+  Promise. The agent gets the decision as the tool result.
+
+## Stack
+
+| Layer | Tech |
+| --- | --- |
+| Frontend | Next.js 16, React 19, Tailwind v4, **`@copilotkit/react-core/v2`** (prebuilt `CopilotSidebar`) |
+| Runtime  | `@copilotkit/runtime/v2` (Next.js route handler at `/api/copilotkit`) |
+| Protocol | AG-UI (HttpAgent) |
+| Agent    | Google ADK `LlmAgent`, Gemini 2.5 Flash (default) or Mistral via LiteLLM |
+
+## Layout
+
+A 2-column main view on desktop — the traveler brief sits in a 320px
+sticky left column, the trip canvas fills the rest, and the prebuilt
+`CopilotSidebar` overlays from the right when the operator opens it.
+
+On mobile the brief column is hidden by default; the **Brief** button
+in the hero toggles it. Chat is reached via the sidebar's built-in
+floating launcher, so the canvas owns the full viewport.
 
 ## Prerequisites
 
-- Node.js 18+
-- Python 3.12+
-- Google Makersuite API Key (for the ADK agent) (see https://makersuite.google.com/app/apikey)
-- Any of the following package managers:
-  - npm (default)
-  - [pnpm](https://pnpm.io/installation)
-  - [yarn](https://classic.yarnpkg.com/lang/en/docs/install/)
-  - [bun](https://bun.sh/)
+* Node.js 18+
+* Python 3.12+
+* Either a Google API key for Gemini, or Mistral (toggle via env)
+* `uv` (the script will use it; install via `pipx install uv` or `brew install uv`)
 
-## Getting Started
-
-1. Install dependencies using your preferred package manager:
+## Getting started
 
 ```bash
-# Using npm (default)
-npm install
-
-# Using pnpm
-pnpm install
-
-# Using yarn
-yarn install
-
-# Using bun
-bun install
-```
-
-2. Install Python dependencies for the ADK agent:
-
-```bash
-# Using npm (default)
-npm run install:agent
-
-# Using pnpm
-pnpm install:agent
-
-# Using yarn
-yarn install:agent
-
-# Using bun
-bun run install:agent
-```
-
-> **Note:** This will automatically setup a `.venv` (virtual environment) inside the `agent` directory.
->
-> To activate the virtual environment manually, you can run:
->
-> ```bash
-> source agent/.venv/bin/activate
-> ```
-
-3. Set up your Google API key:
-
-```bash
-export GOOGLE_API_KEY="your-google-api-key-here"
-```
-
-4. Start the development server:
-
-```bash
-# Using npm (default)
+npm install        # installs node deps and triggers `uv sync` for the agent
+export GOOGLE_API_KEY=...    # or set USE_MISTRAL=1 and MISTRAL_API_KEY=...
 npm run dev
-
-# Using pnpm
-pnpm dev
-
-# Using yarn
-yarn dev
-
-# Using bun
-bun run dev
 ```
 
-This will start both the UI and agent servers concurrently.
+`npm run dev` launches the Next.js UI on `http://localhost:3000` and the
+ADK agent server on `http://localhost:8000` concurrently. The
+`/api/copilotkit` route proxies AG-UI requests through to the agent.
 
-## Available Scripts
+## Project layout
 
-The following scripts can also be run using your preferred package manager:
-
-- `dev` - Starts both UI and agent servers in development mode
-- `dev:debug` - Starts development servers with debug logging enabled
-- `dev:ui` - Starts only the Next.js UI server
-- `dev:agent` - Starts only the ADK agent server
-- `build` - Builds the Next.js application for production
-- `start` - Starts the production server
-- `install:agent` - Installs Python dependencies for the agent
-
-## Documentation
-
-The main UI component is in `src/app/page.tsx`. You can:
-
-- Modify the theme colors and styling
-- Add new frontend actions
-- Customize the CopilotKit sidebar appearance
-
-## 📚 Documentation
-
-- [ADK Documentation](https://google.github.io/adk-docs/) - Learn more about the ADK and its features
-- [CopilotKit Documentation](https://docs.copilotkit.ai) - Explore CopilotKit's capabilities
-- [Next.js Documentation](https://nextjs.org/docs) - Learn about Next.js features and API
-
-## Contributing
-
-Feel free to submit issues and enhancement requests! This starter is designed to be easily extensible.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Troubleshooting
-
-### Agent Connection Issues
-
-If you see "I'm having trouble connecting to my tools", make sure:
-
-1. The ADK agent is running on port 8000
-2. Your Google API key is set correctly
-3. Both servers started successfully
-
-### Python Dependencies
-
-If you encounter Python import errors:
-
-```bash
-cd agent
-pip install -r requirements.txt
 ```
+agent/
+  main.py             # ADK LlmAgent + FastAPI mount + traveler-brief injection
+src/
+  app/
+    page.tsx          # CollabStudio — wires preferences, canvas, chat, HITL
+    layout.tsx        # Root layout with brand fonts
+    api/copilotkit/   # AG-UI runtime route (v2)
+  components/
+    document-canvas.tsx     # Itinerary canvas: trip header + day cards
+    preferences-panel.tsx   # Traveler brief: UI → agent shared-state form
+    approval-dialog.tsx     # HITL modal opened by request_user_approval
+    hero-header.tsx         # Status header + mobile brief toggle
+    providers.tsx           # <CopilotKit> root (v2)
+```
+
+## Itinerary format
+
+The agent writes itineraries as markdown with strict structure so the
+canvas can render rich day cards:
+
+```
+## Day 1: Arrival
+- 14:00 — Land at HND, train to Shinjuku
+- 17:00 — Check in, walk the neighborhood
+- 19:30 — Tonkatsu at Maisen
+
+## Day 2: Old town
+- 09:00 — Asakusa + Senso-ji at opening
+- 12:00 — Ramen on Kappabashi
+- 15:00 — Tea + bookshop in Yanaka
+```
+
+The UI parses `## Day N: <theme>` and `- HH:MM — activity` lines and
+falls back gracefully on free-form bullets.
+
+## Try it
+
+Once the dev server is up:
+
+1. Open the app and fill the **Traveler brief** on the left
+   (home airport, budget tier, vibe, pace, interests).
+2. Use one of the suggestion pills, or ask the agent:
+   *"Plan a 3-day weekend in Tokyo focused on food, late November."*
+3. Watch the trip header and day cards stream in live.
+4. Tweak the destination or a day directly in the canvas — the agent
+   sees your edits on the next turn.
+5. Ask: *"If the itinerary looks good, propose locking it in and ask
+   for my approval."* The approval modal appears.
+
+## Scripts
+
+* `dev` — UI + agent together
+* `dev:ui` — Next.js only (`next dev --turbopack`)
+* `dev:agent` — ADK agent server only (`uv run main.py`)
+* `build` — production Next.js build
+* `install:agent` — sets up the Python venv via `uv sync`
+
+## Acknowledgements
+
+The shared-state, streaming, beautiful-chat, and HITL patterns are direct
+adaptations of the CopilotKit
+[`google-adk` showcase agents](https://github.com/CopilotKit/CopilotKit/tree/main/showcase/integrations/google-adk/src/agents).

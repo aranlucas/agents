@@ -1,90 +1,273 @@
-"""Weekend trip travel planner using Google ADK with MCP tools."""
+"""Collab Studio — Trip Planning agent backend.
+
+A single ADK agent that co-plans a trip with the operator:
+
+  * streams the day-by-day itinerary into shared state token-by-token
+    (PredictStateMapping → live UI rendering),
+  * reads operator preferences (home airport, budget tier, vibe, pace,
+    dietary, mobility) and respects them via a before-model callback
+    that injects a TRAVELER_BRIEF block into the system instruction
+    every turn,
+  * requests human approval before "locking" the trip via a frontend
+    tool (request_user_approval) registered with useFrontendTool.
+
+Backed by Gemini via the ADK (Mistral fallback supported). The FastAPI
+app mounts the agent at "/" via ag-ui-adk, plus a /health endpoint for
+the dev script.
+"""
 
 from __future__ import annotations
 
-from datetime import date
-from dotenv import load_dotenv
 import os
+from typing import Optional
 
-from ag_ui_adk import ADKAgent, add_adk_fastapi_endpoint
+from dotenv import load_dotenv
 from fastapi import FastAPI
-from google.adk.agents import LlmAgent
-from google.adk.models.lite_llm import LiteLlm
+from fastapi.middleware.cors import CORSMiddleware
 
-from agents import (
-    profile_agent,
-    discovery_agent,
-    transport_agent,
-    lodging_agent,
-    viability_agent,
-    itinerary_agent,
-)
-from utils import shared_after_tool_callback
+from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
+from ag_ui_adk.config import PredictStateMapping
+
+from google.adk.agents import LlmAgent
+from google.adk.agents.callback_context import CallbackContext
+from google.adk.models import LlmRequest
+from google.adk.models.lite_llm import LiteLlm
+from google.adk.tools import ToolContext
+from google.genai import types as genai_types
 
 load_dotenv()
 
 
-def get_current_date() -> str:
-    """Returns today's date as YYYY-MM-DD. Call this before any date calculation."""
-    return date.today().isoformat()
+# ---------------------------------------------------------------------------
+# Model selection — Gemini by default, Mistral via LiteLLM if requested.
+# ---------------------------------------------------------------------------
+def _get_model():
+    if os.getenv("USE_MISTRAL") == "1" and os.getenv("MISTRAL_API_KEY"):
+        return LiteLlm(model="mistral/mistral-medium-latest")
+    return os.getenv("ADK_MODEL", "gemini-2.5-flash")
 
 
-ROOT_INSTRUCTION = """You are a travel concierge for weekend trips from Seattle, WA.
-Call get_current_date before any date reasoning.
+# ---------------------------------------------------------------------------
+# Tools — all written against shared state. The UI re-renders on every
+# state delta, and `write_itinerary.body` is streamed token-by-token via
+# COLLAB_PREDICT_STATE below.
+# ---------------------------------------------------------------------------
+def set_trip_meta(
+    tool_context: ToolContext,
+    destination: str,
+    start_date: str,
+    end_date: str,
+    travelers: int = 1,
+    budget_usd: int = 0,
+    headline: str = "",
+) -> dict:
+    """Set the high-level trip card (destination, dates, party size, budget).
 
-Route requests to the correct specialist using these rules:
+    Call this FIRST whenever the operator names a new trip. Dates are
+    ISO YYYY-MM-DD strings. `headline` is a one-line vibe summary the UI
+    pins under the destination ("Snow + sushi + onsen", etc.).
+    """
+    tool_context.state["destination"] = destination
+    tool_context.state["start_date"] = start_date
+    tool_context.state["end_date"] = end_date
+    tool_context.state["travelers"] = travelers
+    tool_context.state["budget_usd"] = budget_usd
+    tool_context.state["headline"] = headline
+    tool_context.state["status"] = "drafting"
+    return {"ok": True}
 
-— discovery: open-ended, exploratory, or destination-unknown requests. Route here even when the
-  word "flights" appears if origin + destination + date are not all specified. Examples:
-  "show flights near me", "where should I go", "cheap weekend trips", "what can I do for $500",
-  "show me deals", "where can I fly from Seattle".
 
-— transport: specific, directed searches where origin, destination, AND date are all known.
-  Examples: "flights from SEA to YVR on June 5", "compare airlines for my Portland trip",
-  "award availability on Alaska SEA-LAX".
+def write_itinerary(
+    tool_context: ToolContext, summary: str, body: str
+) -> dict:
+    """Replace the full multi-day itinerary in shared state.
 
-— lodging: any accommodation search, comparison, pricing, or availability watch.
+    `summary` is a 1–2 sentence pitch shown above the day list. `body` is
+    the structured plan in markdown — use `## Day 1: <theme>` headings
+    followed by `- HH:MM — activity` bullets. Token-streams into the UI.
+    """
+    tool_context.state["itinerary"] = body
+    tool_context.state["summary"] = summary
+    tool_context.state["status"] = "drafting"
+    return {"ok": True, "length": len(body)}
 
-— viability: cost estimation, visa checks, points value, date optimization, "is this trip
-  doable", booking optimization.
 
-— itinerary: save, update, retrieve, or export trips; price watches. Only after a plan exists.
+def add_day(
+    tool_context: ToolContext, day_number: int, theme: str, plan: str
+) -> dict:
+    """Append (or replace) a single day in the existing itinerary.
 
-— profile: only when the user explicitly asks about preferences, or when a specialist needs a
-  specific missing default (home airport, budget, loyalty tier) that would materially change its
-  answer. Never call profile as a default first step.
+    `plan` should be a list of `- HH:MM — activity` bullets. Use this for
+    incremental edits when the operator asks to add or rework one day
+    rather than the whole trip.
+    """
+    current = tool_context.state.get("itinerary", "") or ""
+    sep = "\n\n" if current.strip() else ""
+    block = f"{sep}## Day {day_number}: {theme}\n\n{plan}"
+    tool_context.state["itinerary"] = current + block
+    tool_context.state["status"] = "drafting"
+    return {"ok": True}
 
-Summarize results clearly. Ask only for missing trip constraints needed to proceed.
+
+def mark_ready_to_book(tool_context: ToolContext, summary: str) -> dict:
+    """Flag the trip as ready for the operator to lock in / book."""
+    tool_context.state["status"] = "ready_to_book"
+    tool_context.state["review_summary"] = summary
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Preferences injection — UI writes state["preferences"]; we read it back
+# each turn and prepend a fresh TRAVELER_BRIEF block to the system
+# instruction so the model adapts immediately.
+# ---------------------------------------------------------------------------
+_PREFS_MARK_START = "<<<TRAVELER_BRIEF>>>"
+_PREFS_MARK_END = "<<<END_TRAVELER_BRIEF>>>"
+
+
+def _build_prefs_block(prefs: dict) -> Optional[str]:
+    if not prefs or not isinstance(prefs, dict):
+        return None
+
+    lines = [_PREFS_MARK_START]
+    if name := prefs.get("travelerName"):
+        lines.append(f"- Traveler: {name}")
+    if airport := prefs.get("homeAirport"):
+        lines.append(f"- Home airport: {airport}")
+    if budget := prefs.get("budgetTier"):
+        lines.append(f"- Budget tier: {budget}")
+    if vibe := prefs.get("vibe"):
+        lines.append(f"- Vibe: {vibe}")
+    if pace := prefs.get("pace"):
+        lines.append(f"- Pace: {pace}")
+    if dietary := prefs.get("dietary"):
+        lines.append(f"- Dietary: {dietary}")
+    if mobility := prefs.get("mobility"):
+        lines.append(f"- Mobility: {mobility}")
+    if interests := prefs.get("interests"):
+        if isinstance(interests, list) and interests:
+            lines.append(f"- Interests: {', '.join(interests)}")
+        elif isinstance(interests, str) and interests.strip():
+            lines.append(f"- Interests: {interests}")
+    lines.append(_PREFS_MARK_END)
+
+    if len(lines) <= 2:
+        return None
+    return "\n".join(lines)
+
+
+def _strip_old_prefs(text: str) -> str:
+    if _PREFS_MARK_START not in text:
+        return text
+    before, _, rest = text.partition(_PREFS_MARK_START)
+    _, _, after = rest.partition(_PREFS_MARK_END)
+    return (before.rstrip() + "\n\n" + after.lstrip()).strip()
+
+
+def _inject_preferences(
+    callback_context: CallbackContext, llm_request: LlmRequest
+) -> None:
+    prefs = callback_context.state.to_dict().get("preferences") or {}
+    block = _build_prefs_block(prefs)
+
+    cfg = llm_request.config or genai_types.GenerateContentConfig()
+    existing = cfg.system_instruction
+    base = ""
+    if isinstance(existing, str):
+        base = existing
+    elif isinstance(existing, genai_types.Content) and existing.parts:
+        base = "\n".join(p.text or "" for p in existing.parts)
+
+    base = _strip_old_prefs(base)
+    new_instruction = f"{block}\n\n{base}" if block else base
+    cfg.system_instruction = new_instruction
+    llm_request.config = cfg
+
+
+# ---------------------------------------------------------------------------
+# Agent instruction — emphasizes collaboration patterns.
+# ---------------------------------------------------------------------------
+_INSTRUCTION = """You are a collaborative trip-planning partner.
+
+Your job is to co-design a trip with the operator. The trip lives in
+shared state and the UI renders it live as you write.
+
+Rules:
+1. NEVER paste the itinerary into chat. The plan lives in
+   state["itinerary"]. ALWAYS use the tools to write it:
+   - `set_trip_meta` FIRST whenever a destination, dates, party size,
+     or budget changes,
+   - `write_itinerary` to (re)draft the full multi-day plan,
+   - `add_day` for incremental edits to a single day.
+2. Day headings MUST follow the format `## Day N: <theme>` and each
+   activity MUST be a bullet `- HH:MM — activity` (24h time, em-dash).
+   The UI parses this — drift breaks rendering.
+3. Respect the TRAVELER_BRIEF when present. Budget tier, vibe, pace,
+   dietary, and mobility all materially change recommendations.
+4. After each tool call, reply with a SHORT (1–2 sentence) summary of
+   what changed and propose one concrete next move.
+5. Before doing anything that LOCKS IN the trip — booking flights,
+   reserving hotels, sharing the plan, or charging the operator — call
+   the frontend tool `request_user_approval` with a clear action +
+   reason and wait for the operator's decision. Only proceed if
+   approved.
+6. When the draft looks complete, call `mark_ready_to_book` with a
+   1-sentence wrap-up so the UI can highlight the trip is ready.
+
+Be concise, warm, and proactive. Surface tradeoffs (budget vs. vibe,
+pace vs. coverage) instead of guessing silently.
 """
 
 
-travel_concierge_agent = LlmAgent(
-    name="travel_concierge_agent",
-    model=LiteLlm(model="mistral/mistral-medium-latest"),
-    instruction=ROOT_INSTRUCTION,
-    after_tool_callback=shared_after_tool_callback,
+collab_trip_agent = LlmAgent(
+    name="collab_trip_agent",
+    model=_get_model(),
+    instruction=_INSTRUCTION,
+    before_model_callback=_inject_preferences,
     tools=[
-        get_current_date,
-    ],
-    sub_agents=[
-        profile_agent,
-        discovery_agent,
-        transport_agent,
-        lodging_agent,
-        viability_agent,
-        itinerary_agent,
+        set_trip_meta,
+        write_itinerary,
+        add_day,
+        mark_ready_to_book,
+        AGUIToolset(),
     ],
 )
 
-adk_flight_agent = ADKAgent(
-    adk_agent=travel_concierge_agent,
+
+# Token-level streaming for the itinerary body — the UI re-renders as
+# each token arrives, mirroring the shared-state-streaming showcase.
+COLLAB_PREDICT_STATE = [
+    PredictStateMapping(
+        state_key="itinerary",
+        tool="write_itinerary",
+        tool_argument="body",
+        emit_confirm_tool=False,
+        stream_tool_call=True,
+    ),
+]
+
+
+# ---------------------------------------------------------------------------
+# FastAPI wiring.
+# ---------------------------------------------------------------------------
+adk_collab_agent = ADKAgent(
+    adk_agent=collab_trip_agent,
     user_id="demo_user",
     session_timeout_seconds=3600,
     use_in_memory_services=True,
+    predict_state=COLLAB_PREDICT_STATE,
 )
 
-app = FastAPI(title="Weekend Trip Planner")
-add_adk_fastapi_endpoint(app, adk_flight_agent, path="/")
+app = FastAPI(title="Collab Studio · Trip Planning")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+add_adk_fastapi_endpoint(app, adk_collab_agent, path="/")
 
 
 @app.get("/health")
@@ -95,11 +278,5 @@ async def health():
 if __name__ == "__main__":
     import uvicorn
 
-    if not os.getenv("MISTRAL_API_KEY"):
-        print("⚠️  Warning: MISTRAL_API_KEY environment variable not set!")
-        print("   Set it with: export MISTRAL_API_KEY='your-key-here'")
-        print("   Get a key from: https://console.mistral.ai/")
-        print()
-
-    port = int(os.getenv("PORT", 8000))
+    port = int(os.getenv("PORT", "8000"))
     uvicorn.run(app, host="0.0.0.0", port=port)

@@ -1,36 +1,49 @@
 @import "tailwindcss";
+@import "@copilotkit/react-core/v2/styles.css";
 
 :root {
-  --bg: #07080a;
-  --bg-card: #0d0f12;
-  --bg-card-hover: #131619;
-  --bg-card-footer: #0a0c0e;
-  --amber: #d4a017;
-  --amber-dim: #8a6610;
-  --amber-bright: #f0b820;
-  --blue: #7ec8e3;
-  --cream: #e8e4d8;
-  --cream-muted: #9a9080;
-  --green: #5fb88a;
-  --red: #e86858;
-  --border: #1c1e24;
-  --border-dim: #14161a;
+  --bg: #fafafd;
+  --bg-soft: #f4f3f9;
+  --surface: #ffffff;
+  --surface-soft: #fbfaff;
+  --ink: #0b0c14;
+  --ink-soft: #4b4d5b;
+  --ink-mute: #888a9b;
+  --border: #e7e6f0;
+  --border-soft: #f0eff7;
+  --accent: #6366f1;
+  --accent-soft: #eef0ff;
+  --accent-strong: #4f46e5;
+  --success: #10b981;
+  --success-soft: #ecfdf5;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+
+  --copilot-kit-primary-color: var(--accent);
+  --copilot-kit-contrast-color: #ffffff;
+  --copilot-kit-background-color: var(--surface);
+  --copilot-kit-secondary-color: var(--surface-soft);
+  --copilot-kit-secondary-contrast-color: var(--ink);
+  --copilot-kit-separator-color: var(--border);
+  --copilot-kit-muted-color: var(--ink-mute);
 }
 
-/* Thin scrollbars for canvas panels */
-::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 2px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--amber-dim);
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #07080d;
+    --bg-soft: #0c0d14;
+    --surface: #11121b;
+    --surface-soft: #161726;
+    --ink: #f4f4fb;
+    --ink-soft: #c4c4d3;
+    --ink-mute: #7a7c8d;
+    --border: #232436;
+    --border-soft: #1a1b29;
+    --accent: #818cf8;
+    --accent-soft: #1f1f3a;
+    --accent-strong: #a5b4fc;
+    --success-soft: #062c22;
+  }
 }
 
 * {
@@ -41,15 +54,70 @@ html,
 body {
   height: 100%;
   background: var(--bg);
-  color: var(--cream);
+  color: var(--ink);
 }
 
 body {
-  font-family: "Space Mono", monospace;
-  background-color: var(--bg);
-  background-image:
-    linear-gradient(rgba(212, 160, 23, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(212, 160, 23, 0.03) 1px, transparent 1px);
-  background-size: 40px 40px;
-  background-position: -1px -1px;
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background:
+    radial-gradient(at 20% 10%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 55%),
+    radial-gradient(at 85% 75%, color-mix(in srgb, #ec4899 10%, transparent), transparent 60%),
+    var(--bg);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-mute);
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--accent) 18%, transparent) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 60% { opacity: 1; }
+  61%, 100% { opacity: 0; }
+}
+.caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  background: var(--accent);
+  vertical-align: text-bottom;
+  animation: blink 1s steps(2) infinite;
+}
+
+.glass {
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  backdrop-filter: saturate(160%) blur(14px);
+  -webkit-backdrop-filter: saturate(160%) blur(14px);
+}
+
+.copilotKitChat,
+.copilotKitChatContainer {
+  height: 100%;
+  font-family: inherit;
 }
