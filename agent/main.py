@@ -18,6 +18,7 @@ via ag-ui-adk, plus a /health endpoint for the dev script.
 from __future__ import annotations
 
 import os
+import time
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -33,10 +34,53 @@ from google.adk.models import LlmRequest
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import ToolContext
 from google.genai import types as genai_types
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.google_genai import GoogleGenAiSdkInstrumentor
+from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.semconv.resource import ResourceAttributes
 
 from utils import trvl_toolset, shared_after_tool_callback
 
 load_dotenv()
+
+
+def _setup_otel() -> None:
+    """Configure OTLP tracing when Railway/OpenTelemetry env vars are present."""
+    endpoint = (
+        os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
+        or os.getenv("TRVL_OTEL_ENDPOINT")
+        or os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+    )
+    if not endpoint:
+        return
+
+    if not endpoint.endswith("/v1/traces"):
+        endpoint = endpoint.rstrip("/") + "/v1/traces"
+
+    service_name = os.getenv("OTEL_SERVICE_NAME", "doctor-adk-agent")
+    resource = Resource.create(
+        {
+            ResourceAttributes.SERVICE_NAME: service_name,
+            ResourceAttributes.SERVICE_VERSION: os.getenv("RAILWAY_GIT_COMMIT_SHA", "dev"),
+            "deployment.environment": os.getenv("RAILWAY_ENVIRONMENT_NAME", "local"),
+            "railway.project.id": os.getenv("RAILWAY_PROJECT_ID", ""),
+            "railway.service.id": os.getenv("RAILWAY_SERVICE_ID", ""),
+        }
+    )
+    provider = TracerProvider(resource=resource)
+    provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=endpoint)))
+    trace.set_tracer_provider(provider)
+
+    GoogleGenAiSdkInstrumentor().instrument()
+    SQLite3Instrumentor().instrument()
+
+
+_setup_otel()
+tracer = trace.get_tracer("doctor-adk-agent")
 
 
 # ---------------------------------------------------------------------------
@@ -263,6 +307,32 @@ adk_collab_agent = ADKAgent(
 )
 
 app = FastAPI(title="Collab Studio · Trip Planning")
+
+
+@app.middleware("http")
+async def trace_requests(request, call_next):
+    if request.url.path == "/health":
+        return await call_next(request)
+
+    start = time.perf_counter()
+    with tracer.start_as_current_span(
+        f"{request.method} {request.url.path}",
+        attributes={
+            "http.request.method": request.method,
+            "url.path": request.url.path,
+            "url.scheme": request.url.scheme,
+        },
+    ) as span:
+        try:
+            response = await call_next(request)
+        except Exception as exc:
+            span.record_exception(exc)
+            span.set_attribute("error.type", type(exc).__name__)
+            raise
+
+        span.set_attribute("http.response.status_code", response.status_code)
+        span.set_attribute("duration_ms", round((time.perf_counter() - start) * 1000, 2))
+        return response
 
 app.add_middleware(
     CORSMiddleware,
