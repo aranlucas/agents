@@ -47,9 +47,11 @@ next-env.d.ts
 
 
 # python
-agent/venv/
-agent/__pycache__/
-agent/.venv/
+.venv/
+**/.venv/
 __pycache__/
+**/__pycache__/
 *.pyc
+*.egg-info/
+**/*.egg-info/
 .claude/worktrees
