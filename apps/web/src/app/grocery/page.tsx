@@ -2,13 +2,14 @@
 
 import React from "react";
 import {
+  CopilotKit,
   CopilotSidebar,
   useAgent,
   UseAgentUpdate,
 } from "@copilotkit/react-core/v2";
 import { GroceryState } from "@agents/types";
 
-export default function GroceryPage() {
+function GroceryPageInner() {
   const { agent } = useAgent({
     agentId: "grocery",
     updates: [UseAgentUpdate.OnStateChanged, UseAgentUpdate.OnRunStatusChanged],
@@ -66,5 +67,18 @@ export default function GroceryPage() {
         }}
       />
     </main>
+  );
+}
+
+export default function GroceryPage() {
+  return (
+    <CopilotKit
+      runtimeUrl="/api/copilotkit"
+      agent="grocery"
+      useSingleEndpoint={false}
+      enableInspector={process.env.NODE_ENV !== "production"}
+    >
+      <GroceryPageInner />
+    </CopilotKit>
   );
 }

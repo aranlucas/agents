@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  CopilotKit,
   CopilotSidebar,
   useAgent,
   UseAgentUpdate,
@@ -49,7 +50,16 @@ function asStatus(s: unknown): DocStatus {
 }
 
 export default function Page() {
-  return <TripStudio />;
+  return (
+    <CopilotKit
+      runtimeUrl="/api/copilotkit"
+      agent="travel"
+      useSingleEndpoint={false}
+      enableInspector={process.env.NODE_ENV !== "production"}
+    >
+      <TripStudio />
+    </CopilotKit>
+  );
 }
 
 function TripStudio() {
