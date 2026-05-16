@@ -2,6 +2,7 @@
 
 import React from "react";
 
+export type TransportMode = "flight" | "roadtrip";
 export type BudgetTier = "shoestring" | "comfort" | "premium" | "luxury";
 export type Vibe =
   | "relaxed"
@@ -15,22 +16,20 @@ export type Pace = "slow" | "balanced" | "packed";
 export interface Preferences {
   travelerName: string;
   homeAirport: string;
+  transportMode: TransportMode;
   budgetTier: BudgetTier;
   vibe: Vibe;
   pace: Pace;
-  dietary: string;
-  mobility: string;
   interests: string[];
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
   travelerName: "",
   homeAirport: "",
+  transportMode: "flight",
   budgetTier: "comfort",
   vibe: "foodie",
   pace: "balanced",
-  dietary: "",
-  mobility: "",
   interests: [],
 };
 
@@ -66,6 +65,25 @@ const INTEREST_OPTIONS = [
   "Beaches",
   "Music",
   "Architecture",
+  "Nightlife",
+  "Wine & Spirits",
+  "Street Food",
+  "Fine Dining",
+  "Wildlife",
+  "Snorkeling",
+  "Surfing",
+  "Skiing",
+  "Yoga & Wellness",
+  "Shopping",
+  "Local Crafts",
+  "Temples & Shrines",
+  "Street Art",
+  "Live Shows",
+  "Food Tours",
+  "Cycling",
+  "Scenic Drives",
+  "Camping",
+  "Festivals",
 ];
 
 interface Props {
@@ -128,6 +146,33 @@ export function PreferencesPanel({ value, onChange }: Props) {
             className="w-full px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--ink)] placeholder-[var(--ink-mute)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent font-mono uppercase"
           />
         </div>
+      </div>
+
+      <label className="block text-xs font-medium text-[var(--ink-soft)] mb-2">
+        Transport mode
+      </label>
+      <div className="grid grid-cols-2 gap-1.5 mb-4">
+        {([
+          { value: "flight" as TransportMode, label: "Flight", icon: "✈️" },
+          { value: "roadtrip" as TransportMode, label: "Road trip", icon: "🚗" },
+        ]).map((opt) => {
+          const active = value.transportMode === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => set("transportMode", opt.value)}
+              className={`px-2 py-2 text-xs rounded-lg border transition flex items-center gap-2 justify-center ${
+                active
+                  ? "bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm"
+                  : "bg-[var(--surface-soft)] text-[var(--ink-soft)] border-[var(--border)] hover:border-[var(--accent)]"
+              }`}
+            >
+              <span className="text-sm">{opt.icon}</span>
+              <span className="font-medium">{opt.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       <label className="block text-xs font-medium text-[var(--ink-soft)] mb-2">
@@ -234,39 +279,6 @@ export function PreferencesPanel({ value, onChange }: Props) {
             </button>
           );
         })}
-      </div>
-
-      <div className="grid grid-cols-1 gap-2">
-        <div>
-          <label className="block text-xs font-medium text-[var(--ink-soft)] mb-1">
-            Dietary{" "}
-            <span className="text-[var(--ink-mute)] font-normal">
-              (optional)
-            </span>
-          </label>
-          <input
-            type="text"
-            value={value.dietary}
-            onChange={(e) => set("dietary", e.target.value)}
-            placeholder="e.g. vegetarian, gluten-free"
-            className="w-full px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--ink)] placeholder-[var(--ink-mute)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-[var(--ink-soft)] mb-1">
-            Mobility / energy{" "}
-            <span className="text-[var(--ink-mute)] font-normal">
-              (optional)
-            </span>
-          </label>
-          <input
-            type="text"
-            value={value.mobility}
-            onChange={(e) => set("mobility", e.target.value)}
-            placeholder="e.g. avoid stairs, traveling with kids"
-            className="w-full px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--ink)] placeholder-[var(--ink-mute)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
-          />
-        </div>
       </div>
     </div>
   );

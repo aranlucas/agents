@@ -97,19 +97,25 @@ def set_trip_meta(
     tool_context.state["budget_usd"] = budget_usd
     tool_context.state["headline"] = headline
     tool_context.state["status"] = "drafting"
+    tool_context.state.setdefault("flights", "")
     return {"ok": True}
 
 
-def write_itinerary(tool_context: ToolContext, summary: str, body: str) -> dict:
+def write_itinerary(tool_context: ToolContext, summary: str, body: str, flights: str = "") -> dict:
     """Replace the full multi-day itinerary in shared state.
 
     `summary` is a 1-2 sentence pitch shown above the day list. `body` is
     the structured plan in markdown — use `## Day 1: <theme>` headings
     followed by `- HH:MM — activity` bullets. Token-streams into the UI.
+
+    `flights` is an optional markdown block with flight details (airline,
+    flight numbers, times, prices) that will be rendered in the canvas.
     """
     tool_context.state["itinerary"] = body
     tool_context.state["summary"] = summary
     tool_context.state["status"] = "drafting"
+    if flights:
+        tool_context.state["flights"] = flights
     return {"ok": True, "length": len(body)}
 
 
@@ -165,11 +171,10 @@ Current month: {today.strftime("%B %Y")}
 TRAVELER_BRIEF
 - Traveler: {s.get("travelerName") or ""}
 - Home airport: {s.get("homeAirport") or ""}
+- Transport mode: {s.get("transportMode") or "flight"}
 - Budget tier: {s.get("budgetTier") or ""}
 - Vibe: {s.get("vibe") or ""}
 - Pace: {s.get("pace") or ""}
-- Dietary: {s.get("dietary") or ""}
-- Mobility: {s.get("mobility") or ""}
 - Interests: {interests}"""
 
     return await instructions_utils.inject_session_state(
@@ -205,13 +210,16 @@ Search → summarize results in chat → then write the confirmed plan into stat
    state["itinerary"]. ALWAYS use the tools to write it:
    - `set_trip_meta` FIRST whenever a destination, dates, party size,
      or budget changes,
-   - `write_itinerary` to (re)draft the full multi-day plan,
+   - `write_itinerary` to (re)draft the full multi-day plan. Include
+     a `flights` markdown block with airline, flight numbers, times,
+     and prices when transport mode is "flight".
    - `add_day` for incremental edits to a single day.
 2. Day headings MUST follow the format `## Day N: <theme>` and each
    activity MUST be a bullet `- HH:MM — activity` (24h time, em-dash).
    The UI parses this — drift breaks rendering.
-3. Respect the TRAVELER_BRIEF when present. Budget tier, vibe, pace,
-   dietary, and mobility all materially change recommendations.
+3. Respect the TRAVELER_BRIEF when present. Transport mode (flight vs
+   road trip), budget tier, vibe, pace, dietary, and mobility all
+   materially change recommendations.
 4. After each tool call, reply with a SHORT (1–2 sentence) summary of
    what changed and propose one concrete next move.
 5. Before doing anything that LOCKS IN the trip — booking flights,
@@ -251,6 +259,13 @@ COLLAB_PREDICT_STATE = [
         state_key="itinerary",
         tool="write_itinerary",
         tool_argument="body",
+        emit_confirm_tool=False,
+        stream_tool_call=True,
+    ),
+    PredictStateMapping(
+        state_key="flights",
+        tool="write_itinerary",
+        tool_argument="flights",
         emit_confirm_tool=False,
         stream_tool_call=True,
     ),

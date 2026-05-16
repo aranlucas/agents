@@ -32,6 +32,7 @@ type AgentState = {
   headline?: string;
   summary?: string;
   itinerary?: string;
+  flights?: string;
   status?: DocStatus;
   review_summary?: string;
 } & Partial<Preferences>
@@ -77,6 +78,7 @@ function TripStudio() {
   const headline = agentState.headline ?? "";
   const summary = agentState.summary ?? "";
   const itinerary = agentState.itinerary ?? "";
+  const flights = agentState.flights ?? "";
   const status = asStatus(agentState.status);
   const reviewSummary = agentState.review_summary;
   const isRunning = Boolean(agent?.isRunning);
@@ -266,6 +268,7 @@ function TripStudio() {
       headline: "",
       summary: "",
       itinerary: "",
+      flights: "",
       status: "idle",
       review_summary: undefined,
     });
@@ -308,6 +311,7 @@ function TripStudio() {
             headline={headline}
             summary={summary}
             itinerary={itinerary}
+            flights={flights}
             status={status}
             isStreaming={isRunning}
             reviewSummary={reviewSummary}
