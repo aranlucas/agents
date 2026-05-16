@@ -38,40 +38,6 @@ from utils import trvl_toolset, shared_after_tool_callback
 
 load_dotenv()
 
-# All travel MCP tools surfaced to the agent.
-TRVL_TOOLS = [
-    # Discovery & destination research
-    "explore_destinations", "weekend_getaway", "suggest_dates", "search_dates",
-    "search_deals", "destination_info", "travel_guide", "get_weather",
-    "local_events", "nearby_places", "plan_trip",
-    # Flights & transport
-    "search_flights", "plan_flight_bundle", "find_interactive", "search_route",
-    "search_ground", "search_airport_transfers", "get_baggage_rules",
-    "search_lounges", "search_hidden_city", "search_awards",
-    # Lodging
-    "search_hotels", "search_hotel_by_name", "hotel_rooms", "hotel_prices",
-    "hotel_reviews", "detect_accommodation_hacks", "watch_room_availability",
-    # Viability & optimization
-    "assess_trip", "calculate_trip_cost", "check_visa", "calculate_points_value",
-    "detect_travel_hacks", "optimize_booking", "optimize_trip_dates",
-    "find_trip_window", "optimize_multi_city", "search_restaurants",
-    # Trip persistence & watches
-    "create_trip", "list_trips", "get_trip", "update_trip", "mark_trip_booked",
-    "export_ics", "watch_price", "watch_opportunities", "list_opportunity_watches",
-    # Loyalty & awards
-    "award_holds", "chat_awards", "configure_provider", "list_providers",
-    "list_sweet_spots", "partner_award_paths", "provider_health",
-    "remove_provider", "status_match_policy", "stopover_rules",
-    "suggest_providers", "transfer_bonuses", "transfer_path",
-    # Profile
-    "get_preferences", "update_preferences", "build_profile", "add_booking",
-    "onboard_profile", "interview_trip",
-]
-
-
-def _get_model():
-    return LiteLlm(model="mistral/mistral-medium-latest")
-
 
 # ---------------------------------------------------------------------------
 # Tools — all written against shared state. The UI re-renders on every
@@ -103,12 +69,10 @@ def set_trip_meta(
     return {"ok": True}
 
 
-def write_itinerary(
-    tool_context: ToolContext, summary: str, body: str
-) -> dict:
+def write_itinerary(tool_context: ToolContext, summary: str, body: str) -> dict:
     """Replace the full multi-day itinerary in shared state.
 
-    `summary` is a 1–2 sentence pitch shown above the day list. `body` is
+    `summary` is a 1-2 sentence pitch shown above the day list. `body` is
     the structured plan in markdown — use `## Day 1: <theme>` headings
     followed by `- HH:MM — activity` bullets. Token-streams into the UI.
     """
@@ -118,9 +82,7 @@ def write_itinerary(
     return {"ok": True, "length": len(body)}
 
 
-def add_day(
-    tool_context: ToolContext, day_number: int, theme: str, plan: str
-) -> dict:
+def add_day(tool_context: ToolContext, day_number: int, theme: str, plan: str) -> dict:
     """Append (or replace) a single day in the existing itinerary.
 
     `plan` should be a list of `- HH:MM — activity` bullets. Use this for
@@ -261,7 +223,7 @@ pace vs. coverage, points vs. cash) instead of guessing silently.
 
 collab_trip_agent = LlmAgent(
     name="collab_trip_agent",
-    model=_get_model(),
+    model=LiteLlm(model="mistral/mistral-medium-latest"),
     instruction=_INSTRUCTION,
     before_model_callback=_inject_preferences,
     after_tool_callback=shared_after_tool_callback,
@@ -271,7 +233,7 @@ collab_trip_agent = LlmAgent(
         add_day,
         mark_ready_to_book,
         AGUIToolset(),
-        trvl_toolset(TRVL_TOOLS),
+        trvl_toolset(),
     ],
 )
 
