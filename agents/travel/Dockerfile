@@ -8,7 +8,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/
 
 WORKDIR /app
 
-COPY agent/ ./
+COPY . ./
 
 RUN uv pip install --system -e .
 
