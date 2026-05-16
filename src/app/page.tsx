@@ -23,7 +23,7 @@ import {
   ApprovalRequest,
 } from "@/components/approval-dialog";
 
-interface AgentState {
+type AgentState = {
   destination?: string;
   start_date?: string;
   end_date?: string;
