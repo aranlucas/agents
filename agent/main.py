@@ -55,7 +55,7 @@ def _setup_otel() -> None:
 
     resource = Resource.create(
         {
-            ResourceAttributes.SERVICE_NAME: os.getenv("OTEL_SERVICE_NAME", "doctor-adk-agent"),
+            ResourceAttributes.SERVICE_NAME: os.getenv("OTEL_SERVICE_NAME", "agents-agent"),
             ResourceAttributes.SERVICE_VERSION: os.getenv("RAILWAY_GIT_COMMIT_SHA", "dev"),
             "deployment.environment": os.getenv("RAILWAY_ENVIRONMENT_NAME", "local"),
             "railway.project.id": os.getenv("RAILWAY_PROJECT_ID", ""),
@@ -67,7 +67,7 @@ def _setup_otel() -> None:
 
 
 _setup_otel()
-tracer = trace.get_tracer("doctor-adk-agent")
+tracer = trace.get_tracer("agents-agent")
 
 
 # ---------------------------------------------------------------------------

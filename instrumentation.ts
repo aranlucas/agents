@@ -6,7 +6,7 @@ export function register() {
   if (!endpoint) return;
 
   registerOTel({
-    serviceName: process.env.OTEL_SERVICE_NAME ?? "doctor-adk-nextjs",
+    serviceName: process.env.OTEL_SERVICE_NAME ?? "agents-nextjs",
     traceExporter: new OTLPTraceExporter({
       url: endpoint.endsWith("/v1/traces")
         ? endpoint
