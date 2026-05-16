@@ -35,12 +35,8 @@ from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import ToolContext
 from google.genai import types as genai_types
 from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-from opentelemetry.instrumentation.google_genai import GoogleGenAiSdkInstrumentor
 from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
 from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.semconv.resource import ResourceAttributes
 
 from utils import trvl_toolset, shared_after_tool_callback
@@ -49,33 +45,25 @@ load_dotenv()
 
 
 def _setup_otel() -> None:
-    """Configure OTLP tracing when Railway/OpenTelemetry env vars are present."""
-    endpoint = (
-        os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
-        or os.getenv("TRVL_OTEL_ENDPOINT")
-        or os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-    )
-    if not endpoint:
+    """Configure OTLP telemetry via ADK 1.33+ native setup when OTEL env vars are present."""
+    if not (
+        os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+        or os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
+    ):
         return
 
-    if not endpoint.endswith("/v1/traces"):
-        endpoint = endpoint.rstrip("/") + "/v1/traces"
+    from google.adk.telemetry.setup import maybe_set_otel_providers
 
-    service_name = os.getenv("OTEL_SERVICE_NAME", "doctor-adk-agent")
     resource = Resource.create(
         {
-            ResourceAttributes.SERVICE_NAME: service_name,
+            ResourceAttributes.SERVICE_NAME: os.getenv("OTEL_SERVICE_NAME", "doctor-adk-agent"),
             ResourceAttributes.SERVICE_VERSION: os.getenv("RAILWAY_GIT_COMMIT_SHA", "dev"),
             "deployment.environment": os.getenv("RAILWAY_ENVIRONMENT_NAME", "local"),
             "railway.project.id": os.getenv("RAILWAY_PROJECT_ID", ""),
             "railway.service.id": os.getenv("RAILWAY_SERVICE_ID", ""),
         }
     )
-    provider = TracerProvider(resource=resource)
-    provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=endpoint)))
-    trace.set_tracer_provider(provider)
-
-    GoogleGenAiSdkInstrumentor().instrument()
+    maybe_set_otel_providers(otel_resource=resource)
     SQLite3Instrumentor().instrument()
 
 
