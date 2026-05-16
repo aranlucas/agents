@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Navigate to the agent directory
-cd "$(dirname "$0")/../agent" || exit 1
+cd "$(dirname "$0")/.." || exit 1
 
 # Activate the virtual environment
 source .venv/bin/activate
