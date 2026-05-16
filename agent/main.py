@@ -17,9 +17,9 @@ via ag-ui-adk, plus a /health endpoint for the dev script.
 
 from __future__ import annotations
 
+import datetime
 import os
 import time
-from typing import Optional
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -29,11 +29,10 @@ from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
 from ag_ui_adk.config import PredictStateMapping
 
 from google.adk.agents import LlmAgent
-from google.adk.agents.callback_context import CallbackContext
-from google.adk.models import LlmRequest
+from google.adk.agents.readonly_context import ReadonlyContext
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import ToolContext
-from google.genai import types as genai_types
+from google.adk.utils import instructions_utils
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
 from opentelemetry.sdk.resources import Resource
@@ -129,6 +128,17 @@ def add_day(tool_context: ToolContext, day_number: int, theme: str, plan: str) -
     return {"ok": True}
 
 
+def get_current_date() -> dict:
+    """Return today's date in ISO 8601 format (YYYY-MM-DD) and a human-readable form.
+
+    Call this whenever you need to know today's date — for computing trip
+    durations, suggesting departure windows, or validating that dates the
+    operator provided are in the future.
+    """
+    today = datetime.date.today()
+    return {"month": today.strftime("%B %Y")}
+
+
 def mark_ready_to_book(tool_context: ToolContext, summary: str) -> dict:
     """Flag the trip as ready for the operator to lock in / book."""
     tool_context.state["status"] = "ready_to_book"
@@ -137,71 +147,34 @@ def mark_ready_to_book(tool_context: ToolContext, summary: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Preferences injection — UI writes state["preferences"]; we read it back
-# each turn and prepend a fresh TRAVELER_BRIEF block to the system
-# instruction so the model adapts immediately.
+# InstructionProvider — reads flat session-state keys written by the UI,
+# embeds them via f-string (safe for missing/empty values), then delegates
+# to inject_session_state which handles brace-escaping in _INSTRUCTION.
 # ---------------------------------------------------------------------------
-_PREFS_MARK_START = "<<<TRAVELER_BRIEF>>>"
-_PREFS_MARK_END = "<<<END_TRAVELER_BRIEF>>>"
+async def _build_instruction(context: ReadonlyContext) -> str:
+    s = context.state or {}
+    today = datetime.date.today()
 
+    interests = s.get("interests") or ""
+    if isinstance(interests, list):
+        interests = ", ".join(interests)
 
-def _build_prefs_block(prefs: dict) -> Optional[str]:
-    if not prefs or not isinstance(prefs, dict):
-        return None
+    header = f"""\
+Current month: {today.strftime("%B %Y")}
 
-    lines = [_PREFS_MARK_START]
-    if name := prefs.get("travelerName"):
-        lines.append(f"- Traveler: {name}")
-    if airport := prefs.get("homeAirport"):
-        lines.append(f"- Home airport: {airport}")
-    if budget := prefs.get("budgetTier"):
-        lines.append(f"- Budget tier: {budget}")
-    if vibe := prefs.get("vibe"):
-        lines.append(f"- Vibe: {vibe}")
-    if pace := prefs.get("pace"):
-        lines.append(f"- Pace: {pace}")
-    if dietary := prefs.get("dietary"):
-        lines.append(f"- Dietary: {dietary}")
-    if mobility := prefs.get("mobility"):
-        lines.append(f"- Mobility: {mobility}")
-    if interests := prefs.get("interests"):
-        if isinstance(interests, list) and interests:
-            lines.append(f"- Interests: {', '.join(interests)}")
-        elif isinstance(interests, str) and interests.strip():
-            lines.append(f"- Interests: {interests}")
-    lines.append(_PREFS_MARK_END)
+TRAVELER_BRIEF
+- Traveler: {s.get("travelerName") or ""}
+- Home airport: {s.get("homeAirport") or ""}
+- Budget tier: {s.get("budgetTier") or ""}
+- Vibe: {s.get("vibe") or ""}
+- Pace: {s.get("pace") or ""}
+- Dietary: {s.get("dietary") or ""}
+- Mobility: {s.get("mobility") or ""}
+- Interests: {interests}"""
 
-    if len(lines) <= 2:
-        return None
-    return "\n".join(lines)
-
-
-def _strip_old_prefs(text: str) -> str:
-    if _PREFS_MARK_START not in text:
-        return text
-    before, _, rest = text.partition(_PREFS_MARK_START)
-    _, _, after = rest.partition(_PREFS_MARK_END)
-    return (before.rstrip() + "\n\n" + after.lstrip()).strip()
-
-
-def _inject_preferences(
-    callback_context: CallbackContext, llm_request: LlmRequest
-) -> None:
-    prefs = callback_context.state.to_dict().get("preferences") or {}
-    block = _build_prefs_block(prefs)
-
-    cfg = llm_request.config or genai_types.GenerateContentConfig()
-    existing = cfg.system_instruction
-    base = ""
-    if isinstance(existing, str):
-        base = existing
-    elif isinstance(existing, genai_types.Content) and existing.parts:
-        base = "\n".join(p.text or "" for p in existing.parts)
-
-    base = _strip_old_prefs(base)
-    new_instruction = f"{block}\n\n{base}" if block else base
-    cfg.system_instruction = new_instruction
-    llm_request.config = cfg
+    return await instructions_utils.inject_session_state(
+        f"{header}\n\n{_INSTRUCTION}", context
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -220,6 +193,7 @@ Use the travel MCP tools to get real data BEFORE writing to state:
 - Discovery: `explore_destinations`, `weekend_getaway`, `search_deals`, `destination_info`
 - Costs: `calculate_trip_cost`, `detect_travel_hacks`, `optimize_booking`
 - Logistics: `check_visa`, `get_baggage_rules`, `search_restaurants`, `get_weather`
+- Date: `get_current_date` — call this whenever you need today's date (trip duration, future-date validation, departure windows)
 - Profile: `get_preferences` to read saved traveler defaults; `update_preferences` to save changes
 - Saved trips: `create_trip`, `update_trip`, `get_trip`, `list_trips`, `mark_trip_booked`
 
@@ -256,10 +230,10 @@ pace vs. coverage, points vs. cash) instead of guessing silently.
 collab_trip_agent = LlmAgent(
     name="collab_trip_agent",
     model=LiteLlm(model="mistral/mistral-medium-latest"),
-    instruction=_INSTRUCTION,
-    before_model_callback=_inject_preferences,
+    instruction=_build_instruction,
     after_tool_callback=shared_after_tool_callback,
     tools=[
+        get_current_date,
         set_trip_meta,
         write_itinerary,
         add_day,

@@ -23,7 +23,7 @@ import {
   ApprovalRequest,
 } from "@/components/approval-dialog";
 
-interface AgentState {
+type AgentState = {
   destination?: string;
   start_date?: string;
   end_date?: string;
@@ -34,8 +34,7 @@ interface AgentState {
   itinerary?: string;
   status?: DocStatus;
   review_summary?: string;
-  preferences?: Preferences;
-}
+} & Partial<Preferences>
 
 const STATUS_VALUES: ReadonlyArray<DocStatus> = [
   "idle",
@@ -94,7 +93,7 @@ function TripStudio() {
   useEffect(() => {
     if (!agent || !observedOnce.current) return;
     const current = (agent.state ?? {}) as AgentState;
-    agent.setState({ ...current, preferences });
+    agent.setState({ ...current, ...preferences });
   }, [agent, preferences]);
 
   useFrontendTool({
