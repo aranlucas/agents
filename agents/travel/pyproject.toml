@@ -1,7 +1,7 @@
 [project]
-name = "collab-doc-agent"
+name = "travel-agent"
 version = "0.1.0"
-description = "Collaborative document agent powered by Google ADK + CopilotKit AG-UI"
+description = "Travel planning agent powered by Google ADK + CopilotKit AG-UI"
 requires-python = ">=3.12"
 dependencies = [
   "fastapi",
