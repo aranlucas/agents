@@ -6,8 +6,12 @@ import { HttpAgent } from "@ag-ui/client";
 
 const runtime = new CopilotRuntime({
   agents: {
-    default: new HttpAgent({
-      url: process.env.AGENT_URL || "http://localhost:8000/",
+    travel: new HttpAgent({
+      url: process.env.TRAVEL_AGENT_URL || "http://localhost:8000/",
+      debug: process.env.COPILOTKIT_DEBUG !== "false",
+    }),
+    grocery: new HttpAgent({
+      url: process.env.GROCERY_AGENT_URL || "http://localhost:8001/",
       debug: process.env.COPILOTKIT_DEBUG !== "false",
     }),
   },
