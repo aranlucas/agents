@@ -91,6 +91,21 @@ agent/main.py
   ├── COLLAB_PREDICT_STATE            # token-streaming mapping (itinerary.body)
   └── FastAPI app at "/", /health
 
+agent/utils.py
+  ├── trvl_toolset()                  # Full MCP toolset (all 67 tools)
+  ├── trvl_toolset_for_skills()       # Scoped toolset by skill category
+  └── TOOL_GROUPS                     # Tool name -> skill category mapping
+
+agent/skills/
+  ├── flight-search.md                # Flight search, date optimization, booking strategies
+  ├── hotel-search.md                 # Hotel search, provider comparison, split-stay hacks
+  ├── ground-transport.md             # Buses, trains, ferries, multi-modal routing
+  ├── travel-hacks.md                 # 37 hack detectors, hidden city, error fares
+  ├── destination-research.md         # Weather, events, restaurants, lounges, guides
+  ├── profile-manager.md              # Traveler preferences, onboarding, booking history
+  ├── trip-manager.md                 # Trip CRUD, calendar export, booking status
+  └── awards-points.md                # Award availability, points valuation, transfers
+
 src/app/page.tsx
   ├── useAgent({ updates: OnStateChanged + OnRunStatusChanged })
   ├── useFrontendTool("request_user_approval")
@@ -110,6 +125,37 @@ src/app/api/copilotkit/
   ├── route.ts                # CopilotRuntime + HttpAgent → AGENT_URL
   └── [...path]/route.ts      # re-export so multi-route mode works
 ```
+
+## Modular Skills Architecture
+
+The trvl MCP server exposes 67 tools. Rather than loading all tools into
+every agent context, skills split the tool surface into focused domains:
+
+| Skill | Tools | Trigger |
+|-------|-------|---------|
+| flight-search | 13 | Flights, airfare, cheap dates, booking strategies |
+| hotel-search | 7 | Hotels, accommodation, Airbnb, Booking.com |
+| ground-transport | 3 | Buses, trains, ferries, airport transfers |
+| travel-hacks | 4 | Save money, hidden city, error fares, deals |
+| destination-research | 7 | Weather, events, restaurants, lounges, guides |
+| profile-manager | 5 | Preferences, onboarding, booking history |
+| trip-manager | 6 | Trip CRUD, calendar export, booking status |
+| awards-points | 9 | Award flights, points, transfers, sweet spots |
+
+### Using scoped toolsets
+
+```python
+from utils import trvl_toolset_for_skills
+
+# Load only flight + hotel tools
+toolset = trvl_toolset_for_skills(["flights", "hotels"])
+
+# Load all tools (default behavior)
+toolset = trvl_toolset()
+```
+
+The agent instruction in `main.py` references the skills directory so the
+LLM knows which skill to consult for which type of request.
 
 ## Conventions
 

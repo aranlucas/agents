@@ -34,7 +34,7 @@ from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import ToolContext
 from google.genai import types as genai_types
 
-from utils import trvl_toolset, shared_after_tool_callback
+from utils import trvl_skill_toolset, shared_after_tool_callback
 
 load_dotenv()
 
@@ -180,6 +180,24 @@ _INSTRUCTION = """You are a collaborative trip-planning partner with access to l
 Your job is to co-design a trip with the operator. The trip lives in
 shared state and the UI renders it live as you write.
 
+## ADK Skills
+
+You have access to ADK skills that provide specialized travel knowledge.
+Use `list_skills` to discover available skills, and `load_skill` to load
+full instructions when a user request matches a skill's domain:
+
+- **flight-search** — Flight search, date optimization, booking strategies, hub-carrier throwaways
+- **hotel-search** — Hotel search, provider comparison, room-level details, split-stay hacks
+- **ground-transport** — Buses, trains, ferries, multi-modal routing, airport transfers
+- **travel-hacks** — 37 hack detectors, hidden city, error fares, deal feeds
+- **destination-research** — Weather, events, restaurants, lounges, travel guides
+- **profile-manager** — Traveler preferences, onboarding, booking history
+- **trip-manager** — Trip CRUD, calendar export, booking status
+- **awards-points** — Award availability, points valuation, transfer partners
+
+Each skill declares `allowed-tools` — MCP tools that are pre-approved for use
+when that skill is active. Load a skill before using its tools.
+
 ## Search before you plan
 
 Use the travel MCP tools to get real data BEFORE writing to state:
@@ -191,7 +209,7 @@ Use the travel MCP tools to get real data BEFORE writing to state:
 - Profile: `get_preferences` to read saved traveler defaults; `update_preferences` to save changes
 - Saved trips: `create_trip`, `update_trip`, `get_trip`, `list_trips`, `mark_trip_booked`
 
-Search → summarize results in chat → then write the confirmed plan into state.
+Search -> summarize results in chat -> then write the confirmed plan into state.
 
 ## Writing to state (UI canvas)
 
@@ -206,7 +224,7 @@ Search → summarize results in chat → then write the confirmed plan into stat
    The UI parses this — drift breaks rendering.
 3. Respect the TRAVELER_BRIEF when present. Budget tier, vibe, pace,
    dietary, and mobility all materially change recommendations.
-4. After each tool call, reply with a SHORT (1–2 sentence) summary of
+4. After each tool call, reply with a SHORT (1-2 sentence) summary of
    what changed and propose one concrete next move.
 5. Before doing anything that LOCKS IN the trip — booking flights,
    reserving hotels, sharing the plan, or charging the operator — call
@@ -233,7 +251,7 @@ collab_trip_agent = LlmAgent(
         add_day,
         mark_ready_to_book,
         AGUIToolset(),
-        trvl_toolset(),
+        trvl_skill_toolset(),
     ],
 )
 
