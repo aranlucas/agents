@@ -12,13 +12,12 @@ from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnecti
 TRVL_MCP_URL = os.getenv("TRVL_MCP_URL", "https://trvl-production.up.railway.app/mcp")
 
 
-def trvl_toolset(names: list[str]) -> McpToolset:
+def trvl_toolset() -> McpToolset:
     return McpToolset(
         connection_params=StreamableHTTPConnectionParams(
             url=TRVL_MCP_URL,
             timeout=30.0,
         ),
-        tool_filter=names,
         use_mcp_resources=True,
     )
 
@@ -32,7 +31,9 @@ def parse_tool_response(tool_response: dict | str) -> Optional[dict]:
         return None
 
 
-def save_state(tool_context: ToolContext, tool_name: str, structured_content: Any) -> None:
+def save_state(
+    tool_context: ToolContext, tool_name: str, structured_content: Any
+) -> None:
     tool_context.state[tool_name] = structured_content
 
 

@@ -7,6 +7,7 @@ import {
   UseAgentUpdate,
   useFrontendTool,
   useConfigureSuggestions,
+  useDefaultRenderTool,
 } from "@copilotkit/react-core/v2";
 import { z } from "zod";
 
@@ -173,6 +174,52 @@ function TripStudio() {
     ],
     available: "always",
   });
+
+  useDefaultRenderTool({
+    render: ({ name, parameters, status, result }) => {
+      const hasParams =
+        typeof parameters === "object" &&
+        parameters !== null &&
+        Object.keys(parameters as Record<string, unknown>).length > 0;
+
+      return (
+        <div className="my-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm">
+          <div className="flex items-center gap-2 font-mono font-semibold text-gray-700">
+            <span>
+              {status === "complete"
+                ? "✓"
+                : status === "inProgress" || status === "executing"
+                  ? "⏳"
+                  : "○"}
+            </span>
+            <span>{name}</span>
+          </div>
+          {hasParams && (
+            <details className="mt-2">
+              <summary className="cursor-pointer text-xs text-gray-500">
+                Parameters
+              </summary>
+              <pre className="mt-1 overflow-auto rounded bg-gray-100 p-2 text-xs">
+                {JSON.stringify(parameters, null, 2)}
+              </pre>
+            </details>
+          )}
+          {status === "complete" && result && (
+            <details className="mt-2">
+              <summary className="cursor-pointer text-xs text-gray-500">
+                Result
+              </summary>
+              <pre className="mt-1 overflow-auto rounded bg-gray-100 p-2 text-xs">
+                {typeof result === "string"
+                  ? result
+                  : JSON.stringify(result, null, 2)}
+              </pre>
+            </details>
+          )}
+        </div>
+      );
+    },
+  }, []);
 
   // Cleanup any pending approval promises if the user unmounts mid-flow.
   const pendingRef = useRef<ApprovalRequest[]>([]);
