@@ -1,0 +1,33 @@
+[project]
+name = "grocery-agent"
+version = "0.1.0"
+description = "Grocery planning agent powered by Google ADK + CopilotKit AG-UI"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi",
+  "uvicorn[standard]",
+  "python-dotenv",
+  "pydantic",
+  "google-adk>=1.33.0",
+  "google-genai",
+  "ag-ui-adk",
+  "litellm",
+  "opentelemetry-api",
+  "opentelemetry-sdk",
+  "opentelemetry-instrumentation-sqlite3",
+  "opentelemetry-instrumentation-google-genai>=0.4b0",
+  "opentelemetry-instrumentation-vertexai>=2.0b0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "httpx"]
+
+[project.scripts]
+app = "main:app"
+
+[tool.setuptools]
+py-modules = ["main"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
