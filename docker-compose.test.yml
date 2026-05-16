@@ -1,11 +1,4 @@
 services:
-  aimock:
-    image: ghcr.io/copilotkit/aimock:latest
-    volumes:
-      - ./fixtures:/fixtures:ro
-    command:
-      ["--fixtures", "/fixtures", "--host", "0.0.0.0", "--validate-on-load"]
-
   agent:
     build:
       context: ./agent
@@ -19,9 +12,6 @@ services:
       # dev runs where the local harness may provide its own stub.
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-test-key-for-aimock}
       - GOOGLE_GENAI_USE_VERTEXAI=false
-    depends_on:
-      aimock:
-        condition: service_started
     healthcheck:
       test:
         [
@@ -61,10 +51,9 @@ services:
     image: mcr.microsoft.com/playwright:v1.52.0-noble
     working_dir: /tests
     volumes:
-      - ../../../showcase/tests:/tests
+      - ./smoke-tests:/tests
       - test-results:/tests/test-results
     environment:
-      - STARTER=${STARTER:-adk}
       - STARTER_URL=http://app:3000
     depends_on:
       app:
@@ -73,7 +62,7 @@ services:
       [
         "bash",
         "-c",
-        "cd /tests && npm install --no-audit --no-fund 2>/dev/null && npx playwright install chromium && npx playwright test starter-smoke --reporter=list",
+        "npm ci --no-audit --no-fund && npx playwright test --reporter=list",
       ]
 
 volumes:

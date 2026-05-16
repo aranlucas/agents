@@ -8,6 +8,9 @@
     "dev:agent": "./scripts/run-agent.sh || scripts\\run-agent.bat",
     "dev:ui": "next dev --turbopack",
     "build": "next build",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test:agent": "cd agent && uv run --extra dev pytest",
+    "ci": "npm run typecheck && npm run build && npm run test:agent",
     "start": "next start",
     "install:agent": "./scripts/setup-agent.sh || scripts\\setup-agent.bat",
     "postinstall": "npm run install:agent"
