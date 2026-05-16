@@ -24,6 +24,7 @@
     "react-dom": "^19.2.6",
     "react-error-boundary": "^6.1.1",
     "shiki": "^4.0.2",
+    "streamdown": "^2.5.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

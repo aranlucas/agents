@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
+import { Streamdown } from "streamdown";
 
 export type DocStatus =
   | "idle"
@@ -23,6 +24,7 @@ interface Props {
   headline: string;
   summary: string;
   itinerary: string;
+  flights: string;
   status: DocStatus;
   isStreaming: boolean;
   reviewSummary?: string;
@@ -136,6 +138,7 @@ export function DocumentCanvas({
   headline,
   summary,
   itinerary,
+  flights,
   status,
   isStreaming,
   reviewSummary,
@@ -229,6 +232,17 @@ export function DocumentCanvas({
         </div>
       )}
 
+      {flights && (
+        <div className="mx-6 mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] p-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--ink-mute)] mb-2">
+            Flights
+          </h3>
+          <div className="text-sm text-[var(--ink)]">
+            <Streamdown>{flights}</Streamdown>
+          </div>
+        </div>
+      )}
+
       {status === "ready_to_book" && reviewSummary && (
         <div className="mx-6 mt-4 rounded-xl border border-[color-mix(in_srgb,var(--warning)_30%,transparent)] bg-[color-mix(in_srgb,var(--warning)_8%,transparent)] px-4 py-3 text-xs text-[var(--ink-soft)]">
           <span className="font-semibold text-[var(--warning)]">
@@ -248,6 +262,9 @@ export function DocumentCanvas({
                 {trailing}
               </p>
             )}
+            <div className="streamdown-markdown">
+              <Streamdown>{itinerary}</Streamdown>
+            </div>
             {days.map((d) => (
               <DayCard key={`${d.day}-${d.theme}`} day={d} />
             ))}
