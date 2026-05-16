@@ -1,39 +1,14 @@
 {
-  "name": "copilotkit-agents-collab",
-  "version": "0.1.0",
+  "name": "agents-monorepo",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"npm run dev:ui\" \"npm run dev:agent\" --names ui,agent --prefix-colors blue,green --kill-others",
-    "dev:debug": "LOG_LEVEL=debug npm run dev",
-    "dev:agent": "./scripts/run-agent.sh || scripts\\run-agent.bat",
-    "dev:ui": "next dev --turbopack",
-    "adk:web": "cd agent && uv run adk web . --host 0.0.0.0 --port 8000 --reload",
-    "build": "next build",
-    "start": "next start",
-    "install:agent": "./scripts/setup-agent.sh || scripts\\setup-agent.bat",
-    "postinstall": "npm run install:agent"
-  },
-  "dependencies": {
-    "@ag-ui/client": "^0.0.53",
-    "@copilotkit/react-core": "^1.57.1",
-    "@copilotkit/runtime": "^1.57.1",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.218.0",
-    "@vercel/otel": "^2.1.2",
-    "next": "^16.2.6",
-    "react": "^19.2.6",
-    "react-dom": "^19.2.6",
-    "react-error-boundary": "^6.1.1",
-    "shiki": "^4.0.2",
-    "streamdown": "^2.5.0",
-    "zod": "^4.4.3"
+    "dev": "concurrently \"pnpm --filter web dev\" \"docker compose up --build\" --names web,agents --prefix-colors blue,green --kill-others",
+    "dev:web": "pnpm --filter web dev",
+    "dev:mobile": "pnpm --filter mobile start",
+    "dev:agents": "docker compose up --build",
+    "build": "pnpm --filter web build"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.3.0",
-    "@types/node": "^25",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "concurrently": "^9.2.1",
-    "tailwindcss": "^4.3.0",
-    "typescript": "^6.0.3"
+    "concurrently": "^9.2.1"
   }
 }

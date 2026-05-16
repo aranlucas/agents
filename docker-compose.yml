@@ -1,0 +1,24 @@
+services:
+  travel:
+    build:
+      context: ./agents/travel
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: ./agents/travel/.env
+        required: false
+    environment:
+      OTEL_SERVICE_NAME: travel-agent
+      PORT: 8000
+
+  grocery:
+    build:
+      context: ./agents/grocery
+    ports:
+      - "8001:8001"
+    env_file:
+      - path: ./agents/grocery/.env
+        required: false
+    environment:
+      OTEL_SERVICE_NAME: grocery-agent
+      PORT: 8001
