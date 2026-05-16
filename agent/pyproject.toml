@@ -13,9 +13,7 @@ dependencies = [
   "ag-ui-adk",
   "litellm",
   "opentelemetry-api",
-  "opentelemetry-exporter-otlp-proto-http",
   "opentelemetry-sdk",
-  "opentelemetry-instrumentation-google-genai>=0.4b0",
   "opentelemetry-instrumentation-sqlite3",
 ]
 
