@@ -237,7 +237,7 @@ pace vs. coverage, points vs. cash) instead of guessing silently.
 
 collab_trip_agent = LlmAgent(
     name="collab_trip_agent",
-    model=LiteLlm(model="mistral/mistral-medium-latest"),
+    model=LiteLlm(model="mistral/mistral-medium-3-5"),
     instruction=_build_instruction,
     after_tool_callback=shared_after_tool_callback,
     tools=[
