@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect } from "react";
-import { useAuth } from "@clerk/nextjs";
+import React, { useEffect, useState } from "react";
+import { useUser } from "@clerk/nextjs";
 import {
   CopilotKit,
   CopilotSidebar,
@@ -9,10 +9,6 @@ import {
   UseAgentUpdate,
 } from "@copilotkit/react-core/v2";
 import { GroceryState } from "@agents/types";
-
-const KROGER_AUTH_URL =
-  process.env.NEXT_PUBLIC_KROGER_AUTH_URL ??
-  "https://ai-meal-planner-mcp.aranlucas.workers.dev/auth/kroger";
 
 function KrogerAuthGate({ onConnect }: { onConnect: () => void }) {
   return (
@@ -24,24 +20,22 @@ function KrogerAuthGate({ onConnect }: { onConnect: () => void }) {
           products, check weekly deals, and manage your shopping list.
         </p>
       </div>
-      <a
-        href={KROGER_AUTH_URL}
-        target="_blank"
-        rel="noopener noreferrer"
+      <button
         onClick={onConnect}
         className="px-5 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
       >
         Connect Kroger
-      </a>
+      </button>
       <p className="text-xs text-gray-400">
-        You&apos;ll be redirected to Kroger to authorize access, then returned here.
+        You&apos;ll be redirected to authorize access, then returned here.
       </p>
     </div>
   );
 }
 
 function GroceryPageInner() {
-  const { getToken, isLoaded, isSignedIn } = useAuth();
+  const { user, isLoaded } = useUser();
+  const [connecting, setConnecting] = useState(false);
 
   const { agent } = useAgent({
     agentId: "grocery",
@@ -55,24 +49,39 @@ function GroceryPageInner() {
   const isRunning = Boolean(agent?.isRunning);
   const krogerConnected = state.kroger_connected ?? false;
 
-  // Push the Clerk JWT into agent state so the MCP header_provider can read it.
+  // On load (and after Clerk user is ready), fetch the MCP token from our
+  // server route. If the "shopping" OAuth account is connected, push the
+  // token into agent state so the Python header_provider can use it.
   useEffect(() => {
-    if (!agent || !isLoaded || !isSignedIn) return;
-    getToken().then((token) => {
-      if (!token) return;
-      const current = (agent.state ?? {}) as GroceryState;
-      if (current.kroger_token !== token) {
-        agent.setState({ ...current, kroger_token: token });
-      }
-    });
-  }, [agent, isLoaded, isSignedIn, getToken]);
+    if (!agent || !isLoaded || !user) return;
 
-  // Called after the user clicks "Connect Kroger" and returns from OAuth.
-  // Marks kroger_connected in state so the agent unlocks MCP tools.
-  const handleKrogerConnected = () => {
-    if (!agent) return;
-    const current = (agent.state ?? {}) as GroceryState;
-    agent.setState({ ...current, kroger_connected: true });
+    fetch("/api/mcp/token")
+      .then((r) => r.json())
+      .then(({ connected, token }: { connected: boolean; token: string | null }) => {
+        const current = (agent.state ?? {}) as GroceryState;
+        agent.setState({
+          ...current,
+          kroger_connected: connected,
+          kroger_token: token ?? undefined,
+        });
+      })
+      .catch(() => {/* stay in disconnected state */});
+  }, [agent, isLoaded, user]);
+
+  // Trigger Clerk's OAuth connect flow for the "shopping" provider.
+  const handleConnect = async () => {
+    if (!user || connecting) return;
+    setConnecting(true);
+    try {
+      await user.createExternalAccount({
+        strategy: "oauth_custom_shopping",
+        redirectUrl: window.location.href,
+      });
+      // Clerk will redirect — no need to reset connecting state
+    } catch (err) {
+      console.error("Connect failed:", err);
+      setConnecting(false);
+    }
   };
 
   return (
@@ -86,7 +95,7 @@ function GroceryPageInner() {
       </header>
 
       {!krogerConnected ? (
-        <KrogerAuthGate onConnect={handleKrogerConnected} />
+        <KrogerAuthGate onConnect={handleConnect} />
       ) : (
         <div className="flex-1 grid md:grid-cols-2 gap-4 p-4 md:p-6 max-w-[1200px] w-full mx-auto">
           <section className="space-y-3">
