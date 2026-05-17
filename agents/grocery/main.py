@@ -58,22 +58,6 @@ _setup_otel()
 tracer = trace.get_tracer("grocery-agent")
 
 
-def _model_name() -> str:
-    """Select the LiteLLM provider that matches the configured key."""
-    if os.getenv("AGENT_MODEL"):
-        return os.environ["AGENT_MODEL"]
-
-    if os.getenv("OPENROUTER_API_KEY"):
-        return "openrouter/mistralai/mistral-medium-3-5"
-
-    mistral_key = os.getenv("MISTRAL_API_KEY", "")
-    if mistral_key.startswith("sk-or-"):
-        os.environ["OPENROUTER_API_KEY"] = mistral_key
-        return "openrouter/mistralai/mistral-medium-3-5"
-
-    return "mistral/mistral-small-latest"
-
-
 # ---------------------------------------------------------------------------
 # Default state
 # ---------------------------------------------------------------------------
@@ -238,7 +222,7 @@ Be practical, budget-aware, and proactive. Suggest substitutions for out-of-stoc
 
 grocery_agent = LlmAgent(
     name="grocery_agent",
-    model=LiteLlm(model=_model_name()),
+    model=LiteLlm(model="nvidia_nim/deepseek-ai/deepseek-v4-flash", fallbacks=["openrouter/owl-alpha", "mistral/mistral-small-latest"]),
     instruction=_INSTRUCTION,
     before_agent_callback=on_before_agent,
     before_model_callback=before_model_modifier,
