@@ -3,19 +3,20 @@ import {
   createCopilotRuntimeHandler,
 } from "@copilotkit/runtime/v2";
 import { HttpAgent } from "@ag-ui/client";
+import { env } from "@/env";
 
 const runtime = new CopilotRuntime({
   agents: {
     travel: new HttpAgent({
-      url: process.env.TRAVEL_AGENT_URL || "http://localhost:8000/",
-      debug: process.env.COPILOTKIT_DEBUG !== "false",
+      url: env.TRAVEL_AGENT_URL,
+      debug: env.COPILOTKIT_DEBUG,
     }),
     grocery: new HttpAgent({
-      url: process.env.GROCERY_AGENT_URL || "http://localhost:8001/",
-      debug: process.env.COPILOTKIT_DEBUG !== "false",
+      url: env.GROCERY_AGENT_URL,
+      debug: env.COPILOTKIT_DEBUG,
     }),
   },
-  debug: process.env.COPILOTKIT_DEBUG !== "false",
+  debug: env.COPILOTKIT_DEBUG,
 });
 
 const handler = createCopilotRuntimeHandler({
