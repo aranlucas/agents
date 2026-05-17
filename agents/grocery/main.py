@@ -19,7 +19,6 @@ from google.adk.agents.callback_context import CallbackContext
 from google.adk.models import LlmResponse, LlmRequest
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import ToolContext
-from google.genai import types as genai_types
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
 from opentelemetry.sdk.resources import Resource
@@ -57,6 +56,22 @@ def _setup_otel() -> None:
 
 _setup_otel()
 tracer = trace.get_tracer("grocery-agent")
+
+
+def _model_name() -> str:
+    """Select the LiteLLM provider that matches the configured key."""
+    if os.getenv("AGENT_MODEL"):
+        return os.environ["AGENT_MODEL"]
+
+    if os.getenv("OPENROUTER_API_KEY"):
+        return "openrouter/mistralai/mistral-medium-3-5"
+
+    mistral_key = os.getenv("MISTRAL_API_KEY", "")
+    if mistral_key.startswith("sk-or-"):
+        os.environ["OPENROUTER_API_KEY"] = mistral_key
+        return "openrouter/mistralai/mistral-medium-3-5"
+
+    return "mistral/mistral-small-latest"
 
 
 # ---------------------------------------------------------------------------
@@ -147,7 +162,10 @@ def before_model_modifier(
     callback_context: CallbackContext, llm_request: LlmRequest
 ) -> Optional[LlmResponse]:
     """Inject current grocery state + auth notice into the system prompt."""
-    state = dict(callback_context.state)
+    state = {
+        key: callback_context.state.get(key, default)
+        for key, default in _DEFAULT_STATE.items()
+    }
     kroger_connected: bool = bool(state.get("kroger_connected", False))
 
     auth_notice = (
@@ -167,18 +185,8 @@ def before_model_modifier(
 
     prefix = f"Current grocery state:\n{state_json}{auth_notice}\n\n"
 
-    original = llm_request.config.system_instruction or genai_types.Content(
-        role="system", parts=[]
-    )
-    if not isinstance(original, genai_types.Content):
-        original = genai_types.Content(
-            role="system", parts=[genai_types.Part(text=str(original))]
-        )
-    if not original.parts:
-        original.parts.append(genai_types.Part(text=""))
-
-    original.parts[0].text = prefix + (original.parts[0].text or "")
-    llm_request.config.system_instruction = original
+    original = llm_request.config.system_instruction or ""
+    llm_request.config.system_instruction = prefix + str(original)
     return None
 
 
@@ -230,7 +238,7 @@ Be practical, budget-aware, and proactive. Suggest substitutions for out-of-stoc
 
 grocery_agent = LlmAgent(
     name="grocery_agent",
-    model=LiteLlm(model="mistral/mistral-medium-3-5"),
+    model=LiteLlm(model=_model_name()),
     instruction=_INSTRUCTION,
     before_agent_callback=on_before_agent,
     before_model_callback=before_model_modifier,
