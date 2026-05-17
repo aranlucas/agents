@@ -70,22 +70,6 @@ _setup_otel()
 tracer = trace.get_tracer("agents-agent")
 
 
-def _model_name() -> str:
-    """Select the LiteLLM provider that matches the configured key."""
-    if os.getenv("AGENT_MODEL"):
-        return os.environ["AGENT_MODEL"]
-
-    if os.getenv("OPENROUTER_API_KEY"):
-        return "openrouter/mistralai/mistral-medium-3-5"
-
-    mistral_key = os.getenv("MISTRAL_API_KEY", "")
-    if mistral_key.startswith("sk-or-"):
-        os.environ["OPENROUTER_API_KEY"] = mistral_key
-        return "openrouter/mistralai/mistral-medium-3-5"
-
-    return "mistral/mistral-small-latest"
-
-
 # ---------------------------------------------------------------------------
 # Tools — all written against shared state. The UI re-renders on every
 # state delta, and `write_itinerary.body` is streamed token-by-token via
@@ -253,7 +237,7 @@ pace vs. coverage, points vs. cash) instead of guessing silently.
 
 collab_trip_agent = LlmAgent(
     name="collab_trip_agent",
-    model=LiteLlm(model=_model_name()),
+    model=LiteLlm(model="nvidia_nim/deepseek-ai/deepseek-v4-flash", fallbacks=["openrouter/owl-alpha", "mistral/mistral-small-latest"]),
     instruction=_build_instruction,
     after_tool_callback=shared_after_tool_callback,
     tools=[
