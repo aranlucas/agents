@@ -1,17 +1,11 @@
-"""Grocery Planning Agent — Kroger MCP + ADK + CopilotKit AG-UI.
-
-Helps users plan grocery shopping by:
-  * managing a running shopping list in shared state,
-  * searching Kroger products and weekly deals,
-  * building meal plans and generating shopping lists from them,
-  * tracking pantry inventory.
-"""
+"""Grocery Planning Agent — Meal Planner MCP + ADK + AG-UI shared-state pattern."""
 
 from __future__ import annotations
 
-import datetime
+import json
 import os
 import time
+from typing import Optional
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -21,20 +15,24 @@ from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
 from ag_ui_adk.config import PredictStateMapping
 
 from google.adk.agents import LlmAgent
-from google.adk.agents.readonly_context import ReadonlyContext
+from google.adk.agents.callback_context import CallbackContext
+from google.adk.models import LlmResponse, LlmRequest
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import ToolContext
-from google.adk.utils import instructions_utils
+from google.genai import types as genai_types
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.semconv.resource import ResourceAttributes
 
-from utils import kroger_toolset, shared_after_tool_callback
+from utils import meal_planner_toolset, shared_after_tool_callback
 
 load_dotenv()
 
 
+# ---------------------------------------------------------------------------
+# OTEL
+# ---------------------------------------------------------------------------
 def _setup_otel() -> None:
     if not (
         os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
@@ -62,14 +60,29 @@ tracer = trace.get_tracer("grocery-agent")
 
 
 # ---------------------------------------------------------------------------
-# State tools
+# Default state
+# ---------------------------------------------------------------------------
+_DEFAULT_STATE: dict = {
+    "shopping_list": [],
+    "meal_plan": "",
+    "cart": [],
+    "pantry": [],
+    "weekly_deals": "",
+    "status": "idle",
+    "notes": "",
+    "review_summary": "",
+    "kroger_connected": False,
+}
+
+
+# ---------------------------------------------------------------------------
+# State tools — UI canvas writes
 # ---------------------------------------------------------------------------
 def set_shopping_list(tool_context: ToolContext, items: list[str], notes: str = "") -> dict:
     """Replace the full shopping list in shared state.
 
     `items` is a list of item strings (e.g. ["2x milk", "eggs", "bread"]).
     `notes` is an optional markdown block with shopping notes or substitutions.
-    Call this whenever the list changes materially.
     """
     tool_context.state["shopping_list"] = items
     tool_context.state["status"] = "planning"
@@ -79,28 +92,27 @@ def set_shopping_list(tool_context: ToolContext, items: list[str], notes: str = 
 
 
 def update_cart(tool_context: ToolContext, items: list[dict]) -> dict:
-    """Update the cart with items found on Kroger.
+    """Update the cart with Kroger items ready for checkout.
 
-    Each item dict: {"name": str, "quantity": int, "price": float, "upc": str}.
+    Each item: {"name": str, "quantity": int, "price": float, "upc": str}.
     """
     tool_context.state["cart"] = items
     return {"ok": True, "count": len(items)}
 
 
 def update_pantry(tool_context: ToolContext, items: list[dict]) -> dict:
-    """Update pantry inventory.
+    """Sync pantry inventory to shared state.
 
-    Each item dict: {"name": str, "quantity": str, "expires": str (optional)}.
+    Each item: {"name": str, "quantity": str, "expires": str (optional)}.
     """
     tool_context.state["pantry"] = items
     return {"ok": True}
 
 
 def set_meal_plan(tool_context: ToolContext, plan: str) -> dict:
-    """Write a meal plan in shared state. `plan` is markdown — use day headings.
+    """Write or overwrite the meal plan (token-streams into the UI).
 
-    Format: ## Day 1: Theme\\n- Breakfast: ...\\n- Lunch: ...\\n- Dinner: ...
-    Token-streams into the UI.
+    Use markdown day headings: ## Day 1: Theme\\n- Breakfast: ...
     """
     tool_context.state["meal_plan"] = plan
     tool_context.state["status"] = "planning"
@@ -108,7 +120,7 @@ def set_meal_plan(tool_context: ToolContext, plan: str) -> dict:
 
 
 def set_weekly_deals(tool_context: ToolContext, deals: str) -> dict:
-    """Write the weekly deals summary in shared state. `deals` is markdown."""
+    """Write the weekly deals summary (markdown) to shared state."""
     tool_context.state["weekly_deals"] = deals
     return {"ok": True}
 
@@ -121,64 +133,108 @@ def mark_list_ready(tool_context: ToolContext, summary: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# InstructionProvider
+# Callbacks — shared-state pattern
 # ---------------------------------------------------------------------------
-async def _build_instruction(context: ReadonlyContext) -> str:
-    s = context.state or {}
-    today = datetime.date.today()
+def on_before_agent(callback_context: CallbackContext):
+    """Initialize missing state keys with defaults on every turn."""
+    for key, default in _DEFAULT_STATE.items():
+        if key not in callback_context.state:
+            callback_context.state[key] = default
+    return None
 
-    interests = s.get("interests") or ""
-    if isinstance(interests, list):
-        interests = ", ".join(interests)
 
-    header = f"""\
-Current date: {today.strftime("%A, %B %d, %Y")}
+def before_model_modifier(
+    callback_context: CallbackContext, llm_request: LlmRequest
+) -> Optional[LlmResponse]:
+    """Inject current grocery state + auth notice into the system prompt."""
+    state = dict(callback_context.state)
+    kroger_connected: bool = bool(state.get("kroger_connected", False))
 
-USER_BRIEF
-- Name: {s.get("travelerName") or ""}
-- Budget tier: {s.get("budgetTier") or ""}
-- Interests: {interests}"""
-
-    return await instructions_utils.inject_session_state(
-        f"{header}\n\n{_INSTRUCTION}", context
+    auth_notice = (
+        ""
+        if kroger_connected
+        else (
+            "\n\n⚠️ KROGER NOT CONNECTED: The user has not connected their Kroger account. "
+            "You MUST tell the user to connect Kroger via the 'Connect Kroger' button in the UI "
+            "before you can help with shopping or meal planning. Do NOT attempt to use any MCP tools."
+        )
     )
 
+    try:
+        state_json = json.dumps(state, indent=2, default=str)
+    except Exception:
+        state_json = "{}"
 
-_INSTRUCTION = """You are a collaborative grocery and meal-planning partner with access to live Kroger data.
+    prefix = f"Current grocery state:\n{state_json}{auth_notice}\n\n"
 
-Your job is to help the user plan their grocery shopping efficiently. The shopping list and meal plan
-live in shared state and the UI renders them live as you write.
+    original = llm_request.config.system_instruction or genai_types.Content(
+        role="system", parts=[]
+    )
+    if not isinstance(original, genai_types.Content):
+        original = genai_types.Content(
+            role="system", parts=[genai_types.Part(text=str(original))]
+        )
+    if not original.parts:
+        original.parts.append(genai_types.Part(text=""))
 
-## Search before you plan
+    original.parts[0].text = prefix + (original.parts[0].text or "")
+    llm_request.config.system_instruction = original
+    return None
 
-Use the Kroger MCP tools to get real data BEFORE writing to state:
-- Products: search_products, get_product_details, get_weekly_deals
-- Shopping list: manage_shopping_list, add_to_cart, checkout_shopping_list
-- Pantry: manage_pantry (read what user already has before suggesting purchases)
-- Meals: plan_meals, search_recipes_from_web
-- Store: search_locations, get_location_details, set_preferred_location
 
-## Writing to state (UI canvas)
+def after_model_modifier(
+    callback_context: CallbackContext, llm_response: LlmResponse
+) -> Optional[LlmResponse]:
+    """Stop consecutive tool calling after a text reply."""
+    if (
+        llm_response.content
+        and llm_response.content.parts
+        and llm_response.content.role == "model"
+        and llm_response.content.parts[0].text
+    ):
+        callback_context._invocation_context.end_invocation = True
+    return None
 
-1. NEVER paste the list into chat. The plan lives in state. ALWAYS use tools:
-   - `set_shopping_list` to update the full list after changes
-   - `set_meal_plan` to write or update the meal plan (streams token-by-token)
-   - `update_cart` when the user is ready to check Kroger prices
-   - `update_pantry` when the user tells you what they have at home
-   - `set_weekly_deals` to surface current Kroger specials
-2. Check pantry FIRST — avoid suggesting items the user already has.
-3. Cross-reference weekly deals — highlight when a needed item is on sale.
-4. After each tool call, reply with a SHORT (1–2 sentence) summary.
-5. When the list looks complete, call `mark_list_ready` with a 1-sentence wrap-up.
 
-Be practical, budget-aware, and proactive. Suggest substitutions when items are out of stock or overpriced.
+# ---------------------------------------------------------------------------
+# Agent
+# ---------------------------------------------------------------------------
+_INSTRUCTION = """\
+You are a collaborative grocery and meal-planning partner with live access to Kroger data.
+
+## Auth gate
+If `kroger_connected` is False in the current state, stop immediately and tell the user
+to click the 'Connect Kroger' button in the UI before you can help. Never call MCP tools
+when not connected.
+
+## Workflow
+1. Use MCP tools to fetch real data BEFORE writing to state:
+   - Products: search_products, get_product_details, get_weekly_deals
+   - Shopping list: manage_shopping_list, checkout_shopping_list, add_to_cart
+   - Pantry: manage_pantry (check what the user already has first)
+   - Meals: plan_meals, search_recipes_from_web
+   - Store: search_locations, get_location_details, set_preferred_location
+
+2. Write to state (renders live in the UI canvas) — NEVER paste lists into chat:
+   - set_shopping_list — update the full list after any change
+   - set_meal_plan — write/update the meal plan (streams token-by-token)
+   - update_cart — when the user is ready to check Kroger prices
+   - update_pantry — when the user tells you what they have at home
+   - set_weekly_deals — surface current Kroger specials
+
+3. After each tool call give a SHORT (1–2 sentence) summary.
+4. When the list is complete, call mark_list_ready with a 1-sentence wrap-up.
+
+Be practical, budget-aware, and proactive. Suggest substitutions for out-of-stock items.
 """
-
 
 grocery_agent = LlmAgent(
     name="grocery_agent",
     model=LiteLlm(model="mistral/mistral-medium-3-5"),
-    instruction=_build_instruction,
+    instruction=_INSTRUCTION,
+    before_agent_callback=on_before_agent,
+    before_model_callback=before_model_modifier,
+    after_model_callback=after_model_modifier,
     after_tool_callback=shared_after_tool_callback,
     tools=[
         set_shopping_list,
@@ -188,10 +244,9 @@ grocery_agent = LlmAgent(
         set_weekly_deals,
         mark_list_ready,
         AGUIToolset(),
-        kroger_toolset(),
+        meal_planner_toolset(),
     ],
 )
-
 
 GROCERY_PREDICT_STATE = [
     PredictStateMapping(
@@ -203,7 +258,6 @@ GROCERY_PREDICT_STATE = [
     ),
 ]
 
-
 adk_grocery_agent = ADKAgent(
     adk_agent=grocery_agent,
     user_id="demo_user",
@@ -212,6 +266,9 @@ adk_grocery_agent = ADKAgent(
     predict_state=GROCERY_PREDICT_STATE,
 )
 
+# ---------------------------------------------------------------------------
+# FastAPI app
+# ---------------------------------------------------------------------------
 app = FastAPI(title="Grocery Planning Agent")
 
 
