@@ -8,8 +8,9 @@
     "start": "next start"
   },
   "dependencies": {
-    "@agents/types": "workspace:*",
     "@ag-ui/client": "^0.0.53",
+    "@agents/types": "workspace:*",
+    "@ai-sdk/mcp": "^1.0.42",
     "@clerk/nextjs": "^6",
     "@copilotkit/react-core": "^1.57.1",
     "@copilotkit/runtime": "^1.57.1",

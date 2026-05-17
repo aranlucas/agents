@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useReverification, useUser } from "@clerk/nextjs";
 import {
   CopilotKit,
   CopilotSidebar,
@@ -9,6 +9,9 @@ import {
   UseAgentUpdate,
 } from "@copilotkit/react-core/v2";
 import { GroceryState } from "@agents/types";
+
+const KROGER_PROVIDER = "custom_shopping";
+const KROGER_STRATEGY = "oauth_custom_shopping";
 
 function KrogerAuthGate({ onConnect }: { onConnect: () => void }) {
   return (
@@ -36,6 +39,24 @@ function KrogerAuthGate({ onConnect }: { onConnect: () => void }) {
 function GroceryPageInner() {
   const { user, isLoaded } = useUser();
   const [connecting, setConnecting] = useState(false);
+
+  const connectKroger = useReverification(async () => {
+    if (!user) return;
+    const existingAccount = user.externalAccounts.find(
+      ({ provider }) => provider === KROGER_PROVIDER,
+    );
+
+    const account = existingAccount
+      ? await existingAccount.reauthorize({ redirectUrl: window.location.href })
+      : await user.createExternalAccount({
+          strategy: KROGER_STRATEGY,
+          redirectUrl: window.location.href,
+        });
+    const redirectUrl = account.verification?.externalVerificationRedirectURL?.href;
+    if (redirectUrl) {
+      window.location.assign(redirectUrl);
+    }
+  });
 
   const { agent } = useAgent({
     agentId: "grocery",
@@ -68,15 +89,11 @@ function GroceryPageInner() {
       .catch(() => {/* stay in disconnected state */});
   }, [agent, isLoaded, user]);
 
-  // Trigger Clerk's OAuth connect flow for the "shopping" provider.
   const handleConnect = async () => {
     if (!user || connecting) return;
     setConnecting(true);
     try {
-      await user.createExternalAccount({
-        strategy: "oauth_custom_shopping",
-        redirectUrl: window.location.href,
-      });
+      await connectKroger();
       // Clerk will redirect — no need to reset connecting state
     } catch (err) {
       console.error("Connect failed:", err);
