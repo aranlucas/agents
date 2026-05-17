@@ -15,7 +15,7 @@ export type TripState = {
   review_summary?: string
 }
 
-// Grocery agent state — matches what agents/grocery will write to ADK shared state
+// Grocery agent state — matches what agents/grocery writes to ADK shared state
 export type GroceryState = {
   shopping_list?: string[]
   cart?: CartItem[]
@@ -23,6 +23,11 @@ export type GroceryState = {
   meal_plan?: string
   weekly_deals?: string
   status?: 'idle' | 'planning' | 'ready'
+  notes?: string
+  review_summary?: string
+  // Kroger auth — set by the frontend, read by the agent's header_provider
+  kroger_connected?: boolean
+  kroger_token?: string
 }
 
 export type CartItem = {
