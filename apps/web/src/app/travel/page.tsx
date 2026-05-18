@@ -5,7 +5,6 @@ import {
   CopilotKit,
   CopilotSidebar,
   useAgent,
-  useAgentContext,
   UseAgentUpdate,
   useFrontendTool,
   useConfigureSuggestions,
@@ -94,13 +93,7 @@ function TripStudio() {
   const reviewSummary = agentState.review_summary;
   const isRunning = Boolean(agent?.isRunning);
 
-  // UI → Agent: provide the traveler brief as read-only context on every turn.
-  useAgentContext({
-    description: "Traveler preferences set by the user in the brief panel.",
-    value: preferences as unknown as Record<string, string | number | boolean | null | string[]>,
-  });
-
-  useFrontendTool({
+useFrontendTool({
     name: "request_user_approval",
     description:
       "Pause and ask the operator to approve a sensitive trip action " +
