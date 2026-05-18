@@ -97,7 +97,7 @@ function TripStudio() {
   // UI → Agent: provide the traveler brief as read-only context on every turn.
   useAgentContext({
     description: "Traveler preferences set by the user in the brief panel.",
-    value: preferences,
+    value: preferences as unknown as Record<string, string | number | boolean | null | string[]>,
   });
 
   useFrontendTool({
