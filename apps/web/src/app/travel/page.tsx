@@ -5,6 +5,7 @@ import {
   CopilotKit,
   CopilotSidebar,
   useAgent,
+  useAgentContext,
   UseAgentUpdate,
   useFrontendTool,
   useConfigureSuggestions,
@@ -36,7 +37,7 @@ type AgentState = {
   flights?: string;
   status?: DocStatus;
   review_summary?: string;
-} & Partial<Preferences>
+}
 
 const STATUS_VALUES: ReadonlyArray<DocStatus> = [
   "idle",
@@ -93,20 +94,11 @@ function TripStudio() {
   const reviewSummary = agentState.review_summary;
   const isRunning = Boolean(agent?.isRunning);
 
-  // UI → Agent: stream the latest preferences into shared state whenever
-  // the user edits a control, but only after we've observed initial state
-  // at least once to avoid clobbering server-side defaults.
-  const observedOnce = useRef(false);
-  useEffect(() => {
-    if (!agent) return;
-    if (agent.state !== undefined) observedOnce.current = true;
-  }, [agent, agent?.state]);
-
-  useEffect(() => {
-    if (!agent || !observedOnce.current) return;
-    const current = (agent.state ?? {}) as AgentState;
-    agent.setState({ ...current, ...preferences });
-  }, [agent, preferences]);
+  // UI → Agent: provide the traveler brief as read-only context on every turn.
+  useAgentContext({
+    description: "Traveler preferences set by the user in the brief panel.",
+    value: preferences,
+  });
 
   useFrontendTool({
     name: "request_user_approval",
