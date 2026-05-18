@@ -14,11 +14,7 @@ import { z } from "zod";
 
 import { HeroHeader } from "@/components/hero-header";
 import { DocumentCanvas, DocStatus } from "@/components/document-canvas";
-import {
-  PreferencesPanel,
-  Preferences,
-  DEFAULT_PREFERENCES,
-} from "@/components/preferences-panel";
+import { PreferencesPanel } from "@/components/preferences-panel";
 import {
   ApprovalDialog,
   ApprovalRequest,
@@ -63,9 +59,6 @@ export default function Page() {
 }
 
 function TripStudio() {
-  const [preferences, setPreferences] = useState<Preferences>(
-    DEFAULT_PREFERENCES,
-  );
   const [briefOpenMobile, setBriefOpenMobile] = useState(false);
   const [pendingApprovals, setPendingApprovals] = useState<ApprovalRequest[]>(
     [],
@@ -293,7 +286,7 @@ useFrontendTool({
             briefOpenMobile ? "block" : "hidden"
           } md:block md:sticky md:top-6 md:self-start md:max-h-[calc(100vh-3rem)] md:overflow-y-auto`}
         >
-          <PreferencesPanel value={preferences} onChange={setPreferences} />
+          <PreferencesPanel />
         </aside>
 
         <section className="flex flex-col min-h-[60vh] md:min-h-0">

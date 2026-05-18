@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useAgentContext } from "@copilotkit/react-core/v2";
 
 export type TransportMode = "flight" | "roadtrip";
@@ -87,12 +87,9 @@ const INTEREST_OPTIONS = [
   "Festivals",
 ];
 
-interface Props {
-  value: Preferences;
-  onChange: (next: Preferences) => void;
-}
+export function PreferencesPanel() {
+  const [value, setValue] = useState<Preferences>(DEFAULT_PREFERENCES);
 
-export function PreferencesPanel({ value, onChange }: Props) {
   useAgentContext({
     description: "Traveler preferences set by the user in the brief panel.",
     value: {
@@ -107,7 +104,7 @@ export function PreferencesPanel({ value, onChange }: Props) {
   });
 
   const set = <K extends keyof Preferences>(key: K, v: Preferences[K]) =>
-    onChange({ ...value, [key]: v });
+    setValue((prev) => ({ ...prev, [key]: v }));
 
   const toggleInterest = (i: string) => {
     const has = value.interests.includes(i);
