@@ -14,11 +14,7 @@ import { z } from "zod";
 
 import { HeroHeader } from "@/components/hero-header";
 import { DocumentCanvas, DocStatus } from "@/components/document-canvas";
-import {
-  PreferencesPanel,
-  Preferences,
-  DEFAULT_PREFERENCES,
-} from "@/components/preferences-panel";
+import { PreferencesPanel } from "@/components/preferences-panel";
 import {
   ApprovalDialog,
   ApprovalRequest,
@@ -36,7 +32,7 @@ type AgentState = {
   flights?: string;
   status?: DocStatus;
   review_summary?: string;
-} & Partial<Preferences>
+}
 
 const STATUS_VALUES: ReadonlyArray<DocStatus> = [
   "idle",
@@ -63,9 +59,6 @@ export default function Page() {
 }
 
 function TripStudio() {
-  const [preferences, setPreferences] = useState<Preferences>(
-    DEFAULT_PREFERENCES,
-  );
   const [briefOpenMobile, setBriefOpenMobile] = useState(false);
   const [pendingApprovals, setPendingApprovals] = useState<ApprovalRequest[]>(
     [],
@@ -93,22 +86,7 @@ function TripStudio() {
   const reviewSummary = agentState.review_summary;
   const isRunning = Boolean(agent?.isRunning);
 
-  // UI → Agent: stream the latest preferences into shared state whenever
-  // the user edits a control, but only after we've observed initial state
-  // at least once to avoid clobbering server-side defaults.
-  const observedOnce = useRef(false);
-  useEffect(() => {
-    if (!agent) return;
-    if (agent.state !== undefined) observedOnce.current = true;
-  }, [agent, agent?.state]);
-
-  useEffect(() => {
-    if (!agent || !observedOnce.current) return;
-    const current = (agent.state ?? {}) as AgentState;
-    agent.setState({ ...current, ...preferences });
-  }, [agent, preferences]);
-
-  useFrontendTool({
+useFrontendTool({
     name: "request_user_approval",
     description:
       "Pause and ask the operator to approve a sensitive trip action " +
@@ -308,7 +286,7 @@ function TripStudio() {
             briefOpenMobile ? "block" : "hidden"
           } md:block md:sticky md:top-6 md:self-start md:max-h-[calc(100vh-3rem)] md:overflow-y-auto`}
         >
-          <PreferencesPanel value={preferences} onChange={setPreferences} />
+          <PreferencesPanel />
         </aside>
 
         <section className="flex flex-col min-h-[60vh] md:min-h-0">
