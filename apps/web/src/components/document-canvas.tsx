@@ -2,12 +2,7 @@
 
 import React, { useMemo } from "react";
 import { Streamdown } from "streamdown";
-
-export type DocStatus =
-  | "idle"
-  | "drafting"
-  | "ready_to_book"
-  | "booked";
+import type { DocStatus } from "@agents/types";
 
 interface Day {
   day: number;

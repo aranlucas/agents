@@ -2,27 +2,13 @@
 
 import React, { useState } from "react";
 import { useAgentContext } from "@copilotkit/react-core/v2";
-
-export type TransportMode = "flight" | "roadtrip";
-export type BudgetTier = "shoestring" | "comfort" | "premium" | "luxury";
-export type Vibe =
-  | "relaxed"
-  | "adventure"
-  | "foodie"
-  | "culture"
-  | "nightlife"
-  | "family";
-export type Pace = "slow" | "balanced" | "packed";
-
-export interface Preferences {
-  travelerName: string;
-  homeAirport: string;
-  transportMode: TransportMode;
-  budgetTier: BudgetTier;
-  vibe: Vibe;
-  pace: Pace;
-  interests: string[];
-}
+import type {
+  BudgetTier,
+  Pace,
+  Preferences,
+  TransportMode,
+  Vibe,
+} from "@agents/types";
 
 export const DEFAULT_PREFERENCES: Preferences = {
   travelerName: "",
@@ -165,7 +151,7 @@ export function PreferencesPanel() {
       <div className="grid grid-cols-2 gap-1.5 mb-4">
         {([
           { value: "flight" as TransportMode, label: "Flight", icon: "✈️" },
-          { value: "roadtrip" as TransportMode, label: "Road trip", icon: "🚗" },
+          { value: "road_trip" as TransportMode, label: "Road trip", icon: "🚗" },
         ]).map((opt) => {
           const active = value.transportMode === opt.value;
           return (
