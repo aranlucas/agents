@@ -12,27 +12,15 @@ import {
 } from "@copilotkit/react-core/v2";
 import { z } from "zod";
 
+import type { DocStatus, TripState } from "@agents/types";
+
 import { HeroHeader } from "@/components/hero-header";
-import { DocumentCanvas, DocStatus } from "@/components/document-canvas";
+import { DocumentCanvas } from "@/components/document-canvas";
 import { PreferencesPanel } from "@/components/preferences-panel";
 import {
   ApprovalDialog,
   ApprovalRequest,
 } from "@/components/approval-dialog";
-
-type AgentState = {
-  destination?: string;
-  start_date?: string;
-  end_date?: string;
-  travelers?: number;
-  budget_usd?: number;
-  headline?: string;
-  summary?: string;
-  itinerary?: string;
-  flights?: string;
-  status?: DocStatus;
-  review_summary?: string;
-}
 
 const STATUS_VALUES: ReadonlyArray<DocStatus> = [
   "idle",
@@ -72,7 +60,7 @@ function TripStudio() {
     ],
   });
 
-  const agentState = (agent?.state ?? {}) as AgentState;
+  const agentState = (agent?.state ?? {}) as TripState;
   const destination = agentState.destination ?? "";
   const startDate = agentState.start_date ?? "";
   const endDate = agentState.end_date ?? "";
@@ -131,7 +119,7 @@ useFrontendTool({
       });
 
       if (decision.approved && agent) {
-        const current = (agent.state ?? {}) as AgentState;
+        const current = (agent.state ?? {}) as TripState;
         agent.setState({ ...current, status: "booked" });
       }
       return decision;
@@ -172,8 +160,8 @@ useFrontendTool({
         Object.keys(parameters as Record<string, unknown>).length > 0;
 
       return (
-        <div className="my-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm">
-          <div className="flex items-center gap-2 font-mono font-semibold text-gray-700">
+        <div className="my-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3 text-sm">
+          <div className="flex items-center gap-2 font-mono font-semibold text-[var(--ink-soft)]">
             <span>
               {status === "complete"
                 ? "✓"
@@ -185,20 +173,20 @@ useFrontendTool({
           </div>
           {hasParams && (
             <details className="mt-2">
-              <summary className="cursor-pointer text-xs text-gray-500">
+              <summary className="cursor-pointer text-xs text-[var(--ink-mute)]">
                 Parameters
               </summary>
-              <pre className="mt-1 overflow-auto rounded bg-gray-100 p-2 text-xs">
+              <pre className="mt-1 overflow-auto rounded bg-[var(--bg-soft)] p-2 text-xs">
                 {JSON.stringify(parameters, null, 2)}
               </pre>
             </details>
           )}
           {status === "complete" && result && (
             <details className="mt-2">
-              <summary className="cursor-pointer text-xs text-gray-500">
+              <summary className="cursor-pointer text-xs text-[var(--ink-mute)]">
                 Result
               </summary>
-              <pre className="mt-1 overflow-auto rounded bg-gray-100 p-2 text-xs">
+              <pre className="mt-1 overflow-auto rounded bg-[var(--bg-soft)] p-2 text-xs">
                 {typeof result === "string"
                   ? result
                   : JSON.stringify(result, null, 2)}
@@ -226,17 +214,17 @@ useFrontendTool({
 
   const onDestinationChange = (next: string) => {
     if (!agent) return;
-    const current = (agent.state ?? {}) as AgentState;
+    const current = (agent.state ?? {}) as TripState;
     agent.setState({ ...current, destination: next });
   };
   const onHeadlineChange = (next: string) => {
     if (!agent) return;
-    const current = (agent.state ?? {}) as AgentState;
+    const current = (agent.state ?? {}) as TripState;
     agent.setState({ ...current, headline: next });
   };
   const onItineraryChange = (next: string) => {
     if (!agent) return;
-    const current = (agent.state ?? {}) as AgentState;
+    const current = (agent.state ?? {}) as TripState;
     agent.setState({
       ...current,
       itinerary: next,
@@ -245,7 +233,7 @@ useFrontendTool({
   };
   const onReset = () => {
     if (!agent) return;
-    const current = (agent.state ?? {}) as AgentState;
+    const current = (agent.state ?? {}) as TripState;
     agent.setState({
       ...current,
       destination: "",
