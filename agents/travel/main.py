@@ -55,8 +55,12 @@ def _setup_otel() -> None:
 
     resource = Resource.create(
         {
-            ResourceAttributes.SERVICE_NAME: os.getenv("OTEL_SERVICE_NAME", "travel-agent"),
-            ResourceAttributes.SERVICE_VERSION: os.getenv("RAILWAY_GIT_COMMIT_SHA", "dev"),
+            ResourceAttributes.SERVICE_NAME: os.getenv(
+                "OTEL_SERVICE_NAME", "travel-agent"
+            ),
+            ResourceAttributes.SERVICE_VERSION: os.getenv(
+                "RAILWAY_GIT_COMMIT_SHA", "dev"
+            ),
             "deployment.environment": os.getenv("RAILWAY_ENVIRONMENT_NAME", "local"),
             "railway.project.id": os.getenv("RAILWAY_PROJECT_ID", ""),
             "railway.service.id": os.getenv("RAILWAY_SERVICE_ID", ""),
@@ -101,7 +105,9 @@ def set_trip_meta(
     return {"ok": True}
 
 
-def write_itinerary(tool_context: ToolContext, summary: str, body: str, flights: str = "") -> dict:
+def write_itinerary(
+    tool_context: ToolContext, summary: str, body: str, flights: str = ""
+) -> dict:
     """Replace the full multi-day itinerary in shared state.
 
     `summary` is a 1-2 sentence pitch shown above the day list. `body` is
@@ -237,7 +243,10 @@ pace vs. coverage, points vs. cash) instead of guessing silently.
 
 collab_trip_agent = LlmAgent(
     name="collab_trip_agent",
-    model=LiteLlm(model="nvidia_nim/deepseek-ai/deepseek-v4-flash", fallbacks=["openrouter/owl-alpha", "mistral/mistral-small-latest"]),
+    model=LiteLlm(
+        model="mistral/mistral-small-latest",
+        fallbacks=["openrouter/owl-alpha", "nvidia_nim/deepseek-ai/deepseek-v4-flash"],
+    ),
     instruction=_build_instruction,
     after_tool_callback=shared_after_tool_callback,
     tools=[
@@ -308,8 +317,11 @@ async def trace_requests(request, call_next):
             raise
 
         span.set_attribute("http.response.status_code", response.status_code)
-        span.set_attribute("duration_ms", round((time.perf_counter() - start) * 1000, 2))
+        span.set_attribute(
+            "duration_ms", round((time.perf_counter() - start) * 1000, 2)
+        )
         return response
+
 
 app.add_middleware(
     CORSMiddleware,

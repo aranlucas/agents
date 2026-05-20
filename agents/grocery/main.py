@@ -43,8 +43,12 @@ def _setup_otel() -> None:
 
     resource = Resource.create(
         {
-            ResourceAttributes.SERVICE_NAME: os.getenv("OTEL_SERVICE_NAME", "grocery-agent"),
-            ResourceAttributes.SERVICE_VERSION: os.getenv("RAILWAY_GIT_COMMIT_SHA", "dev"),
+            ResourceAttributes.SERVICE_NAME: os.getenv(
+                "OTEL_SERVICE_NAME", "grocery-agent"
+            ),
+            ResourceAttributes.SERVICE_VERSION: os.getenv(
+                "RAILWAY_GIT_COMMIT_SHA", "dev"
+            ),
             "deployment.environment": os.getenv("RAILWAY_ENVIRONMENT_NAME", "local"),
             "railway.project.id": os.getenv("RAILWAY_PROJECT_ID", ""),
             "railway.service.id": os.getenv("RAILWAY_SERVICE_ID", ""),
@@ -77,7 +81,9 @@ _DEFAULT_STATE: dict = {
 # ---------------------------------------------------------------------------
 # State tools — UI canvas writes
 # ---------------------------------------------------------------------------
-def set_shopping_list(tool_context: ToolContext, items: list[str], notes: str = "") -> dict:
+def set_shopping_list(
+    tool_context: ToolContext, items: list[str], notes: str = ""
+) -> dict:
     """Replace the full shopping list in shared state.
 
     `items` is a list of item strings (e.g. ["2x milk", "eggs", "bread"]).
@@ -222,7 +228,10 @@ Be practical, budget-aware, and proactive. Suggest substitutions for out-of-stoc
 
 grocery_agent = LlmAgent(
     name="grocery_agent",
-    model=LiteLlm(model="nvidia_nim/deepseek-ai/deepseek-v4-flash", fallbacks=["openrouter/owl-alpha", "mistral/mistral-small-latest"]),
+    model=LiteLlm(
+        model="mistral/mistral-small-latest",
+        fallbacks=["openrouter/owl-alpha", "nvidia_nim/deepseek-ai/deepseek-v4-flash"],
+    ),
     instruction=_INSTRUCTION,
     before_agent_callback=on_before_agent,
     before_model_callback=before_model_modifier,
@@ -286,7 +295,9 @@ async def trace_requests(request, call_next):
             raise
 
         span.set_attribute("http.response.status_code", response.status_code)
-        span.set_attribute("duration_ms", round((time.perf_counter() - start) * 1000, 2))
+        span.set_attribute(
+            "duration_ms", round((time.perf_counter() - start) * 1000, 2)
+        )
         return response
 
 
