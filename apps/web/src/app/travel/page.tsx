@@ -21,6 +21,7 @@ import {
   ApprovalDialog,
   ApprovalRequest,
 } from "@/components/approval-dialog";
+import { Card } from "@/components/ui/card";
 
 const STATUS_VALUES: ReadonlyArray<DocStatus> = [
   "idle",
@@ -160,7 +161,7 @@ useFrontendTool({
         Object.keys(parameters as Record<string, unknown>).length > 0;
 
       return (
-        <div className="my-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3 text-sm">
+        <Card className="my-2 gap-2 bg-[var(--surface-soft)] p-3 py-3 text-sm">
           <div className="flex items-center gap-2 font-mono font-semibold text-[var(--ink-soft)]">
             <span>
               {status === "complete"
@@ -193,7 +194,7 @@ useFrontendTool({
               </pre>
             </details>
           )}
-        </div>
+        </Card>
       );
     },
   }, []);

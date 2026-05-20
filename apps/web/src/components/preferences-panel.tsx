@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useAgentContext } from "@copilotkit/react-core/v2";
+import { Car, Plane } from "lucide-react";
 import type {
   BudgetTier,
   Pace,
@@ -9,6 +10,19 @@ import type {
   TransportMode,
   Vibe,
 } from "@agents/types";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 export const DEFAULT_PREFERENCES: Preferences = {
   travelerName: "",
@@ -101,46 +115,50 @@ export function PreferencesPanel() {
   };
 
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
+    <Card size="sm" className="gap-4">
+      <CardHeader className="border-b border-[var(--border-soft)] pb-4">
         <div>
-          <h3 className="text-sm font-semibold text-[var(--ink)]">
-            Traveler brief
-          </h3>
-          <p className="text-xs text-[var(--ink-mute)] mt-0.5">
+          <CardTitle>Traveler brief</CardTitle>
+          <CardDescription className="text-xs">
             Shared with the agent on every turn.
-          </p>
+          </CardDescription>
         </div>
-        <span className="text-[10px] font-mono tracking-wider uppercase text-[var(--ink-mute)] bg-[var(--bg-soft)] px-2 py-1 rounded-md">
+        <CardAction>
+          <Badge
+            variant="outline"
+            className="h-auto rounded-md px-2 py-1 font-mono text-[10px] uppercase tracking-wider"
+          >
           UI → Agent
-        </span>
-      </div>
+          </Badge>
+        </CardAction>
+      </CardHeader>
 
-      <div className="grid grid-cols-2 gap-2 mb-4">
+      <CardContent className="space-y-4">
+      <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="block text-xs font-medium text-[var(--ink-soft)] mb-1">
             Your name
           </label>
-          <input
+          <Input
             type="text"
             value={value.travelerName}
             onChange={(e) => set("travelerName", e.target.value)}
             placeholder="e.g. Ada"
-            className="w-full px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--ink)] placeholder-[var(--ink-mute)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
+            className="bg-[var(--surface-soft)]"
           />
         </div>
         <div>
           <label className="block text-xs font-medium text-[var(--ink-soft)] mb-1">
             Home airport
           </label>
-          <input
+          <Input
             type="text"
             value={value.homeAirport}
             onChange={(e) =>
               set("homeAirport", e.target.value.toUpperCase().slice(0, 4))
             }
             placeholder="SFO"
-            className="w-full px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--ink)] placeholder-[var(--ink-mute)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent font-mono uppercase"
+            className="bg-[var(--surface-soft)] font-mono uppercase"
           />
         </div>
       </div>
@@ -150,24 +168,31 @@ export function PreferencesPanel() {
       </label>
       <div className="grid grid-cols-2 gap-1.5 mb-4">
         {([
-          { value: "flight" as TransportMode, label: "Flight", icon: "✈️" },
-          { value: "road_trip" as TransportMode, label: "Road trip", icon: "🚗" },
+          {
+            value: "flight" as TransportMode,
+            label: "Flight",
+            icon: Plane,
+          },
+          {
+            value: "road_trip" as TransportMode,
+            label: "Road trip",
+            icon: Car,
+          },
         ]).map((opt) => {
           const active = value.transportMode === opt.value;
+          const Icon = opt.icon;
           return (
-            <button
+            <Button
               key={opt.value}
               type="button"
               onClick={() => set("transportMode", opt.value)}
-              className={`px-2 py-2 text-xs rounded-lg border transition flex items-center gap-2 justify-center ${
-                active
-                  ? "bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm"
-                  : "bg-[var(--surface-soft)] text-[var(--ink-soft)] border-[var(--border)] hover:border-[var(--accent)]"
-              }`}
+              variant={active ? "default" : "outline"}
+              size="sm"
+              className={cn("h-9 text-xs", !active && "bg-[var(--surface-soft)]")}
             >
-              <span className="text-sm">{opt.icon}</span>
+              <Icon className="size-3.5" />
               <span className="font-medium">{opt.label}</span>
-            </button>
+            </Button>
           );
         })}
       </div>
@@ -179,15 +204,15 @@ export function PreferencesPanel() {
         {BUDGET_OPTIONS.map((opt) => {
           const active = value.budgetTier === opt.value;
           return (
-            <button
+            <Button
               key={opt.value}
               type="button"
               onClick={() => set("budgetTier", opt.value)}
-              className={`px-2 py-2 text-xs rounded-lg border transition flex flex-col items-center gap-0.5 ${
-                active
-                  ? "bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm"
-                  : "bg-[var(--surface-soft)] text-[var(--ink-soft)] border-[var(--border)] hover:border-[var(--accent)]"
-              }`}
+              variant={active ? "default" : "outline"}
+              className={cn(
+                "h-auto flex-col gap-0.5 py-2 text-xs",
+                !active && "bg-[var(--surface-soft)]",
+              )}
             >
               <span className="font-medium">{opt.label}</span>
               <span
@@ -197,7 +222,7 @@ export function PreferencesPanel() {
               >
                 {opt.hint}
               </span>
-            </button>
+            </Button>
           );
         })}
       </div>
@@ -209,18 +234,16 @@ export function PreferencesPanel() {
         {VIBE_OPTIONS.map((opt) => {
           const active = value.vibe === opt.value;
           return (
-            <button
+            <Button
               key={opt.value}
               type="button"
               onClick={() => set("vibe", opt.value)}
-              className={`px-2 py-1.5 text-xs rounded-lg border transition ${
-                active
-                  ? "bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm"
-                  : "bg-[var(--surface-soft)] text-[var(--ink-soft)] border-[var(--border)] hover:border-[var(--accent)]"
-              }`}
+              variant={active ? "default" : "outline"}
+              size="xs"
+              className={cn("h-8 text-xs", !active && "bg-[var(--surface-soft)]")}
             >
               {opt.label}
-            </button>
+            </Button>
           );
         })}
       </div>
@@ -232,15 +255,15 @@ export function PreferencesPanel() {
         {PACE_OPTIONS.map((opt) => {
           const active = value.pace === opt.value;
           return (
-            <button
+            <Button
               key={opt.value}
               type="button"
               onClick={() => set("pace", opt.value)}
-              className={`px-2 py-2 text-xs rounded-lg border transition flex flex-col items-center gap-0.5 ${
-                active
-                  ? "bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm"
-                  : "bg-[var(--surface-soft)] text-[var(--ink-soft)] border-[var(--border)] hover:border-[var(--accent)]"
-              }`}
+              variant={active ? "default" : "outline"}
+              className={cn(
+                "h-auto flex-col gap-0.5 py-2 text-xs",
+                !active && "bg-[var(--surface-soft)]",
+              )}
             >
               <span className="font-medium">{opt.label}</span>
               <span
@@ -250,7 +273,7 @@ export function PreferencesPanel() {
               >
                 {opt.hint}
               </span>
-            </button>
+            </Button>
           );
         })}
       </div>
@@ -262,21 +285,23 @@ export function PreferencesPanel() {
         {INTEREST_OPTIONS.map((i) => {
           const active = value.interests.includes(i);
           return (
-            <button
+            <Button
               key={i}
               type="button"
               onClick={() => toggleInterest(i)}
-              className={`px-2.5 py-1 text-xs rounded-full border transition ${
-                active
-                  ? "bg-[var(--accent)] text-white border-[var(--accent)]"
-                  : "bg-[var(--surface-soft)] text-[var(--ink-soft)] border-[var(--border)] hover:border-[var(--accent)]"
-              }`}
+              variant={active ? "default" : "outline"}
+              size="xs"
+              className={cn(
+                "rounded-full text-xs",
+                !active && "bg-[var(--surface-soft)]",
+              )}
             >
               {i}
-            </button>
+            </Button>
           );
         })}
       </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

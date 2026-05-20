@@ -4,6 +4,18 @@ import React, { useMemo } from "react";
 import { Streamdown } from "streamdown";
 import type { DocStatus } from "@agents/types";
 
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+
 interface Day {
   day: number;
   theme: string;
@@ -152,33 +164,34 @@ export function DocumentCanvas({
   const budgetLabel = budgetUsd > 0 ? `$${budgetUsd.toLocaleString()}` : "—";
 
   return (
-    <section className="flex flex-col h-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-sm overflow-hidden">
-      <header className="px-6 py-5 border-b border-[var(--border-soft)] bg-gradient-to-br from-[var(--surface)] to-[var(--surface-soft)]">
+    <Card className="h-full gap-0 py-0">
+      <CardHeader className="border-b border-[var(--border-soft)] bg-gradient-to-br from-[var(--surface)] to-[var(--surface-soft)] px-6 py-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <input
+            <Input
               type="text"
               value={destination}
               onChange={(e) => onDestinationChange(e.target.value)}
               placeholder="Where to?"
-              className="w-full bg-transparent text-xl md:text-2xl font-semibold tracking-tight text-[var(--ink)] placeholder-[var(--ink-mute)] focus:outline-none"
+              className="h-auto border-0 bg-transparent px-0 py-0 text-xl font-semibold tracking-tight shadow-none focus-visible:ring-0 md:text-2xl"
             />
-            <input
+            <Input
               type="text"
               value={headline}
               onChange={(e) => onHeadlineChange(e.target.value)}
               placeholder="A one-line vibe (e.g. 'Snow, sushi, onsen')"
-              className="w-full mt-1 bg-transparent text-sm text-[var(--ink-soft)] placeholder-[var(--ink-mute)] focus:outline-none italic"
+              className="mt-1 h-auto border-0 bg-transparent px-0 py-0 text-sm italic text-[var(--ink-soft)] shadow-none focus-visible:ring-0"
             />
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <button
+            <Button
               type="button"
               onClick={onReset}
-              className="px-3 py-1.5 text-xs rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--ink-soft)] hover:text-[var(--ink)] hover:border-[var(--accent)] transition"
+              variant="outline"
+              size="xs"
             >
               Reset
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -196,12 +209,10 @@ export function DocumentCanvas({
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[var(--ink-mute)]">
-          <span
-            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-medium ${meta.chipClass}`}
-          >
+          <Badge variant="outline" className={cn("gap-1.5 border-transparent", meta.chipClass)}>
             <span className={`w-1.5 h-1.5 rounded-full ${meta.dotClass}`} />
             {meta.label}
-          </span>
+          </Badge>
           {days.length > 0 && (
             <>
               <span>·</span>
@@ -219,7 +230,7 @@ export function DocumentCanvas({
             </>
           )}
         </div>
-      </header>
+      </CardHeader>
 
       {summary && (
         <div className="mx-6 mt-4 text-sm text-[var(--ink-soft)] leading-relaxed">
@@ -228,26 +239,26 @@ export function DocumentCanvas({
       )}
 
       {flights && (
-        <div className="mx-6 mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] p-4">
+        <Card size="sm" className="mx-6 mt-4 gap-2 bg-[var(--surface-soft)] p-4 py-4">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--ink-mute)] mb-2">
             Flights
           </h3>
           <div className="text-sm text-[var(--ink)]">
             <Streamdown>{flights}</Streamdown>
           </div>
-        </div>
+        </Card>
       )}
 
       {status === "ready_to_book" && reviewSummary && (
-        <div className="mx-6 mt-4 rounded-xl border border-[color-mix(in_srgb,var(--warning)_30%,transparent)] bg-[color-mix(in_srgb,var(--warning)_8%,transparent)] px-4 py-3 text-xs text-[var(--ink-soft)]">
+        <Card className="mx-6 mt-4 gap-0 border-[color-mix(in_srgb,var(--warning)_30%,transparent)] bg-[color-mix(in_srgb,var(--warning)_8%,transparent)] px-4 py-3 text-xs text-[var(--ink-soft)]">
           <span className="font-semibold text-[var(--warning)]">
             Agent says:
           </span>{" "}
           {reviewSummary}
-        </div>
+        </Card>
       )}
 
-      <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 relative">
+      <CardContent className="relative min-h-0 flex-1 overflow-y-auto px-6 py-5">
         {days.length === 0 && !trailing && !itinerary.trim() ? (
           <EmptyState />
         ) : (
@@ -264,30 +275,30 @@ export function DocumentCanvas({
               <DayCard key={`${d.day}-${d.theme}`} day={d} />
             ))}
             {isStreaming && (
-              <div className="rounded-2xl border border-dashed border-[var(--accent)] bg-[var(--accent-soft)] px-4 py-3 text-xs text-[var(--accent-strong)] font-medium">
+              <Card className="gap-0 border-dashed border-[var(--accent)] bg-[var(--accent-soft)] px-4 py-3 text-xs font-medium text-[var(--accent-strong)]">
                 <span className="inline-flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
                   Streaming next day…
                 </span>
-              </div>
+              </Card>
             )}
           </div>
         )}
 
         {isStreaming && (
-          <div className="pointer-events-none absolute top-5 right-6 inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-[10px] font-mono tracking-wider uppercase bg-[var(--accent-soft)] text-[var(--accent-strong)]">
+          <Badge className="pointer-events-none absolute top-5 right-6 gap-2 bg-[var(--accent-soft)] font-mono text-[10px] uppercase tracking-wider text-[var(--accent-strong)]">
             <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
             Live
-          </div>
+          </Badge>
         )}
-      </div>
+      </CardContent>
 
-      <div className="border-t border-[var(--border-soft)] px-6 py-3 bg-[var(--surface-soft)]">
+      <CardFooter className="border-t border-[var(--border-soft)] bg-[var(--surface-soft)] px-6 py-3">
         <details className="text-xs">
           <summary className="cursor-pointer text-[var(--ink-mute)] hover:text-[var(--ink-soft)] select-none">
             Edit raw itinerary (markdown)
           </summary>
-          <textarea
+          <Textarea
             value={itinerary}
             onChange={(e) => onItineraryChange(e.target.value)}
             placeholder={
@@ -295,31 +306,31 @@ export function DocumentCanvas({
             }
             spellCheck={false}
             rows={8}
-            className="mt-2 w-full resize-y rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 font-mono text-[12px] leading-5 text-[var(--ink)] placeholder-[var(--ink-mute)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+            className="mt-2 resize-y bg-[var(--surface)] font-mono text-[12px] leading-5"
           />
         </details>
-      </div>
-    </section>
+      </CardFooter>
+    </Card>
   );
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-[var(--border-soft)] bg-[var(--surface)] px-3 py-2">
+    <Card size="sm" className="gap-0 border-[var(--border-soft)] px-3 py-2">
       <div className="text-[10px] uppercase tracking-wider text-[var(--ink-mute)] font-mono">
         {label}
       </div>
       <div className="text-sm font-medium text-[var(--ink)] mt-0.5 truncate">
         {value}
       </div>
-    </div>
+    </Card>
   );
 }
 
 function DayCard({ day }: { day: Day }) {
   return (
-    <article className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
-      <header className="flex items-center gap-3 px-4 py-3 border-b border-[var(--border-soft)] bg-[var(--surface-soft)]">
+    <Card size="sm" className="gap-0 py-0">
+      <CardHeader className="flex-row items-center gap-3 border-b border-[var(--border-soft)] bg-[var(--surface-soft)] px-4 py-3">
         <div className="shrink-0 w-9 h-9 rounded-xl bg-[var(--accent-soft)] text-[var(--accent-strong)] flex items-center justify-center text-sm font-semibold font-mono">
           {day.day}
         </div>
@@ -331,8 +342,9 @@ function DayCard({ day }: { day: Day }) {
             {day.theme || "Untitled day"}
           </div>
         </div>
-      </header>
-      <ul className="px-4 py-3 space-y-1.5">
+      </CardHeader>
+      <CardContent className="px-4 py-3">
+      <ul className="space-y-1.5">
         {day.activities.length === 0 ? (
           <li className="text-xs text-[var(--ink-mute)] italic">
             (empty — ask the agent to fill this day)
@@ -343,7 +355,8 @@ function DayCard({ day }: { day: Day }) {
           ))
         )}
       </ul>
-    </article>
+      </CardContent>
+    </Card>
   );
 }
 

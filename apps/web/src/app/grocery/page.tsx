@@ -11,6 +11,17 @@ import {
 } from "@copilotkit/react-core/v2";
 import { Streamdown } from "streamdown";
 import { CartItem, GroceryState, PantryItem } from "@agents/types";
+import { ShoppingCart } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 const KROGER_PROVIDER = "custom_shopping";
 const KROGER_STRATEGY = "oauth_custom_shopping";
@@ -49,7 +60,7 @@ function KrogerAuthGate({
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8 text-center">
       <div className="w-12 h-12 rounded-2xl bg-[var(--accent-soft)] flex items-center justify-center">
-        <CartIcon className="w-6 h-6 text-[var(--accent-strong)]" />
+        <ShoppingCart className="w-6 h-6 text-[var(--accent-strong)]" />
       </div>
       <div className="space-y-2">
         <h2 className="text-xl font-semibold text-[var(--ink)]">
@@ -60,13 +71,13 @@ function KrogerAuthGate({
           products, check weekly deals, and manage your shopping list.
         </p>
       </div>
-      <button
+      <Button
         onClick={onConnect}
         disabled={connecting}
-        className="px-5 py-2.5 rounded-xl bg-[var(--accent)] text-white text-sm font-medium shadow-sm hover:bg-[var(--accent-strong)] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+        size="lg"
       >
         {connecting ? "Connecting…" : "Connect Kroger"}
-      </button>
+      </Button>
       <p className="text-xs text-[var(--ink-mute)]">
         You&apos;ll be redirected to authorize access, then returned here.
       </p>
@@ -186,16 +197,19 @@ function GroceryPageInner() {
         <div className="max-w-[1400px] mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-[var(--accent)] to-emerald-500 shadow-md flex items-center justify-center">
-              <CartIcon className="w-5 h-5 text-white" />
+              <ShoppingCart className="w-5 h-5 text-white" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h1 className="text-base md:text-xl font-semibold tracking-tight text-[var(--ink)] truncate">
                   Grocery Studio
                 </h1>
-                <span className="hidden sm:inline text-[10px] font-mono tracking-wider uppercase text-[var(--ink-mute)] bg-[var(--bg-soft)] px-2 py-0.5 rounded-md border border-[var(--border)]">
+                <Badge
+                  variant="outline"
+                  className="hidden h-auto rounded-md px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider sm:inline-flex"
+                >
                   CopilotKit × ADK
-                </span>
+                </Badge>
               </div>
               <p className="hidden sm:block text-xs text-[var(--ink-mute)] mt-0.5">
                 Plan meals and build a Kroger cart with an AI partner.
@@ -203,12 +217,13 @@ function GroceryPageInner() {
             </div>
           </div>
 
-          <span
-            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-medium ${meta.chipClass}`}
+          <Badge
+            variant="outline"
+            className={cn("h-auto gap-2 border-transparent px-3 py-1.5 text-[11px]", meta.chipClass)}
           >
             <span className={`w-1.5 h-1.5 rounded-full ${meta.dotClass}`} />
             {isRunning ? "Planning…" : meta.label}
-          </span>
+          </Badge>
         </div>
       </header>
 
@@ -245,7 +260,7 @@ function GroceryPageInner() {
   );
 }
 
-function Card({
+function SectionCard({
   title,
   badge,
   children,
@@ -255,22 +270,25 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-sm overflow-hidden">
-      <header className="flex items-center gap-2 px-4 py-3 border-b border-[var(--border-soft)] bg-[var(--surface-soft)]">
-        <h2 className="text-sm font-semibold text-[var(--ink)]">{title}</h2>
+    <Card size="sm" className="gap-0 py-0">
+      <CardHeader className="flex-row items-center gap-2 border-b border-[var(--border-soft)] bg-[var(--surface-soft)] px-4 py-3">
+        <CardTitle>{title}</CardTitle>
         {badge}
-      </header>
-      <div className="p-4">{children}</div>
-    </section>
+      </CardHeader>
+      <CardContent className="p-4">{children}</CardContent>
+    </Card>
   );
 }
 
 function CountBadge({ n }: { n: number }) {
   if (n <= 0) return null;
   return (
-    <span className="ml-auto text-[10px] font-mono tracking-wider text-[var(--ink-mute)] bg-[var(--bg-soft)] px-2 py-0.5 rounded-full">
+    <Badge
+      variant="outline"
+      className="ml-auto h-auto bg-[var(--bg-soft)] px-2 py-0.5 font-mono text-[10px] tracking-wider text-[var(--ink-mute)]"
+    >
       {n}
-    </span>
+    </Badge>
   );
 }
 
@@ -288,7 +306,7 @@ function ShoppingListCard({
   reviewSummary: string;
 }) {
   return (
-    <Card title="Shopping list" badge={<CountBadge n={items.length} />}>
+    <SectionCard title="Shopping list" badge={<CountBadge n={items.length} />}>
       {items.length === 0 ? (
         <EmptyHint>Ask the agent to build your list.</EmptyHint>
       ) : (
@@ -319,19 +337,19 @@ function ShoppingListCard({
           {reviewSummary}
         </div>
       )}
-    </Card>
+    </SectionCard>
   );
 }
 
 function CartCard({ items, total }: { items: CartItem[]; total: number }) {
   return (
-    <Card
+    <SectionCard
       title="Cart"
       badge={
         total > 0 ? (
-          <span className="ml-auto text-sm font-semibold text-[var(--ink)]">
+          <Badge className="ml-auto h-auto bg-transparent px-0 text-sm font-semibold text-[var(--ink)]">
             ${total.toFixed(2)}
-          </span>
+          </Badge>
         ) : (
           <CountBadge n={items.length} />
         )
@@ -363,7 +381,7 @@ function CartCard({ items, total }: { items: CartItem[]; total: number }) {
           ))}
         </ul>
       )}
-    </Card>
+    </SectionCard>
   );
 }
 
@@ -375,14 +393,14 @@ function MealPlanCard({
   isStreaming: boolean;
 }) {
   return (
-    <Card
+    <SectionCard
       title="Meal plan"
       badge={
         isStreaming ? (
-          <span className="ml-auto inline-flex items-center gap-1.5 text-[10px] font-medium text-[var(--accent-strong)]">
+          <Badge className="ml-auto gap-1.5 bg-transparent px-0 text-[10px] font-medium text-[var(--accent-strong)]">
             <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
             writing
-          </span>
+          </Badge>
         ) : undefined
       }
     >
@@ -393,63 +411,49 @@ function MealPlanCard({
       ) : (
         <EmptyHint>Ask the agent to plan your meals.</EmptyHint>
       )}
-    </Card>
+    </SectionCard>
   );
 }
 
 function DealsCard({ deals }: { deals: string }) {
   if (!deals) return null;
   return (
-    <Card title="Weekly deals">
+    <SectionCard title="Weekly deals">
       <div className="text-sm text-[var(--ink-soft)] streamdown-markdown">
         <Streamdown>{deals}</Streamdown>
       </div>
-    </Card>
+    </SectionCard>
   );
 }
 
 function PantryCard({ items }: { items: PantryItem[] }) {
   if (items.length === 0) return null;
   return (
-    <Card title="Pantry" badge={<CountBadge n={items.length} />}>
+    <SectionCard title="Pantry" badge={<CountBadge n={items.length} />}>
       <ul className="grid grid-cols-2 gap-2">
         {items.map((item, i) => (
-          <li
-            key={`${item.name}-${i}`}
-            className="rounded-lg border border-[var(--border-soft)] bg-[var(--surface-soft)] px-3 py-2"
-          >
-            <div className="text-sm text-[var(--ink)] truncate">{item.name}</div>
-            <div className="text-[11px] text-[var(--ink-mute)] flex items-center gap-1.5">
-              <span>{item.quantity}</span>
-              {item.expires && (
-                <>
-                  <span>·</span>
-                  <span>exp {item.expires}</span>
-                </>
-              )}
-            </div>
+          <li key={`${item.name}-${i}`}>
+            <Card
+              size="sm"
+              className="gap-0 border-[var(--border-soft)] bg-[var(--surface-soft)] px-3 py-2"
+            >
+              <div className="text-sm text-[var(--ink)] truncate">
+                {item.name}
+              </div>
+              <div className="text-[11px] text-[var(--ink-mute)] flex items-center gap-1.5">
+                <span>{item.quantity}</span>
+                {item.expires && (
+                  <>
+                    <span>·</span>
+                    <span>exp {item.expires}</span>
+                  </>
+                )}
+              </div>
+            </Card>
           </li>
         ))}
       </ul>
-    </Card>
-  );
-}
-
-function CartIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <circle cx="8" cy="21" r="1" />
-      <circle cx="19" cy="21" r="1" />
-      <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
-    </svg>
+    </SectionCard>
   );
 }
 
