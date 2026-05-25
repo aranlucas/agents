@@ -64,3 +64,30 @@ export type Preferences = {
   pace: Pace
   interests: string[]
 }
+
+// Fitness agent state — matches what agents/fitness writes to ADK shared state
+export type FitnessStatus = 'idle' | 'syncing' | 'planning' | 'ready'
+
+export type FitnessActivity = {
+  id: string
+  name: string
+  sport_type?: string
+  start_date?: string
+  distance_m?: number
+  moving_time_s?: number
+  elapsed_time_s?: number
+  total_elevation_gain_m?: number
+  average_heartrate?: number
+  perceived_effort?: number
+}
+
+export type FitnessState = {
+  strava_connected?: boolean
+  strava_token?: string
+  activities?: FitnessActivity[]
+  activities_synced_at?: string
+  objective_research?: string
+  training_plan?: string
+  status?: FitnessStatus
+  review_summary?: string
+}
