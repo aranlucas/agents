@@ -15,6 +15,10 @@ const runtime = new CopilotRuntime({
       url: env.GROCERY_AGENT_URL,
       debug: env.COPILOTKIT_DEBUG,
     }),
+    fitness: new HttpAgent({
+      url: env.FITNESS_AGENT_URL,
+      debug: env.COPILOTKIT_DEBUG,
+    }),
   },
   debug: env.COPILOTKIT_DEBUG,
 });
