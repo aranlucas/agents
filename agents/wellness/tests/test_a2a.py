@@ -51,3 +51,23 @@ def test_extract_identity_state_includes_clerk_user_id():
         headers = Headers({"x-clerk-user-id": "user_123"})
 
     assert main.extract_identity_state(Request()) == {"user_id": "user_123"}
+
+
+def test_extract_identity_state_includes_provider_tokens():
+    import main
+    from starlette.datastructures import Headers
+
+    class Request:
+        headers = Headers(
+            {
+                "x-clerk-user-id": "user_123",
+                "x-kroger-access-token": "kroger-token",
+                "x-strava-access-token": "strava-token",
+            }
+        )
+
+    assert main.extract_identity_state(Request()) == {
+        "user_id": "user_123",
+        "temp:kroger_token": "kroger-token",
+        "temp:strava_token": "strava-token",
+    }

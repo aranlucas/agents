@@ -58,7 +58,11 @@ const runtime = new CopilotRuntime({
       wellness: new HttpAgent({
         url: env.WELLNESS_AGENT_URL,
         debug: env.COPILOTKIT_DEBUG,
-        headers: identityHeaders,
+        headers: {
+          ...identityHeaders,
+          ...(krogerToken ? { [KROGER_TOKEN_HEADER]: krogerToken } : {}),
+          ...(stravaToken ? { [STRAVA_TOKEN_HEADER]: stravaToken } : {}),
+        },
       }),
     };
   },
