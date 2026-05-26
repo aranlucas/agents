@@ -55,7 +55,8 @@ logging.getLogger("ag_ui_adk").setLevel(logging.DEBUG)
 
 log = logging.getLogger("wellness_agent")
 
-AGENT_PUBLIC_URL = os.getenv("AGENT_PUBLIC_URL", "http://localhost:8003")
+_railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN")
+AGENT_PUBLIC_URL = f"https://{_railway_domain}" if _railway_domain else "http://localhost:8003"
 CLERK_USER_ID_HEADER = "x-clerk-user-id"
 
 _DEFAULT_STATE: dict[str, Any] = {
