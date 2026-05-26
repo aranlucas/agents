@@ -1,16 +1,4 @@
 services:
-  web-search:
-    image: docker.io/mcp/brave-search:latest
-    ports:
-      - "8010:8000"
-    env_file:
-      - path: ./.env
-        required: false
-    environment:
-      BRAVE_MCP_TRANSPORT: http
-      BRAVE_MCP_PORT: 8000
-      BRAVE_MCP_HOST: 0.0.0.0
-
   travel:
     build:
       context: ./agents/travel
@@ -52,6 +40,3 @@ services:
     environment:
       OTEL_SERVICE_NAME: fitness-agent
       PORT: 8002
-      WEB_SEARCH_MCP_URL: http://web-search:8000/mcp
-    depends_on:
-      - web-search

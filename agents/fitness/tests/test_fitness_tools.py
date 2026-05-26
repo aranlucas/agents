@@ -3,8 +3,10 @@ from __future__ import annotations
 from unittest.mock import Mock
 
 import pytest
+from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
 
 import main
+import utils
 
 
 class DummyToolContext:
@@ -119,3 +121,19 @@ def test_set_training_plan_writes_state():
     assert result == {"ok": True, "length": 23}
     assert context.state["training_plan"] == "## Week plan\n- Run easy"
     assert context.state["status"] == "planning"
+
+
+def test_web_search_toolset_uses_local_stdio_mcp(monkeypatch):
+    monkeypatch.setenv("BRAVE_API_KEY", "brave-token")
+
+    toolset = utils.web_search_toolset()
+    params = toolset._connection_params
+
+    assert isinstance(params, StdioConnectionParams)
+    assert params.timeout == 30.0
+    assert params.server_params.command == "npx"
+    assert params.server_params.args == [
+        "-y",
+        "@brave/brave-search-mcp-server",
+    ]
+    assert params.server_params.env == {"BRAVE_API_KEY": "brave-token"}
