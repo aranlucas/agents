@@ -21,6 +21,17 @@ const AGENTS: Agent[] = [
     tags: ["Meals", "Kroger", "Deals"],
     theme: "grocery",
   },
+  {
+    id: "03",
+    href: "/fitness",
+    name: "Fitness Studio",
+    tagline: "Strava-aware weekly training",
+    description:
+      "Build weekly training from Strava history and mountain objectives.",
+    cta: "Plan training",
+    tags: ["Fitness", "Strava", "Recovery"],
+    theme: "fitness",
+  },
 ];
 
 export default function Home() {
@@ -34,12 +45,12 @@ export default function Home() {
           Agents
         </h1>
         <p className="text-[var(--ink-mute)] max-w-sm">
-          Real-time, AI-powered planning for travel and groceries — co-plan
+          Real-time, AI-powered planning for travel, groceries, and training — co-plan
           with an agent that shares your canvas.
         </p>
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-4 w-full max-w-xl">
+      <div className="grid w-full max-w-5xl gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {AGENTS.map((agent, index) => (
           <AgentCard key={agent.id} agent={agent} index={index} />
         ))}

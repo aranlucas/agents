@@ -14,7 +14,7 @@ export type Agent = {
   description: string;
   cta: string;
   tags: string[];
-  theme: "travel" | "grocery";
+  theme: "travel" | "grocery" | "fitness";
 };
 
 export function AgentCard({ agent, index }: { agent: Agent; index: number }) {
@@ -22,9 +22,12 @@ export function AgentCard({ agent, index }: { agent: Agent; index: number }) {
     <Card
       className={cn(
         "group relative gap-4 p-5 transition hover:border-[var(--accent)] hover:shadow-md",
-        agent.theme === "travel"
-          ? "bg-[linear-gradient(135deg,var(--surface),color-mix(in_srgb,#ec4899_5%,var(--surface)))]"
-          : "bg-[linear-gradient(135deg,var(--surface),color-mix(in_srgb,var(--success)_5%,var(--surface)))]",
+        agent.theme === "travel" &&
+          "bg-[linear-gradient(135deg,var(--surface),color-mix(in_srgb,#ec4899_5%,var(--surface)))]",
+        agent.theme === "grocery" &&
+          "bg-[linear-gradient(135deg,var(--surface),color-mix(in_srgb,var(--success)_5%,var(--surface)))]",
+        agent.theme === "fitness" &&
+          "bg-[linear-gradient(135deg,var(--surface),color-mix(in_srgb,#0ea5e9_6%,var(--surface)))]",
       )}
       style={{ animationDelay: `${index * 110}ms` }}
     >

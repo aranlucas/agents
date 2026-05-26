@@ -15,8 +15,6 @@ Backed by Mistral via LiteLLM. The FastAPI app mounts the agent at "/"
 via ag-ui-adk, plus a /health endpoint for the dev script.
 """
 
-from __future__ import annotations
-
 import datetime
 import os
 import time

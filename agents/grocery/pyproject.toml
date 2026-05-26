@@ -2,7 +2,7 @@
 name = "grocery-agent"
 version = "0.1.0"
 description = "Grocery planning agent powered by Google ADK + CopilotKit AG-UI"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 dependencies = [
   "fastapi",
   "uvicorn[standard]",
