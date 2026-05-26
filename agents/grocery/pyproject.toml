@@ -18,6 +18,7 @@ dependencies = [
   "opentelemetry-instrumentation-sqlite3",
   "opentelemetry-instrumentation-google-genai>=0.7b1",
   "opentelemetry-instrumentation-vertexai>=2.0b0",
+  "opentelemetry-exporter-otlp-proto-http",
   "a2a-sdk>=0.3.4,<0.4",
   "dependency-injector>=4.49.0",
 ]
