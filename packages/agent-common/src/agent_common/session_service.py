@@ -20,10 +20,19 @@ def _database_session_service(db_url: str, **kwargs):
     return DatabaseSessionService(db_url, **kwargs)
 
 
+def _normalize_postgres_url(url: str) -> str:
+    """Rewrite bare postgresql:// or postgres:// to use the asyncpg async driver."""
+    if url.startswith("postgres://"):
+        return "postgresql+asyncpg://" + url[len("postgres://"):]
+    if url.startswith("postgresql://"):
+        return "postgresql+asyncpg://" + url[len("postgresql://"):]
+    return url
+
+
 def _database_url(env: Mapping[str, str]) -> str | None:
     db_url = env.get("ADK_SESSION_DB_URL")
     if db_url:
-        return db_url
+        return _normalize_postgres_url(db_url)
 
     turso_url = env.get("TURSO_DATABASE_URL")
     if not turso_url:

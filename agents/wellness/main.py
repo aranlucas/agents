@@ -17,7 +17,7 @@ from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
 from ag_ui_adk.config import PredictStateMapping
 from a2a.server.apps.jsonrpc import A2AFastAPIApplication
 from a2a.server.request_handlers import DefaultRequestHandler
-from a2a.server.tasks import InMemoryTaskStore
+from agent_common.task_store import create_task_store
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill
 from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
@@ -35,7 +35,7 @@ from google.adk.models.lite_llm import LiteLlm
 from google.adk.runners import Runner
 from google.adk.tools import ToolContext
 from opentelemetry import trace
-from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
+from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.sdk.resources import Resource
 
 from utils import FITNESS_AGENT_A2A_URL, GROCERY_AGENT_A2A_URL
@@ -86,7 +86,7 @@ def _setup_otel() -> None:
         }
     )
     maybe_set_otel_providers(otel_resource=resource)
-    SQLite3Instrumentor().instrument()
+    SQLAlchemyInstrumentor().instrument()
 
 
 _setup_otel()
@@ -328,7 +328,7 @@ app.add_middleware(
 _a2a_card = _a2a_agent_card()
 _a2a_handler = DefaultRequestHandler(
     agent_executor=create_a2a_agent_executor(_a2a_runner),
-    task_store=InMemoryTaskStore(),
+    task_store=create_task_store(),
 )
 A2AFastAPIApplication(
     agent_card=_a2a_card,
