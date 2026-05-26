@@ -1,6 +1,7 @@
 """Fitness Training Agent — Strava + objective research + AG-UI shared state."""
 
 import datetime
+import logging
 import os
 import time
 from typing import Any, Optional
@@ -25,6 +26,17 @@ from opentelemetry.semconv.resource import ResourceAttributes
 from utils import shared_after_tool_callback, web_search_toolset
 
 load_dotenv()
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+# Surface ADK and LiteLLM internals at DEBUG so auth/model errors are visible.
+logging.getLogger("google.adk").setLevel(logging.DEBUG)
+logging.getLogger("litellm").setLevel(logging.DEBUG)
+logging.getLogger("ag_ui_adk").setLevel(logging.DEBUG)
+
+log = logging.getLogger("fitness_agent")
 
 STRAVA_ACTIVITIES_URL = "https://www.strava.com/api/v3/athlete/activities"
 STRAVA_TOKEN_HEADER = "x-strava-access-token"
@@ -114,7 +126,18 @@ async def fetch_activities(
     """Fetch recent Strava activities and write normalized activity state."""
     token = tool_context.state.get(STRAVA_TOKEN_STATE_KEY) or ""
     connected = bool(tool_context.state.get("strava_connected")) and bool(token)
+    log.debug(
+        "fetch_activities: strava_connected=%s token_present=%s per_page=%s",
+        tool_context.state.get("strava_connected"),
+        bool(token),
+        per_page,
+    )
     if not connected:
+        log.warning(
+            "fetch_activities: aborting — strava_connected=%s token_present=%s",
+            tool_context.state.get("strava_connected"),
+            bool(token),
+        )
         tool_context.state["status"] = "idle"
         return {
             "ok": False,
@@ -145,9 +168,16 @@ async def fetch_activities(
             if status_code in (401, 403)
             else "strava_api_error"
         )
+        log.exception(
+            "fetch_activities: Strava HTTP error status=%s reason=%s body=%s",
+            status_code,
+            reason,
+            exc.response.text[:500],
+        )
         return {"ok": False, "reason": reason, "status_code": status_code}
     except httpx.HTTPError as exc:
         tool_context.state["status"] = "idle"
+        log.exception("fetch_activities: network error: %s", exc)
         return {"ok": False, "reason": "strava_network_error", "message": str(exc)}
 
     activities = [normalize_strava_activity(item) for item in response.json()]
@@ -169,7 +199,13 @@ async def fetch_activities(
 async def extract_strava_auth_state(request, input_data) -> dict[str, Any]:
     """Inject Strava auth as per-invocation temp state from request headers."""
     token = request.headers.get(STRAVA_TOKEN_HEADER) or ""
+    log.debug(
+        "extract_strava_auth_state: header=%s token_present=%s",
+        STRAVA_TOKEN_HEADER,
+        bool(token),
+    )
     if not token:
+        log.warning("No Strava token in request headers — agent will run without Strava access")
         return {"strava_connected": False}
     return {"strava_connected": True, STRAVA_TOKEN_STATE_KEY: token}
 
@@ -324,6 +360,7 @@ async def trace_requests(request, call_next):
         except Exception as exc:
             span.record_exception(exc)
             span.set_attribute("error.type", type(exc).__name__)
+            log.exception("Unhandled error in %s %s", request.method, request.url.path)
             raise
 
         span.set_attribute("http.response.status_code", response.status_code)
