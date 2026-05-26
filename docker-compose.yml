@@ -26,3 +26,17 @@ services:
     environment:
       OTEL_SERVICE_NAME: grocery-agent
       PORT: 8001
+
+  fitness:
+    build:
+      context: ./agents/fitness
+    ports:
+      - "8002:8002"
+    env_file:
+      - path: ./.env
+        required: false
+      - path: ./agents/fitness/.env
+        required: false
+    environment:
+      OTEL_SERVICE_NAME: fitness-agent
+      PORT: 8002

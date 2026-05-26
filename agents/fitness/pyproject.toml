@@ -1,13 +1,14 @@
 [project]
-name = "travel-agent"
+name = "fitness-agent"
 version = "0.1.0"
-description = "Travel planning agent powered by Google ADK + CopilotKit AG-UI"
+description = "Fitness training agent powered by Google ADK + CopilotKit AG-UI"
 requires-python = ">=3.14"
 dependencies = [
   "fastapi",
   "uvicorn[standard]",
   "python-dotenv",
   "pydantic",
+  "httpx",
   "google-adk>=1.33.0",
   "google-genai",
   "ag-ui-adk",
@@ -20,13 +21,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "httpx"]
+dev = ["pytest", "pytest-asyncio", "httpx"]
 
 [project.scripts]
 app = "main:app"
 
 [tool.setuptools]
-py-modules = ["main"]
+py-modules = ["main", "utils"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,39 +1,36 @@
-"""Shared utilities — MCP toolset factory and tool callback."""
+"""Shared utilities for the fitness agent."""
 
 import os
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Optional
 
-from google.adk.agents.readonly_context import ReadonlyContext
+from mcp import StdioServerParameters
 from google.adk.tools import BaseTool, ToolContext
 from google.adk.tools.mcp_tool import McpToolset
-from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
-
-MEAL_PLANNER_MCP_URL = os.getenv(
-    "MEAL_PLANNER_MCP_URL", "https://ai-meal-planner-mcp.aranlucas.workers.dev/mcp"
+from google.adk.tools.mcp_tool.mcp_session_manager import (
+    StdioConnectionParams,
 )
 
-
-def _header_provider(context: ReadonlyContext) -> Dict[str, str]:
-    """Return auth headers from session state at call time."""
-    token: str = context.state.get("kroger_token", "")
-    if token:
-        return {"Authorization": f"Bearer {token}"}
-    return {}
+BRAVE_SEARCH_MCP_PACKAGE = "@brave/brave-search-mcp-server"
 
 
-def meal_planner_toolset() -> McpToolset:
-    """MCP toolset for the AI Meal Planner. Auth token is read per-request from state."""
+def web_search_toolset() -> McpToolset:
     return McpToolset(
-        connection_params=StreamableHTTPConnectionParams(
-            url=MEAL_PLANNER_MCP_URL,
+        connection_params=StdioConnectionParams(
+            server_params=StdioServerParameters(
+                command="npx",
+                args=[
+                    "-y",
+                    BRAVE_SEARCH_MCP_PACKAGE,
+                ],
+                env={"BRAVE_API_KEY": os.getenv("BRAVE_API_KEY", "")},
+            ),
             timeout=30.0,
         ),
-        header_provider=_header_provider,
         use_mcp_resources=True,
     )
 
 
-def parse_tool_response(tool_response: dict | str) -> Optional[dict]:
+def parse_tool_response(tool_response: dict | str) -> Optional[dict | str]:
     try:
         if isinstance(tool_response, str):
             return tool_response
