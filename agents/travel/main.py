@@ -308,8 +308,6 @@ _a2a_runner = Runner(
 
 
 def _a2a_agent_card() -> AgentCard:
-    host = os.getenv("RAILWAY_PUBLIC_DOMAIN") or f"localhost:{os.getenv('PORT', '8000')}"
-    scheme = "https" if os.getenv("RAILWAY_PUBLIC_DOMAIN") else "http"
     return AgentCard(
         name="Travel Planning Agent",
         description=(
