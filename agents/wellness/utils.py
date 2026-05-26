@@ -1,36 +1,23 @@
-"""Shared utilities for the fitness agent."""
+"""Shared utilities for the wellness orchestrator agent."""
+
+from __future__ import annotations
 
 import os
 from typing import Any, Optional
+from uuid import uuid4
 
-from mcp import StdioServerParameters
+import httpx
+from a2a.helpers import get_message_text, new_task_from_user_message, new_text_part
+from a2a.server.agent_execution import AgentExecutor, RequestContext
+from a2a.server.events import EventQueue
+from a2a.server.tasks import TaskUpdater
+from a2a.types import TaskState
+from google.adk.runners import Runner
 from google.adk.tools import BaseTool, ToolContext
-from google.adk.tools.mcp_tool import McpToolset
-from google.adk.tools.mcp_tool.mcp_session_manager import (
-    StdioConnectionParams,
-)
+from google.genai import types as genai_types
 
-BRAVE_SEARCH_MCP_PACKAGE = "@brave/brave-search-mcp-server"
-
-
-def web_search_toolset() -> McpToolset:
-    brave_api_key = os.getenv("BRAVE_API_KEY", "")
-    return McpToolset(
-        connection_params=StdioConnectionParams(
-            server_params=StdioServerParameters(
-                command="npx",
-                args=[
-                    "-y",
-                    BRAVE_SEARCH_MCP_PACKAGE,
-                    "--brave-api-key",
-                    brave_api_key,
-                ],
-                env={"BRAVE_API_KEY": brave_api_key},
-            ),
-            timeout=30.0,
-        ),
-        use_mcp_resources=False,
-    )
+GROCERY_AGENT_A2A_URL = os.getenv("GROCERY_AGENT_A2A_URL", "http://localhost:8001/")
+FITNESS_AGENT_A2A_URL = os.getenv("FITNESS_AGENT_A2A_URL", "http://localhost:8002/")
 
 
 def parse_tool_response(tool_response: dict | str) -> Optional[dict | str]:
@@ -65,13 +52,48 @@ async def shared_after_tool_callback(
     return tool_response
 
 
-from a2a.helpers import get_message_text, new_task_from_user_message, new_text_part
-from a2a.server.agent_execution import AgentExecutor, RequestContext
-from a2a.server.events import EventQueue
-from a2a.server.tasks import TaskUpdater
-from a2a.types import TaskState
-from google.adk.runners import Runner
-from google.genai import types as genai_types
+async def call_a2a_agent(
+    *,
+    url: str,
+    prompt: str,
+    user_id: str,
+    context_id: str,
+) -> str:
+    payload = {
+        "jsonrpc": "2.0",
+        "id": str(uuid4()),
+        "method": "SendMessage",
+        "params": {
+            "message": {
+                "role": "ROLE_USER",
+                "parts": [{"text": prompt}],
+                "messageId": str(uuid4()),
+                "contextId": context_id,
+            },
+            "metadata": {"user_id": user_id},
+        },
+    }
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        response = await client.post(url, json=payload)
+        response.raise_for_status()
+
+    data = response.json()
+    if "error" in data:
+        raise RuntimeError(str(data["error"]))
+
+    result = data.get("result") or {}
+    task = result.get("task") or result
+    for artifact in task.get("artifacts") or []:
+        for part in artifact.get("parts") or []:
+            text = part.get("text")
+            if text:
+                return text
+    message = result.get("message") or {}
+    for part in message.get("parts") or []:
+        text = part.get("text")
+        if text:
+            return text
+    return str(result)
 
 
 class ADKAgentExecutor(AgentExecutor):

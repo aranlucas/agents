@@ -3,15 +3,21 @@ import {
   createCopilotRuntimeHandler,
 } from "@copilotkit/runtime/v2";
 import { HttpAgent } from "@ag-ui/client";
+import { auth } from "@clerk/nextjs/server";
 import { env } from "@/env";
 import { getKrogerAccessToken } from "@/lib/kroger-token";
 import { getStravaAccessToken } from "@/lib/strava-token";
 
+const CLERK_USER_ID_HEADER = "x-clerk-user-id";
 const KROGER_TOKEN_HEADER = "x-kroger-access-token";
 const STRAVA_TOKEN_HEADER = "x-strava-access-token";
 
 const runtime = new CopilotRuntime({
   agents: async () => {
+    const { userId } = await auth();
+    const identityHeaders: Record<string, string> = userId
+      ? { [CLERK_USER_ID_HEADER]: userId }
+      : {};
     const { token: krogerToken } = await getKrogerAccessToken().catch(() => ({
       connected: false,
       token: null,
@@ -31,16 +37,28 @@ const runtime = new CopilotRuntime({
       travel: new HttpAgent({
         url: env.TRAVEL_AGENT_URL,
         debug: env.COPILOTKIT_DEBUG,
+        headers: identityHeaders,
       }),
       grocery: new HttpAgent({
         url: env.GROCERY_AGENT_URL,
         debug: env.COPILOTKIT_DEBUG,
-        headers: krogerToken ? { [KROGER_TOKEN_HEADER]: krogerToken } : {},
+        headers: {
+          ...identityHeaders,
+          ...(krogerToken ? { [KROGER_TOKEN_HEADER]: krogerToken } : {}),
+        },
       }),
       fitness: new HttpAgent({
         url: env.FITNESS_AGENT_URL,
         debug: env.COPILOTKIT_DEBUG,
-        headers: stravaToken ? { [STRAVA_TOKEN_HEADER]: stravaToken } : {},
+        headers: {
+          ...identityHeaders,
+          ...(stravaToken ? { [STRAVA_TOKEN_HEADER]: stravaToken } : {}),
+        },
+      }),
+      wellness: new HttpAgent({
+        url: env.WELLNESS_AGENT_URL,
+        debug: env.COPILOTKIT_DEBUG,
+        headers: identityHeaders,
       }),
     };
   },

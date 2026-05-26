@@ -24,6 +24,7 @@ async def test_extract_kroger_auth_state_uses_temp_header_state():
     )
 
     assert result == {
+        "user_id": "anonymous",
         "kroger_connected": True,
         "temp:kroger_token": "token-123",
     }

@@ -1,9 +1,11 @@
 """Grocery Planning Agent — Meal Planner MCP + ADK + AG-UI shared-state pattern."""
 
+import datetime
 import json
 import logging
 import os
 import time
+from pathlib import Path
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -33,7 +35,7 @@ from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactServ
 from google.adk.auth.credential_service.in_memory_credential_service import InMemoryCredentialService
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.runners import Runner
-from google.adk.sessions import InMemorySessionService
+from google.adk.sessions.sqlite_session_service import SqliteSessionService
 
 from utils import ADKAgentExecutor
 
@@ -51,6 +53,57 @@ log = logging.getLogger("grocery_agent")
 
 KROGER_TOKEN_HEADER = "x-kroger-access-token"
 KROGER_TOKEN_STATE_KEY = "temp:kroger_token"
+CLERK_USER_ID_HEADER = "x-clerk-user-id"
+
+
+def _default_session_db_path() -> str:
+    return str((Path(__file__).resolve().parents[2] / ".data" / "adk_sessions.sqlite"))
+
+
+def _turso_db_url() -> Optional[str]:
+    db_url = os.getenv("ADK_SESSION_DB_URL")
+    if db_url:
+        return db_url
+
+    turso_url = os.getenv("TURSO_DATABASE_URL")
+    if not turso_url:
+        return None
+    if turso_url.startswith("sqlite+"):
+        return turso_url
+
+    separator = "&" if "?" in turso_url else "?"
+    return f"sqlite+{turso_url}{separator}secure=true"
+
+
+def _database_session_kwargs() -> dict:
+    connect_args = {}
+    auth_token = os.getenv("ADK_SESSION_DB_AUTH_TOKEN") or os.getenv("TURSO_AUTH_TOKEN")
+    sync_url = os.getenv("TURSO_SYNC_URL")
+    if auth_token:
+        connect_args["auth_token"] = auth_token
+    if sync_url:
+        connect_args["sync_url"] = sync_url
+    return {"connect_args": connect_args} if connect_args else {}
+
+
+def DatabaseSessionService(db_url: str, **kwargs):
+    from google.adk.sessions.database_session_service import DatabaseSessionService as Service
+
+    return Service(db_url, **kwargs)
+
+
+def create_session_service():
+    db_url = _turso_db_url()
+    if db_url:
+        return DatabaseSessionService(db_url, **_database_session_kwargs())
+
+    db_path = Path(os.getenv("ADK_SESSION_DB_PATH", _default_session_db_path()))
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    return SqliteSessionService(str(db_path))
+
+
+def extract_identity_state(request) -> dict:
+    return {"user_id": request.headers.get(CLERK_USER_ID_HEADER) or "anonymous"}
 
 
 # ---------------------------------------------------------------------------
@@ -154,6 +207,16 @@ def mark_list_ready(tool_context: ToolContext, summary: str) -> dict:
     return {"ok": True}
 
 
+def get_current_date() -> dict:
+    """Return today's date for meal-plan scheduling and deal timing."""
+    today = datetime.date.today()
+    return {
+        "date": today.isoformat(),
+        "weekday": today.strftime("%A"),
+        "month": today.strftime("%B %Y"),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Callbacks — shared-state pattern
 # ---------------------------------------------------------------------------
@@ -199,10 +262,11 @@ def before_model_modifier(
 
 async def extract_kroger_auth_state(request, input_data) -> dict:
     """Inject Kroger auth as per-invocation temp state from request headers."""
+    state = extract_identity_state(request)
     token = request.headers.get(KROGER_TOKEN_HEADER) or ""
     if not token:
-        return {"kroger_connected": False}
-    return {"kroger_connected": True, KROGER_TOKEN_STATE_KEY: token}
+        return {**state, "kroger_connected": False}
+    return {**state, "kroger_connected": True, KROGER_TOKEN_STATE_KEY: token}
 
 
 def after_model_modifier(
@@ -232,6 +296,7 @@ when not connected.
 
 ## Workflow
 1. Use MCP tools to fetch real data BEFORE writing to state:
+   - Date: call get_current_date before planning a week, validating dates, or using weekly deals
    - Products: search_products, get_product_details, get_weekly_deals
    - Shopping list: manage_shopping_list, checkout_shopping_list, add_to_cart
    - Pantry: manage_pantry (check what the user already has first)
@@ -269,6 +334,7 @@ grocery_agent = LlmAgent(
         set_meal_plan,
         set_weekly_deals,
         mark_list_ready,
+        get_current_date,
         AGUIToolset(),
         meal_planner_toolset(),
     ],
@@ -284,8 +350,8 @@ GROCERY_PREDICT_STATE = [
     ),
 ]
 
-# Shared in-memory session service — used by both AG-UI and A2A paths.
-_shared_session_svc = InMemorySessionService()
+# Shared SQLite session service — used by both AG-UI and A2A paths.
+_shared_session_svc = create_session_service()
 
 _a2a_runner = Runner(
     app_name=grocery_agent.name,
@@ -322,7 +388,6 @@ def _a2a_agent_card() -> AgentCard:
 
 adk_grocery_agent = ADKAgent(
     adk_agent=grocery_agent,
-    user_id="demo_user",
     session_service=_shared_session_svc,
     session_timeout_seconds=3600,
     use_in_memory_services=True,

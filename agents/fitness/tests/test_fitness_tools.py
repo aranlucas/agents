@@ -70,6 +70,7 @@ async def test_extract_strava_auth_state_uses_temp_header_state():
     )
 
     assert result == {
+        "user_id": "anonymous",
         "strava_connected": True,
         "temp:strava_token": "token-123",
     }
@@ -102,7 +103,7 @@ async def test_fetch_activities_writes_normalized_state(monkeypatch):
         async def get(self, url, headers, params):
             assert url == "https://www.strava.com/api/v3/athlete/activities"
             assert headers == {"Authorization": "Bearer token-123"}
-            assert params["per_page"] == 30
+            assert params["per_page"] == 200
             return response
 
     monkeypatch.setattr(main.httpx, "AsyncClient", lambda timeout: DummyClient())
@@ -112,7 +113,8 @@ async def test_fetch_activities_writes_normalized_state(monkeypatch):
 
     assert result["ok"] is True
     assert result["count"] == 1
-    assert context.state["activities"] == [
+    assert "summary" not in result
+    expected_activities = [
         {
             "id": "456",
             "name": "Long hike",
@@ -124,6 +126,8 @@ async def test_fetch_activities_writes_normalized_state(monkeypatch):
             "total_elevation_gain_m": 900,
         }
     ]
+    assert result["activities"] == expected_activities
+    assert context.state["activities"] == expected_activities
     assert context.state["activities_synced_at"]
     assert context.state["status"] == "planning"
 

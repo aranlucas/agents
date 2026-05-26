@@ -94,7 +94,7 @@ class ADKAgentExecutor(AgentExecutor):
         )
         await updater.update_status(TaskState.TASK_STATE_WORKING)
 
-        user_id = "demo_user"
+        user_id = str(context.metadata.get("user_id") or "anonymous")
         session_id = context.context_id
 
         existing = await self._runner.session_service.get_session(

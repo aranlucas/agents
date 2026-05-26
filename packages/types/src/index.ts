@@ -88,3 +88,16 @@ export type FitnessState = {
   status?: FitnessStatus
   review_summary?: string
 }
+
+// Wellness orchestrator state — matches what agents/wellness writes to ADK shared state
+export type WellnessStatus = 'idle' | 'delegating' | 'planning' | 'ready'
+
+export type WellnessState = {
+  status?: WellnessStatus
+  meal_plan?: string
+  workout_plan?: string
+  weekly_plan?: string
+  review_summary?: string
+  last_delegation?: Record<string, unknown>
+  user_id?: string
+}

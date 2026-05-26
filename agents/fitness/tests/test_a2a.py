@@ -22,6 +22,7 @@ async def test_executor_creates_session_when_missing():
     context = MagicMock()
     context.current_task = None
     context.context_id = "ctx-abc"
+    context.metadata = {"user_id": "user_123"}
 
     from a2a.helpers import new_text_message
     from a2a.types import Role
@@ -35,7 +36,7 @@ async def test_executor_creates_session_when_missing():
 
     runner.session_service.create_session.assert_called_once_with(
         app_name="test_agent",
-        user_id="demo_user",
+        user_id="user_123",
         session_id="ctx-abc",
     )
 
@@ -61,6 +62,7 @@ async def test_executor_skips_session_creation_when_exists():
     context = MagicMock()
     context.current_task = None
     context.context_id = "ctx-existing"
+    context.metadata = {"user_id": "user_123"}
 
     from a2a.helpers import new_text_message
     from a2a.types import Role

@@ -19,6 +19,7 @@ import datetime
 import logging
 import os
 import time
+from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -46,7 +47,7 @@ from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactServ
 from google.adk.auth.credential_service.in_memory_credential_service import InMemoryCredentialService
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.runners import Runner
-from google.adk.sessions import InMemorySessionService
+from google.adk.sessions.sqlite_session_service import SqliteSessionService
 
 from utils import ADKAgentExecutor
 
@@ -61,6 +62,62 @@ logging.getLogger("litellm").setLevel(logging.DEBUG)
 logging.getLogger("ag_ui_adk").setLevel(logging.DEBUG)
 
 log = logging.getLogger("travel_agent")
+
+CLERK_USER_ID_HEADER = "x-clerk-user-id"
+
+
+def _default_session_db_path() -> str:
+    return str((Path(__file__).resolve().parents[2] / ".data" / "adk_sessions.sqlite"))
+
+
+def _turso_db_url() -> str | None:
+    db_url = os.getenv("ADK_SESSION_DB_URL")
+    if db_url:
+        return db_url
+
+    turso_url = os.getenv("TURSO_DATABASE_URL")
+    if not turso_url:
+        return None
+    if turso_url.startswith("sqlite+"):
+        return turso_url
+
+    separator = "&" if "?" in turso_url else "?"
+    return f"sqlite+{turso_url}{separator}secure=true"
+
+
+def _database_session_kwargs() -> dict:
+    connect_args = {}
+    auth_token = os.getenv("ADK_SESSION_DB_AUTH_TOKEN") or os.getenv("TURSO_AUTH_TOKEN")
+    sync_url = os.getenv("TURSO_SYNC_URL")
+    if auth_token:
+        connect_args["auth_token"] = auth_token
+    if sync_url:
+        connect_args["sync_url"] = sync_url
+    return {"connect_args": connect_args} if connect_args else {}
+
+
+def DatabaseSessionService(db_url: str, **kwargs):
+    from google.adk.sessions.database_session_service import DatabaseSessionService as Service
+
+    return Service(db_url, **kwargs)
+
+
+def create_session_service():
+    db_url = _turso_db_url()
+    if db_url:
+        return DatabaseSessionService(db_url, **_database_session_kwargs())
+
+    db_path = Path(os.getenv("ADK_SESSION_DB_PATH", _default_session_db_path()))
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    return SqliteSessionService(str(db_path))
+
+
+def extract_identity_state(request) -> dict:
+    return {"user_id": request.headers.get(CLERK_USER_ID_HEADER) or "anonymous"}
+
+
+async def extract_travel_identity_state(request, input_data) -> dict:
+    return extract_identity_state(request)
 
 
 def _setup_otel() -> None:
@@ -161,7 +218,11 @@ def get_current_date() -> dict:
     operator provided are in the future.
     """
     today = datetime.date.today()
-    return {"month": today.strftime("%B %Y")}
+    return {
+        "date": today.isoformat(),
+        "weekday": today.strftime("%A"),
+        "month": today.strftime("%B %Y"),
+    }
 
 
 def mark_ready_to_book(tool_context: ToolContext, summary: str) -> dict:
@@ -294,8 +355,8 @@ COLLAB_PREDICT_STATE = [
 ]
 
 
-# Shared in-memory session service — used by both AG-UI and A2A paths.
-_shared_session_svc = InMemorySessionService()
+# Shared SQLite session service — used by both AG-UI and A2A paths.
+_shared_session_svc = create_session_service()
 
 _a2a_runner = Runner(
     app_name=collab_trip_agent.name,
@@ -335,7 +396,6 @@ def _a2a_agent_card() -> AgentCard:
 # ---------------------------------------------------------------------------
 adk_collab_agent = ADKAgent(
     adk_agent=collab_trip_agent,
-    user_id="demo_user",
     session_service=_shared_session_svc,
     session_timeout_seconds=3600,
     use_in_memory_services=True,
@@ -391,7 +451,12 @@ _a2a_handler = DefaultRequestHandler(
 app.router.routes.extend(create_agent_card_routes(_a2a_card))
 app.router.routes.extend(create_jsonrpc_routes(_a2a_handler, "/"))
 
-add_adk_fastapi_endpoint(app, adk_collab_agent, path="/agui")
+add_adk_fastapi_endpoint(
+    app,
+    adk_collab_agent,
+    path="/agui",
+    extract_state_from_request=extract_travel_identity_state,
+)
 
 
 @app.get("/health")
