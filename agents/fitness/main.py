@@ -21,20 +21,23 @@ from google.adk.tools import ToolContext
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
 from opentelemetry.sdk.resources import Resource
-from utils import shared_after_tool_callback, web_search_toolset
+from utils import web_search_toolset
 
+from a2a.server.apps.jsonrpc import A2AFastAPIApplication
 from a2a.server.request_handlers import DefaultRequestHandler
-from a2a.server.routes import create_agent_card_routes, create_jsonrpc_routes
 from a2a.server.tasks import InMemoryTaskStore
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill
 
 from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
-from google.adk.auth.credential_service.in_memory_credential_service import InMemoryCredentialService
+from google.adk.auth.credential_service.in_memory_credential_service import (
+    InMemoryCredentialService,
+)
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.runners import Runner
-from google.adk.sessions import InMemorySessionService
 
-from utils import ADKAgentExecutor
+from agent_common.a2a import create_a2a_agent_executor
+from agent_common.session_service import create_session_service
+from agent_common.tools import shared_after_tool_callback
 
 load_dotenv()
 
@@ -49,9 +52,17 @@ logging.getLogger("ag_ui_adk").setLevel(logging.DEBUG)
 
 log = logging.getLogger("fitness_agent")
 
+_railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN")
+AGENT_PUBLIC_URL = f"https://{_railway_domain}" if _railway_domain else "http://localhost:8002"
 STRAVA_ACTIVITIES_URL = "https://www.strava.com/api/v3/athlete/activities"
 STRAVA_TOKEN_HEADER = "x-strava-access-token"
 STRAVA_TOKEN_STATE_KEY = "temp:strava_token"
+CLERK_USER_ID_HEADER = "x-clerk-user-id"
+
+
+def extract_identity_state(request) -> dict[str, Any]:
+    return {"user_id": request.headers.get(CLERK_USER_ID_HEADER) or "anonymous"}
+
 
 _DEFAULT_STATE: dict[str, Any] = {
     "strava_connected": False,
@@ -173,9 +184,7 @@ async def fetch_activities(
         tool_context.state["status"] = "idle"
         status_code = exc.response.status_code
         reason = (
-            "strava_unauthorized"
-            if status_code in (401, 403)
-            else "strava_api_error"
+            "strava_unauthorized" if status_code in (401, 403) else "strava_api_error"
         )
         log.exception(
             "fetch_activities: Strava HTTP error status=%s reason=%s body=%s",
@@ -189,8 +198,9 @@ async def fetch_activities(
         log.exception("fetch_activities: network error: %s", exc)
         return {"ok": False, "reason": "strava_network_error", "message": str(exc)}
 
+    normalized_batch = [normalize_strava_activity(activity) for activity in batch]
     existing = tool_context.state.get("activities") or []
-    all_activities = existing + batch if page > 1 else batch
+    all_activities = existing + normalized_batch if page > 1 else normalized_batch
     synced_at = datetime.datetime.now(datetime.UTC).isoformat()
 
     tool_context.state["activities"] = all_activities
@@ -198,19 +208,26 @@ async def fetch_activities(
     tool_context.state["status"] = "planning"
 
     has_more = len(batch) == 200
-    log.debug("fetch_activities: page=%s batch=%s total=%s has_more=%s", page, len(batch), len(all_activities), has_more)
+    log.debug(
+        "fetch_activities: page=%s batch=%s total=%s has_more=%s",
+        page,
+        len(batch),
+        len(all_activities),
+        has_more,
+    )
 
     return {
         "ok": True,
         "count": len(all_activities),
         "synced_at": synced_at,
-        "activities": batch,
+        "activities": normalized_batch,
         **({"next_page_token": page + 1} if has_more else {}),
     }
 
 
 async def extract_strava_auth_state(request, input_data) -> dict[str, Any]:
     """Inject Strava auth as per-invocation temp state from request headers."""
+    state = extract_identity_state(request)
     token = request.headers.get(STRAVA_TOKEN_HEADER) or ""
     log.debug(
         "extract_strava_auth_state: header=%s token_present=%s",
@@ -218,9 +235,11 @@ async def extract_strava_auth_state(request, input_data) -> dict[str, Any]:
         bool(token),
     )
     if not token:
-        log.warning("No Strava token in request headers — agent will run without Strava access")
-        return {"strava_connected": False}
-    return {"strava_connected": True, STRAVA_TOKEN_STATE_KEY: token}
+        log.warning(
+            "No Strava token in request headers — agent will run without Strava access"
+        )
+        return {**state, "strava_connected": False}
+    return {**state, "strava_connected": True, STRAVA_TOKEN_STATE_KEY: token}
 
 
 def set_objective_research(tool_context: ToolContext, research: str) -> dict:
@@ -242,6 +261,16 @@ def mark_plan_ready(tool_context: ToolContext, summary: str) -> dict:
     tool_context.state["status"] = "ready"
     tool_context.state["review_summary"] = summary
     return {"ok": True}
+
+
+def get_current_date() -> dict:
+    """Return today's date for weekly training-plan scheduling."""
+    today = datetime.date.today()
+    return {
+        "date": today.isoformat(),
+        "weekday": today.strftime("%A"),
+        "month": today.strftime("%B %Y"),
+    }
 
 
 def on_before_agent(callback_context: CallbackContext):
@@ -296,16 +325,18 @@ Support endurance workouts, gym strength, stretching, recovery, and preparation
 for hiking or mountaineering objectives.
 
 Workflow:
-1. If Strava is connected and you are creating or revising a plan, call
+1. Call get_current_date before creating or revising a weekly plan so the week
+   is anchored to today's actual date.
+2. If Strava is connected and you are creating or revising a plan, call
    fetch_activities first when the activity snapshot is missing or stale.
-2. For hiking or mountaineering objectives, use web search tools to find current
+3. For hiking or mountaineering objectives, use web search tools to find current
    route, access, permit, seasonal, and weather context. Then call
    set_objective_research with a concise sourced summary.
-3. Write plans to state with set_training_plan. Do not paste the full plan into
+4. Write plans to state with set_training_plan. Do not paste the full plan into
    chat as the source of truth.
-4. Include weekly goals, workout days, gym sessions, mobility, stretching,
+5. Include weekly goals, workout days, gym sessions, mobility, stretching,
    recovery guidance, and objective-specific prep.
-5. When the plan is complete, call mark_plan_ready.
+6. When the plan is complete, call mark_plan_ready.
 
 Be conservative with progression, specific about recovery, and clear about
 assumptions when Strava or objective context is unavailable.
@@ -325,6 +356,7 @@ fitness_agent = LlmAgent(
     after_tool_callback=shared_after_tool_callback,
     tools=[
         fetch_activities,
+        get_current_date,
         set_objective_research,
         set_training_plan,
         mark_plan_ready,
@@ -343,8 +375,8 @@ FITNESS_PREDICT_STATE = [
     ),
 ]
 
-# Shared in-memory session service — used by both AG-UI and A2A paths.
-_shared_session_svc = InMemorySessionService()
+# Shared SQLite session service — used by both AG-UI and A2A paths.
+_shared_session_svc = create_session_service()
 
 _a2a_runner = Runner(
     app_name=fitness_agent.name,
@@ -364,6 +396,7 @@ def _a2a_agent_card() -> AgentCard:
             "research on outdoor objectives like hiking and mountaineering."
         ),
         version="1.0.0",
+        url=AGENT_PUBLIC_URL,
         default_input_modes=["text/plain"],
         default_output_modes=["text/plain"],
         capabilities=AgentCapabilities(streaming=True),
@@ -372,6 +405,7 @@ def _a2a_agent_card() -> AgentCard:
                 id="training_planning",
                 name="Training Planning",
                 description="Creates weekly training plans from Strava data and objective research.",
+                tags=["fitness", "training-planning"],
                 input_modes=["text/plain"],
                 output_modes=["text/plain"],
             )
@@ -381,7 +415,6 @@ def _a2a_agent_card() -> AgentCard:
 
 adk_fitness_agent = ADKAgent(
     adk_agent=fitness_agent,
-    user_id="demo_user",
     session_service=_shared_session_svc,
     session_timeout_seconds=3600,
     use_in_memory_services=True,
@@ -430,12 +463,13 @@ app.add_middleware(
 # A2A — JSON-RPC at POST / and agent card at GET /.well-known/agent-card.json
 _a2a_card = _a2a_agent_card()
 _a2a_handler = DefaultRequestHandler(
-    agent_executor=ADKAgentExecutor(_a2a_runner),
+    agent_executor=create_a2a_agent_executor(_a2a_runner),
     task_store=InMemoryTaskStore(),
-    agent_card=_a2a_card,
 )
-app.router.routes.extend(create_agent_card_routes(_a2a_card))
-app.router.routes.extend(create_jsonrpc_routes(_a2a_handler, "/"))
+A2AFastAPIApplication(
+    agent_card=_a2a_card,
+    http_handler=_a2a_handler,
+).add_routes_to_app(app)
 
 add_adk_fastapi_endpoint(
     app,
