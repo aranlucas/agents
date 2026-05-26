@@ -159,6 +159,7 @@ grocery_remote_agent = RemoteA2aAgent(
     agent_card=_agent_card_url(GROCERY_AGENT_A2A_URL),
     a2a_request_meta_provider=_remote_a2a_metadata_provider,
     use_legacy=False,
+    timeout=300.0,
 )
 
 fitness_remote_agent = RemoteA2aAgent(
@@ -167,6 +168,7 @@ fitness_remote_agent = RemoteA2aAgent(
     agent_card=_agent_card_url(FITNESS_AGENT_A2A_URL),
     a2a_request_meta_provider=_remote_a2a_metadata_provider,
     use_legacy=False,
+    timeout=300.0,
 )
 
 
