@@ -7,10 +7,11 @@ RUN apt-get update && \
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/
 
 WORKDIR /app
+ENV PATH="/app/.venv/bin:$PATH"
 
 COPY . ./
 
-RUN uv pip install --system -e .
+RUN uv sync --frozen --no-dev
 
 EXPOSE 8002
 
