@@ -100,4 +100,6 @@ export type WellnessState = {
   review_summary?: string
   last_delegation?: Record<string, unknown>
   user_id?: string
+  kroger_connected?: boolean
+  strava_connected?: boolean
 }
