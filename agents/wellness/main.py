@@ -71,10 +71,8 @@ STRAVA_TOKEN_STATE_KEY = "temp:strava_token"
 _DEFAULT_STATE: dict[str, Any] = {
     "status": "idle",
     "meal_plan": "",
-    "workout_plan": "",
     "weekly_plan": "",
     "review_summary": "",
-    "last_delegation": {},
     "user_id": "",
 }
 
