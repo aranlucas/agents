@@ -263,14 +263,17 @@ WELLNESS_PREDICT_STATE = [
 ]
 
 _shared_session_svc = create_session_service()
+_artifact_svc = InMemoryArtifactService()
+_memory_svc = InMemoryMemoryService()
+_credential_svc = InMemoryCredentialService()
 
 _a2a_runner = Runner(
     app_name=wellness_agent.name,
     agent=wellness_agent,
-    artifact_service=InMemoryArtifactService(),
+    artifact_service=_artifact_svc,
     session_service=_shared_session_svc,
-    memory_service=InMemoryMemoryService(),
-    credential_service=InMemoryCredentialService(),
+    memory_service=_memory_svc,
+    credential_service=_credential_svc,
 )
 
 
@@ -302,8 +305,10 @@ def _a2a_agent_card() -> AgentCard:
 adk_wellness_agent = ADKAgent(
     adk_agent=wellness_agent,
     session_service=_shared_session_svc,
+    artifact_service=_artifact_svc,
+    memory_service=_memory_svc,
+    credential_service=_credential_svc,
     session_timeout_seconds=3600,
-    use_in_memory_services=True,
     predict_state=WELLNESS_PREDICT_STATE,
 )
 
