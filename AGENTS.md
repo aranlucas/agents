@@ -89,4 +89,3 @@ apps/mobile → @ag-ui/client (HttpAgent) → Railway agent service (direct HTTP
 - **Never import from non-v2 paths** in web — all CopilotKit hooks from `@copilotkit/react-core/v2`
 - **Never paste agent output into chat** — write to state via tools (`write_itinerary`, `set_shopping_list`, etc.)
 - **State is the source of truth** — the UI reads from `agent.state`, not chat messages
-- **Initial-state guard** — only call `agent.setState()` after `agent.state !== undefined` (see `observedOnce` ref pattern in `apps/web/src/app/travel/page.tsx`)

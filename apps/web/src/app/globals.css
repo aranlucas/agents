@@ -26,25 +26,44 @@
   --radius-md: 0.5rem;
   --radius-lg: 0.625rem;
   --radius-xl: 0.75rem;
+  --font-display: var(--font-serif), Georgia, serif;
 }
 
 :root {
-  --bg: #fafafd;
-  --bg-soft: #f4f3f9;
+  /* Base surfaces */
+  --bg: #f5f4f0;
+  --bg-soft: #edecea;
   --surface: #ffffff;
-  --surface-soft: #fbfaff;
-  --ink: #0b0c14;
-  --ink-soft: #4b4d5b;
-  --ink-mute: #888a9b;
-  --border: #e7e6f0;
-  --border-soft: #f0eff7;
-  --accent: #6366f1;
-  --accent-soft: #eef0ff;
-  --accent-strong: #4f46e5;
+  --surface-soft: #faf9f7;
+  --ink: #100f14;
+  --ink-soft: #4d4a5a;
+  --ink-mute: #9a97ab;
+  --border: #dedce8;
+  --border-soft: #eae8f2;
+
+  /* System accent (indigo — CopilotKit + interactive) */
+  --accent: #5b5fc7;
+  --accent-soft: #ededff;
+  --accent-strong: #4145b3;
+
+  /* Agent identity colors */
+  --travel: #ea6b1a;
+  --travel-soft: #fff4ec;
+  --grocery: #16903a;
+  --grocery-soft: #edfbf2;
+  --fitness: #0277b5;
+  --fitness-soft: #e8f5ff;
+  --wellness: #c87d0e;
+  --wellness-soft: #fff9ec;
+
+  /* Status */
   --success: #10b981;
   --success-soft: #ecfdf5;
   --warning: #f59e0b;
   --danger: #ef4444;
+
+  /* Dot grid */
+  --grid-dot: rgba(160, 155, 200, 0.18);
 
   --copilot-kit-primary-color: var(--accent);
   --copilot-kit-contrast-color: #ffffff;
@@ -57,19 +76,32 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #07080d;
-    --bg-soft: #0c0d14;
-    --surface: #11121b;
-    --surface-soft: #161726;
-    --ink: #f4f4fb;
-    --ink-soft: #c4c4d3;
-    --ink-mute: #7a7c8d;
-    --border: #232436;
-    --border-soft: #1a1b29;
-    --accent: #818cf8;
-    --accent-soft: #1f1f3a;
-    --accent-strong: #a5b4fc;
+    --bg: #0c0d14;
+    --bg-soft: #11121c;
+    --surface: #171825;
+    --surface-soft: #1c1d2e;
+    --ink: #f0f1fc;
+    --ink-soft: #b4b5cc;
+    --ink-mute: #72748e;
+    --border: #252637;
+    --border-soft: #1e1f30;
+
+    --accent: #7b7ff5;
+    --accent-soft: #1e2042;
+    --accent-strong: #a5abff;
+
+    --travel: #fb923c;
+    --travel-soft: #1f1008;
+    --grocery: #4ade80;
+    --grocery-soft: #0a1e10;
+    --fitness: #38bdf8;
+    --fitness-soft: #07192a;
+    --wellness: #fbbf24;
+    --wellness-soft: #1e1508;
+
     --success-soft: #062c22;
+
+    --grid-dot: rgba(60, 62, 100, 0.55);
   }
 }
 
@@ -80,17 +112,50 @@
 html,
 body {
   height: 100%;
-  background: var(--bg);
   color: var(--ink);
 }
 
 body {
   font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
-  background:
-    radial-gradient(at 20% 10%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 55%),
-    radial-gradient(at 85% 75%, color-mix(in srgb, #ec4899 10%, transparent), transparent 60%),
-    var(--bg);
+  background-color: var(--bg);
+  background-image: radial-gradient(circle at center, var(--grid-dot) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* ─── Agent card hover glow ─── */
+.agent-card {
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+}
+.agent-card:hover {
+  border-color: var(--agent-color) !important;
+  box-shadow: 0 0 0 1px var(--agent-color),
+    0 8px 32px color-mix(in srgb, var(--agent-color) 14%, transparent);
+  transform: translateY(-3px);
+}
+
+/* ─── Card reveal animation ─── */
+@keyframes card-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.agent-card-reveal {
+  animation: card-reveal 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ─── Hero reveal ─── */
+@keyframes hero-fade {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.hero-reveal {
+  animation: hero-fade 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 ::-webkit-scrollbar {

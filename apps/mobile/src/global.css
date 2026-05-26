@@ -9,7 +9,7 @@
 /* ─── Design Tokens ─── */
 
 :root {
-  
+
   @variant light {
     --app-background: oklch(0.985 0 0);
     --app-foreground: oklch(0.12 0 0);
@@ -25,6 +25,16 @@
     --app-shadow-float: 0 4px 16px oklch(0 0 0 / 0.08), 0 1px 4px oklch(0 0 0 / 0.04);
     --app-shadow-composer: 0 2px 8px oklch(0 0 0 / 0.06), 0 0 0 1px oklch(0 0 0 / 0.03);
     --app-shadow-composer-focus: 0 4px 16px oklch(0 0 0 / 0.1), 0 0 0 1px oklch(0 0 0 / 0.06);
+
+    /* Agent identity palette — matches web design system */
+    --app-travel: oklch(0.65 0.18 42);        /* warm orange */
+    --app-travel-soft: oklch(0.97 0.03 60);
+    --app-grocery: oklch(0.52 0.16 145);      /* leaf green */
+    --app-grocery-soft: oklch(0.97 0.03 145);
+    --app-fitness: oklch(0.50 0.17 240);      /* sky blue */
+    --app-fitness-soft: oklch(0.97 0.03 240);
+    --app-wellness: oklch(0.62 0.16 72);      /* amber gold */
+    --app-wellness-soft: oklch(0.97 0.04 72);
   }
 
   @variant dark {
@@ -42,6 +52,16 @@
     --app-shadow-float: 0 4px 16px oklch(0 0 0 / 0.3), 0 1px 4px oklch(0 0 0 / 0.2);
     --app-shadow-composer: 0 2px 8px oklch(0 0 0 / 0.2), 0 0 0 1px oklch(0 0 0 / 0.1);
     --app-shadow-composer-focus: 0 4px 16px oklch(0 0 0 / 0.3), 0 0 0 1px oklch(0 0 0 / 0.15);
+
+    /* Agent identity palette — dark mode variants */
+    --app-travel: oklch(0.75 0.16 42);
+    --app-travel-soft: oklch(0.22 0.06 42);
+    --app-grocery: oklch(0.72 0.18 145);
+    --app-grocery-soft: oklch(0.20 0.06 145);
+    --app-fitness: oklch(0.72 0.17 240);
+    --app-fitness-soft: oklch(0.20 0.06 240);
+    --app-wellness: oklch(0.78 0.17 72);
+    --app-wellness-soft: oklch(0.22 0.06 72);
   }
 }
 
@@ -57,6 +77,16 @@
   --color-secondary: var(--app-secondary);
   --color-accent: var(--app-accent);
   --color-sidebar: var(--app-sidebar);
+
+  /* Agent zone colors */
+  --color-travel: var(--app-travel);
+  --color-travel-soft: var(--app-travel-soft);
+  --color-grocery: var(--app-grocery);
+  --color-grocery-soft: var(--app-grocery-soft);
+  --color-fitness: var(--app-fitness);
+  --color-fitness-soft: var(--app-fitness-soft);
+  --color-wellness: var(--app-wellness);
+  --color-wellness-soft: var(--app-wellness-soft);
 
   --shadow-card: var(--app-shadow-card);
   --shadow-float: var(--app-shadow-float);
