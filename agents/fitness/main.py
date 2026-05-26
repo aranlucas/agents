@@ -114,18 +114,19 @@ def summarize_activities(activities: list[dict[str, Any]]) -> dict[str, Any]:
 
 async def fetch_activities(
     tool_context: ToolContext,
-    per_page: int = 30,
-    before: Optional[int] = None,
     after: Optional[int] = None,
 ) -> dict:
-    """Fetch recent Strava activities and write normalized activity state."""
+    """Fetch all Strava activities and write normalized activity state.
+
+    Paginates until Strava returns an empty page. Pass `after` as a Unix
+    timestamp to limit to activities after that date.
+    """
     token = tool_context.state.get(STRAVA_TOKEN_STATE_KEY) or ""
     connected = bool(tool_context.state.get("strava_connected")) and bool(token)
     log.debug(
-        "fetch_activities: strava_connected=%s token_present=%s per_page=%s",
+        "fetch_activities: strava_connected=%s token_present=%s",
         tool_context.state.get("strava_connected"),
         bool(token),
-        per_page,
     )
     if not connected:
         log.warning(
@@ -141,20 +142,28 @@ async def fetch_activities(
         }
 
     tool_context.state["status"] = "syncing"
-    params: dict[str, Any] = {"per_page": max(1, min(per_page, 100))}
-    if before is not None:
-        params["before"] = before
-    if after is not None:
-        params["after"] = after
+    all_activities: list[dict[str, Any]] = []
+    page = 1
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(
-                STRAVA_ACTIVITIES_URL,
-                headers={"Authorization": f"Bearer {token}"},
-                params=params,
-            )
-            response.raise_for_status()
+            while True:
+                params: dict[str, Any] = {"per_page": 200, "page": page}
+                if after is not None:
+                    params["after"] = after
+                response = await client.get(
+                    STRAVA_ACTIVITIES_URL,
+                    headers={"Authorization": f"Bearer {token}"},
+                    params=params,
+                )
+                response.raise_for_status()
+                batch = response.json()
+                if not batch:
+                    break
+                all_activities.extend(batch)
+                if len(batch) < 200:
+                    break
+                page += 1
     except httpx.HTTPStatusError as exc:
         tool_context.state["status"] = "idle"
         status_code = exc.response.status_code
@@ -175,13 +184,15 @@ async def fetch_activities(
         log.exception("fetch_activities: network error: %s", exc)
         return {"ok": False, "reason": "strava_network_error", "message": str(exc)}
 
-    activities = [normalize_strava_activity(item) for item in response.json()]
+    activities = all_activities
     synced_at = datetime.datetime.now(datetime.UTC).isoformat()
-    summary = summarize_activities(activities)
+    summary = summarize_activities([normalize_strava_activity(a) for a in activities])
 
     tool_context.state["activities"] = activities
     tool_context.state["activities_synced_at"] = synced_at
     tool_context.state["status"] = "planning"
+
+    log.debug("fetch_activities: fetched %s activities across %s pages", len(activities), page)
 
     return {
         "ok": True,
