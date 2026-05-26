@@ -192,7 +192,7 @@ async def fetch_activities(
 
     log.debug("fetch_activities: fetched %s activities across %s pages", len(all_activities), page)
 
-    return {"ok": True, "count": len(all_activities), "synced_at": synced_at}
+    return {"ok": True, "count": len(all_activities), "synced_at": synced_at, "activities": all_activities}
 
 
 async def extract_strava_auth_state(request, input_data) -> dict[str, Any]:
