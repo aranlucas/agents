@@ -1,7 +1,8 @@
 services:
   travel:
     build:
-      context: ./agents/travel
+      context: .
+      dockerfile: Dockerfile.agents
     ports:
       - "8000:8000"
     env_file:
@@ -11,6 +12,7 @@ services:
         required: false
     environment:
       OTEL_SERVICE_NAME: travel-agent
+      AGENT_DIR: agents/travel
       PORT: 8000
       ADK_SESSION_DB_PATH: /data/adk_sessions.sqlite
     volumes:
@@ -18,7 +20,8 @@ services:
 
   grocery:
     build:
-      context: ./agents/grocery
+      context: .
+      dockerfile: Dockerfile.agents
     ports:
       - "8001:8001"
     env_file:
@@ -28,6 +31,7 @@ services:
         required: false
     environment:
       OTEL_SERVICE_NAME: grocery-agent
+      AGENT_DIR: agents/grocery
       PORT: 8001
       ADK_SESSION_DB_PATH: /data/adk_sessions.sqlite
     volumes:
@@ -35,7 +39,8 @@ services:
 
   fitness:
     build:
-      context: ./agents/fitness
+      context: .
+      dockerfile: Dockerfile.agents
     ports:
       - "8002:8002"
     env_file:
@@ -45,6 +50,7 @@ services:
         required: false
     environment:
       OTEL_SERVICE_NAME: fitness-agent
+      AGENT_DIR: agents/fitness
       PORT: 8002
       ADK_SESSION_DB_PATH: /data/adk_sessions.sqlite
     volumes:
@@ -52,7 +58,8 @@ services:
 
   wellness:
     build:
-      context: ./agents/wellness
+      context: .
+      dockerfile: Dockerfile.agents
     ports:
       - "8003:8003"
     env_file:
@@ -62,6 +69,7 @@ services:
         required: false
     environment:
       OTEL_SERVICE_NAME: wellness-agent
+      AGENT_DIR: agents/wellness
       PORT: 8003
       ADK_SESSION_DB_PATH: /data/adk_sessions.sqlite
       GROCERY_AGENT_A2A_URL: http://grocery:8001/

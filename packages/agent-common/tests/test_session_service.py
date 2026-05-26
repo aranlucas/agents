@@ -1,16 +1,10 @@
-from starlette.datastructures import Headers
+from pathlib import Path
 
 from agent_common.session_service import SessionServiceContainer, create_session_service
 
 
-class Request:
-    def __init__(self, headers: dict[str, str]):
-        self.headers = Headers(headers)
-
-
-def test_create_session_service_uses_sqlite_and_creates_parent(tmp_path, monkeypatch):
+def test_create_session_service_uses_sqlite_and_creates_parent(tmp_path):
     created = {}
-
     db_path = tmp_path / "nested" / "adk_sessions.sqlite"
 
     class FakeSqliteSessionService:
@@ -30,15 +24,17 @@ def test_create_session_service_uses_sqlite_and_creates_parent(tmp_path, monkeyp
     assert db_path.parent.exists()
 
 
-def test_extract_identity_state_includes_clerk_user_id():
-    import main
+def test_create_session_service_defaults_to_repo_data_path(monkeypatch):
+    import agent_common.session_service as session_service
 
-    state = main.extract_identity_state(Request({"x-clerk-user-id": "user_123"}))
+    default_path = session_service.default_session_db_path()
 
-    assert state["user_id"] == "user_123"
+    assert default_path.name == "adk_sessions.sqlite"
+    assert default_path.parent.name == ".data"
+    assert isinstance(default_path, Path)
 
 
-def test_create_session_service_uses_database_url_for_turso(monkeypatch):
+def test_create_session_service_uses_database_url_for_turso():
     captured = {}
 
     class FakeDatabaseSessionService:
@@ -66,7 +62,7 @@ def test_create_session_service_uses_database_url_for_turso(monkeypatch):
     }
 
 
-def test_create_session_service_normalizes_turso_database_url(monkeypatch):
+def test_create_session_service_normalizes_turso_database_url():
     captured = {}
 
     class FakeDatabaseSessionService:

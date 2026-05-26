@@ -107,7 +107,9 @@ async def test_fetch_activities_writes_normalized_state(monkeypatch):
             return response
 
     monkeypatch.setattr(main.httpx, "AsyncClient", lambda timeout: DummyClient())
-    context = DummyToolContext({"strava_connected": True, "temp:strava_token": "token-123"})
+    context = DummyToolContext(
+        {"strava_connected": True, "temp:strava_token": "token-123"}
+    )
 
     result = await main.fetch_activities(context)
 
