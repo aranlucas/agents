@@ -1,7 +1,5 @@
 """Grocery Planning Agent — Meal Planner MCP + ADK + AG-UI shared-state pattern."""
 
-from __future__ import annotations
-
 import json
 import os
 import time

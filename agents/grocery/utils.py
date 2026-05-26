@@ -1,7 +1,5 @@
 """Shared utilities — MCP toolset factory and tool callback."""
 
-from __future__ import annotations
-
 import os
 from typing import Any, Callable, Dict, Optional
 

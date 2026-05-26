@@ -1,7 +1,5 @@
 """Fitness Training Agent — Strava + objective research + AG-UI shared state."""
 
-from __future__ import annotations
-
 import datetime
 import os
 import time
