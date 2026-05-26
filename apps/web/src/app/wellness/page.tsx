@@ -1,6 +1,7 @@
 "use client";
 
-import type React from "react";
+import React, { useState, useEffect } from "react";
+import { useReverification, useUser } from "@clerk/nextjs";
 import {
   CopilotKit,
   CopilotSidebar,
@@ -8,13 +9,51 @@ import {
   UseAgentUpdate,
   useConfigureSuggestions,
 } from "@copilotkit/react-core/v2";
-import { CalendarDays, Dumbbell, Salad, Sparkles } from "lucide-react";
+import { Activity, CalendarDays, Dumbbell, Salad, ShoppingCart, Sparkles } from "lucide-react";
 import { Streamdown } from "streamdown";
 
 import { HeroHeader } from "@/components/hero-header";
+import { useAuthConnection } from "@/lib/use-auth-connection";
+import { Button } from "@/components/ui/button";
 
 import type { WellnessState, WellnessStatus } from "@agents/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+const KROGER_PROVIDER = "custom_shopping";
+const KROGER_STRATEGY = "oauth_custom_shopping";
+const STRAVA_STRATEGY = "oauth_custom_strava";
+
+type ConnectStepId = "kroger" | "strava";
+
+type ConnectStep = {
+  id: ConnectStepId;
+  label: string;
+  connectedKey: "kroger_connected" | "strava_connected";
+  icon: React.ReactNode;
+  iconBg: string;
+  description: string;
+};
+
+const CONNECT_STEPS: ConnectStep[] = [
+  {
+    id: "kroger",
+    label: "Kroger",
+    connectedKey: "kroger_connected",
+    icon: <ShoppingCart className="h-6 w-6" />,
+    iconBg: "bg-[var(--grocery-soft)]",
+    description:
+      "The wellness agent delegates meal planning to the grocery agent, which needs your Kroger account.",
+  },
+  {
+    id: "strava",
+    label: "Strava",
+    connectedKey: "strava_connected",
+    icon: <Activity className="h-6 w-6" />,
+    iconBg: "bg-[var(--fitness-soft)]",
+    description:
+      "The wellness agent delegates workout planning to the fitness agent, which uses your Strava activity history.",
+  },
+];
 
 const STATUS_META: Record<WellnessStatus, { label: string }> = {
   idle:       { label: "No plan yet" },
@@ -82,6 +121,105 @@ function OrchestrationFlow({ status }: { status: WellnessStatus }) {
   );
 }
 
+function StepIndicator({
+  steps,
+  pendingIds,
+}: {
+  steps: ConnectStep[];
+  pendingIds: ConnectStepId[];
+}) {
+  return (
+    <div className="flex items-center justify-center gap-3 py-4">
+      {steps.map((step, i) => {
+        const isDone = !pendingIds.includes(step.id);
+        const isCurrent = pendingIds[0] === step.id;
+        const prevDone = i > 0 && !pendingIds.includes(steps[i - 1].id);
+        return (
+          <React.Fragment key={step.id}>
+            {i > 0 && (
+              <div
+                className={`h-px w-8 ${prevDone ? "bg-[var(--success)]" : "bg-[var(--border)]"}`}
+              />
+            )}
+            <div className="flex flex-col items-center gap-1">
+              <div
+                className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold ${
+                  isDone
+                    ? "bg-[var(--success)] text-white"
+                    : isCurrent
+                      ? "bg-[var(--page-color)] text-white"
+                      : "bg-[var(--border)] text-[var(--ink-mute)]"
+                }`}
+              >
+                {isDone ? "✓" : i + 1}
+              </div>
+              <span
+                className={`text-[8px] font-semibold uppercase tracking-wider ${
+                  isDone
+                    ? "text-[var(--success)]"
+                    : isCurrent
+                      ? "text-[var(--page-color)]"
+                      : "text-[var(--ink-mute)]"
+                }`}
+              >
+                {step.label}
+              </span>
+            </div>
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+function WellnessConnectGate({
+  steps,
+  pendingSteps,
+  onConnect,
+  connectingId,
+}: {
+  steps: ConnectStep[];
+  pendingSteps: ConnectStep[];
+  onConnect: (id: ConnectStepId) => void;
+  connectingId: ConnectStepId | null;
+}) {
+  const currentStep = pendingSteps[0];
+  const pendingIds = pendingSteps.map((s) => s.id);
+
+  return (
+    <>
+      <StepIndicator steps={steps} pendingIds={pendingIds} />
+      <div className="flex flex-1 flex-col items-center justify-center gap-6 p-8 text-center">
+        <div
+          className={`flex h-12 w-12 items-center justify-center rounded-2xl text-[var(--page-color)] ${currentStep.iconBg}`}
+        >
+          {currentStep.icon}
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-xl font-semibold text-[var(--ink)]">
+            Connect {currentStep.label}
+          </h2>
+          <p className="max-w-sm text-sm text-[var(--ink-mute)]">
+            {currentStep.description}
+          </p>
+        </div>
+        <Button
+          onClick={() => onConnect(currentStep.id)}
+          disabled={connectingId !== null}
+          size="lg"
+        >
+          {connectingId === currentStep.id
+            ? "Connecting…"
+            : `Connect ${currentStep.label}`}
+        </Button>
+        <p className="text-xs text-[var(--ink-mute)]">
+          You&apos;ll be redirected to authorize access, then returned here.
+        </p>
+      </div>
+    </>
+  );
+}
+
 function SourceCard({
   title,
   icon,
@@ -143,15 +281,89 @@ function PrimaryCard({
 }
 
 function WellnessPageInner() {
+  const { user, isLoaded } = useUser();
+  const [connectingId, setConnectingId] = useState<ConnectStepId | null>(null);
+
+  const connectKroger = useReverification(async () => {
+    if (!user) return;
+    const existing = user.externalAccounts.find(
+      ({ provider }) => provider === KROGER_PROVIDER,
+    );
+    const account = existing
+      ? await existing.reauthorize({ redirectUrl: window.location.href })
+      : await user.createExternalAccount({
+          strategy: KROGER_STRATEGY,
+          redirectUrl: window.location.href,
+        });
+    const redirectUrl = account.verification?.externalVerificationRedirectURL?.href;
+    if (redirectUrl) window.location.assign(redirectUrl);
+  });
+
+  const connectStrava = useReverification(async () => {
+    if (!user) return;
+    const existing = user.externalAccounts.find(
+      ({ provider }) =>
+        provider === "custom_strava" || String(provider) === STRAVA_STRATEGY,
+    );
+    const account = existing
+      ? await existing.reauthorize({ redirectUrl: window.location.href })
+      : await user.createExternalAccount({
+          strategy: STRAVA_STRATEGY,
+          redirectUrl: window.location.href,
+        });
+    const redirectUrl = account.verification?.externalVerificationRedirectURL?.href;
+    if (redirectUrl) window.location.assign(redirectUrl);
+  });
+
   const { agent } = useAgent({
     agentId: "wellness",
     updates: [UseAgentUpdate.OnStateChanged, UseAgentUpdate.OnRunStatusChanged],
   });
 
-  const state   = (agent?.state ?? {}) as WellnessState;
-  const status  = (state.status ?? "idle") as WellnessStatus;
-  const meta    = STATUS_META[status] ?? STATUS_META.idle;
+  const krogerConnection = useAuthConnection({
+    endpoint: "/api/mcp/token",
+    enabled: Boolean(isLoaded && user),
+    queryKey: ["auth-connection", "kroger"],
+  });
+
+  const stravaConnection = useAuthConnection({
+    endpoint: "/api/strava/token",
+    enabled: Boolean(isLoaded && user),
+    queryKey: ["auth-connection", "strava"],
+  });
+
+  useEffect(() => {
+    if (!agent || !krogerConnection.data) return;
+    const current = (agent.state ?? {}) as WellnessState;
+    if (current.kroger_connected === krogerConnection.data.connected) return;
+    agent.setState({ ...current, kroger_connected: krogerConnection.data.connected });
+  }, [agent, krogerConnection.data]);
+
+  useEffect(() => {
+    if (!agent || !stravaConnection.data) return;
+    const current = (agent.state ?? {}) as WellnessState;
+    if (current.strava_connected === stravaConnection.data.connected) return;
+    agent.setState({ ...current, strava_connected: stravaConnection.data.connected });
+  }, [agent, stravaConnection.data]);
+
+  const state     = (agent?.state ?? {}) as WellnessState;
+  const status    = (state.status ?? "idle") as WellnessStatus;
+  const meta      = STATUS_META[status] ?? STATUS_META.idle;
   const isRunning = Boolean(agent?.isRunning);
+
+  const pendingSteps = CONNECT_STEPS.filter((s) => !state[s.connectedKey]);
+
+  const handleConnect = async (id: ConnectStepId) => {
+    if (!user || connectingId !== null) return;
+    setConnectingId(id);
+    try {
+      if (id === "kroger") await connectKroger();
+      else await connectStrava();
+    } catch (err) {
+      console.error("Connect failed:", err);
+      setConnectingId(null);
+    }
+  };
 
   useConfigureSuggestions({
     suggestions: [
@@ -197,55 +409,64 @@ function WellnessPageInner() {
 
       <OrchestrationFlow status={status} />
 
-      <div className="mx-auto grid w-full max-w-[1400px] flex-1 gap-4 p-4 md:p-6 lg:grid-cols-[340px_minmax(0,1fr)]">
-        <div className="flex min-w-0 flex-col gap-4">
-          <SourceCard
-            title="Meals — from Grocery"
-            icon={<Salad className="h-3 w-3" />}
-            theme="grocery"
-            value={state.meal_plan}
-            hint="Grocery output will appear here after wellness delegates meal planning."
-          />
-          <SourceCard
-            title="Workouts — from Fitness"
-            icon={<Dumbbell className="h-3 w-3" />}
-            theme="fitness"
-            value={state.workout_plan}
-            hint="Fitness output will appear here after wellness delegates training."
-          />
-        </div>
+      {pendingSteps.length > 0 ? (
+        <WellnessConnectGate
+          steps={CONNECT_STEPS}
+          pendingSteps={pendingSteps}
+          onConnect={handleConnect}
+          connectingId={connectingId}
+        />
+      ) : (
+        <div className="mx-auto grid w-full max-w-[1400px] flex-1 gap-4 p-4 md:p-6 lg:grid-cols-[340px_minmax(0,1fr)]">
+          <div className="flex min-w-0 flex-col gap-4">
+            <SourceCard
+              title="Meals — from Grocery"
+              icon={<Salad className="h-3 w-3" />}
+              theme="grocery"
+              value={state.meal_plan}
+              hint="Grocery output will appear here after wellness delegates meal planning."
+            />
+            <SourceCard
+              title="Workouts — from Fitness"
+              icon={<Dumbbell className="h-3 w-3" />}
+              theme="fitness"
+              value={state.workout_plan}
+              hint="Fitness output will appear here after wellness delegates training."
+            />
+          </div>
 
-        <div className="flex min-w-0 flex-col gap-4">
-          <PrimaryCard
-            title="Combined weekly plan"
-            icon={<CalendarDays className="h-3 w-3" />}
-            footer={
-              isRunning ? (
-                <p className="text-xs text-[var(--page-color)]">writing…</p>
-              ) : undefined
-            }
-          >
-            {state.weekly_plan ? (
-              <div className="streamdown-markdown text-sm text-[var(--ink-soft)]">
-                <Streamdown>{state.weekly_plan}</Streamdown>
-              </div>
-            ) : (
-              <p className="text-sm text-[var(--ink-mute)]">
-                Ask the agent to coordinate meals and workouts for next week.
-              </p>
-            )}
-          </PrimaryCard>
-
-          {state.review_summary && (
+          <div className="flex min-w-0 flex-col gap-4">
             <PrimaryCard
-              title="Review"
-              icon={<Sparkles className="h-3 w-3" />}
+              title="Combined weekly plan"
+              icon={<CalendarDays className="h-3 w-3" />}
+              footer={
+                isRunning ? (
+                  <p className="text-xs text-[var(--page-color)]">writing…</p>
+                ) : undefined
+              }
             >
-              <p className="text-sm text-[var(--ink-soft)]">{state.review_summary}</p>
+              {state.weekly_plan ? (
+                <div className="streamdown-markdown text-sm text-[var(--ink-soft)]">
+                  <Streamdown>{state.weekly_plan}</Streamdown>
+                </div>
+              ) : (
+                <p className="text-sm text-[var(--ink-mute)]">
+                  Ask the agent to coordinate meals and workouts for next week.
+                </p>
+              )}
             </PrimaryCard>
-          )}
+
+            {state.review_summary && (
+              <PrimaryCard
+                title="Review"
+                icon={<Sparkles className="h-3 w-3" />}
+              >
+                <p className="text-sm text-[var(--ink-soft)]">{state.review_summary}</p>
+              </PrimaryCard>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       <CopilotSidebar
         agentId="wellness"
