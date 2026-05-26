@@ -10,6 +10,7 @@ import {
   useConfigureSuggestions,
 } from "@copilotkit/react-core/v2";
 import { Activity, Dumbbell, Mountain, RefreshCw } from "lucide-react";
+import { HeroHeader } from "@/components/hero-header";
 import { Streamdown } from "streamdown";
 
 import type {
@@ -17,7 +18,6 @@ import type {
   FitnessState,
   FitnessStatus,
 } from "@agents/types";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -26,7 +26,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useAuthConnection } from "@/lib/use-auth-connection";
-import { cn } from "@/lib/utils";
 
 const STRAVA_STRATEGY = "oauth_custom_strava";
 
@@ -65,8 +64,8 @@ function StravaGate({
 }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6 p-8 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--accent-soft)]">
-        <Activity className="h-6 w-6 text-[var(--accent-strong)]" />
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--page-color-soft,var(--accent-soft))]">
+        <Activity className="h-6 w-6 text-[var(--page-color,var(--accent-strong))]" />
       </div>
       <div className="space-y-2">
         <h2 className="text-xl font-semibold text-[var(--ink)]">
@@ -175,35 +174,20 @@ function FitnessPageInner() {
   const totals = useMemo(() => summarizeActivities(activities), [activities]);
 
   return (
-    <main className="flex min-h-full flex-col">
-      <header className="glass sticky top-0 z-20 border-b border-[var(--border-soft)] px-4 pb-4 pt-5 md:px-8">
-        <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-sky-500 shadow-md">
-              <Mountain className="h-5 w-5 text-white" />
-            </div>
-            <div className="min-w-0">
-              <h1 className="truncate text-base font-semibold tracking-tight text-[var(--ink)] md:text-xl">
-                Fitness Studio
-              </h1>
-              <p className="mt-0.5 hidden text-xs text-[var(--ink-mute)] sm:block">
-                Weekly training from Strava history and mountain objectives.
-              </p>
-            </div>
-          </div>
-
-          <Badge
-            variant="outline"
-            className={cn(
-              "h-auto gap-2 border-transparent px-3 py-1.5 text-[11px]",
-              meta.chipClass,
-            )}
-          >
-            <span className={`h-1.5 w-1.5 rounded-full ${meta.dotClass}`} />
-            {isRunning ? "Working..." : meta.label}
-          </Badge>
-        </div>
-      </header>
+    <main
+      className="flex min-h-full flex-col"
+      style={{
+        "--page-color": "var(--fitness)",
+        "--page-color-soft": "var(--fitness-soft)",
+      } as React.CSSProperties}
+    >
+      <HeroHeader
+        name="Fitness Studio"
+        description="Weekly training from Strava history and mountain objectives."
+        icon={<Mountain className="h-5 w-5" />}
+        isRunning={isRunning}
+        statusLabel={meta.label}
+      />
 
       {!stravaConnected ? (
         <StravaGate onConnect={handleConnect} connecting={connecting} />
@@ -258,7 +242,9 @@ function SectionCard({
   return (
     <Card size="sm" className="gap-0 py-0">
       <CardHeader className="flex-row items-center gap-2 border-b border-[var(--border-soft)] bg-[var(--surface-soft)] px-4 py-3">
-        {icon}
+        {icon && (
+          <span className="text-[var(--page-color,var(--ink-mute))]">{icon}</span>
+        )}
         <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent className="p-4">{children}</CardContent>

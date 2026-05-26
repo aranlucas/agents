@@ -11,6 +11,7 @@ import {
   useDefaultRenderTool,
 } from "@copilotkit/react-core/v2";
 import { z } from "zod";
+import { Plane } from "lucide-react";
 
 import type { DocStatus, TripState } from "@agents/types";
 
@@ -261,8 +262,17 @@ useFrontendTool({
   );
 
   return (
-    <main className="min-h-full flex flex-col">
+    <main
+      className="min-h-full flex flex-col"
+      style={{
+        "--page-color": "var(--travel)",
+        "--page-color-soft": "var(--travel-soft)",
+      } as React.CSSProperties}
+    >
       <HeroHeader
+        name="Trip Studio"
+        description="Co-plan trips with an AI partner in real time."
+        icon={<Plane className="w-5 h-5" />}
         isRunning={isRunning}
         onToggleBrief={() => setBriefOpenMobile((v) => !v)}
         briefOpenMobile={briefOpenMobile}

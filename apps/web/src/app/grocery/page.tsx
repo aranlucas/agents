@@ -15,6 +15,7 @@ import { ShoppingCart } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { HeroHeader } from "@/components/hero-header";
 import {
   Card,
   CardContent,
@@ -191,40 +192,20 @@ function GroceryPageInner() {
   };
 
   return (
-    <main className="min-h-full flex flex-col">
-      <header className="px-4 md:px-8 pt-5 pb-4 border-b border-[var(--border-soft)] glass sticky top-0 z-20">
-        <div className="max-w-[1400px] mx-auto flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-[var(--accent)] to-emerald-500 shadow-md flex items-center justify-center">
-              <ShoppingCart className="w-5 h-5 text-white" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h1 className="text-base md:text-xl font-semibold tracking-tight text-[var(--ink)] truncate">
-                  Grocery Studio
-                </h1>
-                <Badge
-                  variant="outline"
-                  className="hidden h-auto rounded-md px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider sm:inline-flex"
-                >
-                  CopilotKit × ADK
-                </Badge>
-              </div>
-              <p className="hidden sm:block text-xs text-[var(--ink-mute)] mt-0.5">
-                Plan meals and build a Kroger cart with an AI partner.
-              </p>
-            </div>
-          </div>
-
-          <Badge
-            variant="outline"
-            className={cn("h-auto gap-2 border-transparent px-3 py-1.5 text-[11px]", meta.chipClass)}
-          >
-            <span className={`w-1.5 h-1.5 rounded-full ${meta.dotClass}`} />
-            {isRunning ? "Planning…" : meta.label}
-          </Badge>
-        </div>
-      </header>
+    <main
+      className="min-h-full flex flex-col"
+      style={{
+        "--page-color": "var(--grocery)",
+        "--page-color-soft": "var(--grocery-soft)",
+      } as React.CSSProperties}
+    >
+      <HeroHeader
+        name="Grocery Studio"
+        description="Plan meals and build a Kroger cart with an AI partner."
+        icon={<ShoppingCart className="w-5 h-5" />}
+        isRunning={isRunning}
+        statusLabel={meta.label}
+      />
 
       {!krogerConnected ? (
         <KrogerAuthGate onConnect={handleConnect} connecting={connecting} />
@@ -269,9 +250,9 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <Card size="sm" className="gap-0 py-0">
+    <Card size="sm" className="gap-0 py-0 border-[var(--border)]">
       <CardHeader className="flex-row items-center gap-2 border-b border-[var(--border-soft)] bg-[var(--surface-soft)] px-4 py-3">
-        <CardTitle>{title}</CardTitle>
+        <CardTitle className="text-sm font-semibold">{title}</CardTitle>
         {badge}
       </CardHeader>
       <CardContent className="p-4">{children}</CardContent>
@@ -365,7 +346,7 @@ function CartCard({ items, total }: { items: CartItem[]; total: number }) {
               key={item.upc ?? `${item.name}-${i}`}
               className="flex items-center gap-3 py-2 first:pt-0 last:pb-0 text-sm"
             >
-              <span className="shrink-0 w-7 h-7 rounded-lg bg-[var(--accent-soft)] text-[var(--accent-strong)] flex items-center justify-center text-xs font-mono font-semibold">
+              <span className="shrink-0 w-7 h-7 rounded-lg bg-[var(--page-color-soft,var(--accent-soft))] text-[var(--page-color,var(--accent-strong))] flex items-center justify-center text-xs font-mono font-semibold">
                 {item.quantity ?? 1}
               </span>
               <span className="flex-1 min-w-0 truncate text-[var(--ink)]">

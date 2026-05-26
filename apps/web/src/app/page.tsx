@@ -43,113 +43,67 @@ const AGENTS: Agent[] = [
   },
 ];
 
-const AGENT_DOTS = [
-  { label: "Travel",   color: "var(--travel)"   },
-  { label: "Grocery",  color: "var(--grocery)"  },
-  { label: "Fitness",  color: "var(--fitness)"  },
-  { label: "Wellness", color: "var(--wellness)" },
-];
-
 export default function Home() {
   return (
-    <main className="relative min-h-screen flex flex-col items-center justify-center gap-14 px-6 py-20">
-      {/* Atmospheric glow — decorative */}
-      <div
-        className="pointer-events-none fixed inset-0 overflow-hidden"
-        aria-hidden
-      >
-        <div
-          className="absolute -top-32 left-1/3 w-[560px] h-[560px] rounded-full blur-[130px] opacity-30"
-          style={{ background: "var(--accent)" }}
-        />
-        <div
-          className="absolute top-2/3 -right-24 w-[380px] h-[380px] rounded-full blur-[110px] opacity-15"
-          style={{ background: "var(--grocery)" }}
-        />
-        <div
-          className="absolute -bottom-24 left-1/4 w-[420px] h-[420px] rounded-full blur-[120px] opacity-10"
-          style={{ background: "var(--travel)" }}
-        />
-      </div>
-
-      {/* Hero */}
-      <div className="hero-reveal relative text-center space-y-6 max-w-lg">
-        {/* Status pill */}
-        <div className="inline-flex items-center gap-2.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-1.5 shadow-sm">
-          <span
-            className="w-1.5 h-1.5 rounded-full animate-pulse"
-            style={{ backgroundColor: "var(--success)" }}
-          />
-          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ink-mute)]">
-            4 agents live
-          </span>
-          <span className="text-[var(--border)] font-mono text-xs select-none">·</span>
-          <span className="font-mono text-[10px] tracking-wide text-[var(--ink-mute)]">
-            CopilotKit × ADK
+    <div className="min-h-screen flex flex-col bg-[var(--bg)]">
+      {/* Top bar */}
+      <header className="flex items-center justify-between px-5 md:px-8 h-11 border-b border-[var(--border)] shrink-0">
+        <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ink-mute)]">
+          Agents
+        </span>
+        <div className="flex items-center gap-2.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)] animate-pulse" />
+          <span className="font-mono text-[10px] text-[var(--ink-mute)]">
+            4 running · CopilotKit × ADK
           </span>
         </div>
+      </header>
 
-        {/* Heading: mono label + serif italic display */}
-        <div className="space-y-1">
-          <p
-            className="font-mono text-xs uppercase tracking-[0.3em] text-[var(--ink-mute)]"
-          >
-            Agents
+      {/* Title section */}
+      <div className="flex items-end justify-between px-5 md:px-8 pt-10 pb-8 border-b border-[var(--border)] shrink-0">
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-[var(--ink-mute)] mb-3">
+            Planning system
           </p>
-          <h1
-            className="font-display italic text-5xl md:text-6xl text-[var(--ink)] leading-[1.1]"
-          >
-            Working together.
+          <h1 className="text-[clamp(2rem,5vw,3.5rem)] font-extrabold tracking-tight text-[var(--ink)] leading-[1.0]">
+            Agents that work<br />
+            <span style={{ opacity: 0.3 }}>together.</span>
           </h1>
         </div>
 
-        <p className="text-base text-[var(--ink-mute)] leading-relaxed max-w-sm mx-auto">
-          Trip planning, grocery, and fitness — with agents that
-          share context and talk to each other.
-        </p>
-
-        {/* Agent color identity row */}
-        <div className="flex items-center justify-center gap-5 pt-1">
-          {AGENT_DOTS.map(({ label, color }) => (
-            <div key={label} className="flex items-center gap-1.5">
-              <span
-                className="w-2 h-2 rounded-full shrink-0"
-                style={{ backgroundColor: color }}
-              />
-              <span className="font-mono text-[10px] text-[var(--ink-mute)]">
-                {label}
-              </span>
+        {/* Agent key — desktop only */}
+        <div className="hidden md:flex flex-col items-end gap-2 pb-1 shrink-0">
+          {[
+            { color: "#ea580c", label: "Travel" },
+            { color: "#16a34a", label: "Grocery" },
+            { color: "#0284c7", label: "Fitness" },
+            { color: "#d97706", label: "Wellness" },
+          ].map(({ color, label }) => (
+            <div key={label} className="flex items-center gap-2">
+              <span className="font-mono text-[10px] text-[var(--ink-mute)]">{label}</span>
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
             </div>
           ))}
         </div>
       </div>
 
-      {/* Agent grid */}
-      <div className="relative w-full max-w-5xl grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Agent list */}
+      <div className="flex-1 divide-y divide-[var(--border)]">
         {AGENTS.map((agent, index) => (
           <AgentCard key={agent.id} agent={agent} index={index} />
         ))}
       </div>
 
-      {/* A2A footnote */}
-      <p
-        className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ink-mute)] text-center"
-        style={{ animationDelay: "600ms" }}
-      >
-        <span
-          className="inline-block w-1.5 h-1.5 rounded-full mr-1.5 align-middle"
-          style={{ backgroundColor: "var(--grocery)" }}
-        />
-        Grocery
-        <span className="mx-2 opacity-40">+</span>
-        <span
-          className="inline-block w-1.5 h-1.5 rounded-full mr-1.5 align-middle"
-          style={{ backgroundColor: "var(--fitness)" }}
-        />
-        Fitness
-        <span className="mx-2 opacity-40">→</span>
-        Wellness orchestration
-      </p>
-    </main>
+      {/* Footer */}
+      <footer className="flex items-center gap-2 px-5 md:px-8 py-3 border-t border-[var(--border)] shrink-0">
+        <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-[var(--grocery)]" />
+        <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ink-mute)]">Grocery</span>
+        <span className="font-mono text-[9px] text-[var(--border-soft)] select-none">+</span>
+        <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-[var(--fitness)]" />
+        <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ink-mute)]">Fitness</span>
+        <span className="font-mono text-[9px] text-[var(--border-soft)] select-none">→</span>
+        <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ink-mute)]">Wellness orchestration</span>
+      </footer>
+    </div>
   );
 }

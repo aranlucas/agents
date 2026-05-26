@@ -1,24 +1,16 @@
 import type { Metadata } from "next";
-import { Outfit, Instrument_Serif, IBM_Plex_Mono } from "next/font/google";
+import { Schibsted_Grotesk, JetBrains_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
-const outfit = Outfit({
+const schibsted = Schibsted_Grotesk({
   subsets: ["latin"],
   variable: "--font-sans",
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700", "800"],
   display: "swap",
 });
 
-const instrumentSerif = Instrument_Serif({
-  subsets: ["latin"],
-  weight: "400",
-  style: ["normal", "italic"],
-  variable: "--font-serif",
-  display: "swap",
-});
-
-const ibmMono = IBM_Plex_Mono({
+const jetbrains = JetBrains_Mono({
   subsets: ["latin"],
   weight: ["400", "500"],
   variable: "--font-mono",
@@ -34,7 +26,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${outfit.variable} ${instrumentSerif.variable} ${ibmMono.variable}`}>
+    <html lang="en" className={`${schibsted.variable} ${jetbrains.variable}`}>
       <body className="antialiased">
         <Providers>{children}</Providers>
       </body>
