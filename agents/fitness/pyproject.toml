@@ -19,7 +19,6 @@ dependencies = [
   "opentelemetry-instrumentation-google-genai>=0.7b1",
   "opentelemetry-instrumentation-vertexai>=2.0b0",
   "a2a-sdk>=1.0.3",
-  "a2a-executor",
 ]
 
 [project.optional-dependencies]
@@ -35,6 +34,3 @@ py-modules = ["main", "utils"]
 testpaths = ["tests"]
 pythonpath = ["."]
 asyncio_mode = "auto"
-
-[tool.uv.sources]
-a2a-executor = {path = "../a2a_executor"}

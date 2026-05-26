@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 async def test_executor_creates_session_when_missing():
     """Executor creates an ADK session if context_id has no existing session."""
-    from a2a_executor import ADKAgentExecutor
+    from utils import ADKAgentExecutor
 
     runner = MagicMock()
     runner.app_name = "test_agent"
@@ -35,14 +35,14 @@ async def test_executor_creates_session_when_missing():
 
     runner.session_service.create_session.assert_called_once_with(
         app_name="test_agent",
-        user_id="a2a_user",
+        user_id="demo_user",
         session_id="ctx-abc",
     )
 
 
 async def test_executor_skips_session_creation_when_exists():
     """Executor does not create a session if one already exists."""
-    from a2a_executor import ADKAgentExecutor
+    from utils import ADKAgentExecutor
 
     runner = MagicMock()
     runner.app_name = "test_agent"
