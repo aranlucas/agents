@@ -1,7 +1,7 @@
-import { auth, clerkClient } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-const STRAVA_PROVIDER = "custom_strava";
+import { getStravaAccessToken, STRAVA_PROVIDER } from "@/lib/strava-token";
+
 const isDevelopment = process.env.NODE_ENV !== "production";
 
 function getErrorDetails(error: unknown) {
@@ -30,40 +30,15 @@ function getErrorDetails(error: unknown) {
 }
 
 export async function GET() {
-  const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ connected: false, token: null }, { status: 401 });
-  }
-
   try {
-    const client = await clerkClient();
-    const user = await client.users.getUser(userId);
-    const account = user.externalAccounts.find(
-      ({ provider }) =>
-        provider === STRAVA_PROVIDER || provider === `oauth_${STRAVA_PROVIDER}`,
-    );
-    const { data: tokens } = await client.users.getUserOauthAccessToken(
-      userId,
-      STRAVA_PROVIDER as never,
-    );
-
-    const token = tokens[0]?.token ?? null;
+    const { connected, token } = await getStravaAccessToken();
     return NextResponse.json({
-      connected: !!token,
-      token,
+      connected,
       ...(isDevelopment
         ? {
             debug: {
               provider: STRAVA_PROVIDER,
-              externalAccount: account
-                ? {
-                    provider: account.provider,
-                    providerUserId: account.providerUserId,
-                    approvedScopes: account.approvedScopes,
-                    verificationStatus: account.verification?.status,
-                  }
-                : null,
-              tokenCount: tokens.length,
+              tokenAvailable: Boolean(token),
             },
           }
         : {}),
@@ -71,7 +46,6 @@ export async function GET() {
   } catch (error) {
     return NextResponse.json({
       connected: false,
-      token: null,
       ...(isDevelopment
         ? { debug: { provider: STRAVA_PROVIDER, error: getErrorDetails(error) } }
         : {}),

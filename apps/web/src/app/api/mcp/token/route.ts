@@ -1,7 +1,7 @@
-import { auth, clerkClient } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-const KROGER_PROVIDER = "custom_shopping";
+import { getKrogerAccessToken, KROGER_PROVIDER } from "@/lib/kroger-token";
+
 const isDevelopment = process.env.NODE_ENV !== "production";
 
 function getErrorDetails(error: unknown) {
@@ -30,44 +30,19 @@ function getErrorDetails(error: unknown) {
 }
 
 /**
- * Returns the MCP OAuth token for the "shopping" provider if the current
- * Clerk user has connected their Kroger account. Used by the grocery page
- * to check connection status and seed the agent's session state.
+ * Returns whether the "shopping" provider is connected. Tokens stay server-side
+ * and are forwarded to the agent from the CopilotKit runtime route.
  */
 export async function GET() {
-  const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ connected: false, token: null }, { status: 401 });
-  }
-
   try {
-    const client = await clerkClient();
-    const user = await client.users.getUser(userId);
-    const account = user.externalAccounts.find(
-      ({ provider }) => provider === KROGER_PROVIDER || provider === `oauth_${KROGER_PROVIDER}`,
-    );
-    const { data: tokens } = await client.users.getUserOauthAccessToken(
-      userId,
-      KROGER_PROVIDER as never,
-    );
-
-    const token = tokens[0]?.token ?? null;
+    const { connected, token } = await getKrogerAccessToken();
     return NextResponse.json({
-      connected: !!token,
-      token,
+      connected,
       ...(isDevelopment
         ? {
             debug: {
               provider: KROGER_PROVIDER,
-              externalAccount: account
-                ? {
-                    provider: account.provider,
-                    providerUserId: account.providerUserId,
-                    approvedScopes: account.approvedScopes,
-                    verificationStatus: account.verification?.status,
-                  }
-                : null,
-              tokenCount: tokens.length,
+              tokenAvailable: Boolean(token),
             },
           }
         : {}),
@@ -76,7 +51,6 @@ export async function GET() {
     // Provider not connected or token unavailable
     return NextResponse.json({
       connected: false,
-      token: null,
       ...(isDevelopment ? { debug: { provider: KROGER_PROVIDER, error: getErrorDetails(error) } } : {}),
     });
   }

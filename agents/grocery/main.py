@@ -26,6 +26,9 @@ from utils import meal_planner_toolset, shared_after_tool_callback
 
 load_dotenv()
 
+KROGER_TOKEN_HEADER = "x-kroger-access-token"
+KROGER_TOKEN_STATE_KEY = "temp:kroger_token"
+
 
 # ---------------------------------------------------------------------------
 # OTEL
@@ -178,6 +181,14 @@ def before_model_modifier(
     return None
 
 
+async def extract_kroger_auth_state(request, input_data) -> dict:
+    """Inject Kroger auth as per-invocation temp state from request headers."""
+    token = request.headers.get(KROGER_TOKEN_HEADER) or ""
+    if not token:
+        return {"kroger_connected": False}
+    return {"kroger_connected": True, KROGER_TOKEN_STATE_KEY: token}
+
+
 def after_model_modifier(
     callback_context: CallbackContext, llm_response: LlmResponse
 ) -> Optional[LlmResponse]:
@@ -306,7 +317,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-add_adk_fastapi_endpoint(app, adk_grocery_agent, path="/")
+add_adk_fastapi_endpoint(
+    app,
+    adk_grocery_agent,
+    path="/",
+    extract_state_from_request=extract_kroger_auth_state,
+)
 
 
 @app.get("/health")

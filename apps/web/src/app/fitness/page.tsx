@@ -25,9 +25,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useAuthConnection } from "@/lib/use-auth-connection";
 import { cn } from "@/lib/utils";
 
-const STRAVA_PROVIDER = "custom_strava";
 const STRAVA_STRATEGY = "oauth_custom_strava";
 
 const STATUS_META: Record<
@@ -91,7 +91,8 @@ function FitnessPageInner() {
   const connectStrava = useReverification(async () => {
     if (!user) return;
     const existingAccount = user.externalAccounts.find(
-      ({ provider }) => provider === STRAVA_PROVIDER,
+      ({ provider }) =>
+        provider === "custom_strava" || String(provider) === STRAVA_STRATEGY,
     );
 
     const account = existingAccount
@@ -108,6 +109,11 @@ function FitnessPageInner() {
   const { agent } = useAgent({
     agentId: "fitness",
     updates: [UseAgentUpdate.OnStateChanged, UseAgentUpdate.OnRunStatusChanged],
+  });
+  const stravaConnection = useAuthConnection({
+    endpoint: "/api/strava/token",
+    enabled: Boolean(isLoaded && user),
+    queryKey: ["auth-connection", "strava"],
   });
 
   const state = (agent?.state ?? {}) as FitnessState;
@@ -144,35 +150,16 @@ function FitnessPageInner() {
   });
 
   useEffect(() => {
-    if (!agent || !isLoaded || !user) return;
+    if (!agent || !stravaConnection.data) return;
 
-    fetch("/api/strava/token")
-      .then((r) => r.json())
-      .then(
-        ({
-          connected,
-          token,
-        }: {
-          connected: boolean;
-          token: string | null;
-        }) => {
-          const current = (agent.state ?? {}) as FitnessState;
-          agent.setState({
-            ...current,
-            strava_connected: connected,
-            strava_token: token ?? undefined,
-          });
-        },
-      )
-      .catch(() => {
-        const current = (agent.state ?? {}) as FitnessState;
-        agent.setState({
-          ...current,
-          strava_connected: false,
-          strava_token: undefined,
-        });
-      });
-  }, [agent, isLoaded, user]);
+    const current = (agent.state ?? {}) as FitnessState;
+    if (current.strava_connected === stravaConnection.data.connected) return;
+
+    agent.setState({
+      ...current,
+      strava_connected: stravaConnection.data.connected,
+    });
+  }, [agent, stravaConnection.data]);
 
   const handleConnect = async () => {
     if (!user || connecting) return;

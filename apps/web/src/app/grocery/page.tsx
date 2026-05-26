@@ -21,6 +21,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useAuthConnection } from "@/lib/use-auth-connection";
 import { cn } from "@/lib/utils";
 
 const KROGER_PROVIDER = "custom_shopping";
@@ -111,6 +112,11 @@ function GroceryPageInner() {
     agentId: "grocery",
     updates: [UseAgentUpdate.OnStateChanged, UseAgentUpdate.OnRunStatusChanged],
   });
+  const krogerConnection = useAuthConnection({
+    endpoint: "/api/mcp/token",
+    enabled: Boolean(isLoaded && user),
+    queryKey: ["auth-connection", "kroger"],
+  });
 
   const state = (agent?.state ?? {}) as GroceryState;
   const shoppingList = state.shopping_list ?? [];
@@ -160,24 +166,17 @@ function GroceryPageInner() {
     available: "always",
   });
 
-  // On load (and after Clerk user is ready), fetch the MCP token from our
-  // server route. If the "shopping" OAuth account is connected, push the
-  // token into agent state so the Python header_provider can use it.
   useEffect(() => {
-    if (!agent || !isLoaded || !user) return;
+    if (!agent || !krogerConnection.data) return;
 
-    fetch("/api/mcp/token")
-      .then((r) => r.json())
-      .then(({ connected, token }: { connected: boolean; token: string | null }) => {
-        const current = (agent.state ?? {}) as GroceryState;
-        agent.setState({
-          ...current,
-          kroger_connected: connected,
-          kroger_token: token ?? undefined,
-        });
-      })
-      .catch(() => {/* stay in disconnected state */});
-  }, [agent, isLoaded, user]);
+    const current = (agent.state ?? {}) as GroceryState;
+    if (current.kroger_connected === krogerConnection.data.connected) return;
+
+    agent.setState({
+      ...current,
+      kroger_connected: krogerConnection.data.connected,
+    });
+  }, [agent, krogerConnection.data]);
 
   const handleConnect = async () => {
     if (!user || connecting) return;

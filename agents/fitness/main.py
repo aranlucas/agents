@@ -27,10 +27,11 @@ from utils import shared_after_tool_callback, web_search_toolset
 load_dotenv()
 
 STRAVA_ACTIVITIES_URL = "https://www.strava.com/api/v3/athlete/activities"
+STRAVA_TOKEN_HEADER = "x-strava-access-token"
+STRAVA_TOKEN_STATE_KEY = "temp:strava_token"
 
 _DEFAULT_STATE: dict[str, Any] = {
     "strava_connected": False,
-    "strava_token": "",
     "activities": [],
     "activities_synced_at": "",
     "objective_research": "",
@@ -111,7 +112,7 @@ async def fetch_activities(
     after: Optional[int] = None,
 ) -> dict:
     """Fetch recent Strava activities and write normalized activity state."""
-    token = tool_context.state.get("strava_token") or ""
+    token = tool_context.state.get(STRAVA_TOKEN_STATE_KEY) or ""
     connected = bool(tool_context.state.get("strava_connected")) and bool(token)
     if not connected:
         tool_context.state["status"] = "idle"
@@ -165,6 +166,14 @@ async def fetch_activities(
     }
 
 
+async def extract_strava_auth_state(request, input_data) -> dict[str, Any]:
+    """Inject Strava auth as per-invocation temp state from request headers."""
+    token = request.headers.get(STRAVA_TOKEN_HEADER) or ""
+    if not token:
+        return {"strava_connected": False}
+    return {"strava_connected": True, STRAVA_TOKEN_STATE_KEY: token}
+
+
 def set_objective_research(tool_context: ToolContext, research: str) -> dict:
     """Write curated outdoor objective research to shared state."""
     tool_context.state["objective_research"] = research
@@ -197,7 +206,9 @@ def before_model_modifier(
     callback_context: CallbackContext, llm_request: LlmRequest
 ) -> Optional[LlmResponse]:
     state = callback_context.state
-    connected = bool(state.get("strava_connected") and state.get("strava_token"))
+    connected = bool(
+        state.get("strava_connected") and state.get(STRAVA_TOKEN_STATE_KEY)
+    )
     activity_count = len(state.get("activities") or [])
     synced_at = state.get("activities_synced_at") or ""
 
@@ -329,7 +340,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-add_adk_fastapi_endpoint(app, adk_fitness_agent, path="/")
+add_adk_fastapi_endpoint(
+    app,
+    adk_fitness_agent,
+    path="/",
+    extract_state_from_request=extract_strava_auth_state,
+)
 
 
 @app.get("/health")

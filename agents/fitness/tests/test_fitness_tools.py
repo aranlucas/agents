@@ -2,6 +2,7 @@ from unittest.mock import Mock
 
 import pytest
 from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
+from starlette.datastructures import Headers
 
 import main
 import utils
@@ -10,6 +11,11 @@ import utils
 class DummyToolContext:
     def __init__(self, state: dict | None = None):
         self.state = state or {}
+
+
+class DummyRequest:
+    def __init__(self, headers: dict[str, str]):
+        self.headers = Headers(headers)
 
 
 def test_normalize_activity_keeps_training_fields():
@@ -57,6 +63,19 @@ async def test_fetch_activities_requires_connected_strava():
 
 
 @pytest.mark.asyncio
+async def test_extract_strava_auth_state_uses_temp_header_state():
+    result = await main.extract_strava_auth_state(
+        DummyRequest({"x-strava-access-token": "token-123"}),
+        Mock(state={}),
+    )
+
+    assert result == {
+        "strava_connected": True,
+        "temp:strava_token": "token-123",
+    }
+
+
+@pytest.mark.asyncio
 async def test_fetch_activities_writes_normalized_state(monkeypatch):
     response = Mock()
     response.json.return_value = [
@@ -87,9 +106,7 @@ async def test_fetch_activities_writes_normalized_state(monkeypatch):
             return response
 
     monkeypatch.setattr(main.httpx, "AsyncClient", lambda timeout: DummyClient())
-    context = DummyToolContext(
-        {"strava_connected": True, "strava_token": "token-123"}
-    )
+    context = DummyToolContext({"strava_connected": True, "temp:strava_token": "token-123"})
 
     result = await main.fetch_activities(context)
 
