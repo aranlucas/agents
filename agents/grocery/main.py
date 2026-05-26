@@ -35,7 +35,7 @@ from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 
-from a2a_executor import ADKAgentExecutor
+from utils import ADKAgentExecutor
 
 load_dotenv()
 
