@@ -233,20 +233,6 @@ async def extract_kroger_auth_state(request, input_data) -> dict:
     return {**state, "kroger_connected": True, KROGER_TOKEN_STATE_KEY: token}
 
 
-def after_model_modifier(
-    callback_context: CallbackContext, llm_response: LlmResponse
-) -> Optional[LlmResponse]:
-    """Stop consecutive tool calling after a text reply."""
-    if (
-        llm_response.content
-        and llm_response.content.parts
-        and llm_response.content.role == "model"
-        and llm_response.content.parts[0].text
-    ):
-        callback_context._invocation_context.end_invocation = True
-    return None
-
-
 # ---------------------------------------------------------------------------
 # Agent
 # ---------------------------------------------------------------------------
@@ -289,7 +275,6 @@ grocery_agent = LlmAgent(
     instruction=_INSTRUCTION,
     before_agent_callback=on_before_agent,
     before_model_callback=before_model_modifier,
-    after_model_callback=after_model_modifier,
     after_tool_callback=shared_after_tool_callback,
     tools=[
         set_shopping_list,
