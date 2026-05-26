@@ -6,7 +6,7 @@
 
 **Architecture:** Add a third ADK/FastAPI agent under `agents/fitness`, expose it through the existing CopilotKit runtime as `fitness`, and add a `/fitness` Next.js page that writes Clerk-synced Strava token state into the agent. The agent owns Strava fetching, objective research, plan writing, and health checks.
 
-**Tech Stack:** Python 3.12, Google ADK, ag-ui-adk, FastAPI, LiteLLM, httpx, MCP `McpToolset`, Next.js 16, CopilotKit v2, Clerk, TypeScript workspace types, Docker Compose.
+**Tech Stack:** Python 3.14, Google ADK, ag-ui-adk, FastAPI, LiteLLM, httpx, MCP `McpToolset`, Next.js 16, CopilotKit v2, Clerk, TypeScript workspace types, Docker Compose.
 
 ---
 
@@ -103,9 +103,6 @@ Create `agents/fitness/tests/__init__.py` as an empty file.
 Create `agents/fitness/tests/test_fitness_tools.py`:
 
 ```python
-from __future__ import annotations
-
-from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
@@ -263,7 +260,7 @@ Create `agents/fitness/pyproject.toml`:
 name = "fitness-agent"
 version = "0.1.0"
 description = "Fitness training agent powered by Google ADK + CopilotKit AG-UI"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 dependencies = [
   "fastapi",
   "uvicorn[standard]",
@@ -302,26 +299,30 @@ Create `agents/fitness/utils.py`:
 ```python
 """Shared utilities for the fitness agent."""
 
-from __future__ import annotations
-
 import os
 from typing import Any, Optional
 
+from mcp import StdioServerParameters
 from google.adk.tools import BaseTool, ToolContext
 from google.adk.tools.mcp_tool import McpToolset
 from google.adk.tools.mcp_tool.mcp_session_manager import (
-    StreamableHTTPConnectionParams,
+    StdioConnectionParams,
 )
 
-WEB_SEARCH_MCP_URL = os.getenv(
-    "WEB_SEARCH_MCP_URL", "http://web-search:8000/mcp"
-)
+BRAVE_SEARCH_MCP_PACKAGE = "@brave/brave-search-mcp-server"
 
 
 def web_search_toolset() -> McpToolset:
     return McpToolset(
-        connection_params=StreamableHTTPConnectionParams(
-            url=WEB_SEARCH_MCP_URL,
+        connection_params=StdioConnectionParams(
+            server_params=StdioServerParameters(
+                command="npx",
+                args=[
+                    "-y",
+                    BRAVE_SEARCH_MCP_PACKAGE,
+                ],
+                env={"BRAVE_API_KEY": os.getenv("BRAVE_API_KEY", "")},
+            ),
             timeout=30.0,
         ),
         use_mcp_resources=True,
@@ -366,8 +367,6 @@ Create `agents/fitness/main.py`:
 
 ```python
 """Fitness Training Agent — Strava + objective research + AG-UI shared state."""
-
-from __future__ import annotations
 
 import datetime
 import os
@@ -711,7 +710,7 @@ Create `agents/fitness/.env.example`:
 ```env
 PORT=8002
 AGENT_MODEL=mistral/mistral-small-latest
-WEB_SEARCH_MCP_URL=http://web-search:8000/mcp
+BRAVE_API_KEY=
 OTEL_SERVICE_NAME=fitness-agent
 OTEL_EXPORTER_OTLP_ENDPOINT=
 ```
@@ -748,10 +747,10 @@ git commit -m "feat: add fitness agent backend"
 Create `agents/fitness/Dockerfile`:
 
 ```dockerfile
-FROM python:3.12-slim
+FROM python:3.14.5-slim
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl ca-certificates && \
+    apt-get install -y --no-install-recommends curl ca-certificates nodejs npm && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/
@@ -782,23 +781,11 @@ Create `agents/fitness/railway.json`:
 }
 ```
 
-- [ ] **Step 3: Add Docker Compose services**
+- [ ] **Step 3: Add Docker Compose service**
 
 Modify `docker-compose.yml` to include:
 
 ```yaml
-  web-search:
-    image: docker.io/mcp/brave-search:latest
-    ports:
-      - "8010:8000"
-    env_file:
-      - path: ./.env
-        required: false
-    environment:
-      BRAVE_MCP_TRANSPORT: http
-      BRAVE_MCP_PORT: 8000
-      BRAVE_MCP_HOST: 0.0.0.0
-
   fitness:
     build:
       context: ./agents/fitness
@@ -812,9 +799,6 @@ Modify `docker-compose.yml` to include:
     environment:
       OTEL_SERVICE_NAME: fitness-agent
       PORT: 8002
-      WEB_SEARCH_MCP_URL: http://web-search:8000/mcp
-    depends_on:
-      - web-search
 ```
 
 - [ ] **Step 4: Add root env examples**
@@ -825,9 +809,7 @@ Add to `.env.example`:
 FITNESS_AGENT_URL=http://localhost:8002/
 EXPO_PUBLIC_FITNESS_AGENT_URL=http://localhost:8002/
 
-# Web search MCP
 BRAVE_API_KEY=...
-WEB_SEARCH_MCP_URL=http://localhost:8010/mcp
 ```
 
 - [ ] **Step 5: Verify Docker Compose parses**

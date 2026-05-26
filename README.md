@@ -58,7 +58,7 @@ floating launcher, so the canvas owns the full viewport.
 ## Prerequisites
 
 * Node.js 18+
-* Python 3.12+
+* Python 3.14+
 * Either a Google API key for Gemini, or Mistral (toggle via env)
 * `uv` (the script will use it; install via `pipx install uv` or `brew install uv`)
 
