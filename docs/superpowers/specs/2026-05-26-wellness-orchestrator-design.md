@@ -24,12 +24,12 @@ Out of scope:
 
 ## Architecture
 
-`agents/wellness` is a new ADK `LlmAgent` wrapped by `ADKAgent`. The service follows the current agent pattern: OTEL setup, state-writing tools, request-state extraction, an A2A `Runner`, `ADKAgentExecutor`, FastAPI middleware, A2A routes, AG-UI endpoint, and a health check.
+`agents/wellness` is a new ADK `LlmAgent` wrapped by `ADKAgent`. The service follows the current agent pattern: OTEL setup, state-writing tools, request-state extraction, an A2A `Runner`, ADK's `A2aAgentExecutor`, FastAPI middleware, A2A routes, AG-UI endpoint, and a health check.
 
-The wellness agent does not import grocery or fitness internals. Instead, it owns A2A client tools:
+The wellness agent does not import grocery or fitness internals. Instead, it delegates through ADK `RemoteA2aAgent` sub-agents:
 
-- `request_meal_plan`: sends a prompt to the grocery A2A endpoint and stores the returned summary in wellness state.
-- `request_workout_plan`: sends a prompt to the fitness A2A endpoint and stores the returned summary in wellness state.
+- `grocery_remote_agent`: sends meal-planning requests to the grocery A2A endpoint.
+- `fitness_remote_agent`: sends workout-planning requests to the fitness A2A endpoint.
 - `set_weekly_wellness_plan`: writes the final combined markdown plan to wellness state.
 - `mark_plan_ready`: marks the plan complete with a one-sentence review summary.
 
@@ -78,13 +78,15 @@ x-clerk-user-id: <clerk user id>
 
 Each agent's `extract_state_from_request` returns `user_id` from this header. Static `user_id="demo_user"` values are removed from `ADKAgent(...)`, because `ag-ui-adk` gives extractor-provided `user_id` precedence only when no static user ID is configured.
 
-For A2A, `ADKAgentExecutor` reads identity from request metadata:
+For A2A, the shared ADK request converter reads identity from request metadata:
 
 ```py
-user_id = str(context.metadata.get("user_id") or "anonymous")
+user_id = (request.metadata or {}).get("user_id")
+if user_id:
+    run_request.user_id = str(user_id)
 ```
 
-Wellness A2A delegation tools send the Clerk user ID in A2A metadata when they call grocery and fitness. The chain is:
+Wellness `RemoteA2aAgent` delegates send the Clerk user ID in A2A metadata when they call grocery and fitness. The chain is:
 
 ```text
 Clerk auth() -> CopilotKit runtime header -> AG-UI extractor -> ADK user_id -> wellness state/tool context -> A2A metadata -> grocery/fitness executor -> ADK user_id
