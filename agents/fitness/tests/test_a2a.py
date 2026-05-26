@@ -1,8 +1,6 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
 
-@pytest.mark.asyncio
 async def test_executor_creates_session_when_missing():
     """Executor creates an ADK session if context_id has no existing session."""
     from a2a_executor import ADKAgentExecutor
@@ -42,7 +40,6 @@ async def test_executor_creates_session_when_missing():
     )
 
 
-@pytest.mark.asyncio
 async def test_executor_skips_session_creation_when_exists():
     """Executor does not create a session if one already exists."""
     from a2a_executor import ADKAgentExecutor
