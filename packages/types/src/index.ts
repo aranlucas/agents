@@ -25,9 +25,7 @@ export type GroceryState = {
   status?: 'idle' | 'planning' | 'ready'
   notes?: string
   review_summary?: string
-  // Kroger auth — set by the frontend, read by the agent's header_provider
   kroger_connected?: boolean
-  kroger_token?: string
 }
 
 export type CartItem = {
@@ -83,7 +81,6 @@ export type FitnessActivity = {
 
 export type FitnessState = {
   strava_connected?: boolean
-  strava_token?: string
   activities?: FitnessActivity[]
   activities_synced_at?: string
   objective_research?: string

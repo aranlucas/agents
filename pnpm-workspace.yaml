@@ -2,6 +2,16 @@ packages:
   - 'apps/*'
   - 'packages/*'
 
+allowBuilds:
+  '@clerk/shared': true
+  '@scarf/scarf': true
+  browser-tabs-lock: true
+  bufferutil: true
+  core-js: true
+  sharp: true
+  unrs-resolver: true
+  utf-8-validate: true
+
 onlyBuiltDependencies:
   - '@clerk/shared'
   - 'browser-tabs-lock'

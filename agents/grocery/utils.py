@@ -11,11 +11,12 @@ from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnecti
 MEAL_PLANNER_MCP_URL = os.getenv(
     "MEAL_PLANNER_MCP_URL", "https://ai-meal-planner-mcp.aranlucas.workers.dev/mcp"
 )
+KROGER_TOKEN_STATE_KEY = "temp:kroger_token"
 
 
 def _header_provider(context: ReadonlyContext) -> Dict[str, str]:
     """Return auth headers from session state at call time."""
-    token: str = context.state.get("kroger_token", "")
+    token: str = context.state.get(KROGER_TOKEN_STATE_KEY, "")
     if token:
         return {"Authorization": f"Bearer {token}"}
     return {}
