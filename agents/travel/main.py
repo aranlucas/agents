@@ -54,10 +54,7 @@ log = logging.getLogger("travel_agent")
 
 def _setup_otel() -> None:
     """Configure OTLP telemetry via ADK 1.33+ native setup when OTEL env vars are present."""
-    if not (
-        os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-        or os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
-    ):
+    if not os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
         return
 
     from google.adk.telemetry.setup import maybe_set_otel_providers
