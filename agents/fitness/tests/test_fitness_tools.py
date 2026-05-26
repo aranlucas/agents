@@ -144,6 +144,23 @@ def test_set_training_plan_writes_state():
     assert context.state["status"] == "planning"
 
 
+def test_on_before_agent_hydrates_a2a_strava_metadata():
+    callback_context = Mock()
+    callback_context.state = {}
+    callback_context._invocation_context.run_config.custom_metadata = {
+        "a2a_metadata": {
+            "user_id": "user_123",
+            "strava_access_token": "token-123",
+        }
+    }
+
+    main.on_before_agent(callback_context)
+
+    assert callback_context.state["user_id"] == "user_123"
+    assert callback_context.state["strava_connected"] is True
+    assert callback_context.state["temp:strava_token"] == "token-123"
+
+
 def test_web_search_toolset_uses_local_stdio_mcp(monkeypatch):
     monkeypatch.setenv("BRAVE_API_KEY", "brave-token")
 

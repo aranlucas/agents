@@ -26,6 +26,14 @@ async def shared_after_tool_callback(
     tool_context: ToolContext,
     tool_response: dict,
 ) -> Optional[dict]:
+    if tool.name == "transfer_to_agent":
+        return {
+            "result": {
+                "status": "transferring",
+                "agent_name": args.get("agent_name"),
+            }
+        }
+
     save_state(tool_context, tool.name, parse_tool_response(tool_response))
 
     if (
