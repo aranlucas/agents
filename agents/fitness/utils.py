@@ -14,6 +14,7 @@ BRAVE_SEARCH_MCP_PACKAGE = "@brave/brave-search-mcp-server"
 
 
 def web_search_toolset() -> McpToolset:
+    brave_api_key = os.getenv("BRAVE_API_KEY", "")
     return McpToolset(
         connection_params=StdioConnectionParams(
             server_params=StdioServerParameters(
@@ -21,12 +22,14 @@ def web_search_toolset() -> McpToolset:
                 args=[
                     "-y",
                     BRAVE_SEARCH_MCP_PACKAGE,
+                    "--brave-api-key",
+                    brave_api_key,
                 ],
-                env={"BRAVE_API_KEY": os.getenv("BRAVE_API_KEY", "")},
+                env={"BRAVE_API_KEY": brave_api_key},
             ),
             timeout=30.0,
         ),
-        use_mcp_resources=True,
+        use_mcp_resources=False,
     )
 
 

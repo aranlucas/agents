@@ -133,5 +133,8 @@ def test_web_search_toolset_uses_local_stdio_mcp(monkeypatch):
     assert params.server_params.args == [
         "-y",
         "@brave/brave-search-mcp-server",
+        "--brave-api-key",
+        "brave-token",
     ]
     assert params.server_params.env == {"BRAVE_API_KEY": "brave-token"}
+    assert toolset._use_mcp_resources is False
