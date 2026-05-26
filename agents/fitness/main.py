@@ -54,10 +54,7 @@ _DEFAULT_STATE: dict[str, Any] = {
 
 
 def _setup_otel() -> None:
-    if not (
-        os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-        or os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
-    ):
+    if not os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
         return
 
     from google.adk.telemetry.setup import maybe_set_otel_providers
