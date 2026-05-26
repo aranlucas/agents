@@ -1,5 +1,6 @@
 """Grocery Planning Agent — Meal Planner MCP + ADK + AG-UI shared-state pattern."""
 
+import datetime
 import json
 import logging
 import os
@@ -22,20 +23,23 @@ from opentelemetry import trace
 from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
 from opentelemetry.sdk.resources import Resource
 
-from utils import meal_planner_toolset, shared_after_tool_callback
+from utils import meal_planner_toolset
 
+from a2a.server.apps.jsonrpc import A2AFastAPIApplication
 from a2a.server.request_handlers import DefaultRequestHandler
-from a2a.server.routes import create_agent_card_routes, create_jsonrpc_routes
 from a2a.server.tasks import InMemoryTaskStore
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill
 
 from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
-from google.adk.auth.credential_service.in_memory_credential_service import InMemoryCredentialService
+from google.adk.auth.credential_service.in_memory_credential_service import (
+    InMemoryCredentialService,
+)
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.runners import Runner
-from google.adk.sessions import InMemorySessionService
 
-from utils import ADKAgentExecutor
+from agent_common.a2a import create_a2a_agent_executor
+from agent_common.session_service import create_session_service
+from agent_common.tools import shared_after_tool_callback
 
 load_dotenv()
 
@@ -49,8 +53,15 @@ logging.getLogger("ag_ui_adk").setLevel(logging.DEBUG)
 
 log = logging.getLogger("grocery_agent")
 
+_railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN")
+AGENT_PUBLIC_URL = f"https://{_railway_domain}" if _railway_domain else "http://localhost:8001"
 KROGER_TOKEN_HEADER = "x-kroger-access-token"
 KROGER_TOKEN_STATE_KEY = "temp:kroger_token"
+CLERK_USER_ID_HEADER = "x-clerk-user-id"
+
+
+def extract_identity_state(request) -> dict:
+    return {"user_id": request.headers.get(CLERK_USER_ID_HEADER) or "anonymous"}
 
 
 # ---------------------------------------------------------------------------
@@ -154,6 +165,16 @@ def mark_list_ready(tool_context: ToolContext, summary: str) -> dict:
     return {"ok": True}
 
 
+def get_current_date() -> dict:
+    """Return today's date for meal-plan scheduling and deal timing."""
+    today = datetime.date.today()
+    return {
+        "date": today.isoformat(),
+        "weekday": today.strftime("%A"),
+        "month": today.strftime("%B %Y"),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Callbacks — shared-state pattern
 # ---------------------------------------------------------------------------
@@ -199,10 +220,11 @@ def before_model_modifier(
 
 async def extract_kroger_auth_state(request, input_data) -> dict:
     """Inject Kroger auth as per-invocation temp state from request headers."""
+    state = extract_identity_state(request)
     token = request.headers.get(KROGER_TOKEN_HEADER) or ""
     if not token:
-        return {"kroger_connected": False}
-    return {"kroger_connected": True, KROGER_TOKEN_STATE_KEY: token}
+        return {**state, "kroger_connected": False}
+    return {**state, "kroger_connected": True, KROGER_TOKEN_STATE_KEY: token}
 
 
 def after_model_modifier(
@@ -232,6 +254,7 @@ when not connected.
 
 ## Workflow
 1. Use MCP tools to fetch real data BEFORE writing to state:
+   - Date: call get_current_date before planning a week, validating dates, or using weekly deals
    - Products: search_products, get_product_details, get_weekly_deals
    - Shopping list: manage_shopping_list, checkout_shopping_list, add_to_cart
    - Pantry: manage_pantry (check what the user already has first)
@@ -269,6 +292,7 @@ grocery_agent = LlmAgent(
         set_meal_plan,
         set_weekly_deals,
         mark_list_ready,
+        get_current_date,
         AGUIToolset(),
         meal_planner_toolset(),
     ],
@@ -284,8 +308,8 @@ GROCERY_PREDICT_STATE = [
     ),
 ]
 
-# Shared in-memory session service — used by both AG-UI and A2A paths.
-_shared_session_svc = InMemorySessionService()
+# Shared SQLite session service — used by both AG-UI and A2A paths.
+_shared_session_svc = create_session_service()
 
 _a2a_runner = Runner(
     app_name=grocery_agent.name,
@@ -305,6 +329,7 @@ def _a2a_agent_card() -> AgentCard:
             "pantry tracking, and weekly deals."
         ),
         version="1.0.0",
+        url=AGENT_PUBLIC_URL,
         default_input_modes=["text/plain"],
         default_output_modes=["text/plain"],
         capabilities=AgentCapabilities(streaming=True),
@@ -313,6 +338,7 @@ def _a2a_agent_card() -> AgentCard:
                 id="grocery_planning",
                 name="Grocery Planning",
                 description="Creates meal plans and shopping lists from live Kroger data.",
+                tags=["grocery", "meal-planning"],
                 input_modes=["text/plain"],
                 output_modes=["text/plain"],
             )
@@ -322,7 +348,6 @@ def _a2a_agent_card() -> AgentCard:
 
 adk_grocery_agent = ADKAgent(
     adk_agent=grocery_agent,
-    user_id="demo_user",
     session_service=_shared_session_svc,
     session_timeout_seconds=3600,
     use_in_memory_services=True,
@@ -374,12 +399,13 @@ app.add_middleware(
 # A2A — JSON-RPC at POST / and agent card at GET /.well-known/agent-card.json
 _a2a_card = _a2a_agent_card()
 _a2a_handler = DefaultRequestHandler(
-    agent_executor=ADKAgentExecutor(_a2a_runner),
+    agent_executor=create_a2a_agent_executor(_a2a_runner),
     task_store=InMemoryTaskStore(),
-    agent_card=_a2a_card,
 )
-app.router.routes.extend(create_agent_card_routes(_a2a_card))
-app.router.routes.extend(create_jsonrpc_routes(_a2a_handler, "/"))
+A2AFastAPIApplication(
+    agent_card=_a2a_card,
+    http_handler=_a2a_handler,
+).add_routes_to_app(app)
 
 add_adk_fastapi_endpoint(
     app,

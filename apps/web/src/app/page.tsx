@@ -32,6 +32,17 @@ const AGENTS: Agent[] = [
     tags: ["Fitness", "Strava", "Recovery"],
     theme: "fitness",
   },
+  {
+    id: "04",
+    href: "/wellness",
+    name: "Wellness Studio",
+    tagline: "Meals and workouts together",
+    description:
+      "Coordinate grocery and fitness agents into one practical weekly plan.",
+    cta: "Plan week",
+    tags: ["A2A", "Meals", "Training"],
+    theme: "wellness",
+  },
 ];
 
 export default function Home() {
@@ -50,7 +61,7 @@ export default function Home() {
         </p>
       </div>
 
-      <div className="grid w-full max-w-5xl gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid w-full max-w-6xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {AGENTS.map((agent, index) => (
           <AgentCard key={agent.id} agent={agent} index={index} />
         ))}

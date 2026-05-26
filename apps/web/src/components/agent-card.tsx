@@ -14,7 +14,7 @@ export type Agent = {
   description: string;
   cta: string;
   tags: string[];
-  theme: "travel" | "grocery" | "fitness";
+  theme: "travel" | "grocery" | "fitness" | "wellness";
 };
 
 export function AgentCard({ agent, index }: { agent: Agent; index: number }) {
@@ -28,6 +28,8 @@ export function AgentCard({ agent, index }: { agent: Agent; index: number }) {
           "bg-[linear-gradient(135deg,var(--surface),color-mix(in_srgb,var(--success)_5%,var(--surface)))]",
         agent.theme === "fitness" &&
           "bg-[linear-gradient(135deg,var(--surface),color-mix(in_srgb,#0ea5e9_6%,var(--surface)))]",
+        agent.theme === "wellness" &&
+          "bg-[linear-gradient(135deg,var(--surface),color-mix(in_srgb,#f59e0b_6%,var(--surface)))]",
       )}
       style={{ animationDelay: `${index * 110}ms` }}
     >

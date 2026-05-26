@@ -1,7 +1,7 @@
 [project]
-name = "grocery-agent"
+name = "wellness-agent"
 version = "0.1.0"
-description = "Grocery planning agent powered by Google ADK + CopilotKit AG-UI"
+description = "Wellness planning orchestrator powered by Google ADK + A2A + CopilotKit AG-UI"
 requires-python = ">=3.14"
 dependencies = [
   "agent-common",
@@ -9,7 +9,8 @@ dependencies = [
   "uvicorn[standard]",
   "python-dotenv",
   "pydantic",
-  "google-adk[a2a,mcp]>=2.1.0",
+  "httpx",
+  "google-adk[a2a]>=2.1.0",
   "google-genai",
   "ag-ui-adk>=0.6.4",
   "litellm",
