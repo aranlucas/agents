@@ -16,10 +16,16 @@ const runtime = new CopilotRuntime({
       connected: false,
       token: null,
     }));
-    const { token: stravaToken } = await getStravaAccessToken().catch(() => ({
-      connected: false,
-      token: null,
-    }));
+    const { token: stravaToken } = await getStravaAccessToken().catch(
+      (err) => {
+        console.error("[copilotkit] getStravaAccessToken error:", err);
+        return { connected: false, token: null };
+      },
+    );
+
+    console.log(
+      `[copilotkit] building agents stravaTokenPresent=${Boolean(stravaToken)} krogerTokenPresent=${Boolean(krogerToken)}`,
+    );
 
     return {
       travel: new HttpAgent({
