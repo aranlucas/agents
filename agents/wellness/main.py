@@ -60,6 +60,10 @@ AGENT_PUBLIC_URL = os.getenv("AGENT_PUBLIC_URL") or (
     f"https://{_railway_domain}" if _railway_domain else "http://localhost:8003"
 )
 CLERK_USER_ID_HEADER = "x-clerk-user-id"
+KROGER_TOKEN_HEADER = "x-kroger-access-token"
+KROGER_TOKEN_STATE_KEY = "temp:kroger_token"
+STRAVA_TOKEN_HEADER = "x-strava-access-token"
+STRAVA_TOKEN_STATE_KEY = "temp:strava_token"
 
 _DEFAULT_STATE: dict[str, Any] = {
     "status": "idle",
@@ -96,7 +100,14 @@ tracer = trace.get_tracer("wellness-agent")
 
 
 def extract_identity_state(request) -> dict:
-    return {"user_id": request.headers.get(CLERK_USER_ID_HEADER) or "anonymous"}
+    state = {"user_id": request.headers.get(CLERK_USER_ID_HEADER) or "anonymous"}
+    kroger_token = request.headers.get(KROGER_TOKEN_HEADER)
+    if kroger_token:
+        state[KROGER_TOKEN_STATE_KEY] = kroger_token
+    strava_token = request.headers.get(STRAVA_TOKEN_HEADER)
+    if strava_token:
+        state[STRAVA_TOKEN_STATE_KEY] = strava_token
+    return state
 
 
 async def extract_wellness_state(request, input_data) -> dict:
@@ -144,9 +155,17 @@ def _agent_card_url(base_url: str) -> str:
 
 
 def _remote_a2a_metadata_provider(invocation_context, _message) -> dict[str, str]:
-    return {
+    state = invocation_context.session.state
+    metadata = {
         "user_id": str(invocation_context.session.state.get("user_id") or "anonymous")
     }
+    kroger_token = state.get(KROGER_TOKEN_STATE_KEY)
+    if kroger_token:
+        metadata["kroger_access_token"] = str(kroger_token)
+    strava_token = state.get(STRAVA_TOKEN_STATE_KEY)
+    if strava_token:
+        metadata["strava_access_token"] = str(strava_token)
+    return metadata
 
 
 grocery_remote_agent = RemoteA2aAgent(
