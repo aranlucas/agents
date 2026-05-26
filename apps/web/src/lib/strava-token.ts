@@ -15,10 +15,19 @@ export async function getStravaAccessToken() {
     userId,
     STRAVA_PROVIDER as never,
   );
-  const token = tokens[0]?.token ?? null;
+  const tokenData = tokens[0];
+  const token = tokenData?.token ?? null;
+  const expiresAt = tokenData?.expiresAt; // Unix seconds
+  const isExpired = expiresAt ? expiresAt * 1000 < Date.now() : false;
+
   console.log(
-    `[strava-token] provider=${STRAVA_PROVIDER} tokenCount=${tokens.length} tokenPresent=${Boolean(token)}`,
+    `[strava-token] provider=${STRAVA_PROVIDER} tokenCount=${tokens.length} tokenPresent=${Boolean(token)} expiresAt=${expiresAt} isExpired=${isExpired}`,
   );
+
+  if (isExpired) {
+    console.warn("[strava-token] token is expired — user must reconnect Strava");
+    return { connected: false, token: null };
+  }
 
   return { connected: Boolean(token), token };
 }
