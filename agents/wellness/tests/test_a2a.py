@@ -23,6 +23,16 @@ def test_a2a_agent_card_route_exists():
     assert response.json()["name"] == "Wellness Planning Agent"
 
 
+def test_agent_card_url_uses_agent_public_url_env(monkeypatch):
+    import importlib
+    import main
+
+    monkeypatch.setenv("AGENT_PUBLIC_URL", "http://wellness:8003")
+    main = importlib.reload(main)
+
+    assert main._a2a_agent_card().url == "http://wellness:8003"
+
+
 def test_a2a_rpc_route_exists():
     import main
 
