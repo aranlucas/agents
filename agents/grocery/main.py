@@ -1,6 +1,7 @@
 """Grocery Planning Agent — Meal Planner MCP + ADK + AG-UI shared-state pattern."""
 
 import json
+import logging
 import os
 import time
 from typing import Optional
@@ -26,6 +27,16 @@ from utils import meal_planner_toolset, shared_after_tool_callback
 
 load_dotenv()
 
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logging.getLogger("google.adk").setLevel(logging.DEBUG)
+logging.getLogger("litellm").setLevel(logging.DEBUG)
+logging.getLogger("ag_ui_adk").setLevel(logging.DEBUG)
+
+log = logging.getLogger("grocery_agent")
+
 KROGER_TOKEN_HEADER = "x-kroger-access-token"
 KROGER_TOKEN_STATE_KEY = "temp:kroger_token"
 
@@ -42,11 +53,14 @@ def _setup_otel() -> None:
 
     from google.adk.telemetry.setup import maybe_set_otel_providers
 
+    service_name = (
+        os.getenv("OTEL_SERVICE_NAME")
+        or os.getenv("RAILWAY_SERVICE_NAME")
+        or "grocery-agent"
+    )
     resource = Resource.create(
         {
-            ResourceAttributes.SERVICE_NAME: os.getenv(
-                "OTEL_SERVICE_NAME", "grocery-agent"
-            ),
+            ResourceAttributes.SERVICE_NAME: service_name,
             ResourceAttributes.SERVICE_VERSION: os.getenv(
                 "RAILWAY_GIT_COMMIT_SHA", "dev"
             ),
@@ -301,6 +315,7 @@ async def trace_requests(request, call_next):
         except Exception as exc:
             span.record_exception(exc)
             span.set_attribute("error.type", type(exc).__name__)
+            log.exception("Unhandled error in %s %s", request.method, request.url.path)
             raise
 
         span.set_attribute("http.response.status_code", response.status_code)

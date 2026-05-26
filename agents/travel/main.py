@@ -16,6 +16,7 @@ via ag-ui-adk, plus a /health endpoint for the dev script.
 """
 
 import datetime
+import logging
 import os
 import time
 
@@ -40,6 +41,16 @@ from utils import trvl_toolset, shared_after_tool_callback
 
 load_dotenv()
 
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logging.getLogger("google.adk").setLevel(logging.DEBUG)
+logging.getLogger("litellm").setLevel(logging.DEBUG)
+logging.getLogger("ag_ui_adk").setLevel(logging.DEBUG)
+
+log = logging.getLogger("travel_agent")
+
 
 def _setup_otel() -> None:
     """Configure OTLP telemetry via ADK 1.33+ native setup when OTEL env vars are present."""
@@ -51,11 +62,14 @@ def _setup_otel() -> None:
 
     from google.adk.telemetry.setup import maybe_set_otel_providers
 
+    service_name = (
+        os.getenv("OTEL_SERVICE_NAME")
+        or os.getenv("RAILWAY_SERVICE_NAME")
+        or "travel-agent"
+    )
     resource = Resource.create(
         {
-            ResourceAttributes.SERVICE_NAME: os.getenv(
-                "OTEL_SERVICE_NAME", "travel-agent"
-            ),
+            ResourceAttributes.SERVICE_NAME: service_name,
             ResourceAttributes.SERVICE_VERSION: os.getenv(
                 "RAILWAY_GIT_COMMIT_SHA", "dev"
             ),
@@ -312,6 +326,7 @@ async def trace_requests(request, call_next):
         except Exception as exc:
             span.record_exception(exc)
             span.set_attribute("error.type", type(exc).__name__)
+            log.exception("Unhandled error in %s %s", request.method, request.url.path)
             raise
 
         span.set_attribute("http.response.status_code", response.status_code)

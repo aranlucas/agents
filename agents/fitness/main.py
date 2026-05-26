@@ -62,11 +62,14 @@ def _setup_otel() -> None:
 
     from google.adk.telemetry.setup import maybe_set_otel_providers
 
+    service_name = (
+        os.getenv("OTEL_SERVICE_NAME")
+        or os.getenv("RAILWAY_SERVICE_NAME")
+        or "fitness-agent"
+    )
     resource = Resource.create(
         {
-            ResourceAttributes.SERVICE_NAME: os.getenv(
-                "OTEL_SERVICE_NAME", "fitness-agent"
-            ),
+            ResourceAttributes.SERVICE_NAME: service_name,
             ResourceAttributes.SERVICE_VERSION: os.getenv(
                 "RAILWAY_GIT_COMMIT_SHA", "dev"
             ),
