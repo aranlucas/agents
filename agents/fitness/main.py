@@ -53,7 +53,9 @@ logging.getLogger("ag_ui_adk").setLevel(logging.DEBUG)
 log = logging.getLogger("fitness_agent")
 
 _railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN")
-AGENT_PUBLIC_URL = f"https://{_railway_domain}" if _railway_domain else "http://localhost:8002"
+AGENT_PUBLIC_URL = os.getenv("AGENT_PUBLIC_URL") or (
+    f"https://{_railway_domain}" if _railway_domain else "http://localhost:8002"
+)
 STRAVA_ACTIVITIES_URL = "https://www.strava.com/api/v3/athlete/activities"
 STRAVA_TOKEN_HEADER = "x-strava-access-token"
 STRAVA_TOKEN_STATE_KEY = "temp:strava_token"

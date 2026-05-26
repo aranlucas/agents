@@ -67,7 +67,9 @@ log = logging.getLogger("travel_agent")
 
 CLERK_USER_ID_HEADER = "x-clerk-user-id"
 _railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN")
-AGENT_PUBLIC_URL = f"https://{_railway_domain}" if _railway_domain else "http://localhost:8000"
+AGENT_PUBLIC_URL = os.getenv("AGENT_PUBLIC_URL") or (
+    f"https://{_railway_domain}" if _railway_domain else "http://localhost:8000"
+)
 
 
 def extract_identity_state(request) -> dict:

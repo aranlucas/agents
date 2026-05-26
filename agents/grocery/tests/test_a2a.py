@@ -13,6 +13,21 @@ def test_agent_card_route():
     assert r.json()["name"] == "Grocery Planning Agent"
 
 
+def test_agent_card_url_uses_agent_public_url_env(monkeypatch):
+    """A2A card advertises the reachable RPC endpoint for the current network."""
+    import importlib
+    import os
+    import sys
+
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+    import main
+
+    monkeypatch.setenv("AGENT_PUBLIC_URL", "http://grocery:8001")
+    main = importlib.reload(main)
+
+    assert main._a2a_agent_card().url == "http://grocery:8001"
+
+
 def test_a2a_rpc_route_exists():
     """POST / returns an A2A error (not 404), proving the route is registered."""
     from fastapi.testclient import TestClient

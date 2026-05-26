@@ -15,6 +15,7 @@ services:
       AGENT_DIR: agents/travel
       PORT: 8000
       ADK_SESSION_DB_PATH: /data/adk_sessions.sqlite
+      AGENT_PUBLIC_URL: http://travel:8000
     volumes:
       - adk-session-data:/data
 
@@ -34,6 +35,7 @@ services:
       AGENT_DIR: agents/grocery
       PORT: 8001
       ADK_SESSION_DB_PATH: /data/adk_sessions.sqlite
+      AGENT_PUBLIC_URL: http://grocery:8001
     volumes:
       - adk-session-data:/data
 
@@ -53,6 +55,7 @@ services:
       AGENT_DIR: agents/fitness
       PORT: 8002
       ADK_SESSION_DB_PATH: /data/adk_sessions.sqlite
+      AGENT_PUBLIC_URL: http://fitness:8002
     volumes:
       - adk-session-data:/data
 
@@ -72,6 +75,7 @@ services:
       AGENT_DIR: agents/wellness
       PORT: 8003
       ADK_SESSION_DB_PATH: /data/adk_sessions.sqlite
+      AGENT_PUBLIC_URL: http://wellness:8003
       GROCERY_AGENT_A2A_URL: http://grocery:8001/
       FITNESS_AGENT_A2A_URL: http://fitness:8002/
     volumes:
