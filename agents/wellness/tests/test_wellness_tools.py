@@ -10,7 +10,11 @@ def test_remote_a2a_metadata_provider_sends_user_id():
 
     metadata = main._remote_a2a_metadata_provider(invocation_context, object())
 
-    assert metadata == {"user_id": "user_123"}
+    assert metadata == {
+        "user_id": "user_123",
+        "kroger_access_token": "",
+        "strava_access_token": "",
+    }
 
 
 def test_remote_a2a_metadata_provider_sends_auth_tokens():

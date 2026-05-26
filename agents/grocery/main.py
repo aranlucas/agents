@@ -37,7 +37,10 @@ from google.adk.auth.credential_service.in_memory_credential_service import (
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.runners import Runner
 
-from agent_common.a2a import create_a2a_agent_executor
+from agent_common.a2a import (
+    apply_a2a_auth_metadata_to_state,
+    create_a2a_agent_executor,
+)
 from agent_common.session_service import create_session_service
 from agent_common.tools import shared_after_tool_callback
 
@@ -182,6 +185,7 @@ def get_current_date() -> dict:
 # ---------------------------------------------------------------------------
 def on_before_agent(callback_context: CallbackContext):
     """Initialize missing state keys with defaults on every turn."""
+    apply_a2a_auth_metadata_to_state(callback_context)
     for key, default in _DEFAULT_STATE.items():
         if key not in callback_context.state:
             callback_context.state[key] = default

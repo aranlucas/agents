@@ -39,7 +39,10 @@ from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.sdk.resources import Resource
 
 from utils import FITNESS_AGENT_A2A_URL, GROCERY_AGENT_A2A_URL
-from agent_common.a2a import create_a2a_agent_executor
+from agent_common.a2a import (
+    apply_a2a_auth_metadata_to_state,
+    create_a2a_agent_executor,
+)
 from agent_common.session_service import create_session_service
 from agent_common.tools import shared_after_tool_callback
 
@@ -115,6 +118,7 @@ async def extract_wellness_state(request, input_data) -> dict:
 
 
 def on_before_agent(callback_context: CallbackContext):
+    apply_a2a_auth_metadata_to_state(callback_context)
     for key, default in _DEFAULT_STATE.items():
         if key not in callback_context.state:
             callback_context.state[key] = default
@@ -157,14 +161,10 @@ def _agent_card_url(base_url: str) -> str:
 def _remote_a2a_metadata_provider(invocation_context, _message) -> dict[str, str]:
     state = invocation_context.session.state
     metadata = {
-        "user_id": str(invocation_context.session.state.get("user_id") or "anonymous")
+        "user_id": str(invocation_context.session.state.get("user_id") or "anonymous"),
+        "kroger_access_token": str(state.get(KROGER_TOKEN_STATE_KEY) or ""),
+        "strava_access_token": str(state.get(STRAVA_TOKEN_STATE_KEY) or ""),
     }
-    kroger_token = state.get(KROGER_TOKEN_STATE_KEY)
-    if kroger_token:
-        metadata["kroger_access_token"] = str(kroger_token)
-    strava_token = state.get(STRAVA_TOKEN_STATE_KEY)
-    if strava_token:
-        metadata["strava_access_token"] = str(strava_token)
     return metadata
 
 
