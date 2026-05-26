@@ -35,9 +35,20 @@ from google.adk.utils import instructions_utils
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
 from opentelemetry.sdk.resources import Resource
-from opentelemetry.semconv.resource import ResourceAttributes
-
 from utils import trvl_toolset, shared_after_tool_callback
+
+from a2a.server.request_handlers import DefaultRequestHandler
+from a2a.server.routes import create_agent_card_routes, create_jsonrpc_routes
+from a2a.server.tasks import InMemoryTaskStore
+from a2a.types import AgentCapabilities, AgentCard, AgentSkill
+
+from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
+from google.adk.auth.credential_service.in_memory_credential_service import InMemoryCredentialService
+from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
+from google.adk.runners import Runner
+from google.adk.sessions import InMemorySessionService
+
+from a2a_executor import ADKAgentExecutor
 
 load_dotenv()
 
@@ -61,10 +72,8 @@ def _setup_otel() -> None:
 
     resource = Resource.create(
         {
-            ResourceAttributes.SERVICE_NAME: os.getenv("RAILWAY_SERVICE_NAME", "travel-agent"),
-            ResourceAttributes.SERVICE_VERSION: os.getenv(
-                "RAILWAY_GIT_COMMIT_SHA", "dev"
-            ),
+            "service.name": os.getenv("RAILWAY_SERVICE_NAME", "travel-agent"),
+            "service.version": os.getenv("RAILWAY_GIT_COMMIT_SHA", "dev"),
             "deployment.environment": os.getenv("RAILWAY_ENVIRONMENT_NAME", "local"),
             "railway.project.id": os.getenv("RAILWAY_PROJECT_ID", ""),
             "railway.service.id": os.getenv("RAILWAY_SERVICE_ID", ""),
@@ -285,12 +294,51 @@ COLLAB_PREDICT_STATE = [
 ]
 
 
+# Shared in-memory session service — used by both AG-UI and A2A paths.
+_shared_session_svc = InMemorySessionService()
+
+_a2a_runner = Runner(
+    app_name=collab_trip_agent.name,
+    agent=collab_trip_agent,
+    artifact_service=InMemoryArtifactService(),
+    session_service=_shared_session_svc,
+    memory_service=InMemoryMemoryService(),
+    credential_service=InMemoryCredentialService(),
+)
+
+
+def _a2a_agent_card() -> AgentCard:
+    host = os.getenv("RAILWAY_PUBLIC_DOMAIN") or f"localhost:{os.getenv('PORT', '8000')}"
+    scheme = "https" if os.getenv("RAILWAY_PUBLIC_DOMAIN") else "http"
+    return AgentCard(
+        name="Travel Planning Agent",
+        description=(
+            "Co-plans multi-day trips with real flight, hotel, and destination data. "
+            "Produces a structured day-by-day itinerary."
+        ),
+        version="1.0.0",
+        default_input_modes=["text/plain"],
+        default_output_modes=["text/plain"],
+        capabilities=AgentCapabilities(streaming=True),
+        skills=[
+            AgentSkill(
+                id="trip_planning",
+                name="Trip Planning",
+                description="Plans multi-day trips: flights, hotels, itinerary, budget.",
+                input_modes=["text/plain"],
+                output_modes=["text/plain"],
+            )
+        ],
+    )
+
+
 # ---------------------------------------------------------------------------
 # FastAPI wiring.
 # ---------------------------------------------------------------------------
 adk_collab_agent = ADKAgent(
     adk_agent=collab_trip_agent,
     user_id="demo_user",
+    session_service=_shared_session_svc,
     session_timeout_seconds=3600,
     use_in_memory_services=True,
     predict_state=COLLAB_PREDICT_STATE,
@@ -335,7 +383,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-add_adk_fastapi_endpoint(app, adk_collab_agent, path="/")
+# A2A — JSON-RPC at POST / and agent card at GET /.well-known/agent-card.json
+_a2a_card = _a2a_agent_card()
+_a2a_handler = DefaultRequestHandler(
+    agent_executor=ADKAgentExecutor(_a2a_runner),
+    task_store=InMemoryTaskStore(),
+    agent_card=_a2a_card,
+)
+app.router.routes.extend(create_agent_card_routes(_a2a_card))
+app.router.routes.extend(create_jsonrpc_routes(_a2a_handler, "/"))
+
+add_adk_fastapi_endpoint(app, adk_collab_agent, path="/agui")
 
 
 @app.get("/health")
