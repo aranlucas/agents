@@ -184,22 +184,15 @@ async def fetch_activities(
         log.exception("fetch_activities: network error: %s", exc)
         return {"ok": False, "reason": "strava_network_error", "message": str(exc)}
 
-    activities = all_activities
     synced_at = datetime.datetime.now(datetime.UTC).isoformat()
-    summary = summarize_activities([normalize_strava_activity(a) for a in activities])
 
-    tool_context.state["activities"] = activities
+    tool_context.state["activities"] = all_activities
     tool_context.state["activities_synced_at"] = synced_at
     tool_context.state["status"] = "planning"
 
-    log.debug("fetch_activities: fetched %s activities across %s pages", len(activities), page)
+    log.debug("fetch_activities: fetched %s activities across %s pages", len(all_activities), page)
 
-    return {
-        "ok": True,
-        "count": len(activities),
-        "synced_at": synced_at,
-        "summary": summary,
-    }
+    return {"ok": True, "count": len(all_activities), "synced_at": synced_at}
 
 
 async def extract_strava_auth_state(request, input_data) -> dict[str, Any]:
