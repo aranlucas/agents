@@ -378,8 +378,6 @@ Create `agents/wellness/utils.py`:
 ```python
 """Wellness agent utilities for A2A delegation and shared callbacks."""
 
-from __future__ import annotations
-
 import os
 from typing import Any, Optional
 from uuid import uuid4
@@ -588,8 +586,6 @@ Create `agents/wellness/main.py` with the same structure as grocery and fitness.
 
 ```python
 """Wellness Planning Agent — A2A orchestrator for meals and workouts."""
-
-from __future__ import annotations
 
 import json
 import logging

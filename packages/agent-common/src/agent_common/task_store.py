@@ -1,7 +1,5 @@
 """Task store factory — persistent (PostgreSQL) or in-memory fallback."""
 
-from __future__ import annotations
-
 import os
 
 from a2a.server.tasks import DatabaseTaskStore, InMemoryTaskStore
