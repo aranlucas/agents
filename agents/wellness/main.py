@@ -1,7 +1,5 @@
 """Wellness Planning Agent - orchestrates meal and workout plans over A2A."""
 
-from __future__ import annotations
-
 import datetime
 import json
 import logging
