@@ -1,5 +1,6 @@
 """Wellness Planning Agent - orchestrates meal and workout plans over A2A."""
 
+import contextvars
 import datetime
 import json
 import logging
@@ -142,20 +143,44 @@ def _agent_card_url(base_url: str) -> str:
     return base_url.rstrip("/") + AGENT_CARD_WELL_KNOWN_PATH
 
 
+# Carries temp: state across the AgentTool boundary. AgentTool creates a child
+# runner with InMemorySessionService, which strips temp: keys on create_session.
+# before_tool_callback captures them here before AgentTool runs so the metadata
+# provider can still forward credentials to the remote A2A agents.
+_tool_temp_state: contextvars.ContextVar[dict] = contextvars.ContextVar(
+    "_tool_temp_state", default={}
+)
+
+
+def before_tool_callback(tool, args, tool_context):
+    temp = {
+        k: v
+        for k, v in tool_context.state.to_dict().items()
+        if isinstance(k, str) and k.startswith("temp:")
+    }
+    _tool_temp_state.set(temp)
+    return None
+
+
 def _remote_a2a_metadata_provider(invocation_context, _message) -> dict[str, str]:
     state = invocation_context.session.state
+    # Fall back to the ContextVar when running inside AgentTool's child runner
+    # (where temp: keys are stripped from the InMemorySessionService session).
+    fallback = _tool_temp_state.get({})
+    kroger_token = state.get(KROGER_TOKEN_STATE_KEY) or fallback.get(KROGER_TOKEN_STATE_KEY)
+    strava_token = state.get(STRAVA_TOKEN_STATE_KEY) or fallback.get(STRAVA_TOKEN_STATE_KEY)
+    user_id = state.get("user_id") or fallback.get("user_id") or "anonymous"
     log.info(
-        "[metadata_provider] state keys: %s | kroger_token present: %s | strava_token present: %s",
-        list(state.keys()),
-        bool(state.get(KROGER_TOKEN_STATE_KEY)),
-        bool(state.get(STRAVA_TOKEN_STATE_KEY)),
+        "[metadata_provider] kroger_token present: %s | strava_token present: %s | source: %s",
+        bool(kroger_token),
+        bool(strava_token),
+        "session" if state.get(KROGER_TOKEN_STATE_KEY) else "contextvar",
     )
-    metadata = {
-        "user_id": str(invocation_context.session.state.get("user_id") or "anonymous"),
-        "kroger_access_token": str(state.get(KROGER_TOKEN_STATE_KEY) or ""),
-        "strava_access_token": str(state.get(STRAVA_TOKEN_STATE_KEY) or ""),
+    return {
+        "user_id": str(user_id),
+        "kroger_access_token": str(kroger_token or ""),
+        "strava_access_token": str(strava_token or ""),
     }
-    return metadata
 
 
 grocery_remote_agent = RemoteA2aAgent(
@@ -241,6 +266,7 @@ wellness_agent = LlmAgent(
     instruction=_INSTRUCTION,
     before_agent_callback=on_before_agent,
     before_model_callback=before_model_modifier,
+    before_tool_callback=before_tool_callback,
     after_tool_callback=shared_after_tool_callback,
     tools=[
         get_current_date,
