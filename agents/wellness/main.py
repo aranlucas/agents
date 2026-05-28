@@ -222,8 +222,8 @@ not mark the plan ready. Be concrete, conservative, and useful.
 wellness_agent = LlmAgent(
     name="wellness_agent",
     model=LiteLlm(
-        model=os.getenv("AGENT_MODEL", "mistral/mistral-small-latest"),
-        fallbacks=["openrouter/owl-alpha", "nvidia_nim/deepseek-ai/deepseek-v4-flash"],
+        model="openrouter/moonshotai/kimi-k2.6:free",
+        fallbacks=["mistral/mistral-small-latest", "openrouter/owl-alpha", "nvidia_nim/deepseek-ai/deepseek-v4-flash"],
     ),
     instruction=_INSTRUCTION,
     before_agent_callback=on_before_agent,
