@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
 from ag_ui_adk.config import PredictStateMapping
+from ag_ui_adk.request_state_service import RequestStateSessionService
 from a2a.server.apps.jsonrpc import A2AFastAPIApplication
 from a2a.server.request_handlers import DefaultRequestHandler
 from agent_common.task_store import create_task_store
@@ -143,30 +144,34 @@ def _agent_card_url(base_url: str) -> str:
     return base_url.rstrip("/") + AGENT_CARD_WELL_KNOWN_PATH
 
 
-# Carries temp: state across the AgentTool boundary. AgentTool creates a child
-# runner with InMemorySessionService, which strips temp: keys on create_session.
-# before_tool_callback captures them here before AgentTool runs so the metadata
-# provider can still forward credentials to the remote A2A agents.
-_tool_temp_state: contextvars.ContextVar[dict] = contextvars.ContextVar(
-    "_tool_temp_state", default={}
+# Set once per invocation by _TempStateSessionService._inject when the ADK
+# runner fetches the session. AgentTool's child runner (InMemorySessionService)
+# strips temp: keys, but inherits this async context, so the metadata provider
+# can read credentials here without needing before_tool_callback.
+_invocation_temp_state: contextvars.ContextVar[dict] = contextvars.ContextVar(
+    "_invocation_temp_state", default={}
 )
 
 
-def before_tool_callback(tool, args, tool_context):
-    temp = {
-        k: v
-        for k, v in tool_context.state.to_dict().items()
-        if isinstance(k, str) and k.startswith("temp:")
-    }
-    _tool_temp_state.set(temp)
-    return None
+class _TempStateSessionService(RequestStateSessionService):
+    """Sets _invocation_temp_state when temp: keys are injected into a session."""
+
+    def _inject(self, session, key):
+        session = super()._inject(session, key)
+        if session is not None:
+            temp = {
+                k: v
+                for k, v in session.state.to_dict().items()
+                if isinstance(k, str) and k.startswith("temp:")
+            }
+            if temp:
+                _invocation_temp_state.set(temp)
+        return session
 
 
 def _remote_a2a_metadata_provider(invocation_context, _message) -> dict[str, str]:
     state = invocation_context.session.state
-    # Fall back to the ContextVar when running inside AgentTool's child runner
-    # (where temp: keys are stripped from the InMemorySessionService session).
-    fallback = _tool_temp_state.get({})
+    fallback = _invocation_temp_state.get({})
     kroger_token = state.get(KROGER_TOKEN_STATE_KEY) or fallback.get(KROGER_TOKEN_STATE_KEY)
     strava_token = state.get(STRAVA_TOKEN_STATE_KEY) or fallback.get(STRAVA_TOKEN_STATE_KEY)
     user_id = state.get("user_id") or fallback.get("user_id") or "anonymous"
@@ -266,7 +271,6 @@ wellness_agent = LlmAgent(
     instruction=_INSTRUCTION,
     before_agent_callback=on_before_agent,
     before_model_callback=before_model_modifier,
-    before_tool_callback=before_tool_callback,
     after_tool_callback=shared_after_tool_callback,
     tools=[
         get_current_date,
@@ -288,7 +292,7 @@ WELLNESS_PREDICT_STATE = [
     ),
 ]
 
-_shared_session_svc = create_session_service()
+_shared_session_svc = _TempStateSessionService(create_session_service())
 _artifact_svc = InMemoryArtifactService()
 _memory_svc = InMemoryMemoryService()
 _credential_svc = InMemoryCredentialService()
