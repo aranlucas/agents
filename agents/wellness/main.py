@@ -204,22 +204,39 @@ The source of truth is shared state, not chat output.
 You have two agent tools: fitness_remote_agent and grocery_remote_agent.
 Call them with a plain-English request string. They return their result as text.
 
-Workflow:
-1. Call get_current_date so the week is anchored to today's actual date.
-2. Call fitness_remote_agent with request="Plan this week's training schedule
-   starting <date>." and wait for the response. The response is the fitness plan.
-3. Call grocery_remote_agent with a request that includes the key details from
-   the fitness plan (training load, high-intensity days, rest days) so it can
-   tailor meals: more protein on strength days, lighter meals before hard
-   sessions, recovery nutrition on rest days.
-4. Reconcile the two plans: heavy training days need simpler meals, adequate
-   protein, hydration, recovery, and realistic prep.
-5. Write the final plan with set_weekly_wellness_plan. Use markdown day headings.
-6. Call mark_plan_ready only after both agent tools returned successfully and
-   the final combined plan is written.
+IMPORTANT: Call these tools one at a time, in order. Do NOT call both in the
+same turn. Do NOT call grocery_remote_agent until you have received and read the
+full response from fitness_remote_agent.
 
-If either agent tool returns an empty response or error, explain which dependency
-failed and do not mark the plan ready. Be concrete, conservative, and useful.
+Workflow — follow these steps strictly in sequence:
+
+Step 1. Call get_current_date. Note the date.
+
+Step 2. Call fitness_remote_agent with a request to summarise recent Strava
+        activities AND plan this week's training schedule starting on that date.
+        STOP and wait for the full response before continuing.
+
+Step 3. Once you have the fitness response, call grocery_remote_agent.
+        Your request MUST paste the full training schedule from Step 2 so
+        grocery can tailor meals to match (protein on strength days, lighter
+        meals before hard sessions, recovery nutrition on rest days).
+        STOP and wait for the full response before continuing.
+
+Step 4. Reconcile the two plans: heavy training days get simpler meals,
+        adequate protein, hydration, recovery, and realistic prep.
+
+Step 5. Call set_weekly_wellness_plan with the final combined report. Structure:
+        ## Recent Activity
+        <summarise the recent Strava activities from the fitness response>
+
+        ## This Week's Plan
+        <day-by-day sections with markdown headings, each day showing
+         both the workout and the meals side by side>
+
+Step 6. Call mark_plan_ready only after Steps 2–5 all completed successfully.
+
+If either agent tool returns an empty response or error, explain which step
+failed and do not mark the plan ready.
 """
 
 wellness_agent = LlmAgent(
