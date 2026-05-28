@@ -206,9 +206,10 @@ def before_model_modifier(
         ""
         if kroger_connected
         else (
-            "\n\n⚠️ KROGER NOT CONNECTED: The user has not connected their Kroger account. "
-            "You MUST tell the user to connect Kroger via the 'Connect Kroger' button in the UI "
-            "before you can help with shopping or meal planning. Do NOT attempt to use any MCP tools."
+            "\n\nKROGER NOT CONNECTED: Do not call any MCP tools. "
+            "Tell the user their Kroger account isn't connected and they need to "
+            "click 'Connect Kroger' in the UI to continue. Do not plan meals or "
+            "generate shopping lists."
         )
     )
 
@@ -240,11 +241,11 @@ _INSTRUCTION = """\
 You are a collaborative grocery and meal-planning partner with live access to Kroger data.
 
 ## Auth gate
-If `kroger_connected` is False in the current state, stop immediately and tell the user
-to click the 'Connect Kroger' button in the UI before you can help. Never call MCP tools
-when not connected.
+If `kroger_connected` is False in the current state, stop immediately. Tell the user
+their Kroger account isn't connected and they need to click 'Connect Kroger' in the UI.
+Do not call any MCP tools and do not generate a meal plan.
 
-## Workflow
+## Workflow (only when kroger_connected is True)
 1. Use MCP tools to fetch real data BEFORE writing to state:
    - Date: call get_current_date before planning a week, validating dates, or using weekly deals
    - Products: search_products, get_product_details, get_weekly_deals

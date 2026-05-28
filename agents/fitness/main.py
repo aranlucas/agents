@@ -296,13 +296,21 @@ def before_model_modifier(
     activity_count = len(state.get("activities") or [])
     synced_at = state.get("activities_synced_at") or ""
 
+    strava_notice = (
+        "If Strava is connected and you are about to create or revise a training plan,\n"
+        "call fetch_activities first when activities are missing or stale."
+        if connected
+        else
+        "Strava is not connected. Do NOT call fetch_activities. Tell the user their\n"
+        "Strava account isn't connected and they need to connect it in the UI.\n"
+        "Do not generate a training plan until Strava is connected."
+    )
     prefix = f"""Current fitness state:
 - Strava connected: {connected}
 - Synced activities: {activity_count}
 - Activities synced at: {synced_at or "never"}
 
-If Strava is connected and you are about to create or revise a training plan,
-call fetch_activities first when activities are missing or stale.
+{strava_notice}
 
 """
     original = llm_request.config.system_instruction or ""
@@ -313,15 +321,19 @@ call fetch_activities first when activities are missing or stale.
 _INSTRUCTION = """\
 You are a practical fitness training partner.
 
-Plan weekly training from the user's recent Strava history when available.
+## Auth gate
+If `strava_connected` is False in the current state, stop immediately. Tell the user
+their Strava account isn't connected and they need to connect it in the UI before you
+can plan training. Do not call fetch_activities and do not generate a training plan.
+
+## Workflow (only when strava_connected is True)
+Plan weekly training from the user's recent Strava history.
 Support endurance workouts, gym strength, stretching, recovery, and preparation
 for hiking or mountaineering objectives.
 
-Workflow:
 1. Call get_current_date before creating or revising a weekly plan so the week
    is anchored to today's actual date.
-2. If Strava is connected and you are creating or revising a plan, call
-   fetch_activities first when the activity snapshot is missing or stale.
+2. Call fetch_activities first when the activity snapshot is missing or stale.
 3. For hiking or mountaineering objectives, use web search tools to find current
    route, access, permit, seasonal, and weather context. Then call
    set_objective_research with a concise sourced summary.
