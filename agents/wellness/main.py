@@ -144,6 +144,12 @@ def _agent_card_url(base_url: str) -> str:
 
 def _remote_a2a_metadata_provider(invocation_context, _message) -> dict[str, str]:
     state = invocation_context.session.state
+    log.info(
+        "[metadata_provider] state keys: %s | kroger_token present: %s | strava_token present: %s",
+        list(state.keys()),
+        bool(state.get(KROGER_TOKEN_STATE_KEY)),
+        bool(state.get(STRAVA_TOKEN_STATE_KEY)),
+    )
     metadata = {
         "user_id": str(invocation_context.session.state.get("user_id") or "anonymous"),
         "kroger_access_token": str(state.get(KROGER_TOKEN_STATE_KEY) or ""),
