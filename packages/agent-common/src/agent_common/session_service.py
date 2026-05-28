@@ -21,9 +21,9 @@ def _database_session_service(db_url: str, **kwargs):
 def _normalize_postgres_url(url: str) -> str:
     """Rewrite bare postgresql:// or postgres:// to use the asyncpg async driver."""
     if url.startswith("postgres://"):
-        return "postgresql+asyncpg://" + url[len("postgres://"):]
+        return "postgresql+asyncpg://" + url[len("postgres://") :]
     if url.startswith("postgresql://"):
-        return "postgresql+asyncpg://" + url[len("postgresql://"):]
+        return "postgresql+asyncpg://" + url[len("postgresql://") :]
     return url
 
 

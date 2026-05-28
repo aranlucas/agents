@@ -12,24 +12,24 @@ single polished workspace.
 
 ## What's collaborative about it
 
-* **Shared itinerary, agent → UI streaming.**
+- **Shared itinerary, agent → UI streaming.**
   The agent calls `write_itinerary(summary, body)`. A
   `PredictStateMapping` with `stream_tool_call=True` makes the
   itinerary body stream token-by-token into `state["itinerary"]`, and
   the trip canvas re-renders day-by-day as the agent types.
 
-* **Shared itinerary, UI → agent.**
+- **Shared itinerary, UI → agent.**
   The operator can edit the destination, headline, or raw markdown
   directly in the canvas. Each edit updates shared state via
   `agent.setState`, so the agent sees the changes on its next turn.
 
-* **Traveler brief from UI to agent (per-turn injection).**
+- **Traveler brief from UI to agent (per-turn injection).**
   The operator picks home airport, budget tier, vibe, pace, dietary,
   and mobility. The Python agent's `before_model_callback` strips any
   stale block and prepends a fresh `TRAVELER_BRIEF` block to the system
   instruction every turn, so the model adapts immediately.
 
-* **Human-in-the-loop approval modal.**
+- **Human-in-the-loop approval modal.**
   The agent calls the frontend tool `request_user_approval` (registered
   via `useFrontendTool`) before booking flights, reserving hotels, or
   sharing the trip. The UI opens an in-app modal outside the chat
@@ -38,12 +38,12 @@ single polished workspace.
 
 ## Stack
 
-| Layer | Tech |
-| --- | --- |
+| Layer    | Tech                                                                                           |
+| -------- | ---------------------------------------------------------------------------------------------- |
 | Frontend | Next.js 16, React 19, Tailwind v4, **`@copilotkit/react-core/v2`** (prebuilt `CopilotSidebar`) |
-| Runtime  | `@copilotkit/runtime/v2` (Next.js route handler at `/api/copilotkit`) |
-| Protocol | AG-UI (HttpAgent) |
-| Agent    | Google ADK `LlmAgent`, Gemini 2.5 Flash (default) or Mistral via LiteLLM |
+| Runtime  | `@copilotkit/runtime/v2` (Next.js route handler at `/api/copilotkit`)                          |
+| Protocol | AG-UI (HttpAgent)                                                                              |
+| Agent    | Google ADK `LlmAgent`, Gemini 2.5 Flash (default) or Mistral via LiteLLM                       |
 
 ## Layout
 
@@ -57,10 +57,10 @@ floating launcher, so the canvas owns the full viewport.
 
 ## Prerequisites
 
-* Node.js 18+
-* Python 3.14+
-* Either a Google API key for Gemini, or Mistral (toggle via env)
-* `uv` (the script will use it; install via `pipx install uv` or `brew install uv`)
+- Node.js 18+
+- Python 3.14+
+- Either a Google API key for Gemini, or Mistral (toggle via env)
+- `uv` (the script will use it; install via `pipx install uv` or `brew install uv`)
 
 ## Getting started
 
@@ -119,20 +119,20 @@ Once the dev server is up:
 1. Open the app and fill the **Traveler brief** on the left
    (home airport, budget tier, vibe, pace, interests).
 2. Use one of the suggestion pills, or ask the agent:
-   *"Plan a 3-day weekend in Tokyo focused on food, late November."*
+   _"Plan a 3-day weekend in Tokyo focused on food, late November."_
 3. Watch the trip header and day cards stream in live.
 4. Tweak the destination or a day directly in the canvas — the agent
    sees your edits on the next turn.
-5. Ask: *"If the itinerary looks good, propose locking it in and ask
-   for my approval."* The approval modal appears.
+5. Ask: _"If the itinerary looks good, propose locking it in and ask
+   for my approval."_ The approval modal appears.
 
 ## Scripts
 
-* `dev` — UI + agent together
-* `dev:ui` — Next.js only (`next dev --turbopack`)
-* `dev:agent` — ADK agent server only (`uv run main.py`)
-* `build` — production Next.js build
-* `install:agent` — sets up the Python venv via `uv sync`
+- `dev` — UI + agent together
+- `dev:ui` — Next.js only (`next dev --turbopack`)
+- `dev:agent` — ADK agent server only (`uv run main.py`)
+- `build` — production Next.js build
+- `install:agent` — sets up the Python venv via `uv sync`
 
 ## Acknowledgements
 
