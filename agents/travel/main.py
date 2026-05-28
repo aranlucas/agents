@@ -279,7 +279,7 @@ collab_trip_agent = LlmAgent(
     name="collab_trip_agent",
     model=LiteLlm(
         model="openrouter/moonshotai/kimi-k2.6:free",
-        fallbacks=["openrouter/owl-alpha", "nvidia_nim/deepseek-ai/deepseek-v4-flash"],
+        fallbacks=["mistral/mistral-small-latest", "openrouter/owl-alpha", "nvidia_nim/deepseek-ai/deepseek-v4-flash"],
     ),
     instruction=_build_instruction,
     after_tool_callback=shared_after_tool_callback,
