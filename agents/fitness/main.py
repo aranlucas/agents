@@ -296,13 +296,20 @@ def before_model_modifier(
     activity_count = len(state.get("activities") or [])
     synced_at = state.get("activities_synced_at") or ""
 
+    strava_notice = (
+        "If Strava is connected and you are about to create or revise a training plan,\n"
+        "call fetch_activities first when activities are missing or stale."
+        if connected
+        else
+        "Strava is not connected. Do NOT call fetch_activities. Plan from general\n"
+        "fitness principles and be clear about assumptions in your response."
+    )
     prefix = f"""Current fitness state:
 - Strava connected: {connected}
 - Synced activities: {activity_count}
 - Activities synced at: {synced_at or "never"}
 
-If Strava is connected and you are about to create or revise a training plan,
-call fetch_activities first when activities are missing or stale.
+{strava_notice}
 
 """
     original = llm_request.config.system_instruction or ""
