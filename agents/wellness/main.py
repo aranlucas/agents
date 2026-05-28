@@ -23,6 +23,7 @@ from google.adk.agents.remote_a2a_agent import (
     AGENT_CARD_WELL_KNOWN_PATH,
     RemoteA2aAgent,
 )
+from google.adk.tools.agent_tool import AgentTool
 from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
 from google.adk.auth.credential_service.in_memory_credential_service import (
     InMemoryCredentialService,
@@ -200,22 +201,25 @@ You are a wellness planning orchestrator.
 Your job is to create a practical one-week plan that combines meals and workouts.
 The source of truth is shared state, not chat output.
 
+You have two agent tools: fitness_remote_agent and grocery_remote_agent.
+Call them with a plain-English request string. They return their result as text.
+
 Workflow:
 1. Call get_current_date so the week is anchored to today's actual date.
-2. Delegate to fitness_remote_agent FIRST to retrieve the user's planned activities
-   and workout schedule for the week. Wait for it to complete.
-3. Once you have the fitness plan, delegate to grocery_remote_agent. Pass it the
-   key details from the fitness plan (training load, high-intensity days, rest days)
-   so it can tailor meals to match: more protein on strength days, lighter meals
-   before hard sessions, recovery nutrition on rest days.
+2. Call fitness_remote_agent with request="Plan this week's training schedule
+   starting <date>." and wait for the response. The response is the fitness plan.
+3. Call grocery_remote_agent with a request that includes the key details from
+   the fitness plan (training load, high-intensity days, rest days) so it can
+   tailor meals: more protein on strength days, lighter meals before hard
+   sessions, recovery nutrition on rest days.
 4. Reconcile the two plans: heavy training days need simpler meals, adequate
    protein, hydration, recovery, and realistic prep.
 5. Write the final plan with set_weekly_wellness_plan. Use markdown day headings.
-6. Call mark_plan_ready only after both remote delegations succeeded and the final
-   combined plan is written.
+6. Call mark_plan_ready only after both agent tools returned successfully and
+   the final combined plan is written.
 
-If fitness or grocery delegation fails, explain which dependency failed and do
-not mark the plan ready. Be concrete, conservative, and useful.
+If either agent tool returns an empty response or error, explain which dependency
+failed and do not mark the plan ready. Be concrete, conservative, and useful.
 """
 
 wellness_agent = LlmAgent(
@@ -232,12 +236,13 @@ wellness_agent = LlmAgent(
     before_agent_callback=on_before_agent,
     before_model_callback=before_model_modifier,
     after_tool_callback=shared_after_tool_callback,
-    sub_agents=[grocery_remote_agent, fitness_remote_agent],
     tools=[
         get_current_date,
         set_weekly_wellness_plan,
         mark_plan_ready,
         AGUIToolset(),
+        AgentTool(agent=fitness_remote_agent),
+        AgentTool(agent=grocery_remote_agent),
     ],
 )
 
