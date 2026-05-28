@@ -1,7 +1,7 @@
-"use client";
-
-import { AgentCard, type Agent } from "@/components/agent-card";
-import { useAgentWarmup } from "@/hooks/use-agent-warmup";
+import { AgentList } from "@/components/agent-list";
+import { AgentKey } from "@/components/agent-key";
+import { AgentStatusBar } from "@/components/agent-status-bar";
+import type { Agent } from "@/components/agent-card";
 
 const AGENTS: Agent[] = [
   {
@@ -46,44 +46,16 @@ const AGENTS: Agent[] = [
   },
 ];
 
-const AGENT_THEME_MAP: Record<string, Agent["theme"]> = {
-  travel: "travel",
-  grocery: "grocery",
-  fitness: "fitness",
-  wellness: "wellness",
-};
-
 export default function Home() {
-  const { statuses, runningCount, isLoading } = useAgentWarmup();
-
-  const statusDotClass = isLoading
-    ? "bg-[var(--ink-mute)] animate-pulse"
-    : runningCount === 4
-    ? "bg-[var(--success)] animate-pulse"
-    : runningCount === 0
-    ? "bg-red-500"
-    : "bg-yellow-500 animate-pulse";
-
-  const statusLabel = isLoading
-    ? "checking agents…"
-    : `${runningCount} / 4 running · CopilotKit × ADK`;
-
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg)]">
-      {/* Top bar */}
       <header className="flex items-center justify-between px-5 md:px-8 h-11 border-b border-[var(--border)] shrink-0">
         <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ink-mute)]">
           Agents
         </span>
-        <div className="flex items-center gap-2.5">
-          <span className={`w-1.5 h-1.5 rounded-full ${statusDotClass}`} />
-          <span className="font-mono text-[10px] text-[var(--ink-mute)]">
-            {statusLabel}
-          </span>
-        </div>
+        <AgentStatusBar />
       </header>
 
-      {/* Title section */}
       <div className="flex items-end justify-between px-5 md:px-8 pt-10 pb-8 border-b border-[var(--border)] shrink-0">
         <div>
           <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-[var(--ink-mute)] mb-3">
@@ -94,42 +66,11 @@ export default function Home() {
             <span style={{ opacity: 0.3 }}>together.</span>
           </h1>
         </div>
-
-        {/* Agent key — desktop only */}
-        <div className="hidden md:flex flex-col items-end gap-2 pb-1 shrink-0">
-          {[
-            { color: "#ea580c", label: "Travel", key: "travel" },
-            { color: "#16a34a", label: "Grocery", key: "grocery" },
-            { color: "#0284c7", label: "Fitness", key: "fitness" },
-            { color: "#d97706", label: "Wellness", key: "wellness" },
-          ].map(({ color, label, key }) => {
-            const s = statuses[key as keyof typeof statuses];
-            return (
-              <div key={label} className="flex items-center gap-2">
-                <span className="font-mono text-[10px] text-[var(--ink-mute)]">{label}</span>
-                <span
-                  className={`w-2 h-2 rounded-full shrink-0 ${s === "loading" ? "opacity-30 animate-pulse" : s === "error" ? "opacity-50" : ""}`}
-                  style={{ backgroundColor: s === "error" ? "#ef4444" : color }}
-                />
-              </div>
-            );
-          })}
-        </div>
+        <AgentKey />
       </div>
 
-      {/* Agent list */}
-      <div className="flex-1 divide-y divide-[var(--border)]">
-        {AGENTS.map((agent, index) => (
-          <AgentCard
-            key={agent.id}
-            agent={agent}
-            index={index}
-            status={statuses[AGENT_THEME_MAP[agent.theme]]}
-          />
-        ))}
-      </div>
+      <AgentList agents={AGENTS} />
 
-      {/* Footer */}
       <footer className="flex items-center gap-2 px-5 md:px-8 py-3 border-t border-[var(--border)] shrink-0">
         <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-[var(--grocery)]" />
         <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ink-mute)]">Grocery</span>
