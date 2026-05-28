@@ -278,8 +278,8 @@ pace vs. coverage, points vs. cash) instead of guessing silently.
 collab_trip_agent = LlmAgent(
     name="collab_trip_agent",
     model=LiteLlm(
-        model="mistral/mistral-small-latest",
-        fallbacks=["openrouter/owl-alpha", "nvidia_nim/deepseek-ai/deepseek-v4-flash"],
+        model="openrouter/moonshotai/kimi-k2.6:free",
+        fallbacks=["mistral/mistral-small-latest", "openrouter/owl-alpha", "nvidia_nim/deepseek-ai/deepseek-v4-flash"],
     ),
     instruction=_build_instruction,
     after_tool_callback=shared_after_tool_callback,
