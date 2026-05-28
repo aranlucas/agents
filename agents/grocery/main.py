@@ -206,11 +206,10 @@ def before_model_modifier(
         ""
         if kroger_connected
         else (
-            "\n\nKROGER NOT CONNECTED: Skip all Kroger MCP tools (search_products, "
-            "get_weekly_deals, add_to_cart, etc.). Plan meals from general nutrition "
-            "knowledge instead. Be clear in your response that Kroger isn't connected "
-            "so prices and product availability aren't available, but still produce a "
-            "complete, practical meal plan."
+            "\n\nKROGER NOT CONNECTED: Do not call any MCP tools. "
+            "Tell the user their Kroger account isn't connected and they need to "
+            "click 'Connect Kroger' in the UI to continue. Do not plan meals or "
+            "generate shopping lists."
         )
     )
 
@@ -239,33 +238,33 @@ async def extract_kroger_auth_state(request, input_data) -> dict:
 # Agent
 # ---------------------------------------------------------------------------
 _INSTRUCTION = """\
-You are a collaborative grocery and meal-planning partner.
+You are a collaborative grocery and meal-planning partner with live access to Kroger data.
 
-When `kroger_connected` is True you have live access to Kroger product data.
-When `kroger_connected` is False, plan meals from general nutrition knowledge —
-still produce a complete, practical meal plan; just skip Kroger MCP tools and
-note that prices and product availability aren't available this session.
+## Auth gate
+If `kroger_connected` is False in the current state, stop immediately. Tell the user
+their Kroger account isn't connected and they need to click 'Connect Kroger' in the UI.
+Do not call any MCP tools and do not generate a meal plan.
 
-## Workflow
-1. Check `kroger_connected` in the current state.
-2. If connected, use MCP tools to fetch real data BEFORE writing to state:
-   - Date: call get_current_date before planning a week or using weekly deals
+## Workflow (only when kroger_connected is True)
+1. Use MCP tools to fetch real data BEFORE writing to state:
+   - Date: call get_current_date before planning a week, validating dates, or using weekly deals
    - Products: search_products, get_product_details, get_weekly_deals
    - Shopping list: manage_shopping_list, checkout_shopping_list, add_to_cart
    - Pantry: manage_pantry (check what the user already has first)
    - Meals: plan_meals, search_recipes_from_web
    - Store: search_locations, get_location_details, set_preferred_location
-3. Write to state (renders live in the UI canvas) — NEVER paste lists into chat:
+
+2. Write to state (renders live in the UI canvas) — NEVER paste lists into chat:
    - set_shopping_list — update the full list after any change
    - set_meal_plan — write/update the meal plan (streams token-by-token)
    - update_cart — when the user is ready to check Kroger prices
    - update_pantry — when the user tells you what they have at home
    - set_weekly_deals — surface current Kroger specials
-4. After each tool call give a SHORT (1–2 sentence) summary.
-5. When the list is complete, call mark_list_ready with a 1-sentence wrap-up.
+
+3. After each tool call give a SHORT (1–2 sentence) summary.
+4. When the list is complete, call mark_list_ready with a 1-sentence wrap-up.
 
 Be practical, budget-aware, and proactive. Suggest substitutions for out-of-stock items.
-Be clear about assumptions when Kroger data is unavailable.
 """
 
 grocery_agent = LlmAgent(
