@@ -1,0 +1,120 @@
+name: Android APK
+
+# Builds the Expo mobile app (apps/mobile) into an installable Android APK and
+# publishes it to a GitHub Release using the GitHub CLI (`gh`).
+#
+# Triggers:
+#   - push a tag like `v1.2.3` -> publishes the APK to a release for that tag
+#   - manual run (workflow_dispatch) -> publishes a timestamped prerelease
+#
+# The build runs entirely on the runner via `expo prebuild` + Gradle, so no
+# Expo/EAS account or secret is required. The release APK is signed with the
+# debug keystore — generate and wire a real keystore before shipping to Play.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to publish the APK under (defaults to a UTC timestamp)."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-publish:
+    name: Build & publish Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate native Android project
+        working-directory: apps/mobile
+        env:
+          EXPO_NO_TELEMETRY: "1"
+        run: pnpm exec expo prebuild --platform android --no-install
+
+      - name: Build release APK
+        working-directory: apps/mobile/android
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Collect APK
+        id: apk
+        working-directory: apps/mobile
+        run: |
+          set -euo pipefail
+          APK_PATH="$(find android/app/build/outputs/apk/release -name '*.apk' | head -n 1)"
+          if [ -z "$APK_PATH" ]; then
+            echo "::error::No APK produced by Gradle" >&2
+            exit 1
+          fi
+          DEST="$GITHUB_WORKSPACE/agents-android.apk"
+          cp "$APK_PATH" "$DEST"
+          echo "path=$DEST" >> "$GITHUB_OUTPUT"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: agents-android-apk
+          path: ${{ steps.apk.outputs.path }}
+          if-no-files-found: error
+
+      - name: Publish APK to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "push" ]; then
+            TAG="${GITHUB_REF_NAME}"
+            PRERELEASE=""
+          else
+            TAG="${{ github.event.inputs.release_tag }}"
+            if [ -z "$TAG" ]; then
+              TAG="android-$(date -u +%Y%m%d-%H%M%S)"
+            fi
+            PRERELEASE="--prerelease"
+          fi
+
+          echo "Publishing APK to release: $TAG"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --title "Agents Android $TAG" \
+              --notes "Automated Android APK build for the AG-UI React Native mobile app." \
+              --target "$GITHUB_SHA" \
+              $PRERELEASE
+          fi
+          gh release upload "$TAG" \
+            "${{ steps.apk.outputs.path }}#agents-android.apk" \
+            --clobber

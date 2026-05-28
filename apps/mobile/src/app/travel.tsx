@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -11,65 +11,33 @@ import {
   StyleSheet,
 } from "react-native";
 import { TripState } from "@agents/types";
+import { useAuth } from "@clerk/clerk-expo";
 import Constants from "expo-constants";
+import { useAgent } from "@/utils/use-agent";
 
 const TRAVEL_AGENT_URL =
   Constants.expoConfig?.extra?.travelAgentUrl ??
   process.env.EXPO_PUBLIC_TRAVEL_AGENT_URL ??
   "http://localhost:8000/";
 
-type Message = { role: "user" | "assistant"; content: string };
-
 export default function TravelScreen() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const { userId } = useAuth();
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [tripState, setTripState] = useState<TripState>({});
   const scrollRef = useRef<ScrollView>(null);
 
-  const sendMessage = async () => {
-    if (!input.trim() || isLoading) return;
-    const userMsg = input.trim();
+  // Forward the Clerk identity the same way the web copilotkit route does.
+  const headers = useMemo(
+    () => (userId ? { "x-clerk-user-id": userId } : undefined),
+    [userId],
+  );
+
+  const { messages, state, isLoading, error, sendMessage } =
+    useAgent<TripState>({ url: TRAVEL_AGENT_URL, headers }, {});
+
+  const onSend = () => {
+    const text = input;
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", content: userMsg }]);
-    setIsLoading(true);
-
-    try {
-      const response = await fetch(TRAVEL_AGENT_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [...messages, { role: "user", content: userMsg }].map(
-            (m) => ({
-              role: m.role,
-              content: m.content,
-            }),
-          ),
-          state: tripState,
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.content) {
-          setMessages((prev) => [
-            ...prev,
-            { role: "assistant", content: data.content },
-          ]);
-        }
-        if (data.state) setTripState((prev) => ({ ...prev, ...data.state }));
-      }
-    } catch (e) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: "Connection error. Is the agent running?",
-        },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
+    sendMessage(text);
   };
 
   return (
@@ -77,15 +45,15 @@ export default function TravelScreen() {
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      {tripState.destination ? (
+      {state.destination ? (
         <View style={styles.tripCard}>
-          <Text style={styles.tripDestination}>{tripState.destination}</Text>
-          {tripState.headline ? (
-            <Text style={styles.tripHeadline}>{tripState.headline}</Text>
+          <Text style={styles.tripDestination}>{state.destination}</Text>
+          {state.headline ? (
+            <Text style={styles.tripHeadline}>{state.headline}</Text>
           ) : null}
-          {tripState.start_date && tripState.end_date ? (
+          {state.start_date && state.end_date ? (
             <Text style={styles.tripDates}>
-              {tripState.start_date} → {tripState.end_date}
+              {state.start_date} → {state.end_date}
             </Text>
           ) : null}
         </View>
@@ -105,9 +73,9 @@ export default function TravelScreen() {
           scrollRef.current?.scrollToEnd({ animated: true })
         }
       >
-        {messages.map((m, i) => (
+        {messages.map((m) => (
           <View
-            key={i}
+            key={m.id}
             style={[
               styles.bubble,
               m.role === "user" ? styles.userBubble : styles.agentBubble,
@@ -124,6 +92,7 @@ export default function TravelScreen() {
           </View>
         ))}
         {isLoading && <ActivityIndicator style={{ margin: 12 }} />}
+        {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
 
       <View style={styles.inputRow}>
@@ -133,11 +102,11 @@ export default function TravelScreen() {
           onChangeText={setInput}
           placeholder="Plan a trip…"
           placeholderTextColor="#999"
-          onSubmitEditing={sendMessage}
+          onSubmitEditing={onSend}
           returnKeyType="send"
           multiline
         />
-        <Pressable style={styles.sendButton} onPress={sendMessage}>
+        <Pressable style={styles.sendButton} onPress={onSend}>
           <Text style={styles.sendText}>Send</Text>
         </Pressable>
       </View>
@@ -161,6 +130,7 @@ const styles = StyleSheet.create({
   bubbleText: { fontSize: 14, lineHeight: 20 },
   userText: { color: "#fff" },
   agentText: { color: "#111" },
+  error: { color: "#c0392b", fontSize: 13, margin: 12, textAlign: "center" },
   inputRow: {
     flexDirection: "row",
     padding: 12,
