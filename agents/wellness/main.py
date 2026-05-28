@@ -1,5 +1,6 @@
 """Wellness Planning Agent - orchestrates meal and workout plans over A2A."""
 
+import contextvars
 import datetime
 import json
 import logging
@@ -13,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
 from ag_ui_adk.config import PredictStateMapping
+from ag_ui_adk.request_state_service import RequestStateSessionService
 from a2a.server.apps.jsonrpc import A2AFastAPIApplication
 from a2a.server.request_handlers import DefaultRequestHandler
 from agent_common.task_store import create_task_store
@@ -142,14 +144,48 @@ def _agent_card_url(base_url: str) -> str:
     return base_url.rstrip("/") + AGENT_CARD_WELL_KNOWN_PATH
 
 
+# Set once per invocation by _TempStateSessionService._inject when the ADK
+# runner fetches the session. AgentTool's child runner (InMemorySessionService)
+# strips temp: keys, but inherits this async context, so the metadata provider
+# can read credentials here without needing before_tool_callback.
+_invocation_temp_state: contextvars.ContextVar[dict] = contextvars.ContextVar(
+    "_invocation_temp_state", default={}
+)
+
+
+class _TempStateSessionService(RequestStateSessionService):
+    """Sets _invocation_temp_state when temp: keys are injected into a session."""
+
+    def _inject(self, session, key):
+        session = super()._inject(session, key)
+        if session is not None:
+            temp = {
+                k: v
+                for k, v in session.state.to_dict().items()
+                if isinstance(k, str) and k.startswith("temp:")
+            }
+            if temp:
+                _invocation_temp_state.set(temp)
+        return session
+
+
 def _remote_a2a_metadata_provider(invocation_context, _message) -> dict[str, str]:
     state = invocation_context.session.state
-    metadata = {
-        "user_id": str(invocation_context.session.state.get("user_id") or "anonymous"),
-        "kroger_access_token": str(state.get(KROGER_TOKEN_STATE_KEY) or ""),
-        "strava_access_token": str(state.get(STRAVA_TOKEN_STATE_KEY) or ""),
+    fallback = _invocation_temp_state.get({})
+    kroger_token = state.get(KROGER_TOKEN_STATE_KEY) or fallback.get(KROGER_TOKEN_STATE_KEY)
+    strava_token = state.get(STRAVA_TOKEN_STATE_KEY) or fallback.get(STRAVA_TOKEN_STATE_KEY)
+    user_id = state.get("user_id") or fallback.get("user_id") or "anonymous"
+    log.info(
+        "[metadata_provider] kroger_token present: %s | strava_token present: %s | source: %s",
+        bool(kroger_token),
+        bool(strava_token),
+        "session" if state.get(KROGER_TOKEN_STATE_KEY) else "contextvar",
+    )
+    return {
+        "user_id": str(user_id),
+        "kroger_access_token": str(kroger_token or ""),
+        "strava_access_token": str(strava_token or ""),
     }
-    return metadata
 
 
 grocery_remote_agent = RemoteA2aAgent(
@@ -273,7 +309,7 @@ WELLNESS_PREDICT_STATE = [
     ),
 ]
 
-_shared_session_svc = create_session_service()
+_shared_session_svc = _TempStateSessionService(create_session_service())
 _artifact_svc = InMemoryArtifactService()
 _memory_svc = InMemoryMemoryService()
 _credential_svc = InMemoryCredentialService()
