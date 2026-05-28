@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 export type AgentStatus = "loading" | "ok" | "error";
 
@@ -11,46 +11,30 @@ export interface AgentStatuses {
   wellness: AgentStatus;
 }
 
-interface WarmupResult {
-  statuses: AgentStatuses;
+interface HealthResponse {
+  agents: AgentStatuses;
   runningCount: number;
-  isLoading: boolean;
+  total: number;
 }
 
-const INITIAL: AgentStatuses = {
+const FALLBACK: AgentStatuses = {
   travel: "loading",
   grocery: "loading",
   fitness: "loading",
   wellness: "loading",
 };
 
-export function useAgentWarmup(): WarmupResult {
-  const [statuses, setStatuses] = useState<AgentStatuses>(INITIAL);
-  const [runningCount, setRunningCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+export function useAgentWarmup() {
+  const { data, isLoading } = useQuery<HealthResponse>({
+    queryKey: ["agents-health"],
+    queryFn: () => fetch("/api/agents/health").then((r) => r.json()),
+    staleTime: 30_000,
+    retry: 2,
+  });
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function warmup() {
-      try {
-        const res = await fetch("/api/agents/health", { cache: "no-store" });
-        if (cancelled) return;
-        if (res.ok) {
-          const data = await res.json();
-          setStatuses(data.agents);
-          setRunningCount(data.runningCount);
-        }
-      } catch {
-        // leave statuses as "loading" — agents may not be reachable
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    }
-
-    warmup();
-    return () => { cancelled = true; };
-  }, []);
-
-  return { statuses, runningCount, isLoading };
+  return {
+    statuses: data?.agents ?? FALLBACK,
+    runningCount: data?.runningCount ?? 0,
+    isLoading,
+  };
 }
