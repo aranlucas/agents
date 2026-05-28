@@ -159,9 +159,11 @@ class _TempStateSessionService(RequestStateSessionService):
     def _inject(self, session, key):
         session = super()._inject(session, key)
         if session is not None:
+            state = session.state
+            state_dict = state.to_dict() if hasattr(state, "to_dict") else state
             temp = {
                 k: v
-                for k, v in session.state.to_dict().items()
+                for k, v in state_dict.items()
                 if isinstance(k, str) and k.startswith("temp:")
             }
             if temp:
