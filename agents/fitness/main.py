@@ -339,7 +339,7 @@ assumptions when Strava or objective context is unavailable.
 fitness_agent = LlmAgent(
     name="fitness_agent",
     model=LiteLlm(
-        model=os.getenv("AGENT_MODEL", "mistral/mistral-small-latest"),
+        model=os.getenv("AGENT_MODEL", "openrouter/moonshotai/kimi-k2.6:free"),
         fallbacks=["openrouter/owl-alpha", "nvidia_nim/deepseek-ai/deepseek-v4-flash"],
     ),
     instruction=_INSTRUCTION,
