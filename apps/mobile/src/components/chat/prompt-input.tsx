@@ -6,7 +6,13 @@ import {
   isLiquidGlassAvailable,
 } from "expo-glass-effect";
 import { useEffect, useRef, type ReactNode } from "react";
-import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 
 import { cn } from "@/utils/tailwind";
@@ -50,9 +56,7 @@ export function PromptInput({ children }: { children: ReactNode }) {
 function PromptInputError({ message }: { message?: string }) {
   return (
     <Animated.View entering={FadeIn.duration(200)} className="px-3 pb-2">
-      <View
-        className="flex-row items-center gap-2 rounded-xl bg-card px-3 py-2.5 border-continuous"
-      >
+      <View className="flex-row items-center gap-2 rounded-xl bg-card px-3 py-2.5 border-continuous">
         <View
           className="w-2 h-2 rounded-full"
           style={{ backgroundColor: "#EF4444" }}
@@ -193,20 +197,22 @@ export function PromptInputSubmit() {
     >
       {isGenerating ? (
         <Animated.View entering={FadeIn} exiting={FadeOut}>
-          <ActivityIndicator size="small" colorClassName="tint-foreground" className="text-foreground" />
+          <ActivityIndicator
+            size="small"
+            colorClassName="tint-foreground"
+            className="text-foreground"
+          />
         </Animated.View>
       ) : (
-          <SymbolImage
-            name="arrow.up"
-            size={16}
-            sfEffect="scale/up"
-            className={cn(
-              "font-semibold",
-              disabled
-                ? "text-muted-foreground"
-                : "text-background",
-            )}
-          />
+        <SymbolImage
+          name="arrow.up"
+          size={16}
+          sfEffect="scale/up"
+          className={cn(
+            "font-semibold",
+            disabled ? "text-muted-foreground" : "text-background",
+          )}
+        />
       )}
     </Pressable>
   );

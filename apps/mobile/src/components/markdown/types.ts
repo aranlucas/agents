@@ -1,7 +1,7 @@
-import type { ImageStyle, StyleProp, TextStyle, ViewStyle } from 'react-native';
-import type { Node, Root, RootContentMap } from 'mdast';
-import type { Extension } from 'mdast-util-from-markdown';
-import type { ReactElement } from 'react';
+import type { ImageStyle, StyleProp, TextStyle, ViewStyle } from "react-native";
+import type { Node, Root, RootContentMap } from "mdast";
+import type { Extension } from "mdast-util-from-markdown";
+import type { ReactElement } from "react";
 
 // Style types
 type NamedStyle = StyleProp<ViewStyle | TextStyle | ImageStyle>;
@@ -16,7 +16,7 @@ type BaseNodeKeys = {
   [K in keyof RootContentMap]: RootContentMap[K] extends Node ? K : never;
 }[keyof RootContentMap];
 
-export type ValidNodeKey = ExpandUnion<BaseNodeKeys | 'unknown' | 'root'>;
+export type ValidNodeKey = ExpandUnion<BaseNodeKeys | "unknown" | "root">;
 
 export type NodeTypeMap = Prettify<
   {
@@ -40,7 +40,7 @@ export type RenderRules = {
   [K in ValidNodeKey]?: RenderFunction<K>;
 };
 
-export type ListBulletStyle = 'disc' | 'dash';
+export type ListBulletStyle = "disc" | "dash";
 
 export interface ASTRendererOptions {
   renderRules?: RenderRules;
@@ -58,7 +58,7 @@ export interface MarkdownProps extends ASTRendererOptions {
 }
 
 // Extend mdast Node to include key property
-declare module 'mdast' {
+declare module "mdast" {
   interface Node {
     key?: string;
   }

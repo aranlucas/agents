@@ -52,9 +52,7 @@ function DrawerNavItem({
       onPress={onPress}
       className="px-4 py-3 mx-2 rounded-[10px] active:bg-muted"
     >
-      <Text className="text-base text-foreground">
-        {label}
-      </Text>
+      <Text className="text-base text-foreground">{label}</Text>
     </Pressable>
   );
 }
@@ -80,9 +78,7 @@ function DrawerChatItem({
         numberOfLines={1}
         className={cn(
           `text-[15px]`,
-          active
-            ? "text-foreground"
-            : "text-muted-foreground",
+          active ? "text-foreground" : "text-muted-foreground",
         )}
       >
         {title}
@@ -106,9 +102,7 @@ export function DrawerContent({
     >
       {/* Header */}
       <View className="px-4 pt-2 pb-3">
-        <Text className="text-[28px] font-bold text-foreground">
-          Chat
-        </Text>
+        <Text className="text-[28px] font-bold text-foreground">Chat</Text>
       </View>
 
       {/* Nav + Chat history */}
@@ -155,19 +149,14 @@ export function DrawerContent({
               EB
             </Text>
           </View>
-          <Text className="text-sm text-foreground">
-            Evan Bacon
-          </Text>
+          <Text className="text-sm text-foreground">Evan Bacon</Text>
         </TouchableGlass>
         <View className="flex-1" />
         <TouchableGlass
           onPress={() => onNavigate("/")}
           className="w-10 h-10 rounded-full bg-foreground active:bg-muted items-center justify-center"
         >
-          <Icon
-            icon={Plus}
-            className="w-6 h-6 text-background"
-          />
+          <Icon icon={Plus} className="w-6 h-6 text-background" />
         </TouchableGlass>
       </View>
     </SafeAreaView>

@@ -184,12 +184,7 @@ export function DocumentCanvas({
             />
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <Button
-              type="button"
-              onClick={onReset}
-              variant="outline"
-              size="xs"
-            >
+            <Button type="button" onClick={onReset} variant="outline" size="xs">
               Reset
             </Button>
           </div>
@@ -199,7 +194,11 @@ export function DocumentCanvas({
           <Stat label="Dates" value={dateRange || "—"} />
           <Stat
             label="Length"
-            value={tripLength > 0 ? `${tripLength} day${tripLength === 1 ? "" : "s"}` : "—"}
+            value={
+              tripLength > 0
+                ? `${tripLength} day${tripLength === 1 ? "" : "s"}`
+                : "—"
+            }
           />
           <Stat
             label="Travelers"
@@ -209,7 +208,10 @@ export function DocumentCanvas({
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[var(--ink-mute)]">
-          <Badge variant="outline" className={cn("gap-1.5 border-transparent", meta.chipClass)}>
+          <Badge
+            variant="outline"
+            className={cn("gap-1.5 border-transparent", meta.chipClass)}
+          >
             <span className={`w-1.5 h-1.5 rounded-full ${meta.dotClass}`} />
             {meta.label}
           </Badge>
@@ -239,7 +241,10 @@ export function DocumentCanvas({
       )}
 
       {flights && (
-        <Card size="sm" className="mx-6 mt-4 gap-2 bg-[var(--surface-soft)] p-4 py-4">
+        <Card
+          size="sm"
+          className="mx-6 mt-4 gap-2 bg-[var(--surface-soft)] p-4 py-4"
+        >
           <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--ink-mute)] mb-2">
             Flights
           </h3>
@@ -344,17 +349,15 @@ function DayCard({ day }: { day: Day }) {
         </div>
       </CardHeader>
       <CardContent className="px-4 py-3">
-      <ul className="space-y-1.5">
-        {day.activities.length === 0 ? (
-          <li className="text-xs text-[var(--ink-mute)] italic">
-            (empty — ask the agent to fill this day)
-          </li>
-        ) : (
-          day.activities.map((act, i) => (
-            <ActivityRow key={i} text={act} />
-          ))
-        )}
-      </ul>
+        <ul className="space-y-1.5">
+          {day.activities.length === 0 ? (
+            <li className="text-xs text-[var(--ink-mute)] italic">
+              (empty — ask the agent to fill this day)
+            </li>
+          ) : (
+            day.activities.map((act, i) => <ActivityRow key={i} text={act} />)
+          )}
+        </ul>
       </CardContent>
     </Card>
   );
@@ -374,9 +377,7 @@ function ActivityRow({ text }: { text: string }) {
     );
   }
   return (
-    <li className="text-sm text-[var(--ink)] leading-relaxed pl-1">
-      • {text}
-    </li>
+    <li className="text-sm text-[var(--ink)] leading-relaxed pl-1">• {text}</li>
   );
 }
 
@@ -402,8 +403,7 @@ function EmptyState() {
         No itinerary yet
       </p>
       <p className="text-xs mt-1 max-w-xs">
-        Ask the agent to plan a trip, or click a suggestion in the chat
-        panel.
+        Ask the agent to plan a trip, or click a suggestion in the chat panel.
       </p>
     </div>
   );

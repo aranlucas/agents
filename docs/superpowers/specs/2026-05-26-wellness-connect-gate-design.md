@@ -46,6 +46,7 @@ pendingSteps = STEPS.filter(s => !state[s.connectedKey])
 ```
 
 Where `STEPS` is an ordered array:
+
 ```ts
 [
   { id: 'kroger', label: 'Kroger', connectedKey: 'kroger_connected', ... },
@@ -65,6 +66,7 @@ Where `STEPS` is an ordered array:
 **Step indicator layout:** horizontal row — each step shows a numbered circle + label, connected steps show `✓` in green, steps linked by a horizontal line (green if completed, muted if not yet reached).
 
 **Gate body:** centred, full remaining height — matches the existing `KrogerAuthGate` / `StravaGate` layout:
+
 - Service icon in a rounded square
 - Heading: "Connect {Service}"
 - One-sentence description explaining why wellness needs it
@@ -77,9 +79,9 @@ Connection status is read from `agent.state.kroger_connected` / `agent.state.str
 
 ## Files Changed
 
-| File | Change |
-|------|--------|
-| `packages/types/src/index.ts` | Add `kroger_connected`, `strava_connected` to `WellnessState` |
+| File                                 | Change                                                                                                 |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| `packages/types/src/index.ts`        | Add `kroger_connected`, `strava_connected` to `WellnessState`                                          |
 | `apps/web/src/app/wellness/page.tsx` | Add imports, connection hooks, state sync effects, `WellnessConnectGate` component, conditional render |
 
 ## Out of Scope

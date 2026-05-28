@@ -37,23 +37,42 @@ export function ChatMarkdown({ children }: { children: string }) {
   // Only overrides — defaults from utils.ts are merged automatically
   const markdownStyles = {
     heading1: { fontSize: 24, color: text },
-    heading2: { fontSize: 20, lineHeight: 28, fontWeight: "bold" as const, color: text },
+    heading2: {
+      fontSize: 20,
+      lineHeight: 28,
+      fontWeight: "bold" as const,
+      color: text,
+    },
     heading3: { fontSize: 18, color: text },
     heading4: { fontSize: 16, color: text },
     heading5: { fontSize: 14, color: text },
     heading6: { fontSize: 12, color: text },
-    paragraph: { fontSize: baseFontSize, lineHeight: baseLineHeight, marginVertical: 8 },
+    paragraph: {
+      fontSize: baseFontSize,
+      lineHeight: baseLineHeight,
+      marginVertical: 8,
+    },
     text: { color: text, fontSize: baseFontSize, lineHeight: baseLineHeight },
     thematicBreak: { backgroundColor: border },
-    blockquote: { backgroundColor: bg3, borderColor: border, paddingHorizontal: 8 },
+    blockquote: {
+      backgroundColor: bg3,
+      borderColor: border,
+      paddingHorizontal: 8,
+    },
     codeContainer: { backgroundColor: fill3, padding: 12, borderRadius: 8 },
     codeText: {
       fontSize: isWeb ? 12 : 14,
       color: text,
-      fontFamily: Platform.select({ ios: "ui-monospace", default: "monospace" }),
+      fontFamily: Platform.select({
+        ios: "ui-monospace",
+        default: "monospace",
+      }),
     },
     inlineCode: {
-      fontFamily: Platform.select({ ios: "ui-monospace", default: "monospace" }),
+      fontFamily: Platform.select({
+        ios: "ui-monospace",
+        default: "monospace",
+      }),
       paddingHorizontal: 4,
       fontSize: isWeb ? 12 : 15,
       color: text,
@@ -62,8 +81,17 @@ export function ChatMarkdown({ children }: { children: string }) {
       backgroundColor: fill3,
     },
     link: { fontSize: baseFontSize, color: link },
-    image: { height: 200, aspectRatio: 16 / 9, backgroundColor: fill3, borderRadius: 8 },
-    listBullet: { color: text2, fontVariant: ["tabular-nums" as const], marginRight: 8 },
+    image: {
+      height: 200,
+      aspectRatio: 16 / 9,
+      backgroundColor: fill3,
+      borderRadius: 8,
+    },
+    listBullet: {
+      color: text2,
+      fontVariant: ["tabular-nums" as const],
+      marginRight: 8,
+    },
     table: { borderColor: border, borderRadius: 8 },
     tableRow: { borderBottomColor: border },
     tableHeaderRow: { backgroundColor: bg2 },

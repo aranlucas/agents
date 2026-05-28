@@ -113,40 +113,40 @@ Consumed by both `apps/web` and `apps/mobile` via pnpm workspace reference (`"@a
 ```ts
 // Travel agent state
 export type TripState = {
-  destination: string
-  start_date: string
-  end_date: string
-  travelers: number
-  budget_usd: number
-  headline: string
-  itinerary: string
-  summary: string
-  flights: string
-  status: 'drafting' | 'ready_to_book' | 'booked'
-}
+  destination: string;
+  start_date: string;
+  end_date: string;
+  travelers: number;
+  budget_usd: number;
+  headline: string;
+  itinerary: string;
+  summary: string;
+  flights: string;
+  status: "drafting" | "ready_to_book" | "booked";
+};
 
 // Grocery agent state
 export type GroceryState = {
-  shopping_list: string[]
-  cart: CartItem[]
-  pantry: PantryItem[]
-  meal_plan: string
-  weekly_deals: string
-}
+  shopping_list: string[];
+  cart: CartItem[];
+  pantry: PantryItem[];
+  meal_plan: string;
+  weekly_deals: string;
+};
 
-export type CartItem = { name: string; quantity: number; price?: number }
-export type PantryItem = { name: string; quantity: string; expires?: string }
+export type CartItem = { name: string; quantity: number; price?: number };
+export type PantryItem = { name: string; quantity: string; expires?: string };
 
 // Shared user preferences (both agents read these)
 export type Preferences = {
-  travelerName: string
-  homeAirport: string
-  transportMode: 'flight' | 'road_trip'
-  budgetTier: string
-  vibe: string
-  pace: string
-  interests: string[]
-}
+  travelerName: string;
+  homeAirport: string;
+  transportMode: "flight" | "road_trip";
+  budgetTier: string;
+  vibe: string;
+  pace: string;
+  interests: string[];
+};
 ```
 
 ---
@@ -170,14 +170,15 @@ agents/travel  ◀──A2A──▶  agents/grocery  (optional cross-agent call
 
 ## Deployment
 
-| Service | Platform | Config | Notes |
-|---|---|---|---|
-| `agents/travel/` | Railway | `Dockerfile` + `railway.json` | Root Dir: `agents/travel/` |
-| `agents/grocery/` | Railway | `Dockerfile` + `railway.json` | Root Dir: `agents/grocery/` |
-| `apps/web/` | Vercel | `vercel.json` | Auto Next.js detection |
-| `apps/mobile/` | EAS Build | `eas.json` | iOS + Android |
+| Service           | Platform  | Config                        | Notes                       |
+| ----------------- | --------- | ----------------------------- | --------------------------- |
+| `agents/travel/`  | Railway   | `Dockerfile` + `railway.json` | Root Dir: `agents/travel/`  |
+| `agents/grocery/` | Railway   | `Dockerfile` + `railway.json` | Root Dir: `agents/grocery/` |
+| `apps/web/`       | Vercel    | `vercel.json`                 | Auto Next.js detection      |
+| `apps/mobile/`    | EAS Build | `eas.json`                    | iOS + Android               |
 
 `railway.json` per agent:
+
 ```json
 {
   "$schema": "https://railway.com/railway.schema.json",
@@ -205,6 +206,7 @@ services:
 ```
 
 Root `package.json` dev script:
+
 ```json
 {
   "scripts": {

@@ -41,7 +41,9 @@ function TabLayout() {
         name="grocery"
         options={{
           title: "Grocery",
-          tabBarIcon: ({ color, size }) => <ShoppingCart color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => (
+            <ShoppingCart color={color} size={size} />
+          ),
         }}
       />
     </Tabs>
@@ -49,8 +51,10 @@ function TabLayout() {
 }
 
 export default function RootLayout() {
-  const publishableKey = Constants.expoConfig?.extra?.clerkPublishableKey ??
-    process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
+  const publishableKey =
+    Constants.expoConfig?.extra?.clerkPublishableKey ??
+    process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ??
+    "";
 
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>

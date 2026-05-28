@@ -28,7 +28,7 @@ export function useConversationContext() {
   const ctx = use(ConversationCtx);
   if (!ctx)
     throw new Error(
-      "useConversationContext must be used within <Conversation>"
+      "useConversationContext must be used within <Conversation>",
     );
   return ctx;
 }
@@ -55,8 +55,7 @@ export function Conversation({
   const SCROLL_THRESHOLD = 50;
 
   const updateIsAtBottom = useCallback(() => {
-    const maxScrollY =
-      totalContentHeight.current - scrollViewHeight.current;
+    const maxScrollY = totalContentHeight.current - scrollViewHeight.current;
     if (maxScrollY <= 0) {
       setIsAtBottom(true);
       return;
@@ -69,7 +68,7 @@ export function Conversation({
       scrollViewHeight.current = e.nativeEvent.layout.height;
       updateIsAtBottom();
     },
-    [updateIsAtBottom]
+    [updateIsAtBottom],
   );
 
   const onScroll = useCallback(
@@ -77,7 +76,7 @@ export function Conversation({
       scrollY.current = event.nativeEvent.contentOffset.y;
       updateIsAtBottom();
     },
-    [updateIsAtBottom]
+    [updateIsAtBottom],
   );
 
   const lastContentHeight = useRef(0);
@@ -100,7 +99,7 @@ export function Conversation({
         });
       }
     },
-    [updateIsAtBottom]
+    [updateIsAtBottom],
   );
 
   const scrollToBottom = useCallback(() => {

@@ -44,13 +44,13 @@
   --accent-strong: #4145b3;
 
   /* Agent identity tokens */
-  --travel:        #ea580c;
-  --travel-soft:   #ffedd5;
-  --grocery:       #16a34a;
-  --grocery-soft:  #dcfce7;
-  --fitness:       #0284c7;
-  --fitness-soft:  #e0f2fe;
-  --wellness:      #d97706;
+  --travel: #ea580c;
+  --travel-soft: #ffedd5;
+  --grocery: #16a34a;
+  --grocery-soft: #dcfce7;
+  --fitness: #0284c7;
+  --fitness-soft: #e0f2fe;
+  --wellness: #d97706;
   --wellness-soft: #fef3c7;
 
   --success: #10b981;
@@ -83,29 +83,36 @@
     --accent-soft: #1e2042;
     --accent-strong: #a5abff;
 
-    --travel:        #f97316;
-    --travel-soft:   #1f1008;
-    --grocery:       #4ade80;
-    --grocery-soft:  #0a1e10;
-    --fitness:       #38bdf8;
-    --fitness-soft:  #07192a;
-    --wellness:      #fbbf24;
+    --travel: #f97316;
+    --travel-soft: #1f1008;
+    --grocery: #4ade80;
+    --grocery-soft: #0a1e10;
+    --fitness: #38bdf8;
+    --fitness-soft: #07192a;
+    --wellness: #fbbf24;
     --wellness-soft: #1e1508;
 
     --success-soft: #062c22;
   }
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
-html, body {
+html,
+body {
   height: 100%;
   background: var(--bg);
   color: var(--ink);
 }
 
 body {
-  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  font-family:
+    var(--font-sans),
+    system-ui,
+    -apple-system,
+    sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -118,28 +125,54 @@ body {
   background-color: var(--row-hover, transparent);
 }
 
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: var(--ink-mute); }
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-mute);
+}
 
 @keyframes shimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 .shimmer {
-  background: linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--accent) 18%, transparent) 50%, transparent 100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--accent) 18%, transparent) 50%,
+    transparent 100%
+  );
   background-size: 200% 100%;
   animation: shimmer 1.6s ease-in-out infinite;
 }
 
 @keyframes blink {
-  0%, 60%  { opacity: 1; }
-  61%, 100% { opacity: 0; }
+  0%,
+  60% {
+    opacity: 1;
+  }
+  61%,
+  100% {
+    opacity: 0;
+  }
 }
 .caret {
   display: inline-block;
-  width: 2px; height: 1em;
+  width: 2px;
+  height: 1em;
   margin-left: 2px;
   background: var(--accent);
   vertical-align: text-bottom;

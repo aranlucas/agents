@@ -31,10 +31,7 @@ export default function SettingsScreen() {
     >
       {/* Email */}
       <View className="mx-5 mt-4 mb-5 bg-muted rounded-xl px-4 py-3 border-continuous">
-        <Text
-          selectable
-          className="text-[15px] text-foreground"
-        >
+        <Text selectable className="text-[15px] text-foreground">
           developer@expo.dev
         </Text>
       </View>
@@ -82,13 +79,8 @@ export default function SettingsScreen() {
 
       {/* Log out */}
       <Pressable className="flex-row items-center px-5 py-3.5 gap-4 active:bg-muted">
-        <Icon
-          icon={LogOut}
-          className="w-5 h-5 text-foreground"
-        />
-        <Text className="text-[17px] text-foreground">
-          Log out
-        </Text>
+        <Icon icon={LogOut} className="w-5 h-5 text-foreground" />
+        <Text className="text-[17px] text-foreground">Log out</Text>
       </Pressable>
     </ScrollView>
   );
@@ -111,22 +103,12 @@ function SettingsRow({
 }) {
   const content = (
     <View className="flex-row items-center px-5 py-3.5 gap-4 active:bg-muted">
-      <Icon
-        icon={icon}
-        className="w-5 h-5 text-foreground"
-      />
-      <Text className="flex-1 text-[17px] text-foreground">
-        {label}
-      </Text>
+      <Icon icon={icon} className="w-5 h-5 text-foreground" />
+      <Text className="flex-1 text-[17px] text-foreground">{label}</Text>
       {detail && (
-        <Text className="text-[15px] text-muted-foreground">
-          {detail}
-        </Text>
+        <Text className="text-[15px] text-muted-foreground">{detail}</Text>
       )}
-      <Icon
-        icon={ChevronRight}
-        className="w-3.5 h-3.5 text-muted-foreground"
-      />
+      <Icon icon={ChevronRight} className="w-3.5 h-3.5 text-muted-foreground" />
     </View>
   );
 
@@ -154,13 +136,8 @@ function SettingsToggleRow({
 }) {
   return (
     <View className="flex-row items-center px-5 py-3 gap-4">
-      <Icon
-        icon={icon}
-        className="w-5 h-5 text-foreground"
-      />
-      <Text className="flex-1 text-[17px] text-foreground">
-        {label}
-      </Text>
+      <Icon icon={icon} className="w-5 h-5 text-foreground" />
+      <Text className="flex-1 text-[17px] text-foreground">{label}</Text>
       <Switch value={value} onValueChange={onValueChange} />
     </View>
   );

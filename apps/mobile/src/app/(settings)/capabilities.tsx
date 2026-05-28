@@ -67,9 +67,7 @@ export default function CapabilitiesScreen() {
       />
 
       {/* View your memory card */}
-      <View
-        className="mx-5 mt-4 bg-muted rounded-xl px-4 py-3.5 flex-row items-center border-continuous"
-      >
+      <View className="mx-5 mt-4 bg-muted rounded-xl px-4 py-3.5 flex-row items-center border-continuous">
         <View className="flex-1">
           <Text className="text-[15px] font-medium text-foreground">
             View your memory
@@ -121,9 +119,7 @@ function ToolAccessOption({
           </Text>
         )}
       </View>
-      {selected && (
-        <Icon icon={Check} className="w-5 h-5 text-blue-500" />
-      )}
+      {selected && <Icon icon={Check} className="w-5 h-5 text-blue-500" />}
     </View>
   );
 }

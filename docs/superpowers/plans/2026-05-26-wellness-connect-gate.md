@@ -12,9 +12,9 @@
 
 ## Files
 
-| File | Action |
-|------|--------|
-| `packages/types/src/index.ts` | Modify — add two fields to `WellnessState` |
+| File                                 | Action                                                                               |
+| ------------------------------------ | ------------------------------------------------------------------------------------ |
+| `packages/types/src/index.ts`        | Modify — add two fields to `WellnessState`                                           |
 | `apps/web/src/app/wellness/page.tsx` | Modify — add imports, constants, hooks, effects, gate components, conditional render |
 
 ---
@@ -22,6 +22,7 @@
 ### Task 1: Extend WellnessState
 
 **Files:**
+
 - Modify: `packages/types/src/index.ts:95-103`
 
 - [ ] **Step 1: Add the two connection fields**
@@ -30,16 +31,16 @@ In `packages/types/src/index.ts`, update `WellnessState` (currently at line 95):
 
 ```ts
 export type WellnessState = {
-  status?: WellnessStatus
-  meal_plan?: string
-  workout_plan?: string
-  weekly_plan?: string
-  review_summary?: string
-  last_delegation?: Record<string, unknown>
-  user_id?: string
-  kroger_connected?: boolean
-  strava_connected?: boolean
-}
+  status?: WellnessStatus;
+  meal_plan?: string;
+  workout_plan?: string;
+  weekly_plan?: string;
+  review_summary?: string;
+  last_delegation?: Record<string, unknown>;
+  user_id?: string;
+  kroger_connected?: boolean;
+  strava_connected?: boolean;
+};
 ```
 
 - [ ] **Step 2: Verify TypeScript compiles**
@@ -62,6 +63,7 @@ git commit -m "feat(types): add kroger_connected and strava_connected to Wellnes
 ### Task 2: Add OAuth handlers and connection sync to WellnessPageInner
 
 **Files:**
+
 - Modify: `apps/web/src/app/wellness/page.tsx`
 
 This task adds everything to `WellnessPageInner` except the gate render — that comes in Task 3.
@@ -82,7 +84,14 @@ import {
   UseAgentUpdate,
   useConfigureSuggestions,
 } from "@copilotkit/react-core/v2";
-import { Activity, CalendarDays, Dumbbell, Salad, ShoppingCart, Sparkles } from "lucide-react";
+import {
+  Activity,
+  CalendarDays,
+  Dumbbell,
+  Salad,
+  ShoppingCart,
+  Sparkles,
+} from "lucide-react";
 import { Streamdown } from "streamdown";
 
 import { HeroHeader } from "@/components/hero-header";
@@ -156,7 +165,8 @@ const connectKroger = useReverification(async () => {
         strategy: KROGER_STRATEGY,
         redirectUrl: window.location.href,
       });
-  const redirectUrl = account.verification?.externalVerificationRedirectURL?.href;
+  const redirectUrl =
+    account.verification?.externalVerificationRedirectURL?.href;
   if (redirectUrl) window.location.assign(redirectUrl);
 });
 
@@ -172,7 +182,8 @@ const connectStrava = useReverification(async () => {
         strategy: STRAVA_STRATEGY,
         redirectUrl: window.location.href,
       });
-  const redirectUrl = account.verification?.externalVerificationRedirectURL?.href;
+  const redirectUrl =
+    account.verification?.externalVerificationRedirectURL?.href;
   if (redirectUrl) window.location.assign(redirectUrl);
 });
 ```
@@ -198,14 +209,20 @@ useEffect(() => {
   if (!agent || !krogerConnection.data) return;
   const current = (agent.state ?? {}) as WellnessState;
   if (current.kroger_connected === krogerConnection.data.connected) return;
-  agent.setState({ ...current, kroger_connected: krogerConnection.data.connected });
+  agent.setState({
+    ...current,
+    kroger_connected: krogerConnection.data.connected,
+  });
 }, [agent, krogerConnection.data]);
 
 useEffect(() => {
   if (!agent || !stravaConnection.data) return;
   const current = (agent.state ?? {}) as WellnessState;
   if (current.strava_connected === stravaConnection.data.connected) return;
-  agent.setState({ ...current, strava_connected: stravaConnection.data.connected });
+  agent.setState({
+    ...current,
+    strava_connected: stravaConnection.data.connected,
+  });
 }, [agent, stravaConnection.data]);
 ```
 
@@ -249,6 +266,7 @@ git commit -m "feat(wellness): add OAuth handlers and connection sync for Kroger
 ### Task 3: Build WellnessConnectGate and wire into render
 
 **Files:**
+
 - Modify: `apps/web/src/app/wellness/page.tsx`
 
 - [ ] **Step 1: Add the StepIndicator component**
@@ -367,66 +385,67 @@ function WellnessConnectGate({
 In `WellnessPageInner`, find the `return (` statement. The current `<main>` body contains the `<HeroHeader>`, `<OrchestrationFlow>`, and the content grid. Replace the content after `<OrchestrationFlow status={status} />` with a conditional:
 
 ```tsx
-<OrchestrationFlow status={status} />
+<OrchestrationFlow status={status} />;
 
-{pendingSteps.length > 0 ? (
-  <WellnessConnectGate
-    steps={CONNECT_STEPS}
-    pendingSteps={pendingSteps}
-    onConnect={handleConnect}
-    connectingId={connectingId}
-  />
-) : (
-  <div className="mx-auto grid w-full max-w-[1400px] flex-1 gap-4 p-4 md:p-6 lg:grid-cols-[340px_minmax(0,1fr)]">
-    <div className="flex min-w-0 flex-col gap-4">
-      <SourceCard
-        title="Meals — from Grocery"
-        icon={<Salad className="h-3 w-3" />}
-        theme="grocery"
-        value={state.meal_plan}
-        hint="Grocery output will appear here after wellness delegates meal planning."
-      />
-      <SourceCard
-        title="Workouts — from Fitness"
-        icon={<Dumbbell className="h-3 w-3" />}
-        theme="fitness"
-        value={state.workout_plan}
-        hint="Fitness output will appear here after wellness delegates training."
-      />
-    </div>
+{
+  pendingSteps.length > 0 ? (
+    <WellnessConnectGate
+      steps={CONNECT_STEPS}
+      pendingSteps={pendingSteps}
+      onConnect={handleConnect}
+      connectingId={connectingId}
+    />
+  ) : (
+    <div className="mx-auto grid w-full max-w-[1400px] flex-1 gap-4 p-4 md:p-6 lg:grid-cols-[340px_minmax(0,1fr)]">
+      <div className="flex min-w-0 flex-col gap-4">
+        <SourceCard
+          title="Meals — from Grocery"
+          icon={<Salad className="h-3 w-3" />}
+          theme="grocery"
+          value={state.meal_plan}
+          hint="Grocery output will appear here after wellness delegates meal planning."
+        />
+        <SourceCard
+          title="Workouts — from Fitness"
+          icon={<Dumbbell className="h-3 w-3" />}
+          theme="fitness"
+          value={state.workout_plan}
+          hint="Fitness output will appear here after wellness delegates training."
+        />
+      </div>
 
-    <div className="flex min-w-0 flex-col gap-4">
-      <PrimaryCard
-        title="Combined weekly plan"
-        icon={<CalendarDays className="h-3 w-3" />}
-        footer={
-          isRunning ? (
-            <p className="text-xs text-[var(--page-color)]">writing…</p>
-          ) : undefined
-        }
-      >
-        {state.weekly_plan ? (
-          <div className="streamdown-markdown text-sm text-[var(--ink-soft)]">
-            <Streamdown>{state.weekly_plan}</Streamdown>
-          </div>
-        ) : (
-          <p className="text-sm text-[var(--ink-mute)]">
-            Ask the agent to coordinate meals and workouts for next week.
-          </p>
-        )}
-      </PrimaryCard>
-
-      {state.review_summary && (
+      <div className="flex min-w-0 flex-col gap-4">
         <PrimaryCard
-          title="Review"
-          icon={<Sparkles className="h-3 w-3" />}
+          title="Combined weekly plan"
+          icon={<CalendarDays className="h-3 w-3" />}
+          footer={
+            isRunning ? (
+              <p className="text-xs text-[var(--page-color)]">writing…</p>
+            ) : undefined
+          }
         >
-          <p className="text-sm text-[var(--ink-soft)]">{state.review_summary}</p>
+          {state.weekly_plan ? (
+            <div className="streamdown-markdown text-sm text-[var(--ink-soft)]">
+              <Streamdown>{state.weekly_plan}</Streamdown>
+            </div>
+          ) : (
+            <p className="text-sm text-[var(--ink-mute)]">
+              Ask the agent to coordinate meals and workouts for next week.
+            </p>
+          )}
         </PrimaryCard>
-      )}
+
+        {state.review_summary && (
+          <PrimaryCard title="Review" icon={<Sparkles className="h-3 w-3" />}>
+            <p className="text-sm text-[var(--ink-soft)]">
+              {state.review_summary}
+            </p>
+          </PrimaryCard>
+        )}
+      </div>
     </div>
-  </div>
-)}
+  );
+}
 ```
 
 - [ ] **Step 4: Verify TypeScript compiles**
@@ -446,6 +465,7 @@ pnpm dev:web
 Open `http://localhost:3000/wellness`.
 
 Expected behavior to check:
+
 - If neither service is connected: Kroger gate shows (step 1 of 2, step 2 dimmed)
 - If Kroger is already connected (e.g. visited Grocery page first): Strava gate shows (step 1 green ✓, step 2 active)
 - If both connected: main wellness dashboard renders with `OrchestrationFlow` and the source/plan cards

@@ -39,10 +39,12 @@ export default function TravelScreen() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: [...messages, { role: "user", content: userMsg }].map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
+          messages: [...messages, { role: "user", content: userMsg }].map(
+            (m) => ({
+              role: m.role,
+              content: m.content,
+            }),
+          ),
           state: tripState,
         }),
       });
@@ -50,14 +52,20 @@ export default function TravelScreen() {
       if (response.ok) {
         const data = await response.json();
         if (data.content) {
-          setMessages((prev) => [...prev, { role: "assistant", content: data.content }]);
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content: data.content },
+          ]);
         }
         if (data.state) setTripState((prev) => ({ ...prev, ...data.state }));
       }
     } catch (e) {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "Connection error. Is the agent running?" },
+        {
+          role: "assistant",
+          content: "Connection error. Is the agent running?",
+        },
       ]);
     } finally {
       setIsLoading(false);
@@ -84,21 +92,33 @@ export default function TravelScreen() {
       ) : (
         <View style={styles.emptyState}>
           <Text style={styles.emptyTitle}>Trip Planner</Text>
-          <Text style={styles.emptySubtitle}>Tell me where you want to go.</Text>
+          <Text style={styles.emptySubtitle}>
+            Tell me where you want to go.
+          </Text>
         </View>
       )}
 
       <ScrollView
         ref={scrollRef}
         style={styles.messageList}
-        onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+        onContentSizeChange={() =>
+          scrollRef.current?.scrollToEnd({ animated: true })
+        }
       >
         {messages.map((m, i) => (
           <View
             key={i}
-            style={[styles.bubble, m.role === "user" ? styles.userBubble : styles.agentBubble]}
+            style={[
+              styles.bubble,
+              m.role === "user" ? styles.userBubble : styles.agentBubble,
+            ]}
           >
-            <Text style={[styles.bubbleText, m.role === "user" ? styles.userText : styles.agentText]}>
+            <Text
+              style={[
+                styles.bubbleText,
+                m.role === "user" ? styles.userText : styles.agentText,
+              ]}
+            >
               {m.content}
             </Text>
           </View>
@@ -141,8 +161,29 @@ const styles = StyleSheet.create({
   bubbleText: { fontSize: 14, lineHeight: 20 },
   userText: { color: "#fff" },
   agentText: { color: "#111" },
-  inputRow: { flexDirection: "row", padding: 12, borderTopWidth: 1, borderTopColor: "#eee", gap: 8 },
-  input: { flex: 1, minHeight: 40, maxHeight: 120, backgroundColor: "#f5f5f5", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, color: "#111" },
-  sendButton: { backgroundColor: "#000", borderRadius: 20, paddingHorizontal: 16, justifyContent: "center" },
+  inputRow: {
+    flexDirection: "row",
+    padding: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
+    gap: 8,
+  },
+  input: {
+    flex: 1,
+    minHeight: 40,
+    maxHeight: 120,
+    backgroundColor: "#f5f5f5",
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: "#111",
+  },
+  sendButton: {
+    backgroundColor: "#000",
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    justifyContent: "center",
+  },
   sendText: { color: "#fff", fontWeight: "600", fontSize: 14 },
 });

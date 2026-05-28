@@ -1,10 +1,10 @@
-import { memo } from 'react';
-import { fromMarkdown } from 'mdast-util-from-markdown';
-import { gfmTable } from 'micromark-extension-gfm-table';
-import { gfmTableFromMarkdown } from 'mdast-util-gfm-table';
-import ASTRenderer from './ast-renderer';
-import type { MarkdownProps } from './types';
-import { getKeyFromMarkdown, resolveReference } from './utils';
+import { memo } from "react";
+import { fromMarkdown } from "mdast-util-from-markdown";
+import { gfmTable } from "micromark-extension-gfm-table";
+import { gfmTableFromMarkdown } from "mdast-util-gfm-table";
+import ASTRenderer from "./ast-renderer";
+import type { MarkdownProps } from "./types";
+import { getKeyFromMarkdown, resolveReference } from "./utils";
 
 const Markdown = memo(
   ({
@@ -39,8 +39,8 @@ const Markdown = memo(
     });
 
     return renderer.render(tree);
-  }
+  },
 );
 
-Markdown.displayName = 'Markdown';
+Markdown.displayName = "Markdown";
 export default Markdown;

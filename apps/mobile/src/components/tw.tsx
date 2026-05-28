@@ -74,7 +74,10 @@ function convertStylesToProps(
   if (!style) {
     return { style, props: {} as Record<string, unknown> };
   }
-  const flatStyle = (StyleSheet.flatten(style) || {}) as Record<string, unknown>;
+  const flatStyle = (StyleSheet.flatten(style) || {}) as Record<
+    string,
+    unknown
+  >;
   const props: Record<string, unknown> = {};
 
   for (const [styleKey, propKey] of Object.entries(move)) {

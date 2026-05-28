@@ -19,7 +19,8 @@ const jetbrains = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "Agents — AI planning network",
-  description: "Trip, grocery, and fitness agents that collaborate — powered by Google ADK + CopilotKit.",
+  description:
+    "Trip, grocery, and fitness agents that collaborate — powered by Google ADK + CopilotKit.",
 };
 
 export default function RootLayout({

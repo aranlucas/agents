@@ -34,6 +34,7 @@
 ## Task 1: Shared Fitness Types
 
 **Files:**
+
 - Modify: `packages/types/src/index.ts`
 
 - [ ] **Step 1: Add the fitness types**
@@ -42,31 +43,31 @@ Append this block to `packages/types/src/index.ts`:
 
 ```ts
 // Fitness agent state — matches what agents/fitness writes to ADK shared state
-export type FitnessStatus = 'idle' | 'syncing' | 'planning' | 'ready'
+export type FitnessStatus = "idle" | "syncing" | "planning" | "ready";
 
 export type FitnessActivity = {
-  id: string
-  name: string
-  sport_type?: string
-  start_date?: string
-  distance_m?: number
-  moving_time_s?: number
-  elapsed_time_s?: number
-  total_elevation_gain_m?: number
-  average_heartrate?: number
-  perceived_effort?: number
-}
+  id: string;
+  name: string;
+  sport_type?: string;
+  start_date?: string;
+  distance_m?: number;
+  moving_time_s?: number;
+  elapsed_time_s?: number;
+  total_elevation_gain_m?: number;
+  average_heartrate?: number;
+  perceived_effort?: number;
+};
 
 export type FitnessState = {
-  strava_connected?: boolean
-  strava_token?: string
-  activities?: FitnessActivity[]
-  activities_synced_at?: string
-  objective_research?: string
-  training_plan?: string
-  status?: FitnessStatus
-  review_summary?: string
-}
+  strava_connected?: boolean;
+  strava_token?: string;
+  activities?: FitnessActivity[];
+  activities_synced_at?: string;
+  objective_research?: string;
+  training_plan?: string;
+  status?: FitnessStatus;
+  review_summary?: string;
+};
 ```
 
 - [ ] **Step 2: Verify TypeScript can parse the package**
@@ -91,6 +92,7 @@ git commit -m "feat: add fitness state types"
 ## Task 2: Fitness Agent Tool Tests
 
 **Files:**
+
 - Create: `agents/fitness/tests/__init__.py`
 - Create: `agents/fitness/tests/test_fitness_tools.py`
 
@@ -246,6 +248,7 @@ git commit -m "test: define fitness agent tool behavior"
 ## Task 3: Fitness Agent Backend
 
 **Files:**
+
 - Create: `agents/fitness/main.py`
 - Create: `agents/fitness/utils.py`
 - Create: `agents/fitness/pyproject.toml`
@@ -737,6 +740,7 @@ git commit -m "feat: add fitness agent backend"
 ## Task 4: Agent Deployment Wiring
 
 **Files:**
+
 - Create: `agents/fitness/Dockerfile`
 - Create: `agents/fitness/railway.json`
 - Modify: `docker-compose.yml`
@@ -786,19 +790,19 @@ Create `agents/fitness/railway.json`:
 Modify `docker-compose.yml` to include:
 
 ```yaml
-  fitness:
-    build:
-      context: ./agents/fitness
-    ports:
-      - "8002:8002"
-    env_file:
-      - path: ./.env
-        required: false
-      - path: ./agents/fitness/.env
-        required: false
-    environment:
-      OTEL_SERVICE_NAME: fitness-agent
-      PORT: 8002
+fitness:
+  build:
+    context: ./agents/fitness
+  ports:
+    - "8002:8002"
+  env_file:
+    - path: ./.env
+      required: false
+    - path: ./agents/fitness/.env
+      required: false
+  environment:
+    OTEL_SERVICE_NAME: fitness-agent
+    PORT: 8002
 ```
 
 - [ ] **Step 4: Add root env examples**
@@ -834,6 +838,7 @@ git commit -m "feat: wire fitness agent services"
 ## Task 5: Web Runtime And Env Wiring
 
 **Files:**
+
 - Modify: `apps/web/src/env.ts`
 - Modify: `apps/web/src/app/api/copilotkit/route.ts`
 - Modify: `apps/web/.env.example`
@@ -893,6 +898,7 @@ git commit -m "feat: register fitness agent in web runtime"
 ## Task 6: Strava Token Route
 
 **Files:**
+
 - Create: `apps/web/src/app/api/strava/token/route.ts`
 
 - [ ] **Step 1: Create the token route**
@@ -934,7 +940,10 @@ function getErrorDetails(error: unknown) {
 export async function GET() {
   const { userId } = await auth();
   if (!userId) {
-    return NextResponse.json({ connected: false, token: null }, { status: 401 });
+    return NextResponse.json(
+      { connected: false, token: null },
+      { status: 401 },
+    );
   }
 
   try {
@@ -975,7 +984,9 @@ export async function GET() {
       connected: false,
       token: null,
       ...(isDevelopment
-        ? { debug: { provider: STRAVA_PROVIDER, error: getErrorDetails(error) } }
+        ? {
+            debug: { provider: STRAVA_PROVIDER, error: getErrorDetails(error) },
+          }
         : {}),
     });
   }
@@ -1004,6 +1015,7 @@ git commit -m "feat: add strava token route"
 ## Task 7: Fitness Web Page
 
 **Files:**
+
 - Create: `apps/web/src/app/fitness/page.tsx`
 
 - [ ] **Step 1: Create the `/fitness` page**
@@ -1025,15 +1037,14 @@ import {
 import { Streamdown } from "streamdown";
 import { Activity, Dumbbell, Mountain, RefreshCw } from "lucide-react";
 
-import type { FitnessActivity, FitnessState, FitnessStatus } from "@agents/types";
+import type {
+  FitnessActivity,
+  FitnessState,
+  FitnessStatus,
+} from "@agents/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 const STRAVA_PROVIDER = "custom_strava";
@@ -1109,7 +1120,8 @@ function FitnessPageInner() {
           strategy: STRAVA_STRATEGY,
           redirectUrl: window.location.href,
         });
-    const redirectUrl = account.verification?.externalVerificationRedirectURL?.href;
+    const redirectUrl =
+      account.verification?.externalVerificationRedirectURL?.href;
     if (redirectUrl) window.location.assign(redirectUrl);
   });
 
@@ -1156,14 +1168,22 @@ function FitnessPageInner() {
 
     fetch("/api/strava/token")
       .then((r) => r.json())
-      .then(({ connected, token }: { connected: boolean; token: string | null }) => {
-        const current = (agent.state ?? {}) as FitnessState;
-        agent.setState({
-          ...current,
-          strava_connected: connected,
-          strava_token: token ?? undefined,
-        });
-      })
+      .then(
+        ({
+          connected,
+          token,
+        }: {
+          connected: boolean;
+          token: string | null;
+        }) => {
+          const current = (agent.state ?? {}) as FitnessState;
+          agent.setState({
+            ...current,
+            strava_connected: connected,
+            strava_token: token ?? undefined,
+          });
+        },
+      )
       .catch(() => {
         const current = (agent.state ?? {}) as FitnessState;
         agent.setState({
@@ -1223,7 +1243,10 @@ function FitnessPageInner() {
       ) : (
         <div className="mx-auto grid w-full max-w-[1400px] flex-1 gap-4 p-4 md:p-6 lg:grid-cols-[360px_minmax(0,1fr)]">
           <div className="flex min-w-0 flex-col gap-4">
-            <SummaryCard totals={totals} syncedAt={state.activities_synced_at} />
+            <SummaryCard
+              totals={totals}
+              syncedAt={state.activities_synced_at}
+            />
             <ActivitiesCard activities={activities} />
           </div>
           <div className="flex min-w-0 flex-col gap-4">
@@ -1238,7 +1261,8 @@ function FitnessPageInner() {
         defaultOpen={false}
         labels={{
           modalHeaderTitle: "Fitness Planner",
-          chatInputPlaceholder: "Plan training, sync Strava, research objectives...",
+          chatInputPlaceholder:
+            "Plan training, sync Strava, research objectives...",
         }}
       />
     </main>
@@ -1286,7 +1310,12 @@ function SummaryCard({
   totals,
   syncedAt,
 }: {
-  totals: { count: number; distanceKm: number; hours: number; elevationM: number };
+  totals: {
+    count: number;
+    distanceKm: number;
+    hours: number;
+    elevationM: number;
+  };
   syncedAt?: string;
 }) {
   return (
@@ -1309,7 +1338,9 @@ function SummaryCard({
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border border-[var(--border-soft)] bg-[var(--surface-soft)] p-3">
-      <div className="text-[11px] uppercase text-[var(--ink-mute)]">{label}</div>
+      <div className="text-[11px] uppercase text-[var(--ink-mute)]">
+        {label}
+      </div>
       <div className="mt-1 font-mono text-lg font-semibold text-[var(--ink)]">
         {value}
       </div>
@@ -1339,7 +1370,9 @@ function ActivitiesCard({ activities }: { activities: FitnessActivity[] }) {
                   <span>{(activity.distance_m / 1000).toFixed(1)} km</span>
                 )}
                 {activity.total_elevation_gain_m !== undefined && (
-                  <span>{Math.round(activity.total_elevation_gain_m)} m gain</span>
+                  <span>
+                    {Math.round(activity.total_elevation_gain_m)} m gain
+                  </span>
                 )}
               </div>
             </li>
@@ -1369,7 +1402,9 @@ function PlanCard({
         </EmptyHint>
       )}
       {isStreaming && (
-        <div className="mt-3 text-xs text-[var(--accent-strong)]">writing...</div>
+        <div className="mt-3 text-xs text-[var(--accent-strong)]">
+          writing...
+        </div>
       )}
     </SectionCard>
   );
@@ -1378,7 +1413,10 @@ function PlanCard({
 function ResearchCard({ research }: { research: string }) {
   if (!research) return null;
   return (
-    <SectionCard title="Objective research" icon={<Mountain className="h-4 w-4" />}>
+    <SectionCard
+      title="Objective research"
+      icon={<Mountain className="h-4 w-4" />}
+    >
       <div className="text-sm text-[var(--ink-soft)] streamdown-markdown">
         <Streamdown>{research}</Streamdown>
       </div>
@@ -1422,6 +1460,7 @@ git commit -m "feat: add fitness web page"
 ## Task 8: Landing Page Link
 
 **Files:**
+
 - Modify: `apps/web/src/app/page.tsx`
 
 - [ ] **Step 1: Inspect the landing page**
@@ -1460,6 +1499,7 @@ git commit -m "feat: link fitness studio from home"
 ## Task 9: End-To-End Verification
 
 **Files:**
+
 - No code changes unless verification finds a defect.
 
 - [ ] **Step 1: Run Python tests**
@@ -1509,7 +1549,7 @@ curl -fsS http://localhost:8002/health
 Expected:
 
 ```json
-{"status":"ok"}
+{ "status": "ok" }
 ```
 
 - [ ] **Step 5: Final status**

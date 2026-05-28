@@ -31,6 +31,7 @@
 ## Task 1: Shared SQLite Session Helper
 
 **Files:**
+
 - Modify: `agents/travel/main.py`
 - Modify: `agents/grocery/main.py`
 - Modify: `agents/fitness/main.py`
@@ -185,6 +186,7 @@ Expected: PASS.
 ## Task 2: A2A Executor User Identity
 
 **Files:**
+
 - Modify: `agents/travel/utils.py`
 - Modify: `agents/grocery/utils.py`
 - Modify: `agents/fitness/utils.py`
@@ -249,6 +251,7 @@ Expected: PASS.
 ## Task 3: Wellness A2A Client Helpers
 
 **Files:**
+
 - Create: `agents/wellness/pyproject.toml`
 - Create: `agents/wellness/utils.py`
 - Test: `agents/wellness/tests/test_wellness_tools.py`
@@ -526,6 +529,7 @@ Expected: PASS.
 ## Task 4: Wellness Agent Service
 
 **Files:**
+
 - Create: `agents/wellness/main.py`
 - Create: `agents/wellness/tests/test_a2a.py`
 
@@ -761,6 +765,7 @@ Expected: PASS.
 ## Task 5: Web Runtime Identity and Wellness Registration
 
 **Files:**
+
 - Modify: `apps/web/src/app/api/copilotkit/route.ts`
 - Modify: `apps/web/src/env.ts`
 - Modify: `packages/types/src/index.ts`
@@ -817,17 +822,17 @@ WELLNESS_AGENT_URL: process.env.WELLNESS_AGENT_URL,
 In `packages/types/src/index.ts`, add:
 
 ```ts
-export type WellnessStatus = 'idle' | 'delegating' | 'planning' | 'ready'
+export type WellnessStatus = "idle" | "delegating" | "planning" | "ready";
 
 export type WellnessState = {
-  status?: WellnessStatus
-  meal_plan?: string
-  workout_plan?: string
-  weekly_plan?: string
-  review_summary?: string
-  last_delegation?: Record<string, unknown>
-  user_id?: string
-}
+  status?: WellnessStatus;
+  meal_plan?: string;
+  workout_plan?: string;
+  weekly_plan?: string;
+  review_summary?: string;
+  last_delegation?: Record<string, unknown>;
+  user_id?: string;
+};
 ```
 
 - [ ] **Step 4: Run type checks**
@@ -844,6 +849,7 @@ Expected: PASS, or if these scripts do not exist, run `pnpm -r typecheck` and do
 ## Task 6: Docker Compose and Service Files
 
 **Files:**
+
 - Create: `agents/wellness/Dockerfile`
 - Create: `agents/wellness/railway.json`
 - Modify: `docker-compose.yml`
@@ -874,10 +880,10 @@ Create `agents/wellness/railway.json`:
 In `docker-compose.yml`, add `/data` volume mounts and `ADK_SESSION_DB_PATH` to all agents:
 
 ```yaml
-    volumes:
-      - adk-session-data:/data
-    environment:
-      ADK_SESSION_DB_PATH: /data/adk_sessions.sqlite
+volumes:
+  - adk-session-data:/data
+environment:
+  ADK_SESSION_DB_PATH: /data/adk_sessions.sqlite
 ```
 
 Add wellness:
@@ -919,6 +925,7 @@ Expected: command exits 0.
 ## Task 7: Final Verification
 
 **Files:**
+
 - All changed files.
 
 - [ ] **Step 1: Run focused Python tests**

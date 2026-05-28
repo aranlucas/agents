@@ -38,9 +38,7 @@ export default function ProfileScreen() {
       />
 
       {/* Update Profile Button */}
-      <Pressable
-        className="bg-foreground rounded-xl mt-6 py-3.5 items-center active:opacity-80 border-continuous"
-      >
+      <Pressable className="bg-foreground rounded-xl mt-6 py-3.5 items-center active:opacity-80 border-continuous">
         <Text className="text-[17px] font-semibold text-background">
           Update Profile
         </Text>
@@ -67,9 +65,7 @@ export default function ProfileScreen() {
       </Text>
 
       {/* Save Preferences Button */}
-      <Pressable
-        className="bg-muted rounded-xl mt-4 py-3.5 items-center active:opacity-80 border-continuous"
-      >
+      <Pressable className="bg-muted rounded-xl mt-4 py-3.5 items-center active:opacity-80 border-continuous">
         <Text className="text-[17px] font-semibold text-muted-foreground">
           Save Preferences
         </Text>

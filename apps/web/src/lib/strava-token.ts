@@ -25,7 +25,9 @@ export async function getStravaAccessToken() {
   );
 
   if (isExpired) {
-    console.warn("[strava-token] token is expired — user must reconnect Strava");
+    console.warn(
+      "[strava-token] token is expired — user must reconnect Strava",
+    );
     return { connected: false, token: null };
   }
 

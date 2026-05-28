@@ -64,7 +64,16 @@ function TouchableGlassFallback({
   ...rest
 }: TouchableGlassProps) {
   // Pick only View-compatible props, stripping glass-specific ones
-  const { fallbackTint, fallbackIntensity, glassEffectStyle, tintColor, isInteractive, colorScheme, animatedProps, ...viewProps } = rest as Record<string, unknown>;
+  const {
+    fallbackTint,
+    fallbackIntensity,
+    glassEffectStyle,
+    tintColor,
+    isInteractive,
+    colorScheme,
+    animatedProps,
+    ...viewProps
+  } = rest as Record<string, unknown>;
   const safeViewProps = viewProps as ViewOnlyProps;
   const [pressed, setPressed] = useState(false);
   const onTouchBegin = () => {

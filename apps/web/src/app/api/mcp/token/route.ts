@@ -51,7 +51,11 @@ export async function GET() {
     // Provider not connected or token unavailable
     return NextResponse.json({
       connected: false,
-      ...(isDevelopment ? { debug: { provider: KROGER_PROVIDER, error: getErrorDetails(error) } } : {}),
+      ...(isDevelopment
+        ? {
+            debug: { provider: KROGER_PROVIDER, error: getErrorDetails(error) },
+          }
+        : {}),
     });
   }
 }

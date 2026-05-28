@@ -16,12 +16,7 @@ import { ShoppingCart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { HeroHeader } from "@/components/hero-header";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuthConnection } from "@/lib/use-auth-connection";
 import { cn } from "@/lib/utils";
 
@@ -73,11 +68,7 @@ function KrogerAuthGate({
           products, check weekly deals, and manage your shopping list.
         </p>
       </div>
-      <Button
-        onClick={onConnect}
-        disabled={connecting}
-        size="lg"
-      >
+      <Button onClick={onConnect} disabled={connecting} size="lg">
         {connecting ? "Connecting…" : "Connect Kroger"}
       </Button>
       <p className="text-xs text-[var(--ink-mute)]">
@@ -103,7 +94,8 @@ function GroceryPageInner() {
           strategy: KROGER_STRATEGY,
           redirectUrl: window.location.href,
         });
-    const redirectUrl = account.verification?.externalVerificationRedirectURL?.href;
+    const redirectUrl =
+      account.verification?.externalVerificationRedirectURL?.href;
     if (redirectUrl) {
       window.location.assign(redirectUrl);
     }
@@ -194,10 +186,12 @@ function GroceryPageInner() {
   return (
     <main
       className="min-h-full flex flex-col"
-      style={{
-        "--page-color": "var(--grocery)",
-        "--page-color-soft": "var(--grocery-soft)",
-      } as React.CSSProperties}
+      style={
+        {
+          "--page-color": "var(--grocery)",
+          "--page-color-soft": "var(--grocery-soft)",
+        } as React.CSSProperties
+      }
     >
       <HeroHeader
         name="Grocery Studio"
@@ -233,7 +227,8 @@ function GroceryPageInner() {
         defaultOpen={false}
         labels={{
           modalHeaderTitle: "Grocery Planner",
-          chatInputPlaceholder: "Plan meals, build a shopping list, find deals…",
+          chatInputPlaceholder:
+            "Plan meals, build a shopping list, find deals…",
         }}
       />
     </main>

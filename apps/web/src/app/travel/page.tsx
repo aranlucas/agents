@@ -18,10 +18,7 @@ import type { DocStatus, TripState } from "@agents/types";
 import { HeroHeader } from "@/components/hero-header";
 import { DocumentCanvas } from "@/components/document-canvas";
 import { PreferencesPanel } from "@/components/preferences-panel";
-import {
-  ApprovalDialog,
-  ApprovalRequest,
-} from "@/components/approval-dialog";
+import { ApprovalDialog, ApprovalRequest } from "@/components/approval-dialog";
 import { Card } from "@/components/ui/card";
 
 const STATUS_VALUES: ReadonlyArray<DocStatus> = [
@@ -56,10 +53,7 @@ function TripStudio() {
 
   const { agent } = useAgent({
     agentId: "travel",
-    updates: [
-      UseAgentUpdate.OnStateChanged,
-      UseAgentUpdate.OnRunStatusChanged,
-    ],
+    updates: [UseAgentUpdate.OnStateChanged, UseAgentUpdate.OnRunStatusChanged],
   });
 
   const agentState = (agent?.state ?? {}) as TripState;
@@ -76,7 +70,7 @@ function TripStudio() {
   const reviewSummary = agentState.review_summary;
   const isRunning = Boolean(agent?.isRunning);
 
-useFrontendTool({
+  useFrontendTool({
     name: "request_user_approval",
     description:
       "Pause and ask the operator to approve a sensitive trip action " +
@@ -154,51 +148,54 @@ useFrontendTool({
     available: "always",
   });
 
-  useDefaultRenderTool({
-    render: ({ name, parameters, status, result }) => {
-      const hasParams =
-        typeof parameters === "object" &&
-        parameters !== null &&
-        Object.keys(parameters as Record<string, unknown>).length > 0;
+  useDefaultRenderTool(
+    {
+      render: ({ name, parameters, status, result }) => {
+        const hasParams =
+          typeof parameters === "object" &&
+          parameters !== null &&
+          Object.keys(parameters as Record<string, unknown>).length > 0;
 
-      return (
-        <Card className="my-2 gap-2 bg-[var(--surface-soft)] p-3 py-3 text-sm">
-          <div className="flex items-center gap-2 font-mono font-semibold text-[var(--ink-soft)]">
-            <span>
-              {status === "complete"
-                ? "✓"
-                : status === "inProgress" || status === "executing"
-                  ? "⏳"
-                  : "○"}
-            </span>
-            <span>{name}</span>
-          </div>
-          {hasParams && (
-            <details className="mt-2">
-              <summary className="cursor-pointer text-xs text-[var(--ink-mute)]">
-                Parameters
-              </summary>
-              <pre className="mt-1 overflow-auto rounded bg-[var(--bg-soft)] p-2 text-xs">
-                {JSON.stringify(parameters, null, 2)}
-              </pre>
-            </details>
-          )}
-          {status === "complete" && result && (
-            <details className="mt-2">
-              <summary className="cursor-pointer text-xs text-[var(--ink-mute)]">
-                Result
-              </summary>
-              <pre className="mt-1 overflow-auto rounded bg-[var(--bg-soft)] p-2 text-xs">
-                {typeof result === "string"
-                  ? result
-                  : JSON.stringify(result, null, 2)}
-              </pre>
-            </details>
-          )}
-        </Card>
-      );
+        return (
+          <Card className="my-2 gap-2 bg-[var(--surface-soft)] p-3 py-3 text-sm">
+            <div className="flex items-center gap-2 font-mono font-semibold text-[var(--ink-soft)]">
+              <span>
+                {status === "complete"
+                  ? "✓"
+                  : status === "inProgress" || status === "executing"
+                    ? "⏳"
+                    : "○"}
+              </span>
+              <span>{name}</span>
+            </div>
+            {hasParams && (
+              <details className="mt-2">
+                <summary className="cursor-pointer text-xs text-[var(--ink-mute)]">
+                  Parameters
+                </summary>
+                <pre className="mt-1 overflow-auto rounded bg-[var(--bg-soft)] p-2 text-xs">
+                  {JSON.stringify(parameters, null, 2)}
+                </pre>
+              </details>
+            )}
+            {status === "complete" && result && (
+              <details className="mt-2">
+                <summary className="cursor-pointer text-xs text-[var(--ink-mute)]">
+                  Result
+                </summary>
+                <pre className="mt-1 overflow-auto rounded bg-[var(--bg-soft)] p-2 text-xs">
+                  {typeof result === "string"
+                    ? result
+                    : JSON.stringify(result, null, 2)}
+                </pre>
+              </details>
+            )}
+          </Card>
+        );
+      },
     },
-  }, []);
+    [],
+  );
 
   // Cleanup any pending approval promises if the user unmounts mid-flow.
   const pendingRef = useRef<ApprovalRequest[]>([]);
@@ -255,8 +252,7 @@ useFrontendTool({
   const sidebarLabels = useMemo(
     () => ({
       modalHeaderTitle: "Trip Planner",
-      chatInputPlaceholder:
-        "Plan a trip, rework a day, or ask for tradeoffs…",
+      chatInputPlaceholder: "Plan a trip, rework a day, or ask for tradeoffs…",
     }),
     [],
   );
@@ -264,10 +260,12 @@ useFrontendTool({
   return (
     <main
       className="min-h-full flex flex-col"
-      style={{
-        "--page-color": "var(--travel)",
-        "--page-color-soft": "var(--travel-soft)",
-      } as React.CSSProperties}
+      style={
+        {
+          "--page-color": "var(--travel)",
+          "--page-color-soft": "var(--travel-soft)",
+        } as React.CSSProperties
+      }
     >
       <HeroHeader
         name="Trip Studio"

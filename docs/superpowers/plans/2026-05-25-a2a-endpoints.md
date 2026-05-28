@@ -12,28 +12,29 @@
 
 ## File Map
 
-| File | Change |
-|------|--------|
-| `agents/travel/pyproject.toml` | Add `a2a-sdk>=1.0.3` |
-| `agents/grocery/pyproject.toml` | Add `a2a-sdk>=1.0.3` |
-| `agents/fitness/pyproject.toml` | Add `a2a-sdk>=1.0.3` |
-| `agents/travel/utils.py` | Add `ADKAgentExecutor` class |
-| `agents/grocery/utils.py` | Add `ADKAgentExecutor` class |
-| `agents/fitness/utils.py` | Add `ADKAgentExecutor` class |
-| `agents/travel/main.py` | Shared session svc, A2A runner + routes, move AG-UI to `/agui`, fix `ResourceAttributes` |
-| `agents/grocery/main.py` | Same pattern |
-| `agents/fitness/main.py` | Same pattern |
-| `agents/travel/tests/test_a2a.py` | New — smoke tests for A2A routes |
-| `agents/grocery/tests/test_a2a.py` | New |
-| `agents/fitness/tests/test_a2a.py` | New |
-| `apps/web/.env.example` | `*_AGENT_URL` → `…/agui` |
-| `apps/web/.env.local` | Same |
+| File                               | Change                                                                                   |
+| ---------------------------------- | ---------------------------------------------------------------------------------------- |
+| `agents/travel/pyproject.toml`     | Add `a2a-sdk>=1.0.3`                                                                     |
+| `agents/grocery/pyproject.toml`    | Add `a2a-sdk>=1.0.3`                                                                     |
+| `agents/fitness/pyproject.toml`    | Add `a2a-sdk>=1.0.3`                                                                     |
+| `agents/travel/utils.py`           | Add `ADKAgentExecutor` class                                                             |
+| `agents/grocery/utils.py`          | Add `ADKAgentExecutor` class                                                             |
+| `agents/fitness/utils.py`          | Add `ADKAgentExecutor` class                                                             |
+| `agents/travel/main.py`            | Shared session svc, A2A runner + routes, move AG-UI to `/agui`, fix `ResourceAttributes` |
+| `agents/grocery/main.py`           | Same pattern                                                                             |
+| `agents/fitness/main.py`           | Same pattern                                                                             |
+| `agents/travel/tests/test_a2a.py`  | New — smoke tests for A2A routes                                                         |
+| `agents/grocery/tests/test_a2a.py` | New                                                                                      |
+| `agents/fitness/tests/test_a2a.py` | New                                                                                      |
+| `apps/web/.env.example`            | `*_AGENT_URL` → `…/agui`                                                                 |
+| `apps/web/.env.local`              | Same                                                                                     |
 
 ---
 
 ## Task 1: Add `a2a-sdk>=1.0.3` to all three agents
 
 **Files:**
+
 - Modify: `agents/travel/pyproject.toml`
 - Modify: `agents/grocery/pyproject.toml`
 - Modify: `agents/fitness/pyproject.toml`
@@ -43,6 +44,7 @@
 In each file, add `"a2a-sdk>=1.0.3"` to the `dependencies` list. Keep `google-adk>=1.34.1` as-is (no `[a2a]` extra needed — we use a2a-sdk directly).
 
 `agents/travel/pyproject.toml` — add one line to `dependencies`:
+
 ```toml
 [project]
 dependencies = [
@@ -99,6 +101,7 @@ git commit -m "chore: add a2a-sdk>=1.0.3 to all three agents"
 The executor is identical in all three agents — it wraps any ADK `Runner` generically. Add it to `utils.py` in each agent directory.
 
 **Files:**
+
 - Modify: `agents/travel/utils.py`
 - Modify: `agents/grocery/utils.py`
 - Modify: `agents/fitness/utils.py`
@@ -309,6 +312,7 @@ git commit -m "feat: add ADKAgentExecutor to all three agents"
 ## Task 3: Wire A2A into travel `main.py`
 
 **Files:**
+
 - Modify: `agents/travel/main.py`
 - Modify: `agents/travel/tests/test_a2a.py` (add route smoke tests)
 
@@ -362,6 +366,7 @@ Expected: FAIL with 404.
 - [ ] **Step 3: Update imports in `agents/travel/main.py`**
 
 Replace the existing import block. Changes:
+
 - Remove `from opentelemetry.semconv.resource import ResourceAttributes`
 - Add a2a-sdk imports, ADK service imports, `ADKAgentExecutor` from utils
 
@@ -547,6 +552,7 @@ git commit -m "feat(travel): add A2A endpoint at / and move AG-UI to /agui"
 ## Task 4: Wire A2A into grocery `main.py`
 
 **Files:**
+
 - Modify: `agents/grocery/main.py`
 - Modify: `agents/grocery/tests/test_a2a.py`
 
@@ -768,6 +774,7 @@ git commit -m "feat(grocery): add A2A endpoint at / and move AG-UI to /agui"
 ## Task 5: Wire A2A into fitness `main.py`
 
 **Files:**
+
 - Modify: `agents/fitness/main.py`
 - Modify: `agents/fitness/tests/test_a2a.py`
 
@@ -991,6 +998,7 @@ git commit -m "feat(fitness): add A2A endpoint at / and move AG-UI to /agui"
 AG-UI moved from `<base>/` to `<base>/agui`. Update the env files the frontend uses to connect to the agents.
 
 **Files:**
+
 - Modify: `apps/web/.env.example`
 - Modify: `apps/web/.env.local`
 
@@ -1030,6 +1038,7 @@ cd apps/web && pnpm dev
 Open http://localhost:3000 and send one message to a agent. Confirm it replies.
 
 Also verify A2A cards are reachable:
+
 ```bash
 curl http://localhost:8000/.well-known/agent-card.json | python3 -m json.tool
 curl http://localhost:8001/.well-known/agent-card.json | python3 -m json.tool
@@ -1050,6 +1059,7 @@ git commit -m "chore: update agent URLs to /agui after A2A route move"
 ## Self-Review
 
 **Spec coverage:**
+
 - ✅ A2A at `/` — `create_jsonrpc_routes(_a2a_handler, "/")` in Tasks 3–5
 - ✅ Agent card at `/.well-known/agent-card.json` — `create_agent_card_routes` in Tasks 3–5
 - ✅ AG-UI moved to `/agui` — `path="/agui"` in Tasks 3–5
@@ -1063,6 +1073,7 @@ git commit -m "chore: update agent URLs to /agui after A2A route move"
 **Placeholder scan:** No TBDs. All code blocks are complete. Import paths verified against installed ADK 1.34.1 source.
 
 **Type consistency:**
+
 - `ADKAgentExecutor` defined in Task 2, imported in Tasks 3–5 via `from utils import ADKAgentExecutor` ✓
 - `_shared_session_svc: InMemorySessionService` used consistently in both `ADKAgent(session_service=...)` and `Runner(session_service=...)` ✓
 - Agent card name in test assertions matches `_a2a_agent_card()` return value ✓ (`"Travel Planning Agent"`, `"Grocery Planning Agent"`, `"Fitness Training Agent"`)

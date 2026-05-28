@@ -23,16 +23,9 @@ function AttachmentButton({
   label: string;
 }) {
   return (
-    <Pressable
-      className="flex-1 items-center gap-2 py-3 rounded-xl bg-secondary active:bg-muted border-continuous"
-    >
-      <Icon
-        icon={icon}
-        className="w-6 h-6 text-foreground"
-      />
-      <Text className="text-[13px] text-foreground">
-        {label}
-      </Text>
+    <Pressable className="flex-1 items-center gap-2 py-3 rounded-xl bg-secondary active:bg-muted border-continuous">
+      <Icon icon={icon} className="w-6 h-6 text-foreground" />
+      <Text className="text-[13px] text-foreground">{label}</Text>
     </Pressable>
   );
 }
@@ -52,13 +45,8 @@ function ToggleRow({
 }) {
   return (
     <View className="flex-row items-center px-5 py-3 gap-3.5">
-      <Icon
-        icon={icon}
-        className="w-5 h-5 text-foreground"
-      />
-      <Text className="flex-1 text-[17px] text-foreground">
-        {label}
-      </Text>
+      <Icon icon={icon} className="w-5 h-5 text-foreground" />
+      <Text className="flex-1 text-[17px] text-foreground">{label}</Text>
       {badge && (
         <View className="px-1.5 py-0.5 rounded bg-muted">
           <Text className="text-[11px] font-medium text-muted-foreground">
@@ -87,20 +75,10 @@ function DisclosureRow({
       onPress={onPress}
       className="flex-row items-center px-5 py-3.5 gap-3.5 active:bg-muted"
     >
-      <Icon
-        icon={icon}
-        className="w-5 h-5 text-foreground"
-      />
-      <Text className="flex-1 text-[17px] text-foreground">
-        {label}
-      </Text>
-      <Text className="text-[15px] text-muted-foreground">
-        {detail}
-      </Text>
-      <Icon
-        icon={ChevronRight}
-        className="w-3 h-3 text-muted-foreground"
-      />
+      <Icon icon={icon} className="w-5 h-5 text-foreground" />
+      <Text className="flex-1 text-[17px] text-foreground">{label}</Text>
+      <Text className="text-[15px] text-muted-foreground">{detail}</Text>
+      <Icon icon={ChevronRight} className="w-3 h-3 text-muted-foreground" />
     </Pressable>
   );
 }

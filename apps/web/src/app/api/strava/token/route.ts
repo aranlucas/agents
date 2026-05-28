@@ -47,7 +47,9 @@ export async function GET() {
     return NextResponse.json({
       connected: false,
       ...(isDevelopment
-        ? { debug: { provider: STRAVA_PROVIDER, error: getErrorDetails(error) } }
+        ? {
+            debug: { provider: STRAVA_PROVIDER, error: getErrorDetails(error) },
+          }
         : {}),
     });
   }

@@ -60,7 +60,6 @@ const NAV_ITEMS = [
   { href: "/settings", label: "Settings" },
 ] as const;
 
-
 /**
  * Sidebar matching the native drawer content layout:
  * - Bold "Chat" title
@@ -293,9 +292,7 @@ export function Sidebar({
                       <Settings size={14} strokeWidth={1.5} />
                       Settings
                     </DropdownMenu.Item>
-                    <DropdownMenu.Separator
-                      className={MENU_SEPARATOR_CLASS}
-                    />
+                    <DropdownMenu.Separator className={MENU_SEPARATOR_CLASS} />
                     <DropdownMenu.Item className={MENU_DESTRUCTIVE_CLASS}>
                       <LogOut size={14} strokeWidth={1.5} />
                       Sign out

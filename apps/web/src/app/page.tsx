@@ -9,7 +9,8 @@ const AGENTS: Agent[] = [
     href: "/travel",
     name: "Trip Studio",
     tagline: "Real-time itinerary planning",
-    description: "Co-plan an itinerary, stream day-by-day, and book with approval.",
+    description:
+      "Co-plan an itinerary, stream day-by-day, and book with approval.",
     cta: "Plan trip",
     tags: ["Travel", "Approvals", "Streaming"],
     theme: "travel",
@@ -19,7 +20,8 @@ const AGENTS: Agent[] = [
     href: "/grocery",
     name: "Grocery Studio",
     tagline: "Meal plans to Kroger carts",
-    description: "Plan meals, find weekly deals, and build a cart you can check out.",
+    description:
+      "Plan meals, find weekly deals, and build a cart you can check out.",
     cta: "Plan groceries",
     tags: ["Meals", "Kroger", "Deals"],
     theme: "grocery",
@@ -29,7 +31,8 @@ const AGENTS: Agent[] = [
     href: "/fitness",
     name: "Fitness Studio",
     tagline: "Strava-aware weekly training",
-    description: "Build weekly training from Strava history and mountain objectives.",
+    description:
+      "Build weekly training from Strava history and mountain objectives.",
     cta: "Plan training",
     tags: ["Fitness", "Strava", "Recovery"],
     theme: "fitness",
@@ -39,7 +42,8 @@ const AGENTS: Agent[] = [
     href: "/wellness",
     name: "Wellness Studio",
     tagline: "Meals and workouts together",
-    description: "Coordinate grocery and fitness agents into one practical weekly plan.",
+    description:
+      "Coordinate grocery and fitness agents into one practical weekly plan.",
     cta: "Plan week",
     tags: ["A2A", "Meals", "Training"],
     theme: "wellness",
@@ -62,7 +66,8 @@ export default function Home() {
             Planning system
           </p>
           <h1 className="text-[clamp(2rem,5vw,3.5rem)] font-extrabold tracking-tight text-[var(--ink)] leading-[1.0]">
-            Agents that work<br />
+            Agents that work
+            <br />
             <span style={{ opacity: 0.3 }}>together.</span>
           </h1>
         </div>
@@ -73,12 +78,22 @@ export default function Home() {
 
       <footer className="flex items-center gap-2 px-5 md:px-8 py-3 border-t border-[var(--border)] shrink-0">
         <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-[var(--grocery)]" />
-        <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ink-mute)]">Grocery</span>
-        <span className="font-mono text-[9px] text-[var(--border-soft)] select-none">+</span>
+        <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ink-mute)]">
+          Grocery
+        </span>
+        <span className="font-mono text-[9px] text-[var(--border-soft)] select-none">
+          +
+        </span>
         <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-[var(--fitness)]" />
-        <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ink-mute)]">Fitness</span>
-        <span className="font-mono text-[9px] text-[var(--border-soft)] select-none">→</span>
-        <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ink-mute)]">Wellness orchestration</span>
+        <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ink-mute)]">
+          Fitness
+        </span>
+        <span className="font-mono text-[9px] text-[var(--border-soft)] select-none">
+          →
+        </span>
+        <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ink-mute)]">
+          Wellness orchestration
+        </span>
       </footer>
     </div>
   );

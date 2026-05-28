@@ -128,179 +128,185 @@ export function PreferencesPanel() {
             variant="outline"
             className="h-auto rounded-md px-2 py-1 font-mono text-[10px] uppercase tracking-wider"
           >
-          UI → Agent
+            UI → Agent
           </Badge>
         </CardAction>
       </CardHeader>
 
       <CardContent className="space-y-4">
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className="block text-xs font-medium text-[var(--ink-soft)] mb-1">
-            Your name
-          </label>
-          <Input
-            type="text"
-            value={value.travelerName}
-            onChange={(e) => set("travelerName", e.target.value)}
-            placeholder="e.g. Ada"
-            className="bg-[var(--surface-soft)]"
-          />
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="block text-xs font-medium text-[var(--ink-soft)] mb-1">
+              Your name
+            </label>
+            <Input
+              type="text"
+              value={value.travelerName}
+              onChange={(e) => set("travelerName", e.target.value)}
+              placeholder="e.g. Ada"
+              className="bg-[var(--surface-soft)]"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[var(--ink-soft)] mb-1">
+              Home airport
+            </label>
+            <Input
+              type="text"
+              value={value.homeAirport}
+              onChange={(e) =>
+                set("homeAirport", e.target.value.toUpperCase().slice(0, 4))
+              }
+              placeholder="SFO"
+              className="bg-[var(--surface-soft)] font-mono uppercase"
+            />
+          </div>
         </div>
-        <div>
-          <label className="block text-xs font-medium text-[var(--ink-soft)] mb-1">
-            Home airport
-          </label>
-          <Input
-            type="text"
-            value={value.homeAirport}
-            onChange={(e) =>
-              set("homeAirport", e.target.value.toUpperCase().slice(0, 4))
-            }
-            placeholder="SFO"
-            className="bg-[var(--surface-soft)] font-mono uppercase"
-          />
+
+        <label className="block text-xs font-medium text-[var(--ink-soft)] mb-2">
+          Transport mode
+        </label>
+        <div className="grid grid-cols-2 gap-1.5 mb-4">
+          {[
+            {
+              value: "flight" as TransportMode,
+              label: "Flight",
+              icon: Plane,
+            },
+            {
+              value: "road_trip" as TransportMode,
+              label: "Road trip",
+              icon: Car,
+            },
+          ].map((opt) => {
+            const active = value.transportMode === opt.value;
+            const Icon = opt.icon;
+            return (
+              <Button
+                key={opt.value}
+                type="button"
+                onClick={() => set("transportMode", opt.value)}
+                variant={active ? "default" : "outline"}
+                size="sm"
+                className={cn(
+                  "h-9 text-xs",
+                  !active && "bg-[var(--surface-soft)]",
+                )}
+              >
+                <Icon className="size-3.5" />
+                <span className="font-medium">{opt.label}</span>
+              </Button>
+            );
+          })}
         </div>
-      </div>
 
-      <label className="block text-xs font-medium text-[var(--ink-soft)] mb-2">
-        Transport mode
-      </label>
-      <div className="grid grid-cols-2 gap-1.5 mb-4">
-        {([
-          {
-            value: "flight" as TransportMode,
-            label: "Flight",
-            icon: Plane,
-          },
-          {
-            value: "road_trip" as TransportMode,
-            label: "Road trip",
-            icon: Car,
-          },
-        ]).map((opt) => {
-          const active = value.transportMode === opt.value;
-          const Icon = opt.icon;
-          return (
-            <Button
-              key={opt.value}
-              type="button"
-              onClick={() => set("transportMode", opt.value)}
-              variant={active ? "default" : "outline"}
-              size="sm"
-              className={cn("h-9 text-xs", !active && "bg-[var(--surface-soft)]")}
-            >
-              <Icon className="size-3.5" />
-              <span className="font-medium">{opt.label}</span>
-            </Button>
-          );
-        })}
-      </div>
-
-      <label className="block text-xs font-medium text-[var(--ink-soft)] mb-2">
-        Budget tier
-      </label>
-      <div className="grid grid-cols-2 gap-1.5 mb-4">
-        {BUDGET_OPTIONS.map((opt) => {
-          const active = value.budgetTier === opt.value;
-          return (
-            <Button
-              key={opt.value}
-              type="button"
-              onClick={() => set("budgetTier", opt.value)}
-              variant={active ? "default" : "outline"}
-              className={cn(
-                "h-auto flex-col gap-0.5 py-2 text-xs",
-                !active && "bg-[var(--surface-soft)]",
-              )}
-            >
-              <span className="font-medium">{opt.label}</span>
-              <span
-                className={`text-[10px] ${
-                  active ? "text-white/80" : "text-[var(--ink-mute)]"
-                }`}
+        <label className="block text-xs font-medium text-[var(--ink-soft)] mb-2">
+          Budget tier
+        </label>
+        <div className="grid grid-cols-2 gap-1.5 mb-4">
+          {BUDGET_OPTIONS.map((opt) => {
+            const active = value.budgetTier === opt.value;
+            return (
+              <Button
+                key={opt.value}
+                type="button"
+                onClick={() => set("budgetTier", opt.value)}
+                variant={active ? "default" : "outline"}
+                className={cn(
+                  "h-auto flex-col gap-0.5 py-2 text-xs",
+                  !active && "bg-[var(--surface-soft)]",
+                )}
               >
-                {opt.hint}
-              </span>
-            </Button>
-          );
-        })}
-      </div>
+                <span className="font-medium">{opt.label}</span>
+                <span
+                  className={`text-[10px] ${
+                    active ? "text-white/80" : "text-[var(--ink-mute)]"
+                  }`}
+                >
+                  {opt.hint}
+                </span>
+              </Button>
+            );
+          })}
+        </div>
 
-      <label className="block text-xs font-medium text-[var(--ink-soft)] mb-2">
-        Vibe
-      </label>
-      <div className="grid grid-cols-3 gap-1.5 mb-4">
-        {VIBE_OPTIONS.map((opt) => {
-          const active = value.vibe === opt.value;
-          return (
-            <Button
-              key={opt.value}
-              type="button"
-              onClick={() => set("vibe", opt.value)}
-              variant={active ? "default" : "outline"}
-              size="xs"
-              className={cn("h-8 text-xs", !active && "bg-[var(--surface-soft)]")}
-            >
-              {opt.label}
-            </Button>
-          );
-        })}
-      </div>
-
-      <label className="block text-xs font-medium text-[var(--ink-soft)] mb-2">
-        Pace
-      </label>
-      <div className="grid grid-cols-3 gap-1.5 mb-4">
-        {PACE_OPTIONS.map((opt) => {
-          const active = value.pace === opt.value;
-          return (
-            <Button
-              key={opt.value}
-              type="button"
-              onClick={() => set("pace", opt.value)}
-              variant={active ? "default" : "outline"}
-              className={cn(
-                "h-auto flex-col gap-0.5 py-2 text-xs",
-                !active && "bg-[var(--surface-soft)]",
-              )}
-            >
-              <span className="font-medium">{opt.label}</span>
-              <span
-                className={`text-[10px] ${
-                  active ? "text-white/80" : "text-[var(--ink-mute)]"
-                }`}
+        <label className="block text-xs font-medium text-[var(--ink-soft)] mb-2">
+          Vibe
+        </label>
+        <div className="grid grid-cols-3 gap-1.5 mb-4">
+          {VIBE_OPTIONS.map((opt) => {
+            const active = value.vibe === opt.value;
+            return (
+              <Button
+                key={opt.value}
+                type="button"
+                onClick={() => set("vibe", opt.value)}
+                variant={active ? "default" : "outline"}
+                size="xs"
+                className={cn(
+                  "h-8 text-xs",
+                  !active && "bg-[var(--surface-soft)]",
+                )}
               >
-                {opt.hint}
-              </span>
-            </Button>
-          );
-        })}
-      </div>
+                {opt.label}
+              </Button>
+            );
+          })}
+        </div>
 
-      <label className="block text-xs font-medium text-[var(--ink-soft)] mb-2">
-        Interests
-      </label>
-      <div className="flex flex-wrap gap-1.5 mb-4">
-        {INTEREST_OPTIONS.map((i) => {
-          const active = value.interests.includes(i);
-          return (
-            <Button
-              key={i}
-              type="button"
-              onClick={() => toggleInterest(i)}
-              variant={active ? "default" : "outline"}
-              size="xs"
-              className={cn(
-                "rounded-full text-xs",
-                !active && "bg-[var(--surface-soft)]",
-              )}
-            >
-              {i}
-            </Button>
-          );
-        })}
-      </div>
+        <label className="block text-xs font-medium text-[var(--ink-soft)] mb-2">
+          Pace
+        </label>
+        <div className="grid grid-cols-3 gap-1.5 mb-4">
+          {PACE_OPTIONS.map((opt) => {
+            const active = value.pace === opt.value;
+            return (
+              <Button
+                key={opt.value}
+                type="button"
+                onClick={() => set("pace", opt.value)}
+                variant={active ? "default" : "outline"}
+                className={cn(
+                  "h-auto flex-col gap-0.5 py-2 text-xs",
+                  !active && "bg-[var(--surface-soft)]",
+                )}
+              >
+                <span className="font-medium">{opt.label}</span>
+                <span
+                  className={`text-[10px] ${
+                    active ? "text-white/80" : "text-[var(--ink-mute)]"
+                  }`}
+                >
+                  {opt.hint}
+                </span>
+              </Button>
+            );
+          })}
+        </div>
+
+        <label className="block text-xs font-medium text-[var(--ink-soft)] mb-2">
+          Interests
+        </label>
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          {INTEREST_OPTIONS.map((i) => {
+            const active = value.interests.includes(i);
+            return (
+              <Button
+                key={i}
+                type="button"
+                onClick={() => toggleInterest(i)}
+                variant={active ? "default" : "outline"}
+                size="xs"
+                className={cn(
+                  "rounded-full text-xs",
+                  !active && "bg-[var(--surface-soft)]",
+                )}
+              >
+                {i}
+              </Button>
+            );
+          })}
+        </div>
       </CardContent>
     </Card>
   );

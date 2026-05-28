@@ -16,7 +16,10 @@ import {
   type TextStyle,
 } from "react-native";
 import SyntaxHighlighter from "react-syntax-highlighter";
-import { githubGist, irBlack } from "react-syntax-highlighter/dist/esm/styles/hljs";
+import {
+  githubGist,
+  irBlack,
+} from "react-syntax-highlighter/dist/esm/styles/hljs";
 
 type HighlighterStyleSheet = { [key: string]: TextStyle };
 type ReactStyle = { [key: string]: CSSProperties };

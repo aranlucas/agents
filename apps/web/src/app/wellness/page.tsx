@@ -9,7 +9,14 @@ import {
   UseAgentUpdate,
   useConfigureSuggestions,
 } from "@copilotkit/react-core/v2";
-import { Activity, CalendarDays, Dumbbell, Salad, ShoppingCart, Sparkles } from "lucide-react";
+import {
+  Activity,
+  CalendarDays,
+  Dumbbell,
+  Salad,
+  ShoppingCart,
+  Sparkles,
+} from "lucide-react";
 import { Streamdown } from "streamdown";
 
 import { HeroHeader } from "@/components/hero-header";
@@ -56,10 +63,10 @@ const CONNECT_STEPS: ConnectStep[] = [
 ];
 
 const STATUS_META: Record<WellnessStatus, { label: string }> = {
-  idle:       { label: "No plan yet" },
+  idle: { label: "No plan yet" },
   delegating: { label: "Delegating" },
-  planning:   { label: "Planning" },
-  ready:      { label: "Ready" },
+  planning: { label: "Planning" },
+  ready: { label: "Ready" },
 };
 
 type SourceTheme = "grocery" | "fitness";
@@ -67,19 +74,22 @@ type SourceTheme = "grocery" | "fitness";
 const SOURCE_THEME = {
   grocery: {
     headerBg: "bg-[var(--grocery-soft)]",
-    iconBg:   "bg-[var(--grocery)]",
+    iconBg: "bg-[var(--grocery)]",
     svgColor: "var(--grocery)",
   },
   fitness: {
     headerBg: "bg-[var(--fitness-soft)]",
-    iconBg:   "bg-[var(--fitness)]",
+    iconBg: "bg-[var(--fitness)]",
     svgColor: "var(--fitness)",
   },
-} satisfies Record<SourceTheme, { headerBg: string; iconBg: string; svgColor: string }>;
+} satisfies Record<
+  SourceTheme,
+  { headerBg: string; iconBg: string; svgColor: string }
+>;
 
 function OrchestrationFlow({ status }: { status: WellnessStatus }) {
   const isDelegating = status === "delegating";
-  const isPlanning   = status === "planning";
+  const isPlanning = status === "planning";
 
   return (
     <div className="flex items-center justify-center border-b border-[var(--border-soft)] bg-[var(--surface)]">
@@ -90,8 +100,22 @@ function OrchestrationFlow({ status }: { status: WellnessStatus }) {
         <div className="flex h-6 w-6 items-center justify-center rounded-md text-white bg-[var(--grocery)]">
           <Salad className="h-3 w-3" />
         </div>
-        <svg width="32" height="14" viewBox="0 0 32 14" className="shrink-0" style={{ opacity: isDelegating ? 1 : 0.25 }}>
-          <line x1="0" y1="7" x2="26" y2="7" stroke="var(--grocery)" strokeWidth="1.5" strokeDasharray={isDelegating ? "4 2" : undefined} />
+        <svg
+          width="32"
+          height="14"
+          viewBox="0 0 32 14"
+          className="shrink-0"
+          style={{ opacity: isDelegating ? 1 : 0.25 }}
+        >
+          <line
+            x1="0"
+            y1="7"
+            x2="26"
+            y2="7"
+            stroke="var(--grocery)"
+            strokeWidth="1.5"
+            strokeDasharray={isDelegating ? "4 2" : undefined}
+          />
           <polygon points="26,3 32,7 26,11" fill="var(--grocery)" />
         </svg>
       </div>
@@ -106,8 +130,22 @@ function OrchestrationFlow({ status }: { status: WellnessStatus }) {
       </div>
 
       <div className="flex flex-1 items-center justify-start gap-2 px-6 py-2.5">
-        <svg width="32" height="14" viewBox="0 0 32 14" className="shrink-0 scale-x-[-1]" style={{ opacity: isDelegating ? 1 : 0.25 }}>
-          <line x1="0" y1="7" x2="26" y2="7" stroke="var(--fitness)" strokeWidth="1.5" strokeDasharray={isDelegating ? "4 2" : undefined} />
+        <svg
+          width="32"
+          height="14"
+          viewBox="0 0 32 14"
+          className="shrink-0 scale-x-[-1]"
+          style={{ opacity: isDelegating ? 1 : 0.25 }}
+        >
+          <line
+            x1="0"
+            y1="7"
+            x2="26"
+            y2="7"
+            stroke="var(--fitness)"
+            strokeWidth="1.5"
+            strokeDasharray={isDelegating ? "4 2" : undefined}
+          />
           <polygon points="26,3 32,7 26,11" fill="var(--fitness)" />
         </svg>
         <div className="flex h-6 w-6 items-center justify-center rounded-md text-white bg-[var(--fitness)]">
@@ -236,11 +274,17 @@ function SourceCard({
   const t = SOURCE_THEME[theme];
   return (
     <Card className="min-w-0 overflow-hidden border-[var(--border)]">
-      <CardHeader className={`flex flex-row items-center gap-2.5 pb-3 border-b border-[var(--border-soft)] ${t.headerBg}`}>
-        <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-white ${t.iconBg}`}>
+      <CardHeader
+        className={`flex flex-row items-center gap-2.5 pb-3 border-b border-[var(--border-soft)] ${t.headerBg}`}
+      >
+        <div
+          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-white ${t.iconBg}`}
+        >
           {icon}
         </div>
-        <CardTitle className="text-sm font-semibold text-[var(--ink)]">{title}</CardTitle>
+        <CardTitle className="text-sm font-semibold text-[var(--ink)]">
+          {title}
+        </CardTitle>
       </CardHeader>
       <CardContent className="p-4">
         {value ? (
@@ -272,7 +316,9 @@ function PrimaryCard({
         <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-white bg-[var(--page-color)]">
           {icon}
         </div>
-        <CardTitle className="text-sm font-semibold text-[var(--ink)]">{title}</CardTitle>
+        <CardTitle className="text-sm font-semibold text-[var(--ink)]">
+          {title}
+        </CardTitle>
       </CardHeader>
       <CardContent className="flex-1 p-4">{children}</CardContent>
       {footer && <div className="px-4 pb-4">{footer}</div>}
@@ -295,7 +341,8 @@ function WellnessPageInner() {
           strategy: KROGER_STRATEGY,
           redirectUrl: window.location.href,
         });
-    const redirectUrl = account.verification?.externalVerificationRedirectURL?.href;
+    const redirectUrl =
+      account.verification?.externalVerificationRedirectURL?.href;
     if (redirectUrl) window.location.assign(redirectUrl);
   });
 
@@ -311,7 +358,8 @@ function WellnessPageInner() {
           strategy: STRAVA_STRATEGY,
           redirectUrl: window.location.href,
         });
-    const redirectUrl = account.verification?.externalVerificationRedirectURL?.href;
+    const redirectUrl =
+      account.verification?.externalVerificationRedirectURL?.href;
     if (redirectUrl) window.location.assign(redirectUrl);
   });
 
@@ -336,19 +384,25 @@ function WellnessPageInner() {
     if (!agent || !krogerConnection.data) return;
     const current = (agent.state ?? {}) as WellnessState;
     if (current.kroger_connected === krogerConnection.data.connected) return;
-    agent.setState({ ...current, kroger_connected: krogerConnection.data.connected });
+    agent.setState({
+      ...current,
+      kroger_connected: krogerConnection.data.connected,
+    });
   }, [agent, krogerConnection.data]);
 
   useEffect(() => {
     if (!agent || !stravaConnection.data) return;
     const current = (agent.state ?? {}) as WellnessState;
     if (current.strava_connected === stravaConnection.data.connected) return;
-    agent.setState({ ...current, strava_connected: stravaConnection.data.connected });
+    agent.setState({
+      ...current,
+      strava_connected: stravaConnection.data.connected,
+    });
   }, [agent, stravaConnection.data]);
 
-  const state     = (agent?.state ?? {}) as WellnessState;
-  const status    = (state.status ?? "idle") as WellnessStatus;
-  const meta      = STATUS_META[status] ?? STATUS_META.idle;
+  const state = (agent?.state ?? {}) as WellnessState;
+  const status = (state.status ?? "idle") as WellnessStatus;
+  const meta = STATUS_META[status] ?? STATUS_META.idle;
   const isRunning = Boolean(agent?.isRunning);
 
   const pendingSteps = CONNECT_STEPS.filter((s) => !state[s.connectedKey]);
@@ -394,10 +448,12 @@ function WellnessPageInner() {
   return (
     <main
       className="flex min-h-full flex-col"
-      style={{
-        "--page-color":      "var(--wellness)",
-        "--page-color-soft": "var(--wellness-soft)",
-      } as React.CSSProperties}
+      style={
+        {
+          "--page-color": "var(--wellness)",
+          "--page-color-soft": "var(--wellness-soft)",
+        } as React.CSSProperties
+      }
     >
       <HeroHeader
         name="Wellness Studio"
@@ -461,7 +517,9 @@ function WellnessPageInner() {
                 title="Review"
                 icon={<Sparkles className="h-3 w-3" />}
               >
-                <p className="text-sm text-[var(--ink-soft)]">{state.review_summary}</p>
+                <p className="text-sm text-[var(--ink-soft)]">
+                  {state.review_summary}
+                </p>
               </PrimaryCard>
             )}
           </div>
@@ -472,7 +530,7 @@ function WellnessPageInner() {
         agentId="wellness"
         defaultOpen={false}
         labels={{
-          modalHeaderTitle:     "Wellness Planner",
+          modalHeaderTitle: "Wellness Planner",
           chatInputPlaceholder: "Coordinate meals, workouts, recovery…",
         }}
       />

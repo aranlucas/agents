@@ -14,13 +14,20 @@ export type Agent = {
 };
 
 const THEME: Record<Agent["theme"], { color: string; hover: string }> = {
-  travel:   { color: "#ea580c", hover: "#fff7f3" },
-  grocery:  { color: "#16a34a", hover: "#f4fbf6" },
-  fitness:  { color: "#0284c7", hover: "#f2f8fd" },
+  travel: { color: "#ea580c", hover: "#fff7f3" },
+  grocery: { color: "#16a34a", hover: "#f4fbf6" },
+  fitness: { color: "#0284c7", hover: "#f2f8fd" },
   wellness: { color: "#d97706", hover: "#fdf8f2" },
 };
 
-export function AgentCard({ agent, status }: { agent: Agent; index: number; status?: AgentStatus }) {
+export function AgentCard({
+  agent,
+  status,
+}: {
+  agent: Agent;
+  index: number;
+  status?: AgentStatus;
+}) {
   const t = THEME[agent.theme];
   const isWellness = agent.theme === "wellness";
 
@@ -50,7 +57,10 @@ export function AgentCard({ agent, status }: { agent: Agent; index: number; stat
             <h2 className="text-lg md:text-xl font-bold tracking-tight text-[var(--ink)] leading-tight">
               {agent.name}
             </h2>
-            <span className="text-sm font-medium leading-tight" style={{ color: t.color }}>
+            <span
+              className="text-sm font-medium leading-tight"
+              style={{ color: t.color }}
+            >
               {agent.tagline}
             </span>
             {isWellness && (
@@ -83,13 +93,19 @@ export function AgentCard({ agent, status }: { agent: Agent; index: number; stat
         <div className="shrink-0 flex flex-col items-end gap-2 pt-0.5">
           {status !== undefined && (
             <span
-              title={status === "loading" ? "Checking…" : status === "ok" ? "Running" : "Unavailable"}
+              title={
+                status === "loading"
+                  ? "Checking…"
+                  : status === "ok"
+                    ? "Running"
+                    : "Unavailable"
+              }
               className={`w-1.5 h-1.5 rounded-full ${
                 status === "loading"
                   ? "bg-[var(--ink-mute)] opacity-40 animate-pulse"
                   : status === "ok"
-                  ? "animate-pulse"
-                  : "bg-red-400 opacity-60"
+                    ? "animate-pulse"
+                    : "bg-red-400 opacity-60"
               }`}
               style={status === "ok" ? { backgroundColor: t.color } : undefined}
             />

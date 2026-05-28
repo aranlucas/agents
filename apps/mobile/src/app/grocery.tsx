@@ -39,10 +39,12 @@ export default function GroceryScreen() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: [...messages, { role: "user", content: userMsg }].map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
+          messages: [...messages, { role: "user", content: userMsg }].map(
+            (m) => ({
+              role: m.role,
+              content: m.content,
+            }),
+          ),
           state: groceryState,
         }),
       });
@@ -50,14 +52,20 @@ export default function GroceryScreen() {
       if (response.ok) {
         const data = await response.json();
         if (data.content) {
-          setMessages((prev) => [...prev, { role: "assistant", content: data.content }]);
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content: data.content },
+          ]);
         }
         if (data.state) setGroceryState((prev) => ({ ...prev, ...data.state }));
       }
     } catch (e) {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "Connection error. Is the agent running?" },
+        {
+          role: "assistant",
+          content: "Connection error. Is the agent running?",
+        },
       ]);
     } finally {
       setIsLoading(false);
@@ -72,7 +80,11 @@ export default function GroceryScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       {list.length > 0 && (
-        <ScrollView horizontal style={styles.chipRow} showsHorizontalScrollIndicator={false}>
+        <ScrollView
+          horizontal
+          style={styles.chipRow}
+          showsHorizontalScrollIndicator={false}
+        >
           {list.map((item, i) => (
             <View key={i} style={styles.chip}>
               <Text style={styles.chipText}>{item}</Text>
@@ -84,21 +96,33 @@ export default function GroceryScreen() {
       {list.length === 0 && (
         <View style={styles.emptyState}>
           <Text style={styles.emptyTitle}>Grocery Planner</Text>
-          <Text style={styles.emptySubtitle}>Ask me to plan meals or build a shopping list.</Text>
+          <Text style={styles.emptySubtitle}>
+            Ask me to plan meals or build a shopping list.
+          </Text>
         </View>
       )}
 
       <ScrollView
         ref={scrollRef}
         style={styles.messageList}
-        onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+        onContentSizeChange={() =>
+          scrollRef.current?.scrollToEnd({ animated: true })
+        }
       >
         {messages.map((m, i) => (
           <View
             key={i}
-            style={[styles.bubble, m.role === "user" ? styles.userBubble : styles.agentBubble]}
+            style={[
+              styles.bubble,
+              m.role === "user" ? styles.userBubble : styles.agentBubble,
+            ]}
           >
-            <Text style={[styles.bubbleText, m.role === "user" ? styles.userText : styles.agentText]}>
+            <Text
+              style={[
+                styles.bubbleText,
+                m.role === "user" ? styles.userText : styles.agentText,
+              ]}
+            >
               {m.content}
             </Text>
           </View>
@@ -127,8 +151,20 @@ export default function GroceryScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
-  chipRow: { maxHeight: 48, paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "#eee" },
-  chip: { backgroundColor: "#f0f0f0", borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6, marginRight: 8 },
+  chipRow: {
+    maxHeight: 48,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  chip: {
+    backgroundColor: "#f0f0f0",
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginRight: 8,
+  },
   chipText: { fontSize: 13, color: "#333" },
   emptyState: { padding: 24, alignItems: "center" },
   emptyTitle: { fontSize: 22, fontWeight: "700" },
@@ -140,8 +176,29 @@ const styles = StyleSheet.create({
   bubbleText: { fontSize: 14, lineHeight: 20 },
   userText: { color: "#fff" },
   agentText: { color: "#111" },
-  inputRow: { flexDirection: "row", padding: 12, borderTopWidth: 1, borderTopColor: "#eee", gap: 8 },
-  input: { flex: 1, minHeight: 40, maxHeight: 120, backgroundColor: "#f5f5f5", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, color: "#111" },
-  sendButton: { backgroundColor: "#000", borderRadius: 20, paddingHorizontal: 16, justifyContent: "center" },
+  inputRow: {
+    flexDirection: "row",
+    padding: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
+    gap: 8,
+  },
+  input: {
+    flex: 1,
+    minHeight: 40,
+    maxHeight: 120,
+    backgroundColor: "#f5f5f5",
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: "#111",
+  },
+  sendButton: {
+    backgroundColor: "#000",
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    justifyContent: "center",
+  },
   sendText: { color: "#fff", fontWeight: "600", fontSize: 14 },
 });

@@ -19,12 +19,7 @@ import type {
   FitnessStatus,
 } from "@agents/types";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuthConnection } from "@/lib/use-auth-connection";
 
 const STRAVA_STRATEGY = "oauth_custom_strava";
@@ -176,10 +171,12 @@ function FitnessPageInner() {
   return (
     <main
       className="flex min-h-full flex-col"
-      style={{
-        "--page-color": "var(--fitness)",
-        "--page-color-soft": "var(--fitness-soft)",
-      } as React.CSSProperties}
+      style={
+        {
+          "--page-color": "var(--fitness)",
+          "--page-color-soft": "var(--fitness-soft)",
+        } as React.CSSProperties
+      }
     >
       <HeroHeader
         name="Fitness Studio"
@@ -194,7 +191,10 @@ function FitnessPageInner() {
       ) : (
         <div className="mx-auto grid w-full max-w-[1400px] flex-1 gap-4 p-4 md:p-6 lg:grid-cols-[360px_minmax(0,1fr)]">
           <div className="flex min-w-0 flex-col gap-4">
-            <SummaryCard totals={totals} syncedAt={state.activities_synced_at} />
+            <SummaryCard
+              totals={totals}
+              syncedAt={state.activities_synced_at}
+            />
             <ActivitiesCard activities={activities} />
           </div>
           <div className="flex min-w-0 flex-col gap-4">
@@ -243,7 +243,9 @@ function SectionCard({
     <Card size="sm" className="gap-0 py-0">
       <CardHeader className="flex-row items-center gap-2 border-b border-[var(--border-soft)] bg-[var(--surface-soft)] px-4 py-3">
         {icon && (
-          <span className="text-[var(--page-color,var(--ink-mute))]">{icon}</span>
+          <span className="text-[var(--page-color,var(--ink-mute))]">
+            {icon}
+          </span>
         )}
         <CardTitle>{title}</CardTitle>
       </CardHeader>
@@ -320,7 +322,9 @@ function ActivitiesCard({ activities }: { activities: FitnessActivity[] }) {
                   <span>{(activity.distance_m / 1000).toFixed(1)} km</span>
                 )}
                 {activity.total_elevation_gain_m !== undefined && (
-                  <span>{Math.round(activity.total_elevation_gain_m)} m gain</span>
+                  <span>
+                    {Math.round(activity.total_elevation_gain_m)} m gain
+                  </span>
                 )}
               </div>
             </li>

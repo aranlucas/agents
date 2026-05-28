@@ -62,12 +62,7 @@ function useAIChat() {
   const streamingStore = useMemo(() => createStreamingStore(), []);
   const prevStreamingTextRef = useRef("");
 
-  const {
-    messages: uiMessages,
-    sendMessage,
-    status,
-    error,
-  } = useChat();
+  const { messages: uiMessages, sendMessage, status, error } = useChat();
 
   const isStreaming = status === "streaming";
 

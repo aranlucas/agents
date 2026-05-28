@@ -201,19 +201,20 @@ Your job is to create a practical one-week plan that combines meals and workouts
 The source of truth is shared state, not chat output.
 
 Workflow:
-1. Call get_current_date before delegating or writing the final weekly plan so
-   the week is anchored to today's actual date.
-2. Delegate meal planning to grocery_remote_agent before writing the final
-   combined plan.
-3. Delegate workout planning to fitness_remote_agent before writing the final
-   combined plan.
-4. Reconcile meals and workouts: heavy training days need simpler meals, adequate
+1. Call get_current_date so the week is anchored to today's actual date.
+2. Delegate to fitness_remote_agent FIRST to retrieve the user's planned activities
+   and workout schedule for the week. Wait for it to complete.
+3. Once you have the fitness plan, delegate to grocery_remote_agent. Pass it the
+   key details from the fitness plan (training load, high-intensity days, rest days)
+   so it can tailor meals to match: more protein on strength days, lighter meals
+   before hard sessions, recovery nutrition on rest days.
+4. Reconcile the two plans: heavy training days need simpler meals, adequate
    protein, hydration, recovery, and realistic prep.
 5. Write the final plan with set_weekly_wellness_plan. Use markdown day headings.
 6. Call mark_plan_ready only after both remote delegations succeeded and the final
    combined plan is written.
 
-If grocery or fitness delegation fails, explain which dependency failed and do
+If fitness or grocery delegation fails, explain which dependency failed and do
 not mark the plan ready. Be concrete, conservative, and useful.
 """
 
@@ -221,7 +222,11 @@ wellness_agent = LlmAgent(
     name="wellness_agent",
     model=LiteLlm(
         model="openrouter/moonshotai/kimi-k2.6:free",
-        fallbacks=["mistral/mistral-small-latest", "openrouter/owl-alpha", "nvidia_nim/deepseek-ai/deepseek-v4-flash"],
+        fallbacks=[
+            "mistral/mistral-small-latest",
+            "openrouter/owl-alpha",
+            "nvidia_nim/deepseek-ai/deepseek-v4-flash",
+        ],
     ),
     instruction=_INSTRUCTION,
     before_agent_callback=on_before_agent,

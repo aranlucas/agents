@@ -23,10 +23,7 @@ export function Message({
         className="max-w-[80%] self-end rounded-2xl bg-user-bubble p-3 mb-2 border-continuous"
       >
         {typeof children === "string" ? (
-          <Text
-            selectable
-            className="text-base leading-5.5 text-foreground"
-          >
+          <Text selectable className="text-base leading-5.5 text-foreground">
             {children}
           </Text>
         ) : (

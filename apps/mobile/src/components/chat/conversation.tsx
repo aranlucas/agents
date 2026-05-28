@@ -298,7 +298,6 @@ export function Conversation({
   );
 }
 
-
 export function ConversationScrollButton() {
   const { scrollToBottom, scrollButtonStyle } = useConversationContext();
 
@@ -314,7 +313,7 @@ export function ConversationScrollButton() {
       >
         <SymbolImage
           name="chevron.down"
-          sfEffect={{effect: "wiggle", repeat: -1, }}
+          sfEffect={{ effect: "wiggle", repeat: -1 }}
           className="text-muted-foreground text-xs mt-1"
         />
       </TouchableGlass>
@@ -333,18 +332,10 @@ export function ConversationEmptyState({
 }) {
   return (
     <View className="flex-1 justify-center items-center gap-2">
-      <SymbolImage
-        name={icon}
-        size={48}
-        className="text-muted-foreground"
-      />
-      <Text className="text-xl font-semibold text-foreground">
-        {title}
-      </Text>
+      <SymbolImage name={icon} size={48} className="text-muted-foreground" />
+      <Text className="text-xl font-semibold text-foreground">{title}</Text>
       {description && (
-        <Text className="text-sm text-muted-foreground">
-          {description}
-        </Text>
+        <Text className="text-sm text-muted-foreground">{description}</Text>
       )}
     </View>
   );

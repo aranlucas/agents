@@ -38,31 +38,31 @@ The agent must call `fetch_activities` before creating or revising a plan when S
 Add shared fitness types:
 
 ```ts
-export type FitnessStatus = 'idle' | 'syncing' | 'planning' | 'ready'
+export type FitnessStatus = "idle" | "syncing" | "planning" | "ready";
 
 export type FitnessActivity = {
-  id: string
-  name: string
-  sport_type?: string
-  start_date?: string
-  distance_m?: number
-  moving_time_s?: number
-  elapsed_time_s?: number
-  total_elevation_gain_m?: number
-  average_heartrate?: number
-  perceived_effort?: number
-}
+  id: string;
+  name: string;
+  sport_type?: string;
+  start_date?: string;
+  distance_m?: number;
+  moving_time_s?: number;
+  elapsed_time_s?: number;
+  total_elevation_gain_m?: number;
+  average_heartrate?: number;
+  perceived_effort?: number;
+};
 
 export type FitnessState = {
-  strava_connected?: boolean
-  strava_token?: string
-  activities?: FitnessActivity[]
-  activities_synced_at?: string
-  objective_research?: string
-  training_plan?: string
-  status?: FitnessStatus
-  review_summary?: string
-}
+  strava_connected?: boolean;
+  strava_token?: string;
+  activities?: FitnessActivity[];
+  activities_synced_at?: string;
+  objective_research?: string;
+  training_plan?: string;
+  status?: FitnessStatus;
+  review_summary?: string;
+};
 ```
 
 ## Web

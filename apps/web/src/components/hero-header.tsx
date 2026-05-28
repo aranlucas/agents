@@ -64,9 +64,7 @@ export function HeroHeader({
             <span
               className={cn(
                 "w-1.5 h-1.5 rounded-full",
-                isRunning
-                  ? "bg-white animate-pulse"
-                  : "bg-[var(--ink-mute)]",
+                isRunning ? "bg-white animate-pulse" : "bg-[var(--ink-mute)]",
               )}
             />
             {isRunning ? "Working…" : (statusLabel ?? "Ready")}
