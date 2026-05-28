@@ -59,7 +59,8 @@ The web app runs on :3000. Travel agent on :8000. Grocery agent on :8001.
 | -------------- | --------- | ------------------------------------------------------------------------------------------------------------- |
 | Python agents  | Railway   | `Dockerfile.agents` + `agents/<name>/railway.json` — set Root Dir to repo root, set `AGENT_DIR=agents/<name>` |
 | `apps/web/`    | Vercel    | vercel.json — set Root Dir to `apps/web/` in Vercel dashboard                                                 |
-| `apps/mobile/` | EAS Build | eas.json → App Store / Google Play                                                                            |
+| `apps/mobile/` | EAS Build | `apps/mobile/eas.json` → App Store / Google Play                                                              |
+| Android APK    | GitHub Actions | `.github/workflows/android-apk.yml` — `expo prebuild` + Gradle, publishes the APK to a GitHub Release via `gh` (push a `v*` tag or run manually) |
 
 ## Architecture
 

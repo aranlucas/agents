@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -11,68 +11,36 @@ import {
   StyleSheet,
 } from "react-native";
 import { GroceryState } from "@agents/types";
+import { useAuth } from "@clerk/clerk-expo";
 import Constants from "expo-constants";
+import { useAgent } from "@/utils/use-agent";
 
 const GROCERY_AGENT_URL =
   Constants.expoConfig?.extra?.groceryAgentUrl ??
   process.env.EXPO_PUBLIC_GROCERY_AGENT_URL ??
   "http://localhost:8001/";
 
-type Message = { role: "user" | "assistant"; content: string };
-
 export default function GroceryScreen() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const { userId } = useAuth();
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [groceryState, setGroceryState] = useState<GroceryState>({});
   const scrollRef = useRef<ScrollView>(null);
 
-  const sendMessage = async () => {
-    if (!input.trim() || isLoading) return;
-    const userMsg = input.trim();
+  // Forward the Clerk identity the same way the web copilotkit route does.
+  const headers = useMemo(
+    () => (userId ? { "x-clerk-user-id": userId } : undefined),
+    [userId],
+  );
+
+  const { messages, state, isLoading, error, sendMessage } =
+    useAgent<GroceryState>({ url: GROCERY_AGENT_URL, headers }, {});
+
+  const onSend = () => {
+    const text = input;
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", content: userMsg }]);
-    setIsLoading(true);
-
-    try {
-      const response = await fetch(GROCERY_AGENT_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [...messages, { role: "user", content: userMsg }].map(
-            (m) => ({
-              role: m.role,
-              content: m.content,
-            }),
-          ),
-          state: groceryState,
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.content) {
-          setMessages((prev) => [
-            ...prev,
-            { role: "assistant", content: data.content },
-          ]);
-        }
-        if (data.state) setGroceryState((prev) => ({ ...prev, ...data.state }));
-      }
-    } catch (e) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: "Connection error. Is the agent running?",
-        },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
+    sendMessage(text);
   };
 
-  const list = groceryState.shopping_list ?? [];
+  const list = state.shopping_list ?? [];
 
   return (
     <KeyboardAvoidingView
@@ -109,9 +77,9 @@ export default function GroceryScreen() {
           scrollRef.current?.scrollToEnd({ animated: true })
         }
       >
-        {messages.map((m, i) => (
+        {messages.map((m) => (
           <View
-            key={i}
+            key={m.id}
             style={[
               styles.bubble,
               m.role === "user" ? styles.userBubble : styles.agentBubble,
@@ -128,6 +96,7 @@ export default function GroceryScreen() {
           </View>
         ))}
         {isLoading && <ActivityIndicator style={{ margin: 12 }} />}
+        {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
 
       <View style={styles.inputRow}>
@@ -137,11 +106,11 @@ export default function GroceryScreen() {
           onChangeText={setInput}
           placeholder="Plan meals, find deals…"
           placeholderTextColor="#999"
-          onSubmitEditing={sendMessage}
+          onSubmitEditing={onSend}
           returnKeyType="send"
           multiline
         />
-        <Pressable style={styles.sendButton} onPress={sendMessage}>
+        <Pressable style={styles.sendButton} onPress={onSend}>
           <Text style={styles.sendText}>Send</Text>
         </Pressable>
       </View>
@@ -176,6 +145,7 @@ const styles = StyleSheet.create({
   bubbleText: { fontSize: 14, lineHeight: 20 },
   userText: { color: "#fff" },
   agentText: { color: "#111" },
+  error: { color: "#c0392b", fontSize: 13, margin: 12, textAlign: "center" },
   inputRow: {
     flexDirection: "row",
     padding: 12,

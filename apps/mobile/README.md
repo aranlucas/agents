@@ -77,6 +77,25 @@ Edit `global.css` to change the design tokens. Colors use OKLCH for perceptual u
 
 The template ships with mock streaming responses in `app/index.tsx`. Replace `mockStreamResponse` with your API integration -- the streaming architecture (`createStreamingStore` + throttled token callback) is ready for real LLM APIs.
 
+### Agent screens (AG-UI)
+
+The **Travel** and **Grocery** tabs talk directly to the ADK agent services over the [AG-UI](https://docs.ag-ui.com/) protocol via [`@ag-ui/client`](https://www.npmjs.com/package/@ag-ui/client), mirroring the web data flow (`apps/web → @ag-ui/client → Railway agent`).
+
+- `src/utils/use-agent.ts` wraps a long-lived `HttpAgent`, streams assistant tokens through `onMessagesChanged`, and reads the agent's shared ADK state (snapshots + JSON-patch deltas) through `onStateChanged`.
+- Each screen renders from agent state (e.g. the trip card, the shopping-list chips) — **state is the source of truth**, not chat text.
+- The Clerk user id is forwarded as `x-clerk-user-id`, matching `apps/web/src/app/api/copilotkit/route.ts`.
+
+Point the screens at your agents with `EXPO_PUBLIC_TRAVEL_AGENT_URL` / `EXPO_PUBLIC_GROCERY_AGENT_URL` (see `.env.example`).
+
+### Android APK builds (CI)
+
+`.github/workflows/android-apk.yml` builds an installable APK and publishes it to a GitHub Release with the GitHub CLI (`gh`):
+
+- **Push a tag** like `v1.2.3` → the APK is attached to that tag's release.
+- **Run manually** (Actions → _Android APK_ → _Run workflow_) → a timestamped prerelease is created.
+
+The job runs `expo prebuild` + `./gradlew assembleRelease` on the runner, so no EAS account or secret is required. The release APK is signed with the **debug keystore** — wire a real keystore (and Play upload) before public distribution. For cloud builds / store submission instead, `eas.json` defines `preview` (APK) and `production` (AAB) profiles for `eas build --platform android`.
+
 ### Database
 
 I recommend using Convex, which you can setup in a single command:
