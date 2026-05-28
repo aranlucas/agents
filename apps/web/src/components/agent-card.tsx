@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
+import type { AgentStatus } from "@/hooks/use-agent-warmup";
 
 export type Agent = {
   id: string;
@@ -19,7 +20,7 @@ const THEME: Record<Agent["theme"], { color: string; hover: string }> = {
   wellness: { color: "#d97706", hover: "#fdf8f2" },
 };
 
-export function AgentCard({ agent }: { agent: Agent; index: number }) {
+export function AgentCard({ agent, status }: { agent: Agent; index: number; status?: AgentStatus }) {
   const t = THEME[agent.theme];
   const isWellness = agent.theme === "wellness";
 
@@ -79,7 +80,20 @@ export function AgentCard({ agent }: { agent: Agent; index: number }) {
         </div>
 
         {/* CTA */}
-        <div className="shrink-0 flex items-start pt-0.5">
+        <div className="shrink-0 flex flex-col items-end gap-2 pt-0.5">
+          {status !== undefined && (
+            <span
+              title={status === "loading" ? "Checking…" : status === "ok" ? "Running" : "Unavailable"}
+              className={`w-1.5 h-1.5 rounded-full ${
+                status === "loading"
+                  ? "bg-[var(--ink-mute)] opacity-40 animate-pulse"
+                  : status === "ok"
+                  ? "animate-pulse"
+                  : "bg-red-400 opacity-60"
+              }`}
+              style={status === "ok" ? { backgroundColor: t.color } : undefined}
+            />
+          )}
           <span
             className="flex items-center gap-1 text-sm font-semibold group-hover:gap-2 transition-all whitespace-nowrap"
             style={{ color: t.color }}

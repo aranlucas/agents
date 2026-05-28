@@ -1,4 +1,7 @@
+"use client";
+
 import { AgentCard, type Agent } from "@/components/agent-card";
+import { useAgentWarmup } from "@/hooks/use-agent-warmup";
 
 const AGENTS: Agent[] = [
   {
@@ -43,7 +46,28 @@ const AGENTS: Agent[] = [
   },
 ];
 
+const AGENT_THEME_MAP: Record<string, Agent["theme"]> = {
+  travel: "travel",
+  grocery: "grocery",
+  fitness: "fitness",
+  wellness: "wellness",
+};
+
 export default function Home() {
+  const { statuses, runningCount, isLoading } = useAgentWarmup();
+
+  const statusDotClass = isLoading
+    ? "bg-[var(--ink-mute)] animate-pulse"
+    : runningCount === 4
+    ? "bg-[var(--success)] animate-pulse"
+    : runningCount === 0
+    ? "bg-red-500"
+    : "bg-yellow-500 animate-pulse";
+
+  const statusLabel = isLoading
+    ? "checking agents…"
+    : `${runningCount} / 4 running · CopilotKit × ADK`;
+
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg)]">
       {/* Top bar */}
@@ -52,9 +76,9 @@ export default function Home() {
           Agents
         </span>
         <div className="flex items-center gap-2.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)] animate-pulse" />
+          <span className={`w-1.5 h-1.5 rounded-full ${statusDotClass}`} />
           <span className="font-mono text-[10px] text-[var(--ink-mute)]">
-            4 running · CopilotKit × ADK
+            {statusLabel}
           </span>
         </div>
       </header>
@@ -74,23 +98,34 @@ export default function Home() {
         {/* Agent key — desktop only */}
         <div className="hidden md:flex flex-col items-end gap-2 pb-1 shrink-0">
           {[
-            { color: "#ea580c", label: "Travel" },
-            { color: "#16a34a", label: "Grocery" },
-            { color: "#0284c7", label: "Fitness" },
-            { color: "#d97706", label: "Wellness" },
-          ].map(({ color, label }) => (
-            <div key={label} className="flex items-center gap-2">
-              <span className="font-mono text-[10px] text-[var(--ink-mute)]">{label}</span>
-              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
-            </div>
-          ))}
+            { color: "#ea580c", label: "Travel", key: "travel" },
+            { color: "#16a34a", label: "Grocery", key: "grocery" },
+            { color: "#0284c7", label: "Fitness", key: "fitness" },
+            { color: "#d97706", label: "Wellness", key: "wellness" },
+          ].map(({ color, label, key }) => {
+            const s = statuses[key as keyof typeof statuses];
+            return (
+              <div key={label} className="flex items-center gap-2">
+                <span className="font-mono text-[10px] text-[var(--ink-mute)]">{label}</span>
+                <span
+                  className={`w-2 h-2 rounded-full shrink-0 ${s === "loading" ? "opacity-30 animate-pulse" : s === "error" ? "opacity-50" : ""}`}
+                  style={{ backgroundColor: s === "error" ? "#ef4444" : color }}
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
 
       {/* Agent list */}
       <div className="flex-1 divide-y divide-[var(--border)]">
         {AGENTS.map((agent, index) => (
-          <AgentCard key={agent.id} agent={agent} index={index} />
+          <AgentCard
+            key={agent.id}
+            agent={agent}
+            index={index}
+            status={statuses[AGENT_THEME_MAP[agent.theme]]}
+          />
         ))}
       </div>
 
