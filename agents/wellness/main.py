@@ -250,26 +250,35 @@ Workflow — follow these steps strictly in sequence:
 
 Step 1. Call get_current_date. Note the date.
 
-Step 2. Call fitness_remote_agent with a request to summarise recent Strava
-        activities AND plan this week's training schedule starting on that date.
-        STOP and wait for the full response before continuing.
+Step 2. Call fitness_remote_agent with a request to: (a) summarise recent Strava
+        activities, (b) build a DETAILED day-by-day training schedule for this week
+        starting on that date — each day with session type, duration/distance or
+        sets×reps, and target intensity — and (c) recommend ONE specific named hike
+        for the week, including its distance, elevation gain, difficulty, and why it
+        suits this athlete. STOP and wait for the full response before continuing.
 
 Step 3. Once you have the fitness response, call grocery_remote_agent.
-        Your request MUST paste the full training schedule from Step 2 so
-        grocery can tailor meals to match (protein on strength days, lighter
-        meals before hard sessions, recovery nutrition on rest days).
+        Your request MUST paste the full training schedule (and the recommended
+        hike) from Step 2 so grocery can tailor meals to match (protein on strength
+        days, lighter meals before hard sessions, extra fuel/hydration on the hike
+        day, recovery nutrition on rest days).
         STOP and wait for the full response before continuing.
 
-Step 4. Reconcile the two plans: heavy training days get simpler meals,
-        adequate protein, hydration, recovery, and realistic prep.
+Step 4. Reconcile the two plans: heavy training days and the hike day get simpler
+        meals, adequate protein, hydration, recovery, and realistic prep.
 
 Step 5. Call set_weekly_wellness_plan with the final combined report. Structure:
         ## Recent Activity
         <summarise the recent Strava activities from the fitness response>
 
+        ## Recommended Hike
+        <the specific hike from Step 2: name, distance, elevation gain, difficulty,
+         which day it is scheduled, and why it fits this athlete>
+
         ## This Week's Plan
-        <day-by-day sections with markdown headings, each day showing
-         both the workout and the meals side by side>
+        <day-by-day sections with markdown headings, each day showing the DETAILED
+         workout (type, duration/distance or sets×reps, intensity) and the meals
+         side by side; mark the hike on its scheduled day>
 
 Step 6. Call mark_plan_ready only after Steps 2–5 all completed successfully.
 
