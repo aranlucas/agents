@@ -4,7 +4,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useReverification, useUser } from "@clerk/nextjs";
 import {
   CopilotKit,
-  CopilotSidebar,
   useAgent,
   UseAgentUpdate,
   useConfigureSuggestions,
@@ -15,6 +14,7 @@ import { ShoppingCart } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { AgentChatPanel, AgentWorkspace } from "@/components/agent-workspace";
 import { HeroHeader } from "@/components/hero-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuthConnection } from "@/lib/use-auth-connection";
@@ -204,33 +204,35 @@ function GroceryPageInner() {
       {!krogerConnected ? (
         <KrogerAuthGate onConnect={handleConnect} connecting={connecting} />
       ) : (
-        <div className="flex-1 min-h-0 grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4 p-4 md:p-6 max-w-[1400px] w-full mx-auto">
-          <div className="flex flex-col gap-4 min-w-0">
-            <ShoppingListCard
-              items={shoppingList}
-              notes={notes}
-              reviewSummary={status === "ready" ? reviewSummary : ""}
+        <AgentWorkspace
+          chat={
+            <AgentChatPanel
+              agentId="grocery"
+              title="Grocery conversation"
+              placeholder="Plan meals, build a shopping list, find deals..."
+              welcomeMessage="Ask for a weekly meal plan, pantry-aware ideas, or a Kroger-ready shopping list."
             />
-            <CartCard items={cart} total={cartTotal} />
-          </div>
+          }
+          artifact={
+            <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+              <div className="flex min-w-0 flex-col gap-4">
+                <ShoppingListCard
+                  items={shoppingList}
+                  notes={notes}
+                  reviewSummary={status === "ready" ? reviewSummary : ""}
+                />
+                <CartCard items={cart} total={cartTotal} />
+              </div>
 
-          <div className="flex flex-col gap-4 min-w-0">
-            <MealPlanCard plan={mealPlan} isStreaming={isRunning} />
-            <DealsCard deals={weeklyDeals} />
-            <PantryCard items={pantry} />
-          </div>
-        </div>
+              <div className="flex min-w-0 flex-col gap-4">
+                <MealPlanCard plan={mealPlan} isStreaming={isRunning} />
+                <DealsCard deals={weeklyDeals} />
+                <PantryCard items={pantry} />
+              </div>
+            </div>
+          }
+        />
       )}
-
-      <CopilotSidebar
-        agentId="grocery"
-        defaultOpen={false}
-        labels={{
-          modalHeaderTitle: "Grocery Planner",
-          chatInputPlaceholder:
-            "Plan meals, build a shopping list, find deals…",
-        }}
-      />
     </main>
   );
 }

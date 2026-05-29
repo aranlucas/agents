@@ -3,7 +3,6 @@
 import React from "react";
 import {
   CopilotKit,
-  CopilotSidebar,
   useAgent,
   UseAgentUpdate,
   useConfigureSuggestions,
@@ -18,6 +17,7 @@ import {
   Wand2,
 } from "lucide-react";
 
+import { AgentChatPanel, AgentWorkspace } from "@/components/agent-workspace";
 import { HeroHeader } from "@/components/hero-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -107,95 +107,92 @@ function A2UIPageInner() {
         statusLabel={meta.label}
       />
 
-      <div className="mx-auto grid w-full max-w-[1400px] flex-1 gap-4 p-4 md:p-6 lg:grid-cols-[minmax(0,1fr)_420px]">
-        <section className="min-w-0 border border-[var(--border)] bg-[var(--surface)]">
-          <div className="border-b border-[var(--border)] bg-[var(--surface-soft)] p-5">
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-[var(--a2ui-soft)] px-3 py-1 text-xs font-semibold text-[var(--a2ui)]">
-              <Sparkles className="h-3.5 w-3.5" />
-              A2UI render target
+      <AgentWorkspace
+        chat={
+          <AgentChatPanel
+            agentId="a2ui"
+            title="A2UI conversation"
+            placeholder="Ask for an A2UI dashboard, form, or planner..."
+            welcomeMessage="Ask me to render the Launch Readiness A2UI surface."
+          />
+        }
+        artifact={
+          <section className="min-w-0 border border-[var(--border)] bg-[var(--surface)]">
+            <div className="border-b border-[var(--border)] bg-[var(--surface-soft)] p-5">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-[var(--a2ui-soft)] px-3 py-1 text-xs font-semibold text-[var(--a2ui)]">
+                <Sparkles className="h-3.5 w-3.5" />
+                A2UI render target
+              </div>
+              <h1 className="max-w-3xl text-3xl font-black leading-none tracking-tight text-[var(--ink)] md:text-5xl">
+                Generated interfaces render inside the conversation.
+              </h1>
             </div>
-            <h1 className="max-w-3xl text-3xl font-black leading-none tracking-tight text-[var(--ink)] md:text-5xl">
-              Ask the agent for a surface. The UI should render in chat, not as
-              plain markdown.
-            </h1>
-          </div>
 
-          <div className="grid gap-3 p-5 md:grid-cols-3">
-            <Metric
-              label="Transport"
-              value="AG-UI"
-              icon={<Gauge className="h-4 w-4" />}
-            />
-            <Metric
-              label="Agent"
-              value="Google ADK"
-              icon={<Wand2 className="h-4 w-4" />}
-            />
-            <Metric
-              label="Surface"
-              value="A2UI"
-              icon={<Blocks className="h-4 w-4" />}
-            />
-          </div>
+            <div className="grid gap-3 p-5 md:grid-cols-3">
+              <Metric
+                label="Transport"
+                value="AG-UI"
+                icon={<Gauge className="h-4 w-4" />}
+              />
+              <Metric
+                label="Agent"
+                value="Google ADK"
+                icon={<Wand2 className="h-4 w-4" />}
+              />
+              <Metric
+                label="Surface"
+                value="A2UI"
+                icon={<Blocks className="h-4 w-4" />}
+              />
+            </div>
 
-          <div className="grid gap-4 p-5 pt-0 md:grid-cols-2">
-            <Card size="sm" className="gap-0 py-0">
-              <CardHeader className="border-b border-[var(--border-soft)] bg-[var(--surface-soft)] px-4 py-3">
-                <CardTitle className="flex items-center gap-2">
-                  <GalleryVerticalEnd className="h-4 w-4 text-[var(--a2ui)]" />
-                  Verification brief
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 p-4 text-sm text-[var(--ink-soft)]">
-                <p>
-                  The CopilotKit runtime injects the A2UI render tool only for
-                  the `a2ui` agent. This page keeps the sidebar open so the
-                  generated surface is visible during local screenshots.
-                </p>
-                <p>
-                  Use the Launch readiness suggestion for the fastest local
-                  proof that A2UI is active.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card size="sm" className="gap-0 py-0">
-              <CardHeader className="border-b border-[var(--border-soft)] bg-[var(--surface-soft)] px-4 py-3">
-                <CardTitle className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-[var(--a2ui)]" />
-                  Last surface
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4">
-                {state.last_surface ? (
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold text-[var(--ink)]">
-                      {state.last_surface}
-                    </p>
-                    <p className="text-sm text-[var(--ink-mute)]">
-                      {state.surface_brief}
-                    </p>
-                  </div>
-                ) : (
-                  <p className="text-sm text-[var(--ink-mute)]">
-                    No generated surface has been recorded yet.
+            <div className="grid gap-4 p-5 pt-0 md:grid-cols-2">
+              <Card size="sm" className="gap-0 py-0">
+                <CardHeader className="border-b border-[var(--border-soft)] bg-[var(--surface-soft)] px-4 py-3">
+                  <CardTitle className="flex items-center gap-2">
+                    <GalleryVerticalEnd className="h-4 w-4 text-[var(--a2ui)]" />
+                    Verification brief
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 p-4 text-sm text-[var(--ink-soft)]">
+                  <p>
+                    The CopilotKit runtime injects the A2UI render tool only
+                    for the `a2ui` agent.
                   </p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </section>
-      </div>
+                  <p>
+                    Use the Launch readiness suggestion for the fastest local
+                    proof that A2UI is active.
+                  </p>
+                </CardContent>
+              </Card>
 
-      <CopilotSidebar
-        agentId="a2ui"
-        defaultOpen
-        labels={{
-          modalHeaderTitle: "A2UI Renderer",
-          chatInputPlaceholder: "Ask for an A2UI dashboard, form, or planner...",
-          welcomeMessageText:
-            "Ask me to render the Launch Readiness A2UI surface.",
-        }}
+              <Card size="sm" className="gap-0 py-0">
+                <CardHeader className="border-b border-[var(--border-soft)] bg-[var(--surface-soft)] px-4 py-3">
+                  <CardTitle className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-[var(--a2ui)]" />
+                    Last surface
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4">
+                  {state.last_surface ? (
+                    <div className="space-y-2">
+                      <p className="text-sm font-semibold text-[var(--ink)]">
+                        {state.last_surface}
+                      </p>
+                      <p className="text-sm text-[var(--ink-mute)]">
+                        {state.surface_brief}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-[var(--ink-mute)]">
+                      No generated surface has been recorded yet.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </section>
+        }
       />
     </main>
   );

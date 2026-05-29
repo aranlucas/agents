@@ -1,0 +1,262 @@
+"use client";
+
+import React, { useState } from "react";
+import { CopilotChat, useDefaultRenderTool } from "@copilotkit/react-core/v2";
+
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+
+type MobilePanel = "chat" | "artifact" | "context";
+
+type AgentWorkspaceProps = {
+  context?: React.ReactNode;
+  chat: React.ReactNode;
+  artifact: React.ReactNode;
+  className?: string;
+  defaultMobilePanel?: MobilePanel;
+  mobileLabels?: Partial<Record<MobilePanel, string>>;
+};
+
+type AgentChatPanelProps = {
+  agentId: string;
+  title: string;
+  placeholder: string;
+  welcomeMessage?: string;
+  interrupts?: React.ReactNode;
+  className?: string;
+};
+
+const DEFAULT_MOBILE_LABELS: Record<MobilePanel, string> = {
+  chat: "Chat",
+  artifact: "Output",
+  context: "Context",
+};
+
+export function AgentWorkspace({
+  context,
+  chat,
+  artifact,
+  className,
+  defaultMobilePanel = "chat",
+  mobileLabels,
+}: AgentWorkspaceProps) {
+  const [mobilePanel, setMobilePanel] =
+    useState<MobilePanel>(defaultMobilePanel);
+  const labels = { ...DEFAULT_MOBILE_LABELS, ...mobileLabels };
+  const panels: MobilePanel[] = context
+    ? ["chat", "artifact", "context"]
+    : ["chat", "artifact"];
+
+  return (
+    <div className="flex flex-1 flex-col">
+      <div className="sticky top-[51px] z-10 border-b border-[var(--border-soft)] bg-[var(--bg)] px-4 py-2 xl:hidden">
+        <div
+          className="grid rounded-lg border border-[var(--border)] bg-[var(--surface)] p-1"
+          style={{ gridTemplateColumns: `repeat(${panels.length}, 1fr)` }}
+        >
+          {panels.map((panel) => (
+            <button
+              key={panel}
+              type="button"
+              onClick={() => setMobilePanel(panel)}
+              className={cn(
+                "h-8 rounded-md text-xs font-semibold transition-colors",
+                mobilePanel === panel
+                  ? "bg-[var(--page-color,var(--accent))] text-white shadow-sm"
+                  : "text-[var(--ink-mute)] hover:text-[var(--ink)]",
+              )}
+            >
+              {labels[panel]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div
+        className={cn(
+          "mx-auto grid w-full max-w-[1480px] flex-1 gap-4 p-4 md:p-6",
+          context
+            ? "xl:grid-cols-[300px_minmax(380px,0.86fr)_minmax(0,1.14fr)]"
+            : "xl:grid-cols-[minmax(400px,0.86fr)_minmax(0,1.14fr)]",
+          "lg:min-h-0",
+          className,
+        )}
+      >
+        {context && (
+          <aside
+            className={cn(
+              "order-2 min-w-0 lg:min-h-0 xl:order-1 xl:block xl:sticky xl:top-16 xl:max-h-[calc(100vh-5.5rem)] xl:overflow-y-auto",
+              mobilePanel !== "context" && "hidden",
+            )}
+          >
+            {context}
+          </aside>
+        )}
+
+        <section
+          className={cn(
+            "order-1 min-w-0 lg:min-h-0 xl:block",
+            context && "xl:order-2",
+            mobilePanel !== "chat" && "hidden",
+          )}
+          aria-label="Agent conversation"
+        >
+          {chat}
+        </section>
+
+        <section
+          className={cn(
+            "order-3 min-w-0 lg:min-h-0 xl:block",
+            mobilePanel !== "artifact" && "hidden",
+          )}
+          aria-label="Live agent artifact"
+        >
+          {artifact}
+        </section>
+      </div>
+    </div>
+  );
+}
+
+export function AgentChatPanel({
+  agentId,
+  title,
+  placeholder,
+  welcomeMessage,
+  interrupts,
+  className,
+}: AgentChatPanelProps) {
+  return (
+    <section
+      className={cn(
+        "flex h-[min(760px,calc(100vh-7.5rem))] min-h-[560px] flex-col overflow-hidden border border-[var(--border)] bg-[var(--surface)] shadow-sm",
+        className,
+      )}
+    >
+      <div className="flex h-12 shrink-0 items-center justify-between border-b border-[var(--border-soft)] bg-[var(--surface-soft)] px-4">
+        <div className="min-w-0">
+          <h2 className="truncate text-sm font-semibold text-[var(--ink)]">
+            {title}
+          </h2>
+          <p className="truncate text-[11px] text-[var(--ink-mute)]">
+            Chat is the command surface. Artifacts update live.
+          </p>
+        </div>
+      </div>
+
+      <div className="agent-chat-shell min-h-0 flex-1">
+        <AgentToolEventRenderer />
+        {interrupts && (
+          <div className="border-b border-[var(--border-soft)] bg-[var(--surface)] p-3">
+            {interrupts}
+          </div>
+        )}
+        <CopilotChat
+          agentId={agentId}
+          labels={{
+            chatInputPlaceholder: placeholder,
+            ...(welcomeMessage
+              ? { welcomeMessageText: welcomeMessage }
+              : undefined),
+          }}
+        />
+      </div>
+    </section>
+  );
+}
+
+function AgentToolEventRenderer() {
+  useDefaultRenderTool(
+    {
+      render: ({ name, parameters, status, result }) => {
+        const event = toolEventLabel(name);
+        const isActive = status === "inProgress" || status === "executing";
+        const hasParams =
+          typeof parameters === "object" &&
+          parameters !== null &&
+          Object.keys(parameters as Record<string, unknown>).length > 0;
+        const hasResult = status === "complete" && result !== undefined;
+
+        return (
+          <Card className="my-2 gap-0 border-[var(--border-soft)] bg-[var(--surface-soft)] p-3 py-3 text-sm">
+            <div className="flex items-start gap-3">
+              <span
+                className={cn(
+                  "mt-1 h-2 w-2 shrink-0 rounded-full",
+                  isActive
+                    ? "animate-pulse bg-[var(--page-color,var(--accent))]"
+                    : "bg-[var(--success)]",
+                )}
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium text-[var(--ink)]">
+                    {event}
+                  </span>
+                  <Badge
+                    variant="outline"
+                    className="h-auto border-transparent bg-[var(--bg-soft)] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-[var(--ink-mute)]"
+                  >
+                    {statusLabel(status)}
+                  </Badge>
+                </div>
+                <p className="mt-0.5 truncate font-mono text-[10px] text-[var(--ink-mute)]">
+                  {name}
+                </p>
+              </div>
+            </div>
+
+            {(hasParams || hasResult) && (
+              <details className="mt-2 pl-5">
+                <summary className="cursor-pointer text-xs text-[var(--ink-mute)]">
+                  Details
+                </summary>
+                <pre className="mt-1 max-h-44 overflow-auto rounded-md bg-[var(--bg-soft)] p-2 text-xs text-[var(--ink-soft)]">
+                  {JSON.stringify(
+                    {
+                      ...(hasParams ? { parameters } : {}),
+                      ...(hasResult ? { result } : {}),
+                    },
+                    null,
+                    2,
+                  )}
+                </pre>
+              </details>
+            )}
+          </Card>
+        );
+      },
+    },
+    [],
+  );
+
+  return null;
+}
+
+function statusLabel(status: string) {
+  if (status === "complete") return "done";
+  if (status === "executing") return "running";
+  return "drafting";
+}
+
+function toolEventLabel(name: string) {
+  const normalized = name.replace(/[_-]+/g, " ").toLowerCase();
+
+  if (normalized.includes("approval")) return "Waiting for your approval";
+  if (normalized.includes("itinerary")) return "Updating the itinerary";
+  if (normalized.includes("shopping") || normalized.includes("cart")) {
+    return "Updating the shopping artifact";
+  }
+  if (normalized.includes("meal")) return "Planning meals";
+  if (normalized.includes("flight")) return "Checking travel options";
+  if (normalized.includes("fitness") || normalized.includes("training")) {
+    return "Updating the training plan";
+  }
+  if (normalized.includes("delegate")) return "Delegating to another agent";
+  if (normalized.includes("surface") || normalized.includes("a2ui")) {
+    return "Rendering an interface";
+  }
+
+  return "Agent used a tool";
+}

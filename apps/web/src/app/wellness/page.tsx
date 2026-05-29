@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import { useReverification, useUser } from "@clerk/nextjs";
 import {
   CopilotKit,
-  CopilotSidebar,
   useAgent,
   UseAgentUpdate,
   useConfigureSuggestions,
@@ -20,6 +19,7 @@ import {
 import { Streamdown } from "streamdown";
 
 import { HeroHeader } from "@/components/hero-header";
+import { AgentChatPanel, AgentWorkspace } from "@/components/agent-workspace";
 import { useAuthConnection } from "@/lib/use-auth-connection";
 import { Button } from "@/components/ui/button";
 
@@ -473,67 +473,72 @@ function WellnessPageInner() {
           connectingId={connectingId}
         />
       ) : (
-        <div className="mx-auto grid w-full max-w-[1400px] flex-1 gap-4 p-4 md:p-6 lg:grid-cols-[340px_minmax(0,1fr)]">
-          <div className="flex min-w-0 flex-col gap-4">
-            <SourceCard
-              title="Meals — from Grocery"
-              icon={<Salad className="h-3 w-3" />}
-              theme="grocery"
-              value={state.meal_plan}
-              hint="Grocery output will appear here after wellness delegates meal planning."
+        <AgentWorkspace
+          context={
+            <div className="flex min-w-0 flex-col gap-4">
+              <SourceCard
+                title="Meals - from Grocery"
+                icon={<Salad className="h-3 w-3" />}
+                theme="grocery"
+                value={state.meal_plan}
+                hint="Grocery output will appear here after wellness delegates meal planning."
+              />
+              <SourceCard
+                title="Workouts - from Fitness"
+                icon={<Dumbbell className="h-3 w-3" />}
+                theme="fitness"
+                value={state.workout_plan}
+                hint="Fitness output will appear here after wellness delegates training."
+              />
+            </div>
+          }
+          chat={
+            <AgentChatPanel
+              agentId="wellness"
+              title="Wellness conversation"
+              placeholder="Coordinate meals, workouts, recovery..."
+              welcomeMessage="Ask me to delegate to grocery and fitness, then merge their work into one practical week."
             />
-            <SourceCard
-              title="Workouts — from Fitness"
-              icon={<Dumbbell className="h-3 w-3" />}
-              theme="fitness"
-              value={state.workout_plan}
-              hint="Fitness output will appear here after wellness delegates training."
-            />
-          </div>
-
-          <div className="flex min-w-0 flex-col gap-4">
-            <PrimaryCard
-              title="Combined weekly plan"
-              icon={<CalendarDays className="h-3 w-3" />}
-              footer={
-                isRunning ? (
-                  <p className="text-xs text-[var(--page-color)]">writing…</p>
-                ) : undefined
-              }
-            >
-              {state.weekly_plan ? (
-                <div className="streamdown-markdown text-sm text-[var(--ink-soft)]">
-                  <Streamdown>{state.weekly_plan}</Streamdown>
-                </div>
-              ) : (
-                <p className="text-sm text-[var(--ink-mute)]">
-                  Ask the agent to coordinate meals and workouts for next week.
-                </p>
-              )}
-            </PrimaryCard>
-
-            {state.review_summary && (
+          }
+          artifact={
+            <div className="flex min-w-0 flex-col gap-4">
               <PrimaryCard
-                title="Review"
-                icon={<Sparkles className="h-3 w-3" />}
+                title="Combined weekly plan"
+                icon={<CalendarDays className="h-3 w-3" />}
+                footer={
+                  isRunning ? (
+                    <p className="text-xs text-[var(--page-color)]">
+                      writing...
+                    </p>
+                  ) : undefined
+                }
               >
-                <p className="text-sm text-[var(--ink-soft)]">
-                  {state.review_summary}
-                </p>
+                {state.weekly_plan ? (
+                  <div className="streamdown-markdown text-sm text-[var(--ink-soft)]">
+                    <Streamdown>{state.weekly_plan}</Streamdown>
+                  </div>
+                ) : (
+                  <p className="text-sm text-[var(--ink-mute)]">
+                    Ask the agent to coordinate meals and workouts for next
+                    week.
+                  </p>
+                )}
               </PrimaryCard>
-            )}
-          </div>
-        </div>
-      )}
 
-      <CopilotSidebar
-        agentId="wellness"
-        defaultOpen={false}
-        labels={{
-          modalHeaderTitle: "Wellness Planner",
-          chatInputPlaceholder: "Coordinate meals, workouts, recovery…",
-        }}
-      />
+              {state.review_summary && (
+                <PrimaryCard
+                  title="Review"
+                  icon={<Sparkles className="h-3 w-3" />}
+                >
+                  <p className="text-sm text-[var(--ink-soft)]">
+                    {state.review_summary}
+                  </p>
+                </PrimaryCard>
+              )}
+            </div>
+          }
+        />
+      )}
     </main>
   );
 }

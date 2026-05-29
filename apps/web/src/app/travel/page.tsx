@@ -1,14 +1,12 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   CopilotKit,
-  CopilotSidebar,
   useAgent,
   UseAgentUpdate,
   useFrontendTool,
   useConfigureSuggestions,
-  useDefaultRenderTool,
 } from "@copilotkit/react-core/v2";
 import { z } from "zod";
 import { Plane } from "lucide-react";
@@ -16,10 +14,10 @@ import { Plane } from "lucide-react";
 import type { DocStatus, TripState } from "@agents/types";
 
 import { HeroHeader } from "@/components/hero-header";
+import { AgentChatPanel, AgentWorkspace } from "@/components/agent-workspace";
 import { DocumentCanvas } from "@/components/document-canvas";
 import { PreferencesPanel } from "@/components/preferences-panel";
-import { ApprovalDialog, ApprovalRequest } from "@/components/approval-dialog";
-import { Card } from "@/components/ui/card";
+import { ApprovalCard, ApprovalRequest } from "@/components/approval-dialog";
 
 const STATUS_VALUES: ReadonlyArray<DocStatus> = [
   "idle",
@@ -46,7 +44,6 @@ export default function Page() {
 }
 
 function TripStudio() {
-  const [briefOpenMobile, setBriefOpenMobile] = useState(false);
   const [pendingApprovals, setPendingApprovals] = useState<ApprovalRequest[]>(
     [],
   );
@@ -148,55 +145,6 @@ function TripStudio() {
     available: "always",
   });
 
-  useDefaultRenderTool(
-    {
-      render: ({ name, parameters, status, result }) => {
-        const hasParams =
-          typeof parameters === "object" &&
-          parameters !== null &&
-          Object.keys(parameters as Record<string, unknown>).length > 0;
-
-        return (
-          <Card className="my-2 gap-2 bg-[var(--surface-soft)] p-3 py-3 text-sm">
-            <div className="flex items-center gap-2 font-mono font-semibold text-[var(--ink-soft)]">
-              <span>
-                {status === "complete"
-                  ? "✓"
-                  : status === "inProgress" || status === "executing"
-                    ? "⏳"
-                    : "○"}
-              </span>
-              <span>{name}</span>
-            </div>
-            {hasParams && (
-              <details className="mt-2">
-                <summary className="cursor-pointer text-xs text-[var(--ink-mute)]">
-                  Parameters
-                </summary>
-                <pre className="mt-1 overflow-auto rounded bg-[var(--bg-soft)] p-2 text-xs">
-                  {JSON.stringify(parameters, null, 2)}
-                </pre>
-              </details>
-            )}
-            {status === "complete" && result && (
-              <details className="mt-2">
-                <summary className="cursor-pointer text-xs text-[var(--ink-mute)]">
-                  Result
-                </summary>
-                <pre className="mt-1 overflow-auto rounded bg-[var(--bg-soft)] p-2 text-xs">
-                  {typeof result === "string"
-                    ? result
-                    : JSON.stringify(result, null, 2)}
-                </pre>
-              </details>
-            )}
-          </Card>
-        );
-      },
-    },
-    [],
-  );
-
   // Cleanup any pending approval promises if the user unmounts mid-flow.
   const pendingRef = useRef<ApprovalRequest[]>([]);
   useEffect(() => {
@@ -249,14 +197,6 @@ function TripStudio() {
     });
   };
 
-  const sidebarLabels = useMemo(
-    () => ({
-      modalHeaderTitle: "Trip Planner",
-      chatInputPlaceholder: "Plan a trip, rework a day, or ask for tradeoffs…",
-    }),
-    [],
-  );
-
   return (
     <main
       className="min-h-full flex flex-col"
@@ -272,21 +212,21 @@ function TripStudio() {
         description="Co-plan trips with an AI partner in real time."
         icon={<Plane className="w-5 h-5" />}
         isRunning={isRunning}
-        onToggleBrief={() => setBriefOpenMobile((v) => !v)}
-        briefOpenMobile={briefOpenMobile}
       />
 
-      <div className="flex-1 min-h-0 grid md:grid-cols-[320px_minmax(0,1fr)] gap-4 p-4 md:p-6 max-w-[1400px] w-full mx-auto">
-        {/* Traveler brief — pinned left on desktop, collapsible on mobile */}
-        <aside
-          className={`${
-            briefOpenMobile ? "block" : "hidden"
-          } md:block md:sticky md:top-6 md:self-start md:max-h-[calc(100vh-3rem)] md:overflow-y-auto`}
-        >
-          <PreferencesPanel />
-        </aside>
-
-        <section className="flex flex-col min-h-[60vh] md:min-h-0">
+      <AgentWorkspace
+        context={<PreferencesPanel />}
+        chat={
+          <AgentChatPanel
+            agentId="travel"
+            title="Trip conversation"
+            placeholder="Plan a trip, rework a day, or ask for tradeoffs..."
+            welcomeMessage="Tell me where you want to go, what dates you have, and what kind of trip you want."
+            interrupts={head ? <ApprovalCard request={head} /> : undefined}
+          />
+        }
+        artifact={
+          <div className="flex min-h-[60vh] flex-col md:min-h-0">
           <DocumentCanvas
             destination={destination}
             startDate={startDate}
@@ -305,17 +245,10 @@ function TripStudio() {
             onItineraryChange={onItineraryChange}
             onReset={onReset}
           />
-        </section>
-      </div>
-
-      {/* Prebuilt sidebar — handles its own mobile-friendly launcher + overlay */}
-      <CopilotSidebar
-        agentId="travel"
-        defaultOpen={false}
-        labels={sidebarLabels}
+          </div>
+        }
       />
 
-      {head && <ApprovalDialog key={head.id} request={head} />}
     </main>
   );
 }

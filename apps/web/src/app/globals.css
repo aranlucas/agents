@@ -194,3 +194,15 @@ body {
   height: 100%;
   font-family: inherit;
 }
+
+.agent-chat-shell .copilotKitChat,
+.agent-chat-shell .copilotKitChatContainer {
+  min-height: 0;
+  border: 0;
+  background: var(--surface);
+}
+
+.agent-chat-shell textarea,
+.agent-chat-shell input {
+  font-family: inherit;
+}

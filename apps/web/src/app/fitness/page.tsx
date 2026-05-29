@@ -4,12 +4,12 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useReverification, useUser } from "@clerk/nextjs";
 import {
   CopilotKit,
-  CopilotSidebar,
   useAgent,
   UseAgentUpdate,
   useConfigureSuggestions,
 } from "@copilotkit/react-core/v2";
 import { Activity, Dumbbell, Mountain, RefreshCw } from "lucide-react";
+import { AgentChatPanel, AgentWorkspace } from "@/components/agent-workspace";
 import { HeroHeader } from "@/components/hero-header";
 import { Streamdown } from "streamdown";
 
@@ -189,30 +189,32 @@ function FitnessPageInner() {
       {!stravaConnected ? (
         <StravaGate onConnect={handleConnect} connecting={connecting} />
       ) : (
-        <div className="mx-auto grid w-full max-w-[1400px] flex-1 gap-4 p-4 md:p-6 lg:grid-cols-[360px_minmax(0,1fr)]">
-          <div className="flex min-w-0 flex-col gap-4">
-            <SummaryCard
-              totals={totals}
-              syncedAt={state.activities_synced_at}
+        <AgentWorkspace
+          context={
+            <div className="flex min-w-0 flex-col gap-4">
+              <SummaryCard
+                totals={totals}
+                syncedAt={state.activities_synced_at}
+              />
+              <ActivitiesCard activities={activities} />
+            </div>
+          }
+          chat={
+            <AgentChatPanel
+              agentId="fitness"
+              title="Fitness conversation"
+              placeholder="Plan training, sync Strava, research objectives..."
+              welcomeMessage="Ask me to sync recent activity, plan the week, or adapt training around a mountain objective."
             />
-            <ActivitiesCard activities={activities} />
-          </div>
-          <div className="flex min-w-0 flex-col gap-4">
-            <PlanCard plan={trainingPlan} isStreaming={isRunning} />
-            <ResearchCard research={objectiveResearch} />
-          </div>
-        </div>
+          }
+          artifact={
+            <div className="flex min-w-0 flex-col gap-4">
+              <PlanCard plan={trainingPlan} isStreaming={isRunning} />
+              <ResearchCard research={objectiveResearch} />
+            </div>
+          }
+        />
       )}
-
-      <CopilotSidebar
-        agentId="fitness"
-        defaultOpen={false}
-        labels={{
-          modalHeaderTitle: "Fitness Planner",
-          chatInputPlaceholder:
-            "Plan training, sync Strava, research objectives...",
-        }}
-      />
     </main>
   );
 }

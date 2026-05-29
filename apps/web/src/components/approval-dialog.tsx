@@ -24,6 +24,68 @@ interface Props {
   request: ApprovalRequest;
 }
 
+export function ApprovalCard({ request }: Props) {
+  return (
+    <div className="rounded-lg border border-[color-mix(in_srgb,var(--warning)_38%,var(--border))] bg-[color-mix(in_srgb,var(--warning)_8%,var(--surface))] p-3">
+      <div className="flex items-start gap-3">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[color-mix(in_srgb,var(--warning)_16%,transparent)] text-[var(--warning)]">
+          <TriangleAlert className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-semibold text-[var(--ink)]">
+            Approval required
+          </div>
+          <div className="mt-0.5 text-xs text-[var(--ink-mute)]">
+            The agent paused before taking this action.
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 rounded-md border border-[var(--border-soft)] bg-[var(--surface)] px-3 py-2">
+        <div className="mb-1 font-mono text-[10px] uppercase tracking-wider text-[var(--ink-mute)]">
+          Proposed action
+        </div>
+        <div className="text-sm font-medium text-[var(--ink)]">
+          {request.action}
+        </div>
+      </div>
+
+      {request.reason && (
+        <div className="mt-2 rounded-md border border-[var(--border-soft)] bg-[var(--surface)] px-3 py-2">
+          <div className="mb-1 font-mono text-[10px] uppercase tracking-wider text-[var(--ink-mute)]">
+            Why
+          </div>
+          <div className="text-sm text-[var(--ink-soft)]">
+            {request.reason}
+          </div>
+        </div>
+      )}
+
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <Button
+          type="button"
+          onClick={() =>
+            request.resolve({ approved: false, note: "rejected by user" })
+          }
+          variant="outline"
+          size="sm"
+          className="w-full"
+        >
+          Reject
+        </Button>
+        <Button
+          type="button"
+          onClick={() => request.resolve({ approved: true })}
+          size="sm"
+          className="w-full"
+        >
+          Approve
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function ApprovalDialog({ request }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
