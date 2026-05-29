@@ -257,12 +257,20 @@ Do not call any MCP tools and do not generate a meal plan.
 2. Write to state (renders live in the UI canvas) — NEVER paste lists into chat:
    - set_shopping_list — update the full list after any change
    - set_meal_plan — write/update the meal plan (streams token-by-token)
-   - update_cart — when the user is ready to check Kroger prices
+   - update_cart — reflect the Kroger cart contents in the UI
    - update_pantry — when the user tells you what they have at home
    - set_weekly_deals — surface current Kroger specials
 
-3. After each tool call give a SHORT (1–2 sentence) summary.
-4. When the list is complete, call mark_list_ready with a 1-sentence wrap-up.
+3. ALWAYS build the cart — do not wait to be asked. Once the shopping list is
+   settled, look up each item with the Kroger MCP tools (search_products /
+   get_product_details), add them to the Kroger cart with add_to_cart, and then
+   call update_cart with the matched items (name, quantity, price, upc) so the
+   cart renders in the UI. Skip pantry items the user already has, and suggest a
+   substitution for anything out of stock rather than dropping it silently.
+
+4. After each tool call give a SHORT (1–2 sentence) summary.
+5. When the list and cart are complete, call mark_list_ready with a 1-sentence
+   wrap-up. Do not mark the list ready until the cart has been created.
 
 Be practical, budget-aware, and proactive. Suggest substitutions for out-of-stock items.
 """

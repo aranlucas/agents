@@ -1,5 +1,6 @@
 """Fitness Training Agent — Strava + objective research + AG-UI shared state."""
 
+import asyncio
 import datetime
 import logging
 import os
@@ -286,6 +287,30 @@ def on_before_agent(callback_context: CallbackContext):
     return None
 
 
+# Brave's free search tier allows ~1 request/second and returns 429s when bursted,
+# which is the most common failure mode for this agent. Enforce a minimum spacing
+# between web-search tool calls across the whole process as a hard floor; the
+# instruction also asks the model to keep its total number of searches small.
+_WEB_SEARCH_MIN_INTERVAL_S = 1.2
+_web_search_lock = asyncio.Lock()
+_last_web_search_at = 0.0
+
+
+async def throttle_web_search(tool, args, tool_context) -> None:
+    """Space out Brave web-search calls to respect the free-tier rate limit."""
+    if not str(getattr(tool, "name", "")).startswith("brave_"):
+        return None
+    global _last_web_search_at
+    async with _web_search_lock:
+        elapsed = time.monotonic() - _last_web_search_at
+        if elapsed < _WEB_SEARCH_MIN_INTERVAL_S:
+            wait = _WEB_SEARCH_MIN_INTERVAL_S - elapsed
+            log.debug("throttle_web_search: sleeping %.2fs before %s", wait, tool.name)
+            await asyncio.sleep(wait)
+        _last_web_search_at = time.monotonic()
+    return None
+
+
 def before_model_modifier(
     callback_context: CallbackContext, llm_request: LlmRequest
 ) -> Optional[LlmResponse]:
@@ -326,6 +351,18 @@ If `strava_connected` is False in the current state, stop immediately. Tell the 
 their Strava account isn't connected and they need to connect it in the UI before you
 can plan training. Do not call fetch_activities and do not generate a training plan.
 
+## Web search budget (IMPORTANT — throttle to avoid rate limits)
+Web search runs against a shared, rate-limited free tier and frequently returns
+429 / "too many requests" errors when called rapidly. Treat it as a scarce resource:
+- Make AT MOST 2 web searches for an entire plan. Prefer a single, well-formed query.
+- Batch your questions into one broad query (e.g. route + permits + season + weather
+  in one search) instead of many narrow back-to-back searches.
+- Only search when you genuinely need current external facts (trail conditions,
+  permits, seasonal access, weather). Do NOT search for general training knowledge
+  you already have.
+- If a search returns a rate-limit / 429 / error, do NOT retry in a loop. Proceed
+  with what you already know and note the assumption in the plan.
+
 ## Workflow (only when strava_connected is True)
 Plan weekly training from the user's recent Strava history.
 Support endurance workouts, gym strength, stretching, recovery, and preparation
@@ -334,13 +371,17 @@ for hiking or mountaineering objectives.
 1. Call get_current_date before creating or revising a weekly plan so the week
    is anchored to today's actual date.
 2. Call fetch_activities first when the activity snapshot is missing or stale.
-3. For hiking or mountaineering objectives, use web search tools to find current
-   route, access, permit, seasonal, and weather context. Then call
-   set_objective_research with a concise sourced summary.
+3. Recommend ONE specific named hike suited to the athlete's recent fitness and
+   the season. For that hike (and any mountaineering objective), make at most one
+   batched web search for current route, access, permit, seasonal, and weather
+   context, then call set_objective_research with a concise sourced summary that
+   names the hike, its distance, elevation gain, and why it fits this athlete.
 4. Write plans to state with set_training_plan. Do not paste the full plan into
    chat as the source of truth.
-5. Include weekly goals, workout days, gym sessions, mobility, stretching,
-   recovery guidance, and objective-specific prep.
+5. Make the plan DETAILED and day-by-day: for each day give the session type,
+   duration/distance or sets×reps, target intensity (easy/tempo/threshold or RPE),
+   plus weekly goals, gym sessions, mobility, stretching, recovery guidance, and
+   prep for the recommended hike. Schedule the recommended hike on a specific day.
 6. When the plan is complete, call mark_plan_ready.
 
 Be conservative with progression, specific about recovery, and clear about
@@ -361,6 +402,7 @@ fitness_agent = LlmAgent(
     instruction=_INSTRUCTION,
     before_agent_callback=on_before_agent,
     before_model_callback=before_model_modifier,
+    before_tool_callback=throttle_web_search,
     after_tool_callback=shared_after_tool_callback,
     tools=[
         fetch_activities,

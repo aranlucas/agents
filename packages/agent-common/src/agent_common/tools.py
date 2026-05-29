@@ -10,7 +10,7 @@ def parse_tool_response(tool_response: dict | str) -> Optional[dict | str]:
         if isinstance(tool_response, str):
             return tool_response
         return tool_response.get("structuredContent", tool_response.get("content", {}))
-    except KeyError, TypeError, AttributeError:
+    except (KeyError, TypeError, AttributeError):
         return None
 
 

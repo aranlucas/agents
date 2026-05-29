@@ -12,7 +12,7 @@ dependencies = [
   "httpx",
   "google-adk[a2a,mcp]>=2.1.0",
   "google-genai",
-  "ag-ui-adk>=0.6.4",
+  "ag-ui-adk>=0.6.5",
   "litellm",
   "opentelemetry-api",
   "opentelemetry-sdk",
