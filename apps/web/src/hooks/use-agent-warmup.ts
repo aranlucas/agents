@@ -9,6 +9,7 @@ export interface AgentStatuses {
   grocery: AgentStatus;
   fitness: AgentStatus;
   wellness: AgentStatus;
+  a2ui: AgentStatus;
 }
 
 interface HealthResponse {
@@ -22,6 +23,7 @@ const FALLBACK: AgentStatuses = {
   grocery: "loading",
   fitness: "loading",
   wellness: "loading",
+  a2ui: "loading",
 };
 
 export function useAgentWarmup() {

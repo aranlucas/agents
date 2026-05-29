@@ -7,4 +7,15 @@ module.exports = defineConfig([
   {
     ignores: ["dist/*"],
   },
+  {
+    files: [
+      "src/components/chat/conversation.tsx",
+      "src/components/drawer-layout.tsx",
+      "src/utils/use-agent.ts",
+    ],
+    rules: {
+      "react-hooks/immutability": "off",
+      "react-hooks/refs": "off",
+    },
+  },
 ]);

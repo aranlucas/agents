@@ -62,8 +62,14 @@ const runtime = new CopilotRuntime({
           ...(stravaToken ? { [STRAVA_TOKEN_HEADER]: stravaToken } : {}),
         },
       }),
+      a2ui: new HttpAgent({
+        url: env.A2UI_AGENT_URL,
+        debug: env.COPILOTKIT_DEBUG,
+        headers: identityHeaders,
+      }),
     };
   },
+  a2ui: { injectA2UITool: true, agents: ["a2ui"] },
   debug: env.COPILOTKIT_DEBUG,
 });
 

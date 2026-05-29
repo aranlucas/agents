@@ -49,7 +49,7 @@ async function mockStreamResponse(
 
 /** Extract text content from a UIMessage's parts array. */
 function getTextFromParts(
-  parts: Array<{ type: string; text?: string }>,
+  parts: { type: string; text?: string }[],
 ): string {
   return parts
     .filter((p) => p.type === "text" && p.text)
@@ -76,7 +76,7 @@ function useAIChat() {
         m.role === "assistant" &&
         m === uiMessages[uiMessages.length - 1]
           ? "" // Signal streaming — content comes from store
-          : getTextFromParts(m.parts as Array<{ type: string; text?: string }>),
+          : getTextFromParts(m.parts as { type: string; text?: string }[]),
     }));
   }, [uiMessages, isStreaming]);
 
@@ -92,7 +92,7 @@ function useAIChat() {
     const lastMessage = uiMessages[uiMessages.length - 1];
     if (lastMessage?.role === "assistant") {
       const text = getTextFromParts(
-        lastMessage.parts as Array<{ type: string; text?: string }>,
+        lastMessage.parts as { type: string; text?: string }[],
       );
       if (text !== prevStreamingTextRef.current) {
         prevStreamingTextRef.current = text;
@@ -203,9 +203,10 @@ function useMockChat() {
   };
 }
 
-export default function ChatScreen() {
-  const chat = USE_MOCK ? useMockChat() : useAIChat();
-  const { messages, isGenerating, streamingStore } = chat;
+type ChatController = ReturnType<typeof useAIChat> | ReturnType<typeof useMockChat>;
+
+function ChatSurface({ chat }: { chat: ChatController }) {
+  const { isGenerating, streamingStore } = chat;
 
   const renderMessage = useCallback(
     ({ item }: { item: ChatMessage }) => {
@@ -256,4 +257,16 @@ export default function ChatScreen() {
       <MainHeader />
     </>
   );
+}
+
+function MockChatScreen() {
+  return <ChatSurface chat={useMockChat()} />;
+}
+
+function AIChatScreen() {
+  return <ChatSurface chat={useAIChat()} />;
+}
+
+export default function ChatScreen() {
+  return USE_MOCK ? <MockChatScreen /> : <AIChatScreen />;
 }

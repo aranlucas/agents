@@ -9,6 +9,7 @@ package = false
 
 [tool.uv.workspace]
 members = [
+  "agents/a2ui",
   "agents/fitness",
   "agents/grocery",
   "agents/travel",

@@ -81,5 +81,25 @@ services:
     volumes:
       - adk-session-data:/data
 
+  a2ui:
+    build:
+      context: .
+      dockerfile: Dockerfile.agents
+    ports:
+      - "8004:8004"
+    env_file:
+      - path: ./.env
+        required: false
+      - path: ./agents/a2ui/.env
+        required: false
+    environment:
+      OTEL_SERVICE_NAME: a2ui-agent
+      AGENT_DIR: agents/a2ui
+      PORT: 8004
+      ADK_SESSION_DB_PATH: /data/adk_sessions.sqlite
+      AGENT_PUBLIC_URL: http://a2ui:8004
+    volumes:
+      - adk-session-data:/data
+
 volumes:
   adk-session-data:

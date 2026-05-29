@@ -48,6 +48,17 @@ const AGENTS: Agent[] = [
     tags: ["A2A", "Meals", "Training"],
     theme: "wellness",
   },
+  {
+    id: "05",
+    href: "/a2ui",
+    name: "A2UI Studio",
+    tagline: "Generative UI over AG-UI",
+    description:
+      "Ask an ADK agent to render declarative A2UI surfaces through CopilotKit.",
+    cta: "Render UI",
+    tags: ["A2UI", "ADK", "AG-UI"],
+    theme: "a2ui",
+  },
 ];
 
 export default function Home() {

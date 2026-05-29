@@ -52,6 +52,8 @@
   --fitness-soft: #e0f2fe;
   --wellness: #d97706;
   --wellness-soft: #fef3c7;
+  --a2ui: #0891b2;
+  --a2ui-soft: #cffafe;
 
   --success: #10b981;
   --success-soft: #ecfdf5;
@@ -91,6 +93,8 @@
     --fitness-soft: #07192a;
     --wellness: #fbbf24;
     --wellness-soft: #1e1508;
+    --a2ui: #22d3ee;
+    --a2ui-soft: #082f49;
 
     --success-soft: #062c22;
   }

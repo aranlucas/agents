@@ -10,7 +10,7 @@ export type Agent = {
   description: string;
   cta: string;
   tags: string[];
-  theme: "travel" | "grocery" | "fitness" | "wellness";
+  theme: "travel" | "grocery" | "fitness" | "wellness" | "a2ui";
 };
 
 const THEME: Record<Agent["theme"], { color: string; hover: string }> = {
@@ -18,6 +18,7 @@ const THEME: Record<Agent["theme"], { color: string; hover: string }> = {
   grocery: { color: "#16a34a", hover: "#f4fbf6" },
   fitness: { color: "#0284c7", hover: "#f2f8fd" },
   wellness: { color: "#d97706", hover: "#fdf8f2" },
+  a2ui: { color: "#0891b2", hover: "#effcff" },
 };
 
 export function AgentCard({
@@ -30,6 +31,7 @@ export function AgentCard({
 }) {
   const t = THEME[agent.theme];
   const isWellness = agent.theme === "wellness";
+  const isA2UI = agent.theme === "a2ui";
 
   return (
     <Link href={agent.href} className="group block">
@@ -69,6 +71,14 @@ export function AgentCard({
                 style={{ color: t.color, borderColor: t.color, opacity: 0.65 }}
               >
                 A2A
+              </span>
+            )}
+            {isA2UI && (
+              <span
+                className="font-mono text-[9px] uppercase tracking-wider border px-1.5 py-0.5 leading-none"
+                style={{ color: t.color, borderColor: t.color, opacity: 0.65 }}
+              >
+                A2UI
               </span>
             )}
           </div>
