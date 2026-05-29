@@ -2,21 +2,34 @@ packages:
   - "apps/*"
   - "packages/*"
 
+overrides:
+  "@expo/dom-webview": 56.0.5
+  "@expo/metro-runtime": 56.0.13
+  react-native-reanimated: 4.3.1
+  react-native-worklets: 0.8.3
+  utf-8-validate: 5.0.10
+
 allowBuilds:
   "@clerk/shared": true
   "@scarf/scarf": true
   browser-tabs-lock: true
   bufferutil: true
   core-js: true
+  msgpackr-extract: true
   sharp: true
   unrs-resolver: true
   utf-8-validate: true
+
+minimumReleaseAgeExclude:
+  - expo-modules-autolinking@56.0.14
+  - expo@56.0.6
 
 onlyBuiltDependencies:
   - "@clerk/shared"
   - "browser-tabs-lock"
   - "bufferutil"
   - "core-js"
+  - "msgpackr-extract"
   - "sharp"
   - "unrs-resolver"
   - "utf-8-validate"

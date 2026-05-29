@@ -103,3 +103,13 @@ export type WellnessState = {
   kroger_connected?: boolean;
   strava_connected?: boolean;
 };
+
+// A2UI showcase state — matches what agents/a2ui writes to ADK shared state
+export type A2UIStatus = "idle" | "ready";
+
+export type A2UIState = {
+  status?: A2UIStatus;
+  surface_brief?: string;
+  last_surface?: string;
+  user_id?: string;
+};
