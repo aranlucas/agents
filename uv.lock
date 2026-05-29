@@ -30,7 +30,7 @@ wheels = [
 
 [[package]]
 name = "ag-ui-adk"
-version = "0.6.4"
+version = "0.6.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ag-ui-protocol" },
@@ -42,9 +42,9 @@ dependencies = [
     { name = "sse-starlette" },
     { name = "uvicorn" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5a/53/c7e15c556c92e2146ffb38fbe1c6a771f4e14599306a6aedd3fd6a8bfd7a/ag_ui_adk-0.6.4.tar.gz", hash = "sha256:47150c782409ffe4055c5d6441931510c11155ca4542f053e3177ca2dfb6869b", size = 83158, upload-time = "2026-05-26T03:42:33.148Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/02/db/b146b69d98ce13dbc6a5e0f836976b279f9411ea5b9454c6cc2f7accd6c0/ag_ui_adk-0.6.5.tar.gz", hash = "sha256:0d1b415f424d4addd876f8c991b3847eaa6a2febe2dc859a6a5e8966b164b400", size = 81328, upload-time = "2026-05-28T07:34:07.737Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e7/ca/c222419f7631246e44ecd00d50ff08b389a4076282cd12fc4d7118a03c7b/ag_ui_adk-0.6.4-py3-none-any.whl", hash = "sha256:aef16281d78c2d03271d4d28404bfb46c446d064d3ced4b0463052f1c38a3714", size = 89540, upload-time = "2026-05-26T03:42:34.028Z" },
+    { url = "https://files.pythonhosted.org/packages/14/47/0f16e065c1a26cb1512a028abc9dac350c9a0656b92a12712a7da8b11b29/ag_ui_adk-0.6.5-py3-none-any.whl", hash = "sha256:c8d0af9838e713161df55bcd72977c288388811fb424283ba050933d12cc704f", size = 87595, upload-time = "2026-05-28T07:34:08.707Z" },
 ]
 
 [[package]]
@@ -515,7 +515,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "a2a-sdk", specifier = ">=0.3.4,<0.4" },
-    { name = "ag-ui-adk", specifier = ">=0.6.4" },
+    { name = "ag-ui-adk", specifier = ">=0.6.5" },
     { name = "agent-common", editable = "packages/agent-common" },
     { name = "dependency-injector", specifier = ">=4.49.0" },
     { name = "fastapi" },
@@ -792,7 +792,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "a2a-sdk", specifier = ">=0.3.4,<0.4" },
-    { name = "ag-ui-adk", specifier = ">=0.6.4" },
+    { name = "ag-ui-adk", specifier = ">=0.6.5" },
     { name = "agent-common", editable = "packages/agent-common" },
     { name = "dependency-injector", specifier = ">=4.49.0" },
     { name = "fastapi" },
@@ -1996,7 +1996,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "a2a-sdk", specifier = ">=0.3.4,<0.4" },
-    { name = "ag-ui-adk", specifier = ">=0.6.4" },
+    { name = "ag-ui-adk", specifier = ">=0.6.5" },
     { name = "agent-common", editable = "packages/agent-common" },
     { name = "dependency-injector", specifier = ">=4.49.0" },
     { name = "fastapi" },
@@ -2237,7 +2237,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "a2a-sdk", specifier = ">=0.3.4,<0.4" },
-    { name = "ag-ui-adk", specifier = ">=0.6.4" },
+    { name = "ag-ui-adk", specifier = ">=0.6.5" },
     { name = "agent-common", editable = "packages/agent-common" },
     { name = "dependency-injector", specifier = ">=4.49.0" },
     { name = "fastapi" },
