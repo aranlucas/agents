@@ -45,7 +45,7 @@ from agent_common.a2a import (
     create_a2a_agent_executor,
 )
 from agent_common.session_service import create_session_service
-from agent_common.tools import shared_after_tool_callback
+from agent_common.tools import parse_tool_response, shared_after_tool_callback
 
 load_dotenv()
 
@@ -71,10 +71,19 @@ STRAVA_TOKEN_STATE_KEY = "temp:strava_token"
 
 _DEFAULT_STATE: dict[str, Any] = {
     "status": "idle",
+    "workout_plan": "",
     "meal_plan": "",
     "weekly_plan": "",
     "review_summary": "",
     "user_id": "",
+}
+
+# Each delegated sub-agent's result is captured into a dedicated shared-state
+# key so it becomes first-class collaboration state — not just chat output.
+# These are the keys the web/mobile UI reads to render the per-source panels.
+_DELEGATE_OUTPUT_KEYS: dict[str, str] = {
+    "fitness_remote_agent": "workout_plan",
+    "grocery_remote_agent": "meal_plan",
 }
 
 
@@ -209,6 +218,35 @@ fitness_remote_agent = RemoteA2aAgent(
 )
 
 
+def before_delegate_tool(
+    tool, args: dict, tool_context: ToolContext
+) -> Optional[dict]:
+    """Flag delegation-in-progress so the UI animates the orchestration flow."""
+    if getattr(tool, "name", None) in _DELEGATE_OUTPUT_KEYS:
+        tool_context.state["status"] = "delegating"
+    return None
+
+
+async def capture_delegate_output(
+    tool, args: dict, tool_context: ToolContext, tool_response: Any
+) -> Optional[dict]:
+    """Capture each sub-agent's result into the shared-state key the UI reads.
+
+    Sub-agents collaborate through shared state, not chat output: the fitness
+    delegate's plan lands in `workout_plan` and the grocery delegate's plan in
+    `meal_plan`, so each source panel renders and the orchestrator can reconcile
+    them from state. Generic per-tool persistence still runs via the shared
+    callback afterwards.
+    """
+    state_key = _DELEGATE_OUTPUT_KEYS.get(getattr(tool, "name", None))
+    if state_key:
+        parsed = parse_tool_response(tool_response)
+        text = parsed if isinstance(parsed, str) else json.dumps(parsed, default=str)
+        if text:
+            tool_context.state[state_key] = text
+    return await shared_after_tool_callback(tool, args, tool_context, tool_response)
+
+
 def set_weekly_wellness_plan(tool_context: ToolContext, plan: str) -> dict:
     """Write the complete weekly meal and workout plan to shared state."""
     tool_context.state["weekly_plan"] = plan
@@ -241,6 +279,11 @@ The source of truth is shared state, not chat output.
 
 You have two agent tools: fitness_remote_agent and grocery_remote_agent.
 Call them with a plain-English request string. They return their result as text.
+
+These two delegates collaborate through shared state. Their results are captured
+automatically: the fitness response is saved to `workout_plan` and the grocery
+response to `meal_plan`. Both appear in the current state shown above, so you can
+read and reconcile them from state — you do not need to re-type their output.
 
 IMPORTANT: Call these tools one at a time, in order. Do NOT call both in the
 same turn. Do NOT call grocery_remote_agent until you have received and read the
@@ -299,7 +342,8 @@ wellness_agent = LlmAgent(
     instruction=_INSTRUCTION,
     before_agent_callback=on_before_agent,
     before_model_callback=before_model_modifier,
-    after_tool_callback=shared_after_tool_callback,
+    before_tool_callback=before_delegate_tool,
+    after_tool_callback=capture_delegate_output,
     tools=[
         get_current_date,
         set_weekly_wellness_plan,
