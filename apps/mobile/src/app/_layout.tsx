@@ -62,7 +62,6 @@ function TabLayout() {
       <Tabs.Screen name="attachments" options={{ href: null }} />
       <Tabs.Screen name="model-picker" options={{ href: null }} />
       <Tabs.Screen name="(settings)" options={{ href: null }} />
-      <Tabs.Screen name="api/chat+api" options={{ href: null }} />
     </Tabs>
   );
 }
