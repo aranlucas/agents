@@ -6,9 +6,17 @@
     "dev:web": "pnpm --filter web dev",
     "dev:mobile": "pnpm --filter mobile start",
     "dev:agents": "docker compose up --build",
+    "lint": "oxlint .",
+    "lint:py": "uv run ruff check agents packages/agent-common",
+    "check": "pnpm lint && pnpm lint:py && pnpm fmt:check",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check",
     "build": "pnpm --filter web build"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^10.0.3",
+    "oxfmt": "^0.53.0",
+    "oxlint": "^1.68.0",
+    "oxlint-tsgolint": "^0.23.0"
   }
 }

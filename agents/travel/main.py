@@ -20,38 +20,33 @@ import logging
 import os
 import time
 
+from a2a.server.apps.jsonrpc import A2AFastAPIApplication
+from a2a.server.request_handlers import DefaultRequestHandler
+from a2a.types import AgentCapabilities, AgentCard, AgentSkill
+from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
+from ag_ui_adk.config import PredictStateMapping
+from agent_common.a2a import create_a2a_agent_executor
+from agent_common.session_service import create_session_service
+from agent_common.task_store import create_task_store
+from agent_common.tools import shared_after_tool_callback
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
-from ag_ui_adk.config import PredictStateMapping
-
 from google.adk.agents import LlmAgent
 from google.adk.agents.readonly_context import ReadonlyContext
+from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
+from google.adk.auth.credential_service.in_memory_credential_service import (
+    InMemoryCredentialService,
+)
+from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.models.lite_llm import LiteLlm
+from google.adk.runners import Runner
 from google.adk.tools import ToolContext
 from google.adk.utils import instructions_utils
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.sdk.resources import Resource
 from utils import trvl_toolset
-
-from a2a.server.apps.jsonrpc import A2AFastAPIApplication
-from a2a.server.request_handlers import DefaultRequestHandler
-from agent_common.task_store import create_task_store
-from a2a.types import AgentCapabilities, AgentCard, AgentSkill
-
-from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
-from google.adk.auth.credential_service.in_memory_credential_service import (
-    InMemoryCredentialService,
-)
-from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
-from google.adk.runners import Runner
-
-from agent_common.a2a import create_a2a_agent_executor
-from agent_common.session_service import create_session_service
-from agent_common.tools import shared_after_tool_callback
 
 load_dotenv()
 

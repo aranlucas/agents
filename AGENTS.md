@@ -39,6 +39,32 @@ pnpm dev:agents
 
 The web app runs on :3000. Travel agent on :8000. Grocery agent on :8001.
 
+## Quality checks
+
+This repo uses the Oxc toolchain for JavaScript/TypeScript and Ruff for Python.
+
+```bash
+# Run all configured checks
+pnpm check
+
+# JS/TS linting with Oxlint (type-aware via oxlint-tsgolint)
+pnpm lint
+
+# Python linting with Ruff
+pnpm lint:py
+
+# Format all supported files with Oxfmt
+pnpm fmt
+```
+
+Conventions:
+
+- Use `oxlint` instead of ESLint. Keep `.oxlintrc.json` as the source of truth.
+- Use `oxfmt` instead of Prettier. Tailwind class sorting is enabled, including `cn()` and `tw()` helper calls.
+- Use Ruff for Python linting. The root `pyproject.toml` owns the shared Ruff rule set.
+- `react/react-in-jsx-scope` stays off because the web and mobile apps use the React 17+ automatic JSX runtime.
+- Treat Oxlint warnings as follow-up cleanup unless the checker exits non-zero.
+
 ## Adding a new agent
 
 1. `mkdir agents/<name>` and copy the structure from `agents/travel/` (or `agents/grocery/`)
@@ -55,11 +81,11 @@ The web app runs on :3000. Travel agent on :8000. Grocery agent on :8001.
 
 ## Deployment
 
-| Surface        | Platform  | Config                                                                                                        |
-| -------------- | --------- | ------------------------------------------------------------------------------------------------------------- |
-| Python agents  | Railway   | `Dockerfile.agents` + `agents/<name>/railway.json` — set Root Dir to repo root, set `AGENT_DIR=agents/<name>` |
-| `apps/web/`    | Vercel    | vercel.json — set Root Dir to `apps/web/` in Vercel dashboard                                                 |
-| `apps/mobile/` | EAS Build | `apps/mobile/eas.json` → App Store / Google Play                                                              |
+| Surface        | Platform       | Config                                                                                                                                           |
+| -------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Python agents  | Railway        | `Dockerfile.agents` + `agents/<name>/railway.json` — set Root Dir to repo root, set `AGENT_DIR=agents/<name>`                                    |
+| `apps/web/`    | Vercel         | vercel.json — set Root Dir to `apps/web/` in Vercel dashboard                                                                                    |
+| `apps/mobile/` | EAS Build      | `apps/mobile/eas.json` → App Store / Google Play                                                                                                 |
 | Android APK    | GitHub Actions | `.github/workflows/android-apk.yml` — `expo prebuild` + Gradle, publishes the APK to a GitHub Release via `gh` (push a `v*` tag or run manually) |
 
 ## Architecture

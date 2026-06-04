@@ -27,6 +27,7 @@ def test_a2a_agent_card_route_exists():
 
 def test_agent_card_url_uses_agent_public_url_env(monkeypatch):
     import importlib
+
     import main
 
     monkeypatch.setenv("AGENT_PUBLIC_URL", "http://a2ui:8004")

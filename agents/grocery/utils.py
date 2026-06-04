@@ -1,7 +1,6 @@
 """Grocery agent MCP toolset factory."""
 
 import os
-from typing import Dict
 
 from google.adk.agents.readonly_context import ReadonlyContext
 from google.adk.tools.mcp_tool import McpToolset
@@ -13,7 +12,7 @@ MEAL_PLANNER_MCP_URL = os.getenv(
 KROGER_TOKEN_STATE_KEY = "temp:kroger_token"
 
 
-def _header_provider(context: ReadonlyContext) -> Dict[str, str]:
+def _header_provider(context: ReadonlyContext) -> dict[str, str]:
     """Return auth headers from session state at call time."""
     token: str = context.state.get(KROGER_TOKEN_STATE_KEY, "")
     if token:

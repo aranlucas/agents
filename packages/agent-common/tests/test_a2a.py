@@ -1,10 +1,9 @@
 from unittest.mock import MagicMock
 
 from a2a.types import Message, Role, TextPart
-
 from agent_common.a2a import (
-    apply_a2a_auth_metadata_to_state,
     a2a_request_converter,
+    apply_a2a_auth_metadata_to_state,
     create_a2a_agent_executor,
 )
 from google.adk.a2a.executor.a2a_agent_executor import A2aAgentExecutor

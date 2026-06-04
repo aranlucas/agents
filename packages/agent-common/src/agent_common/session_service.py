@@ -1,8 +1,8 @@
 """Session service factory with injectable database dependencies."""
 
 import os
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Mapping
 
 from dependency_injector import containers, providers
 from google.adk.sessions.sqlite_session_service import SqliteSessionService

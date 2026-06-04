@@ -4,16 +4,12 @@ import json
 import logging
 import os
 import time
-from typing import Any, Optional
+from typing import Any
 
-from dotenv import load_dotenv
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-
-from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
 from a2a.server.apps.jsonrpc import A2AFastAPIApplication
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill
+from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
 from agent_common.a2a import (
     apply_a2a_auth_metadata_to_state,
     create_a2a_agent_executor,
@@ -21,6 +17,9 @@ from agent_common.a2a import (
 from agent_common.session_service import create_session_service
 from agent_common.task_store import create_task_store
 from agent_common.tools import shared_after_tool_callback
+from dotenv import load_dotenv
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
@@ -99,7 +98,7 @@ def on_before_agent(callback_context: CallbackContext):
 
 def before_model_modifier(
     callback_context: CallbackContext, llm_request: LlmRequest
-) -> Optional[LlmResponse]:
+) -> LlmResponse | None:
     state = {
         key: callback_context.state.get(key, default)
         for key, default in _DEFAULT_STATE.items()
