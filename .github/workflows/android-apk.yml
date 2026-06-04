@@ -66,6 +66,14 @@ jobs:
           EXPO_NO_TELEMETRY: "1"
         run: pnpm exec expo prebuild --platform android --no-install
 
+      - name: Configure Gradle for CI
+        working-directory: apps/mobile/android
+        run: |
+          # Increase JVM heap (default 2g is too low for 4-ABI builds on CI).
+          sed -i 's/org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m/' gradle.properties
+          # Build only the two ABIs needed for real devices; x86/x86_64 are emulator-only.
+          sed -i 's/reactNativeArchitectures=.*/reactNativeArchitectures=arm64-v8a,x86_64/' gradle.properties
+
       - name: Build release APK
         working-directory: apps/mobile/android
         run: ./gradlew assembleRelease --no-daemon
