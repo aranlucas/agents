@@ -184,6 +184,7 @@ function TripStudio() {
         {
           "--page-color": "var(--travel)",
           "--page-color-soft": "var(--travel-soft)",
+          "--page-contrast": "var(--travel-contrast)",
         } as React.CSSProperties
       }
     >

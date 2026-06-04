@@ -47,9 +47,9 @@ export function AgentWorkspace({
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="sticky top-[51px] z-10 border-b border-[var(--border-soft)] bg-[var(--bg)] px-4 py-2 xl:hidden">
+      <div className="sticky top-[51px] z-10 border-b border-[var(--border-soft)] bg-[color-mix(in_srgb,var(--bg)_92%,transparent)] px-4 py-2 backdrop-blur xl:hidden">
         <div
-          className="grid rounded-lg border border-[var(--border)] bg-[var(--surface)] p-1"
+          className="grid rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] p-1 shadow-[var(--shadow-card)]"
           style={{ gridTemplateColumns: `repeat(${panels.length}, 1fr)` }}
         >
           {panels.map((panel) => (
@@ -60,7 +60,7 @@ export function AgentWorkspace({
               className={cn(
                 "h-8 rounded-md text-xs font-semibold transition-colors",
                 mobilePanel === panel
-                  ? "bg-[var(--page-color,var(--accent))] text-white shadow-sm"
+                  ? "bg-[var(--page-color,var(--accent))] text-[var(--page-contrast,#fff)] shadow-sm"
                   : "text-[var(--ink-mute)] hover:text-[var(--ink)]",
               )}
             >
@@ -127,7 +127,7 @@ export function AgentChatPanel({
   return (
     <section
       className={cn(
-        "flex h-[min(760px,calc(100vh-7.5rem))] min-h-[560px] flex-col overflow-hidden border border-[var(--border)] bg-[var(--surface)] shadow-sm",
+        "flex h-[min(760px,calc(100vh-7.5rem))] min-h-[560px] flex-col overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)]",
         className,
       )}
     >
@@ -143,7 +143,7 @@ export function AgentChatPanel({
       <div className="agent-chat-shell min-h-0 flex-1">
         <AgentToolEventRenderer />
         {interrupts && (
-          <div className="border-b border-[var(--border-soft)] bg-[var(--surface)] p-3">
+          <div className="border-b border-[var(--border-soft)] bg-[var(--surface-soft)] p-3">
             {interrupts}
           </div>
         )}
@@ -172,7 +172,7 @@ function AgentToolEventRenderer() {
         const hasResult = status === "complete" && result !== undefined;
 
         return (
-          <Card className="my-2 gap-0 border-[var(--border-soft)] bg-[var(--surface-soft)] p-3 py-3 text-sm">
+          <Card className="my-2 gap-0 border-[var(--border-soft)] bg-[var(--surface-soft)] p-3 py-3 text-sm shadow-none">
             <div className="flex items-start gap-3">
               <span
                 className={cn(
@@ -187,7 +187,7 @@ function AgentToolEventRenderer() {
                   <span className="font-medium text-[var(--ink)]">{event}</span>
                   <Badge
                     variant="outline"
-                    className="h-auto border-transparent bg-[var(--bg-soft)] px-1.5 py-0.5 font-mono text-[9px] tracking-wider text-[var(--ink-mute)] uppercase"
+                    className="h-auto border-[var(--border)] bg-[var(--bg-soft)] px-1.5 py-0.5 font-mono text-[9px] tracking-wider text-[var(--ink-mute)] uppercase"
                   >
                     {statusLabel(status)}
                   </Badge>

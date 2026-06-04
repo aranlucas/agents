@@ -44,7 +44,7 @@ export default function GroceryScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       {list.length > 0 && (
         <ScrollView horizontal style={styles.chipRow} showsHorizontalScrollIndicator={false}>

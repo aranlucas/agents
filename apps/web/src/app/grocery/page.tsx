@@ -172,6 +172,7 @@ function GroceryPageInner() {
         {
           "--page-color": "var(--grocery)",
           "--page-color-soft": "var(--grocery-soft)",
+          "--page-contrast": "var(--grocery-contrast)",
         } as React.CSSProperties
       }
     >
@@ -229,7 +230,7 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <Card size="sm" className="gap-0 border-[var(--border)] py-0">
+    <Card size="sm" className="gap-0 border-[var(--border)] py-0 shadow-[var(--shadow-card)]">
       <CardHeader className="flex-row items-center gap-2 border-b border-[var(--border-soft)] bg-[var(--surface-soft)] px-4 py-3">
         <CardTitle className="text-sm font-semibold">{title}</CardTitle>
         {badge}

@@ -13,6 +13,10 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
       type: "empty",
     };
   }
+  // @legendapp/list ships no "." export; redirect bare import to the RN subpath.
+  if (moduleName === "@legendapp/list") {
+    return context.resolveRequest(context, "@legendapp/list/react-native", platform);
+  }
   return context.resolveRequest(context, moduleName, platform);
 };
 

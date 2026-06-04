@@ -209,7 +209,7 @@ export function PreferencesPanel() {
               >
                 <span className="font-medium">{opt.label}</span>
                 <span
-                  className={`text-[10px] ${active ? "text-white/80" : "text-[var(--ink-mute)]"}`}
+                  className={cn("text-[10px]", active ? "opacity-80" : "text-[var(--ink-mute)]")}
                 >
                   {opt.hint}
                 </span>
@@ -254,7 +254,7 @@ export function PreferencesPanel() {
               >
                 <span className="font-medium">{opt.label}</span>
                 <span
-                  className={`text-[10px] ${active ? "text-white/80" : "text-[var(--ink-mute)]"}`}
+                  className={cn("text-[10px]", active ? "opacity-80" : "text-[var(--ink-mute)]")}
                 >
                   {opt.hint}
                 </span>

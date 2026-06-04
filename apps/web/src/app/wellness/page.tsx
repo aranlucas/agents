@@ -68,14 +68,19 @@ const SOURCE_THEME = {
   grocery: {
     headerBg: "bg-[var(--grocery-soft)]",
     iconBg: "bg-[var(--grocery)]",
+    iconText: "text-[var(--grocery-contrast)]",
     svgColor: "var(--grocery)",
   },
   fitness: {
     headerBg: "bg-[var(--fitness-soft)]",
     iconBg: "bg-[var(--fitness)]",
+    iconText: "text-[var(--fitness-contrast)]",
     svgColor: "var(--fitness)",
   },
-} satisfies Record<SourceTheme, { headerBg: string; iconBg: string; svgColor: string }>;
+} satisfies Record<
+  SourceTheme,
+  { headerBg: string; iconBg: string; iconText: string; svgColor: string }
+>;
 
 function OrchestrationFlow({ status }: { status: WellnessStatus }) {
   const isDelegating = status === "delegating";
@@ -87,7 +92,7 @@ function OrchestrationFlow({ status }: { status: WellnessStatus }) {
         <span className="font-mono text-[10px] tracking-widest text-[var(--ink-mute)] uppercase">
           Grocery
         </span>
-        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[var(--grocery)] text-white">
+        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[var(--grocery)] text-[var(--grocery-contrast)]">
           <Salad className="h-3 w-3" />
         </div>
         <svg
@@ -111,7 +116,7 @@ function OrchestrationFlow({ status }: { status: WellnessStatus }) {
       </div>
 
       <div className="mx-1 flex flex-col items-center gap-0.5 rounded-xl bg-[var(--wellness-soft)] px-4 py-2">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--wellness)] text-white shadow-sm">
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--wellness)] text-[var(--wellness-contrast)] shadow-sm">
           <Sparkles className="h-3.5 w-3.5" />
         </div>
         <span className="font-mono text-[9px] tracking-widest text-[var(--wellness)] uppercase">
@@ -138,7 +143,7 @@ function OrchestrationFlow({ status }: { status: WellnessStatus }) {
           />
           <polygon points="26,3 32,7 26,11" fill="var(--fitness)" />
         </svg>
-        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[var(--fitness)] text-white">
+        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[var(--fitness)] text-[var(--fitness-contrast)]">
           <Dumbbell className="h-3 w-3" />
         </div>
         <span className="font-mono text-[10px] tracking-widest text-[var(--ink-mute)] uppercase">
@@ -173,9 +178,9 @@ function StepIndicator({
               <div
                 className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold ${
                   isDone
-                    ? "bg-[var(--success)] text-white"
+                    ? "bg-[var(--success)] text-[var(--bg)]"
                     : isCurrent
-                      ? "bg-[var(--page-color)] text-white"
+                      ? "bg-[var(--page-color)] text-[var(--page-contrast)]"
                       : "bg-[var(--border)] text-[var(--ink-mute)]"
                 }`}
               >
@@ -262,7 +267,7 @@ function SourceCard({
         className={`flex flex-row items-center gap-2.5 border-b border-[var(--border-soft)] pb-3 ${t.headerBg}`}
       >
         <div
-          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-white ${t.iconBg}`}
+          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${t.iconBg} ${t.iconText}`}
         >
           {icon}
         </div>
@@ -295,7 +300,7 @@ function PrimaryCard({
   return (
     <Card className="flex min-w-0 flex-col border-[var(--border)]">
       <CardHeader className="flex flex-row items-center gap-2.5 border-b border-[var(--border-soft)] bg-[var(--page-color-soft)] pb-3">
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[var(--page-color)] text-white">
+        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[var(--page-color)] text-[var(--page-contrast)]">
           {icon}
         </div>
         <CardTitle className="text-sm font-semibold text-[var(--ink)]">{title}</CardTitle>
@@ -426,6 +431,7 @@ function WellnessPageInner() {
         {
           "--page-color": "var(--wellness)",
           "--page-color-soft": "var(--wellness-soft)",
+          "--page-contrast": "var(--wellness-contrast)",
         } as React.CSSProperties
       }
     >
