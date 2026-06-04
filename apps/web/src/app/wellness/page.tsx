@@ -264,7 +264,7 @@ function SourceCard({
   return (
     <Card className="min-w-0 overflow-hidden border-[var(--border)]">
       <CardHeader
-        className={`flex flex-row items-center gap-2.5 border-b border-[var(--border-soft)] pb-3 ${t.headerBg}`}
+        className={`flex flex-row items-center gap-2.5 border-b border-[var(--border-soft)] px-4 py-3 ${t.headerBg}`}
       >
         <div
           className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${t.iconBg} ${t.iconText}`}
@@ -299,7 +299,7 @@ function PrimaryCard({
 }) {
   return (
     <Card className="flex min-w-0 flex-col border-[var(--border)]">
-      <CardHeader className="flex flex-row items-center gap-2.5 border-b border-[var(--border-soft)] bg-[var(--page-color-soft)] pb-3">
+      <CardHeader className="flex flex-row items-center gap-2.5 border-b border-[var(--border-soft)] bg-[var(--page-color-soft)] px-4 py-3">
         <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[var(--page-color)] text-[var(--page-contrast)]">
           {icon}
         </div>
