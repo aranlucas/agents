@@ -42,7 +42,7 @@ export default function TravelScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       {state.destination ? (
         <View style={styles.tripCard}>

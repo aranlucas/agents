@@ -1,6 +1,7 @@
 import { AgentList } from "@/components/agent-list";
 import { AgentKey } from "@/components/agent-key";
-import { AgentStatusBar } from "@/components/agent-status-bar";
+import { AppHeader } from "@/components/app-header";
+import { Badge } from "@/components/ui/badge";
 import type { Agent } from "@/components/agent-card";
 
 const AGENTS: Agent[] = [
@@ -58,45 +59,47 @@ const AGENTS: Agent[] = [
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen flex-col bg-[var(--bg)]">
-      <header className="flex h-11 shrink-0 items-center justify-between border-b border-[var(--border)] px-5 md:px-8">
-        <span className="font-mono text-[10px] tracking-[0.22em] text-[var(--ink-mute)] uppercase">
-          Agents
-        </span>
-        <AgentStatusBar />
-      </header>
+    <div className="min-h-screen bg-[var(--bg)]">
+      <AppHeader />
 
-      <div className="flex shrink-0 items-end justify-between border-b border-[var(--border)] px-5 pt-10 pb-8 md:px-8">
-        <div>
-          <p className="mb-3 font-mono text-[10px] tracking-[0.25em] text-[var(--ink-mute)] uppercase">
-            Planning system
-          </p>
-          <h1 className="text-[clamp(2rem,5vw,3.5rem)] leading-[1.0] font-extrabold tracking-tight text-[var(--ink)]">
-            Agents that work
-            <br />
-            <span style={{ opacity: 0.3 }}>together.</span>
-          </h1>
-        </div>
-        <AgentKey />
-      </div>
+      <main className="mx-auto flex min-h-[calc(100vh-3rem)] max-w-[1480px] flex-col gap-5 px-4 py-5 md:px-8 md:py-7">
+        <section className="grid gap-5 border-b border-[var(--border)] pb-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+          <div className="min-w-0">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="bg-[var(--surface)] font-mono">
+                Planning system
+              </Badge>
+              <Badge variant="secondary">CopilotKit x ADK</Badge>
+            </div>
+            <h1 className="max-w-3xl text-4xl leading-[0.98] font-semibold tracking-tight text-[var(--ink)] md:text-6xl">
+              Agents that coordinate useful work.
+            </h1>
+            <p className="mt-4 max-w-2xl text-sm leading-6 text-[var(--ink-soft)] md:text-base">
+              A compact control surface for travel, grocery, fitness, wellness, and generative UI
+              agents. Pick a workspace, give direction in chat, and watch the live artifact update.
+            </p>
+          </div>
+          <AgentKey />
+        </section>
 
-      <AgentList agents={AGENTS} />
+        <AgentList agents={AGENTS} />
 
-      <footer className="flex shrink-0 items-center gap-2 border-t border-[var(--border)] px-5 py-3 md:px-8">
-        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--grocery)]" />
-        <span className="font-mono text-[9px] tracking-[0.18em] text-[var(--ink-mute)] uppercase">
-          Grocery
-        </span>
-        <span className="font-mono text-[9px] text-[var(--border-soft)] select-none">+</span>
-        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--fitness)]" />
-        <span className="font-mono text-[9px] tracking-[0.18em] text-[var(--ink-mute)] uppercase">
-          Fitness
-        </span>
-        <span className="font-mono text-[9px] text-[var(--border-soft)] select-none">→</span>
-        <span className="font-mono text-[9px] tracking-[0.18em] text-[var(--ink-mute)] uppercase">
-          Wellness orchestration
-        </span>
-      </footer>
+        <footer className="mt-auto flex flex-wrap items-center gap-2 border-t border-[var(--border)] pt-4">
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--grocery)]" />
+          <span className="font-mono text-[10px] tracking-[0.14em] text-[var(--ink-mute)] uppercase">
+            Grocery
+          </span>
+          <span className="font-mono text-[10px] text-[var(--ink-mute)] select-none">+</span>
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--fitness)]" />
+          <span className="font-mono text-[10px] tracking-[0.14em] text-[var(--ink-mute)] uppercase">
+            Fitness
+          </span>
+          <span className="font-mono text-[10px] text-[var(--ink-mute)] select-none">to</span>
+          <span className="font-mono text-[10px] tracking-[0.14em] text-[var(--ink-soft)] uppercase">
+            Wellness orchestration
+          </span>
+        </footer>
+      </main>
     </div>
   );
 }

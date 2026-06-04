@@ -3,6 +3,8 @@
 import React from "react";
 import Link from "next/link";
 import { ArrowLeft, ListFilter } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -25,11 +27,14 @@ export function HeroHeader({
   briefOpenMobile,
 }: Props) {
   return (
-    <header className="sticky top-0 z-20 bg-[var(--page-color-soft)] [border-bottom:1px_solid_color-mix(in_srgb,var(--page-color)_22%,transparent)] [border-top:3px_solid_var(--page-color)]">
+    <header className="sticky top-0 z-20 border-b border-[color-mix(in_srgb,var(--page-color)_26%,var(--border))] bg-[color-mix(in_srgb,var(--page-color-soft)_42%,var(--bg))] [border-top:3px_solid_var(--page-color)]">
       <div className="mx-auto flex max-w-[1400px] items-center gap-3 px-4 py-2.5 md:px-6">
         <Link
           href="/"
-          className="flex shrink-0 items-center gap-1 font-mono text-[10px] tracking-[0.18em] text-[var(--ink-mute)] uppercase transition-colors hover:text-[var(--page-color)]"
+          className={cn(
+            buttonVariants({ variant: "ghost", size: "xs" }),
+            "shrink-0 font-mono tracking-[0.14em] text-[var(--ink-mute)] uppercase hover:text-[var(--page-color)]",
+          )}
         >
           <ArrowLeft className="h-3 w-3" />
           <span className="hidden sm:inline">Agents</span>
@@ -37,7 +42,7 @@ export function HeroHeader({
 
         <span className="h-4 w-px shrink-0 bg-[var(--border)]" />
 
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--page-color)] text-white shadow-sm">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--page-color)] text-[var(--page-contrast,#fff)] shadow-sm">
           {icon}
         </div>
 
@@ -55,8 +60,8 @@ export function HeroHeader({
             className={cn(
               "hidden items-center gap-2 rounded-full px-2.5 py-1 text-[11px] font-medium sm:flex",
               isRunning
-                ? "bg-[var(--page-color)] text-white"
-                : "bg-white/60 text-[var(--ink-soft)]",
+                ? "bg-[var(--page-color)] text-[var(--page-contrast,#fff)]"
+                : "border border-[var(--border)] bg-[var(--surface-raised)] text-[var(--ink-soft)]",
             )}
           >
             <span
@@ -69,21 +74,25 @@ export function HeroHeader({
           </div>
 
           {onToggleBrief && (
-            <button
+            <Button
               type="button"
               onClick={onToggleBrief}
               aria-pressed={briefOpenMobile}
+              variant="outline"
+              size="sm"
               className={cn(
-                "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors md:hidden",
+                "md:hidden",
                 briefOpenMobile
-                  ? "border-transparent bg-[var(--page-color)] text-white"
-                  : "border-[var(--border)] bg-transparent text-[var(--ink-mute)]",
+                  ? "border-transparent bg-[var(--page-color)] text-[var(--page-contrast,#fff)]"
+                  : "border-[var(--border)] bg-[var(--surface-raised)] text-[var(--ink-mute)]",
               )}
             >
               <ListFilter className="h-3 w-3" />
               Brief
-            </button>
+            </Button>
           )}
+
+          <ThemeToggle />
         </div>
       </div>
     </header>

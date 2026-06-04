@@ -30,7 +30,7 @@ const STATUS_META: Record<A2UIStatus, { label: string }> = {
 
 function Metric({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
   return (
-    <div className="border border-[var(--border)] bg-[var(--surface)] p-4">
+    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-card)]">
       <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-md bg-[var(--a2ui-soft)] text-[var(--a2ui)]">
         {icon}
       </div>
@@ -86,6 +86,7 @@ function A2UIPageInner() {
         {
           "--page-color": "var(--a2ui)",
           "--page-color-soft": "var(--a2ui-soft)",
+          "--page-contrast": "var(--a2ui-contrast)",
         } as React.CSSProperties
       }
     >
@@ -107,7 +108,7 @@ function A2UIPageInner() {
           />
         }
         artifact={
-          <section className="min-w-0 border border-[var(--border)] bg-[var(--surface)]">
+          <section className="min-w-0 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-panel)]">
             <div className="border-b border-[var(--border)] bg-[var(--surface-soft)] p-5">
               <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-[var(--a2ui-soft)] px-3 py-1 text-xs font-semibold text-[var(--a2ui)]">
                 <Sparkles className="h-3.5 w-3.5" />
@@ -125,7 +126,10 @@ function A2UIPageInner() {
             </div>
 
             <div className="grid gap-4 p-5 pt-0 md:grid-cols-2">
-              <Card size="sm" className="gap-0 py-0">
+              <Card
+                size="sm"
+                className="gap-0 border-[var(--border)] py-0 shadow-[var(--shadow-card)]"
+              >
                 <CardHeader className="border-b border-[var(--border-soft)] bg-[var(--surface-soft)] px-4 py-3">
                   <CardTitle className="flex items-center gap-2">
                     <GalleryVerticalEnd className="h-4 w-4 text-[var(--a2ui)]" />
@@ -143,7 +147,10 @@ function A2UIPageInner() {
                 </CardContent>
               </Card>
 
-              <Card size="sm" className="gap-0 py-0">
+              <Card
+                size="sm"
+                className="gap-0 border-[var(--border)] py-0 shadow-[var(--shadow-card)]"
+              >
                 <CardHeader className="border-b border-[var(--border-soft)] bg-[var(--surface-soft)] px-4 py-3">
                   <CardTitle className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-[var(--a2ui)]" />

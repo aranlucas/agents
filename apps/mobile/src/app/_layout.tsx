@@ -1,3 +1,15 @@
+// Polyfill crypto.getRandomValues for Hermes (used by @ag-ui/client via uuid).
+if (!globalThis.crypto) {
+  (globalThis as any).crypto = {};
+}
+if (!globalThis.crypto.getRandomValues) {
+  (globalThis.crypto as any).getRandomValues = function <T extends ArrayBufferView>(array: T): T {
+    const bytes = new Uint8Array(array.buffer, array.byteOffset, array.byteLength);
+    for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+    return array;
+  };
+}
+
 import { ClerkProvider } from "@clerk/clerk-expo";
 import * as SecureStore from "expo-secure-store";
 import { Tabs } from "expo-router";
@@ -44,6 +56,13 @@ function TabLayout() {
           tabBarIcon: ({ color, size }) => <ShoppingCart color={color} size={size} />,
         }}
       />
+      {/* Hide all other routes from the tab bar */}
+      <Tabs.Screen name="index" options={{ href: null }} />
+      <Tabs.Screen name="chats" options={{ href: null }} />
+      <Tabs.Screen name="attachments" options={{ href: null }} />
+      <Tabs.Screen name="model-picker" options={{ href: null }} />
+      <Tabs.Screen name="(settings)" options={{ href: null }} />
+      <Tabs.Screen name="api/chat+api" options={{ href: null }} />
     </Tabs>
   );
 }
