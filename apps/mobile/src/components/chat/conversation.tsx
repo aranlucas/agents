@@ -47,10 +47,7 @@ const ConversationCtx = createContext<ConversationContextValue | null>(null);
 
 export function useConversationContext() {
   const ctx = use(ConversationCtx);
-  if (!ctx)
-    throw new Error(
-      "useConversationContext must be used within <Conversation>",
-    );
+  if (!ctx) throw new Error("useConversationContext must be used within <Conversation>");
   return ctx;
 }
 
@@ -137,15 +134,13 @@ export function Conversation({
   });
 
   const isAtBottom = useDerivedValue(() => {
-    const maxScrollY =
-      totalContentHeight.value - scrollViewHeight.value + bottomInset.value;
+    const maxScrollY = totalContentHeight.value - scrollViewHeight.value + bottomInset.value;
     if (maxScrollY <= 0) return true;
     return maxScrollY - scrollY.value <= SCROLL_THRESHOLD;
   });
 
   const shouldShowScrollButton = useDerivedValue(() => {
-    const maxScrollY =
-      totalContentHeight.value - scrollViewHeight.value + bottomInset.value;
+    const maxScrollY = totalContentHeight.value - scrollViewHeight.value + bottomInset.value;
     if (maxScrollY <= 50) return false;
     return !isAtBottom.value;
   });
@@ -156,12 +151,9 @@ export function Conversation({
     scrollViewHeight.value = e.nativeEvent.layout.height;
   }, []);
 
-  const onScroll = useCallback(
-    (event: { nativeEvent: { contentOffset: { y: number } } }) => {
-      scrollY.value = event.nativeEvent.contentOffset.y;
-    },
-    [],
-  );
+  const onScroll = useCallback((event: { nativeEvent: { contentOffset: { y: number } } }) => {
+    scrollY.value = event.nativeEvent.contentOffset.y;
+  }, []);
 
   const onContentSizeChange = useCallback((_width: number, height: number) => {
     const wasAtBottom = isAtBottom.value;
@@ -223,10 +215,7 @@ export function Conversation({
         }),
       },
     ],
-    bottom:
-      composerHeight.value +
-      Math.max(insets.bottom, Math.abs(keyboardHeight.value)) +
-      12,
+    bottom: composerHeight.value + Math.max(insets.bottom, Math.abs(keyboardHeight.value)) + 12,
   }));
 
   const listAnimatedProps = useAnimatedProps(() => {
@@ -257,7 +246,7 @@ export function Conversation({
 
   return (
     <ConversationCtx value={contextValue}>
-      <View className="flex-1 bg-background">
+      <View className="bg-background flex-1">
         <KeyboardGestureArea
           interpolator="ios"
           showOnSwipeUp
@@ -308,12 +297,12 @@ export function ConversationScrollButton() {
       <TouchableGlass
         onPress={scrollToBottom}
         hitSlop={8}
-        className="w-10 h-10 rounded-full justify-center items-center"
+        className="h-10 w-10 items-center justify-center rounded-full"
       >
         <SymbolImage
           name="chevron.down"
           sfEffect={{ effect: "wiggle", repeat: -1 }}
-          className="text-muted-foreground text-xs mt-1"
+          className="text-muted-foreground mt-1 text-xs"
         />
       </TouchableGlass>
     </Animated.View>
@@ -330,12 +319,10 @@ export function ConversationEmptyState({
   icon?: string;
 }) {
   return (
-    <View className="flex-1 justify-center items-center gap-2">
+    <View className="flex-1 items-center justify-center gap-2">
       <SymbolImage name={icon} size={48} className="text-muted-foreground" />
-      <Text className="text-xl font-semibold text-foreground">{title}</Text>
-      {description && (
-        <Text className="text-sm text-muted-foreground">{description}</Text>
-      )}
+      <Text className="text-foreground text-xl font-semibold">{title}</Text>
+      {description && <Text className="text-muted-foreground text-sm">{description}</Text>}
     </View>
   );
 }

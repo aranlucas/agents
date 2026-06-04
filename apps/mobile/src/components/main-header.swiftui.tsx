@@ -10,18 +10,13 @@ import {
   Toggle,
   VStack,
 } from "@expo/ui/swift-ui";
-import {
-  controlSize,
-  font,
-  foregroundStyle,
-} from "@expo/ui/swift-ui/modifiers";
+import { controlSize, font, foregroundStyle } from "@expo/ui/swift-ui/modifiers";
 import { Stack } from "expo-router";
 import { useColorScheme } from "react-native";
 import { useDrawer } from "./drawer-content";
 
 function HeaderTitleMenu() {
-  const { models, selectedModel, extendedThinking, setExtendedThinking } =
-    useModel();
+  const { models, selectedModel, extendedThinking, setExtendedThinking } = useModel();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const headerFg = isDark ? "#fff" : "#000";
@@ -41,19 +36,14 @@ function HeaderTitleMenu() {
           <VStack spacing={0}>
             <HStack spacing={4} alignment="center">
               <SUIText
-                modifiers={[
-                  foregroundStyle(headerFg),
-                  font({ weight: "semibold", size: 17 }),
-                ]}
+                modifiers={[foregroundStyle(headerFg), font({ weight: "semibold", size: 17 })]}
               >
                 {selected?.label ?? "Model"}
               </SUIText>
               <SUIImage systemName="chevron.down" size={10} color={headerFg} />
             </HStack>
             {subtitle && (
-              <SUIText
-                modifiers={[foregroundStyle(headerFgMuted), font({ size: 12 })]}
-              >
+              <SUIText modifiers={[foregroundStyle(headerFgMuted), font({ size: 12 })]}>
                 {subtitle}
               </SUIText>
             )}
@@ -62,19 +52,10 @@ function HeaderTitleMenu() {
         modifiers={[controlSize("regular")]}
       >
         <Section title="Existing tools for iOS app tech stack detection">
-          <Button
-            systemImage="archivebox"
-            label="Add to project"
-            onPress={() => {}}
-          />
+          <Button systemImage="archivebox" label="Add to project" onPress={() => {}} />
           <Button systemImage="star" label="Star" onPress={() => {}} />
           <Button systemImage="pencil" label="Rename" onPress={() => {}} />
-          <Button
-            systemImage="trash"
-            label="Delete"
-            role="destructive"
-            onPress={() => {}}
-          />
+          <Button systemImage="trash" label="Delete" onPress={() => {}} />
         </Section>
         <Toggle isOn={extendedThinking} onIsOnChange={setExtendedThinking}>
           <SUIText>Extended thinking</SUIText>

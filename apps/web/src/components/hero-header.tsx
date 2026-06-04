@@ -25,37 +25,35 @@ export function HeroHeader({
   briefOpenMobile,
 }: Props) {
   return (
-    <header className="sticky top-0 z-20 bg-[var(--page-color-soft)] [border-top:3px_solid_var(--page-color)] [border-bottom:1px_solid_color-mix(in_srgb,var(--page-color)_22%,transparent)]">
-      <div className="flex items-center gap-3 px-4 py-2.5 md:px-6 max-w-[1400px] mx-auto">
+    <header className="sticky top-0 z-20 bg-[var(--page-color-soft)] [border-bottom:1px_solid_color-mix(in_srgb,var(--page-color)_22%,transparent)] [border-top:3px_solid_var(--page-color)]">
+      <div className="mx-auto flex max-w-[1400px] items-center gap-3 px-4 py-2.5 md:px-6">
         <Link
           href="/"
-          className="shrink-0 flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ink-mute)] hover:text-[var(--page-color)] transition-colors"
+          className="flex shrink-0 items-center gap-1 font-mono text-[10px] tracking-[0.18em] text-[var(--ink-mute)] uppercase transition-colors hover:text-[var(--page-color)]"
         >
-          <ArrowLeft className="w-3 h-3" />
+          <ArrowLeft className="h-3 w-3" />
           <span className="hidden sm:inline">Agents</span>
         </Link>
 
         <span className="h-4 w-px shrink-0 bg-[var(--border)]" />
 
-        <div className="w-7 h-7 shrink-0 rounded-lg flex items-center justify-center text-white shadow-sm bg-[var(--page-color)]">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--page-color)] text-white shadow-sm">
           {icon}
         </div>
 
-        <div className="flex-1 min-w-0 flex items-baseline gap-2">
-          <h1 className="shrink-0 text-sm font-bold tracking-tight text-[var(--ink)]">
-            {name}
-          </h1>
+        <div className="flex min-w-0 flex-1 items-baseline gap-2">
+          <h1 className="shrink-0 text-sm font-bold tracking-tight text-[var(--ink)]">{name}</h1>
           {description && (
-            <p className="hidden md:block text-xs text-[var(--ink-mute)] truncate min-w-0">
+            <p className="hidden min-w-0 truncate text-xs text-[var(--ink-mute)] md:block">
               {description}
             </p>
           )}
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex shrink-0 items-center gap-2">
           <div
             className={cn(
-              "hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-full text-[11px] font-medium",
+              "hidden items-center gap-2 rounded-full px-2.5 py-1 text-[11px] font-medium sm:flex",
               isRunning
                 ? "bg-[var(--page-color)] text-white"
                 : "bg-white/60 text-[var(--ink-soft)]",
@@ -63,8 +61,8 @@ export function HeroHeader({
           >
             <span
               className={cn(
-                "w-1.5 h-1.5 rounded-full",
-                isRunning ? "bg-white animate-pulse" : "bg-[var(--ink-mute)]",
+                "h-1.5 w-1.5 rounded-full",
+                isRunning ? "animate-pulse bg-white" : "bg-[var(--ink-mute)]",
               )}
             />
             {isRunning ? "Working…" : (statusLabel ?? "Ready")}
@@ -76,13 +74,13 @@ export function HeroHeader({
               onClick={onToggleBrief}
               aria-pressed={briefOpenMobile}
               className={cn(
-                "md:hidden flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors",
+                "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors md:hidden",
                 briefOpenMobile
-                  ? "bg-[var(--page-color)] text-white border-transparent"
-                  : "bg-transparent text-[var(--ink-mute)] border-[var(--border)]",
+                  ? "border-transparent bg-[var(--page-color)] text-white"
+                  : "border-[var(--border)] bg-transparent text-[var(--ink-mute)]",
               )}
             >
-              <ListFilter className="w-3 h-3" />
+              <ListFilter className="h-3 w-3" />
               Brief
             </button>
           )}

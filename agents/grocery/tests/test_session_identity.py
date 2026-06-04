@@ -1,6 +1,5 @@
-from starlette.datastructures import Headers
-
 from agent_common.session_service import SessionServiceContainer, create_session_service
+from starlette.datastructures import Headers
 
 
 class Request:

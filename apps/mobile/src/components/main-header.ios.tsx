@@ -2,8 +2,7 @@ import Constants, { ExecutionEnvironment } from "expo-constants";
 
 import { MainHeader as FallbackMainHeader } from "./main-header.fallback";
 
-const isExpoGo =
-  Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
 const SwiftUIMainHeader: typeof FallbackMainHeader | undefined = isExpoGo
   ? undefined

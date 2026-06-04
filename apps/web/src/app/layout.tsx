@@ -23,9 +23,7 @@ export const metadata: Metadata = {
     "Trip, grocery, and fitness agents that collaborate — powered by Google ADK + CopilotKit.",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${schibsted.variable} ${jetbrains.variable}`}>
       <body className="antialiased">

@@ -26,13 +26,12 @@ export default function TravelScreen() {
   const scrollRef = useRef<ScrollView>(null);
 
   // Forward the Clerk identity the same way the web copilotkit route does.
-  const headers = useMemo(
-    () => (userId ? { "x-clerk-user-id": userId } : undefined),
-    [userId],
-  );
+  const headers = useMemo(() => (userId ? { "x-clerk-user-id": userId } : undefined), [userId]);
 
-  const { messages, state, isLoading, error, sendMessage } =
-    useAgent<TripState>({ url: TRAVEL_AGENT_URL, headers }, {});
+  const { messages, state, isLoading, error, sendMessage } = useAgent<TripState>(
+    { url: TRAVEL_AGENT_URL, headers },
+    {},
+  );
 
   const onSend = () => {
     const text = input;
@@ -48,9 +47,7 @@ export default function TravelScreen() {
       {state.destination ? (
         <View style={styles.tripCard}>
           <Text style={styles.tripDestination}>{state.destination}</Text>
-          {state.headline ? (
-            <Text style={styles.tripHeadline}>{state.headline}</Text>
-          ) : null}
+          {state.headline ? <Text style={styles.tripHeadline}>{state.headline}</Text> : null}
           {state.start_date && state.end_date ? (
             <Text style={styles.tripDates}>
               {state.start_date} → {state.end_date}
@@ -60,32 +57,22 @@ export default function TravelScreen() {
       ) : (
         <View style={styles.emptyState}>
           <Text style={styles.emptyTitle}>Trip Planner</Text>
-          <Text style={styles.emptySubtitle}>
-            Tell me where you want to go.
-          </Text>
+          <Text style={styles.emptySubtitle}>Tell me where you want to go.</Text>
         </View>
       )}
 
       <ScrollView
         ref={scrollRef}
         style={styles.messageList}
-        onContentSizeChange={() =>
-          scrollRef.current?.scrollToEnd({ animated: true })
-        }
+        onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
       >
         {messages.map((m) => (
           <View
             key={m.id}
-            style={[
-              styles.bubble,
-              m.role === "user" ? styles.userBubble : styles.agentBubble,
-            ]}
+            style={[styles.bubble, m.role === "user" ? styles.userBubble : styles.agentBubble]}
           >
             <Text
-              style={[
-                styles.bubbleText,
-                m.role === "user" ? styles.userText : styles.agentText,
-              ]}
+              style={[styles.bubbleText, m.role === "user" ? styles.userText : styles.agentText]}
             >
               {m.content}
             </Text>

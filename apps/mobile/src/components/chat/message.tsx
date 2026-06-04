@@ -8,22 +8,16 @@ import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
  * role – user messages render as right-aligned blue bubbles, assistant messages
  * render full-width.
  */
-export function Message({
-  from,
-  children,
-}: {
-  from: "user" | "assistant";
-  children: ReactNode;
-}) {
+export function Message({ from, children }: { from: "user" | "assistant"; children: ReactNode }) {
   if (from === "user") {
     return (
       <Animated.View
         entering={FadeIn.duration(200)}
         exiting={FadeOut.duration(150)}
-        className="max-w-[80%] self-end rounded-2xl bg-user-bubble p-3 mb-2 border-continuous"
+        className="bg-user-bubble border-continuous mb-2 max-w-[80%] self-end rounded-2xl p-3"
       >
         {typeof children === "string" ? (
-          <Text selectable className="text-base leading-5.5 text-foreground">
+          <Text selectable className="text-foreground text-base leading-5.5">
             {children}
           </Text>
         ) : (
@@ -34,11 +28,7 @@ export function Message({
   }
 
   return (
-    <Animated.View
-      entering={FadeIn.duration(200)}
-      exiting={FadeOut.duration(150)}
-      className="mb-2"
-    >
+    <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)} className="mb-2">
       {children}
     </Animated.View>
   );

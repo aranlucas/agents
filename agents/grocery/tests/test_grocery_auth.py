@@ -1,8 +1,8 @@
 from unittest.mock import Mock
 
 import main
-import utils
 import pytest
+import utils
 from starlette.datastructures import Headers
 
 

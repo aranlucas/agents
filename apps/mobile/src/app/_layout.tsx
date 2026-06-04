@@ -41,9 +41,7 @@ function TabLayout() {
         name="grocery"
         options={{
           title: "Grocery",
-          tabBarIcon: ({ color, size }) => (
-            <ShoppingCart color={color} size={size} />
-          ),
+          tabBarIcon: ({ color, size }) => <ShoppingCart color={color} size={size} />,
         }}
       />
     </Tabs>

@@ -80,30 +80,25 @@ export function useAgent<TState extends Record<string, unknown>>(
       agent.messages = [...agent.messages, userMessage as never];
 
       try {
-        await agent.runAgent(
-          { runId: `run_${Date.now()}` },
-          {
-            // Fires on every streamed token and message mutation.
-            onMessagesChanged: ({ messages: next }: { messages: unknown[] }) => {
-              setMessages(
-                (next as Parameters<typeof toAgentMessage>[0][])
-                  .map(toAgentMessage)
-                  .filter(
-                    (m) =>
-                      (m.role === "user" || m.role === "assistant") &&
-                      m.content.length > 0,
-                  ),
-              );
-            },
-            // Client has already applied snapshots + JSON-patch deltas here.
-            onStateChanged: ({ state: next }: { state: TState }) => {
-              if (next) setState((prev) => ({ ...prev, ...next }));
-            },
-            onRunErrorEvent: () => {
-              setError("Connection error. Is the agent running?");
-            },
-          } as never,
-        );
+        await agent.runAgent({ runId: `run_${Date.now()}` }, {
+          // Fires on every streamed token and message mutation.
+          onMessagesChanged: ({ messages: next }: { messages: unknown[] }) => {
+            setMessages(
+              (next as Parameters<typeof toAgentMessage>[0][])
+                .map(toAgentMessage)
+                .filter(
+                  (m) => (m.role === "user" || m.role === "assistant") && m.content.length > 0,
+                ),
+            );
+          },
+          // Client has already applied snapshots + JSON-patch deltas here.
+          onStateChanged: ({ state: next }: { state: TState }) => {
+            if (next) setState((prev) => ({ ...prev, ...next }));
+          },
+          onRunErrorEvent: () => {
+            setError("Connection error. Is the agent running?");
+          },
+        } as never);
       } catch {
         setError("Connection error. Is the agent running?");
       } finally {

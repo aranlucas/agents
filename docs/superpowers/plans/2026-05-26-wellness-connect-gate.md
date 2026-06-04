@@ -84,14 +84,7 @@ import {
   UseAgentUpdate,
   useConfigureSuggestions,
 } from "@copilotkit/react-core/v2";
-import {
-  Activity,
-  CalendarDays,
-  Dumbbell,
-  Salad,
-  ShoppingCart,
-  Sparkles,
-} from "lucide-react";
+import { Activity, CalendarDays, Dumbbell, Salad, ShoppingCart, Sparkles } from "lucide-react";
 import { Streamdown } from "streamdown";
 
 import { HeroHeader } from "@/components/hero-header";
@@ -156,25 +149,21 @@ const [connectingId, setConnectingId] = useState<ConnectStepId | null>(null);
 
 const connectKroger = useReverification(async () => {
   if (!user) return;
-  const existing = user.externalAccounts.find(
-    ({ provider }) => provider === KROGER_PROVIDER,
-  );
+  const existing = user.externalAccounts.find(({ provider }) => provider === KROGER_PROVIDER);
   const account = existing
     ? await existing.reauthorize({ redirectUrl: window.location.href })
     : await user.createExternalAccount({
         strategy: KROGER_STRATEGY,
         redirectUrl: window.location.href,
       });
-  const redirectUrl =
-    account.verification?.externalVerificationRedirectURL?.href;
+  const redirectUrl = account.verification?.externalVerificationRedirectURL?.href;
   if (redirectUrl) window.location.assign(redirectUrl);
 });
 
 const connectStrava = useReverification(async () => {
   if (!user) return;
   const existing = user.externalAccounts.find(
-    ({ provider }) =>
-      provider === "custom_strava" || String(provider) === STRAVA_STRATEGY,
+    ({ provider }) => provider === "custom_strava" || String(provider) === STRAVA_STRATEGY,
   );
   const account = existing
     ? await existing.reauthorize({ redirectUrl: window.location.href })
@@ -182,8 +171,7 @@ const connectStrava = useReverification(async () => {
         strategy: STRAVA_STRATEGY,
         redirectUrl: window.location.href,
       });
-  const redirectUrl =
-    account.verification?.externalVerificationRedirectURL?.href;
+  const redirectUrl = account.verification?.externalVerificationRedirectURL?.href;
   if (redirectUrl) window.location.assign(redirectUrl);
 });
 ```
@@ -355,21 +343,15 @@ function WellnessConnectGate({
           {currentStep.icon}
         </div>
         <div className="space-y-2">
-          <h2 className="text-xl font-semibold text-[var(--ink)]">
-            Connect {currentStep.label}
-          </h2>
-          <p className="max-w-sm text-sm text-[var(--ink-mute)]">
-            {currentStep.description}
-          </p>
+          <h2 className="text-xl font-semibold text-[var(--ink)]">Connect {currentStep.label}</h2>
+          <p className="max-w-sm text-sm text-[var(--ink-mute)]">{currentStep.description}</p>
         </div>
         <Button
           onClick={() => onConnect(currentStep.id)}
           disabled={connectingId !== null}
           size="lg"
         >
-          {connectingId === currentStep.id
-            ? "Connecting…"
-            : `Connect ${currentStep.label}`}
+          {connectingId === currentStep.id ? "Connecting…" : `Connect ${currentStep.label}`}
         </Button>
         <p className="text-xs text-[var(--ink-mute)]">
           You&apos;ll be redirected to authorize access, then returned here.
@@ -419,9 +401,7 @@ In `WellnessPageInner`, find the `return (` statement. The current `<main>` body
           title="Combined weekly plan"
           icon={<CalendarDays className="h-3 w-3" />}
           footer={
-            isRunning ? (
-              <p className="text-xs text-[var(--page-color)]">writing…</p>
-            ) : undefined
+            isRunning ? <p className="text-xs text-[var(--page-color)]">writing…</p> : undefined
           }
         >
           {state.weekly_plan ? (
@@ -437,9 +417,7 @@ In `WellnessPageInner`, find the `return (` statement. The current `<main>` body
 
         {state.review_summary && (
           <PrimaryCard title="Review" icon={<Sparkles className="h-3 w-3" />}>
-            <p className="text-sm text-[var(--ink-soft)]">
-              {state.review_summary}
-            </p>
+            <p className="text-sm text-[var(--ink-soft)]">{state.review_summary}</p>
           </PrimaryCard>
         )}
       </div>

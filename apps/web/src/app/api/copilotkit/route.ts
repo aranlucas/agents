@@ -1,7 +1,4 @@
-import {
-  CopilotRuntime,
-  createCopilotRuntimeHandler,
-} from "@copilotkit/runtime/v2";
+import { CopilotSseRuntime, createCopilotRuntimeHandler } from "@copilotkit/runtime/v2";
 import { HttpAgent } from "@ag-ui/client";
 import { auth } from "@clerk/nextjs/server";
 import { env } from "@/env";
@@ -12,7 +9,7 @@ const CLERK_USER_ID_HEADER = "x-clerk-user-id";
 const KROGER_TOKEN_HEADER = "x-kroger-access-token";
 const STRAVA_TOKEN_HEADER = "x-strava-access-token";
 
-const runtime = new CopilotRuntime({
+const runtime = new CopilotSseRuntime({
   agents: async () => {
     const { userId } = await auth();
     const identityHeaders: Record<string, string> = userId

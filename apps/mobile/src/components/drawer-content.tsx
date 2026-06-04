@@ -25,11 +25,7 @@ export function DrawerProvider({ children }: { children: React.ReactNode }) {
   const openDrawer = useCallback(() => setIsOpen(true), []);
   const closeDrawer = useCallback(() => setIsOpen(false), []);
 
-  return (
-    <DrawerContext value={{ isOpen, openDrawer, closeDrawer }}>
-      {children}
-    </DrawerContext>
-  );
+  return <DrawerContext value={{ isOpen, openDrawer, closeDrawer }}>{children}</DrawerContext>;
 }
 
 export function useDrawer() {
@@ -40,19 +36,10 @@ export function useDrawer() {
   return context;
 }
 
-function DrawerNavItem({
-  label,
-  onPress,
-}: {
-  label: string;
-  onPress: () => void;
-}) {
+function DrawerNavItem({ label, onPress }: { label: string; onPress: () => void }) {
   return (
-    <Pressable
-      onPress={onPress}
-      className="px-4 py-3 mx-2 rounded-[10px] active:bg-muted"
-    >
-      <Text className="text-base text-foreground">{label}</Text>
+    <Pressable onPress={onPress} className="active:bg-muted mx-2 rounded-[10px] px-4 py-3">
+      <Text className="text-foreground text-base">{label}</Text>
     </Pressable>
   );
 }
@@ -69,17 +56,11 @@ function DrawerChatItem({
   return (
     <Pressable
       onPress={onPress}
-      className={cn(
-        `px-4 py-2.5 mx-2 rounded-[10px] active:bg-accent`,
-        active && "bg-muted",
-      )}
+      className={cn(`active:bg-accent mx-2 rounded-[10px] px-4 py-2.5`, active && "bg-muted")}
     >
       <Text
         numberOfLines={1}
-        className={cn(
-          `text-[15px]`,
-          active ? "text-foreground" : "text-muted-foreground",
-        )}
+        className={cn(`text-[15px]`, active ? "text-foreground" : "text-muted-foreground")}
       >
         {title}
       </Text>
@@ -102,14 +83,11 @@ export function DrawerContent({
     >
       {/* Header */}
       <View className="px-4 pt-2 pb-3">
-        <Text className="text-[28px] font-bold text-foreground">Chat</Text>
+        <Text className="text-foreground text-[28px] font-bold">Chat</Text>
       </View>
 
       {/* Nav + Chat history */}
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: 8 }}
-      >
+      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 8 }}>
         <DrawerNavItem label="Chats" onPress={() => onNavigate("/chats")} />
         <DrawerNavItem
           label="Settings"
@@ -122,7 +100,7 @@ export function DrawerContent({
         />
 
         {/* Recents */}
-        <Text className="text-[13px] font-semibold text-muted-foreground px-6 pt-5 pb-1.5">
+        <Text className="text-muted-foreground px-6 pt-5 pb-1.5 text-[13px] font-semibold">
           Recents
         </Text>
         {MOCK_CHATS.map((chat) => (
@@ -137,26 +115,24 @@ export function DrawerContent({
 
       {/* Footer */}
       <View
-        className="flex-row items-center px-4 py-3 border-t border-border"
+        className="border-border flex-row items-center border-t px-4 py-3"
         style={{ borderTopWidth: StyleSheet.hairlineWidth }}
       >
         <TouchableGlass
           onPress={() => onOpenModal("/(settings)/settings")}
-          className="rounded-full p-2 flex-row items-center gap-2.5 active:opacity-60"
+          className="flex-row items-center gap-2.5 rounded-full p-2 active:opacity-60"
         >
-          <View className="w-8 h-8 rounded-full bg-muted items-center justify-center">
-            <Text className="text-[13px] font-semibold text-foreground">
-              EB
-            </Text>
+          <View className="bg-muted h-8 w-8 items-center justify-center rounded-full">
+            <Text className="text-foreground text-[13px] font-semibold">EB</Text>
           </View>
-          <Text className="text-sm text-foreground">Evan Bacon</Text>
+          <Text className="text-foreground text-sm">Evan Bacon</Text>
         </TouchableGlass>
         <View className="flex-1" />
         <TouchableGlass
           onPress={() => onNavigate("/")}
-          className="w-10 h-10 rounded-full bg-foreground active:bg-muted items-center justify-center"
+          className="bg-foreground active:bg-muted h-10 w-10 items-center justify-center rounded-full"
         >
-          <Icon icon={Plus} className="w-6 h-6 text-background" />
+          <Icon icon={Plus} className="text-background h-6 w-6" />
         </TouchableGlass>
       </View>
     </SafeAreaView>

@@ -3,13 +3,7 @@
 import React, { useState } from "react";
 import { useAgentContext } from "@copilotkit/react-core/v2";
 import { Car, Plane } from "lucide-react";
-import type {
-  BudgetTier,
-  Pace,
-  Preferences,
-  TransportMode,
-  Vibe,
-} from "@agents/types";
+import type { BudgetTier, Pace, Preferences, TransportMode, Vibe } from "@agents/types";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -108,10 +102,7 @@ export function PreferencesPanel() {
 
   const toggleInterest = (i: string) => {
     const has = value.interests.includes(i);
-    set(
-      "interests",
-      has ? value.interests.filter((x) => x !== i) : [...value.interests, i],
-    );
+    set("interests", has ? value.interests.filter((x) => x !== i) : [...value.interests, i]);
   };
 
   return (
@@ -126,7 +117,7 @@ export function PreferencesPanel() {
         <CardAction>
           <Badge
             variant="outline"
-            className="h-auto rounded-md px-2 py-1 font-mono text-[10px] uppercase tracking-wider"
+            className="h-auto rounded-md px-2 py-1 font-mono text-[10px] tracking-wider uppercase"
           >
             UI → Agent
           </Badge>
@@ -136,10 +127,14 @@ export function PreferencesPanel() {
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="block text-xs font-medium text-[var(--ink-soft)] mb-1">
+            <label
+              htmlFor="traveler-name"
+              className="mb-1 block text-xs font-medium text-[var(--ink-soft)]"
+            >
               Your name
             </label>
             <Input
+              id="traveler-name"
               type="text"
               value={value.travelerName}
               onChange={(e) => set("travelerName", e.target.value)}
@@ -148,25 +143,25 @@ export function PreferencesPanel() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[var(--ink-soft)] mb-1">
+            <label
+              htmlFor="home-airport"
+              className="mb-1 block text-xs font-medium text-[var(--ink-soft)]"
+            >
               Home airport
             </label>
             <Input
+              id="home-airport"
               type="text"
               value={value.homeAirport}
-              onChange={(e) =>
-                set("homeAirport", e.target.value.toUpperCase().slice(0, 4))
-              }
+              onChange={(e) => set("homeAirport", e.target.value.toUpperCase().slice(0, 4))}
               placeholder="SFO"
               className="bg-[var(--surface-soft)] font-mono uppercase"
             />
           </div>
         </div>
 
-        <label className="block text-xs font-medium text-[var(--ink-soft)] mb-2">
-          Transport mode
-        </label>
-        <div className="grid grid-cols-2 gap-1.5 mb-4">
+        <p className="mb-2 block text-xs font-medium text-[var(--ink-soft)]">Transport mode</p>
+        <div className="mb-4 grid grid-cols-2 gap-1.5">
           {[
             {
               value: "flight" as TransportMode,
@@ -188,10 +183,7 @@ export function PreferencesPanel() {
                 onClick={() => set("transportMode", opt.value)}
                 variant={active ? "default" : "outline"}
                 size="sm"
-                className={cn(
-                  "h-9 text-xs",
-                  !active && "bg-[var(--surface-soft)]",
-                )}
+                className={cn("h-9 text-xs", !active && "bg-[var(--surface-soft)]")}
               >
                 <Icon className="size-3.5" />
                 <span className="font-medium">{opt.label}</span>
@@ -200,10 +192,8 @@ export function PreferencesPanel() {
           })}
         </div>
 
-        <label className="block text-xs font-medium text-[var(--ink-soft)] mb-2">
-          Budget tier
-        </label>
-        <div className="grid grid-cols-2 gap-1.5 mb-4">
+        <p className="mb-2 block text-xs font-medium text-[var(--ink-soft)]">Budget tier</p>
+        <div className="mb-4 grid grid-cols-2 gap-1.5">
           {BUDGET_OPTIONS.map((opt) => {
             const active = value.budgetTier === opt.value;
             return (
@@ -219,9 +209,7 @@ export function PreferencesPanel() {
               >
                 <span className="font-medium">{opt.label}</span>
                 <span
-                  className={`text-[10px] ${
-                    active ? "text-white/80" : "text-[var(--ink-mute)]"
-                  }`}
+                  className={`text-[10px] ${active ? "text-white/80" : "text-[var(--ink-mute)]"}`}
                 >
                   {opt.hint}
                 </span>
@@ -230,10 +218,8 @@ export function PreferencesPanel() {
           })}
         </div>
 
-        <label className="block text-xs font-medium text-[var(--ink-soft)] mb-2">
-          Vibe
-        </label>
-        <div className="grid grid-cols-3 gap-1.5 mb-4">
+        <p className="mb-2 block text-xs font-medium text-[var(--ink-soft)]">Vibe</p>
+        <div className="mb-4 grid grid-cols-3 gap-1.5">
           {VIBE_OPTIONS.map((opt) => {
             const active = value.vibe === opt.value;
             return (
@@ -243,10 +229,7 @@ export function PreferencesPanel() {
                 onClick={() => set("vibe", opt.value)}
                 variant={active ? "default" : "outline"}
                 size="xs"
-                className={cn(
-                  "h-8 text-xs",
-                  !active && "bg-[var(--surface-soft)]",
-                )}
+                className={cn("h-8 text-xs", !active && "bg-[var(--surface-soft)]")}
               >
                 {opt.label}
               </Button>
@@ -254,10 +237,8 @@ export function PreferencesPanel() {
           })}
         </div>
 
-        <label className="block text-xs font-medium text-[var(--ink-soft)] mb-2">
-          Pace
-        </label>
-        <div className="grid grid-cols-3 gap-1.5 mb-4">
+        <p className="mb-2 block text-xs font-medium text-[var(--ink-soft)]">Pace</p>
+        <div className="mb-4 grid grid-cols-3 gap-1.5">
           {PACE_OPTIONS.map((opt) => {
             const active = value.pace === opt.value;
             return (
@@ -273,9 +254,7 @@ export function PreferencesPanel() {
               >
                 <span className="font-medium">{opt.label}</span>
                 <span
-                  className={`text-[10px] ${
-                    active ? "text-white/80" : "text-[var(--ink-mute)]"
-                  }`}
+                  className={`text-[10px] ${active ? "text-white/80" : "text-[var(--ink-mute)]"}`}
                 >
                   {opt.hint}
                 </span>
@@ -284,10 +263,8 @@ export function PreferencesPanel() {
           })}
         </div>
 
-        <label className="block text-xs font-medium text-[var(--ink-soft)] mb-2">
-          Interests
-        </label>
-        <div className="flex flex-wrap gap-1.5 mb-4">
+        <p className="mb-2 block text-xs font-medium text-[var(--ink-soft)]">Interests</p>
+        <div className="mb-4 flex flex-wrap gap-1.5">
           {INTEREST_OPTIONS.map((i) => {
             const active = value.interests.includes(i);
             return (
@@ -297,10 +274,7 @@ export function PreferencesPanel() {
                 onClick={() => toggleInterest(i)}
                 variant={active ? "default" : "outline"}
                 size="xs"
-                className={cn(
-                  "rounded-full text-xs",
-                  !active && "bg-[var(--surface-soft)]",
-                )}
+                className={cn("rounded-full text-xs", !active && "bg-[var(--surface-soft)]")}
               >
                 {i}
               </Button>

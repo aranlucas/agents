@@ -1,1 +1,1 @@
-// noop
+export const fetchPolyfillWeb = "noop";

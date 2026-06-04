@@ -1,11 +1,5 @@
 import transform, { type StyleTuple } from "css-to-react-native";
-import React, {
-  memo,
-  useCallback,
-  useMemo,
-  type CSSProperties,
-  type ReactNode,
-} from "react";
+import React, { memo, useCallback, useMemo, type CSSProperties, type ReactNode } from "react";
 import {
   Platform,
   ScrollView,
@@ -16,10 +10,7 @@ import {
   type TextStyle,
 } from "react-native";
 import SyntaxHighlighter from "react-syntax-highlighter";
-import {
-  githubGist,
-  irBlack,
-} from "react-syntax-highlighter/dist/esm/styles/hljs";
+import { githubGist, irBlack } from "react-syntax-highlighter/dist/esm/styles/hljs";
 
 type HighlighterStyleSheet = { [key: string]: TextStyle };
 type ReactStyle = { [key: string]: CSSProperties };
@@ -48,14 +39,9 @@ const cleanStyle = (style: CSSProperties) => {
   return transform(styles);
 };
 
-const getRNStylesFromHljsStyle = (
-  hljsStyle: ReactStyle,
-): HighlighterStyleSheet => {
+const getRNStylesFromHljsStyle = (hljsStyle: ReactStyle): HighlighterStyleSheet => {
   return Object.fromEntries(
-    Object.entries(hljsStyle).map(([className, style]) => [
-      className,
-      cleanStyle(style),
-    ]),
+    Object.entries(hljsStyle).map(([className, style]) => [className, cleanStyle(style)]),
   );
 };
 
@@ -65,10 +51,7 @@ function trimNewlines(string: string): string {
   while (start < end && (string[start] === "\r" || string[start] === "\n")) {
     start++;
   }
-  while (
-    end > start &&
-    (string[end - 1] === "\r" || string[end - 1] === "\n")
-  ) {
+  while (end > start && (string[end - 1] === "\r" || string[end - 1] === "\n")) {
     end--;
   }
   return start > 0 || end < string.length ? string.slice(start, end) : string;
@@ -83,10 +66,7 @@ interface CodeBlockProps {
   language?: string;
 }
 
-export const CodeBlock = memo(function CodeBlock({
-  code,
-  language,
-}: CodeBlockProps) {
+export const CodeBlock = memo(function CodeBlock({ code, language }: CodeBlockProps) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
 
@@ -102,19 +82,14 @@ export const CodeBlock = memo(function CodeBlock({
   );
 
   const containerStyle = useMemo(
-    () => [
-      styles.container,
-      { backgroundColor: isDark ? "#1a1a1a" : "#f6f8fa" },
-    ],
+    () => [styles.container, { backgroundColor: isDark ? "#1a1a1a" : "#f6f8fa" }],
     [isDark],
   );
 
   const getStylesForNode = useCallback(
     (node: RendererNode): TextStyle[] => {
       const classes: string[] = node.properties?.className ?? [];
-      return classes
-        .map((c: string) => stylesheet[c])
-        .filter((c) => !!c) as TextStyle[];
+      return classes.map((c: string) => stylesheet[c]).filter((c) => !!c) as TextStyle[];
     },
     [stylesheet],
   );

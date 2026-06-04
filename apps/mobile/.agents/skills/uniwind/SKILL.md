@@ -100,10 +100,7 @@ module.exports = withUniwindConfig(withOtherConfig(config, opts), {
 });
 
 // WRONG — Uniwind is NOT outermost
-module.exports = withOtherConfig(
-  withUniwindConfig(config, { cssEntryFile: "./global.css" }),
-  opts,
-);
+module.exports = withOtherConfig(withUniwindConfig(config, { cssEntryFile: "./global.css" }), opts);
 ```
 
 ### Vite Configuration (v1.2.0+)
@@ -618,9 +615,7 @@ Converts Tailwind class strings to React Native style objects. Use for one-off c
 import { useResolveClassNames } from "uniwind";
 
 const headerStyle = useResolveClassNames("bg-primary p-4");
-const cardStyle = useResolveClassNames(
-  "bg-card dark:bg-card rounded-lg shadow-sm",
-);
+const cardStyle = useResolveClassNames("bg-card dark:bg-card rounded-lg shadow-sm");
 
 // React Navigation screen options
 <Stack.Navigator screenOptions={{ headerStyle, cardStyle }} />;
@@ -909,15 +904,11 @@ export const ThemeSwitcher = () => {
             key={t.name}
             onPress={() => Uniwind.setTheme(t.name)}
             className={`px-4 py-3 rounded-lg items-center ${
-              activeTheme === t.name
-                ? "bg-primary"
-                : "bg-card border border-border"
+              activeTheme === t.name ? "bg-primary" : "bg-card border border-border"
             }`}
           >
             <Text
-              className={`text-sm ${
-                activeTheme === t.name ? "text-white" : "text-foreground"
-              }`}
+              className={`text-sm ${activeTheme === t.name ? "text-white" : "text-foreground"}`}
             >
               {t.label}
             </Text>
@@ -965,10 +956,7 @@ const primaryColor = useCSSVariable("--color-primary");
 const spacing = useCSSVariable("--spacing-4");
 
 // Multiple variables at once
-const [bg, fg] = useCSSVariable([
-  "--color-background",
-  "--color-foreground",
-]) as [string, string];
+const [bg, fg] = useCSSVariable(["--color-background", "--color-foreground"]) as [string, string];
 ```
 
 Use for: animations, chart libraries, third-party component configs, calculations with design tokens.
@@ -1232,10 +1220,7 @@ Usage: `xs:p-2 tablet:p-4 3xl:p-8`
 Wrap your App component in `SafeAreaProvider` and `SafeAreaListener` and call `Uniwind.updateInsets(insets)` in the `onChange` callback:
 
 ```tsx
-import {
-  SafeAreaProvider,
-  SafeAreaListener,
-} from "react-native-safe-area-context";
+import { SafeAreaProvider, SafeAreaListener } from "react-native-safe-area-context";
 import { Uniwind } from "uniwind";
 
 export default function App() {

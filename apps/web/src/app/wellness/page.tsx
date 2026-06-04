@@ -8,14 +8,7 @@ import {
   UseAgentUpdate,
   useConfigureSuggestions,
 } from "@copilotkit/react-core/v2";
-import {
-  Activity,
-  CalendarDays,
-  Dumbbell,
-  Salad,
-  ShoppingCart,
-  Sparkles,
-} from "lucide-react";
+import { Activity, CalendarDays, Dumbbell, Salad, ShoppingCart, Sparkles } from "lucide-react";
 import { Streamdown } from "streamdown";
 
 import { HeroHeader } from "@/components/hero-header";
@@ -82,10 +75,7 @@ const SOURCE_THEME = {
     iconBg: "bg-[var(--fitness)]",
     svgColor: "var(--fitness)",
   },
-} satisfies Record<
-  SourceTheme,
-  { headerBg: string; iconBg: string; svgColor: string }
->;
+} satisfies Record<SourceTheme, { headerBg: string; iconBg: string; svgColor: string }>;
 
 function OrchestrationFlow({ status }: { status: WellnessStatus }) {
   const isDelegating = status === "delegating";
@@ -94,10 +84,10 @@ function OrchestrationFlow({ status }: { status: WellnessStatus }) {
   return (
     <div className="flex items-center justify-center border-b border-[var(--border-soft)] bg-[var(--surface)]">
       <div className="flex flex-1 items-center justify-end gap-2 px-6 py-2.5">
-        <span className="font-mono text-[10px] uppercase tracking-widest text-[var(--ink-mute)]">
+        <span className="font-mono text-[10px] tracking-widest text-[var(--ink-mute)] uppercase">
           Grocery
         </span>
-        <div className="flex h-6 w-6 items-center justify-center rounded-md text-white bg-[var(--grocery)]">
+        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[var(--grocery)] text-white">
           <Salad className="h-3 w-3" />
         </div>
         <svg
@@ -120,11 +110,11 @@ function OrchestrationFlow({ status }: { status: WellnessStatus }) {
         </svg>
       </div>
 
-      <div className="flex flex-col items-center gap-0.5 px-4 py-2 rounded-xl mx-1 bg-[var(--wellness-soft)]">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg text-white shadow-sm bg-[var(--wellness)]">
+      <div className="mx-1 flex flex-col items-center gap-0.5 rounded-xl bg-[var(--wellness-soft)] px-4 py-2">
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--wellness)] text-white shadow-sm">
           <Sparkles className="h-3.5 w-3.5" />
         </div>
-        <span className="font-mono text-[9px] uppercase tracking-widest text-[var(--wellness)]">
+        <span className="font-mono text-[9px] tracking-widest text-[var(--wellness)] uppercase">
           {isPlanning ? "planning…" : "wellness"}
         </span>
       </div>
@@ -148,10 +138,10 @@ function OrchestrationFlow({ status }: { status: WellnessStatus }) {
           />
           <polygon points="26,3 32,7 26,11" fill="var(--fitness)" />
         </svg>
-        <div className="flex h-6 w-6 items-center justify-center rounded-md text-white bg-[var(--fitness)]">
+        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[var(--fitness)] text-white">
           <Dumbbell className="h-3 w-3" />
         </div>
-        <span className="font-mono text-[10px] uppercase tracking-widest text-[var(--ink-mute)]">
+        <span className="font-mono text-[10px] tracking-widest text-[var(--ink-mute)] uppercase">
           Fitness
         </span>
       </div>
@@ -192,7 +182,7 @@ function StepIndicator({
                 {isDone ? "✓" : i + 1}
               </div>
               <span
-                className={`text-[8px] font-semibold uppercase tracking-wider ${
+                className={`text-[8px] font-semibold tracking-wider uppercase ${
                   isDone
                     ? "text-[var(--success)]"
                     : isCurrent
@@ -234,21 +224,15 @@ function WellnessConnectGate({
           {currentStep.icon}
         </div>
         <div className="space-y-2">
-          <h2 className="text-xl font-semibold text-[var(--ink)]">
-            Connect {currentStep.label}
-          </h2>
-          <p className="max-w-sm text-sm text-[var(--ink-mute)]">
-            {currentStep.description}
-          </p>
+          <h2 className="text-xl font-semibold text-[var(--ink)]">Connect {currentStep.label}</h2>
+          <p className="max-w-sm text-sm text-[var(--ink-mute)]">{currentStep.description}</p>
         </div>
         <Button
           onClick={() => onConnect(currentStep.id)}
           disabled={connectingId !== null}
           size="lg"
         >
-          {connectingId === currentStep.id
-            ? "Connecting…"
-            : `Connect ${currentStep.label}`}
+          {connectingId === currentStep.id ? "Connecting…" : `Connect ${currentStep.label}`}
         </Button>
         <p className="text-xs text-[var(--ink-mute)]">
           You&apos;ll be redirected to authorize access, then returned here.
@@ -275,16 +259,14 @@ function SourceCard({
   return (
     <Card className="min-w-0 overflow-hidden border-[var(--border)]">
       <CardHeader
-        className={`flex flex-row items-center gap-2.5 pb-3 border-b border-[var(--border-soft)] ${t.headerBg}`}
+        className={`flex flex-row items-center gap-2.5 border-b border-[var(--border-soft)] pb-3 ${t.headerBg}`}
       >
         <div
           className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-white ${t.iconBg}`}
         >
           {icon}
         </div>
-        <CardTitle className="text-sm font-semibold text-[var(--ink)]">
-          {title}
-        </CardTitle>
+        <CardTitle className="text-sm font-semibold text-[var(--ink)]">{title}</CardTitle>
       </CardHeader>
       <CardContent className="p-4">
         {value ? (
@@ -311,14 +293,12 @@ function PrimaryCard({
   footer?: React.ReactNode;
 }) {
   return (
-    <Card className="min-w-0 flex flex-col border-[var(--border)]">
-      <CardHeader className="flex flex-row items-center gap-2.5 pb-3 border-b border-[var(--border-soft)] bg-[var(--page-color-soft)]">
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-white bg-[var(--page-color)]">
+    <Card className="flex min-w-0 flex-col border-[var(--border)]">
+      <CardHeader className="flex flex-row items-center gap-2.5 border-b border-[var(--border-soft)] bg-[var(--page-color-soft)] pb-3">
+        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[var(--page-color)] text-white">
           {icon}
         </div>
-        <CardTitle className="text-sm font-semibold text-[var(--ink)]">
-          {title}
-        </CardTitle>
+        <CardTitle className="text-sm font-semibold text-[var(--ink)]">{title}</CardTitle>
       </CardHeader>
       <CardContent className="flex-1 p-4">{children}</CardContent>
       {footer && <div className="px-4 pb-4">{footer}</div>}
@@ -332,25 +312,21 @@ function WellnessPageInner() {
 
   const connectKroger = useReverification(async () => {
     if (!user) return;
-    const existing = user.externalAccounts.find(
-      ({ provider }) => provider === KROGER_PROVIDER,
-    );
+    const existing = user.externalAccounts.find(({ provider }) => provider === KROGER_PROVIDER);
     const account = existing
       ? await existing.reauthorize({ redirectUrl: window.location.href })
       : await user.createExternalAccount({
           strategy: KROGER_STRATEGY,
           redirectUrl: window.location.href,
         });
-    const redirectUrl =
-      account.verification?.externalVerificationRedirectURL?.href;
+    const redirectUrl = account.verification?.externalVerificationRedirectURL?.href;
     if (redirectUrl) window.location.assign(redirectUrl);
   });
 
   const connectStrava = useReverification(async () => {
     if (!user) return;
     const existing = user.externalAccounts.find(
-      ({ provider }) =>
-        provider === "custom_strava" || String(provider) === STRAVA_STRATEGY,
+      ({ provider }) => provider === "custom_strava" || String(provider) === STRAVA_STRATEGY,
     );
     const account = existing
       ? await existing.reauthorize({ redirectUrl: window.location.href })
@@ -358,8 +334,7 @@ function WellnessPageInner() {
           strategy: STRAVA_STRATEGY,
           redirectUrl: window.location.href,
         });
-    const redirectUrl =
-      account.verification?.externalVerificationRedirectURL?.href;
+    const redirectUrl = account.verification?.externalVerificationRedirectURL?.href;
     if (redirectUrl) window.location.assign(redirectUrl);
   });
 
@@ -433,8 +408,7 @@ function WellnessPageInner() {
       },
       {
         title: "Busy weekdays",
-        message:
-          "Plan meals and workouts for a busy weekday schedule with more prep on Sunday.",
+        message: "Plan meals and workouts for a busy weekday schedule with more prep on Sunday.",
       },
       {
         title: "Recovery week",
@@ -507,9 +481,7 @@ function WellnessPageInner() {
                 icon={<CalendarDays className="h-3 w-3" />}
                 footer={
                   isRunning ? (
-                    <p className="text-xs text-[var(--page-color)]">
-                      writing...
-                    </p>
+                    <p className="text-xs text-[var(--page-color)]">writing...</p>
                   ) : undefined
                 }
               >
@@ -519,20 +491,14 @@ function WellnessPageInner() {
                   </div>
                 ) : (
                   <p className="text-sm text-[var(--ink-mute)]">
-                    Ask the agent to coordinate meals and workouts for next
-                    week.
+                    Ask the agent to coordinate meals and workouts for next week.
                   </p>
                 )}
               </PrimaryCard>
 
               {state.review_summary && (
-                <PrimaryCard
-                  title="Review"
-                  icon={<Sparkles className="h-3 w-3" />}
-                >
-                  <p className="text-sm text-[var(--ink-soft)]">
-                    {state.review_summary}
-                  </p>
+                <PrimaryCard title="Review" icon={<Sparkles className="h-3 w-3" />}>
+                  <p className="text-sm text-[var(--ink-soft)]">{state.review_summary}</p>
                 </PrimaryCard>
               )}
             </div>

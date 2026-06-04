@@ -31,7 +31,7 @@ export default class ASTRenderer {
   }: ASTRendererOptions) {
     this._renderRules = {
       ...defaultRenderRules,
-      ...(renderRules || {}),
+      ...renderRules,
     };
     this._styles = getMergedStyles(styles, mergeStyle);
     this._listBulletStyle = listBulletStyle;
@@ -87,9 +87,7 @@ export default class ASTRenderer {
 
         for (let i = 0; i < listNode.children.length; i++) {
           const listItemNode = listNode.children[i];
-          const listStyleType = ordered
-            ? `${start + i}.`
-            : this.getListBulletCharacter;
+          const listStyleType = ordered ? `${start + i}.` : this.getListBulletCharacter;
 
           const customListStyleType = !ordered && this._customBulletElement;
 
@@ -98,11 +96,13 @@ export default class ASTRenderer {
             continue;
           }
 
-          const renderedChild = this.renderNode(
-            listItemNode,
-            [node, ...parentStack],
-            { listStyleType, index: i, ordered, start, customListStyleType },
-          );
+          const renderedChild = this.renderNode(listItemNode, [node, ...parentStack], {
+            listStyleType,
+            index: i,
+            ordered,
+            start,
+            customListStyleType,
+          });
 
           children.push(renderedChild);
         }

@@ -25,34 +25,26 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView
-      className="flex-1 bg-background text-foreground"
+      className="bg-background text-foreground flex-1"
       contentInsetAdjustmentBehavior="automatic"
       contentContainerClassName="android:pb-safe"
     >
       {/* Email */}
-      <View className="mx-5 mt-4 mb-5 bg-muted rounded-xl px-4 py-3 border-continuous">
-        <Text selectable className="text-[15px] text-foreground">
+      <View className="bg-muted border-continuous mx-5 mt-4 mb-5 rounded-xl px-4 py-3">
+        <Text selectable className="text-foreground text-[15px]">
           developer@expo.dev
         </Text>
       </View>
 
       {/* Account */}
-      <SettingsRow
-        icon={CircleUser}
-        label="Profile"
-        href="/(settings)/profile"
-      />
+      <SettingsRow icon={CircleUser} label="Profile" href="/(settings)/profile" />
       <SettingsRow icon={CircleDollarSign} label="Billing" detail="Max plan" />
       <SettingsRow icon={TrendingUp} label="Usage" />
 
       <SectionDivider />
 
       {/* Features */}
-      <SettingsRow
-        icon={SlidersHorizontal}
-        label="Capabilities"
-        href="/(settings)/capabilities"
-      />
+      <SettingsRow icon={SlidersHorizontal} label="Capabilities" href="/(settings)/capabilities" />
       <SettingsRow icon={LayoutGrid} label="Connectors" />
       <SettingsRow icon={Users} label="Permissions" />
 
@@ -78,16 +70,16 @@ export default function SettingsScreen() {
       <SectionDivider />
 
       {/* Log out */}
-      <Pressable className="flex-row items-center px-5 py-3.5 gap-4 active:bg-muted">
-        <Icon icon={LogOut} className="w-5 h-5 text-foreground" />
-        <Text className="text-[17px] text-foreground">Log out</Text>
+      <Pressable className="active:bg-muted flex-row items-center gap-4 px-5 py-3.5">
+        <Icon icon={LogOut} className="text-foreground h-5 w-5" />
+        <Text className="text-foreground text-[17px]">Log out</Text>
       </Pressable>
     </ScrollView>
   );
 }
 
 function SectionDivider() {
-  return <View className="h-px bg-border mx-5" />;
+  return <View className="bg-border mx-5 h-px" />;
 }
 
 function SettingsRow({
@@ -102,13 +94,11 @@ function SettingsRow({
   href?: string;
 }) {
   const content = (
-    <View className="flex-row items-center px-5 py-3.5 gap-4 active:bg-muted">
-      <Icon icon={icon} className="w-5 h-5 text-foreground" />
-      <Text className="flex-1 text-[17px] text-foreground">{label}</Text>
-      {detail && (
-        <Text className="text-[15px] text-muted-foreground">{detail}</Text>
-      )}
-      <Icon icon={ChevronRight} className="w-3.5 h-3.5 text-muted-foreground" />
+    <View className="active:bg-muted flex-row items-center gap-4 px-5 py-3.5">
+      <Icon icon={icon} className="text-foreground h-5 w-5" />
+      <Text className="text-foreground flex-1 text-[17px]">{label}</Text>
+      {detail && <Text className="text-muted-foreground text-[15px]">{detail}</Text>}
+      <Icon icon={ChevronRight} className="text-muted-foreground h-3.5 w-3.5" />
     </View>
   );
 
@@ -135,9 +125,9 @@ function SettingsToggleRow({
   onValueChange: (v: boolean) => void;
 }) {
   return (
-    <View className="flex-row items-center px-5 py-3 gap-4">
-      <Icon icon={icon} className="w-5 h-5 text-foreground" />
-      <Text className="flex-1 text-[17px] text-foreground">{label}</Text>
+    <View className="flex-row items-center gap-4 px-5 py-3">
+      <Icon icon={icon} className="text-foreground h-5 w-5" />
+      <Text className="text-foreground flex-1 text-[17px]">{label}</Text>
       <Switch value={value} onValueChange={onValueChange} />
     </View>
   );

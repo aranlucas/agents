@@ -107,9 +107,7 @@
 @layer theme {
   @theme {
     /* Fonts */
-    --font-rounded:
-      "SF Pro Rounded", "Hiragino Maru Gothic ProN", Meiryo, "MS PGothic",
-      sans-serif;
+    --font-rounded: "SF Pro Rounded", "Hiragino Maru Gothic ProN", Meiryo, "MS PGothic", sans-serif;
 
     /* Accent colors */
     --color-sf-blue: var(--sf-blue) /* rgba(0, 122, 255, 1) */;
@@ -138,8 +136,7 @@
     --color-sf-text-2: var(--sf-text-2) /* rgba(61.2, 61.2, 66, 0.6) */;
     --color-sf-text-3: var(--sf-text-3) /* rgba(61.2, 61.2, 66, 0.3) */;
     --color-sf-text-4: var(--sf-text-4) /* rgba(61.2, 61.2, 66, 0.18) */;
-    --color-sf-text-placeholder: var(--sf-text-placeholder)
-      /* rgba(61.2, 61.2, 66, 0.3) */;
+    --color-sf-text-placeholder: var(--sf-text-placeholder) /* rgba(61.2, 61.2, 66, 0.3) */;
     --color-sf-text-dark: var(--sf-text-dark) /* rgba(0, 0, 0, 1) */;
     --color-sf-text-light: var(--sf-text-light) /* rgba(255, 255, 255, 0.6) */;
 
@@ -153,16 +150,13 @@
     --color-sf-bg: var(--sf-bg) /* rgba(255, 255, 255, 1) */;
     --color-sf-bg-2: var(--sf-bg-2) /* rgba(242.25, 242.25, 247.35, 1) */;
     --color-sf-bg-3: var(--sf-bg-3) /* rgba(255, 255, 255, 1) */;
-    --color-sf-grouped-bg: var(--sf-grouped-bg)
-      /* rgba(242.25, 242.25, 247.35, 1) */;
+    --color-sf-grouped-bg: var(--sf-grouped-bg) /* rgba(242.25, 242.25, 247.35, 1) */;
     --color-sf-grouped-bg-2: var(--sf-grouped-bg-2) /* rgba(255, 255, 255, 1) */;
-    --color-sf-grouped-bg-3: var(--sf-grouped-bg-3)
-      /* rgba(242.25, 242.25, 247.35, 1) */;
+    --color-sf-grouped-bg-3: var(--sf-grouped-bg-3) /* rgba(242.25, 242.25, 247.35, 1) */;
 
     /* Border and link colors */
     --color-sf-border: var(--sf-border) /* rgba(61.2, 61.2, 66, 0.29) */;
-    --color-sf-border-opaque: var(--sf-border-opaque)
-      /* rgba(198.9, 198.9, 198.9, 1) */;
+    --color-sf-border-opaque: var(--sf-border-opaque) /* rgba(198.9, 198.9, 198.9, 1) */;
     --color-sf-link: var(--sf-link) /* rgba(0, 122.4, 255, 1) */;
   }
 }

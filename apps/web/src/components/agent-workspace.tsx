@@ -41,12 +41,9 @@ export function AgentWorkspace({
   defaultMobilePanel = "chat",
   mobileLabels,
 }: AgentWorkspaceProps) {
-  const [mobilePanel, setMobilePanel] =
-    useState<MobilePanel>(defaultMobilePanel);
+  const [mobilePanel, setMobilePanel] = useState<MobilePanel>(defaultMobilePanel);
   const labels = { ...DEFAULT_MOBILE_LABELS, ...mobileLabels };
-  const panels: MobilePanel[] = context
-    ? ["chat", "artifact", "context"]
-    : ["chat", "artifact"];
+  const panels: MobilePanel[] = context ? ["chat", "artifact", "context"] : ["chat", "artifact"];
 
   return (
     <div className="flex flex-1 flex-col">
@@ -86,7 +83,7 @@ export function AgentWorkspace({
         {context && (
           <aside
             className={cn(
-              "order-2 min-w-0 lg:min-h-0 xl:order-1 xl:block xl:sticky xl:top-16 xl:max-h-[calc(100vh-5.5rem)] xl:overflow-y-auto",
+              "order-2 min-w-0 lg:min-h-0 xl:sticky xl:top-16 xl:order-1 xl:block xl:max-h-[calc(100vh-5.5rem)] xl:overflow-y-auto",
               mobilePanel !== "context" && "hidden",
             )}
           >
@@ -136,9 +133,7 @@ export function AgentChatPanel({
     >
       <div className="flex h-12 shrink-0 items-center justify-between border-b border-[var(--border-soft)] bg-[var(--surface-soft)] px-4">
         <div className="min-w-0">
-          <h2 className="truncate text-sm font-semibold text-[var(--ink)]">
-            {title}
-          </h2>
+          <h2 className="truncate text-sm font-semibold text-[var(--ink)]">{title}</h2>
           <p className="truncate text-[11px] text-[var(--ink-mute)]">
             Chat is the command surface. Artifacts update live.
           </p>
@@ -156,9 +151,7 @@ export function AgentChatPanel({
           agentId={agentId}
           labels={{
             chatInputPlaceholder: placeholder,
-            ...(welcomeMessage
-              ? { welcomeMessageText: welcomeMessage }
-              : undefined),
+            ...(welcomeMessage ? { welcomeMessageText: welcomeMessage } : undefined),
           }}
         />
       </div>
@@ -191,12 +184,10 @@ function AgentToolEventRenderer() {
               />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium text-[var(--ink)]">
-                    {event}
-                  </span>
+                  <span className="font-medium text-[var(--ink)]">{event}</span>
                   <Badge
                     variant="outline"
-                    className="h-auto border-transparent bg-[var(--bg-soft)] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-[var(--ink-mute)]"
+                    className="h-auto border-transparent bg-[var(--bg-soft)] px-1.5 py-0.5 font-mono text-[9px] tracking-wider text-[var(--ink-mute)] uppercase"
                   >
                     {statusLabel(status)}
                   </Badge>
@@ -209,9 +200,7 @@ function AgentToolEventRenderer() {
 
             {(hasParams || hasResult) && (
               <details className="mt-2 pl-5">
-                <summary className="cursor-pointer text-xs text-[var(--ink-mute)]">
-                  Details
-                </summary>
+                <summary className="cursor-pointer text-xs text-[var(--ink-mute)]">Details</summary>
                 <pre className="mt-1 max-h-44 overflow-auto rounded-md bg-[var(--bg-soft)] p-2 text-xs text-[var(--ink-soft)]">
                   {JSON.stringify(
                     {

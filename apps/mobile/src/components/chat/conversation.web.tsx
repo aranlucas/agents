@@ -26,10 +26,7 @@ const ConversationCtx = createContext<ConversationContextValue | null>(null);
 
 export function useConversationContext() {
   const ctx = use(ConversationCtx);
-  if (!ctx)
-    throw new Error(
-      "useConversationContext must be used within <Conversation>",
-    );
+  if (!ctx) throw new Error("useConversationContext must be used within <Conversation>");
   return ctx;
 }
 
@@ -83,10 +80,7 @@ export function Conversation({
   const onContentSizeChange = useCallback(
     (_width: number, height: number) => {
       const wasAtBottom =
-        totalContentHeight.current -
-          scrollViewHeight.current -
-          scrollY.current <=
-        SCROLL_THRESHOLD;
+        totalContentHeight.current - scrollViewHeight.current - scrollY.current <= SCROLL_THRESHOLD;
       const heightIncreased = height > lastContentHeight.current;
 
       totalContentHeight.current = height;
@@ -120,7 +114,7 @@ export function Conversation({
 
   return (
     <ConversationCtx value={contextValue}>
-      <View className="relative flex-1 bg-background">
+      <View className="bg-background relative flex-1">
         {/* Empty state overlay */}
         {messages.length === 0 && emptyState && (
           <View className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
@@ -155,12 +149,10 @@ export function Conversation({
         {!isAtBottom && messages.length > 0 && (
           <Pressable
             onPress={scrollToBottom}
-            className="absolute left-1/2 z-10 flex -translate-x-1/2 h-7 flex-row items-center justify-center rounded-full border border-border/50 bg-card/90 px-3 shadow-float backdrop-blur-lg transition-all duration-200"
+            className="border-border/50 bg-card/90 shadow-float absolute left-1/2 z-10 flex h-7 -translate-x-1/2 flex-row items-center justify-center rounded-full border px-3 backdrop-blur-lg transition-all duration-200"
             style={{ bottom: composerHeight + 16 }}
           >
-            <Text className="text-xs text-muted-foreground leading-none">
-              ↓
-            </Text>
+            <Text className="text-muted-foreground text-xs leading-none">↓</Text>
           </Pressable>
         )}
 
@@ -186,13 +178,11 @@ export function ConversationEmptyState({
 }) {
   return (
     <View className="flex flex-col items-center px-4">
-      <Text className="text-center font-semibold text-2xl tracking-tight text-foreground md:text-3xl">
+      <Text className="text-foreground text-center text-2xl font-semibold tracking-tight md:text-3xl">
         {title}
       </Text>
       {description && (
-        <Text className="mt-3 text-center text-muted-foreground/80 text-sm">
-          {description}
-        </Text>
+        <Text className="text-muted-foreground/80 mt-3 text-center text-sm">{description}</Text>
       )}
     </View>
   );

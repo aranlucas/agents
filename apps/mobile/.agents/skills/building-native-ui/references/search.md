@@ -100,12 +100,7 @@ function SearchScreen() {
     item.name.toLowerCase().includes(search.toLowerCase()),
   );
 
-  return (
-    <FlatList
-      data={filteredItems}
-      renderItem={({ item }) => <ItemRow item={item} />}
-    />
-  );
+  return <FlatList data={filteredItems} renderItem={({ item }) => <ItemRow item={item} />} />;
 }
 ```
 
@@ -114,9 +109,7 @@ function SearchScreen() {
 ### Simple Text Filter
 
 ```tsx
-const filtered = items.filter((item) =>
-  item.name.toLowerCase().includes(search.toLowerCase()),
-);
+const filtered = items.filter((item) => item.name.toLowerCase().includes(search.toLowerCase()));
 ```
 
 ### Multiple Fields
@@ -155,10 +148,7 @@ function SearchScreen() {
   const debouncedSearch = useDebounce(search, 300);
 
   const filteredItems = useMemo(
-    () =>
-      items.filter((item) =>
-        item.name.toLowerCase().includes(debouncedSearch.toLowerCase()),
-      ),
+    () => items.filter((item) => item.name.toLowerCase().includes(debouncedSearch.toLowerCase())),
     [debouncedSearch],
   );
 
@@ -209,9 +199,7 @@ function SearchResults({ search, items }) {
   if (search && filtered.length === 0) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <Text style={{ color: PlatformColor("secondaryLabel") }}>
-          No results for "{search}"
-        </Text>
+        <Text style={{ color: PlatformColor("secondaryLabel") }}>No results for "{search}"</Text>
       </View>
     );
   }

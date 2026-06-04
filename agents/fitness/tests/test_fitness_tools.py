@@ -1,11 +1,10 @@
 from unittest.mock import Mock
 
+import main
 import pytest
+import utils
 from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
 from starlette.datastructures import Headers
-
-import main
-import utils
 
 
 class DummyToolContext:

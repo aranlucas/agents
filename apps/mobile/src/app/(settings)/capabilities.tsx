@@ -1,13 +1,5 @@
 import { Icon } from "@/components/icon";
-import {
-  Box,
-  Brain,
-  Check,
-  ChevronRight,
-  FileCog,
-  Globe,
-  Search,
-} from "lucide-react-native";
+import { Box, Brain, Check, ChevronRight, FileCog, Globe, Search } from "lucide-react-native";
 import type { LucideIcon } from "lucide-react-native";
 import { useState } from "react";
 import { ScrollView, Switch, Text, View } from "react-native";
@@ -21,7 +13,7 @@ export default function CapabilitiesScreen() {
 
   return (
     <ScrollView
-      className="flex-1 bg-background text-foreground"
+      className="bg-background text-foreground flex-1"
       contentInsetAdjustmentBehavior="automatic"
       contentContainerClassName="pb-10"
     >
@@ -47,7 +39,7 @@ export default function CapabilitiesScreen() {
         onValueChange={setWebSearch}
       />
 
-      <View className="h-px bg-border mx-5 mt-2" />
+      <View className="bg-border mx-5 mt-2 h-px" />
 
       <SectionHeader title="Memory" />
 
@@ -67,30 +59,21 @@ export default function CapabilitiesScreen() {
       />
 
       {/* View your memory card */}
-      <View className="mx-5 mt-4 bg-muted rounded-xl px-4 py-3.5 flex-row items-center border-continuous">
+      <View className="bg-muted border-continuous mx-5 mt-4 flex-row items-center rounded-xl px-4 py-3.5">
         <View className="flex-1">
-          <Text className="text-[15px] font-medium text-foreground">
-            View your memory
-          </Text>
-          <Text className="text-[13px] text-muted-foreground mt-0.5">
+          <Text className="text-foreground text-[15px] font-medium">View your memory</Text>
+          <Text className="text-muted-foreground mt-0.5 text-[13px]">
             Updated 4d ago from your chats
           </Text>
         </View>
-        <Icon
-          icon={ChevronRight}
-          className="w-3.5 h-3.5 text-muted-foreground"
-        />
+        <Icon icon={ChevronRight} className="text-muted-foreground h-3.5 w-3.5" />
       </View>
 
-      <View className="h-px bg-border mx-5 mt-6" />
+      <View className="bg-border mx-5 mt-6 h-px" />
 
       <SectionHeader title="Tool access" />
 
-      <ToolAccessOption
-        label="Auto"
-        description="Agent chooses for you"
-        selected
-      />
+      <ToolAccessOption label="Auto" description="Agent chooses for you" selected />
       <ToolAccessOption
         label="On demand"
         description="Load when needed. More messages, lower accuracy"
@@ -110,16 +93,12 @@ function ToolAccessOption({
   selected?: boolean;
 }) {
   return (
-    <View className="flex-row items-center px-5 py-3 gap-4">
+    <View className="flex-row items-center gap-4 px-5 py-3">
       <View className="flex-1">
-        <Text className="text-[17px] text-foreground">{label}</Text>
-        {description && (
-          <Text className="text-[13px] text-muted-foreground">
-            {description}
-          </Text>
-        )}
+        <Text className="text-foreground text-[17px]">{label}</Text>
+        {description && <Text className="text-muted-foreground text-[13px]">{description}</Text>}
       </View>
-      {selected && <Icon icon={Check} className="w-5 h-5 text-blue-500" />}
+      {selected && <Icon icon={Check} className="h-5 w-5 text-blue-500" />}
     </View>
   );
 }
@@ -138,14 +117,12 @@ function CapabilityToggle({
   onValueChange: (v: boolean) => void;
 }) {
   return (
-    <View className="flex-row items-center px-5 py-3.5 gap-4">
-      <Icon icon={icon} className="w-5 h-5 text-foreground" />
+    <View className="flex-row items-center gap-4 px-5 py-3.5">
+      <Icon icon={icon} className="text-foreground h-5 w-5" />
       <View className="flex-1 gap-0.5">
-        <Text className="text-[17px] text-foreground">{label}</Text>
+        <Text className="text-foreground text-[17px]">{label}</Text>
         {description && (
-          <Text className="text-[13px] text-muted-foreground leading-snug">
-            {description}
-          </Text>
+          <Text className="text-muted-foreground text-[13px] leading-snug">{description}</Text>
         )}
       </View>
       <Switch value={value} onValueChange={onValueChange} />
@@ -154,9 +131,5 @@ function CapabilityToggle({
 }
 
 function SectionHeader({ title }: { title: string }) {
-  return (
-    <Text className="text-[15px] font-semibold text-foreground px-5 pt-6 pb-2">
-      {title}
-    </Text>
-  );
+  return <Text className="text-foreground px-5 pt-6 pb-2 text-[15px] font-semibold">{title}</Text>;
 }

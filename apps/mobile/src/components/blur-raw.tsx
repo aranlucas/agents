@@ -10,8 +10,8 @@ export function BlurViewRawBackdrop({
   intensity = 50,
   blurReductionFactor = 4,
   experimentalBlurMethod = "none",
-  style,
-  children,
+  style: _style,
+  children: _children,
   ...props
 }: BlurViewProps) {
   return (

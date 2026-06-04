@@ -1,11 +1,11 @@
 """Shared ADK tool callbacks."""
 
-from typing import Any, Optional
+from typing import Any
 
 from google.adk.tools import BaseTool, ToolContext
 
 
-def parse_tool_response(tool_response: dict | str) -> Optional[dict | str]:
+def parse_tool_response(tool_response: dict | str) -> dict | str | None:
     try:
         if isinstance(tool_response, str):
             return tool_response
@@ -25,7 +25,7 @@ async def shared_after_tool_callback(
     args: dict,
     tool_context: ToolContext,
     tool_response: dict,
-) -> Optional[dict]:
+) -> dict | None:
     save_state(tool_context, tool.name, parse_tool_response(tool_response))
 
     if (

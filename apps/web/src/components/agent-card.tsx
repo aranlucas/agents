@@ -36,38 +36,35 @@ export function AgentCard({
   return (
     <Link href={agent.href} className="group block">
       <div
-        className="agent-row flex gap-5 md:gap-8 px-5 md:px-8 py-6 md:py-8"
+        className="agent-row flex gap-5 px-5 py-6 md:gap-8 md:px-8 md:py-8"
         style={{ "--row-hover": t.hover } as React.CSSProperties}
       >
         {/* Number + connector line */}
-        <div className="flex flex-col items-center shrink-0 w-10 md:w-14">
+        <div className="flex w-10 shrink-0 flex-col items-center md:w-14">
           <span
-            className="font-mono text-2xl md:text-3xl font-bold leading-none tabular-nums"
+            className="font-mono text-2xl leading-none font-bold tabular-nums md:text-3xl"
             style={{ color: t.color }}
           >
             {agent.id}
           </span>
           <span
-            className="w-px flex-1 mt-3 min-h-[24px]"
+            className="mt-3 min-h-[24px] w-px flex-1"
             style={{ backgroundColor: t.color, opacity: 0.18 }}
           />
         </div>
 
         {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 mb-2">
-            <h2 className="text-lg md:text-xl font-bold tracking-tight text-[var(--ink)] leading-tight">
+        <div className="min-w-0 flex-1">
+          <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+            <h2 className="text-lg leading-tight font-bold tracking-tight text-[var(--ink)] md:text-xl">
               {agent.name}
             </h2>
-            <span
-              className="text-sm font-medium leading-tight"
-              style={{ color: t.color }}
-            >
+            <span className="text-sm leading-tight font-medium" style={{ color: t.color }}>
               {agent.tagline}
             </span>
             {isWellness && (
               <span
-                className="font-mono text-[9px] uppercase tracking-wider border px-1.5 py-0.5 leading-none"
+                className="border px-1.5 py-0.5 font-mono text-[9px] leading-none tracking-wider uppercase"
                 style={{ color: t.color, borderColor: t.color, opacity: 0.65 }}
               >
                 A2A
@@ -75,7 +72,7 @@ export function AgentCard({
             )}
             {isA2UI && (
               <span
-                className="font-mono text-[9px] uppercase tracking-wider border px-1.5 py-0.5 leading-none"
+                className="border px-1.5 py-0.5 font-mono text-[9px] leading-none tracking-wider uppercase"
                 style={{ color: t.color, borderColor: t.color, opacity: 0.65 }}
               >
                 A2UI
@@ -83,7 +80,7 @@ export function AgentCard({
             )}
           </div>
 
-          <p className="text-sm text-[var(--ink-mute)] leading-relaxed max-w-lg mb-3">
+          <p className="mb-3 max-w-lg text-sm leading-relaxed text-[var(--ink-mute)]">
             {agent.description}
           </p>
 
@@ -91,7 +88,7 @@ export function AgentCard({
             {agent.tags.map((tag) => (
               <span
                 key={tag}
-                className="font-mono text-[9px] uppercase tracking-wider px-2 py-1 bg-[var(--bg-soft)] text-[var(--ink-mute)]"
+                className="bg-[var(--bg-soft)] px-2 py-1 font-mono text-[9px] tracking-wider text-[var(--ink-mute)] uppercase"
               >
                 {tag}
               </span>
@@ -100,19 +97,15 @@ export function AgentCard({
         </div>
 
         {/* CTA */}
-        <div className="shrink-0 flex flex-col items-end gap-2 pt-0.5">
+        <div className="flex shrink-0 flex-col items-end gap-2 pt-0.5">
           {status !== undefined && (
             <span
               title={
-                status === "loading"
-                  ? "Checking…"
-                  : status === "ok"
-                    ? "Running"
-                    : "Unavailable"
+                status === "loading" ? "Checking…" : status === "ok" ? "Running" : "Unavailable"
               }
-              className={`w-1.5 h-1.5 rounded-full ${
+              className={`h-1.5 w-1.5 rounded-full ${
                 status === "loading"
-                  ? "bg-[var(--ink-mute)] opacity-40 animate-pulse"
+                  ? "animate-pulse bg-[var(--ink-mute)] opacity-40"
                   : status === "ok"
                     ? "animate-pulse"
                     : "bg-red-400 opacity-60"
@@ -121,11 +114,11 @@ export function AgentCard({
             />
           )}
           <span
-            className="flex items-center gap-1 text-sm font-semibold group-hover:gap-2 transition-all whitespace-nowrap"
+            className="flex items-center gap-1 text-sm font-semibold whitespace-nowrap transition-all group-hover:gap-2"
             style={{ color: t.color }}
           >
             {agent.cta}
-            <ArrowUpRight className="w-4 h-4 shrink-0" />
+            <ArrowUpRight className="h-4 w-4 shrink-0" />
           </span>
         </div>
       </div>

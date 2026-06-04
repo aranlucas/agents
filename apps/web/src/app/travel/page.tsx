@@ -19,12 +19,7 @@ import { DocumentCanvas } from "@/components/document-canvas";
 import { PreferencesPanel } from "@/components/preferences-panel";
 import { ApprovalCard, ApprovalRequest } from "@/components/approval-dialog";
 
-const STATUS_VALUES: ReadonlyArray<DocStatus> = [
-  "idle",
-  "drafting",
-  "ready_to_book",
-  "booked",
-];
+const STATUS_VALUES: ReadonlyArray<DocStatus> = ["idle", "drafting", "ready_to_book", "booked"];
 
 function asStatus(s: unknown): DocStatus {
   return STATUS_VALUES.includes(s as DocStatus) ? (s as DocStatus) : "idle";
@@ -44,9 +39,7 @@ export default function Page() {
 }
 
 function TripStudio() {
-  const [pendingApprovals, setPendingApprovals] = useState<ApprovalRequest[]>(
-    [],
-  );
+  const [pendingApprovals, setPendingApprovals] = useState<ApprovalRequest[]>([]);
 
   const { agent } = useAgent({
     agentId: "travel",
@@ -74,24 +67,15 @@ function TripStudio() {
       "(book flights, reserve hotels, share itinerary, charge card). " +
       "Returns { approved: boolean, note?: string }.",
     parameters: z.object({
-      action: z
-        .string()
-        .describe("Short, specific description of the action to take."),
+      action: z.string().describe("Short, specific description of the action to take."),
       reason: z
         .string()
         .optional()
         .describe(
-          "One sentence on why this action is being proposed (cost, " +
-            "tradeoff, deadline).",
+          "One sentence on why this action is being proposed (cost, " + "tradeoff, deadline).",
         ),
     }),
-    handler: async ({
-      action,
-      reason,
-    }: {
-      action: string;
-      reason?: string;
-    }) => {
+    handler: async ({ action, reason }: { action: string; reason?: string }) => {
       const id = crypto.randomUUID();
       const decision = await new Promise<{
         approved: boolean;
@@ -123,13 +107,11 @@ function TripStudio() {
     suggestions: [
       {
         title: "Weekend in Tokyo",
-        message:
-          "Plan a 3-day weekend in Tokyo focused on food, late November.",
+        message: "Plan a 3-day weekend in Tokyo focused on food, late November.",
       },
       {
         title: "Family in Lisbon",
-        message:
-          "Plan a 5-day family trip to Lisbon next summer, kids 7 and 10.",
+        message: "Plan a 5-day family trip to Lisbon next summer, kids 7 and 10.",
       },
       {
         title: "Rework Day 2",
@@ -138,8 +120,7 @@ function TripStudio() {
       },
       {
         title: "Ready to book?",
-        message:
-          "If the itinerary looks good, propose locking it in and ask for my approval.",
+        message: "If the itinerary looks good, propose locking it in and ask for my approval.",
       },
     ],
     available: "always",
@@ -152,8 +133,7 @@ function TripStudio() {
   }, [pendingApprovals]);
   useEffect(() => {
     return () => {
-      for (const r of pendingRef.current)
-        r.resolve({ approved: false, note: "navigated away" });
+      for (const r of pendingRef.current) r.resolve({ approved: false, note: "navigated away" });
     };
   }, []);
 
@@ -199,7 +179,7 @@ function TripStudio() {
 
   return (
     <main
-      className="min-h-full flex flex-col"
+      className="flex min-h-full flex-col"
       style={
         {
           "--page-color": "var(--travel)",
@@ -210,7 +190,7 @@ function TripStudio() {
       <HeroHeader
         name="Trip Studio"
         description="Co-plan trips with an AI partner in real time."
-        icon={<Plane className="w-5 h-5" />}
+        icon={<Plane className="h-5 w-5" />}
         isRunning={isRunning}
       />
 
@@ -227,28 +207,27 @@ function TripStudio() {
         }
         artifact={
           <div className="flex min-h-[60vh] flex-col md:min-h-0">
-          <DocumentCanvas
-            destination={destination}
-            startDate={startDate}
-            endDate={endDate}
-            travelers={travelers}
-            budgetUsd={budgetUsd}
-            headline={headline}
-            summary={summary}
-            itinerary={itinerary}
-            flights={flights}
-            status={status}
-            isStreaming={isRunning}
-            reviewSummary={reviewSummary}
-            onDestinationChange={onDestinationChange}
-            onHeadlineChange={onHeadlineChange}
-            onItineraryChange={onItineraryChange}
-            onReset={onReset}
-          />
+            <DocumentCanvas
+              destination={destination}
+              startDate={startDate}
+              endDate={endDate}
+              travelers={travelers}
+              budgetUsd={budgetUsd}
+              headline={headline}
+              summary={summary}
+              itinerary={itinerary}
+              flights={flights}
+              status={status}
+              isStreaming={isRunning}
+              reviewSummary={reviewSummary}
+              onDestinationChange={onDestinationChange}
+              onHeadlineChange={onHeadlineChange}
+              onItineraryChange={onItineraryChange}
+              onReset={onReset}
+            />
           </div>
         }
       />
-
     </main>
   );
 }

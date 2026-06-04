@@ -28,10 +28,7 @@ const renderRules: RenderRules = {
     return (
       <Text
         key={node.key}
-        style={[
-          getTextStyle(styles, "paragraph"),
-          inListItem && { marginVertical: 0 },
-        ]}
+        style={[getTextStyle(styles, "paragraph"), inListItem && { marginVertical: 0 }]}
       >
         {children}
       </Text>
@@ -53,11 +50,7 @@ const renderRules: RenderRules = {
     </Text>
   ),
   text: ({ node, styles }) => (
-    <Text
-      key={node.key}
-      style={getTextStyle(styles, "text")}
-      maxFontSizeMultiplier={1.2}
-    >
+    <Text key={node.key} style={getTextStyle(styles, "text")} maxFontSizeMultiplier={1.2}>
       {node.value}
     </Text>
   ),
@@ -72,17 +65,10 @@ const renderRules: RenderRules = {
     </Text>
   ),
   thematicBreak: ({ node, styles }) => (
-    <View
-      key={node.key}
-      style={getViewStyle(styles, `_VIEW_SAFE_${node.type}`)}
-    />
+    <View key={node.key} style={getViewStyle(styles, `_VIEW_SAFE_${node.type}`)} />
   ),
   code: ({ node }) => (
-    <CodeBlock
-      key={node.key}
-      code={node.value}
-      language={node.lang || undefined}
-    />
+    <CodeBlock key={node.key} code={node.value} language={node.lang || undefined} />
   ),
   inlineCode: ({ node, styles }) => (
     <Text key={node.key} style={getTextStyle(styles, node.type)}>
@@ -102,23 +88,15 @@ const renderRules: RenderRules = {
     return <Image key={node.key} {...imageProps} />;
   },
   link: ({ node, styles, children, extras }) => {
-    const onPress = () =>
-      extras?.onPress(node.url) || (() => Linking.openURL(node.url));
+    const onPress = () => extras?.onPress(node.url) || (() => Linking.openURL(node.url));
     return (
-      <Text
-        key={node.key}
-        onPress={onPress}
-        style={getTextStyle(styles, "link")}
-      >
+      <Text key={node.key} onPress={onPress} style={getTextStyle(styles, "link")}>
         {children}
       </Text>
     );
   },
   list: ({ node, styles, children }) => (
-    <View
-      key={node.key}
-      style={getViewStyle(styles, `_VIEW_SAFE_${node.type}`)}
-    >
+    <View key={node.key} style={getViewStyle(styles, `_VIEW_SAFE_${node.type}`)}>
       {children}
     </View>
   ),
@@ -127,9 +105,7 @@ const renderRules: RenderRules = {
       {extras?.customListStyleType ? (
         extras.customListStyleType
       ) : (
-        <Text style={getTextStyle(styles, "listBullet")}>
-          {extras?.listStyleType}
-        </Text>
+        <Text style={getTextStyle(styles, "listBullet")}>{extras?.listStyleType}</Text>
       )}
       <View style={getViewStyle(styles, "listItemContent")}>{children}</View>
     </View>

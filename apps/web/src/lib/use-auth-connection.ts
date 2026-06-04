@@ -6,9 +6,7 @@ type AuthConnectionResponse = {
   connected: boolean;
 };
 
-async function fetchAuthConnection(
-  endpoint: string,
-): Promise<AuthConnectionResponse> {
+async function fetchAuthConnection(endpoint: string): Promise<AuthConnectionResponse> {
   const response = await fetch(endpoint);
   if (!response.ok) {
     throw new Error(`Failed to load auth connection from ${endpoint}`);

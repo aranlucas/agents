@@ -28,26 +28,16 @@ const STATUS_META: Record<A2UIStatus, { label: string }> = {
   ready: { label: "Surface rendered" },
 };
 
-function Metric({
-  label,
-  value,
-  icon,
-}: {
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-}) {
+function Metric({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
   return (
     <div className="border border-[var(--border)] bg-[var(--surface)] p-4">
       <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-md bg-[var(--a2ui-soft)] text-[var(--a2ui)]">
         {icon}
       </div>
-      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ink-mute)]">
+      <p className="font-mono text-[10px] tracking-[0.18em] text-[var(--ink-mute)] uppercase">
         {label}
       </p>
-      <p className="mt-1 text-lg font-semibold tracking-tight text-[var(--ink)]">
-        {value}
-      </p>
+      <p className="mt-1 text-lg font-semibold tracking-tight text-[var(--ink)]">{value}</p>
     </div>
   );
 }
@@ -123,27 +113,15 @@ function A2UIPageInner() {
                 <Sparkles className="h-3.5 w-3.5" />
                 A2UI render target
               </div>
-              <h1 className="max-w-3xl text-3xl font-black leading-none tracking-tight text-[var(--ink)] md:text-5xl">
+              <h1 className="max-w-3xl text-3xl leading-none font-black tracking-tight text-[var(--ink)] md:text-5xl">
                 Generated interfaces render inside the conversation.
               </h1>
             </div>
 
             <div className="grid gap-3 p-5 md:grid-cols-3">
-              <Metric
-                label="Transport"
-                value="AG-UI"
-                icon={<Gauge className="h-4 w-4" />}
-              />
-              <Metric
-                label="Agent"
-                value="Google ADK"
-                icon={<Wand2 className="h-4 w-4" />}
-              />
-              <Metric
-                label="Surface"
-                value="A2UI"
-                icon={<Blocks className="h-4 w-4" />}
-              />
+              <Metric label="Transport" value="AG-UI" icon={<Gauge className="h-4 w-4" />} />
+              <Metric label="Agent" value="Google ADK" icon={<Wand2 className="h-4 w-4" />} />
+              <Metric label="Surface" value="A2UI" icon={<Blocks className="h-4 w-4" />} />
             </div>
 
             <div className="grid gap-4 p-5 pt-0 md:grid-cols-2">
@@ -156,12 +134,11 @@ function A2UIPageInner() {
                 </CardHeader>
                 <CardContent className="space-y-3 p-4 text-sm text-[var(--ink-soft)]">
                   <p>
-                    The CopilotKit runtime injects the A2UI render tool only
-                    for the `a2ui` agent.
+                    The CopilotKit runtime injects the A2UI render tool only for the `a2ui` agent.
                   </p>
                   <p>
-                    Use the Launch readiness suggestion for the fastest local
-                    proof that A2UI is active.
+                    Use the Launch readiness suggestion for the fastest local proof that A2UI is
+                    active.
                   </p>
                 </CardContent>
               </Card>
@@ -179,9 +156,7 @@ function A2UIPageInner() {
                       <p className="text-sm font-semibold text-[var(--ink)]">
                         {state.last_surface}
                       </p>
-                      <p className="text-sm text-[var(--ink-mute)]">
-                        {state.surface_brief}
-                      </p>
+                      <p className="text-sm text-[var(--ink-mute)]">{state.surface_brief}</p>
                     </div>
                   ) : (
                     <p className="text-sm text-[var(--ink-mute)]">

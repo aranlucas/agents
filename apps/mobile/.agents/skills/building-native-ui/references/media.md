@@ -45,10 +45,7 @@ function Camera({ onPicture }: { onPicture: (uri: string) => Promise<void> }) {
           tintColor={PlatformColor("systemBlue")}
           style={{ borderRadius: 12 }}
         >
-          <TouchableOpacity
-            onPress={requestPermission}
-            style={{ padding: 12, borderRadius: 12 }}
-          >
+          <TouchableOpacity onPress={requestPermission} style={{ padding: 12, borderRadius: 12 }}>
             <Text style={{ color: "white" }}>Grant Permission</Text>
           </TouchableOpacity>
         </GlassView>

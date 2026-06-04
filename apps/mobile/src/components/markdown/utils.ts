@@ -1,11 +1,6 @@
 import type { Node, Parent } from "mdast";
 import type { Extension } from "mdast-util-from-markdown";
-import {
-  Platform,
-  StyleSheet,
-  type TextStyle,
-  type ViewStyle,
-} from "react-native";
+import { Platform, StyleSheet, type TextStyle, type ViewStyle } from "react-native";
 import type { StyleMap } from "./types";
 
 const defaultStyles: StyleMap = {
@@ -161,9 +156,7 @@ const defaultStyles: StyleMap = {
 // Remove text-only style props for View-safe styles
 type TextOnlyProps = Omit<TextStyle, keyof ViewStyle>;
 
-function removeTextStyleProps<T extends ViewStyle | TextStyle>(
-  style: T,
-): ViewStyle {
+function removeTextStyleProps<T extends ViewStyle | TextStyle>(style: T): ViewStyle {
   const textOnlyKeys: (keyof TextOnlyProps)[] = [
     "color",
     "fontFamily",
@@ -192,26 +185,16 @@ function removeTextStyleProps<T extends ViewStyle | TextStyle>(
   return result as ViewStyle;
 }
 
-export function getMergedStyles(
-  styles: StyleMap | null = null,
-  merge = false,
-): StyleMap {
+export function getMergedStyles(styles: StyleMap | null = null, merge = false): StyleMap {
   const output: Record<string, any> = {};
 
-  const allKeys = new Set([
-    ...Object.keys(defaultStyles),
-    ...(styles ? Object.keys(styles) : []),
-  ]);
+  const allKeys = new Set([...Object.keys(defaultStyles), ...(styles ? Object.keys(styles) : [])]);
 
   for (const key of allKeys) {
     const base = StyleSheet.flatten(defaultStyles[key] as any) ?? {};
     const custom = StyleSheet.flatten(styles?.[key] as any) ?? {};
 
-    const final = merge
-      ? { ...base, ...custom }
-      : styles?.[key]
-        ? custom
-        : base;
+    const final = merge ? { ...base, ...custom } : styles?.[key] ? custom : base;
 
     output[key] = final;
     output[`_VIEW_SAFE_${key}`] = removeTextStyleProps(final as any);
@@ -257,10 +240,7 @@ function normalizeIdentifier(id: string): string {
   return id.trim().toLowerCase();
 }
 
-const transform = (
-  node: RootContent | Root,
-  definitions: Map<string, Definition>,
-): void => {
+const transform = (node: RootContent | Root, definitions: Map<string, Definition>): void => {
   if (node.type === "linkReference" || node.type === "imageReference") {
     const def = definitions.get(normalizeIdentifier(node.identifier));
     if (!def) return;

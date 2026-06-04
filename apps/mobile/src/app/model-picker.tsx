@@ -20,21 +20,13 @@ function ActionRow({
   return (
     <Pressable
       onPress={onPress}
-      className="flex-row items-center px-5 py-3.5 gap-3.5 active:bg-muted"
+      className="active:bg-muted flex-row items-center gap-3.5 px-5 py-3.5"
     >
       <Icon
         icon={icon}
-        className={cn(
-          "w-5 h-5",
-          destructive ? "text-red-500" : "text-foreground",
-        )}
+        className={cn("h-5 w-5", destructive ? "text-red-500" : "text-foreground")}
       />
-      <Text
-        className={cn(
-          "flex-1 text-[17px]",
-          destructive ? "text-red-500" : "text-foreground",
-        )}
-      >
+      <Text className={cn("flex-1 text-[17px]", destructive ? "text-red-500" : "text-foreground")}>
         {label}
       </Text>
     </Pressable>
@@ -55,23 +47,16 @@ export default function ModelPickerSheet() {
         <ActionRow icon={Archive} label="Add to project" onPress={() => {}} />
         <ActionRow icon={Star} label="Star" onPress={() => {}} />
         <ActionRow icon={Pencil} label="Rename" onPress={() => {}} />
-        <ActionRow
-          icon={Trash2}
-          label="Delete"
-          destructive
-          onPress={() => {}}
-        />
+        <ActionRow icon={Trash2} label="Delete" destructive onPress={() => {}} />
       </View>
 
-      <View className="h-px bg-border mx-5 my-1" />
+      <View className="bg-border mx-5 my-1 h-px" />
 
-      <View className="flex-row items-center px-5 py-3 gap-3.5">
-        <Icon icon={Sparkles} className="w-5 h-5 text-foreground" />
+      <View className="flex-row items-center gap-3.5 px-5 py-3">
+        <Icon icon={Sparkles} className="text-foreground h-5 w-5" />
         <View className="flex-1">
-          <Text className="text-[17px] text-foreground">Extended thinking</Text>
-          <Text className="text-[13px] text-muted-foreground">
-            Think longer for complex tasks
-          </Text>
+          <Text className="text-foreground text-[17px]">Extended thinking</Text>
+          <Text className="text-muted-foreground text-[13px]">Think longer for complex tasks</Text>
         </View>
         <Switch value={extendedThinking} onValueChange={setExtendedThinking} />
       </View>

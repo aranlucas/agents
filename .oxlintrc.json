@@ -1,0 +1,47 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn"
+  },
+  "plugins": ["import", "jsx-a11y", "nextjs", "react", "typescript", "unicorn"],
+  "env": {
+    "browser": true,
+    "node": true,
+    "es2026": true
+  },
+  "settings": {
+    "next": {
+      "rootDir": "apps/web"
+    },
+    "react": {
+      "version": "19.2.7"
+    }
+  },
+  "options": {
+    "typeAware": true,
+    "reportUnusedDisableDirectives": "warn"
+  },
+  "rules": {
+    "eslint/no-underscore-dangle": "off",
+    "jsx-a11y/prefer-tag-over-role": "off",
+    "react-hooks/exhaustive-deps": "warn",
+    "react/react-in-jsx-scope": "off",
+    "typescript/no-floating-promises": "warn",
+    "typescript/no-redundant-type-constituents": "warn"
+  },
+  "overrides": [
+    {
+      "files": ["apps/mobile/**/*.{ts,tsx,js,jsx}"],
+      "env": {
+        "browser": true,
+        "es2026": true
+      },
+      "globals": {
+        "__DEV__": "readonly"
+      }
+    }
+  ],
+  "ignorePatterns": [".next/**", "apps/mobile/.expo/**"]
+}

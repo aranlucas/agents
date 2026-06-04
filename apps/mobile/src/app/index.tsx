@@ -48,9 +48,7 @@ async function mockStreamResponse(
 }
 
 /** Extract text content from a UIMessage's parts array. */
-function getTextFromParts(
-  parts: { type: string; text?: string }[],
-): string {
+function getTextFromParts(parts: { type: string; text?: string }[]): string {
   return parts
     .filter((p) => p.type === "text" && p.text)
     .map((p) => p.text)
@@ -72,9 +70,7 @@ function useAIChat() {
       id: m.id,
       role: m.role as "user" | "assistant",
       content:
-        isStreaming &&
-        m.role === "assistant" &&
-        m === uiMessages[uiMessages.length - 1]
+        isStreaming && m.role === "assistant" && m === uiMessages[uiMessages.length - 1]
           ? "" // Signal streaming — content comes from store
           : getTextFromParts(m.parts as { type: string; text?: string }[]),
     }));
@@ -91,9 +87,7 @@ function useAIChat() {
     }
     const lastMessage = uiMessages[uiMessages.length - 1];
     if (lastMessage?.role === "assistant") {
-      const text = getTextFromParts(
-        lastMessage.parts as { type: string; text?: string }[],
-      );
+      const text = getTextFromParts(lastMessage.parts as { type: string; text?: string }[]);
       if (text !== prevStreamingTextRef.current) {
         prevStreamingTextRef.current = text;
         streamingStore.set(text);
@@ -154,8 +148,7 @@ function useMockChat() {
     streamingStore.set("");
 
     try {
-      const mockText =
-        MOCK_RESPONSES[mockIndexRef.current % MOCK_RESPONSES.length];
+      const mockText = MOCK_RESPONSES[mockIndexRef.current % MOCK_RESPONSES.length];
       mockIndexRef.current++;
 
       await mockStreamResponse(mockText, (token) => {
@@ -234,17 +227,14 @@ function ChatSurface({ chat }: { chat: ChatController }) {
         <Conversation
           renderMessage={renderMessage}
           emptyState={
-            <ConversationEmptyState
-              title="Chat"
-              description="Send a message to get started"
-            />
+            <ConversationEmptyState title="Chat" description="Send a message to get started" />
           }
         >
           <ConversationScrollButton />
           <PromptInput>
             <Link href="/attachments" asChild>
               <PromptInputAction>
-                <Icon icon={Plus} className="w-5 h-5 text-muted-foreground" />
+                <Icon icon={Plus} className="text-muted-foreground h-5 w-5" />
               </PromptInputAction>
             </Link>
             <PromptInputBody>

@@ -26,9 +26,7 @@ export function ModelProvider({
   const selectedModel = "sonnet-4.6";
 
   return (
-    <ModelContext
-      value={{ models, selectedModel, extendedThinking, setExtendedThinking }}
-    >
+    <ModelContext value={{ models, selectedModel, extendedThinking, setExtendedThinking }}>
       {children}
     </ModelContext>
   );

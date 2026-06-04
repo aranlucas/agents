@@ -21,9 +21,7 @@ const manifest = Constants.expoConfig;
 
 const polyfillSymbol = Symbol.for("expo.polyfillFetchWithWindowLocation");
 
-export function wrapFetchWithWindowLocation(
-  fetch: Function & { [polyfillSymbol]?: boolean },
-) {
+export function wrapFetchWithWindowLocation(fetch: Function & { [polyfillSymbol]?: boolean }) {
   if (fetch[polyfillSymbol]) {
     return fetch;
   }
@@ -32,11 +30,7 @@ export function wrapFetchWithWindowLocation(
     if (props[0] && typeof props[0] === "string" && props[0].startsWith("/")) {
       props[0] = new URL(props[0], getOrigin()).toString();
     } else if (props[0] && typeof props[0] === "object") {
-      if (
-        props[0].url &&
-        typeof props[0].url === "string" &&
-        props[0].url.startsWith("/")
-      ) {
+      if (props[0].url && typeof props[0].url === "string" && props[0].url.startsWith("/")) {
         props[0].url = new URL(props[0].url, getOrigin()).toString();
       }
     }

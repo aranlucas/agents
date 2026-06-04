@@ -9,12 +9,7 @@ export function AgentList({ agents }: { agents: Agent[] }) {
   return (
     <div className="flex-1 divide-y divide-[var(--border)]">
       {agents.map((agent, index) => (
-        <AgentCard
-          key={agent.id}
-          agent={agent}
-          index={index}
-          status={statuses[agent.theme]}
-        />
+        <AgentCard key={agent.id} agent={agent} index={index} status={statuses[agent.theme]} />
       ))}
     </div>
   );

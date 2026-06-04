@@ -20,9 +20,7 @@ const VAR_NAMES = [
  * the same way they appear during streaming. Skips fenced code blocks.
  */
 function preserveNewlines(md: string): string {
-  return md.replace(/(```[\s\S]*?```)|(\n)/g, (match, codeBlock) =>
-    codeBlock ? match : "  \n",
-  );
+  return md.replace(/(```[\s\S]*?```)|(\n)/g, (match, codeBlock) => (codeBlock ? match : "  \n"));
 }
 
 export function ChatMarkdown({ children }: { children: string }) {
@@ -122,9 +120,7 @@ export function ChatMarkdown({ children }: { children: string }) {
               <Text
                 style={[
                   styles.listBullet as any,
-                  extras?.ordered
-                    ? fullStyles.orderedBullet
-                    : fullStyles.unorderedBullet,
+                  extras?.ordered ? fullStyles.orderedBullet : fullStyles.unorderedBullet,
                 ]}
               >
                 {extras?.listStyleType}

@@ -32,29 +32,20 @@ function ChatRow({
   return (
     <Link href="/" asChild>
       <Link.Trigger>
-        <Pressable className="flex-row items-center px-5 py-4 active:bg-card">
-          <View className="flex-1 gap-0.5 mr-3">
-            <Text
-              numberOfLines={1}
-              className="text-[17px] text-foreground"
-              selectable
-            >
+        <Pressable className="active:bg-card flex-row items-center px-5 py-4">
+          <View className="mr-3 flex-1 gap-0.5">
+            <Text numberOfLines={1} className="text-foreground text-[17px]" selectable>
               {item.title}
             </Text>
-            <Text className="text-[13px] text-muted-foreground">
-              {formatTimeAgo(item.daysAgo)}
-            </Text>
+            <Text className="text-muted-foreground text-[13px]">{formatTimeAgo(item.daysAgo)}</Text>
           </View>
           {process.env.EXPO_OS === "ios" ? (
             <Image
               source="sf:chevron.right"
-              className="w-2.5 h-4 font-medium text-muted-foreground"
+              className="text-muted-foreground h-4 w-2.5 font-medium"
             />
           ) : (
-            <Icon
-              icon={ChevronRight}
-              className="w-2.5 h-4 text-muted-foreground"
-            />
+            <Icon icon={ChevronRight} className="text-muted-foreground h-4 w-2.5" />
           )}
         </Pressable>
       </Link.Trigger>
@@ -66,12 +57,7 @@ function ChatRow({
           onPress={onStar}
         />
         <Link.MenuAction title="Rename" icon="pencil" onPress={onRename} />
-        <Link.MenuAction
-          title="Delete"
-          icon="trash"
-          destructive
-          onPress={onDelete}
-        />
+        <Link.MenuAction title="Delete" icon="trash" destructive onPress={onDelete} />
       </Link.Menu>
     </Link>
   );
@@ -79,9 +65,9 @@ function ChatRow({
 
 function EmptySearch({ query }: { query: string }) {
   return (
-    <View className="flex-1 items-center justify-center pt-32 gap-2">
-      <Icon icon={Search} className="w-10 h-10 text-muted-foreground" />
-      <Text className="text-[17px] text-muted-foreground text-center px-10">
+    <View className="flex-1 items-center justify-center gap-2 pt-32">
+      <Icon icon={Search} className="text-muted-foreground h-10 w-10" />
+      <Text className="text-muted-foreground px-10 text-center text-[17px]">
         No results found for &ldquo;{query}&rdquo;
       </Text>
     </View>
@@ -116,9 +102,7 @@ export default function ChatsScreen() {
           onPress: (newTitle?: string) => {
             if (newTitle?.trim()) {
               setChats((prev) =>
-                prev.map((c) =>
-                  c.id === chat.id ? { ...c, title: newTitle.trim() } : c,
-                ),
+                prev.map((c) => (c.id === chat.id ? { ...c, title: newTitle.trim() } : c)),
               );
             }
           },
@@ -143,9 +127,7 @@ export default function ChatsScreen() {
   }, []);
 
   const handleStar = useCallback((chat: Chat) => {
-    setChats((prev) =>
-      prev.map((c) => (c.id === chat.id ? { ...c, starred: !c.starred } : c)),
-    );
+    setChats((prev) => prev.map((c) => (c.id === chat.id ? { ...c, starred: !c.starred } : c)));
   }, []);
 
   return (
@@ -193,9 +175,9 @@ function LeftToolbar() {
           onPress={openDrawer}
           accessibilityLabel="Open drawer"
           accessibilityRole="button"
-          className="p-2 -ml-1 active:opacity-60"
+          className="-ml-1 p-2 active:opacity-60"
         >
-          <Icon icon={Menu} className="w-6 h-6 text-foreground" />
+          <Icon icon={Menu} className="text-foreground h-6 w-6" />
         </Pressable>
       </Stack.Toolbar>
     );
@@ -243,9 +225,7 @@ function BottomToolbar() {
 
   return (
     <Stack.Toolbar placement="bottom">
-      {isLiquidGlassAvailable() && (
-        <Stack.Toolbar.SearchBarSlot separateBackground />
-      )}
+      {isLiquidGlassAvailable() && <Stack.Toolbar.SearchBarSlot separateBackground />}
       <Stack.Toolbar.Button
         tintColor={Color.ios.label}
         icon="square.and.pencil"

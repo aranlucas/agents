@@ -44,13 +44,7 @@ export type PantryItem = {
 // User preferences — shared across both agents
 export type TransportMode = "flight" | "road_trip";
 export type BudgetTier = "shoestring" | "comfort" | "premium" | "luxury";
-export type Vibe =
-  | "relaxed"
-  | "adventure"
-  | "foodie"
-  | "culture"
-  | "nightlife"
-  | "family";
+export type Vibe = "relaxed" | "adventure" | "foodie" | "culture" | "nightlife" | "family";
 export type Pace = "slow" | "balanced" | "packed";
 
 export type Preferences = {

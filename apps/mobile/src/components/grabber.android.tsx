@@ -5,11 +5,7 @@ import { View } from "react-native";
 export function AndroidGrabber() {
   return (
     <View className="items-center pt-2 pb-1">
-      <Icon
-        icon={Minus}
-        strokeWidth={4}
-        className="w-8 h-8 text-muted-foreground"
-      />
+      <Icon icon={Minus} strokeWidth={4} className="text-muted-foreground h-8 w-8" />
     </View>
   );
 }

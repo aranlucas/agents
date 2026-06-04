@@ -6,12 +6,7 @@ import type { DocStatus } from "@agents/types";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-} from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -41,10 +36,7 @@ interface Props {
   onReset: () => void;
 }
 
-const STATUS_META: Record<
-  DocStatus,
-  { label: string; dotClass: string; chipClass: string }
-> = {
+const STATUS_META: Record<DocStatus, { label: string; dotClass: string; chipClass: string }> = {
   idle: {
     label: "No trip yet",
     dotClass: "bg-[var(--ink-mute)]",
@@ -58,8 +50,7 @@ const STATUS_META: Record<
   ready_to_book: {
     label: "Ready to book",
     dotClass: "bg-[var(--warning)]",
-    chipClass:
-      "text-[var(--warning)] bg-[color-mix(in_srgb,var(--warning)_14%,transparent)]",
+    chipClass: "text-[var(--warning)] bg-[color-mix(in_srgb,var(--warning)_14%,transparent)]",
   },
   booked: {
     label: "Booked",
@@ -155,10 +146,7 @@ export function DocumentCanvas({
   onReset,
 }: Props) {
   const meta = STATUS_META[status];
-  const { days, trailing } = useMemo(
-    () => parseItinerary(itinerary),
-    [itinerary],
-  );
+  const { days, trailing } = useMemo(() => parseItinerary(itinerary), [itinerary]);
   const tripLength = daysBetween(startDate, endDate);
   const dateRange = fmtDateRange(startDate, endDate);
   const budgetLabel = budgetUsd > 0 ? `$${budgetUsd.toLocaleString()}` : "—";
@@ -167,7 +155,7 @@ export function DocumentCanvas({
     <Card className="h-full gap-0 py-0">
       <CardHeader className="border-b border-[var(--border-soft)] bg-gradient-to-br from-[var(--surface)] to-[var(--surface-soft)] px-6 py-5">
         <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0 flex-1">
             <Input
               type="text"
               value={destination}
@@ -180,39 +168,29 @@ export function DocumentCanvas({
               value={headline}
               onChange={(e) => onHeadlineChange(e.target.value)}
               placeholder="A one-line vibe (e.g. 'Snow, sushi, onsen')"
-              className="mt-1 h-auto border-0 bg-transparent px-0 py-0 text-sm italic text-[var(--ink-soft)] shadow-none focus-visible:ring-0"
+              className="mt-1 h-auto border-0 bg-transparent px-0 py-0 text-sm text-[var(--ink-soft)] italic shadow-none focus-visible:ring-0"
             />
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex shrink-0 items-center gap-2">
             <Button type="button" onClick={onReset} variant="outline" size="xs">
               Reset
             </Button>
           </div>
         </div>
 
-        <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+        <div className="mt-3 grid grid-cols-2 gap-2 text-xs md:grid-cols-4">
           <Stat label="Dates" value={dateRange || "—"} />
           <Stat
             label="Length"
-            value={
-              tripLength > 0
-                ? `${tripLength} day${tripLength === 1 ? "" : "s"}`
-                : "—"
-            }
+            value={tripLength > 0 ? `${tripLength} day${tripLength === 1 ? "" : "s"}` : "—"}
           />
-          <Stat
-            label="Travelers"
-            value={travelers > 0 ? String(travelers) : "—"}
-          />
+          <Stat label="Travelers" value={travelers > 0 ? String(travelers) : "—"} />
           <Stat label="Budget" value={budgetLabel} />
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[var(--ink-mute)]">
-          <Badge
-            variant="outline"
-            className={cn("gap-1.5 border-transparent", meta.chipClass)}
-          >
-            <span className={`w-1.5 h-1.5 rounded-full ${meta.dotClass}`} />
+          <Badge variant="outline" className={cn("gap-1.5 border-transparent", meta.chipClass)}>
+            <span className={`h-1.5 w-1.5 rounded-full ${meta.dotClass}`} />
             {meta.label}
           </Badge>
           {days.length > 0 && (
@@ -226,26 +204,19 @@ export function DocumentCanvas({
           {isStreaming && (
             <>
               <span>·</span>
-              <span className="text-[var(--accent-strong)] font-medium">
-                agent writing
-              </span>
+              <span className="font-medium text-[var(--accent-strong)]">agent writing</span>
             </>
           )}
         </div>
       </CardHeader>
 
       {summary && (
-        <div className="mx-6 mt-4 text-sm text-[var(--ink-soft)] leading-relaxed">
-          {summary}
-        </div>
+        <div className="mx-6 mt-4 text-sm leading-relaxed text-[var(--ink-soft)]">{summary}</div>
       )}
 
       {flights && (
-        <Card
-          size="sm"
-          className="mx-6 mt-4 gap-2 bg-[var(--surface-soft)] p-4 py-4"
-        >
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--ink-mute)] mb-2">
+        <Card size="sm" className="mx-6 mt-4 gap-2 bg-[var(--surface-soft)] p-4 py-4">
+          <h3 className="mb-2 text-xs font-semibold tracking-wider text-[var(--ink-mute)] uppercase">
             Flights
           </h3>
           <div className="text-sm text-[var(--ink)]">
@@ -256,10 +227,7 @@ export function DocumentCanvas({
 
       {status === "ready_to_book" && reviewSummary && (
         <Card className="mx-6 mt-4 gap-0 border-[color-mix(in_srgb,var(--warning)_30%,transparent)] bg-[color-mix(in_srgb,var(--warning)_8%,transparent)] px-4 py-3 text-xs text-[var(--ink-soft)]">
-          <span className="font-semibold text-[var(--warning)]">
-            Agent says:
-          </span>{" "}
-          {reviewSummary}
+          <span className="font-semibold text-[var(--warning)]">Agent says:</span> {reviewSummary}
         </Card>
       )}
 
@@ -268,11 +236,7 @@ export function DocumentCanvas({
           <EmptyState />
         ) : (
           <div className="space-y-4">
-            {trailing && (
-              <p className="text-sm italic text-[var(--ink-mute)]">
-                {trailing}
-              </p>
-            )}
+            {trailing && <p className="text-sm text-[var(--ink-mute)] italic">{trailing}</p>}
             <div className="streamdown-markdown">
               <Streamdown>{itinerary}</Streamdown>
             </div>
@@ -282,7 +246,7 @@ export function DocumentCanvas({
             {isStreaming && (
               <Card className="gap-0 border-dashed border-[var(--accent)] bg-[var(--accent-soft)] px-4 py-3 text-xs font-medium text-[var(--accent-strong)]">
                 <span className="inline-flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--accent)]" />
                   Streaming next day…
                 </span>
               </Card>
@@ -291,8 +255,8 @@ export function DocumentCanvas({
         )}
 
         {isStreaming && (
-          <Badge className="pointer-events-none absolute top-5 right-6 gap-2 bg-[var(--accent-soft)] font-mono text-[10px] uppercase tracking-wider text-[var(--accent-strong)]">
-            <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
+          <Badge className="pointer-events-none absolute top-5 right-6 gap-2 bg-[var(--accent-soft)] font-mono text-[10px] tracking-wider text-[var(--accent-strong)] uppercase">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--accent)]" />
             Live
           </Badge>
         )}
@@ -300,7 +264,7 @@ export function DocumentCanvas({
 
       <CardFooter className="border-t border-[var(--border-soft)] bg-[var(--surface-soft)] px-6 py-3">
         <details className="text-xs">
-          <summary className="cursor-pointer text-[var(--ink-mute)] hover:text-[var(--ink-soft)] select-none">
+          <summary className="cursor-pointer text-[var(--ink-mute)] select-none hover:text-[var(--ink-soft)]">
             Edit raw itinerary (markdown)
           </summary>
           <Textarea
@@ -322,12 +286,10 @@ export function DocumentCanvas({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <Card size="sm" className="gap-0 border-[var(--border-soft)] px-3 py-2">
-      <div className="text-[10px] uppercase tracking-wider text-[var(--ink-mute)] font-mono">
+      <div className="font-mono text-[10px] tracking-wider text-[var(--ink-mute)] uppercase">
         {label}
       </div>
-      <div className="text-sm font-medium text-[var(--ink)] mt-0.5 truncate">
-        {value}
-      </div>
+      <div className="mt-0.5 truncate text-sm font-medium text-[var(--ink)]">{value}</div>
     </Card>
   );
 }
@@ -336,14 +298,14 @@ function DayCard({ day }: { day: Day }) {
   return (
     <Card size="sm" className="gap-0 py-0">
       <CardHeader className="flex-row items-center gap-3 border-b border-[var(--border-soft)] bg-[var(--surface-soft)] px-4 py-3">
-        <div className="shrink-0 w-9 h-9 rounded-xl bg-[var(--accent-soft)] text-[var(--accent-strong)] flex items-center justify-center text-sm font-semibold font-mono">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-soft)] font-mono text-sm font-semibold text-[var(--accent-strong)]">
           {day.day}
         </div>
         <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-wider text-[var(--ink-mute)] font-mono">
+          <div className="font-mono text-[10px] tracking-wider text-[var(--ink-mute)] uppercase">
             Day {day.day}
           </div>
-          <div className="text-sm font-semibold text-[var(--ink)] truncate">
+          <div className="truncate text-sm font-semibold text-[var(--ink)]">
             {day.theme || "Untitled day"}
           </div>
         </div>
@@ -369,22 +331,20 @@ function ActivityRow({ text }: { text: string }) {
   if (m) {
     return (
       <li className="flex items-baseline gap-3 text-sm">
-        <span className="font-mono text-[11px] text-[var(--accent-strong)] bg-[var(--accent-soft)] px-1.5 py-0.5 rounded shrink-0">
+        <span className="shrink-0 rounded bg-[var(--accent-soft)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--accent-strong)]">
           {m[1]}
         </span>
-        <span className="text-[var(--ink)] leading-relaxed">{m[2]}</span>
+        <span className="leading-relaxed text-[var(--ink)]">{m[2]}</span>
       </li>
     );
   }
-  return (
-    <li className="text-sm text-[var(--ink)] leading-relaxed pl-1">• {text}</li>
-  );
+  return <li className="pl-1 text-sm leading-relaxed text-[var(--ink)]">• {text}</li>;
 }
 
 function EmptyState() {
   return (
-    <div className="h-full min-h-[200px] flex flex-col items-center justify-center text-center text-[var(--ink-mute)]">
-      <div className="w-12 h-12 rounded-2xl bg-[var(--accent-soft)] flex items-center justify-center mb-3">
+    <div className="flex h-full min-h-[200px] flex-col items-center justify-center text-center text-[var(--ink-mute)]">
+      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--accent-soft)]">
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -392,17 +352,15 @@ function EmptyState() {
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="w-6 h-6 text-[var(--accent-strong)]"
+          className="h-6 w-6 text-[var(--accent-strong)]"
         >
           <path d="M3 6 9 4l6 2 6-2v14l-6 2-6-2-6 2Z" />
           <path d="M9 4v16" />
           <path d="M15 6v16" />
         </svg>
       </div>
-      <p className="text-sm font-medium text-[var(--ink-soft)]">
-        No itinerary yet
-      </p>
-      <p className="text-xs mt-1 max-w-xs">
+      <p className="text-sm font-medium text-[var(--ink-soft)]">No itinerary yet</p>
+      <p className="mt-1 max-w-xs text-xs">
         Ask the agent to plan a trip, or click a suggestion in the chat panel.
       </p>
     </div>

@@ -26,13 +26,12 @@ export default function GroceryScreen() {
   const scrollRef = useRef<ScrollView>(null);
 
   // Forward the Clerk identity the same way the web copilotkit route does.
-  const headers = useMemo(
-    () => (userId ? { "x-clerk-user-id": userId } : undefined),
-    [userId],
-  );
+  const headers = useMemo(() => (userId ? { "x-clerk-user-id": userId } : undefined), [userId]);
 
-  const { messages, state, isLoading, error, sendMessage } =
-    useAgent<GroceryState>({ url: GROCERY_AGENT_URL, headers }, {});
+  const { messages, state, isLoading, error, sendMessage } = useAgent<GroceryState>(
+    { url: GROCERY_AGENT_URL, headers },
+    {},
+  );
 
   const onSend = () => {
     const text = input;
@@ -48,11 +47,7 @@ export default function GroceryScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       {list.length > 0 && (
-        <ScrollView
-          horizontal
-          style={styles.chipRow}
-          showsHorizontalScrollIndicator={false}
-        >
+        <ScrollView horizontal style={styles.chipRow} showsHorizontalScrollIndicator={false}>
           {list.map((item, i) => (
             <View key={i} style={styles.chip}>
               <Text style={styles.chipText}>{item}</Text>
@@ -64,32 +59,22 @@ export default function GroceryScreen() {
       {list.length === 0 && (
         <View style={styles.emptyState}>
           <Text style={styles.emptyTitle}>Grocery Planner</Text>
-          <Text style={styles.emptySubtitle}>
-            Ask me to plan meals or build a shopping list.
-          </Text>
+          <Text style={styles.emptySubtitle}>Ask me to plan meals or build a shopping list.</Text>
         </View>
       )}
 
       <ScrollView
         ref={scrollRef}
         style={styles.messageList}
-        onContentSizeChange={() =>
-          scrollRef.current?.scrollToEnd({ animated: true })
-        }
+        onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
       >
         {messages.map((m) => (
           <View
             key={m.id}
-            style={[
-              styles.bubble,
-              m.role === "user" ? styles.userBubble : styles.agentBubble,
-            ]}
+            style={[styles.bubble, m.role === "user" ? styles.userBubble : styles.agentBubble]}
           >
             <Text
-              style={[
-                styles.bubbleText,
-                m.role === "user" ? styles.userText : styles.agentText,
-              ]}
+              style={[styles.bubbleText, m.role === "user" ? styles.userText : styles.agentText]}
             >
               {m.content}
             </Text>

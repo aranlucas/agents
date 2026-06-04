@@ -8,9 +8,7 @@ export function register() {
   registerOTel({
     serviceName: process.env.OTEL_SERVICE_NAME ?? "agents-nextjs",
     traceExporter: new OTLPTraceExporter({
-      url: endpoint.endsWith("/v1/traces")
-        ? endpoint
-        : `${endpoint.replace(/\/$/, "")}/v1/traces`,
+      url: endpoint.endsWith("/v1/traces") ? endpoint : `${endpoint.replace(/\/$/, "")}/v1/traces`,
     }),
   });
 }

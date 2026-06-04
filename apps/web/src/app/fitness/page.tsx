@@ -13,21 +13,14 @@ import { AgentChatPanel, AgentWorkspace } from "@/components/agent-workspace";
 import { HeroHeader } from "@/components/hero-header";
 import { Streamdown } from "streamdown";
 
-import type {
-  FitnessActivity,
-  FitnessState,
-  FitnessStatus,
-} from "@agents/types";
+import type { FitnessActivity, FitnessState, FitnessStatus } from "@agents/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuthConnection } from "@/lib/use-auth-connection";
 
 const STRAVA_STRATEGY = "oauth_custom_strava";
 
-const STATUS_META: Record<
-  FitnessStatus,
-  { label: string; dotClass: string; chipClass: string }
-> = {
+const STATUS_META: Record<FitnessStatus, { label: string; dotClass: string; chipClass: string }> = {
   idle: {
     label: "No plan yet",
     dotClass: "bg-[var(--ink-mute)]",
@@ -50,25 +43,17 @@ const STATUS_META: Record<
   },
 };
 
-function StravaGate({
-  onConnect,
-  connecting,
-}: {
-  onConnect: () => void;
-  connecting: boolean;
-}) {
+function StravaGate({ onConnect, connecting }: { onConnect: () => void; connecting: boolean }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6 p-8 text-center">
       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--page-color-soft,var(--accent-soft))]">
         <Activity className="h-6 w-6 text-[var(--page-color,var(--accent-strong))]" />
       </div>
       <div className="space-y-2">
-        <h2 className="text-xl font-semibold text-[var(--ink)]">
-          Connect Strava
-        </h2>
+        <h2 className="text-xl font-semibold text-[var(--ink)]">Connect Strava</h2>
         <p className="max-w-sm text-sm text-[var(--ink-mute)]">
-          The fitness agent uses your recent activity history to adapt weekly
-          training, recovery, and mountain objective prep.
+          The fitness agent uses your recent activity history to adapt weekly training, recovery,
+          and mountain objective prep.
         </p>
       </div>
       <Button onClick={onConnect} disabled={connecting} size="lg">
@@ -85,8 +70,7 @@ function FitnessPageInner() {
   const connectStrava = useReverification(async () => {
     if (!user) return;
     const existingAccount = user.externalAccounts.find(
-      ({ provider }) =>
-        provider === "custom_strava" || String(provider) === STRAVA_STRATEGY,
+      ({ provider }) => provider === "custom_strava" || String(provider) === STRAVA_STRATEGY,
     );
 
     const account = existingAccount
@@ -95,8 +79,7 @@ function FitnessPageInner() {
           strategy: STRAVA_STRATEGY,
           redirectUrl: window.location.href,
         });
-    const redirectUrl =
-      account.verification?.externalVerificationRedirectURL?.href;
+    const redirectUrl = account.verification?.externalVerificationRedirectURL?.href;
     if (redirectUrl) window.location.assign(redirectUrl);
   });
 
@@ -136,8 +119,7 @@ function FitnessPageInner() {
       },
       {
         title: "Recovery focus",
-        message:
-          "Adapt this week around recovery while keeping my long-term mountain goal moving.",
+        message: "Adapt this week around recovery while keeping my long-term mountain goal moving.",
       },
     ],
     available: "always",
@@ -192,10 +174,7 @@ function FitnessPageInner() {
         <AgentWorkspace
           context={
             <div className="flex min-w-0 flex-col gap-4">
-              <SummaryCard
-                totals={totals}
-                syncedAt={state.activities_synced_at}
-              />
+              <SummaryCard totals={totals} syncedAt={state.activities_synced_at} />
               <ActivitiesCard activities={activities} />
             </div>
           }
@@ -244,11 +223,7 @@ function SectionCard({
   return (
     <Card size="sm" className="gap-0 py-0">
       <CardHeader className="flex-row items-center gap-2 border-b border-[var(--border-soft)] bg-[var(--surface-soft)] px-4 py-3">
-        {icon && (
-          <span className="text-[var(--page-color,var(--ink-mute))]">
-            {icon}
-          </span>
-        )}
+        {icon && <span className="text-[var(--page-color,var(--ink-mute))]">{icon}</span>}
         <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent className="p-4">{children}</CardContent>
@@ -292,12 +267,8 @@ function SummaryCard({
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border border-[var(--border-soft)] bg-[var(--surface-soft)] p-3">
-      <div className="text-[11px] uppercase text-[var(--ink-mute)]">
-        {label}
-      </div>
-      <div className="mt-1 font-mono text-lg font-semibold text-[var(--ink)]">
-        {value}
-      </div>
+      <div className="text-[11px] text-[var(--ink-mute)] uppercase">{label}</div>
+      <div className="mt-1 font-mono text-lg font-semibold text-[var(--ink)]">{value}</div>
     </div>
   );
 }
@@ -324,9 +295,7 @@ function ActivitiesCard({ activities }: { activities: FitnessActivity[] }) {
                   <span>{(activity.distance_m / 1000).toFixed(1)} km</span>
                 )}
                 {activity.total_elevation_gain_m !== undefined && (
-                  <span>
-                    {Math.round(activity.total_elevation_gain_m)} m gain
-                  </span>
+                  <span>{Math.round(activity.total_elevation_gain_m)} m gain</span>
                 )}
               </div>
             </li>
@@ -337,13 +306,7 @@ function ActivitiesCard({ activities }: { activities: FitnessActivity[] }) {
   );
 }
 
-function PlanCard({
-  plan,
-  isStreaming,
-}: {
-  plan: string;
-  isStreaming: boolean;
-}) {
+function PlanCard({ plan, isStreaming }: { plan: string; isStreaming: boolean }) {
   return (
     <SectionCard title="Weekly plan" icon={<Dumbbell className="h-4 w-4" />}>
       {plan ? (
@@ -351,15 +314,9 @@ function PlanCard({
           <Streamdown>{plan}</Streamdown>
         </div>
       ) : (
-        <EmptyHint>
-          Ask the agent to build a week from your recent training.
-        </EmptyHint>
+        <EmptyHint>Ask the agent to build a week from your recent training.</EmptyHint>
       )}
-      {isStreaming && (
-        <div className="mt-3 text-xs text-[var(--accent-strong)]">
-          writing...
-        </div>
-      )}
+      {isStreaming && <div className="mt-3 text-xs text-[var(--accent-strong)]">writing...</div>}
     </SectionCard>
   );
 }
@@ -367,10 +324,7 @@ function PlanCard({
 function ResearchCard({ research }: { research: string }) {
   if (!research) return null;
   return (
-    <SectionCard
-      title="Objective research"
-      icon={<Mountain className="h-4 w-4" />}
-    >
+    <SectionCard title="Objective research" icon={<Mountain className="h-4 w-4" />}>
       <div className="streamdown-markdown text-sm text-[var(--ink-soft)]">
         <Streamdown>{research}</Streamdown>
       </div>

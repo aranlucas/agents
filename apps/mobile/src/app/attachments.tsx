@@ -15,17 +15,11 @@ import {
 import { useState } from "react";
 import { Pressable, ScrollView, Switch, Text, View } from "react-native";
 
-function AttachmentButton({
-  icon,
-  label,
-}: {
-  icon: LucideIcon;
-  label: string;
-}) {
+function AttachmentButton({ icon, label }: { icon: LucideIcon; label: string }) {
   return (
-    <Pressable className="flex-1 items-center gap-2 py-3 rounded-xl bg-secondary active:bg-muted border-continuous">
-      <Icon icon={icon} className="w-6 h-6 text-foreground" />
-      <Text className="text-[13px] text-foreground">{label}</Text>
+    <Pressable className="bg-secondary active:bg-muted border-continuous flex-1 items-center gap-2 rounded-xl py-3">
+      <Icon icon={icon} className="text-foreground h-6 w-6" />
+      <Text className="text-foreground text-[13px]">{label}</Text>
     </Pressable>
   );
 }
@@ -44,14 +38,12 @@ function ToggleRow({
   onValueChange: (v: boolean) => void;
 }) {
   return (
-    <View className="flex-row items-center px-5 py-3 gap-3.5">
-      <Icon icon={icon} className="w-5 h-5 text-foreground" />
-      <Text className="flex-1 text-[17px] text-foreground">{label}</Text>
+    <View className="flex-row items-center gap-3.5 px-5 py-3">
+      <Icon icon={icon} className="text-foreground h-5 w-5" />
+      <Text className="text-foreground flex-1 text-[17px]">{label}</Text>
       {badge && (
-        <View className="px-1.5 py-0.5 rounded bg-muted">
-          <Text className="text-[11px] font-medium text-muted-foreground">
-            {badge}
-          </Text>
+        <View className="bg-muted rounded px-1.5 py-0.5">
+          <Text className="text-muted-foreground text-[11px] font-medium">{badge}</Text>
         </View>
       )}
       <Switch value={value} onValueChange={onValueChange} />
@@ -73,12 +65,12 @@ function DisclosureRow({
   return (
     <Pressable
       onPress={onPress}
-      className="flex-row items-center px-5 py-3.5 gap-3.5 active:bg-muted"
+      className="active:bg-muted flex-row items-center gap-3.5 px-5 py-3.5"
     >
-      <Icon icon={icon} className="w-5 h-5 text-foreground" />
-      <Text className="flex-1 text-[17px] text-foreground">{label}</Text>
-      <Text className="text-[15px] text-muted-foreground">{detail}</Text>
-      <Icon icon={ChevronRight} className="w-3 h-3 text-muted-foreground" />
+      <Icon icon={icon} className="text-foreground h-5 w-5" />
+      <Text className="text-foreground flex-1 text-[17px]">{label}</Text>
+      <Text className="text-muted-foreground text-[15px]">{detail}</Text>
+      <Icon icon={ChevronRight} className="text-muted-foreground h-3 w-3" />
     </Pressable>
   );
 }
@@ -88,7 +80,7 @@ export default function AddToChatSheet() {
   const [webSearch, setWebSearch] = useState(true);
 
   return (
-    <ScrollView className="flex-1 " contentInsetAdjustmentBehavior="automatic">
+    <ScrollView className="flex-1" contentInsetAdjustmentBehavior="automatic">
       <AndroidGrabber />
       {/* Attachment buttons */}
       <View className="flex-row gap-3 px-5 pt-2 pb-4">
@@ -98,12 +90,7 @@ export default function AddToChatSheet() {
       </View>
 
       {/* Toggles */}
-      <ToggleRow
-        icon={Sparkles}
-        label="Research"
-        value={research}
-        onValueChange={setResearch}
-      />
+      <ToggleRow icon={Sparkles} label="Research" value={research} onValueChange={setResearch} />
       <ToggleRow
         icon={Globe}
         label="Web search"
@@ -113,7 +100,7 @@ export default function AddToChatSheet() {
       />
 
       {/* Divider */}
-      <View className="h-px bg-border mx-5 my-1" />
+      <View className="bg-border mx-5 my-1 h-px" />
 
       {/* Disclosure rows */}
       <DisclosureRow icon={Archive} label="Add to project" detail="None" />

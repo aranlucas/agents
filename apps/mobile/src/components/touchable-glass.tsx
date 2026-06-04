@@ -41,12 +41,7 @@ function TouchableGlassNative({
   // TODO: Add iOS 18 bounce effect on blur.
   return (
     <GestureDetector gesture={tap}>
-      <AppleGlassView
-        ref={ref}
-        collapsable={false}
-        isInteractive={!disabled}
-        {...rest}
-      />
+      <AppleGlassView ref={ref} collapsable={false} isInteractive={!disabled} {...rest} />
     </GestureDetector>
   );
 }
@@ -65,13 +60,13 @@ function TouchableGlassFallback({
 }: TouchableGlassProps) {
   // Pick only View-compatible props, stripping glass-specific ones
   const {
-    fallbackTint,
-    fallbackIntensity,
-    glassEffectStyle,
-    tintColor,
-    isInteractive,
-    colorScheme,
-    animatedProps,
+    fallbackTint: _fallbackTint,
+    fallbackIntensity: _fallbackIntensity,
+    glassEffectStyle: _glassEffectStyle,
+    tintColor: _tintColor,
+    isInteractive: _isInteractive,
+    colorScheme: _colorScheme,
+    animatedProps: _animatedProps,
     ...viewProps
   } = rest as Record<string, unknown>;
   const safeViewProps = viewProps as ViewOnlyProps;

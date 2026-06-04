@@ -23,6 +23,13 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - expo-modules-autolinking@56.0.14
   - expo@56.0.6
+  - "@copilotkit/a2ui-renderer@1.59.3"
+  - "@copilotkit/core@1.59.3"
+  - "@copilotkit/react-core@1.59.3"
+  - "@copilotkit/runtime-client-gql@1.59.3"
+  - "@copilotkit/runtime@1.59.3"
+  - "@copilotkit/shared@1.59.3"
+  - "@copilotkit/web-inspector@1.59.3"
 
 onlyBuiltDependencies:
   - "@clerk/shared"

@@ -1,12 +1,6 @@
 import { ArrowUp, Paperclip } from "lucide-react";
 import { Children, type ReactNode, isValidElement } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
 
 import { useChatContext } from "./chat-context";
 import { useConversationContext } from "./conversation";
@@ -26,10 +20,7 @@ export function PromptInput({ children }: { children: ReactNode }) {
   Children.forEach(children, (child) => {
     if (isValidElement(child) && (child.type as any) === PromptInputAction) {
       actions.push(child);
-    } else if (
-      isValidElement(child) &&
-      (child.type as any) === PromptInputBody
-    ) {
+    } else if (isValidElement(child) && (child.type as any) === PromptInputBody) {
       body = child;
     }
   });
@@ -37,9 +28,9 @@ export function PromptInput({ children }: { children: ReactNode }) {
   return (
     <View
       onLayout={onPromptInputLayout}
-      className="sticky bottom-0 z-10 mx-auto flex w-full max-w-4xl gap-2 bg-background px-2 pb-3 md:px-4 md:pb-4"
+      className="bg-background sticky bottom-0 z-10 mx-auto flex w-full max-w-4xl gap-2 px-2 pb-3 md:px-4 md:pb-4"
     >
-      <View className="flex w-full flex-col rounded-2xl border border-border/30 bg-card/70 shadow-composer transition-shadow duration-300 focus-within:shadow-composer-focus">
+      <View className="border-border/30 bg-card/70 shadow-composer focus-within:shadow-composer-focus flex w-full flex-col rounded-2xl border transition-shadow duration-300">
         {body}
       </View>
     </View>
@@ -59,7 +50,7 @@ export function PromptInputAction({
   return (
     <Pressable
       onPress={onPress}
-      className="flex h-7 w-7 items-center justify-center rounded-lg border border-border/40 transition-colors hover:bg-accent"
+      className="border-border/40 hover:bg-accent flex h-7 w-7 items-center justify-center rounded-lg border transition-colors"
     >
       {children}
     </Pressable>
@@ -91,12 +82,12 @@ export function PromptInputBody({ children }: { children: ReactNode }) {
       <View className="flex flex-row items-center justify-between px-3 pb-3">
         <View className="flex flex-row items-center gap-1">
           {/* Attachments button */}
-          <Pressable className="flex h-7 w-7 items-center justify-center rounded-lg border border-border/40 transition-colors hover:bg-accent">
+          <Pressable className="border-border/40 hover:bg-accent flex h-7 w-7 items-center justify-center rounded-lg border transition-colors">
             <Paperclip size={14} className="text-muted-foreground" />
           </Pressable>
           {/* Model selector mock */}
-          <Pressable className="flex h-7 flex-row items-center gap-1.5 rounded-lg px-2 transition-colors hover:bg-accent">
-            <Text className="text-[12px] text-muted-foreground">Opus</Text>
+          <Pressable className="hover:bg-accent flex h-7 flex-row items-center gap-1.5 rounded-lg px-2 transition-colors">
+            <Text className="text-muted-foreground text-[12px]">Opus</Text>
           </Pressable>
         </View>
         {submit}
@@ -121,7 +112,7 @@ export function PromptInputTextarea({
   return (
     <TextInput
       nativeID="composer"
-      className="min-h-24 w-full bg-transparent px-4 pt-3.5 pb-1.5 text-[13px] leading-relaxed text-foreground placeholder:text-muted-foreground/35 outline-none"
+      className="text-foreground placeholder:text-muted-foreground/35 min-h-24 w-full bg-transparent px-4 pt-3.5 pb-1.5 text-[13px] leading-relaxed outline-none"
       style={{ maxHeight: 200, resize: "none" } as any}
       value={input}
       onChangeText={setInput}
@@ -130,10 +121,7 @@ export function PromptInputTextarea({
       multiline
       maxLength={maxLength}
       onKeyPress={(e) => {
-        if (
-          (e as any).nativeEvent.key === "Enter" &&
-          !(e as any).nativeEvent.shiftKey
-        ) {
+        if ((e as any).nativeEvent.key === "Enter" && !(e as any).nativeEvent.shiftKey) {
           e.preventDefault();
           onSend();
         }
@@ -154,9 +142,7 @@ export function PromptInputSubmit() {
       onPress={onSend}
       disabled={disabled}
       className={`flex h-7 w-7 items-center justify-center rounded-xl transition-all duration-200 ${
-        disabled
-          ? "bg-muted cursor-not-allowed"
-          : "bg-foreground hover:opacity-85 active:scale-95"
+        disabled ? "bg-muted cursor-not-allowed" : "bg-foreground hover:opacity-85 active:scale-95"
       }`}
     >
       {isGenerating ? (

@@ -5,13 +5,7 @@
 
 import * as Haptics from "expo-haptics";
 import * as React from "react";
-import {
-  InteractionManager,
-  Keyboard,
-  Pressable,
-  useWindowDimensions,
-  View,
-} from "react-native";
+import { InteractionManager, Keyboard, Pressable, useWindowDimensions, View } from "react-native";
 import {
   Gesture,
   GestureDetector,
@@ -173,11 +167,7 @@ export function DrawerLayout({
         "worklet";
         touchX.value = event.x;
         // Clamp so content can't go past fully-open or fully-closed
-        translationX.value = minmax(
-          startX.value + event.translationX,
-          -drawerWidth,
-          0,
-        );
+        translationX.value = minmax(startX.value + event.translationX, -drawerWidth, 0);
         gestureState.value = event.state;
       })
       .onEnd((event) => {
@@ -222,9 +212,7 @@ export function DrawerLayout({
   ]);
 
   // Clamped translation for styles
-  const translateX = useDerivedValue(() =>
-    minmax(translationX.value, -drawerWidth, 0),
-  );
+  const translateX = useDerivedValue(() => minmax(translationX.value, -drawerWidth, 0));
 
   const CORNERS = process.env.EXPO_OS === "ios" ? 53 : undefined;
   const contentAnimatedStyle = useAnimatedStyle(
@@ -246,9 +234,7 @@ export function DrawerLayout({
       transform: [
         {
           scale: interpolate(
-            drawerWidth === 0
-              ? 0
-              : (translateX.value + drawerWidth) / drawerWidth,
+            drawerWidth === 0 ? 0 : (translateX.value + drawerWidth) / drawerWidth,
             [0, 1],
             [0.95, 1],
           ),
@@ -259,9 +245,7 @@ export function DrawerLayout({
   );
 
   const progress = useDerivedValue(() =>
-    drawerWidth === 0
-      ? 0
-      : interpolate(translateX.value, [-drawerWidth, 0], [0, 1]),
+    drawerWidth === 0 ? 0 : interpolate(translateX.value, [-drawerWidth, 0], [0, 1]),
   );
 
   return (
@@ -269,7 +253,7 @@ export function DrawerLayout({
       <GestureDetector gesture={pan}>
         <Animated.View className="flex-1 overflow-hidden">
           <Animated.View
-            className="flex-1 overflow-hidden border-continuous"
+            className="border-continuous flex-1 overflow-hidden"
             style={[
               {
                 borderRadius: CORNERS,
@@ -286,10 +270,7 @@ export function DrawerLayout({
           <Animated.View
             aria-hidden={!open}
             className="absolute top-0 bottom-0 max-w-full"
-            style={[
-              { width: drawerWidth, transformOrigin: "left top" },
-              drawerAnimatedStyle,
-            ]}
+            style={[{ width: drawerWidth, transformOrigin: "left top" }, drawerAnimatedStyle]}
           >
             {drawerContent}
             <DrawerDim progress={progress} />
@@ -325,13 +306,12 @@ function Overlay({
   return (
     <Animated.View
       style={animatedStyle}
-      className={"absolute inset-0 bg-card/80"}
+      className={"bg-card/80 absolute inset-0"}
       animatedProps={animatedProps}
     >
       <Pressable
         onPress={onPress}
-        className="flex flex-1 pointer-events-auto"
-        role="button"
+        className="pointer-events-auto flex flex-1"
         aria-label="Close drawer"
         accessible
       />
@@ -339,11 +319,7 @@ function Overlay({
   );
 }
 
-function DrawerDim({
-  progress,
-}: {
-  progress: ReturnType<typeof useDerivedValue<number>>;
-}) {
+function DrawerDim({ progress }: { progress: ReturnType<typeof useDerivedValue<number>> }) {
   const animatedStyle = useAnimatedStyle(() => {
     // Counter-scale to fill the full area when parent is scaled down
     const parentScale = interpolate(progress.value, [0, 1], [0.95, 1]);
@@ -356,7 +332,7 @@ function DrawerDim({
 
   return (
     <Animated.View
-      className={"pointer-events-none bg-black absolute inset-0"}
+      className={"pointer-events-none absolute inset-0 bg-black"}
       style={[{ transformOrigin: "left top" }, animatedStyle]}
     />
   );

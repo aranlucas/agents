@@ -29,9 +29,7 @@ export async function GET() {
     Object.entries(AGENT_URLS).map(([name, url]) => checkAgent(name, url)),
   );
 
-  const agents = Object.fromEntries(
-    results.map(({ name, status }) => [name, status]),
-  );
+  const agents = Object.fromEntries(results.map(({ name, status }) => [name, status]));
   const runningCount = results.filter((r) => r.status === "ok").length;
 
   return NextResponse.json({ agents, runningCount, total: results.length });

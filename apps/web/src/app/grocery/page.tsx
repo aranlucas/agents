@@ -18,17 +18,13 @@ import { AgentChatPanel, AgentWorkspace } from "@/components/agent-workspace";
 import { HeroHeader } from "@/components/hero-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuthConnection } from "@/lib/use-auth-connection";
-import { cn } from "@/lib/utils";
 
 const KROGER_PROVIDER = "custom_shopping";
 const KROGER_STRATEGY = "oauth_custom_shopping";
 
 type GroceryStatus = NonNullable<GroceryState["status"]>;
 
-const STATUS_META: Record<
-  GroceryStatus,
-  { label: string; dotClass: string; chipClass: string }
-> = {
+const STATUS_META: Record<GroceryStatus, { label: string; dotClass: string; chipClass: string }> = {
   idle: {
     label: "No plan yet",
     dotClass: "bg-[var(--ink-mute)]",
@@ -47,25 +43,17 @@ const STATUS_META: Record<
   },
 };
 
-function KrogerAuthGate({
-  onConnect,
-  connecting,
-}: {
-  onConnect: () => void;
-  connecting: boolean;
-}) {
+function KrogerAuthGate({ onConnect, connecting }: { onConnect: () => void; connecting: boolean }) {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8 text-center">
-      <div className="w-12 h-12 rounded-2xl bg-[var(--accent-soft)] flex items-center justify-center">
-        <ShoppingCart className="w-6 h-6 text-[var(--accent-strong)]" />
+    <div className="flex flex-1 flex-col items-center justify-center gap-6 p-8 text-center">
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--accent-soft)]">
+        <ShoppingCart className="h-6 w-6 text-[var(--accent-strong)]" />
       </div>
       <div className="space-y-2">
-        <h2 className="text-xl font-semibold text-[var(--ink)]">
-          Connect your Kroger account
-        </h2>
-        <p className="text-sm text-[var(--ink-mute)] max-w-sm">
-          The grocery planner needs access to your Kroger account to search
-          products, check weekly deals, and manage your shopping list.
+        <h2 className="text-xl font-semibold text-[var(--ink)]">Connect your Kroger account</h2>
+        <p className="max-w-sm text-sm text-[var(--ink-mute)]">
+          The grocery planner needs access to your Kroger account to search products, check weekly
+          deals, and manage your shopping list.
         </p>
       </div>
       <Button onClick={onConnect} disabled={connecting} size="lg">
@@ -94,8 +82,7 @@ function GroceryPageInner() {
           strategy: KROGER_STRATEGY,
           redirectUrl: window.location.href,
         });
-    const redirectUrl =
-      account.verification?.externalVerificationRedirectURL?.href;
+    const redirectUrl = account.verification?.externalVerificationRedirectURL?.href;
     if (redirectUrl) {
       window.location.assign(redirectUrl);
     }
@@ -125,11 +112,7 @@ function GroceryPageInner() {
   const krogerConnected = state.kroger_connected ?? false;
 
   const cartTotal = useMemo(
-    () =>
-      cart.reduce(
-        (sum, item) => sum + (item.price ?? 0) * (item.quantity ?? 1),
-        0,
-      ),
+    () => cart.reduce((sum, item) => sum + (item.price ?? 0) * (item.quantity ?? 1), 0),
     [cart],
   );
 
@@ -152,8 +135,7 @@ function GroceryPageInner() {
       },
       {
         title: "Ready to shop?",
-        message:
-          "If the list looks good, finalize it and mark it ready to shop.",
+        message: "If the list looks good, finalize it and mark it ready to shop.",
       },
     ],
     available: "always",
@@ -185,7 +167,7 @@ function GroceryPageInner() {
 
   return (
     <main
-      className="min-h-full flex flex-col"
+      className="flex min-h-full flex-col"
       style={
         {
           "--page-color": "var(--grocery)",
@@ -196,7 +178,7 @@ function GroceryPageInner() {
       <HeroHeader
         name="Grocery Studio"
         description="Plan meals and build a Kroger cart with an AI partner."
-        icon={<ShoppingCart className="w-5 h-5" />}
+        icon={<ShoppingCart className="h-5 w-5" />}
         isRunning={isRunning}
         statusLabel={meta.label}
       />
@@ -247,7 +229,7 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <Card size="sm" className="gap-0 py-0 border-[var(--border)]">
+    <Card size="sm" className="gap-0 border-[var(--border)] py-0">
       <CardHeader className="flex-row items-center gap-2 border-b border-[var(--border-soft)] bg-[var(--surface-soft)] px-4 py-3">
         <CardTitle className="text-sm font-semibold">{title}</CardTitle>
         {badge}
@@ -289,11 +271,8 @@ function ShoppingListCard({
       ) : (
         <ul className="space-y-1.5">
           {items.map((item, i) => (
-            <li
-              key={i}
-              className="flex items-center gap-2.5 text-sm text-[var(--ink)]"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)] shrink-0" />
+            <li key={i} className="flex items-center gap-2.5 text-sm text-[var(--ink)]">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--success)]" />
               {item}
             </li>
           ))}
@@ -301,16 +280,14 @@ function ShoppingListCard({
       )}
 
       {notes && (
-        <div className="mt-3 rounded-xl border border-[var(--border-soft)] bg-[var(--surface-soft)] px-3 py-2 text-sm text-[var(--ink-soft)] streamdown-markdown">
+        <div className="streamdown-markdown mt-3 rounded-xl border border-[var(--border-soft)] bg-[var(--surface-soft)] px-3 py-2 text-sm text-[var(--ink-soft)]">
           <Streamdown>{notes}</Streamdown>
         </div>
       )}
 
       {reviewSummary && (
         <div className="mt-3 rounded-xl border border-[color-mix(in_srgb,var(--success)_30%,transparent)] bg-[color-mix(in_srgb,var(--success)_8%,transparent)] px-3 py-2 text-xs text-[var(--ink-soft)]">
-          <span className="font-semibold text-[var(--success)]">
-            Ready to shop:
-          </span>{" "}
+          <span className="font-semibold text-[var(--success)]">Ready to shop:</span>{" "}
           {reviewSummary}
         </div>
       )}
@@ -333,22 +310,18 @@ function CartCard({ items, total }: { items: CartItem[]; total: number }) {
       }
     >
       {items.length === 0 ? (
-        <EmptyHint>
-          Connected to Kroger — ask the agent to add items to your cart.
-        </EmptyHint>
+        <EmptyHint>Connected to Kroger — ask the agent to add items to your cart.</EmptyHint>
       ) : (
         <ul className="divide-y divide-[var(--border-soft)]">
           {items.map((item, i) => (
             <li
               key={item.upc ?? `${item.name}-${i}`}
-              className="flex items-center gap-3 py-2 first:pt-0 last:pb-0 text-sm"
+              className="flex items-center gap-3 py-2 text-sm first:pt-0 last:pb-0"
             >
-              <span className="shrink-0 w-7 h-7 rounded-lg bg-[var(--page-color-soft,var(--accent-soft))] text-[var(--page-color,var(--accent-strong))] flex items-center justify-center text-xs font-mono font-semibold">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--page-color-soft,var(--accent-soft))] font-mono text-xs font-semibold text-[var(--page-color,var(--accent-strong))]">
                 {item.quantity ?? 1}
               </span>
-              <span className="flex-1 min-w-0 truncate text-[var(--ink)]">
-                {item.name}
-              </span>
+              <span className="min-w-0 flex-1 truncate text-[var(--ink)]">{item.name}</span>
               {typeof item.price === "number" && (
                 <span className="shrink-0 font-mono text-[var(--ink-soft)]">
                   ${(item.price * (item.quantity ?? 1)).toFixed(2)}
@@ -362,27 +335,21 @@ function CartCard({ items, total }: { items: CartItem[]; total: number }) {
   );
 }
 
-function MealPlanCard({
-  plan,
-  isStreaming,
-}: {
-  plan: string;
-  isStreaming: boolean;
-}) {
+function MealPlanCard({ plan, isStreaming }: { plan: string; isStreaming: boolean }) {
   return (
     <SectionCard
       title="Meal plan"
       badge={
         isStreaming ? (
           <Badge className="ml-auto gap-1.5 bg-transparent px-0 text-[10px] font-medium text-[var(--accent-strong)]">
-            <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--accent)]" />
             writing
           </Badge>
         ) : undefined
       }
     >
       {plan ? (
-        <div className="text-sm text-[var(--ink-soft)] streamdown-markdown">
+        <div className="streamdown-markdown text-sm text-[var(--ink-soft)]">
           <Streamdown>{plan}</Streamdown>
         </div>
       ) : (
@@ -396,7 +363,7 @@ function DealsCard({ deals }: { deals: string }) {
   if (!deals) return null;
   return (
     <SectionCard title="Weekly deals">
-      <div className="text-sm text-[var(--ink-soft)] streamdown-markdown">
+      <div className="streamdown-markdown text-sm text-[var(--ink-soft)]">
         <Streamdown>{deals}</Streamdown>
       </div>
     </SectionCard>
@@ -414,10 +381,8 @@ function PantryCard({ items }: { items: PantryItem[] }) {
               size="sm"
               className="gap-0 border-[var(--border-soft)] bg-[var(--surface-soft)] px-3 py-2"
             >
-              <div className="text-sm text-[var(--ink)] truncate">
-                {item.name}
-              </div>
-              <div className="text-[11px] text-[var(--ink-mute)] flex items-center gap-1.5">
+              <div className="truncate text-sm text-[var(--ink)]">{item.name}</div>
+              <div className="flex items-center gap-1.5 text-[11px] text-[var(--ink-mute)]">
                 <span>{item.quantity}</span>
                 {item.expires && (
                   <>

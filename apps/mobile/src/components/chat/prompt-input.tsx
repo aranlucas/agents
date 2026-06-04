@@ -1,18 +1,8 @@
 import { SymbolImage } from "@/components/symbol-image";
 import { TouchableGlass } from "@/components/touchable-glass";
-import {
-  GlassContainer,
-  GlassView,
-  isLiquidGlassAvailable,
-} from "expo-glass-effect";
+import { GlassContainer, GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import { useEffect, useRef, type ReactNode } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 
 import { cn } from "@/utils/tailwind";
@@ -56,15 +46,9 @@ export function PromptInput({ children }: { children: ReactNode }) {
 function PromptInputError({ message }: { message?: string }) {
   return (
     <Animated.View entering={FadeIn.duration(200)} className="px-3 pb-2">
-      <View className="flex-row items-center gap-2 rounded-xl bg-card px-3 py-2.5 border-continuous">
-        <View
-          className="w-2 h-2 rounded-full"
-          style={{ backgroundColor: "#EF4444" }}
-        />
-        <Text
-          className="flex-1 text-xs text-muted-foreground"
-          numberOfLines={2}
-        >
+      <View className="bg-card border-continuous flex-row items-center gap-2 rounded-xl px-3 py-2.5">
+        <View className="h-2 w-2 rounded-full" style={{ backgroundColor: "#EF4444" }} />
+        <Text className="text-muted-foreground flex-1 text-xs" numberOfLines={2}>
           {message || "Something went wrong"}
         </Text>
       </View>
@@ -75,10 +59,7 @@ function PromptInputError({ message }: { message?: string }) {
 /**
  * A circular glass button for actions (e.g. attachments, camera).
  */
-export function PromptInputAction(props: {
-  children: ReactNode;
-  onPress?: () => void;
-}) {
+export function PromptInputAction(props: { children: ReactNode; onPress?: () => void }) {
   return (
     <TouchableGlass
       hitSlop={4}
@@ -161,7 +142,7 @@ export function PromptInputTextarea({
       cursorColorClassName="tint-foreground"
       selectionColorClassName="tint-foreground"
       style={{ fontSize: 16 }}
-      className="flex-1 pl-4 pr-2 py-3 text-foreground max-h-25"
+      className="text-foreground max-h-25 flex-1 py-3 pr-2 pl-4"
       value={input}
       onChangeText={setInput}
       placeholder={placeholder}
@@ -208,10 +189,7 @@ export function PromptInputSubmit() {
           name="arrow.up"
           size={16}
           sfEffect="scale/up"
-          className={cn(
-            "font-semibold",
-            disabled ? "text-muted-foreground" : "text-background",
-          )}
+          className={cn("font-semibold", disabled ? "text-muted-foreground" : "text-background")}
         />
       )}
     </Pressable>
