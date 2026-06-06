@@ -4,7 +4,7 @@ import json
 import logging
 import os
 import time
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from a2a.server.apps.jsonrpc import A2AFastAPIApplication
 from a2a.server.request_handlers import DefaultRequestHandler
@@ -21,21 +21,19 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from google.adk.agents import LlmAgent
+from google.adk.agents.callback_context import CallbackContext
 from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
 from google.adk.auth.credential_service.in_memory_credential_service import (
     InMemoryCredentialService,
 )
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
+from google.adk.models import LlmRequest, LlmResponse
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.runners import Runner
+from google.adk.tools import ToolContext
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.sdk.resources import Resource
-
-if TYPE_CHECKING:
-    from google.adk.agents.callback_context import CallbackContext
-    from google.adk.models import LlmRequest, LlmResponse
-    from google.adk.tools import ToolContext
 
 load_dotenv()
 

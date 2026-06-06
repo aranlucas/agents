@@ -14,5 +14,5 @@
     "preserveDuplicates": false,
     "preserveWhitespace": false
   },
-  "ignorePatterns": []
+  "ignorePatterns": ["apps/mobile/uniwind-types.d.ts"]
 }

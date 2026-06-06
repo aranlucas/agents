@@ -1,9 +1,8 @@
 """Shared ADK tool callbacks."""
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-if TYPE_CHECKING:
-    from google.adk.tools import BaseTool, ToolContext
+from google.adk.tools import BaseTool, ToolContext
 
 
 def parse_tool_response(tool_response: dict | str) -> dict | str | None:
@@ -11,7 +10,7 @@ def parse_tool_response(tool_response: dict | str) -> dict | str | None:
         if isinstance(tool_response, str):
             return tool_response
         return tool_response.get("structuredContent", tool_response.get("content", {}))
-    except KeyError, TypeError, AttributeError:
+    except (KeyError, TypeError, AttributeError):
         return None
 
 

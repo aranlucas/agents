@@ -6,7 +6,6 @@ import json
 import logging
 import os
 import time
-from typing import TYPE_CHECKING
 
 from a2a.server.apps.jsonrpc import A2AFastAPIApplication
 from a2a.server.request_handlers import DefaultRequestHandler
@@ -25,6 +24,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from google.adk.agents import LlmAgent
+from google.adk.agents.callback_context import CallbackContext
 from google.adk.agents.remote_a2a_agent import (
     AGENT_CARD_WELL_KNOWN_PATH,
     RemoteA2aAgent,
@@ -34,19 +34,16 @@ from google.adk.auth.credential_service.in_memory_credential_service import (
     InMemoryCredentialService,
 )
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
+from google.adk.models import LlmRequest, LlmResponse
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.runners import Runner
+from google.adk.tools import ToolContext
 from google.adk.tools.agent_tool import AgentTool
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.sdk.resources import Resource
 
 from .utils import FITNESS_AGENT_A2A_URL, GROCERY_AGENT_A2A_URL
-
-if TYPE_CHECKING:
-    from google.adk.agents.callback_context import CallbackContext
-    from google.adk.models import LlmRequest, LlmResponse
-    from google.adk.tools import ToolContext
 
 load_dotenv()
 

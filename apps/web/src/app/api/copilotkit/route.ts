@@ -10,11 +10,30 @@ const KROGER_TOKEN_HEADER = "x-kroger-access-token";
 const STRAVA_TOKEN_HEADER = "x-strava-access-token";
 
 const runtime = new CopilotSseRuntime({
-  agents: async () => {
+  agents: {
+    travel: new HttpAgent({
+      url: env.TRAVEL_AGENT_URL,
+      debug: env.COPILOTKIT_DEBUG,
+    }),
+    grocery: new HttpAgent({
+      url: env.GROCERY_AGENT_URL,
+      debug: env.COPILOTKIT_DEBUG,
+    }),
+    fitness: new HttpAgent({
+      url: env.FITNESS_AGENT_URL,
+      debug: env.COPILOTKIT_DEBUG,
+    }),
+    wellness: new HttpAgent({
+      url: env.WELLNESS_AGENT_URL,
+      debug: env.COPILOTKIT_DEBUG,
+    }),
+    a2ui: new HttpAgent({
+      url: env.A2UI_AGENT_URL,
+      debug: env.COPILOTKIT_DEBUG,
+    }),
+  },
+  beforeRequestMiddleware: async ({ request }) => {
     const { userId } = await auth();
-    const identityHeaders: Record<string, string> = userId
-      ? { [CLERK_USER_ID_HEADER]: userId }
-      : {};
     const { token: krogerToken } = await getKrogerAccessToken().catch(() => ({
       connected: false,
       token: null,
@@ -28,43 +47,18 @@ const runtime = new CopilotSseRuntime({
       `[copilotkit] building agents stravaTokenPresent=${Boolean(stravaToken)} krogerTokenPresent=${Boolean(krogerToken)}`,
     );
 
-    return {
-      travel: new HttpAgent({
-        url: env.TRAVEL_AGENT_URL,
-        debug: env.COPILOTKIT_DEBUG,
-        headers: identityHeaders,
-      }),
-      grocery: new HttpAgent({
-        url: env.GROCERY_AGENT_URL,
-        debug: env.COPILOTKIT_DEBUG,
-        headers: {
-          ...identityHeaders,
-          ...(krogerToken ? { [KROGER_TOKEN_HEADER]: krogerToken } : {}),
-        },
-      }),
-      fitness: new HttpAgent({
-        url: env.FITNESS_AGENT_URL,
-        debug: env.COPILOTKIT_DEBUG,
-        headers: {
-          ...identityHeaders,
-          ...(stravaToken ? { [STRAVA_TOKEN_HEADER]: stravaToken } : {}),
-        },
-      }),
-      wellness: new HttpAgent({
-        url: env.WELLNESS_AGENT_URL,
-        debug: env.COPILOTKIT_DEBUG,
-        headers: {
-          ...identityHeaders,
-          ...(krogerToken ? { [KROGER_TOKEN_HEADER]: krogerToken } : {}),
-          ...(stravaToken ? { [STRAVA_TOKEN_HEADER]: stravaToken } : {}),
-        },
-      }),
-      a2ui: new HttpAgent({
-        url: env.A2UI_AGENT_URL,
-        debug: env.COPILOTKIT_DEBUG,
-        headers: identityHeaders,
-      }),
-    };
+    const headers = new Headers(request.headers);
+    if (userId) {
+      headers.set(CLERK_USER_ID_HEADER, userId);
+    }
+    if (krogerToken) {
+      headers.set(KROGER_TOKEN_HEADER, krogerToken);
+    }
+    if (stravaToken) {
+      headers.set(STRAVA_TOKEN_HEADER, stravaToken);
+    }
+
+    return new Request(request, { headers });
   },
   a2ui: { injectA2UITool: true, agents: ["a2ui"] },
   debug: env.COPILOTKIT_DEBUG,
