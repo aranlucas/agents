@@ -7,6 +7,9 @@ dependencies = []
 [tool.uv]
 package = false
 
+[tool.uv.sources]
+agent-common = { workspace = true }
+
 [tool.uv.workspace]
 members = [
   "agents/a2ui",
@@ -23,7 +26,52 @@ extend-exclude = [".venv", "__pycache__", ".pytest_cache"]
 
 [tool.ruff.lint]
 select = ["E", "F", "UP", "B", "SIM", "I"]
-ignore = ["E501"]
+ignore = [
+  "ANN", # Runtime and framework callbacks use dynamic third-party types.
+  "D", # This codebase does not require public API docstrings everywhere.
+  "E501", # Long prompts and JSON examples are intentionally kept readable.
+  "INP001", # Agent directories are executable service roots, not packages.
+  "PLC0415", # Lazy imports avoid importing optional telemetry/database modules.
+  "PLR0913", # Framework/provider factories mirror third-party constructor shapes.
+  "PLR2004", # Tests use literal status codes and compact fixture assertions.
+  "PLW0603", # Shared test fixtures intentionally mutate module-level state.
+  "S104", # Local dev containers intentionally bind to all interfaces.
+  "S105", # Tests and examples contain non-secret token placeholder strings.
+  "SLF001", # Tests validate private helpers where they are the behavior boundary.
+  "TRY401", # Existing logging keeps exception context explicit in dev services.
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/*.py" = [
+  "ANN", # Runtime and framework callbacks use dynamic third-party types.
+  "D", # This codebase does not require public API docstrings everywhere.
+  "E501", # Long prompts and JSON examples are intentionally kept readable.
+  "INP001", # Agent directories are executable service roots, not packages.
+  "PLC0415", # Lazy imports avoid importing optional telemetry/database modules.
+  "PLR0913", # Framework/provider factories mirror third-party constructor shapes.
+  "PLR2004", # Tests use literal status codes and compact fixture assertions.
+  "PLW0603", # Shared test fixtures intentionally mutate module-level state.
+  "S104", # Local dev containers intentionally bind to all interfaces.
+  "S105", # Tests and examples contain non-secret token placeholder strings.
+  "SLF001", # Tests validate private helpers where they are the behavior boundary.
+  "TRY401", # Existing logging keeps exception context explicit in dev services.
+]
+"**/tests/**/*.py" = [
+  "S101", # Pytest assertion rewriting is the preferred test style.
+]
+
+[tool.pytest.ini_options]
+testpaths = ["agents", "packages/agent-common"]
+asyncio_mode = "auto"
+addopts = ["--import-mode=importlib"]
+pythonpath = [
+  "agents/a2ui/src",
+  "agents/fitness/src",
+  "agents/grocery/src",
+  "agents/travel/src",
+  "agents/wellness/src",
+  "packages/agent-common/src",
+]
 
 [dependency-groups]
-dev = ["ruff>=0.15.15"]
+dev = ["httpx", "pytest", "pytest-asyncio", "ruff>=0.15.15"]

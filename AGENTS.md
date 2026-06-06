@@ -69,7 +69,7 @@ Conventions:
 
 1. `mkdir agents/<name>` and copy the structure from `agents/travel/` (or `agents/grocery/`)
 2. Update `agents/<name>/pyproject.toml` — set `name = "<name>-agent"`
-3. Implement `agents/<name>/main.py` — follow the pattern:
+3. Implement `agents/<name>/src/<name>_agent/main.py` — follow the pattern:
    - `_setup_otel()` → `LlmAgent` → `ADKAgent` → FastAPI with `add_adk_fastapi_endpoint`
    - `GET /health` endpoint required for Railway health checks
 4. Add `agents/<name>/railway.json` pointing at the root `Dockerfile.agents`

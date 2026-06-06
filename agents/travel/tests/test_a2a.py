@@ -1,13 +1,9 @@
-def test_agent_card_route():
+from fastapi.testclient import TestClient
+from travel_agent import main
+
+
+def test_agent_card_route() -> None:
     """A2A agent card is served at the well-known URL."""
-    import os
-    import sys
-
-    from fastapi.testclient import TestClient
-
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-    import main
-
     client = TestClient(main.app)
     r = client.get("/.well-known/agent-card.json")
     assert r.status_code == 200
@@ -16,31 +12,15 @@ def test_agent_card_route():
     assert body["version"] == "1.0.0"
 
 
-def test_a2a_rpc_route_exists():
+def test_a2a_rpc_route_exists() -> None:
     """POST / returns an A2A error (not 404), proving the route is registered."""
-    import os
-    import sys
-
-    from fastapi.testclient import TestClient
-
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-    import main
-
     client = TestClient(main.app, raise_server_exceptions=False)
     r = client.post("/", json={})
     assert r.status_code != 404
 
 
-def test_agui_moved_to_slash_agui():
+def test_agui_moved_to_slash_agui() -> None:
     """AG-UI endpoint is at /agui, not /."""
-    import os
-    import sys
-
-    from fastapi.testclient import TestClient
-
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-    import main
-
     client = TestClient(main.app, raise_server_exceptions=False)
     r = client.post("/agui", content=b"")
     assert r.status_code != 404
