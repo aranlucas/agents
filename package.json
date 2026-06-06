@@ -1,6 +1,7 @@
 {
   "name": "agents-monorepo",
   "private": true,
+  "packageManager": "pnpm@11.3.0",
   "scripts": {
     "dev": "concurrently \"pnpm --filter web dev\" \"docker compose up --build\" --names web,agents --prefix-colors blue,green --kill-others",
     "dev:web": "pnpm --filter web dev",
