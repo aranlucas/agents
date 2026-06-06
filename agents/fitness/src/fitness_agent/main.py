@@ -292,7 +292,7 @@ _web_search_lock = asyncio.Lock()
 _last_web_search_at = 0.0
 
 
-async def throttle_web_search(tool, _args, _tool_context) -> None:
+async def throttle_web_search(tool, args, tool_context) -> None:
     """Space out Brave web-search calls to respect the free-tier rate limit."""
     if not str(getattr(tool, "name", "")).startswith("brave_"):
         return
