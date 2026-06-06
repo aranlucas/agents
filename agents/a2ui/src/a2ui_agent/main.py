@@ -4,7 +4,7 @@ import json
 import logging
 import os
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from a2a.server.apps.jsonrpc import A2AFastAPIApplication
 from a2a.server.request_handlers import DefaultRequestHandler
@@ -21,19 +21,21 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from google.adk.agents import LlmAgent
-from google.adk.agents.callback_context import CallbackContext
 from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
 from google.adk.auth.credential_service.in_memory_credential_service import (
     InMemoryCredentialService,
 )
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
-from google.adk.models import LlmRequest, LlmResponse
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.runners import Runner
-from google.adk.tools import ToolContext
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.sdk.resources import Resource
+
+if TYPE_CHECKING:
+    from google.adk.agents.callback_context import CallbackContext
+    from google.adk.models import LlmRequest, LlmResponse
+    from google.adk.tools import ToolContext
 
 load_dotenv()
 
@@ -74,7 +76,7 @@ def _setup_otel() -> None:
             "deployment.environment": os.getenv("RAILWAY_ENVIRONMENT_NAME", "local"),
             "railway.project.id": os.getenv("RAILWAY_PROJECT_ID", ""),
             "railway.service.id": os.getenv("RAILWAY_SERVICE_ID", ""),
-        }
+        },
     )
     maybe_set_otel_providers(otel_resource=resource)
     SQLAlchemyInstrumentor().instrument()
@@ -88,16 +90,16 @@ async def extract_demo_state(request, _input_data) -> dict[str, Any]:
     return {"user_id": request.headers.get(CLERK_USER_ID_HEADER) or "anonymous"}
 
 
-def on_before_agent(callback_context: CallbackContext):
+def on_before_agent(callback_context: CallbackContext) -> None:
     apply_a2a_auth_metadata_to_state(callback_context)
     for key, default in _DEFAULT_STATE.items():
         if key not in callback_context.state:
             callback_context.state[key] = default
-    return None
 
 
 def before_model_modifier(
-    callback_context: CallbackContext, llm_request: LlmRequest
+    callback_context: CallbackContext,
+    llm_request: LlmRequest,
 ) -> LlmResponse | None:
     state = {
         key: callback_context.state.get(key, default)
@@ -181,7 +183,7 @@ and the surface name. Keep chat text short; the generated UI is the product.
 a2ui_agent = LlmAgent(
     name="a2ui_agent",
     model=LiteLlm(
-        model=os.getenv("AGENT_MODEL", "openrouter/moonshotai/kimi-k2.6:free"),
+        model="openrouter/poolside/laguna-m.1:free",
         fallbacks=[
             "mistral/mistral-small-latest",
             "openrouter/owl-alpha",
@@ -232,7 +234,7 @@ def _a2a_agent_card() -> AgentCard:
                 tags=["a2ui", "ag-ui", "adk", "generative-ui"],
                 input_modes=["text/plain"],
                 output_modes=["text/plain"],
-            )
+            ),
         ],
     )
 
@@ -273,7 +275,8 @@ async def trace_requests(request, call_next):
 
         span.set_attribute("http.response.status_code", response.status_code)
         span.set_attribute(
-            "duration_ms", round((time.perf_counter() - start) * 1000, 2)
+            "duration_ms",
+            round((time.perf_counter() - start) * 1000, 2),
         )
         return response
 

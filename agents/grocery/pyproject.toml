@@ -23,19 +23,16 @@ dependencies = [
   "dependency-injector>=4.49.0",
 ]
 
-[tool.uv.sources]
-agent-common = { workspace = true }
-
 [project.optional-dependencies]
 dev = ["pytest", "pytest-asyncio", "httpx"]
 
 [project.scripts]
-app = "main:app"
-
-[tool.setuptools]
-py-modules = ["main", "session_service", "utils"]
+app = "grocery_agent.main:app"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
 asyncio_mode = "auto"
+
+[build-system]
+requires = ["uv_build>=0.11.19,<0.12"]
+build-backend = "uv_build"

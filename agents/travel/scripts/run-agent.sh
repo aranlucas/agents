@@ -10,4 +10,4 @@ source .venv/bin/activate
 export UV_CACHE_DIR="${UV_CACHE_DIR:-/tmp/doctor-adk-uv-cache}"
 
 # Run the agent
-uv run main.py
+uv run uvicorn travel_agent.main:app --host 0.0.0.0 --port "${PORT:-8000}"

@@ -27,6 +27,15 @@ type AgentChatPanelProps = {
   className?: string;
 };
 
+export const AGENT_CHAT_SLOT_CLASSES = [
+  "ai-elements-copilot-chat",
+  "ai-elements-conversation",
+  "ai-elements-message-view",
+  "ai-elements-assistant-message",
+  "ai-elements-user-message",
+  "ai-elements-prompt-input",
+] as const;
+
 const DEFAULT_MOBILE_LABELS: Record<MobilePanel, string> = {
   chat: "Chat",
   artifact: "Output",
@@ -149,6 +158,33 @@ export function AgentChatPanel({
         )}
         <CopilotChat
           agentId={agentId}
+          autoScroll="pin-to-send"
+          chatView="ai-elements-copilot-chat"
+          messageView={{
+            className: "ai-elements-message-view",
+            assistantMessage: "ai-elements-assistant-message",
+            userMessage: "ai-elements-user-message",
+            cursor: "ai-elements-streaming-cursor",
+          }}
+          scrollView={{
+            className: "ai-elements-conversation",
+            scrollToBottomButton: "ai-elements-scroll-button",
+            feather: "ai-elements-conversation-feather",
+          }}
+          suggestionView={{
+            container: "ai-elements-suggestions",
+            suggestion: "ai-elements-suggestion",
+          }}
+          input={{
+            className: "ai-elements-prompt-input",
+            textArea: "ai-elements-prompt-input-textarea",
+            sendButton: "ai-elements-prompt-input-submit",
+            addMenuButton: "ai-elements-prompt-input-tool",
+            startTranscribeButton: "ai-elements-prompt-input-tool",
+            cancelTranscribeButton: "ai-elements-prompt-input-tool",
+            finishTranscribeButton: "ai-elements-prompt-input-submit",
+            disclaimer: "ai-elements-prompt-input-disclaimer",
+          }}
           labels={{
             chatInputPlaceholder: placeholder,
             ...(welcomeMessage ? { welcomeMessageText: welcomeMessage } : undefined),

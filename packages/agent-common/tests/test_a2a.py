@@ -9,7 +9,7 @@ from agent_common.a2a import (
 from google.adk.a2a.executor.a2a_agent_executor import A2aAgentExecutor
 
 
-def test_a2a_request_converter_uses_metadata_user_id():
+def test_a2a_request_converter_uses_metadata_user_id() -> None:
     request = MagicMock()
     request.call_context = None
     request.context_id = "ctx-abc"
@@ -19,15 +19,13 @@ def test_a2a_request_converter_uses_metadata_user_id():
         role=Role.user,
         parts=[TextPart(text="hello")],
     )
-
     run_request = a2a_request_converter(request)
-
     assert run_request.user_id == "user_123"
     assert run_request.session_id == "ctx-abc"
     assert run_request.new_message.parts[0].text == "hello"
 
 
-def test_a2a_request_converter_maps_auth_metadata_to_state_delta():
+def test_a2a_request_converter_maps_auth_metadata_to_state_delta() -> None:
     request = MagicMock()
     request.call_context = None
     request.context_id = "ctx-abc"
@@ -41,9 +39,7 @@ def test_a2a_request_converter_maps_auth_metadata_to_state_delta():
         role=Role.user,
         parts=[TextPart(text="hello")],
     )
-
     run_request = a2a_request_converter(request)
-
     assert run_request.state_delta == {
         "user_id": "user_123",
         "kroger_connected": True,
@@ -53,7 +49,7 @@ def test_a2a_request_converter_maps_auth_metadata_to_state_delta():
     }
 
 
-def test_apply_a2a_auth_metadata_to_state_hydrates_callback_state():
+def test_apply_a2a_auth_metadata_to_state_hydrates_callback_state() -> None:
     callback_context = MagicMock()
     callback_context.state = {}
     callback_context._invocation_context.run_config.custom_metadata = {
@@ -61,11 +57,9 @@ def test_apply_a2a_auth_metadata_to_state_hydrates_callback_state():
             "user_id": "user_123",
             "kroger_access_token": "kroger-token",
             "strava_access_token": "strava-token",
-        }
+        },
     }
-
     state_delta = apply_a2a_auth_metadata_to_state(callback_context)
-
     assert state_delta == {
         "user_id": "user_123",
         "kroger_connected": True,
@@ -76,7 +70,7 @@ def test_apply_a2a_auth_metadata_to_state_hydrates_callback_state():
     assert callback_context.state == state_delta
 
 
-def test_apply_a2a_auth_metadata_to_state_marks_missing_tokens_disconnected():
+def test_apply_a2a_auth_metadata_to_state_marks_missing_tokens_disconnected() -> None:
     callback_context = MagicMock()
     callback_context.state = {
         "kroger_connected": True,
@@ -85,14 +79,9 @@ def test_apply_a2a_auth_metadata_to_state_marks_missing_tokens_disconnected():
         "temp:strava_token": "old-strava-token",
     }
     callback_context._invocation_context.run_config.custom_metadata = {
-        "a2a_metadata": {
-            "kroger_access_token": "",
-            "strava_access_token": "",
-        }
+        "a2a_metadata": {"kroger_access_token": "", "strava_access_token": ""},
     }
-
     state_delta = apply_a2a_auth_metadata_to_state(callback_context)
-
     assert state_delta == {
         "kroger_connected": False,
         "temp:kroger_token": "",
@@ -105,9 +94,7 @@ def test_apply_a2a_auth_metadata_to_state_marks_missing_tokens_disconnected():
     assert callback_context.state["temp:strava_token"] == ""
 
 
-def test_create_a2a_agent_executor_uses_adk_executor():
+def test_create_a2a_agent_executor_uses_adk_executor() -> None:
     runner = MagicMock()
-
     executor = create_a2a_agent_executor(runner)
-
     assert isinstance(executor, A2aAgentExecutor)

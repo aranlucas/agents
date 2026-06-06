@@ -6,7 +6,7 @@ import json
 import logging
 import os
 import time
-from typing import Any
+from typing import TYPE_CHECKING
 
 from a2a.server.apps.jsonrpc import A2AFastAPIApplication
 from a2a.server.request_handlers import DefaultRequestHandler
@@ -25,7 +25,6 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from google.adk.agents import LlmAgent
-from google.adk.agents.callback_context import CallbackContext
 from google.adk.agents.remote_a2a_agent import (
     AGENT_CARD_WELL_KNOWN_PATH,
     RemoteA2aAgent,
@@ -35,15 +34,19 @@ from google.adk.auth.credential_service.in_memory_credential_service import (
     InMemoryCredentialService,
 )
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
-from google.adk.models import LlmRequest, LlmResponse
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.runners import Runner
-from google.adk.tools import ToolContext
 from google.adk.tools.agent_tool import AgentTool
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.sdk.resources import Resource
-from utils import FITNESS_AGENT_A2A_URL, GROCERY_AGENT_A2A_URL
+
+from .utils import FITNESS_AGENT_A2A_URL, GROCERY_AGENT_A2A_URL
+
+if TYPE_CHECKING:
+    from google.adk.agents.callback_context import CallbackContext
+    from google.adk.models import LlmRequest, LlmResponse
+    from google.adk.tools import ToolContext
 
 load_dotenv()
 
@@ -67,7 +70,7 @@ KROGER_TOKEN_STATE_KEY = "temp:kroger_token"
 STRAVA_TOKEN_HEADER = "x-strava-access-token"
 STRAVA_TOKEN_STATE_KEY = "temp:strava_token"
 
-_DEFAULT_STATE: dict[str, Any] = {
+_DEFAULT_STATE = {
     "status": "idle",
     "meal_plan": "",
     "weekly_plan": "",
@@ -89,7 +92,7 @@ def _setup_otel() -> None:
             "deployment.environment": os.getenv("RAILWAY_ENVIRONMENT_NAME", "local"),
             "railway.project.id": os.getenv("RAILWAY_PROJECT_ID", ""),
             "railway.service.id": os.getenv("RAILWAY_SERVICE_ID", ""),
-        }
+        },
     )
     maybe_set_otel_providers(otel_resource=resource)
     SQLAlchemyInstrumentor().instrument()
@@ -110,20 +113,20 @@ def extract_identity_state(request) -> dict:
     return state
 
 
-async def extract_wellness_state(request, input_data) -> dict:
+async def extract_wellness_state(request, _input_data) -> dict:
     return extract_identity_state(request)
 
 
-def on_before_agent(callback_context: CallbackContext):
+def on_before_agent(callback_context: CallbackContext) -> None:
     apply_a2a_auth_metadata_to_state(callback_context)
     for key, default in _DEFAULT_STATE.items():
         if key not in callback_context.state:
             callback_context.state[key] = default
-    return None
 
 
 def before_model_modifier(
-    callback_context: CallbackContext, llm_request: LlmRequest
+    callback_context: CallbackContext,
+    llm_request: LlmRequest,
 ) -> LlmResponse | None:
     state = {
         key: callback_context.state.get(key, default)
@@ -147,7 +150,8 @@ def _agent_card_url(base_url: str) -> str:
 # strips temp: keys, but inherits this async context, so the metadata provider
 # can read credentials here without needing before_tool_callback.
 _invocation_temp_state: contextvars.ContextVar[dict | None] = contextvars.ContextVar(
-    "_invocation_temp_state", default=None
+    "_invocation_temp_state",
+    default=None,
 )
 
 
@@ -172,8 +176,12 @@ class _TempStateSessionService(RequestStateSessionService):
 def _remote_a2a_metadata_provider(invocation_context, _message) -> dict[str, str]:
     state = invocation_context.session.state
     fallback = _invocation_temp_state.get() or {}
-    kroger_token = state.get(KROGER_TOKEN_STATE_KEY) or fallback.get(KROGER_TOKEN_STATE_KEY)
-    strava_token = state.get(STRAVA_TOKEN_STATE_KEY) or fallback.get(STRAVA_TOKEN_STATE_KEY)
+    kroger_token = state.get(KROGER_TOKEN_STATE_KEY) or fallback.get(
+        KROGER_TOKEN_STATE_KEY,
+    )
+    strava_token = state.get(STRAVA_TOKEN_STATE_KEY) or fallback.get(
+        STRAVA_TOKEN_STATE_KEY,
+    )
     user_id = state.get("user_id") or fallback.get("user_id") or "anonymous"
     log.info(
         "[metadata_provider] kroger_token present: %s | strava_token present: %s | source: %s",
@@ -223,7 +231,7 @@ def mark_plan_ready(tool_context: ToolContext, summary: str) -> dict:
 
 def get_current_date() -> dict:
     """Return today's date for anchoring the combined weekly plan."""
-    today = datetime.date.today()
+    today = datetime.datetime.now(datetime.UTC).date()
     return {
         "date": today.isoformat(),
         "weekday": today.strftime("%A"),
@@ -251,7 +259,7 @@ Step 1. Call get_current_date. Note the date.
 Step 2. Call fitness_remote_agent with a request to: (a) summarise recent Strava
         activities, (b) build a DETAILED day-by-day training schedule for this week
         starting on that date — each day with session type, duration/distance or
-        sets×reps, and target intensity — and (c) recommend ONE specific named hike
+        sets x reps, and target intensity — and (c) recommend ONE specific named hike
         for the week, including its distance, elevation gain, difficulty, and why it
         suits this athlete. STOP and wait for the full response before continuing.
 
@@ -275,10 +283,10 @@ Step 5. Call set_weekly_wellness_plan with the final combined report. Structure:
 
         ## This Week's Plan
         <day-by-day sections with markdown headings, each day showing the DETAILED
-         workout (type, duration/distance or sets×reps, intensity) and the meals
+         workout (type, duration/distance or sets x reps, intensity) and the meals
          side by side; mark the hike on its scheduled day>
 
-Step 6. Call mark_plan_ready only after Steps 2–5 all completed successfully.
+Step 6. Call mark_plan_ready only after Steps 2-5 all completed successfully.
 
 If either agent tool returns an empty response or error, explain which step
 failed and do not mark the plan ready.
@@ -287,7 +295,7 @@ failed and do not mark the plan ready.
 wellness_agent = LlmAgent(
     name="wellness_agent",
     model=LiteLlm(
-        model="openrouter/moonshotai/kimi-k2.6:free",
+        model="openrouter/poolside/laguna-m.1:free",
         fallbacks=[
             "mistral/mistral-small-latest",
             "openrouter/owl-alpha",
@@ -353,7 +361,7 @@ def _a2a_agent_card() -> AgentCard:
                 tags=["wellness", "meal-planning", "training-planning"],
                 input_modes=["text/plain"],
                 output_modes=["text/plain"],
-            )
+            ),
         ],
     )
 
@@ -395,7 +403,8 @@ async def trace_requests(request, call_next):
 
         span.set_attribute("http.response.status_code", response.status_code)
         span.set_attribute(
-            "duration_ms", round((time.perf_counter() - start) * 1000, 2)
+            "duration_ms",
+            round((time.perf_counter() - start) * 1000, 2),
         )
         return response
 

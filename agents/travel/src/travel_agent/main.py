@@ -19,6 +19,7 @@ import datetime
 import logging
 import os
 import time
+from typing import TYPE_CHECKING
 
 from a2a.server.apps.jsonrpc import A2AFastAPIApplication
 from a2a.server.request_handlers import DefaultRequestHandler
@@ -33,7 +34,6 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from google.adk.agents import LlmAgent
-from google.adk.agents.readonly_context import ReadonlyContext
 from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
 from google.adk.auth.credential_service.in_memory_credential_service import (
     InMemoryCredentialService,
@@ -41,12 +41,16 @@ from google.adk.auth.credential_service.in_memory_credential_service import (
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.runners import Runner
-from google.adk.tools import ToolContext
 from google.adk.utils import instructions_utils
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.sdk.resources import Resource
-from utils import trvl_toolset
+
+from .utils import trvl_toolset
+
+if TYPE_CHECKING:
+    from google.adk.agents.readonly_context import ReadonlyContext
+    from google.adk.tools import ToolContext
 
 load_dotenv()
 
@@ -71,7 +75,7 @@ def extract_identity_state(request) -> dict:
     return {"user_id": request.headers.get(CLERK_USER_ID_HEADER) or "anonymous"}
 
 
-async def extract_travel_identity_state(request, input_data) -> dict:
+async def extract_travel_identity_state(request, _input_data) -> dict:
     return extract_identity_state(request)
 
 
@@ -89,7 +93,7 @@ def _setup_otel() -> None:
             "deployment.environment": os.getenv("RAILWAY_ENVIRONMENT_NAME", "local"),
             "railway.project.id": os.getenv("RAILWAY_PROJECT_ID", ""),
             "railway.service.id": os.getenv("RAILWAY_SERVICE_ID", ""),
-        }
+        },
     )
     maybe_set_otel_providers(otel_resource=resource)
     SQLAlchemyInstrumentor().instrument()
@@ -131,7 +135,10 @@ def set_trip_meta(
 
 
 def write_itinerary(
-    tool_context: ToolContext, summary: str, body: str, flights: str = ""
+    tool_context: ToolContext,
+    summary: str,
+    body: str,
+    flights: str = "",
 ) -> dict:
     """Replace the full multi-day itinerary in shared state.
 
@@ -172,7 +179,7 @@ def get_current_date() -> dict:
     durations, suggesting departure windows, or validating that dates the
     operator provided are in the future.
     """
-    today = datetime.date.today()
+    today = datetime.datetime.now(datetime.UTC).date()
     return {
         "date": today.isoformat(),
         "weekday": today.strftime("%A"),
@@ -194,7 +201,7 @@ def mark_ready_to_book(tool_context: ToolContext, summary: str) -> dict:
 # ---------------------------------------------------------------------------
 async def _build_instruction(context: ReadonlyContext) -> str:
     s = context.state or {}
-    today = datetime.date.today()
+    today = datetime.datetime.now(datetime.UTC).date()
 
     interests = s.get("interests") or ""
     if isinstance(interests, list):
@@ -213,7 +220,8 @@ TRAVELER_BRIEF
 - Interests: {interests}"""
 
     return await instructions_utils.inject_session_state(
-        f"{header}\n\n{_INSTRUCTION}", context
+        f"{header}\n\n{_INSTRUCTION}",
+        context,
     )
 
 
@@ -255,7 +263,7 @@ Search → summarize results in chat → then write the confirmed plan into stat
 3. Respect the TRAVELER_BRIEF when present. Transport mode (flight vs
    road trip), budget tier, vibe, pace, dietary, and mobility all
    materially change recommendations.
-4. After each tool call, reply with a SHORT (1–2 sentence) summary of
+4. After each tool call, reply with a SHORT (1-2 sentence) summary of
    what changed and propose one concrete next move.
 5. Before doing anything that LOCKS IN the trip — booking flights,
    reserving hotels, sharing the plan, or charging the operator — call
@@ -273,7 +281,7 @@ pace vs. coverage, points vs. cash) instead of guessing silently.
 collab_trip_agent = LlmAgent(
     name="collab_trip_agent",
     model=LiteLlm(
-        model="openrouter/moonshotai/kimi-k2.6:free",
+        model="openrouter/poolside/laguna-m.1:free",
         fallbacks=[
             "mistral/mistral-small-latest",
             "openrouter/owl-alpha",
@@ -350,7 +358,7 @@ def _a2a_agent_card() -> AgentCard:
                 tags=["travel", "trip-planning"],
                 input_modes=["text/plain"],
                 output_modes=["text/plain"],
-            )
+            ),
         ],
     )
 
@@ -395,7 +403,8 @@ async def trace_requests(request, call_next):
 
         span.set_attribute("http.response.status_code", response.status_code)
         span.set_attribute(
-            "duration_ms", round((time.perf_counter() - start) * 1000, 2)
+            "duration_ms",
+            round((time.perf_counter() - start) * 1000, 2),
         )
         return response
 
