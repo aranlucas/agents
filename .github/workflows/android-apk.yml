@@ -57,6 +57,9 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Install NDK
+        run: $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;27.1.12297006"
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -65,6 +68,14 @@ jobs:
         env:
           EXPO_NO_TELEMETRY: "1"
         run: pnpm exec expo prebuild --platform android --no-install
+
+      - name: Configure Gradle for CI
+        working-directory: apps/mobile/android
+        run: |
+          # Increase JVM heap (default 2g is too low for 4-ABI builds on CI).
+          sed -i 's/org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m/' gradle.properties
+          # Build only the two ABIs needed for real devices; x86/x86_64 are emulator-only.
+          sed -i 's/reactNativeArchitectures=.*/reactNativeArchitectures=arm64-v8a,x86_64/' gradle.properties
 
       - name: Build release APK
         working-directory: apps/mobile/android
