@@ -32,34 +32,6 @@ const runtime = new CopilotSseRuntime({
       debug: env.COPILOTKIT_DEBUG,
     }),
   },
-  beforeRequestMiddleware: async ({ request }) => {
-    const { userId } = await auth();
-    const { token: krogerToken } = await getKrogerAccessToken().catch(() => ({
-      connected: false,
-      token: null,
-    }));
-    const { token: stravaToken } = await getStravaAccessToken().catch((err) => {
-      console.error("[copilotkit] getStravaAccessToken error:", err);
-      return { connected: false, token: null };
-    });
-
-    console.log(
-      `[copilotkit] building agents stravaTokenPresent=${Boolean(stravaToken)} krogerTokenPresent=${Boolean(krogerToken)}`,
-    );
-
-    const headers = new Headers(request.headers);
-    if (userId) {
-      headers.set(CLERK_USER_ID_HEADER, userId);
-    }
-    if (krogerToken) {
-      headers.set(KROGER_TOKEN_HEADER, krogerToken);
-    }
-    if (stravaToken) {
-      headers.set(STRAVA_TOKEN_HEADER, stravaToken);
-    }
-
-    return new Request(request, { headers });
-  },
   a2ui: { injectA2UITool: true, agents: ["a2ui"] },
   debug: env.COPILOTKIT_DEBUG,
 });
@@ -68,6 +40,42 @@ const handler = createCopilotRuntimeHandler({
   runtime,
   basePath: "/api/copilotkit",
   mode: "multi-route",
+  hooks: {
+    // Attach per-request auth context. The runtime forwards `authorization` +
+    // all `x-*` headers from this request to the remote agent (see
+    // configureAgentForRequest -> extractForwardableHeaders), so these reach
+    // the Railway services without any per-agent header wiring.
+    //
+    // Headers are mutated in place; do NOT `return new Request(request, …)`:
+    // passing a Request object to the constructor reads the input's private
+    // `#state`, which throws across bundler realms on Vercel (the global
+    // Request class differs from the one backing the incoming Next.js request).
+    onRequest: async ({ request }) => {
+      const { userId } = await auth();
+      const { token: krogerToken } = await getKrogerAccessToken().catch(() => ({
+        connected: false,
+        token: null,
+      }));
+      const { token: stravaToken } = await getStravaAccessToken().catch((err) => {
+        console.error("[copilotkit] getStravaAccessToken error:", err);
+        return { connected: false, token: null };
+      });
+
+      console.log(
+        `[copilotkit] building agents stravaTokenPresent=${Boolean(stravaToken)} krogerTokenPresent=${Boolean(krogerToken)}`,
+      );
+
+      if (userId) {
+        request.headers.set(CLERK_USER_ID_HEADER, userId);
+      }
+      if (krogerToken) {
+        request.headers.set(KROGER_TOKEN_HEADER, krogerToken);
+      }
+      if (stravaToken) {
+        request.headers.set(STRAVA_TOKEN_HEADER, stravaToken);
+      }
+    },
+  },
 });
 
 export const GET = handler;
