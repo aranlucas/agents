@@ -26,7 +26,7 @@ from a2a.types import AgentCapabilities, AgentCard, AgentSkill
 from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
 from ag_ui_adk.config import PredictStateMapping
 from agent_common.a2a import create_a2a_agent_executor
-from agent_common.session_service import create_session_service
+from agent_common.session_service import SessionServiceContainer, create_session_service
 from agent_common.task_store import create_task_store
 from agent_common.tools import shared_after_tool_callback
 from dotenv import load_dotenv
@@ -321,6 +321,7 @@ COLLAB_PREDICT_STATE = [
 
 # Shared SQLite session service — used by both AG-UI and A2A paths.
 _shared_session_svc = create_session_service()
+_session_container = SessionServiceContainer()
 _artifact_svc = InMemoryArtifactService()
 _memory_svc = InMemoryMemoryService()
 _credential_svc = InMemoryCredentialService()
@@ -434,7 +435,7 @@ add_adk_fastapi_endpoint(
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    return await _session_container.check_database_connection()
 
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ from agent_common.a2a import (
     apply_a2a_auth_metadata_to_state,
     create_a2a_agent_executor,
 )
-from agent_common.session_service import create_session_service
+from agent_common.session_service import SessionServiceContainer, create_session_service
 from agent_common.task_store import create_task_store
 from agent_common.tools import shared_after_tool_callback
 from dotenv import load_dotenv
@@ -199,6 +199,7 @@ a2ui_agent = LlmAgent(
 )
 
 _shared_session_svc = create_session_service()
+_session_container = SessionServiceContainer()
 _artifact_svc = InMemoryArtifactService()
 _memory_svc = InMemoryMemoryService()
 _credential_svc = InMemoryCredentialService()
@@ -306,7 +307,7 @@ add_adk_fastapi_endpoint(
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    return await _session_container.check_database_connection()
 
 
 if __name__ == "__main__":

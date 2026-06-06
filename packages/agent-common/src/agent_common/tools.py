@@ -24,7 +24,7 @@ def save_state(
 
 async def shared_after_tool_callback(
     tool: BaseTool,
-    _args: dict,
+    args: dict,
     tool_context: ToolContext,
     tool_response: dict,
 ) -> dict | None:

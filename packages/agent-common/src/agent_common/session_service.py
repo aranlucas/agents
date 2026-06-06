@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from dependency_injector import containers, providers
 from google.adk.sessions.database_session_service import DatabaseSessionService
 from google.adk.sessions.sqlite_session_service import SqliteSessionService
+from sqlalchemy.ext.asyncio import create_async_engine
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -71,6 +72,42 @@ def _create_session_service(
     return sqlite_session_service(str(db_path))
 
 
+def get_database_url() -> str | None:
+    """Get the database URL that would be used by the session service."""
+    return _database_url(os.environ)
+
+
+def get_sqlite_db_path() -> Path:
+    """Get the SQLite database path that would be used by the session service."""
+    db_path = Path(os.environ.get("ADK_SESSION_DB_PATH", default_session_db_path()))
+    return db_path
+
+
+async def check_database_connection() -> dict:
+    """Test database connectivity without creating a session."""
+    db_url = get_database_url()
+    if db_url:
+        try:
+            engine = create_async_engine(db_url, **_database_kwargs(os.environ))
+            async with engine.connect() as conn:
+                await conn.execute("SELECT 1")
+            await engine.dispose()
+            return {"status": "ok", "database": "connected", "type": "postgres"}
+        except Exception as e:
+            return {"status": "degraded", "database": "error", "error": str(e), "type": "postgres"}
+
+    db_path = get_sqlite_db_path()
+    try:
+        sqlite_url = f"sqlite+aiosqlite:///{db_path}"
+        engine = create_async_engine(sqlite_url)
+        async with engine.connect() as conn:
+            await conn.execute("SELECT 1")
+        await engine.dispose()
+        return {"status": "ok", "database": "connected", "type": "sqlite"}
+    except Exception as e:
+        return {"status": "degraded", "database": "error", "error": str(e), "type": "sqlite"}
+
+
 class SessionServiceContainer(containers.DeclarativeContainer):
     env = providers.Object(os.environ)
     sqlite_session_service = providers.Object(SqliteSessionService)
@@ -85,7 +122,14 @@ class SessionServiceContainer(containers.DeclarativeContainer):
         default_db_path=default_db_path,
     )
 
+    check_database_connection = providers.Callable(check_database_connection)
+
 
 def create_session_service(container: SessionServiceContainer | None = None):
     container = container or SessionServiceContainer()
     return container.session_service()
+
+
+def create_check_database(container: SessionServiceContainer | None = None):
+    container = container or SessionServiceContainer()
+    return container.check_database_connection()
