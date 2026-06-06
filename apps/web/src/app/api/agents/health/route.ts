@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { env } from "@/env";
 
 const AGENT_URLS: Record<string, string> = {
-  travel: env.TRAVEL_AGENT_URL.replace(/\/agui$/, ""),
-  grocery: env.GROCERY_AGENT_URL.replace(/\/agui$/, ""),
-  fitness: env.FITNESS_AGENT_URL.replace(/\/agui$/, ""),
-  wellness: env.WELLNESS_AGENT_URL.replace(/\/agui$/, ""),
-  a2ui: env.A2UI_AGENT_URL.replace(/\/agui$/, ""),
+  travel: env.TRAVEL_AGENT_URL,
+  grocery: env.GROCERY_AGENT_URL,
+  fitness: env.FITNESS_AGENT_URL,
+  wellness: env.WELLNESS_AGENT_URL,
+  a2ui: env.A2UI_AGENT_URL,
 };
 
 async function checkAgent(

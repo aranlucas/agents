@@ -1006,9 +1006,9 @@ AG-UI moved from `<base>/` to `<base>/agui`. Update the env files the frontend u
 
 ```bash
 # agents/web/.env.example — Agent URLs section
-TRAVEL_AGENT_URL=http://localhost:8000/agui
-GROCERY_AGENT_URL=http://localhost:8001/agui
-FITNESS_AGENT_URL=http://localhost:8002/agui
+TRAVEL_AGENT_URL=http://localhost:8000
+GROCERY_AGENT_URL=http://localhost:8001
+FITNESS_AGENT_URL=http://localhost:8002
 ```
 
 (All other lines unchanged.)

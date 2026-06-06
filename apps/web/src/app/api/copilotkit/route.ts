@@ -12,23 +12,23 @@ const STRAVA_TOKEN_HEADER = "x-strava-access-token";
 const runtime = new CopilotSseRuntime({
   agents: {
     travel: new HttpAgent({
-      url: env.TRAVEL_AGENT_URL,
+      url: `${env.TRAVEL_AGENT_URL}/agui`,
       debug: env.COPILOTKIT_DEBUG,
     }),
     grocery: new HttpAgent({
-      url: env.GROCERY_AGENT_URL,
+      url: `${env.GROCERY_AGENT_URL}/agui`,
       debug: env.COPILOTKIT_DEBUG,
     }),
     fitness: new HttpAgent({
-      url: env.FITNESS_AGENT_URL,
+      url: `${env.FITNESS_AGENT_URL}/agui`,
       debug: env.COPILOTKIT_DEBUG,
     }),
     wellness: new HttpAgent({
-      url: env.WELLNESS_AGENT_URL,
+      url: `${env.WELLNESS_AGENT_URL}/agui`,
       debug: env.COPILOTKIT_DEBUG,
     }),
     a2ui: new HttpAgent({
-      url: env.A2UI_AGENT_URL,
+      url: `${env.A2UI_AGENT_URL}/agui`,
       debug: env.COPILOTKIT_DEBUG,
     }),
   },

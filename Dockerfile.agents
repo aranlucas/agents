@@ -12,6 +12,6 @@ ENV PATH="/app/.venv/bin:$PATH" \
 
 COPY . ./
 
-RUN uv sync --no-dev --all-packages
+RUN uv sync --no-dev --package $(basename ${AGENT_DIR})-agent
 
 CMD ["sh", "-c", "cd /app && agent_name=$(basename ${AGENT_DIR}) && module=${AGENT_MODULE:-${agent_name}_agent.main} && uvicorn ${module}:app --host 0.0.0.0 --port ${PORT:-8000}"]
