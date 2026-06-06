@@ -1,13 +1,17 @@
 """Grocery agent MCP toolset factory."""
 
 import os
+from typing import TYPE_CHECKING
 
-from google.adk.agents.readonly_context import ReadonlyContext
 from google.adk.tools.mcp_tool import McpToolset
 from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
 
+if TYPE_CHECKING:
+    from google.adk.agents.readonly_context import ReadonlyContext
+
 MEAL_PLANNER_MCP_URL = os.getenv(
-    "MEAL_PLANNER_MCP_URL", "https://ai-meal-planner-mcp.aranlucas.workers.dev/mcp"
+    "MEAL_PLANNER_MCP_URL",
+    "https://ai-meal-planner-mcp.aranlucas.workers.dev/mcp",
 )
 KROGER_TOKEN_STATE_KEY = "temp:kroger_token"
 

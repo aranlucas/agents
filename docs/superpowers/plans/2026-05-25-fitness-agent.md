@@ -617,7 +617,7 @@ assumptions when Strava or objective context is unavailable.
 fitness_agent = LlmAgent(
     name="fitness_agent",
     model=LiteLlm(
-        model=os.getenv("AGENT_MODEL", "mistral/mistral-small-latest"),
+        model="openrouter/poolside/laguna-m.1:free",
         fallbacks=["openrouter/owl-alpha", "nvidia_nim/deepseek-ai/deepseek-v4-flash"],
     ),
     instruction=_INSTRUCTION,
@@ -712,7 +712,6 @@ Create `agents/fitness/.env.example`:
 
 ```env
 PORT=8002
-AGENT_MODEL=mistral/mistral-small-latest
 BRAVE_API_KEY=
 OTEL_SERVICE_NAME=fitness-agent
 OTEL_EXPORTER_OTLP_ENDPOINT=

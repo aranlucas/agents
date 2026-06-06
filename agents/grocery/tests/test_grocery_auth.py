@@ -1,28 +1,26 @@
 from unittest.mock import Mock
 
-import main
 import pytest
-import utils
+from grocery_agent import main, utils
 from starlette.datastructures import Headers
 
 
 class DummyRequest:
-    def __init__(self, headers: dict[str, str]):
+    def __init__(self, headers: dict[str, str]) -> None:
         self.headers = Headers(headers)
 
 
 class DummyContext:
-    def __init__(self, state: dict):
+    def __init__(self, state: dict) -> None:
         self.state = state
 
 
 @pytest.mark.asyncio
-async def test_extract_kroger_auth_state_uses_temp_header_state():
+async def test_extract_kroger_auth_state_uses_temp_header_state() -> None:
     result = await main.extract_kroger_auth_state(
         DummyRequest({"x-kroger-access-token": "token-123"}),
         Mock(state={}),
     )
-
     assert result == {
         "user_id": "anonymous",
         "kroger_connected": True,
@@ -30,24 +28,18 @@ async def test_extract_kroger_auth_state_uses_temp_header_state():
     }
 
 
-def test_meal_planner_header_provider_reads_temp_token():
+def test_meal_planner_header_provider_reads_temp_token() -> None:
     headers = utils._header_provider(DummyContext({"temp:kroger_token": "token-123"}))
-
     assert headers == {"Authorization": "Bearer token-123"}
 
 
-def test_on_before_agent_hydrates_a2a_kroger_metadata():
+def test_on_before_agent_hydrates_a2a_kroger_metadata() -> None:
     callback_context = Mock()
     callback_context.state = {}
     callback_context._invocation_context.run_config.custom_metadata = {
-        "a2a_metadata": {
-            "user_id": "user_123",
-            "kroger_access_token": "token-123",
-        }
+        "a2a_metadata": {"user_id": "user_123", "kroger_access_token": "token-123"},
     }
-
     main.on_before_agent(callback_context)
-
     assert callback_context.state["user_id"] == "user_123"
     assert callback_context.state["kroger_connected"] is True
     assert callback_context.state["temp:kroger_token"] == "token-123"

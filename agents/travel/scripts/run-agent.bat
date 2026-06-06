@@ -6,4 +6,5 @@ REM Activate the virtual environment
 call .venv\Scripts\activate.bat
 
 REM Run the agent
-uv run main.py
+if "%PORT%"=="" set PORT=8000
+uv run uvicorn travel_agent.main:app --host 0.0.0.0 --port %PORT%

@@ -1,6 +1,7 @@
 """Shared A2A executor factory for ADK runners."""
 
-from a2a.server.agent_execution.context import RequestContext
+from typing import TYPE_CHECKING
+
 from google.adk.a2a.converters.part_converter import convert_a2a_part_to_genai_part
 from google.adk.a2a.converters.request_converter import (
     A2A_METADATA_KEY,
@@ -9,7 +10,10 @@ from google.adk.a2a.converters.request_converter import (
 )
 from google.adk.a2a.executor.a2a_agent_executor import A2aAgentExecutor
 from google.adk.a2a.executor.config import A2aAgentExecutorConfig
-from google.adk.runners import Runner
+
+if TYPE_CHECKING:
+    from a2a.server.agent_execution.context import RequestContext
+    from google.adk.runners import Runner
 
 
 def _auth_state_delta_from_metadata(metadata: dict) -> dict:

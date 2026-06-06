@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import time
+from typing import TYPE_CHECKING
 
 from a2a.server.apps.jsonrpc import A2AFastAPIApplication
 from a2a.server.request_handlers import DefaultRequestHandler
@@ -22,20 +23,23 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from google.adk.agents import LlmAgent
-from google.adk.agents.callback_context import CallbackContext
 from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
 from google.adk.auth.credential_service.in_memory_credential_service import (
     InMemoryCredentialService,
 )
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
-from google.adk.models import LlmRequest, LlmResponse
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.runners import Runner
-from google.adk.tools import ToolContext
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.sdk.resources import Resource
-from utils import meal_planner_toolset
+
+from .utils import meal_planner_toolset
+
+if TYPE_CHECKING:
+    from google.adk.agents.callback_context import CallbackContext
+    from google.adk.models import LlmRequest, LlmResponse
+    from google.adk.tools import ToolContext
 
 load_dotenv()
 
@@ -78,7 +82,7 @@ def _setup_otel() -> None:
             "deployment.environment": os.getenv("RAILWAY_ENVIRONMENT_NAME", "local"),
             "railway.project.id": os.getenv("RAILWAY_PROJECT_ID", ""),
             "railway.service.id": os.getenv("RAILWAY_SERVICE_ID", ""),
-        }
+        },
     )
     maybe_set_otel_providers(otel_resource=resource)
     SQLAlchemyInstrumentor().instrument()
@@ -108,7 +112,9 @@ _DEFAULT_STATE: dict = {
 # State tools — UI canvas writes
 # ---------------------------------------------------------------------------
 def set_shopping_list(
-    tool_context: ToolContext, items: list[str], notes: str = ""
+    tool_context: ToolContext,
+    items: list[str],
+    notes: str = "",
 ) -> dict:
     """Replace the full shopping list in shared state.
 
@@ -141,7 +147,7 @@ def update_pantry(tool_context: ToolContext, items: list[dict]) -> dict:
 
 
 def set_meal_plan(tool_context: ToolContext, plan: str) -> dict:
-    """Write or overwrite the meal plan (token-streams into the UI).
+    r"""Write or overwrite the meal plan (token-streams into the UI).
 
     Use markdown day headings: ## Day 1: Theme\\n- Breakfast: ...
     """
@@ -165,7 +171,7 @@ def mark_list_ready(tool_context: ToolContext, summary: str) -> dict:
 
 def get_current_date() -> dict:
     """Return today's date for meal-plan scheduling and deal timing."""
-    today = datetime.date.today()
+    today = datetime.datetime.now(datetime.UTC).date()
     return {
         "date": today.isoformat(),
         "weekday": today.strftime("%A"),
@@ -176,17 +182,17 @@ def get_current_date() -> dict:
 # ---------------------------------------------------------------------------
 # Callbacks — shared-state pattern
 # ---------------------------------------------------------------------------
-def on_before_agent(callback_context: CallbackContext):
+def on_before_agent(callback_context: CallbackContext) -> None:
     """Initialize missing state keys with defaults on every turn."""
     apply_a2a_auth_metadata_to_state(callback_context)
     for key, default in _DEFAULT_STATE.items():
         if key not in callback_context.state:
             callback_context.state[key] = default
-    return None
 
 
 def before_model_modifier(
-    callback_context: CallbackContext, llm_request: LlmRequest
+    callback_context: CallbackContext,
+    llm_request: LlmRequest,
 ) -> LlmResponse | None:
     """Inject current grocery state + auth notice into the system prompt."""
     state = {
@@ -208,7 +214,7 @@ def before_model_modifier(
 
     try:
         state_json = json.dumps(state, indent=2, default=str)
-    except Exception:
+    except TypeError, ValueError:
         state_json = "{}"
 
     prefix = f"Current grocery state:\n{state_json}{auth_notice}\n\n"
@@ -218,7 +224,7 @@ def before_model_modifier(
     return None
 
 
-async def extract_kroger_auth_state(request, input_data) -> dict:
+async def extract_kroger_auth_state(request, _input_data) -> dict:
     """Inject Kroger auth as per-invocation temp state from request headers."""
     state = extract_identity_state(request)
     token = request.headers.get(KROGER_TOKEN_HEADER) or ""
@@ -261,7 +267,7 @@ Do not call any MCP tools and do not generate a meal plan.
    cart renders in the UI. Skip pantry items the user already has, and suggest a
    substitution for anything out of stock rather than dropping it silently.
 
-4. After each tool call give a SHORT (1–2 sentence) summary.
+4. After each tool call give a SHORT (1-2 sentence) summary.
 5. When the list and cart are complete, call mark_list_ready with a 1-sentence
    wrap-up. Do not mark the list ready until the cart has been created.
 
@@ -271,7 +277,7 @@ Be practical, budget-aware, and proactive. Suggest substitutions for out-of-stoc
 grocery_agent = LlmAgent(
     name="grocery_agent",
     model=LiteLlm(
-        model="openrouter/moonshotai/kimi-k2.6:free",
+        model="openrouter/poolside/laguna-m.1:free",
         fallbacks=[
             "mistral/mistral-small-latest",
             "openrouter/owl-alpha",
@@ -341,7 +347,7 @@ def _a2a_agent_card() -> AgentCard:
                 tags=["grocery", "meal-planning"],
                 input_modes=["text/plain"],
                 output_modes=["text/plain"],
-            )
+            ),
         ],
     )
 
@@ -386,7 +392,8 @@ async def trace_requests(request, call_next):
 
         span.set_attribute("http.response.status_code", response.status_code)
         span.set_attribute(
-            "duration_ms", round((time.perf_counter() - start) * 1000, 2)
+            "duration_ms",
+            round((time.perf_counter() - start) * 1000, 2),
         )
         return response
 

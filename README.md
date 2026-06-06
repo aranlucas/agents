@@ -130,7 +130,7 @@ Once the dev server is up:
 
 - `dev` — UI + agent together
 - `dev:ui` — Next.js only (`next dev --turbopack`)
-- `dev:agent` — ADK agent server only (`uv run main.py`)
+- `dev:agent` — ADK agent server only (`uv run uvicorn travel_agent.main:app`)
 - `build` — production Next.js build
 - `install:agent` — sets up the Python venv via `uv sync`
 

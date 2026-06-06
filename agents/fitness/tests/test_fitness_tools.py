@@ -1,23 +1,22 @@
 from unittest.mock import Mock
 
-import main
 import pytest
-import utils
+from fitness_agent import main, utils
 from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
 from starlette.datastructures import Headers
 
 
 class DummyToolContext:
-    def __init__(self, state: dict | None = None):
+    def __init__(self, state: dict | None = None) -> None:
         self.state = state or {}
 
 
 class DummyRequest:
-    def __init__(self, headers: dict[str, str]):
+    def __init__(self, headers: dict[str, str]) -> None:
         self.headers = Headers(headers)
 
 
-def test_normalize_activity_keeps_training_fields():
+def test_normalize_activity_keeps_training_fields() -> None:
     activity = main.normalize_strava_activity(
         {
             "id": 123,
@@ -30,9 +29,8 @@ def test_normalize_activity_keeps_training_fields():
             "total_elevation_gain": 420.5,
             "average_heartrate": 146.2,
             "perceived_exertion": 7,
-        }
+        },
     )
-
     assert activity == {
         "id": "123",
         "name": "Hill repeats",
@@ -48,11 +46,9 @@ def test_normalize_activity_keeps_training_fields():
 
 
 @pytest.mark.asyncio
-async def test_fetch_activities_requires_connected_strava():
+async def test_fetch_activities_requires_connected_strava() -> None:
     context = DummyToolContext({"strava_connected": False})
-
     result = await main.fetch_activities(context)
-
     assert result == {
         "ok": False,
         "reason": "strava_not_connected",
@@ -62,12 +58,11 @@ async def test_fetch_activities_requires_connected_strava():
 
 
 @pytest.mark.asyncio
-async def test_extract_strava_auth_state_uses_temp_header_state():
+async def test_extract_strava_auth_state_uses_temp_header_state() -> None:
     result = await main.extract_strava_auth_state(
         DummyRequest({"x-strava-access-token": "token-123"}),
         Mock(state={}),
     )
-
     assert result == {
         "user_id": "anonymous",
         "strava_connected": True,
@@ -76,7 +71,7 @@ async def test_extract_strava_auth_state_uses_temp_header_state():
 
 
 @pytest.mark.asyncio
-async def test_fetch_activities_writes_normalized_state(monkeypatch):
+async def test_fetch_activities_writes_normalized_state(monkeypatch) -> None:
     response = Mock()
     response.json.return_value = [
         {
@@ -88,7 +83,7 @@ async def test_fetch_activities_writes_normalized_state(monkeypatch):
             "moving_time": 10800,
             "elapsed_time": 12000,
             "total_elevation_gain": 900,
-        }
+        },
     ]
     response.raise_for_status.return_value = None
 
@@ -105,13 +100,15 @@ async def test_fetch_activities_writes_normalized_state(monkeypatch):
             assert params["per_page"] == 200
             return response
 
-    monkeypatch.setattr(main.httpx, "AsyncClient", lambda timeout: DummyClient())
+    def async_client_factory(*, timeout):
+        assert timeout == 30.0
+        return DummyClient()
+
+    monkeypatch.setattr(main.httpx, "AsyncClient", async_client_factory)
     context = DummyToolContext(
-        {"strava_connected": True, "temp:strava_token": "token-123"}
+        {"strava_connected": True, "temp:strava_token": "token-123"},
     )
-
     result = await main.fetch_activities(context)
-
     assert result["ok"] is True
     assert result["count"] == 1
     assert "summary" not in result
@@ -125,7 +122,7 @@ async def test_fetch_activities_writes_normalized_state(monkeypatch):
             "moving_time_s": 10800,
             "elapsed_time_s": 12000,
             "total_elevation_gain_m": 900,
-        }
+        },
     ]
     assert result["activities"] == expected_activities
     assert context.state["activities"] == expected_activities
@@ -133,39 +130,30 @@ async def test_fetch_activities_writes_normalized_state(monkeypatch):
     assert context.state["status"] == "planning"
 
 
-def test_set_training_plan_writes_state():
+def test_set_training_plan_writes_state() -> None:
     context = DummyToolContext()
-
     result = main.set_training_plan(context, "## Week plan\n- Run easy")
-
     assert result == {"ok": True, "length": 23}
     assert context.state["training_plan"] == "## Week plan\n- Run easy"
     assert context.state["status"] == "planning"
 
 
-def test_on_before_agent_hydrates_a2a_strava_metadata():
+def test_on_before_agent_hydrates_a2a_strava_metadata() -> None:
     callback_context = Mock()
     callback_context.state = {}
     callback_context._invocation_context.run_config.custom_metadata = {
-        "a2a_metadata": {
-            "user_id": "user_123",
-            "strava_access_token": "token-123",
-        }
+        "a2a_metadata": {"user_id": "user_123", "strava_access_token": "token-123"},
     }
-
     main.on_before_agent(callback_context)
-
     assert callback_context.state["user_id"] == "user_123"
     assert callback_context.state["strava_connected"] is True
     assert callback_context.state["temp:strava_token"] == "token-123"
 
 
-def test_web_search_toolset_uses_local_stdio_mcp(monkeypatch):
+def test_web_search_toolset_uses_local_stdio_mcp(monkeypatch) -> None:
     monkeypatch.setenv("BRAVE_API_KEY", "brave-token")
-
     toolset = utils.web_search_toolset()
     params = toolset._connection_params
-
     assert isinstance(params, StdioConnectionParams)
     assert params.timeout == 30.0
     assert params.server_params.command == "npx"

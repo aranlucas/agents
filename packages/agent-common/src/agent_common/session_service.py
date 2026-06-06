@@ -1,11 +1,15 @@
 """Session service factory with injectable database dependencies."""
 
 import os
-from collections.abc import Mapping
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from dependency_injector import containers, providers
+from google.adk.sessions.database_session_service import DatabaseSessionService
 from google.adk.sessions.sqlite_session_service import SqliteSessionService
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 def default_session_db_path() -> Path:
@@ -13,8 +17,6 @@ def default_session_db_path() -> Path:
 
 
 def _database_session_service(db_url: str, **kwargs):
-    from google.adk.sessions.database_session_service import DatabaseSessionService
-
     return DatabaseSessionService(db_url, **kwargs)
 
 

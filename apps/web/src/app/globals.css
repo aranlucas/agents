@@ -260,6 +260,282 @@ body {
   animation: blink 1s steps(2) infinite;
 }
 
+/* CopilotKit chat shell styled after AI Elements' conversation/message/prompt primitives. */
+.agent-chat-shell {
+  --ai-chat-max-width: 48rem;
+  --ai-chat-radius: 8px;
+  --ai-chat-accent: var(--page-color, var(--accent));
+  --ai-chat-accent-soft: var(--page-soft, var(--accent-soft));
+  --ai-chat-accent-contrast: var(--page-contrast, var(--primary-foreground));
+  --ai-chat-bg: var(--bg);
+  --ai-chat-bg-soft: var(--bg-soft);
+  --ai-chat-border: var(--border);
+  --ai-chat-border-soft: var(--border-soft);
+  --ai-chat-ink: var(--ink);
+  --ai-chat-ink-mute: var(--ink-mute);
+  --ai-chat-ink-soft: var(--ink-soft);
+  --ai-chat-surface: var(--surface);
+  --ai-chat-surface-raised: var(--surface-raised);
+  --ai-chat-surface-soft: var(--surface-soft);
+}
+
+.agent-chat-shell [data-copilotkit] {
+  --background: var(--ai-chat-surface);
+  --foreground: var(--ai-chat-ink);
+  --card: var(--ai-chat-surface);
+  --card-foreground: var(--ai-chat-ink);
+  --popover: var(--ai-chat-surface-raised);
+  --popover-foreground: var(--ai-chat-ink);
+  --primary: var(--ai-chat-accent);
+  --primary-foreground: var(--ai-chat-accent-contrast);
+  --secondary: var(--ai-chat-surface-soft);
+  --secondary-foreground: var(--ai-chat-ink);
+  --muted: var(--ai-chat-bg-soft);
+  --muted-foreground: var(--ai-chat-ink-mute);
+  --accent: var(--ai-chat-accent-soft);
+  --accent-foreground: var(--ai-chat-accent);
+  --border: var(--ai-chat-border);
+  --input: var(--ai-chat-border);
+  --ring: var(--ai-chat-accent);
+}
+
+.agent-chat-shell [data-testid="copilot-chat"].ai-elements-copilot-chat {
+  min-height: 0;
+  background-color: var(--surface);
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--surface-soft) 86%, transparent) 0%,
+    transparent 36%
+  );
+}
+
+.agent-chat-shell .ai-elements-conversation {
+  min-height: 0;
+  padding-top: 0.75rem;
+}
+
+.agent-chat-shell .ai-elements-conversation [data-testid="copilot-scroll-content"] {
+  min-height: 100%;
+}
+
+.agent-chat-shell .ai-elements-conversation [data-testid="copilot-scroll-content"] > div {
+  max-width: var(--ai-chat-max-width);
+}
+
+.agent-chat-shell .ai-elements-message-view {
+  gap: 1rem;
+  padding: 0.25rem 0.25rem 1rem;
+}
+
+.agent-chat-shell .ai-elements-assistant-message {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  width: min(100%, var(--ai-chat-max-width));
+  padding: 0.2rem 0;
+  color: var(--ink);
+}
+
+.agent-chat-shell .ai-elements-assistant-message > .cpk\:prose {
+  max-width: 100%;
+  color: var(--ink);
+  font-size: 0.925rem;
+  line-height: 1.65;
+}
+
+.agent-chat-shell .ai-elements-assistant-message > .cpk\:prose :where(p, ul, ol) {
+  margin-block: 0.75em;
+}
+
+.agent-chat-shell .ai-elements-assistant-message > .cpk\:prose :where(p:first-child) {
+  margin-top: 0;
+}
+
+.agent-chat-shell .ai-elements-assistant-message > .cpk\:prose :where(p:last-child) {
+  margin-bottom: 0;
+}
+
+.agent-chat-shell .ai-elements-assistant-message pre {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--ai-chat-radius);
+  background: var(--bg-soft);
+}
+
+.agent-chat-shell .ai-elements-assistant-message [data-testid="copilot-assistant-toolbar"] {
+  margin-left: -0.25rem;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.agent-chat-shell .ai-elements-assistant-message:hover [data-testid="copilot-assistant-toolbar"],
+.agent-chat-shell
+  .ai-elements-assistant-message:focus-within
+  [data-testid="copilot-assistant-toolbar"] {
+  opacity: 1;
+}
+
+.agent-chat-shell .ai-elements-user-message {
+  padding-top: 0;
+}
+
+.agent-chat-shell .ai-elements-user-message .cpk\:prose {
+  max-width: min(82%, 38rem);
+  border: 1px solid color-mix(in srgb, var(--page-color, var(--accent)) 18%, var(--border));
+  border-radius: var(--ai-chat-radius);
+  background: color-mix(in srgb, var(--page-soft, var(--accent-soft)) 70%, var(--surface));
+  color: var(--ink);
+  box-shadow: 0 1px 1px rgb(21 20 15 / 0.04);
+}
+
+.agent-chat-shell .ai-elements-user-message [data-testid="copilot-user-toolbar"] {
+  opacity: 0;
+  visibility: visible;
+  transition: opacity 0.15s ease;
+}
+
+.agent-chat-shell .ai-elements-user-message:hover [data-testid="copilot-user-toolbar"],
+.agent-chat-shell .ai-elements-user-message:focus-within [data-testid="copilot-user-toolbar"] {
+  opacity: 1;
+}
+
+.agent-chat-shell .ai-elements-streaming-cursor {
+  width: 0.625rem;
+  height: 0.625rem;
+  margin: 0.25rem 0 0 0.25rem;
+  background: var(--page-color, var(--accent));
+}
+
+.agent-chat-shell .ai-elements-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.agent-chat-shell .ai-elements-suggestion {
+  height: 2rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  font-weight: 500;
+  box-shadow: 0 1px 1px rgb(21 20 15 / 0.04);
+}
+
+.agent-chat-shell .ai-elements-suggestion:hover {
+  border-color: color-mix(in srgb, var(--page-color, var(--accent)) 34%, var(--border));
+  background: var(--page-soft, var(--accent-soft));
+  color: var(--ink);
+}
+
+.agent-chat-shell .ai-elements-conversation-feather {
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 7.5rem;
+  background: linear-gradient(180deg, transparent, var(--surface));
+}
+
+.agent-chat-shell .ai-elements-scroll-button {
+  width: 2rem;
+  height: 2rem;
+  border-color: var(--border);
+  background: var(--surface-raised);
+  color: var(--ink);
+  box-shadow: var(--shadow-card);
+}
+
+.agent-chat-shell .ai-elements-prompt-input {
+  padding-bottom: 0.5rem;
+}
+
+.agent-chat-shell .ai-elements-prompt-input [data-testid="copilot-chat-input"] {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--ai-chat-radius);
+  background: var(--surface-raised);
+  box-shadow:
+    0 1px 1px rgb(21 20 15 / 0.04),
+    0 10px 28px rgb(21 20 15 / 0.08);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.agent-chat-shell .ai-elements-prompt-input [data-testid="copilot-chat-input"]:focus-within {
+  border-color: color-mix(in srgb, var(--page-color, var(--accent)) 64%, var(--border));
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--page-color, var(--accent)) 15%, transparent),
+    0 12px 32px rgb(21 20 15 / 0.1);
+}
+
+.agent-chat-shell .ai-elements-prompt-input-textarea {
+  min-height: 3rem;
+  color: var(--ink);
+  font-size: 0.925rem;
+  line-height: 1.5;
+}
+
+.agent-chat-shell .ai-elements-prompt-input-textarea::placeholder {
+  color: var(--ink-mute);
+}
+
+.agent-chat-shell .ai-elements-prompt-input-tool,
+.agent-chat-shell .ai-elements-prompt-input-submit {
+  border-radius: 999px;
+}
+
+.agent-chat-shell .ai-elements-prompt-input-tool {
+  color: var(--ink-mute);
+}
+
+.agent-chat-shell .ai-elements-prompt-input-tool:hover {
+  background: var(--bg-soft);
+  color: var(--ink);
+}
+
+.agent-chat-shell .ai-elements-prompt-input-submit {
+  background: var(--page-color, var(--accent));
+  color: var(--page-contrast, #fff);
+}
+
+.agent-chat-shell .ai-elements-prompt-input-submit:disabled {
+  background: var(--bg-soft);
+  color: var(--ink-mute);
+}
+
+.agent-chat-shell .ai-elements-prompt-input-disclaimer {
+  padding-top: 0.45rem;
+  padding-bottom: 0;
+  color: var(--ink-mute);
+  font-size: 0.68rem;
+}
+
+.agent-chat-shell [data-testid="copilot-slash-menu"] {
+  border-color: var(--border);
+  border-radius: var(--ai-chat-radius);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-panel);
+}
+
+@media (max-width: 767px) {
+  .agent-chat-shell .ai-elements-user-message .cpk\:prose {
+    max-width: 92%;
+  }
+
+  .agent-chat-shell .ai-elements-message-view {
+    gap: 0.85rem;
+    padding-inline: 0;
+  }
+
+  .agent-chat-shell .ai-elements-prompt-input [data-testid="copilot-chat-input"] {
+    border-radius: var(--ai-chat-radius);
+  }
+}
+
 .glass {
   background: color-mix(in srgb, var(--surface) 86%, transparent);
   backdrop-filter: saturate(160%) blur(14px);

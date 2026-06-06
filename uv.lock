@@ -32,7 +32,7 @@ wheels = [
 [[package]]
 name = "a2ui-agent"
 version = "0.1.0"
-source = { virtual = "agents/a2ui" }
+source = { editable = "agents/a2ui" }
 dependencies = [
     { name = "a2a-sdk" },
     { name = "ag-ui-adk" },
@@ -148,13 +148,21 @@ source = { virtual = "." }
 
 [package.dev-dependencies]
 dev = [
+    { name = "httpx" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
     { name = "ruff" },
 ]
 
 [package.metadata]
 
 [package.metadata.requires-dev]
-dev = [{ name = "ruff", specifier = ">=0.15.15" }]
+dev = [
+    { name = "httpx" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "ruff", specifier = ">=0.15.15" },
+]
 
 [[package]]
 name = "aiohappyeyeballs"
@@ -557,7 +565,7 @@ wheels = [
 [[package]]
 name = "fitness-agent"
 version = "0.1.0"
-source = { virtual = "agents/fitness" }
+source = { editable = "agents/fitness" }
 dependencies = [
     { name = "a2a-sdk" },
     { name = "ag-ui-adk" },
@@ -835,7 +843,7 @@ wheels = [
 [[package]]
 name = "grocery-agent"
 version = "0.1.0"
-source = { virtual = "agents/grocery" }
+source = { editable = "agents/grocery" }
 dependencies = [
     { name = "a2a-sdk" },
     { name = "ag-ui-adk" },
@@ -2094,7 +2102,7 @@ wheels = [
 [[package]]
 name = "travel-agent"
 version = "0.1.0"
-source = { virtual = "agents/travel" }
+source = { editable = "agents/travel" }
 dependencies = [
     { name = "a2a-sdk" },
     { name = "ag-ui-adk" },
@@ -2334,7 +2342,7 @@ wheels = [
 [[package]]
 name = "wellness-agent"
 version = "0.1.0"
-source = { virtual = "agents/wellness" }
+source = { editable = "agents/wellness" }
 dependencies = [
     { name = "a2a-sdk" },
     { name = "ag-ui-adk" },

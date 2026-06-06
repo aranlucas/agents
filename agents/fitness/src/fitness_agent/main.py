@@ -5,7 +5,7 @@ import datetime
 import logging
 import os
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 from a2a.server.apps.jsonrpc import A2AFastAPIApplication
@@ -24,20 +24,23 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from google.adk.agents import LlmAgent
-from google.adk.agents.callback_context import CallbackContext
 from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
 from google.adk.auth.credential_service.in_memory_credential_service import (
     InMemoryCredentialService,
 )
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
-from google.adk.models import LlmRequest, LlmResponse
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.runners import Runner
-from google.adk.tools import ToolContext
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.sdk.resources import Resource
-from utils import web_search_toolset
+
+from .utils import web_search_toolset
+
+if TYPE_CHECKING:
+    from google.adk.agents.callback_context import CallbackContext
+    from google.adk.models import LlmRequest, LlmResponse
+    from google.adk.tools import ToolContext
 
 load_dotenv()
 
@@ -90,7 +93,7 @@ def _setup_otel() -> None:
             "deployment.environment": os.getenv("RAILWAY_ENVIRONMENT_NAME", "local"),
             "railway.project.id": os.getenv("RAILWAY_PROJECT_ID", ""),
             "railway.service.id": os.getenv("RAILWAY_SERVICE_ID", ""),
-        }
+        },
     )
     maybe_set_otel_providers(otel_resource=resource)
     SQLAlchemyInstrumentor().instrument()
@@ -227,7 +230,7 @@ async def fetch_activities(
     }
 
 
-async def extract_strava_auth_state(request, input_data) -> dict[str, Any]:
+async def extract_strava_auth_state(request, _input_data) -> dict[str, Any]:
     """Inject Strava auth as per-invocation temp state from request headers."""
     state = extract_identity_state(request)
     token = request.headers.get(STRAVA_TOKEN_HEADER) or ""
@@ -238,7 +241,7 @@ async def extract_strava_auth_state(request, input_data) -> dict[str, Any]:
     )
     if not token:
         log.warning(
-            "No Strava token in request headers — agent will run without Strava access"
+            "No Strava token in request headers — agent will run without Strava access",
         )
         return {**state, "strava_connected": False}
     return {**state, "strava_connected": True, STRAVA_TOKEN_STATE_KEY: token}
@@ -267,7 +270,7 @@ def mark_plan_ready(tool_context: ToolContext, summary: str) -> dict:
 
 def get_current_date() -> dict:
     """Return today's date for weekly training-plan scheduling."""
-    today = datetime.date.today()
+    today = datetime.datetime.now(datetime.UTC).date()
     return {
         "date": today.isoformat(),
         "weekday": today.strftime("%A"),
@@ -275,12 +278,11 @@ def get_current_date() -> dict:
     }
 
 
-def on_before_agent(callback_context: CallbackContext):
+def on_before_agent(callback_context: CallbackContext) -> None:
     apply_a2a_auth_metadata_to_state(callback_context)
     for key, default in _DEFAULT_STATE.items():
         if key not in callback_context.state:
             callback_context.state[key] = default
-    return None
 
 
 # Brave's free search tier allows ~1 request/second and returns 429s when bursted,
@@ -292,10 +294,10 @@ _web_search_lock = asyncio.Lock()
 _last_web_search_at = 0.0
 
 
-async def throttle_web_search(tool, args, tool_context) -> None:
+async def throttle_web_search(tool, _args, _tool_context) -> None:
     """Space out Brave web-search calls to respect the free-tier rate limit."""
     if not str(getattr(tool, "name", "")).startswith("brave_"):
-        return None
+        return
     global _last_web_search_at
     async with _web_search_lock:
         elapsed = time.monotonic() - _last_web_search_at
@@ -304,15 +306,16 @@ async def throttle_web_search(tool, args, tool_context) -> None:
             log.debug("throttle_web_search: sleeping %.2fs before %s", wait, tool.name)
             await asyncio.sleep(wait)
         _last_web_search_at = time.monotonic()
-    return None
+    return
 
 
 def before_model_modifier(
-    callback_context: CallbackContext, llm_request: LlmRequest
+    callback_context: CallbackContext,
+    llm_request: LlmRequest,
 ) -> LlmResponse | None:
     state = callback_context.state
     connected = bool(
-        state.get("strava_connected") and state.get(STRAVA_TOKEN_STATE_KEY)
+        state.get("strava_connected") and state.get(STRAVA_TOKEN_STATE_KEY),
     )
     activity_count = len(state.get("activities") or [])
     synced_at = state.get("activities_synced_at") or ""
@@ -321,8 +324,7 @@ def before_model_modifier(
         "If Strava is connected and you are about to create or revise a training plan,\n"
         "call fetch_activities first when activities are missing or stale."
         if connected
-        else
-        "Strava is not connected. Do NOT call fetch_activities. Tell the user their\n"
+        else "Strava is not connected. Do NOT call fetch_activities. Tell the user their\n"
         "Strava account isn't connected and they need to connect it in the UI.\n"
         "Do not generate a training plan until Strava is connected."
     )
@@ -375,7 +377,7 @@ for hiking or mountaineering objectives.
 4. Write plans to state with set_training_plan. Do not paste the full plan into
    chat as the source of truth.
 5. Make the plan DETAILED and day-by-day: for each day give the session type,
-   duration/distance or sets×reps, target intensity (easy/tempo/threshold or RPE),
+   duration/distance or sets x reps, target intensity (easy/tempo/threshold or RPE),
    plus weekly goals, gym sessions, mobility, stretching, recovery guidance, and
    prep for the recommended hike. Schedule the recommended hike on a specific day.
 6. When the plan is complete, call mark_plan_ready.
@@ -388,7 +390,7 @@ assumptions when Strava or objective context is unavailable.
 fitness_agent = LlmAgent(
     name="fitness_agent",
     model=LiteLlm(
-        model="openrouter/moonshotai/kimi-k2.6:free",
+        model="openrouter/poolside/laguna-m.1:free",
         fallbacks=[
             "mistral/mistral-small-latest",
             "openrouter/owl-alpha",
@@ -457,7 +459,7 @@ def _a2a_agent_card() -> AgentCard:
                 tags=["fitness", "training-planning"],
                 input_modes=["text/plain"],
                 output_modes=["text/plain"],
-            )
+            ),
         ],
     )
 
@@ -499,7 +501,8 @@ async def trace_requests(request, call_next):
 
         span.set_attribute("http.response.status_code", response.status_code)
         span.set_attribute(
-            "duration_ms", round((time.perf_counter() - start) * 1000, 2)
+            "duration_ms",
+            round((time.perf_counter() - start) * 1000, 2),
         )
         return response
 

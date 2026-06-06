@@ -12,7 +12,6 @@ export const env = createEnv({
     TRVL_MCP_URL: z.url().optional(),
     KROGER_MCP_URL: z.url().optional(),
     MISTRAL_API_KEY: z.string().optional(),
-    AGENT_MODEL: z.string().optional(),
     OTEL_EXPORTER_OTLP_ENDPOINT: z.string().optional(),
     OTEL_SERVICE_NAME: z.string().default("agents-nextjs"),
     COPILOTKIT_DEBUG: z
@@ -33,7 +32,6 @@ export const env = createEnv({
     TRVL_MCP_URL: process.env.TRVL_MCP_URL,
     KROGER_MCP_URL: process.env.KROGER_MCP_URL,
     MISTRAL_API_KEY: process.env.MISTRAL_API_KEY,
-    AGENT_MODEL: process.env.AGENT_MODEL,
     OTEL_EXPORTER_OTLP_ENDPOINT: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
     OTEL_SERVICE_NAME: process.env.OTEL_SERVICE_NAME,
     COPILOTKIT_DEBUG: process.env.COPILOTKIT_DEBUG,
