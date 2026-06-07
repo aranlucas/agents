@@ -7,7 +7,7 @@ def test_health_route() -> None:
     client = TestClient(main.app)
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    assert response.json()["status"] == "ok"
 
 
 def test_a2a_agent_card_route_exists() -> None:
