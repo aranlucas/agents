@@ -29,7 +29,25 @@
     "react-hooks/exhaustive-deps": "warn",
     "react/react-in-jsx-scope": "off",
     "typescript/no-floating-promises": "warn",
-    "typescript/no-redundant-type-constituents": "warn"
+    "typescript/no-redundant-type-constituents": "warn",
+    "import/no-unassigned-import": [
+      "warn",
+      {
+        "allow": [
+          "**/*.css",
+          "**/env",
+          "expo",
+          "whatwg-fetch",
+          "react-native/**"
+        ]
+      }
+    ],
+    "react/style-prop-object": [
+      "warn",
+      {
+        "allow": ["StatusBar"]
+      }
+    ]
   },
   "overrides": [
     {
@@ -41,7 +59,35 @@
       "globals": {
         "__DEV__": "readonly"
       }
+    },
+    {
+      "files": ["**/*.test.{ts,tsx}", "**/test/**"],
+      "rules": {
+        "typescript/no-unsafe-type-assertion": "off",
+        "typescript/no-floating-promises": "off",
+        "typescript/no-extraneous-class": "off",
+        "eslint/no-await-in-loop": "off",
+        "eslint/no-shadow": "off",
+        "unicorn/consistent-function-scoping": "off",
+        "jsx-a11y/aria-role": "off",
+        "jsx-a11y/heading-has-content": "off"
+      }
+    },
+    {
+      // Reanimated shared values (`.value`) are stable refs that must stay out of
+      // hook dependency arrays; the rule cannot be suppressed inline in oxlint.
+      "files": ["apps/mobile/src/components/chat/conversation.tsx"],
+      "rules": {
+        "react-hooks/exhaustive-deps": "off"
+      }
     }
   ],
-  "ignorePatterns": [".next/**", "apps/mobile/.expo/**"]
+  "ignorePatterns": [
+    ".next/**",
+    "apps/mobile/.expo/**",
+    "apps/mobile/uniwind-types.d.ts",
+    "**/coverage/**",
+    ".claude/**",
+    ".agents/**"
+  ]
 }

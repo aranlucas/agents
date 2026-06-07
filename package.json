@@ -9,6 +9,11 @@
     "lint": "oxlint .",
     "lint:py": "uv run ruff check agents packages/agent-common",
     "check": "pnpm lint && pnpm lint:py && pnpm fmt:check",
+    "test": "pnpm --filter web test && pnpm --filter mobile test",
+    "test:py": "uv run pytest",
+    "coverage": "pnpm coverage:ts && pnpm coverage:py",
+    "coverage:ts": "pnpm --filter web exec vitest run --coverage && pnpm --filter mobile exec vitest run --coverage",
+    "coverage:py": "uv run pytest --cov",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "build": "pnpm --filter web build"

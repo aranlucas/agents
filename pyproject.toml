@@ -73,5 +73,26 @@ pythonpath = [
   "packages/agent-common/src",
 ]
 
+[tool.coverage.run]
+source = [
+  "agents/a2ui/src",
+  "agents/fitness/src",
+  "agents/grocery/src",
+  "agents/travel/src",
+  "agents/wellness/src",
+  "packages/agent-common/src",
+]
+omit = ["*/__init__.py"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 90
+exclude_also = [
+  "def _setup_otel",
+  "async def trace_requests",
+  "async def health",
+  "if __name__ == .__main__.:",
+]
+
 [dependency-groups]
-dev = ["httpx", "pytest", "pytest-asyncio", "ruff>=0.15.15"]
+dev = ["httpx", "pytest", "pytest-asyncio", "pytest-cov>=7.1.0", "ruff>=0.15.15"]

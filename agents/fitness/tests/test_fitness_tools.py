@@ -138,6 +138,96 @@ def test_set_training_plan_writes_state() -> None:
     assert context.state["status"] == "planning"
 
 
+def test_summarize_activities_aggregates_training_totals() -> None:
+    summary = main.summarize_activities(
+        [
+            {
+                "sport_type": "Run",
+                "distance_m": 5000,
+                "moving_time_s": 1800,
+                "total_elevation_gain_m": 100.4,
+            },
+            {
+                "sport_type": "Hike",
+                "distance_m": 12500,
+                "moving_time_s": 7200,
+                "total_elevation_gain_m": 800.2,
+            },
+            {"distance_m": None, "moving_time_s": None},
+        ],
+    )
+    assert summary == {
+        "activity_count": 3,
+        "distance_km": 17.5,
+        "moving_hours": 2.5,
+        "elevation_m": 901,
+        "sport_counts": {"Run": 1, "Hike": 1, "Activity": 1},
+    }
+
+
+def test_normalize_activity_uses_type_and_default_name() -> None:
+    assert main.normalize_strava_activity({"id": None, "type": "Ride"}) == {
+        "id": "None",
+        "name": "Untitled activity",
+        "sport_type": "Ride",
+    }
+
+
+@pytest.mark.asyncio
+async def test_extract_strava_auth_state_marks_missing_token_disconnected() -> None:
+    result = await main.extract_strava_auth_state(
+        DummyRequest({"x-clerk-user-id": "user_123"}),
+        Mock(state={}),
+    )
+    assert result == {"user_id": "user_123", "strava_connected": False}
+
+
+def test_fitness_state_tools_write_state() -> None:
+    context = DummyToolContext()
+    assert main.set_objective_research(context, "Trail notes") == {
+        "ok": True,
+        "length": 11,
+    }
+    assert context.state["objective_research"] == "Trail notes"
+    assert context.state["status"] == "planning"
+
+    assert main.mark_plan_ready(context, "Ready") == {"ok": True}
+    assert context.state["status"] == "ready"
+    assert context.state["review_summary"] == "Ready"
+
+
+def test_before_model_modifier_warns_when_strava_disconnected() -> None:
+    request = Mock()
+    request.config.system_instruction = "Original"
+    callback_context = Mock()
+    callback_context.state = {}
+    assert main.before_model_modifier(callback_context, request) is None
+    assert "Strava is not connected" in request.config.system_instruction
+    assert "Original" in request.config.system_instruction
+
+
+def test_before_model_modifier_prompts_fetch_when_connected() -> None:
+    request = Mock()
+    request.config.system_instruction = "Original"
+    callback_context = Mock()
+    callback_context.state = {
+        "strava_connected": True,
+        "temp:strava_token": "token",
+        "activities": [{"id": "1"}],
+        "activities_synced_at": "2026-06-01T00:00:00Z",
+    }
+    main.before_model_modifier(callback_context, request)
+    assert "Strava connected: True" in request.config.system_instruction
+    assert "call fetch_activities first" in request.config.system_instruction
+
+
+@pytest.mark.asyncio
+async def test_throttle_web_search_ignores_non_brave_tools() -> None:
+    main._last_web_search_at = 1000
+    await main.throttle_web_search(Mock(name="other_search"), {}, Mock())
+    assert main._last_web_search_at == 1000
+
+
 def test_on_before_agent_hydrates_a2a_strava_metadata() -> None:
     callback_context = Mock()
     callback_context.state = {}
