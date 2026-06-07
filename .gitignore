@@ -55,3 +55,5 @@ __pycache__/
 *.egg-info/
 **/*.egg-info/
 .claude/worktrees
+# Superpowers brainstorm companion (local mockups)
+.superpowers/
