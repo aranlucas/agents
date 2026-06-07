@@ -45,8 +45,12 @@
     ],
     "extra": {
       "clerkPublishableKey": "",
+      "copilotKitRuntimeUrl": "",
       "travelAgentUrl": "http://localhost:8000/",
-      "groceryAgentUrl": "http://localhost:8001/"
+      "groceryAgentUrl": "http://localhost:8001/",
+      "fitnessAgentUrl": "http://localhost:8002/",
+      "wellnessAgentUrl": "http://localhost:8003/",
+      "a2uiAgentUrl": "http://localhost:8004/"
     },
     "experiments": {
       "typedRoutes": true,

@@ -79,13 +79,13 @@ The template ships with mock streaming responses in `app/index.tsx`. Replace `mo
 
 ### Agent screens (AG-UI)
 
-The **Travel** and **Grocery** tabs talk directly to the ADK agent services over the [AG-UI](https://docs.ag-ui.com/) protocol via [`@ag-ui/client`](https://www.npmjs.com/package/@ag-ui/client), mirroring the web data flow (`apps/web → @ag-ui/client → Railway agent`).
+The agent tabs use the [AG-UI](https://docs.ag-ui.com/) protocol via [`@ag-ui/client`](https://www.npmjs.com/package/@ag-ui/client). The production path should point at the web CopilotKit runtime, while direct ADK service URLs remain useful for local agent development.
 
-- `src/utils/use-agent.ts` wraps a long-lived `HttpAgent`, streams assistant tokens through `onMessagesChanged`, and reads the agent's shared ADK state (snapshots + JSON-patch deltas) through `onStateChanged`.
-- Each screen renders from agent state (e.g. the trip card, the shopping-list chips) — **state is the source of truth**, not chat text.
-- The Clerk user id is forwarded as `x-clerk-user-id`, matching `apps/web/src/app/api/copilotkit/route.ts`.
-
-Point the screens at your agents with `EXPO_PUBLIC_TRAVEL_AGENT_URL` / `EXPO_PUBLIC_GROCERY_AGENT_URL` (see `.env.example`).
+- Set `EXPO_PUBLIC_COPILOTKIT_RUNTIME_URL=https://your-web-app.example.com/api/copilotkit` for production APKs. Mobile will call `/agent/{agentId}/run`, so the Next.js runtime can inject A2UI tooling and resolve Clerk OAuth provider tokens for Kroger and Strava before forwarding to the ADK services.
+- Leave `EXPO_PUBLIC_COPILOTKIT_RUNTIME_URL` unset for local direct-agent testing. The `EXPO_PUBLIC_*_AGENT_URL` values are normalized to each service's `/agui` endpoint, and Android local defaults use `10.0.2.2` so emulator APKs can reach host-machine agents.
+- `src/utils/use-agent.ts` wraps a long-lived `HttpAgent`, streams assistant tokens through `onMessagesChanged`, applies AG-UI state snapshots/JSON-patch deltas through `onStateChanged`, and enables `@ag-ui/a2ui-middleware` for the A2UI tab.
+- Each screen renders from agent state (e.g. trip cards, shopping-list chips, fitness/wellness summaries) -- **state is the source of truth**, not chat text.
+- The Clerk user id is forwarded as `x-clerk-user-id`; when signed in, the Clerk session JWT is sent as `Authorization` for the CopilotKit runtime.
 
 ### Android APK builds (CI)
 

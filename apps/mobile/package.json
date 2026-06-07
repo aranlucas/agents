@@ -8,9 +8,13 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "lint": "pnpm --workspace-root lint"
+    "lint": "pnpm --workspace-root lint",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "test:watch": "vitest"
   },
   "dependencies": {
+    "@ag-ui/a2ui-middleware": "0.0.6",
     "@ag-ui/client": "^0.0.53",
     "@agents/types": "workspace:*",
     "@ai-sdk/react": "^3.0.199",
@@ -28,6 +32,7 @@
     "expo-asset": "~56.0.16",
     "expo-blur": "~56.0.3",
     "expo-constants": "~56.0.17",
+    "expo-crypto": "~56.0.4",
     "expo-dev-client": "~56.0.19",
     "expo-font": "~56.0.5",
     "expo-glass-effect": "~56.0.4",
@@ -64,8 +69,12 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@types/mdast": "^4.0.4",
     "@types/react": "~19.2.17",
     "@types/react-syntax-highlighter": "^15.5.13",
-    "typescript": "~6.0.3"
+    "@types/react-test-renderer": "^19.1.0",
+    "react-test-renderer": "^19.2.7",
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.8"
   }
 }

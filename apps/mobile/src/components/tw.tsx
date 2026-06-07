@@ -5,7 +5,7 @@ import { StyleSheet, type ViewStyle } from "react-native";
 import { withUniwind } from "uniwind";
 
 import { KeyboardGestureArea as XKeyboardGestureArea } from "react-native-keyboard-controller";
-import Animated from "react-native-reanimated";
+import { createAnimatedComponent } from "react-native-reanimated";
 import { SafeAreaView as XSafeAreaView } from "react-native-safe-area-context";
 
 export const SafeAreaView = withUniwind(XSafeAreaView);
@@ -13,7 +13,7 @@ export const SafeAreaView = withUniwind(XSafeAreaView);
 export const Image = withUniwind(XImage);
 export const KeyboardGestureArea = withUniwind(XKeyboardGestureArea);
 
-const AnimatedEXGlassView = Animated.createAnimatedComponent(XGlassView);
+const AnimatedEXGlassView = createAnimatedComponent(XGlassView);
 
 const BlurView = withUniwind(EXBlurView);
 
@@ -37,10 +37,15 @@ const FallbackAppleGlassView = ({
   return (
     <BlurView
       className={className}
+      // Reanimated style props widen to animatable variants; narrow back to a
+      // plain ViewStyle for the BlurView.
+      // eslint-disable-next-line typescript/no-unsafe-type-assertion
       style={[{ overflow: "hidden" }, StyleSheet.flatten(style) as ViewStyle]}
       tint={fallbackTint}
       intensity={fallbackIntensity}
     >
+      {/* children may be typed as SharedValue<ReactNode> via the glass props. */}
+      {/* eslint-disable-next-line typescript/no-unsafe-type-assertion */}
       {children as React.ReactNode}
     </BlurView>
   );
@@ -65,6 +70,7 @@ function convertStylesToProps(
   if (!style) {
     return { style, props: {} as Record<string, unknown> };
   }
+  // eslint-disable-next-line typescript/no-unsafe-type-assertion
   const flatStyle = (StyleSheet.flatten(style) || {}) as Record<string, unknown>;
   const props: Record<string, unknown> = {};
 

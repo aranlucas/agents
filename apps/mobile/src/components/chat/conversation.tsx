@@ -4,14 +4,15 @@ import {
   createContext,
   use,
   useCallback,
+  useMemo,
   useRef,
   useState,
-  type ReactElement,
-  type ReactNode,
 } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { LayoutChangeEvent, Text, View } from "react-native";
 import { useKeyboardHandler } from "react-native-keyboard-controller";
 import Animated, {
+  createAnimatedComponent,
   runOnJS,
   useAnimatedProps,
   useAnimatedStyle,
@@ -29,7 +30,7 @@ import type { ChatMessage } from "./types";
 
 const IS_GLASS = isLiquidGlassAvailable();
 
-const AnimatedLegendList = Animated.createAnimatedComponent(LegendList);
+const AnimatedLegendList = createAnimatedComponent(LegendList);
 
 type AnimatedStyle = any;
 
@@ -147,6 +148,10 @@ export function Conversation({
 
   // -- Callbacks -----------------------------------------------------------
 
+  // NOTE: the callbacks below read/write Reanimated shared values (`.value`),
+  // which are stable refs and intentionally excluded from dependency arrays.
+  // `react-hooks/exhaustive-deps` is disabled for this file (see .oxlintrc.json)
+  // because oxlint cannot suppress that rule via inline directives.
   const onScrollViewLayout = useCallback((e: LayoutChangeEvent) => {
     scrollViewHeight.value = e.nativeEvent.layout.height;
   }, []);
@@ -235,12 +240,15 @@ export function Conversation({
 
   // -- Context value -------------------------------------------------------
 
-  const contextValue: ConversationContextValue = {
-    scrollToBottom,
-    promptInputStyle,
-    onPromptInputLayout,
-    scrollButtonStyle,
-  };
+  const contextValue: ConversationContextValue = useMemo(
+    () => ({
+      scrollToBottom,
+      promptInputStyle,
+      onPromptInputLayout,
+      scrollButtonStyle,
+    }),
+    [scrollToBottom, promptInputStyle, onPromptInputLayout, scrollButtonStyle],
+  );
 
   // -- Render --------------------------------------------------------------
 
@@ -256,8 +264,11 @@ export function Conversation({
           <AnimatedLegendList
             ref={listRef}
             data={messages}
+            // The Animated wrapper around LegendList erases the item generic, so
+            // renderItem must be bridged; keyExtractor is typed directly instead.
+            // eslint-disable-next-line typescript/no-unsafe-type-assertion
             renderItem={renderMessage as any}
-            keyExtractor={(item) => (item as ChatMessage).id}
+            keyExtractor={(item: ChatMessage) => item.id}
             contentContainerStyle={{
               padding: 16,
               // transparent header spacing.

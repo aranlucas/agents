@@ -13,6 +13,9 @@ export async function getStravaAccessToken() {
   const client = await clerkClient();
   const { data: tokens } = await client.users.getUserOauthAccessToken(
     userId,
+    // Clerk's `OAuthProvider` is a closed union of built-in providers and does
+    // not include custom OAuth providers like Strava, so a cast is required.
+    // eslint-disable-next-line typescript/no-unsafe-type-assertion
     STRAVA_PROVIDER as never,
   );
   const tokenData = tokens[0];

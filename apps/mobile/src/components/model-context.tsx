@@ -1,4 +1,4 @@
-import React, { createContext, use, useState } from "react";
+import React, { createContext, use, useMemo, useState } from "react";
 
 export type Model = {
   id: string;
@@ -25,11 +25,12 @@ export function ModelProvider({
   const [extendedThinking, setExtendedThinking] = useState(true);
   const selectedModel = "sonnet-4.6";
 
-  return (
-    <ModelContext value={{ models, selectedModel, extendedThinking, setExtendedThinking }}>
-      {children}
-    </ModelContext>
+  const value = useMemo(
+    () => ({ models, selectedModel, extendedThinking, setExtendedThinking }),
+    [models, extendedThinking],
   );
+
+  return <ModelContext value={value}>{children}</ModelContext>;
 }
 
 export function useModel() {

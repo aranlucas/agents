@@ -125,6 +125,8 @@ export function Sidebar({
             {NAV_ITEMS.map((item) => {
               const isActive = pathname === item.href;
               return (
+                // expo-router types `href` as a known-route union; ours are dynamic.
+                // eslint-disable-next-line typescript/no-unsafe-type-assertion
                 <Link key={item.href} href={item.href as any} asChild>
                   <Pressable
                     className={`mx-2 rounded-[10px] px-4 py-3 ${

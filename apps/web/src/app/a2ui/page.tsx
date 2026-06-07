@@ -20,8 +20,10 @@ import {
 import { AgentChatPanel, AgentWorkspace } from "@/components/agent-workspace";
 import { HeroHeader } from "@/components/hero-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { toA2UIState } from "@/lib/agent-state";
+import { cssVars } from "@/lib/css";
 
-import type { A2UIState, A2UIStatus } from "@agents/types";
+import type { A2UIStatus } from "@agents/types";
 
 const STATUS_META: Record<A2UIStatus, { label: string }> = {
   idle: { label: "Ready to render" },
@@ -74,21 +76,19 @@ function A2UIPageInner() {
     available: "always",
   });
 
-  const state = (agent?.state ?? {}) as A2UIState;
-  const status = (state.status ?? "idle") as A2UIStatus;
+  const state = toA2UIState(agent?.state);
+  const status = state.status ?? "idle";
   const meta = STATUS_META[status] ?? STATUS_META.idle;
-  const isRunning = Boolean(agent?.isRunning);
+  const isRunning = agent?.isRunning ?? false;
 
   return (
     <main
       className="flex min-h-full flex-col"
-      style={
-        {
-          "--page-color": "var(--a2ui)",
-          "--page-color-soft": "var(--a2ui-soft)",
-          "--page-contrast": "var(--a2ui-contrast)",
-        } as React.CSSProperties
-      }
+      style={cssVars({
+        "--page-color": "var(--a2ui)",
+        "--page-color-soft": "var(--a2ui-soft)",
+        "--page-contrast": "var(--a2ui-contrast)",
+      })}
     >
       <HeroHeader
         name="A2UI Studio"

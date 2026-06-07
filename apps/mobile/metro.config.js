@@ -1,4 +1,5 @@
 const { getDefaultConfig } = require("expo/metro-config");
+const path = require("node:path");
 const { withUniwindConfig } = require("uniwind/metro");
 
 /** @type {import('expo/metro-config').MetroConfig} */
@@ -16,6 +17,12 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   // @legendapp/list ships no "." export; redirect bare import to the RN subpath.
   if (moduleName === "@legendapp/list") {
     return context.resolveRequest(context, "@legendapp/list/react-native", platform);
+  }
+  if (moduleName === "crypto") {
+    return {
+      type: "sourceFile",
+      filePath: path.resolve(__dirname, "src/shims/node-crypto.ts"),
+    };
   }
   return context.resolveRequest(context, moduleName, platform);
 };

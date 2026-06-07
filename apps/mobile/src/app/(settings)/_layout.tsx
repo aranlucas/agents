@@ -8,7 +8,10 @@ const GLASS = isLiquidGlassAvailable();
 export default function SettingsLayout() {
   const router = useRouter();
 
+  // CSS-variable colors resolve to strings; the hook types them more broadly.
+  // eslint-disable-next-line typescript/no-unsafe-type-assertion
   const appForeground = useCSSVariable("--app-foreground") as string;
+  // eslint-disable-next-line typescript/no-unsafe-type-assertion
   const appBackground = useCSSVariable("--app-background") as string;
 
   return (

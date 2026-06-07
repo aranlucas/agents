@@ -4,10 +4,14 @@ from types import SimpleNamespace
 def test_remote_a2a_metadata_provider_sends_user_id() -> None:
     from wellness_agent import main
 
+    token = main._invocation_temp_state.set(None)
     invocation_context = SimpleNamespace(
         session=SimpleNamespace(state={"user_id": "user_123"}),
     )
-    metadata = main._remote_a2a_metadata_provider(invocation_context, object())
+    try:
+        metadata = main._remote_a2a_metadata_provider(invocation_context, object())
+    finally:
+        main._invocation_temp_state.reset(token)
     assert metadata == {
         "user_id": "user_123",
         "kroger_access_token": "",

@@ -3,11 +3,11 @@ import {
   createContext,
   use,
   useCallback,
+  useMemo,
   useRef,
   useState,
-  type ReactElement,
-  type ReactNode,
 } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { LayoutChangeEvent, Pressable, Text, View } from "react-native";
 
 import { useChatContext } from "./chat-context";
@@ -105,12 +105,15 @@ export function Conversation({
     setComposerHeight(h);
   }, []);
 
-  const contextValue: ConversationContextValue = {
-    scrollToBottom,
-    promptInputStyle: { bottom: 0 },
-    onPromptInputLayout,
-    scrollButtonStyle: {},
-  };
+  const contextValue: ConversationContextValue = useMemo(
+    () => ({
+      scrollToBottom,
+      promptInputStyle: { bottom: 0 },
+      onPromptInputLayout,
+      scrollButtonStyle: {},
+    }),
+    [scrollToBottom, onPromptInputLayout],
+  );
 
   return (
     <ConversationCtx value={contextValue}>
@@ -126,8 +129,11 @@ export function Conversation({
         <LegendList
           ref={listRef}
           data={messages}
+          // LegendList's renderItem generic isn't inferred through this usage;
+          // keyExtractor is typed directly instead.
+          // eslint-disable-next-line typescript/no-unsafe-type-assertion
           renderItem={renderMessage as any}
-          keyExtractor={(item) => (item as ChatMessage).id}
+          keyExtractor={(item: ChatMessage) => item.id}
           contentContainerStyle={{
             paddingBottom: composerHeight + 16,
             maxWidth: 896,

@@ -101,19 +101,20 @@ function parseItinerary(raw: string): {
   return { days, trailing: preamble.join(" ") };
 }
 
+function fmtDate(s: string): string {
+  if (!s) return "";
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return s;
+  return d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
+
 function fmtDateRange(start: string, end: string): string {
   if (!start && !end) return "";
-  const fmt = (s: string) => {
-    if (!s) return "";
-    const d = new Date(s);
-    if (Number.isNaN(d.getTime())) return s;
-    return d.toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-    });
-  };
-  const a = fmt(start);
-  const b = fmt(end);
+  const a = fmtDate(start);
+  const b = fmtDate(end);
   if (a && b) return `${a} → ${b}`;
   return a || b;
 }
@@ -317,7 +318,7 @@ function DayCard({ day }: { day: Day }) {
               (empty — ask the agent to fill this day)
             </li>
           ) : (
-            day.activities.map((act, i) => <ActivityRow key={i} text={act} />)
+            day.activities.map((act) => <ActivityRow key={act} text={act} />)
           )}
         </ul>
       </CardContent>

@@ -1,4 +1,4 @@
-import type { Node, Root } from "mdast";
+import type { List, Node, Root, Table, TableRow } from "mdast";
 import defaultRenderRules from "./render-rules";
 import { getMergedStyles } from "./utils";
 import type { ReactElement } from "react";
@@ -40,13 +40,8 @@ export default class ASTRenderer {
     this._customBulletElement = customBulletElement;
   }
 
-  private get getListBulletCharacter() {
-    switch (this._listBulletStyle) {
-      case "disc":
-        return "\u2022";
-      case "dash":
-        return "-";
-    }
+  private get getListBulletCharacter(): string {
+    return this._listBulletStyle === "dash" ? "-" : "\u2022";
   }
 
   private debugLog(length: number, type: string) {
@@ -56,11 +51,17 @@ export default class ASTRenderer {
   }
 
   private getRenderFunction(type: keyof RenderRules): RenderFunction {
+    // The registry holds per-node-type render functions (`RenderFunction<K>`),
+    // but dispatch happens dynamically from the runtime AST type. Function
+    // parameter contravariance makes the per-type entries unassignable to the
+    // generic `RenderFunction` without a cast at this boundary.
     const fn = this._renderRules[type];
     if (!fn) {
       console.warn(`Missing render rule for node type: ${type}`);
+      // eslint-disable-next-line typescript/no-unsafe-type-assertion
       return (this._renderRules.unknown ?? (() => null)) as RenderFunction;
     }
+    // eslint-disable-next-line typescript/no-unsafe-type-assertion
     return fn as RenderFunction;
   }
 
@@ -70,7 +71,9 @@ export default class ASTRenderer {
     extras?: Record<string, any>,
   ): any => {
     const children: any[] = [];
-    let type = node.type as ValidNodeKey;
+    // `node.type` is a runtime string; narrow it to the renderer's key union.
+    // eslint-disable-next-line typescript/no-unsafe-type-assertion
+    const type = node.type as ValidNodeKey;
 
     if (type === "link" && this._onLinkPress) {
       extras = {
@@ -81,7 +84,9 @@ export default class ASTRenderer {
 
     if ("children" in node && Array.isArray(node.children)) {
       if (type === "list") {
-        const listNode = node as import("mdast").List;
+        // Dispatched by runtime type; narrow to the matching mdast node.
+        // eslint-disable-next-line typescript/no-unsafe-type-assertion
+        const listNode = node as List;
         const start = listNode.start ?? 1;
         const ordered = listNode.ordered ?? false;
 
@@ -108,7 +113,8 @@ export default class ASTRenderer {
         }
       } else if (type === "table") {
         // Handle table with header row detection
-        const tableNode = node as import("mdast").Table;
+        // eslint-disable-next-line typescript/no-unsafe-type-assertion
+        const tableNode = node as Table;
         for (let i = 0; i < tableNode.children.length; i++) {
           const rowNode = tableNode.children[i];
           if (rowNode) {
@@ -122,7 +128,8 @@ export default class ASTRenderer {
         }
       } else if (type === "tableRow") {
         // Handle table row with cell rendering
-        const tableRowNode = node as import("mdast").TableRow;
+        // eslint-disable-next-line typescript/no-unsafe-type-assertion
+        const tableRowNode = node as TableRow;
         for (let i = 0; i < tableRowNode.children.length; i++) {
           const cellNode = tableRowNode.children[i];
           if (cellNode) {

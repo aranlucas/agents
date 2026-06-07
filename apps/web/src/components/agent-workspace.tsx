@@ -204,7 +204,7 @@ function AgentToolEventRenderer() {
         const hasParams =
           typeof parameters === "object" &&
           parameters !== null &&
-          Object.keys(parameters as Record<string, unknown>).length > 0;
+          Object.keys(parameters).length > 0;
         const hasResult = status === "complete" && result !== undefined;
 
         return (

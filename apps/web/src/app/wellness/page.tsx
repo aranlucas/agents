@@ -16,8 +16,10 @@ import { AgentChatPanel, AgentWorkspace } from "@/components/agent-workspace";
 import { useAuthConnection } from "@/lib/use-auth-connection";
 import { Button } from "@/components/ui/button";
 
-import type { WellnessState, WellnessStatus } from "@agents/types";
+import type { WellnessStatus } from "@agents/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { toWellnessState } from "@/lib/agent-state";
+import { cssVars } from "@/lib/css";
 
 const KROGER_PROVIDER = "custom_shopping";
 const KROGER_STRATEGY = "oauth_custom_shopping";
@@ -330,9 +332,12 @@ function WellnessPageInner() {
 
   const connectStrava = useReverification(async () => {
     if (!user) return;
-    const existing = user.externalAccounts.find(
-      ({ provider }) => provider === "custom_strava" || String(provider) === STRAVA_STRATEGY,
-    );
+    const existing = user.externalAccounts.find((account) => {
+      // Clerk types `provider` as a closed union that omits custom providers,
+      // so widen to string before comparing against the custom strategy id.
+      const provider: string = account.provider;
+      return provider === "custom_strava" || provider === STRAVA_STRATEGY;
+    });
     const account = existing
       ? await existing.reauthorize({ redirectUrl: window.location.href })
       : await user.createExternalAccount({
@@ -362,7 +367,7 @@ function WellnessPageInner() {
 
   useEffect(() => {
     if (!agent || !krogerConnection.data) return;
-    const current = (agent.state ?? {}) as WellnessState;
+    const current = toWellnessState(agent.state);
     if (current.kroger_connected === krogerConnection.data.connected) return;
     agent.setState({
       ...current,
@@ -372,7 +377,7 @@ function WellnessPageInner() {
 
   useEffect(() => {
     if (!agent || !stravaConnection.data) return;
-    const current = (agent.state ?? {}) as WellnessState;
+    const current = toWellnessState(agent.state);
     if (current.strava_connected === stravaConnection.data.connected) return;
     agent.setState({
       ...current,
@@ -380,10 +385,10 @@ function WellnessPageInner() {
     });
   }, [agent, stravaConnection.data]);
 
-  const state = (agent?.state ?? {}) as WellnessState;
-  const status = (state.status ?? "idle") as WellnessStatus;
+  const state = toWellnessState(agent?.state);
+  const status = state.status ?? "idle";
   const meta = STATUS_META[status] ?? STATUS_META.idle;
-  const isRunning = Boolean(agent?.isRunning);
+  const isRunning = agent?.isRunning ?? false;
 
   const pendingSteps = CONNECT_STEPS.filter((s) => !state[s.connectedKey]);
 
@@ -427,13 +432,11 @@ function WellnessPageInner() {
   return (
     <main
       className="flex min-h-full flex-col"
-      style={
-        {
-          "--page-color": "var(--wellness)",
-          "--page-color-soft": "var(--wellness-soft)",
-          "--page-contrast": "var(--wellness-contrast)",
-        } as React.CSSProperties
-      }
+      style={cssVars({
+        "--page-color": "var(--wellness)",
+        "--page-color-soft": "var(--wellness-soft)",
+        "--page-contrast": "var(--wellness-contrast)",
+      })}
     >
       <HeroHeader
         name="Wellness Studio"

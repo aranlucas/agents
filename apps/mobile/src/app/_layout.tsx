@@ -1,8 +1,11 @@
 // Polyfill crypto.getRandomValues for Hermes (used by @ag-ui/client via uuid).
+// Assigning onto the read-only `globalThis.crypto` shape requires `any`.
 if (!globalThis.crypto) {
+  // eslint-disable-next-line typescript/no-unsafe-type-assertion
   (globalThis as any).crypto = {};
 }
 if (!globalThis.crypto.getRandomValues) {
+  // eslint-disable-next-line typescript/no-unsafe-type-assertion
   (globalThis.crypto as any).getRandomValues = function <T extends ArrayBufferView>(array: T): T {
     const bytes = new Uint8Array(array.buffer, array.byteOffset, array.byteLength);
     for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
@@ -13,9 +16,34 @@ if (!globalThis.crypto.getRandomValues) {
 import { ClerkProvider } from "@clerk/clerk-expo";
 import * as SecureStore from "expo-secure-store";
 import { Tabs } from "expo-router";
-import { Plane, ShoppingCart } from "lucide-react-native";
-import { useColorScheme } from "react-native";
+import { Dumbbell, HeartPulse, LayoutTemplate, Plane, ShoppingCart } from "lucide-react-native";
+import { useColorScheme, type ColorValue } from "react-native";
 import Constants from "expo-constants";
+
+type TabIconProps = {
+  color: ColorValue;
+  size: number;
+};
+
+function TravelIcon({ color, size }: TabIconProps) {
+  return <Plane color={String(color)} size={size} />;
+}
+
+function GroceryIcon({ color, size }: TabIconProps) {
+  return <ShoppingCart color={String(color)} size={size} />;
+}
+
+function FitnessIcon({ color, size }: TabIconProps) {
+  return <Dumbbell color={String(color)} size={size} />;
+}
+
+function WellnessIcon({ color, size }: TabIconProps) {
+  return <HeartPulse color={String(color)} size={size} />;
+}
+
+function A2UIIcon({ color, size }: TabIconProps) {
+  return <LayoutTemplate color={String(color)} size={size} />;
+}
 
 const tokenCache = {
   async getToken(key: string) {
@@ -46,14 +74,35 @@ function TabLayout() {
         name="travel"
         options={{
           title: "Travel",
-          tabBarIcon: ({ color, size }) => <Plane color={color} size={size} />,
+          tabBarIcon: TravelIcon,
         }}
       />
       <Tabs.Screen
         name="grocery"
         options={{
           title: "Grocery",
-          tabBarIcon: ({ color, size }) => <ShoppingCart color={color} size={size} />,
+          tabBarIcon: GroceryIcon,
+        }}
+      />
+      <Tabs.Screen
+        name="fitness"
+        options={{
+          title: "Fitness",
+          tabBarIcon: FitnessIcon,
+        }}
+      />
+      <Tabs.Screen
+        name="wellness"
+        options={{
+          title: "Wellness",
+          tabBarIcon: WellnessIcon,
+        }}
+      />
+      <Tabs.Screen
+        name="a2ui"
+        options={{
+          title: "A2UI",
+          tabBarIcon: A2UIIcon,
         }}
       />
       {/* Hide all other routes from the tab bar */}

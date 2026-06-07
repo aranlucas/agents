@@ -1,4 +1,5 @@
-import { HttpAgent } from "@ag-ui/client";
+import { HttpAgent, type AgentSubscriber, type Message } from "@ag-ui/client";
+import { A2UIMiddleware } from "@ag-ui/a2ui-middleware";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 /**
@@ -10,7 +11,13 @@ import { useCallback, useMemo, useRef, useState } from "react";
  * `onStateChanged` (the client applies snapshots + JSON-patch deltas for us).
  */
 
-export type ChatRole = "user" | "assistant" | "system" | "tool";
+export type ChatRole = "user" | "assistant" | "system" | "tool" | "activity";
+
+const CHAT_ROLES: readonly ChatRole[] = ["user", "assistant", "system", "tool", "activity"];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
 
 export type AgentMessage = {
   id: string;
@@ -22,20 +29,31 @@ type UseAgentOptions = {
   /** AG-UI endpoint of the ADK agent service. */
   url: string;
   /** Extra headers (e.g. Clerk identity) sent with every run. */
-  headers?: Record<string, string>;
+  headers?: Record<string, string> | (() => Promise<Record<string, string> | undefined>);
+  /** Enables AG-UI A2UI tool injection/activity handling for the A2UI agent. */
+  enableA2UI?: boolean;
 };
 
 // AG-UI messages are a union (text, tool calls, results). We only surface the
-// human-readable text bubbles to the UI.
-function toAgentMessage(message: {
-  id?: string | number;
-  role?: string;
-  content?: unknown;
-}): AgentMessage {
+// human-readable text bubbles to the UI. Accepts `unknown` so the streamed
+// message list can be mapped without an array-level cast.
+function toAgentMessage(message: unknown): AgentMessage {
+  const m = isRecord(message) ? message : {};
+  const role = CHAT_ROLES.find((r) => r === m.role) ?? "assistant";
+  const activityType = typeof m.activityType === "string" ? m.activityType : "agent UI";
+  const content =
+    typeof m.content === "string"
+      ? m.content
+      : role === "activity"
+        ? `Rendered ${activityType}`
+        : "";
+
+  const id = typeof m.id === "string" || typeof m.id === "number" ? m.id : null;
+
   return {
-    id: String(message.id ?? Math.random().toString(36).slice(2)),
-    role: (message.role ?? "assistant") as ChatRole,
-    content: typeof message.content === "string" ? message.content : "",
+    id: String(id ?? Math.random().toString(36).slice(2)),
+    role,
+    content,
   };
 }
 
@@ -43,7 +61,7 @@ export function useAgent<TState extends Record<string, unknown>>(
   options: UseAgentOptions,
   initialState: TState,
 ) {
-  const { url, headers } = options;
+  const { url, headers, enableA2UI } = options;
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [state, setState] = useState<TState>(initialState);
   const [isLoading, setIsLoading] = useState(false);
@@ -55,11 +73,17 @@ export function useAgent<TState extends Record<string, unknown>>(
   const initialStateRef = useRef(initialState);
 
   const agent = useMemo(() => {
-    const instance = new HttpAgent({ url, headers });
+    const instance = new HttpAgent({
+      url,
+      headers: typeof headers === "function" ? undefined : headers,
+    });
+    if (enableA2UI) {
+      instance.use(new A2UIMiddleware({ injectA2UITool: true }));
+    }
     instance.state = initialStateRef.current as Record<string, unknown>;
     return instance;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url, headerKey]);
+  }, [url, headerKey, enableA2UI]);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -77,35 +101,46 @@ export function useAgent<TState extends Record<string, unknown>>(
       // Optimistically render the user's bubble, and seed the agent's history so
       // the next run includes it.
       setMessages((prev) => [...prev, userMessage]);
-      agent.messages = [...agent.messages, userMessage as never];
+      const userAgentMessage: Message = {
+        id: userMessage.id,
+        role: "user",
+        content,
+      };
+      agent.messages = [...agent.messages, userAgentMessage];
 
       try {
-        await agent.runAgent({ runId: `run_${Date.now()}` }, {
+        agent.headers = typeof headers === "function" ? ((await headers()) ?? {}) : (headers ?? {});
+
+        const subscriber: AgentSubscriber = {
           // Fires on every streamed token and message mutation.
-          onMessagesChanged: ({ messages: next }: { messages: unknown[] }) => {
+          onMessagesChanged: ({ messages: next }) => {
             setMessages(
-              (next as Parameters<typeof toAgentMessage>[0][])
+              next
                 .map(toAgentMessage)
                 .filter(
-                  (m) => (m.role === "user" || m.role === "assistant") && m.content.length > 0,
+                  (m) =>
+                    (m.role === "user" || m.role === "assistant" || m.role === "activity") &&
+                    m.content.length > 0,
                 ),
             );
           },
           // Client has already applied snapshots + JSON-patch deltas here.
-          onStateChanged: ({ state: next }: { state: TState }) => {
-            if (next) setState((prev) => ({ ...prev, ...next }));
+          onStateChanged: ({ state: next }) => {
+            if (isRecord(next)) setState((prev) => ({ ...prev, ...next }));
           },
           onRunErrorEvent: () => {
             setError("Connection error. Is the agent running?");
           },
-        } as never);
+        };
+
+        await agent.runAgent({ runId: `run_${Date.now()}` }, subscriber);
       } catch {
         setError("Connection error. Is the agent running?");
       } finally {
         setIsLoading(false);
       }
     },
-    [agent, isLoading],
+    [agent, headers, isLoading],
   );
 
   return { messages, state, isLoading, error, sendMessage };

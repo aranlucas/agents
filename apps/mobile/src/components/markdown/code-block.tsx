@@ -89,7 +89,7 @@ export const CodeBlock = memo(function CodeBlock({ code, language }: CodeBlockPr
   const getStylesForNode = useCallback(
     (node: RendererNode): TextStyle[] => {
       const classes: string[] = node.properties?.className ?? [];
-      return classes.map((c: string) => stylesheet[c]).filter((c) => !!c) as TextStyle[];
+      return classes.map((c: string) => stylesheet[c]).filter((c) => !!c);
     },
     [stylesheet],
   );
@@ -108,7 +108,7 @@ export const CodeBlock = memo(function CodeBlock({ code, language }: CodeBlockPr
           );
         }
         if (node.value) {
-          acc.push(trimNewlines(String(node.value)));
+          acc.push(trimNewlines(node.value));
         }
         return acc;
       }, []);
@@ -126,11 +126,16 @@ export const CodeBlock = memo(function CodeBlock({ code, language }: CodeBlockPr
           contentContainerStyle={styles.scrollContent}
         >
           <View style={styles.codeContent}>
-            {rows.map((row: RendererNode, index: number) => (
-              <Text key={`row_${index}`} style={baseStyle}>
-                {renderNodeChildren(row.children || [], `row_${index}`)}
-              </Text>
-            ))}
+            {rows.map((row: RendererNode, index: number) => {
+              // Highlighted rows are positional lines with no stable id, and the
+              // list is never reordered, so a row-position key is appropriate.
+              const rowKey = `row_${index}`;
+              return (
+                <Text key={rowKey} style={baseStyle}>
+                  {renderNodeChildren(row.children || [], rowKey)}
+                </Text>
+              );
+            })}
           </View>
         </ScrollView>
       );
@@ -142,7 +147,11 @@ export const CodeBlock = memo(function CodeBlock({ code, language }: CodeBlockPr
     <View style={containerStyle}>
       <SyntaxHighlighter
         renderer={renderer}
+        // react-syntax-highlighter types CodeTag/PreTag as DOM components; we
+        // intentionally render RN `View`s instead.
+        // eslint-disable-next-line typescript/no-unsafe-type-assertion
         CodeTag={View as any}
+        // eslint-disable-next-line typescript/no-unsafe-type-assertion
         PreTag={View as any}
         style={undefined}
         customStyle={{ backgroundColor: "transparent" }}

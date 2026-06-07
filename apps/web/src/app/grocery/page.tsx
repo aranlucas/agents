@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useReverification, useUser } from "@clerk/nextjs";
 import {
   CopilotKit,
@@ -18,6 +18,8 @@ import { AgentChatPanel, AgentWorkspace } from "@/components/agent-workspace";
 import { HeroHeader } from "@/components/hero-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuthConnection } from "@/lib/use-auth-connection";
+import { toGroceryState } from "@/lib/agent-state";
+import { cssVars } from "@/lib/css";
 
 const KROGER_PROVIDER = "custom_shopping";
 const KROGER_STRATEGY = "oauth_custom_shopping";
@@ -98,7 +100,7 @@ function GroceryPageInner() {
     queryKey: ["auth-connection", "kroger"],
   });
 
-  const state = (agent?.state ?? {}) as GroceryState;
+  const state = toGroceryState(agent?.state);
   const shoppingList = state.shopping_list ?? [];
   const cart = state.cart ?? [];
   const pantry = state.pantry ?? [];
@@ -106,15 +108,14 @@ function GroceryPageInner() {
   const weeklyDeals = state.weekly_deals ?? "";
   const notes = state.notes ?? "";
   const reviewSummary = state.review_summary ?? "";
-  const status = (state.status ?? "idle") as GroceryStatus;
+  const status = state.status ?? "idle";
   const meta = STATUS_META[status] ?? STATUS_META.idle;
-  const isRunning = Boolean(agent?.isRunning);
+  const isRunning = agent?.isRunning ?? false;
   const krogerConnected = state.kroger_connected ?? false;
 
-  const cartTotal = useMemo(
-    () => cart.reduce((sum, item) => sum + (item.price ?? 0) * (item.quantity ?? 1), 0),
-    [cart],
-  );
+  // `cart` is re-derived from agent state each render, so memoizing on it never
+  // hits the cache. The reduce is cheap, so compute it directly.
+  const cartTotal = cart.reduce((sum, item) => sum + (item.price ?? 0) * (item.quantity ?? 1), 0);
 
   useConfigureSuggestions({
     suggestions: [
@@ -144,7 +145,7 @@ function GroceryPageInner() {
   useEffect(() => {
     if (!agent || !krogerConnection.data) return;
 
-    const current = (agent.state ?? {}) as GroceryState;
+    const current = toGroceryState(agent.state);
     if (current.kroger_connected === krogerConnection.data.connected) return;
 
     agent.setState({
@@ -168,13 +169,11 @@ function GroceryPageInner() {
   return (
     <main
       className="flex min-h-full flex-col"
-      style={
-        {
-          "--page-color": "var(--grocery)",
-          "--page-color-soft": "var(--grocery-soft)",
-          "--page-contrast": "var(--grocery-contrast)",
-        } as React.CSSProperties
-      }
+      style={cssVars({
+        "--page-color": "var(--grocery)",
+        "--page-color-soft": "var(--grocery-soft)",
+        "--page-contrast": "var(--grocery-contrast)",
+      })}
     >
       <HeroHeader
         name="Grocery Studio"
@@ -271,8 +270,8 @@ function ShoppingListCard({
         <EmptyHint>Ask the agent to build your list.</EmptyHint>
       ) : (
         <ul className="space-y-1.5">
-          {items.map((item, i) => (
-            <li key={i} className="flex items-center gap-2.5 text-sm text-[var(--ink)]">
+          {items.map((item) => (
+            <li key={item} className="flex items-center gap-2.5 text-sm text-[var(--ink)]">
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--success)]" />
               {item}
             </li>
@@ -376,8 +375,8 @@ function PantryCard({ items }: { items: PantryItem[] }) {
   return (
     <SectionCard title="Pantry" badge={<CountBadge n={items.length} />}>
       <ul className="grid grid-cols-2 gap-2">
-        {items.map((item, i) => (
-          <li key={`${item.name}-${i}`}>
+        {items.map((item) => (
+          <li key={`${item.name}-${item.quantity}`}>
             <Card
               size="sm"
               className="gap-0 border-[var(--border-soft)] bg-[var(--surface-soft)] px-3 py-2"

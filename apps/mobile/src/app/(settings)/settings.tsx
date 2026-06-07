@@ -104,6 +104,8 @@ function SettingsRow({
 
   if (href) {
     return (
+      // expo-router types `href` as a known-route union; this one is dynamic.
+      // eslint-disable-next-line typescript/no-unsafe-type-assertion
       <Link href={href as any} asChild>
         <Pressable>{content}</Pressable>
       </Link>

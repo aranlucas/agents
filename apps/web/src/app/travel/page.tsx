@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CopilotKit,
   useAgent,
@@ -11,19 +11,13 @@ import {
 import { z } from "zod";
 import { Plane } from "lucide-react";
 
-import type { DocStatus, TripState } from "@agents/types";
-
 import { HeroHeader } from "@/components/hero-header";
 import { AgentChatPanel, AgentWorkspace } from "@/components/agent-workspace";
 import { DocumentCanvas } from "@/components/document-canvas";
 import { PreferencesPanel } from "@/components/preferences-panel";
 import { ApprovalCard, ApprovalRequest } from "@/components/approval-dialog";
-
-const STATUS_VALUES: ReadonlyArray<DocStatus> = ["idle", "drafting", "ready_to_book", "booked"];
-
-function asStatus(s: unknown): DocStatus {
-  return STATUS_VALUES.includes(s as DocStatus) ? (s as DocStatus) : "idle";
-}
+import { toTripState } from "@/lib/agent-state";
+import { cssVars } from "@/lib/css";
 
 export default function Page() {
   return (
@@ -46,7 +40,7 @@ function TripStudio() {
     updates: [UseAgentUpdate.OnStateChanged, UseAgentUpdate.OnRunStatusChanged],
   });
 
-  const agentState = (agent?.state ?? {}) as TripState;
+  const agentState = toTripState(agent?.state);
   const destination = agentState.destination ?? "";
   const startDate = agentState.start_date ?? "";
   const endDate = agentState.end_date ?? "";
@@ -56,9 +50,9 @@ function TripStudio() {
   const summary = agentState.summary ?? "";
   const itinerary = agentState.itinerary ?? "";
   const flights = agentState.flights ?? "";
-  const status = asStatus(agentState.status);
+  const status = agentState.status ?? "idle";
   const reviewSummary = agentState.review_summary;
-  const isRunning = Boolean(agent?.isRunning);
+  const isRunning = agent?.isRunning ?? false;
 
   useFrontendTool({
     name: "request_user_approval",
@@ -71,9 +65,7 @@ function TripStudio() {
       reason: z
         .string()
         .optional()
-        .describe(
-          "One sentence on why this action is being proposed (cost, " + "tradeoff, deadline).",
-        ),
+        .describe("One sentence on why this action is being proposed (cost, tradeoff, deadline)."),
     }),
     handler: async ({ action, reason }: { action: string; reason?: string }) => {
       const id = crypto.randomUUID();
@@ -96,7 +88,7 @@ function TripStudio() {
       });
 
       if (decision.approved && agent) {
-        const current = (agent.state ?? {}) as TripState;
+        const current = toTripState(agent.state);
         agent.setState({ ...current, status: "booked" });
       }
       return decision;
@@ -141,17 +133,17 @@ function TripStudio() {
 
   const onDestinationChange = (next: string) => {
     if (!agent) return;
-    const current = (agent.state ?? {}) as TripState;
+    const current = toTripState(agent.state);
     agent.setState({ ...current, destination: next });
   };
   const onHeadlineChange = (next: string) => {
     if (!agent) return;
-    const current = (agent.state ?? {}) as TripState;
+    const current = toTripState(agent.state);
     agent.setState({ ...current, headline: next });
   };
   const onItineraryChange = (next: string) => {
     if (!agent) return;
-    const current = (agent.state ?? {}) as TripState;
+    const current = toTripState(agent.state);
     agent.setState({
       ...current,
       itinerary: next,
@@ -160,7 +152,7 @@ function TripStudio() {
   };
   const onReset = () => {
     if (!agent) return;
-    const current = (agent.state ?? {}) as TripState;
+    const current = toTripState(agent.state);
     agent.setState({
       ...current,
       destination: "",
@@ -180,13 +172,11 @@ function TripStudio() {
   return (
     <main
       className="flex min-h-full flex-col"
-      style={
-        {
-          "--page-color": "var(--travel)",
-          "--page-color-soft": "var(--travel-soft)",
-          "--page-contrast": "var(--travel-contrast)",
-        } as React.CSSProperties
-      }
+      style={cssVars({
+        "--page-color": "var(--travel)",
+        "--page-color-soft": "var(--travel-soft)",
+        "--page-contrast": "var(--travel-contrast)",
+      })}
     >
       <HeroHeader
         name="Trip Studio"

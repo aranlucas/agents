@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useReverification, useUser } from "@clerk/nextjs";
 import {
   CopilotKit,
@@ -13,10 +13,12 @@ import { AgentChatPanel, AgentWorkspace } from "@/components/agent-workspace";
 import { HeroHeader } from "@/components/hero-header";
 import { Streamdown } from "streamdown";
 
-import type { FitnessActivity, FitnessState, FitnessStatus } from "@agents/types";
+import type { FitnessActivity, FitnessStatus } from "@agents/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuthConnection } from "@/lib/use-auth-connection";
+import { toFitnessState } from "@/lib/agent-state";
+import { cssVars } from "@/lib/css";
 
 const STRAVA_STRATEGY = "oauth_custom_strava";
 
@@ -69,9 +71,12 @@ function FitnessPageInner() {
 
   const connectStrava = useReverification(async () => {
     if (!user) return;
-    const existingAccount = user.externalAccounts.find(
-      ({ provider }) => provider === "custom_strava" || String(provider) === STRAVA_STRATEGY,
-    );
+    const existingAccount = user.externalAccounts.find((account) => {
+      // Clerk types `provider` as a closed union that omits custom providers,
+      // so widen to string before comparing against the custom strategy id.
+      const provider: string = account.provider;
+      return provider === "custom_strava" || provider === STRAVA_STRATEGY;
+    });
 
     const account = existingAccount
       ? await existingAccount.reauthorize({ redirectUrl: window.location.href })
@@ -93,13 +98,13 @@ function FitnessPageInner() {
     queryKey: ["auth-connection", "strava"],
   });
 
-  const state = (agent?.state ?? {}) as FitnessState;
+  const state = toFitnessState(agent?.state);
   const activities = state.activities ?? [];
   const trainingPlan = state.training_plan ?? "";
   const objectiveResearch = state.objective_research ?? "";
-  const status = (state.status ?? "idle") as FitnessStatus;
+  const status = state.status ?? "idle";
   const meta = STATUS_META[status] ?? STATUS_META.idle;
-  const isRunning = Boolean(agent?.isRunning);
+  const isRunning = agent?.isRunning ?? false;
   const stravaConnected = state.strava_connected ?? false;
 
   useConfigureSuggestions({
@@ -128,7 +133,7 @@ function FitnessPageInner() {
   useEffect(() => {
     if (!agent || !stravaConnection.data) return;
 
-    const current = (agent.state ?? {}) as FitnessState;
+    const current = toFitnessState(agent.state);
     if (current.strava_connected === stravaConnection.data.connected) return;
 
     agent.setState({
@@ -148,18 +153,18 @@ function FitnessPageInner() {
     }
   };
 
-  const totals = useMemo(() => summarizeActivities(activities), [activities]);
+  // `activities` is re-derived from agent state each render, so memoizing on it
+  // never hits the cache. The reduce is cheap, so compute it directly.
+  const totals = summarizeActivities(activities);
 
   return (
     <main
       className="flex min-h-full flex-col"
-      style={
-        {
-          "--page-color": "var(--fitness)",
-          "--page-color-soft": "var(--fitness-soft)",
-          "--page-contrast": "var(--fitness-contrast)",
-        } as React.CSSProperties
-      }
+      style={cssVars({
+        "--page-color": "var(--fitness)",
+        "--page-color-soft": "var(--fitness-soft)",
+        "--page-contrast": "var(--fitness-contrast)",
+      })}
     >
       <HeroHeader
         name="Fitness Studio"

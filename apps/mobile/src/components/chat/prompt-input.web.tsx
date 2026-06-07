@@ -18,9 +18,9 @@ export function PromptInput({ children }: { children: ReactNode }) {
   let body: ReactNode = null;
 
   Children.forEach(children, (child) => {
-    if (isValidElement(child) && (child.type as any) === PromptInputAction) {
+    if (isValidElement(child) && child.type === PromptInputAction) {
       actions.push(child);
-    } else if (isValidElement(child) && (child.type as any) === PromptInputBody) {
+    } else if (isValidElement(child) && child.type === PromptInputBody) {
       body = child;
     }
   });
@@ -67,7 +67,7 @@ export function PromptInputBody({ children }: { children: ReactNode }) {
   let submit: ReactNode = null;
 
   Children.forEach(children, (child) => {
-    if (isValidElement(child) && (child.type as any) === PromptInputSubmit) {
+    if (isValidElement(child) && child.type === PromptInputSubmit) {
       submit = child;
     } else {
       textarea.push(child);
@@ -113,6 +113,8 @@ export function PromptInputTextarea({
     <TextInput
       nativeID="composer"
       className="text-foreground placeholder:text-muted-foreground/35 min-h-24 w-full bg-transparent px-4 pt-3.5 pb-1.5 text-[13px] leading-relaxed outline-none"
+      // `resize` is a web-only CSS property not present in RN's style types.
+      // eslint-disable-next-line typescript/no-unsafe-type-assertion
       style={{ maxHeight: 200, resize: "none" } as any}
       value={input}
       onChangeText={setInput}
@@ -121,7 +123,10 @@ export function PromptInputTextarea({
       multiline
       maxLength={maxLength}
       onKeyPress={(e) => {
-        if ((e as any).nativeEvent.key === "Enter" && !(e as any).nativeEvent.shiftKey) {
+        // Web key events expose `key`/`shiftKey`, which RN's event type omits.
+        // eslint-disable-next-line typescript/no-unsafe-type-assertion
+        const nativeEvent = (e as any).nativeEvent as { key: string; shiftKey: boolean };
+        if (nativeEvent.key === "Enter" && !nativeEvent.shiftKey) {
           e.preventDefault();
           onSend();
         }

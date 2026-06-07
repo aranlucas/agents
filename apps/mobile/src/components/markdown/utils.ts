@@ -1,4 +1,4 @@
-import type { Node, Parent } from "mdast";
+import type { Node } from "mdast";
 import type { Extension } from "mdast-util-from-markdown";
 import { Platform, StyleSheet, type TextStyle, type ViewStyle } from "react-native";
 import type { StyleMap } from "./types";
@@ -156,33 +156,34 @@ const defaultStyles: StyleMap = {
 // Remove text-only style props for View-safe styles
 type TextOnlyProps = Omit<TextStyle, keyof ViewStyle>;
 
-function removeTextStyleProps<T extends ViewStyle | TextStyle>(style: T): ViewStyle {
-  const textOnlyKeys: (keyof TextOnlyProps)[] = [
-    "color",
-    "fontFamily",
-    "fontSize",
-    "fontStyle",
-    "fontWeight",
-    "letterSpacing",
-    "lineHeight",
-    "textAlign",
-    "textDecorationLine",
-    "textDecorationStyle",
-    "textDecorationColor",
-    "textShadowColor",
-    "textShadowOffset",
-    "textShadowRadius",
-    "textTransform",
-    "includeFontPadding",
-    "textAlignVertical",
-    "fontVariant",
-    "writingDirection",
-  ];
-  const result = { ...style };
-  textOnlyKeys.forEach((key) => {
-    delete (result as any)[key];
-  });
-  return result as ViewStyle;
+const TEXT_ONLY_KEYS: (keyof TextOnlyProps)[] = [
+  "color",
+  "fontFamily",
+  "fontSize",
+  "fontStyle",
+  "fontWeight",
+  "letterSpacing",
+  "lineHeight",
+  "textAlign",
+  "textDecorationLine",
+  "textDecorationStyle",
+  "textDecorationColor",
+  "textShadowColor",
+  "textShadowOffset",
+  "textShadowRadius",
+  "textTransform",
+  "includeFontPadding",
+  "textAlignVertical",
+  "fontVariant",
+  "writingDirection",
+];
+
+function removeTextStyleProps(style: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...style };
+  for (const key of TEXT_ONLY_KEYS) {
+    delete result[key];
+  }
+  return result;
 }
 
 export function getMergedStyles(styles: StyleMap | null = null, merge = false): StyleMap {
@@ -191,13 +192,13 @@ export function getMergedStyles(styles: StyleMap | null = null, merge = false): 
   const allKeys = new Set([...Object.keys(defaultStyles), ...(styles ? Object.keys(styles) : [])]);
 
   for (const key of allKeys) {
-    const base = StyleSheet.flatten(defaultStyles[key] as any) ?? {};
-    const custom = StyleSheet.flatten(styles?.[key] as any) ?? {};
+    const base: Record<string, unknown> = { ...StyleSheet.flatten(defaultStyles[key]) };
+    const custom: Record<string, unknown> = { ...StyleSheet.flatten(styles?.[key]) };
 
-    const final = merge ? { ...base, ...custom } : styles?.[key] ? custom : base;
+    const final: Record<string, unknown> = merge ? { ...base, ...custom } : styles?.[key] ? custom : base;
 
     output[key] = final;
-    output[`_VIEW_SAFE_${key}`] = removeTextStyleProps(final as any);
+    output[`_VIEW_SAFE_${key}`] = removeTextStyleProps(final);
   }
 
   return StyleSheet.create(output);
@@ -216,8 +217,8 @@ function addKeysRecursively(node: Node): void {
   if (node.position) {
     node.key = getKey(node);
   }
-  if ("children" in node && Array.isArray((node as Parent).children)) {
-    for (const child of (node as Parent).children) {
+  if ("children" in node && Array.isArray(node.children)) {
+    for (const child of node.children) {
       addKeysRecursively(child);
     }
   }
@@ -285,7 +286,7 @@ export function resolveReference(): Extension {
 
         transform(tree, definitions);
 
-        for (const index of definitionIndices.reverse()) {
+        for (const index of definitionIndices.toReversed()) {
           tree.children.splice(index, 1);
         }
       },

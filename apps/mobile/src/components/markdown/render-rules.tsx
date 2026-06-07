@@ -11,10 +11,14 @@ import {
 import type { RenderRules, StyleMap } from "./types";
 import { CodeBlock } from "./code-block";
 
-// Helper to safely get styles with proper casting
+// `StyleMap` values are the broad `StyleProp<ViewStyle | TextStyle | ImageStyle>`
+// union; these helpers narrow a looked-up entry to the concrete style type the
+// caller needs. The narrowing cast is unavoidable at this boundary.
 const getViewStyle = (styles: StyleMap, key: string): ViewStyle | undefined =>
+  // eslint-disable-next-line typescript/no-unsafe-type-assertion
   styles[key] as ViewStyle | undefined;
 const getTextStyle = (styles: StyleMap, key: string): TextStyle | undefined =>
+  // eslint-disable-next-line typescript/no-unsafe-type-assertion
   styles[key] as TextStyle | undefined;
 
 const renderRules: RenderRules = {
@@ -78,6 +82,7 @@ const renderRules: RenderRules = {
   image: ({ node, styles }) => {
     const imageProps: ImageProps = {
       source: { uri: node.url },
+      // eslint-disable-next-line typescript/no-unsafe-type-assertion
       style: styles.image as ImageStyle,
     };
     if (node.alt) {

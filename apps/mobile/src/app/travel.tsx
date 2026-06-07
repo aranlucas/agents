@@ -1,146 +1,31 @@
-import React, { useMemo, useRef, useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ActivityIndicator,
-  StyleSheet,
-} from "react-native";
-import { TripState } from "@agents/types";
-import { useAuth } from "@clerk/clerk-expo";
-import Constants from "expo-constants";
-import { useAgent } from "@/utils/use-agent";
+import type { TripState } from "@agents/types";
+import { AgentScreen, Field, SummaryCard } from "@/components/agent-screen";
 
-const TRAVEL_AGENT_URL =
-  Constants.expoConfig?.extra?.travelAgentUrl ??
-  process.env.EXPO_PUBLIC_TRAVEL_AGENT_URL ??
-  "http://localhost:8000/";
+const TRAVEL_CONFIG = {
+  id: "travel" as const,
+  title: "Trip Planner",
+  subtitle: "Tell me where you want to go.",
+  placeholder: "Plan a trip...",
+  accentColor: "#b45309",
+  renderSummary: (state: TripState) =>
+    state.destination ? (
+      <SummaryCard>
+        <Field label="Destination" value={state.destination} />
+        <Field label="Headline" value={state.headline} />
+        <Field
+          label="Dates"
+          value={
+            state.start_date && state.end_date
+              ? `${state.start_date} to ${state.end_date}`
+              : undefined
+          }
+        />
+        <Field label="Travelers" value={state.travelers} />
+        <Field label="Status" value={state.status} />
+      </SummaryCard>
+    ) : null,
+};
 
 export default function TravelScreen() {
-  const { userId } = useAuth();
-  const [input, setInput] = useState("");
-  const scrollRef = useRef<ScrollView>(null);
-
-  // Forward the Clerk identity the same way the web copilotkit route does.
-  const headers = useMemo(() => (userId ? { "x-clerk-user-id": userId } : undefined), [userId]);
-
-  const { messages, state, isLoading, error, sendMessage } = useAgent<TripState>(
-    { url: TRAVEL_AGENT_URL, headers },
-    {},
-  );
-
-  const onSend = () => {
-    const text = input;
-    setInput("");
-    sendMessage(text);
-  };
-
-  return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      {state.destination ? (
-        <View style={styles.tripCard}>
-          <Text style={styles.tripDestination}>{state.destination}</Text>
-          {state.headline ? <Text style={styles.tripHeadline}>{state.headline}</Text> : null}
-          {state.start_date && state.end_date ? (
-            <Text style={styles.tripDates}>
-              {state.start_date} → {state.end_date}
-            </Text>
-          ) : null}
-        </View>
-      ) : (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyTitle}>Trip Planner</Text>
-          <Text style={styles.emptySubtitle}>Tell me where you want to go.</Text>
-        </View>
-      )}
-
-      <ScrollView
-        ref={scrollRef}
-        style={styles.messageList}
-        onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
-      >
-        {messages.map((m) => (
-          <View
-            key={m.id}
-            style={[styles.bubble, m.role === "user" ? styles.userBubble : styles.agentBubble]}
-          >
-            <Text
-              style={[styles.bubbleText, m.role === "user" ? styles.userText : styles.agentText]}
-            >
-              {m.content}
-            </Text>
-          </View>
-        ))}
-        {isLoading && <ActivityIndicator style={{ margin: 12 }} />}
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-      </ScrollView>
-
-      <View style={styles.inputRow}>
-        <TextInput
-          style={styles.input}
-          value={input}
-          onChangeText={setInput}
-          placeholder="Plan a trip…"
-          placeholderTextColor="#999"
-          onSubmitEditing={onSend}
-          returnKeyType="send"
-          multiline
-        />
-        <Pressable style={styles.sendButton} onPress={onSend}>
-          <Text style={styles.sendText}>Send</Text>
-        </Pressable>
-      </View>
-    </KeyboardAvoidingView>
-  );
+  return <AgentScreen<TripState> config={TRAVEL_CONFIG} initialState={{}} />;
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
-  tripCard: { padding: 16, borderBottomWidth: 1, borderBottomColor: "#eee" },
-  tripDestination: { fontSize: 20, fontWeight: "700" },
-  tripHeadline: { fontSize: 14, color: "#666", marginTop: 2 },
-  tripDates: { fontSize: 12, color: "#999", marginTop: 4 },
-  emptyState: { padding: 24, alignItems: "center" },
-  emptyTitle: { fontSize: 22, fontWeight: "700" },
-  emptySubtitle: { fontSize: 14, color: "#999", marginTop: 4 },
-  messageList: { flex: 1, paddingHorizontal: 12 },
-  bubble: { marginVertical: 4, padding: 10, borderRadius: 12, maxWidth: "85%" },
-  userBubble: { backgroundColor: "#000", alignSelf: "flex-end" },
-  agentBubble: { backgroundColor: "#f0f0f0", alignSelf: "flex-start" },
-  bubbleText: { fontSize: 14, lineHeight: 20 },
-  userText: { color: "#fff" },
-  agentText: { color: "#111" },
-  error: { color: "#c0392b", fontSize: 13, margin: 12, textAlign: "center" },
-  inputRow: {
-    flexDirection: "row",
-    padding: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
-    gap: 8,
-  },
-  input: {
-    flex: 1,
-    minHeight: 40,
-    maxHeight: 120,
-    backgroundColor: "#f5f5f5",
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: "#111",
-  },
-  sendButton: {
-    backgroundColor: "#000",
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    justifyContent: "center",
-  },
-  sendText: { color: "#fff", fontWeight: "600", fontSize: 14 },
-});

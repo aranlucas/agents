@@ -5,6 +5,8 @@ import { useCSSVariable } from "uniwind";
 export function useSystemBackgroundColor() {
   const color = useCSSVariable("--app-background");
   useEffect(() => {
-    SystemUI.setBackgroundColorAsync(color as unknown as string);
+    if (typeof color === "string") {
+      void SystemUI.setBackgroundColorAsync(color);
+    }
   }, [color]);
 }

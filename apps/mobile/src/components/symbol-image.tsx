@@ -56,5 +56,7 @@ export function SymbolImage({
   }
 
   const Icon = LUCIDE_FALLBACKS[name] ?? HelpCircle;
+  // The SF Symbol `ImageStyle` doesn't match the Lucide SVG icon's style type.
+  // eslint-disable-next-line typescript/no-unsafe-type-assertion
   return <Icon size={size} color={tintColor} style={style as any} />;
 }

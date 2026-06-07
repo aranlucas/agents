@@ -1,10 +1,11 @@
 import * as WebBrowser from "expo-web-browser";
 import React from "react";
 import { Linking, Platform, StyleSheet, Text, View } from "react-native";
+import type { TextStyle, ViewStyle } from "react-native";
 import { useCSSVariable } from "uniwind";
 import Markdown from "./markdown";
 
-const VAR_NAMES = [
+const VAR_NAMES: string[] = [
   "--app-foreground",
   "--app-muted-foreground",
   "--app-border",
@@ -13,7 +14,7 @@ const VAR_NAMES = [
   "--app-accent",
   // Tailwind blue
   "--color-blue-400",
-] as const;
+];
 
 /**
  * Convert single newlines to hard breaks (two trailing spaces) so they render
@@ -24,9 +25,10 @@ function preserveNewlines(md: string): string {
 }
 
 export function ChatMarkdown({ children }: { children: string }) {
-  const [text, text2, border, bg2, bg3, fill3, link] = useCSSVariable(
-    VAR_NAMES as unknown as string[],
-  ) as string[];
+  // CSS-variable values are typed `string | number | undefined`; these are all
+  // color/length custom properties that resolve to strings in this app.
+  // eslint-disable-next-line typescript/no-unsafe-type-assertion
+  const [text, text2, border, bg2, bg3, fill3, link] = useCSSVariable(VAR_NAMES) as string[];
 
   const isWeb = process.env.EXPO_OS === "web";
   const baseFontSize = isWeb ? 13 : 16;
@@ -104,31 +106,41 @@ export function ChatMarkdown({ children }: { children: string }) {
       styles={markdownStyles}
       onLinkPress={(url) => {
         if (process.env.EXPO_OS === "web") {
-          Linking.openURL(url);
+          void Linking.openURL(url);
         } else {
-          WebBrowser.openBrowserAsync(url, {
+          void WebBrowser.openBrowserAsync(url, {
             presentationStyle: WebBrowser.WebBrowserPresentationStyle.AUTOMATIC,
           });
         }
       }}
       renderRules={{
-        listItem: ({ node, styles, children, extras }) => (
-          <View key={node.key} style={styles.listItem as any}>
-            {extras?.customListStyleType ? (
-              extras.customListStyleType
-            ) : (
-              <Text
-                style={[
-                  styles.listBullet as any,
-                  extras?.ordered ? fullStyles.orderedBullet : fullStyles.unorderedBullet,
-                ]}
-              >
-                {extras?.listStyleType}
-              </Text>
-            )}
-            <View style={styles.listItemContent as any}>{children}</View>
-          </View>
-        ),
+        listItem: ({ node, styles, children: itemChildren, extras }) => {
+          // StyleMap entries are the broad `StyleProp` union; narrow them to the
+          // concrete style types the RN `style` props expect.
+          // eslint-disable-next-line typescript/no-unsafe-type-assertion
+          const itemStyle = styles.listItem as ViewStyle;
+          // eslint-disable-next-line typescript/no-unsafe-type-assertion
+          const bulletStyle = styles.listBullet as TextStyle;
+          // eslint-disable-next-line typescript/no-unsafe-type-assertion
+          const contentStyle = styles.listItemContent as ViewStyle;
+          return (
+            <View key={node.key} style={itemStyle}>
+              {extras?.customListStyleType ? (
+                extras.customListStyleType
+              ) : (
+                <Text
+                  style={[
+                    bulletStyle,
+                    extras?.ordered ? fullStyles.orderedBullet : fullStyles.unorderedBullet,
+                  ]}
+                >
+                  {extras?.listStyleType}
+                </Text>
+              )}
+              <View style={contentStyle}>{itemChildren}</View>
+            </View>
+          );
+        },
       }}
       markdown={preserveNewlines(children)}
     />

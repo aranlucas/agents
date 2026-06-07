@@ -10,20 +10,13 @@ import Constants from "expo-constants";
 
 import { fetch } from "expo/fetch";
 
-interface ExpoExtraRouterConfig {
-  router?: {
-    origin?: any;
-    generatedOrigin?: any;
-  };
-}
-
 const manifest = Constants.expoConfig;
 
 const polyfillSymbol = Symbol.for("expo.polyfillFetchWithWindowLocation");
 
-export function wrapFetchWithWindowLocation(fetch: Function & { [polyfillSymbol]?: boolean }) {
-  if (fetch[polyfillSymbol]) {
-    return fetch;
+export function wrapFetchWithWindowLocation(baseFetch: Function & { [polyfillSymbol]?: boolean }) {
+  if (baseFetch[polyfillSymbol]) {
+    return baseFetch;
   }
 
   const _fetch = (...props: any[]) => {
@@ -35,7 +28,7 @@ export function wrapFetchWithWindowLocation(fetch: Function & { [polyfillSymbol]
       }
     }
 
-    return fetch(...props);
+    return baseFetch(...props);
   };
 
   _fetch[polyfillSymbol] = true;
@@ -43,7 +36,7 @@ export function wrapFetchWithWindowLocation(fetch: Function & { [polyfillSymbol]
   return _fetch;
 }
 
-const extra = manifest?.extra as ExpoExtraRouterConfig | null;
+const extra = manifest?.extra;
 
 function getOrigin() {
   assertOrigin();

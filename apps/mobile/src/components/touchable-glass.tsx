@@ -111,6 +111,8 @@ function TouchableGlassFallback({
         ]}
       >
         <BlurViewRawBackdrop />
+        {/* children may be typed as SharedValue<ReactNode> via animated props. */}
+        {/* eslint-disable-next-line typescript/no-unsafe-type-assertion */}
         {children as React.ReactNode}
       </Animated.View>
     </TouchableWithoutFeedback>

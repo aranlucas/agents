@@ -3,14 +3,14 @@ import { TouchableGlass } from "@/components/touchable-glass";
 import { GlassContainer, GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import { useEffect, useRef, type ReactNode } from "react";
 import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
-import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+import Animated, { createAnimatedComponent, FadeIn, FadeOut } from "react-native-reanimated";
 
 import { cn } from "@/utils/tailwind";
 import { BlurView } from "expo-blur";
 import { useChatContext } from "./chat-context";
 import { useConversationContext } from "./conversation";
 
-const AnimatedGlassContainer = Animated.createAnimatedComponent(GlassContainer);
+const AnimatedGlassContainer = createAnimatedComponent(GlassContainer);
 
 /**
  * Root container for the message composer. Positions itself at the bottom of

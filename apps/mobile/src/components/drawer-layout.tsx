@@ -143,7 +143,7 @@ export function DrawerLayout({
   const onGestureFinish = React.useCallback(
     (nextOpen: boolean) => {
       endInteraction();
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       if (nextOpen) {
         Keyboard.dismiss();
       }

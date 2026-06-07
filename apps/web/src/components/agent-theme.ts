@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { cssVars } from "@/lib/css";
 
 export type AgentTheme = "travel" | "grocery" | "fitness" | "wellness" | "a2ui";
 
@@ -45,9 +45,9 @@ export const AGENT_THEMES: Record<
 
 export function agentStyle(theme: AgentTheme) {
   const t = AGENT_THEMES[theme];
-  return {
+  return cssVars({
     "--agent-color": t.colorVar,
     "--agent-soft": t.softVar,
     "--agent-contrast": t.contrastVar,
-  } as CSSProperties;
+  });
 }
