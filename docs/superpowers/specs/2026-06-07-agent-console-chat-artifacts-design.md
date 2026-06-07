@@ -280,3 +280,7 @@ for this spec.**
   button; otherwise ship as visual-disabled.
 - Resizable split + fullscreen transitions must not thrash the streaming `streamdown` render —
   test with an active stream.
+- **Single provider → global context.** Consolidating five `CopilotKit` providers into one
+  (`/console/[agent]`) means `useAgentContext` is global across all agents (a CopilotKit
+  constraint — no per-agent scoping). Fine for switching; just means cross-agent context isn't
+  isolated. Branch inside an agent's prompt/tools if a context entry should only apply to it.
