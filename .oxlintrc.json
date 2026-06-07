@@ -33,13 +33,7 @@
     "import/no-unassigned-import": [
       "warn",
       {
-        "allow": [
-          "**/*.css",
-          "**/env",
-          "expo",
-          "whatwg-fetch",
-          "react-native/**"
-        ]
+        "allow": ["**/*.css", "**/env", "expo", "whatwg-fetch", "react-native/**"]
       }
     ],
     "react/style-prop-object": [
