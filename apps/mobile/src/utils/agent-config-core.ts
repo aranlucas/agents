@@ -51,13 +51,25 @@ function normalizeLocalhostForPlatform(value: string, os: string) {
   );
 }
 
+function nonEmpty(value: string | undefined) {
+  return value?.trim() || undefined;
+}
+
+function envOrConfig(
+  env: Record<string, string | undefined>,
+  envKey: string,
+  configValue: string | undefined,
+) {
+  return envKey in env ? nonEmpty(env[envKey]) : nonEmpty(configValue);
+}
+
 export function getAgentUrl(
   agentId: AgentId,
   config: AgentRuntimeConfig,
   os: string,
   env: Record<string, string | undefined> = process.env,
 ) {
-  const runtimeBaseUrl = env[COPILOTKIT_RUNTIME_ENV_KEY] ?? config.copilotKitRuntimeUrl;
+  const runtimeBaseUrl = envOrConfig(env, COPILOTKIT_RUNTIME_ENV_KEY, config.copilotKitRuntimeUrl);
   if (runtimeBaseUrl) {
     return normalizeLocalhostForPlatform(
       normalizeCopilotKitRuntimeUrl(runtimeBaseUrl, agentId),
@@ -65,7 +77,7 @@ export function getAgentUrl(
     );
   }
 
-  const configured = env[EXPO_PUBLIC_ENV_KEYS[agentId]] ?? config[agentId];
+  const configured = envOrConfig(env, EXPO_PUBLIC_ENV_KEYS[agentId], config[agentId]);
   const baseUrl = configured ?? getDefaultAgentBaseUrl(agentId, os);
   return normalizeAguiUrl(normalizeLocalhostForPlatform(baseUrl, os));
 }

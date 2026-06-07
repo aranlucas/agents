@@ -44,13 +44,17 @@
       "expo-secure-store"
     ],
     "extra": {
-      "clerkPublishableKey": "",
-      "copilotKitRuntimeUrl": "",
-      "travelAgentUrl": "http://localhost:8000/",
-      "groceryAgentUrl": "http://localhost:8001/",
-      "fitnessAgentUrl": "http://localhost:8002/",
-      "wellnessAgentUrl": "http://localhost:8003/",
-      "a2uiAgentUrl": "http://localhost:8004/"
+      "clerkPublishableKey": "pk_test_bG9naWNhbC12aXBlci0zMy5jbGVyay5hY2NvdW50cy5kZXYk",
+      "copilotKitRuntimeUrl": "https://agents-lucas.vercel.app/api/copilotkit",
+      "travelAgentUrl": "https://agents-travel-production.up.railway.app",
+      "groceryAgentUrl": "https://agents-grocery-production.up.railway.app",
+      "fitnessAgentUrl": "https://agents-fitness-production.up.railway.app",
+      "wellnessAgentUrl": "https://agents-wellness-production.up.railway.app",
+      "a2uiAgentUrl": "https://agents-a2ui-production.up.railway.app",
+      "router": {},
+      "eas": {
+        "projectId": "55635582-fffb-4745-913d-ae2dae61fbe8"
+      }
     },
     "experiments": {
       "typedRoutes": true,

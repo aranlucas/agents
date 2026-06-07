@@ -40,6 +40,7 @@ const handler = createCopilotRuntimeHandler({
   runtime,
   basePath: "/api/copilotkit",
   mode: "multi-route",
+  cors: true,
   hooks: {
     // Attach per-request auth context. The runtime forwards `authorization` +
     // all `x-*` headers from this request to the remote agent (see
@@ -80,5 +81,6 @@ const handler = createCopilotRuntimeHandler({
 
 export const GET = handler;
 export const POST = handler;
+export const OPTIONS = handler;
 export const PATCH = handler;
 export const DELETE = handler;

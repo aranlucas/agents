@@ -62,4 +62,34 @@ describe("getAgentUrl", () => {
       "http://10.0.2.2:3000/api/copilotkit/agent/travel/run",
     );
   });
+
+  it("lets an explicit empty runtime environment value use direct prod URLs", () => {
+    assert.equal(
+      getAgentUrl(
+        "a2ui",
+        {
+          copilotKitRuntimeUrl: "https://app.example.com/api/copilotkit",
+          a2ui: "https://agents-a2ui-production.up.railway.app",
+        },
+        "ios",
+        { EXPO_PUBLIC_COPILOTKIT_RUNTIME_URL: "" },
+      ),
+      "https://agents-a2ui-production.up.railway.app/agui",
+    );
+  });
+
+  it("lets explicit localhost agent URLs override prod direct URLs", () => {
+    assert.equal(
+      getAgentUrl(
+        "a2ui",
+        { a2ui: "https://agents-a2ui-production.up.railway.app" },
+        "ios",
+        {
+          EXPO_PUBLIC_COPILOTKIT_RUNTIME_URL: "",
+          EXPO_PUBLIC_A2UI_AGENT_URL: "http://localhost:8004",
+        },
+      ),
+      "http://localhost:8004/agui",
+    );
+  });
 });
