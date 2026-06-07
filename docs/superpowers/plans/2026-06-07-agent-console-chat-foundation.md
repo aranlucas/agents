@@ -185,6 +185,8 @@ git commit -m "feat(web): agent registry + ArtifactKind type"
 
 Maps the flat `agent.messages` array into ordered render items: user bubbles, and assistant turns that bundle their text, reasoning, and tool calls.
 
+> **Implemented correction (verified against `@ag-ui/core@0.0.53`):** reasoning is **not** a property on the assistant message — it arrives as a separate `{ role: "reasoning", id, content }` message preceding the assistant turn. `toolCalls` are `{ id, type, function: { name, arguments } }`. The mapping buffers a reasoning message and attaches it to the next assistant turn. The test/impl below reflect this.
+
 **Files:**
 - Create: `apps/web/src/components/chat/messages.ts`
 - Test: `apps/web/src/components/chat/messages.test.ts`
