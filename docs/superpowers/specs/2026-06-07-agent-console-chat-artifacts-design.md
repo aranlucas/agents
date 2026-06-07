@@ -41,6 +41,8 @@ chat/artifact surfaces feel inconsistent across `travel`, `grocery`, `fitness`, 
 | Aesthetic | Personality | **Agent console / utilitarian** |
 | Architecture | Chat rendering | **Fully headless** (`useAgent`/`useCopilotKit`, no `CopilotChat`) |
 | Layout | Full-screen | Slim left icon rail **replaces** per-page HeroHeader on agent pages |
+| Agents | Selector | **Agent dropdown in the composer** (replaces the model picker) switches the active agent; left rail keeps thread actions (new/history) |
+| Routing | Console | **Single console route** `/console/<agent>`, one CopilotKit provider, active agent in the URL, switched in place (no full reload) |
 | Artifact panel | States | **closed / split (~48%, resizable) / fullscreen** |
 | Artifact model | Storage | **ADK-native artifacts** (`save_artifact`/`load_artifact`), versioning by ADK |
 | Artifact store | Backing | **Custom `SqlAlchemyArtifactService`** over the existing DB (Postgres prod / SQLite-libSQL dev), mirroring `session_service.py` |
@@ -97,14 +99,20 @@ Locked via interactive mockups (`.superpowers/brainstorm/.../chat-fullscreen-v2.
 - **Human-in-the-loop** → existing `request_user_approval` renders as an inline approval card in
   the stream (replaces the current `interrupts` slot).
 
-**Composer (`PromptInput`)**: auto-grow textarea, attach button (`useAttachments`), agent/model
-label, suggestion pills (`useConfigureSuggestions`), round send button that becomes **Stop**
-while running.
+**Composer (`PromptInput`)**: auto-grow textarea, attach button (`useAttachments`), **agent
+selector dropdown** (switches the active agent — replaces a model picker; shows the agent's
+glyph/color), suggestion pills (`useConfigureSuggestions`), round send button that becomes
+**Stop** while running.
 
-**Artifact panel**: header (kind icon, title, `name · vN · status`), `⤢` fullscreen toggle,
-`✕` close; right tools rail (fullscreen, run/preview where applicable, undo, redo, copy,
-versions). **Inline artifact preview card** in the conversation (title + content peek + `⤢`)
-opens/expands the panel.
+**Agent switching**: selecting a different agent navigates to `/console/<agent>` and switches
+the active `agentId` in place — the conversation, suggestions, frontend tools, artifact panel,
+and `--page-color` theme all swap to the chosen agent. No full page reload.
+
+**Artifact panel**: header (kind icon, title, `name · vN · status`) owns the single **`✕`
+close**; the right **tools rail** owns the single **`⤢` fullscreen** plus run/preview (where
+applicable), undo, redo, copy, versions. No affordance is duplicated between header and rail.
+**Inline artifact preview card** in the conversation (title + content peek + `⤢`) opens/expands
+the panel.
 
 **Brand**: existing tokens (`--bg`, `--surface`, `--accent`, per-agent `--travel`/`--grocery`/…),
 Schibsted Grotesk body + JetBrains Mono metadata, light + dark. No new color system.
@@ -130,9 +138,15 @@ New directory `apps/web/src/components/chat/` (shadcn-style, reusing `components
   `agent-workspace.tsx`, and the ~300 lines of `.agent-chat-shell [data-testid…]` /
   `.copilotKit*` CSS in `globals.css` (§264–567). Keep the token/`@theme` blocks and
   `streamdown/styles.css`.
-- `agent-workspace.tsx` is replaced by `WorkspaceShell` + the chat library. The per-page files
-  (`app/travel/page.tsx`, etc.) keep their `CopilotKit` provider, `useAgent`, `useFrontendTool`,
-  `useConfigureSuggestions` wiring and pass page-specific artifact renderers into the shell.
+- **Single console route** `app/console/[agent]/page.tsx` hosts one `CopilotKit` provider with
+  all agents registered (the runtime already registers them in `api/copilotkit/route.ts`). The
+  active `agentId` comes from the `[agent]` route param; switching navigates + swaps in place.
+  Old `/travel`, `/grocery`, … routes redirect to `/console/<agent>`.
+- Per-agent specifics move into a **config registry** (`components/chat/agents/<agent>.ts(x)`):
+  glyph, `--page-color`, suggestions, `useFrontendTool` registrations, artifact `kind` +
+  renderer. `WorkspaceShell` reads the active agent's config; switching uses the **key-remount**
+  pattern (`key={agentId}`) so per-agent hooks re-register cleanly.
+- `agent-workspace.tsx` is replaced by `WorkspaceShell` + the chat library.
 - We hand-build (cost of going headless): autoscroll, streaming cursor, input keyboard handling
   (Enter send / Shift-Enter newline), stop button.
 - Tool renderers: register per-tool with `useRenderTool` (e.g. `write_itinerary`,
@@ -223,9 +237,11 @@ for this spec.**
 - `pnpm check` (oxlint + ruff) clean.
 
 ## 10. Milestones (ordered, single spec)
-1. **Chat foundation** — `components/chat/` headless library + `WorkspaceShell`; wire `travel`;
-   delete skinning CSS. Artifact panel reads existing travel state (no Python yet). Ships the
-   visual + interaction win and removes brittleness.
+1. **Chat foundation** — `components/chat/` headless library + `WorkspaceShell` + the
+   `/console/[agent]` route, single CopilotKit provider, agent-selector dropdown, and per-agent
+   config registry (all agents listed; `travel` fully populated first). Old routes redirect.
+   Delete skinning CSS. Artifact panel reads existing travel state (no Python yet). Ships the
+   visual + interaction win, the agent switcher, and removes brittleness.
 2. **Artifact contract (Python)** — `SqlAlchemyArtifactService` + `create_artifact_service`;
    `write_artifact` helper; `ArtifactRef` types; migrate travel; artifact REST endpoints; web
    proxy. Fullscreen + version history become real on travel.
@@ -236,14 +252,17 @@ for this spec.**
 
 ## 11. Files affected (indicative)
 - **New:** `apps/web/src/components/chat/*`, `apps/web/src/components/workspace-shell.tsx`,
+  `apps/web/src/components/chat/agents/<agent>.ts(x)` (per-agent config registry),
+  `apps/web/src/app/console/[agent]/page.tsx`,
   `apps/web/src/app/api/agents/artifacts/[...]/route.ts`,
   `packages/agent-common/src/agent_common/artifact_service.py`,
   `packages/agent-common/src/agent_common/artifacts.py`.
-- **Changed:** `apps/web/src/app/globals.css` (remove skinning), `app/{travel,grocery,fitness,
-  wellness,a2ui}/page.tsx`, `components/document-canvas.tsx` (→ markdown artifact renderer),
-  `packages/types/src/index.ts`, every `agents/*/src/*/main.py` (artifact service + write_artifact),
-  agent tool tests.
-- **Removed:** `apps/web/src/components/agent-workspace.tsx` (replaced by `WorkspaceShell`).
+- **Changed:** `apps/web/src/app/globals.css` (remove skinning), `components/document-canvas.tsx`
+  (→ markdown artifact renderer), `packages/types/src/index.ts`, every
+  `agents/*/src/*/main.py` (artifact service + write_artifact), agent tool tests.
+- **Removed/redirected:** `apps/web/src/components/agent-workspace.tsx` (replaced by
+  `WorkspaceShell`); `app/{travel,grocery,fitness,wellness,a2ui}/page.tsx` become thin redirects
+  to `/console/<agent>` (logic moves to the per-agent config registry).
 
 ## 12. Open risks
 - ADK reasoning over AG-UI: confirm Gemini "thinking" surfaces as `REASONING_*` through the
