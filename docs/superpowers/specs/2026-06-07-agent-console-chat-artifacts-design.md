@@ -168,19 +168,23 @@ Three coordinated layers:
   SQLite file alongside `adk_sessions.sqlite`.
 - Each agent `main.py` replaces `InMemoryArtifactService()` with `create_artifact_service()`.
 
-### 6b. Authoring helper — `agent_common.artifacts.write_artifact`
-- New `packages/agent-common/src/agent_common/artifacts.py`:
-  `write_artifact(tool_context, name, content, kind, title=None) -> ArtifactRefDict`.
-  It (1) `tool_context.save_artifact(name, types.Part(inline_data=Blob(content.encode(),
-  mime_type_for(kind))))` → version int; (2) mirrors a ref + the live content into shared state:
-  `tool_context.state["artifact"] = {name, title, kind, mime_type, version, status}` and
-  `tool_context.state["artifact_content"] = content`.
-- Agents migrate document writes to it: travel `write_itinerary`, grocery `set_shopping_list`,
-  fitness plan, wellness `set_weekly_wellness_plan`, etc. Existing typed state fields
-  (`itinerary`, `shopping_list`, …) are kept for rich page-specific panels; the `artifact` ref is
-  the canonical handle the shared panel uses.
-- Streaming: register the content field with `PredictStateMapping` so the panel updates
-  token-by-token while the tool runs (matches today's live behavior).
+### 6b. Authoring — native `save_artifact` + a shared state mirror
+Saving is **native ADK** — tools call `tool_context.save_artifact(name,
+types.Part(inline_data=Blob(content.encode(), mime_type)))` directly. No bespoke wrapper.
+The only non-native need is making the save **visible to the client** (AG-UI doesn't bridge
+`artifact_delta`), handled in one shared place:
+- Extend the existing `agent_common.tools.shared_after_tool_callback` (already wired as each
+  agent's `after_tool_callback`): after a tool runs, read `tool_context.actions.artifact_delta`
+  ({name: version}) and mirror a ref into state — `state["artifact"] = {name, kind, mime_type,
+  version, status, title}`. `version` comes from the delta; `kind`/`title`/`mime_type` (which the
+  delta does not carry) come from a small per-agent **artifact registry** keyed by artifact name
+  (e.g. `{"itinerary.md": {kind:"markdown", title:"Itinerary"}}`).
+- **Live content** is plain state, exactly as today: tools keep writing the document string to
+  state (`itinerary`, `shopping_list`, `weekly_plan`, …) and that field is registered with
+  `PredictStateMapping` for token-level streaming. The shared panel reads current content from
+  this field (resolved via the registry); ADK artifacts provide the durable versioned snapshots.
+- So a tool that produces a document does two native things: write content to state (stream) +
+  `save_artifact` (version). The callback wires the rest. No `agent_common.artifacts` module.
 
 ### 6c. Client transport — REST load endpoint + web proxy
 - Each agent FastAPI app gains artifact routes beside the AG-UI endpoint:
@@ -243,8 +247,9 @@ for this spec.**
    Delete skinning CSS. Artifact panel reads existing travel state (no Python yet). Ships the
    visual + interaction win, the agent switcher, and removes brittleness.
 2. **Artifact contract (Python)** — `SqlAlchemyArtifactService` + `create_artifact_service`;
-   `write_artifact` helper; `ArtifactRef` types; migrate travel; artifact REST endpoints; web
-   proxy. Fullscreen + version history become real on travel.
+   extend `shared_after_tool_callback` to mirror `artifact_delta` → `state["artifact"]` + a
+   per-agent artifact registry; `ArtifactRef` types; migrate travel to native `save_artifact`;
+   artifact REST endpoints; web proxy. Fullscreen + version history become real on travel.
 3. **Rollout** — `grocery`, `fitness`, `wellness`, `a2ui` adopt headless chat (near-free via the
    shared shell) + `write_artifact`; per-kind artifact renderers (list, plan, markdown, code).
 4. **Polish & tests** — message actions, suggestions, attachments, dark-mode pass, full test
@@ -255,11 +260,13 @@ for this spec.**
   `apps/web/src/components/chat/agents/<agent>.ts(x)` (per-agent config registry),
   `apps/web/src/app/console/[agent]/page.tsx`,
   `apps/web/src/app/api/agents/artifacts/[...]/route.ts`,
-  `packages/agent-common/src/agent_common/artifact_service.py`,
-  `packages/agent-common/src/agent_common/artifacts.py`.
+  `packages/agent-common/src/agent_common/artifact_service.py`.
 - **Changed:** `apps/web/src/app/globals.css` (remove skinning), `components/document-canvas.tsx`
-  (→ markdown artifact renderer), `packages/types/src/index.ts`, every
-  `agents/*/src/*/main.py` (artifact service + write_artifact), agent tool tests.
+  (→ markdown artifact renderer), `packages/types/src/index.ts`,
+  `packages/agent-common/src/agent_common/tools.py` (extend `shared_after_tool_callback` to mirror
+  `artifact_delta` → `state["artifact"]`), every `agents/*/src/*/main.py` (use
+  `create_artifact_service`, call native `save_artifact`, declare a per-agent artifact registry),
+  agent tool tests.
 - **Removed/redirected:** `apps/web/src/components/agent-workspace.tsx` (replaced by
   `WorkspaceShell`); `app/{travel,grocery,fitness,wellness,a2ui}/page.tsx` become thin redirects
   to `/console/<agent>` (logic moves to the per-agent config registry).
