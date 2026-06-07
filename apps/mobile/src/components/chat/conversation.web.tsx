@@ -1,12 +1,5 @@
 import { LegendList, LegendListRef } from "@legendapp/list";
-import {
-  createContext,
-  use,
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { createContext, use, useCallback, useMemo, useRef, useState } from "react";
 import type { ReactElement, ReactNode } from "react";
 import { LayoutChangeEvent, Pressable, Text, View } from "react-native";
 

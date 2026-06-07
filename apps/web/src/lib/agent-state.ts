@@ -49,7 +49,9 @@ function bool(value: unknown, fallback = false): boolean {
 }
 
 function strArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
 }
 
 /** Returns `value` if it is one of `allowed`, otherwise `fallback`. */

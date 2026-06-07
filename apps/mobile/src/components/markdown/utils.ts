@@ -195,7 +195,11 @@ export function getMergedStyles(styles: StyleMap | null = null, merge = false): 
     const base: Record<string, unknown> = { ...StyleSheet.flatten(defaultStyles[key]) };
     const custom: Record<string, unknown> = { ...StyleSheet.flatten(styles?.[key]) };
 
-    const final: Record<string, unknown> = merge ? { ...base, ...custom } : styles?.[key] ? custom : base;
+    const final: Record<string, unknown> = merge
+      ? { ...base, ...custom }
+      : styles?.[key]
+        ? custom
+        : base;
 
     output[key] = final;
     output[`_VIEW_SAFE_${key}`] = removeTextStyleProps(final);

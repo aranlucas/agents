@@ -65,7 +65,9 @@ vi.mock("@/env", () => ({
 
 vi.mock("@copilotkit/react-core/v2", () => ({
   CopilotKit: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  CopilotChat: (props: Record<string, unknown>) => <div data-copilot-chat={props.agent as string} />,
+  CopilotChat: (props: Record<string, unknown>) => (
+    <div data-copilot-chat={props.agent as string} />
+  ),
   UseAgentUpdate: { OnStateChanged: "state", OnRunStatusChanged: "run" },
   useAgent: ({ agentId }: { agentId: string }) => ({
     agent: {
@@ -84,7 +86,11 @@ vi.mock("@copilotkit/react-core/v2", () => ({
       result?: unknown;
     }) => React.ReactNode;
   }) => {
-    config.render({ name: "request_user_approval", status: "executing", parameters: { action: "Book" } });
+    config.render({
+      name: "request_user_approval",
+      status: "executing",
+      parameters: { action: "Book" },
+    });
     config.render({ name: "write_itinerary", status: "complete", result: { ok: true } });
     config.render({ name: "update_cart", status: "inProgress", parameters: { items: [] } });
     config.render({ name: "set_meal_plan", status: "drafting" });
@@ -327,15 +333,60 @@ describe("web all-source smoke coverage", () => {
     );
     await render("sign-in", <SignInPage.default />);
     await render("sign-up", <SignUpPage.default />);
-    await render("travel", <ProvidersModule.Providers><TravelPage.default /></ProvidersModule.Providers>);
-    await render("grocery", <ProvidersModule.Providers><GroceryPage.default /></ProvidersModule.Providers>);
-    await render("fitness", <ProvidersModule.Providers><FitnessPage.default /></ProvidersModule.Providers>);
-    await render("wellness", <ProvidersModule.Providers><WellnessPage.default /></ProvidersModule.Providers>);
-    await render("a2ui", <ProvidersModule.Providers><A2UIPage.default /></ProvidersModule.Providers>);
-    await interact("travel", <ProvidersModule.Providers><TravelPage.default /></ProvidersModule.Providers>);
-    await interact("grocery", <ProvidersModule.Providers><GroceryPage.default /></ProvidersModule.Providers>);
-    await interact("fitness", <ProvidersModule.Providers><FitnessPage.default /></ProvidersModule.Providers>);
-    await interact("wellness", <ProvidersModule.Providers><WellnessPage.default /></ProvidersModule.Providers>);
+    await render(
+      "travel",
+      <ProvidersModule.Providers>
+        <TravelPage.default />
+      </ProvidersModule.Providers>,
+    );
+    await render(
+      "grocery",
+      <ProvidersModule.Providers>
+        <GroceryPage.default />
+      </ProvidersModule.Providers>,
+    );
+    await render(
+      "fitness",
+      <ProvidersModule.Providers>
+        <FitnessPage.default />
+      </ProvidersModule.Providers>,
+    );
+    await render(
+      "wellness",
+      <ProvidersModule.Providers>
+        <WellnessPage.default />
+      </ProvidersModule.Providers>,
+    );
+    await render(
+      "a2ui",
+      <ProvidersModule.Providers>
+        <A2UIPage.default />
+      </ProvidersModule.Providers>,
+    );
+    await interact(
+      "travel",
+      <ProvidersModule.Providers>
+        <TravelPage.default />
+      </ProvidersModule.Providers>,
+    );
+    await interact(
+      "grocery",
+      <ProvidersModule.Providers>
+        <GroceryPage.default />
+      </ProvidersModule.Providers>,
+    );
+    await interact(
+      "fitness",
+      <ProvidersModule.Providers>
+        <FitnessPage.default />
+      </ProvidersModule.Providers>,
+    );
+    await interact(
+      "wellness",
+      <ProvidersModule.Providers>
+        <WellnessPage.default />
+      </ProvidersModule.Providers>,
+    );
     agentStates.grocery = { kroger_connected: false, status: "idle" };
     agentStates.fitness = { strava_connected: false, status: "idle" };
     agentStates.wellness = {
@@ -346,9 +397,24 @@ describe("web all-source smoke coverage", () => {
       meal_plan: "",
       workout_plan: "",
     };
-    await interact("grocery-disconnected", <ProvidersModule.Providers><GroceryPage.default /></ProvidersModule.Providers>);
-    await interact("fitness-disconnected", <ProvidersModule.Providers><FitnessPage.default /></ProvidersModule.Providers>);
-    await interact("wellness-disconnected", <ProvidersModule.Providers><WellnessPage.default /></ProvidersModule.Providers>);
+    await interact(
+      "grocery-disconnected",
+      <ProvidersModule.Providers>
+        <GroceryPage.default />
+      </ProvidersModule.Providers>,
+    );
+    await interact(
+      "fitness-disconnected",
+      <ProvidersModule.Providers>
+        <FitnessPage.default />
+      </ProvidersModule.Providers>,
+    );
+    await interact(
+      "wellness-disconnected",
+      <ProvidersModule.Providers>
+        <WellnessPage.default />
+      </ProvidersModule.Providers>,
+    );
     agentStates.grocery = {
       kroger_connected: true,
       status: "planning",
@@ -373,9 +439,24 @@ describe("web all-source smoke coverage", () => {
       meal_plan: "",
       workout_plan: "",
     };
-    await render("grocery-empty", <ProvidersModule.Providers><GroceryPage.default /></ProvidersModule.Providers>);
-    await render("fitness-empty", <ProvidersModule.Providers><FitnessPage.default /></ProvidersModule.Providers>);
-    await render("wellness-empty", <ProvidersModule.Providers><WellnessPage.default /></ProvidersModule.Providers>);
+    await render(
+      "grocery-empty",
+      <ProvidersModule.Providers>
+        <GroceryPage.default />
+      </ProvidersModule.Providers>,
+    );
+    await render(
+      "fitness-empty",
+      <ProvidersModule.Providers>
+        <FitnessPage.default />
+      </ProvidersModule.Providers>,
+    );
+    await render(
+      "wellness-empty",
+      <ProvidersModule.Providers>
+        <WellnessPage.default />
+      </ProvidersModule.Providers>,
+    );
     await render(
       "theme",
       <ProvidersModule.Providers>
@@ -399,10 +480,22 @@ describe("web all-source smoke coverage", () => {
       tags: ["adk"],
       theme: "travel",
     } as const;
-    await render("agent-card-loading", <AgentCardModule.AgentCard agent={agent} index={0} status="loading" />);
-    await render("agent-card-ok", <AgentCardModule.AgentCard agent={{ ...agent, theme: "wellness" }} index={1} status="ok" />);
-    await render("agent-card-error", <AgentCardModule.AgentCard agent={{ ...agent, theme: "a2ui" }} index={2} status="error" />);
-    await render("agent-status-bar", <AgentStatusBarModule.AgentStatusBar statuses={{ travel: "ok", grocery: "error" }} />);
+    await render(
+      "agent-card-loading",
+      <AgentCardModule.AgentCard agent={agent} index={0} status="loading" />,
+    );
+    await render(
+      "agent-card-ok",
+      <AgentCardModule.AgentCard agent={{ ...agent, theme: "wellness" }} index={1} status="ok" />,
+    );
+    await render(
+      "agent-card-error",
+      <AgentCardModule.AgentCard agent={{ ...agent, theme: "a2ui" }} index={2} status="error" />,
+    );
+    await render(
+      "agent-status-bar",
+      <AgentStatusBarModule.AgentStatusBar statuses={{ travel: "ok", grocery: "error" }} />,
+    );
     await render(
       "approval-card",
       <ApprovalModule.ApprovalCard
@@ -481,10 +574,7 @@ describe("web all-source smoke coverage", () => {
         onReset={vi.fn()}
       />,
     );
-    await render(
-      "preferences",
-      <PreferencesModule.PreferencesPanel />,
-    );
+    await render("preferences", <PreferencesModule.PreferencesPanel />);
     await interact("preferences", <PreferencesModule.PreferencesPanel />);
 
     const request = new Request("http://localhost/travel");

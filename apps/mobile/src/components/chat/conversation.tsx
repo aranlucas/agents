@@ -1,13 +1,6 @@
 import { SymbolImage } from "@/components/symbol-image";
 import { LegendList, LegendListRef } from "@legendapp/list";
-import {
-  createContext,
-  use,
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { createContext, use, useCallback, useMemo, useRef, useState } from "react";
 import type { ReactElement, ReactNode } from "react";
 import { LayoutChangeEvent, Text, View } from "react-native";
 import { useKeyboardHandler } from "react-native-keyboard-controller";
