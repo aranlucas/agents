@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from dependency_injector import containers, providers
 from google.adk.sessions.database_session_service import DatabaseSessionService
 from google.adk.sessions.sqlite_session_service import SqliteSessionService
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
 if TYPE_CHECKING:
@@ -90,7 +91,7 @@ async def check_database_connection() -> dict:
         try:
             engine = create_async_engine(db_url, **_database_kwargs(os.environ))
             async with engine.connect() as conn:
-                await conn.execute("SELECT 1")
+                await conn.execute(text("SELECT 1"))
             await engine.dispose()
             return {"status": "ok", "database": "connected", "type": "postgres"}
         except Exception as e:
@@ -101,7 +102,7 @@ async def check_database_connection() -> dict:
         sqlite_url = f"sqlite+aiosqlite:///{db_path}"
         engine = create_async_engine(sqlite_url)
         async with engine.connect() as conn:
-            await conn.execute("SELECT 1")
+            await conn.execute(text("SELECT 1"))
         await engine.dispose()
         return {"status": "ok", "database": "connected", "type": "sqlite"}
     except Exception as e:
