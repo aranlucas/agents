@@ -196,7 +196,7 @@ The only non-native need is making the save **visible to the client** (AG-UI doe
   existing `api/mcp/token` / `api/strava/token` pattern) forwards to the right agent service.
 - Frontend: `ArtifactPanel` reads the **current** content from `agent.state.artifact_content`
   (live stream); the **version dropdown / restore** fetches historical bytes from the proxy.
-  Restore = load v(n-1) → `write_artifact` again (new version) since ADK has no in-place revert.
+  Restore = load v(n-1) → `save_artifact` again (new version) since ADK has no in-place revert.
 
 ### 6d. Shared types (`packages/types/src/index.ts`)
 ```ts
@@ -235,7 +235,8 @@ for this spec.**
   load-error, `ArtifactCard` open. Update `agent-workspace.contract.test.tsx` →
   `workspace-shell.contract.test.tsx`. Keep `all-source-smoke.test.tsx` green.
 - **Python (pytest):** `SqlAlchemyArtifactService` save/load/list/versions (incl. `user:` scope)
-  against in-memory SQLite; `write_artifact` saves + mirrors state + returns ref; artifact REST
+  against in-memory SQLite; `shared_after_tool_callback` mirrors `artifact_delta` →
+  `state["artifact"]` (version from delta, kind/title from registry); artifact REST
   endpoints (list/load/version/404). Update per-agent tool tests that assert state shape to
   include the `artifact` ref.
 - `pnpm check` (oxlint + ruff) clean.
@@ -251,7 +252,8 @@ for this spec.**
    per-agent artifact registry; `ArtifactRef` types; migrate travel to native `save_artifact`;
    artifact REST endpoints; web proxy. Fullscreen + version history become real on travel.
 3. **Rollout** — `grocery`, `fitness`, `wellness`, `a2ui` adopt headless chat (near-free via the
-   shared shell) + `write_artifact`; per-kind artifact renderers (list, plan, markdown, code).
+   shared shell) + native `save_artifact` + per-agent registry; per-kind artifact renderers
+   (list, plan, markdown, code).
 4. **Polish & tests** — message actions, suggestions, attachments, dark-mode pass, full test
    suite, `pnpm check`.
 
