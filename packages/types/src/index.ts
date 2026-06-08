@@ -1,6 +1,9 @@
 // Travel agent state — matches what agents/travel writes to ADK shared state
 export type DocStatus = "idle" | "drafting" | "ready_to_book" | "booked";
 
+// Artifact kinds rendered by the shared console artifact panel
+export type ArtifactKind = "markdown" | "document" | "list" | "code" | "plan";
+
 export type TripState = {
   destination?: string;
   start_date?: string;

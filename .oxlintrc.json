@@ -74,6 +74,25 @@
       "rules": {
         "react-hooks/exhaustive-deps": "off"
       }
+    },
+    {
+      // Vendored UI libraries (Vercel ai-elements + shadcn ui primitives). Held
+      // to their upstream conventions, not the app's a11y/next-image lint bar.
+      "files": [
+        "apps/web/src/components/ai-elements/**/*.{ts,tsx}",
+        "apps/web/src/components/ui/**/*.{ts,tsx}"
+      ],
+      "rules": {
+        "jsx-a11y/anchor-has-content": "off",
+        "jsx-a11y/control-has-associated-label": "off",
+        "jsx-a11y/media-has-caption": "off",
+        "jsx-a11y/click-events-have-key-events": "off",
+        "jsx-a11y/no-noninteractive-element-interactions": "off",
+        "jsx-a11y/heading-has-content": "off",
+        "nextjs/no-img-element": "off",
+        "typescript/restrict-template-expressions": "off",
+        "typescript/no-useless-default-assignment": "off"
+      }
     }
   ],
   "ignorePatterns": [
