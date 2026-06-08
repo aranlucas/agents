@@ -36,7 +36,7 @@ function Console({ agentId }: { agentId: AgentId }) {
   const artifact = selectArtifact(agent?.state as Record<string, unknown>, config);
 
   return (
-    <main className="h-screen" style={cssVars({ "--page-color": `var(${config.colorVar})` })}>
+    <main className="h-dvh" style={cssVars({ "--page-color": `var(${config.colorVar})` })}>
       {agentId === "travel" && <TravelHooks />}
       <WorkspaceShell
         hasArtifact={Boolean(artifact)}

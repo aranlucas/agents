@@ -164,7 +164,7 @@ export function ChatSurface({
         <ConversationScrollButton />
       </Conversation>
 
-      <div className="px-4 pb-4">
+      <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <div className="mx-auto w-full max-w-[760px]">
           <PromptInput
             onSubmit={(message: PromptInputMessage) => {
