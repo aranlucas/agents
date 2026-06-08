@@ -5,12 +5,15 @@ import {
   useAgent,
   useCopilotKit,
   useDefaultRenderTool,
+  useRenderActivityMessage,
   useRenderToolCall,
+  useSuggestions,
   UseAgentUpdate,
 } from "@copilotkit/react-core/v2";
 import { SparklesIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
 import {
   Conversation,
   ConversationContent,
@@ -78,6 +81,8 @@ export function ChatSurface({
   });
   const { copilotkit } = useCopilotKit();
   const renderToolCall = useRenderToolCall();
+  const { renderActivityMessage } = useRenderActivityMessage();
+  const { suggestions } = useSuggestions({ agentId: config.id });
 
   const messages = (agent?.messages ?? []) as AguiMessage[];
   const items = toRenderItems(messages);
@@ -123,6 +128,11 @@ export function ChatSurface({
             />
           ) : (
             items.map((item) => {
+              if (item.kind === "activity") {
+                return (
+                  <Fragment key={item.id}>{renderActivityMessage(item.message as never)}</Fragment>
+                );
+              }
               if (item.kind === "user") {
                 return (
                   <Message key={item.id} from="user">
@@ -166,6 +176,13 @@ export function ChatSurface({
 
       <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <div className="mx-auto w-full max-w-[760px]">
+          {!isRunning && suggestions.length > 0 && (
+            <Suggestions className="mb-2">
+              {suggestions.map((s) => (
+                <Suggestion key={s.title} suggestion={s.title} onClick={() => send(s.message)} />
+              ))}
+            </Suggestions>
+          )}
           <PromptInput
             onSubmit={(message: PromptInputMessage) => {
               send(message.text ?? "");

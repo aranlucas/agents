@@ -13,6 +13,10 @@ import { WorkspaceShell, useArtifactPanel } from "@/components/workspace-shell";
 import { selectArtifact } from "@/components/chat/artifact";
 import { cssVars } from "@/lib/css";
 
+// Enables the auto-mounted A2UI activity renderer (the runtime advertises A2UI
+// via /info for the a2ui agent). Hoisted so the prop identity stays stable.
+const A2UI_CONFIG = {};
+
 export default function Page({ params }: { params: Promise<{ agent: string }> }) {
   const { agent: raw } = use(params);
   const agentId: AgentId = isAgentId(raw) ? raw : "travel";
@@ -21,6 +25,7 @@ export default function Page({ params }: { params: Promise<{ agent: string }> })
       runtimeUrl="/api/copilotkit"
       agent={agentId}
       useSingleEndpoint={false}
+      a2ui={A2UI_CONFIG}
       enableInspector={process.env.NODE_ENV !== "production"}
     >
       <Console key={agentId} agentId={agentId} />

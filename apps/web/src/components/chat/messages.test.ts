@@ -44,4 +44,13 @@ describe("toRenderItems", () => {
     if (item.kind !== "assistant") throw new Error("expected assistant");
     expect(item.reasoning).toBe("hmm");
   });
+
+  it("passes activity messages through as standalone items carrying the raw message", () => {
+    const activity: AguiMessage = { id: "act1", role: "activity", content: "surface" };
+    const items = toRenderItems([{ id: "u1", role: "user", content: "hi" }, activity]);
+    expect(items.map((i) => i.kind)).toEqual(["user", "activity"]);
+    const item = items[1];
+    if (item.kind !== "activity") throw new Error("expected activity");
+    expect(item.message).toBe(activity);
+  });
 });
