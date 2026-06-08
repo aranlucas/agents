@@ -209,6 +209,12 @@ async function render(label: string, element: React.ReactElement) {
   try {
     expect(renderToStaticMarkup(element)).toEqual(expect.any(String));
   } catch (error) {
+    // Redirect pages (e.g. /travel -> /console/travel) render by throwing a
+    // NEXT_REDIRECT control-flow error; that is a valid outcome, not a failure.
+    const digest = (error as { digest?: unknown })?.digest;
+    if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) {
+      return;
+    }
     throw new Error(`render failed: ${label}`, { cause: error });
   }
 }
@@ -238,6 +244,10 @@ async function interact(label: string, element: React.ReactElement) {
       tree!.unmount();
     });
   } catch (error) {
+    const digest = (error as { digest?: unknown })?.digest;
+    if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) {
+      return;
+    }
     throw new Error(`interaction failed: ${label}`, { cause: error });
   }
 }
