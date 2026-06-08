@@ -17,7 +17,12 @@ export default function Page({ params }: { params: Promise<{ agent: string }> })
   const { agent: raw } = use(params);
   const agentId: AgentId = isAgentId(raw) ? raw : "travel";
   return (
-    <CopilotKit runtimeUrl="/api/copilotkit" agent={agentId} useSingleEndpoint={false}>
+    <CopilotKit
+      runtimeUrl="/api/copilotkit"
+      agent={agentId}
+      useSingleEndpoint={false}
+      enableInspector={process.env.NODE_ENV !== "production"}
+    >
       <Console key={agentId} agentId={agentId} />
     </CopilotKit>
   );
