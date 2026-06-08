@@ -15,18 +15,21 @@
 ## File Structure
 
 Pure logic (unit-tested first):
+
 - `apps/web/src/components/chat/agents/registry.ts` — agent id type, per-agent config, lookups.
 - `apps/web/src/components/chat/messages.ts` — map `agent.messages` → ordered render items (group assistant text + tool calls + reasoning).
 - `apps/web/src/components/chat/artifact.ts` — select an `ArtifactView` from agent state via the registry.
 - `apps/web/src/components/chat/scroll.ts` — pure `shouldPinToBottom(...)` used by the autoscroll hook.
 
 Hooks/components (presentational, render-tested):
+
 - `apps/web/src/components/chat/use-pin-to-bottom.ts`
 - `apps/web/src/components/chat/Conversation.tsx`, `Message.tsx`, `Response.tsx`, `Reasoning.tsx`, `ToolEvent.tsx`, `MessageActions.tsx`, `PromptInput.tsx`, `AgentSelector.tsx`, `ArtifactPanel.tsx`, `ArtifactCard.tsx`
 - `apps/web/src/components/workspace-shell.tsx`
 - `apps/web/src/components/chat/ChatSurface.tsx` — composes the headless loop (driver).
 
 Routing/integration:
+
 - `apps/web/src/app/console/[agent]/page.tsx` — single console route.
 - `apps/web/src/app/{travel,grocery,fitness,wellness,a2ui}/page.tsx` — become redirects.
 - `apps/web/src/components/workspace-shell.contract.test.tsx` — replaces `agent-workspace.contract.test.tsx`.
@@ -37,6 +40,7 @@ Routing/integration:
 ## Task 1: Agent registry (pure)
 
 **Files:**
+
 - Create: `apps/web/src/components/chat/agents/registry.ts`
 - Test: `apps/web/src/components/chat/agents/registry.test.ts`
 
@@ -111,7 +115,12 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
     colorVar: "--travel",
     placeholder: "Plan a trip, rework a day, or ask for tradeoffs…",
     welcome: "Tell me where you want to go, your dates, and the kind of trip you want.",
-    artifact: { stateField: "itinerary", kind: "markdown", title: "Itinerary", name: "itinerary.md" },
+    artifact: {
+      stateField: "itinerary",
+      kind: "markdown",
+      title: "Itinerary",
+      name: "itinerary.md",
+    },
   },
   grocery: {
     id: "grocery",
@@ -119,7 +128,12 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
     glyph: "🛒",
     colorVar: "--grocery",
     placeholder: "Plan meals, build a list, or find deals…",
-    artifact: { stateField: "shopping_list", kind: "list", title: "Shopping list", name: "shopping_list.json" },
+    artifact: {
+      stateField: "shopping_list",
+      kind: "list",
+      title: "Shopping list",
+      name: "shopping_list.json",
+    },
   },
   fitness: {
     id: "fitness",
@@ -127,7 +141,12 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
     glyph: "💪",
     colorVar: "--fitness",
     placeholder: "Plan training, log a workout, or set a goal…",
-    artifact: { stateField: "weekly_plan", kind: "plan", title: "Training plan", name: "training_plan.md" },
+    artifact: {
+      stateField: "weekly_plan",
+      kind: "plan",
+      title: "Training plan",
+      name: "training_plan.md",
+    },
   },
   wellness: {
     id: "wellness",
@@ -135,7 +154,12 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
     glyph: "☯",
     colorVar: "--wellness",
     placeholder: "Coordinate a week of meals and training…",
-    artifact: { stateField: "weekly_plan", kind: "plan", title: "Wellness plan", name: "wellness_plan.md" },
+    artifact: {
+      stateField: "weekly_plan",
+      kind: "plan",
+      title: "Wellness plan",
+      name: "wellness_plan.md",
+    },
   },
   a2ui: {
     id: "a2ui",
@@ -188,6 +212,7 @@ Maps the flat `agent.messages` array into ordered render items: user bubbles, an
 > **Implemented correction (verified against `@ag-ui/core@0.0.53`):** reasoning is **not** a property on the assistant message — it arrives as a separate `{ role: "reasoning", id, content }` message preceding the assistant turn. `toolCalls` are `{ id, type, function: { name, arguments } }`. The mapping buffers a reasoning message and attaches it to the next assistant turn. The test/impl below reflect this.
 
 **Files:**
+
 - Create: `apps/web/src/components/chat/messages.ts`
 - Test: `apps/web/src/components/chat/messages.test.ts`
 
@@ -303,6 +328,7 @@ git commit -m "feat(web): group agent messages into render items"
 ## Task 3: Artifact selection (pure)
 
 **Files:**
+
 - Create: `apps/web/src/components/chat/artifact.ts`
 - Test: `apps/web/src/components/chat/artifact.test.ts`
 
@@ -418,6 +444,7 @@ git commit -m "feat(web): select artifact view from agent state"
 ## Task 4: Scroll pinning (pure) + hook
 
 **Files:**
+
 - Create: `apps/web/src/components/chat/scroll.ts`, `apps/web/src/components/chat/use-pin-to-bottom.ts`
 - Test: `apps/web/src/components/chat/scroll.test.ts`
 
@@ -435,7 +462,9 @@ describe("shouldPinToBottom", () => {
   });
 
   it("does not pin when the user has scrolled up beyond the threshold", () => {
-    expect(shouldPinToBottom({ scrollTop: 200, clientHeight: 120, scrollHeight: 1000 })).toBe(false);
+    expect(shouldPinToBottom({ scrollTop: 200, clientHeight: 120, scrollHeight: 1000 })).toBe(
+      false,
+    );
   });
 
   it("respects a custom threshold", () => {
@@ -525,6 +554,7 @@ git commit -m "feat(web): scroll pinning helper + autoscroll hook"
 `Message`, `Response`, `Reasoning`, `MessageActions`. All are pure render given props (no CopilotKit hooks), so they render-test cleanly with `react-test-renderer`.
 
 **Files:**
+
 - Create: `apps/web/src/components/chat/Response.tsx`, `Reasoning.tsx`, `MessageActions.tsx`, `Message.tsx`
 - Test: `apps/web/src/components/chat/message.test.tsx`
 
@@ -699,6 +729,7 @@ git commit -m "feat(web): message, response, reasoning, actions components"
 `ToolEvent` renders one resolved tool call. It is presentational (takes `name`/`status`/`parameters`/`result`); the resolver wiring (`useRenderToolCall`) happens in `ChatSurface` (Task 9).
 
 **Files:**
+
 - Create: `apps/web/src/components/chat/ToolEvent.tsx`
 - Test: `apps/web/src/components/chat/tool-event.test.tsx`
 
@@ -712,7 +743,9 @@ import { ToolEvent, toolEventLabel } from "./ToolEvent";
 
 const render = (n: React.ReactElement) => {
   let r!: TestRenderer.ReactTestRenderer;
-  act(() => { r = TestRenderer.create(n); });
+  act(() => {
+    r = TestRenderer.create(n);
+  });
   return JSON.stringify(r.toJSON());
 };
 
@@ -729,7 +762,9 @@ describe("ToolEvent", () => {
     expect(render(<ToolEvent name="write_itinerary" status="executing" />)).toContain("running");
   });
   it("shows a done badge when complete", () => {
-    expect(render(<ToolEvent name="write_itinerary" status="complete" result="ok" />)).toContain("done");
+    expect(render(<ToolEvent name="write_itinerary" status="complete" result="ok" />)).toContain(
+      "done",
+    );
   });
 });
 ```
@@ -754,15 +789,18 @@ export function toolEventLabel(name: string): string {
   if (n.includes("shopping") || n.includes("cart")) return "Updating the shopping list";
   if (n.includes("meal")) return "Planning meals";
   if (n.includes("flight")) return "Checking travel options";
-  if (n.includes("fitness") || n.includes("training") || n.includes("plan")) return "Updating the plan";
+  if (n.includes("fitness") || n.includes("training") || n.includes("plan"))
+    return "Updating the plan";
   if (n.includes("delegate")) return "Delegating to another agent";
   if (n.includes("surface") || n.includes("a2ui")) return "Rendering an interface";
   return "Agent used a tool";
 }
 
 function badge(status: ToolStatus) {
-  if (status === "complete") return { text: "done", cls: "bg-[var(--success-soft)] text-[var(--success)]" };
-  if (status === "executing") return { text: "running", cls: "bg-[var(--accent-soft)] text-[var(--accent-strong)]" };
+  if (status === "complete")
+    return { text: "done", cls: "bg-[var(--success-soft)] text-[var(--success)]" };
+  if (status === "executing")
+    return { text: "running", cls: "bg-[var(--accent-soft)] text-[var(--accent-strong)]" };
   return { text: "drafting", cls: "bg-[var(--bg-soft)] text-[var(--ink-mute)]" };
 }
 
@@ -792,17 +830,27 @@ export function ToolEvent({
           )}
         />
         <span className="text-[13px] font-semibold text-[var(--ink)]">{toolEventLabel(name)}</span>
-        <span className={cn("rounded px-1.5 py-0.5 font-mono text-[9px] tracking-wider uppercase", b.cls)}>
+        <span
+          className={cn(
+            "rounded px-1.5 py-0.5 font-mono text-[9px] tracking-wider uppercase",
+            b.cls,
+          )}
+        >
           {b.text}
         </span>
         <span className="ml-auto font-mono text-[10px] text-[var(--ink-mute)]">{name}</span>
       </div>
       {hasDetails && (
         <details className="border-t border-dashed border-[var(--border)] bg-[var(--surface)] px-3 py-2">
-          <summary className="cursor-pointer font-mono text-[10px] text-[var(--ink-mute)]">details</summary>
+          <summary className="cursor-pointer font-mono text-[10px] text-[var(--ink-mute)]">
+            details
+          </summary>
           <pre className="mt-1 max-h-44 overflow-auto text-[11px] text-[var(--ink-soft)]">
             {JSON.stringify(
-              { ...(parameters ? { parameters } : {}), ...(result !== undefined ? { result } : {}) },
+              {
+                ...(parameters ? { parameters } : {}),
+                ...(result !== undefined ? { result } : {}),
+              },
               null,
               2,
             )}
@@ -833,6 +881,7 @@ git commit -m "feat(web): structured tool-event card"
 `PromptInput` is presentational: it takes `value`/`onChange`/`onSubmit`/`onStop`/`isRunning`/`placeholder` and the `AgentSelector` node. The CopilotKit wiring is in `ChatSurface`.
 
 **Files:**
+
 - Create: `apps/web/src/components/chat/PromptInput.tsx`, `apps/web/src/components/chat/AgentSelector.tsx`
 - Test: `apps/web/src/components/chat/prompt-input.test.tsx`
 
@@ -846,23 +895,54 @@ import { PromptInput } from "./PromptInput";
 
 const render = (n: React.ReactElement) => {
   let r!: TestRenderer.ReactTestRenderer;
-  act(() => { r = TestRenderer.create(n); });
+  act(() => {
+    r = TestRenderer.create(n);
+  });
   return r;
 };
 
 describe("PromptInput", () => {
   it("shows a send button when idle and a stop button when running", () => {
-    const idle = render(<PromptInput value="" onChange={() => {}} onSubmit={() => {}} onStop={() => {}} isRunning={false} placeholder="ask" />);
+    const idle = render(
+      <PromptInput
+        value=""
+        onChange={() => {}}
+        onSubmit={() => {}}
+        onStop={() => {}}
+        isRunning={false}
+        placeholder="ask"
+      />,
+    );
     expect(JSON.stringify(idle.toJSON())).toContain("Send");
 
-    const running = render(<PromptInput value="" onChange={() => {}} onSubmit={() => {}} onStop={() => {}} isRunning placeholder="ask" />);
+    const running = render(
+      <PromptInput
+        value=""
+        onChange={() => {}}
+        onSubmit={() => {}}
+        onStop={() => {}}
+        isRunning
+        placeholder="ask"
+      />,
+    );
     expect(JSON.stringify(running.toJSON())).toContain("Stop");
   });
 
   it("calls onStop when running and the stop button is pressed", () => {
     const onStop = vi.fn();
-    const r = render(<PromptInput value="" onChange={() => {}} onSubmit={() => {}} onStop={onStop} isRunning placeholder="ask" />);
-    const stop = r.root.findAll((n) => n.type === "button").find((b) => JSON.stringify(b.toJSON()).includes("Stop"));
+    const r = render(
+      <PromptInput
+        value=""
+        onChange={() => {}}
+        onSubmit={() => {}}
+        onStop={onStop}
+        isRunning
+        placeholder="ask"
+      />,
+    );
+    const stop = r.root
+      .findAll((n) => n.type === "button")
+      .find((b) => JSON.stringify(b.toJSON()).includes("Stop"));
     act(() => stop!.props.onClick());
     expect(onStop).toHaveBeenCalledOnce();
   });
@@ -927,7 +1007,16 @@ type Props = {
   onAttach?: () => void;
 };
 
-export function PromptInput({ value, onChange, onSubmit, onStop, isRunning, placeholder, selector, onAttach }: Props) {
+export function PromptInput({
+  value,
+  onChange,
+  onSubmit,
+  onStop,
+  isRunning,
+  placeholder,
+  selector,
+  onAttach,
+}: Props) {
   const ref = useRef<HTMLTextAreaElement | null>(null);
 
   const submit = () => {
@@ -958,17 +1047,31 @@ export function PromptInput({ value, onChange, onSubmit, onStop, isRunning, plac
       />
       <div className="mt-2 flex items-center gap-2">
         {onAttach && (
-          <button type="button" onClick={onAttach} aria-label="Attach" className="grid h-[30px] w-[30px] place-items-center rounded-lg border border-[var(--border-soft)] text-[var(--ink-mute)] hover:text-[var(--ink)]">
+          <button
+            type="button"
+            onClick={onAttach}
+            aria-label="Attach"
+            className="grid h-[30px] w-[30px] place-items-center rounded-lg border border-[var(--border-soft)] text-[var(--ink-mute)] hover:text-[var(--ink)]"
+          >
             ＋
           </button>
         )}
         {selector}
         {isRunning ? (
-          <button type="button" onClick={onStop} className="ml-auto flex h-[30px] items-center gap-2 rounded-lg border border-[var(--danger)] px-3.5 text-[12.5px] font-semibold text-[var(--danger)]">
+          <button
+            type="button"
+            onClick={onStop}
+            className="ml-auto flex h-[30px] items-center gap-2 rounded-lg border border-[var(--danger)] px-3.5 text-[12.5px] font-semibold text-[var(--danger)]"
+          >
             <span className="h-2 w-2 rounded-[2px] bg-[var(--danger)]" /> Stop
           </button>
         ) : (
-          <button type="button" onClick={submit} className="ml-auto flex h-[30px] items-center gap-1.5 rounded-lg bg-[var(--page-color,var(--accent))] px-3.5 text-[12.5px] font-semibold text-white disabled:opacity-50" disabled={!value.trim()}>
+          <button
+            type="button"
+            onClick={submit}
+            className="ml-auto flex h-[30px] items-center gap-1.5 rounded-lg bg-[var(--page-color,var(--accent))] px-3.5 text-[12.5px] font-semibold text-white disabled:opacity-50"
+            disabled={!value.trim()}
+          >
             Send ↑
           </button>
         )}
@@ -997,6 +1100,7 @@ git commit -m "feat(web): prompt input + agent selector"
 `ArtifactPanel` renders an `ArtifactView` with the 3-state chrome (close in header, fullscreen in tools rail). `ArtifactCard` is the inline preview. Both presentational; panel-state is owned by `WorkspaceShell` (Task 10).
 
 **Files:**
+
 - Create: `apps/web/src/components/chat/ArtifactPanel.tsx`, `apps/web/src/components/chat/ArtifactCard.tsx`
 - Test: `apps/web/src/components/chat/artifact-panel.test.tsx`
 
@@ -1008,16 +1112,33 @@ import { describe, expect, it, vi } from "vitest";
 import TestRenderer, { act } from "react-test-renderer";
 import { ArtifactPanel } from "./ArtifactPanel";
 
-const view = { title: "Itinerary", kind: "markdown" as const, content: "# Day 1", status: "drafting", version: 2 };
+const view = {
+  title: "Itinerary",
+  kind: "markdown" as const,
+  content: "# Day 1",
+  status: "drafting",
+  version: 2,
+};
 const render = (n: React.ReactElement) => {
   let r!: TestRenderer.ReactTestRenderer;
-  act(() => { r = TestRenderer.create(n); });
+  act(() => {
+    r = TestRenderer.create(n);
+  });
   return r;
 };
 
 describe("ArtifactPanel", () => {
   it("renders title, version and content", () => {
-    const s = JSON.stringify(render(<ArtifactPanel view={view} fullscreen={false} onClose={() => {}} onToggleFullscreen={() => {}} />).toJSON());
+    const s = JSON.stringify(
+      render(
+        <ArtifactPanel
+          view={view}
+          fullscreen={false}
+          onClose={() => {}}
+          onToggleFullscreen={() => {}}
+        />,
+      ).toJSON(),
+    );
     expect(s).toContain("Itinerary");
     expect(s).toContain("v2");
     expect(s).toContain("Day 1");
@@ -1025,8 +1146,17 @@ describe("ArtifactPanel", () => {
 
   it("fires onClose from the single header close button", () => {
     const onClose = vi.fn();
-    const r = render(<ArtifactPanel view={view} fullscreen={false} onClose={onClose} onToggleFullscreen={() => {}} />);
-    const close = r.root.findAll((n) => n.type === "button").find((b) => b.props["aria-label"] === "Close artifact");
+    const r = render(
+      <ArtifactPanel
+        view={view}
+        fullscreen={false}
+        onClose={onClose}
+        onToggleFullscreen={() => {}}
+      />,
+    );
+    const close = r.root
+      .findAll((n) => n.type === "button")
+      .find((b) => b.props["aria-label"] === "Close artifact");
     act(() => close!.props.onClick());
     expect(onClose).toHaveBeenCalledOnce();
   });
@@ -1142,6 +1272,7 @@ git commit -m "feat(web): artifact panel + inline preview card"
 Composes the conversation from `useAgent` + `useCopilotKit`, resolves tool calls via `useRenderToolCall`, registers a default tool renderer, and wires the input. Tested via a contract example (compile-time) plus the underlying pure units already covered.
 
 **Files:**
+
 - Create: `apps/web/src/components/chat/ChatSurface.tsx`
 - Verify against: `node_modules/@copilotkit/react-core/v2` (hook signatures), `node_modules/@ag-ui/client` (message shape).
 
@@ -1194,7 +1325,11 @@ export function ChatSurface({
 }) {
   const { agent } = useAgent({
     agentId: config.id,
-    updates: [UseAgentUpdate.OnMessagesChanged, UseAgentUpdate.OnRunStatusChanged, UseAgentUpdate.OnStateChanged],
+    updates: [
+      UseAgentUpdate.OnMessagesChanged,
+      UseAgentUpdate.OnRunStatusChanged,
+      UseAgentUpdate.OnStateChanged,
+    ],
   });
   const { copilotkit } = useCopilotKit();
   const renderToolCall = useRenderToolCall();
@@ -1286,6 +1421,7 @@ git commit -m "feat(web): headless chat surface driver"
 ## Task 10: WorkspaceShell (layout + artifact state machine)
 
 **Files:**
+
 - Create: `apps/web/src/components/workspace-shell.tsx`
 - Test: `apps/web/src/components/workspace-shell.test.tsx`
 
@@ -1411,6 +1547,7 @@ git commit -m "feat(web): workspace shell + artifact panel state machine"
 ## Task 11: Left rail
 
 **Files:**
+
 - Create: `apps/web/src/components/chat/NavRail.tsx`
 
 - [ ] **Step 1: Write the component (presentational, no test beyond smoke)**
@@ -1422,8 +1559,17 @@ git commit -m "feat(web): workspace shell + artifact panel state machine"
 export function NavRail({ onNewThread }: { onNewThread?: () => void }) {
   return (
     <div className="flex h-full w-[54px] flex-col items-center gap-1.5 border-r border-[var(--border-soft)] bg-[var(--surface-soft)] py-3">
-      <div className="mb-2.5 grid h-[30px] w-[30px] place-items-center rounded-lg bg-[var(--accent)] text-sm font-bold text-white">A</div>
-      <button type="button" aria-label="New thread" onClick={onNewThread} className="grid h-[34px] w-[34px] place-items-center rounded-lg text-[var(--ink-mute)] hover:bg-[var(--bg-soft)] hover:text-[var(--ink)]">✎</button>
+      <div className="mb-2.5 grid h-[30px] w-[30px] place-items-center rounded-lg bg-[var(--accent)] text-sm font-bold text-white">
+        A
+      </div>
+      <button
+        type="button"
+        aria-label="New thread"
+        onClick={onNewThread}
+        className="grid h-[34px] w-[34px] place-items-center rounded-lg text-[var(--ink-mute)] hover:bg-[var(--bg-soft)] hover:text-[var(--ink)]"
+      >
+        ✎
+      </button>
       <div className="mt-auto h-2.5 w-2.5 rounded-full bg-[var(--success)]" />
     </div>
   );
@@ -1445,6 +1591,7 @@ git commit -m "feat(web): console left nav rail"
 Composes everything: provider, agent from the route param, shell, chat surface, artifact panel. Applies the agent's `--page-color` and migrates travel's existing `useFrontendTool`/`useConfigureSuggestions` wiring.
 
 **Files:**
+
 - Create: `apps/web/src/app/console/[agent]/page.tsx`
 - Reference: `apps/web/src/app/travel/page.tsx` (existing tool/suggestion logic to carry over)
 
@@ -1538,6 +1685,7 @@ git commit -m "feat(web): /console/[agent] route with agent selector"
 ## Task 13: Redirect old routes
 
 **Files:**
+
 - Modify: `apps/web/src/app/{travel,grocery,fitness,wellness,a2ui}/page.tsx`
 
 - [ ] **Step 1: Replace each page with a redirect**
@@ -1568,6 +1716,7 @@ git commit -m "feat(web): redirect per-agent routes to /console/<agent>"
 ## Task 14: Delete the skinning CSS + old workspace + contract test
 
 **Files:**
+
 - Modify: `apps/web/src/app/globals.css` (remove the chat-skinning block)
 - Delete: `apps/web/src/components/agent-workspace.tsx`, `apps/web/src/components/agent-workspace.contract.test.tsx`
 - Create: `apps/web/src/components/workspace-shell.contract.test.tsx`
@@ -1628,6 +1777,7 @@ git commit -m "refactor(web): remove CopilotKit DOM-skinning CSS + old workspace
 ## Self-Review
 
 **Spec coverage (Milestone 1 scope):**
+
 - Headless chat (no `CopilotChat`) → Tasks 9, 12. ✓
 - Delete skinning CSS → Task 14. ✓
 - Console aesthetic components (message/response/reasoning/tool/actions/input) → Tasks 5–8. ✓

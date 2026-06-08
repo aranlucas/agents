@@ -30,7 +30,12 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
     colorVar: "--travel",
     placeholder: "Plan a trip, rework a day, or ask for tradeoffs…",
     welcome: "Tell me where you want to go, your dates, and the kind of trip you want.",
-    artifact: { stateField: "itinerary", kind: "markdown", title: "Itinerary", name: "itinerary.md" },
+    artifact: {
+      stateField: "itinerary",
+      kind: "markdown",
+      title: "Itinerary",
+      name: "itinerary.md",
+    },
   },
   grocery: {
     id: "grocery",

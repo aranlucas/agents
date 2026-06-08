@@ -35,20 +35,20 @@ chat/artifact surfaces feel inconsistent across `travel`, `grocery`, `fitness`, 
 
 ## 2. Decisions (resolved during brainstorming)
 
-| # | Decision | Choice |
-|---|----------|--------|
-| Fidelity | How closely to match Vercel | **Vercel structure, bolder brand** |
-| Aesthetic | Personality | **Agent console / utilitarian** |
-| Architecture | Chat rendering | **Fully headless** (`useAgent`/`useCopilotKit`, no `CopilotChat`) |
-| Layout | Full-screen | Slim left icon rail **replaces** per-page HeroHeader on agent pages |
-| Agents | Selector | **Agent dropdown in the composer** (replaces the model picker) switches the active agent; left rail keeps thread actions (new/history) |
-| Routing | Console | **Single console route** `/console/<agent>`, one CopilotKit provider, active agent in the URL, switched in place (no full reload) |
-| Artifact panel | States | **closed / split (~48%, resizable) / fullscreen** |
-| Artifact model | Storage | **ADK-native artifacts** (`save_artifact`/`load_artifact`), versioning by ADK |
-| Artifact store | Backing | **Custom `SqlAlchemyArtifactService`** over the existing DB (Postgres prod / SQLite-libSQL dev), mirroring `session_service.py` |
-| Versions | History | **Handled by ADK** (auto-increment); UI restore = load prior version + re-save |
-| Features | In scope | Rich tool cards, reasoning block, message actions, rich prompt input |
-| Delivery | Spec shape | **One comprehensive spec**, ordered internal milestones |
+| #              | Decision                    | Choice                                                                                                                                 |
+| -------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Fidelity       | How closely to match Vercel | **Vercel structure, bolder brand**                                                                                                     |
+| Aesthetic      | Personality                 | **Agent console / utilitarian**                                                                                                        |
+| Architecture   | Chat rendering              | **Fully headless** (`useAgent`/`useCopilotKit`, no `CopilotChat`)                                                                      |
+| Layout         | Full-screen                 | Slim left icon rail **replaces** per-page HeroHeader on agent pages                                                                    |
+| Agents         | Selector                    | **Agent dropdown in the composer** (replaces the model picker) switches the active agent; left rail keeps thread actions (new/history) |
+| Routing        | Console                     | **Single console route** `/console/<agent>`, one CopilotKit provider, active agent in the URL, switched in place (no full reload)      |
+| Artifact panel | States                      | **closed / split (~48%, resizable) / fullscreen**                                                                                      |
+| Artifact model | Storage                     | **ADK-native artifacts** (`save_artifact`/`load_artifact`), versioning by ADK                                                          |
+| Artifact store | Backing                     | **Custom `SqlAlchemyArtifactService`** over the existing DB (Postgres prod / SQLite-libSQL dev), mirroring `session_service.py`        |
+| Versions       | History                     | **Handled by ADK** (auto-increment); UI restore = load prior version + re-save                                                         |
+| Features       | In scope                    | Rich tool cards, reasoning block, message actions, rich prompt input                                                                   |
+| Delivery       | Spec shape                  | **One comprehensive spec**, ordered internal milestones                                                                                |
 
 ## 3. Key technical findings (research)
 
@@ -80,6 +80,7 @@ chat/artifact surfaces feel inconsistent across `travel`, `grocery`, `fitness`, 
 Locked via interactive mockups (`.superpowers/brainstorm/.../chat-fullscreen-v2.html`).
 
 **Layout (`WorkspaceShell`)** — full viewport, no page padding:
+
 - **Left icon rail** (~54px): brand glyph, new-thread, history, trash, online status dot.
   Replaces `HeroHeader` on agent pages.
 - **Center conversation**: centered reading column (~720px) inside a full-height flex column;
@@ -89,6 +90,7 @@ Locked via interactive mockups (`.superpowers/brainstorm/.../chat-fullscreen-v2.
   or localStorage — see §7).
 
 **Conversation**:
+
 - User → right-aligned soft bubble (`--bg-soft`, asymmetric radius).
 - Assistant → ✦ glyph + flowing markdown via `streamdown`; blinking streaming cursor.
 - **Reasoning** → "Thought for Xs" pill (collapsible), italic muted body; renders only when
@@ -121,18 +123,18 @@ Schibsted Grotesk body + JetBrains Mono metadata, light + dark. No new color sys
 
 New directory `apps/web/src/components/chat/` (shadcn-style, reusing `components/ui/*`):
 
-| Component | Responsibility | Key hooks/libs |
-|-----------|----------------|----------------|
-| `WorkspaceShell` | Full-screen layout, left rail, artifact panel state machine (closed/split/fullscreen), resize, persistence | — |
-| `Conversation` | Scroll container, **autoscroll/pin-to-bottom** (pin unless user scrolled up; scroll on send), scroll-to-bottom button | `useAgent({updates:[OnMessagesChanged,OnRunStatusChanged]})` |
-| `Message` | User vs assistant row chrome, glyph, timestamp | — |
-| `Response` | Assistant markdown stream + streaming cursor | `streamdown` |
-| `Reasoning` | Collapsible reasoning block | reasoning message parts |
-| `ToolEvent` | Resolve + render a tool call in the custom list | `useRenderToolCall()` + registered `useRenderTool`/`useDefaultRenderTool` |
-| `MessageActions` | copy / retry / vote | `agent` (retry = re-run) |
-| `PromptInput` | textarea, attach, suggestions, send/stop | `useAttachments`, `useConfigureSuggestions`, `runAgent`/`stopAgent` |
-| `ArtifactPanel` | header + tools rail + content renderers by `kind` | artifact state + `/api/.../artifacts` |
-| `ArtifactCard` | inline preview that opens the panel | — |
+| Component        | Responsibility                                                                                                        | Key hooks/libs                                                            |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `WorkspaceShell` | Full-screen layout, left rail, artifact panel state machine (closed/split/fullscreen), resize, persistence            | —                                                                         |
+| `Conversation`   | Scroll container, **autoscroll/pin-to-bottom** (pin unless user scrolled up; scroll on send), scroll-to-bottom button | `useAgent({updates:[OnMessagesChanged,OnRunStatusChanged]})`              |
+| `Message`        | User vs assistant row chrome, glyph, timestamp                                                                        | —                                                                         |
+| `Response`       | Assistant markdown stream + streaming cursor                                                                          | `streamdown`                                                              |
+| `Reasoning`      | Collapsible reasoning block                                                                                           | reasoning message parts                                                   |
+| `ToolEvent`      | Resolve + render a tool call in the custom list                                                                       | `useRenderToolCall()` + registered `useRenderTool`/`useDefaultRenderTool` |
+| `MessageActions` | copy / retry / vote                                                                                                   | `agent` (retry = re-run)                                                  |
+| `PromptInput`    | textarea, attach, suggestions, send/stop                                                                              | `useAttachments`, `useConfigureSuggestions`, `runAgent`/`stopAgent`       |
+| `ArtifactPanel`  | header + tools rail + content renderers by `kind`                                                                     | artifact state + `/api/.../artifacts`                                     |
+| `ArtifactCard`   | inline preview that opens the panel                                                                                   | —                                                                         |
 
 - **Delete**: the `ai-elements-*` class hooks and `AGENT_CHAT_SLOT_CLASSES` in
   `agent-workspace.tsx`, and the ~300 lines of `.agent-chat-shell [data-testid…]` /
@@ -158,6 +160,7 @@ New directory `apps/web/src/components/chat/` (shadcn-style, reusing `components
 Three coordinated layers:
 
 ### 6a. Durable, versioned store — ADK artifacts over the DB
+
 - New `packages/agent-common/src/agent_common/artifact_service.py`:
   `SqlAlchemyArtifactService(BaseArtifactService)` implementing `save_artifact`,
   `load_artifact`, `list_artifact_keys`, `delete_artifact`, `list_versions`. Rows:
@@ -169,14 +172,16 @@ Three coordinated layers:
 - Each agent `main.py` replaces `InMemoryArtifactService()` with `create_artifact_service()`.
 
 ### 6b. Authoring — native `save_artifact` + a shared state mirror
+
 Saving is **native ADK** — tools call `tool_context.save_artifact(name,
 types.Part(inline_data=Blob(content.encode(), mime_type)))` directly. No bespoke wrapper.
 The only non-native need is making the save **visible to the client** (AG-UI doesn't bridge
 `artifact_delta`), handled in one shared place:
+
 - Extend the existing `agent_common.tools.shared_after_tool_callback` (already wired as each
   agent's `after_tool_callback`): after a tool runs, read `tool_context.actions.artifact_delta`
   ({name: version}) and mirror a ref into state — `state["artifact"] = {name, kind, mime_type,
-  version, status, title}`. `version` comes from the delta; `kind`/`title`/`mime_type` (which the
+version, status, title}`. `version` comes from the delta; `kind`/`title`/`mime_type` (which the
   delta does not carry) come from a small per-agent **artifact registry** keyed by artifact name
   (e.g. `{"itinerary.md": {kind:"markdown", title:"Itinerary"}}`).
 - **Live content** is plain state, exactly as today: tools keep writing the document string to
@@ -187,6 +192,7 @@ The only non-native need is making the save **visible to the client** (AG-UI doe
   `save_artifact` (version). The callback wires the rest. No `agent_common.artifacts` module.
 
 ### 6c. Client transport — REST load endpoint + web proxy
+
 - Each agent FastAPI app gains artifact routes beside the AG-UI endpoint:
   `GET /artifacts` → `[{name, kind, versions:[…], latest}]`;
   `GET /artifacts/{name}?version=` → bytes (+ `Content-Type` from mime). Backed by the same
@@ -199,22 +205,30 @@ The only non-native need is making the save **visible to the client** (AG-UI doe
   Restore = load v(n-1) → `save_artifact` again (new version) since ADK has no in-place revert.
 
 ### 6d. Shared types (`packages/types/src/index.ts`)
+
 ```ts
 export type ArtifactKind = "markdown" | "document" | "list" | "code" | "plan";
 export type ArtifactStatus = "drafting" | "ready" | "stale";
 export type ArtifactRef = {
-  name: string; title?: string; kind: ArtifactKind;
-  mime_type: string; version: number; status: ArtifactStatus;
+  name: string;
+  title?: string;
+  kind: ArtifactKind;
+  mime_type: string;
+  version: number;
+  status: ArtifactStatus;
 };
 ```
+
 Each agent state type gains `artifact?: ArtifactRef` and `artifact_content?: string`.
 
 ## 7. Persistence of UI prefs
+
 Artifact panel state (open/split/fullscreen, width) persists per agent. Default: localStorage
 (simple, no contract change). Optional later: a user-pref row in the DB. **Decision: localStorage
 for this spec.**
 
 ## 8. Error handling & edge cases
+
 - **Stop mid-stream** (`abortRun`/`stopAgent`): partial assistant message preserved; artifact
   `status = "drafting"`; no version saved for the partial.
 - **Artifact load failure**: panel shows an inline error with retry; inline card still renders
@@ -229,6 +243,7 @@ for this spec.**
   WeakMap-clone footgun) — one chat instance per page.
 
 ## 9. Testing
+
 - **Frontend (vitest + react-test-renderer):** `Message` (user/assistant), `ToolEvent` across
   `inProgress`/`executing`/`complete` + `Partial` params, `Reasoning` present/absent,
   `Conversation` autoscroll/pin logic, `PromptInput` send/stop, `ArtifactPanel` state machine +
@@ -242,6 +257,7 @@ for this spec.**
 - `pnpm check` (oxlint + ruff) clean.
 
 ## 10. Milestones (ordered, single spec)
+
 1. **Chat foundation** — `components/chat/` headless library + `WorkspaceShell` + the
    `/console/[agent]` route, single CopilotKit provider, agent-selector dropdown, and per-agent
    config registry (all agents listed; `travel` fully populated first). Old routes redirect.
@@ -258,6 +274,7 @@ for this spec.**
    suite, `pnpm check`.
 
 ## 11. Files affected (indicative)
+
 - **New:** `apps/web/src/components/chat/*`, `apps/web/src/components/workspace-shell.tsx`,
   `apps/web/src/components/chat/agents/<agent>.ts(x)` (per-agent config registry),
   `apps/web/src/app/console/[agent]/page.tsx`,
@@ -274,6 +291,7 @@ for this spec.**
   to `/console/<agent>` (logic moves to the per-agent config registry).
 
 ## 12. Open risks
+
 - ADK reasoning over AG-UI: confirm Gemini "thinking" surfaces as `REASONING_*` through the
   `ag-ui-adk` bridge; if not, the reasoning block stays dormant until the agent emits it.
 - `useAttachments` end-to-end with ADK (upload target) — verify before promising the attach

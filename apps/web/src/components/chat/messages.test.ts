@@ -9,7 +9,9 @@ const msgs: AguiMessage[] = [
     id: "a1",
     role: "assistant",
     content: "Here is a plan",
-    toolCalls: [{ id: "t1", type: "function", function: { name: "write_itinerary", arguments: "{}" } }],
+    toolCalls: [
+      { id: "t1", type: "function", function: { name: "write_itinerary", arguments: "{}" } },
+    ],
   },
 ];
 

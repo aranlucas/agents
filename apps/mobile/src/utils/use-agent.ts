@@ -114,9 +114,8 @@ export function useAgent<TState extends Record<string, unknown>>(
 
       try {
         if (useClientA2UIMiddleware && a2uiMiddlewareAgentRef.current !== agent) {
-          const { A2UIMiddleware } = (await import(
-            "@ag-ui/a2ui-middleware"
-          )) as A2UIMiddlewareModule;
+          const { A2UIMiddleware } =
+            (await import("@ag-ui/a2ui-middleware")) as A2UIMiddlewareModule;
           agent.use(new A2UIMiddleware({ injectA2UITool: true }));
           a2uiMiddlewareAgentRef.current = agent;
         }
