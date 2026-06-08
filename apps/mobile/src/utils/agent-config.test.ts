@@ -80,15 +80,10 @@ describe("getAgentUrl", () => {
 
   it("lets explicit localhost agent URLs override prod direct URLs", () => {
     assert.equal(
-      getAgentUrl(
-        "a2ui",
-        { a2ui: "https://agents-a2ui-production.up.railway.app" },
-        "ios",
-        {
-          EXPO_PUBLIC_COPILOTKIT_RUNTIME_URL: "",
-          EXPO_PUBLIC_A2UI_AGENT_URL: "http://localhost:8004",
-        },
-      ),
+      getAgentUrl("a2ui", { a2ui: "https://agents-a2ui-production.up.railway.app" }, "ios", {
+        EXPO_PUBLIC_COPILOTKIT_RUNTIME_URL: "",
+        EXPO_PUBLIC_A2UI_AGENT_URL: "http://localhost:8004",
+      }),
       "http://localhost:8004/agui",
     );
   });
