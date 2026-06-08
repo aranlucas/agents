@@ -17,12 +17,21 @@ This adds (1) a user settings page reachable from the sidebar where accounts are
 linked via Clerk, and (2) a gate that disables an agent's chat input until its
 required providers are connected, pointing the user to settings.
 
+**Connection status comes from Clerk on the client** (`useUser().user.externalAccounts`),
+not from the `/api/*/token` endpoints. Those endpoints still exist — the CopilotKit
+runtime route uses them to forward the real OAuth token to the agent server-side —
+but the gate reads `externalAccounts` directly. This avoids a fetch/loading flash
+and reads the exact data the settings `<UserProfile>` mutates, so connecting an
+account reflects in the gate instantly. The trade-off (a linked-but-expired token
+reads as connected) is acceptable: the gate's question is "have you linked this
+account?", and Clerk refreshes the token server-side when the agent fetches it.
+
 ## Scope
 
-- `apps/web/src/lib/connections.ts` — **new.** Provider catalog + `missingProviders` helper.
-- `apps/web/src/lib/connections.test.ts` — **new.** Unit tests for `missingProviders`.
+- `apps/web/src/lib/connections.ts` — **new.** Provider catalog (Clerk provider strings) + `missingProviders` / `connectedProviders` helpers.
+- `apps/web/src/lib/connections.test.ts` — **new.** Unit tests for the pure helpers.
 - `apps/web/src/components/chat/agents/registry.ts` — add `requires?: ProviderId[]` per agent.
-- `apps/web/src/hooks/use-required-connections.ts` — **new.** Compose connection queries for an agent.
+- `apps/web/src/hooks/use-required-connections.ts` — **new.** Derive missing providers from `useUser()`.
 - `apps/web/src/components/chat/ChatSurface.tsx` — gate the prompt input when providers are missing.
 - `apps/web/src/components/chat/NavRail.tsx` — add a settings (gear) link + active state.
 - `apps/web/src/app/console/settings/page.tsx` — **new.** Settings route hosting Clerk `<UserProfile>`.
@@ -35,34 +44,54 @@ and the deprecated `/wellness` `WellnessConnectGate` (superseded by this console
 
 ### 1. Provider catalog & gating model (`src/lib/connections.ts`)
 
-The single source of truth for the two providers and a pure helper for deriving
-what's missing.
+The single source of truth for the two providers and pure helpers for mapping
+Clerk external accounts to connection status. No endpoints, no react-query.
 
 ```ts
 export type ProviderId = "strava" | "kroger";
 
-export const PROVIDERS: Record<ProviderId, {
-  id: ProviderId;
-  label: string;        // "Strava" / "Kroger"
-  endpoint: string;     // status endpoint returning { connected: boolean }
-  queryKey: readonly string[];
-}> = {
-  strava: { id: "strava", label: "Strava", endpoint: "/api/strava/token", queryKey: ["connection", "strava"] },
-  kroger: { id: "kroger", label: "Kroger", endpoint: "/api/mcp/token",    queryKey: ["connection", "kroger"] },
+/** Minimal shape of a Clerk `ExternalAccount` we depend on. */
+export type ExternalAccountLike = {
+  provider: string;
+  verification?: { status?: string | null } | null;
 };
 
-/** Providers that are required but not connected. Order follows `required`. */
+export const PROVIDERS: Record<ProviderId, {
+  id: ProviderId;
+  label: string;          // "Strava" / "Kroger"
+  /** Clerk `externalAccount.provider` strings that map to this provider. */
+  clerkProviders: readonly string[];
+}> = {
+  strava: { id: "strava", label: "Strava", clerkProviders: ["custom_strava", "oauth_custom_strava"] },
+  kroger: { id: "kroger", label: "Kroger", clerkProviders: ["custom_shopping", "oauth_custom_shopping"] },
+};
+
+/** Provider ids that have a verified external account. */
+export function connectedProviders(accounts: readonly ExternalAccountLike[]): ProviderId[] {
+  return (Object.keys(PROVIDERS) as ProviderId[]).filter((id) =>
+    accounts.some(
+      (a) =>
+        PROVIDERS[id].clerkProviders.includes(a.provider) &&
+        a.verification?.status === "verified",
+    ),
+  );
+}
+
+/** Required providers that are not connected. Order follows `required`. */
 export function missingProviders(
   required: readonly ProviderId[],
-  status: Partial<Record<ProviderId, boolean>>,
+  accounts: readonly ExternalAccountLike[],
 ): ProviderId[] {
-  return required.filter((p) => status[p] !== true);
+  const connected = new Set(connectedProviders(accounts));
+  return required.filter((p) => !connected.has(p));
 }
 ```
 
-Note: Kroger's status endpoint is `/api/mcp/token` (the "shopping" provider,
-Clerk provider key `custom_shopping`); Strava's is `/api/strava/token` (Clerk
-provider key `oauth_custom_strava`). These already exist and are unchanged.
+The `clerkProviders` arrays cover both spellings Clerk may report for a custom
+OAuth connection (`custom_<key>` and `oauth_custom_<key>`) — the prior `/fitness`
+page matched both. Verified-only filtering excludes pending/in-progress links.
+The server-side provider keys remain `custom_shopping` (Kroger) and
+`oauth_custom_strava` (Strava) in the unchanged token helpers/endpoints.
 
 ### 2. Agent requirements (`registry.ts`)
 
@@ -96,14 +125,14 @@ function useRequiredConnections(agentId: AgentId): {
 ```
 
 - Reads `getAgentConfig(agentId).requires ?? []`.
-- For each required provider, calls the existing `useAuthConnection({ endpoint, queryKey, enabled })`.
-  Because hook calls cannot be conditional, the hook always issues a query for
-  **both** providers (`strava`, `kroger`) but sets `enabled` to whether that
-  provider is in `requires` — non-required providers stay idle.
-- `isLoading` is true while any required provider's query is still loading.
-- `missing` = `missingProviders(required, { strava: stravaQuery.data?.connected, kroger: krogerQuery.data?.connected })`.
+- Calls Clerk's `useUser()` once: `const { isLoaded, user } = useUser();`.
+- `isLoading` = `!isLoaded`.
+- `missing` = `missingProviders(required, user?.externalAccounts ?? [])`.
 
-This reuses `useAuthConnection` verbatim and produces a tiny, testable surface.
+No network call — `externalAccounts` is already present in the Clerk client
+context. The whole hook is a thin wrapper over the pure `missingProviders` helper,
+so the logic is exercised by `connections.test.ts` and the hook itself stays
+trivial. `useUser()` is mocked in `all-source-smoke.test.tsx` already.
 
 ### 4. Chat gating (`ChatSurface.tsx`)
 
@@ -154,19 +183,24 @@ undefined); the settings page passes `/console/settings`.
 
 ```
 NavRail gear ── Link ──▶ /console/settings ──▶ Clerk <UserProfile> (link Strava/Kroger)
-                                                          │ writes OAuth tokens to Clerk
+                                                          │ adds verified externalAccounts on Clerk user
                                                           ▼
 /console/[agent] ─▶ ChatSurface ─▶ useRequiredConnections(agentId)
-                                        │ useAuthConnection → /api/{strava,mcp}/token → Clerk tokens
+                                        │ useUser().user.externalAccounts (client, no fetch)
                                         ▼
                           missing.length > 0 ? ConnectNotice (→ settings) : PromptInput
+
+(separately, agent runs: CopilotKit runtime route → /api/{strava,mcp}/token → forwards token to agent)
 ```
 
 ## Testing
 
-- `connections.test.ts` — `missingProviders` truth table: none required → `[]`;
-  one required + connected → `[]`; one required + missing → `[that]`; wellness
-  both missing → `["kroger","strava"]`; both required, one connected → the other.
+- `connections.test.ts` — `connectedProviders` + `missingProviders` over
+  `externalAccounts` fixtures: no accounts → all required missing; a verified
+  Strava account (test both `custom_strava` and `oauth_custom_strava` spellings)
+  → not missing; an *unverified* account → still missing; wellness with neither
+  → `["kroger","strava"]`; wellness with Kroger only → `["strava"]`; agent with
+  no `requires` → `[]`.
 - `registry` — assert `grocery.requires`, `fitness.requires`, `wellness.requires`
   match the table; `travel`/`a2ui` have no `requires`.
 - `ChatSurface` gating test (mock `useRequiredConnections`): when `missing` is
@@ -177,10 +211,10 @@ NavRail gear ── Link ──▶ /console/settings ──▶ Clerk <UserProfil
 
 | File | Change |
 | --- | --- |
-| `apps/web/src/lib/connections.ts` | New — provider catalog + `missingProviders` |
-| `apps/web/src/lib/connections.test.ts` | New — `missingProviders` unit tests |
+| `apps/web/src/lib/connections.ts` | New — provider catalog (Clerk strings) + `connectedProviders`/`missingProviders` |
+| `apps/web/src/lib/connections.test.ts` | New — pure-helper unit tests over `externalAccounts` fixtures |
 | `apps/web/src/components/chat/agents/registry.ts` | Add `requires?: ProviderId[]` + mapping |
-| `apps/web/src/hooks/use-required-connections.ts` | New — compose connection queries per agent |
+| `apps/web/src/hooks/use-required-connections.ts` | New — derive `missing` from `useUser().externalAccounts` |
 | `apps/web/src/components/chat/ChatSurface.tsx` | Gate prompt input via `useRequiredConnections` |
 | `apps/web/src/components/chat/NavRail.tsx` | Add settings gear link + `activePath` |
 | `apps/web/src/app/console/settings/page.tsx` | New — settings route hosting `<UserProfile>` |
