@@ -259,7 +259,7 @@ export type MicSelectorListProps = Omit<ComponentProps<typeof CommandList>, "chi
 export const MicSelectorList = ({ children, ...props }: MicSelectorListProps) => {
   const { data } = useContext(MicSelectorContext);
 
-  return <CommandList {...props}>{children(data)}</CommandList>;
+  return <CommandList {...props}>{children(data) as never}</CommandList>;
 };
 
 export type MicSelectorEmptyProps = ComponentProps<typeof CommandEmpty>;

@@ -71,7 +71,7 @@ export const VoiceSelector = ({
 
   const [open, setOpen] = useControllableState({
     defaultProp: defaultOpen,
-    onChange: onOpenChange,
+    onChange: onOpenChange as never,
     prop: openProp,
   });
 
@@ -107,7 +107,7 @@ export const VoiceSelectorContent = ({
 }: VoiceSelectorContentProps) => (
   <DialogContent aria-describedby={undefined} className={cn("p-0", className)} {...props}>
     <DialogTitle className="sr-only">{title}</DialogTitle>
-    <Command className="**:data-[slot=command-input-wrapper]:h-auto">{children}</Command>
+    <Command className="**:data-[slot=command-input-wrapper]:h-auto">{children as never}</Command>
   </DialogContent>
 );
 
