@@ -12,6 +12,38 @@
 
 ---
 
+## ✅ IMPLEMENTATION STATUS — as-built (2026-06-07)
+
+**Milestone 1 is COMPLETE on branch `agent-console-chat-artifacts` (24 commits ahead of `main`, not yet merged/pushed).** Read this section first; the task list below is the original plan and has diverged — see "Divergence" before trusting any task body.
+
+### Major divergence: built on vendored ai-elements, not hand-rolled components
+Mid-execution we discovered the repo already had **Vercel `ai-elements/` (60+ components) + shadcn `ui/` primitives + their deps** vendored in the working tree (they'd been swept, untracked, into commit `00604e7` — a commit mislabeled "docs"; the components are intentional and the user explicitly wants them). We **pivoted**: deleted the hand-rolled `Message/Response/Reasoning/ToolEvent/PromptInput/ArtifactPanel/ArtifactCard` + scroll hook (Tasks 5–8) and **composed the vendored ai-elements** instead. Autoscroll now comes from ai-elements `Conversation` (`use-stick-to-bottom`).
+
+### What actually shipped (current `components/chat/`)
+- **Pure adapters (unit-tested, kept from original plan):** `agents/registry.ts`, `messages.ts` (`toRenderItems`), `artifact.ts` (`selectArtifact`), `tool-adapter.ts` (`toToolState` — CopilotKit status → ai-elements Tool state). `@agents/types` gained `ArtifactKind`.
+- **Composition (verified at runtime, no unit tests):** `ChatSurface.tsx` (headless `useAgent`/`useCopilotKit`/`useRenderToolCall` driving ai-elements `Conversation/Message/MessageResponse/Reasoning/Tool/PromptInput`), `ArtifactPanel.tsx` (ai-elements `Artifact`), `AgentSelector.tsx`, `NavRail.tsx`.
+- **Shell + route:** `components/workspace-shell.tsx` (`nextPanelState` state machine, unit-tested; `useArtifactPanel` localStorage persistence; closed/split/fullscreen), `app/console/[agent]/page.tsx` (single CopilotKit provider, agent from URL, `<TravelHooks/>` for travel only), `components/chat/agents/travel.tsx` (ported `request_user_approval` + suggestions + ApprovalDialog).
+- **Redirects:** `/travel|grocery|fitness|wellness|a2ui` → `/console/<agent>`.
+- **Removed:** `agent-workspace.tsx` + its contract test; the ~300-line DOM-skinning block in `globals.css`. New `workspace-shell.contract.test.tsx`.
+
+### Verified gates
+`pnpm --filter web build` ✓ · `vitest` 58 pass ✓ · `pnpm lint` (oxlint) ✓ · `ruff` ✓ · `oxfmt` ✓. `/console/travel` + `/console/grocery` render HTTP 200 in `next dev`.
+
+### Known tech debt / deferred (pick up next)
+1. **NOT verified live:** token streaming, tool-call cards, reasoning, and artifact updates against a **running agent backend** were never exercised (needs `pnpm dev` with Docker agents up). Only static render + pure logic are verified.
+2. **`as never` casts** in vendored components to satisfy base-ui 1.5 / React 19 — see commit `d2f1ee6`: `prompt-input.tsx` (event handlers), `mic/model/voice-selector.tsx` (`children as never` — duplicate `@types/react` 18+19), `voice-selector` onOpenChange. Proper fix = dedupe `@types/react` to 19 via pnpm overrides (attempted, didn't re-resolve cleanly — reverted).
+3. **`.oxlintrc.json` override** relaxes jsx-a11y/`no-img-element`/a few TS rules for `ai-elements/**` + `ui/**` (vendored). Intentional.
+4. **Suggestions deferred:** `ChatSurface` does NOT render suggestion pills yet (ai-elements `Suggestions`/`Suggestion` exist; wire via `useSuggestions`). Travel still *configures* them via `TravelHooks`.
+5. **Non-travel agents** (grocery/fitness/wellness/a2ui) run as basic chat — their per-agent suggestions/tools are NOT ported (only travel). That + per-kind artifact renderers = **Milestone 3**.
+6. **Commit `00604e7`** mislabeled "docs" actually contains the vendored ai-elements/ui + package.json deps. Left as-is (not history-rewritten).
+
+### Next milestones (own specs/plans)
+- **M2 — ADK-native artifacts:** `SqlAlchemyArtifactService` (mirror `agent_common/session_service.py` DB resolution), extend `shared_after_tool_callback` to mirror `artifact_delta` → `state["artifact"]` + per-agent artifact registry, native `save_artifact`, artifact REST endpoints + `app/api/agents/artifacts` proxy, real version/undo-redo in `ArtifactPanel` tools rail. (Spec §6.)
+- **M3 — rollout:** port grocery/fitness/wellness/a2ui hooks + suggestions + per-`kind` artifact renderers; wire `Suggestions`.
+- **M4 — polish:** message actions, attachments end-to-end, dark-mode pass, live verification.
+
+---
+
 ## File Structure
 
 Pure logic (unit-tested first):
