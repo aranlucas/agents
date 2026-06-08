@@ -12,6 +12,8 @@ export type AguiMessage = {
   role: "user" | "assistant" | "reasoning" | "system" | "tool" | "activity" | string;
   content?: string;
   toolCalls?: AguiToolCall[];
+  /** Present on `role: "tool"` result messages — links the result to its call. */
+  toolCallId?: string;
 };
 
 export type RenderItem =

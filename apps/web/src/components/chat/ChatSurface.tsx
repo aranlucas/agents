@@ -84,9 +84,17 @@ export function ChatSurface({
   const isRunning = agent?.isRunning ?? false;
   const artifact = selectArtifact(agent?.state as Record<string, unknown>, config);
 
-  // The resolver's toolCall type is CopilotKit-internal; AguiToolCall is the
-  // structural runtime shape. Cast at this single boundary.
-  const renderTC = (tc: AguiToolCall) => renderToolCall({ toolCall: tc as never });
+  // Pair each tool call with its result message (role: "tool") so the resolver
+  // can render the completed state instead of a perpetual "Pending".
+  const toolMessages = new Map<string, AguiMessage>();
+  for (const m of messages) {
+    if (m.role === "tool" && m.toolCallId) toolMessages.set(m.toolCallId, m);
+  }
+
+  // The resolver's toolCall/toolMessage types are CopilotKit-internal; our Agui*
+  // are the structural runtime shapes. Cast at this single boundary.
+  const renderTC = (tc: AguiToolCall) =>
+    renderToolCall({ toolCall: tc as never, toolMessage: toolMessages.get(tc.id) as never });
 
   const send = useCallback(
     (text: string) => {
