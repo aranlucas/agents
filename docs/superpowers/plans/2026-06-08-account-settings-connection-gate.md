@@ -14,23 +14,24 @@
 
 ## File Structure
 
-| File | Responsibility |
-| --- | --- |
-| `apps/web/src/lib/connections.ts` | **New.** `ProviderId`, `PROVIDERS` catalog, pure `connectedProviders` / `missingProviders` |
-| `apps/web/src/lib/connections.test.ts` | **New.** Unit tests for the pure helpers |
-| `apps/web/src/components/chat/agents/registry.ts` | Add `requires?: ProviderId[]` field + per-agent mapping |
-| `apps/web/src/components/chat/agents/registry.test.ts` | Assert `requires` mapping |
-| `apps/web/src/hooks/use-required-connections.ts` | **New.** `useUser()` → `{ isLoading, missing }` |
-| `apps/web/src/components/chat/ConnectNotice.tsx` | **New.** Presentational "link your account" card |
-| `apps/web/src/components/chat/ChatSurface.tsx` | Gate the prompt input via `useRequiredConnections` |
-| `apps/web/src/components/chat/NavRail.tsx` | Add settings gear `Link` + `activePath` prop |
-| `apps/web/src/app/console/settings/page.tsx` | **New.** Settings route: `NavRail` + `<UserProfile>` |
-| `apps/web/src/app/console/[agent]/page.tsx` | Pass `activePath` to `NavRail` |
-| `apps/web/src/all-source-smoke.test.tsx` | Mock `UserProfile`, render the settings page |
+| File                                                   | Responsibility                                                                             |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| `apps/web/src/lib/connections.ts`                      | **New.** `ProviderId`, `PROVIDERS` catalog, pure `connectedProviders` / `missingProviders` |
+| `apps/web/src/lib/connections.test.ts`                 | **New.** Unit tests for the pure helpers                                                   |
+| `apps/web/src/components/chat/agents/registry.ts`      | Add `requires?: ProviderId[]` field + per-agent mapping                                    |
+| `apps/web/src/components/chat/agents/registry.test.ts` | Assert `requires` mapping                                                                  |
+| `apps/web/src/hooks/use-required-connections.ts`       | **New.** `useUser()` → `{ isLoading, missing }`                                            |
+| `apps/web/src/components/chat/ConnectNotice.tsx`       | **New.** Presentational "link your account" card                                           |
+| `apps/web/src/components/chat/ChatSurface.tsx`         | Gate the prompt input via `useRequiredConnections`                                         |
+| `apps/web/src/components/chat/NavRail.tsx`             | Add settings gear `Link` + `activePath` prop                                               |
+| `apps/web/src/app/console/settings/page.tsx`           | **New.** Settings route: `NavRail` + `<UserProfile>`                                       |
+| `apps/web/src/app/console/[agent]/page.tsx`            | Pass `activePath` to `NavRail`                                                             |
+| `apps/web/src/all-source-smoke.test.tsx`               | Mock `UserProfile`, render the settings page                                               |
 
 **Note on test environment:** Vitest runs in the `node` environment (see `vitest.config`). Follow the existing convention — pure-function tests (like `tool-adapter.test.ts`, `registry.test.ts`) plus the `all-source-smoke.test.tsx` render harness. Do **not** introduce jsdom/testing-library; gating logic is tested as a pure function and the settings page via the smoke harness.
 
 **Commands** (run from `apps/web/`):
+
 - Single test file: `pnpm exec vitest run src/lib/connections.test.ts`
 - All web tests: `pnpm test`
 - Full repo checks: `pnpm check` (from repo root)
@@ -40,6 +41,7 @@
 ## Task 1: Provider catalog & pure helpers
 
 **Files:**
+
 - Create: `apps/web/src/lib/connections.ts`
 - Test: `apps/web/src/lib/connections.test.ts`
 
@@ -72,7 +74,9 @@ describe("connectedProviders", () => {
   });
 
   it("ignores unverified accounts", () => {
-    expect(connectedProviders([{ provider: "custom_strava", verification: { status: "unverified" } }])).toEqual([]);
+    expect(
+      connectedProviders([{ provider: "custom_strava", verification: { status: "unverified" } }]),
+    ).toEqual([]);
     expect(connectedProviders([{ provider: "custom_strava" }])).toEqual([]);
   });
 });
@@ -95,7 +99,9 @@ describe("missingProviders", () => {
   });
 
   it("reports only the still-missing one (order follows required)", () => {
-    expect(missingProviders(["kroger", "strava"], [verified("custom_shopping")])).toEqual(["strava"]);
+    expect(missingProviders(["kroger", "strava"], [verified("custom_shopping")])).toEqual([
+      "strava",
+    ]);
   });
 });
 ```
@@ -179,6 +185,7 @@ git commit -m "feat(web): provider catalog + connection-status helpers"
 ## Task 2: Agent connection requirements
 
 **Files:**
+
 - Modify: `apps/web/src/components/chat/agents/registry.ts`
 - Test: `apps/web/src/components/chat/agents/registry.test.ts`
 
@@ -187,13 +194,13 @@ git commit -m "feat(web): provider catalog + connection-status helpers"
 Append to `apps/web/src/components/chat/agents/registry.test.ts` inside the existing `describe("agent registry", ...)` block:
 
 ```ts
-  it("declares external-account requirements per agent", () => {
-    expect(getAgentConfig("travel").requires ?? []).toEqual([]);
-    expect(getAgentConfig("grocery").requires).toEqual(["kroger"]);
-    expect(getAgentConfig("fitness").requires).toEqual(["strava"]);
-    expect(getAgentConfig("wellness").requires).toEqual(["kroger", "strava"]);
-    expect(getAgentConfig("a2ui").requires ?? []).toEqual([]);
-  });
+it("declares external-account requirements per agent", () => {
+  expect(getAgentConfig("travel").requires ?? []).toEqual([]);
+  expect(getAgentConfig("grocery").requires).toEqual(["kroger"]);
+  expect(getAgentConfig("fitness").requires).toEqual(["strava"]);
+  expect(getAgentConfig("wellness").requires).toEqual(["kroger", "strava"]);
+  expect(getAgentConfig("a2ui").requires ?? []).toEqual([]);
+});
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -243,6 +250,7 @@ git commit -m "feat(web): declare per-agent connection requirements"
 ## Task 3: useRequiredConnections hook
 
 **Files:**
+
 - Create: `apps/web/src/hooks/use-required-connections.ts`
 
 This is a thin wrapper over `useUser()` and the already-tested `missingProviders`. Its logic is covered by `connections.test.ts`; no dedicated hook test (the repo's node-env Vitest setup does not render hooks, and the hook adds no branching beyond the pure helper). It is exercised at render time by the smoke test once `ChatSurface` consumes it.
@@ -296,6 +304,7 @@ git commit -m "feat(web): useRequiredConnections hook over Clerk externalAccount
 ## Task 4: ConnectNotice + chat gating
 
 **Files:**
+
 - Create: `apps/web/src/components/chat/ConnectNotice.tsx`
 - Modify: `apps/web/src/components/chat/ChatSurface.tsx`
 
@@ -364,36 +373,36 @@ import { useRequiredConnections } from "@/hooks/use-required-connections";
 b) Inside the `ChatSurface` component body, after the existing `const renderToolCall = useRenderToolCall();` line, add:
 
 ```tsx
-  const connections = useRequiredConnections(config.id);
-  const gated = !connections.isLoading && connections.missing.length > 0;
+const connections = useRequiredConnections(config.id);
+const gated = !connections.isLoading && connections.missing.length > 0;
 ```
 
 c) Replace the entire footer block (the `<div className="px-4 pb-...">` wrapper that contains `<PromptInput>`) with a conditional:
 
 ```tsx
-      <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <div className="mx-auto w-full max-w-[760px]">
-          {gated ? (
-            <ConnectNotice agentLabel={config.label} missing={connections.missing} />
-          ) : (
-            <PromptInput
-              onSubmit={(message: PromptInputMessage) => {
-                send(message.text ?? "");
-              }}
-            >
-              <PromptInputBody>
-                <PromptInputTextarea placeholder={config.placeholder} />
-              </PromptInputBody>
-              <PromptInputFooter>
-                <PromptInputTools>
-                  <AgentSelector active={config.id} onSelect={onSwitchAgent} />
-                </PromptInputTools>
-                <PromptInputSubmit status={isRunning ? "streaming" : "ready"} onStop={stop} />
-              </PromptInputFooter>
-            </PromptInput>
-          )}
-        </div>
-      </div>
+<div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+  <div className="mx-auto w-full max-w-[760px]">
+    {gated ? (
+      <ConnectNotice agentLabel={config.label} missing={connections.missing} />
+    ) : (
+      <PromptInput
+        onSubmit={(message: PromptInputMessage) => {
+          send(message.text ?? "");
+        }}
+      >
+        <PromptInputBody>
+          <PromptInputTextarea placeholder={config.placeholder} />
+        </PromptInputBody>
+        <PromptInputFooter>
+          <PromptInputTools>
+            <AgentSelector active={config.id} onSelect={onSwitchAgent} />
+          </PromptInputTools>
+          <PromptInputSubmit status={isRunning ? "streaming" : "ready"} onStop={stop} />
+        </PromptInputFooter>
+      </PromptInput>
+    )}
+  </div>
+</div>
 ```
 
 - [ ] **Step 4: Run tests + typecheck**
@@ -413,6 +422,7 @@ git commit -m "feat(web): gate agent chat input on required account connections"
 ## Task 5: NavRail settings gear
 
 **Files:**
+
 - Modify: `apps/web/src/components/chat/NavRail.tsx`
 
 - [ ] **Step 1: Implement the gear link + active state**
@@ -459,9 +469,7 @@ export function NavRail({
         aria-current={settingsActive ? "page" : undefined}
         className={cn(
           "ml-auto grid h-[34px] w-[34px] place-items-center rounded-lg hover:bg-[var(--bg-soft)] hover:text-[var(--ink)] md:mt-auto md:ml-0",
-          settingsActive
-            ? "bg-[var(--bg-soft)] text-[var(--ink)]"
-            : "text-[var(--ink-mute)]",
+          settingsActive ? "bg-[var(--bg-soft)] text-[var(--ink)]" : "text-[var(--ink-mute)]",
         )}
       >
         <SettingsIcon className="size-4" />
@@ -491,6 +499,7 @@ git commit -m "feat(web): add settings link to NavRail"
 ## Task 6: Settings route
 
 **Files:**
+
 - Create: `apps/web/src/app/console/settings/page.tsx`
 
 - [ ] **Step 1: Implement the settings page**
@@ -540,6 +549,7 @@ git commit -m "feat(web): /console/settings page hosting Clerk UserProfile"
 ## Task 7: Wire console activePath + smoke coverage
 
 **Files:**
+
 - Modify: `apps/web/src/app/console/[agent]/page.tsx`
 - Modify: `apps/web/src/all-source-smoke.test.tsx`
 
@@ -578,12 +588,12 @@ c) Add a matching binding name in the destructuring array on the left of that `a
 d) Add a render call alongside the other page renders (after the `"a2ui"` render block):
 
 ```tsx
-    await render(
-      "settings",
-      <ProvidersModule.Providers>
-        <SettingsPage.default />
-      </ProvidersModule.Providers>,
-    );
+await render(
+  "settings",
+  <ProvidersModule.Providers>
+    <SettingsPage.default />
+  </ProvidersModule.Providers>,
+);
 ```
 
 - [ ] **Step 3: Run the smoke test**

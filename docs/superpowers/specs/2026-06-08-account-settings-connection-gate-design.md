@@ -56,14 +56,25 @@ export type ExternalAccountLike = {
   verification?: { status?: string | null } | null;
 };
 
-export const PROVIDERS: Record<ProviderId, {
-  id: ProviderId;
-  label: string;          // "Strava" / "Kroger"
-  /** Clerk `externalAccount.provider` strings that map to this provider. */
-  clerkProviders: readonly string[];
-}> = {
-  strava: { id: "strava", label: "Strava", clerkProviders: ["custom_strava", "oauth_custom_strava"] },
-  kroger: { id: "kroger", label: "Kroger", clerkProviders: ["custom_shopping", "oauth_custom_shopping"] },
+export const PROVIDERS: Record<
+  ProviderId,
+  {
+    id: ProviderId;
+    label: string; // "Strava" / "Kroger"
+    /** Clerk `externalAccount.provider` strings that map to this provider. */
+    clerkProviders: readonly string[];
+  }
+> = {
+  strava: {
+    id: "strava",
+    label: "Strava",
+    clerkProviders: ["custom_strava", "oauth_custom_strava"],
+  },
+  kroger: {
+    id: "kroger",
+    label: "Kroger",
+    clerkProviders: ["custom_shopping", "oauth_custom_shopping"],
+  },
 };
 
 /** Provider ids that have a verified external account. */
@@ -71,8 +82,7 @@ export function connectedProviders(accounts: readonly ExternalAccountLike[]): Pr
   return (Object.keys(PROVIDERS) as ProviderId[]).filter((id) =>
     accounts.some(
       (a) =>
-        PROVIDERS[id].clerkProviders.includes(a.provider) &&
-        a.verification?.status === "verified",
+        PROVIDERS[id].clerkProviders.includes(a.provider) && a.verification?.status === "verified",
     ),
   );
 }
@@ -103,13 +113,13 @@ requires?: ProviderId[];
 
 Mapping:
 
-| Agent     | requires              |
-| --------- | --------------------- |
-| `travel`  | — (none)              |
-| `grocery` | `["kroger"]`          |
-| `fitness` | `["strava"]`          |
-| `wellness`| `["kroger","strava"]` |
-| `a2ui`    | — (none)              |
+| Agent      | requires              |
+| ---------- | --------------------- |
+| `travel`   | — (none)              |
+| `grocery`  | `["kroger"]`          |
+| `fitness`  | `["strava"]`          |
+| `wellness` | `["kroger","strava"]` |
+| `a2ui`     | — (none)              |
 
 `registry.ts` imports `ProviderId` from `connections.ts`. Keeping the requirement
 on the agent config (declarative, co-located with the rest of the agent's
@@ -198,7 +208,7 @@ NavRail gear ── Link ──▶ /console/settings ──▶ Clerk <UserProfil
 - `connections.test.ts` — `connectedProviders` + `missingProviders` over
   `externalAccounts` fixtures: no accounts → all required missing; a verified
   Strava account (test both `custom_strava` and `oauth_custom_strava` spellings)
-  → not missing; an *unverified* account → still missing; wellness with neither
+  → not missing; an _unverified_ account → still missing; wellness with neither
   → `["kroger","strava"]`; wellness with Kroger only → `["strava"]`; agent with
   no `requires` → `[]`.
 - `registry` — assert `grocery.requires`, `fitness.requires`, `wellness.requires`
@@ -209,16 +219,16 @@ NavRail gear ── Link ──▶ /console/settings ──▶ Clerk <UserProfil
 
 ## Files Changed
 
-| File | Change |
-| --- | --- |
-| `apps/web/src/lib/connections.ts` | New — provider catalog (Clerk strings) + `connectedProviders`/`missingProviders` |
-| `apps/web/src/lib/connections.test.ts` | New — pure-helper unit tests over `externalAccounts` fixtures |
-| `apps/web/src/components/chat/agents/registry.ts` | Add `requires?: ProviderId[]` + mapping |
-| `apps/web/src/hooks/use-required-connections.ts` | New — derive `missing` from `useUser().externalAccounts` |
-| `apps/web/src/components/chat/ChatSurface.tsx` | Gate prompt input via `useRequiredConnections` |
-| `apps/web/src/components/chat/NavRail.tsx` | Add settings gear link + `activePath` |
-| `apps/web/src/app/console/settings/page.tsx` | New — settings route hosting `<UserProfile>` |
-| `apps/web/src/app/console/[agent]/page.tsx` | Pass `activePath` to `NavRail` (minor) |
+| File                                              | Change                                                                           |
+| ------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `apps/web/src/lib/connections.ts`                 | New — provider catalog (Clerk strings) + `connectedProviders`/`missingProviders` |
+| `apps/web/src/lib/connections.test.ts`            | New — pure-helper unit tests over `externalAccounts` fixtures                    |
+| `apps/web/src/components/chat/agents/registry.ts` | Add `requires?: ProviderId[]` + mapping                                          |
+| `apps/web/src/hooks/use-required-connections.ts`  | New — derive `missing` from `useUser().externalAccounts`                         |
+| `apps/web/src/components/chat/ChatSurface.tsx`    | Gate prompt input via `useRequiredConnections`                                   |
+| `apps/web/src/components/chat/NavRail.tsx`        | Add settings gear link + `activePath`                                            |
+| `apps/web/src/app/console/settings/page.tsx`      | New — settings route hosting `<UserProfile>`                                     |
+| `apps/web/src/app/console/[agent]/page.tsx`       | Pass `activePath` to `NavRail` (minor)                                           |
 
 ## Out of Scope
 
