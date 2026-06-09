@@ -5,12 +5,15 @@ import {
   useAgent,
   useCopilotKit,
   useDefaultRenderTool,
+  useRenderActivityMessage,
   useRenderToolCall,
+  useSuggestions,
   UseAgentUpdate,
 } from "@copilotkit/react-core/v2";
 import { SparklesIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
 import {
   Conversation,
   ConversationContent,
@@ -80,6 +83,8 @@ export function ChatSurface({
   });
   const { copilotkit } = useCopilotKit();
   const renderToolCall = useRenderToolCall();
+  const { renderActivityMessage } = useRenderActivityMessage();
+  const { suggestions } = useSuggestions({ agentId: config.id });
   const connections = useRequiredConnections(config.id);
   const gated = !connections.isLoading && connections.missing.length > 0;
 
@@ -127,6 +132,11 @@ export function ChatSurface({
             />
           ) : (
             items.map((item) => {
+              if (item.kind === "activity") {
+                return (
+                  <Fragment key={item.id}>{renderActivityMessage(item.message as never)}</Fragment>
+                );
+              }
               if (item.kind === "user") {
                 return (
                   <Message key={item.id} from="user">
@@ -173,21 +183,34 @@ export function ChatSurface({
           {gated ? (
             <ConnectNotice agentLabel={config.label} missing={connections.missing} />
           ) : (
-            <PromptInput
-              onSubmit={(message: PromptInputMessage) => {
-                send(message.text ?? "");
-              }}
-            >
-              <PromptInputBody>
-                <PromptInputTextarea placeholder={config.placeholder} />
-              </PromptInputBody>
-              <PromptInputFooter>
-                <PromptInputTools>
-                  <AgentSelector active={config.id} onSelect={onSwitchAgent} />
-                </PromptInputTools>
-                <PromptInputSubmit status={isRunning ? "streaming" : "ready"} onStop={stop} />
-              </PromptInputFooter>
-            </PromptInput>
+            <>
+              {!isRunning && suggestions.length > 0 && (
+                <Suggestions className="mb-2">
+                  {suggestions.map((s) => (
+                    <Suggestion
+                      key={s.title}
+                      suggestion={s.title}
+                      onClick={() => send(s.message)}
+                    />
+                  ))}
+                </Suggestions>
+              )}
+              <PromptInput
+                onSubmit={(message: PromptInputMessage) => {
+                  send(message.text ?? "");
+                }}
+              >
+                <PromptInputBody>
+                  <PromptInputTextarea placeholder={config.placeholder} />
+                </PromptInputBody>
+                <PromptInputFooter>
+                  <PromptInputTools>
+                    <AgentSelector active={config.id} onSelect={onSwitchAgent} />
+                  </PromptInputTools>
+                  <PromptInputSubmit status={isRunning ? "streaming" : "ready"} onStop={stop} />
+                </PromptInputFooter>
+              </PromptInput>
+            </>
           )}
         </div>
       </div>

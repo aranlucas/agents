@@ -1,22 +1,31 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useAgent, useConfigureSuggestions, useFrontendTool } from "@copilotkit/react-core/v2";
+import { useEffect, useRef } from "react";
+import {
+  useAgent,
+  useConfigureSuggestions,
+  useHumanInTheLoop,
+  UseAgentUpdate,
+} from "@copilotkit/react-core/v2";
 import { z } from "zod";
 
-import { ApprovalDialog, type ApprovalRequest } from "@/components/approval-dialog";
+import { ApprovalCard } from "@/components/approval-dialog";
 import { toTripState } from "@/lib/agent-state";
 
 /**
  * Travel-specific frontend wiring for the console: the human-in-the-loop
- * approval tool and suggestion pills. Renders the pending approval dialog so
- * `request_user_approval` always resolves (an unresolved handler hangs the run).
+ * approval tool and suggestion pills.
+ *
+ * `useHumanInTheLoop` registers a renderer keyed by the tool name, which the
+ * console's `useRenderToolCall()` loop resolves inline in the conversation —
+ * so the approval card appears where the tool call happens (no modal, no
+ * duplicate generic card). The synthesized handler resolves only when
+ * `respond` is called, so every branch must call it.
  */
 export function TravelHooks() {
-  const { agent } = useAgent({ agentId: "travel" });
-  const [pendingApprovals, setPendingApprovals] = useState<ApprovalRequest[]>([]);
+  const { agent } = useAgent({ agentId: "travel", updates: [UseAgentUpdate.OnRunStatusChanged] });
 
-  useFrontendTool({
+  useHumanInTheLoop({
     name: "request_user_approval",
     description:
       "Pause and ask the operator to approve a sensitive trip action " +
@@ -29,28 +38,30 @@ export function TravelHooks() {
         .optional()
         .describe("One sentence on why this action is being proposed (cost, tradeoff, deadline)."),
     }),
-    handler: async ({ action, reason }: { action: string; reason?: string }) => {
-      const id = crypto.randomUUID();
-      const decision = await new Promise<{ approved: boolean; note?: string }>((resolve) => {
-        setPendingApprovals((prev) => [
-          ...prev,
-          {
-            id,
-            action,
-            reason: reason ?? "",
-            resolve: (d) => {
-              setPendingApprovals((q) => q.filter((r) => r.id !== id));
-              resolve(d);
-            },
-          },
-        ]);
-      });
-
-      if (decision.approved && agent) {
-        const current = toTripState(agent.state);
-        agent.setState({ ...current, status: "booked" });
+    render: ({ status, args, respond }) => {
+      if (status !== "executing" || !respond) {
+        return (
+          <div className="my-2 rounded-lg border border-[var(--border-soft)] bg-[var(--surface-soft)] px-3 py-2 text-xs text-[var(--ink-mute)]">
+            {status === "complete" ? "Decision recorded." : "Preparing approval…"}
+          </div>
+        );
       }
-      return decision;
+      return (
+        <ApprovalCard
+          request={{
+            id: "approval",
+            action: args.action ?? "this action",
+            reason: args.reason ?? "",
+            resolve: (decision) => {
+              if (decision.approved && agent) {
+                const current = toTripState(agent.state);
+                agent.setState({ ...current, status: "booked" });
+              }
+              respond(decision);
+            },
+          }}
+        />
+      );
     },
   });
 
@@ -77,17 +88,18 @@ export function TravelHooks() {
     available: "always",
   });
 
-  // Resolve any pending approvals if the user navigates away mid-flow.
-  const pendingRef = useRef<ApprovalRequest[]>([]);
+  // `useHumanInTheLoop` drops its renderer on unmount; if that happens mid-
+  // executing the run's Promise is abandoned and the thread stays locked.
+  // Abort the run on unmount, reading the latest isRunning via a ref.
+  const runningRef = useRef(false);
   useEffect(() => {
-    pendingRef.current = pendingApprovals;
-  }, [pendingApprovals]);
+    runningRef.current = agent?.isRunning ?? false;
+  }, [agent?.isRunning]);
   useEffect(() => {
     return () => {
-      for (const r of pendingRef.current) r.resolve({ approved: false, note: "navigated away" });
+      if (runningRef.current) agent?.abortRun();
     };
-  }, []);
+  }, [agent]);
 
-  const head = pendingApprovals[0];
-  return head ? <ApprovalDialog request={head} /> : null;
+  return null;
 }

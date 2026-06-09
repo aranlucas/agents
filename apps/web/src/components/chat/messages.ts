@@ -24,7 +24,10 @@ export type RenderItem =
       text: string;
       reasoning?: string;
       toolCalls: AguiToolCall[];
-    };
+    }
+  // Activity messages (e.g. A2UI surfaces) are rendered standalone via the
+  // `useRenderActivityMessage` resolver; we carry the raw message through.
+  | { kind: "activity"; id: string; message: AguiMessage };
 
 export function toRenderItems(messages: AguiMessage[]): RenderItem[] {
   const items: RenderItem[] = [];
@@ -34,6 +37,10 @@ export function toRenderItems(messages: AguiMessage[]): RenderItem[] {
     if (m.role === "reasoning") {
       const text = (m.content ?? "").trim();
       if (text) pendingReasoning = text;
+      continue;
+    }
+    if (m.role === "activity") {
+      items.push({ kind: "activity", id: m.id, message: m });
       continue;
     }
     if (m.role === "user") {
