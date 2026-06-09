@@ -108,6 +108,7 @@ vi.mock("@clerk/nextjs", () => ({
   ClerkProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   SignIn: () => <div data-sign-in />,
   SignUp: () => <div data-sign-up />,
+  UserProfile: () => <div data-user-profile />,
   useReverification: (fn: unknown) => fn,
   useUser: () => ({
     isLoaded: true,
@@ -302,6 +303,7 @@ describe("web all-source smoke coverage", () => {
       FitnessPage,
       WellnessPage,
       A2UIPage,
+      SettingsPage,
       AgentCardModule,
       AgentStatusBarModule,
       ApprovalModule,
@@ -322,6 +324,7 @@ describe("web all-source smoke coverage", () => {
       import("./app/fitness/page"),
       import("./app/wellness/page"),
       import("./app/a2ui/page"),
+      import("./app/console/settings/page"),
       import("./components/agent-card"),
       import("./components/agent-status-bar"),
       import("./components/approval-dialog"),
@@ -371,6 +374,12 @@ describe("web all-source smoke coverage", () => {
       "a2ui",
       <ProvidersModule.Providers>
         <A2UIPage.default />
+      </ProvidersModule.Providers>,
+    );
+    await render(
+      "settings",
+      <ProvidersModule.Providers>
+        <SettingsPage.default />
       </ProvidersModule.Providers>,
     );
     await interact(

@@ -21,4 +21,12 @@ describe("agent registry", () => {
   it("falls back to travel for unknown ids", () => {
     expect(getAgentConfig("nope").id).toBe("travel");
   });
+
+  it("declares external-account requirements per agent", () => {
+    expect(getAgentConfig("travel").requires ?? []).toEqual([]);
+    expect(getAgentConfig("grocery").requires).toEqual(["kroger"]);
+    expect(getAgentConfig("fitness").requires).toEqual(["strava"]);
+    expect(getAgentConfig("wellness").requires).toEqual(["kroger", "strava"]);
+    expect(getAgentConfig("a2ui").requires ?? []).toEqual([]);
+  });
 });

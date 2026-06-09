@@ -1,5 +1,7 @@
 import type { ArtifactKind } from "@agents/types";
 
+import type { ProviderId } from "@/lib/connections";
+
 export type AgentId = "travel" | "grocery" | "fitness" | "wellness" | "a2ui";
 
 export type ArtifactSource = {
@@ -20,6 +22,8 @@ export type AgentConfig = {
   placeholder: string;
   welcome?: string;
   artifact?: ArtifactSource;
+  /** External OAuth providers that must be connected before this agent is usable. */
+  requires?: ProviderId[];
 };
 
 export const AGENTS: Record<AgentId, AgentConfig> = {
@@ -39,6 +43,7 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
   },
   grocery: {
     id: "grocery",
+    requires: ["kroger"],
     label: "Grocery",
     glyph: "🛒",
     colorVar: "--grocery",
@@ -52,6 +57,7 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
   },
   fitness: {
     id: "fitness",
+    requires: ["strava"],
     label: "Fitness",
     glyph: "💪",
     colorVar: "--fitness",
@@ -65,6 +71,7 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
   },
   wellness: {
     id: "wellness",
+    requires: ["kroger", "strava"],
     label: "Wellness",
     glyph: "☯",
     colorVar: "--wellness",

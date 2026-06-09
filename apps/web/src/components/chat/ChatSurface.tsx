@@ -44,6 +44,8 @@ import { toRenderItems, type AguiMessage, type AguiToolCall } from "./messages";
 import { selectArtifact } from "./artifact";
 import { toToolState } from "./tool-adapter";
 import { AgentSelector } from "./AgentSelector";
+import { ConnectNotice } from "./ConnectNotice";
+import { useRequiredConnections } from "@/hooks/use-required-connections";
 
 // Registers the wildcard tool renderer that `useRenderToolCall()` resolves to
 // for our custom message list. Maps CopilotKit status -> ai-elements Tool state.
@@ -83,6 +85,8 @@ export function ChatSurface({
   const renderToolCall = useRenderToolCall();
   const { renderActivityMessage } = useRenderActivityMessage();
   const { suggestions } = useSuggestions({ agentId: config.id });
+  const connections = useRequiredConnections(config.id);
+  const gated = !connections.isLoading && connections.missing.length > 0;
 
   const messages = (agent?.messages ?? []) as AguiMessage[];
   const items = toRenderItems(messages);
@@ -176,28 +180,38 @@ export function ChatSurface({
 
       <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <div className="mx-auto w-full max-w-[760px]">
-          {!isRunning && suggestions.length > 0 && (
-            <Suggestions className="mb-2">
-              {suggestions.map((s) => (
-                <Suggestion key={s.title} suggestion={s.title} onClick={() => send(s.message)} />
-              ))}
-            </Suggestions>
+          {gated ? (
+            <ConnectNotice agentLabel={config.label} missing={connections.missing} />
+          ) : (
+            <>
+              {!isRunning && suggestions.length > 0 && (
+                <Suggestions className="mb-2">
+                  {suggestions.map((s) => (
+                    <Suggestion
+                      key={s.title}
+                      suggestion={s.title}
+                      onClick={() => send(s.message)}
+                    />
+                  ))}
+                </Suggestions>
+              )}
+              <PromptInput
+                onSubmit={(message: PromptInputMessage) => {
+                  send(message.text ?? "");
+                }}
+              >
+                <PromptInputBody>
+                  <PromptInputTextarea placeholder={config.placeholder} />
+                </PromptInputBody>
+                <PromptInputFooter>
+                  <PromptInputTools>
+                    <AgentSelector active={config.id} onSelect={onSwitchAgent} />
+                  </PromptInputTools>
+                  <PromptInputSubmit status={isRunning ? "streaming" : "ready"} onStop={stop} />
+                </PromptInputFooter>
+              </PromptInput>
+            </>
           )}
-          <PromptInput
-            onSubmit={(message: PromptInputMessage) => {
-              send(message.text ?? "");
-            }}
-          >
-            <PromptInputBody>
-              <PromptInputTextarea placeholder={config.placeholder} />
-            </PromptInputBody>
-            <PromptInputFooter>
-              <PromptInputTools>
-                <AgentSelector active={config.id} onSelect={onSwitchAgent} />
-              </PromptInputTools>
-              <PromptInputSubmit status={isRunning ? "streaming" : "ready"} onStop={stop} />
-            </PromptInputFooter>
-          </PromptInput>
         </div>
       </div>
     </div>
