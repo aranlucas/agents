@@ -41,7 +41,7 @@ function Console({ agentId }: { agentId: AgentId }) {
       <WorkspaceShell
         hasArtifact={Boolean(artifact)}
         panelState={state}
-        rail={<NavRail />}
+        rail={<NavRail activePath={`/console/${agentId}`} />}
         chat={
           <ChatSurface
             config={config}
