@@ -151,7 +151,9 @@ export function ChatSurface({
                     {item.reasoning && (
                       <Reasoning
                         defaultOpen={false}
-                        isStreaming={last && isRunning && item.toolCalls.length === 0 && !item.text.trim()}
+                        isStreaming={
+                          last && isRunning && item.toolCalls.length === 0 && !item.text.trim()
+                        }
                       >
                         <ReasoningTrigger />
                         <ReasoningContent>{item.reasoning}</ReasoningContent>
