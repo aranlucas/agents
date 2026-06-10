@@ -4,11 +4,12 @@
 
 **Goal:** Restructure `Dockerfile.agents` into a cached, per-agent, multi-stage uv build, and clean up the uv-workspace/pnpm seam (dependency groups, dead config, bootstrap scripts).
 
-**Architecture:** The Docker image becomes a two-stage build: a `builder` stage runs `uv sync --locked` in two phases (third-party deps from manifests only, then workspace packages from source) so dependency layers cache across code changes; the runtime stage copies only the venv + source and runs as a non-root user. Each image installs a single agent via an `AGENT_PACKAGE` build arg wired through docker-compose and Railway. Workspace cleanup happens *first* so `uv.lock` is final before the Docker work depends on it.
+**Architecture:** The Docker image becomes a two-stage build: a `builder` stage runs `uv sync --locked` in two phases (third-party deps from manifests only, then workspace packages from source) so dependency layers cache across code changes; the runtime stage copies only the venv + source and runs as a non-root user. Each image installs a single agent via an `AGENT_PACKAGE` build arg wired through docker-compose and Railway. Workspace cleanup happens _first_ so `uv.lock` is final before the Docker work depends on it.
 
 **Tech Stack:** Docker BuildKit, uv 0.11.x workspaces, pnpm scripts, Ruff.
 
 **Repo facts the engineer needs:**
+
 - Root `pyproject.toml` defines a uv workspace with members `agents/{a2ui,fitness,grocery,travel,wellness}` and `packages/agent-common`. Single `uv.lock` at the root.
 - Python package names are `<dir>-agent` (e.g. `travel-agent`); import modules are `<dir>_agent` (e.g. `travel_agent.main`).
 - All 5 agent pyprojects have an identical unused `[project.optional-dependencies] dev` block and a broken `[project.scripts] app` entry (points at an ASGI object, not a callable — entry points must be callables).
@@ -23,6 +24,7 @@
 ### Task 1: Remove dead dev extras and broken script entries from agent pyprojects
 
 **Files:**
+
 - Modify: `agents/travel/pyproject.toml:26-30`
 - Modify: `agents/grocery/pyproject.toml:26-30`
 - Modify: `agents/fitness/pyproject.toml:27-31`
@@ -66,6 +68,7 @@ git commit -m "chore(py): drop unused dev extras and invalid project.scripts fro
 ### Task 2: Remove the redundant Ruff per-file-ignores block
 
 **Files:**
+
 - Modify: `pyproject.toml:44-58`
 
 - [ ] **Step 1: Delete the duplicate block**
@@ -98,6 +101,7 @@ git commit -m "chore(ruff): remove per-file-ignores block that duplicated the gl
 ### Task 3: Bootstrap Python env from pnpm and include Python tests in `pnpm test`
 
 **Files:**
+
 - Modify: `package.json:4-20`
 
 - [ ] **Step 1: Edit the scripts block**
@@ -147,9 +151,11 @@ git commit -m "chore(pnpm): bootstrap uv sync on install, run Python tests in pn
 ### Task 4: Restructure Dockerfile.agents (multi-stage, two-phase locked sync, per-agent package)
 
 **Files:**
+
 - Modify: `Dockerfile.agents` (full rewrite)
 
 **Design notes for the engineer:**
+
 - Two-phase sync is the standard uv Docker pattern: phase 1 copies only `uv.lock` + every workspace `pyproject.toml` and installs third-party deps (`--no-install-workspace`); phase 2 copies source and installs the workspace packages. Result: editing agent source no longer invalidates the dependency layer.
 - `COPY agents/*/pyproject.toml agents/` would flatten paths (BuildKit globs don't preserve directories without labs-only `--parents`), so phase 1 uses one explicit `COPY` per member. Adding a new agent means adding one line here — Task 6 documents that.
 - `AGENT_PACKAGE` has **no default** and is validated with `${AGENT_PACKAGE:?…}` so a build without it fails immediately and loudly, rather than silently producing a travel-only image for a grocery service.
@@ -227,10 +233,12 @@ Expected: builds to completion; the phase-1 `uv sync` output should NOT list gro
 - [ ] **Step 4: Verify layer caching works**
 
 Run:
+
 ```bash
 touch agents/travel/src/travel_agent/main.py
 docker build -f Dockerfile.agents --build-arg AGENT_PACKAGE=travel-agent -t travel-agent:test .
 ```
+
 Expected: the phase-1 `RUN uv sync` step shows `CACHED`; only phase 2 re-runs. Build finishes in seconds.
 
 - [ ] **Step 5: Commit**
@@ -245,6 +253,7 @@ git commit -m "feat(docker): multi-stage per-agent uv build with locked two-phas
 ### Task 5: Wire AGENT_PACKAGE through docker-compose and verify end-to-end
 
 **Files:**
+
 - Modify: `docker-compose.yml` (each of the 5 services' `build` block)
 
 - [ ] **Step 1: Add build args to every service**
@@ -262,12 +271,12 @@ For each service in `docker-compose.yml`, extend the `build` block. The five map
 Pattern (shown for `travel`; repeat for all 5 with the table values):
 
 ```yaml
-  travel:
-    build:
-      context: .
-      dockerfile: Dockerfile.agents
-      args:
-        AGENT_PACKAGE: travel-agent
+travel:
+  build:
+    context: .
+    dockerfile: Dockerfile.agents
+    args:
+      AGENT_PACKAGE: travel-agent
 ```
 
 Leave every service's `ports`, `env_file`, `environment`, and `volumes` blocks untouched.
@@ -280,12 +289,14 @@ Expected: all 5 images build. Phase-1 layers are per-agent (different `--package
 - [ ] **Step 3: Boot and health-check every agent**
 
 Run:
+
 ```bash
 docker compose up -d
 sleep 20
 for p in 8000 8001 8002 8003 8004; do curl -fsS "http://localhost:$p/health" && echo " :$p ok"; done
 docker compose ps
 ```
+
 Expected: all 5 curls return the health payload; `docker compose ps` shows every service `healthy` (the new HEALTHCHECK). This also exercises the non-root `/data` SQLite write — check logs for permission errors:
 
 Run: `docker compose logs --tail 50 travel | grep -i "permission\|error" || echo "no errors"`
@@ -305,6 +316,7 @@ git commit -m "feat(docker): pass AGENT_PACKAGE build arg per compose service"
 ### Task 6: Update AGENTS.md for the new build flow and Railway requirement
 
 **Files:**
+
 - Modify: `AGENTS.md` ("Adding a new agent" list and "Deployment" table)
 
 **Railway context:** Railway injects service variables as Docker build args when the Dockerfile declares a matching `ARG`. Because `AGENT_PACKAGE` is now required, **each Railway agent service must define an `AGENT_PACKAGE` variable (e.g. `grocery-agent`) before this branch deploys** — otherwise the build fails with the explicit `:?` error. That is a deliberate loud failure, but it must be called out in the PR description.
@@ -323,7 +335,7 @@ In `AGENTS.md`, after the existing step 5 ("Add a service to `docker-compose.yml
 Change the Railway row's config cell to:
 
 ```markdown
-| Python agents  | Railway        | `Dockerfile.agents` + `agents/<name>/railway.json` — set Root Dir to repo root, set `AGENT_DIR=agents/<name>` and `AGENT_PACKAGE=<name>-agent` |
+| Python agents | Railway | `Dockerfile.agents` + `agents/<name>/railway.json` — set Root Dir to repo root, set `AGENT_DIR=agents/<name>` and `AGENT_PACKAGE=<name>-agent` |
 ```
 
 - [ ] **Step 3: Verify formatting passes**
