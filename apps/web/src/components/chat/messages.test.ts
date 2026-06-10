@@ -3,7 +3,7 @@ import { toRenderItems, type AguiMessage } from "./messages";
 
 const msgs: AguiMessage[] = [
   { id: "u1", role: "user", content: "plan tokyo" },
-  // Reasoning arrives as its own message preceding the assistant turn.
+  // Reasoning arrives as its own message, rendered in place as a standalone block.
   { id: "r1", role: "reasoning", content: "think…" },
   {
     id: "a1",
@@ -16,78 +16,70 @@ const msgs: AguiMessage[] = [
 ];
 
 describe("toRenderItems", () => {
-  it("emits a user item then an assistant item", () => {
+  it("emits user, reasoning, then assistant items in message order", () => {
     const items = toRenderItems(msgs);
-    expect(items.map((i) => i.kind)).toEqual(["user", "assistant"]);
+    expect(items.map((i) => i.kind)).toEqual(["user", "reasoning", "assistant"]);
   });
 
-  it("attaches the preceding reasoning message to the assistant turn", () => {
-    const assistant = toRenderItems(msgs)[1];
+  it("renders reasoning as a standalone block, separate from the assistant turn", () => {
+    const items = toRenderItems(msgs);
+    const reasoning = items[1];
+    const assistant = items[2];
+    if (reasoning.kind !== "reasoning") throw new Error("expected reasoning");
     if (assistant.kind !== "assistant") throw new Error("expected assistant");
+    expect(reasoning.text).toBe("think…");
     expect(assistant.text).toBe("Here is a plan");
-    expect(assistant.reasoning).toBe("think…");
     expect(assistant.toolCalls.map((t) => t.id)).toEqual(["t1"]);
   });
 
-  it("skips empty assistant turns with no text, tools, or reasoning", () => {
+  it("skips empty assistant turns with no text or tools", () => {
     const items = toRenderItems([{ id: "a0", role: "assistant", content: "" }]);
     expect(items).toEqual([]);
   });
 
-  it("keeps a reasoning-only assistant turn (reasoning but no text/tools)", () => {
+  it("skips empty reasoning messages", () => {
     const items = toRenderItems([
-      { id: "r1", role: "reasoning", content: "hmm" },
+      { id: "r1", role: "reasoning", content: "   " },
+      { id: "a1", role: "assistant", content: "hi" },
+    ]);
+    expect(items.map((i) => i.kind)).toEqual(["assistant"]);
+  });
+
+  it("collapses messages that share an id, merging assistant content and tools", () => {
+    // CopilotKit's deduplicateMessages: a snapshot can re-send the same id.
+    const items = toRenderItems([
       { id: "a1", role: "assistant", content: "" },
+      {
+        id: "a1",
+        role: "assistant",
+        content: "done",
+        toolCalls: [{ id: "t1", type: "function", function: { name: "go", arguments: "{}" } }],
+      },
     ]);
     expect(items).toHaveLength(1);
     const item = items[0];
     if (item.kind !== "assistant") throw new Error("expected assistant");
-    expect(item.reasoning).toBe("hmm");
+    expect(item.text).toBe("done");
+    expect(item.toolCalls.map((t) => t.id)).toEqual(["t1"]);
   });
 
-  it("renders reasoning as a provisional assistant item while the assistant message hasn't arrived yet", () => {
-    const items = toRenderItems([
-      { id: "u1", role: "user", content: "think hard" },
-      { id: "r1", role: "reasoning", content: "considering options..." },
-      // no assistant message yet — still streaming
-    ]);
-    expect(items.map((i) => i.kind)).toEqual(["user", "assistant"]);
-    const item = items[1];
-    if (item.kind !== "assistant") throw new Error("expected assistant");
-    expect(item.id).toBe("r1");
-    expect(item.text).toBe("");
-    expect(item.reasoning).toBe("considering options...");
-  });
-
-  it("does not render reasoning twice when a duplicate reasoning message trails the assistant turn", () => {
-    // The stream can leave a reasoning message ordered after the assistant text
-    // message it belongs to. It must not produce a second "Thinking" block.
+  it("drops a duplicate trailing reasoning message with a different id but identical text", () => {
+    // ag-ui-adk re-emits the final aggregated thought as a second reasoning message
+    // (new id, same text) ordered after the assistant turn. id-dedup can't catch it.
     const items = toRenderItems([
       { id: "u1", role: "user", content: "say hi" },
       { id: "r1", role: "reasoning", content: "greet warmly" },
       { id: "a1", role: "assistant", content: "Hey there!" },
       { id: "r2", role: "reasoning", content: "greet warmly" },
     ]);
-    expect(items.map((i) => i.kind)).toEqual(["user", "assistant"]);
-    const item = items[1];
-    if (item.kind !== "assistant") throw new Error("expected assistant");
-    expect(item.text).toBe("Hey there!");
-    expect(item.reasoning).toBe("greet warmly");
+    expect(items.map((i) => i.kind)).toEqual(["user", "reasoning", "assistant"]);
+    const reasoning = items[1];
+    if (reasoning.kind !== "reasoning") throw new Error("expected reasoning");
+    expect(reasoning.id).toBe("r1");
+    expect(reasoning.text).toBe("greet warmly");
   });
 
-  it("attaches trailing reasoning to a preceding assistant turn that has none", () => {
-    const items = toRenderItems([
-      { id: "a1", role: "assistant", content: "Hey there!" },
-      { id: "r1", role: "reasoning", content: "greet warmly" },
-    ]);
-    expect(items.map((i) => i.kind)).toEqual(["assistant"]);
-    const item = items[0];
-    if (item.kind !== "assistant") throw new Error("expected assistant");
-    expect(item.text).toBe("Hey there!");
-    expect(item.reasoning).toBe("greet warmly");
-  });
-
-  it("shows a new trailing reasoning phase after a tool-call turn as a provisional item", () => {
+  it("keeps a genuinely new reasoning phase with different text", () => {
     const items = toRenderItems([
       { id: "r1", role: "reasoning", content: "look up trips" },
       {
@@ -100,16 +92,39 @@ describe("toRenderItems", () => {
       },
       { id: "t1", role: "tool", content: "[]", toolCallId: "t1" },
       { id: "r2", role: "reasoning", content: "now summarise" },
+      { id: "a2", role: "assistant", content: "Here are your trips" },
     ]);
-    expect(items.map((i) => i.kind)).toEqual(["assistant", "assistant"]);
-    const first = items[0];
-    const second = items[1];
-    if (first.kind !== "assistant" || second.kind !== "assistant") {
-      throw new Error("expected assistants");
-    }
-    expect(first.reasoning).toBe("look up trips");
-    expect(second.text).toBe("");
-    expect(second.reasoning).toBe("now summarise");
+    expect(items.map((i) => i.kind)).toEqual(["reasoning", "assistant", "reasoning", "assistant"]);
+  });
+
+  it("does not suppress identical reasoning text across separate turns", () => {
+    const items = toRenderItems([
+      { id: "r1", role: "reasoning", content: "greet warmly" },
+      { id: "a1", role: "assistant", content: "Hi" },
+      { id: "u2", role: "user", content: "again" },
+      { id: "r2", role: "reasoning", content: "greet warmly" },
+      { id: "a2", role: "assistant", content: "Hi again" },
+    ]);
+    expect(items.map((i) => i.kind)).toEqual([
+      "reasoning",
+      "assistant",
+      "user",
+      "reasoning",
+      "assistant",
+    ]);
+  });
+
+  it("renders a reasoning-only turn while the assistant message is still streaming", () => {
+    const items = toRenderItems([
+      { id: "u1", role: "user", content: "think hard" },
+      { id: "r1", role: "reasoning", content: "considering options..." },
+      // no assistant message yet — still streaming
+    ]);
+    expect(items.map((i) => i.kind)).toEqual(["user", "reasoning"]);
+    const item = items[1];
+    if (item.kind !== "reasoning") throw new Error("expected reasoning");
+    expect(item.id).toBe("r1");
+    expect(item.text).toBe("considering options...");
   });
 
   it("passes activity messages through as standalone items carrying the raw message", () => {

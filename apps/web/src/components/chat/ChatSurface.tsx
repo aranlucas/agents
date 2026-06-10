@@ -93,6 +93,9 @@ export function ChatSurface({
   const isRunning = agent?.isRunning ?? false;
   const artifact = selectArtifact(agent?.state as Record<string, unknown>, config);
 
+  // The artifact button hangs off the most recent assistant turn.
+  const lastAssistantId = items.findLast((i) => i.kind === "assistant")?.id;
+
   // Pair each tool call with its result message (role: "tool") so the resolver
   // can render the completed state instead of a perpetual "Pending".
   const toolMessages = new Map<string, AguiMessage>();
@@ -145,25 +148,24 @@ export function ChatSurface({
                 );
               }
               const last = item === items[items.length - 1];
+              if (item.kind === "reasoning") {
+                // Standalone "Thinking" block, rendered in message order. It is
+                // streaming only while it is the final item and the agent is running.
+                return (
+                  <Reasoning key={item.id} defaultOpen={false} isStreaming={last && isRunning}>
+                    <ReasoningTrigger />
+                    <ReasoningContent>{item.text}</ReasoningContent>
+                  </Reasoning>
+                );
+              }
               return (
                 <Message key={item.id} from="assistant">
                   <MessageContent>
-                    {item.reasoning && (
-                      <Reasoning
-                        defaultOpen={false}
-                        isStreaming={
-                          last && isRunning && item.toolCalls.length === 0 && !item.text.trim()
-                        }
-                      >
-                        <ReasoningTrigger />
-                        <ReasoningContent>{item.reasoning}</ReasoningContent>
-                      </Reasoning>
-                    )}
                     {item.toolCalls.map((tc) => (
                       <Fragment key={tc.id}>{renderTC(tc)}</Fragment>
                     ))}
                     {item.text.trim() && <MessageResponse>{item.text}</MessageResponse>}
-                    {last && artifact && (
+                    {item.id === lastAssistantId && artifact && (
                       <Button
                         type="button"
                         variant="outline"
