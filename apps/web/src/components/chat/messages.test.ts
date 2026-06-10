@@ -29,16 +29,6 @@ describe("toRenderItems", () => {
     expect(assistant.toolCalls.map((t) => t.id)).toEqual(["t1"]);
   });
 
-  it("strips newlines from reasoning text", () => {
-    const items = toRenderItems([
-      { id: "r1", role: "reasoning", content: "first thought\n\nsecond thought\nthird" },
-      { id: "a1", role: "assistant", content: "done" },
-    ]);
-    const item = items[0];
-    if (item.kind !== "assistant") throw new Error("expected assistant");
-    expect(item.reasoning).toBe("first thought second thought third");
-  });
-
   it("skips empty assistant turns with no text, tools, or reasoning", () => {
     const items = toRenderItems([{ id: "a0", role: "assistant", content: "" }]);
     expect(items).toEqual([]);

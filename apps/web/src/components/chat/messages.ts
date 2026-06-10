@@ -35,7 +35,7 @@ export function toRenderItems(messages: AguiMessage[]): RenderItem[] {
 
   for (const m of messages) {
     if (m.role === "reasoning") {
-      const text = (m.content ?? "").replace(/\n+/g, " ").trim();
+      const text = (m.content ?? "").trim();
       if (text) pendingReasoning = { id: m.id, text };
       continue;
     }
