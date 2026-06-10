@@ -29,6 +29,16 @@ describe("toRenderItems", () => {
     expect(assistant.toolCalls.map((t) => t.id)).toEqual(["t1"]);
   });
 
+  it("strips newlines from reasoning text", () => {
+    const items = toRenderItems([
+      { id: "r1", role: "reasoning", content: "first thought\n\nsecond thought\nthird" },
+      { id: "a1", role: "assistant", content: "done" },
+    ]);
+    const item = items[0];
+    if (item.kind !== "assistant") throw new Error("expected assistant");
+    expect(item.reasoning).toBe("first thought second thought third");
+  });
+
   it("skips empty assistant turns with no text, tools, or reasoning", () => {
     const items = toRenderItems([{ id: "a0", role: "assistant", content: "" }]);
     expect(items).toEqual([]);
@@ -43,6 +53,20 @@ describe("toRenderItems", () => {
     const item = items[0];
     if (item.kind !== "assistant") throw new Error("expected assistant");
     expect(item.reasoning).toBe("hmm");
+  });
+
+  it("renders reasoning as a provisional assistant item while the assistant message hasn't arrived yet", () => {
+    const items = toRenderItems([
+      { id: "u1", role: "user", content: "think hard" },
+      { id: "r1", role: "reasoning", content: "considering options..." },
+      // no assistant message yet — still streaming
+    ]);
+    expect(items.map((i) => i.kind)).toEqual(["user", "assistant"]);
+    const item = items[1];
+    if (item.kind !== "assistant") throw new Error("expected assistant");
+    expect(item.id).toBe("r1");
+    expect(item.text).toBe("");
+    expect(item.reasoning).toBe("considering options...");
   });
 
   it("passes activity messages through as standalone items carrying the raw message", () => {
