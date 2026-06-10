@@ -58,16 +58,39 @@ export function toRenderItems(messages: AguiMessage[]): RenderItem[] {
     }
   }
 
-  // Reasoning arrived but the assistant message hasn't started yet (still streaming).
-  // Emit a provisional item so the reasoning text is visible immediately.
+  // Trailing reasoning with no assistant message after it. The stream can leave a
+  // reasoning message ordered *after* the assistant turn it belongs to, so reconcile
+  // it with the previous item instead of always emitting a standalone block.
   if (pendingReasoning) {
-    items.push({
-      kind: "assistant",
-      id: pendingReasoning.id,
-      text: "",
-      reasoning: pendingReasoning.text,
-      toolCalls: [],
-    });
+    const last = items[items.length - 1];
+    if (last?.kind === "assistant") {
+      // The reasoning belongs to this turn. Attach it if the turn has none yet;
+      // skip it if the same reasoning is already shown (the duplicate that would
+      // otherwise render a second "Thinking" block below the response).
+      if (!last.reasoning) {
+        last.reasoning = pendingReasoning.text;
+      } else if (last.reasoning !== pendingReasoning.text) {
+        // A genuinely new reasoning phase (e.g. after a tool call) whose assistant
+        // response hasn't started yet — show it provisionally while streaming.
+        items.push({
+          kind: "assistant",
+          id: pendingReasoning.id,
+          text: "",
+          reasoning: pendingReasoning.text,
+          toolCalls: [],
+        });
+      }
+    } else {
+      // No assistant turn yet (still streaming the first reasoning). Emit a
+      // provisional item so the reasoning text is visible immediately.
+      items.push({
+        kind: "assistant",
+        id: pendingReasoning.id,
+        text: "",
+        reasoning: pendingReasoning.text,
+        toolCalls: [],
+      });
+    }
   }
 
   return items;
