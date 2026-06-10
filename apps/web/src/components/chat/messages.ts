@@ -31,12 +31,12 @@ export type RenderItem =
 
 export function toRenderItems(messages: AguiMessage[]): RenderItem[] {
   const items: RenderItem[] = [];
-  let pendingReasoning: string | undefined;
+  let pendingReasoning: { id: string; text: string } | undefined;
 
   for (const m of messages) {
     if (m.role === "reasoning") {
       const text = (m.content ?? "").trim();
-      if (text) pendingReasoning = text;
+      if (text) pendingReasoning = { id: m.id, text };
       continue;
     }
     if (m.role === "activity") {
@@ -51,11 +51,24 @@ export function toRenderItems(messages: AguiMessage[]): RenderItem[] {
     if (m.role === "assistant") {
       const text = m.content ?? "";
       const toolCalls = m.toolCalls ?? [];
-      const reasoning = pendingReasoning;
+      const reasoning = pendingReasoning?.text;
       pendingReasoning = undefined;
       if (!text.trim() && toolCalls.length === 0 && !reasoning) continue;
       items.push({ kind: "assistant", id: m.id, text, reasoning, toolCalls });
     }
   }
+
+  // Reasoning arrived but the assistant message hasn't started yet (still streaming).
+  // Emit a provisional item so the reasoning text is visible immediately.
+  if (pendingReasoning) {
+    items.push({
+      kind: "assistant",
+      id: pendingReasoning.id,
+      text: "",
+      reasoning: pendingReasoning.text,
+      toolCalls: [],
+    });
+  }
+
   return items;
 }
