@@ -1,7 +1,7 @@
 "use client";
 
 import { use } from "react";
-import { useRouter } from "next/navigation";
+import { notFound, useRouter } from "next/navigation";
 import { CopilotKit, useAgent, UseAgentUpdate } from "@copilotkit/react-core/v2";
 
 import { getAgentConfig, isAgentId, type AgentId } from "@/components/chat/agents/registry";
@@ -19,7 +19,8 @@ const A2UI_CONFIG = {};
 
 export default function Page({ params }: { params: Promise<{ agent: string }> }) {
   const { agent: raw } = use(params);
-  const agentId: AgentId = isAgentId(raw) ? raw : "travel";
+  if (!isAgentId(raw)) notFound();
+  const agentId: AgentId = raw;
   return (
     <CopilotKit
       runtimeUrl="/api/copilotkit"

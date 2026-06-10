@@ -18,8 +18,8 @@ describe("agent registry", () => {
     expect(cfg.artifact?.stateField).toBe("itinerary");
   });
 
-  it("falls back to travel for unknown ids", () => {
-    expect(getAgentConfig("nope").id).toBe("travel");
+  it("returns undefined for unknown ids", () => {
+    expect(getAgentConfig("nope")).toBeUndefined();
   });
 
   it("declares external-account requirements per agent", () => {
