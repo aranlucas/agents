@@ -52,3 +52,13 @@ jobs:
 
       - name: Run Python tests
         run: uv run pytest
+
+      - name: Run JS tests
+        run: pnpm test
+
+      - name: Build web
+        run: pnpm build
+        env:
+          SKIP_ENV_VALIDATION: "1"
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2xlcmsuZXhhbXBsZS5jb20k
+          CLERK_SECRET_KEY: sk_test_placeholder

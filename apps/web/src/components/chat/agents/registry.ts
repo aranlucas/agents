@@ -98,6 +98,8 @@ export function isAgentId(value: string): value is AgentId {
   return value in AGENTS;
 }
 
-export function getAgentConfig(id: string): AgentConfig {
-  return isAgentId(id) ? AGENTS[id] : AGENTS.travel;
+export function getAgentConfig(id: AgentId): AgentConfig;
+export function getAgentConfig(id: string): AgentConfig | undefined;
+export function getAgentConfig(id: string): AgentConfig | undefined {
+  return isAgentId(id) ? AGENTS[id] : undefined;
 }

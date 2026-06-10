@@ -17,11 +17,12 @@ export const env = createEnv({
     COPILOTKIT_DEBUG: z
       .string()
       .optional()
-      .transform((v) => v !== "false"),
+      .transform((v) => v === "true"),
   },
   client: {
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1),
   },
+  skipValidation: process.env.SKIP_ENV_VALIDATION === "1",
   runtimeEnv: {
     CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
     TRAVEL_AGENT_URL: process.env.TRAVEL_AGENT_URL,

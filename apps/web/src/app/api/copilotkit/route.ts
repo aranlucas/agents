@@ -62,10 +62,6 @@ const handler = createCopilotRuntimeHandler({
         return { connected: false, token: null };
       });
 
-      console.log(
-        `[copilotkit] building agents stravaTokenPresent=${Boolean(stravaToken)} krogerTokenPresent=${Boolean(krogerToken)}`,
-      );
-
       if (userId) {
         request.headers.set(CLERK_USER_ID_HEADER, userId);
       }
