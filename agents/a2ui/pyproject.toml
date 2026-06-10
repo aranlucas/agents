@@ -23,12 +23,6 @@ dependencies = [
   "dependency-injector>=4.49.0",
 ]
 
-[project.optional-dependencies]
-dev = ["pytest", "pytest-asyncio", "httpx"]
-
-[project.scripts]
-app = "a2ui_agent.main:app"
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"

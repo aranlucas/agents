@@ -53,13 +53,6 @@ dependencies = [
     { name = "uvicorn", extra = ["standard"] },
 ]
 
-[package.optional-dependencies]
-dev = [
-    { name = "httpx" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-]
-
 [package.metadata]
 requires-dist = [
     { name = "a2a-sdk", specifier = ">=0.3.4,<0.4" },
@@ -69,7 +62,6 @@ requires-dist = [
     { name = "fastapi" },
     { name = "google-adk", extras = ["a2a"], specifier = ">=2.2.0" },
     { name = "google-genai" },
-    { name = "httpx", marker = "extra == 'dev'" },
     { name = "litellm" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-exporter-otlp-proto-http" },
@@ -78,12 +70,9 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-vertexai", specifier = ">=2.0b0" },
     { name = "opentelemetry-sdk" },
     { name = "pydantic" },
-    { name = "pytest", marker = "extra == 'dev'" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'" },
     { name = "python-dotenv" },
     { name = "uvicorn", extras = ["standard"] },
 ]
-provides-extras = ["dev"]
 
 [[package]]
 name = "ag-ui-adk"
@@ -628,13 +617,6 @@ dependencies = [
     { name = "uvicorn", extra = ["standard"] },
 ]
 
-[package.optional-dependencies]
-dev = [
-    { name = "httpx" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-]
-
 [package.metadata]
 requires-dist = [
     { name = "a2a-sdk", specifier = ">=0.3.4,<0.4" },
@@ -645,7 +627,6 @@ requires-dist = [
     { name = "google-adk", extras = ["a2a", "mcp"], specifier = ">=2.2.0" },
     { name = "google-genai" },
     { name = "httpx" },
-    { name = "httpx", marker = "extra == 'dev'" },
     { name = "litellm" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-exporter-otlp-proto-http" },
@@ -654,12 +635,9 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-vertexai", specifier = ">=2.0b0" },
     { name = "opentelemetry-sdk" },
     { name = "pydantic" },
-    { name = "pytest", marker = "extra == 'dev'" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'" },
     { name = "python-dotenv" },
     { name = "uvicorn", extras = ["standard"] },
 ]
-provides-extras = ["dev"]
 
 [[package]]
 name = "frozenlist"
@@ -905,13 +883,6 @@ dependencies = [
     { name = "uvicorn", extra = ["standard"] },
 ]
 
-[package.optional-dependencies]
-dev = [
-    { name = "httpx" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-]
-
 [package.metadata]
 requires-dist = [
     { name = "a2a-sdk", specifier = ">=0.3.4,<0.4" },
@@ -921,7 +892,6 @@ requires-dist = [
     { name = "fastapi" },
     { name = "google-adk", extras = ["a2a", "mcp"], specifier = ">=2.2.0" },
     { name = "google-genai" },
-    { name = "httpx", marker = "extra == 'dev'" },
     { name = "litellm" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-exporter-otlp-proto-http" },
@@ -930,12 +900,9 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-vertexai", specifier = ">=2.0b0" },
     { name = "opentelemetry-sdk" },
     { name = "pydantic" },
-    { name = "pytest", marker = "extra == 'dev'" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'" },
     { name = "python-dotenv" },
     { name = "uvicorn", extras = ["standard"] },
 ]
-provides-extras = ["dev"]
 
 [[package]]
 name = "h11"
@@ -2181,13 +2148,6 @@ dependencies = [
     { name = "uvicorn", extra = ["standard"] },
 ]
 
-[package.optional-dependencies]
-dev = [
-    { name = "httpx" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-]
-
 [package.metadata]
 requires-dist = [
     { name = "a2a-sdk", specifier = ">=0.3.4,<0.4" },
@@ -2197,7 +2157,6 @@ requires-dist = [
     { name = "fastapi" },
     { name = "google-adk", extras = ["a2a", "mcp"], specifier = ">=2.2.0" },
     { name = "google-genai" },
-    { name = "httpx", marker = "extra == 'dev'" },
     { name = "litellm" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-exporter-otlp-proto-http" },
@@ -2206,12 +2165,9 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-vertexai", specifier = ">=2.0b0" },
     { name = "opentelemetry-sdk" },
     { name = "pydantic" },
-    { name = "pytest", marker = "extra == 'dev'" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'" },
     { name = "python-dotenv" },
     { name = "uvicorn", extras = ["standard"] },
 ]
-provides-extras = ["dev"]
 
 [[package]]
 name = "typer"
@@ -2422,13 +2378,6 @@ dependencies = [
     { name = "uvicorn", extra = ["standard"] },
 ]
 
-[package.optional-dependencies]
-dev = [
-    { name = "httpx" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-]
-
 [package.metadata]
 requires-dist = [
     { name = "a2a-sdk", specifier = ">=0.3.4,<0.4" },
@@ -2439,7 +2388,6 @@ requires-dist = [
     { name = "google-adk", extras = ["a2a"], specifier = ">=2.2.0" },
     { name = "google-genai" },
     { name = "httpx" },
-    { name = "httpx", marker = "extra == 'dev'" },
     { name = "litellm" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-exporter-otlp-proto-http" },
@@ -2448,12 +2396,9 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-vertexai", specifier = ">=2.0b0" },
     { name = "opentelemetry-sdk" },
     { name = "pydantic" },
-    { name = "pytest", marker = "extra == 'dev'" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'" },
     { name = "python-dotenv" },
     { name = "uvicorn", extras = ["standard"] },
 ]
-provides-extras = ["dev"]
 
 [[package]]
 name = "wrapt"
