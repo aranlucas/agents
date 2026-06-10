@@ -12,6 +12,7 @@ overrides:
   utf-8-validate: 5.0.10
 
 allowBuilds:
+  agents-monorepo: true
   "@clerk/shared": true
   "@scarf/scarf": true
   browser-tabs-lock: true
@@ -46,6 +47,7 @@ minimumReleaseAgeExclude:
   - expo@56.0.9
 
 onlyBuiltDependencies:
+  - "agents-monorepo"
   - "@clerk/shared"
   - "browser-tabs-lock"
   - "bufferutil"
