@@ -149,7 +149,10 @@ export function ChatSurface({
                 <Message key={item.id} from="assistant">
                   <MessageContent>
                     {item.reasoning && (
-                      <Reasoning defaultOpen={false} isStreaming={last && isRunning && !item.text.trim()}>
+                      <Reasoning
+                        defaultOpen={false}
+                        isStreaming={last && isRunning && item.toolCalls.length === 0 && !item.text.trim()}
+                      >
                         <ReasoningTrigger />
                         <ReasoningContent>{item.reasoning}</ReasoningContent>
                       </Reasoning>
