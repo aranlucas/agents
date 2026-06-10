@@ -13,6 +13,11 @@ export type ArtifactSource = {
   name: string;
 };
 
+export type Suggestion = {
+  title: string;
+  message: string;
+};
+
 export type AgentConfig = {
   id: AgentId;
   label: string;
@@ -24,6 +29,7 @@ export type AgentConfig = {
   artifact?: ArtifactSource;
   /** External OAuth providers that must be connected before this agent is usable. */
   requires?: ProviderId[];
+  suggestions?: Suggestion[];
 };
 
 export const AGENTS: Record<AgentId, AgentConfig> = {
@@ -40,6 +46,25 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
       title: "Itinerary",
       name: "itinerary.md",
     },
+    suggestions: [
+      {
+        title: "Weekend in Tokyo",
+        message: "Plan a 3-day weekend in Tokyo focused on food, late November.",
+      },
+      {
+        title: "Family in Lisbon",
+        message: "Plan a 5-day family trip to Lisbon next summer, kids 7 and 10.",
+      },
+      {
+        title: "Rework Day 2",
+        message:
+          "Day 2 feels too packed — rework it with a slower morning and one anchor activity in the afternoon.",
+      },
+      {
+        title: "Ready to book?",
+        message: "If the itinerary looks good, propose locking it in and ask for my approval.",
+      },
+    ],
   },
   grocery: {
     id: "grocery",
@@ -54,6 +79,18 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
       title: "Shopping list",
       name: "shopping_list.json",
     },
+    suggestions: [
+      { title: "Meals for the week", message: "Plan 5 quick weeknight dinners for this week." },
+      { title: "What's on sale?", message: "What deals are available at my store this week?" },
+      {
+        title: "Check my pantry",
+        message: "Look at what I have and tell me what I'm running low on.",
+      },
+      {
+        title: "Healthy swaps",
+        message: "Suggest healthier alternatives for common items on my list.",
+      },
+    ],
   },
   fitness: {
     id: "fitness",
@@ -68,6 +105,15 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
       title: "Training plan",
       name: "training_plan.md",
     },
+    suggestions: [
+      { title: "Plan this week", message: "Build a 5-day training plan for this week." },
+      { title: "What today?", message: "What should I do today based on my recent activity?" },
+      { title: "Set a goal", message: "Help me set a realistic fitness goal for the next month." },
+      {
+        title: "Recovery check",
+        message: "I'm feeling tired — should I rest or do a light workout today?",
+      },
+    ],
   },
   wellness: {
     id: "wellness",
@@ -82,6 +128,18 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
       title: "Wellness plan",
       name: "wellness_plan.md",
     },
+    suggestions: [
+      {
+        title: "Coordinate week",
+        message: "Create a coordinated meal and workout plan for this week.",
+      },
+      { title: "Balance check", message: "How balanced are my meals and training this week?" },
+      {
+        title: "Recovery day",
+        message: "Suggest a recovery day with light movement and nourishing meals.",
+      },
+      { title: "Sunday prep", message: "Help me plan a Sunday meal prep and training session." },
+    ],
   },
   a2ui: {
     id: "a2ui",
@@ -89,6 +147,12 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
     glyph: "▦",
     colorVar: "--a2ui",
     placeholder: "Ask me to render an interface…",
+    suggestions: [
+      { title: "Dashboard", message: "Render a sales dashboard with charts and KPI cards." },
+      { title: "Data table", message: "Show me a sortable data table with sample data." },
+      { title: "Build a form", message: "Create a contact form with validation." },
+      { title: "Kanban", message: "Show a kanban board with a few sample cards." },
+    ],
   },
 };
 

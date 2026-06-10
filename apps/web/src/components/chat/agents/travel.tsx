@@ -1,12 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import {
-  useAgent,
-  useConfigureSuggestions,
-  useHumanInTheLoop,
-  UseAgentUpdate,
-} from "@copilotkit/react-core/v2";
+import { useAgent, useHumanInTheLoop, UseAgentUpdate } from "@copilotkit/react-core/v2";
 import { z } from "zod";
 
 import { ApprovalCard } from "@/components/approval-dialog";
@@ -63,29 +58,6 @@ export function TravelHooks() {
         />
       );
     },
-  });
-
-  useConfigureSuggestions({
-    suggestions: [
-      {
-        title: "Weekend in Tokyo",
-        message: "Plan a 3-day weekend in Tokyo focused on food, late November.",
-      },
-      {
-        title: "Family in Lisbon",
-        message: "Plan a 5-day family trip to Lisbon next summer, kids 7 and 10.",
-      },
-      {
-        title: "Rework Day 2",
-        message:
-          "Day 2 feels too packed — rework it with a slower morning and one anchor activity in the afternoon.",
-      },
-      {
-        title: "Ready to book?",
-        message: "If the itinerary looks good, propose locking it in and ask for my approval.",
-      },
-    ],
-    available: "always",
   });
 
   // `useHumanInTheLoop` drops its renderer on unmount; if that happens mid-
