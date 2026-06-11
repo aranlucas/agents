@@ -5,6 +5,7 @@ const isProtectedRoute = createRouteMatcher([
   "/grocery(.*)",
   "/fitness(.*)",
   "/wellness(.*)",
+  "/oral-boards(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

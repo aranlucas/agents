@@ -101,6 +101,31 @@ export type WellnessState = {
   strava_connected?: boolean;
 };
 
+// Oral boards examiner state — matches what agents/oralboards writes to ADK shared state
+export type OralBoardsPhase = "idle" | "presenting" | "questioning" | "feedback" | "complete";
+
+export type CaseSource = {
+  docid: number;
+  title: string;
+  collection: "abpd" | "aapd" | "cody";
+};
+
+export type OralBoardsExchange = {
+  question: string;
+  answer: string;
+  feedback: string;
+  citations: CaseSource[];
+};
+
+export type OralBoardsState = {
+  case?: string;
+  case_sources?: CaseSource[];
+  phase?: OralBoardsPhase;
+  transcript?: OralBoardsExchange[];
+  score_card?: string;
+  status?: OralBoardsPhase | "idle";
+};
+
 // A2UI showcase state — matches what agents/a2ui writes to ADK shared state
 export type A2UIStatus = "idle" | "ready";
 

@@ -44,6 +44,21 @@ const agentStates: Record<string, Record<string, unknown>> = {
     kroger_connected: true,
     strava_connected: true,
   },
+  "oral-boards": {
+    case: "## Case\nA 7-year-old presents with pain.",
+    case_sources: [{ docid: 1, title: "OCE Guide", collection: "abpd" }],
+    phase: "complete",
+    transcript: [
+      {
+        question: "What is your diagnosis?",
+        answer: "Irreversible pulpitis",
+        feedback: "Cite guideline criteria.",
+        citations: [{ docid: 2, title: "Pulp Therapy", collection: "aapd" }],
+      },
+    ],
+    score_card: "## Score Card\n- Diagnosis: 3/4",
+    status: "complete",
+  },
   a2ui: {
     status: "ready",
     surface_brief: "Dashboard",
@@ -58,6 +73,7 @@ vi.mock("@/env", () => ({
     GROCERY_AGENT_URL: "http://grocery.test",
     FITNESS_AGENT_URL: "http://fitness.test",
     WELLNESS_AGENT_URL: "http://wellness.test",
+    ORALBOARDS_AGENT_URL: "http://oralboards.test",
     A2UI_AGENT_URL: "http://a2ui.test",
     COPILOTKIT_DEBUG: false,
   },
@@ -302,6 +318,7 @@ describe("web all-source smoke coverage", () => {
       GroceryPage,
       FitnessPage,
       WellnessPage,
+      OralBoardsPage,
       A2UIPage,
       SettingsPage,
       AgentCardModule,
@@ -323,6 +340,7 @@ describe("web all-source smoke coverage", () => {
       import("./app/grocery/page"),
       import("./app/fitness/page"),
       import("./app/wellness/page"),
+      import("./app/oral-boards/page"),
       import("./app/a2ui/page"),
       import("./app/console/settings/page"),
       import("./components/agent-card"),
@@ -368,6 +386,12 @@ describe("web all-source smoke coverage", () => {
       "wellness",
       <ProvidersModule.Providers>
         <WellnessPage.default />
+      </ProvidersModule.Providers>,
+    );
+    await render(
+      "oral-boards",
+      <ProvidersModule.Providers>
+        <OralBoardsPage.default />
       </ProvidersModule.Providers>,
     );
     await render(
@@ -432,6 +456,12 @@ describe("web all-source smoke coverage", () => {
       "wellness-disconnected",
       <ProvidersModule.Providers>
         <WellnessPage.default />
+      </ProvidersModule.Providers>,
+    );
+    await interact(
+      "oral-boards",
+      <ProvidersModule.Providers>
+        <OralBoardsPage.default />
       </ProvidersModule.Providers>,
     );
     agentStates.grocery = {
@@ -513,7 +543,9 @@ describe("web all-source smoke coverage", () => {
     );
     await render(
       "agent-status-bar",
-      <AgentStatusBarModule.AgentStatusBar statuses={{ travel: "ok", grocery: "error" }} />,
+      <AgentStatusBarModule.AgentStatusBar
+        statuses={{ travel: "ok", grocery: "error", "oral-boards": "ok" }}
+      />,
     );
     await render(
       "approval-card",

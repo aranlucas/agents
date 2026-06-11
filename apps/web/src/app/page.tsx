@@ -47,6 +47,16 @@ const AGENTS: Agent[] = [
   },
   {
     id: "05",
+    href: "/oral-boards",
+    name: "Oral Boards",
+    tagline: "Cited pediatric dentistry exams",
+    description: "Practice staged ABPD-style cases grounded in bundled source documents.",
+    cta: "Start exam",
+    tags: ["OCE", "Citations", "Scoring"],
+    theme: "oral-boards",
+  },
+  {
+    id: "06",
     href: "/a2ui",
     name: "A2UI Studio",
     tagline: "Generative UI over AG-UI",

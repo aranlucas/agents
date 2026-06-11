@@ -6,6 +6,7 @@ vi.mock("@/env", () => ({
     GROCERY_AGENT_URL: "http://grocery.test",
     FITNESS_AGENT_URL: "http://fitness.test",
     WELLNESS_AGENT_URL: "http://wellness.test",
+    ORALBOARDS_AGENT_URL: "http://oralboards.test",
     A2UI_AGENT_URL: "http://a2ui.test",
   },
 }));
@@ -25,17 +26,18 @@ describe("GET /api/agents/health", () => {
     const response = await GET();
     const body = await response.json();
 
-    expect(fetchMock).toHaveBeenCalledTimes(5);
+    expect(fetchMock).toHaveBeenCalledTimes(6);
     expect(body).toEqual({
       agents: {
         travel: "ok",
         grocery: "error",
         fitness: "error",
         wellness: "error",
+        "oral-boards": "error",
         a2ui: "ok",
       },
       runningCount: 2,
-      total: 5,
+      total: 6,
     });
   });
 
@@ -50,6 +52,13 @@ describe("GET /api/agents/health", () => {
     const { GET } = await import("./route");
     const body = await (await GET()).json();
     expect(body.runningCount).toBe(0);
-    expect(Object.values(body.agents)).toEqual(["error", "error", "error", "error", "error"]);
+    expect(Object.values(body.agents)).toEqual([
+      "error",
+      "error",
+      "error",
+      "error",
+      "error",
+      "error",
+    ]);
   });
 });

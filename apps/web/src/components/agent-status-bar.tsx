@@ -7,13 +7,13 @@ export function AgentStatusBar() {
 
   const dotClass = isLoading
     ? "bg-muted-foreground animate-pulse"
-    : runningCount === 4
+    : runningCount === 6
       ? "bg-(--success) animate-pulse"
       : runningCount === 0
         ? "bg-destructive"
         : "bg-(--warning) animate-pulse";
 
-  const label = isLoading ? "checking agents…" : `${runningCount} / 4 running · CopilotKit × ADK`;
+  const label = isLoading ? "checking agents…" : `${runningCount} / 6 running · CopilotKit × ADK`;
 
   return (
     <div className="border-border flex items-center gap-2.5 rounded-full border bg-(--surface-raised) px-2.5 py-1">
