@@ -35,11 +35,11 @@ The oral-boards repo (`~/Projects/oral-boards`) maintains a committed
 `search.sqlite` (~21 MB) built by its `scripts/build-index.mjs` from
 `docs-extracted/` (209 markdown files in three collections):
 
-| Collection | Content |
-| ---------- | ------- |
+| Collection | Content                                               |
+| ---------- | ----------------------------------------------------- |
 | `abpd`     | ABPD exam guides, blueprint, scoring, study materials |
-| `aapd`     | AAPD clinical practice guidelines and policies |
-| `cody`     | Prep-course materials and clinical cases |
+| `aapd`     | AAPD clinical practice guidelines and policies        |
+| `cody`     | Prep-course materials and clinical cases              |
 
 Key tables: `documents` (id, collection, path, title, hash), `content`
 (hash → full markdown body), `documents_fts` (FTS5 index over filepath, title,
@@ -102,11 +102,11 @@ State is the source of truth; the agent never pastes exam content into chat.
 
 ```ts
 interface OralBoardsState {
-  case: string;            // markdown vignette — token-streamed
+  case: string; // markdown vignette — token-streamed
   case_sources: CaseSource[]; // { docid, title, collection } provenance
   phase: "idle" | "presenting" | "questioning" | "feedback" | "complete";
-  transcript: Exchange[];  // { question, answer, feedback, citations }
-  score_card: string;      // markdown: per-criterion scores + cited feedback
+  transcript: Exchange[]; // { question, answer, feedback, citations }
+  score_card: string; // markdown: per-criterion scores + cited feedback
   status: string;
 }
 ```
