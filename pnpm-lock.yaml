@@ -214,8 +214,8 @@ importers:
   apps/web:
     dependencies:
       '@ag-ui/client':
-        specifier: ^0.0.56
-        version: 0.0.56
+        specifier: 0.0.53
+        version: 0.0.53
       '@agents/types':
         specifier: workspace:*
         version: link:../../packages/types
