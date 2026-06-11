@@ -9,6 +9,7 @@ members = [
     "agents-workspace",
     "fitness-agent",
     "grocery-agent",
+    "oralboards-agent",
     "travel-agent",
     "wellness-agent",
 ]
@@ -1479,6 +1480,51 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/a2/d8/4dd2fb622d26ec45b10ef63eb87fd512f5d7467c7bd35ce390629bd6dff8/opentelemetry_util_genai-0.3b0.tar.gz", hash = "sha256:83e127789a9ad615b8ca65f05fc36955a67ce257b06142bfd46159a3b7ed73d3", size = 31800, upload-time = "2026-02-20T16:16:14.807Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/18/e5/fada54909e445d7b4007f8b96221d571999efeab9446f3127cc1cebe5e07/opentelemetry_util_genai-0.3b0-py3-none-any.whl", hash = "sha256:ebc2b01bcb891ddc7218452470d189d3321cd742653299ff8e7de45debcfb986", size = 28426, upload-time = "2026-02-20T16:16:12.027Z" },
+]
+
+[[package]]
+name = "oralboards-agent"
+version = "0.1.0"
+source = { editable = "agents/oralboards" }
+dependencies = [
+    { name = "a2a-sdk" },
+    { name = "ag-ui-adk" },
+    { name = "agent-common" },
+    { name = "dependency-injector" },
+    { name = "fastapi" },
+    { name = "google-adk", extra = ["a2a"] },
+    { name = "google-genai" },
+    { name = "litellm" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-exporter-otlp-proto-http" },
+    { name = "opentelemetry-instrumentation-google-genai" },
+    { name = "opentelemetry-instrumentation-sqlite3" },
+    { name = "opentelemetry-instrumentation-vertexai" },
+    { name = "opentelemetry-sdk" },
+    { name = "pydantic" },
+    { name = "python-dotenv" },
+    { name = "uvicorn", extra = ["standard"] },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "a2a-sdk", specifier = ">=0.3.4,<0.4" },
+    { name = "ag-ui-adk", specifier = ">=0.6.5" },
+    { name = "agent-common", editable = "packages/agent-common" },
+    { name = "dependency-injector", specifier = ">=4.49.0" },
+    { name = "fastapi" },
+    { name = "google-adk", extras = ["a2a"], specifier = ">=2.2.0" },
+    { name = "google-genai" },
+    { name = "litellm" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-exporter-otlp-proto-http" },
+    { name = "opentelemetry-instrumentation-google-genai", specifier = ">=0.7b1" },
+    { name = "opentelemetry-instrumentation-sqlite3" },
+    { name = "opentelemetry-instrumentation-vertexai", specifier = ">=2.0b0" },
+    { name = "opentelemetry-sdk" },
+    { name = "pydantic" },
+    { name = "python-dotenv" },
+    { name = "uvicorn", extras = ["standard"] },
 ]
 
 [[package]]

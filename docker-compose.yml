@@ -93,6 +93,27 @@ services:
     volumes:
       - adk-session-data:/data
 
+  oralboards:
+    build:
+      context: .
+      dockerfile: Dockerfile.agents
+    ports:
+      - "8005:8005"
+    env_file:
+      - path: ./.env
+        required: false
+      - path: ./.env.local
+        required: false
+    environment:
+      OTEL_SERVICE_NAME: oralboards-agent
+      AGENT_DIR: agents/oralboards
+      AGENT_MODULE: oralboards_agent.main
+      PORT: 8005
+      ADK_SESSION_DB_PATH: /data/adk_sessions.sqlite
+      AGENT_PUBLIC_URL: http://oralboards:8005
+    volumes:
+      - adk-session-data:/data
+
   a2ui:
     build:
       context: .
