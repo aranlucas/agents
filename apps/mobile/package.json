@@ -27,7 +27,7 @@
     "@agents/types": "workspace:*",
     "@ai-sdk/react": "^3.0.202",
     "@clerk/clerk-expo": "^2.19.31",
-    "@expo/metro-runtime": "56.0.15",
+    "@expo/metro-runtime": "~56.0.15",
     "@expo/ui": "~56.0.17",
     "@legendapp/list": "^3.0.4",
     "@radix-ui/react-context-menu": "^2.3.0",
