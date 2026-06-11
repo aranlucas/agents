@@ -107,7 +107,7 @@ export function PreferencesPanel() {
 
   return (
     <Card size="sm" className="gap-4">
-      <CardHeader className="border-b border-[var(--border-soft)] pb-4">
+      <CardHeader className="border-b border-(--border-soft) pb-4">
         <div>
           <CardTitle>Traveler brief</CardTitle>
           <CardDescription className="text-xs">
@@ -129,7 +129,7 @@ export function PreferencesPanel() {
           <div>
             <label
               htmlFor="traveler-name"
-              className="mb-1 block text-xs font-medium text-[var(--ink-soft)]"
+              className="mb-1 block text-xs font-medium text-(--ink-soft)"
             >
               Your name
             </label>
@@ -139,13 +139,13 @@ export function PreferencesPanel() {
               value={value.travelerName}
               onChange={(e) => set("travelerName", e.target.value)}
               placeholder="e.g. Ada"
-              className="bg-[var(--surface-soft)]"
+              className="bg-secondary"
             />
           </div>
           <div>
             <label
               htmlFor="home-airport"
-              className="mb-1 block text-xs font-medium text-[var(--ink-soft)]"
+              className="mb-1 block text-xs font-medium text-(--ink-soft)"
             >
               Home airport
             </label>
@@ -155,12 +155,12 @@ export function PreferencesPanel() {
               value={value.homeAirport}
               onChange={(e) => set("homeAirport", e.target.value.toUpperCase().slice(0, 4))}
               placeholder="SFO"
-              className="bg-[var(--surface-soft)] font-mono uppercase"
+              className="bg-secondary font-mono uppercase"
             />
           </div>
         </div>
 
-        <p className="mb-2 block text-xs font-medium text-[var(--ink-soft)]">Transport mode</p>
+        <p className="mb-2 block text-xs font-medium text-(--ink-soft)">Transport mode</p>
         <div className="mb-4 grid grid-cols-2 gap-1.5">
           {[
             {
@@ -183,7 +183,7 @@ export function PreferencesPanel() {
                 onClick={() => set("transportMode", opt.value)}
                 variant={active ? "default" : "outline"}
                 size="sm"
-                className={cn("h-9 text-xs", !active && "bg-[var(--surface-soft)]")}
+                className={cn("h-9 text-xs", !active && "bg-secondary")}
               >
                 <Icon className="size-3.5" />
                 <span className="font-medium">{opt.label}</span>
@@ -192,7 +192,7 @@ export function PreferencesPanel() {
           })}
         </div>
 
-        <p className="mb-2 block text-xs font-medium text-[var(--ink-soft)]">Budget tier</p>
+        <p className="mb-2 block text-xs font-medium text-(--ink-soft)">Budget tier</p>
         <div className="mb-4 grid grid-cols-2 gap-1.5">
           {BUDGET_OPTIONS.map((opt) => {
             const active = value.budgetTier === opt.value;
@@ -202,14 +202,11 @@ export function PreferencesPanel() {
                 type="button"
                 onClick={() => set("budgetTier", opt.value)}
                 variant={active ? "default" : "outline"}
-                className={cn(
-                  "h-auto flex-col gap-0.5 py-2 text-xs",
-                  !active && "bg-[var(--surface-soft)]",
-                )}
+                className={cn("h-auto flex-col gap-0.5 py-2 text-xs", !active && "bg-secondary")}
               >
                 <span className="font-medium">{opt.label}</span>
                 <span
-                  className={cn("text-[10px]", active ? "opacity-80" : "text-[var(--ink-mute)]")}
+                  className={cn("text-[10px]", active ? "opacity-80" : "text-muted-foreground")}
                 >
                   {opt.hint}
                 </span>
@@ -218,7 +215,7 @@ export function PreferencesPanel() {
           })}
         </div>
 
-        <p className="mb-2 block text-xs font-medium text-[var(--ink-soft)]">Vibe</p>
+        <p className="mb-2 block text-xs font-medium text-(--ink-soft)">Vibe</p>
         <div className="mb-4 grid grid-cols-3 gap-1.5">
           {VIBE_OPTIONS.map((opt) => {
             const active = value.vibe === opt.value;
@@ -229,7 +226,7 @@ export function PreferencesPanel() {
                 onClick={() => set("vibe", opt.value)}
                 variant={active ? "default" : "outline"}
                 size="xs"
-                className={cn("h-8 text-xs", !active && "bg-[var(--surface-soft)]")}
+                className={cn("h-8 text-xs", !active && "bg-secondary")}
               >
                 {opt.label}
               </Button>
@@ -237,7 +234,7 @@ export function PreferencesPanel() {
           })}
         </div>
 
-        <p className="mb-2 block text-xs font-medium text-[var(--ink-soft)]">Pace</p>
+        <p className="mb-2 block text-xs font-medium text-(--ink-soft)">Pace</p>
         <div className="mb-4 grid grid-cols-3 gap-1.5">
           {PACE_OPTIONS.map((opt) => {
             const active = value.pace === opt.value;
@@ -247,14 +244,11 @@ export function PreferencesPanel() {
                 type="button"
                 onClick={() => set("pace", opt.value)}
                 variant={active ? "default" : "outline"}
-                className={cn(
-                  "h-auto flex-col gap-0.5 py-2 text-xs",
-                  !active && "bg-[var(--surface-soft)]",
-                )}
+                className={cn("h-auto flex-col gap-0.5 py-2 text-xs", !active && "bg-secondary")}
               >
                 <span className="font-medium">{opt.label}</span>
                 <span
-                  className={cn("text-[10px]", active ? "opacity-80" : "text-[var(--ink-mute)]")}
+                  className={cn("text-[10px]", active ? "opacity-80" : "text-muted-foreground")}
                 >
                   {opt.hint}
                 </span>
@@ -263,7 +257,7 @@ export function PreferencesPanel() {
           })}
         </div>
 
-        <p className="mb-2 block text-xs font-medium text-[var(--ink-soft)]">Interests</p>
+        <p className="mb-2 block text-xs font-medium text-(--ink-soft)">Interests</p>
         <div className="mb-4 flex flex-wrap gap-1.5">
           {INTEREST_OPTIONS.map((i) => {
             const active = value.interests.includes(i);
@@ -274,7 +268,7 @@ export function PreferencesPanel() {
                 onClick={() => toggleInterest(i)}
                 variant={active ? "default" : "outline"}
                 size="xs"
-                className={cn("rounded-full text-xs", !active && "bg-[var(--surface-soft)]")}
+                className={cn("rounded-full text-xs", !active && "bg-secondary")}
               >
                 {i}
               </Button>

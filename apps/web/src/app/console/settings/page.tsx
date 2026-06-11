@@ -13,8 +13,8 @@ export default function SettingsPage() {
         <NavRail activePath={SETTINGS_PATH} />
       </div>
       <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
-        <div className="mx-auto w-full max-w-[900px] px-4 py-6">
-          <h1 className="mb-4 text-lg font-semibold text-[var(--ink)]">Settings</h1>
+        <div className="mx-auto w-full max-w-225 px-4 py-6">
+          <h1 className="text-foreground mb-4 text-lg font-semibold">Settings</h1>
           <UserProfile routing="hash" />
         </div>
       </div>

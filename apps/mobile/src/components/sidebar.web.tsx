@@ -21,7 +21,7 @@ import type { ReactNode } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
 const MENU_CONTENT_CLASS =
-  "z-[100] min-w-[180px] rounded-xl bg-card p-1.5 shadow-float border border-border/40 animate-fade-up";
+  "z-[100] min-w-45 rounded-xl bg-card p-1.5 shadow-float border border-border/40 animate-fade-up";
 
 const MENU_ITEM_CLASS =
   "flex cursor-default select-none items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] text-foreground outline-none data-[highlighted]:bg-accent";

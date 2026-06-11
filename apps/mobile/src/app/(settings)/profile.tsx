@@ -47,7 +47,7 @@ export default function ProfileScreen() {
         value={preferences}
         onChangeText={setPreferences}
         multiline
-        className="bg-muted text-foreground border-continuous min-h-[140px] rounded-xl px-4 py-3 text-[15px] leading-relaxed"
+        className="bg-muted text-foreground border-continuous min-h-35 rounded-xl px-4 py-3 text-[15px] leading-relaxed"
         style={{ textAlignVertical: "top" }}
         placeholderTextColor="#999"
       />

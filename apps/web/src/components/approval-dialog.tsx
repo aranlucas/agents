@@ -28,30 +28,30 @@ export function ApprovalCard({ request }: Props) {
   return (
     <div className="rounded-lg border border-[color-mix(in_srgb,var(--warning)_38%,var(--border))] bg-[color-mix(in_srgb,var(--warning)_8%,var(--surface))] p-3">
       <div className="flex items-start gap-3">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[color-mix(in_srgb,var(--warning)_16%,transparent)] text-[var(--warning)]">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[color-mix(in_srgb,var(--warning)_16%,transparent)] text-(--warning)">
           <TriangleAlert className="h-4 w-4" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold text-[var(--ink)]">Approval required</div>
-          <div className="mt-0.5 text-xs text-[var(--ink-mute)]">
+          <div className="text-foreground text-sm font-semibold">Approval required</div>
+          <div className="text-muted-foreground mt-0.5 text-xs">
             The agent paused before taking this action.
           </div>
         </div>
       </div>
 
-      <div className="mt-3 rounded-md border border-[var(--border-soft)] bg-[var(--surface)] px-3 py-2">
-        <div className="mb-1 font-mono text-[10px] tracking-wider text-[var(--ink-mute)] uppercase">
+      <div className="bg-card mt-3 rounded-md border border-(--border-soft) px-3 py-2">
+        <div className="text-muted-foreground mb-1 font-mono text-[10px] tracking-wider uppercase">
           Proposed action
         </div>
-        <div className="text-sm font-medium text-[var(--ink)]">{request.action}</div>
+        <div className="text-foreground text-sm font-medium">{request.action}</div>
       </div>
 
       {request.reason && (
-        <div className="mt-2 rounded-md border border-[var(--border-soft)] bg-[var(--surface)] px-3 py-2">
-          <div className="mb-1 font-mono text-[10px] tracking-wider text-[var(--ink-mute)] uppercase">
+        <div className="bg-card mt-2 rounded-md border border-(--border-soft) px-3 py-2">
+          <div className="text-muted-foreground mb-1 font-mono text-[10px] tracking-wider uppercase">
             Why
           </div>
-          <div className="text-sm text-[var(--ink-soft)]">{request.reason}</div>
+          <div className="text-sm text-(--ink-soft)">{request.reason}</div>
         </div>
       )}
 
@@ -91,8 +91,8 @@ export function ApprovalDialog({ request }: Props) {
     <Dialog open>
       <DialogContent showCloseButton={false} className="gap-4 shadow-2xl">
         <DialogHeader className="flex-row items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-soft)]">
-            <TriangleAlert className="h-5 w-5 text-[var(--accent-strong)]" />
+          <div className="bg-accent flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
+            <TriangleAlert className="text-accent-foreground h-5 w-5" />
           </div>
           <div className="min-w-0">
             <DialogTitle className="text-base">Approve before continuing</DialogTitle>
@@ -102,19 +102,19 @@ export function ApprovalDialog({ request }: Props) {
           </div>
         </DialogHeader>
 
-        <div className="mb-2 rounded-xl border border-[var(--border-soft)] bg-[var(--surface-soft)] px-4 py-3">
-          <div className="mb-1 font-mono text-[10px] tracking-wider text-[var(--ink-mute)] uppercase">
+        <div className="bg-secondary mb-2 rounded-xl border border-(--border-soft) px-4 py-3">
+          <div className="text-muted-foreground mb-1 font-mono text-[10px] tracking-wider uppercase">
             Proposed action
           </div>
-          <div className="text-sm font-medium text-[var(--ink)]">{request.action}</div>
+          <div className="text-foreground text-sm font-medium">{request.action}</div>
         </div>
 
         {request.reason && (
-          <div className="mb-4 rounded-xl border border-[var(--border-soft)] bg-[var(--surface-soft)] px-4 py-3">
-            <div className="mb-1 font-mono text-[10px] tracking-wider text-[var(--ink-mute)] uppercase">
+          <div className="bg-secondary mb-4 rounded-xl border border-(--border-soft) px-4 py-3">
+            <div className="text-muted-foreground mb-1 font-mono text-[10px] tracking-wider uppercase">
               Why
             </div>
-            <div className="text-sm text-[var(--ink-soft)]">{request.reason}</div>
+            <div className="text-sm text-(--ink-soft)">{request.reason}</div>
           </div>
         )}
 

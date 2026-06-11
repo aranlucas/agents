@@ -19,15 +19,15 @@ export function NavRail({
 }) {
   const settingsActive = activePath === SETTINGS_PATH;
   return (
-    <div className="flex w-full flex-row items-center gap-1.5 border-b border-[var(--border-soft)] bg-[var(--surface-soft)] px-3 py-2 md:h-full md:w-[54px] md:flex-col md:border-r md:border-b-0 md:px-0 md:py-3">
-      <div className="grid h-[30px] w-[30px] place-items-center rounded-lg bg-[var(--accent)] text-sm font-bold text-white md:mb-2.5">
+    <div className="bg-secondary flex w-full flex-row items-center gap-1.5 border-b border-(--border-soft) px-3 py-2 md:h-full md:w-13.5 md:flex-col md:border-r md:border-b-0 md:px-0 md:py-3">
+      <div className="bg-primary grid h-7.5 w-7.5 place-items-center rounded-lg text-sm font-bold text-white md:mb-2.5">
         A
       </div>
       <button
         type="button"
         aria-label="New thread"
         onClick={onNewThread}
-        className="grid h-[34px] w-[34px] place-items-center rounded-lg text-[var(--ink-mute)] hover:bg-[var(--bg-soft)] hover:text-[var(--ink)]"
+        className="text-muted-foreground hover:bg-muted hover:text-foreground grid h-8.5 w-8.5 place-items-center rounded-lg"
       >
         <PencilIcon className="size-4" />
       </button>
@@ -36,13 +36,13 @@ export function NavRail({
         aria-label="Settings"
         aria-current={settingsActive ? "page" : undefined}
         className={cn(
-          "ml-auto grid h-[34px] w-[34px] place-items-center rounded-lg hover:bg-[var(--bg-soft)] hover:text-[var(--ink)] md:mt-auto md:ml-0",
-          settingsActive ? "bg-[var(--bg-soft)] text-[var(--ink)]" : "text-[var(--ink-mute)]",
+          "hover:bg-muted hover:text-foreground ml-auto grid h-8.5 w-8.5 place-items-center rounded-lg md:mt-auto md:ml-0",
+          settingsActive ? "bg-muted text-foreground" : "text-muted-foreground",
         )}
       >
         <SettingsIcon className="size-4" />
       </Link>
-      <div className="h-2.5 w-2.5 rounded-full bg-[var(--success)]" />
+      <div className="h-2.5 w-2.5 rounded-full bg-(--success)" />
     </div>
   );
 }

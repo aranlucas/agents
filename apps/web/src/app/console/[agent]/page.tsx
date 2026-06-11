@@ -40,6 +40,9 @@ function Console({ agentId }: { agentId: AgentId }) {
   const config = getAgentConfig(agentId);
   const { state, dispatch } = useArtifactPanel(agentId);
   const { agent } = useAgent({ agentId, updates: [UseAgentUpdate.OnStateChanged] });
+  // CopilotKit agent state is intentionally dynamic; artifact selection validates
+  // the fields it needs for the active agent.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const artifact = selectArtifact(agent?.state as Record<string, unknown>, config);
 
   return (

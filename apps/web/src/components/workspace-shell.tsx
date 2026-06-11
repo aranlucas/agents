@@ -16,6 +16,8 @@ export function nextPanelState(state: PanelState, action: PanelAction): PanelSta
       return state === "closed" ? "split" : "closed";
     case "toggle-fullscreen":
       return state === "fullscreen" ? "split" : "fullscreen";
+    default:
+      return state;
   }
 }
 
@@ -76,7 +78,7 @@ export function WorkspaceShell({
       {hasArtifact && (
         <div
           className={cn(
-            "overflow-hidden border-[var(--border)]",
+            "border-border overflow-hidden",
             // Mobile: full-screen takeover when open, removed when closed.
             open ? "max-md:flex max-md:flex-1" : "max-md:hidden",
             // Desktop: animated side panel that widens from the right edge.

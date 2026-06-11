@@ -15,7 +15,7 @@ export function AgentKey() {
         const theme = AGENT_THEMES[key];
         return (
           <div key={key} className="flex items-center gap-2">
-            <span className="font-mono text-[10px] text-[var(--ink-mute)]">{theme.label}</span>
+            <span className="text-muted-foreground font-mono text-[10px]">{theme.label}</span>
             <span
               className={`h-2 w-2 shrink-0 rounded-full ${
                 s === "loading" ? "animate-pulse opacity-30" : s === "error" ? "opacity-50" : ""

@@ -10,7 +10,7 @@ export type AguiToolCall = {
 
 export type AguiMessage = {
   id: string;
-  role: "user" | "assistant" | "reasoning" | "system" | "tool" | "activity" | string;
+  role: string;
   content?: string;
   toolCalls?: AguiToolCall[];
   /** Present on `role: "tool"` result messages — links the result to its call. */

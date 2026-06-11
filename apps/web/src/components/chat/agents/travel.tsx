@@ -34,10 +34,11 @@ export function TravelHooks() {
         .describe("One sentence on why this action is being proposed (cost, tradeoff, deadline)."),
     }),
     render: ({ status, args, respond }) => {
-      if (status !== "executing" || !respond) {
+      const statusText = status.valueOf();
+      if (statusText !== "executing" || !respond) {
         return (
-          <div className="my-2 rounded-lg border border-[var(--border-soft)] bg-[var(--surface-soft)] px-3 py-2 text-xs text-[var(--ink-mute)]">
-            {status === "complete" ? "Decision recorded." : "Preparing approval…"}
+          <div className="bg-secondary text-muted-foreground my-2 rounded-lg border border-(--border-soft) px-3 py-2 text-xs">
+            {statusText === "complete" ? "Decision recorded." : "Preparing approval…"}
           </div>
         );
       }
@@ -52,7 +53,7 @@ export function TravelHooks() {
                 const current = toTripState(agent.state);
                 agent.setState({ ...current, status: "booked" });
               }
-              respond(decision);
+              void respond(decision);
             },
           }}
         />

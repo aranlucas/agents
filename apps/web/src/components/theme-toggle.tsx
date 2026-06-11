@@ -29,7 +29,7 @@ export function ThemeToggle() {
       aria-label={LABEL[theme]}
       title={`Theme: ${theme}`}
       onClick={() => setTheme(NEXT_THEME[theme])}
-      className="border-[var(--border)] bg-[var(--surface-raised)] text-[var(--ink-soft)] shadow-none hover:bg-[var(--surface-soft)] hover:text-[var(--ink)]"
+      className="border-border hover:bg-secondary hover:text-foreground bg-(--surface-raised) text-(--ink-soft) shadow-none"
     >
       <Icon className="h-4 w-4" />
     </Button>

@@ -27,7 +27,7 @@ export const PROVIDERS: Record<
   },
 };
 
-const PROVIDER_IDS = Object.keys(PROVIDERS) as ProviderId[];
+const PROVIDER_IDS: ProviderId[] = ["strava", "kroger"];
 
 /** Provider ids that have a verified external account. */
 export function connectedProviders(accounts: readonly ExternalAccountLike[]): ProviderId[] {

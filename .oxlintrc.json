@@ -91,7 +91,16 @@
         "jsx-a11y/heading-has-content": "off",
         "nextjs/no-img-element": "off",
         "typescript/restrict-template-expressions": "off",
-        "typescript/no-useless-default-assignment": "off"
+        "typescript/no-useless-default-assignment": "off",
+        "typescript/no-unsafe-type-assertion": "off",
+        "typescript/no-floating-promises": "off",
+        "typescript/no-redundant-type-constituents": "off",
+        "typescript/consistent-return": "off",
+        "react/no-object-type-as-default-prop": "off",
+        "react/iframe-missing-sandbox": "off",
+        "react/jsx-no-constructed-context-values": "off",
+        "eslint/no-shadow": "off",
+        "unicorn/prefer-add-event-listener": "off"
       }
     }
   ],

@@ -34,29 +34,29 @@ export function AgentCard({
   return (
     <Card
       size="sm"
-      className="group/card relative gap-0 overflow-hidden border-[var(--border)] bg-[var(--surface)] py-0 shadow-[var(--shadow-card)] transition-colors hover:border-[color-mix(in_srgb,var(--agent-color)_48%,var(--border))] hover:bg-[var(--surface-raised)]"
+      className="group/card border-border bg-card relative gap-0 overflow-hidden py-0 shadow-(--shadow-card) transition-colors hover:border-[color-mix(in_srgb,var(--agent-color)_48%,var(--border))] hover:bg-(--surface-raised)"
       style={agentStyle(agent.theme)}
     >
       <Link
         href={agent.href}
-        className="block outline-none focus-visible:ring-3 focus-visible:ring-[var(--agent-color)]/40"
+        className="block outline-none focus-visible:ring-3 focus-visible:ring-(--agent-color)/40"
       >
         <CardContent className="grid gap-5 p-5 md:grid-cols-[72px_minmax(0,1fr)_auto] md:items-start md:p-6">
           <div className="flex items-center gap-3 md:block">
-            <span className="font-mono text-[11px] font-medium text-[var(--ink-mute)]">
+            <span className="text-muted-foreground font-mono text-[11px] font-medium">
               {String(index + 1).padStart(2, "0")}
             </span>
-            <div className="h-1.5 flex-1 rounded-full bg-[var(--agent-soft)] md:mt-3 md:h-16 md:w-1.5" />
+            <div className="h-1.5 flex-1 rounded-full bg-(--agent-soft) md:mt-3 md:h-16 md:w-1.5" />
           </div>
 
           <div className="min-w-0">
             <div className="mb-2 flex flex-wrap items-center gap-2">
-              <h2 className="text-lg leading-tight font-semibold tracking-tight text-[var(--ink)] md:text-xl">
+              <h2 className="text-foreground text-lg leading-tight font-semibold tracking-tight md:text-xl">
                 {agent.name}
               </h2>
               <Badge
                 variant="outline"
-                className="border-[color-mix(in_srgb,var(--agent-color)_38%,transparent)] bg-[var(--agent-soft)] text-[var(--agent-color)]"
+                className="border-[color-mix(in_srgb,var(--agent-color)_38%,transparent)] bg-(--agent-soft) text-(--agent-color)"
               >
                 {agent.tagline}
               </Badge>
@@ -64,13 +64,11 @@ export function AgentCard({
               {isA2UI && <Badge variant="secondary">A2UI</Badge>}
             </div>
 
-            <p className="max-w-2xl text-sm leading-6 text-[var(--ink-soft)]">
-              {agent.description}
-            </p>
+            <p className="max-w-2xl text-sm leading-6 text-(--ink-soft)">{agent.description}</p>
 
             <div className="mt-4 flex flex-wrap gap-1.5">
               {agent.tags.map((tag) => (
-                <Badge key={tag} variant="outline" className="bg-[var(--bg-soft)] font-mono">
+                <Badge key={tag} variant="outline" className="bg-muted font-mono">
                   {tag}
                 </Badge>
               ))}
@@ -82,7 +80,7 @@ export function AgentCard({
             <span
               className={cn(
                 buttonVariants({ variant: "outline", size: "sm" }),
-                "border-[color-mix(in_srgb,var(--agent-color)_42%,var(--border))] bg-[var(--surface-raised)] text-[var(--agent-color)] group-hover/card:bg-[var(--agent-soft)]",
+                "border-[color-mix(in_srgb,var(--agent-color)_42%,var(--border))] bg-(--surface-raised) text-(--agent-color) group-hover/card:bg-(--agent-soft)",
               )}
             >
               {agent.cta}
@@ -106,10 +104,10 @@ function StatusBadge({ status }: { status?: AgentStatus }) {
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-medium",
         status === "ok" &&
-          "border-[color-mix(in_srgb,var(--agent-color)_38%,transparent)] bg-[var(--agent-soft)] text-[var(--agent-color)]",
-        status === "loading" && "border-[var(--border)] bg-[var(--bg-soft)] text-[var(--ink-mute)]",
+          "border-[color-mix(in_srgb,var(--agent-color)_38%,transparent)] bg-(--agent-soft) text-(--agent-color)",
+        status === "loading" && "border-border bg-muted text-muted-foreground",
         status === "error" &&
-          "border-[color-mix(in_srgb,var(--danger)_35%,transparent)] bg-[var(--danger-soft)] text-[var(--danger)]",
+          "text-destructive border-[color-mix(in_srgb,var(--danger)_35%,transparent)] bg-(--danger-soft)",
       )}
     >
       <Icon

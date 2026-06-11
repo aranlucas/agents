@@ -88,9 +88,13 @@ export function ChatSurface({
   const connections = useRequiredConnections(config.id);
   const gated = !connections.isLoading && connections.missing.length > 0;
 
+  // CopilotKit's public agent message type is looser than the AG-UI runtime
+  // shape this renderer consumes; keep that cast at the integration boundary.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const messages = (agent?.messages ?? []) as AguiMessage[];
   const items = toRenderItems(messages);
   const isRunning = agent?.isRunning ?? false;
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const artifact = selectArtifact(agent?.state as Record<string, unknown>, config);
 
   // The artifact button hangs off the most recent assistant turn.
@@ -106,6 +110,7 @@ export function ChatSurface({
   // The resolver's toolCall/toolMessage types are CopilotKit-internal; our Agui*
   // are the structural runtime shapes. Cast at this single boundary.
   const renderTC = (tc: AguiToolCall) =>
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     renderToolCall({ toolCall: tc as never, toolMessage: toolMessages.get(tc.id) as never });
 
   const send = useCallback(
@@ -126,7 +131,7 @@ export function ChatSurface({
     <div className="flex h-full flex-col">
       <ToolRendererRegistration />
       <Conversation className="flex-1">
-        <ConversationContent className="mx-auto w-full max-w-[760px]">
+        <ConversationContent className="mx-auto w-full max-w-190">
           {items.length === 0 ? (
             <ConversationEmptyState
               icon={<SparklesIcon className="size-5" />}
@@ -137,6 +142,7 @@ export function ChatSurface({
             items.map((item) => {
               if (item.kind === "activity") {
                 return (
+                  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
                   <Fragment key={item.id}>{renderActivityMessage(item.message as never)}</Fragment>
                 );
               }
@@ -186,7 +192,7 @@ export function ChatSurface({
       </Conversation>
 
       <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <div className="mx-auto w-full max-w-[760px]">
+        <div className="mx-auto w-full max-w-190">
           {gated ? (
             <ConnectNotice agentLabel={config.label} missing={connections.missing} />
           ) : (
