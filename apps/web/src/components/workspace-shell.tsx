@@ -61,10 +61,12 @@ export function WorkspaceShell({
       <div className={cn("flex-none", fullscreen && "md:hidden", open && "max-md:hidden")}>
         {rail}
       </div>
-      {/* Chat: hidden on desktop fullscreen, and on mobile when the artifact is open. */}
+      {/* Chat: hidden on desktop fullscreen, and on mobile when the artifact is open.
+          `min-h-0` lets this flex child shrink below its content height in the mobile
+          column layout, so the inner conversation scrolls instead of overflowing. */}
       <div
         className={cn(
-          "flex min-w-0 flex-1 flex-col",
+          "flex min-h-0 min-w-0 flex-1 flex-col",
           fullscreen && "md:hidden",
           open && "max-md:hidden",
         )}
