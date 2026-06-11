@@ -4,13 +4,6 @@ packages:
 
 minimumReleaseAge: 0
 
-overrides:
-  "@expo/dom-webview": 56.0.5
-  "@expo/metro-runtime": 56.0.13
-  react-native-reanimated: 4.3.1
-  react-native-worklets: 0.8.3
-  utf-8-validate: 5.0.10
-
 allowBuilds:
   agents-monorepo: true
   "@clerk/shared": true
