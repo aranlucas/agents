@@ -8,6 +8,7 @@ const root = process.cwd();
 const check = process.argv.includes("--check");
 const cssPath = "apps/web/src/app/globals.css";
 const globs = ["*.{ts,tsx,js,jsx}", "*.css"];
+const sourceFilePattern = /\.(?:ts|tsx|js|jsx|css)$/;
 
 const utilityThemePreferences = {
   bg: {
@@ -110,17 +111,31 @@ function canonicalizeContent(source) {
 }
 
 function repoFiles() {
-  const files = execFileSync(
-    "rg",
-    ["--files", "apps", "packages", ...globs.flatMap((g) => ["--glob", g])],
+  try {
+    return execFileSync(
+      "rg",
+      ["--files", "apps", "packages", ...globs.flatMap((g) => ["--glob", g])],
+      {
+        encoding: "utf8",
+      },
+    )
+      .trim()
+      .split("\n")
+      .filter(Boolean);
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+
+  return execFileSync(
+    "git",
+    ["ls-files", "--cached", "--others", "--exclude-standard", "apps", "packages"],
     {
       encoding: "utf8",
     },
   )
     .trim()
     .split("\n")
-    .filter(Boolean);
-  return files;
+    .filter((file) => sourceFilePattern.test(file));
 }
 
 const changed = [];

@@ -20,6 +20,7 @@ describe("env", () => {
     expect(env.FITNESS_AGENT_URL).toBe("http://127.0.0.1:8002");
     expect(env.WELLNESS_AGENT_URL).toBe("http://127.0.0.1:8003");
     expect(env.A2UI_AGENT_URL).toBe("http://127.0.0.1:8004");
+    expect(env.ORALBOARDS_AGENT_URL).toBe("http://127.0.0.1:8005");
     expect(env.COPILOTKIT_DEBUG).toBe(false);
   });
 

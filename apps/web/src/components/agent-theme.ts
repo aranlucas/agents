@@ -1,6 +1,6 @@
 import { cssVars } from "@/lib/css";
 
-export type AgentTheme = "travel" | "grocery" | "fitness" | "wellness" | "a2ui";
+export type AgentTheme = "travel" | "grocery" | "fitness" | "wellness" | "oral-boards" | "a2ui";
 
 export const AGENT_THEMES: Record<
   AgentTheme,
@@ -34,6 +34,12 @@ export const AGENT_THEMES: Record<
     colorVar: "var(--wellness)",
     softVar: "var(--wellness-soft)",
     contrastVar: "var(--wellness-contrast)",
+  },
+  "oral-boards": {
+    label: "Oral Boards",
+    colorVar: "var(--oral-boards)",
+    softVar: "var(--oral-boards-soft)",
+    contrastVar: "var(--oral-boards-contrast)",
   },
   a2ui: {
     label: "A2UI",

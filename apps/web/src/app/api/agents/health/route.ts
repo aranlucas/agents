@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { env } from "@/env";
+import { agentHealthUrl } from "@/lib/agent-url";
 
 const AGENT_URLS: Record<string, string> = {
   travel: env.TRAVEL_AGENT_URL,
   grocery: env.GROCERY_AGENT_URL,
   fitness: env.FITNESS_AGENT_URL,
   wellness: env.WELLNESS_AGENT_URL,
+  "oral-boards": env.ORALBOARDS_AGENT_URL,
   a2ui: env.A2UI_AGENT_URL,
 };
 
@@ -14,7 +16,9 @@ async function checkAgent(
   baseUrl: string,
 ): Promise<{ name: string; status: "ok" | "error" }> {
   try {
-    const res = await fetch(`${baseUrl}/health`, {
+    const res = await fetch(agentHealthUrl(baseUrl), {
+      // `baseUrl` may already include /agui in local env files.
+      // Normalize before probing health so both config styles work.
       signal: AbortSignal.timeout(5000),
       cache: "no-store",
     });

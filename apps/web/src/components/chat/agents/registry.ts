@@ -2,7 +2,7 @@ import type { ArtifactKind } from "@agents/types";
 
 import type { ProviderId } from "@/lib/connections";
 
-export type AgentId = "travel" | "grocery" | "fitness" | "wellness" | "a2ui";
+export type AgentId = "travel" | "grocery" | "fitness" | "wellness" | "oral-boards" | "a2ui";
 
 export type ArtifactSource = {
   /** Agent-state field holding the live document content (string or string[]). */
@@ -141,6 +141,38 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
       { title: "Sunday prep", message: "Help me plan a Sunday meal prep and training session." },
     ],
   },
+  "oral-boards": {
+    id: "oral-boards",
+    label: "Oral Boards",
+    glyph: "◆",
+    colorVar: "--oral-boards",
+    placeholder: "Start a pediatric dentistry oral-board case…",
+    welcome: "Name a topic, or ask for a grounded mock oral-board case.",
+    artifact: {
+      stateField: "case",
+      kind: "markdown",
+      title: "Exam canvas",
+      name: "oral_boards_exam.md",
+    },
+    suggestions: [
+      {
+        title: "Start a case",
+        message: "Run a grounded pediatric dentistry oral-board case.",
+      },
+      {
+        title: "Pulp therapy",
+        message: "Create an oral-board case focused on pulp therapy.",
+      },
+      {
+        title: "Trauma scenario",
+        message: "Give me a staged OCE-style trauma case.",
+      },
+      {
+        title: "Score my answer",
+        message: "Ask one question at a time and grade my answer with citations.",
+      },
+    ],
+  },
   a2ui: {
     id: "a2ui",
     label: "A2UI",
@@ -156,11 +188,14 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
   },
 };
 
-export const AGENT_ORDER: AgentId[] = ["travel", "grocery", "fitness", "wellness", "a2ui"];
-
-export function isAgentId(value: string): value is AgentId {
-  return value in AGENTS;
-}
+export const AGENT_ORDER: AgentId[] = [
+  "travel",
+  "grocery",
+  "fitness",
+  "wellness",
+  "oral-boards",
+  "a2ui",
+];
 
 export function isAgentId(value: string): value is AgentId {
   return value in AGENTS;

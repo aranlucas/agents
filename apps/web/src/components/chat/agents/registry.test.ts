@@ -2,8 +2,15 @@ import { describe, expect, it } from "vitest";
 import { AGENT_ORDER, getAgentConfig, isAgentId } from "./registry";
 
 describe("agent registry", () => {
-  it("lists the five agents in display order", () => {
-    expect(AGENT_ORDER).toEqual(["travel", "grocery", "fitness", "wellness", "a2ui"]);
+  it("lists the six agents in display order", () => {
+    expect(AGENT_ORDER).toEqual([
+      "travel",
+      "grocery",
+      "fitness",
+      "wellness",
+      "oral-boards",
+      "a2ui",
+    ]);
   });
 
   it("narrows valid agent ids", () => {
@@ -27,6 +34,7 @@ describe("agent registry", () => {
     expect(getAgentConfig("grocery").requires).toEqual(["kroger"]);
     expect(getAgentConfig("fitness").requires).toEqual(["strava"]);
     expect(getAgentConfig("wellness").requires).toEqual(["kroger", "strava"]);
+    expect(getAgentConfig("oral-boards").requires ?? []).toEqual([]);
     expect(getAgentConfig("a2ui").requires ?? []).toEqual([]);
   });
 });
