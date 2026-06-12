@@ -5,8 +5,8 @@ export const env = createEnv({
   server: {
     CLERK_SECRET_KEY: z.string().min(1),
     AGENTS_BASE_URL: z.url().default("https://agents-gateway.up.railway.app"),
-    TRVL_MCP_URL: z.url().optional(),
-    KROGER_MCP_URL: z.url().optional(),
+    TRVL_MCP_URL: z.url().default("https://trvl-production.up.railway.app/mcp"),
+    KROGER_MCP_URL: z.url().default("https://mcp.kroger.com/mcp"),
     MISTRAL_API_KEY: z.string().optional(),
     OTEL_EXPORTER_OTLP_ENDPOINT: z.string().optional(),
     OTEL_SERVICE_NAME: z.string().default("agents-nextjs"),
@@ -22,8 +22,8 @@ export const env = createEnv({
   runtimeEnv: {
     CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
     AGENTS_BASE_URL: process.env.AGENTS_BASE_URL ?? "https://agents-gateway.up.railway.app",
-    TRVL_MCP_URL: process.env.TRVL_MCP_URL,
-    KROGER_MCP_URL: process.env.KROGER_MCP_URL,
+    TRVL_MCP_URL: process.env.TRVL_MCP_URL ?? "https://trvl-production.up.railway.app/mcp",
+    KROGER_MCP_URL: process.env.KROGER_MCP_URL ?? "https://mcp.kroger.com/mcp",
     MISTRAL_API_KEY: process.env.MISTRAL_API_KEY,
     OTEL_EXPORTER_OTLP_ENDPOINT: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
     OTEL_SERVICE_NAME: process.env.OTEL_SERVICE_NAME,
