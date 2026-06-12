@@ -1,12 +1,24 @@
 """TempStateSessionService forwards temp: keys into invocation temp state."""
 
-from agents_shared.invocation_state import get_invocation_temp
+import pytest
+from agents_shared.invocation_state import (
+    get_invocation_temp,
+    set_invocation_temp_state,
+)
 from agents_shared.session_service import TempStateSessionService
 
 
 class _FakeSession:
     def __init__(self, state):
         self.state = state
+
+
+@pytest.fixture(autouse=True)
+def _reset_invocation_temp_state():
+    """Reset the invocation temp contextvar before and after each test."""
+    set_invocation_temp_state(None)
+    yield
+    set_invocation_temp_state(None)
 
 
 def test_inject_forwards_temp_keys():
@@ -29,8 +41,9 @@ def test_inject_ignores_non_temp_keys():
     session = _FakeSession({"user_id": "u1", "regular_key": "value"})
     result = TempStateSessionService._inject(svc, session, ("app", "user", "session"))
     assert result is session
-    # No temp state should be set (invocation temp remains empty/None)
-    assert get_invocation_temp("temp:nonexistent", {}) == ""
+    # temp:kroger_token was never set in this test; if _inject wrongly forwarded non-temp keys
+    # or a prior test leaked state, this would be non-empty — catching both bugs.
+    assert get_invocation_temp("temp:kroger_token", {}) == ""
 
 
 def test_inject_returns_none_when_session_is_none():
