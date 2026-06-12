@@ -62,3 +62,13 @@ jobs:
           SKIP_ENV_VALIDATION: "1"
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2xlcmsuZXhhbXBsZS5jb20k
           CLERK_SECRET_KEY: sk_test_placeholder
+
+  docker:
+    name: Build agent image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Build Dockerfile.agents
+        run: docker build -f Dockerfile.agents .
