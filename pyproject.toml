@@ -9,13 +9,18 @@ package = false
 
 [tool.uv.sources]
 agent-common = { workspace = true }
+a2ui-agent = { workspace = true }
 fitness-agent = { workspace = true }
 grocery-agent = { workspace = true }
+oralboards-agent = { workspace = true }
+travel-agent = { workspace = true }
+wellness-agent = { workspace = true }
 
 [tool.uv.workspace]
 members = [
   "agents/a2ui",
   "agents/fitness",
+  "agents/gateway",
   "agents/grocery",
   "agents/oralboards",
   "agents/travel",
@@ -56,6 +61,7 @@ addopts = ["--import-mode=importlib"]
 pythonpath = [
   "agents/a2ui/src",
   "agents/fitness/src",
+  "agents/gateway/src",
   "agents/grocery/src",
   "agents/oralboards/src",
   "agents/travel/src",
@@ -67,6 +73,7 @@ pythonpath = [
 source = [
   "agents/a2ui/src",
   "agents/fitness/src",
+  "agents/gateway/src",
   "agents/grocery/src",
   "agents/oralboards/src",
   "agents/travel/src",

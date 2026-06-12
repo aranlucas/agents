@@ -20,7 +20,9 @@ import pytest
 AGENT_MODULES = [
     "a2ui_agent.main",
     "fitness_agent.main",
+    "gateway.main",
     "grocery_agent.main",
+    "oralboards_agent.main",
     "travel_agent.main",
     "wellness_agent.main",
 ]

@@ -339,7 +339,7 @@ app = FastAPI(title="Collab Studio · Trip Planning")
 
 @app.middleware("http")
 async def trace_requests(request, call_next):
-    if request.url.path == "/health":
+    if request.url.path.endswith("/health"):
         return await call_next(request)
 
     start = time.perf_counter()

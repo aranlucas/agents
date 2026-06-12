@@ -1,5 +1,5 @@
 services:
-  travel:
+  agents:
     build:
       context: .
       dockerfile: Dockerfile.agents
@@ -10,128 +10,12 @@ services:
         required: false
       - path: ./.env.local
         required: false
-      - path: ./agents/travel/.env
-        required: false
     environment:
-      OTEL_SERVICE_NAME: travel-agent
-      AGENT_DIR: agents/travel
-      AGENT_MODULE: travel_agent.main
+      OTEL_SERVICE_NAME: agents-gateway
+      AGENT_DIR: agents/gateway
+      AGENT_MODULE: gateway.main
       PORT: 8000
       ADK_SESSION_DB_PATH: /data/adk_sessions.sqlite
-      AGENT_PUBLIC_URL: http://travel:8000
-    volumes:
-      - adk-session-data:/data
-
-  grocery:
-    build:
-      context: .
-      dockerfile: Dockerfile.agents
-    ports:
-      - "8001:8001"
-    env_file:
-      - path: ./.env
-        required: false
-      - path: ./.env.local
-        required: false
-      - path: ./agents/grocery/.env
-        required: false
-    environment:
-      OTEL_SERVICE_NAME: grocery-agent
-      AGENT_DIR: agents/grocery
-      AGENT_MODULE: grocery_agent.main
-      PORT: 8001
-      ADK_SESSION_DB_PATH: /data/adk_sessions.sqlite
-      AGENT_PUBLIC_URL: http://grocery:8001
-    volumes:
-      - adk-session-data:/data
-
-  fitness:
-    build:
-      context: .
-      dockerfile: Dockerfile.agents
-    ports:
-      - "8002:8002"
-    env_file:
-      - path: ./.env
-        required: false
-      - path: ./.env.local
-        required: false
-      - path: ./agents/fitness/.env
-        required: false
-    environment:
-      OTEL_SERVICE_NAME: fitness-agent
-      AGENT_DIR: agents/fitness
-      AGENT_MODULE: fitness_agent.main
-      PORT: 8002
-      ADK_SESSION_DB_PATH: /data/adk_sessions.sqlite
-      AGENT_PUBLIC_URL: http://fitness:8002
-    volumes:
-      - adk-session-data:/data
-
-  wellness:
-    build:
-      context: .
-      dockerfile: Dockerfile.agents
-    ports:
-      - "8003:8003"
-    env_file:
-      - path: ./.env
-        required: false
-      - path: ./.env.local
-        required: false
-      - path: ./agents/wellness/.env
-        required: false
-    environment:
-      OTEL_SERVICE_NAME: wellness-agent
-      AGENT_DIR: agents/wellness
-      AGENT_MODULE: wellness_agent.main
-      PORT: 8003
-      ADK_SESSION_DB_PATH: /data/adk_sessions.sqlite
-      AGENT_PUBLIC_URL: http://wellness:8003
-    volumes:
-      - adk-session-data:/data
-
-  oralboards:
-    build:
-      context: .
-      dockerfile: Dockerfile.agents
-    ports:
-      - "8005:8005"
-    env_file:
-      - path: ./.env
-        required: false
-      - path: ./.env.local
-        required: false
-    environment:
-      OTEL_SERVICE_NAME: oralboards-agent
-      AGENT_DIR: agents/oralboards
-      AGENT_MODULE: oralboards_agent.main
-      PORT: 8005
-      ADK_SESSION_DB_PATH: /data/adk_sessions.sqlite
-      AGENT_PUBLIC_URL: http://oralboards:8005
-    volumes:
-      - adk-session-data:/data
-
-  a2ui:
-    build:
-      context: .
-      dockerfile: Dockerfile.agents
-    ports:
-      - "8004:8004"
-    env_file:
-      - path: ./.env
-        required: false
-      - path: ./.env.local
-        required: false
-      - path: ./agents/a2ui/.env
-        required: false
-    environment:
-      OTEL_SERVICE_NAME: a2ui-agent
-      AGENT_DIR: agents/a2ui
-      AGENT_MODULE: a2ui_agent.main
-      PORT: 8004
-      ADK_SESSION_DB_PATH: /data/adk_sessions.sqlite
-      AGENT_PUBLIC_URL: http://a2ui:8004
     volumes:
       - adk-session-data:/data
 

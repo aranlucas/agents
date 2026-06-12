@@ -17,6 +17,7 @@ COPY pyproject.toml uv.lock ./
 COPY packages/agent-common/pyproject.toml packages/agent-common/
 COPY agents/a2ui/pyproject.toml agents/a2ui/
 COPY agents/fitness/pyproject.toml agents/fitness/
+COPY agents/gateway/pyproject.toml agents/gateway/
 COPY agents/grocery/pyproject.toml agents/grocery/
 COPY agents/oralboards/pyproject.toml agents/oralboards/
 COPY agents/travel/pyproject.toml agents/travel/
