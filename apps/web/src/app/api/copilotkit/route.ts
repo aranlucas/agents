@@ -1,3 +1,5 @@
+export const maxDuration = 60;
+
 import { CopilotSseRuntime, createCopilotRuntimeHandler } from "@copilotkit/runtime/v2";
 import { HttpAgent } from "@ag-ui/client";
 import { auth } from "@clerk/nextjs/server";
