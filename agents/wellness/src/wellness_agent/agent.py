@@ -4,8 +4,6 @@ from typing import Any
 
 from ag_ui_adk import AGUIToolset
 from agents_shared.state import (
-    KROGER_AUTH,
-    STRAVA_AUTH,
     make_state_initializer,
     make_state_instruction_provider,
 )
@@ -131,13 +129,7 @@ def build_agent() -> LlmAgent:
         static_instruction=_INSTRUCTION,
         instruction=make_state_instruction_provider("wellness", WellnessState),
         sub_agents=[build_fitness_agent(mode="task"), build_grocery_agent(mode="task")],
-        before_agent_callback=make_state_initializer(
-            WellnessState,
-            token_flags={
-                KROGER_AUTH.state_key: KROGER_AUTH.connected_flag,
-                STRAVA_AUTH.state_key: STRAVA_AUTH.connected_flag,
-            },
-        ),
+        before_agent_callback=make_state_initializer(WellnessState),
         after_tool_callback=shared_after_tool_callback,
         tools=[
             get_current_date,
