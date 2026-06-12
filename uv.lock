@@ -119,6 +119,9 @@ requires-dist = [
 name = "agents-workspace"
 version = "0.1.0"
 source = { virtual = "." }
+dependencies = [
+    { name = "gateway" },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -130,6 +133,7 @@ dev = [
 ]
 
 [package.metadata]
+requires-dist = [{ name = "gateway", editable = "agents/gateway" }]
 
 [package.metadata.requires-dev]
 dev = [
