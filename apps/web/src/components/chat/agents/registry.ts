@@ -2,7 +2,14 @@ import type { ArtifactKind } from "@agents/types";
 
 import type { ProviderId } from "@/lib/connections";
 
-export type AgentId = "travel" | "grocery" | "fitness" | "wellness" | "oral-boards" | "a2ui";
+export type AgentId =
+  | "travel"
+  | "grocery"
+  | "fitness"
+  | "wellness"
+  | "oral-boards"
+  | "a2ui"
+  | "resume";
 
 export type ArtifactSource = {
   /** Agent-state field holding the live document content (string or string[]). */
@@ -186,6 +193,24 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
       { title: "Kanban", message: "Show a kanban board with a few sample cards." },
     ],
   },
+  resume: {
+    id: "resume",
+    label: "Resume",
+    glyph: "▣",
+    colorVar: "--resume",
+    placeholder: "Ask about Lucas's experience, skills, or projects…",
+    welcome:
+      "Hi! I can answer questions about Lucas's background, experience, and skills. What would you like to know?",
+    suggestions: [
+      { title: "Experience", message: "Walk me through Lucas's work experience." },
+      { title: "Tech stack", message: "What technologies is Lucas strongest in?" },
+      { title: "Recent projects", message: "What has Lucas built recently?" },
+      {
+        title: "Good fit?",
+        message: "Why would Lucas be a good fit for a senior engineering role?",
+      },
+    ],
+  },
 };
 
 export const AGENT_ORDER: AgentId[] = [
@@ -195,6 +220,7 @@ export const AGENT_ORDER: AgentId[] = [
   "wellness",
   "oral-boards",
   "a2ui",
+  "resume",
 ];
 
 export function isAgentId(value: string): value is AgentId {

@@ -42,7 +42,7 @@ const AGENTS: Agent[] = [
     tagline: "Meals and workouts together",
     description: "Coordinate grocery and fitness agents into one practical weekly plan.",
     cta: "Plan week",
-    tags: ["A2A", "Meals", "Training"],
+    tags: ["In-process", "Meals", "Training"],
     theme: "wellness",
   },
   {
@@ -57,6 +57,16 @@ const AGENTS: Agent[] = [
   },
   {
     id: "06",
+    href: "/resume",
+    name: "Resume",
+    tagline: "Public Q&A for Lucas",
+    description: "Ask about Lucas's background, skills, projects, and fit.",
+    cta: "Ask resume",
+    tags: ["Public", "Career", "Q&A"],
+    theme: "resume",
+  },
+  {
+    id: "07",
     href: "/a2ui",
     name: "A2UI Studio",
     tagline: "Generative UI over AG-UI",

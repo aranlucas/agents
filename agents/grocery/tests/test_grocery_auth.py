@@ -33,13 +33,20 @@ def test_meal_planner_header_provider_reads_temp_token() -> None:
     assert headers == {"Authorization": "Bearer token-123"}
 
 
-def test_on_before_agent_hydrates_a2a_kroger_metadata() -> None:
-    callback_context = Mock()
-    callback_context.state = {}
-    callback_context._invocation_context.run_config.custom_metadata = {
-        "a2a_metadata": {"user_id": "user_123", "kroger_access_token": "token-123"},
-    }
-    main.on_before_agent(callback_context)
-    assert callback_context.state["user_id"] == "user_123"
-    assert callback_context.state["kroger_connected"] is True
-    assert callback_context.state["temp:kroger_token"] == "token-123"
+def test_header_provider_falls_back_to_invocation_contextvar() -> None:
+    from agents_shared.invocation_state import set_invocation_temp_state
+
+    set_invocation_temp_state({"temp:kroger_token": "ctx-token"})
+    headers = utils._header_provider(DummyContext({}))
+    assert headers == {"Authorization": "Bearer ctx-token"}
+    set_invocation_temp_state(None)
+
+
+def test_on_before_agent_derives_kroger_connected_from_contextvar_token() -> None:
+    from agents_shared.invocation_state import set_invocation_temp_state
+
+    set_invocation_temp_state({"temp:kroger_token": "ctx-token"})
+    ctx = DummyContext({})
+    main.on_before_agent(ctx)
+    assert ctx.state["kroger_connected"] is True
+    set_invocation_temp_state(None)

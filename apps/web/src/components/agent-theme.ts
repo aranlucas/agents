@@ -1,6 +1,13 @@
 import { cssVars } from "@/lib/css";
 
-export type AgentTheme = "travel" | "grocery" | "fitness" | "wellness" | "oral-boards" | "a2ui";
+export type AgentTheme =
+  | "travel"
+  | "grocery"
+  | "fitness"
+  | "wellness"
+  | "oral-boards"
+  | "a2ui"
+  | "resume";
 
 export const AGENT_THEMES: Record<
   AgentTheme,
@@ -46,6 +53,12 @@ export const AGENT_THEMES: Record<
     colorVar: "var(--a2ui)",
     softVar: "var(--a2ui-soft)",
     contrastVar: "var(--a2ui-contrast)",
+  },
+  resume: {
+    label: "Resume",
+    colorVar: "var(--resume)",
+    softVar: "var(--resume-soft)",
+    contrastVar: "var(--resume-contrast)",
   },
 };
 

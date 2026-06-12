@@ -6,20 +6,16 @@ import os
 import re
 import sqlite3
 import time
+from importlib import resources
 from pathlib import Path
 
-from a2a.server.apps.jsonrpc import A2AFastAPIApplication
-from a2a.server.request_handlers import DefaultRequestHandler
-from a2a.types import AgentCapabilities, AgentCard, AgentSkill
 from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
 from ag_ui_adk.config import PredictStateMapping
-from agent_common.a2a import (
-    apply_a2a_auth_metadata_to_state,
-    create_a2a_agent_executor,
+from agents_shared.session_service import (
+    SessionServiceContainer,
+    create_session_service,
 )
-from agent_common.session_service import SessionServiceContainer, create_session_service
-from agent_common.task_store import create_task_store
-from agent_common.tools import shared_after_tool_callback
+from agents_shared.tools import shared_after_tool_callback
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,7 +28,6 @@ from google.adk.auth.credential_service.in_memory_credential_service import (
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.models import LlmRequest, LlmResponse
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.runners import Runner
 from google.adk.tools import ToolContext
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
@@ -51,9 +46,17 @@ logging.getLogger("ag_ui_adk").setLevel(logging.DEBUG)
 log = logging.getLogger("oralboards_agent")
 
 CLERK_USER_ID_HEADER = "x-clerk-user-id"
-DATA_DIR = Path(__file__).resolve().parents[2] / "data"
-DB_PATH = Path(os.getenv("ORALBOARDS_SEARCH_DB", str(DATA_DIR / "search.sqlite")))
 VALID_COLLECTIONS = {"abpd", "aapd", "cody"}
+
+
+def _default_db_path() -> Path:
+    package_db = resources.files("oralboards_agent").joinpath("data/search.sqlite")
+    if package_db.is_file():
+        return Path(str(package_db))
+    return Path(__file__).resolve().parents[2] / "data" / "search.sqlite"
+
+
+DB_PATH = Path(os.getenv("ORALBOARDS_SEARCH_DB", str(_default_db_path())))
 
 _railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN")
 AGENT_PUBLIC_URL = os.getenv("AGENT_PUBLIC_URL") or (
@@ -268,7 +271,6 @@ def set_score_card(tool_context: ToolContext, markdown: str) -> dict:
 
 def on_before_agent(callback_context: CallbackContext) -> None:
     """Initialize missing oral-boards state keys on every turn."""
-    apply_a2a_auth_metadata_to_state(callback_context)
     for key, default in _DEFAULT_STATE.items():
         if key not in callback_context.state:
             callback_context.state[key] = default
@@ -373,40 +375,6 @@ _artifact_svc = InMemoryArtifactService()
 _memory_svc = InMemoryMemoryService()
 _credential_svc = InMemoryCredentialService()
 
-_a2a_runner = Runner(
-    app_name=oralboards_agent.name,
-    agent=oralboards_agent,
-    artifact_service=_artifact_svc,
-    session_service=_shared_session_svc,
-    memory_service=_memory_svc,
-    credential_service=_credential_svc,
-)
-
-
-def _a2a_agent_card() -> AgentCard:
-    return AgentCard(
-        name="Oral Boards Examiner Agent",
-        description=(
-            "Runs grounded pediatric dentistry oral-board mock exams with "
-            "retrieved citations and score cards."
-        ),
-        version="1.0.0",
-        url=AGENT_PUBLIC_URL,
-        default_input_modes=["text/plain"],
-        default_output_modes=["text/plain"],
-        capabilities=AgentCapabilities(streaming=True),
-        skills=[
-            AgentSkill(
-                id="oral_boards_exam",
-                name="Oral Boards Exam Practice",
-                description="Presents cited case vignettes and grades staged oral-board answers.",
-                tags=["oral-boards", "pediatric-dentistry", "exam"],
-                input_modes=["text/plain"],
-                output_modes=["text/plain"],
-            ),
-        ],
-    )
-
 
 adk_oralboards_agent = ADKAgent(
     adk_agent=oralboards_agent,
@@ -423,7 +391,7 @@ app = FastAPI(title="Oral Boards Examiner Agent")
 
 @app.middleware("http")
 async def trace_requests(request, call_next):
-    if request.url.path == "/health":
+    if request.url.path.endswith("/health"):
         return await call_next(request)
 
     start = time.perf_counter()
@@ -458,16 +426,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-_a2a_card = _a2a_agent_card()
-_a2a_handler = DefaultRequestHandler(
-    agent_executor=create_a2a_agent_executor(_a2a_runner),
-    task_store=create_task_store(),
-)
-A2AFastAPIApplication(
-    agent_card=_a2a_card,
-    http_handler=_a2a_handler,
-).add_routes_to_app(app)
-
 add_adk_fastapi_endpoint(
     app,
     adk_oralboards_agent,
@@ -482,10 +440,3 @@ async def health():
     if DB_STARTUP_ERROR:
         return {"status": "unhealthy", "database": "error", "error": DB_STARTUP_ERROR}
     return session_health
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    port = int(os.getenv("PORT", "8005"))
-    uvicorn.run(app, host="0.0.0.0", port=port)

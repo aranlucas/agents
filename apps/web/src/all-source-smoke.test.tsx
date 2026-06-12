@@ -69,12 +69,7 @@ const agentStates: Record<string, Record<string, unknown>> = {
 vi.mock("@/env", () => ({
   env: {
     CLERK_SECRET_KEY: "secret",
-    TRAVEL_AGENT_URL: "http://travel.test",
-    GROCERY_AGENT_URL: "http://grocery.test",
-    FITNESS_AGENT_URL: "http://fitness.test",
-    WELLNESS_AGENT_URL: "http://wellness.test",
-    ORALBOARDS_AGENT_URL: "http://oralboards.test",
-    A2UI_AGENT_URL: "http://a2ui.test",
+    AGENTS_BASE_URL: "http://agents.test",
     COPILOTKIT_DEBUG: false,
   },
 }));
@@ -138,7 +133,7 @@ vi.mock("@clerk/nextjs", () => ({
 }));
 
 vi.mock("@clerk/nextjs/server", () => ({
-  auth: vi.fn(async () => ({ userId: "user_123" })),
+  auth: vi.fn(async () => ({ userId: "user_123", getToken: vi.fn(async () => "session-jwt") })),
   clerkClient: vi.fn(async () => ({
     users: { getUserOauthAccessToken: vi.fn(async () => ({ data: [{ token: "token" }] })) },
   })),
@@ -320,6 +315,7 @@ describe("web all-source smoke coverage", () => {
       WellnessPage,
       OralBoardsPage,
       A2UIPage,
+      ResumePage,
       SettingsPage,
       AgentCardModule,
       AgentStatusBarModule,
@@ -342,6 +338,7 @@ describe("web all-source smoke coverage", () => {
       import("./app/wellness/page"),
       import("./app/oral-boards/page"),
       import("./app/a2ui/page"),
+      import("./app/resume/page"),
       import("./app/console/settings/page"),
       import("./components/agent-card"),
       import("./components/agent-status-bar"),
@@ -398,6 +395,12 @@ describe("web all-source smoke coverage", () => {
       "a2ui",
       <ProvidersModule.Providers>
         <A2UIPage.default />
+      </ProvidersModule.Providers>,
+    );
+    await render(
+      "resume",
+      <ProvidersModule.Providers>
+        <ResumePage.default />
       </ProvidersModule.Providers>,
     );
     await render(

@@ -125,11 +125,7 @@ vi.mock("expo-constants", () => ({
     expoConfig: {
       extra: {
         clerkPublishableKey: "pk_test",
-        travelAgentUrl: "http://travel.test",
-        groceryAgentUrl: "http://grocery.test",
-        fitnessAgentUrl: "http://fitness.test",
-        wellnessAgentUrl: "http://wellness.test",
-        a2uiAgentUrl: "http://a2ui.test",
+        agentsBaseUrl: "http://agents.test",
       },
     },
     executionEnvironment: "storeClient",

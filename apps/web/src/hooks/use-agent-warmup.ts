@@ -11,6 +11,7 @@ export interface AgentStatuses {
   wellness: AgentStatus;
   "oral-boards": AgentStatus;
   a2ui: AgentStatus;
+  resume: AgentStatus;
 }
 
 interface HealthResponse {
@@ -26,6 +27,7 @@ const FALLBACK: AgentStatuses = {
   wellness: "loading",
   "oral-boards": "loading",
   a2ui: "loading",
+  resume: "loading",
 };
 
 export function useAgentWarmup() {
@@ -39,6 +41,7 @@ export function useAgentWarmup() {
   return {
     statuses: data?.agents ?? FALLBACK,
     runningCount: data?.runningCount ?? 0,
+    total: data?.total ?? Object.keys(FALLBACK).length,
     isLoading,
   };
 }

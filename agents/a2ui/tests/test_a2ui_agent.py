@@ -10,35 +10,6 @@ def test_health_route() -> None:
     assert response.json()["status"] == "ok"
 
 
-def test_a2a_agent_card_route_exists() -> None:
-    from a2ui_agent import main
-
-    client = TestClient(main.app)
-    response = client.get("/.well-known/agent-card.json")
-    assert response.status_code == 200
-    body = response.json()
-    assert body["name"] == "A2UI Showcase Agent"
-    assert body["capabilities"]["streaming"] is True
-
-
-def test_agent_card_url_uses_agent_public_url_env(monkeypatch) -> None:
-    import importlib
-
-    from a2ui_agent import main
-
-    monkeypatch.setenv("AGENT_PUBLIC_URL", "http://a2ui:8004")
-    main = importlib.reload(main)
-    assert main._a2a_agent_card().url == "http://a2ui:8004"
-
-
-def test_a2a_rpc_route_exists() -> None:
-    from a2ui_agent import main
-
-    client = TestClient(main.app, raise_server_exceptions=False)
-    response = client.post("/", json={})
-    assert response.status_code != 404
-
-
 def test_agui_route_exists() -> None:
     from a2ui_agent import main
 

@@ -10,8 +10,24 @@ WORKDIR /app
 ENV PATH="/app/.venv/bin:$PATH" \
     AGENT_DIR="agents/travel"
 
+# Dependency layer: only manifests + lockfile, so third-party installs are
+# cached until a manifest changes. --no-install-workspace skips building the
+# workspace members themselves (their sources aren't copied yet).
+COPY pyproject.toml uv.lock ./
+COPY agents/shared/pyproject.toml agents/shared/
+COPY agents/a2ui/pyproject.toml agents/a2ui/
+COPY agents/fitness/pyproject.toml agents/fitness/
+COPY agents/gateway/pyproject.toml agents/gateway/
+COPY agents/grocery/pyproject.toml agents/grocery/
+COPY agents/oralboards/pyproject.toml agents/oralboards/
+COPY agents/resume/pyproject.toml agents/resume/
+COPY agents/travel/pyproject.toml agents/travel/
+COPY agents/wellness/pyproject.toml agents/wellness/
+
+RUN uv sync --frozen --no-dev --all-packages --no-install-workspace
+
 COPY . ./
 
-RUN uv sync --no-dev --all-packages
+RUN uv sync --frozen --no-dev --all-packages
 
 CMD ["sh", "-c", "cd /app && agent_name=$(basename ${AGENT_DIR}) && module=${AGENT_MODULE:-${agent_name}_agent.main} && uvicorn ${module}:app --host 0.0.0.0 --port ${PORT:-8000}"]

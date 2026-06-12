@@ -25,23 +25,33 @@ describe("normalizeCopilotKitRuntimeUrl", () => {
 });
 
 describe("getAgentUrl", () => {
-  it("uses the Android emulator host for local development defaults", () => {
-    assert.equal(getAgentUrl("fitness", {}, "android"), "http://10.0.2.2:8002/agui");
-  });
-
-  it("maps configured localhost URLs to the Android emulator host", () => {
+  it("builds agent urls from the single base url", () => {
     assert.equal(
-      getAgentUrl("travel", { travel: "http://localhost:8000/" }, "android"),
-      "http://10.0.2.2:8000/agui",
+      getAgentUrl("travel", {}, "ios", {
+        EXPO_PUBLIC_AGENTS_BASE_URL: "https://agents.example.com",
+      }),
+      "https://agents.example.com/travel/agui",
     );
   });
 
-  it("prefers environment URLs over app defaults", () => {
+  it("defaults to localhost:8000 with the agent prefix", () => {
+    assert.equal(getAgentUrl("grocery", {}, "ios", {}), "http://localhost:8000/grocery/agui");
+    assert.equal(getAgentUrl("grocery", {}, "android", {}), "http://10.0.2.2:8000/grocery/agui");
+  });
+
+  it("maps configured localhost base URLs to the Android emulator host", () => {
     assert.equal(
-      getAgentUrl("grocery", { grocery: "http://localhost:8001/" }, "android", {
-        EXPO_PUBLIC_GROCERY_AGENT_URL: "https://grocery.example.com",
+      getAgentUrl("travel", { agentsBaseUrl: "http://localhost:8000/" }, "android"),
+      "http://10.0.2.2:8000/travel/agui",
+    );
+  });
+
+  it("prefers environment base URLs over app defaults", () => {
+    assert.equal(
+      getAgentUrl("grocery", { agentsBaseUrl: "http://localhost:8000/" }, "android", {
+        EXPO_PUBLIC_AGENTS_BASE_URL: "https://agents.example.com",
       }),
-      "https://grocery.example.com/agui",
+      "https://agents.example.com/grocery/agui",
     );
   });
 
@@ -69,22 +79,22 @@ describe("getAgentUrl", () => {
         "a2ui",
         {
           copilotKitRuntimeUrl: "https://app.example.com/api/copilotkit",
-          a2ui: "https://agents-a2ui-production.up.railway.app",
+          agentsBaseUrl: "https://agents-production.up.railway.app",
         },
         "ios",
         { EXPO_PUBLIC_COPILOTKIT_RUNTIME_URL: "" },
       ),
-      "https://agents-a2ui-production.up.railway.app/agui",
+      "https://agents-production.up.railway.app/a2ui/agui",
     );
   });
 
-  it("lets explicit localhost agent URLs override prod direct URLs", () => {
+  it("lets explicit localhost base URLs override prod direct URLs", () => {
     assert.equal(
-      getAgentUrl("a2ui", { a2ui: "https://agents-a2ui-production.up.railway.app" }, "ios", {
+      getAgentUrl("a2ui", { agentsBaseUrl: "https://agents-production.up.railway.app" }, "ios", {
         EXPO_PUBLIC_COPILOTKIT_RUNTIME_URL: "",
-        EXPO_PUBLIC_A2UI_AGENT_URL: "http://localhost:8004",
+        EXPO_PUBLIC_AGENTS_BASE_URL: "http://localhost:8000",
       }),
-      "http://localhost:8004/agui",
+      "http://localhost:8000/a2ui/agui",
     );
   });
 });
