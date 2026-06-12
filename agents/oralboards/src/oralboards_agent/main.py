@@ -6,6 +6,7 @@ import os
 import re
 import sqlite3
 import time
+from importlib import resources
 from pathlib import Path
 
 from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
@@ -42,9 +43,17 @@ logging.getLogger("ag_ui_adk").setLevel(logging.DEBUG)
 log = logging.getLogger("oralboards_agent")
 
 CLERK_USER_ID_HEADER = "x-clerk-user-id"
-DATA_DIR = Path(__file__).resolve().parents[2] / "data"
-DB_PATH = Path(os.getenv("ORALBOARDS_SEARCH_DB", str(DATA_DIR / "search.sqlite")))
 VALID_COLLECTIONS = {"abpd", "aapd", "cody"}
+
+
+def _default_db_path() -> Path:
+    package_db = resources.files("oralboards_agent").joinpath("data/search.sqlite")
+    if package_db.is_file():
+        return Path(str(package_db))
+    return Path(__file__).resolve().parents[2] / "data" / "search.sqlite"
+
+
+DB_PATH = Path(os.getenv("ORALBOARDS_SEARCH_DB", str(_default_db_path())))
 
 _railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN")
 AGENT_PUBLIC_URL = os.getenv("AGENT_PUBLIC_URL") or (
