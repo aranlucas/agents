@@ -64,6 +64,9 @@
   --a2ui: #006c78;
   --a2ui-soft: #d7eef1;
   --a2ui-contrast: #ffffff;
+  --resume: #4b5d73;
+  --resume-soft: #e3e9f0;
+  --resume-contrast: #ffffff;
 
   --success: #0f7a45;
   --success-soft: #e2f3e8;
@@ -128,6 +131,9 @@
   --a2ui: #7edee8;
   --a2ui-soft: #17383c;
   --a2ui-contrast: #051719;
+  --resume: #aec0d5;
+  --resume-soft: #202b38;
+  --resume-contrast: #09111a;
 
   --success: #79d99d;
   --success-soft: #153525;
@@ -175,6 +181,9 @@
     --a2ui: #7edee8;
     --a2ui-soft: #17383c;
     --a2ui-contrast: #051719;
+    --resume: #aec0d5;
+    --resume-soft: #202b38;
+    --resume-contrast: #09111a;
     --success: #79d99d;
     --success-soft: #153525;
     --warning: #f2c56d;

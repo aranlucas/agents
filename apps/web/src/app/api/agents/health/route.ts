@@ -9,6 +9,7 @@ const AGENT_PATHS = {
   wellness: "wellness",
   "oral-boards": "oralboards",
   a2ui: "a2ui",
+  resume: "resume",
 };
 
 async function checkAgent(

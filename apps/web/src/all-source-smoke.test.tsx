@@ -315,6 +315,7 @@ describe("web all-source smoke coverage", () => {
       WellnessPage,
       OralBoardsPage,
       A2UIPage,
+      ResumePage,
       SettingsPage,
       AgentCardModule,
       AgentStatusBarModule,
@@ -337,6 +338,7 @@ describe("web all-source smoke coverage", () => {
       import("./app/wellness/page"),
       import("./app/oral-boards/page"),
       import("./app/a2ui/page"),
+      import("./app/resume/page"),
       import("./app/console/settings/page"),
       import("./components/agent-card"),
       import("./components/agent-status-bar"),
@@ -393,6 +395,12 @@ describe("web all-source smoke coverage", () => {
       "a2ui",
       <ProvidersModule.Providers>
         <A2UIPage.default />
+      </ProvidersModule.Providers>,
+    );
+    await render(
+      "resume",
+      <ProvidersModule.Providers>
+        <ResumePage.default />
       </ProvidersModule.Providers>,
     );
     await render(

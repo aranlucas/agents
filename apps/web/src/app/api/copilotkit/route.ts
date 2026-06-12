@@ -18,6 +18,7 @@ const AGENT_PATHS = {
   wellness: "wellness",
   "oral-boards": "oralboards",
   a2ui: "a2ui",
+  resume: "resume",
 } as const;
 
 const runtime = new CopilotSseRuntime({
