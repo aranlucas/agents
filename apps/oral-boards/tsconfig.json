@@ -15,8 +15,7 @@
     "incremental": true,
     "plugins": [{ "name": "next" }],
     "paths": {
-      "@/*": ["./*"],
-      "@agents/ui": ["../../packages/ui/src/index.ts"]
+      "@/*": ["./*"]
     }
   },
   "include": [
