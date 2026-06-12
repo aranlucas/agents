@@ -1,6 +1,7 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 import {
+  getCopilotKitRuntimeBaseUrl,
   getAgentUrl as getAgentUrlCore,
   type AgentId,
   type AgentRuntimeConfig,
@@ -20,6 +21,11 @@ const config: AgentRuntimeConfig = {
 
 export function getAgentUrl(agentId: AgentId) {
   return getAgentUrlCore(agentId, config, Platform.OS);
+}
+
+/** Returns the CopilotKit runtime base URL for use with CopilotKitProvider. */
+export function getCopilotKitRuntimeUrl(): string | undefined {
+  return getCopilotKitRuntimeBaseUrl(config, Platform.OS);
 }
 
 export type { AgentId };

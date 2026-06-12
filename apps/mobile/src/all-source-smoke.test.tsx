@@ -4,9 +4,13 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/global.css", () => ({}));
 vi.mock("./global.css", () => ({}));
+vi.mock("expo-crypto", () => ({
+  randomUUID: () => "00000000-0000-0000-0000-000000000000",
+  getRandomValues: <T extends ArrayBufferView | null>(array: T) => array,
+}));
+vi.mock("@/shims/node-crypto", () => ({}));
 
 let currentState: Record<string, unknown> = {};
-const sendMessage = vi.fn(async () => undefined);
 
 function Host({ children, ...props }: { children?: React.ReactNode }) {
   return React.createElement("Host", props, children);
@@ -94,17 +98,26 @@ vi.mock("@clerk/clerk-expo", () => ({
   useAuth: () => ({ userId: "user_123" }),
 }));
 
-vi.mock("@/utils/use-agent", () => ({
-  useAgent: vi.fn(() => ({
-    messages: [
+const mockCopilotkit = { runAgent: vi.fn(async () => undefined), stopAgent: vi.fn() };
+const mockAgent = {
+  get messages() {
+    return [
       { id: "m1", role: "user", content: "Hello" },
       { id: "m2", role: "assistant", content: "Plan ready" },
-    ],
-    state: currentState,
-    isLoading: false,
-    error: null,
-    sendMessage,
-  })),
+    ];
+  },
+  get state() {
+    return currentState;
+  },
+  isRunning: false,
+  addMessage: vi.fn(),
+  runAgent: vi.fn(async () => undefined),
+};
+
+vi.mock("@copilotkit/react-native", () => ({
+  CopilotKitProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useAgent: vi.fn(() => ({ agent: mockAgent })),
+  useCopilotKit: vi.fn(() => ({ copilotkit: mockCopilotkit })),
 }));
 
 vi.mock("expo-constants", () => ({
@@ -701,6 +714,6 @@ describe("mobile all-source smoke coverage", () => {
       ),
     );
 
-    expect(sendMessage).toHaveBeenCalled();
+    expect(mockAgent.addMessage).toHaveBeenCalled();
   });
 });

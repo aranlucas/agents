@@ -63,6 +63,21 @@ function envOrConfig(
   return envKey in env ? nonEmpty(env[envKey]) : nonEmpty(configValue);
 }
 
+/**
+ * Returns the CopilotKit runtime base URL (e.g. https://example.com/api/copilotkit)
+ * with the Android localhost rewrite applied, or undefined if not configured.
+ * Use this as the `runtimeUrl` for `CopilotKitProvider`.
+ */
+export function getCopilotKitRuntimeBaseUrl(
+  config: AgentRuntimeConfig,
+  os: string,
+  env: Record<string, string | undefined> = process.env,
+): string | undefined {
+  const url = envOrConfig(env, COPILOTKIT_RUNTIME_ENV_KEY, config.copilotKitRuntimeUrl);
+  if (!url) return undefined;
+  return normalizeLocalhostForPlatform(stripTrailingSlash(url), os);
+}
+
 export function getAgentUrl(
   agentId: AgentId,
   config: AgentRuntimeConfig,

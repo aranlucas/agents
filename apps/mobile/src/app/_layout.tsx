@@ -1,24 +1,13 @@
-// Polyfill crypto.getRandomValues for Hermes (used by @ag-ui/client via uuid).
-// Assigning onto the read-only `globalThis.crypto` shape requires `any`.
-if (!globalThis.crypto) {
-  // eslint-disable-next-line typescript/no-unsafe-type-assertion
-  (globalThis as any).crypto = {};
-}
-if (!globalThis.crypto.getRandomValues) {
-  // eslint-disable-next-line typescript/no-unsafe-type-assertion
-  (globalThis.crypto as any).getRandomValues = function <T extends ArrayBufferView>(array: T): T {
-    const bytes = new Uint8Array(array.buffer, array.byteOffset, array.byteLength);
-    for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
-    return array;
-  };
-}
-
+// oxlint-disable-next-line import/no-unassigned-import
+import "@/shims/node-crypto";
+import { CopilotKitProvider } from "@copilotkit/react-native";
 import { ClerkProvider } from "@clerk/clerk-expo";
 import * as SecureStore from "expo-secure-store";
 import { Tabs } from "expo-router";
 import { Dumbbell, HeartPulse, LayoutTemplate, Plane, ShoppingCart } from "lucide-react-native";
 import { useColorScheme, type ColorValue } from "react-native";
 import Constants from "expo-constants";
+import { getCopilotKitRuntimeUrl } from "@/utils/agent-config";
 
 type TabIconProps = {
   color: ColorValue;
@@ -121,9 +110,13 @@ export default function RootLayout() {
     process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ??
     "";
 
+  const runtimeUrl = getCopilotKitRuntimeUrl() ?? "";
+
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <TabLayout />
+      <CopilotKitProvider runtimeUrl={runtimeUrl}>
+        <TabLayout />
+      </CopilotKitProvider>
     </ClerkProvider>
   );
 }

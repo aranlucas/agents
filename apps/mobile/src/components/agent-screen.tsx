@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -10,7 +10,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useAuth } from "@clerk/clerk-expo";
+import { useAgent, useCopilotKit } from "@copilotkit/react-native";
 import type {
   A2UIState,
   FitnessState,
@@ -18,8 +18,7 @@ import type {
   TripState,
   WellnessState,
 } from "@agents/types";
-import { getAgentUrl, type AgentId } from "@/utils/agent-config";
-import { useAgent } from "@/utils/use-agent";
+import type { AgentId } from "@/utils/agent-config";
 
 type AgentState = TripState | GroceryState | FitnessState | WellnessState | A2UIState;
 
@@ -37,34 +36,46 @@ type Props<TState extends AgentState> = {
   initialState: TState;
 };
 
-function connectionHeaders(userId: string | null | undefined, token: string | null) {
-  const headers: Record<string, string> = {};
-  if (userId) headers["x-clerk-user-id"] = userId;
-  if (token) headers.authorization = `Bearer ${token}`;
-  return Object.keys(headers).length > 0 ? headers : undefined;
+type DisplayMessage = { id: string; role: "user" | "assistant"; content: string };
+
+function toDisplayMessage(m: unknown): DisplayMessage | null {
+  if (typeof m !== "object" || m === null) return null;
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const msg = m as Record<string, unknown>;
+  const role = msg.role;
+  if (role !== "user" && role !== "assistant") return null;
+  const content = msg.content;
+  if (typeof content !== "string" || content.length === 0) return null;
+  const id = typeof msg.id === "string" ? msg.id : String(Math.random());
+  return { id, role, content };
 }
 
 export function AgentScreen<TState extends AgentState>({ config, initialState }: Props<TState>) {
-  const { getToken, userId } = useAuth();
   const [input, setInput] = useState("");
   const scrollRef = useRef<ScrollView>(null);
 
-  const headers = useCallback(async () => {
-    const token = await getToken().catch(() => null);
-    return connectionHeaders(userId, token);
-  }, [getToken, userId]);
-  const url = useMemo(() => getAgentUrl(config.id), [config.id]);
+  const { agent } = useAgent({ agentId: config.id });
+  const { copilotkit } = useCopilotKit();
 
-  const { messages, state, isLoading, error, sendMessage } = useAgent<TState>(
-    { url, headers, enableA2UI: config.id === "a2ui" },
-    initialState,
-  );
+  const messages = (agent?.messages ?? [])
+    .map(toDisplayMessage)
+    .filter((m): m is DisplayMessage => m !== null);
 
-  const onSend = () => {
-    const text = input;
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const state = (agent?.state ?? initialState) as TState;
+  const isLoading = agent?.isRunning ?? false;
+
+  const onSend = useCallback(() => {
+    const content = input.trim();
+    if (!content || isLoading || !agent) return;
     setInput("");
-    void sendMessage(text);
-  };
+    agent.addMessage({
+      id: `user_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      role: "user",
+      content,
+    });
+    void copilotkit.runAgent({ agent });
+  }, [input, isLoading, agent, copilotkit]);
 
   const summary = config.renderSummary(state);
 
@@ -108,11 +119,6 @@ export function AgentScreen<TState extends AgentState>({ config, initialState }:
           </View>
         ))}
         {isLoading && <ActivityIndicator style={styles.loading} />}
-        {error ? (
-          <Text selectable style={styles.error}>
-            {error}
-          </Text>
-        ) : null}
       </ScrollView>
 
       <View style={styles.inputRow}>
@@ -174,7 +180,6 @@ const styles = StyleSheet.create({
   userText: { color: "#fff" },
   agentText: { color: "#111" },
   loading: { margin: 12 },
-  error: { color: "#c0392b", fontSize: 13, margin: 12, textAlign: "center" },
   inputRow: {
     flexDirection: "row",
     padding: 12,
