@@ -25,7 +25,7 @@ from agents_shared.tools import (
     shared_after_tool_callback,
 )
 from dotenv import load_dotenv
-from fitness_agent.main import build_agent as build_fitness_agent
+from fitness_agent.agent import build_agent as build_fitness_agent
 from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.agents.readonly_context import ReadonlyContext
