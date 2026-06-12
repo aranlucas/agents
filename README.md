@@ -1,141 +1,69 @@
-# Trip Studio — CopilotKit × Google ADK
+# Agents Monorepo — CopilotKit x Google ADK
 
-A beautiful real-time trip-planning surface where a human and an AI agent
-share the same itinerary, built on
-[CopilotKit](https://copilotkit.ai) v2 + [Google ADK](https://google.github.io/adk-docs/)
-via the [AG-UI](https://docs.copilotkit.ai/ag-ui) protocol.
+Seven collaborative AI agents served from a single gateway, sharing live state
+with web and mobile UIs over the [AG-UI](https://docs.copilotkit.ai/ag-ui)
+protocol. Built with [CopilotKit](https://copilotkit.ai) v2,
+[Google ADK](https://google.github.io/adk-docs/), Next.js 16, and Expo.
 
-Inspired by patterns from the
-[CopilotKit `google-adk` showcase](https://github.com/CopilotKit/CopilotKit/tree/main/showcase/integrations/google-adk),
-this app demonstrates three complementary collaboration primitives in a
-single polished workspace.
+| Agent       | What it does                                           | Access           |
+| ----------- | ------------------------------------------------------ | ---------------- |
+| travel      | Trip planning with a live shared itinerary (trvl MCP)  | Sign-in required |
+| grocery     | Meal planning + shopping lists with live Kroger data   | Sign-in + Kroger |
+| fitness     | Training plans from Strava activity                    | Sign-in + Strava |
+| wellness    | Orchestrates grocery + fitness in-process              | Sign-in + both   |
+| oral-boards | Pediatric dentistry mock oral-board exams with sources | Sign-in required |
+| a2ui        | Renders declarative A2UI surfaces from chat            | Sign-in required |
+| resume      | Public Q&A about Lucas's resume (no account needed)    | Public           |
 
-## What's collaborative about it
+## Architecture
 
-- **Shared itinerary, agent → UI streaming.**
-  The agent calls `write_itinerary(summary, body)`. A
-  `PredictStateMapping` with `stream_tool_call=True` makes the
-  itinerary body stream token-by-token into `state["itinerary"]`, and
-  the trip canvas re-renders day-by-day as the agent types.
+```text
+apps/web    -> CopilotKit runtime (/api/copilotkit) -> gateway /<agent>/agui
+apps/mobile -> @ag-ui/client (HttpAgent)            -> gateway /<agent>/agui (direct)
+wellness    -> AgentTool (in-process)               -> grocery + fitness sub-agents
+```
 
-- **Shared itinerary, UI → agent.**
-  The operator can edit the destination, headline, or raw markdown
-  directly in the canvas. Each edit updates shared state via
-  `agent.setState`, so the agent sees the changes on its next turn.
-
-- **Traveler brief from UI to agent (per-turn injection).**
-  The operator picks home airport, budget tier, vibe, pace, dietary,
-  and mobility. The Python agent's `before_model_callback` strips any
-  stale block and prepends a fresh `TRAVELER_BRIEF` block to the system
-  instruction every turn, so the model adapts immediately.
-
-- **Human-in-the-loop approval modal.**
-  The agent calls the frontend tool `request_user_approval` (registered
-  via `useFrontendTool`) before booking flights, reserving hotels, or
-  sharing the trip. The UI opens an in-app modal outside the chat
-  surface, waits for Approve / Reject, then resolves the pending tool
-  Promise. The agent gets the decision as the tool result.
-
-## Stack
-
-| Layer    | Tech                                                                                           |
-| -------- | ---------------------------------------------------------------------------------------------- |
-| Frontend | Next.js 16, React 19, Tailwind v4, **`@copilotkit/react-core/v2`** (prebuilt `CopilotSidebar`) |
-| Runtime  | `@copilotkit/runtime/v2` (Next.js route handler at `/api/copilotkit`)                          |
-| Protocol | AG-UI (HttpAgent)                                                                              |
-| Agent    | Google ADK `LlmAgent`, Gemini 2.5 Flash (default) or Mistral via LiteLLM                       |
-
-## Layout
-
-A 2-column main view on desktop — the traveler brief sits in a 320px
-sticky left column, the trip canvas fills the rest, and the prebuilt
-`CopilotSidebar` overlays from the right when the operator opens it.
-
-On mobile the brief column is hidden by default; the **Brief** button
-in the hero toggles it. Chat is reached via the sidebar's built-in
-floating launcher, so the canvas owns the full viewport.
-
-## Prerequisites
-
-- Node.js 18+
-- Python 3.14+
-- Either a Google API key for Gemini, or Mistral (toggle via env)
-- `uv` (the script will use it; install via `pipx install uv` or `brew install uv`)
+- All agents run in one FastAPI process (`agents/gateway/` mounts each
+  `agents/<name>/` app under a path prefix) — one Railway service.
+- State (itineraries, shopping lists, plans) is written to ADK shared state by
+  tools, never pasted into chat; the UI re-renders on every state delta.
+- Auth is Clerk end to end: the web runtime mints a session JWT per request and
+  the gateway verifies it against the Clerk JWKS (`agent-common`'s
+  `ClerkAuthMiddleware`), rewriting the identity header to the verified
+  subject. The resume agent is intentionally unauthenticated.
 
 ## Getting started
 
+Prerequisites: pnpm, Docker, [uv](https://docs.astral.sh/uv/), and API keys
+per `.env.example`.
+
 ```bash
-npm install        # installs node deps and triggers `uv sync` for the agent
-export GOOGLE_API_KEY=...    # or set USE_MISTRAL=1 and MISTRAL_API_KEY=...
-npm run dev
+cp .env.example .env   # fill in Clerk + model provider keys
+pnpm install           # JS deps + uv sync for Python
+pnpm dev               # web on :3000 + the agents gateway on :8000
 ```
 
-`npm run dev` launches the Next.js UI on `http://localhost:3000` and the
-ADK agent server on `http://localhost:8000` concurrently. The
-`/api/copilotkit` route proxies AG-UI requests through to the agent.
+Other entry points: `pnpm dev:web`, `pnpm dev:mobile`, `pnpm dev:agents`.
 
-## Project layout
+## Quality checks
 
-```
-agent/
-  main.py             # ADK LlmAgent + FastAPI mount + traveler-brief injection
-src/
-  app/
-    page.tsx          # CollabStudio — wires preferences, canvas, chat, HITL
-    layout.tsx        # Root layout with brand fonts
-    api/copilotkit/   # AG-UI runtime route (v2)
-  components/
-    document-canvas.tsx     # Itinerary canvas: trip header + day cards
-    preferences-panel.tsx   # Traveler brief: UI → agent shared-state form
-    approval-dialog.tsx     # HITL modal opened by request_user_approval
-    hero-header.tsx         # Status header + mobile brief toggle
-    providers.tsx           # <CopilotKit> root (v2)
+```bash
+pnpm check     # oxlint + ruff + tailwind canon + oxfmt --check
+pnpm test      # vitest (web, mobile) + pytest (agents, agent-common)
+pnpm coverage  # both ecosystems with coverage
 ```
 
-## Itinerary format
+CI (`.github/workflows/ci.yml`) gates lint, format, Python syntax, both test
+suites with a coverage floor, the web build, and the agent Docker image.
 
-The agent writes itineraries as markdown with strict structure so the
-canvas can render rich day cards:
+## Layout, conventions, deployment
 
-```
-## Day 1: Arrival
-- 14:00 — Land at HND, train to Shinjuku
-- 17:00 — Check in, walk the neighborhood
-- 19:30 — Tonkatsu at Maisen
-
-## Day 2: Old town
-- 09:00 — Asakusa + Senso-ji at opening
-- 12:00 — Ramen on Kappabashi
-- 15:00 — Tea + bookshop in Yanaka
-```
-
-The UI parses `## Day N: <theme>` and `- HH:MM — activity` lines and
-falls back gracefully on free-form bullets.
-
-## Try it
-
-Once the dev server is up:
-
-1. Open the app and fill the **Traveler brief** on the left
-   (home airport, budget tier, vibe, pace, interests).
-2. Use one of the suggestion pills, or ask the agent:
-   _"Plan a 3-day weekend in Tokyo focused on food, late November."_
-3. Watch the trip header and day cards stream in live.
-4. Tweak the destination or a day directly in the canvas — the agent
-   sees your edits on the next turn.
-5. Ask: _"If the itinerary looks good, propose locking it in and ask
-   for my approval."_ The approval modal appears.
-
-## Scripts
-
-- `dev` — UI + agent together
-- `dev:ui` — Next.js only (`next dev --turbopack`)
-- `dev:agent` — ADK agent server only (`uv run uvicorn travel_agent.main:app`)
-- `build` — production Next.js build
-- `install:agent` — sets up the Python venv via `uv sync`
+See [AGENTS.md](AGENTS.md) — repository guide (also loaded by coding agents),
+including the "Adding a new agent" checklist and the Railway/Vercel/EAS
+deployment table. Design docs live in `docs/superpowers/`; the forward-looking
+roadmap is [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Acknowledgements
 
-The shared-state, streaming, beautiful-chat, and HITL patterns are direct
-adaptations of the CopilotKit
-[`google-adk` showcase agents](https://github.com/CopilotKit/CopilotKit/tree/main/showcase/integrations/google-adk/src/agents).
+The shared-state, streaming, and HITL patterns are adapted from the CopilotKit
+[`google-adk` showcase](https://github.com/CopilotKit/CopilotKit/tree/main/showcase/integrations/google-adk).
