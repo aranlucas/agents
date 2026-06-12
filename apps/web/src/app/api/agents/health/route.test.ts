@@ -22,18 +22,12 @@ describe("GET /api/agents/health", () => {
     const body = await response.json();
 
     expect(fetchMock).toHaveBeenCalledTimes(7);
-    expect(fetchMock).toHaveBeenCalledWith(
-      "http://agents.test/travel/health",
-      expect.any(Object),
-    );
+    expect(fetchMock).toHaveBeenCalledWith("http://agents.test/travel/health", expect.any(Object));
     expect(fetchMock).toHaveBeenCalledWith(
       "http://agents.test/oralboards/health",
       expect.any(Object),
     );
-    expect(fetchMock).toHaveBeenCalledWith(
-      "http://agents.test/resume/health",
-      expect.any(Object),
-    );
+    expect(fetchMock).toHaveBeenCalledWith("http://agents.test/resume/health", expect.any(Object));
     expect(body).toEqual({
       agents: {
         travel: "ok",
