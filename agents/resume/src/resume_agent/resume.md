@@ -9,6 +9,7 @@ Software engineer with 7+ years of experience in engineering roles, working acro
 ## Experience
 
 ### Amazon Web Services (AWS) — Software Development Engineer, AWS IoT
+
 **Seattle, WA | Jul 2019 – Jul 2022**
 
 - Implemented and launched the Public AWS IoT SiteWise Monitor control plane during re:Invent, using DynamoDB, Golang, and API Gateway.
@@ -17,12 +18,14 @@ Software engineer with 7+ years of experience in engineering roles, working acro
 - Built canary testing with AWS Synthetics to thoroughly validate the IoT Console before release, ensuring high quality and stability.
 
 **Key projects:**
+
 - **re:Invent launch for SiteWise Monitor Federation** — Delivered the SiteWise Monitor control plane publicly at AWS re:Invent.
 - **Microfrontends for IoT Console** — Led the Angular-to-React migration via a microfrontend architecture, enabling independent team deployments.
 - **Operation Readiness Review for SiteWise Monitor** — Led operational readiness review to ensure production-readiness of the SiteWise Monitor service.
 - **Console canary testing** — Implemented automated synthetic canary testing to improve pre-release quality assurance.
 
 ### Amazon — Software Development Engineer, Compliance Technologies
+
 **Seattle, WA | Jul 2015 – Jul 2019**
 
 - Developed and launched a highly secure case management and investigation platform using Ruby on Rails and Java Spring to manage internal investigations into suspicious customer activity (money laundering, identity theft).
@@ -30,14 +33,17 @@ Software engineer with 7+ years of experience in engineering roles, working acro
 - Led the design and development of a system for submitting Suspicious Transaction Reports (STR/SAR) to the Luxembourg Financial Intelligence Unit (FIU) and the UK National Crime Agency (NCA).
 
 **Key projects:**
+
 - **Noir Case Management System** — Built the internal investigation platform handling sensitive compliance cases.
 
 ### Amazon — Software Development Engineer Intern
+
 **Seattle, WA | May 2014 – Aug 2014**
 
 - Set up a system to integrate Kindle Unlimited books into Goodreads.
 
 ### BlackBerry — Software Development Engineer Intern
+
 **Sunrise, FL | Jan 2013 – Aug 2013**
 
 - Collaborated on developing and maintaining software applications for BlackBerry handhelds.
@@ -47,6 +53,7 @@ Software engineer with 7+ years of experience in engineering roles, working acro
 ## Education
 
 ### University of Florida — B.S., Computer Engineering (Hardware, CEE)
+
 **Gainesville, FL | Sept 2010 – May 2015**
 
 - GPA: 3.33 | Graduated Cum Laude
