@@ -6,14 +6,20 @@ This is a **pnpm monorepo** hosting multiple Google ADK agents and the frontends
 
 ```
 apps/
-  web/      Next.js 16 + CopilotKit AG-UI — /travel and /grocery pages
-  mobile/   Expo Router (iOS/Android) — travel and grocery tabs via @ag-ui/client
+  web/      Next.js 16 + CopilotKit AG-UI — multi-agent console
+  mobile/   Expo Router (iOS/Android) — AG-UI client screens
 agents/
-  travel/   Python ADK agent — trip planning via trvl MCP
-  grocery/  Python ADK agent — grocery/meal planning via Kroger MCP
+  gateway/     Single FastAPI gateway mounted by Railway defaults
+  travel/      Python ADK agent — trip planning via trvl MCP
+  grocery/     Python ADK agent — grocery/meal planning via Kroger MCP
+  fitness/     Python ADK agent — Strava-backed training plans
+  wellness/    Python ADK orchestrator — in-process grocery + fitness tools
+  a2ui/        Python ADK agent — declarative A2UI surfaces
+  oralboards/  Python ADK agent — pediatric dentistry oral-board practice
+  resume/      Public Python ADK agent — resume Q&A
+  shared/      Shared Python helpers for ADK session, gateway auth, invocation state, and tool callbacks
 packages/
-  agent-common/ Shared Python helpers for ADK session, A2A, and tool callbacks
-  types/    Shared TypeScript types (TripState, GroceryState, Preferences)
+  types/       Shared TypeScript types (TripState, GroceryState, Preferences)
 ```
 
 ## Running locally
@@ -24,20 +30,21 @@ packages/
 # Install JS dependencies
 pnpm install
 
-# Start web + both agents (Docker)
+# Start web + the single agents gateway (Docker)
 pnpm dev
 
-# Web only (agents must be running separately)
+# Web only (gateway must be running separately)
 pnpm dev:web
 
 # Mobile (Expo)
 pnpm dev:mobile
 
-# Agents only (via Docker)
+# Single agents gateway only (via Docker)
 pnpm dev:agents
 ```
 
-The web app runs on :3000. Travel agent on :8000. Grocery agent on :8001.
+The web app runs on :3000. The agents gateway runs on :8000 and mounts each
+agent at `/<agent>/agui` plus `/<agent>/health`.
 
 ## Quality checks
 
@@ -71,21 +78,22 @@ Conventions:
 2. Update `agents/<name>/pyproject.toml` — set `name = "<name>-agent"`
 3. Implement `agents/<name>/src/<name>_agent/main.py` — follow the pattern:
    - `_setup_otel()` → `LlmAgent` → `ADKAgent` → FastAPI with `add_adk_fastapi_endpoint`
-   - `GET /health` endpoint required for Railway health checks
-4. Add `agents/<name>/railway.json` pointing at the root `Dockerfile.agents`
-5. Add a service to `docker-compose.yml` at the repo root
-6. Register the agent in `apps/web/src/app/api/copilotkit/route.ts`
-7. Add a page at `apps/web/src/app/<name>/page.tsx`
-8. Add a screen at `apps/mobile/src/app/<name>.tsx`
-9. Add state types to `packages/types/src/index.ts`
+   - `GET /health` endpoint required for gateway health aggregation
+   - no standalone `uvicorn.run(...)` entrypoint; the gateway is the only server entrypoint
+4. Add the package to the root uv workspace and `agents/gateway/pyproject.toml`
+5. Mount the app in `agents/gateway/src/gateway/main.py`
+6. Register the agent in `apps/web/src/app/api/copilotkit/route.ts` and `apps/web/src/app/api/agents/health/route.ts`
+7. Add a page or console registration in `apps/web/src/components/chat/agents/registry.ts`
+8. Add a mobile screen/config if the agent should be available in `apps/mobile`
+9. Add state types to `packages/types/src/index.ts` when the agent exposes typed shared state
 
 ## Deployment
 
 | Surface        | Platform       | Config                                                                                                                                           |
 | -------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Python agents  | Railway        | `Dockerfile.agents` + `agents/<name>/railway.json` — set Root Dir to repo root, set `AGENT_DIR=agents/<name>`                                    |
-| `apps/web/`    | Vercel         | vercel.json — set Root Dir to `apps/web/` in Vercel dashboard                                                                                    |
-| `apps/mobile/` | EAS Build      | `apps/mobile/eas.json` → App Store / Google Play                                                                                                 |
+| Agents gateway | Railway        | Root repo with Railway defaults/Railpack: root `main.py` exposes `gateway.main.app`; `.python-version` pins Python                               |
+| `apps/web/`    | Vercel         | vercel.json — set Root Dir to `apps/web/` in Vercel dashboard; `AGENTS_BASE_URL` points at the gateway                                           |
+| `apps/mobile/` | EAS Build      | `apps/mobile/eas.json` → App Store / Google Play; `EXPO_PUBLIC_AGENTS_BASE_URL` points at the gateway                                            |
 | Android APK    | GitHub Actions | `.github/workflows/android-apk.yml` — `expo prebuild` + Gradle, publishes the APK to a GitHub Release via `gh` (push a `v*` tag or run manually) |
 
 ## Architecture
@@ -93,21 +101,22 @@ Conventions:
 **Web data flow:**
 
 ```
-apps/web → CopilotKit runtime (Next.js API route) → HttpAgent → Railway agent service
+apps/web → CopilotKit runtime (Next.js API route) → HttpAgent → Railway agents gateway
 ```
 
 **Mobile data flow:**
 
 ```
-apps/mobile → @ag-ui/client (HttpAgent) → Railway agent service (direct HTTP)
+apps/mobile → @ag-ui/client (HttpAgent) → Railway agents gateway (direct HTTP)
 ```
 
-**Auth:** Clerk — `@clerk/nextjs` on web, `@clerk/clerk-expo` on mobile. Protected routes: `/travel`, `/grocery`. Configure at [clerk.com](https://clerk.com).
+**Auth:** Clerk — `@clerk/nextjs` on web, `@clerk/clerk-expo` on mobile. Protected routes are enforced in the web proxy/runtime and, when `CLERK_JWKS_URL` is configured, by `ClerkAuthMiddleware` on the gateway. The `resume` agent is intentionally public.
 
 **Agent pattern:**
 
-- Each agent is a FastAPI service exposing an AG-UI endpoint via `ag-ui-adk`
-- A2A-compatible — agents can call each other via the A2A protocol
+- Each agent owns a mountable FastAPI sub-app exposing AG-UI via `ag-ui-adk`
+- The gateway is the only deployable Python web service
+- Cross-agent orchestration is in-process via ADK tools, not remote A2A
 - State is written to ADK shared state; the UI re-renders on every delta
 - Token-level streaming via `PredictStateMapping` for long-form content
 

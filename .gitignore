@@ -59,3 +59,7 @@ __pycache__/
 .worktrees/
 # Superpowers brainstorm companion (local mockups)
 .superpowers/
+
+# runtime/session data and local tool output
+.data/
+output/

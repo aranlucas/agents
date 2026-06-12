@@ -1,8 +1,8 @@
 from pathlib import Path
 
 import pytest
-from agent_common import session_service
-from agent_common.session_service import (
+from agents_shared import session_service
+from agents_shared.session_service import (
     SessionServiceContainer,
     create_check_database,
     create_session_service,

@@ -3,6 +3,7 @@
 import os
 from typing import TYPE_CHECKING
 
+from agents_shared.invocation_state import get_invocation_temp
 from google.adk.tools.mcp_tool import McpToolset
 from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
 
@@ -17,8 +18,8 @@ KROGER_TOKEN_STATE_KEY = "temp:kroger_token"
 
 
 def _header_provider(context: ReadonlyContext) -> dict[str, str]:
-    """Return auth headers from session state at call time."""
-    token: str = context.state.get(KROGER_TOKEN_STATE_KEY, "")
+    """Return auth headers from session state (or the in-process invocation bridge)."""
+    token = get_invocation_temp(KROGER_TOKEN_STATE_KEY, context.state)
     if token:
         return {"Authorization": f"Bearer {token}"}
     return {}

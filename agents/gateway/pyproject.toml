@@ -1,0 +1,26 @@
+[project]
+name = "gateway"
+version = "0.1.0"
+description = "Single-service gateway mounting every agent app under one port"
+requires-python = ">=3.14"
+dependencies = [
+  "agents-shared",
+  "a2ui-agent",
+  "fitness-agent",
+  "grocery-agent",
+  "oralboards-agent",
+  "resume-agent",
+  "travel-agent",
+  "wellness-agent",
+  "fastapi",
+  "uvicorn[standard]",
+  "python-dotenv",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[build-system]
+requires = ["uv_build>=0.11.19,<0.12"]
+build-backend = "uv_build"

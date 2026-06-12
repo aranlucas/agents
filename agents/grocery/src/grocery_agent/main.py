@@ -6,18 +6,14 @@ import logging
 import os
 import time
 
-from a2a.server.apps.jsonrpc import A2AFastAPIApplication
-from a2a.server.request_handlers import DefaultRequestHandler
-from a2a.types import AgentCapabilities, AgentCard, AgentSkill
 from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
 from ag_ui_adk.config import PredictStateMapping
-from agent_common.a2a import (
-    apply_a2a_auth_metadata_to_state,
-    create_a2a_agent_executor,
+from agents_shared.invocation_state import get_invocation_temp
+from agents_shared.session_service import (
+    SessionServiceContainer,
+    create_session_service,
 )
-from agent_common.session_service import SessionServiceContainer, create_session_service
-from agent_common.task_store import create_task_store
-from agent_common.tools import shared_after_tool_callback
+from agents_shared.tools import shared_after_tool_callback
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -30,7 +26,6 @@ from google.adk.auth.credential_service.in_memory_credential_service import (
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.models import LlmRequest, LlmResponse
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.runners import Runner
 from google.adk.tools import ToolContext
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
@@ -181,7 +176,9 @@ def get_current_date() -> dict:
 # ---------------------------------------------------------------------------
 def on_before_agent(callback_context: CallbackContext) -> None:
     """Initialize missing state keys with defaults on every turn."""
-    apply_a2a_auth_metadata_to_state(callback_context)
+    token = get_invocation_temp(KROGER_TOKEN_STATE_KEY, callback_context.state)
+    if token:
+        callback_context.state["kroger_connected"] = True
     for key, default in _DEFAULT_STATE.items():
         if key not in callback_context.state:
             callback_context.state[key] = default
@@ -271,32 +268,37 @@ Do not call any MCP tools and do not generate a meal plan.
 Be practical, budget-aware, and proactive. Suggest substitutions for out-of-stock items.
 """
 
-grocery_agent = LlmAgent(
-    name="grocery_agent",
-    model=LiteLlm(
-        model="openrouter/poolside/laguna-m.1:free",
-        fallbacks=[
-            "mistral/mistral-small-latest",
-            "openrouter/owl-alpha",
-            "nvidia_nim/deepseek-ai/deepseek-v4-flash",
+def build_agent() -> LlmAgent:
+    """Fresh LlmAgent instance — the gateway's wellness orchestrator builds its own."""
+    return LlmAgent(
+        name="grocery_agent",
+        model=LiteLlm(
+            model="openrouter/poolside/laguna-m.1:free",
+            fallbacks=[
+                "mistral/mistral-small-latest",
+                "openrouter/owl-alpha",
+                "nvidia_nim/deepseek-ai/deepseek-v4-flash",
+            ],
+        ),
+        instruction=_INSTRUCTION,
+        before_agent_callback=on_before_agent,
+        before_model_callback=before_model_modifier,
+        after_tool_callback=shared_after_tool_callback,
+        tools=[
+            set_shopping_list,
+            update_cart,
+            update_pantry,
+            set_meal_plan,
+            set_weekly_deals,
+            mark_list_ready,
+            get_current_date,
+            AGUIToolset(),
+            meal_planner_toolset(),
         ],
-    ),
-    instruction=_INSTRUCTION,
-    before_agent_callback=on_before_agent,
-    before_model_callback=before_model_modifier,
-    after_tool_callback=shared_after_tool_callback,
-    tools=[
-        set_shopping_list,
-        update_cart,
-        update_pantry,
-        set_meal_plan,
-        set_weekly_deals,
-        mark_list_ready,
-        get_current_date,
-        AGUIToolset(),
-        meal_planner_toolset(),
-    ],
-)
+    )
+
+
+grocery_agent = build_agent()
 
 GROCERY_PREDICT_STATE = [
     PredictStateMapping(
@@ -308,46 +310,12 @@ GROCERY_PREDICT_STATE = [
     ),
 ]
 
-# Shared SQLite session service — used by both AG-UI and A2A paths.
+# Shared SQLite session service.
 _shared_session_svc = create_session_service()
 _session_container = SessionServiceContainer()
 _artifact_svc = InMemoryArtifactService()
 _memory_svc = InMemoryMemoryService()
 _credential_svc = InMemoryCredentialService()
-
-_a2a_runner = Runner(
-    app_name=grocery_agent.name,
-    agent=grocery_agent,
-    artifact_service=_artifact_svc,
-    session_service=_shared_session_svc,
-    memory_service=_memory_svc,
-    credential_service=_credential_svc,
-)
-
-
-def _a2a_agent_card() -> AgentCard:
-    return AgentCard(
-        name="Grocery Planning Agent",
-        description=(
-            "Plans meals and shopping lists with live Kroger product data, "
-            "pantry tracking, and weekly deals."
-        ),
-        version="1.0.0",
-        url=AGENT_PUBLIC_URL,
-        default_input_modes=["text/plain"],
-        default_output_modes=["text/plain"],
-        capabilities=AgentCapabilities(streaming=True),
-        skills=[
-            AgentSkill(
-                id="grocery_planning",
-                name="Grocery Planning",
-                description="Creates meal plans and shopping lists from live Kroger data.",
-                tags=["grocery", "meal-planning"],
-                input_modes=["text/plain"],
-                output_modes=["text/plain"],
-            ),
-        ],
-    )
 
 
 adk_grocery_agent = ADKAgent(
@@ -368,7 +336,7 @@ app = FastAPI(title="Grocery Planning Agent")
 
 @app.middleware("http")
 async def trace_requests(request, call_next):
-    if request.url.path == "/health":
+    if request.url.path.endswith("/health"):
         return await call_next(request)
 
     start = time.perf_counter()
@@ -403,17 +371,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# A2A — JSON-RPC at POST / and agent card at GET /.well-known/agent-card.json
-_a2a_card = _a2a_agent_card()
-_a2a_handler = DefaultRequestHandler(
-    agent_executor=create_a2a_agent_executor(_a2a_runner),
-    task_store=create_task_store(),
-)
-A2AFastAPIApplication(
-    agent_card=_a2a_card,
-    http_handler=_a2a_handler,
-).add_routes_to_app(app)
-
 add_adk_fastapi_endpoint(
     app,
     adk_grocery_agent,
@@ -425,10 +382,3 @@ add_adk_fastapi_endpoint(
 @app.get("/health")
 async def health():
     return await _session_container.check_database_connection()
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    port = int(os.getenv("PORT", "8001"))
-    uvicorn.run(app, host="0.0.0.0", port=port)

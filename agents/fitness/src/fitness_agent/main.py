@@ -8,18 +8,14 @@ import time
 from typing import Any
 
 import httpx
-from a2a.server.apps.jsonrpc import A2AFastAPIApplication
-from a2a.server.request_handlers import DefaultRequestHandler
-from a2a.types import AgentCapabilities, AgentCard, AgentSkill
 from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
 from ag_ui_adk.config import PredictStateMapping
-from agent_common.a2a import (
-    apply_a2a_auth_metadata_to_state,
-    create_a2a_agent_executor,
+from agents_shared.invocation_state import get_invocation_temp
+from agents_shared.session_service import (
+    SessionServiceContainer,
+    create_session_service,
 )
-from agent_common.session_service import SessionServiceContainer, create_session_service
-from agent_common.task_store import create_task_store
-from agent_common.tools import shared_after_tool_callback
+from agents_shared.tools import shared_after_tool_callback
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,7 +28,6 @@ from google.adk.auth.credential_service.in_memory_credential_service import (
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.models import LlmRequest, LlmResponse
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.runners import Runner
 from google.adk.tools import ToolContext
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
@@ -147,7 +142,7 @@ async def fetch_activities(
     omit it (or pass 1) to start from the most recent activities.
     Activities are appended to state across calls so the full history builds up.
     """
-    token = tool_context.state.get(STRAVA_TOKEN_STATE_KEY) or ""
+    token = get_invocation_temp(STRAVA_TOKEN_STATE_KEY, tool_context.state)
     connected = bool(tool_context.state.get("strava_connected")) and bool(token)
     log.debug(
         "fetch_activities: strava_connected=%s token_present=%s page=%s",
@@ -277,7 +272,9 @@ def get_current_date() -> dict:
 
 
 def on_before_agent(callback_context: CallbackContext) -> None:
-    apply_a2a_auth_metadata_to_state(callback_context)
+    token = get_invocation_temp(STRAVA_TOKEN_STATE_KEY, callback_context.state)
+    if token:
+        callback_context.state["strava_connected"] = True
     for key, default in _DEFAULT_STATE.items():
         if key not in callback_context.state:
             callback_context.state[key] = default
@@ -313,7 +310,8 @@ def before_model_modifier(
 ) -> LlmResponse | None:
     state = callback_context.state
     connected = bool(
-        state.get("strava_connected") and state.get(STRAVA_TOKEN_STATE_KEY),
+        state.get("strava_connected")
+        and get_invocation_temp(STRAVA_TOKEN_STATE_KEY, state),
     )
     activity_count = len(state.get("activities") or [])
     synced_at = state.get("activities_synced_at") or ""
@@ -385,31 +383,36 @@ assumptions when Strava or objective context is unavailable.
 """
 
 
-fitness_agent = LlmAgent(
-    name="fitness_agent",
-    model=LiteLlm(
-        model="openrouter/poolside/laguna-m.1:free",
-        fallbacks=[
-            "mistral/mistral-small-latest",
-            "openrouter/owl-alpha",
-            "nvidia_nim/deepseek-ai/deepseek-v4-flash",
+def build_agent() -> LlmAgent:
+    """Fresh LlmAgent instance — the gateway's wellness orchestrator builds its own."""
+    return LlmAgent(
+        name="fitness_agent",
+        model=LiteLlm(
+            model="openrouter/poolside/laguna-m.1:free",
+            fallbacks=[
+                "mistral/mistral-small-latest",
+                "openrouter/owl-alpha",
+                "nvidia_nim/deepseek-ai/deepseek-v4-flash",
+            ],
+        ),
+        instruction=_INSTRUCTION,
+        before_agent_callback=on_before_agent,
+        before_model_callback=before_model_modifier,
+        before_tool_callback=throttle_web_search,
+        after_tool_callback=shared_after_tool_callback,
+        tools=[
+            fetch_activities,
+            get_current_date,
+            set_objective_research,
+            set_training_plan,
+            mark_plan_ready,
+            AGUIToolset(),
+            web_search_toolset(),
         ],
-    ),
-    instruction=_INSTRUCTION,
-    before_agent_callback=on_before_agent,
-    before_model_callback=before_model_modifier,
-    before_tool_callback=throttle_web_search,
-    after_tool_callback=shared_after_tool_callback,
-    tools=[
-        fetch_activities,
-        get_current_date,
-        set_objective_research,
-        set_training_plan,
-        mark_plan_ready,
-        AGUIToolset(),
-        web_search_toolset(),
-    ],
-)
+    )
+
+
+fitness_agent = build_agent()
 
 FITNESS_PREDICT_STATE = [
     PredictStateMapping(
@@ -421,46 +424,12 @@ FITNESS_PREDICT_STATE = [
     ),
 ]
 
-# Shared SQLite session service — used by both AG-UI and A2A paths.
+# Shared SQLite session service.
 _shared_session_svc = create_session_service()
 _session_container = SessionServiceContainer()
 _artifact_svc = InMemoryArtifactService()
 _memory_svc = InMemoryMemoryService()
 _credential_svc = InMemoryCredentialService()
-
-_a2a_runner = Runner(
-    app_name=fitness_agent.name,
-    agent=fitness_agent,
-    artifact_service=_artifact_svc,
-    session_service=_shared_session_svc,
-    memory_service=_memory_svc,
-    credential_service=_credential_svc,
-)
-
-
-def _a2a_agent_card() -> AgentCard:
-    return AgentCard(
-        name="Fitness Training Agent",
-        description=(
-            "Builds weekly training plans from Strava activity history and "
-            "research on outdoor objectives like hiking and mountaineering."
-        ),
-        version="1.0.0",
-        url=AGENT_PUBLIC_URL,
-        default_input_modes=["text/plain"],
-        default_output_modes=["text/plain"],
-        capabilities=AgentCapabilities(streaming=True),
-        skills=[
-            AgentSkill(
-                id="training_planning",
-                name="Training Planning",
-                description="Creates weekly training plans from Strava data and objective research.",
-                tags=["fitness", "training-planning"],
-                input_modes=["text/plain"],
-                output_modes=["text/plain"],
-            ),
-        ],
-    )
 
 
 adk_fitness_agent = ADKAgent(
@@ -478,7 +447,7 @@ app = FastAPI(title="Fitness Training Agent")
 
 @app.middleware("http")
 async def trace_requests(request, call_next):
-    if request.url.path == "/health":
+    if request.url.path.endswith("/health"):
         return await call_next(request)
 
     start = time.perf_counter()
@@ -513,17 +482,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# A2A — JSON-RPC at POST / and agent card at GET /.well-known/agent-card.json
-_a2a_card = _a2a_agent_card()
-_a2a_handler = DefaultRequestHandler(
-    agent_executor=create_a2a_agent_executor(_a2a_runner),
-    task_store=create_task_store(),
-)
-A2AFastAPIApplication(
-    agent_card=_a2a_card,
-    http_handler=_a2a_handler,
-).add_routes_to_app(app)
-
 add_adk_fastapi_endpoint(
     app,
     adk_fitness_agent,
@@ -535,10 +493,3 @@ add_adk_fastapi_endpoint(
 @app.get("/health")
 async def health():
     return await _session_container.check_database_connection()
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    port = int(os.getenv("PORT", "8002"))
-    uvicorn.run(app, host="0.0.0.0", port=port)

@@ -4,12 +4,12 @@ version = "0.1.0"
 description = "A2UI showcase agent powered by Google ADK + CopilotKit AG-UI"
 requires-python = ">=3.14"
 dependencies = [
-  "agent-common",
+  "agents-shared",
   "fastapi",
   "uvicorn[standard]",
   "python-dotenv",
   "pydantic",
-  "google-adk[a2a]>=2.2.0",
+  "google-adk>=2.2.0",
   "google-genai",
   "ag-ui-adk>=0.6.4",
   "litellm",
@@ -19,7 +19,6 @@ dependencies = [
   "opentelemetry-instrumentation-google-genai>=0.7b1",
   "opentelemetry-instrumentation-vertexai>=2.0b0",
   "opentelemetry-exporter-otlp-proto-http",
-  "a2a-sdk>=0.3.4,<0.4",
   "dependency-injector>=4.49.0",
 ]
 

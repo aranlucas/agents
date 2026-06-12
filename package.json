@@ -8,7 +8,7 @@
     "dev:mobile": "pnpm --filter mobile start",
     "dev:agents": "docker compose up --build",
     "lint": "oxlint",
-    "lint:py": "uv run ruff check agents packages/agent-common",
+    "lint:py": "uv run ruff check agents",
     "check": "pnpm lint && pnpm lint:py && pnpm lint:tw && pnpm fmt:check",
     "lint:tw": "node scripts/canonical-tailwind-classes.mjs --check",
     "lint:tw:fix": "node scripts/canonical-tailwind-classes.mjs",

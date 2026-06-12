@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
 import pytest
-from agent_common.tools import (
+from agents_shared.tools import (
     parse_tool_response,
     save_state,
     shared_after_tool_callback,

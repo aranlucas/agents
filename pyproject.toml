@@ -2,23 +2,33 @@
 name = "agents-workspace"
 version = "0.1.0"
 requires-python = ">=3.14"
-dependencies = []
+dependencies = ["gateway"]
 
 [tool.uv]
 package = false
 
 [tool.uv.sources]
-agent-common = { workspace = true }
+agents-shared = { workspace = true }
+a2ui-agent = { workspace = true }
+fitness-agent = { workspace = true }
+gateway = { workspace = true }
+grocery-agent = { workspace = true }
+oralboards-agent = { workspace = true }
+resume-agent = { workspace = true }
+travel-agent = { workspace = true }
+wellness-agent = { workspace = true }
 
 [tool.uv.workspace]
 members = [
   "agents/a2ui",
   "agents/fitness",
+  "agents/gateway",
   "agents/grocery",
   "agents/oralboards",
+  "agents/resume",
   "agents/travel",
   "agents/wellness",
-  "packages/agent-common",
+  "agents/shared",
 ]
 
 [tool.ruff]
@@ -48,28 +58,32 @@ ignore = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["agents", "packages/agent-common"]
+testpaths = ["agents"]
 asyncio_mode = "auto"
 addopts = ["--import-mode=importlib"]
 pythonpath = [
   "agents/a2ui/src",
   "agents/fitness/src",
+  "agents/gateway/src",
   "agents/grocery/src",
   "agents/oralboards/src",
+  "agents/resume/src",
   "agents/travel/src",
   "agents/wellness/src",
-  "packages/agent-common/src",
+  "agents/shared/src",
 ]
 
 [tool.coverage.run]
 source = [
   "agents/a2ui/src",
   "agents/fitness/src",
+  "agents/gateway/src",
   "agents/grocery/src",
   "agents/oralboards/src",
+  "agents/resume/src",
   "agents/travel/src",
   "agents/wellness/src",
-  "packages/agent-common/src",
+  "agents/shared/src",
 ]
 omit = ["*/__init__.py"]
 
