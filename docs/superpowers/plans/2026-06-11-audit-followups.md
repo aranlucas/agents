@@ -23,6 +23,7 @@
 ### Task 1: Remove committed runtime artifacts
 
 **Files:**
+
 - Delete (from git): `.data/adk_sessions.sqlite`, `output/playwright/a2ui-chat-first.png`, `output/playwright/a2ui-chat-tabs.png`, `output/playwright/a2ui-working.jpg`
 - Modify: `.gitignore`
 
@@ -57,9 +58,10 @@ git commit -m "chore: stop tracking runtime sqlite and playwright output"
 
 ### Task 2: Dockerfile dependency-layer caching
 
-Today `Dockerfile.agents` does `COPY . ./` *before* `uv sync`, so any source change reinstalls the entire Python tree. Split into a cached third-party layer (`--no-install-workspace` skips building workspace members, so their sources aren't needed yet) and a cheap source layer.
+Today `Dockerfile.agents` does `COPY . ./` _before_ `uv sync`, so any source change reinstalls the entire Python tree. Split into a cached third-party layer (`--no-install-workspace` skips building workspace members, so their sources aren't needed yet) and a cheap source layer.
 
 **Files:**
+
 - Modify: `Dockerfile.agents`
 
 - [ ] **Step 1: Replace the copy/sync section**
@@ -110,6 +112,7 @@ git commit -m "build: cache python dependency layer in agent image"
 ### Task 3: Complete `.env.example`
 
 **Files:**
+
 - Modify: `.env.example`
 
 - [ ] **Step 1: Replace the per-agent URL block and add auth vars**
@@ -155,6 +158,7 @@ git commit -m "docs: single gateway base URL and auth vars in .env.example"
 `pyproject.toml` declares `fail_under = 90` but CI runs plain `uv run pytest`, so the gate never fires.
 
 **Files:**
+
 - Modify: `.github/workflows/ci.yml`
 - Possibly modify: `pyproject.toml` (`fail_under`)
 
@@ -168,15 +172,15 @@ If TOTAL ≥ 90, leave `fail_under = 90`. If below, set `fail_under` (`[tool.cov
 In `.github/workflows/ci.yml`, change:
 
 ```yaml
-      - name: Run Python tests
-        run: uv run pytest
+- name: Run Python tests
+  run: uv run pytest
 ```
 
 to:
 
 ```yaml
-      - name: Run Python tests (with coverage gate)
-        run: uv run pytest --cov
+- name: Run Python tests (with coverage gate)
+  run: uv run pytest --cov
 ```
 
 - [ ] **Step 3: Verify locally**
@@ -193,20 +197,21 @@ git commit -m "ci: enforce python coverage floor"
 ### Task 5: Build the agent Docker image in CI
 
 **Files:**
+
 - Modify: `.github/workflows/ci.yml`
 
 - [ ] **Step 1: Add a parallel job** (sibling of `check:`):
 
 ```yaml
-  docker:
-    name: Build agent image
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+docker:
+  name: Build agent image
+  runs-on: ubuntu-latest
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v6
 
-      - name: Build Dockerfile.agents
-        run: docker build -f Dockerfile.agents .
+    - name: Build Dockerfile.agents
+      run: docker build -f Dockerfile.agents .
 ```
 
 - [ ] **Step 2: Commit**
@@ -225,6 +230,7 @@ git commit -m "ci: build agent docker image"
 Wellness already solves "AgentTool's child runner strips `temp:` keys" with a module-private contextvar (`agents/wellness/src/wellness_agent/main.py:147-170`). In-process orchestration needs grocery/fitness to read that same contextvar, so the mechanism moves to `agent-common`.
 
 **Files:**
+
 - Create: `packages/agent-common/src/agent_common/invocation_state.py`
 - Test: `packages/agent-common/tests/test_invocation_state.py`
 
@@ -309,6 +315,7 @@ git commit -m "feat(agent-common): shared invocation temp-state bridge"
 Two changes per agent: (a) token reads fall back to the contextvar (so they work when invoked in-process by wellness), and (b) the `LlmAgent` construction moves into a `build_agent()` factory so wellness can hold its own instances (ADK agents track a parent; sharing the module-level instance between two runners is unsafe).
 
 **Files:**
+
 - Modify: `agents/grocery/src/grocery_agent/utils.py` (`_header_provider`)
 - Modify: `agents/grocery/src/grocery_agent/main.py` (`on_before_agent`, agent construction)
 - Modify: `agents/fitness/src/fitness_agent/main.py` (every `temp:strava_token` read, `on_before_agent`, agent construction)
@@ -414,6 +421,7 @@ grocery_agent = build_agent()
 - [ ] **Step 3: Same pattern in fitness**
 
 In `agents/fitness/src/fitness_agent/main.py`:
+
 - `grep -n "temp:strava_token\|STRAVA_TOKEN_STATE_KEY" agents/fitness/src/fitness_agent/main.py` and replace every read of the token from state (`state.get(STRAVA_TOKEN_STATE_KEY...)` or equivalent) with `get_invocation_temp(STRAVA_TOKEN_STATE_KEY, state)` (import as in grocery).
 - In `on_before_agent`: set `strava_connected = True` when `get_invocation_temp(STRAVA_TOKEN_STATE_KEY, callback_context.state)` is non-empty; remove the `apply_a2a_auth_metadata_to_state` call/import.
 - Wrap the `LlmAgent(...)` construction in `def build_agent() -> LlmAgent:` + `fitness_agent = build_agent()` exactly as in grocery (same arguments as today).
@@ -436,6 +444,7 @@ git commit -m "refactor(agents): token bridge fallback + build_agent factories f
 `RemoteA2aAgent` → `AgentTool(agent=build_agent())`. Then remove the A2A surface (JSON-RPC app, runner, agent card, task store, executor) from all five agents and delete `agent_common/a2a.py` + `agent_common/task_store.py`.
 
 **Files:**
+
 - Modify: `agents/wellness/src/wellness_agent/main.py`
 - Delete: `agents/wellness/src/wellness_agent/utils.py` (only held A2A URLs)
 - Modify: `agents/travel/src/travel_agent/main.py`, `agents/grocery/src/grocery_agent/main.py`, `agents/fitness/src/fitness_agent/main.py`, `agents/a2ui/src/a2ui_agent/main.py`
@@ -535,6 +544,7 @@ git commit -m "refactor!: in-process wellness orchestration, remove A2A protocol
 ### Task 9: Gateway app — one process, one port
 
 **Files:**
+
 - Create: `agents/gateway/pyproject.toml`
 - Create: `agents/gateway/railway.json`
 - Create: `agents/gateway/src/gateway/__init__.py`
@@ -548,6 +558,7 @@ git commit -m "refactor!: in-process wellness orchestration, remove A2A protocol
 - [ ] **Step 1: Register the member**
 
 Root `pyproject.toml`:
+
 - `[tool.uv.workspace] members`: add `"agents/gateway",` (after `"agents/fitness",`).
 - `[tool.uv.sources]`: add the agent packages the gateway imports:
 
@@ -558,6 +569,7 @@ a2ui-agent = { workspace = true }
 ```
 
 (`grocery-agent`/`fitness-agent` were added in Task 8.)
+
 - `[tool.pytest.ini_options] pythonpath`: add `"agents/gateway/src",`.
 - `[tool.coverage.run] source`: add `"agents/gateway/src",`.
 
@@ -743,6 +755,7 @@ git commit -m "feat(gateway): serve all agents from one FastAPI service"
 ### Task 10: Point web + mobile at the gateway
 
 **Files:**
+
 - Modify: `apps/web/src/env.ts`
 - Modify: `apps/web/src/app/api/copilotkit/route.ts`
 - Modify: `apps/web/src/app/api/agents/health/route.ts` + `route.test.ts`
@@ -817,11 +830,11 @@ it("defaults to localhost:8000 with the agent prefix", () => {
 Then in `apps/mobile/src/utils/agent-config-core.ts`: delete `AGENT_PORTS` and `EXPO_PUBLIC_ENV_KEYS`; add `const AGENTS_BASE_ENV_KEY = "EXPO_PUBLIC_AGENTS_BASE_URL";` and change `AgentRuntimeConfig` to `{ agentsBaseUrl?: string; copilotKitRuntimeUrl?: string }`; replace the non-runtime branch of `getAgentUrl` with:
 
 ```ts
-  const configured = envOrConfig(env, AGENTS_BASE_ENV_KEY, config.agentsBaseUrl);
-  const baseUrl = configured ?? `http://${os === "android" ? "10.0.2.2" : "localhost"}:8000`;
-  return normalizeAguiUrl(
-    `${stripTrailingSlash(normalizeLocalhostForPlatform(baseUrl, os))}/${agentId}`,
-  );
+const configured = envOrConfig(env, AGENTS_BASE_ENV_KEY, config.agentsBaseUrl);
+const baseUrl = configured ?? `http://${os === "android" ? "10.0.2.2" : "localhost"}:8000`;
+return normalizeAguiUrl(
+  `${stripTrailingSlash(normalizeLocalhostForPlatform(baseUrl, os))}/${agentId}`,
+);
 ```
 
 (`normalizeAguiUrl` already appends `/agui`; `getDefaultAgentBaseUrl` is deleted — remove its tests.) In `apps/mobile/src/utils/agent-config.ts`, replace the per-agent `extra.*AgentUrl` reads with `agentsBaseUrl: typeof extra.agentsBaseUrl === "string" ? extra.agentsBaseUrl : undefined,`.
@@ -848,9 +861,10 @@ git commit -m "feat: web and mobile target the single agents gateway"
 
 ## Phase 4 — Web auth perimeter
 
-### Task 11 *(formerly Task 6)*: Protect `/console/*` and `/a2ui` in Clerk middleware (resume stays public)
+### Task 11 _(formerly Task 6)_: Protect `/console/*` and `/a2ui` in Clerk middleware (resume stays public)
 
 **Files:**
+
 - Modify: `apps/web/src/proxy.ts`
 - Test: `apps/web/src/proxy.test.ts` (create)
 
@@ -933,11 +947,12 @@ git add apps/web/src/proxy.ts apps/web/src/proxy.test.ts
 git commit -m "fix(web): protect /console and /a2ui routes behind Clerk"
 ```
 
-### Task 12 *(formerly Task 7)*: Gate `/api/copilotkit` and forward a verified Clerk JWT
+### Task 12 _(formerly Task 7)_: Gate `/api/copilotkit` and forward a verified Clerk JWT
 
 (1) Unauthenticated requests are rejected unless they target the public `resume` agent (multi-route paths like `/api/copilotkit/agent/<id>/run`) or `/info`; (2) `onRequest` mints a Clerk session JWT via `getToken()` into the `authorization` header — browsers auth to Next.js with cookies, so without this the gateway (Phase 5) would never see a token on the web path. The runtime already forwards `authorization` + `x-*` headers.
 
 **Files:**
+
 - Create: `apps/web/src/app/api/copilotkit/guard.ts`
 - Modify: `apps/web/src/app/api/copilotkit/route.ts`
 - Test: `apps/web/src/app/api/copilotkit/route.guard.test.ts` (create)
@@ -1063,11 +1078,12 @@ git commit -m "fix(web): require Clerk session on copilotkit runtime, forward se
 
 ## Phase 5 — Verified identity on the gateway
 
-### Task 13 *(formerly Task 8+10)*: `ClerkAuthMiddleware` in agent-common, wired once on the gateway
+### Task 13 _(formerly Task 8+10)_: `ClerkAuthMiddleware` in agent-common, wired once on the gateway
 
 Pure-ASGI middleware protecting every path containing `/agui` (except declared public prefixes): requires a valid Clerk session JWT (RS256 against the instance JWKS) and **rewrites** `x-clerk-user-id` to the verified `sub` — existing `extract_*_state` functions keep working but can't be spoofed. Token verification is injectable for tests (matches the DI style of `session_service.py`). Because all agents live behind the gateway, this is wired exactly once.
 
 **Files:**
+
 - Modify: `packages/agent-common/pyproject.toml` (add PyJWT)
 - Create: `packages/agent-common/src/agent_common/clerk_auth.py`
 - Modify: `agents/gateway/src/gateway/main.py`
@@ -1342,11 +1358,12 @@ git commit -m "feat: verify Clerk session JWT on gateway /agui routes"
 
 ## Phase 6 — Resume agent (public demo)
 
-### Task 14 *(formerly Task 11)*: Resume agent Python package
+### Task 14 _(formerly Task 11)_: Resume agent Python package
 
 Chat-only ADK agent: no MCP, no PredictState, no auth (the gateway's `public_prefixes=("/resume",)` exempts it). The resume is embedded in the system instruction — a resume is a few KB; no vector store needed.
 
 **Files:**
+
 - Create: `agents/resume/pyproject.toml`
 - Create: `agents/resume/src/resume_agent/__init__.py`
 - Create: `agents/resume/src/resume_agent/resume.md`
@@ -1412,9 +1429,11 @@ Create `agents/resume/src/resume_agent/resume.md`:
 Software engineer. GitHub: github.com/aranlucas.
 
 ## Experience
+
 (placeholder — replace with real entries)
 
 ## Skills
+
 (placeholder — replace with real entries)
 ```
 
@@ -1626,9 +1645,10 @@ git add agents/resume agents/gateway pyproject.toml uv.lock Dockerfile.agents
 git commit -m "feat(resume): public resume Q&A agent mounted on the gateway"
 ```
 
-### Task 15 *(formerly Task 12)*: Register the resume agent in the web app
+### Task 15 _(formerly Task 12)_: Register the resume agent in the web app
 
 **Files:**
+
 - Modify: `apps/web/src/app/api/copilotkit/route.ts` (AGENT_IDS)
 - Modify: `apps/web/src/app/api/agents/health/route.ts` + `route.test.ts`
 - Modify: `apps/web/src/components/chat/agents/registry.ts` + `registry.test.ts`
@@ -1640,9 +1660,9 @@ git commit -m "feat(resume): public resume Q&A agent mounted on the gateway"
 `registry.test.ts`: order assertion becomes
 
 ```ts
-  it("lists the six agents in display order", () => {
-    expect(AGENT_ORDER).toEqual(["travel", "grocery", "fitness", "wellness", "a2ui", "resume"]);
-  });
+it("lists the six agents in display order", () => {
+  expect(AGENT_ORDER).toEqual(["travel", "grocery", "fitness", "wellness", "a2ui", "resume"]);
+});
 ```
 
 plus `expect(getAgentConfig("resume").requires ?? []).toEqual([]);` in the requirements test.
@@ -1704,11 +1724,12 @@ git commit -m "feat(web): public /console/resume surface"
 
 ## Phase 7 — README
 
-### Task 16 *(formerly Task 13)*: Rewrite README.md
+### Task 16 _(formerly Task 13)_: Rewrite README.md
 
 The current README documents the pre-monorepo "Trip Studio" single app. Replace entirely.
 
 **Files:**
+
 - Modify: `README.md` (full rewrite)
 
 - [ ] **Step 1: Replace the content**
@@ -1723,22 +1744,23 @@ with web and mobile UIs over the [AG-UI](https://docs.copilotkit.ai/ag-ui)
 protocol. Built with [CopilotKit](https://copilotkit.ai) v2,
 [Google ADK](https://google.github.io/adk-docs/), Next.js 16, and Expo.
 
-| Agent    | What it does                                            | Access           |
-| -------- | ------------------------------------------------------- | ---------------- |
-| travel   | Trip planning with a live shared itinerary (trvl MCP)   | Sign-in required |
-| grocery  | Meal planning + shopping lists with live Kroger data    | Sign-in + Kroger |
-| fitness  | Training plans from Strava activity                     | Sign-in + Strava |
-| wellness | Orchestrates grocery + fitness in-process               | Sign-in + both   |
-| a2ui     | Renders declarative A2UI surfaces from chat             | Sign-in required |
-| resume   | Public Q&A about Lucas's resume (no account needed)     | Public           |
+| Agent    | What it does                                          | Access           |
+| -------- | ----------------------------------------------------- | ---------------- |
+| travel   | Trip planning with a live shared itinerary (trvl MCP) | Sign-in required |
+| grocery  | Meal planning + shopping lists with live Kroger data  | Sign-in + Kroger |
+| fitness  | Training plans from Strava activity                   | Sign-in + Strava |
+| wellness | Orchestrates grocery + fitness in-process             | Sign-in + both   |
+| a2ui     | Renders declarative A2UI surfaces from chat           | Sign-in required |
+| resume   | Public Q&A about Lucas's resume (no account needed)   | Public           |
 
 ## Architecture
+```
 
-```
-apps/web    → CopilotKit runtime (/api/copilotkit) → gateway /<agent>/agui
-apps/mobile → @ag-ui/client (HttpAgent)            → gateway /<agent>/agui (direct)
-wellness    → AgentTool (in-process)               → grocery + fitness sub-agents
-```
+apps/web → CopilotKit runtime (/api/copilotkit) → gateway /<agent>/agui
+apps/mobile → @ag-ui/client (HttpAgent) → gateway /<agent>/agui (direct)
+wellness → AgentTool (in-process) → grocery + fitness sub-agents
+
+````
 
 - All agents run in ONE FastAPI process (`agents/gateway/` mounts each
   `agents/<name>/` app under a path prefix) — one Railway service.
@@ -1758,7 +1780,7 @@ per `.env.example`.
 cp .env.example .env   # fill in Clerk + model provider keys
 pnpm install           # JS deps + `uv sync` for Python
 pnpm dev               # web on :3000 + the agents gateway on :8000
-```
+````
 
 Other entry points: `pnpm dev:web`, `pnpm dev:mobile`, `pnpm dev:agents`.
 
@@ -1784,7 +1806,8 @@ roadmap is [docs/ROADMAP.md](docs/ROADMAP.md).
 
 The shared-state, streaming, and HITL patterns are adapted from the CopilotKit
 [`google-adk` showcase](https://github.com/CopilotKit/CopilotKit/tree/main/showcase/integrations/google-adk).
-```
+
+````
 
 - [ ] **Step 2: Verify formatting** — `pnpm fmt:check` (run `pnpm fmt` if oxfmt reflows tables).
 
@@ -1793,7 +1816,7 @@ The shared-state, streaming, and HITL patterns are adapted from the CopilotKit
 ```bash
 git add README.md
 git commit -m "docs: rewrite README for the single-gateway monorepo"
-```
+````
 
 **Follow-up for the 2026-06-09 plan's Task 21 (AGENTS.md):** when refreshing AGENTS.md, the "Adding a new agent" checklist changes — no new compose service or Railway service; instead "add the package, mount it in `agents/gateway/src/gateway/main.py`, add the id to the two `AGENT_IDS` tuples and the registry."
 
