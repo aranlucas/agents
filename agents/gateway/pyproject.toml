@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Single-service gateway mounting every agent app under one port"
 requires-python = ">=3.14"
 dependencies = [
-  "agent-common",
+  "agents-shared",
   "a2ui-agent",
   "fitness-agent",
   "grocery-agent",

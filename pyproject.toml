@@ -8,7 +8,7 @@ dependencies = ["gateway"]
 package = false
 
 [tool.uv.sources]
-agent-common = { workspace = true }
+agents-shared = { workspace = true }
 a2ui-agent = { workspace = true }
 fitness-agent = { workspace = true }
 gateway = { workspace = true }
@@ -28,7 +28,7 @@ members = [
   "agents/resume",
   "agents/travel",
   "agents/wellness",
-  "packages/agent-common",
+  "agents/shared",
 ]
 
 [tool.ruff]
@@ -58,7 +58,7 @@ ignore = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["agents", "packages/agent-common"]
+testpaths = ["agents"]
 asyncio_mode = "auto"
 addopts = ["--import-mode=importlib"]
 pythonpath = [
@@ -70,7 +70,7 @@ pythonpath = [
   "agents/resume/src",
   "agents/travel/src",
   "agents/wellness/src",
-  "packages/agent-common/src",
+  "agents/shared/src",
 ]
 
 [tool.coverage.run]
@@ -83,7 +83,7 @@ source = [
   "agents/resume/src",
   "agents/travel/src",
   "agents/wellness/src",
-  "packages/agent-common/src",
+  "agents/shared/src",
 ]
 omit = ["*/__init__.py"]
 

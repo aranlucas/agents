@@ -34,7 +34,7 @@ def test_meal_planner_header_provider_reads_temp_token() -> None:
 
 
 def test_header_provider_falls_back_to_invocation_contextvar() -> None:
-    from agent_common.invocation_state import set_invocation_temp_state
+    from agents_shared.invocation_state import set_invocation_temp_state
 
     set_invocation_temp_state({"temp:kroger_token": "ctx-token"})
     headers = utils._header_provider(DummyContext({}))
@@ -43,7 +43,7 @@ def test_header_provider_falls_back_to_invocation_contextvar() -> None:
 
 
 def test_on_before_agent_derives_kroger_connected_from_contextvar_token() -> None:
-    from agent_common.invocation_state import set_invocation_temp_state
+    from agents_shared.invocation_state import set_invocation_temp_state
 
     set_invocation_temp_state({"temp:kroger_token": "ctx-token"})
     ctx = DummyContext({})

@@ -14,7 +14,7 @@ ENV PATH="/app/.venv/bin:$PATH" \
 # cached until a manifest changes. --no-install-workspace skips building the
 # workspace members themselves (their sources aren't copied yet).
 COPY pyproject.toml uv.lock ./
-COPY packages/agent-common/pyproject.toml packages/agent-common/
+COPY agents/shared/pyproject.toml agents/shared/
 COPY agents/a2ui/pyproject.toml agents/a2ui/
 COPY agents/fitness/pyproject.toml agents/fitness/
 COPY agents/gateway/pyproject.toml agents/gateway/

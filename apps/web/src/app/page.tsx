@@ -42,7 +42,7 @@ const AGENTS: Agent[] = [
     tagline: "Meals and workouts together",
     description: "Coordinate grocery and fitness agents into one practical weekly plan.",
     cta: "Plan week",
-    tags: ["A2A", "Meals", "Training"],
+    tags: ["In-process", "Meals", "Training"],
     theme: "wellness",
   },
   {

@@ -9,9 +9,12 @@ import time
 from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
 from ag_ui_adk.config import PredictStateMapping
 from ag_ui_adk.request_state_service import RequestStateSessionService
-from agent_common.invocation_state import set_invocation_temp_state
-from agent_common.session_service import SessionServiceContainer, create_session_service
-from agent_common.tools import shared_after_tool_callback
+from agents_shared.invocation_state import set_invocation_temp_state
+from agents_shared.session_service import (
+    SessionServiceContainer,
+    create_session_service,
+)
+from agents_shared.tools import shared_after_tool_callback
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

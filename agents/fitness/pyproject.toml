@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Fitness training agent powered by Google ADK + CopilotKit AG-UI"
 requires-python = ">=3.14"
 dependencies = [
-  "agent-common",
+  "agents-shared",
   "fastapi",
   "uvicorn[standard]",
   "python-dotenv",

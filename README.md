@@ -28,7 +28,7 @@ wellness    -> AgentTool (in-process)               -> grocery + fitness sub-age
 - State (itineraries, shopping lists, plans) is written to ADK shared state by
   tools, never pasted into chat; the UI re-renders on every state delta.
 - Auth is Clerk end to end: the web runtime mints a session JWT per request and
-  the gateway verifies it against the Clerk JWKS (`agent-common`'s
+  the gateway verifies it against the Clerk JWKS (`agents-shared`'s
   `ClerkAuthMiddleware`), rewriting the identity header to the verified
   subject. The resume agent is intentionally unauthenticated.
 
@@ -49,7 +49,7 @@ Other entry points: `pnpm dev:web`, `pnpm dev:mobile`, `pnpm dev:agents`.
 
 ```bash
 pnpm check     # oxlint + ruff + tailwind canon + oxfmt --check
-pnpm test      # vitest (web, mobile) + pytest (agents, agent-common)
+pnpm test      # vitest (web, mobile) + pytest (agents, agents-shared)
 pnpm coverage  # both ecosystems with coverage
 ```
 

@@ -2,7 +2,10 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-from agent_common.invocation_state import get_invocation_temp, set_invocation_temp_state
+from agents_shared.invocation_state import (
+    get_invocation_temp,
+    set_invocation_temp_state,
+)
 from starlette.datastructures import Headers
 from wellness_agent import main
 

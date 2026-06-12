@@ -1,4 +1,4 @@
-from agent_common.invocation_state import (
+from agents_shared.invocation_state import (
     get_invocation_temp,
     set_invocation_temp_state,
 )

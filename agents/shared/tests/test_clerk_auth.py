@@ -1,6 +1,6 @@
 import jwt
 import pytest
-from agent_common.clerk_auth import (
+from agents_shared.clerk_auth import (
     ClerkAuthMiddleware,
     clerk_auth_enabled,
     decode_clerk_jwt,

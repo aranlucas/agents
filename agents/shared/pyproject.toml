@@ -1,16 +1,16 @@
 [project]
-name = "agent-common"
+name = "agents-shared"
 version = "0.1.0"
-description = "Shared runtime helpers for the ADK agents"
+description = "Shared runtime helpers for the single agents gateway"
 requires-python = ">=3.14"
 dependencies = [
+  "asyncpg>=0.30.0",
   "dependency-injector>=4.49.0",
   "google-adk>=2.2.0",
   "google-genai",
-  "pyjwt[crypto]>=2.10",
-  "asyncpg>=0.30.0",
-  "sqlalchemy[asyncio]>=2.0",
   "opentelemetry-instrumentation-sqlalchemy>=0.50b0",
+  "pyjwt[crypto]>=2.10",
+  "sqlalchemy[asyncio]>=2.0",
 ]
 
 [build-system]

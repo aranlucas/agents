@@ -229,7 +229,7 @@ async def test_throttle_web_search_ignores_non_brave_tools() -> None:
 
 
 def test_on_before_agent_derives_strava_connected_from_contextvar_token() -> None:
-    from agent_common.invocation_state import set_invocation_temp_state
+    from agents_shared.invocation_state import set_invocation_temp_state
 
     set_invocation_temp_state({"temp:strava_token": "ctx-token"})
     callback_context = Mock()

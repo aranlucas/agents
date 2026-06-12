@@ -60,7 +60,7 @@ export function AgentCard({
               >
                 {agent.tagline}
               </Badge>
-              {isWellness && <Badge variant="secondary">A2A</Badge>}
+              {isWellness && <Badge variant="secondary">In-process</Badge>}
               {isA2UI && <Badge variant="secondary">A2UI</Badge>}
             </div>
 

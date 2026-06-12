@@ -3,7 +3,7 @@
 import os
 from typing import TYPE_CHECKING
 
-from agent_common.invocation_state import get_invocation_temp
+from agents_shared.invocation_state import get_invocation_temp
 from google.adk.tools.mcp_tool import McpToolset
 from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
 

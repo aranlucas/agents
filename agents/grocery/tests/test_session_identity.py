@@ -1,4 +1,7 @@
-from agent_common.session_service import SessionServiceContainer, create_session_service
+from agents_shared.session_service import (
+    SessionServiceContainer,
+    create_session_service,
+)
 from starlette.datastructures import Headers
 
 

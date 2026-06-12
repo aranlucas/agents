@@ -41,6 +41,7 @@ export function useAgentWarmup() {
   return {
     statuses: data?.agents ?? FALLBACK,
     runningCount: data?.runningCount ?? 0,
+    total: data?.total ?? Object.keys(FALLBACK).length,
     isLoading,
   };
 }

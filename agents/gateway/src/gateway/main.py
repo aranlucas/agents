@@ -4,8 +4,8 @@ import logging
 import os
 
 from a2ui_agent.main import app as a2ui_app
-from agent_common.clerk_auth import ClerkAuthMiddleware, clerk_auth_enabled
-from agent_common.session_service import SessionServiceContainer
+from agents_shared.clerk_auth import ClerkAuthMiddleware, clerk_auth_enabled
+from agents_shared.session_service import SessionServiceContainer
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fitness_agent.main import app as fitness_app
