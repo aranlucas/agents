@@ -1,18 +1,16 @@
 from fastapi.testclient import TestClient
 from resume_agent import main
+from resume_agent.agent import _INSTRUCTION
 
 
 def test_instruction_embeds_resume_content():
-    assert "# Lucas Aran" in main.resume_agent.instruction
-    assert "only answer questions" in main.resume_agent.instruction.lower()
+    assert "# Lucas Aran" in _INSTRUCTION
+    assert "only answer questions" in _INSTRUCTION.lower()
 
 
-async def test_extract_state_defaults_to_anonymous():
-    class DummyRequest:
-        headers = {}
-
-    state = await main.extract_visitor_state(DummyRequest(), None)
-    assert state == {"user_id": "anonymous"}
+def test_agent_static_instruction_embeds_resume_content():
+    assert "# Lucas Aran" in main.resume_agent.static_instruction
+    assert "only answer questions" in main.resume_agent.static_instruction.lower()
 
 
 def test_app_exposes_agui_and_health_routes():
