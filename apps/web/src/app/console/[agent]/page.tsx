@@ -27,7 +27,7 @@ export default function Page({ params }: { params: Promise<{ agent: string }> })
       runtimeUrl="/api/copilotkit"
       agent={agentId}
       useSingleEndpoint={false}
-      a2ui={A2UI_CONFIG}
+      a2ui={agentId === "a2ui" ? A2UI_CONFIG : undefined}
       enableInspector={process.env.NODE_ENV !== "production"}
     >
       <Console key={agentId} agentId={agentId} />

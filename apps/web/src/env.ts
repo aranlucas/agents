@@ -4,7 +4,7 @@ import * as z from "zod";
 export const env = createEnv({
   server: {
     CLERK_SECRET_KEY: z.string().min(1),
-    AGENTS_BASE_URL: z.url().default("http://127.0.0.1:8000"),
+    AGENTS_BASE_URL: z.url().default("https://agents-gateway.up.railway.app"),
     TRVL_MCP_URL: z.url().optional(),
     KROGER_MCP_URL: z.url().optional(),
     MISTRAL_API_KEY: z.string().optional(),
@@ -21,7 +21,7 @@ export const env = createEnv({
   skipValidation: process.env.SKIP_ENV_VALIDATION === "1",
   runtimeEnv: {
     CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
-    AGENTS_BASE_URL: process.env.AGENTS_BASE_URL ?? "http://127.0.0.1:8000",
+    AGENTS_BASE_URL: process.env.AGENTS_BASE_URL ?? "https://agents-gateway.up.railway.app",
     TRVL_MCP_URL: process.env.TRVL_MCP_URL,
     KROGER_MCP_URL: process.env.KROGER_MCP_URL,
     MISTRAL_API_KEY: process.env.MISTRAL_API_KEY,
