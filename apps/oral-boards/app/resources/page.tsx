@@ -4,27 +4,27 @@ import { useState } from "react";
 import { PageLayout } from "@/components/PageLayout";
 import { Navigation } from "@/components/Navigation";
 import { PageHeader } from "@/components/PageHeader";
-import { Button } from "@/components/ui/button";
+import { Button } from "@agents/ui";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
   CardDescription,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+} from "@agents/ui";
+import { Badge } from "@agents/ui";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+} from "@agents/ui";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@agents/ui";
 import { resourceCategories, getAllPdfResources } from "@/data/resources";
 import {
   BookOpen,
@@ -231,7 +231,12 @@ export default function ResourcesPage() {
               <label className="text-xs sm:text-sm font-medium mb-1.5 sm:mb-2 block">
                 Resource Type
               </label>
-              <Select value={filterType} onValueChange={setFilterType}>
+              <Select
+                value={filterType}
+                onValueChange={(value) => {
+                  if (value) setFilterType(value);
+                }}
+              >
                 <SelectTrigger className="text-sm">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>

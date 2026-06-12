@@ -4,20 +4,20 @@ import { useState } from "react";
 import { PageLayout } from "@/components/PageLayout";
 import { Navigation } from "@/components/Navigation";
 import { PageHeader } from "@/components/PageHeader";
-import { Button } from "@/components/ui/button";
+import { Button } from "@agents/ui";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+} from "@agents/ui";
+import { Badge } from "@agents/ui";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+} from "@agents/ui";
 import {
   ChevronDown,
   ChevronUp,

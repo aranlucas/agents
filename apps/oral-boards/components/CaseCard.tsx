@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { Case } from "@/types/case";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@agents/ui";
+import { Badge } from "@agents/ui";
+import { buttonVariants } from "@agents/ui";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+} from "@agents/ui";
 import { InfoBox } from "@/components/InfoBox";
 import { IconLabel } from "@/components/IconLabel";
 import { ChevronDown, ChevronUp, BookOpen, Clock } from "lucide-react";
@@ -140,23 +140,24 @@ export default function CaseCard({ case: caseData }: CaseCardProps) {
           open={showModelResponse}
           onOpenChange={setShowModelResponse}
         >
-          <CollapsibleTrigger asChild>
-            <Button
-              className="w-full h-12 text-sm sm:text-base bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800"
-              size="lg"
-            >
-              {showModelResponse ? (
-                <>
-                  <ChevronUp className="mr-2 h-4 w-4" />
-                  Hide Model Response
-                </>
-              ) : (
-                <>
-                  <ChevronDown className="mr-2 h-4 w-4" />
-                  Present Model Response
-                </>
-              )}
-            </Button>
+          <CollapsibleTrigger
+            className={buttonVariants({
+              size: "lg",
+              className:
+                "w-full h-12 text-sm sm:text-base bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800",
+            })}
+          >
+            {showModelResponse ? (
+              <>
+                <ChevronUp className="mr-2 h-4 w-4" />
+                Hide Model Response
+              </>
+            ) : (
+              <>
+                <ChevronDown className="mr-2 h-4 w-4" />
+                Present Model Response
+              </>
+            )}
           </CollapsibleTrigger>
 
           <CollapsibleContent className="mt-4">

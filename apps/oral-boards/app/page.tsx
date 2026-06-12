@@ -3,7 +3,7 @@ import { getCaseOfDay } from "@/lib/caseRotation";
 import { PageLayout } from "@/components/PageLayout";
 import { Navigation } from "@/components/Navigation";
 import { PageHeader } from "@/components/PageHeader";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@agents/ui";
 import { Calendar } from "lucide-react";
 
 export default function Home() {

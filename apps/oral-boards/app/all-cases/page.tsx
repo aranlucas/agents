@@ -7,16 +7,16 @@ import { PageLayout } from "@/components/PageLayout";
 import { Navigation } from "@/components/Navigation";
 import { PageHeader } from "@/components/PageHeader";
 import { IconLabel } from "@/components/IconLabel";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@agents/ui";
+import { Card, CardContent, CardHeader, CardTitle } from "@agents/ui";
+import { Badge } from "@agents/ui";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@agents/ui";
 import { ArrowLeft, BookOpen, Clock, ChevronRight } from "lucide-react";
 
 export default function AllCasesPage() {
@@ -80,7 +80,9 @@ export default function AllCasesPage() {
                   <label className="text-sm font-medium">Category</label>
                   <Select
                     value={selectedCategory}
-                    onValueChange={setSelectedCategory}
+                    onValueChange={(value) => {
+                      if (value) setSelectedCategory(value);
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
@@ -98,7 +100,9 @@ export default function AllCasesPage() {
                   <label className="text-sm font-medium">Difficulty</label>
                   <Select
                     value={selectedDifficulty}
-                    onValueChange={setSelectedDifficulty}
+                    onValueChange={(value) => {
+                      if (value) setSelectedDifficulty(value);
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select difficulty" />

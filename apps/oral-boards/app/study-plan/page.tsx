@@ -3,8 +3,8 @@ import { PageLayout } from "@/components/PageLayout";
 import { Navigation } from "@/components/Navigation";
 import { PageHeader } from "@/components/PageHeader";
 import { InfoBox } from "@/components/InfoBox";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@agents/ui";
+import { Badge } from "@agents/ui";
 import {
   CheckCircle2,
   ArrowRight,

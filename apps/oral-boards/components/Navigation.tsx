@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@agents/ui";
+import { env } from "@/src/env";
 
 const navItems = [
   { href: "/", label: "Today's Case" },
@@ -13,6 +14,10 @@ const navItems = [
   { href: "/search", label: "Search Docs" },
 ] as const;
 
+const examinerLink = env.NEXT_PUBLIC_AGENT_CONSOLE_URL
+  ? [{ href: env.NEXT_PUBLIC_AGENT_CONSOLE_URL, label: "Examiner", external: true }]
+  : [];
+
 export function Navigation() {
   const pathname = usePathname();
 
@@ -22,20 +27,35 @@ export function Navigation() {
         const isActive = pathname === item.href;
 
         return (
-          <Button
+          <Link
             key={item.href}
-            asChild
-            variant={isActive ? "default" : "outline"}
-            className={
-              isActive
+            href={item.href}
+            className={buttonVariants({
+              variant: isActive ? "default" : "outline",
+              className: isActive
                 ? "bg-indigo-600 hover:bg-indigo-700"
-                : "border-indigo-600 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950"
-            }
+                : "border-indigo-600 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950",
+            })}
           >
-            <Link href={item.href}>{item.label}</Link>
-          </Button>
+            {item.label}
+          </Link>
         );
       })}
+      {examinerLink.map((item) => (
+        <a
+          key={item.href}
+          href={item.href}
+          target="_blank"
+          rel="noreferrer"
+          className={buttonVariants({
+            variant: "outline",
+            className:
+              "border-indigo-600 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950",
+          })}
+        >
+          {item.label}
+        </a>
+      ))}
     </nav>
   );
 }
