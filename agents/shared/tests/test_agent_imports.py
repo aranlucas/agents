@@ -36,15 +36,17 @@ def test_agent_module_imports(module_name: str) -> None:
 
 
 def test_wellness_uses_task_mode_sub_agents() -> None:
-    module = importlib.import_module("wellness_agent.main")
+    from wellness_agent.agent import build_agent
 
-    sub_agent_names = [agent.name for agent in module.wellness_agent.sub_agents]
+    agent = build_agent()
+
+    sub_agent_names = [sa.name for sa in agent.sub_agents]
     assert sub_agent_names == ["fitness_agent", "grocery_agent"]
-    assert [agent.mode for agent in module.wellness_agent.sub_agents] == [
+    assert [sa.mode for sa in agent.sub_agents] == [
         "task",
         "task",
     ]
-    assert not any(type(tool) is AgentTool for tool in module.wellness_agent.tools)
+    assert not any(type(tool) is AgentTool for tool in agent.tools)
     assert {"fitness_agent", "grocery_agent"}.issubset(
-        {tool.name for tool in module.wellness_agent.tools if hasattr(tool, "name")},
+        {tool.name for tool in agent.tools if hasattr(tool, "name")},
     )

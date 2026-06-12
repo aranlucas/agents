@@ -78,3 +78,11 @@ def test_token_auth_constants():
     assert TokenAuth(
         "x-strava-access-token", "temp:strava_token", "strava_connected"
     ) == STRAVA_AUTH
+
+
+def test_extract_state_strava_token_present():
+    extract = make_extract_state(STRAVA_AUTH)
+    request = SimpleNamespace(headers={"x-strava-access-token": "stok"})
+    state = asyncio.run(extract(request, None))
+    assert state["strava_connected"] is True
+    assert state["temp:strava_token"] == "stok"
