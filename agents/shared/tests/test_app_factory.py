@@ -23,7 +23,7 @@ def test_build_adk_agent_accepts_session_service_override():
 
     svc = create_session_service()
     adk = build_adk_agent(_dummy_agent(), session_service=svc)
-    # session_service is wrapped in RequestStateSessionService; verify the inner service
+    # _inner/_session_manager are ag-ui-adk internals (wiring-pinning test)
     assert adk._session_manager._session_service._inner is svc
 
 
@@ -33,6 +33,10 @@ def test_build_adk_agent_forwards_predict_state():
     )
     adk = build_adk_agent(_dummy_agent(), predict_state=[mapping])
     assert adk._predict_state == [mapping]
+
+
+def test_build_adk_agent_defaults_predict_state_to_none():
+    assert build_adk_agent(_dummy_agent())._predict_state is None
 
 
 def test_streaming_state_mapping_sets_streaming_flags():

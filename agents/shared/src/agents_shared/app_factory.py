@@ -107,17 +107,14 @@ def build_adk_agent(
     Pass `session_service` to substitute a wrapper (e.g. wellness'
     TempStateSessionService); everything else is identical across agents.
     """
-    kwargs: dict[str, Any] = {}
-    if predict_state is not None:
-        kwargs["predict_state"] = predict_state
     return ADKAgent(
         adk_agent=agent,
-        session_service=session_service or create_session_service(),
+        session_service=session_service if session_service is not None else create_session_service(),
         artifact_service=InMemoryArtifactService(),
         memory_service=InMemoryMemoryService(),
         credential_service=InMemoryCredentialService(),
         session_timeout_seconds=3600,
-        **kwargs,
+        predict_state=predict_state,
     )
 
 
