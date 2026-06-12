@@ -38,6 +38,9 @@ importers:
       '@clerk/clerk-expo':
         specifier: ^2.19.31
         version: 2.19.31(af52fbd15c50060a381637960fd08189)
+      '@copilotkit/react-native':
+        specifier: ^1.60.0
+        version: 1.60.0(37e4a4efaff41fa5b5ff588b1b2fdfc9)
       '@expo/metro-runtime':
         specifier: ~56.0.15
         version: 56.0.15(@expo/log-box@56.0.13)(expo@56.0.11)(react-dom@19.2.3(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.17)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))(react@19.2.3)
@@ -89,6 +92,12 @@ importers:
       expo-dev-client:
         specifier: ~56.0.20
         version: 56.0.20(expo@56.0.11)(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.17)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))
+      expo-document-picker:
+        specifier: ~56.0.4
+        version: 56.0.4(expo@56.0.11)
+      expo-file-system:
+        specifier: ~56.0.8
+        version: 56.0.8(expo@56.0.11)(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.17)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))
       expo-font:
         specifier: ~56.0.6
         version: 56.0.6(expo@56.0.11)(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.17)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))(react@19.2.3)
@@ -1077,8 +1086,18 @@ packages:
       react: ^18 || ^19 || ^19.0.0-rc
       react-dom: ^18 || ^19 || ^19.0.0-rc
 
+  '@copilotkit/a2ui-renderer@1.60.0':
+    resolution: {integrity: sha512-kK5cqA5EtuoBymtaBEcVGu5opz62duzAoutanMHee0xqNm4s37qx5TrbpEfI2sSciEeMFwcwMns7LH4xoCLulA==}
+    peerDependencies:
+      react: ^18 || ^19 || ^19.0.0-rc
+      react-dom: ^18 || ^19 || ^19.0.0-rc
+
   '@copilotkit/core@1.59.5':
     resolution: {integrity: sha512-y1mR0dc2bkVtGHrv1Z86OXERH54tzpfpW4JX+RGJiyInMtblz40FWNQoGoQpOc4IwxdPynrMnpoiMVR/FrUI9g==}
+    engines: {node: '>=18'}
+
+  '@copilotkit/core@1.60.0':
+    resolution: {integrity: sha512-DzqT+0twnvM2bUhdoFyY2gON61BvkgpVa0yHzWQRRLUif0hmwrBOssAXvBbjvGe3bGCZHleKfXCirJxR8gyV0A==}
     engines: {node: '>=18'}
 
   '@copilotkit/license-verifier@0.4.2':
@@ -1091,8 +1110,48 @@ packages:
       react-dom: ^18 || ^19 || ^19.0.0-rc
       zod: '>=3.0.0'
 
+  '@copilotkit/react-core@1.60.0':
+    resolution: {integrity: sha512-JEtiODspP+fHElgJH3kEn06mckkho6ZrMmdKSF7qxoCFgx16YCI/o3+nCmCZ8nMkJpig0etT3Ii7ohSUKty/qA==}
+    peerDependencies:
+      react: ^18 || ^19 || ^19.0.0-rc
+      react-dom: ^18 || ^19 || ^19.0.0-rc
+      zod: '>=3.0.0'
+
+  '@copilotkit/react-native@1.60.0':
+    resolution: {integrity: sha512-hsaerFNwTHp0POWCKuF8IgMYMMfHwtKsmXXO8AyHWDOikvunbo5xDjxCJW6qncTINKjY6rLyGQYQ+HYSZWp88A==}
+    peerDependencies:
+      '@gorhom/bottom-sheet': ^5.0.0
+      expo-document-picker: '>=12.0.0'
+      expo-file-system: '>=17.0.0'
+      react: ^18 || ^19
+      react-native: '>=0.70'
+      react-native-gesture-handler: '>=2.0.0'
+      react-native-reanimated: '>=3.0.0'
+      react-native-streamdown: '>=0.1.0'
+      zod: '>=3.0.0'
+    peerDependenciesMeta:
+      '@gorhom/bottom-sheet':
+        optional: true
+      expo-document-picker:
+        optional: true
+      expo-file-system:
+        optional: true
+      react-native-gesture-handler:
+        optional: true
+      react-native-reanimated:
+        optional: true
+      react-native-streamdown:
+        optional: true
+      zod:
+        optional: true
+
   '@copilotkit/runtime-client-gql@1.59.5':
     resolution: {integrity: sha512-JD7dT8vdOl7IGBvJy2/1GjNpon9Li8+Hz2v4YGSaFmv6mMeJTRL4XZgT7Rjv7KCq+ps3Bs2NjATBd+1NSjrNtA==}
+    peerDependencies:
+      react: ^18 || ^19 || ^19.0.0-rc
+
+  '@copilotkit/runtime-client-gql@1.60.0':
+    resolution: {integrity: sha512-xMp1az4tuBVo5rzq5kyWj6lLQLgpBZToPdxC9wzqtF6ttgt0fCOL6vrC/xLTVSlqm72A5j59FD6UhYIsoS84fg==}
     peerDependencies:
       react: ^18 || ^19 || ^19.0.0-rc
 
@@ -1134,8 +1193,17 @@ packages:
     peerDependencies:
       '@ag-ui/core': '>=0.0.48'
 
+  '@copilotkit/shared@1.60.0':
+    resolution: {integrity: sha512-VQ85yc/24gjR+kKZOPpFcCXeAjDrtvWD2TlbPvPkOFioIK6hnP3ok+Z1/VwTT9ZJQZx2Ic89z1XijVkitpQFNw==}
+    peerDependencies:
+      '@ag-ui/core': '>=0.0.48'
+
   '@copilotkit/web-inspector@1.59.5':
     resolution: {integrity: sha512-LDyFmSr53j3AGxvca9yMsJIAVnpzbAueftgKy7/Jcqk5rsiaFLSlQGOJyYY8AV5QhQ0JANoAzx47GTxqVWKJmg==}
+    engines: {node: '>=18'}
+
+  '@copilotkit/web-inspector@1.60.0':
+    resolution: {integrity: sha512-S3jdBiw0V8cEtB9OpP3sFMNUnDAxH/sXB9KH7vwoAz+6U6TNgDr7Y6nH6RcnjpYmQT5id87g4S+ZetwDeZkCwQ==}
     engines: {node: '>=18'}
 
   '@egjs/hammerjs@2.0.17':
@@ -4966,6 +5034,11 @@ packages:
       expo: '*'
       react-native: '*'
 
+  expo-document-picker@56.0.4:
+    resolution: {integrity: sha512-75Apf74XNkYYohObIH19VZw42xpe0gmEnPccuzGXKVAzlvTYCfibSgW17F+6vt4paOfZEnAoZ1QFZM6dmaujRA==}
+    peerDependencies:
+      expo: '*'
+
   expo-file-system@56.0.8:
     resolution: {integrity: sha512-NrH41/8snGIBSbYicwVLB4txPdgCATd7ZYhMAGS3YJZ9GbnduhlAoV4/YCbGayjrbpE9bJb/6wegPL/zmvRMnQ==}
     peerDependencies:
@@ -7716,6 +7789,10 @@ packages:
   text-encoding-utf-8@1.0.2:
     resolution: {integrity: sha512-8bw4MY9WjdsD2aMtO0OzOCY3pXGYNx2d2FfHRVUKkiCPDWjKuOlhLVASS+pD7VkLTVjW268LYJHwsnPFlBpbAg==}
 
+  text-encoding@0.7.0:
+    resolution: {integrity: sha512-oJQ3f1hrOnbRLOcwKz0Liq2IcrvDeZRHXhd9RgLrsT+DjWY/nty1Hi7v3dtkaEYbPYe0mUoOfzRrMwfXXwgPUA==}
+    deprecated: no longer maintained
+
   thread-stream@3.2.0:
     resolution: {integrity: sha512-zLBvqpwr4Esa0kRjcrzGU6zL25lePWaCLMx0RQFrmteozIfeNdaMLpG5U7PeHzvlFkAWaRKA9/KVW4F60iB+qw==}
 
@@ -8146,6 +8223,10 @@ packages:
 
   web-streams-polyfill@3.3.3:
     resolution: {integrity: sha512-d2JWLCivmZYTSIoge9MsgFCZrt571BikcWGYkjC1khllbTeDlGqZ2D8vD8E/lJa8WGWbb7Plm8/XJYV7IJHZZw==}
+    engines: {node: '>= 8'}
+
+  web-streams-polyfill@4.3.0:
+    resolution: {integrity: sha512-/Gnggvj9oSrEvJbDyyPtAnxBt5fGQM2iWOKQNu7ie1OxDgK40iZpyV3TKaRiEzVj1oA1UxKnEy9XPXh6PW3eVw==}
     engines: {node: '>= 8'}
 
   webidl-conversions@3.0.1:
@@ -9329,10 +9410,32 @@ snapshots:
       zod: 3.25.76
       zod-to-json-schema: 3.25.2(zod@3.25.76)
 
+  '@copilotkit/a2ui-renderer@1.60.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+    dependencies:
+      '@a2ui/web_core': 0.9.0
+      clsx: 2.1.1
+      react: 19.2.3
+      react-dom: 19.2.3(react@19.2.3)
+      zod: 3.25.76
+      zod-to-json-schema: 3.25.2(zod@3.25.76)
+
   '@copilotkit/core@1.59.5(@ag-ui/core@0.0.53)(zod@4.4.3)':
     dependencies:
       '@ag-ui/client': 0.0.53
       '@copilotkit/shared': 1.59.5(@ag-ui/core@0.0.53)
+      '@tanstack/pacer': 0.20.1
+      phoenix: 1.8.8
+      rxjs: 7.8.1
+      zod-to-json-schema: 3.25.2(zod@4.4.3)
+    transitivePeerDependencies:
+      - '@ag-ui/core'
+      - encoding
+      - zod
+
+  '@copilotkit/core@1.60.0(@ag-ui/core@0.0.56)(zod@4.4.3)':
+    dependencies:
+      '@ag-ui/client': 0.0.56
+      '@copilotkit/shared': 1.60.0(@ag-ui/core@0.0.56)
       '@tanstack/pacer': 0.20.1
       phoenix: 1.8.8
       rxjs: 7.8.1
@@ -9385,6 +9488,75 @@ snapshots:
       - micromark-util-types
       - supports-color
 
+  '@copilotkit/react-core@1.60.0(@types/mdast@4.0.4)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(zod@4.4.3)':
+    dependencies:
+      '@ag-ui/client': 0.0.56
+      '@ag-ui/core': 0.0.56
+      '@copilotkit/a2ui-renderer': 1.60.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@copilotkit/core': 1.60.0(@ag-ui/core@0.0.56)(zod@4.4.3)
+      '@copilotkit/runtime-client-gql': 1.60.0(@ag-ui/core@0.0.56)(react@19.2.3)
+      '@copilotkit/shared': 1.60.0(@ag-ui/core@0.0.56)
+      '@copilotkit/web-inspector': 1.60.0(@ag-ui/core@0.0.56)(zod@4.4.3)
+      '@jetbrains/websandbox': 1.2.1
+      '@lit-labs/react': 2.1.3(@types/react@19.2.17)
+      '@radix-ui/react-dropdown-menu': 2.1.17(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@radix-ui/react-slot': 1.2.5(@types/react@19.2.17)(react@19.2.3)
+      '@radix-ui/react-tooltip': 1.2.9(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@scarf/scarf': 1.4.0
+      '@tanstack/react-virtual': 3.14.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      class-variance-authority: 0.7.1
+      clsx: 2.1.1
+      katex: 0.16.47
+      lucide-react: 0.525.0(react@19.2.3)
+      react: 19.2.3
+      react-dom: 19.2.3(react@19.2.3)
+      react-markdown: 8.0.7(@types/react@19.2.17)(react@19.2.3)
+      rxjs: 7.8.1
+      streamdown: 1.6.11(@types/mdast@4.0.4)(react@19.2.3)
+      tailwind-merge: 3.6.0
+      tw-animate-css: 1.4.0
+      untruncate-json: 0.0.1
+      use-stick-to-bottom: 1.1.6(react@19.2.3)
+      zod: 4.4.3
+      zod-to-json-schema: 3.25.2(zod@4.4.3)
+    transitivePeerDependencies:
+      - '@types/mdast'
+      - '@types/react'
+      - '@types/react-dom'
+      - encoding
+      - graphql
+      - micromark
+      - micromark-util-types
+      - supports-color
+
+  '@copilotkit/react-native@1.60.0(37e4a4efaff41fa5b5ff588b1b2fdfc9)':
+    dependencies:
+      '@ag-ui/client': 0.0.56
+      '@copilotkit/core': 1.60.0(@ag-ui/core@0.0.56)(zod@4.4.3)
+      '@copilotkit/react-core': 1.60.0(@types/mdast@4.0.4)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(zod@4.4.3)
+      '@copilotkit/shared': 1.60.0(@ag-ui/core@0.0.56)
+      react: 19.2.3
+      react-native: 0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.17)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6)
+      text-encoding: 0.7.0
+      web-streams-polyfill: 4.3.0
+    optionalDependencies:
+      expo-document-picker: 56.0.4(expo@56.0.11)
+      expo-file-system: 56.0.8(expo@56.0.11)(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.17)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))
+      react-native-gesture-handler: 2.31.2(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.17)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))(react@19.2.3)
+      react-native-reanimated: 4.3.1(react-native-worklets@0.8.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.17)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.17)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))(react@19.2.3)
+      zod: 4.4.3
+    transitivePeerDependencies:
+      - '@ag-ui/core'
+      - '@types/mdast'
+      - '@types/react'
+      - '@types/react-dom'
+      - encoding
+      - graphql
+      - micromark
+      - micromark-util-types
+      - react-dom
+      - supports-color
+
   '@copilotkit/runtime-client-gql@1.59.5(@ag-ui/core@0.0.53)(graphql@16.14.2)(react@19.2.7)':
     dependencies:
       '@copilotkit/shared': 1.59.5(@ag-ui/core@0.0.53)
@@ -9392,6 +9564,18 @@ snapshots:
       react: 19.2.7
       untruncate-json: 0.0.1
       urql: 4.2.2(@urql/core@5.2.0(graphql@16.14.2))(react@19.2.7)
+    transitivePeerDependencies:
+      - '@ag-ui/core'
+      - encoding
+      - graphql
+
+  '@copilotkit/runtime-client-gql@1.60.0(@ag-ui/core@0.0.56)(react@19.2.3)':
+    dependencies:
+      '@copilotkit/shared': 1.60.0(@ag-ui/core@0.0.56)
+      '@urql/core': 5.2.0(graphql@16.14.2)
+      react: 19.2.3
+      untruncate-json: 0.0.1
+      urql: 4.2.2(@urql/core@5.2.0)(react@19.2.3)
     transitivePeerDependencies:
       - '@ag-ui/core'
       - encoding
@@ -9474,10 +9658,38 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
+  '@copilotkit/shared@1.60.0(@ag-ui/core@0.0.56)':
+    dependencies:
+      '@ag-ui/client': 0.0.56
+      '@ag-ui/core': 0.0.56
+      '@copilotkit/license-verifier': 0.4.2
+      '@segment/analytics-node': 2.3.0
+      '@standard-schema/spec': 1.1.0
+      chalk: 4.1.2
+      graphql: 16.14.2
+      partial-json: 0.1.7
+      uuid: 11.1.1
+      zod: 3.25.76
+      zod-to-json-schema: 3.25.2(zod@3.25.76)
+    transitivePeerDependencies:
+      - encoding
+
   '@copilotkit/web-inspector@1.59.5(@ag-ui/core@0.0.53)(zod@4.4.3)':
     dependencies:
       '@ag-ui/client': 0.0.53
       '@copilotkit/core': 1.59.5(@ag-ui/core@0.0.53)(zod@4.4.3)
+      lit: 3.3.3
+      lucide: 0.525.0
+      marked: 12.0.2
+    transitivePeerDependencies:
+      - '@ag-ui/core'
+      - encoding
+      - zod
+
+  '@copilotkit/web-inspector@1.60.0(@ag-ui/core@0.0.56)(zod@4.4.3)':
+    dependencies:
+      '@ag-ui/client': 0.0.56
+      '@copilotkit/core': 1.60.0(@ag-ui/core@0.0.56)(zod@4.4.3)
       lit: 3.3.3
       lucide: 0.525.0
       marked: 12.0.2
@@ -12331,6 +12543,12 @@ snapshots:
       '@tanstack/query-core': 5.101.0
       react: 19.2.7
 
+  '@tanstack/react-virtual@3.14.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+    dependencies:
+      '@tanstack/virtual-core': 3.17.0
+      react: 19.2.3
+      react-dom: 19.2.3(react@19.2.3)
+
   '@tanstack/react-virtual@3.14.2(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@tanstack/virtual-core': 3.17.0
@@ -13928,6 +14146,10 @@ snapshots:
       expo-dev-menu-interface: 56.0.1(expo@56.0.11)
       react-native: 0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.17)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6)
 
+  expo-document-picker@56.0.4(expo@56.0.11):
+    dependencies:
+      expo: 56.0.11(@babel/core@7.29.7)(@expo/dom-webview@56.0.5)(@expo/metro-runtime@56.0.15)(bufferutil@4.1.0)(expo-router@56.2.10)(react-dom@19.2.3(react@19.2.3))(react-native-web@0.21.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-native-worklets@0.8.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.17)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.17)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))(react@19.2.3)(typescript@6.0.3)(utf-8-validate@6.0.6)
+
   expo-file-system@56.0.8(expo@56.0.11)(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.17)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6)):
     dependencies:
       expo: 56.0.11(@babel/core@7.29.7)(@expo/dom-webview@56.0.5)(@expo/metro-runtime@56.0.15)(bufferutil@4.1.0)(expo-router@56.2.10)(react-dom@19.2.3(react@19.2.3))(react-native-web@0.21.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-native-worklets@0.8.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.17)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.17)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))(react@19.2.3)(typescript@6.0.3)(utf-8-validate@6.0.6)
@@ -15095,9 +15317,17 @@ snapshots:
       react-native: 0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.17)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6)
       react-native-svg: 15.15.4(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.17)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))(react@19.2.3)
 
+  lucide-react@0.525.0(react@19.2.3):
+    dependencies:
+      react: 19.2.3
+
   lucide-react@0.525.0(react@19.2.7):
     dependencies:
       react: 19.2.7
+
+  lucide-react@0.542.0(react@19.2.3):
+    dependencies:
+      react: 19.2.3
 
   lucide-react@0.542.0(react@19.2.7):
     dependencies:
@@ -16555,6 +16785,28 @@ snapshots:
       '@types/react': 18.3.31
       '@types/react-dom': 18.3.7(@types/react@18.3.31)
 
+  react-markdown@8.0.7(@types/react@19.2.17)(react@19.2.3):
+    dependencies:
+      '@types/hast': 2.3.10
+      '@types/prop-types': 15.7.15
+      '@types/react': 19.2.17
+      '@types/unist': 2.0.11
+      comma-separated-tokens: 2.0.3
+      hast-util-whitespace: 2.0.1
+      prop-types: 15.8.1
+      property-information: 6.5.0
+      react: 19.2.3
+      react-is: 18.3.1
+      remark-parse: 10.0.2
+      remark-rehype: 10.1.0
+      space-separated-tokens: 2.0.2
+      style-to-object: 0.4.4
+      unified: 10.1.2
+      unist-util-visit: 4.1.2
+      vfile: 5.3.7
+    transitivePeerDependencies:
+      - supports-color
+
   react-markdown@8.0.7(@types/react@19.2.17)(react@19.2.7):
     dependencies:
       '@types/hast': 2.3.10
@@ -17362,6 +17614,38 @@ snapshots:
       - micromark-util-types
       - supports-color
 
+  streamdown@1.6.11(@types/mdast@4.0.4)(react@19.2.3):
+    dependencies:
+      clsx: 2.1.1
+      hast: 1.0.0
+      hast-util-to-jsx-runtime: 2.3.6
+      html-url-attributes: 3.0.1
+      katex: 0.16.47
+      lucide-react: 0.542.0(react@19.2.3)
+      marked: 16.4.2
+      mermaid: 11.15.0
+      react: 19.2.3
+      rehype-harden: 1.1.8
+      rehype-katex: 7.0.1
+      rehype-raw: 7.0.0
+      rehype-sanitize: 6.0.0
+      remark-cjk-friendly: 1.2.3(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(unified@11.0.5)
+      remark-cjk-friendly-gfm-strikethrough: 1.2.3(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(unified@11.0.5)
+      remark-gfm: 4.0.1
+      remark-math: 6.0.0
+      remark-parse: 11.0.0
+      remark-rehype: 11.1.2
+      remend: 1.0.1
+      shiki: 3.23.0
+      tailwind-merge: 3.6.0
+      unified: 11.0.5
+      unist-util-visit: 5.1.0
+    transitivePeerDependencies:
+      - '@types/mdast'
+      - micromark
+      - micromark-util-types
+      - supports-color
+
   streamdown@2.5.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
     dependencies:
       clsx: 2.1.1
@@ -17507,6 +17791,8 @@ snapshots:
       source-map-support: 0.5.21
 
   text-encoding-utf-8@1.0.2: {}
+
+  text-encoding@0.7.0: {}
 
   thread-stream@3.2.0:
     dependencies:
@@ -17722,6 +18008,12 @@ snapshots:
       react: 19.2.7
       wonka: 6.3.6
 
+  urql@4.2.2(@urql/core@5.2.0)(react@19.2.3):
+    dependencies:
+      '@urql/core': 5.2.0(graphql@16.14.2)
+      react: 19.2.3
+      wonka: 6.3.6
+
   use-callback-ref@1.3.3(@types/react@19.2.17)(react@19.2.3):
     dependencies:
       react: 19.2.3
@@ -17755,6 +18047,10 @@ snapshots:
       tslib: 2.8.1
     optionalDependencies:
       '@types/react': 19.2.17
+
+  use-stick-to-bottom@1.1.6(react@19.2.3):
+    dependencies:
+      react: 19.2.3
 
   use-stick-to-bottom@1.1.6(react@19.2.7):
     dependencies:
@@ -17909,6 +18205,8 @@ snapshots:
   web-namespaces@2.0.1: {}
 
   web-streams-polyfill@3.3.3: {}
+
+  web-streams-polyfill@4.3.0: {}
 
   webidl-conversions@3.0.1: {}
 
