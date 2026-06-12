@@ -45,8 +45,7 @@ def test_oralboards_state_tools_write_canvas_state() -> None:
     assert context.state["phase"] == "complete"
 
 
-def test_on_before_agent_preserves_existing_state_and_adds_defaults(monkeypatch) -> None:
-    monkeypatch.setattr(main, "apply_a2a_auth_metadata_to_state", lambda _context: {})
+def test_on_before_agent_preserves_existing_state_and_adds_defaults() -> None:
     callback_context = SimpleNamespace(state={"case": "existing"})
 
     main.on_before_agent(callback_context)

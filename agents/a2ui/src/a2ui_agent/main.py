@@ -6,16 +6,8 @@ import os
 import time
 from typing import Any
 
-from a2a.server.apps.jsonrpc import A2AFastAPIApplication
-from a2a.server.request_handlers import DefaultRequestHandler
-from a2a.types import AgentCapabilities, AgentCard, AgentSkill
 from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
-from agent_common.a2a import (
-    apply_a2a_auth_metadata_to_state,
-    create_a2a_agent_executor,
-)
 from agent_common.session_service import SessionServiceContainer, create_session_service
-from agent_common.task_store import create_task_store
 from agent_common.tools import shared_after_tool_callback
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -29,7 +21,6 @@ from google.adk.auth.credential_service.in_memory_credential_service import (
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.models import LlmRequest, LlmResponse
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.runners import Runner
 from google.adk.tools import ToolContext
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
@@ -89,7 +80,6 @@ async def extract_demo_state(request, _input_data) -> dict[str, Any]:
 
 
 def on_before_agent(callback_context: CallbackContext) -> None:
-    apply_a2a_auth_metadata_to_state(callback_context)
     for key, default in _DEFAULT_STATE.items():
         if key not in callback_context.state:
             callback_context.state[key] = default
@@ -204,39 +194,6 @@ _artifact_svc = InMemoryArtifactService()
 _memory_svc = InMemoryMemoryService()
 _credential_svc = InMemoryCredentialService()
 
-_a2a_runner = Runner(
-    app_name=a2ui_agent.name,
-    agent=a2ui_agent,
-    artifact_service=_artifact_svc,
-    session_service=_shared_session_svc,
-    memory_service=_memory_svc,
-    credential_service=_credential_svc,
-)
-
-
-def _a2a_agent_card() -> AgentCard:
-    return AgentCard(
-        name="A2UI Showcase Agent",
-        description=(
-            "Renders declarative A2UI surfaces over AG-UI from a Google ADK agent."
-        ),
-        version="1.0.0",
-        url=AGENT_PUBLIC_URL,
-        default_input_modes=["text/plain"],
-        default_output_modes=["text/plain"],
-        capabilities=AgentCapabilities(streaming=True),
-        skills=[
-            AgentSkill(
-                id="a2ui_showcase",
-                name="A2UI Showcase",
-                description="Creates rich A2UI demo surfaces through CopilotKit AG-UI.",
-                tags=["a2ui", "ag-ui", "adk", "generative-ui"],
-                input_modes=["text/plain"],
-                output_modes=["text/plain"],
-            ),
-        ],
-    )
-
 
 adk_a2ui_agent = ADKAgent(
     adk_agent=a2ui_agent,
@@ -286,16 +243,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-_a2a_card = _a2a_agent_card()
-_a2a_handler = DefaultRequestHandler(
-    agent_executor=create_a2a_agent_executor(_a2a_runner),
-    task_store=create_task_store(),
-)
-A2AFastAPIApplication(
-    agent_card=_a2a_card,
-    http_handler=_a2a_handler,
-).add_routes_to_app(app)
 
 add_adk_fastapi_endpoint(
     app,

@@ -1,34 +1,23 @@
-"""Wellness Planning Agent - orchestrates meal and workout plans over A2A."""
+"""Wellness Planning Agent - orchestrates meal and workout plans in-process."""
 
-import contextvars
 import datetime
 import json
 import logging
 import os
 import time
 
-from a2a.server.apps.jsonrpc import A2AFastAPIApplication
-from a2a.server.request_handlers import DefaultRequestHandler
-from a2a.types import AgentCapabilities, AgentCard, AgentSkill
 from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
 from ag_ui_adk.config import PredictStateMapping
 from ag_ui_adk.request_state_service import RequestStateSessionService
-from agent_common.a2a import (
-    apply_a2a_auth_metadata_to_state,
-    create_a2a_agent_executor,
-)
+from agent_common.invocation_state import set_invocation_temp_state
 from agent_common.session_service import SessionServiceContainer, create_session_service
-from agent_common.task_store import create_task_store
 from agent_common.tools import shared_after_tool_callback
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fitness_agent.main import build_agent as build_fitness_agent
 from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
-from google.adk.agents.remote_a2a_agent import (
-    AGENT_CARD_WELL_KNOWN_PATH,
-    RemoteA2aAgent,
-)
 from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
 from google.adk.auth.credential_service.in_memory_credential_service import (
     InMemoryCredentialService,
@@ -36,14 +25,12 @@ from google.adk.auth.credential_service.in_memory_credential_service import (
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.models import LlmRequest, LlmResponse
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.runners import Runner
 from google.adk.tools import ToolContext
 from google.adk.tools.agent_tool import AgentTool
+from grocery_agent.main import build_agent as build_grocery_agent
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.sdk.resources import Resource
-
-from .utils import FITNESS_AGENT_A2A_URL, GROCERY_AGENT_A2A_URL
 
 load_dotenv()
 
@@ -104,9 +91,11 @@ def extract_identity_state(request) -> dict:
     kroger_token = request.headers.get(KROGER_TOKEN_HEADER)
     if kroger_token:
         state[KROGER_TOKEN_STATE_KEY] = kroger_token
+        state["kroger_connected"] = True
     strava_token = request.headers.get(STRAVA_TOKEN_HEADER)
     if strava_token:
         state[STRAVA_TOKEN_STATE_KEY] = strava_token
+        state["strava_connected"] = True
     return state
 
 
@@ -115,7 +104,6 @@ async def extract_wellness_state(request, _input_data) -> dict:
 
 
 def on_before_agent(callback_context: CallbackContext) -> None:
-    apply_a2a_auth_metadata_to_state(callback_context)
     for key, default in _DEFAULT_STATE.items():
         if key not in callback_context.state:
             callback_context.state[key] = default
@@ -138,22 +126,8 @@ def before_model_modifier(
     return None
 
 
-def _agent_card_url(base_url: str) -> str:
-    return base_url.rstrip("/") + AGENT_CARD_WELL_KNOWN_PATH
-
-
-# Set once per invocation by _TempStateSessionService._inject when the ADK
-# runner fetches the session. AgentTool's child runner (InMemorySessionService)
-# strips temp: keys, but inherits this async context, so the metadata provider
-# can read credentials here without needing before_tool_callback.
-_invocation_temp_state: contextvars.ContextVar[dict | None] = contextvars.ContextVar(
-    "_invocation_temp_state",
-    default=None,
-)
-
-
 class _TempStateSessionService(RequestStateSessionService):
-    """Sets _invocation_temp_state when temp: keys are injected into a session."""
+    """Sets invocation temp state when temp: keys are injected into a session."""
 
     def _inject(self, session, key):
         session = super()._inject(session, key)
@@ -166,50 +140,12 @@ class _TempStateSessionService(RequestStateSessionService):
                 if isinstance(k, str) and k.startswith("temp:")
             }
             if temp:
-                _invocation_temp_state.set(temp)
+                set_invocation_temp_state(temp)
         return session
 
 
-def _remote_a2a_metadata_provider(invocation_context, _message) -> dict[str, str]:
-    state = invocation_context.session.state
-    fallback = _invocation_temp_state.get() or {}
-    kroger_token = state.get(KROGER_TOKEN_STATE_KEY) or fallback.get(
-        KROGER_TOKEN_STATE_KEY,
-    )
-    strava_token = state.get(STRAVA_TOKEN_STATE_KEY) or fallback.get(
-        STRAVA_TOKEN_STATE_KEY,
-    )
-    user_id = state.get("user_id") or fallback.get("user_id") or "anonymous"
-    log.info(
-        "[metadata_provider] kroger_token present: %s | strava_token present: %s | source: %s",
-        bool(kroger_token),
-        bool(strava_token),
-        "session" if state.get(KROGER_TOKEN_STATE_KEY) else "contextvar",
-    )
-    return {
-        "user_id": str(user_id),
-        "kroger_access_token": str(kroger_token or ""),
-        "strava_access_token": str(strava_token or ""),
-    }
-
-
-grocery_remote_agent = RemoteA2aAgent(
-    name="grocery_remote_agent",
-    description="Plans one-week meal plans and shopping notes.",
-    agent_card=_agent_card_url(GROCERY_AGENT_A2A_URL),
-    a2a_request_meta_provider=_remote_a2a_metadata_provider,
-    use_legacy=False,
-    timeout=300.0,
-)
-
-fitness_remote_agent = RemoteA2aAgent(
-    name="fitness_remote_agent",
-    description="Plans one-week workout, recovery, strength, and mobility schedules.",
-    agent_card=_agent_card_url(FITNESS_AGENT_A2A_URL),
-    a2a_request_meta_provider=_remote_a2a_metadata_provider,
-    use_legacy=False,
-    timeout=300.0,
-)
+grocery_subagent = build_grocery_agent()
+fitness_subagent = build_fitness_agent()
 
 
 def set_weekly_wellness_plan(tool_context: ToolContext, plan: str) -> dict:
@@ -242,25 +178,25 @@ You are a wellness planning orchestrator.
 Your job is to create a practical one-week plan that combines meals and workouts.
 The source of truth is shared state, not chat output.
 
-You have two agent tools: fitness_remote_agent and grocery_remote_agent.
+You have two agent tools: fitness_agent and grocery_agent.
 Call them with a plain-English request string. They return their result as text.
 
 IMPORTANT: Call these tools one at a time, in order. Do NOT call both in the
-same turn. Do NOT call grocery_remote_agent until you have received and read the
-full response from fitness_remote_agent.
+same turn. Do NOT call grocery_agent until you have received and read the
+full response from fitness_agent.
 
 Workflow — follow these steps strictly in sequence:
 
 Step 1. Call get_current_date. Note the date.
 
-Step 2. Call fitness_remote_agent with a request to: (a) summarise recent Strava
+Step 2. Call fitness_agent with a request to: (a) summarise recent Strava
         activities, (b) build a DETAILED day-by-day training schedule for this week
         starting on that date — each day with session type, duration/distance or
         sets x reps, and target intensity — and (c) recommend ONE specific named hike
         for the week, including its distance, elevation gain, difficulty, and why it
         suits this athlete. STOP and wait for the full response before continuing.
 
-Step 3. Once you have the fitness response, call grocery_remote_agent.
+Step 3. Once you have the fitness response, call grocery_agent.
         Your request MUST paste the full training schedule (and the recommended
         hike) from Step 2 so grocery can tailor meals to match (protein on strength
         days, lighter meals before hard sessions, extra fuel/hydration on the hike
@@ -308,8 +244,8 @@ wellness_agent = LlmAgent(
         set_weekly_wellness_plan,
         mark_plan_ready,
         AGUIToolset(),
-        AgentTool(agent=fitness_remote_agent),
-        AgentTool(agent=grocery_remote_agent),
+        AgentTool(agent=fitness_subagent),
+        AgentTool(agent=grocery_subagent),
     ],
 )
 
@@ -328,40 +264,6 @@ _session_container = SessionServiceContainer()
 _artifact_svc = InMemoryArtifactService()
 _memory_svc = InMemoryMemoryService()
 _credential_svc = InMemoryCredentialService()
-
-_a2a_runner = Runner(
-    app_name=wellness_agent.name,
-    agent=wellness_agent,
-    artifact_service=_artifact_svc,
-    session_service=_shared_session_svc,
-    memory_service=_memory_svc,
-    credential_service=_credential_svc,
-)
-
-
-def _a2a_agent_card() -> AgentCard:
-    return AgentCard(
-        name="Wellness Planning Agent",
-        description=(
-            "Creates a one-week wellness plan by coordinating meal planning "
-            "with grocery and workout planning with fitness over A2A."
-        ),
-        version="1.0.0",
-        url=AGENT_PUBLIC_URL,
-        default_input_modes=["text/plain"],
-        default_output_modes=["text/plain"],
-        capabilities=AgentCapabilities(streaming=True),
-        skills=[
-            AgentSkill(
-                id="wellness_planning",
-                name="Wellness Planning",
-                description="Plans next week's meals and workouts by delegating over A2A.",
-                tags=["wellness", "meal-planning", "training-planning"],
-                input_modes=["text/plain"],
-                output_modes=["text/plain"],
-            ),
-        ],
-    )
 
 
 adk_wellness_agent = ADKAgent(
@@ -413,16 +315,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-_a2a_card = _a2a_agent_card()
-_a2a_handler = DefaultRequestHandler(
-    agent_executor=create_a2a_agent_executor(_a2a_runner),
-    task_store=create_task_store(),
-)
-A2AFastAPIApplication(
-    agent_card=_a2a_card,
-    http_handler=_a2a_handler,
-).add_routes_to_app(app)
 
 add_adk_fastapi_endpoint(
     app,

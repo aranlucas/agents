@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
+from agent_common.invocation_state import get_invocation_temp, set_invocation_temp_state
 from starlette.datastructures import Headers
 from wellness_agent import main
 
@@ -24,7 +25,9 @@ def test_extract_identity_state_reads_user_and_auth_tokens() -> None:
     assert result == {
         "user_id": "user_123",
         "temp:kroger_token": "kroger",
+        "kroger_connected": True,
         "temp:strava_token": "strava",
+        "strava_connected": True,
     }
 
 
@@ -57,8 +60,7 @@ def test_before_model_modifier_prefixes_current_state() -> None:
     assert "Original" in request.config.system_instruction
 
 
-def test_on_before_agent_adds_defaults(monkeypatch) -> None:
-    monkeypatch.setattr(main, "apply_a2a_auth_metadata_to_state", lambda _context: {})
+def test_on_before_agent_adds_defaults() -> None:
     callback_context = SimpleNamespace(state={"status": "planning"})
     main.on_before_agent(callback_context)
     assert callback_context.state["status"] == "planning"
@@ -66,15 +68,13 @@ def test_on_before_agent_adds_defaults(monkeypatch) -> None:
     assert callback_context.state["weekly_plan"] == ""
 
 
-def test_temp_state_session_service_captures_temp_keys(monkeypatch) -> None:
-    token = main._invocation_temp_state.set(None)
+def test_temp_state_session_service_captures_temp_keys() -> None:
+    set_invocation_temp_state(None)
     session = SimpleNamespace(state={"temp:kroger_token": "kroger", "user_id": "user"})
     service = main._TempStateSessionService(object())
-    try:
-        assert service._inject(session, "abc") is session
-        assert main._invocation_temp_state.get() == {"temp:kroger_token": "kroger"}
-    finally:
-        main._invocation_temp_state.reset(token)
+    assert service._inject(session, "abc") is session
+    assert get_invocation_temp("temp:kroger_token", {}) == "kroger"
+    set_invocation_temp_state(None)
 
 
 @pytest.mark.asyncio

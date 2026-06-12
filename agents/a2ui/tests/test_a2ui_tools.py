@@ -31,8 +31,7 @@ def test_before_model_modifier_prefixes_current_state() -> None:
     assert "Original" in request.config.system_instruction
 
 
-def test_on_before_agent_adds_default_state(monkeypatch) -> None:
-    monkeypatch.setattr(main, "apply_a2a_auth_metadata_to_state", lambda _context: {})
+def test_on_before_agent_adds_default_state() -> None:
     callback_context = SimpleNamespace(state={"status": "ready"})
     main.on_before_agent(callback_context)
     assert callback_context.state["status"] == "ready"

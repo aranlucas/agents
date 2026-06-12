@@ -88,8 +88,6 @@ services:
       PORT: 8003
       ADK_SESSION_DB_PATH: /data/adk_sessions.sqlite
       AGENT_PUBLIC_URL: http://wellness:8003
-      GROCERY_AGENT_A2A_URL: http://grocery:8001/
-      FITNESS_AGENT_A2A_URL: http://fitness:8002/
     volumes:
       - adk-session-data:/data
 

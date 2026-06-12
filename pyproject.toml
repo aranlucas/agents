@@ -9,6 +9,8 @@ package = false
 
 [tool.uv.sources]
 agent-common = { workspace = true }
+fitness-agent = { workspace = true }
+grocery-agent = { workspace = true }
 
 [tool.uv.workspace]
 members = [

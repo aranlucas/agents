@@ -20,14 +20,9 @@ import logging
 import os
 import time
 
-from a2a.server.apps.jsonrpc import A2AFastAPIApplication
-from a2a.server.request_handlers import DefaultRequestHandler
-from a2a.types import AgentCapabilities, AgentCard, AgentSkill
 from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
 from ag_ui_adk.config import PredictStateMapping
-from agent_common.a2a import create_a2a_agent_executor
 from agent_common.session_service import SessionServiceContainer, create_session_service
-from agent_common.task_store import create_task_store
 from agent_common.tools import shared_after_tool_callback
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -40,7 +35,6 @@ from google.adk.auth.credential_service.in_memory_credential_service import (
 )
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.runners import Runner
 from google.adk.tools import ToolContext
 from google.adk.utils import instructions_utils
 from opentelemetry import trace
@@ -319,46 +313,12 @@ COLLAB_PREDICT_STATE = [
 ]
 
 
-# Shared SQLite session service — used by both AG-UI and A2A paths.
+# Shared SQLite session service.
 _shared_session_svc = create_session_service()
 _session_container = SessionServiceContainer()
 _artifact_svc = InMemoryArtifactService()
 _memory_svc = InMemoryMemoryService()
 _credential_svc = InMemoryCredentialService()
-
-_a2a_runner = Runner(
-    app_name=collab_trip_agent.name,
-    agent=collab_trip_agent,
-    artifact_service=_artifact_svc,
-    session_service=_shared_session_svc,
-    memory_service=_memory_svc,
-    credential_service=_credential_svc,
-)
-
-
-def _a2a_agent_card() -> AgentCard:
-    return AgentCard(
-        name="Travel Planning Agent",
-        description=(
-            "Co-plans multi-day trips with real flight, hotel, and destination data. "
-            "Produces a structured day-by-day itinerary."
-        ),
-        version="1.0.0",
-        url=AGENT_PUBLIC_URL,
-        default_input_modes=["text/plain"],
-        default_output_modes=["text/plain"],
-        capabilities=AgentCapabilities(streaming=True),
-        skills=[
-            AgentSkill(
-                id="trip_planning",
-                name="Trip Planning",
-                description="Plans multi-day trips: flights, hotels, itinerary, budget.",
-                tags=["travel", "trip-planning"],
-                input_modes=["text/plain"],
-                output_modes=["text/plain"],
-            ),
-        ],
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -413,17 +373,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# A2A — JSON-RPC at POST / and agent card at GET /.well-known/agent-card.json
-_a2a_card = _a2a_agent_card()
-_a2a_handler = DefaultRequestHandler(
-    agent_executor=create_a2a_agent_executor(_a2a_runner),
-    task_store=create_task_store(),
-)
-A2AFastAPIApplication(
-    agent_card=_a2a_card,
-    http_handler=_a2a_handler,
-).add_routes_to_app(app)
 
 add_adk_fastapi_endpoint(
     app,
