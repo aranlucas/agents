@@ -26,3 +26,19 @@ def test_subapp_health_reachable_under_prefix():
     assert client.get("/travel/health").status_code == 200
     assert client.get("/grocery/health").status_code == 200
     assert client.get("/oralboards/health").status_code == 200
+
+
+def test_agui_requires_token_when_clerk_auth_enabled(monkeypatch):
+    monkeypatch.setenv(
+        "CLERK_JWKS_URL",
+        "https://example.clerk.accounts.dev/.well-known/jwks.json",
+    )
+    import importlib
+
+    module = importlib.reload(main)
+    client = TestClient(module.app)
+    assert client.get("/health").status_code == 200
+    assert client.post("/travel/agui", json={}).status_code == 401
+
+    monkeypatch.delenv("CLERK_JWKS_URL")
+    importlib.reload(main)

@@ -99,6 +99,7 @@ dependencies = [
     { name = "google-adk" },
     { name = "google-genai" },
     { name = "opentelemetry-instrumentation-sqlalchemy" },
+    { name = "pyjwt", extra = ["crypto"] },
     { name = "sqlalchemy", extra = ["asyncio"] },
 ]
 
@@ -109,6 +110,7 @@ requires-dist = [
     { name = "google-adk", specifier = ">=2.2.0" },
     { name = "google-genai" },
     { name = "opentelemetry-instrumentation-sqlalchemy", specifier = ">=0.50b0" },
+    { name = "pyjwt", extras = ["crypto"], specifier = ">=2.10" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0" },
 ]
 

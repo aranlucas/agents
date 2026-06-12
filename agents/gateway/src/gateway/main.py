@@ -4,6 +4,7 @@ import logging
 import os
 
 from a2ui_agent.main import app as a2ui_app
+from agent_common.clerk_auth import ClerkAuthMiddleware, clerk_auth_enabled
 from agent_common.session_service import SessionServiceContainer
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -32,6 +33,9 @@ MOUNTS = {
 
 for prefix, sub_app in MOUNTS.items():
     app.mount(prefix, sub_app)
+
+if clerk_auth_enabled():
+    app.add_middleware(ClerkAuthMiddleware, public_prefixes=("/resume",))
 
 
 @app.get("/health")
