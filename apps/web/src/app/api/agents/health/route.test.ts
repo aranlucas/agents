@@ -2,12 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/env", () => ({
   env: {
-    TRAVEL_AGENT_URL: "http://travel.test",
-    GROCERY_AGENT_URL: "http://grocery.test",
-    FITNESS_AGENT_URL: "http://fitness.test",
-    WELLNESS_AGENT_URL: "http://wellness.test",
-    ORALBOARDS_AGENT_URL: "http://oralboards.test",
-    A2UI_AGENT_URL: "http://a2ui.test",
+    AGENTS_BASE_URL: "http://agents.test",
   },
 }));
 
@@ -27,6 +22,14 @@ describe("GET /api/agents/health", () => {
     const body = await response.json();
 
     expect(fetchMock).toHaveBeenCalledTimes(6);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://agents.test/travel/health",
+      expect.any(Object),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://agents.test/oralboards/health",
+      expect.any(Object),
+    );
     expect(body).toEqual({
       agents: {
         travel: "ok",

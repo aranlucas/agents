@@ -1,24 +1,22 @@
 import { NextResponse } from "next/server";
 import { env } from "@/env";
-import { agentHealthUrl } from "@/lib/agent-url";
+import { agentBaseUrl } from "@/lib/agent-url";
 
-const AGENT_URLS: Record<string, string> = {
-  travel: env.TRAVEL_AGENT_URL,
-  grocery: env.GROCERY_AGENT_URL,
-  fitness: env.FITNESS_AGENT_URL,
-  wellness: env.WELLNESS_AGENT_URL,
-  "oral-boards": env.ORALBOARDS_AGENT_URL,
-  a2ui: env.A2UI_AGENT_URL,
+const AGENT_PATHS = {
+  travel: "travel",
+  grocery: "grocery",
+  fitness: "fitness",
+  wellness: "wellness",
+  "oral-boards": "oralboards",
+  a2ui: "a2ui",
 };
 
 async function checkAgent(
   name: string,
-  baseUrl: string,
+  path: string,
 ): Promise<{ name: string; status: "ok" | "error" }> {
   try {
-    const res = await fetch(agentHealthUrl(baseUrl), {
-      // `baseUrl` may already include /agui in local env files.
-      // Normalize before probing health so both config styles work.
+    const res = await fetch(`${agentBaseUrl(env.AGENTS_BASE_URL)}/${path}/health`, {
       signal: AbortSignal.timeout(5000),
       cache: "no-store",
     });
@@ -30,7 +28,7 @@ async function checkAgent(
 
 export async function GET() {
   const results = await Promise.all(
-    Object.entries(AGENT_URLS).map(([name, url]) => checkAgent(name, url)),
+    Object.entries(AGENT_PATHS).map(([name, path]) => checkAgent(name, path)),
   );
 
   const agents = Object.fromEntries(results.map(({ name, status }) => [name, status]));

@@ -2,7 +2,7 @@ import { CopilotSseRuntime, createCopilotRuntimeHandler } from "@copilotkit/runt
 import { HttpAgent } from "@ag-ui/client";
 import { auth } from "@clerk/nextjs/server";
 import { env } from "@/env";
-import { agentAguiUrl } from "@/lib/agent-url";
+import { agentBaseUrl } from "@/lib/agent-url";
 import { getKrogerAccessToken } from "@/lib/kroger-token";
 import { getStravaAccessToken } from "@/lib/strava-token";
 
@@ -10,33 +10,25 @@ const CLERK_USER_ID_HEADER = "x-clerk-user-id";
 const KROGER_TOKEN_HEADER = "x-kroger-access-token";
 const STRAVA_TOKEN_HEADER = "x-strava-access-token";
 
+const AGENT_PATHS = {
+  travel: "travel",
+  grocery: "grocery",
+  fitness: "fitness",
+  wellness: "wellness",
+  "oral-boards": "oralboards",
+  a2ui: "a2ui",
+} as const;
+
 const runtime = new CopilotSseRuntime({
-  agents: {
-    travel: new HttpAgent({
-      url: agentAguiUrl(env.TRAVEL_AGENT_URL),
-      debug: env.COPILOTKIT_DEBUG,
-    }),
-    grocery: new HttpAgent({
-      url: agentAguiUrl(env.GROCERY_AGENT_URL),
-      debug: env.COPILOTKIT_DEBUG,
-    }),
-    fitness: new HttpAgent({
-      url: agentAguiUrl(env.FITNESS_AGENT_URL),
-      debug: env.COPILOTKIT_DEBUG,
-    }),
-    wellness: new HttpAgent({
-      url: agentAguiUrl(env.WELLNESS_AGENT_URL),
-      debug: env.COPILOTKIT_DEBUG,
-    }),
-    "oral-boards": new HttpAgent({
-      url: agentAguiUrl(env.ORALBOARDS_AGENT_URL),
-      debug: env.COPILOTKIT_DEBUG,
-    }),
-    a2ui: new HttpAgent({
-      url: agentAguiUrl(env.A2UI_AGENT_URL),
-      debug: env.COPILOTKIT_DEBUG,
-    }),
-  },
+  agents: Object.fromEntries(
+    Object.entries(AGENT_PATHS).map(([id, path]) => [
+      id,
+      new HttpAgent({
+        url: `${agentBaseUrl(env.AGENTS_BASE_URL)}/${path}/agui`,
+        debug: env.COPILOTKIT_DEBUG,
+      }),
+    ]),
+  ),
   a2ui: { injectA2UITool: true, agents: ["a2ui"] },
   debug: env.COPILOTKIT_DEBUG,
 });

@@ -69,12 +69,7 @@ const agentStates: Record<string, Record<string, unknown>> = {
 vi.mock("@/env", () => ({
   env: {
     CLERK_SECRET_KEY: "secret",
-    TRAVEL_AGENT_URL: "http://travel.test",
-    GROCERY_AGENT_URL: "http://grocery.test",
-    FITNESS_AGENT_URL: "http://fitness.test",
-    WELLNESS_AGENT_URL: "http://wellness.test",
-    ORALBOARDS_AGENT_URL: "http://oralboards.test",
-    A2UI_AGENT_URL: "http://a2ui.test",
+    AGENTS_BASE_URL: "http://agents.test",
     COPILOTKIT_DEBUG: false,
   },
 }));
