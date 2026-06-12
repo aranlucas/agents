@@ -11,6 +11,7 @@ package = false
 agent-common = { workspace = true }
 a2ui-agent = { workspace = true }
 fitness-agent = { workspace = true }
+gateway = { workspace = true }
 grocery-agent = { workspace = true }
 oralboards-agent = { workspace = true }
 resume-agent = { workspace = true }
