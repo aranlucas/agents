@@ -5,11 +5,7 @@ import { Case } from "@/types/case";
 import { Card, CardContent, CardHeader, CardTitle } from "@agents/ui";
 import { Badge } from "@agents/ui";
 import { buttonVariants } from "@agents/ui";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@agents/ui";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@agents/ui";
 import { InfoBox } from "@/components/InfoBox";
 import { IconLabel } from "@/components/IconLabel";
 import { ChevronDown, ChevronUp, BookOpen, Clock } from "lucide-react";
@@ -28,25 +24,19 @@ export default function CaseCard({ case: caseData }: CaseCardProps) {
   } as const;
 
   return (
-    <Card className="max-w-4xl mx-auto shadow-lg">
+    <Card className="mx-auto max-w-4xl shadow-lg">
       <CardHeader className="space-y-3 pb-4">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
-          <CardTitle className="text-xl sm:text-2xl md:text-3xl">
-            {caseData.title}
-          </CardTitle>
-          <Badge
-            variant={difficultyVariant[caseData.difficulty]}
-            className="self-start"
-          >
-            {caseData.difficulty.charAt(0).toUpperCase() +
-              caseData.difficulty.slice(1)}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <CardTitle className="text-xl sm:text-2xl md:text-3xl">{caseData.title}</CardTitle>
+          <Badge variant={difficultyVariant[caseData.difficulty]} className="self-start">
+            {caseData.difficulty.charAt(0).toUpperCase() + caseData.difficulty.slice(1)}
           </Badge>
         </div>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
+        <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs sm:gap-4 sm:text-sm">
           <IconLabel icon={BookOpen} className="font-medium">
             {caseData.category}
           </IconLabel>
-          <span className="hidden sm:inline text-border">|</span>
+          <span className="text-border hidden sm:inline">|</span>
           <IconLabel icon={Clock}>{caseData.estimatedTime} min</IconLabel>
         </div>
       </CardHeader>
@@ -54,10 +44,8 @@ export default function CaseCard({ case: caseData }: CaseCardProps) {
       <CardContent className="space-y-4 sm:space-y-6">
         {/* Case Presentation */}
         <section className="space-y-2 sm:space-y-3">
-          <h2 className="text-lg sm:text-xl font-semibold">
-            Case Presentation
-          </h2>
-          <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+          <h2 className="text-lg font-semibold sm:text-xl">Case Presentation</h2>
+          <p className="text-muted-foreground text-sm leading-relaxed sm:text-base">
             {caseData.presentation}
           </p>
         </section>
@@ -65,10 +53,8 @@ export default function CaseCard({ case: caseData }: CaseCardProps) {
         {/* Clinical Findings */}
         {caseData.clinicalFindings && caseData.clinicalFindings.length > 0 && (
           <section className="space-y-2 sm:space-y-3">
-            <h3 className="text-base sm:text-lg font-semibold">
-              Clinical Findings
-            </h3>
-            <ul className="list-disc list-inside space-y-1 text-sm sm:text-base text-muted-foreground">
+            <h3 className="text-base font-semibold sm:text-lg">Clinical Findings</h3>
+            <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm sm:text-base">
               {caseData.clinicalFindings.map((finding, index) => (
                 <li key={index}>{finding}</li>
               ))}
@@ -77,26 +63,21 @@ export default function CaseCard({ case: caseData }: CaseCardProps) {
         )}
 
         {/* Radiographic Findings */}
-        {caseData.radiographicFindings &&
-          caseData.radiographicFindings.length > 0 && (
-            <section className="space-y-2 sm:space-y-3">
-              <h3 className="text-base sm:text-lg font-semibold">
-                Radiographic Findings
-              </h3>
-              <ul className="list-disc list-inside space-y-1 text-sm sm:text-base text-muted-foreground">
-                {caseData.radiographicFindings.map((finding, index) => (
-                  <li key={index}>{finding}</li>
-                ))}
-              </ul>
-            </section>
-          )}
+        {caseData.radiographicFindings && caseData.radiographicFindings.length > 0 && (
+          <section className="space-y-2 sm:space-y-3">
+            <h3 className="text-base font-semibold sm:text-lg">Radiographic Findings</h3>
+            <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm sm:text-base">
+              {caseData.radiographicFindings.map((finding, index) => (
+                <li key={index}>{finding}</li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {/* Questions */}
         <section className="space-y-2 sm:space-y-3">
-          <h3 className="text-base sm:text-lg font-semibold">
-            Questions to Consider
-          </h3>
-          <ol className="list-decimal list-inside space-y-1.5 sm:space-y-2 text-sm sm:text-base text-muted-foreground">
+          <h3 className="text-base font-semibold sm:text-lg">Questions to Consider</h3>
+          <ol className="text-muted-foreground list-inside list-decimal space-y-1.5 text-sm sm:space-y-2 sm:text-base">
             {caseData.questions.map((question, index) => (
               <li key={index} className="font-medium">
                 {question}
@@ -107,26 +88,24 @@ export default function CaseCard({ case: caseData }: CaseCardProps) {
 
         {/* Reference Materials */}
         <InfoBox variant="blue" className="space-y-2 sm:space-y-3">
-          <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
-            <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+          <h3 className="flex items-center gap-2 text-base font-semibold sm:text-lg">
+            <BookOpen className="h-4 w-4 text-blue-600 sm:h-5 sm:w-5" />
             Reference Materials
           </h3>
           <div className="space-y-2">
             {caseData.references.map((ref, index) => (
               <div key={index} className="flex items-start gap-2">
-                <span className="text-blue-600 mt-0.5 sm:mt-1 text-sm sm:text-base">
-                  📚
-                </span>
+                <span className="mt-0.5 text-sm text-blue-600 sm:mt-1 sm:text-base">📚</span>
                 <div className="min-w-0 flex-1">
                   <a
                     href={ref.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm sm:text-base text-blue-600 hover:text-blue-800 font-medium underline underline-offset-2 break-words"
+                    className="text-sm font-medium break-words text-blue-600 underline underline-offset-2 hover:text-blue-800 sm:text-base"
                   >
                     {ref.title}
                   </a>
-                  <Badge variant="outline" className="ml-1 sm:ml-2 text-xs">
+                  <Badge variant="outline" className="ml-1 text-xs sm:ml-2">
                     {ref.type}
                   </Badge>
                 </div>
@@ -136,10 +115,7 @@ export default function CaseCard({ case: caseData }: CaseCardProps) {
         </InfoBox>
 
         {/* Model Response Collapsible */}
-        <Collapsible
-          open={showModelResponse}
-          onOpenChange={setShowModelResponse}
-        >
+        <Collapsible open={showModelResponse} onOpenChange={setShowModelResponse}>
           <CollapsibleTrigger
             className={buttonVariants({
               size: "lg",
@@ -161,19 +137,17 @@ export default function CaseCard({ case: caseData }: CaseCardProps) {
           </CollapsibleTrigger>
 
           <CollapsibleContent className="mt-4">
-            <Card className="border-2 border-indigo-200 dark:border-indigo-800 bg-muted/30">
+            <Card className="bg-muted/30 border-2 border-indigo-200 dark:border-indigo-800">
               <CardHeader className="pb-4">
-                <CardTitle className="text-xl sm:text-2xl text-indigo-900 dark:text-indigo-100">
+                <CardTitle className="text-xl text-indigo-900 sm:text-2xl dark:text-indigo-100">
                   Model Response
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 sm:space-y-6">
                 {/* Diagnosis */}
                 <section className="space-y-1.5 sm:space-y-2">
-                  <h3 className="text-base sm:text-lg font-semibold">
-                    Diagnosis
-                  </h3>
-                  <p className="text-sm sm:text-base text-muted-foreground font-medium">
+                  <h3 className="text-base font-semibold sm:text-lg">Diagnosis</h3>
+                  <p className="text-muted-foreground text-sm font-medium sm:text-base">
                     {caseData.modelResponse.diagnosis}
                   </p>
                 </section>
@@ -182,25 +156,19 @@ export default function CaseCard({ case: caseData }: CaseCardProps) {
                 {caseData.modelResponse.differentialDiagnosis &&
                   caseData.modelResponse.differentialDiagnosis.length > 0 && (
                     <section className="space-y-1.5 sm:space-y-2">
-                      <h3 className="text-base sm:text-lg font-semibold">
-                        Differential Diagnosis
-                      </h3>
-                      <ul className="list-disc list-inside space-y-1 text-sm sm:text-base text-muted-foreground">
-                        {caseData.modelResponse.differentialDiagnosis.map(
-                          (diff, index) => (
-                            <li key={index}>{diff}</li>
-                          ),
-                        )}
+                      <h3 className="text-base font-semibold sm:text-lg">Differential Diagnosis</h3>
+                      <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm sm:text-base">
+                        {caseData.modelResponse.differentialDiagnosis.map((diff, index) => (
+                          <li key={index}>{diff}</li>
+                        ))}
                       </ul>
                     </section>
                   )}
 
                 {/* Treatment Plan */}
                 <section className="space-y-1.5 sm:space-y-2">
-                  <h3 className="text-base sm:text-lg font-semibold">
-                    Treatment Plan
-                  </h3>
-                  <ol className="list-decimal list-inside space-y-1 text-sm sm:text-base text-muted-foreground">
+                  <h3 className="text-base font-semibold sm:text-lg">Treatment Plan</h3>
+                  <ol className="text-muted-foreground list-inside list-decimal space-y-1 text-sm sm:text-base">
                     {caseData.modelResponse.treatmentPlan.map((step, index) => (
                       <li key={index}>{step}</li>
                     ))}
@@ -209,20 +177,16 @@ export default function CaseCard({ case: caseData }: CaseCardProps) {
 
                 {/* Rationale */}
                 <section className="space-y-1.5 sm:space-y-2">
-                  <h3 className="text-base sm:text-lg font-semibold">
-                    Rationale
-                  </h3>
-                  <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+                  <h3 className="text-base font-semibold sm:text-lg">Rationale</h3>
+                  <p className="text-muted-foreground text-sm leading-relaxed sm:text-base">
                     {caseData.modelResponse.rationale}
                   </p>
                 </section>
 
                 {/* Key Points */}
                 <section className="space-y-1.5 sm:space-y-2">
-                  <h3 className="text-base sm:text-lg font-semibold">
-                    Key Points to Remember
-                  </h3>
-                  <ul className="list-disc list-inside space-y-1 text-sm sm:text-base text-muted-foreground">
+                  <h3 className="text-base font-semibold sm:text-lg">Key Points to Remember</h3>
+                  <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm sm:text-base">
                     {caseData.modelResponse.keyPoints.map((point, index) => (
                       <li key={index}>{point}</li>
                     ))}

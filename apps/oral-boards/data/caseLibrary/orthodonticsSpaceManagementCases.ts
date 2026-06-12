@@ -3,8 +3,7 @@ import type { Case } from "@/types/case";
 export const orthodonticsSpaceManagementCases: Case[] = [
   {
     id: "6",
-    title:
-      "Premature Loss of Primary Second Molar - Space Maintenance Strategy",
+    title: "Premature Loss of Primary Second Molar - Space Maintenance Strategy",
     category: "Orthodontics & Space Management",
     presentation:
       "A 6-year-old had extraction of tooth T two weeks ago due to non-restorable caries. The parent asks if treatment is needed now because the area is asymptomatic.",
@@ -25,8 +24,7 @@ export const orthodonticsSpaceManagementCases: Case[] = [
       "How will you monitor and transition once the permanent molar erupts?",
     ],
     modelResponse: {
-      diagnosis:
-        "Premature loss of a primary second molar with risk of arch-length loss",
+      diagnosis: "Premature loss of a primary second molar with risk of arch-length loss",
       treatmentPlan: [
         "Assess eruption status and quantify space-loss risk before appliance selection",
         "Select a distal shoe or alternative space-maintenance approach based on first permanent molar eruption status",
@@ -45,8 +43,7 @@ export const orthodonticsSpaceManagementCases: Case[] = [
     },
     references: [
       {
-        title:
-          "AAPD Management of the Developing Dentition and Occlusion in Pediatric Dentistry",
+        title: "AAPD Management of the Developing Dentition and Occlusion in Pediatric Dentistry",
         url: "https://www.aapd.org/research/oral-health-policies--recommendations/management-of-the-developing-dentition-and-occlusion-in-pediatric-dentistry/",
         type: "guideline",
       },
@@ -56,8 +53,7 @@ export const orthodonticsSpaceManagementCases: Case[] = [
         type: "guideline",
       },
       {
-        title:
-          "McDonald and Avery's Dentistry for the Child and Adolescent, 11th Edition",
+        title: "McDonald and Avery's Dentistry for the Child and Adolescent, 11th Edition",
         url: "https://shop.elsevier.com/books/mcdonald-and-averys-dentistry-for-the-child-and-adolescent/dean/978-0-323-69820-7",
         type: "textbook",
       },
@@ -89,8 +85,7 @@ export const orthodonticsSpaceManagementCases: Case[] = [
       "What findings would prompt referral to orthodontics instead of office interceptive care?",
     ],
     modelResponse: {
-      diagnosis:
-        "Mixed-dentition anterior crossbite requiring interceptive orthodontic evaluation",
+      diagnosis: "Mixed-dentition anterior crossbite requiring interceptive orthodontic evaluation",
       differentialDiagnosis: [
         "Pseudo-Class III functional shift",
         "Skeletal Class III pattern needing specialty management",
@@ -113,20 +108,17 @@ export const orthodonticsSpaceManagementCases: Case[] = [
     },
     references: [
       {
-        title:
-          "AAPD Management of the Developing Dentition and Occlusion in Pediatric Dentistry",
+        title: "AAPD Management of the Developing Dentition and Occlusion in Pediatric Dentistry",
         url: "https://www.aapd.org/research/oral-health-policies--recommendations/management-of-the-developing-dentition-and-occlusion-in-pediatric-dentistry/",
         type: "guideline",
       },
       {
-        title:
-          "AAPD Acquired Temporomandibular Disorders in Infants, Children, and Adolescents",
+        title: "AAPD Acquired Temporomandibular Disorders in Infants, Children, and Adolescents",
         url: "https://www.aapd.org/research/oral-health-policies--recommendations/acquired-temporomandibular-disorders-in-infants-children-and-adolescents/",
         type: "guideline",
       },
       {
-        title:
-          "McDonald and Avery's Dentistry for the Child and Adolescent, 11th Edition",
+        title: "McDonald and Avery's Dentistry for the Child and Adolescent, 11th Edition",
         url: "https://shop.elsevier.com/books/mcdonald-and-averys-dentistry-for-the-child-and-adolescent/dean/978-0-323-69820-7",
         type: "textbook",
       },

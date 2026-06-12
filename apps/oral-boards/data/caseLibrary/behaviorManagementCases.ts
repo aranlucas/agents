@@ -46,8 +46,7 @@ export const behaviorManagementCases: Case[] = [
         type: "guideline",
       },
       {
-        title:
-          "AAPD Management of Dental Patients with Special Health Care Needs",
+        title: "AAPD Management of Dental Patients with Special Health Care Needs",
         url: "https://www.aapd.org/research/oral-health-policies--recommendations/management-of-dental-patients-with-special-health-care-needs/",
         type: "guideline",
       },
@@ -58,8 +57,7 @@ export const behaviorManagementCases: Case[] = [
         type: "guideline",
       },
       {
-        title:
-          "Behavioral Guidance for Improving Dental Care in ASD (PMC 2023)",
+        title: "Behavioral Guidance for Improving Dental Care in ASD (PMC 2023)",
         url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10682214/",
         type: "article",
       },

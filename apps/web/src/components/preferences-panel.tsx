@@ -7,14 +7,7 @@ import type { BudgetTier, Pace, Preferences, TransportMode, Vibe } from "@agents
 
 import { Badge } from "@agents/ui";
 import { Button } from "@agents/ui";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@agents/ui";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@agents/ui";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 

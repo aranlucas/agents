@@ -25,8 +25,7 @@ export const dentalTraumaCases: Case[] = [
       "What follow-up and long-term complications must be discussed?",
     ],
     modelResponse: {
-      diagnosis:
-        "Avulsion of permanent maxillary central incisor with open apex",
+      diagnosis: "Avulsion of permanent maxillary central incisor with open apex",
       treatmentPlan: [
         "Perform focused trauma assessment and document baseline findings",
         "Handle tooth by crown only and gently rinse contaminants without scrubbing root surface",
@@ -52,8 +51,7 @@ export const dentalTraumaCases: Case[] = [
         type: "guideline",
       },
       {
-        title:
-          "IADT Guidelines: Fractures and Luxations of Permanent Teeth (2020)",
+        title: "IADT Guidelines: Fractures and Luxations of Permanent Teeth (2020)",
         url: "https://pubmed.ncbi.nlm.nih.gov/32475015/",
         type: "article",
       },

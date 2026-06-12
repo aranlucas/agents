@@ -11,7 +11,7 @@ export function PageLayout({ children, footer }: PageLayoutProps) {
       <div className="container mx-auto px-4 py-6 sm:py-8">
         {children}
         {footer && (
-          <footer className="mt-8 sm:mt-12 text-center text-muted-foreground text-xs sm:text-sm px-2">
+          <footer className="text-muted-foreground mt-8 px-2 text-center text-xs sm:mt-12 sm:text-sm">
             {footer}
           </footer>
         )}

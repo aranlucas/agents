@@ -50,8 +50,7 @@ export const examTimeline: TimelineMilestone[] = [
   {
     timeframe: "January",
     milestone: "OCE application opens",
-    detail:
-      "Application for the Oral Clinical Examination opens annually in January.",
+    detail: "Application for the Oral Clinical Examination opens annually in January.",
   },
   {
     timeframe: "Fall",

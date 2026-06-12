@@ -382,7 +382,13 @@ Write `apps/oral-boards/tsconfig.json`:
       "@agents/ui": ["../../packages/ui/src/index.ts"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", ".next/dev/types/**/*.ts"],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
   "exclude": ["node_modules"]
 }
 ```
@@ -963,4 +969,3 @@ Verification: pnpm --filter oral-boards build, pnpm --filter web test, pnpm lint
 ```
 
 If any verification command failed, include the exact command and failure reason instead of claiming success.
-

@@ -25,8 +25,7 @@ export const developmentAndAnomaliesCases: Case[] = [
       "When should extraction and orthodontic coordination be considered?",
     ],
     modelResponse: {
-      diagnosis:
-        "Molar-incisor hypomineralization with symptomatic molar involvement",
+      diagnosis: "Molar-incisor hypomineralization with symptomatic molar involvement",
       differentialDiagnosis: [
         "Fluorosis",
         "Amelogenesis imperfecta",

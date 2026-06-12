@@ -4,14 +4,11 @@ import { getStore } from "@/lib/searchStore";
 export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get("q")?.trim();
   if (!q) {
-    return NextResponse.json(
-      { error: "Missing query parameter q" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Missing query parameter q" }, { status: 400 });
   }
 
   try {
-    const store = await getStore();
+    const store = getStore();
     const raw = await store.searchLex(q, { limit: 10 });
     const results = raw.map(({ body: _body, ...r }) => r);
     return NextResponse.json({ results });

@@ -8,7 +8,7 @@ export async function GET(
   const { docid } = await params;
 
   try {
-    const store = await getStore();
+    const store = getStore();
     const meta = await store.get(`#${docid}`);
     if ("error" in meta) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -17,9 +17,6 @@ export async function GET(
     return NextResponse.json({ doc: { ...meta, body } });
   } catch (err) {
     console.error("Doc fetch error:", err);
-    return NextResponse.json(
-      { error: "Failed to fetch document" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to fetch document" }, { status: 500 });
   }
 }

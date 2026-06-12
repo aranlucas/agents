@@ -15,8 +15,7 @@ export interface ResourceCategory {
 export const resourceCategories: ResourceCategory[] = [
   {
     name: "Core Reference Materials",
-    description:
-      "Essential resources for pediatric dentistry board preparation",
+    description: "Essential resources for pediatric dentistry board preparation",
     resources: [
       {
         title: "AAPD Reference Manual 2024-2025",
@@ -33,8 +32,7 @@ export const resourceCategories: ResourceCategory[] = [
           "Digital searchable version of the complete AAPD Reference Manual with all current policies and guidelines.",
       },
       {
-        title:
-          "McDonald and Avery's Dentistry for the Child and Adolescent, 11th Edition",
+        title: "McDonald and Avery's Dentistry for the Child and Adolescent, 11th Edition",
         url: "https://shop.elsevier.com/books/mcdonald-and-averys-dentistry-for-the-child-and-adolescent/dean/978-0-323-69820-7",
         type: "textbook",
         description:
@@ -44,8 +42,7 @@ export const resourceCategories: ResourceCategory[] = [
   },
   {
     name: "ABPD Certification Resources",
-    description:
-      "Official American Board of Pediatric Dentistry OCE and certification resources",
+    description: "Official American Board of Pediatric Dentistry OCE and certification resources",
     resources: [
       {
         title: "ABPD 2026 Oral Clinical Examination Guide (PDF)",
@@ -73,8 +70,7 @@ export const resourceCategories: ResourceCategory[] = [
         title: "OCE Blueprint and Scoring",
         url: "https://www.abpd.org/become-certified/oral-clinical-examination/oce-blueprint",
         type: "guideline",
-        description:
-          "Official ABPD OCE blueprint domain content and scoring overview.",
+        description: "Official ABPD OCE blueprint domain content and scoring overview.",
       },
       {
         title: "Examination Day - OCE",
@@ -87,8 +83,7 @@ export const resourceCategories: ResourceCategory[] = [
         title: "Preparing for the OCE - ABPD Blog",
         url: "https://www.abpd.org/about-abpd/blog/preparing-oce",
         type: "article",
-        description:
-          "Official ABPD guidance on how to prepare for the Oral Clinical Examination.",
+        description: "Official ABPD guidance on how to prepare for the Oral Clinical Examination.",
       },
       {
         title: "ABPD Certification Process Overview",
@@ -116,8 +111,7 @@ export const resourceCategories: ResourceCategory[] = [
         title: "AAPD Policy on ECC: Unique Challenges and Treatment Options",
         url: "https://www.aapd.org/research/oral-health-policies--recommendations/early-childhood-caries-unique-challenges-and-treatment-options/",
         type: "guideline",
-        description:
-          "Comprehensive treatment approaches for managing early childhood caries.",
+        description: "Comprehensive treatment approaches for managing early childhood caries.",
       },
       {
         title: "AAPD Guideline on Caries-risk Assessment and Management",
@@ -139,8 +133,7 @@ export const resourceCategories: ResourceCategory[] = [
         title: "AAPD Policy on Use of Fluoride",
         url: "https://www.aapd.org/media/policies_guidelines/p_fluorideuse.pdf",
         type: "guideline",
-        description:
-          "Current AAPD position on fluoride safety and efficacy in caries prevention.",
+        description: "Current AAPD position on fluoride safety and efficacy in caries prevention.",
         isPdf: true,
       },
       {
@@ -172,8 +165,7 @@ export const resourceCategories: ResourceCategory[] = [
           "Interactive clinical decision support tool for managing dental trauma cases, with prognosis data.",
       },
       {
-        title:
-          "IADT Guidelines: 1. Fractures and Luxations of Permanent Teeth (2020)",
+        title: "IADT Guidelines: 1. Fractures and Luxations of Permanent Teeth (2020)",
         url: "https://pubmed.ncbi.nlm.nih.gov/32475015/",
         type: "article",
         description:
@@ -197,8 +189,7 @@ export const resourceCategories: ResourceCategory[] = [
         title: "AAPD Guidelines on Management of Acute Dental Trauma",
         url: "https://www.aapd.org/research/oral-health-policies--recommendations/guidelines-for-the-management-of-traumatic-dental-injuries-1-fracture-and-luxations-or-permanent-teeth/",
         type: "guideline",
-        description:
-          "AAPD endorsement and recommendations for dental trauma management.",
+        description: "AAPD endorsement and recommendations for dental trauma management.",
       },
     ],
   },
@@ -226,8 +217,7 @@ export const resourceCategories: ResourceCategory[] = [
         title: "AAPD MIH Best Practices Overview",
         url: "https://www.aapd.org/research/oral-health-policies--recommendations/molar-incisor-hypomineralization/",
         type: "guideline",
-        description:
-          "Web page overview of MIH diagnosis, classification, and treatment approach.",
+        description: "Web page overview of MIH diagnosis, classification, and treatment approach.",
       },
       {
         title: "Treatment Approaches to MIH: A Systematic Review (PMC 2023)",
@@ -237,23 +227,19 @@ export const resourceCategories: ResourceCategory[] = [
           "Comprehensive systematic review of current treatment modalities for MIH-affected teeth.",
       },
       {
-        title:
-          "Update of the Molar Incisor Hypomineralization: Würzburg Concept (PMC 2023)",
+        title: "Update of the Molar Incisor Hypomineralization: Würzburg Concept (PMC 2023)",
         url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10657291/",
         type: "article",
-        description:
-          "Updated clinical management approach based on severity classification.",
+        description: "Updated clinical management approach based on severity classification.",
       },
     ],
   },
   {
     name: "Pulp Therapy",
-    description:
-      "Guidelines for vital pulp therapy in primary and permanent teeth",
+    description: "Guidelines for vital pulp therapy in primary and permanent teeth",
     resources: [
       {
-        title:
-          "AAPD Best Practices: Pulp Therapy for Primary and Immature Permanent Teeth",
+        title: "AAPD Best Practices: Pulp Therapy for Primary and Immature Permanent Teeth",
         url: "https://www.aapd.org/media/Policies_Guidelines/BP_PulpTherapy.pdf",
         type: "guideline",
         description:
@@ -261,8 +247,7 @@ export const resourceCategories: ResourceCategory[] = [
         isPdf: true,
       },
       {
-        title:
-          "AAPD Guideline: Use of Vital Pulp Therapies in Primary Teeth (2024)",
+        title: "AAPD Guideline: Use of Vital Pulp Therapies in Primary Teeth (2024)",
         url: "https://www.aapd.org/media/Policies_Guidelines/G_VPT.pdf",
         type: "guideline",
         description:
@@ -288,23 +273,19 @@ export const resourceCategories: ResourceCategory[] = [
         title: "AAPD Pulp Therapy Overview",
         url: "https://www.aapd.org/research/oral-health-policies--recommendations/vital_pulp_therapies_in_primary_teeth_with_deep_caries_lesions/",
         type: "guideline",
-        description:
-          "Web overview of pulp therapy recommendations and indications.",
+        description: "Web overview of pulp therapy recommendations and indications.",
       },
     ],
   },
   {
     name: "Behavior Management",
-    description:
-      "Guidelines for behavior guidance and management of special needs patients",
+    description: "Guidelines for behavior guidance and management of special needs patients",
     resources: [
       {
-        title:
-          "AAPD Best Practices: Behavior Guidance for the Pediatric Dental Patient",
+        title: "AAPD Best Practices: Behavior Guidance for the Pediatric Dental Patient",
         url: "https://www.aapd.org/globalassets/media/policies_guidelines/bp_behavguide.pdf",
         type: "guideline",
-        description:
-          "Comprehensive guidance on basic and advanced behavior management techniques.",
+        description: "Comprehensive guidance on basic and advanced behavior management techniques.",
         isPdf: true,
       },
       {
@@ -317,8 +298,7 @@ export const resourceCategories: ResourceCategory[] = [
         isPdf: true,
       },
       {
-        title:
-          "AAPD Best Practices: Management of Dental Patients with Special Health Care Needs",
+        title: "AAPD Best Practices: Management of Dental Patients with Special Health Care Needs",
         url: "https://www.aapd.org/research/oral-health-policies--recommendations/management-of-dental-patients-with-special-health-care-needs/",
         type: "guideline",
         description:
@@ -333,28 +313,23 @@ export const resourceCategories: ResourceCategory[] = [
         isPdf: true,
       },
       {
-        title:
-          "Behavioral Guidance for Autistic Dental Patients - AAPD Archives",
+        title: "Behavioral Guidance for Autistic Dental Patients - AAPD Archives",
         url: "https://www.aapd.org/globalassets/media/publications/archives/400-7.pdf",
         type: "article",
-        description:
-          "Specific strategies for managing patients with autism spectrum disorders.",
+        description: "Specific strategies for managing patients with autism spectrum disorders.",
         isPdf: true,
       },
       {
-        title:
-          "Behavioral Guidance for Improving Dental Care in ASD (PMC 2023)",
+        title: "Behavioral Guidance for Improving Dental Care in ASD (PMC 2023)",
         url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10682214/",
         type: "article",
-        description:
-          "Recent review of effective behavioral strategies for patients with autism.",
+        description: "Recent review of effective behavioral strategies for patients with autism.",
       },
     ],
   },
   {
     name: "Sedation and Anesthesia",
-    description:
-      "Guidelines for sedation and general anesthesia in pediatric dentistry",
+    description: "Guidelines for sedation and general anesthesia in pediatric dentistry",
     resources: [
       {
         title:
@@ -374,12 +349,10 @@ export const resourceCategories: ResourceCategory[] = [
         isPdf: true,
       },
       {
-        title:
-          "AAPD Guidelines for Monitoring and Management of Pediatric Patients",
+        title: "AAPD Guidelines for Monitoring and Management of Pediatric Patients",
         url: "https://www.aapd.org/research/oral-health-policies--recommendations/monitoring-and-management-of-pediatric-patients-before-during-and-after-sedation-for-diagnostic-and-therapeutic-procedures/",
         type: "guideline",
-        description:
-          "Web page with complete sedation guidelines and resources.",
+        description: "Web page with complete sedation guidelines and resources.",
       },
       {
         title: "AAPD Use of Anesthesia Providers Overview",
@@ -395,8 +368,7 @@ export const resourceCategories: ResourceCategory[] = [
     description: "Other important AAPD policies and best practices",
     resources: [
       {
-        title:
-          "AAPD Best Practices: Periodicity of Examination and Preventive Dental Services",
+        title: "AAPD Best Practices: Periodicity of Examination and Preventive Dental Services",
         url: "https://www.aapd.org/globalassets/media/policies_guidelines/bp_periodicity.pdf",
         type: "guideline",
         description:

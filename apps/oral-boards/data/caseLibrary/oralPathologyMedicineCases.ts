@@ -121,8 +121,7 @@ export const oralPathologyMedicineCases: Case[] = [
         type: "guideline",
       },
       {
-        title:
-          "McDonald and Avery's Dentistry for the Child and Adolescent, 11th Edition",
+        title: "McDonald and Avery's Dentistry for the Child and Adolescent, 11th Edition",
         url: "https://shop.elsevier.com/books/mcdonald-and-averys-dentistry-for-the-child-and-adolescent/dean/978-0-323-69820-7",
         type: "textbook",
       },

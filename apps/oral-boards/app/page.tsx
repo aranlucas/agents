@@ -14,16 +14,16 @@ export default function Home() {
       footer={
         <>
           <p>
-            A new case is presented daily. Review reference materials before
-            revealing the model response.
+            A new case is presented daily. Review reference materials before revealing the model
+            response.
           </p>
           <p className="mt-2">
-            Exam preparation tool - not a substitute for comprehensive study and
-            clinical experience.
+            Exam preparation tool - not a substitute for comprehensive study and clinical
+            experience.
           </p>
           <p className="mt-2">
-            Exam-policy pages are aligned to ABPD source documentation; clinical
-            guidance links map to AAPD and related guideline sources.
+            Exam-policy pages are aligned to ABPD source documentation; clinical guidance links map
+            to AAPD and related guideline sources.
           </p>
         </>
       }
@@ -35,9 +35,9 @@ export default function Home() {
 
       <Navigation />
 
-      <div className="text-center mb-4 sm:mb-6">
-        <Badge className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm">
-          <Calendar className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5" />
+      <div className="mb-4 text-center sm:mb-6">
+        <Badge className="bg-indigo-600 px-3 py-1.5 text-xs text-white hover:bg-indigo-700 sm:px-4 sm:py-2 sm:text-sm">
+          <Calendar className="mr-1.5 h-3 w-3 sm:h-4 sm:w-4" />
           Case of the Day -{" "}
           {new Date().toLocaleDateString("en-US", {
             weekday: "long",

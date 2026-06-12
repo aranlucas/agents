@@ -57,14 +57,12 @@ export const cariesManagementCases: Case[] = [
         type: "guideline",
       },
       {
-        title:
-          "AAPD Policy: Early Childhood Caries - Unique Challenges and Treatment Options",
+        title: "AAPD Policy: Early Childhood Caries - Unique Challenges and Treatment Options",
         url: "https://www.aapd.org/research/oral-health-policies--recommendations/early-childhood-caries-unique-challenges-and-treatment-options/",
         type: "guideline",
       },
       {
-        title:
-          "AAPD Caries-Risk Assessment and Management for Infants, Children, and Adolescents",
+        title: "AAPD Caries-Risk Assessment and Management for Infants, Children, and Adolescents",
         url: "https://www.aapd.org/research/oral-health-policies--recommendations/caries-risk-assessment-and-management-for-infants-children-and-adolescents/",
         type: "guideline",
       },
@@ -74,8 +72,7 @@ export const cariesManagementCases: Case[] = [
         type: "guideline",
       },
       {
-        title:
-          "McDonald and Avery's Dentistry for the Child and Adolescent, 11th Edition",
+        title: "McDonald and Avery's Dentistry for the Child and Adolescent, 11th Edition",
         url: "https://shop.elsevier.com/books/mcdonald-and-averys-dentistry-for-the-child-and-adolescent/dean/978-0-323-69820-7",
         type: "textbook",
       },

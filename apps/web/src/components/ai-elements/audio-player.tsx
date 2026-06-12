@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@agents/ui";
-import { ButtonGroup, ButtonGroupText } from "/ui-group";
+import { ButtonGroup, ButtonGroupText } from "@/components/ui/button-group";
 import { cn } from "@/lib/utils";
 import type { Experimental_SpeechResult as SpeechResult } from "ai";
 import {
