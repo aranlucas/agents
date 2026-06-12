@@ -12,12 +12,20 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from ag_ui_adk import ADKAgent, add_adk_fastapi_endpoint
+from ag_ui_adk.config import PredictStateMapping
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from google.adk.agents import LlmAgent
+from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
+from google.adk.auth.credential_service.in_memory_credential_service import (
+    InMemoryCredentialService,
+)
+from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
+from google.adk.sessions import BaseSessionService
 from opentelemetry import trace
 from opentelemetry.trace import Tracer
 
-from .session_service import SessionServiceContainer
+from .session_service import SessionServiceContainer, create_session_service
 
 _DEBUG_ENV_VAR = "AGENTS_DEBUG_LOGGING"
 
@@ -73,6 +81,44 @@ def setup_otel(default_service_name: str) -> Tracer:
 def get_agent_tracer(name: str) -> Tracer:
     """Return a named tracer without configuring OTEL providers."""
     return trace.get_tracer(name)
+
+
+def streaming_state_mapping(
+    *, state_key: str, tool: str, tool_argument: str
+) -> PredictStateMapping:
+    """Token-streaming state mapping with the flags every agent uses."""
+    return PredictStateMapping(
+        state_key=state_key,
+        tool=tool,
+        tool_argument=tool_argument,
+        emit_confirm_tool=False,
+        stream_tool_call=True,
+    )
+
+
+def build_adk_agent(
+    agent: LlmAgent,
+    *,
+    predict_state: list[PredictStateMapping] | None = None,
+    session_service: BaseSessionService | None = None,
+) -> ADKAgent:
+    """ADKAgent with the standard service bundle every agent uses.
+
+    Pass `session_service` to substitute a wrapper (e.g. wellness'
+    TempStateSessionService); everything else is identical across agents.
+    """
+    kwargs: dict[str, Any] = {}
+    if predict_state is not None:
+        kwargs["predict_state"] = predict_state
+    return ADKAgent(
+        adk_agent=agent,
+        session_service=session_service or create_session_service(),
+        artifact_service=InMemoryArtifactService(),
+        memory_service=InMemoryMemoryService(),
+        credential_service=InMemoryCredentialService(),
+        session_timeout_seconds=3600,
+        **kwargs,
+    )
 
 
 def create_agent_app(
