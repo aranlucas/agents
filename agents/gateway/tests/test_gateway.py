@@ -11,6 +11,7 @@ def test_mounts_every_agent():
         "/wellness",
         "/a2ui",
         "/oralboards",
+        "/resume",
     ):
         assert prefix in mounted
 
@@ -39,6 +40,21 @@ def test_agui_requires_token_when_clerk_auth_enabled(monkeypatch):
     client = TestClient(module.app)
     assert client.get("/health").status_code == 200
     assert client.post("/travel/agui", json={}).status_code == 401
+
+    monkeypatch.delenv("CLERK_JWKS_URL")
+    importlib.reload(main)
+
+
+def test_resume_agui_is_public_with_auth_enabled(monkeypatch):
+    monkeypatch.setenv(
+        "CLERK_JWKS_URL",
+        "https://example.clerk.accounts.dev/.well-known/jwks.json",
+    )
+    import importlib
+
+    module = importlib.reload(main)
+    client = TestClient(module.app)
+    assert client.post("/resume/agui", json={}).status_code != 401
 
     monkeypatch.delenv("CLERK_JWKS_URL")
     importlib.reload(main)

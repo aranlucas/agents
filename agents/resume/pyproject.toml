@@ -1,0 +1,28 @@
+[project]
+name = "resume-agent"
+version = "0.1.0"
+description = "Public resume Q&A agent powered by Google ADK + CopilotKit AG-UI"
+requires-python = ">=3.14"
+dependencies = [
+  "agent-common",
+  "fastapi",
+  "uvicorn[standard]",
+  "python-dotenv",
+  "pydantic",
+  "google-adk>=2.2.0",
+  "google-genai",
+  "ag-ui-adk>=0.6.4",
+  "litellm",
+  "opentelemetry-api",
+  "opentelemetry-sdk",
+  "opentelemetry-exporter-otlp-proto-http",
+  "dependency-injector>=4.49.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[build-system]
+requires = ["uv_build>=0.11.19,<0.12"]
+build-backend = "uv_build"

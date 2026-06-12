@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from fitness_agent.main import app as fitness_app
 from grocery_agent.main import app as grocery_app
 from oralboards_agent.main import app as oralboards_app
+from resume_agent.main import app as resume_app
 from travel_agent.main import app as travel_app
 from wellness_agent.main import app as wellness_app
 
@@ -29,6 +30,7 @@ MOUNTS = {
     "/wellness": wellness_app,
     "/a2ui": a2ui_app,
     "/oralboards": oralboards_app,
+    "/resume": resume_app,
 }
 
 for prefix, sub_app in MOUNTS.items():

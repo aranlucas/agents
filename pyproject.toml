@@ -13,6 +13,7 @@ a2ui-agent = { workspace = true }
 fitness-agent = { workspace = true }
 grocery-agent = { workspace = true }
 oralboards-agent = { workspace = true }
+resume-agent = { workspace = true }
 travel-agent = { workspace = true }
 wellness-agent = { workspace = true }
 
@@ -23,6 +24,7 @@ members = [
   "agents/gateway",
   "agents/grocery",
   "agents/oralboards",
+  "agents/resume",
   "agents/travel",
   "agents/wellness",
   "packages/agent-common",
@@ -64,6 +66,7 @@ pythonpath = [
   "agents/gateway/src",
   "agents/grocery/src",
   "agents/oralboards/src",
+  "agents/resume/src",
   "agents/travel/src",
   "agents/wellness/src",
   "packages/agent-common/src",
@@ -76,6 +79,7 @@ source = [
   "agents/gateway/src",
   "agents/grocery/src",
   "agents/oralboards/src",
+  "agents/resume/src",
   "agents/travel/src",
   "agents/wellness/src",
   "packages/agent-common/src",
