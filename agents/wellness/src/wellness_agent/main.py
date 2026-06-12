@@ -35,7 +35,7 @@ from google.adk.auth.credential_service.in_memory_credential_service import (
 )
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.tools import ToolContext
-from grocery_agent.main import build_agent as build_grocery_agent
+from grocery_agent.agent import build_agent as build_grocery_agent
 from pydantic import BaseModel
 
 load_dotenv()
