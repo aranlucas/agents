@@ -228,6 +228,9 @@ importers:
       '@agents/types':
         specifier: workspace:*
         version: link:../../packages/types
+      '@agents/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@ai-sdk/mcp':
         specifier: ^1.0.49
         version: 1.0.49(zod@4.4.3)

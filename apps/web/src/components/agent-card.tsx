@@ -2,9 +2,9 @@ import Link from "next/link";
 import { ArrowUpRight, CheckCircle2, CircleAlert, Loader2 } from "lucide-react";
 
 import { agentStyle, type AgentTheme } from "@/components/agent-theme";
-import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@agents/ui";
+import { buttonVariants } from "@agents/ui";
+import { Card, CardContent } from "@agents/ui";
 import type { AgentStatus } from "@/hooks/use-agent-warmup";
 import { cn } from "@/lib/utils";
 

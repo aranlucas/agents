@@ -19,7 +19,8 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@agents/ui": ["../../packages/ui/src/index.ts"]
     }
   },
   "include": [

@@ -5,8 +5,8 @@ import { useAgentContext } from "@copilotkit/react-core/v2";
 import { Car, Plane } from "lucide-react";
 import type { BudgetTier, Pace, Preferences, TransportMode, Vibe } from "@agents/types";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@agents/ui";
+import { Button } from "@agents/ui";
 import {
   Card,
   CardAction,
@@ -14,7 +14,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "@agents/ui";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 

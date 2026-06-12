@@ -4,9 +4,9 @@ import React, { useMemo } from "react";
 import { Streamdown } from "streamdown";
 import type { DocStatus } from "@agents/types";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Badge } from "@agents/ui";
+import { Button } from "@agents/ui";
+import { Card, CardContent, CardFooter, CardHeader } from "@agents/ui";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
