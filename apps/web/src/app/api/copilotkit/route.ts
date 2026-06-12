@@ -5,6 +5,7 @@ import { env } from "@/env";
 import { agentBaseUrl } from "@/lib/agent-url";
 import { getKrogerAccessToken } from "@/lib/kroger-token";
 import { getStravaAccessToken } from "@/lib/strava-token";
+import { isPublicCopilotPath } from "./guard";
 
 const CLERK_USER_ID_HEADER = "x-clerk-user-id";
 const KROGER_TOKEN_HEADER = "x-kroger-access-token";
@@ -49,7 +50,8 @@ const handler = createCopilotRuntimeHandler({
     // `#state`, which throws across bundler realms on Vercel (the global
     // Request class differs from the one backing the incoming Next.js request).
     onRequest: async ({ request }) => {
-      const { userId } = await auth();
+      const { userId, getToken } = await auth();
+      const sessionToken = userId ? await getToken().catch(() => null) : null;
       const { token: krogerToken } = await getKrogerAccessToken().catch(() => ({
         connected: false,
         token: null,
@@ -62,6 +64,9 @@ const handler = createCopilotRuntimeHandler({
       if (userId) {
         request.headers.set(CLERK_USER_ID_HEADER, userId);
       }
+      if (sessionToken) {
+        request.headers.set("authorization", `Bearer ${sessionToken}`);
+      }
       if (krogerToken) {
         request.headers.set(KROGER_TOKEN_HEADER, krogerToken);
       }
@@ -72,8 +77,19 @@ const handler = createCopilotRuntimeHandler({
   },
 });
 
-export const GET = handler;
-export const POST = handler;
+const guarded = async (request: Request): Promise<Response> => {
+  const { pathname } = new URL(request.url);
+  if (request.method !== "OPTIONS" && !isPublicCopilotPath(pathname)) {
+    const { userId } = await auth();
+    if (!userId) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+  }
+  return handler(request);
+};
+
+export const GET = guarded;
+export const POST = guarded;
 export const OPTIONS = handler;
-export const PATCH = handler;
-export const DELETE = handler;
+export const PATCH = guarded;
+export const DELETE = guarded;

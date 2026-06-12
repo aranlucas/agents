@@ -133,7 +133,7 @@ vi.mock("@clerk/nextjs", () => ({
 }));
 
 vi.mock("@clerk/nextjs/server", () => ({
-  auth: vi.fn(async () => ({ userId: "user_123" })),
+  auth: vi.fn(async () => ({ userId: "user_123", getToken: vi.fn(async () => "session-jwt") })),
   clerkClient: vi.fn(async () => ({
     users: { getUserOauthAccessToken: vi.fn(async () => ({ data: [{ token: "token" }] })) },
   })),
