@@ -1,51 +1,47 @@
 """Wellness Planning Agent - orchestrates meal and workout plans in-process."""
 
-import datetime
 import json
-import logging
 import os
-import time
+from typing import Any
 
-from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
+from ag_ui_adk import ADKAgent, AGUIToolset
 from ag_ui_adk.config import PredictStateMapping
 from ag_ui_adk.request_state_service import RequestStateSessionService
+from agents_shared.app_factory import (
+    create_agent_app,
+    get_agent_tracer,
+    setup_agent_logging,
+)
 from agents_shared.invocation_state import set_invocation_temp_state
 from agents_shared.session_service import (
     SessionServiceContainer,
     create_session_service,
 )
-from agents_shared.tools import shared_after_tool_callback
+from agents_shared.tools import (
+    DEFAULT_RETRY_CONFIG,
+    build_model,
+    get_current_date,
+    on_model_error_callback,
+    shared_after_tool_callback,
+)
 from dotenv import load_dotenv
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from fitness_agent.main import build_agent as build_fitness_agent
 from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
+from google.adk.agents.readonly_context import ReadonlyContext
 from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
 from google.adk.auth.credential_service.in_memory_credential_service import (
     InMemoryCredentialService,
 )
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
-from google.adk.models import LlmRequest, LlmResponse
-from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import ToolContext
-from google.adk.tools.agent_tool import AgentTool
 from grocery_agent.main import build_agent as build_grocery_agent
-from opentelemetry import trace
-from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
-from opentelemetry.sdk.resources import Resource
+from pydantic import BaseModel
 
 load_dotenv()
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
-logging.getLogger("google.adk").setLevel(logging.DEBUG)
-logging.getLogger("litellm").setLevel(logging.DEBUG)
-logging.getLogger("ag_ui_adk").setLevel(logging.DEBUG)
-
-log = logging.getLogger("wellness_agent")
+log = setup_agent_logging("wellness_agent")
+tracer = get_agent_tracer("wellness-agent")
 
 _railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN")
 AGENT_PUBLIC_URL = os.getenv("AGENT_PUBLIC_URL") or (
@@ -57,36 +53,29 @@ KROGER_TOKEN_STATE_KEY = "temp:kroger_token"
 STRAVA_TOKEN_HEADER = "x-strava-access-token"
 STRAVA_TOKEN_STATE_KEY = "temp:strava_token"
 
-_DEFAULT_STATE = {
-    "status": "idle",
-    "meal_plan": "",
-    "weekly_plan": "",
-    "review_summary": "",
-    "user_id": "",
-}
+
+class WellnessState(BaseModel):
+    """Combined shared-state shape used by wellness and its task sub-agents."""
+
+    status: str = "idle"
+    meal_plan: str = ""
+    weekly_plan: str = ""
+    review_summary: str = ""
+    user_id: str = ""
+    kroger_connected: bool = False
+    strava_connected: bool = False
+    shopping_list: list[str] = []
+    cart: list[dict[str, Any]] = []
+    pantry: list[dict[str, Any]] = []
+    weekly_deals: str = ""
+    notes: str = ""
+    activities: list[dict[str, Any]] = []
+    activities_synced_at: str = ""
+    objective_research: str = ""
+    training_plan: str = ""
 
 
-def _setup_otel() -> None:
-    if not os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
-        return
-
-    from google.adk.telemetry.setup import maybe_set_otel_providers
-
-    resource = Resource.create(
-        {
-            "service.name": os.getenv("RAILWAY_SERVICE_NAME", "wellness-agent"),
-            "service.version": os.getenv("RAILWAY_GIT_COMMIT_SHA", "dev"),
-            "deployment.environment": os.getenv("RAILWAY_ENVIRONMENT_NAME", "local"),
-            "railway.project.id": os.getenv("RAILWAY_PROJECT_ID", ""),
-            "railway.service.id": os.getenv("RAILWAY_SERVICE_ID", ""),
-        },
-    )
-    maybe_set_otel_providers(otel_resource=resource)
-    SQLAlchemyInstrumentor().instrument()
-
-
-_setup_otel()
-tracer = trace.get_tracer("wellness-agent")
+_DEFAULT_STATE: dict[str, Any] = WellnessState().model_dump()
 
 
 def extract_identity_state(request) -> dict:
@@ -112,21 +101,12 @@ def on_before_agent(callback_context: CallbackContext) -> None:
             callback_context.state[key] = default
 
 
-def before_model_modifier(
-    callback_context: CallbackContext,
-    llm_request: LlmRequest,
-) -> LlmResponse | None:
+async def build_dynamic_instruction(context: ReadonlyContext) -> str:
     state = {
-        key: callback_context.state.get(key, default)
+        key: context.state.get(key, default)
         for key, default in _DEFAULT_STATE.items()
     }
-    llm_request.config.system_instruction = (
-        "Current wellness state:\n"
-        + json.dumps(state, indent=2, default=str)
-        + "\n\n"
-        + str(llm_request.config.system_instruction or "")
-    )
-    return None
+    return "Current wellness state:\n" + json.dumps(state, indent=2, default=str)
 
 
 class _TempStateSessionService(RequestStateSessionService):
@@ -147,8 +127,8 @@ class _TempStateSessionService(RequestStateSessionService):
         return session
 
 
-grocery_subagent = build_grocery_agent()
-fitness_subagent = build_fitness_agent()
+fitness_subagent = build_fitness_agent(mode="task")
+grocery_subagent = build_grocery_agent(mode="task")
 
 
 def set_weekly_wellness_plan(tool_context: ToolContext, plan: str) -> dict:
@@ -165,46 +145,33 @@ def mark_plan_ready(tool_context: ToolContext, summary: str) -> dict:
     return {"ok": True}
 
 
-def get_current_date() -> dict:
-    """Return today's date for anchoring the combined weekly plan."""
-    today = datetime.datetime.now(datetime.UTC).date()
-    return {
-        "date": today.isoformat(),
-        "weekday": today.strftime("%A"),
-        "month": today.strftime("%B %Y"),
-    }
-
-
 _INSTRUCTION = """\
 You are a wellness planning orchestrator.
 
 Your job is to create a practical one-week plan that combines meals and workouts.
 The source of truth is shared state, not chat output.
 
-You have two agent tools: fitness_agent and grocery_agent.
-Call them with a plain-English request string. They return their result as text.
-
-IMPORTANT: Call these tools one at a time, in order. Do NOT call both in the
-same turn. Do NOT call grocery_agent until you have received and read the
-full response from fitness_agent.
+You have two task-mode specialist agents available as tools: fitness_agent and
+grocery_agent. Call them with a plain-English request string. The framework
+runs each task agent to completion and then returns control to you.
 
 Workflow — follow these steps strictly in sequence:
 
 Step 1. Call get_current_date. Note the date.
 
-Step 2. Call fitness_agent with a request to: (a) summarise recent Strava
+Step 2. Call fitness_agent first with a request to: (a) summarise recent Strava
         activities, (b) build a DETAILED day-by-day training schedule for this week
         starting on that date — each day with session type, duration/distance or
         sets x reps, and target intensity — and (c) recommend ONE specific named hike
-        for the week, including its distance, elevation gain, difficulty, and why it
-        suits this athlete. STOP and wait for the full response before continuing.
+        for the week, including its distance, elevation gain, difficulty, why it
+        suits this athlete, and the scheduled hike day. The fitness agent writes
+        the completed plan to shared state as training_plan.
 
-Step 3. Once you have the fitness response, call grocery_agent.
-        Your request MUST paste the full training schedule (and the recommended
-        hike) from Step 2 so grocery can tailor meals to match (protein on strength
-        days, lighter meals before hard sessions, extra fuel/hydration on the hike
-        day, recovery nutrition on rest days).
-        STOP and wait for the full response before continuing.
+Step 3. After fitness_agent completes and training_plan exists in shared state,
+        call grocery_agent. Do not paste the training plan into the request.
+        Ask grocery_agent to read training_plan from shared state and tailor meals
+        to match it: protein on strength days, lighter meals before hard sessions,
+        extra fuel/hydration on the hike day, and recovery nutrition on rest days.
 
 Step 4. Reconcile the two plans: heavy training days and the hike day get simpler
         meals, adequate protein, hydration, recovery, and realistic prep.
@@ -230,25 +197,20 @@ failed and do not mark the plan ready.
 
 wellness_agent = LlmAgent(
     name="wellness_agent",
-    model=LiteLlm(
-        model="openrouter/poolside/laguna-m.1:free",
-        fallbacks=[
-            "mistral/mistral-small-latest",
-            "openrouter/owl-alpha",
-            "nvidia_nim/deepseek-ai/deepseek-v4-flash",
-        ],
-    ),
-    instruction=_INSTRUCTION,
+    model=build_model(),
+    retry_config=DEFAULT_RETRY_CONFIG,
+    on_model_error_callback=on_model_error_callback,
+    state_schema=WellnessState,
+    static_instruction=_INSTRUCTION,
+    instruction=build_dynamic_instruction,
+    sub_agents=[fitness_subagent, grocery_subagent],
     before_agent_callback=on_before_agent,
-    before_model_callback=before_model_modifier,
     after_tool_callback=shared_after_tool_callback,
     tools=[
         get_current_date,
         set_weekly_wellness_plan,
         mark_plan_ready,
         AGUIToolset(),
-        AgentTool(agent=fitness_subagent),
-        AgentTool(agent=grocery_subagent),
     ],
 )
 
@@ -279,54 +241,10 @@ adk_wellness_agent = ADKAgent(
     predict_state=WELLNESS_PREDICT_STATE,
 )
 
-app = FastAPI(title="Wellness Planning Agent")
-
-
-@app.middleware("http")
-async def trace_requests(request, call_next):
-    if request.url.path.endswith("/health"):
-        return await call_next(request)
-
-    start = time.perf_counter()
-    with tracer.start_as_current_span(
-        f"{request.method} {request.url.path}",
-        attributes={
-            "http.request.method": request.method,
-            "url.path": request.url.path,
-            "url.scheme": request.url.scheme,
-        },
-    ) as span:
-        try:
-            response = await call_next(request)
-        except Exception as exc:
-            span.record_exception(exc)
-            span.set_attribute("error.type", type(exc).__name__)
-            log.exception("Unhandled error in %s %s", request.method, request.url.path)
-            raise
-
-        span.set_attribute("http.response.status_code", response.status_code)
-        span.set_attribute(
-            "duration_ms",
-            round((time.perf_counter() - start) * 1000, 2),
-        )
-        return response
-
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-add_adk_fastapi_endpoint(
-    app,
-    adk_wellness_agent,
-    path="/agui",
+app = create_agent_app(
+    title="Wellness Planning Agent",
+    adk_agent=adk_wellness_agent,
     extract_state_from_request=extract_wellness_state,
+    session_container=_session_container,
+    tracer=tracer,
 )
-
-
-@app.get("/health")
-async def health():
-    return await _session_container.check_database_connection()

@@ -2,51 +2,49 @@
 
 import asyncio
 import datetime
-import logging
 import os
 import time
 from typing import Any
 
 import httpx
-from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
+from ag_ui_adk import ADKAgent, AGUIToolset
 from ag_ui_adk.config import PredictStateMapping
+from agents_shared.app_factory import (
+    create_agent_app,
+    get_agent_tracer,
+    setup_agent_logging,
+)
 from agents_shared.invocation_state import get_invocation_temp
 from agents_shared.session_service import (
     SessionServiceContainer,
     create_session_service,
 )
-from agents_shared.tools import shared_after_tool_callback
+from agents_shared.tools import (
+    DEFAULT_RETRY_CONFIG,
+    build_model,
+    extract_identity_state,
+    get_current_date,
+    on_model_error_callback,
+    shared_after_tool_callback,
+)
 from dotenv import load_dotenv
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
+from google.adk.agents.readonly_context import ReadonlyContext
 from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
 from google.adk.auth.credential_service.in_memory_credential_service import (
     InMemoryCredentialService,
 )
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
-from google.adk.models import LlmRequest, LlmResponse
-from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import ToolContext
-from opentelemetry import trace
-from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
-from opentelemetry.sdk.resources import Resource
+from pydantic import BaseModel
 
 from .utils import web_search_toolset
 
 load_dotenv()
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
-# Surface ADK and LiteLLM internals at DEBUG so auth/model errors are visible.
-logging.getLogger("google.adk").setLevel(logging.DEBUG)
-logging.getLogger("litellm").setLevel(logging.DEBUG)
-logging.getLogger("ag_ui_adk").setLevel(logging.DEBUG)
-
-log = logging.getLogger("fitness_agent")
+log = setup_agent_logging("fitness_agent")
+tracer = get_agent_tracer("fitness-agent")
 
 _railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN")
 AGENT_PUBLIC_URL = os.getenv("AGENT_PUBLIC_URL") or (
@@ -55,45 +53,22 @@ AGENT_PUBLIC_URL = os.getenv("AGENT_PUBLIC_URL") or (
 STRAVA_ACTIVITIES_URL = "https://www.strava.com/api/v3/athlete/activities"
 STRAVA_TOKEN_HEADER = "x-strava-access-token"
 STRAVA_TOKEN_STATE_KEY = "temp:strava_token"
-CLERK_USER_ID_HEADER = "x-clerk-user-id"
 
 
-def extract_identity_state(request) -> dict[str, Any]:
-    return {"user_id": request.headers.get(CLERK_USER_ID_HEADER) or "anonymous"}
+class FitnessState(BaseModel):
+    """Default shared-state shape for the fitness agent."""
+
+    strava_connected: bool = False
+    activities: list[dict[str, Any]] = []
+    activities_synced_at: str = ""
+    objective_research: str = ""
+    training_plan: str = ""
+    status: str = "idle"
+    review_summary: str = ""
+    user_id: str = ""
 
 
-_DEFAULT_STATE: dict[str, Any] = {
-    "strava_connected": False,
-    "activities": [],
-    "activities_synced_at": "",
-    "objective_research": "",
-    "training_plan": "",
-    "status": "idle",
-    "review_summary": "",
-}
-
-
-def _setup_otel() -> None:
-    if not os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
-        return
-
-    from google.adk.telemetry.setup import maybe_set_otel_providers
-
-    resource = Resource.create(
-        {
-            "service.name": os.getenv("RAILWAY_SERVICE_NAME", "fitness-agent"),
-            "service.version": os.getenv("RAILWAY_GIT_COMMIT_SHA", "dev"),
-            "deployment.environment": os.getenv("RAILWAY_ENVIRONMENT_NAME", "local"),
-            "railway.project.id": os.getenv("RAILWAY_PROJECT_ID", ""),
-            "railway.service.id": os.getenv("RAILWAY_SERVICE_ID", ""),
-        },
-    )
-    maybe_set_otel_providers(otel_resource=resource)
-    SQLAlchemyInstrumentor().instrument()
-
-
-_setup_otel()
-tracer = trace.get_tracer("fitness-agent")
+_DEFAULT_STATE: dict[str, Any] = FitnessState().model_dump()
 
 
 def normalize_strava_activity(activity: dict[str, Any]) -> dict[str, Any]:
@@ -261,16 +236,6 @@ def mark_plan_ready(tool_context: ToolContext, summary: str) -> dict:
     return {"ok": True}
 
 
-def get_current_date() -> dict:
-    """Return today's date for weekly training-plan scheduling."""
-    today = datetime.datetime.now(datetime.UTC).date()
-    return {
-        "date": today.isoformat(),
-        "weekday": today.strftime("%A"),
-        "month": today.strftime("%B %Y"),
-    }
-
-
 def on_before_agent(callback_context: CallbackContext) -> None:
     token = get_invocation_temp(STRAVA_TOKEN_STATE_KEY, callback_context.state)
     if token:
@@ -304,11 +269,8 @@ async def throttle_web_search(tool, args, tool_context) -> None:
     return
 
 
-def before_model_modifier(
-    callback_context: CallbackContext,
-    llm_request: LlmRequest,
-) -> LlmResponse | None:
-    state = callback_context.state
+async def build_dynamic_instruction(context: ReadonlyContext) -> str:
+    state = context.state
     connected = bool(
         state.get("strava_connected")
         and get_invocation_temp(STRAVA_TOKEN_STATE_KEY, state),
@@ -324,17 +286,12 @@ def before_model_modifier(
         "Strava account isn't connected and they need to connect it in the UI.\n"
         "Do not generate a training plan until Strava is connected."
     )
-    prefix = f"""Current fitness state:
+    return f"""Current fitness state:
 - Strava connected: {connected}
 - Synced activities: {activity_count}
 - Activities synced at: {synced_at or "never"}
 
-{strava_notice}
-
-"""
-    original = llm_request.config.system_instruction or ""
-    llm_request.config.system_instruction = prefix + str(original)
-    return None
+{strava_notice}"""
 
 
 _INSTRUCTION = """\
@@ -383,21 +340,19 @@ assumptions when Strava or objective context is unavailable.
 """
 
 
-def build_agent() -> LlmAgent:
+def build_agent(*, mode: str | None = None, include_contents: str = "default") -> LlmAgent:
     """Fresh LlmAgent instance — the gateway's wellness orchestrator builds its own."""
     return LlmAgent(
         name="fitness_agent",
-        model=LiteLlm(
-            model="openrouter/poolside/laguna-m.1:free",
-            fallbacks=[
-                "mistral/mistral-small-latest",
-                "openrouter/owl-alpha",
-                "nvidia_nim/deepseek-ai/deepseek-v4-flash",
-            ],
-        ),
-        instruction=_INSTRUCTION,
+        model=build_model(),
+        retry_config=DEFAULT_RETRY_CONFIG,
+        on_model_error_callback=on_model_error_callback,
+        mode=mode,
+        include_contents=include_contents,
+        state_schema=FitnessState,
+        static_instruction=_INSTRUCTION,
+        instruction=build_dynamic_instruction,
         before_agent_callback=on_before_agent,
-        before_model_callback=before_model_modifier,
         before_tool_callback=throttle_web_search,
         after_tool_callback=shared_after_tool_callback,
         tools=[
@@ -442,54 +397,10 @@ adk_fitness_agent = ADKAgent(
     predict_state=FITNESS_PREDICT_STATE,
 )
 
-app = FastAPI(title="Fitness Training Agent")
-
-
-@app.middleware("http")
-async def trace_requests(request, call_next):
-    if request.url.path.endswith("/health"):
-        return await call_next(request)
-
-    start = time.perf_counter()
-    with tracer.start_as_current_span(
-        f"{request.method} {request.url.path}",
-        attributes={
-            "http.request.method": request.method,
-            "url.path": request.url.path,
-            "url.scheme": request.url.scheme,
-        },
-    ) as span:
-        try:
-            response = await call_next(request)
-        except Exception as exc:
-            span.record_exception(exc)
-            span.set_attribute("error.type", type(exc).__name__)
-            log.exception("Unhandled error in %s %s", request.method, request.url.path)
-            raise
-
-        span.set_attribute("http.response.status_code", response.status_code)
-        span.set_attribute(
-            "duration_ms",
-            round((time.perf_counter() - start) * 1000, 2),
-        )
-        return response
-
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-add_adk_fastapi_endpoint(
-    app,
-    adk_fitness_agent,
-    path="/agui",
+app = create_agent_app(
+    title="Fitness Training Agent",
+    adk_agent=adk_fitness_agent,
     extract_state_from_request=extract_strava_auth_state,
+    session_container=_session_container,
+    tracer=tracer,
 )
-
-
-@app.get("/health")
-async def health():
-    return await _session_container.check_database_connection()

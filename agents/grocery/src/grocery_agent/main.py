@@ -1,49 +1,47 @@
 """Grocery Planning Agent — Meal Planner MCP + ADK + AG-UI shared-state pattern."""
 
-import datetime
 import json
-import logging
 import os
-import time
+from typing import Any
 
-from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
+from ag_ui_adk import ADKAgent, AGUIToolset
 from ag_ui_adk.config import PredictStateMapping
+from agents_shared.app_factory import (
+    create_agent_app,
+    get_agent_tracer,
+    setup_agent_logging,
+)
 from agents_shared.invocation_state import get_invocation_temp
 from agents_shared.session_service import (
     SessionServiceContainer,
     create_session_service,
 )
-from agents_shared.tools import shared_after_tool_callback
+from agents_shared.tools import (
+    DEFAULT_RETRY_CONFIG,
+    build_model,
+    extract_identity_state,
+    get_current_date,
+    on_model_error_callback,
+    shared_after_tool_callback,
+)
 from dotenv import load_dotenv
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
+from google.adk.agents.readonly_context import ReadonlyContext
 from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
 from google.adk.auth.credential_service.in_memory_credential_service import (
     InMemoryCredentialService,
 )
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
-from google.adk.models import LlmRequest, LlmResponse
-from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import ToolContext
-from opentelemetry import trace
-from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
-from opentelemetry.sdk.resources import Resource
+from pydantic import BaseModel
 
 from .utils import meal_planner_toolset
 
 load_dotenv()
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
-logging.getLogger("google.adk").setLevel(logging.DEBUG)
-logging.getLogger("litellm").setLevel(logging.DEBUG)
-logging.getLogger("ag_ui_adk").setLevel(logging.DEBUG)
-
-log = logging.getLogger("grocery_agent")
+log = setup_agent_logging("grocery_agent")
+tracer = get_agent_tracer("grocery-agent")
 
 _railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN")
 AGENT_PUBLIC_URL = os.getenv("AGENT_PUBLIC_URL") or (
@@ -51,53 +49,28 @@ AGENT_PUBLIC_URL = os.getenv("AGENT_PUBLIC_URL") or (
 )
 KROGER_TOKEN_HEADER = "x-kroger-access-token"
 KROGER_TOKEN_STATE_KEY = "temp:kroger_token"
-CLERK_USER_ID_HEADER = "x-clerk-user-id"
-
-
-def extract_identity_state(request) -> dict:
-    return {"user_id": request.headers.get(CLERK_USER_ID_HEADER) or "anonymous"}
-
-
-# ---------------------------------------------------------------------------
-# OTEL
-# ---------------------------------------------------------------------------
-def _setup_otel() -> None:
-    if not os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
-        return
-
-    from google.adk.telemetry.setup import maybe_set_otel_providers
-
-    resource = Resource.create(
-        {
-            "service.name": os.getenv("RAILWAY_SERVICE_NAME", "grocery-agent"),
-            "service.version": os.getenv("RAILWAY_GIT_COMMIT_SHA", "dev"),
-            "deployment.environment": os.getenv("RAILWAY_ENVIRONMENT_NAME", "local"),
-            "railway.project.id": os.getenv("RAILWAY_PROJECT_ID", ""),
-            "railway.service.id": os.getenv("RAILWAY_SERVICE_ID", ""),
-        },
-    )
-    maybe_set_otel_providers(otel_resource=resource)
-    SQLAlchemyInstrumentor().instrument()
-
-
-_setup_otel()
-tracer = trace.get_tracer("grocery-agent")
 
 
 # ---------------------------------------------------------------------------
 # Default state
 # ---------------------------------------------------------------------------
-_DEFAULT_STATE: dict = {
-    "shopping_list": [],
-    "meal_plan": "",
-    "cart": [],
-    "pantry": [],
-    "weekly_deals": "",
-    "status": "idle",
-    "notes": "",
-    "review_summary": "",
-    "kroger_connected": False,
-}
+class GroceryState(BaseModel):
+    """Default shared-state shape for the grocery agent."""
+
+    shopping_list: list[str] = []
+    meal_plan: str = ""
+    cart: list[dict[str, Any]] = []
+    pantry: list[dict[str, Any]] = []
+    weekly_deals: str = ""
+    status: str = "idle"
+    notes: str = ""
+    review_summary: str = ""
+    kroger_connected: bool = False
+    training_plan: str = ""
+    user_id: str = ""
+
+
+_DEFAULT_STATE: dict[str, Any] = GroceryState().model_dump()
 
 
 # ---------------------------------------------------------------------------
@@ -161,16 +134,6 @@ def mark_list_ready(tool_context: ToolContext, summary: str) -> dict:
     return {"ok": True}
 
 
-def get_current_date() -> dict:
-    """Return today's date for meal-plan scheduling and deal timing."""
-    today = datetime.datetime.now(datetime.UTC).date()
-    return {
-        "date": today.isoformat(),
-        "weekday": today.strftime("%A"),
-        "month": today.strftime("%B %Y"),
-    }
-
-
 # ---------------------------------------------------------------------------
 # Callbacks — shared-state pattern
 # ---------------------------------------------------------------------------
@@ -184,13 +147,10 @@ def on_before_agent(callback_context: CallbackContext) -> None:
             callback_context.state[key] = default
 
 
-def before_model_modifier(
-    callback_context: CallbackContext,
-    llm_request: LlmRequest,
-) -> LlmResponse | None:
-    """Inject current grocery state + auth notice into the system prompt."""
+async def build_dynamic_instruction(context: ReadonlyContext) -> str:
+    """Per-turn grocery state and auth notice appended after static prompt."""
     state = {
-        key: callback_context.state.get(key, default)
+        key: context.state.get(key, default)
         for key, default in _DEFAULT_STATE.items()
     }
     kroger_connected: bool = bool(state.get("kroger_connected", False))
@@ -211,11 +171,7 @@ def before_model_modifier(
     except (TypeError, ValueError):
         state_json = "{}"
 
-    prefix = f"Current grocery state:\n{state_json}{auth_notice}\n\n"
-
-    original = llm_request.config.system_instruction or ""
-    llm_request.config.system_instruction = prefix + str(original)
-    return None
+    return f"Current grocery state:\n{state_json}{auth_notice}"
 
 
 async def extract_kroger_auth_state(request, _input_data) -> dict:
@@ -237,6 +193,11 @@ You are a collaborative grocery and meal-planning partner with live access to Kr
 If `kroger_connected` is False in the current state, stop immediately. Tell the user
 their Kroger account isn't connected and they need to click 'Connect Kroger' in the UI.
 Do not call any MCP tools and do not generate a meal plan.
+
+## Training-plan context
+If `training_plan` is present in the current state, tailor meals and shopping to it:
+protein around strength days, lighter prep before hard sessions, extra fuel and
+hydration for the hike or long-endurance day, and recovery nutrition after heavy days.
 
 ## Workflow (only when kroger_connected is True)
 1. Use MCP tools to fetch real data BEFORE writing to state:
@@ -268,21 +229,20 @@ Do not call any MCP tools and do not generate a meal plan.
 Be practical, budget-aware, and proactive. Suggest substitutions for out-of-stock items.
 """
 
-def build_agent() -> LlmAgent:
+
+def build_agent(*, mode: str | None = None, include_contents: str = "default") -> LlmAgent:
     """Fresh LlmAgent instance — the gateway's wellness orchestrator builds its own."""
     return LlmAgent(
         name="grocery_agent",
-        model=LiteLlm(
-            model="openrouter/poolside/laguna-m.1:free",
-            fallbacks=[
-                "mistral/mistral-small-latest",
-                "openrouter/owl-alpha",
-                "nvidia_nim/deepseek-ai/deepseek-v4-flash",
-            ],
-        ),
-        instruction=_INSTRUCTION,
+        model=build_model(),
+        retry_config=DEFAULT_RETRY_CONFIG,
+        on_model_error_callback=on_model_error_callback,
+        mode=mode,
+        include_contents=include_contents,
+        state_schema=GroceryState,
+        static_instruction=_INSTRUCTION,
+        instruction=build_dynamic_instruction,
         before_agent_callback=on_before_agent,
-        before_model_callback=before_model_modifier,
         after_tool_callback=shared_after_tool_callback,
         tools=[
             set_shopping_list,
@@ -328,57 +288,10 @@ adk_grocery_agent = ADKAgent(
     predict_state=GROCERY_PREDICT_STATE,
 )
 
-# ---------------------------------------------------------------------------
-# FastAPI app
-# ---------------------------------------------------------------------------
-app = FastAPI(title="Grocery Planning Agent")
-
-
-@app.middleware("http")
-async def trace_requests(request, call_next):
-    if request.url.path.endswith("/health"):
-        return await call_next(request)
-
-    start = time.perf_counter()
-    with tracer.start_as_current_span(
-        f"{request.method} {request.url.path}",
-        attributes={
-            "http.request.method": request.method,
-            "url.path": request.url.path,
-            "url.scheme": request.url.scheme,
-        },
-    ) as span:
-        try:
-            response = await call_next(request)
-        except Exception as exc:
-            span.record_exception(exc)
-            span.set_attribute("error.type", type(exc).__name__)
-            log.exception("Unhandled error in %s %s", request.method, request.url.path)
-            raise
-
-        span.set_attribute("http.response.status_code", response.status_code)
-        span.set_attribute(
-            "duration_ms",
-            round((time.perf_counter() - start) * 1000, 2),
-        )
-        return response
-
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-add_adk_fastapi_endpoint(
-    app,
-    adk_grocery_agent,
-    path="/agui",
+app = create_agent_app(
+    title="Grocery Planning Agent",
+    adk_agent=adk_grocery_agent,
     extract_state_from_request=extract_kroger_auth_state,
+    session_container=_session_container,
+    tracer=tracer,
 )
-
-
-@app.get("/health")
-async def health():
-    return await _session_container.check_database_connection()

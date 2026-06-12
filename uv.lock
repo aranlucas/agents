@@ -95,22 +95,30 @@ name = "agents-shared"
 version = "0.1.0"
 source = { editable = "agents/shared" }
 dependencies = [
+    { name = "ag-ui-adk" },
     { name = "asyncpg" },
     { name = "dependency-injector" },
+    { name = "fastapi" },
     { name = "google-adk" },
     { name = "google-genai" },
+    { name = "opentelemetry-api" },
     { name = "opentelemetry-instrumentation-sqlalchemy" },
+    { name = "opentelemetry-sdk" },
     { name = "pyjwt", extra = ["crypto"] },
     { name = "sqlalchemy", extra = ["asyncio"] },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "ag-ui-adk", specifier = ">=0.6.4" },
     { name = "asyncpg", specifier = ">=0.30.0" },
     { name = "dependency-injector", specifier = ">=4.49.0" },
+    { name = "fastapi" },
     { name = "google-adk", specifier = ">=2.2.0" },
     { name = "google-genai" },
+    { name = "opentelemetry-api" },
     { name = "opentelemetry-instrumentation-sqlalchemy", specifier = ">=0.50b0" },
+    { name = "opentelemetry-sdk" },
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.10" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0" },
 ]

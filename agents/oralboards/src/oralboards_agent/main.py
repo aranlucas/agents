@@ -1,51 +1,47 @@
 """Oral Boards Examiner Agent - grounded pediatric dentistry mock exams."""
 
 import json
-import logging
 import os
 import re
 import sqlite3
-import time
 from importlib import resources
 from pathlib import Path
+from typing import Any
 
-from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
+from ag_ui_adk import ADKAgent, AGUIToolset
 from ag_ui_adk.config import PredictStateMapping
+from agents_shared.app_factory import (
+    create_agent_app,
+    get_agent_tracer,
+    setup_agent_logging,
+)
 from agents_shared.session_service import (
     SessionServiceContainer,
     create_session_service,
 )
-from agents_shared.tools import shared_after_tool_callback
+from agents_shared.tools import (
+    DEFAULT_RETRY_CONFIG,
+    build_model,
+    extract_identity_state,
+    on_model_error_callback,
+    shared_after_tool_callback,
+)
 from dotenv import load_dotenv
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
+from google.adk.agents.readonly_context import ReadonlyContext
 from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
 from google.adk.auth.credential_service.in_memory_credential_service import (
     InMemoryCredentialService,
 )
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
-from google.adk.models import LlmRequest, LlmResponse
-from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import ToolContext
-from opentelemetry import trace
-from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
-from opentelemetry.sdk.resources import Resource
+from pydantic import BaseModel
 
 load_dotenv()
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
-logging.getLogger("google.adk").setLevel(logging.DEBUG)
-logging.getLogger("litellm").setLevel(logging.DEBUG)
-logging.getLogger("ag_ui_adk").setLevel(logging.DEBUG)
+log = setup_agent_logging("oralboards_agent")
 
-log = logging.getLogger("oralboards_agent")
-
-CLERK_USER_ID_HEADER = "x-clerk-user-id"
 VALID_COLLECTIONS = {"abpd", "aapd", "cody"}
 
 
@@ -91,46 +87,25 @@ def _connect() -> sqlite3.Connection:
 
 DB_STARTUP_ERROR = _validate_db()
 
-
-def extract_identity_state(request) -> dict:
-    return {"user_id": request.headers.get(CLERK_USER_ID_HEADER) or "anonymous"}
+tracer = get_agent_tracer("oralboards-agent")
 
 
 async def extract_oralboards_identity_state(request, _input_data) -> dict:
     return extract_identity_state(request)
 
 
-def _setup_otel() -> None:
-    if not os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
-        return
+class OralBoardsState(BaseModel):
+    """Default shared-state shape for the oral-boards examiner agent."""
 
-    from google.adk.telemetry.setup import maybe_set_otel_providers
-
-    resource = Resource.create(
-        {
-            "service.name": os.getenv("RAILWAY_SERVICE_NAME", "oralboards-agent"),
-            "service.version": os.getenv("RAILWAY_GIT_COMMIT_SHA", "dev"),
-            "deployment.environment": os.getenv("RAILWAY_ENVIRONMENT_NAME", "local"),
-            "railway.project.id": os.getenv("RAILWAY_PROJECT_ID", ""),
-            "railway.service.id": os.getenv("RAILWAY_SERVICE_ID", ""),
-        },
-    )
-    maybe_set_otel_providers(otel_resource=resource)
-    SQLAlchemyInstrumentor().instrument()
+    case: str = ""
+    case_sources: list[Any] = []
+    phase: str = "idle"
+    transcript: list[Any] = []
+    score_card: str = ""
+    status: str = "idle"
 
 
-_setup_otel()
-tracer = trace.get_tracer("oralboards-agent")
-
-
-_DEFAULT_STATE: dict = {
-    "case": "",
-    "case_sources": [],
-    "phase": "idle",
-    "transcript": [],
-    "score_card": "",
-    "status": "idle",
-}
+_DEFAULT_STATE: dict[str, Any] = OralBoardsState().model_dump()
 
 
 def _clean_query(query: str) -> str:
@@ -276,14 +251,9 @@ def on_before_agent(callback_context: CallbackContext) -> None:
             callback_context.state[key] = default
 
 
-def before_model_modifier(
-    callback_context: CallbackContext,
-    llm_request: LlmRequest,
-) -> LlmResponse | None:
-    state = {
-        key: callback_context.state.get(key, default)
-        for key, default in _DEFAULT_STATE.items()
-    }
+async def build_dynamic_instruction(context: ReadonlyContext) -> str:
+    """Per-turn state snapshot + DB-availability notice (after static prompt)."""
+    state = {key: context.state.get(key, default) for key, default in _DEFAULT_STATE.items()}
     try:
         state_json = json.dumps(state, indent=2, default=str)
     except (TypeError, ValueError):
@@ -295,13 +265,10 @@ def before_model_modifier(
         if DB_STARTUP_ERROR
         else ""
     )
-    prefix = f"Current oral-boards state:\n{state_json}{db_notice}\n\n"
-    original = llm_request.config.system_instruction or ""
-    llm_request.config.system_instruction = prefix + str(original)
-    return None
+    return f"Current oral-boards state:\n{state_json}{db_notice}"
 
 
-_INSTRUCTION = """\
+_STATIC_INSTRUCTION = """\
 You are an ABPD Oral Clinical Exam practice examiner for pediatric dentistry.
 
 The UI canvas is the source of truth. Never paste a vignette, transcript, or
@@ -336,17 +303,13 @@ Be firm, source-bound, and concise. This is exam practice, not open-ended Q&A.
 
 oralboards_agent = LlmAgent(
     name="oralboards_agent",
-    model=LiteLlm(
-        model="openrouter/poolside/laguna-m.1:free",
-        fallbacks=[
-            "mistral/mistral-small-latest",
-            "openrouter/owl-alpha",
-            "nvidia_nim/deepseek-ai/deepseek-v4-flash",
-        ],
-    ),
-    instruction=_INSTRUCTION,
+    model=build_model(),
+    retry_config=DEFAULT_RETRY_CONFIG,
+    on_model_error_callback=on_model_error_callback,
+    state_schema=OralBoardsState,
+    static_instruction=_STATIC_INSTRUCTION,
+    instruction=build_dynamic_instruction,
     before_agent_callback=on_before_agent,
-    before_model_callback=before_model_modifier,
     after_tool_callback=shared_after_tool_callback,
     tools=[
         search_docs,
@@ -369,74 +332,32 @@ ORALBOARDS_PREDICT_STATE = [
     ),
 ]
 
-_shared_session_svc = create_session_service()
 _session_container = SessionServiceContainer()
-_artifact_svc = InMemoryArtifactService()
-_memory_svc = InMemoryMemoryService()
-_credential_svc = InMemoryCredentialService()
 
 
 adk_oralboards_agent = ADKAgent(
     adk_agent=oralboards_agent,
-    session_service=_shared_session_svc,
-    artifact_service=_artifact_svc,
-    memory_service=_memory_svc,
-    credential_service=_credential_svc,
+    session_service=create_session_service(),
+    artifact_service=InMemoryArtifactService(),
+    memory_service=InMemoryMemoryService(),
+    credential_service=InMemoryCredentialService(),
     session_timeout_seconds=3600,
     predict_state=ORALBOARDS_PREDICT_STATE,
 )
 
-app = FastAPI(title="Oral Boards Examiner Agent")
 
-
-@app.middleware("http")
-async def trace_requests(request, call_next):
-    if request.url.path.endswith("/health"):
-        return await call_next(request)
-
-    start = time.perf_counter()
-    with tracer.start_as_current_span(
-        f"{request.method} {request.url.path}",
-        attributes={
-            "http.request.method": request.method,
-            "url.path": request.url.path,
-            "url.scheme": request.url.scheme,
-        },
-    ) as span:
-        try:
-            response = await call_next(request)
-        except Exception as exc:
-            span.record_exception(exc)
-            span.set_attribute("error.type", type(exc).__name__)
-            log.exception("Unhandled error in %s %s", request.method, request.url.path)
-            raise
-
-        span.set_attribute("http.response.status_code", response.status_code)
-        span.set_attribute(
-            "duration_ms",
-            round((time.perf_counter() - start) * 1000, 2),
-        )
-        return response
-
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-add_adk_fastapi_endpoint(
-    app,
-    adk_oralboards_agent,
-    path="/agui",
-    extract_state_from_request=extract_oralboards_identity_state,
-)
-
-
-@app.get("/health")
-async def health():
+async def _health() -> dict:
     session_health = await _session_container.check_database_connection()
     if DB_STARTUP_ERROR:
         return {"status": "unhealthy", "database": "error", "error": DB_STARTUP_ERROR}
     return session_health
+
+
+app = create_agent_app(
+    title="Oral Boards Examiner Agent",
+    adk_agent=adk_oralboards_agent,
+    extract_state_from_request=extract_oralboards_identity_state,
+    session_container=_session_container,
+    tracer=tracer,
+    health_handler=_health,
+)

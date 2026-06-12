@@ -1,25 +1,32 @@
 """Resume Q&A Agent — public, unauthenticated demo."""
 
-import logging
-import time
 from pathlib import Path
 
-from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
+from ag_ui_adk import ADKAgent, AGUIToolset
+from agents_shared.app_factory import (
+    create_agent_app,
+    get_agent_tracer,
+    setup_agent_logging,
+)
 from agents_shared.session_service import (
     SessionServiceContainer,
     create_session_service,
 )
+from agents_shared.tools import (
+    DEFAULT_RETRY_CONFIG,
+    build_model,
+    extract_identity_state,
+    on_model_error_callback,
+)
 from dotenv import load_dotenv
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from google.adk.agents import LlmAgent
-from google.adk.models.lite_llm import LiteLlm
-from opentelemetry import trace
+from google.adk.agents.callback_context import CallbackContext
+from pydantic import BaseModel
 
 load_dotenv()
 
-log = logging.getLogger("resume_agent")
-tracer = trace.get_tracer("resume-agent")
+log = setup_agent_logging("resume_agent")
+tracer = get_agent_tracer("resume-agent")
 
 _RESUME = (Path(__file__).parent / "resume.md").read_text(encoding="utf-8")
 
@@ -50,22 +57,34 @@ resume Q&A is one of the agents on his personal platform.
 """
 
 
+class ResumeState(BaseModel):
+    """Default shared-state shape for the public resume agent."""
+
+    user_id: str = ""
+
+
+_DEFAULT_STATE = ResumeState().model_dump()
+
+
 async def extract_visitor_state(request, _input_data) -> dict:
-    return {"user_id": request.headers.get("x-clerk-user-id") or "anonymous"}
+    return extract_identity_state(request)
+
+
+def on_before_agent(callback_context: CallbackContext) -> None:
+    for key, default in _DEFAULT_STATE.items():
+        if key not in callback_context.state:
+            callback_context.state[key] = default
 
 
 def build_agent() -> LlmAgent:
     return LlmAgent(
         name="resume_agent",
-        model=LiteLlm(
-            model="openrouter/poolside/laguna-m.1:free",
-            fallbacks=[
-                "mistral/mistral-small-latest",
-                "openrouter/owl-alpha",
-                "nvidia_nim/deepseek-ai/deepseek-v4-flash",
-            ],
-        ),
-        instruction=_INSTRUCTION,
+        model=build_model(),
+        retry_config=DEFAULT_RETRY_CONFIG,
+        on_model_error_callback=on_model_error_callback,
+        state_schema=ResumeState,
+        static_instruction=_INSTRUCTION,
+        before_agent_callback=on_before_agent,
         tools=[AGUIToolset()],
     )
 
@@ -80,54 +99,10 @@ adk_resume_agent = ADKAgent(
     session_timeout_seconds=3600,
 )
 
-app = FastAPI(title="Resume Q&A Agent")
-
-
-@app.middleware("http")
-async def trace_requests(request, call_next):
-    if request.url.path.endswith("/health"):
-        return await call_next(request)
-
-    start = time.perf_counter()
-    with tracer.start_as_current_span(
-        f"{request.method} {request.url.path}",
-        attributes={
-            "http.request.method": request.method,
-            "url.path": request.url.path,
-            "url.scheme": request.url.scheme,
-        },
-    ) as span:
-        try:
-            response = await call_next(request)
-        except Exception as exc:
-            span.record_exception(exc)
-            span.set_attribute("error.type", type(exc).__name__)
-            log.exception("Unhandled error in %s %s", request.method, request.url.path)
-            raise
-
-        span.set_attribute("http.response.status_code", response.status_code)
-        span.set_attribute(
-            "duration_ms",
-            round((time.perf_counter() - start) * 1000, 2),
-        )
-        return response
-
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-add_adk_fastapi_endpoint(
-    app,
-    adk_resume_agent,
-    path="/agui",
+app = create_agent_app(
+    title="Resume Q&A Agent",
+    adk_agent=adk_resume_agent,
     extract_state_from_request=extract_visitor_state,
+    session_container=_session_container,
+    tracer=tracer,
 )
-
-
-@app.get("/health")
-async def health():
-    return await _session_container.check_database_connection()

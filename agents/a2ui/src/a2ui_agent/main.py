@@ -1,85 +1,57 @@
 """A2UI Showcase Agent - ADK agent that renders A2UI through AG-UI."""
 
 import json
-import logging
-import os
-import time
 from typing import Any
 
-from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
+from ag_ui_adk import ADKAgent, AGUIToolset
+from agents_shared.app_factory import (
+    create_agent_app,
+    get_agent_tracer,
+    setup_agent_logging,
+)
 from agents_shared.session_service import (
     SessionServiceContainer,
     create_session_service,
 )
-from agents_shared.tools import shared_after_tool_callback
+from agents_shared.tools import (
+    DEFAULT_RETRY_CONFIG,
+    build_model,
+    extract_identity_state,
+    on_model_error_callback,
+    shared_after_tool_callback,
+)
 from dotenv import load_dotenv
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
+from google.adk.agents.readonly_context import ReadonlyContext
 from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
 from google.adk.auth.credential_service.in_memory_credential_service import (
     InMemoryCredentialService,
 )
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
-from google.adk.models import LlmRequest, LlmResponse
-from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import ToolContext
-from opentelemetry import trace
-from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
-from opentelemetry.sdk.resources import Resource
+from pydantic import BaseModel
 
 load_dotenv()
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
-logging.getLogger("google.adk").setLevel(logging.DEBUG)
-logging.getLogger("litellm").setLevel(logging.DEBUG)
-logging.getLogger("ag_ui_adk").setLevel(logging.DEBUG)
-
-log = logging.getLogger("a2ui_agent")
-
-_railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN")
-AGENT_PUBLIC_URL = os.getenv("AGENT_PUBLIC_URL") or (
-    f"https://{_railway_domain}" if _railway_domain else "http://localhost:8004"
-)
-CLERK_USER_ID_HEADER = "x-clerk-user-id"
-
-_DEFAULT_STATE: dict[str, Any] = {
-    "status": "idle",
-    "surface_brief": "",
-    "last_surface": "",
-    "user_id": "",
-}
+log = setup_agent_logging("a2ui_agent")
+tracer = get_agent_tracer("a2ui-agent")
 
 
-def _setup_otel() -> None:
-    if not os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
-        return
+class A2UIState(BaseModel):
+    """Default shared-state shape for the A2UI showcase agent."""
 
-    from google.adk.telemetry.setup import maybe_set_otel_providers
-
-    resource = Resource.create(
-        {
-            "service.name": os.getenv("RAILWAY_SERVICE_NAME", "a2ui-agent"),
-            "service.version": os.getenv("RAILWAY_GIT_COMMIT_SHA", "dev"),
-            "deployment.environment": os.getenv("RAILWAY_ENVIRONMENT_NAME", "local"),
-            "railway.project.id": os.getenv("RAILWAY_PROJECT_ID", ""),
-            "railway.service.id": os.getenv("RAILWAY_SERVICE_ID", ""),
-        },
-    )
-    maybe_set_otel_providers(otel_resource=resource)
-    SQLAlchemyInstrumentor().instrument()
+    status: str = "idle"
+    surface_brief: str = ""
+    last_surface: str = ""
+    user_id: str = ""
 
 
-_setup_otel()
-tracer = trace.get_tracer("a2ui-agent")
+_DEFAULT_STATE: dict[str, Any] = A2UIState().model_dump()
 
 
 async def extract_demo_state(request, _input_data) -> dict[str, Any]:
-    return {"user_id": request.headers.get(CLERK_USER_ID_HEADER) or "anonymous"}
+    return extract_identity_state(request)
 
 
 def on_before_agent(callback_context: CallbackContext) -> None:
@@ -88,21 +60,9 @@ def on_before_agent(callback_context: CallbackContext) -> None:
             callback_context.state[key] = default
 
 
-def before_model_modifier(
-    callback_context: CallbackContext,
-    llm_request: LlmRequest,
-) -> LlmResponse | None:
-    state = {
-        key: callback_context.state.get(key, default)
-        for key, default in _DEFAULT_STATE.items()
-    }
-    llm_request.config.system_instruction = (
-        "Current A2UI showcase state:\n"
-        + json.dumps(state, indent=2, default=str)
-        + "\n\n"
-        + str(llm_request.config.system_instruction or "")
-    )
-    return None
+async def build_dynamic_instruction(context: ReadonlyContext) -> str:
+    state = {key: context.state.get(key, default) for key, default in _DEFAULT_STATE.items()}
+    return "Current A2UI showcase state:\n" + json.dumps(state, indent=2, default=str)
 
 
 def remember_surface(tool_context: ToolContext, brief: str, surface_name: str) -> dict:
@@ -113,7 +73,7 @@ def remember_surface(tool_context: ToolContext, brief: str, surface_name: str) -
     return {"ok": True, "surface_name": surface_name}
 
 
-_INSTRUCTION = """\
+_STATIC_INSTRUCTION = """\
 You are an A2UI showcase agent for testing the latest ADK + AG-UI + A2UI stack.
 
 Your primary job is to render rich declarative UI, not to answer only in text.
@@ -173,17 +133,13 @@ and the surface name. Keep chat text short; the generated UI is the product.
 
 a2ui_agent = LlmAgent(
     name="a2ui_agent",
-    model=LiteLlm(
-        model="openrouter/poolside/laguna-m.1:free",
-        fallbacks=[
-            "mistral/mistral-small-latest",
-            "openrouter/owl-alpha",
-            "nvidia_nim/deepseek-ai/deepseek-v4-flash",
-        ],
-    ),
-    instruction=_INSTRUCTION,
+    model=build_model(),
+    retry_config=DEFAULT_RETRY_CONFIG,
+    on_model_error_callback=on_model_error_callback,
+    state_schema=A2UIState,
+    static_instruction=_STATIC_INSTRUCTION,
+    instruction=build_dynamic_instruction,
     before_agent_callback=on_before_agent,
-    before_model_callback=before_model_modifier,
     after_tool_callback=shared_after_tool_callback,
     tools=[
         remember_surface,
@@ -191,70 +147,22 @@ a2ui_agent = LlmAgent(
     ],
 )
 
-_shared_session_svc = create_session_service()
 _session_container = SessionServiceContainer()
-_artifact_svc = InMemoryArtifactService()
-_memory_svc = InMemoryMemoryService()
-_credential_svc = InMemoryCredentialService()
 
 
 adk_a2ui_agent = ADKAgent(
     adk_agent=a2ui_agent,
-    session_service=_shared_session_svc,
-    artifact_service=_artifact_svc,
-    memory_service=_memory_svc,
-    credential_service=_credential_svc,
+    session_service=create_session_service(),
+    artifact_service=InMemoryArtifactService(),
+    memory_service=InMemoryMemoryService(),
+    credential_service=InMemoryCredentialService(),
     session_timeout_seconds=3600,
 )
 
-app = FastAPI(title="A2UI Showcase Agent")
-
-
-@app.middleware("http")
-async def trace_requests(request, call_next):
-    if request.url.path.endswith("/health"):
-        return await call_next(request)
-
-    start = time.perf_counter()
-    with tracer.start_as_current_span(
-        f"{request.method} {request.url.path}",
-        attributes={
-            "http.request.method": request.method,
-            "url.path": request.url.path,
-            "url.scheme": request.url.scheme,
-        },
-    ) as span:
-        try:
-            response = await call_next(request)
-        except Exception as exc:
-            span.record_exception(exc)
-            span.set_attribute("error.type", type(exc).__name__)
-            log.exception("Unhandled error in %s %s", request.method, request.url.path)
-            raise
-
-        span.set_attribute("http.response.status_code", response.status_code)
-        span.set_attribute(
-            "duration_ms",
-            round((time.perf_counter() - start) * 1000, 2),
-        )
-        return response
-
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-add_adk_fastapi_endpoint(
-    app,
-    adk_a2ui_agent,
-    path="/agui",
+app = create_agent_app(
+    title="A2UI Showcase Agent",
+    adk_agent=adk_a2ui_agent,
     extract_state_from_request=extract_demo_state,
+    session_container=_session_container,
+    tracer=tracer,
 )
-
-
-@app.get("/health")
-async def health():
-    return await _session_container.check_database_connection()

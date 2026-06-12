@@ -51,3 +51,18 @@ async def test_shared_after_tool_callback_returns_original_response_without_cont
     result = await shared_after_tool_callback(tool, {}, context, response)
     assert context.state["lookup"] == {"ok": True}
     assert result is response
+
+
+def test_save_state_falls_back_to_prefixed_key_when_schema_rejects_raw_tool_name() -> None:
+    class SchemaBoundState(dict):
+        def __setitem__(self, key, value):
+            if ":" not in key and key != "declared":
+                raise TypeError("unknown state key")
+            super().__setitem__(key, value)
+
+    context = SimpleNamespace(state=SchemaBoundState())
+    save_state(context, "search_products", {"items": ["eggs"]})
+
+    assert context.state == {
+        "temp:tool_response:search_products": {"items": ["eggs"]},
+    }
