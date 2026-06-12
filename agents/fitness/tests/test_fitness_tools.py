@@ -228,16 +228,15 @@ async def test_throttle_web_search_ignores_non_brave_tools() -> None:
     assert main._last_web_search_at == 1000
 
 
-def test_on_before_agent_hydrates_a2a_strava_metadata() -> None:
+def test_on_before_agent_derives_strava_connected_from_contextvar_token() -> None:
+    from agent_common.invocation_state import set_invocation_temp_state
+
+    set_invocation_temp_state({"temp:strava_token": "ctx-token"})
     callback_context = Mock()
     callback_context.state = {}
-    callback_context._invocation_context.run_config.custom_metadata = {
-        "a2a_metadata": {"user_id": "user_123", "strava_access_token": "token-123"},
-    }
     main.on_before_agent(callback_context)
-    assert callback_context.state["user_id"] == "user_123"
     assert callback_context.state["strava_connected"] is True
-    assert callback_context.state["temp:strava_token"] == "token-123"
+    set_invocation_temp_state(None)
 
 
 def test_web_search_toolset_uses_local_stdio_mcp(monkeypatch) -> None:

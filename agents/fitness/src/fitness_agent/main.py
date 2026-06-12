@@ -13,10 +13,8 @@ from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill
 from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
 from ag_ui_adk.config import PredictStateMapping
-from agent_common.a2a import (
-    apply_a2a_auth_metadata_to_state,
-    create_a2a_agent_executor,
-)
+from agent_common.a2a import create_a2a_agent_executor
+from agent_common.invocation_state import get_invocation_temp
 from agent_common.session_service import SessionServiceContainer, create_session_service
 from agent_common.task_store import create_task_store
 from agent_common.tools import shared_after_tool_callback
@@ -147,7 +145,7 @@ async def fetch_activities(
     omit it (or pass 1) to start from the most recent activities.
     Activities are appended to state across calls so the full history builds up.
     """
-    token = tool_context.state.get(STRAVA_TOKEN_STATE_KEY) or ""
+    token = get_invocation_temp(STRAVA_TOKEN_STATE_KEY, tool_context.state)
     connected = bool(tool_context.state.get("strava_connected")) and bool(token)
     log.debug(
         "fetch_activities: strava_connected=%s token_present=%s page=%s",
@@ -277,7 +275,9 @@ def get_current_date() -> dict:
 
 
 def on_before_agent(callback_context: CallbackContext) -> None:
-    apply_a2a_auth_metadata_to_state(callback_context)
+    token = get_invocation_temp(STRAVA_TOKEN_STATE_KEY, callback_context.state)
+    if token:
+        callback_context.state["strava_connected"] = True
     for key, default in _DEFAULT_STATE.items():
         if key not in callback_context.state:
             callback_context.state[key] = default
@@ -313,7 +313,8 @@ def before_model_modifier(
 ) -> LlmResponse | None:
     state = callback_context.state
     connected = bool(
-        state.get("strava_connected") and state.get(STRAVA_TOKEN_STATE_KEY),
+        state.get("strava_connected")
+        and get_invocation_temp(STRAVA_TOKEN_STATE_KEY, state),
     )
     activity_count = len(state.get("activities") or [])
     synced_at = state.get("activities_synced_at") or ""
@@ -385,31 +386,36 @@ assumptions when Strava or objective context is unavailable.
 """
 
 
-fitness_agent = LlmAgent(
-    name="fitness_agent",
-    model=LiteLlm(
-        model="openrouter/poolside/laguna-m.1:free",
-        fallbacks=[
-            "mistral/mistral-small-latest",
-            "openrouter/owl-alpha",
-            "nvidia_nim/deepseek-ai/deepseek-v4-flash",
+def build_agent() -> LlmAgent:
+    """Fresh LlmAgent instance — the gateway's wellness orchestrator builds its own."""
+    return LlmAgent(
+        name="fitness_agent",
+        model=LiteLlm(
+            model="openrouter/poolside/laguna-m.1:free",
+            fallbacks=[
+                "mistral/mistral-small-latest",
+                "openrouter/owl-alpha",
+                "nvidia_nim/deepseek-ai/deepseek-v4-flash",
+            ],
+        ),
+        instruction=_INSTRUCTION,
+        before_agent_callback=on_before_agent,
+        before_model_callback=before_model_modifier,
+        before_tool_callback=throttle_web_search,
+        after_tool_callback=shared_after_tool_callback,
+        tools=[
+            fetch_activities,
+            get_current_date,
+            set_objective_research,
+            set_training_plan,
+            mark_plan_ready,
+            AGUIToolset(),
+            web_search_toolset(),
         ],
-    ),
-    instruction=_INSTRUCTION,
-    before_agent_callback=on_before_agent,
-    before_model_callback=before_model_modifier,
-    before_tool_callback=throttle_web_search,
-    after_tool_callback=shared_after_tool_callback,
-    tools=[
-        fetch_activities,
-        get_current_date,
-        set_objective_research,
-        set_training_plan,
-        mark_plan_ready,
-        AGUIToolset(),
-        web_search_toolset(),
-    ],
-)
+    )
+
+
+fitness_agent = build_agent()
 
 FITNESS_PREDICT_STATE = [
     PredictStateMapping(

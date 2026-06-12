@@ -11,10 +11,8 @@ from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill
 from ag_ui_adk import ADKAgent, AGUIToolset, add_adk_fastapi_endpoint
 from ag_ui_adk.config import PredictStateMapping
-from agent_common.a2a import (
-    apply_a2a_auth_metadata_to_state,
-    create_a2a_agent_executor,
-)
+from agent_common.a2a import create_a2a_agent_executor
+from agent_common.invocation_state import get_invocation_temp
 from agent_common.session_service import SessionServiceContainer, create_session_service
 from agent_common.task_store import create_task_store
 from agent_common.tools import shared_after_tool_callback
@@ -181,7 +179,9 @@ def get_current_date() -> dict:
 # ---------------------------------------------------------------------------
 def on_before_agent(callback_context: CallbackContext) -> None:
     """Initialize missing state keys with defaults on every turn."""
-    apply_a2a_auth_metadata_to_state(callback_context)
+    token = get_invocation_temp(KROGER_TOKEN_STATE_KEY, callback_context.state)
+    if token:
+        callback_context.state["kroger_connected"] = True
     for key, default in _DEFAULT_STATE.items():
         if key not in callback_context.state:
             callback_context.state[key] = default
@@ -271,32 +271,37 @@ Do not call any MCP tools and do not generate a meal plan.
 Be practical, budget-aware, and proactive. Suggest substitutions for out-of-stock items.
 """
 
-grocery_agent = LlmAgent(
-    name="grocery_agent",
-    model=LiteLlm(
-        model="openrouter/poolside/laguna-m.1:free",
-        fallbacks=[
-            "mistral/mistral-small-latest",
-            "openrouter/owl-alpha",
-            "nvidia_nim/deepseek-ai/deepseek-v4-flash",
+def build_agent() -> LlmAgent:
+    """Fresh LlmAgent instance — the gateway's wellness orchestrator builds its own."""
+    return LlmAgent(
+        name="grocery_agent",
+        model=LiteLlm(
+            model="openrouter/poolside/laguna-m.1:free",
+            fallbacks=[
+                "mistral/mistral-small-latest",
+                "openrouter/owl-alpha",
+                "nvidia_nim/deepseek-ai/deepseek-v4-flash",
+            ],
+        ),
+        instruction=_INSTRUCTION,
+        before_agent_callback=on_before_agent,
+        before_model_callback=before_model_modifier,
+        after_tool_callback=shared_after_tool_callback,
+        tools=[
+            set_shopping_list,
+            update_cart,
+            update_pantry,
+            set_meal_plan,
+            set_weekly_deals,
+            mark_list_ready,
+            get_current_date,
+            AGUIToolset(),
+            meal_planner_toolset(),
         ],
-    ),
-    instruction=_INSTRUCTION,
-    before_agent_callback=on_before_agent,
-    before_model_callback=before_model_modifier,
-    after_tool_callback=shared_after_tool_callback,
-    tools=[
-        set_shopping_list,
-        update_cart,
-        update_pantry,
-        set_meal_plan,
-        set_weekly_deals,
-        mark_list_ready,
-        get_current_date,
-        AGUIToolset(),
-        meal_planner_toolset(),
-    ],
-)
+    )
+
+
+grocery_agent = build_agent()
 
 GROCERY_PREDICT_STATE = [
     PredictStateMapping(
