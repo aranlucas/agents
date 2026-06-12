@@ -385,10 +385,3 @@ add_adk_fastapi_endpoint(
 @app.get("/health")
 async def health():
     return await _session_container.check_database_connection()
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    port = int(os.getenv("PORT", "8000"))
-    uvicorn.run(app, host="0.0.0.0", port=port)
