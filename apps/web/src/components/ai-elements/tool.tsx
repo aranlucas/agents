@@ -1,7 +1,7 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Badge } from "@agents/ui";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@agents/ui";
 import { cn } from "@/lib/utils";
 import type { DynamicToolUIPart, ToolUIPart } from "ai";
 import {

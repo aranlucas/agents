@@ -1,8 +1,8 @@
 "use client";
 
 import { useControllableState } from "@radix-ui/react-use-controllable-state";
-import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Button } from "@agents/ui";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@agents/ui";
 import { cn } from "@/lib/utils";
 import { AlertTriangleIcon, CheckIcon, ChevronDownIcon, CopyIcon } from "lucide-react";
 import type { ComponentProps } from "react";

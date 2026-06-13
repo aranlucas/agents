@@ -1,7 +1,7 @@
 import { AgentList } from "@/components/agent-list";
 import { AgentKey } from "@/components/agent-key";
 import { AppHeader } from "@/components/app-header";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@agents/ui";
 import type { Agent } from "@/components/agent-card";
 
 const AGENTS: Agent[] = [

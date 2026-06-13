@@ -1,13 +1,7 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Button } from "@agents/ui";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@agents/ui";
 import { cn } from "@/lib/utils";
 import { CheckIcon, CopyIcon } from "lucide-react";
 import type { ComponentProps, CSSProperties, HTMLAttributes } from "react";
