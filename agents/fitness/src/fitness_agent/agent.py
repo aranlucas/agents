@@ -8,6 +8,7 @@ from typing import Any
 
 import httpx
 from ag_ui_adk import AGUIToolset
+from agents_shared.prompts import canvas_contract
 from agents_shared.state import STRAVA_AUTH, make_state_initializer
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
@@ -248,7 +249,13 @@ generate a training plan until Strava is connected.
 # ---------------------------------------------------------------------------
 # Static instruction
 # ---------------------------------------------------------------------------
-_INSTRUCTION = """\
+_CANVAS_CONTRACT = canvas_contract(
+    artifact="training plan and objective research",
+    tools=("fetch_activities", "set_objective_research", "set_training_plan", "mark_plan_ready"),
+)
+
+_INSTRUCTION = (
+    """\
 You are a practical fitness training partner.
 
 ## Auth gate
@@ -268,6 +275,10 @@ Web search runs against a shared, rate-limited free tier and frequently returns
 - If a search returns a rate-limit / 429 / error, do NOT retry in a loop. Proceed
   with what you already know and note the assumption in the plan.
 
+"""
+    + _CANVAS_CONTRACT
+    + """
+
 ## Workflow (only when strava_connected is True)
 Plan weekly training from the user's recent Strava history.
 Support endurance workouts, gym strength, stretching, recovery, and preparation
@@ -281,8 +292,7 @@ for hiking or mountaineering objectives.
    batched web search for current route, access, permit, seasonal, and weather
    context, then call set_objective_research with a concise sourced summary that
    names the hike, its distance, elevation gain, and why it fits this athlete.
-4. Write plans to state with set_training_plan. Do not paste the full plan into
-   chat as the source of truth.
+4. Write plans to state with set_training_plan.
 5. Make the plan DETAILED and day-by-day: for each day give the session type,
    duration/distance or sets x reps, target intensity (easy/tempo/threshold or RPE),
    plus weekly goals, gym sessions, mobility, stretching, recovery guidance, and
@@ -292,6 +302,7 @@ for hiking or mountaineering objectives.
 Be conservative with progression, specific about recovery, and clear about
 assumptions when Strava or objective context is unavailable.
 """
+)
 
 
 # ---------------------------------------------------------------------------
