@@ -5,14 +5,12 @@ import {
   useAgent,
   useCopilotKit,
   useDefaultRenderTool,
-  useFrontendTool,
   useRenderActivityMessage,
   useRenderToolCall,
   useSuggestions,
   UseAgentUpdate,
 } from "@copilotkit/react-core/v2";
 import { SparklesIcon } from "lucide-react";
-import { z } from "zod";
 
 import { Button } from "@agents/ui";
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
@@ -49,9 +47,7 @@ import { toToolState } from "./tool-adapter";
 import { AgentSelector } from "./AgentSelector";
 import { ConnectNotice } from "./ConnectNotice";
 import { TranscribeButton } from "./TranscribeButton";
-import { SpeakQuestionToolCall } from "./SpeakQuestionToolCall";
 import { useRequiredConnections } from "@/hooks/use-required-connections";
-import { speakQuestion } from "@/lib/copilotkit/speak-question";
 
 // Registers the wildcard tool renderer that `useRenderToolCall()` resolves to
 // for our custom message list. Maps CopilotKit status -> ai-elements Tool state.
@@ -67,39 +63,6 @@ function ToolRendererRegistration() {
       </Tool>
     ),
   });
-  return null;
-}
-
-function OralBoardsVoiceToolRegistration({ agentId }: { agentId: AgentId }) {
-  useFrontendTool(
-    {
-      name: "speak_question",
-      description:
-        "Speak the next oral boards examiner question aloud in the chat UI and explain why it is being asked.",
-      available: true,
-      agentId,
-      parameters: z.object({
-        question: z.string().describe("The exact examiner question to speak aloud"),
-        purpose: z
-          .string()
-          .describe("Why this question is being asked in the oral-board flow")
-          .optional(),
-        evaluationFocus: z
-          .string()
-          .describe("The clinical reasoning or ABPD competency being evaluated")
-          .optional(),
-        sourceBasis: z
-          .string()
-          .describe("The source document, guideline, or case fact that motivated the question")
-          .optional(),
-      }),
-      handler: ({ question }) => speakQuestion(question),
-      render: ({ status, args, result }) => (
-        <SpeakQuestionToolCall status={status} parameters={args ?? {}} result={result} />
-      ),
-    },
-    [agentId],
-  );
   return null;
 }
 
@@ -169,7 +132,6 @@ export function ChatSurface({
   return (
     <div className="flex h-full flex-col">
       <ToolRendererRegistration />
-      {config.id === "oral-boards" && <OralBoardsVoiceToolRegistration agentId={config.id} />}
       <Conversation className="flex-1">
         <ConversationContent className="mx-auto w-full max-w-190">
           {items.length === 0 ? (

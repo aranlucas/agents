@@ -5,7 +5,7 @@ import { notFound, useRouter } from "next/navigation";
 import { CopilotKit, useAgent, UseAgentUpdate } from "@copilotkit/react-core/v2";
 
 import { getAgentConfig, isAgentId, type AgentId } from "@/components/chat/agents/registry";
-import { GroceryHooks, TravelHooks } from "@/components/chat/agents/approval";
+import { AgentExtensionSlot, getAgentExtension } from "@/components/chat/agents/extensions";
 import { AgentSuggestions } from "@/components/chat/agents/suggestions";
 import { ChatSurface } from "@/components/chat/ChatSurface";
 import { ArtifactPanel } from "@/components/chat/ArtifactPanel";
@@ -13,10 +13,6 @@ import { NavRail } from "@/components/chat/NavRail";
 import { WorkspaceShell, useArtifactPanel } from "@/components/workspace-shell";
 import { selectArtifact } from "@/components/chat/artifact";
 import { cssVars } from "@/lib/css";
-
-// Enables the auto-mounted A2UI activity renderer (the runtime advertises A2UI
-// via /info for the a2ui agent). Hoisted so the prop identity stays stable.
-const A2UI_CONFIG = {};
 
 export default function Page({ params }: { params: Promise<{ agent: string }> }) {
   const { agent: raw } = use(params);
@@ -27,8 +23,8 @@ export default function Page({ params }: { params: Promise<{ agent: string }> })
       runtimeUrl="/api/copilotkit"
       agent={agentId}
       useSingleEndpoint={false}
-      a2ui={agentId === "a2ui" ? A2UI_CONFIG : undefined}
       enableInspector={process.env.NODE_ENV !== "production"}
+      {...getAgentExtension(agentId)?.copilotKitProps}
     >
       <Console key={agentId} agentId={agentId} />
     </CopilotKit>
@@ -47,8 +43,7 @@ function Console({ agentId }: { agentId: AgentId }) {
 
   return (
     <main className="h-dvh" style={cssVars({ "--page-color": `var(${config.colorVar})` })}>
-      {agentId === "travel" && <TravelHooks />}
-      {agentId === "grocery" && <GroceryHooks />}
+      <AgentExtensionSlot agentId={agentId} />
       <AgentSuggestions config={config} />
       <WorkspaceShell
         hasArtifact={Boolean(artifact)}

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { speakQuestion } from "./speak-question";
+import { preloadKokoro, speakQuestion } from "./speak-question";
 
 class MockUtterance {
   constructor(public text: string) {}
@@ -65,5 +65,30 @@ describe("speakQuestion", () => {
     expect(result).toBe(
       "Local Kokoro TTS unavailable (model unavailable); used browser speech synthesis. Browser speech synthesis is unavailable.",
     );
+  });
+});
+
+describe("preloadKokoro", () => {
+  it("warms the model and reports success", async () => {
+    const fromPretrained = vi.fn().mockResolvedValue({ generate: vi.fn() });
+    const importKokoro = vi.fn().mockResolvedValue({
+      KokoroTTS: { from_pretrained: fromPretrained },
+    });
+
+    const ok = await preloadKokoro({ importKokoro });
+
+    expect(ok).toBe(true);
+    expect(fromPretrained).toHaveBeenCalledWith("onnx-community/Kokoro-82M-ONNX", {
+      dtype: "q8",
+      device: "wasm",
+    });
+  });
+
+  it("swallows load failures and reports false", async () => {
+    const ok = await preloadKokoro({
+      importKokoro: vi.fn().mockRejectedValue(new Error("model unavailable")),
+    });
+
+    expect(ok).toBe(false);
   });
 });

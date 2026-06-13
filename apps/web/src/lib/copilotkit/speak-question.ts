@@ -143,6 +143,26 @@ async function speakWithKokoro(question: string, deps: SpeakQuestionDeps) {
   await playBlob(await audioToBlob(audio), deps);
 }
 
+/**
+ * Eagerly download and compile the local Kokoro TTS model so the first spoken
+ * question plays without the multi-second cold-start stall. Safe to call
+ * repeatedly: the underlying model promise is memoized and shared with
+ * {@link speakQuestion}. Best-effort — failures are swallowed and the cache is
+ * reset so a later call can retry (and `speakQuestion` still falls back to
+ * browser speech synthesis if the model never loads).
+ */
+export async function preloadKokoro(
+  deps: Pick<SpeakQuestionDeps, "importKokoro"> = {},
+): Promise<boolean> {
+  try {
+    await loadKokoro(deps.importKokoro);
+    return true;
+  } catch {
+    kokoroTtsPromise = undefined;
+    return false;
+  }
+}
+
 export async function speakQuestion(
   question: string,
   deps: SpeakQuestionDeps = {},
