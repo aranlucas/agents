@@ -57,6 +57,8 @@ __pycache__/
 .data/adk_sessions.sqlite
 .claude/worktrees
 .worktrees/
+.codex/
+.codex-worktrees/
 # Superpowers brainstorm companion (local mockups)
 .superpowers/
 
