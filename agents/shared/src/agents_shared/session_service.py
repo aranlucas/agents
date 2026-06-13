@@ -26,35 +26,16 @@ def _normalize_postgres_url(url: str) -> str:
 
 
 def _database_url(env: Mapping[str, str]) -> str | None:
-    db_url = env.get("ADK_SESSION_DB_URL")
+    db_url = env.get("DATABASE_URL")
     if db_url:
         return _normalize_postgres_url(db_url)
-
-    turso_url = env.get("TURSO_DATABASE_URL")
-    if not turso_url:
-        return None
-    if turso_url.startswith("sqlite+"):
-        return turso_url
-
-    separator = "&" if "?" in turso_url else "?"
-    return f"sqlite+{turso_url}{separator}secure=true"
-
-
-def _database_kwargs(env: Mapping[str, str]) -> dict:
-    connect_args = {}
-    auth_token = env.get("ADK_SESSION_DB_AUTH_TOKEN") or env.get("TURSO_AUTH_TOKEN")
-    sync_url = env.get("TURSO_SYNC_URL")
-    if auth_token:
-        connect_args["auth_token"] = auth_token
-    if sync_url:
-        connect_args["sync_url"] = sync_url
-    return {"connect_args": connect_args} if connect_args else {}
+    return None
 
 
 def create_session_service() -> DatabaseSessionService | SqliteSessionService:
     db_url = _database_url(os.environ)
     if db_url:
-        return DatabaseSessionService(db_url, **_database_kwargs(os.environ))
+        return DatabaseSessionService(db_url)
 
     db_path = Path(os.environ.get("ADK_SESSION_DB_PATH", str(default_session_db_path())))
     db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -63,10 +44,6 @@ def create_session_service() -> DatabaseSessionService | SqliteSessionService:
 
 def get_database_url() -> str | None:
     return _database_url(os.environ)
-
-
-def get_database_connect_args() -> dict:
-    return _database_kwargs(os.environ)
 
 
 def get_sqlite_db_path() -> Path:
@@ -78,7 +55,7 @@ async def check_database_connection() -> dict:
     db_url = get_database_url()
     if db_url:
         try:
-            engine = create_async_engine(db_url, **_database_kwargs(os.environ))
+            engine = create_async_engine(db_url)
             async with engine.connect() as conn:
                 await conn.execute(text("SELECT 1"))
             await engine.dispose()
