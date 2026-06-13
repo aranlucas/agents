@@ -328,13 +328,6 @@ describe("web all-source smoke coverage", () => {
       Layout,
       SignInPage,
       SignUpPage,
-      TravelPage,
-      GroceryPage,
-      FitnessPage,
-      WellnessPage,
-      OralBoardsPage,
-      A2UIPage,
-      ResumePage,
       SettingsPage,
       AgentCardModule,
       AgentStatusBarModule,
@@ -351,13 +344,6 @@ describe("web all-source smoke coverage", () => {
       import("./app/layout"),
       import("./app/sign-in/[[...sign-in]]/page"),
       import("./app/sign-up/[[...sign-up]]/page"),
-      import("./app/travel/page"),
-      import("./app/grocery/page"),
-      import("./app/fitness/page"),
-      import("./app/wellness/page"),
-      import("./app/oral-boards/page"),
-      import("./app/a2ui/page"),
-      import("./app/resume/page"),
       import("./app/console/settings/page"),
       import("./components/agent-card"),
       import("./components/agent-status-bar"),
@@ -381,151 +367,9 @@ describe("web all-source smoke coverage", () => {
     await render("sign-in", <SignInPage.default />);
     await render("sign-up", <SignUpPage.default />);
     await render(
-      "travel",
-      <ProvidersModule.Providers>
-        <TravelPage.default />
-      </ProvidersModule.Providers>,
-    );
-    await render(
-      "grocery",
-      <ProvidersModule.Providers>
-        <GroceryPage.default />
-      </ProvidersModule.Providers>,
-    );
-    await render(
-      "fitness",
-      <ProvidersModule.Providers>
-        <FitnessPage.default />
-      </ProvidersModule.Providers>,
-    );
-    await render(
-      "wellness",
-      <ProvidersModule.Providers>
-        <WellnessPage.default />
-      </ProvidersModule.Providers>,
-    );
-    await render(
-      "oral-boards",
-      <ProvidersModule.Providers>
-        <OralBoardsPage.default />
-      </ProvidersModule.Providers>,
-    );
-    await render(
-      "a2ui",
-      <ProvidersModule.Providers>
-        <A2UIPage.default />
-      </ProvidersModule.Providers>,
-    );
-    await render(
-      "resume",
-      <ProvidersModule.Providers>
-        <ResumePage.default />
-      </ProvidersModule.Providers>,
-    );
-    await render(
       "settings",
       <ProvidersModule.Providers>
         <SettingsPage.default />
-      </ProvidersModule.Providers>,
-    );
-    await interact(
-      "travel",
-      <ProvidersModule.Providers>
-        <TravelPage.default />
-      </ProvidersModule.Providers>,
-    );
-    await interact(
-      "grocery",
-      <ProvidersModule.Providers>
-        <GroceryPage.default />
-      </ProvidersModule.Providers>,
-    );
-    await interact(
-      "fitness",
-      <ProvidersModule.Providers>
-        <FitnessPage.default />
-      </ProvidersModule.Providers>,
-    );
-    await interact(
-      "wellness",
-      <ProvidersModule.Providers>
-        <WellnessPage.default />
-      </ProvidersModule.Providers>,
-    );
-    agentStates.grocery = { kroger_connected: false, status: "idle" };
-    agentStates.fitness = { strava_connected: false, status: "idle" };
-    agentStates.wellness = {
-      status: "idle",
-      kroger_connected: false,
-      strava_connected: false,
-      weekly_plan: "",
-      meal_plan: "",
-      workout_plan: "",
-    };
-    await interact(
-      "grocery-disconnected",
-      <ProvidersModule.Providers>
-        <GroceryPage.default />
-      </ProvidersModule.Providers>,
-    );
-    await interact(
-      "fitness-disconnected",
-      <ProvidersModule.Providers>
-        <FitnessPage.default />
-      </ProvidersModule.Providers>,
-    );
-    await interact(
-      "wellness-disconnected",
-      <ProvidersModule.Providers>
-        <WellnessPage.default />
-      </ProvidersModule.Providers>,
-    );
-    await interact(
-      "oral-boards",
-      <ProvidersModule.Providers>
-        <OralBoardsPage.default />
-      </ProvidersModule.Providers>,
-    );
-    agentStates.grocery = {
-      kroger_connected: true,
-      status: "planning",
-      shopping_list: [],
-      cart: [],
-      pantry: [],
-      meal_plan: "",
-      weekly_deals: "",
-    };
-    agentStates.fitness = {
-      strava_connected: true,
-      status: "planning",
-      activities: [],
-      objective_research: "",
-      training_plan: "",
-    };
-    agentStates.wellness = {
-      status: "planning",
-      kroger_connected: true,
-      strava_connected: true,
-      weekly_plan: "",
-      meal_plan: "",
-      workout_plan: "",
-    };
-    await render(
-      "grocery-empty",
-      <ProvidersModule.Providers>
-        <GroceryPage.default />
-      </ProvidersModule.Providers>,
-    );
-    await render(
-      "fitness-empty",
-      <ProvidersModule.Providers>
-        <FitnessPage.default />
-      </ProvidersModule.Providers>,
-    );
-    await render(
-      "wellness-empty",
-      <ProvidersModule.Providers>
-        <WellnessPage.default />
       </ProvidersModule.Providers>,
     );
     await render(

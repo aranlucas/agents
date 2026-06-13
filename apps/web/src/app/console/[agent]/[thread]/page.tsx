@@ -52,7 +52,7 @@ function Console({ agentId }: { agentId: AgentId }) {
         chat={
           <ChatSurface
             config={config}
-            onSwitchAgent={(id) => router.push(`/console/${id}`)}
+            onSwitchAgent={(id) => router.push(`/console/${id}/${crypto.randomUUID()}`)}
             onOpenArtifact={() => dispatch("open")}
           />
         }
