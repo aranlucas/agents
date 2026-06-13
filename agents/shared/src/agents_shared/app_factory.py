@@ -123,7 +123,7 @@ def create_agent_app(
     title: str,
     adk_agent: ADKAgent,
     extract_state_from_request: Callable[..., Awaitable[dict[str, Any]]],
-    session_container: SessionServiceContainer,
+    session_container: SessionServiceContainer | None = None,
     tracer: Tracer,
     health_handler: Callable[[], Awaitable[dict[str, Any]]] | None = None,
 ) -> FastAPI:
@@ -184,6 +184,8 @@ def create_agent_app(
     )
 
     async def _default_health() -> dict[str, Any]:
+        if session_container is None:
+            return {"status": "ok", "database": "not_configured"}
         return await session_container.check_database_connection()
 
     handler = health_handler or _default_health
