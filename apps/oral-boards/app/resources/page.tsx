@@ -159,9 +159,9 @@ export default function ResourcesPage() {
           <CollapsibleContent>
             <CardContent className="pt-0">
               <div className="grid gap-1.5 sm:gap-2">
-                {pdfResources.map((resource, index) => (
+                {pdfResources.map((resource) => (
                   <a
-                    key={index}
+                    key={resource.url}
                     href={resource.url}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -282,11 +282,11 @@ export default function ResourcesPage() {
               <CollapsibleContent>
                 <CardContent className="px-3 pt-0 pb-4 sm:px-6 sm:pb-6">
                   <div className="space-y-2 sm:space-y-3">
-                    {category.resources.map((resource, resourceIndex) => {
+                    {category.resources.map((resource) => {
                       const IconComponent = typeIcons[resource.type] || FileText;
                       return (
                         <div
-                          key={resourceIndex}
+                          key={resource.url}
                           className="rounded-lg border p-2.5 transition-all hover:border-indigo-300 hover:bg-indigo-50/30 sm:p-3 dark:hover:border-indigo-700 dark:hover:bg-indigo-950/20"
                         >
                           <div className="flex flex-col gap-2 sm:gap-2.5">

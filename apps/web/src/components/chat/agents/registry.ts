@@ -236,6 +236,7 @@ export const AGENT_ORDER: AgentId[] = [
  * AgentId → gateway mount path. Single source for server-side route wiring
  * (the CopilotKit runtime and the health proxy both derive their maps here).
  */
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion
 export const AGENT_BACKEND_PATHS = Object.fromEntries(
   AGENT_ORDER.map((id) => [id, AGENTS[id].backendPath]),
 ) as Record<AgentId, string>;

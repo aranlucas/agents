@@ -55,8 +55,8 @@ export default function CaseCard({ case: caseData }: CaseCardProps) {
           <section className="space-y-2 sm:space-y-3">
             <h3 className="text-base font-semibold sm:text-lg">Clinical Findings</h3>
             <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm sm:text-base">
-              {caseData.clinicalFindings.map((finding, index) => (
-                <li key={index}>{finding}</li>
+              {caseData.clinicalFindings.map((finding) => (
+                <li key={finding}>{finding}</li>
               ))}
             </ul>
           </section>
@@ -67,8 +67,8 @@ export default function CaseCard({ case: caseData }: CaseCardProps) {
           <section className="space-y-2 sm:space-y-3">
             <h3 className="text-base font-semibold sm:text-lg">Radiographic Findings</h3>
             <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm sm:text-base">
-              {caseData.radiographicFindings.map((finding, index) => (
-                <li key={index}>{finding}</li>
+              {caseData.radiographicFindings.map((finding) => (
+                <li key={finding}>{finding}</li>
               ))}
             </ul>
           </section>
@@ -78,8 +78,8 @@ export default function CaseCard({ case: caseData }: CaseCardProps) {
         <section className="space-y-2 sm:space-y-3">
           <h3 className="text-base font-semibold sm:text-lg">Questions to Consider</h3>
           <ol className="text-muted-foreground list-inside list-decimal space-y-1.5 text-sm sm:space-y-2 sm:text-base">
-            {caseData.questions.map((question, index) => (
-              <li key={index} className="font-medium">
+            {caseData.questions.map((question) => (
+              <li key={question} className="font-medium">
                 {question}
               </li>
             ))}
@@ -93,8 +93,8 @@ export default function CaseCard({ case: caseData }: CaseCardProps) {
             Reference Materials
           </h3>
           <div className="space-y-2">
-            {caseData.references.map((ref, index) => (
-              <div key={index} className="flex items-start gap-2">
+            {caseData.references.map((ref) => (
+              <div key={ref.url} className="flex items-start gap-2">
                 <span className="mt-0.5 text-sm text-blue-600 sm:mt-1 sm:text-base">📚</span>
                 <div className="min-w-0 flex-1">
                   <a
@@ -158,8 +158,8 @@ export default function CaseCard({ case: caseData }: CaseCardProps) {
                     <section className="space-y-1.5 sm:space-y-2">
                       <h3 className="text-base font-semibold sm:text-lg">Differential Diagnosis</h3>
                       <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm sm:text-base">
-                        {caseData.modelResponse.differentialDiagnosis.map((diff, index) => (
-                          <li key={index}>{diff}</li>
+                        {caseData.modelResponse.differentialDiagnosis.map((diff) => (
+                          <li key={diff}>{diff}</li>
                         ))}
                       </ul>
                     </section>
@@ -169,8 +169,8 @@ export default function CaseCard({ case: caseData }: CaseCardProps) {
                 <section className="space-y-1.5 sm:space-y-2">
                   <h3 className="text-base font-semibold sm:text-lg">Treatment Plan</h3>
                   <ol className="text-muted-foreground list-inside list-decimal space-y-1 text-sm sm:text-base">
-                    {caseData.modelResponse.treatmentPlan.map((step, index) => (
-                      <li key={index}>{step}</li>
+                    {caseData.modelResponse.treatmentPlan.map((step) => (
+                      <li key={step}>{step}</li>
                     ))}
                   </ol>
                 </section>
@@ -187,8 +187,8 @@ export default function CaseCard({ case: caseData }: CaseCardProps) {
                 <section className="space-y-1.5 sm:space-y-2">
                   <h3 className="text-base font-semibold sm:text-lg">Key Points to Remember</h3>
                   <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm sm:text-base">
-                    {caseData.modelResponse.keyPoints.map((point, index) => (
-                      <li key={index}>{point}</li>
+                    {caseData.modelResponse.keyPoints.map((point) => (
+                      <li key={point}>{point}</li>
                     ))}
                   </ul>
                 </section>

@@ -87,6 +87,7 @@ export function getStore() {
       const escaped = cleanQuery(q);
       if (!escaped) return [];
 
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
       const rows = ftsStmt.all(escaped, limit) as Array<{
         id: number;
         collection: string;
@@ -110,6 +111,7 @@ export function getStore() {
 
     async get(docRef: string): Promise<DocMeta | { error: string }> {
       const id = docRef.startsWith("#") ? docRef.slice(1) : docRef;
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
       const row = getByIdStmt.get(Number(id)) as
         | { id: number; collection: string; filepath: string; title: string }
         | undefined;
@@ -125,6 +127,7 @@ export function getStore() {
     },
 
     async getDocumentBody(filepath: string): Promise<string> {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
       const row = getBodyStmt.get(filepath) as { doc: string } | undefined;
       return row?.doc ?? "";
     },

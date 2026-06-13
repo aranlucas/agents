@@ -50,12 +50,11 @@ function highlightTerms(text: string, query: string): React.ReactNode {
   if (terms.length === 0) return text;
   const pattern = new RegExp(`(${terms.join("|")})`, "gi");
   const parts = text.split(pattern);
+  const cls = "rounded-sm bg-yellow-200 px-0.5 text-gray-900 dark:bg-yellow-700 dark:text-gray-100";
+  const keys = parts.map(() => crypto.randomUUID());
   return parts.map((part, i) =>
     pattern.test(part) ? (
-      <mark
-        key={i}
-        className="rounded-sm bg-yellow-200 px-0.5 text-gray-900 dark:bg-yellow-700 dark:text-gray-100"
-      >
+      <mark key={keys[i]} className={cls}>
         {part}
       </mark>
     ) : (
@@ -204,9 +203,9 @@ export default function SearchPage() {
 
       {isLoading && (
         <div className="mx-auto max-w-2xl space-y-2">
-          {Array.from({ length: 4 }).map((_, i) => (
+          {Array.from({ length: 4 }, () => crypto.randomUUID()).map((id) => (
             <div
-              key={i}
+              key={id}
               className="animate-pulse rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900"
             >
               <div className="mb-2 h-4 w-2/3 rounded bg-gray-200 dark:bg-gray-700" />

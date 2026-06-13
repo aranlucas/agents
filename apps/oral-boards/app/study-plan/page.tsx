@@ -130,9 +130,9 @@ export default function StudyPlanPage() {
                     Key Topics
                   </h4>
                   <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 sm:gap-2">
-                    {month.topics.map((topic, i) => (
+                    {month.topics.map((topic) => (
                       <li
-                        key={i}
+                        key={topic}
                         className="text-muted-foreground flex items-start gap-2 text-sm sm:text-base"
                       >
                         <span className="mt-0.5 text-indigo-600 sm:mt-1">•</span>
@@ -149,9 +149,9 @@ export default function StudyPlanPage() {
                     Learning Goals
                   </h4>
                   <ul className="space-y-1.5 sm:space-y-2">
-                    {month.goals.map((goal, i) => (
+                    {month.goals.map((goal) => (
                       <li
-                        key={i}
+                        key={goal}
                         className="text-muted-foreground flex items-start gap-2 text-sm sm:text-base"
                       >
                         <span className="mt-0.5 font-bold text-green-600 sm:mt-1">✓</span>
@@ -168,9 +168,9 @@ export default function StudyPlanPage() {
                     Study Activities
                   </h4>
                   <ul className="space-y-1.5 sm:space-y-2">
-                    {month.activities.map((activity, i) => (
+                    {month.activities.map((activity) => (
                       <li
-                        key={i}
+                        key={activity}
                         className="text-muted-foreground flex items-start gap-2 text-sm sm:text-base"
                       >
                         <span className="mt-0.5 text-blue-600 sm:mt-1">→</span>
@@ -187,9 +187,9 @@ export default function StudyPlanPage() {
                     Recommended Resources
                   </h4>
                   <ul className="space-y-1.5 sm:space-y-2">
-                    {month.resources.map((resource, i) => (
+                    {month.resources.map((resource) => (
                       <li
-                        key={i}
+                        key={resource.name}
                         className="text-muted-foreground flex items-start gap-2 text-sm sm:text-base"
                       >
                         <span className="mt-0.5 flex-shrink-0 text-blue-600 sm:mt-1">📚</span>

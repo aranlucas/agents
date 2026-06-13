@@ -118,8 +118,8 @@ export default function ExamFramework() {
               </h3>
               <p className="text-muted-foreground mb-2 text-sm">{phase.description}</p>
               <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
-                {phase.keyFocus.map((focus, idx) => (
-                  <li key={idx}>{focus}</li>
+                {phase.keyFocus.map((focus) => (
+                  <li key={`${phase.phase}-${focus}`}>{focus}</li>
                 ))}
               </ul>
             </div>
@@ -142,8 +142,8 @@ export default function ExamFramework() {
                 {section.title}
               </h3>
               <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
-                {section.details.map((detail, idx) => (
-                  <li key={idx}>{detail}</li>
+                {section.details.map((detail) => (
+                  <li key={`${section.title}-${detail}`}>{detail}</li>
                 ))}
               </ul>
             </div>
@@ -179,8 +179,8 @@ export default function ExamFramework() {
             </table>
           </div>
           <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
-            {afterTestPolicies.map((policy, idx) => (
-              <li key={idx}>{policy}</li>
+            {afterTestPolicies.map((policy) => (
+              <li key={policy}>{policy}</li>
             ))}
           </ul>
         </CardContent>
@@ -197,8 +197,8 @@ export default function ExamFramework() {
         </CardHeader>
         <CardContent>
           <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
-            {preparationStrategies.map((item, idx) => (
-              <li key={idx}>{item}</li>
+            {preparationStrategies.map((item) => (
+              <li key={item}>{item}</li>
             ))}
           </ul>
         </CardContent>
@@ -257,8 +257,8 @@ export default function ExamFramework() {
                       Key Components
                     </h4>
                     <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
-                      {domain.keyComponents.map((component, idx) => (
-                        <li key={idx}>{component}</li>
+                      {domain.keyComponents.map((component) => (
+                        <li key={`${domain.id}-${component}`}>{component}</li>
                       ))}
                     </ul>
                   </div>
@@ -268,8 +268,8 @@ export default function ExamFramework() {
                       Clinical Tasks
                     </h4>
                     <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
-                      {domain.clinicalTasks.map((task, idx) => (
-                        <li key={idx}>{task}</li>
+                      {domain.clinicalTasks.map((task) => (
+                        <li key={`${domain.id}-${task}`}>{task}</li>
                       ))}
                     </ul>
                   </div>
@@ -279,8 +279,8 @@ export default function ExamFramework() {
                       Proficiency Descriptors
                     </h4>
                     <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
-                      {domain.proficiencyDescriptors.map((descriptor, idx) => (
-                        <li key={idx}>{descriptor}</li>
+                      {domain.proficiencyDescriptors.map((descriptor) => (
+                        <li key={`${domain.id}-${descriptor}`}>{descriptor}</li>
                       ))}
                     </ul>
                   </div>

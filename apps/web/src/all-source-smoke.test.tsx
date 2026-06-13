@@ -79,6 +79,13 @@ vi.mock("@copilotkit/react-core/v2", () => ({
   CopilotChat: (props: Record<string, unknown>) => (
     <div data-copilot-chat={props.agent as string} />
   ),
+  CopilotChatAudioRecorder: React.forwardRef(function CopilotChatAudioRecorder(_, ref) {
+    React.useImperativeHandle(ref, () => ({
+      start: vi.fn(async () => undefined),
+      stop: vi.fn(async () => new Blob(["audio"], { type: "audio/webm" })),
+    }));
+    return null;
+  }),
   UseAgentUpdate: { OnStateChanged: "state", OnRunStatusChanged: "run" },
   useAgent: ({ agentId }: { agentId: string }) => ({
     agent: {
@@ -206,6 +213,16 @@ vi.mock("@copilotkit/runtime/v2", () => ({
       await config.hooks?.onRequest?.({ request });
       return new Response("ok");
     }),
+  TranscriptionService: class TranscriptionService {
+    constructor() {
+      if (new.target === TranscriptionService) {
+        throw new TypeError("TranscriptionService is abstract");
+      }
+    }
+    async transcribeFile() {
+      return "";
+    }
+  },
 }));
 
 vi.mock("@ag-ui/client", () => ({

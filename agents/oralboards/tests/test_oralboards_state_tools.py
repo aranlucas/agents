@@ -76,3 +76,15 @@ def test_agent_instruction_uses_adk_state_placeholders() -> None:
     assert "{status}" in instruction
     assert "{transcript}" in instruction
     assert "{score_card}" in instruction
+
+
+def test_agent_static_instruction_requires_speaking_questions_before_chat() -> None:
+    agent = build_agent()
+    static_instruction = agent.static_instruction
+
+    assert isinstance(static_instruction, str)
+    assert "speak_question" in static_instruction
+    assert "before writing the question in chat" in static_instruction
+    assert "purpose" in static_instruction
+    assert "evaluationFocus" in static_instruction
+    assert "sourceBasis" in static_instruction
