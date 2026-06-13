@@ -88,12 +88,12 @@ Conventions:
 
 ## Deployment
 
-| Surface        | Platform       | Config                                                                                                                                           |
-| -------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Surface        | Platform       | Config                                                                                                                                                           |
+| -------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Agents gateway | Railway        | Railpack builds the root `agents` package (editable via `uv sync`); `railway.toml` `startCommand` runs `uvicorn gateway.main:app`; `.python-version` pins Python |
-| `apps/web/`    | Vercel         | vercel.json — set Root Dir to `apps/web/` in Vercel dashboard; `AGENTS_BASE_URL` points at the gateway                                           |
-| `apps/mobile/` | EAS Build      | `apps/mobile/eas.json` → App Store / Google Play; `EXPO_PUBLIC_AGENTS_BASE_URL` points at the gateway                                            |
-| Android APK    | GitHub Actions | `.github/workflows/android-apk.yml` — `expo prebuild` + Gradle, publishes the APK to a GitHub Release via `gh` (push a `v*` tag or run manually) |
+| `apps/web/`    | Vercel         | vercel.json — set Root Dir to `apps/web/` in Vercel dashboard; `AGENTS_BASE_URL` points at the gateway                                                           |
+| `apps/mobile/` | EAS Build      | `apps/mobile/eas.json` → App Store / Google Play; `EXPO_PUBLIC_AGENTS_BASE_URL` points at the gateway                                                            |
+| Android APK    | GitHub Actions | `.github/workflows/android-apk.yml` — `expo prebuild` + Gradle, publishes the APK to a GitHub Release via `gh` (push a `v*` tag or run manually)                 |
 
 ## Architecture
 
