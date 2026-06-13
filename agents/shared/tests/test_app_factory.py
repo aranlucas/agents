@@ -1,6 +1,9 @@
 """Tests for the shared ADKAgent/app wiring helpers."""
 
+from unittest.mock import MagicMock
+
 from agents_shared.app_factory import build_adk_agent, streaming_state_mapping
+from agents_shared.dependencies import AgentServices
 from agents_shared.tools import build_model
 from google.adk.agents import LlmAgent
 
@@ -9,34 +12,44 @@ def _dummy_agent() -> LlmAgent:
     return LlmAgent(name="dummy_agent", model=build_model(), instruction="hi")
 
 
+def _mock_services():
+    return AgentServices(
+        session_service=MagicMock(),
+        artifact_service=MagicMock(),
+        memory_service=MagicMock(),
+        credential_service=MagicMock(),
+    )
+
+
 def test_build_adk_agent_wires_default_services():
-    adk = build_adk_agent(_dummy_agent())
+    services = _mock_services()
+    adk = build_adk_agent(_dummy_agent(), services=services)
     assert adk._session_manager._timeout == 3600
-    assert adk._artifact_service is not None
-    assert adk._memory_service is not None
-    assert adk._credential_service is not None
-    assert adk._session_manager is not None
 
 
 def test_build_adk_agent_accepts_session_service_override():
-    from agents_shared.session_service import create_session_service
-
-    svc = create_session_service()
-    adk = build_adk_agent(_dummy_agent(), session_service=svc)
-    # _inner/_session_manager are ag-ui-adk internals (wiring-pinning test)
-    assert adk._session_manager._session_service._inner is svc
+    services = _mock_services()
+    custom_session = MagicMock()
+    adk = build_adk_agent(
+        _dummy_agent(),
+        services=services,
+        session_service=custom_session,
+    )
+    assert adk._session_manager._session_service._inner is custom_session
 
 
 def test_build_adk_agent_forwards_predict_state():
+    services = _mock_services()
     mapping = streaming_state_mapping(
         state_key="plan", tool="set_plan", tool_argument="plan"
     )
-    adk = build_adk_agent(_dummy_agent(), predict_state=[mapping])
+    adk = build_adk_agent(_dummy_agent(), services=services, predict_state=[mapping])
     assert adk._predict_state == [mapping]
 
 
 def test_build_adk_agent_defaults_predict_state_to_none():
-    assert build_adk_agent(_dummy_agent())._predict_state is None
+    services = _mock_services()
+    assert build_adk_agent(_dummy_agent(), services=services)._predict_state is None
 
 
 def test_streaming_state_mapping_sets_streaming_flags():

@@ -4,7 +4,6 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from dependency_injector import containers, providers
 from google.adk.sessions.database_session_service import DatabaseSessionService
 from google.adk.sessions.sqlite_session_service import SqliteSessionService
 from sqlalchemy import text
@@ -18,12 +17,7 @@ def default_session_db_path() -> Path:
     return Path(__file__).resolve().parents[4] / ".data" / "adk_sessions.sqlite"
 
 
-def _database_session_service(db_url: str, **kwargs):
-    return DatabaseSessionService(db_url, **kwargs)
-
-
 def _normalize_postgres_url(url: str) -> str:
-    """Rewrite bare postgresql:// or postgres:// to use the asyncpg async driver."""
     if url.startswith("postgres://"):
         return "postgresql+asyncpg://" + url[len("postgres://") :]
     if url.startswith("postgresql://"):
@@ -57,35 +51,30 @@ def _database_kwargs(env: Mapping[str, str]) -> dict:
     return {"connect_args": connect_args} if connect_args else {}
 
 
-def _create_session_service(
-    *,
-    env: Mapping[str, str],
-    sqlite_session_service,
-    database_session_service,
-    default_db_path,
-):
-    db_url = _database_url(env)
+def create_session_service() -> DatabaseSessionService | SqliteSessionService:
+    db_url = _database_url(os.environ)
     if db_url:
-        return database_session_service(db_url, **_database_kwargs(env))
+        return DatabaseSessionService(db_url, **_database_kwargs(os.environ))
 
-    db_path = Path(env.get("ADK_SESSION_DB_PATH", default_db_path()))
+    db_path = Path(os.environ.get("ADK_SESSION_DB_PATH", str(default_session_db_path())))
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    return sqlite_session_service(str(db_path))
+    return SqliteSessionService(str(db_path))
 
 
 def get_database_url() -> str | None:
-    """Get the database URL that would be used by the session service."""
     return _database_url(os.environ)
 
 
+def get_database_connect_args() -> dict:
+    return _database_kwargs(os.environ)
+
+
 def get_sqlite_db_path() -> Path:
-    """Get the SQLite database path that would be used by the session service."""
-    db_path = Path(os.environ.get("ADK_SESSION_DB_PATH", default_session_db_path()))
+    db_path = Path(os.environ.get("ADK_SESSION_DB_PATH", str(default_session_db_path())))
     return db_path
 
 
 async def check_database_connection() -> dict:
-    """Test database connectivity without creating a session."""
     db_url = get_database_url()
     if db_url:
         try:
@@ -107,30 +96,3 @@ async def check_database_connection() -> dict:
         return {"status": "ok", "database": "connected", "type": "sqlite"}
     except Exception as e:
         return {"status": "degraded", "database": "error", "error": str(e), "type": "sqlite"}
-
-
-class SessionServiceContainer(containers.DeclarativeContainer):
-    env = providers.Object(os.environ)
-    sqlite_session_service = providers.Object(SqliteSessionService)
-    database_session_service = providers.Object(_database_session_service)
-    default_db_path = providers.Object(default_session_db_path)
-
-    session_service = providers.Factory(
-        _create_session_service,
-        env=env,
-        sqlite_session_service=sqlite_session_service,
-        database_session_service=database_session_service,
-        default_db_path=default_db_path,
-    )
-
-    check_database_connection = providers.Callable(check_database_connection)
-
-
-def create_session_service(container: SessionServiceContainer | None = None):
-    container = container or SessionServiceContainer()
-    return container.session_service()
-
-
-def create_check_database(container: SessionServiceContainer | None = None):
-    container = container or SessionServiceContainer()
-    return container.check_database_connection()
