@@ -1,5 +1,5 @@
 import React from "react";
-import { beforeAll, describe, it, vi } from "vitest";
+import { describe, it, vi } from "vitest";
 import { renderSmoke, interactSmoke } from "@/test/test-utils";
 
 const dialogPrimitive = vi.hoisted(() => ({
@@ -34,13 +34,6 @@ const request: ApprovalRequest = {
   reason: "Fare hold",
   resolve,
 };
-
-beforeAll(() => {
-  globalThis.window ??= {
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-  } as unknown as Window & typeof globalThis;
-});
 
 describe("ApprovalCard", () => {
   it("renders", async () => {

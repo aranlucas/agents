@@ -8,7 +8,7 @@ export default defineConfig({
     },
   },
   test: {
-    environment: "node",
+    environment: "jsdom",
     include: ["src/**/*.test.{ts,tsx}"],
     // `*.contract.test.tsx` files are compile-time type contracts checked by tsc
     // (they import React components that pull in CSS), not runtime Vitest specs.

@@ -12,10 +12,6 @@ vi.mock("@/components/providers", () => ({
   }),
 }));
 
-vi.mock("@agents/ui", () => ({
-  Button: (props: React.ComponentProps<"button">) => <button {...props} />,
-}));
-
 import { ThemeToggle } from "./theme-toggle";
 
 describe("ThemeToggle", () => {

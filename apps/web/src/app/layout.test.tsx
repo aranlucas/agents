@@ -14,11 +14,6 @@ vi.mock("@clerk/nextjs", () => ({
   ClerkProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-vi.mock("@tanstack/react-query", () => ({
-  QueryClient: class QueryClient {},
-  QueryClientProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-}));
-
 import RootLayout from "./layout";
 
 describe("RootLayout", () => {
