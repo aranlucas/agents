@@ -7,25 +7,16 @@ import { env } from "@/env";
 import { agentBaseUrl } from "@/lib/agent-url";
 import { getKrogerAccessToken } from "@/lib/kroger-token";
 import { getStravaAccessToken } from "@/lib/strava-token";
+import { AGENT_BACKEND_PATHS } from "@/components/chat/agents/registry";
 import { isPublicCopilotPath } from "./guard";
 
 const CLERK_USER_ID_HEADER = "x-clerk-user-id";
 const KROGER_TOKEN_HEADER = "x-kroger-access-token";
 const STRAVA_TOKEN_HEADER = "x-strava-access-token";
 
-const AGENT_PATHS = {
-  travel: "travel",
-  grocery: "grocery",
-  fitness: "fitness",
-  wellness: "wellness",
-  "oral-boards": "oralboards",
-  a2ui: "a2ui",
-  resume: "resume",
-} as const;
-
 const runtime = new CopilotSseRuntime({
   agents: Object.fromEntries(
-    Object.entries(AGENT_PATHS).map(([id, path]) => [
+    Object.entries(AGENT_BACKEND_PATHS).map(([id, path]) => [
       id,
       new HttpAgent({
         url: `${agentBaseUrl(env.AGENTS_BASE_URL)}/${path}/agui`,
