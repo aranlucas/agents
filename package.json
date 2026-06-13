@@ -5,6 +5,7 @@
     "postinstall": "if [ -z \"$VERCEL\" ] && command -v uv >/dev/null 2>&1; then uv sync --all-packages; fi",
     "dev": "concurrently \"pnpm --filter web dev\" \"docker compose up --build\" --names web,agents --prefix-colors blue,green --kill-others",
     "dev:web": "pnpm --filter web dev",
+    "dev:oral-boards": "pnpm --filter oral-boards dev",
     "dev:mobile": "pnpm --filter mobile start",
     "dev:agents": "docker compose up --build",
     "lint": "oxlint",
@@ -19,7 +20,8 @@
     "coverage:py": "uv run pytest --cov",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
-    "build": "pnpm --filter web build"
+    "build": "pnpm --filter web build",
+    "build:oral-boards": "pnpm --filter oral-boards build"
   },
   "devDependencies": {
     "concurrently": "^10.0.3",

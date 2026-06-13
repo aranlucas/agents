@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { LockIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@agents/ui";
 import { PROVIDERS, type ProviderId } from "@/lib/connections";
 
 /** Joins labels as "Strava", "Strava and Kroger", "A, B, and C". */

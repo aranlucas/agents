@@ -2,7 +2,7 @@
 
 import { Monitor, Moon, Sun } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@agents/ui";
 import { useTheme } from "@/components/providers";
 
 const NEXT_THEME = {

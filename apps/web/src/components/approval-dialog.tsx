@@ -3,7 +3,7 @@
 import React, { useEffect } from "react";
 import { TriangleAlert } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@agents/ui";
 import {
   Dialog,
   DialogContent,

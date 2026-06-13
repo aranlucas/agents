@@ -1,0 +1,5 @@
+{
+  "buildCommand": "cd ../.. && pnpm --filter oral-boards build",
+  "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
+  "outputDirectory": ".next"
+}

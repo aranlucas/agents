@@ -6,7 +6,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@agents/ui";
 import { cn } from "@/lib/utils";
 import type { Tool } from "ai";
 import { BotIcon } from "lucide-react";
