@@ -16,7 +16,19 @@ def test_mounts_every_agent():
         "/oralboards",
         "/resume",
     ):
-        assert prefix in mounted
+        assert f"{prefix}/agui" in mounted
+        assert f"{prefix}/health" in mounted
+
+
+def test_startup_does_not_mutate_route_table():
+    before = [route.path for route in main.app.routes]
+    with TestClient(main.app):
+        first_startup = [route.path for route in main.app.routes]
+    with TestClient(main.app):
+        second_startup = [route.path for route in main.app.routes]
+
+    assert first_startup == before
+    assert second_startup == before
 
 
 def test_gateway_health():
