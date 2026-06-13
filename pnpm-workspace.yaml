@@ -8,6 +8,7 @@ allowBuilds:
   agents-monorepo: true
   "@clerk/shared": true
   "@scarf/scarf": true
+  better-sqlite3: true
   browser-tabs-lock: true
   bufferutil: true
   core-js: true
@@ -19,6 +20,7 @@ allowBuilds:
 onlyBuiltDependencies:
   - "agents-monorepo"
   - "@clerk/shared"
+  - "better-sqlite3"
   - "browser-tabs-lock"
   - "bufferutil"
   - "core-js"
