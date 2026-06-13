@@ -8,17 +8,20 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/
 
 WORKDIR /app
 ENV PATH="/app/.venv/bin:$PATH" \
-    AGENT_DIR="agents/travel" \
-    PYTHONPATH="/app/agents/a2ui/src:/app/agents/fitness/src:/app/agents/gateway/src:/app/agents/grocery/src:/app/agents/oralboards/src:/app/agents/resume/src:/app/agents/shared/src:/app/agents/travel/src:/app/agents/wellness/src"
+    AGENT_DIR="agents/travel"
 
 # Dependency layer: only the root manifest + lockfile, so third-party installs
-# are cached until dependencies change.
+# are cached until dependencies change. `--no-install-project` skips building the
+# local `agents` package here (its src trees aren't copied yet).
 COPY pyproject.toml uv.lock ./
 
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen --no-dev --no-install-project
 
 COPY . ./
 
+# Now that the agent src trees are present, install the `agents` package editable.
+# This puts every agent package (gateway, *_agent, agents_shared) on the path —
+# `uvicorn gateway.main:app` resolves with no PYTHONPATH.
 RUN uv sync --frozen --no-dev
 
 CMD ["sh", "-c", "cd /app && agent_name=$(basename ${AGENT_DIR}) && module=${AGENT_MODULE:-${agent_name}_agent.main} && uvicorn ${module}:app --host 0.0.0.0 --port ${PORT:-8000}"]

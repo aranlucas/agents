@@ -12,6 +12,7 @@ node_modules/
 
 # testing
 /coverage
+.coverage
 
 # next.js
 .next/
@@ -57,6 +58,8 @@ __pycache__/
 .data/adk_sessions.sqlite
 .claude/worktrees
 .worktrees/
+.codex/
+.codex-worktrees/
 # Superpowers brainstorm companion (local mockups)
 .superpowers/
 
