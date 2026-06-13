@@ -1,4 +1,6 @@
-export type AgentId = "travel" | "grocery" | "fitness" | "wellness" | "a2ui";
+import { AGENT_BACKEND_PATHS, type AgentId } from "@agents/types";
+
+export type { AgentId };
 
 export type AgentRuntimeConfig = {
   agentsBaseUrl?: string;
@@ -75,7 +77,8 @@ export function getAgentUrl(
 
   const configured = envOrConfig(env, AGENTS_BASE_ENV_KEY, config.agentsBaseUrl);
   const baseUrl = configured ?? `http://${os === "android" ? "10.0.2.2" : "localhost"}:8000`;
+  const backendPath = AGENT_BACKEND_PATHS[agentId];
   return normalizeAguiUrl(
-    `${stripTrailingSlash(normalizeLocalhostForPlatform(baseUrl, os))}/${agentId}`,
+    `${stripTrailingSlash(normalizeLocalhostForPlatform(baseUrl, os))}/${backendPath}`,
   );
 }

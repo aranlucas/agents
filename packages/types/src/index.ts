@@ -1,3 +1,27 @@
+export const AGENT_ORDER = [
+  "travel",
+  "grocery",
+  "fitness",
+  "wellness",
+  "oral-boards",
+  "a2ui",
+  "resume",
+] as const;
+
+export type AgentId = (typeof AGENT_ORDER)[number];
+
+export const AGENT_BACKEND_PATHS = {
+  travel: "travel",
+  grocery: "grocery",
+  fitness: "fitness",
+  wellness: "wellness",
+  "oral-boards": "oralboards",
+  a2ui: "a2ui",
+  resume: "resume",
+} as const satisfies Record<AgentId, string>;
+
+export type AgentBackendPath = (typeof AGENT_BACKEND_PATHS)[AgentId];
+
 // Travel agent state — matches what agents/travel writes to ADK shared state
 export type DocStatus = "idle" | "drafting" | "ready_to_book" | "booked";
 

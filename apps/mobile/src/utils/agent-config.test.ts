@@ -34,6 +34,15 @@ describe("getAgentUrl", () => {
     );
   });
 
+  it("uses shared backend paths when agent ids differ from gateway mounts", () => {
+    assert.equal(
+      getAgentUrl("oral-boards", {}, "ios", {
+        EXPO_PUBLIC_AGENTS_BASE_URL: "https://agents.example.com",
+      }),
+      "https://agents.example.com/oralboards/agui",
+    );
+  });
+
   it("defaults to localhost:8000 with the agent prefix", () => {
     assert.equal(getAgentUrl("grocery", {}, "ios", {}), "http://localhost:8000/grocery/agui");
     assert.equal(getAgentUrl("grocery", {}, "android", {}), "http://10.0.2.2:8000/grocery/agui");

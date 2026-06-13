@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AGENT_ORDER, getAgentConfig, isAgentId } from "./registry";
+import { AGENT_BACKEND_PATHS, AGENT_ORDER, getAgentConfig, isAgentId } from "./registry";
 
 describe("agent registry", () => {
   it("lists the seven agents in display order", () => {
@@ -24,6 +24,11 @@ describe("agent registry", () => {
     expect(cfg.label).toBe("Trip Studio");
     expect(cfg.colorVar).toBe("--travel");
     expect(cfg.artifact?.stateField).toBe("itinerary");
+  });
+
+  it("uses canonical backend paths for gateway routes", () => {
+    expect(AGENT_BACKEND_PATHS["oral-boards"]).toBe("oralboards");
+    expect(AGENT_BACKEND_PATHS.resume).toBe("resume");
   });
 
   it("returns undefined for unknown ids", () => {
