@@ -6,10 +6,12 @@ routes directly on the gateway app.
 
 import logging
 import os
+from collections.abc import Awaitable, Callable
 from typing import Any
 
-from ag_ui_adk import ADKAgent
+from ag_ui_adk import ADKAgent, add_adk_fastapi_endpoint
 from ag_ui_adk.config import PredictStateMapping
+from fastapi import APIRouter, FastAPI, Request
 from google.adk.agents import LlmAgent
 from google.adk.sessions import BaseSessionService
 from google.adk.telemetry.setup import maybe_set_otel_providers
@@ -90,3 +92,35 @@ def build_adk_agent(
         session_timeout_seconds=3600,
         predict_state=predict_state,
     )
+
+
+def add_agent_routes(
+    app: FastAPI,
+    *,
+    prefix: str,
+    adk_agent: ADKAgent,
+    extract_state_from_request: Callable[
+        [Request, Any],
+        Awaitable[dict[str, Any]],
+    ],
+    health_check: Callable[[], Awaitable[dict[str, Any]]],
+) -> None:
+    """Register one gateway-scoped agent router.
+
+    ``ag-ui-adk`` also registers an experimental ``/agents/state`` endpoint.
+    Mounting a router per agent keeps that endpoint scoped under the agent
+    prefix instead of creating duplicate root routes in the gateway.
+    """
+    router = APIRouter()
+    add_adk_fastapi_endpoint(
+        router,
+        adk_agent,
+        path="/agui",
+        extract_state_from_request=extract_state_from_request,
+    )
+
+    @router.get("/health")
+    async def health():
+        return await health_check()
+
+    app.include_router(router, prefix=prefix)

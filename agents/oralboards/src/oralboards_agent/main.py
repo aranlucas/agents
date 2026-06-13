@@ -1,7 +1,10 @@
 """Oral Boards Examiner Agent — wiring (see agent.py / db.py for domain logic)."""
 
-from ag_ui_adk import add_adk_fastapi_endpoint
-from agents_shared.app_factory import build_adk_agent, streaming_state_mapping
+from agents_shared.app_factory import (
+    add_agent_routes,
+    build_adk_agent,
+    streaming_state_mapping,
+)
 from agents_shared.dependencies import AgentServices
 from agents_shared.session_service import check_database_connection
 from agents_shared.state import make_extract_state
@@ -27,13 +30,12 @@ async def _health() -> dict:
 
 
 def register(app: FastAPI, services: AgentServices):
-    add_adk_fastapi_endpoint(
+    add_agent_routes(
         app,
-        build_adk_agent(_oralboards_agent, services=services, predict_state=ORALBOARDS_PREDICT_STATE),
-        path="/oralboards/agui",
+        prefix="/oralboards",
+        adk_agent=build_adk_agent(
+            _oralboards_agent, services=services, predict_state=ORALBOARDS_PREDICT_STATE
+        ),
         extract_state_from_request=make_extract_state(),
+        health_check=_health,
     )
-
-    @app.get("/oralboards/health")
-    async def health():
-        return await _health()
