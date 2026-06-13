@@ -27,6 +27,8 @@ export type Suggestion = {
 
 export type AgentConfig = {
   id: AgentId;
+  /** Mount path on the agents gateway (`/<backendPath>/agui` + `/<backendPath>/health`). */
+  backendPath: string;
   label: string;
   glyph: string;
   /** CSS custom property holding the agent accent, e.g. "--travel". */
@@ -42,6 +44,7 @@ export type AgentConfig = {
 export const AGENTS: Record<AgentId, AgentConfig> = {
   travel: {
     id: "travel",
+    backendPath: "travel",
     label: "Trip Studio",
     glyph: "✈",
     colorVar: "--travel",
@@ -75,6 +78,7 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
   },
   grocery: {
     id: "grocery",
+    backendPath: "grocery",
     requires: ["kroger"],
     label: "Grocery",
     glyph: "🛒",
@@ -101,6 +105,7 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
   },
   fitness: {
     id: "fitness",
+    backendPath: "fitness",
     requires: ["strava"],
     label: "Fitness",
     glyph: "💪",
@@ -124,6 +129,7 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
   },
   wellness: {
     id: "wellness",
+    backendPath: "wellness",
     requires: ["kroger", "strava"],
     label: "Wellness",
     glyph: "☯",
@@ -150,6 +156,7 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
   },
   "oral-boards": {
     id: "oral-boards",
+    backendPath: "oralboards",
     label: "Oral Boards",
     glyph: "◆",
     colorVar: "--oral-boards",
@@ -182,6 +189,7 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
   },
   a2ui: {
     id: "a2ui",
+    backendPath: "a2ui",
     label: "A2UI",
     glyph: "▦",
     colorVar: "--a2ui",
@@ -195,6 +203,7 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
   },
   resume: {
     id: "resume",
+    backendPath: "resume",
     label: "Resume",
     glyph: "▣",
     colorVar: "--resume",
@@ -222,6 +231,14 @@ export const AGENT_ORDER: AgentId[] = [
   "a2ui",
   "resume",
 ];
+
+/**
+ * AgentId → gateway mount path. Single source for server-side route wiring
+ * (the CopilotKit runtime and the health proxy both derive their maps here).
+ */
+export const AGENT_BACKEND_PATHS = Object.fromEntries(
+  AGENT_ORDER.map((id) => [id, AGENTS[id].backendPath]),
+) as Record<AgentId, string>;
 
 export function isAgentId(value: string): value is AgentId {
   return value in AGENTS;

@@ -80,20 +80,20 @@ Conventions:
    - `GET /health` endpoint required for gateway health aggregation
    - no standalone `uvicorn.run(...)` entrypoint; the gateway is the only server entrypoint
 3. Add any new Python third-party dependencies to the root `pyproject.toml`; do not add per-agent `pyproject.toml` files
-4. Mount the app in `agents/gateway/src/gateway/main.py`
-5. Register the agent in `apps/web/src/app/api/copilotkit/route.ts` and `apps/web/src/app/api/agents/health/route.ts`
-6. Add a page or console registration in `apps/web/src/components/chat/agents/registry.ts`
+4. Add the new package to `[tool.hatch.build.targets.wheel].packages` in the root `pyproject.toml`, then run `uv sync` so it installs (this is what makes `agents/<name>/src/<name>_agent` importable everywhere)
+5. Mount the app in `agents/gateway/src/gateway/main.py`
+6. Register the agent in `apps/web/src/components/chat/agents/registry.ts` (set `id` and `backendPath`) — the CopilotKit runtime and health-proxy routes derive their agent maps from the registry, so there is nothing to edit in the API routes
 7. Add a mobile screen/config if the agent should be available in `apps/mobile`
 8. Add state types to `packages/types/src/index.ts` when the agent exposes typed shared state
 
 ## Deployment
 
-| Surface        | Platform       | Config                                                                                                                                           |
-| -------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Agents gateway | Railway        | Root repo with Railway defaults/Railpack: root `main.py` exposes `gateway.main.app`; `.python-version` pins Python                               |
-| `apps/web/`    | Vercel         | vercel.json — set Root Dir to `apps/web/` in Vercel dashboard; `AGENTS_BASE_URL` points at the gateway                                           |
-| `apps/mobile/` | EAS Build      | `apps/mobile/eas.json` → App Store / Google Play; `EXPO_PUBLIC_AGENTS_BASE_URL` points at the gateway                                            |
-| Android APK    | GitHub Actions | `.github/workflows/android-apk.yml` — `expo prebuild` + Gradle, publishes the APK to a GitHub Release via `gh` (push a `v*` tag or run manually) |
+| Surface        | Platform       | Config                                                                                                                                                           |
+| -------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Agents gateway | Railway        | Railpack builds the root `agents` package (editable via `uv sync`); `railway.toml` `startCommand` runs `uvicorn gateway.main:app`; `.python-version` pins Python |
+| `apps/web/`    | Vercel         | vercel.json — set Root Dir to `apps/web/` in Vercel dashboard; `AGENTS_BASE_URL` points at the gateway                                                           |
+| `apps/mobile/` | EAS Build      | `apps/mobile/eas.json` → App Store / Google Play; `EXPO_PUBLIC_AGENTS_BASE_URL` points at the gateway                                                            |
+| Android APK    | GitHub Actions | `.github/workflows/android-apk.yml` — `expo prebuild` + Gradle, publishes the APK to a GitHub Release via `gh` (push a `v*` tag or run manually)                 |
 
 ## Architecture
 

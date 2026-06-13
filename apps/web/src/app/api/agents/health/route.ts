@@ -1,16 +1,7 @@
 import { NextResponse } from "next/server";
+import { AGENT_BACKEND_PATHS } from "@/components/chat/agents/registry";
 import { env } from "@/env";
 import { agentBaseUrl } from "@/lib/agent-url";
-
-const AGENT_PATHS = {
-  travel: "travel",
-  grocery: "grocery",
-  fitness: "fitness",
-  wellness: "wellness",
-  "oral-boards": "oralboards",
-  a2ui: "a2ui",
-  resume: "resume",
-};
 
 async function checkAgent(
   name: string,
@@ -29,7 +20,7 @@ async function checkAgent(
 
 export async function GET() {
   const results = await Promise.all(
-    Object.entries(AGENT_PATHS).map(([name, path]) => checkAgent(name, path)),
+    Object.entries(AGENT_BACKEND_PATHS).map(([name, path]) => checkAgent(name, path)),
   );
 
   const agents = Object.fromEntries(results.map(({ name, status }) => [name, status]));
