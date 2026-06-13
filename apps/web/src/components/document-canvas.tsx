@@ -7,9 +7,9 @@ import type { DocStatus } from "@agents/types";
 import { Badge } from "@agents/ui";
 import { Button } from "@agents/ui";
 import { Card, CardContent, CardFooter, CardHeader } from "@agents/ui";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
+import { Input } from "@agents/ui/components/input";
+import { Textarea } from "@agents/ui/components/textarea";
+import { cn } from "@agents/ui/lib/utils";
 
 interface Day {
   day: number;

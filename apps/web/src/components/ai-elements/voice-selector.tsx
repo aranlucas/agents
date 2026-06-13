@@ -12,10 +12,10 @@ import {
   CommandList,
   CommandSeparator,
   CommandShortcut,
-} from "@/components/ui/command";
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Spinner } from "@/components/ui/spinner";
-import { cn } from "@/lib/utils";
+} from "@agents/ui/components/command";
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@agents/ui/components/dialog";
+import { Spinner } from "@agents/ui/components/spinner";
+import { cn } from "@agents/ui/lib/utils";
 import {
   CircleSmallIcon,
   MarsIcon,

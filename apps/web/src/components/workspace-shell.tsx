@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "@agents/ui/lib/utils";
 
 export type PanelState = "closed" | "split" | "fullscreen";
 export type PanelAction = "open" | "close" | "toggle-open" | "toggle-fullscreen";

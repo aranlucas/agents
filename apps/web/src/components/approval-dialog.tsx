@@ -11,7 +11,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@agents/ui/components/dialog";
 
 export interface ApprovalRequest {
   id: string;

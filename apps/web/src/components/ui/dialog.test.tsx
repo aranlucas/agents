@@ -18,7 +18,7 @@ vi.mock("@base-ui/react/dialog", () => ({
   Dialog: dialogPrimitive,
 }));
 
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "./dialog";
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@agents/ui/components/dialog";
 
 describe("Dialog components", () => {
   it("renders with all subcomponents", async () => {

@@ -1,8 +1,8 @@
 "use client";
 
 import { Button } from "@agents/ui";
-import { Spinner } from "@/components/ui/spinner";
-import { cn } from "@/lib/utils";
+import { Spinner } from "@agents/ui/components/spinner";
+import { cn } from "@agents/ui/lib/utils";
 import { MicIcon, SquareIcon } from "lucide-react";
 import type { ComponentProps } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";

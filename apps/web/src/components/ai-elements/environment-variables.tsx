@@ -2,8 +2,8 @@
 
 import { Badge } from "@agents/ui";
 import { Button } from "@agents/ui";
-import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
+import { Switch } from "@agents/ui/components/switch";
+import { cn } from "@agents/ui/lib/utils";
 import { CheckIcon, CopyIcon, EyeIcon, EyeOffIcon } from "lucide-react";
 import type { ComponentProps, HTMLAttributes } from "react";
 import {
