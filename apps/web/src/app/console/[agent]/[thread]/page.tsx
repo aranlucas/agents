@@ -2,10 +2,10 @@
 
 import { use, useCallback } from "react";
 import { notFound, useRouter } from "next/navigation";
-import { CopilotKit, useAgent, UseAgentUpdate } from "@copilotkit/react-core/v2";
+import { useAgent, UseAgentUpdate } from "@copilotkit/react-core/v2";
 
 import { getAgentConfig, isAgentId, type AgentId } from "@/components/chat/agents/registry";
-import { AgentExtensionSlot, getAgentExtension } from "@/components/chat/agents/extensions";
+import { AgentExtensionSlot } from "@/components/chat/agents/extensions";
 import { AgentSuggestions } from "@/components/chat/agents/suggestions";
 import { ChatSurface } from "@/components/chat/ChatSurface";
 import { ArtifactPanel } from "@/components/chat/ArtifactPanel";
@@ -15,25 +15,11 @@ import { selectArtifact } from "@/components/chat/artifact";
 import { cssVars } from "@/lib/css";
 
 export default function Page({ params }: { params: Promise<{ agent: string; thread: string }> }) {
-  const { agent: raw, thread } = use(params);
-  if (!isAgentId(raw)) notFound();
-  const agentId: AgentId = raw;
-  return (
-    <CopilotKit
-      runtimeUrl="/api/copilotkit"
-      agent={agentId}
-      // The URL thread id is the durable session key: CopilotKit forwards it to
-      // the gateway, where ag-ui-adk maps it onto a persisted ADK session, so a
-      // refresh resumes the same conversation context.
-      threadId={thread}
-      useSingleEndpoint={false}
-      enableInspector={process.env.NODE_ENV !== "production"}
-      {...getAgentExtension(agentId)?.copilotKitProps}
-    >
-      {/* Remount per agent+thread so no client state leaks across switches. */}
-      <Console key={`${agentId}:${thread}`} agentId={agentId} />
-    </CopilotKit>
-  );
+  const { agent, thread } = use(params);
+  if (!isAgentId(agent)) notFound();
+  // Remount per agent+thread so no client state leaks across switches; the
+  // <CopilotKit> provider/session lives one level up in layout.tsx.
+  return <Console key={`${agent}:${thread}`} agentId={agent} />;
 }
 
 function Console({ agentId }: { agentId: AgentId }) {
