@@ -9,7 +9,6 @@ from agents_shared.tools import (
     build_model,
     get_current_date,
     on_model_error_callback,
-    shared_after_tool_callback,
 )
 from google.adk.agents import LlmAgent
 from google.adk.tools import ToolContext
@@ -184,7 +183,6 @@ def build_agent(*, mode: str | None = None, include_contents: str = "default") -
         before_agent_callback=make_state_initializer(
             GroceryState, token_flags={KROGER_AUTH.state_key: KROGER_AUTH.connected_flag}
         ),
-        after_tool_callback=shared_after_tool_callback,
         tools=[
             set_shopping_list,
             update_cart,

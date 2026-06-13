@@ -1,10 +1,8 @@
 from types import SimpleNamespace
 
-import pytest
 from agents_shared.tools import (
     parse_tool_response,
     save_state,
-    shared_after_tool_callback,
 )
 
 
@@ -27,30 +25,6 @@ def test_save_state_writes_by_tool_name() -> None:
     context = SimpleNamespace(state={})
     save_state(context, "set_shopping_list", {"items": ["eggs"]})
     assert context.state == {"set_shopping_list": {"items": ["eggs"]}}
-
-
-@pytest.mark.asyncio
-async def test_shared_after_tool_callback_removes_structured_content_from_response() -> None:
-    context = SimpleNamespace(state={})
-    tool = SimpleNamespace(name="lookup")
-    result = await shared_after_tool_callback(
-        tool,
-        {},
-        context,
-        {"content": [{"text": "shown"}], "structuredContent": {"secret": True}},
-    )
-    assert context.state["lookup"] == {"secret": True}
-    assert result == {"content": [{"text": "shown"}]}
-
-
-@pytest.mark.asyncio
-async def test_shared_after_tool_callback_returns_original_response_without_content_pair() -> None:
-    context = SimpleNamespace(state={})
-    tool = SimpleNamespace(name="lookup")
-    response = {"structuredContent": {"ok": True}}
-    result = await shared_after_tool_callback(tool, {}, context, response)
-    assert context.state["lookup"] == {"ok": True}
-    assert result is response
 
 
 def test_save_state_falls_back_to_prefixed_key_when_schema_rejects_raw_tool_name() -> None:

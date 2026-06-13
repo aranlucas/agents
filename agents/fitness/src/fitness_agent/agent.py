@@ -14,7 +14,6 @@ from agents_shared.tools import (
     build_model,
     get_current_date,
     on_model_error_callback,
-    shared_after_tool_callback,
 )
 from google.adk.agents import LlmAgent
 from google.adk.tools import ToolContext
@@ -315,7 +314,6 @@ def build_agent(*, mode: str | None = None, include_contents: str = "default") -
             FitnessState, token_flags={STRAVA_AUTH.state_key: STRAVA_AUTH.connected_flag}
         ),
         before_tool_callback=throttle_web_search,
-        after_tool_callback=shared_after_tool_callback,
         tools=[
             fetch_activities,
             get_current_date,

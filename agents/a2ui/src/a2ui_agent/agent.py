@@ -6,7 +6,6 @@ from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
     build_model,
     on_model_error_callback,
-    shared_after_tool_callback,
 )
 from google.adk.agents import LlmAgent
 from google.adk.tools import ToolContext
@@ -107,7 +106,6 @@ def build_agent() -> LlmAgent:
         static_instruction=_STATIC_INSTRUCTION,
         instruction=_STATE_INSTRUCTION,
         before_agent_callback=make_state_initializer(A2UIState),
-        after_tool_callback=shared_after_tool_callback,
         tools=[
             remember_surface,
             AGUIToolset(),
