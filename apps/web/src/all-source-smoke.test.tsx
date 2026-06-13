@@ -3,6 +3,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { act, create } from "react-test-renderer";
 import { describe, expect, it, vi } from "vitest";
 
+import type { Agent } from "./components/agent-card";
+
 vi.mock("./app/globals.css", () => ({}));
 
 const agentStates: Record<string, Record<string, unknown>> = {
@@ -539,7 +541,7 @@ describe("web all-source smoke coverage", () => {
       </ProvidersModule.Providers>,
     );
 
-    const agent = {
+    const agent: Agent = {
       id: "travel",
       href: "/travel",
       name: "Travel",
@@ -548,7 +550,7 @@ describe("web all-source smoke coverage", () => {
       cta: "Open",
       tags: ["adk"],
       theme: "travel",
-    } as const;
+    };
     await render(
       "agent-card-loading",
       <AgentCardModule.AgentCard agent={agent} index={0} status="loading" />,
@@ -561,12 +563,7 @@ describe("web all-source smoke coverage", () => {
       "agent-card-error",
       <AgentCardModule.AgentCard agent={{ ...agent, theme: "a2ui" }} index={2} status="error" />,
     );
-    await render(
-      "agent-status-bar",
-      <AgentStatusBarModule.AgentStatusBar
-        statuses={{ travel: "ok", grocery: "error", "oral-boards": "ok" }}
-      />,
-    );
+    await render("agent-status-bar", <AgentStatusBarModule.AgentStatusBar />);
     await render(
       "approval-card",
       <ApprovalModule.ApprovalCard
@@ -653,6 +650,6 @@ describe("web all-source smoke coverage", () => {
     await CopilotRouteModule.POST(request);
     await CopilotRouteModule.PATCH(request);
     await CopilotRouteModule.DELETE(request);
-    await ProxyModule.default({ protect: vi.fn() } as never, request);
+    await ProxyModule.default({ protect: vi.fn() } as never, request as never);
   });
 });

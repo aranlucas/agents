@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const getStravaAccessTokenMock = vi.fn();
 
@@ -11,7 +11,11 @@ describe("GET /api/strava/token", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
-    process.env.NODE_ENV = "development";
+    vi.stubEnv("NODE_ENV", "development");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("returns token availability in development", async () => {
@@ -58,7 +62,7 @@ describe("GET /api/strava/token", () => {
   });
 
   it("omits debug details in production", async () => {
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     getStravaAccessTokenMock.mockResolvedValueOnce({ connected: false, token: null });
     const { GET } = await import("./route");
     const body = await (await GET()).json();
@@ -66,7 +70,7 @@ describe("GET /api/strava/token", () => {
   });
 
   it("omits error debug details in production", async () => {
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     getStravaAccessTokenMock.mockRejectedValueOnce(new Error("hidden"));
     const { GET } = await import("./route");
     const body = await (await GET()).json();
