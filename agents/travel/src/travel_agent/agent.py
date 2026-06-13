@@ -16,6 +16,7 @@ via ag-ui-adk, plus a /health endpoint for the dev script.
 """
 
 from ag_ui_adk import AGUIToolset
+from agents_shared.prompts import canvas_contract
 from agents_shared.state import make_state_initializer
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
@@ -138,7 +139,13 @@ def mark_ready_to_book(tool_context: ToolContext, summary: str) -> dict:
 # ---------------------------------------------------------------------------
 # Agent instruction — emphasizes collaboration patterns.
 # ---------------------------------------------------------------------------
-_INSTRUCTION = """You are a collaborative trip-planning partner with access to live travel data.
+_CANVAS_CONTRACT = canvas_contract(
+    artifact="trip itinerary",
+    tools=("set_trip_meta", "write_itinerary", "add_day", "mark_ready_to_book"),
+)
+
+_INSTRUCTION = (
+    """You are a collaborative trip-planning partner with access to live travel data.
 
 Your job is to co-design a trip with the operator. The trip lives in
 shared state and the UI renders it live as you write.
@@ -157,10 +164,13 @@ Use the travel MCP tools to get real data BEFORE writing to state:
 
 Search → summarize results in chat → then write the confirmed plan into state.
 
+"""
+    + _CANVAS_CONTRACT
+    + """
+
 ## Writing to state (UI canvas)
 
-1. NEVER paste the itinerary into chat. The plan lives in
-   state["itinerary"]. ALWAYS use the tools to write it:
+1. The plan lives in state["itinerary"]. ALWAYS use the tools to write it:
    - `set_trip_meta` FIRST whenever a destination, dates, party size,
      or budget changes,
    - `write_itinerary` to (re)draft the full multi-day plan. Include
@@ -186,6 +196,7 @@ Search → summarize results in chat → then write the confirmed plan into stat
 Be concise, warm, and proactive. Surface tradeoffs (budget vs. vibe,
 pace vs. coverage, points vs. cash) instead of guessing silently.
 """
+)
 
 
 _STATE_INSTRUCTION = """\

@@ -3,6 +3,7 @@
 from typing import Any
 
 from ag_ui_adk import AGUIToolset
+from agents_shared.prompts import canvas_contract
 from agents_shared.state import KROGER_AUTH, make_state_initializer
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
@@ -100,7 +101,20 @@ def mark_list_ready(tool_context: ToolContext, summary: str) -> dict:
 # ---------------------------------------------------------------------------
 # Static instruction
 # ---------------------------------------------------------------------------
-_INSTRUCTION = """\
+_CANVAS_CONTRACT = canvas_contract(
+    artifact="meal plan, shopping list, pantry, deals, and cart",
+    tools=(
+        "set_shopping_list",
+        "set_meal_plan",
+        "update_cart",
+        "update_pantry",
+        "set_weekly_deals",
+        "mark_list_ready",
+    ),
+)
+
+_INSTRUCTION = (
+    """\
 You are a collaborative grocery and meal-planning partner with live access to Kroger data.
 
 ## Auth gate
@@ -112,6 +126,10 @@ Do not call any MCP tools and do not generate a meal plan.
 If `training_plan` is present in the current state, tailor meals and shopping to it:
 protein around strength days, lighter prep before hard sessions, extra fuel and
 hydration for the hike or long-endurance day, and recovery nutrition after heavy days.
+
+"""
+    + _CANVAS_CONTRACT
+    + """
 
 ## Workflow (only when kroger_connected is True)
 1. Use MCP tools to fetch real data BEFORE writing to state:
@@ -136,12 +154,12 @@ hydration for the hike or long-endurance day, and recovery nutrition after heavy
    cart renders in the UI. Skip pantry items the user already has, and suggest a
    substitution for anything out of stock rather than dropping it silently.
 
-4. After each tool call give a SHORT (1-2 sentence) summary.
-5. When the list and cart are complete, call mark_list_ready with a 1-sentence
+4. When the list and cart are complete, call mark_list_ready with a 1-sentence
    wrap-up. Do not mark the list ready until the cart has been created.
 
 Be practical, budget-aware, and proactive. Suggest substitutions for out-of-stock items.
 """
+)
 
 
 _STATE_INSTRUCTION = """\

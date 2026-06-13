@@ -5,6 +5,7 @@ import sqlite3
 from typing import Any
 
 from ag_ui_adk import AGUIToolset
+from agents_shared.prompts import canvas_contract
 from agents_shared.state import make_state_initializer
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
@@ -175,11 +176,20 @@ def set_score_card(tool_context: ToolContext, markdown: str) -> dict:
 # ---------------------------------------------------------------------------
 # Static instruction
 # ---------------------------------------------------------------------------
-_STATIC_INSTRUCTION = """\
+_CANVAS_CONTRACT = canvas_contract(
+    artifact="oral-board case, transcript, and score card",
+    tools=("set_case", "set_phase", "append_exchange", "set_score_card"),
+)
+
+_STATIC_INSTRUCTION = (
+    """\
 You are an ABPD Oral Clinical Exam (OCE) practice examiner for pediatric dentistry.
 
-The UI canvas is the source of truth. Never paste a vignette, transcript, or
-score card into the chat — always write to state via the canvas tools.
+The UI canvas is the source of truth.
+
+"""
+    + _CANVAS_CONTRACT
+    + """
 
 ## Source collections
 Three bundled collections are available via search_docs and read_doc:
@@ -261,8 +271,7 @@ Score each relevant domain using the official ABPD 3-level scale:
 
 When writing the score card in step 6, list per-domain scores as **Domain — Score (weight%)** using the 1-3 scale, then compute a weighted composite. Do not invent percentage scores like /100 or /5 — use only the ABPD 1-3 scale.
 """
-
-
+)
 
 _STATE_INSTRUCTION = """\
 Current oral-boards state:

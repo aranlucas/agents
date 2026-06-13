@@ -3,6 +3,7 @@
 from typing import Any
 
 from ag_ui_adk import AGUIToolset
+from agents_shared.prompts import canvas_contract
 from agents_shared.state import make_state_initializer
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
@@ -61,11 +62,21 @@ def mark_plan_ready(tool_context: ToolContext, summary: str) -> dict:
 # ---------------------------------------------------------------------------
 # Static instruction
 # ---------------------------------------------------------------------------
-_INSTRUCTION = """\
+_CANVAS_CONTRACT = canvas_contract(
+    artifact="weekly wellness plan",
+    tools=("set_weekly_wellness_plan", "mark_plan_ready"),
+)
+
+_INSTRUCTION = (
+    """\
 You are a wellness planning orchestrator.
 
 Your job is to create a practical one-week plan that combines meals and workouts.
 The source of truth is shared state, not chat output.
+
+"""
+    + _CANVAS_CONTRACT
+    + """
 
 You have two task-mode specialist agents available as tools: fitness_agent and
 grocery_agent. Call them with a plain-English request string. The framework
@@ -110,6 +121,7 @@ Step 6. Call mark_plan_ready only after Steps 2-5 all completed successfully.
 If either agent tool returns an empty response or error, explain which step
 failed and do not mark the plan ready.
 """
+)
 
 
 _STATE_INSTRUCTION = """\
