@@ -3,9 +3,9 @@
 import os
 from typing import TYPE_CHECKING
 
-from agents_shared.invocation_state import get_invocation_temp
 from google.adk.tools.mcp_tool import McpToolset
 from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
+from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
     from google.adk.agents.readonly_context import ReadonlyContext
@@ -17,9 +17,15 @@ MEAL_PLANNER_MCP_URL = os.getenv(
 KROGER_TOKEN_STATE_KEY = "temp:kroger_token"
 
 
+class _KrogerAuthState(BaseModel):
+    """Subset of ADK session state containing the request-scoped Kroger token."""
+
+    kroger_token: str = Field(default="", validation_alias=KROGER_TOKEN_STATE_KEY)
+
+
 def _header_provider(context: ReadonlyContext) -> dict[str, str]:
-    """Return auth headers from session state (or the in-process invocation bridge)."""
-    token = get_invocation_temp(KROGER_TOKEN_STATE_KEY, context.state)
+    """Return auth headers from the ADK session state."""
+    token = _KrogerAuthState.model_validate(context.state).kroger_token
     if token:
         return {"Authorization": f"Bearer {token}"}
     return {}

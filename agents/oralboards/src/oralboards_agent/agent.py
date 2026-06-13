@@ -4,7 +4,7 @@ import re
 import sqlite3
 from typing import Any
 
-from agents_shared.state import make_state_initializer, make_state_instruction_provider
+from agents_shared.state import make_state_initializer
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
     build_model,
@@ -178,18 +178,6 @@ def set_score_card(tool_context: ToolContext, markdown: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# DB-availability notice for the instruction provider
-# ---------------------------------------------------------------------------
-def _db_notice(_state: dict) -> str:
-    if not DB_STARTUP_ERROR:
-        return ""
-    return (
-        f"\n\nSOURCE DATABASE ERROR: {DB_STARTUP_ERROR}\n"
-        "Do not conduct an exam until the database is available."
-    )
-
-
-# ---------------------------------------------------------------------------
 # Static instruction
 # ---------------------------------------------------------------------------
 _STATIC_INSTRUCTION = """\
@@ -225,6 +213,28 @@ Be firm, source-bound, and concise. This is exam practice, not open-ended Q&A.
 """
 
 
+_DB_NOTICE = (
+    f"\n\nSOURCE DATABASE ERROR: {DB_STARTUP_ERROR}\n"
+    "Do not conduct an exam until the database is available."
+    if DB_STARTUP_ERROR
+    else ""
+)
+
+
+_STATE_INSTRUCTION = (
+    """\
+Current oral-boards state:
+- Case: {case}
+- Case sources: {case_sources}
+- Phase: {phase}
+- Transcript: {transcript}
+- Score card: {score_card}
+- Status: {status}
+"""
+    + _DB_NOTICE
+)
+
+
 # ---------------------------------------------------------------------------
 # Agent factory
 # ---------------------------------------------------------------------------
@@ -239,9 +249,7 @@ def build_agent() -> LlmAgent:
         on_model_error_callback=on_model_error_callback,
         state_schema=OralBoardsState,
         static_instruction=_STATIC_INSTRUCTION,
-        instruction=make_state_instruction_provider(
-            "oral-boards", OralBoardsState, notice=_db_notice
-        ),
+        instruction=_STATE_INSTRUCTION,
         before_agent_callback=make_state_initializer(OralBoardsState),
         after_tool_callback=shared_after_tool_callback,
         tools=[

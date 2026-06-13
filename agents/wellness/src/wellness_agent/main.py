@@ -1,5 +1,6 @@
 """Wellness Planning Agent — wiring (see agent.py for domain logic)."""
 
+from ag_ui_adk.request_state_service import RequestStateSessionService
 from agents_shared.app_factory import (
     build_adk_agent,
     create_agent_app,
@@ -9,7 +10,6 @@ from agents_shared.app_factory import (
 )
 from agents_shared.session_service import (
     SessionServiceContainer,
-    TempStateSessionService,
     create_session_service,
 )
 from agents_shared.state import KROGER_AUTH, STRAVA_AUTH, make_extract_state
@@ -35,7 +35,7 @@ app = create_agent_app(
     adk_agent=build_adk_agent(
         wellness_agent,
         predict_state=WELLNESS_PREDICT_STATE,
-        session_service=TempStateSessionService(create_session_service()),
+        session_service=RequestStateSessionService(create_session_service()),
     ),
     extract_state_from_request=make_extract_state(KROGER_AUTH, STRAVA_AUTH),
     session_container=_session_container,

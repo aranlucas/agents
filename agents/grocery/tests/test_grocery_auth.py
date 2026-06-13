@@ -1,5 +1,4 @@
 import pytest
-from agents_shared.invocation_state import set_invocation_temp_state
 from agents_shared.state import KROGER_AUTH, make_extract_state, make_state_initializer
 from grocery_agent import toolsets
 from grocery_agent.agent import GroceryState
@@ -35,19 +34,23 @@ def test_meal_planner_header_provider_reads_temp_token() -> None:
     assert headers == {"Authorization": "Bearer token-123"}
 
 
-def test_header_provider_falls_back_to_invocation_contextvar() -> None:
-    set_invocation_temp_state({"temp:kroger_token": "ctx-token"})
-    headers = toolsets._header_provider(DummyContext({}))
-    assert headers == {"Authorization": "Bearer ctx-token"}
-    set_invocation_temp_state(None)
+def test_kroger_auth_state_parses_temp_token_alias() -> None:
+    parsed = toolsets._KrogerAuthState.model_validate(
+        {"temp:kroger_token": "token-123", "status": "planning"}
+    )
+
+    assert parsed.kroger_token == "token-123"
+    assert toolsets._KrogerAuthState.model_validate({}).kroger_token == ""
 
 
-def test_on_before_agent_derives_kroger_connected_from_contextvar_token() -> None:
-    set_invocation_temp_state({"temp:kroger_token": "ctx-token"})
-    ctx = DummyContext({})
+def test_header_provider_returns_empty_without_state_token() -> None:
+    assert toolsets._header_provider(DummyContext({})) == {}
+
+
+def test_on_before_agent_derives_kroger_connected_from_state_token() -> None:
+    ctx = DummyContext({"temp:kroger_token": "ctx-token"})
     initializer = make_state_initializer(
         GroceryState, token_flags={KROGER_AUTH.state_key: KROGER_AUTH.connected_flag}
     )
     initializer(ctx)
     assert ctx.state["kroger_connected"] is True
-    set_invocation_temp_state(None)

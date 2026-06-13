@@ -9,7 +9,6 @@ from agents_shared.state import (
     TokenAuth,
     make_extract_state,
     make_state_initializer,
-    make_state_instruction_provider,
 )
 from pydantic import BaseModel
 
@@ -36,19 +35,6 @@ def test_initializer_flips_connected_flag_from_temp_token():
     ctx = SimpleNamespace(state={"temp:kroger_token": "tok"})
     init(ctx)
     assert ctx.state["kroger_connected"] is True
-
-
-def test_instruction_provider_dumps_state_and_notice():
-    provider = make_state_instruction_provider(
-        "demo",
-        DemoState,
-        notice=lambda s: "" if s["kroger_connected"] else "\n\nNOT CONNECTED",
-    )
-    ctx = SimpleNamespace(state={"status": "ready", "plan": "p"})
-    text = asyncio.run(provider(ctx))
-    assert text.startswith("Current demo state:\n")
-    assert '"status": "ready"' in text
-    assert text.endswith("NOT CONNECTED")
 
 
 def test_extract_state_identity_only():

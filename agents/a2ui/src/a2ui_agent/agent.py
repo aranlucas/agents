@@ -1,10 +1,7 @@
 """A2UI showcase agent domain: state, tools, instruction."""
 
 from ag_ui_adk import AGUIToolset
-from agents_shared.state import (
-    make_state_initializer,
-    make_state_instruction_provider,
-)
+from agents_shared.state import make_state_initializer
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
     build_model,
@@ -91,6 +88,15 @@ and the surface name. Keep chat text short; the generated UI is the product.
 """
 
 
+_STATE_INSTRUCTION = """\
+Current A2UI showcase state:
+- Status: {status}
+- Surface brief: {surface_brief}
+- Last surface: {last_surface}
+- User ID: {user_id}
+"""
+
+
 def build_agent() -> LlmAgent:
     return LlmAgent(
         name="a2ui_agent",
@@ -99,7 +105,7 @@ def build_agent() -> LlmAgent:
         on_model_error_callback=on_model_error_callback,
         state_schema=A2UIState,
         static_instruction=_STATIC_INSTRUCTION,
-        instruction=make_state_instruction_provider("A2UI showcase", A2UIState),
+        instruction=_STATE_INSTRUCTION,
         before_agent_callback=make_state_initializer(A2UIState),
         after_tool_callback=shared_after_tool_callback,
         tools=[

@@ -22,3 +22,15 @@ def test_a2ui_state_defaults() -> None:
     assert state.surface_brief == ""
     assert state.last_surface == ""
     assert state.user_id == ""
+
+
+def test_agent_instruction_uses_adk_state_placeholders() -> None:
+    a2ui_agent = agent.build_agent()
+    instruction = a2ui_agent.instruction
+
+    assert isinstance(instruction, str)
+    assert "Current A2UI showcase state:" in instruction
+    assert "{status}" in instruction
+    assert "{surface_brief}" in instruction
+    assert "{last_surface}" in instruction
+    assert "{user_id}" in instruction

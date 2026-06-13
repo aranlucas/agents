@@ -15,8 +15,6 @@ Backed by Mistral via LiteLLM. The FastAPI app mounts the agent at "/"
 via ag-ui-adk, plus a /health endpoint for the dev script.
 """
 
-import datetime
-
 from ag_ui_adk import AGUIToolset
 from agents_shared.state import make_state_initializer
 from agents_shared.tools import (
@@ -27,7 +25,6 @@ from agents_shared.tools import (
     shared_after_tool_callback,
 )
 from google.adk.agents import LlmAgent
-from google.adk.agents.readonly_context import ReadonlyContext
 from google.adk.tools import ToolContext
 from pydantic import BaseModel
 
@@ -140,34 +137,6 @@ def mark_ready_to_book(tool_context: ToolContext, summary: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# InstructionProvider — reads flat session-state keys written by the UI,
-# embeds them via f-string (safe for missing/empty values), and ADK appends
-# it after the cache-stable static instruction.
-# ---------------------------------------------------------------------------
-async def _build_instruction(context: ReadonlyContext) -> str:
-    s = context.state or {}
-    today = datetime.datetime.now(datetime.UTC).date()
-
-    interests = s.get("interests") or ""
-    if isinstance(interests, list):
-        interests = ", ".join(interests)
-
-    header = f"""\
-Current month: {today.strftime("%B %Y")}
-
-TRAVELER_BRIEF
-- Traveler: {s.get("travelerName") or ""}
-- Home airport: {s.get("homeAirport") or ""}
-- Transport mode: {s.get("transportMode") or "flight"}
-- Budget tier: {s.get("budgetTier") or ""}
-- Vibe: {s.get("vibe") or ""}
-- Pace: {s.get("pace") or ""}
-- Interests: {interests}"""
-
-    return header
-
-
-# ---------------------------------------------------------------------------
 # Agent instruction — emphasizes collaboration patterns.
 # ---------------------------------------------------------------------------
 _INSTRUCTION = """You are a collaborative trip-planning partner with access to live travel data.
@@ -220,6 +189,34 @@ pace vs. coverage, points vs. cash) instead of guessing silently.
 """
 
 
+_STATE_INSTRUCTION = """\
+Current travel state:
+- Destination: {destination}
+- Start date: {start_date}
+- End date: {end_date}
+- Travelers: {travelers}
+- Budget USD: {budget_usd}
+- Headline: {headline}
+- Flights: {flights}
+- Itinerary: {itinerary}
+- Summary: {summary}
+- Status: {status}
+- Review summary: {review_summary}
+- User ID: {user_id}
+
+TRAVELER_BRIEF
+- Traveler: {travelerName}
+- Home airport: {homeAirport}
+- Transport mode: {transportMode}
+- Budget tier: {budgetTier}
+- Vibe: {vibe}
+- Pace: {pace}
+- Interests: {interests}
+- Dietary: {dietary}
+- Mobility: {mobility}
+"""
+
+
 # ---------------------------------------------------------------------------
 # Agent factory
 # ---------------------------------------------------------------------------
@@ -232,7 +229,7 @@ def build_agent() -> LlmAgent:
         on_model_error_callback=on_model_error_callback,
         state_schema=TravelState,
         static_instruction=_INSTRUCTION,
-        instruction=_build_instruction,
+        instruction=_STATE_INSTRUCTION,
         before_agent_callback=make_state_initializer(TravelState),
         after_tool_callback=shared_after_tool_callback,
         tools=[
