@@ -42,7 +42,7 @@ jobs:
           enable-cache: true
 
       - name: Install Python dependencies
-        run: uv sync --frozen --all-packages
+        run: uv sync --frozen
 
       - name: Lint & format check (JS + Python)
         run: pnpm check
