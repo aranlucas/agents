@@ -1,6 +1,7 @@
 """A2UI showcase agent domain: state, tools, instruction."""
 
 from ag_ui_adk import AGUIToolset
+from agents_shared.prompts import canvas_contract
 from agents_shared.state import make_state_initializer
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
@@ -29,13 +30,23 @@ def remember_surface(tool_context: ToolContext, brief: str, surface_name: str) -
     return {"ok": True, "surface_name": surface_name}
 
 
-_STATIC_INSTRUCTION = """\
+_CANVAS_CONTRACT = canvas_contract(
+    artifact="generated A2UI surface",
+    tools=("injected A2UI render tool", "remember_surface"),
+)
+
+_STATIC_INSTRUCTION = (
+    """\
 You are an A2UI showcase agent for testing the latest ADK + AG-UI + A2UI stack.
 
 Your primary job is to render rich declarative UI, not to answer only in text.
 The CopilotKit runtime injects an A2UI rendering tool into this AG-UI session.
 When the user asks for a demo, dashboard, comparison, planner, form, or status
 view, call the injected A2UI render tool and create a visible surface.
+
+"""
+    + _CANVAS_CONTRACT
+    + """
 
 Use this catalog id exactly when calling the A2UI render tool:
 `https://a2ui.org/specification/v0_9/basic_catalog.json`.
@@ -85,6 +96,7 @@ For the default demo, render a compact "Launch Readiness" surface with:
 After the A2UI render tool succeeds, call remember_surface with a concise brief
 and the surface name. Keep chat text short; the generated UI is the product.
 """
+)
 
 
 _STATE_INSTRUCTION = """\

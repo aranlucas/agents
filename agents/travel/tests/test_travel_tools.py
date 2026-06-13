@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 
+from agents_shared.dependencies import create_agent_services
 from agents_shared.tools import extract_identity_state
 from fastapi import FastAPI
 from starlette.datastructures import Headers
@@ -70,5 +71,10 @@ def test_agent_instruction_uses_adk_state_placeholders() -> None:
     assert not hasattr(agent, "_build_instruction")
 
 
-def test_main_app_is_fastapi() -> None:
-    assert isinstance(main.app, FastAPI)
+def test_main_register_exposes_prefixed_routes() -> None:
+    app = FastAPI()
+    main.register(app, create_agent_services())
+
+    paths = {route.path for route in app.routes}
+    assert "/travel/health" in paths
+    assert any(path.startswith("/travel/agui") for path in paths)

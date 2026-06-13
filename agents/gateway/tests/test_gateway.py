@@ -1,4 +1,5 @@
 import importlib
+from collections import Counter
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -16,7 +17,37 @@ def test_mounts_every_agent():
         "/oralboards",
         "/resume",
     ):
-        assert prefix in mounted
+        assert f"{prefix}/agui" in mounted
+        assert f"{prefix}/health" in mounted
+
+
+def test_startup_does_not_mutate_route_table():
+    before = [route.path for route in main.app.routes]
+    with TestClient(main.app):
+        first_startup = [route.path for route in main.app.routes]
+    with TestClient(main.app):
+        second_startup = [route.path for route in main.app.routes]
+
+    assert first_startup == before
+    assert second_startup == before
+
+
+def test_agent_routes_are_unique_and_state_is_scoped():
+    paths = [route.path for route in main.app.routes]
+    duplicates = {path: count for path, count in Counter(paths).items() if count > 1}
+
+    assert duplicates == {}
+    assert "/agents/state" not in paths
+    for prefix in (
+        "/travel",
+        "/grocery",
+        "/fitness",
+        "/wellness",
+        "/a2ui",
+        "/oralboards",
+        "/resume",
+    ):
+        assert f"{prefix}/agents/state" in paths
 
 
 def test_gateway_health():

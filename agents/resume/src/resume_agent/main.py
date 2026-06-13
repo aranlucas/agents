@@ -1,7 +1,6 @@
 """Resume Q&A Agent — public, unauthenticated demo. Wiring only."""
 
-from ag_ui_adk import add_adk_fastapi_endpoint
-from agents_shared.app_factory import build_adk_agent
+from agents_shared.app_factory import add_agent_routes, build_adk_agent
 from agents_shared.dependencies import AgentServices
 from agents_shared.session_service import check_database_connection
 from agents_shared.state import make_extract_state
@@ -16,13 +15,10 @@ _resume_agent = build_agent()
 
 
 def register(app: FastAPI, services: AgentServices):
-    add_adk_fastapi_endpoint(
+    add_agent_routes(
         app,
-        build_adk_agent(_resume_agent, services=services),
-        path="/resume/agui",
+        prefix="/resume",
+        adk_agent=build_adk_agent(_resume_agent, services=services),
         extract_state_from_request=make_extract_state(),
+        health_check=check_database_connection,
     )
-
-    @app.get("/resume/health")
-    async def health():
-        return await check_database_connection()

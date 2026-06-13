@@ -3,12 +3,11 @@
 import logging
 import os
 import time
-from contextlib import asynccontextmanager
 
 from a2ui_agent.main import register as register_a2ui
 from agents_shared.app_factory import setup_otel
 from agents_shared.clerk_auth import ClerkAuthMiddleware, clerk_auth_enabled
-from agents_shared.dependencies import create_agent_services
+from agents_shared.dependencies import AgentServices, create_agent_services
 from agents_shared.session_service import check_database_connection
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -26,9 +25,7 @@ tracer = setup_otel("agents-gateway")
 log = logging.getLogger("gateway")
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    services = create_agent_services()
+def register_agents(app: FastAPI, services: AgentServices) -> None:
     app.state.services = services
 
     for register_agent in (
@@ -42,13 +39,9 @@ async def lifespan(app: FastAPI):
     ):
         register_agent(app, services)
 
-    if clerk_auth_enabled():
-        app.add_middleware(ClerkAuthMiddleware, public_prefixes=("/resume",))
 
-    yield
-
-
-app = FastAPI(title="Agents Gateway", lifespan=lifespan)
+app = FastAPI(title="Agents Gateway")
+register_agents(app, create_agent_services())
 
 app.add_middleware(
     CORSMiddleware,
@@ -56,6 +49,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+if clerk_auth_enabled():
+    app.add_middleware(ClerkAuthMiddleware, public_prefixes=("/resume",))
 
 
 @app.middleware("http")

@@ -1,17 +1,25 @@
 from a2ui_agent import agent, main
+from agents_shared.dependencies import create_agent_services
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 
+def _registered_app() -> FastAPI:
+    app = FastAPI()
+    main.register(app, create_agent_services())
+    return app
+
+
 def test_health_route() -> None:
-    client = TestClient(main.app)
-    response = client.get("/health")
+    client = TestClient(_registered_app())
+    response = client.get("/a2ui/health")
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
 
 
 def test_agui_route_exists() -> None:
-    client = TestClient(main.app, raise_server_exceptions=False)
-    response = client.post("/agui", content=b"")
+    client = TestClient(_registered_app(), raise_server_exceptions=False)
+    response = client.post("/a2ui/agui", content=b"")
     assert response.status_code != 404
 
 
