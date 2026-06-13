@@ -5,7 +5,7 @@ import { notFound, useRouter } from "next/navigation";
 import { CopilotKit, useAgent, UseAgentUpdate } from "@copilotkit/react-core/v2";
 
 import { getAgentConfig, isAgentId, type AgentId } from "@/components/chat/agents/registry";
-import { TravelHooks } from "@/components/chat/agents/travel";
+import { GroceryHooks, TravelHooks } from "@/components/chat/agents/approval";
 import { AgentSuggestions } from "@/components/chat/agents/suggestions";
 import { ChatSurface } from "@/components/chat/ChatSurface";
 import { ArtifactPanel } from "@/components/chat/ArtifactPanel";
@@ -48,6 +48,7 @@ function Console({ agentId }: { agentId: AgentId }) {
   return (
     <main className="h-dvh" style={cssVars({ "--page-color": `var(${config.colorVar})` })}>
       {agentId === "travel" && <TravelHooks />}
+      {agentId === "grocery" && <GroceryHooks />}
       <AgentSuggestions config={config} />
       <WorkspaceShell
         hasArtifact={Boolean(artifact)}
