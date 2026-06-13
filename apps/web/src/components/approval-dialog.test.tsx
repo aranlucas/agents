@@ -18,10 +18,6 @@ vi.mock("@base-ui/react/dialog", () => ({
   Dialog: dialogPrimitive,
 }));
 
-vi.mock("@/components/ui/dialog", async () => {
-  const actual = await vi.importActual("@/components/ui/dialog");
-  return actual;
-});
 
 import { ApprovalCard, ApprovalDialog } from "./approval-dialog";
 import type { ApprovalRequest } from "./approval-dialog";
