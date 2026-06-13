@@ -17,6 +17,7 @@ import importlib
 
 import pytest
 from google.adk.tools.agent_tool import AgentTool
+from wellness_agent.agent import build_agent
 
 AGENT_MODULES = [
     "a2ui_agent.main",
@@ -36,8 +37,6 @@ def test_agent_module_imports(module_name: str) -> None:
 
 
 def test_wellness_uses_task_mode_sub_agents() -> None:
-    from wellness_agent.agent import build_agent
-
     agent = build_agent()
 
     sub_agent_names = [sa.name for sa in agent.sub_agents]

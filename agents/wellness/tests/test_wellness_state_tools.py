@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 
+from google.adk.tools.agent_tool import AgentTool
 from wellness_agent.agent import (
     WellnessState,
     build_agent,
@@ -39,8 +40,6 @@ def test_build_agent_returns_fresh_instances() -> None:
 
 
 def test_build_agent_sub_agents_task_mode() -> None:
-    from google.adk.tools.agent_tool import AgentTool
-
     agent = build_agent()
     sub_agent_names = [sa.name for sa in agent.sub_agents]
     assert sub_agent_names == ["fitness_agent", "grocery_agent"]

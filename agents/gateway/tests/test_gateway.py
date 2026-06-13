@@ -1,3 +1,4 @@
+import importlib
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -54,7 +55,6 @@ def test_agui_requires_token_when_clerk_auth_enabled(monkeypatch):
         "CLERK_JWKS_URL",
         "https://example.clerk.accounts.dev/.well-known/jwks.json",
     )
-    import importlib
 
     module = importlib.reload(main)
     client = TestClient(module.app)
@@ -70,8 +70,6 @@ def test_resume_agui_is_public_with_auth_enabled(monkeypatch):
         "CLERK_JWKS_URL",
         "https://example.clerk.accounts.dev/.well-known/jwks.json",
     )
-    import importlib
-
     module = importlib.reload(main)
     client = TestClient(module.app)
     assert client.post("/resume/agui", json={}).status_code != 401

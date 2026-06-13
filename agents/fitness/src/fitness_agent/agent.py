@@ -148,7 +148,7 @@ async def fetch_activities(
         return {"ok": False, "reason": reason, "status_code": status_code}
     except httpx.HTTPError as exc:
         tool_context.state["status"] = "idle"
-        log.exception("fetch_activities: network error: %s", exc)
+        log.exception("fetch_activities: network error")
         return {"ok": False, "reason": "strava_network_error", "message": str(exc)}
 
     normalized_batch = [normalize_strava_activity(activity) for activity in batch]
@@ -208,21 +208,20 @@ def mark_plan_ready(tool_context: ToolContext, summary: str) -> dict:
 # instruction also asks the model to keep its total number of searches small.
 _WEB_SEARCH_MIN_INTERVAL_S = 1.2
 _web_search_lock = asyncio.Lock()
-_last_web_search_at = 0.0
+_web_search_state: dict[str, float] = {"last_at": 0.0}
 
 
 async def throttle_web_search(tool, args, tool_context) -> None:
     """Space out Brave web-search calls to respect the free-tier rate limit."""
     if not str(getattr(tool, "name", "")).startswith("brave_"):
         return
-    global _last_web_search_at
     async with _web_search_lock:
-        elapsed = time.monotonic() - _last_web_search_at
+        elapsed = time.monotonic() - _web_search_state["last_at"]
         if elapsed < _WEB_SEARCH_MIN_INTERVAL_S:
             wait = _WEB_SEARCH_MIN_INTERVAL_S - elapsed
             log.debug("throttle_web_search: sleeping %.2fs before %s", wait, tool.name)
             await asyncio.sleep(wait)
-        _last_web_search_at = time.monotonic()
+        _web_search_state["last_at"] = time.monotonic()
     return
 
 

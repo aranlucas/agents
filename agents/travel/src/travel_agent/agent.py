@@ -64,7 +64,7 @@ class TravelState(BaseModel):
 # state delta, and `write_itinerary.body` is streamed token-by-token via
 # COLLAB_PREDICT_STATE below.
 # ---------------------------------------------------------------------------
-def set_trip_meta(
+def set_trip_meta(  # noqa: PLR0913
     tool_context: ToolContext,
     destination: str,
     start_date: str,
