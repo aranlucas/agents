@@ -3,10 +3,7 @@
 from typing import Any
 
 from ag_ui_adk import AGUIToolset
-from agents_shared.state import (
-    make_state_initializer,
-    make_state_instruction_provider,
-)
+from agents_shared.state import make_state_initializer
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
     build_model,
@@ -116,6 +113,27 @@ failed and do not mark the plan ready.
 """
 
 
+_STATE_INSTRUCTION = """\
+Current wellness state:
+- Status: {status}
+- Meal plan: {meal_plan}
+- Weekly plan: {weekly_plan}
+- Review summary: {review_summary}
+- User ID: {user_id}
+- Kroger connected: {kroger_connected}
+- Strava connected: {strava_connected}
+- Shopping list: {shopping_list}
+- Cart: {cart}
+- Pantry: {pantry}
+- Weekly deals: {weekly_deals}
+- Notes: {notes}
+- Activities: {activities}
+- Activities synced at: {activities_synced_at}
+- Objective research: {objective_research}
+- Training plan: {training_plan}
+"""
+
+
 # ---------------------------------------------------------------------------
 # Agent factory
 # ---------------------------------------------------------------------------
@@ -127,7 +145,7 @@ def build_agent() -> LlmAgent:
         on_model_error_callback=on_model_error_callback,
         state_schema=WellnessState,
         static_instruction=_INSTRUCTION,
-        instruction=make_state_instruction_provider("wellness", WellnessState),
+        instruction=_STATE_INSTRUCTION,
         sub_agents=[build_fitness_agent(mode="task"), build_grocery_agent(mode="task")],
         before_agent_callback=make_state_initializer(WellnessState),
         after_tool_callback=shared_after_tool_callback,

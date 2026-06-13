@@ -8,7 +8,6 @@ from typing import Any
 
 import httpx
 from ag_ui_adk import AGUIToolset
-from agents_shared.invocation_state import get_invocation_temp
 from agents_shared.state import STRAVA_AUTH, make_state_initializer
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
@@ -18,9 +17,8 @@ from agents_shared.tools import (
     shared_after_tool_callback,
 )
 from google.adk.agents import LlmAgent
-from google.adk.agents.readonly_context import ReadonlyContext
 from google.adk.tools import ToolContext
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .toolsets import web_search_toolset
 
@@ -43,6 +41,12 @@ class FitnessState(BaseModel):
     status: str = "idle"
     review_summary: str = ""
     user_id: str = ""
+
+
+class _StravaAuthState(BaseModel):
+    """Subset of ADK session state containing the request-scoped Strava token."""
+
+    strava_token: str = Field(default="", validation_alias=STRAVA_AUTH.state_key)
 
 
 # ---------------------------------------------------------------------------
@@ -94,7 +98,7 @@ async def fetch_activities(
     omit it (or pass 1) to start from the most recent activities.
     Activities are appended to state across calls so the full history builds up.
     """
-    token = get_invocation_temp(STRAVA_AUTH.state_key, tool_context.state)
+    token = _StravaAuthState.model_validate(tool_context.state).strava_token
     connected = bool(tool_context.state.get("strava_connected")) and bool(token)
     log.debug(
         "fetch_activities: strava_connected=%s token_present=%s page=%s",
@@ -223,29 +227,24 @@ async def throttle_web_search(tool, args, tool_context) -> None:
     return
 
 
-async def build_dynamic_instruction(context: ReadonlyContext) -> str:
-    state = context.state
-    connected = bool(
-        state.get("strava_connected")
-        and get_invocation_temp(STRAVA_AUTH.state_key, state),
-    )
-    activity_count = len(state.get("activities") or [])
-    synced_at = state.get("activities_synced_at") or ""
+_STATE_INSTRUCTION = """\
+Current fitness state:
+- Strava connected: {strava_connected}
+- Activities: {activities}
+- Activities synced at: {activities_synced_at}
+- Objective research: {objective_research}
+- Training plan: {training_plan}
+- Status: {status}
+- Review summary: {review_summary}
+- User ID: {user_id}
 
-    strava_notice = (
-        "If Strava is connected and you are about to create or revise a training plan,\n"
-        "call fetch_activities first when activities are missing or stale."
-        if connected
-        else "Strava is not connected. Do NOT call fetch_activities. Tell the user their\n"
-        "Strava account isn't connected and they need to connect it in the UI.\n"
-        "Do not generate a training plan until Strava is connected."
-    )
-    return f"""Current fitness state:
-- Strava connected: {connected}
-- Synced activities: {activity_count}
-- Activities synced at: {synced_at or "never"}
-
-{strava_notice}"""
+Use the injected `strava_connected` state value above as the auth gate.
+If `strava_connected` is True and you are about to create or revise a training
+plan, call fetch_activities first when activities are missing or stale.
+If `strava_connected` is False, do NOT call fetch_activities. Tell the user their
+Strava account isn't connected and they need to connect it in the UI. Do not
+generate a training plan until Strava is connected.
+"""
 
 
 # ---------------------------------------------------------------------------
@@ -311,7 +310,7 @@ def build_agent(*, mode: str | None = None, include_contents: str = "default") -
         include_contents=include_contents,
         state_schema=FitnessState,
         static_instruction=_INSTRUCTION,
-        instruction=build_dynamic_instruction,
+        instruction=_STATE_INSTRUCTION,
         before_agent_callback=make_state_initializer(
             FitnessState, token_flags={STRAVA_AUTH.state_key: STRAVA_AUTH.connected_flag}
         ),

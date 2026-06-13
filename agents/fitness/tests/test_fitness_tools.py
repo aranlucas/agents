@@ -174,6 +174,28 @@ def test_fitness_state_tools_write_state() -> None:
     assert context.state["review_summary"] == "Ready"
 
 
+def test_agent_instruction_uses_adk_state_placeholders() -> None:
+    fitness_agent = agent.build_agent()
+    instruction = fitness_agent.instruction
+
+    assert isinstance(instruction, str)
+    assert "Current fitness state:" in instruction
+    assert "{strava_connected}" in instruction
+    assert "{activities}" in instruction
+    assert "{activities_synced_at}" in instruction
+    assert "{training_plan}" in instruction
+    assert not hasattr(agent, "build_dynamic_instruction")
+
+
+def test_strava_auth_state_parses_temp_token_alias() -> None:
+    parsed = agent._StravaAuthState.model_validate(
+        {"temp:strava_token": "token-123", "status": "planning"}
+    )
+
+    assert parsed.strava_token == "token-123"
+    assert agent._StravaAuthState.model_validate({}).strava_token == ""
+
+
 @pytest.mark.asyncio
 async def test_throttle_web_search_ignores_non_brave_tools() -> None:
     agent._last_web_search_at = 1000
@@ -181,19 +203,16 @@ async def test_throttle_web_search_ignores_non_brave_tools() -> None:
     assert agent._last_web_search_at == 1000
 
 
-def test_on_before_agent_derives_strava_connected_from_contextvar_token() -> None:
-    from agents_shared.invocation_state import set_invocation_temp_state
+def test_on_before_agent_derives_strava_connected_from_state_token() -> None:
     from agents_shared.state import STRAVA_AUTH, make_state_initializer
 
-    set_invocation_temp_state({"temp:strava_token": "ctx-token"})
     callback_context = Mock()
-    callback_context.state = {}
+    callback_context.state = {"temp:strava_token": "ctx-token"}
     initializer = make_state_initializer(
         agent.FitnessState, token_flags={STRAVA_AUTH.state_key: STRAVA_AUTH.connected_flag}
     )
     initializer(callback_context)
     assert callback_context.state["strava_connected"] is True
-    set_invocation_temp_state(None)
 
 
 def test_web_search_toolset_uses_local_stdio_mcp(monkeypatch) -> None:

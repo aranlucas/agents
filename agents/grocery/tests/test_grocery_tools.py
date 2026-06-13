@@ -33,11 +33,16 @@ def test_grocery_state_tools_write_canvas_state() -> None:
     assert context.state["review_summary"] == "Ready to shop"
 
 
-def test_kroger_notice_emitted_when_not_connected() -> None:
-    notice = agent._kroger_notice({"kroger_connected": False})
-    assert "KROGER NOT CONNECTED" in notice
+def test_agent_instruction_uses_adk_state_placeholders() -> None:
+    grocery_agent = agent.build_agent()
+    instruction = grocery_agent.instruction
 
-
-def test_kroger_notice_empty_when_connected() -> None:
-    notice = agent._kroger_notice({"kroger_connected": True})
-    assert notice == ""
+    assert isinstance(instruction, str)
+    assert "Current grocery state:" in instruction
+    assert "{kroger_connected}" in instruction
+    assert "{shopping_list}" in instruction
+    assert "{meal_plan}" in instruction
+    assert "{cart}" in instruction
+    assert "{training_plan}" in instruction
+    assert "If `kroger_connected` is False" in instruction
+    assert not hasattr(agent, "_kroger_notice")
