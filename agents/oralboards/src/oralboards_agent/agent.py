@@ -14,7 +14,7 @@ from google.adk.agents import LlmAgent
 from google.adk.tools import ToolContext
 from pydantic import BaseModel
 
-from .db import DB_STARTUP_ERROR, VALID_COLLECTIONS, connect
+from .db import VALID_COLLECTIONS, connect
 
 
 # ---------------------------------------------------------------------------
@@ -25,7 +25,6 @@ class OralBoardsState(BaseModel):
 
     case: str = ""
     case_sources: list[Any] = []
-    phase: str = "idle"
     transcript: list[Any] = []
     score_card: str = ""
     status: str = "idle"
@@ -133,14 +132,12 @@ def set_case(tool_context: ToolContext, case: str, sources: list[dict]) -> dict:
     """Write the grounded case vignette and source provenance to shared state."""
     tool_context.state["case"] = case
     tool_context.state["case_sources"] = sources
-    tool_context.state["phase"] = "presenting"
     tool_context.state["status"] = "presenting"
     return {"ok": True, "length": len(case), "source_count": len(sources)}
 
 
 def set_phase(tool_context: ToolContext, phase: str) -> dict:
-    """Set the current oral-exam phase."""
-    tool_context.state["phase"] = phase
+    """Set the current oral-exam status."""
     tool_context.state["status"] = phase
     return {"ok": True, "phase": phase}
 
@@ -163,15 +160,13 @@ def append_exchange(
         },
     )
     tool_context.state["transcript"] = transcript
-    tool_context.state["phase"] = "feedback"
-    tool_context.state["status"] = "feedback"
+    tool_context.state["status"] = "questioning"
     return {"ok": True, "count": len(transcript)}
 
 
 def set_score_card(tool_context: ToolContext, markdown: str) -> dict:
     """Write the final cited score card to shared state."""
     tool_context.state["score_card"] = markdown
-    tool_context.state["phase"] = "complete"
     tool_context.state["status"] = "complete"
     return {"ok": True, "length": len(markdown)}
 
@@ -212,38 +207,62 @@ it and offer adjacent topics you found via search_docs. Do not improvise.
    Read the top documents with read_doc. Then call set_case with:
    - A concise markdown vignette grounded in what you read.
    - Source chips: [{"docid": N, "title": "...", "collection": "aapd"}, ...].
-3. Ask questions one at a time in order: diagnosis → management → complications /
-   follow-up. Call set_phase("questioning") before each question.
-4. After the user answers each question, re-search or reuse existing docs, then
-   call append_exchange with the exact question text, the user's verbatim answer,
-   concise cited feedback, and citation chips.
-5. After the final question, call set_score_card with per-criterion markdown
-   scoring and cited feedback, then summarize in 1–2 chat sentences.
+3. Call set_phase("questioning") once, then ask the first question.
+4. After the user answers, re-search or reuse existing docs, then call
+   append_exchange with the exact question text, the user's verbatim answer,
+   concise cited feedback, and citation chips. append_exchange automatically
+   keeps the status at "questioning" — do NOT call set_phase again.
+5. Ask the next question. Repeat step 4 for each subsequent answer.
+6. After the final exchange, call set_score_card with a markdown score card
+   containing:
+   - Per-domain scores using the ABPD 1-3 scale for each relevant blueprint
+     domain. Format: "Domain — Score (weight%)" with cited rationale.
+   - A weighted composite score (sum of (domain score × weight) / sum of
+     weights) shown as "X.Y / 3.0".
+   - Cited feedback tying each score to the candidate's performance.
+   Then summarize in 1–2 chat sentences.
 
 Be firm, source-bound, and concise. This is exam practice, not open-ended Q&A.
+
+## ABPD OCE Blueprint domains and weights
+
+When scoring, reference these ABPD blueprint domains and their exam weights.
+Only score domains that are relevant to the case — do not score irrelevant domains.
+
+| # | Domain | Weight |
+|---|--------|--------|
+| 1 | Behavior Guidance | 14 % |
+| 2 | Growth and Development | 8 % |
+| 3 | Oral Facial Injury, Emergency Care and Oral Surgery | 16 % |
+| 4 | Diagnosis, Oral Pathology, Oral Radiology, and Oral Medicine | 10 % |
+| 5 | Prevention and Health Promotion | 10 % |
+| 6 | Dental Caries Diagnosis, Non-restorative Caries Management and Restorative Treatment | 17 % |
+| 7 | Pulp Therapy | 8 % |
+| 8 | Special Health Care Needs | 8 % |
+| 9 | Advocacy and Education | 4 % |
+| 10 | Elements of Pediatric Dental Practice | 5 % |
+
+## ABPD OCE scoring rubric
+
+Score each relevant domain using the official ABPD 3-level scale:
+
+- **Score 3** — The candidate showed a full understanding/application or analysis/evaluation of the knowledge and skills, clinical reasoning, communication, and professionalism required for safe and effective practice for the task being assessed.
+- **Score 2** — The candidate showed less than a full understanding/application or analysis/evaluation of the knowledge and skills, clinical reasoning, communication, and professionalism required for safe and effective practice for the task being assessed.
+- **Score 1** — The candidate did not show accurate understanding/application or analysis/evaluation of the knowledge and skills, clinical reasoning, communication, and professionalism required for safe and effective practice for the task being assessed.
+
+When writing the score card in step 6, list per-domain scores as **Domain — Score (weight%)** using the 1-3 scale, then compute a weighted composite. Do not invent percentage scores like /100 or /5 — use only the ABPD 1-3 scale.
 """
 
 
-_DB_NOTICE = (
-    f"\n\nSOURCE DATABASE ERROR: {DB_STARTUP_ERROR}\n"
-    "Do not conduct an exam until the database is available."
-    if DB_STARTUP_ERROR
-    else ""
-)
 
-
-_STATE_INSTRUCTION = (
-    """\
+_STATE_INSTRUCTION = """\
 Current oral-boards state:
 - Case: {case}
 - Case sources: {case_sources}
-- Phase: {phase}
+- Status: {status}
 - Transcript: {transcript}
 - Score card: {score_card}
-- Status: {status}
 """
-    + _DB_NOTICE
-)
 
 
 # ---------------------------------------------------------------------------

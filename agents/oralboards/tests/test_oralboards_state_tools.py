@@ -22,10 +22,10 @@ def test_oralboards_state_tools_write_canvas_state() -> None:
     }
     assert context.state["case"] == "## Case\nA 7-year-old patient."
     assert context.state["case_sources"] == sources
-    assert context.state["phase"] == "presenting"
+    assert context.state["status"] == "presenting"
 
     assert set_phase(context, "questioning") == {"ok": True, "phase": "questioning"}
-    assert context.state["phase"] == "questioning"
+    assert context.state["status"] == "questioning"
 
     assert append_exchange(
         context,
@@ -42,14 +42,14 @@ def test_oralboards_state_tools_write_canvas_state() -> None:
             "citations": citations,
         },
     ]
-    assert context.state["phase"] == "feedback"
+    assert context.state["status"] == "questioning"
 
     assert set_score_card(context, "## Score\n- Diagnosis: 3/4") == {
         "ok": True,
         "length": 25,
     }
     assert context.state["score_card"] == "## Score\n- Diagnosis: 3/4"
-    assert context.state["phase"] == "complete"
+    assert context.state["status"] == "complete"
 
 
 def test_state_initializer_preserves_existing_state_and_adds_defaults() -> None:
@@ -62,7 +62,6 @@ def test_state_initializer_preserves_existing_state_and_adds_defaults() -> None:
     on_before_agent(callback_context)
 
     assert callback_context.state["case"] == "existing"
-    assert callback_context.state["phase"] == "idle"
     assert callback_context.state["transcript"] == []
     assert callback_context.state["status"] == "idle"
 
@@ -75,6 +74,6 @@ def test_agent_instruction_uses_adk_state_placeholders() -> None:
     assert "Current oral-boards state:" in instruction
     assert "{case}" in instruction
     assert "{case_sources}" in instruction
-    assert "{phase}" in instruction
+    assert "{status}" in instruction
     assert "{transcript}" in instruction
     assert "{score_card}" in instruction
