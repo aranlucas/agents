@@ -1160,15 +1160,16 @@ git commit -m "test: enforce standard agent package layout"
 
 ### Task 12: Align dependency pins
 
-`ag-ui-adk` is pinned `>=0.6.4` in a2ui, resume, and shared but `>=0.6.5` everywhere else.
+Python dependencies now live in the root `pyproject.toml`; per-agent
+`pyproject.toml` files have been removed.
 
 **Files:**
 
-- Modify: `agents/a2ui/pyproject.toml:14`, `agents/resume/pyproject.toml:14`, `agents/shared/pyproject.toml:7`
+- Modify: `pyproject.toml`
 
-- [ ] **Step 1: Bump the three pins**
+- [ ] **Step 1: Keep `ag-ui-adk` pinned once**
 
-Change `"ag-ui-adk>=0.6.4"` → `"ag-ui-adk>=0.6.5"` in all three files.
+Ensure the root dependency list contains one `"ag-ui-adk>=0.6.5"` entry.
 
 - [ ] **Step 2: Re-lock and verify**
 
@@ -1178,7 +1179,7 @@ Expected: lockfile updates (or no-op if 0.6.5 already resolved). Then re-run the
 - [ ] **Step 3: Commit**
 
 ```bash
-git add agents/a2ui/pyproject.toml agents/resume/pyproject.toml agents/shared/pyproject.toml uv.lock
+git add pyproject.toml uv.lock
 git commit -m "chore: align ag-ui-adk pin to >=0.6.5 across agents"
 ```
 

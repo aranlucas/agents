@@ -75,17 +75,16 @@ Conventions:
 ## Adding a new agent
 
 1. `mkdir agents/<name>` and copy the structure from `agents/travel/` (or `agents/grocery/`)
-2. Update `agents/<name>/pyproject.toml` — set `name = "<name>-agent"`
-3. Implement `agents/<name>/src/<name>_agent/main.py` — follow the pattern:
+2. Implement `agents/<name>/src/<name>_agent/main.py` — follow the pattern:
    - `_setup_otel()` → `LlmAgent` → `ADKAgent` → FastAPI with `add_adk_fastapi_endpoint`
    - `GET /health` endpoint required for gateway health aggregation
    - no standalone `uvicorn.run(...)` entrypoint; the gateway is the only server entrypoint
-4. Add the package to the root uv workspace and `agents/gateway/pyproject.toml`
-5. Mount the app in `agents/gateway/src/gateway/main.py`
-6. Register the agent in `apps/web/src/app/api/copilotkit/route.ts` and `apps/web/src/app/api/agents/health/route.ts`
-7. Add a page or console registration in `apps/web/src/components/chat/agents/registry.ts`
-8. Add a mobile screen/config if the agent should be available in `apps/mobile`
-9. Add state types to `packages/types/src/index.ts` when the agent exposes typed shared state
+3. Add any new Python third-party dependencies to the root `pyproject.toml`; do not add per-agent `pyproject.toml` files
+4. Mount the app in `agents/gateway/src/gateway/main.py`
+5. Register the agent in `apps/web/src/app/api/copilotkit/route.ts` and `apps/web/src/app/api/agents/health/route.ts`
+6. Add a page or console registration in `apps/web/src/components/chat/agents/registry.ts`
+7. Add a mobile screen/config if the agent should be available in `apps/mobile`
+8. Add state types to `packages/types/src/index.ts` when the agent exposes typed shared state
 
 ## Deployment
 
