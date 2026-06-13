@@ -7,7 +7,7 @@ from typing import Any
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models import LlmRequest
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.tools import BaseTool, ToolContext
+from google.adk.tools import ToolContext
 from google.adk.workflow._retry_config import RetryConfig
 
 log = logging.getLogger("agents_shared")
@@ -99,18 +99,3 @@ def save_state(
         tool_context.state[fallback_key] = structured_content
 
 
-async def shared_after_tool_callback(
-    tool: BaseTool,
-    args: dict,
-    tool_context: ToolContext,
-    tool_response: dict,
-) -> dict | None:
-    save_state(tool_context, tool.name, parse_tool_response(tool_response))
-
-    if (
-        isinstance(tool_response, dict)
-        and "content" in tool_response
-        and "structuredContent" in tool_response
-    ):
-        return {"content": tool_response["content"]}
-    return tool_response

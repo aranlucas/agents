@@ -9,7 +9,6 @@ from agents_shared.tools import (
     build_model,
     get_current_date,
     on_model_error_callback,
-    shared_after_tool_callback,
 )
 from fitness_agent.agent import build_agent as build_fitness_agent
 from google.adk.agents import LlmAgent
@@ -148,7 +147,6 @@ def build_agent() -> LlmAgent:
         instruction=_STATE_INSTRUCTION,
         sub_agents=[build_fitness_agent(mode="task"), build_grocery_agent(mode="task")],
         before_agent_callback=make_state_initializer(WellnessState),
-        after_tool_callback=shared_after_tool_callback,
         tools=[
             get_current_date,
             set_weekly_wellness_plan,

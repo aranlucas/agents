@@ -22,7 +22,6 @@ from agents_shared.tools import (
     build_model,
     get_current_date,
     on_model_error_callback,
-    shared_after_tool_callback,
 )
 from google.adk.agents import LlmAgent
 from google.adk.tools import ToolContext
@@ -231,7 +230,6 @@ def build_agent() -> LlmAgent:
         static_instruction=_INSTRUCTION,
         instruction=_STATE_INSTRUCTION,
         before_agent_callback=make_state_initializer(TravelState),
-        after_tool_callback=shared_after_tool_callback,
         tools=[
             get_current_date,
             set_trip_meta,
