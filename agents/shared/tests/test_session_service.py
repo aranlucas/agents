@@ -4,24 +4,11 @@ import pytest
 from agents_shared import session_service
 
 
-def test_default_session_db_path_has_correct_layout() -> None:
-    default_path = session_service.default_session_db_path()
-    assert default_path.name == "adk_sessions.sqlite"
-    assert default_path.parent.name == ".data"
-    assert isinstance(default_path, Path)
-
-
-def test_database_url_normalizes_postgres_variants() -> None:
-    assert session_service._database_url(
-        {"DATABASE_URL": "postgres://user:pass@example/db"},
-    ) == "postgresql+asyncpg://user:pass@example/db"
-    assert session_service._database_url(
-        {"DATABASE_URL": "postgresql://user:pass@example/db"},
-    ) == "postgresql+asyncpg://user:pass@example/db"
-
-
-def test_database_url_returns_none_when_not_set() -> None:
-    assert session_service._database_url({}) is None
+def test_get_sqlite_db_path_default() -> None:
+    path = session_service.get_sqlite_db_path()
+    assert path.name == "adk_sessions.sqlite"
+    assert path.parent.name == ".data"
+    assert isinstance(path, Path)
 
 
 def test_get_sqlite_db_path_uses_env_override(monkeypatch, tmp_path) -> None:
@@ -30,8 +17,19 @@ def test_get_sqlite_db_path_uses_env_override(monkeypatch, tmp_path) -> None:
     assert session_service.get_sqlite_db_path() == db_path
 
 
-def test_get_database_url_reads_environment(monkeypatch) -> None:
+def test_get_database_url_returns_none_when_not_set(monkeypatch) -> None:
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    assert session_service.get_database_url() is None
+
+
+def test_get_database_url_normalizes_postgres(monkeypatch) -> None:
     monkeypatch.setenv("DATABASE_URL", "postgres://user:pass@example/db")
+    assert (
+        session_service.get_database_url()
+        == "postgresql+asyncpg://user:pass@example/db"
+    )
+
+    monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@example/db")
     assert (
         session_service.get_database_url()
         == "postgresql+asyncpg://user:pass@example/db"
