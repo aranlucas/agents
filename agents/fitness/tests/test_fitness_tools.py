@@ -1,6 +1,7 @@
 from unittest.mock import Mock
 
 import pytest
+from agents_shared.state import STRAVA_AUTH, make_state_initializer
 from fitness_agent import agent, toolsets
 from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
 from starlette.datastructures import Headers
@@ -198,14 +199,12 @@ def test_strava_auth_state_parses_temp_token_alias() -> None:
 
 @pytest.mark.asyncio
 async def test_throttle_web_search_ignores_non_brave_tools() -> None:
-    agent._last_web_search_at = 1000
+    agent._web_search_state["last_at"] = 1000
     await agent.throttle_web_search(Mock(name="other_search"), {}, Mock())
-    assert agent._last_web_search_at == 1000
+    assert agent._web_search_state["last_at"] == 1000
 
 
 def test_on_before_agent_derives_strava_connected_from_state_token() -> None:
-    from agents_shared.state import STRAVA_AUTH, make_state_initializer
-
     callback_context = Mock()
     callback_context.state = {"temp:strava_token": "ctx-token"}
     initializer = make_state_initializer(

@@ -4,6 +4,7 @@ import re
 import sqlite3
 from typing import Any
 
+from ag_ui_adk import AGUIToolset
 from agents_shared.state import make_state_initializer
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
@@ -270,8 +271,6 @@ Current oral-boards state:
 # ---------------------------------------------------------------------------
 def build_agent() -> LlmAgent:
     """Fresh LlmAgent instance for the oral-boards examiner."""
-    from ag_ui_adk import AGUIToolset
-
     return LlmAgent(
         name="oralboards_agent",
         model=build_model(),

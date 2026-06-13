@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 from agents_shared.tools import extract_identity_state
+from fastapi import FastAPI
 from starlette.datastructures import Headers
 from travel_agent import agent, main
 
@@ -70,6 +71,4 @@ def test_agent_instruction_uses_adk_state_placeholders() -> None:
 
 
 def test_main_app_is_fastapi() -> None:
-    from fastapi import FastAPI
-
     assert isinstance(main.app, FastAPI)

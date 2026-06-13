@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 
+from agents_shared.state import make_state_initializer
 from oralboards_agent.agent import (
     OralBoardsState,
     append_exchange,
@@ -54,8 +55,6 @@ def test_oralboards_state_tools_write_canvas_state() -> None:
 
 def test_state_initializer_preserves_existing_state_and_adds_defaults() -> None:
     """make_state_initializer (replacing on_before_agent) backfills defaults."""
-    from agents_shared.state import make_state_initializer
-
     callback_context = SimpleNamespace(state={"case": "existing"})
 
     on_before_agent = make_state_initializer(OralBoardsState)

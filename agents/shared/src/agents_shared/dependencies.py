@@ -10,11 +10,18 @@ from typing import Annotated
 
 from fastapi import Depends, Request
 from google.adk.artifacts.base_artifact_service import BaseArtifactService
+from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
 from google.adk.auth.credential_service.base_credential_service import (
     BaseCredentialService,
 )
+from google.adk.auth.credential_service.in_memory_credential_service import (
+    InMemoryCredentialService,
+)
 from google.adk.memory.base_memory_service import BaseMemoryService
+from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.sessions import BaseSessionService
+
+from .session_service import create_session_service
 
 
 @dataclass
@@ -26,16 +33,6 @@ class AgentServices:
 
 
 def create_agent_services() -> AgentServices:
-    from google.adk.artifacts.in_memory_artifact_service import (
-        InMemoryArtifactService,
-    )
-    from google.adk.auth.credential_service.in_memory_credential_service import (
-        InMemoryCredentialService,
-    )
-    from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
-
-    from .session_service import create_session_service
-
     return AgentServices(
         session_service=create_session_service(),
         artifact_service=InMemoryArtifactService(),

@@ -8,10 +8,14 @@ import logging
 import os
 from typing import Any
 
+from ag_ui_adk import ADKAgent
 from ag_ui_adk.config import PredictStateMapping
 from google.adk.agents import LlmAgent
 from google.adk.sessions import BaseSessionService
+from google.adk.telemetry.setup import maybe_set_otel_providers
 from opentelemetry import trace
+from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+from opentelemetry.sdk.resources import Resource
 from opentelemetry.trace import Tracer
 
 from .dependencies import AgentServices
@@ -36,10 +40,6 @@ def setup_agent_logging(name: str) -> logging.Logger:
 
 def setup_otel(default_service_name: str) -> Tracer:
     if os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
-        from google.adk.telemetry.setup import maybe_set_otel_providers
-        from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
-        from opentelemetry.sdk.resources import Resource
-
         resource = Resource.create(
             {
                 "service.name": os.getenv("RAILWAY_SERVICE_NAME", default_service_name),
@@ -81,8 +81,6 @@ def build_adk_agent(
     session_service: BaseSessionService | None = None,
     predict_state: list[PredictStateMapping] | None = None,
 ) -> Any:
-    from ag_ui_adk import ADKAgent
-
     return ADKAgent(
         adk_agent=agent,
         session_service=session_service or services.session_service,
