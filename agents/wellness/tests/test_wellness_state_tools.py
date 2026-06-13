@@ -46,3 +46,16 @@ def test_build_agent_sub_agents_task_mode() -> None:
     assert sub_agent_names == ["fitness_agent", "grocery_agent"]
     assert all(sa.mode == "task" for sa in agent.sub_agents)
     assert not any(type(tool) is AgentTool for tool in agent.tools)
+
+
+def test_agent_instruction_uses_adk_state_placeholders() -> None:
+    agent = build_agent()
+    instruction = agent.instruction
+
+    assert isinstance(instruction, str)
+    assert "Current wellness state:" in instruction
+    assert "{kroger_connected}" in instruction
+    assert "{strava_connected}" in instruction
+    assert "{training_plan}" in instruction
+    assert "{meal_plan}" in instruction
+    assert "{weekly_plan}" in instruction

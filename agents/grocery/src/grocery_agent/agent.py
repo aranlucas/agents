@@ -3,11 +3,7 @@
 from typing import Any
 
 from ag_ui_adk import AGUIToolset
-from agents_shared.state import (
-    KROGER_AUTH,
-    make_state_initializer,
-    make_state_instruction_provider,
-)
+from agents_shared.state import KROGER_AUTH, make_state_initializer
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
     build_model,
@@ -103,20 +99,6 @@ def mark_list_ready(tool_context: ToolContext, summary: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Auth notice
-# ---------------------------------------------------------------------------
-def _kroger_notice(state: dict) -> str:
-    if state.get("kroger_connected"):
-        return ""
-    return (
-        "\n\nKROGER NOT CONNECTED: Do not call any MCP tools. "
-        "Tell the user their Kroger account isn't connected and they need to "
-        "click 'Connect Kroger' in the UI to continue. Do not plan meals or "
-        "generate shopping lists."
-    )
-
-
-# ---------------------------------------------------------------------------
 # Static instruction
 # ---------------------------------------------------------------------------
 _INSTRUCTION = """\
@@ -163,6 +145,27 @@ Be practical, budget-aware, and proactive. Suggest substitutions for out-of-stoc
 """
 
 
+_STATE_INSTRUCTION = """\
+Current grocery state:
+- Kroger connected: {kroger_connected}
+- Shopping list: {shopping_list}
+- Meal plan: {meal_plan}
+- Cart: {cart}
+- Pantry: {pantry}
+- Weekly deals: {weekly_deals}
+- Status: {status}
+- Notes: {notes}
+- Review summary: {review_summary}
+- Training plan: {training_plan}
+- User ID: {user_id}
+
+Use the injected `kroger_connected` state value above as the auth gate.
+If `kroger_connected` is False, do not call any MCP tools. Tell the user their
+Kroger account isn't connected and they need to click 'Connect Kroger' in the UI
+to continue. Do not plan meals or generate shopping lists.
+"""
+
+
 # ---------------------------------------------------------------------------
 # Agent factory
 # ---------------------------------------------------------------------------
@@ -177,7 +180,7 @@ def build_agent(*, mode: str | None = None, include_contents: str = "default") -
         include_contents=include_contents,
         state_schema=GroceryState,
         static_instruction=_INSTRUCTION,
-        instruction=make_state_instruction_provider("grocery", GroceryState, notice=_kroger_notice),
+        instruction=_STATE_INSTRUCTION,
         before_agent_callback=make_state_initializer(
             GroceryState, token_flags={KROGER_AUTH.state_key: KROGER_AUTH.connected_flag}
         ),

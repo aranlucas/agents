@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from oralboards_agent.agent import (
     OralBoardsState,
     append_exchange,
+    build_agent,
     set_case,
     set_phase,
     set_score_card,
@@ -64,3 +65,16 @@ def test_state_initializer_preserves_existing_state_and_adds_defaults() -> None:
     assert callback_context.state["phase"] == "idle"
     assert callback_context.state["transcript"] == []
     assert callback_context.state["status"] == "idle"
+
+
+def test_agent_instruction_uses_adk_state_placeholders() -> None:
+    agent = build_agent()
+    instruction = agent.instruction
+
+    assert isinstance(instruction, str)
+    assert "Current oral-boards state:" in instruction
+    assert "{case}" in instruction
+    assert "{case_sources}" in instruction
+    assert "{phase}" in instruction
+    assert "{transcript}" in instruction
+    assert "{score_card}" in instruction

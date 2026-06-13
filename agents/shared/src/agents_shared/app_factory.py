@@ -104,8 +104,8 @@ def build_adk_agent(
 ) -> ADKAgent:
     """ADKAgent with the standard service bundle every agent uses.
 
-    Pass `session_service` to substitute a wrapper (e.g. wellness'
-    TempStateSessionService); everything else is identical across agents.
+    Pass `session_service` to substitute a wrapper (e.g. request-state injection);
+    everything else is identical across agents.
     """
     return ADKAgent(
         adk_agent=agent,

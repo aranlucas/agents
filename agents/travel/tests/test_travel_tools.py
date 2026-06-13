@@ -1,6 +1,5 @@
 from types import SimpleNamespace
 
-import pytest
 from agents_shared.tools import extract_identity_state
 from starlette.datastructures import Headers
 from travel_agent import agent, main
@@ -56,24 +55,18 @@ def test_trip_tools_write_expected_state() -> None:
     assert context.state["review_summary"] == "Ready"
 
 
-@pytest.mark.asyncio
-async def test_build_instruction_includes_preferences() -> None:
-    instruction = await agent._build_instruction(
-        SimpleNamespace(
-            state={
-                "travelerName": "Lucas",
-                "homeAirport": "SFO",
-                "transportMode": "train",
-                "budgetTier": "mid",
-                "vibe": "food",
-                "pace": "relaxed",
-                "interests": ["museums", "coffee"],
-            },
-        ),
-    )
+def test_agent_instruction_uses_adk_state_placeholders() -> None:
+    travel_agent = agent.build_agent()
+    instruction = travel_agent.instruction
+
+    assert isinstance(instruction, str)
     assert "TRAVELER_BRIEF" in instruction
-    assert "- Traveler: Lucas" in instruction
-    assert "- Interests: museums, coffee" in instruction
+    assert "{travelerName}" in instruction
+    assert "{homeAirport}" in instruction
+    assert "{transportMode}" in instruction
+    assert "{budgetTier}" in instruction
+    assert "{interests}" in instruction
+    assert not hasattr(agent, "_build_instruction")
 
 
 def test_main_app_is_fastapi() -> None:
