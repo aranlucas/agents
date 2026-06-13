@@ -16,6 +16,7 @@ minimum bar for "the service works".
 import importlib
 
 import pytest
+from google.adk.tools.agent_tool import AgentTool
 
 AGENT_MODULES = [
     "a2ui_agent.main",
@@ -32,3 +33,20 @@ AGENT_MODULES = [
 @pytest.mark.parametrize("module_name", AGENT_MODULES)
 def test_agent_module_imports(module_name: str) -> None:
     importlib.import_module(module_name)
+
+
+def test_wellness_uses_task_mode_sub_agents() -> None:
+    from wellness_agent.agent import build_agent
+
+    agent = build_agent()
+
+    sub_agent_names = [sa.name for sa in agent.sub_agents]
+    assert sub_agent_names == ["fitness_agent", "grocery_agent"]
+    assert [sa.mode for sa in agent.sub_agents] == [
+        "task",
+        "task",
+    ]
+    assert not any(type(tool) is AgentTool for tool in agent.tools)
+    assert {"fitness_agent", "grocery_agent"}.issubset(
+        {tool.name for tool in agent.tools if hasattr(tool, "name")},
+    )

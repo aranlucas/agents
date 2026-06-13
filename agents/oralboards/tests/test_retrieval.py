@@ -1,8 +1,8 @@
-from oralboards_agent import main
+from oralboards_agent.agent import read_doc, search_docs
 
 
 def test_search_docs_returns_known_results() -> None:
-    result = main.search_docs("pulpotomy")
+    result = search_docs("pulpotomy")
 
     assert result["error"] == ""
     assert result["results"]
@@ -16,7 +16,7 @@ def test_search_docs_returns_known_results() -> None:
 
 
 def test_search_docs_respects_collection_filter() -> None:
-    result = main.search_docs("pulpotomy", collection="aapd")
+    result = search_docs("pulpotomy", collection="aapd")
 
     assert result["error"] == ""
     assert result["results"]
@@ -24,14 +24,14 @@ def test_search_docs_respects_collection_filter() -> None:
 
 
 def test_search_docs_handles_fts_hostile_input() -> None:
-    result = main.search_docs('"pulpotomy"*')
+    result = search_docs('"pulpotomy"*')
 
     assert result["error"] == ""
     assert isinstance(result["results"], list)
 
 
 def test_read_doc_returns_body_for_known_filepath() -> None:
-    result = main.read_doc("aapd/bp-pulptherapy25.md")
+    result = read_doc("aapd/bp-pulptherapy25.md")
 
     assert result["error"] == ""
     assert result["filepath"] == "aapd/bp-pulptherapy25.md"
@@ -40,6 +40,6 @@ def test_read_doc_returns_body_for_known_filepath() -> None:
 
 
 def test_read_doc_returns_error_for_unknown_filepath() -> None:
-    result = main.read_doc("aapd/does-not-exist.md")
+    result = read_doc("aapd/does-not-exist.md")
 
     assert result == {"error": "not found"}

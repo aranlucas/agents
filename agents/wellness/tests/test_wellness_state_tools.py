@@ -1,88 +1,48 @@
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
 
-import pytest
-from agents_shared.invocation_state import (
-    get_invocation_temp,
-    set_invocation_temp_state,
+from wellness_agent.agent import (
+    WellnessState,
+    build_agent,
+    mark_plan_ready,
+    set_weekly_wellness_plan,
 )
-from starlette.datastructures import Headers
-from wellness_agent import main
-
-
-class DummyRequest:
-    def __init__(self, headers: dict[str, str]) -> None:
-        self.headers = Headers(headers)
-
-
-def test_extract_identity_state_reads_user_and_auth_tokens() -> None:
-    result = main.extract_identity_state(
-        DummyRequest(
-            {
-                "x-clerk-user-id": "user_123",
-                "x-kroger-access-token": "kroger",
-                "x-strava-access-token": "strava",
-            },
-        ),
-    )
-    assert result == {
-        "user_id": "user_123",
-        "temp:kroger_token": "kroger",
-        "kroger_connected": True,
-        "temp:strava_token": "strava",
-        "strava_connected": True,
-    }
-
-
-@pytest.mark.asyncio
-async def test_extract_wellness_state_delegates_to_identity_reader() -> None:
-    assert await main.extract_wellness_state(DummyRequest({}), object()) == {
-        "user_id": "anonymous",
-    }
 
 
 def test_wellness_tools_write_state() -> None:
     context = SimpleNamespace(state={})
-    assert main.set_weekly_wellness_plan(context, "## Week") == {
+    assert set_weekly_wellness_plan(context, "## Week") == {
         "ok": True,
         "length": 7,
     }
     assert context.state["weekly_plan"] == "## Week"
     assert context.state["status"] == "planning"
 
-    assert main.mark_plan_ready(context, "Ready") == {"ok": True}
+    assert mark_plan_ready(context, "Ready") == {"ok": True}
     assert context.state["status"] == "ready"
     assert context.state["review_summary"] == "Ready"
 
 
-def test_before_model_modifier_prefixes_current_state() -> None:
-    request = SimpleNamespace(config=SimpleNamespace(system_instruction="Original"))
-    callback_context = SimpleNamespace(state={"weekly_plan": "Plan"})
-    assert main.before_model_modifier(callback_context, request) is None
-    assert request.config.system_instruction.startswith("Current wellness state:")
-    assert "Original" in request.config.system_instruction
+def test_wellness_state_defaults() -> None:
+    state = WellnessState()
+    assert state.status == "idle"
+    assert state.kroger_connected is False
+    assert state.strava_connected is False
+    assert state.weekly_plan == ""
+    assert state.shopping_list == []
+    assert state.activities == []
 
 
-def test_on_before_agent_adds_defaults() -> None:
-    callback_context = SimpleNamespace(state={"status": "planning"})
-    main.on_before_agent(callback_context)
-    assert callback_context.state["status"] == "planning"
-    assert callback_context.state["meal_plan"] == ""
-    assert callback_context.state["weekly_plan"] == ""
+def test_build_agent_returns_fresh_instances() -> None:
+    a = build_agent()
+    b = build_agent()
+    assert a is not b
 
 
-def test_temp_state_session_service_captures_temp_keys() -> None:
-    set_invocation_temp_state(None)
-    session = SimpleNamespace(state={"temp:kroger_token": "kroger", "user_id": "user"})
-    service = main._TempStateSessionService(object())
-    assert service._inject(session, "abc") is session
-    assert get_invocation_temp("temp:kroger_token", {}) == "kroger"
-    set_invocation_temp_state(None)
+def test_build_agent_sub_agents_task_mode() -> None:
+    from google.adk.tools.agent_tool import AgentTool
 
-
-@pytest.mark.asyncio
-async def test_trace_requests_skips_health_path() -> None:
-    request = SimpleNamespace(url=SimpleNamespace(path="/health"))
-    response = object()
-    call_next = AsyncMock(return_value=response)
-    assert await main.trace_requests(request, call_next) is response
+    agent = build_agent()
+    sub_agent_names = [sa.name for sa in agent.sub_agents]
+    assert sub_agent_names == ["fitness_agent", "grocery_agent"]
+    assert all(sa.mode == "task" for sa in agent.sub_agents)
+    assert not any(type(tool) is AgentTool for tool in agent.tools)

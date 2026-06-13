@@ -4,11 +4,14 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from ag_ui_adk.request_state_service import RequestStateSessionService
 from dependency_injector import containers, providers
 from google.adk.sessions.database_session_service import DatabaseSessionService
 from google.adk.sessions.sqlite_session_service import SqliteSessionService
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
+
+from .invocation_state import set_invocation_temp_state
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -134,3 +137,21 @@ def create_session_service(container: SessionServiceContainer | None = None):
 def create_check_database(container: SessionServiceContainer | None = None):
     container = container or SessionServiceContainer()
     return container.check_database_connection()
+
+
+class TempStateSessionService(RequestStateSessionService):
+    """Sets invocation temp state when temp: keys are injected into a session."""
+
+    def _inject(self, session, key):
+        session = super()._inject(session, key)
+        if session is not None:
+            state = session.state
+            state_dict = state.to_dict() if hasattr(state, "to_dict") else state
+            temp = {
+                k: v
+                for k, v in state_dict.items()
+                if isinstance(k, str) and k.startswith("temp:")
+            }
+            if temp:
+                set_invocation_temp_state(temp)
+        return session

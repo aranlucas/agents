@@ -1,6 +1,12 @@
 from types import SimpleNamespace
 
-from oralboards_agent import main
+from oralboards_agent.agent import (
+    OralBoardsState,
+    append_exchange,
+    set_case,
+    set_phase,
+    set_score_card,
+)
 
 
 def test_oralboards_state_tools_write_canvas_state() -> None:
@@ -8,7 +14,7 @@ def test_oralboards_state_tools_write_canvas_state() -> None:
     sources = [{"docid": 1, "title": "Guide", "collection": "abpd"}]
     citations = [{"docid": 2, "title": "Pulp Therapy", "collection": "aapd"}]
 
-    assert main.set_case(context, "## Case\nA 7-year-old patient.", sources) == {
+    assert set_case(context, "## Case\nA 7-year-old patient.", sources) == {
         "ok": True,
         "length": 29,
         "source_count": 1,
@@ -17,10 +23,10 @@ def test_oralboards_state_tools_write_canvas_state() -> None:
     assert context.state["case_sources"] == sources
     assert context.state["phase"] == "presenting"
 
-    assert main.set_phase(context, "questioning") == {"ok": True, "phase": "questioning"}
+    assert set_phase(context, "questioning") == {"ok": True, "phase": "questioning"}
     assert context.state["phase"] == "questioning"
 
-    assert main.append_exchange(
+    assert append_exchange(
         context,
         question="What is your diagnosis?",
         answer="Irreversible pulpitis",
@@ -37,7 +43,7 @@ def test_oralboards_state_tools_write_canvas_state() -> None:
     ]
     assert context.state["phase"] == "feedback"
 
-    assert main.set_score_card(context, "## Score\n- Diagnosis: 3/4") == {
+    assert set_score_card(context, "## Score\n- Diagnosis: 3/4") == {
         "ok": True,
         "length": 25,
     }
@@ -45,10 +51,14 @@ def test_oralboards_state_tools_write_canvas_state() -> None:
     assert context.state["phase"] == "complete"
 
 
-def test_on_before_agent_preserves_existing_state_and_adds_defaults() -> None:
+def test_state_initializer_preserves_existing_state_and_adds_defaults() -> None:
+    """make_state_initializer (replacing on_before_agent) backfills defaults."""
+    from agents_shared.state import make_state_initializer
+
     callback_context = SimpleNamespace(state={"case": "existing"})
 
-    main.on_before_agent(callback_context)
+    on_before_agent = make_state_initializer(OralBoardsState)
+    on_before_agent(callback_context)
 
     assert callback_context.state["case"] == "existing"
     assert callback_context.state["phase"] == "idle"

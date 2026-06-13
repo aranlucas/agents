@@ -32,9 +32,9 @@ def test_create_session_service_uses_sqlite_and_creates_parent(
 
 
 def test_extract_identity_state_includes_clerk_user_id() -> None:
-    from grocery_agent import main
+    from agents_shared.tools import extract_identity_state
 
-    state = main.extract_identity_state(Request({"x-clerk-user-id": "user_123"}))
+    state = extract_identity_state(Request({"x-clerk-user-id": "user_123"}))
     assert state["user_id"] == "user_123"
 
 

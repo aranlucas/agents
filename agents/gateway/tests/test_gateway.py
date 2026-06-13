@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 from gateway import main
 
@@ -27,6 +29,24 @@ def test_subapp_health_reachable_under_prefix():
     assert client.get("/travel/health").status_code == 200
     assert client.get("/grocery/health").status_code == 200
     assert client.get("/oralboards/health").status_code == 200
+
+
+def test_gateway_is_only_otel_setup_call():
+    repo_root = Path(__file__).resolve().parents[3]
+    agent_main_files = [
+        path
+        for path in (repo_root / "agents").glob("*/src/*_agent/main.py")
+        if path.parts[-3] != "gateway"
+    ]
+
+    offenders = [
+        str(path.relative_to(repo_root))
+        for path in agent_main_files
+        if "setup_otel(" in path.read_text()
+    ]
+
+    assert offenders == []
+    assert "setup_otel(" in (repo_root / "agents/gateway/src/gateway/main.py").read_text()
 
 
 def test_agui_requires_token_when_clerk_auth_enabled(monkeypatch):
