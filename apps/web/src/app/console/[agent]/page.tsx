@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { use, useCallback } from "react";
 import { notFound, useRouter } from "next/navigation";
 import { CopilotKit, useAgent, UseAgentUpdate } from "@copilotkit/react-core/v2";
 
@@ -41,6 +41,19 @@ function Console({ agentId }: { agentId: AgentId }) {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const artifact = selectArtifact(agent?.state as Record<string, unknown>, config);
 
+  // "New thread" in the rail: drop the current conversation, clear shared state
+  // (so a prior thread's artifact doesn't linger), and start a fresh thread id
+  // so the backend session has no carried-over context. Abort any in-flight run
+  // first to avoid a dangling request writing into the new thread.
+  const startNewThread = useCallback(() => {
+    if (!agent) return;
+    if (agent.isRunning) agent.abortRun();
+    agent.setMessages([]);
+    agent.setState({});
+    agent.threadId = crypto.randomUUID();
+    dispatch("close");
+  }, [agent, dispatch]);
+
   return (
     <main className="h-dvh" style={cssVars({ "--page-color": `var(${config.colorVar})` })}>
       <AgentExtensionSlot agentId={agentId} />
@@ -48,7 +61,7 @@ function Console({ agentId }: { agentId: AgentId }) {
       <WorkspaceShell
         hasArtifact={Boolean(artifact)}
         panelState={state}
-        rail={<NavRail activePath={`/console/${agentId}`} />}
+        rail={<NavRail activePath={`/console/${agentId}`} onNewThread={startNewThread} />}
         chat={
           <ChatSurface
             config={config}
