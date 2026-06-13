@@ -9,10 +9,10 @@ import type { AgentId } from "./registry";
 
 /**
  * Per-agent console customizations, keyed by agent id. This is the single place
- * the `/console/[agent]` route reaches for agent-specific wiring, so adding a
- * new agent's frontend tools, human-in-the-loop handlers, or resource preloads
- * never means editing the route (or `ChatSurface`) with another `id === …`
- * branch.
+ * an agent's console route (`/console/<agent>`) reaches for agent-specific
+ * wiring, so adding a new agent's frontend tools, human-in-the-loop handlers,
+ * or resource preloads never means editing `ConsoleSession`/`AgentWorkspace`
+ * (or `ChatSurface`) with another `id === …` branch.
  *
  * - `copilotKitProps` is merged into the route's `<CopilotKit>` provider — e.g.
  *   a2ui advertises its auto-mounted activity renderer this way.

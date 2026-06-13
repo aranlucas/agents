@@ -1,10 +1,10 @@
 "use client";
 
-import { use, useCallback } from "react";
-import { notFound, useRouter } from "next/navigation";
+import { useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useAgent, UseAgentUpdate } from "@copilotkit/react-core/v2";
 
-import { getAgentConfig, isAgentId, type AgentId } from "@/components/chat/agents/registry";
+import { getAgentConfig, type AgentId } from "@/components/chat/agents/registry";
 import { AgentExtensionSlot } from "@/components/chat/agents/extensions";
 import { AgentSuggestions } from "@/components/chat/agents/suggestions";
 import { ChatSurface } from "@/components/chat/ChatSurface";
@@ -14,15 +14,16 @@ import { WorkspaceShell, useArtifactPanel } from "@/components/workspace-shell";
 import { selectArtifact } from "@/components/chat/artifact";
 import { cssVars } from "@/lib/css";
 
-export default function Page({ params }: { params: Promise<{ agent: string; thread: string }> }) {
-  const { agent, thread } = use(params);
-  if (!isAgentId(agent)) notFound();
-  // Remount per agent+thread so no client state leaks across switches; the
-  // <CopilotKit> provider/session lives one level up in layout.tsx.
-  return <Console key={`${agent}:${thread}`} agentId={agent} />;
-}
-
-function Console({ agentId }: { agentId: AgentId }) {
+/**
+ * The default console experience: rail + chat + artifact panel, wired to the
+ * active agent's CopilotKit session. Every agent's `[thread]/page.tsx` renders
+ * this by default; an agent that needs a bespoke surface renders its own
+ * component there instead and reuses these primitives as needed.
+ *
+ * Must render inside a `<ConsoleSession>` provider (the agent's `[thread]`
+ * layout supplies it).
+ */
+export function AgentWorkspace({ agentId }: { agentId: AgentId }) {
   const router = useRouter();
   const config = getAgentConfig(agentId);
   const { state, dispatch } = useArtifactPanel(agentId);
