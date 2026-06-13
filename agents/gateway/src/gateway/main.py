@@ -4,6 +4,7 @@ import logging
 import os
 
 from a2ui_agent.main import app as a2ui_app
+from agents_shared.app_factory import setup_otel
 from agents_shared.clerk_auth import ClerkAuthMiddleware, clerk_auth_enabled
 from agents_shared.session_service import SessionServiceContainer
 from dotenv import load_dotenv
@@ -16,6 +17,7 @@ from travel_agent.main import app as travel_app
 from wellness_agent.main import app as wellness_app
 
 load_dotenv()
+tracer = setup_otel("agents-gateway")
 
 log = logging.getLogger("gateway")
 
