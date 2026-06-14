@@ -74,12 +74,12 @@ export async function preloadKokoro(): Promise<boolean> {
   }
 }
 
-export async function generateSpeech(text: string): Promise<GenerateResult> {
+export async function generateSpeech(text: string, speed?: number): Promise<GenerateResult> {
   const w = getWorker();
   const id = nextId++;
 
   // oxlint-disable-next-line unicorn/require-post-message-target-origin
-  w.postMessage({ type: "generate", id, text });
+  w.postMessage({ type: "generate", id, text, speed });
 
   return new Promise<GenerateResult>((resolve, reject) => {
     pending.set(id, { resolve, reject });

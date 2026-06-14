@@ -49,7 +49,9 @@ async function getTts() {
       device: "wasm",
     });
   }
-  return ttsPromise as Promise<{ generate: (text: string, opts: { voice: string }) => unknown }>;
+  return ttsPromise as Promise<{
+    generate: (text: string, opts: { voice: string; speed?: number }) => unknown;
+  }>;
 }
 
 addEventListener("message", async (event: MessageEvent) => {
@@ -72,7 +74,10 @@ addEventListener("message", async (event: MessageEvent) => {
   if (msg.type === "generate") {
     try {
       const tts = await getTts();
-      const audio: any = await tts.generate(msg.text, { voice: KOKORO_VOICE });
+      const audio: any = await tts.generate(msg.text, {
+        voice: KOKORO_VOICE,
+        speed: typeof msg.speed === "number" ? msg.speed : 1,
+      });
 
       const data: Float32Array | undefined = audio.data ?? audio.buffer;
       const sampleRate = audio.sampling_rate ?? audio.sample_rate ?? KOKORO_SAMPLE_RATE;
