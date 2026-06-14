@@ -1,7 +1,8 @@
 "use client";
 
+import { useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useAgent, UseAgentUpdate } from "@copilotkit/react-core/v2";
+import { useAgent, useCopilotKit, UseAgentUpdate } from "@copilotkit/react-core/v2";
 
 import type { OralBoardsState } from "@agents/types";
 import { getAgentConfig } from "@/components/chat/agents/registry";
@@ -26,6 +27,7 @@ export function OralBoardsWorkspace() {
   const config = getAgentConfig(AGENT_ID);
   const { state, dispatch } = useArtifactPanel(AGENT_ID);
   const { agent } = useAgent({ agentId: AGENT_ID, updates: [UseAgentUpdate.OnStateChanged] });
+  const { copilotkit } = useCopilotKit();
   const startNewThread = useNewThread(AGENT_ID);
 
   // CopilotKit agent state is intentionally dynamic; the panel validates the
@@ -33,6 +35,16 @@ export function OralBoardsWorkspace() {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const examState = (agent?.state ?? {}) as OralBoardsState;
   const hasPanel = Boolean(examState.case && examState.case.trim());
+
+  // Optimistically flip the UI pane to "questioning" and send "ready" to trigger
+  // the agent's first question — no agent round-trip before the pane switches.
+  const handleReady = useCallback(() => {
+    if (!agent) return;
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    agent.setState({ ...(agent.state as OralBoardsState), status: "questioning" });
+    agent.addMessage({ id: crypto.randomUUID(), role: "user", content: "ready" });
+    void copilotkit.runAgent({ agent });
+  }, [agent, copilotkit]);
 
   return (
     <main className="h-dvh" style={cssVars({ "--page-color": `var(${config.colorVar})` })}>
@@ -56,6 +68,7 @@ export function OralBoardsWorkspace() {
               fullscreen={state === "fullscreen"}
               onClose={() => dispatch("close")}
               onToggleFullscreen={() => dispatch("toggle-fullscreen")}
+              onReady={handleReady}
             />
           ) : null
         }
