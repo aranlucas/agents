@@ -8,6 +8,7 @@ vi.mock("next/font/google", () => ({
   JetBrains_Mono: () => ({ variable: "font-mono" }),
 }));
 
+vi.mock("@agents/ui/globals.css", () => ({}));
 vi.mock("./globals.css", () => ({}));
 
 vi.mock("@clerk/nextjs", () => ({
