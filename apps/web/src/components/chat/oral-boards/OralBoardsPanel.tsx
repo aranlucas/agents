@@ -52,9 +52,9 @@ function CitationChips({ sources }: { sources: CaseSource[] }) {
   if (sources.length === 0) return null;
   return (
     <div className="flex flex-wrap gap-1">
-      {sources.map((s) => (
+      {sources.map((s, i) => (
         <span
-          key={`${s.collection}-${s.docid}`}
+          key={`${s.collection}-${s.docid}-${i}`}
           className="bg-muted text-muted-foreground rounded-md px-1.5 py-0.5 text-[11px]"
         >
           {s.collection} #{s.docid} · {s.title}
@@ -348,7 +348,7 @@ function FeedbackPane({
 }) {
   return (
     <div className="space-y-4">
-      {scoreCard.trim() && <Streamdown>{scoreCard}</Streamdown>}
+      {scoreCard.trim() && <Streamdown key={scoreCard}>{scoreCard}</Streamdown>}
       <ExchangeList transcript={transcript} />
       {!scoreCard.trim() && transcript.length === 0 && (
         <p className="text-muted-foreground text-sm">No feedback yet.</p>

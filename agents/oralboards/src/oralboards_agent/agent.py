@@ -88,7 +88,6 @@ def search_docs(query: str, collection: str = "") -> dict:
             }
             for row in rows
         ],
-        "error": "",
     }
 
 
@@ -118,7 +117,6 @@ def read_doc(filepath: str) -> dict:
         return {"error": "not found"}
 
     return {
-        "error": "",
         "docid": row["docid"],
         "collection": row["collection"],
         "filepath": f"{row['collection']}/{row['filepath']}",
@@ -130,9 +128,14 @@ def read_doc(filepath: str) -> dict:
 # ---------------------------------------------------------------------------
 # State / canvas tools
 # ---------------------------------------------------------------------------
-def set_case(tool_context: ToolContext, case: str) -> dict:
+def set_case(
+    tool_context: ToolContext,
+    case: str,
+    case_sources: list[dict] | None = None,
+) -> dict:
     """Write the grounded case vignette and source provenance to shared state."""
     tool_context.state["case"] = case
+    tool_context.state["case_sources"] = case_sources or []
     tool_context.state["status"] = "presenting"
     return {"ok": True}
 
@@ -162,14 +165,14 @@ def append_exchange(
     )
     tool_context.state["transcript"] = transcript
     tool_context.state["status"] = "questioning"
-    return {"ok": True, "count": len(transcript)}
+    return {"ok": True}
 
 
 def set_score_card(tool_context: ToolContext, markdown: str) -> dict:
     """Write the final cited score card to shared state."""
     tool_context.state["score_card"] = markdown
     tool_context.state["status"] = "complete"
-    return {"ok": True, "length": len(markdown)}
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------------------
