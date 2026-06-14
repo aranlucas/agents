@@ -224,6 +224,7 @@ function QuestioningPane({
         </p>
         {micSupported && <CopilotChatAudioRecorder ref={recorderRef} />}
         <textarea
+          aria-label="Your answer"
           className="border-border bg-background min-h-[80px] flex-1 resize-none rounded border p-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
           placeholder="Type your answer…"
           value={answerText}
