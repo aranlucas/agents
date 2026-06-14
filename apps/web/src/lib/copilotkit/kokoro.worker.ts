@@ -43,13 +43,13 @@ function writeAscii(view: DataView, offset: number, text: string) {
 
 async function getTts() {
   if (!ttsPromise) {
-        const { KokoroTTS } = await import("kokoro-js");
+    const { KokoroTTS } = await import("kokoro-js");
     ttsPromise = KokoroTTS.from_pretrained(KOKORO_MODEL_ID, {
       dtype: "q8",
       device: "wasm",
     });
-      }
-  return ttsPromise;
+  }
+  return ttsPromise as Promise<{ generate: (text: string, opts: { voice: string }) => unknown }>;
 }
 
 addEventListener("message", async (event: MessageEvent) => {
