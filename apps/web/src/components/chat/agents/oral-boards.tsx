@@ -4,7 +4,7 @@ import { useFrontendTool } from "@copilotkit/react-core/v2";
 import { z } from "zod";
 
 import { SpeakQuestionToolCall } from "@/components/chat/SpeakQuestionToolCall";
-import { speak } from "@/lib/copilotkit/speak-question";
+import { speakQuestion } from "@/lib/copilotkit/speak-question";
 import { setCurrentQuestion } from "@/lib/copilotkit/oral-boards-question";
 import type { AgentId } from "./registry";
 
@@ -26,7 +26,7 @@ export function OralBoardsExtension({ agentId }: { agentId: AgentId }) {
       }),
       handler: ({ question }) => {
         setCurrentQuestion(question);
-        return speak(question);
+        return speakQuestion(question);
       },
       render: ({ status, args, result }) => (
         <SpeakQuestionToolCall status={status} parameters={args ?? {}} result={result} />

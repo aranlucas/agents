@@ -5,7 +5,7 @@ import { RotateCcwIcon, Volume2Icon } from "lucide-react";
 
 import { Button } from "@agents/ui";
 import { Tool, ToolContent, ToolHeader } from "@/components/ai-elements/tool";
-import { speak } from "@/lib/copilotkit/speak-question";
+import { speakQuestion } from "@/lib/copilotkit/speak-question";
 import { toToolState } from "./tool-adapter";
 
 export type SpeakQuestionToolParams = {
@@ -25,7 +25,7 @@ export function SpeakQuestionToolCall({
 }) {
   const replay = useCallback(() => {
     const question = parameters.question?.trim();
-    if (question) void speak(question);
+    if (question) void speakQuestion(question);
   }, [parameters.question]);
   const resultText = typeof result === "string" ? result : "";
 
