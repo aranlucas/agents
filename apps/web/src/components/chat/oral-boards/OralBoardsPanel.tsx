@@ -2,7 +2,15 @@
 
 import { useState } from "react";
 import { Streamdown } from "streamdown";
-import { Maximize2Icon, Minimize2Icon, PlayIcon, SquareIcon } from "lucide-react";
+import {
+  Loader2Icon,
+  Maximize2Icon,
+  Minimize2Icon,
+  MicIcon,
+  PlayIcon,
+  SquareIcon,
+} from "lucide-react";
+import { CopilotChatAudioRecorder } from "@copilotkit/react-core/v2";
 
 import type { CaseSource, OralBoardsExchange, OralBoardsState } from "@agents/types";
 import { Button } from "@agents/ui";
@@ -17,18 +25,23 @@ import {
 } from "@/components/ai-elements/artifact";
 import { speak, stopSpeaking } from "@/lib/copilotkit/speak-question";
 import { useCurrentQuestion } from "@/lib/copilotkit/oral-boards-question";
+import { useAnswerRecorder } from "@/lib/copilotkit/use-answer-recorder";
+
+function truncate(text: string, len: number): string {
+  return text.length <= len ? text : `${text.slice(0, len)}…`;
+}
 
 function stripMarkdownForSpeech(text: string): string {
   return text
-    .replace(/^#{1,6}\s+/gm, "") // headers → bare text
-    .replace(/\*{1,3}([^*]+)\*{1,3}/g, "$1") // bold / italic
-    .replace(/_{1,3}([^_]+)_{1,3}/g, "$1") // underscore emphasis
-    .replace(/`+([^`]+)`+/g, "$1") // inline code
-    .replace(/^>\s*/gm, "") // blockquotes
-    .replace(/^[-*+]\s+/gm, "") // unordered lists
-    .replace(/^\d+\.\s+/gm, "") // ordered lists
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // links → link text
-    .replace(/\[[^\]]*\]/g, "") // remaining brackets (inline citations)
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/\*{1,3}([^*]+)\*{1,3}/g, "$1")
+    .replace(/_{1,3}([^_]+)_{1,3}/g, "$1")
+    .replace(/`+([^`]+)`+/g, "$1")
+    .replace(/^>\s*/gm, "")
+    .replace(/^[-*+]\s+/gm, "")
+    .replace(/^\d+\.\s+/gm, "")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/\[[^\]]*\]/g, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
@@ -128,33 +141,139 @@ function QuestioningPane({
   caseBody,
   sources,
   transcript,
+  onAnswer,
+  isRunning,
 }: {
   caseBody: string;
   sources: CaseSource[];
   transcript: OralBoardsExchange[];
+  onAnswer: (text: string) => void;
+  isRunning: boolean;
 }) {
   const live = useCurrentQuestion();
-  const question = live || transcript.at(-1)?.question || "";
+  const question = live;
+  const questionNumber = transcript.length + 1;
+
+  const [answerText, setAnswerText] = useState("");
+  const [expandedChip, setExpandedChip] = useState<number | null>(null);
+
+  const { recording, transcribing, micSupported, toggle, recorderRef } = useAnswerRecorder(
+    (text) => {
+      setAnswerText((prev) => (prev ? `${prev} ${text}` : text));
+    },
+  );
+
+  const handleSubmit = () => {
+    const trimmed = answerText.trim();
+    if (!trimmed || isRunning) return;
+    onAnswer(trimmed);
+    setAnswerText("");
+  };
+
+  const olderExchanges = transcript.slice(0, -1);
+  const lastExchange = transcript.at(-1);
 
   return (
-    <div className="space-y-4">
-      <details>
-        <summary className="text-muted-foreground cursor-pointer text-xs font-medium tracking-wide uppercase select-none">
+    <div className="flex h-full flex-col gap-3 overflow-hidden">
+      {olderExchanges.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {olderExchanges.map((x, i) => (
+            <div key={x.question || i}>
+              <button
+                type="button"
+                onClick={() => setExpandedChip(expandedChip === i ? null : i)}
+                className="bg-muted text-muted-foreground hover:text-foreground rounded-full border px-2.5 py-0.5 text-xs transition-colors"
+              >
+                Q{i + 1} · {truncate(x.question, 22)} ✓
+              </button>
+              {expandedChip === i && (
+                <div className="bg-muted mt-1.5 space-y-1 rounded-lg p-3 text-sm">
+                  <p className="font-medium">{x.question}</p>
+                  {x.answer && (
+                    <p className="text-muted-foreground">Your answer: {x.answer}</p>
+                  )}
+                  {x.feedback && <Streamdown>{x.feedback}</Streamdown>}
+                  <CitationChips sources={x.citations ?? []} />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {lastExchange && (
+        <div className="bg-muted shrink-0 space-y-1 rounded-lg p-3 text-sm">
+          <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+            Q{transcript.length} · Feedback
+          </p>
+          <p className="font-medium">{lastExchange.question}</p>
+          {lastExchange.answer && (
+            <p className="text-muted-foreground">Your answer: {lastExchange.answer}</p>
+          )}
+          {lastExchange.feedback && <Streamdown>{lastExchange.feedback}</Streamdown>}
+          <CitationChips sources={lastExchange.citations ?? []} />
+        </div>
+      )}
+
+      <div className="flex min-h-0 flex-1 flex-col gap-3 rounded-lg border-2 border-indigo-500 bg-indigo-950/20 p-4">
+        <p className="text-indigo-400 text-xs font-semibold uppercase tracking-wide">
+          Q{questionNumber}
+        </p>
+        <p className="text-sm leading-relaxed">
+          {question || "Waiting for the next question…"}
+        </p>
+        {micSupported && <CopilotChatAudioRecorder ref={recorderRef} />}
+        <textarea
+          className="border-border bg-background min-h-[80px] flex-1 resize-none rounded border p-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
+          placeholder="Type your answer…"
+          value={answerText}
+          onChange={(e) => setAnswerText(e.target.value)}
+          disabled={isRunning || recording}
+        />
+        <div className="flex items-center justify-end gap-2">
+          {micSupported && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void toggle()}
+              disabled={isRunning || transcribing}
+              className={recording ? "border-red-500 text-red-500" : ""}
+            >
+              {transcribing ? (
+                <Loader2Icon className="size-3.5 animate-spin" />
+              ) : recording ? (
+                <>
+                  <span className="mr-1.5 inline-block size-2 animate-pulse rounded-full bg-red-500" />
+                  Stop
+                </>
+              ) : (
+                <>
+                  <MicIcon className="mr-1 size-3.5" />
+                  Record
+                </>
+              )}
+            </Button>
+          )}
+          <Button
+            type="button"
+            size="sm"
+            disabled={isRunning || !answerText.trim()}
+            onClick={handleSubmit}
+          >
+            Submit
+          </Button>
+        </div>
+      </div>
+
+      <details className="shrink-0">
+        <summary className="text-muted-foreground cursor-pointer text-xs font-medium uppercase tracking-wide select-none">
           Case vignette
         </summary>
         <div className="mt-2">
-          <VignetteBody caseBody={caseBody} sources={sources} />
+          <VignetteBody caseBody={caseBody} sources={sources} showTts={false} />
         </div>
       </details>
-
-      <div className="space-y-1">
-        <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-          Current question
-        </p>
-        <p className="text-sm leading-relaxed">{question || "Waiting for the next question…"}</p>
-      </div>
-
-      <ExchangeList transcript={transcript} />
     </div>
   );
 }
@@ -183,12 +302,16 @@ export function OralBoardsPanel({
   onClose,
   onToggleFullscreen,
   onReady,
+  onAnswer,
+  isRunning,
 }: {
   state: OralBoardsState;
   fullscreen: boolean;
   onClose: () => void;
   onToggleFullscreen: () => void;
   onReady: () => void;
+  onAnswer: (text: string) => void;
+  isRunning: boolean;
 }) {
   const status = state.status ?? "idle";
   const caseBody = state.case ?? "";
@@ -209,12 +332,18 @@ export function OralBoardsPanel({
           <ArtifactClose aria-label="Close panel" onClick={onClose} />
         </ArtifactActions>
       </ArtifactHeader>
-      <ArtifactContent className={status === "presenting" ? "flex h-full flex-col" : "space-y-4"}>
+      <ArtifactContent className={status === "presenting" ? "flex h-full flex-col" : status === "questioning" ? "flex h-full flex-col" : "space-y-4"}>
         {status === "presenting" && (
           <PresentingPane caseBody={caseBody} sources={sources} onReady={onReady} />
         )}
         {status === "questioning" && (
-          <QuestioningPane caseBody={caseBody} sources={sources} transcript={transcript} />
+          <QuestioningPane
+            caseBody={caseBody}
+            sources={sources}
+            transcript={transcript}
+            onAnswer={onAnswer}
+            isRunning={isRunning}
+          />
         )}
         {(status === "complete" || status === "feedback") && (
           <FeedbackPane scoreCard={scoreCard} transcript={transcript} />
