@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAgent, UseAgentUpdate } from "@copilotkit/react-core/v2";
 
 import { getAgentConfig, type AgentId } from "@/components/chat/agents/registry";
+import { useNewThread } from "@/components/chat/use-new-thread";
 import { AgentExtensionSlot } from "@/components/chat/agents/extensions";
 import { AgentSuggestions } from "@/components/chat/agents/suggestions";
 import { ChatSurface } from "@/components/chat/ChatSurface";
@@ -33,14 +33,7 @@ export function AgentWorkspace({ agentId }: { agentId: AgentId }) {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const artifact = selectArtifact(agent?.state as Record<string, unknown>, config);
 
-  // "New thread": route to a fresh thread id. The URL is the source of truth for
-  // the active thread, so a new id starts a clean CopilotKit/ADK session and the
-  // result is refreshable and shareable. Abort any in-flight run first so a
-  // dangling request can't write into the new thread.
-  const startNewThread = useCallback(() => {
-    if (agent?.isRunning) agent.abortRun();
-    router.push(`/console/${agentId}/${crypto.randomUUID()}`);
-  }, [agent, agentId, router]);
+  const startNewThread = useNewThread(agentId);
 
   return (
     <main className="h-dvh" style={cssVars({ "--page-color": `var(${config.colorVar})` })}>
