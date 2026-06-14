@@ -9,6 +9,7 @@
     "./components/*": "./src/components/*.tsx",
     "./hooks/*": "./src/hooks/*.ts",
     "./lib/*": "./src/lib/*.ts",
+    "./styles/*.css": "./src/styles/*.css",
     "./styles/*": "./src/styles/*.css"
   },
   "dependencies": {
