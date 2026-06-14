@@ -149,12 +149,6 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
     colorVar: "--oral-boards",
     placeholder: "Start a pediatric dentistry oral-board case…",
     welcome: "Name a topic, or ask for a grounded mock oral-board case.",
-    artifact: {
-      stateField: "case",
-      kind: "markdown",
-      title: "Exam canvas",
-      name: "oral_boards_exam.md",
-    },
     suggestions: [
       {
         title: "Start a case",
