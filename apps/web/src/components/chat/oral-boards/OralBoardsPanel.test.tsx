@@ -17,8 +17,12 @@ vi.mock("streamdown", () => ({
   ),
 }));
 
-vi.mock("@/lib/copilotkit/oral-boards-question", () => ({
-  useCurrentQuestion: vi.fn().mockReturnValue(""),
+vi.mock("@/lib/copilotkit/oral-boards-question-context", () => ({
+  useOralBoardsQuestion: vi.fn().mockReturnValue({
+    currentQuestion: "",
+    setCurrentQuestion: vi.fn(),
+    clearCurrentQuestion: vi.fn(),
+  }),
 }));
 
 vi.mock("@copilotkit/react-core/v2", () => ({
@@ -32,7 +36,7 @@ vi.mock("@copilotkit/react-core/v2", () => ({
 }));
 
 vi.mock("@/lib/copilotkit/use-answer-recorder", () => ({
-  useAnswerRecorder: (onTranscript: (t: string) => void) => ({
+  useAnswerRecorder: (_onTranscript: (t: string) => void) => ({
     recording: false,
     transcribing: false,
     micSupported: false,
@@ -86,9 +90,13 @@ describe("OralBoardsPanel — presenting", () => {
 });
 
 describe("OralBoardsPanel — questioning", () => {
-  it("renders the active question from useCurrentQuestion (live)", async () => {
-    const { useCurrentQuestion } = await import("@/lib/copilotkit/oral-boards-question");
-    vi.mocked(useCurrentQuestion).mockReturnValue("What is your initial impression?");
+  it("renders the active question from useOralBoardsQuestion (live)", async () => {
+    const { useOralBoardsQuestion } = await import("@/lib/copilotkit/oral-boards-question-context");
+    vi.mocked(useOralBoardsQuestion).mockReturnValue({
+      currentQuestion: "What is your initial impression?",
+      setCurrentQuestion: vi.fn(),
+      clearCurrentQuestion: vi.fn(),
+    });
 
     const state: OralBoardsState = {
       case: "Case.",
@@ -101,7 +109,11 @@ describe("OralBoardsPanel — questioning", () => {
 
     expect(screen.getByText("What is your initial impression?")).toBeDefined();
 
-    vi.mocked(useCurrentQuestion).mockReturnValue("");
+    vi.mocked(useOralBoardsQuestion).mockReturnValue({
+      currentQuestion: "",
+      setCurrentQuestion: vi.fn(),
+      clearCurrentQuestion: vi.fn(),
+    });
   });
 
   it("calls onAnswer with trimmed text and clears textarea on Submit", async () => {

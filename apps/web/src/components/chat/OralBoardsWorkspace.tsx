@@ -15,6 +15,7 @@ import { useNewThread } from "@/components/chat/use-new-thread";
 import { AgentExtensionSlot } from "@/components/chat/agents/extensions";
 import { NavRail } from "@/components/chat/NavRail";
 import { OralBoardsPanel } from "@/components/chat/oral-boards/OralBoardsPanel";
+import { OralBoardsQuestionProvider } from "@/lib/copilotkit/oral-boards-question-context";
 import { useArtifactPanel } from "@/components/workspace-shell";
 import { cssVars } from "@/lib/css";
 
@@ -120,6 +121,7 @@ export function OralBoardsWorkspace() {
       className="flex h-dvh overflow-hidden"
       style={cssVars({ "--page-color": `var(${config.colorVar})` })}
     >
+      <OralBoardsQuestionProvider>
       <AgentExtensionSlot agentId={AGENT_ID} />
       <CopilotSidebar
         defaultOpen={false}
@@ -149,6 +151,7 @@ export function OralBoardsWorkspace() {
           />
         )}
       </div>
+      </OralBoardsQuestionProvider>
     </main>
   );
 }

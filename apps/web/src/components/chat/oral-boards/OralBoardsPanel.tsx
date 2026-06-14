@@ -24,7 +24,7 @@ import {
   ArtifactTitle,
 } from "@/components/ai-elements/artifact";
 import { speak, stopSpeaking } from "@/lib/copilotkit/speak-question";
-import { useCurrentQuestion } from "@/lib/copilotkit/oral-boards-question";
+import { useOralBoardsQuestion } from "@/lib/copilotkit/oral-boards-question-context";
 import { useAnswerRecorder } from "@/lib/copilotkit/use-answer-recorder";
 
 function truncate(text: string, len: number): string {
@@ -150,8 +150,7 @@ function QuestioningPane({
   onAnswer: (text: string) => void;
   isRunning: boolean;
 }) {
-  const live = useCurrentQuestion();
-  const question = live;
+  const { currentQuestion: question } = useOralBoardsQuestion();
   const questionNumber = transcript.length + 1;
 
   const [answerText, setAnswerText] = useState("");

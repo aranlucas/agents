@@ -4,7 +4,7 @@ import { useFrontendTool } from "@copilotkit/react-core/v2";
 import { z } from "zod";
 
 import { SpeakQuestionToolCall } from "@/components/chat/SpeakQuestionToolCall";
-import { setCurrentQuestion } from "@/lib/copilotkit/oral-boards-question";
+import { useOralBoardsQuestion } from "@/lib/copilotkit/oral-boards-question-context";
 import type { AgentId } from "./registry";
 
 /**
@@ -14,6 +14,8 @@ import type { AgentId } from "./registry";
  * question speaks without a cold-start stall.
  */
 export function OralBoardsExtension({ agentId }: { agentId: AgentId }) {
+  const { setCurrentQuestion } = useOralBoardsQuestion();
+
   useFrontendTool(
     {
       name: "ask_question",
@@ -28,7 +30,7 @@ export function OralBoardsExtension({ agentId }: { agentId: AgentId }) {
       }),
       handler: ({ question }) => {
         setCurrentQuestion(question);
-        return Promise.resolve("ok");
+        return Promise.resolve("Question is displayed in the exam panel");
       },
       render: ({ status, args, result }) => (
         <SpeakQuestionToolCall status={status} parameters={args ?? {}} result={result} />
