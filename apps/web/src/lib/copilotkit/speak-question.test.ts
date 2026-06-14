@@ -9,12 +9,9 @@ class MockUtterance {
 describe("speakQuestion", () => {
   it("uses local Kokoro TTS by default", async () => {
     const play = vi.fn().mockResolvedValue(undefined);
-    const generate = vi.fn().mockResolvedValue({
-      toBlob: () => new Blob(["audio"], { type: "audio/wav" }),
-    });
-    const fromPretrained = vi.fn().mockResolvedValue({ generate });
-    const importKokoro = vi.fn().mockResolvedValue({
-      KokoroTTS: { from_pretrained: fromPretrained },
+    const generateSpeech = vi.fn().mockResolvedValue({
+      data: new ArrayBuffer(44),
+      sampleRate: 24000,
     });
 
     const result = await speakQuestion("What is your diagnosis?", {
@@ -24,17 +21,12 @@ describe("speakQuestion", () => {
         play = play;
       } as unknown as typeof Audio,
       createObjectURL: vi.fn().mockReturnValue("blob:question"),
-      importKokoro,
+      generateSpeech,
       revokeObjectURL: vi.fn(),
     });
 
     expect(result).toBe("Used local Kokoro TTS.");
-    expect(importKokoro).toHaveBeenCalledOnce();
-    expect(fromPretrained).toHaveBeenCalledWith("onnx-community/Kokoro-82M-ONNX", {
-      dtype: "q8",
-      device: "wasm",
-    });
-    expect(generate).toHaveBeenCalledWith("What is your diagnosis?", { voice: "af_sky" });
+    expect(generateSpeech).toHaveBeenCalledWith("What is your diagnosis?");
     expect(play).toHaveBeenCalledOnce();
   });
 
@@ -42,7 +34,7 @@ describe("speakQuestion", () => {
     const speak = vi.fn();
 
     const result = await speakQuestion("What is your diagnosis?", {
-      importKokoro: vi.fn().mockRejectedValue(new Error("model unavailable")),
+      generateSpeech: vi.fn().mockRejectedValue(new Error("model unavailable")),
       speechSynthesis: { cancel: vi.fn(), speak } as unknown as SpeechSynthesis,
       SpeechSynthesisUtteranceCtor: MockUtterance as unknown as typeof SpeechSynthesisUtterance,
     });
@@ -57,7 +49,7 @@ describe("speakQuestion", () => {
 
   it("reports when Kokoro and browser speech synthesis are unavailable", async () => {
     const result = await speakQuestion("What is your diagnosis?", {
-      importKokoro: vi.fn().mockRejectedValue(new Error("model unavailable")),
+      generateSpeech: vi.fn().mockRejectedValue(new Error("model unavailable")),
       speechSynthesis: undefined,
       SpeechSynthesisUtteranceCtor: undefined,
     });
@@ -70,23 +62,17 @@ describe("speakQuestion", () => {
 
 describe("preloadKokoro", () => {
   it("warms the model and reports success", async () => {
-    const fromPretrained = vi.fn().mockResolvedValue({ generate: vi.fn() });
-    const importKokoro = vi.fn().mockResolvedValue({
-      KokoroTTS: { from_pretrained: fromPretrained },
-    });
+    const mockPreload = vi.fn().mockResolvedValue(true);
 
-    const ok = await preloadKokoro({ importKokoro });
+    const ok = await preloadKokoro({ preloadKokoro: mockPreload });
 
     expect(ok).toBe(true);
-    expect(fromPretrained).toHaveBeenCalledWith("onnx-community/Kokoro-82M-ONNX", {
-      dtype: "q8",
-      device: "wasm",
-    });
+    expect(mockPreload).toHaveBeenCalledOnce();
   });
 
   it("swallows load failures and reports false", async () => {
     const ok = await preloadKokoro({
-      importKokoro: vi.fn().mockRejectedValue(new Error("model unavailable")),
+      preloadKokoro: vi.fn().mockRejectedValue(new Error("model unavailable")),
     });
 
     expect(ok).toBe(false);

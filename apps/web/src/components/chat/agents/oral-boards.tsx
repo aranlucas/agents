@@ -1,19 +1,16 @@
 "use client";
 
-import { useEffect } from "react";
-import ReactDOM from "react-dom";
 import { useFrontendTool } from "@copilotkit/react-core/v2";
 import { z } from "zod";
 
 import { SpeakQuestionToolCall } from "@/components/chat/SpeakQuestionToolCall";
-import { preloadKokoro, speakQuestion } from "@/lib/copilotkit/speak-question";
+import { speakQuestion } from "@/lib/copilotkit/speak-question";
 import type { AgentId } from "./registry";
 
 /**
  * Oral-boards console wiring. Registers the `speak_question` frontend tool that
- * voices examiner prompts, and warms the local Kokoro TTS model the moment the
- * examinee opens the console — so the first question speaks without the
- * cold-start download/compile stall (rather than blocking on the first call).
+ * voices examiner prompts. The Kokoro TTS model is preloaded earlier by the
+ * route layout so the first question speaks without a cold-start stall.
  */
 export function OralBoardsExtension({ agentId }: { agentId: AgentId }) {
   useFrontendTool(
@@ -45,17 +42,6 @@ export function OralBoardsExtension({ agentId }: { agentId: AgentId }) {
     },
     [agentId],
   );
-
-  // Warm the TTS model on entry instead of on the first spoken question. The
-  // expensive part is the model weights (~80 MB from the Hugging Face CDN), so
-  // first warm the connection (React 19 / Next resource hint) and then kick off
-  // the download. Fire and forget — speakQuestion shares the same memoized model
-  // and falls back to browser speech synthesis if this never completes.
-  useEffect(() => {
-    ReactDOM.preconnect("https://huggingface.co");
-    ReactDOM.preconnect("https://cdn-lfs.huggingface.co");
-    void preloadKokoro();
-  }, []);
 
   return null;
 }
