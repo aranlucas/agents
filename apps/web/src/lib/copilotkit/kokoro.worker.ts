@@ -74,10 +74,8 @@ addEventListener("message", async (event: MessageEvent) => {
       const tts = await getTts();
       const audio: any = await tts.generate(msg.text, { voice: KOKORO_VOICE });
 
-      const data: Float32Array | undefined =
-        audio.data ?? audio.buffer;
-      const sampleRate =
-        audio.sampling_rate ?? audio.sample_rate ?? KOKORO_SAMPLE_RATE;
+      const data: Float32Array | undefined = audio.data ?? audio.buffer;
+      const sampleRate = audio.sampling_rate ?? audio.sample_rate ?? KOKORO_SAMPLE_RATE;
 
       let arrayBuffer: ArrayBuffer;
 

@@ -60,7 +60,7 @@ const STATUS_META: Record<DocStatus, { label: string; dotClass: string; chipClas
   },
 };
 
-function parseItinerary(raw: string): {
+export function parseItinerary(raw: string): {
   days: Day[];
   trailing: string;
 } {
@@ -101,7 +101,7 @@ function parseItinerary(raw: string): {
   return { days, trailing: preamble.join(" ") };
 }
 
-function fmtDate(s: string): string {
+export function fmtDate(s: string): string {
   if (!s) return "";
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return s;
@@ -111,7 +111,7 @@ function fmtDate(s: string): string {
   });
 }
 
-function fmtDateRange(start: string, end: string): string {
+export function fmtDateRange(start: string, end: string): string {
   if (!start && !end) return "";
   const a = fmtDate(start);
   const b = fmtDate(end);
@@ -119,7 +119,7 @@ function fmtDateRange(start: string, end: string): string {
   return a || b;
 }
 
-function daysBetween(start: string, end: string): number {
+export function daysBetween(start: string, end: string): number {
   if (!start || !end) return 0;
   const a = new Date(start);
   const b = new Date(end);
