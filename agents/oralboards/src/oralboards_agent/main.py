@@ -16,11 +16,6 @@ from .db import DB_STARTUP_ERROR
 
 load_dotenv()
 
-ORALBOARDS_PREDICT_STATE = [
-    streaming_state_mapping(state_key="case", tool="set_case", tool_argument="case"),
-]
-
-_oralboards_agent = build_agent()
 
 
 async def _health() -> dict:
@@ -34,7 +29,7 @@ def register(app: FastAPI, services: AgentServices):
         app,
         prefix="/oralboards",
         adk_agent=build_adk_agent(
-            _oralboards_agent, services=services, predict_state=ORALBOARDS_PREDICT_STATE
+            build_agent(), services=services
         ),
         extract_state_from_request=make_extract_state(),
         health_check=_health,

@@ -40,6 +40,8 @@ vi.mock("@/lib/copilotkit/use-answer-recorder", () => ({
     recording: false,
     transcribing: false,
     micSupported: false,
+    error: null,
+    clearError: vi.fn(),
     toggle: vi.fn(),
     recorderRef: { current: null },
   }),

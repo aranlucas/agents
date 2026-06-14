@@ -9,6 +9,8 @@ export interface UseAnswerRecorder {
   recording: boolean;
   transcribing: boolean;
   micSupported: boolean;
+  error: string | null;
+  clearError: () => void;
   toggle: () => Promise<void>;
   recorderRef: React.RefObject<AnswerRecorderRef | null>;
 }
@@ -19,7 +21,9 @@ export function useAnswerRecorder(
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [micSupported, setMicSupported] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const recorderRef = useRef<AnswerRecorderRef | null>(null);
+  const recordingRef = useRef(false);
   const onTranscriptRef = useRef(onTranscript);
   onTranscriptRef.current = onTranscript;
 
@@ -30,21 +34,25 @@ export function useAnswerRecorder(
   const toggle = useCallback(async () => {
     const recorder = recorderRef.current;
     if (!recorder) return;
+    setError(null);
 
-    if (!recording) {
+    if (!recordingRef.current) {
+      recordingRef.current = true;
       setRecording(true);
       try {
         await recorder.start();
       } catch {
+        recordingRef.current = false;
         setRecording(false);
       }
       return;
     }
 
-    setRecording(false);
     setTranscribing(true);
     try {
       const blob = await recorder.stop();
+      recordingRef.current = false;
+      setRecording(false);
       const formData = new FormData();
       formData.append("audio", blob, "recording.webm");
       const res = await fetch("/api/copilotkit/transcribe", {
@@ -55,14 +63,18 @@ export function useAnswerRecorder(
         const { text } = (await res.json()) as { text: string };
         onTranscriptRef.current(text);
       } else {
-        console.error("Transcription failed:", res.statusText);
+        setError(`Transcription failed: ${res.statusText}`);
       }
     } catch (e) {
-      console.error("Transcription failed:", e);
+      recordingRef.current = false;
+      setRecording(false);
+      setError(e instanceof Error ? e.message : "Transcription failed");
     } finally {
       setTranscribing(false);
     }
-  }, [recording]);
+  }, []);
 
-  return { recording, transcribing, micSupported, toggle, recorderRef };
+  const clearError = useCallback(() => setError(null), []);
+
+  return { recording, transcribing, micSupported, error, clearError, toggle, recorderRef };
 }

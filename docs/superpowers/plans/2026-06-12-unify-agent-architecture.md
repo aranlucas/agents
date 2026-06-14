@@ -982,9 +982,6 @@ load_dotenv()
 
 log = setup_agent_logging("oralboards_agent")
 
-ORALBOARDS_PREDICT_STATE = [
-    streaming_state_mapping(state_key="case", tool="set_case", tool_argument="case"),
-]
 
 oralboards_agent = build_agent()
 _session_container = SessionServiceContainer()

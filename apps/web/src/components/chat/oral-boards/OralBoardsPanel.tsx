@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Streamdown } from "streamdown";
 import {
+  AlertCircleIcon,
   Loader2Icon,
   Maximize2Icon,
   Minimize2Icon,
@@ -26,6 +27,7 @@ import {
 import { speak, stopSpeaking } from "@/lib/copilotkit/speak-question";
 import { useOralBoardsQuestion } from "@/lib/copilotkit/oral-boards-question-context";
 import { useAnswerRecorder } from "@/lib/copilotkit/use-answer-recorder";
+import type { UseAnswerRecorder } from "@/lib/copilotkit/use-answer-recorder";
 
 function truncate(text: string, len: number): string {
   return text.length <= len ? text : `${text.slice(0, len)}…`;
@@ -58,6 +60,44 @@ function CitationChips({ sources }: { sources: CaseSource[] }) {
           {s.collection} #{s.docid} · {s.title}
         </span>
       ))}
+    </div>
+  );
+}
+
+function RecordButton({ recorder }: { recorder: UseAnswerRecorder }) {
+  const { recording, transcribing, micSupported, error, clearError, toggle } = recorder;
+  if (!micSupported) return null;
+  return (
+    <div className="flex items-center gap-2">
+      {error && (
+        <span className="flex items-center gap-1 text-xs text-red-500">
+          <AlertCircleIcon className="size-3" />
+          {error}
+          <button type="button" onClick={clearError} className="ml-1 underline">Dismiss</button>
+        </span>
+      )}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => void toggle()}
+        disabled={transcribing}
+        className={recording ? "border-red-500 text-red-500" : ""}
+      >
+        {transcribing ? (
+          <Loader2Icon className="size-3.5 animate-spin" />
+        ) : recording ? (
+          <>
+            <span className="mr-1.5 inline-block size-2 animate-pulse rounded-full bg-red-500" />
+            Stop
+          </>
+        ) : (
+          <>
+            <MicIcon className="mr-1 size-3.5" />
+            Record
+          </>
+        )}
+      </Button>
     </div>
   );
 }
@@ -99,6 +139,26 @@ function VignetteBody({
   );
 }
 
+function QuestionTtsButton({ text }: { text: string }) {
+  const [playing, setPlaying] = useState(false);
+
+  const toggle = () => {
+    if (playing) {
+      stopSpeaking();
+      setPlaying(false);
+      return;
+    }
+    setPlaying(true);
+    void speak(stripMarkdownForSpeech(text)).finally(() => setPlaying(false));
+  };
+
+  return (
+    <Button type="button" variant="ghost" size="icon" className="size-6" onClick={toggle}>
+      {playing ? <SquareIcon className="size-3" /> : <PlayIcon className="size-3" />}
+    </Button>
+  );
+}
+
 function ExchangeList({ transcript }: { transcript: OralBoardsExchange[] }) {
   return (
     <>
@@ -125,11 +185,30 @@ function PresentingPane({
   sources: CaseSource[];
   onReady: () => void;
 }) {
+  const [notes, setNotes] = useState("");
+  const recorder = useAnswerRecorder(
+    (text) => setNotes((prev) => (prev ? `${prev} ${text}` : text)),
+  );
+
   return (
     <div className="flex h-full flex-col gap-4">
       <div className="flex-1 overflow-auto">
         <VignetteBody caseBody={caseBody} sources={sources} />
       </div>
+
+      <div className="shrink-0 space-y-2">
+        <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Your notes</p>
+        {recorder.micSupported && <CopilotChatAudioRecorder ref={recorder.recorderRef} />}
+        <textarea
+          aria-label="Case notes"
+          className="border-border bg-background min-h-[60px] w-full resize-none rounded border p-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          placeholder="Record or type your notes about the case…"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+        />
+        <RecordButton recorder={recorder} />
+      </div>
+
       <Button type="button" className="w-full shrink-0" onClick={onReady}>
         Ready to begin
       </Button>
@@ -156,7 +235,7 @@ function QuestioningPane({
   const [answerText, setAnswerText] = useState("");
   const [expandedChip, setExpandedChip] = useState<number | null>(null);
 
-  const { recording, transcribing, micSupported, toggle, recorderRef } = useAnswerRecorder(
+  const recorder = useAnswerRecorder(
     (text) => {
       setAnswerText((prev) => (prev ? `${prev} ${text}` : text));
     },
@@ -215,46 +294,28 @@ function QuestioningPane({
       )}
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 rounded-lg border-2 border-indigo-500 bg-indigo-950/20 p-4">
-        <p className="text-indigo-400 text-xs font-semibold uppercase tracking-wide">
-          Q{questionNumber}
-        </p>
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-indigo-400 text-xs font-semibold uppercase tracking-wide">
+            Q{questionNumber}
+          </p>
+          {question && (
+            <QuestionTtsButton text={question} />
+          )}
+        </div>
         <p className="text-sm leading-relaxed">
           {question || "Waiting for the next question…"}
         </p>
-        {micSupported && <CopilotChatAudioRecorder ref={recorderRef} />}
+        {recorder.micSupported && <CopilotChatAudioRecorder ref={recorder.recorderRef} />}
         <textarea
           aria-label="Your answer"
           className="border-border bg-background min-h-[80px] flex-1 resize-none rounded border p-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
           placeholder="Type your answer…"
           value={answerText}
           onChange={(e) => setAnswerText(e.target.value)}
-          disabled={isRunning || recording}
+          disabled={isRunning || recorder.recording}
         />
         <div className="flex items-center justify-end gap-2">
-          {micSupported && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => void toggle()}
-              disabled={isRunning || transcribing}
-              className={recording ? "border-red-500 text-red-500" : ""}
-            >
-              {transcribing ? (
-                <Loader2Icon className="size-3.5 animate-spin" />
-              ) : recording ? (
-                <>
-                  <span className="mr-1.5 inline-block size-2 animate-pulse rounded-full bg-red-500" />
-                  Stop
-                </>
-              ) : (
-                <>
-                  <MicIcon className="mr-1 size-3.5" />
-                  Record
-                </>
-              )}
-            </Button>
-          )}
+          <RecordButton recorder={recorder} />
           <Button
             type="button"
             size="sm"

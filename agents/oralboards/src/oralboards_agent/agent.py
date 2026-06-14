@@ -130,12 +130,11 @@ def read_doc(filepath: str) -> dict:
 # ---------------------------------------------------------------------------
 # State / canvas tools
 # ---------------------------------------------------------------------------
-def set_case(tool_context: ToolContext, case: str, sources: list[dict]) -> dict:
+def set_case(tool_context: ToolContext, case: str) -> dict:
     """Write the grounded case vignette and source provenance to shared state."""
     tool_context.state["case"] = case
-    tool_context.state["case_sources"] = sources
     tool_context.state["status"] = "presenting"
-    return {"ok": True, "length": len(case), "source_count": len(sources)}
+    return {"ok": True}
 
 
 def set_phase(tool_context: ToolContext, phase: str) -> dict:
@@ -219,8 +218,10 @@ it and offer adjacent topics you found via search_docs. Do not improvise.
    Read the top documents with read_doc. Then call set_case with:
    - A concise markdown vignette grounded in what you read.
    - Source chips: [{"docid": N, "title": "...", "collection": "aapd"}, ...].
-   In chat, say: "Take your time reading the case. Click **Ready to begin**
-   when you want to start." Then stop — do not call set_phase yet.
+   In chat, present the case as a real examiner would — introduce the
+   patient and scenario in 2-3 natural sentences, then say: "Take your
+   time reviewing the details. When you're ready to begin, click
+   **Ready to begin** below." Do not ask any clinical questions yet.
 
 3. When the candidate signals readiness, call set_phase("questioning") once.
    Do not call set_phase again for the remainder of the session.
