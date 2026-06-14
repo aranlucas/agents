@@ -17,13 +17,21 @@ const mockUseTheme = vi.mocked(useTheme);
 
 describe("ThemeToggle", () => {
   it("shows 'Use light theme' label for system theme", () => {
-    mockUseTheme.mockReturnValue({ theme: "system", resolvedTheme: "light", setTheme: mockSetTheme });
+    mockUseTheme.mockReturnValue({
+      theme: "system",
+      resolvedTheme: "light",
+      setTheme: mockSetTheme,
+    });
     render(<ThemeToggle />);
     expect(screen.getByRole("button", { name: "Use light theme" })).toBeInTheDocument();
   });
 
   it("shows 'Use dark theme' label for light theme", () => {
-    mockUseTheme.mockReturnValue({ theme: "light", resolvedTheme: "light", setTheme: mockSetTheme });
+    mockUseTheme.mockReturnValue({
+      theme: "light",
+      resolvedTheme: "light",
+      setTheme: mockSetTheme,
+    });
     render(<ThemeToggle />);
     expect(screen.getByRole("button", { name: "Use dark theme" })).toBeInTheDocument();
   });

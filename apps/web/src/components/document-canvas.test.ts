@@ -20,8 +20,7 @@ describe("parseItinerary", () => {
   });
 
   it("parses multiple days", () => {
-    const raw =
-      "## Day 1: Arrival\n- Land\n## Day 2: Markets\n- Nishiki\n- Ramen";
+    const raw = "## Day 1: Arrival\n- Land\n## Day 2: Markets\n- Nishiki\n- Ramen";
     const { days } = parseItinerary(raw);
     expect(days).toHaveLength(2);
     expect(days[1].theme).toBe("Markets");

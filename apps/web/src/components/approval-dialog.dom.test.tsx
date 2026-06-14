@@ -18,9 +18,11 @@ vi.mock("@base-ui/react/dialog", () => {
     render: renderProp,
     ...props
   }: React.ComponentProps<"button"> & { render?: React.ReactElement }) =>
-    renderProp
-      ? React.cloneElement(renderProp, props, children)
-      : <button {...props}>{children}</button>;
+    renderProp ? (
+      React.cloneElement(renderProp, props, children)
+    ) : (
+      <button {...props}>{children}</button>
+    );
   return { Dialog: { Root, Trigger, Portal, Backdrop, Popup, Title, Description, Close } };
 });
 
@@ -46,17 +48,13 @@ describe("ApprovalCard", () => {
   });
 
   it("hides the reason section when reason is empty", () => {
-    render(
-      <ApprovalCard request={{ id: "1", action: "Book", reason: "", resolve: vi.fn() }} />,
-    );
+    render(<ApprovalCard request={{ id: "1", action: "Book", reason: "", resolve: vi.fn() }} />);
     expect(screen.queryByText(/Why/i)).not.toBeInTheDocument();
   });
 
   it("calls resolve({ approved: true }) when Approve is clicked", async () => {
     const resolve = vi.fn();
-    render(
-      <ApprovalCard request={{ id: "1", action: "Book", reason: "", resolve }} />,
-    );
+    render(<ApprovalCard request={{ id: "1", action: "Book", reason: "", resolve }} />);
     await userEvent.click(screen.getByRole("button", { name: /approve/i }));
     expect(resolve).toHaveBeenCalledOnce();
     expect(resolve).toHaveBeenCalledWith({ approved: true });
@@ -64,9 +62,7 @@ describe("ApprovalCard", () => {
 
   it("calls resolve({ approved: false }) when Reject is clicked", async () => {
     const resolve = vi.fn();
-    render(
-      <ApprovalCard request={{ id: "1", action: "Book", reason: "", resolve }} />,
-    );
+    render(<ApprovalCard request={{ id: "1", action: "Book", reason: "", resolve }} />);
     await userEvent.click(screen.getByRole("button", { name: /reject/i }));
     expect(resolve).toHaveBeenCalledOnce();
     expect(resolve).toHaveBeenCalledWith({ approved: false, note: "rejected by user" });
@@ -102,18 +98,14 @@ describe("ApprovalDialog", () => {
 
   it("calls resolve({ approved: true }) when Approve is clicked", async () => {
     const resolve = vi.fn();
-    render(
-      <ApprovalDialog request={{ id: "2", action: "Reserve", reason: "", resolve }} />,
-    );
+    render(<ApprovalDialog request={{ id: "2", action: "Reserve", reason: "", resolve }} />);
     await userEvent.click(screen.getByRole("button", { name: /approve/i }));
     expect(resolve).toHaveBeenCalledWith({ approved: true });
   });
 
   it("calls resolve({ approved: false }) when Reject is clicked", async () => {
     const resolve = vi.fn();
-    render(
-      <ApprovalDialog request={{ id: "2", action: "Reserve", reason: "", resolve }} />,
-    );
+    render(<ApprovalDialog request={{ id: "2", action: "Reserve", reason: "", resolve }} />);
     await userEvent.click(screen.getByRole("button", { name: /reject/i }));
     expect(resolve).toHaveBeenCalledWith({ approved: false, note: "rejected by user" });
   });

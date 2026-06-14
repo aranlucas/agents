@@ -19,9 +19,11 @@ vi.mock("@base-ui/react/dialog", () => ({
       render: renderProp,
       ...props
     }: React.ComponentProps<"button"> & { render?: React.ReactElement }) =>
-      renderProp
-        ? React.cloneElement(renderProp, props, children)
-        : <button {...props}>{children}</button>,
+      renderProp ? (
+        React.cloneElement(renderProp, props, children)
+      ) : (
+        <button {...props}>{children}</button>
+      ),
   },
 }));
 

@@ -80,8 +80,14 @@ describe("DocumentCanvas", () => {
   });
 
   it("shows 'agent writing' when isStreaming", () => {
-    render(<DocumentCanvas {...defaults} isStreaming itinerary="## Day 1: Arrival
-- Land" />);
+    render(
+      <DocumentCanvas
+        {...defaults}
+        isStreaming
+        itinerary="## Day 1: Arrival
+- Land"
+      />,
+    );
     expect(screen.getByText("agent writing")).toBeInTheDocument();
   });
 
@@ -103,19 +109,13 @@ describe("DocumentCanvas", () => {
 
   it("shows review summary when status is ready_to_book", () => {
     render(
-      <DocumentCanvas
-        {...defaults}
-        status="ready_to_book"
-        reviewSummary="You're good to book."
-      />,
+      <DocumentCanvas {...defaults} status="ready_to_book" reviewSummary="You're good to book." />,
     );
     expect(screen.getByText(/You're good to book\./)).toBeInTheDocument();
   });
 
   it("does not show review summary for other statuses", () => {
-    render(
-      <DocumentCanvas {...defaults} status="drafting" reviewSummary="You're good to book." />,
-    );
+    render(<DocumentCanvas {...defaults} status="drafting" reviewSummary="You're good to book." />);
     expect(screen.queryByText(/You're good to book\./)).not.toBeInTheDocument();
   });
 
