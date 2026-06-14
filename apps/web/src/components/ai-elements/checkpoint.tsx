@@ -2,8 +2,8 @@
 
 import { Button } from "@agents/ui";
 import { Separator } from "@agents/ui";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@agents/ui/components/tooltip";
+import { cn } from "@agents/ui/lib/utils";
 import type { LucideProps } from "lucide-react";
 import { BookmarkIcon } from "lucide-react";
 import type { ComponentProps, HTMLAttributes } from "react";

@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@agents/ui";
-import { cn } from "@/lib/utils";
+import { cn } from "@agents/ui/lib/utils";
 import { Handle, Position } from "@xyflow/react";
 import type { ComponentProps } from "react";
 

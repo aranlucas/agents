@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { cssVars } from "./css";
-import { cn } from "./utils";
+import { cn } from "@agents/ui/lib/utils";
 
 describe("cn", () => {
   it("merges conditional classes and resolves Tailwind conflicts", () => {

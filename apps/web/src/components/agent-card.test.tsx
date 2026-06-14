@@ -28,11 +28,17 @@ describe("AgentCard", () => {
   });
 
   it("renders ok state", async () => {
-    await renderSmoke("agent-card-ok", <AgentCard agent={{ ...agent, theme: "wellness" }} index={1} status="ok" />);
+    await renderSmoke(
+      "agent-card-ok",
+      <AgentCard agent={{ ...agent, theme: "wellness" }} index={1} status="ok" />,
+    );
   });
 
   it("renders error state", async () => {
-    await renderSmoke("agent-card-error", <AgentCard agent={{ ...agent, theme: "a2ui" }} index={2} status="error" />);
+    await renderSmoke(
+      "agent-card-error",
+      <AgentCard agent={{ ...agent, theme: "a2ui" }} index={2} status="error" />,
+    );
   });
 
   it("interacts without throwing", async () => {

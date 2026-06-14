@@ -8,9 +8,9 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+} from "@agents/ui/components/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@agents/ui/components/popover";
+import { cn } from "@agents/ui/lib/utils";
 import { ChevronsUpDownIcon } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
 import {

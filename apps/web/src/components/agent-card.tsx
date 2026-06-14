@@ -6,7 +6,7 @@ import { Badge } from "@agents/ui";
 import { buttonVariants } from "@agents/ui";
 import { Card, CardContent } from "@agents/ui";
 import type { AgentStatus } from "@/hooks/use-agent-warmup";
-import { cn } from "@/lib/utils";
+import { cn } from "@agents/ui/lib/utils";
 
 export type Agent = {
   id: string;

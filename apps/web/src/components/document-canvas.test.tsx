@@ -2,11 +2,11 @@ import React from "react";
 import { describe, it, vi } from "vitest";
 import { renderSmoke, interactSmoke } from "@/test/test-utils";
 
-vi.mock("@/components/ui/input", () => ({
+vi.mock("@agents/ui/components/input", () => ({
   Input: (props: React.ComponentProps<"input">) => <input {...props} />,
 }));
 
-vi.mock("@/components/ui/textarea", () => ({
+vi.mock("@agents/ui/components/textarea", () => ({
   Textarea: (props: React.ComponentProps<"textarea">) => <textarea {...props} />,
 }));
 
@@ -41,7 +41,8 @@ describe("DocumentCanvas", () => {
   });
 
   it("renders drafting non-streaming state", async () => {
-    await renderSmoke("document-canvas", (
+    await renderSmoke(
+      "document-canvas",
       <DocumentCanvas
         {...defaultProps}
         startDate="bad-date"
@@ -50,11 +51,14 @@ describe("DocumentCanvas", () => {
         flights=""
         status="drafting"
         isStreaming={false}
-      />
-    ));
+      />,
+    );
   });
 
   it("interacts without throwing", async () => {
-    await interactSmoke("document-canvas", <DocumentCanvas {...defaultProps} isStreaming={false} />);
+    await interactSmoke(
+      "document-canvas",
+      <DocumentCanvas {...defaultProps} isStreaming={false} />,
+    );
   });
 });

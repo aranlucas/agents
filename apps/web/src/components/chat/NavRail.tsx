@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { PencilIcon, SettingsIcon } from "lucide-react";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@agents/ui/lib/utils";
 
 export const SETTINGS_PATH = "/console/settings";
 

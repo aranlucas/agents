@@ -2,8 +2,8 @@
 
 import { Button } from "@agents/ui";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@agents/ui";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
+import { ScrollArea } from "@agents/ui/components/scroll-area";
+import { cn } from "@agents/ui/lib/utils";
 import { ChevronDownIcon, PaperclipIcon } from "lucide-react";
 import type { ComponentProps } from "react";
 

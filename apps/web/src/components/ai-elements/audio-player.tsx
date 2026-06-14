@@ -1,8 +1,8 @@
 "use client";
 
 import { Button } from "@agents/ui";
-import { ButtonGroup, ButtonGroupText } from "@/components/ui/button-group";
-import { cn } from "@/lib/utils";
+import { ButtonGroup, ButtonGroupText } from "@agents/ui/components/button-group";
+import { cn } from "@agents/ui/lib/utils";
 import type { Experimental_SpeechResult as SpeechResult } from "ai";
 import {
   MediaControlBar,

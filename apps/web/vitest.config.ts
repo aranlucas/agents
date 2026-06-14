@@ -3,9 +3,14 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
-    alias: {
-      "@": resolve(__dirname, "./src"),
-    },
+    alias: [
+      {
+        find: "@agents/ui/globals.css",
+        replacement: resolve(__dirname, "../../packages/ui/src/styles/globals.css"),
+      },
+      { find: "@agents/ui", replacement: resolve(__dirname, "../../packages/ui/src") },
+      { find: "@", replacement: resolve(__dirname, "./src") },
+    ],
   },
   test: {
     environment: "jsdom",

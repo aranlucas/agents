@@ -2,9 +2,14 @@
 
 import { Button } from "@agents/ui";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@agents/ui";
-import { Input } from "@/components/ui/input";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { Input } from "@agents/ui/components/input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@agents/ui/components/tooltip";
+import { cn } from "@agents/ui/lib/utils";
 import { ChevronDownIcon } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
 import { createContext, useCallback, useContext, useMemo, useState } from "react";

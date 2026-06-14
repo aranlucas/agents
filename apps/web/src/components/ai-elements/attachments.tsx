@@ -1,8 +1,8 @@
 "use client";
 
 import { Button } from "@agents/ui";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { cn } from "@/lib/utils";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@agents/ui/components/hover-card";
+import { cn } from "@agents/ui/lib/utils";
 import type { FileUIPart, SourceDocumentUIPart } from "ai";
 import {
   FileTextIcon,
