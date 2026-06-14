@@ -187,7 +187,7 @@ function removeTextStyleProps(style: Record<string, unknown>): Record<string, un
 }
 
 export function getMergedStyles(styles: StyleMap | null = null, merge = false): StyleMap {
-  const output: Record<string, any> = {};
+  const output: Record<string, Record<string, unknown>> = {};
 
   const allKeys = new Set([...Object.keys(defaultStyles), ...(styles ? Object.keys(styles) : [])]);
 
@@ -251,14 +251,14 @@ const transform = (node: RootContent | Root, definitions: Map<string, Definition
     if (!def) return;
 
     if (node.type === "linkReference") {
-      const linkNode: any = node;
+      const linkNode = node as { type: string; url?: string; title?: string | null };
       linkNode.type = "link";
       linkNode.url = def.url;
       linkNode.title = def.title ?? null;
     }
 
     if (node.type === "imageReference") {
-      const imageNode: any = node;
+      const imageNode = node as { type: string; url?: string; title?: string | null };
       imageNode.type = "image";
       imageNode.url = def.url;
       imageNode.title = def.title ?? null;

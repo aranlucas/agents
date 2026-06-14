@@ -76,7 +76,7 @@ export const CodeBlock = memo(function CodeBlock({ code, language }: CodeBlockPr
     () =>
       StyleSheet.flatten([
         styles.text,
-        { color: stylesheet.hljs?.color || (isDark ? "#f8f8f2" : "#333") },
+        { color: stylesheet.hljs?.color ?? (isDark ? "#f8f8f2" : "#333") },
       ]),
     [stylesheet, isDark],
   );
@@ -117,8 +117,7 @@ export const CodeBlock = memo(function CodeBlock({ code, language }: CodeBlockPr
   );
 
   const renderer = useCallback(
-    (props: any) => {
-      const { rows } = props;
+    ({ rows }: { rows: RendererNode[] }) => {
       return (
         <ScrollView
           horizontal
@@ -126,13 +125,13 @@ export const CodeBlock = memo(function CodeBlock({ code, language }: CodeBlockPr
           contentContainerStyle={styles.scrollContent}
         >
           <View style={styles.codeContent}>
-            {rows.map((row: RendererNode, index: number) => {
+            {rows.map((row, index) => {
               // Highlighted rows are positional lines with no stable id, and the
               // list is never reordered, so a row-position key is appropriate.
               const rowKey = `row_${index}`;
               return (
                 <Text key={rowKey} style={baseStyle}>
-                  {renderNodeChildren(row.children || [], rowKey)}
+                  {renderNodeChildren(row.children ?? [], rowKey)}
                 </Text>
               );
             })}
@@ -149,13 +148,13 @@ export const CodeBlock = memo(function CodeBlock({ code, language }: CodeBlockPr
         renderer={renderer}
         // react-syntax-highlighter types CodeTag/PreTag as DOM components; we
         // intentionally render RN `View`s instead.
-        // eslint-disable-next-line typescript/no-unsafe-type-assertion
+        // eslint-disable-next-line typescript/no-unsafe-type-assertion, typescript/no-explicit-any
         CodeTag={View as any}
-        // eslint-disable-next-line typescript/no-unsafe-type-assertion
+        // eslint-disable-next-line typescript/no-unsafe-type-assertion, typescript/no-explicit-any
         PreTag={View as any}
         style={undefined}
         customStyle={{ backgroundColor: "transparent" }}
-        language={language || "typescript"}
+        language={language ?? "typescript"}
       >
         {code}
       </SyntaxHighlighter>

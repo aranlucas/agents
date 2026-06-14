@@ -72,7 +72,7 @@ function convertStylesToProps(
     return { style, props: {} as Record<string, unknown> };
   }
   // eslint-disable-next-line typescript/no-unsafe-type-assertion
-  const flatStyle = (StyleSheet.flatten(style) || {}) as Record<string, unknown>;
+  const flatStyle = (StyleSheet.flatten(style) ?? {}) as Record<string, unknown>;
   const props: Record<string, unknown> = {};
 
   for (const [styleKey, propKey] of Object.entries(move)) {

@@ -49,6 +49,7 @@ function PromptInputError({ message }: { message?: string }) {
       <View className="bg-card border-continuous flex-row items-center gap-2 rounded-xl px-3 py-2.5">
         <View className="h-2 w-2 rounded-full" style={{ backgroundColor: "#EF4444" }} />
         <Text className="text-muted-foreground flex-1 text-xs" numberOfLines={2}>
+          {/* eslint-disable-next-line typescript/prefer-nullish-coalescing */}
           {message || "Something went wrong"}
         </Text>
       </View>

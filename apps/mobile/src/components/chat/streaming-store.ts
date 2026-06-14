@@ -12,7 +12,7 @@ export function createStreamingStore(): StreamingStore {
     get: () => text,
     set: (value: string) => {
       text = value;
-      listeners.forEach((l) => l());
+      for (const l of listeners) { l(); }
     },
     subscribe: (listener: () => void) => {
       listeners.add(listener);

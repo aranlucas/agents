@@ -37,7 +37,7 @@ function dedupeById(messages: AguiMessage[]): AguiMessage[] {
       acc.set(m.id, {
         ...existing,
         ...m,
-        content: m.content || existing.content,
+        content: m.content ?? existing.content,
         toolCalls: m.toolCalls ?? existing.toolCalls,
       });
     } else {

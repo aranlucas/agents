@@ -48,6 +48,7 @@ describe("getKeyFromMarkdown", () => {
     const transform = ext.transforms?.[0];
     expect(transform).toBeDefined();
 
+    // eslint-disable-next-line typescript/no-explicit-any
     const tree: any = {
       type: "root",
       position: { start: { line: 1, column: 1 }, end: { line: 2, column: 1 } },
@@ -72,6 +73,7 @@ describe("resolveReference", () => {
     const transform = ext.transforms?.[0];
     expect(transform).toBeDefined();
 
+    // eslint-disable-next-line typescript/no-explicit-any
     const tree: any = {
       type: "root",
       children: [
@@ -96,6 +98,7 @@ describe("resolveReference", () => {
   it("does nothing when there are no definitions", () => {
     const ext = resolveReference();
     const transform = ext.transforms?.[0];
+    // eslint-disable-next-line typescript/no-explicit-any
     const tree: any = {
       type: "root",
       children: [{ type: "paragraph", children: [{ type: "text", value: "hi" }] }],

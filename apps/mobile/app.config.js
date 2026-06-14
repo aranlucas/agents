@@ -1,6 +1,7 @@
 const appJson = require("./app.json");
 
 function envOrFallback(name, fallback) {
+  // eslint-disable-next-line typescript/prefer-nullish-coalescing
   return process.env[name] || fallback || "";
 }
 

@@ -86,6 +86,7 @@ export function AgentScreen<TState extends AgentState>({ config, initialState }:
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <View style={[styles.header, { borderTopColor: config.accentColor }]}>
+        {/* eslint-disable-next-line typescript/prefer-nullish-coalescing */}
         {summary ? (
           summary
         ) : (

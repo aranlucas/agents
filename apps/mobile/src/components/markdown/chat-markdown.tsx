@@ -125,6 +125,7 @@ export function ChatMarkdown({ children }: { children: string }) {
           const contentStyle = styles.listItemContent as ViewStyle;
           return (
             <View key={node.key} style={itemStyle}>
+              {/* eslint-disable-next-line typescript/prefer-nullish-coalescing */}
               {extras?.customListStyleType ? (
                 extras.customListStyleType
               ) : (

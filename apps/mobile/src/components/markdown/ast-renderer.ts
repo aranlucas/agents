@@ -1,7 +1,7 @@
 import type { List, Node, Root, Table, TableRow } from "mdast";
 import defaultRenderRules from "./render-rules";
 import { getMergedStyles } from "./utils";
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import type {
   StyleMap,
   ASTRendererOptions,
@@ -68,9 +68,9 @@ export default class ASTRenderer {
   private renderNode = (
     node: Node,
     parentStack: Node[] = [],
-    extras?: Record<string, any>,
-  ): any => {
-    const children: any[] = [];
+    extras?: Record<string, unknown>,
+  ): ReactNode => {
+    const children: ReactNode[] = [];
     // `node.type` is a runtime string; narrow it to the renderer's key union.
     // eslint-disable-next-line typescript/no-unsafe-type-assertion
     const type = node.type as ValidNodeKey;
@@ -160,7 +160,7 @@ export default class ASTRenderer {
     });
   };
 
-  public render = (tree: Root): any => {
+  public render = (tree: Root): ReactNode => {
     return this.renderNode(tree);
   };
 }

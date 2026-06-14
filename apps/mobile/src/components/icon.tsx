@@ -8,11 +8,11 @@ function IconBase({
   strokeWidth,
 }: {
   icon: LucideIcon;
-  style?: any;
+  style?: object;
   strokeWidth?: number;
   className?: string;
 }) {
-  const flat: Record<string, unknown> = StyleSheet.flatten(style) || {};
+  const flat: Record<string, unknown> = StyleSheet.flatten(style) ?? {};
   const width = typeof flat.width === "number" ? flat.width : undefined;
   const height = typeof flat.height === "number" ? flat.height : undefined;
   const size = width ?? height ?? 24;

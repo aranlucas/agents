@@ -72,7 +72,7 @@ const renderRules: RenderRules = {
     <View key={node.key} style={getViewStyle(styles, `_VIEW_SAFE_${node.type}`)} />
   ),
   code: ({ node }) => (
-    <CodeBlock key={node.key} code={node.value} language={node.lang || undefined} />
+    <CodeBlock key={node.key} code={node.value} language={node.lang ?? undefined} />
   ),
   inlineCode: ({ node, styles }) => (
     <Text key={node.key} style={getTextStyle(styles, node.type)}>
@@ -93,7 +93,7 @@ const renderRules: RenderRules = {
     return <Image key={node.key} {...imageProps} />;
   },
   link: ({ node, styles, children, extras }) => {
-    const onPress = () => extras?.onPress(node.url) || (() => Linking.openURL(node.url));
+    const onPress = () => extras?.onPress(node.url) ?? Linking.openURL(node.url);
     return (
       <Text key={node.key} onPress={onPress} style={getTextStyle(styles, "link")}>
         {children}
@@ -107,6 +107,7 @@ const renderRules: RenderRules = {
   ),
   listItem: ({ node, styles, children, extras }) => (
     <View key={node.key} style={getViewStyle(styles, "listItem")}>
+      {/* eslint-disable-next-line typescript/prefer-nullish-coalescing */}
       {extras?.customListStyleType ? (
         extras.customListStyleType
       ) : (
