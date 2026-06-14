@@ -1,7 +1,12 @@
 "use client";
 
 import { useCallback, useEffect } from "react";
-import { CopilotSidebar, useAgent, useCopilotKit, UseAgentUpdate } from "@copilotkit/react-core/v2";
+import {
+  CopilotSidebar,
+  useAgent,
+  useCopilotKit,
+  UseAgentUpdate,
+} from "@copilotkit/react-core/v2";
 
 import type { OralBoardsState } from "@agents/types";
 import { Button } from "@agents/ui";
@@ -18,14 +23,8 @@ const AGENT_ID = "oral-boards" as const;
 const TOPICS = [
   { label: "Pulp therapy", message: "Create an oral-board case focused on pulp therapy." },
   { label: "Dental trauma", message: "Give me a staged OCE-style dental trauma case." },
-  {
-    label: "Early childhood caries",
-    message: "Create an oral-board case on early childhood caries.",
-  },
-  {
-    label: "Behavior guidance",
-    message: "Create an oral-board case focused on behavior guidance.",
-  },
+  { label: "Early childhood caries", message: "Create an oral-board case on early childhood caries." },
+  { label: "Behavior guidance", message: "Create an oral-board case focused on behavior guidance." },
 ];
 
 function OralBoardsStartPage({
@@ -70,11 +69,6 @@ function OralBoardsStartPage({
   );
 }
 
-/**
- * Bespoke Oral Boards console: exam-focused full-page layout. The exam panel
- * is the primary surface; chat is available in a collapsible sidebar.
- * Must render inside the agent's <ConsoleSession>.
- */
 export function OralBoardsWorkspace() {
   const config = getAgentConfig(AGENT_ID);
   const { state, dispatch } = useArtifactPanel(AGENT_ID);
@@ -88,11 +82,11 @@ export function OralBoardsWorkspace() {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const examState = (agent?.state ?? {}) as OralBoardsState;
   const hasPanel = Boolean(examState.case && examState.case.trim());
-  const isGenerating = (agent?.isRunning ?? false) && !hasPanel;
+  const isRunning = agent?.isRunning ?? false;
+  const isGenerating = isRunning && !hasPanel;
 
-  // Auto-open fullscreen when a case first appears — the panel is the primary surface.
   useEffect(() => {
-    if (hasPanel && state === "closed") dispatch("fullscreen");
+    if (hasPanel && state === "closed") dispatch("toggle-fullscreen");
   }, [hasPanel, state, dispatch]);
 
   const handleStart = useCallback(
@@ -105,11 +99,21 @@ export function OralBoardsWorkspace() {
   );
 
   const handleReady = useCallback(() => {
+    if (!agent) return;
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     agent.setState({ ...(agent.state as OralBoardsState), status: "questioning" });
     agent.addMessage({ id: crypto.randomUUID(), role: "user", content: "ready" });
     void copilotkit.runAgent({ agent });
   }, [agent, copilotkit]);
+
+  const handleAnswer = useCallback(
+    async (text: string) => {
+      if (!agent || !text.trim()) return;
+      agent.addMessage({ id: crypto.randomUUID(), role: "user", content: text });
+      await copilotkit.runAgent({ agent });
+    },
+    [agent, copilotkit],
+  );
 
   return (
     <main
@@ -120,8 +124,8 @@ export function OralBoardsWorkspace() {
       <CopilotSidebar
         defaultOpen={false}
         labels={{
-          title: "Oral Boards",
-          placeholder: config.placeholder,
+          modalHeaderTitle: "Agent reasoning",
+          chatInputPlaceholder: config.placeholder,
         }}
       />
       <div className="flex-none">
@@ -135,9 +139,14 @@ export function OralBoardsWorkspace() {
             onClose={() => dispatch("close")}
             onToggleFullscreen={() => dispatch("toggle-fullscreen")}
             onReady={handleReady}
+            onAnswer={(text) => void handleAnswer(text)}
+            isRunning={isRunning}
           />
         ) : (
-          <OralBoardsStartPage onStart={(m) => void handleStart(m)} isGenerating={isGenerating} />
+          <OralBoardsStartPage
+            onStart={(m) => void handleStart(m)}
+            isGenerating={isGenerating}
+          />
         )}
       </div>
     </main>
