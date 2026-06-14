@@ -13,6 +13,7 @@
 ## File Structure
 
 **New (web):**
+
 - `apps/web/src/lib/copilotkit/oral-boards-question.ts` — live-question store
 - `apps/web/src/lib/copilotkit/oral-boards-question.test.ts`
 - `apps/web/src/components/chat/use-new-thread.ts` — shared new-thread hook
@@ -22,6 +23,7 @@
 - `apps/web/src/components/chat/OralBoardsWorkspace.tsx`
 
 **Modified (web):**
+
 - `apps/web/src/lib/copilotkit/speak-question.ts` — `speak(text,{speed})`, `stopSpeaking()`
 - `apps/web/src/lib/copilotkit/speak-question.test.ts`
 - `apps/web/src/components/chat/agents/oral-boards.tsx` — `ask_question` rename/slim
@@ -32,6 +34,7 @@
 - `apps/web/src/app/console/oral-boards/[thread]/page.tsx` — render `OralBoardsWorkspace`
 
 **Modified (agent):**
+
 - `agents/oralboards/src/oralboards_agent/agent.py` — prompt: `ask_question(question)`
 
 ---
@@ -39,6 +42,7 @@
 ## Task 1: Generalize TTS with `speed` and `stopSpeaking`
 
 **Files:**
+
 - Modify: `apps/web/src/lib/copilotkit/speak-question.ts`
 - Test: `apps/web/src/lib/copilotkit/speak-question.test.ts`
 
@@ -47,80 +51,80 @@
 Replace the first two `it(...)` blocks in `speak-question.test.ts` and add a speed + stop test. Add `import { speak, stopSpeaking } from "./speak-question";` to the existing import line (keep `preloadKokoro`, `speakQuestion`).
 
 ```ts
-  it("passes speed through to Kokoro generate", async () => {
-    const play = vi.fn().mockResolvedValue(undefined);
-    const generate = vi.fn().mockResolvedValue({
-      toBlob: () => new Blob(["audio"], { type: "audio/wav" }),
-    });
-    const fromPretrained = vi.fn().mockResolvedValue({ generate });
-    const importKokoro = vi.fn().mockResolvedValue({
-      KokoroTTS: { from_pretrained: fromPretrained },
-    });
-
-    await speak("Read the case slowly.", {
-      speed: 0.8,
-      AudioCtor: class MockAudio {
-        constructor(public src: string) {}
-        addEventListener = vi.fn();
-        play = play;
-      } as unknown as typeof Audio,
-      createObjectURL: vi.fn().mockReturnValue("blob:case"),
-      importKokoro,
-      revokeObjectURL: vi.fn(),
-    });
-
-    expect(generate).toHaveBeenCalledWith("Read the case slowly.", { voice: "af_sky", speed: 0.8 });
-    expect(play).toHaveBeenCalledOnce();
+it("passes speed through to Kokoro generate", async () => {
+  const play = vi.fn().mockResolvedValue(undefined);
+  const generate = vi.fn().mockResolvedValue({
+    toBlob: () => new Blob(["audio"], { type: "audio/wav" }),
+  });
+  const fromPretrained = vi.fn().mockResolvedValue({ generate });
+  const importKokoro = vi.fn().mockResolvedValue({
+    KokoroTTS: { from_pretrained: fromPretrained },
   });
 
-  it("defaults speed to 1 for speakQuestion", async () => {
-    const generate = vi.fn().mockResolvedValue({
-      toBlob: () => new Blob(["audio"], { type: "audio/wav" }),
-    });
-    const importKokoro = vi.fn().mockResolvedValue({
-      KokoroTTS: { from_pretrained: vi.fn().mockResolvedValue({ generate }) },
-    });
-
-    await speakQuestion("What is your diagnosis?", {
-      AudioCtor: class MockAudio {
-        constructor(public src: string) {}
-        addEventListener = vi.fn();
-        play = vi.fn().mockResolvedValue(undefined);
-      } as unknown as typeof Audio,
-      createObjectURL: vi.fn().mockReturnValue("blob:q"),
-      importKokoro,
-      revokeObjectURL: vi.fn(),
-    });
-
-    expect(generate).toHaveBeenCalledWith("What is your diagnosis?", { voice: "af_sky", speed: 1 });
+  await speak("Read the case slowly.", {
+    speed: 0.8,
+    AudioCtor: class MockAudio {
+      constructor(public src: string) {}
+      addEventListener = vi.fn();
+      play = play;
+    } as unknown as typeof Audio,
+    createObjectURL: vi.fn().mockReturnValue("blob:case"),
+    importKokoro,
+    revokeObjectURL: vi.fn(),
   });
 
-  it("applies speed to the browser fallback rate", async () => {
-    const speakSpy = vi.fn();
-    const utterances: { text: string; rate?: number }[] = [];
-    class RateUtterance {
-      rate?: number;
-      constructor(public text: string) {
-        utterances.push(this);
-      }
+  expect(generate).toHaveBeenCalledWith("Read the case slowly.", { voice: "af_sky", speed: 0.8 });
+  expect(play).toHaveBeenCalledOnce();
+});
+
+it("defaults speed to 1 for speakQuestion", async () => {
+  const generate = vi.fn().mockResolvedValue({
+    toBlob: () => new Blob(["audio"], { type: "audio/wav" }),
+  });
+  const importKokoro = vi.fn().mockResolvedValue({
+    KokoroTTS: { from_pretrained: vi.fn().mockResolvedValue({ generate }) },
+  });
+
+  await speakQuestion("What is your diagnosis?", {
+    AudioCtor: class MockAudio {
+      constructor(public src: string) {}
+      addEventListener = vi.fn();
+      play = vi.fn().mockResolvedValue(undefined);
+    } as unknown as typeof Audio,
+    createObjectURL: vi.fn().mockReturnValue("blob:q"),
+    importKokoro,
+    revokeObjectURL: vi.fn(),
+  });
+
+  expect(generate).toHaveBeenCalledWith("What is your diagnosis?", { voice: "af_sky", speed: 1 });
+});
+
+it("applies speed to the browser fallback rate", async () => {
+  const speakSpy = vi.fn();
+  const utterances: { text: string; rate?: number }[] = [];
+  class RateUtterance {
+    rate?: number;
+    constructor(public text: string) {
+      utterances.push(this);
     }
+  }
 
-    await speak("Read the case slowly.", {
-      speed: 0.8,
-      importKokoro: vi.fn().mockRejectedValue(new Error("model unavailable")),
-      speechSynthesis: { cancel: vi.fn(), speak: speakSpy } as unknown as SpeechSynthesis,
-      SpeechSynthesisUtteranceCtor: RateUtterance as unknown as typeof SpeechSynthesisUtterance,
-    });
-
-    expect(utterances[0]?.rate).toBe(0.8);
-    expect(speakSpy).toHaveBeenCalledOnce();
+  await speak("Read the case slowly.", {
+    speed: 0.8,
+    importKokoro: vi.fn().mockRejectedValue(new Error("model unavailable")),
+    speechSynthesis: { cancel: vi.fn(), speak: speakSpy } as unknown as SpeechSynthesis,
+    SpeechSynthesisUtteranceCtor: RateUtterance as unknown as typeof SpeechSynthesisUtterance,
   });
 
-  it("stopSpeaking cancels browser speech and the active player", () => {
-    const cancel = vi.fn();
-    stopSpeaking({ speechSynthesis: { cancel } as unknown as SpeechSynthesis });
-    expect(cancel).toHaveBeenCalledOnce();
-  });
+  expect(utterances[0]?.rate).toBe(0.8);
+  expect(speakSpy).toHaveBeenCalledOnce();
+});
+
+it("stopSpeaking cancels browser speech and the active player", () => {
+  const cancel = vi.fn();
+  stopSpeaking({ speechSynthesis: { cancel } as unknown as SpeechSynthesis });
+  expect(cancel).toHaveBeenCalledOnce();
+});
 ```
 
 Update the existing "uses local Kokoro TTS by default" test's assertion from
@@ -254,6 +258,7 @@ git commit -m "Add speed option and stopSpeaking to TTS"
 ## Task 2: Live-question store
 
 **Files:**
+
 - Create: `apps/web/src/lib/copilotkit/oral-boards-question.ts`
 - Test: `apps/web/src/lib/copilotkit/oral-boards-question.test.ts`
 
@@ -348,6 +353,7 @@ git commit -m "Add live-question store for oral-boards pane"
 ## Task 3: Rename + slim `ask_question` frontend tool
 
 **Files:**
+
 - Modify: `apps/web/src/components/chat/agents/oral-boards.tsx`
 - Modify: `apps/web/src/components/chat/SpeakQuestionToolCall.tsx`
 
@@ -439,25 +445,25 @@ import type { AgentId } from "./registry";
 Replace the `useFrontendTool({...}, [agentId])` call with:
 
 ```tsx
-  useFrontendTool(
-    {
-      name: "ask_question",
-      description: "Speak the next oral boards examiner question aloud in the chat UI.",
-      available: true,
-      agentId,
-      parameters: z.object({
-        question: z.string().describe("The exact examiner question to speak aloud"),
-      }),
-      handler: ({ question }) => {
-        setCurrentQuestion(question);
-        return speak(question);
-      },
-      render: ({ status, args, result }) => (
-        <SpeakQuestionToolCall status={status} parameters={args ?? {}} result={result} />
-      ),
+useFrontendTool(
+  {
+    name: "ask_question",
+    description: "Speak the next oral boards examiner question aloud in the chat UI.",
+    available: true,
+    agentId,
+    parameters: z.object({
+      question: z.string().describe("The exact examiner question to speak aloud"),
+    }),
+    handler: ({ question }) => {
+      setCurrentQuestion(question);
+      return speak(question);
     },
-    [agentId],
-  );
+    render: ({ status, args, result }) => (
+      <SpeakQuestionToolCall status={status} parameters={args ?? {}} result={result} />
+    ),
+  },
+  [agentId],
+);
 ```
 
 Leave the `preloadKokoro` warmup `useEffect` unchanged.
@@ -479,6 +485,7 @@ git commit -m "Rename speak_question to ask_question and slim its args"
 ## Task 4: Update the agent prompt
 
 **Files:**
+
 - Modify: `agents/oralboards/src/oralboards_agent/agent.py`
 
 - [ ] **Step 1: Read the prompt section**
@@ -542,6 +549,7 @@ git commit -m "Update oral-boards prompt to call ask_question"
 ## Task 5: Remove the dead generic oral-boards artifact path
 
 **Files:**
+
 - Modify: `apps/web/src/components/chat/agents/registry.ts`
 - Modify: `apps/web/src/components/chat/artifact.ts`
 
@@ -557,7 +565,7 @@ the oral-boards config (`id`, `label`, `glyph`, `colorVar`, `placeholder`,
 Replace the `content` assignment in `selectArtifact` (lines ~80-83):
 
 ```ts
-  const content = toContent(state[config.artifact.stateField]);
+const content = toContent(state[config.artifact.stateField]);
 ```
 
 Then delete the now-unused `renderOralBoardsContent` function and, if they become
@@ -581,6 +589,7 @@ git commit -m "Drop generic artifact path for oral-boards"
 ## Task 6: Extract a shared `useNewThread` hook
 
 **Files:**
+
 - Create: `apps/web/src/components/chat/use-new-thread.ts`
 - Modify: `apps/web/src/components/chat/AgentWorkspace.tsx`
 
@@ -619,7 +628,7 @@ import only if nothing else uses it — `router.push` for `onSwitchAgent` still
 needs it, so keep `useRouter`), and replace it with:
 
 ```tsx
-  const startNewThread = useNewThread(agentId);
+const startNewThread = useNewThread(agentId);
 ```
 
 Keep everything else (the `onSwitchAgent={(id) => router.push(...)}` still uses
@@ -642,6 +651,7 @@ git commit -m "Extract useNewThread hook"
 ## Task 7: Build the `OralBoardsPanel`
 
 **Files:**
+
 - Create: `apps/web/src/components/chat/oral-boards/tab-for-status.ts`
 - Test: `apps/web/src/components/chat/oral-boards/tab-for-status.test.ts`
 - Create: `apps/web/src/components/chat/oral-boards/OralBoardsPanel.tsx`
@@ -799,7 +809,9 @@ function FeedbackView({
       {scoreCard.trim() && <Streamdown>{scoreCard}</Streamdown>}
       {transcript.map((x, i) => (
         <div key={i} className="border-border space-y-1 border-t pt-3 text-sm">
-          <p className="font-medium">Q{i + 1}. {x.question}</p>
+          <p className="font-medium">
+            Q{i + 1}. {x.question}
+          </p>
           {x.answer && <p className="text-muted-foreground">Your answer: {x.answer}</p>}
           {x.feedback && <p>{x.feedback}</p>}
           <CitationChips sources={x.citations ?? []} />
@@ -894,6 +906,7 @@ git commit -m "Add OralBoardsPanel with pinned case, question/feedback tabs"
 ## Task 8: `OralBoardsWorkspace` + wire the route
 
 **Files:**
+
 - Create: `apps/web/src/components/chat/OralBoardsWorkspace.tsx`
 - Modify: `apps/web/src/app/console/oral-boards/[thread]/page.tsx`
 - Modify: `apps/web/src/all-source-smoke.test.tsx`
@@ -993,23 +1006,28 @@ Add a destructured binding `OralBoardsPanelModule` to the array on the left-hand
 side, then add a render call alongside the other `render(...)` calls:
 
 ```tsx
-    await render(
-      "oral-boards-panel",
-      <OralBoardsPanelModule.OralBoardsPanel
-        state={{
-          case: "7-year-old with trauma to #8.",
-          case_sources: [{ docid: 1, title: "AAPD trauma", collection: "aapd" }],
-          status: "feedback",
-          transcript: [
-            { question: "Immediate management?", answer: "Reposition.", feedback: "Good.", citations: [] },
-          ],
-          score_card: "## Score\nSolid.",
-        }}
-        fullscreen={false}
-        onClose={() => {}}
-        onToggleFullscreen={() => {}}
-      />,
-    );
+await render(
+  "oral-boards-panel",
+  <OralBoardsPanelModule.OralBoardsPanel
+    state={{
+      case: "7-year-old with trauma to #8.",
+      case_sources: [{ docid: 1, title: "AAPD trauma", collection: "aapd" }],
+      status: "feedback",
+      transcript: [
+        {
+          question: "Immediate management?",
+          answer: "Reposition.",
+          feedback: "Good.",
+          citations: [],
+        },
+      ],
+      score_card: "## Score\nSolid.",
+    }}
+    fullscreen={false}
+    onClose={() => {}}
+    onToggleFullscreen={() => {}}
+  />,
+);
 ```
 
 - [ ] **Step 4: Run tests + build**

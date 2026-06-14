@@ -139,11 +139,13 @@ state-driven.
 ## Files touched
 
 **Web (new):**
+
 - `apps/web/src/components/chat/OralBoardsWorkspace.tsx`
 - `apps/web/src/components/chat/oral-boards/OralBoardsPanel.tsx` (+ `CaseVignette`, `QuestionView`, `FeedbackView` — split as size warrants)
 - `apps/web/src/lib/copilotkit/oral-boards-question.ts`
 
 **Web (changed):**
+
 - `apps/web/src/app/console/oral-boards/[thread]/page.tsx` — render the bespoke workspace
 - `apps/web/src/components/chat/AgentWorkspace.tsx` — extract `useNewThread`
 - `apps/web/src/components/chat/agents/oral-boards.tsx` — `ask_question` rename/slim
@@ -153,4 +155,5 @@ state-driven.
 - `apps/web/src/components/chat/SpeakQuestionToolCall.tsx` — slimmer args (rename optional)
 
 **Agent:**
+
 - `agents/oralboards/src/oralboards_agent/agent.py` — prompt: `ask_question(question)`
