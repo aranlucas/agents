@@ -80,8 +80,7 @@
       // to their upstream conventions, not the app's a11y/next-image lint bar.
       "files": [
         "apps/web/src/components/ai-elements/**/*.{ts,tsx}",
-        "apps/web/src/components/ui/**/*.{ts,tsx}",
-        "packages/ui/src/components/**/*.{ts,tsx}"
+        "apps/web/src/components/ui/**/*.{ts,tsx}"
       ],
       "rules": {
         "jsx-a11y/anchor-has-content": "off",
