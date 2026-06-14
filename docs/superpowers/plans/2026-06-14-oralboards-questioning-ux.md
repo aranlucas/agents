@@ -308,12 +308,16 @@ function QuestioningPane({
     setAnswerText("");
   };
 
+  // Split transcript: older exchanges → chips; most recent → always-visible feedback block.
+  const olderExchanges = transcript.slice(0, -1);
+  const lastExchange = transcript.at(-1);
+
   return (
     <div className="flex h-full flex-col gap-3 overflow-hidden">
-      {/* Chip row — prior exchanges */}
-      {transcript.length > 0 && (
+      {/* Chip row — all exchanges except the most recent */}
+      {olderExchanges.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          {transcript.map((x, i) => (
+          {olderExchanges.map((x, i) => (
             <div key={x.question || i}>
               <button
                 type="button"
@@ -334,6 +338,21 @@ function QuestioningPane({
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Most recent exchange — always expanded so feedback is visible immediately */}
+      {lastExchange && (
+        <div className="bg-muted shrink-0 space-y-1 rounded-lg p-3 text-sm">
+          <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+            Q{transcript.length} · Feedback
+          </p>
+          <p className="font-medium">{lastExchange.question}</p>
+          {lastExchange.answer && (
+            <p className="text-muted-foreground">Your answer: {lastExchange.answer}</p>
+          )}
+          {lastExchange.feedback && <Streamdown>{lastExchange.feedback}</Streamdown>}
+          <CitationChips sources={lastExchange.citations ?? []} />
         </div>
       )}
 
@@ -648,7 +667,29 @@ describe("OralBoardsPanel — questioning", () => {
     expect(submitBtn).toHaveProperty("disabled", true);
   });
 
-  it("renders prior exchange chips and expands on click", async () => {
+  it("shows the most recent exchange as an always-visible feedback block", () => {
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: [
+        {
+          question: "What is your initial impression?",
+          answer: "I see caries.",
+          feedback: "Good start.",
+          citations: [],
+        },
+      ],
+    };
+
+    render(<OralBoardsPanel state={state} {...baseProps} />);
+
+    // Feedback is visible without any click — no chip for the last exchange.
+    expect(screen.getByText("Your answer: I see caries.")).toBeDefined();
+    expect(screen.queryByRole("button", { name: /Q1 ·/ })).toBeNull();
+  });
+
+  it("older exchanges collapse to chips; only the last stays expanded", async () => {
     const state: OralBoardsState = {
       case: "Case.",
       case_sources: [],
@@ -660,20 +701,28 @@ describe("OralBoardsPanel — questioning", () => {
           feedback: "Good.",
           citations: [],
         },
+        {
+          question: "What data do you need?",
+          answer: "Radiographs.",
+          feedback: "Correct.",
+          citations: [],
+        },
       ],
     };
 
     render(<OralBoardsPanel state={state} {...baseProps} />);
 
-    // Chip is visible
+    // Q1 is a chip (collapsed); Q2 feedback is always visible.
     const chip = screen.getByRole("button", { name: /Q1 ·/ });
     expect(chip).toBeDefined();
+    expect(screen.queryByText("Your answer: I see caries.")).toBeNull();
+    expect(screen.getByText("Your answer: Radiographs.")).toBeDefined();
 
-    // Click to expand — answer should appear
+    // Clicking Q1 chip expands it.
     await userEvent.click(chip);
     expect(screen.getByText("Your answer: I see caries.")).toBeDefined();
 
-    // Click again to collapse
+    // Clicking again collapses.
     await userEvent.click(chip);
     expect(screen.queryByText("Your answer: I see caries.")).toBeNull();
   });
