@@ -210,7 +210,9 @@ git commit -m "chore(oralboards): delete tab-for-status helper, no longer needed
 
 - [ ] **Step 1: Write the new panel**
 
-Replace the entire file with:
+Replace the entire file with (note: `stripMarkdownForSpeech` removes headers, bold/italic markers,
+inline citation brackets, and other markdown syntax before passing text to TTS — source chips
+in the `sources` array are already separate JSX and never reach `speak()`):
 
 ```tsx
 "use client";
@@ -234,6 +236,21 @@ import { speak, stopSpeaking } from "@/lib/copilotkit/speak-question";
 import { useCurrentQuestion } from "@/lib/copilotkit/oral-boards-question";
 
 const CASE_SPEED = 0.8;
+
+function stripMarkdownForSpeech(text: string): string {
+  return text
+    .replace(/^#{1,6}\s+/gm, "")              // headers → bare text
+    .replace(/\*{1,3}([^*]+)\*{1,3}/g, "$1")  // bold / italic
+    .replace(/_{1,3}([^_]+)_{1,3}/g, "$1")    // underscore emphasis
+    .replace(/`+([^`]+)`+/g, "$1")            // inline code
+    .replace(/^>\s*/gm, "")                   // blockquotes
+    .replace(/^[-*+]\s+/gm, "")               // unordered lists
+    .replace(/^\d+\.\s+/gm, "")               // ordered lists
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")  // links → link text
+    .replace(/\[[^\]]*\]/g, "")               // remaining brackets (inline citations)
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
 
 function CitationChips({ sources }: { sources: CaseSource[] }) {
   if (sources.length === 0) return null;
@@ -269,7 +286,7 @@ function VignetteBody({
       return;
     }
     setPlaying(true);
-    void speak(caseBody, { speed: CASE_SPEED }).finally(() => setPlaying(false));
+    void speak(stripMarkdownForSpeech(caseBody), { speed: CASE_SPEED }).finally(() => setPlaying(false));
   };
 
   return (

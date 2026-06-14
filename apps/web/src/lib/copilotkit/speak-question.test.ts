@@ -7,27 +7,11 @@ class MockUtterance {
   constructor(public text: string) {}
 }
 
-class MockAudio {
-  constructor(public src: string) {}
-  addEventListener = vi.fn();
-  play = vi.fn().mockResolvedValue(undefined);
-  pause = vi.fn();
-}
-
 describe("speakQuestion", () => {
   it("uses local Kokoro TTS by default", async () => {
-    const generateSpeech = vi.fn().mockResolvedValue({
-      data: new ArrayBuffer(8),
-      sampleRate: 24000,
-    });
-    const AudioCtor = class extends MockAudio {} as unknown as typeof Audio;
+    const generateSpeech = vi.fn().mockResolvedValue(undefined);
 
-    const result = await speakQuestion("What is your diagnosis?", {
-      AudioCtor,
-      createObjectURL: vi.fn().mockReturnValue("blob:question"),
-      generateSpeech,
-      revokeObjectURL: vi.fn(),
-    });
+    const result = await speakQuestion("What is your diagnosis?", { generateSpeech });
 
     expect(result).toBe("Used local Kokoro TTS.");
     // speakQuestion wrapper passes speed: 1 explicitly
@@ -35,19 +19,9 @@ describe("speakQuestion", () => {
   });
 
   it("passes speed through to generateSpeech", async () => {
-    const generateSpeech = vi.fn().mockResolvedValue({
-      data: new ArrayBuffer(8),
-      sampleRate: 24000,
-    });
-    const AudioCtor = class extends MockAudio {} as unknown as typeof Audio;
+    const generateSpeech = vi.fn().mockResolvedValue(undefined);
 
-    await speak("Read slowly.", {
-      speed: 0.8,
-      generateSpeech,
-      AudioCtor,
-      createObjectURL: vi.fn().mockReturnValue("blob:slow"),
-      revokeObjectURL: vi.fn(),
-    });
+    await speak("Read slowly.", { speed: 0.8, generateSpeech });
 
     expect(generateSpeech).toHaveBeenCalledWith("Read slowly.", 0.8);
   });
@@ -103,38 +77,11 @@ describe("speakQuestion", () => {
     );
   });
 
-  it("stopSpeaking pauses the active player", async () => {
-    // Reset any leftover active player first
-    stopSpeaking();
-
-    const pauseSpy = vi.fn();
+  it("stopSpeaking cancels browser speech synthesis", () => {
     const cancelSpy = vi.fn();
-    const AudioCtor = class {
-      constructor(public src: string) {}
-      addEventListener = vi.fn((_event: string, _cb: () => void) => {
-        // Don't auto-fire ended so the player stays active
-      });
-      play = vi.fn().mockResolvedValue(undefined);
-      pause = pauseSpy;
-    } as unknown as typeof Audio;
 
-    const generateSpeech = vi.fn().mockResolvedValue({
-      data: new ArrayBuffer(8),
-      sampleRate: 24000,
-    });
-
-    // Start speaking (don't await the full "ended" event — just let play resolve)
-    await speak("Test stop.", {
-      generateSpeech,
-      AudioCtor,
-      createObjectURL: vi.fn().mockReturnValue("blob:stop"),
-      revokeObjectURL: vi.fn(),
-    });
-
-    // Now stop it
     stopSpeaking({ speechSynthesis: { cancel: cancelSpy } as unknown as SpeechSynthesis });
 
-    expect(pauseSpy).toHaveBeenCalledOnce();
     expect(cancelSpy).toHaveBeenCalledOnce();
   });
 });

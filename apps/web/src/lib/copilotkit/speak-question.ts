@@ -1,18 +1,10 @@
 type SpeakQuestionDeps = {
-  AudioCtor?: typeof Audio;
-  createObjectURL?: (blob: Blob) => string;
-  revokeObjectURL?: (url: string) => void;
   speechSynthesis?: SpeechSynthesis;
   SpeechSynthesisUtteranceCtor?: typeof SpeechSynthesisUtterance;
-  generateSpeech?: (
-    text: string,
-    speed?: number,
-  ) => Promise<{ data: ArrayBuffer; sampleRate: number }>;
+  generateSpeech?: (text: string, speed?: number) => Promise<void>;
   preloadKokoro?: () => Promise<boolean>;
   speed?: number;
 };
-
-let activePlayer: HTMLAudioElement | undefined;
 
 function getBrowserSpeech(deps: SpeakQuestionDeps) {
   const speech = deps.speechSynthesis ?? globalThis.speechSynthesis;
@@ -32,44 +24,7 @@ function speakWithBrowserSpeech(question: string, deps: SpeakQuestionDeps, messa
   return message;
 }
 
-function getObjectUrlApi(deps: SpeakQuestionDeps) {
-  return {
-    createObjectURL: deps.createObjectURL ?? globalThis.URL.createObjectURL.bind(globalThis.URL),
-    revokeObjectURL: deps.revokeObjectURL ?? globalThis.URL.revokeObjectURL.bind(globalThis.URL),
-  };
-}
-
-async function playBlob(blob: Blob, deps: SpeakQuestionDeps) {
-  const AudioPlayer = deps.AudioCtor ?? globalThis.Audio;
-  const { createObjectURL, revokeObjectURL } = getObjectUrlApi(deps);
-  const url = createObjectURL(blob);
-
-  if (activePlayer) {
-    activePlayer.pause?.();
-    activePlayer = undefined;
-  }
-
-  const player = new AudioPlayer(url);
-  activePlayer = player as unknown as HTMLAudioElement;
-
-  try {
-    await player.play();
-    player.addEventListener(
-      "ended",
-      () => {
-        revokeObjectURL(url);
-        activePlayer = undefined;
-      },
-      { once: true },
-    );
-    player.addEventListener("error", () => revokeObjectURL(url), { once: true });
-  } catch (error) {
-    revokeObjectURL(url);
-    throw error;
-  }
-}
-
-async function defaultGenerateSpeech(text: string, speed?: number) {
+async function defaultGenerateSpeech(text: string, speed?: number): Promise<void> {
   const { generateSpeech } = await import("./kokoro-worker-client");
   return generateSpeech(text, speed);
 }
@@ -79,11 +34,9 @@ async function defaultPreloadKokoro() {
   return clientPreload();
 }
 
-async function speakWithKokoro(question: string, deps: SpeakQuestionDeps) {
+async function speakWithKokoro(question: string, deps: SpeakQuestionDeps): Promise<void> {
   const gen = deps.generateSpeech ?? defaultGenerateSpeech;
-  const { data } = await gen(question, deps.speed);
-  const blob = new Blob([data], { type: "audio/wav" });
-  await playBlob(blob, deps);
+  await gen(question, deps.speed);
 }
 
 /**
@@ -129,10 +82,7 @@ export async function speakQuestion(
 export function stopSpeaking(deps: Pick<SpeakQuestionDeps, "speechSynthesis"> = {}): void {
   const speech = deps.speechSynthesis ?? globalThis.speechSynthesis;
   speech?.cancel();
-  if (activePlayer) {
-    activePlayer.pause?.();
-    activePlayer = undefined;
-  }
+  void import("./kokoro-worker-client").then(({ stopSpeechWorker }) => stopSpeechWorker());
 }
 
 export function speakQuestionWithBrowserSpeech(
