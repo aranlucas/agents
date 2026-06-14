@@ -7,7 +7,7 @@ import type { Agent } from "@/components/agent-card";
 const AGENTS: Agent[] = [
   {
     id: "01",
-    href: "/travel",
+    href: "/console/travel",
     name: "Trip Studio",
     tagline: "Real-time itinerary planning",
     description: "Co-plan an itinerary, stream day-by-day, and book with approval.",
@@ -17,7 +17,7 @@ const AGENTS: Agent[] = [
   },
   {
     id: "02",
-    href: "/grocery",
+    href: "/console/grocery",
     name: "Grocery Studio",
     tagline: "Meal plans to Kroger carts",
     description: "Plan meals, find weekly deals, and build a cart you can check out.",
@@ -27,7 +27,7 @@ const AGENTS: Agent[] = [
   },
   {
     id: "03",
-    href: "/fitness",
+    href: "/console/fitness",
     name: "Fitness Studio",
     tagline: "Strava-aware weekly training",
     description: "Build weekly training from Strava history and mountain objectives.",
@@ -37,7 +37,7 @@ const AGENTS: Agent[] = [
   },
   {
     id: "04",
-    href: "/wellness",
+    href: "/console/wellness",
     name: "Wellness Studio",
     tagline: "Meals and workouts together",
     description: "Coordinate grocery and fitness agents into one practical weekly plan.",
@@ -47,7 +47,7 @@ const AGENTS: Agent[] = [
   },
   {
     id: "05",
-    href: "/oral-boards",
+    href: "/console/oral-boards",
     name: "Oral Boards",
     tagline: "Cited pediatric dentistry exams",
     description: "Practice staged ABPD-style cases grounded in bundled source documents.",
@@ -57,7 +57,7 @@ const AGENTS: Agent[] = [
   },
   {
     id: "06",
-    href: "/resume",
+    href: "/console/resume",
     name: "Resume",
     tagline: "Public Q&A for Lucas",
     description: "Ask about Lucas's background, skills, projects, and fit.",
@@ -67,7 +67,7 @@ const AGENTS: Agent[] = [
   },
   {
     id: "07",
-    href: "/a2ui",
+    href: "/console/a2ui",
     name: "A2UI Studio",
     tagline: "Generative UI over AG-UI",
     description: "Ask an ADK agent to render declarative A2UI surfaces through CopilotKit.",
