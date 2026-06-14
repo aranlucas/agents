@@ -10,14 +10,17 @@ const dialogPrimitive = vi.hoisted(() => ({
   Popup: (props: React.ComponentProps<"div">) => <div {...props} />,
   Title: (props: React.ComponentProps<"h2">) => <h2 {...props} />,
   Description: (props: React.ComponentProps<"p">) => <p {...props} />,
-  Close: ({ children, render, ...props }: React.ComponentProps<"button"> & { render?: React.ReactElement }) =>
+  Close: ({
+    children,
+    render,
+    ...props
+  }: React.ComponentProps<"button"> & { render?: React.ReactElement }) =>
     render ? React.cloneElement(render, props, children) : <button {...props}>{children}</button>,
 }));
 
 vi.mock("@base-ui/react/dialog", () => ({
   Dialog: dialogPrimitive,
 }));
-
 
 import { ApprovalCard, ApprovalDialog } from "./approval-dialog";
 import type { ApprovalRequest } from "./approval-dialog";

@@ -1,7 +1,12 @@
 "use client";
 
 import { Button } from "@agents/ui";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@agents/ui/components/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@agents/ui/components/tooltip";
 import { cn } from "@agents/ui/lib/utils";
 import type { LucideIcon } from "lucide-react";
 import { XIcon } from "lucide-react";

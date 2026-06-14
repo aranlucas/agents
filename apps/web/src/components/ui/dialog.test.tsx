@@ -10,7 +10,11 @@ const dialogPrimitive = vi.hoisted(() => ({
   Popup: (props: React.ComponentProps<"div">) => <div {...props} />,
   Title: (props: React.ComponentProps<"h2">) => <h2 {...props} />,
   Description: (props: React.ComponentProps<"p">) => <p {...props} />,
-  Close: ({ children, render, ...props }: React.ComponentProps<"button"> & { render?: React.ReactElement }) =>
+  Close: ({
+    children,
+    render,
+    ...props
+  }: React.ComponentProps<"button"> & { render?: React.ReactElement }) =>
     render ? React.cloneElement(render, props, children) : <button {...props}>{children}</button>,
 }));
 
@@ -18,11 +22,20 @@ vi.mock("@base-ui/react/dialog", () => ({
   Dialog: dialogPrimitive,
 }));
 
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@agents/ui/components/dialog";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+} from "@agents/ui/components/dialog";
 
 describe("Dialog components", () => {
   it("renders with all subcomponents", async () => {
-    await renderSmoke("dialog-components", (
+    await renderSmoke(
+      "dialog-components",
       <Dialog open>
         <DialogTrigger>Open</DialogTrigger>
         <DialogContent>
@@ -32,12 +45,13 @@ describe("Dialog components", () => {
           </DialogHeader>
           <DialogFooter showCloseButton>Footer</DialogFooter>
         </DialogContent>
-      </Dialog>
-    ));
+      </Dialog>,
+    );
   });
 
   it("interacts without throwing", async () => {
-    await interactSmoke("dialog-components", (
+    await interactSmoke(
+      "dialog-components",
       <Dialog open>
         <DialogTrigger>Open</DialogTrigger>
         <DialogContent>
@@ -47,7 +61,7 @@ describe("Dialog components", () => {
           </DialogHeader>
           <DialogFooter>Footer</DialogFooter>
         </DialogContent>
-      </Dialog>
-    ));
+      </Dialog>,
+    );
   });
 });

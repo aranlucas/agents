@@ -41,7 +41,8 @@ describe("DocumentCanvas", () => {
   });
 
   it("renders drafting non-streaming state", async () => {
-    await renderSmoke("document-canvas", (
+    await renderSmoke(
+      "document-canvas",
       <DocumentCanvas
         {...defaultProps}
         startDate="bad-date"
@@ -50,11 +51,14 @@ describe("DocumentCanvas", () => {
         flights=""
         status="drafting"
         isStreaming={false}
-      />
-    ));
+      />,
+    );
   });
 
   it("interacts without throwing", async () => {
-    await interactSmoke("document-canvas", <DocumentCanvas {...defaultProps} isStreaming={false} />);
+    await interactSmoke(
+      "document-canvas",
+      <DocumentCanvas {...defaultProps} isStreaming={false} />,
+    );
   });
 });

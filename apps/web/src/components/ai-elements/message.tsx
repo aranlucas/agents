@@ -2,7 +2,12 @@
 
 import { Button } from "@agents/ui";
 import { ButtonGroup, ButtonGroupText } from "@agents/ui/components/button-group";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@agents/ui/components/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@agents/ui/components/tooltip";
 import { cn } from "@agents/ui/lib/utils";
 import { cjk } from "@streamdown/cjk";
 import { code } from "@streamdown/code";

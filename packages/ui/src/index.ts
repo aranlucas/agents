@@ -15,7 +15,12 @@ export {
 } from "./components/avatar";
 export { Badge, badgeVariants } from "./components/badge";
 export { Button, buttonVariants } from "./components/button";
-export { ButtonGroup, ButtonGroupSeparator, ButtonGroupText, buttonGroupVariants } from "./components/button-group";
+export {
+  ButtonGroup,
+  ButtonGroupSeparator,
+  ButtonGroupText,
+  buttonGroupVariants,
+} from "./components/button-group";
 export {
   Card,
   CardAction,
@@ -34,11 +39,7 @@ export {
   type CarouselApi,
   useCarousel,
 } from "./components/carousel";
-export {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "./components/collapsible";
+export { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./components/collapsible";
 export {
   Command,
   CommandDialog,
@@ -122,10 +123,5 @@ export { Spinner } from "./components/spinner";
 export { Switch } from "./components/switch";
 export { Tabs, TabsContent, TabsList, TabsTrigger, tabsListVariants } from "./components/tabs";
 export { Textarea } from "./components/textarea";
-export {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "./components/tooltip";
+export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./components/tooltip";
 export { cn } from "./lib/utils";
