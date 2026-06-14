@@ -227,7 +227,7 @@ vi.mock("react-native-reanimated", () => ({
   ReduceMotion: { Never: "never" },
   createAnimatedComponent: (Component: ElementType) => Component,
   interpolate: (value: number, input: number[], output: number[]) =>
-    value <= input[0] ? output[0] : output[output.length - 1],
+    value <= input[0] ? output[0] : output.at(-1),
   runOnJS: (fn: () => void) => fn,
   useAnimatedProps: (fn: () => unknown) => fn(),
   useAnimatedStyle: (fn: () => unknown) => fn(),

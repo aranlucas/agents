@@ -11,7 +11,7 @@ function joinLabels(missing: ProviderId[]): string {
   const labels = missing.map((id) => PROVIDERS[id].label);
   if (labels.length <= 1) return labels.join("");
   if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
-  return `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
+  return `${labels.slice(0, -1).join(", ")}, and ${labels.at(-1)}`;
 }
 
 export function ConnectNotice({

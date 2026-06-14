@@ -1,7 +1,7 @@
 import { create } from "react-test-renderer";
 import { describe, expect, it } from "vitest";
 
-import { SpeakQuestionToolCall } from "./SpeakQuestionToolCall";
+import { SpeakQuestionToolCall } from "./speak-question-tool-call";
 
 describe("SpeakQuestionToolCall", () => {
   it("renders while tool arguments are still unavailable", () => {

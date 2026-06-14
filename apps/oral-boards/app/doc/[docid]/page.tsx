@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
-import { getStore } from "@/lib/searchStore";
-import { PageLayout } from "@/components/PageLayout";
-import { Navigation } from "@/components/Navigation";
-import DocBody from "./DocBody";
+import { getStore } from "@/lib/search-store";
+import { PageLayout } from "@/components/page-layout";
+import { Navigation } from "@/components/navigation";
+import DocBody from "./doc-body";
 
 export default async function DocPage({ params }: { params: Promise<{ docid: string }> }) {
   const { docid } = await params;

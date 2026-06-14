@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { PageLayout } from "@/components/PageLayout";
-import { Navigation } from "@/components/Navigation";
-import { PageHeader } from "@/components/PageHeader";
+import { PageLayout } from "@/components/page-layout";
+import { Navigation } from "@/components/navigation";
+import { PageHeader } from "@/components/page-header";
 import { Button } from "@agents/ui";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@agents/ui";
 import { Badge } from "@agents/ui";

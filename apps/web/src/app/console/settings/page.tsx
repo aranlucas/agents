@@ -2,7 +2,7 @@
 
 import { UserProfile } from "@clerk/nextjs";
 
-import { NavRail, SETTINGS_PATH } from "@/components/chat/NavRail";
+import { NavRail, SETTINGS_PATH } from "@/components/chat/nav-rail";
 
 export default function SettingsPage() {
   return (

@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import CaseCard from "@/components/CaseCard";
-import { getAllCases } from "@/lib/caseRotation";
-import { PageLayout } from "@/components/PageLayout";
-import { Navigation } from "@/components/Navigation";
-import { PageHeader } from "@/components/PageHeader";
-import { IconLabel } from "@/components/IconLabel";
+import CaseCard from "@/components/case-card";
+import { getAllCases } from "@/lib/case-rotation";
+import { PageLayout } from "@/components/page-layout";
+import { Navigation } from "@/components/navigation";
+import { PageHeader } from "@/components/page-header";
+import { IconLabel } from "@/components/icon-label";
 import { Button } from "@agents/ui";
 import { Card, CardContent, CardHeader, CardTitle } from "@agents/ui";
 import { Badge } from "@agents/ui";

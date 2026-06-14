@@ -44,9 +44,9 @@ import type { AgentConfig, AgentId } from "./agents/registry";
 import { toRenderItems, type AguiMessage, type AguiToolCall } from "./messages";
 import { selectArtifact } from "./artifact";
 import { toToolState } from "./tool-adapter";
-import { AgentSelector } from "./AgentSelector";
-import { ConnectNotice } from "./ConnectNotice";
-import { TranscribeButton } from "./TranscribeButton";
+import { AgentSelector } from "./agent-selector";
+import { ConnectNotice } from "./connect-notice";
+import { TranscribeButton } from "./transcribe-button";
 import { useRequiredConnections } from "@/hooks/use-required-connections";
 
 // Registers the wildcard tool renderer that `useRenderToolCall()` resolves to
@@ -155,7 +155,7 @@ export function ChatSurface({
                   </Message>
                 );
               }
-              const last = item === items[items.length - 1];
+              const last = item === items.at(-1);
               if (item.kind === "reasoning") {
                 // Standalone "Thinking" block, rendered in message order. It is
                 // streaming only while it is the final item and the agent is running.

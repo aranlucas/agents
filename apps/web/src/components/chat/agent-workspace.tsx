@@ -7,9 +7,9 @@ import { getAgentConfig, type AgentId } from "@/components/chat/agents/registry"
 import { useNewThread } from "@/components/chat/use-new-thread";
 import { AgentExtensionSlot } from "@/components/chat/agents/extensions";
 import { AgentSuggestions } from "@/components/chat/agents/suggestions";
-import { ChatSurface } from "@/components/chat/ChatSurface";
-import { ArtifactPanel } from "@/components/chat/ArtifactPanel";
-import { NavRail } from "@/components/chat/NavRail";
+import { ChatSurface } from "@/components/chat/chat-surface";
+import { ArtifactPanel } from "@/components/chat/artifact-panel";
+import { NavRail } from "@/components/chat/nav-rail";
 import { WorkspaceShell, useArtifactPanel } from "@/components/workspace-shell";
 import { selectArtifact } from "@/components/chat/artifact";
 import { cssVars } from "@/lib/css";

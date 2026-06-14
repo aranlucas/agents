@@ -8,8 +8,8 @@ import { Button } from "@agents/ui";
 import { getAgentConfig } from "@/components/chat/agents/registry";
 import { useNewThread } from "@/components/chat/use-new-thread";
 import { AgentExtensionSlot } from "@/components/chat/agents/extensions";
-import { NavRail } from "@/components/chat/NavRail";
-import { OralBoardsPanel } from "@/components/chat/oral-boards/OralBoardsPanel";
+import { NavRail } from "@/components/chat/nav-rail";
+import { OralBoardsPanel } from "@/components/chat/oral-boards/oral-boards-panel";
 import { OralBoardsQuestionProvider } from "@/lib/copilotkit/oral-boards-question-context";
 import { useArtifactPanel } from "@/components/workspace-shell";
 import { cssVars } from "@/lib/css";
@@ -83,7 +83,7 @@ export function OralBoardsWorkspace() {
 
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const examState = (agent?.state ?? {}) as OralBoardsState;
-  const hasPanel = Boolean(examState.case && examState.case.trim());
+  const hasPanel = Boolean(examState.case?.trim());
   const isRunning = agent?.isRunning ?? false;
   const isGenerating = isRunning && !hasPanel;
 

@@ -52,7 +52,7 @@ describe("TranscribeButton", () => {
   });
 
   it("cancels an active recording without transcribing it", async () => {
-    const { TranscribeButton } = await import("./TranscribeButton");
+    const { TranscribeButton } = await import("./transcribe-button");
     recorderStart.mockResolvedValue(undefined);
     recorderStop.mockResolvedValue(new Blob(["audio"], { type: "audio/webm" }));
 

@@ -3,7 +3,7 @@
 import { useFrontendTool } from "@copilotkit/react-core/v2";
 import { z } from "zod";
 
-import { SpeakQuestionToolCall } from "@/components/chat/SpeakQuestionToolCall";
+import { SpeakQuestionToolCall } from "@/components/chat/speak-question-tool-call";
 import { useOralBoardsQuestion } from "@/lib/copilotkit/oral-boards-question-context";
 import type { AgentId } from "./registry";
 

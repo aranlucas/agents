@@ -3,9 +3,9 @@
 import { useState, useRef } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { PageLayout } from "@/components/PageLayout";
-import { Navigation } from "@/components/Navigation";
-import { PageHeader } from "@/components/PageHeader";
+import { PageLayout } from "@/components/page-layout";
+import { Navigation } from "@/components/navigation";
+import { PageHeader } from "@/components/page-header";
 import { Search, FileText, Loader2, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 
 interface SearchResult {

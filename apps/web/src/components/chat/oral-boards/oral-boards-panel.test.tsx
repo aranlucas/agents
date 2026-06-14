@@ -47,7 +47,7 @@ vi.mock("@/lib/copilotkit/use-answer-recorder", () => ({
   }),
 }));
 
-import { OralBoardsPanel } from "./OralBoardsPanel";
+import { OralBoardsPanel } from "./oral-boards-panel";
 
 const noop = () => {};
 

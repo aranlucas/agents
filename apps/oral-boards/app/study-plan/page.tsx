@@ -1,8 +1,8 @@
-import { studyPlan } from "@/data/studyPlan";
-import { PageLayout } from "@/components/PageLayout";
-import { Navigation } from "@/components/Navigation";
-import { PageHeader } from "@/components/PageHeader";
-import { InfoBox } from "@/components/InfoBox";
+import { studyPlan } from "@/data/study-plan";
+import { PageLayout } from "@/components/page-layout";
+import { Navigation } from "@/components/navigation";
+import { PageHeader } from "@/components/page-header";
+import { InfoBox } from "@/components/info-box";
 import { Card, CardContent, CardHeader, CardTitle } from "@agents/ui";
 import { Badge } from "@agents/ui";
 import {
@@ -14,7 +14,7 @@ import {
   ExternalLink,
   Calendar,
 } from "lucide-react";
-import { examTimeline } from "@/data/examFramework";
+import { examTimeline } from "@/data/exam-framework";
 
 export default function StudyPlanPage() {
   const currentMonth = new Date().getMonth() + 1; // 1-12

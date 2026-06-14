@@ -51,7 +51,7 @@ export function useAgentChat<TState extends Record<string, unknown>>(
       }
       return;
     }
-    const last = rawMessages[rawMessages.length - 1];
+    const last = rawMessages.at(-1);
     if (last?.role === "assistant" && last.content !== prevContentRef.current) {
       prevContentRef.current = last.content;
       streamingStore.set(last.content);

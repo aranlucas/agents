@@ -7,4 +7,4 @@ export {
   behaviorManagementCases,
   orthodonticsSpaceManagementCases,
   oralPathologyMedicineCases,
-} from "./caseLibrary";
+} from "./caseLibrary/index";

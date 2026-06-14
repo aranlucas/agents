@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@agents/ui";
 import { Badge } from "@agents/ui";
 import { buttonVariants } from "@agents/ui";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@agents/ui";
-import { InfoBox } from "@/components/InfoBox";
-import { IconLabel } from "@/components/IconLabel";
+import { InfoBox } from "@/components/info-box";
+import { IconLabel } from "@/components/icon-label";
 import { ChevronDown, ChevronUp, BookOpen, Clock } from "lucide-react";
 
 interface CaseCardProps {

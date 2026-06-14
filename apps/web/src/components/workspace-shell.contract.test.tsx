@@ -1,5 +1,5 @@
 import { WorkspaceShell } from "./workspace-shell";
-import { ChatSurface } from "./chat/ChatSurface";
+import { ChatSurface } from "./chat/chat-surface";
 import { getAgentConfig } from "./chat/agents/registry";
 
 // Compile-time contract: the shell composes rail/chat/artifact, and ChatSurface

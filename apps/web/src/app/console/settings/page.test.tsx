@@ -6,7 +6,7 @@ vi.mock("@clerk/nextjs", () => ({
   UserProfile: () => <div data-user-profile />,
 }));
 
-vi.mock("@/components/chat/NavRail", () => ({
+vi.mock("@/components/chat/nav-rail", () => ({
   NavRail: () => <div data-nav-rail />,
   SETTINGS_PATH: "/console/settings",
 }));

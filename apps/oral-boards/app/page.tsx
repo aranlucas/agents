@@ -1,8 +1,8 @@
-import CaseCard from "@/components/CaseCard";
-import { getCaseOfDay } from "@/lib/caseRotation";
-import { PageLayout } from "@/components/PageLayout";
-import { Navigation } from "@/components/Navigation";
-import { PageHeader } from "@/components/PageHeader";
+import CaseCard from "@/components/case-card";
+import { getCaseOfDay } from "@/lib/case-rotation";
+import { PageLayout } from "@/components/page-layout";
+import { Navigation } from "@/components/navigation";
+import { PageHeader } from "@/components/page-header";
 import { Badge } from "@agents/ui";
 import { Calendar } from "lucide-react";
 
