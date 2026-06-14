@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+import React, { forwardRef, useImperativeHandle } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -19,6 +21,26 @@ vi.mock("@/lib/copilotkit/oral-boards-question", () => ({
   useCurrentQuestion: vi.fn().mockReturnValue(""),
 }));
 
+vi.mock("@copilotkit/react-core/v2", () => ({
+  CopilotChatAudioRecorder: forwardRef(function MockAudioRecorder(_, ref) {
+    useImperativeHandle(ref, () => ({
+      start: vi.fn().mockResolvedValue(undefined),
+      stop: vi.fn().mockResolvedValue(new Blob(["audio"])),
+    }));
+    return null;
+  }),
+}));
+
+vi.mock("@/lib/copilotkit/use-answer-recorder", () => ({
+  useAnswerRecorder: (onTranscript: (t: string) => void) => ({
+    recording: false,
+    transcribing: false,
+    micSupported: false,
+    toggle: vi.fn(),
+    recorderRef: { current: null },
+  }),
+}));
+
 import { OralBoardsPanel } from "./OralBoardsPanel";
 
 const noop = () => {};
@@ -28,6 +50,8 @@ const baseProps = {
   onClose: noop,
   onToggleFullscreen: noop,
   onReady: noop,
+  onAnswer: noop,
+  isRunning: false,
 };
 
 describe("OralBoardsPanel — presenting", () => {
@@ -62,33 +86,67 @@ describe("OralBoardsPanel — presenting", () => {
 });
 
 describe("OralBoardsPanel — questioning", () => {
-  it("renders collapsible vignette summary and current question fallback", () => {
+  it("renders the active question from useCurrentQuestion (live)", async () => {
+    const { useCurrentQuestion } = await import("@/lib/copilotkit/oral-boards-question");
+    vi.mocked(useCurrentQuestion).mockReturnValue("What is your initial impression?");
+
     const state: OralBoardsState = {
-      case: "A 4-year-old presents with early childhood caries.",
+      case: "Case.",
       case_sources: [],
       status: "questioning",
-      transcript: [
-        { question: "What is your initial impression?", answer: "", feedback: "", citations: [] },
-      ],
+      transcript: [],
     };
 
     render(<OralBoardsPanel state={state} {...baseProps} />);
 
-    expect(screen.getByText("Case vignette")).toBeDefined();
-    // fallback to last transcript question when useCurrentQuestion returns ""
     expect(screen.getByText("What is your initial impression?")).toBeDefined();
+
+    vi.mocked(useCurrentQuestion).mockReturnValue("");
   });
 
-  it("renders prior exchange feedback in the transcript list", () => {
+  it("calls onAnswer with trimmed text and clears textarea on Submit", async () => {
+    const onAnswer = vi.fn();
     const state: OralBoardsState = {
-      case: "Case text.",
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: [],
+    };
+
+    render(<OralBoardsPanel state={state} {...baseProps} onAnswer={onAnswer} />);
+
+    const textarea = screen.getByPlaceholderText("Type your answer…");
+    await userEvent.type(textarea, "  My answer  ");
+    await userEvent.click(screen.getByRole("button", { name: "Submit" }));
+
+    expect(onAnswer).toHaveBeenCalledWith("My answer");
+    expect((textarea as HTMLTextAreaElement).value).toBe("");
+  });
+
+  it("disables Submit while isRunning", () => {
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: [],
+    };
+
+    render(<OralBoardsPanel state={state} {...baseProps} isRunning={true} />);
+
+    const submitBtn = screen.getByRole("button", { name: "Submit" });
+    expect(submitBtn).toHaveProperty("disabled", true);
+  });
+
+  it("shows the most recent exchange as an always-visible feedback block", () => {
+    const state: OralBoardsState = {
+      case: "Case.",
       case_sources: [],
       status: "questioning",
       transcript: [
         {
-          question: "What additional history do you need?",
-          answer: "I would ask about diet.",
-          feedback: "**Interview phase:** Data gathering and diagnosis\nGood start.",
+          question: "What is your initial impression?",
+          answer: "I see caries.",
+          feedback: "Good start.",
           citations: [],
         },
       ],
@@ -96,7 +154,43 @@ describe("OralBoardsPanel — questioning", () => {
 
     render(<OralBoardsPanel state={state} {...baseProps} />);
 
-    expect(screen.getByText("Your answer: I would ask about diet.")).toBeDefined();
+    expect(screen.getByText("Your answer: I see caries.")).toBeDefined();
+    expect(screen.queryByRole("button", { name: /Q1 ·/ })).toBeNull();
+  });
+
+  it("older exchanges collapse to chips; only the last stays expanded", async () => {
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: [
+        {
+          question: "What is your initial impression?",
+          answer: "I see caries.",
+          feedback: "Good.",
+          citations: [],
+        },
+        {
+          question: "What data do you need?",
+          answer: "Radiographs.",
+          feedback: "Correct.",
+          citations: [],
+        },
+      ],
+    };
+
+    render(<OralBoardsPanel state={state} {...baseProps} />);
+
+    const chip = screen.getByRole("button", { name: /Q1 ·/ });
+    expect(chip).toBeDefined();
+    expect(screen.queryByText("Your answer: I see caries.")).toBeNull();
+    expect(screen.getByText("Your answer: Radiographs.")).toBeDefined();
+
+    await userEvent.click(chip);
+    expect(screen.getByText("Your answer: I see caries.")).toBeDefined();
+
+    await userEvent.click(chip);
+    expect(screen.queryByText("Your answer: I see caries.")).toBeNull();
   });
 });
 
