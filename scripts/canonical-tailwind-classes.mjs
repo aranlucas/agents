@@ -6,7 +6,7 @@ import { execFileSync } from "node:child_process";
 
 const root = process.cwd();
 const check = process.argv.includes("--check");
-const cssPath = "apps/web/src/app/globals.css";
+const cssPath = "packages/ui/src/styles/globals.css";
 const globs = ["*.{ts,tsx,js,jsx}", "*.css"];
 const sourceFilePattern = /\.(?:ts|tsx|js|jsx|css)$/;
 
