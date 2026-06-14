@@ -18,19 +18,17 @@ import {
 import { speak, stopSpeaking } from "@/lib/copilotkit/speak-question";
 import { useCurrentQuestion } from "@/lib/copilotkit/oral-boards-question";
 
-const CASE_SPEED = 0.8;
-
 function stripMarkdownForSpeech(text: string): string {
   return text
-    .replace(/^#{1,6}\s+/gm, "")              // headers → bare text
-    .replace(/\*{1,3}([^*]+)\*{1,3}/g, "$1")  // bold / italic
-    .replace(/_{1,3}([^_]+)_{1,3}/g, "$1")    // underscore emphasis
-    .replace(/`+([^`]+)`+/g, "$1")            // inline code
-    .replace(/^>\s*/gm, "")                   // blockquotes
-    .replace(/^[-*+]\s+/gm, "")               // unordered lists
-    .replace(/^\d+\.\s+/gm, "")               // ordered lists
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")  // links → link text
-    .replace(/\[[^\]]*\]/g, "")               // remaining brackets (inline citations)
+    .replace(/^#{1,6}\s+/gm, "") // headers → bare text
+    .replace(/\*{1,3}([^*]+)\*{1,3}/g, "$1") // bold / italic
+    .replace(/_{1,3}([^_]+)_{1,3}/g, "$1") // underscore emphasis
+    .replace(/`+([^`]+)`+/g, "$1") // inline code
+    .replace(/^>\s*/gm, "") // blockquotes
+    .replace(/^[-*+]\s+/gm, "") // unordered lists
+    .replace(/^\d+\.\s+/gm, "") // ordered lists
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // links → link text
+    .replace(/\[[^\]]*\]/g, "") // remaining brackets (inline citations)
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
@@ -69,9 +67,7 @@ function VignetteBody({
       return;
     }
     setPlaying(true);
-    void speak(stripMarkdownForSpeech(caseBody), { speed: CASE_SPEED }).finally(() =>
-      setPlaying(false),
-    );
+    void speak(stripMarkdownForSpeech(caseBody)).finally(() => setPlaying(false));
   };
 
   return (
@@ -147,7 +143,7 @@ function QuestioningPane({
           Case vignette
         </summary>
         <div className="mt-2">
-          <VignetteBody caseBody={caseBody} sources={sources} showTts={false} />
+          <VignetteBody caseBody={caseBody} sources={sources} />
         </div>
       </details>
 

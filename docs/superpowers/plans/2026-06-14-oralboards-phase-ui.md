@@ -12,20 +12,21 @@
 
 ## File map
 
-| Action | Path |
-|--------|------|
-| Modify | `agents/oralboards/src/oralboards_agent/agent.py` |
-| Delete | `apps/web/src/components/chat/oral-boards/tab-for-status.ts` |
-| Delete | `apps/web/src/components/chat/oral-boards/tab-for-status.test.ts` |
-| Rewrite | `apps/web/src/components/chat/oral-boards/OralBoardsPanel.tsx` |
+| Action  | Path                                                                |
+| ------- | ------------------------------------------------------------------- |
+| Modify  | `agents/oralboards/src/oralboards_agent/agent.py`                   |
+| Delete  | `apps/web/src/components/chat/oral-boards/tab-for-status.ts`        |
+| Delete  | `apps/web/src/components/chat/oral-boards/tab-for-status.test.ts`   |
+| Rewrite | `apps/web/src/components/chat/oral-boards/OralBoardsPanel.tsx`      |
 | Rewrite | `apps/web/src/components/chat/oral-boards/OralBoardsPanel.test.tsx` |
-| Modify | `apps/web/src/components/chat/OralBoardsWorkspace.tsx` |
+| Modify  | `apps/web/src/components/chat/OralBoardsWorkspace.tsx`              |
 
 ---
 
 ## Task 1: Update the system prompt
 
 **Files:**
+
 - Modify: `agents/oralboards/src/oralboards_agent/agent.py:218-244`
 
 - [ ] **Step 1: Replace the `## Exam flow` section in `_STATIC_INSTRUCTION`**
@@ -176,6 +177,7 @@ git commit -m "feat(oralboards): update system prompt with 5-phase interview seq
 ## Task 2: Delete tab-for-status
 
 **Files:**
+
 - Delete: `apps/web/src/components/chat/oral-boards/tab-for-status.ts`
 - Delete: `apps/web/src/components/chat/oral-boards/tab-for-status.test.ts`
 
@@ -206,6 +208,7 @@ git commit -m "chore(oralboards): delete tab-for-status helper, no longer needed
 ## Task 3: Rewrite OralBoardsPanel.tsx
 
 **Files:**
+
 - Rewrite: `apps/web/src/components/chat/oral-boards/OralBoardsPanel.tsx`
 
 - [ ] **Step 1: Write the new panel**
@@ -239,15 +242,15 @@ const CASE_SPEED = 0.8;
 
 function stripMarkdownForSpeech(text: string): string {
   return text
-    .replace(/^#{1,6}\s+/gm, "")              // headers → bare text
-    .replace(/\*{1,3}([^*]+)\*{1,3}/g, "$1")  // bold / italic
-    .replace(/_{1,3}([^_]+)_{1,3}/g, "$1")    // underscore emphasis
-    .replace(/`+([^`]+)`+/g, "$1")            // inline code
-    .replace(/^>\s*/gm, "")                   // blockquotes
-    .replace(/^[-*+]\s+/gm, "")               // unordered lists
-    .replace(/^\d+\.\s+/gm, "")               // ordered lists
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")  // links → link text
-    .replace(/\[[^\]]*\]/g, "")               // remaining brackets (inline citations)
+    .replace(/^#{1,6}\s+/gm, "") // headers → bare text
+    .replace(/\*{1,3}([^*]+)\*{1,3}/g, "$1") // bold / italic
+    .replace(/_{1,3}([^_]+)_{1,3}/g, "$1") // underscore emphasis
+    .replace(/`+([^`]+)`+/g, "$1") // inline code
+    .replace(/^>\s*/gm, "") // blockquotes
+    .replace(/^[-*+]\s+/gm, "") // unordered lists
+    .replace(/^\d+\.\s+/gm, "") // ordered lists
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // links → link text
+    .replace(/\[[^\]]*\]/g, "") // remaining brackets (inline citations)
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
@@ -286,7 +289,9 @@ function VignetteBody({
       return;
     }
     setPlaying(true);
-    void speak(stripMarkdownForSpeech(caseBody), { speed: CASE_SPEED }).finally(() => setPlaying(false));
+    void speak(stripMarkdownForSpeech(caseBody), { speed: CASE_SPEED }).finally(() =>
+      setPlaying(false),
+    );
   };
 
   return (
@@ -428,9 +433,7 @@ export function OralBoardsPanel({
           <ArtifactClose aria-label="Close panel" onClick={onClose} />
         </ArtifactActions>
       </ArtifactHeader>
-      <ArtifactContent
-        className={status === "presenting" ? "flex h-full flex-col" : "space-y-4"}
-      >
+      <ArtifactContent className={status === "presenting" ? "flex h-full flex-col" : "space-y-4"}>
         {status === "presenting" && (
           <PresentingPane caseBody={caseBody} sources={sources} onReady={onReady} />
         )}
@@ -458,6 +461,7 @@ git commit -m "feat(oralboards): rewrite panel with presenting/questioning/compl
 ## Task 4: Update OralBoardsPanel tests
 
 **Files:**
+
 - Rewrite: `apps/web/src/components/chat/oral-boards/OralBoardsPanel.test.tsx`
 
 - [ ] **Step 1: Write updated tests**
@@ -612,6 +616,7 @@ git commit -m "test(oralboards): update panel tests for three-pane layout"
 ## Task 5: Wire onReady in OralBoardsWorkspace
 
 **Files:**
+
 - Modify: `apps/web/src/components/chat/OralBoardsWorkspace.tsx`
 
 - [ ] **Step 1: Add the handleReady callback and pass onReady to the panel**

@@ -20,11 +20,11 @@ The current oral-boards panel is a persistent split showing the case vignette al
 
 ## Three-pane model
 
-| `state.status` | Pane content |
-|---|---|
-| `presenting` | Full-pane case vignette + TTS button + "Ready to begin" CTA pinned to bottom |
-| `questioning` | Collapsible vignette (collapsed by default) · current question · prior exchanges |
-| `complete` | Score card · full Q&A transcript |
+| `state.status` | Pane content                                                                     |
+| -------------- | -------------------------------------------------------------------------------- |
+| `presenting`   | Full-pane case vignette + TTS button + "Ready to begin" CTA pinned to bottom     |
+| `questioning`  | Collapsible vignette (collapsed by default) · current question · prior exchanges |
+| `complete`     | Score card · full Q&A transcript                                                 |
 
 The `idle` status shows nothing (agent hasn't presented a case yet). The `tab-for-status.ts` helper and `OralBoardsTab` type are deleted.
 
@@ -142,17 +142,20 @@ default (idle)           → null
 ```
 
 **`PresentingPane`**
+
 - Full-pane vignette with `Streamdown`
 - "Present case" TTS button
 - Citation chips
 - "Ready to begin" `<Button>` pinned to bottom; on click: `setState({ status: "questioning" })` + `appendMessage("ready")`
 
 **`QuestioningPane`**
+
 - `<details>` collapsed vignette at top (label: "Case vignette ▸")
 - Current question via `useCurrentQuestion()` with fallback to `transcript.at(-1)?.question`
 - Prior exchanges rendered below (question + user answer + feedback + citation chips)
 
 **`FeedbackPane`**
+
 - Score card via `Streamdown`
 - Full transcript (same exchange renderer as Q&A)
 

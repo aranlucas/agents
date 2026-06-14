@@ -4,7 +4,6 @@ import { useFrontendTool } from "@copilotkit/react-core/v2";
 import { z } from "zod";
 
 import { SpeakQuestionToolCall } from "@/components/chat/SpeakQuestionToolCall";
-import { speakQuestion } from "@/lib/copilotkit/speak-question";
 import { setCurrentQuestion } from "@/lib/copilotkit/oral-boards-question";
 import type { AgentId } from "./registry";
 
@@ -18,15 +17,18 @@ export function OralBoardsExtension({ agentId }: { agentId: AgentId }) {
   useFrontendTool(
     {
       name: "ask_question",
-      description: "Speak the next oral boards examiner question aloud in the chat UI.",
+      description:
+        "Register the current examiner question so it appears in the exam panel. " +
+        "Call this once per turn with the exact question text before writing the question in chat. " +
+        "Do not call this more than once per turn.",
       available: true,
       agentId,
       parameters: z.object({
-        question: z.string().describe("The exact examiner question to speak aloud"),
+        question: z.string().describe("The exact examiner question to display in the exam panel"),
       }),
       handler: ({ question }) => {
         setCurrentQuestion(question);
-        return speakQuestion(question);
+        return Promise.resolve("ok");
       },
       render: ({ status, args, result }) => (
         <SpeakQuestionToolCall status={status} parameters={args ?? {}} result={result} />

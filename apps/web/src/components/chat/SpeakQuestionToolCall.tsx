@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { RotateCcwIcon, Volume2Icon } from "lucide-react";
+import { PlayIcon, Volume2Icon } from "lucide-react";
 
 import { Button } from "@agents/ui";
 import { Tool, ToolContent, ToolHeader } from "@/components/ai-elements/tool";
@@ -40,7 +40,7 @@ export function SpeakQuestionToolCall({
             </div>
             <div className="min-w-0 flex-1 space-y-1">
               <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                Spoken examiner question
+                Examiner question
               </p>
               <p className="text-sm leading-relaxed">
                 {parameters.question ?? "Preparing audio..."}
@@ -48,8 +48,8 @@ export function SpeakQuestionToolCall({
             </div>
             {status === "complete" && (
               <Button type="button" variant="outline" size="sm" className="gap-2" onClick={replay}>
-                <RotateCcwIcon className="size-3.5" />
-                Replay
+                <PlayIcon className="size-3.5" />
+                Play
               </Button>
             )}
           </div>

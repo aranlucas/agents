@@ -8,7 +8,7 @@ import { agentBaseUrl } from "@/lib/agent-url";
 import { getKrogerAccessToken } from "@/lib/kroger-token";
 import { getStravaAccessToken } from "@/lib/strava-token";
 import { AGENT_BACKEND_PATHS } from "@/components/chat/agents/registry";
-import { HFTranscriptionService } from "@/lib/copilotkit/hf-transcription";
+import { GroqTranscriptionService } from "@/lib/copilotkit/groq-transcription";
 import { isPublicCopilotPath } from "./guard";
 
 const CLERK_USER_ID_HEADER = "x-clerk-user-id";
@@ -25,8 +25,8 @@ const runtime = new CopilotSseRuntime({
       }),
     ]),
   ),
-  transcriptionService: env.HUGGING_FACE_API_KEY
-    ? new HFTranscriptionService(env.HUGGING_FACE_API_KEY)
+  transcriptionService: env.GROQ_API_KEY
+    ? new GroqTranscriptionService(env.GROQ_API_KEY)
     : undefined,
   a2ui: { injectA2UITool: true, agents: ["a2ui"] },
   debug: env.COPILOTKIT_DEBUG,
