@@ -97,3 +97,11 @@ body {
   vertical-align: text-bottom;
   animation: blink 1s steps(2) infinite;
 }
+
+/* Oral boards: make the CopilotKit sidebar read-only — hide input toolbar */
+[data-copilotkit-sidebar] form,
+[data-copilotkit-sidebar] [role="toolbar"],
+.copilotKitSidebarContentWrapper form,
+.copilotKitSidebarContentWrapper [role="toolbar"] {
+  display: none !important;
+}
