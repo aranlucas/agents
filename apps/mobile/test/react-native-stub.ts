@@ -1,5 +1,5 @@
-import React from "react";
-
+import type { ReactNode } from "react";
+import { Fragment, createElement } from "react";
 // Minimal `react-native` stub for running unit tests under Node. The host
 // component names keep react-test-renderer traversal simple.
 
@@ -23,15 +23,15 @@ export function FlatList<T>({
   ...props
 }: {
   data?: T[];
-  renderItem?: (info: { item: T; index: number }) => React.ReactNode;
-  ListEmptyComponent?: React.ReactNode;
+  renderItem?: (info: { item: T; index: number }) => ReactNode;
+  ListEmptyComponent?: ReactNode;
 }) {
-  return React.createElement(
+  return createElement(
     "FlatList",
     props,
     data?.length
       ? data.map((item, index) =>
-          React.createElement(React.Fragment, { key: index }, renderItem?.({ item, index })),
+          createElement(Fragment, { key: index }, renderItem?.({ item, index })),
         )
       : ListEmptyComponent,
   );

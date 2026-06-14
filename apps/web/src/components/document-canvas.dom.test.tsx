@@ -1,15 +1,15 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import React from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("streamdown", () => ({
-  Streamdown: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
+  Streamdown: ({ children }: { children: ReactNode }) => <span>{children}</span>,
 }));
 
 vi.mock("@base-ui/react/input", () => ({
-  Input: (props: React.ComponentProps<"input">) => <input {...props} />,
+  Input: (props: ComponentProps<"input">) => <input {...props} />,
 }));
 
 import { DocumentCanvas } from "./document-canvas";

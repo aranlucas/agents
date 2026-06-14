@@ -135,7 +135,7 @@ const useTheme = (enabled: boolean) => {
 interface PersonaWithModelProps {
   rive: ReturnType<typeof useRive>["rive"];
   source: (typeof sources)[keyof typeof sources];
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 const PersonaWithModel = memo(({ rive, source, children }: PersonaWithModelProps) => {

@@ -1,4 +1,5 @@
 "use client";
+import type { ReactNode } from "react";
 
 import { Button } from "@agents/ui";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@agents/ui";
@@ -194,7 +195,7 @@ export const QueueSectionTrigger = ({
 export type QueueSectionLabelProps = ComponentProps<"span"> & {
   count?: number;
   label: string;
-  icon?: React.ReactNode;
+  icon?: ReactNode;
 };
 
 export const QueueSectionLabel = ({

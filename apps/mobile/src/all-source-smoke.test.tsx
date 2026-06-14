@@ -1,4 +1,5 @@
-import React from "react";
+import type { ComponentType, ElementType, ReactElement, ReactNode } from "react";
+import { Fragment, createElement } from "react";
 import { act, create } from "react-test-renderer";
 import { describe, expect, it, vi } from "vitest";
 
@@ -12,8 +13,8 @@ vi.mock("@/shims/node-crypto", () => ({}));
 
 let currentState: Record<string, unknown> = {};
 
-function Host({ children, ...props }: { children?: React.ReactNode }) {
-  return React.createElement("Host", props, children);
+function Host({ children, ...props }: { children?: ReactNode }) {
+  return createElement("Host", props, children);
 }
 
 function ButtonHost({
@@ -21,10 +22,10 @@ function ButtonHost({
   onPress,
   ...props
 }: {
-  children?: React.ReactNode;
+  children?: ReactNode;
   onPress?: () => void;
 }) {
-  return React.createElement("Pressable", { ...props, onPress }, children);
+  return createElement("Pressable", { ...props, onPress }, children);
 }
 
 const menuPrimitive = Object.assign(Host, {
@@ -39,8 +40,8 @@ const toolbarPrimitive = Object.assign(Host, {
   SearchBarSlot: Host,
 });
 
-function ScreenHost({ children, ...props }: { children?: React.ReactNode }) {
-  return React.createElement("Screen", props, children);
+function ScreenHost({ children, ...props }: { children?: ReactNode }) {
+  return createElement("Screen", props, children);
 }
 
 const screenPrimitive = Object.assign(ScreenHost, {
@@ -57,7 +58,7 @@ const stackPrimitive = Object.assign(Host, {
     onChangeText?: (event: { nativeEvent: { text: string } }) => void;
     onCancelButtonPress?: () => void;
   }) =>
-    React.createElement("TextInput", {
+    createElement("TextInput", {
       ...props,
       onChangeText: (value: string) => onChangeText?.({ nativeEvent: { text: value } }),
       onSubmitEditing: onCancelButtonPress,
@@ -66,7 +67,7 @@ const stackPrimitive = Object.assign(Host, {
 });
 
 const tabsPrimitive = Object.assign(Host, {
-  Screen: ({ options, ...props }: { options?: { tabBarIcon?: React.ComponentType<any> } }) => (
+  Screen: ({ options, ...props }: { options?: { tabBarIcon?: ComponentType<any> } }) => (
     <Host {...props}>{options?.tabBarIcon?.({ color: "#111", size: 20 })}</Host>
   ),
 });
@@ -85,7 +86,7 @@ vi.mock("expo-router", () => ({
   Color: { ios: { label: "#111" } },
   Href: String,
   Link: linkPrimitive,
-  Redirect: ({ href }: { href: string }) => React.createElement("Redirect", { href }),
+  Redirect: ({ href }: { href: string }) => createElement("Redirect", { href }),
   Slot: Host,
   Stack: stackPrimitive,
   Tabs: tabsPrimitive,
@@ -94,7 +95,7 @@ vi.mock("expo-router", () => ({
 }));
 
 vi.mock("@clerk/clerk-expo", () => ({
-  ClerkProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  ClerkProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
   useAuth: () => ({ userId: "user_123" }),
 }));
 
@@ -115,7 +116,7 @@ const mockAgent = {
 };
 
 vi.mock("@copilotkit/react-native", () => ({
-  CopilotKitProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  CopilotKitProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
   useAgent: vi.fn(() => ({ agent: mockAgent })),
   useCopilotKit: vi.fn(() => ({ copilotkit: mockCopilotkit })),
 }));
@@ -181,20 +182,20 @@ vi.mock("expo-web-browser", () => ({
 
 vi.mock("uniwind", () => ({
   useCSSVariable: () => "#111",
-  withUniwind: (Component: React.ElementType) => Component,
+  withUniwind: (Component: ElementType) => Component,
 }));
 
 vi.mock("@legendapp/list", () => ({
   LegendList: ({ data, renderItem, children, ...props }: Record<string, unknown>) =>
-    React.createElement(
+    createElement(
       "LegendList",
       props,
       Array.isArray(data)
         ? data.map((item, index) =>
-            React.createElement(
-              React.Fragment,
+            createElement(
+              Fragment,
               { key: index },
-              (renderItem as (info: { item: unknown; index: number }) => React.ReactNode)?.({
+              (renderItem as (info: { item: unknown; index: number }) => ReactNode)?.({
                 item,
                 index,
               }),
@@ -224,7 +225,7 @@ vi.mock("react-native-reanimated", () => ({
   FadeIn: animationChain(),
   FadeOut: animationChain(),
   ReduceMotion: { Never: "never" },
-  createAnimatedComponent: (Component: React.ElementType) => Component,
+  createAnimatedComponent: (Component: ElementType) => Component,
   interpolate: (value: number, input: number[], output: number[]) =>
     value <= input[0] ? output[0] : output[output.length - 1],
   runOnJS: (fn: () => void) => fn,
@@ -288,9 +289,9 @@ vi.mock("@expo/ui/swift-ui", () => ({
     children,
     onIsOnChange,
   }: {
-    children?: React.ReactNode;
+    children?: ReactNode;
     onIsOnChange?: (value: boolean) => void;
-  }) => React.createElement("Switch", { onValueChange: onIsOnChange }, children),
+  }) => createElement("Switch", { onValueChange: onIsOnChange }, children),
   VStack: Host,
 }));
 
@@ -301,7 +302,7 @@ vi.mock("@expo/ui/swift-ui/modifiers", () => ({
 }));
 
 function icon(name: string) {
-  return (props: Record<string, unknown>) => React.createElement(name, props);
+  return (props: Record<string, unknown>) => createElement(name, props);
 }
 
 vi.mock("lucide-react-native", () => ({
@@ -372,10 +373,10 @@ vi.mock("react-syntax-highlighter", () => ({
     children,
     renderer,
   }: {
-    children?: React.ReactNode;
-    renderer?: (props: unknown) => React.ReactNode;
+    children?: ReactNode;
+    renderer?: (props: unknown) => ReactNode;
   }) =>
-    React.createElement(
+    createElement(
       "SyntaxHighlighter",
       null,
       renderer?.({
@@ -417,7 +418,7 @@ function radixPrimitive() {
   };
 }
 
-async function render(label: string, element: React.ReactElement) {
+async function render(label: string, element: ReactElement) {
   try {
     let tree: ReturnType<typeof create>;
     await act(async () => {
@@ -522,7 +523,7 @@ describe("mobile all-source smoke coverage", () => {
       }),
     );
 
-    const providers = (children: React.ReactNode) => (
+    const providers = (children: ReactNode) => (
       <ModelProvider
         models={[
           { id: "sonnet-4.6", label: "Sonnet", subtitle: "Daily" },

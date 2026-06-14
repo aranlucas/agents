@@ -1,4 +1,5 @@
 "use client";
+import type { ReactNode } from "react";
 
 import { ClerkProvider } from "@clerk/nextjs";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -26,7 +27,7 @@ function readStoredTheme(): ThemeMode {
   return stored === "light" || stored === "dark" || stored === "system" ? stored : "system";
 }
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
   const [theme, setThemeState] = useState<ThemeMode>("system");
   const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light");

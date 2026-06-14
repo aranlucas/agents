@@ -1,12 +1,7 @@
 "use client";
 
 import { useCallback, useEffect } from "react";
-import {
-  CopilotSidebar,
-  useAgent,
-  useCopilotKit,
-  UseAgentUpdate,
-} from "@copilotkit/react-core/v2";
+import { CopilotSidebar, useAgent, useCopilotKit, UseAgentUpdate } from "@copilotkit/react-core/v2";
 
 import type { OralBoardsState } from "@agents/types";
 import { Button } from "@agents/ui";
@@ -24,8 +19,14 @@ const AGENT_ID = "oral-boards" as const;
 const TOPICS = [
   { label: "Pulp therapy", message: "Create an oral-board case focused on pulp therapy." },
   { label: "Dental trauma", message: "Give me a staged OCE-style dental trauma case." },
-  { label: "Early childhood caries", message: "Create an oral-board case on early childhood caries." },
-  { label: "Behavior guidance", message: "Create an oral-board case focused on behavior guidance." },
+  {
+    label: "Early childhood caries",
+    message: "Create an oral-board case on early childhood caries.",
+  },
+  {
+    label: "Behavior guidance",
+    message: "Create an oral-board case focused on behavior guidance.",
+  },
 ];
 
 function OralBoardsStartPage({
@@ -122,35 +123,32 @@ export function OralBoardsWorkspace() {
       style={cssVars({ "--page-color": `var(${config.colorVar})` })}
     >
       <OralBoardsQuestionProvider>
-      <AgentExtensionSlot agentId={AGENT_ID} />
-      <CopilotSidebar
-        defaultOpen={false}
-        labels={{
-          modalHeaderTitle: "Agent reasoning",
-          chatInputPlaceholder: config.placeholder,
-        }}
-      />
-      <div className="flex-none">
-        <NavRail activePath={`/console/${AGENT_ID}`} onNewThread={startNewThread} />
-      </div>
-      <div className="flex-1 overflow-hidden">
-        {hasPanel ? (
-          <OralBoardsPanel
-            state={examState}
-            fullscreen={state === "fullscreen"}
-            onClose={() => dispatch("close")}
-            onToggleFullscreen={() => dispatch("toggle-fullscreen")}
-            onReady={handleReady}
-            onAnswer={(text) => void handleAnswer(text)}
-            isRunning={isRunning}
-          />
-        ) : (
-          <OralBoardsStartPage
-            onStart={(m) => void handleStart(m)}
-            isGenerating={isGenerating}
-          />
-        )}
-      </div>
+        <AgentExtensionSlot agentId={AGENT_ID} />
+        <CopilotSidebar
+          defaultOpen={false}
+          labels={{
+            modalHeaderTitle: "Agent reasoning",
+            chatInputPlaceholder: config.placeholder,
+          }}
+        />
+        <div className="flex-none">
+          <NavRail activePath={`/console/${AGENT_ID}`} onNewThread={startNewThread} />
+        </div>
+        <div className="flex-1 overflow-hidden">
+          {hasPanel ? (
+            <OralBoardsPanel
+              state={examState}
+              fullscreen={state === "fullscreen"}
+              onClose={() => dispatch("close")}
+              onToggleFullscreen={() => dispatch("toggle-fullscreen")}
+              onReady={handleReady}
+              onAnswer={(text) => void handleAnswer(text)}
+              isRunning={isRunning}
+            />
+          ) : (
+            <OralBoardsStartPage onStart={(m) => void handleStart(m)} isGenerating={isGenerating} />
+          )}
+        </div>
       </OralBoardsQuestionProvider>
     </main>
   );

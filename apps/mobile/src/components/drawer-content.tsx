@@ -8,7 +8,8 @@ import { cn } from "@/utils/tailwind";
 import type { Href } from "expo-router";
 import { Plus } from "lucide-react-native";
 
-import React, { createContext, use, useCallback, useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import { createContext, use, useCallback, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 type DrawerContextValue = {
@@ -19,7 +20,7 @@ type DrawerContextValue = {
 
 const DrawerContext = createContext<DrawerContextValue | null>(null);
 
-export function DrawerProvider({ children }: { children: React.ReactNode }) {
+export function DrawerProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
 
   const openDrawer = useCallback(() => setIsOpen(true), []);

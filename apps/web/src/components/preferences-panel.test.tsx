@@ -1,9 +1,9 @@
-import React from "react";
+import type { ComponentProps } from "react";
 import { describe, it, vi } from "vitest";
 import { renderSmoke, interactSmoke } from "@/test/test-utils";
 
 vi.mock("@agents/ui/components/input", () => ({
-  Input: (props: React.ComponentProps<"input">) => <input {...props} />,
+  Input: (props: ComponentProps<"input">) => <input {...props} />,
 }));
 
 vi.mock("@copilotkit/react-core/v2", () => ({

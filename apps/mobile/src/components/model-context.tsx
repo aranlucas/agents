@@ -1,5 +1,5 @@
-import React, { createContext, use, useMemo, useState } from "react";
-
+import type { ReactNode } from "react";
+import { createContext, use, useMemo, useState } from "react";
 export type Model = {
   id: string;
   label: string;
@@ -19,7 +19,7 @@ export function ModelProvider({
   children,
   models,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   models: readonly Model[];
 }) {
   const [extendedThinking, setExtendedThinking] = useState(true);

@@ -1,4 +1,5 @@
 "use client";
+import type { ComponentType } from "react";
 
 import { cn } from "@agents/ui/lib/utils";
 import type { MotionProps } from "motion/react";
@@ -9,10 +10,7 @@ import { memo, useMemo } from "react";
 type MotionHTMLProps = MotionProps & Record<string, unknown>;
 
 // Cache motion components at module level to avoid creating during render
-const motionComponentCache = new Map<
-  keyof JSX.IntrinsicElements,
-  React.ComponentType<MotionHTMLProps>
->();
+const motionComponentCache = new Map<keyof JSX.IntrinsicElements, ComponentType<MotionHTMLProps>>();
 
 const getMotionComponent = (element: keyof JSX.IntrinsicElements) => {
   let component = motionComponentCache.get(element);

@@ -4,7 +4,8 @@
  */
 
 import * as Haptics from "expo-haptics";
-import * as React from "react";
+import type { ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { InteractionManager, Keyboard, Pressable, useWindowDimensions, View } from "react-native";
 import {
   Gesture,
@@ -50,10 +51,10 @@ type DrawerLayoutProps = {
   open: boolean;
   onOpen: () => void;
   onClose: () => void;
-  drawerContent: React.ReactNode;
+  drawerContent: ReactNode;
   drawerWidth?: number;
   swipeEnabled?: boolean;
-  children: React.ReactNode;
+  children: ReactNode;
 };
 
 export function DrawerLayout({
@@ -69,23 +70,23 @@ export function DrawerLayout({
   const drawerWidth = getDrawerWidth(layoutWidth, drawerWidthProp);
 
   // Use refs for callbacks to keep toggleDrawer stable
-  const onOpenRef = React.useRef(onOpen);
-  const onCloseRef = React.useRef(onClose);
-  React.useEffect(() => {
+  const onOpenRef = useRef(onOpen);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
     onOpenRef.current = onOpen;
     onCloseRef.current = onClose;
   });
 
-  const callOnOpen = React.useCallback(() => onOpenRef.current(), []);
-  const callOnClose = React.useCallback(() => onCloseRef.current(), []);
+  const callOnOpen = useCallback(() => onOpenRef.current(), []);
+  const callOnClose = useCallback(() => onCloseRef.current(), []);
 
-  const interactionHandleRef = React.useRef<number | null>(null);
+  const interactionHandleRef = useRef<number | null>(null);
 
-  const startInteraction = React.useCallback(() => {
+  const startInteraction = useCallback(() => {
     interactionHandleRef.current = InteractionManager.createInteractionHandle();
   }, []);
 
-  const endInteraction = React.useCallback(() => {
+  const endInteraction = useCallback(() => {
     if (interactionHandleRef.current != null) {
       InteractionManager.clearInteractionHandle(interactionHandleRef.current);
       interactionHandleRef.current = null;
@@ -100,7 +101,7 @@ export function DrawerLayout({
   // Track the current `open` prop on the UI thread
   const openValue = useSharedValue(open);
 
-  const toggleDrawer = React.useCallback(
+  const toggleDrawer = useCallback(
     (isOpen: boolean, velocity?: number) => {
       "worklet";
 
@@ -127,7 +128,7 @@ export function DrawerLayout({
   );
 
   // Animate to match `open` prop
-  React.useEffect(() => {
+  useEffect(() => {
     openValue.value = open;
     toggleDrawer(open);
     if (open) {
@@ -135,12 +136,12 @@ export function DrawerLayout({
     }
   }, [open, toggleDrawer, openValue]);
 
-  const onGestureBegin = React.useCallback(() => {
+  const onGestureBegin = useCallback(() => {
     startInteraction();
     Keyboard.dismiss();
   }, [startInteraction]);
 
-  const onGestureFinish = React.useCallback(
+  const onGestureFinish = useCallback(
     (nextOpen: boolean) => {
       endInteraction();
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -151,7 +152,7 @@ export function DrawerLayout({
     [endInteraction],
   );
 
-  const pan = React.useMemo(() => {
+  const pan = useMemo(() => {
     const gesture = Gesture.Pan()
       .onBegin((event) => {
         "worklet";

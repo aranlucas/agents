@@ -124,7 +124,7 @@ export const PlanTrigger = ({ className, ...props }: PlanTriggerProps) => (
         data-slot="plan-trigger"
         size="icon"
         variant="ghost"
-        {...(props as React.ComponentProps<typeof Button>)}
+        {...(props as ComponentProps<typeof Button>)}
       />
     }
   >

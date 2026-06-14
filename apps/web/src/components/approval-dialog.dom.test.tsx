@@ -1,28 +1,25 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import React from "react";
+import type { ComponentProps, ReactElement, ReactNode } from "react";
+import { cloneElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 // Provide a minimal @base-ui/react/dialog mock so the component renders in jsdom
 vi.mock("@base-ui/react/dialog", () => {
-  const Root = ({ children }: { children: React.ReactNode }) => <>{children}</>;
-  const Trigger = ({ children }: { children: React.ReactNode }) => <>{children}</>;
-  const Portal = ({ children }: { children: React.ReactNode }) => <>{children}</>;
-  const Backdrop = (props: React.ComponentProps<"div">) => <div {...props} />;
-  const Popup = (props: React.ComponentProps<"div">) => <div {...props} />;
-  const Title = (props: React.ComponentProps<"h2">) => <h2 {...props} />;
-  const Description = (props: React.ComponentProps<"p">) => <p {...props} />;
+  const Root = ({ children }: { children: ReactNode }) => <>{children}</>;
+  const Trigger = ({ children }: { children: ReactNode }) => <>{children}</>;
+  const Portal = ({ children }: { children: ReactNode }) => <>{children}</>;
+  const Backdrop = (props: ComponentProps<"div">) => <div {...props} />;
+  const Popup = (props: ComponentProps<"div">) => <div {...props} />;
+  const Title = (props: ComponentProps<"h2">) => <h2 {...props} />;
+  const Description = (props: ComponentProps<"p">) => <p {...props} />;
   const Close = ({
     children,
     render: renderProp,
     ...props
-  }: React.ComponentProps<"button"> & { render?: React.ReactElement }) =>
-    renderProp ? (
-      React.cloneElement(renderProp, props, children)
-    ) : (
-      <button {...props}>{children}</button>
-    );
+  }: ComponentProps<"button"> & { render?: ReactElement }) =>
+    renderProp ? cloneElement(renderProp, props, children) : <button {...props}>{children}</button>;
   return { Dialog: { Root, Trigger, Portal, Backdrop, Popup, Title, Description, Close } };
 });
 

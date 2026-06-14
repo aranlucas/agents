@@ -1,4 +1,5 @@
 "use client";
+import type { MouseEvent } from "react";
 
 import { useControllableState } from "@radix-ui/react-use-controllable-state";
 import { cn } from "@agents/ui/lib/utils";
@@ -84,7 +85,7 @@ export const TranscriptionSegment = ({
   const isPast = currentTime >= segment.endSecond;
 
   const handleClick = useCallback(
-    (event: React.MouseEvent<HTMLButtonElement>) => {
+    (event: MouseEvent<HTMLButtonElement>) => {
       if (onSeek) {
         onSeek(segment.startSecond);
       }

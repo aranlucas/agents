@@ -3,6 +3,7 @@ import { Schibsted_Grotesk, JetBrains_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
 import "@agents/ui/globals.css";
 import "./globals.css";
+import type { ReactNode } from "react";
 
 const schibsted = Schibsted_Grotesk({
   subsets: ["latin"],
@@ -24,7 +25,7 @@ export const metadata: Metadata = {
     "Trip, grocery, and fitness agents that collaborate — powered by Google ADK + CopilotKit.",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html
       lang="en"

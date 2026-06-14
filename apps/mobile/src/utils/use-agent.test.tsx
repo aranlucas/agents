@@ -1,4 +1,5 @@
-import React, { useEffect } from "react";
+import { useRef } from "react";
+import { useEffect } from "react";
 import { act, create } from "react-test-renderer";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -31,7 +32,7 @@ describe("useAgent", () => {
     function Harness() {
       const agent = useAgent({ url: "http://agent.test", headers: { auth: "yes" } }, { count: 1 });
       const sendAgentMessage = agent.sendMessage;
-      const sent = React.useRef(false);
+      const sent = useRef(false);
       snapshots.push(agent);
       useEffect(() => {
         if (sent.current) return;
@@ -81,7 +82,7 @@ describe("useAgent", () => {
     function Harness() {
       const agent = useAgent({ url: "http://agent.test" }, {});
       const sendAgentMessage = agent.sendMessage;
-      const sent = React.useRef(false);
+      const sent = useRef(false);
       snapshots.push(agent);
       useEffect(() => {
         if (sent.current) return;

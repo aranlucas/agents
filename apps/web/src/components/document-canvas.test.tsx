@@ -1,17 +1,17 @@
-import React from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { describe, it, vi } from "vitest";
 import { renderSmoke, interactSmoke } from "@/test/test-utils";
 
 vi.mock("@agents/ui/components/input", () => ({
-  Input: (props: React.ComponentProps<"input">) => <input {...props} />,
+  Input: (props: ComponentProps<"input">) => <input {...props} />,
 }));
 
 vi.mock("@agents/ui/components/textarea", () => ({
-  Textarea: (props: React.ComponentProps<"textarea">) => <textarea {...props} />,
+  Textarea: (props: ComponentProps<"textarea">) => <textarea {...props} />,
 }));
 
 vi.mock("streamdown", () => ({
-  Streamdown: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Streamdown: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
 import { DocumentCanvas } from "./document-canvas";

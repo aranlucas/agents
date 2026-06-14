@@ -12,20 +12,21 @@
 
 ## File map
 
-| Action | Path |
-|--------|------|
-| Create | `apps/web/src/lib/copilotkit/use-answer-recorder.ts` |
-| Modify | `apps/web/src/components/chat/oral-boards/OralBoardsPanel.tsx` |
+| Action | Path                                                                |
+| ------ | ------------------------------------------------------------------- |
+| Create | `apps/web/src/lib/copilotkit/use-answer-recorder.ts`                |
+| Modify | `apps/web/src/components/chat/oral-boards/OralBoardsPanel.tsx`      |
 | Modify | `apps/web/src/components/chat/oral-boards/OralBoardsPanel.test.tsx` |
-| Modify | `apps/web/src/components/chat/OralBoardsWorkspace.tsx` |
-| Modify | `apps/web/src/app/globals.css` |
-| Modify | `agents/oralboards/src/oralboards_agent/agent.py` |
+| Modify | `apps/web/src/components/chat/OralBoardsWorkspace.tsx`              |
+| Modify | `apps/web/src/app/globals.css`                                      |
+| Modify | `agents/oralboards/src/oralboards_agent/agent.py`                   |
 
 ---
 
 ## Task 1: useAnswerRecorder hook
 
 **Files:**
+
 - Create: `apps/web/src/lib/copilotkit/use-answer-recorder.ts`
 
 The existing `TranscribeButton` is tightly coupled to `PromptInputButton` / `usePromptInputController` and cannot be reused outside `PromptInput`. This hook extracts the same `CopilotChatAudioRecorder`-based toggle-record pattern for standalone use.
@@ -50,9 +51,7 @@ export interface UseAnswerRecorder {
   recorderRef: React.RefObject<AnswerRecorderRef | null>;
 }
 
-export function useAnswerRecorder(
-  onTranscript: (text: string) => void,
-): UseAnswerRecorder {
+export function useAnswerRecorder(onTranscript: (text: string) => void): UseAnswerRecorder {
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [micSupported, setMicSupported] = useState(false);
@@ -127,6 +126,7 @@ git commit -m "feat(oralboards): add useAnswerRecorder hook for toggle-record tr
 ## Task 2: Rewrite QuestioningPane in OralBoardsPanel.tsx
 
 **Files:**
+
 - Modify: `apps/web/src/components/chat/oral-boards/OralBoardsPanel.tsx`
 
 Replace the `QuestioningPane` component (lines 129–162 in the current file) and update the `OralBoardsPanel` export to accept two new props: `onAnswer` and `isRunning`.
@@ -329,9 +329,7 @@ function QuestioningPane({
               {expandedChip === i && (
                 <div className="bg-muted mt-1.5 space-y-1 rounded-lg p-3 text-sm">
                   <p className="font-medium">{x.question}</p>
-                  {x.answer && (
-                    <p className="text-muted-foreground">Your answer: {x.answer}</p>
-                  )}
+                  {x.answer && <p className="text-muted-foreground">Your answer: {x.answer}</p>}
                   {x.feedback && <Streamdown>{x.feedback}</Streamdown>}
                   <CitationChips sources={x.citations ?? []} />
                 </div>
@@ -361,9 +359,7 @@ function QuestioningPane({
         <p className="text-indigo-400 text-xs font-semibold uppercase tracking-wide">
           Q{questionNumber}
         </p>
-        <p className="text-sm leading-relaxed">
-          {question || "Waiting for the next question…"}
-        </p>
+        <p className="text-sm leading-relaxed">{question || "Waiting for the next question…"}</p>
         {micSupported && <CopilotChatAudioRecorder ref={recorderRef} />}
         <textarea
           className="border-border bg-background min-h-[80px] flex-1 resize-none rounded border p-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
@@ -475,7 +471,15 @@ export function OralBoardsPanel({
           <ArtifactClose aria-label="Close panel" onClick={onClose} />
         </ArtifactActions>
       </ArtifactHeader>
-      <ArtifactContent className={status === "presenting" ? "flex h-full flex-col" : status === "questioning" ? "flex h-full flex-col" : "space-y-4"}>
+      <ArtifactContent
+        className={
+          status === "presenting"
+            ? "flex h-full flex-col"
+            : status === "questioning"
+              ? "flex h-full flex-col"
+              : "space-y-4"
+        }
+      >
         {status === "presenting" && (
           <PresentingPane caseBody={caseBody} sources={sources} onReady={onReady} />
         )}
@@ -517,6 +521,7 @@ git commit -m "feat(oralboards): rewrite QuestioningPane with chips + active car
 ## Task 3: Update OralBoardsPanel tests
 
 **Files:**
+
 - Modify: `apps/web/src/components/chat/oral-boards/OralBoardsPanel.test.tsx`
 
 The `OralBoardsPanel` now requires `onAnswer` and `isRunning` props. Tests for `QuestioningPane` must cover: Submit calls `onAnswer`, Submit is disabled when `isRunning`, chip expand/collapse.
@@ -773,6 +778,7 @@ git commit -m "test(oralboards): update panel tests for chip row, answer submit,
 ## Task 4: Wire handleAnswer + isRunning in OralBoardsWorkspace
 
 **Files:**
+
 - Modify: `apps/web/src/components/chat/OralBoardsWorkspace.tsx`
 
 `handleAnswer` is the **only** path that calls `copilotkit.runAgent` during questioning. The sidebar has no runAgent path once we remove its input (Task 5). Pass `onAnswer` and `isRunning` to `OralBoardsPanel`.
@@ -785,12 +791,7 @@ Replace the entire file `apps/web/src/components/chat/OralBoardsWorkspace.tsx` w
 "use client";
 
 import { useCallback, useEffect } from "react";
-import {
-  CopilotSidebar,
-  useAgent,
-  useCopilotKit,
-  UseAgentUpdate,
-} from "@copilotkit/react-core/v2";
+import { CopilotSidebar, useAgent, useCopilotKit, UseAgentUpdate } from "@copilotkit/react-core/v2";
 
 import type { OralBoardsState } from "@agents/types";
 import { Button } from "@agents/ui";
@@ -807,8 +808,14 @@ const AGENT_ID = "oral-boards" as const;
 const TOPICS = [
   { label: "Pulp therapy", message: "Create an oral-board case focused on pulp therapy." },
   { label: "Dental trauma", message: "Give me a staged OCE-style dental trauma case." },
-  { label: "Early childhood caries", message: "Create an oral-board case on early childhood caries." },
-  { label: "Behavior guidance", message: "Create an oral-board case focused on behavior guidance." },
+  {
+    label: "Early childhood caries",
+    message: "Create an oral-board case on early childhood caries.",
+  },
+  {
+    label: "Behavior guidance",
+    message: "Create an oral-board case focused on behavior guidance.",
+  },
 ];
 
 function OralBoardsStartPage({
@@ -927,10 +934,7 @@ export function OralBoardsWorkspace() {
             isRunning={isRunning}
           />
         ) : (
-          <OralBoardsStartPage
-            onStart={(m) => void handleStart(m)}
-            isGenerating={isGenerating}
-          />
+          <OralBoardsStartPage onStart={(m) => void handleStart(m)} isGenerating={isGenerating} />
         )}
       </div>
     </main>
@@ -958,6 +962,7 @@ git commit -m "feat(oralboards): add handleAnswer — panel is sole runAgent pat
 ## Task 5: Hide sidebar input via CSS
 
 **Files:**
+
 - Modify: `apps/web/src/app/globals.css`
 
 CopilotSidebar renders its chat form in a portal. Adding a global CSS rule hides the input and toolbar so the sidebar becomes a read-only reasoning log. The rule targets the data attribute CopilotKit adds to its sidebar container, with a fallback class selector.
@@ -1000,11 +1005,12 @@ git commit -m "feat(oralboards): hide CopilotSidebar input — sidebar is read-o
 ## Task 6: Harden system prompt — STOP after ask_question
 
 **Files:**
+
 - Modify: `agents/oralboards/src/oralboards_agent/agent.py:228-233`
 
 Step 4 of the exam flow must be explicit: after `ask_question` and writing the question in chat, the agent must STOP and wait for a candidate message. The current wording is ambiguous.
 
-- [ ] **Step 1: Replace step 4 in _STATIC_INSTRUCTION**
+- [ ] **Step 1: Replace step 4 in \_STATIC_INSTRUCTION**
 
 In `agents/oralboards/src/oralboards_agent/agent.py`, find this block in `_STATIC_INSTRUCTION` (inside the `## Exam flow` section, step 4):
 

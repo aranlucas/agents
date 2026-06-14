@@ -1,4 +1,4 @@
-import React from "react";
+import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { renderSmoke } from "@/test/test-utils";
@@ -12,7 +12,7 @@ vi.mock("@agents/ui/globals.css", () => ({}));
 vi.mock("./globals.css", () => ({}));
 
 vi.mock("@clerk/nextjs", () => ({
-  ClerkProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  ClerkProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
 import RootLayout from "./layout";

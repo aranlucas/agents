@@ -1,9 +1,9 @@
-import React from "react";
+import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { act, create } from "react-test-renderer";
 import { expect } from "vitest";
 
-export async function renderSmoke(label: string, element: React.ReactElement) {
+export async function renderSmoke(label: string, element: ReactElement) {
   try {
     expect(renderToStaticMarkup(element)).toEqual(expect.any(String));
   } catch (error) {
@@ -15,7 +15,7 @@ export async function renderSmoke(label: string, element: React.ReactElement) {
   }
 }
 
-export async function interactSmoke(label: string, element: React.ReactElement) {
+export async function interactSmoke(label: string, element: ReactElement) {
   try {
     let tree: ReturnType<typeof create>;
     await act(async () => {

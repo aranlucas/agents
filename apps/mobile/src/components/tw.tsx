@@ -3,6 +3,7 @@ import { GlassView as XGlassView, isLiquidGlassAvailable } from "expo-glass-effe
 import { Image as XImage } from "expo-image";
 import { StyleSheet, type ViewStyle } from "react-native";
 import { withUniwind } from "uniwind";
+import type { ComponentProps, ReactNode } from "react";
 
 import { KeyboardGestureArea as XKeyboardGestureArea } from "react-native-keyboard-controller";
 import { createAnimatedComponent } from "react-native-reanimated";
@@ -20,10 +21,10 @@ const BlurView = withUniwind(EXBlurView);
 export const InnerAppleGlassView = withUniwind(BetterGlassView);
 const GLASS_ENABLED = isLiquidGlassAvailable();
 
-type FallbackAppleGlassViewProps = React.ComponentProps<typeof AnimatedEXGlassView> & {
+type FallbackAppleGlassViewProps = ComponentProps<typeof AnimatedEXGlassView> & {
   className?: string;
-  fallbackTint?: React.ComponentProps<typeof EXBlurView>["tint"];
-  fallbackIntensity?: React.ComponentProps<typeof EXBlurView>["intensity"];
+  fallbackTint?: ComponentProps<typeof EXBlurView>["tint"];
+  fallbackIntensity?: ComponentProps<typeof EXBlurView>["intensity"];
 };
 
 const FallbackAppleGlassView = ({
@@ -46,14 +47,14 @@ const FallbackAppleGlassView = ({
     >
       {/* children may be typed as SharedValue<ReactNode> via the glass props. */}
       {/* eslint-disable-next-line typescript/no-unsafe-type-assertion */}
-      {children as React.ReactNode}
+      {children as ReactNode}
     </BlurView>
   );
 };
 
 export const AppleGlassView = GLASS_ENABLED ? InnerAppleGlassView : FallbackAppleGlassView;
 
-function BetterGlassView(props: React.ComponentProps<typeof AnimatedEXGlassView>) {
+function BetterGlassView(props: ComponentProps<typeof AnimatedEXGlassView>) {
   const { style, props: converted } = convertStylesToProps(props.style, {
     backgroundColor: "tintColor",
   });
@@ -64,7 +65,7 @@ function BetterGlassView(props: React.ComponentProps<typeof AnimatedEXGlassView>
 export const GlassView = withUniwind(XGlassView);
 
 function convertStylesToProps(
-  style: React.ComponentProps<typeof AnimatedEXGlassView>["style"],
+  style: ComponentProps<typeof AnimatedEXGlassView>["style"],
   move: Record<string, string>,
 ) {
   if (!style) {

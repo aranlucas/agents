@@ -1,9 +1,10 @@
 "use client";
+import type { ElementRef, RefObject } from "react";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CopilotChatAudioRecorder } from "@copilotkit/react-core/v2";
 
-export type AnswerRecorderRef = React.ElementRef<typeof CopilotChatAudioRecorder>;
+export type AnswerRecorderRef = ElementRef<typeof CopilotChatAudioRecorder>;
 
 export interface UseAnswerRecorder {
   recording: boolean;
@@ -12,12 +13,10 @@ export interface UseAnswerRecorder {
   error: string | null;
   clearError: () => void;
   toggle: () => Promise<void>;
-  recorderRef: React.RefObject<AnswerRecorderRef | null>;
+  recorderRef: RefObject<AnswerRecorderRef | null>;
 }
 
-export function useAnswerRecorder(
-  onTranscript: (text: string) => void,
-): UseAnswerRecorder {
+export function useAnswerRecorder(onTranscript: (text: string) => void): UseAnswerRecorder {
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [micSupported, setMicSupported] = useState(false);
@@ -60,6 +59,7 @@ export function useAnswerRecorder(
         body: formData,
       });
       if (res.ok) {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
         const { text } = (await res.json()) as { text: string };
         onTranscriptRef.current(text);
       } else {

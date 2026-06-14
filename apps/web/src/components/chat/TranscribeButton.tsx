@@ -1,4 +1,5 @@
 "use client";
+import type { ElementRef } from "react";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CopilotChatAudioRecorder } from "@copilotkit/react-core/v2";
@@ -10,7 +11,7 @@ export function TranscribeButton() {
   const { textInput } = usePromptInputController();
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
-  const audioRecorderRef = useRef<React.ElementRef<typeof CopilotChatAudioRecorder>>(null);
+  const audioRecorderRef = useRef<ElementRef<typeof CopilotChatAudioRecorder>>(null);
 
   const [micSupported, setMicSupported] = useState(false);
   useEffect(() => {

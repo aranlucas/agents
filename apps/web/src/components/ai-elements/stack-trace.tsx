@@ -1,4 +1,5 @@
 "use client";
+import type { KeyboardEvent, MouseEvent } from "react";
 
 import { useControllableState } from "@radix-ui/react-use-controllable-state";
 import { Button } from "@agents/ui";
@@ -262,8 +263,8 @@ export const StackTraceErrorMessage = memo(
 
 export type StackTraceActionsProps = ComponentProps<"div">;
 
-const handleActionsClick = (e: React.MouseEvent) => e.stopPropagation();
-const handleActionsKeyDown = (e: React.KeyboardEvent) => {
+const handleActionsClick = (e: MouseEvent) => e.stopPropagation();
+const handleActionsKeyDown = (e: KeyboardEvent) => {
   if (e.key === "Enter" || e.key === " ") {
     e.stopPropagation();
   }

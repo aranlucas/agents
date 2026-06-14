@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import React from "react";
+import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@copilotkit/react-core/v2", () => ({
@@ -9,7 +9,7 @@ vi.mock("@copilotkit/react-core/v2", () => ({
 }));
 
 vi.mock("@base-ui/react/input", () => ({
-  Input: (props: React.ComponentProps<"input">) => <input {...props} />,
+  Input: (props: ComponentProps<"input">) => <input {...props} />,
 }));
 
 import { DEFAULT_PREFERENCES, PreferencesPanel } from "./preferences-panel";

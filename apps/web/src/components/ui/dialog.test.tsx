@@ -1,21 +1,18 @@
-import React from "react";
+import type { ComponentProps, ReactElement, ReactNode } from "react";
+import { cloneElement } from "react";
 import { describe, it, vi } from "vitest";
 import { renderSmoke, interactSmoke } from "@/test/test-utils";
 
 const dialogPrimitive = vi.hoisted(() => ({
-  Root: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  Trigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  Portal: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  Backdrop: (props: React.ComponentProps<"div">) => <div {...props} />,
-  Popup: (props: React.ComponentProps<"div">) => <div {...props} />,
-  Title: (props: React.ComponentProps<"h2">) => <h2 {...props} />,
-  Description: (props: React.ComponentProps<"p">) => <p {...props} />,
-  Close: ({
-    children,
-    render,
-    ...props
-  }: React.ComponentProps<"button"> & { render?: React.ReactElement }) =>
-    render ? React.cloneElement(render, props, children) : <button {...props}>{children}</button>,
+  Root: ({ children }: { children: ReactNode }) => <>{children}</>,
+  Trigger: ({ children }: { children: ReactNode }) => <>{children}</>,
+  Portal: ({ children }: { children: ReactNode }) => <>{children}</>,
+  Backdrop: (props: ComponentProps<"div">) => <div {...props} />,
+  Popup: (props: ComponentProps<"div">) => <div {...props} />,
+  Title: (props: ComponentProps<"h2">) => <h2 {...props} />,
+  Description: (props: ComponentProps<"p">) => <p {...props} />,
+  Close: ({ children, render, ...props }: ComponentProps<"button"> & { render?: ReactElement }) =>
+    render ? cloneElement(render, props, children) : <button {...props}>{children}</button>,
 }));
 
 vi.mock("@base-ui/react/dialog", () => ({

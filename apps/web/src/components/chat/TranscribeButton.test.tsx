@@ -1,4 +1,5 @@
-import React, { forwardRef, useImperativeHandle } from "react";
+import type { ComponentProps } from "react";
+import { forwardRef, useImperativeHandle } from "react";
 import { act, create } from "react-test-renderer";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -21,7 +22,7 @@ vi.mock("@/components/ai-elements/prompt-input", () => ({
     children,
     tooltip,
     ...props
-  }: React.ComponentProps<"button"> & { tooltip?: string }) => (
+  }: ComponentProps<"button"> & { tooltip?: string }) => (
     <button title={tooltip} type="button" {...props}>
       {children}
     </button>
@@ -35,7 +36,7 @@ vi.mock("@/components/ai-elements/prompt-input", () => ({
 }));
 
 vi.mock("@agents/ui", () => ({
-  Button: (props: React.ComponentProps<"button">) => <button type="button" {...props} />,
+  Button: (props: ComponentProps<"button">) => <button type="button" {...props} />,
 }));
 
 describe("TranscribeButton", () => {

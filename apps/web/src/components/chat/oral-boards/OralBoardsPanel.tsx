@@ -52,9 +52,9 @@ function CitationChips({ sources }: { sources: CaseSource[] }) {
   if (sources.length === 0) return null;
   return (
     <div className="flex flex-wrap gap-1">
-      {sources.map((s, i) => (
+      {sources.map((s) => (
         <span
-          key={`${s.collection}-${s.docid}-${i}`}
+          key={`${s.collection}-${s.docid}`}
           className="bg-muted text-muted-foreground rounded-md px-1.5 py-0.5 text-[11px]"
         >
           {s.collection} #{s.docid} · {s.title}
@@ -73,7 +73,9 @@ function RecordButton({ recorder }: { recorder: UseAnswerRecorder }) {
         <span className="flex items-center gap-1 text-xs text-red-500">
           <AlertCircleIcon className="size-3" />
           {error}
-          <button type="button" onClick={clearError} className="ml-1 underline">Dismiss</button>
+          <button type="button" onClick={clearError} className="ml-1 underline">
+            Dismiss
+          </button>
         </span>
       )}
       <Button
@@ -186,8 +188,8 @@ function PresentingPane({
   onReady: () => void;
 }) {
   const [notes, setNotes] = useState("");
-  const recorder = useAnswerRecorder(
-    (text) => setNotes((prev) => (prev ? `${prev} ${text}` : text)),
+  const recorder = useAnswerRecorder((text) =>
+    setNotes((prev) => (prev ? `${prev} ${text}` : text)),
   );
 
   return (
@@ -197,11 +199,13 @@ function PresentingPane({
       </div>
 
       <div className="shrink-0 space-y-2">
-        <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Your notes</p>
+        <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+          Your notes
+        </p>
         {recorder.micSupported && <CopilotChatAudioRecorder ref={recorder.recorderRef} />}
         <textarea
           aria-label="Case notes"
-          className="border-border bg-background min-h-[60px] w-full resize-none rounded border p-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="border-border bg-background min-h-[60px] w-full resize-none rounded border p-2 text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none"
           placeholder="Record or type your notes about the case…"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
@@ -235,11 +239,9 @@ function QuestioningPane({
   const [answerText, setAnswerText] = useState("");
   const [expandedChip, setExpandedChip] = useState<number | null>(null);
 
-  const recorder = useAnswerRecorder(
-    (text) => {
-      setAnswerText((prev) => (prev ? `${prev} ${text}` : text));
-    },
-  );
+  const recorder = useAnswerRecorder((text) => {
+    setAnswerText((prev) => (prev ? `${prev} ${text}` : text));
+  });
 
   const handleSubmit = () => {
     const trimmed = answerText.trim();
@@ -267,9 +269,7 @@ function QuestioningPane({
               {expandedChip === i && (
                 <div className="bg-muted mt-1.5 space-y-1 rounded-lg p-3 text-sm">
                   <p className="font-medium">{x.question}</p>
-                  {x.answer && (
-                    <p className="text-muted-foreground">Your answer: {x.answer}</p>
-                  )}
+                  {x.answer && <p className="text-muted-foreground">Your answer: {x.answer}</p>}
                   {x.feedback && <Streamdown>{x.feedback}</Streamdown>}
                   <CitationChips sources={x.citations ?? []} />
                 </div>
@@ -281,7 +281,7 @@ function QuestioningPane({
 
       {lastExchange && (
         <div className="bg-muted shrink-0 space-y-1 rounded-lg p-3 text-sm">
-          <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+          <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
             Q{transcript.length} · Feedback
           </p>
           <p className="font-medium">{lastExchange.question}</p>
@@ -295,20 +295,16 @@ function QuestioningPane({
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 rounded-lg border-2 border-indigo-500 bg-indigo-950/20 p-4">
         <div className="flex items-start justify-between gap-2">
-          <p className="text-indigo-400 text-xs font-semibold uppercase tracking-wide">
+          <p className="text-xs font-semibold tracking-wide text-indigo-400 uppercase">
             Q{questionNumber}
           </p>
-          {question && (
-            <QuestionTtsButton text={question} />
-          )}
+          {question && <QuestionTtsButton text={question} />}
         </div>
-        <p className="text-sm leading-relaxed">
-          {question || "Waiting for the next question…"}
-        </p>
+        <p className="text-sm leading-relaxed">{question || "Waiting for the next question…"}</p>
         {recorder.micSupported && <CopilotChatAudioRecorder ref={recorder.recorderRef} />}
         <textarea
           aria-label="Your answer"
-          className="border-border bg-background min-h-[80px] flex-1 resize-none rounded border p-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
+          className="border-border bg-background min-h-[80px] flex-1 resize-none rounded border p-2 text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none disabled:opacity-50"
           placeholder="Type your answer…"
           value={answerText}
           onChange={(e) => setAnswerText(e.target.value)}
@@ -328,7 +324,7 @@ function QuestioningPane({
       </div>
 
       <details className="shrink-0">
-        <summary className="text-muted-foreground cursor-pointer text-xs font-medium uppercase tracking-wide select-none">
+        <summary className="text-muted-foreground cursor-pointer text-xs font-medium tracking-wide uppercase select-none">
           Case vignette
         </summary>
         <div className="mt-2">
@@ -393,7 +389,15 @@ export function OralBoardsPanel({
           <ArtifactClose aria-label="Close panel" onClick={onClose} />
         </ArtifactActions>
       </ArtifactHeader>
-      <ArtifactContent className={status === "presenting" ? "flex h-full flex-col" : status === "questioning" ? "flex h-full flex-col" : "space-y-4"}>
+      <ArtifactContent
+        className={
+          status === "presenting"
+            ? "flex h-full flex-col"
+            : status === "questioning"
+              ? "flex h-full flex-col"
+              : "space-y-4"
+        }
+      >
         {status === "presenting" && (
           <PresentingPane caseBody={caseBody} sources={sources} onReady={onReady} />
         )}

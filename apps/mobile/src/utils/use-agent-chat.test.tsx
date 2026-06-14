@@ -1,4 +1,5 @@
-import React, { useEffect } from "react";
+import { useRef } from "react";
+import { useEffect } from "react";
 import { act, create } from "react-test-renderer";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -39,8 +40,8 @@ describe("useAgentChat", () => {
     function Harness() {
       const chat = useAgentChat({ url: "http://agent.test" }, {});
       const { input, onSend, setInput } = chat;
-      const updated = React.useRef(false);
-      const sent = React.useRef(false);
+      const updated = useRef(false);
+      const sent = useRef(false);
       snapshots.push(chat);
       useEffect(() => {
         if (updated.current) return;

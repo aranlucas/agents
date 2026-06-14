@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowLeft, ListFilter } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -10,7 +10,7 @@ import { cn } from "@agents/ui/lib/utils";
 interface Props {
   name: string;
   description?: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   isRunning: boolean;
   statusLabel?: string;
   onToggleBrief?: () => void;

@@ -1,4 +1,5 @@
 "use client";
+import type { MouseEvent } from "react";
 
 import { useControllableState } from "@radix-ui/react-use-controllable-state";
 import { Button } from "@agents/ui";
@@ -434,7 +435,7 @@ export const VoiceSelectorPreview = ({
   ...props
 }: VoiceSelectorPreviewProps) => {
   const handleClick = useCallback(
-    (event: React.MouseEvent<HTMLButtonElement>) => {
+    (event: MouseEvent<HTMLButtonElement>) => {
       event.stopPropagation();
       onClick?.(event);
       onPlay?.();

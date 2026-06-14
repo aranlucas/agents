@@ -1,4 +1,5 @@
 "use client";
+import type { MouseEvent } from "react";
 
 import {
   Command,
@@ -1121,7 +1122,7 @@ export const PromptInputSubmit = ({
   }
 
   const handleClick = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
+    (e: MouseEvent<HTMLButtonElement>) => {
       if (isGenerating && onStop) {
         e.preventDefault();
         onStop();

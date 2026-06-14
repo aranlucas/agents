@@ -1,4 +1,5 @@
 "use client";
+import type { KeyboardEvent, SyntheticEvent } from "react";
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@agents/ui";
 import { cn } from "@agents/ui/lib/utils";
@@ -208,7 +209,7 @@ export const FileTreeFile = ({
   }, [onSelect, path]);
 
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
+    (e: KeyboardEvent) => {
       if (e.key === "Enter" || e.key === " ") {
         onSelect?.(path);
       }
@@ -249,7 +250,7 @@ export const FileTreeFile = ({
 
 export type FileTreeActionsProps = HTMLAttributes<HTMLDivElement>;
 
-const stopPropagation = (e: React.SyntheticEvent) => e.stopPropagation();
+const stopPropagation = (e: SyntheticEvent) => e.stopPropagation();
 
 export const FileTreeActions = ({ className, children, ...props }: FileTreeActionsProps) => (
   <div

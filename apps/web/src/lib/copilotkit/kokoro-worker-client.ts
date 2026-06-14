@@ -13,6 +13,7 @@ function getWorker(): Worker {
     worker = new Worker(new URL("./kokoro.worker.ts", import.meta.url), { type: "module" });
 
     worker.addEventListener("message", (event: MessageEvent) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
       const msg = event.data as {
         type?: string;
         status?: string;
@@ -82,9 +83,11 @@ async function drainQueue(): Promise<void> {
     const source = ctx.createBufferSource();
     source.buffer = buffer;
     source.connect(ctx.destination);
+    // oxlint-disable-next-line eslint/no-await-in-loop
     if (ctx.state === "suspended") await ctx.resume();
+    // oxlint-disable-next-line eslint/no-await-in-loop
     await new Promise<void>((resolve) => {
-      source.onended = () => resolve();
+      source.addEventListener("ended", () => resolve(), { once: true });
       source.start();
     });
     // oxlint-disable-next-line unicorn/require-post-message-target-origin
@@ -101,6 +104,7 @@ export async function preloadKokoro(): Promise<boolean> {
     const w = getWorker();
     await new Promise<void>((resolve, reject) => {
       const handler = (event: MessageEvent) => {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
         const msg = event.data as { type?: string; message?: string; id?: number };
         if (msg.type === "ready") {
           w.removeEventListener("message", handler);

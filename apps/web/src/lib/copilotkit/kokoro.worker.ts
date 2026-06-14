@@ -54,6 +54,7 @@ function splitText(text: string, maxLength = MAX_CHUNK_LENGTH): string[] {
 
 async function detectWebGPU(): Promise<boolean> {
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     const gpu = (navigator as unknown as { gpu?: { requestAdapter(): Promise<unknown> } }).gpu;
     if (!gpu) return false;
     const adapter = await gpu.requestAdapter();
@@ -72,6 +73,7 @@ async function getTts(): Promise<KokoroInstance> {
     postMessage({ status: "loading_model_start", device });
 
     const { KokoroTTS } = await import("kokoro-js");
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     ttsPromise = KokoroTTS.from_pretrained(KOKORO_MODEL_ID, {
       dtype,
       device,
@@ -84,6 +86,7 @@ async function getTts(): Promise<KokoroInstance> {
 }
 
 addEventListener("message", async (event: MessageEvent) => {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const msg = event.data as {
     type: string;
     id?: number;
@@ -133,12 +136,15 @@ addEventListener("message", async (event: MessageEvent) => {
         if (shouldStop) break;
 
         // Back-pressure: wait until the player has consumed enough buffers
+        // oxlint-disable-next-line eslint/no-unmodified-loop-condition
         while (bufferQueueSize >= MAX_QUEUE_SIZE) {
           if (shouldStop) break;
+          // oxlint-disable-next-line eslint/no-await-in-loop
           await new Promise((r) => setTimeout(r, 50));
         }
         if (shouldStop) break;
 
+        // oxlint-disable-next-line eslint/no-await-in-loop
         const audio = await tts.generate(chunk, {
           voice: msg.voice ?? KOKORO_VOICE,
           speed: typeof msg.speed === "number" ? msg.speed : 1,
@@ -151,6 +157,7 @@ addEventListener("message", async (event: MessageEvent) => {
         const ab = pcm.buffer.slice(pcm.byteOffset, pcm.byteOffset + pcm.byteLength);
 
         bufferQueueSize++;
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
         (self as unknown as DedicatedWorkerGlobalScope).postMessage(
           { status: "stream_audio_data", id: msg.id, audio: ab, sampleRate },
           [ab],

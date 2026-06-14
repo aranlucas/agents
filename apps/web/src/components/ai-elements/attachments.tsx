@@ -1,4 +1,5 @@
 "use client";
+import type { MouseEvent } from "react";
 
 import { Button } from "@agents/ui";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@agents/ui/components/hover-card";
@@ -306,7 +307,7 @@ export const AttachmentRemove = ({
   const { onRemove, variant } = useAttachmentContext();
 
   const handleClick = useCallback(
-    (e: React.MouseEvent) => {
+    (e: MouseEvent) => {
       e.stopPropagation();
       onRemove?.();
     },

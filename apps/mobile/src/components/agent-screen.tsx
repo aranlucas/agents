@@ -1,4 +1,5 @@
-import React, { useCallback, useRef, useState } from "react";
+import type { ReactNode } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -28,7 +29,7 @@ type AgentScreenConfig<TState extends AgentState> = {
   subtitle: string;
   placeholder: string;
   accentColor: string;
-  renderSummary: (state: TState) => React.ReactNode;
+  renderSummary: (state: TState) => ReactNode;
 };
 
 type Props<TState extends AgentState> = {
@@ -156,7 +157,7 @@ export function Field({ label, value }: { label: string; value?: string | number
   );
 }
 
-export function SummaryCard({ children }: { children: React.ReactNode }) {
+export function SummaryCard({ children }: { children: ReactNode }) {
   return <View style={styles.summaryCard}>{children}</View>;
 }
 

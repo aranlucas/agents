@@ -1,4 +1,5 @@
 "use client";
+import type { ReactNode } from "react";
 
 import { Button } from "@agents/ui";
 import { cn } from "@agents/ui/lib/utils";
@@ -29,7 +30,7 @@ export const ConversationContent = ({ className, ...props }: ConversationContent
 export type ConversationEmptyStateProps = ComponentProps<"div"> & {
   title?: string;
   description?: string;
-  icon?: React.ReactNode;
+  icon?: ReactNode;
 };
 
 export const ConversationEmptyState = ({

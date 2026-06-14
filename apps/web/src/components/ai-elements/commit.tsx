@@ -1,4 +1,5 @@
 "use client";
+import type { KeyboardEvent, MouseEvent } from "react";
 
 import { Avatar, AvatarFallback } from "@agents/ui/components/avatar";
 import { Button } from "@agents/ui";
@@ -129,8 +130,8 @@ export const CommitTimestamp = ({ date, className, children, ...props }: CommitT
 
 export type CommitActionsProps = HTMLAttributes<HTMLDivElement>;
 
-const handleActionsClick = (e: React.MouseEvent) => e.stopPropagation();
-const handleActionsKeyDown = (e: React.KeyboardEvent) => e.stopPropagation();
+const handleActionsClick = (e: MouseEvent) => e.stopPropagation();
+const handleActionsKeyDown = (e: KeyboardEvent) => e.stopPropagation();
 
 export const CommitActions = ({ className, children, ...props }: CommitActionsProps) => (
   <div

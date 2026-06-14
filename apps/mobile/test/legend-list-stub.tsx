@@ -1,5 +1,5 @@
-import React from "react";
-
+import type { ReactNode } from "react";
+import { Fragment, createElement } from "react";
 export type LegendListRef = {
   scrollToEnd: (options?: unknown) => void;
 };
@@ -11,15 +11,15 @@ export function LegendList({
   ...props
 }: {
   data?: unknown[];
-  renderItem?: (info: { item: unknown; index: number }) => React.ReactNode;
-  children?: React.ReactNode;
+  renderItem?: (info: { item: unknown; index: number }) => ReactNode;
+  children?: ReactNode;
 }) {
-  return React.createElement(
+  return createElement(
     "LegendList",
     props,
     data?.length
       ? data.map((item, index) =>
-          React.createElement(React.Fragment, { key: index }, renderItem?.({ item, index })),
+          createElement(Fragment, { key: index }, renderItem?.({ item, index })),
         )
       : children,
   );

@@ -30,9 +30,7 @@ export function OralBoardsQuestionProvider({ children }: { children: ReactNode }
 export function useOralBoardsQuestion(): OralBoardsQuestionContextValue {
   const ctx = useContext(OralBoardsQuestionContext);
   if (!ctx) {
-    throw new Error(
-      "useOralBoardsQuestion must be used within an OralBoardsQuestionProvider",
-    );
+    throw new Error("useOralBoardsQuestion must be used within an OralBoardsQuestionProvider");
   }
   return ctx;
 }
