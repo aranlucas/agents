@@ -39,30 +39,8 @@ describe("selectArtifact", () => {
     expect(selectArtifact({ foo: "bar" }, getAgentConfig("a2ui"))).toBeNull();
   });
 
-  it("composes oral-boards case, provenance, transcript, and score card", () => {
+  it("returns null for oral-boards (no generic artifact config — uses bespoke pane)", () => {
     const oralBoards = getAgentConfig("oral-boards");
-    const view = selectArtifact(
-      {
-        case: "## Case\nA 7-year-old patient.",
-        case_sources: [{ docid: 1, title: "OCE Guide", collection: "abpd" }],
-        transcript: [
-          {
-            question: "What is your diagnosis?",
-            answer: "Pulpitis",
-            feedback: "Support the diagnosis with guideline criteria.",
-            citations: [{ docid: 2, title: "Pulp Therapy", collection: "aapd" }],
-          },
-        ],
-        score_card: "## Score Card\n- Diagnosis: 3/4",
-        status: "complete",
-      },
-      oralBoards,
-    );
-
-    expect(view?.title).toBe("Exam canvas");
-    expect(view?.content).toContain("## Case");
-    expect(view?.content).toContain("Sources");
-    expect(view?.content).toContain("What is your diagnosis?");
-    expect(view?.content).toContain("Score Card");
+    expect(selectArtifact({ case: "## Case\nA 7-year-old patient." }, oralBoards)).toBeNull();
   });
 });

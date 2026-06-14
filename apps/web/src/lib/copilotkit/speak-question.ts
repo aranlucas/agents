@@ -4,9 +4,15 @@ type SpeakQuestionDeps = {
   revokeObjectURL?: (url: string) => void;
   speechSynthesis?: SpeechSynthesis;
   SpeechSynthesisUtteranceCtor?: typeof SpeechSynthesisUtterance;
-  generateSpeech?: (text: string) => Promise<{ data: ArrayBuffer; sampleRate: number }>;
+  generateSpeech?: (
+    text: string,
+    speed?: number,
+  ) => Promise<{ data: ArrayBuffer; sampleRate: number }>;
   preloadKokoro?: () => Promise<boolean>;
+  speed?: number;
 };
+
+let activePlayer: HTMLAudioElement | undefined;
 
 function getBrowserSpeech(deps: SpeakQuestionDeps) {
   const speech = deps.speechSynthesis ?? globalThis.speechSynthesis;
@@ -20,7 +26,9 @@ function speakWithBrowserSpeech(question: string, deps: SpeakQuestionDeps, messa
     return `${message} Browser speech synthesis is unavailable.`;
   }
   speech.cancel();
-  speech.speak(new Utterance(question));
+  const utterance = new Utterance(question);
+  if (deps.speed != null) utterance.rate = deps.speed;
+  speech.speak(utterance);
   return message;
 }
 
@@ -35,10 +43,25 @@ async function playBlob(blob: Blob, deps: SpeakQuestionDeps) {
   const AudioPlayer = deps.AudioCtor ?? globalThis.Audio;
   const { createObjectURL, revokeObjectURL } = getObjectUrlApi(deps);
   const url = createObjectURL(blob);
+
+  if (activePlayer) {
+    activePlayer.pause?.();
+    activePlayer = undefined;
+  }
+
   const player = new AudioPlayer(url);
+  activePlayer = player as unknown as HTMLAudioElement;
+
   try {
     await player.play();
-    player.addEventListener("ended", () => revokeObjectURL(url), { once: true });
+    player.addEventListener(
+      "ended",
+      () => {
+        revokeObjectURL(url);
+        activePlayer = undefined;
+      },
+      { once: true },
+    );
     player.addEventListener("error", () => revokeObjectURL(url), { once: true });
   } catch (error) {
     revokeObjectURL(url);
@@ -46,9 +69,9 @@ async function playBlob(blob: Blob, deps: SpeakQuestionDeps) {
   }
 }
 
-async function defaultGenerateSpeech(text: string) {
+async function defaultGenerateSpeech(text: string, speed?: number) {
   const { generateSpeech } = await import("./kokoro-worker-client");
-  return generateSpeech(text);
+  return generateSpeech(text, speed);
 }
 
 async function defaultPreloadKokoro() {
@@ -58,7 +81,7 @@ async function defaultPreloadKokoro() {
 
 async function speakWithKokoro(question: string, deps: SpeakQuestionDeps) {
   const gen = deps.generateSpeech ?? defaultGenerateSpeech;
-  const { data } = await gen(question);
+  const { data } = await gen(question, deps.speed);
   const blob = new Blob([data], { type: "audio/wav" });
   await playBlob(blob, deps);
 }
@@ -81,20 +104,34 @@ export async function preloadKokoro(
   }
 }
 
-export async function speakQuestion(
-  question: string,
-  deps: SpeakQuestionDeps = {},
-): Promise<string> {
+export async function speak(text: string, deps: SpeakQuestionDeps = {}): Promise<string> {
   try {
-    await speakWithKokoro(question, deps);
+    await speakWithKokoro(text, deps);
     return "Used local Kokoro TTS.";
   } catch (error) {
     const detail = error instanceof Error ? error.message : "unknown error";
     return speakWithBrowserSpeech(
-      question,
+      text,
       deps,
       `Local Kokoro TTS unavailable (${detail}); used browser speech synthesis.`,
     );
+  }
+}
+
+export async function speakQuestion(
+  question: string,
+  deps: SpeakQuestionDeps = {},
+): Promise<string> {
+  // Kokoro's default; kept explicit so the deps record is honest.
+  return speak(question, { ...deps, speed: deps.speed ?? 1 });
+}
+
+export function stopSpeaking(deps: Pick<SpeakQuestionDeps, "speechSynthesis"> = {}): void {
+  const speech = deps.speechSynthesis ?? globalThis.speechSynthesis;
+  speech?.cancel();
+  if (activePlayer) {
+    activePlayer.pause?.();
+    activePlayer = undefined;
   }
 }
 

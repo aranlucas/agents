@@ -5,37 +5,29 @@ import { z } from "zod";
 
 import { SpeakQuestionToolCall } from "@/components/chat/SpeakQuestionToolCall";
 import { speakQuestion } from "@/lib/copilotkit/speak-question";
+import { setCurrentQuestion } from "@/lib/copilotkit/oral-boards-question";
 import type { AgentId } from "./registry";
 
 /**
- * Oral-boards console wiring. Registers the `speak_question` frontend tool that
- * voices examiner prompts. The Kokoro TTS model is preloaded earlier by the
- * route layout so the first question speaks without a cold-start stall.
+ * Oral-boards console wiring. Registers the `ask_question` frontend tool that
+ * voices examiner prompts and captures the live question for the bespoke pane.
+ * The Kokoro TTS model is preloaded earlier by the route layout so the first
+ * question speaks without a cold-start stall.
  */
 export function OralBoardsExtension({ agentId }: { agentId: AgentId }) {
   useFrontendTool(
     {
-      name: "speak_question",
-      description:
-        "Speak the next oral boards examiner question aloud in the chat UI and explain why it is being asked.",
+      name: "ask_question",
+      description: "Speak the next oral boards examiner question aloud in the chat UI.",
       available: true,
       agentId,
       parameters: z.object({
         question: z.string().describe("The exact examiner question to speak aloud"),
-        purpose: z
-          .string()
-          .describe("Why this question is being asked in the oral-board flow")
-          .optional(),
-        evaluationFocus: z
-          .string()
-          .describe("The clinical reasoning or ABPD competency being evaluated")
-          .optional(),
-        sourceBasis: z
-          .string()
-          .describe("The source document, guideline, or case fact that motivated the question")
-          .optional(),
       }),
-      handler: ({ question }) => speakQuestion(question),
+      handler: ({ question }) => {
+        setCurrentQuestion(question);
+        return speakQuestion(question);
+      },
       render: ({ status, args, result }) => (
         <SpeakQuestionToolCall status={status} parameters={args ?? {}} result={result} />
       ),
