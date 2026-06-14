@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Streamdown } from "streamdown";
 import { Maximize2Icon, Minimize2Icon, PlayIcon, SquareIcon } from "lucide-react";
 
@@ -17,9 +17,23 @@ import {
 } from "@/components/ai-elements/artifact";
 import { speak, stopSpeaking } from "@/lib/copilotkit/speak-question";
 import { useCurrentQuestion } from "@/lib/copilotkit/oral-boards-question";
-import { tabForStatus, type OralBoardsTab } from "./tab-for-status";
 
 const CASE_SPEED = 0.8;
+
+function stripMarkdownForSpeech(text: string): string {
+  return text
+    .replace(/^#{1,6}\s+/gm, "")              // headers → bare text
+    .replace(/\*{1,3}([^*]+)\*{1,3}/g, "$1")  // bold / italic
+    .replace(/_{1,3}([^_]+)_{1,3}/g, "$1")    // underscore emphasis
+    .replace(/`+([^`]+)`+/g, "$1")            // inline code
+    .replace(/^>\s*/gm, "")                   // blockquotes
+    .replace(/^[-*+]\s+/gm, "")               // unordered lists
+    .replace(/^\d+\.\s+/gm, "")               // ordered lists
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")  // links → link text
+    .replace(/\[[^\]]*\]/g, "")               // remaining brackets (inline citations)
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
 
 function CitationChips({ sources }: { sources: CaseSource[] }) {
   if (sources.length === 0) return null;
@@ -37,59 +51,119 @@ function CitationChips({ sources }: { sources: CaseSource[] }) {
   );
 }
 
-function CaseVignette({ caseBody, sources }: { caseBody: string; sources: CaseSource[] }) {
-  const [open, setOpen] = useState(true);
+function VignetteBody({
+  caseBody,
+  sources,
+  showTts = true,
+}: {
+  caseBody: string;
+  sources: CaseSource[];
+  showTts?: boolean;
+}) {
   const [playing, setPlaying] = useState(false);
 
-  const present = () => {
+  const toggle = () => {
     if (playing) {
       stopSpeaking();
       setPlaying(false);
       return;
     }
     setPlaying(true);
-    void speak(caseBody, { speed: CASE_SPEED }).finally(() => setPlaying(false));
+    void speak(stripMarkdownForSpeech(caseBody), { speed: CASE_SPEED }).finally(() =>
+      setPlaying(false),
+    );
   };
 
   return (
-    <section className="border-border rounded-lg border p-3">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="text-muted-foreground text-xs font-medium tracking-wide uppercase"
-        >
-          {open ? "▾" : "▸"} Case vignette
-        </button>
-        <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={present}>
-          {playing ? <SquareIcon className="size-3.5" /> : <PlayIcon className="size-3.5" />}
-          {playing ? "Stop" : "Present case"}
-        </Button>
-      </div>
-      {open && (
-        <div className="space-y-2">
-          <Streamdown>{caseBody}</Streamdown>
-          <CitationChips sources={sources} />
+    <div className="space-y-2">
+      {showTts && (
+        <div className="flex justify-end">
+          <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={toggle}>
+            {playing ? <SquareIcon className="size-3.5" /> : <PlayIcon className="size-3.5" />}
+            {playing ? "Stop" : "Present case"}
+          </Button>
         </div>
       )}
-    </section>
-  );
-}
-
-function QuestionView({ fallback }: { fallback: string }) {
-  const live = useCurrentQuestion();
-  const question = live || fallback;
-  return (
-    <div className="space-y-1">
-      <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-        Current question
-      </p>
-      <p className="text-sm leading-relaxed">{question || "Waiting for the next question…"}</p>
+      <Streamdown>{caseBody}</Streamdown>
+      <CitationChips sources={sources} />
     </div>
   );
 }
 
-function FeedbackView({
+function ExchangeList({ transcript }: { transcript: OralBoardsExchange[] }) {
+  return (
+    <>
+      {transcript.map((x, i) => (
+        <div key={x.question || i} className="border-border space-y-1 border-t pt-3 text-sm">
+          <p className="font-medium">
+            Q{i + 1}. {x.question}
+          </p>
+          {x.answer && <p className="text-muted-foreground">Your answer: {x.answer}</p>}
+          {x.feedback && <Streamdown>{x.feedback}</Streamdown>}
+          <CitationChips sources={x.citations ?? []} />
+        </div>
+      ))}
+    </>
+  );
+}
+
+function PresentingPane({
+  caseBody,
+  sources,
+  onReady,
+}: {
+  caseBody: string;
+  sources: CaseSource[];
+  onReady: () => void;
+}) {
+  return (
+    <div className="flex h-full flex-col gap-4">
+      <div className="flex-1 overflow-auto">
+        <VignetteBody caseBody={caseBody} sources={sources} />
+      </div>
+      <Button type="button" className="w-full shrink-0" onClick={onReady}>
+        Ready to begin
+      </Button>
+    </div>
+  );
+}
+
+function QuestioningPane({
+  caseBody,
+  sources,
+  transcript,
+}: {
+  caseBody: string;
+  sources: CaseSource[];
+  transcript: OralBoardsExchange[];
+}) {
+  const live = useCurrentQuestion();
+  const question = live || transcript.at(-1)?.question || "";
+
+  return (
+    <div className="space-y-4">
+      <details>
+        <summary className="text-muted-foreground cursor-pointer text-xs font-medium tracking-wide uppercase select-none">
+          Case vignette
+        </summary>
+        <div className="mt-2">
+          <VignetteBody caseBody={caseBody} sources={sources} showTts={false} />
+        </div>
+      </details>
+
+      <div className="space-y-1">
+        <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+          Current question
+        </p>
+        <p className="text-sm leading-relaxed">{question || "Waiting for the next question…"}</p>
+      </div>
+
+      <ExchangeList transcript={transcript} />
+    </div>
+  );
+}
+
+function FeedbackPane({
   scoreCard,
   transcript,
 }: {
@@ -99,16 +173,7 @@ function FeedbackView({
   return (
     <div className="space-y-4">
       {scoreCard.trim() && <Streamdown>{scoreCard}</Streamdown>}
-      {transcript.map((x, i) => (
-        <div key={x.question || i} className="border-border space-y-1 border-t pt-3 text-sm">
-          <p className="font-medium">
-            Q{i + 1}. {x.question}
-          </p>
-          {x.answer && <p className="text-muted-foreground">Your answer: {x.answer}</p>}
-          {x.feedback && <p>{x.feedback}</p>}
-          <CitationChips sources={x.citations ?? []} />
-        </div>
-      ))}
+      <ExchangeList transcript={transcript} />
       {!scoreCard.trim() && transcript.length === 0 && (
         <p className="text-muted-foreground text-sm">No feedback yet.</p>
       )}
@@ -121,19 +186,19 @@ export function OralBoardsPanel({
   fullscreen,
   onClose,
   onToggleFullscreen,
+  onReady,
 }: {
   state: OralBoardsState;
   fullscreen: boolean;
   onClose: () => void;
   onToggleFullscreen: () => void;
+  onReady: () => void;
 }) {
-  const phaseTab = tabForStatus(state.status ?? state.phase);
-  const [tab, setTab] = useState<OralBoardsTab>(phaseTab);
-  // Auto-follow the phase; manual selection sticks until the phase changes again.
-  useEffect(() => setTab(phaseTab), [phaseTab]);
-
+  const status = state.status ?? "idle";
+  const caseBody = state.case ?? "";
+  const sources = state.case_sources ?? [];
   const transcript = state.transcript ?? [];
-  const lastQuestion = transcript.at(-1)?.question ?? "";
+  const scoreCard = state.score_card ?? "";
 
   return (
     <Artifact className="h-full rounded-none border-0 border-l">
@@ -148,28 +213,15 @@ export function OralBoardsPanel({
           <ArtifactClose aria-label="Close panel" onClick={onClose} />
         </ArtifactActions>
       </ArtifactHeader>
-      <ArtifactContent className="space-y-3">
-        <CaseVignette caseBody={state.case ?? ""} sources={state.case_sources ?? []} />
-        <div className="flex gap-1 text-xs">
-          {(["question", "feedback"] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              className={
-                tab === t
-                  ? "bg-primary rounded-md px-2 py-1 text-white capitalize"
-                  : "text-muted-foreground rounded-md px-2 py-1 capitalize"
-              }
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-        {tab === "question" ? (
-          <QuestionView fallback={lastQuestion} />
-        ) : (
-          <FeedbackView scoreCard={state.score_card ?? ""} transcript={transcript} />
+      <ArtifactContent className={status === "presenting" ? "flex h-full flex-col" : "space-y-4"}>
+        {status === "presenting" && (
+          <PresentingPane caseBody={caseBody} sources={sources} onReady={onReady} />
+        )}
+        {status === "questioning" && (
+          <QuestioningPane caseBody={caseBody} sources={sources} transcript={transcript} />
+        )}
+        {(status === "complete" || status === "feedback") && (
+          <FeedbackPane scoreCard={scoreCard} transcript={transcript} />
         )}
       </ArtifactContent>
     </Artifact>
