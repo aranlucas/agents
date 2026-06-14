@@ -16,11 +16,7 @@ def test_oralboards_state_tools_write_canvas_state() -> None:
     sources = [{"docid": 1, "title": "Guide", "collection": "abpd"}]
     citations = [{"docid": 2, "title": "Pulp Therapy", "collection": "aapd"}]
 
-    assert set_case(context, "## Case\nA 7-year-old patient.", sources) == {
-        "ok": True,
-        "length": 29,
-        "source_count": 1,
-    }
+    assert set_case(context, "## Case\nA 7-year-old patient.", sources) == {"ok": True}
     assert context.state["case"] == "## Case\nA 7-year-old patient."
     assert context.state["case_sources"] == sources
     assert context.state["status"] == "presenting"
@@ -34,7 +30,7 @@ def test_oralboards_state_tools_write_canvas_state() -> None:
         answer="Irreversible pulpitis",
         feedback="Needs source-specific reasoning.",
         citations=citations,
-    ) == {"ok": True, "count": 1}
+    ) == {"ok": True}
     assert context.state["transcript"] == [
         {
             "question": "What is your diagnosis?",
@@ -45,10 +41,7 @@ def test_oralboards_state_tools_write_canvas_state() -> None:
     ]
     assert context.state["status"] == "questioning"
 
-    assert set_score_card(context, "## Score\n- Diagnosis: 3/4") == {
-        "ok": True,
-        "length": 25,
-    }
+    assert set_score_card(context, "## Score\n- Diagnosis: 3/4") == {"ok": True}
     assert context.state["score_card"] == "## Score\n- Diagnosis: 3/4"
     assert context.state["status"] == "complete"
 

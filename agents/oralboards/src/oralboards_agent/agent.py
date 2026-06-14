@@ -88,6 +88,7 @@ def search_docs(query: str, collection: str = "") -> dict:
             }
             for row in rows
         ],
+        "error": "",
     }
 
 
@@ -122,6 +123,7 @@ def read_doc(filepath: str) -> dict:
         "filepath": f"{row['collection']}/{row['filepath']}",
         "title": row["title"],
         "body": row["body"],
+        "error": "",
     }
 
 
@@ -231,7 +233,7 @@ it and offer adjacent topics you found via search_docs. Do not improvise.
 
 4. Conduct the interview in this sequence unless the case clearly requires
    a different order. For each question:
-   a. Call ask_question with the exact question text.
+   a. Call ask_question with the exact question text before writing the question in chat.
    b. Write ONLY that question in chat — one sentence, no elaboration.
    c. STOP COMPLETELY. Do not call any tool. Do not write any more text.
       Do not proceed until a candidate message arrives in the conversation.

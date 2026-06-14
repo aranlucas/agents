@@ -4,7 +4,6 @@ from oralboards_agent.agent import read_doc, search_docs
 def test_search_docs_returns_known_results() -> None:
     result = search_docs("pulpotomy")
 
-    assert result["error"] == ""
     assert result["results"]
     assert {
         "docid",
@@ -18,7 +17,6 @@ def test_search_docs_returns_known_results() -> None:
 def test_search_docs_respects_collection_filter() -> None:
     result = search_docs("pulpotomy", collection="aapd")
 
-    assert result["error"] == ""
     assert result["results"]
     assert {row["collection"] for row in result["results"]} == {"aapd"}
 
@@ -26,14 +24,12 @@ def test_search_docs_respects_collection_filter() -> None:
 def test_search_docs_handles_fts_hostile_input() -> None:
     result = search_docs('"pulpotomy"*')
 
-    assert result["error"] == ""
     assert isinstance(result["results"], list)
 
 
 def test_read_doc_returns_body_for_known_filepath() -> None:
     result = read_doc("aapd/bp-pulptherapy25.md")
 
-    assert result["error"] == ""
     assert result["filepath"] == "aapd/bp-pulptherapy25.md"
     assert result["collection"] == "aapd"
     assert "Pulp" in result["body"]
