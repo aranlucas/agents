@@ -1,5 +1,3 @@
-@import "tailwindcss";
-@import "@agents/ui/styles/globals.css";
 @import "@copilotkit/react-core/v2/styles.css";
 @import "streamdown/styles.css";
 

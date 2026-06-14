@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Schibsted_Grotesk, JetBrains_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
+import "@agents/ui/globals.css";
 import "./globals.css";
 
 const schibsted = Schibsted_Grotesk({
