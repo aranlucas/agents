@@ -58,12 +58,14 @@ def test_extract_state_with_token_auth():
 
 
 def test_token_auth_constants():
-    assert TokenAuth(
-        "x-kroger-access-token", "temp:kroger_token", "kroger_connected"
-    ) == KROGER_AUTH
-    assert TokenAuth(
-        "x-strava-access-token", "temp:strava_token", "strava_connected"
-    ) == STRAVA_AUTH
+    assert (
+        TokenAuth("x-kroger-access-token", "temp:kroger_token", "kroger_connected")
+        == KROGER_AUTH
+    )
+    assert (
+        TokenAuth("x-strava-access-token", "temp:strava_token", "strava_connected")
+        == STRAVA_AUTH
+    )
 
 
 def test_extract_state_strava_token_present():

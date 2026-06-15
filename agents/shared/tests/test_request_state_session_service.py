@@ -16,7 +16,9 @@ def test_request_state_service_injects_pending_temp_keys() -> None:
     }
 
     session = _FakeSession({"user_id": "u1"})
-    result = RequestStateSessionService._inject(svc, session, ("app", "user", "session"))
+    result = RequestStateSessionService._inject(
+        svc, session, ("app", "user", "session")
+    )
 
     assert result is session
     assert session.state["temp:kroger_token"] == "tok-123"
@@ -27,7 +29,9 @@ def test_request_state_service_leaves_session_without_pending_temp_state() -> No
     svc._pending_temp_state = {}
 
     session = _FakeSession({"user_id": "u1"})
-    result = RequestStateSessionService._inject(svc, session, ("app", "user", "session"))
+    result = RequestStateSessionService._inject(
+        svc, session, ("app", "user", "session")
+    )
 
     assert result is session
     assert session.state == {"user_id": "u1"}

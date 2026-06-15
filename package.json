@@ -8,7 +8,7 @@
     "dev:oral-boards": "pnpm --filter oral-boards dev",
     "dev:mobile": "pnpm --filter mobile start",
     "dev:agents": "docker compose up --build",
-    "lint": "oxlint",
+    "lint": "turbo lint",
     "lint:py": "uv run ruff check agents",
     "check": "pnpm lint && pnpm lint:py && pnpm fmt",
     "test": "pnpm --filter web test && pnpm --filter mobile test && pnpm test:py",
@@ -16,10 +16,12 @@
     "coverage": "pnpm coverage:ts && pnpm coverage:py",
     "coverage:ts": "pnpm --filter web exec vitest run --coverage && pnpm --filter mobile exec vitest run --coverage",
     "coverage:py": "uv run pytest --cov",
-    "fmt": "oxfmt",
-    "fmt:check": "oxfmt --check",
-    "build": "pnpm --filter web build",
-    "build:oral-boards": "pnpm --filter oral-boards build"
+    "fmt": "turbo fmt",
+    "fmt:check": "turbo fmt:check",
+    "typecheck": "turbo typecheck",
+    "graph": "turbo graph",
+    "build": "turbo build --filter=web",
+    "build:oral-boards": "turbo build --filter=oral-boards"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
@@ -30,7 +32,8 @@
     "jsdom": "^29.1.1",
     "oxfmt": "^0.54.0",
     "oxlint": "^1.69.0",
-    "oxlint-tsgolint": "^0.23.0"
+    "oxlint-tsgolint": "^0.23.0",
+    "turbo": "^2.9.15"
   },
   "packageManager": "pnpm@11.5.3"
 }

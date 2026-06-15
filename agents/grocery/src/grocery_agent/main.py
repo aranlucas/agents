@@ -16,7 +16,9 @@ from .agent import build_agent
 load_dotenv()
 
 GROCERY_PREDICT_STATE = [
-    streaming_state_mapping(state_key="meal_plan", tool="set_meal_plan", tool_argument="plan"),
+    streaming_state_mapping(
+        state_key="meal_plan", tool="set_meal_plan", tool_argument="plan"
+    ),
 ]
 
 _grocery_agent = build_agent()
@@ -26,7 +28,9 @@ def register(app: FastAPI, services: AgentServices):
     add_agent_routes(
         app,
         prefix="/grocery",
-        adk_agent=build_adk_agent(_grocery_agent, services=services, predict_state=GROCERY_PREDICT_STATE),
+        adk_agent=build_adk_agent(
+            _grocery_agent, services=services, predict_state=GROCERY_PREDICT_STATE
+        ),
         extract_state_from_request=make_extract_state(KROGER_AUTH),
         health_check=check_database_connection,
     )

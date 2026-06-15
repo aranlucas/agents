@@ -264,7 +264,12 @@ generate a training plan until Strava is connected.
 # ---------------------------------------------------------------------------
 _CANVAS_CONTRACT = canvas_contract(
     artifact="training plan and objective research",
-    tools=("fetch_activities", "set_objective_research", "set_training_plan", "mark_plan_ready"),
+    tools=(
+        "fetch_activities",
+        "set_objective_research",
+        "set_training_plan",
+        "mark_plan_ready",
+    ),
 )
 
 _INSTRUCTION = (
@@ -321,7 +326,9 @@ assumptions when Strava or objective context is unavailable.
 # ---------------------------------------------------------------------------
 # Agent factory
 # ---------------------------------------------------------------------------
-def build_agent(*, mode: str | None = None, include_contents: str = "default") -> LlmAgent:
+def build_agent(
+    *, mode: str | None = None, include_contents: str = "default"
+) -> LlmAgent:
     """Fresh LlmAgent instance — the gateway's wellness orchestrator builds its own."""
     return LlmAgent(
         name="fitness_agent",
@@ -334,7 +341,8 @@ def build_agent(*, mode: str | None = None, include_contents: str = "default") -
         static_instruction=_INSTRUCTION,
         instruction=_STATE_INSTRUCTION,
         before_agent_callback=make_state_initializer(
-            FitnessState, token_flags={STRAVA_AUTH.state_key: STRAVA_AUTH.connected_flag}
+            FitnessState,
+            token_flags={STRAVA_AUTH.state_key: STRAVA_AUTH.connected_flag},
         ),
         before_tool_callback=throttle_web_search,
         tools=[

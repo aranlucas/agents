@@ -24,7 +24,10 @@ def test_agui_route_exists() -> None:
 
 
 def test_instruction_names_basic_catalog_id() -> None:
-    assert "https://a2ui.org/specification/v0_9/basic_catalog.json" in agent._STATIC_INSTRUCTION
+    assert (
+        "https://a2ui.org/specification/v0_9/basic_catalog.json"
+        in agent._STATIC_INSTRUCTION
+    )
     assert "Do not use `default`" in agent._STATIC_INSTRUCTION
     assert "Do not use `type`" in agent._STATIC_INSTRUCTION
     assert '"component": "Column"' in agent._STATIC_INSTRUCTION

@@ -30,7 +30,9 @@ async def test_extract_kroger_auth_state_uses_temp_header_state() -> None:
 
 
 def test_meal_planner_header_provider_reads_temp_token() -> None:
-    headers = toolsets._header_provider(DummyContext({"temp:kroger_token": "token-123"}))
+    headers = toolsets._header_provider(
+        DummyContext({"temp:kroger_token": "token-123"})
+    )
     assert headers == {"Authorization": "Bearer token-123"}
 
 

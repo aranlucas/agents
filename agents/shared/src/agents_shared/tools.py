@@ -27,6 +27,7 @@ def build_model() -> LiteLlm:
     """LiteLlm configured with the shared primary model + fallback chain."""
     return LiteLlm(model=_DEFAULT_MODEL, fallbacks=list(_DEFAULT_FALLBACKS))
 
+
 # Modest ADK-level retry layered on top of each model's LiteLLM `fallbacks`.
 # Retries the same model a couple of times with backoff before LiteLLM rotates
 # to the next fallback model.
@@ -78,7 +79,7 @@ def parse_tool_response(tool_response: dict | str) -> dict | str | None:
         if isinstance(tool_response, str):
             return tool_response
         return tool_response.get("structuredContent", tool_response.get("content", {}))
-    except (KeyError, TypeError, AttributeError):
+    except KeyError, TypeError, AttributeError:
         return None
 
 
@@ -97,5 +98,3 @@ def save_state(
             fallback_key,
         )
         tool_context.state[fallback_key] = structured_content
-
-
