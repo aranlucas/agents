@@ -8,6 +8,7 @@ import logging
 import os
 from collections.abc import Awaitable, Callable
 
+import litellm
 from ag_ui.core.types import RunAgentInput
 from ag_ui_adk import ADKAgent, add_adk_fastapi_endpoint
 from ag_ui_adk.config import PredictStateMapping
@@ -56,6 +57,7 @@ def setup_otel(default_service_name: str) -> Tracer:
         )
         maybe_set_otel_providers(otel_resource=resource)
         SQLAlchemyInstrumentor().instrument()
+        litellm.callbacks = ["otel"]
 
     return trace.get_tracer(default_service_name)
 
