@@ -1,7 +1,6 @@
-# Railway deploy config for the agents gateway.
-#
-# The build installs the root `agents` package (see pyproject.toml) editable via
-# `uv sync`, which puts every agent's `src` package on the path — so the gateway
-# entrypoint is just `gateway.main:app`, with no root-level shim or PYTHONPATH.
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "agents/Dockerfile"
+
 [deploy]
 startCommand = "uvicorn gateway.main:app --host 0.0.0.0 --port $PORT"

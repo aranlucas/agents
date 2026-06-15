@@ -13,6 +13,6 @@ node_modules
 **/.pytest_cache
 **/.ruff_cache
 **/tests
-docs/superpowers
-apps
-packages/types
+docs/
+apps/
+packages/
