@@ -226,12 +226,14 @@ function QuestioningPane({
   transcript,
   onAnswer,
   isRunning,
+  loadingStep = "",
 }: {
   caseBody: string;
   sources: CaseSource[];
   transcript: OralBoardsExchange[];
   onAnswer: (text: string) => void;
   isRunning: boolean;
+  loadingStep?: string;
 }) {
   const { currentQuestion: question } = useOralBoardsQuestion();
   const questionNumber = transcript.length + 1;
@@ -300,7 +302,9 @@ function QuestioningPane({
           </p>
           {question && <QuestionTtsButton text={question} />}
         </div>
-        <p className="text-sm leading-relaxed">{question || "Waiting for the next question…"}</p>
+        <p className="text-sm leading-relaxed">
+          {question || (isRunning && loadingStep) || "Waiting for the next question…"}
+        </p>
         {recorder.micSupported && <CopilotChatAudioRecorder ref={recorder.recorderRef} />}
         <textarea
           aria-label="Your answer"
@@ -361,6 +365,7 @@ export function OralBoardsPanel({
   onReady,
   onAnswer,
   isRunning,
+  loadingStep = "",
 }: {
   state: OralBoardsState;
   fullscreen: boolean;
@@ -369,6 +374,7 @@ export function OralBoardsPanel({
   onReady: () => void;
   onAnswer: (text: string) => void;
   isRunning: boolean;
+  loadingStep?: string;
 }) {
   const status = state.status ?? "idle";
   const caseBody = state.case ?? "";
@@ -408,9 +414,10 @@ export function OralBoardsPanel({
             transcript={transcript}
             onAnswer={onAnswer}
             isRunning={isRunning}
+            loadingStep={loadingStep}
           />
         )}
-        {(status === "complete" || status === "feedback") && (
+        {(status === "complete" || status === "feedback" || Boolean(scoreCard.trim())) && (
           <FeedbackPane scoreCard={scoreCard} transcript={transcript} />
         )}
       </ArtifactContent>

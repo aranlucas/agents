@@ -146,6 +146,7 @@ export function OralBoardsWorkspace() {
               onReady={handleReady}
               onAnswer={(text) => void handleAnswer(text)}
               isRunning={isRunning}
+              loadingStep={examState.loading_step ?? ""}
             />
           ) : (
             <OralBoardsStartPage
