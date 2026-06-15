@@ -28,7 +28,9 @@ def register(app: FastAPI, services: AgentServices):
     add_agent_routes(
         app,
         prefix="/fitness",
-        adk_agent=build_adk_agent(_fitness_agent, services=services, predict_state=FITNESS_PREDICT_STATE),
+        adk_agent=build_adk_agent(
+            _fitness_agent, services=services, predict_state=FITNESS_PREDICT_STATE
+        ),
         extract_state_from_request=make_extract_state(STRAVA_AUTH),
         health_check=check_database_connection,
     )

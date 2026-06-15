@@ -24,8 +24,12 @@ class TokenAuth(NamedTuple):
     connected_flag: str
 
 
-KROGER_AUTH = TokenAuth("x-kroger-access-token", "temp:kroger_token", "kroger_connected")
-STRAVA_AUTH = TokenAuth("x-strava-access-token", "temp:strava_token", "strava_connected")
+KROGER_AUTH = TokenAuth(
+    "x-kroger-access-token", "temp:kroger_token", "kroger_connected"
+)
+STRAVA_AUTH = TokenAuth(
+    "x-strava-access-token", "temp:strava_token", "strava_connected"
+)
 
 
 def make_state_initializer(
@@ -56,7 +60,9 @@ def make_extract_state(
 ) -> Callable[[Request, RunAgentInput], Awaitable[dict[str, object]]]:
     """extract_state_from_request handler: Clerk identity + optional token auth."""
 
-    async def extract(request: Request, _input_data: RunAgentInput) -> dict[str, object]:
+    async def extract(
+        request: Request, _input_data: RunAgentInput
+    ) -> dict[str, object]:
         state: dict[str, object] = extract_identity_state(request)
         for auth in token_auths:
             token = request.headers.get(auth.header) or ""

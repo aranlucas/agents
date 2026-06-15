@@ -1,0 +1,54 @@
+{
+  "$schema": "../../node_modules/oxlint/configuration_schema.json",
+  "extends": ["../../packages/oxlint-config/base.json"],
+  "plugins": ["import", "jsx-a11y", "nextjs", "react", "typescript", "unicorn"],
+  "settings": {
+    "next": {
+      "rootDir": "."
+    },
+    "react": {
+      "version": "19.2.7"
+    }
+  },
+  "rules": {
+    "react/self-closing-comp": "warn",
+    "react/react-in-jsx-scope": "off",
+    "react-hooks/exhaustive-deps": "warn",
+    "jsx-a11y/prefer-tag-over-role": "off"
+  },
+  "overrides": [
+    {
+      "files": ["**/*.test.{ts,tsx}", "**/test/**"],
+      "rules": {
+        "jsx-a11y/aria-role": "off",
+        "jsx-a11y/heading-has-content": "off"
+      }
+    },
+    {
+      "files": ["src/components/ai-elements/**/*.{ts,tsx}", "src/components/ui/**/*.{ts,tsx}"],
+      "rules": {
+        "jsx-a11y/anchor-has-content": "off",
+        "jsx-a11y/control-has-associated-label": "off",
+        "jsx-a11y/media-has-caption": "off",
+        "jsx-a11y/click-events-have-key-events": "off",
+        "jsx-a11y/no-noninteractive-element-interactions": "off",
+        "jsx-a11y/heading-has-content": "off",
+        "nextjs/no-img-element": "off",
+        "typescript/restrict-template-expressions": "off",
+        "typescript/no-useless-default-assignment": "off",
+        "typescript/no-unsafe-type-assertion": "off",
+        "typescript/no-floating-promises": "off",
+        "typescript/no-redundant-type-constituents": "off",
+        "typescript/consistent-return": "off",
+        "react/no-object-type-as-default-prop": "off",
+        "react/iframe-missing-sandbox": "off",
+        "react/jsx-no-constructed-context-values": "off",
+        "eslint/no-shadow": "off",
+        "unicorn/prefer-add-event-listener": "off",
+        "react/self-closing-comp": "off",
+        "typescript/prefer-nullish-coalescing": "off"
+      }
+    }
+  ],
+  "ignorePatterns": [".next/**"]
+}

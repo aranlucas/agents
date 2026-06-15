@@ -27,7 +27,9 @@ def test_save_state_writes_by_tool_name() -> None:
     assert context.state == {"set_shopping_list": {"items": ["eggs"]}}
 
 
-def test_save_state_falls_back_to_prefixed_key_when_schema_rejects_raw_tool_name() -> None:
+def test_save_state_falls_back_to_prefixed_key_when_schema_rejects_raw_tool_name() -> (
+    None
+):
     class SchemaBoundState(dict):
         def __setitem__(self, key, value):
             if ":" not in key and key != "declared":

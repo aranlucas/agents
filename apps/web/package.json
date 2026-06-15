@@ -6,9 +6,13 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
+    "lint": "oxlint .",
+    "fmt": "oxfmt .",
+    "fmt:check": "oxfmt --check .",
     "test": "vitest run",
     "coverage": "vitest run --coverage",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@agents/types": "workspace:*",
@@ -57,6 +61,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@agents/typescript-config": "workspace:*",
     "@tailwindcss/postcss": "^4.3.1",
     "@types/node": "^25.9.3",
     "@types/react": "^19.2.17",

@@ -78,7 +78,9 @@ def test_gateway_is_only_otel_setup_call():
     ]
 
     assert offenders == []
-    assert "setup_otel(" in (repo_root / "agents/gateway/src/gateway/main.py").read_text()
+    assert (
+        "setup_otel(" in (repo_root / "agents/gateway/src/gateway/main.py").read_text()
+    )
 
 
 def test_agui_requires_token_when_clerk_auth_enabled(monkeypatch):

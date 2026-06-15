@@ -1,0 +1,51 @@
+{
+  "$schema": "../../node_modules/oxlint/configuration_schema.json",
+  "extends": ["../../packages/oxlint-config/base.json"],
+  "plugins": ["import", "jsx-a11y", "react", "typescript", "unicorn"],
+  "env": {
+    "browser": true,
+    "es2026": true
+  },
+  "globals": {
+    "__DEV__": "readonly"
+  },
+  "settings": {
+    "react": {
+      "version": "19.2.7"
+    }
+  },
+  "rules": {
+    "react/self-closing-comp": "warn",
+    "react/react-in-jsx-scope": "off",
+    "react-hooks/exhaustive-deps": "warn",
+    "jsx-a11y/prefer-tag-over-role": "off",
+    "import/no-unassigned-import": [
+      "warn",
+      {
+        "allow": ["**/*.css", "**/env", "expo", "whatwg-fetch", "react-native/**"]
+      }
+    ],
+    "react/style-prop-object": [
+      "warn",
+      {
+        "allow": ["StatusBar"]
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["**/*.test.{ts,tsx}", "**/test/**"],
+      "rules": {
+        "jsx-a11y/aria-role": "off",
+        "jsx-a11y/heading-has-content": "off"
+      }
+    },
+    {
+      "files": ["src/components/chat/conversation.tsx"],
+      "rules": {
+        "react-hooks/exhaustive-deps": "off"
+      }
+    }
+  ],
+  "ignorePatterns": [".expo/**", "uniwind-types.d.ts"]
+}

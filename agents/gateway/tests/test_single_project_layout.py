@@ -7,7 +7,10 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 def test_agents_do_not_have_nested_pyproject_files():
-    nested = sorted(path.relative_to(REPO_ROOT) for path in (REPO_ROOT / "agents").glob("*/pyproject.toml"))
+    nested = sorted(
+        path.relative_to(REPO_ROOT)
+        for path in (REPO_ROOT / "agents").glob("*/pyproject.toml")
+    )
 
     assert nested == []
 

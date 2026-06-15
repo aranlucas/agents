@@ -1,0 +1,15 @@
+{
+  "$schema": "../../node_modules/oxlint/configuration_schema.json",
+  "extends": ["../oxlint-config/base.json"],
+  "plugins": ["import", "jsx-a11y", "react", "typescript", "unicorn"],
+  "settings": {
+    "react": {
+      "version": "19.2.7"
+    }
+  },
+  "rules": {
+    "react/self-closing-comp": "warn",
+    "react/react-in-jsx-scope": "off",
+    "jsx-a11y/prefer-tag-over-role": "off"
+  }
+}
