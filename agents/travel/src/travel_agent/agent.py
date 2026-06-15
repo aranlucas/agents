@@ -11,7 +11,8 @@ A single ADK agent that co-plans a trip with the operator:
   * requests human approval before "locking" the trip via a frontend
     tool (request_user_approval) registered with useFrontendTool.
 
-Backed by Mistral via LiteLLM. The FastAPI app mounts the agent at "/"
+Backed by a free LiteLLM model pool with Mistral as first fallback.
+The FastAPI app mounts the agent at "/"
 via ag-ui-adk, plus a /health endpoint for the dev script.
 """
 
@@ -22,6 +23,7 @@ from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
     build_model,
     get_current_date,
+    make_mark_ready,
     on_model_error_callback,
 )
 from google.adk.agents import LlmAgent
@@ -129,11 +131,11 @@ def add_day(tool_context: ToolContext, day_number: int, theme: str, plan: str) -
     return {"ok": True}
 
 
-def mark_ready_to_book(tool_context: ToolContext, summary: str) -> dict:
-    """Flag the trip as ready for the operator to lock in / book."""
-    tool_context.state["status"] = "ready_to_book"
-    tool_context.state["review_summary"] = summary
-    return {"ok": True}
+mark_ready_to_book = make_mark_ready(
+    "mark_ready_to_book",
+    "ready_to_book",
+    doc="Flag the trip as ready for the operator to lock in / book.",
+)
 
 
 # ---------------------------------------------------------------------------

@@ -4,11 +4,16 @@ from typing import TypedDict
 
 from ag_ui_adk import AGUIToolset
 from agents_shared.prompts import canvas_contract
-from agents_shared.state import KROGER_AUTH, make_state_initializer
+from agents_shared.state import (
+    KROGER_AUTH,
+    make_state_initializer,
+    make_state_instruction,
+)
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
     build_model,
     get_current_date,
+    make_mark_ready,
     on_model_error_callback,
 )
 from google.adk.agents import LlmAgent
@@ -104,11 +109,11 @@ def set_weekly_deals(tool_context: ToolContext, deals: str) -> dict:
     return {"ok": True}
 
 
-def mark_list_ready(tool_context: ToolContext, summary: str) -> dict:
-    """Mark the shopping list as ready to shop."""
-    tool_context.state["status"] = "ready"
-    tool_context.state["review_summary"] = summary
-    return {"ok": True}
+mark_list_ready = make_mark_ready(
+    "mark_list_ready",
+    "ready",
+    doc="Mark the shopping list as ready to shop.",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -182,25 +187,7 @@ Be practical, budget-aware, and proactive. Suggest substitutions for out-of-stoc
 )
 
 
-_STATE_INSTRUCTION = """\
-Current grocery state:
-- Kroger connected: {kroger_connected}
-- Shopping list: {shopping_list}
-- Meal plan: {meal_plan}
-- Cart: {cart}
-- Pantry: {pantry}
-- Weekly deals: {weekly_deals}
-- Status: {status}
-- Notes: {notes}
-- Review summary: {review_summary}
-- Training plan: {training_plan}
-- User ID: {user_id}
-
-Use the injected `kroger_connected` state value above as the auth gate.
-If `kroger_connected` is False, do not call any MCP tools. Tell the user their
-Kroger account isn't connected and they need to click 'Connect Kroger' in the UI
-to continue. Do not plan meals or generate shopping lists.
-"""
+_STATE_INSTRUCTION = make_state_instruction(GroceryState, header="Current grocery state")
 
 
 # ---------------------------------------------------------------------------

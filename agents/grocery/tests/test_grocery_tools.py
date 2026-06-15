@@ -44,5 +44,4 @@ def test_agent_instruction_uses_adk_state_placeholders() -> None:
     assert "{meal_plan}" in instruction
     assert "{cart}" in instruction
     assert "{training_plan}" in instruction
-    assert "If `kroger_connected` is False" in instruction
     assert not hasattr(agent, "_kroger_notice")

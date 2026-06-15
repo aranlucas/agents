@@ -2,11 +2,12 @@
 
 from ag_ui_adk import AGUIToolset
 from agents_shared.prompts import canvas_contract
-from agents_shared.state import make_state_initializer
+from agents_shared.state import make_state_initializer, make_state_instruction
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
     build_model,
     get_current_date,
+    make_mark_ready,
     on_model_error_callback,
 )
 from fitness_agent.agent import StravaActivity
@@ -52,11 +53,11 @@ def set_weekly_wellness_plan(tool_context: ToolContext, plan: str) -> dict:
     return {"ok": True, "length": len(plan)}
 
 
-def mark_plan_ready(tool_context: ToolContext, summary: str) -> dict:
-    """Mark the combined weekly wellness plan as ready."""
-    tool_context.state["status"] = "ready"
-    tool_context.state["review_summary"] = summary
-    return {"ok": True}
+mark_plan_ready = make_mark_ready(
+    "mark_plan_ready",
+    "ready",
+    doc="Mark the combined weekly wellness plan as ready.",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -124,25 +125,7 @@ failed and do not mark the plan ready.
 )
 
 
-_STATE_INSTRUCTION = """\
-Current wellness state:
-- Status: {status}
-- Meal plan: {meal_plan}
-- Weekly plan: {weekly_plan}
-- Review summary: {review_summary}
-- User ID: {user_id}
-- Kroger connected: {kroger_connected}
-- Strava connected: {strava_connected}
-- Shopping list: {shopping_list}
-- Cart: {cart}
-- Pantry: {pantry}
-- Weekly deals: {weekly_deals}
-- Notes: {notes}
-- Activities: {activities}
-- Activities synced at: {activities_synced_at}
-- Objective research: {objective_research}
-- Training plan: {training_plan}
-"""
+_STATE_INSTRUCTION = make_state_instruction(WellnessState, header="Current wellness state")
 
 
 # ---------------------------------------------------------------------------
