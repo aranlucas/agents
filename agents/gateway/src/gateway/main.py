@@ -19,6 +19,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fitness_agent.main import register as register_fitness
 from grocery_agent.main import register as register_grocery
+from opentelemetry.propagate import extract as otel_extract
 from oralboards_agent.main import register as register_oralboards
 from resume_agent.main import register as register_resume
 from travel_agent.main import register as register_travel
@@ -81,8 +82,10 @@ async def trace_requests(request, call_next):
         return await call_next(request)
 
     start = time.perf_counter()
+    context = otel_extract(dict(request.headers))
     with tracer.start_as_current_span(
         f"{request.method} {request.url.path}",
+        context=context,
         attributes={
             "http.request.method": request.method,
             "url.path": request.url.path,
