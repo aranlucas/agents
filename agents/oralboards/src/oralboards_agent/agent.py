@@ -46,6 +46,7 @@ class OralBoardsState(BaseModel):
     transcript: list[OralBoardsExchange] = []
     score_card: str = ""
     status: str = "idle"
+    loading_step: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -170,6 +171,12 @@ def set_phase(tool_context: ToolContext, phase: str) -> dict:
     """Set the current oral-exam status."""
     tool_context.state["status"] = phase
     return {"ok": True, "phase": phase}
+
+
+def set_loading_step(tool_context: ToolContext, step: str) -> dict:
+    """Report a human-readable progress step during search or generation phases."""
+    tool_context.state["loading_step"] = step
+    return {"ok": True}
 
 
 def append_exchange(
@@ -367,6 +374,7 @@ def build_agent() -> LlmAgent:
             read_doc,
             set_case,
             set_phase,
+            set_loading_step,
             append_exchange,
             set_score_card,
             AGUIToolset(),
