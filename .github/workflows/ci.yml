@@ -5,7 +5,7 @@ name: CI
 #   js      — oxlint, oxfmt, turbo typecheck, vitest (web + mobile)
 #   build   — next build (slowest step; runs in parallel with the others)
 #   python  — ruff, compileall, pytest (no Node needed)
-#   docker  — Dockerfile.agents smoke-build
+#   docker  — Dockerfile smoke-build
 
 on:
   push:
@@ -82,5 +82,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Build Dockerfile.agents
-        run: docker build -f Dockerfile.agents .
+      - name: Build Dockerfile
+        run: docker build .
