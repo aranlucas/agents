@@ -1,10 +1,9 @@
 """Gateway — single FastAPI app with per-agent AG-UI routes."""
 
-import contextlib
 import logging
 import os
 import time
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from a2ui_agent.main import register as register_a2ui
 from agents_shared.app_factory import setup_otel
@@ -55,7 +54,7 @@ async def lifespan(app: FastAPI):
         app.state._initialized = True
     yield
     # shutdown — release the cached health-check engine
-    with contextlib.suppress(Exception):
+    with suppress(Exception):
         release_health_engine()
 
 
