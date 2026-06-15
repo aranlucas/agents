@@ -19,8 +19,7 @@ def _normalize_postgres_url(url: str) -> str:
 
 
 def get_database_url() -> str | None:
-    # Prefer Railway's internal URL (lower latency, no egress) over the public one
-    url = os.environ.get("DATABASE_PRIVATE_URL") or os.environ.get("DATABASE_URL")
+    url = os.environ.get("DATABASE_URL")
     return _normalize_postgres_url(url) if url else None
 
 
