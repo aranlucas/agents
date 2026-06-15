@@ -22,6 +22,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@agents/typescript-config": "workspace:*",
     "@tailwindcss/postcss": "^4.3.1",
     "@types/node": "^25.9.3",
     "@types/react": "^19.2.17",

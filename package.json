@@ -18,8 +18,8 @@
     "coverage:py": "uv run pytest --cov",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
-    "build": "pnpm --filter web build",
-    "build:oral-boards": "pnpm --filter oral-boards build"
+    "build": "turbo build --filter=web",
+    "build:oral-boards": "turbo build --filter=oral-boards"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
@@ -30,7 +30,8 @@
     "jsdom": "^29.1.1",
     "oxfmt": "^0.54.0",
     "oxlint": "^1.69.0",
-    "oxlint-tsgolint": "^0.23.0"
+    "oxlint-tsgolint": "^0.23.0",
+    "turbo": "^2.9.15"
   },
   "packageManager": "pnpm@11.5.3"
 }
