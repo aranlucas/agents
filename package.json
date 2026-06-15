@@ -18,6 +18,7 @@
     "coverage:py": "uv run pytest --cov",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
+    "typecheck": "turbo typecheck",
     "build": "turbo build --filter=web",
     "build:oral-boards": "turbo build --filter=oral-boards"
   },

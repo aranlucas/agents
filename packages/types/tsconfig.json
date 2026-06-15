@@ -1,11 +1,8 @@
 {
+  "extends": "@agents/typescript-config/base.json",
   "compilerOptions": {
-    "target": "ESNext",
     "module": "ESNext",
-    "moduleResolution": "bundler",
-    "strict": true,
-    "skipLibCheck": true,
-    "isolatedModules": true,
+    "moduleResolution": "Bundler",
     "noEmit": true
   },
   "include": ["src"]
