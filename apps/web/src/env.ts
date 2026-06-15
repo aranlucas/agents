@@ -10,7 +10,7 @@ export const env = createEnv({
     MISTRAL_API_KEY: z.string().optional(),
     OPENROUTER_API_KEY: z.string().optional(),
     HUGGING_FACE_API_KEY: z.string().optional(),
-    GROQ_API_KEY: z.string().optional(),
+    GROQ_API_KEY: z.string().min(1),
     OTEL_EXPORTER_OTLP_ENDPOINT: z.string().optional(),
     OTEL_SERVICE_NAME: z.string().default("agents-nextjs"),
     COPILOTKIT_DEBUG: z

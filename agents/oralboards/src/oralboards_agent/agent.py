@@ -237,12 +237,11 @@ You MUST call search_docs before producing ANY clinical content — cases, quest
 feedback, or scoring. No exceptions. Never fill in clinical content from memory.
 
 Search strategy:
-1. Call search_docs with the topic keyword (no collection filter) to find the
-   highest-ranked results across all collections.
-2. Call search_docs again with collection="aapd" or collection="abpd" if you need
-   guideline-specific or exam-structure content specifically.
-3. Call read_doc on the most relevant filepath(s) to read the full document body
-   before writing the case or feedback.
+1. In a single turn, call search_docs with the topic keyword (no collection filter)
+   AND call search_docs with collection="aapd" or collection="abpd" in parallel —
+   both searches are independent, so fire them together rather than sequentially.
+2. Call read_doc on the most relevant filepath(s). When multiple documents look
+   relevant, issue all read_doc calls in parallel rather than one at a time.
 
 If search returns no results for a topic, tell the user the corpus doesn't cover
 it and offer adjacent topics you found via search_docs. Do not improvise.
