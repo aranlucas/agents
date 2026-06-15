@@ -85,7 +85,7 @@ def search_docs(query: str, collection: str = "") -> dict:
           {collection_clause}
         order by bm25(documents_fts)
         limit 10
-    """
+    """  # noqa: S608 — collection_clause is a literal "and d.collection = ?" or ""; user input goes through params
     try:
         with connect() as conn:
             rows = conn.execute(sql, params).fetchall()

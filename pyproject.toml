@@ -12,10 +12,7 @@ dependencies = [
   "litellm",
   "opentelemetry-api",
   "opentelemetry-exporter-otlp-proto-http",
-  "opentelemetry-instrumentation-google-genai>=0.7b1",
   "opentelemetry-instrumentation-sqlalchemy>=0.50b0",
-  "opentelemetry-instrumentation-sqlite3",
-  "opentelemetry-instrumentation-vertexai>=2.0b0",
   "opentelemetry-sdk",
   "pydantic",
   "pyjwt[crypto]>=2.10",
@@ -50,7 +47,7 @@ target-version = "py314"
 extend-exclude = [".venv", "__pycache__", ".pytest_cache"]
 
 [tool.ruff.lint]
-select = ["E", "F", "UP", "B", "SIM", "I"]
+select = ["E", "F", "UP", "B", "SIM", "I", "ASYNC", "S"]
 ignore = [
   "ANN", # Runtime and framework callbacks use dynamic third-party types.
   "D", # This codebase does not require public API docstrings everywhere.
@@ -63,6 +60,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**/*.py" = [
   "S101", # Pytest assertion rewriting is the preferred test style.
+  "S105", # Test fixtures use placeholder token strings, not real credentials.
 ]
 
 [tool.pytest.ini_options]
@@ -97,4 +95,4 @@ exclude_also = [
 ]
 
 [dependency-groups]
-dev = ["httpx", "pytest", "pytest-asyncio", "pytest-cov>=7.1.0", "ruff>=0.15.15"]
+dev = ["httpx", "pyright>=1.1", "pytest", "pytest-asyncio", "pytest-cov>=7.1.0", "ruff>=0.15.15"]
