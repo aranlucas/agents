@@ -148,6 +148,7 @@ export type OralBoardsState = {
   transcript?: OralBoardsExchange[];
   score_card?: string;
   status?: OralBoardsPhase | "idle";
+  loading_step?: string;
 };
 
 // A2UI showcase state — matches what agents/a2ui writes to ADK shared state
