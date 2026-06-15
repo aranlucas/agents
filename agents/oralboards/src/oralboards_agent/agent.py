@@ -7,7 +7,7 @@ from typing import TypedDict
 
 from ag_ui_adk import AGUIToolset
 from agents_shared.prompts import canvas_contract
-from agents_shared.state import make_state_initializer
+from agents_shared.state import make_state_initializer, make_state_instruction
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
     build_model,
@@ -343,14 +343,9 @@ When writing the score card in step 6, list per-domain scores as **Domain — Sc
 """
 )
 
-_STATE_INSTRUCTION = """\
-Current oral-boards state:
-- Case: {case}
-- Case sources: {case_sources}
-- Status: {status}
-- Transcript: {transcript}
-- Score card: {score_card}
-"""
+_STATE_INSTRUCTION = make_state_instruction(
+    OralBoardsState, header="Current oral-boards state"
+)
 
 
 # ---------------------------------------------------------------------------

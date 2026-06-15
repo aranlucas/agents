@@ -6,7 +6,7 @@ state extractor from it so agents don't copy the loops around.
 """
 
 from collections.abc import Awaitable, Callable
-from typing import NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
 from ag_ui.core.types import RunAgentInput
 from fastapi import Request
@@ -14,6 +14,9 @@ from google.adk.agents.callback_context import CallbackContext
 from pydantic import BaseModel
 
 from .tools import extract_identity_state
+
+if TYPE_CHECKING:
+    from google.adk.agents.readonly_context import ReadonlyContext
 
 
 class TokenAuth(NamedTuple):
@@ -72,3 +75,43 @@ def make_extract_state(
         return state
 
     return extract
+
+
+def make_state_instruction(
+    state_model: type[BaseModel],
+    *,
+    header: str = "Current state",
+) -> str:
+    """Generate a per-turn state instruction template from a pydantic model.
+
+    Produces a string like:
+        Current state:
+        - Field name: {field_name}
+        - ...
+
+    Use as the ``instruction`` parameter of LlmAgent to ensure the field list
+    stays in sync with the state model automatically.
+    """
+    lines = [f"{header}:"]
+    for field_name in state_model.model_fields:
+        label = field_name.replace("_", " ").title()
+        lines.append(f"- {label}: {{{field_name}}}")
+    return "\n".join(lines)
+
+
+def make_token_auth_header_provider(
+    auth: TokenAuth,
+) -> Callable[[ReadonlyContext], dict[str, str]]:
+    """Factory for MCP header providers that read an OAuth token from ADK session state.
+
+    The returned function reads ``auth.state_key`` from the session state and
+    returns an ``Authorization: Bearer <token>`` header if a token is present.
+    """
+
+    def _header_provider(context: ReadonlyContext) -> dict[str, str]:
+        token = str(context.state.get(auth.state_key) or "")
+        if token:
+            return {"Authorization": f"Bearer {token}"}
+        return {}
+
+    return _header_provider

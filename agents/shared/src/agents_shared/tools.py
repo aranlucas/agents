@@ -2,11 +2,13 @@
 
 import datetime
 import logging
+from collections.abc import Callable
 
 from fastapi import Request
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.models.llm_request import LlmRequest
+from google.adk.tools import ToolContext
 from google.adk.workflow._retry_config import RetryConfig
 
 log = logging.getLogger("agents_shared")
@@ -71,3 +73,33 @@ def on_model_error_callback(
         error,
     )
     return None
+
+
+def make_mark_ready(
+    tool_name: str,
+    status_value: str,
+    *,
+    doc: str = "",
+) -> Callable[[ToolContext, str], dict]:
+    """Factory for the status-flip / review-summary tool duplicated across agents.
+
+    Creates a named function that sets state["status"] = status_value and
+    state["review_summary"] = summary, returning {"ok": True}.
+
+    Args:
+        tool_name: The function name ADK registers as the tool name.
+        status_value: The value to write to state["status"].
+        doc: Optional docstring for the generated tool.
+    """
+
+    def _mark_ready(tool_context: ToolContext, summary: str) -> dict:
+        tool_context.state["status"] = status_value
+        tool_context.state["review_summary"] = summary
+        return {"ok": True}
+
+    _mark_ready.__name__ = tool_name
+    _mark_ready.__qualname__ = tool_name
+    _mark_ready.__doc__ = (
+        doc or f"Mark the plan as {status_value!r} and capture the review summary."
+    )
+    return _mark_ready
