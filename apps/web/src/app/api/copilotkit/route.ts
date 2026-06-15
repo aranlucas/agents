@@ -7,7 +7,7 @@ import { env } from "@/env";
 import { agentBaseUrl } from "@/lib/agent-url";
 import { getKrogerAccessToken } from "@/lib/kroger-token";
 import { getStravaAccessToken } from "@/lib/strava-token";
-import { AGENT_BACKEND_PATHS } from "@/components/chat/agents/registry";
+import { AGENT_BACKEND_PATHS, AGENT_ORDER } from "@/components/chat/agents/registry";
 import { GroqTranscriptionService } from "@/lib/copilotkit/groq-transcription";
 import { isPublicCopilotPath } from "./guard";
 
@@ -17,10 +17,10 @@ const STRAVA_TOKEN_HEADER = "x-strava-access-token";
 
 const runtime = new CopilotSseRuntime({
   agents: Object.fromEntries(
-    Object.entries(AGENT_BACKEND_PATHS).map(([id, path]) => [
+    AGENT_ORDER.map((id) => [
       id,
       new HttpAgent({
-        url: `${agentBaseUrl(env.AGENTS_BASE_URL)}/${path}/agui`,
+        url: `${agentBaseUrl(env.AGENTS_BASE_URL)}/${AGENT_BACKEND_PATHS[id]}/agui`,
         debug: env.COPILOTKIT_DEBUG,
       }),
     ]),
