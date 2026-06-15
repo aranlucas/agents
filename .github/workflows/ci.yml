@@ -59,7 +59,7 @@ jobs:
         run: pnpm typecheck
 
       - name: Run JS tests
-        run: pnpm exec turbo test --filter=[origin/main]...HEAD
+        run: pnpm exec turbo test "--filter=...[origin/main]"
 
       - name: Build web
         run: pnpm build
