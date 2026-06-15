@@ -76,6 +76,15 @@ def test_agent_instruction_uses_adk_state_placeholders() -> None:
     assert "{loading_step}" in instruction
 
 
+def test_agent_static_instruction_includes_loading_step_protocol() -> None:
+    agent = build_agent()
+    static = agent.static_instruction
+    assert isinstance(static, str)
+    assert "set_loading_step" in static
+    assert "Searching clinical guidelines" in static
+    assert "Computing score card" in static
+
+
 def test_agent_static_instruction_requires_speaking_questions_before_chat() -> None:
     agent = build_agent()
     static_instruction = agent.static_instruction
