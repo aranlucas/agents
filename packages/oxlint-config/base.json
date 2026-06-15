@@ -1,0 +1,50 @@
+{
+  "$schema": "../../node_modules/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn"
+  },
+  "plugins": ["import", "typescript", "unicorn"],
+  "env": {
+    "browser": true,
+    "node": true,
+    "es2026": true
+  },
+  "options": {
+    "typeAware": true,
+    "reportUnusedDisableDirectives": "warn"
+  },
+  "rules": {
+    "eslint/no-underscore-dangle": "off",
+    "unicorn/filename-case": ["error", { "ignore": ["^_"] }],
+    "unicorn/prefer-node-protocol": "warn",
+    "unicorn/throw-new-error": "warn",
+    "unicorn/prefer-optional-catch-binding": "warn",
+    "unicorn/prefer-at": "warn",
+    "unicorn/no-array-for-each": "warn",
+    "typescript/prefer-optional-chain": "warn",
+    "typescript/prefer-nullish-coalescing": "warn",
+    "typescript/no-explicit-any": "warn",
+    "typescript/no-unnecessary-type-assertion": "warn",
+    "typescript/prefer-function-type": "warn",
+    "typescript/no-floating-promises": "warn",
+    "typescript/no-redundant-type-constituents": "warn",
+    "import/no-cycle": "warn",
+    "import/no-unassigned-import": ["warn", { "allow": ["**/*.css", "**/env"] }]
+  },
+  "overrides": [
+    {
+      "files": ["**/*.test.{ts,tsx}", "**/test/**"],
+      "rules": {
+        "typescript/no-unsafe-type-assertion": "off",
+        "typescript/no-floating-promises": "off",
+        "typescript/no-extraneous-class": "off",
+        "eslint/no-await-in-loop": "off",
+        "eslint/no-shadow": "off",
+        "unicorn/consistent-function-scoping": "off"
+      }
+    }
+  ],
+  "ignorePatterns": ["**/coverage/**", ".claude/**", ".agents/**"]
+}

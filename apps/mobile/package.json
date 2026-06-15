@@ -16,7 +16,9 @@
     "build:local:preview:android": "npx eas-cli@latest env:exec preview \"npx eas-cli@latest build --profile preview --platform android --local\"",
     "build:local:production:android": "npx eas-cli@latest env:exec production \"npx eas-cli@latest build --profile production --platform android --local\"",
     "build:local:production:android:env-file": "sh -c 'if [ -f .env.local ]; then set -a; . ./.env.local; set +a; fi; npx eas-cli@latest build --profile production --platform android --local'",
-    "lint": "pnpm --workspace-root lint",
+    "lint": "oxlint .",
+    "fmt": "oxfmt .",
+    "fmt:check": "oxfmt --check .",
     "test": "vitest run",
     "coverage": "vitest run --coverage",
     "test:watch": "vitest"

@@ -1,0 +1,20 @@
+{
+  "$schema": "../../node_modules/oxlint/configuration_schema.json",
+  "extends": ["../../packages/oxlint-config/base.json"],
+  "plugins": ["import", "jsx-a11y", "nextjs", "react", "typescript", "unicorn"],
+  "settings": {
+    "next": {
+      "rootDir": "."
+    },
+    "react": {
+      "version": "19.2.7"
+    }
+  },
+  "rules": {
+    "react/self-closing-comp": "warn",
+    "react/react-in-jsx-scope": "off",
+    "react-hooks/exhaustive-deps": "warn",
+    "jsx-a11y/prefer-tag-over-role": "off"
+  },
+  "ignorePatterns": [".next/**"]
+}

@@ -6,6 +6,9 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "lint": "oxlint .",
+    "fmt": "oxfmt .",
+    "fmt:check": "oxfmt --check .",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
