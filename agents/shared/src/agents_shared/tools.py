@@ -7,7 +7,6 @@ from fastapi import Request
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models import LlmRequest
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.tools import ToolContext
 from google.adk.workflow._retry_config import RetryConfig
 
 log = logging.getLogger("agents_shared")
@@ -72,29 +71,3 @@ def on_model_error_callback(
         error,
     )
     return None
-
-
-def parse_tool_response(tool_response: dict | str) -> dict | str | None:
-    try:
-        if isinstance(tool_response, str):
-            return tool_response
-        return tool_response.get("structuredContent", tool_response.get("content", {}))
-    except KeyError, TypeError, AttributeError:
-        return None
-
-
-def save_state(
-    tool_context: ToolContext,
-    tool_name: str,
-    structured_content: object,
-) -> None:
-    try:
-        tool_context.state[tool_name] = structured_content
-    except TypeError:
-        fallback_key = f"temp:tool_response:{tool_name}"
-        log.debug(
-            "State schema rejected tool response key %s; storing under %s",
-            tool_name,
-            fallback_key,
-        )
-        tool_context.state[fallback_key] = structured_content
