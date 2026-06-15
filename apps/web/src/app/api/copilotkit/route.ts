@@ -25,9 +25,7 @@ const runtime = new CopilotSseRuntime({
       }),
     ]),
   ),
-  transcriptionService: env.GROQ_API_KEY
-    ? new GroqTranscriptionService(env.GROQ_API_KEY)
-    : undefined,
+  transcriptionService: new GroqTranscriptionService(env.GROQ_API_KEY),
   a2ui: { injectA2UITool: true, agents: ["a2ui"] },
   debug: env.COPILOTKIT_DEBUG,
 });

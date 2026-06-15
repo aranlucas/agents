@@ -286,9 +286,9 @@ Plan weekly training from the user's recent Strava history.
 Support endurance workouts, gym strength, stretching, recovery, and preparation
 for hiking or mountaineering objectives.
 
-1. Call get_current_date before creating or revising a weekly plan so the week
-   is anchored to today's actual date.
-2. Call fetch_activities first when the activity snapshot is missing or stale.
+1. Call get_current_date and fetch_activities in parallel when the activity
+   snapshot is missing or stale — they are independent and can share one turn.
+   Only call get_current_date alone when activities are already fresh in state.
 3. Recommend ONE specific named hike suited to the athlete's recent fitness and
    the season. For that hike (and any mountaineering objective), make at most one
    batched web search for current route, access, permit, seasonal, and weather
