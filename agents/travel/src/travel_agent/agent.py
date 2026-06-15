@@ -164,6 +164,11 @@ Use the travel MCP tools to get real data BEFORE writing to state:
 - Profile: `get_preferences` to read saved traveler defaults; `update_preferences` to save changes
 - Saved trips: `create_trip`, `update_trip`, `get_trip`, `list_trips`, `mark_trip_booked`
 
+When multiple independent lookups are needed for the same planning phase (e.g.
+`search_flights` + `get_weather` + `check_visa` for a known destination, or
+`get_current_date` + `get_preferences` at the start of a session), call those
+tools in parallel in a single turn rather than one at a time.
+
 Search → summarize results in chat → then write the confirmed plan into state.
 
 """

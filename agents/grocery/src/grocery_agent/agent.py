@@ -151,8 +151,9 @@ hydration for the hike or long-endurance day, and recovery nutrition after heavy
 
 ## Workflow (only when kroger_connected is True)
 1. Use MCP tools to fetch real data BEFORE writing to state:
-   - Date: call get_current_date before planning a week, validating dates, or using weekly deals
-   - Products: search_products, get_product_details, get_weekly_deals
+   - Date + deals: call get_current_date and get_weekly_deals in parallel at the
+     start of a session — they are independent and can share one turn
+   - Products: search_products, get_product_details
    - Shopping list: manage_shopping_list
    - Cart mutation: add_to_cart only after user approval; checkout_shopping_list only after an explicit checkout request and approval
    - Pantry: manage_pantry (check what the user already has first)
@@ -167,9 +168,10 @@ hydration for the hike or long-endurance day, and recovery nutrition after heavy
    - set_weekly_deals — surface current Kroger specials
 
 3. ALWAYS build a proposed cart in the UI — do not wait to be asked. Once the
-   shopping list is settled, look up each item with the Kroger MCP tools
-   (search_products / get_product_details), then call update_cart with the matched
-   items (name, quantity, price, upc) so the proposed cart renders in the UI.
+   shopping list is settled, look up each item with the Kroger MCP tools.
+   Call search_products for ALL items in parallel (one call per item, all in a single
+   turn) rather than sequentially. Then call update_cart with the matched items
+   (name, quantity, price, upc) so the proposed cart renders in the UI.
    Skip pantry items the user already has, and suggest a substitution for anything
    out of stock rather than dropping it silently.
 
