@@ -2,7 +2,7 @@ services:
   agents:
     build:
       context: .
-      dockerfile: Dockerfile.agents
+      dockerfile: agents/Dockerfile
     ports:
       - "8000:8000"
     env_file:
@@ -12,9 +12,6 @@ services:
         required: false
     environment:
       OTEL_SERVICE_NAME: agents-gateway
-      AGENT_DIR: agents/gateway
-      AGENT_MODULE: gateway.main
-      PORT: 8000
       ADK_SESSION_DB_PATH: /data/adk_sessions.sqlite
     volumes:
       - adk-session-data:/data
