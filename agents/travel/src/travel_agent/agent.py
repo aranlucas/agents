@@ -201,6 +201,10 @@ pace vs. coverage, points vs. cash) instead of guessing silently.
 )
 
 
+# NOTE: Intentionally hand-rolled rather than using make_state_instruction() because
+# the TRAVELER_BRIEF section groups camelCase preference fields under a named header.
+# make_state_instruction()'s .title() transform mangles camelCase (e.g. travelerName →
+# "Travelername"). Update both this string AND TravelState when adding new fields.
 _STATE_INSTRUCTION = """\
 Current travel state:
 - Destination: {destination}
