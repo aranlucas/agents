@@ -187,7 +187,9 @@ Be practical, budget-aware, and proactive. Suggest substitutions for out-of-stoc
 )
 
 
-_STATE_INSTRUCTION = make_state_instruction(GroceryState, header="Current grocery state")
+_STATE_INSTRUCTION = make_state_instruction(
+    GroceryState, header="Current grocery state"
+)
 
 
 # ---------------------------------------------------------------------------

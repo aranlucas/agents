@@ -125,7 +125,9 @@ failed and do not mark the plan ready.
 )
 
 
-_STATE_INSTRUCTION = make_state_instruction(WellnessState, header="Current wellness state")
+_STATE_INSTRUCTION = make_state_instruction(
+    WellnessState, header="Current wellness state"
+)
 
 
 # ---------------------------------------------------------------------------

@@ -236,9 +236,7 @@ def test_web_search_toolset_uses_npx_when_binary_absent(monkeypatch) -> None:
 
 def test_web_search_toolset_uses_binary_when_installed(monkeypatch) -> None:
     monkeypatch.setenv("BRAVE_API_KEY", "brave-token")
-    monkeypatch.setattr(
-        toolsets.shutil, "which", lambda name: f"/usr/local/bin/{name}"
-    )
+    monkeypatch.setattr(toolsets.shutil, "which", lambda name: f"/usr/local/bin/{name}")
     toolset = toolsets.web_search_toolset()
     params = toolset._connection_params
     assert isinstance(params, StdioConnectionParams)
