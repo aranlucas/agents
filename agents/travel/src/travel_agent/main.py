@@ -6,7 +6,6 @@ from agents_shared.app_factory import (
     streaming_state_mapping,
 )
 from agents_shared.dependencies import AgentServices
-from agents_shared.session_service import check_database_connection
 from agents_shared.state import make_extract_state
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -35,5 +34,4 @@ def register(app: FastAPI, services: AgentServices):
             _trip_agent, services=services, predict_state=COLLAB_PREDICT_STATE
         ),
         extract_state_from_request=make_extract_state(),
-        health_check=check_database_connection,
     )

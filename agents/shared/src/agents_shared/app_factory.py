@@ -105,14 +105,21 @@ def add_agent_routes(
         [Request, RunAgentInput],
         Awaitable[dict[str, object]],
     ],
-    health_check: Callable[[], Awaitable[dict[str, object]]],
+    health_check: Callable[..., Awaitable[dict[str, object]]] | None = None,
 ) -> None:
     """Register one gateway-scoped agent router.
 
     ``ag-ui-adk`` also registers an experimental ``/agents/state`` endpoint.
     Mounting a router per agent keeps that endpoint scoped under the agent
     prefix instead of creating duplicate root routes in the gateway.
+
+    ``health_check``, if supplied, receives ``services.engine`` as its sole
+    argument and can gate on agent-specific startup state before falling back
+    to the standard DB probe.  Omit it to use the default DB probe.
     """
+    from .dependencies import AgentServicesDep
+    from .session_service import check_database_connection
+
     router = APIRouter()
     add_adk_fastapi_endpoint(
         router,
@@ -122,7 +129,9 @@ def add_agent_routes(
     )
 
     @router.get("/health")
-    async def health():
-        return await health_check()
+    async def health(services: AgentServicesDep):
+        if health_check is not None:
+            return await health_check(services.engine)
+        return await check_database_connection(services.engine)
 
     app.include_router(router, prefix=prefix)

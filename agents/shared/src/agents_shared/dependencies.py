@@ -1,8 +1,8 @@
 """FastAPI DI wiring for shared ADK services.
 
-All agents consume a single ``AgentServices`` bundle created during the
-gateway's FastAPI lifespan.  Tests can call ``create_agent_services()`` for
-a fresh set or construct ``AgentServices(...)`` with mocked dependencies.
+All agents consume a single ``AgentServices`` bundle created at gateway startup.
+Tests can call ``create_agent_services()`` for a fresh set or construct
+``AgentServices(...)`` with mocked dependencies.
 """
 
 from dataclasses import dataclass
@@ -20,8 +20,13 @@ from google.adk.auth.credential_service.in_memory_credential_service import (
 from google.adk.memory.base_memory_service import BaseMemoryService
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.sessions import BaseSessionService
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
-from .session_service import create_session_service
+from .session_service import (
+    create_session_service,
+    get_database_url,
+    get_sqlite_db_path,
+)
 
 
 @dataclass
@@ -30,6 +35,12 @@ class AgentServices:
     artifact_service: BaseArtifactService
     memory_service: BaseMemoryService
     credential_service: BaseCredentialService
+    engine: AsyncEngine
+
+
+def _build_engine() -> AsyncEngine:
+    url = get_database_url() or f"sqlite+aiosqlite:///{get_sqlite_db_path()}"
+    return create_async_engine(url)
 
 
 def create_agent_services() -> AgentServices:
@@ -38,6 +49,7 @@ def create_agent_services() -> AgentServices:
         artifact_service=InMemoryArtifactService(),
         memory_service=InMemoryMemoryService(),
         credential_service=InMemoryCredentialService(),
+        engine=_build_engine(),
     )
 
 
