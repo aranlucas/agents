@@ -1,5 +1,6 @@
 """Oral boards examiner agent domain: state, tools, instructions."""
 
+import asyncio
 import re
 import sqlite3
 from typing import TypedDict
@@ -58,7 +59,7 @@ def _clean_query(query: str) -> str:
 # ---------------------------------------------------------------------------
 # Domain / search tools
 # ---------------------------------------------------------------------------
-def search_docs(query: str, collection: str = "") -> dict:
+async def search_docs(query: str, collection: str = "") -> dict:
     """Search bundled oral-board source documents with FTS5/BM25."""
     clean = _clean_query(query)
     if not clean:
@@ -86,9 +87,13 @@ def search_docs(query: str, collection: str = "") -> dict:
         order by bm25(documents_fts)
         limit 10
     """  # noqa: S608 — collection_clause is a literal "and d.collection = ?" or ""; user input goes through params
-    try:
+
+    def _query() -> list:
         with connect() as conn:
-            rows = conn.execute(sql, params).fetchall()
+            return conn.execute(sql, params).fetchall()
+
+    try:
+        rows = await asyncio.to_thread(_query)
     except sqlite3.Error as exc:
         return {"results": [], "error": str(exc)}
 
@@ -107,7 +112,7 @@ def search_docs(query: str, collection: str = "") -> dict:
     }
 
 
-def read_doc(filepath: str) -> dict:
+async def read_doc(filepath: str) -> dict:
     """Read a full markdown document body by filepath from the bundled DB."""
     collection, _, path = filepath.partition("/")
     if not path:
@@ -123,9 +128,13 @@ def read_doc(filepath: str) -> dict:
           and d.active = 1
         limit 1
     """
-    try:
+
+    def _query() -> object:
         with connect() as conn:
-            row = conn.execute(sql, [path, collection, collection]).fetchone()
+            return conn.execute(sql, [path, collection, collection]).fetchone()
+
+    try:
+        row = await asyncio.to_thread(_query)
     except sqlite3.Error as exc:
         return {"error": str(exc)}
 

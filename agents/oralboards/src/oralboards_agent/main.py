@@ -15,6 +15,8 @@ from .db import DB_STARTUP_ERROR
 
 load_dotenv()
 
+_oralboards_agent = build_agent()
+
 
 async def _health() -> dict:
     if DB_STARTUP_ERROR:
@@ -26,7 +28,7 @@ def register(app: FastAPI, services: AgentServices):
     add_agent_routes(
         app,
         prefix="/oralboards",
-        adk_agent=build_adk_agent(build_agent(), services=services),
+        adk_agent=build_adk_agent(_oralboards_agent, services=services),
         extract_state_from_request=make_extract_state(),
         health_check=_health,
     )
