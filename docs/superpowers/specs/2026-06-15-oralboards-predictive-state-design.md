@@ -139,5 +139,6 @@ set_score_card(markdown=…)
 |---|---|
 | `agents/oralboards/src/oralboards_agent/agent.py` | Add `loading_step` to state; add `set_loading_step` tool; update instructions |
 | `agents/oralboards/src/oralboards_agent/main.py` | Add `ORALBOARDS_PREDICT_STATE`; pass to `build_adk_agent` |
+| `packages/types/src/index.ts` | Add `loading_step?: string` to `OralBoardsState` TypeScript type |
 | `apps/web/src/components/chat/oral-boards-workspace.tsx` | Show `loading_step` in start page |
 | `apps/web/src/components/chat/oral-boards/oral-boards-panel.tsx` | Pass `loadingStep` to `QuestioningPane`; fix `FeedbackPane` gate |
