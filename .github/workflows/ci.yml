@@ -74,6 +74,8 @@ jobs:
         run: uv run ruff format --check agents
       - name: Compile (catches syntax errors ruff misses)
         run: uv run python -m compileall -q agents packages
+      - name: Type check (pyright)
+        run: uv run pyright
       - name: Tests (with coverage gate)
         run: uv run pytest --cov
 

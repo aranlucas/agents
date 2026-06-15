@@ -118,7 +118,7 @@ def add_agent_routes(
         router,
         adk_agent,
         path="/agui",
-        extract_state_from_request=extract_state_from_request,
+        extract_state_from_request=extract_state_from_request,  # type: ignore[arg-type]
     )
 
     @router.get("/health")

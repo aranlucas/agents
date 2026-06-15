@@ -14,7 +14,7 @@ MEAL_PLANNER_MCP_URL = os.getenv(
     "MEAL_PLANNER_MCP_URL",
     "https://ai-meal-planner-mcp.aranlucas.workers.dev/mcp",
 )
-KROGER_TOKEN_STATE_KEY = "temp:kroger_token"
+KROGER_TOKEN_STATE_KEY = "temp:kroger_token"  # noqa: S105 — ADK state key, not a credential
 
 
 class _KrogerAuthState(BaseModel):
