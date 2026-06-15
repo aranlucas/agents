@@ -1,7 +1,5 @@
 """Wellness agent domain: state, tools, instruction, orchestration."""
 
-from typing import Any
-
 from ag_ui_adk import AGUIToolset
 from agents_shared.prompts import canvas_contract
 from agents_shared.state import make_state_initializer
@@ -11,9 +9,11 @@ from agents_shared.tools import (
     get_current_date,
     on_model_error_callback,
 )
+from fitness_agent.agent import StravaActivity
 from fitness_agent.agent import build_agent as build_fitness_agent
 from google.adk.agents import LlmAgent
 from google.adk.tools import ToolContext
+from grocery_agent.agent import CartItem, PantryItem
 from grocery_agent.agent import build_agent as build_grocery_agent
 from pydantic import BaseModel
 
@@ -32,11 +32,11 @@ class WellnessState(BaseModel):
     kroger_connected: bool = False
     strava_connected: bool = False
     shopping_list: list[str] = []
-    cart: list[dict[str, Any]] = []
-    pantry: list[dict[str, Any]] = []
+    cart: list[CartItem] = []
+    pantry: list[PantryItem] = []
     weekly_deals: str = ""
     notes: str = ""
-    activities: list[dict[str, Any]] = []
+    activities: list[StravaActivity] = []
     activities_synced_at: str = ""
     objective_research: str = ""
     training_plan: str = ""

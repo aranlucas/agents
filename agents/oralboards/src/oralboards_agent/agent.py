@@ -2,7 +2,7 @@
 
 import re
 import sqlite3
-from typing import Any
+from typing import TypedDict
 
 from ag_ui_adk import AGUIToolset
 from agents_shared.prompts import canvas_contract
@@ -22,12 +22,27 @@ from .db import VALID_COLLECTIONS, connect
 # ---------------------------------------------------------------------------
 # State model
 # ---------------------------------------------------------------------------
+class CaseSource(TypedDict):
+    docid: int
+    filepath: str
+    title: str
+    snippet: str
+    collection: str
+
+
+class OralBoardsExchange(TypedDict):
+    question: str
+    answer: str
+    feedback: str
+    citations: list[CaseSource]
+
+
 class OralBoardsState(BaseModel):
     """Default shared-state shape for the oral-boards examiner agent."""
 
     case: str = ""
-    case_sources: list[Any] = []
-    transcript: list[Any] = []
+    case_sources: list[CaseSource] = []
+    transcript: list[OralBoardsExchange] = []
     score_card: str = ""
     status: str = "idle"
 
@@ -133,7 +148,7 @@ def read_doc(filepath: str) -> dict:
 def set_case(
     tool_context: ToolContext,
     case: str,
-    case_sources: list[dict] | None = None,
+    case_sources: list[CaseSource] | None = None,
 ) -> dict:
     """Write the grounded case vignette and source provenance to shared state."""
     tool_context.state["case"] = case
@@ -153,7 +168,7 @@ def append_exchange(
     question: str,
     answer: str,
     feedback: str,
-    citations: list[dict],
+    citations: list[CaseSource],
 ) -> dict:
     """Append one examiner question, candidate answer, and cited feedback."""
     transcript = list(tool_context.state.get("transcript") or [])
