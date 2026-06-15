@@ -1,14 +1,16 @@
 """Gateway — single FastAPI app with per-agent AG-UI routes."""
 
+import contextlib
 import logging
 import os
 import time
+from contextlib import asynccontextmanager
 
 from a2ui_agent.main import register as register_a2ui
 from agents_shared.app_factory import setup_otel
 from agents_shared.clerk_auth import ClerkAuthMiddleware, clerk_auth_enabled
 from agents_shared.dependencies import AgentServices, create_agent_services
-from agents_shared.session_service import check_database_connection
+from agents_shared.session_service import _health_engine, check_database_connection
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -40,12 +42,28 @@ def register_agents(app: FastAPI, services: AgentServices) -> None:
         register_agent(app, services)
 
 
-app = FastAPI(title="Agents Gateway")
-register_agents(app, create_agent_services())
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # startup — register agents once (guard against double-startup in tests)
+    if not getattr(app.state, "_initialized", False):
+        services = create_agent_services()
+        register_agents(app, services)
+        app.state._initialized = True
+    yield
+    # shutdown — release the cached health-check engine
+    with contextlib.suppress(Exception):
+        _health_engine.cache_clear()
+
+
+_allowed_origins = os.getenv("ALLOWED_ORIGINS", "*")
+origins = [o.strip() for o in _allowed_origins.split(",") if o.strip()] or ["*"]
+
+app = FastAPI(title="Agents Gateway", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
+    allow_credentials="*" not in origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
