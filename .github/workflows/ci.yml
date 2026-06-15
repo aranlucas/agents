@@ -1,10 +1,11 @@
 name: CI
 
-# Lints and tests the monorepo on every push to main and every pull request.
-#
-# The Python steps are the important guard: `compileall` catches syntax errors
-# Ruff's parser tolerates, and the pytest import smoke test catches agents that
-# fail to import (e.g. runtime annotations referencing TYPE_CHECKING-only names).
+# Lints, typechecks, and tests the monorepo on every push to main and every
+# pull request. Four parallel jobs cut the critical path:
+#   js      — oxlint, oxfmt, turbo typecheck, vitest (web + mobile)
+#   build   — next build (slowest step; runs in parallel with the others)
+#   python  — ruff, compileall, pytest (no Node needed)
+#   docker  — Dockerfile.agents smoke-build
 
 on:
   push:
@@ -16,64 +17,70 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check:
-    name: Lint, format & test
+  js:
+    name: Lint, typecheck & test (JS)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
-
       - name: Install JS dependencies
         run: pnpm install --frozen-lockfile
-
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v8.2.0
-        with:
-          version: "0.11.19"
-          enable-cache: true
-
-      - name: Install Python dependencies
-        run: uv sync --frozen
-
-      - name: Lint & format check (JS + Python)
-        run: pnpm check
-
-      - name: Compile Python (catches syntax errors)
-        run: uv run python -m compileall -q agents packages
-
-      - name: Run Python tests (with coverage gate)
-        run: uv run pytest --cov
-
+      - name: Lint
+        run: pnpm lint
+      - name: Format check
+        run: pnpm fmt:check
       - name: Typecheck
         run: pnpm typecheck
+      - name: JS tests
+        run: pnpm --filter web test && pnpm --filter mobile test
 
-      - name: Run JS tests
-        run: pnpm test
-
-      - name: Build web
+  build:
+    name: Build web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build
         run: pnpm build
         env:
           SKIP_ENV_VALIDATION: "1"
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2xlcmsuZXhhbXBsZS5jb20k
           CLERK_SECRET_KEY: sk_test_placeholder
 
+  python:
+    name: Lint, compile & test (Python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8.2.0
+        with:
+          version: "0.11.19"
+          enable-cache: true
+      - name: Install Python dependencies
+        run: uv sync --frozen
+      - name: Lint
+        run: uv run ruff check agents
+      - name: Format check
+        run: uv run ruff format --check agents
+      - name: Compile (catches syntax errors ruff misses)
+        run: uv run python -m compileall -q agents packages
+      - name: Tests (with coverage gate)
+        run: uv run pytest --cov
+
   docker:
     name: Build agent image
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
+      - uses: actions/checkout@v6
       - name: Build Dockerfile.agents
         run: docker build -f Dockerfile.agents .

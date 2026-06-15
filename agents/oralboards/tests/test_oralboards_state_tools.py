@@ -95,7 +95,13 @@ def test_tool_schema_includes_casesource_defs() -> None:
     defs = schema.get("$defs", {})
     cs = defs.get("CaseSource", {})
     assert cs.get("type") == "object"
-    assert set(cs.get("required", [])) == {"docid", "filepath", "title", "snippet", "collection"}
+    assert set(cs.get("required", [])) == {
+        "docid",
+        "filepath",
+        "title",
+        "snippet",
+        "collection",
+    }
 
     # case_sources is Optional[list[CaseSource]] — should use $ref
     props = schema.get("properties", {})
@@ -116,7 +122,13 @@ def test_preprocess_args_preserves_dicts_for_typeddict_params() -> None:
     """ADK _preprocess_args passes plain dicts through for TypedDict types."""
     tool = FunctionTool(func=set_case)
     sources = [
-        {"docid": 1, "filepath": "abpd/guide.md", "title": "Guide", "snippet": "...", "collection": "abpd"}
+        {
+            "docid": 1,
+            "filepath": "abpd/guide.md",
+            "title": "Guide",
+            "snippet": "...",
+            "collection": "abpd",
+        }
     ]
     args = {"case": "## Case\nA child.", "case_sources": sources}
     processed = tool._preprocess_args(args)
@@ -135,7 +147,13 @@ def test_preprocess_args_preserves_citations_for_append_exchange() -> None:
     """append_exchange citations remain plain dicts through preprocessing."""
     tool = FunctionTool(func=append_exchange)
     citations = [
-        {"docid": 2, "filepath": "aapd/pulp.md", "title": "Pulp Therapy", "snippet": "...", "collection": "aapd"}
+        {
+            "docid": 2,
+            "filepath": "aapd/pulp.md",
+            "title": "Pulp Therapy",
+            "snippet": "...",
+            "collection": "aapd",
+        }
     ]
     args = {
         "question": "What is your diagnosis?",
@@ -155,7 +173,13 @@ def test_run_async_with_typeddict_args() -> None:
     tool = FunctionTool(func=set_case)
     context = SimpleNamespace(state={})
     sources = [
-        {"docid": 1, "filepath": "abpd/guide.md", "title": "Guide", "snippet": "...", "collection": "abpd"}
+        {
+            "docid": 1,
+            "filepath": "abpd/guide.md",
+            "title": "Guide",
+            "snippet": "...",
+            "collection": "abpd",
+        }
     ]
 
     result = asyncio.run(

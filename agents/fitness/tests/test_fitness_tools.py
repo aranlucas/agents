@@ -208,7 +208,8 @@ def test_on_before_agent_derives_strava_connected_from_state_token() -> None:
     callback_context = Mock()
     callback_context.state = {"temp:strava_token": "ctx-token"}
     initializer = make_state_initializer(
-        agent.FitnessState, token_flags={STRAVA_AUTH.state_key: STRAVA_AUTH.connected_flag}
+        agent.FitnessState,
+        token_flags={STRAVA_AUTH.state_key: STRAVA_AUTH.connected_flag},
     )
     initializer(callback_context)
     assert callback_context.state["strava_connected"] is True

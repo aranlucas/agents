@@ -206,7 +206,9 @@ to continue. Do not plan meals or generate shopping lists.
 # ---------------------------------------------------------------------------
 # Agent factory
 # ---------------------------------------------------------------------------
-def build_agent(*, mode: str | None = None, include_contents: str = "default") -> LlmAgent:
+def build_agent(
+    *, mode: str | None = None, include_contents: str = "default"
+) -> LlmAgent:
     """Fresh LlmAgent instance — the gateway's wellness orchestrator builds its own."""
     return LlmAgent(
         name="grocery_agent",
@@ -219,7 +221,8 @@ def build_agent(*, mode: str | None = None, include_contents: str = "default") -
         static_instruction=_INSTRUCTION,
         instruction=_STATE_INSTRUCTION,
         before_agent_callback=make_state_initializer(
-            GroceryState, token_flags={KROGER_AUTH.state_key: KROGER_AUTH.connected_flag}
+            GroceryState,
+            token_flags={KROGER_AUTH.state_key: KROGER_AUTH.connected_flag},
         ),
         tools=[
             set_shopping_list,

@@ -50,4 +50,9 @@ async def check_database_connection() -> dict:
         await engine.dispose()
         return {"status": "ok", "database": "connected", "type": db_type}
     except Exception as e:
-        return {"status": "degraded", "database": "error", "error": str(e), "type": db_type}
+        return {
+            "status": "degraded",
+            "database": "error",
+            "error": str(e),
+            "type": db_type,
+        }

@@ -37,7 +37,9 @@ def test_get_database_url_normalizes_postgres(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_check_database_connection_reports_sqlite_error(monkeypatch, tmp_path) -> None:
+async def test_check_database_connection_reports_sqlite_error(
+    monkeypatch, tmp_path
+) -> None:
     class FailingConnection:
         async def __aenter__(self):
             raise RuntimeError("cannot connect")

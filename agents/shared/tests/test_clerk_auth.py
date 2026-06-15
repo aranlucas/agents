@@ -30,7 +30,9 @@ def _app(decoder):
     async def resume_agui():
         return {"public": True}
 
-    app.add_middleware(ClerkAuthMiddleware, decoder=decoder, public_prefixes=("/resume",))
+    app.add_middleware(
+        ClerkAuthMiddleware, decoder=decoder, public_prefixes=("/resume",)
+    )
     return TestClient(app)
 
 
