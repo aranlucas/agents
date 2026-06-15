@@ -10,7 +10,10 @@ from a2ui_agent.main import register as register_a2ui
 from agents_shared.app_factory import setup_otel
 from agents_shared.clerk_auth import ClerkAuthMiddleware, clerk_auth_enabled
 from agents_shared.dependencies import AgentServices, create_agent_services
-from agents_shared.session_service import _health_engine, check_database_connection
+from agents_shared.session_service import (
+    check_database_connection,
+    release_health_engine,
+)
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -52,7 +55,7 @@ async def lifespan(app: FastAPI):
     yield
     # shutdown — release the cached health-check engine
     with contextlib.suppress(Exception):
-        _health_engine.cache_clear()
+        release_health_engine()
 
 
 _allowed_origins = os.getenv("ALLOWED_ORIGINS", "*")

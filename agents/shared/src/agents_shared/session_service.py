@@ -49,6 +49,13 @@ def _health_engine():
     return create_async_engine(url)
 
 
+def release_health_engine() -> None:
+    """Clear the cached health engine and result — call on server shutdown."""
+    global _health_cache
+    _health_engine.cache_clear()
+    _health_cache = None
+
+
 async def check_database_connection() -> dict:
     global _health_cache
     now = time.monotonic()
