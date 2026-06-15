@@ -8,6 +8,7 @@ from oralboards_agent.agent import (
     append_exchange,
     build_agent,
     set_case,
+    set_loading_step,
     set_phase,
     set_score_card,
 )
@@ -58,6 +59,7 @@ def test_state_initializer_preserves_existing_state_and_adds_defaults() -> None:
     assert callback_context.state["case"] == "existing"
     assert callback_context.state["transcript"] == []
     assert callback_context.state["status"] == "idle"
+    assert callback_context.state["loading_step"] == ""
 
 
 def test_agent_instruction_uses_adk_state_placeholders() -> None:
@@ -71,6 +73,7 @@ def test_agent_instruction_uses_adk_state_placeholders() -> None:
     assert "{status}" in instruction
     assert "{transcript}" in instruction
     assert "{score_card}" in instruction
+    assert "{loading_step}" in instruction
 
 
 def test_agent_static_instruction_requires_speaking_questions_before_chat() -> None:
@@ -141,6 +144,16 @@ def test_preprocess_args_preserves_dicts_for_typeddict_params() -> None:
     args_no_sources = {"case": "## Case\nA child."}
     processed_no = tool._preprocess_args(args_no_sources)
     assert processed_no["case"] == "## Case\nA child."
+
+
+def test_set_loading_step_writes_to_state() -> None:
+    context = SimpleNamespace(state={})
+    assert set_loading_step(context, "Searching clinical guidelines…") == {"ok": True}
+    assert context.state["loading_step"] == "Searching clinical guidelines…"
+
+    # Calling again overwrites the previous step
+    set_loading_step(context, "Reading: Pulp therapy guide…")
+    assert context.state["loading_step"] == "Reading: Pulp therapy guide…"
 
 
 def test_preprocess_args_preserves_citations_for_append_exchange() -> None:
