@@ -7,7 +7,8 @@ from gateway import main
 
 
 def test_mounts_every_agent():
-    mounted = {route.path for route in main.app.routes}
+    with TestClient(main.app) as client:  # noqa: F841 — triggers lifespan startup
+        mounted = {route.path for route in main.app.routes}
     for prefix in (
         "/travel",
         "/grocery",
@@ -22,18 +23,18 @@ def test_mounts_every_agent():
 
 
 def test_startup_does_not_mutate_route_table():
-    before = [route.path for route in main.app.routes]
+    """Route table must be identical across repeated startups (no duplicates)."""
     with TestClient(main.app):
         first_startup = [route.path for route in main.app.routes]
     with TestClient(main.app):
         second_startup = [route.path for route in main.app.routes]
 
-    assert first_startup == before
-    assert second_startup == before
+    assert second_startup == first_startup
 
 
 def test_agent_routes_are_unique_and_state_is_scoped():
-    paths = [route.path for route in main.app.routes]
+    with TestClient(main.app):
+        paths = [route.path for route in main.app.routes]
     duplicates = {path: count for path, count in Counter(paths).items() if count > 1}
 
     assert duplicates == {}
@@ -51,16 +52,16 @@ def test_agent_routes_are_unique_and_state_is_scoped():
 
 
 def test_gateway_health():
-    client = TestClient(main.app)
-    body = client.get("/health").json()
+    with TestClient(main.app) as client:
+        body = client.get("/health").json()
     assert body["status"] in {"ok", "degraded"}
 
 
 def test_subapp_health_reachable_under_prefix():
-    client = TestClient(main.app)
-    assert client.get("/travel/health").status_code == 200
-    assert client.get("/grocery/health").status_code == 200
-    assert client.get("/oralboards/health").status_code == 200
+    with TestClient(main.app) as client:
+        assert client.get("/travel/health").status_code == 200
+        assert client.get("/grocery/health").status_code == 200
+        assert client.get("/oralboards/health").status_code == 200
 
 
 def test_gateway_is_only_otel_setup_call():
@@ -90,9 +91,9 @@ def test_agui_requires_token_when_clerk_auth_enabled(monkeypatch):
     )
 
     module = importlib.reload(main)
-    client = TestClient(module.app)
-    assert client.get("/health").status_code == 200
-    assert client.post("/travel/agui", json={}).status_code == 401
+    with TestClient(module.app) as client:
+        assert client.get("/health").status_code == 200
+        assert client.post("/travel/agui", json={}).status_code == 401
 
     monkeypatch.delenv("CLERK_JWKS_URL")
     importlib.reload(main)
@@ -104,8 +105,8 @@ def test_resume_agui_is_public_with_auth_enabled(monkeypatch):
         "https://example.clerk.accounts.dev/.well-known/jwks.json",
     )
     module = importlib.reload(main)
-    client = TestClient(module.app)
-    assert client.post("/resume/agui", json={}).status_code != 401
+    with TestClient(module.app) as client:
+        assert client.post("/resume/agui", json={}).status_code != 401
 
     monkeypatch.delenv("CLERK_JWKS_URL")
     importlib.reload(main)

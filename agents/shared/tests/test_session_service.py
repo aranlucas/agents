@@ -53,11 +53,10 @@ async def test_check_database_connection_reports_sqlite_error(
 
     monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.setenv("ADK_SESSION_DB_PATH", str(tmp_path / "missing" / "db.sqlite"))
-    monkeypatch.setattr(
-        session_service,
-        "create_async_engine",
-        lambda _url, **_kwargs: FailingEngine(),
-    )
+    # Patch _health_engine directly so the lru_cache is bypassed entirely
+    monkeypatch.setattr(session_service, "_health_engine", lambda: FailingEngine())
+    # Reset the TTL result cache so the patched engine is actually invoked
+    monkeypatch.setattr(session_service, "_health_cache", None)
 
     result = await session_service.check_database_connection()
     assert result["status"] == "degraded"
