@@ -1,6 +1,5 @@
 """Session service factory with injectable database dependencies."""
 
-import functools
 import os
 import time
 from pathlib import Path
@@ -9,7 +8,7 @@ from google.adk.sessions import BaseSessionService
 from google.adk.sessions.database_session_service import DatabaseSessionService
 from google.adk.sessions.sqlite_session_service import SqliteSessionService
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 _HEALTH_CACHE_TTL = 5.0
 _health_cache: tuple[float, dict] | None = None
@@ -43,30 +42,16 @@ def create_session_service() -> BaseSessionService:
     return SqliteSessionService(str(path))
 
 
-@functools.lru_cache(maxsize=1)
-def _health_engine():
-    url = get_database_url() or f"sqlite+aiosqlite:///{get_sqlite_db_path()}"
-    return create_async_engine(url)
-
-
-def release_health_engine() -> None:
-    """Clear the cached health engine and result — call on server shutdown."""
-    global _health_cache
-    _health_engine.cache_clear()
-    _health_cache = None
-
-
-async def check_database_connection() -> dict:
+async def check_database_connection(engine: AsyncEngine) -> dict:
+    """Probe the database with a ``SELECT 1``; result is cached for 5 s."""
     global _health_cache
     now = time.monotonic()
     if _health_cache is not None and now - _health_cache[0] < _HEALTH_CACHE_TTL:
         return _health_cache[1]
 
-    url = get_database_url()
-    db_type = "postgres" if url else "sqlite"
+    db_type = "postgres" if get_database_url() else "sqlite"
 
     try:
-        engine = _health_engine()
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
         result: dict = {"status": "ok", "database": "connected", "type": db_type}

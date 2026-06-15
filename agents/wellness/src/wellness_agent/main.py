@@ -7,7 +7,6 @@ from agents_shared.app_factory import (
     streaming_state_mapping,
 )
 from agents_shared.dependencies import AgentServices
-from agents_shared.session_service import check_database_connection
 from agents_shared.state import KROGER_AUTH, STRAVA_AUTH, make_extract_state
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -36,5 +35,4 @@ def register(app: FastAPI, services: AgentServices):
             session_service=RequestStateSessionService(services.session_service),
         ),
         extract_state_from_request=make_extract_state(KROGER_AUTH, STRAVA_AUTH),
-        health_check=check_database_connection,
     )

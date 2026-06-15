@@ -9,6 +9,7 @@ from agents_shared.session_service import check_database_connection
 from agents_shared.state import make_extract_state
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 from .agent import build_agent
 from .db import DB_STARTUP_ERROR
@@ -18,10 +19,10 @@ load_dotenv()
 _oralboards_agent = build_agent()
 
 
-async def _health() -> dict:
+async def _health(engine: AsyncEngine) -> dict:
     if DB_STARTUP_ERROR:
         return {"status": "unhealthy", "database": "error", "error": DB_STARTUP_ERROR}
-    return await check_database_connection()
+    return await check_database_connection(engine)
 
 
 def register(app: FastAPI, services: AgentServices):
