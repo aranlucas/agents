@@ -2,7 +2,7 @@ services:
   agents:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: agents/Dockerfile
     ports:
       - "8000:8000"
     env_file:
