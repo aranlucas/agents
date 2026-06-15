@@ -19,6 +19,7 @@
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "typecheck": "turbo typecheck",
+    "graph": "turbo graph",
     "build": "turbo build --filter=web",
     "build:oral-boards": "turbo build --filter=oral-boards"
   },

@@ -19,9 +19,14 @@ jobs:
   check:
     name: Lint, format & test
     runs-on: ubuntu-latest
+    env:
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
@@ -53,8 +58,11 @@ jobs:
       - name: Run Python tests (with coverage gate)
         run: uv run pytest --cov
 
+      - name: Typecheck
+        run: pnpm typecheck
+
       - name: Run JS tests
-        run: pnpm test
+        run: pnpm exec turbo test --filter=[origin/main]...HEAD
 
       - name: Build web
         run: pnpm build
