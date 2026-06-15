@@ -63,7 +63,7 @@ def make_extract_state(
     async def extract(
         request: Request, _input_data: RunAgentInput
     ) -> dict[str, object]:
-        state: dict[str, object] = extract_identity_state(request)
+        state: dict[str, object] = dict(extract_identity_state(request))
         for auth in token_auths:
             token = request.headers.get(auth.header) or ""
             state[auth.connected_flag] = bool(token)

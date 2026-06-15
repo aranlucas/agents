@@ -5,7 +5,7 @@ import logging
 
 from fastapi import Request
 from google.adk.agents.callback_context import CallbackContext
-from google.adk.models import LlmRequest
+from google.adk.models.llm_request import LlmRequest
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.workflow._retry_config import RetryConfig
 
