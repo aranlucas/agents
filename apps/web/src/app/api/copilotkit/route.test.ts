@@ -61,6 +61,7 @@ vi.mock("@/lib/strava-token", () => ({
 
 vi.mock("@/components/chat/agents/registry", () => ({
   AGENT_BACKEND_PATHS: { travel: "travel" },
+  AGENT_ORDER: ["travel"],
 }));
 
 vi.mock("./guard", () => ({
