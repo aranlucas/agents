@@ -1,0 +1,103 @@
+$ oxlint .
+
+  ! typescript(no-explicit-any): Unexpected `any`. Specify a different type.
+    ,-[src/components/symbol-image.tsx:61:62]
+ 60 |   // eslint-disable-next-line typescript/no-unsafe-type-assertion
+ 61 |   return <Icon size={size} color={tintColor} style={style as any} />;
+    :                                                              ^^^
+ 62 | }
+    `----
+  help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.
+
+  ! typescript(no-explicit-any): Unexpected `any`. Specify a different type.
+    ,-[src/components/chat/conversation.web.tsx:9:22]
+  8 | 
+  9 | type AnimatedStyle = any;
+    :                      ^^^
+ 10 | 
+    `----
+  help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.
+
+  ! typescript(no-explicit-any): Unexpected `any`. Specify a different type.
+     ,-[src/components/chat/conversation.web.tsx:128:40]
+ 127 |           // eslint-disable-next-line typescript/no-unsafe-type-assertion
+ 128 |           renderItem={renderMessage as any}
+     :                                        ^^^
+ 129 |           keyExtractor={(item: ChatMessage) => item.id}
+     `----
+  help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.
+
+  ! typescript(no-explicit-any): Unexpected `any`. Specify a different type.
+     ,-[src/app/(settings)/settings.tsx:109:27]
+ 108 |       // eslint-disable-next-line typescript/no-unsafe-type-assertion
+ 109 |       <Link href={href as any} asChild>
+     :                           ^^^
+ 110 |         <Pressable>{content}</Pressable>
+     `----
+  help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.
+
+  ! typescript(no-explicit-any): Unexpected `any`. Specify a different type.
+     ,-[src/components/sidebar.web.tsx:130:58]
+ 129 |                 // eslint-disable-next-line typescript/no-unsafe-type-assertion
+ 130 |                 <Link key={item.href} href={item.href as any} asChild>
+     :                                                          ^^^
+ 131 |                   <Pressable
+     `----
+  help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.
+
+  ! typescript(no-explicit-any): Unexpected `any`. Specify a different type.
+     ,-[src/components/chat/prompt-input.web.tsx:118:52]
+ 117 |       // eslint-disable-next-line typescript/no-unsafe-type-assertion
+ 118 |       style={{ maxHeight: 200, resize: "none" } as any}
+     :                                                    ^^^
+ 119 |       value={input}
+     `----
+  help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.
+
+  ! typescript(no-explicit-any): Unexpected `any`. Specify a different type.
+     ,-[src/components/chat/prompt-input.web.tsx:128:35]
+ 127 |         // eslint-disable-next-line typescript/no-unsafe-type-assertion
+ 128 |         const nativeEvent = (e as any).nativeEvent as { key: string; shiftKey: boolean };
+     :                                   ^^^
+ 129 |         if (nativeEvent.key === "Enter" && !nativeEvent.shiftKey) {
+     `----
+  help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.
+
+  ! typescript(no-explicit-any): Unexpected `any`. Specify a different type.
+    ,-[src/components/chat/conversation.tsx:28:22]
+ 27 | 
+ 28 | type AnimatedStyle = any;
+    :                      ^^^
+ 29 | 
+    `----
+  help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.
+
+  ! typescript(no-explicit-any): Unexpected `any`. Specify a different type.
+     ,-[src/components/chat/conversation.tsx:263:42]
+ 262 |             // eslint-disable-next-line typescript/no-unsafe-type-assertion
+ 263 |             renderItem={renderMessage as any}
+     :                                          ^^^
+ 264 |             keyExtractor={(item: ChatMessage) => item.id}
+     `----
+  help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.
+
+  ! typescript(no-explicit-any): Unexpected `any`. Specify a different type.
+    ,-[src/utils/fetch-polyfill.ts:22:29]
+ 21 | 
+ 22 |   const _fetch = (...props: any[]) => {
+    :                             ^^^
+ 23 |     if (props[0] && typeof props[0] === "string" && props[0].startsWith("/")) {
+    `----
+  help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.
+
+  ! typescript(no-explicit-any): Unexpected `any`. Specify a different type.
+    ,-[src/all-source-smoke.test.tsx:70:76]
+ 69 | const tabsPrimitive = Object.assign(Host, {
+ 70 |   Screen: ({ options, ...props }: { options?: { tabBarIcon?: ComponentType<any> } }) => (
+    :                                                                            ^^^
+ 71 |     <Host {...props}>{options?.tabBarIcon?.({ color: "#111", size: 20 })}</Host>
+    `----
+  help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.
+
+Found 11 warnings and 0 errors.
+Finished in 1.8s on 77 files with 216 rules using 10 threads.

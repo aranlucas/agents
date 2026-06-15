@@ -25,10 +25,7 @@
       }
     },
     {
-      "files": [
-        "src/components/ai-elements/**/*.{ts,tsx}",
-        "src/components/ui/**/*.{ts,tsx}"
-      ],
+      "files": ["src/components/ai-elements/**/*.{ts,tsx}", "src/components/ui/**/*.{ts,tsx}"],
       "rules": {
         "jsx-a11y/anchor-has-content": "off",
         "jsx-a11y/control-has-associated-label": "off",
