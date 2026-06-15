@@ -238,7 +238,9 @@ async def throttle_web_search(tool, args, tool_context) -> None:
     return
 
 
-_STATE_INSTRUCTION = make_state_instruction(FitnessState, header="Current fitness state")
+_STATE_INSTRUCTION = make_state_instruction(
+    FitnessState, header="Current fitness state"
+)
 
 
 # ---------------------------------------------------------------------------
