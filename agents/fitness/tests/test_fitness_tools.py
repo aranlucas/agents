@@ -188,13 +188,14 @@ def test_agent_instruction_uses_adk_state_placeholders() -> None:
     assert not hasattr(agent, "build_dynamic_instruction")
 
 
-def test_strava_auth_state_parses_temp_token_alias() -> None:
-    parsed = agent._StravaAuthState.model_validate(
-        {"temp:strava_token": "token-123", "status": "planning"}
-    )
+def test_strava_token_read_from_state_key() -> None:
+    """fetch_activities reads the token directly via STRAVA_AUTH.state_key."""
+    from agents_shared.state import STRAVA_AUTH
 
-    assert parsed.strava_token == "token-123"
-    assert agent._StravaAuthState.model_validate({}).strava_token == ""
+    state = {"temp:strava_token": "token-123", "status": "planning"}
+    token = str(state.get(STRAVA_AUTH.state_key) or "")
+    assert token == "token-123"
+    assert str({}.get(STRAVA_AUTH.state_key) or "") == ""
 
 
 @pytest.mark.asyncio

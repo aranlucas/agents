@@ -9,16 +9,21 @@ from typing import TypedDict
 import httpx
 from ag_ui_adk import AGUIToolset
 from agents_shared.prompts import canvas_contract
-from agents_shared.state import STRAVA_AUTH, make_state_initializer
+from agents_shared.state import (
+    STRAVA_AUTH,
+    make_state_initializer,
+    make_state_instruction,
+)
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
     build_model,
     get_current_date,
+    make_mark_ready,
     on_model_error_callback,
 )
 from google.adk.agents import LlmAgent
 from google.adk.tools import ToolContext
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from .toolsets import web_search_toolset
 
@@ -56,10 +61,6 @@ class FitnessState(BaseModel):
     user_id: str = ""
 
 
-class _StravaAuthState(BaseModel):
-    """Subset of ADK session state containing the request-scoped Strava token."""
-
-    strava_token: str = Field(default="", validation_alias=STRAVA_AUTH.state_key)
 
 
 # ---------------------------------------------------------------------------
@@ -111,7 +112,7 @@ async def fetch_activities(
     omit it (or pass 1) to start from the most recent activities.
     Activities are appended to state across calls so the full history builds up.
     """
-    token = _StravaAuthState.model_validate(tool_context.state).strava_token
+    token = str(tool_context.state.get(STRAVA_AUTH.state_key) or "")
     connected = bool(tool_context.state.get("strava_connected")) and bool(token)
     log.debug(
         "fetch_activities: strava_connected=%s token_present=%s page=%s",
@@ -209,11 +210,11 @@ def set_training_plan(tool_context: ToolContext, plan: str) -> dict:
     return {"ok": True, "length": len(plan)}
 
 
-def mark_plan_ready(tool_context: ToolContext, summary: str) -> dict:
-    """Mark the weekly training plan as ready."""
-    tool_context.state["status"] = "ready"
-    tool_context.state["review_summary"] = summary
-    return {"ok": True}
+mark_plan_ready = make_mark_ready(
+    "mark_plan_ready",
+    "ready",
+    doc="Mark the training plan as ready for review.",
+)
 
 
 # Brave's free search tier allows ~1 request/second and returns 429s when bursted,
@@ -239,24 +240,7 @@ async def throttle_web_search(tool, args, tool_context) -> None:
     return
 
 
-_STATE_INSTRUCTION = """\
-Current fitness state:
-- Strava connected: {strava_connected}
-- Activities: {activities}
-- Activities synced at: {activities_synced_at}
-- Objective research: {objective_research}
-- Training plan: {training_plan}
-- Status: {status}
-- Review summary: {review_summary}
-- User ID: {user_id}
-
-Use the injected `strava_connected` state value above as the auth gate.
-If `strava_connected` is True and you are about to create or revise a training
-plan, call fetch_activities first when activities are missing or stale.
-If `strava_connected` is False, do NOT call fetch_activities. Tell the user their
-Strava account isn't connected and they need to connect it in the UI. Do not
-generate a training plan until Strava is connected.
-"""
+_STATE_INSTRUCTION = make_state_instruction(FitnessState, header="Current fitness state")
 
 
 # ---------------------------------------------------------------------------

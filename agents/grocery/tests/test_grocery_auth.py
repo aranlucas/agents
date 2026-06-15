@@ -36,13 +36,12 @@ def test_meal_planner_header_provider_reads_temp_token() -> None:
     assert headers == {"Authorization": "Bearer token-123"}
 
 
-def test_kroger_auth_state_parses_temp_token_alias() -> None:
-    parsed = toolsets._KrogerAuthState.model_validate(
-        {"temp:kroger_token": "token-123", "status": "planning"}
+def test_header_provider_reads_token_via_kroger_auth_state_key() -> None:
+    """_header_provider reads the Kroger token via KROGER_AUTH.state_key."""
+    headers = toolsets._header_provider(
+        DummyContext({KROGER_AUTH.state_key: "token-alias-123"})
     )
-
-    assert parsed.kroger_token == "token-123"
-    assert toolsets._KrogerAuthState.model_validate({}).kroger_token == ""
+    assert headers == {"Authorization": "Bearer token-alias-123"}
 
 
 def test_header_provider_returns_empty_without_state_token() -> None:
