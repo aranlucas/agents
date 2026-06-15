@@ -2,8 +2,7 @@
   "extends": "@agents/typescript-config/nextjs.json",
   "compilerOptions": {
     "paths": {
-      "@/*": ["./src/*"],
-      "@agents/ui/*": ["../../packages/ui/src/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": [
