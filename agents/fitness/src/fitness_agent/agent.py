@@ -4,7 +4,7 @@ import asyncio
 import datetime
 import logging
 import time
-from typing import Any
+from typing import TypedDict
 
 import httpx
 from ag_ui_adk import AGUIToolset
@@ -30,11 +30,24 @@ STRAVA_ACTIVITIES_URL = "https://www.strava.com/api/v3/athlete/activities"
 # ---------------------------------------------------------------------------
 # State model
 # ---------------------------------------------------------------------------
+class StravaActivity(TypedDict):
+    id: str
+    name: str
+    sport_type: str | None
+    start_date: str | None
+    distance_m: float | None
+    moving_time_s: int | None
+    elapsed_time_s: int | None
+    total_elevation_gain_m: float | None
+    average_heartrate: float | None
+    perceived_effort: int | None
+
+
 class FitnessState(BaseModel):
     """Default shared-state shape for the fitness agent."""
 
     strava_connected: bool = False
-    activities: list[dict[str, Any]] = []
+    activities: list[StravaActivity] = []
     activities_synced_at: str = ""
     objective_research: str = ""
     training_plan: str = ""
@@ -52,7 +65,7 @@ class _StravaAuthState(BaseModel):
 # ---------------------------------------------------------------------------
 # Activity helpers
 # ---------------------------------------------------------------------------
-def normalize_strava_activity(activity: dict[str, Any]) -> dict[str, Any]:
+def normalize_strava_activity(activity: dict[str, object]) -> StravaActivity:
     mapping = {
         "id": str(activity.get("id", "")),
         "name": activity.get("name") or "Untitled activity",
@@ -68,7 +81,7 @@ def normalize_strava_activity(activity: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in mapping.items() if value not in (None, "")}
 
 
-def summarize_activities(activities: list[dict[str, Any]]) -> dict[str, Any]:
+def summarize_activities(activities: list[StravaActivity]) -> dict[str, object]:
     distance_m = sum(float(a.get("distance_m") or 0) for a in activities)
     moving_time_s = sum(int(a.get("moving_time_s") or 0) for a in activities)
     elevation_m = sum(float(a.get("total_elevation_gain_m") or 0) for a in activities)
@@ -121,7 +134,7 @@ async def fetch_activities(
 
     tool_context.state["status"] = "syncing"
     page = next_page_token or 1
-    params: dict[str, Any] = {"per_page": 200, "page": page}
+    params: dict[str, str | int] = {"per_page": 200, "page": page}
     if after is not None:
         params["after"] = after
 

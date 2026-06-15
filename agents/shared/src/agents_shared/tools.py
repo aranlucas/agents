@@ -2,8 +2,8 @@
 
 import datetime
 import logging
-from typing import Any
 
+from fastapi import Request
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models import LlmRequest
 from google.adk.models.lite_llm import LiteLlm
@@ -48,7 +48,7 @@ def get_current_date() -> dict:
     }
 
 
-def extract_identity_state(request) -> dict:
+def extract_identity_state(request: Request) -> dict[str, str]:
     """Map the Clerk user-id header into shared state (anonymous when absent)."""
     return {"user_id": request.headers.get(CLERK_USER_ID_HEADER) or "anonymous"}
 
@@ -85,7 +85,7 @@ def parse_tool_response(tool_response: dict | str) -> dict | str | None:
 def save_state(
     tool_context: ToolContext,
     tool_name: str,
-    structured_content: Any,
+    structured_content: object,
 ) -> None:
     try:
         tool_context.state[tool_name] = structured_content

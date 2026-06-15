@@ -1,6 +1,6 @@
 """Grocery agent domain: state, tools, instructions."""
 
-from typing import Any
+from typing import TypedDict
 
 from ag_ui_adk import AGUIToolset
 from agents_shared.prompts import canvas_contract
@@ -21,13 +21,26 @@ from .toolsets import meal_planner_toolset
 # ---------------------------------------------------------------------------
 # State model
 # ---------------------------------------------------------------------------
+class CartItem(TypedDict):
+    name: str
+    quantity: int
+    price: float
+    upc: str
+
+
+class PantryItem(TypedDict):
+    name: str
+    quantity: str
+    expires: str | None
+
+
 class GroceryState(BaseModel):
     """Default shared-state shape for the grocery agent."""
 
     shopping_list: list[str] = []
     meal_plan: str = ""
-    cart: list[dict[str, Any]] = []
-    pantry: list[dict[str, Any]] = []
+    cart: list[CartItem] = []
+    pantry: list[PantryItem] = []
     weekly_deals: str = ""
     status: str = "idle"
     notes: str = ""
@@ -57,7 +70,7 @@ def set_shopping_list(
     return {"ok": True, "count": len(items)}
 
 
-def update_cart(tool_context: ToolContext, items: list[dict]) -> dict:
+def update_cart(tool_context: ToolContext, items: list[CartItem]) -> dict:
     """Update the cart with Kroger items ready for checkout.
 
     Each item: {"name": str, "quantity": int, "price": float, "upc": str}.
@@ -66,7 +79,7 @@ def update_cart(tool_context: ToolContext, items: list[dict]) -> dict:
     return {"ok": True, "count": len(items)}
 
 
-def update_pantry(tool_context: ToolContext, items: list[dict]) -> dict:
+def update_pantry(tool_context: ToolContext, items: list[PantryItem]) -> dict:
     """Sync pantry inventory to shared state.
 
     Each item: {"name": str, "quantity": str, "expires": str (optional)}.

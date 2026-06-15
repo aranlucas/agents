@@ -6,8 +6,10 @@ state extractor from it so agents don't copy the loops around.
 """
 
 from collections.abc import Awaitable, Callable
-from typing import Any, NamedTuple
+from typing import NamedTuple
 
+from ag_ui.core.types import RunAgentInput
+from fastapi import Request
 from google.adk.agents.callback_context import CallbackContext
 from pydantic import BaseModel
 
@@ -51,11 +53,11 @@ def make_state_initializer(
 
 def make_extract_state(
     *token_auths: TokenAuth,
-) -> Callable[[Any, Any], Awaitable[dict[str, Any]]]:
+) -> Callable[[Request, RunAgentInput], Awaitable[dict[str, object]]]:
     """extract_state_from_request handler: Clerk identity + optional token auth."""
 
-    async def extract(request: Any, _input_data: Any) -> dict[str, Any]:
-        state: dict[str, Any] = extract_identity_state(request)
+    async def extract(request: Request, _input_data: RunAgentInput) -> dict[str, object]:
+        state: dict[str, object] = extract_identity_state(request)
         for auth in token_auths:
             token = request.headers.get(auth.header) or ""
             state[auth.connected_flag] = bool(token)

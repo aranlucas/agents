@@ -7,8 +7,8 @@ routes directly on the gateway app.
 import logging
 import os
 from collections.abc import Awaitable, Callable
-from typing import Any
 
+from ag_ui.core.types import RunAgentInput
 from ag_ui_adk import ADKAgent, add_adk_fastapi_endpoint
 from ag_ui_adk.config import PredictStateMapping
 from fastapi import APIRouter, FastAPI, Request
@@ -82,7 +82,7 @@ def build_adk_agent(
     services: AgentServices,
     session_service: BaseSessionService | None = None,
     predict_state: list[PredictStateMapping] | None = None,
-) -> Any:
+) -> ADKAgent:
     return ADKAgent(
         adk_agent=agent,
         session_service=session_service or services.session_service,
@@ -100,10 +100,10 @@ def add_agent_routes(
     prefix: str,
     adk_agent: ADKAgent,
     extract_state_from_request: Callable[
-        [Request, Any],
-        Awaitable[dict[str, Any]],
+        [Request, RunAgentInput],
+        Awaitable[dict[str, object]],
     ],
-    health_check: Callable[[], Awaitable[dict[str, Any]]],
+    health_check: Callable[[], Awaitable[dict[str, object]]],
 ) -> None:
     """Register one gateway-scoped agent router.
 
