@@ -32,15 +32,17 @@ const TOPICS = [
 function OralBoardsStartPage({
   onStart,
   isGenerating,
+  loadingStep,
 }: {
   onStart: (message: string) => void;
   isGenerating: boolean;
+  loadingStep: string;
 }) {
   if (isGenerating) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4">
         <div className="border-primary size-8 animate-spin rounded-full border-2 border-t-transparent" />
-        <p className="text-muted-foreground text-sm">Building your case…</p>
+        <p className="text-muted-foreground text-sm">{loadingStep || "Building your case…"}</p>
       </div>
     );
   }
@@ -146,7 +148,11 @@ export function OralBoardsWorkspace() {
               isRunning={isRunning}
             />
           ) : (
-            <OralBoardsStartPage onStart={(m) => void handleStart(m)} isGenerating={isGenerating} />
+            <OralBoardsStartPage
+              onStart={(m) => void handleStart(m)}
+              isGenerating={isGenerating}
+              loadingStep={examState.loading_step ?? ""}
+            />
           )}
         </div>
       </OralBoardsQuestionProvider>
