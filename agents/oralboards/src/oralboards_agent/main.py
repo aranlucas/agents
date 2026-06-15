@@ -3,6 +3,7 @@
 from agents_shared.app_factory import (
     add_agent_routes,
     build_adk_agent,
+    streaming_state_mapping,
 )
 from agents_shared.dependencies import AgentServices
 from agents_shared.session_service import check_database_connection
@@ -15,6 +16,13 @@ from .agent import build_agent
 from .db import DB_STARTUP_ERROR
 
 load_dotenv()
+
+ORALBOARDS_PREDICT_STATE = [
+    streaming_state_mapping(state_key="case", tool="set_case", tool_argument="case"),
+    streaming_state_mapping(
+        state_key="score_card", tool="set_score_card", tool_argument="markdown"
+    ),
+]
 
 _oralboards_agent = build_agent()
 
@@ -29,7 +37,9 @@ def register(app: FastAPI, services: AgentServices):
     add_agent_routes(
         app,
         prefix="/oralboards",
-        adk_agent=build_adk_agent(_oralboards_agent, services=services),
+        adk_agent=build_adk_agent(
+            _oralboards_agent, services=services, predict_state=ORALBOARDS_PREDICT_STATE
+        ),
         extract_state_from_request=make_extract_state(),
         health_check=_health,
     )
