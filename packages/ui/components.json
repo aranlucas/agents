@@ -14,8 +14,11 @@
   "aliases": {
     "components": "@agents/ui/components",
     "utils": "@agents/ui/lib/utils",
-    "hooks": "@agents/ui/hooks",
+    "ui": "@agents/ui/components",
     "lib": "@agents/ui/lib",
-    "ui": "@agents/ui/components"
+    "hooks": "@agents/ui/hooks"
+  },
+  "registries": {
+    "@ai-elements": "https://ai-sdk.dev/elements/api/registry/{name}.json"
   }
 }
