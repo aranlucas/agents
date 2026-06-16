@@ -3,19 +3,20 @@
 import { useRouter } from "next/navigation";
 import { useAgent, UseAgentUpdate } from "@copilotkit/react-core/v2";
 
+import { SidebarInset, SidebarProvider } from "@agents/ui";
 import { getAgentConfig, type AgentId } from "@/components/chat/agents/registry";
 import { useNewThread } from "@/components/chat/use-new-thread";
 import { AgentExtensionSlot } from "@/components/chat/agents/extensions";
 import { AgentSuggestions } from "@/components/chat/agents/suggestions";
 import { ChatSurface } from "@/components/chat/chat-surface";
 import { ArtifactPanel } from "@/components/chat/artifact-panel";
-import { NavRail } from "@/components/chat/nav-rail";
+import { AppSidebar } from "@/components/chat/app-sidebar";
 import { WorkspaceShell, useArtifactPanel } from "@/components/workspace-shell";
 import { selectArtifact } from "@/components/chat/artifact";
 import { cssVars } from "@/lib/css";
 
 /**
- * The default console experience: rail + chat + artifact panel, wired to the
+ * The default console experience: sidebar + chat + artifact panel, wired to the
  * active agent's CopilotKit session. Every agent's `[thread]/page.tsx` renders
  * this by default; an agent that needs a bespoke surface renders its own
  * component there instead and reuses these primitives as needed.
@@ -36,31 +37,37 @@ export function AgentWorkspace({ agentId }: { agentId: AgentId }) {
   const startNewThread = useNewThread(agentId);
 
   return (
-    <main className="h-dvh" style={cssVars({ "--page-color": `var(${config.colorVar})` })}>
+    <SidebarProvider
+      defaultOpen={false}
+      className="h-dvh overflow-hidden"
+      style={cssVars({ "--page-color": `var(${config.colorVar})` })}
+    >
       <AgentExtensionSlot agentId={agentId} />
       <AgentSuggestions config={config} />
-      <WorkspaceShell
-        hasArtifact={Boolean(artifact)}
-        panelState={state}
-        rail={<NavRail activePath={`/console/${agentId}`} onNewThread={startNewThread} />}
-        chat={
-          <ChatSurface
-            config={config}
-            onSwitchAgent={(id) => router.push(`/console/${id}/${crypto.randomUUID()}`)}
-            onOpenArtifact={() => dispatch("open")}
-          />
-        }
-        artifact={
-          artifact ? (
-            <ArtifactPanel
-              view={artifact}
-              fullscreen={state === "fullscreen"}
-              onClose={() => dispatch("close")}
-              onToggleFullscreen={() => dispatch("toggle-fullscreen")}
+      <AppSidebar activePath={`/console/${agentId}`} onNewThread={startNewThread} />
+      <SidebarInset className="min-h-0 overflow-hidden">
+        <WorkspaceShell
+          hasArtifact={Boolean(artifact)}
+          panelState={state}
+          chat={
+            <ChatSurface
+              config={config}
+              onSwitchAgent={(id) => router.push(`/console/${id}/${crypto.randomUUID()}`)}
+              onOpenArtifact={() => dispatch("open")}
             />
-          ) : null
-        }
-      />
-    </main>
+          }
+          artifact={
+            artifact ? (
+              <ArtifactPanel
+                view={artifact}
+                fullscreen={state === "fullscreen"}
+                onClose={() => dispatch("close")}
+                onToggleFullscreen={() => dispatch("toggle-fullscreen")}
+              />
+            ) : null
+          }
+        />
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
