@@ -18,6 +18,7 @@ allowBuilds:
   utf-8-validate: true
   onnxruntime-node: false
   protobufjs: true
+  dtrace-provider: false
 
 onlyBuiltDependencies:
   - "agents-monorepo"
