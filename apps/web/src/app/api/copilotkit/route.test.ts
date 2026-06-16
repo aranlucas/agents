@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@copilotkit/runtime/v2", () => ({
@@ -43,6 +44,7 @@ vi.mock("@/env", () => ({
   env: {
     CLERK_SECRET_KEY: "secret",
     AGENTS_BASE_URL: "http://agents.test",
+    GROQ_API_KEY: "gsk_fake",
     COPILOTKIT_DEBUG: false,
   },
 }));
