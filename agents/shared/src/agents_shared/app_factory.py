@@ -101,7 +101,7 @@ def add_agent_routes(
     *,
     prefix: str,
     adk_agent: ADKAgent,
-    services: "AgentServices",
+    services: AgentServices,
     extract_state_from_request: Callable[
         [Request, RunAgentInput],
         Awaitable[dict[str, object]],

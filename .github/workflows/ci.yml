@@ -51,7 +51,7 @@ jobs:
       - name: Install JS dependencies
         run: pnpm install --frozen-lockfile
       - name: Build
-        run: pnpm build
+        run: pnpm --filter web build
         env:
           SKIP_ENV_VALIDATION: "1"
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2xlcmsuZXhhbXBsZS5jb20k
