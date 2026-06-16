@@ -28,6 +28,22 @@ const TOPICS = [
     label: "Behavior guidance",
     message: "Create an oral-board case focused on behavior guidance.",
   },
+  {
+    label: "Sedation & emergencies",
+    message: "Create an oral-board case on sedation and managing a medical emergency.",
+  },
+  {
+    label: "Special health care needs",
+    message: "Create an oral-board case involving a patient with special health care needs.",
+  },
+  {
+    label: "Oral pathology",
+    message: "Create an oral-board case focused on diagnosing a pediatric oral lesion.",
+  },
+  {
+    label: "Space management",
+    message: "Create an oral-board case on growth, development, and space management.",
+  },
 ];
 
 function OralBoardsStartPage({
@@ -50,7 +66,17 @@ function OralBoardsStartPage({
 
   return (
     <div className="flex h-full flex-col items-center justify-center gap-6 p-8">
-      <p className="text-muted-foreground text-sm">ABPD Oral Clinical Exam practice</p>
+      <div className="max-w-md space-y-2.5 text-center">
+        <p className="text-[10px] font-semibold tracking-[0.18em] text-indigo-400 uppercase">
+          ABPD Oral Clinical Exam
+        </p>
+        <h2 className="text-xl font-semibold">Practice the oral boards</h2>
+        <p className="text-muted-foreground text-sm leading-relaxed">
+          Get a grounded clinical vignette, field the examiner&apos;s open-ended questions one at a
+          time, then receive cited per-skillset feedback scored on the ABPD 1–3 scale.
+        </p>
+      </div>
+
       <Button
         size="lg"
         className="px-10"
@@ -58,17 +84,21 @@ function OralBoardsStartPage({
       >
         Start a case
       </Button>
-      <div className="flex flex-wrap justify-center gap-2">
-        {TOPICS.map((t) => (
-          <button
-            key={t.label}
-            type="button"
-            onClick={() => onStart(t.message)}
-            className="text-muted-foreground hover:text-foreground rounded-full border px-3 py-1 text-xs transition-colors"
-          >
-            {t.label}
-          </button>
-        ))}
+
+      <div className="w-full max-w-lg space-y-2 text-center">
+        <p className="text-muted-foreground text-[11px]">or focus on a blueprint domain</p>
+        <div className="flex flex-wrap justify-center gap-2">
+          {TOPICS.map((t) => (
+            <button
+              key={t.label}
+              type="button"
+              onClick={() => onStart(t.message)}
+              className="text-muted-foreground hover:text-foreground rounded-full border px-3 py-1 text-xs transition-colors hover:border-indigo-500/40"
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

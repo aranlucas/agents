@@ -37,12 +37,17 @@ def test_oralboards_state_tools_write_canvas_state() -> None:
     }
     assert context.state["status"] == "questioning"
 
+    exchange_citations = [{"docid": 1, "title": "Guide", "collection": "abpd"}]
     result_exchange = append_exchange(
         context,
         question="What is your diagnosis?",
         answer="Irreversible pulpitis",
-        feedback="Needs source-specific reasoning.",
+        skillset="Pulp Therapy",
+        skill="analyze_evaluate",
+        feedback="**Skillset:** Pulp Therapy · Analyze/Evaluate\nNeeds source-specific reasoning.",
         ideal_response="Irreversible pulpitis of tooth #19.",
+        score=2,
+        citations=exchange_citations,
     )
     assert result_exchange["ok"] is True
     assert result_exchange["status"] == "success"
@@ -51,16 +56,37 @@ def test_oralboards_state_tools_write_canvas_state() -> None:
         {
             "question": "What is your diagnosis?",
             "answer": "Irreversible pulpitis",
-            "feedback": "Needs source-specific reasoning.",
+            "skillset": "Pulp Therapy",
+            "skill": "analyze_evaluate",
+            "feedback": "**Skillset:** Pulp Therapy · Analyze/Evaluate\nNeeds source-specific reasoning.",
             "ideal_response": "Irreversible pulpitis of tooth #19.",
+            "score": 2,
+            "citations": exchange_citations,
         },
     ]
     assert context.state["status"] == "questioning"
 
-    result_score = set_score_card(context, "## Score\n- Diagnosis: 3/4")
+    summary = [
+        {
+            "skillset": "Pulp Therapy",
+            "skill": "analyze_evaluate",
+            "score": 2,
+            "rationale": "Reached the diagnosis but missed cited support.",
+        }
+    ]
+    result_score = set_score_card(
+        context,
+        "## Score\nPulp Therapy — 2 (Analyze/Evaluate)",
+        score_summary=summary,
+        outcome="borderline",
+    )
     assert result_score["ok"] is True
     assert result_score["status"] == "success"
-    assert context.state["score_card"] == "## Score\n- Diagnosis: 3/4"
+    assert (
+        context.state["score_card"] == "## Score\nPulp Therapy — 2 (Analyze/Evaluate)"
+    )
+    assert context.state["score_summary"] == summary
+    assert context.state["outcome"] == "borderline"
     assert context.state["status"] == "complete"
 
 
@@ -73,6 +99,8 @@ def test_state_initializer_preserves_existing_state_and_adds_defaults() -> None:
 
     assert callback_context.state["case"] == "existing"
     assert callback_context.state["transcript"] == []
+    assert callback_context.state["score_summary"] == []
+    assert callback_context.state["outcome"] == ""
     assert callback_context.state["status"] == "idle"
     assert callback_context.state["loading_step"] == ""
 
@@ -107,6 +135,32 @@ def test_agent_static_instruction_requires_speaking_questions_before_chat() -> N
     assert isinstance(static_instruction, str)
     assert "ask_question" in static_instruction
     assert "before writing the question in chat" in static_instruction
+
+
+def test_static_instruction_grounded_in_oce_guide() -> None:
+    """Static instruction reflects the ABPD OCE guide, not the old 4a-4e model."""
+    agent = build_agent()
+    static = agent.static_instruction
+    assert isinstance(static, str)
+
+    # Entry-level "safe and effective practice" framing from the OCE guide
+    assert "safe and effective" in static
+    assert "entry-level" in static
+
+    # Faithful examiner model: open-ended questions across blueprint skillsets,
+    # replacing the invented 4a-4e "interview phases"
+    assert "open-ended" in static
+    assert "skillset" in static.lower()
+    assert "Interview phase" not in static
+
+    # Blueprint cognitive skill levels are taught to the agent
+    assert "analyze_evaluate" in static
+    assert "understand_apply" in static
+    assert "remember" in static
+
+    # Scoring is per-skillset 1-3, not a weighted composite
+    assert "do not compute a weighted composite" in static.lower()
+    assert "/ 3.0" not in static
 
 
 # ---------------------------------------------------------------------------
@@ -236,15 +290,20 @@ def test_preprocess_args_preserves_append_exchange_params() -> None:
     args = {
         "question": "What is your diagnosis?",
         "answer": "Irreversible pulpitis",
-        "feedback": "Needs source-specific reasoning.",
+        "skillset": "Pulp Therapy",
+        "skill": "analyze_evaluate",
+        "feedback": "**Skillset:** Pulp Therapy · Analyze/Evaluate\nNeeds reasoning.",
         "ideal_response": "Irreversible pulpitis of tooth #19.",
+        "score": 2,
     }
     processed = tool._preprocess_args(args)
 
     assert processed["question"] == "What is your diagnosis?"
     assert processed["answer"] == "Irreversible pulpitis"
-    assert processed["feedback"] == "Needs source-specific reasoning."
+    assert processed["skillset"] == "Pulp Therapy"
+    assert processed["skill"] == "analyze_evaluate"
     assert processed["ideal_response"] == "Irreversible pulpitis of tooth #19."
+    assert processed["score"] == 2
 
 
 def test_run_async_with_typeddict_args() -> None:
