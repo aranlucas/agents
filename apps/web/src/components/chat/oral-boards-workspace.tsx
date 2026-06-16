@@ -4,8 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { CopilotSidebar, useAgent, useCopilotKit, UseAgentUpdate } from "@copilotkit/react-core/v2";
 
 import type { OralBoardsState } from "@agents/types";
-import { Button } from "@agents/ui";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@agents/ui";
+import { Button, SidebarInset, SidebarProvider, SidebarTrigger, Spinner } from "@agents/ui";
 import { getAgentConfig } from "@/components/chat/agents/registry";
 import { useNewThread } from "@/components/chat/use-new-thread";
 import { AgentExtensionSlot } from "@/components/chat/agents/extensions";
@@ -58,7 +57,7 @@ function OralBoardsStartPage({
   if (isGenerating) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4">
-        <div className="border-primary size-8 animate-spin rounded-full border-2 border-t-transparent" />
+        <Spinner className="size-8" />
         <p className="text-muted-foreground text-sm">{loadingStep || "Building your case…"}</p>
       </div>
     );

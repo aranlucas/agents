@@ -90,6 +90,7 @@ export {
   InputGroupTextarea,
 } from "./components/input-group";
 export { Input } from "./components/input";
+export { Kbd, KbdGroup } from "./components/kbd";
 export {
   Popover,
   PopoverContent,
@@ -162,3 +163,13 @@ export {
   SheetTrigger,
 } from "./components/sheet";
 export { Skeleton } from "./components/skeleton";
+export {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./components/table";
