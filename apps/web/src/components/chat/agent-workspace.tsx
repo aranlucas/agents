@@ -60,9 +60,7 @@ export function AgentWorkspace({ agentId }: { agentId: AgentId }) {
             artifact ? (
               <ArtifactPanel
                 view={artifact}
-                fullscreen={state === "fullscreen"}
                 onClose={() => dispatch("close")}
-                onToggleFullscreen={() => dispatch("toggle-fullscreen")}
               />
             ) : null
           }

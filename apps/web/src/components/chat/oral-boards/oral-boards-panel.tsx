@@ -8,8 +8,6 @@ import {
   CheckCircle2Icon,
   ChevronDownIcon,
   Loader2Icon,
-  Maximize2Icon,
-  Minimize2Icon,
   MicIcon,
   PencilIcon,
   PlayIcon,
@@ -31,7 +29,6 @@ import { Button } from "@agents/ui";
 import {
   Artifact,
   ArtifactActions,
-  ArtifactAction,
   ArtifactClose,
   ArtifactContent,
   ArtifactHeader,
@@ -722,18 +719,14 @@ function FeedbackPane({
 
 export function OralBoardsPanel({
   state,
-  fullscreen,
   onClose,
-  onToggleFullscreen,
   onReady,
   onAnswer,
   isRunning,
   loadingStep = "",
 }: {
   state: OralBoardsState;
-  fullscreen: boolean;
   onClose: () => void;
-  onToggleFullscreen: () => void;
   onReady: () => void;
   onAnswer: (text: string) => void;
   isRunning: boolean;
@@ -758,11 +751,6 @@ export function OralBoardsPanel({
       <ArtifactHeader>
         <ArtifactTitle>Oral board</ArtifactTitle>
         <ArtifactActions>
-          <ArtifactAction
-            icon={fullscreen ? Minimize2Icon : Maximize2Icon}
-            tooltip={fullscreen ? "Restore split" : "Fullscreen"}
-            onClick={onToggleFullscreen}
-          />
           <ArtifactClose aria-label="Close panel" onClick={onClose} />
         </ArtifactActions>
       </ArtifactHeader>

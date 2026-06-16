@@ -14,7 +14,6 @@ describe("WorkspaceShell layout invariants", () => {
     <WorkspaceShell
       hasArtifact={false}
       panelState="closed"
-      rail={<span>RAIL_MARKER</span>}
       chat={<span>CHAT_MARKER</span>}
       artifact={<span>ARTIFACT_MARKER</span>}
     />,
@@ -35,25 +34,21 @@ describe("WorkspaceShell layout invariants", () => {
 
   // The min-h-0 fix only matters because an ancestor bounds the height and clips
   // overflow; if that scroll model changes, revisit the chat column constraint.
+  // The shell root uses h-full (height comes from the parent SidebarInset) and
+  // clips overflow.
   it("bounds the shell height and clips overflow at the root", () => {
-    expect(markup).toContain("h-dvh");
+    expect(markup).toContain("h-full");
     expect(markup).toContain("overflow-hidden");
   });
 });
 
 describe("nextPanelState", () => {
-  it("open toggles between split and closed", () => {
+  it("toggle-open toggles between split and closed", () => {
     expect(nextPanelState("closed", "toggle-open")).toBe("split");
     expect(nextPanelState("split", "toggle-open")).toBe("closed");
-    expect(nextPanelState("fullscreen", "toggle-open")).toBe("closed");
-  });
-  it("fullscreen toggles between fullscreen and split, and opens if closed", () => {
-    expect(nextPanelState("closed", "toggle-fullscreen")).toBe("fullscreen");
-    expect(nextPanelState("split", "toggle-fullscreen")).toBe("fullscreen");
-    expect(nextPanelState("fullscreen", "toggle-fullscreen")).toBe("split");
   });
   it("open action forces split, close forces closed", () => {
     expect(nextPanelState("closed", "open")).toBe("split");
-    expect(nextPanelState("fullscreen", "close")).toBe("closed");
+    expect(nextPanelState("split", "close")).toBe("closed");
   });
 });

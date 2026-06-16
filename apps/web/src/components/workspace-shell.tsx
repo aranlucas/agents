@@ -4,8 +4,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { cn } from "@agents/ui/lib/utils";
 import { SidebarTrigger } from "@agents/ui";
 
-export type PanelState = "closed" | "split" | "fullscreen";
-export type PanelAction = "open" | "close" | "toggle-open" | "toggle-fullscreen";
+export type PanelState = "closed" | "split";
+export type PanelAction = "open" | "close" | "toggle-open";
 
 export function nextPanelState(state: PanelState, action: PanelAction): PanelState {
   switch (action) {
@@ -15,8 +15,6 @@ export function nextPanelState(state: PanelState, action: PanelAction): PanelSta
       return "closed";
     case "toggle-open":
       return state === "closed" ? "split" : "closed";
-    case "toggle-fullscreen":
-      return state === "fullscreen" ? "split" : "fullscreen";
     default:
       return state;
   }
@@ -28,7 +26,7 @@ export function useArtifactPanel(agentId: string) {
   const [state, setState] = useState<PanelState>("closed");
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_PREFIX + agentId);
-    setState(stored === "split" || stored === "fullscreen" ? (stored as PanelState) : "closed");
+    setState(stored === "split" ? "split" : "closed");
   }, [agentId]);
   const dispatch = (action: PanelAction) =>
     setState((s) => {
@@ -51,7 +49,6 @@ export function WorkspaceShell({
   panelState: PanelState;
 }) {
   const open = panelState !== "closed";
-  const fullscreen = panelState === "fullscreen";
   return (
     // Height comes from the parent SidebarInset; overflow-hidden clips panels.
     <div className="flex h-full flex-col overflow-hidden md:flex-row">
@@ -59,7 +56,6 @@ export function WorkspaceShell({
       <div
         className={cn(
           "flex min-h-0 min-w-0 flex-1 flex-col",
-          fullscreen && "md:hidden",
           open && "max-md:hidden",
         )}
       >
@@ -77,7 +73,7 @@ export function WorkspaceShell({
             open ? "max-md:flex max-md:flex-1" : "max-md:hidden",
             // Desktop: animated side panel that widens from the right edge.
             "md:flex-none md:border-l md:transition-[width] md:duration-300",
-            fullscreen ? "md:w-full" : open ? "md:w-[48%]" : "md:w-0",
+            open ? "md:w-[48%]" : "md:w-0",
           )}
         >
           {artifact}
