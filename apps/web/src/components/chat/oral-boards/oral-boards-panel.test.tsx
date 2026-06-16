@@ -52,9 +52,7 @@ import { OralBoardsPanel } from "./oral-boards-panel";
 const noop = () => {};
 
 const baseProps = {
-  fullscreen: false,
   onClose: noop,
-  onToggleFullscreen: noop,
   onReady: noop,
   onAnswer: noop,
   isRunning: false,

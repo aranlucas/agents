@@ -106,7 +106,7 @@ function OralBoardsStartPage({
 
 export function OralBoardsWorkspace() {
   const config = getAgentConfig(AGENT_ID);
-  const { state, dispatch } = useArtifactPanel(AGENT_ID);
+  const { dispatch } = useArtifactPanel(AGENT_ID);
   const { agent } = useAgent({
     agentId: AGENT_ID,
     updates: [UseAgentUpdate.OnStateChanged, UseAgentUpdate.OnRunStatusChanged],
@@ -177,9 +177,7 @@ export function OralBoardsWorkspace() {
           {hasPanel ? (
             <OralBoardsPanel
               state={examState}
-              fullscreen={state === "fullscreen"}
               onClose={startNewThread}
-              onToggleFullscreen={() => dispatch("toggle-fullscreen")}
               onReady={handleReady}
               onAnswer={(text) => void handleAnswer(text)}
               isRunning={isRunning}
