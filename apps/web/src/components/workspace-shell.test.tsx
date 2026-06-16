@@ -1,10 +1,17 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import type { ReactNode } from "react";
+
+vi.mock("@agents/ui", () => ({
+  SidebarTrigger: () => null as unknown as ReactNode,
+}));
+
 import { nextPanelState, WorkspaceShell } from "./workspace-shell";
 
-// Returns the class list of the element that directly wraps the given marker child.
+// Returns the class list of the innermost class-bearing ancestor of the marker.
 function classesWrapping(markup: string, marker: string): string[] {
-  const match = markup.match(new RegExp(`class="([^"]*)"[^>]*>(?:<[^>]+>)*${marker}`));
+  const matches = [...markup.matchAll(new RegExp(`class="([^"]*)"(?=[^>]*>(?:<[^>]*>)*${marker})`, "g"))];
+  const match = matches.at(-1);
   if (!match) throw new Error(`could not find element wrapping ${marker}`);
   return match[1].split(/\s+/);
 }

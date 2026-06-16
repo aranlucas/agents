@@ -181,6 +181,12 @@
       "skillPath": "skills/runtime/SKILL.md",
       "computedHash": "670e8b8f8cdd16fbe82622c56b5f63e48514cca80632dfa8b9225dd7b46f3418"
     },
+    "shadcn": {
+      "source": "shadcn/ui",
+      "sourceType": "github",
+      "skillPath": "skills/shadcn/SKILL.md",
+      "computedHash": "ac9d0d69caac7de1d1e5647f3db3bcd2f13af355d6b3a78780fbf7fc80e8dca0"
+    },
     "upgrading-expo": {
       "source": "expo/skills",
       "sourceType": "github",

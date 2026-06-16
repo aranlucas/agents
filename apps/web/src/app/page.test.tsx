@@ -10,7 +10,6 @@ vi.mock("next/link", () => ({
 
 vi.mock("@/components/providers", () => ({
   Providers: ({ children }: { children: ReactNode }) => <>{children}</>,
-  useTheme: () => ({ theme: "system", resolvedTheme: "light", setTheme: vi.fn() }),
 }));
 
 vi.mock("@clerk/nextjs", () => ({

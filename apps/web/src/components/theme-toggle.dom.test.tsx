@@ -4,71 +4,63 @@ import userEvent from "@testing-library/user-event";
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
 
-const mockSetTheme = vi.fn();
+const setTheme = vi.fn();
 
-vi.mock("@/components/providers", () => ({
-  useTheme: vi.fn(),
+vi.mock("next-themes", () => ({
+  useTheme: () => ({ setTheme }),
 }));
 
-import { useTheme } from "@/components/providers";
 import { ThemeToggle } from "./theme-toggle";
 
-const mockUseTheme = vi.mocked(useTheme);
+function getToggle() {
+  const buttons = screen.getAllByRole("button");
+  return buttons.find((b) => b.getAttribute("aria-haspopup") === "menu")!;
+}
 
 describe("ThemeToggle", () => {
-  it("shows 'Use light theme' label for system theme", () => {
-    mockUseTheme.mockReturnValue({
-      theme: "system",
-      resolvedTheme: "light",
-      setTheme: mockSetTheme,
-    });
+  it("renders a toggle button", () => {
     render(<ThemeToggle />);
-    expect(screen.getByRole("button", { name: "Use light theme" })).toBeInTheDocument();
+    expect(getToggle()).toBeInTheDocument();
   });
 
-  it("shows 'Use dark theme' label for light theme", () => {
-    mockUseTheme.mockReturnValue({
-      theme: "light",
-      resolvedTheme: "light",
-      setTheme: mockSetTheme,
-    });
+  it("shows Light, Dark, and System options in the dropdown", async () => {
+    const user = userEvent.setup();
     render(<ThemeToggle />);
-    expect(screen.getByRole("button", { name: "Use dark theme" })).toBeInTheDocument();
+
+    await user.click(getToggle());
+
+    expect(screen.getByRole("menuitem", { name: "Light" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Dark" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "System" })).toBeInTheDocument();
   });
 
-  it("shows 'Use system theme' label for dark theme", () => {
-    mockUseTheme.mockReturnValue({ theme: "dark", resolvedTheme: "dark", setTheme: mockSetTheme });
+  it("calls setTheme with 'light' when Light is clicked", async () => {
+    const user = userEvent.setup();
     render(<ThemeToggle />);
-    expect(screen.getByRole("button", { name: "Use system theme" })).toBeInTheDocument();
-  });
 
-  it("cycles system → light when clicked", async () => {
-    const setTheme = vi.fn();
-    mockUseTheme.mockReturnValue({ theme: "system", resolvedTheme: "light", setTheme });
-    render(<ThemeToggle />);
-    await userEvent.click(screen.getByRole("button"));
+    await user.click(getToggle());
+    await user.click(screen.getByRole("menuitem", { name: "Light" }));
+
     expect(setTheme).toHaveBeenCalledWith("light");
   });
 
-  it("cycles light → dark when clicked", async () => {
-    const setTheme = vi.fn();
-    mockUseTheme.mockReturnValue({ theme: "light", resolvedTheme: "light", setTheme });
+  it("calls setTheme with 'dark' when Dark is clicked", async () => {
+    const user = userEvent.setup();
     render(<ThemeToggle />);
-    await userEvent.click(screen.getByRole("button"));
+
+    await user.click(getToggle());
+    await user.click(screen.getByRole("menuitem", { name: "Dark" }));
+
     expect(setTheme).toHaveBeenCalledWith("dark");
   });
 
-  it("cycles dark → system when clicked", async () => {
-    const setTheme = vi.fn();
-    mockUseTheme.mockReturnValue({ theme: "dark", resolvedTheme: "dark", setTheme });
+  it("calls setTheme with 'system' when System is clicked", async () => {
+    const user = userEvent.setup();
     render(<ThemeToggle />);
-    await userEvent.click(screen.getByRole("button"));
-    expect(setTheme).toHaveBeenCalledWith("system");
-  });
 
-  it("shows the current theme in the title attribute", () => {
-    mockUseTheme.mockReturnValue({ theme: "dark", resolvedTheme: "dark", setTheme: mockSetTheme });
-    render(<ThemeToggle />);
-    expect(screen.getByRole("button")).toHaveAttribute("title", "Theme: dark");
+    await user.click(getToggle());
+    await user.click(screen.getByRole("menuitem", { name: "System" }));
+
+    expect(setTheme).toHaveBeenCalledWith("system");
   });
 });
