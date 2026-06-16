@@ -15,9 +15,7 @@ import { ThemeToggle } from "./theme-toggle";
 describe("ThemeToggle", () => {
   it("renders a toggle button", () => {
     render(<ThemeToggle />);
-    expect(
-      screen.getByRole("button", { name: "Toggle theme" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Toggle theme" })).toBeInTheDocument();
   });
 
   it("shows Light, Dark, and System options in the dropdown", async () => {

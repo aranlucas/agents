@@ -5,7 +5,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { CopilotChatAudioRecorder } from "@copilotkit/react-core/v2";
 import { Check, Loader2, Mic, X } from "lucide-react";
 
-import { PromptInputButton, usePromptInputController } from "@agents/ui/components/ai-elements/prompt-input";
+import {
+  PromptInputButton,
+  usePromptInputController,
+} from "@agents/ui/components/ai-elements/prompt-input";
 
 export function TranscribeButton() {
   const { textInput } = usePromptInputController();
