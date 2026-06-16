@@ -100,27 +100,11 @@ interface VoiceItemProps {
 }
 
 const VoiceItem = memo(
-  ({
-    voice,
-    playingVoice,
-    loadingVoice,
-    onSelect,
-    onPreview,
-  }: VoiceItemProps) => {
-    const handleSelect = useCallback(
-      () => onSelect(voice.id),
-      [onSelect, voice.id]
-    );
-    const handlePreview = useCallback(
-      () => onPreview(voice.id),
-      [onPreview, voice.id]
-    );
+  ({ voice, playingVoice, loadingVoice, onSelect, onPreview }: VoiceItemProps) => {
+    const handleSelect = useCallback(() => onSelect(voice.id), [onSelect, voice.id]);
+    const handlePreview = useCallback(() => onPreview(voice.id), [onPreview, voice.id]);
     return (
-      <VoiceSelectorItem
-        key={voice.id}
-        onSelect={handleSelect}
-        value={voice.id}
-      >
+      <VoiceSelectorItem key={voice.id} onSelect={handleSelect} value={voice.id}>
         <VoiceSelectorPreview
           loading={loadingVoice === voice.id}
           onPlay={handlePreview}
@@ -136,7 +120,7 @@ const VoiceItem = memo(
         <VoiceSelectorGender value={voice.gender} />
       </VoiceSelectorItem>
     );
-  }
+  },
 );
 
 VoiceItem.displayName = "VoiceItem";
@@ -195,7 +179,7 @@ const Example = () => {
 
       audio.load();
     },
-    [playingVoice]
+    [playingVoice],
   );
 
   const selectedVoiceData = voices.find((voice) => voice.id === selectedVoice);
@@ -215,9 +199,7 @@ const Example = () => {
                 <VoiceSelectorGender value={selectedVoiceData.gender} />
               </>
             ) : (
-              <span className="flex-1 text-left text-sm">
-                Select a voice...
-              </span>
+              <span className="flex-1 text-left text-sm">Select a voice...</span>
             )}
           </Button>
         </VoiceSelectorTrigger>

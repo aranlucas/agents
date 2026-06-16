@@ -74,17 +74,12 @@ const Example = () => {
         clearInterval(intervalRef.current);
       }
     },
-    []
+    [],
   );
 
   return (
     <div className="space-y-4">
-      <Button
-        disabled={isStreaming}
-        onClick={simulateStreaming}
-        size="sm"
-        variant="outline"
-      >
+      <Button disabled={isStreaming} onClick={simulateStreaming} size="sm" variant="outline">
         {isStreaming ? "Streaming..." : "Simulate Streaming"}
       </Button>
 

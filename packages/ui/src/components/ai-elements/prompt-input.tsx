@@ -47,9 +47,7 @@ import type {
   PropsWithChildren,
   ReactNode,
   RefObject,
-  SyntheticEvent,
 } from "react";
-import type { BaseUIEvent } from "@base-ui/react/types";
 import {
   Children,
   createContext,
@@ -60,8 +58,6 @@ import {
   useRef,
   useState,
 } from "react";
-
-type DropdownMenuSelectEvent = BaseUIEvent<SyntheticEvent<HTMLDivElement, Event>>;
 
 // ============================================================================
 // Helpers
@@ -393,7 +389,7 @@ export const PromptInputActionAddAttachments = ({
   const attachments = usePromptInputAttachments();
 
   const handleSelect = useCallback(
-    (e: DropdownMenuSelectEvent) => {
+    (e: Event) => {
       e.preventDefault();
       attachments.openFileDialog();
     },
@@ -419,7 +415,7 @@ export const PromptInputActionAddScreenshot = ({
   const attachments = usePromptInputAttachments();
 
   const handleSelect = useCallback(
-    async (event: DropdownMenuSelectEvent) => {
+    async (event: Event) => {
       onSelect?.(event);
       if (event.defaultPrevented) {
         return;
@@ -1071,7 +1067,7 @@ export const PromptInputButton = ({
 
   return (
     <Tooltip>
-      <TooltipTrigger render={button} />
+      <TooltipTrigger>{button}</TooltipTrigger>
       <TooltipContent side={side}>
         {tooltipContent}
         {shortcut && <span className="text-muted-foreground ml-2">{shortcut}</span>}
@@ -1142,7 +1138,7 @@ export const PromptInputSubmit = ({
   }
 
   const handleClick = useCallback(
-    (e: BaseUIEvent<React.MouseEvent<HTMLButtonElement>>) => {
+    (e: React.MouseEvent<HTMLButtonElement>) => {
       if (isGenerating && onStop) {
         e.preventDefault();
         onStop();

@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  Transcription,
-  TranscriptionSegment,
-} from "@/components/ai-elements/transcription";
+import { Transcription, TranscriptionSegment } from "@/components/ai-elements/transcription";
 import type { Experimental_TranscriptionResult as TranscriptionResult } from "ai";
 import { useCallback, useRef, useState } from "react";
 
@@ -269,11 +266,7 @@ const Example = () => {
         <source src="https://ejiidnob33g9ap1r.public.blob.vercel-storage.com/ElevenLabs_2025-11-10T22_10_24_Hayden_pvc_sp110_s50_sb75_se0_b_m2.mp3" />
       </audio>
 
-      <Transcription
-        currentTime={currentTime}
-        onSeek={handleSeek}
-        segments={segments}
-      >
+      <Transcription currentTime={currentTime} onSeek={handleSeek} segments={segments}>
         {(segment, index) => (
           <TranscriptionSegment
             className="text-lg"
