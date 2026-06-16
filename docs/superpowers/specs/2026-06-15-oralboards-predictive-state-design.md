@@ -67,14 +67,14 @@ Pass to `build_adk_agent(..., predict_state=ORALBOARDS_PREDICT_STATE)`.
 
 Add a `set_loading_step` protocol to the static instruction, mapping each phase:
 
-| When | Call |
-|---|---|
-| Before first `search_docs` (case build) | `set_loading_step("Searching clinical guidelines…")` |
-| Before each `read_doc` | `set_loading_step("Reading: {doc title}…")` |
-| Before calling `set_case` | `set_loading_step("Composing case vignette…")` |
-| After candidate answer, before re-search | `set_loading_step("Reviewing your answer…")` |
-| Before calling `append_exchange` | `set_loading_step("Composing feedback…")` |
-| Before calling `set_score_card` | `set_loading_step("Computing score card…")` |
+| When                                     | Call                                                 |
+| ---------------------------------------- | ---------------------------------------------------- |
+| Before first `search_docs` (case build)  | `set_loading_step("Searching clinical guidelines…")` |
+| Before each `read_doc`                   | `set_loading_step("Reading: {doc title}…")`          |
+| Before calling `set_case`                | `set_loading_step("Composing case vignette…")`       |
+| After candidate answer, before re-search | `set_loading_step("Reviewing your answer…")`         |
+| Before calling `append_exchange`         | `set_loading_step("Composing feedback…")`            |
+| Before calling `set_score_card`          | `set_loading_step("Computing score card…")`          |
 
 ---
 
@@ -85,9 +85,7 @@ Add a `set_loading_step` protocol to the static instruction, mapping each phase:
 `OralBoardsStartPage` currently shows hardcoded "Building your case…". Replace with `examState.loading_step`:
 
 ```tsx
-<p className="text-muted-foreground text-sm">
-  {examState.loading_step || "Building your case…"}
-</p>
+<p className="text-muted-foreground text-sm">{examState.loading_step || "Building your case…"}</p>
 ```
 
 `examState` is already in scope via `agent?.state`.
@@ -109,9 +107,11 @@ Add a `set_loading_step` protocol to the static instruction, mapping each phase:
 `FeedbackPane` is currently gated on `status === "complete" || status === "feedback"`. With `score_card` streaming, `status` doesn't flip to `"complete"` until `set_score_card` finishes. Show the pane as soon as `score_card` has content:
 
 ```tsx
-{(status === "complete" || status === "feedback" || scoreCard.trim()) && (
-  <FeedbackPane scoreCard={scoreCard} transcript={transcript} />
-)}
+{
+  (status === "complete" || status === "feedback" || scoreCard.trim()) && (
+    <FeedbackPane scoreCard={scoreCard} transcript={transcript} />
+  );
+}
 ```
 
 ---
@@ -135,10 +135,10 @@ set_score_card(markdown=…)
 
 ## Files touched
 
-| File | Change |
-|---|---|
-| `agents/oralboards/src/oralboards_agent/agent.py` | Add `loading_step` to state; add `set_loading_step` tool; update instructions |
-| `agents/oralboards/src/oralboards_agent/main.py` | Add `ORALBOARDS_PREDICT_STATE`; pass to `build_adk_agent` |
-| `packages/types/src/index.ts` | Add `loading_step?: string` to `OralBoardsState` TypeScript type |
-| `apps/web/src/components/chat/oral-boards-workspace.tsx` | Show `loading_step` in start page |
-| `apps/web/src/components/chat/oral-boards/oral-boards-panel.tsx` | Pass `loadingStep` to `QuestioningPane`; fix `FeedbackPane` gate |
+| File                                                             | Change                                                                        |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `agents/oralboards/src/oralboards_agent/agent.py`                | Add `loading_step` to state; add `set_loading_step` tool; update instructions |
+| `agents/oralboards/src/oralboards_agent/main.py`                 | Add `ORALBOARDS_PREDICT_STATE`; pass to `build_adk_agent`                     |
+| `packages/types/src/index.ts`                                    | Add `loading_step?: string` to `OralBoardsState` TypeScript type              |
+| `apps/web/src/components/chat/oral-boards-workspace.tsx`         | Show `loading_step` in start page                                             |
+| `apps/web/src/components/chat/oral-boards/oral-boards-panel.tsx` | Pass `loadingStep` to `QuestioningPane`; fix `FeedbackPane` gate              |

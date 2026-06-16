@@ -5,12 +5,7 @@ Postgres, Durable Objects, or anything else you own.
 
 ```typescript
 // packages/runtime/src/v2/runtime/runner/agent-runner.ts
-import {
-  AbstractAgent,
-  BaseEvent,
-  Message,
-  RunAgentInput,
-} from "@ag-ui/client";
+import { AbstractAgent, BaseEvent, Message, RunAgentInput } from "@ag-ui/client";
 import { Observable } from "rxjs";
 
 export interface AgentRunnerRunRequest {
@@ -68,13 +63,7 @@ export class RedisAgentRunner extends AgentRunner {
 
     (async () => {
       // NX guard — return 409-equivalent if another instance is running this thread
-      const acquired = await this.redis.set(
-        RUNNING_KEY(threadId),
-        "1",
-        "EX",
-        600,
-        "NX",
-      );
+      const acquired = await this.redis.set(RUNNING_KEY(threadId), "1", "EX", 600, "NX");
       if (!acquired) {
         subject.error(new Error("Thread already running"));
         return;
@@ -83,12 +72,7 @@ export class RedisAgentRunner extends AgentRunner {
       const sub = agent.run(input).subscribe({
         next: async (event) => {
           subject.next(event);
-          await this.redis.xadd(
-            STREAM_KEY(threadId),
-            "*",
-            "event",
-            JSON.stringify(event),
-          );
+          await this.redis.xadd(STREAM_KEY(threadId), "*", "event", JSON.stringify(event));
         },
         error: async (err) => {
           subject.error(err);
@@ -110,11 +94,7 @@ export class RedisAgentRunner extends AgentRunner {
   connect(request: AgentRunnerConnectRequest): Observable<BaseEvent> {
     const subject = new ReplaySubject<BaseEvent>();
     (async () => {
-      const entries = await this.redis.xrange(
-        STREAM_KEY(request.threadId),
-        "-",
-        "+",
-      );
+      const entries = await this.redis.xrange(STREAM_KEY(request.threadId), "-", "+");
       for (const [, fields] of entries) {
         const eventStr = fields[1];
         if (eventStr) subject.next(JSON.parse(eventStr));

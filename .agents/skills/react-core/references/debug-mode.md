@@ -41,10 +41,7 @@ leaking PII by default. For a bug repro, explicitly set `verbose: true` to
 dump full message/tool-call payloads.
 
 ```tsx
-<CopilotKit
-  runtimeUrl="/api/copilotkit"
-  debug={{ events: true, lifecycle: true, verbose: true }}
-/>
+<CopilotKit runtimeUrl="/api/copilotkit" debug={{ events: true, lifecycle: true, verbose: true }} />
 ```
 
 ### Anchor the inspector on narrow viewports
@@ -60,10 +57,7 @@ dump full message/tool-call payloads.
 ### Env-gate the inspector
 
 ```tsx
-<CopilotKit
-  runtimeUrl="/api/copilotkit"
-  showDevConsole={process.env.NODE_ENV !== "production"}
-/>
+<CopilotKit runtimeUrl="/api/copilotkit" showDevConsole={process.env.NODE_ENV !== "production"} />
 ```
 
 ## Common Mistakes

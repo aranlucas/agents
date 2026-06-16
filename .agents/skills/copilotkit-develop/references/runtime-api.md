@@ -193,9 +193,7 @@ const runtime = new CopilotRuntime({
     // Optionally return a modified Request
   },
   afterRequestMiddleware: async ({ response, path, threadId, messages }) => {
-    console.log(
-      `Response from ${path}, thread: ${threadId}, ${messages?.length} messages`,
-    );
+    console.log(`Response from ${path}, thread: ${threadId}, ${messages?.length} messages`);
   },
 });
 ```
@@ -222,9 +220,7 @@ const intelligence = new CopilotKitIntelligence({
 Required for Intelligence mode. Resolves the authenticated user from the incoming request.
 
 ```ts
-type IdentifyUserCallback = (
-  request: Request,
-) => MaybePromise<{ id: string; name: string }>;
+type IdentifyUserCallback = (request: Request) => MaybePromise<{ id: string; name: string }>;
 ```
 
 ### Thread Management Types
@@ -313,10 +309,7 @@ The Express endpoint factory uses `cors({ origin: "*" })` by default. Override b
 
 ```ts
 // app/api/copilotkit/[[...path]]/route.ts
-import {
-  CopilotRuntime,
-  createCopilotHonoHandler,
-} from "@copilotkit/runtime/v2";
+import { CopilotRuntime, createCopilotHonoHandler } from "@copilotkit/runtime/v2";
 import { LangGraphAgent } from "@copilotkit/runtime/langgraph";
 import { handle } from "hono/vercel";
 

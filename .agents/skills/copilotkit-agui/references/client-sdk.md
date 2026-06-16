@@ -385,22 +385,13 @@ Middleware intercepts the `run()` call, enabling event transformation, filtering
 ```typescript
 abstract class Middleware {
   // Override this to intercept runs
-  abstract run(
-    input: RunAgentInput,
-    next: AbstractAgent,
-  ): Observable<BaseEvent>;
+  abstract run(input: RunAgentInput, next: AbstractAgent): Observable<BaseEvent>;
 
   // Helper: runs next agent with chunk transformation
-  protected runNext(
-    input: RunAgentInput,
-    next: AbstractAgent,
-  ): Observable<BaseEvent>;
+  protected runNext(input: RunAgentInput, next: AbstractAgent): Observable<BaseEvent>;
 
   // Helper: runs next agent and tracks state after each event
-  protected runNextWithState(
-    input: RunAgentInput,
-    next: AbstractAgent,
-  ): Observable<EventWithState>;
+  protected runNextWithState(input: RunAgentInput, next: AbstractAgent): Observable<EventWithState>;
 }
 
 interface EventWithState {

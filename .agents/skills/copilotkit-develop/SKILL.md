@@ -28,10 +28,7 @@ CopilotKit v2 is built on the AG-UI protocol (`@ag-ui/client` / `@ag-ui/core`). 
 Create a `CopilotRuntime` (or the explicit `CopilotSseRuntime` / `CopilotIntelligenceRuntime`) and expose it via `createCopilotHonoHandler` (Hono) or `createCopilotExpressHandler` (Express).
 
 ```ts
-import {
-  CopilotRuntime,
-  createCopilotHonoHandler,
-} from "@copilotkit/runtime/v2";
+import { CopilotRuntime, createCopilotHonoHandler } from "@copilotkit/runtime/v2";
 import { LangGraphAgent } from "@copilotkit/runtime/langgraph";
 import { handle } from "hono/vercel";
 
@@ -150,8 +147,7 @@ useRenderTool(
     name: "searchDocs",
     parameters: z.object({ query: z.string() }),
     render: ({ status, parameters, result }) => {
-      if (status === "executing")
-        return <Spinner>Searching {parameters.query}...</Spinner>;
+      if (status === "executing") return <Spinner>Searching {parameters.query}...</Spinner>;
       if (status === "complete") return <Results data={result} />;
       return <div>Preparing...</div>;
     },

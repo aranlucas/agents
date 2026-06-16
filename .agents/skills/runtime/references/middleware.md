@@ -13,10 +13,7 @@ Use **hooks** for new code.
 ## Setup
 
 ```typescript
-import {
-  CopilotRuntime,
-  createCopilotRuntimeHandler,
-} from "@copilotkit/runtime/v2";
+import { CopilotRuntime, createCopilotRuntimeHandler } from "@copilotkit/runtime/v2";
 
 const runtime = new CopilotRuntime({
   agents: {
@@ -34,9 +31,7 @@ const handler = createCopilotRuntimeHandler({
     },
     onBeforeHandler: async ({ route, request }) => {
       if (route.method === "agent/run" && route.agentId === "admin") {
-        const user = await verifyAdminToken(
-          request.headers.get("authorization"),
-        );
+        const user = await verifyAdminToken(request.headers.get("authorization"));
         if (!user) throw new Response("Forbidden", { status: 403 });
       }
     },
@@ -55,9 +50,7 @@ const handler = createCopilotRuntimeHandler({
   },
 });
 
-async function verifyAdminToken(
-  header: string | null,
-): Promise<{ id: string } | null> {
+async function verifyAdminToken(header: string | null): Promise<{ id: string } | null> {
   if (!header) return null;
   // delegate to your auth lib
   return { id: "admin" };
@@ -167,8 +160,7 @@ Wrong:
 ```typescript
 new CopilotRuntime({
   agents,
-  beforeRequestMiddleware: async () =>
-    new Response("Unauthorized", { status: 401 }),
+  beforeRequestMiddleware: async () => new Response("Unauthorized", { status: 401 }),
 });
 ```
 
@@ -356,9 +348,7 @@ const ratelimit = new Ratelimit({
 new CopilotRuntime({
   agents,
   beforeRequestMiddleware: async ({ request }) => {
-    const { success } = await ratelimit.limit(
-      request.headers.get("x-user-id") ?? "anon",
-    );
+    const { success } = await ratelimit.limit(request.headers.get("x-user-id") ?? "anon");
     if (!success) throw new Response("Too Many Requests", { status: 429 });
   },
 });

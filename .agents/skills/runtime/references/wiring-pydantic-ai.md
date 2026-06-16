@@ -9,10 +9,7 @@ pnpm add @ag-ui/client
 ## Minimal wire-up
 
 ```typescript
-import {
-  CopilotRuntime,
-  createCopilotRuntimeHandler,
-} from "@copilotkit/runtime/v2";
+import { CopilotRuntime, createCopilotRuntimeHandler } from "@copilotkit/runtime/v2";
 import { HttpAgent } from "@ag-ui/client";
 
 const runtime = new CopilotRuntime({

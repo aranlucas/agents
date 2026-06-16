@@ -9,10 +9,7 @@ pnpm add @ag-ui/llamaindex
 ## Minimal wire-up
 
 ```typescript
-import {
-  CopilotRuntime,
-  createCopilotRuntimeHandler,
-} from "@copilotkit/runtime/v2";
+import { CopilotRuntime, createCopilotRuntimeHandler } from "@copilotkit/runtime/v2";
 import { LlamaIndexAgent } from "@ag-ui/llamaindex";
 
 const runtime = new CopilotRuntime({

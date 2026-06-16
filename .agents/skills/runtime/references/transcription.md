@@ -90,10 +90,7 @@ await fetch("/api/copilotkit/transcribe", {
 class OpenAIWhisperTranscription extends TranscriptionService {
   private client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-  async transcribeFile({
-    audioFile,
-    size,
-  }: TranscribeFileOptions): Promise<string> {
+  async transcribeFile({ audioFile, size }: TranscribeFileOptions): Promise<string> {
     const max = 25 * 1024 * 1024; // 25 MB
     if ((size ?? audioFile.size) > max) {
       // "too long" keyword → audio_too_long response

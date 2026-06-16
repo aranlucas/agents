@@ -52,11 +52,7 @@ export default { fetch: handler };
 Simple Mode (quickstart only):
 
 ```typescript
-import {
-  BuiltInAgent,
-  CopilotRuntime,
-  createCopilotRuntimeHandler,
-} from "@copilotkit/runtime/v2";
+import { BuiltInAgent, CopilotRuntime, createCopilotRuntimeHandler } from "@copilotkit/runtime/v2";
 
 const agent = new BuiltInAgent({
   model: "openai/gpt-4o",
@@ -105,11 +101,7 @@ const agent = new BuiltInAgent({
 ### Per-request agent via a factory function on CopilotRuntime
 
 ```typescript
-import {
-  CopilotRuntime,
-  BuiltInAgent,
-  convertInputToTanStackAI,
-} from "@copilotkit/runtime/v2";
+import { CopilotRuntime, BuiltInAgent, convertInputToTanStackAI } from "@copilotkit/runtime/v2";
 import { chat } from "@tanstack/ai";
 import { openaiText } from "@tanstack/ai-openai";
 
@@ -327,8 +319,7 @@ const sendStateSnapshot = defineTool({
 });
 const sendStateDelta = defineTool({
   name: "AGUISendStateDelta",
-  description:
-    "Apply incremental updates to application state using JSON Patch operations",
+  description: "Apply incremental updates to application state using JSON Patch operations",
   // MUST mirror the Simple-Mode auto-injected schema (src/agent/index.ts:1140-1176)
   // or the frontend's state handler won't recognize the payload.
   parameters: z.object({
@@ -354,10 +345,7 @@ new BuiltInAgent({
     streamText({
       model: openai("gpt-4o"),
       messages: convertMessagesToVercelAISDKMessages(input.messages),
-      tools: convertToolDefinitionsToVercelAITools([
-        sendStateSnapshot,
-        sendStateDelta,
-      ]),
+      tools: convertToolDefinitionsToVercelAITools([sendStateSnapshot, sendStateDelta]),
       abortSignal,
     }),
 });
@@ -433,10 +421,7 @@ new BuiltInAgent({
 Correct:
 
 ```typescript
-import {
-  BuiltInAgent,
-  convertMessagesToVercelAISDKMessages,
-} from "@copilotkit/runtime/v2";
+import { BuiltInAgent, convertMessagesToVercelAISDKMessages } from "@copilotkit/runtime/v2";
 import { streamText } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
 

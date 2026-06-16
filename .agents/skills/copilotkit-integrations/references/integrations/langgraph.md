@@ -161,8 +161,7 @@ import { LangGraphAgent } from "@copilotkit/runtime/langgraph";
 import { handle } from "hono/vercel";
 
 const defaultAgent = new LangGraphAgent({
-  deploymentUrl:
-    process.env.LANGGRAPH_DEPLOYMENT_URL || "http://localhost:8123",
+  deploymentUrl: process.env.LANGGRAPH_DEPLOYMENT_URL || "http://localhost:8123",
   graphId: "sample_agent",
   langsmithApiKey: process.env.LANGSMITH_API_KEY || "",
 });
@@ -213,14 +212,11 @@ const AgentStateAnnotation = Annotation.Root({
 
 export type AgentState = typeof AgentStateAnnotation.State;
 
-const getWeather = tool(
-  (args) => `The weather for ${args.location} is 70 degrees.`,
-  {
-    name: "getWeather",
-    description: "Get the weather for a given location.",
-    schema: z.object({ location: z.string() }),
-  },
-);
+const getWeather = tool((args) => `The weather for ${args.location} is 70 degrees.`, {
+  name: "getWeather",
+  description: "Get the weather for a given location.",
+  schema: z.object({ location: z.string() }),
+});
 
 const tools = [getWeather];
 
@@ -234,10 +230,7 @@ async function chat_node(state: AgentState, config) {
   const systemMessage = new SystemMessage({
     content: `You are a helpful assistant. The current proverbs are ${JSON.stringify(state.proverbs)}.`,
   });
-  const response = await modelWithTools.invoke(
-    [systemMessage, ...state.messages],
-    config,
-  );
+  const response = await modelWithTools.invoke([systemMessage, ...state.messages], config);
   return { messages: response };
 }
 

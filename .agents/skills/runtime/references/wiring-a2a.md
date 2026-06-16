@@ -9,10 +9,7 @@ pnpm add @ag-ui/a2a @a2a-js/sdk
 ## Minimal wire-up
 
 ```typescript
-import {
-  CopilotRuntime,
-  createCopilotRuntimeHandler,
-} from "@copilotkit/runtime/v2";
+import { CopilotRuntime, createCopilotRuntimeHandler } from "@copilotkit/runtime/v2";
 import { A2AAgent } from "@ag-ui/a2a";
 import { A2AClient } from "@a2a-js/sdk/client";
 

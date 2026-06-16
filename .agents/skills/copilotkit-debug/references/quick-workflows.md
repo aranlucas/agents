@@ -57,10 +57,7 @@ createCopilotEndpoint({
 And on the client:
 
 ```tsx
-<CopilotKit
-  runtimeUrl="https://your-api.com/api/copilotkit"
-  credentials="include"
-/>
+<CopilotKit runtimeUrl="https://your-api.com/api/copilotkit" credentials="include" />
 ```
 
 ---

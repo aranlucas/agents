@@ -34,11 +34,7 @@ export function ChatPanel() {
 
 ```tsx
 "use client";
-import {
-  useAttachments,
-  useAgent,
-  useCopilotKit,
-} from "@copilotkit/react-core/v2";
+import { useAttachments, useAgent, useCopilotKit } from "@copilotkit/react-core/v2";
 import type { InputContent } from "@ag-ui/core";
 
 export function CustomChatInput() {

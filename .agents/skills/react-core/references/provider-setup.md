@@ -51,11 +51,7 @@ and never refreshes.
 // app/layout.tsx — server component
 import { Providers } from "./providers";
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
@@ -220,16 +216,9 @@ Correct:
 
 ```tsx
 const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
-const properties = useMemo(
-  () => ({ tenantId: user.tenantId }),
-  [user.tenantId],
-);
+const properties = useMemo(() => ({ tenantId: user.tenantId }), [user.tenantId]);
 
-<CopilotKit
-  runtimeUrl="/api/copilotkit"
-  headers={headers}
-  properties={properties}
-/>;
+<CopilotKit runtimeUrl="/api/copilotkit" headers={headers} properties={properties} />;
 ```
 
 New object identity on every render causes the provider to diff-churn

@@ -87,9 +87,7 @@ import { useEffect, useState } from "react";
 
 export function useAvailableAgents() {
   const { copilotkit } = useCopilotKit();
-  const [ids, setIds] = useState<string[]>(() =>
-    Object.keys(copilotkit.agents ?? {}),
-  );
+  const [ids, setIds] = useState<string[]>(() => Object.keys(copilotkit.agents ?? {}));
 
   useEffect(() => {
     const subscription = copilotkit.subscribe({
@@ -208,9 +206,7 @@ import { useEffect, useState } from "react";
 
 function useAvailableAgents() {
   const { copilotkit } = useCopilotKit();
-  const [ids, setIds] = useState<string[]>(() =>
-    Object.keys(copilotkit.agents ?? {}),
-  );
+  const [ids, setIds] = useState<string[]>(() => Object.keys(copilotkit.agents ?? {}));
   useEffect(() => {
     const sub = copilotkit.subscribe({
       onAgentsChanged: ({ agents }) => setIds(Object.keys(agents ?? {})),

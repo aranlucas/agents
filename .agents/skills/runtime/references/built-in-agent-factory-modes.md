@@ -50,9 +50,7 @@ new BuiltInAgent({
   type: "tanstack",
   factory: ({ input, abortController }) => {
     const { messages, systemPrompts } = convertInputToTanStackAI(input);
-    const fwd = input.forwardedProps as
-      | { model?: string; temperature?: number }
-      | undefined;
+    const fwd = input.forwardedProps as { model?: string; temperature?: number } | undefined;
     return chat({
       adapter: openaiText(fwd?.model ?? "gpt-4o"),
       messages,
@@ -101,10 +99,7 @@ async iterable — this is exactly what `streamText()` returns.
 ```typescript
 import { anthropic } from "@ai-sdk/anthropic";
 import { streamText } from "ai";
-import {
-  BuiltInAgent,
-  convertMessagesToVercelAISDKMessages,
-} from "@copilotkit/runtime/v2";
+import { BuiltInAgent, convertMessagesToVercelAISDKMessages } from "@copilotkit/runtime/v2";
 
 new BuiltInAgent({
   type: "aisdk",
@@ -191,8 +186,7 @@ const sendStateSnapshot = defineTool({
 });
 const sendStateDelta = defineTool({
   name: "AGUISendStateDelta",
-  description:
-    "Apply incremental updates to application state using JSON Patch operations",
+  description: "Apply incremental updates to application state using JSON Patch operations",
   // MUST mirror the Simple-Mode auto-injected schema (src/agent/index.ts:1140-1176)
   // or the frontend's state handler won't recognize the payload.
   parameters: z.object({
@@ -215,10 +209,7 @@ new BuiltInAgent({
     streamText({
       model: openai("gpt-4o"),
       messages: convertMessagesToVercelAISDKMessages(input.messages),
-      tools: convertToolDefinitionsToVercelAITools([
-        sendStateSnapshot,
-        sendStateDelta,
-      ]),
+      tools: convertToolDefinitionsToVercelAITools([sendStateSnapshot, sendStateDelta]),
       abortSignal,
     }),
 });

@@ -221,11 +221,10 @@ import { useCoAgent } from "@copilotkit/react-core";
 
 type AgentState = { count: number };
 
-const { name, state, setState, running, start, stop, run } =
-  useCoAgent<AgentState>({
-    name: "my-agent",
-    initialState: { count: 0 },
-  });
+const { name, state, setState, running, start, stop, run } = useCoAgent<AgentState>({
+  name: "my-agent",
+  initialState: { count: 0 },
+});
 ```
 
 **v2:**
@@ -257,9 +256,7 @@ import { useCoAgentStateRender } from "@copilotkit/react-core";
 useCoAgentStateRender<YourAgentState>({
   name: "basic_agent",
   nodeName: "search_node",
-  render: ({ status, state, nodeName }) => (
-    <SearchProgress state={state} status={status} />
-  ),
+  render: ({ status, state, nodeName }) => <SearchProgress state={state} status={status} />,
 });
 ```
 
@@ -351,12 +348,9 @@ return <div>{interruptElement}</div>;
 import { useCopilotChat } from "@copilotkit/react-core";
 import { TextMessage, MessageRole } from "@copilotkit/runtime-client-gql";
 
-const { appendMessage, visibleMessages, isLoading, stopGeneration, reset } =
-  useCopilotChat();
+const { appendMessage, visibleMessages, isLoading, stopGeneration, reset } = useCopilotChat();
 
-await appendMessage(
-  new TextMessage({ role: MessageRole.User, content: "Hello" }),
-);
+await appendMessage(new TextMessage({ role: MessageRole.User, content: "Hello" }));
 ```
 
 **v2:**
@@ -401,10 +395,9 @@ useConfigureSuggestions({
 });
 
 // Read suggestions:
-const { suggestions, reloadSuggestions, clearSuggestions, isLoading } =
-  useSuggestions({
-    agentId: "my-agent",
-  });
+const { suggestions, reloadSuggestions, clearSuggestions, isLoading } = useSuggestions({
+  agentId: "my-agent",
+});
 ```
 
 **Key differences:**
@@ -458,11 +451,7 @@ The API is similar -- registers a tool that pauses for user input via a render f
 ### v1: Service Adapter Pattern
 
 ```ts
-import {
-  CopilotRuntime,
-  OpenAIAdapter,
-  GoogleGenerativeAIAdapter,
-} from "@copilotkit/runtime";
+import { CopilotRuntime, OpenAIAdapter, GoogleGenerativeAIAdapter } from "@copilotkit/runtime";
 import { copilotKitEndpoint } from "@copilotkit/runtime"; // Next.js App Router
 
 const serviceAdapter = new OpenAIAdapter({ model: "gpt-4o" });
@@ -475,9 +464,7 @@ const runtime = new CopilotRuntime({
       handler: async ({ city }) => fetchWeather(city),
     },
   ],
-  remoteEndpoints: [
-    { url: "http://localhost:8000/copilotkit", type: "langgraph" },
-  ],
+  remoteEndpoints: [{ url: "http://localhost:8000/copilotkit", type: "langgraph" }],
 });
 
 // Next.js App Router
@@ -557,11 +544,7 @@ Chat components have the same names but move to `@copilotkit/react`:
 **v1:**
 
 ```tsx
-import {
-  CopilotChat,
-  CopilotPopup,
-  CopilotSidebar,
-} from "@copilotkit/react-ui";
+import { CopilotChat, CopilotPopup, CopilotSidebar } from "@copilotkit/react-ui";
 ```
 
 **v2:**
@@ -605,11 +588,5 @@ import { TextMessage, MessageRole } from "@copilotkit/runtime-client-gql";
 v2 uses AG-UI protocol types from `@ag-ui/client` (re-exported by `@copilotkit/react`):
 
 ```tsx
-import {
-  Message,
-  TextMessage,
-  ToolCall,
-  ToolMessage,
-  EventType,
-} from "@copilotkit/react"; // re-exports from @ag-ui/client
+import { Message, TextMessage, ToolCall, ToolMessage, EventType } from "@copilotkit/react"; // re-exports from @ag-ui/client
 ```

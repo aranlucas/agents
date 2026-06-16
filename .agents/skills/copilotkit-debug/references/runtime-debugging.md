@@ -103,10 +103,7 @@ createCopilotEndpoint({
 On the client side, enable credentials:
 
 ```tsx
-<CopilotKit
-  runtimeUrl="https://api.myapp.com/api/copilotkit"
-  credentials="include"
-/>
+<CopilotKit runtimeUrl="https://api.myapp.com/api/copilotkit" credentials="include" />
 ```
 
 ### Common CORS Errors
@@ -215,10 +212,7 @@ For Intelligence mode, the response also includes:
 ### Passing Headers from Client to Runtime
 
 ```tsx
-<CopilotKit
-  runtimeUrl="/api/copilotkit"
-  headers={{ Authorization: `Bearer ${token}` }}
-/>
+<CopilotKit runtimeUrl="/api/copilotkit" headers={{ Authorization: `Bearer ${token}` }} />
 ```
 
 Headers are sent with every request to the runtime, including `/info`, `/agent/:id/run`, etc.

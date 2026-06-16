@@ -9,10 +9,7 @@ pnpm add @ag-ui/crewai
 ## Minimal wire-up
 
 ```typescript
-import {
-  CopilotRuntime,
-  createCopilotRuntimeHandler,
-} from "@copilotkit/runtime/v2";
+import { CopilotRuntime, createCopilotRuntimeHandler } from "@copilotkit/runtime/v2";
 import { CrewAIAgent } from "@ag-ui/crewai";
 
 const runtime = new CopilotRuntime({

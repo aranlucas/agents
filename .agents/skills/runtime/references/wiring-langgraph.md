@@ -9,10 +9,7 @@ ship with `@copilotkit/runtime` — no separate install needed.
 ## Minimal wire-up
 
 ```typescript
-import {
-  CopilotRuntime,
-  createCopilotRuntimeHandler,
-} from "@copilotkit/runtime/v2";
+import { CopilotRuntime, createCopilotRuntimeHandler } from "@copilotkit/runtime/v2";
 import { LangGraphAgent } from "@copilotkit/runtime/langgraph";
 
 const runtime = new CopilotRuntime({

@@ -351,8 +351,7 @@ app.post("/agent", async (req, res) => {
       });
 
       const content = userMessage?.content || "No message received";
-      const text =
-        typeof content === "string" ? content : "[multimodal content]";
+      const text = typeof content === "string" ? content : "[multimodal content]";
       const response = `You said: "${text}"`;
 
       // Stream character by character for demonstration

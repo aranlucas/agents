@@ -13,6 +13,7 @@
 ### Task 1: Add `loading_step` field and `set_loading_step` tool
 
 **Files:**
+
 - Modify: `agents/oralboards/src/oralboards_agent/agent.py`
 - Modify: `agents/oralboards/tests/test_oralboards_state_tools.py`
 
@@ -148,6 +149,7 @@ git commit -m "feat(oralboards): add loading_step state field and set_loading_st
 ### Task 2: Add PredictStateMapping in main.py
 
 **Files:**
+
 - Modify: `agents/oralboards/src/oralboards_agent/main.py`
 
 No unit test for this — it's pure wiring. Covered by the shared `test_build_adk_agent_forwards_predict_state` test in `agents/shared/tests/test_app_factory.py`.
@@ -232,6 +234,7 @@ git commit -m "feat(oralboards): stream case and score_card via PredictStateMapp
 ### Task 3: Update agent instruction to call `set_loading_step`
 
 **Files:**
+
 - Modify: `agents/oralboards/src/oralboards_agent/agent.py`
 
 - [ ] **Step 1: Add the loading-step protocol to `_STATIC_INSTRUCTION`**
@@ -332,6 +335,7 @@ git commit -m "feat(oralboards): instruct agent to call set_loading_step at key 
 ### Task 4: Add `loading_step` to the TypeScript shared types
 
 **Files:**
+
 - Modify: `packages/types/src/index.ts`
 
 - [ ] **Step 1: Add the field**
@@ -370,6 +374,7 @@ git commit -m "feat(types): add loading_step to OralBoardsState"
 ### Task 5: Frontend — start page shows `loading_step`
 
 **Files:**
+
 - Modify: `apps/web/src/components/chat/oral-boards-workspace.tsx`
 
 - [ ] **Step 1: Update `OralBoardsStartPage` to show the live loading step**
@@ -431,6 +436,7 @@ git commit -m "feat(web/oralboards): show live loading_step on start page during
 ### Task 6: Frontend — questioning pane and score card pane fixes
 
 **Files:**
+
 - Modify: `apps/web/src/components/chat/oral-boards/oral-boards-panel.tsx`
 
 - [ ] **Step 1: Add `loadingStep` prop to `QuestioningPane`**
@@ -498,16 +504,18 @@ export function OralBoardsPanel({
 Then find the `QuestioningPane` usage and pass `loadingStep`:
 
 ```tsx
-{status === "questioning" && (
-  <QuestioningPane
-    caseBody={caseBody}
-    sources={sources}
-    transcript={transcript}
-    onAnswer={onAnswer}
-    isRunning={isRunning}
-    loadingStep={loadingStep}
-  />
-)}
+{
+  status === "questioning" && (
+    <QuestioningPane
+      caseBody={caseBody}
+      sources={sources}
+      transcript={transcript}
+      onAnswer={onAnswer}
+      isRunning={isRunning}
+      loadingStep={loadingStep}
+    />
+  );
+}
 ```
 
 - [ ] **Step 3: Fix the `FeedbackPane` gate to support score card streaming**
@@ -515,9 +523,11 @@ Then find the `QuestioningPane` usage and pass `loadingStep`:
 Find the `FeedbackPane` render condition (currently `status === "complete" || status === "feedback"`). Replace it:
 
 ```tsx
-{(status === "complete" || status === "feedback" || Boolean(scoreCard.trim())) && (
-  <FeedbackPane scoreCard={scoreCard} transcript={transcript} />
-)}
+{
+  (status === "complete" || status === "feedback" || Boolean(scoreCard.trim())) && (
+    <FeedbackPane scoreCard={scoreCard} transcript={transcript} />
+  );
+}
 ```
 
 - [ ] **Step 4: Pass `loadingStep` from `OralBoardsWorkspace`**

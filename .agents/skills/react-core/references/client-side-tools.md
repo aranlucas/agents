@@ -151,13 +151,7 @@ useFrontendTool({
   parameters: z.object({ id: z.string() }),
   handler,
   render: ({ status, result }) => (
-    <Card>
-      {status === "inProgress" ? (
-        <Skeleton />
-      ) : (
-        <CardContent>{result}</CardContent>
-      )}
-    </Card>
+    <Card>{status === "inProgress" ? <Skeleton /> : <CardContent>{result}</CardContent>}</Card>
   ),
 });
 ```
@@ -219,8 +213,7 @@ Correct:
 useFrontendTool({
   name: "search",
   parameters: z.object({ q: z.string() }),
-  handler: async ({ q }, { signal }) =>
-    (await fetch(`/search?q=${q}`, { signal })).text(),
+  handler: async ({ q }, { signal }) => (await fetch(`/search?q=${q}`, { signal })).text(),
 });
 ```
 

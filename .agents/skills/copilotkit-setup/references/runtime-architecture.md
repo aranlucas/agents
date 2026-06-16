@@ -131,10 +131,7 @@ Each operation gets its own HTTP path under the base path:
 **Hono (`createCopilotHonoHandler`):**
 
 ```typescript
-import {
-  CopilotRuntime,
-  createCopilotHonoHandler,
-} from "@copilotkit/runtime/v2";
+import { CopilotRuntime, createCopilotHonoHandler } from "@copilotkit/runtime/v2";
 
 const app = createCopilotHonoHandler({
   runtime,
@@ -166,10 +163,7 @@ All operations go through a single POST endpoint. The operation is identified by
 **Hono (`createCopilotHonoHandler` with `mode: "single-route"`):**
 
 ```typescript
-import {
-  CopilotRuntime,
-  createCopilotHonoHandler,
-} from "@copilotkit/runtime/v2";
+import { CopilotRuntime, createCopilotHonoHandler } from "@copilotkit/runtime/v2";
 
 const app = createCopilotHonoHandler({
   runtime,

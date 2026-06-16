@@ -38,10 +38,8 @@ import { HttpAgent } from "@ag-ui/client";
 import { A2AMiddlewareAgent } from "@ag-ui/a2a-middleware";
 import { handle } from "hono/vercel";
 
-const researchAgentUrl =
-  process.env.RESEARCH_AGENT_URL || "http://localhost:9001";
-const analysisAgentUrl =
-  process.env.ANALYSIS_AGENT_URL || "http://localhost:9002";
+const researchAgentUrl = process.env.RESEARCH_AGENT_URL || "http://localhost:9001";
+const analysisAgentUrl = process.env.ANALYSIS_AGENT_URL || "http://localhost:9002";
 const orchestratorUrl = process.env.ORCHESTRATOR_URL || "http://localhost:9000";
 
 // Connect to orchestrator via AG-UI Protocol

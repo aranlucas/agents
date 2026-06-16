@@ -202,10 +202,7 @@ Do not use `createCopilotExpressHandler` / `createCopilotHonoHandler`.
 import express from "express";
 import { Readable } from "node:stream";
 import type { ReadableStream as WebReadableStream } from "node:stream/web";
-import {
-  CopilotRuntime,
-  createCopilotRuntimeHandler,
-} from "@copilotkit/runtime/v2";
+import { CopilotRuntime, createCopilotRuntimeHandler } from "@copilotkit/runtime/v2";
 
 const app = express();
 const runtime = new CopilotRuntime({
@@ -247,10 +244,7 @@ app.listen(3000);
 ```typescript
 // Hono — already speaks Request/Response
 import { Hono } from "hono";
-import {
-  CopilotRuntime,
-  createCopilotRuntimeHandler,
-} from "@copilotkit/runtime/v2";
+import { CopilotRuntime, createCopilotRuntimeHandler } from "@copilotkit/runtime/v2";
 
 const app = new Hono();
 const runtime = new CopilotRuntime({
@@ -288,10 +282,7 @@ Wrong:
 
 ```typescript
 import { createCopilotExpressHandler } from "@copilotkit/runtime/v2/express";
-app.use(
-  "/api/copilotkit",
-  createCopilotExpressHandler({ runtime, basePath: "/api/copilotkit" }),
-);
+app.use("/api/copilotkit", createCopilotExpressHandler({ runtime, basePath: "/api/copilotkit" }));
 ```
 
 Correct:
@@ -387,8 +378,7 @@ Wrong:
 ```typescript
 new CopilotRuntime({
   agents,
-  beforeRequestMiddleware: async () =>
-    new Response("Unauthorized", { status: 401 }),
+  beforeRequestMiddleware: async () => new Response("Unauthorized", { status: 401 }),
 });
 ```
 
@@ -450,9 +440,7 @@ Wrong:
 ```typescript
 import cors from "cors";
 app.use(cors());
-app.use(
-  createCopilotExpressHandler({ runtime, basePath, cors: { origin: "..." } }),
-);
+app.use(createCopilotExpressHandler({ runtime, basePath, cors: { origin: "..." } }));
 ```
 
 Correct:
@@ -485,10 +473,7 @@ import { createCopilotRuntimeHandler } from "@copilotkit/runtime/v2";
 Correct:
 
 ```typescript
-import {
-  CopilotRuntime,
-  createCopilotRuntimeHandler,
-} from "@copilotkit/runtime/v2";
+import { CopilotRuntime, createCopilotRuntimeHandler } from "@copilotkit/runtime/v2";
 ```
 
 Both v1 and v2 APIs compile together but route through different implementations. Always

@@ -108,9 +108,7 @@ export function CustomToolList() {
   const { agent } = useAgent({ agentId: "default" });
   const renderToolCall = useRenderToolCall();
 
-  const toolCalls = agent.messages.flatMap((m) =>
-    "toolCalls" in m ? (m.toolCalls ?? []) : [],
-  );
+  const toolCalls = agent.messages.flatMap((m) => ("toolCalls" in m ? (m.toolCalls ?? []) : []));
 
   return (
     <>
@@ -215,9 +213,7 @@ Source: maintainer interview (Phase 2c)
 Wrong:
 
 ```tsx
-render: ({ status, parameters }) => (
-  <span>{parameters.user.id.toUpperCase()}</span>
-);
+render: ({ status, parameters }) => <span>{parameters.user.id.toUpperCase()}</span>;
 // `parameters` is Partial<T> during inProgress — `parameters.user` may be undefined.
 ```
 
@@ -225,11 +221,7 @@ Correct:
 
 ```tsx
 render: ({ status, parameters }) =>
-  status === "inProgress" ? (
-    <Skeleton />
-  ) : (
-    <span>{parameters.user.id.toUpperCase()}</span>
-  );
+  status === "inProgress" ? <Skeleton /> : <span>{parameters.user.id.toUpperCase()}</span>;
 ```
 
 During streaming, `RenderToolInProgressProps` has

@@ -66,8 +66,9 @@ export function StaticStarters() {
 import { useSuggestions } from "@copilotkit/react-core/v2";
 
 export function RefreshButton() {
-  const { suggestions, reloadSuggestions, clearSuggestions, isLoading } =
-    useSuggestions({ agentId: "default" });
+  const { suggestions, reloadSuggestions, clearSuggestions, isLoading } = useSuggestions({
+    agentId: "default",
+  });
   return (
     <div>
       <button onClick={reloadSuggestions} disabled={isLoading}>
@@ -84,9 +85,7 @@ export function RefreshButton() {
 
 ```tsx
 const enabled = useFeatureFlag("suggestions");
-useConfigureSuggestions(
-  enabled ? { instructions: "Suggest 3 follow-ups" } : null,
-);
+useConfigureSuggestions(enabled ? { instructions: "Suggest 3 follow-ups" } : null);
 ```
 
 ### Agent-scoped dynamic suggestions
@@ -116,9 +115,7 @@ Correct:
 
 ```tsx
 const enabled = useFeatureFlag("suggestions");
-useConfigureSuggestions(
-  enabled ? { instructions: "Suggest 3 follow-ups" } : null,
-);
+useConfigureSuggestions(enabled ? { instructions: "Suggest 3 follow-ups" } : null);
 ```
 
 `available: "disabled"` is normalized to a `null` config — the same as
@@ -139,9 +136,7 @@ useConfigureSuggestions({ instructions: `about ${currentPage}` });
 Correct:
 
 ```tsx
-useConfigureSuggestions({ instructions: `about ${currentPage}` }, [
-  currentPage,
-]);
+useConfigureSuggestions({ instructions: `about ${currentPage}` }, [currentPage]);
 ```
 
 `useConfigureSuggestions` uses a serialized-config cache keyed off the

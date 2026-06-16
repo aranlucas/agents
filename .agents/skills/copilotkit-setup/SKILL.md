@@ -189,9 +189,7 @@ app.use(
 
 const port = Number(process.env.PORT ?? 4000);
 app.listen(port, () => {
-  console.log(
-    `CopilotKit runtime listening at http://localhost:${port}/api/copilotkit`,
-  );
+  console.log(`CopilotKit runtime listening at http://localhost:${port}/api/copilotkit`);
 });
 ```
 
@@ -200,11 +198,7 @@ For multi-route Express, omit the `mode` option (multi-route is the default) -- 
 #### Standalone Hono Server (non-Vercel)
 
 ```typescript
-import {
-  CopilotRuntime,
-  createCopilotHonoHandler,
-  BuiltInAgent,
-} from "@copilotkit/runtime/v2";
+import { CopilotRuntime, createCopilotHonoHandler, BuiltInAgent } from "@copilotkit/runtime/v2";
 import { serve } from "@hono/node-server";
 
 const runtime = new CopilotRuntime({

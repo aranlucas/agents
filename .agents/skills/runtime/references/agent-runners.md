@@ -235,9 +235,7 @@ Wrong:
 
 ```tsx
 // Double-click send button → two POST /agent/:id/run to the same thread
-<button onClick={() => agent.addMessage({ role: "user", content })}>
-  Send
-</button>
+<button onClick={() => agent.addMessage({ role: "user", content })}>Send</button>
 ```
 
 Correct:

@@ -27,11 +27,7 @@ const CopyButton: ReactCustomMessageRenderer = {
     const content = typeof message.content === "string" ? message.content : "";
     if (!content) return null;
     return (
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => navigator.clipboard.writeText(content)}
-      >
+      <Button variant="ghost" size="sm" onClick={() => navigator.clipboard.writeText(content)}>
         Copy
       </Button>
     );
@@ -96,9 +92,7 @@ const DebugBefore: ReactCustomMessageRenderer = {
     // `runId` is always a string, but it falls back to a synthetic
     // "missing-run-id:<messageId>" value before a run is registered.
     // Slice only when it looks like a real id, otherwise show a dash.
-    const shortId = runId?.startsWith("missing-run-id:")
-      ? "—"
-      : (runId?.slice(0, 6) ?? "—");
+    const shortId = runId?.startsWith("missing-run-id:") ? "—" : (runId?.slice(0, 6) ?? "—");
     return (
       <div style={{ opacity: 0.5, fontSize: 11 }}>
         #{messageIndex} · run {shortId}

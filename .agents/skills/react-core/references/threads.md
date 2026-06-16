@@ -45,8 +45,10 @@ export function ThreadSidebar({ agentId }: { agentId: string }) {
 ### Paginated list
 
 ```tsx
-const { threads, hasMoreThreads, fetchMoreThreads, isFetchingMoreThreads } =
-  useThreads({ agentId: "default", limit: 25 });
+const { threads, hasMoreThreads, fetchMoreThreads, isFetchingMoreThreads } = useThreads({
+  agentId: "default",
+  limit: 25,
+});
 ```
 
 ### Include archived threads
@@ -88,15 +90,11 @@ export function ThreadSwitcher() {
       <ul>
         {threads.map((t) => (
           <li key={t.id}>
-            <button onClick={() => setActiveId(t.id)}>
-              {t.name ?? "Untitled"}
-            </button>
+            <button onClick={() => setActiveId(t.id)}>{t.name ?? "Untitled"}</button>
           </li>
         ))}
       </ul>
-      {activeId && (
-        <CopilotChat key={activeId} agentId="default" threadId={activeId} />
-      )}
+      {activeId && <CopilotChat key={activeId} agentId="default" threadId={activeId} />}
     </div>
   );
 }
@@ -121,10 +119,7 @@ Correct:
 
 ```ts
 // Server — upgrade to Intelligence mode:
-import {
-  CopilotIntelligenceRuntime,
-  CopilotKitIntelligence,
-} from "@copilotkit/runtime/v2";
+import { CopilotIntelligenceRuntime, CopilotKitIntelligence } from "@copilotkit/runtime/v2";
 
 const intelligence = new CopilotKitIntelligence({
   apiUrl: process.env.COPILOTKIT_INTELLIGENCE_API_URL!,

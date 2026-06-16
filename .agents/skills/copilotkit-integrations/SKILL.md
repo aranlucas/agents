@@ -171,9 +171,7 @@ useHumanInTheLoop(
   {
     name: "go_to_moon",
     description: "Go to the moon on request.",
-    render: ({ respond, status }) => (
-      <MoonCard status={status} respond={respond} />
-    ),
+    render: ({ respond, status }) => <MoonCard status={status} respond={respond} />,
   },
   [],
 );

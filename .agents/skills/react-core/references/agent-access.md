@@ -13,27 +13,14 @@ Two complementary surfaces:
 
 ```tsx
 "use client";
-import {
-  useAgent,
-  useAgentContext,
-  UseAgentUpdate,
-} from "@copilotkit/react-core/v2";
+import { useAgent, useAgentContext, UseAgentUpdate } from "@copilotkit/react-core/v2";
 import { useMemo } from "react";
 
-export function ChatDriver({
-  route,
-  userId,
-}: {
-  route: string;
-  userId: string;
-}) {
+export function ChatDriver({ route, userId }: { route: string; userId: string }) {
   const { agent } = useAgent({
     agentId: "default",
     threadId: "main",
-    updates: [
-      UseAgentUpdate.OnMessagesChanged,
-      UseAgentUpdate.OnRunStatusChanged,
-    ],
+    updates: [UseAgentUpdate.OnMessagesChanged, UseAgentUpdate.OnRunStatusChanged],
     throttleMs: 100,
   });
 
@@ -42,8 +29,7 @@ export function ChatDriver({
 
   return (
     <div>
-      {agent.isRunning ? "…thinking" : "idle"} — {agent.messages.length}{" "}
-      messages
+      {agent.isRunning ? "…thinking" : "idle"} — {agent.messages.length} messages
     </div>
   );
 }

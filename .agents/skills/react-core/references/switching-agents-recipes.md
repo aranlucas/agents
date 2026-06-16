@@ -13,9 +13,7 @@ import { useEffect, useState } from "react";
 
 export function DropdownAgentSwitcher() {
   const { copilotkit } = useCopilotKit();
-  const [agentIds, setAgentIds] = useState<string[]>(() =>
-    Object.keys(copilotkit.agents ?? {}),
-  );
+  const [agentIds, setAgentIds] = useState<string[]>(() => Object.keys(copilotkit.agents ?? {}));
   const [activeAgent, setActiveAgent] = useState<string>(
     () => Object.keys(copilotkit.agents ?? {})[0] ?? "default",
   );
@@ -31,10 +29,7 @@ export function DropdownAgentSwitcher() {
 
   return (
     <div className="flex flex-col gap-3">
-      <select
-        value={activeAgent}
-        onChange={(e) => setActiveAgent(e.target.value)}
-      >
+      <select value={activeAgent} onChange={(e) => setActiveAgent(e.target.value)}>
         {agentIds.map((id) => (
           <option key={id} value={id}>
             {id}
@@ -56,12 +51,8 @@ import { useEffect, useRef, useState } from "react";
 
 export function TabsAgentSwitcher() {
   const { copilotkit } = useCopilotKit();
-  const [agentIds, setAgentIds] = useState<string[]>(() =>
-    Object.keys(copilotkit.agents ?? {}),
-  );
-  const [activeAgent, setActiveAgent] = useState<string>(
-    () => agentIds[0] ?? "default",
-  );
+  const [agentIds, setAgentIds] = useState<string[]>(() => Object.keys(copilotkit.agents ?? {}));
+  const [activeAgent, setActiveAgent] = useState<string>(() => agentIds[0] ?? "default");
 
   // Hold activeAgent in a ref so the subscribe effect only re-binds when
   // `copilotkit` changes. Depending on `activeAgent` would tear down and
@@ -115,12 +106,8 @@ import { useEffect, useState } from "react";
 
 export function KeyboardAgentSwitcher() {
   const { copilotkit } = useCopilotKit();
-  const [agentIds, setAgentIds] = useState<string[]>(() =>
-    Object.keys(copilotkit.agents ?? {}),
-  );
-  const [activeAgent, setActiveAgent] = useState<string>(
-    () => agentIds[0] ?? "default",
-  );
+  const [agentIds, setAgentIds] = useState<string[]>(() => Object.keys(copilotkit.agents ?? {}));
+  const [activeAgent, setActiveAgent] = useState<string>(() => agentIds[0] ?? "default");
 
   useEffect(() => {
     const sub = copilotkit.subscribe({

@@ -92,20 +92,13 @@ While the runtime is connecting, returns a provisional `ProxiedCopilotRuntimeAge
 ### useInterrupt
 
 ```ts
-function useInterrupt<
-  TResult = never,
-  TRenderInChat extends boolean | undefined = undefined,
->(
+function useInterrupt<TResult = never, TRenderInChat extends boolean | undefined = undefined>(
   config: UseInterruptConfig<any, TResult, TRenderInChat>,
 ): React.ReactElement | null | void;
 
 interface UseInterruptConfig<TValue, TResult, TRenderInChat> {
-  render: (
-    props: InterruptRenderProps<TValue, TResult | null>,
-  ) => React.ReactElement;
-  handler?: (
-    props: InterruptHandlerProps<TValue>,
-  ) => TResult | PromiseLike<TResult>;
+  render: (props: InterruptRenderProps<TValue, TResult | null>) => React.ReactElement;
+  handler?: (props: InterruptHandlerProps<TValue>) => TResult | PromiseLike<TResult>;
   enabled?: (event: InterruptEvent<TValue>) => boolean;
   agentId?: string;
   renderInChat?: TRenderInChat; // default: true
@@ -330,9 +323,7 @@ Returns a function that resolves the correct renderer for a tool call. Priority:
 
 ```ts
 function useRenderActivityMessage(): {
-  renderActivityMessage: (
-    message: ActivityMessage,
-  ) => React.ReactElement | null;
+  renderActivityMessage: (message: ActivityMessage) => React.ReactElement | null;
   findRenderer: (activityType: string) => ReactActivityMessageRenderer | null;
 };
 ```

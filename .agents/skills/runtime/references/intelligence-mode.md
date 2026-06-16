@@ -80,10 +80,7 @@ call in try/catch and converts any thrown value (including `Response`) into a ge
 (see the `middleware` skill) and keep `identifyUser` focused on returning an id:
 
 ```typescript
-import {
-  CopilotRuntime,
-  createCopilotRuntimeHandler,
-} from "@copilotkit/runtime/v2";
+import { CopilotRuntime, createCopilotRuntimeHandler } from "@copilotkit/runtime/v2";
 import { parse } from "cookie";
 
 const runtime = new CopilotRuntime({

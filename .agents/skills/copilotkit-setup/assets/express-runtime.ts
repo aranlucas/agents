@@ -22,11 +22,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import { z } from "zod";
-import {
-  CopilotRuntime,
-  BuiltInAgent,
-  defineTool,
-} from "@copilotkit/runtime/v2";
+import { CopilotRuntime, BuiltInAgent, defineTool } from "@copilotkit/runtime/v2";
 import { createCopilotExpressHandler } from "@copilotkit/runtime/v2/express";
 
 dotenv.config();
@@ -75,7 +71,5 @@ app.use(
 const port = Number(process.env.PORT ?? 4000);
 
 app.listen(port, () => {
-  console.log(
-    `CopilotKit runtime listening at http://localhost:${port}/api/copilotkit`,
-  );
+  console.log(`CopilotKit runtime listening at http://localhost:${port}/api/copilotkit`);
 });

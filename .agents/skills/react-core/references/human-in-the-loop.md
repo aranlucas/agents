@@ -44,9 +44,7 @@ export function DeleteConfirmHITL() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {args.label}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone.
-            </AlertDialogDescription>
+            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel
@@ -83,9 +81,7 @@ render: ({ status, args, respond }) => {
     <div>
       <button onClick={() => respond("approved")}>Approve</button>
       <button onClick={() => respond("denied")}>Reject</button>
-      <button onClick={() => respond({ action: "skip", reason: "timeout" })}>
-        Skip
-      </button>
+      <button onClick={() => respond({ action: "skip", reason: "timeout" })}>Skip</button>
     </div>
   );
 };
@@ -136,10 +132,7 @@ useHumanInTheLoop({
     return (
       <div>
         {["low", "medium", "high"].map((p) => (
-          <button
-            key={p}
-            onClick={() => respond({ taskId: args.taskId, priority: p })}
-          >
+          <button key={p} onClick={() => respond({ taskId: args.taskId, priority: p })}>
             {p}
           </button>
         ))}
@@ -196,28 +189,19 @@ Wrong:
 
 ```tsx
 render: ({ respond }) => (
-  <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)" }}>
-    …
-  </div>
+  <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)" }}>…</div>
 );
 ```
 
 Correct:
 
 ```tsx
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogAction,
-} from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogContent, AlertDialogAction } from "@/components/ui/alert-dialog";
 
 render: ({ respond }) => (
   <AlertDialog open>
     <AlertDialogContent>
-      …
-      <AlertDialogAction onClick={() => respond?.("approved")}>
-        OK
-      </AlertDialogAction>
+      …<AlertDialogAction onClick={() => respond?.("approved")}>OK</AlertDialogAction>
     </AlertDialogContent>
   </AlertDialog>
 );
@@ -234,9 +218,7 @@ Source: maintainer interview (Phase 2c)
 Wrong:
 
 ```tsx
-render: ({ status, respond }) => (
-  <button onClick={() => (respond as any)("yes")}>Yes</button>
-);
+render: ({ status, respond }) => <button onClick={() => (respond as any)("yes")}>Yes</button>;
 ```
 
 Correct:

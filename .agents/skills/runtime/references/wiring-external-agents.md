@@ -27,10 +27,7 @@ MCP Apps is NOT a framework — it's a runtime middleware:
 Generic shape for every framework:
 
 ```typescript
-import {
-  CopilotRuntime,
-  createCopilotRuntimeHandler,
-} from "@copilotkit/runtime/v2";
+import { CopilotRuntime, createCopilotRuntimeHandler } from "@copilotkit/runtime/v2";
 import { HttpAgent } from "@ag-ui/client";
 
 const runtime = new CopilotRuntime({
@@ -52,10 +49,7 @@ export default { fetch: handler };
 ### Mastra (local agents)
 
 ```typescript
-import {
-  CopilotRuntime,
-  createCopilotRuntimeHandler,
-} from "@copilotkit/runtime/v2";
+import { CopilotRuntime, createCopilotRuntimeHandler } from "@copilotkit/runtime/v2";
 import { MastraAgent } from "@ag-ui/mastra";
 import { mastra } from "./mastra";
 
@@ -81,10 +75,7 @@ See [wiring-mastra.md](wiring-mastra.md).
 ### LangGraph
 
 ```typescript
-import {
-  CopilotRuntime,
-  createCopilotRuntimeHandler,
-} from "@copilotkit/runtime/v2";
+import { CopilotRuntime, createCopilotRuntimeHandler } from "@copilotkit/runtime/v2";
 import { LangGraphAgent } from "@copilotkit/runtime/langgraph";
 
 const runtime = new CopilotRuntime({
@@ -110,10 +101,7 @@ See [wiring-langgraph.md](wiring-langgraph.md).
 ### Multi-framework single runtime
 
 ```typescript
-import {
-  CopilotRuntime,
-  createCopilotRuntimeHandler,
-} from "@copilotkit/runtime/v2";
+import { CopilotRuntime, createCopilotRuntimeHandler } from "@copilotkit/runtime/v2";
 import { LangGraphAgent } from "@copilotkit/runtime/langgraph";
 import { CrewAIAgent } from "@ag-ui/crewai";
 import { HttpAgent } from "@ag-ui/client";
@@ -140,11 +128,7 @@ export default { fetch: handler };
 ### MCP Apps (runtime middleware, not an agent)
 
 ```typescript
-import {
-  CopilotRuntime,
-  createCopilotRuntimeHandler,
-  BuiltInAgent,
-} from "@copilotkit/runtime/v2";
+import { CopilotRuntime, createCopilotRuntimeHandler, BuiltInAgent } from "@copilotkit/runtime/v2";
 
 const runtime = new CopilotRuntime({
   agents: {

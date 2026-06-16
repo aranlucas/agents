@@ -291,11 +291,7 @@ Correct:
 
 ```ts
 // Low-level primitives (rarely needed — the CopilotKit provider's a2ui prop is the default path):
-import {
-  A2UIProvider,
-  A2UIRenderer,
-  createCatalog,
-} from "@copilotkit/a2ui-renderer";
+import { A2UIProvider, A2UIRenderer, createCatalog } from "@copilotkit/a2ui-renderer";
 // Auto-mounted renderer lives in react-core/v2:
 import { createA2UIMessageRenderer } from "@copilotkit/react-core/v2";
 ```

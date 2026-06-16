@@ -11,10 +11,7 @@ pnpm add @mastra/core
 ## Minimal wire-up
 
 ```typescript
-import {
-  CopilotRuntime,
-  createCopilotRuntimeHandler,
-} from "@copilotkit/runtime/v2";
+import { CopilotRuntime, createCopilotRuntimeHandler } from "@copilotkit/runtime/v2";
 import { MastraAgent } from "@ag-ui/mastra";
 import { Mastra } from "@mastra/core";
 import { weatherAgent } from "./agents/weather"; // your Mastra agent

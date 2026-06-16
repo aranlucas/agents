@@ -51,11 +51,7 @@ full control over messages, input, or layout. This is the path when you
 want to manage `messages`/`isRunning` yourself.
 
 ```tsx
-import {
-  CopilotChatView,
-  useAgent,
-  useCopilotKit,
-} from "@copilotkit/react-core/v2";
+import { CopilotChatView, useAgent, useCopilotKit } from "@copilotkit/react-core/v2";
 
 export function HeadlessChat() {
   const { agent } = useAgent({ agentId: "default" });
