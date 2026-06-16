@@ -13,22 +13,22 @@ import {
 import { SparklesIcon } from "lucide-react";
 
 import { Button } from "@agents/ui";
-import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
+import { Suggestion, Suggestions } from "@agents/ui/components/ai-elements/suggestion";
 import {
   Conversation,
   ConversationContent,
   ConversationEmptyState,
   ConversationScrollButton,
-} from "@/components/ai-elements/conversation";
-import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
-import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ai-elements/reasoning";
+} from "@agents/ui/components/ai-elements/conversation";
+import { Message, MessageContent, MessageResponse } from "@agents/ui/components/ai-elements/message";
+import { Reasoning, ReasoningContent, ReasoningTrigger } from "@agents/ui/components/ai-elements/reasoning";
 import {
   Tool,
   ToolContent,
   ToolHeader,
   ToolInput,
   ToolOutput,
-} from "@/components/ai-elements/tool";
+} from "@agents/ui/components/ai-elements/tool";
 import {
   PromptInput,
   PromptInputBody,
@@ -38,7 +38,7 @@ import {
   PromptInputTextarea,
   PromptInputTools,
   type PromptInputMessage,
-} from "@/components/ai-elements/prompt-input";
+} from "@agents/ui/components/ai-elements/prompt-input";
 
 import type { AgentConfig, AgentId } from "./agents/registry";
 import { toRenderItems, type AguiMessage, type AguiToolCall } from "./messages";

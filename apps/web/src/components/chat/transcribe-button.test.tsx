@@ -17,7 +17,7 @@ vi.mock("@copilotkit/react-core/v2", () => ({
   }),
 }));
 
-vi.mock("@/components/ai-elements/prompt-input", () => ({
+vi.mock("@agents/ui/components/ai-elements/prompt-input", () => ({
   PromptInputButton: ({
     children,
     tooltip,
