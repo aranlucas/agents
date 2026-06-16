@@ -11,6 +11,7 @@ describe("env", () => {
     vi.stubEnv("CLERK_SECRET_KEY", "secret");
     vi.stubEnv("AGENTS_BASE_URL", "http://127.0.0.1:8000");
     vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "pk_test_123");
+    vi.stubEnv("GROQ_API_KEY", "gsk_fake");
 
     const { env } = await import("./env");
 
@@ -22,6 +23,7 @@ describe("env", () => {
     vi.stubEnv("CLERK_SECRET_KEY", "secret");
     vi.stubEnv("AGENTS_BASE_URL", "http://127.0.0.1:8000");
     vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "pk_test_123");
+    vi.stubEnv("GROQ_API_KEY", "gsk_fake");
     vi.stubEnv("COPILOTKIT_DEBUG", "true");
 
     const { env } = await import("./env");

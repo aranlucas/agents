@@ -72,7 +72,7 @@ describe("OralBoardsPanel — presenting", () => {
     render(<OralBoardsPanel state={state} {...baseProps} />);
 
     expect(screen.getByText("A 4-year-old presents with early childhood caries.")).toBeDefined();
-    expect(screen.getByRole("button", { name: "Ready to begin" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "Begin Examination" })).toBeDefined();
   });
 
   it("calls onReady when Ready to begin is clicked", async () => {
@@ -85,7 +85,7 @@ describe("OralBoardsPanel — presenting", () => {
     };
 
     render(<OralBoardsPanel state={state} {...baseProps} onReady={onReady} />);
-    await userEvent.click(screen.getByRole("button", { name: "Ready to begin" }));
+    await userEvent.click(screen.getByRole("button", { name: "Begin Examination" }));
 
     expect(onReady).toHaveBeenCalledOnce();
   });
@@ -129,7 +129,7 @@ describe("OralBoardsPanel — questioning", () => {
 
     render(<OralBoardsPanel state={state} {...baseProps} onAnswer={onAnswer} />);
 
-    const textarea = screen.getByPlaceholderText("Type your answer…");
+    const textarea = screen.getByPlaceholderText(/Type your answer…/);
     await userEvent.type(textarea, "  My answer  ");
     await userEvent.click(screen.getByRole("button", { name: "Submit" }));
 
@@ -195,16 +195,18 @@ describe("OralBoardsPanel — questioning", () => {
 
     render(<OralBoardsPanel state={state} {...baseProps} />);
 
-    const chip = screen.getByRole("button", { name: /Q1 ·/ });
+    const chip = screen.getByRole("button", { name: /^Q1/ });
     expect(chip).toBeDefined();
     expect(screen.queryByText("Your answer: I see caries.")).toBeNull();
     expect(screen.getByText("Your answer: Radiographs.")).toBeDefined();
 
     await userEvent.click(chip);
-    expect(screen.getByText("Your answer: I see caries.")).toBeDefined();
+    expect(screen.getByText((_content, el) => el?.tagName === "P" && el.textContent?.includes("Your answer: I see caries."))).toBeDefined();
 
     await userEvent.click(chip);
-    expect(screen.queryByText("Your answer: I see caries.")).toBeNull();
+    expect(
+      screen.queryByText((_content, el) => el?.tagName === "P" && el.textContent?.includes("Your answer: I see caries."))
+    ).toBeNull();
   });
 });
 
@@ -227,7 +229,8 @@ describe("OralBoardsPanel — complete", () => {
 
     render(<OralBoardsPanel state={state} {...baseProps} />);
 
-    expect(screen.getByText("Q1. Describe your approach to pain management.")).toBeDefined();
+    expect(screen.getByText("Q1")).toBeDefined();
+    expect(screen.getByText("Describe your approach to pain management.")).toBeDefined();
     expect(screen.getByText("Your answer: I would use local anesthesia.")).toBeDefined();
   });
 });
