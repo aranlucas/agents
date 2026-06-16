@@ -212,13 +212,7 @@ function CompletedExchangeRow({
   );
 }
 
-function LastFeedbackCard({
-  exchange,
-  index,
-}: {
-  exchange: OralBoardsExchange;
-  index: number;
-}) {
+function LastFeedbackCard({ exchange, index }: { exchange: OralBoardsExchange; index: number }) {
   return (
     <div className="shrink-0 space-y-1.5 rounded-lg border border-emerald-800/30 bg-emerald-950/10 px-3 py-3 text-sm">
       <p className="text-[10px] font-semibold tracking-[0.15em] text-emerald-400 uppercase">
@@ -369,7 +363,7 @@ function QuestioningPane({
         className="group relative z-10 flex w-1.5 shrink-0 cursor-col-resize items-center justify-center border-r bg-transparent transition-colors hover:bg-indigo-500/20 active:bg-indigo-500/30"
         onPointerDown={handleDividerPointerDown}
       >
-        <div className="h-8 w-0.5 rounded-full bg-border transition-colors group-hover:bg-indigo-400" />
+        <div className="bg-border h-8 w-0.5 rounded-full transition-colors group-hover:bg-indigo-400" />
       </div>
 
       {/* Right: examination Q&A */}
@@ -391,7 +385,7 @@ function QuestioningPane({
           {/* Ghost question number */}
           <span
             aria-hidden
-            className="pointer-events-none absolute -top-2 right-3 select-none font-mono text-[72px] font-black leading-none text-indigo-500/[0.07]"
+            className="pointer-events-none absolute -top-2 right-3 font-mono text-[72px] leading-none font-black text-indigo-500/[0.07] select-none"
           >
             {questionNumber}
           </span>
@@ -410,7 +404,7 @@ function QuestioningPane({
               <span className="text-muted-foreground flex items-center gap-2">
                 {isRunning && <Loader2Icon className="size-3 animate-spin" />}
                 {isRunning
-                  ? (loadingStep || "Preparing next question…")
+                  ? loadingStep || "Preparing next question…"
                   : "Waiting for the next question…"}
               </span>
             )}
@@ -465,9 +459,7 @@ function FeedbackPane({
                 Q{i + 1}
               </p>
               <p className="font-medium">{x.question}</p>
-              {x.answer && (
-                <p className="text-muted-foreground text-xs">Your answer: {x.answer}</p>
-              )}
+              {x.answer && <p className="text-muted-foreground text-xs">Your answer: {x.answer}</p>}
               {x.feedback && <Streamdown>{x.feedback}</Streamdown>}
               <CitationChips sources={x.citations ?? []} />
             </div>
