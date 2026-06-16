@@ -1,4 +1,6 @@
 import asyncio
+import inspect
+import typing
 from types import SimpleNamespace
 
 from agents_shared.state import make_state_initializer
@@ -7,11 +9,14 @@ from oralboards_agent.agent import (
     OralBoardsState,
     append_exchange,
     build_agent,
+    read_doc,
+    search_docs,
     set_case,
     set_loading_step,
     set_phase,
     set_score_card,
 )
+from pydantic.fields import FieldInfo
 
 
 def test_oralboards_state_tools_write_canvas_state() -> None:
@@ -105,8 +110,19 @@ def test_agent_static_instruction_requires_speaking_questions_before_chat() -> N
 
 
 # ---------------------------------------------------------------------------
-# ADK FunctionTool preprocessing for TypedDict-annotated params
+# ADK FunctionTool schema validation — every tool must have clean,
+# well-described JSON schemas for the LLM
 # ---------------------------------------------------------------------------
+
+_TOOL_FUNCTIONS = [
+    search_docs,
+    read_doc,
+    set_case,
+    set_phase,
+    set_loading_step,
+    append_exchange,
+    set_score_card,
+]
 
 
 def test_tool_schema_includes_casesource_defs() -> None:
@@ -121,6 +137,62 @@ def test_tool_schema_includes_casesource_defs() -> None:
     # case or case_sources must be listed as a property
     props = schema.get("properties", {})
     assert "case" in props or "case_sources" in props
+
+
+def test_every_param_has_description() -> None:
+    """Every FunctionTool parameter carries Field(description=...) in source.
+
+    Validates the raw function signature annotations rather than ADK's schema
+    output, because ADK's ``_get_function_fields`` calls
+    ``get_type_hints(include_extras=False)`` which strips ``Annotated``
+    metadata.  Once that ADK bug is fixed the test can be changed to check
+    ``decl = tool._get_declaration()`` instead.
+    """
+    ignored = {"tool_context", "input_stream"}
+
+    for fn in _TOOL_FUNCTIONS:
+        sig = inspect.signature(fn)
+        for name, param in sig.parameters.items():
+            if name in ignored:
+                continue
+            ann = param.annotation
+            if ann is inspect.Parameter.empty:
+                continue
+
+            origin = typing.get_origin(ann)
+            if origin is typing.Annotated:
+                args = typing.get_args(ann)
+                field = next((a for a in args[1:] if isinstance(a, FieldInfo)), None)
+                assert field is not None, (
+                    f"{fn.__name__}.{name} is Annotated but missing Field"
+                )
+                assert field.description, (
+                    f"{fn.__name__}.{name} has empty Field(description='')"
+                )
+
+
+def test_no_anyof_null_in_schemas() -> None:
+    """No parameter schema should contain anyOf with null (clean array types)."""
+    for fn in _TOOL_FUNCTIONS:
+        tool = FunctionTool(func=fn)
+        decl = tool._get_declaration()
+        raw = str(decl.parameters_json_schema or {})
+        assert '"null"' not in raw, (
+            f"{fn.__name__} has an anyOf with null in its schema"
+        )
+
+
+def test_literal_params_use_enum() -> None:
+    """Parameters typed as Literal[...] should emit an enum in the schema."""
+    for fn in _TOOL_FUNCTIONS:
+        tool = FunctionTool(func=fn)
+        decl = tool._get_declaration()
+        props = (decl.parameters_json_schema or {}).get("properties", {})
+        for name, prop in props.items():
+            if prop.get("type") == "string" and "enum" in prop:
+                assert len(prop["enum"]) > 0, (
+                    f"{fn.__name__}.{name} has empty enum"
+                )
 
 
 def test_preprocess_args_preserves_dicts_for_typeddict_params() -> None:

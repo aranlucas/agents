@@ -175,12 +175,18 @@ async def search_docs(
     }
 
 
-async def read_doc(filepath: str) -> dict:
-    """Read a full markdown document body by filepath from the bundled DB.
-
-    The `filepath` value should come from a search_docs result's `filepath`
-    field (e.g. \"aapd/some-guideline.md\").
-    """
+async def read_doc(
+    filepath: Annotated[
+        str,
+        Field(
+            description=(
+                "Filepath from a search_docs result (e.g. "
+                '"aapd/some-guideline.md")'
+            ),
+        ),
+    ],
+) -> dict:
+    """Read a full markdown document body by filepath from the bundled DB."""
     collection, _, path = filepath.partition("/")
     if not path:
         collection = ""
@@ -224,54 +230,72 @@ async def read_doc(filepath: str) -> dict:
 # ---------------------------------------------------------------------------
 def set_case(
     tool_context: ToolContext,
-    case: str,
-    case_sources: list[CaseSource] | None = None,
+    case: Annotated[str, Field(description="Grounded case vignette in concise markdown")],
+    case_sources: Annotated[
+        list[CaseSource],
+        Field(
+            description=(
+                "Source provenance list from search_docs results: "
+                "{docid, filepath, title, snippet, collection}"
+            ),
+        ),
+    ] = (),
 ) -> dict:
-    """Write the grounded case vignette and source provenance to shared state.
-
-    Populates the UI case display and source chips. Call after reading
-    relevant documents with search_docs + read_doc.
-    """
+    """Write the grounded case vignette and source provenance to shared state."""
     tool_context.state["case"] = case
     tool_context.state["case_sources"] = case_sources or []
     tool_context.state["status"] = "presenting"
     return {"status": "success", "ok": True, "length": len(case)}
 
 
-def set_phase(tool_context: ToolContext, phase: str) -> dict:
-    """Set the current oral-exam status phase.
-
-    Call ONCE with "questioning" after presenting the case and the candidate
-    signals readiness. Do not call again for the remainder of the session.
-    """
+def set_phase(
+    tool_context: ToolContext,
+    phase: Annotated[
+        Literal["presenting", "questioning", "complete"],
+        Field(description="Exam phase to transition to"),
+    ],
+) -> dict:
+    """Set the current oral-exam status phase."""
     tool_context.state["status"] = phase
     return {"status": "success", "ok": True, "phase": phase}
 
 
-def set_loading_step(tool_context: ToolContext, step: str) -> dict:
-    """Report a human-readable progress step during search or generation phases.
-
-    Call BEFORE each long operation to show the user what the agent is doing.
-    See the loading-step protocol table in the static instruction for the
-    exact step text to use at each moment.
-    """
+def set_loading_step(
+    tool_context: ToolContext,
+    step: Annotated[
+        str,
+        Field(
+            description=(
+                "Human-readable progress message shown during long operations. "
+                "See the loading-step protocol table in the static instruction."
+            ),
+        ),
+    ],
+) -> dict:
+    """Report a human-readable progress step during search or generation phases."""
     tool_context.state["loading_step"] = step
     return {"status": "success", "ok": True}
 
 
 def append_exchange(
     tool_context: ToolContext,
-    question: str,
-    answer: str,
-    feedback: str,
-    ideal_response: str,
+    question: Annotated[str, Field(description="The exact question text the examiner asked")],
+    answer: Annotated[str, Field(description="The candidate's verbatim answer")],
+    feedback: Annotated[
+        str,
+        Field(
+            description=(
+                "Cited feedback markdown. Must begin with: **Interview phase:** "
+                "<phase name from 4a–4e>."
+            ),
+        ),
+    ],
+    ideal_response: Annotated[
+        str,
+        Field(description="Model answer the candidate should have given, grounded in sourced documents"),
+    ],
 ) -> dict:
-    """Append one examiner question, candidate answer, cited feedback, and ideal response.
-
-    Call AFTER the candidate answers a question and you have re-searched or
-    reused docs to compose cited feedback. Renders the exchange row in the
-    UI transcript table.
-    """
+    """Append one examiner question, candidate answer, cited feedback, and ideal response."""
     transcript = list(tool_context.state.get("transcript") or [])
     transcript.append(
         {
@@ -286,13 +310,19 @@ def append_exchange(
     return {"status": "success", "ok": True, "count": len(transcript)}
 
 
-def set_score_card(tool_context: ToolContext, markdown: str) -> dict:
-    """Write the final cited score card to shared state.
-
-    Call after all oral-board exchanges are complete. The score card should
-    include per-domain scores on the ABPD 1-3 scale with weights, a weighted
-    composite, and cited rationale. Renders in the UI score panel.
-    """
+def set_score_card(
+    tool_context: ToolContext,
+    markdown: Annotated[
+        str,
+        Field(
+            description=(
+                "Final score card markdown with per-domain ABPD 1-3 scores, "
+                "weights, weighted composite, and cited rationale"
+            ),
+        ),
+    ],
+) -> dict:
+    """Write the final cited score card to shared state."""
     tool_context.state["score_card"] = markdown
     tool_context.state["status"] = "complete"
     return {"status": "success", "ok": True, "length": len(markdown)}
