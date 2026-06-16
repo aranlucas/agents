@@ -19,16 +19,19 @@ export function wrapFetchWithWindowLocation(baseFetch: Function & { [polyfillSym
     return baseFetch;
   }
 
-  const _fetch = (...props: any[]) => {
-    if (props[0] && typeof props[0] === "string" && props[0].startsWith("/")) {
-      props[0] = new URL(props[0], getOrigin()).toString();
-    } else if (props[0] && typeof props[0] === "object") {
-      if (props[0].url && typeof props[0].url === "string" && props[0].url.startsWith("/")) {
-        props[0].url = new URL(props[0].url, getOrigin()).toString();
+  const _fetch = (...props: unknown[]) => {
+    const arg0 = props[0];
+    if (typeof arg0 === "string" && arg0.startsWith("/")) {
+      props[0] = new URL(arg0, getOrigin()).toString();
+    } else if (arg0 && typeof arg0 === "object") {
+      const req = arg0 as { url?: string };
+      if (req.url && typeof req.url === "string" && req.url.startsWith("/")) {
+        req.url = new URL(req.url, getOrigin()).toString();
       }
     }
 
-    return baseFetch(...props);
+    // eslint-disable-next-line typescript/no-unsafe-type-assertion
+    return (baseFetch as (...args: unknown[]) => unknown)(...props);
   };
 
   _fetch[polyfillSymbol] = true;

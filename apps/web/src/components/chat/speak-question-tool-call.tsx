@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback } from "react";
-import { PlayIcon, Volume2Icon } from "lucide-react";
+import { useCallback, useState } from "react";
+import { PlayIcon, SquareIcon, Volume2Icon } from "lucide-react";
 
 import { Button } from "@agents/ui";
 import { Tool, ToolContent, ToolHeader } from "@/components/ai-elements/tool";
-import { speakQuestion } from "@/lib/copilotkit/speak-question";
+import { speakQuestion, stopSpeaking } from "@/lib/copilotkit/speak-question";
 import { toToolState } from "./tool-adapter";
 
 export type SpeakQuestionToolParams = {
@@ -23,10 +23,18 @@ export function SpeakQuestionToolCall({
   parameters?: SpeakQuestionToolParams;
   result?: unknown;
 }) {
-  const replay = useCallback(() => {
+  const [playing, setPlaying] = useState(false);
+  const toggle = useCallback(() => {
     const question = parameters.question?.trim();
-    if (question) void speakQuestion(question);
-  }, [parameters.question]);
+    if (!question) return;
+    if (playing) {
+      stopSpeaking();
+      setPlaying(false);
+    } else {
+      setPlaying(true);
+      void speakQuestion(question).finally(() => setPlaying(false));
+    }
+  }, [parameters.question, playing]);
   const resultText = typeof result === "string" ? result : "";
 
   return (
@@ -47,9 +55,9 @@ export function SpeakQuestionToolCall({
               </p>
             </div>
             {status === "complete" && (
-              <Button type="button" variant="outline" size="sm" className="gap-2" onClick={replay}>
-                <PlayIcon className="size-3.5" />
-                Play
+              <Button type="button" variant="outline" size="sm" className="gap-2" onClick={toggle}>
+                {playing ? <SquareIcon className="size-3.5" /> : <PlayIcon className="size-3.5" />}
+                {playing ? "Stop" : "Play"}
               </Button>
             )}
           </div>

@@ -1,5 +1,6 @@
 import { ArrowUp, Paperclip } from "lucide-react";
 import { Children, type ReactNode, isValidElement } from "react";
+import type { CSSProperties } from "react";
 import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
 
 import { useChatContext } from "./chat-context";
@@ -113,9 +114,8 @@ export function PromptInputTextarea({
     <TextInput
       nativeID="composer"
       className="text-foreground placeholder:text-muted-foreground/35 min-h-24 w-full bg-transparent px-4 pt-3.5 pb-1.5 text-[13px] leading-relaxed outline-none"
-      // `resize` is a web-only CSS property not present in RN's style types.
       // eslint-disable-next-line typescript/no-unsafe-type-assertion
-      style={{ maxHeight: 200, resize: "none" } as any}
+      style={{ maxHeight: 200, resize: "none" } as unknown as CSSProperties}
       value={input}
       onChangeText={setInput}
       placeholder={placeholder}
@@ -123,9 +123,8 @@ export function PromptInputTextarea({
       multiline
       maxLength={maxLength}
       onKeyPress={(e) => {
-        // Web key events expose `key`/`shiftKey`, which RN's event type omits.
         // eslint-disable-next-line typescript/no-unsafe-type-assertion
-        const nativeEvent = (e as any).nativeEvent as { key: string; shiftKey: boolean };
+        const nativeEvent = (e as unknown as { nativeEvent: { key: string; shiftKey: boolean } }).nativeEvent;
         if (nativeEvent.key === "Enter" && !nativeEvent.shiftKey) {
           e.preventDefault();
           onSend();

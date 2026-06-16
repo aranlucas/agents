@@ -67,7 +67,7 @@ const stackPrimitive = Object.assign(Host, {
 });
 
 const tabsPrimitive = Object.assign(Host, {
-  Screen: ({ options, ...props }: { options?: { tabBarIcon?: ComponentType<any> } }) => (
+  Screen: ({ options, ...props }: { options?: { tabBarIcon?: ComponentType<unknown> } }) => (
     <Host {...props}>{options?.tabBarIcon?.({ color: "#111", size: 20 })}</Host>
   ),
 });

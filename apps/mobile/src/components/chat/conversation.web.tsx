@@ -1,12 +1,12 @@
 import { LegendList, LegendListRef } from "@legendapp/list";
 import { createContext, use, useCallback, useMemo, useRef, useState } from "react";
-import type { ReactElement, ReactNode } from "react";
+import type { ComponentProps, ReactElement, ReactNode } from "react";
 import { LayoutChangeEvent, Pressable, Text, View } from "react-native";
 
 import { useChatContext } from "./chat-context";
 import type { ChatMessage } from "./types";
 
-type AnimatedStyle = any;
+type AnimatedStyle = Record<string, unknown>;
 
 type ConversationContextValue = {
   scrollToBottom: () => void;
@@ -122,10 +122,8 @@ export function Conversation({
         <LegendList
           ref={listRef}
           data={messages}
-          // LegendList's renderItem generic isn't inferred through this usage;
-          // keyExtractor is typed directly instead.
           // eslint-disable-next-line typescript/no-unsafe-type-assertion
-          renderItem={renderMessage as any}
+          renderItem={renderMessage as unknown as ComponentProps<typeof LegendList>["renderItem"]}
           keyExtractor={(item: ChatMessage) => item.id}
           contentContainerStyle={{
             paddingBottom: composerHeight + 16,

@@ -424,6 +424,7 @@ export type VoiceSelectorPreviewProps = Omit<ComponentProps<"button">, "children
   playing?: boolean;
   loading?: boolean;
   onPlay?: () => void;
+  onStop?: () => void;
 };
 
 export const VoiceSelectorPreview = ({
@@ -431,6 +432,7 @@ export const VoiceSelectorPreview = ({
   playing,
   loading,
   onPlay,
+  onStop,
   onClick,
   ...props
 }: VoiceSelectorPreviewProps) => {
@@ -438,9 +440,13 @@ export const VoiceSelectorPreview = ({
     (event: MouseEvent<HTMLButtonElement>) => {
       event.stopPropagation();
       onClick?.(event);
-      onPlay?.();
+      if (playing) {
+        onStop?.();
+      } else {
+        onPlay?.();
+      }
     },
-    [onClick, onPlay],
+    [onClick, onPlay, onStop, playing],
   );
 
   let icon = <PlayIcon className="size-3" />;

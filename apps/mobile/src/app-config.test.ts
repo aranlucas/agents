@@ -16,7 +16,7 @@ function readExpoConfig(extraEnv: Record<string, string>) {
     },
   });
 
-  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.equal(result.status, 0, result.stderr ?? result.stdout);
   return JSON.parse(result.stdout) as { extra?: Record<string, string> };
 }
 

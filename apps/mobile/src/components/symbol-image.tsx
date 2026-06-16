@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import { Image as ExpoImage, ImageProps, type ImageStyle } from "expo-image";
 import {
   ArrowUp,
@@ -56,7 +57,6 @@ export function SymbolImage({
   }
 
   const Icon = LUCIDE_FALLBACKS[name] ?? HelpCircle;
-  // The SF Symbol `ImageStyle` doesn't match the Lucide SVG icon's style type.
   // eslint-disable-next-line typescript/no-unsafe-type-assertion
-  return <Icon size={size} color={tintColor} style={style as any} />;
+  return <Icon size={size} color={tintColor} style={style as unknown as ComponentProps<typeof Icon>["style"]} />;
 }

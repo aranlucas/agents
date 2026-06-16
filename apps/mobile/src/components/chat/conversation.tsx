@@ -1,7 +1,7 @@
 import { SymbolImage } from "@/components/symbol-image";
 import { LegendList, LegendListRef } from "@legendapp/list";
 import { createContext, use, useCallback, useMemo, useRef, useState } from "react";
-import type { ReactElement, ReactNode } from "react";
+import type { ComponentProps, ReactElement, ReactNode } from "react";
 import { LayoutChangeEvent, Text, View } from "react-native";
 import { useKeyboardHandler } from "react-native-keyboard-controller";
 import Animated, {
@@ -25,7 +25,7 @@ const IS_GLASS = isLiquidGlassAvailable();
 
 const AnimatedLegendList = createAnimatedComponent(LegendList);
 
-type AnimatedStyle = any;
+type AnimatedStyle = Record<string, unknown>;
 
 type ConversationContextValue = {
   scrollToBottom: () => void;
@@ -257,10 +257,8 @@ export function Conversation({
           <AnimatedLegendList
             ref={listRef}
             data={messages}
-            // The Animated wrapper around LegendList erases the item generic, so
-            // renderItem must be bridged; keyExtractor is typed directly instead.
             // eslint-disable-next-line typescript/no-unsafe-type-assertion
-            renderItem={renderMessage as any}
+            renderItem={renderMessage as unknown as ComponentProps<typeof LegendList>["renderItem"]}
             keyExtractor={(item: ChatMessage) => item.id}
             contentContainerStyle={{
               padding: 16,
