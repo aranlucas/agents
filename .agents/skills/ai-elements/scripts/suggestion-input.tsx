@@ -59,21 +59,13 @@ interface SuggestionItemProps {
   onSuggestionClick: (value: string) => void;
 }
 
-const SuggestionItem = memo(
-  ({ suggestion, onSuggestionClick }: SuggestionItemProps) => {
-    const handleClick = useCallback(
-      () => onSuggestionClick(suggestion.value),
-      [onSuggestionClick, suggestion.value]
-    );
-    return (
-      <Suggestion
-        key={suggestion.key}
-        onClick={handleClick}
-        suggestion={suggestion.value}
-      />
-    );
-  }
-);
+const SuggestionItem = memo(({ suggestion, onSuggestionClick }: SuggestionItemProps) => {
+  const handleClick = useCallback(
+    () => onSuggestionClick(suggestion.value),
+    [onSuggestionClick, suggestion.value],
+  );
+  return <Suggestion key={suggestion.key} onClick={handleClick} suggestion={suggestion.value} />;
+});
 
 SuggestionItem.displayName = "SuggestionItem";
 
@@ -87,7 +79,7 @@ const Example = () => {
 
   const handleTextChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => setText(e.target.value),
-    []
+    [],
   );
 
   return (
