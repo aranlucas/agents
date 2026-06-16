@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CopilotSidebar, useAgent, useCopilotKit, UseAgentUpdate } from "@copilotkit/react-core/v2";
 
 import type { OralBoardsState } from "@agents/types";
 import { Button } from "@agents/ui";
+import { cn } from "@agents/ui/lib/utils";
 import { getAgentConfig } from "@/components/chat/agents/registry";
 import { useNewThread } from "@/components/chat/use-new-thread";
 import { AgentExtensionSlot } from "@/components/chat/agents/extensions";
@@ -89,9 +90,16 @@ export function OralBoardsWorkspace() {
   const isRunning = agent?.isRunning ?? false;
   const isGenerating = isRunning && !hasPanel;
 
+  // Auto-open the panel the first time a case appears; don't re-open after
+  // the user explicitly closes it (would fight the close button).
+  const [autoOpened, setAutoOpened] = useState(false);
   useEffect(() => {
-    if (hasPanel && state === "closed") dispatch("toggle-fullscreen");
-  }, [hasPanel, state, dispatch]);
+    if (hasPanel && !autoOpened) {
+      setAutoOpened(true);
+      dispatch("open");
+    }
+    if (!hasPanel) setAutoOpened(false);
+  }, [hasPanel, autoOpened, dispatch]);
 
   const handleStart = useCallback(
     async (content: string) => {
@@ -133,7 +141,8 @@ export function OralBoardsWorkspace() {
             chatInputPlaceholder: config.placeholder,
           }}
         />
-        <div className="flex-none">
+        {/* Rail: hidden in fullscreen to give max space to the panel */}
+        <div className={cn("flex-none", state === "fullscreen" && "hidden")}>
           <NavRail activePath={`/console/${AGENT_ID}`} onNewThread={startNewThread} />
         </div>
         <div className="flex-1 overflow-hidden">
@@ -141,7 +150,7 @@ export function OralBoardsWorkspace() {
             <OralBoardsPanel
               state={examState}
               fullscreen={state === "fullscreen"}
-              onClose={() => dispatch("close")}
+              onClose={startNewThread}
               onToggleFullscreen={() => dispatch("toggle-fullscreen")}
               onReady={handleReady}
               onAnswer={(text) => void handleAnswer(text)}
