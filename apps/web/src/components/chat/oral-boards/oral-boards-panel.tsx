@@ -612,7 +612,7 @@ function QuestioningPane({
           </div>
 
           {/* Response composer */}
-          <div className="bg-muted/15 flex min-h-0 flex-1 flex-col gap-2 rounded-xl border p-3">
+          <div className="bg-muted/15 flex shrink-0 flex-col gap-2 rounded-xl border p-3 md:min-h-0 md:flex-1">
             <div className="flex shrink-0 items-center justify-between">
               <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
                 Your response
@@ -624,7 +624,7 @@ function QuestioningPane({
 
             <textarea
               aria-label="Your answer"
-              className="border-border bg-background min-h-[80px] flex-1 resize-none rounded-lg border p-3 text-sm transition-shadow focus:ring-1 focus:ring-indigo-500 focus:outline-none disabled:opacity-50"
+              className="border-border bg-background h-24 resize-none rounded-lg border p-3 text-sm transition-shadow focus:ring-1 focus:ring-indigo-500 focus:outline-none disabled:opacity-50 md:h-auto md:flex-1 md:min-h-[80px]"
               placeholder="Type your answer…"
               value={answerText}
               onChange={(e) => setAnswerText(e.target.value)}
@@ -635,7 +635,7 @@ function QuestioningPane({
             />
 
             <div className="flex shrink-0 items-center justify-between">
-              <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
+              <span className="text-muted-foreground hidden items-center gap-1 text-[11px] md:flex">
                 <kbd className="bg-muted rounded border px-1 py-0.5 font-sans text-[10px] leading-none">
                   ⌘
                 </kbd>
@@ -649,6 +649,7 @@ function QuestioningPane({
                 size="sm"
                 disabled={isRunning || !answerText.trim()}
                 onClick={handleSubmit}
+                className="ml-auto"
               >
                 <SendHorizontalIcon className="size-3.5" />
                 Submit
