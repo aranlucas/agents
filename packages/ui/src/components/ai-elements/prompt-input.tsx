@@ -1142,7 +1142,7 @@ export const PromptInputSubmit = ({
   }
 
   const handleClick = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
+    (e: BaseUIEvent<React.MouseEvent<HTMLButtonElement>>) => {
       if (isGenerating && onStop) {
         e.preventDefault();
         onStop();
