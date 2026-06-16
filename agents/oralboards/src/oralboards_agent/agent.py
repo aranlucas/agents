@@ -180,8 +180,7 @@ async def read_doc(
         str,
         Field(
             description=(
-                "Filepath from a search_docs result (e.g. "
-                '"aapd/some-guideline.md")'
+                'Filepath from a search_docs result (e.g. "aapd/some-guideline.md")'
             ),
         ),
     ],
@@ -230,7 +229,9 @@ async def read_doc(
 # ---------------------------------------------------------------------------
 def set_case(
     tool_context: ToolContext,
-    case: Annotated[str, Field(description="Grounded case vignette in concise markdown")],
+    case: Annotated[
+        str, Field(description="Grounded case vignette in concise markdown")
+    ],
     case_sources: Annotated[
         list[CaseSource],
         Field(
@@ -279,7 +280,9 @@ def set_loading_step(
 
 def append_exchange(
     tool_context: ToolContext,
-    question: Annotated[str, Field(description="The exact question text the examiner asked")],
+    question: Annotated[
+        str, Field(description="The exact question text the examiner asked")
+    ],
     answer: Annotated[str, Field(description="The candidate's verbatim answer")],
     feedback: Annotated[
         str,
@@ -292,7 +295,9 @@ def append_exchange(
     ],
     ideal_response: Annotated[
         str,
-        Field(description="Model answer the candidate should have given, grounded in sourced documents"),
+        Field(
+            description="Model answer the candidate should have given, grounded in sourced documents"
+        ),
     ],
 ) -> dict:
     """Append one examiner question, candidate answer, cited feedback, and ideal response."""

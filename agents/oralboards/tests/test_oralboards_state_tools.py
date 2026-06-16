@@ -190,9 +190,7 @@ def test_literal_params_use_enum() -> None:
         props = (decl.parameters_json_schema or {}).get("properties", {})
         for name, prop in props.items():
             if prop.get("type") == "string" and "enum" in prop:
-                assert len(prop["enum"]) > 0, (
-                    f"{fn.__name__}.{name} has empty enum"
-                )
+                assert len(prop["enum"]) > 0, f"{fn.__name__}.{name} has empty enum"
 
 
 def test_preprocess_args_preserves_dicts_for_typeddict_params() -> None:
