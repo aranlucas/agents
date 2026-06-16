@@ -20,18 +20,10 @@ export const Conversation = ({ className, ...props }: ConversationProps) => (
   />
 );
 
-export type ConversationContentProps = ComponentProps<
-  typeof StickToBottom.Content
->;
+export type ConversationContentProps = ComponentProps<typeof StickToBottom.Content>;
 
-export const ConversationContent = ({
-  className,
-  ...props
-}: ConversationContentProps) => (
-  <StickToBottom.Content
-    className={cn("flex flex-col gap-8 p-4", className)}
-    {...props}
-  />
+export const ConversationContent = ({ className, ...props }: ConversationContentProps) => (
+  <StickToBottom.Content className={cn("flex flex-col gap-8 p-4", className)} {...props} />
 );
 
 export type ConversationEmptyStateProps = ComponentProps<"div"> & {
@@ -51,7 +43,7 @@ export const ConversationEmptyState = ({
   <div
     className={cn(
       "flex size-full flex-col items-center justify-center gap-3 p-8 text-center",
-      className
+      className,
     )}
     {...props}
   >
@@ -59,10 +51,8 @@ export const ConversationEmptyState = ({
       <>
         {icon && <div className="text-muted-foreground">{icon}</div>}
         <div className="space-y-1">
-          <h3 className="font-medium text-sm">{title}</h3>
-          {description && (
-            <p className="text-muted-foreground text-sm">{description}</p>
-          )}
+          <h3 className="text-sm font-medium">{title}</h3>
+          {description && <p className="text-muted-foreground text-sm">{description}</p>}
         </div>
       </>
     )}
@@ -85,8 +75,8 @@ export const ConversationScrollButton = ({
     !isAtBottom && (
       <Button
         className={cn(
-          "absolute bottom-4 left-[50%] translate-x-[-50%] rounded-full dark:bg-background dark:hover:bg-muted",
-          className
+          "dark:bg-background dark:hover:bg-muted absolute bottom-4 left-[50%] translate-x-[-50%] rounded-full",
+          className,
         )}
         onClick={handleScrollToBottom}
         size="icon"
@@ -106,27 +96,20 @@ const getMessageText = (message: UIMessage): string =>
     .map((part) => part.text)
     .join("");
 
-export type ConversationDownloadProps = Omit<
-  ComponentProps<typeof Button>,
-  "onClick"
-> & {
+export type ConversationDownloadProps = Omit<ComponentProps<typeof Button>, "onClick"> & {
   messages: UIMessage[];
   filename?: string;
   formatMessage?: (message: UIMessage, index: number) => string;
 };
 
 const defaultFormatMessage = (message: UIMessage): string => {
-  const roleLabel =
-    message.role.charAt(0).toUpperCase() + message.role.slice(1);
+  const roleLabel = message.role.charAt(0).toUpperCase() + message.role.slice(1);
   return `**${roleLabel}:** ${getMessageText(message)}`;
 };
 
 export const messagesToMarkdown = (
   messages: UIMessage[],
-  formatMessage: (
-    message: UIMessage,
-    index: number
-  ) => string = defaultFormatMessage
+  formatMessage: (message: UIMessage, index: number) => string = defaultFormatMessage,
 ): string => messages.map((msg, i) => formatMessage(msg, i)).join("\n\n");
 
 export const ConversationDownload = ({
@@ -153,8 +136,8 @@ export const ConversationDownload = ({
   return (
     <Button
       className={cn(
-        "absolute top-4 right-4 rounded-full dark:bg-background dark:hover:bg-muted",
-        className
+        "dark:bg-background dark:hover:bg-muted absolute top-4 right-4 rounded-full",
+        className,
       )}
       onClick={handleDownload}
       size="icon"

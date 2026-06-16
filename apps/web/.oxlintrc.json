@@ -23,8 +23,7 @@
         "jsx-a11y/aria-role": "off",
         "jsx-a11y/heading-has-content": "off"
       }
-    },
-
+    }
   ],
   "ignorePatterns": [".next/**"]
 }
