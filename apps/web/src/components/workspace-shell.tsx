@@ -53,12 +53,7 @@ export function WorkspaceShell({
     // Height comes from the parent SidebarInset; overflow-hidden clips panels.
     <div className="flex h-full flex-col overflow-hidden md:flex-row">
       {/* Chat column: mobile trigger bar on top, chat content below */}
-      <div
-        className={cn(
-          "flex min-h-0 min-w-0 flex-1 flex-col",
-          open && "max-md:hidden",
-        )}
-      >
+      <div className={cn("flex min-h-0 min-w-0 flex-1 flex-col", open && "max-md:hidden")}>
         {/* Mobile-only top bar with sidebar trigger */}
         <div className="flex shrink-0 items-center border-b px-2 py-1.5 md:hidden">
           <SidebarTrigger />

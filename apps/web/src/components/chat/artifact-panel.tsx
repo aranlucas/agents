@@ -13,13 +13,7 @@ import {
 } from "@/components/ai-elements/artifact";
 import type { ArtifactView } from "./artifact";
 
-export function ArtifactPanel({
-  view,
-  onClose,
-}: {
-  view: ArtifactView;
-  onClose: () => void;
-}) {
+export function ArtifactPanel({ view, onClose }: { view: ArtifactView; onClose: () => void }) {
   return (
     <Artifact className="h-full rounded-none border-0 border-l">
       <ArtifactHeader>
