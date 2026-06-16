@@ -31,7 +31,7 @@ import {
   ArtifactContent,
   ArtifactHeader,
   ArtifactTitle,
-} from "@/components/ai-elements/artifact";
+} from "@agents/ui/components/ai-elements/artifact";
 import { speak, stopSpeaking } from "@/lib/copilotkit/speak-question";
 import { useOralBoardsQuestion } from "@/lib/copilotkit/oral-boards-question-context";
 import { useAnswerRecorder } from "@/lib/copilotkit/use-answer-recorder";

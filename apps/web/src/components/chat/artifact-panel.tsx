@@ -10,7 +10,7 @@ import {
   ArtifactDescription,
   ArtifactHeader,
   ArtifactTitle,
-} from "@/components/ai-elements/artifact";
+} from "@agents/ui/components/ai-elements/artifact";
 import type { ArtifactView } from "./artifact";
 
 export function ArtifactPanel({ view, onClose }: { view: ArtifactView; onClose: () => void }) {
