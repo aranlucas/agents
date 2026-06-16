@@ -1,31 +1,13 @@
-import { renderToStaticMarkup } from "react-dom/server";
+import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { ReactNode } from "react";
 
 vi.mock("@agents/ui", () => ({
-  SidebarTrigger: () => null as unknown as ReactNode,
+  SidebarTrigger: () => null,
 }));
 
 import { nextPanelState, WorkspaceShell } from "./workspace-shell";
 
-// Returns the class list of the innermost class-bearing ancestor of the marker.
-function classesWrapping(markup: string, marker: string): string[] {
-  const matches = [...markup.matchAll(new RegExp(`class="([^"]*)"(?=[^>]*>(?:<[^>]*>)*${marker})`, "g"))];
-  const match = matches.at(-1);
-  if (!match) throw new Error(`could not find element wrapping ${marker}`);
-  return match[1].split(/\s+/);
-}
-
 describe("WorkspaceShell layout invariants", () => {
-  const markup = renderToStaticMarkup(
-    <WorkspaceShell
-      hasArtifact={false}
-      panelState="closed"
-      chat={<span>CHAT_MARKER</span>}
-      artifact={<span>ARTIFACT_MARKER</span>}
-    />,
-  );
-
   // Regression guard for the mobile scroll bug: in the mobile flex-col layout the
   // chat column's flex-1 is on the main (vertical) axis, so it must carry `min-h-0`
   // to shrink below its content height. Without it the column overflows the bounded
@@ -33,7 +15,17 @@ describe("WorkspaceShell layout invariants", () => {
   // has no room to scroll. Desktop (cross-axis height) was unaffected — but the fix
   // must not regress, hence this assertion.
   it("gives the chat column min-h-0 so the conversation can scroll on mobile", () => {
-    const classes = classesWrapping(markup, "CHAT_MARKER");
+    const { container } = render(
+      <WorkspaceShell
+        hasArtifact={false}
+        panelState="closed"
+        chat={<span>CHAT_MARKER</span>}
+        artifact={<span>ARTIFACT_MARKER</span>}
+      />,
+    );
+    const chatColumn = container.querySelector('[class*="min-h-0"]')!;
+    const classes = Array.from(chatColumn.classList);
+
     expect(classes).toContain("min-h-0");
     expect(classes).toContain("flex-1");
     expect(classes).toContain("flex-col");
@@ -44,8 +36,17 @@ describe("WorkspaceShell layout invariants", () => {
   // The shell root uses h-full (height comes from the parent SidebarInset) and
   // clips overflow.
   it("bounds the shell height and clips overflow at the root", () => {
-    expect(markup).toContain("h-full");
-    expect(markup).toContain("overflow-hidden");
+    const { container } = render(
+      <WorkspaceShell
+        hasArtifact={false}
+        panelState="closed"
+        chat={<span>CHAT_MARKER</span>}
+        artifact={<span>ARTIFACT_MARKER</span>}
+      />,
+    );
+    const root = container.firstElementChild!;
+    expect(root.classList.contains("h-full")).toBe(true);
+    expect(root.classList.contains("overflow-hidden")).toBe(true);
   });
 });
 
