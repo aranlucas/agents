@@ -3,7 +3,7 @@
 import asyncio
 import re
 import sqlite3
-from typing import TypedDict
+from typing import Annotated, Literal, TypedDict
 
 from ag_ui_adk import AGUIToolset
 from agents_shared.prompts import canvas_contract
@@ -14,8 +14,8 @@ from agents_shared.tools import (
     on_model_error_callback,
 )
 from google.adk.agents import LlmAgent
-from google.adk.tools import ToolContext
-from pydantic import BaseModel
+from google.adk.tools import FunctionTool, ToolContext
+from pydantic import BaseModel, Field
 
 from .db import VALID_COLLECTIONS, connect
 
@@ -35,7 +35,7 @@ class OralBoardsExchange(TypedDict):
     question: str
     answer: str
     feedback: str
-    citations: list[CaseSource]
+    ideal_response: str
 
 
 class OralBoardsState(BaseModel):
@@ -50,6 +50,50 @@ class OralBoardsState(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Tool argument schemas
+# ---------------------------------------------------------------------------
+class AppendExchangeSchema(BaseModel):
+    """Explicit parameter schema for `append_exchange`.
+
+    Each field corresponds to one flat function parameter the LLM sees.
+    """
+
+    question: str = Field(
+        description="The exact question text the examiner asked the candidate"
+    )
+    answer: str = Field(
+        description="The candidate's verbatim answer to the question"
+    )
+    feedback: str = Field(
+        description=(
+            "Cited feedback markdown. Must begin with: **Interview phase:** "
+            "<phase name from 4a–4e>. Followed by concise cited feedback."
+        )
+    )
+    ideal_response: str = Field(
+        description=(
+            "Model answer the candidate should have given, grounded in the "
+            "sourced documents"
+        )
+    )
+
+
+class SetCaseSchema(BaseModel):
+    """Explicit parameter schema for `set_case`."""
+
+    case: str = Field(
+        description="The grounded case vignette in concise markdown"
+    )
+    case_sources: list[CaseSource] | None = Field(
+        default=None,
+        description=(
+            "Source provenance: list of {docid, filepath, title, snippet, "
+            "collection} dicts from search_docs results"
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
 # Query helpers
 # ---------------------------------------------------------------------------
 def _clean_query(query: str) -> str:
@@ -60,13 +104,21 @@ def _clean_query(query: str) -> str:
 # ---------------------------------------------------------------------------
 # Domain / search tools
 # ---------------------------------------------------------------------------
-async def search_docs(query: str, collection: str = "") -> dict:
-    """Search bundled oral-board source documents with FTS5/BM25."""
+async def search_docs(
+    query: Annotated[str, Field(description="Free-text search terms (BM25-optimized; quotes and wildcards are stripped automatically)")],
+    collection: Annotated[Literal["", "aapd", "abpd", "cody"], Field(description="Optional source collection filter. Omit to search all.")] = "",
+) -> dict:
+    """Search bundled oral-board source documents with FTS5/BM25.
+  """
     clean = _clean_query(query)
     if not clean:
-        return {"results": [], "error": ""}
+        return {"status": "error", "results": [], "error": "query is empty after cleaning"}
     if collection and collection not in VALID_COLLECTIONS:
-        return {"results": [], "error": f"unknown collection: {collection}"}
+        return {
+            "status": "error",
+            "results": [],
+            "error": f"unknown collection: {collection}",
+        }
 
     collection_clause = "and d.collection = ?" if collection else ""
     params: list[str] = [clean]
@@ -96,25 +148,32 @@ async def search_docs(query: str, collection: str = "") -> dict:
     try:
         rows = await asyncio.to_thread(_query)
     except sqlite3.Error as exc:
-        return {"results": [], "error": str(exc)}
+        return {"status": "error", "results": [], "error": str(exc)}
 
+    results = [
+        {
+            "docid": row["docid"],
+            "filepath": row["filepath"],
+            "title": row["title"],
+            "snippet": row["snippet"],
+            "collection": row["collection"],
+        }
+        for row in rows
+    ]
     return {
-        "results": [
-            {
-                "docid": row["docid"],
-                "filepath": row["filepath"],
-                "title": row["title"],
-                "snippet": row["snippet"],
-                "collection": row["collection"],
-            }
-            for row in rows
-        ],
+        "status": "success",
+        "results": results,
         "error": "",
+        "count": len(results),
     }
 
 
 async def read_doc(filepath: str) -> dict:
-    """Read a full markdown document body by filepath from the bundled DB."""
+    """Read a full markdown document body by filepath from the bundled DB.
+
+    The `filepath` value should come from a search_docs result's `filepath`
+    field (e.g. \"aapd/some-guideline.md\").
+ """
     collection, _, path = filepath.partition("/")
     if not path:
         collection = ""
@@ -137,12 +196,13 @@ async def read_doc(filepath: str) -> dict:
     try:
         row = await asyncio.to_thread(_query)
     except sqlite3.Error as exc:
-        return {"error": str(exc)}
+        return {"status": "error", "error": str(exc)}
 
     if row is None:
-        return {"error": "not found"}
+        return {"status": "error", "error": "not found"}
 
     return {
+        "status": "success",
         "docid": row["docid"],
         "collection": row["collection"],
         "filepath": f"{row['collection']}/{row['filepath']}",
@@ -160,23 +220,36 @@ def set_case(
     case: str,
     case_sources: list[CaseSource] | None = None,
 ) -> dict:
-    """Write the grounded case vignette and source provenance to shared state."""
+    """Write the grounded case vignette and source provenance to shared state.
+
+    Populates the UI case display and source chips. Call after reading
+    relevant documents with search_docs + read_doc.
+    """
     tool_context.state["case"] = case
     tool_context.state["case_sources"] = case_sources or []
     tool_context.state["status"] = "presenting"
-    return {"ok": True}
+    return {"status": "success", "ok": True, "length": len(case)}
 
 
 def set_phase(tool_context: ToolContext, phase: str) -> dict:
-    """Set the current oral-exam status."""
+    """Set the current oral-exam status phase.
+
+    Call ONCE with "questioning" after presenting the case and the candidate
+    signals readiness. Do not call again for the remainder of the session.
+    """
     tool_context.state["status"] = phase
-    return {"ok": True, "phase": phase}
+    return {"status": "success", "ok": True, "phase": phase}
 
 
 def set_loading_step(tool_context: ToolContext, step: str) -> dict:
-    """Report a human-readable progress step during search or generation phases."""
+    """Report a human-readable progress step during search or generation phases.
+
+    Call BEFORE each long operation to show the user what the agent is doing.
+    See the loading-step protocol table in the static instruction for the
+    exact step text to use at each moment.
+    """
     tool_context.state["loading_step"] = step
-    return {"ok": True}
+    return {"status": "success", "ok": True}
 
 
 def append_exchange(
@@ -184,28 +257,38 @@ def append_exchange(
     question: str,
     answer: str,
     feedback: str,
-    citations: list[CaseSource],
+    ideal_response: str,
 ) -> dict:
-    """Append one examiner question, candidate answer, and cited feedback."""
+    """Append one examiner question, candidate answer, cited feedback, and ideal response.
+
+    Call AFTER the candidate answers a question and you have re-searched or
+    reused docs to compose cited feedback. Renders the exchange row in the
+    UI transcript table.
+    """
     transcript = list(tool_context.state.get("transcript") or [])
     transcript.append(
         {
             "question": question,
             "answer": answer,
             "feedback": feedback,
-            "citations": citations,
+            "ideal_response": ideal_response,
         },
     )
     tool_context.state["transcript"] = transcript
     tool_context.state["status"] = "questioning"
-    return {"ok": True}
+    return {"status": "success", "ok": True, "count": len(transcript)}
 
 
 def set_score_card(tool_context: ToolContext, markdown: str) -> dict:
-    """Write the final cited score card to shared state."""
+    """Write the final cited score card to shared state.
+
+    Call after all oral-board exchanges are complete. The score card should
+    include per-domain scores on the ABPD 1-3 scale with weights, a weighted
+    composite, and cited rationale. Renders in the UI score panel.
+    """
     tool_context.state["score_card"] = markdown
     tool_context.state["status"] = "complete"
-    return {"ok": True}
+    return {"status": "success", "ok": True, "length": len(markdown)}
 
 
 # ---------------------------------------------------------------------------
@@ -314,14 +397,16 @@ Always call set_loading_step before the long operation, not after.
       guidance, medical complexity, trauma prognosis, or shared
       decision-making.
 
-5. After the candidate answers each question, re-search or reuse existing
-   docs, then call append_exchange with:
-   - The exact question text
-   - The candidate's verbatim answer
-   - Feedback markdown that begins:
-       **Interview phase:** <phase name from 4a–4e>
-     followed by concise cited feedback
-   - Citation chips
+ 5. After the candidate answers each question, re-search or reuse existing
+    docs, then call append_exchange with:
+    - The exact question text
+    - The candidate's verbatim answer
+    - Feedback markdown that begins:
+        **Interview phase:** <phase name from 4a–4e>
+      followed by concise cited feedback
+    - The ideal candidate response — a model answer the candidate
+      should have given, grounded in the sourced documents
+    - Citation chips
 
 6. After the final exchange, call set_score_card with a markdown score card
    containing:
@@ -384,13 +469,13 @@ def build_agent() -> LlmAgent:
         instruction=_STATE_INSTRUCTION,
         before_agent_callback=make_state_initializer(OralBoardsState),
         tools=[
-            search_docs,
-            read_doc,
-            set_case,
-            set_phase,
-            set_loading_step,
-            append_exchange,
-            set_score_card,
+            FunctionTool(search_docs),
+            FunctionTool(read_doc),
+            FunctionTool(set_case),
+            FunctionTool(set_phase),
+            FunctionTool(set_loading_step),
+            FunctionTool(append_exchange),
+            FunctionTool(set_score_card),
             AGUIToolset(),
         ],
     )

@@ -124,7 +124,8 @@ export function PromptInputTextarea({
       maxLength={maxLength}
       onKeyPress={(e) => {
         // eslint-disable-next-line typescript/no-unsafe-type-assertion
-        const nativeEvent = (e as unknown as { nativeEvent: { key: string; shiftKey: boolean } }).nativeEvent;
+        const nativeEvent = (e as unknown as { nativeEvent: { key: string; shiftKey: boolean } })
+          .nativeEvent;
         if (nativeEvent.key === "Enter" && !nativeEvent.shiftKey) {
           e.preventDefault();
           onSend();

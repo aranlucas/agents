@@ -40,4 +40,4 @@ def test_read_doc_returns_body_for_known_filepath() -> None:
 def test_read_doc_returns_error_for_unknown_filepath() -> None:
     result = asyncio.run(read_doc("aapd/does-not-exist.md"))
 
-    assert result == {"error": "not found"}
+    assert result == {"status": "error", "error": "not found"}

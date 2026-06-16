@@ -127,7 +127,11 @@ export function Sidebar({
               return (
                 // expo-router types `href` as a known-route union; ours are dynamic.
                 // eslint-disable-next-line typescript/no-unsafe-type-assertion
-                <Link key={item.href} href={item.href as unknown as Parameters<typeof Link>["0"]["href"]} asChild>
+                <Link
+                  key={item.href}
+                  href={item.href as unknown as Parameters<typeof Link>["0"]["href"]}
+                  asChild
+                >
                   <Pressable
                     className={`mx-2 rounded-[10px] px-4 py-3 ${
                       isActive ? "bg-accent" : "hover:bg-accent/50 active:bg-accent"
