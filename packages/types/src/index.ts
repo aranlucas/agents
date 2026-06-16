@@ -138,6 +138,7 @@ export type OralBoardsExchange = {
   question: string;
   answer: string;
   feedback: string;
+  ideal_response: string;
   citations: CaseSource[];
 };
 
