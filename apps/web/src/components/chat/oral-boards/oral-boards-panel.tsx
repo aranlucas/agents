@@ -25,7 +25,27 @@ import type {
   OralBoardsSkillsetScore,
   OralBoardsState,
 } from "@agents/types";
-import { Button } from "@agents/ui";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  Kbd,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Textarea,
+} from "@agents/ui";
 import {
   Artifact,
   ArtifactContent,
@@ -61,12 +81,13 @@ function CitationChips({ sources }: { sources: CaseSource[] }) {
   return (
     <div className="flex flex-wrap gap-1">
       {sources.map((s) => (
-        <span
+        <Badge
           key={`${s.collection}-${s.docid}`}
-          className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 font-mono text-[10px]"
+          variant="secondary"
+          className="font-mono text-[10px]"
         >
           {s.collection.toUpperCase()} #{s.docid} · {s.title}
-        </span>
+        </Badge>
       ))}
     </div>
   );
@@ -86,24 +107,21 @@ function SkillsetBadges({ exchange }: { exchange: OralBoardsExchange }) {
   return (
     <div className="flex flex-wrap items-center gap-1">
       {exchange.skillset && (
-        <span className="rounded bg-indigo-950/40 px-1.5 py-0.5 text-[10px] font-medium text-indigo-300">
+        <Badge variant="secondary" className="text-[10px]">
           {exchange.skillset}
-        </span>
+        </Badge>
       )}
       {skillMeta && (
-        <span
-          title={skillMeta.description}
-          className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 text-[10px]"
-        >
+        <Badge variant="secondary" title={skillMeta.description} className="text-[10px]">
           {skillMeta.label}
-        </span>
+        </Badge>
       )}
       {exchange.score != null && (
-        <span
-          className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${scoreClasses(exchange.score)}`}
+        <Badge
+          className={`rounded border text-[10px] font-semibold ${scoreClasses(exchange.score)}`}
         >
           {exchange.score}/3
-        </span>
+        </Badge>
       )}
     </div>
   );
@@ -141,51 +159,47 @@ const OUTCOME_META: Record<OralBoardsOutcome, { label: string; cls: string }> = 
 function OutcomeBanner({ outcome }: { outcome: OralBoardsOutcome }) {
   const meta = OUTCOME_META[outcome];
   return (
-    <div className={`rounded-lg border px-3 py-2.5 ${meta.cls}`}>
-      <p className="text-sm font-semibold">Practice outcome: {meta.label}</p>
-      <p className="mt-0.5 text-[11px] opacity-80">
+    <Alert className={meta.cls}>
+      <AlertTitle className="font-semibold">Practice outcome: {meta.label}</AlertTitle>
+      <AlertDescription className="text-[11px] opacity-80">
         Study estimate only — the real OCE is reported Pass/Fail and each skillset is scored
         independently by two examiners.
-      </p>
-    </div>
+      </AlertDescription>
+    </Alert>
   );
 }
 
-// Per-skillset 1-3 scores, mirroring how ABPD scores each skillset independently
-// (no weighted composite).
 function ScoreSummaryTable({ summary }: { summary: OralBoardsSkillsetScore[] }) {
   if (summary.length === 0) return null;
   return (
     <div className="overflow-hidden rounded-lg border">
-      <table className="w-full text-left text-xs">
-        <thead className="bg-muted/40 text-muted-foreground">
-          <tr>
-            <th className="px-2.5 py-1.5 font-medium">Skillset</th>
-            <th className="px-2.5 py-1.5 font-medium">Skill</th>
-            <th className="px-2.5 py-1.5 text-center font-medium">Score</th>
-          </tr>
-        </thead>
-        <tbody>
+      <Table className="text-xs">
+        <TableHeader className="bg-muted/40 text-muted-foreground">
+          <TableRow>
+            <TableHead className="px-2.5 py-1.5 font-medium">Skillset</TableHead>
+            <TableHead className="px-2.5 py-1.5 font-medium">Skill</TableHead>
+            <TableHead className="px-2.5 py-1.5 text-center font-medium">Score</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {summary.map((row) => (
-            <tr key={`${row.skillset}-${row.skill ?? "na"}`} className="border-t align-top">
-              <td className="px-2.5 py-1.5">
+            <TableRow key={`${row.skillset}-${row.skill ?? "na"}`} className="align-top">
+              <TableCell className="px-2.5 py-1.5">
                 <p className="font-medium">{row.skillset}</p>
                 {row.rationale && <p className="text-muted-foreground mt-0.5">{row.rationale}</p>}
-              </td>
-              <td className="text-muted-foreground px-2.5 py-1.5 whitespace-nowrap">
+              </TableCell>
+              <TableCell className="text-muted-foreground px-2.5 py-1.5 whitespace-nowrap">
                 {row.skill ? OCE_SKILL_LEVELS[row.skill].label : "—"}
-              </td>
-              <td className="px-2.5 py-1.5 text-center">
-                <span
-                  className={`inline-block rounded border px-1.5 py-0.5 font-semibold ${scoreClasses(row.score)}`}
-                >
+              </TableCell>
+              <TableCell className="px-2.5 py-1.5 text-center">
+                <Badge className={`rounded border font-semibold ${scoreClasses(row.score)}`}>
                   {row.score}/3
-                </span>
-              </td>
-            </tr>
+                </Badge>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }
@@ -289,9 +303,9 @@ function VignettePanel({
             <PencilIcon className="size-3" />
             Your notes
           </p>
-          <textarea
+          <Textarea
             aria-label="Case notes"
-            className="border-border bg-background/60 min-h-[56px] w-full resize-none rounded-lg border p-2.5 text-xs leading-relaxed focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+            className="min-h-[56px] resize-none p-2.5 text-xs leading-relaxed"
             placeholder="Jot notes as you reason through the case…"
             value={notes}
             onChange={(e) => onNotesChange(e.target.value)}
@@ -317,45 +331,36 @@ function CompletedExchangeRow({
   exchange: OralBoardsExchange;
   index: number;
 }) {
-  const [expanded, setExpanded] = useState(false);
   return (
-    <div className="overflow-hidden rounded-lg border border-emerald-800/30 bg-emerald-950/10">
-      <button
-        type="button"
-        onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-emerald-950/20"
-      >
+    <Collapsible className="overflow-hidden rounded-lg border">
+      <CollapsibleTrigger className="hover:bg-muted flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors">
         <CheckCircle2Icon className="size-3 shrink-0 text-emerald-400" />
         <span className="font-medium text-emerald-300/90">Q{index + 1}</span>
         <span className="text-muted-foreground flex-1 truncate">
           {truncate(exchange.question, 52)}
         </span>
-        <ChevronDownIcon
-          className={`text-muted-foreground size-3 transition-transform ${expanded ? "rotate-180" : ""}`}
-        />
-      </button>
-      {expanded && (
-        <div className="space-y-1.5 border-t border-emerald-800/20 px-3 py-2.5 text-xs">
-          <SkillsetBadges exchange={exchange} />
-          <p className="text-sm font-medium">{exchange.question}</p>
-          {exchange.answer && (
-            <p className="text-muted-foreground">
-              <span className="text-foreground/60 font-medium">Your answer: </span>
-              {exchange.answer}
-            </p>
-          )}
-          {exchange.feedback && <Streamdown>{exchange.feedback}</Streamdown>}
-          <ModelAnswer text={exchange.ideal_response} />
-          <CitationChips sources={exchange.citations ?? []} />
-        </div>
-      )}
-    </div>
+        <ChevronDownIcon className="text-muted-foreground size-3 transition-transform data-[open]:rotate-180" />
+      </CollapsibleTrigger>
+      <CollapsibleContent className="space-y-1.5 border-t px-3 py-2.5 text-xs">
+        <SkillsetBadges exchange={exchange} />
+        <p className="text-sm font-medium">{exchange.question}</p>
+        {exchange.answer && (
+          <p className="text-muted-foreground">
+            <span className="text-foreground/60 font-medium">Your answer: </span>
+            {exchange.answer}
+          </p>
+        )}
+        {exchange.feedback && <Streamdown>{exchange.feedback}</Streamdown>}
+        <ModelAnswer text={exchange.ideal_response} />
+        <CitationChips sources={exchange.citations ?? []} />
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
 function LastFeedbackCard({ exchange, index }: { exchange: OralBoardsExchange; index: number }) {
   return (
-    <div className="shrink-0 space-y-1.5 rounded-lg border border-emerald-800/30 bg-emerald-950/10 px-3 py-3 text-sm">
+    <div className="shrink-0 space-y-1.5 rounded-lg border px-3 py-3 text-sm">
       <p className="text-[10px] font-semibold tracking-[0.15em] text-emerald-400 uppercase">
         Q{index + 1} · Feedback
       </p>
@@ -413,9 +418,9 @@ function PresentingPane({
           Your Notes
         </p>
         {recorder.micSupported && <CopilotChatAudioRecorder ref={recorder.recorderRef} />}
-        <textarea
+        <Textarea
           aria-label="Case notes"
-          className="border-border bg-background min-h-[60px] w-full resize-none rounded-lg border p-3 text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+          className="min-h-[60px] resize-none p-3 text-sm"
           placeholder="Record or type your notes about the case…"
           value={notes}
           onChange={(e) => onNotesChange(e.target.value)}
@@ -438,7 +443,7 @@ function QuestionProgress({ answered, current }: { answered: number; current: nu
       {Array.from({ length: total }).map((_, i) => {
         const dot =
           i === current - 1
-            ? "size-1.5 rounded-full bg-indigo-400 ring-2 ring-indigo-400/25"
+            ? "size-1.5 rounded-full ring-2 ring-indigo-400/25"
             : i < answered
               ? "size-1.5 rounded-full bg-emerald-500/70"
               : "size-1.5 rounded-full bg-muted-foreground/25";
@@ -454,9 +459,9 @@ function ThinkingState({ isRunning, loadingStep }: { isRunning: boolean; loading
   return (
     <div className="text-muted-foreground flex items-center gap-2.5">
       <span className="flex gap-1">
-        <span className="size-1.5 animate-bounce rounded-full bg-indigo-400 [animation-delay:-0.3s]" />
-        <span className="size-1.5 animate-bounce rounded-full bg-indigo-400 [animation-delay:-0.15s]" />
-        <span className="size-1.5 animate-bounce rounded-full bg-indigo-400" />
+        <span className="size-1.5 animate-bounce rounded-full [animation-delay:-0.3s]" />
+        <span className="size-1.5 animate-bounce rounded-full [animation-delay:-0.15s]" />
+        <span className="size-1.5 animate-bounce rounded-full" />
       </span>
       <span className="text-[13px] italic">
         {isRunning ? loadingStep || "The examiner is thinking…" : "Waiting for the next question…"}
@@ -557,7 +562,7 @@ function QuestioningPane({
         className="group relative z-10 hidden w-1.5 shrink-0 cursor-col-resize items-center justify-center border-r bg-transparent transition-colors hover:bg-indigo-500/20 active:bg-indigo-500/30 md:flex"
         onPointerDown={handleDividerPointerDown}
       >
-        <div className="bg-border h-8 w-0.5 rounded-full transition-colors group-hover:bg-indigo-400" />
+        <div className="bg-border group-hover: h-8 w-0.5 rounded-full transition-colors" />
       </div>
 
       {/* Right: examination Q&A */}
@@ -585,8 +590,8 @@ function QuestioningPane({
         {/* Active question + response composer */}
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
           {/* Examiner prompt */}
-          <div className="shrink-0 overflow-hidden rounded-xl border border-indigo-500/25 bg-gradient-to-br from-indigo-950/40 to-indigo-950/10 p-4 shadow-sm">
-            <div className="mb-3 flex items-start justify-between gap-2">
+          <Card>
+            <CardHeader className="flex-row items-start justify-between gap-2">
               <div className="flex items-center gap-2.5">
                 <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-indigo-500/15 ring-1 ring-indigo-500/30">
                   <StethoscopeIcon className="size-4 text-indigo-300" />
@@ -599,13 +604,15 @@ function QuestioningPane({
                 </div>
               </div>
               {question && <TtsButton text={question} label="Listen" />}
-            </div>
-            {question ? (
-              <p className="text-[15px] leading-relaxed font-medium text-pretty">{question}</p>
-            ) : (
-              <ThinkingState isRunning={isRunning} loadingStep={loadingStep} />
-            )}
-          </div>
+            </CardHeader>
+            <CardContent>
+              {question ? (
+                <p className="text-[15px] leading-relaxed font-medium text-pretty">{question}</p>
+              ) : (
+                <ThinkingState isRunning={isRunning} loadingStep={loadingStep} />
+              )}
+            </CardContent>
+          </Card>
 
           {/* Response composer */}
           <div className="bg-muted/15 flex shrink-0 flex-col gap-2 rounded-xl border p-3 md:min-h-0 md:flex-1">
@@ -618,9 +625,9 @@ function QuestioningPane({
 
             {recorder.micSupported && <CopilotChatAudioRecorder ref={recorder.recorderRef} />}
 
-            <textarea
+            <Textarea
               aria-label="Your answer"
-              className="border-border bg-background h-24 resize-none rounded-lg border p-3 text-sm transition-shadow focus:ring-1 focus:ring-indigo-500 focus:outline-none disabled:opacity-50 md:h-auto md:min-h-[80px] md:flex-1"
+              className="h-24 resize-none p-3 text-sm md:h-auto md:min-h-[80px] md:flex-1"
               placeholder="Type your answer…"
               value={answerText}
               onChange={(e) => setAnswerText(e.target.value)}
@@ -632,12 +639,8 @@ function QuestioningPane({
 
             <div className="flex shrink-0 items-center justify-between">
               <span className="text-muted-foreground hidden items-center gap-1 text-[11px] md:flex">
-                <kbd className="bg-muted rounded border px-1 py-0.5 font-sans text-[10px] leading-none">
-                  ⌘
-                </kbd>
-                <kbd className="bg-muted rounded border px-1 py-0.5 font-sans text-[10px] leading-none">
-                  ↵
-                </kbd>
+                <Kbd>⌘</Kbd>
+                <Kbd>↵</Kbd>
                 <span className="ml-0.5">to submit</span>
               </span>
               <Button

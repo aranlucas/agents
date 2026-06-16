@@ -1,11 +1,13 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { forwardRef, useImperativeHandle } from "react";
-import { act, create } from "react-test-renderer";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const recorderStart = vi.fn();
 const recorderStop = vi.fn();
 const setInput = vi.fn();
+const user = userEvent.setup();
 
 vi.mock("@copilotkit/react-core/v2", () => ({
   CopilotChatAudioRecorder: forwardRef(function CopilotChatAudioRecorder(_, ref) {
@@ -56,27 +58,10 @@ describe("TranscribeButton", () => {
     recorderStart.mockResolvedValue(undefined);
     recorderStop.mockResolvedValue(new Blob(["audio"], { type: "audio/webm" }));
 
-    let tree: ReturnType<typeof create>;
-    await act(async () => {
-      tree = create(<TranscribeButton />);
-    });
+    render(<TranscribeButton />);
 
-    const startButton = () =>
-      tree!.root
-        .findAllByType("button")
-        .find((button) => button.props["aria-label"] === "Start recording");
-
-    await act(async () => {
-      await startButton()?.props.onClick();
-    });
-
-    const cancelButton = tree!.root
-      .findAllByType("button")
-      .find((button) => button.props["aria-label"] === "Cancel recording");
-
-    await act(async () => {
-      await cancelButton?.props.onClick();
-    });
+    await user.click(screen.getByRole("button", { name: /start recording/i }));
+    await user.click(screen.getByRole("button", { name: /cancel recording/i }));
 
     expect(recorderStop).toHaveBeenCalledTimes(1);
     expect(globalThis.fetch).not.toHaveBeenCalled();

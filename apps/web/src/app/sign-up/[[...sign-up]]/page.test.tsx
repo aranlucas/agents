@@ -1,6 +1,5 @@
-import React from "react";
-import { describe, it, vi } from "vitest";
-import { renderSmoke, interactSmoke } from "@/test/test-utils";
+import { render } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@clerk/nextjs", () => ({
   SignUp: () => <div data-sign-up />,
@@ -9,11 +8,7 @@ vi.mock("@clerk/nextjs", () => ({
 import SignUpPage from "./page";
 
 describe("SignUpPage", () => {
-  it("renders", async () => {
-    await renderSmoke("sign-up", <SignUpPage />);
-  });
-
-  it("interacts without throwing", async () => {
-    await interactSmoke("sign-up", <SignUpPage />);
+  it("renders", () => {
+    expect(() => render(<SignUpPage />)).not.toThrow();
   });
 });

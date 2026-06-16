@@ -1,7 +1,7 @@
+import { render } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { renderSmoke } from "@/test/test-utils";
 
 vi.mock("next/font/google", () => ({
   Schibsted_Grotesk: () => ({ variable: "font-sans" }),
@@ -23,13 +23,13 @@ vi.mock("next-themes", () => ({
 import RootLayout from "./layout";
 
 describe("RootLayout", () => {
-  it("renders children inside html and body", async () => {
+  it("renders children inside html and body", () => {
     const markup = renderToStaticMarkup(<RootLayout>hello world</RootLayout>);
     expect(markup).toContain("<html");
     expect(markup).toContain("hello world");
   });
 
-  it("interacts without throwing", async () => {
-    await renderSmoke("layout", <RootLayout>test</RootLayout>);
+  it("renders without throwing", () => {
+    expect(() => render(<RootLayout>test</RootLayout>)).not.toThrow();
   });
 });

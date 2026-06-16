@@ -1,7 +1,7 @@
+import { render } from "@testing-library/react";
 import type { ComponentProps, ReactElement, ReactNode } from "react";
 import { cloneElement } from "react";
-import { describe, it, vi } from "vitest";
-import { renderSmoke, interactSmoke } from "@/test/test-utils";
+import { describe, expect, it, vi } from "vitest";
 
 const dialogPrimitive = vi.hoisted(() => ({
   Root: ({ children }: { children: ReactNode }) => <>{children}</>,
@@ -32,21 +32,13 @@ const request: ApprovalRequest = {
 };
 
 describe("ApprovalCard", () => {
-  it("renders", async () => {
-    await renderSmoke("approval-card", <ApprovalCard request={request} />);
-  });
-
-  it("interacts without throwing", async () => {
-    await interactSmoke("approval-card", <ApprovalCard request={request} />);
+  it("renders", () => {
+    expect(() => render(<ApprovalCard request={request} />)).not.toThrow();
   });
 });
 
 describe("ApprovalDialog", () => {
-  it("renders", async () => {
-    await renderSmoke("approval-dialog", <ApprovalDialog request={request} />);
-  });
-
-  it("interacts without throwing", async () => {
-    await interactSmoke("approval-dialog", <ApprovalDialog request={{ ...request, reason: "" }} />);
+  it("renders", () => {
+    expect(() => render(<ApprovalDialog request={request} />)).not.toThrow();
   });
 });

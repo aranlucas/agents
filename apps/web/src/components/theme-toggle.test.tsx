@@ -1,5 +1,5 @@
-import { describe, it, vi } from "vitest";
-import { renderSmoke } from "@/test/test-utils";
+import { render } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next-themes", () => ({
   useTheme: () => ({
@@ -10,7 +10,7 @@ vi.mock("next-themes", () => ({
 import { ThemeToggle } from "./theme-toggle";
 
 describe("ThemeToggle", () => {
-  it("renders", async () => {
-    await renderSmoke("theme-toggle", <ThemeToggle />);
+  it("renders", () => {
+    expect(() => render(<ThemeToggle />)).not.toThrow();
   });
 });

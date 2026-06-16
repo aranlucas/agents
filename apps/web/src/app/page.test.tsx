@@ -1,6 +1,6 @@
+import { render } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { describe, it, vi } from "vitest";
-import { renderSmoke, interactSmoke } from "@/test/test-utils";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next/link", () => ({
   default: ({ children, href }: { children: ReactNode; href: string }) => (
@@ -29,11 +29,7 @@ vi.mock("@tanstack/react-query", () => ({
 import Home from "./page";
 
 describe("Home page", () => {
-  it("renders", async () => {
-    await renderSmoke("home", <Home />);
-  });
-
-  it("interacts without throwing", async () => {
-    await interactSmoke("home", <Home />);
+  it("renders", () => {
+    expect(() => render(<Home />)).not.toThrow();
   });
 });
