@@ -222,17 +222,29 @@ describe("OralBoardsPanel — questioning", () => {
 });
 
 describe("OralBoardsPanel — complete", () => {
-  it("renders score card and full transcript", () => {
+  it("renders the outcome banner, per-skillset score table, model answer, and transcript", () => {
     const state: OralBoardsState = {
       case: "Case summary text.",
       case_sources: [],
       status: "complete",
-      score_card: "## Score\nComposite: 2.4 / 3.0",
+      score_card: "## Score\nStrong management reasoning overall.",
+      score_summary: [
+        {
+          skillset: "Behavior Guidance",
+          skill: "analyze_evaluate",
+          score: 2,
+          rationale: "Solid plan; thin on alternatives.",
+        },
+      ],
+      outcome: "borderline",
       transcript: [
         {
           question: "Describe your approach to pain management.",
           answer: "I would use local anesthesia.",
-          feedback: "**Interview phase:** Management and treatment planning\nGood.",
+          skillset: "Behavior Guidance",
+          skill: "analyze_evaluate",
+          score: 2,
+          feedback: "**Skillset:** Behavior Guidance · Analyze/Evaluate\nGood.",
           ideal_response: "Use articaine with epinephrine.",
           citations: [],
         },
@@ -244,5 +256,56 @@ describe("OralBoardsPanel — complete", () => {
     expect(screen.getByText("Q1")).toBeDefined();
     expect(screen.getByText("Describe your approach to pain management.")).toBeDefined();
     expect(screen.getByText("Your answer: I would use local anesthesia.")).toBeDefined();
+
+    // Practice-outcome banner (study-aid verdict, not part of the real OCE)
+    expect(screen.getByText(/Practice outcome:/)).toBeDefined();
+    expect(screen.getByText(/Borderline/)).toBeDefined();
+
+    // Per-skillset score table surfaces the skill-level label and rationale.
+    // The skill label also appears as an exchange badge, so expect >= 1.
+    expect(screen.getAllByText("Analyze / Evaluate").length).toBeGreaterThan(0);
+    expect(screen.getByText("Solid plan; thin on alternatives.")).toBeDefined();
+
+    // The model answer is now surfaced (was previously never rendered)
+    expect(screen.getByText("Model answer")).toBeDefined();
+    expect(screen.getByText("Use articaine with epinephrine.")).toBeDefined();
+  });
+
+  it("offers a Start a new case action and fires onClose", async () => {
+    const onClose = vi.fn();
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "complete",
+      score_card: "## Score\nNice work.",
+      transcript: [],
+    };
+
+    render(<OralBoardsPanel state={state} {...baseProps} onClose={onClose} />);
+    await userEvent.click(screen.getByRole("button", { name: /Start a new case/ }));
+
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+});
+
+describe("OralBoardsPanel — notes", () => {
+  it("carries case notes from the presenting view into questioning", async () => {
+    const presenting: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "presenting",
+      transcript: [],
+    };
+    const { rerender } = render(<OralBoardsPanel state={presenting} {...baseProps} />);
+
+    const notesField = screen.getByLabelText("Case notes");
+    await userEvent.type(notesField, "ECC on #B and #I");
+    expect((notesField as HTMLTextAreaElement).value).toBe("ECC on #B and #I");
+
+    rerender(<OralBoardsPanel state={{ ...presenting, status: "questioning" }} {...baseProps} />);
+
+    expect((screen.getByLabelText("Case notes") as HTMLTextAreaElement).value).toBe(
+      "ECC on #B and #I",
+    );
   });
 });

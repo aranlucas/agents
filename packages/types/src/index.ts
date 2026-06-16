@@ -134,12 +134,50 @@ export type CaseSource = {
   collection: "abpd" | "aapd" | "cody";
 };
 
+// Cognitive skill level from the ABPD OCE Examination Blueprint "Skill" column.
+export type OralBoardsSkill = "remember" | "understand_apply" | "analyze_evaluate";
+
+// Overall practice-outcome estimate. The real OCE is reported Pass/Fail by
+// examiners; "borderline" / "not_yet" are study-aid gradations, not official ABPD
+// categories.
+export type OralBoardsOutcome = "pass" | "borderline" | "not_yet";
+
+// Display metadata for the three blueprint skill levels. Shared by the agent
+// (authoritative copy lives in the agent prompt) and the exam UI legend/badges.
+export const OCE_SKILL_LEVELS: Record<OralBoardsSkill, { label: string; description: string }> = {
+  remember: {
+    label: "Remember",
+    description: "Recall facts, terms, and basic concepts.",
+  },
+  understand_apply: {
+    label: "Understand / Apply",
+    description: "Explain concepts and apply knowledge to the clinical situation.",
+  },
+  analyze_evaluate: {
+    label: "Analyze / Evaluate",
+    description: "Analyze, compare, and evaluate to reach and defend a decision.",
+  },
+};
+
 export type OralBoardsExchange = {
   question: string;
   answer: string;
   feedback: string;
   ideal_response: string;
   citations: CaseSource[];
+  // Blueprint domain ("skillset") this question assessed, e.g. "Pulp Therapy".
+  skillset?: string;
+  // Cognitive level the question targeted.
+  skill?: OralBoardsSkill;
+  // Practice score for this skillset on the official ABPD 1-3 scale.
+  score?: 1 | 2 | 3;
+};
+
+export type OralBoardsSkillsetScore = {
+  skillset: string;
+  skill?: OralBoardsSkill;
+  score: 1 | 2 | 3;
+  rationale: string;
 };
 
 export type OralBoardsState = {
@@ -148,6 +186,10 @@ export type OralBoardsState = {
   phase?: OralBoardsPhase;
   transcript?: OralBoardsExchange[];
   score_card?: string;
+  // Structured per-skillset scores backing the feedback score table.
+  score_summary?: OralBoardsSkillsetScore[];
+  // Overall practice-outcome estimate (study aid; real OCE is Pass/Fail).
+  outcome?: OralBoardsOutcome;
   status?: OralBoardsPhase | "idle";
   loading_step?: string;
 };

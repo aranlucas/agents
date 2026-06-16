@@ -11,12 +11,22 @@ import {
   Maximize2Icon,
   Minimize2Icon,
   MicIcon,
+  PencilIcon,
   PlayIcon,
+  SendHorizontalIcon,
   SquareIcon,
+  StethoscopeIcon,
 } from "lucide-react";
 import { CopilotChatAudioRecorder } from "@copilotkit/react-core/v2";
 
-import type { CaseSource, OralBoardsExchange, OralBoardsState } from "@agents/types";
+import { OCE_SKILL_LEVELS } from "@agents/types";
+import type {
+  CaseSource,
+  OralBoardsExchange,
+  OralBoardsOutcome,
+  OralBoardsSkillsetScore,
+  OralBoardsState,
+} from "@agents/types";
 import { Button } from "@agents/ui";
 import {
   Artifact,
@@ -63,6 +73,124 @@ function CitationChips({ sources }: { sources: CaseSource[] }) {
           {s.collection.toUpperCase()} #{s.docid} · {s.title}
         </span>
       ))}
+    </div>
+  );
+}
+
+function scoreClasses(score: number): string {
+  if (score >= 3) return "border-emerald-700/40 bg-emerald-950/30 text-emerald-300";
+  if (score === 2) return "border-amber-700/40 bg-amber-950/30 text-amber-300";
+  return "border-red-700/40 bg-red-950/30 text-red-300";
+}
+
+// Blueprint skillset (domain), cognitive skill level, and 1-3 practice score
+// for one exchange. Hidden gracefully when the agent hasn't tagged the answer.
+function SkillsetBadges({ exchange }: { exchange: OralBoardsExchange }) {
+  const skillMeta = exchange.skill ? OCE_SKILL_LEVELS[exchange.skill] : undefined;
+  if (!exchange.skillset && !skillMeta && exchange.score == null) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {exchange.skillset && (
+        <span className="rounded bg-indigo-950/40 px-1.5 py-0.5 text-[10px] font-medium text-indigo-300">
+          {exchange.skillset}
+        </span>
+      )}
+      {skillMeta && (
+        <span
+          title={skillMeta.description}
+          className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 text-[10px]"
+        >
+          {skillMeta.label}
+        </span>
+      )}
+      {exchange.score != null && (
+        <span
+          className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${scoreClasses(exchange.score)}`}
+        >
+          {exchange.score}/3
+        </span>
+      )}
+    </div>
+  );
+}
+
+// The model answer the candidate should have given — produced by the agent but
+// previously never surfaced in the UI.
+function ModelAnswer({ text }: { text: string }) {
+  if (!text.trim()) return null;
+  return (
+    <div className="border-border/60 rounded border border-dashed px-2.5 py-2 text-xs">
+      <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide uppercase">
+        Model answer
+      </p>
+      <Streamdown>{text}</Streamdown>
+    </div>
+  );
+}
+
+const OUTCOME_META: Record<OralBoardsOutcome, { label: string; cls: string }> = {
+  pass: {
+    label: "On track to pass",
+    cls: "border-emerald-700/40 bg-emerald-950/30 text-emerald-300",
+  },
+  borderline: {
+    label: "Borderline",
+    cls: "border-amber-700/40 bg-amber-950/30 text-amber-300",
+  },
+  not_yet: {
+    label: "Not yet passing",
+    cls: "border-red-700/40 bg-red-950/30 text-red-300",
+  },
+};
+
+function OutcomeBanner({ outcome }: { outcome: OralBoardsOutcome }) {
+  const meta = OUTCOME_META[outcome];
+  return (
+    <div className={`rounded-lg border px-3 py-2.5 ${meta.cls}`}>
+      <p className="text-sm font-semibold">Practice outcome: {meta.label}</p>
+      <p className="mt-0.5 text-[11px] opacity-80">
+        Study estimate only — the real OCE is reported Pass/Fail and each skillset is scored
+        independently by two examiners.
+      </p>
+    </div>
+  );
+}
+
+// Per-skillset 1-3 scores, mirroring how ABPD scores each skillset independently
+// (no weighted composite).
+function ScoreSummaryTable({ summary }: { summary: OralBoardsSkillsetScore[] }) {
+  if (summary.length === 0) return null;
+  return (
+    <div className="overflow-hidden rounded-lg border">
+      <table className="w-full text-left text-xs">
+        <thead className="bg-muted/40 text-muted-foreground">
+          <tr>
+            <th className="px-2.5 py-1.5 font-medium">Skillset</th>
+            <th className="px-2.5 py-1.5 font-medium">Skill</th>
+            <th className="px-2.5 py-1.5 text-center font-medium">Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          {summary.map((row) => (
+            <tr key={`${row.skillset}-${row.skill ?? "na"}`} className="border-t align-top">
+              <td className="px-2.5 py-1.5">
+                <p className="font-medium">{row.skillset}</p>
+                {row.rationale && <p className="text-muted-foreground mt-0.5">{row.rationale}</p>}
+              </td>
+              <td className="text-muted-foreground px-2.5 py-1.5 whitespace-nowrap">
+                {row.skill ? OCE_SKILL_LEVELS[row.skill].label : "—"}
+              </td>
+              <td className="px-2.5 py-1.5 text-center">
+                <span
+                  className={`inline-block rounded border px-1.5 py-0.5 font-semibold ${scoreClasses(row.score)}`}
+                >
+                  {row.score}/3
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -132,15 +260,20 @@ function TtsButton({ text, label = "Listen" }: { text: string; label?: string })
   );
 }
 
-// Permanent left column during questioning — the vignette is always in view
+// Permanent left column during questioning — the vignette is always in view,
+// with the candidate's running notes editable beneath it.
 function VignettePanel({
   caseBody,
   sources,
   width,
+  notes,
+  onNotesChange,
 }: {
   caseBody: string;
   sources: CaseSource[];
   width: number;
+  notes: string;
+  onNotesChange: React.Dispatch<React.SetStateAction<string>>;
 }) {
   return (
     <div
@@ -159,14 +292,30 @@ function VignettePanel({
       <div className="text-[13px] leading-[1.7]">
         <Streamdown>{caseBody}</Streamdown>
       </div>
-      {sources.length > 0 && (
-        <div className="mt-auto border-t pt-3">
-          <p className="text-muted-foreground mb-1.5 text-[10px] font-medium tracking-wide uppercase">
-            Sources
+
+      <div className="mt-auto space-y-3">
+        <div className="border-t pt-3">
+          <p className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-[10px] font-medium tracking-wide uppercase">
+            <PencilIcon className="size-3" />
+            Your notes
           </p>
-          <CitationChips sources={sources} />
+          <textarea
+            aria-label="Case notes"
+            className="border-border bg-background/60 min-h-[56px] w-full resize-none rounded-lg border p-2.5 text-xs leading-relaxed focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+            placeholder="Jot notes as you reason through the case…"
+            value={notes}
+            onChange={(e) => onNotesChange(e.target.value)}
+          />
         </div>
-      )}
+        {sources.length > 0 && (
+          <div className="border-t pt-3">
+            <p className="text-muted-foreground mb-1.5 text-[10px] font-medium tracking-wide uppercase">
+              Sources
+            </p>
+            <CitationChips sources={sources} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -197,6 +346,7 @@ function CompletedExchangeRow({
       </button>
       {expanded && (
         <div className="space-y-1.5 border-t border-emerald-800/20 px-3 py-2.5 text-xs">
+          <SkillsetBadges exchange={exchange} />
           <p className="text-sm font-medium">{exchange.question}</p>
           {exchange.answer && (
             <p className="text-muted-foreground">
@@ -205,6 +355,7 @@ function CompletedExchangeRow({
             </p>
           )}
           {exchange.feedback && <Streamdown>{exchange.feedback}</Streamdown>}
+          <ModelAnswer text={exchange.ideal_response} />
           <CitationChips sources={exchange.citations ?? []} />
         </div>
       )}
@@ -218,11 +369,13 @@ function LastFeedbackCard({ exchange, index }: { exchange: OralBoardsExchange; i
       <p className="text-[10px] font-semibold tracking-[0.15em] text-emerald-400 uppercase">
         Q{index + 1} · Feedback
       </p>
+      <SkillsetBadges exchange={exchange} />
       <p className="font-medium">{exchange.question}</p>
       {exchange.answer && (
         <p className="text-muted-foreground text-xs">Your answer: {exchange.answer}</p>
       )}
       {exchange.feedback && <Streamdown>{exchange.feedback}</Streamdown>}
+      <ModelAnswer text={exchange.ideal_response} />
       <CitationChips sources={exchange.citations ?? []} />
     </div>
   );
@@ -232,14 +385,17 @@ function PresentingPane({
   caseBody,
   sources,
   onReady,
+  notes,
+  onNotesChange,
 }: {
   caseBody: string;
   sources: CaseSource[];
   onReady: () => void;
+  notes: string;
+  onNotesChange: React.Dispatch<React.SetStateAction<string>>;
 }) {
-  const [notes, setNotes] = useState("");
   const recorder = useAnswerRecorder((text) =>
-    setNotes((prev) => (prev ? `${prev} ${text}` : text)),
+    onNotesChange((prev) => (prev ? `${prev} ${text}` : text)),
   );
 
   return (
@@ -272,7 +428,7 @@ function PresentingPane({
           className="border-border bg-background min-h-[60px] w-full resize-none rounded-lg border p-3 text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none"
           placeholder="Record or type your notes about the case…"
           value={notes}
-          onChange={(e) => setNotes(e.target.value)}
+          onChange={(e) => onNotesChange(e.target.value)}
         />
         <RecordButton recorder={recorder} />
       </div>
@@ -280,6 +436,41 @@ function PresentingPane({
       <Button type="button" className="w-full shrink-0" onClick={onReady}>
         Begin Examination
       </Button>
+    </div>
+  );
+}
+
+// Sequential progress dots — answered skillsets vs. the live question.
+function QuestionProgress({ answered, current }: { answered: number; current: number }) {
+  const total = Math.max(answered + 1, current);
+  return (
+    <div className="flex items-center gap-1" aria-hidden>
+      {Array.from({ length: total }).map((_, i) => {
+        const dot =
+          i === current - 1
+            ? "size-1.5 rounded-full bg-indigo-400 ring-2 ring-indigo-400/25"
+            : i < answered
+              ? "size-1.5 rounded-full bg-emerald-500/70"
+              : "size-1.5 rounded-full bg-muted-foreground/25";
+        // oxlint-disable-next-line react/no-array-index-key -- positional dots, no identity
+        return <span key={i} className={dot} />;
+      })}
+    </div>
+  );
+}
+
+// "Examiner is thinking" placeholder shown until the next question streams in.
+function ThinkingState({ isRunning, loadingStep }: { isRunning: boolean; loadingStep: string }) {
+  return (
+    <div className="text-muted-foreground flex items-center gap-2.5">
+      <span className="flex gap-1">
+        <span className="size-1.5 animate-bounce rounded-full bg-indigo-400 [animation-delay:-0.3s]" />
+        <span className="size-1.5 animate-bounce rounded-full bg-indigo-400 [animation-delay:-0.15s]" />
+        <span className="size-1.5 animate-bounce rounded-full bg-indigo-400" />
+      </span>
+      <span className="text-[13px] italic">
+        {isRunning ? loadingStep || "The examiner is thinking…" : "Waiting for the next question…"}
+      </span>
     </div>
   );
 }
@@ -294,6 +485,8 @@ function QuestioningPane({
   onAnswer,
   isRunning,
   loadingStep = "",
+  notes,
+  onNotesChange,
 }: {
   caseBody: string;
   sources: CaseSource[];
@@ -301,6 +494,8 @@ function QuestioningPane({
   onAnswer: (text: string) => void;
   isRunning: boolean;
   loadingStep?: string;
+  notes: string;
+  onNotesChange: React.Dispatch<React.SetStateAction<string>>;
 }) {
   const { currentQuestion: question } = useOralBoardsQuestion();
   const questionNumber = transcript.length + 1;
@@ -353,7 +548,13 @@ function QuestioningPane({
   return (
     <div ref={containerRef} className="flex h-full overflow-hidden">
       {/* Left: case vignette — pinned, always in view */}
-      <VignettePanel caseBody={caseBody} sources={sources} width={leftPct} />
+      <VignettePanel
+        caseBody={caseBody}
+        sources={sources}
+        width={leftPct}
+        notes={notes}
+        onNotesChange={onNotesChange}
+      />
 
       {/* Drag handle */}
       <div
@@ -367,10 +568,18 @@ function QuestioningPane({
       </div>
 
       {/* Right: examination Q&A */}
-      <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-hidden p-4">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        {/* Progress header */}
+        <div className="flex shrink-0 items-center justify-between border-b px-4 py-2.5">
+          <span className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
+            Examination
+          </span>
+          <QuestionProgress answered={transcript.length} current={questionNumber} />
+        </div>
+
         {/* Scrollable history: completed + last feedback */}
         {(olderExchanges.length > 0 || lastExchange) && (
-          <div className="max-h-[40%] shrink-0 space-y-1.5 overflow-y-auto pr-0.5">
+          <div className="max-h-[36%] shrink-0 space-y-1.5 overflow-y-auto border-b px-4 py-3">
             {olderExchanges.map((x, i) => (
               <CompletedExchangeRow key={x.question || i} exchange={x} index={i} />
             ))}
@@ -380,60 +589,74 @@ function QuestioningPane({
           </div>
         )}
 
-        {/* Active question — fills remaining height */}
-        <div className="relative flex min-h-0 flex-1 flex-col gap-3 overflow-hidden rounded-xl border-l-4 border-indigo-500 bg-indigo-950/15 p-4 pl-5">
-          {/* Ghost question number */}
-          <span
-            aria-hidden
-            className="pointer-events-none absolute -top-2 right-3 font-mono text-[72px] leading-none font-black text-indigo-500/[0.07] select-none"
-          >
-            {questionNumber}
-          </span>
-
-          <div className="flex shrink-0 items-center justify-between">
-            <p className="text-[10px] font-semibold tracking-[0.15em] text-indigo-400 uppercase">
-              Question {questionNumber}
-            </p>
-            {question && <TtsButton text={question} label="Listen" />}
+        {/* Active question + response composer */}
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-4">
+          {/* Examiner prompt */}
+          <div className="shrink-0 overflow-hidden rounded-xl border border-indigo-500/25 bg-gradient-to-br from-indigo-950/40 to-indigo-950/10 p-4 shadow-sm">
+            <div className="mb-3 flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-indigo-500/15 ring-1 ring-indigo-500/30">
+                  <StethoscopeIcon className="size-4 text-indigo-300" />
+                </span>
+                <div className="leading-tight">
+                  <p className="text-[10px] font-semibold tracking-[0.12em] text-indigo-300/80 uppercase">
+                    Examiner
+                  </p>
+                  <p className="text-muted-foreground text-[11px]">Question {questionNumber}</p>
+                </div>
+              </div>
+              {question && <TtsButton text={question} label="Listen" />}
+            </div>
+            {question ? (
+              <p className="text-[15px] leading-relaxed font-medium text-pretty">{question}</p>
+            ) : (
+              <ThinkingState isRunning={isRunning} loadingStep={loadingStep} />
+            )}
           </div>
 
-          <p className="relative z-10 shrink-0 text-[13.5px] leading-relaxed">
-            {question ? (
-              question
-            ) : (
-              <span className="text-muted-foreground flex items-center gap-2">
-                {isRunning && <Loader2Icon className="size-3 animate-spin" />}
-                {isRunning
-                  ? loadingStep || "Preparing next question…"
-                  : "Waiting for the next question…"}
+          {/* Response composer */}
+          <div className="bg-muted/15 flex min-h-0 flex-1 flex-col gap-2 rounded-xl border p-3">
+            <div className="flex shrink-0 items-center justify-between">
+              <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
+                Your response
+              </p>
+              <RecordButton recorder={recorder} />
+            </div>
+
+            {recorder.micSupported && <CopilotChatAudioRecorder ref={recorder.recorderRef} />}
+
+            <textarea
+              aria-label="Your answer"
+              className="border-border bg-background min-h-[80px] flex-1 resize-none rounded-lg border p-3 text-sm transition-shadow focus:ring-1 focus:ring-indigo-500 focus:outline-none disabled:opacity-50"
+              placeholder="Type your answer…"
+              value={answerText}
+              onChange={(e) => setAnswerText(e.target.value)}
+              disabled={isRunning || recorder.recording}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSubmit();
+              }}
+            />
+
+            <div className="flex shrink-0 items-center justify-between">
+              <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
+                <kbd className="bg-muted rounded border px-1 py-0.5 font-sans text-[10px] leading-none">
+                  ⌘
+                </kbd>
+                <kbd className="bg-muted rounded border px-1 py-0.5 font-sans text-[10px] leading-none">
+                  ↵
+                </kbd>
+                <span className="ml-0.5">to submit</span>
               </span>
-            )}
-          </p>
-
-          {recorder.micSupported && <CopilotChatAudioRecorder ref={recorder.recorderRef} />}
-
-          <textarea
-            aria-label="Your answer"
-            className="border-border bg-background min-h-[80px] flex-1 resize-none rounded-lg border p-3 text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none disabled:opacity-50"
-            placeholder="Type your answer… (⌘↵ to submit)"
-            value={answerText}
-            onChange={(e) => setAnswerText(e.target.value)}
-            disabled={isRunning || recorder.recording}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSubmit();
-            }}
-          />
-
-          <div className="flex shrink-0 items-center justify-end gap-2">
-            <RecordButton recorder={recorder} />
-            <Button
-              type="button"
-              size="sm"
-              disabled={isRunning || !answerText.trim()}
-              onClick={handleSubmit}
-            >
-              Submit
-            </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={isRunning || !answerText.trim()}
+                onClick={handleSubmit}
+              >
+                <SendHorizontalIcon className="size-3.5" />
+                Submit
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -443,13 +666,28 @@ function QuestioningPane({
 
 function FeedbackPane({
   scoreCard,
+  scoreSummary,
+  outcome,
   transcript,
+  onNewCase,
 }: {
   scoreCard: string;
+  scoreSummary: OralBoardsSkillsetScore[];
+  outcome?: OralBoardsOutcome;
   transcript: OralBoardsExchange[];
+  onNewCase: () => void;
 }) {
+  const isEmpty = !scoreCard.trim() && scoreSummary.length === 0 && transcript.length === 0;
   return (
     <div className="space-y-4">
+      {outcome && <OutcomeBanner outcome={outcome} />}
+      {scoreSummary.length > 0 && (
+        <p className="text-muted-foreground text-xs">
+          {scoreSummary.length} skillset{scoreSummary.length === 1 ? "" : "s"} assessed · scored
+          independently on the ABPD 1–3 scale
+        </p>
+      )}
+      <ScoreSummaryTable summary={scoreSummary} />
       {scoreCard.trim() && <Streamdown key={scoreCard}>{scoreCard}</Streamdown>}
       {transcript.length > 0 && (
         <div className="space-y-3">
@@ -458,16 +696,25 @@ function FeedbackPane({
               <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
                 Q{i + 1}
               </p>
+              <SkillsetBadges exchange={x} />
               <p className="font-medium">{x.question}</p>
               {x.answer && <p className="text-muted-foreground text-xs">Your answer: {x.answer}</p>}
               {x.feedback && <Streamdown>{x.feedback}</Streamdown>}
+              <ModelAnswer text={x.ideal_response} />
               <CitationChips sources={x.citations ?? []} />
             </div>
           ))}
         </div>
       )}
-      {!scoreCard.trim() && transcript.length === 0 && (
+      {isEmpty ? (
         <p className="text-muted-foreground text-sm">No feedback yet.</p>
+      ) : (
+        <div className="border-t pt-4">
+          <Button type="button" className="w-full" onClick={onNewCase}>
+            <PlayIcon className="size-3.5" />
+            Start a new case
+          </Button>
+        </div>
       )}
     </div>
   );
@@ -497,6 +744,12 @@ export function OralBoardsPanel({
   const sources = state.case_sources ?? [];
   const transcript = state.transcript ?? [];
   const scoreCard = state.score_card ?? "";
+  const scoreSummary = state.score_summary ?? [];
+  const outcome = state.outcome;
+
+  // Scratch notes persist across presenting → questioning so the candidate
+  // keeps what they jotted while reading the case.
+  const [notes, setNotes] = useState("");
 
   const isQuestioning = status === "questioning";
 
@@ -523,7 +776,13 @@ export function OralBoardsPanel({
         }
       >
         {status === "presenting" && (
-          <PresentingPane caseBody={caseBody} sources={sources} onReady={onReady} />
+          <PresentingPane
+            caseBody={caseBody}
+            sources={sources}
+            onReady={onReady}
+            notes={notes}
+            onNotesChange={setNotes}
+          />
         )}
         {isQuestioning && (
           <QuestioningPane
@@ -533,10 +792,18 @@ export function OralBoardsPanel({
             onAnswer={onAnswer}
             isRunning={isRunning}
             loadingStep={loadingStep}
+            notes={notes}
+            onNotesChange={setNotes}
           />
         )}
         {(status === "complete" || status === "feedback" || Boolean(scoreCard.trim())) && (
-          <FeedbackPane scoreCard={scoreCard} transcript={transcript} />
+          <FeedbackPane
+            scoreCard={scoreCard}
+            scoreSummary={scoreSummary}
+            outcome={outcome}
+            transcript={transcript}
+            onNewCase={onClose}
+          />
         )}
       </ArtifactContent>
     </Artifact>

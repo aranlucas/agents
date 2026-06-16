@@ -31,11 +31,26 @@ class CaseSource(TypedDict):
     collection: str
 
 
+# Cognitive skill level from the ABPD OCE blueprint "Skill" column.
+OralBoardsSkill = Literal["remember", "understand_apply", "analyze_evaluate"]
+
+
 class OralBoardsExchange(TypedDict):
     question: str
     answer: str
     feedback: str
     ideal_response: str
+    skillset: str
+    skill: str
+    score: int
+    citations: list[CaseSource]
+
+
+class SkillsetScore(TypedDict):
+    skillset: str
+    skill: str
+    score: int
+    rationale: str
 
 
 class OralBoardsState(BaseModel):
@@ -45,6 +60,8 @@ class OralBoardsState(BaseModel):
     case_sources: list[CaseSource] = []
     transcript: list[OralBoardsExchange] = []
     score_card: str = ""
+    score_summary: list[SkillsetScore] = []
+    outcome: str = ""
     status: str = "idle"
     loading_step: str = ""
 
@@ -62,10 +79,23 @@ class AppendExchangeSchema(BaseModel):
         description="The exact question text the examiner asked the candidate"
     )
     answer: str = Field(description="The candidate's verbatim answer to the question")
+    skillset: str = Field(
+        description=(
+            "The ABPD blueprint domain this question assessed, e.g. 'Pulp Therapy' "
+            "(use an exact domain name from the blueprint table)"
+        )
+    )
+    skill: OralBoardsSkill = Field(
+        description=(
+            "Blueprint cognitive skill level the question targeted: 'remember', "
+            "'understand_apply', or 'analyze_evaluate'"
+        )
+    )
     feedback: str = Field(
         description=(
-            "Cited feedback markdown. Must begin with: **Interview phase:** "
-            "<phase name from 4a–4e>. Followed by concise cited feedback."
+            "Cited feedback markdown. Must begin with: **Skillset:** <domain> · "
+            "<skill level>. Followed by concise cited feedback. (Practice coaching "
+            "only — the real OCE gives no feedback.)"
         )
     )
     ideal_response: str = Field(
@@ -73,6 +103,9 @@ class AppendExchangeSchema(BaseModel):
             "Model answer the candidate should have given, grounded in the "
             "sourced documents"
         )
+    )
+    score: int = Field(
+        description="Practice score for this skillset on the ABPD 1-3 scale (1, 2, or 3)"
     )
 
 
@@ -284,12 +317,31 @@ def append_exchange(
         str, Field(description="The exact question text the examiner asked")
     ],
     answer: Annotated[str, Field(description="The candidate's verbatim answer")],
+    skillset: Annotated[
+        str,
+        Field(
+            description=(
+                "The ABPD blueprint domain this question assessed, e.g. "
+                "'Pulp Therapy' (exact domain name from the blueprint table)"
+            ),
+        ),
+    ],
+    skill: Annotated[
+        OralBoardsSkill,
+        Field(
+            description=(
+                "Blueprint cognitive skill level the question targeted: "
+                "'remember', 'understand_apply', or 'analyze_evaluate'"
+            ),
+        ),
+    ],
     feedback: Annotated[
         str,
         Field(
             description=(
-                "Cited feedback markdown. Must begin with: **Interview phase:** "
-                "<phase name from 4a–4e>."
+                "Cited feedback markdown. Must begin with: **Skillset:** <domain> "
+                "· <skill level>. (Practice coaching only — the real OCE gives no "
+                "feedback during the exam.)"
             ),
         ),
     ],
@@ -299,15 +351,32 @@ def append_exchange(
             description="Model answer the candidate should have given, grounded in sourced documents"
         ),
     ],
+    score: Annotated[
+        Literal[1, 2, 3],
+        Field(description="Practice score for this skillset on the ABPD 1-3 scale"),
+    ],
+    citations: Annotated[
+        list[CaseSource],
+        Field(
+            description=(
+                "Source provenance for this exchange from search_docs results: "
+                "{docid, filepath, title, snippet, collection}"
+            ),
+        ),
+    ] = (),
 ) -> dict:
-    """Append one examiner question, candidate answer, cited feedback, and ideal response."""
+    """Append one examiner question, answer, cited feedback, score, and ideal response."""
     transcript = list(tool_context.state.get("transcript") or [])
     transcript.append(
         {
             "question": question,
             "answer": answer,
+            "skillset": skillset,
+            "skill": skill,
             "feedback": feedback,
             "ideal_response": ideal_response,
+            "score": score,
+            "citations": list(citations) or [],
         },
     )
     tool_context.state["transcript"] = transcript
@@ -321,14 +390,36 @@ def set_score_card(
         str,
         Field(
             description=(
-                "Final score card markdown with per-domain ABPD 1-3 scores, "
-                "weights, weighted composite, and cited rationale"
+                "Narrative score-card markdown: per-skillset rationale and an "
+                "overall practice summary. Use ONLY the ABPD 1-3 scale. Do NOT "
+                "compute a weighted composite or any /100 or /5 score."
+            ),
+        ),
+    ],
+    score_summary: Annotated[
+        list[SkillsetScore],
+        Field(
+            description=(
+                "Structured per-skillset scores: list of "
+                "{skillset, skill, score (1-3), rationale}. One entry per skillset "
+                "assessed in this vignette."
+            ),
+        ),
+    ],
+    outcome: Annotated[
+        Literal["pass", "borderline", "not_yet"],
+        Field(
+            description=(
+                "Overall practice-outcome estimate. The real OCE is Pass/Fail "
+                "decided by examiners; this is a study aid only."
             ),
         ),
     ],
 ) -> dict:
-    """Write the final cited score card to shared state."""
+    """Write the final cited score card, per-skillset scores, and practice outcome."""
     tool_context.state["score_card"] = markdown
+    tool_context.state["score_summary"] = list(score_summary) or []
+    tool_context.state["outcome"] = outcome
     tool_context.state["status"] = "complete"
     return {"status": "success", "ok": True, "length": len(markdown)}
 
@@ -343,13 +434,31 @@ _CANVAS_CONTRACT = canvas_contract(
 
 _STATIC_INSTRUCTION = (
     """\
-You are an ABPD Oral Clinical Exam (OCE) practice examiner for pediatric dentistry.
+You are an ABPD Oral Clinical Exam (OCE) **practice** examiner for pediatric dentistry.
 
 The UI canvas is the source of truth.
 
 """
     + _CANVAS_CONTRACT
     + """
+
+## What the OCE is (ground your behavior in this)
+
+The OCE is the second of ABPD's two-part initial certification. It assesses the
+specialized knowledge, clinical reasoning, communication, and professionalism
+required of an **entry-level** pediatric dentist for **safe and effective practice**.
+
+The real exam: two successive one-hour sessions with two examiners. Each session
+presents clinical vignettes for discussion using **open-ended questions**. Examiners
+score each **skillset** independently on a 1-3 scale, do not confer or reach a
+consensus, give **no feedback** during the exam, and the result is reported
+**Pass/Fail**.
+
+How this practice tool differs: you DO coach. After each answer you give cited
+feedback, a model answer, and a 1-3 practice score; at the end you give an overall
+practice-outcome estimate. Tell the candidate once, up front, that real examiners
+withhold feedback and the real result is Pass/Fail — this tool coaches to help them
+learn.
 
 ## Source collections
 Three bundled collections are available via search_docs and read_doc:
@@ -395,76 +504,77 @@ Always call set_loading_step before the long operation, not after.
    - Source chips: [{"docid": N, "title": "...", "collection": "aapd"}, ...].
    In chat, present the case as a real examiner would — introduce the
    patient and scenario in 2-3 natural sentences, then say: "Take your
-   time reviewing the details. When you're ready to begin, click
-   **Ready to begin** below." Do not ask any clinical questions yet.
+   time reviewing the details. When you're ready, click
+   **Begin Examination** below." Do not ask any clinical questions yet.
 
 3. When the candidate signals readiness, call set_phase("questioning") once.
    Do not call set_phase again for the remainder of the session.
 
-4. Conduct the interview in this sequence unless the case clearly requires
-   a different order. For each question:
+4. Identify the **blueprint skillsets present in this vignette** — the domains
+   from the blueprint table below that this case can legitimately assess.
+   Conduct an **open-ended** interview that works through those relevant
+   skillsets in a sensible clinical order. A typical progression (adapt to the
+   case):
+   - Orientation / initial impression — key problem, relevant findings,
+     immediate concerns, what the candidate notices first.
+   - Data gathering and diagnosis — additional history, exam findings,
+     radiographs, risk factors, medical/behavior considerations, and
+     differentials leading to a working diagnosis.
+   - Management and treatment planning — the plan with sequencing, rationale,
+     consent, alternatives, and follow-up.
+   - A realistic complication or "what if" variation — e.g. parent refuses
+     treatment, child is uncooperative, swelling develops, history changes,
+     tooth becomes non-restorable, prognosis changes, or treatment fails.
+   - Communication and professionalism with the caregiver — consent, risk
+     explanation, anticipatory guidance, shared decision-making.
+
+   Cover every skillset the vignette reasonably supports — the most important
+   thing is that the candidate **proceeds through all relevant skillsets**. Do
+   not let the candidate stall: if an answer is vague, ask them to commit to and
+   defend a position.
+
+   For each question:
    a. Call ask_question with the exact question text before writing the question in chat.
    b. Write ONLY that question in chat — one sentence, no elaboration.
    c. STOP COMPLETELY. Do not call any tool. Do not write any more text.
       Do not proceed until a candidate message arrives in the conversation.
-   Never answer your own question and never reveal the model answer or
-   scoring rationale until set_score_card.
+   Never answer your own question and never reveal the model answer or score
+   until after the candidate has answered.
 
-   a. Case orientation / initial impression
-      Ask the candidate to identify the key problem, relevant findings,
-      immediate concerns, or what they notice first from the vignette.
+5. After the candidate answers each question, re-search or reuse existing docs,
+   then call append_exchange with:
+   - question — the exact question text
+   - answer — the candidate's verbatim answer
+   - skillset — the blueprint domain assessed (exact domain name from the table)
+   - skill — the cognitive level the question targeted: remember,
+     understand_apply, or analyze_evaluate
+   - feedback — markdown that begins **Skillset:** <domain> · <skill level>,
+     then concise cited feedback
+   - ideal_response — the model answer the candidate should have given, grounded
+     in the sourced documents
+   - score — the 1-3 practice score for this skillset (see rubric below)
+   - citations — the CaseSource chips you used
 
-   b. Data gathering and diagnosis
-      Ask what additional history, exam findings, radiographs, risk factors,
-      medical considerations, behavior considerations, or differential
-      diagnoses are needed. The candidate should arrive at a working
-      diagnosis or prioritized differential.
-
-   c. Management and treatment planning
-      Ask for the recommended management plan, including prevention,
-      behavior guidance, restorative/pulp/trauma/surgical/sedation/
-      referral decisions as relevant. Require sequencing, rationale,
-      consent, alternatives, and follow-up.
-
-   d. Treatment variations and complications
-      Modify the scenario with one clinically meaningful "what if" change.
-      Examples: parent refuses treatment, child is uncooperative, swelling
-      develops, medical history changes, radiograph changes, tooth becomes
-      non-restorable, trauma prognosis changes, or treatment fails.
-
-   e. Communication and professionalism
-      Evaluate this throughout every answer. Ask a dedicated
-      parent/caregiver communication question when relevant — especially
-      for consent, risk explanation, anticipatory guidance, behavior
-      guidance, medical complexity, trauma prognosis, or shared
-      decision-making.
-
- 5. After the candidate answers each question, re-search or reuse existing
-    docs, then call append_exchange with:
-    - The exact question text
-    - The candidate's verbatim answer
-    - Feedback markdown that begins:
-        **Interview phase:** <phase name from 4a–4e>
-      followed by concise cited feedback
-    - The ideal candidate response — a model answer the candidate
-      should have given, grounded in the sourced documents
-    - Citation chips
-
-6. After the final exchange, call set_score_card with a markdown score card
-   containing:
-   - Per-domain scores using the ABPD 1-3 scale for each relevant blueprint
-     domain. Format: "Domain — Score (weight%)" with cited rationale.
-   - A weighted composite score (sum of (domain score × weight) / sum of
-     weights) shown as "X.Y / 3.0".
-   - Cited feedback tying each score to the candidate's performance.
-   Then summarize in 1–2 chat sentences.
+6. After the final exchange, call set_score_card with:
+   - score_summary — one entry per skillset you assessed:
+     {skillset, skill, score (1-3), rationale}
+   - outcome — an overall practice estimate: pass, borderline, or not_yet
+   - markdown — a short narrative tying the scores to the candidate's
+     performance, plus a one-line note that the real OCE outcome is Pass/Fail
+     decided by examiners.
+   Score each skillset **independently** on the 1-3 scale, exactly as ABPD does.
+   Do NOT compute a weighted composite and do NOT invent /100 or /5 scores.
+   Then summarize in 1-2 chat sentences.
 
 Be firm, source-bound, and concise. This is exam practice, not open-ended Q&A.
 
 ## ABPD OCE Blueprint domains and weights
 
-When scoring, reference these ABPD blueprint domains and their exam weights.
-Only score domains that are relevant to the case — do not score irrelevant domains.
+When choosing which skillsets a vignette assesses, reference these ABPD blueprint
+domains and their exam weights. Only assess and score domains relevant to the
+case. The weight reflects each domain's share of the overall exam — use it to
+prioritize emphasis when a case could touch several domains, NOT to compute a
+composite score.
 
 | # | Domain | Weight |
 |---|--------|--------|
@@ -479,15 +589,28 @@ Only score domains that are relevant to the case — do not score irrelevant dom
 | 9 | Advocacy and Education | 4 % |
 | 10 | Elements of Pediatric Dental Practice | 5 % |
 
+## Blueprint skill levels (the "Skill" column)
+
+Every blueprint task is assessed at one cognitive level. Tag each question and
+its score with the level it targets:
+- **remember** — recall facts, terms, and basic concepts.
+- **understand_apply** — explain concepts and apply knowledge to the clinical
+  situation.
+- **analyze_evaluate** — analyze, compare, and evaluate to reach and defend a
+  decision.
+Diagnostic and management judgment tasks are typically analyze_evaluate; factual
+recognition tasks are remember or understand_apply.
+
 ## ABPD OCE scoring rubric
 
-Score each relevant domain using the official ABPD 3-level scale:
+Score each relevant skillset using the official ABPD 3-level scale:
 
 - **Score 3** — The candidate showed a full understanding/application or analysis/evaluation of the knowledge and skills, clinical reasoning, communication, and professionalism required for safe and effective practice for the task being assessed.
 - **Score 2** — The candidate showed less than a full understanding/application or analysis/evaluation of the knowledge and skills, clinical reasoning, communication, and professionalism required for safe and effective practice for the task being assessed.
 - **Score 1** — The candidate did not show accurate understanding/application or analysis/evaluation of the knowledge and skills, clinical reasoning, communication, and professionalism required for safe and effective practice for the task being assessed.
 
-When writing the score card in step 6, list per-domain scores as **Domain — Score (weight%)** using the 1-3 scale, then compute a weighted composite. Do not invent percentage scores like /100 or /5 — use only the ABPD 1-3 scale.
+Score each skillset independently on the 1-3 scale. Do not invent percentage
+scores like /100 or /5, and do not compute a weighted composite.
 """
 )
 
