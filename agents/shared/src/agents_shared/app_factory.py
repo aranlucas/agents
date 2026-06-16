@@ -15,7 +15,6 @@ from ag_ui_adk.config import PredictStateMapping
 from fastapi import APIRouter, FastAPI, Request
 from google.adk.agents import LlmAgent
 from google.adk.sessions import BaseSessionService
-from google.adk.telemetry.setup import maybe_set_otel_providers
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.sdk.resources import Resource
@@ -42,28 +41,33 @@ def setup_agent_logging(name: str) -> logging.Logger:
 
 
 def setup_otel(default_service_name: str) -> Tracer:
-    if os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
-        resource = Resource.create(
-            {
-                "service.name": os.getenv("RAILWAY_SERVICE_NAME", default_service_name),
-                "service.version": os.getenv("RAILWAY_GIT_COMMIT_SHA", "dev"),
-                "deployment.environment": os.getenv(
-                    "RAILWAY_ENVIRONMENT_NAME",
-                    "local",
-                ),
-                "railway.project.id": os.getenv("RAILWAY_PROJECT_ID", ""),
-                "railway.service.id": os.getenv("RAILWAY_SERVICE_ID", ""),
-            },
-        )
-        maybe_set_otel_providers(otel_resource=resource)
-        SQLAlchemyInstrumentor().instrument()
-        litellm.callbacks = ["otel"]
+    if not os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
+        return trace.get_tracer(default_service_name)
+
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+        OTLPSpanExporter,
+    )
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+    resource = Resource.create(
+        {
+            "service.name": os.getenv("RAILWAY_SERVICE_NAME", default_service_name),
+            "service.version": os.getenv("RAILWAY_GIT_COMMIT_SHA", "dev"),
+            "deployment.environment": os.getenv("RAILWAY_ENVIRONMENT_NAME", "local"),
+            "railway.project.id": os.getenv("RAILWAY_PROJECT_ID", ""),
+            "railway.service.id": os.getenv("RAILWAY_SERVICE_ID", ""),
+        },
+    )
+
+    provider = TracerProvider(resource=resource)
+    provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+    trace.set_tracer_provider(provider)
+
+    SQLAlchemyInstrumentor().instrument()
+    litellm.callbacks = ["otel"]
 
     return trace.get_tracer(default_service_name)
-
-
-def get_agent_tracer(name: str) -> Tracer:
-    return trace.get_tracer(name)
 
 
 def streaming_state_mapping(
