@@ -5,11 +5,11 @@ import { CopilotSidebar, useAgent, useCopilotKit, UseAgentUpdate } from "@copilo
 
 import type { OralBoardsState } from "@agents/types";
 import { Button } from "@agents/ui";
-import { cn } from "@agents/ui/lib/utils";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@agents/ui";
 import { getAgentConfig } from "@/components/chat/agents/registry";
 import { useNewThread } from "@/components/chat/use-new-thread";
 import { AgentExtensionSlot } from "@/components/chat/agents/extensions";
-import { NavRail } from "@/components/chat/nav-rail";
+import { AppSidebar } from "@/components/chat/app-sidebar";
 import { OralBoardsPanel } from "@/components/chat/oral-boards/oral-boards-panel";
 import { OralBoardsQuestionProvider } from "@/lib/copilotkit/oral-boards-question-context";
 import { useArtifactPanel } from "@/components/workspace-shell";
@@ -158,8 +158,9 @@ export function OralBoardsWorkspace() {
   );
 
   return (
-    <main
-      className="flex h-dvh flex-col overflow-hidden md:flex-row"
+    <SidebarProvider
+      defaultOpen={false}
+      className="h-dvh overflow-hidden"
       style={cssVars({ "--page-color": `var(${config.colorVar})` })}
     >
       <OralBoardsQuestionProvider>
@@ -171,11 +172,8 @@ export function OralBoardsWorkspace() {
             chatInputPlaceholder: config.placeholder,
           }}
         />
-        {/* Rail: hidden only when the panel is active in fullscreen */}
-        <div className={cn("flex-none", state === "fullscreen" && hasPanel && "hidden")}>
-          <NavRail activePath={`/console/${AGENT_ID}`} onNewThread={startNewThread} />
-        </div>
-        <div className="flex-1 overflow-hidden">
+        <AppSidebar activePath={`/console/${AGENT_ID}`} onNewThread={startNewThread} />
+        <SidebarInset className="min-h-0 overflow-hidden">
           {hasPanel ? (
             <OralBoardsPanel
               state={examState}
@@ -188,14 +186,19 @@ export function OralBoardsWorkspace() {
               loadingStep={examState.loading_step ?? ""}
             />
           ) : (
-            <OralBoardsStartPage
-              onStart={(m) => void handleStart(m)}
-              isGenerating={isGenerating}
-              loadingStep={examState.loading_step ?? ""}
-            />
+            <div className="flex h-full flex-col overflow-hidden">
+              <div className="flex shrink-0 items-center border-b px-2 py-1.5 md:hidden">
+                <SidebarTrigger />
+              </div>
+              <OralBoardsStartPage
+                onStart={(m) => void handleStart(m)}
+                isGenerating={isGenerating}
+                loadingStep={examState.loading_step ?? ""}
+              />
+            </div>
           )}
-        </div>
+        </SidebarInset>
       </OralBoardsQuestionProvider>
-    </main>
+    </SidebarProvider>
   );
 }

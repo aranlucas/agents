@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { cn } from "@agents/ui/lib/utils";
+import { SidebarTrigger } from "@agents/ui";
 
 export type PanelState = "closed" | "split" | "fullscreen";
 export type PanelAction = "open" | "close" | "toggle-open" | "toggle-fullscreen";
@@ -39,13 +40,11 @@ export function useArtifactPanel(agentId: string) {
 }
 
 export function WorkspaceShell({
-  rail,
   chat,
   artifact,
   hasArtifact,
   panelState,
 }: {
-  rail: ReactNode;
   chat: ReactNode;
   artifact: ReactNode;
   hasArtifact: boolean;
@@ -54,18 +53,9 @@ export function WorkspaceShell({
   const open = panelState !== "closed";
   const fullscreen = panelState === "fullscreen";
   return (
-    // Stacks vertically on mobile (top bar over content), splits into columns on
-    // md+. `h-dvh` tracks the dynamic viewport so mobile browser chrome doesn't
-    // clip the layout the way `h-screen`/100vh does.
-    <div className="flex h-dvh flex-col overflow-hidden md:flex-row">
-      {/* Rail: top menu bar on mobile, left rail on desktop. Hidden on desktop
-          fullscreen, and on mobile whenever the artifact takes over the screen. */}
-      <div className={cn("flex-none", fullscreen && "md:hidden", open && "max-md:hidden")}>
-        {rail}
-      </div>
-      {/* Chat: hidden on desktop fullscreen, and on mobile when the artifact is open.
-          `min-h-0` lets this flex child shrink below its content height in the mobile
-          column layout, so the inner conversation scrolls instead of overflowing. */}
+    // Height comes from the parent SidebarInset; overflow-hidden clips panels.
+    <div className="flex h-full flex-col overflow-hidden md:flex-row">
+      {/* Chat column: mobile trigger bar on top, chat content below */}
       <div
         className={cn(
           "flex min-h-0 min-w-0 flex-1 flex-col",
@@ -73,6 +63,10 @@ export function WorkspaceShell({
           open && "max-md:hidden",
         )}
       >
+        {/* Mobile-only top bar with sidebar trigger */}
+        <div className="flex shrink-0 items-center border-b px-2 py-1.5 md:hidden">
+          <SidebarTrigger />
+        </div>
         {chat}
       </div>
       {hasArtifact && (

@@ -2,22 +2,26 @@
 
 import { UserProfile } from "@clerk/nextjs";
 
-import { NavRail, SETTINGS_PATH } from "@/components/chat/nav-rail";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@agents/ui";
+import { AppSidebar, SETTINGS_PATH } from "@/components/chat/app-sidebar";
 
 export default function SettingsPage() {
   return (
-    // Mirrors the /console/[agent] shell: rail (top bar on mobile, left rail on
-    // desktop) beside a scrollable content column.
-    <main className="flex h-dvh flex-col overflow-hidden md:flex-row">
-      <div className="flex-none">
-        <NavRail activePath={SETTINGS_PATH} />
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
-        <div className="mx-auto w-full max-w-225 px-4 py-6">
-          <h1 className="text-foreground mb-4 text-lg font-semibold">Settings</h1>
-          <UserProfile routing="hash" />
+    // Mirrors the /console/[agent] shell: sidebar (icon rail on desktop, drawer
+    // on mobile) beside a scrollable content column.
+    <SidebarProvider defaultOpen={false} className="h-dvh overflow-hidden">
+      <AppSidebar activePath={SETTINGS_PATH} />
+      <SidebarInset className="min-h-0">
+        <div className="flex shrink-0 items-center border-b px-2 py-1.5 md:hidden">
+          <SidebarTrigger />
         </div>
-      </div>
-    </main>
+        <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+          <div className="mx-auto w-full max-w-225 px-4 py-6">
+            <h1 className="text-foreground mb-4 text-lg font-semibold">Settings</h1>
+            <UserProfile routing="hash" />
+          </div>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
