@@ -201,11 +201,19 @@ describe("OralBoardsPanel — questioning", () => {
     expect(screen.getByText("Your answer: Radiographs.")).toBeDefined();
 
     await userEvent.click(chip);
-    expect(screen.getByText((_content, el) => el?.tagName === "P" && el.textContent?.includes("Your answer: I see caries."))).toBeDefined();
+    expect(
+      screen.getByText(
+        (_content, el) =>
+          el?.tagName === "P" && el.textContent?.includes("Your answer: I see caries."),
+      ),
+    ).toBeDefined();
 
     await userEvent.click(chip);
     expect(
-      screen.queryByText((_content, el) => el?.tagName === "P" && el.textContent?.includes("Your answer: I see caries."))
+      screen.queryByText(
+        (_content, el) =>
+          el?.tagName === "P" && el.textContent?.includes("Your answer: I see caries."),
+      ),
     ).toBeNull();
   });
 });
