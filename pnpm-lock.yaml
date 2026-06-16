@@ -495,6 +495,12 @@ importers:
       '@base-ui/react':
         specifier: ^1.5.0
         version: 1.5.0(@date-fns/tz@1.5.0)(@types/react@19.2.17)(date-fns@4.4.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@radix-ui/react-use-controllable-state':
+        specifier: ^1.2.3
+        version: 1.2.3(@types/react@19.2.17)(react@19.2.7)
+      '@rive-app/react-webgl2':
+        specifier: ^4.29.1
+        version: 4.29.1(react@19.2.7)
       '@streamdown/cjk':
         specifier: ^1.0.3
         version: 1.0.3(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(react@19.2.7)(unified@11.0.5)
@@ -513,6 +519,9 @@ importers:
       ai:
         specifier: ^6.0.206
         version: 6.0.206(zod@4.4.3)
+      ansi-to-react:
+        specifier: ^6.2.6
+        version: 6.2.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -534,6 +543,15 @@ importers:
       lucide-react:
         specifier: ^1.18.0
         version: 1.18.0(react@19.2.7)
+      media-chrome:
+        specifier: ^4.19.2
+        version: 4.19.2(react@19.2.7)
+      motion:
+        specifier: ^12.40.0
+        version: 12.40.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      nanoid:
+        specifier: ^5.1.11
+        version: 5.1.11
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -546,6 +564,9 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.2.7(react@19.2.7)
+      react-jsx-parser:
+        specifier: ^2.4.1
+        version: 2.4.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react-resizable-panels:
         specifier: ^4.11.2
         version: 4.11.2(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -555,6 +576,9 @@ importers:
       shadcn:
         specifier: ^4.11.0
         version: 4.11.0(@cfworker/json-schema@4.1.1)(babel-plugin-macros@3.1.0)(typescript@6.0.3)
+      shiki:
+        specifier: ^4.2.0
+        version: 4.2.0
       sonner:
         specifier: ^2.0.7
         version: 2.0.7(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -564,9 +588,15 @@ importers:
       tailwind-merge:
         specifier: ^3.6.0
         version: 3.6.0
+      tokenlens:
+        specifier: ^1.3.1
+        version: 1.3.1
       tw-animate-css:
         specifier: ^1.4.0
         version: 1.4.0
+      use-stick-to-bottom:
+        specifier: ^1.1.6
+        version: 1.1.6(react@19.2.7)
       vaul:
         specifier: ^1.1.2
         version: 1.1.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
