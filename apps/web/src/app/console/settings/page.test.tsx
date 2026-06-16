@@ -17,7 +17,7 @@ vi.mock("@agents/ui", async (importOriginal) => {
     ...actual,
     SidebarProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
     SidebarInset: ({ children }: { children: React.ReactNode }) => <main>{children}</main>,
-    SidebarTrigger: () => <button />,
+    SidebarTrigger: () => <button aria-label="Toggle sidebar" />,
   };
 });
 
