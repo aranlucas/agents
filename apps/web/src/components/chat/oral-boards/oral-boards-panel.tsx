@@ -585,7 +585,7 @@ function QuestioningPane({
         )}
 
         {/* Active question + response composer */}
-        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-4">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
           {/* Examiner prompt */}
           <div className="shrink-0 overflow-hidden rounded-xl border border-indigo-500/25 bg-gradient-to-br from-indigo-950/40 to-indigo-950/10 p-4 shadow-sm">
             <div className="mb-3 flex items-start justify-between gap-2">
