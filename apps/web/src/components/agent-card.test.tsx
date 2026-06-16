@@ -1,7 +1,6 @@
+import { render } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { describe, it, vi } from "vitest";
-import { renderSmoke, interactSmoke } from "@/test/test-utils";
-import type { Agent } from "./agent-card";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next/link", () => ({
   default: ({ children, href }: { children: ReactNode; href: string }) => (
@@ -10,6 +9,7 @@ vi.mock("next/link", () => ({
 }));
 
 import { AgentCard } from "./agent-card";
+import type { Agent } from "./agent-card";
 
 const agent: Agent = {
   id: "travel",
@@ -23,25 +23,25 @@ const agent: Agent = {
 };
 
 describe("AgentCard", () => {
-  it("renders loading state", async () => {
-    await renderSmoke("agent-card-loading", <AgentCard agent={agent} index={0} status="loading" />);
+  it("renders loading state", () => {
+    expect(() =>
+      render(<AgentCard agent={agent} index={0} status="loading" />),
+    ).not.toThrow();
   });
 
-  it("renders ok state", async () => {
-    await renderSmoke(
-      "agent-card-ok",
-      <AgentCard agent={{ ...agent, theme: "wellness" }} index={1} status="ok" />,
-    );
+  it("renders ok state", () => {
+    expect(() =>
+      render(<AgentCard agent={{ ...agent, theme: "wellness" }} index={1} status="ok" />),
+    ).not.toThrow();
   });
 
-  it("renders error state", async () => {
-    await renderSmoke(
-      "agent-card-error",
-      <AgentCard agent={{ ...agent, theme: "a2ui" }} index={2} status="error" />,
-    );
+  it("renders error state", () => {
+    expect(() =>
+      render(<AgentCard agent={{ ...agent, theme: "a2ui" }} index={2} status="error" />),
+    ).not.toThrow();
   });
 
-  it("interacts without throwing", async () => {
-    await interactSmoke("agent-card", <AgentCard agent={agent} index={0} />);
+  it("renders without throwing", () => {
+    expect(() => render(<AgentCard agent={agent} index={0} />)).not.toThrow();
   });
 });

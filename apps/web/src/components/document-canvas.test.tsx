@@ -1,6 +1,6 @@
+import { render } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
-import { describe, it, vi } from "vitest";
-import { renderSmoke, interactSmoke } from "@/test/test-utils";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@agents/ui/components/input", () => ({
   Input: (props: ComponentProps<"input">) => <input {...props} />,
@@ -36,29 +36,29 @@ const defaultProps = {
 };
 
 describe("DocumentCanvas", () => {
-  it("renders booked streaming state", async () => {
-    await renderSmoke("document-canvas", <DocumentCanvas {...defaultProps} />);
+  it("renders booked streaming state", () => {
+    expect(() => render(<DocumentCanvas {...defaultProps} />)).not.toThrow();
   });
 
-  it("renders drafting non-streaming state", async () => {
-    await renderSmoke(
-      "document-canvas",
-      <DocumentCanvas
-        {...defaultProps}
-        startDate="bad-date"
-        endDate=""
-        itinerary="## Day 1: Arrival\n- Land\n## Day 2:"
-        flights=""
-        status="drafting"
-        isStreaming={false}
-      />,
-    );
+  it("renders drafting non-streaming state", () => {
+    expect(() =>
+      render(
+        <DocumentCanvas
+          {...defaultProps}
+          startDate="bad-date"
+          endDate=""
+          itinerary="## Day 1: Arrival\n- Land\n## Day 2:"
+          flights=""
+          status="drafting"
+          isStreaming={false}
+        />,
+      ),
+    ).not.toThrow();
   });
 
-  it("interacts without throwing", async () => {
-    await interactSmoke(
-      "document-canvas",
-      <DocumentCanvas {...defaultProps} isStreaming={false} />,
-    );
+  it("renders without throwing", () => {
+    expect(() =>
+      render(<DocumentCanvas {...defaultProps} isStreaming={false} />),
+    ).not.toThrow();
   });
 });

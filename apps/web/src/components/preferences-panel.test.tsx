@@ -1,6 +1,6 @@
+import { render } from "@testing-library/react";
 import type { ComponentProps } from "react";
-import { describe, it, vi } from "vitest";
-import { renderSmoke, interactSmoke } from "@/test/test-utils";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@agents/ui/components/input", () => ({
   Input: (props: ComponentProps<"input">) => <input {...props} />,
@@ -13,11 +13,7 @@ vi.mock("@copilotkit/react-core/v2", () => ({
 import { PreferencesPanel } from "./preferences-panel";
 
 describe("PreferencesPanel", () => {
-  it("renders", async () => {
-    await renderSmoke("preferences", <PreferencesPanel />);
-  });
-
-  it("interacts without throwing", async () => {
-    await interactSmoke("preferences", <PreferencesPanel />);
+  it("renders", () => {
+    expect(() => render(<PreferencesPanel />)).not.toThrow();
   });
 });

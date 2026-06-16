@@ -1,6 +1,5 @@
-import React from "react";
-import { describe, it, vi } from "vitest";
-import { renderSmoke } from "@/test/test-utils";
+import { render } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/hooks/use-agent-warmup", () => ({
   useAgentWarmup: () => ({
@@ -13,7 +12,7 @@ vi.mock("@/hooks/use-agent-warmup", () => ({
 import { AgentStatusBar } from "./agent-status-bar";
 
 describe("AgentStatusBar", () => {
-  it("renders", async () => {
-    await renderSmoke("agent-status-bar", <AgentStatusBar />);
+  it("renders", () => {
+    expect(() => render(<AgentStatusBar />)).not.toThrow();
   });
 });
