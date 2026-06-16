@@ -15,6 +15,11 @@ vi.mock("@clerk/nextjs", () => ({
   ClerkProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
+vi.mock("next-themes", () => ({
+  ThemeProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
+  useTheme: () => ({ theme: "system", resolvedTheme: "light", setTheme: vi.fn() }),
+}));
+
 import RootLayout from "./layout";
 
 describe("RootLayout", () => {
