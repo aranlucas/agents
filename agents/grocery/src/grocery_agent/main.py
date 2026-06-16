@@ -30,5 +30,6 @@ def register(app: FastAPI, services: AgentServices):
         adk_agent=build_adk_agent(
             _grocery_agent, services=services, predict_state=GROCERY_PREDICT_STATE
         ),
+        services=services,
         extract_state_from_request=make_extract_state(KROGER_AUTH),
     )

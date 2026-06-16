@@ -34,5 +34,6 @@ def register(app: FastAPI, services: AgentServices):
             predict_state=WELLNESS_PREDICT_STATE,
             session_service=RequestStateSessionService(services.session_service),
         ),
+        services=services,
         extract_state_from_request=make_extract_state(KROGER_AUTH, STRAVA_AUTH),
     )

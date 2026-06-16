@@ -141,8 +141,8 @@ export function OralBoardsWorkspace() {
             chatInputPlaceholder: config.placeholder,
           }}
         />
-        {/* Rail: hidden in fullscreen to give max space to the panel */}
-        <div className={cn("flex-none", state === "fullscreen" && "hidden")}>
+        {/* Rail: hidden only when the panel is active in fullscreen */}
+        <div className={cn("flex-none", state === "fullscreen" && hasPanel && "hidden")}>
           <NavRail activePath={`/console/${AGENT_ID}`} onNewThread={startNewThread} />
         </div>
         <div className="flex-1 overflow-hidden">

@@ -6,9 +6,24 @@ from fastapi.testclient import TestClient
 from gateway import main
 
 
+def _route_paths(app) -> list[str]:
+    """Collect all route paths, handling FastAPI's _IncludedRouter lazy wrapper."""
+    paths = []
+    for route in app.routes:
+        if hasattr(route, "path"):
+            paths.append(route.path)
+        elif hasattr(route, "original_router") and hasattr(route, "include_context"):
+            ic = route.include_context
+            prefix = getattr(ic, "prefix", "") or ""
+            for sub in route.original_router.routes:
+                if hasattr(sub, "path"):
+                    paths.append(prefix + sub.path)
+    return paths
+
+
 def test_mounts_every_agent():
     with TestClient(main.app) as client:  # noqa: F841 — triggers lifespan startup
-        mounted = {route.path for route in main.app.routes}
+        mounted = set(_route_paths(main.app))
     for prefix in (
         "/travel",
         "/grocery",
@@ -25,16 +40,16 @@ def test_mounts_every_agent():
 def test_startup_does_not_mutate_route_table():
     """Route table must be identical across repeated startups (no duplicates)."""
     with TestClient(main.app):
-        first_startup = [route.path for route in main.app.routes]
+        first_startup = _route_paths(main.app)
     with TestClient(main.app):
-        second_startup = [route.path for route in main.app.routes]
+        second_startup = _route_paths(main.app)
 
     assert second_startup == first_startup
 
 
 def test_agent_routes_are_unique_and_state_is_scoped():
     with TestClient(main.app):
-        paths = [route.path for route in main.app.routes]
+        paths = _route_paths(main.app)
     duplicates = {path: count for path, count in Counter(paths).items() if count > 1}
 
     assert duplicates == {}

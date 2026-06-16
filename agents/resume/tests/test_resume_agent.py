@@ -22,8 +22,22 @@ def test_agent_static_instruction_embeds_resume_content():
     assert "only answer questions" in resume_agent.static_instruction.lower()
 
 
+def _route_paths(app) -> set[str]:
+    paths = set()
+    for route in app.routes:
+        if hasattr(route, "path"):
+            paths.add(route.path)
+        elif hasattr(route, "original_router") and hasattr(route, "include_context"):
+            ic = route.include_context
+            prefix = getattr(ic, "prefix", "") or ""
+            for sub in route.original_router.routes:
+                if hasattr(sub, "path"):
+                    paths.add(prefix + sub.path)
+    return paths
+
+
 def test_app_exposes_agui_and_health_routes():
-    paths = {route.path for route in _registered_app().routes}
+    paths = _route_paths(_registered_app())
     assert "/resume/health" in paths
     assert any(p.startswith("/resume/agui") for p in paths)
 
