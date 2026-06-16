@@ -159,7 +159,7 @@ export function OralBoardsWorkspace() {
 
   return (
     <main
-      className="flex h-dvh overflow-hidden"
+      className="flex h-dvh flex-col overflow-hidden md:flex-row"
       style={cssVars({ "--page-color": `var(${config.colorVar})` })}
     >
       <OralBoardsQuestionProvider>

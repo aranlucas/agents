@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, type CSSProperties } from "react";
 import { Streamdown } from "streamdown";
 import {
   AlertCircleIcon,
@@ -265,20 +265,17 @@ function TtsButton({ text, label = "Listen" }: { text: string; label?: string })
 function VignettePanel({
   caseBody,
   sources,
-  width,
   notes,
   onNotesChange,
 }: {
   caseBody: string;
   sources: CaseSource[];
-  width: number;
   notes: string;
   onNotesChange: React.Dispatch<React.SetStateAction<string>>;
 }) {
   return (
     <div
-      className="bg-muted/25 flex shrink-0 flex-col gap-4 overflow-y-auto border-r px-5 py-4"
-      style={{ width: `${width}%` }}
+      className="bg-muted/25 flex shrink-0 flex-col gap-4 overflow-y-auto border-b px-5 py-4 max-h-[38vh] md:max-h-none md:border-b-0 md:border-r md:[width:var(--vignette-w,42%)]"
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
@@ -546,22 +543,25 @@ function QuestioningPane({
   const lastExchange = transcript.at(-1);
 
   return (
-    <div ref={containerRef} className="flex h-full overflow-hidden">
+    <div
+      ref={containerRef}
+      className="flex h-full flex-col overflow-hidden md:flex-row"
+      style={{ '--vignette-w': `${leftPct}%` } as CSSProperties}
+    >
       {/* Left: case vignette — pinned, always in view */}
       <VignettePanel
         caseBody={caseBody}
         sources={sources}
-        width={leftPct}
         notes={notes}
         onNotesChange={onNotesChange}
       />
 
-      {/* Drag handle */}
+      {/* Drag handle — desktop only */}
       <div
         role="separator"
         aria-label="Resize panels"
         aria-orientation="vertical"
-        className="group relative z-10 flex w-1.5 shrink-0 cursor-col-resize items-center justify-center border-r bg-transparent transition-colors hover:bg-indigo-500/20 active:bg-indigo-500/30"
+        className="group relative z-10 hidden w-1.5 shrink-0 cursor-col-resize items-center justify-center border-r bg-transparent transition-colors hover:bg-indigo-500/20 active:bg-indigo-500/30 md:flex"
         onPointerDown={handleDividerPointerDown}
       >
         <div className="bg-border h-8 w-0.5 rounded-full transition-colors group-hover:bg-indigo-400" />
