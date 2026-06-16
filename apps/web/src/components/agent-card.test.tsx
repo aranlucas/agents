@@ -24,9 +24,7 @@ const agent: Agent = {
 
 describe("AgentCard", () => {
   it("renders loading state", () => {
-    expect(() =>
-      render(<AgentCard agent={agent} index={0} status="loading" />),
-    ).not.toThrow();
+    expect(() => render(<AgentCard agent={agent} index={0} status="loading" />)).not.toThrow();
   });
 
   it("renders ok state", () => {

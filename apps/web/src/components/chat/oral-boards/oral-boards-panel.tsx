@@ -107,7 +107,9 @@ function SkillsetBadges({ exchange }: { exchange: OralBoardsExchange }) {
   return (
     <div className="flex flex-wrap items-center gap-1">
       {exchange.skillset && (
-        <Badge variant="secondary" className="text-[10px]">{exchange.skillset}</Badge>
+        <Badge variant="secondary" className="text-[10px]">
+          {exchange.skillset}
+        </Badge>
       )}
       {skillMeta && (
         <Badge variant="secondary" title={skillMeta.description} className="text-[10px]">
@@ -331,7 +333,7 @@ function CompletedExchangeRow({
 }) {
   return (
     <Collapsible className="overflow-hidden rounded-lg border">
-      <CollapsibleTrigger className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-muted">
+      <CollapsibleTrigger className="hover:bg-muted flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors">
         <CheckCircle2Icon className="size-3 shrink-0 text-emerald-400" />
         <span className="font-medium text-emerald-300/90">Q{index + 1}</span>
         <span className="text-muted-foreground flex-1 truncate">
@@ -441,7 +443,7 @@ function QuestionProgress({ answered, current }: { answered: number; current: nu
       {Array.from({ length: total }).map((_, i) => {
         const dot =
           i === current - 1
-            ? "size-1.5 rounded-full bg-indigo-400 ring-2 ring-indigo-400/25"
+            ? "size-1.5 rounded-full ring-2 ring-indigo-400/25"
             : i < answered
               ? "size-1.5 rounded-full bg-emerald-500/70"
               : "size-1.5 rounded-full bg-muted-foreground/25";
@@ -457,9 +459,9 @@ function ThinkingState({ isRunning, loadingStep }: { isRunning: boolean; loading
   return (
     <div className="text-muted-foreground flex items-center gap-2.5">
       <span className="flex gap-1">
-        <span className="size-1.5 animate-bounce rounded-full bg-indigo-400 [animation-delay:-0.3s]" />
-        <span className="size-1.5 animate-bounce rounded-full bg-indigo-400 [animation-delay:-0.15s]" />
-        <span className="size-1.5 animate-bounce rounded-full bg-indigo-400" />
+        <span className="size-1.5 animate-bounce rounded-full [animation-delay:-0.3s]" />
+        <span className="size-1.5 animate-bounce rounded-full [animation-delay:-0.15s]" />
+        <span className="size-1.5 animate-bounce rounded-full" />
       </span>
       <span className="text-[13px] italic">
         {isRunning ? loadingStep || "The examiner is thinking…" : "Waiting for the next question…"}
@@ -560,7 +562,7 @@ function QuestioningPane({
         className="group relative z-10 hidden w-1.5 shrink-0 cursor-col-resize items-center justify-center border-r bg-transparent transition-colors hover:bg-indigo-500/20 active:bg-indigo-500/30 md:flex"
         onPointerDown={handleDividerPointerDown}
       >
-        <div className="bg-border h-8 w-0.5 rounded-full transition-colors group-hover:bg-indigo-400" />
+        <div className="bg-border group-hover: h-8 w-0.5 rounded-full transition-colors" />
       </div>
 
       {/* Right: examination Q&A */}

@@ -57,8 +57,6 @@ describe("DocumentCanvas", () => {
   });
 
   it("renders without throwing", () => {
-    expect(() =>
-      render(<DocumentCanvas {...defaultProps} isStreaming={false} />),
-    ).not.toThrow();
+    expect(() => render(<DocumentCanvas {...defaultProps} isStreaming={false} />)).not.toThrow();
   });
 });
