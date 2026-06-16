@@ -18,6 +18,7 @@ def _mock_services():
         artifact_service=MagicMock(),
         memory_service=MagicMock(),
         credential_service=MagicMock(),
+        engine=MagicMock(),
     )
 
 

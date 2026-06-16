@@ -71,10 +71,24 @@ def test_agent_instruction_uses_adk_state_placeholders() -> None:
     assert not hasattr(agent, "_build_instruction")
 
 
+def _route_paths(app) -> set[str]:
+    paths = set()
+    for route in app.routes:
+        if hasattr(route, "path"):
+            paths.add(route.path)
+        elif hasattr(route, "original_router") and hasattr(route, "include_context"):
+            ic = route.include_context
+            prefix = getattr(ic, "prefix", "") or ""
+            for sub in route.original_router.routes:
+                if hasattr(sub, "path"):
+                    paths.add(prefix + sub.path)
+    return paths
+
+
 def test_main_register_exposes_prefixed_routes() -> None:
     app = FastAPI()
     main.register(app, create_agent_services())
 
-    paths = {route.path for route in app.routes}
+    paths = _route_paths(app)
     assert "/travel/health" in paths
     assert any(path.startswith("/travel/agui") for path in paths)

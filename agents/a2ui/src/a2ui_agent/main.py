@@ -18,5 +18,6 @@ def register(app: FastAPI, services: AgentServices):
         app,
         prefix="/a2ui",
         adk_agent=build_adk_agent(_a2ui_agent, services=services),
+        services=services,
         extract_state_from_request=make_extract_state(),
     )

@@ -18,5 +18,6 @@ def register(app: FastAPI, services: AgentServices):
         app,
         prefix="/resume",
         adk_agent=build_adk_agent(_resume_agent, services=services),
+        services=services,
         extract_state_from_request=make_extract_state(),
     )

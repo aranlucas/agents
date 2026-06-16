@@ -40,6 +40,7 @@ def register(app: FastAPI, services: AgentServices):
         adk_agent=build_adk_agent(
             _oralboards_agent, services=services, predict_state=ORALBOARDS_PREDICT_STATE
         ),
+        services=services,
         extract_state_from_request=make_extract_state(),
         health_check=_health,
     )

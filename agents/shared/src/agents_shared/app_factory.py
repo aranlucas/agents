@@ -101,6 +101,7 @@ def add_agent_routes(
     *,
     prefix: str,
     adk_agent: ADKAgent,
+    services: "AgentServices",
     extract_state_from_request: Callable[
         [Request, RunAgentInput],
         Awaitable[dict[str, object]],
@@ -119,6 +120,8 @@ def add_agent_routes(
     """
     from .dependencies import AgentServicesDep
     from .session_service import check_database_connection
+
+    app.state.services = services
 
     router = APIRouter()
     add_adk_fastapi_endpoint(
