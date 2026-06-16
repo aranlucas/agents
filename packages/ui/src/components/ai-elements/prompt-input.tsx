@@ -47,7 +47,9 @@ import type {
   PropsWithChildren,
   ReactNode,
   RefObject,
+  SyntheticEvent,
 } from "react";
+import type { BaseUIEvent } from "@base-ui/react/types";
 import {
   Children,
   createContext,
@@ -58,6 +60,8 @@ import {
   useRef,
   useState,
 } from "react";
+
+type DropdownMenuSelectEvent = BaseUIEvent<SyntheticEvent<HTMLDivElement, Event>>;
 
 // ============================================================================
 // Helpers
@@ -389,7 +393,7 @@ export const PromptInputActionAddAttachments = ({
   const attachments = usePromptInputAttachments();
 
   const handleSelect = useCallback(
-    (e: Event) => {
+    (e: DropdownMenuSelectEvent) => {
       e.preventDefault();
       attachments.openFileDialog();
     },
@@ -415,7 +419,7 @@ export const PromptInputActionAddScreenshot = ({
   const attachments = usePromptInputAttachments();
 
   const handleSelect = useCallback(
-    async (event: Event) => {
+    async (event: DropdownMenuSelectEvent) => {
       onSelect?.(event);
       if (event.defaultPrevented) {
         return;
