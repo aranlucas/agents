@@ -18,9 +18,9 @@ export default function CaseCard({ case: caseData }: CaseCardProps) {
   const [showModelResponse, setShowModelResponse] = useState(false);
 
   const difficultyVariant = {
-    beginner: "success",
-    intermediate: "warning",
-    advanced: "danger",
+    beginner: "default",
+    intermediate: "link",
+    advanced: "destructive",
   } as const;
 
   return (
