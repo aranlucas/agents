@@ -23,9 +23,20 @@ export async function interactSmoke(label: string, element: ReactElement) {
     });
     const root = tree!.root;
     for (const button of root.findAllByType("button")) {
+      // Skip Base UI dropdown triggers — they use createPortal (incompatible with
+      // react-test-renderer) and their enhanced-click handlers inspect native event
+      // properties that don't exist in this synthetic environment.
+      if (button.props["aria-haspopup"]) continue;
+
       if (typeof button.props.onClick === "function") {
         await act(async () => {
-          await button.props.onClick();
+          await button.props.onClick({
+            nativeEvent: {} as Event,
+            detail: 0,
+            type: "click",
+            preventDefault: () => {},
+            stopPropagation: () => {},
+          });
         });
       }
     }
