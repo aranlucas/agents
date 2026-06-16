@@ -8,6 +8,7 @@ import logging
 import os
 from collections.abc import Awaitable, Callable
 
+import ag_ui_adk.adk_agent as _adk_agent_module
 import litellm
 from ag_ui.core.types import RunAgentInput
 from ag_ui_adk import ADKAgent, add_adk_fastapi_endpoint
@@ -23,6 +24,29 @@ from opentelemetry.trace import Tracer
 from .dependencies import AgentServices
 
 _DEBUG_ENV_VAR = "AGENTS_DEBUG_LOGGING"
+
+
+_original_stream_events = _adk_agent_module.ADKAgent._stream_events
+
+
+async def _patched_stream_events(self, execution):
+    """Wrap _stream_events to cancel the background ADK task on generator close.
+
+    When the HTTP client disconnects (stop button), sse-starlette cancels the
+    SSE response stream, which calls aclose() on the async generator chain.
+    Without cancellation the background ``_run_adk_in_background`` task keeps
+    running to completion, wasting resources and potentially racing with the
+    next run on the same thread.
+    """
+    try:
+        async for event in _original_stream_events(self, execution):
+            yield event
+    finally:
+        if not execution.is_complete:
+            await execution.cancel()
+
+
+_adk_agent_module.ADKAgent._stream_events = _patched_stream_events
 
 
 def _debug_enabled() -> bool:
