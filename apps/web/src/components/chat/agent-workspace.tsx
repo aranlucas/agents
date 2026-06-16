@@ -57,12 +57,7 @@ export function AgentWorkspace({ agentId }: { agentId: AgentId }) {
             />
           }
           artifact={
-            artifact ? (
-              <ArtifactPanel
-                view={artifact}
-                onClose={() => dispatch("close")}
-              />
-            ) : null
+            artifact ? <ArtifactPanel view={artifact} onClose={() => dispatch("close")} /> : null
           }
         />
       </SidebarInset>

@@ -269,9 +269,7 @@ function VignettePanel({
   onNotesChange: React.Dispatch<React.SetStateAction<string>>;
 }) {
   return (
-    <div
-      className="bg-muted/25 flex shrink-0 flex-col gap-4 overflow-y-auto border-b px-5 py-4 max-h-[38vh] md:max-h-none md:border-b-0 md:border-r md:[width:var(--vignette-w,42%)]"
-    >
+    <div className="bg-muted/25 flex max-h-[38vh] shrink-0 flex-col gap-4 overflow-y-auto border-b px-5 py-4 md:max-h-none md:[width:var(--vignette-w,42%)] md:border-r md:border-b-0">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <BookOpenIcon className="size-3 text-indigo-400" />
@@ -541,7 +539,7 @@ function QuestioningPane({
     <div
       ref={containerRef}
       className="flex h-full flex-col overflow-hidden md:flex-row"
-      style={{ '--vignette-w': `${leftPct}%` } as CSSProperties}
+      style={{ "--vignette-w": `${leftPct}%` } as CSSProperties}
     >
       {/* Left: case vignette — pinned, always in view */}
       <VignettePanel
@@ -622,7 +620,7 @@ function QuestioningPane({
 
             <textarea
               aria-label="Your answer"
-              className="border-border bg-background h-24 resize-none rounded-lg border p-3 text-sm transition-shadow focus:ring-1 focus:ring-indigo-500 focus:outline-none disabled:opacity-50 md:h-auto md:flex-1 md:min-h-[80px]"
+              className="border-border bg-background h-24 resize-none rounded-lg border p-3 text-sm transition-shadow focus:ring-1 focus:ring-indigo-500 focus:outline-none disabled:opacity-50 md:h-auto md:min-h-[80px] md:flex-1"
               placeholder="Type your answer…"
               value={answerText}
               onChange={(e) => setAnswerText(e.target.value)}
@@ -746,7 +744,7 @@ export function OralBoardsPanel({
   const isQuestioning = status === "questioning";
 
   return (
-    <Artifact className="flex-1 min-h-0 rounded-none border-0">
+    <Artifact className="min-h-0 flex-1 rounded-none border-0">
       <ArtifactHeader>
         <ArtifactTitle>Oral board</ArtifactTitle>
       </ArtifactHeader>
