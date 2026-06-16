@@ -28,8 +28,6 @@ import type {
 import { Button } from "@agents/ui";
 import {
   Artifact,
-  ArtifactActions,
-  ArtifactClose,
   ArtifactContent,
   ArtifactHeader,
   ArtifactTitle,
@@ -748,19 +746,16 @@ export function OralBoardsPanel({
   const isQuestioning = status === "questioning";
 
   return (
-    <Artifact className="h-full rounded-none border-0 border-l">
+    <Artifact className="flex-1 min-h-0 rounded-none border-0">
       <ArtifactHeader>
         <ArtifactTitle>Oral board</ArtifactTitle>
-        <ArtifactActions>
-          <ArtifactClose aria-label="Close panel" onClick={onClose} />
-        </ArtifactActions>
       </ArtifactHeader>
       <ArtifactContent
         className={
           isQuestioning
-            ? "flex h-full overflow-hidden p-0"
+            ? "flex overflow-hidden p-0"
             : status === "presenting"
-              ? "flex h-full flex-col"
+              ? "flex flex-col"
               : "space-y-4"
         }
       >
