@@ -61,9 +61,7 @@ class AppendExchangeSchema(BaseModel):
     question: str = Field(
         description="The exact question text the examiner asked the candidate"
     )
-    answer: str = Field(
-        description="The candidate's verbatim answer to the question"
-    )
+    answer: str = Field(description="The candidate's verbatim answer to the question")
     feedback: str = Field(
         description=(
             "Cited feedback markdown. Must begin with: **Interview phase:** "
@@ -81,9 +79,7 @@ class AppendExchangeSchema(BaseModel):
 class SetCaseSchema(BaseModel):
     """Explicit parameter schema for `set_case`."""
 
-    case: str = Field(
-        description="The grounded case vignette in concise markdown"
-    )
+    case: str = Field(description="The grounded case vignette in concise markdown")
     case_sources: list[CaseSource] | None = Field(
         default=None,
         description=(
@@ -105,14 +101,25 @@ def _clean_query(query: str) -> str:
 # Domain / search tools
 # ---------------------------------------------------------------------------
 async def search_docs(
-    query: Annotated[str, Field(description="Free-text search terms (BM25-optimized; quotes and wildcards are stripped automatically)")],
-    collection: Annotated[Literal["", "aapd", "abpd", "cody"], Field(description="Optional source collection filter. Omit to search all.")] = "",
+    query: Annotated[
+        str,
+        Field(
+            description="Free-text search terms (BM25-optimized; quotes and wildcards are stripped automatically)"
+        ),
+    ],
+    collection: Annotated[
+        Literal["", "aapd", "abpd", "cody"],
+        Field(description="Optional source collection filter. Omit to search all."),
+    ] = "",
 ) -> dict:
-    """Search bundled oral-board source documents with FTS5/BM25.
-  """
+    """Search bundled oral-board source documents with FTS5/BM25."""
     clean = _clean_query(query)
     if not clean:
-        return {"status": "error", "results": [], "error": "query is empty after cleaning"}
+        return {
+            "status": "error",
+            "results": [],
+            "error": "query is empty after cleaning",
+        }
     if collection and collection not in VALID_COLLECTIONS:
         return {
             "status": "error",
@@ -173,7 +180,7 @@ async def read_doc(filepath: str) -> dict:
 
     The `filepath` value should come from a search_docs result's `filepath`
     field (e.g. \"aapd/some-guideline.md\").
- """
+    """
     collection, _, path = filepath.partition("/")
     if not path:
         collection = ""
