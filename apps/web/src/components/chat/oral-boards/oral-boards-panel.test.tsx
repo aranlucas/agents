@@ -79,7 +79,9 @@ describe("OralBoardsPanel — presenting", () => {
 
     render(<OralBoardsPanel state={state} {...baseProps} />);
 
-    expect(screen.getByText("A 4-year-old presents with early childhood caries.")).toBeInTheDocument();
+    expect(
+      screen.getByText("A 4-year-old presents with early childhood caries."),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Begin Examination" })).toBeInTheDocument();
   });
 

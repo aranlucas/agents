@@ -116,7 +116,7 @@ function RapidToggleTest() {
       </div>
       <pre className="h-48 overflow-y-scroll rounded border border-(--border) bg-(--bg-soft) p-3 font-mono text-xs leading-relaxed text-(--ink-soft)">
         {log.length === 0 ? (
-          <span className="italic text-(--ink-mute)">
+          <span className="text-(--ink-mute) italic">
             Click Speak to start, then Stop mid-playback.
           </span>
         ) : (
@@ -136,9 +136,8 @@ export default function TtsDemoPage() {
       <header className="mb-8">
         <h1 className="text-lg font-semibold">TTS Listen/Stop Test</h1>
         <p className="mt-1 text-sm text-(--ink-soft)">
-          Test the <Code>speak</Code> / <Code>stopSpeaking</Code> fix. Click{" "}
-          <strong>Listen</strong>, then click <strong>Stop</strong> — audio should stop immediately
-          and not restart.
+          Test the <Code>speak</Code> / <Code>stopSpeaking</Code> fix. Click <strong>Listen</strong>
+          , then click <strong>Stop</strong> — audio should stop immediately and not restart.
         </p>
       </header>
 
