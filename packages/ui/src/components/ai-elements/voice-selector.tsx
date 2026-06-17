@@ -71,7 +71,7 @@ export const VoiceSelector = ({
 
   const [open, setOpen] = useControllableState({
     defaultProp: defaultOpen,
-    onChange: onOpenChange,
+    onChange: onOpenChange ? (value) => onOpenChange(value, { reason: "none", preventUnmountOnClose: () => {} } as any) : undefined,
     prop: openProp,
   });
 
