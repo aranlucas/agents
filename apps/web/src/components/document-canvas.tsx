@@ -20,7 +20,7 @@ import {
   Textarea,
 } from "@agents/ui";
 
-import { daysBetween, fmtDateRange, parseItinerary } from "./document-canvas-utils";
+import { type Day, daysBetween, fmtDateRange, parseItinerary } from "./document-canvas-utils";
 
 interface Props {
   destination: string;

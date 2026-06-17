@@ -1,4 +1,4 @@
-interface Day {
+export interface Day {
   day: number;
   theme: string;
   activities: string[];
