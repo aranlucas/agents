@@ -150,6 +150,9 @@ addEventListener("message", async (event: MessageEvent) => {
           speed: typeof msg.speed === "number" ? msg.speed : 1,
         });
 
+        // If stop was requested while this chunk was generating, discard it
+        if (shouldStop) break;
+
         const pcm = audio.audio;
         const sampleRate = audio.sampling_rate ?? KOKORO_SAMPLE_RATE;
 
