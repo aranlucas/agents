@@ -175,6 +175,12 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
     colorVar: "--oral-boards",
     placeholder: "Start a graph-based oral-board case (workflow)…",
     welcome: "This is the workflow-based oral boards examiner. Name a topic or start a case.",
+    artifact: {
+      stateField: "case",
+      kind: "markdown",
+      title: "Case",
+      name: "case.md",
+    },
     suggestions: [
       {
         title: "Start a case",

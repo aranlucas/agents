@@ -56,6 +56,16 @@ const AGENTS: Agent[] = [
     theme: "oral-boards",
   },
   {
+    id: "05b",
+    href: "/console/oral-boards-v2",
+    name: "Oral Boards v2",
+    tagline: "Graph-based exam flow",
+    description: "ADK graph-driven oral boards: deterministic flow, guaranteed Q&A, auto-scoring.",
+    cta: "Try v2",
+    tags: ["OCE", "Graphs", "Auto-score"],
+    theme: "oral-boards-v2",
+  },
+  {
     id: "06",
     href: "/console/resume",
     name: "Resume",
