@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { cn, SidebarTrigger } from "@agents/ui";
 
 export type { PanelState, PanelAction } from "./workspace-shell-utils";
+import type { PanelState, PanelAction } from "./workspace-shell-utils";
 import { nextPanelState } from "./workspace-shell-utils";
 
 const STORAGE_PREFIX = "agents-artifact-panel:";
