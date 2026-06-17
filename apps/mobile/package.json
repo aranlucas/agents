@@ -10,7 +10,7 @@
     "web": "expo start --web",
     "eas:env:production": "npx eas-cli env:list production --format long",
     "eas:env:pull:production": "npx eas-cli env:pull production --path .env.local",
-    "build": "npx eas-cli build --profile production --platform all",
+    "build": "npx eas-cli build --profile production --platform android",
     "build:android": "npx eas-cli build --profile production --platform android",
     "build:preview": "npx eas-cli build --profile preview --platform android",
     "build:preview:android": "npx eas-cli build --profile preview --platform android",
