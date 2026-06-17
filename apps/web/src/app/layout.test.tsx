@@ -1,4 +1,5 @@
-import { render } from "@testing-library/react";
+// @vitest-environment jsdom
+import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -20,6 +21,10 @@ vi.mock("next-themes", () => ({
   useTheme: () => ({ theme: "system", resolvedTheme: "light", setTheme: vi.fn() }),
 }));
 
+vi.mock("@/components/providers", () => ({
+  Providers: ({ children }: { children: ReactNode }) => <>{children}</>,
+}));
+
 import RootLayout from "./layout";
 
 describe("RootLayout", () => {
@@ -29,7 +34,13 @@ describe("RootLayout", () => {
     expect(markup).toContain("hello world");
   });
 
-  it("renders without throwing", () => {
-    expect(() => render(<RootLayout>test</RootLayout>)).not.toThrow();
+  it("sets lang attribute to en", () => {
+    const markup = renderToStaticMarkup(<RootLayout>test</RootLayout>);
+    expect(markup).toContain('lang="en"');
+  });
+
+  it("renders children in the DOM", () => {
+    render(<RootLayout>test content</RootLayout>);
+    expect(screen.getByText("test content")).toBeInTheDocument();
   });
 });

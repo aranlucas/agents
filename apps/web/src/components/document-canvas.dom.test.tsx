@@ -148,17 +148,16 @@ describe("DocumentCanvas", () => {
 
   it("calls onItineraryChange when the raw textarea changes", async () => {
     const onItineraryChange = vi.fn();
-    const { container } = render(
+    render(
       <DocumentCanvas
         {...defaults}
         itinerary="## Day 1: Arrival\n- Land"
         onItineraryChange={onItineraryChange}
       />,
     );
-    // The textarea is the only <textarea> in the component (inside <details>)
-    const textarea = container.querySelector("textarea");
-    expect(textarea).not.toBeNull();
-    await userEvent.type(textarea!, "x");
+    await userEvent.click(screen.getByText("Edit raw itinerary (markdown)"));
+    const textarea = await screen.findByPlaceholderText(/## Day 1: Arrival/);
+    await userEvent.type(textarea, "x");
     expect(onItineraryChange).toHaveBeenCalled();
   });
 });

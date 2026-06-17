@@ -1,4 +1,5 @@
-import { render } from "@testing-library/react";
+// @vitest-environment jsdom
+import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -29,7 +30,46 @@ vi.mock("@tanstack/react-query", () => ({
 import Home from "./page";
 
 describe("Home page", () => {
-  it("renders", () => {
-    expect(() => render(<Home />)).not.toThrow();
+  it("renders the main heading", () => {
+    render(<Home />);
+    expect(
+      screen.getByRole("heading", { name: /Agents that coordinate useful work/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the Planning system badge", () => {
+    render(<Home />);
+    expect(screen.getByText("Planning system")).toBeInTheDocument();
+  });
+
+  it("renders all agent cards", () => {
+    render(<Home />);
+    expect(screen.getByText("Trip Studio")).toBeInTheDocument();
+    expect(screen.getByText("Grocery Studio")).toBeInTheDocument();
+    expect(screen.getByText("Fitness Studio")).toBeInTheDocument();
+    expect(screen.getByText("Wellness Studio")).toBeInTheDocument();
+    expect(screen.getByText("Oral Boards")).toBeInTheDocument();
+    expect(screen.getByText("Resume")).toBeInTheDocument();
+    expect(screen.getByText("A2UI Studio")).toBeInTheDocument();
+  });
+
+  it("renders links to each agent console", () => {
+    render(<Home />);
+    const links = screen.getAllByRole("link");
+    const hrefs = links.map((link) => link.getAttribute("href"));
+    expect(hrefs).toContain("/console/travel");
+    expect(hrefs).toContain("/console/grocery");
+    expect(hrefs).toContain("/console/fitness");
+    expect(hrefs).toContain("/console/wellness");
+    expect(hrefs).toContain("/console/oral-boards");
+    expect(hrefs).toContain("/console/resume");
+    expect(hrefs).toContain("/console/a2ui");
+  });
+
+  it("renders the footer with agent labels", () => {
+    render(<Home />);
+    expect(screen.getAllByText("Grocery").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Fitness").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Wellness orchestration")).toBeInTheDocument();
   });
 });

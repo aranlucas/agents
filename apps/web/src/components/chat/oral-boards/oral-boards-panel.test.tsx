@@ -47,6 +47,16 @@ vi.mock("@/lib/copilotkit/use-answer-recorder", () => ({
   }),
 }));
 
+vi.mock("@agents/ui", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@agents/ui")>();
+  return {
+    ...actual,
+    ResizablePanelGroup: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    ResizablePanel: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    ResizableHandle: () => null,
+  };
+});
+
 import { OralBoardsPanel } from "./oral-boards-panel";
 
 const noop = () => {};
@@ -69,8 +79,8 @@ describe("OralBoardsPanel — presenting", () => {
 
     render(<OralBoardsPanel state={state} {...baseProps} />);
 
-    expect(screen.getByText("A 4-year-old presents with early childhood caries.")).toBeDefined();
-    expect(screen.getByRole("button", { name: "Begin Examination" })).toBeDefined();
+    expect(screen.getByText("A 4-year-old presents with early childhood caries.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Begin Examination" })).toBeInTheDocument();
   });
 
   it("calls onReady when Ready to begin is clicked", async () => {
@@ -107,7 +117,7 @@ describe("OralBoardsPanel — questioning", () => {
 
     render(<OralBoardsPanel state={state} {...baseProps} />);
 
-    expect(screen.getByText("What is your initial impression?")).toBeDefined();
+    expect(screen.getByText("What is your initial impression?")).toBeInTheDocument();
 
     vi.mocked(useOralBoardsQuestion).mockReturnValue({
       currentQuestion: "",
@@ -167,8 +177,8 @@ describe("OralBoardsPanel — questioning", () => {
 
     render(<OralBoardsPanel state={state} {...baseProps} />);
 
-    expect(screen.getByText("Your answer: I see caries.")).toBeDefined();
-    expect(screen.queryByRole("button", { name: /Q1 ·/ })).toBeNull();
+    expect(screen.getByText("Your answer: I see caries.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Q1 ·/ })).not.toBeInTheDocument();
   });
 
   it("older exchanges collapse to chips; only the last stays expanded", async () => {
@@ -197,9 +207,9 @@ describe("OralBoardsPanel — questioning", () => {
     render(<OralBoardsPanel state={state} {...baseProps} />);
 
     const chip = screen.getByRole("button", { name: /^Q1/ });
-    expect(chip).toBeDefined();
-    expect(screen.queryByText("Your answer: I see caries.")).toBeNull();
-    expect(screen.getByText("Your answer: Radiographs.")).toBeDefined();
+    expect(chip).toBeInTheDocument();
+    expect(screen.queryByText("Your answer: I see caries.")).not.toBeInTheDocument();
+    expect(screen.getByText("Your answer: Radiographs.")).toBeInTheDocument();
 
     await userEvent.click(chip);
     expect(
@@ -207,7 +217,7 @@ describe("OralBoardsPanel — questioning", () => {
         (_content, el) =>
           el?.tagName === "P" && el.textContent?.includes("Your answer: I see caries."),
       ),
-    ).toBeDefined();
+    ).toBeInTheDocument();
 
     await userEvent.click(chip);
     expect(
@@ -215,7 +225,7 @@ describe("OralBoardsPanel — questioning", () => {
         (_content, el) =>
           el?.tagName === "P" && el.textContent?.includes("Your answer: I see caries."),
       ),
-    ).toBeNull();
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -251,22 +261,18 @@ describe("OralBoardsPanel — complete", () => {
 
     render(<OralBoardsPanel state={state} {...baseProps} />);
 
-    expect(screen.getByText("Q1")).toBeDefined();
-    expect(screen.getByText("Describe your approach to pain management.")).toBeDefined();
-    expect(screen.getByText("Your answer: I would use local anesthesia.")).toBeDefined();
+    expect(screen.getByText("Q1")).toBeInTheDocument();
+    expect(screen.getByText("Describe your approach to pain management.")).toBeInTheDocument();
+    expect(screen.getByText("Your answer: I would use local anesthesia.")).toBeInTheDocument();
 
-    // Practice-outcome banner (study-aid verdict, not part of the real OCE)
-    expect(screen.getByText(/Practice outcome:/)).toBeDefined();
-    expect(screen.getByText(/Borderline/)).toBeDefined();
+    expect(screen.getByText(/Practice outcome:/)).toBeInTheDocument();
+    expect(screen.getByText(/Borderline/)).toBeInTheDocument();
 
-    // Per-skillset score table surfaces the skill-level label and rationale.
-    // The skill label also appears as an exchange badge, so expect >= 1.
     expect(screen.getAllByText("Analyze / Evaluate").length).toBeGreaterThan(0);
-    expect(screen.getByText("Solid plan; thin on alternatives.")).toBeDefined();
+    expect(screen.getByText("Solid plan; thin on alternatives.")).toBeInTheDocument();
 
-    // The model answer is now surfaced (was previously never rendered)
-    expect(screen.getByText("Model answer")).toBeDefined();
-    expect(screen.getByText("Use articaine with epinephrine.")).toBeDefined();
+    expect(screen.getByText("Model answer")).toBeInTheDocument();
+    expect(screen.getByText("Use articaine with epinephrine.")).toBeInTheDocument();
   });
 
   it("offers a Start a new case action and fires onClose", async () => {
@@ -298,12 +304,10 @@ describe("OralBoardsPanel — notes", () => {
 
     const notesField = screen.getByLabelText("Case notes");
     await userEvent.type(notesField, "ECC on #B and #I");
-    expect((notesField as HTMLTextAreaElement).value).toBe("ECC on #B and #I");
+    expect(notesField).toHaveValue("ECC on #B and #I");
 
     rerender(<OralBoardsPanel state={{ ...presenting, status: "questioning" }} {...baseProps} />);
 
-    expect((screen.getByLabelText("Case notes") as HTMLTextAreaElement).value).toBe(
-      "ECC on #B and #I",
-    );
+    expect(screen.getByLabelText("Case notes")).toHaveValue("ECC on #B and #I");
   });
 });
