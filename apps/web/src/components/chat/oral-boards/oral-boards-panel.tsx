@@ -528,7 +528,7 @@ function QuestioningPane({
   return (
     <ResizablePanelGroup orientation="horizontal" className="h-full">
       {/* Left: case vignette — pinned, always in view */}
-      <ResizablePanel defaultSize={42} minSize={20} maxSize={65}>
+      <ResizablePanel defaultSize="50%">
         <VignettePanel
           caseBody={caseBody}
           sources={sources}
