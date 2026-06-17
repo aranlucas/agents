@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { cn, SidebarTrigger } from "@agents/ui";
+import { cn } from "@agents/ui/lib/utils";
+import { SidebarTrigger } from "@agents/ui";
 
 export type { PanelState, PanelAction } from "./workspace-shell-utils";
 import type { PanelState, PanelAction } from "./workspace-shell-utils";
