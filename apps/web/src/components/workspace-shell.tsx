@@ -1,39 +1,23 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
-import { cn } from "@agents/ui/lib/utils";
-import { SidebarTrigger } from "@agents/ui";
+import { useState, type ReactNode } from "react";
+import { cn, SidebarTrigger } from "@agents/ui";
 
-export type PanelState = "closed" | "split";
-export type PanelAction = "open" | "close" | "toggle-open";
-
-export function nextPanelState(state: PanelState, action: PanelAction): PanelState {
-  switch (action) {
-    case "open":
-      return "split";
-    case "close":
-      return "closed";
-    case "toggle-open":
-      return state === "closed" ? "split" : "closed";
-    default:
-      return state;
-  }
-}
+export type { PanelState, PanelAction } from "./workspace-shell-utils";
+import { nextPanelState } from "./workspace-shell-utils";
 
 const STORAGE_PREFIX = "agents-artifact-panel:";
 
 export function useArtifactPanel(agentId: string) {
-  const [state, setState] = useState<PanelState>("closed");
-  useEffect(() => {
-    const stored = window.localStorage.getItem(STORAGE_PREFIX + agentId);
-    setState(stored === "split" ? "split" : "closed");
-  }, [agentId]);
-  const dispatch = (action: PanelAction) =>
-    setState((s) => {
-      const next = nextPanelState(s, action);
-      window.localStorage.setItem(STORAGE_PREFIX + agentId, next);
-      return next;
-    });
+  const [, forceUpdate] = useState(0);
+  const key = STORAGE_PREFIX + agentId;
+  const stored = typeof window !== "undefined" ? window.localStorage.getItem(key) : null;
+  const state: PanelState = stored === "split" ? "split" : "closed";
+  const dispatch = (action: PanelAction) => {
+    const next = nextPanelState(state, action);
+    window.localStorage.setItem(key, next);
+    forceUpdate((n) => n + 1);
+  };
   return { state, dispatch };
 }
 

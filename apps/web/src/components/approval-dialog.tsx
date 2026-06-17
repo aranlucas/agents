@@ -3,15 +3,15 @@
 import React, { useEffect } from "react";
 import { TriangleAlert } from "lucide-react";
 
-import { Button } from "@agents/ui";
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@agents/ui/components/dialog";
+} from "@agents/ui";
 
 export interface ApprovalRequest {
   id: string;
@@ -78,14 +78,14 @@ export function ApprovalCard({ request }: Props) {
   );
 }
 
-export function ApprovalDialog({ request }: Props) {
+export function ApprovalDialog({ request: approval }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") request.resolve({ approved: false });
+      if (e.key === "Escape") approval.resolve({ approved: false });
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [request]);
+  }, [approval]);
 
   return (
     <Dialog open>
@@ -106,22 +106,22 @@ export function ApprovalDialog({ request }: Props) {
           <div className="text-muted-foreground mb-1 font-mono text-[10px] tracking-wider uppercase">
             Proposed action
           </div>
-          <div className="text-foreground text-sm font-medium">{request.action}</div>
+          <div className="text-foreground text-sm font-medium">{approval.action}</div>
         </div>
 
-        {request.reason && (
+        {approval.reason && (
           <div className="bg-secondary mb-4 rounded-xl border border-(--border-soft) px-4 py-3">
             <div className="text-muted-foreground mb-1 font-mono text-[10px] tracking-wider uppercase">
               Why
             </div>
-            <div className="text-sm text-(--ink-soft)">{request.reason}</div>
+            <div className="text-sm text-(--ink-soft)">{approval.reason}</div>
           </div>
         )}
 
         <DialogFooter className="grid grid-cols-2 gap-2 sm:grid-cols-2">
           <Button
             type="button"
-            onClick={() => request.resolve({ approved: false, note: "rejected by user" })}
+            onClick={() => approval.resolve({ approved: false, note: "rejected by user" })}
             variant="outline"
             className="w-full"
           >
@@ -129,7 +129,7 @@ export function ApprovalDialog({ request }: Props) {
           </Button>
           <Button
             type="button"
-            onClick={() => request.resolve({ approved: true })}
+            onClick={() => approval.resolve({ approved: true })}
             className="w-full"
           >
             Approve

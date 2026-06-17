@@ -5,22 +5,21 @@ import { useAgentContext } from "@copilotkit/react-core/v2";
 import { Car, Plane } from "lucide-react";
 import type { BudgetTier, Pace, Preferences, TransportMode, Vibe } from "@agents/types";
 
-import { Badge } from "@agents/ui";
-import { Button } from "@agents/ui";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@agents/ui";
-import { Input } from "@agents/ui/components/input";
-import { Label } from "@agents/ui/components/label";
-import { cn } from "@agents/ui/lib/utils";
+import {
+  Badge,
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  cn,
+  Input,
+  Label,
+} from "@agents/ui";
 
-export const DEFAULT_PREFERENCES: Preferences = {
-  travelerName: "",
-  homeAirport: "",
-  transportMode: "flight",
-  budgetTier: "comfort",
-  vibe: "foodie",
-  pace: "balanced",
-  interests: [],
-};
+import { DEFAULT_PREFERENCES } from "./preferences-defaults";
 
 const BUDGET_OPTIONS: { value: BudgetTier; label: string; hint: string }[] = [
   { value: "shoestring", label: "Shoestring", hint: "< $100/day" },
@@ -247,18 +246,18 @@ export function PreferencesPanel() {
 
         <p className="mb-2 block text-xs font-medium text-(--ink-soft)">Interests</p>
         <div className="mb-4 flex flex-wrap gap-1.5">
-          {INTEREST_OPTIONS.map((i) => {
-            const active = value.interests.includes(i);
+          {INTEREST_OPTIONS.map((interest) => {
+            const active = value.interests.includes(interest);
             return (
               <Button
-                key={i}
+                key={interest}
                 type="button"
-                onClick={() => toggleInterest(i)}
+                onClick={() => toggleInterest(interest)}
                 variant={active ? "default" : "outline"}
                 size="xs"
                 className={cn("rounded-full text-xs", !active && "bg-secondary")}
               >
-                {i}
+                {interest}
               </Button>
             );
           })}

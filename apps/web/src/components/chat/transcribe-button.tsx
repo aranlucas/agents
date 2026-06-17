@@ -1,14 +1,14 @@
 "use client";
 import type { ElementRef } from "react";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState, useSyncExternalStore } from "react";
 import { CopilotChatAudioRecorder } from "@copilotkit/react-core/v2";
 import { Check, Loader2, Mic, X } from "lucide-react";
 
-import {
-  PromptInputButton,
-  usePromptInputController,
-} from "@agents/ui/components/ai-elements/prompt-input";
+import { PromptInputButton, usePromptInputController } from "@agents/ui";
+
+const noopSubscribe = () => () => {};
+const getMicSupported = () => typeof navigator.mediaDevices?.getUserMedia === "function";
 
 export function TranscribeButton() {
   const { textInput } = usePromptInputController();
@@ -16,10 +16,7 @@ export function TranscribeButton() {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const audioRecorderRef = useRef<ElementRef<typeof CopilotChatAudioRecorder>>(null);
 
-  const [micSupported, setMicSupported] = useState(false);
-  useEffect(() => {
-    setMicSupported(typeof navigator.mediaDevices?.getUserMedia === "function");
-  }, []);
+  const micSupported = useSyncExternalStore(noopSubscribe, getMicSupported, () => false);
 
   const stopAndTranscribe = useCallback(async () => {
     const recorder = audioRecorderRef.current;
