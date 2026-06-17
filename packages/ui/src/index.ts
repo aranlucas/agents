@@ -91,6 +91,7 @@ export {
 } from "./components/input-group";
 export { Input } from "./components/input";
 export { Kbd, KbdGroup } from "./components/kbd";
+export { Label } from "./components/label";
 export {
   Popover,
   PopoverContent,
@@ -106,6 +107,7 @@ export {
   ProgressTrack,
   ProgressValue,
 } from "./components/progress";
+export { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "./components/resizable";
 export { ScrollArea, ScrollBar } from "./components/scroll-area";
 export {
   Select,

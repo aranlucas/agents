@@ -7,7 +7,9 @@ import type { DocStatus } from "@agents/types";
 import { Badge } from "@agents/ui";
 import { Button } from "@agents/ui";
 import { Card, CardContent, CardFooter, CardHeader } from "@agents/ui";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@agents/ui";
 import { Input } from "@agents/ui/components/input";
+import { ScrollArea } from "@agents/ui/components/scroll-area";
 import { Textarea } from "@agents/ui/components/textarea";
 import { cn } from "@agents/ui/lib/utils";
 
@@ -154,7 +156,7 @@ export function DocumentCanvas({
 
   return (
     <Card className="h-full gap-0 py-0">
-      <CardHeader className="from-card to-secondary border-b border-(--border-soft) bg-gradient-to-br px-6 py-5">
+      <CardHeader className="from-card to-secondary border-b border-(--border-soft) bg-gradient-to-br px-4 py-4 md:px-6 md:py-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <Input
@@ -216,7 +218,7 @@ export function DocumentCanvas({
       )}
 
       {flights && (
-        <Card size="sm" className="bg-secondary mx-6 mt-4 gap-2 p-4 py-4">
+        <Card size="sm" className="bg-secondary mx-6 mt-4 gap-2 p-4">
           <h3 className="text-muted-foreground mb-2 text-xs font-semibold tracking-wider uppercase">
             Flights
           </h3>
@@ -232,53 +234,59 @@ export function DocumentCanvas({
         </Card>
       )}
 
-      <CardContent className="relative min-h-0 flex-1 overflow-y-auto px-6 py-5">
-        {days.length === 0 && !trailing && !itinerary.trim() ? (
-          <EmptyState />
-        ) : (
-          <div className="space-y-4">
-            {trailing && <p className="text-muted-foreground text-sm italic">{trailing}</p>}
-            <div className="streamdown-markdown">
-              <Streamdown>{itinerary}</Streamdown>
-            </div>
-            {days.map((d) => (
-              <DayCard key={`${d.day}-${d.theme}`} day={d} />
-            ))}
+      <CardContent className="relative min-h-0 flex-1">
+        <ScrollArea className="size-full">
+          <div className="px-4 py-4 md:px-6 md:py-5">
+            {days.length === 0 && !trailing && !itinerary.trim() ? (
+              <EmptyState />
+            ) : (
+              <div className="space-y-4">
+                {trailing && <p className="text-muted-foreground text-sm italic">{trailing}</p>}
+                <div className="streamdown-markdown">
+                  <Streamdown>{itinerary}</Streamdown>
+                </div>
+                {days.map((d) => (
+                  <DayCard key={`${d.day}-${d.theme}`} day={d} />
+                ))}
+                {isStreaming && (
+                  <Card className="border-primary bg-accent text-accent-foreground gap-0 border-dashed px-4 py-3 text-xs font-medium">
+                    <span className="inline-flex items-center gap-2">
+                      <span className="bg-primary h-1.5 w-1.5 animate-pulse rounded-full" />
+                      Streaming next day…
+                    </span>
+                  </Card>
+                )}
+              </div>
+            )}
+
             {isStreaming && (
-              <Card className="border-primary bg-accent text-accent-foreground gap-0 border-dashed px-4 py-3 text-xs font-medium">
-                <span className="inline-flex items-center gap-2">
-                  <span className="bg-primary h-1.5 w-1.5 animate-pulse rounded-full" />
-                  Streaming next day…
-                </span>
-              </Card>
+              <Badge className="bg-accent text-accent-foreground pointer-events-none absolute top-5 right-6 gap-2 font-mono text-[10px] tracking-wider uppercase">
+                <span className="bg-primary h-1.5 w-1.5 animate-pulse rounded-full" />
+                Live
+              </Badge>
             )}
           </div>
-        )}
-
-        {isStreaming && (
-          <Badge className="bg-accent text-accent-foreground pointer-events-none absolute top-5 right-6 gap-2 font-mono text-[10px] tracking-wider uppercase">
-            <span className="bg-primary h-1.5 w-1.5 animate-pulse rounded-full" />
-            Live
-          </Badge>
-        )}
+        </ScrollArea>
       </CardContent>
 
       <CardFooter className="bg-secondary border-t border-(--border-soft) px-6 py-3">
-        <details className="text-xs">
-          <summary className="text-muted-foreground cursor-pointer select-none hover:text-(--ink-soft)">
+        <Collapsible className="w-full text-xs">
+          <CollapsibleTrigger className="text-muted-foreground cursor-pointer select-none hover:text-(--ink-soft)">
             Edit raw itinerary (markdown)
-          </summary>
-          <Textarea
-            value={itinerary}
-            onChange={(e) => onItineraryChange(e.target.value)}
-            placeholder={
-              "## Day 1: Arrival\n\n- 14:00 — Land at HND\n- 18:00 — Ramen in Shinjuku\n"
-            }
-            spellCheck={false}
-            rows={8}
-            className="bg-card mt-2 resize-y font-mono text-[12px] leading-5"
-          />
-        </details>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <Textarea
+              value={itinerary}
+              onChange={(e) => onItineraryChange(e.target.value)}
+              placeholder={
+                "## Day 1: Arrival\n\n- 14:00 — Land at HND\n- 18:00 — Ramen in Shinjuku\n"
+              }
+              spellCheck={false}
+              rows={8}
+              className="bg-card mt-2 resize-y font-mono text-[12px] leading-5"
+            />
+          </CollapsibleContent>
+        </Collapsible>
       </CardFooter>
     </Card>
   );
