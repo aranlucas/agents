@@ -561,7 +561,6 @@ function QuestioningPane({
                   </div>
                 )}
               </ScrollArea>
-
             </ResizablePanel>
             <ResizableHandle withHandle />
 

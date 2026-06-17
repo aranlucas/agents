@@ -81,8 +81,8 @@ function OralBoardsStartPage({
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 p-8">
         <p className="text-muted-foreground text-sm">
-          Could not connect to the agent backend. You can still start a case — the first question may
-          be slower than usual.
+          Could not connect to the agent backend. You can still start a case — the first question
+          may be slower than usual.
         </p>
         <Button size="lg" className="px-10" onClick={() => onStart(TOPICS[0].message)}>
           Start anyway
@@ -145,9 +145,7 @@ export function OralBoardsWorkspace() {
 
   const { statuses, isLoading: warmingUp } = useAgentWarmup();
   const warmupError =
-    statuses[AGENT_ID] === "error" && !warmingUp
-      ? new Error("Agent backend is unreachable")
-      : null;
+    statuses[AGENT_ID] === "error" && !warmingUp ? new Error("Agent backend is unreachable") : null;
 
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const examState = (agent?.state ?? {}) as OralBoardsState;
