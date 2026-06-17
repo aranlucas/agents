@@ -5,7 +5,10 @@ import { useCallback, useRef, useState, useSyncExternalStore } from "react";
 import { CopilotChatAudioRecorder } from "@copilotkit/react-core/v2";
 import { Check, Loader2, Mic, X } from "lucide-react";
 
-import { PromptInputButton, usePromptInputController } from "@agents/ui";
+import {
+  PromptInputButton,
+  usePromptInputController,
+} from "@agents/ui/components/ai-elements/prompt-input";
 
 const noopSubscribe = () => () => {};
 const getMicSupported = () => typeof navigator.mediaDevices?.getUserMedia === "function";

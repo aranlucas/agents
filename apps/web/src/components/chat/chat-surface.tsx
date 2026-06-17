@@ -12,15 +12,32 @@ import {
 } from "@copilotkit/react-core/v2";
 import { SparklesIcon } from "lucide-react";
 
+import { Button } from "@agents/ui";
+import { Suggestion, Suggestions } from "@agents/ui/components/ai-elements/suggestion";
 import {
-  Button,
   Conversation,
   ConversationContent,
   ConversationEmptyState,
   ConversationScrollButton,
+} from "@agents/ui/components/ai-elements/conversation";
+import {
   Message,
   MessageContent,
   MessageResponse,
+} from "@agents/ui/components/ai-elements/message";
+import {
+  Reasoning,
+  ReasoningContent,
+  ReasoningTrigger,
+} from "@agents/ui/components/ai-elements/reasoning";
+import {
+  Tool,
+  ToolContent,
+  ToolHeader,
+  ToolInput,
+  ToolOutput,
+} from "@agents/ui/components/ai-elements/tool";
+import {
   PromptInput,
   PromptInputBody,
   PromptInputFooter,
@@ -28,18 +45,8 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputTools,
-  Reasoning,
-  ReasoningContent,
-  ReasoningTrigger,
-  Suggestion,
-  Suggestions,
-  Tool,
-  ToolContent,
-  ToolHeader,
-  ToolInput,
-  ToolOutput,
   type PromptInputMessage,
-} from "@agents/ui";
+} from "@agents/ui/components/ai-elements/prompt-input";
 
 import type { AgentConfig, AgentId } from "./agents/registry";
 import { toRenderItems, type AguiMessage, type AguiToolCall } from "./messages";
