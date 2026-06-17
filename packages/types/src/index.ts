@@ -4,6 +4,7 @@ export const AGENT_ORDER = [
   "fitness",
   "wellness",
   "oral-boards",
+  "oral-boards-v2",
   "a2ui",
   "resume",
 ] as const;
@@ -16,6 +17,7 @@ export const AGENT_BACKEND_PATHS = {
   fitness: "fitness",
   wellness: "wellness",
   "oral-boards": "oralboards",
+  "oral-boards-v2": "oralboards-v2",
   a2ui: "a2ui",
   resume: "resume",
 } as const satisfies Record<AgentId, string>;
