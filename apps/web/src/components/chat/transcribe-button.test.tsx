@@ -1,8 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ComponentProps } from "react";
 import { type Ref, useImperativeHandle } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { PromptInputControllerProps } from "@agents/ui";
 
 const recorderStart = vi.fn();
 const recorderStop = vi.fn();
@@ -23,19 +23,33 @@ vi.mock("@copilotkit/react-core/v2", () => ({
   },
 }));
 
-vi.mock("@agents/ui", () => import("@/__mocks__/@agents/ui"));
+vi.mock("@agents/ui/components/ai-elements/prompt-input", () => ({
+  PromptInputButton: ({
+    children,
+    tooltip,
+    ...props
+  }: ComponentProps<"button"> & { tooltip?: string }) => (
+    <button title={tooltip} type="button" {...props}>
+      {children}
+    </button>
+  ),
+  usePromptInputController: () => ({
+    textInput: {
+      value: "",
+      setInput,
+    },
+  }),
+}));
 
-import { usePromptInputController } from "@agents/ui";
+vi.mock("@agents/ui", () => ({
+  Button: (props: ComponentProps<"button">) => <button type="button" {...props} />,
+}));
 
 describe("TranscribeButton", () => {
   beforeEach(() => {
     recorderStart.mockReset();
     recorderStop.mockReset();
     setInput.mockReset();
-    vi.mocked(usePromptInputController).mockReset();
-    vi.mocked(usePromptInputController).mockReturnValue({
-      textInput: { value: "", setInput, clear: vi.fn() },
-    } as unknown as PromptInputControllerProps);
     vi.stubGlobal("fetch", vi.fn());
     Object.defineProperty(globalThis.navigator, "mediaDevices", {
       configurable: true,

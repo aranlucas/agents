@@ -1,7 +1,9 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@agents/ui", () => import("@/__mocks__/@agents/ui"));
+vi.mock("@agents/ui", () => ({
+  SidebarTrigger: () => null,
+}));
 
 import { nextPanelState } from "./workspace-shell-utils";
 import { WorkspaceShell } from "./workspace-shell";
