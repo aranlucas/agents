@@ -6,6 +6,7 @@ export type AgentTheme =
   | "fitness"
   | "wellness"
   | "oral-boards"
+  | "oral-boards-v2"
   | "a2ui"
   | "resume";
 
@@ -44,6 +45,12 @@ export const AGENT_THEMES: Record<
   },
   "oral-boards": {
     label: "Oral Boards",
+    colorVar: "var(--oral-boards)",
+    softVar: "var(--oral-boards-soft)",
+    contrastVar: "var(--oral-boards-contrast)",
+  },
+  "oral-boards-v2": {
+    label: "Oral Boards v2",
     colorVar: "var(--oral-boards)",
     softVar: "var(--oral-boards-soft)",
     contrastVar: "var(--oral-boards-contrast)",
