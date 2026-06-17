@@ -88,14 +88,16 @@ function OralBoardsStartPage({
         <p className="text-muted-foreground text-[11px]">or focus on a blueprint domain</p>
         <div className="flex flex-wrap justify-center gap-2">
           {TOPICS.map((t) => (
-            <button
+            <Button
               key={t.label}
               type="button"
+              variant="outline"
+              size="xs"
               onClick={() => onStart(t.message)}
-              className="text-muted-foreground hover:text-foreground rounded-full border px-3 py-1 text-xs transition-colors hover:border-indigo-500/40"
+              className="rounded-full"
             >
               {t.label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>

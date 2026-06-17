@@ -2,7 +2,7 @@
 
 import { UserProfile } from "@clerk/nextjs";
 
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@agents/ui";
+import { ScrollArea, SidebarInset, SidebarProvider, SidebarTrigger } from "@agents/ui";
 import { AppSidebar, SETTINGS_PATH } from "@/components/chat/app-sidebar";
 
 export default function SettingsPage() {
@@ -15,12 +15,12 @@ export default function SettingsPage() {
         <div className="flex shrink-0 items-center border-b px-2 py-1.5 md:hidden">
           <SidebarTrigger />
         </div>
-        <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+        <ScrollArea className="flex min-w-0 flex-1 flex-col">
           <div className="mx-auto w-full max-w-225 px-4 py-6">
             <h1 className="text-foreground mb-4 text-lg font-semibold">Settings</h1>
             <UserProfile routing="hash" />
           </div>
-        </div>
+        </ScrollArea>
       </SidebarInset>
     </SidebarProvider>
   );

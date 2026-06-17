@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState, type CSSProperties } from "react";
+import { useState } from "react";
 import { Streamdown } from "streamdown";
 import {
   AlertCircleIcon,
@@ -29,6 +29,8 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
+  Avatar,
+  AvatarFallback,
   Badge,
   Button,
   Card,
@@ -38,6 +40,10 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
   Kbd,
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+  ScrollArea,
   Table,
   TableBody,
   TableCell,
@@ -46,6 +52,7 @@ import {
   TableRow,
   Textarea,
 } from "@agents/ui";
+
 import {
   Artifact,
   ArtifactContent,
@@ -79,12 +86,12 @@ function stripMarkdownForSpeech(text: string): string {
 function CitationChips({ sources }: { sources: CaseSource[] }) {
   if (sources.length === 0) return null;
   return (
-    <div className="flex flex-wrap gap-1">
+    <div className="flex min-w-0 flex-wrap gap-1">
       {sources.map((s) => (
         <Badge
           key={`${s.collection}-${s.docid}`}
           variant="secondary"
-          className="font-mono text-[10px]"
+          className="max-w-full min-w-0 truncate font-mono text-[10px]"
         >
           {s.collection.toUpperCase()} #{s.docid} · {s.title}
         </Badge>
@@ -176,9 +183,9 @@ function ScoreSummaryTable({ summary }: { summary: OralBoardsSkillsetScore[] }) 
       <Table className="text-xs">
         <TableHeader className="bg-muted/40 text-muted-foreground">
           <TableRow>
-            <TableHead className="px-2.5 py-1.5 font-medium">Skillset</TableHead>
-            <TableHead className="px-2.5 py-1.5 font-medium">Skill</TableHead>
-            <TableHead className="px-2.5 py-1.5 text-center font-medium">Score</TableHead>
+            <TableHead className="px-2.5">Skillset</TableHead>
+            <TableHead className="px-2.5">Skill</TableHead>
+            <TableHead className="px-2.5 text-center">Score</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -213,9 +220,15 @@ function RecordButton({ recorder }: { recorder: UseAnswerRecorder }) {
         <span className="flex items-center gap-1 text-xs text-red-500">
           <AlertCircleIcon className="size-3" />
           {error}
-          <button type="button" onClick={clearError} className="ml-1 underline">
+          <Button
+            type="button"
+            variant="link"
+            size="xs"
+            onClick={clearError}
+            className="ml-1 h-auto p-0 underline"
+          >
             Dismiss
-          </button>
+          </Button>
         </span>
       )}
       <Button
@@ -283,44 +296,46 @@ function VignettePanel({
   onNotesChange: React.Dispatch<React.SetStateAction<string>>;
 }) {
   return (
-    <div className="bg-muted/25 flex max-h-[38vh] shrink-0 flex-col gap-4 overflow-y-auto border-b px-5 py-4 md:max-h-none md:[width:var(--vignette-w,42%)] md:border-r md:border-b-0">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <BookOpenIcon className="size-3 text-indigo-400" />
-          <span className="text-[10px] font-semibold tracking-[0.15em] text-indigo-400 uppercase">
-            Case Vignette
-          </span>
-        </div>
-        <TtsButton text={caseBody} label="Listen" />
-      </div>
-      <div className="text-[13px] leading-[1.7]">
-        <Streamdown>{caseBody}</Streamdown>
-      </div>
-
-      <div className="mt-auto space-y-3">
-        <div className="border-t pt-3">
-          <p className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-[10px] font-medium tracking-wide uppercase">
-            <PencilIcon className="size-3" />
-            Your notes
-          </p>
-          <Textarea
-            aria-label="Case notes"
-            className="min-h-[56px] resize-none p-2.5 text-xs leading-relaxed"
-            placeholder="Jot notes as you reason through the case…"
-            value={notes}
-            onChange={(e) => onNotesChange(e.target.value)}
-          />
-        </div>
-        {sources.length > 0 && (
-          <div className="border-t pt-3">
-            <p className="text-muted-foreground mb-1.5 text-[10px] font-medium tracking-wide uppercase">
-              Sources
-            </p>
-            <CitationChips sources={sources} />
+    <ScrollArea className="bg-muted/25 h-full shrink-0 border-b md:border-r md:border-b-0">
+      <div className="flex flex-col gap-4 p-4 sm:px-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <BookOpenIcon className="size-3 text-indigo-400" />
+            <span className="text-[10px] font-semibold tracking-[0.15em] text-indigo-400 uppercase">
+              Case Vignette
+            </span>
           </div>
-        )}
+          <TtsButton text={caseBody} label="Listen" />
+        </div>
+        <div className="text-[13px] leading-[1.7]">
+          <Streamdown>{caseBody}</Streamdown>
+        </div>
+
+        <div className="mt-auto space-y-3">
+          <div className="border-t pt-3">
+            <p className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-[10px] font-medium tracking-wide uppercase">
+              <PencilIcon className="size-3" />
+              Your notes
+            </p>
+            <Textarea
+              aria-label="Case notes"
+              className="min-h-[56px] resize-none p-2.5 text-xs leading-relaxed"
+              placeholder="Jot notes as you reason through the case…"
+              value={notes}
+              onChange={(e) => onNotesChange(e.target.value)}
+            />
+          </div>
+          {sources.length > 0 && (
+            <div className="border-t pt-3">
+              <p className="text-muted-foreground mb-1.5 text-[10px] font-medium tracking-wide uppercase">
+                Sources
+              </p>
+              <CitationChips sources={sources} />
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </ScrollArea>
   );
 }
 
@@ -360,7 +375,7 @@ function CompletedExchangeRow({
 
 function LastFeedbackCard({ exchange, index }: { exchange: OralBoardsExchange; index: number }) {
   return (
-    <div className="shrink-0 space-y-1.5 rounded-lg border px-3 py-3 text-sm">
+    <div className="shrink-0 space-y-1.5 rounded-lg border p-3 text-sm">
       <p className="text-[10px] font-semibold tracking-[0.15em] text-emerald-400 uppercase">
         Q{index + 1} · Feedback
       </p>
@@ -402,16 +417,18 @@ function PresentingPane({
         <TtsButton text={caseBody} label="Present case" />
       </div>
 
-      <div className="bg-muted/20 flex-1 overflow-auto rounded-lg border p-5">
-        <div className="text-[13.5px] leading-[1.75]">
-          <Streamdown>{caseBody}</Streamdown>
-        </div>
-        {sources.length > 0 && (
-          <div className="mt-4 border-t pt-3">
-            <CitationChips sources={sources} />
+      <ScrollArea className="bg-muted/20 flex-1 rounded-lg border">
+        <div className="p-4 sm:p-5">
+          <div className="text-[13.5px] leading-[1.75]">
+            <Streamdown>{caseBody}</Streamdown>
           </div>
-        )}
-      </div>
+          {sources.length > 0 && (
+            <div className="mt-4 border-t pt-3">
+              <CitationChips sources={sources} />
+            </div>
+          )}
+        </div>
+      </ScrollArea>
 
       <div className="shrink-0 space-y-2">
         <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
@@ -470,9 +487,6 @@ function ThinkingState({ isRunning, loadingStep }: { isRunning: boolean; loading
   );
 }
 
-const MIN_VIGNETTE_PCT = 20;
-const MAX_VIGNETTE_PCT = 65;
-
 function QuestioningPane({
   caseBody,
   sources,
@@ -496,9 +510,6 @@ function QuestioningPane({
   const questionNumber = transcript.length + 1;
 
   const [answerText, setAnswerText] = useState("");
-  const [leftPct, setLeftPct] = useState(42);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const dragging = useRef(false);
 
   const recorder = useAnswerRecorder((text) => {
     setAnswerText((prev) => (prev ? `${prev} ${text}` : text));
@@ -511,62 +522,25 @@ function QuestioningPane({
     setAnswerText("");
   };
 
-  const handleDividerPointerDown = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      dragging.current = true;
-      const container = containerRef.current;
-      if (!container) return;
-      const startX = e.clientX;
-      const startPct = leftPct;
-      const totalWidth = container.getBoundingClientRect().width;
-
-      const onMove = (ev: PointerEvent) => {
-        if (!dragging.current) return;
-        const delta = ((ev.clientX - startX) / totalWidth) * 100;
-        setLeftPct(Math.min(MAX_VIGNETTE_PCT, Math.max(MIN_VIGNETTE_PCT, startPct + delta)));
-      };
-      const onUp = () => {
-        dragging.current = false;
-        document.removeEventListener("pointermove", onMove);
-        document.removeEventListener("pointerup", onUp);
-      };
-      document.addEventListener("pointermove", onMove);
-      document.addEventListener("pointerup", onUp);
-    },
-    [leftPct],
-  );
-
   const olderExchanges = transcript.slice(0, -1);
   const lastExchange = transcript.at(-1);
 
   return (
-    <div
-      ref={containerRef}
-      className="flex h-full flex-col overflow-hidden md:flex-row"
-      style={{ "--vignette-w": `${leftPct}%` } as CSSProperties}
-    >
+    <ResizablePanelGroup orientation="horizontal" className="h-full">
       {/* Left: case vignette — pinned, always in view */}
-      <VignettePanel
-        caseBody={caseBody}
-        sources={sources}
-        notes={notes}
-        onNotesChange={onNotesChange}
-      />
+      <ResizablePanel defaultSize={42} minSize={20} maxSize={65}>
+        <VignettePanel
+          caseBody={caseBody}
+          sources={sources}
+          notes={notes}
+          onNotesChange={onNotesChange}
+        />
+      </ResizablePanel>
 
-      {/* Drag handle — desktop only */}
-      <div
-        role="separator"
-        aria-label="Resize panels"
-        aria-orientation="vertical"
-        className="group relative z-10 hidden w-1.5 shrink-0 cursor-col-resize items-center justify-center border-r bg-transparent transition-colors hover:bg-indigo-500/20 active:bg-indigo-500/30 md:flex"
-        onPointerDown={handleDividerPointerDown}
-      >
-        <div className="bg-border group-hover: h-8 w-0.5 rounded-full transition-colors" />
-      </div>
+      <ResizableHandle withHandle />
 
       {/* Right: examination Q&A */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <ResizablePanel>
         {/* Progress header */}
         <div className="flex shrink-0 items-center justify-between border-b px-4 py-2.5">
           <span className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
@@ -577,87 +551,93 @@ function QuestioningPane({
 
         {/* Scrollable history: completed + last feedback */}
         {(olderExchanges.length > 0 || lastExchange) && (
-          <div className="max-h-[36%] shrink-0 space-y-1.5 overflow-y-auto border-b px-4 py-3">
-            {olderExchanges.map((x, i) => (
-              <CompletedExchangeRow key={x.question || i} exchange={x} index={i} />
-            ))}
-            {lastExchange && (
-              <LastFeedbackCard exchange={lastExchange} index={transcript.length - 1} />
-            )}
-          </div>
+          <ScrollArea className="max-h-[36%] shrink-0 border-b">
+            <div className="space-y-1.5 px-4 py-3">
+              {olderExchanges.map((x, i) => (
+                <CompletedExchangeRow key={x.question || i} exchange={x} index={i} />
+              ))}
+              {lastExchange && (
+                <LastFeedbackCard exchange={lastExchange} index={transcript.length - 1} />
+              )}
+            </div>
+          </ScrollArea>
         )}
 
         {/* Active question + response composer */}
-        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
-          {/* Examiner prompt */}
-          <Card>
-            <CardHeader className="flex-row items-start justify-between gap-2">
-              <div className="flex items-center gap-2.5">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-indigo-500/15 ring-1 ring-indigo-500/30">
-                  <StethoscopeIcon className="size-4 text-indigo-300" />
-                </span>
-                <div className="leading-tight">
-                  <p className="text-[10px] font-semibold tracking-[0.12em] text-indigo-300/80 uppercase">
-                    Examiner
-                  </p>
-                  <p className="text-muted-foreground text-[11px]">Question {questionNumber}</p>
+        <ScrollArea className="min-h-0 flex-1">
+          <div className="flex flex-col gap-3 p-4">
+            {/* Examiner prompt */}
+            <Card>
+              <CardHeader className="flex-row items-start justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <Avatar className="size-8 ring-1 ring-indigo-500/30">
+                    <AvatarFallback className="bg-indigo-500/15 text-indigo-300">
+                      <StethoscopeIcon className="size-4" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="leading-tight">
+                    <p className="text-[10px] font-semibold tracking-[0.12em] text-indigo-300/80 uppercase">
+                      Examiner
+                    </p>
+                    <p className="text-muted-foreground text-[11px]">Question {questionNumber}</p>
+                  </div>
                 </div>
+                {question && <TtsButton text={question} label="Listen" />}
+              </CardHeader>
+              <CardContent>
+                {question ? (
+                  <p className="text-[15px] leading-relaxed font-medium text-pretty">{question}</p>
+                ) : (
+                  <ThinkingState isRunning={isRunning} loadingStep={loadingStep} />
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Response composer */}
+            <div className="bg-muted/15 flex shrink-0 flex-col gap-2 rounded-xl border p-3 md:min-h-0 md:flex-1">
+              <div className="flex shrink-0 items-center justify-between">
+                <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
+                  Your response
+                </p>
+                <RecordButton recorder={recorder} />
               </div>
-              {question && <TtsButton text={question} label="Listen" />}
-            </CardHeader>
-            <CardContent>
-              {question ? (
-                <p className="text-[15px] leading-relaxed font-medium text-pretty">{question}</p>
-              ) : (
-                <ThinkingState isRunning={isRunning} loadingStep={loadingStep} />
-              )}
-            </CardContent>
-          </Card>
 
-          {/* Response composer */}
-          <div className="bg-muted/15 flex shrink-0 flex-col gap-2 rounded-xl border p-3 md:min-h-0 md:flex-1">
-            <div className="flex shrink-0 items-center justify-between">
-              <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
-                Your response
-              </p>
-              <RecordButton recorder={recorder} />
-            </div>
+              {recorder.micSupported && <CopilotChatAudioRecorder ref={recorder.recorderRef} />}
 
-            {recorder.micSupported && <CopilotChatAudioRecorder ref={recorder.recorderRef} />}
+              <Textarea
+                aria-label="Your answer"
+                className="h-24 resize-none p-3 text-sm md:h-auto md:min-h-[80px] md:flex-1"
+                placeholder="Type your answer…"
+                value={answerText}
+                onChange={(e) => setAnswerText(e.target.value)}
+                disabled={isRunning || recorder.recording}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSubmit();
+                }}
+              />
 
-            <Textarea
-              aria-label="Your answer"
-              className="h-24 resize-none p-3 text-sm md:h-auto md:min-h-[80px] md:flex-1"
-              placeholder="Type your answer…"
-              value={answerText}
-              onChange={(e) => setAnswerText(e.target.value)}
-              disabled={isRunning || recorder.recording}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSubmit();
-              }}
-            />
-
-            <div className="flex shrink-0 items-center justify-between">
-              <span className="text-muted-foreground hidden items-center gap-1 text-[11px] md:flex">
-                <Kbd>⌘</Kbd>
-                <Kbd>↵</Kbd>
-                <span className="ml-0.5">to submit</span>
-              </span>
-              <Button
-                type="button"
-                size="sm"
-                disabled={isRunning || !answerText.trim()}
-                onClick={handleSubmit}
-                className="ml-auto"
-              >
-                <SendHorizontalIcon className="size-3.5" />
-                Submit
-              </Button>
+              <div className="flex shrink-0 items-center justify-between">
+                <span className="text-muted-foreground hidden items-center gap-1 text-[11px] md:flex">
+                  <Kbd>⌘</Kbd>
+                  <Kbd>↵</Kbd>
+                  <span className="ml-0.5">to submit</span>
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={isRunning || !answerText.trim()}
+                  onClick={handleSubmit}
+                  className="ml-auto"
+                >
+                  <SendHorizontalIcon className="size-3.5" />
+                  Submit
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+        </ScrollArea>
+      </ResizablePanel>
+    </ResizablePanelGroup>
   );
 }
 

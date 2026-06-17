@@ -9,6 +9,7 @@ import { Badge } from "@agents/ui";
 import { Button } from "@agents/ui";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@agents/ui";
 import { Input } from "@agents/ui/components/input";
+import { Label } from "@agents/ui/components/label";
 import { cn } from "@agents/ui/lib/utils";
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -120,12 +121,9 @@ export function PreferencesPanel() {
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label
-              htmlFor="traveler-name"
-              className="mb-1 block text-xs font-medium text-(--ink-soft)"
-            >
+            <Label htmlFor="traveler-name" className="mb-1 text-xs text-(--ink-soft)">
               Your name
-            </label>
+            </Label>
             <Input
               id="traveler-name"
               type="text"
@@ -136,12 +134,9 @@ export function PreferencesPanel() {
             />
           </div>
           <div>
-            <label
-              htmlFor="home-airport"
-              className="mb-1 block text-xs font-medium text-(--ink-soft)"
-            >
+            <Label htmlFor="home-airport" className="mb-1 text-xs text-(--ink-soft)">
               Home airport
-            </label>
+            </Label>
             <Input
               id="home-airport"
               type="text"

@@ -1,5 +1,6 @@
 "use client";
 
+import { Label } from "@agents/ui";
 import { AGENT_ORDER, getAgentConfig, isAgentId, type AgentId } from "./agents/registry";
 
 export function AgentSelector({
@@ -11,7 +12,7 @@ export function AgentSelector({
 }) {
   const cfg = getAgentConfig(active);
   return (
-    <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-(--border-soft) px-2.5 py-1.5 font-mono text-[11px] text-(--ink-soft)">
+    <Label className="flex cursor-pointer items-center gap-2 rounded-lg border border-(--border-soft) px-2.5 py-1.5 font-mono text-[11px] text-(--ink-soft)">
       <span style={{ color: `var(${cfg.colorVar})` }}>{cfg.glyph}</span>
       <select
         aria-label="Active agent"
@@ -27,6 +28,6 @@ export function AgentSelector({
           </option>
         ))}
       </select>
-    </label>
+    </Label>
   );
 }
