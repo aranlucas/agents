@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Streamdown } from "@agents/ui";
+import { Streamdown } from "streamdown";
 import {
   AlertCircleIcon,
   BookOpenIcon,
@@ -29,10 +29,6 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
-  Artifact,
-  ArtifactContent,
-  ArtifactHeader,
-  ArtifactTitle,
   Avatar,
   AvatarFallback,
   Badge,
@@ -56,6 +52,12 @@ import {
   TableRow,
   Textarea,
 } from "@agents/ui";
+import {
+  Artifact,
+  ArtifactContent,
+  ArtifactHeader,
+  ArtifactTitle,
+} from "@agents/ui/components/ai-elements/artifact";
 import { speak, stopSpeaking } from "@/lib/copilotkit/speak-question";
 import { useOralBoardsQuestion } from "@/lib/copilotkit/oral-boards-question-context";
 import { useAnswerRecorder } from "@/lib/copilotkit/use-answer-recorder";
