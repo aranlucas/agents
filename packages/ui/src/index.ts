@@ -175,19 +175,3 @@ export {
   TableHeader,
   TableRow,
 } from "./components/table";
-export {
-  Artifact,
-  ArtifactAction,
-  ArtifactActions,
-  ArtifactClose,
-  ArtifactContent,
-  ArtifactDescription,
-  ArtifactHeader,
-  ArtifactTitle,
-} from "./components/ai-elements/artifact";
-export { Streamdown } from "./components/ai-elements/streamdown";
-export {
-  type PromptInputControllerProps,
-  PromptInputButton,
-  usePromptInputController,
-} from "./components/ai-elements/prompt-input";
