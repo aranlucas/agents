@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useAgent, useHumanInTheLoop, UseAgentUpdate } from "@copilotkit/react-core/v2";
 import { z } from "zod";
 
@@ -59,13 +59,9 @@ function SensitiveActionApprovalHooks({
 
   // `useHumanInTheLoop` drops its renderer on unmount; if that happens mid-run
   // the run's Promise is abandoned and the thread stays locked.
-  const runningRef = useRef(false);
-  useEffect(() => {
-    runningRef.current = agent?.isRunning ?? false;
-  }, [agent?.isRunning]);
   useEffect(() => {
     return () => {
-      if (runningRef.current) agent?.abortRun();
+      if (agent?.isRunning) agent.abortRun();
     };
   }, [agent]);
 

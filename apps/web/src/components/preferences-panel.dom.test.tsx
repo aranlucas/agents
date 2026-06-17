@@ -12,7 +12,8 @@ vi.mock("@base-ui/react/input", () => ({
   Input: (props: ComponentProps<"input">) => <input {...props} />,
 }));
 
-import { DEFAULT_PREFERENCES, PreferencesPanel } from "./preferences-panel";
+import { DEFAULT_PREFERENCES } from "./preferences-defaults";
+import { PreferencesPanel } from "./preferences-panel";
 
 describe("PreferencesPanel", () => {
   it("renders all four budget tier options", () => {

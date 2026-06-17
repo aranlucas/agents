@@ -37,6 +37,8 @@ jobs:
         run: pnpm typecheck
       - name: JS tests
         run: pnpm --filter web test && pnpm --filter mobile test
+      - name: React Doctor
+        run: npx react-doctor@latest --scope changed
 
   build:
     name: Build web

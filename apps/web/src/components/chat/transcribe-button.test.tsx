@@ -1,8 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ComponentProps } from "react";
-import { forwardRef, useImperativeHandle } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { type Ref, useImperativeHandle } from "react";
+import { beforeEach, describe, expect, it, vi, type Mocked } from "vitest";
+import type { PromptInputControllerProps } from "@agents/ui";
 
 const recorderStart = vi.fn();
 const recorderStop = vi.fn();
@@ -10,42 +10,32 @@ const setInput = vi.fn();
 const user = userEvent.setup();
 
 vi.mock("@copilotkit/react-core/v2", () => ({
-  CopilotChatAudioRecorder: forwardRef(function CopilotChatAudioRecorder(_, ref) {
+  CopilotChatAudioRecorder: function CopilotChatAudioRecorder({
+    ref,
+  }: {
+    ref?: Ref<{ start: () => Promise<void>; stop: () => Promise<Blob> }>;
+  }) {
     useImperativeHandle(ref, () => ({
       start: recorderStart,
       stop: recorderStop,
     }));
     return null;
-  }),
+  },
 }));
 
-vi.mock("@agents/ui/components/ai-elements/prompt-input", () => ({
-  PromptInputButton: ({
-    children,
-    tooltip,
-    ...props
-  }: ComponentProps<"button"> & { tooltip?: string }) => (
-    <button title={tooltip} type="button" {...props}>
-      {children}
-    </button>
-  ),
-  usePromptInputController: () => ({
-    textInput: {
-      value: "",
-      setInput,
-    },
-  }),
-}));
+vi.mock("@agents/ui", () => import("@/__mocks__/@agents/ui"));
 
-vi.mock("@agents/ui", () => ({
-  Button: (props: ComponentProps<"button">) => <button type="button" {...props} />,
-}));
+import { usePromptInputController } from "@agents/ui";
 
 describe("TranscribeButton", () => {
   beforeEach(() => {
     recorderStart.mockReset();
     recorderStop.mockReset();
     setInput.mockReset();
+    vi.mocked(usePromptInputController).mockReset();
+    vi.mocked(usePromptInputController).mockReturnValue({
+      textInput: { value: "", setInput, clear: vi.fn() },
+    } as unknown as PromptInputControllerProps);
     vi.stubGlobal("fetch", vi.fn());
     Object.defineProperty(globalThis.navigator, "mediaDevices", {
       configurable: true,

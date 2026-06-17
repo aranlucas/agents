@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { CopilotSidebar, useAgent, useCopilotKit, UseAgentUpdate } from "@copilotkit/react-core/v2";
 
 import type { OralBoardsState } from "@agents/types";
@@ -13,6 +13,7 @@ import { OralBoardsPanel } from "@/components/chat/oral-boards/oral-boards-panel
 import { OralBoardsQuestionProvider } from "@/lib/copilotkit/oral-boards-question-context";
 import { useArtifactPanel } from "@/components/workspace-shell";
 import { cssVars } from "@/lib/css";
+import { useAgentWarmup } from "@/hooks/use-agent-warmup";
 
 const AGENT_ID = "oral-boards" as const;
 
@@ -49,16 +50,43 @@ function OralBoardsStartPage({
   onStart,
   isGenerating,
   loadingStep,
+  warmingUp,
+  warmupError,
 }: {
   onStart: (message: string) => void;
   isGenerating: boolean;
   loadingStep: string;
+  warmingUp: boolean;
+  warmupError: Error | null;
 }) {
   if (isGenerating) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4">
         <Spinner className="size-8" />
         <p className="text-muted-foreground text-sm">{loadingStep || "Building your case…"}</p>
+      </div>
+    );
+  }
+
+  if (warmingUp) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-4">
+        <Spinner className="size-8" />
+        <p className="text-muted-foreground text-sm">Warming up the search database…</p>
+      </div>
+    );
+  }
+
+  if (warmupError) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-4 p-8">
+        <p className="text-muted-foreground text-sm">
+          Could not connect to the agent backend. You can still start a case — the first question may
+          be slower than usual.
+        </p>
+        <Button size="lg" className="px-10" onClick={() => onStart(TOPICS[0].message)}>
+          Start anyway
+        </Button>
       </div>
     );
   }
@@ -115,6 +143,12 @@ export function OralBoardsWorkspace() {
   const { copilotkit } = useCopilotKit();
   const startNewThread = useNewThread(AGENT_ID);
 
+  const { statuses, isLoading: warmingUp } = useAgentWarmup();
+  const warmupError =
+    statuses[AGENT_ID] === "error" && !warmingUp
+      ? new Error("Agent backend is unreachable")
+      : null;
+
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const examState = (agent?.state ?? {}) as OralBoardsState;
   const hasPanel = Boolean(examState.case?.trim());
@@ -123,14 +157,14 @@ export function OralBoardsWorkspace() {
 
   // Auto-open the panel the first time a case appears; don't re-open after
   // the user explicitly closes it (would fight the close button).
-  const [autoOpened, setAutoOpened] = useState(false);
+  const autoOpenedRef = useRef(false);
   useEffect(() => {
-    if (hasPanel && !autoOpened) {
-      setAutoOpened(true);
+    if (hasPanel && !autoOpenedRef.current) {
+      autoOpenedRef.current = true;
       dispatch("open");
     }
-    if (!hasPanel) setAutoOpened(false);
-  }, [hasPanel, autoOpened, dispatch]);
+    if (!hasPanel) autoOpenedRef.current = false;
+  }, [hasPanel, dispatch]);
 
   const handleStart = useCallback(
     async (content: string) => {
@@ -193,6 +227,8 @@ export function OralBoardsWorkspace() {
                 onStart={(m) => void handleStart(m)}
                 isGenerating={isGenerating}
                 loadingStep={examState.loading_step ?? ""}
+                warmingUp={warmingUp && !hasPanel}
+                warmupError={warmupError}
               />
             </div>
           )}

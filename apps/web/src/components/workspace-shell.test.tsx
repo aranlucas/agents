@@ -1,11 +1,10 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@agents/ui", () => ({
-  SidebarTrigger: () => null,
-}));
+vi.mock("@agents/ui", () => import("@/__mocks__/@agents/ui"));
 
-import { nextPanelState, WorkspaceShell } from "./workspace-shell";
+import { nextPanelState } from "./workspace-shell-utils";
+import { WorkspaceShell } from "./workspace-shell";
 
 describe("WorkspaceShell layout invariants", () => {
   // Regression guard for the mobile scroll bug: in the mobile flex-col layout the

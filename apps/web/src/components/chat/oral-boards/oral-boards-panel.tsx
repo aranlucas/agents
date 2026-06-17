@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Streamdown } from "streamdown";
+import { Streamdown } from "@agents/ui";
 import {
   AlertCircleIcon,
   BookOpenIcon,
@@ -29,6 +29,10 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
+  Artifact,
+  ArtifactContent,
+  ArtifactHeader,
+  ArtifactTitle,
   Avatar,
   AvatarFallback,
   Badge,
@@ -52,13 +56,6 @@ import {
   TableRow,
   Textarea,
 } from "@agents/ui";
-
-import {
-  Artifact,
-  ArtifactContent,
-  ArtifactHeader,
-  ArtifactTitle,
-} from "@agents/ui/components/ai-elements/artifact";
 import { speak, stopSpeaking } from "@/lib/copilotkit/speak-question";
 import { useOralBoardsQuestion } from "@/lib/copilotkit/oral-boards-question-context";
 import { useAnswerRecorder } from "@/lib/copilotkit/use-answer-recorder";
@@ -476,9 +473,9 @@ function ThinkingState({ isRunning, loadingStep }: { isRunning: boolean; loading
   return (
     <div className="text-muted-foreground flex items-center gap-2.5">
       <span className="flex gap-1">
-        <span className="size-1.5 animate-bounce rounded-full [animation-delay:-0.3s]" />
-        <span className="size-1.5 animate-bounce rounded-full [animation-delay:-0.15s]" />
-        <span className="size-1.5 animate-bounce rounded-full" />
+        <span className="size-1.5 animate-pulse rounded-full bg-current [animation-delay:-0.3s]" />
+        <span className="size-1.5 animate-pulse rounded-full bg-current [animation-delay:-0.15s]" />
+        <span className="size-1.5 animate-pulse rounded-full bg-current" />
       </span>
       <span className="text-[13px] italic">
         {isRunning ? loadingStep || "The examiner is thinking…" : "Waiting for the next question…"}
@@ -551,24 +548,22 @@ function QuestioningPane({
           </div>
 
           <ResizablePanelGroup orientation="vertical" className="min-h-0 flex-1">
-            {/* Scrollable history: completed + last feedback */}
-            {(olderExchanges.length > 0 || lastExchange) && (
-              <>
-                <ResizablePanel defaultSize={30} minSize={10} maxSize={50}>
-                  <ScrollArea className="h-full border-b">
-                    <div className="space-y-1.5 px-4 py-3">
-                      {olderExchanges.map((x, i) => (
-                        <CompletedExchangeRow key={x.question || i} exchange={x} index={i} />
-                      ))}
-                      {lastExchange && (
-                        <LastFeedbackCard exchange={lastExchange} index={transcript.length - 1} />
-                      )}
-                    </div>
-                  </ScrollArea>
-                </ResizablePanel>
-                <ResizableHandle withHandle />
-              </>
-            )}
+            <ResizablePanel>
+              <ScrollArea className="h-full border-b">
+                {(olderExchanges.length > 0 || lastExchange) && (
+                  <div className="space-y-1.5 px-4 py-3">
+                    {olderExchanges.map((x, i) => (
+                      <CompletedExchangeRow key={x.question || i} exchange={x} index={i} />
+                    ))}
+                    {lastExchange && (
+                      <LastFeedbackCard exchange={lastExchange} index={transcript.length - 1} />
+                    )}
+                  </div>
+                )}
+              </ScrollArea>
+
+            </ResizablePanel>
+            <ResizableHandle withHandle />
 
             {/* Active question + response composer */}
             <ResizablePanel>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { daysBetween, fmtDate, fmtDateRange, parseItinerary } from "./document-canvas";
+import { daysBetween, fmtDate, fmtDateRange, parseItinerary } from "./document-canvas-utils";
 
 describe("parseItinerary", () => {
   it("returns empty when input is blank", () => {

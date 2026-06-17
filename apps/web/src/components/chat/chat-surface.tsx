@@ -12,32 +12,15 @@ import {
 } from "@copilotkit/react-core/v2";
 import { SparklesIcon } from "lucide-react";
 
-import { Button } from "@agents/ui";
-import { Suggestion, Suggestions } from "@agents/ui/components/ai-elements/suggestion";
 import {
+  Button,
   Conversation,
   ConversationContent,
   ConversationEmptyState,
   ConversationScrollButton,
-} from "@agents/ui/components/ai-elements/conversation";
-import {
   Message,
   MessageContent,
   MessageResponse,
-} from "@agents/ui/components/ai-elements/message";
-import {
-  Reasoning,
-  ReasoningContent,
-  ReasoningTrigger,
-} from "@agents/ui/components/ai-elements/reasoning";
-import {
-  Tool,
-  ToolContent,
-  ToolHeader,
-  ToolInput,
-  ToolOutput,
-} from "@agents/ui/components/ai-elements/tool";
-import {
   PromptInput,
   PromptInputBody,
   PromptInputFooter,
@@ -45,8 +28,18 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputTools,
+  Reasoning,
+  ReasoningContent,
+  ReasoningTrigger,
+  Suggestion,
+  Suggestions,
+  Tool,
+  ToolContent,
+  ToolHeader,
+  ToolInput,
+  ToolOutput,
   type PromptInputMessage,
-} from "@agents/ui/components/ai-elements/prompt-input";
+} from "@agents/ui";
 
 import type { AgentConfig, AgentId } from "./agents/registry";
 import { toRenderItems, type AguiMessage, type AguiToolCall } from "./messages";
@@ -93,7 +86,7 @@ export function ChatSurface({
   });
   const { copilotkit } = useCopilotKit();
   const renderToolCall = useRenderToolCall();
-  const { renderActivityMessage } = useRenderActivityMessage();
+  const { renderActivityMessage: activityMessage } = useRenderActivityMessage();
   const { suggestions } = useSuggestions({ agentId: config.id });
   const connections = useRequiredConnections(config.id);
   const gated = !connections.isLoading && connections.missing.length > 0;
@@ -119,7 +112,7 @@ export function ChatSurface({
 
   // The resolver's toolCall/toolMessage types are CopilotKit-internal; our Agui*
   // are the structural runtime shapes. Cast at this single boundary.
-  const renderTC = (tc: AguiToolCall) =>
+  const toolCallContent = (tc: AguiToolCall) =>
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     renderToolCall({ toolCall: tc as never, toolMessage: toolMessages.get(tc.id) as never });
 
@@ -153,7 +146,7 @@ export function ChatSurface({
               if (item.kind === "activity") {
                 return (
                   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-                  <Fragment key={item.id}>{renderActivityMessage(item.message as never)}</Fragment>
+                  <Fragment key={item.id}>{activityMessage(item.message as never)}</Fragment>
                 );
               }
               if (item.kind === "user") {
@@ -178,7 +171,7 @@ export function ChatSurface({
                 <Message key={item.id} from="assistant">
                   <MessageContent>
                     {item.toolCalls.map((tc) => (
-                      <Fragment key={tc.id}>{renderTC(tc)}</Fragment>
+                      <Fragment key={tc.id}>{toolCallContent(tc)}</Fragment>
                     ))}
                     {item.text.trim() && <MessageResponse>{item.text}</MessageResponse>}
                     {item.id === lastAssistantId && artifact && (
