@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type Ref, useImperativeHandle } from "react";
-import { beforeEach, describe, expect, it, vi, type Mocked } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PromptInputControllerProps } from "@agents/ui";
 
 const recorderStart = vi.fn();
