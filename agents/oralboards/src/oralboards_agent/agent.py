@@ -27,7 +27,6 @@ class CaseSource(TypedDict):
     docid: int
     filepath: str
     title: str
-    snippet: str
     collection: str
 
 

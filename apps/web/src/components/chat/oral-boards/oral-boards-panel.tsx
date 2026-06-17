@@ -541,101 +541,118 @@ function QuestioningPane({
 
       {/* Right: examination Q&A */}
       <ResizablePanel>
-        {/* Progress header */}
-        <div className="flex shrink-0 items-center justify-between border-b px-4 py-2.5">
-          <span className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
-            Examination
-          </span>
-          <QuestionProgress answered={transcript.length} current={questionNumber} />
-        </div>
+        <div className="flex h-full flex-col">
+          {/* Progress header — fixed outside ResizablePanelGroup */}
+          <div className="flex shrink-0 items-center justify-between border-b px-4 py-2.5">
+            <span className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
+              Examination
+            </span>
+            <QuestionProgress answered={transcript.length} current={questionNumber} />
+          </div>
 
-        {/* Scrollable history: completed + last feedback */}
-        {(olderExchanges.length > 0 || lastExchange) && (
-          <ScrollArea className="max-h-[36%] shrink-0 border-b">
-            <div className="space-y-1.5 px-4 py-3">
-              {olderExchanges.map((x, i) => (
-                <CompletedExchangeRow key={x.question || i} exchange={x} index={i} />
-              ))}
-              {lastExchange && (
-                <LastFeedbackCard exchange={lastExchange} index={transcript.length - 1} />
-              )}
-            </div>
-          </ScrollArea>
-        )}
+          <ResizablePanelGroup orientation="vertical" className="min-h-0 flex-1">
+            {/* Scrollable history: completed + last feedback */}
+            {(olderExchanges.length > 0 || lastExchange) && (
+              <>
+                <ResizablePanel defaultSize={30} minSize={10} maxSize={50}>
+                  <ScrollArea className="h-full border-b">
+                    <div className="space-y-1.5 px-4 py-3">
+                      {olderExchanges.map((x, i) => (
+                        <CompletedExchangeRow key={x.question || i} exchange={x} index={i} />
+                      ))}
+                      {lastExchange && (
+                        <LastFeedbackCard exchange={lastExchange} index={transcript.length - 1} />
+                      )}
+                    </div>
+                  </ScrollArea>
+                </ResizablePanel>
+                <ResizableHandle withHandle />
+              </>
+            )}
 
-        {/* Active question + response composer */}
-        <ScrollArea className="min-h-0 flex-1">
-          <div className="flex flex-col gap-3 p-4">
-            {/* Examiner prompt */}
-            <Card>
-              <CardHeader className="flex-row items-start justify-between gap-2">
-                <div className="flex items-center gap-2.5">
-                  <Avatar className="size-8 ring-1 ring-indigo-500/30">
-                    <AvatarFallback className="bg-indigo-500/15 text-indigo-300">
-                      <StethoscopeIcon className="size-4" />
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="leading-tight">
-                    <p className="text-[10px] font-semibold tracking-[0.12em] text-indigo-300/80 uppercase">
-                      Examiner
-                    </p>
-                    <p className="text-muted-foreground text-[11px]">Question {questionNumber}</p>
+            {/* Active question + response composer */}
+            <ResizablePanel>
+              <ScrollArea className="h-full">
+                <div className="flex flex-col gap-3 p-4">
+                  {/* Examiner prompt */}
+                  <Card>
+                    <CardHeader className="flex-row items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <Avatar className="size-8 ring-1 ring-indigo-500/30">
+                          <AvatarFallback className="bg-indigo-500/15 text-indigo-300">
+                            <StethoscopeIcon className="size-4" />
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="leading-tight">
+                          <p className="text-[10px] font-semibold tracking-[0.12em] text-indigo-300/80 uppercase">
+                            Examiner
+                          </p>
+                          <p className="text-muted-foreground text-[11px]">
+                            Question {questionNumber}
+                          </p>
+                        </div>
+                      </div>
+                      {question && <TtsButton text={question} label="Listen" />}
+                    </CardHeader>
+                    <CardContent>
+                      {question ? (
+                        <p className="text-[15px] leading-relaxed font-medium text-pretty">
+                          {question}
+                        </p>
+                      ) : (
+                        <ThinkingState isRunning={isRunning} loadingStep={loadingStep} />
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Response composer */}
+                  <div className="bg-muted/15 flex shrink-0 flex-col gap-2 rounded-xl border p-3 md:min-h-0 md:flex-1">
+                    <div className="flex shrink-0 items-center justify-between">
+                      <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
+                        Your response
+                      </p>
+                      <RecordButton recorder={recorder} />
+                    </div>
+
+                    {recorder.micSupported && (
+                      <CopilotChatAudioRecorder ref={recorder.recorderRef} />
+                    )}
+
+                    <Textarea
+                      aria-label="Your answer"
+                      className="h-24 resize-none p-3 text-sm md:h-auto md:min-h-[80px] md:flex-1"
+                      placeholder="Type your answer…"
+                      value={answerText}
+                      onChange={(e) => setAnswerText(e.target.value)}
+                      disabled={isRunning || recorder.recording}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSubmit();
+                      }}
+                    />
+
+                    <div className="flex shrink-0 items-center justify-between">
+                      <span className="text-muted-foreground hidden items-center gap-1 text-[11px] md:flex">
+                        <Kbd>⌘</Kbd>
+                        <Kbd>↵</Kbd>
+                        <span className="ml-0.5">to submit</span>
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={isRunning || !answerText.trim()}
+                        onClick={handleSubmit}
+                        className="ml-auto"
+                      >
+                        <SendHorizontalIcon className="size-3.5" />
+                        Submit
+                      </Button>
+                    </div>
                   </div>
                 </div>
-                {question && <TtsButton text={question} label="Listen" />}
-              </CardHeader>
-              <CardContent>
-                {question ? (
-                  <p className="text-[15px] leading-relaxed font-medium text-pretty">{question}</p>
-                ) : (
-                  <ThinkingState isRunning={isRunning} loadingStep={loadingStep} />
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Response composer */}
-            <div className="bg-muted/15 flex shrink-0 flex-col gap-2 rounded-xl border p-3 md:min-h-0 md:flex-1">
-              <div className="flex shrink-0 items-center justify-between">
-                <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
-                  Your response
-                </p>
-                <RecordButton recorder={recorder} />
-              </div>
-
-              {recorder.micSupported && <CopilotChatAudioRecorder ref={recorder.recorderRef} />}
-
-              <Textarea
-                aria-label="Your answer"
-                className="h-24 resize-none p-3 text-sm md:h-auto md:min-h-[80px] md:flex-1"
-                placeholder="Type your answer…"
-                value={answerText}
-                onChange={(e) => setAnswerText(e.target.value)}
-                disabled={isRunning || recorder.recording}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSubmit();
-                }}
-              />
-
-              <div className="flex shrink-0 items-center justify-between">
-                <span className="text-muted-foreground hidden items-center gap-1 text-[11px] md:flex">
-                  <Kbd>⌘</Kbd>
-                  <Kbd>↵</Kbd>
-                  <span className="ml-0.5">to submit</span>
-                </span>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={isRunning || !answerText.trim()}
-                  onClick={handleSubmit}
-                  className="ml-auto"
-                >
-                  <SendHorizontalIcon className="size-3.5" />
-                  Submit
-                </Button>
-              </div>
-            </div>
-          </div>
-        </ScrollArea>
+              </ScrollArea>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        </div>
       </ResizablePanel>
     </ResizablePanelGroup>
   );
