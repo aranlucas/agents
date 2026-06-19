@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 import path from "node:path";
 
 const nextConfig: NextConfig = {
+  reactCompiler: true,
   serverExternalPackages: ["better-sqlite3"],
   outputFileTracingIncludes: {
     "/api/search": ["./search.sqlite", "./node_modules/better-sqlite3/**"],

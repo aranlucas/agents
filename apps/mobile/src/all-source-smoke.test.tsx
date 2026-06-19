@@ -650,8 +650,8 @@ describe("mobile all-source smoke coverage", () => {
           }}
         >
           <Conversation
-            emptyState={<Message role="assistant">Empty</Message>}
-            renderMessage={({ item }) => <Message role={item.role}>{item.content}</Message>}
+            emptyState={<Message from="assistant">Empty</Message>}
+            renderMessage={({ item }) => <Message from={item.role}>{item.content}</Message>}
           >
             <ConversationScrollButton />
             <NativePrompt.PromptInput>

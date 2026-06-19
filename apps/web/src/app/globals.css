@@ -95,6 +95,17 @@ body {
   animation: blink 1s steps(2) infinite;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* Oral boards: make the CopilotKit sidebar read-only — hide input toolbar */
 [data-copilotkit-sidebar] form,
 [data-copilotkit-sidebar] [role="toolbar"],

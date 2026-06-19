@@ -11,7 +11,7 @@ A single ADK agent that co-plans a trip with the operator:
   * requests human approval before "locking" the trip via a frontend
     tool (request_user_approval) registered with useFrontendTool.
 
-Backed by a free LiteLLM model pool with Mistral as first fallback.
+Backed by the shared free LiteLLM model pool.
 The FastAPI app mounts the agent at "/"
 via ag-ui-adk, plus a /health endpoint for the dev script.
 """

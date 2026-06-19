@@ -2,6 +2,7 @@
   "name": "agents-monorepo",
   "private": true,
   "scripts": {
+    "prepare": "husky",
     "postinstall": "if [ -z \"$VERCEL\" ] && command -v uv >/dev/null 2>&1; then uv sync; fi",
     "dev": "concurrently \"pnpm --filter web dev\" \"docker compose up --build\" --names web,agents --prefix-colors blue,green --kill-others",
     "dev:web": "pnpm --filter web dev",
@@ -33,7 +34,9 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/jsdom": "^28.0.3",
     "concurrently": "^10.0.3",
+    "husky": "^9.1.7",
     "jsdom": "^29.1.1",
+    "lint-staged": "^17.0.7",
     "oxfmt": "^0.55.0",
     "oxlint": "^1.70.0",
     "oxlint-tsgolint": "^0.23.0",

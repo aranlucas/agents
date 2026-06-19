@@ -16,11 +16,13 @@ log = logging.getLogger("agents_shared")
 CLERK_USER_ID_HEADER = "x-clerk-user-id"
 
 # Primary free model plus LiteLLM fallbacks, shared by every agent.
-_DEFAULT_MODEL = "openrouter/poolside/laguna-m.1:free"
+_DEFAULT_MODEL = "nvidia_nim/deepseek-ai/deepseek-v4-flash"
 _DEFAULT_FALLBACKS = [
-    "mistral/mistral-small-latest",
-    "openrouter/owl-alpha",
-    "nvidia_nim/deepseek-ai/deepseek-v4-flash",
+    "mistral/mistral-medium-3.5-128b",
+    "nvidia_nim/minimaxai/minimax-m3",
+    "nvidia_nim/z-ai/glm-5.1",
+    "nvidia_nim/nvidia/nemotron-3-ultra-550b-a55b",
+    "openrouter/openrouter/free",
 ]
 
 
@@ -29,13 +31,13 @@ def build_model() -> LiteLlm:
     return LiteLlm(model=_DEFAULT_MODEL, fallbacks=list(_DEFAULT_FALLBACKS))
 
 
-# Modest ADK-level retry layered on top of each model's LiteLLM `fallbacks`.
-# Retries the same model a couple of times with backoff before LiteLLM rotates
-# to the next fallback model.
+# ADK-level retry layered on top of LiteLLM's fallback chain. Each attempt gives
+# LiteLLM a chance to route through the configured providers, while the backoff
+# keeps transient 429/5xx errors from immediately failing the turn.
 DEFAULT_RETRY_CONFIG = RetryConfig(
-    max_attempts=3,
+    max_attempts=5,
     initial_delay=1.0,
-    max_delay=20.0,
+    max_delay=30.0,
     backoff_factor=2.0,
 )
 
