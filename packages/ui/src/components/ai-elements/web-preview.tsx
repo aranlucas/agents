@@ -197,9 +197,11 @@ export type WebPreviewConsoleProps = ComponentProps<"div"> & {
   }[];
 };
 
+const EMPTY_LOGS: NonNullable<WebPreviewConsoleProps["logs"]> = [];
+
 export const WebPreviewConsole = ({
   className,
-  logs = [],
+  logs = EMPTY_LOGS,
   children,
   ...props
 }: WebPreviewConsoleProps) => {

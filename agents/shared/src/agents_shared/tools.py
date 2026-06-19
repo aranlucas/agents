@@ -18,7 +18,7 @@ CLERK_USER_ID_HEADER = "x-clerk-user-id"
 # Primary free model plus LiteLLM fallbacks, shared by every agent.
 _DEFAULT_MODEL = "nvidia_nim/deepseek-ai/deepseek-v4-flash"
 _DEFAULT_FALLBACKS = [
-    "mistral/mistral-medium-3.5-128b",
+    "mistral/mistral-medium-latest",
     "nvidia_nim/minimaxai/minimax-m3",
     "nvidia_nim/z-ai/glm-5.1",
     "nvidia_nim/nvidia/nemotron-3-ultra-550b-a55b",

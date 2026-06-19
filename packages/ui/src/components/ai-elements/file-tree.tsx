@@ -35,9 +35,11 @@ export type FileTreeProps = Omit<HTMLAttributes<HTMLDivElement>, "onSelect"> & {
   onExpandedChange?: (expanded: Set<string>) => void;
 };
 
+const EMPTY_SET = new Set<string>();
+
 export const FileTree = ({
   expanded: controlledExpanded,
-  defaultExpanded = new Set(),
+  defaultExpanded = EMPTY_SET,
   selectedPath,
   onSelect,
   onExpandedChange,

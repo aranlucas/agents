@@ -76,4 +76,13 @@ describe("GET /api/mcp/token", () => {
     const body = await (await GET()).json();
     expect(body).toEqual({ connected: false });
   });
+
+  it("returns the offline fixture without reading Clerk tokens in offline agent test mode", async () => {
+    vi.stubEnv("AGENT_TEST_MODE", "offline");
+    const { GET } = await import("./route");
+    const body = await (await GET()).json();
+
+    expect(getKrogerAccessTokenMock).not.toHaveBeenCalled();
+    expect(body).toEqual({ connected: false });
+  });
 });

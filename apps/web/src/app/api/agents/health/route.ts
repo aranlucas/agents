@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { AGENT_BACKEND_PATHS } from "@/components/chat/agents/registry";
 import { env } from "@/env";
 import { agentBaseUrl } from "@/lib/agent-url";
+import { OFFLINE_AGENT_HEALTH_RESPONSE } from "@/lib/offline-fixtures";
+import { isOfflineAgentTestMode } from "@/lib/offline-mode";
 
 async function checkAgent(
   name: string,
@@ -19,6 +21,10 @@ async function checkAgent(
 }
 
 export async function GET() {
+  if (isOfflineAgentTestMode()) {
+    return NextResponse.json(OFFLINE_AGENT_HEALTH_RESPONSE);
+  }
+
   const results = await Promise.all(
     Object.entries(AGENT_BACKEND_PATHS).map(([name, path]) => checkAgent(name, path)),
   );
