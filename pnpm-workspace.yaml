@@ -19,6 +19,7 @@ allowBuilds:
   onnxruntime-node: false
   protobufjs: true
   dtrace-provider: false
+  msw: true
 
 onlyBuiltDependencies:
   - "agents-monorepo"
@@ -33,3 +34,4 @@ onlyBuiltDependencies:
   - "utf-8-validate"
   - "@scarf/scarf"
   - "protobufjs"
+  - "msw"
