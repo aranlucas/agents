@@ -23,7 +23,7 @@
     "build": "turbo build",
     "update": "pnpm update:js && pnpm update:expo && pnpm update:py",
     "update:js": "pnpm up -r --latest",
-    "update:expo": "cd apps/mobile && npx expo install expo@latest && npx expo install --fix && npx expo-doctor",
+    "update:expo": "cd apps/mobile && pnpx expo install expo@latest && pnpx expo install --fix && pnpx expo-doctor",
     "update:py": "uv lock --upgrade && uv sync",
     "doctor": "npx react-doctor@latest"
   },
