@@ -2,8 +2,10 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@xyflow/react/dist/style.css";
+@import "streamdown/styles.css";
 @source "../../../apps/**/*.{ts,tsx}";
 @source "../**/*.{ts,tsx}";
+@source "../../node_modules/streamdown/dist/*.js";
 
 @theme inline {
   --color-background: var(--bg);
@@ -67,6 +69,9 @@
   --wellness: #805000;
   --wellness-soft: #f3e6c8;
   --wellness-contrast: #ffffff;
+  --expense: #2f6651;
+  --expense-soft: #dfeee8;
+  --expense-contrast: #ffffff;
   --oral-boards: #8f2633;
   --oral-boards-soft: #f6dde1;
   --oral-boards-contrast: #ffffff;
@@ -122,6 +127,9 @@
   --wellness: #f2c56d;
   --wellness-soft: #372814;
   --wellness-contrast: #1e1404;
+  --expense: #85d7b6;
+  --expense-soft: #17362b;
+  --expense-contrast: #061811;
   --oral-boards: #ff9ca8;
   --oral-boards-soft: #3d1a20;
   --oral-boards-contrast: #21070b;
@@ -172,6 +180,9 @@
     --wellness: #f2c56d;
     --wellness-soft: #372814;
     --wellness-contrast: #1e1404;
+    --expense: #85d7b6;
+    --expense-soft: #17362b;
+    --expense-contrast: #061811;
     --oral-boards: #ff9ca8;
     --oral-boards-soft: #3d1a20;
     --oral-boards-contrast: #21070b;

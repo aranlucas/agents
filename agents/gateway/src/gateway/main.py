@@ -14,6 +14,7 @@ from agents_shared.dependencies import (
 )
 from agents_shared.session_service import check_database_connection
 from dotenv import load_dotenv
+from expense_agent.main import register as register_expense
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fitness_agent.main import register as register_fitness
@@ -39,6 +40,7 @@ def register_agents(app: FastAPI, services: AgentServices) -> None:
         register_grocery,
         register_fitness,
         register_wellness,
+        register_expense,
         register_a2ui,
         register_oralboards,
         register_oralboards_v2,
