@@ -13,7 +13,7 @@ description: >
 metadata:
   author: Google
   license: Apache-2.0
-  version: 0.4.0
+  version: 0.5.0
   requires:
     bins:
       - agents-cli
@@ -90,7 +90,7 @@ For detailed setup instructions (Agent Runtime CLI/SDK, Cloud Run, custom deploy
 
 Captures GenAI interactions (model name, tokens, timing) and exports to GCS (JSONL) and BigQuery (via direct log sinks and external tables). Privacy-preserving by default — only metadata is logged unless explicitly configured otherwise.
 
-Key env var: `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` — set to `NO_CONTENT` (metadata only, default in deployed envs), `true` (full content), or `false` (disabled). Logging is disabled locally unless `LOGS_BUCKET_NAME` is set.
+Key env var: `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` — OTel GenAI semantic-conventions standard (modes: `span_only`, `event_only`, `span_and_event`, `no_content`). The scaffolded `setup_telemetry()` collapses every non-`false` value to `NO_CONTENT` (metadata-only); `false` disables capture. Logging is disabled locally unless `LOGS_BUCKET_NAME` is set.
 
 For scaffolded project details (Terraform resources, env vars, privacy modes, enabling/disabling, verification commands), see `references/cloud-trace-and-logging.md`.
 

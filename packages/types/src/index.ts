@@ -231,6 +231,13 @@ export type OralBoardsState = {
   outcome?: OralBoardsOutcome;
   status?: OralBoardsPhase | "idle";
   loading_step?: string;
+  // Streamed token-by-token while append_exchange generates — rendered live in
+  // the panel before the exchange commits to transcript.
+  active_feedback?: string;
+  active_ideal_response?: string;
+  // Written by the ask_question frontend tool so the active question survives
+  // a page refresh (reconstructed from agent state on mount).
+  current_question?: string;
 };
 
 // A2UI showcase state — matches what agents/a2ui writes to ADK shared state

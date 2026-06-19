@@ -11,7 +11,7 @@ description: >
 metadata:
   author: Google
   license: Apache-2.0
-  version: 0.4.0
+  version: 0.5.0
   requires:
     bins:
       - agents-cli
@@ -88,7 +88,7 @@ Recognize these rationalizations and push back — they always cost more time th
 
 ## Choosing the Right Metrics
 
-Pick built-in metrics by what you want to measure. Multi-turn metrics evaluate the full conversation; single-turn metrics evaluate one prompt-response pair (with intermediate tool calls). When no built-in fits, write a custom metric (see _Custom Metrics for `eval grade`_ below).
+Pick built-in metrics by what you want to measure. Multi-turn metrics evaluate the full conversation; single-turn metrics evaluate one prompt-response pair (with intermediate tool calls). When no built-in fits, write a custom metric (see _Evaluation Configuration Schema_ below).
 
 | Goal                                                                         | Recommended built-in metrics                                                                                                         |
 | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
@@ -98,7 +98,7 @@ Pick built-in metrics by what you want to measure. Multi-turn metrics evaluate t
 | **Final response quality** (no ground-truth reference needed)                | `final_response_quality`                                                                                                             |
 | **Factual grounding** (catch hallucinated claims, e.g., RAG agents)          | `hallucination`                                                                                                                      |
 | **Safety policy compliance**                                                 | `safety`                                                                                                                             |
-| **Domain-specific check no built-in covers**                                 | Write a custom `LLMMetric` (LLM-judge) or `CodeExecutionMetric` (deterministic Python). See _Custom Metrics for `eval grade`_ below. |
+| **Domain-specific check no built-in covers**                                 | Write a custom `LLMMetric` (LLM-judge) or `CodeExecutionMetric` (deterministic Python). See _Evaluation Configuration Schema_ below. |
 
 Run `agents-cli eval metric list` to see all available built-ins. For full metric definitions and rubric details, see the [Agent Platform metric docs](https://cloud.google.com/gemini-enterprise-agent-platform/optimize/evaluation/manage-metrics) and `references/metrics-guide.md`.
 

@@ -1,0 +1,101 @@
+# Oral-boards eval config — all metrics use local custom_function (no GCP required).
+# Run with: agents-cli eval grade --traces artifacts/traces/ --config tests/eval/eval_config.yaml
+
+metrics_to_run:
+  - grounding_search_before_set_case
+  - set_case_has_sources
+  - loading_step_called
+  - case_vignette_length
+  - ask_question_tool_called
+
+custom_metrics:
+  # Verifies the agent called search_docs at least once before calling set_case.
+  # Grounding rule violation if this fails.
+  - name: grounding_search_before_set_case
+    custom_function: |
+      def evaluate(instance):
+          turns = (instance.get("agent_data") or {}).get("turns", [])
+          events = [e for t in turns for e in (t.get("events") or [])]
+          tool_seq = []
+          for event in events:
+              for part in (event.get("content") or {}).get("parts") or []:
+                  fc = part.get("function_call") or {}
+                  if fc.get("name"):
+                      tool_seq.append(fc["name"])
+          has_search = "search_docs" in tool_seq
+          has_set_case = "set_case" in tool_seq
+          if not has_set_case:
+              return {"score": 0, "explanation": "set_case was never called — no case vignette produced"}
+          if not has_search:
+              return {"score": 0, "explanation": "set_case called without prior search_docs — grounding rule violated"}
+          search_idx = tool_seq.index("search_docs")
+          case_idx = tool_seq.index("set_case")
+          if search_idx < case_idx:
+              return {"score": 1, "explanation": f"search_docs (pos {search_idx}) called before set_case (pos {case_idx}) — grounding satisfied"}
+          return {"score": 0, "explanation": f"set_case (pos {case_idx}) called before search_docs (pos {search_idx}) — grounding violated"}
+
+  # Verifies set_case was called with non-empty case_sources.
+  - name: set_case_has_sources
+    custom_function: |
+      def evaluate(instance):
+          turns = (instance.get("agent_data") or {}).get("turns", [])
+          events = [e for t in turns for e in (t.get("events") or [])]
+          for event in events:
+              for part in (event.get("content") or {}).get("parts") or []:
+                  fc = part.get("function_call") or {}
+                  if fc.get("name") == "set_case":
+                      args = fc.get("args") or {}
+                      sources = args.get("case_sources") or []
+                      if sources:
+                          return {"score": 1, "explanation": f"set_case called with {len(sources)} source(s)"}
+                      return {"score": 0, "explanation": "set_case called without case_sources — no provenance"}
+          return {"score": 0, "explanation": "set_case was never called"}
+
+  # Verifies set_loading_step was called (progress feedback to the user).
+  - name: loading_step_called
+    custom_function: |
+      def evaluate(instance):
+          turns = (instance.get("agent_data") or {}).get("turns", [])
+          events = [e for t in turns for e in (t.get("events") or [])]
+          for event in events:
+              for part in (event.get("content") or {}).get("parts") or []:
+                  fc = part.get("function_call") or {}
+                  if fc.get("name") == "set_loading_step":
+                      step = ((fc.get("args") or {}).get("step") or "").strip()
+                      return {"score": 1, "explanation": f"set_loading_step called: '{step}'"}
+          return {"score": 0, "explanation": "set_loading_step was never called — user sees no progress"}
+
+  # Checks the case vignette has reasonable length (100–2000 chars).
+  - name: case_vignette_length
+    custom_function: |
+      def evaluate(instance):
+          turns = (instance.get("agent_data") or {}).get("turns", [])
+          events = [e for t in turns for e in (t.get("events") or [])]
+          for event in events:
+              for part in (event.get("content") or {}).get("parts") or []:
+                  fc = part.get("function_call") or {}
+                  if fc.get("name") == "set_case":
+                      case_text = ((fc.get("args") or {}).get("case") or "").strip()
+                      n = len(case_text)
+                      if n < 100:
+                          return {"score": 0, "explanation": f"case vignette too short ({n} chars) — likely incomplete"}
+                      if n > 4000:
+                          return {"score": 0, "explanation": f"case vignette too long ({n} chars) — may exceed context budget"}
+                      return {"score": 1, "explanation": f"case vignette length OK ({n} chars)"}
+          return {"score": 0, "explanation": "set_case never called — no vignette to check"}
+
+  # Verifies ask_question was called (examiner question wired to UI).
+  # Only relevant if the agent reached the questioning phase.
+  - name: ask_question_tool_called
+    custom_function: |
+      def evaluate(instance):
+          turns = (instance.get("agent_data") or {}).get("turns", [])
+          events = [e for t in turns for e in (t.get("events") or [])]
+          for event in events:
+              for part in (event.get("content") or {}).get("parts") or []:
+                  fc = part.get("function_call") or {}
+                  if fc.get("name") == "ask_question":
+                      q = ((fc.get("args") or {}).get("question") or "").strip()
+                      return {"score": 1, "explanation": f"ask_question called: '{q[:80]}...'"}
+          # Not called on first turn (only case generation) — that's OK
+          return {"score": 0, "explanation": "ask_question not called — examiner question not wired to UI"}

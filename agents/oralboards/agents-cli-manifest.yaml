@@ -1,0 +1,4 @@
+name: oralboards
+agent_directory: src/oralboards_agent
+region: us-central1
+acli_version: "0.5.0"

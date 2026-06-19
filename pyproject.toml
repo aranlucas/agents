@@ -96,4 +96,12 @@ exclude_also = [
 ]
 
 [dependency-groups]
-dev = ["httpx", "pyright>=1.1", "pytest", "pytest-asyncio", "pytest-cov>=7.1.0", "ruff>=0.15.15"]
+dev = [
+  "google-cloud-aiplatform[evaluation]>=1.158.0",
+  "httpx",
+  "pyright>=1.1",
+  "pytest",
+  "pytest-asyncio",
+  "pytest-cov>=7.1.0",
+  "ruff>=0.15.15",
+]

@@ -15,7 +15,7 @@ import { useArtifactPanel } from "@/components/workspace-shell";
 import { cssVars } from "@/lib/css";
 import { useAgentWarmup } from "@/hooks/use-agent-warmup";
 
-const AGENT_ID = "oral-boards" as const;
+type OralBoardsAgentId = "oral-boards" | "oral-boards-v2";
 
 const TOPICS = [
   { label: "Pulp therapy", message: "Create an oral-board case focused on pulp therapy." },
@@ -133,19 +133,19 @@ function OralBoardsStartPage({
   );
 }
 
-export function OralBoardsWorkspace() {
-  const config = getAgentConfig(AGENT_ID);
-  const { dispatch } = useArtifactPanel(AGENT_ID);
+export function OralBoardsWorkspace({ agentId = "oral-boards" }: { agentId?: OralBoardsAgentId }) {
+  const config = getAgentConfig(agentId);
+  const { dispatch } = useArtifactPanel(agentId);
   const { agent } = useAgent({
-    agentId: AGENT_ID,
+    agentId,
     updates: [UseAgentUpdate.OnStateChanged, UseAgentUpdate.OnRunStatusChanged],
   });
   const { copilotkit } = useCopilotKit();
-  const startNewThread = useNewThread(AGENT_ID);
+  const startNewThread = useNewThread(agentId);
 
   const { statuses, isLoading: warmingUp } = useAgentWarmup();
   const warmupError =
-    statuses[AGENT_ID] === "error" && !warmingUp ? new Error("Agent backend is unreachable") : null;
+    statuses[agentId] === "error" && !warmingUp ? new Error("Agent backend is unreachable") : null;
 
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const examState = (agent?.state ?? {}) as OralBoardsState;
@@ -197,7 +197,7 @@ export function OralBoardsWorkspace() {
       style={cssVars({ "--page-color": `var(${config.colorVar})` })}
     >
       <OralBoardsQuestionProvider>
-        <AgentExtensionSlot agentId={AGENT_ID} />
+        <AgentExtensionSlot agentId={agentId} />
         <CopilotSidebar
           defaultOpen={false}
           labels={{
@@ -205,7 +205,7 @@ export function OralBoardsWorkspace() {
             chatInputPlaceholder: config.placeholder,
           }}
         />
-        <AppSidebar activePath={`/console/${AGENT_ID}`} onNewThread={startNewThread} />
+        <AppSidebar activePath={`/console/${agentId}`} onNewThread={startNewThread} />
         <SidebarInset className="min-h-0 overflow-hidden">
           {hasPanel ? (
             <OralBoardsPanel
@@ -215,6 +215,8 @@ export function OralBoardsWorkspace() {
               onAnswer={(text) => void handleAnswer(text)}
               isRunning={isRunning}
               loadingStep={examState.loading_step ?? ""}
+              activeFeedback={examState.active_feedback ?? ""}
+              activeIdealResponse={examState.active_ideal_response ?? ""}
             />
           ) : (
             <div className="flex h-full flex-col overflow-hidden">

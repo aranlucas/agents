@@ -63,6 +63,10 @@ class OralBoardsState(BaseModel):
     outcome: str = ""
     status: str = "idle"
     loading_step: str = ""
+    # Streamed token-by-token while append_exchange is generating; cleared when
+    # the exchange commits to transcript.  The UI shows these fields live.
+    active_feedback: str = ""
+    active_ideal_response: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -380,6 +384,9 @@ def append_exchange(
     )
     tool_context.state["transcript"] = transcript
     tool_context.state["status"] = "questioning"
+    # Clear streaming preview fields once the exchange is committed.
+    tool_context.state["active_feedback"] = ""
+    tool_context.state["active_ideal_response"] = ""
     return {"status": "success", "ok": True, "count": len(transcript)}
 
 

@@ -2,24 +2,24 @@
 
 ## `agents-cli scaffold create` Flags
 
-| Flag                             | Short  | Default         | Description                                                                                                                        |
-| -------------------------------- | ------ | --------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `--agent`                        | `-a`   | `adk`           | Agent template — local name (e.g. `adk`), local path (`local@/path`), adk-samples shortcut (`adk@data-science`), or remote Git URL |
-| `--deployment-target`            | `-d`   | `agent_runtime` | Deployment target (`agent_runtime`, `cloud_run`, `gke`, `none`)                                                                    |
-| `--region`                       |        | `us-east1`      | GCP region                                                                                                                         |
-| `--prototype`                    | `-p`   | off             | Skip CI/CD and Terraform (recommended for first pass)                                                                              |
-| `--datastore`                    | `-ds`  | —               | RAG datastore type (`agent_platform_search`, `agent_platform_vector_search`). Use with `--agent agentic_rag`.                      |
-| `--session-type`                 |        | —               | Session storage (`in_memory`, `cloud_sql`, `agent_platform_sessions`). Use with `cloud_run` target.                                |
-| `--cicd-runner`                  |        | —               | CI/CD runner (`github_actions`, `google_cloud_build`, `skip`)                                                                      |
-| `--agent-directory`              | `-dir` | `app/`          | Custom agent code directory inside the project                                                                                     |
-| `--agent-guidance-filename`      |        | `GEMINI.md`     | Coding agent guidance file (`GEMINI.md`, `CLAUDE.md`, or `AGENTS.md`)                                                              |
-| `--output-dir`                   | `-o`   | `.`             | Output directory for the project                                                                                                   |
-| `--bq-analytics`                 |        | off             | Enable BigQuery Agent Analytics plugin (requires `--deployment-target agent_runtime` or `cloud_run`)                               |
-| `--google-api-key` / `--api-key` | `-k`   | —               | Use Google AI Studio API key instead of Agent Platform                                                                             |
-| `--skip-checks`                  | `-s`   | off             | Skip verification checks for GCP and Agent Platform                                                                                |
-| `--adk`                          |        | off             | Quickstart mode: adk + agent_runtime + prototype, skips prompts                                                                    |
-| `--auto-approve` / `--yes`       | `-y`   | off             | Non-interactive: skip prompts, use defaults for missing params                                                                     |
-| `--interactive`                  | `-i`   | off             | Interactive mode: show menus and prompts (for use in terminals)                                                                    |
+| Flag                             | Short  | Default         | Description                                                                                                                                           |
+| -------------------------------- | ------ | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--agent`                        | `-a`   | `adk`           | Agent template — local name (e.g. `adk`), local path (`local@/path`), adk-samples shortcut (`adk@data-science`), or remote Git URL                    |
+| `--deployment-target`            | `-d`   | `agent_runtime` | Deployment target (`agent_runtime`, `cloud_run`, `gke`, `none`)                                                                                       |
+| `--region`                       |        | `us-east1`      | GCP region                                                                                                                                            |
+| `--prototype`                    | `-p`   | off             | Skip CI/CD and Terraform (recommended for first pass)                                                                                                 |
+| `--datastore`                    | `-ds`  | —               | RAG datastore type (`agent_platform_search`, `agent_platform_vector_search`). Use with `--agent agentic_rag`.                                         |
+| `--session-type`                 |        | —               | Session storage (`in_memory`, `cloud_sql`, `agent_platform_sessions`). Use with `cloud_run` or `gke` targets (Agent Runtime manages sessions itself). |
+| `--cicd-runner`                  |        | —               | CI/CD runner (`github_actions`, `google_cloud_build`, `skip`)                                                                                         |
+| `--agent-directory`              | `-dir` | `app/`          | Custom agent code directory inside the project                                                                                                        |
+| `--agent-guidance-filename`      |        | `GEMINI.md`     | Coding agent guidance file (`GEMINI.md`, `CLAUDE.md`, or `AGENTS.md`)                                                                                 |
+| `--output-dir`                   | `-o`   | `.`             | Output directory for the project                                                                                                                      |
+| `--bq-analytics`                 |        | off             | Enable BigQuery Agent Analytics plugin (supported on `agent_runtime`, `cloud_run`, and `gke`)                                                         |
+| `--google-api-key` / `--api-key` | `-k`   | —               | Use Google AI Studio API key instead of Agent Platform                                                                                                |
+| `--skip-checks`                  | `-s`   | off             | Skip verification checks for GCP and Agent Platform                                                                                                   |
+| `--adk`                          |        | off             | Quickstart mode: adk + agent_runtime + prototype, skips prompts                                                                                       |
+| `--auto-approve` / `--yes`       | `-y`   | off             | Non-interactive: skip prompts, use defaults for missing params                                                                                        |
+| `--interactive`                  | `-i`   | off             | Interactive mode: show menus and prompts (for use in terminals)                                                                                       |
 
 For all available flags, run `agents-cli scaffold create --help`.
 

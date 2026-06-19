@@ -486,6 +486,27 @@ function ThinkingState({ isRunning, loadingStep }: { isRunning: boolean; loading
   );
 }
 
+// Live streaming feedback preview shown while the evaluator is generating —
+// disappears once append_exchange commits the exchange to transcript.
+function LiveFeedbackPreview({
+  activeFeedback,
+  activeIdealResponse,
+}: {
+  activeFeedback: string;
+  activeIdealResponse: string;
+}) {
+  if (!activeFeedback.trim()) return null;
+  return (
+    <div className="shrink-0 space-y-1.5 rounded-lg border border-dashed p-3 text-sm">
+      <p className="text-[10px] font-semibold tracking-[0.15em] text-amber-400 uppercase">
+        Feedback · generating…
+      </p>
+      <Streamdown>{activeFeedback}</Streamdown>
+      {activeIdealResponse.trim() && <ModelAnswer text={activeIdealResponse} />}
+    </div>
+  );
+}
+
 function QuestioningPane({
   caseBody,
   sources,
@@ -495,6 +516,8 @@ function QuestioningPane({
   loadingStep = "",
   notes,
   onNotesChange,
+  activeFeedback = "",
+  activeIdealResponse = "",
 }: {
   caseBody: string;
   sources: CaseSource[];
@@ -504,6 +527,8 @@ function QuestioningPane({
   loadingStep?: string;
   notes: string;
   onNotesChange: React.Dispatch<React.SetStateAction<string>>;
+  activeFeedback?: string;
+  activeIdealResponse?: string;
 }) {
   const { currentQuestion: question } = useOralBoardsQuestion();
   const questionNumber = transcript.length + 1;
@@ -542,23 +567,54 @@ function QuestioningPane({
       <ResizablePanel>
         <div className="flex h-full flex-col">
           {/* Progress header — fixed outside ResizablePanelGroup */}
-          <div className="flex shrink-0 items-center justify-between border-b px-4 py-2.5">
-            <span className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
-              Examination
-            </span>
-            <QuestionProgress answered={transcript.length} current={questionNumber} />
+          <div className="shrink-0 border-b px-4 py-2">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
+                Examination
+              </span>
+              <QuestionProgress answered={transcript.length} current={questionNumber} />
+            </div>
+            {transcript.length > 0 && (
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {[...new Set(transcript.map((x) => x.skillset).filter(Boolean))].map((skillset) => {
+                  const scores = transcript
+                    .filter((x) => x.skillset === skillset)
+                    .map((x) => x.score)
+                    .filter((s) => s != null);
+                  const avg = scores.length
+                    ? scores.reduce((a, b) => a + b, 0) / scores.length
+                    : null;
+                  return (
+                    <Badge
+                      key={skillset}
+                      variant="secondary"
+                      className={`py-0 text-[9px] ${avg != null ? scoreClasses(Math.round(avg)) : ""}`}
+                    >
+                      {skillset}
+                      {avg != null && <span className="ml-1 opacity-70">{avg.toFixed(1)}</span>}
+                    </Badge>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <ResizablePanelGroup orientation="vertical" className="min-h-0 flex-1">
             <ResizablePanel>
               <ScrollArea className="h-full border-b">
-                {(olderExchanges.length > 0 || lastExchange) && (
+                {(olderExchanges.length > 0 || lastExchange || activeFeedback) && (
                   <div className="space-y-1.5 px-4 py-3">
                     {olderExchanges.map((x, i) => (
                       <CompletedExchangeRow key={x.question || i} exchange={x} index={i} />
                     ))}
                     {lastExchange && (
                       <LastFeedbackCard exchange={lastExchange} index={transcript.length - 1} />
+                    )}
+                    {isRunning && (
+                      <LiveFeedbackPreview
+                        activeFeedback={activeFeedback}
+                        activeIdealResponse={activeIdealResponse}
+                      />
                     )}
                   </div>
                 )}
@@ -717,6 +773,8 @@ export function OralBoardsPanel({
   onAnswer,
   isRunning,
   loadingStep = "",
+  activeFeedback = "",
+  activeIdealResponse = "",
 }: {
   state: OralBoardsState;
   onClose: () => void;
@@ -724,6 +782,8 @@ export function OralBoardsPanel({
   onAnswer: (text: string) => void;
   isRunning: boolean;
   loadingStep?: string;
+  activeFeedback?: string;
+  activeIdealResponse?: string;
 }) {
   const status = state.status ?? "idle";
   const caseBody = state.case ?? "";
@@ -772,6 +832,8 @@ export function OralBoardsPanel({
             loadingStep={loadingStep}
             notes={notes}
             onNotesChange={setNotes}
+            activeFeedback={activeFeedback}
+            activeIdealResponse={activeIdealResponse}
           />
         )}
         {(status === "complete" || status === "feedback" || Boolean(scoreCard.trim())) && (

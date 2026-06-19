@@ -22,6 +22,14 @@ ORALBOARDS_PREDICT_STATE = [
     streaming_state_mapping(
         state_key="score_card", tool="set_score_card", tool_argument="markdown"
     ),
+    streaming_state_mapping(
+        state_key="active_feedback", tool="append_exchange", tool_argument="feedback"
+    ),
+    streaming_state_mapping(
+        state_key="active_ideal_response",
+        tool="append_exchange",
+        tool_argument="ideal_response",
+    ),
 ]
 
 _oralboards_agent = build_agent()

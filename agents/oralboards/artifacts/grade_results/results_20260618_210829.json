@@ -1,0 +1,43 @@
+{
+  "results": [
+    {
+      "eval_case_id": "case_gen_pulp_therapy",
+      "ask_question_tool_called": 0,
+      "ask_question_tool_called__explanation": "ask_question not called — examiner question not wired to UI",
+      "set_case_has_sources": 1,
+      "set_case_has_sources__explanation": "set_case called with 4 source(s)",
+      "grounding_search_before_set_case": 1,
+      "grounding_search_before_set_case__explanation": "search_docs (pos 1) called before set_case (pos 11) — grounding satisfied",
+      "case_vignette_length": 1,
+      "case_vignette_length__explanation": "case vignette length OK (1358 chars)",
+      "loading_step_called": 1,
+      "loading_step_called__explanation": "set_loading_step called: 'Searching clinical guidelines…'"
+    },
+    {
+      "eval_case_id": "case_gen_dental_trauma",
+      "ask_question_tool_called": 0,
+      "ask_question_tool_called__explanation": "ask_question not called — examiner question not wired to UI",
+      "set_case_has_sources": 1,
+      "set_case_has_sources__explanation": "set_case called with 2 source(s)",
+      "grounding_search_before_set_case": 1,
+      "grounding_search_before_set_case__explanation": "search_docs (pos 1) called before set_case (pos 10) — grounding satisfied",
+      "case_vignette_length": 1,
+      "case_vignette_length__explanation": "case vignette length OK (1581 chars)",
+      "loading_step_called": 1,
+      "loading_step_called__explanation": "set_loading_step called: 'Searching clinical guidelines…'"
+    },
+    {
+      "eval_case_id": "case_gen_ecc",
+      "ask_question_tool_called": 0,
+      "ask_question_tool_called__explanation": "ask_question not called — examiner question not wired to UI",
+      "set_case_has_sources": 1,
+      "set_case_has_sources__explanation": "set_case called with 3 source(s)",
+      "grounding_search_before_set_case": 1,
+      "grounding_search_before_set_case__explanation": "search_docs (pos 1) called before set_case (pos 11) — grounding satisfied",
+      "case_vignette_length": 1,
+      "case_vignette_length__explanation": "case vignette length OK (1788 chars)",
+      "loading_step_called": 1,
+      "loading_step_called__explanation": "set_loading_step called: 'Searching clinical guidelines…'"
+    }
+  ]
+}
