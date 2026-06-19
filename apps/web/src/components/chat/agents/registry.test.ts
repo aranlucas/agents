@@ -8,6 +8,7 @@ describe("agent registry", () => {
       "grocery",
       "fitness",
       "wellness",
+      "expense",
       "oral-boards",
       "oral-boards-v2",
       "a2ui",
@@ -28,6 +29,7 @@ describe("agent registry", () => {
   });
 
   it("uses canonical backend paths for gateway routes", () => {
+    expect(AGENT_BACKEND_PATHS.expense).toBe("expense");
     expect(AGENT_BACKEND_PATHS["oral-boards"]).toBe("oralboards");
     expect(AGENT_BACKEND_PATHS.resume).toBe("resume");
   });
@@ -41,6 +43,7 @@ describe("agent registry", () => {
     expect(getAgentConfig("grocery").requires).toEqual(["kroger"]);
     expect(getAgentConfig("fitness").requires).toEqual(["strava"]);
     expect(getAgentConfig("wellness").requires).toEqual(["kroger", "strava"]);
+    expect(getAgentConfig("expense").requires ?? []).toEqual([]);
     expect(getAgentConfig("oral-boards").requires ?? []).toEqual([]);
     expect(getAgentConfig("oral-boards-v2").requires ?? []).toEqual([]);
     expect(getAgentConfig("a2ui").requires ?? []).toEqual([]);

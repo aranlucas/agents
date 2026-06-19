@@ -1,0 +1,147 @@
+// @vitest-environment jsdom
+import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { render, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const copilotMocks = vi.hoisted(() => ({
+  agent: {
+    addMessage: vi.fn(),
+    isRunning: false,
+    messages: [],
+    setMessages: vi.fn(),
+    state: {},
+  },
+  connectAgent: vi.fn(async () => undefined),
+  runAgent: vi.fn(async () => undefined),
+  stopAgent: vi.fn(),
+  runtimeConnectionStatus: "connected",
+}));
+
+vi.mock("@copilotkit/react-core/v2", () => ({
+  UseAgentUpdate: {
+    OnMessagesChanged: "OnMessagesChanged",
+    OnRunStatusChanged: "OnRunStatusChanged",
+    OnStateChanged: "OnStateChanged",
+  },
+  useAgent: () => ({ agent: copilotMocks.agent }),
+  useCopilotKit: () => ({
+    copilotkit: {
+      connectAgent: copilotMocks.connectAgent,
+      runAgent: copilotMocks.runAgent,
+      runtimeConnectionStatus: copilotMocks.runtimeConnectionStatus,
+      stopAgent: copilotMocks.stopAgent,
+    },
+  }),
+  useDefaultRenderTool: vi.fn(),
+  useRenderActivityMessage: () => ({ renderActivityMessage: () => null }),
+  useRenderToolCall: () => () => null,
+  useSuggestions: () => ({ suggestions: [] }),
+}));
+
+vi.mock("lucide-react", () => ({
+  SparklesIcon: () => <span data-testid="sparkles" />,
+}));
+
+vi.mock("@agents/ui", () => ({
+  Button: ({ children, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button {...props}>{children}</button>
+  ),
+}));
+
+vi.mock("@agents/ui/components/ai-elements/conversation", () => ({
+  Conversation: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  ConversationContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  ConversationEmptyState: ({ title }: { title: string }) => <div>{title}</div>,
+  ConversationScrollButton: () => null,
+}));
+
+vi.mock("@agents/ui/components/ai-elements/message", () => ({
+  Message: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  MessageContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  MessageResponse: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+}));
+
+vi.mock("@agents/ui/components/ai-elements/prompt-input", () => ({
+  PromptInput: ({ children }: { children: ReactNode }) => <form>{children}</form>,
+  PromptInputBody: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  PromptInputFooter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  PromptInputProvider: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  PromptInputSubmit: () => <button type="button">submit</button>,
+  PromptInputTextarea: () => <textarea />,
+  PromptInputTools: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+}));
+
+vi.mock("@agents/ui/components/ai-elements/reasoning", () => ({
+  Reasoning: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  ReasoningContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  ReasoningTrigger: () => <button type="button">reasoning</button>,
+}));
+
+vi.mock("@agents/ui/components/ai-elements/suggestion", () => ({
+  Suggestion: ({ suggestion }: { suggestion: string }) => (
+    <button type="button">{suggestion}</button>
+  ),
+  Suggestions: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+}));
+
+vi.mock("@agents/ui/components/ai-elements/tool", () => ({
+  Tool: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  ToolContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  ToolHeader: () => <div />,
+  ToolInput: () => <div />,
+  ToolOutput: () => <div />,
+}));
+
+vi.mock("@/hooks/use-required-connections", () => ({
+  useRequiredConnections: () => ({ isLoading: false, missing: [] }),
+}));
+
+vi.mock("./agent-selector", () => ({
+  AgentSelector: () => <button type="button">agent</button>,
+}));
+
+vi.mock("./connect-notice", () => ({
+  ConnectNotice: () => <div />,
+}));
+
+vi.mock("./transcribe-button", () => ({
+  TranscribeButton: () => <button type="button">transcribe</button>,
+}));
+
+import { ChatSurface } from "./chat-surface";
+import { getAgentConfig } from "./agents/registry";
+
+describe("ChatSurface history replay", () => {
+  beforeEach(() => {
+    copilotMocks.connectAgent.mockClear();
+    copilotMocks.runtimeConnectionStatus = "connected";
+  });
+
+  it("connects the agent on mount so reloads replay thread history", async () => {
+    render(
+      <ChatSurface
+        config={getAgentConfig("travel")}
+        onSwitchAgent={() => {}}
+        onOpenArtifact={() => {}}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(copilotMocks.connectAgent).toHaveBeenCalledWith({ agent: copilotMocks.agent });
+    });
+  });
+
+  it("waits until the runtime connection is ready before replaying history", () => {
+    copilotMocks.runtimeConnectionStatus = "connecting";
+
+    render(
+      <ChatSurface
+        config={getAgentConfig("travel")}
+        onSwitchAgent={() => {}}
+        onOpenArtifact={() => {}}
+      />,
+    );
+
+    expect(copilotMocks.connectAgent).not.toHaveBeenCalled();
+  });
+});

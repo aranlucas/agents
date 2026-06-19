@@ -5,6 +5,7 @@ export type AgentTheme =
   | "grocery"
   | "fitness"
   | "wellness"
+  | "expense"
   | "oral-boards"
   | "oral-boards-v2"
   | "a2ui"
@@ -42,6 +43,12 @@ export const AGENT_THEMES: Record<
     colorVar: "var(--wellness)",
     softVar: "var(--wellness-soft)",
     contrastVar: "var(--wellness-contrast)",
+  },
+  expense: {
+    label: "Expense Desk",
+    colorVar: "var(--expense)",
+    softVar: "var(--expense-soft)",
+    contrastVar: "var(--expense-contrast)",
   },
   "oral-boards": {
     label: "Oral Boards",

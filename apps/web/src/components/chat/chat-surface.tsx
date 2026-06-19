@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback } from "react";
+import { Fragment, useCallback, useEffect, useRef } from "react";
 import {
   useAgent,
   useCopilotKit,
@@ -74,6 +74,10 @@ function ToolRendererRegistration() {
   return null;
 }
 
+function isConnectedRuntimeStatus(status: unknown) {
+  return status === "connected";
+}
+
 export function ChatSurface({
   config,
   onSwitchAgent,
@@ -97,6 +101,30 @@ export function ChatSurface({
   const { suggestions } = useSuggestions({ agentId: config.id });
   const connections = useRequiredConnections(config.id);
   const gated = !connections.isLoading && connections.missing.length > 0;
+  const connectedAgentRef = useRef<typeof agent | null>(null);
+  const isRuntimeConnected = isConnectedRuntimeStatus(copilotkit.runtimeConnectionStatus);
+
+  useEffect(() => {
+    let detached = false;
+
+    if (!agent || connectedAgentRef.current === agent || !isRuntimeConnected) {
+      return undefined;
+    }
+
+    connectedAgentRef.current = agent;
+    void copilotkit.connectAgent({ agent }).catch((error: unknown) => {
+      if (detached) return;
+      connectedAgentRef.current = null;
+      if (error instanceof Error && error.name === "AGUIConnectNotImplementedError") return;
+      console.error("ChatSurface: connectAgent failed", error);
+    });
+
+    return () => {
+      detached = true;
+      connectedAgentRef.current = null;
+      void agent.detachActiveRun?.();
+    };
+  }, [agent, copilotkit, isRuntimeConnected]);
 
   // CopilotKit's public agent message type is looser than the AG-UI runtime
   // shape this renderer consumes; keep that cast at the integration boundary.
@@ -108,7 +136,14 @@ export function ChatSurface({
   const artifact = selectArtifact(agent?.state as Record<string, unknown>, config);
 
   // The artifact button hangs off the most recent assistant turn.
-  const lastAssistantId = items.findLast((i) => i.kind === "assistant")?.id;
+  let lastAssistantId: string | undefined;
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    const item = items[index];
+    if (item.kind === "assistant") {
+      lastAssistantId = item.id;
+      break;
+    }
+  }
 
   // Pair each tool call with its result message (role: "tool") so the resolver
   // can render the completed state instead of a perpetual "Pending".

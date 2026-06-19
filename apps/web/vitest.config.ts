@@ -8,7 +8,10 @@ export default defineConfig({
         find: "@agents/ui/globals.css",
         replacement: resolve(__dirname, "../../packages/ui/src/styles/globals.css"),
       },
-      { find: "@agents/ui", replacement: resolve(__dirname, "../../packages/ui/src") },
+      {
+        find: "@agents/ui",
+        replacement: resolve(__dirname, "../../packages/ui/src"),
+      },
       { find: "@", replacement: resolve(__dirname, "./src") },
     ],
   },

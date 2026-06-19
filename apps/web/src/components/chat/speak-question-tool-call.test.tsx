@@ -1,18 +1,9 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@agents/ui", () => ({
-  Button: (props: ComponentProps<"button">) => <button type="button" {...props} />,
-}));
-
-vi.mock("@agents/ui/components/ai-elements/tool", () => ({
-  Tool: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  ToolHeader: () => null,
-  ToolContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}));
+vi.mock("@agents/ui", () => import("@/__mocks__/@agents/ui"));
 
 const speakQuestion = vi.fn().mockResolvedValue(undefined);
 const stopSpeaking = vi.fn();

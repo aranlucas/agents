@@ -3,6 +3,7 @@ export const AGENT_ORDER = [
   "grocery",
   "fitness",
   "wellness",
+  "expense",
   "oral-boards",
   "oral-boards-v2",
   "a2ui",
@@ -16,6 +17,7 @@ export const AGENT_BACKEND_PATHS = {
   grocery: "grocery",
   fitness: "fitness",
   wellness: "wellness",
+  expense: "expense",
   "oral-boards": "oralboards",
   "oral-boards-v2": "oralboards-v2",
   a2ui: "a2ui",
@@ -125,6 +127,41 @@ export type WellnessState = {
   user_id?: string;
   kroger_connected?: boolean;
   strava_connected?: boolean;
+};
+
+// Expense Desk state — matches what agents/expense writes to ADK shared state
+export type ExpenseStatus =
+  | "submitted"
+  | "auto_approved"
+  | "needs_review"
+  | "approved"
+  | "rejected";
+
+export type ExpenseRiskLevel = "low" | "medium" | "high";
+export type ExpenseDeskStatus = "idle" | "reviewing" | "needs_approval" | "ready";
+
+export type ExpenseItem = {
+  id: string;
+  amount: number;
+  submitter: string;
+  category: string;
+  description: string;
+  date: string;
+  status: ExpenseStatus;
+  risk_level?: ExpenseRiskLevel | null;
+  risk_summary?: string;
+  recommendation?: string;
+  decision_note?: string;
+};
+
+export type ExpenseState = {
+  expenses?: ExpenseItem[];
+  selected_expense_id?: string;
+  expense_report?: string;
+  status?: ExpenseDeskStatus;
+  review_summary?: string;
+  review_threshold_usd?: number;
+  user_id?: string;
 };
 
 // Oral boards examiner state — matches what agents/oralboards writes to ADK shared state

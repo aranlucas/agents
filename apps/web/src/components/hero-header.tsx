@@ -4,8 +4,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowLeft, ListFilter } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Button, buttonVariants } from "@agents/ui";
-import { cn } from "@agents/ui/lib/utils";
+import { Button, buttonVariants, cn } from "@agents/ui";
 
 interface Props {
   name: string;

@@ -5,7 +5,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
-import { TooltipProvider } from "@agents/ui/components/tooltip";
+import { TooltipProvider } from "@agents/ui";
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());

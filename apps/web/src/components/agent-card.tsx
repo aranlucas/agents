@@ -2,11 +2,8 @@ import Link from "next/link";
 import { ArrowUpRight, CheckCircle2, CircleAlert, Loader2 } from "lucide-react";
 
 import { agentStyle, type AgentTheme } from "@/components/agent-theme";
-import { Badge } from "@agents/ui";
-import { buttonVariants } from "@agents/ui";
-import { Card, CardContent } from "@agents/ui";
+import { Badge, buttonVariants, Card, CardContent, cn } from "@agents/ui";
 import type { AgentStatus } from "@/hooks/use-agent-warmup";
-import { cn } from "@agents/ui/lib/utils";
 
 export type Agent = {
   id: string;

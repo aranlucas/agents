@@ -24,7 +24,8 @@
     "update": "pnpm update:js && pnpm update:expo && pnpm update:py",
     "update:js": "pnpm up -r --latest",
     "update:expo": "cd apps/mobile && npx expo install expo@latest && npx expo install --fix && npx expo-doctor",
-    "update:py": "uv lock --upgrade && uv sync"
+    "update:py": "uv lock --upgrade && uv sync",
+    "doctor": "npx react-doctor@latest"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
@@ -36,6 +37,7 @@
     "oxfmt": "^0.55.0",
     "oxlint": "^1.70.0",
     "oxlint-tsgolint": "^0.23.0",
+    "react-doctor": "^0.5.6",
     "turbo": "^2.9.18"
   },
   "packageManager": "pnpm@11.5.3"

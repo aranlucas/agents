@@ -1,6 +1,6 @@
 "use client";
 
-import { Streamdown } from "streamdown";
+import { Streamdown } from "@agents/ui";
 
 import {
   Artifact,
@@ -10,7 +10,7 @@ import {
   ArtifactDescription,
   ArtifactHeader,
   ArtifactTitle,
-} from "@agents/ui/components/ai-elements/artifact";
+} from "@agents/ui";
 import type { ArtifactView } from "./artifact";
 
 export function ArtifactPanel({ view, onClose }: { view: ArtifactView; onClose: () => void }) {
