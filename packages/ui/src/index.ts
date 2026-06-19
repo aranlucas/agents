@@ -197,7 +197,13 @@ export type {
   ArtifactProps,
   ArtifactTitleProps,
 } from "./components/ai-elements/artifact";
-export { Tool, ToolContent, ToolHeader, ToolInput, ToolOutput } from "./components/ai-elements/tool";
+export {
+  Tool,
+  ToolContent,
+  ToolHeader,
+  ToolInput,
+  ToolOutput,
+} from "./components/ai-elements/tool";
 export type {
   ToolContentProps,
   ToolHeaderProps,
