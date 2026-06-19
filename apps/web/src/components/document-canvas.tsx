@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { Streamdown } from "streamdown";
+import { Streamdown } from "@agents/ui";
 import type { DocStatus } from "@agents/types";
 
 import {

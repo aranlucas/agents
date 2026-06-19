@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Streamdown } from "streamdown";
+import { Streamdown } from "@agents/ui";
 import {
   AlertCircleIcon,
   BookOpenIcon,
