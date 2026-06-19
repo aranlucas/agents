@@ -45,6 +45,19 @@ pnpm dev               # web on :3000 + the agents gateway on :8000
 
 Other entry points: `pnpm dev:web`, `pnpm dev:mobile`, `pnpm dev:agents`.
 
+For no-key web agent testing, run the offline web mode:
+
+```bash
+pnpm dev:web:offline
+pnpm test:web:offline
+```
+
+Offline mode sets `AGENT_TEST_MODE=offline` and
+`NEXT_PUBLIC_AGENT_TEST_MODE=offline`. It bypasses Clerk/Groq, serves local
+CopilotKit/health/token fixtures shaped from
+`https://agents-lucas.vercel.app/`, and exposes reusable MSW handlers from
+`apps/web/src/testing/msw-handlers.ts` for browser or component agent tests.
+
 ## Quality checks
 
 ```bash

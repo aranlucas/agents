@@ -13,14 +13,13 @@ Software engineer with 10+ years of experience shipping products at DoorDash, Am
 **Seattle, WA (Hybrid) | Oct 2023 – Present**
 
 - Originated **Ask DoorDash** (launched June 2026): pitched the vision for a conversational, agent-driven shopping experience, built the prototype that secured leadership buy-in, and served as lead engineer guiding delivery teams across engineering, ML, product, and design to launch — natural-language search across ~800,000 menu items and products, personalized from order history and dietary preferences ([announcement](https://about.doordash.com/en-us/news/ask-doordash)).
-- Drove a cross-org reliability program for core ordering-flow services, cutting customer-facing incidents by ~40% and raising availability from 99.9% to 99.95%.
-- Tied system performance directly to business outcomes: latency and efficiency improvements on high-traffic surfaces credited with a ~1.5% lift in order conversion, worth tens of millions in annualized order volume.
-- Defined org-wide performance standards — golden-path SLOs and automated performance-regression gates in CI — adopted by 15+ teams, shifting performance work from reactive firefighting to a continuous engineering practice.
+- Drove a cross-org reliability program adding multi-tenancy for testin environments https://careersatdoordash.com/blog/moving-e2e-testing-into-production-with-multi-tenancy-for-increased-speed-and-reliability/
+- Defined org-wide performance standards — golden-path performance-regression gates in CI, shifting verifcation work from reactive firefighting to a continuous engineering practice.
 
 **Key projects:**
 
 - **Ask DoorDash** — Conversational AI search for restaurants, groceries, and reservations: users describe what they want (or share a recipe link or cookbook photo) and the app builds personalized results. Lucas pitched the product, built the prototype, and was the lead engineer through release, with delivery owned across multiple teams.
-- **System Performance & Reliability** — Org-wide performance standards, SLOs, and regression gates for high-traffic DoorDash systems, with measurable conversion and availability wins.
+- **System Performance & Reliability** — Org-wide performance standards, SLOs, and regression gates for Dashmart
 
 ### Career Break
 

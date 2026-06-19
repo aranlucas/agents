@@ -4,12 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "dev:offline": "AGENT_TEST_MODE=offline NEXT_PUBLIC_AGENT_TEST_MODE=offline next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "oxlint .",
     "fmt": "oxfmt .",
     "fmt:check": "oxfmt --check .",
     "test": "vitest run",
+    "test:offline": "AGENT_TEST_MODE=offline NEXT_PUBLIC_AGENT_TEST_MODE=offline vitest run -t offline",
     "coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
@@ -50,6 +52,7 @@
     "@types/react-test-renderer": "^19.1.0",
     "@vitest/coverage-v8": "4.1.9",
     "jsdom": "^29.1.1",
+    "msw": "^2.14.6",
     "react-test-renderer": "^19.2.7",
     "tailwindcss": "^4.3.1",
     "typescript": "^6.0.3",
