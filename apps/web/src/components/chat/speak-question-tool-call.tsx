@@ -3,8 +3,7 @@
 import { useCallback, useState } from "react";
 import { PlayIcon, SquareIcon, Volume2Icon } from "lucide-react";
 
-import { Button } from "@agents/ui";
-import { Tool, ToolContent, ToolHeader } from "@agents/ui/components/ai-elements/tool";
+import { Button, Tool, ToolContent, ToolHeader } from "@agents/ui";
 import { speakQuestion, stopSpeaking } from "@/lib/copilotkit/speak-question";
 import { toToolState } from "./tool-adapter";
 

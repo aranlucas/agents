@@ -1,7 +1,4 @@
 @import "@copilotkit/react-core/v2/styles.css";
-@import "streamdown/styles.css";
-
-@source "../node_modules/streamdown/dist/*.js";
 
 :root,
 .light,

@@ -9,6 +9,7 @@ export interface AgentStatuses {
   grocery: AgentStatus;
   fitness: AgentStatus;
   wellness: AgentStatus;
+  expense: AgentStatus;
   "oral-boards": AgentStatus;
   "oral-boards-v2": AgentStatus;
   a2ui: AgentStatus;
@@ -26,6 +27,7 @@ const FALLBACK: AgentStatuses = {
   grocery: "loading",
   fitness: "loading",
   wellness: "loading",
+  expense: "loading",
   "oral-boards": "loading",
   "oral-boards-v2": "loading",
   a2ui: "loading",

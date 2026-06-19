@@ -142,6 +142,36 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
       { title: "Sunday prep", message: "Help me plan a Sunday meal prep and training session." },
     ],
   },
+  expense: {
+    id: "expense",
+    label: "Expense Desk",
+    glyph: "$",
+    colorVar: "--expense",
+    placeholder: "Submit an expense or review the queue...",
+    welcome: "Submit an expense with amount, submitter, category, description, and date.",
+    artifact: {
+      stateField: "expense_report",
+      kind: "markdown",
+      title: "Expense report",
+      name: "expense_report.md",
+    },
+    suggestions: [
+      {
+        title: "Travel expense",
+        message:
+          "Review a $250 travel expense from alice@example.com for a flight to NYC on 2026-06-18.",
+      },
+      {
+        title: "Meal receipt",
+        message:
+          "Submit a $45.50 meals expense from ben@example.com for a team lunch on 2026-06-18.",
+      },
+      {
+        title: "Summarize queue",
+        message: "Write a concise markdown report of the current expense queue by status.",
+      },
+    ],
+  },
   "oral-boards": {
     id: "oral-boards",
     label: "Oral Boards",

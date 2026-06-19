@@ -2,9 +2,9 @@
 
 import type { ComponentProps, ComponentType } from "react";
 import type { CopilotKit } from "@copilotkit/react-core/v2";
+import dynamic from "next/dynamic";
 
 import { GroceryHooks, TravelHooks } from "./approval";
-import { OralBoardsExtension } from "./oral-boards";
 import type { AgentId } from "./registry";
 
 /**
@@ -27,6 +27,11 @@ export type AgentExtension = {
 // Enables the auto-mounted A2UI activity renderer (the runtime advertises A2UI
 // via /info for the a2ui agent). Hoisted so the prop identity stays stable.
 const A2UI_CONFIG = {};
+
+const OralBoardsExtension = dynamic(
+  () => import("./oral-boards").then((mod) => mod.OralBoardsExtension),
+  { ssr: false },
+);
 
 const AGENT_EXTENSIONS: Partial<Record<AgentId, AgentExtension>> = {
   travel: { Mount: TravelHooks },
