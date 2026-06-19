@@ -13,6 +13,7 @@ export function ContractExample() {
       chat={
         <ChatSurface
           config={getAgentConfig("travel")}
+          threadId="contract-thread"
           onSwitchAgent={() => {}}
           onOpenArtifact={() => {}}
         />

@@ -24,7 +24,7 @@ import { cssVars } from "@/lib/css";
  * Must render inside a `<ConsoleSession>` provider (the agent's `[thread]`
  * layout supplies it).
  */
-export function AgentWorkspace({ agentId }: { agentId: AgentId }) {
+export function AgentWorkspace({ agentId, threadId }: { agentId: AgentId; threadId: string }) {
   const router = useRouter();
   const config = getAgentConfig(agentId);
   const { state, dispatch } = useArtifactPanel(agentId);
@@ -52,6 +52,7 @@ export function AgentWorkspace({ agentId }: { agentId: AgentId }) {
           chat={
             <ChatSurface
               config={config}
+              threadId={threadId}
               onSwitchAgent={(id) => router.push(`/console/${id}/${crypto.randomUUID()}`)}
               onOpenArtifact={() => dispatch("open")}
             />

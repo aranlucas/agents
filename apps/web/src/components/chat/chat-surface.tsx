@@ -80,10 +80,12 @@ function isConnectedRuntimeStatus(status: unknown) {
 
 export function ChatSurface({
   config,
+  threadId,
   onSwitchAgent,
   onOpenArtifact,
 }: {
   config: AgentConfig;
+  threadId: string;
   onSwitchAgent: (id: AgentId) => void;
   onOpenArtifact: () => void;
 }) {
@@ -106,11 +108,16 @@ export function ChatSurface({
 
   useEffect(() => {
     let detached = false;
+    const connectAbortController = new AbortController();
 
     if (!agent || connectedAgentRef.current === agent || !isRuntimeConnected) {
       return undefined;
     }
 
+    agent.threadId = threadId;
+    if ("abortController" in agent) {
+      agent.abortController = connectAbortController;
+    }
     connectedAgentRef.current = agent;
     void copilotkit.connectAgent({ agent }).catch((error: unknown) => {
       if (detached) return;
@@ -121,10 +128,11 @@ export function ChatSurface({
 
     return () => {
       detached = true;
+      connectAbortController.abort();
       connectedAgentRef.current = null;
       void agent.detachActiveRun?.();
     };
-  }, [agent, copilotkit, isRuntimeConnected]);
+  }, [agent, copilotkit, isRuntimeConnected, threadId]);
 
   // CopilotKit's public agent message type is looser than the AG-UI runtime
   // shape this renderer consumes; keep that cast at the integration boundary.

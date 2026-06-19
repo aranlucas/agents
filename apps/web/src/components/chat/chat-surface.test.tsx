@@ -6,12 +6,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const copilotMocks = vi.hoisted(() => ({
   agent: {
     addMessage: vi.fn(),
+    abortController: undefined as AbortController | undefined,
     isRunning: false,
     messages: [],
     setMessages: vi.fn(),
     state: {},
+    threadId: undefined as string | undefined,
   },
-  connectAgent: vi.fn(async () => undefined),
+  connectAgent: vi.fn(async (_options: { agent: { threadId?: string } }) => undefined),
   runAgent: vi.fn(async () => undefined),
   stopAgent: vi.fn(),
   runtimeConnectionStatus: "connected",
@@ -115,12 +117,19 @@ describe("ChatSurface history replay", () => {
   beforeEach(() => {
     copilotMocks.connectAgent.mockClear();
     copilotMocks.runtimeConnectionStatus = "connected";
+    copilotMocks.agent.abortController = undefined;
+    copilotMocks.agent.threadId = undefined;
   });
 
-  it("connects the agent on mount so reloads replay thread history", async () => {
+  it("binds the route thread and connects the agent so reloads replay thread history", async () => {
+    copilotMocks.connectAgent.mockImplementationOnce(async ({ agent }) => {
+      expect(agent.threadId).toBe("thread-123");
+    });
+
     render(
       <ChatSurface
         config={getAgentConfig("travel")}
+        threadId="thread-123"
         onSwitchAgent={() => {}}
         onOpenArtifact={() => {}}
       />,
@@ -129,6 +138,8 @@ describe("ChatSurface history replay", () => {
     await waitFor(() => {
       expect(copilotMocks.connectAgent).toHaveBeenCalledWith({ agent: copilotMocks.agent });
     });
+    expect(copilotMocks.agent.threadId).toBe("thread-123");
+    expect(copilotMocks.agent.abortController).toBeInstanceOf(AbortController);
   });
 
   it("waits until the runtime connection is ready before replaying history", () => {
@@ -137,6 +148,7 @@ describe("ChatSurface history replay", () => {
     render(
       <ChatSurface
         config={getAgentConfig("travel")}
+        threadId="thread-123"
         onSwitchAgent={() => {}}
         onOpenArtifact={() => {}}
       />,
