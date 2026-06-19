@@ -175,3 +175,34 @@ export {
   TableHeader,
   TableRow,
 } from "./components/table";
+export { Streamdown } from "./components/ai-elements/streamdown";
+export type { StreamdownProps } from "./components/ai-elements/streamdown";
+export {
+  Artifact,
+  ArtifactAction,
+  ArtifactActions,
+  ArtifactClose,
+  ArtifactContent,
+  ArtifactDescription,
+  ArtifactHeader,
+  ArtifactTitle,
+} from "./components/ai-elements/artifact";
+export type {
+  ArtifactActionProps,
+  ArtifactActionsProps,
+  ArtifactCloseProps,
+  ArtifactContentProps,
+  ArtifactDescriptionProps,
+  ArtifactHeaderProps,
+  ArtifactProps,
+  ArtifactTitleProps,
+} from "./components/ai-elements/artifact";
+export { Tool, ToolContent, ToolHeader, ToolInput, ToolOutput } from "./components/ai-elements/tool";
+export type {
+  ToolContentProps,
+  ToolHeaderProps,
+  ToolInputProps,
+  ToolOutputProps,
+  ToolPart,
+  ToolProps,
+} from "./components/ai-elements/tool";
