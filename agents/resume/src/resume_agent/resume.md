@@ -13,7 +13,10 @@ Software engineer with 10+ years of experience shipping products at DoorDash, Am
 **Seattle, WA (Hybrid) | Oct 2023 – Present**
 
 - Originated **Ask DoorDash** (launched June 2026): pitched the vision for a conversational, agent-driven shopping experience, built the prototype that secured leadership buy-in, and served as lead engineer guiding delivery teams across engineering, ML, product, and design to launch — natural-language search across ~800,000 menu items and products, personalized from order history and dietary preferences ([announcement](https://about.doordash.com/en-us/news/ask-doordash)).
-- Drove a cross-org reliability program adding multi-tenancy for testin environments https://careersatdoordash.com/blog/moving-e2e-testing-into-production-with-multi-tenancy-for-increased-speed-and-reliability/
+- Drove the external MCP integration across ChatGPT
+- Drove a cross-org reliability program adding multi-tenancy for testing environments https://careersatdoordash.com/blog/moving-e2e-testing-into-production-with-multi-tenancy-for-increased-speed-and-reliability/
+- Built consumer facing personalization features for DashMart, helping surface more relevant grocery/convenience items and improving discovery beyond restaurant ordering.
+- https://careersatdoordash.com/blog/doordash-kdd-llm-assisted-personalization-framework/
 - Defined org-wide performance standards — golden-path performance-regression gates in CI, shifting verifcation work from reactive firefighting to a continuous engineering practice.
 
 **Key projects:**

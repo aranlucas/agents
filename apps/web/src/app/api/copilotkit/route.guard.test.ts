@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { isPublicCopilotPath } from "./guard";
 
 describe("isPublicCopilotPath", () => {
@@ -18,5 +18,16 @@ describe("isPublicCopilotPath", () => {
     "/api/copilotkit/agent/resumefake/run",
   ])("requires auth for %s", (path) => {
     expect(isPublicCopilotPath(path)).toBe(false);
+  });
+
+  it("allows protected agent paths in offline agent test mode", async () => {
+    vi.stubEnv("AGENT_TEST_MODE", "offline");
+    vi.resetModules();
+
+    const { isPublicCopilotPath: isOfflinePublicCopilotPath } = await import("./guard");
+
+    expect(isOfflinePublicCopilotPath("/api/copilotkit/agent/travel/run")).toBe(true);
+
+    vi.unstubAllEnvs();
   });
 });

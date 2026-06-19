@@ -29,4 +29,15 @@ describe("env", () => {
     const { env } = await import("./env");
     expect(env.COPILOTKIT_DEBUG).toBe(true);
   });
+
+  it("does not require API keys when offline agent test mode is enabled", async () => {
+    vi.stubEnv("AGENT_TEST_MODE", "offline");
+    vi.stubEnv("NEXT_PUBLIC_AGENT_TEST_MODE", "offline");
+
+    const { env } = await import("./env");
+
+    expect(env.CLERK_SECRET_KEY).toBeUndefined();
+    expect(env.GROQ_API_KEY).toBeUndefined();
+    expect(env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY).toBeUndefined();
+  });
 });

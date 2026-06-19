@@ -1,4 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { isOfflineAgentTestMode } from "@/lib/offline-mode";
 
 export const PROTECTED_ROUTES = [
   "/travel(.*)",
@@ -21,6 +22,8 @@ export const PROTECTED_ROUTES = [
 const isProtectedRoute = createRouteMatcher(PROTECTED_ROUTES);
 
 export default clerkMiddleware(async (auth, req) => {
+  if (isOfflineAgentTestMode()) return;
+
   if (isProtectedRoute(req)) {
     const signInUrl = new URL("/sign-in", req.url);
     signInUrl.searchParams.set("redirect_url", req.url);

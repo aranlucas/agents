@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { OFFLINE_AUTH_CONNECTION_RESPONSE } from "@/lib/offline-fixtures";
+import { isOfflineAgentTestMode } from "@/lib/offline-mode";
 import { getStravaAccessToken, STRAVA_PROVIDER } from "@/lib/strava-token";
 
 const isDevelopment = process.env.NODE_ENV !== "production";
@@ -30,6 +32,10 @@ function getErrorDetails(error: unknown) {
 }
 
 export async function GET() {
+  if (isOfflineAgentTestMode()) {
+    return NextResponse.json(OFFLINE_AUTH_CONNECTION_RESPONSE);
+  }
+
   try {
     const { connected, token } = await getStravaAccessToken();
     return NextResponse.json({
