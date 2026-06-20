@@ -84,7 +84,11 @@ def append_rows(
     sheets[sheet_index]["rows"] = sheets[sheet_index].get("rows", []) + rows
     tool_context.state["sheets"] = sheets
     tool_context.state["status"] = "ready"
-    return {"ok": True, "sheet_index": sheet_index, "total_rows": len(sheets[sheet_index]["rows"])}
+    return {
+        "ok": True,
+        "sheet_index": sheet_index,
+        "total_rows": len(sheets[sheet_index]["rows"]),
+    }
 
 
 def delete_sheet(

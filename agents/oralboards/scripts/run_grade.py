@@ -9,6 +9,7 @@ Usage:
 Outputs a results table to the console and writes
 artifacts/grade_results/results_<ts>.json.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -24,6 +25,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 # ── metric compilation ───────────────────────────────────────────────────────
+
 
 def _compile(source: str, name: str):
     ns: dict = {}
@@ -43,6 +45,7 @@ def _load_metrics(config_path: str) -> list[dict]:
 
 
 # ── trace loading ────────────────────────────────────────────────────────────
+
 
 def _load_traces(paths: list[str]) -> list[dict]:
     cases = []
@@ -87,6 +90,7 @@ def _case_to_instance(case: dict) -> dict:
 
 # ── scoring ──────────────────────────────────────────────────────────────────
 
+
 def _run(cases: list[dict], metrics: list[dict]) -> list[dict]:
     results = []
     for case in cases:
@@ -111,9 +115,12 @@ def _run(cases: list[dict], metrics: list[dict]) -> list[dict]:
 
 # ── display + save ───────────────────────────────────────────────────────────
 
+
 def _display(results: list[dict], metric_names: list[str]) -> None:
     col_w = 38
-    header = f"{'eval_case_id':<30} " + " ".join(f"{n[:col_w]:<{col_w}}" for n in metric_names)
+    header = f"{'eval_case_id':<30} " + " ".join(
+        f"{n[:col_w]:<{col_w}}" for n in metric_names
+    )
     print("\n" + header)
     print("-" * len(header))
     for r in results:
