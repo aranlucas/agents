@@ -36,8 +36,8 @@ function SlideThumbnail({
           : "border-border hover:border-muted-foreground/40",
       )}
     >
-      <p className="text-xs text-muted-foreground mb-1">Slide {index + 1}</p>
-      <p className="text-xs font-semibold truncate">{slide.heading || "(no title)"}</p>
+      <p className="text-muted-foreground mb-1 text-xs">Slide {index + 1}</p>
+      <p className="truncate text-xs font-semibold">{slide.heading || "(no title)"}</p>
     </button>
   );
 }
@@ -60,14 +60,14 @@ function SlidePreview({
     <div
       className={cn(
         "flex h-full flex-col rounded-lg border p-8 shadow-lg",
-        isDark && "bg-gray-900 text-white border-gray-700",
-        !isDark && !isMinimal && "bg-white text-gray-900 border-gray-200",
-        isMinimal && "bg-gray-50 text-gray-900 border-gray-100",
+        isDark && "border-gray-700 bg-gray-900 text-white",
+        !isDark && !isMinimal && "border-gray-200 bg-white text-gray-900",
+        isMinimal && "border-gray-100 bg-gray-50 text-gray-900",
       )}
     >
       {/* Slide number */}
-      <div className="flex justify-between text-xs text-muted-foreground mb-6">
-        <span className="text-[var(--page-color)] font-medium uppercase tracking-wider text-xs">
+      <div className="text-muted-foreground mb-6 flex justify-between text-xs">
+        <span className="text-xs font-medium tracking-wider text-[var(--page-color)] uppercase">
           {slide.type}
         </span>
         <span>
@@ -78,7 +78,7 @@ function SlidePreview({
       {/* Heading */}
       <h2
         className={cn(
-          "font-bold mb-4 leading-tight",
+          "mb-4 leading-tight font-bold",
           slide.type === "title" ? "text-4xl" : "text-2xl",
         )}
       >
@@ -87,8 +87,8 @@ function SlidePreview({
 
       {/* Body */}
       {slide.body && (
-        <div className="flex-1 min-h-0 overflow-auto">
-          <div className="prose prose-sm max-w-none dark:prose-invert">
+        <div className="min-h-0 flex-1 overflow-auto">
+          <div className="prose prose-sm dark:prose-invert max-w-none">
             <Streamdown>{slide.body}</Streamdown>
           </div>
         </div>
@@ -97,10 +97,10 @@ function SlidePreview({
       {/* Speaker notes */}
       {slide.notes && (
         <div className="mt-6 border-t pt-4">
-          <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wide">
+          <p className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
             Speaker notes
           </p>
-          <p className="text-xs text-muted-foreground">{slide.notes}</p>
+          <p className="text-muted-foreground text-xs">{slide.notes}</p>
         </div>
       )}
     </div>
@@ -160,22 +160,20 @@ export function PresentationWorkspace({ threadId: _threadId }: { threadId: strin
       />
       <AppSidebar activePath={`/console/${AGENT_ID}`} onNewThread={startNewThread} />
       <SidebarInset className="min-h-0 overflow-hidden">
-        <div className="flex h-full min-h-0 bg-background">
+        <div className="bg-background flex h-full min-h-0">
           {/* Slide list sidebar */}
-          <aside className="w-48 shrink-0 border-r flex flex-col">
+          <aside className="flex w-48 shrink-0 flex-col border-r">
             {/* Deck title */}
             <div className="shrink-0 border-b p-3">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
+              <p className="text-muted-foreground mb-0.5 text-xs tracking-wide uppercase">
                 {slides.length} slide{slides.length !== 1 ? "s" : ""}
               </p>
-              <p className="text-sm font-semibold truncate">
-                {state.title || "New presentation"}
-              </p>
+              <p className="truncate text-sm font-semibold">{state.title || "New presentation"}</p>
             </div>
             {/* Thumbnails */}
             <ScrollArea className="flex-1 p-2">
               {slides.length === 0 ? (
-                <p className="text-xs text-muted-foreground p-2">
+                <p className="text-muted-foreground p-2 text-xs">
                   No slides yet. Ask in chat to build your deck.
                 </p>
               ) : (
@@ -197,8 +195,8 @@ export function PresentationWorkspace({ threadId: _threadId }: { threadId: strin
           {/* Slide preview */}
           <div className="flex min-h-0 flex-1 flex-col">
             {activeSlide ? (
-              <div className="flex flex-1 min-h-0 items-center justify-center p-8">
-                <div className="w-full max-w-3xl aspect-video">
+              <div className="flex min-h-0 flex-1 items-center justify-center p-8">
+                <div className="aspect-video w-full max-w-3xl">
                   <SlidePreview
                     slide={activeSlide}
                     index={activeIndex}
@@ -208,7 +206,7 @@ export function PresentationWorkspace({ threadId: _threadId }: { threadId: strin
                 </div>
               </div>
             ) : (
-              <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center text-muted-foreground">
+              <div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-3 text-center">
                 <p className="text-5xl">🎞</p>
                 <p className="text-sm">
                   Ask me to build a presentation in the chat.
@@ -220,23 +218,23 @@ export function PresentationWorkspace({ threadId: _threadId }: { threadId: strin
 
             {/* Navigation arrows */}
             {slides.length > 1 && (
-              <div className="shrink-0 flex items-center justify-center gap-4 border-t py-3">
+              <div className="flex shrink-0 items-center justify-center gap-4 border-t py-3">
                 <button
                   type="button"
                   disabled={activeIndex === 0}
                   onClick={() => goTo(activeIndex - 1)}
-                  className="rounded px-3 py-1 text-sm disabled:opacity-30 hover:bg-muted transition-colors"
+                  className="hover:bg-muted rounded px-3 py-1 text-sm transition-colors disabled:opacity-30"
                 >
                   ← Prev
                 </button>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-muted-foreground text-xs">
                   {activeIndex + 1} / {slides.length}
                 </span>
                 <button
                   type="button"
                   disabled={activeIndex === slides.length - 1}
                   onClick={() => goTo(activeIndex + 1)}
-                  className="rounded px-3 py-1 text-sm disabled:opacity-30 hover:bg-muted transition-colors"
+                  className="hover:bg-muted rounded px-3 py-1 text-sm transition-colors disabled:opacity-30"
                 >
                   Next →
                 </button>

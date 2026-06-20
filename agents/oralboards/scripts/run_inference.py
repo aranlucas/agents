@@ -17,11 +17,10 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import os
 import sys
 import uuid
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 # ── make sure the repo root is importable ───────────────────────────────────
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -30,17 +29,31 @@ sys.path.insert(0, str(REPO_ROOT / "agents" / "shared" / "src"))
 
 # Load .env from repo root so LiteLLM gets the API keys
 from dotenv import load_dotenv  # noqa: E402
+
 load_dotenv(REPO_ROOT / ".env", override=False)
 
-from oralboards_agent.agent import build_agent, FunctionTool, search_docs, read_doc, set_case, set_phase, set_loading_step, append_exchange, set_score_card  # noqa: E402
+from oralboards_agent.agent import (  # noqa: E402
+    FunctionTool,
+    append_exchange,
+    read_doc,
+    search_docs,
+    set_case,
+    set_loading_step,
+    set_phase,
+    set_score_card,
+)
 
 
 def _build_eval_agent():
     """Build the agent without AGUIToolset (not usable in eval mode)."""
-    from agents_shared.tools import build_model, DEFAULT_RETRY_CONFIG, on_model_error_callback
     from agents_shared.state import make_state_initializer, make_state_instruction
+    from agents_shared.tools import (
+        DEFAULT_RETRY_CONFIG,
+        build_model,
+        on_model_error_callback,
+    )
     from google.adk.agents import LlmAgent
-    from oralboards_agent.agent import OralBoardsState, _STATIC_INSTRUCTION
+    from oralboards_agent.agent import _STATIC_INSTRUCTION, OralBoardsState
 
     state_instruction = make_state_instruction(OralBoardsState, header="Current oral-boards state")
     return LlmAgent(
@@ -169,12 +182,12 @@ def _build_trace_case(eval_case_id: str, prompt_text: str, events: list[dict]) -
 
 
 async def main(dataset_path: str, output_dir: str) -> None:
-    raw = json.loads(Path(dataset_path).read_text(encoding="utf-8"))
+    raw = json.loads(Path(dataset_path).read_text(encoding="utf-8"))  # noqa: ASYNC240
     cases = raw.get("eval_cases") or []
     print(f"[inference] {len(cases)} eval case(s) loaded", flush=True)
 
     out_dir = Path(output_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
+    out_dir.mkdir(parents=True, exist_ok=True)  # noqa: ASYNC240
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_path = out_dir / f"traces_{ts}.json"
 
