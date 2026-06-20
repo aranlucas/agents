@@ -27,7 +27,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 
 def _compile(source: str, name: str):
     ns: dict = {}
-    exec(compile(source, f"<metric:{name}>", "exec"), ns)
+    exec(compile(source, f"<metric:{name}>", "exec"), ns)  # noqa: S102
     fn = ns.get("evaluate")
     if not callable(fn):
         raise ValueError(f"Metric '{name}' must define evaluate(instance)")

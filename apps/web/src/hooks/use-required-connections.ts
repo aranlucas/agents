@@ -17,11 +17,12 @@ export function useRequiredConnections(agentId: AgentId): {
   missing: ProviderId[];
 } {
   const required = getAgentConfig(agentId).requires ?? [];
+  const { isLoaded, user } = useUser();
+
   if (isOfflineAgentTestMode) {
     return { isLoading: false, missing: [] };
   }
 
-  const { isLoaded, user } = useUser();
   const accounts = (user?.externalAccounts ?? []) as ExternalAccountLike[];
 
   return {
