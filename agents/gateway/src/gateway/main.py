@@ -22,7 +22,10 @@ from grocery_agent.main import register as register_grocery
 from opentelemetry.propagate import extract as otel_extract
 from oralboards_agent.main import register as register_oralboards
 from oralboards_agent.workflow_main import register as register_oralboards_v2
+from presentation_agent.main import register as register_presentation
+from research_agent.main import register as register_research
 from resume_agent.main import register as register_resume
+from spreadsheet_agent.main import register as register_spreadsheet
 from travel_agent.main import register as register_travel
 from wellness_agent.main import register as register_wellness
 
@@ -44,6 +47,9 @@ def register_agents(app: FastAPI, services: AgentServices) -> None:
         register_a2ui,
         register_oralboards,
         register_oralboards_v2,
+        register_presentation,
+        register_research,
+        register_spreadsheet,
         register_resume,
     ):
         register_agent(app, services)

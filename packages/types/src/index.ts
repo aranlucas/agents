@@ -8,6 +8,9 @@ export const AGENT_ORDER = [
   "oral-boards-v2",
   "a2ui",
   "resume",
+  "research",
+  "spreadsheet",
+  "presentation",
 ] as const;
 
 export type AgentId = (typeof AGENT_ORDER)[number];
@@ -22,6 +25,9 @@ export const AGENT_BACKEND_PATHS = {
   "oral-boards-v2": "oralboards-v2",
   a2ui: "a2ui",
   resume: "resume",
+  research: "research",
+  spreadsheet: "spreadsheet",
+  presentation: "presentation",
 } as const satisfies Record<AgentId, string>;
 
 export type AgentBackendPath = (typeof AGENT_BACKEND_PATHS)[AgentId];
@@ -247,5 +253,70 @@ export type A2UIState = {
   status?: A2UIStatus;
   surface_brief?: string;
   last_surface?: string;
+  user_id?: string;
+};
+
+// Research agent state — matches what agents/research writes to ADK shared state
+export type ResearchStatus = "idle" | "drafting" | "ready";
+
+export type ResearchSection = {
+  id: string;
+  title: string;
+  content: string;
+};
+
+export type ResearchSource = {
+  id: string;
+  title: string;
+  url: string;
+  snippet: string;
+};
+
+export type ResearchState = {
+  title?: string;
+  query?: string;
+  report?: string;
+  sections?: ResearchSection[];
+  sources?: ResearchSource[];
+  status?: ResearchStatus;
+  review_summary?: string;
+  user_id?: string;
+};
+
+// Spreadsheet agent state — matches what agents/spreadsheet writes to ADK shared state
+export type SpreadsheetSheet = {
+  title: string;
+  rows: string[][];
+};
+
+export type SpreadsheetState = {
+  sheets?: SpreadsheetSheet[];
+  active_sheet_index?: number;
+  summary?: string;
+  status?: "idle" | "ready";
+  review_summary?: string;
+  user_id?: string;
+};
+
+// Presentation agent state — matches what agents/presentation writes to ADK shared state
+export type PresentationSlideType = "title" | "content" | "bullets" | "two-column";
+export type PresentationTheme = "light" | "dark" | "minimal";
+export type PresentationStatus = "idle" | "drafting" | "ready";
+
+export type PresentationSlide = {
+  id: string;
+  type: PresentationSlideType;
+  heading: string;
+  body: string;
+  notes: string;
+};
+
+export type PresentationState = {
+  title?: string;
+  theme?: PresentationTheme;
+  slides?: PresentationSlide[];
+  active_slide_index?: number;
+  status?: PresentationStatus;
+  review_summary?: string;
   user_id?: string;
 };

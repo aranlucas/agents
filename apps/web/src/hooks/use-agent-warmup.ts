@@ -14,6 +14,9 @@ export interface AgentStatuses {
   "oral-boards-v2": AgentStatus;
   a2ui: AgentStatus;
   resume: AgentStatus;
+  research: AgentStatus;
+  spreadsheet: AgentStatus;
+  presentation: AgentStatus;
 }
 
 interface HealthResponse {
@@ -32,6 +35,9 @@ const FALLBACK: AgentStatuses = {
   "oral-boards-v2": "loading",
   a2ui: "loading",
   resume: "loading",
+  research: "loading",
+  spreadsheet: "loading",
+  presentation: "loading",
 };
 
 export function useAgentWarmup() {

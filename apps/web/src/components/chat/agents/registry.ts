@@ -257,6 +257,87 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
       },
     ],
   },
+  research: {
+    id: "research",
+    label: "Research",
+    glyph: "🔬",
+    colorVar: "--research",
+    placeholder: "Ask me to research any topic…",
+    welcome: "Tell me what you want to research and I'll build a structured report.",
+    artifact: {
+      stateField: "report",
+      kind: "markdown",
+      title: "Research report",
+      name: "report.md",
+    },
+    suggestions: [
+      { title: "AI in healthcare", message: "Research the current state of AI in healthcare." },
+      {
+        title: "Climate solutions",
+        message: "Research the most promising climate change mitigation technologies.",
+      },
+      {
+        title: "Quantum computing",
+        message: "Give me a comprehensive overview of quantum computing and its applications.",
+      },
+      {
+        title: "Startup ecosystems",
+        message: "Research the top global startup ecosystems and what makes them successful.",
+      },
+    ],
+  },
+  spreadsheet: {
+    id: "spreadsheet",
+    label: "Spreadsheet",
+    glyph: "📊",
+    colorVar: "--spreadsheet",
+    placeholder: "Ask me to create or analyze a spreadsheet…",
+    welcome: "Tell me what kind of spreadsheet you need and I'll build it.",
+    suggestions: [
+      {
+        title: "Budget tracker",
+        message: "Create a monthly budget tracker with income and expense categories.",
+      },
+      {
+        title: "Project timeline",
+        message: "Build a project timeline spreadsheet with tasks, owners, and due dates.",
+      },
+      {
+        title: "Sales data",
+        message: "Create a sales data sheet with Q1–Q4 revenue by product line.",
+      },
+      {
+        title: "Workout log",
+        message: "Make a workout log tracking exercises, sets, reps, and weight over 4 weeks.",
+      },
+    ],
+  },
+  presentation: {
+    id: "presentation",
+    label: "Slides",
+    glyph: "🎞",
+    colorVar: "--presentation",
+    placeholder: "Ask me to build a presentation…",
+    welcome: "Tell me your topic and I'll build a slide deck for you.",
+    suggestions: [
+      {
+        title: "Product pitch",
+        message: "Create a 10-slide pitch deck for a SaaS product targeting small businesses.",
+      },
+      {
+        title: "Team meeting",
+        message: "Build a weekly team meeting slide deck with agenda, updates, and action items.",
+      },
+      {
+        title: "Research findings",
+        message: "Create a presentation summarizing key findings on remote work productivity.",
+      },
+      {
+        title: "Onboarding deck",
+        message: "Build a 8-slide employee onboarding presentation covering culture and process.",
+      },
+    ],
+  },
 };
 
 export function isAgentId(value: string): value is AgentId {

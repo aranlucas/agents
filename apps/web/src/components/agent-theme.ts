@@ -9,7 +9,10 @@ export type AgentTheme =
   | "oral-boards"
   | "oral-boards-v2"
   | "a2ui"
-  | "resume";
+  | "resume"
+  | "research"
+  | "spreadsheet"
+  | "presentation";
 
 export const AGENT_THEMES: Record<
   AgentTheme,
@@ -73,6 +76,24 @@ export const AGENT_THEMES: Record<
     colorVar: "var(--resume)",
     softVar: "var(--resume-soft)",
     contrastVar: "var(--resume-contrast)",
+  },
+  research: {
+    label: "Research",
+    colorVar: "var(--research)",
+    softVar: "var(--research-soft)",
+    contrastVar: "var(--research-contrast)",
+  },
+  spreadsheet: {
+    label: "Spreadsheet",
+    colorVar: "var(--spreadsheet)",
+    softVar: "var(--spreadsheet-soft)",
+    contrastVar: "var(--spreadsheet-contrast)",
+  },
+  presentation: {
+    label: "Slides",
+    colorVar: "var(--presentation)",
+    softVar: "var(--presentation-soft)",
+    contrastVar: "var(--presentation-contrast)",
   },
 };
 
