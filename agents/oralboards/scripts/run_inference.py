@@ -12,6 +12,7 @@ Usage:
 Env vars required (from Railway or .env):
     NVIDIA_NIM_API_KEY  (or OPENROUTER_API_KEY / MISTRAL_API_KEY as fallback)
 """
+
 from __future__ import annotations
 
 import argparse
@@ -55,7 +56,9 @@ def _build_eval_agent():
     from google.adk.agents import LlmAgent
     from oralboards_agent.agent import _STATIC_INSTRUCTION, OralBoardsState
 
-    state_instruction = make_state_instruction(OralBoardsState, header="Current oral-boards state")
+    state_instruction = make_state_instruction(
+        OralBoardsState, header="Current oral-boards state"
+    )
     return LlmAgent(
         name="oralboards_agent",
         model=build_model(),
@@ -165,9 +168,7 @@ def _build_trace_case(eval_case_id: str, prompt_text: str, events: list[dict]) -
     return {
         "eval_case_id": eval_case_id,
         "agent_data": {
-            "agents": {
-                "oralboards_agent": {"agent_id": "oralboards_agent"}
-            },
+            "agents": {"oralboards_agent": {"agent_id": "oralboards_agent"}},
             "turns": [
                 {
                     "turn_index": 0,
@@ -197,7 +198,9 @@ async def main(dataset_path: str, output_dir: str) -> None:
         prompt_parts = (case.get("prompt") or {}).get("parts") or []
         prompt_text = " ".join(p.get("text", "") for p in prompt_parts).strip()
         if not prompt_text:
-            print(f"[inference] case {i} ({case_id}) skipped — no prompt text", flush=True)
+            print(
+                f"[inference] case {i} ({case_id}) skipped — no prompt text", flush=True
+            )
             continue
 
         print(f"[inference] running case {i + 1}/{len(cases)}: {case_id}", flush=True)
@@ -206,22 +209,31 @@ async def main(dataset_path: str, output_dir: str) -> None:
             events = await _run_single(agent, prompt_text)
             trace = _build_trace_case(case_id, prompt_text, events)
             trace_cases.append(trace)
-            print(f"[inference] case {i + 1} done — {len(events)} events captured", flush=True)
+            print(
+                f"[inference] case {i + 1} done — {len(events)} events captured",
+                flush=True,
+            )
         except Exception as exc:
-            print(f"[inference] case {i + 1} FAILED: {exc}", file=sys.stderr, flush=True)
+            print(
+                f"[inference] case {i + 1} FAILED: {exc}", file=sys.stderr, flush=True
+            )
 
     if not trace_cases:
         print("[inference] No cases succeeded — no output written.", file=sys.stderr)
         sys.exit(1)
 
     result = {"eval_cases": trace_cases}
-    output_path.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
+    output_path.write_text(
+        json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
     print(f"[inference] wrote {output_path}", flush=True)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", default="tests/eval/datasets/oralboards-evals.json")
+    parser.add_argument(
+        "--dataset", default="tests/eval/datasets/oralboards-evals.json"
+    )
     parser.add_argument("--output", default="artifacts/traces/")
     args = parser.parse_args()
     asyncio.run(main(args.dataset, args.output))
