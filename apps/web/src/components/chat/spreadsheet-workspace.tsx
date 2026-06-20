@@ -28,10 +28,10 @@ function SheetTab({
       type="button"
       onClick={onClick}
       className={cn(
-        "whitespace-nowrap rounded-t border-b-2 px-4 py-1.5 text-sm font-medium transition-colors",
+        "rounded-t border-b-2 px-4 py-1.5 text-sm font-medium whitespace-nowrap transition-colors",
         active
           ? "border-[var(--page-color)] text-[var(--page-color)]"
-          : "border-transparent text-muted-foreground hover:text-foreground",
+          : "text-muted-foreground hover:text-foreground border-transparent",
       )}
     >
       {title}
@@ -42,7 +42,7 @@ function SheetTab({
 function SpreadsheetTable({ rows }: { rows: string[][] }) {
   if (!rows.length) {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+      <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
         No data yet.
       </div>
     );
@@ -58,7 +58,7 @@ function SpreadsheetTable({ rows }: { rows: string[][] }) {
             {header?.map((cell, ci) => (
               <th
                 key={`h-${ci}-${cell}`}
-                className="border border-border px-3 py-2 text-left font-semibold text-foreground"
+                className="border-border text-foreground border px-3 py-2 text-left font-semibold"
               >
                 {cell}
               </th>
@@ -69,7 +69,10 @@ function SpreadsheetTable({ rows }: { rows: string[][] }) {
           {body.map((row, ri) => (
             <tr key={`r-${ri}`} className="hover:bg-muted/30">
               {header?.map((_, ci) => (
-                <td key={`c-${ri}-${ci}`} className="border border-border px-3 py-1.5 text-muted-foreground">
+                <td
+                  key={`c-${ri}-${ci}`}
+                  className="border-border text-muted-foreground border px-3 py-1.5"
+                >
                   {row[ci] ?? ""}
                 </td>
               ))}
@@ -115,11 +118,13 @@ export function SpreadsheetWorkspace({ threadId: _threadId }: { threadId: string
       />
       <AppSidebar activePath={`/console/${AGENT_ID}`} onNewThread={startNewThread} />
       <SidebarInset className="min-h-0 overflow-hidden">
-        <div className="flex h-full flex-col bg-background">
+        <div className="bg-background flex h-full flex-col">
           {/* Sheet tabs */}
           <div className="flex shrink-0 items-end border-b px-4 pt-2">
             {sheets.length === 0 ? (
-              <span className="pb-2 text-xs text-muted-foreground">No sheets yet — ask in chat</span>
+              <span className="text-muted-foreground pb-2 text-xs">
+                No sheets yet — ask in chat
+              </span>
             ) : (
               sheets.map((sheet, i) => (
                 <SheetTab
@@ -138,7 +143,7 @@ export function SpreadsheetWorkspace({ threadId: _threadId }: { threadId: string
               {activeSheet ? (
                 <SpreadsheetTable rows={activeSheet.rows} />
               ) : (
-                <div className="flex h-full min-h-[300px] flex-col items-center justify-center gap-3 text-center text-muted-foreground">
+                <div className="text-muted-foreground flex h-full min-h-[300px] flex-col items-center justify-center gap-3 text-center">
                   <p className="text-4xl">📊</p>
                   <p className="text-sm">
                     Ask me to create a spreadsheet in the chat.
@@ -153,10 +158,10 @@ export function SpreadsheetWorkspace({ threadId: _threadId }: { threadId: string
           {/* Summary strip */}
           {state.summary && (
             <div className="shrink-0 border-t px-4 py-3">
-              <p className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              <p className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
                 Analysis
               </p>
-              <div className="prose prose-sm max-w-none dark:prose-invert">
+              <div className="prose prose-sm dark:prose-invert max-w-none">
                 <Streamdown>{state.summary}</Streamdown>
               </div>
             </div>
