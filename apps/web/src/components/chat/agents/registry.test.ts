@@ -13,6 +13,9 @@ describe("agent registry", () => {
       "oral-boards-v2",
       "a2ui",
       "resume",
+      "research",
+      "spreadsheet",
+      "presentation",
     ]);
   });
 
@@ -48,5 +51,8 @@ describe("agent registry", () => {
     expect(getAgentConfig("oral-boards-v2").requires ?? []).toEqual([]);
     expect(getAgentConfig("a2ui").requires ?? []).toEqual([]);
     expect(getAgentConfig("resume").requires ?? []).toEqual([]);
+    expect(getAgentConfig("research").requires ?? []).toEqual([]);
+    expect(getAgentConfig("spreadsheet").requires ?? []).toEqual([]);
+    expect(getAgentConfig("presentation").requires ?? []).toEqual([]);
   });
 });

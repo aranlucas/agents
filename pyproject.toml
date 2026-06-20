@@ -37,8 +37,11 @@ packages = [
   "agents/gateway/src/gateway",
   "agents/grocery/src/grocery_agent",
   "agents/oralboards/src/oralboards_agent",
+  "agents/presentation/src/presentation_agent",
+  "agents/research/src/research_agent",
   "agents/resume/src/resume_agent",
   "agents/shared/src/agents_shared",
+  "agents/spreadsheet/src/spreadsheet_agent",
   "agents/travel/src/travel_agent",
   "agents/wellness/src/wellness_agent",
 ]

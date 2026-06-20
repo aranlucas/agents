@@ -21,7 +21,7 @@ describe("GET /api/agents/health", () => {
     const response = await GET();
     const body = await response.json();
 
-    expect(fetchMock).toHaveBeenCalledTimes(9);
+    expect(fetchMock).toHaveBeenCalledTimes(12);
     expect(fetchMock).toHaveBeenCalledWith("http://agents.test/travel/health", expect.any(Object));
     expect(fetchMock).toHaveBeenCalledWith("http://agents.test/expense/health", expect.any(Object));
     expect(fetchMock).toHaveBeenCalledWith(
@@ -29,6 +29,18 @@ describe("GET /api/agents/health", () => {
       expect.any(Object),
     );
     expect(fetchMock).toHaveBeenCalledWith("http://agents.test/resume/health", expect.any(Object));
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://agents.test/research/health",
+      expect.any(Object),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://agents.test/spreadsheet/health",
+      expect.any(Object),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://agents.test/presentation/health",
+      expect.any(Object),
+    );
     expect(body).toEqual({
       agents: {
         travel: "ok",
@@ -40,9 +52,12 @@ describe("GET /api/agents/health", () => {
         "oral-boards-v2": "error",
         a2ui: "ok",
         resume: "error",
+        research: "error",
+        spreadsheet: "error",
+        presentation: "error",
       },
       runningCount: 2,
-      total: 9,
+      total: 12,
     });
   });
 
@@ -67,6 +82,9 @@ describe("GET /api/agents/health", () => {
       "error",
       "error",
       "error",
+      "error",
+      "error",
+      "error",
     ]);
   });
 
@@ -80,8 +98,11 @@ describe("GET /api/agents/health", () => {
     const body = await (await GET()).json();
 
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(body.runningCount).toBe(9);
+    expect(body.runningCount).toBe(12);
     expect(Object.values(body.agents)).toEqual([
+      "ok",
+      "ok",
+      "ok",
       "ok",
       "ok",
       "ok",
