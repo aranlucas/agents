@@ -4,7 +4,7 @@
 
 ## Summary
 
-Software engineer with 10+ years of experience shipping products at DoorDash, Amazon, and AWS, operating at staff scope: originating products from prototype to launch, setting performance and reliability standards adopted org-wide, and leading through influence across engineering, ML, product, and design. Most recently pitched, prototyped, and served as lead engineer for Ask DoorDash, the company's conversational AI shopping experience — a vision that grew directly out of the agentic experiences he builds as a hobby. Looking for senior/staff software engineer roles. I'm driven by creative problem-solving, open to feedback, willing to defend ideas, and quick to acknowledge when a better approach exists.
+Software engineer with 10+ years of experience shipping products at DoorDash, Amazon, and AWS, operating at staff scope: originating products from prototype to launch, setting performance and reliability standards adopted org-wide, and leading through influence across engineering, ML, product, design, and operations. Most recently pitched, prototyped, and served as lead engineer for Ask DoorDash, the company's conversational AI shopping experience — a vision that grew directly out of the agentic experiences he builds as a hobby. Looking for senior/staff software engineer roles. I'm driven by creative problem-solving, open to feedback, willing to defend ideas, and quick to acknowledge when a better approach exists.
 
 ## Experience
 
@@ -12,17 +12,18 @@ Software engineer with 10+ years of experience shipping products at DoorDash, Am
 
 **Seattle, WA (Hybrid) | Oct 2023 – Present**
 
-- Originated **Ask DoorDash** (launched June 2026): pitched the vision for a conversational, agent-driven shopping experience, built the prototype that secured leadership buy-in, and served as lead engineer guiding delivery teams across engineering, ML, product, and design to launch — natural-language search across ~800,000 menu items and products, personalized from order history and dietary preferences ([announcement](https://about.doordash.com/en-us/news/ask-doordash)).
-- Drove the external MCP integration across ChatGPT
-- Drove a cross-org reliability program adding multi-tenancy for testing environments https://careersatdoordash.com/blog/moving-e2e-testing-into-production-with-multi-tenancy-for-increased-speed-and-reliability/
-- Built consumer facing personalization features for DashMart, helping surface more relevant grocery/convenience items and improving discovery beyond restaurant ordering.
-- https://careersatdoordash.com/blog/doordash-kdd-llm-assisted-personalization-framework/
-- Defined org-wide performance standards — golden-path performance-regression gates in CI, shifting verifcation work from reactive firefighting to a continuous engineering practice.
+- Originated **Ask DoorDash** (launched June 2026): pitched the vision for a conversational, agent-driven shopping experience, built the prototype that secured leadership buy-in, and served as lead engineer guiding delivery teams across engineering, ML, product, and design to launch — natural-language search across ~800,000 menu items and products, personalized from order history and dietary preferences ([announcement](https://about.doordash.com/en-us/news/ask-doordash), [engineering overview](https://careersatdoordash.com/blog/building-doordash-assistant-an-engineering-overview/)).
+- Drove DoorDash's external MCP integration for ChatGPT, extending the company's catalog and commerce capabilities into assistant-driven discovery surfaces.
+- Optimized DashMart warehouse and fulfillment workflows, improving the operational backbone for DoorDash's first-party convenience and grocery business.
+- Built consumer-facing DashMart web personalization features, helping surface more relevant grocery and convenience items and improving discovery beyond restaurant ordering ([personalization context](https://careersatdoordash.com/blog/doordash-kdd-llm-assisted-personalization-framework/)).
+- Drove a cross-org reliability program for core ordering and test infrastructure, including multi-tenant production-like E2E testing environments that improved delivery speed and reliability ([engineering write-up](https://careersatdoordash.com/blog/moving-e2e-testing-into-production-with-multi-tenancy-for-increased-speed-and-reliability/)).
+- Defined org-wide performance standards — golden-path SLOs and performance-regression gates in CI — shifting verification work from reactive firefighting to a continuous engineering practice.
 
 **Key projects:**
 
 - **Ask DoorDash** — Conversational AI search for restaurants, groceries, and reservations: users describe what they want (or share a recipe link or cookbook photo) and the app builds personalized results. Lucas pitched the product, built the prototype, and was the lead engineer through release, with delivery owned across multiple teams.
-- **System Performance & Reliability** — Org-wide performance standards, SLOs, and regression gates for Dashmart
+- **DashMart Fulfillment & Personalization** — Optimized warehouse/fulfillment workflows and built web personalization features for DoorDash's first-party convenience and grocery surface.
+- **System Performance & Reliability** — Org-wide performance standards, SLOs, regression gates, and production-like test environments for high-traffic DoorDash systems.
 
 ### Career Break
 
@@ -103,6 +104,6 @@ Building AI agents is Lucas's main hobby. He runs a personal multi-agent platfor
 - Passionate about learning, growing, and creative problem-solving — which led him to engineering.
 - Enjoys the outdoors: camping and climbing mountains in the Cascade Range; also runs and lifts regularly.
 - Has held a wide range of jobs and worked hard to put himself through school.
-- Has been a technical leader and go-to expert on his teams — most recently envisioning Ask DoorDash and leading the team to release it — and is currently looking for senior/staff software engineer roles.
-- Builds agentic experiences as his main hobby — a production multi-agent platform with web and mobile frontends (see Personal Projects) — and it's where his product ideas start: the hobby grocery agent became the vision for Ask DoorDash.
+- Has been a technical leader and go-to expert on his teams — most recently envisioning Ask DoorDash, leading the team to release it, and shipping DashMart personalization and fulfillment improvements — and is currently looking for senior/staff software engineer roles.
+- Builds agentic experiences as his main hobby — a production multi-agent platform with web and mobile frontends (see Personal Projects) — and it's where his product ideas start: the hobby grocery agent became the vision for Ask DoorDash and maps closely to his DashMart grocery/convenience experience.
 - Values open feedback, willingness to apologize, and the ability to recognize when someone else has a better idea.
