@@ -13,12 +13,16 @@ def _registered_app() -> FastAPI:
 
 def test_instruction_embeds_resume_content():
     assert "# Lucas Aran" in _INSTRUCTION
+    assert "DashMart" in _INSTRUCTION
+    assert "MCP integration for ChatGPT" in _INSTRUCTION
     assert "only answer questions" in _INSTRUCTION.lower()
 
 
 def test_agent_static_instruction_embeds_resume_content():
     resume_agent = build_agent()
     assert "# Lucas Aran" in resume_agent.static_instruction
+    assert "DashMart" in resume_agent.static_instruction
+    assert "MCP integration for ChatGPT" in resume_agent.static_instruction
     assert "only answer questions" in resume_agent.static_instruction.lower()
 
 
