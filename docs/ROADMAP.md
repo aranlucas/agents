@@ -6,7 +6,7 @@ console + mobile app, and a growing set of agents that each own one slice of
 life (food, fitness, travel, career), composable in-process the way wellness
 already composes grocery + fitness.
 
-Cost philosophy: free-tier model (OpenRouter free models with fallbacks), one
+Cost philosophy: free-tier model chain (Gemini with provider fallbacks), one
 Railway service, free or generous-free-tier APIs wherever possible.
 
 ---
@@ -64,7 +64,7 @@ plan; becomes more valuable with every new agent.
 ### 5. Cheap eval loop
 
 A nightly GitHub Actions job replaying ~10 canned conversations per agent
-against the free model and diffing tool-call sequences (not prose). Catches
+against the free model chain and diffing tool-call sequences (not prose). Catches
 "the free model changed and grocery stopped building carts" before Lucas does.
 
 - **Cost:** $0 (free model + Actions).
