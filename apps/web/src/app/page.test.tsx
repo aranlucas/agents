@@ -48,9 +48,19 @@ describe("Home page", () => {
     expect(screen.getByText("Grocery Studio")).toBeInTheDocument();
     expect(screen.getByText("Fitness Studio")).toBeInTheDocument();
     expect(screen.getByText("Wellness Studio")).toBeInTheDocument();
+    expect(screen.getByText("Expense Desk")).toBeInTheDocument();
     expect(screen.getByText("Oral Boards")).toBeInTheDocument();
     expect(screen.getByText("Resume")).toBeInTheDocument();
     expect(screen.getByText("A2UI Studio")).toBeInTheDocument();
+    expect(screen.getAllByText("Research").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Spreadsheet")).toBeInTheDocument();
+    expect(screen.getAllByText("Slides").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("shows a single consolidated Oral Boards card (no separate v2)", () => {
+    render(<Home />);
+    expect(screen.getByText("Oral Boards")).toBeInTheDocument();
+    expect(screen.queryByText("Oral Boards v2")).not.toBeInTheDocument();
   });
 
   it("renders links to each agent console", () => {
@@ -61,9 +71,13 @@ describe("Home page", () => {
     expect(hrefs).toContain("/console/grocery");
     expect(hrefs).toContain("/console/fitness");
     expect(hrefs).toContain("/console/wellness");
+    expect(hrefs).toContain("/console/expense");
     expect(hrefs).toContain("/console/oral-boards");
     expect(hrefs).toContain("/console/resume");
     expect(hrefs).toContain("/console/a2ui");
+    expect(hrefs).toContain("/console/research");
+    expect(hrefs).toContain("/console/spreadsheet");
+    expect(hrefs).toContain("/console/presentation");
   });
 
   it("renders the footer with agent labels", () => {

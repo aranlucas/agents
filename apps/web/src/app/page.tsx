@@ -47,33 +47,24 @@ const AGENTS: Agent[] = [
   },
   {
     id: "05",
-    href: "/console/oral-boards",
-    name: "Oral Boards",
-    tagline: "Cited pediatric dentistry exams",
-    description: "Practice staged ABPD-style cases grounded in bundled source documents.",
-    cta: "Start exam",
-    tags: ["OCE", "Citations", "Scoring"],
-    theme: "oral-boards",
-  },
-  {
-    id: "05b",
-    href: "/console/oral-boards-v2",
-    name: "Oral Boards v2",
-    tagline: "Graph-based exam flow",
-    description: "ADK graph-driven oral boards: deterministic flow, guaranteed Q&A, auto-scoring.",
-    cta: "Try v2",
-    tags: ["OCE", "Graphs", "Auto-score"],
-    theme: "oral-boards-v2",
+    href: "/console/expense",
+    name: "Expense Desk",
+    tagline: "Policy-aware expense review",
+    description: "Submit expenses, auto-screen against policy, and approve with a human in the loop.",
+    cta: "Review expenses",
+    tags: ["Approvals", "Risk", "HITL"],
+    theme: "expense",
   },
   {
     id: "06",
-    href: "/console/resume",
-    name: "Resume",
-    tagline: "Public Q&A for Lucas",
-    description: "Ask about Lucas's background, skills, projects, and fit.",
-    cta: "Ask resume",
-    tags: ["Public", "Career", "Q&A"],
-    theme: "resume",
+    href: "/console/oral-boards",
+    name: "Oral Boards",
+    tagline: "Cited pediatric dentistry exams",
+    description:
+      "Practice staged ABPD-style cases grounded in bundled sources. Toggle between the prompt-based and graph-based examiner engines.",
+    cta: "Start exam",
+    tags: ["OCE", "Citations", "Scoring"],
+    theme: "oral-boards",
   },
   {
     id: "07",
@@ -84,6 +75,46 @@ const AGENTS: Agent[] = [
     cta: "Render UI",
     tags: ["A2UI", "ADK", "AG-UI"],
     theme: "a2ui",
+  },
+  {
+    id: "08",
+    href: "/console/resume",
+    name: "Resume",
+    tagline: "Public Q&A for Lucas",
+    description: "Ask about Lucas's background, skills, projects, and fit.",
+    cta: "Ask resume",
+    tags: ["Public", "Career", "Q&A"],
+    theme: "resume",
+  },
+  {
+    id: "09",
+    href: "/console/research",
+    name: "Research",
+    tagline: "Structured research reports",
+    description: "Research any topic and stream a structured, sourced report into the canvas.",
+    cta: "Start research",
+    tags: ["Research", "Sources", "Streaming"],
+    theme: "research",
+  },
+  {
+    id: "10",
+    href: "/console/spreadsheet",
+    name: "Spreadsheet",
+    tagline: "Generate and analyze sheets",
+    description: "Build spreadsheets from a prompt and analyze data across multiple sheets.",
+    cta: "Build sheet",
+    tags: ["Data", "Tables", "Analysis"],
+    theme: "spreadsheet",
+  },
+  {
+    id: "11",
+    href: "/console/presentation",
+    name: "Slides",
+    tagline: "Build slide decks from a prompt",
+    description: "Draft a themed slide deck with speaker notes, editable slide by slide.",
+    cta: "Build deck",
+    tags: ["Slides", "Decks", "Themes"],
+    theme: "presentation",
   },
 ];
 
@@ -105,8 +136,9 @@ export default function Home() {
               Agents that coordinate useful work.
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-(--ink-soft) md:text-base">
-              A compact control surface for travel, grocery, fitness, wellness, and generative UI
-              agents. Pick a workspace, give direction in chat, and watch the live artifact update.
+              A compact control surface for travel, grocery, fitness, wellness, expense, oral
+              boards, research, spreadsheet, slides, and generative UI agents. Pick a workspace,
+              give direction in chat, and watch the live artifact update.
             </p>
           </div>
           <AgentKey />

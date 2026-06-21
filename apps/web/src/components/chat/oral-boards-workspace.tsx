@@ -1,10 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CopilotSidebar, useAgent, useCopilotKit, UseAgentUpdate } from "@copilotkit/react-core/v2";
 
 import type { OralBoardsState } from "@agents/types";
-import { Button, SidebarInset, SidebarProvider, SidebarTrigger, Spinner } from "@agents/ui";
+import {
+  Button,
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+  Spinner,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@agents/ui";
 import { getAgentConfig } from "@/components/chat/agents/registry";
 import { useNewThread } from "@/components/chat/use-new-thread";
 import { AgentExtensionSlot } from "@/components/chat/agents/extensions";
@@ -16,6 +25,14 @@ import { cssVars } from "@/lib/css";
 import { useAgentWarmup } from "@/hooks/use-agent-warmup";
 
 type OralBoardsAgentId = "oral-boards" | "oral-boards-v2";
+
+// The two interchangeable examiner backends, surfaced as a toggle at the top of
+// the workspace. Both share this UI and shared-state shape; only the orchestration
+// differs (prompt-driven vs. ADK graph flow).
+const ENGINES: { id: OralBoardsAgentId; label: string }[] = [
+  { id: "oral-boards", label: "Prompt-based" },
+  { id: "oral-boards-v2", label: "Graph-based" },
+];
 
 const TOPICS = [
   { label: "Pulp therapy", message: "Create an oral-board case focused on pulp therapy." },
@@ -134,18 +151,21 @@ function OralBoardsStartPage({
 }
 
 export function OralBoardsWorkspace({ agentId = "oral-boards" }: { agentId?: OralBoardsAgentId }) {
-  const config = getAgentConfig(agentId);
-  const { dispatch } = useArtifactPanel(agentId);
+  // `agentId` seeds the active engine; the toggle below switches between the two
+  // backends in place without leaving the consolidated /console/oral-boards route.
+  const [engine, setEngine] = useState<OralBoardsAgentId>(agentId);
+  const config = getAgentConfig(engine);
+  const { dispatch } = useArtifactPanel(engine);
   const { agent } = useAgent({
-    agentId,
+    agentId: engine,
     updates: [UseAgentUpdate.OnStateChanged, UseAgentUpdate.OnRunStatusChanged],
   });
   const { copilotkit } = useCopilotKit();
-  const startNewThread = useNewThread(agentId);
+  const startNewThread = useNewThread(engine);
 
   const { statuses, isLoading: warmingUp } = useAgentWarmup();
   const warmupError =
-    statuses[agentId] === "error" && !warmingUp ? new Error("Agent backend is unreachable") : null;
+    statuses[engine] === "error" && !warmingUp ? new Error("Agent backend is unreachable") : null;
 
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const examState = (agent?.state ?? {}) as OralBoardsState;
@@ -197,7 +217,7 @@ export function OralBoardsWorkspace({ agentId = "oral-boards" }: { agentId?: Ora
       style={cssVars({ "--page-color": `var(${config.colorVar})` })}
     >
       <OralBoardsQuestionProvider>
-        <AgentExtensionSlot agentId={agentId} />
+        <AgentExtensionSlot agentId={engine} />
         <CopilotSidebar
           defaultOpen={false}
           labels={{
@@ -207,31 +227,51 @@ export function OralBoardsWorkspace({ agentId = "oral-boards" }: { agentId?: Ora
         />
         <AppSidebar activePath={`/console/${agentId}`} onNewThread={startNewThread} />
         <SidebarInset className="min-h-0 overflow-hidden">
-          {hasPanel ? (
-            <OralBoardsPanel
-              state={examState}
-              onClose={startNewThread}
-              onReady={handleReady}
-              onAnswer={(text) => void handleAnswer(text)}
-              isRunning={isRunning}
-              loadingStep={examState.loading_step ?? ""}
-              activeFeedback={examState.active_feedback ?? ""}
-              activeIdealResponse={examState.active_ideal_response ?? ""}
-            />
-          ) : (
-            <div className="flex h-full flex-col overflow-hidden">
-              <div className="flex shrink-0 items-center border-b px-2 py-1.5 md:hidden">
-                <SidebarTrigger />
-              </div>
-              <OralBoardsStartPage
-                onStart={(m) => void handleStart(m)}
-                isGenerating={isGenerating}
-                loadingStep={examState.loading_step ?? ""}
-                warmingUp={warmingUp && !hasPanel}
-                warmupError={warmupError}
-              />
+          <div className="flex h-full flex-col overflow-hidden">
+            <div className="flex shrink-0 items-center gap-3 border-b px-2 py-1.5">
+              <SidebarTrigger className="md:hidden" />
+              <span className="text-muted-foreground text-[11px] font-medium tracking-wide">
+                Examiner engine
+              </span>
+              <Tabs
+                value={engine}
+                onValueChange={(value) => {
+                  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+                  setEngine(value as OralBoardsAgentId);
+                }}
+              >
+                <TabsList>
+                  {ENGINES.map((e) => (
+                    <TabsTrigger key={e.id} value={e.id} className="px-3 text-xs">
+                      {e.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
             </div>
-          )}
+            <div className="min-h-0 flex-1 overflow-hidden">
+              {hasPanel ? (
+                <OralBoardsPanel
+                  state={examState}
+                  onClose={startNewThread}
+                  onReady={handleReady}
+                  onAnswer={(text) => void handleAnswer(text)}
+                  isRunning={isRunning}
+                  loadingStep={examState.loading_step ?? ""}
+                  activeFeedback={examState.active_feedback ?? ""}
+                  activeIdealResponse={examState.active_ideal_response ?? ""}
+                />
+              ) : (
+                <OralBoardsStartPage
+                  onStart={(m) => void handleStart(m)}
+                  isGenerating={isGenerating}
+                  loadingStep={examState.loading_step ?? ""}
+                  warmingUp={warmingUp && !hasPanel}
+                  warmupError={warmupError}
+                />
+              )}
+            </div>
+          </div>
         </SidebarInset>
       </OralBoardsQuestionProvider>
     </SidebarProvider>
