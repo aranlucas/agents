@@ -62,3 +62,21 @@ def test_streaming_state_mapping_sets_streaming_flags():
     assert mapping.tool_argument == "plan"
     assert mapping.emit_confirm_tool is False
     assert mapping.stream_tool_call is True
+
+
+def test_build_model_uses_current_free_agent_model_chain():
+    model = build_model()
+    fallbacks = model._additional_args["fallbacks"]
+
+    assert model.model == "gemini/gemini-3.5-flash"
+    assert fallbacks == [
+        "cerebras/gpt-oss-120b",
+        "groq/openai/gpt-oss-120b",
+        "nvidia_nim/deepseek-ai/deepseek-v4-flash",
+        "mistral/mistral-medium-latest",
+        "openrouter/qwen/qwen3-next-80b-a3b-instruct:free",
+        "openrouter/openrouter/free",
+    ]
+
+    fallbacks.append("mutated")
+    assert "mutated" not in build_model()._additional_args["fallbacks"]

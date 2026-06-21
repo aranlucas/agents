@@ -17,7 +17,10 @@ function readExpoConfig(extraEnv: Record<string, string>) {
   });
 
   assert.equal(result.status, 0, result.stderr ?? result.stdout);
-  return JSON.parse(result.stdout) as { extra?: Record<string, string> };
+  return JSON.parse(result.stdout) as {
+    extra?: Record<string, string>;
+    web?: { output?: string };
+  };
 }
 
 describe("Expo app config", () => {
@@ -31,5 +34,13 @@ describe("Expo app config", () => {
     assert.equal(config.extra?.clerkPublishableKey, "pk_test_eas");
     assert.equal(config.extra?.copilotKitRuntimeUrl, "https://app.example.com/api/copilotkit");
     assert.equal(config.extra?.agentsBaseUrl, "https://agents.example.com");
+  });
+
+  it("keeps server web output off Android EAS builds", () => {
+    const androidConfig = readExpoConfig({ EAS_BUILD_PLATFORM: "android" });
+    const webConfig = readExpoConfig({});
+
+    assert.equal(androidConfig.web?.output, "static");
+    assert.equal(webConfig.web?.output, "server");
   });
 });

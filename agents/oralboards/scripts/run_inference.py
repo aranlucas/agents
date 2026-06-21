@@ -10,7 +10,8 @@ Usage:
         --output agents/oralboards/artifacts/traces/
 
 Env vars required (from Railway or .env):
-    NVIDIA_NIM_API_KEY  (or OPENROUTER_API_KEY / MISTRAL_API_KEY as fallback)
+    GEMINI_API_KEY  (or CEREBRAS_API_KEY / GROQ_API_KEY / NVIDIA_NIM_API_KEY /
+    MISTRAL_API_KEY / OPENROUTER_API_KEY as fallback)
 """
 
 from __future__ import annotations

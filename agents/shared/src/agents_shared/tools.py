@@ -15,13 +15,14 @@ log = logging.getLogger("agents_shared")
 
 CLERK_USER_ID_HEADER = "x-clerk-user-id"
 
-# Primary free model plus LiteLLM fallbacks, shared by every agent.
-_DEFAULT_MODEL = "nvidia_nim/deepseek-ai/deepseek-v4-flash"
+# Primary free-tier model plus LiteLLM fallbacks, shared by every agent.
+_DEFAULT_MODEL = "gemini/gemini-3.5-flash"
 _DEFAULT_FALLBACKS = [
+    "cerebras/gpt-oss-120b",
+    "groq/openai/gpt-oss-120b",
+    "nvidia_nim/deepseek-ai/deepseek-v4-flash",
     "mistral/mistral-medium-latest",
-    "nvidia_nim/minimaxai/minimax-m3",
-    "nvidia_nim/z-ai/glm-5.1",
-    "nvidia_nim/nvidia/nemotron-3-ultra-550b-a55b",
+    "openrouter/qwen/qwen3-next-80b-a3b-instruct:free",
     "openrouter/openrouter/free",
 ]
 
