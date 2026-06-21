@@ -1,0 +1,49 @@
+{
+  "eval_cases": [
+    {
+      "eval_case_id": "grocery_requires_kroger_connection",
+      "metadata": {
+        "agent_id": "grocery",
+        "backend_path": "grocery"
+      },
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Plan five quick weeknight dinners for this week and build the shopping list."
+          }
+        ]
+      },
+      "rubric_groups": {
+        "agent_contract": {
+          "rubrics": [
+            {
+              "rubric_id": "grocery_auth_gate",
+              "content": {
+                "property": {
+                  "description": "With default state where kroger_connected is false, the agent tells the user to connect Kroger before planning."
+                }
+              }
+            },
+            {
+              "rubric_id": "grocery_no_tools_when_disconnected",
+              "content": {
+                "property": {
+                  "description": "The agent does not call Kroger MCP tools and does not generate or write a meal plan or shopping list while disconnected."
+                }
+              }
+            },
+            {
+              "rubric_id": "grocery_clear_next_step",
+              "content": {
+                "property": {
+                  "description": "The response is concise and gives the user the concrete next step of connecting Kroger in the UI."
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
