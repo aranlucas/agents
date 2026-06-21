@@ -1,0 +1,57 @@
+{
+  "eval_cases": [
+    {
+      "eval_case_id": "a2ui_launch_readiness_surface",
+      "metadata": {
+        "agent_id": "a2ui",
+        "backend_path": "a2ui"
+      },
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Render a compact launch-readiness dashboard that compares ADK, AG-UI, and A2UI status. Include metrics, a checklist, and one primary action."
+          }
+        ]
+      },
+      "rubric_groups": {
+        "agent_contract": {
+          "rubrics": [
+            {
+              "rubric_id": "a2ui_renders_surface",
+              "content": {
+                "property": {
+                  "description": "The agent calls the injected A2UI render tool rather than answering only in text."
+                }
+              }
+            },
+            {
+              "rubric_id": "a2ui_catalog_and_shape",
+              "content": {
+                "property": {
+                  "description": "The rendered surface uses catalogId https://a2ui.org/specification/v0_9/basic_catalog.json and valid v0.9 component objects with component fields."
+                }
+              }
+            },
+            {
+              "rubric_id": "a2ui_avoids_invalid_schema",
+              "content": {
+                "property": {
+                  "description": "The surface does not use prohibited type fields, lowercase component names, box, metric, checklist, title, or default catalog id."
+                }
+              }
+            },
+            {
+              "rubric_id": "a2ui_remembers_surface",
+              "content": {
+                "property": {
+                  "description": "After rendering, the agent calls remember_surface with a concise brief and surface name, then keeps chat text short."
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

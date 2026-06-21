@@ -1,0 +1,57 @@
+{
+  "eval_cases": [
+    {
+      "eval_case_id": "oral_boards_pulp_therapy_case_start",
+      "metadata": {
+        "agent_id": "oral-boards",
+        "backend_path": "oralboards"
+      },
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Start a grounded pediatric dentistry oral-board case focused on pulp therapy."
+          }
+        ]
+      },
+      "rubric_groups": {
+        "agent_contract": {
+          "rubrics": [
+            {
+              "rubric_id": "oralboards_search_before_content",
+              "content": {
+                "property": {
+                  "description": "The agent calls set_loading_step, search_docs, and read_doc before producing clinical case content."
+                }
+              }
+            },
+            {
+              "rubric_id": "oralboards_sets_case_with_sources",
+              "content": {
+                "property": {
+                  "description": "The agent calls set_case with a concise vignette and source chips grounded in the retrieved documents."
+                }
+              }
+            },
+            {
+              "rubric_id": "oralboards_presenting_phase_only",
+              "content": {
+                "property": {
+                  "description": "The agent sets the phase to presenting, introduces the case, explains the real OCE feedback/pass-fail difference, and does not ask a clinical question yet."
+                }
+              }
+            },
+            {
+              "rubric_id": "oralboards_no_improvised_clinical_claims",
+              "content": {
+                "property": {
+                  "description": "If the local corpus does not cover the requested topic, the agent says so and offers adjacent sourced topics instead of improvising clinical content."
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
