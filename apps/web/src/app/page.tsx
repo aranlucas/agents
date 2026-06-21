@@ -50,7 +50,8 @@ const AGENTS: Agent[] = [
     href: "/console/expense",
     name: "Expense Desk",
     tagline: "Policy-aware expense review",
-    description: "Submit expenses, auto-screen against policy, and approve with a human in the loop.",
+    description:
+      "Submit expenses, auto-screen against policy, and approve with a human in the loop.",
     cta: "Review expenses",
     tags: ["Approvals", "Risk", "HITL"],
     theme: "expense",
