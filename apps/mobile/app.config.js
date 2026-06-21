@@ -5,6 +5,10 @@ function envOrFallback(name, fallback) {
   return process.env[name] || fallback || "";
 }
 
+function shouldUseStaticWebOutputForNativeBuild() {
+  return ["android", "ios"].includes(process.env.EAS_BUILD_PLATFORM);
+}
+
 module.exports = ({ config }) => {
   const baseConfig = {
     ...appJson.expo,
@@ -17,6 +21,10 @@ module.exports = ({ config }) => {
 
   return {
     ...baseConfig,
+    web: {
+      ...baseConfig.web,
+      output: shouldUseStaticWebOutputForNativeBuild() ? "static" : baseConfig.web?.output,
+    },
     extra: {
       ...baseExtra,
       clerkPublishableKey: envOrFallback(
