@@ -97,6 +97,11 @@ def build_adk_agent(
         credential_service=services.credential_service,
         session_timeout_seconds=3600,
         predict_state=predict_state,
+        # Bind the ADK session id to the AG-UI thread_id so every agent resumes
+        # the same persisted session for a given thread instead of relying on an
+        # in-memory cache + O(n) list_sessions scan that is lost on gateway
+        # restarts.
+        use_thread_id_as_session_id=True,
     )
 
 
