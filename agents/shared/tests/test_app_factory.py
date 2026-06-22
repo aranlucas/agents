@@ -28,6 +28,12 @@ def test_build_adk_agent_wires_default_services():
     assert adk._session_manager._timeout == 3600
 
 
+def test_build_adk_agent_resumes_session_from_thread_id():
+    services = _mock_services()
+    adk = build_adk_agent(_dummy_agent(), services=services)
+    assert adk._session_manager._use_thread_id_as_session_id is True
+
+
 def test_build_adk_agent_accepts_session_service_override():
     services = _mock_services()
     custom_session = MagicMock()
