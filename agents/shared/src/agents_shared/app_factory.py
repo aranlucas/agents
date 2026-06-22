@@ -91,6 +91,7 @@ def build_adk_agent(
 ) -> ADKAgent:
     return ADKAgent(
         adk_agent=agent,
+        app_name=agent.name,
         session_service=session_service or services.session_service,
         artifact_service=services.artifact_service,
         memory_service=services.memory_service,
