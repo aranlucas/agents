@@ -1,14 +1,16 @@
-"""Oral boards examiner — graph-based agent using SequentialAgent + LoopAgent.
+"""Oral boards examiner — Workflow-based agent.
 
 Reuses the state model, tools, and search functions from agent.py.
-Flow is enforced via ADK orchestration agents instead of prompt instructions:
+Flow is enforced via ADK Workflow graph:
 
-    case_builder  →  questioning_loop (questioner → evaluator)  →  scorer
+    case_builder  →  questioner  →  evaluator  →  router  →  scorer
+
+The router checks whether ``complete_examination`` was called by the
+evaluator and either loops back to the questioner or proceeds to the scorer.
 
 - ``request_input`` (long-running tool) pauses the invocation after each
   question so the candidate must respond before the next step runs.
-- ``tool_context.actions.escalate = True`` on the evaluator's append_exchange
-  call exits the loop when all relevant skillsets are covered.
+- ``complete_examination`` sets a state flag that the router reads.
 """
 
 from agents_shared.state import make_state_initializer, make_state_instruction
@@ -17,8 +19,10 @@ from agents_shared.tools import (
     build_model,
     on_model_error_callback,
 )
-from google.adk.agents import LlmAgent, LoopAgent, SequentialAgent
-from google.adk.tools import FunctionTool, request_input
+from google.adk import Workflow
+from google.adk.agents import LlmAgent
+from google.adk.tools import FunctionTool, ToolContext, request_input
+from google.adk.workflow import FunctionNode
 
 from .agent import (
     OralBoardsState,
@@ -102,6 +106,29 @@ _LOADING_STEPS = (
     "| Before calling append_exchange | 'Composing feedback…' |\n"
     "| Before calling set_score_card | 'Computing score card…' |"
 )
+
+
+def complete_examination(tool_context: ToolContext) -> dict:
+    """End the questioning phase when all relevant skillsets are covered.
+
+    Called by the evaluator after the last skillset has been assessed.
+    Sets a state flag read by the questioning_router to route to the scorer.
+    """
+    tool_context.state["interview_complete"] = True
+    return {"status": "success", "message": "Interview complete."}
+
+
+def questioning_router(ctx: ToolContext) -> str:
+    """Read the interview_complete flag and set the route accordingly.
+
+    Returns:
+        ``""`` (the route is communicated via ``ctx.route``, not the return value).
+    """
+    if ctx.state.get("interview_complete"):
+        ctx.route = "complete"
+    else:
+        ctx.route = "continue"
+    return ""
 
 
 def _build_case_builder() -> LlmAgent:
@@ -201,14 +228,14 @@ def _build_evaluator() -> LlmAgent:
             "## When to end the interview\n"
             "After calling append_exchange, check the transcript length in state.\n"
             "If all relevant skillsets for this case have been covered (typically 4-6 exchanges),\n"
-            "set tool_context.actions.escalate = True inside the append_exchange tool call.\n"
-            "This signals the loop to exit and the scorer will generate the final score card.\n"
-            "If more skillsets remain, do NOT set escalate — the loop will continue."
+            "call complete_examination. This signals the end of questioning and the scorer\n"
+            "will generate the final score card. If more skillsets remain, do NOT call it."
         ),
         tools=[
             FunctionTool(search_docs),
             FunctionTool(read_doc),
             FunctionTool(append_exchange),
+            FunctionTool(complete_examination),
             FunctionTool(set_loading_step),
         ],
     )
@@ -245,30 +272,39 @@ def _build_scorer() -> LlmAgent:
     )
 
 
-def build_workflow_agent() -> SequentialAgent:
-    """Graph-based oral-boards examiner with deterministic flow control.
+def build_workflow_agent() -> Workflow:
+    """Graph-based oral-boards examiner with Workflow.
 
-    Flow: case_builder → questioning_loop(questioner → evaluator) → scorer
+    Flow: case_builder → questioner → evaluator → router → subgraphs ↓
+
+                             ┌───────────────────────────────┐
+                             │  questioner  ←  (continue)    │
+                             │               router          │
+                             │  scorer     ←  (complete)     │
+                             └───────────────────────────────┘
 
     - ``request_input`` pauses the invocation after each question so the
       candidate must respond before the next node runs.
-    - The evaluator sets ``escalate=True`` on ``append_exchange`` when all
-      relevant skillsets are covered, exiting the loop.
+    - The evaluator calls ``complete_examination`` when all relevant skillsets
+      are covered, setting a state flag read by the router.
     """
+    case_builder = _build_case_builder()
     questioner = _build_questioner()
     evaluator = _build_evaluator()
+    scorer = _build_scorer()
 
-    questioning_loop = LoopAgent(
-        name="questioning_loop",
-        sub_agents=[questioner, evaluator],
-        max_iterations=8,
+    router = FunctionNode(
+        func=questioning_router,
+        name="questioning_router",
     )
 
-    return SequentialAgent(
+    return Workflow(
         name="oralboards_workflow",
-        sub_agents=[
-            _build_case_builder(),
-            questioning_loop,
-            _build_scorer(),
+        description="Graph-based oral-boards examiner — workflow with conditional loop.",
+        edges=[
+            (case_builder, questioner),
+            (questioner, evaluator),
+            (evaluator, router),
+            (router, {"__DEFAULT__": questioner, "complete": scorer}),
         ],
     )

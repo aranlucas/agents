@@ -1,7 +1,7 @@
 """Oral Boards Workflow Agent — graph-based AG-UI endpoint at /oralboards-v2.
 
-Uses SequentialAgent + LoopAgent for deterministic flow control instead of
-prompt-based instructions. See workflow_agent.py for the agent definition.
+Uses ADK Workflow for deterministic flow control instead of prompt-based
+instructions. See workflow_agent.py for the agent definition.
 """
 
 from agents_shared.app_factory import (
