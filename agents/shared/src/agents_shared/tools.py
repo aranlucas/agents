@@ -24,7 +24,7 @@ _DEFAULT_FALLBACKS = [
     "groq/openai/gpt-oss-120b",
     "mistral/mistral-medium-latest",
     "nvidia_nim/deepseek-ai/deepseek-r1-0528-distill-llama-70b",
-    "openrouter/qwen/qwen3-235b-a22b:free",
+    "openrouter/openrouter/free",
     "gemini/gemini-3.5-flash",
 ]
 
