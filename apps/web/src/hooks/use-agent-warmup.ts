@@ -12,7 +12,7 @@ export interface AgentStatuses {
   expense: AgentStatus;
   "oral-boards": AgentStatus;
   "oral-boards-v2": AgentStatus;
-  a2ui: AgentStatus;
+  trends: AgentStatus;
   resume: AgentStatus;
   research: AgentStatus;
   spreadsheet: AgentStatus;
@@ -33,7 +33,7 @@ const FALLBACK: AgentStatuses = {
   expense: "loading",
   "oral-boards": "loading",
   "oral-boards-v2": "loading",
-  a2ui: "loading",
+  trends: "loading",
   resume: "loading",
   research: "loading",
   spreadsheet: "loading",

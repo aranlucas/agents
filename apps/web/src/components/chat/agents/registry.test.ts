@@ -11,7 +11,7 @@ describe("agent registry", () => {
       "expense",
       "oral-boards",
       "oral-boards-v2",
-      "a2ui",
+      "trends",
       "resume",
       "research",
       "spreadsheet",
@@ -49,10 +49,14 @@ describe("agent registry", () => {
     expect(getAgentConfig("expense").requires ?? []).toEqual([]);
     expect(getAgentConfig("oral-boards").requires ?? []).toEqual([]);
     expect(getAgentConfig("oral-boards-v2").requires ?? []).toEqual([]);
-    expect(getAgentConfig("a2ui").requires ?? []).toEqual([]);
+    expect(getAgentConfig("trends").requires ?? []).toEqual([]);
     expect(getAgentConfig("resume").requires ?? []).toEqual([]);
     expect(getAgentConfig("research").requires ?? []).toEqual([]);
     expect(getAgentConfig("spreadsheet").requires ?? []).toEqual([]);
     expect(getAgentConfig("presentation").requires ?? []).toEqual([]);
+  });
+
+  it("uses A2UI inline instead of a markdown artifact for Trends", () => {
+    expect(getAgentConfig("trends").artifact).toBeUndefined();
   });
 });

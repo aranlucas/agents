@@ -36,7 +36,7 @@ describe("selectArtifact", () => {
   });
 
   it("returns null for an agent with no artifact config", () => {
-    expect(selectArtifact({ foo: "bar" }, getAgentConfig("a2ui"))).toBeNull();
+    expect(selectArtifact({ foo: "bar" }, getAgentConfig("trends"))).toBeNull();
   });
 
   it("returns null for oral-boards (no generic artifact config — uses bespoke pane)", () => {

@@ -226,19 +226,6 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
       },
     ],
   },
-  a2ui: {
-    id: "a2ui",
-    label: "A2UI",
-    glyph: "▦",
-    colorVar: "--a2ui",
-    placeholder: "Ask me to render an interface…",
-    suggestions: [
-      { title: "Dashboard", message: "Render a sales dashboard with charts and KPI cards." },
-      { title: "Data table", message: "Show me a sortable data table with sample data." },
-      { title: "Build a form", message: "Create a contact form with validation." },
-      { title: "Kanban", message: "Show a kanban board with a few sample cards." },
-    ],
-  },
   trends: {
     id: "trends",
     label: "Trends",
@@ -247,28 +234,22 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
     placeholder: "What's trending on Google right now?",
     welcome:
       "Ask me about Google search trends — top terms, rising topics, or regional breakdowns.",
-    artifact: {
-      stateField: "result",
-      kind: "markdown",
-      title: "Trends report",
-      name: "trends_report.md",
-    },
     suggestions: [
       {
-        title: "Top searches today",
-        message: "What are the top Google searches in the US today?",
+        title: "Top searches",
+        message: "Visualize the top 10 Google searches in the US for the latest available week.",
       },
       {
-        title: "Rising terms",
-        message: "What search terms are rising fastest right now?",
+        title: "Fastest rising",
+        message: "Show the fastest-rising US search terms and compare their percent gains.",
       },
       {
-        title: "AI trends",
-        message: "What AI-related terms are trending this week?",
+        title: "California",
+        message: "Visualize the leading search terms in California for the latest available week.",
       },
       {
-        title: "Region breakdown",
-        message: "Which search terms are trending in California?",
+        title: "Weekly change",
+        message: "Show how the leading AI-related search terms changed across recent weeks.",
       },
     ],
   },

@@ -26,7 +26,6 @@ export function AgentCard({
   status?: AgentStatus;
 }) {
   const isWellness = agent.theme === "wellness";
-  const isA2UI = agent.theme === "a2ui";
 
   return (
     <Card
@@ -58,7 +57,6 @@ export function AgentCard({
                 {agent.tagline}
               </Badge>
               {isWellness && <Badge variant="secondary">In-process</Badge>}
-              {isA2UI && <Badge variant="secondary">A2UI</Badge>}
             </div>
 
             <p className="max-w-2xl text-sm leading-6 text-(--ink-soft)">{agent.description}</p>

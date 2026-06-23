@@ -51,7 +51,7 @@ describe("Home page", () => {
     expect(screen.getByText("Expense Desk")).toBeInTheDocument();
     expect(screen.getByText("Oral Boards")).toBeInTheDocument();
     expect(screen.getByText("Resume")).toBeInTheDocument();
-    expect(screen.getByText("A2UI Studio")).toBeInTheDocument();
+    expect(screen.getByText("Google Trends")).toBeInTheDocument();
     expect(screen.getAllByText("Research").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Spreadsheet")).toBeInTheDocument();
     expect(screen.getAllByText("Slides").length).toBeGreaterThanOrEqual(1);
@@ -61,6 +61,14 @@ describe("Home page", () => {
     render(<Home />);
     expect(screen.getByText("Oral Boards")).toBeInTheDocument();
     expect(screen.queryByText("Oral Boards v2")).not.toBeInTheDocument();
+  });
+
+  it("does not surface the standalone A2UI showcase card", () => {
+    render(<Home />);
+    expect(screen.queryByText("A2UI Studio")).not.toBeInTheDocument();
+    const links = screen.getAllByRole("link");
+    const hrefs = links.map((link) => link.getAttribute("href"));
+    expect(hrefs).not.toContain("/console/a2ui");
   });
 
   it("renders links to each agent console", () => {
@@ -74,7 +82,7 @@ describe("Home page", () => {
     expect(hrefs).toContain("/console/expense");
     expect(hrefs).toContain("/console/oral-boards");
     expect(hrefs).toContain("/console/resume");
-    expect(hrefs).toContain("/console/a2ui");
+    expect(hrefs).toContain("/console/trends");
     expect(hrefs).toContain("/console/research");
     expect(hrefs).toContain("/console/spreadsheet");
     expect(hrefs).toContain("/console/presentation");

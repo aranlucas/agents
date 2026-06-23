@@ -69,13 +69,14 @@ const AGENTS: Agent[] = [
   },
   {
     id: "07",
-    href: "/console/a2ui",
-    name: "A2UI Studio",
-    tagline: "Generative UI over AG-UI",
-    description: "Ask an ADK agent to render declarative A2UI surfaces through CopilotKit.",
-    cta: "Render UI",
-    tags: ["A2UI", "ADK", "AG-UI"],
-    theme: "a2ui",
+    href: "/console/trends",
+    name: "Google Trends",
+    tagline: "Live visual search analysis",
+    description:
+      "Ask a question in natural language, run bounded BigQuery SQL, and explore the result as an A2UI chart and table.",
+    cta: "Explore trends",
+    tags: ["BigQuery", "A2UI", "Live data"],
+    theme: "trends",
   },
   {
     id: "08",
@@ -116,17 +117,6 @@ const AGENTS: Agent[] = [
     cta: "Build deck",
     tags: ["Slides", "Decks", "Themes"],
     theme: "presentation",
-  },
-  {
-    id: "12",
-    href: "/console/trends",
-    name: "Google Trends",
-    tagline: "Live search trend analysis",
-    description:
-      "Ask questions in natural language — the agent writes BigQuery SQL against the Google Trends public dataset and streams a formatted report.",
-    cta: "Explore trends",
-    tags: ["BigQuery", "Trends", "Live data"],
-    theme: "trends",
   },
 ];
 

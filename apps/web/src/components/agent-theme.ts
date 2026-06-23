@@ -8,7 +8,6 @@ export type AgentTheme =
   | "expense"
   | "oral-boards"
   | "oral-boards-v2"
-  | "a2ui"
   | "resume"
   | "research"
   | "spreadsheet"
@@ -65,12 +64,6 @@ export const AGENT_THEMES: Record<
     colorVar: "var(--oral-boards)",
     softVar: "var(--oral-boards-soft)",
     contrastVar: "var(--oral-boards-contrast)",
-  },
-  a2ui: {
-    label: "A2UI",
-    colorVar: "var(--a2ui)",
-    softVar: "var(--a2ui-soft)",
-    contrastVar: "var(--a2ui-contrast)",
   },
   resume: {
     label: "Resume",

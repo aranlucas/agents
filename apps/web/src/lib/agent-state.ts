@@ -5,8 +5,6 @@
 // trivially testable and keeps `as` casts out of the page components.
 
 import type {
-  A2UIState,
-  A2UIStatus,
   CartItem,
   DocStatus,
   FitnessActivity,
@@ -63,7 +61,6 @@ const DOC_STATUSES: readonly DocStatus[] = ["idle", "drafting", "ready_to_book",
 const GROCERY_STATUSES = ["idle", "planning", "ready"] as const;
 const FITNESS_STATUSES: readonly FitnessStatus[] = ["idle", "syncing", "planning", "ready"];
 const WELLNESS_STATUSES: readonly WellnessStatus[] = ["idle", "delegating", "planning", "ready"];
-const A2UI_STATUSES: readonly A2UIStatus[] = ["idle", "ready"];
 
 export function asDocStatus(value: unknown): DocStatus {
   return oneOf(value, DOC_STATUSES, "idle");
@@ -161,15 +158,5 @@ export function toWellnessState(raw: unknown): WellnessState {
     user_id: optionalStr(s.user_id),
     kroger_connected: bool(s.kroger_connected),
     strava_connected: bool(s.strava_connected),
-  };
-}
-
-export function toA2UIState(raw: unknown): A2UIState {
-  const s = asRecord(raw);
-  return {
-    status: oneOf(s.status, A2UI_STATUSES, "idle"),
-    surface_brief: optionalStr(s.surface_brief),
-    last_surface: optionalStr(s.last_surface),
-    user_id: optionalStr(s.user_id),
   };
 }

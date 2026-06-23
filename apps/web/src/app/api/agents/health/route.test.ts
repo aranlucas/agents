@@ -13,7 +13,7 @@ describe("GET /api/agents/health", () => {
 
   it("returns per-agent status and running count", async () => {
     const fetchMock = vi.fn(async (url: string) => ({
-      ok: url.includes("travel") || url.includes("a2ui"),
+      ok: url.includes("travel") || url.includes("trends"),
     }));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -50,7 +50,7 @@ describe("GET /api/agents/health", () => {
         expense: "error",
         "oral-boards": "error",
         "oral-boards-v2": "error",
-        a2ui: "ok",
+        trends: "ok",
         resume: "error",
         research: "error",
         spreadsheet: "error",

@@ -4,7 +4,6 @@ import {
   asDocStatus,
   isRecord,
   oneOf,
-  toA2UIState,
   toFitnessState,
   toGroceryState,
   toTripState,
@@ -157,14 +156,12 @@ describe("toWellnessState", () => {
   });
 });
 
-describe("toA2UIState", () => {
-  it("coerces status and optional strings", () => {
-    expect(toA2UIState({ status: "ready", surface_brief: "b" })).toEqual({
-      status: "ready",
-      surface_brief: "b",
-      last_surface: undefined,
-      user_id: undefined,
-    });
-    expect(toA2UIState({ status: "bogus" }).status).toBe("idle");
+describe("agent-state (no A2UI showcase)", () => {
+  it("no longer exposes toA2UIState", async () => {
+    // toA2UIState was removed with the standalone showcase; the module must no
+    // longer export it. Import dynamically so the absence is a runtime fact,
+    // not a compile error.
+    const mod = (await import("./agent-state")) as Record<string, unknown>;
+    expect(mod.toA2UIState).toBeUndefined();
   });
 });

@@ -81,14 +81,8 @@ describe("AgentCard", () => {
     expect(screen.getByText("In-process")).toBeInTheDocument();
   });
 
-  it("shows 'A2UI' badge for a2ui theme", () => {
-    render(<AgentCard agent={{ ...base, theme: "a2ui" }} index={0} />);
-    expect(screen.getByText("A2UI")).toBeInTheDocument();
-  });
-
   it("does not show special badges for other themes", () => {
     render(<AgentCard agent={base} index={0} />);
     expect(screen.queryByText("In-process")).not.toBeInTheDocument();
-    expect(screen.queryByText("A2UI")).not.toBeInTheDocument();
   });
 });
