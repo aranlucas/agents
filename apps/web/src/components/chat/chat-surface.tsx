@@ -115,7 +115,11 @@ export function ChatSurface({
   const gated = !connections.isLoading && connections.missing.length > 0;
   const connectedAgentRef = useRef<typeof agent | null>(null);
   const isRuntimeConnected = isConnectedRuntimeStatus(copilotkit.runtimeConnectionStatus);
-  const [isAgentConnected, setIsAgentConnected] = useState(false);
+  // Track which agent instance has finished connecting. Deriving isAgentConnected
+  // by comparing to the current agent avoids a synchronous setState in the
+  // effect body (no-adjust-state-on-prop-change).
+  const [connectedAgent, setConnectedAgent] = useState<typeof agent | null>(null);
+  const isAgentConnected = connectedAgent === agent;
 
   useEffect(() => {
     let detached = false;
@@ -125,7 +129,6 @@ export function ChatSurface({
       return undefined;
     }
 
-    setIsAgentConnected(false);
     agent.threadId = threadId;
     if ("abortController" in agent) {
       agent.abortController = connectAbortController;
@@ -148,7 +151,7 @@ export function ChatSurface({
             ? requestAnimationFrame
             : (cb: () => void) => setTimeout(cb, 16);
         raf(() => {
-          if (!detached) setIsAgentConnected(true);
+          if (!detached) setConnectedAgent(agent);
         });
       });
 
@@ -156,7 +159,7 @@ export function ChatSurface({
       detached = true;
       connectAbortController.abort();
       connectedAgentRef.current = null;
-      setIsAgentConnected(false);
+      setConnectedAgent(null);
       void agent.detachActiveRun?.();
     };
   }, [agent, copilotkit, isRuntimeConnected, threadId]);
