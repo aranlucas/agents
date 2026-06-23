@@ -11,6 +11,7 @@ export const AGENT_ORDER = [
   "research",
   "spreadsheet",
   "presentation",
+  "trends",
 ] as const;
 
 export type AgentId = (typeof AGENT_ORDER)[number];
@@ -28,6 +29,7 @@ export const AGENT_BACKEND_PATHS = {
   research: "research",
   spreadsheet: "spreadsheet",
   presentation: "presentation",
+  trends: "trends",
 } as const satisfies Record<AgentId, string>;
 
 export type AgentBackendPath = (typeof AGENT_BACKEND_PATHS)[AgentId];
@@ -318,5 +320,16 @@ export type PresentationState = {
   active_slide_index?: number;
   status?: PresentationStatus;
   review_summary?: string;
+  user_id?: string;
+};
+
+// Trends agent state — matches what agents/trends writes to ADK shared state
+export type TrendsStatus = "idle" | "ready";
+
+export type TrendsState = {
+  query?: string;
+  generated_sql?: string;
+  result?: string;
+  status?: TrendsStatus;
   user_id?: string;
 };
