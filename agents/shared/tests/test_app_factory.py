@@ -79,7 +79,7 @@ def test_build_model_uses_current_free_agent_model_chain():
     assert fallbacks == [
         "groq/openai/gpt-oss-120b",
         "mistral/mistral-medium-latest",
-        "nvidia_nim/deepseek-ai/deepseek-r1-0528-distill-llama-70b",
+        "nvidia_nim/deepseek-ai/deepseek-v4-flash",
         "openrouter/openrouter/free",
         "gemini/gemini-3.5-flash",
     ]
