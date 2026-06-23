@@ -125,10 +125,9 @@ export function Sidebar({
             {NAV_ITEMS.map((item) => {
               const isActive = pathname === item.href;
               return (
-                // expo-router types `href` as a known-route union; ours are dynamic.
-                // eslint-disable-next-line typescript/no-unsafe-type-assertion
                 <Link
                   key={item.href}
+                  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- expo-router typed routes cannot infer this dynamic nav table.
                   href={item.href as unknown as Parameters<typeof Link>["0"]["href"]}
                   asChild
                 >
