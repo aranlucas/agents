@@ -6,12 +6,11 @@ export const AGENT_ORDER = [
   "expense",
   "oral-boards",
   "oral-boards-v2",
-  "a2ui",
+  "trends",
   "resume",
   "research",
   "spreadsheet",
   "presentation",
-  "trends",
 ] as const;
 
 export type AgentId = (typeof AGENT_ORDER)[number];
@@ -24,12 +23,11 @@ export const AGENT_BACKEND_PATHS = {
   expense: "expense",
   "oral-boards": "oralboards",
   "oral-boards-v2": "oralboards-v2",
-  a2ui: "a2ui",
+  trends: "trends",
   resume: "resume",
   research: "research",
   spreadsheet: "spreadsheet",
   presentation: "presentation",
-  trends: "trends",
 } as const satisfies Record<AgentId, string>;
 
 export type AgentBackendPath = (typeof AGENT_BACKEND_PATHS)[AgentId];
@@ -246,16 +244,6 @@ export type OralBoardsState = {
   // Written by the ask_question frontend tool so the active question survives
   // a page refresh (reconstructed from agent state on mount).
   current_question?: string;
-};
-
-// A2UI showcase state — matches what agents/a2ui writes to ADK shared state
-export type A2UIStatus = "idle" | "ready";
-
-export type A2UIState = {
-  status?: A2UIStatus;
-  surface_brief?: string;
-  last_surface?: string;
-  user_id?: string;
 };
 
 // Research agent state — matches what agents/research writes to ADK shared state
