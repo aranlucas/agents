@@ -27,6 +27,7 @@ from research_agent.main import register as register_research
 from resume_agent.main import register as register_resume
 from spreadsheet_agent.main import register as register_spreadsheet
 from travel_agent.main import register as register_travel
+from trends_agent.main import register as register_trends
 from wellness_agent.main import register as register_wellness
 
 load_dotenv()
@@ -40,6 +41,7 @@ def register_agents(app: FastAPI, services: AgentServices) -> None:
 
     for register_agent in (
         register_travel,
+        register_trends,
         register_grocery,
         register_fitness,
         register_wellness,
