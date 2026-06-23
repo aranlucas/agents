@@ -29,12 +29,19 @@ def test_mounts_every_agent():
         "/grocery",
         "/fitness",
         "/wellness",
-        "/a2ui",
+        "/trends",
         "/oralboards",
         "/resume",
     ):
         assert f"{prefix}/agui" in mounted
         assert f"{prefix}/health" in mounted
+
+
+def test_standalone_a2ui_route_is_removed():
+    with TestClient(main.app):
+        mounted = set(_route_paths(main.app))
+    assert "/a2ui/agui" not in mounted
+    assert "/a2ui/health" not in mounted
 
 
 def test_startup_does_not_mutate_route_table():
@@ -59,7 +66,7 @@ def test_agent_routes_are_unique_and_state_is_scoped():
         "/grocery",
         "/fitness",
         "/wellness",
-        "/a2ui",
+        "/trends",
         "/oralboards",
         "/resume",
     ):
