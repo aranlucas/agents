@@ -1,7 +1,14 @@
-import json
+import logging
 import os
+from datetime import date, datetime, time
+from decimal import Decimal
 
 from google.adk.tools import ToolContext
+
+log = logging.getLogger(__name__)
+
+type JsonScalar = str | int | float | bool | None
+type JsonValue = JsonScalar | list[JsonValue] | dict[str, JsonValue]
 
 
 def clean_sql_query(text: str) -> str:
@@ -15,29 +22,104 @@ def clean_sql_query(text: str) -> str:
     )
 
 
-def execute_bigquery_sql(sql: str) -> str:
-    """Execute a BigQuery SQL query and return results as a JSON string."""
+def normalize_bigquery_value(value: object) -> JsonValue:
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, Decimal):
+        return int(value) if value == value.to_integral_value() else float(value)
+    if isinstance(value, (date, datetime, time)):
+        return value.isoformat()
+    if isinstance(value, dict):
+        return {str(key): normalize_bigquery_value(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [normalize_bigquery_value(item) for item in value]
+    return str(value)
+
+
+def validate_trends_sql(sql: str) -> dict:
+    cleaned = clean_sql_query(sql)
+    if not cleaned:
+        return {
+            "ok": False,
+            "error": "The Trends SQL generator did not return a query.",
+        }
+    if not cleaned.lstrip().upper().startswith(("SELECT", "WITH")):
+        return {
+            "ok": False,
+            "error": "The Trends SQL generator returned an unsupported statement.",
+        }
+    if "LIMIT" not in cleaned.upper():
+        return {
+            "ok": False,
+            "error": "The Trends SQL generator returned an unbounded query.",
+        }
+    return {"ok": True, "sql": cleaned}
+
+
+def execute_bigquery_sql(sql: str) -> dict:
+    """Execute bounded BigQuery SQL and return normalized rows."""
     from google.cloud import bigquery
 
-    project = os.getenv("GOOGLE_CLOUD_PROJECT")
-    cleaned = clean_sql_query(sql)
     try:
-        client = bigquery.Client(project=project)
-        results = [dict(row) for row in client.query(cleaned).result()]
-        if not results:
-            return "Query returned no results."
-        return (
-            json.dumps(results, default=str)
-            .replace("```sql", "")
-            .replace("```", "")
+        result = (
+            bigquery.Client(project=os.getenv("GOOGLE_CLOUD_PROJECT"))
+            .query(clean_sql_query(sql))
+            .result()
         )
-    except Exception as e:  # noqa: BLE001
-        return f"Error executing BigQuery query: {e!s}"
+        columns = [field.name for field in result.schema]
+        rows = [
+            {
+                str(key): normalize_bigquery_value(value)
+                for key, value in dict(row).items()
+            }
+            for row in result
+        ]
+        return {
+            "ok": True,
+            "columns": columns,
+            "rows": rows,
+            "row_count": len(rows),
+        }
+    except Exception:  # noqa: BLE001
+        log.exception("Google Trends BigQuery execution failed")
+        return {"ok": False, "error": "BigQuery query failed."}
 
 
-def write_trends_result(tool_context: ToolContext, sql: str, insights: str) -> dict:
-    """Format SQL + insights as markdown and persist to shared state."""
-    md = f"## SQL Query\n\n```sql\n{sql}\n```\n\n---\n\n## Insights\n\n{insights}"
-    tool_context.state["result"] = md
-    tool_context.state["status"] = "ready"
-    return {"ok": True}
+def begin_trends_query(tool_context: ToolContext, query: str, sql: str) -> dict:
+    tool_context.state.update(
+        {
+            "query": query,
+            "generated_sql": clean_sql_query(sql),
+            "columns": [],
+            "rows": [],
+            "insights": "",
+            "status": "querying",
+            "error": "",
+        }
+    )
+    return {"ok": True, "status": "querying"}
+
+
+def write_trends_result(
+    tool_context: ToolContext,
+    query: str,
+    sql: str,
+    columns: list[str],
+    rows: list[dict],
+    insights: str,
+    error: str = "",
+) -> dict:
+    normalized_rows = [normalize_bigquery_value(row) for row in rows]
+    status = "error" if error else "ready" if normalized_rows else "empty"
+    tool_context.state.update(
+        {
+            "query": query,
+            "generated_sql": clean_sql_query(sql),
+            "columns": columns,
+            "rows": normalized_rows,
+            "insights": insights,
+            "status": status,
+            "error": error,
+        }
+    )
+    return {"ok": not error, "status": status, "row_count": len(normalized_rows)}

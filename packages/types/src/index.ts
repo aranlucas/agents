@@ -324,12 +324,17 @@ export type PresentationState = {
 };
 
 // Trends agent state — matches what agents/trends writes to ADK shared state
-export type TrendsStatus = "idle" | "ready";
+export type TrendsStatus = "idle" | "querying" | "ready" | "empty" | "error";
+export type TrendsCell = string | number | boolean | null;
+export type TrendsRow = Record<string, TrendsCell>;
 
 export type TrendsState = {
   query?: string;
   generated_sql?: string;
-  result?: string;
+  columns?: string[];
+  rows?: TrendsRow[];
+  insights?: string;
   status?: TrendsStatus;
+  error?: string;
   user_id?: string;
 };

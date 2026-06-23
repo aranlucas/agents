@@ -5,7 +5,7 @@ from agents_shared.tools import (
     on_model_error_callback,
 )
 from google.adk.agents import LlmAgent, SequentialAgent
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .prompt import load_agent_instructions
 from .tools import execute_bigquery_sql, write_trends_result
@@ -14,8 +14,11 @@ from .tools import execute_bigquery_sql, write_trends_result
 class TrendsState(BaseModel):
     query: str = ""
     generated_sql: str = ""
-    result: str = ""
+    columns: list[str] = Field(default_factory=list)
+    rows: list[dict] = Field(default_factory=list)
+    insights: str = ""
     status: str = "idle"
+    error: str = ""
     user_id: str = ""
 
 
