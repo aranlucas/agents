@@ -3,20 +3,20 @@ from unittest.mock import Mock
 import pytest
 from agents_shared.dependencies import create_agent_services
 from fastapi import FastAPI
-from google.adk.agents import SequentialAgent
+from google.adk import Workflow
 from trends_agent import agent, main
 
 
-def test_build_agent_returns_sequential_agent() -> None:
+def test_build_agent_returns_workflow() -> None:
     a = agent.build_agent()
-    assert isinstance(a, SequentialAgent)
+    assert isinstance(a, Workflow)
     assert a.name == "GoogleTrendsAgent"
-    assert len(a.sub_agents) == 2
+    assert len(a.graph.nodes) == 2
 
 
 def test_build_agent_sub_agent_names() -> None:
     a = agent.build_agent()
-    names = [s.name for s in a.sub_agents]
+    names = [n.name for n in a.graph.nodes]
     assert "TrendsQueryGeneratorAgent" in names
     assert "TrendsQueryExecutorAgent" in names
 
@@ -24,8 +24,8 @@ def test_build_agent_sub_agent_names() -> None:
 def test_executor_has_state_bigquery_and_explicit_a2ui_tools() -> None:
     trends = agent.build_agent()
     executor = next(
-        child for child in trends.sub_agents
-        if child.name == "TrendsQueryExecutorAgent"
+        n for n in trends.graph.nodes
+        if n.name == "TrendsQueryExecutorAgent"
     )
     tool_names = {
         tool.name if hasattr(tool, "name") else getattr(tool, "__name__", "")
@@ -78,7 +78,7 @@ def test_executor_persists_state_before_rendering() -> None:
 
 def test_trends_catalog_id_is_stable() -> None:
     assert agent.TRENDS_CATALOG_ID == (
-        "https://agents-lucas.vercel.app/a2ui/catalogs/trends/v1"
+        "copilotkit://trends/v1"
     )
 
 
