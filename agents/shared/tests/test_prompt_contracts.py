@@ -1,7 +1,6 @@
 """Shared prompt UX contracts for artifact-producing agents."""
 
 import pytest
-from a2ui_agent.agent import build_agent as build_a2ui_agent
 from agents_shared.prompts import CANVAS_CONTRACT_MARKER
 from fitness_agent.agent import build_agent as build_fitness_agent
 from grocery_agent.agent import build_agent as build_grocery_agent
@@ -15,7 +14,6 @@ ARTIFACT_AGENT_BUILDERS = [
     build_fitness_agent,
     build_wellness_agent,
     build_oralboards_agent,
-    build_a2ui_agent,
 ]
 
 

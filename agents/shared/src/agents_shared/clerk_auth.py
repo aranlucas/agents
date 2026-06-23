@@ -18,7 +18,7 @@ def _jwk_client() -> jwt.PyJWKClient:
     return jwt.PyJWKClient(os.environ["CLERK_JWKS_URL"])
 
 
-def decode_clerk_jwt(token: str, *, signing_key=None) -> dict:
+def decode_clerk_jwt(token: str, *, signing_key=None) -> dict[str, object]:
     """Verify signature + expiry and issuer when CLERK_ISSUER is set."""
     if signing_key is None:
         signing_key = _jwk_client().get_signing_key_from_jwt(token).key
@@ -57,7 +57,7 @@ async def _send_401(send, detail: str) -> None:
 class ClerkAuthMiddleware:
     """Pure-ASGI middleware guarding every path that contains "/agui"."""
 
-    def __init__(self, app, *, decoder=decode_clerk_jwt, public_prefixes: tuple = ()):
+    def __init__(self, app, *, decoder=decode_clerk_jwt, public_prefixes: tuple[str, ...] = ()):
         self.app = app
         self.decoder = decoder
         self.public_prefixes = public_prefixes

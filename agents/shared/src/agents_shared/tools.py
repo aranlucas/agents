@@ -45,7 +45,7 @@ DEFAULT_RETRY_CONFIG = RetryConfig(
 )
 
 
-def get_current_date() -> dict:
+def get_current_date() -> dict[str, str]:
     """Return today's date (ISO 8601) plus weekday and month for scheduling."""
     today = datetime.datetime.now(datetime.UTC).date()
     return {
@@ -85,7 +85,7 @@ def make_mark_ready(
     status_value: str,
     *,
     doc: str = "",
-) -> Callable[[ToolContext, str], dict]:
+) -> Callable[[ToolContext, str], dict[str, bool]]:
     """Factory for the status-flip / review-summary tool duplicated across agents.
 
     Creates a named function that sets state["status"] = status_value and
@@ -97,7 +97,7 @@ def make_mark_ready(
         doc: Optional docstring for the generated tool.
     """
 
-    def _mark_ready(tool_context: ToolContext, summary: str) -> dict:
+    def _mark_ready(tool_context: ToolContext, summary: str) -> dict[str, bool]:
         tool_context.state["status"] = status_value
         tool_context.state["review_summary"] = summary
         return {"ok": True}

@@ -132,7 +132,7 @@ def build_agent() -> SequentialAgent:
     trends_a2ui_tool = get_a2ui_tool(
         {
             "model": executor_model,
-            "guidelines": _TRENDS_A2UI_GUIDELINES,
+            "guidelines": {"generation_guidelines": _TRENDS_A2UI_GUIDELINES},
             "default_surface_id": "trends-result",
             "default_catalog_id": TRENDS_CATALOG_ID,
         }

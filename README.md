@@ -1,19 +1,22 @@
 # Agents Monorepo — CopilotKit x Google ADK
 
-Seven collaborative AI agents served from a single gateway, sharing live state
+A collection of collaborative AI agents served from a single gateway, sharing live state
 with web and mobile UIs over the [AG-UI](https://docs.copilotkit.ai/ag-ui)
 protocol. Built with [CopilotKit](https://copilotkit.ai) v2,
 [Google ADK](https://google.github.io/adk-docs/), Next.js 16, and Expo.
 
-| Agent       | What it does                                           | Access           |
-| ----------- | ------------------------------------------------------ | ---------------- |
-| travel      | Trip planning with a live shared itinerary (trvl MCP)  | Sign-in required |
-| grocery     | Meal planning + shopping lists with live Kroger data   | Sign-in + Kroger |
-| fitness     | Training plans from Strava activity                    | Sign-in + Strava |
-| wellness    | Orchestrates grocery + fitness in-process              | Sign-in + both   |
-| oral-boards | Pediatric dentistry mock oral-board exams with sources | Sign-in required |
-| a2ui        | Renders declarative A2UI surfaces from chat            | Sign-in required |
-| resume      | Public Q&A about Lucas's resume (no account needed)    | Public           |
+A2UI is currently rendered by the web Trends console only; mobile does not
+render A2UI surfaces.
+
+| Agent       | What it does                                              | Access           |
+| ----------- | --------------------------------------------------------- | ---------------- |
+| travel      | Trip planning with a live shared itinerary (trvl MCP)     | Sign-in required |
+| grocery     | Meal planning + shopping lists with live Kroger data      | Sign-in + Kroger |
+| fitness     | Training plans from Strava activity                       | Sign-in + Strava |
+| wellness    | Orchestrates grocery + fitness in-process                 | Sign-in + both   |
+| oral-boards | Pediatric dentistry mock oral-board exams with sources    | Sign-in required |
+| trends      | BigQuery-backed Google Trends analysis rendered with A2UI | Sign-in required |
+| resume      | Public Q&A about Lucas's resume (no account needed)       | Public           |
 
 ## Architecture
 
