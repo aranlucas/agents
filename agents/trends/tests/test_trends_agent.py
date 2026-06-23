@@ -1,3 +1,6 @@
+from unittest.mock import Mock
+
+import pytest
 from agents_shared.dependencies import create_agent_services
 from fastapi import FastAPI
 from google.adk.agents import SequentialAgent
@@ -25,7 +28,7 @@ def test_executor_has_state_bigquery_and_explicit_a2ui_tools() -> None:
         if child.name == "TrendsQueryExecutorAgent"
     )
     tool_names = {
-        tool.name if hasattr(tool, "name") else tool.__name__
+        tool.name if hasattr(tool, "name") else getattr(tool, "__name__", "")
         for tool in executor.tools
     }
     assert {
@@ -33,8 +36,30 @@ def test_executor_has_state_bigquery_and_explicit_a2ui_tools() -> None:
         "begin_trends_query",
         "execute_bigquery_sql",
         "write_trends_result",
+        "set_trends_verification",
         "generate_a2ui",
     } <= tool_names
+
+
+def test_executor_instruction_describes_web_verification() -> None:
+    instruction = agent._EXECUTOR_INSTRUCTION
+    assert "set_trends_verification" in instruction
+    assert "Brave" in instruction
+    assert "AT MOST 2" in instruction
+    assert "CONFIRMED" in instruction
+    assert "CONTRADICTED" in instruction
+    assert "UNVERIFIED" in instruction
+    # Verification is appended after the result is written.
+    assert instruction.index("write_trends_result") < instruction.index(
+        "set_trends_verification"
+    )
+
+
+@pytest.mark.asyncio
+async def test_throttle_web_search_ignores_non_brave_tools() -> None:
+    agent._web_search_state["last_at"] = 1000.0
+    await agent.throttle_web_search(Mock(name="other_tool"), {}, Mock())
+    assert agent._web_search_state["last_at"] == 1000.0
 
 
 def test_executor_persists_state_before_rendering() -> None:

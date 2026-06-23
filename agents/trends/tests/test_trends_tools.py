@@ -121,3 +121,21 @@ def test_write_trends_result_distinguishes_empty_and_error() -> None:
         failed, "q", "SELECT 1", [], [], "", error="BigQuery query failed."
     )["status"] == "error"
     assert failed.state["error"] == "BigQuery query failed."
+
+
+def test_set_trends_verification_appends_section_to_insights() -> None:
+    context = SimpleNamespace(state={"insights": "Python leads.", "status": "ready"})
+    assert tools.set_trends_verification(context, "Confirmed by launch news.") == {
+        "ok": True
+    }
+    assert context.state["status"] == "ready"
+    assert context.state["insights"] == (
+        "Python leads.\n\n## Verification\n\nConfirmed by launch news."
+    )
+
+
+def test_set_trends_verification_creates_section_when_insights_empty() -> None:
+    context = SimpleNamespace(state={})
+    tools.set_trends_verification(context, "No web context found.")
+    assert context.state["insights"] == "## Verification\n\nNo web context found."
+    assert context.state["status"] == "ready"
