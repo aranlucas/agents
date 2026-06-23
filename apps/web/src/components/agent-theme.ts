@@ -12,7 +12,8 @@ export type AgentTheme =
   | "resume"
   | "research"
   | "spreadsheet"
-  | "presentation";
+  | "presentation"
+  | "trends";
 
 export const AGENT_THEMES: Record<
   AgentTheme,
@@ -94,6 +95,12 @@ export const AGENT_THEMES: Record<
     colorVar: "var(--presentation)",
     softVar: "var(--presentation-soft)",
     contrastVar: "var(--presentation-contrast)",
+  },
+  trends: {
+    label: "Trends",
+    colorVar: "var(--trends)",
+    softVar: "var(--trends-soft)",
+    contrastVar: "var(--trends-contrast)",
   },
 };
 
