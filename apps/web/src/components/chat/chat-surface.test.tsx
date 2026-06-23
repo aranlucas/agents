@@ -8,7 +8,7 @@ const copilotMocks = vi.hoisted(() => ({
     addMessage: vi.fn(),
     abortController: undefined as AbortController | undefined,
     isRunning: false,
-    messages: [],
+    messages: [] as unknown[],
     setMessages: vi.fn(),
     state: {},
     threadId: undefined as string | undefined,
@@ -35,7 +35,11 @@ vi.mock("@copilotkit/react-core/v2", () => ({
     },
   }),
   useDefaultRenderTool: vi.fn(),
-  useRenderActivityMessage: () => ({ renderActivityMessage: () => null }),
+  useRenderActivityMessage: () => ({
+    renderActivityMessage: (message: { id: string }) => (
+      <div data-testid="activity-surface">{message.id}</div>
+    ),
+  }),
   useRenderToolCall: () => () => null,
   useSuggestions: () => ({ suggestions: [] }),
 }));
@@ -119,6 +123,7 @@ describe("ChatSurface history replay", () => {
     copilotMocks.runtimeConnectionStatus = "connected";
     copilotMocks.agent.abortController = undefined;
     copilotMocks.agent.threadId = undefined;
+    copilotMocks.agent.messages = [];
   });
 
   it("binds the route thread and connects the agent so reloads replay thread history", async () => {
@@ -155,5 +160,30 @@ describe("ChatSurface history replay", () => {
     );
 
     expect(copilotMocks.connectAgent).not.toHaveBeenCalled();
+  });
+
+  it("renders A2UI activity messages through CopilotKit's resolver", () => {
+    copilotMocks.agent.messages = [
+      {
+        id: "surface-1",
+        role: "activity",
+        activityType: "a2ui-surface",
+        content: {
+          status: "painted",
+          a2ui_operations: [{ createSurface: { surfaceId: "trends-result" } }],
+        },
+      },
+    ];
+
+    const { getByTestId } = render(
+      <ChatSurface
+        config={getAgentConfig("trends")}
+        threadId="thread-123"
+        onSwitchAgent={() => {}}
+        onOpenArtifact={() => {}}
+      />,
+    );
+
+    expect(getByTestId("activity-surface")).toHaveTextContent("surface-1");
   });
 });

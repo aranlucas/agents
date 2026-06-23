@@ -29,7 +29,7 @@ export const OFFLINE_COPILOTKIT_INFO_RESPONSE = {
   a2uiEnabled: true,
   a2ui: {
     enabled: true,
-    agents: ["a2ui"],
+    agents: ["trends"],
   },
   openGenerativeUIEnabled: false,
   telemetryDisabled: false,

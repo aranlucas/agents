@@ -17,6 +17,8 @@ const CLERK_USER_ID_HEADER = "x-clerk-user-id";
 const KROGER_TOKEN_HEADER = "x-kroger-access-token";
 const STRAVA_TOKEN_HEADER = "x-strava-access-token";
 
+export const A2UI_RUNTIME_CONFIG = { agents: ["trends"] };
+
 function createRuntime(): CopilotSseRuntime {
   return new CopilotSseRuntime({
     agents: Object.fromEntries(
@@ -29,7 +31,7 @@ function createRuntime(): CopilotSseRuntime {
       ]),
     ),
     transcriptionService: new GroqTranscriptionService(env.GROQ_API_KEY ?? ""),
-    a2ui: { injectA2UITool: true, agents: ["a2ui"] },
+    a2ui: A2UI_RUNTIME_CONFIG,
     debug: env.COPILOTKIT_DEBUG,
   });
 }

@@ -5,6 +5,7 @@ import type { CopilotKit } from "@copilotkit/react-core/v2";
 import dynamic from "next/dynamic";
 
 import { GroceryHooks, TravelHooks } from "./approval";
+import { trendsCatalog } from "./trends/catalog";
 import type { AgentId } from "./registry";
 
 /**
@@ -15,7 +16,8 @@ import type { AgentId } from "./registry";
  * (or `ChatSurface`) with another `id === …` branch.
  *
  * - `copilotKitProps` is merged into the route's `<CopilotKit>` provider — e.g.
- *   a2ui advertises its auto-mounted activity renderer this way.
+ *   Trends advertises its custom A2UI catalog and auto-mounted activity
+ *   renderer this way.
  * - `Mount` is a headless client component rendered inside `<CopilotKit>` that
  *   registers tools/handlers or kicks off preloads on entry.
  */
@@ -24,9 +26,19 @@ export type AgentExtension = {
   Mount?: ComponentType<{ agentId: AgentId }>;
 };
 
-// Enables the auto-mounted A2UI activity renderer (the runtime advertises A2UI
-// via /info for the a2ui agent). Hoisted so the prop identity stays stable.
-const A2UI_CONFIG = {};
+// The runtime advertises A2UI via /info for the Trends agent only. The provider
+// config ships Trends' domain-specific catalog (TrendMetric, TrendBarChart,
+// TrendLineChart, TrendTable, SqlDisclosure) alongside the auto-mounted activity
+// renderer. Recovery is left to the built-in resurface behaviour.
+const TRENDS_A2UI_CONFIG = {
+  catalog: trendsCatalog,
+  includeSchema: true,
+  recovery: {
+    showAfterMs: 2000,
+    showAfterAttempts: 2,
+    debugExposure: "collapsed" as const,
+  },
+};
 
 const OralBoardsExtension = dynamic(
   () => import("./oral-boards").then((mod) => mod.OralBoardsExtension),
@@ -38,7 +50,7 @@ const AGENT_EXTENSIONS: Partial<Record<AgentId, AgentExtension>> = {
   grocery: { Mount: GroceryHooks },
   "oral-boards": { Mount: OralBoardsExtension },
   "oral-boards-v2": { Mount: OralBoardsExtension },
-  a2ui: { copilotKitProps: { a2ui: A2UI_CONFIG } },
+  trends: { copilotKitProps: { a2ui: TRENDS_A2UI_CONFIG } },
 };
 
 export function getAgentExtension(agentId: AgentId): AgentExtension | undefined {

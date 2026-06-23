@@ -25,6 +25,7 @@ describe("offline CopilotKit route handlers", () => {
       version: "1.61.0",
       mode: "sse",
       a2uiEnabled: true,
+      a2ui: { enabled: true, agents: ["trends"] },
       agents: {
         travel: { name: "travel", description: "", className: "ox" },
         resume: { name: "resume", description: "", className: "ox" },

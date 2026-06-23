@@ -70,7 +70,12 @@ vi.mock("./guard", () => ({
   isPublicCopilotPath: vi.fn(() => false),
 }));
 
-import { GET, POST, PATCH, DELETE, OPTIONS } from "./route";
+import { A2UI_RUNTIME_CONFIG, GET, POST, PATCH, DELETE, OPTIONS } from "./route";
+
+it("scopes A2UI to Trends without automatic tool injection", () => {
+  expect(A2UI_RUNTIME_CONFIG).toEqual({ agents: ["trends"] });
+  expect(A2UI_RUNTIME_CONFIG).not.toHaveProperty("injectA2UITool");
+});
 
 describe("CopilotKit route handlers", () => {
   const request = new Request("http://localhost/travel");

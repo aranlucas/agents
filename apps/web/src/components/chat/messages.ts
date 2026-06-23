@@ -11,7 +11,8 @@ export type AguiToolCall = {
 export type AguiMessage = {
   id: string;
   role: string;
-  content?: string;
+  content?: unknown;
+  activityType?: string;
   toolCalls?: AguiToolCall[];
   /** Present on `role: "tool"` result messages — links the result to its call. */
   toolCallId?: string;
@@ -34,10 +35,12 @@ function dedupeById(messages: AguiMessage[]): AguiMessage[] {
   for (const m of messages) {
     const existing = acc.get(m.id);
     if (existing && m.role === "assistant" && existing.role === "assistant") {
+      const existingText = typeof existing.content === "string" ? existing.content : "";
+      const incomingText = typeof m.content === "string" ? m.content : "";
       acc.set(m.id, {
         ...existing,
         ...m,
-        content: m.content ?? existing.content,
+        content: incomingText || existingText,
         toolCalls: m.toolCalls ?? existing.toolCalls,
       });
     } else {
@@ -57,11 +60,12 @@ export function toRenderItems(messages: AguiMessage[]): RenderItem[] {
   let lastReasoningText: string | undefined;
 
   for (const m of dedupeById(messages)) {
+    const text = typeof m.content === "string" ? m.content : "";
     if (m.role === "reasoning") {
-      const text = (m.content ?? "").trim();
-      if (!text || text === lastReasoningText) continue;
-      lastReasoningText = text;
-      items.push({ kind: "reasoning", id: m.id, text });
+      const trimmed = text.trim();
+      if (!trimmed || trimmed === lastReasoningText) continue;
+      lastReasoningText = trimmed;
+      items.push({ kind: "reasoning", id: m.id, text: trimmed });
       continue;
     }
     if (m.role === "activity") {
@@ -72,12 +76,11 @@ export function toRenderItems(messages: AguiMessage[]): RenderItem[] {
       // A user message starts a new turn — reasoning from a prior turn should not
       // suppress identical reasoning text later.
       lastReasoningText = undefined;
-      const text = (m.content ?? "").trim();
-      if (text) items.push({ kind: "user", id: m.id, text });
+      const trimmed = text.trim();
+      if (trimmed) items.push({ kind: "user", id: m.id, text: trimmed });
       continue;
     }
     if (m.role === "assistant") {
-      const text = m.content ?? "";
       const toolCalls = m.toolCalls ?? [];
       if (!text.trim() && toolCalls.length === 0) continue;
       items.push({ kind: "assistant", id: m.id, text, toolCalls });

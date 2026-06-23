@@ -135,4 +135,18 @@ describe("toRenderItems", () => {
     if (item.kind !== "activity") throw new Error("expected activity");
     expect(item.message).toBe(activity);
   });
+
+  it("preserves A2UI activity metadata for the custom chat renderer", () => {
+    const message: AguiMessage = {
+      id: "surface-1",
+      role: "activity",
+      activityType: "a2ui-surface",
+      content: {
+        status: "painted",
+        a2ui_operations: [{ createSurface: { surfaceId: "trends-result" } }],
+      },
+    };
+
+    expect(toRenderItems([message])).toEqual([{ kind: "activity", id: "surface-1", message }]);
+  });
 });
