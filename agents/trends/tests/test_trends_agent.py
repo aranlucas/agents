@@ -18,11 +18,43 @@ def test_build_agent_sub_agent_names() -> None:
     assert "TrendsQueryExecutorAgent" in names
 
 
-def test_build_agent_executor_has_bigquery_tool() -> None:
-    a = agent.build_agent()
-    executor = next(s for s in a.sub_agents if s.name == "TrendsQueryExecutorAgent")
-    tool_names = [t.__name__ if callable(t) else str(t) for t in executor.tools]
-    assert any("execute_bigquery_sql" in name for name in tool_names)
+def test_executor_has_state_bigquery_and_explicit_a2ui_tools() -> None:
+    trends = agent.build_agent()
+    executor = next(
+        child for child in trends.sub_agents
+        if child.name == "TrendsQueryExecutorAgent"
+    )
+    tool_names = {
+        tool.name if hasattr(tool, "name") else tool.__name__
+        for tool in executor.tools
+    }
+    assert {
+        "validate_trends_sql",
+        "begin_trends_query",
+        "execute_bigquery_sql",
+        "write_trends_result",
+        "generate_a2ui",
+    } <= tool_names
+
+
+def test_executor_persists_state_before_rendering() -> None:
+    instruction = agent._EXECUTOR_INSTRUCTION
+    assert instruction.index("validate_trends_sql") < instruction.index(
+        "begin_trends_query"
+    )
+    assert instruction.index("begin_trends_query") < instruction.index(
+        "execute_bigquery_sql"
+    )
+    assert instruction.index("write_trends_result") < instruction.index(
+        "generate_a2ui"
+    )
+    assert "Never invent values" in instruction
+
+
+def test_trends_catalog_id_is_stable() -> None:
+    assert agent.TRENDS_CATALOG_ID == (
+        "https://agents-lucas.vercel.app/a2ui/catalogs/trends/v1"
+    )
 
 
 def _route_paths(app: FastAPI) -> set[str]:
