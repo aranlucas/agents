@@ -239,6 +239,39 @@ export const AGENTS: Record<AgentId, AgentConfig> = {
       { title: "Kanban", message: "Show a kanban board with a few sample cards." },
     ],
   },
+  trends: {
+    id: "trends",
+    label: "Trends",
+    glyph: "📈",
+    colorVar: "--trends",
+    placeholder: "What's trending on Google right now?",
+    welcome:
+      "Ask me about Google search trends — top terms, rising topics, or regional breakdowns.",
+    artifact: {
+      stateField: "result",
+      kind: "markdown",
+      title: "Trends report",
+      name: "trends_report.md",
+    },
+    suggestions: [
+      {
+        title: "Top searches today",
+        message: "What are the top Google searches in the US today?",
+      },
+      {
+        title: "Rising terms",
+        message: "What search terms are rising fastest right now?",
+      },
+      {
+        title: "AI trends",
+        message: "What AI-related terms are trending this week?",
+      },
+      {
+        title: "Region breakdown",
+        message: "Which search terms are trending in California?",
+      },
+    ],
+  },
   resume: {
     id: "resume",
     label: "Resume",

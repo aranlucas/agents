@@ -117,6 +117,17 @@ const AGENTS: Agent[] = [
     tags: ["Slides", "Decks", "Themes"],
     theme: "presentation",
   },
+  {
+    id: "12",
+    href: "/console/trends",
+    name: "Google Trends",
+    tagline: "Live search trend analysis",
+    description:
+      "Ask questions in natural language — the agent writes BigQuery SQL against the Google Trends public dataset and streams a formatted report.",
+    cta: "Explore trends",
+    tags: ["BigQuery", "Trends", "Live data"],
+    theme: "trends",
+  },
 ];
 
 export default function Home() {
