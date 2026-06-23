@@ -13,7 +13,7 @@ from ag_ui.core.types import RunAgentInput
 from ag_ui_adk import ADKAgent, add_adk_fastapi_endpoint
 from ag_ui_adk.config import PredictStateMapping
 from fastapi import APIRouter, FastAPI, Request
-from google.adk.agents import LlmAgent
+from google.adk.agents import BaseAgent
 from google.adk.sessions import BaseSessionService
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
@@ -83,7 +83,7 @@ def streaming_state_mapping(
 
 
 def build_adk_agent(
-    agent: LlmAgent,
+    agent: BaseAgent,
     *,
     services: AgentServices,
     session_service: BaseSessionService | None = None,

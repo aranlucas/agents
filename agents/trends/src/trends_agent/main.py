@@ -18,7 +18,7 @@ def register(app: FastAPI, services: AgentServices) -> None:
         app,
         prefix="/trends",
         adk_agent=build_adk_agent(
-            _trends_agent,  # type: ignore[arg-type]
+            _trends_agent,
             services=services,
         ),
         services=services,
