@@ -17,7 +17,9 @@ const CLERK_USER_ID_HEADER = "x-clerk-user-id";
 const KROGER_TOKEN_HEADER = "x-kroger-access-token";
 const STRAVA_TOKEN_HEADER = "x-strava-access-token";
 
-export const A2UI_RUNTIME_CONFIG = { agents: ["trends"] };
+const TRENDS_CATALOG_ID = "copilotkit://trends/v1";
+
+export const A2UI_RUNTIME_CONFIG = { agents: ["trends"], defaultCatalogId: TRENDS_CATALOG_ID };
 
 function createRuntime(): CopilotSseRuntime {
   return new CopilotSseRuntime({

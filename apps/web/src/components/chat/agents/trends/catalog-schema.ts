@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const TRENDS_CATALOG_ID = "https://agents-lucas.vercel.app/a2ui/catalogs/trends/v1";
+export const TRENDS_CATALOG_ID = "copilotkit://trends/v1";
 
 const trendCell = z.union([z.string(), z.number(), z.boolean(), z.null()]);
 const trendRow = z.record(z.string(), trendCell);

@@ -9,7 +9,8 @@ from agents_shared.tools import (
     build_model,
     on_model_error_callback,
 )
-from google.adk.agents import LlmAgent, SequentialAgent
+from google.adk import Workflow
+from google.adk.agents import LlmAgent
 from pydantic import BaseModel, Field
 
 from .prompt import load_agent_instructions
@@ -24,7 +25,7 @@ from .toolsets import web_search_toolset
 
 log = logging.getLogger("trends_agent")
 
-TRENDS_CATALOG_ID = "https://agents-lucas.vercel.app/a2ui/catalogs/trends/v1"
+TRENDS_CATALOG_ID = "copilotkit://trends/v1"
 
 _TRENDS_A2UI_GUIDELINES = """\
 Render a compact Google Trends analysis using the supplied catalog.
@@ -117,7 +118,9 @@ async def throttle_web_search(tool, args, tool_context) -> None:
     return
 
 
-def build_agent() -> SequentialAgent:
+def build_agent() -> Workflow:
+    state_init = make_state_initializer(TrendsState)
+
     generator = LlmAgent(
         name="TrendsQueryGeneratorAgent",
         model=build_model(),
@@ -126,6 +129,7 @@ def build_agent() -> SequentialAgent:
         static_instruction=_GENERATOR_INSTRUCTION,
         description="Generates bounded BigQuery SQL for Google Trends.",
         output_key="generated_sql",
+        before_agent_callback=state_init,
     )
 
     executor_model = build_model()
@@ -145,6 +149,7 @@ def build_agent() -> SequentialAgent:
         instruction=_EXECUTOR_INSTRUCTION,
         description="Executes Trends SQL, verifies findings against the web, and renders A2UI analysis.",
         before_tool_callback=throttle_web_search,
+        before_agent_callback=state_init,
         tools=[
             validate_trends_sql,
             begin_trends_query,
@@ -156,9 +161,8 @@ def build_agent() -> SequentialAgent:
         ],
     )
 
-    return SequentialAgent(
+    return Workflow(
         name="GoogleTrendsAgent",
-        sub_agents=[generator, executor],
-        before_agent_callback=make_state_initializer(TrendsState),
+        edges=[(generator, executor)],
         description="Executes Google Trends analysis and renders structured results.",
     )
