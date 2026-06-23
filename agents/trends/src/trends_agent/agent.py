@@ -10,6 +10,7 @@ from agents_shared.tools import (
     on_model_error_callback,
 )
 from google.adk import Workflow
+from google.adk.workflow import START
 from google.adk.agents import LlmAgent
 from pydantic import BaseModel, Field
 
@@ -163,6 +164,6 @@ def build_agent() -> Workflow:
 
     return Workflow(
         name="GoogleTrendsAgent",
-        edges=[(generator, executor)],
+        edges=[(START, generator), (generator, executor)],
         description="Executes Google Trends analysis and renders structured results.",
     )
