@@ -74,14 +74,13 @@ def test_build_model_uses_current_free_agent_model_chain():
     model = build_model()
     fallbacks = model._additional_args["fallbacks"]
 
-    assert model.model == "gemini/gemini-3.5-flash"
+    assert model.model == "cerebras/qwen-3-235b-a22b"
     assert fallbacks == [
-        "cerebras/gpt-oss-120b",
-        "groq/openai/gpt-oss-120b",
-        "nvidia_nim/deepseek-ai/deepseek-v4-flash",
+        "groq/moonshotai/kimi-k2-instruct",
         "mistral/mistral-medium-latest",
-        "openrouter/qwen/qwen3-next-80b-a3b-instruct:free",
-        "openrouter/openrouter/free",
+        "nvidia_nim/deepseek-ai/deepseek-r1-0528-distill-llama-70b",
+        "openrouter/qwen/qwen3-235b-a22b:free",
+        "gemini/gemini-3.5-flash",
     ]
 
     fallbacks.append("mutated")
