@@ -15,15 +15,17 @@ log = logging.getLogger("agents_shared")
 
 CLERK_USER_ID_HEADER = "x-clerk-user-id"
 
-# Primary free-tier model plus LiteLLM fallbacks, shared by every agent.
-_DEFAULT_MODEL = "gemini/gemini-3.5-flash"
+# Primary model uses an eager-HTTP provider (Groq) so 429/503 errors are
+# raised at call time — before streaming starts — making the fallback chain
+# work correctly. Gemini (deferred-HTTP) raises errors mid-stream where
+# litellm.acompletion(fallbacks=[...]) can no longer intercept them.
+_DEFAULT_MODEL = "cerebras/qwen-3-235b-a22b"
 _DEFAULT_FALLBACKS = [
-    "cerebras/gpt-oss-120b",
-    "groq/openai/gpt-oss-120b",
-    "nvidia_nim/deepseek-ai/deepseek-v4-flash",
+    "groq/moonshotai/kimi-k2-instruct",
     "mistral/mistral-medium-latest",
-    "openrouter/qwen/qwen3-next-80b-a3b-instruct:free",
-    "openrouter/openrouter/free",
+    "nvidia_nim/deepseek-ai/deepseek-r1-0528-distill-llama-70b",
+    "openrouter/qwen/qwen3-235b-a22b:free",
+    "gemini/gemini-3.5-flash",
 ]
 
 
