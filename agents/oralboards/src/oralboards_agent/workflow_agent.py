@@ -23,6 +23,7 @@ from google.adk import Workflow
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool, ToolContext, request_input
 from google.adk.workflow import FunctionNode
+from google.adk.workflow import START
 
 from .agent import (
     OralBoardsState,
@@ -302,6 +303,7 @@ def build_workflow_agent() -> Workflow:
         name="oralboards_workflow",
         description="Graph-based oral-boards examiner — workflow with conditional loop.",
         edges=[
+            (START, case_builder),
             (case_builder, questioner),
             (questioner, evaluator),
             (evaluator, router),
