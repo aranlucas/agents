@@ -53,7 +53,7 @@ export function TrendMetricRenderer({ props }: { props: MetricProps }) {
 }
 
 export function TrendBarChartRenderer({ props }: { props: BarChartProps }) {
-  const rows = selectBarRows(props.rows, props.categoryKey, props.valueKey, props.maxItems);
+  const rows = selectBarRows(props.rows ?? [], props.categoryKey, props.valueKey, props.maxItems);
   const max = Math.max(...rows.map((row) => Math.abs(row.value)), 1);
   return (
     <section className="border-border bg-card rounded-xl border p-4">
@@ -89,7 +89,7 @@ export function TrendBarChartRenderer({ props }: { props: BarChartProps }) {
 }
 
 export function TrendLineChartRenderer({ props }: { props: LineChartProps }) {
-  const points = buildLinePoints(props.rows, props.xKey, props.yKey);
+  const points = buildLinePoints(props.rows ?? [], props.xKey, props.yKey);
   const path = points
     .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
     .join(" ");
@@ -146,7 +146,7 @@ export function TrendTableRenderer({ props }: { props: TableProps }) {
         <table className="w-full min-w-max border-collapse text-sm">
           <thead>
             <tr className="border-border border-b">
-              {props.columns.map((column) => (
+              {(props.columns ?? []).map((column) => (
                 <th key={column.key} className="px-3 py-2 text-left font-medium">
                   {column.label}
                 </th>
@@ -154,7 +154,7 @@ export function TrendTableRenderer({ props }: { props: TableProps }) {
             </tr>
           </thead>
           <tbody>
-            {props.rows.slice(0, props.maxRows).map((row, index) => (
+            {(props.rows ?? []).slice(0, props.maxRows).map((row, index) => (
               <tr key={index} className="border-border border-b last:border-0">
                 {props.columns.map((column) => (
                   <td key={column.key} className="px-3 py-2">
