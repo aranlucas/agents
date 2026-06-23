@@ -12,16 +12,10 @@ import {
   View,
 } from "react-native";
 import { useAgent, useCopilotKit } from "@copilotkit/react-native";
-import type {
-  A2UIState,
-  FitnessState,
-  GroceryState,
-  TripState,
-  WellnessState,
-} from "@agents/types";
+import type { FitnessState, GroceryState, TripState, WellnessState } from "@agents/types";
 import type { AgentId } from "@/utils/agent-config";
 
-type AgentState = TripState | GroceryState | FitnessState | WellnessState | A2UIState;
+type AgentState = TripState | GroceryState | FitnessState | WellnessState;
 
 type AgentScreenConfig<TState extends AgentState> = {
   id: AgentId;

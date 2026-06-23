@@ -8,14 +8,12 @@ export const PROTECTED_ROUTES = [
   "/wellness(.*)",
   "/oral-boards(.*)",
   "/oralboards-v2(.*)",
-  "/a2ui(.*)",
   "/console/travel(.*)",
   "/console/grocery(.*)",
   "/console/fitness(.*)",
   "/console/wellness(.*)",
   "/console/oral-boards(.*)",
   "/console/oral-boards-v2(.*)",
-  "/console/a2ui(.*)",
   "/console/settings(.*)",
 ];
 

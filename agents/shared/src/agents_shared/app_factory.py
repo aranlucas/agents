@@ -142,7 +142,7 @@ def add_agent_routes(
     )
 
     @router.get("/health")
-    async def health(services: AgentServicesDep):
+    async def health(services: AgentServicesDep):  # pyright: ignore[reportUnusedFunction]
         if health_check is not None:
             return await health_check(services.engine)
         return await check_database_connection(services.engine)

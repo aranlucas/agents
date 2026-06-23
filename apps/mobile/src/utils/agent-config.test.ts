@@ -66,10 +66,10 @@ describe("getAgentUrl", () => {
 
   it("prefers the CopilotKit runtime over direct agent URLs", () => {
     assert.equal(
-      getAgentUrl("a2ui", { a2ui: "http://localhost:8004/" }, "ios", {
+      getAgentUrl("trends", {}, "ios", {
         EXPO_PUBLIC_COPILOTKIT_RUNTIME_URL: "https://app.example.com/api/copilotkit",
       }),
-      "https://app.example.com/api/copilotkit/agent/a2ui/run",
+      "https://app.example.com/api/copilotkit/agent/trends/run",
     );
   });
 
@@ -85,7 +85,7 @@ describe("getAgentUrl", () => {
   it("lets an explicit empty runtime environment value use direct prod URLs", () => {
     assert.equal(
       getAgentUrl(
-        "a2ui",
+        "trends",
         {
           copilotKitRuntimeUrl: "https://app.example.com/api/copilotkit",
           agentsBaseUrl: "https://agents-production.up.railway.app",
@@ -93,17 +93,17 @@ describe("getAgentUrl", () => {
         "ios",
         { EXPO_PUBLIC_COPILOTKIT_RUNTIME_URL: "" },
       ),
-      "https://agents-production.up.railway.app/a2ui/agui",
+      "https://agents-production.up.railway.app/trends/agui",
     );
   });
 
   it("lets explicit localhost base URLs override prod direct URLs", () => {
     assert.equal(
-      getAgentUrl("a2ui", { agentsBaseUrl: "https://agents-production.up.railway.app" }, "ios", {
+      getAgentUrl("trends", { agentsBaseUrl: "https://agents-production.up.railway.app" }, "ios", {
         EXPO_PUBLIC_COPILOTKIT_RUNTIME_URL: "",
         EXPO_PUBLIC_AGENTS_BASE_URL: "http://localhost:8000",
       }),
-      "http://localhost:8000/a2ui/agui",
+      "http://localhost:8000/trends/agui",
     );
   });
 });

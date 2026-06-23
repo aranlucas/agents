@@ -13,22 +13,30 @@ describe("protected route matcher", () => {
     "/fitness",
     "/wellness",
     "/oral-boards",
-    "/a2ui",
     "/console/travel",
     "/console/grocery",
     "/console/fitness",
     "/console/wellness",
     "/console/oral-boards",
-    "/console/a2ui",
     "/console/settings",
   ])("protects %s", (path) => {
     expect(matcher(req(path))).toBe(true);
   });
 
-  it.each(["/", "/console/resume", "/resume", "/sign-in", "/api/agents/health"])(
-    "leaves %s public",
-    (path) => {
-      expect(matcher(req(path))).toBe(false);
-    },
-  );
+  it.each([
+    "/",
+    "/console/resume",
+    "/resume",
+    "/sign-in",
+    "/api/agents/health",
+    "/a2ui",
+    "/console/a2ui",
+  ])("leaves %s public", (path) => {
+    expect(matcher(req(path))).toBe(false);
+  });
+
+  it("no longer protects the standalone A2UI showcase routes", () => {
+    expect(PROTECTED_ROUTES).not.toContain("/a2ui(.*)");
+    expect(PROTECTED_ROUTES).not.toContain("/console/a2ui(.*)");
+  });
 });

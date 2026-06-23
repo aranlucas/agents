@@ -27,7 +27,6 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@ag-ui/a2ui-middleware": "0.0.10",
     "@ag-ui/client": "^0.0.57",
     "@agents/types": "workspace:*",
     "@ai-sdk/react": "^3.0.211",

@@ -4,7 +4,7 @@ import { CopilotKitProvider } from "@copilotkit/react-native";
 import { ClerkProvider } from "@clerk/clerk-expo";
 import * as SecureStore from "expo-secure-store";
 import { Tabs } from "expo-router";
-import { Dumbbell, HeartPulse, LayoutTemplate, Plane, ShoppingCart } from "lucide-react-native";
+import { Dumbbell, HeartPulse, Plane, ShoppingCart } from "lucide-react-native";
 import { useColorScheme, type ColorValue } from "react-native";
 import Constants from "expo-constants";
 import { getCopilotKitRuntimeUrl } from "@/utils/agent-config";
@@ -28,10 +28,6 @@ function FitnessIcon({ color, size }: TabIconProps) {
 
 function WellnessIcon({ color, size }: TabIconProps) {
   return <HeartPulse color={String(color)} size={size} />;
-}
-
-function A2UIIcon({ color, size }: TabIconProps) {
-  return <LayoutTemplate color={String(color)} size={size} />;
 }
 
 const tokenCache = {
@@ -85,13 +81,6 @@ function TabLayout() {
         options={{
           title: "Wellness",
           tabBarIcon: WellnessIcon,
-        }}
-      />
-      <Tabs.Screen
-        name="a2ui"
-        options={{
-          title: "A2UI",
-          tabBarIcon: A2UIIcon,
         }}
       />
       {/* Hide all other routes from the tab bar */}

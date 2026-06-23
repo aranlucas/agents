@@ -11,7 +11,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 _HEALTH_CACHE_TTL = 5.0
-_health_cache: tuple[float, dict] | None = None
+_health_cache: tuple[float, dict[str, str]] | None = None
 
 
 def _normalize_postgres_url(url: str) -> str:
@@ -42,7 +42,7 @@ def create_session_service() -> BaseSessionService:
     return SqliteSessionService(str(path))
 
 
-async def check_database_connection(engine: AsyncEngine) -> dict:
+async def check_database_connection(engine: AsyncEngine) -> dict[str, str]:
     """Probe the database with a ``SELECT 1``; result is cached for 5 s."""
     global _health_cache
     now = time.monotonic()
@@ -54,7 +54,7 @@ async def check_database_connection(engine: AsyncEngine) -> dict:
     try:
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
-        result: dict = {"status": "ok", "database": "connected", "type": db_type}
+        result: dict[str, str] = {"status": "ok", "database": "connected", "type": db_type}
     except Exception as e:
         result = {
             "status": "degraded",

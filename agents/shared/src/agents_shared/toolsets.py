@@ -11,7 +11,7 @@ __all__ = ["make_http_mcp_toolset"]
 def make_http_mcp_toolset(
     url: str,
     *,
-    header_provider: Callable | None = None,
+    header_provider: Callable[..., dict[str, str]] | None = None,
     use_mcp_resources: bool = True,
     timeout: float = 30.0,
 ) -> McpToolset:

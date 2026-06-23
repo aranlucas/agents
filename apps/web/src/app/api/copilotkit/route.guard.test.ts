@@ -13,7 +13,7 @@ describe("isPublicCopilotPath", () => {
   it.each([
     "/api/copilotkit/agent/travel/run",
     "/api/copilotkit/agent/grocery/run",
-    "/api/copilotkit/agent/a2ui/run",
+    "/api/copilotkit/agent/trends/run",
     "/api/copilotkit",
     "/api/copilotkit/agent/resumefake/run",
   ])("requires auth for %s", (path) => {

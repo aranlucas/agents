@@ -490,7 +490,6 @@ describe("mobile all-source smoke coverage", () => {
     const { default: GroceryScreen } = await import("./app/grocery");
     const { default: FitnessScreen } = await import("./app/fitness");
     const { default: WellnessScreen } = await import("./app/wellness");
-    const { default: A2UIScreen } = await import("./app/a2ui");
     const { default: ChatsScreen } = await import("./app/chats");
     const { default: AttachmentsScreen } = await import("./app/attachments");
     const { default: ModelPickerScreen } = await import("./app/model-picker");
@@ -575,13 +574,6 @@ describe("mobile all-source smoke coverage", () => {
       meal_plan: "Eat",
     };
     await render("wellness", providers(<WellnessScreen />));
-
-    currentState = {
-      status: "ready",
-      surface_brief: "Dashboard",
-      last_surface: "launch-readiness",
-    };
-    await render("a2ui", providers(<A2UIScreen />));
 
     await render("chats", providers(<ChatsScreen />));
     await render("attachments", providers(<AttachmentsScreen />));
