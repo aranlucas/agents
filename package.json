@@ -38,11 +38,11 @@
     "concurrently": "^10.0.3",
     "husky": "^9.1.7",
     "jsdom": "^29.1.1",
-    "lint-staged": "^17.0.7",
-    "oxfmt": "^0.55.0",
-    "oxlint": "^1.70.0",
+    "lint-staged": "^17.0.8",
+    "oxfmt": "^0.56.0",
+    "oxlint": "^1.71.0",
     "oxlint-tsgolint": "^0.23.0",
-    "react-doctor": "^0.5.6",
+    "react-doctor": "^0.5.8",
     "turbo": "^2.9.18"
   },
   "packageManager": "pnpm@11.5.3"
