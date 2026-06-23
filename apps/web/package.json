@@ -21,6 +21,7 @@
     "@agents/ui": "workspace:*",
     "@ai-sdk/mcp": "^1.0.52",
     "@clerk/nextjs": "^7.5.7",
+    "@copilotkit/a2ui-renderer": "^1.61.0",
     "@copilotkit/react-core": "^1.61.0",
     "@copilotkit/react-ui": "^1.61.0",
     "@copilotkit/runtime": "^1.61.0",
