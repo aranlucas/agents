@@ -33,7 +33,6 @@ build-backend = "hatchling.build"
 # PYTHONPATH / sys.path wiring is needed anywhere (Docker, Railway, or pytest).
 [tool.hatch.build.targets.wheel]
 packages = [
-  "agents/a2ui/src/a2ui_agent",
   "agents/expense/src/expense_agent",
   "agents/fitness/src/fitness_agent",
   "agents/gateway/src/gateway",
@@ -79,7 +78,6 @@ addopts = ["--import-mode=importlib"]
 
 [tool.coverage.run]
 source = [
-  "agents/a2ui/src",
   "agents/fitness/src",
   "agents/gateway/src",
   "agents/grocery/src",

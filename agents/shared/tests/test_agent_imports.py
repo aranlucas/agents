@@ -20,13 +20,13 @@ from google.adk.tools.agent_tool import AgentTool
 from wellness_agent.agent import build_agent
 
 AGENT_MODULES = [
-    "a2ui_agent.main",
     "fitness_agent.main",
     "gateway.main",
     "grocery_agent.main",
     "oralboards_agent.main",
     "resume_agent.main",
     "travel_agent.main",
+    "trends_agent.main",
     "wellness_agent.main",
 ]
 

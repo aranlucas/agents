@@ -4,7 +4,6 @@ import logging
 import os
 import time
 
-from a2ui_agent.main import register as register_a2ui
 from agents_shared.app_factory import setup_otel
 from agents_shared.clerk_auth import ClerkAuthMiddleware, clerk_auth_enabled
 from agents_shared.dependencies import (
@@ -46,7 +45,6 @@ def register_agents(app: FastAPI, services: AgentServices) -> None:
         register_fitness,
         register_wellness,
         register_expense,
-        register_a2ui,
         register_oralboards,
         register_oralboards_v2,
         register_presentation,
