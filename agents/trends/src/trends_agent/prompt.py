@@ -1,11 +1,11 @@
 import os
 
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 
 def load_agent_instructions() -> str:
     template_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prompt-template")
-    env = Environment(loader=FileSystemLoader(template_dir))
+    env = Environment(loader=FileSystemLoader(template_dir), autoescape=select_autoescape())
     try:
         table_structure = env.get_template("google_trends_table_structure.j2").render()
         few_shots = env.get_template("google_trends_few_shots.j2").render()

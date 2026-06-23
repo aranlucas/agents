@@ -1,7 +1,6 @@
+from agents_shared.dependencies import create_agent_services
 from fastapi import FastAPI
 from google.adk.agents import SequentialAgent
-
-from agents_shared.dependencies import create_agent_services
 from trends_agent import agent, main
 
 
