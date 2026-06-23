@@ -8,6 +8,10 @@ import { cn } from "@agents/ui/lib/utils";
 
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: "", dark: ".dark" } as const;
+const THEME_ENTRIES: Array<[keyof typeof THEMES, string]> = [
+  ["light", THEMES.light],
+  ["dark", THEMES.dark],
+];
 
 const INITIAL_DIMENSION = { width: 320, height: 200 } as const;
 type TooltipNameType = number | string;
@@ -56,9 +60,10 @@ function ChartContainer({
 }) {
   const uniqueId = React.useId();
   const chartId = `chart-${id ?? uniqueId.replace(/:/g, "")}`;
+  const contextValue = React.useMemo(() => ({ config }), [config]);
 
   return (
-    <ChartContext.Provider value={{ config }}>
+    <ChartContext.Provider value={contextValue}>
       <div
         data-slot="chart"
         data-chart={chartId}
@@ -78,7 +83,9 @@ function ChartContainer({
 }
 
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
-  const colorConfig = Object.entries(config).filter(([, config]) => config.theme ?? config.color);
+  const colorConfig = Object.entries(config).filter(
+    ([, itemConfig]) => itemConfig.theme ?? itemConfig.color,
+  );
 
   if (!colorConfig.length) {
     return null;
@@ -87,20 +94,18 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   return (
     <style
       dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
+        __html: THEME_ENTRIES.map(
+          ([theme, prefix]) => `
 ${prefix} [data-chart=${id}] {
 ${colorConfig
   .map(([key, itemConfig]) => {
-    const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ?? itemConfig.color;
+    const color = itemConfig.theme?.[theme] ?? itemConfig.color;
     return color ? `  --color-${key}: ${color};` : null;
   })
   .join("\n")}
 }
 `,
-          )
-          .join("\n"),
+        ).join("\n"),
       }}
     />
   );
@@ -180,10 +185,11 @@ function ChartTooltipContent({
             const key = nameKey ?? String(item.name ?? item.dataKey ?? "value");
             const itemConfig = getPayloadConfigFromPayload(config, item, key);
             const indicatorColor = color ?? item.payload?.fill ?? item.color;
+            const itemKey = String(item.dataKey ?? item.name ?? item.value ?? key);
 
             return (
               <div
-                key={index}
+                key={itemKey}
                 className={cn(
                   "[&>svg]:text-muted-foreground flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5",
                   indicator === "dot" && "items-center",
@@ -275,13 +281,19 @@ function ChartLegendContent({
     >
       {payload
         .filter((item) => item.type !== "none")
-        .map((item, index) => {
+        .map((item) => {
           const key = nameKey ?? String(item.dataKey ?? "value");
           const itemConfig = getPayloadConfigFromPayload(config, item, key);
+          const itemKey =
+            toKeyPart(item.dataKey) ??
+            toKeyPart(item.value) ??
+            toKeyPart(item.color) ??
+            toKeyPart(itemConfig?.label) ??
+            key;
 
           return (
             <div
-              key={index}
+              key={itemKey}
               className={cn(
                 "[&>svg]:text-muted-foreground flex items-center gap-1.5 [&>svg]:h-3 [&>svg]:w-3",
               )}
@@ -304,26 +316,39 @@ function ChartLegendContent({
   );
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function getStringProperty(source: Record<string, unknown>, key: string) {
+  const value = source[key];
+  return typeof value === "string" ? value : undefined;
+}
+
+function toKeyPart(value: unknown) {
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  return undefined;
+}
+
 function getPayloadConfigFromPayload(config: ChartConfig, payload: unknown, key: string) {
-  if (typeof payload !== "object" || payload === null) {
+  if (!isRecord(payload)) {
     return undefined;
   }
 
-  const payloadPayload =
-    "payload" in payload && typeof payload.payload === "object" && payload.payload !== null
-      ? payload.payload
-      : undefined;
+  const payloadPayload = isRecord(payload.payload) ? payload.payload : undefined;
 
   let configLabelKey: string = key;
 
-  if (key in payload && typeof payload[key as keyof typeof payload] === "string") {
-    configLabelKey = payload[key as keyof typeof payload] as string;
-  } else if (
-    payloadPayload &&
-    key in payloadPayload &&
-    typeof payloadPayload[key as keyof typeof payloadPayload] === "string"
-  ) {
-    configLabelKey = payloadPayload[key as keyof typeof payloadPayload] as string;
+  const payloadLabel = getStringProperty(payload, key);
+  const nestedPayloadLabel = payloadPayload ? getStringProperty(payloadPayload, key) : undefined;
+
+  if (payloadLabel) {
+    configLabelKey = payloadLabel;
+  } else if (nestedPayloadLabel) {
+    configLabelKey = nestedPayloadLabel;
   }
 
   return configLabelKey in config ? config[configLabelKey] : config[key];

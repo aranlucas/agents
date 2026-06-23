@@ -18,6 +18,38 @@ import { useOralBoardsQuestion } from "@/lib/copilotkit/oral-boards-question-con
 import type { AgentId } from "./registry";
 
 type ToolStatus = "inProgress" | "executing" | "complete";
+type SearchResult = { title: string; collection: string; snippet: string };
+type SearchOutput = { results?: SearchResult[] };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function getCurrentQuestion(state: unknown) {
+  if (!isRecord(state)) return undefined;
+  return typeof state.current_question === "string" ? state.current_question : undefined;
+}
+
+function isSearchResult(value: unknown): value is SearchResult {
+  return (
+    isRecord(value) &&
+    typeof value.title === "string" &&
+    typeof value.collection === "string" &&
+    typeof value.snippet === "string"
+  );
+}
+
+function parseSearchOutput(result: string | undefined): SearchOutput {
+  if (!result) return {};
+
+  try {
+    const parsed: unknown = JSON.parse(result);
+    if (!isRecord(parsed) || !Array.isArray(parsed.results)) return {};
+    return { results: parsed.results.filter(isSearchResult) };
+  } catch {
+    return {};
+  }
+}
 
 function SearchDocsToolCall({
   status,
@@ -109,7 +141,7 @@ export function OralBoardsExtension({ agentId }: { agentId: AgentId }) {
   // refresh, so the exam panel shows the last question without waiting for the
   // next ask_question tool call.
   useEffect(() => {
-    const q = (agent?.state as OralBoardsState | undefined)?.current_question;
+    const q = getCurrentQuestion(agent?.state);
     if (q) setCurrentQuestion(q);
   }, [agent, setCurrentQuestion]);
 
@@ -128,7 +160,10 @@ export function OralBoardsExtension({ agentId }: { agentId: AgentId }) {
       handler: ({ question }) => {
         setCurrentQuestion(question);
         // Persist to agent state so the question survives a page refresh.
-        agent?.setState({ ...(agent.state as OralBoardsState), current_question: question });
+        agent?.setState({
+          ...(isRecord(agent.state) ? agent.state : {}),
+          current_question: question,
+        } satisfies OralBoardsState);
         return Promise.resolve("Question is displayed in the exam panel");
       },
       render: ({ status, args, result }) => (
@@ -147,10 +182,7 @@ export function OralBoardsExtension({ agentId }: { agentId: AgentId }) {
         collection: z.string().optional(),
       }),
       render: ({ status, parameters, result }) => {
-        type SearchResult = { title: string; collection: string; snippet: string };
-        type SearchOutput = { results?: SearchResult[] };
-        // result is a JSON string when status === "complete"
-        const parsed: SearchOutput = result ? (JSON.parse(result) as SearchOutput) : {};
+        const parsed = parseSearchOutput(result);
         return (
           <SearchDocsToolCall
             status={status}

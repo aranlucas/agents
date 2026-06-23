@@ -602,7 +602,7 @@ function QuestioningPane({
           <ResizablePanelGroup orientation="vertical" className="min-h-0 flex-1">
             <ResizablePanel>
               <ScrollArea className="h-full border-b">
-                {(olderExchanges.length > 0 || lastExchange || activeFeedback) && (
+                {[olderExchanges.length > 0, lastExchange, activeFeedback].some(Boolean) && (
                   <div className="space-y-1.5 px-4 py-3">
                     {olderExchanges.map((x, i) => (
                       <CompletedExchangeRow key={x.question || i} exchange={x} index={i} />

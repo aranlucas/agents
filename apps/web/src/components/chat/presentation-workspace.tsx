@@ -168,7 +168,7 @@ export function PresentationWorkspace({ threadId: _threadId }: { threadId: strin
               <p className="text-muted-foreground mb-0.5 text-xs tracking-wide uppercase">
                 {slides.length} slide{slides.length !== 1 ? "s" : ""}
               </p>
-              <p className="truncate text-sm font-semibold">{state.title || "New presentation"}</p>
+              <p className="truncate text-sm font-semibold">{state.title ?? "New presentation"}</p>
             </div>
             {/* Thumbnails */}
             <ScrollArea className="flex-1 p-2">

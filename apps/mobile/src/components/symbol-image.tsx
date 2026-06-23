@@ -57,11 +57,11 @@ export function SymbolImage({
   }
 
   const Icon = LUCIDE_FALLBACKS[name] ?? HelpCircle;
-  // eslint-disable-next-line typescript/no-unsafe-type-assertion
   return (
     <Icon
       size={size}
       color={tintColor}
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- React Native image styles overlap with lucide-native icon styles at runtime.
       style={style as unknown as ComponentProps<typeof Icon>["style"]}
     />
   );
