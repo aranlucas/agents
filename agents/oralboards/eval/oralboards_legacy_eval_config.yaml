@@ -1,5 +1,5 @@
 # Oral-boards eval config — all metrics use local custom_function (no GCP required).
-# Run with: agents-cli eval grade --traces artifacts/traces/ --config tests/eval/eval_config.yaml
+# Run with: agents-cli eval grade --traces artifacts/traces/ --config eval/oralboards_legacy_eval_config.yaml
 
 metrics_to_run:
   - grounding_search_before_set_case

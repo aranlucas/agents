@@ -1,8 +1,4 @@
-"""Contracts for the Agent Platform eval scaffold.
-
-The eval datasets live outside pytest's default testpaths so this test keeps
-them tied to the mounted/web-visible agent registry.
-"""
+"""Contracts for the Agent Platform eval scaffold."""
 
 import json
 import re
@@ -11,7 +7,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 TYPES_FILE = ROOT / "packages/types/src/index.ts"
 EVAL_DIR = ROOT / "tests/eval"
-DATASETS_DIR = EVAL_DIR / "datasets"
 RUBRIC_GROUP = "agent_contract"
 
 
@@ -42,8 +37,27 @@ def _agent_order_and_backend_paths() -> tuple[list[str], dict[str, str]]:
     return agent_order, backend_paths
 
 
+def _agent_eval_groups() -> dict[str, list[str]]:
+    agent_order, backend_paths = _agent_order_and_backend_paths()
+    groups: dict[str, list[str]] = {}
+
+    for agent_id in agent_order:
+        backend_path = backend_paths[agent_id]
+        agent_dir = backend_path.removesuffix("-v2")
+        groups.setdefault(agent_dir, []).append(agent_id)
+
+    return groups
+
+
+def _eval_dir_for_agent(agent_dir: str) -> Path:
+    return ROOT / "agents" / agent_dir / "eval"
+
+
 def _dataset_path(agent_id: str) -> Path:
-    return DATASETS_DIR / f"{agent_id}.json"
+    for agent_dir, agent_ids in _agent_eval_groups().items():
+        if agent_id in agent_ids:
+            return _eval_dir_for_agent(agent_dir) / "datasets" / f"{agent_id}.json"
+    raise AssertionError(f"Unknown registered agent: {agent_id}")
 
 
 def _load_dataset(agent_id: str) -> dict:
@@ -53,26 +67,38 @@ def _load_dataset(agent_id: str) -> dict:
 
 
 def test_eval_config_selects_agent_quality_metrics() -> None:
-    config = EVAL_DIR / "eval_config.yaml"
-    assert config.exists()
-    text = config.read_text(encoding="utf-8")
+    assert not EVAL_DIR.exists(), "Eval assets should live under agents/<agent>/eval"
 
-    for metric in (
-        "multi_turn_task_success",
-        "final_response_quality",
-        "safety",
-        "project_agent_contract",
-    ):
-        assert f"- {metric}" in text
+    for agent_dir in _agent_eval_groups():
+        config = _eval_dir_for_agent(agent_dir) / "eval_config.yaml"
+        assert config.exists(), f"Missing eval config for {agent_dir}: {config}"
+        text = config.read_text(encoding="utf-8")
+
+        for metric in (
+            "multi_turn_task_success",
+            "final_response_quality",
+            "safety",
+            "project_agent_contract",
+        ):
+            assert f"- {metric}" in text
 
 
 def test_every_registered_agent_has_eval_dataset() -> None:
-    agent_order, _ = _agent_order_and_backend_paths()
+    agent_order, backend_paths = _agent_order_and_backend_paths()
+    groups = _agent_eval_groups()
 
     assert agent_order
-    assert sorted(path.stem for path in DATASETS_DIR.glob("*.json")) == sorted(
-        agent_order
-    )
+    for agent_dir, agent_ids in groups.items():
+        agent_root = ROOT / "agents" / agent_dir
+        assert agent_root.exists(), f"Missing agent directory for {agent_dir}"
+        assert (agent_root / "tests").exists(), f"Missing tests directory for {agent_dir}"
+
+        datasets_dir = _eval_dir_for_agent(agent_dir) / "datasets"
+        assert datasets_dir.exists(), f"Missing eval datasets directory for {agent_dir}"
+        available = {path.stem for path in datasets_dir.glob("*.json")}
+        assert set(agent_ids) <= available
+
+    assert set(agent_order) == set(backend_paths)
 
 
 def test_eval_datasets_are_generate_ready() -> None:
