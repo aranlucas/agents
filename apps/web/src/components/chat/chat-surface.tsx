@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useRef } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import {
   useAgent,
   useCopilotKit,
@@ -78,6 +78,16 @@ function isConnectedRuntimeStatus(status: unknown) {
   return status === "connected";
 }
 
+// Local equivalent of @copilotkit/core's isRunCompletionAware type guard.
+// activeRunCompletionPromise is private on AbstractAgent but exposed here via
+// duck-typing so we can await it the same way the prebuilt CopilotChat does.
+interface RunCompletionAware {
+  readonly activeRunCompletionPromise?: Promise<void>;
+}
+function isRunCompletionAware(value: unknown): value is RunCompletionAware {
+  return typeof value === "object" && value !== null && "activeRunCompletionPromise" in value;
+}
+
 export function ChatSurface({
   config,
   threadId,
@@ -105,6 +115,7 @@ export function ChatSurface({
   const gated = !connections.isLoading && connections.missing.length > 0;
   const connectedAgentRef = useRef<typeof agent | null>(null);
   const isRuntimeConnected = isConnectedRuntimeStatus(copilotkit.runtimeConnectionStatus);
+  const [isAgentConnected, setIsAgentConnected] = useState(false);
 
   useEffect(() => {
     let detached = false;
@@ -114,22 +125,38 @@ export function ChatSurface({
       return undefined;
     }
 
+    setIsAgentConnected(false);
     agent.threadId = threadId;
     if ("abortController" in agent) {
       agent.abortController = connectAbortController;
     }
     connectedAgentRef.current = agent;
-    void copilotkit.connectAgent({ agent }).catch((error: unknown) => {
-      if (detached) return;
-      connectedAgentRef.current = null;
-      if (error instanceof Error && error.name === "AGUIConnectNotImplementedError") return;
-      console.error("ChatSurface: connectAgent failed", error);
-    });
+    void copilotkit
+      .connectAgent({ agent })
+      .catch((error: unknown) => {
+        if (detached) return;
+        connectedAgentRef.current = null;
+        if (error instanceof Error && error.name === "AGUIConnectNotImplementedError") return;
+        console.error("ChatSurface: connectAgent failed", error);
+      })
+      .finally(() => {
+        if (detached) return;
+        // Mirror CopilotKit prebuilt: delay one frame so any loaded messages
+        // paint before suggestions appear, avoiding a layout jump.
+        const raf =
+          typeof requestAnimationFrame === "function"
+            ? requestAnimationFrame
+            : (cb: () => void) => setTimeout(cb, 16);
+        raf(() => {
+          if (!detached) setIsAgentConnected(true);
+        });
+      });
 
     return () => {
       detached = true;
       connectAbortController.abort();
       connectedAgentRef.current = null;
+      setIsAgentConnected(false);
       void agent.detachActiveRun?.();
     };
   }, [agent, copilotkit, isRuntimeConnected, threadId]);
@@ -167,17 +194,35 @@ export function ChatSurface({
     renderToolCall({ toolCall: tc as never, toolMessage: toolMessages.get(tc.id) as never });
 
   const send = useCallback(
-    (text: string) => {
+    async (text: string) => {
       const trimmed = text.trim();
-      if (!agent || !trimmed) return;
+      if (!agent || !trimmed || !isAgentConnected) return;
+      // Mirror CopilotKit prebuilt: wait for any in-flight run before queuing.
+      if (agent.isRunning && isRunCompletionAware(agent) && agent.activeRunCompletionPromise) {
+        try {
+          await agent.activeRunCompletionPromise;
+        } catch (error) {
+          console.error("ChatSurface: in-flight run rejected while queuing send", error);
+        }
+      }
       agent.addMessage({ id: crypto.randomUUID(), role: "user", content: trimmed });
       void copilotkit.runAgent({ agent });
     },
-    [agent, copilotkit],
+    [agent, copilotkit, isAgentConnected],
   );
 
   const stop = useCallback(() => {
-    if (agent) copilotkit.stopAgent({ agent });
+    if (!agent) return;
+    try {
+      copilotkit.stopAgent({ agent });
+    } catch (error) {
+      console.error("ChatSurface: stopAgent failed", error);
+      try {
+        agent.abortRun();
+      } catch (abortError) {
+        console.error("ChatSurface: abortRun fallback failed", abortError);
+      }
+    }
   }, [agent, copilotkit]);
 
   return (
@@ -185,7 +230,7 @@ export function ChatSurface({
       <ToolRendererRegistration />
       <Conversation className="flex-1">
         <ConversationContent className="mx-auto w-full max-w-190">
-          {items.length === 0 ? (
+          {items.length === 0 && isAgentConnected ? (
             <ConversationEmptyState
               icon={<SparklesIcon className="size-5" />}
               title={`${config.label} is ready`}
@@ -250,13 +295,13 @@ export function ChatSurface({
             <ConnectNotice agentLabel={config.label} missing={connections.missing} />
           ) : (
             <>
-              {!isRunning && suggestions.length > 0 && (
+              {isAgentConnected && !isRunning && suggestions.length > 0 && (
                 <Suggestions className="mb-2">
                   {suggestions.map((s) => (
                     <Suggestion
                       key={s.title}
                       suggestion={s.title}
-                      onClick={() => send(s.message)}
+                      onClick={() => void send(s.message)}
                     />
                   ))}
                 </Suggestions>
@@ -264,7 +309,7 @@ export function ChatSurface({
               <PromptInputProvider>
                 <PromptInput
                   onSubmit={(message: PromptInputMessage) => {
-                    send(message.text ?? "");
+                    void send(message.text ?? "");
                   }}
                 >
                   <PromptInputBody>
