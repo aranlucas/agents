@@ -88,7 +88,8 @@ async function handleConnectHistory(
   let threadId: string | undefined;
   try {
     const body = await request.clone().json();
-    threadId = (body?.thread_id as string) || undefined;
+    // CopilotKit sends camelCase; fall back to snake_case defensively
+    threadId = (body?.threadId as string) || (body?.thread_id as string) || undefined;
   } catch {
     return null;
   }
