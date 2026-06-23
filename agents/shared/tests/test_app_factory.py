@@ -25,6 +25,7 @@ def _mock_services():
 def test_build_adk_agent_wires_default_services():
     services = _mock_services()
     adk = build_adk_agent(_dummy_agent(), services=services)
+    assert adk._static_app_name == "dummy_agent"
     assert adk._session_manager._timeout == 3600
 
 
@@ -74,9 +75,9 @@ def test_build_model_uses_current_free_agent_model_chain():
     model = build_model()
     fallbacks = model._additional_args["fallbacks"]
 
-    assert model.model == "cerebras/qwen-3-235b-a22b"
+    assert model.model == "cerebras/gpt-oss-120b"
     assert fallbacks == [
-        "groq/moonshotai/kimi-k2-instruct",
+        "groq/openai/gpt-oss-120b",
         "mistral/mistral-medium-latest",
         "nvidia_nim/deepseek-ai/deepseek-r1-0528-distill-llama-70b",
         "openrouter/qwen/qwen3-235b-a22b:free",
