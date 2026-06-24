@@ -3,33 +3,23 @@ from unittest.mock import Mock
 import pytest
 from agents_shared.dependencies import create_agent_services
 from fastapi import FastAPI
-from google.adk import Workflow
+from google.adk.agents import LlmAgent
+from google.adk.tools.agent_tool import AgentTool
 from trends_agent import agent, main
+from trends_agent.sub_agents.generator import build_generator
 
 
-def test_build_agent_returns_workflow() -> None:
+def test_build_agent_returns_llm_agent() -> None:
     a = agent.build_agent()
-    assert isinstance(a, Workflow)
+    assert isinstance(a, LlmAgent)
     assert a.name == "GoogleTrendsAgent"
-    assert len(a.graph.nodes) == 2
 
 
-def test_build_agent_sub_agent_names() -> None:
+def test_agent_has_all_tools() -> None:
     a = agent.build_agent()
-    names = [n.name for n in a.graph.nodes]
-    assert "TrendsQueryGeneratorAgent" in names
-    assert "TrendsQueryExecutorAgent" in names
-
-
-def test_executor_has_state_bigquery_and_explicit_a2ui_tools() -> None:
-    trends = agent.build_agent()
-    executor = next(
-        n for n in trends.graph.nodes
-        if n.name == "TrendsQueryExecutorAgent"
-    )
     tool_names = {
         tool.name if hasattr(tool, "name") else getattr(tool, "__name__", "")
-        for tool in executor.tools
+        for tool in a.tools
     }
     assert {
         "validate_trends_sql",
@@ -38,18 +28,32 @@ def test_executor_has_state_bigquery_and_explicit_a2ui_tools() -> None:
         "write_trends_result",
         "set_trends_verification",
         "generate_a2ui",
+        "TrendsQueryGeneratorAgent",
     } <= tool_names
 
 
-def test_executor_instruction_describes_web_verification() -> None:
-    instruction = agent._EXECUTOR_INSTRUCTION
+def test_generator_is_agent_tool() -> None:
+    a = agent.build_agent()
+    gen_tools = [t for t in a.tools if isinstance(t, AgentTool)]
+    assert len(gen_tools) == 1
+    assert gen_tools[0].name == "TrendsQueryGeneratorAgent"
+
+
+def test_build_generator_returns_llm_agent() -> None:
+    g = build_generator()
+    assert isinstance(g, LlmAgent)
+    assert g.name == "TrendsQueryGeneratorAgent"
+    assert g.output_key == "generated_sql"
+
+
+def test_instruction_describes_web_verification() -> None:
+    instruction = agent._INSTRUCTION
     assert "set_trends_verification" in instruction
     assert "Brave" in instruction
     assert "AT MOST 2" in instruction
     assert "CONFIRMED" in instruction
     assert "CONTRADICTED" in instruction
     assert "UNVERIFIED" in instruction
-    # Verification is appended after the result is written.
     assert instruction.index("write_trends_result") < instruction.index(
         "set_trends_verification"
     )
@@ -62,8 +66,11 @@ async def test_throttle_web_search_ignores_non_brave_tools() -> None:
     assert agent._web_search_state["last_at"] == 1000.0
 
 
-def test_executor_persists_state_before_rendering() -> None:
-    instruction = agent._EXECUTOR_INSTRUCTION
+def test_instruction_persists_state_before_rendering() -> None:
+    instruction = agent._INSTRUCTION
+    assert instruction.index("TrendsQueryGeneratorAgent") < instruction.index(
+        "validate_trends_sql"
+    )
     assert instruction.index("validate_trends_sql") < instruction.index(
         "begin_trends_query"
     )
