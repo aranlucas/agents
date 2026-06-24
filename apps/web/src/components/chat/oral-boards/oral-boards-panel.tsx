@@ -800,7 +800,7 @@ export function OralBoardsPanel({
   const isQuestioning = status === "questioning";
 
   return (
-    <Artifact className="min-h-0 flex-1 rounded-none border-0">
+    <Artifact className="h-full min-h-0 flex-1 rounded-none border-0">
       <ArtifactHeader>
         <ArtifactTitle>Oral board</ArtifactTitle>
       </ArtifactHeader>

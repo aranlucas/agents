@@ -1,15 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 import {
   useAgent,
   UseAgentUpdate,
   useDefaultRenderTool,
-  useFrontendTool,
+  useHumanInTheLoop,
   useRenderTool,
 } from "@copilotkit/react-core/v2";
 import { z } from "zod";
-import type { OralBoardsState } from "@agents/types";
 
 import { Badge, Tool, ToolContent, ToolHeader } from "@agents/ui";
 import { SpeakQuestionToolCall } from "@/components/chat/speak-question-tool-call";
@@ -127,22 +126,44 @@ function SetCaseToolCall({ status }: { status: ToolStatus }) {
   );
 }
 
-// Renderer for ADK's built-in `adk_request_input` long-running tool, used by
-// the workflow agent (oral-boards-v2) to pause execution and wait for the
-// candidate's response. Syncs the message into the exam panel question context.
-function AskRequestInputToolCall({ status, message }: { status: ToolStatus; message?: string }) {
-  const { setCurrentQuestion } = useOralBoardsQuestion();
+// Bridges CopilotKit's HITL renderer into the bespoke exam panel. The tool call
+// stays pending until that panel invokes the registered `respond` callback.
+function AskQuestionToolCall({
+  status,
+  kind,
+  question,
+  respond,
+  result,
+}: {
+  status: ToolStatus;
+  kind?: "ready" | "answer";
+  question?: string;
+  respond?: (response: { answer: string }) => void | Promise<void>;
+  result?: string;
+}) {
+  const requestId = useId();
+  const { registerPendingInput, clearPendingInput } = useOralBoardsQuestion();
 
   useEffect(() => {
-    if (message) setCurrentQuestion(message);
-  }, [message, setCurrentQuestion]);
+    if (status === "executing" && kind && question && respond) {
+      registerPendingInput({
+        id: requestId,
+        kind,
+        question,
+        respond,
+      });
+    }
 
-  return <SpeakQuestionToolCall status={status} parameters={{ question: message }} />;
+    return () => clearPendingInput(requestId);
+  }, [status, kind, question, respond, requestId, registerPendingInput, clearPendingInput]);
+
+  if (kind !== "answer") return null;
+  return <SpeakQuestionToolCall status={status} parameters={{ question }} result={result} />;
 }
 
 /**
- * Oral-boards console wiring. Registers the `ask_question` frontend tool that
- * voices examiner prompts and captures the live question for the bespoke pane,
+ * Oral-boards console wiring. Registers the `ask_question` HITL tool that
+ * pauses the examiner until the bespoke pane submits the candidate's response,
  * plus tool-call renderers for search_docs / read_doc (grounding transparency)
  * and a default fallback for all other agent tool calls.
  */
@@ -158,29 +179,28 @@ export function OralBoardsExtension({ agentId }: { agentId: AgentId }) {
     if (q) setCurrentQuestion(q);
   }, [agent, setCurrentQuestion]);
 
-  useFrontendTool(
+  useHumanInTheLoop(
     {
       name: "ask_question",
-      description:
-        "Register the current examiner question so it appears in the exam panel. " +
-        "Call this once per turn with the exact question text before writing the question in chat. " +
-        "Do not call this more than once per turn.",
-      available: true,
       agentId,
+      description:
+        "Pause the oral-board examination and wait for the candidate's response in the exam panel. " +
+        "Use kind='ready' after presenting a case and kind='answer' for each clinical question. " +
+        "Returns { answer: string }.",
       parameters: z.object({
-        question: z.string().describe("The exact examiner question to display in the exam panel"),
+        kind: z
+          .enum(["ready", "answer"])
+          .describe("Whether the UI is waiting to begin or waiting for a clinical answer"),
+        question: z.string().describe("The exact prompt to display in the oral-board panel"),
       }),
-      handler: ({ question }) => {
-        setCurrentQuestion(question);
-        // Persist to agent state so the question survives a page refresh.
-        agent?.setState({
-          ...(isRecord(agent.state) ? agent.state : {}),
-          current_question: question,
-        } satisfies OralBoardsState);
-        return Promise.resolve("Question is displayed in the exam panel");
-      },
-      render: ({ status, args, result }) => (
-        <SpeakQuestionToolCall status={status} parameters={args ?? {}} result={result} />
+      render: ({ status, args, respond, result }) => (
+        <AskQuestionToolCall
+          status={status}
+          kind={args?.kind}
+          question={args?.question}
+          respond={respond}
+          result={result}
+        />
       ),
     },
     [agentId],
@@ -229,23 +249,6 @@ export function OralBoardsExtension({ agentId }: { agentId: AgentId }) {
       agentId,
       parameters: z.object({ case: z.string(), case_sources: z.array(z.unknown()).optional() }),
       render: ({ status }) => <SetCaseToolCall status={status} />,
-    },
-    [agentId],
-  );
-
-  // adk_request_input is ADK's built-in long-running tool used by oral-boards-v2
-  // to pause the workflow and wait for the candidate's response.
-  useRenderTool(
-    {
-      name: "adk_request_input",
-      agentId,
-      parameters: z.object({
-        message: z.string(),
-        response_schema: z.record(z.string(), z.unknown()).optional(),
-      }),
-      render: ({ status, parameters }) => (
-        <AskRequestInputToolCall status={status} message={parameters?.message} />
-      ),
     },
     [agentId],
   );

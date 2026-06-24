@@ -1,6 +1,7 @@
 {
   "extends": "@agents/typescript-config/nextjs.json",
   "compilerOptions": {
+    "jsx": "react-jsx",
     "paths": {
       "@/*": ["./src/*"]
     }

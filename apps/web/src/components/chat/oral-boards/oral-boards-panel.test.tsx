@@ -22,6 +22,10 @@ vi.mock("@/lib/copilotkit/oral-boards-question-context", () => ({
     currentQuestion: "",
     setCurrentQuestion: vi.fn(),
     clearCurrentQuestion: vi.fn(),
+    pendingInputKind: null,
+    registerPendingInput: vi.fn(),
+    clearPendingInput: vi.fn(),
+    respondToPendingInput: vi.fn(),
   }),
 }));
 
@@ -102,12 +106,30 @@ describe("OralBoardsPanel — presenting", () => {
 });
 
 describe("OralBoardsPanel — questioning", () => {
+  it("fills the available workspace height", () => {
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: [],
+    };
+
+    render(<OralBoardsPanel state={state} {...baseProps} />);
+
+    const panel = screen.getByText("Oral board").parentElement?.parentElement;
+    expect(panel).toHaveClass("h-full");
+  });
+
   it("renders the active question from useOralBoardsQuestion (live)", async () => {
     const { useOralBoardsQuestion } = await import("@/lib/copilotkit/oral-boards-question-context");
     vi.mocked(useOralBoardsQuestion).mockReturnValue({
       currentQuestion: "What is your initial impression?",
       setCurrentQuestion: vi.fn(),
       clearCurrentQuestion: vi.fn(),
+      pendingInputKind: "answer",
+      registerPendingInput: vi.fn(),
+      clearPendingInput: vi.fn(),
+      respondToPendingInput: vi.fn(),
     });
 
     const state: OralBoardsState = {
@@ -125,6 +147,10 @@ describe("OralBoardsPanel — questioning", () => {
       currentQuestion: "",
       setCurrentQuestion: vi.fn(),
       clearCurrentQuestion: vi.fn(),
+      pendingInputKind: null,
+      registerPendingInput: vi.fn(),
+      clearPendingInput: vi.fn(),
+      respondToPendingInput: vi.fn(),
     });
   });
 

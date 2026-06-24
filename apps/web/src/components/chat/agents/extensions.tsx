@@ -64,5 +64,5 @@ export function getAgentExtension(agentId: AgentId): AgentExtension | undefined 
  */
 export function AgentExtensionSlot({ agentId }: { agentId: AgentId }) {
   const Mount = AGENT_EXTENSIONS[agentId]?.Mount;
-  return Mount ? <Mount agentId={agentId} /> : null;
+  return Mount ? <Mount key={agentId} agentId={agentId} /> : null;
 }

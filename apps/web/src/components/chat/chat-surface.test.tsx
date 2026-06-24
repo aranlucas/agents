@@ -114,8 +114,20 @@ vi.mock("./transcribe-button", () => ({
   TranscribeButton: () => <button type="button">transcribe</button>,
 }));
 
-import { ChatSurface } from "./chat-surface";
+import { ChatSurface, getRunCompletionPromise } from "./chat-surface";
 import { getAgentConfig } from "./agents/registry";
+
+describe("getRunCompletionPromise", () => {
+  it("reads a run-completion promise without narrowing the agent type", async () => {
+    const completion = Promise.resolve();
+
+    expect(getRunCompletionPromise({ activeRunCompletionPromise: completion })).toBe(completion);
+    expect(
+      getRunCompletionPromise({ activeRunCompletionPromise: "not a promise" }),
+    ).toBeUndefined();
+    expect(getRunCompletionPromise(null)).toBeUndefined();
+  });
+});
 
 describe("ChatSurface history replay", () => {
   beforeEach(() => {
