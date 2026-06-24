@@ -156,3 +156,33 @@ To guide your response, you will be provided with a set of few-shot examples in 
       AND percent_gain > 5000
     ORDER BY
       percent_gain DESC
+
+
+### Example 9: Concept/theme-based query (AI-related terms)
+*   **User Question:** "Which AI-related search terms are trending in the United States?"
+*   **Key rule:** NEVER use `LIKE '%ai%'` — it matches unrelated words ("trail", "rain",
+    "spain"). Always use `REGEXP_CONTAINS` with explicit brand/concept tokens OR an
+    explicit `IN (...)` list of known terms.
+*   **Correct SQL:**
+
+    SELECT
+      term,
+      rank,
+      week
+    FROM
+      `bigquery-public-data.google_trends.top_terms`
+    WHERE
+      refresh_date = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+      AND REGEXP_CONTAINS(
+            LOWER(term),
+            r'\bai\b|chatgpt|gemini|claude|llm|openai|copilot|generative|midjourney|sora|grok|deepseek'
+          )
+    ORDER BY
+      week DESC, rank
+    LIMIT 25;
+
+*   **Why:** Substring `LIKE '%ai%'` returns rows for "trail running", "rain jacket",
+    etc. while missing capitalized brand names like "ChatGPT". `REGEXP_CONTAINS` with
+    word-boundary `\b` and explicit brand tokens is precise and recall-complete.
+    For niche themes (e.g., "crypto terms"), prefer an explicit `IN (...)` list of
+    the most common known terms over a vague regex.
