@@ -3,6 +3,7 @@ import inspect
 import typing
 from types import SimpleNamespace
 
+import oralboards_agent.agent as oralboards_agent
 from agents_shared.state import make_state_initializer
 from google.adk.tools.function_tool import FunctionTool
 from oralboards_agent.agent import (
@@ -12,6 +13,7 @@ from oralboards_agent.agent import (
     read_doc,
     search_docs,
     set_case,
+    set_current_question,
     set_loading_step,
     set_phase,
     set_score_card,
@@ -36,6 +38,14 @@ def test_oralboards_state_tools_write_canvas_state() -> None:
         "phase": "questioning",
     }
     assert context.state["status"] == "questioning"
+
+    set_current_question = getattr(oralboards_agent, "set_current_question", None)
+    assert callable(set_current_question)
+    assert set_current_question(context, "What is your diagnosis?") == {
+        "status": "success",
+        "ok": True,
+    }
+    assert context.state["current_question"] == "What is your diagnosis?"
 
     exchange_citations = [{"docid": 1, "title": "Guide", "collection": "abpd"}]
     result_exchange = append_exchange(
@@ -65,6 +75,7 @@ def test_oralboards_state_tools_write_canvas_state() -> None:
         },
     ]
     assert context.state["status"] == "questioning"
+    assert context.state["current_question"] == ""
 
     summary = [
         {
@@ -103,6 +114,7 @@ def test_state_initializer_preserves_existing_state_and_adds_defaults() -> None:
     assert callback_context.state["outcome"] == ""
     assert callback_context.state["status"] == "idle"
     assert callback_context.state["loading_step"] == ""
+    assert callback_context.state["current_question"] == ""
 
 
 def test_agent_instruction_uses_adk_state_placeholders() -> None:
@@ -176,6 +188,7 @@ _TOOL_FUNCTIONS = [
     read_doc,
     set_case,
     set_phase,
+    set_current_question,
     set_loading_step,
     append_exchange,
     set_score_card,

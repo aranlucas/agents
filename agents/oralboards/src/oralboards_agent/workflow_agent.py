@@ -15,7 +15,6 @@ evaluator and either loops back to the questioner or proceeds to the scorer.
 
 from typing import Any
 
-from ag_ui_adk import AGUIToolset
 from agents_shared.state import make_state_initializer, make_state_instruction
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
@@ -35,6 +34,7 @@ from .agent import (
     append_exchange,
     search_docs,
     set_case,
+    set_current_question,
     set_loading_step,
     set_phase,
     set_score_card,
@@ -210,6 +210,20 @@ def questioning_router(ctx: ToolContext) -> str:
     return ""
 
 
+def workflow_entry_router(ctx: ToolContext) -> str:
+    """Route a new invocation from the persisted exam phase."""
+    status = ctx.state.get("status", "idle")
+    if status == "feedback":
+        ctx.route = "evaluate"
+    elif status == "complete":
+        ctx.route = "complete"
+    elif status == "idle" or not ctx.state.get("case"):
+        ctx.route = "build"
+    else:
+        ctx.route = "question"
+    return ""
+
+
 def _build_case_builder() -> LlmAgent:
     return LlmAgent(
         **{**_AGENT_DEFAULTS, "model": build_fast_model()},
@@ -232,9 +246,7 @@ def _build_case_builder() -> LlmAgent:
             "   - case_passages: the 'passage' strings from the top search results\n"
             "     (so the evaluator can ground feedback without re-searching).\n"
             "4. Call set_phase('presenting').\n"
-            "5. Call ask_question with kind='ready' and question='When you are ready to begin the examination, click Begin Examination.'\n"
-            "   The frontend tool pauses this workflow until the candidate responds.\n"
-            "6. After ask_question returns, call set_phase('questioning').\n"
+            "5. End the turn. The UI's Begin Examination button starts the question phase.\n"
             "Do NOT ask any clinical questions in this phase."
         ),
         tools=[
@@ -242,7 +254,6 @@ def _build_case_builder() -> LlmAgent:
             FunctionTool(set_case),
             FunctionTool(set_phase),
             FunctionTool(set_loading_step),
-            AGUIToolset(),
         ],
     )
 
@@ -254,7 +265,7 @@ def _build_questioner() -> LlmAgent:
         include_contents="none",
         static_instruction=(
             "You are an ABPD OCE practice examiner in the questioning phase.\n"
-            "Your ONLY job is to ask ONE clinical question and wait for the candidate's answer.\n\n"
+            "Your ONLY job is to write ONE clinical question to shared state.\n\n"
             f"{_CANVAS_HINT}\n\n"
             f"{_BLUEPRINT}\n\n"
             "## Current case\n"
@@ -271,12 +282,11 @@ def _build_questioner() -> LlmAgent:
             "Do not let the candidate stall: if an answer is vague, ask them to commit.\n\n"
             "## Your task\n"
             "1. Identify the next uncovered skillset from the blueprint that this case can assess.\n"
-            "2. Call ask_question with kind='answer' and question=<the exact question text>.\n"
-            "   This frontend tool displays the question and waits for the candidate's response.\n"
-            "3. After the tool returns {answer: <candidate response>}, say nothing more.\n"
+            "2. Call set_current_question with the exact question text.\n"
+            "3. End the turn immediately. The UI submits the candidate's answer in a new invocation.\n"
             "Do NOT provide feedback. Do NOT reveal the model answer. Do NOT score."
         ),
-        tools=[AGUIToolset()],
+        tools=[FunctionTool(set_current_question)],
     )
 
 
@@ -295,7 +305,8 @@ def _build_evaluator() -> LlmAgent:
             "ideal response. Do not re-search unless the answer raises a topic clearly\n"
             "outside those passages.\n\n"
             "## Your task\n"
-            "The candidate just answered a clinical question. Evaluate their answer:\n"
+            "The active question is in state: {current_question}\n"
+            "The candidate's answer is the latest user message. Evaluate that answer:\n"
             "1. Call set_loading_step('Reviewing your answer…').\n"
             "2. Call set_loading_step('Composing feedback…').\n"
             "3. Call append_exchange with:\n"
@@ -353,16 +364,14 @@ def _build_scorer() -> LlmAgent:
 def build_workflow_agent() -> Workflow:
     """Graph-based oral-boards examiner with Workflow.
 
-    Flow: case_builder → questioner → evaluator → router → subgraphs ↓
+    Each request enters through a state router:
 
-                             ┌───────────────────────────────┐
-                             │  questioner  ←  (continue)    │
-                             │               router          │
-                             │  scorer     ←  (complete)     │
-                             └───────────────────────────────┘
+      idle → case_builder
+      presenting/questioning → questioner
+      feedback → evaluator → router → questioner/scorer
 
-    - ``ask_question`` pauses the invocation after each question so the
-      candidate must respond before the next node runs.
+    Case building and question generation are terminal steps. The browser
+    starts a new invocation after Begin Examination and after each answer.
     - The evaluator calls ``complete_examination`` when all relevant skillsets
       are covered, setting a state flag read by the router.
     """
@@ -375,14 +384,25 @@ def build_workflow_agent() -> Workflow:
         func=questioning_router,
         name="questioning_router",
     )
+    entry_router = FunctionNode(
+        func=workflow_entry_router,
+        name="workflow_entry_router",
+    )
 
     return _WorkflowWithSubAgents(
         name="oralboards_workflow",
         description="Graph-based oral-boards examiner — workflow with conditional loop.",
         edges=[
-            (START, case_builder),
-            (case_builder, questioner),
-            (questioner, evaluator),
+            (START, entry_router),
+            (
+                entry_router,
+                {
+                    "build": case_builder,
+                    "evaluate": evaluator,
+                    "complete": scorer,
+                    "__DEFAULT__": questioner,
+                },
+            ),
             (evaluator, router),
             (router, {"__DEFAULT__": questioner, "complete": scorer}),
         ],

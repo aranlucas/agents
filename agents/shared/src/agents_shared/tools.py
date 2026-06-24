@@ -53,6 +53,13 @@ class _ProviderThrottle(CustomLogger):
         return None
 
     async def async_pre_call_hook(self, user_api_key_dict, cache, data, call_type):
+        # LiteLLM reuses the OpenAI-format messages for fallback attempts.
+        # Reasoning providers add this non-standard field, while providers such
+        # as Mistral and Cerebras reject it before they can answer.
+        for message in data.get("messages") or []:
+            if isinstance(message, dict):
+                message.pop("reasoning_content", None)
+
         provider = self._provider(str(data.get("model", "")))
         if not provider:
             return data

@@ -1,19 +1,21 @@
 "use client";
 
-import { useEffect, useId } from "react";
+import { useEffect, useRef } from "react";
 import {
   useAgent,
   UseAgentUpdate,
   useDefaultRenderTool,
-  useHumanInTheLoop,
+  useFrontendTool,
   useRenderTool,
 } from "@copilotkit/react-core/v2";
 import { z } from "zod";
+import type { OralBoardsState } from "@agents/types";
 
 import { Badge, Tool, ToolContent, ToolHeader } from "@agents/ui";
 import { SpeakQuestionToolCall } from "@/components/chat/speak-question-tool-call";
 import { toToolState } from "@/components/chat/tool-adapter";
 import { useOralBoardsQuestion } from "@/lib/copilotkit/oral-boards-question-context";
+import { speakQuestion } from "@/lib/copilotkit/speak-question";
 import type { AgentId } from "./registry";
 
 type ToolStatus = "inProgress" | "executing" | "complete";
@@ -126,82 +128,60 @@ function SetCaseToolCall({ status }: { status: ToolStatus }) {
   );
 }
 
-// Bridges CopilotKit's HITL renderer into the bespoke exam panel. The tool call
-// stays pending until that panel invokes the registered `respond` callback.
-function AskQuestionToolCall({
-  status,
-  kind,
-  question,
-  respond,
-  result,
-}: {
-  status: ToolStatus;
-  kind?: "ready" | "answer";
-  question?: string;
-  respond?: (response: { answer: string }) => void | Promise<void>;
-  result?: string;
-}) {
-  const requestId = useId();
-  const { registerPendingInput, clearPendingInput } = useOralBoardsQuestion();
-
-  useEffect(() => {
-    if (status === "executing" && kind && question && respond) {
-      registerPendingInput({
-        id: requestId,
-        kind,
-        question,
-        respond,
-      });
-    }
-
-    return () => clearPendingInput(requestId);
-  }, [status, kind, question, respond, requestId, registerPendingInput, clearPendingInput]);
-
-  if (kind !== "answer") return null;
-  return <SpeakQuestionToolCall status={status} parameters={{ question }} result={result} />;
-}
-
 /**
- * Oral-boards console wiring. Registers the `ask_question` HITL tool that
- * pauses the examiner until the bespoke pane submits the candidate's response,
+ * Oral-boards console wiring. Registers the legacy prompt agent's
+ * `ask_question` frontend tool and mirrors workflow questions from shared state,
  * plus tool-call renderers for search_docs / read_doc (grounding transparency)
  * and a default fallback for all other agent tool calls.
  */
 export function OralBoardsExtension({ agentId }: { agentId: AgentId }) {
   const { setCurrentQuestion } = useOralBoardsQuestion();
   const { agent } = useAgent({ agentId, updates: [UseAgentUpdate.OnStateChanged] });
+  const lastSpokenQuestion = useRef("");
 
   // Seed the in-memory question context from agent state on mount / after
   // refresh, so the exam panel shows the last question without waiting for the
   // next ask_question tool call.
   useEffect(() => {
     const q = getCurrentQuestion(agent?.state);
-    if (q) setCurrentQuestion(q);
+    if (!q) return;
+    setCurrentQuestion(q);
+    if (q !== lastSpokenQuestion.current) {
+      lastSpokenQuestion.current = q;
+      void speakQuestion(q);
+    }
   }, [agent, setCurrentQuestion]);
 
-  useHumanInTheLoop(
+  useFrontendTool(
     {
       name: "ask_question",
       agentId,
-      description:
-        "Pause the oral-board examination and wait for the candidate's response in the exam panel. " +
-        "Use kind='ready' after presenting a case and kind='answer' for each clinical question. " +
-        "Returns { answer: string }.",
+      description: "Display and speak the current oral-board question in the exam panel.",
+      available: true,
       parameters: z.object({
         kind: z
           .enum(["ready", "answer"])
           .describe("Whether the UI is waiting to begin or waiting for a clinical answer"),
         question: z.string().describe("The exact prompt to display in the oral-board panel"),
       }),
-      render: ({ status, args, respond, result }) => (
-        <AskQuestionToolCall
-          status={status}
-          kind={args?.kind}
-          question={args?.question}
-          respond={respond}
-          result={result}
-        />
-      ),
+      handler: async ({ question }) => {
+        setCurrentQuestion(question);
+        lastSpokenQuestion.current = question;
+        await speakQuestion(question);
+        agent?.setState({
+          ...(isRecord(agent.state) ? agent.state : {}),
+          current_question: question,
+        } satisfies OralBoardsState);
+        return "Question is displayed in the exam panel";
+      },
+      render: ({ status, args, result }) =>
+        args?.kind === "answer" ? (
+          <SpeakQuestionToolCall
+            status={status}
+            parameters={{ question: args.question }}
+            result={result}
+          />
+        ) : null,
     },
     [agentId],
   );

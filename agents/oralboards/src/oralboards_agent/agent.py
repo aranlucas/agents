@@ -64,6 +64,7 @@ class OralBoardsState(BaseModel):
     outcome: str = ""
     status: str = "idle"
     loading_step: str = ""
+    current_question: str = ""
     # Streamed token-by-token while append_exchange is generating; cleared when
     # the exchange commits to transcript.  The UI shows these fields live.
     active_feedback: str = ""
@@ -355,6 +356,19 @@ def set_loading_step(
     return {"status": "success", "ok": True}
 
 
+def set_current_question(
+    tool_context: ToolContext,
+    question: Annotated[
+        str,
+        Field(description="The exact oral-board question shown to the candidate"),
+    ],
+) -> dict:
+    """Persist the active examiner question in shared state."""
+    tool_context.state["current_question"] = question
+    tool_context.state["status"] = "questioning"
+    return {"status": "success", "ok": True}
+
+
 def append_exchange(
     tool_context: ToolContext,
     question: Annotated[
@@ -425,6 +439,7 @@ def append_exchange(
     )
     tool_context.state["transcript"] = transcript
     tool_context.state["status"] = "questioning"
+    tool_context.state["current_question"] = ""
     # Clear streaming preview fields once the exchange is committed.
     tool_context.state["active_feedback"] = ""
     tool_context.state["active_ideal_response"] = ""
