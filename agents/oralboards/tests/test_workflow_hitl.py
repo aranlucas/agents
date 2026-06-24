@@ -11,8 +11,10 @@ def test_workflow_uses_state_driven_terminal_question_steps() -> None:
     assert "ask_question" not in case_builder.static_instruction
     assert "set_phase('presenting')" in case_builder.static_instruction
 
-    assert "set_current_question" in questioner.static_instruction
+    assert "Return exactly the question text" in questioner.static_instruction
     assert "ask_question" not in questioner.static_instruction
+    assert questioner.output_key == "current_question"
+    assert questioner.tools == []
 
 
 def test_workflow_entry_router_resumes_from_shared_state() -> None:

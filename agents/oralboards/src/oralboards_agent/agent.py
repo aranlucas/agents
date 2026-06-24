@@ -356,19 +356,6 @@ def set_loading_step(
     return {"status": "success", "ok": True}
 
 
-def set_current_question(
-    tool_context: ToolContext,
-    question: Annotated[
-        str,
-        Field(description="The exact oral-board question shown to the candidate"),
-    ],
-) -> dict:
-    """Persist the active examiner question in shared state."""
-    tool_context.state["current_question"] = question
-    tool_context.state["status"] = "questioning"
-    return {"status": "success", "ok": True}
-
-
 def append_exchange(
     tool_context: ToolContext,
     question: Annotated[

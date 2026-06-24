@@ -34,7 +34,6 @@ from .agent import (
     append_exchange,
     search_docs,
     set_case,
-    set_current_question,
     set_loading_step,
     set_phase,
     set_score_card,
@@ -263,9 +262,10 @@ def _build_questioner() -> LlmAgent:
         **{**_AGENT_DEFAULTS, "model": build_fast_model()},
         name="questioner",
         include_contents="none",
+        output_key="current_question",
         static_instruction=(
             "You are an ABPD OCE practice examiner in the questioning phase.\n"
-            "Your ONLY job is to write ONE clinical question to shared state.\n\n"
+            "Your ONLY job is to write ONE clinical question.\n\n"
             f"{_CANVAS_HINT}\n\n"
             f"{_BLUEPRINT}\n\n"
             "## Current case\n"
@@ -282,11 +282,11 @@ def _build_questioner() -> LlmAgent:
             "Do not let the candidate stall: if an answer is vague, ask them to commit.\n\n"
             "## Your task\n"
             "1. Identify the next uncovered skillset from the blueprint that this case can assess.\n"
-            "2. Call set_current_question with the exact question text.\n"
-            "3. End the turn immediately. The UI submits the candidate's answer in a new invocation.\n"
+            "2. Return exactly the question text as one open-ended sentence.\n"
+            "The response is persisted to current_question automatically. Do not call tools.\n"
             "Do NOT provide feedback. Do NOT reveal the model answer. Do NOT score."
         ),
-        tools=[FunctionTool(set_current_question)],
+        tools=[],
     )
 
 
