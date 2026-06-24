@@ -809,7 +809,7 @@ export function OralBoardsPanel({
           isQuestioning
             ? "flex overflow-hidden p-0"
             : status === "presenting"
-              ? "flex flex-col"
+              ? "flex flex-col overflow-hidden"
               : "space-y-4"
         }
       >
