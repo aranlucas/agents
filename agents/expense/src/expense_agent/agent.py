@@ -170,6 +170,7 @@ def mark_expense_ready(tool_context: ToolContext, summary: str) -> dict[str, boo
     tool_context.state["review_summary"] = summary
     return {"ok": True}
 
+
 _CANVAS_CONTRACT = canvas_contract(
     artifact="expense review report",
     tools=(

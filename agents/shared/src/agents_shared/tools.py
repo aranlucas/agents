@@ -120,5 +120,3 @@ def on_model_error_callback(
         error,
     )
     return None
-
-
