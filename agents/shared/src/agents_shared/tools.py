@@ -28,10 +28,29 @@ _DEFAULT_FALLBACKS = [
     "gemini/gemini-3.5-flash",
 ]
 
+# Subset of fallbacks safe for the A2UI subagent: excludes DeepSeek and the
+# openrouter wildcard because both may produce thought=True (reasoning) parts.
+# ADK's LiteLlm serialises those as reasoning_content in the OpenAI-format
+# message body, which Cerebras/Groq/Mistral reject with 400 — exhausting the
+# fallback chain. Gemini stays because it can consume reasoning_content from its
+# own prior turns; Mistral stays because it never produces thought parts.
+_A2UI_FALLBACKS = [
+    "groq/openai/gpt-oss-120b",
+    "mistral/mistral-medium-latest",
+    "gemini/gemini-3.5-flash",
+]
+
 
 def build_model() -> LiteLlm:
     """LiteLlm configured with the shared primary model + fallback chain."""
     return LiteLlm(model=_DEFAULT_MODEL, fallbacks=list(_DEFAULT_FALLBACKS))
+
+
+def build_a2ui_model() -> LiteLlm:
+    """LiteLlm for A2UI subagent calls — fallbacks restricted to providers that
+    never produce reasoning/thought parts, so session history with thought=True
+    events doesn't cause 400 errors on re-submission."""
+    return LiteLlm(model=_DEFAULT_MODEL, fallbacks=list(_A2UI_FALLBACKS))
 
 
 # ADK-level retry layered on top of LiteLLM's fallback chain. Each attempt gives

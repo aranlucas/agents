@@ -4,7 +4,9 @@ import pytest
 from agents_shared.dependencies import create_agent_services
 from fastapi import FastAPI
 from google.adk.agents import LlmAgent
+from google.adk.tools.agent_tool import AgentTool
 from trends_agent import agent, main
+from trends_agent.sub_agents.generator import build_generator
 
 
 def test_build_agent_returns_llm_agent() -> None:
@@ -26,7 +28,22 @@ def test_agent_has_all_tools() -> None:
         "write_trends_result",
         "set_trends_verification",
         "generate_a2ui",
+        "TrendsQueryGeneratorAgent",
     } <= tool_names
+
+
+def test_generator_is_agent_tool() -> None:
+    a = agent.build_agent()
+    gen_tools = [t for t in a.tools if isinstance(t, AgentTool)]
+    assert len(gen_tools) == 1
+    assert gen_tools[0].name == "TrendsQueryGeneratorAgent"
+
+
+def test_build_generator_returns_llm_agent() -> None:
+    g = build_generator()
+    assert isinstance(g, LlmAgent)
+    assert g.name == "TrendsQueryGeneratorAgent"
+    assert g.output_key == "generated_sql"
 
 
 def test_instruction_describes_web_verification() -> None:
@@ -37,7 +54,6 @@ def test_instruction_describes_web_verification() -> None:
     assert "CONFIRMED" in instruction
     assert "CONTRADICTED" in instruction
     assert "UNVERIFIED" in instruction
-    # Verification is appended after the result is written.
     assert instruction.index("write_trends_result") < instruction.index(
         "set_trends_verification"
     )
@@ -52,6 +68,9 @@ async def test_throttle_web_search_ignores_non_brave_tools() -> None:
 
 def test_instruction_persists_state_before_rendering() -> None:
     instruction = agent._INSTRUCTION
+    assert instruction.index("TrendsQueryGeneratorAgent") < instruction.index(
+        "validate_trends_sql"
+    )
     assert instruction.index("validate_trends_sql") < instruction.index(
         "begin_trends_query"
     )
