@@ -57,6 +57,7 @@ class OralBoardsState(BaseModel):
 
     case: str = ""
     case_sources: list[CaseSource] = []
+    case_passages: str = ""
     transcript: list[OralBoardsExchange] = []
     score_card: str = ""
     score_summary: list[SkillsetScore] = []
@@ -133,6 +134,29 @@ def _clean_query(query: str) -> str:
     return re.sub(r"\s+", " ", cleaned)
 
 
+def _extract_passage(body: str, query: str, max_chars: int = 2000) -> str:
+    """Return the most relevant section of a document body for the given query.
+
+    Finds the first occurrence of the longest query word (>4 chars) in the
+    body and returns up to max_chars of text centered on that position.
+    Falls back to the document start if no word matches.
+    """
+    body_lower = body.lower()
+    words = sorted(
+        (w.lower() for w in query.split() if len(w) > 4),
+        key=len,
+        reverse=True,
+    )
+    best_pos = next(
+        (body_lower.find(w) for w in words if body_lower.find(w) != -1),
+        -1,
+    )
+    if best_pos == -1:
+        return body[:max_chars]
+    start = max(0, best_pos - max_chars // 2)
+    return body[start : start + max_chars]
+
+
 # ---------------------------------------------------------------------------
 # Domain / search tools
 # ---------------------------------------------------------------------------
@@ -174,19 +198,22 @@ async def search_docs(
           documents_fts.filepath as filepath,
           d.title as title,
           d.collection as collection,
-          snippet(documents_fts, 2, '[', ']', '...', 24) as snippet
+          snippet(documents_fts, 2, '[', ']', '...', 24) as snippet,
+          c.doc as body
         from documents_fts
         join documents d on d.collection || '/' || d.path = documents_fts.filepath
+        join content c on c.hash = d.hash
         where documents_fts match ?
           and d.active = 1
           {collection_clause}
         order by bm25(documents_fts)
-        limit 10
+        limit 5
     """  # noqa: S608 — collection_clause is a literal "and d.collection = ?" or ""; user input goes through params
 
     def _query() -> list:
         with connect() as conn:
-            return conn.execute(sql, params).fetchall()
+            rows = conn.execute(sql, params).fetchall()
+            return [dict(row) for row in rows]
 
     try:
         rows = await asyncio.to_thread(_query)
@@ -200,6 +227,7 @@ async def search_docs(
             "title": row["title"],
             "snippet": row["snippet"],
             "collection": row["collection"],
+            "passage": _extract_passage(row["body"], clean),
         }
         for row in rows
     ]
@@ -277,10 +305,23 @@ def set_case(
             ),
         ),
     ] = (),
+    case_passages: Annotated[
+        list[str],
+        Field(
+            description=(
+                "Relevant text passages from search_docs results (the 'passage' field "
+                "of each result). Stored in state so the evaluator can ground feedback "
+                "without re-searching."
+            ),
+        ),
+    ] = (),
 ) -> dict:
-    """Write the grounded case vignette and source provenance to shared state."""
+    """Write the grounded case vignette, source provenance, and passages to shared state."""
     tool_context.state["case"] = case
     tool_context.state["case_sources"] = case_sources or []
+    tool_context.state["case_passages"] = (
+        "\n\n---\n\n".join(case_passages) if case_passages else ""
+    )
     tool_context.state["status"] = "presenting"
     return {"status": "success", "ok": True, "length": len(case)}
 
