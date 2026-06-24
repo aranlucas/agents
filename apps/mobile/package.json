@@ -31,7 +31,7 @@
     "@agents/types": "workspace:*",
     "@ai-sdk/react": "^3.0.211",
     "@clerk/clerk-expo": "^2.19.31",
-    "@copilotkit/react-native": "^1.61.0",
+    "@copilotkit/react-native": "^1.61.1",
     "@expo/metro-runtime": "~56.0.15",
     "@expo/ui": "~56.0.18",
     "@legendapp/list": "^3.1.2",
@@ -91,7 +91,7 @@
     "@types/react-syntax-highlighter": "^15.5.13",
     "@types/react-test-renderer": "^19.1.0",
     "react-test-renderer": "^19.2.7",
-    "typescript": "7.0.1-rc",
+    "typescript": "6.0.3",
     "vitest": "^4.1.9"
   }
 }
