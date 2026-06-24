@@ -83,6 +83,22 @@ def test_instruction_persists_state_before_rendering() -> None:
     assert "Never invent values" in instruction
 
 
+def test_a2ui_guidelines_use_correct_prop_names() -> None:
+    g = agent._TRENDS_A2UI_GUIDELINES
+    # TrendBarChart must use the schema's exact prop names
+    assert "categoryKey" in g
+    assert "valueKey" in g
+    # rows must be passed directly on the component, not via a separate data model
+    assert "rows" in g
+    assert "data model" in g
+    # TrendTable must cap at 10 rows
+    assert "10" in g
+    assert "maxRows" in g
+    # wrong names from the incident must not appear
+    assert "value_column" not in g
+    assert "label_column" not in g
+
+
 def test_trends_catalog_id_is_stable() -> None:
     assert agent.TRENDS_CATALOG_ID == (
         "copilotkit://trends/v1"
