@@ -17,7 +17,7 @@ from ag_ui_adk import AGUIToolset
 from agents_shared.state import make_state_initializer, make_state_instruction
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
-    build_a2ui_model,
+    build_fast_model,
     build_model,
     on_model_error_callback,
     strip_thinking_before_model,
@@ -171,7 +171,7 @@ def _build_case_builder() -> LlmAgent:
 
 def _build_questioner() -> LlmAgent:
     return LlmAgent(
-        **{**_AGENT_DEFAULTS, "model": build_a2ui_model()},
+        **{**_AGENT_DEFAULTS, "model": build_fast_model()},
         name="questioner",
         include_contents="none",
         static_instruction=(
@@ -245,7 +245,7 @@ def _build_evaluator() -> LlmAgent:
 
 def _build_scorer() -> LlmAgent:
     return LlmAgent(
-        **{**_AGENT_DEFAULTS, "model": build_a2ui_model()},
+        **{**_AGENT_DEFAULTS, "model": build_fast_model()},
         name="scorer",
         static_instruction=(
             "You are an ABPD OCE practice examiner generating the final score card.\n\n"
