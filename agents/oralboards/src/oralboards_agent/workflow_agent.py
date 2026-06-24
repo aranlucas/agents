@@ -19,6 +19,7 @@ from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
     build_model,
     on_model_error_callback,
+    strip_thinking_before_model,
 )
 from google.adk import Workflow
 from google.adk.agents import LlmAgent
@@ -45,6 +46,7 @@ _AGENT_DEFAULTS = {
     "state_schema": OralBoardsState,
     "instruction": _STATE_INSTRUCTION,
     "before_agent_callback": make_state_initializer(OralBoardsState),
+    "before_model_callback": strip_thinking_before_model,
     "on_model_error_callback": on_model_error_callback,
     "retry_config": DEFAULT_RETRY_CONFIG,
 }
