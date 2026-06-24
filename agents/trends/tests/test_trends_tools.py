@@ -112,14 +112,20 @@ def test_begin_and_write_trends_result_update_state_in_order() -> None:
 
 def test_write_trends_result_distinguishes_empty_and_error() -> None:
     empty = SimpleNamespace(state={})
-    assert tools.write_trends_result(
-        empty, "q", "SELECT 1", ["term"], [], "No matches."
-    )["status"] == "empty"
+    assert (
+        tools.write_trends_result(empty, "q", "SELECT 1", ["term"], [], "No matches.")[
+            "status"
+        ]
+        == "empty"
+    )
 
     failed = SimpleNamespace(state={})
-    assert tools.write_trends_result(
-        failed, "q", "SELECT 1", [], [], "", error="BigQuery query failed."
-    )["status"] == "error"
+    assert (
+        tools.write_trends_result(
+            failed, "q", "SELECT 1", [], [], "", error="BigQuery query failed."
+        )["status"]
+        == "error"
+    )
     assert failed.state["error"] == "BigQuery query failed."
 
 
