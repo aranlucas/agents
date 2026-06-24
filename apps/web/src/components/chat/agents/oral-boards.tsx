@@ -127,6 +127,19 @@ function SetCaseToolCall({ status }: { status: ToolStatus }) {
   );
 }
 
+// Renderer for ADK's built-in `adk_request_input` long-running tool, used by
+// the workflow agent (oral-boards-v2) to pause execution and wait for the
+// candidate's response. Syncs the message into the exam panel question context.
+function AskRequestInputToolCall({ status, message }: { status: ToolStatus; message?: string }) {
+  const { setCurrentQuestion } = useOralBoardsQuestion();
+
+  useEffect(() => {
+    if (message) setCurrentQuestion(message);
+  }, [message, setCurrentQuestion]);
+
+  return <SpeakQuestionToolCall status={status} parameters={{ question: message }} />;
+}
+
 /**
  * Oral-boards console wiring. Registers the `ask_question` frontend tool that
  * voices examiner prompts and captures the live question for the bespoke pane,
@@ -216,6 +229,23 @@ export function OralBoardsExtension({ agentId }: { agentId: AgentId }) {
       agentId,
       parameters: z.object({ case: z.string(), case_sources: z.array(z.unknown()).optional() }),
       render: ({ status }) => <SetCaseToolCall status={status} />,
+    },
+    [agentId],
+  );
+
+  // adk_request_input is ADK's built-in long-running tool used by oral-boards-v2
+  // to pause the workflow and wait for the candidate's response.
+  useRenderTool(
+    {
+      name: "adk_request_input",
+      agentId,
+      parameters: z.object({
+        message: z.string(),
+        response_schema: z.record(z.string(), z.unknown()).optional(),
+      }),
+      render: ({ status, parameters }) => (
+        <AskRequestInputToolCall status={status} message={parameters?.message} />
+      ),
     },
     [agentId],
   );
