@@ -137,7 +137,7 @@ def questioning_router(ctx: ToolContext) -> str:
 
 def _build_case_builder() -> LlmAgent:
     return LlmAgent(
-        **_AGENT_DEFAULTS,
+        **{**_AGENT_DEFAULTS, "model": build_fast_model()},
         name="case_builder",
         static_instruction=(
             "You are an ABPD Oral Clinical Exam (OCE) practice examiner.\n"
@@ -204,7 +204,7 @@ def _build_questioner() -> LlmAgent:
 
 def _build_evaluator() -> LlmAgent:
     return LlmAgent(
-        **_AGENT_DEFAULTS,
+        **{**_AGENT_DEFAULTS, "model": build_fast_model()},
         name="evaluator",
         static_instruction=(
             "You are an ABPD OCE practice examiner evaluating a candidate's answer.\n\n"

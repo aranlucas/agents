@@ -63,11 +63,13 @@ def build_a2ui_model() -> LiteLlm:
 
 
 def build_fast_model() -> LiteLlm:
-    """LiteLlm for low-latency single-tool-call agents.
+    """LiteLlm for agents that need Gemini as primary.
 
-    Use when an agent only needs to make one structured decision and call a
-    tool — no multi-step reasoning required. Gemini Flash gives sub-second
-    TTFT without generating reasoning tokens.
+    Use when an agent either (a) only needs to make one structured decision and
+    call a tool (low latency, no reasoning tokens), or (b) accumulates large
+    context from tool results (e.g. read_doc) that exceeds Cerebras/Groq's
+    context window. Gemini Flash handles both cases: 1M-token context and fast
+    TTFT. Mistral and Cerebras are fallbacks only.
     """
     return LiteLlm(model=_FAST_PRIMARY, fallbacks=list(_FAST_FALLBACKS))
 
