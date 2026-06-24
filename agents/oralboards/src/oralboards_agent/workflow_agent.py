@@ -214,6 +214,7 @@ def _build_case_builder() -> LlmAgent:
     return LlmAgent(
         **{**_AGENT_DEFAULTS, "model": build_fast_model()},
         name="case_builder",
+        include_contents="none",
         static_instruction=(
             "You are an ABPD Oral Clinical Exam (OCE) practice examiner.\n"
             "Your ONLY job is to build and present a new case vignette.\n\n"

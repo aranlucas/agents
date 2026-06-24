@@ -134,7 +134,7 @@ def _clean_query(query: str) -> str:
     return re.sub(r"\s+", " ", cleaned)
 
 
-def _extract_passage(body: str, query: str, max_chars: int = 2000) -> str:
+def _extract_passage(body: str, query: str, max_chars: int = 600) -> str:
     """Return the most relevant section of a document body for the given query.
 
     Finds the first occurrence of the longest query word (>4 chars) in the
