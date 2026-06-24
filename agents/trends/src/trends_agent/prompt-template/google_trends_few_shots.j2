@@ -141,21 +141,40 @@ To guide your response, you will be provided with a set of few-shot examples in 
     ORDER BY
       term, week;
 
-### Example 8: Rising terms in the USA
-*   **User Question:** "Show me rising terms in the USA with a percent gain over 5000."
+### Example 8: Rising terms in the USA (current week, deduplicated)
+*   **User Question:** "Show me the top rising search terms in the United States right now."
+*   **Critical structure notes for `top_rising_terms`:**
+    - Each term appears in ALL 210 US DMAs (Designated Market Areas) with identical
+      rank/percent_gain. Without `GROUP BY`, you get 210× duplicate rows per term.
+    - The table stores 5+ years of weekly history. Without a `week` filter you get
+      262 weeks × 210 DMAs = ~55 000 rows per term. Always filter to the latest week.
+    - `score` is always NULL in this table; use `rank` and `percent_gain` instead.
 *   **Correct SQL:**
 
     SELECT
       term,
-      percent_gain,
-      week
+      rank,
+      percent_gain
     FROM
       `bigquery-public-data.google_trends.top_rising_terms`
     WHERE
-      refresh_date = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
-      AND percent_gain > 5000
+      refresh_date = (
+        SELECT MAX(refresh_date)
+        FROM `bigquery-public-data.google_trends.top_rising_terms`
+      )
+      AND week = (
+        SELECT MAX(week)
+        FROM `bigquery-public-data.google_trends.top_rising_terms`
+        WHERE refresh_date = (
+          SELECT MAX(refresh_date)
+          FROM `bigquery-public-data.google_trends.top_rising_terms`
+        )
+      )
+    GROUP BY
+      term, rank, percent_gain
     ORDER BY
-      percent_gain DESC
+      rank
+    LIMIT 25;
 
 
 ### Example 9: Concept/theme-based query (AI-related terms)
@@ -186,3 +205,81 @@ To guide your response, you will be provided with a set of few-shot examples in 
     word-boundary `\b` and explicit brand tokens is precise and recall-complete.
     For niche themes (e.g., "crypto terms"), prefer an explicit `IN (...)` list of
     the most common known terms over a vague regex.
+
+
+### Example 10: What's brand-new in this week's rising terms (not in prior week)
+*   **User Question:** "Which rising search terms are new this week — ones that weren't
+    in the top rising list last week?"
+*   **Correct SQL:**
+
+    WITH
+      max_ref AS (
+        SELECT MAX(refresh_date) AS refresh_date
+        FROM `bigquery-public-data.google_trends.top_rising_terms`
+      ),
+      max_week AS (
+        SELECT MAX(week) AS week
+        FROM `bigquery-public-data.google_trends.top_rising_terms`
+        WHERE refresh_date = (SELECT refresh_date FROM max_ref)
+      ),
+      this_week AS (
+        SELECT DISTINCT term
+        FROM `bigquery-public-data.google_trends.top_rising_terms`
+        WHERE refresh_date = (SELECT refresh_date FROM max_ref)
+          AND week = (SELECT week FROM max_week)
+      ),
+      last_week AS (
+        SELECT DISTINCT term
+        FROM `bigquery-public-data.google_trends.top_rising_terms`
+        WHERE refresh_date = (SELECT refresh_date FROM max_ref)
+          AND week = DATE_SUB((SELECT week FROM max_week), INTERVAL 1 WEEK)
+      )
+    SELECT
+      t.term,
+      t.rank,
+      t.percent_gain
+    FROM
+      `bigquery-public-data.google_trends.top_rising_terms` AS t
+      JOIN this_week USING (term)
+      LEFT JOIN last_week USING (term)
+    WHERE
+      t.refresh_date = (SELECT refresh_date FROM max_ref)
+      AND t.week = (SELECT week FROM max_week)
+      AND last_week.term IS NULL
+    GROUP BY
+      t.term, t.rank, t.percent_gain
+    ORDER BY
+      t.rank
+    LIMIT 25;
+
+
+### Example 11: Terms that have stayed in the rising chart for many consecutive weeks
+*   **User Question:** "Which search terms have been consistently rising for the longest
+    time — staying in the top 25 for the most weeks?"
+*   **Correct SQL:**
+
+    SELECT
+      term,
+      COUNT(DISTINCT week) AS weeks_in_chart,
+      MIN(week)            AS first_appeared,
+      MAX(week)            AS last_appeared,
+      MIN(rank)            AS best_rank,
+      MAX(percent_gain)    AS peak_gain
+    FROM
+      `bigquery-public-data.google_trends.top_rising_terms`
+    WHERE
+      refresh_date = (
+        SELECT MAX(refresh_date)
+        FROM `bigquery-public-data.google_trends.top_rising_terms`
+      )
+    GROUP BY
+      term
+    ORDER BY
+      weeks_in_chart DESC,
+      best_rank ASC
+    LIMIT 25;
+
+*   **Note:** Because every term appears in 210 identical DMA rows per week,
+    `COUNT(DISTINCT week)` correctly counts calendar weeks (not DMA×week
+    combinations). This pattern surfaces long-running viral or evergreen search
+    surges rather than one-off news spikes.
