@@ -14,7 +14,6 @@ from agents_shared.state import make_state_initializer
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
     build_model,
-    make_mark_ready,
     on_model_error_callback,
 )
 from google.adk.agents import LlmAgent
@@ -129,11 +128,11 @@ def write_report(
     return {"ok": True, "length": len(report)}
 
 
-mark_research_ready = make_mark_ready(
-    "mark_research_ready",
-    "ready",
-    doc="Mark the research report as ready and capture the review summary.",
-)
+def mark_research_ready(tool_context: ToolContext, summary: str) -> dict[str, bool]:
+    """Mark the research report as ready and capture the review summary."""
+    tool_context.state["status"] = "ready"
+    tool_context.state["review_summary"] = summary
+    return {"ok": True}
 
 _CANVAS_CONTRACT = canvas_contract(
     artifact="research report",

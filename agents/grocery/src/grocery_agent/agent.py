@@ -13,7 +13,6 @@ from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
     build_model,
     get_current_date,
-    make_mark_ready,
     on_model_error_callback,
 )
 from google.adk.agents import LlmAgent
@@ -109,11 +108,11 @@ def set_weekly_deals(tool_context: ToolContext, deals: str) -> dict:
     return {"ok": True}
 
 
-mark_list_ready = make_mark_ready(
-    "mark_list_ready",
-    "ready",
-    doc="Mark the shopping list as ready to shop.",
-)
+def mark_list_ready(tool_context: ToolContext, summary: str) -> dict[str, bool]:
+    """Mark the shopping list as ready to shop."""
+    tool_context.state["status"] = "ready"
+    tool_context.state["review_summary"] = summary
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------------------

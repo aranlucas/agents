@@ -7,7 +7,6 @@ from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
     build_model,
     get_current_date,
-    make_mark_ready,
     on_model_error_callback,
 )
 from fitness_agent.agent import StravaActivity
@@ -53,11 +52,11 @@ def set_weekly_wellness_plan(tool_context: ToolContext, plan: str) -> dict:
     return {"ok": True, "length": len(plan)}
 
 
-mark_plan_ready = make_mark_ready(
-    "mark_plan_ready",
-    "ready",
-    doc="Mark the combined weekly wellness plan as ready.",
-)
+def mark_plan_ready(tool_context: ToolContext, summary: str) -> dict[str, bool]:
+    """Mark the combined weekly wellness plan as ready."""
+    tool_context.state["status"] = "ready"
+    tool_context.state["review_summary"] = summary
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------------------
