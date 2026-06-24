@@ -41,10 +41,23 @@ _A2UI_FALLBACKS = [
 # e.g. the oral-boards questioner (pick next question → call ask_question).
 # Gemini Flash is primary: low latency, no reasoning tokens. Mistral is the
 # first fallback; Cerebras last (generates reasoning tokens we'd have to strip).
+# WARNING: Gemini is deferred-HTTP — 429s arrive mid-stream and can't be caught
+# by the fallback chain. Only use this for agents making 1 model call per turn.
 _FAST_PRIMARY = "gemini/gemini-2.5-flash"
 _FAST_FALLBACKS = [
     "mistral/mistral-medium-latest",
     _DEFAULT_MODEL,
+]
+
+# Large-context model for agents that read full document text into session
+# history (e.g. case_builder, evaluator). Mistral Medium has 128k context and
+# is eager-HTTP so 429/503 errors surface before streaming starts, keeping the
+# fallback chain intact. NVIDIA NIM DeepSeek and Gemini 3.5 Flash are fallbacks.
+_LARGE_CONTEXT_PRIMARY = "mistral/mistral-medium-latest"
+_LARGE_CONTEXT_FALLBACKS = [
+    "nvidia_nim/deepseek-ai/deepseek-v4-flash",
+    "openrouter/openrouter/free",
+    "gemini/gemini-3.5-flash",
 ]
 
 
@@ -63,15 +76,28 @@ def build_a2ui_model() -> LiteLlm:
 
 
 def build_fast_model() -> LiteLlm:
-    """LiteLlm for agents that need Gemini as primary.
+    """LiteLlm for low-latency single-tool-call agents (≤1 model call per turn).
 
-    Use when an agent either (a) only needs to make one structured decision and
-    call a tool (low latency, no reasoning tokens), or (b) accumulates large
-    context from tool results (e.g. read_doc) that exceeds Cerebras/Groq's
-    context window. Gemini Flash handles both cases: 1M-token context and fast
-    TTFT. Mistral and Cerebras are fallbacks only.
+    Gemini Flash is primary: fast TTFT, no reasoning tokens. Only safe for
+    agents that make exactly one model call per invocation — Gemini is
+    deferred-HTTP so rate-limit 429s arrive mid-stream and bypass the fallback
+    chain. Use build_large_context_model() when an agent makes multiple calls
+    or accumulates large doc content in history.
     """
     return LiteLlm(model=_FAST_PRIMARY, fallbacks=list(_FAST_FALLBACKS))
+
+
+def build_large_context_model() -> LiteLlm:
+    """LiteLlm for agents that make multiple model calls or read large documents.
+
+    Mistral Medium is primary: 128k context window, eager-HTTP (errors surface
+    before streaming so the fallback chain works). Use for case_builder and
+    evaluator which call search_docs + read_doc in the same turn, easily
+    exceeding Cerebras/Groq's context limit and Gemini's free-tier 5 RPM cap.
+    """
+    return LiteLlm(
+        model=_LARGE_CONTEXT_PRIMARY, fallbacks=list(_LARGE_CONTEXT_FALLBACKS)
+    )
 
 
 # ADK-level retry layered on top of LiteLLM's fallback chain. Each attempt gives
