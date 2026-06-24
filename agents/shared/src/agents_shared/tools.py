@@ -37,6 +37,16 @@ _A2UI_FALLBACKS = [
     _DEFAULT_MODEL,
 ]
 
+# Fast model for single-tool-call agents that don't need deep reasoning —
+# e.g. the oral-boards questioner (pick next question → call ask_question).
+# Gemini Flash is primary: low latency, no reasoning tokens. Mistral is the
+# first fallback; Cerebras last (generates reasoning tokens we'd have to strip).
+_FAST_PRIMARY = "gemini/gemini-2.5-flash"
+_FAST_FALLBACKS = [
+    "mistral/mistral-medium-latest",
+    _DEFAULT_MODEL,
+]
+
 
 def build_model() -> LiteLlm:
     """LiteLlm configured with the shared primary model + fallback chain."""
@@ -50,6 +60,16 @@ def build_a2ui_model() -> LiteLlm:
     session history without 400 errors. Mistral and Cerebras are fallbacks only.
     """
     return LiteLlm(model=_A2UI_PRIMARY, fallbacks=list(_A2UI_FALLBACKS))
+
+
+def build_fast_model() -> LiteLlm:
+    """LiteLlm for low-latency single-tool-call agents.
+
+    Use when an agent only needs to make one structured decision and call a
+    tool — no multi-step reasoning required. Gemini Flash gives sub-second
+    TTFT without generating reasoning tokens.
+    """
+    return LiteLlm(model=_FAST_PRIMARY, fallbacks=list(_FAST_FALLBACKS))
 
 
 # ADK-level retry layered on top of LiteLLM's fallback chain. Each attempt gives
