@@ -134,6 +134,7 @@ def mark_research_ready(tool_context: ToolContext, summary: str) -> dict[str, bo
     tool_context.state["review_summary"] = summary
     return {"ok": True}
 
+
 _CANVAS_CONTRACT = canvas_contract(
     artifact="research report",
     tools=(
