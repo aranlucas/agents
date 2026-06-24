@@ -28,7 +28,7 @@ from google.adk import Workflow
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool, ToolContext
 from google.adk.workflow import START, FunctionNode
-from pydantic import ConfigDict
+from pydantic import ConfigDict, Field
 
 from .agent import (
     OralBoardsState,
@@ -60,6 +60,11 @@ class _WorkflowWithSubAgents(Workflow):
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    # ADK's BaseAgent.root_agent walks parent_agent upward until None.
+    # Workflow (BaseNode) has no parent_agent, so we declare it here so the
+    # traversal terminates at the Workflow root instead of raising AttributeError.
+    parent_agent: Any = Field(default=None, exclude=True)
 
     def model_post_init(self, __context: Any) -> None:
         super().model_post_init(__context)
