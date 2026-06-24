@@ -2,21 +2,60 @@ Few-Shot Examples
 
 To guide your response, you will be provided with a set of few-shot examples in a separate file. Study these examples to understand the expected format and logic for translating questions into BigQuery SQL queries. The examples will illustrate how to handle various types of user questions, including those that require filtering by date, country, and specific metrics.
 
-### Example 1: Top terms in the USA
+### CRITICAL: Always use MAX(refresh_date) — never DATE_SUB(CURRENT_DATE(), INTERVAL N DAY)
+
+BigQuery's `CURRENT_DATE()` runs in UTC. The Google Trends dataset is refreshed
+once per day and may lag by 1–3 days. Using `DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)`
+will return zero rows whenever the UTC clock is ahead of the latest available date.
+
+**Always write:**
+```
+refresh_date = (SELECT MAX(refresh_date) FROM `<table>`)
+```
+Never write `DATE_SUB(CURRENT_DATE(), ...)`.
+
+### CRITICAL: top_terms and top_rising_terms have a DMA dimension
+
+`top_terms` and `top_rising_terms` are US-only tables with a `dma_name` / `dma_id`
+column (Designated Market Area). Every term appears in all ~210 DMAs with
+identical rank/score. Without deduplication you get 210× duplicate rows.
+
+**Always add `GROUP BY term, rank, score` (or `GROUP BY term, rank, percent_gain`)
+and filter `week` to `MAX(week)` for these tables.**
+
+The international tables (`international_top_terms`, `international_top_rising_terms`)
+use `country_name` / `region_name` instead and do have meaningful geographic
+variation — do NOT blindly aggregate those.
+
+
+### Example 1: Top terms in the USA (current week)
 *   **User Question:** "What are the top 10 search terms in the United States for the most recent week available?"
 *   **Correct SQL:**
 
     SELECT
       term,
-      ARRAY_AGG(STRUCT(rank, week) ORDER BY week DESC LIMIT 1) AS latest_week_data
+      rank,
+      score
     FROM
       `bigquery-public-data.google_trends.top_terms`
     WHERE
-      refresh_date = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+      refresh_date = (
+        SELECT MAX(refresh_date)
+        FROM `bigquery-public-data.google_trends.top_terms`
+      )
+      AND week = (
+        SELECT MAX(week)
+        FROM `bigquery-public-data.google_trends.top_terms`
+        WHERE refresh_date = (
+          SELECT MAX(refresh_date)
+          FROM `bigquery-public-data.google_trends.top_terms`
+        )
+      )
+      AND rank <= 10
     GROUP BY
-      term
+      term, rank, score
     ORDER BY
-      (SELECT rank FROM UNNEST(latest_week_data))
+      rank
     LIMIT 10;
 
 
@@ -34,9 +73,15 @@ To guide your response, you will be provided with a set of few-shot examples in 
       week = (
         SELECT DATE_SUB(MAX(week), INTERVAL 52 WEEK)
         FROM `bigquery-public-data.google_trends.international_top_rising_terms`
-        WHERE refresh_date = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+        WHERE refresh_date = (
+          SELECT MAX(refresh_date)
+          FROM `bigquery-public-data.google_trends.international_top_rising_terms`
+        )
       )
-      AND refresh_date = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+      AND refresh_date = (
+        SELECT MAX(refresh_date)
+        FROM `bigquery-public-data.google_trends.international_top_rising_terms`
+      )
       AND country_name = 'Canada'
     GROUP BY
       term, week
@@ -54,7 +99,10 @@ To guide your response, you will be provided with a set of few-shot examples in 
     FROM
       `bigquery-public-data.google_trends.international_top_terms`
     WHERE
-      refresh_date = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+      refresh_date = (
+        SELECT MAX(refresh_date)
+        FROM `bigquery-public-data.google_trends.international_top_terms`
+      )
       AND country_name = 'Germany'
       AND rank = 1
     ORDER BY
@@ -72,7 +120,10 @@ To guide your response, you will be provided with a set of few-shot examples in 
     FROM
       `bigquery-public-data.google_trends.international_top_rising_terms`
     WHERE
-      refresh_date = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+      refresh_date = (
+        SELECT MAX(refresh_date)
+        FROM `bigquery-public-data.google_trends.international_top_rising_terms`
+      )
       AND country_name = 'Australia'
       AND percent_gain > 1000
     ORDER BY
@@ -89,7 +140,10 @@ To guide your response, you will be provided with a set of few-shot examples in 
     FROM
       `bigquery-public-data.google_trends.international_top_rising_terms`
     WHERE
-      refresh_date = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+      refresh_date = (
+        SELECT MAX(refresh_date)
+        FROM `bigquery-public-data.google_trends.international_top_rising_terms`
+      )
       AND country_name = 'France'
       AND region_name = 'Ile-de-France'
     ORDER BY
@@ -100,14 +154,17 @@ To guide your response, you will be provided with a set of few-shot examples in 
 ### Example 6: Time-based query with a date range
 *   **User Question:** "Generate a template to find all rising terms in Brazil that appeared in the first quarter of 2023."
 
-    SELECT
-      DISTINCT term,
+    SELECT DISTINCT
+      term,
       week,
       rank
     FROM
       `bigquery-public-data.google_trends.international_top_rising_terms`
     WHERE
-      refresh_date = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+      refresh_date = (
+        SELECT MAX(refresh_date)
+        FROM `bigquery-public-data.google_trends.international_top_rising_terms`
+      )
       AND country_name = 'Brazil'
       AND week BETWEEN '2023-01-01' AND '2023-03-31'
     ORDER BY
@@ -126,20 +183,25 @@ To guide your response, you will be provided with a set of few-shot examples in 
     FROM
       `bigquery-public-data.google_trends.international_top_rising_terms`
     WHERE
-      refresh_date = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+      refresh_date = (
+        SELECT MAX(refresh_date)
+        FROM `bigquery-public-data.google_trends.international_top_rising_terms`
+      )
       AND country_name = 'Japan'
       AND term IN (
-        SELECT
-          term
-        FROM
-          `bigquery-public-data.google_trends.international_top_terms`
+        SELECT term
+        FROM `bigquery-public-data.google_trends.international_top_terms`
         WHERE
-          refresh_date = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+          refresh_date = (
+            SELECT MAX(refresh_date)
+            FROM `bigquery-public-data.google_trends.international_top_terms`
+          )
           AND country_name = 'Japan'
           AND rank <= 5
       )
     ORDER BY
       term, week;
+
 
 ### Example 8: Rising terms in the USA (current week, deduplicated)
 *   **User Question:** "Show me the top rising search terms in the United States right now."
@@ -187,17 +249,31 @@ To guide your response, you will be provided with a set of few-shot examples in 
     SELECT
       term,
       rank,
+      score,
       week
     FROM
       `bigquery-public-data.google_trends.top_terms`
     WHERE
-      refresh_date = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+      refresh_date = (
+        SELECT MAX(refresh_date)
+        FROM `bigquery-public-data.google_trends.top_terms`
+      )
+      AND week = (
+        SELECT MAX(week)
+        FROM `bigquery-public-data.google_trends.top_terms`
+        WHERE refresh_date = (
+          SELECT MAX(refresh_date)
+          FROM `bigquery-public-data.google_trends.top_terms`
+        )
+      )
       AND REGEXP_CONTAINS(
             LOWER(term),
             r'\bai\b|chatgpt|gemini|claude|llm|openai|copilot|generative|midjourney|sora|grok|deepseek'
           )
+    GROUP BY
+      term, rank, score, week
     ORDER BY
-      week DESC, rank
+      rank
     LIMIT 25;
 
 *   **Why:** Substring `LIKE '%ai%'` returns rows for "trail running", "rain jacket",
