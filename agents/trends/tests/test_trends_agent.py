@@ -83,20 +83,33 @@ def test_instruction_persists_state_before_rendering() -> None:
     assert "Never invent values" in instruction
 
 
-def test_a2ui_guidelines_use_correct_prop_names() -> None:
-    g = agent._TRENDS_A2UI_GUIDELINES
+def test_a2ui_composition_guide_uses_correct_prop_names() -> None:
+    g = agent._TRENDS_A2UI_COMPOSITION_GUIDE
     # TrendBarChart must use the schema's exact prop names
     assert "categoryKey" in g
     assert "valueKey" in g
     # rows must be passed directly on the component, not via a separate data model
     assert "rows" in g
-    assert "data model" in g
+    assert "data" in g  # "data field" warning must be present
     # TrendTable must cap at 10 rows
     assert "10" in g
     assert "maxRows" in g
     # wrong names from the incident must not appear
     assert "value_column" not in g
     assert "label_column" not in g
+
+
+def test_a2ui_tool_uses_composition_guide_not_generation_guidelines() -> None:
+    # generation_guidelines REPLACES the default A2UI protocol instructions;
+    # composition_guide APPENDS after them. Trends must use the latter so the
+    # subagent still receives the render_a2ui contract and component-ID rules.
+    a = agent.build_agent()
+    a2ui_tools = [t for t in a.tools if getattr(t, "name", None) == "generate_a2ui"]
+    assert len(a2ui_tools) == 1
+    cfg = a2ui_tools[0]._cfg
+    guidelines = cfg.get("guidelines") or {}
+    assert "composition_guide" in guidelines
+    assert "generation_guidelines" not in guidelines
 
 
 def test_trends_catalog_id_is_stable() -> None:

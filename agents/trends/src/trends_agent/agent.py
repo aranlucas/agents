@@ -29,32 +29,35 @@ log = logging.getLogger("trends_agent")
 
 TRENDS_CATALOG_ID = "copilotkit://trends/v1"
 
-_TRENDS_A2UI_GUIDELINES = """\
-Render a compact Google Trends analysis using the supplied catalog.
+_TRENDS_A2UI_COMPOSITION_GUIDE = """\
+## Trends Catalog — Component Reference
 
-Component props (pass these fields directly on the component — never use a \
-separate data model):
-- TrendMetric: { label, value, detail? }
-- TrendBarChart: { title, categoryKey, valueKey, rows, maxItems?, valueFormat? }
-  categoryKey = column name for labels (e.g. "term")
-  valueKey    = numeric column name (e.g. "percent_gain", "rank", "score")
-  rows        = top 10 result rows (array of objects from the query)
-  Use percent_gain, score, rank, or any numeric column as valueKey.
-  Never leave the chart empty if rows contain any numeric column.
-- TrendLineChart: { title, xKey, yKey, rows, valueFormat? }
-  Only include when rows have a date/week column alongside a numeric value.
-- TrendTable: { columns, rows, maxRows? }
-  columns = [{ key, label, format }] derived from result column names
-  rows    = top 10 result rows
-  maxRows = 10
-- SqlDisclosure: { title, sql }
+Use ONLY the Trends catalog components below. Every value must come from \
+executed query rows, generated SQL, or saved insights.
 
-Rules:
-- Never invent values. Every displayed value must come from executed rows,
-  generated SQL, or saved insights.
-- Do not render empty axes — omit a chart component if it has no valid data.
-- Use one stable surface id per result; update that surface only for
-  presentation-only follow-ups.
+TrendBarChart  { title, categoryKey, valueKey, rows, maxItems?, valueFormat? }
+  categoryKey  column name for labels         e.g. "term"
+  valueKey     numeric column name            e.g. "percent_gain", "rank", "score"
+  rows         top 10 rows as an inline array — object array, not a path binding
+  Omit if no numeric column exists in the result.
+
+TrendLineChart  { title, xKey, yKey, rows, valueFormat? }
+  Include only when rows contain a date or week column alongside a numeric value.
+
+TrendMetric  { label, value, detail? }
+  One card per KPI (peak term, total rows, date range).
+
+TrendTable  { columns, rows, maxRows }
+  columns  [{ key, label, format }]  one entry per result column
+  rows     top 10 rows as an inline array
+  maxRows  10
+
+SqlDisclosure  { title, sql }
+  Always include. title = "Generated SQL", sql = the exact executed query.
+
+CRITICAL: pass rows as an inline array directly on the component. \
+Do NOT put rows only in the data field — the catalog components read from \
+their own props, not path bindings.
 """
 
 _INSTRUCTION = """\
@@ -144,7 +147,7 @@ def build_agent() -> LlmAgent:
             # LiteLlm serialises those as reasoning_content in the OpenAI message
             # body, which Cerebras, Groq, and Mistral reject with 400.
             "model": build_a2ui_model(),
-            "guidelines": {"generation_guidelines": _TRENDS_A2UI_GUIDELINES},
+            "guidelines": {"composition_guide": _TRENDS_A2UI_COMPOSITION_GUIDE},
             "default_surface_id": "trends-result",
             "default_catalog_id": TRENDS_CATALOG_ID,
         }
