@@ -6,13 +6,15 @@ from ag_ui_adk import get_a2ui_tool
 from agents_shared.state import make_state_initializer
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
+    build_a2ui_model,
     build_model,
     on_model_error_callback,
 )
 from google.adk.agents import LlmAgent
+from google.adk.tools.agent_tool import AgentTool
 from pydantic import BaseModel, Field
 
-from .prompt import load_agent_instructions
+from .sub_agents import build_generator
 from .tools import (
     begin_trends_query,
     execute_bigquery_sql,
@@ -37,15 +39,13 @@ empty. Use one stable surface id per result and update that surface only for
 presentation-only follow-ups.
 """
 
-_INSTRUCTION = f"""\
-You are a Google Trends SQL generation, execution, verification, and visualization agent.
-
-{load_agent_instructions()}
+_INSTRUCTION = """\
+You are a Google Trends execution, verification, and visualization agent.
 
 Follow these steps in order:
 1. Read the latest user message as the original analytical question.
-2. Generate a bounded BigQuery SQL query for Google Trends data.
-3. Call validate_trends_sql with the exact generated SQL.
+2. Call TrendsQueryGeneratorAgent with the question to get bounded BigQuery SQL.
+3. Call validate_trends_sql with the exact SQL returned by the generator.
 4. If validation fails, call write_trends_result with the safe validation error.
    Do not call BigQuery or generate_a2ui.
 5. Call begin_trends_query with that question and the validated SQL.
@@ -116,18 +116,25 @@ async def throttle_web_search(tool, args, tool_context) -> None:
 
 def build_agent() -> LlmAgent:
     state_init = make_state_initializer(TrendsState)
-    model = build_model()
+
+    # A2UI tool lives directly on the root agent — no sub-agent traversal
+    # needed for ag_ui_adk's per-run event_queue wiring.
     trends_a2ui_tool = get_a2ui_tool(
         {
-            "model": model,
+            # Restricted fallback chain: excludes DeepSeek and openrouter/free
+            # because both may produce thought=True (reasoning) parts. ADK's
+            # LiteLlm serialises those as reasoning_content in the OpenAI message
+            # body, which Cerebras, Groq, and Mistral reject with 400.
+            "model": build_a2ui_model(),
             "guidelines": {"generation_guidelines": _TRENDS_A2UI_GUIDELINES},
             "default_surface_id": "trends-result",
             "default_catalog_id": TRENDS_CATALOG_ID,
         }
     )
+
     return LlmAgent(
         name="GoogleTrendsAgent",
-        model=model,
+        model=build_model(),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         instruction=_INSTRUCTION,
@@ -135,6 +142,7 @@ def build_agent() -> LlmAgent:
         before_tool_callback=throttle_web_search,
         before_agent_callback=state_init,
         tools=[
+            AgentTool(build_generator()),
             validate_trends_sql,
             begin_trends_query,
             execute_bigquery_sql,
