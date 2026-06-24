@@ -8,17 +8,12 @@ import logging
 import os
 from collections.abc import Awaitable, Callable
 
-import litellm
 from ag_ui.core.types import RunAgentInput
 from ag_ui_adk import ADKAgent, add_adk_fastapi_endpoint
 from ag_ui_adk.config import PredictStateMapping
 from fastapi import APIRouter, FastAPI, Request
 from google.adk.agents import BaseAgent
 from google.adk.sessions import BaseSessionService
-from opentelemetry import trace
-from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.trace import Tracer
 
 from .dependencies import AgentServices
 
@@ -38,36 +33,6 @@ def setup_agent_logging(name: str) -> logging.Logger:
     for logger_name in ("google.adk", "litellm", "ag_ui_adk"):
         logging.getLogger(logger_name).setLevel(level)
     return logging.getLogger(name)
-
-
-def setup_otel(default_service_name: str) -> Tracer:
-    if not os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
-        return trace.get_tracer(default_service_name)
-
-    from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
-        OTLPSpanExporter,
-    )
-    from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import BatchSpanProcessor
-
-    resource = Resource.create(
-        {
-            "service.name": os.getenv("RAILWAY_SERVICE_NAME", default_service_name),
-            "service.version": os.getenv("RAILWAY_GIT_COMMIT_SHA", "dev"),
-            "deployment.environment": os.getenv("RAILWAY_ENVIRONMENT_NAME", "local"),
-            "railway.project.id": os.getenv("RAILWAY_PROJECT_ID", ""),
-            "railway.service.id": os.getenv("RAILWAY_SERVICE_ID", ""),
-        },
-    )
-
-    provider = TracerProvider(resource=resource)
-    provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
-    trace.set_tracer_provider(provider)
-
-    SQLAlchemyInstrumentor().instrument()
-    litellm.callbacks = ["otel"]
-
-    return trace.get_tracer(default_service_name)
 
 
 def streaming_state_mapping(

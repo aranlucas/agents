@@ -4,7 +4,6 @@ import logging
 import os
 import time
 
-from agents_shared.app_factory import setup_otel
 from agents_shared.clerk_auth import ClerkAuthMiddleware, clerk_auth_enabled
 from agents_shared.dependencies import (
     AgentServices,
@@ -18,7 +17,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fitness_agent.main import register as register_fitness
 from grocery_agent.main import register as register_grocery
+from opentelemetry import trace
 from opentelemetry.propagate import extract as otel_extract
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.trace import Tracer
 from oralboards_agent.main import register as register_oralboards
 from oralboards_agent.workflow_main import register as register_oralboards_v2
 from presentation_agent.main import register as register_presentation
@@ -28,6 +30,56 @@ from spreadsheet_agent.main import register as register_spreadsheet
 from travel_agent.main import register as register_travel
 from trends_agent.main import register as register_trends
 from wellness_agent.main import register as register_wellness
+
+
+def setup_otel(default_service_name: str) -> Tracer:
+    if not os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
+        return trace.get_tracer(default_service_name)
+
+    import litellm
+    from opentelemetry import _logs, metrics
+    from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
+    from opentelemetry.exporter.otlp.proto.http.metric_exporter import (
+        OTLPMetricExporter,
+    )
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+    from opentelemetry.sdk._logs import LoggerProvider
+    from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+    from opentelemetry.sdk.metrics import MeterProvider
+    from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+    resource = Resource.create(
+        {
+            "service.name": os.getenv("RAILWAY_SERVICE_NAME", default_service_name),
+            "service.version": os.getenv("RAILWAY_GIT_COMMIT_SHA", "dev"),
+            "deployment.environment": os.getenv("RAILWAY_ENVIRONMENT_NAME", "local"),
+            "railway.project.id": os.getenv("RAILWAY_PROJECT_ID", ""),
+            "railway.service.id": os.getenv("RAILWAY_SERVICE_ID", ""),
+        },
+    )
+
+    tracer_provider = TracerProvider(resource=resource)
+    tracer_provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+    trace.set_tracer_provider(tracer_provider)
+
+    logger_provider = LoggerProvider(resource=resource)
+    logger_provider.add_log_record_processor(BatchLogRecordProcessor(OTLPLogExporter()))
+    _logs.set_logger_provider(logger_provider)
+
+    meter_provider = MeterProvider(
+        resource=resource,
+        metric_readers=[PeriodicExportingMetricReader(OTLPMetricExporter())],
+    )
+    metrics.set_meter_provider(meter_provider)
+
+    SQLAlchemyInstrumentor().instrument()
+    litellm.callbacks = ["otel"]
+
+    return trace.get_tracer(default_service_name)
+
 
 load_dotenv()
 tracer = setup_otel("agents-gateway")
