@@ -57,7 +57,9 @@ async def _send_401(send, detail: str) -> None:
 class ClerkAuthMiddleware:
     """Pure-ASGI middleware guarding every path that contains "/agui"."""
 
-    def __init__(self, app, *, decoder=decode_clerk_jwt, public_prefixes: tuple[str, ...] = ()):
+    def __init__(
+        self, app, *, decoder=decode_clerk_jwt, public_prefixes: tuple[str, ...] = ()
+    ):
         self.app = app
         self.decoder = decoder
         self.public_prefixes = public_prefixes

@@ -54,7 +54,11 @@ async def check_database_connection(engine: AsyncEngine) -> dict[str, str]:
     try:
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
-        result: dict[str, str] = {"status": "ok", "database": "connected", "type": db_type}
+        result: dict[str, str] = {
+            "status": "ok",
+            "database": "connected",
+            "type": db_type,
+        }
     except Exception as e:
         result = {
             "status": "degraded",
