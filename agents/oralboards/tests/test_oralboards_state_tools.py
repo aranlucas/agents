@@ -134,7 +134,10 @@ def test_agent_static_instruction_requires_speaking_questions_before_chat() -> N
 
     assert isinstance(static_instruction, str)
     assert "ask_question" in static_instruction
-    assert "before writing the question in chat" in static_instruction
+    assert "kind='ready'" in static_instruction
+    assert "kind='answer'" in static_instruction
+    assert "waits for the candidate's response" in static_instruction
+    assert "STOP COMPLETELY" not in static_instruction
 
 
 def test_static_instruction_grounded_in_oce_guide() -> None:

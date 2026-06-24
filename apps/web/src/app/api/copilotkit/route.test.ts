@@ -73,7 +73,10 @@ vi.mock("./guard", () => ({
 import { A2UI_RUNTIME_CONFIG, GET, POST, PATCH, DELETE, OPTIONS } from "./route";
 
 it("scopes A2UI to Trends without automatic tool injection", () => {
-  expect(A2UI_RUNTIME_CONFIG).toEqual({ agents: ["trends"] });
+  expect(A2UI_RUNTIME_CONFIG).toEqual({
+    agents: ["trends"],
+    defaultCatalogId: "copilotkit://trends/v1",
+  });
   expect(A2UI_RUNTIME_CONFIG).not.toHaveProperty("injectA2UITool");
 });
 

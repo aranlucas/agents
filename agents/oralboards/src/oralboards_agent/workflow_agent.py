@@ -8,11 +8,12 @@ Flow is enforced via ADK Workflow graph:
 The router checks whether ``complete_examination`` was called by the
 evaluator and either loops back to the questioner or proceeds to the scorer.
 
-- ``request_input`` (long-running tool) pauses the invocation after each
+- The frontend ``ask_question`` HITL tool pauses the invocation after each
   question so the candidate must respond before the next step runs.
 - ``complete_examination`` sets a state flag that the router reads.
 """
 
+from ag_ui_adk import AGUIToolset
 from agents_shared.state import make_state_initializer, make_state_instruction
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
@@ -21,9 +22,8 @@ from agents_shared.tools import (
 )
 from google.adk import Workflow
 from google.adk.agents import LlmAgent
-from google.adk.tools import FunctionTool, ToolContext, request_input
-from google.adk.workflow import FunctionNode
-from google.adk.workflow import START
+from google.adk.tools import FunctionTool, ToolContext
+from google.adk.workflow import START, FunctionNode
 
 from .agent import (
     OralBoardsState,
@@ -150,11 +150,9 @@ def _build_case_builder() -> LlmAgent:
             "   - A concise markdown vignette grounded in what you read.\n"
             "   - Source chips: [{docid, filepath, title, collection}].\n"
             "5. Call set_phase('presenting').\n"
-            "6. Present the case in 2-3 natural sentences as a real examiner would.\n"
-            "   Tell the candidate once that real examiners withhold feedback and the real\n"
-            "   result is Pass/Fail — this tool coaches to help them learn.\n"
-            "7. Call adk_request_input with message='When you are ready to begin the examination, type ready.'\n"
-            "   This pauses the session until the candidate responds.\n"
+            "6. Call ask_question with kind='ready' and question='When you are ready to begin the examination, click Begin Examination.'\n"
+            "   The frontend tool pauses this workflow until the candidate responds.\n"
+            "7. After ask_question returns, call set_phase('questioning').\n"
             "Do NOT ask any clinical questions in this phase."
         ),
         tools=[
@@ -163,7 +161,7 @@ def _build_case_builder() -> LlmAgent:
             FunctionTool(set_case),
             FunctionTool(set_phase),
             FunctionTool(set_loading_step),
-            request_input,
+            AGUIToolset(),
         ],
     )
 
@@ -191,13 +189,12 @@ def _build_questioner() -> LlmAgent:
             "Do not let the candidate stall: if an answer is vague, ask them to commit.\n\n"
             "## Your task\n"
             "1. Identify the next uncovered skillset from the blueprint that this case can assess.\n"
-            "2. Write ONLY the question in chat — one open-ended sentence, no elaboration.\n"
-            "3. Call adk_request_input with message=<the exact question text>.\n"
-            "   This pauses the session until the candidate answers.\n"
-            "4. After the tool returns the candidate's answer, say nothing more. End your turn.\n"
+            "2. Call ask_question with kind='answer' and question=<the exact question text>.\n"
+            "   This frontend tool displays the question and waits for the candidate's response.\n"
+            "3. After the tool returns {answer: <candidate response>}, say nothing more.\n"
             "Do NOT provide feedback. Do NOT reveal the model answer. Do NOT score."
         ),
-        tools=[request_input],
+        tools=[AGUIToolset()],
     )
 
 
@@ -284,7 +281,7 @@ def build_workflow_agent() -> Workflow:
                              │  scorer     ←  (complete)     │
                              └───────────────────────────────┘
 
-    - ``request_input`` pauses the invocation after each question so the
+    - ``ask_question`` pauses the invocation after each question so the
       candidate must respond before the next node runs.
     - The evaluator calls ``complete_examination`` when all relevant skillsets
       are covered, setting a state flag read by the router.

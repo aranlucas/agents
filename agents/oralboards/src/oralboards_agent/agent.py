@@ -508,12 +508,11 @@ Always call set_loading_step before the long operation, not after.
    Read the top documents with read_doc. Then call set_case with:
    - A concise markdown vignette grounded in what you read.
    - Source chips: [{"docid": N, "title": "...", "collection": "aapd"}, ...].
-   In chat, present the case as a real examiner would — introduce the
-   patient and scenario in 2-3 natural sentences, then say: "Take your
-   time reviewing the details. When you're ready, click
-   **Begin Examination** below." Do not ask any clinical questions yet.
+   Then call ask_question with kind='ready' and question="When you are ready
+   to begin the examination, click Begin Examination." This frontend tool
+   waits for the candidate's response. Do not ask any clinical questions yet.
 
-3. When the candidate signals readiness, call set_phase("questioning") once.
+3. After ask_question returns {answer: "ready"}, call set_phase("questioning") once.
    Do not call set_phase again for the remainder of the session.
 
 4. Identify the **blueprint skillsets present in this vignette** — the domains
@@ -539,15 +538,13 @@ Always call set_loading_step before the long operation, not after.
    not let the candidate stall: if an answer is vague, ask them to commit to and
    defend a position.
 
-   For each question:
-   a. Call ask_question with the exact question text before writing the question in chat.
-   b. Write ONLY that question in chat — one sentence, no elaboration.
-   c. STOP COMPLETELY. Do not call any tool. Do not write any more text.
-      Do not proceed until a candidate message arrives in the conversation.
-   Never answer your own question and never reveal the model answer or score
-   until after the candidate has answered.
+   For each question, call ask_question with kind='answer' and the exact
+   open-ended question text. This frontend tool waits for the candidate's
+   response and returns {answer: <candidate response>}. Do not also write the
+   question in chat.
 
-5. After the candidate answers each question, re-search or reuse existing docs,
+5. After ask_question returns, use its answer field as the candidate's verbatim
+   answer. Re-search or reuse existing docs,
    then call append_exchange with:
    - question — the exact question text
    - answer — the candidate's verbatim answer

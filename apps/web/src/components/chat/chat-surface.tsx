@@ -78,14 +78,23 @@ function isConnectedRuntimeStatus(status: unknown) {
   return status === "connected";
 }
 
-// Local equivalent of @copilotkit/core's isRunCompletionAware type guard.
-// activeRunCompletionPromise is private on AbstractAgent but exposed here via
-// duck-typing so we can await it the same way the prebuilt CopilotChat does.
-interface RunCompletionAware {
-  readonly activeRunCompletionPromise?: Promise<void>;
-}
-function isRunCompletionAware(value: unknown): value is RunCompletionAware {
-  return typeof value === "object" && value !== null && "activeRunCompletionPromise" in value;
+// activeRunCompletionPromise is private on AbstractAgent, so a type predicate
+// that redeclares it intersects the agent with a conflicting private member and
+// collapses to `never`. Read it through Reflect instead, matching CopilotKit's
+// runtime behavior without claiming it is part of the public agent type.
+export function getRunCompletionPromise(value: unknown): Promise<unknown> | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+
+  const candidate = Reflect.get(value, "activeRunCompletionPromise");
+  if (
+    (typeof candidate !== "object" && typeof candidate !== "function") ||
+    candidate === null ||
+    typeof Reflect.get(candidate, "then") !== "function"
+  ) {
+    return undefined;
+  }
+
+  return Promise.resolve(candidate);
 }
 
 export function ChatSurface({
@@ -166,7 +175,6 @@ export function ChatSurface({
 
   // CopilotKit's public agent message type is looser than the AG-UI runtime
   // shape this renderer consumes; keep that cast at the integration boundary.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const messages = (agent?.messages ?? []) as AguiMessage[];
   const items = toRenderItems(messages);
   const isRunning = agent?.isRunning ?? false;
@@ -201,9 +209,10 @@ export function ChatSurface({
       const trimmed = text.trim();
       if (!agent || !trimmed || !isAgentConnected) return;
       // Mirror CopilotKit prebuilt: wait for any in-flight run before queuing.
-      if (agent.isRunning && isRunCompletionAware(agent) && agent.activeRunCompletionPromise) {
+      const runCompletion = agent.isRunning ? getRunCompletionPromise(agent) : undefined;
+      if (runCompletion) {
         try {
-          await agent.activeRunCompletionPromise;
+          await runCompletion;
         } catch (error) {
           console.error("ChatSurface: in-flight run rejected while queuing send", error);
         }

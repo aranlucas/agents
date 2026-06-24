@@ -19,7 +19,10 @@ import { useNewThread } from "@/components/chat/use-new-thread";
 import { AgentExtensionSlot } from "@/components/chat/agents/extensions";
 import { AppSidebar } from "@/components/chat/app-sidebar";
 import { OralBoardsPanel } from "@/components/chat/oral-boards/oral-boards-panel";
-import { OralBoardsQuestionProvider } from "@/lib/copilotkit/oral-boards-question-context";
+import {
+  OralBoardsQuestionProvider,
+  useOralBoardsQuestion,
+} from "@/lib/copilotkit/oral-boards-question-context";
 import { useArtifactPanel } from "@/components/workspace-shell";
 import { cssVars } from "@/lib/css";
 import { useAgentWarmup } from "@/hooks/use-agent-warmup";
@@ -150,7 +153,7 @@ function OralBoardsStartPage({
   );
 }
 
-export function OralBoardsWorkspace({ agentId = "oral-boards" }: { agentId?: OralBoardsAgentId }) {
+function OralBoardsWorkspaceContent({ agentId }: { agentId: OralBoardsAgentId }) {
   // `agentId` seeds the active engine; the toggle below switches between the two
   // backends in place without leaving the consolidated /console/oral-boards route.
   const [engine, setEngine] = useState<OralBoardsAgentId>(agentId);
@@ -161,6 +164,7 @@ export function OralBoardsWorkspace({ agentId = "oral-boards" }: { agentId?: Ora
     updates: [UseAgentUpdate.OnStateChanged, UseAgentUpdate.OnRunStatusChanged],
   });
   const { copilotkit } = useCopilotKit();
+  const { pendingInputKind, respondToPendingInput } = useOralBoardsQuestion();
   const startNewThread = useNewThread(engine);
 
   const { statuses, isLoading: warmingUp } = useAgentWarmup();
@@ -194,20 +198,23 @@ export function OralBoardsWorkspace({ agentId = "oral-boards" }: { agentId?: Ora
   );
 
   const handleReady = useCallback(() => {
+    if (respondToPendingInput("ready")) return;
     if (!agent) return;
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     agent.setState({ ...(agent.state as OralBoardsState), status: "questioning" });
     agent.addMessage({ id: crypto.randomUUID(), role: "user", content: "ready" });
     void copilotkit.runAgent({ agent });
-  }, [agent, copilotkit]);
+  }, [agent, copilotkit, respondToPendingInput]);
 
   const handleAnswer = useCallback(
     async (text: string) => {
-      if (!agent || !text.trim()) return;
+      if (!text.trim()) return;
+      if (respondToPendingInput(text.trim())) return;
+      if (!agent) return;
       agent.addMessage({ id: crypto.randomUUID(), role: "user", content: text });
       await copilotkit.runAgent({ agent });
     },
-    [agent, copilotkit],
+    [agent, copilotkit, respondToPendingInput],
   );
 
   return (
@@ -216,64 +223,70 @@ export function OralBoardsWorkspace({ agentId = "oral-boards" }: { agentId?: Ora
       className="h-dvh overflow-hidden"
       style={cssVars({ "--page-color": `var(${config.colorVar})` })}
     >
-      <OralBoardsQuestionProvider>
-        <AgentExtensionSlot agentId={engine} />
-        <CopilotSidebar
-          defaultOpen={false}
-          labels={{
-            modalHeaderTitle: "Agent reasoning",
-            chatInputPlaceholder: config.placeholder,
-          }}
-        />
-        <AppSidebar activePath={`/console/${agentId}`} onNewThread={startNewThread} />
-        <SidebarInset className="min-h-0 overflow-hidden">
-          <div className="flex h-full flex-col overflow-hidden">
-            <div className="flex shrink-0 items-center gap-3 border-b px-2 py-1.5">
-              <SidebarTrigger className="md:hidden" />
-              <span className="text-muted-foreground text-[11px] font-medium tracking-wide">
-                Examiner engine
-              </span>
-              <Tabs
-                value={engine}
-                onValueChange={(value) => {
-                  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-                  setEngine(value as OralBoardsAgentId);
-                }}
-              >
-                <TabsList>
-                  {ENGINES.map((e) => (
-                    <TabsTrigger key={e.id} value={e.id} className="px-3 text-xs">
-                      {e.label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
-            </div>
-            <div className="min-h-0 flex-1 overflow-hidden">
-              {hasPanel ? (
-                <OralBoardsPanel
-                  state={examState}
-                  onClose={startNewThread}
-                  onReady={handleReady}
-                  onAnswer={(text) => void handleAnswer(text)}
-                  isRunning={isRunning}
-                  loadingStep={examState.loading_step ?? ""}
-                  activeFeedback={examState.active_feedback ?? ""}
-                  activeIdealResponse={examState.active_ideal_response ?? ""}
-                />
-              ) : (
-                <OralBoardsStartPage
-                  onStart={(m) => void handleStart(m)}
-                  isGenerating={isGenerating}
-                  loadingStep={examState.loading_step ?? ""}
-                  warmingUp={warmingUp && !hasPanel}
-                  warmupError={warmupError}
-                />
-              )}
-            </div>
+      <AgentExtensionSlot agentId={engine} />
+      <CopilotSidebar
+        defaultOpen={false}
+        labels={{
+          modalHeaderTitle: "Agent reasoning",
+          chatInputPlaceholder: config.placeholder,
+        }}
+      />
+      <AppSidebar activePath={`/console/${agentId}`} onNewThread={startNewThread} />
+      <SidebarInset className="min-h-0 overflow-hidden">
+        <div className="flex h-full flex-col overflow-hidden">
+          <div className="flex shrink-0 items-center gap-3 border-b px-2 py-1.5">
+            <SidebarTrigger className="md:hidden" />
+            <span className="text-muted-foreground text-[11px] font-medium tracking-wide">
+              Examiner engine
+            </span>
+            <Tabs
+              value={engine}
+              onValueChange={(value) => {
+                // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+                setEngine(value as OralBoardsAgentId);
+              }}
+            >
+              <TabsList>
+                {ENGINES.map((e) => (
+                  <TabsTrigger key={e.id} value={e.id} className="px-3 text-xs">
+                    {e.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
           </div>
-        </SidebarInset>
-      </OralBoardsQuestionProvider>
+          <div className="min-h-0 flex-1 overflow-hidden">
+            {hasPanel ? (
+              <OralBoardsPanel
+                state={examState}
+                onClose={startNewThread}
+                onReady={handleReady}
+                onAnswer={(text) => void handleAnswer(text)}
+                isRunning={isRunning && pendingInputKind !== "answer"}
+                loadingStep={examState.loading_step ?? ""}
+                activeFeedback={examState.active_feedback ?? ""}
+                activeIdealResponse={examState.active_ideal_response ?? ""}
+              />
+            ) : (
+              <OralBoardsStartPage
+                onStart={(m) => void handleStart(m)}
+                isGenerating={isGenerating}
+                loadingStep={examState.loading_step ?? ""}
+                warmingUp={warmingUp && !hasPanel}
+                warmupError={warmupError}
+              />
+            )}
+          </div>
+        </div>
+      </SidebarInset>
     </SidebarProvider>
+  );
+}
+
+export function OralBoardsWorkspace({ agentId = "oral-boards" }: { agentId?: OralBoardsAgentId }) {
+  return (
+    <OralBoardsQuestionProvider>
+      <OralBoardsWorkspaceContent agentId={agentId} />
+    </OralBoardsQuestionProvider>
   );
 }
