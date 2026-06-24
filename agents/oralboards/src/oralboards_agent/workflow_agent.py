@@ -18,6 +18,7 @@ from agents_shared.state import make_state_initializer, make_state_instruction
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
     build_fast_model,
+    build_large_context_model,
     build_model,
     on_model_error_callback,
     strip_thinking_before_model,
@@ -137,7 +138,7 @@ def questioning_router(ctx: ToolContext) -> str:
 
 def _build_case_builder() -> LlmAgent:
     return LlmAgent(
-        **{**_AGENT_DEFAULTS, "model": build_fast_model()},
+        **{**_AGENT_DEFAULTS, "model": build_large_context_model()},
         name="case_builder",
         static_instruction=(
             "You are an ABPD Oral Clinical Exam (OCE) practice examiner.\n"
@@ -204,7 +205,7 @@ def _build_questioner() -> LlmAgent:
 
 def _build_evaluator() -> LlmAgent:
     return LlmAgent(
-        **{**_AGENT_DEFAULTS, "model": build_fast_model()},
+        **{**_AGENT_DEFAULTS, "model": build_large_context_model()},
         name="evaluator",
         static_instruction=(
             "You are an ABPD OCE practice examiner evaluating a candidate's answer.\n\n"
