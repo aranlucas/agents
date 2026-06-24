@@ -13,6 +13,8 @@ evaluator and either loops back to the questioner or proceeds to the scorer.
 - ``complete_examination`` sets a state flag that the router reads.
 """
 
+from typing import Any
+
 from ag_ui_adk import AGUIToolset
 from agents_shared.state import make_state_initializer, make_state_instruction
 from agents_shared.tools import (
@@ -26,6 +28,7 @@ from google.adk import Workflow
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool, ToolContext
 from google.adk.workflow import START, FunctionNode
+from pydantic import ConfigDict
 
 from .agent import (
     OralBoardsState,
@@ -36,6 +39,74 @@ from .agent import (
     set_phase,
     set_score_card,
 )
+
+
+class _WorkflowWithSubAgents(Workflow):
+    """Workflow subclass that exposes graph nodes as ``sub_agents`` for ag_ui_adk.
+
+    ag_ui_adk's ``_shallow_copy_agent_tree`` and ``_update_agent_tools_recursive``
+    traverse ``sub_agents`` but not ``Workflow.graph.nodes``.  Without this shim,
+    ``AGUIToolset`` placeholders inside Workflow nodes are never replaced with the
+    per-run ``ClientProxyToolset`` and ``ask_question`` raises
+    ``ValueError: Tool 'ask_question' not found``.
+
+    This subclass exposes the graph's ``LlmAgent`` nodes via ``sub_agents`` and
+    syncs any write-back into ``graph.nodes`` so that the Workflow executor (which
+    calls ``_get_static_node_by_name`` → iterates ``graph.nodes``) uses the updated,
+    tool-replaced copies.
+
+    ``model_copy`` also clones the graph so each run has its own independent nodes
+    list — preventing concurrent requests from mutating the shared singleton.
+    """
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    def model_post_init(self, __context: Any) -> None:
+        super().model_post_init(__context)
+        nodes = [
+            n for n in (self.graph.nodes if self.graph else []) if hasattr(n, "tools")
+        ]
+        object.__setattr__(self, "_sub_agents", nodes)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name == "sub_agents":
+            object.__setattr__(self, "_sub_agents", value)
+            # Sync the per-run copies back into graph.nodes so the Workflow
+            # executor's _get_static_node_by_name finds them (lookup is by name).
+            if self.graph is not None and value:
+                name_to_new = {n.name: n for n in value if hasattr(n, "name")}
+                object.__setattr__(
+                    self.graph,
+                    "nodes",
+                    [name_to_new.get(n.name, n) for n in self.graph.nodes],
+                )
+        else:
+            super().__setattr__(name, value)
+
+    @property
+    def sub_agents(self) -> list:
+        return getattr(self, "_sub_agents", [])
+
+    def model_copy(self, *, deep: bool = False, **kwargs) -> _WorkflowWithSubAgents:
+        copied = super().model_copy(deep=deep, **kwargs)
+        if copied.graph is not None:
+            # Give the copy its own Graph with an independent nodes list so the
+            # sub_agents setter can update graph.nodes without touching the
+            # shared original.  Pydantic's model_copy does NOT call
+            # model_post_init, so Graph.model_post_init's "nodes already set"
+            # guard never fires and _terminal_node_names is correctly carried
+            # over via __pydantic_private__.
+            fresh_graph = copied.graph.model_copy(deep=False)
+            object.__setattr__(fresh_graph, "nodes", list(fresh_graph.nodes))
+            object.__setattr__(copied, "graph", fresh_graph)
+        nodes = [
+            n
+            for n in (copied.graph.nodes if copied.graph else [])
+            if hasattr(n, "tools")
+        ]
+        object.__setattr__(copied, "_sub_agents", nodes)
+        return copied
+
 
 _STATE_INSTRUCTION = make_state_instruction(
     OralBoardsState, header="Current oral-boards state"
@@ -299,7 +370,7 @@ def build_workflow_agent() -> Workflow:
         name="questioning_router",
     )
 
-    return Workflow(
+    return _WorkflowWithSubAgents(
         name="oralboards_workflow",
         description="Graph-based oral-boards examiner — workflow with conditional loop.",
         edges=[
