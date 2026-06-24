@@ -86,7 +86,6 @@ CLERK_USER_ID_HEADER = "x-clerk-user-id"
 # litellm.acompletion(fallbacks=[...]) can no longer intercept them.
 _DEFAULT_MODEL = "cerebras/gpt-oss-120b"
 _DEFAULT_FALLBACKS = [
-    "groq/openai/gpt-oss-120b",
     "mistral/mistral-medium-latest",
     "nvidia_nim/deepseek-ai/deepseek-v4-flash",
     "openrouter/openrouter/free",
@@ -114,7 +113,6 @@ _A2UI_FALLBACKS = [
 _FAST_PRIMARY = "mistral/mistral-medium-latest"
 _FAST_FALLBACKS = [
     _DEFAULT_MODEL,
-    "groq/openai/gpt-oss-120b",
     "gemini/gemini-3.1-flash-lite",
     "gemini/gemini-2.5-flash",
 ]
