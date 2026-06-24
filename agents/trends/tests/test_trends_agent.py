@@ -77,9 +77,7 @@ def test_instruction_persists_state_before_rendering() -> None:
     assert instruction.index("begin_trends_query") < instruction.index(
         "execute_bigquery_sql"
     )
-    assert instruction.index("write_trends_result") < instruction.index(
-        "generate_a2ui"
-    )
+    assert instruction.index("write_trends_result") < instruction.index("generate_a2ui")
     assert "Never invent values" in instruction
 
 
@@ -113,9 +111,7 @@ def test_a2ui_tool_uses_composition_guide_not_generation_guidelines() -> None:
 
 
 def test_trends_catalog_id_is_stable() -> None:
-    assert agent.TRENDS_CATALOG_ID == (
-        "copilotkit://trends/v1"
-    )
+    assert agent.TRENDS_CATALOG_ID == ("copilotkit://trends/v1")
 
 
 def _route_paths(app: FastAPI) -> set[str]:

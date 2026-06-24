@@ -91,7 +91,9 @@ def test_every_registered_agent_has_eval_dataset() -> None:
     for agent_dir, agent_ids in groups.items():
         agent_root = ROOT / "agents" / agent_dir
         assert agent_root.exists(), f"Missing agent directory for {agent_dir}"
-        assert (agent_root / "tests").exists(), f"Missing tests directory for {agent_dir}"
+        assert (agent_root / "tests").exists(), (
+            f"Missing tests directory for {agent_dir}"
+        )
 
         datasets_dir = _eval_dir_for_agent(agent_dir) / "datasets"
         assert datasets_dir.exists(), f"Missing eval datasets directory for {agent_dir}"
@@ -117,9 +119,7 @@ def test_eval_datasets_are_generate_ready() -> None:
                 "backend_path": backend_paths[agent_id],
             }
 
-            assert case.get("eval_case_id", "").startswith(
-                agent_id.replace("-", "_")
-            )
+            assert case.get("eval_case_id", "").startswith(agent_id.replace("-", "_"))
 
             prompt = case.get("prompt")
             assert prompt is not None, f"{agent_id} case must be inference-ready"
