@@ -6,20 +6,28 @@ This is a **pnpm monorepo** hosting multiple Google ADK agents and the frontends
 
 ```
 apps/
-  web/      Next.js 16 + CopilotKit AG-UI — multi-agent console
-  mobile/   Expo Router (iOS/Android) — AG-UI client screens
+  web/         Next.js 16 + CopilotKit AG-UI — multi-agent console
+  mobile/      Expo Router (iOS/Android) — AG-UI client screens
+  oral-boards/ Standalone oral-boards console app
 agents/
-  gateway/     Single FastAPI gateway mounted by Railway defaults
-  travel/      Python ADK agent — trip planning via trvl MCP
-  grocery/     Python ADK agent — grocery/meal planning via Kroger MCP
-  fitness/     Python ADK agent — Strava-backed training plans
-  wellness/    Python ADK orchestrator — in-process grocery + fitness tools
-  a2ui/        Python ADK agent — declarative A2UI surfaces
-  oralboards/  Python ADK agent — pediatric dentistry oral-board practice
-  resume/      Public Python ADK agent — resume Q&A
-  shared/      Shared Python helpers for ADK session, gateway auth, invocation state, and tool callbacks
+  gateway/      Single FastAPI gateway — the only deployable Python server
+  travel/       Python ADK agent — trip planning via trvl MCP
+  grocery/      Python ADK agent — grocery/meal planning via Kroger MCP
+  fitness/      Python ADK agent — Strava-backed training plans
+  wellness/     Python ADK orchestrator — in-process grocery + fitness tools
+  expense/      Python ADK agent — expense desk / approval workflow
+  oralboards/   Python ADK agent — pediatric dentistry oral-board practice
+  trends/       Python ADK agent — Google Trends analysis (A2UI surfaces)
+  resume/       Public Python ADK agent — resume Q&A (no auth)
+  research/     Python ADK agent — research report generation
+  spreadsheet/  Python ADK agent — spreadsheet builder
+  presentation/ Python ADK agent — slide deck builder
+  shared/       Shared Python helpers — auth, session, gateway wiring, tool callbacks
 packages/
-  types/       Shared TypeScript types (TripState, GroceryState, Preferences)
+  types/            Shared TypeScript types (@agents/types)
+  ui/               Shared UI components (@agents/ui)
+  typescript-config/ Shared TS compiler settings
+  oxlint-config/    Shared Oxlint rules
 ```
 
 ## Running locally
@@ -43,7 +51,7 @@ pnpm dev:mobile
 pnpm dev:agents
 ```
 
-The web app runs on :3000. The agents gateway runs on :8000 and mounts each
+The web app runs on `:3000`. The agents gateway runs on `:8000` and mounts each
 agent at `/<agent>/agui` plus `/<agent>/health`.
 
 ## Quality checks
@@ -88,10 +96,10 @@ Conventions:
 
 ## Deployment
 
-| Surface        | Platform       | Config                                                                                                                                                                          |
-| -------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Surface        | Platform       | Config                                                                                                                                                                           |
+| -------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Agents gateway | Railway        | Docker (`agents/Dockerfile`) with repo root as build context; `railway.toml` sets `builder = "DOCKERFILE"` and `dockerfilePath`; `startCommand` runs `uvicorn gateway.main:app` |
-| `apps/web/`    | Vercel         | vercel.json — set Root Dir to `apps/web/` in Vercel dashboard; `AGENTS_BASE_URL` points at the gateway                                                                          |
+| `apps/web/`    | Vercel         | `vercel.json` — set Root Dir to `apps/web/` in Vercel dashboard; `AGENTS_BASE_URL` points at the gateway                                                                        |
 | `apps/mobile/` | EAS Build      | `apps/mobile/eas.json` → App Store / Google Play; `EXPO_PUBLIC_AGENTS_BASE_URL` points at the gateway                                                                           |
 | Android APK    | GitHub Actions | `.github/workflows/android-apk.yml` — `expo prebuild` + Gradle, publishes the APK to a GitHub Release via `gh` (push a `v*` tag or run manually)                                |
 
