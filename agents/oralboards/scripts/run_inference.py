@@ -55,7 +55,7 @@ def _build_eval_agent():
         on_model_error_callback,
     )
     from google.adk.agents import LlmAgent
-    from oralboards_agent.agent import _STATIC_INSTRUCTION, OralBoardsState
+    from oralboards_agent.agent import STATIC_INSTRUCTION, OralBoardsState
 
     state_instruction = make_state_instruction(
         OralBoardsState, header="Current oral-boards state"
@@ -66,7 +66,7 @@ def _build_eval_agent():
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         state_schema=OralBoardsState,
-        static_instruction=_STATIC_INSTRUCTION,
+        static_instruction=STATIC_INSTRUCTION,
         instruction=state_instruction,
         before_agent_callback=make_state_initializer(OralBoardsState),
         tools=[

@@ -438,7 +438,7 @@ _CANVAS_CONTRACT = canvas_contract(
     tools=("set_case", "set_phase", "append_exchange", "set_score_card"),
 )
 
-_STATIC_INSTRUCTION = (
+STATIC_INSTRUCTION = (
     """\
 You are an ABPD Oral Clinical Exam (OCE) **practice** examiner for pediatric dentistry.
 
@@ -636,7 +636,7 @@ def build_agent() -> LlmAgent:
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         state_schema=OralBoardsState,
-        static_instruction=_STATIC_INSTRUCTION,
+        static_instruction=STATIC_INSTRUCTION,
         instruction=_STATE_INSTRUCTION,
         before_agent_callback=make_state_initializer(OralBoardsState),
         tools=[
