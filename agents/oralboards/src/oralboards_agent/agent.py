@@ -65,6 +65,7 @@ class OralBoardsState(BaseModel):
     status: str = "idle"
     loading_step: str = ""
     current_question: str = ""
+    interview_complete: bool = False
     # Streamed token-by-token while append_exchange is generating; cleared when
     # the exchange commits to transcript.  The UI shows these fields live.
     active_feedback: str = ""
@@ -323,6 +324,7 @@ def set_case(
     tool_context.state["case_passages"] = (
         "\n\n---\n\n".join(case_passages) if case_passages else ""
     )
+    tool_context.state["interview_complete"] = False
     tool_context.state["status"] = "presenting"
     return {"status": "success", "ok": True, "length": len(case)}
 

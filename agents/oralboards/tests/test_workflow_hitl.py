@@ -2,6 +2,7 @@ from unittest.mock import MagicMock
 
 import oralboards_agent.workflow_agent as workflow_agent
 from google.adk.workflow import START
+from oralboards_agent.agent import OralBoardsState
 
 
 def test_workflow_uses_state_driven_terminal_question_steps() -> None:
@@ -33,6 +34,10 @@ def test_workflow_entry_router_resumes_from_shared_state() -> None:
     ctx.state = {"status": "feedback", "case": "case"}
     route(ctx)
     assert ctx.route == "evaluate"
+
+
+def test_completion_flag_is_declared_in_shared_state() -> None:
+    assert OralBoardsState().interview_complete is False
 
 
 def test_workflow_starts_with_entry_router_instead_of_rebuilding_case() -> None:
