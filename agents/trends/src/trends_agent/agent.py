@@ -41,7 +41,7 @@ Component selection:
   have any numeric column.
 - TrendLineChart: weekly/daily time-series. Only include if rows have a date
   or week column alongside a numeric value. Skip if no time dimension exists.
-- TrendTable: always include with the raw result rows.
+- TrendTable: always include with the top 10 rows (by the primary sort column).
 - SqlDisclosure: always include with the generated SQL.
 
 Rules:
