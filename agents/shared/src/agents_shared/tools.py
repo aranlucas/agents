@@ -18,10 +18,12 @@ log = logging.getLogger("agents_shared")
 # ---------------------------------------------------------------------------
 # LiteLLM provider throttle
 # ---------------------------------------------------------------------------
-# Free-tier RPM caps per provider prefix (as they appear in LiteLLM model strings).
+# Free-tier RPM caps per provider/model prefix (as they appear in LiteLLM model strings).
 # Set at ~80 % of the documented limit to leave headroom and avoid mid-stream 429s.
+# Longer prefixes take priority over shorter ones (longest-match in _ProviderThrottle._provider).
 _FREE_TIER_RPM: dict[str, int] = {
-    "gemini": 4,  # Google AI Studio free tier: 5 RPM hard cap
+    "gemini/gemini-3.1-flash-lite": 24,  # Flash Lite free tier: ~30 RPM — higher than standard
+    "gemini": 4,  # Google AI Studio free tier: 5 RPM hard cap (other Gemini models)
     "nvidia_nim": 10,  # NVIDIA NIM free tier: ~15 RPM, conservative
     "openrouter": 10,  # OpenRouter free tier: varies by model, conservative
 }
@@ -45,7 +47,7 @@ class _ProviderThrottle(CustomLogger):
 
     def _provider(self, model: str) -> str | None:
         m = model.lower()
-        for prefix in self._limits:
+        for prefix in sorted(self._limits, key=len, reverse=True):
             if m.startswith(prefix):
                 return prefix
         return None
@@ -88,6 +90,7 @@ _DEFAULT_FALLBACKS = [
     "mistral/mistral-medium-latest",
     "nvidia_nim/deepseek-ai/deepseek-v4-flash",
     "openrouter/openrouter/free",
+    "gemini/gemini-3.1-flash-lite",
     "gemini/gemini-3.5-flash",
 ]
 
@@ -112,6 +115,7 @@ _FAST_PRIMARY = "mistral/mistral-medium-latest"
 _FAST_FALLBACKS = [
     _DEFAULT_MODEL,
     "groq/openai/gpt-oss-120b",
+    "gemini/gemini-3.1-flash-lite",
     "gemini/gemini-2.5-flash",
 ]
 
@@ -123,6 +127,7 @@ _LARGE_CONTEXT_PRIMARY = "mistral/mistral-medium-latest"
 _LARGE_CONTEXT_FALLBACKS = [
     "nvidia_nim/deepseek-ai/deepseek-v4-flash",
     "openrouter/openrouter/free",
+    "gemini/gemini-3.1-flash-lite",
     "gemini/gemini-3.5-flash",
 ]
 
