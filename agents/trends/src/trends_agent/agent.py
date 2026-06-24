@@ -32,23 +32,27 @@ TRENDS_CATALOG_ID = "copilotkit://trends/v1"
 _TRENDS_A2UI_GUIDELINES = """\
 Render a compact Google Trends analysis using the supplied catalog.
 
-Component selection:
-- TrendMetric: single KPI values (total rows, date range, peak term).
-- TrendBarChart: ranked terms or categories. Use any numeric column as the
-  value axis — rank, score, percent_gain, or count all work. If the only
-  numeric column is a rank, invert it (higher rank = lower bar) or just use
-  it as-is with a clear axis label. Never leave a bar chart empty if rows
-  have any numeric column.
-- TrendLineChart: weekly/daily time-series. Only include if rows have a date
-  or week column alongside a numeric value. Skip if no time dimension exists.
-- TrendTable: always include with the top 10 rows (by the primary sort column).
-- SqlDisclosure: always include with the generated SQL.
+Component props (pass these fields directly on the component — never use a \
+separate data model):
+- TrendMetric: { label, value, detail? }
+- TrendBarChart: { title, categoryKey, valueKey, rows, maxItems?, valueFormat? }
+  categoryKey = column name for labels (e.g. "term")
+  valueKey    = numeric column name (e.g. "percent_gain", "rank", "score")
+  rows        = top 10 result rows (array of objects from the query)
+  Use percent_gain, score, rank, or any numeric column as valueKey.
+  Never leave the chart empty if rows contain any numeric column.
+- TrendLineChart: { title, xKey, yKey, rows, valueFormat? }
+  Only include when rows have a date/week column alongside a numeric value.
+- TrendTable: { columns, rows, maxRows? }
+  columns = [{ key, label, format }] derived from result column names
+  rows    = top 10 result rows
+  maxRows = 10
+- SqlDisclosure: { title, sql }
 
 Rules:
 - Never invent values. Every displayed value must come from executed rows,
   generated SQL, or saved insights.
-- Do not render empty axes — if a chart has no valid data to plot, omit that
-  component rather than showing an empty chart.
+- Do not render empty axes — omit a chart component if it has no valid data.
 - Use one stable surface id per result; update that surface only for
   presentation-only follow-ups.
 """
