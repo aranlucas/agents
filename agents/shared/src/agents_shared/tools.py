@@ -37,16 +37,17 @@ _A2UI_FALLBACKS = [
     _DEFAULT_MODEL,
 ]
 
-# Fast model for single-tool-call agents that don't need deep reasoning —
-# e.g. the oral-boards questioner (pick next question → call ask_question).
-# Gemini Flash is primary: low latency, no reasoning tokens. Mistral is the
-# first fallback; Cerebras last (generates reasoning tokens we'd have to strip).
-# WARNING: Gemini is deferred-HTTP — 429s arrive mid-stream and can't be caught
-# by the fallback chain. Only use this for agents making 1 model call per turn.
-_FAST_PRIMARY = "gemini/gemini-2.5-flash"
+# Fast model for agents that need low latency and no reasoning tokens —
+# e.g. the oral-boards questioner and evaluator.
+# Mistral Medium is primary: eager-HTTP (errors surface before streaming so the
+# fallback chain works), no reasoning tokens, fast TTFT.
+# Cerebras and Gemini are fallbacks; Gemini is last because it is deferred-HTTP
+# (429s arrive mid-stream as MidStreamFallbackError, bypassing the fallback chain).
+_FAST_PRIMARY = "mistral/mistral-medium-latest"
 _FAST_FALLBACKS = [
-    "mistral/mistral-medium-latest",
     _DEFAULT_MODEL,
+    "groq/openai/gpt-oss-120b",
+    "gemini/gemini-2.5-flash",
 ]
 
 # Large-context model for agents that read full document text into session
@@ -76,13 +77,12 @@ def build_a2ui_model() -> LiteLlm:
 
 
 def build_fast_model() -> LiteLlm:
-    """LiteLlm for low-latency single-tool-call agents (≤1 model call per turn).
+    """LiteLlm for low-latency agents that need no reasoning tokens.
 
-    Gemini Flash is primary: fast TTFT, no reasoning tokens. Only safe for
-    agents that make exactly one model call per invocation — Gemini is
-    deferred-HTTP so rate-limit 429s arrive mid-stream and bypass the fallback
-    chain. Use build_large_context_model() when an agent makes multiple calls
-    or accumulates large doc content in history.
+    Mistral Medium is primary: eager-HTTP (rate-limit errors surface before
+    streaming so the fallback chain works), no reasoning tokens, fast TTFT.
+    Cerebras/Groq are next; Gemini Flash is last-resort only — it is
+    deferred-HTTP so its 429s arrive mid-stream and bypass the fallback chain.
     """
     return LiteLlm(model=_FAST_PRIMARY, fallbacks=list(_FAST_FALLBACKS))
 
