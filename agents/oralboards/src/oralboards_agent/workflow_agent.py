@@ -18,7 +18,6 @@ from agents_shared.state import make_state_initializer, make_state_instruction
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
     build_fast_model,
-    build_large_context_model,
     build_model,
     on_model_error_callback,
     strip_thinking_before_model,
@@ -31,7 +30,6 @@ from google.adk.workflow import START, FunctionNode
 from .agent import (
     OralBoardsState,
     append_exchange,
-    read_doc,
     search_docs,
     set_case,
     set_loading_step,
@@ -60,16 +58,17 @@ _CANVAS_HINT = (
 
 _SOURCE_RULES = (
     "## Source collections\n"
-    "Three bundled collections are available via search_docs and read_doc:\n"
+    "Three bundled collections are available via search_docs:\n"
     "- aapd  — AAPD clinical practice guidelines and best-practice papers\n"
     "- abpd  — ABPD OCE guides, scoring rubrics, and qualifying-exam structure\n"
     "- cody  — Oral-boards prep course cases and topic-specific lecture notes\n\n"
     "## Grounding rules (non-negotiable)\n"
     "You MUST call search_docs before producing ANY clinical content. "
     "Never fill in clinical content from memory.\n"
-    "Search strategy: fire search_docs calls in parallel (one broad, one "
-    "collection-filtered). Call read_doc on the most relevant filepath(s) "
-    "in parallel.\n"
+    "Each search result includes a 'passage' field with the most relevant text "
+    "from that document — use it directly. No separate read_doc call is needed.\n"
+    "Search strategy: fire two search_docs calls in parallel (one broad, one "
+    "collection-filtered) to maximize coverage.\n"
     "If search returns no results, tell the user the corpus doesn't cover "
     "it and offer adjacent topics."
 )
@@ -104,10 +103,9 @@ _LOADING_STEPS = (
     "Call set_loading_step at each of these moments:\n"
     "| Moment | Step text |\n"
     "|--------|-----------|\n"
-    "| Before the first search_docs call when building a case | 'Searching clinical guidelines…' |\n"
-    "| Before each read_doc call | 'Reading: <document title>…' |\n"
+    "| Before search_docs calls when building a case | 'Searching clinical guidelines…' |\n"
     "| Immediately before calling set_case | 'Composing case vignette…' |\n"
-    "| After a candidate submits an answer, before re-searching | 'Reviewing your answer…' |\n"
+    "| After a candidate submits an answer, before evaluating | 'Reviewing your answer…' |\n"
     "| Before calling append_exchange | 'Composing feedback…' |\n"
     "| Before calling set_score_card | 'Computing score card…' |"
 )
@@ -138,7 +136,7 @@ def questioning_router(ctx: ToolContext) -> str:
 
 def _build_case_builder() -> LlmAgent:
     return LlmAgent(
-        **{**_AGENT_DEFAULTS, "model": build_large_context_model()},
+        **{**_AGENT_DEFAULTS, "model": build_fast_model()},
         name="case_builder",
         static_instruction=(
             "You are an ABPD Oral Clinical Exam (OCE) practice examiner.\n"
@@ -148,20 +146,22 @@ def _build_case_builder() -> LlmAgent:
             f"{_LOADING_STEPS}\n\n"
             "## Your task\n"
             "1. Pick a topic from the user's request or choose one yourself.\n"
-            "2. Call set_loading_step, then run search_docs (broad + collection-filtered, in parallel).\n"
-            "3. Call read_doc on the top results (in parallel).\n"
-            "4. Call set_loading_step('Composing case vignette…'), then call set_case with:\n"
-            "   - A concise markdown vignette grounded in what you read.\n"
-            "   - Source chips: [{docid, filepath, title, collection}].\n"
-            "5. Call set_phase('presenting').\n"
-            "6. Call ask_question with kind='ready' and question='When you are ready to begin the examination, click Begin Examination.'\n"
+            "2. Call set_loading_step('Searching clinical guidelines…'), then run search_docs\n"
+            "   (broad + collection-filtered, in parallel). Each result includes a 'passage'\n"
+            "   field with the most relevant text — use it directly, no read_doc needed.\n"
+            "3. Call set_loading_step('Composing case vignette…'), then call set_case with:\n"
+            "   - case: A concise markdown vignette grounded in the search passages.\n"
+            "   - case_sources: [{docid, filepath, title, collection}] from results.\n"
+            "   - case_passages: the 'passage' strings from the top search results\n"
+            "     (so the evaluator can ground feedback without re-searching).\n"
+            "4. Call set_phase('presenting').\n"
+            "5. Call ask_question with kind='ready' and question='When you are ready to begin the examination, click Begin Examination.'\n"
             "   The frontend tool pauses this workflow until the candidate responds.\n"
-            "7. After ask_question returns, call set_phase('questioning').\n"
+            "6. After ask_question returns, call set_phase('questioning').\n"
             "Do NOT ask any clinical questions in this phase."
         ),
         tools=[
             FunctionTool(search_docs),
-            FunctionTool(read_doc),
             FunctionTool(set_case),
             FunctionTool(set_phase),
             FunctionTool(set_loading_step),
@@ -205,29 +205,32 @@ def _build_questioner() -> LlmAgent:
 
 def _build_evaluator() -> LlmAgent:
     return LlmAgent(
-        **{**_AGENT_DEFAULTS, "model": build_large_context_model()},
+        **{**_AGENT_DEFAULTS, "model": build_fast_model()},
         name="evaluator",
         static_instruction=(
             "You are an ABPD OCE practice examiner evaluating a candidate's answer.\n\n"
             f"{_CANVAS_HINT}\n\n"
-            f"{_SOURCE_RULES}\n\n"
             f"{_BLUEPRINT}\n\n"
             f"{_LOADING_STEPS}\n\n"
+            "## Clinical grounding\n"
+            "The case_passages field in state contains the relevant source text retrieved\n"
+            "when the case was built. Use it to verify the candidate's answer and write the\n"
+            "ideal response. Do not re-search unless the answer raises a topic clearly\n"
+            "outside those passages.\n\n"
             "## Your task\n"
             "The candidate just answered a clinical question. Evaluate their answer:\n"
             "1. Call set_loading_step('Reviewing your answer…').\n"
-            "2. Re-search or reuse existing docs to verify the answer.\n"
-            "3. Call set_loading_step('Composing feedback…').\n"
-            "4. Call append_exchange with:\n"
+            "2. Call set_loading_step('Composing feedback…').\n"
+            "3. Call append_exchange with:\n"
             "   - question — the exact question text\n"
             "   - answer — the candidate's verbatim answer\n"
             "   - skillset — the blueprint domain assessed (exact domain name)\n"
             "   - skill — remember, understand_apply, or analyze_evaluate\n"
             "   - feedback — markdown starting with **Skillset:** <domain> · <skill level>, then cited feedback\n"
-            "   - ideal_response — the model answer, grounded in sourced documents\n"
+            "   - ideal_response — the model answer, grounded in the case passages\n"
             "   - score — 1-3 practice score\n"
-            "   - citations — the CaseSource chips you used\n"
-            "5. Write 1-2 sentences of coaching feedback in chat.\n\n"
+            "   - citations — the CaseSource chips from case_sources in state\n"
+            "4. Write 1-2 sentences of coaching feedback in chat.\n\n"
             "## When to end the interview\n"
             "After calling append_exchange, check the transcript length in state.\n"
             "If all relevant skillsets for this case have been covered (typically 4-6 exchanges),\n"
@@ -235,8 +238,6 @@ def _build_evaluator() -> LlmAgent:
             "will generate the final score card. If more skillsets remain, do NOT call it."
         ),
         tools=[
-            FunctionTool(search_docs),
-            FunctionTool(read_doc),
             FunctionTool(append_exchange),
             FunctionTool(complete_examination),
             FunctionTool(set_loading_step),
@@ -251,7 +252,6 @@ def _build_scorer() -> LlmAgent:
         static_instruction=(
             "You are an ABPD OCE practice examiner generating the final score card.\n\n"
             f"{_CANVAS_HINT}\n\n"
-            f"{_SOURCE_RULES}\n\n"
             f"{_BLUEPRINT}\n\n"
             f"{_LOADING_STEPS}\n\n"
             "## Your task\n"
@@ -267,8 +267,6 @@ def _build_scorer() -> LlmAgent:
             "Do NOT compute a weighted composite or invent /100 or /5 scores."
         ),
         tools=[
-            FunctionTool(search_docs),
-            FunctionTool(read_doc),
             FunctionTool(set_score_card),
             FunctionTool(set_loading_step),
         ],
