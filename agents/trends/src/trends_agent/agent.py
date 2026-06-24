@@ -30,13 +30,26 @@ TRENDS_CATALOG_ID = "copilotkit://trends/v1"
 
 _TRENDS_A2UI_GUIDELINES = """\
 Render a compact Google Trends analysis using the supplied catalog.
-Use TrendMetric for summary values, TrendBarChart for ranked categories,
-TrendLineChart for time-series data, TrendTable for the source rows, and
-SqlDisclosure for generated SQL. Never invent values. Every displayed value
-must come from the executed rows, generated SQL, or saved insights. Always
-include TrendTable and SqlDisclosure. Do not render empty axes when rows are
-empty. Use one stable surface id per result and update that surface only for
-presentation-only follow-ups.
+
+Component selection:
+- TrendMetric: single KPI values (total rows, date range, peak term).
+- TrendBarChart: ranked terms or categories. Use any numeric column as the
+  value axis — rank, score, percent_gain, or count all work. If the only
+  numeric column is a rank, invert it (higher rank = lower bar) or just use
+  it as-is with a clear axis label. Never leave a bar chart empty if rows
+  have any numeric column.
+- TrendLineChart: weekly/daily time-series. Only include if rows have a date
+  or week column alongside a numeric value. Skip if no time dimension exists.
+- TrendTable: always include with the raw result rows.
+- SqlDisclosure: always include with the generated SQL.
+
+Rules:
+- Never invent values. Every displayed value must come from executed rows,
+  generated SQL, or saved insights.
+- Do not render empty axes — if a chart has no valid data to plot, omit that
+  component rather than showing an empty chart.
+- Use one stable surface id per result; update that surface only for
+  presentation-only follow-ups.
 """
 
 _INSTRUCTION = """\
