@@ -9,6 +9,7 @@ from agents_shared.tools import (
     build_a2ui_model,
     build_model,
     on_model_error_callback,
+    strip_thinking_before_model,
 )
 from google.adk.agents import LlmAgent
 from google.adk.tools.agent_tool import AgentTool
@@ -149,6 +150,7 @@ def build_agent() -> LlmAgent:
         name="GoogleTrendsAgent",
         model=build_model(),
         retry_config=DEFAULT_RETRY_CONFIG,
+        before_model_callback=strip_thinking_before_model,
         on_model_error_callback=on_model_error_callback,
         instruction=_INSTRUCTION,
         description="Generates SQL, executes BigQuery, verifies findings against the web, and renders A2UI analysis.",

@@ -80,6 +80,30 @@ def extract_identity_state(request: Request) -> dict[str, str]:
     return {"user_id": request.headers.get(CLERK_USER_ID_HEADER) or "anonymous"}
 
 
+def strip_thinking_before_model(
+    callback_context: CallbackContext,
+    llm_request: LlmRequest,
+) -> None:
+    """Strip thought=True parts from session history before each LLM call.
+
+    Cerebras and Groq produce reasoning/thinking tokens stored as thought=True
+    parts in session history. ADK's LiteLlm serialises these as
+    reasoning_content in the OpenAI-format message body. Providers that don't
+    support reasoning (Mistral, NVIDIA NIM, openrouter) reject such messages
+    with HTTP 400, burning the entire fallback chain before reaching Gemini.
+
+    Stripping here affects only the serialised history — not the current turn's
+    reasoning. Returning None lets ADK proceed with the sanitised request.
+    """
+    if llm_request.contents:
+        for content in llm_request.contents:
+            if content.parts:
+                content.parts = [
+                    p for p in content.parts if not getattr(p, "thought", False)
+                ]
+    return None
+
+
 def on_model_error_callback(
     callback_context: CallbackContext,
     llm_request: LlmRequest,
