@@ -1,15 +1,80 @@
 """Shared ADK tool callbacks and small reusable tools/config."""
 
+import asyncio
 import datetime
 import logging
+import time
 
+import litellm
 from fastapi import Request
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.models.llm_request import LlmRequest
 from google.adk.workflow._retry_config import RetryConfig
+from litellm.integrations.custom_logger import CustomLogger
 
 log = logging.getLogger("agents_shared")
+
+# ---------------------------------------------------------------------------
+# LiteLLM provider throttle
+# ---------------------------------------------------------------------------
+# Free-tier RPM caps per provider prefix (as they appear in LiteLLM model strings).
+# Set at ~80 % of the documented limit to leave headroom and avoid mid-stream 429s.
+_FREE_TIER_RPM: dict[str, int] = {
+    "gemini": 4,  # Google AI Studio free tier: 5 RPM hard cap
+    "nvidia_nim": 10,  # NVIDIA NIM free tier: ~15 RPM, conservative
+    "openrouter": 10,  # OpenRouter free tier: varies by model, conservative
+}
+
+
+class _ProviderThrottle(CustomLogger):
+    """Sliding-window rate limiter for free-tier LLM providers.
+
+    Registered as a LiteLLM callback so async_pre_call_hook fires before every
+    provider call — including fallback attempts inside acompletion(fallbacks=[]).
+    When a provider's window is full, concurrent callers wait here rather than
+    racing to a 429 mid-stream (which would raise MidStreamFallbackError and
+    bypass the rest of the fallback chain).
+    """
+
+    def __init__(self, limits: dict[str, int]) -> None:
+        super().__init__()
+        self._lock = asyncio.Lock()
+        self._windows: dict[str, list[float]] = {k: [] for k in limits}
+        self._limits = limits
+
+    def _provider(self, model: str) -> str | None:
+        m = model.lower()
+        for prefix in self._limits:
+            if m.startswith(prefix):
+                return prefix
+        return None
+
+    async def async_pre_call_hook(self, user_api_key_dict, cache, data, call_type):
+        provider = self._provider(str(data.get("model", "")))
+        if not provider:
+            return data
+        rpm = self._limits[provider]
+        while True:
+            async with self._lock:
+                now = time.monotonic()
+                window = self._windows[provider]
+                window[:] = [t for t in window if now - t < 60.0]
+                if len(window) < rpm:
+                    window.append(now)
+                    return data
+                wait = 60.0 - (now - window[0]) + 0.1
+            log.debug(
+                "throttle: %s at %d/%d RPM — sleeping %.1fs",
+                provider,
+                len(self._windows[provider]),
+                rpm,
+                wait,
+            )
+            await asyncio.sleep(wait)
+
+
+litellm.callbacks.append(_ProviderThrottle(_FREE_TIER_RPM))
 
 CLERK_USER_ID_HEADER = "x-clerk-user-id"
 
