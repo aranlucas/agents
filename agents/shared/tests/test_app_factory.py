@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 from agents_shared.app_factory import build_adk_agent, streaming_state_mapping
 from agents_shared.dependencies import AgentServices
-from agents_shared.tools import build_model
+from agents_shared.tools import _ProviderThrottle, build_model
 from google.adk.agents import LlmAgent
 
 
@@ -77,12 +77,34 @@ def test_build_model_uses_current_free_agent_model_chain():
 
     assert model.model == "cerebras/gpt-oss-120b"
     assert fallbacks == [
-        "groq/openai/gpt-oss-120b",
         "mistral/mistral-medium-latest",
         "nvidia_nim/deepseek-ai/deepseek-v4-flash",
         "openrouter/openrouter/free",
+        "gemini/gemini-3.1-flash-lite",
         "gemini/gemini-3.5-flash",
     ]
 
     fallbacks.append("mutated")
     assert "mutated" not in build_model()._additional_args["fallbacks"]
+
+
+async def test_provider_hook_strips_reasoning_content_before_fallback_calls():
+    hook = _ProviderThrottle({})
+    data = {
+        "model": "mistral/mistral-medium-latest",
+        "messages": [
+            {"role": "user", "content": "question"},
+            {
+                "role": "assistant",
+                "content": "answer",
+                "reasoning_content": "private chain of thought",
+            },
+        ],
+    }
+
+    result = await hook.async_pre_call_hook(None, None, data, "completion")
+
+    assert result["messages"] == [
+        {"role": "user", "content": "question"},
+        {"role": "assistant", "content": "answer"},
+    ]
