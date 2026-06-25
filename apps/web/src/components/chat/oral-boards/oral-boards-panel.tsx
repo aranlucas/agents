@@ -645,7 +645,11 @@ function QuestioningPane({
     : submittedAnswer && isRunning
       ? "reviewing"
       : "question";
-  const displayedQuestionNumber = question ? transcript.length + 1 : Math.max(transcript.length, 1);
+  const displayedQuestionNumber = isScoring
+    ? Math.max(transcript.length, 1)
+    : question
+      ? transcript.length + 1
+      : Math.max(transcript.length, 1);
   const reviewingStatus =
     stage === "scoring" ? "Computing score card…" : loadingStep || "Reviewing your answer…";
 

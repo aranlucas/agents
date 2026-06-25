@@ -421,10 +421,10 @@ describe("OralBoardsPanel — questioning", () => {
   it("does not render a fake next question while computing the score card", async () => {
     const { useOralBoardsQuestion } = await import("@/lib/copilotkit/oral-boards-question-context");
     vi.mocked(useOralBoardsQuestion).mockReturnValue({
-      currentQuestion: "",
+      currentQuestion: "What is your final recommendation?",
       setCurrentQuestion: vi.fn(),
       clearCurrentQuestion: vi.fn(),
-      pendingInputKind: null,
+      pendingInputKind: "answer",
       registerPendingInput: vi.fn(),
       clearPendingInput: vi.fn(),
       respondToPendingInput: vi.fn(),
