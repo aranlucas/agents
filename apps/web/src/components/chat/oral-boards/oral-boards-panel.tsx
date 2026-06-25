@@ -458,18 +458,45 @@ function ExamTimeline({
   questionNumber: number;
   stage: "question" | "reviewing" | "scoring" | "complete";
 }) {
-  const totalQuestions = Math.max(questionNumber, 1);
-  const questionSteps = Array.from({ length: totalQuestions }, (_value, index) => index + 1);
+  const timelineSteps = [
+    {
+      key: "case",
+      label: "Case",
+      state: "completed" as const,
+    },
+    {
+      key: "question",
+      label: `Question ${Math.max(questionNumber, 1)}`,
+      state:
+        stage === "question"
+          ? ("active" as const)
+          : stage === "reviewing" || stage === "scoring" || stage === "complete"
+            ? ("completed" as const)
+            : ("upcoming" as const),
+    },
+    {
+      key: "reviewing",
+      label: "Reviewing",
+      state:
+        stage === "reviewing"
+          ? ("active" as const)
+          : stage === "scoring" || stage === "complete"
+            ? ("completed" as const)
+            : ("upcoming" as const),
+    },
+    {
+      key: "complete",
+      label: "Complete",
+      state:
+        stage === "scoring" || stage === "complete" ? ("active" as const) : ("upcoming" as const),
+    },
+  ];
 
   return (
     <ol aria-label="Exam progress" className="flex flex-wrap items-center gap-2 text-xs">
-      {questionSteps.map((stepNumber) => {
-        const isActive =
-          (stage === "question" || stage === "reviewing") && stepNumber === questionNumber;
-        const isCompleted =
-          (stage === "question" || stage === "reviewing") && stepNumber < questionNumber
-            ? true
-            : (stage === "scoring" || stage === "complete") && stepNumber <= questionNumber;
+      {timelineSteps.map((step) => {
+        const isCompleted = step.state === "completed";
+        const isActive = step.state === "active";
         const labelClasses = isCompleted
           ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
           : isActive
@@ -477,29 +504,16 @@ function ExamTimeline({
             : "border-border/60 bg-muted/30 text-muted-foreground";
 
         return (
-          <li key={stepNumber} className="flex items-center gap-2">
+          <li key={step.key} className="flex items-center gap-2">
             <span
               className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 ${labelClasses}`}
             >
               {isCompleted && <CheckCircle2Icon className="size-3" />}
-              <span aria-current={isActive ? "step" : undefined}>{`Question ${stepNumber}`}</span>
+              <span aria-current={isActive ? "step" : undefined}>{step.label}</span>
             </span>
           </li>
         );
       })}
-      <li>
-        <span
-          className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 ${
-            stage === "scoring" || stage === "complete"
-              ? "border-indigo-500/40 bg-indigo-500/10 text-indigo-200"
-              : "border-border/60 bg-muted/30 text-muted-foreground"
-          }`}
-        >
-          <span aria-current={stage === "scoring" || stage === "complete" ? "step" : undefined}>
-            Complete
-          </span>
-        </span>
-      </li>
     </ol>
   );
 }
@@ -648,11 +662,6 @@ function QuestioningPane({
                 Examination
               </span>
               <ExamTimeline questionNumber={displayedQuestionNumber} stage={stage} />
-              {stage === "scoring" && (
-                <p role="status" className="text-muted-foreground text-xs">
-                  Computing score card…
-                </p>
-              )}
             </div>
             {transcript.length > 0 && (
               <div className="mt-1.5 flex flex-wrap gap-1">

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React, { forwardRef, useImperativeHandle } from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -277,8 +277,14 @@ describe("OralBoardsPanel — questioning", () => {
 
     render(<OralBoardsPanel state={state} {...baseProps} />);
 
-    expect(screen.getByRole("list", { name: "Exam progress" })).toBeInTheDocument();
-    expect(screen.getByText("Question 1")).toHaveAttribute("aria-current", "step");
+    const timeline = screen.getByRole("list", { name: "Exam progress" });
+    const stages = within(timeline).getAllByRole("listitem");
+
+    expect(stages).toHaveLength(4);
+    expect(within(timeline).getByText("Case")).toBeInTheDocument();
+    expect(within(timeline).getByText("Question 1")).toHaveAttribute("aria-current", "step");
+    expect(within(timeline).getByText("Reviewing")).toBeInTheDocument();
+    expect(within(timeline).getByText("Complete")).toBeInTheDocument();
 
     vi.mocked(useOralBoardsQuestion).mockReturnValue({
       currentQuestion: "",
@@ -330,6 +336,13 @@ describe("OralBoardsPanel — questioning", () => {
       />,
     );
 
+    const timeline = screen.getByRole("list", { name: "Exam progress" });
+
+    expect(within(timeline).getAllByRole("listitem")).toHaveLength(4);
+    expect(within(timeline).getByText("Case")).toBeInTheDocument();
+    expect(within(timeline).getByText("Question 1")).toBeInTheDocument();
+    expect(within(timeline).getByText("Reviewing")).toHaveAttribute("aria-current", "step");
+    expect(within(timeline).getByText("Complete")).toBeInTheDocument();
     expect(screen.getByText("What is your diagnosis?")).toBeInTheDocument();
     expect(screen.getByText("My diagnosis is reversible pulpitis.")).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Reviewing your answer…");
@@ -369,7 +382,15 @@ describe("OralBoardsPanel — questioning", () => {
       />,
     );
 
-    expect(screen.getByText("Complete")).toHaveAttribute("aria-current", "step");
+    const timeline = screen.getByRole("list", { name: "Exam progress" });
+
+    expect(within(timeline).getAllByRole("listitem")).toHaveLength(4);
+    expect(within(timeline).getByText("Case")).toBeInTheDocument();
+    expect(within(timeline).getByText("Question 6")).toBeInTheDocument();
+    expect(within(timeline).getByText("Reviewing")).toBeInTheDocument();
+    expect(within(timeline).getByText("Complete")).toHaveAttribute("aria-current", "step");
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+    expect(screen.getByRole("status")).toHaveTextContent("Computing score card…");
     expect(screen.queryByText("Question 7")).not.toBeInTheDocument();
   });
 });
