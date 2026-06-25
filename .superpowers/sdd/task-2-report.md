@@ -223,3 +223,76 @@ Result:
 ```text
 Exit status 0
 ```
+
+## TypeScript fixture follow-up
+
+### Change
+
+- Preserved the citation collection literal type with
+  `collection: "aapd" as const`, preventing object-property inference from
+  widening it to `string`.
+
+### Typecheck RED
+
+Command:
+
+```bash
+pnpm --filter web typecheck
+```
+
+Result:
+
+```text
+src/components/chat/oral-boards/oral-boards-panel.test.tsx(413,23): error TS2322:
+Type '{ docid: number; title: string; collection: string; }' is not assignable to type 'CaseSource'.
+Types of property 'collection' are incompatible.
+Type 'string' is not assignable to type '"aapd" | "abpd" | "cody"'.
+Exit status 1
+```
+
+### Typecheck GREEN
+
+Command:
+
+```bash
+pnpm --filter web typecheck
+```
+
+Result:
+
+```text
+$ tsc --noEmit
+Exit status 0
+```
+
+### Focused tests
+
+Command:
+
+```bash
+pnpm --filter web test -- src/components/chat/oral-boards/oral-boards-panel.test.tsx
+```
+
+Result:
+
+```text
+Test Files  42 passed (42)
+Tests  276 passed (276)
+Exit status 0
+```
+
+### Formatting
+
+Command:
+
+```bash
+pnpm exec oxfmt --check apps/web/src/components/chat/oral-boards/oral-boards-panel.test.tsx .superpowers/sdd/task-2-report.md
+```
+
+Result:
+
+```text
+All matched files use the correct format.
+Finished in 126ms on 2 files using 10 threads.
+Exit status 0
+```

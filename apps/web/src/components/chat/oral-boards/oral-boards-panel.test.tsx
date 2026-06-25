@@ -398,7 +398,7 @@ describe("OralBoardsPanel — questioning", () => {
     const citation = {
       docid: 17,
       title: "Local Anesthesia Guideline",
-      collection: "aapd",
+      collection: "aapd" as const,
     };
     const state: OralBoardsState = {
       case: "Case.",
