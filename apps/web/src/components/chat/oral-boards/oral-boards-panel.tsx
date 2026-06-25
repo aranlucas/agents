@@ -416,7 +416,7 @@ function PresentingPane({
         <TtsButton text={caseBody} label="Present case" />
       </div>
 
-      <ScrollArea className="bg-muted/20 flex-1 rounded-lg border">
+      <ScrollArea className="bg-muted/20 min-h-0 flex-1 rounded-lg border">
         <div className="p-4 sm:p-5">
           <div className="text-[13.5px] leading-[1.75]">
             <Streamdown>{caseBody}</Streamdown>
