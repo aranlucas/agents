@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 from agents_shared.app_factory import build_adk_agent, streaming_state_mapping
 from agents_shared.dependencies import AgentServices
-from agents_shared.tools import _ProviderThrottle, build_model
+from agents_shared.tools import _ProviderThrottle, build_fast_model, build_model
 from google.adk.agents import LlmAgent
 
 
@@ -86,6 +86,18 @@ def test_build_model_uses_current_free_agent_model_chain():
 
     fallbacks.append("mutated")
     assert "mutated" not in build_model()._additional_args["fallbacks"]
+
+
+def test_build_fast_model_uses_groq_before_gemini_fallbacks():
+    model = build_fast_model()
+
+    assert model.model == "mistral/mistral-medium-latest"
+    assert model._additional_args["fallbacks"] == [
+        "cerebras/gpt-oss-120b",
+        "groq/openai/gpt-oss-120b",
+        "gemini/gemini-3.1-flash-lite",
+        "gemini/gemini-2.5-flash",
+    ]
 
 
 async def test_provider_hook_strips_reasoning_content_before_fallback_calls():

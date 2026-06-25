@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React, { forwardRef, useImperativeHandle } from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -255,10 +255,282 @@ describe("OralBoardsPanel — questioning", () => {
       ),
     ).not.toBeInTheDocument();
   });
+
+  it("labels the current questioning stage accessibly", async () => {
+    const { useOralBoardsQuestion } = await import("@/lib/copilotkit/oral-boards-question-context");
+    vi.mocked(useOralBoardsQuestion).mockReturnValue({
+      currentQuestion: "What is your diagnosis?",
+      setCurrentQuestion: vi.fn(),
+      clearCurrentQuestion: vi.fn(),
+      pendingInputKind: "answer",
+      registerPendingInput: vi.fn(),
+      clearPendingInput: vi.fn(),
+      respondToPendingInput: vi.fn(),
+    });
+
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: [],
+    };
+
+    render(<OralBoardsPanel state={state} {...baseProps} />);
+
+    const timeline = screen.getByRole("list", { name: "Exam progress" });
+    const stages = within(timeline).getAllByRole("listitem");
+
+    expect(stages).toHaveLength(4);
+    expect(within(timeline).getByText("Case")).toBeInTheDocument();
+    expect(within(timeline).getByText("Question 1")).toHaveAttribute("aria-current", "step");
+    expect(within(timeline).getByText("Reviewing")).toBeInTheDocument();
+    expect(within(timeline).getByText("Complete")).toBeInTheDocument();
+
+    vi.mocked(useOralBoardsQuestion).mockReturnValue({
+      currentQuestion: "",
+      setCurrentQuestion: vi.fn(),
+      clearCurrentQuestion: vi.fn(),
+      pendingInputKind: null,
+      registerPendingInput: vi.fn(),
+      clearPendingInput: vi.fn(),
+      respondToPendingInput: vi.fn(),
+    });
+  });
+
+  it("keeps the submitted question and answer visible while reviewing", async () => {
+    const { useOralBoardsQuestion } = await import("@/lib/copilotkit/oral-boards-question-context");
+    vi.mocked(useOralBoardsQuestion).mockReturnValue({
+      currentQuestion: "What is your diagnosis?",
+      setCurrentQuestion: vi.fn(),
+      clearCurrentQuestion: vi.fn(),
+      pendingInputKind: "answer",
+      registerPendingInput: vi.fn(),
+      clearPendingInput: vi.fn(),
+      respondToPendingInput: vi.fn(),
+    });
+
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: [],
+    };
+
+    const { rerender } = render(
+      <OralBoardsPanel state={state} {...baseProps} onAnswer={vi.fn()} />,
+    );
+
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Your answer" }),
+      "My diagnosis is reversible pulpitis.",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Submit" }));
+
+    rerender(
+      <OralBoardsPanel
+        state={state}
+        {...baseProps}
+        isRunning={true}
+        loadingStep="Reviewing your answer…"
+        onAnswer={vi.fn()}
+      />,
+    );
+
+    const timeline = screen.getByRole("list", { name: "Exam progress" });
+
+    expect(within(timeline).getAllByRole("listitem")).toHaveLength(4);
+    expect(within(timeline).getByText("Case")).toBeInTheDocument();
+    expect(within(timeline).getByText("Question 1")).toBeInTheDocument();
+    expect(within(timeline).getByText("Reviewing")).toHaveAttribute("aria-current", "step");
+    expect(within(timeline).getByText("Complete")).toBeInTheDocument();
+    expect(screen.getByText("What is your diagnosis?")).toBeInTheDocument();
+    expect(screen.getByText("My diagnosis is reversible pulpitis.")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Reviewing your answer…");
+    expect(screen.queryByRole("textbox", { name: "Your answer" })).not.toBeInTheDocument();
+
+    vi.mocked(useOralBoardsQuestion).mockReturnValue({
+      currentQuestion: "",
+      setCurrentQuestion: vi.fn(),
+      clearCurrentQuestion: vi.fn(),
+      pendingInputKind: null,
+      registerPendingInput: vi.fn(),
+      clearPendingInput: vi.fn(),
+      respondToPendingInput: vi.fn(),
+    });
+  });
+
+  it("keeps the exam surface mounted when questioning transitions to feedback", async () => {
+    const { useOralBoardsQuestion } = await import("@/lib/copilotkit/oral-boards-question-context");
+    vi.mocked(useOralBoardsQuestion).mockReturnValue({
+      currentQuestion: "What is your diagnosis?",
+      setCurrentQuestion: vi.fn(),
+      clearCurrentQuestion: vi.fn(),
+      pendingInputKind: "answer",
+      registerPendingInput: vi.fn(),
+      clearPendingInput: vi.fn(),
+      respondToPendingInput: vi.fn(),
+    });
+
+    const questioningState: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: [],
+    };
+    const onAnswer = vi.fn();
+    const { rerender } = render(
+      <OralBoardsPanel state={questioningState} {...baseProps} onAnswer={onAnswer} />,
+    );
+
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Your answer" }),
+      "My diagnosis is reversible pulpitis.",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Submit" }));
+
+    rerender(
+      <OralBoardsPanel
+        state={{ ...questioningState, status: "feedback" }}
+        {...baseProps}
+        isRunning={true}
+        loadingStep="Reviewing your answer…"
+        onAnswer={onAnswer}
+      />,
+    );
+
+    const timeline = screen.getByRole("list", { name: "Exam progress" });
+
+    expect(screen.getByText("What is your diagnosis?")).toBeInTheDocument();
+    expect(screen.getByText("My diagnosis is reversible pulpitis.")).toBeInTheDocument();
+    expect(within(timeline).getByText("Reviewing")).toHaveAttribute("aria-current", "step");
+    expect(screen.getByRole("status")).toHaveTextContent("Reviewing your answer…");
+    expect(screen.queryByRole("textbox", { name: "Your answer" })).not.toBeInTheDocument();
+    expect(screen.queryByText("No feedback yet.")).not.toBeInTheDocument();
+
+    vi.mocked(useOralBoardsQuestion).mockReturnValue({
+      currentQuestion: "",
+      setCurrentQuestion: vi.fn(),
+      clearCurrentQuestion: vi.fn(),
+      pendingInputKind: null,
+      registerPendingInput: vi.fn(),
+      clearPendingInput: vi.fn(),
+      respondToPendingInput: vi.fn(),
+    });
+  });
+
+  it("does not render a fake next question while computing the score card", async () => {
+    const { useOralBoardsQuestion } = await import("@/lib/copilotkit/oral-boards-question-context");
+    vi.mocked(useOralBoardsQuestion).mockReturnValue({
+      currentQuestion: "What is your final recommendation?",
+      setCurrentQuestion: vi.fn(),
+      clearCurrentQuestion: vi.fn(),
+      pendingInputKind: "answer",
+      registerPendingInput: vi.fn(),
+      clearPendingInput: vi.fn(),
+      respondToPendingInput: vi.fn(),
+    });
+
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: Array.from({ length: 6 }, (_value, index) => ({
+        question: `Question ${index + 1}?`,
+        answer: `Answer ${index + 1}`,
+        feedback: `Feedback ${index + 1}`,
+        ideal_response: `Ideal ${index + 1}`,
+        citations: [],
+      })),
+    };
+
+    render(
+      <OralBoardsPanel
+        state={state}
+        {...baseProps}
+        isRunning={true}
+        loadingStep="Computing score card…"
+      />,
+    );
+
+    const timeline = screen.getByRole("list", { name: "Exam progress" });
+
+    expect(within(timeline).getAllByRole("listitem")).toHaveLength(4);
+    expect(within(timeline).getByText("Case")).toBeInTheDocument();
+    expect(within(timeline).getByText("Question 6")).toBeInTheDocument();
+    expect(within(timeline).getByText("Reviewing")).toBeInTheDocument();
+    expect(within(timeline).getByText("Complete")).toHaveAttribute("aria-current", "step");
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+    expect(screen.getByRole("status")).toHaveTextContent("Computing score card…");
+    expect(screen.queryByText("Question 7")).not.toBeInTheDocument();
+  });
+
+  it("collapses model answer and citations in live feedback by default", async () => {
+    const citation = {
+      docid: 17,
+      title: "Local Anesthesia Guideline",
+      collection: "aapd" as const,
+    };
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: [
+        {
+          question: "Which anesthetic would you choose?",
+          answer: "I would use local anesthesia.",
+          feedback: "Consider anesthetic selection.",
+          ideal_response: "Use articaine with epinephrine.",
+          citations: [citation],
+        },
+      ],
+    };
+
+    render(<OralBoardsPanel state={state} {...baseProps} />);
+
+    expect(screen.getByText("Consider anesthetic selection.")).toBeInTheDocument();
+    expect(screen.queryByText("Use articaine with epinephrine.")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Local Anesthesia Guideline/)).not.toBeInTheDocument();
+
+    const detailsTrigger = screen.getByRole("button", {
+      name: "Show model answer and sources",
+    });
+    const chevron = detailsTrigger.querySelector("svg");
+
+    expect(chevron).toHaveClass("group-data-panel-open:rotate-180");
+
+    await userEvent.click(detailsTrigger);
+
+    expect(detailsTrigger).toHaveAttribute("data-panel-open", "");
+    expect(screen.getByText("Use articaine with epinephrine.")).toBeInTheDocument();
+    expect(screen.getByText(/Local Anesthesia Guideline/)).toBeInTheDocument();
+  });
 });
 
 describe("OralBoardsPanel — complete", () => {
-  it("renders the outcome banner, per-skillset score table, model answer, and transcript", () => {
+  it("renders only the final feedback pane once a score card is present", () => {
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "feedback",
+      score_card: "## Score\nStrong management reasoning overall.",
+      transcript: [],
+    };
+
+    render(
+      <OralBoardsPanel
+        state={state}
+        {...baseProps}
+        isRunning={true}
+        loadingStep="Computing score card…"
+      />,
+    );
+
+    expect(screen.getByText("Strong management reasoning overall.")).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Exam progress" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("renders the outcome banner, per-skillset score table, and collapsible transcript review", async () => {
     const state: OralBoardsState = {
       case: "Case summary text.",
       case_sources: [],
@@ -289,15 +561,39 @@ describe("OralBoardsPanel — complete", () => {
 
     render(<OralBoardsPanel state={state} {...baseProps} />);
 
-    expect(screen.getByText("Q1")).toBeInTheDocument();
-    expect(screen.getByText("Describe your approach to pain management.")).toBeInTheDocument();
-    expect(screen.getByText("Your answer: I would use local anesthesia.")).toBeInTheDocument();
-
     expect(screen.getByText(/Practice outcome:/)).toBeInTheDocument();
     expect(screen.getByText(/Borderline/)).toBeInTheDocument();
 
     expect(screen.getAllByText("Analyze / Evaluate").length).toBeGreaterThan(0);
     expect(screen.getByText("Solid plan; thin on alternatives.")).toBeInTheDocument();
+
+    const reviewHeading = screen.getByRole("heading", { name: "Question review" });
+    expect(reviewHeading).toBeInTheDocument();
+    expect(screen.getByLabelText("Question review")).toHaveAttribute(
+      "aria-labelledby",
+      reviewHeading.id,
+    );
+
+    const review = screen.getByRole("button", { name: /^Q1/ });
+    expect(review).toBeInTheDocument();
+    expect(
+      screen.queryByText("Your answer: I would use local anesthesia."),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(review);
+
+    expect(
+      screen.getAllByText("Describe your approach to pain management.").length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getByText(
+        (_content, el) =>
+          el?.tagName === "P" &&
+          el.textContent?.includes("Your answer: I would use local anesthesia."),
+      ),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Show model answer and sources" }));
 
     expect(screen.getByText("Model answer")).toBeInTheDocument();
     expect(screen.getByText("Use articaine with epinephrine.")).toBeInTheDocument();
@@ -317,6 +613,73 @@ describe("OralBoardsPanel — complete", () => {
     await userEvent.click(screen.getByRole("button", { name: /Start a new case/ }));
 
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("collapses completed question reviews on the final score screen", async () => {
+    const state: OralBoardsState = {
+      case: "Case summary text.",
+      case_sources: [],
+      status: "complete",
+      score_card: "## Score\nStrong management reasoning overall.",
+      transcript: [
+        {
+          question: "Describe your approach to pain management.",
+          answer: "I would use local anesthesia.",
+          feedback: "Good.",
+          ideal_response: "Use articaine with epinephrine.",
+          citations: [],
+        },
+      ],
+    };
+
+    render(<OralBoardsPanel state={state} {...baseProps} />);
+
+    expect(screen.getByRole("button", { name: /^Q1/ })).toBeInTheDocument();
+    expect(
+      screen.queryByText("Your answer: I would use local anesthesia."),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /^Q1/ }));
+
+    expect(
+      screen.getByText(
+        (_content, el) =>
+          el?.tagName === "P" &&
+          el.textContent?.includes("Your answer: I would use local anesthesia."),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("shows exchange metadata in the trigger while the review stays collapsed", () => {
+    const state: OralBoardsState = {
+      case: "Case summary text.",
+      case_sources: [],
+      status: "complete",
+      score_card: "## Score\nStrong management reasoning overall.",
+      transcript: [
+        {
+          question: "Describe your approach to pain management.",
+          answer: "I would use local anesthesia.",
+          skillset: "Behavior Guidance",
+          skill: "analyze_evaluate",
+          score: 2,
+          feedback: "Good.",
+          ideal_response: "Use articaine with epinephrine.",
+          citations: [],
+        },
+      ],
+    };
+
+    render(<OralBoardsPanel state={state} {...baseProps} />);
+
+    const review = screen.getByRole("button", { name: /^Q1/ });
+
+    expect(within(review).getByText("Behavior Guidance")).toBeInTheDocument();
+    expect(within(review).getByText("Analyze / Evaluate")).toBeInTheDocument();
+    expect(within(review).getByText("2/3")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Your answer: I would use local anesthesia."),
+    ).not.toBeInTheDocument();
   });
 });
 

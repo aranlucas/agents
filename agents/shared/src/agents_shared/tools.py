@@ -120,6 +120,7 @@ _A2UI_FALLBACKS = [
 _FAST_PRIMARY = "mistral/mistral-medium-latest"
 _FAST_FALLBACKS = [
     _DEFAULT_MODEL,
+    "groq/openai/gpt-oss-120b",
     "gemini/gemini-3.1-flash-lite",
     "gemini/gemini-2.5-flash",
 ]

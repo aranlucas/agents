@@ -138,19 +138,19 @@ export function OralBoardsExtension({ agentId }: { agentId: AgentId }) {
   const { setCurrentQuestion } = useOralBoardsQuestion();
   const { agent } = useAgent({ agentId, updates: [UseAgentUpdate.OnStateChanged] });
   const lastSpokenQuestion = useRef("");
+  const currentQuestion = getCurrentQuestion(agent?.state);
 
   // Seed the in-memory question context from agent state on mount / after
   // refresh, so the exam panel shows the last question without waiting for the
   // next ask_question tool call.
   useEffect(() => {
-    const q = getCurrentQuestion(agent?.state);
-    if (!q) return;
-    setCurrentQuestion(q);
-    if (q !== lastSpokenQuestion.current) {
-      lastSpokenQuestion.current = q;
-      void speakQuestion(q);
+    if (!currentQuestion) return;
+    setCurrentQuestion(currentQuestion);
+    if (currentQuestion !== lastSpokenQuestion.current) {
+      lastSpokenQuestion.current = currentQuestion;
+      void speakQuestion(currentQuestion);
     }
-  }, [agent, setCurrentQuestion]);
+  }, [currentQuestion, setCurrentQuestion]);
 
   useFrontendTool(
     {
