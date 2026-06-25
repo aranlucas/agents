@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Streamdown } from "@agents/ui";
 import {
   AlertCircleIcon,
@@ -451,22 +451,56 @@ function PresentingPane({
   );
 }
 
-// Sequential progress dots — answered skillsets vs. the live question.
-function QuestionProgress({ answered, current }: { answered: number; current: number }) {
-  const total = Math.max(answered + 1, current);
+function ExamTimeline({
+  questionNumber,
+  stage,
+}: {
+  questionNumber: number;
+  stage: "question" | "reviewing" | "scoring" | "complete";
+}) {
+  const totalQuestions = Math.max(questionNumber, 1);
+  const questionSteps = Array.from({ length: totalQuestions }, (_value, index) => index + 1);
+
   return (
-    <div className="flex items-center gap-1" aria-hidden>
-      {Array.from({ length: total }).map((_, i) => {
-        const dot =
-          i === current - 1
-            ? "size-1.5 rounded-full ring-2 ring-indigo-400/25"
-            : i < answered
-              ? "size-1.5 rounded-full bg-emerald-500/70"
-              : "size-1.5 rounded-full bg-muted-foreground/25";
-        // oxlint-disable-next-line react/no-array-index-key -- positional dots, no identity
-        return <span key={i} className={dot} />;
+    <ol aria-label="Exam progress" className="flex flex-wrap items-center gap-2 text-xs">
+      {questionSteps.map((stepNumber) => {
+        const isActive =
+          (stage === "question" || stage === "reviewing") && stepNumber === questionNumber;
+        const isCompleted =
+          (stage === "question" || stage === "reviewing") && stepNumber < questionNumber
+            ? true
+            : (stage === "scoring" || stage === "complete") && stepNumber <= questionNumber;
+        const labelClasses = isCompleted
+          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+          : isActive
+            ? "border-indigo-500/40 bg-indigo-500/10 text-indigo-200"
+            : "border-border/60 bg-muted/30 text-muted-foreground";
+
+        return (
+          <li key={stepNumber} className="flex items-center gap-2">
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 ${labelClasses}`}
+            >
+              {isCompleted && <CheckCircle2Icon className="size-3" />}
+              <span aria-current={isActive ? "step" : undefined}>{`Question ${stepNumber}`}</span>
+            </span>
+          </li>
+        );
       })}
-    </div>
+      <li>
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 ${
+            stage === "scoring" || stage === "complete"
+              ? "border-indigo-500/40 bg-indigo-500/10 text-indigo-200"
+              : "border-border/60 bg-muted/30 text-muted-foreground"
+          }`}
+        >
+          <span aria-current={stage === "scoring" || stage === "complete" ? "step" : undefined}>
+            Complete
+          </span>
+        </span>
+      </li>
+    </ol>
   );
 }
 
@@ -507,6 +541,22 @@ function LiveFeedbackPreview({
   );
 }
 
+function ReviewingAnswer({ answer, loadingStep }: { answer: string; loadingStep: string }) {
+  return (
+    <div className="bg-muted/15 flex shrink-0 flex-col gap-3 rounded-xl border p-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
+          Your response
+        </p>
+        <p role="status" className="text-muted-foreground text-xs">
+          {loadingStep}
+        </p>
+      </div>
+      <p className="text-sm leading-relaxed">{answer}</p>
+    </div>
+  );
+}
+
 function QuestioningPane({
   caseBody,
   sources,
@@ -531,9 +581,33 @@ function QuestioningPane({
   activeIdealResponse?: string;
 }) {
   const { currentQuestion: question } = useOralBoardsQuestion();
-  const questionNumber = transcript.length + 1;
-
   const [answerText, setAnswerText] = useState("");
+  const [submittedAnswer, setSubmittedAnswer] = useState("");
+  const previousQuestionRef = useRef(question);
+
+  useEffect(() => {
+    if (question && question !== previousQuestionRef.current) {
+      previousQuestionRef.current = question;
+      setSubmittedAnswer("");
+    }
+  }, [question]);
+
+  useEffect(
+    () => () => {
+      previousQuestionRef.current = "";
+    },
+    [],
+  );
+
+  const isScoring = isRunning && loadingStep === "Computing score card…";
+  const stage: "question" | "reviewing" | "scoring" | "complete" = isScoring
+    ? "scoring"
+    : submittedAnswer && isRunning
+      ? "reviewing"
+      : "question";
+  const displayedQuestionNumber = question ? transcript.length + 1 : Math.max(transcript.length, 1);
+  const reviewingStatus =
+    stage === "scoring" ? "Computing score card…" : loadingStep || "Reviewing your answer…";
 
   const recorder = useAnswerRecorder((text) => {
     setAnswerText((prev) => (prev ? `${prev} ${text}` : text));
@@ -542,6 +616,7 @@ function QuestioningPane({
   const handleSubmit = () => {
     const trimmed = answerText.trim();
     if (!trimmed || isRunning) return;
+    setSubmittedAnswer(trimmed);
     onAnswer(trimmed);
     setAnswerText("");
   };
@@ -568,11 +643,16 @@ function QuestioningPane({
         <div className="flex h-full flex-col">
           {/* Progress header — fixed outside ResizablePanelGroup */}
           <div className="shrink-0 border-b px-4 py-2">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-2">
               <span className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
                 Examination
               </span>
-              <QuestionProgress answered={transcript.length} current={questionNumber} />
+              <ExamTimeline questionNumber={displayedQuestionNumber} stage={stage} />
+              {stage === "scoring" && (
+                <p role="status" className="text-muted-foreground text-xs">
+                  Computing score card…
+                </p>
+              )}
             </div>
             {transcript.length > 0 && (
               <div className="mt-1.5 flex flex-wrap gap-1">
@@ -627,79 +707,91 @@ function QuestioningPane({
               <ScrollArea className="h-full">
                 <div className="flex flex-col gap-3 p-4">
                   {/* Examiner prompt */}
-                  <Card>
-                    <CardHeader className="flex-row items-start justify-between gap-2">
-                      <div className="flex items-center gap-2.5">
-                        <Avatar className="size-8 ring-1 ring-indigo-500/30">
-                          <AvatarFallback className="bg-indigo-500/15 text-indigo-300">
-                            <StethoscopeIcon className="size-4" />
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="leading-tight">
-                          <p className="text-[10px] font-semibold tracking-[0.12em] text-indigo-300/80 uppercase">
-                            Examiner
-                          </p>
-                          <p className="text-muted-foreground text-[11px]">
-                            Question {questionNumber}
-                          </p>
+                  {!isScoring && (
+                    <Card>
+                      <CardHeader className="flex-row items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar className="size-8 ring-1 ring-indigo-500/30">
+                            <AvatarFallback className="bg-indigo-500/15 text-indigo-300">
+                              <StethoscopeIcon className="size-4" />
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="leading-tight">
+                            <p className="text-[10px] font-semibold tracking-[0.12em] text-indigo-300/80 uppercase">
+                              Examiner
+                            </p>
+                            <p className="text-muted-foreground text-[11px]">
+                              Q{displayedQuestionNumber}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      {question && <TtsButton text={question} label="Listen" />}
-                    </CardHeader>
-                    <CardContent>
-                      {question ? (
-                        <p className="text-[15px] leading-relaxed font-medium text-pretty">
-                          {question}
-                        </p>
-                      ) : (
-                        <ThinkingState isRunning={isRunning} loadingStep={loadingStep} />
-                      )}
-                    </CardContent>
-                  </Card>
+                        {question && <TtsButton text={question} label="Listen" />}
+                      </CardHeader>
+                      <CardContent>
+                        {question ? (
+                          <p className="text-[15px] leading-relaxed font-medium text-pretty">
+                            {question}
+                          </p>
+                        ) : (
+                          <ThinkingState isRunning={isRunning} loadingStep={loadingStep} />
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
 
                   {/* Response composer */}
-                  <div className="bg-muted/15 flex shrink-0 flex-col gap-2 rounded-xl border p-3 md:min-h-0 md:flex-1">
-                    <div className="flex shrink-0 items-center justify-between">
-                      <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
-                        Your response
+                  {submittedAnswer && isRunning ? (
+                    <ReviewingAnswer answer={submittedAnswer} loadingStep={reviewingStatus} />
+                  ) : isScoring ? (
+                    <div className="bg-muted/15 rounded-xl border p-3">
+                      <p role="status" className="text-muted-foreground text-sm">
+                        Computing score card…
                       </p>
-                      <RecordButton recorder={recorder} />
                     </div>
+                  ) : (
+                    <div className="bg-muted/15 flex shrink-0 flex-col gap-2 rounded-xl border p-3 md:min-h-0 md:flex-1">
+                      <div className="flex shrink-0 items-center justify-between">
+                        <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
+                          Your response
+                        </p>
+                        <RecordButton recorder={recorder} />
+                      </div>
 
-                    {recorder.micSupported && (
-                      <CopilotChatAudioRecorder ref={recorder.recorderRef} />
-                    )}
+                      {recorder.micSupported && (
+                        <CopilotChatAudioRecorder ref={recorder.recorderRef} />
+                      )}
 
-                    <Textarea
-                      aria-label="Your answer"
-                      className="h-24 resize-none p-3 text-sm md:h-auto md:min-h-[80px] md:flex-1"
-                      placeholder="Type your answer…"
-                      value={answerText}
-                      onChange={(e) => setAnswerText(e.target.value)}
-                      disabled={isRunning || recorder.recording}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSubmit();
-                      }}
-                    />
+                      <Textarea
+                        aria-label="Your answer"
+                        className="h-24 resize-none p-3 text-sm md:h-auto md:min-h-[80px] md:flex-1"
+                        placeholder="Type your answer…"
+                        value={answerText}
+                        onChange={(e) => setAnswerText(e.target.value)}
+                        disabled={isRunning || recorder.recording}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSubmit();
+                        }}
+                      />
 
-                    <div className="flex shrink-0 items-center justify-between">
-                      <span className="text-muted-foreground hidden items-center gap-1 text-[11px] md:flex">
-                        <Kbd>⌘</Kbd>
-                        <Kbd>↵</Kbd>
-                        <span className="ml-0.5">to submit</span>
-                      </span>
-                      <Button
-                        type="button"
-                        size="sm"
-                        disabled={isRunning || !answerText.trim()}
-                        onClick={handleSubmit}
-                        className="ml-auto"
-                      >
-                        <SendHorizontalIcon className="size-3.5" />
-                        Submit
-                      </Button>
+                      <div className="flex shrink-0 items-center justify-between">
+                        <span className="text-muted-foreground hidden items-center gap-1 text-[11px] md:flex">
+                          <Kbd>⌘</Kbd>
+                          <Kbd>↵</Kbd>
+                          <span className="ml-0.5">to submit</span>
+                        </span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={isRunning || !answerText.trim()}
+                          onClick={handleSubmit}
+                          className="ml-auto"
+                        >
+                          <SendHorizontalIcon className="size-3.5" />
+                          Submit
+                        </Button>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </ScrollArea>
             </ResizablePanel>

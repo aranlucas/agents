@@ -255,6 +255,123 @@ describe("OralBoardsPanel — questioning", () => {
       ),
     ).not.toBeInTheDocument();
   });
+
+  it("labels the current questioning stage accessibly", async () => {
+    const { useOralBoardsQuestion } = await import("@/lib/copilotkit/oral-boards-question-context");
+    vi.mocked(useOralBoardsQuestion).mockReturnValue({
+      currentQuestion: "What is your diagnosis?",
+      setCurrentQuestion: vi.fn(),
+      clearCurrentQuestion: vi.fn(),
+      pendingInputKind: "answer",
+      registerPendingInput: vi.fn(),
+      clearPendingInput: vi.fn(),
+      respondToPendingInput: vi.fn(),
+    });
+
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: [],
+    };
+
+    render(<OralBoardsPanel state={state} {...baseProps} />);
+
+    expect(screen.getByRole("list", { name: "Exam progress" })).toBeInTheDocument();
+    expect(screen.getByText("Question 1")).toHaveAttribute("aria-current", "step");
+
+    vi.mocked(useOralBoardsQuestion).mockReturnValue({
+      currentQuestion: "",
+      setCurrentQuestion: vi.fn(),
+      clearCurrentQuestion: vi.fn(),
+      pendingInputKind: null,
+      registerPendingInput: vi.fn(),
+      clearPendingInput: vi.fn(),
+      respondToPendingInput: vi.fn(),
+    });
+  });
+
+  it("keeps the submitted question and answer visible while reviewing", async () => {
+    const { useOralBoardsQuestion } = await import("@/lib/copilotkit/oral-boards-question-context");
+    vi.mocked(useOralBoardsQuestion).mockReturnValue({
+      currentQuestion: "What is your diagnosis?",
+      setCurrentQuestion: vi.fn(),
+      clearCurrentQuestion: vi.fn(),
+      pendingInputKind: "answer",
+      registerPendingInput: vi.fn(),
+      clearPendingInput: vi.fn(),
+      respondToPendingInput: vi.fn(),
+    });
+
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: [],
+    };
+
+    const { rerender } = render(
+      <OralBoardsPanel state={state} {...baseProps} onAnswer={vi.fn()} />,
+    );
+
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Your answer" }),
+      "My diagnosis is reversible pulpitis.",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Submit" }));
+
+    rerender(
+      <OralBoardsPanel
+        state={state}
+        {...baseProps}
+        isRunning={true}
+        loadingStep="Reviewing your answer…"
+        onAnswer={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("What is your diagnosis?")).toBeInTheDocument();
+    expect(screen.getByText("My diagnosis is reversible pulpitis.")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Reviewing your answer…");
+    expect(screen.queryByRole("textbox", { name: "Your answer" })).not.toBeInTheDocument();
+
+    vi.mocked(useOralBoardsQuestion).mockReturnValue({
+      currentQuestion: "",
+      setCurrentQuestion: vi.fn(),
+      clearCurrentQuestion: vi.fn(),
+      pendingInputKind: null,
+      registerPendingInput: vi.fn(),
+      clearPendingInput: vi.fn(),
+      respondToPendingInput: vi.fn(),
+    });
+  });
+
+  it("does not render a fake next question while computing the score card", () => {
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: Array.from({ length: 6 }, (_value, index) => ({
+        question: `Question ${index + 1}?`,
+        answer: `Answer ${index + 1}`,
+        feedback: `Feedback ${index + 1}`,
+        ideal_response: `Ideal ${index + 1}`,
+        citations: [],
+      })),
+    };
+
+    render(
+      <OralBoardsPanel
+        state={state}
+        {...baseProps}
+        isRunning={true}
+        loadingStep="Computing score card…"
+      />,
+    );
+
+    expect(screen.getByText("Complete")).toHaveAttribute("aria-current", "step");
+    expect(screen.queryByText("Question 7")).not.toBeInTheDocument();
+  });
 });
 
 describe("OralBoardsPanel — complete", () => {
