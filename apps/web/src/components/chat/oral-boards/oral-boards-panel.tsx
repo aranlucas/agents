@@ -157,9 +157,9 @@ function FeedbackDetails({ idealResponse, citations }: FeedbackDetailsProps) {
 
   return (
     <Collapsible className="rounded-lg border border-dashed">
-      <CollapsibleTrigger className="hover:bg-muted flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left text-xs transition-colors">
+      <CollapsibleTrigger className="group hover:bg-muted flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left text-xs transition-colors">
         <span className="font-medium">Show model answer and sources</span>
-        <ChevronDownIcon className="text-muted-foreground size-3 transition-transform data-[open]:rotate-180" />
+        <ChevronDownIcon className="text-muted-foreground size-3 transition-transform group-data-panel-open:rotate-180" />
       </CollapsibleTrigger>
       <CollapsibleContent className="space-y-1.5 border-t px-2.5 py-2">
         <ModelAnswer text={idealResponse} />
@@ -369,13 +369,13 @@ function CompletedExchangeRow({
 }) {
   return (
     <Collapsible className="overflow-hidden rounded-lg border">
-      <CollapsibleTrigger className="hover:bg-muted flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors">
+      <CollapsibleTrigger className="group hover:bg-muted flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors">
         <CheckCircle2Icon className="size-3 shrink-0 text-emerald-400" />
         <span className="font-medium text-emerald-300/90">Q{index + 1}</span>
         <span className="text-muted-foreground flex-1 truncate">
           {truncate(exchange.question, 52)}
         </span>
-        <ChevronDownIcon className="text-muted-foreground size-3 transition-transform data-[open]:rotate-180" />
+        <ChevronDownIcon className="text-muted-foreground size-3 transition-transform group-data-panel-open:rotate-180" />
       </CollapsibleTrigger>
       <CollapsibleContent className="space-y-1.5 border-t px-3 py-2.5 text-xs">
         <SkillsetBadges exchange={exchange} />
@@ -864,10 +864,13 @@ function FeedbackPane({
       {scoreCard.trim() && <Streamdown key={scoreCard}>{scoreCard}</Streamdown>}
       {transcript.length > 0 && (
         <div className="space-y-3">
-          <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
+          <h2
+            id="question-review-heading"
+            className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase"
+          >
             Question review
-          </p>
-          <div className="space-y-2" aria-label="Question review">
+          </h2>
+          <div className="space-y-2" aria-labelledby="question-review-heading">
             {transcript.map((exchange, index) => (
               <CompletedExchangeRow
                 key={exchange.question || index}

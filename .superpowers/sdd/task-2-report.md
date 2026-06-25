@@ -121,3 +121,105 @@ Exit status 0
 ## Concerns
 
 - None.
+
+## Reviewer follow-up
+
+### Changes
+
+- Replaced the `Question review` paragraph with an `h2` and connected the
+  review container using `aria-labelledby="question-review-heading"`.
+- Verified the installed `@base-ui/react` 1.6 Collapsible trigger exposes
+  `data-panel-open`, then changed both chevrons to use
+  `group-data-panel-open:rotate-180`.
+- Expanded the questioning-screen feedback test with a nonempty citation.
+  The test now confirms:
+  - primary feedback remains visible
+  - model answer and citation are hidden by default
+  - the trigger exposes `data-panel-open` after expansion
+  - model answer and citation are revealed after expansion
+
+### Follow-up RED
+
+Command:
+
+```bash
+pnpm --filter web test -- src/components/chat/oral-boards/oral-boards-panel.test.tsx
+```
+
+Result:
+
+```text
+❯ src/components/chat/oral-boards/oral-boards-panel.test.tsx (16 tests | 2 failed)
+× collapses model answer and citations in live feedback by default
+× renders the outcome banner, per-skillset score table, and collapsible transcript review
+
+FAIL ... collapses model answer and citations in live feedback by default
+Expected the chevron to have class:
+  group-data-panel-open:rotate-180
+Received:
+  data-[open]:rotate-180
+
+FAIL ... renders the outcome banner, per-skillset score table, and collapsible transcript review
+Unable to find an accessible element with role "heading" and name "Question review".
+
+Test Files  1 failed | 41 passed (42)
+Tests  2 failed | 274 passed (276)
+Exit status 1
+```
+
+### Follow-up GREEN
+
+Command:
+
+```bash
+pnpm --filter web test -- src/components/chat/oral-boards/oral-boards-panel.test.tsx
+```
+
+Result:
+
+```text
+Test Files  42 passed (42)
+Tests  276 passed (276)
+Exit status 0
+```
+
+### Follow-up verification
+
+Command:
+
+```bash
+pnpm exec oxfmt --check apps/web/src/components/chat/oral-boards/oral-boards-panel.tsx apps/web/src/components/chat/oral-boards/oral-boards-panel.test.tsx .superpowers/sdd/task-2-report.md
+```
+
+Result:
+
+```text
+All matched files use the correct format.
+Finished in 116ms on 3 files using 10 threads.
+Exit status 0
+```
+
+Command:
+
+```bash
+npx react-doctor@latest --verbose --scope changed
+```
+
+Result:
+
+```text
+web  100  Great
+Exit status 0
+```
+
+Command:
+
+```bash
+git diff --check
+```
+
+Result:
+
+```text
+Exit status 0
+```

@@ -395,28 +395,44 @@ describe("OralBoardsPanel — questioning", () => {
   });
 
   it("collapses model answer and citations in live feedback by default", async () => {
+    const citation = {
+      docid: 17,
+      title: "Local Anesthesia Guideline",
+      collection: "aapd",
+    };
     const state: OralBoardsState = {
       case: "Case.",
       case_sources: [],
       status: "questioning",
-      transcript: [],
+      transcript: [
+        {
+          question: "Which anesthetic would you choose?",
+          answer: "I would use local anesthesia.",
+          feedback: "Consider anesthetic selection.",
+          ideal_response: "Use articaine with epinephrine.",
+          citations: [citation],
+        },
+      ],
     };
 
-    render(
-      <OralBoardsPanel
-        state={state}
-        {...baseProps}
-        isRunning={true}
-        activeFeedback="Consider anesthetic selection."
-        activeIdealResponse="Use articaine with epinephrine."
-      />,
-    );
+    render(<OralBoardsPanel state={state} {...baseProps} />);
 
+    expect(screen.getByText("Consider anesthetic selection.")).toBeInTheDocument();
     expect(screen.queryByText("Use articaine with epinephrine.")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Local Anesthesia Guideline/)).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Show model answer and sources" }));
+    const detailsTrigger = screen.getByRole("button", {
+      name: "Show model answer and sources",
+    });
+    const chevron = detailsTrigger.querySelector("svg");
 
+    expect(chevron).toHaveClass("group-data-panel-open:rotate-180");
+
+    await userEvent.click(detailsTrigger);
+
+    expect(detailsTrigger).toHaveAttribute("data-panel-open", "");
     expect(screen.getByText("Use articaine with epinephrine.")).toBeInTheDocument();
+    expect(screen.getByText(/Local Anesthesia Guideline/)).toBeInTheDocument();
   });
 });
 
@@ -458,7 +474,12 @@ describe("OralBoardsPanel — complete", () => {
     expect(screen.getAllByText("Analyze / Evaluate").length).toBeGreaterThan(0);
     expect(screen.getByText("Solid plan; thin on alternatives.")).toBeInTheDocument();
 
-    expect(screen.getByText("Question review")).toBeInTheDocument();
+    const reviewHeading = screen.getByRole("heading", { name: "Question review" });
+    expect(reviewHeading).toBeInTheDocument();
+    expect(screen.getByLabelText("Question review")).toHaveAttribute(
+      "aria-labelledby",
+      reviewHeading.id,
+    );
 
     const review = screen.getByRole("button", { name: /^Q1/ });
     expect(review).toBeInTheDocument();
