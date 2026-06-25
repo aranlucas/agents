@@ -408,45 +408,53 @@ function PresentingPane({
   );
 
   return (
-    <div className="flex h-full flex-col gap-4">
-      <div className="flex shrink-0 items-center justify-between">
-        <p className="text-muted-foreground text-xs">
-          Read and analyze the case. Take notes before beginning.
-        </p>
-        <TtsButton text={caseBody} label="Present case" />
-      </div>
-
-      <ScrollArea className="bg-muted/20 flex-1 rounded-lg border">
-        <div className="p-4 sm:p-5">
-          <div className="text-[13.5px] leading-[1.75]">
-            <Streamdown>{caseBody}</Streamdown>
+    <div className="flex h-full flex-col">
+      {/* Scrollable content — native overflow so touch scroll works on mobile */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="flex flex-col gap-4 p-4 sm:p-5">
+          <div className="flex items-center justify-between">
+            <p className="text-muted-foreground text-xs">
+              Read and analyze the case. Take notes before beginning.
+            </p>
+            <TtsButton text={caseBody} label="Present case" />
           </div>
-          {sources.length > 0 && (
-            <div className="mt-4 border-t pt-3">
-              <CitationChips sources={sources} />
-            </div>
-          )}
-        </div>
-      </ScrollArea>
 
-      <div className="shrink-0 space-y-2">
-        <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
-          Your Notes
-        </p>
-        {recorder.micSupported && <CopilotChatAudioRecorder ref={recorder.recorderRef} />}
-        <Textarea
-          aria-label="Case notes"
-          className="min-h-[60px] resize-none p-3 text-sm"
-          placeholder="Record or type your notes about the case…"
-          value={notes}
-          onChange={(e) => onNotesChange(e.target.value)}
-        />
-        <RecordButton recorder={recorder} />
+          <div className="bg-muted/20 rounded-lg border">
+            <div className="p-4 sm:p-5">
+              <div className="text-[13.5px] leading-[1.75]">
+                <Streamdown>{caseBody}</Streamdown>
+              </div>
+              {sources.length > 0 && (
+                <div className="mt-4 border-t pt-3">
+                  <CitationChips sources={sources} />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
+              Your Notes
+            </p>
+            {recorder.micSupported && <CopilotChatAudioRecorder ref={recorder.recorderRef} />}
+            <Textarea
+              aria-label="Case notes"
+              className="min-h-[60px] resize-none p-3 text-sm"
+              placeholder="Record or type your notes about the case…"
+              value={notes}
+              onChange={(e) => onNotesChange(e.target.value)}
+            />
+            <RecordButton recorder={recorder} />
+          </div>
+        </div>
       </div>
 
-      <Button type="button" className="w-full shrink-0" onClick={onReady}>
-        Begin Examination
-      </Button>
+      {/* Always-visible footer — button never pushed off screen */}
+      <div className="shrink-0 border-t p-4">
+        <Button type="button" className="w-full" onClick={onReady}>
+          Begin Examination
+        </Button>
+      </div>
     </div>
   );
 }
@@ -809,7 +817,7 @@ export function OralBoardsPanel({
           isQuestioning
             ? "flex overflow-hidden p-0"
             : status === "presenting"
-              ? "flex flex-col overflow-hidden"
+              ? "flex flex-col overflow-hidden p-0"
               : "space-y-4"
         }
       >
