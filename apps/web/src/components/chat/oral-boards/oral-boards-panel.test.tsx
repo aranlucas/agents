@@ -393,10 +393,35 @@ describe("OralBoardsPanel — questioning", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Computing score card…");
     expect(screen.queryByText("Question 7")).not.toBeInTheDocument();
   });
+
+  it("collapses model answer and citations in live feedback by default", async () => {
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: [],
+    };
+
+    render(
+      <OralBoardsPanel
+        state={state}
+        {...baseProps}
+        isRunning={true}
+        activeFeedback="Consider anesthetic selection."
+        activeIdealResponse="Use articaine with epinephrine."
+      />,
+    );
+
+    expect(screen.queryByText("Use articaine with epinephrine.")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Show model answer and sources" }));
+
+    expect(screen.getByText("Use articaine with epinephrine.")).toBeInTheDocument();
+  });
 });
 
 describe("OralBoardsPanel — complete", () => {
-  it("renders the outcome banner, per-skillset score table, model answer, and transcript", () => {
+  it("renders the outcome banner, per-skillset score table, and collapsible transcript review", async () => {
     const state: OralBoardsState = {
       case: "Case summary text.",
       case_sources: [],
@@ -427,15 +452,34 @@ describe("OralBoardsPanel — complete", () => {
 
     render(<OralBoardsPanel state={state} {...baseProps} />);
 
-    expect(screen.getByText("Q1")).toBeInTheDocument();
-    expect(screen.getByText("Describe your approach to pain management.")).toBeInTheDocument();
-    expect(screen.getByText("Your answer: I would use local anesthesia.")).toBeInTheDocument();
-
     expect(screen.getByText(/Practice outcome:/)).toBeInTheDocument();
     expect(screen.getByText(/Borderline/)).toBeInTheDocument();
 
     expect(screen.getAllByText("Analyze / Evaluate").length).toBeGreaterThan(0);
     expect(screen.getByText("Solid plan; thin on alternatives.")).toBeInTheDocument();
+
+    expect(screen.getByText("Question review")).toBeInTheDocument();
+
+    const review = screen.getByRole("button", { name: /^Q1/ });
+    expect(review).toBeInTheDocument();
+    expect(
+      screen.queryByText("Your answer: I would use local anesthesia."),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(review);
+
+    expect(
+      screen.getAllByText("Describe your approach to pain management.").length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getByText(
+        (_content, el) =>
+          el?.tagName === "P" &&
+          el.textContent?.includes("Your answer: I would use local anesthesia."),
+      ),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Show model answer and sources" }));
 
     expect(screen.getByText("Model answer")).toBeInTheDocument();
     expect(screen.getByText("Use articaine with epinephrine.")).toBeInTheDocument();
@@ -455,6 +499,41 @@ describe("OralBoardsPanel — complete", () => {
     await userEvent.click(screen.getByRole("button", { name: /Start a new case/ }));
 
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("collapses completed question reviews on the final score screen", async () => {
+    const state: OralBoardsState = {
+      case: "Case summary text.",
+      case_sources: [],
+      status: "complete",
+      score_card: "## Score\nStrong management reasoning overall.",
+      transcript: [
+        {
+          question: "Describe your approach to pain management.",
+          answer: "I would use local anesthesia.",
+          feedback: "Good.",
+          ideal_response: "Use articaine with epinephrine.",
+          citations: [],
+        },
+      ],
+    };
+
+    render(<OralBoardsPanel state={state} {...baseProps} />);
+
+    expect(screen.getByRole("button", { name: /^Q1/ })).toBeInTheDocument();
+    expect(
+      screen.queryByText("Your answer: I would use local anesthesia."),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /^Q1/ }));
+
+    expect(
+      screen.getByText(
+        (_content, el) =>
+          el?.tagName === "P" &&
+          el.textContent?.includes("Your answer: I would use local anesthesia."),
+      ),
+    ).toBeInTheDocument();
   });
 });
 

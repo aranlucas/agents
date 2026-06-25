@@ -147,6 +147,28 @@ function ModelAnswer({ text }: { text: string }) {
   );
 }
 
+type FeedbackDetailsProps = {
+  idealResponse: string;
+  citations: CaseSource[];
+};
+
+function FeedbackDetails({ idealResponse, citations }: FeedbackDetailsProps) {
+  if (!idealResponse.trim() && citations.length === 0) return null;
+
+  return (
+    <Collapsible className="rounded-lg border border-dashed">
+      <CollapsibleTrigger className="hover:bg-muted flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left text-xs transition-colors">
+        <span className="font-medium">Show model answer and sources</span>
+        <ChevronDownIcon className="text-muted-foreground size-3 transition-transform data-[open]:rotate-180" />
+      </CollapsibleTrigger>
+      <CollapsibleContent className="space-y-1.5 border-t px-2.5 py-2">
+        <ModelAnswer text={idealResponse} />
+        <CitationChips sources={citations} />
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
 const OUTCOME_META: Record<OralBoardsOutcome, { label: string; cls: string }> = {
   pass: {
     label: "On track to pass",
@@ -365,8 +387,10 @@ function CompletedExchangeRow({
           </p>
         )}
         {exchange.feedback && <Streamdown>{exchange.feedback}</Streamdown>}
-        <ModelAnswer text={exchange.ideal_response} />
-        <CitationChips sources={exchange.citations ?? []} />
+        <FeedbackDetails
+          idealResponse={exchange.ideal_response}
+          citations={exchange.citations ?? []}
+        />
       </CollapsibleContent>
     </Collapsible>
   );
@@ -384,8 +408,10 @@ function LastFeedbackCard({ exchange, index }: { exchange: OralBoardsExchange; i
         <p className="text-muted-foreground text-xs">Your answer: {exchange.answer}</p>
       )}
       {exchange.feedback && <Streamdown>{exchange.feedback}</Streamdown>}
-      <ModelAnswer text={exchange.ideal_response} />
-      <CitationChips sources={exchange.citations ?? []} />
+      <FeedbackDetails
+        idealResponse={exchange.ideal_response}
+        citations={exchange.citations ?? []}
+      />
     </div>
   );
 }
@@ -550,7 +576,7 @@ function LiveFeedbackPreview({
         Feedback · generating…
       </p>
       <Streamdown>{activeFeedback}</Streamdown>
-      {activeIdealResponse.trim() && <ModelAnswer text={activeIdealResponse} />}
+      <FeedbackDetails idealResponse={activeIdealResponse} citations={[]} />
     </div>
   );
 }
@@ -838,19 +864,18 @@ function FeedbackPane({
       {scoreCard.trim() && <Streamdown key={scoreCard}>{scoreCard}</Streamdown>}
       {transcript.length > 0 && (
         <div className="space-y-3">
-          {transcript.map((x, i) => (
-            <div key={x.question || i} className="border-border space-y-1.5 border-t pt-3 text-sm">
-              <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
-                Q{i + 1}
-              </p>
-              <SkillsetBadges exchange={x} />
-              <p className="font-medium">{x.question}</p>
-              {x.answer && <p className="text-muted-foreground text-xs">Your answer: {x.answer}</p>}
-              {x.feedback && <Streamdown>{x.feedback}</Streamdown>}
-              <ModelAnswer text={x.ideal_response} />
-              <CitationChips sources={x.citations ?? []} />
-            </div>
-          ))}
+          <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
+            Question review
+          </p>
+          <div className="space-y-2" aria-label="Question review">
+            {transcript.map((exchange, index) => (
+              <CompletedExchangeRow
+                key={exchange.question || index}
+                exchange={exchange}
+                index={index}
+              />
+            ))}
+          </div>
         </div>
       )}
       {isEmpty ? (
