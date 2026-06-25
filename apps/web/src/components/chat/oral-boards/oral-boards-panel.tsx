@@ -111,7 +111,7 @@ function SkillsetBadges({ exchange }: { exchange: OralBoardsExchange }) {
   const skillMeta = exchange.skill ? OCE_SKILL_LEVELS[exchange.skill] : undefined;
   if (!exchange.skillset && !skillMeta && exchange.score == null) return null;
   return (
-    <div className="flex flex-wrap items-center gap-1">
+    <span className="flex flex-wrap items-center gap-1">
       {exchange.skillset && (
         <Badge variant="secondary" className="text-[10px]">
           {exchange.skillset}
@@ -129,7 +129,7 @@ function SkillsetBadges({ exchange }: { exchange: OralBoardsExchange }) {
           {exchange.score}/3
         </Badge>
       )}
-    </div>
+    </span>
   );
 }
 
@@ -375,10 +375,10 @@ function CompletedExchangeRow({
         <span className="text-muted-foreground flex-1 truncate">
           {truncate(exchange.question, 52)}
         </span>
+        <SkillsetBadges exchange={exchange} />
         <ChevronDownIcon className="text-muted-foreground size-3 transition-transform group-data-panel-open:rotate-180" />
       </CollapsibleTrigger>
       <CollapsibleContent className="space-y-1.5 border-t px-3 py-2.5 text-xs">
-        <SkillsetBadges exchange={exchange} />
         <p className="text-sm font-medium">{exchange.question}</p>
         {exchange.answer && (
           <p className="text-muted-foreground">
@@ -926,7 +926,8 @@ export function OralBoardsPanel({
   // keeps what they jotted while reading the case.
   const [notes, setNotes] = useState("");
 
-  const isQuestioning = status === "questioning";
+  const showFinalFeedback = status === "complete" || Boolean(scoreCard.trim());
+  const isExamActive = (status === "questioning" || status === "feedback") && !showFinalFeedback;
 
   return (
     <Artifact className="h-full min-h-0 flex-1 rounded-none border-0">
@@ -935,7 +936,7 @@ export function OralBoardsPanel({
       </ArtifactHeader>
       <ArtifactContent
         className={
-          isQuestioning
+          isExamActive
             ? "flex overflow-hidden p-0"
             : status === "presenting"
               ? "flex flex-col overflow-hidden"
@@ -951,7 +952,7 @@ export function OralBoardsPanel({
             onNotesChange={setNotes}
           />
         )}
-        {isQuestioning && (
+        {isExamActive && (
           <QuestioningPane
             caseBody={caseBody}
             sources={sources}
@@ -965,7 +966,7 @@ export function OralBoardsPanel({
             activeIdealResponse={activeIdealResponse}
           />
         )}
-        {(status === "complete" || status === "feedback" || Boolean(scoreCard.trim())) && (
+        {showFinalFeedback && (
           <FeedbackPane
             scoreCard={scoreCard}
             scoreSummary={scoreSummary}
