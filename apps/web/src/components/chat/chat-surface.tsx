@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, memo, useCallback, useEffect, useRef, useState } from "react";
 import {
   useAgent,
   useCopilotKit,
@@ -12,19 +12,25 @@ import {
 } from "@copilotkit/react-core/v2";
 import { SparklesIcon } from "lucide-react";
 
-import { Button } from "@agents/ui";
+import { Button, Streamdown } from "@agents/ui";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@agents/ui/components/empty";
+import { Message, MessageContent } from "@agents/ui/components/message";
+import { Bubble, BubbleContent } from "@agents/ui/components/bubble";
+import {
+  MessageScrollerProvider,
+  MessageScroller,
+  MessageScrollerViewport,
+  MessageScrollerContent,
+  MessageScrollerItem,
+  MessageScrollerButton,
+} from "@agents/ui/components/message-scroller";
 import { Suggestion, Suggestions } from "@agents/ui/components/ai-elements/suggestion";
-import {
-  Conversation,
-  ConversationContent,
-  ConversationEmptyState,
-  ConversationScrollButton,
-} from "@agents/ui/components/ai-elements/conversation";
-import {
-  Message,
-  MessageContent,
-  MessageResponse,
-} from "@agents/ui/components/ai-elements/message";
 import {
   Reasoning,
   ReasoningContent,
@@ -56,6 +62,14 @@ import { AgentSelector } from "./agent-selector";
 import { ConnectNotice } from "./connect-notice";
 import { TranscribeButton } from "./transcribe-button";
 import { useRequiredConnections } from "@/hooks/use-required-connections";
+
+const AssistantText = memo(
+  ({ children }: { children: string }) => (
+    <Streamdown className="[&>*:first-child]:mt-0 [&>*:last-child]:mb-0">{children}</Streamdown>
+  ),
+  (prev, next) => prev.children === next.children,
+);
+AssistantText.displayName = "AssistantText";
 
 // Registers the wildcard tool renderer that `useRenderToolCall()` resolves to
 // for our custom message list. Maps CopilotKit status -> ai-elements Tool state.
@@ -240,66 +254,90 @@ export function ChatSurface({
   return (
     <div className="flex h-full flex-col">
       <ToolRendererRegistration />
-      <Conversation className="flex-1">
-        <ConversationContent className="mx-auto w-full max-w-190">
-          {items.length === 0 && isAgentConnected ? (
-            <ConversationEmptyState
-              icon={<SparklesIcon className="size-5" />}
-              title={`${config.label} is ready`}
-              description={config.welcome ?? config.placeholder}
-            />
-          ) : (
-            items.map((item) => {
-              if (item.kind === "activity") {
-                return (
-                  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-                  <Fragment key={item.id}>{activityMessage(item.message as never)}</Fragment>
-                );
-              }
-              if (item.kind === "user") {
-                return (
-                  <Message key={item.id} from="user">
-                    <MessageContent>{item.text}</MessageContent>
-                  </Message>
-                );
-              }
-              const last = item === items.at(-1);
-              if (item.kind === "reasoning") {
-                // Standalone "Thinking" block, rendered in message order. It is
-                // streaming only while it is the final item and the agent is running.
-                return (
-                  <Reasoning key={item.id} defaultOpen={false} isStreaming={last && isRunning}>
-                    <ReasoningTrigger />
-                    <ReasoningContent>{item.text}</ReasoningContent>
-                  </Reasoning>
-                );
-              }
-              return (
-                <Message key={item.id} from="assistant">
-                  <MessageContent>
-                    {item.toolCalls.map((tc) => (
-                      <Fragment key={tc.id}>{toolCallContent(tc)}</Fragment>
-                    ))}
-                    {item.text.trim() && <MessageResponse>{item.text}</MessageResponse>}
-                    {item.id === lastAssistantId && artifact && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="mt-1 w-fit gap-2"
-                        onClick={onOpenArtifact}
-                      >
-                        ▤ Open {artifact.title}
-                      </Button>
-                    )}
-                  </MessageContent>
-                </Message>
-              );
-            })
-          )}
-        </ConversationContent>
-        <ConversationScrollButton />
-      </Conversation>
+      <MessageScrollerProvider autoScroll defaultScrollPosition="last-anchor">
+        <MessageScroller className="flex-1">
+          <MessageScrollerViewport>
+            <MessageScrollerContent aria-busy={isRunning} className="mx-auto w-full max-w-190 p-4">
+              {items.length === 0 && isAgentConnected ? (
+                <Empty className="border-none">
+                  <EmptyMedia>
+                    <SparklesIcon className="text-muted-foreground size-5" />
+                  </EmptyMedia>
+                  <EmptyHeader>
+                    <EmptyTitle>{config.label} is ready</EmptyTitle>
+                    <EmptyDescription>{config.welcome ?? config.placeholder}</EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              ) : (
+                items.map((item) => {
+                  if (item.kind === "activity") {
+                    return (
+                      <MessageScrollerItem key={item.id} messageId={item.id}>
+                        {/* oxlint-disable-next-line typescript/no-unsafe-type-assertion */}
+                        {activityMessage(item.message as never)}
+                      </MessageScrollerItem>
+                    );
+                  }
+                  if (item.kind === "user") {
+                    return (
+                      <MessageScrollerItem key={item.id} messageId={item.id} scrollAnchor>
+                        <Message align="end">
+                          <MessageContent>
+                            <Bubble variant="secondary" align="end">
+                              <BubbleContent>{item.text}</BubbleContent>
+                            </Bubble>
+                          </MessageContent>
+                        </Message>
+                      </MessageScrollerItem>
+                    );
+                  }
+                  const last = item === items.at(-1);
+                  if (item.kind === "reasoning") {
+                    return (
+                      <MessageScrollerItem key={item.id} messageId={item.id}>
+                        <Reasoning defaultOpen={false} isStreaming={last && isRunning}>
+                          <ReasoningTrigger />
+                          <ReasoningContent>{item.text}</ReasoningContent>
+                        </Reasoning>
+                      </MessageScrollerItem>
+                    );
+                  }
+                  return (
+                    <MessageScrollerItem key={item.id} messageId={item.id}>
+                      <Message align="start">
+                        <MessageContent>
+                          {item.toolCalls.map((tc) => (
+                            <Fragment key={tc.id}>{toolCallContent(tc)}</Fragment>
+                          ))}
+                          {item.text.trim() && (
+                            <Bubble variant="ghost" align="start">
+                              <BubbleContent>
+                                <AssistantText>{item.text}</AssistantText>
+                              </BubbleContent>
+                            </Bubble>
+                          )}
+                          {item.id === lastAssistantId && artifact && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="mt-1 w-fit gap-2"
+                              onClick={onOpenArtifact}
+                            >
+                              ▤ Open {artifact.title}
+                            </Button>
+                          )}
+                        </MessageContent>
+                      </Message>
+                    </MessageScrollerItem>
+                  );
+                })
+              )}
+            </MessageScrollerContent>
+          </MessageScrollerViewport>
+          <MessageScrollerButton />
+        </MessageScroller>
+      </MessageScrollerProvider>
 
       <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <div className="mx-auto w-full max-w-190">

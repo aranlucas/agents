@@ -52,19 +52,34 @@ vi.mock("@agents/ui", () => ({
   Button: ({ children, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) => (
     <button {...props}>{children}</button>
   ),
+  Streamdown: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
-vi.mock("@agents/ui/components/ai-elements/conversation", () => ({
-  Conversation: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  ConversationContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  ConversationEmptyState: ({ title }: { title: string }) => <div>{title}</div>,
-  ConversationScrollButton: () => null,
+vi.mock("@agents/ui/components/message-scroller", () => ({
+  MessageScrollerProvider: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  MessageScroller: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  MessageScrollerViewport: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  MessageScrollerContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  MessageScrollerItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  MessageScrollerButton: () => null,
 }));
 
-vi.mock("@agents/ui/components/ai-elements/message", () => ({
+vi.mock("@agents/ui/components/message", () => ({
   Message: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   MessageContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  MessageResponse: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+}));
+
+vi.mock("@agents/ui/components/bubble", () => ({
+  Bubble: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  BubbleContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+}));
+
+vi.mock("@agents/ui/components/empty", () => ({
+  Empty: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  EmptyMedia: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  EmptyHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  EmptyTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  EmptyDescription: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock("@agents/ui/components/ai-elements/prompt-input", () => ({
