@@ -9,6 +9,7 @@ from agents_shared.tools import (
     build_a2ui_model,
     build_model,
     on_model_error_callback,
+    stop_on_terminal_text,
     strip_thinking_before_model,
 )
 from google.adk.agents import LlmAgent
@@ -159,6 +160,7 @@ def build_agent() -> LlmAgent:
         retry_config=DEFAULT_RETRY_CONFIG,
         before_model_callback=strip_thinking_before_model,
         on_model_error_callback=on_model_error_callback,
+        after_model_callback=stop_on_terminal_text,
         instruction=_INSTRUCTION,
         description="Generates SQL, executes BigQuery, verifies findings against the web, and renders A2UI analysis.",
         before_tool_callback=throttle_web_search,

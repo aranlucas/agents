@@ -14,6 +14,7 @@ from agents_shared.tools import (
     build_model,
     get_current_date,
     on_model_error_callback,
+    stop_on_terminal_text,
 )
 from google.adk.agents import LlmAgent
 from google.adk.tools import ToolContext
@@ -205,6 +206,7 @@ def build_agent(
         model=build_model(),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
+        after_model_callback=stop_on_terminal_text,
         mode=mode,
         include_contents=include_contents,
         state_schema=GroceryState,

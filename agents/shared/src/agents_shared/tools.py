@@ -10,6 +10,7 @@ from fastapi import Request
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.models.llm_request import LlmRequest
+from google.adk.models.llm_response import LlmResponse
 from google.adk.workflow._retry_config import RetryConfig
 from litellm.integrations.custom_logger import CustomLogger
 
@@ -243,4 +244,71 @@ def on_model_error_callback(
         type(error).__name__,
         error,
     )
+    return None
+
+
+def stop_on_terminal_text(
+    callback_context: CallbackContext,
+    llm_response: LlmResponse,
+) -> LlmResponse | None:
+    """Terminate the ADK agentic loop when the model produces a final text turn.
+
+    Without this guard, models that don't have a native loop-termination
+    condition (Gemini Flash in particular) keep re-issuing the same tool call
+    after a successful result. LiteLLM models (cerebras, mistral, etc.) can
+    exhibit the same problem when the fallback chain lands on Gemini.
+
+    Logic (mirrors CopilotKit's shared_chat.py):
+    1. Skip partial streaming chunks — never terminate on a mid-stream event.
+    2. Only act on finish_reason=STOP. LiteLLM maps both "stop" and "tool_calls"
+       to FinishReason.STOP, so this is always set on the final chunk for our
+       model pool. The guard also covers the Gemini-thinking double-chunk case:
+       the first thought chunk has finish_reason=None, so we skip it and only
+       fire on the final STOP chunk.
+    3. Terminate (set end_invocation=True) when the response has text content
+       and no pending function_call. If function calls are present the loop must
+       continue so ADK can execute them; we return None and let it proceed.
+    4. Access _invocation_context via a private ADK attribute — log-and-degrade
+       gracefully if the attribute drifts in a future ADK release.
+    """
+    content = llm_response.content
+    if not content or not content.parts:
+        if llm_response.error_message:
+            log.warning(
+                "stop_on_terminal_text: model returned error for agent=%s: %s",
+                callback_context.agent_name,
+                llm_response.error_message,
+            )
+        return None
+
+    if getattr(llm_response, "partial", False):
+        return None
+
+    finish_reason = getattr(llm_response, "finish_reason", None)
+    finish_reason_name = (
+        getattr(finish_reason, "name", None) if finish_reason is not None else None
+    )
+    if finish_reason_name != "STOP" and finish_reason != "STOP":
+        return None
+
+    has_text = any(getattr(p, "text", None) for p in content.parts)
+    has_function_call = any(getattr(p, "function_call", None) for p in content.parts)
+
+    if content.role != "model" or not has_text or has_function_call:
+        return None
+
+    invocation_context = getattr(callback_context, "_invocation_context", None)
+    if invocation_context is None:
+        log.debug(
+            "stop_on_terminal_text: no _invocation_context on callback_context; skipping."
+        )
+        return None
+
+    try:
+        invocation_context.end_invocation = True
+    except AttributeError:
+        log.debug(
+            "stop_on_terminal_text: _invocation_context.end_invocation not writable; "
+            "ADK private API may have changed."
+        )
     return None
