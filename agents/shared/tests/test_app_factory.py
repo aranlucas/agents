@@ -247,7 +247,6 @@ def test_stop_on_terminal_text_skips_non_stop_finish_reason():
 
 def test_stop_on_terminal_text_skips_function_call_response():
     from agents_shared.tools import stop_on_terminal_text
-    from google.adk.models.llm_response import LlmResponse
     from google.genai import types
 
     ctx = _ctx_no_invocation()
