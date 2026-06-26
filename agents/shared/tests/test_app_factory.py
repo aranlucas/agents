@@ -1,7 +1,6 @@
 """Tests for the shared ADKAgent/app wiring helpers."""
 
 import logging
-import os
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
