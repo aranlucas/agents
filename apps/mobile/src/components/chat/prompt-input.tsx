@@ -89,7 +89,7 @@ export function PromptInputBody({ children }: { children: ReactNode }) {
         style={{
           flex: 1,
           flexDirection: "row",
-
+          alignItems: "flex-end",
           borderRadius: 22,
         }}
       >
@@ -106,7 +106,7 @@ export function PromptInputBody({ children }: { children: ReactNode }) {
       style={{
         flex: 1,
         flexDirection: "row",
-
+        alignItems: "flex-end",
         overflow: "hidden",
         borderRadius: 22,
       }}
