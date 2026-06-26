@@ -33,6 +33,7 @@ build-backend = "hatchling.build"
 # PYTHONPATH / sys.path wiring is needed anywhere (Docker, Railway, or pytest).
 [tool.hatch.build.targets.wheel]
 packages = [
+  "agents/excalidraw/src/excalidraw_agent",
   "agents/expense/src/expense_agent",
   "agents/fitness/src/fitness_agent",
   "agents/gateway/src/gateway",

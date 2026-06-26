@@ -20,6 +20,7 @@ from google.adk.tools.agent_tool import AgentTool
 from wellness_agent.agent import build_agent
 
 AGENT_MODULES = [
+    "excalidraw_agent.main",
     "fitness_agent.main",
     "gateway.main",
     "grocery_agent.main",

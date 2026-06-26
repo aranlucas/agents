@@ -1,10 +1,25 @@
 """Tests for the shared ADKAgent/app wiring helpers."""
 
+import logging
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from agents_shared.app_factory import build_adk_agent, streaming_state_mapping
+from agents_shared.app_factory import (
+    _debug_enabled,
+    build_adk_agent,
+    setup_agent_logging,
+    streaming_state_mapping,
+)
 from agents_shared.dependencies import AgentServices
-from agents_shared.tools import _ProviderThrottle, build_fast_model, build_model
+from agents_shared.tools import (
+    _ProviderThrottle,
+    build_fast_model,
+    build_large_context_model,
+    build_model,
+    get_current_date,
+    on_model_error_callback,
+    strip_thinking_before_model,
+)
 from google.adk.agents import LlmAgent
 
 
@@ -120,3 +135,54 @@ async def test_provider_hook_strips_reasoning_content_before_fallback_calls():
         {"role": "user", "content": "question"},
         {"role": "assistant", "content": "answer"},
     ]
+
+
+async def test_provider_hook_returns_data_for_known_provider():
+    hook = _ProviderThrottle({"gemini": 100})
+    data = {"model": "gemini/gemini-3.1-flash-lite", "messages": []}
+    result = await hook.async_pre_call_hook(None, None, data, "completion")
+    assert result is data
+
+
+def test_build_large_context_model_returns_mistral_primary():
+    model = build_large_context_model()
+    assert model.model == "mistral/mistral-medium-latest"
+
+
+def test_get_current_date_returns_iso_keys():
+    result = get_current_date()
+    assert "date" in result and "weekday" in result and "month" in result
+    import datetime
+
+    datetime.date.fromisoformat(result["date"])
+
+
+def test_strip_thinking_removes_thought_true_parts():
+    thought_part = SimpleNamespace(thought=True)
+    regular_part = SimpleNamespace(thought=False, text="hello")
+    content = SimpleNamespace(parts=[thought_part, regular_part])
+    llm_request = SimpleNamespace(contents=[content])
+
+    result = strip_thinking_before_model(None, llm_request)
+
+    assert result is None
+    assert content.parts == [regular_part]
+
+
+def test_on_model_error_callback_logs_and_returns_none():
+    ctx = SimpleNamespace(agent_name="test_agent")
+    req = SimpleNamespace(model="test-model")
+    result = on_model_error_callback(ctx, req, ValueError("boom"))
+    assert result is None
+
+
+def test_debug_enabled_true_when_env_set(monkeypatch):
+    monkeypatch.setenv("AGENTS_DEBUG_LOGGING", "true")
+    assert _debug_enabled() is True
+
+
+def test_setup_agent_logging_sets_debug_level(monkeypatch):
+    monkeypatch.setenv("AGENTS_DEBUG_LOGGING", "1")
+    logger = setup_agent_logging("test.debug.logger")
+    assert logger.name == "test.debug.logger"
+    assert logging.getLogger("google.adk").level == logging.DEBUG
