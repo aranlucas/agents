@@ -186,3 +186,126 @@ def test_setup_agent_logging_sets_debug_level(monkeypatch):
     logger = setup_agent_logging("test.debug.logger")
     assert logger.name == "test.debug.logger"
     assert logging.getLogger("google.adk").level == logging.DEBUG
+
+
+# ---------------------------------------------------------------------------
+# stop_on_terminal_text
+# ---------------------------------------------------------------------------
+
+
+def _make_response(
+    *, role="model", parts=None, partial=None, finish_reason=None, error_message=None
+):
+    from google.adk.models.llm_response import LlmResponse
+    from google.genai import types
+
+    content = types.Content(role=role, parts=parts or []) if parts is not None else None
+    return LlmResponse(
+        content=content,
+        partial=partial,
+        finish_reason=finish_reason,
+        error_message=error_message,
+    )
+
+
+def _ctx_with_invocation():
+    inv = SimpleNamespace(end_invocation=False)
+    return SimpleNamespace(agent_name="test", _invocation_context=inv), inv
+
+
+def _ctx_no_invocation():
+    return SimpleNamespace(agent_name="test")
+
+
+def test_stop_on_terminal_text_returns_none_on_empty_content():
+    from agents_shared.tools import stop_on_terminal_text
+
+    ctx = _ctx_no_invocation()
+    resp = _make_response(parts=None)
+    assert stop_on_terminal_text(ctx, resp) is None
+
+
+def test_stop_on_terminal_text_skips_partial():
+    from agents_shared.tools import stop_on_terminal_text
+    from google.genai import types
+
+    ctx = _ctx_no_invocation()
+    part = types.Part(text="hello")
+    resp = _make_response(parts=[part], partial=True)
+    assert stop_on_terminal_text(ctx, resp) is None
+
+
+def test_stop_on_terminal_text_skips_non_stop_finish_reason():
+    from agents_shared.tools import stop_on_terminal_text
+    from google.genai import types
+
+    ctx = _ctx_no_invocation()
+    part = types.Part(text="hello")
+    resp = _make_response(parts=[part], finish_reason=None)
+    assert stop_on_terminal_text(ctx, resp) is None
+
+
+def test_stop_on_terminal_text_skips_function_call_response():
+    from agents_shared.tools import stop_on_terminal_text
+    from google.genai import types
+
+    ctx = _ctx_no_invocation()
+    fc_part = types.Part(function_call=types.FunctionCall(name="my_tool", args={}))
+    resp = _make_response(parts=[fc_part], finish_reason=types.FinishReason.STOP)
+    assert stop_on_terminal_text(ctx, resp) is None
+
+
+def test_stop_on_terminal_text_skips_mixed_text_and_function_call():
+    from agents_shared.tools import stop_on_terminal_text
+    from google.genai import types
+
+    ctx = _ctx_no_invocation()
+    text_part = types.Part(text="hello")
+    fc_part = types.Part(function_call=types.FunctionCall(name="my_tool", args={}))
+    resp = _make_response(
+        parts=[text_part, fc_part], finish_reason=types.FinishReason.STOP
+    )
+    assert stop_on_terminal_text(ctx, resp) is None
+
+
+def test_stop_on_terminal_text_sets_end_invocation_on_text_only():
+    from agents_shared.tools import stop_on_terminal_text
+    from google.genai import types
+
+    ctx, inv = _ctx_with_invocation()
+    part = types.Part(text="final answer")
+    resp = _make_response(parts=[part], finish_reason=types.FinishReason.STOP)
+    result = stop_on_terminal_text(ctx, resp)
+    assert result is None
+    assert inv.end_invocation is True
+
+
+def test_stop_on_terminal_text_degrades_without_invocation_context():
+    from agents_shared.tools import stop_on_terminal_text
+    from google.genai import types
+
+    ctx = _ctx_no_invocation()
+    part = types.Part(text="final answer")
+    resp = _make_response(parts=[part], finish_reason=types.FinishReason.STOP)
+    assert stop_on_terminal_text(ctx, resp) is None
+
+
+def test_stop_on_terminal_text_skips_non_model_role():
+    from agents_shared.tools import stop_on_terminal_text
+    from google.genai import types
+
+    ctx, inv = _ctx_with_invocation()
+    part = types.Part(text="hello")
+    resp = _make_response(
+        role="user", parts=[part], finish_reason=types.FinishReason.STOP
+    )
+    assert stop_on_terminal_text(ctx, resp) is None
+    assert inv.end_invocation is False
+
+
+def test_stop_on_terminal_text_logs_error_message_on_empty_content():
+    from agents_shared.tools import stop_on_terminal_text
+
+    ctx = _ctx_no_invocation()
+    resp = _make_response(parts=None, error_message="something went wrong")
+    assert stop_on_terminal_text(ctx, resp) is None

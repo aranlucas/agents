@@ -2,6 +2,7 @@ from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
     build_model,
     on_model_error_callback,
+    stop_on_terminal_text,
     strip_thinking_before_model,
 )
 from google.adk.agents import LlmAgent
@@ -24,6 +25,7 @@ def build_generator() -> LlmAgent:
         retry_config=DEFAULT_RETRY_CONFIG,
         before_model_callback=strip_thinking_before_model,
         on_model_error_callback=on_model_error_callback,
+        after_model_callback=stop_on_terminal_text,
         instruction=load_agent_instructions(),
         description="Generates bounded BigQuery SQL for a Google Trends analytical question.",
         output_key="generated_sql",
