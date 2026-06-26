@@ -29,9 +29,9 @@ export function PromptInput({ children }: { children: ReactNode }) {
   return (
     <View
       onLayout={onPromptInputLayout}
-      className="bg-background sticky bottom-0 z-10 mx-auto flex w-full max-w-4xl gap-2 px-2 pb-3 md:px-4 md:pb-4"
+      className="bg-background/80 absolute inset-x-0 bottom-0 z-10 flex px-2 pb-3 backdrop-blur-xl md:px-4 md:pb-4"
     >
-      <View className="border-border/30 bg-card/70 shadow-composer focus-within:shadow-composer-focus flex w-full flex-col rounded-2xl border transition-shadow duration-300">
+      <View className="border-border/30 bg-card/70 shadow-composer focus-within:shadow-composer-focus mx-auto flex w-full max-w-4xl flex-col rounded-2xl border transition-shadow duration-300">
         {body}
       </View>
     </View>
