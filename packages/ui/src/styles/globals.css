@@ -90,6 +90,9 @@
   --trends: #1a5fcb;
   --trends-soft: #dce8f9;
   --trends-contrast: #ffffff;
+  --excalidraw: #7c3aed;
+  --excalidraw-soft: #ede9fb;
+  --excalidraw-contrast: #ffffff;
 
   --success: #0f7a45;
   --success-soft: #e2f3e8;
@@ -160,6 +163,9 @@
   --trends: #7eb8f7;
   --trends-soft: #0f2a4d;
   --trends-contrast: #040f1f;
+  --excalidraw: #c4b5fd;
+  --excalidraw-soft: #2d1f5e;
+  --excalidraw-contrast: #150d31;
 
   --success: #79d99d;
   --success-soft: #153525;
@@ -222,6 +228,9 @@
     --trends: #7eb8f7;
     --trends-soft: #0f2a4d;
     --trends-contrast: #040f1f;
+    --excalidraw: #c4b5fd;
+    --excalidraw-soft: #2d1f5e;
+    --excalidraw-contrast: #150d31;
     --success: #79d99d;
     --success-soft: #153525;
     --warning: #f2c56d;

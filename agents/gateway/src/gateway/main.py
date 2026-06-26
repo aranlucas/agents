@@ -12,6 +12,7 @@ from agents_shared.dependencies import (
 )
 from agents_shared.session_service import check_database_connection
 from dotenv import load_dotenv
+from excalidraw_agent.main import register as register_excalidraw
 from expense_agent.main import register as register_expense
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -91,6 +92,7 @@ def register_agents(app: FastAPI, services: AgentServices) -> None:
     app.state.services = services
 
     for register_agent in (
+        register_excalidraw,
         register_travel,
         register_trends,
         register_grocery,

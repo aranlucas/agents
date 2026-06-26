@@ -4,6 +4,7 @@ import { AGENT_BACKEND_PATHS, AGENT_ORDER, getAgentConfig, isAgentId } from "./r
 describe("agent registry", () => {
   it("lists all agents in display order", () => {
     expect(AGENT_ORDER).toEqual([
+      "excalidraw",
       "travel",
       "grocery",
       "fitness",
@@ -42,6 +43,7 @@ describe("agent registry", () => {
   });
 
   it("declares external-account requirements per agent", () => {
+    expect(getAgentConfig("excalidraw").requires ?? []).toEqual([]);
     expect(getAgentConfig("travel").requires ?? []).toEqual([]);
     expect(getAgentConfig("grocery").requires).toEqual(["kroger"]);
     expect(getAgentConfig("fitness").requires).toEqual(["strava"]);
