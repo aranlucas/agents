@@ -8,6 +8,7 @@ from agents_shared.tools import (
     build_model,
     get_current_date,
     on_model_error_callback,
+    stop_on_terminal_text,
 )
 from fitness_agent.agent import StravaActivity
 from fitness_agent.agent import build_agent as build_fitness_agent
@@ -138,6 +139,7 @@ def build_agent() -> LlmAgent:
         model=build_model(),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
+        after_model_callback=stop_on_terminal_text,
         state_schema=WellnessState,
         static_instruction=_INSTRUCTION,
         instruction=_STATE_INSTRUCTION,

@@ -15,6 +15,7 @@ from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
     build_model,
     on_model_error_callback,
+    stop_on_terminal_text,
 )
 from google.adk.agents import LlmAgent
 from google.adk.tools import ToolContext
@@ -197,6 +198,7 @@ def build_agent() -> LlmAgent:
         model=build_model(),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
+        after_model_callback=stop_on_terminal_text,
         state_schema=ResearchState,
         static_instruction=_INSTRUCTION,
         instruction=_STATE_INSTRUCTION,
