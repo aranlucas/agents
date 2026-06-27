@@ -51,10 +51,10 @@ def _build_eval_agent():
     from agents_shared.state import make_state_initializer, make_state_instruction
     from agents_shared.tools import (
         DEFAULT_RETRY_CONFIG,
-        build_model,
         on_model_error_callback,
     )
     from google.adk.agents import LlmAgent
+    from google.adk.models.lite_llm import LiteLlm
     from oralboards_agent.agent import STATIC_INSTRUCTION, OralBoardsState
 
     state_instruction = make_state_instruction(
@@ -62,7 +62,7 @@ def _build_eval_agent():
     )
     return LlmAgent(
         name="oralboards_agent",
-        model=build_model(),
+        model=LiteLlm(model="cerebras/gpt-oss-120b"),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         state_schema=OralBoardsState,

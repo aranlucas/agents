@@ -15,18 +15,20 @@ from agents_shared.dependencies import AgentServices
 from agents_shared.tools import (
     ProviderThrottle,
     RateLimit,
-    build_fast_model,
-    build_large_context_model,
-    build_model,
     get_current_date,
     on_model_error_callback,
     strip_thinking_before_model,
 )
 from google.adk.agents import LlmAgent
+from google.adk.models.lite_llm import LiteLlm
 
 
 def _dummy_agent() -> LlmAgent:
-    return LlmAgent(name="dummy_agent", model=build_model(), instruction="hi")
+    return LlmAgent(
+        name="dummy_agent",
+        model=LiteLlm(model="cerebras/gpt-oss-120b"),
+        instruction="hi",
+    )
 
 
 def _mock_services():
@@ -88,16 +90,6 @@ def test_streaming_state_mapping_sets_streaming_flags():
     assert mapping.stream_tool_call is True
 
 
-def test_build_model_uses_cerebras_primary():
-    model = build_model()
-    assert model.model == "cerebras/gpt-oss-120b"
-
-
-def test_build_fast_model_uses_mistral_primary():
-    model = build_fast_model()
-    assert model.model == "mistral/mistral-medium-latest"
-
-
 async def test_provider_hook_strips_reasoning_content():
     hook = ProviderThrottle({})
     data = {
@@ -132,15 +124,6 @@ async def test_provider_hook_skips_throttle_for_unknown_model():
     data = {"model": "cerebras/gpt-oss-120b", "messages": []}
     result = await hook.async_pre_call_hook(None, None, data, "completion")
     assert result is data
-
-
-def test_build_large_context_model_returns_mistral_primary():
-    model = build_large_context_model()
-    assert model.model == "mistral/mistral-medium-latest"
-    assert (
-        "fallbacks" not in model._additional_args
-        or not model._additional_args["fallbacks"]
-    )
 
 
 def test_get_current_date_returns_iso_keys():

@@ -6,11 +6,11 @@ from ag_ui_adk import AGUIToolset
 from agents_shared.state import make_state_initializer
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
-    build_model,
     on_model_error_callback,
     stop_on_terminal_text,
 )
 from google.adk.agents import LlmAgent
+from google.adk.models.lite_llm import LiteLlm
 from pydantic import BaseModel
 
 from .tools import (
@@ -57,7 +57,7 @@ def build_agent() -> LlmAgent:
     """Fresh LlmAgent instance for the oral-boards examiner."""
     return LlmAgent(
         name="oralboards_agent",
-        model=build_model(),
+        model=LiteLlm(model="cerebras/gpt-oss-120b"),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,
@@ -85,7 +85,7 @@ def build_eval_agent() -> LlmAgent:
     """
     return LlmAgent(
         name="oralboards_agent",
-        model=build_model(),
+        model=LiteLlm(model="cerebras/gpt-oss-120b"),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,

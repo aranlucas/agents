@@ -18,13 +18,12 @@ from typing import Any
 from agents_shared.state import make_state_initializer, make_state_instruction
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
-    build_fast_model,
-    build_model,
     on_model_error_callback,
     strip_thinking_before_model,
 )
 from google.adk import Workflow
 from google.adk.agents import LlmAgent
+from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import FunctionTool, ToolContext
 from google.adk.workflow import START, FunctionNode
 from pydantic import ConfigDict, Field
@@ -117,7 +116,7 @@ _STATE_INSTRUCTION = make_state_instruction(
 )
 
 _AGENT_DEFAULTS = {
-    "model": build_model(),
+    "model": LiteLlm(model="cerebras/gpt-oss-120b"),
     "state_schema": OralBoardsState,
     "instruction": _STATE_INSTRUCTION,
     "before_agent_callback": make_state_initializer(OralBoardsState),
@@ -225,7 +224,7 @@ def workflow_entry_router(ctx: ToolContext) -> str:
 
 def build_case_builder() -> LlmAgent:
     return LlmAgent(
-        **{**_AGENT_DEFAULTS, "model": build_fast_model()},
+        **{**_AGENT_DEFAULTS, "model": LiteLlm(model="mistral/mistral-medium-latest")},
         name="case_builder",
         include_contents="none",
         static_instruction=(
@@ -259,7 +258,7 @@ def build_case_builder() -> LlmAgent:
 
 def build_questioner() -> LlmAgent:
     return LlmAgent(
-        **{**_AGENT_DEFAULTS, "model": build_fast_model()},
+        **{**_AGENT_DEFAULTS, "model": LiteLlm(model="mistral/mistral-medium-latest")},
         name="questioner",
         include_contents="none",
         output_key="current_question",
@@ -292,7 +291,7 @@ def build_questioner() -> LlmAgent:
 
 def _build_evaluator() -> LlmAgent:
     return LlmAgent(
-        **{**_AGENT_DEFAULTS, "model": build_fast_model()},
+        **{**_AGENT_DEFAULTS, "model": LiteLlm(model="mistral/mistral-medium-latest")},
         name="evaluator",
         static_instruction=(
             "You are an ABPD OCE practice examiner evaluating a candidate's answer.\n\n"
@@ -335,7 +334,7 @@ def _build_evaluator() -> LlmAgent:
 
 def _build_scorer() -> LlmAgent:
     return LlmAgent(
-        **{**_AGENT_DEFAULTS, "model": build_fast_model()},
+        **{**_AGENT_DEFAULTS, "model": LiteLlm(model="mistral/mistral-medium-latest")},
         name="scorer",
         static_instruction=(
             "You are an ABPD OCE practice examiner generating the final score card.\n\n"

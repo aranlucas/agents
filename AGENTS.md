@@ -165,7 +165,7 @@ GEPA's default `optimizer_model` is `gemini-2.5-flash` and it is invoked **direc
 1. The Ambient Gemini free tier (`GEMINI_API_KEY` from Railway) has a 20 req/day quota on `gemini-2.5-flash`. GEPA's reflection_lm burns through it in one run.
 2. The Railway service account (`railway-bigquery-runner@ivory-period-864.iam.gserviceaccount.com`) does **not** have Vertex AI / Agent Platform API enabled in project `ivory-period-864`. Routing to Vertex (`GOOGLE_GENAI_USE_GCA_VERTEX=1`) fails with `403 SERVICE_DISABLED` on `aiplatform.googleapis.com`. Enabling it requires a Console action outside this repo, so Vertex is not currently a fallback.
 
-Setting `optimizer_model: "mistral/mistral-medium-latest"` routes the reflection_lm through `LiteLlm` (the registry matches `mistral/.*`), and Railway's `MISTRAL_API_KEY` is paid with no daily cap. The candidate agent's own inference is **independent** of the optimizer_model — it always uses the shared LiteLLM fallback chain via `agents_shared.tools.build_model()` (Cerebras primary → Mistral → NVIDIA NIM → Gemini).
+Setting `optimizer_model: "mistral/mistral-medium-latest"` routes the reflection_lm through `LiteLlm` (the registry matches `mistral/.*`), and Railway's `MISTRAL_API_KEY` is paid with no daily cap. The candidate agent's own inference is **independent** of the optimizer_model — each agent picks its own primary model inline in its `agent.py`, distributed across paid providers to spread load (see Model Distribution below).
 
 ### `model_configuration: {}` is required (not optional)
 
@@ -266,6 +266,31 @@ apps/mobile → @ag-ui/client (HttpAgent) → Railway agents gateway (direct HTT
 - Cross-agent orchestration is in-process via ADK tools, not remote A2A
 - State is written to ADK shared state; the UI re-renders on every delta
 - Token-level streaming via `PredictStateMapping` for long-form content
+
+**Model distribution (load spreading):**
+
+Each agent specifies its own primary model in `agent.py` to spread inference
+load across providers and reduce single-provider dependency. Agents are
+classified by task complexity — the LiteLLM ambient fallback chain (driven
+by which API keys are present in the environment) provides dynamic fallback
+if the primary provider fails.
+
+Free-tier model IDs and rate limits change frequently. Check
+[**freellm.net**](https://freellm.net) /
+[awesome-freellm-apis](https://github.com/open-free-llm-api/awesome-freellm-apis)
+for current best free models per provider.
+
+| Tier      | Primary provider | Agents                                                                    |
+| --------- | ---------------- | ------------------------------------------------------------------------- |
+| Reasoning | Cerebras         | travel, research, oralboards (v1 + workflow root), oralboards eval runner |
+| Standard  | Groq             | fitness, wellness, trends (+ subagent), presentation,                     |
+|           |                  | spreadsheet, excalidraw                                                   |
+| Light     | OpenRouter       | grocery, expense, resume                                                  |
+| Light     | Mistral          | oralboards workflow sub-nodes (case_builder, questioner, evaluator,       |
+|           | (free-tier, low  | scorer) — only here because they are low-traffic sub-tasks                |
+| A2UI      | Gemini           | trends A2UI rendering subagent (bypasses LiteLLM entirely — uses          |
+|           | (direct ADK)     | `Gemini(model="gemini-2.5-flash")` directly because Gemini can consume    |
+|           |                  | `reasoning_content` from prior turns that other providers reject.         |
 
 ## Conventions
 

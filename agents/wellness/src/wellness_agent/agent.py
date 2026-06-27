@@ -6,7 +6,6 @@ from ag_ui_adk import AGUIToolset
 from agents_shared.state import make_state_initializer
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
-    build_model,
     get_current_date,
     on_model_error_callback,
     stop_on_terminal_text,
@@ -14,6 +13,7 @@ from agents_shared.tools import (
 from fitness_agent.agent import build_agent as build_fitness_agent
 from fitness_agent.tools import StravaActivity
 from google.adk.agents import LlmAgent
+from google.adk.models.lite_llm import LiteLlm
 from grocery_agent.agent import build_agent as build_grocery_agent
 from grocery_agent.tools import CartItem, PantryItem
 from pydantic import BaseModel
@@ -53,7 +53,7 @@ class WellnessState(BaseModel):
 def build_agent() -> LlmAgent:
     return LlmAgent(
         name="wellness_agent",
-        model=build_model(),
+        model=LiteLlm(model="groq/llama-3.3-70b-versatile"),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,
@@ -81,7 +81,7 @@ def build_eval_agent() -> LlmAgent:
 
     return LlmAgent(
         name="wellness_agent",
-        model=build_model(),
+        model=LiteLlm(model="groq/llama-3.3-70b-versatile"),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,
