@@ -11,7 +11,15 @@ export {
 } from "./conversation";
 
 // Message
-export { Message, MessageResponse } from "./message";
+export {
+  Message,
+  MessageGroup,
+  MessageAvatar,
+  MessageContent,
+  MessageHeader,
+  MessageFooter,
+  MessageResponse,
+} from "./message";
 
 // Prompt Input
 export {
