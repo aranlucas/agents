@@ -268,9 +268,19 @@ def build_agent() -> LlmAgent:
 def build_eval_agent() -> LlmAgent:
     """Eval-compatible agent: plain function tools only (no ADK Toolsets).
 
-    AGUIToolset and McpToolset are stripped because the Vertex AI eval SDK
-    requires plain callables when building AgentConfig tool declarations.
+    AGUIToolset and McpToolset are replaced with stubs because the Vertex AI
+    eval SDK requires plain callables when building AgentConfig tool declarations.
     """
+    from .eval_stubs import (
+        check_visa,
+        destination_info,
+        get_preferences,
+        get_weather,
+        search_flights,
+        search_hotels,
+        search_restaurants,
+    )
+
     return LlmAgent(
         name="collab_trip_agent",
         model=build_model(),
@@ -287,6 +297,13 @@ def build_eval_agent() -> LlmAgent:
             write_itinerary,
             add_day,
             mark_ready_to_book,
+            search_flights,
+            search_hotels,
+            get_weather,
+            check_visa,
+            destination_info,
+            get_preferences,
+            search_restaurants,
         ],
     )
 
