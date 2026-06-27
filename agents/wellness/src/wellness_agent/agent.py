@@ -85,8 +85,7 @@ def build_eval_agent() -> LlmAgent:
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,
-        static_instruction=_INSTRUCTION,
-        instruction=_STATE_INSTRUCTION,
+        instruction=_INSTRUCTION,
         sub_agents=[build_fitness_eval(mode="task"), build_grocery_eval(mode="task")],
         tools=[
             get_current_date,

@@ -102,8 +102,7 @@ def build_eval_agent(
         after_model_callback=stop_on_terminal_text,
         mode=mode,
         include_contents=include_contents,
-        static_instruction=_INSTRUCTION,
-        instruction=_STATE_INSTRUCTION,
+        instruction=_INSTRUCTION,
         tools=[
             set_shopping_list,
             update_cart,

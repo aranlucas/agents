@@ -86,7 +86,7 @@ def build_eval_agent() -> LlmAgent:
     AGUIToolset and McpToolset are replaced with stubs because the Vertex AI
     eval SDK requires plain callables when building AgentConfig tool declarations.
     """
-    from .eval_stubs import (
+    from .tools import (
         check_visa,
         destination_info,
         get_preferences,
@@ -102,8 +102,7 @@ def build_eval_agent() -> LlmAgent:
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,
-        static_instruction=_INSTRUCTION,
-        instruction=_STATE_INSTRUCTION,
+        instruction=_INSTRUCTION,
         tools=[
             get_current_date,
             set_trip_meta,
