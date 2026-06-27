@@ -5,8 +5,8 @@ agents in this monorepo.
 
 - `eval_config.yaml` selects shared managed metrics plus one project-specific
   rubric metric.
-- `datasets/*.json` contains one inference-ready seed dataset per registered
-  agent surface from `packages/types/src/index.ts`.
+- Each agent's dataset lives alongside its implementation at
+  `agents/<name>/tests/eval/<name>.json`.
 - `agents/shared/tests/test_eval_assets.py` keeps the datasets in sync with the
   agent registry and checks the generate-ready schema used here.
 
@@ -20,7 +20,7 @@ Run Agent Platform evals after installing `agents-cli` and configuring the
 target agent runtime:
 
 ```bash
-agents-cli eval generate --dataset tests/eval/datasets/travel.json
+agents-cli eval generate --dataset agents/travel/tests/eval/travel.json
 agents-cli eval grade --config tests/eval/eval_config.yaml
 ```
 
