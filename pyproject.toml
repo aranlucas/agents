@@ -76,6 +76,19 @@ asyncio_mode = "auto"
 # Agent packages are installed editable via `uv sync` (see [build-system]), so
 # tests import them straight from the venv — no pythonpath wiring needed.
 addopts = ["--import-mode=importlib"]
+filterwarnings = [
+  # Python 3.14 / google-genai compat — not our code
+  "ignore:.*_UnionGenericAlias.*:DeprecationWarning",
+  # ADK API churn — BaseAgentConfig renamed upstream
+  "ignore:BaseAgentConfig is deprecated:DeprecationWarning",
+  # ADK experimental features used intentionally
+  "ignore:.*PLUGGABLE_AUTH.*:UserWarning",
+  "ignore:.*InMemoryCredentialService.*:UserWarning",
+  "ignore:.*BaseCredentialService.*:UserWarning",
+  "ignore:.*JSON_SCHEMA_FOR_FUNC_DECL.*:UserWarning",
+  # ADK InMemoryCredentialService leaks SQLite handles during test teardown
+  "ignore:.*unclosed database.*:ResourceWarning",
+]
 
 [tool.coverage.run]
 source = [
@@ -104,6 +117,7 @@ exclude_also = [
 dev = [
   "google-cloud-aiplatform[evaluation]>=1.158.0",
   "httpx",
+  "httpx2>=2.5.0",
   "pyright>=1.1",
   "pytest",
   "pytest-asyncio",

@@ -8,6 +8,7 @@ import time
 import litellm
 from fastapi import Request
 from google.adk.agents.callback_context import CallbackContext
+from google.adk.models.google_llm import Gemini
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.models.llm_request import LlmRequest
 from google.adk.models.llm_response import LlmResponse
@@ -101,16 +102,10 @@ _DEFAULT_FALLBACKS = [
     "gemini/gemini-3.5-flash",
 ]
 
-# A2UI model starts with Gemini — reliable for structured JSON catalog output
-# and safe with reasoning_content in session history (unlike Cerebras/Groq which
-# return 400 when thought=True parts are present). Cerebras/Groq/Mistral stay as
-# fallbacks but Gemini's latency is far better than burning through Cerebras
-# retries before reaching it.
-_A2UI_PRIMARY = "gemini/gemini-2.5-flash"
-_A2UI_FALLBACKS = [
-    "mistral/mistral-medium-latest",
-    _DEFAULT_MODEL,
-]
+# A2UI uses native Gemini — fast for structured JSON catalog output and safe with
+# reasoning_content in session history (unlike Cerebras/Groq which return 400
+# when thought=True parts are present).
+_A2UI_PRIMARY = "gemini-2.5-flash"
 
 # Fast model for agents that need low latency and no reasoning tokens —
 # e.g. the oral-boards questioner and evaluator.
@@ -144,13 +139,14 @@ def build_model() -> LiteLlm:
     return LiteLlm(model=_DEFAULT_MODEL, fallbacks=list(_DEFAULT_FALLBACKS))
 
 
-def build_a2ui_model() -> LiteLlm:
-    """LiteLlm for A2UI subagent calls.
+def build_a2ui_model() -> Gemini:
+    """Native Gemini for A2UI subagent calls.
 
-    Gemini is primary: fast for structured JSON, handles reasoning_content in
-    session history without 400 errors. Mistral and Cerebras are fallbacks only.
+    Gemini Flash is primary: fast for structured JSON, handles reasoning_content
+    in session history without 400 errors (unlike Cerebras/Groq). Uses the
+    native ADK Gemini integration rather than LiteLLM for better reliability.
     """
-    return LiteLlm(model=_A2UI_PRIMARY, fallbacks=list(_A2UI_FALLBACKS))
+    return Gemini(model=_A2UI_PRIMARY)
 
 
 def build_fast_model() -> LiteLlm:
