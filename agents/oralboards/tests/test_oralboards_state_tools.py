@@ -5,17 +5,14 @@ from types import SimpleNamespace
 
 from agents_shared.state import make_state_initializer
 from google.adk.tools.function_tool import FunctionTool
-from oralboards_agent.agent import (
-    OralBoardsState,
-    append_exchange,
-    build_agent,
-    read_doc,
-    search_docs,
-    set_case,
-    set_loading_step,
-    set_phase,
-    set_score_card,
-)
+from oralboards_agent.agent import OralBoardsState, build_agent
+from oralboards_agent.tools.append_exchange import append_exchange
+from oralboards_agent.tools.read_doc import read_doc
+from oralboards_agent.tools.search_docs import search_docs
+from oralboards_agent.tools.set_case import set_case
+from oralboards_agent.tools.set_loading_step import set_loading_step
+from oralboards_agent.tools.set_phase import set_phase
+from oralboards_agent.tools.set_score_card import set_score_card
 from pydantic.fields import FieldInfo
 
 
@@ -123,51 +120,51 @@ def test_agent_instruction_uses_adk_state_placeholders() -> None:
     assert "{loading_step}" in instruction
 
 
-def test_agent_static_instruction_includes_loading_step_protocol() -> None:
+def test_agent_instruction_includes_loading_step_protocol() -> None:
     agent = build_agent()
-    static = agent.static_instruction
-    assert isinstance(static, str)
-    assert "set_loading_step" in static
-    assert "Searching clinical guidelines" in static
-    assert "Computing score card" in static
+    instruction = agent.instruction
+    assert isinstance(instruction, str)
+    assert "set_loading_step" in instruction
+    assert "Searching clinical guidelines" in instruction
+    assert "Computing score card" in instruction
 
 
-def test_agent_static_instruction_requires_speaking_questions_before_chat() -> None:
+def test_agent_instruction_requires_speaking_questions_before_chat() -> None:
     agent = build_agent()
-    static_instruction = agent.static_instruction
+    instruction = agent.instruction
 
-    assert isinstance(static_instruction, str)
-    assert "ask_question" in static_instruction
-    assert "kind='ready'" in static_instruction
-    assert "kind='answer'" in static_instruction
-    assert "waits for the candidate's response" in static_instruction
-    assert "STOP COMPLETELY" not in static_instruction
+    assert isinstance(instruction, str)
+    assert "ask_question" in instruction
+    assert "kind='ready'" in instruction
+    assert "kind='answer'" in instruction
+    assert "waits for the candidate's response" in instruction
+    assert "STOP COMPLETELY" not in instruction
 
 
-def test_static_instruction_grounded_in_oce_guide() -> None:
-    """Static instruction reflects the ABPD OCE guide, not the old 4a-4e model."""
+def test_instruction_grounded_in_oce_guide() -> None:
+    """Instruction reflects the ABPD OCE guide, not the old 4a-4e model."""
     agent = build_agent()
-    static = agent.static_instruction
-    assert isinstance(static, str)
+    instruction = agent.instruction
+    assert isinstance(instruction, str)
 
     # Entry-level "safe and effective practice" framing from the OCE guide
-    assert "safe and effective" in static
-    assert "entry-level" in static
+    assert "safe and effective" in instruction
+    assert "entry-level" in instruction
 
     # Faithful examiner model: open-ended questions across blueprint skillsets,
     # replacing the invented 4a-4e "interview phases"
-    assert "open-ended" in static
-    assert "skillset" in static.lower()
-    assert "Interview phase" not in static
+    assert "open-ended" in instruction
+    assert "skillset" in instruction.lower()
+    assert "Interview phase" not in instruction
 
     # Blueprint cognitive skill levels are taught to the agent
-    assert "analyze_evaluate" in static
-    assert "understand_apply" in static
-    assert "remember" in static
+    assert "analyze_evaluate" in instruction
+    assert "understand_apply" in instruction
+    assert "remember" in instruction
 
     # Scoring is per-skillset 1-3, not a weighted composite
-    assert "do not compute a weighted composite" in static.lower()
-    assert "/ 3.0" not in static
+    assert "do not compute a weighted composite" in instruction.lower()
+    assert "/ 3.0" not in instruction
 
 
 # ---------------------------------------------------------------------------

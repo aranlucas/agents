@@ -18,12 +18,12 @@ def test_instruction_embeds_resume_content():
     assert "only answer questions" in _INSTRUCTION.lower()
 
 
-def test_agent_static_instruction_embeds_resume_content():
+def test_agent_instruction_embeds_resume_content():
     resume_agent = build_agent()
-    assert "# Lucas Aran" in resume_agent.static_instruction
-    assert "DashMart" in resume_agent.static_instruction
-    assert "MCP integration for ChatGPT" in resume_agent.static_instruction
-    assert "only answer questions" in resume_agent.static_instruction.lower()
+    assert "# Lucas Aran" in resume_agent.instruction
+    assert "DashMart" in resume_agent.instruction
+    assert "MCP integration for ChatGPT" in resume_agent.instruction
+    assert "only answer questions" in resume_agent.instruction.lower()
 
 
 def _route_paths(app) -> set[str]:

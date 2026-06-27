@@ -1,12 +1,9 @@
 from types import SimpleNamespace
 
 from google.adk.tools.agent_tool import AgentTool
-from wellness_agent.agent import (
-    WellnessState,
-    build_agent,
-    mark_plan_ready,
-    set_weekly_wellness_plan,
-)
+from wellness_agent.agent import WellnessState, build_agent
+from wellness_agent.tools.mark_plan_ready import mark_plan_ready
+from wellness_agent.tools.set_weekly_wellness_plan import set_weekly_wellness_plan
 
 
 def test_wellness_tools_write_state() -> None:

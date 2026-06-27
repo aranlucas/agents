@@ -1,8 +1,15 @@
 from unittest.mock import Mock
 
+import fitness_agent.tools.search as _search_mod
+import httpx
 import pytest
 from agents_shared.state import STRAVA_AUTH, make_state_initializer
-from fitness_agent import agent, toolsets
+from fitness_agent import agent
+from fitness_agent.tools._types import normalize_strava_activity, summarize_activities
+from fitness_agent.tools.fetch_activities import fetch_activities
+from fitness_agent.tools.mark_plan_ready import mark_plan_ready
+from fitness_agent.tools.set_objective_research import set_objective_research
+from fitness_agent.tools.set_training_plan import set_training_plan
 from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
 from starlette.datastructures import Headers
 
@@ -18,7 +25,7 @@ class DummyRequest:
 
 
 def test_normalize_activity_keeps_training_fields() -> None:
-    activity = agent.normalize_strava_activity(
+    activity = normalize_strava_activity(
         {
             "id": 123,
             "name": "Hill repeats",
@@ -49,7 +56,7 @@ def test_normalize_activity_keeps_training_fields() -> None:
 @pytest.mark.asyncio
 async def test_fetch_activities_requires_connected_strava() -> None:
     context = DummyToolContext({"strava_connected": False})
-    result = await agent.fetch_activities(context)
+    result = await fetch_activities(context)
     assert result == {
         "ok": False,
         "reason": "strava_not_connected",
@@ -92,11 +99,11 @@ async def test_fetch_activities_writes_normalized_state(monkeypatch) -> None:
         assert timeout == 30.0
         return DummyClient()
 
-    monkeypatch.setattr(agent.httpx, "AsyncClient", async_client_factory)
+    monkeypatch.setattr(httpx, "AsyncClient", async_client_factory)
     context = DummyToolContext(
         {"strava_connected": True, "temp:strava_token": "token-123"},
     )
-    result = await agent.fetch_activities(context)
+    result = await fetch_activities(context)
     assert result["ok"] is True
     assert result["count"] == 1
     assert "summary" not in result
@@ -120,14 +127,14 @@ async def test_fetch_activities_writes_normalized_state(monkeypatch) -> None:
 
 def test_set_training_plan_writes_state() -> None:
     context = DummyToolContext()
-    result = agent.set_training_plan(context, "## Week plan\n- Run easy")
+    result = set_training_plan(context, "## Week plan\n- Run easy")
     assert result == {"ok": True, "length": 23}
     assert context.state["training_plan"] == "## Week plan\n- Run easy"
     assert context.state["status"] == "planning"
 
 
 def test_summarize_activities_aggregates_training_totals() -> None:
-    summary = agent.summarize_activities(
+    summary = summarize_activities(
         [
             {
                 "sport_type": "Run",
@@ -154,7 +161,7 @@ def test_summarize_activities_aggregates_training_totals() -> None:
 
 
 def test_normalize_activity_uses_type_and_default_name() -> None:
-    assert agent.normalize_strava_activity({"id": None, "type": "Ride"}) == {
+    assert normalize_strava_activity({"id": None, "type": "Ride"}) == {
         "id": "None",
         "name": "Untitled activity",
         "sport_type": "Ride",
@@ -163,14 +170,14 @@ def test_normalize_activity_uses_type_and_default_name() -> None:
 
 def test_fitness_state_tools_write_state() -> None:
     context = DummyToolContext()
-    assert agent.set_objective_research(context, "Trail notes") == {
+    assert set_objective_research(context, "Trail notes") == {
         "ok": True,
         "length": 11,
     }
     assert context.state["objective_research"] == "Trail notes"
     assert context.state["status"] == "planning"
 
-    assert agent.mark_plan_ready(context, "Ready") == {"ok": True}
+    assert mark_plan_ready(context, "Ready") == {"ok": True}
     assert context.state["status"] == "ready"
     assert context.state["review_summary"] == "Ready"
 
@@ -218,8 +225,10 @@ def test_on_before_agent_derives_strava_connected_from_state_token() -> None:
 
 def test_web_search_toolset_uses_npx_when_binary_absent(monkeypatch) -> None:
     monkeypatch.setenv("BRAVE_API_KEY", "brave-token")
-    monkeypatch.setattr(toolsets.shutil, "which", lambda _: None)
-    toolset = toolsets.web_search_toolset()
+    monkeypatch.setattr(_search_mod.shutil, "which", lambda _: None)
+    from fitness_agent.tools.search import web_search_toolset
+
+    toolset = web_search_toolset()
     params = toolset._connection_params
     assert isinstance(params, StdioConnectionParams)
     assert params.timeout == 30.0
@@ -236,8 +245,12 @@ def test_web_search_toolset_uses_npx_when_binary_absent(monkeypatch) -> None:
 
 def test_web_search_toolset_uses_binary_when_installed(monkeypatch) -> None:
     monkeypatch.setenv("BRAVE_API_KEY", "brave-token")
-    monkeypatch.setattr(toolsets.shutil, "which", lambda name: f"/usr/local/bin/{name}")
-    toolset = toolsets.web_search_toolset()
+    monkeypatch.setattr(
+        _search_mod.shutil, "which", lambda name: f"/usr/local/bin/{name}"
+    )
+    from fitness_agent.tools.search import web_search_toolset
+
+    toolset = web_search_toolset()
     params = toolset._connection_params
     assert isinstance(params, StdioConnectionParams)
     assert params.timeout == 30.0

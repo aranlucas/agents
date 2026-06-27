@@ -1,9 +1,7 @@
-from expense_agent.agent import (
-    decide_expense,
-    set_expense_report,
-    submit_expense,
-    write_expense_review,
-)
+from expense_agent.tools.decide_expense import decide_expense
+from expense_agent.tools.set_expense_report import set_expense_report
+from expense_agent.tools.submit_expense import submit_expense
+from expense_agent.tools.write_expense_review import write_expense_review
 
 
 class DummyToolContext:

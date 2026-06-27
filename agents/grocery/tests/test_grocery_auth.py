@@ -1,7 +1,7 @@
 import pytest
 from agents_shared.state import KROGER_AUTH, make_extract_state, make_state_initializer
-from grocery_agent import toolsets
 from grocery_agent.agent import GroceryState
+from grocery_agent.tools.kroger import _header_provider
 from starlette.datastructures import Headers
 
 
@@ -30,22 +30,18 @@ async def test_extract_kroger_auth_state_uses_temp_header_state() -> None:
 
 
 def test_meal_planner_header_provider_reads_temp_token() -> None:
-    headers = toolsets._header_provider(
-        DummyContext({"temp:kroger_token": "token-123"})
-    )
+    headers = _header_provider(DummyContext({"temp:kroger_token": "token-123"}))
     assert headers == {"Authorization": "Bearer token-123"}
 
 
 def test_header_provider_reads_token_via_kroger_auth_state_key() -> None:
     """_header_provider reads the Kroger token via KROGER_AUTH.state_key."""
-    headers = toolsets._header_provider(
-        DummyContext({KROGER_AUTH.state_key: "token-alias-123"})
-    )
+    headers = _header_provider(DummyContext({KROGER_AUTH.state_key: "token-alias-123"}))
     assert headers == {"Authorization": "Bearer token-alias-123"}
 
 
 def test_header_provider_returns_empty_without_state_token() -> None:
-    assert toolsets._header_provider(DummyContext({})) == {}
+    assert _header_provider(DummyContext({})) == {}
 
 
 def test_on_before_agent_derives_kroger_connected_from_state_token() -> None:
