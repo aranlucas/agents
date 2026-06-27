@@ -1,11 +1,11 @@
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
-    build_model,
     on_model_error_callback,
     stop_on_terminal_text,
     strip_thinking_before_model,
 )
 from google.adk.agents import LlmAgent
+from google.adk.models.lite_llm import LiteLlm
 
 from ..prompt import load_agent_instructions
 
@@ -21,7 +21,7 @@ def build_generator() -> LlmAgent:
     """
     return LlmAgent(
         name="TrendsQueryGeneratorAgent",
-        model=build_model(),
+        model=LiteLlm(model="groq/llama-3.3-70b-versatile"),
         retry_config=DEFAULT_RETRY_CONFIG,
         before_model_callback=strip_thinking_before_model,
         on_model_error_callback=on_model_error_callback,

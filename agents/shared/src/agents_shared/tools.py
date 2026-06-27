@@ -13,8 +13,6 @@ from datetime import UTC
 import litellm
 from fastapi import Request
 from google.adk.agents.callback_context import CallbackContext
-from google.adk.models.google_llm import Gemini
-from google.adk.models.lite_llm import LiteLlm
 from google.adk.models.llm_request import LlmRequest
 from google.adk.models.llm_response import LlmResponse
 from google.adk.workflow._retry_config import RetryConfig
@@ -27,10 +25,8 @@ log = logging.getLogger("agents_shared")
 # ---------------------------------------------------------------------------
 # Rate limit configuration
 # ---------------------------------------------------------------------------
-# Limits for free-tier LLM providers per freellm.net data. Set at ~80 %
-# of the documented limit to leave headroom. Uses longest-prefix matching
-# against LiteLLM model strings. 0 = unlimited for that dimension.
-# Providers with paid API keys (Cerebras, Mistral, Groq) are unthrottled.
+# Limits for free-tier LLM providers per freellm.net data. Uses longest-prefix
+# matching against LiteLLM model strings. 0 = unlimited for that dimension.
 
 
 @dataclass
@@ -43,7 +39,10 @@ RATE_LIMITS: dict[str, RateLimit] = {
     "gemini/gemini-3.1-flash-lite": RateLimit(rpm=15, rpd=400),
     "gemini": RateLimit(rpm=4, rpd=16),
     "nvidia_nim": RateLimit(rpm=32),
-    "openrouter": RateLimit(rpd=160),
+    "cerebras/gpt-oss-120b": RateLimit(rpm=30, rpd=14400),
+    "cerebras": RateLimit(rpm=10, rpd=100),
+    "groq": RateLimit(rpm=30, rpd=1000),
+    "openrouter": RateLimit(rpd=1000),
 }
 
 
@@ -230,31 +229,6 @@ class ProviderThrottle(CustomLogger):
 litellm.callbacks.append(ProviderThrottle(RATE_LIMITS))
 
 CLERK_USER_ID_HEADER = "x-clerk-user-id"
-
-_DEFAULT_MODEL = "cerebras/gpt-oss-120b"
-
-_A2UI_PRIMARY = "gemini-2.5-flash"
-
-_FAST_PRIMARY = "mistral/mistral-medium-latest"
-
-_LARGE_CONTEXT_PRIMARY = "mistral/mistral-medium-latest"
-
-
-def build_model() -> LiteLlm:
-    return LiteLlm(model=_DEFAULT_MODEL)
-
-
-def build_a2ui_model() -> Gemini:
-    return Gemini(model=_A2UI_PRIMARY)
-
-
-def build_fast_model() -> LiteLlm:
-    return LiteLlm(model=_FAST_PRIMARY)
-
-
-def build_large_context_model() -> LiteLlm:
-    return LiteLlm(model=_LARGE_CONTEXT_PRIMARY)
-
 
 DEFAULT_RETRY_CONFIG = RetryConfig(
     max_attempts=5,

@@ -7,13 +7,13 @@ from ag_ui_adk import get_a2ui_tool
 from agents_shared.state import make_state_initializer
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
-    build_a2ui_model,
-    build_model,
     on_model_error_callback,
     stop_on_terminal_text,
     strip_thinking_before_model,
 )
 from google.adk.agents import LlmAgent
+from google.adk.models.google_llm import Gemini
+from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools.agent_tool import AgentTool
 from pydantic import BaseModel, Field
 
@@ -110,7 +110,7 @@ def build_agent() -> LlmAgent:
             # because both may produce thought=True (reasoning) parts. ADK's
             # LiteLlm serialises those as reasoning_content in the OpenAI message
             # body, which Cerebras, Groq, and Mistral reject with 400.
-            "model": build_a2ui_model(),
+            "model": Gemini(model="gemini-2.5-flash"),
             "guidelines": {"composition_guide": TRENDS_A2UI_COMPOSITION_GUIDE},
             "default_surface_id": "trends-result",
             "default_catalog_id": TRENDS_CATALOG_ID,
@@ -119,7 +119,7 @@ def build_agent() -> LlmAgent:
 
     return LlmAgent(
         name="GoogleTrendsAgent",
-        model=build_model(),
+        model=LiteLlm(model="groq/llama-3.3-70b-versatile"),
         retry_config=DEFAULT_RETRY_CONFIG,
         before_model_callback=strip_thinking_before_model,
         on_model_error_callback=on_model_error_callback,
