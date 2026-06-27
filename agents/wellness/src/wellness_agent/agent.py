@@ -1,8 +1,9 @@
 """Wellness agent domain: state, tools, instruction, orchestration."""
 
+from pathlib import Path
+
 from ag_ui_adk import AGUIToolset
-from agents_shared.prompts import canvas_contract
-from agents_shared.state import make_state_initializer, make_state_instruction
+from agents_shared.state import make_state_initializer
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
     build_model,
@@ -10,13 +11,16 @@ from agents_shared.tools import (
     on_model_error_callback,
     stop_on_terminal_text,
 )
-from fitness_agent.agent import StravaActivity
 from fitness_agent.agent import build_agent as build_fitness_agent
+from fitness_agent.tools import StravaActivity
 from google.adk.agents import LlmAgent
-from google.adk.tools import ToolContext
-from grocery_agent.agent import CartItem, PantryItem
 from grocery_agent.agent import build_agent as build_grocery_agent
+from grocery_agent.tools import CartItem, PantryItem
 from pydantic import BaseModel
+
+from .tools import mark_plan_ready, set_weekly_wellness_plan
+
+_INSTRUCTION = (Path(__file__).parent / "instructions.md").read_text(encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
@@ -44,93 +48,6 @@ class WellnessState(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# State tools — UI canvas writes
-# ---------------------------------------------------------------------------
-def set_weekly_wellness_plan(tool_context: ToolContext, plan: str) -> dict:
-    """Write the complete weekly meal and workout plan to shared state."""
-    tool_context.state["weekly_plan"] = plan
-    tool_context.state["status"] = "planning"
-    return {"ok": True, "length": len(plan)}
-
-
-def mark_plan_ready(tool_context: ToolContext, summary: str) -> dict[str, bool]:
-    """Mark the combined weekly wellness plan as ready."""
-    tool_context.state["status"] = "ready"
-    tool_context.state["review_summary"] = summary
-    return {"ok": True}
-
-
-# ---------------------------------------------------------------------------
-# Static instruction
-# ---------------------------------------------------------------------------
-_CANVAS_CONTRACT = canvas_contract(
-    artifact="weekly wellness plan",
-    tools=("set_weekly_wellness_plan", "mark_plan_ready"),
-)
-
-_INSTRUCTION = (
-    """\
-You are a wellness planning orchestrator.
-
-Your job is to create a practical one-week plan that combines meals and workouts.
-The source of truth is shared state, not chat output.
-
-"""
-    + _CANVAS_CONTRACT
-    + """
-
-You have two task-mode specialist agents available as tools: fitness_agent and
-grocery_agent. Call them with a plain-English request string. The framework
-runs each task agent to completion and then returns control to you.
-
-Workflow — follow these steps strictly in sequence:
-
-Step 1. Call get_current_date. Note the date.
-
-Step 2. Call fitness_agent first with a request to: (a) summarise recent Strava
-        activities, (b) build a DETAILED day-by-day training schedule for this week
-        starting on that date — each day with session type, duration/distance or
-        sets x reps, and target intensity — and (c) recommend ONE specific named hike
-        for the week, including its distance, elevation gain, difficulty, why it
-        suits this athlete, and the scheduled hike day. The fitness agent writes
-        the completed plan to shared state as training_plan.
-
-Step 3. After fitness_agent completes and training_plan exists in shared state,
-        call grocery_agent. Do not paste the training plan into the request.
-        Ask grocery_agent to read training_plan from shared state and tailor meals
-        to match it: protein on strength days, lighter meals before hard sessions,
-        extra fuel/hydration on the hike day, and recovery nutrition on rest days.
-
-Step 4. Reconcile the two plans: heavy training days and the hike day get simpler
-        meals, adequate protein, hydration, recovery, and realistic prep.
-
-Step 5. Call set_weekly_wellness_plan with the final combined report. Structure:
-        ## Recent Activity
-        <summarise the recent Strava activities from the fitness response>
-
-        ## Recommended Hike
-        <the specific hike from Step 2: name, distance, elevation gain, difficulty,
-         which day it is scheduled, and why it fits this athlete>
-
-        ## This Week's Plan
-        <day-by-day sections with markdown headings, each day showing the DETAILED
-         workout (type, duration/distance or sets x reps, intensity) and the meals
-         side by side; mark the hike on its scheduled day>
-
-Step 6. Call mark_plan_ready only after Steps 2-5 all completed successfully.
-
-If either agent tool returns an empty response or error, explain which step
-failed and do not mark the plan ready.
-"""
-)
-
-
-_STATE_INSTRUCTION = make_state_instruction(
-    WellnessState, header="Current wellness state"
-)
-
-
-# ---------------------------------------------------------------------------
 # Agent factory
 # ---------------------------------------------------------------------------
 def build_agent() -> LlmAgent:
@@ -141,8 +58,7 @@ def build_agent() -> LlmAgent:
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,
         state_schema=WellnessState,
-        static_instruction=_INSTRUCTION,
-        instruction=_STATE_INSTRUCTION,
+        instruction=_INSTRUCTION,
         sub_agents=[build_fitness_agent(mode="task"), build_grocery_agent(mode="task")],
         before_agent_callback=make_state_initializer(WellnessState),
         tools=[
@@ -169,8 +85,7 @@ def build_eval_agent() -> LlmAgent:
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,
-        static_instruction=_INSTRUCTION,
-        instruction=_STATE_INSTRUCTION,
+        instruction=_INSTRUCTION,
         sub_agents=[build_fitness_eval(mode="task"), build_grocery_eval(mode="task")],
         tools=[
             get_current_date,

@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from google.adk.agents import LlmAgent
 from google.adk.tools.agent_tool import AgentTool
 from trends_agent import agent, main
-from trends_agent.sub_agents.generator import build_generator
+from trends_agent.subagents.generator import build_generator
 
 
 def test_build_agent_returns_llm_agent() -> None:

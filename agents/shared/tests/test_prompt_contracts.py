@@ -19,19 +19,19 @@ ARTIFACT_AGENT_BUILDERS = [
 
 @pytest.mark.parametrize("build_agent", ARTIFACT_AGENT_BUILDERS)
 def test_artifact_agents_include_shared_canvas_contract(build_agent) -> None:
-    static_instruction = build_agent().static_instruction
+    instruction = build_agent().instruction
 
-    assert isinstance(static_instruction, str)
-    assert CANVAS_CONTRACT_MARKER in static_instruction
-    assert "Never paste the full" in static_instruction
-    assert "1-2 sentences" in static_instruction
-    assert "one concrete next step" in static_instruction
+    assert isinstance(instruction, str)
+    assert CANVAS_CONTRACT_MARKER in instruction
+    assert "Never paste the full" in instruction
+    assert "1-2 sentences" in instruction
+    assert "one concrete next step" in instruction
 
 
 def test_grocery_cart_mutation_requires_user_approval() -> None:
-    static_instruction = build_grocery_agent().static_instruction
+    instruction = build_grocery_agent().instruction
 
-    assert isinstance(static_instruction, str)
-    assert "request_user_approval" in static_instruction
-    assert "Only call `add_to_cart` after approval" in static_instruction
-    assert "Do not call `checkout_shopping_list`" in static_instruction
+    assert isinstance(instruction, str)
+    assert "request_user_approval" in instruction
+    assert "Only call `add_to_cart` after approval" in instruction
+    assert "Do not call `checkout_shopping_list`" in instruction

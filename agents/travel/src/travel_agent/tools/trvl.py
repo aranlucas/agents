@@ -1,5 +1,3 @@
-"""Travel agent MCP toolset factory."""
-
 import os
 
 from agents_shared.toolsets import make_http_mcp_toolset

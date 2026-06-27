@@ -1,5 +1,3 @@
-"""Fitness agent MCP toolset factory."""
-
 import os
 import shutil
 
@@ -13,7 +11,6 @@ BRAVE_SEARCH_MCP_PACKAGE = "@brave/brave-search-mcp-server"
 
 def web_search_toolset() -> McpToolset:
     brave_api_key = os.getenv("BRAVE_API_KEY", "")
-    # Use pre-installed binary if available (Docker), fall back to npx for local dev
     if shutil.which(BRAVE_SEARCH_MCP_BINARY):
         command = BRAVE_SEARCH_MCP_BINARY
         args = ["--brave-api-key", brave_api_key]

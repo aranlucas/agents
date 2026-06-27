@@ -1,5 +1,3 @@
-"""Grocery agent MCP toolset factory."""
-
 import os
 
 from agents_shared.state import KROGER_AUTH, make_token_auth_header_provider
