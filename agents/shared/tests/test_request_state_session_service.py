@@ -1,3 +1,4 @@
+# pyright: reportPrivateUsage=false
 """RequestStateSessionService injects temp keys into ADK session state."""
 
 from ag_ui_adk.request_state_service import RequestStateSessionService

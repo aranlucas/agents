@@ -2,7 +2,7 @@ from agents_shared.dependencies import create_agent_services
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from resume_agent import main
-from resume_agent.agent import _INSTRUCTION, build_agent
+from resume_agent.agent import INSTRUCTION, build_agent
 
 
 def _registered_app() -> FastAPI:
@@ -12,10 +12,10 @@ def _registered_app() -> FastAPI:
 
 
 def test_instruction_embeds_resume_content():
-    assert "# Lucas Aran" in _INSTRUCTION
-    assert "DashMart" in _INSTRUCTION
-    assert "MCP integration for ChatGPT" in _INSTRUCTION
-    assert "only answer questions" in _INSTRUCTION.lower()
+    assert "# Lucas Aran" in INSTRUCTION
+    assert "DashMart" in INSTRUCTION
+    assert "MCP integration for ChatGPT" in INSTRUCTION
+    assert "only answer questions" in INSTRUCTION.lower()
 
 
 def test_agent_instruction_embeds_resume_content():

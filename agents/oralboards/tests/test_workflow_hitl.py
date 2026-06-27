@@ -6,8 +6,8 @@ from oralboards_agent.agent import OralBoardsState
 
 
 def test_workflow_uses_state_driven_terminal_question_steps() -> None:
-    case_builder = workflow_agent._build_case_builder()
-    questioner = workflow_agent._build_questioner()
+    case_builder = workflow_agent.build_case_builder()
+    questioner = workflow_agent.build_questioner()
 
     assert "ask_question" not in case_builder.static_instruction
     assert "set_phase('presenting')" in case_builder.static_instruction

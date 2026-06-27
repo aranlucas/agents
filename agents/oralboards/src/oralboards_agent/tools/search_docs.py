@@ -6,7 +6,7 @@ from google.adk.tools import FunctionTool
 from pydantic import Field
 
 from ..db import VALID_COLLECTIONS, connect
-from ._types import _clean_query, _extract_passage
+from ._types import clean_query, extract_passage
 
 
 async def search_docs(
@@ -22,7 +22,7 @@ async def search_docs(
     ] = "",
 ) -> dict:
     """Search bundled oral-board source documents with FTS5/BM25."""
-    clean = _clean_query(query)
+    clean = clean_query(query)
     if not clean:
         return {
             "status": "error",
@@ -76,7 +76,7 @@ async def search_docs(
             "title": row["title"],
             "snippet": row["snippet"],
             "collection": row["collection"],
-            "passage": _extract_passage(row["body"], clean),
+            "passage": extract_passage(row["body"], clean),
         }
         for row in rows
     ]

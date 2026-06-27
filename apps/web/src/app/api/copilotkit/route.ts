@@ -9,6 +9,7 @@ import { getKrogerAccessToken } from "@/lib/kroger-token";
 import { getStravaAccessToken } from "@/lib/strava-token";
 import { AGENT_BACKEND_PATHS, AGENT_ORDER } from "@/components/chat/agents/registry";
 import { GroqTranscriptionService } from "@/lib/copilotkit/groq-transcription";
+import { GatewayBackedRunner } from "@/lib/copilotkit/gateway-backed-runner";
 import { isOfflineAgentTestMode } from "@/lib/offline-mode";
 import { isPublicCopilotPath } from "./guard";
 import { handleOfflineCopilotKitRequest } from "./offline";
@@ -21,17 +22,28 @@ const TRENDS_CATALOG_ID = "copilotkit://trends/v1";
 
 export const A2UI_RUNTIME_CONFIG = { agents: ["trends"], defaultCatalogId: TRENDS_CATALOG_ID };
 
+function createAgentUrlMap(): Record<string, string> {
+  return Object.fromEntries(
+    AGENT_ORDER.map((id) => [
+      id,
+      `${agentBaseUrl(env.AGENTS_BASE_URL)}/${AGENT_BACKEND_PATHS[id]}/agui`,
+    ]),
+  );
+}
+
 function createRuntime(): CopilotSseRuntime {
+  const agentUrls = createAgentUrlMap();
   return new CopilotSseRuntime({
     agents: Object.fromEntries(
       AGENT_ORDER.map((id) => [
         id,
         new HttpAgent({
-          url: `${agentBaseUrl(env.AGENTS_BASE_URL)}/${AGENT_BACKEND_PATHS[id]}/agui`,
+          url: agentUrls[id],
           debug: env.COPILOTKIT_DEBUG,
         }),
       ]),
     ),
+    runner: new GatewayBackedRunner(agentUrls),
     transcriptionService: new GroqTranscriptionService(env.GROQ_API_KEY ?? ""),
     a2ui: A2UI_RUNTIME_CONFIG,
     debug: env.COPILOTKIT_DEBUG,
@@ -78,6 +90,14 @@ const handler: (request: Request) => Response | Promise<Response> = isOfflineAge
           }
           if (stravaToken) {
             request.headers.set(STRAVA_TOKEN_HEADER, stravaToken);
+          }
+
+          // Expose the agentId to the runner so it can query the correct
+          // agent's /agents/state endpoint instead of iterating all agents.
+          // URL pattern: POST /api/copilotkit/agent/:agentId/connect
+          const agentMatch = request.url.match(/\/agent\/([^/]+)\//);
+          if (agentMatch) {
+            request.headers.set("x-agent-id", agentMatch[1]);
           }
         },
       },

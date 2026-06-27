@@ -14,7 +14,7 @@ from google.adk.agents import LlmAgent
 from pydantic import BaseModel
 
 _RESUME = (Path(__file__).parent / "resume.md").read_text(encoding="utf-8")
-_INSTRUCTION = (
+INSTRUCTION = (
     (Path(__file__).parent / "instructions.md")
     .read_text(encoding="utf-8")
     .replace("{{RESUME}}", _RESUME)
@@ -35,7 +35,7 @@ def build_agent() -> LlmAgent:
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,
         state_schema=ResumeState,
-        instruction=_INSTRUCTION,
+        instruction=INSTRUCTION,
         before_agent_callback=make_state_initializer(ResumeState),
         tools=[AGUIToolset()],
     )
@@ -53,7 +53,7 @@ def build_eval_agent() -> LlmAgent:
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,
-        static_instruction=_INSTRUCTION,
+        static_instruction=INSTRUCTION,
         tools=[],
     )
 

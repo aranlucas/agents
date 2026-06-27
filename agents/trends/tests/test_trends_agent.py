@@ -47,7 +47,7 @@ def test_build_generator_returns_llm_agent() -> None:
 
 
 def test_instruction_describes_web_verification() -> None:
-    instruction = agent._INSTRUCTION
+    instruction = agent.INSTRUCTION
     assert "set_trends_verification" in instruction
     assert "Brave" in instruction
     assert "AT MOST 2" in instruction
@@ -61,13 +61,13 @@ def test_instruction_describes_web_verification() -> None:
 
 @pytest.mark.asyncio
 async def test_throttle_web_search_ignores_non_brave_tools() -> None:
-    agent._web_search_state["last_at"] = 1000.0
+    agent.web_search_state["last_at"] = 1000.0
     await agent.throttle_web_search(Mock(name="other_tool"), {}, Mock())
-    assert agent._web_search_state["last_at"] == 1000.0
+    assert agent.web_search_state["last_at"] == 1000.0
 
 
 def test_instruction_persists_state_before_rendering() -> None:
-    instruction = agent._INSTRUCTION
+    instruction = agent.INSTRUCTION
     assert instruction.index("TrendsQueryGeneratorAgent") < instruction.index(
         "validate_trends_sql"
     )
@@ -82,7 +82,7 @@ def test_instruction_persists_state_before_rendering() -> None:
 
 
 def test_a2ui_composition_guide_uses_correct_prop_names() -> None:
-    g = agent._TRENDS_A2UI_COMPOSITION_GUIDE
+    g = agent.TRENDS_A2UI_COMPOSITION_GUIDE
     # TrendBarChart must use the schema's exact prop names
     assert "categoryKey" in g
     assert "valueKey" in g

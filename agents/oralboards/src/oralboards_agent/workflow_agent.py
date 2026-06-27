@@ -223,7 +223,7 @@ def workflow_entry_router(ctx: ToolContext) -> str:
     return ""
 
 
-def _build_case_builder() -> LlmAgent:
+def build_case_builder() -> LlmAgent:
     return LlmAgent(
         **{**_AGENT_DEFAULTS, "model": build_fast_model()},
         name="case_builder",
@@ -257,7 +257,7 @@ def _build_case_builder() -> LlmAgent:
     )
 
 
-def _build_questioner() -> LlmAgent:
+def build_questioner() -> LlmAgent:
     return LlmAgent(
         **{**_AGENT_DEFAULTS, "model": build_fast_model()},
         name="questioner",
@@ -375,8 +375,8 @@ def build_workflow_agent() -> Workflow:
     - The evaluator calls ``complete_examination`` when all relevant skillsets
       are covered, setting a state flag read by the router.
     """
-    case_builder = _build_case_builder()
-    questioner = _build_questioner()
+    case_builder = build_case_builder()
+    questioner = build_questioner()
     evaluator = _build_evaluator()
     scorer = _build_scorer()
 

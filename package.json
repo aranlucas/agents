@@ -9,6 +9,8 @@
     "dev:web:offline": "pnpm --filter web dev:offline",
     "dev:oral-boards": "pnpm --filter oral-boards dev",
     "dev:mobile": "pnpm --filter mobile start",
+    "dev:railway": "pnpm env:railway && pnpm dev",
+    "env:railway": "railway variables --json | python3 -c 'import json,shlex,sys; d=json.load(sys.stdin); d.pop(\"DATABASE_URL\",None); [print(f\"{k}={shlex.quote(str(v))}\") for k,v in d.items()]' > .env.local",
     "dev:agents": "docker compose up --build",
     "lint": "turbo lint",
     "lint:py": "uv run ruff check agents",
