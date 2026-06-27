@@ -1,6 +1,7 @@
 import asyncio
 
-from oralboards_agent.agent import read_doc, search_docs
+from oralboards_agent.tools.read_doc import read_doc
+from oralboards_agent.tools.search_docs import search_docs
 
 
 def test_search_docs_returns_known_results() -> None:

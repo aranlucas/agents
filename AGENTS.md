@@ -72,6 +72,45 @@ Conventions:
 - `react/react-in-jsx-scope` stays off because the web and mobile apps use the React 17+ automatic JSX runtime.
 - Treat Oxlint warnings as follow-up cleanup unless the checker exits non-zero.
 
+## Agent filesystem structure
+
+Each agent follows a filesystem-first layout. Every piece of behavior lives in its own file so contributors can find logic without reading the whole module.
+
+```
+agents/<name>/src/<name>_agent/
+  instructions.md          # Full agent instruction + ADK state template (single file)
+  agent.py                 # State model (Pydantic BaseModel) + build_agent()
+  main.py                  # FastAPI app, OTEL setup, health endpoint
+  tools/
+    __init__.py            # Re-exports every tool and toolset factory
+    <tool_name>.py         # One file per callable tool; exports tool = FunctionTool(fn)
+    _types.py              # (optional) Shared TypedDicts / helpers private to tools/
+    <mcp_name>.py          # MCP toolset factory: def <name>_toolset() -> McpToolset
+  subagents/               # (optional) Sub-agents used via AgentTool
+    __init__.py
+    <sub_name>.py          # def build_<sub_name>() -> LlmAgent
+```
+
+**Rules:**
+
+- `instructions.md` is loaded at module import time via `pathlib`:
+  ```python
+  _INSTRUCTION = (Path(__file__).parent / "instructions.md").read_text(encoding="utf-8")
+  ```
+  Pass it as `instruction=_INSTRUCTION` only — no `static_instruction` split.
+- Every callable tool must export `tool = FunctionTool(fn)` and live in its own file.
+  The `__init__.py` re-exports each as `from .<tool_name> import tool as <tool_name>`.
+- MCP toolset factories (`def <name>_toolset() -> McpToolset`) live in their own file
+  but are **not** wrapped in `FunctionTool` — they return a `McpToolset` ADK passes
+  directly to the `tools=` list.
+- Pydantic `BaseModel` state schemas stay in `agent.py`, not in `tools/`.
+- `_types.py` (underscore prefix = private to the package) holds TypedDicts,
+  shared helpers, and normalisation functions used by multiple tool files.
+- If a placeholder must survive Python `.format()` in the instruction template,
+  use double braces: `{{RESUME}}` in `instructions.md` and `.replace("{{RESUME}}", value)` in `agent.py`.
+- `subagents/` is used for sub-LLM agents called via `AgentTool`; only add it when
+  the agent orchestrates sub-agents.
+
 ## Adding a new agent
 
 1. `mkdir agents/<name>` and copy the structure from `agents/travel/` (or `agents/grocery/`)

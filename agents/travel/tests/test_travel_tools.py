@@ -5,6 +5,10 @@ from agents_shared.tools import extract_identity_state
 from fastapi import FastAPI
 from starlette.datastructures import Headers
 from travel_agent import agent, main
+from travel_agent.tools.add_day import add_day
+from travel_agent.tools.mark_ready_to_book import mark_ready_to_book
+from travel_agent.tools.set_trip_meta import set_trip_meta
+from travel_agent.tools.write_itinerary import write_itinerary
 
 
 class DummyRequest:
@@ -21,7 +25,7 @@ def test_extract_identity_state_defaults_to_anonymous() -> None:
 
 def test_trip_tools_write_expected_state() -> None:
     context = SimpleNamespace(state={})
-    assert agent.set_trip_meta(
+    assert set_trip_meta(
         context,
         destination="Kyoto",
         start_date="2026-10-01",
@@ -41,7 +45,7 @@ def test_trip_tools_write_expected_state() -> None:
         "flights": "",
     }
 
-    assert agent.write_itinerary(context, "A balanced week", "## Day 1", "UA 1") == {
+    assert write_itinerary(context, "A balanced week", "## Day 1", "UA 1") == {
         "ok": True,
         "length": 8,
     }
@@ -49,10 +53,10 @@ def test_trip_tools_write_expected_state() -> None:
     assert context.state["itinerary"] == "## Day 1"
     assert context.state["flights"] == "UA 1"
 
-    assert agent.add_day(context, 2, "Markets", "- 09:00 - Nishiki") == {"ok": True}
+    assert add_day(context, 2, "Markets", "- 09:00 - Nishiki") == {"ok": True}
     assert "## Day 2: Markets" in context.state["itinerary"]
 
-    assert agent.mark_ready_to_book(context, "Ready") == {"ok": True}
+    assert mark_ready_to_book(context, "Ready") == {"ok": True}
     assert context.state["status"] == "ready_to_book"
     assert context.state["review_summary"] == "Ready"
 
