@@ -64,3 +64,23 @@ def build_agent() -> LlmAgent:
         before_agent_callback=make_state_initializer(ResumeState),
         tools=[AGUIToolset()],
     )
+
+
+def build_eval_agent() -> LlmAgent:
+    """Eval-compatible agent: no AGUIToolset, no state_schema.
+
+    The resume agent has no domain tools beyond AGUIToolset, so the eval agent
+    is a pure conversational agent that answers from its static instruction.
+    """
+    return LlmAgent(
+        name="resume_agent",
+        model=build_model(),
+        retry_config=DEFAULT_RETRY_CONFIG,
+        on_model_error_callback=on_model_error_callback,
+        after_model_callback=stop_on_terminal_text,
+        static_instruction=_INSTRUCTION,
+        tools=[],
+    )
+
+
+root_agent = build_eval_agent()
