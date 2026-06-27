@@ -46,6 +46,9 @@ vi.mock("@copilotkit/react-core/v2", () => ({
 
 vi.mock("lucide-react", () => ({
   SparklesIcon: () => <span data-testid="sparkles" />,
+  PaperclipIcon: () => <span data-testid="paperclip" />,
+  FileIcon: () => <span data-testid="file" />,
+  XIcon: () => <span data-testid="x" />,
 }));
 
 vi.mock("@agents/ui", () => ({
@@ -86,10 +89,18 @@ vi.mock("@agents/ui/components/ai-elements/prompt-input", () => ({
   PromptInput: ({ children }: { children: ReactNode }) => <form>{children}</form>,
   PromptInputBody: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   PromptInputFooter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  PromptInputHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   PromptInputProvider: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   PromptInputSubmit: () => <button type="button">submit</button>,
   PromptInputTextarea: () => <textarea />,
   PromptInputTools: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  PromptInputActionMenu: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  PromptInputActionMenuTrigger: ({ children }: { children: ReactNode }) => (
+    <button type="button">{children}</button>
+  ),
+  PromptInputActionMenuContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  PromptInputActionAddAttachments: () => <button type="button">attach</button>,
+  usePromptInputAttachments: () => ({ files: [], remove: vi.fn() }),
 }));
 
 vi.mock("@agents/ui/components/ai-elements/reasoning", () => ({
