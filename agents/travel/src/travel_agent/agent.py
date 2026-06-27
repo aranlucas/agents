@@ -263,3 +263,32 @@ def build_agent() -> LlmAgent:
             trvl_toolset(),
         ],
     )
+
+
+def build_eval_agent() -> LlmAgent:
+    """Eval-compatible agent: plain function tools only (no ADK Toolsets).
+
+    AGUIToolset and McpToolset are stripped because the Vertex AI eval SDK
+    requires plain callables when building AgentConfig tool declarations.
+    """
+    return LlmAgent(
+        name="collab_trip_agent",
+        model=build_model(),
+        retry_config=DEFAULT_RETRY_CONFIG,
+        on_model_error_callback=on_model_error_callback,
+        after_model_callback=stop_on_terminal_text,
+        state_schema=TravelState,
+        static_instruction=_INSTRUCTION,
+        instruction=_STATE_INSTRUCTION,
+        before_agent_callback=make_state_initializer(TravelState),
+        tools=[
+            get_current_date,
+            set_trip_meta,
+            write_itinerary,
+            add_day,
+            mark_ready_to_book,
+        ],
+    )
+
+
+root_agent = build_eval_agent()

@@ -67,3 +67,8 @@ __pycache__/
 .data/
 output/
 .turbo
+
+# eval artifacts and local credentials
+artifacts/
+.env.agents
+.google-credentials.json
