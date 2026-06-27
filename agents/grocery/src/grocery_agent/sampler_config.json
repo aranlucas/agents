@@ -1,0 +1,9 @@
+{
+  "eval_config": {
+    "criteria": {
+      "response_match_score": 0.75
+    }
+  },
+  "app_name": "grocery_agent",
+  "train_eval_set": "train_eval_set"
+}

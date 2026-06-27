@@ -1,0 +1,35 @@
+{
+  "eval_set_id": "train_eval_set",
+  "name": "train_eval_set",
+  "eval_cases": [
+    {
+      "eval_id": "resume_senior_staff_ai_fit",
+      "session_input": {
+        "app_name": "resume_agent",
+        "user_id": "eval_user",
+        "state": {}
+      },
+      "conversation": [
+        {
+          "invocation_id": "inv1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Why is Lucas a strong fit for a senior or staff engineering role involving AI agents?"
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "Lucas is a strong fit for a senior or staff role in AI agents because he has shipped end-to-end agentic products like Ask DoorDash, this resume Q&A is itself one of the agents on his personal platform, and he blends product leadership with hands-on agent engineering across the ADK and CopilotKit stacks."
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

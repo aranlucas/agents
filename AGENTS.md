@@ -111,6 +111,115 @@ agents/<name>/src/<name>_agent/
 - `subagents/` is used for sub-LLM agents called via `AgentTool`; only add it when
   the agent orchestrates sub-agents.
 
+## Prompt optimization (`adk optimize`)
+
+**Canonical flow: drive everything through the `uv run adk optimize` CLI.** Do not write custom Python optimization scripts — the CLI handles `LocalEvalSamplerConfig` parsing, `LocalEvalSetsManager` construction, GEPA invocation, and result printing (`google/adk/cli/cli_tools_click.py::cli_optimize`). Custom scripts duplicate that path and rot against ADK upgrades.
+
+### The three files per agent
+
+Each eval-enabled agent ships three files **inside its module dir** (`agents/<name>/src/<name>_agent/`):
+
+| File                          | Purpose                                                                                                            |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `train_eval_set.evalset.json` | Eval cases with `final_response` gold answers.                                                                     |
+| `sampler_config.json`         | `LocalEvalSamplerConfig` — uses `response_match_score: 0.75` (ROUGE-based, no LLM judge).                          |
+| `optimizer_config.json`       | `GEPARootAgentPromptOptimizerConfig` — Mistral reflection LM, empty `model_configuration`, `max_metric_calls: 12`. |
+
+### Evalset location invariant (do not move these files)
+
+`adk optimize` constructs `LocalEvalSetsManager(agents_dir=os.path.dirname(module_path))`, then resolves evalsets at `<agents_dir>/<app_name>/<eval_set_id>.evalset.json`. So:
+
+- The evalset file **must** live inside the agent module dir (`agents/<name>/src/<name>_agent/train_eval_set.evalset.json`).
+- `app_name` in `sampler_config.json` **must** equal `os.path.basename(module_path)` (the CLI asserts this and aborts with a `ClickException` on mismatch — the symptom is `eval set not found`).
+
+`os.path.basename(agents/<name>/src/<name>_agent)` == `<name>_agent`, so `app_name` in every `sampler_config.json` is the snake-case `<name>_agent` string, not the human-readable name.
+
+### Evalset schema requirements for `response_match_score`
+
+Each `conversation[i]` entry needs both `invocation_id` and a `final_response` Content object, not just `user_content`. Omitting `final_response` silently scores 0.0 on ROUGE for every case — GEPA sees a flat-zero signal and reports "no improvement found" even though the path ran end-to-end. Minimum viable case:
+
+```json
+{
+  "eval_id": "...",
+  "session_input": { "app_name": "<name>_agent", "user_id": "eval_user", "state": {} },
+  "conversation": [
+    {
+      "invocation_id": "inv1",
+      "user_content": { "role": "user", "parts": [{ "text": "…" }] },
+      "final_response": { "role": "model", "parts": [{ "text": "<gold answer>" }] }
+    }
+  ]
+}
+```
+
+The gold answer does not need to be verbatim — ROUGE is recall/precision-overlap on n-grams, so a short representative answer (1–2 sentences capturing the must-cover points) is enough. Aim for one gold answer per case; more cases > longer gold answers.
+
+### Why `response_match_score` and not `rubric_based_final_response_quality_v1`
+
+`rubric_based_final_response_quality_v1` is the natural fit for "the agent must call set_trip_meta, must not paste the plan in chat, must ask approval before booking"-style rules. **Do not use it through `adk optimize`'s JSON path.** There is a Pydantic + `RubricBasedEvaluator` mismatch: criteria deserialized from JSON come back as plain `dict`s, but `RubricBasedEvaluator` accesses `r.rubric_content.text_property` as attribute access → `AttributeError` mid-eval. The only supported workaround is the programmatic API (`RubricsBasedCriterion(rubrics=[Rubric(...)])`) — which means leaving the `adk optimize` CLI, i.e. the custom-script path we are explicitly avoiding. Use `response_match_score` + well-written gold answers instead. If rubric-based grading is genuinely required, capture it as a `custom_function` metric in `eval_config.criteria` (code-execution metrics deserialize cleanly because Pydantic just stores the string).
+
+### Why `optimizer_model: mistral/mistral-medium-latest` (not the default `gemini-2.5-flash`)
+
+GEPA's default `optimizer_model` is `gemini-2.5-flash` and it is invoked **directly** via ADK's native `Gemini` adapter (not through LiteLLM). Two problems on this repo:
+
+1. The Ambient Gemini free tier (`GEMINI_API_KEY` from Railway) has a 20 req/day quota on `gemini-2.5-flash`. GEPA's reflection_lm burns through it in one run.
+2. The Railway service account (`railway-bigquery-runner@ivory-period-864.iam.gserviceaccount.com`) does **not** have Vertex AI / Agent Platform API enabled in project `ivory-period-864`. Routing to Vertex (`GOOGLE_GENAI_USE_GCA_VERTEX=1`) fails with `403 SERVICE_DISABLED` on `aiplatform.googleapis.com`. Enabling it requires a Console action outside this repo, so Vertex is not currently a fallback.
+
+Setting `optimizer_model: "mistral/mistral-medium-latest"` routes the reflection_lm through `LiteLlm` (the registry matches `mistral/.*`), and Railway's `MISTRAL_API_KEY` is paid with no daily cap. The candidate agent's own inference is **independent** of the optimizer_model — it always uses the shared LiteLLM fallback chain via `agents_shared.tools.build_model()` (Cerebras primary → Mistral → NVIDIA NIM → Gemini).
+
+### `model_configuration: {}` is required (not optional)
+
+The default `GEPARootAgentPromptOptimizerConfig.model_configuration` ships with `thinking_config(include_thoughts=True, thinking_budget=10240)` — Gemini-only. Leaving it set when `optimizer_model` is a LiteLLM model causes the LiteLLM adapter to reject the request or silently drop the config. Set `model_configuration: {}` in every `optimizer_config.json` to disable it.
+
+### The canonical command
+
+```bash
+# 1. pull provider keys from Railway into the shell (Cerebras, Mistral, NVIDIA NIM, Groq, …)
+eval "$(railway variables --json | python3 -c 'import json,sys; d=json.load(sys.stdin); [print(f"export {k}=\047{v}\047") for k,v in d.items() if k.endswith(\"_API_KEY\")]')"
+
+# 2. run GEPA via the adk CLI (no custom scripts, no Python entrypoints)
+uv run adk optimize agents/<name>/src/<name>_agent \
+  --sampler_config_file_path   agents/<name>/src/<name>_agent/sampler_config.json \
+  --optimizer_config_file_path agents/<name>/src/<name>_agent/optimizer_config.json \
+  --print_detailed_results
+```
+
+### Validating configs without spending model budget
+
+Before each run, dry-validate that the configs parse and the evalsets resolve — this catches the `app_name == basename` invariant and missing `final_response` issues in <1s with no API calls:
+
+```bash
+uv run python - <<'PY'
+import os
+from google.adk.optimization.local_eval_sampler import LocalEvalSampler, LocalEvalSamplerConfig
+from google.adk.evaluation.local_eval_sets_manager import LocalEvalSetsManager
+
+mod = "agents/<name>/src/<name>_agent"
+cfg = LocalEvalSamplerConfig.model_validate_json(open(f"{mod}/sampler_config.json").read())
+assert cfg.app_name == os.path.basename(mod), (cfg.app_name, os.path.basename(mod))
+mgr  = LocalEvalSetsManager(agents_dir=os.path.dirname(mod))
+eset = mgr.get_eval_set(cfg.app_name, cfg.train_eval_set)
+assert eset and eset.eval_cases[0].conversation[0].final_response, "missing eval set or gold answer"
+LocalEvalSampler(cfg, mgr).get_train_example_ids()  # forces full sampler init
+print("OK", mod, cfg.app_name, len(eset.eval_cases), "cases")
+PY
+```
+
+### Reading GEPA results
+
+The CLI prints the optimized instruction and (with `--print_detailed_results`) the full `gepa_result` JSON. Key fields:
+
+- `total_metric_calls` — how many eval sampler runs were spent (caps at `max_metric_calls`).
+- `val_aggregate_scores[best_idx]` — the best validation ROUGE score across all candidates.
+- `candidates[best_idx].agent_prompt` — the optimized instruction to paste back into the agent.
+- `Iteration N: New subsample score X is not better than old score Y, skipping` — normal; GEPA only propagates candidates that beat their parent on the train subsample.
+
+If the printed optimized instruction is empty and `val_aggregate_scores` is `[0.0]`, the seed prompt already beat every candidate GEPA proposed within the budget. Either (a) bump `max_metric_calls` in `optimizer_config.json`, (b) add more diverse eval cases, or (c) tighten the gold answer so the seed has room to improve.
+
+### Iteration guidance
+
+GEPA is **long-running and expensive** — do not loop on it. Iterate manually on the prompt and the evalset first (the agent's chat output lives in `.tmp/` traces when you run `adk eval` separately), and only run a single final `adk optimize` after manual fixes plateau. 12 metric calls is a tuning budget, not a search budget — for real prompt exploration raise `max_metric_calls` to 40–80.
+
 ## Adding a new agent
 
 1. `mkdir agents/<name>` and copy the structure from `agents/travel/` (or `agents/grocery/`)
