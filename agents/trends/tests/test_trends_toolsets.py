@@ -1,3 +1,4 @@
+# pyright: reportPrivateUsage=false
 import trends_agent.tools.search as _search_mod
 from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
 from trends_agent.tools.search import web_search_toolset

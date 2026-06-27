@@ -31,7 +31,7 @@ log = logging.getLogger("trends_agent")
 
 TRENDS_CATALOG_ID = "copilotkit://trends/v1"
 
-_TRENDS_A2UI_COMPOSITION_GUIDE = """\
+TRENDS_A2UI_COMPOSITION_GUIDE = """\
 ## Trends Catalog — Component Reference
 
 Use ONLY the Trends catalog components below. Every value must come from \
@@ -62,7 +62,7 @@ Do NOT put rows only in the data field — the catalog components read from \
 their own props, not path bindings.
 """
 
-_INSTRUCTION = (Path(__file__).parent / "instructions.md").read_text(encoding="utf-8")
+INSTRUCTION = (Path(__file__).parent / "instructions.md").read_text(encoding="utf-8")
 
 
 class TrendsState(BaseModel):
@@ -81,21 +81,21 @@ class TrendsState(BaseModel):
 # between web-search tool calls across the whole process as a hard floor; the
 # instruction also caps the total number of searches per verification.
 _WEB_SEARCH_MIN_INTERVAL_S = 1.2
-_web_search_lock = asyncio.Lock()
-_web_search_state: dict[str, float] = {"last_at": 0.0}
+web_search_lock = asyncio.Lock()
+web_search_state: dict[str, float] = {"last_at": 0.0}
 
 
 async def throttle_web_search(tool, args, tool_context) -> None:
     """Space out Brave web-search calls to respect the free-tier rate limit."""
     if not str(getattr(tool, "name", "")).startswith("brave_"):
         return
-    async with _web_search_lock:
-        elapsed = time.monotonic() - _web_search_state["last_at"]
+    async with web_search_lock:
+        elapsed = time.monotonic() - web_search_state["last_at"]
         if elapsed < _WEB_SEARCH_MIN_INTERVAL_S:
             wait = _WEB_SEARCH_MIN_INTERVAL_S - elapsed
             log.debug("throttle_web_search: sleeping %.2fs before %s", wait, tool.name)
             await asyncio.sleep(wait)
-        _web_search_state["last_at"] = time.monotonic()
+        web_search_state["last_at"] = time.monotonic()
     return
 
 
@@ -111,7 +111,7 @@ def build_agent() -> LlmAgent:
             # LiteLlm serialises those as reasoning_content in the OpenAI message
             # body, which Cerebras, Groq, and Mistral reject with 400.
             "model": build_a2ui_model(),
-            "guidelines": {"composition_guide": _TRENDS_A2UI_COMPOSITION_GUIDE},
+            "guidelines": {"composition_guide": TRENDS_A2UI_COMPOSITION_GUIDE},
             "default_surface_id": "trends-result",
             "default_catalog_id": TRENDS_CATALOG_ID,
         }
@@ -124,7 +124,7 @@ def build_agent() -> LlmAgent:
         before_model_callback=strip_thinking_before_model,
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,
-        instruction=_INSTRUCTION,
+        instruction=INSTRUCTION,
         description="Generates SQL, executes BigQuery, verifies findings against the web, and renders A2UI analysis.",
         before_tool_callback=throttle_web_search,
         before_agent_callback=state_init,

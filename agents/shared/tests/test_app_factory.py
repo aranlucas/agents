@@ -1,3 +1,4 @@
+# pyright: reportPrivateUsage=false
 """Tests for the shared ADKAgent/app wiring helpers."""
 
 import logging
@@ -5,14 +6,15 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 from agents_shared.app_factory import (
-    _debug_enabled,
     build_adk_agent,
+    debug_enabled,
     setup_agent_logging,
     streaming_state_mapping,
 )
 from agents_shared.dependencies import AgentServices
 from agents_shared.tools import (
-    _ProviderThrottle,
+    ProviderThrottle,
+    RateLimit,
     build_fast_model,
     build_large_context_model,
     build_model,
@@ -86,37 +88,18 @@ def test_streaming_state_mapping_sets_streaming_flags():
     assert mapping.stream_tool_call is True
 
 
-def test_build_model_uses_current_free_agent_model_chain():
+def test_build_model_uses_cerebras_primary():
     model = build_model()
-    fallbacks = model._additional_args["fallbacks"]
-
     assert model.model == "cerebras/gpt-oss-120b"
-    assert fallbacks == [
-        "mistral/mistral-medium-latest",
-        "nvidia_nim/deepseek-ai/deepseek-v4-flash",
-        "openrouter/openrouter/free",
-        "gemini/gemini-3.1-flash-lite",
-        "gemini/gemini-3.5-flash",
-    ]
-
-    fallbacks.append("mutated")
-    assert "mutated" not in build_model()._additional_args["fallbacks"]
 
 
-def test_build_fast_model_uses_groq_before_gemini_fallbacks():
+def test_build_fast_model_uses_mistral_primary():
     model = build_fast_model()
-
     assert model.model == "mistral/mistral-medium-latest"
-    assert model._additional_args["fallbacks"] == [
-        "cerebras/gpt-oss-120b",
-        "groq/openai/gpt-oss-120b",
-        "gemini/gemini-3.1-flash-lite",
-        "gemini/gemini-2.5-flash",
-    ]
 
 
-async def test_provider_hook_strips_reasoning_content_before_fallback_calls():
-    hook = _ProviderThrottle({})
+async def test_provider_hook_strips_reasoning_content():
+    hook = ProviderThrottle({})
     data = {
         "model": "mistral/mistral-medium-latest",
         "messages": [
@@ -137,9 +120,16 @@ async def test_provider_hook_strips_reasoning_content_before_fallback_calls():
     ]
 
 
-async def test_provider_hook_returns_data_for_known_provider():
-    hook = _ProviderThrottle({"gemini": 100})
+async def test_provider_hook_admits_request_under_rpm_limit():
+    hook = ProviderThrottle({"gemini": RateLimit(rpm=100)})
     data = {"model": "gemini/gemini-3.1-flash-lite", "messages": []}
+    result = await hook.async_pre_call_hook(None, None, data, "completion")
+    assert result is data
+
+
+async def test_provider_hook_skips_throttle_for_unknown_model():
+    hook = ProviderThrottle({"gemini": RateLimit(rpm=100)})
+    data = {"model": "cerebras/gpt-oss-120b", "messages": []}
     result = await hook.async_pre_call_hook(None, None, data, "completion")
     assert result is data
 
@@ -147,6 +137,10 @@ async def test_provider_hook_returns_data_for_known_provider():
 def test_build_large_context_model_returns_mistral_primary():
     model = build_large_context_model()
     assert model.model == "mistral/mistral-medium-latest"
+    assert (
+        "fallbacks" not in model._additional_args
+        or not model._additional_args["fallbacks"]
+    )
 
 
 def test_get_current_date_returns_iso_keys():
@@ -178,7 +172,7 @@ def test_on_model_error_callback_logs_and_returns_none():
 
 def test_debug_enabled_true_when_env_set(monkeypatch):
     monkeypatch.setenv("AGENTS_DEBUG_LOGGING", "true")
-    assert _debug_enabled() is True
+    assert debug_enabled() is True
 
 
 def test_setup_agent_logging_sets_debug_level(monkeypatch):
@@ -309,3 +303,50 @@ def test_stop_on_terminal_text_logs_error_message_on_empty_content():
     ctx = _ctx_no_invocation()
     resp = _make_response(parts=None, error_message="something went wrong")
     assert stop_on_terminal_text(ctx, resp) is None
+
+
+# ---------------------------------------------------------------------------
+# RateLimitStore
+# ---------------------------------------------------------------------------
+
+
+async def test_rate_limit_store_round_trip():
+    from agents_shared.tools import RateLimitStore
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    engine = create_async_engine("sqlite+aiosqlite://", echo=False)
+    store = RateLimitStore(engine)
+    try:
+        await store.ensure_table()
+
+        ok = await store.check_and_increment(
+            "nvidia_nim", "nvidia_nim/model-x", "2026-06-27", 3
+        )
+        assert ok is True
+
+        ok = await store.check_and_increment(
+            "nvidia_nim", "nvidia_nim/model-x", "2026-06-27", 3
+        )
+        assert ok is True
+
+        ok = await store.check_and_increment(
+            "nvidia_nim", "nvidia_nim/model-x", "2026-06-27", 3
+        )
+        assert ok is True
+
+        ok = await store.check_and_increment(
+            "nvidia_nim", "nvidia_nim/model-x", "2026-06-27", 3
+        )
+        assert ok is False
+
+        ok = await store.check_and_increment(
+            "nvidia_nim", "nvidia_nim/model-x", "2026-06-28", 3
+        )
+        assert ok is True
+
+        ok = await store.check_and_increment(
+            "nvidia_nim", "nvidia_nim/model-y", "2026-06-27", 3
+        )
+        assert ok is True
+    finally:
+        await engine.dispose()

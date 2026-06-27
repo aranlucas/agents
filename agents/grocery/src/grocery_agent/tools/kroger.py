@@ -9,13 +9,13 @@ MEAL_PLANNER_MCP_URL = os.getenv(
     "https://ai-meal-planner-mcp.aranlucas.workers.dev/mcp",
 )
 
-_header_provider = make_token_auth_header_provider(KROGER_AUTH)
+header_provider = make_token_auth_header_provider(KROGER_AUTH)
 
 
 def meal_planner_toolset() -> McpToolset:
     """MCP toolset for the AI Meal Planner. Auth token is read per-request from state."""
     return make_http_mcp_toolset(
         MEAL_PLANNER_MCP_URL,
-        header_provider=_header_provider,
+        header_provider=header_provider,
         use_mcp_resources=True,
     )
