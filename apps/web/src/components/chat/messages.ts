@@ -50,6 +50,21 @@ function dedupeById(messages: AguiMessage[]): AguiMessage[] {
   return [...acc.values()];
 }
 
+function isTextPart(p: unknown): p is { type: "text"; text: string } {
+  if (typeof p !== "object" || p === null) return false;
+  const obj = p as Record<string, unknown>;
+  return obj["type"] === "text" && typeof obj["text"] === "string";
+}
+
+function extractText(content: unknown): string {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  return content
+    .filter(isTextPart)
+    .map((p) => p.text)
+    .join("");
+}
+
 export function toRenderItems(messages: AguiMessage[]): RenderItem[] {
   const items: RenderItem[] = [];
   // Tracks the previous reasoning text within the current turn. ag-ui-adk re-emits
@@ -60,7 +75,7 @@ export function toRenderItems(messages: AguiMessage[]): RenderItem[] {
   let lastReasoningText: string | undefined;
 
   for (const m of dedupeById(messages)) {
-    const text = typeof m.content === "string" ? m.content : "";
+    const text = extractText(m.content);
     if (m.role === "reasoning") {
       const trimmed = text.trim();
       if (!trimmed || trimmed === lastReasoningText) continue;
