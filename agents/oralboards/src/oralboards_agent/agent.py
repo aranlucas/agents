@@ -694,3 +694,32 @@ def build_agent() -> LlmAgent:
             AGUIToolset(),
         ],
     )
+
+
+def build_eval_agent() -> LlmAgent:
+    """Eval-compatible agent: no AGUIToolset, no state_schema.
+
+    FunctionTool wrappers are kept — they are plain callables, not ADK Toolsets,
+    and the Vertex AI eval SDK can introspect them correctly.
+    """
+    return LlmAgent(
+        name="oralboards_agent",
+        model=build_model(),
+        retry_config=DEFAULT_RETRY_CONFIG,
+        on_model_error_callback=on_model_error_callback,
+        after_model_callback=stop_on_terminal_text,
+        static_instruction=STATIC_INSTRUCTION,
+        instruction=_STATE_INSTRUCTION,
+        tools=[
+            FunctionTool(search_docs),
+            FunctionTool(read_doc),
+            FunctionTool(set_case),
+            FunctionTool(set_phase),
+            FunctionTool(set_loading_step),
+            FunctionTool(append_exchange),
+            FunctionTool(set_score_card),
+        ],
+    )
+
+
+root_agent = build_eval_agent()

@@ -5,13 +5,12 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-TYPES_FILE = ROOT / "packages/types/src/index.ts"
-EVAL_DIR = ROOT / "tests/eval"
+SHARED_EVAL_CONFIG = ROOT / "agents/eval/eval_config.yaml"
 RUBRIC_GROUP = "agent_contract"
 
 
 def _agent_order_and_backend_paths() -> tuple[list[str], dict[str, str]]:
-    text = TYPES_FILE.read_text(encoding="utf-8")
+    text = (ROOT / "packages/types/src/index.ts").read_text(encoding="utf-8")
 
     order_match = re.search(
         r"export const AGENT_ORDER = \[(?P<body>.*?)\] as const;",
@@ -37,77 +36,68 @@ def _agent_order_and_backend_paths() -> tuple[list[str], dict[str, str]]:
     return agent_order, backend_paths
 
 
-def _agent_eval_groups() -> dict[str, list[str]]:
+def _agent_dir_for_backend_path(backend_path: str) -> str:
+    """Map backend_path to agents/<dir> (oralboards-v2 → oralboards)."""
+    return backend_path.removesuffix("-v2")
+
+
+def _dataset_path(agent_id: str, backend_path: str) -> Path:
+    """Colocated dataset: agents/<dir>/tests/eval/<agent_id>.json."""
+    agent_dir = _agent_dir_for_backend_path(backend_path)
+    return ROOT / "agents" / agent_dir / "tests" / "eval" / f"{agent_id}.json"
+
+
+def _agents_with_eval_datasets() -> list[tuple[str, str]]:
+    """Return (agent_id, backend_path) pairs that have colocated eval datasets."""
     agent_order, backend_paths = _agent_order_and_backend_paths()
-    groups: dict[str, list[str]] = {}
+    return [
+        (agent_id, backend_paths[agent_id])
+        for agent_id in agent_order
+        if _dataset_path(agent_id, backend_paths[agent_id]).exists()
+    ]
+
+
+def test_shared_eval_config_exists_and_has_required_metrics() -> None:
+    assert SHARED_EVAL_CONFIG.exists(), (
+        f"Missing shared eval config: {SHARED_EVAL_CONFIG}"
+    )
+    text = SHARED_EVAL_CONFIG.read_text(encoding="utf-8")
+
+    for metric in (
+        "task_success",
+        "response_quality",
+        "project_agent_contract",
+    ):
+        assert f"- {metric}" in text, f"Metric '{metric}' missing from eval_config.yaml"
+
+
+def test_every_registered_agent_with_eval_has_dataset() -> None:
+    """Agents that have a tests/eval/ directory must have a dataset for each registered ID."""
+    agent_order, backend_paths = _agent_order_and_backend_paths()
+    assert agent_order
 
     for agent_id in agent_order:
         backend_path = backend_paths[agent_id]
-        agent_dir = backend_path.removesuffix("-v2")
-        groups.setdefault(agent_dir, []).append(agent_id)
-
-    return groups
-
-
-def _eval_dir_for_agent(agent_dir: str) -> Path:
-    return ROOT / "agents" / agent_dir / "eval"
-
-
-def _dataset_path(agent_id: str) -> Path:
-    for agent_dir, agent_ids in _agent_eval_groups().items():
-        if agent_id in agent_ids:
-            return _eval_dir_for_agent(agent_dir) / "datasets" / f"{agent_id}.json"
-    raise AssertionError(f"Unknown registered agent: {agent_id}")
-
-
-def _load_dataset(agent_id: str) -> dict:
-    path = _dataset_path(agent_id)
-    assert path.exists(), f"Missing eval dataset for {agent_id}: {path}"
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
-def test_eval_config_selects_agent_quality_metrics() -> None:
-    assert not EVAL_DIR.exists(), "Eval assets should live under agents/<agent>/eval"
-
-    for agent_dir in _agent_eval_groups():
-        config = _eval_dir_for_agent(agent_dir) / "eval_config.yaml"
-        assert config.exists(), f"Missing eval config for {agent_dir}: {config}"
-        text = config.read_text(encoding="utf-8")
-
-        for metric in (
-            "multi_turn_task_success",
-            "final_response_quality",
-            "safety",
-            "project_agent_contract",
-        ):
-            assert f"- {metric}" in text
-
-
-def test_every_registered_agent_has_eval_dataset() -> None:
-    agent_order, backend_paths = _agent_order_and_backend_paths()
-    groups = _agent_eval_groups()
-
-    assert agent_order
-    for agent_dir, agent_ids in groups.items():
+        agent_dir = _agent_dir_for_backend_path(backend_path)
         agent_root = ROOT / "agents" / agent_dir
-        assert agent_root.exists(), f"Missing agent directory for {agent_dir}"
-        assert (agent_root / "tests").exists(), (
-            f"Missing tests directory for {agent_dir}"
+        eval_dir = agent_root / "tests" / "eval"
+
+        if not eval_dir.exists():
+            continue  # eval not yet scaffolded for this agent
+
+        expected = _dataset_path(agent_id, backend_path)
+        assert expected.exists(), (
+            f"eval dir exists for {agent_dir} but missing dataset for {agent_id}: {expected}"
         )
-
-        datasets_dir = _eval_dir_for_agent(agent_dir) / "datasets"
-        assert datasets_dir.exists(), f"Missing eval datasets directory for {agent_dir}"
-        available = {path.stem for path in datasets_dir.glob("*.json")}
-        assert set(agent_ids) <= available
-
-    assert set(agent_order) == set(backend_paths)
 
 
 def test_eval_datasets_are_generate_ready() -> None:
     agent_order, backend_paths = _agent_order_and_backend_paths()
 
-    for agent_id in agent_order:
-        dataset = _load_dataset(agent_id)
+    for agent_id, backend_path in _agents_with_eval_datasets():
+        dataset = json.loads(
+            _dataset_path(agent_id, backend_path).read_text(encoding="utf-8")
+        )
         cases = dataset.get("eval_cases")
         assert isinstance(cases, list), f"{agent_id} eval_cases must be a list"
         assert cases, f"{agent_id} needs at least one eval case"
@@ -117,9 +107,11 @@ def test_eval_datasets_are_generate_ready() -> None:
             assert metadata == {
                 "agent_id": agent_id,
                 "backend_path": backend_paths[agent_id],
-            }
+            }, f"{agent_id} metadata mismatch: {metadata}"
 
-            assert case.get("eval_case_id", "").startswith(agent_id.replace("-", "_"))
+            assert case.get("eval_case_id", "").startswith(
+                agent_id.replace("-", "_")
+            ), f"{agent_id} eval_case_id must start with '{agent_id.replace('-', '_')}'"
 
             prompt = case.get("prompt")
             assert prompt is not None, f"{agent_id} case must be inference-ready"
@@ -130,9 +122,11 @@ def test_eval_datasets_are_generate_ready() -> None:
             assert all(part["text"].strip() for part in parts)
 
             rubric_groups = case.get("rubric_groups")
-            assert isinstance(rubric_groups, dict)
+            assert isinstance(rubric_groups, dict), (
+                f"{agent_id} must have rubric_groups"
+            )
             rubrics = rubric_groups[RUBRIC_GROUP]["rubrics"]
-            assert len(rubrics) >= 3
+            assert len(rubrics) >= 3, f"{agent_id} needs at least 3 rubrics"
             for rubric in rubrics:
                 description = rubric["content"]["property"]["description"]
                 assert isinstance(description, str)

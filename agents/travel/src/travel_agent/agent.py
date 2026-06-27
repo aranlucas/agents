@@ -287,10 +287,8 @@ def build_eval_agent() -> LlmAgent:
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,
-        state_schema=TravelState,
         static_instruction=_INSTRUCTION,
         instruction=_STATE_INSTRUCTION,
-        before_agent_callback=make_state_initializer(TravelState),
         tools=[
             get_current_date,
             set_trip_meta,

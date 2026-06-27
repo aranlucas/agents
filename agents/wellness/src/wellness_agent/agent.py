@@ -152,3 +152,32 @@ def build_agent() -> LlmAgent:
             AGUIToolset(),
         ],
     )
+
+
+def build_eval_agent() -> LlmAgent:
+    """Eval-compatible agent: no AGUIToolset, no state_schema, eval sub-agents.
+
+    Uses eval versions of fitness and grocery so the full sub-agent graph is free
+    of McpToolset objects that the Vertex AI eval SDK cannot introspect.
+    """
+    from fitness_agent.agent import build_eval_agent as build_fitness_eval
+    from grocery_agent.agent import build_eval_agent as build_grocery_eval
+
+    return LlmAgent(
+        name="wellness_agent",
+        model=build_model(),
+        retry_config=DEFAULT_RETRY_CONFIG,
+        on_model_error_callback=on_model_error_callback,
+        after_model_callback=stop_on_terminal_text,
+        static_instruction=_INSTRUCTION,
+        instruction=_STATE_INSTRUCTION,
+        sub_agents=[build_fitness_eval(mode="task"), build_grocery_eval(mode="task")],
+        tools=[
+            get_current_date,
+            set_weekly_wellness_plan,
+            mark_plan_ready,
+        ],
+    )
+
+
+root_agent = build_eval_agent()

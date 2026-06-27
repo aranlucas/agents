@@ -42,6 +42,14 @@
               }
             },
             {
+              "rubric_id": "travel_no_full_plan_in_chat",
+              "content": {
+                "property": {
+                  "description": "The agent's final chat message is ≤2 sentences. It must not include tables, bullet lists, day-by-day breakdowns, or any itinerary content — that content belongs in the canvas (state), not chat."
+                }
+              }
+            },
+            {
               "rubric_id": "travel_no_booking_without_approval",
               "content": {
                 "property": {
