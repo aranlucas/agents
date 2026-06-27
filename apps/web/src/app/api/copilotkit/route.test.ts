@@ -25,6 +25,14 @@ vi.mock("@copilotkit/runtime/v2", () => ({
       return "";
     }
   },
+  InMemoryAgentRunner: class InMemoryAgentRunner {
+    getThreadMessages() {
+      return [];
+    }
+    connect() {
+      return { subscribe: vi.fn() };
+    }
+  },
 }));
 
 vi.mock("@ag-ui/client", () => ({

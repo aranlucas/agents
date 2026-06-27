@@ -20,12 +20,12 @@ from .dependencies import AgentServices
 _DEBUG_ENV_VAR = "AGENTS_DEBUG_LOGGING"
 
 
-def _debug_enabled() -> bool:
+def debug_enabled() -> bool:
     return os.getenv(_DEBUG_ENV_VAR, "").strip().lower() in ("1", "true", "yes", "on")
 
 
 def setup_agent_logging(name: str) -> logging.Logger:
-    level = logging.DEBUG if _debug_enabled() else logging.INFO
+    level = logging.DEBUG if debug_enabled() else logging.INFO
     logging.basicConfig(
         level=level,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",

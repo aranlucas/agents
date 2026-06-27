@@ -54,21 +54,21 @@ class FitnessState(BaseModel):
 # Rate-limit throttle for Brave free-tier searches
 # ---------------------------------------------------------------------------
 _WEB_SEARCH_MIN_INTERVAL_S = 1.2
-_web_search_lock = asyncio.Lock()
-_web_search_state: dict[str, float] = {"last_at": 0.0}
+web_search_lock = asyncio.Lock()
+web_search_state: dict[str, float] = {"last_at": 0.0}
 
 
 async def throttle_web_search(tool, args, tool_context) -> None:
     """Space out Brave web-search calls to respect the free-tier rate limit."""
     if not str(getattr(tool, "name", "")).startswith("brave_"):
         return
-    async with _web_search_lock:
-        elapsed = time.monotonic() - _web_search_state["last_at"]
+    async with web_search_lock:
+        elapsed = time.monotonic() - web_search_state["last_at"]
         if elapsed < _WEB_SEARCH_MIN_INTERVAL_S:
             wait = _WEB_SEARCH_MIN_INTERVAL_S - elapsed
             log.debug("throttle_web_search: sleeping %.2fs before %s", wait, tool.name)
             await asyncio.sleep(wait)
-        _web_search_state["last_at"] = time.monotonic()
+        web_search_state["last_at"] = time.monotonic()
 
 
 # ---------------------------------------------------------------------------

@@ -30,12 +30,12 @@ class SkillsetScore(TypedDict):
     rationale: str
 
 
-def _clean_query(query: str) -> str:
+def clean_query(query: str) -> str:
     cleaned = re.sub(r'["*]', " ", query).strip()
     return re.sub(r"\s+", " ", cleaned)
 
 
-def _extract_passage(body: str, query: str, max_chars: int = 600) -> str:
+def extract_passage(body: str, query: str, max_chars: int = 600) -> str:
     body_lower = body.lower()
     words = sorted(
         (w.lower() for w in query.split() if len(w) > 4),

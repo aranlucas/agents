@@ -5,14 +5,18 @@ import { HttpAgent } from "@ag-ui/client";
 import { auth } from "@clerk/nextjs/server";
 import { env } from "@/env";
 import { agentBaseUrl } from "@/lib/agent-url";
+import { GatewayBackedRunner } from "@/lib/copilotkit/gateway-backed-runner";
+
+const EXCALIDRAW_AGUI_URL = `${agentBaseUrl(env.AGENTS_BASE_URL)}/excalidraw/agui`;
 
 const runtime = new CopilotSseRuntime({
   agents: {
     excalidraw: new HttpAgent({
-      url: `${agentBaseUrl(env.AGENTS_BASE_URL)}/excalidraw/agui`,
+      url: EXCALIDRAW_AGUI_URL,
       debug: env.COPILOTKIT_DEBUG,
     }),
   },
+  runner: new GatewayBackedRunner({ excalidraw: EXCALIDRAW_AGUI_URL }),
   mcpApps: {
     servers: [
       {

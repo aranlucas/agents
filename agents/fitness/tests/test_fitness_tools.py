@@ -1,3 +1,4 @@
+# pyright: reportPrivateUsage=false
 from unittest.mock import Mock
 
 import fitness_agent.tools.search as _search_mod
@@ -207,9 +208,9 @@ def test_strava_token_read_from_state_key() -> None:
 
 @pytest.mark.asyncio
 async def test_throttle_web_search_ignores_non_brave_tools() -> None:
-    agent._web_search_state["last_at"] = 1000
+    agent.web_search_state["last_at"] = 1000
     await agent.throttle_web_search(Mock(name="other_search"), {}, Mock())
-    assert agent._web_search_state["last_at"] == 1000
+    assert agent.web_search_state["last_at"] == 1000
 
 
 def test_on_before_agent_derives_strava_connected_from_state_token() -> None:
