@@ -23,6 +23,11 @@ dependencies = [
   "uvicorn[standard]",
 ]
 
+[project.optional-dependencies]
+eval = [
+  "google-adk[eval]",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

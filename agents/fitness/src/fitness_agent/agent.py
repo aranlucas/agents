@@ -340,3 +340,34 @@ def build_agent(
             web_search_toolset(),
         ],
     )
+
+
+def build_eval_agent(
+    *, mode: str | None = None, include_contents: str = "default"
+) -> LlmAgent:
+    """Eval-compatible agent: no AGUIToolset, no McpToolset, no state_schema.
+
+    The eval case tests the auth-gate path (strava_connected=False by default).
+    fetch_activities gracefully returns an error when disconnected, so no stub needed.
+    """
+    return LlmAgent(
+        name="fitness_agent",
+        model=build_model(),
+        retry_config=DEFAULT_RETRY_CONFIG,
+        on_model_error_callback=on_model_error_callback,
+        after_model_callback=stop_on_terminal_text,
+        mode=mode,
+        include_contents=include_contents,
+        static_instruction=_INSTRUCTION,
+        instruction=_STATE_INSTRUCTION,
+        tools=[
+            fetch_activities,
+            get_current_date,
+            set_objective_research,
+            set_training_plan,
+            mark_plan_ready,
+        ],
+    )
+
+
+root_agent = build_eval_agent()

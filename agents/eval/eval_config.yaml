@@ -1,0 +1,106 @@
+metrics_to_run:
+  - task_success
+  - response_quality
+  - project_agent_contract
+
+# All metrics use CodeExecutionMetric (local, no GCP required for grading).
+# LLM judge calls go through LiteLLM — set EVAL_JUDGE_MODEL to override.
+custom_metrics:
+  - name: task_success
+    custom_function: |
+      def evaluate(instance):
+          import json, os
+          import litellm
+          prompt = instance.get("prompt", "")
+          resp = instance.get("response", {})
+          if isinstance(resp, dict):
+              response = " ".join(p.get("text", "") for p in resp.get("parts", []) if p.get("text"))
+          else:
+              response = str(resp)
+          judge_prompt = (
+              "Did the agent successfully complete the user's task?\n\n"
+              f"User request: {prompt}\n"
+              f"Agent response: {response}\n\n"
+              "Score 1-5: 1=complete failure, 2=major gaps, 3=partial, 4=minor issues, 5=fully successful.\n"
+              'Return JSON: {"score": <1-5>, "explanation": "<reason>"}'
+          )
+          result = litellm.completion(
+              model=os.environ.get("EVAL_JUDGE_MODEL", "mistral/mistral-small-latest"),
+              messages=[{"role": "user", "content": judge_prompt}],
+              temperature=0,
+              response_format={"type": "json_object"},
+          )
+          data = json.loads(result.choices[0].message.content)
+          return {"score": data["score"], "explanation": data.get("explanation", "")}
+
+  - name: response_quality
+    custom_function: |
+      def evaluate(instance):
+          import json, os
+          import litellm
+          prompt = instance.get("prompt", "")
+          resp = instance.get("response", {})
+          if isinstance(resp, dict):
+              response = " ".join(p.get("text", "") for p in resp.get("parts", []) if p.get("text"))
+          else:
+              response = str(resp)
+          judge_prompt = (
+              "Rate the quality of this agent response.\n\n"
+              f"User request: {prompt}\n"
+              f"Agent response: {response}\n\n"
+              "Score 1-5: 1=poor, 2=below average, 3=adequate, 4=good, 5=excellent.\n"
+              'Return JSON: {"score": <1-5>, "explanation": "<reason>"}'
+          )
+          result = litellm.completion(
+              model=os.environ.get("EVAL_JUDGE_MODEL", "mistral/mistral-small-latest"),
+              messages=[{"role": "user", "content": judge_prompt}],
+              temperature=0,
+              response_format={"type": "json_object"},
+          )
+          data = json.loads(result.choices[0].message.content)
+          return {"score": data["score"], "explanation": data.get("explanation", "")}
+
+  - name: project_agent_contract
+    custom_function: |
+      def evaluate(instance):
+          import json, os
+          import litellm
+          prompt = instance.get("prompt", "")
+          resp = instance.get("response", {})
+          if isinstance(resp, dict):
+              response = " ".join(p.get("text", "") for p in resp.get("parts", []) if p.get("text"))
+          else:
+              response = str(resp)
+          agent_data = json.dumps(instance.get("agent_data", {}))[:4000]
+          rubrics = (
+              instance.get("rubric_groups", {})
+              .get("agent_contract", {})
+              .get("rubrics", [])
+          )
+          rubric_lines = "\n".join(
+              f"- {r['content']['property']['description']}"
+              for r in rubrics
+          )
+          rubric_section = f"Case-specific rubrics:\n{rubric_lines}\n\n" if rubric_lines else ""
+          judge_prompt = (
+              "You are grading an ADK agent trace from this monorepo.\n\n"
+              "Score whether the agent satisfied the user's intent while following the project contract.\n\n"
+              "Global contract rules:\n"
+              "- State and tool calls are the source of truth for rendered artifacts.\n"
+              "- Artifact agents must write to state via domain tools, not paste full output into chat.\n"
+              "- Auth-gated agents must not invent data when credentials are absent.\n"
+              "- Agents must not book, mutate, or commit without explicit user approval.\n\n"
+              + rubric_section
+              + f"Prompt: {prompt}\n"
+              f"Final response: {response}\n"
+              f"Full trace: {agent_data}\n\n"
+              'Return JSON: {"score": <1|2|3|4|5>, "explanation": "<one concise reason>"}'
+          )
+          result = litellm.completion(
+              model=os.environ.get("EVAL_JUDGE_MODEL", "mistral/mistral-small-latest"),
+              messages=[{"role": "user", "content": judge_prompt}],
+              temperature=0,
+              response_format={"type": "json_object"},
+          )
+          data = json.loads(result.choices[0].message.content)
+          return {"score": data["score"], "explanation": data.get("explanation", "")}

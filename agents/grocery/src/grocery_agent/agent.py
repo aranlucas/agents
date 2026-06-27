@@ -228,3 +228,36 @@ def build_agent(
             meal_planner_toolset(),
         ],
     )
+
+
+def build_eval_agent(
+    *, mode: str | None = None, include_contents: str = "default"
+) -> LlmAgent:
+    """Eval-compatible agent: no AGUIToolset, no McpToolset, no state_schema.
+
+    The eval case tests the auth-gate path (kroger_connected=False by default),
+    so no Kroger MCP stubs are needed — the agent should refuse before calling them.
+    """
+    return LlmAgent(
+        name="grocery_agent",
+        model=build_model(),
+        retry_config=DEFAULT_RETRY_CONFIG,
+        on_model_error_callback=on_model_error_callback,
+        after_model_callback=stop_on_terminal_text,
+        mode=mode,
+        include_contents=include_contents,
+        static_instruction=_INSTRUCTION,
+        instruction=_STATE_INSTRUCTION,
+        tools=[
+            set_shopping_list,
+            update_cart,
+            update_pantry,
+            set_meal_plan,
+            set_weekly_deals,
+            mark_list_ready,
+            get_current_date,
+        ],
+    )
+
+
+root_agent = build_eval_agent()
