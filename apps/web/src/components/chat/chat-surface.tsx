@@ -10,7 +10,7 @@ import {
   useSuggestions,
   UseAgentUpdate,
 } from "@copilotkit/react-core/v2";
-import { SparklesIcon } from "lucide-react";
+import { FileIcon, PaperclipIcon, SparklesIcon, XIcon } from "lucide-react";
 
 import { Button, Streamdown } from "@agents/ui";
 import {
@@ -20,7 +20,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@agents/ui/components/empty";
-import { Message, MessageContent } from "@agents/ui/components/message";
+import { Message, MessageAvatar, MessageContent } from "@agents/ui/components/message";
 import { Bubble, BubbleContent } from "@agents/ui/components/bubble";
 import {
   MessageScrollerProvider,
@@ -30,6 +30,7 @@ import {
   MessageScrollerItem,
   MessageScrollerButton,
 } from "@agents/ui/components/message-scroller";
+import { Marker, MarkerContent } from "@agents/ui/components/marker";
 import { Suggestion, Suggestions } from "@agents/ui/components/ai-elements/suggestion";
 import {
   Reasoning,
@@ -45,14 +46,29 @@ import {
 } from "@agents/ui/components/ai-elements/tool";
 import {
   PromptInput,
+  PromptInputActionAddAttachments,
+  PromptInputActionMenu,
+  PromptInputActionMenuContent,
+  PromptInputActionMenuTrigger,
   PromptInputBody,
   PromptInputFooter,
+  PromptInputHeader,
   PromptInputProvider,
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputTools,
+  usePromptInputAttachments,
   type PromptInputMessage,
 } from "@agents/ui/components/ai-elements/prompt-input";
+import {
+  Attachment,
+  AttachmentAction,
+  AttachmentActions,
+  AttachmentContent,
+  AttachmentGroup,
+  AttachmentMedia,
+  AttachmentTitle,
+} from "@agents/ui/components/attachment";
 
 import type { AgentConfig, AgentId } from "./agents/registry";
 import { toRenderItems, type AguiMessage, type AguiToolCall } from "./messages";
@@ -70,6 +86,40 @@ const AssistantText = memo(
   (prev, next) => prev.children === next.children,
 );
 AssistantText.displayName = "AssistantText";
+
+function StagedAttachments() {
+  const { files, remove } = usePromptInputAttachments();
+  if (files.length === 0) return null;
+  return (
+    <PromptInputHeader>
+      <AttachmentGroup>
+        {files.map((file) => {
+          const isImage = file.mediaType?.startsWith("image/");
+          return (
+            <Attachment key={file.id} size="sm" state="done">
+              <AttachmentMedia variant={isImage ? "image" : "icon"}>
+                {isImage ? (
+                  // oxlint-disable-next-line next/no-img-element -- blob/data URLs cannot be optimized by next/image
+                  <img src={file.url} alt={file.filename ?? "attachment"} />
+                ) : (
+                  <FileIcon />
+                )}
+              </AttachmentMedia>
+              <AttachmentContent>
+                <AttachmentTitle>{file.filename ?? "File"}</AttachmentTitle>
+              </AttachmentContent>
+              <AttachmentActions>
+                <AttachmentAction onClick={() => remove(file.id)}>
+                  <XIcon />
+                </AttachmentAction>
+              </AttachmentActions>
+            </Attachment>
+          );
+        })}
+      </AttachmentGroup>
+    </PromptInputHeader>
+  );
+}
 
 // Registers the wildcard tool renderer that `useRenderToolCall()` resolves to
 // for our custom message list. Maps CopilotKit status -> ai-elements Tool state.
@@ -219,7 +269,7 @@ export function ChatSurface({
     renderToolCall({ toolCall: tc as never, toolMessage: toolMessages.get(tc.id) as never });
 
   const send = useCallback(
-    async (text: string) => {
+    async (text: string, files: PromptInputMessage["files"] = []) => {
       const trimmed = text.trim();
       if (!agent || !trimmed || !isAgentConnected) return;
       // Mirror CopilotKit prebuilt: wait for any in-flight run before queuing.
@@ -231,7 +281,18 @@ export function ChatSurface({
           console.error("ChatSurface: in-flight run rejected while queuing send", error);
         }
       }
-      agent.addMessage({ id: crypto.randomUUID(), role: "user", content: trimmed });
+      const content =
+        files.length > 0
+          ? [
+              trimmed,
+              ...files.map((f) =>
+                f.mediaType?.startsWith("image/")
+                  ? `![${f.filename ?? "image"}](${f.url ?? ""})`
+                  : `[Attached: ${f.filename ?? "file"}]`,
+              ),
+            ].join("\n\n")
+          : trimmed;
+      agent.addMessage({ id: crypto.randomUUID(), role: "user", content });
       void copilotkit.runAgent({ agent });
     },
     [agent, copilotkit, isAgentConnected],
@@ -269,69 +330,81 @@ export function ChatSurface({
                   </EmptyHeader>
                 </Empty>
               ) : (
-                items.map((item) => {
-                  if (item.kind === "activity") {
+                <>
+                  {items.length > 0 && (
+                    <MessageScrollerItem key="conversation-start">
+                      <Marker variant="separator">
+                        <MarkerContent>{config.label}</MarkerContent>
+                      </Marker>
+                    </MessageScrollerItem>
+                  )}
+                  {items.map((item) => {
+                    if (item.kind === "activity") {
+                      return (
+                        <MessageScrollerItem key={item.id} messageId={item.id}>
+                          {/* oxlint-disable-next-line typescript/no-unsafe-type-assertion */}
+                          {activityMessage(item.message as never)}
+                        </MessageScrollerItem>
+                      );
+                    }
+                    if (item.kind === "user") {
+                      return (
+                        <MessageScrollerItem key={item.id} messageId={item.id} scrollAnchor>
+                          <Message align="end">
+                            <MessageContent>
+                              <Bubble variant="secondary" align="end">
+                                <BubbleContent>{item.text}</BubbleContent>
+                              </Bubble>
+                            </MessageContent>
+                          </Message>
+                        </MessageScrollerItem>
+                      );
+                    }
+                    const last = item === items.at(-1);
+                    if (item.kind === "reasoning") {
+                      return (
+                        <MessageScrollerItem key={item.id} messageId={item.id}>
+                          <Reasoning defaultOpen={false} isStreaming={last && isRunning}>
+                            <ReasoningTrigger />
+                            <ReasoningContent>{item.text}</ReasoningContent>
+                          </Reasoning>
+                        </MessageScrollerItem>
+                      );
+                    }
                     return (
                       <MessageScrollerItem key={item.id} messageId={item.id}>
-                        {/* oxlint-disable-next-line typescript/no-unsafe-type-assertion */}
-                        {activityMessage(item.message as never)}
-                      </MessageScrollerItem>
-                    );
-                  }
-                  if (item.kind === "user") {
-                    return (
-                      <MessageScrollerItem key={item.id} messageId={item.id} scrollAnchor>
-                        <Message align="end">
+                        <Message align="start">
+                          <MessageAvatar>
+                            <SparklesIcon className="text-muted-foreground size-4" />
+                          </MessageAvatar>
                           <MessageContent>
-                            <Bubble variant="secondary" align="end">
-                              <BubbleContent>{item.text}</BubbleContent>
-                            </Bubble>
+                            {item.toolCalls.map((tc) => (
+                              <Fragment key={tc.id}>{toolCallContent(tc)}</Fragment>
+                            ))}
+                            {item.text.trim() && (
+                              <Bubble variant="ghost" align="start">
+                                <BubbleContent>
+                                  <AssistantText>{item.text}</AssistantText>
+                                </BubbleContent>
+                              </Bubble>
+                            )}
+                            {item.id === lastAssistantId && artifact && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="mt-1 w-fit gap-2"
+                                onClick={onOpenArtifact}
+                              >
+                                ▤ Open {artifact.title}
+                              </Button>
+                            )}
                           </MessageContent>
                         </Message>
                       </MessageScrollerItem>
                     );
-                  }
-                  const last = item === items.at(-1);
-                  if (item.kind === "reasoning") {
-                    return (
-                      <MessageScrollerItem key={item.id} messageId={item.id}>
-                        <Reasoning defaultOpen={false} isStreaming={last && isRunning}>
-                          <ReasoningTrigger />
-                          <ReasoningContent>{item.text}</ReasoningContent>
-                        </Reasoning>
-                      </MessageScrollerItem>
-                    );
-                  }
-                  return (
-                    <MessageScrollerItem key={item.id} messageId={item.id}>
-                      <Message align="start">
-                        <MessageContent>
-                          {item.toolCalls.map((tc) => (
-                            <Fragment key={tc.id}>{toolCallContent(tc)}</Fragment>
-                          ))}
-                          {item.text.trim() && (
-                            <Bubble variant="ghost" align="start">
-                              <BubbleContent>
-                                <AssistantText>{item.text}</AssistantText>
-                              </BubbleContent>
-                            </Bubble>
-                          )}
-                          {item.id === lastAssistantId && artifact && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="mt-1 w-fit gap-2"
-                              onClick={onOpenArtifact}
-                            >
-                              ▤ Open {artifact.title}
-                            </Button>
-                          )}
-                        </MessageContent>
-                      </Message>
-                    </MessageScrollerItem>
-                  );
-                })
+                  })}
+                </>
               )}
             </MessageScrollerContent>
           </MessageScrollerViewport>
@@ -359,15 +432,24 @@ export function ChatSurface({
               <PromptInputProvider>
                 <PromptInput
                   onSubmit={(message: PromptInputMessage) => {
-                    void send(message.text ?? "");
+                    void send(message.text ?? "", message.files);
                   }}
                 >
+                  <StagedAttachments />
                   <PromptInputBody>
                     <PromptInputTextarea placeholder={config.placeholder} />
                   </PromptInputBody>
                   <PromptInputFooter>
                     <PromptInputTools>
                       <AgentSelector active={config.id} onSelect={onSwitchAgent} />
+                      <PromptInputActionMenu>
+                        <PromptInputActionMenuTrigger>
+                          <PaperclipIcon />
+                        </PromptInputActionMenuTrigger>
+                        <PromptInputActionMenuContent>
+                          <PromptInputActionAddAttachments />
+                        </PromptInputActionMenuContent>
+                      </PromptInputActionMenu>
                     </PromptInputTools>
                     <PromptInputTools>
                       <TranscribeButton />
