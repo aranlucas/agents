@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import hmac
+import logging
 import os
 import secrets
 import time
@@ -14,6 +15,8 @@ from clerk_backend_api import Clerk
 from clerk_backend_api.models import ClerkErrors
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
+
+log = logging.getLogger(__name__)
 
 TELEGRAM_LINK_TOKEN_TTL_SECONDS = 10 * 60
 KROGER_PROVIDERS = ("oauth_custom_shopping", "custom_shopping")
@@ -246,20 +249,39 @@ async def fetch_clerk_oauth_token(
                 res = clerk.users.get_o_auth_access_token(
                     user_id=clerk_user_id, provider=provider
                 )
-            except ClerkErrors:
+            except ClerkErrors as exc:
+                log.warning(
+                    "clerk oauth token ClerkErrors provider=%s: %s", provider, exc
+                )
                 return None
+            except Exception as exc:
+                log.warning("clerk oauth token error provider=%s: %s", provider, exc)
+                return None
+            log.debug(
+                "clerk oauth token provider=%s result_count=%d",
+                provider,
+                len(res) if res else 0,
+            )
             if not res:
                 return None
             token_obj = res[0]
             expires_at = token_obj.expires_at
             if isinstance(expires_at, int | float) and expires_at < time.time():
+                log.warning(
+                    "clerk oauth token expired provider=%s expires_at=%s",
+                    provider,
+                    expires_at,
+                )
                 return None
             token = token_obj.token
             return token if token else None
 
     try:
         return await asyncio.to_thread(_fetch)
-    except Exception:
+    except Exception as exc:
+        log.warning(
+            "fetch_clerk_oauth_token thread error provider=%s: %s", provider, exc
+        )
         return None
 
 
