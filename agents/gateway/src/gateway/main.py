@@ -121,6 +121,8 @@ async def _lifespan(app: FastAPI):
         )
         ptb_app = bot.build_application(token)
         await ptb_app.initialize()
+        # Drop any stale long-poll held by a previous instance (e.g. rolling deploy).
+        await ptb_app.bot.delete_webhook(drop_pending_updates=False)
         await ptb_app.updater.start_polling(
             timeout=int(os.getenv("TELEGRAM_POLL_TIMEOUT", "50")),
             allowed_updates=["message"],
