@@ -17,5 +17,5 @@ def meal_planner_toolset() -> McpToolset:
     return make_http_mcp_toolset(
         MEAL_PLANNER_MCP_URL,
         header_provider=header_provider,
-        use_mcp_resources=True,
+        use_mcp_resources=False,
     )
