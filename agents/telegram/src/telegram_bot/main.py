@@ -23,9 +23,14 @@ def run() -> None:
     if not token:
         raise RuntimeError("Set TELEGRAM_BOT_TOKEN with the BotFather token.")
 
+    _default_web_base = "https://agents-lucas.vercel.app"
     allowed_chat_ids = parse_allowed_chat_ids(os.getenv("TELEGRAM_ALLOWED_CHAT_IDS"))
-    link_base_url = os.getenv("TELEGRAM_LINK_BASE_URL")
-    connect_url = os.getenv("TELEGRAM_CONNECT_URL")
+    link_base_url = (
+        os.getenv("TELEGRAM_LINK_BASE_URL") or f"{_default_web_base}/telegram/link"
+    )
+    connect_url = (
+        os.getenv("TELEGRAM_CONNECT_URL") or f"{_default_web_base}/console/settings"
+    )
     mini_app_url = os.getenv("TELEGRAM_MINI_APP_URL")
     poll_timeout = int(os.getenv("TELEGRAM_POLL_TIMEOUT", "50"))
 
