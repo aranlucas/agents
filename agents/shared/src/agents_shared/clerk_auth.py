@@ -3,8 +3,11 @@
 import functools
 import json
 import os
+from collections.abc import Callable
+from typing import Any
 
 import jwt
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 USER_ID_HEADER = b"x-clerk-user-id"
 
@@ -18,14 +21,19 @@ def _jwk_client() -> jwt.PyJWKClient:
     return jwt.PyJWKClient(os.environ["CLERK_JWKS_URL"])
 
 
-def decode_clerk_jwt(token: str, *, signing_key=None) -> dict[str, object]:
+def decode_clerk_jwt(
+    token: str, *, signing_key: Any | None = None
+) -> dict[str, object]:
     """Verify signature + expiry and issuer when CLERK_ISSUER is set."""
-    if signing_key is None:
-        signing_key = _jwk_client().get_signing_key_from_jwt(token).key
+    key: Any = (
+        signing_key
+        if signing_key is not None
+        else _jwk_client().get_signing_key_from_jwt(token).key
+    )
     issuer = os.getenv("CLERK_ISSUER")
     return jwt.decode(
         token,
-        signing_key,
+        key,
         algorithms=["RS256"],
         issuer=issuer or None,
         options={"verify_aud": False, "verify_iss": bool(issuer)},
@@ -33,7 +41,7 @@ def decode_clerk_jwt(token: str, *, signing_key=None) -> dict[str, object]:
     )
 
 
-def _bearer_token(scope) -> str | None:
+def _bearer_token(scope: Scope) -> str | None:
     for name, value in scope.get("headers", []):
         if name == b"authorization":
             text = value.decode("latin-1")
@@ -42,7 +50,7 @@ def _bearer_token(scope) -> str | None:
     return None
 
 
-async def _send_401(send, detail: str) -> None:
+async def _send_401(send: Send, detail: str) -> None:
     body = json.dumps({"detail": detail}).encode()
     await send(
         {
@@ -58,7 +66,11 @@ class ClerkAuthMiddleware:
     """Pure-ASGI middleware guarding every path that contains "/agui"."""
 
     def __init__(
-        self, app, *, decoder=decode_clerk_jwt, public_prefixes: tuple[str, ...] = ()
+        self,
+        app: ASGIApp,
+        *,
+        decoder: Callable[[str], dict[str, object]] = decode_clerk_jwt,
+        public_prefixes: tuple[str, ...] = (),
     ):
         self.app = app
         self.decoder = decoder
@@ -69,7 +81,7 @@ class ClerkAuthMiddleware:
             return False
         return not any(path.startswith(prefix) for prefix in self.public_prefixes)
 
-    async def __call__(self, scope, receive, send):
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http" or not self._is_protected(scope["path"]):
             return await self.app(scope, receive, send)
 

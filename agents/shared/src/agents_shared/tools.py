@@ -9,6 +9,7 @@ import logging
 import time
 from dataclasses import dataclass
 from datetime import UTC
+from typing import Any, override
 
 import litellm
 from fastapi import Request
@@ -149,7 +150,7 @@ class ProviderThrottle(CustomLogger):
     """
 
     def __init__(self, limits: dict[str, RateLimit]) -> None:
-        super().__init__()
+        super().__init__()  # pyright: ignore[reportUnknownMemberType]
         self._lock = asyncio.Lock()
         self._limits = limits
         self._rpm_windows: dict[str, collections.deque[float]] = {}
@@ -169,15 +170,17 @@ class ProviderThrottle(CustomLogger):
             while rpm and now - rpm[0] >= 60.0:
                 rpm.popleft()
 
+    @override
     async def async_pre_call_hook(
         self,
-        user_api_key_dict,
-        cache,
-        data,
-        call_type,
-    ):
+        user_api_key_dict: Any,
+        cache: Any,
+        data: dict[str, Any],
+        call_type: Any,
+    ) -> dict[str, Any]:
         # Strip reasoning_content that non-reasoning providers reject
-        for message in data.get("messages") or []:
+        messages: list[Any] = data.get("messages") or []
+        for message in messages:
             if isinstance(message, dict):
                 message.pop("reasoning_content", None)
 
@@ -226,7 +229,7 @@ class ProviderThrottle(CustomLogger):
         return data
 
 
-litellm.callbacks.append(ProviderThrottle(RATE_LIMITS))
+litellm.callbacks.append(ProviderThrottle(RATE_LIMITS))  # pyright: ignore[reportUnknownMemberType]
 
 CLERK_USER_ID_HEADER = "x-clerk-user-id"
 

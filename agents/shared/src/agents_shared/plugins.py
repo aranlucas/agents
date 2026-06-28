@@ -31,10 +31,6 @@ class SlimMcpPlugin(BasePlugin):
         tool_context: ToolContext,
         result: dict[str, Any],
     ) -> dict[str, Any] | None:
-        if (
-            isinstance(result, dict)
-            and "content" in result
-            and "structuredContent" in result
-        ):
+        if "content" in result and "structuredContent" in result:
             return result["content"]
         return result
