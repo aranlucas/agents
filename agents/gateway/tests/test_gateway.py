@@ -148,6 +148,8 @@ def test_lifespan_starts_and_stops_telegram_bot_when_token_set(monkeypatch):
     fake_ptb.stop = AsyncMock()
     fake_ptb.shutdown = AsyncMock()
     fake_ptb.updater = fake_updater
+    fake_ptb.bot = MagicMock()
+    fake_ptb.bot.delete_webhook = AsyncMock()
 
     fake_bot = MagicMock()
     fake_bot.build_application = MagicMock(return_value=fake_ptb)
