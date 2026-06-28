@@ -26,12 +26,14 @@ def run() -> None:
     allowed_chat_ids = parse_allowed_chat_ids(os.getenv("TELEGRAM_ALLOWED_CHAT_IDS"))
     link_base_url = os.getenv("TELEGRAM_LINK_BASE_URL")
     connect_url = os.getenv("TELEGRAM_CONNECT_URL")
+    mini_app_url = os.getenv("TELEGRAM_MINI_APP_URL")
     poll_timeout = int(os.getenv("TELEGRAM_POLL_TIMEOUT", "50"))
 
     bot = TelegramAgentsBot(
         allowed_chat_ids=allowed_chat_ids,
         link_base_url=link_base_url,
         connect_url=connect_url,
+        mini_app_url=mini_app_url,
         poll_timeout=poll_timeout,
         debug=env_flag("TELEGRAM_DEBUG"),
     )

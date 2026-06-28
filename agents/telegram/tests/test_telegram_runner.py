@@ -39,15 +39,18 @@ class FakeReplyTarget:
         self.chat_id = chat_id
         self.messages: list[tuple[int, str]] = []
         self.disable_web_page_preview_values: list[bool] = []
+        self.reply_markups: list[object] = []
 
     async def reply_text(
         self,
         text: str,
         *,
         disable_web_page_preview: bool = True,
+        reply_markup: object = None,
     ) -> TelegramSentMessage:
         self.messages.append((self.chat_id, text))
         self.disable_web_page_preview_values.append(disable_web_page_preview)
+        self.reply_markups.append(reply_markup)
         return FakeSentMessage(self)
 
 
@@ -135,6 +138,53 @@ def test_format_state_summary_hides_internal_state() -> None:
 def test_parse_allowed_chat_ids() -> None:
     assert parse_allowed_chat_ids("123, -456,789") == {123, -456, 789}
     assert parse_allowed_chat_ids(None) == set()
+
+
+def test_bot_stores_mini_app_url(engine: AsyncEngine) -> None:
+    services = SimpleNamespace(engine=engine)
+    bot = TelegramAgentsBot(
+        services=cast(AgentServices, services),
+        mini_app_url="https://example.com/tma",
+    )
+    assert bot.mini_app_url == "https://example.com/tma"
+
+
+def test_bot_mini_app_url_defaults_to_none(engine: AsyncEngine) -> None:
+    services = SimpleNamespace(engine=engine)
+    bot = TelegramAgentsBot(
+        services=cast(AgentServices, services),
+    )
+    assert bot.mini_app_url is None
+
+
+@pytest.mark.asyncio
+async def test_help_command_sends_webapp_button_when_url_set(
+    engine: AsyncEngine,
+) -> None:
+    services = SimpleNamespace(engine=engine)
+    bot = TelegramAgentsBot(
+        services=cast(AgentServices, services),
+        mini_app_url="https://example.com/tma",
+    )
+    reply_target = FakeReplyTarget(chat_id=123)
+    message = _message("/start", reply_target)
+
+    await bot._help_update_for_message(message)  # type: ignore[attr-defined]
+
+    assert len(reply_target.reply_markups) == 1
+    assert reply_target.reply_markups[0] is not None
+
+
+@pytest.mark.asyncio
+async def test_help_command_no_webapp_button_when_no_url(engine: AsyncEngine) -> None:
+    bot = _bot(engine)
+    reply_target = FakeReplyTarget(chat_id=123)
+    message = _message("/start", reply_target)
+
+    await bot._help_update_for_message(message)  # type: ignore[attr-defined]
+
+    assert len(reply_target.reply_markups) == 1
+    assert reply_target.reply_markups[0] is None
 
 
 @pytest.mark.asyncio
