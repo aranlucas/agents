@@ -29,7 +29,7 @@ class SlimMcpPlugin(BasePlugin):
         tool: BaseTool,
         tool_args: dict[str, Any],
         tool_context: ToolContext,
-        result: dict[str, Any],
+        result: dict[str, Any] | None,
     ) -> dict[str, Any] | None:
         if (
             result is None
