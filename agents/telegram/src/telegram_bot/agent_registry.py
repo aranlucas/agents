@@ -19,7 +19,12 @@ from travel_agent.agent import build_agent as build_travel
 from trends_agent.agent import build_agent as build_trends
 from wellness_agent.agent import build_agent as build_wellness
 
-from .orchestrator import ORCHESTRATOR_AGENT_ID, build_orchestrator_agent
+from .orchestrator import (
+    ORCHESTRATOR_AGENT_ID,
+    ORCHESTRATOR_DESCRIPTION,
+    ORCHESTRATOR_TITLE,
+    build_orchestrator_agent,
+)
 
 
 @dataclass(frozen=True)
@@ -116,8 +121,8 @@ TELEGRAM_SURFACED_AGENTS: tuple[TelegramAgentSpec, ...] = (
 TELEGRAM_AGENTS: tuple[TelegramAgentSpec, ...] = (
     TelegramAgentSpec(
         id=ORCHESTRATOR_AGENT_ID,
-        title="Orchestrator",
-        description="Default router that delegates to the best specialist sub-agent.",
+        title=ORCHESTRATOR_TITLE,
+        description=ORCHESTRATOR_DESCRIPTION,
         build=build_orchestrator_agent,
     ),
     *TELEGRAM_SURFACED_AGENTS,

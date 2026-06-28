@@ -14,6 +14,10 @@ from google.adk.agents import BaseAgent, LlmAgent
 from google.adk.models.lite_llm import LiteLlm
 
 ORCHESTRATOR_AGENT_ID = "orchestrator"
+ORCHESTRATOR_TITLE = "Orchestrator"
+ORCHESTRATOR_DESCRIPTION = (
+    "Default router that delegates to the best specialist sub-agent."
+)
 
 
 class TelegramAgentLike(Protocol):

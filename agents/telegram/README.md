@@ -22,19 +22,34 @@ Optional environment variables:
 
 ## Telegram commands
 
-- `/agents` lists the orchestrator plus every directly selectable surfaced agent
-- `/agent <id>` switches the active agent for the current Telegram chat
-- `/current` shows the active agent
 - `/login` links Telegram to the signed-in web account
 - `/logout` unlinks Telegram from the web account
-- `/reset` clears the selected agent session for the current chat
+- `/new` starts a new conversation with the orchestrator
+- `/reset` alias for `/new`
 - `/chat_id` prints the Telegram chat ID for allowlisting
 
-The bot always starts each chat on the default `orchestrator` agent, which delegates to the specialist agents through
+The bot always routes every chat through the `orchestrator` agent, which delegates to the specialist agents through
 ADK `sub_agents`. The adapter uses the same ADK agent constructors as the
 gateway. State-first agents still write their artifacts to ADK state; when they
 do not emit final chat text, the bot sends a compact state summary back to
 Telegram.
+
+## Architecture
+
+The runner follows the same shape as
+[`google.adk.integrations.slack.SlackRunner`](https://github.com/google/adk-python/blob/main/src/google/adk/integrations/slack/slack_runner.py):
+
+- `TelegramRunner` — thin wrapper that takes an ADK `Runner` and a
+  `telegram.ext.Application`, sets up command and message handlers, and runs
+  the core `receive → run agent → edit thinking message` loop
+- `TelegramAuth`, `CredentialGate`, `SessionManager` — focused dependencies
+  injected into the runner for account linking, integration gating, and ADK
+  session lifecycle
+- `build_telegram_runner(...)` — single entry point that composes the runner
+  and all of its dependencies
+
+The previous `TelegramAgentsBot` class is preserved as a thin facade that
+mirrors the old public API on top of the new runner.
 
 Telegram use is account-gated. `/start`, `/help`, `/login`, `/logout`, and
 `/chat_id` work before linking; normal messages require a linked Clerk account

@@ -1,40 +1,30 @@
 from collections.abc import AsyncIterator, Awaitable, Callable
-from types import SimpleNamespace
-from typing import cast
+from unittest.mock import Mock, create_autospec
 from urllib.parse import parse_qs, urlparse
 
 import pytest
 from agents_shared.dependencies import AgentServices
 from agents_shared.telegram_auth import consume_link_token, create_link_token
+from google.adk.agents import LlmAgent
+from pytest_mock import MockerFixture
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
-from telegram_bot.agent_registry import TELEGRAM_AGENT_BY_ID
 from telegram_bot.runner import (
     TELEGRAM_MESSAGE_LIMIT,
-    TelegramAgentsBot,
     TelegramMessage,
+    TelegramRunner,
     TelegramSentMessage,
+    build_telegram_runner,
     chunk_text,
     format_state_summary,
     parse_allowed_chat_ids,
 )
 
-
-class FakeSentMessage:
-    def __init__(self, target: FakeReplyTarget) -> None:
-        self.target = target
-
-    async def edit_text(
-        self,
-        text: str,
-        *,
-        disable_web_page_preview: bool = True,
-    ) -> object:
-        self.target.messages.append((self.target.chat_id, text))
-        self.target.disable_web_page_preview_values.append(disable_web_page_preview)
-        return self
+CredentialLoader = Callable[[str], Awaitable[tuple[dict[str, object], tuple[str, ...]]]]
 
 
 class FakeReplyTarget:
+    """Implements the ``TelegramReplyTarget`` protocol for the runner."""
+
     def __init__(self, chat_id: int) -> None:
         self.chat_id = chat_id
         self.messages: list[tuple[int, str]] = []
@@ -54,6 +44,21 @@ class FakeReplyTarget:
         return FakeSentMessage(self)
 
 
+class FakeSentMessage:
+    def __init__(self, target: FakeReplyTarget) -> None:
+        self.target = target
+
+    async def edit_text(
+        self,
+        text: str,
+        *,
+        disable_web_page_preview: bool = True,
+    ) -> object:
+        self.target.messages.append((self.target.chat_id, text))
+        self.target.disable_web_page_preview_values.append(disable_web_page_preview)
+        return self
+
+
 @pytest.fixture
 async def engine(tmp_path) -> AsyncIterator[AsyncEngine]:
     db_path = tmp_path / "telegram_runner.sqlite"
@@ -64,22 +69,20 @@ async def engine(tmp_path) -> AsyncIterator[AsyncEngine]:
         await engine.dispose()
 
 
-def _bot(
-    engine: AsyncEngine,
-    *,
-    link_base_url: str | None = None,
-    connect_url: str | None = None,
-    credential_state_loader: Callable[
-        [str], Awaitable[tuple[dict[str, object], tuple[str, ...]]]
-    ]
-    | None = None,
-) -> TelegramAgentsBot:
-    services = SimpleNamespace(engine=engine)
-    return TelegramAgentsBot(
-        services=cast(AgentServices, services),
-        link_base_url=link_base_url,
-        connect_url=connect_url,
-        credential_state_loader=credential_state_loader,
+@pytest.fixture
+def services(engine: AsyncEngine) -> AgentServices:
+    """Typed mock of :class:`AgentServices` — only ``engine`` is real."""
+    mock = create_autospec(AgentServices, instance=True)
+    mock.engine = engine
+    return mock
+
+
+@pytest.fixture
+def orchestrator_agent(mocker: MockerFixture) -> Mock:
+    """Patch ``build_orchestrator_agent`` so tests don't construct the real LiteLLM agent."""
+    return mocker.patch(
+        "telegram_bot.runner.build_orchestrator_agent",
+        return_value=create_autospec(LlmAgent, instance=True),
     )
 
 
@@ -94,31 +97,52 @@ def _message(text: str, reply_target: FakeReplyTarget) -> TelegramMessage:
     )
 
 
-def test_build_application_registers_commands_and_text_handler(
-    engine: AsyncEngine,
-) -> None:
-    bot = _bot(engine)
+def _build(
+    services: AgentServices,
+    *,
+    link_base_url: str | None = None,
+    connect_url: str | None = None,
+    credential_loader: CredentialLoader | None = None,
+    mini_app_url: str | None = None,
+) -> TelegramRunner:
+    """Build a runner via the public factory."""
+    return build_telegram_runner(
+        token="test-token-placeholder",  # noqa: S106
+        services=services,
+        link_base_url=link_base_url,
+        connect_url=connect_url,
+        credential_loader=credential_loader,
+        mini_app_url=mini_app_url,
+    )
 
-    application = bot.build_application("123:test")
+
+def test_build_telegram_runner_registers_commands_and_text_handler(
+    services: AgentServices,
+    orchestrator_agent: Mock,
+) -> None:
+    runner = _build(services)
 
     handler_types = {
         type(handler).__name__
-        for group_handlers in application.handlers.values()
+        for group_handlers in runner.application.handlers.values()
         for handler in group_handlers
     }
     assert "CommandHandler" in handler_types
     assert "MessageHandler" in handler_types
 
 
-def test_new_command_is_registered(engine: AsyncEngine) -> None:
-    bot = _bot(engine)
-    application = bot.build_application("123:test")
+def test_build_telegram_runner_registers_new_and_reset_commands(
+    services: AgentServices,
+    orchestrator_agent: Mock,
+) -> None:
+    runner = _build(services)
 
     registered_commands: list[str] = []
-    for group_handlers in application.handlers.values():
+    for group_handlers in runner.application.handlers.values():
         for handler in group_handlers:
-            if hasattr(handler, "commands"):
-                registered_commands.extend(handler.commands)
+            commands = getattr(handler, "commands", None)
+            if commands is not None:
+                registered_commands.extend(commands)
 
     assert "new" in registered_commands
     assert "reset" in registered_commands
@@ -133,7 +157,6 @@ def test_chunk_text_respects_telegram_message_limit() -> None:
 
 def test_format_state_summary_hides_internal_state() -> None:
     summary = format_state_summary(
-        TELEGRAM_AGENT_BY_ID["travel"],
         {
             "user_id": "telegram:1",
             "temp:tool_response:write_itinerary": "hidden",
@@ -142,7 +165,7 @@ def test_format_state_summary_hides_internal_state() -> None:
         },
     )
 
-    assert "Travel updated state:" in summary
+    assert "Orchestrator updated state:" in summary
     assert "destination: Lisbon" in summary
     assert "itinerary: Day 1\nDay 2" in summary
     assert "telegram:1" not in summary
@@ -154,62 +177,48 @@ def test_parse_allowed_chat_ids() -> None:
     assert parse_allowed_chat_ids(None) == set()
 
 
-def test_bot_stores_mini_app_url(engine: AsyncEngine) -> None:
-    services = SimpleNamespace(engine=engine)
-    bot = TelegramAgentsBot(
-        services=cast(AgentServices, services),
-        mini_app_url="https://example.com/tma",
-    )
-    assert bot.mini_app_url == "https://example.com/tma"
-
-
-def test_bot_mini_app_url_defaults_to_none(engine: AsyncEngine) -> None:
-    services = SimpleNamespace(engine=engine)
-    bot = TelegramAgentsBot(
-        services=cast(AgentServices, services),
-    )
-    assert bot.mini_app_url is None
-
-
 @pytest.mark.asyncio
 async def test_help_command_sends_webapp_button_when_url_set(
-    engine: AsyncEngine,
+    services: AgentServices,
+    orchestrator_agent: Mock,
 ) -> None:
-    services = SimpleNamespace(engine=engine)
-    bot = TelegramAgentsBot(
-        services=cast(AgentServices, services),
-        mini_app_url="https://example.com/tma",
-    )
+    runner = _build(services, mini_app_url="https://example.com/tma")
     reply_target = FakeReplyTarget(chat_id=123)
     message = _message("/start", reply_target)
 
-    await bot._help_update_for_message(message)  # type: ignore[attr-defined]
+    await runner.send_help(message)
 
     assert len(reply_target.reply_markups) == 1
     assert reply_target.reply_markups[0] is not None
 
 
 @pytest.mark.asyncio
-async def test_help_command_no_webapp_button_when_no_url(engine: AsyncEngine) -> None:
-    bot = _bot(engine)
+async def test_help_command_no_webapp_button_when_no_url(
+    services: AgentServices,
+    orchestrator_agent: Mock,
+) -> None:
+    runner = _build(services)
     reply_target = FakeReplyTarget(chat_id=123)
     message = _message("/start", reply_target)
 
-    await bot._help_update_for_message(message)  # type: ignore[attr-defined]
+    await runner.send_help(message)
 
     assert len(reply_target.reply_markups) == 1
     assert reply_target.reply_markups[0] is None
 
 
 @pytest.mark.asyncio
-async def test_login_command_sends_one_time_link(engine: AsyncEngine) -> None:
-    reply_target = FakeReplyTarget(chat_id=123)
-    bot = _bot(
-        engine,
+async def test_login_command_sends_one_time_link(
+    services: AgentServices,
+    orchestrator_agent: Mock,
+) -> None:
+    runner = _build(
+        services,
         link_base_url="https://agents.example.com/telegram/link",
     )
+    reply_target = FakeReplyTarget(chat_id=123)
 
-    await bot.send_login_link(_message("/login", reply_target))
+    await runner.send_login_link(_message("/login", reply_target))
 
     assert len(reply_target.messages) == 1
     chat_id, text = reply_target.messages[0]
@@ -217,7 +226,7 @@ async def test_login_command_sends_one_time_link(engine: AsyncEngine) -> None:
     assert "https://agents.example.com/telegram/link?token=" in text
     token = parse_qs(urlparse(text.splitlines()[-1]).query)["token"][0]
     link = await consume_link_token(
-        engine,
+        services.engine,
         token=token,
         clerk_user_id="clerk-user",
     )
@@ -226,13 +235,14 @@ async def test_login_command_sends_one_time_link(engine: AsyncEngine) -> None:
 
 
 @pytest.mark.asyncio
-async def test_unlinked_message_requires_login_without_building_runtime(
-    engine: AsyncEngine,
+async def test_unlinked_message_requires_login(
+    services: AgentServices,
+    orchestrator_agent: Mock,
 ) -> None:
+    runner = _build(services)
     reply_target = FakeReplyTarget(chat_id=123)
-    bot = _bot(engine)
 
-    await bot.handle_message(_message("plan food", reply_target))
+    await runner.handle_message(_message("plan food", reply_target))
 
     assert reply_target.messages == [
         (
@@ -241,18 +251,22 @@ async def test_unlinked_message_requires_login_without_building_runtime(
             "Send /login to link this Telegram account.",
         )
     ]
-    assert vars(bot)["_runtimes"] == {}
 
 
 @pytest.mark.asyncio
-async def test_missing_connected_accounts_blocks_agent_run(engine: AsyncEngine) -> None:
+async def test_missing_connected_accounts_blocks_agent_run(
+    services: AgentServices,
+    orchestrator_agent: Mock,
+) -> None:
     token = await create_link_token(
-        engine,
+        services.engine,
         telegram_user_id="456",
         telegram_chat_id="123",
     )
     assert (
-        await consume_link_token(engine, token=token, clerk_user_id="clerk-user")
+        await consume_link_token(
+            services.engine, token=token, clerk_user_id="clerk-user"
+        )
         is not None
     )
     reply_target = FakeReplyTarget(chat_id=123)
@@ -263,13 +277,13 @@ async def test_missing_connected_accounts_blocks_agent_run(engine: AsyncEngine) 
         assert clerk_user_id == "clerk-user"
         return {"user_id": clerk_user_id}, ("Strava", "Kroger/QFC")
 
-    bot = _bot(
-        engine,
+    runner = _build(
+        services,
         connect_url="https://agents.example.com/console/settings",
-        credential_state_loader=credential_state_loader,
+        credential_loader=credential_state_loader,
     )
 
-    await bot.handle_message(_message("plan food", reply_target))
+    await runner.handle_message(_message("plan food", reply_target))
 
     assert reply_target.messages == [
         (
@@ -278,4 +292,3 @@ async def test_missing_connected_accounts_blocks_agent_run(engine: AsyncEngine) 
             "Connect it here: https://agents.example.com/console/settings",
         )
     ]
-    assert vars(bot)["_runtimes"] == {}
