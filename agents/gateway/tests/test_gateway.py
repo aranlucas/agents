@@ -1,6 +1,7 @@
 import importlib
 from collections import Counter
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi.testclient import TestClient
 from gateway import main
@@ -132,6 +133,37 @@ def test_resume_agui_is_public_with_auth_enabled(monkeypatch):
 
     monkeypatch.delenv("CLERK_JWKS_URL")
     importlib.reload(main)
+
+
+def test_lifespan_starts_and_stops_telegram_bot_when_token_set(monkeypatch):
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "123:fake_token")
+
+    fake_updater = MagicMock()
+    fake_updater.start_polling = AsyncMock()
+    fake_updater.stop = AsyncMock()
+
+    fake_ptb = MagicMock()
+    fake_ptb.initialize = AsyncMock()
+    fake_ptb.start = AsyncMock()
+    fake_ptb.stop = AsyncMock()
+    fake_ptb.shutdown = AsyncMock()
+    fake_ptb.updater = fake_updater
+
+    fake_bot = MagicMock()
+    fake_bot.build_application = MagicMock(return_value=fake_ptb)
+
+    with (
+        patch("telegram_bot.runner.TelegramAgentsBot", return_value=fake_bot),
+        TestClient(main.app) as client,
+    ):
+        assert client.get("/health").status_code in {200, 503}
+
+    fake_ptb.initialize.assert_called_once()
+    fake_ptb.start.assert_called_once()
+    fake_updater.start_polling.assert_called_once()
+    fake_ptb.stop.assert_called_once()
+    fake_updater.stop.assert_called_once()
+    fake_ptb.shutdown.assert_called_once()
 
 
 def test_telegram_link_consume_is_public_with_auth_enabled(monkeypatch):
