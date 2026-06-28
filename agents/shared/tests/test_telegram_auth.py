@@ -1,5 +1,5 @@
 from collections.abc import AsyncIterator
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from agents_shared import telegram_auth
@@ -158,30 +158,27 @@ async def test_lookup_by_external_id_returns_none_without_secret_key(
 @pytest.mark.asyncio
 async def test_lookup_by_external_id_returns_user_id_on_match(monkeypatch) -> None:
     monkeypatch.setenv("CLERK_SECRET_KEY", "sk_test_fake")
-    mock_resp = MagicMock(is_success=True)
-    mock_resp.json.return_value = [{"id": "user_abc", "external_id": "tg-123"}]
-    mock_client = AsyncMock()
-    mock_client.get = AsyncMock(return_value=mock_resp)
-    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-    mock_client.__aexit__ = AsyncMock(return_value=None)
-    with patch(
-        "agents_shared.telegram_auth.httpx.AsyncClient", return_value=mock_client
-    ):
+    mock_user = MagicMock()
+    mock_user.id = "user_abc"
+    mock_users_sdk = MagicMock()
+    mock_users_sdk.list.return_value = [mock_user]
+    mock_clerk = MagicMock()
+    mock_clerk.users = mock_users_sdk
+    mock_clerk.__enter__ = MagicMock(return_value=mock_clerk)
+    mock_clerk.__exit__ = MagicMock(return_value=None)
+    with patch("agents_shared.telegram_auth.Clerk", return_value=mock_clerk):
         result = await _lookup_clerk_user_by_external_id("tg-123")
     assert result == "user_abc"
 
 
 @pytest.mark.asyncio
-async def test_lookup_by_external_id_returns_none_on_http_error(monkeypatch) -> None:
+async def test_lookup_by_external_id_returns_none_on_exception(monkeypatch) -> None:
     monkeypatch.setenv("CLERK_SECRET_KEY", "sk_test_fake")
-    mock_resp = MagicMock(is_success=False)
-    mock_client = AsyncMock()
-    mock_client.get = AsyncMock(return_value=mock_resp)
-    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-    mock_client.__aexit__ = AsyncMock(return_value=None)
-    with patch(
-        "agents_shared.telegram_auth.httpx.AsyncClient", return_value=mock_client
-    ):
+    mock_clerk = MagicMock()
+    mock_clerk.users.list.side_effect = Exception("network error")
+    mock_clerk.__enter__ = MagicMock(return_value=mock_clerk)
+    mock_clerk.__exit__ = MagicMock(return_value=None)
+    with patch("agents_shared.telegram_auth.Clerk", return_value=mock_clerk):
         result = await _lookup_clerk_user_by_external_id("tg-123")
     assert result is None
 
@@ -189,15 +186,11 @@ async def test_lookup_by_external_id_returns_none_on_http_error(monkeypatch) -> 
 @pytest.mark.asyncio
 async def test_lookup_by_external_id_returns_none_when_list_empty(monkeypatch) -> None:
     monkeypatch.setenv("CLERK_SECRET_KEY", "sk_test_fake")
-    mock_resp = MagicMock(is_success=True)
-    mock_resp.json.return_value = []
-    mock_client = AsyncMock()
-    mock_client.get = AsyncMock(return_value=mock_resp)
-    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-    mock_client.__aexit__ = AsyncMock(return_value=None)
-    with patch(
-        "agents_shared.telegram_auth.httpx.AsyncClient", return_value=mock_client
-    ):
+    mock_clerk = MagicMock()
+    mock_clerk.users.list.return_value = []
+    mock_clerk.__enter__ = MagicMock(return_value=mock_clerk)
+    mock_clerk.__exit__ = MagicMock(return_value=None)
+    with patch("agents_shared.telegram_auth.Clerk", return_value=mock_clerk):
         result = await _lookup_clerk_user_by_external_id("tg-unknown")
     assert result is None
 
@@ -242,7 +235,6 @@ async def test_credential_state_accepts_kroger_and_strava_provider_aliases(
     assert credential_state.state["temp:kroger_token"] == "qfc-token"
     assert credential_state.state["temp:strava_token"] == "strava-token"
     assert calls == [
-        "custom_shopping",
         "oauth_custom_shopping",
         "oauth_custom_strava",
     ]

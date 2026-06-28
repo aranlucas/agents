@@ -274,7 +274,7 @@ async def test_missing_connected_accounts_blocks_agent_run(engine: AsyncEngine) 
     assert reply_target.messages == [
         (
             123,
-            "Your account is linked, but Strava, Kroger/QFC is not connected yet.\n"
+            "Your account is linked, but Strava, Kroger/QFC are not connected yet.\n"
             "Connect it here: https://agents.example.com/console/settings",
         )
     ]
