@@ -285,7 +285,8 @@ for current best free models per provider.
 | Reasoning | Cerebras         | travel, research, oralboards (v1 + workflow root), oralboards eval runner |
 | Standard  | Groq             | fitness, wellness, trends (+ subagent), presentation,                     |
 |           |                  | spreadsheet, excalidraw                                                   |
-| Light     | OpenRouter       | grocery, expense, resume                                                  |
+| Standard  | NVIDIA NIM       | grocery (`deepseek-ai/deepseek-v4-flash`, 1M ctx)                         |
+| Light     | OpenRouter       | expense, resume                                                           |
 | Light     | Mistral          | oralboards workflow sub-nodes (case_builder, questioner, evaluator,       |
 |           | (free-tier, low  | scorer) — only here because they are low-traffic sub-tasks                |
 | A2UI      | Gemini           | trends A2UI rendering subagent (bypasses LiteLLM entirely — uses          |
