@@ -116,7 +116,7 @@ omit = ["*/__init__.py"]
 
 [tool.coverage.report]
 show_missing = true
-fail_under = 85
+fail_under = 90
 exclude_also = [
   "def _setup_otel",
   "async def trace_requests",
