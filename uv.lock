@@ -141,7 +141,7 @@ dev = [
 requires-dist = [
     { name = "ag-ui-adk", specifier = ">=0.6.5" },
     { name = "asyncpg", specifier = ">=0.30.0" },
-    { name = "clerk-backend-api", specifier = ">=2.0.0" },
+    { name = "clerk-backend-api", specifier = ">=6.0.0" },
     { name = "fastapi" },
     { name = "google-adk", extras = ["eval"], marker = "extra == 'eval'" },
     { name = "google-adk", extras = ["eval", "mcp"], specifier = ">=2.2.0" },
