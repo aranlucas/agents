@@ -101,12 +101,13 @@ async def _lifespan(app: FastAPI):
     ptb_app: Any = None
     if token:
         from telegram_bot.runner import (
-            TelegramAgentsBot,
+            build_telegram_runner,
             env_flag,
             parse_allowed_chat_ids,
         )
 
-        bot = TelegramAgentsBot(
+        runner = build_telegram_runner(
+            token=token,
             services=app.state.services,
             allowed_chat_ids=parse_allowed_chat_ids(
                 os.getenv("TELEGRAM_ALLOWED_CHAT_IDS")
@@ -116,10 +117,9 @@ async def _lifespan(app: FastAPI):
             connect_url=os.getenv("TELEGRAM_CONNECT_URL")
             or f"{_DEFAULT_WEB_BASE}/console/settings",
             mini_app_url=os.getenv("TELEGRAM_MINI_APP_URL"),
-            poll_timeout=int(os.getenv("TELEGRAM_POLL_TIMEOUT", "50")),
             debug=env_flag("TELEGRAM_DEBUG"),
         )
-        ptb_app = bot.build_application(token)
+        ptb_app = runner.application
         await ptb_app.initialize()
         # Drop any stale long-poll held by a previous instance (e.g. rolling deploy).
         await ptb_app.bot.delete_webhook(drop_pending_updates=False)

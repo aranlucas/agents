@@ -97,6 +97,19 @@ def _message(text: str, reply_target: FakeReplyTarget) -> TelegramMessage:
     )
 
 
+def _update(chat_id: int, text: str, reply_target: FakeReplyTarget):
+    """Build a minimal ``Update`` carrying one text message."""
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        effective_message=SimpleNamespace(
+            text=text, message_id=99, reply_text=reply_target.reply_text
+        ),
+        effective_chat=SimpleNamespace(id=chat_id, type="private"),
+        effective_user=SimpleNamespace(id=456),
+    )
+
+
 def _build(
     services: AgentServices,
     *,
@@ -175,6 +188,148 @@ def test_format_state_summary_hides_internal_state() -> None:
 def test_parse_allowed_chat_ids() -> None:
     assert parse_allowed_chat_ids("123, -456,789") == {123, -456, 789}
     assert parse_allowed_chat_ids(None) == set()
+
+
+@pytest.mark.asyncio
+async def test_handle_message_runs_agent_and_replies(
+    services: AgentServices,
+    orchestrator_agent: Mock,
+) -> None:
+    """End-to-end: linked user + connected creds + mocked ADK Runner that returns text."""
+    from google.genai import types
+
+    token = await create_link_token(
+        services.engine,
+        telegram_user_id="456",
+        telegram_chat_id="123",
+    )
+    assert (
+        await consume_link_token(
+            services.engine, token=token, clerk_user_id="clerk-user"
+        )
+        is not None
+    )
+    reply_target = FakeReplyTarget(chat_id=123)
+
+    async def credential_state_loader(
+        clerk_user_id: str,
+    ) -> tuple[dict[str, object], tuple[str, ...]]:
+        return {"user_id": clerk_user_id}, ()
+
+    runner = _build(services, credential_loader=credential_state_loader)
+
+    async def fake_run_async(*, user_id, session_id, new_message, state_delta):
+        yield _Event(
+            content=types.Content(
+                role="model",
+                parts=[types.Part(text="Here is the plan.")],
+            )
+        )
+
+    runner.runner.run_async = fake_run_async  # type: ignore[method-assign]
+
+    await runner.handle_message(_message("plan food", reply_target))
+
+    assert reply_target.messages[1] == (123, "Here is the plan.")
+
+
+@pytest.mark.asyncio
+async def test_handle_message_sends_deduped_text(
+    services: AgentServices,
+    orchestrator_agent: Mock,
+) -> None:
+    """Deduplicates identical final-response chunks."""
+    from google.genai import types
+
+    token = await create_link_token(
+        services.engine,
+        telegram_user_id="456",
+        telegram_chat_id="123",
+    )
+    assert (
+        await consume_link_token(
+            services.engine, token=token, clerk_user_id="clerk-user"
+        )
+        is not None
+    )
+    reply_target = FakeReplyTarget(chat_id=123)
+
+    async def credential_state_loader(
+        clerk_user_id: str,
+    ) -> tuple[dict[str, object], tuple[str, ...]]:
+        return {"user_id": clerk_user_id}, ()
+
+    runner = _build(services, credential_loader=credential_state_loader)
+
+    async def fake_run_async(*, user_id, session_id, new_message, state_delta):
+        yield _Event(
+            content=types.Content(
+                role="model",
+                parts=[types.Part(text="same"), types.Part(text="same")],
+            )
+        )
+
+    runner.runner.run_async = fake_run_async  # type: ignore[method-assign]
+
+    await runner.handle_message(_message("hi", reply_target))
+
+    assert (123, "same") in reply_target.messages
+
+
+@pytest.mark.asyncio
+async def test_handle_message_reports_runner_errors(
+    services: AgentServices,
+    orchestrator_agent: Mock,
+) -> None:
+    """A RuntimeError from the ADK Runner is surfaced to the user."""
+    from google.genai import types
+
+    token = await create_link_token(
+        services.engine,
+        telegram_user_id="456",
+        telegram_chat_id="123",
+    )
+    assert (
+        await consume_link_token(
+            services.engine, token=token, clerk_user_id="clerk-user"
+        )
+        is not None
+    )
+    reply_target = FakeReplyTarget(chat_id=123)
+
+    async def credential_state_loader(
+        clerk_user_id: str,
+    ) -> tuple[dict[str, object], tuple[str, ...]]:
+        return {"user_id": clerk_user_id}, ()
+
+    runner = _build(services, credential_loader=credential_state_loader)
+
+    async def fake_run_async(*, user_id, session_id, new_message, state_delta):
+        yield _Event(
+            content=types.Content(role="model", parts=[]),
+            error_message="boom",
+        )
+
+    runner.runner.run_async = fake_run_async  # type: ignore[method-assign]
+
+    await runner.handle_message(_message("hi", reply_target))
+
+    assert any("hit an error: boom" in text for _, text in reply_target.messages)
+
+
+def _Event(*, content, error_message: str | None = None):
+    """Build a minimal ADK Event for the handle_message loop."""
+    actions = type("Actions", (), {"state_delta": None})()
+    return type(
+        "Event",
+        (),
+        {
+            "actions": actions,
+            "content": content,
+            "error_message": error_message,
+            "is_final_response": lambda self: True,
+        },
+    )()
 
 
 @pytest.mark.asyncio
@@ -292,3 +447,113 @@ async def test_missing_connected_accounts_blocks_agent_run(
             "Connect it here: https://agents.example.com/console/settings",
         )
     ]
+
+
+@pytest.mark.asyncio
+async def test_reset_session_clears_session_for_linked_user(
+    services: AgentServices,
+    orchestrator_agent: Mock,
+) -> None:
+    token = await create_link_token(
+        services.engine,
+        telegram_user_id="456",
+        telegram_chat_id="123",
+    )
+    assert (
+        await consume_link_token(
+            services.engine, token=token, clerk_user_id="clerk-user"
+        )
+        is not None
+    )
+    reply_target = FakeReplyTarget(chat_id=123)
+    runner = _build(services)
+
+    await runner._reset_session(_message("/reset", reply_target))  # type: ignore[attr-defined]
+
+    assert reply_target.messages == [(123, "Reset Orchestrator for this chat.")]
+
+
+@pytest.mark.asyncio
+async def test_reset_session_requires_login(
+    services: AgentServices,
+    orchestrator_agent: Mock,
+) -> None:
+    reply_target = FakeReplyTarget(chat_id=123)
+    runner = _build(services)
+
+    await runner._reset_session(_message("/reset", reply_target))  # type: ignore[attr-defined]
+
+    assert reply_target.messages == [
+        (
+            123,
+            "Sign in is required before I can use your Strava and QFC credentials. "
+            "Send /login to link this Telegram account.",
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_on_chat_id_returns_chat_id(
+    services: AgentServices,
+    orchestrator_agent: Mock,
+) -> None:
+    reply_target = FakeReplyTarget(chat_id=123)
+    runner = _build(services)
+    update = _update(reply_target.chat_id, "/chat_id", reply_target)
+
+    await runner._on_chat_id(update, Mock())  # type: ignore[arg-type]
+
+    assert reply_target.messages == [(123, "123")]
+
+
+@pytest.mark.asyncio
+async def test_on_logout_unlinks_account(
+    services: AgentServices,
+    orchestrator_agent: Mock,
+) -> None:
+    token = await create_link_token(
+        services.engine,
+        telegram_user_id="456",
+        telegram_chat_id="123",
+    )
+    assert (
+        await consume_link_token(
+            services.engine, token=token, clerk_user_id="clerk-user"
+        )
+        is not None
+    )
+    reply_target = FakeReplyTarget(chat_id=123)
+    runner = _build(services)
+    update = _update(reply_target.chat_id, "/logout", reply_target)
+
+    await runner._on_logout(update, Mock())  # type: ignore[arg-type]
+
+    assert reply_target.messages == [(123, "Telegram access has been unlinked.")]
+
+
+@pytest.mark.asyncio
+async def test_on_logout_reports_no_linked_account(
+    services: AgentServices,
+    orchestrator_agent: Mock,
+) -> None:
+    reply_target = FakeReplyTarget(chat_id=123)
+    runner = _build(services)
+    update = _update(reply_target.chat_id, "/logout", reply_target)
+
+    await runner._on_logout(update, Mock())  # type: ignore[arg-type]
+
+    assert reply_target.messages == [(123, "No linked account was found.")]
+
+
+@pytest.mark.asyncio
+async def test_on_unknown_command_sends_help(
+    services: AgentServices,
+    orchestrator_agent: Mock,
+) -> None:
+    reply_target = FakeReplyTarget(chat_id=123)
+    runner = _build(services)
+    update = _update(reply_target.chat_id, "/bogus", reply_target)
+
+    await runner._on_unknown(update, Mock())  # type: ignore[arg-type]
+
+    assert reply_target.messages == [(123, "Unknown command. Use /help.")]
