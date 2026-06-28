@@ -6,7 +6,7 @@ dependencies = [
   "ag-ui-adk>=0.6.5",
   "asyncpg>=0.30.0",
   "fastapi",
-  "google-adk[mcp]>=2.2.0",
+  "google-adk[eval,mcp]>=2.2.0",
   "google-genai",
   "httpx",
   "litellm",
@@ -21,6 +21,7 @@ dependencies = [
   "jinja2>=3.1.6,<4.0.0",
   "sqlalchemy[asyncio]>=2.0",
   "uvicorn[standard]",
+  "rouge-score>=0.1.2",
 ]
 
 [project.optional-dependencies]

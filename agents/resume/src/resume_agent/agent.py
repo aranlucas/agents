@@ -44,12 +44,12 @@ def build_agent() -> LlmAgent:
 def build_eval_agent() -> LlmAgent:
     """Eval-compatible agent: no AGUIToolset, no state_schema.
 
-    The resume agent has no domain tools beyond AGUIToolset, so the eval agent
-    is a pure conversational agent that answers from its static instruction.
+    Uses Groq instead of the free OpenRouter tier so GEPA's parallel eval
+    calls don't hit upstream 429s on the free rate-limited model.
     """
     return LlmAgent(
         name="resume_agent",
-        model=LiteLlm(model="openrouter/openai/gpt-oss-120b:free"),
+        model=LiteLlm(model="mistral/mistral-medium-latest"),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,

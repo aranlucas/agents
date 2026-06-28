@@ -24,7 +24,297 @@
             "role": "model",
             "parts": [
               {
-                "text": "Lucas is a strong fit for a senior or staff role in AI agents because he has shipped end-to-end agentic products like Ask DoorDash, this resume Q&A is itself one of the agents on his personal platform, and he blends product leadership with hands-on agent engineering across the ADK and CopilotKit stacks."
+                "text": "Lucas is a strong fit because he has already shipped AI-powered products at scale and led them from idea to launch. At DoorDash, he pitched, prototyped, and served as lead engineer for Ask DoorDash, a conversational AI shopping experience across 800K+ items, and drove the company's external MCP integration for ChatGPT. His hobby-to-production loop — building a personal multi-agent platform (grocery, fitness, travel agents with real MCP tool use) directly fed into his professional work: the grocery agent he built as a hobby became the prototype and vision for Ask DoorDash. He operates at staff scope by influencing cross-functional teams (engineering, ML, product, design) without direct reports, and sets org-wide standards (SLOs, regression gates, multi-tenant E2E environments) that outlast his direct involvement."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "resume_career_break",
+      "session_input": {
+        "app_name": "resume_agent",
+        "user_id": "eval_user",
+        "state": {}
+      },
+      "conversation": [
+        {
+          "invocation_id": "inv1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "I see a gap on Lucas's resume from July 2022 to October 2023. What happened?"
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "Lucas took an intentional career break between AWS and DoorDash to recharge, travel, and spend time outdoors — including camping and climbing in the Cascade Range. He stayed sharp through personal projects and self-directed learning during this time."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "resume_ask_doordash",
+      "session_input": {
+        "app_name": "resume_agent",
+        "user_id": "eval_user",
+        "state": {}
+      },
+      "conversation": [
+        {
+          "invocation_id": "inv1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Tell me about Ask DoorDash — what was Lucas's role?"
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "Lucas pitched the vision for Ask DoorDash, built the prototype that secured leadership buy-in, and served as the lead engineer coordinating delivery across engineering, ML, product, and design to launch. It's a conversational, agent-driven shopping experience enabling natural-language search across 800,000 menu items and products, personalized from order history and dietary preferences."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "resume_ml_depth",
+      "session_input": {
+        "app_name": "resume_agent",
+        "user_id": "eval_user",
+        "state": {}
+      },
+      "conversation": [
+        {
+          "invocation_id": "inv1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "How deep is Lucas in ML and AI? Does he train models or do research?"
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "Lucas is an application engineer who builds and ships AI-powered products at scale. He does not train models or do research. His depth is in applying AI to real user problems: he built Ask DoorDash (conversational shopping across 800K+ items) from prototype to launch, delivered DoorDash's external MCP integration for ChatGPT, and runs a personal multi-agent platform in production (FastAPI, Google ADK, MCP, AG-UI) with real-world tool use. He's hands-on with LLM-powered features, agent orchestration, and tool integration — not model training."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "resume_cross_org_influence",
+      "session_input": {
+        "app_name": "resume_agent",
+        "user_id": "eval_user",
+        "state": {}
+      },
+      "conversation": [
+        {
+          "invocation_id": "inv1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Has Lucas led or managed teams? How does he work across organizations?"
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "Lucas has never managed direct reports, but he has led large cross-team programs through influence at staff scope. For Ask DoorDash he pitched the vision, built the prototype that secured buy-in, then served as lead engineer coordinating delivery across engineering, ML, product, and design. For the DoorDash reliability initiative he drove org-wide standards (SLOs, CI regression gates, multi-tenant E2E test environments) adopted by multiple teams. At AWS he led the Angular-to-React IoT Console migration via microfrontends, coordinating 5+ sub-teams to ship independently — cutting release lead time from weeks to days. He operates as a technical leader and go-to expert, not a people manager."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "resume_personal_projects",
+      "session_input": {
+        "app_name": "resume_agent",
+        "user_id": "eval_user",
+        "state": {}
+      },
+      "conversation": [
+        {
+          "invocation_id": "inv1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Tell me about Lucas's personal projects."
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "Lucas builds AI agents as a hobby and runs a personal multi-agent platform in production, end to end. It's a multi-agent monorepo (Google ADK + AG-UI) with Python agents for travel, grocery, fitness, wellness, Google Trends analysis, oral-board practice, and resume Q&A, behind a FastAPI gateway deployed on Railway. He has a full-stack agent UX: Next.js + CopilotKit web console and an Expo (iOS/Android) app using the AG-UI protocol, with token-level streaming and shared agent state. Agents call live MCP servers (Kroger for groceries, Strava for training data, travel search) to act on real data. The wellness agent composes the grocery and fitness agents in-process as ADK tools — an architecture he later applied to Ask DoorDash. The grocery agent prototype directly shaped his vision for conversational shopping at DoorDash. This resume Q&A is one of his agents."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "resume_what_next",
+      "session_input": {
+        "app_name": "resume_agent",
+        "user_id": "eval_user",
+        "state": {}
+      },
+      "conversation": [
+        {
+          "invocation_id": "inv1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "What kind of role is Lucas looking for next?"
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "Lucas is looking for senior or staff software engineer roles at big tech, AI-native companies, or product companies that ship fast. He wants to take products from idea to launch, work at the intersection of AI and real user problems, and raise the quality bar for his team. He is not looking for a management role."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "resume_aws_background",
+      "session_input": {
+        "app_name": "resume_agent",
+        "user_id": "eval_user",
+        "state": {}
+      },
+      "conversation": [
+        {
+          "invocation_id": "inv1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "What did Lucas do at AWS?"
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "At AWS (Jul 2019–Jul 2022), Lucas implemented and launched the AWS IoT SiteWise Monitor control plane (DynamoDB, Golang, API Gateway) and took it through operational readiness review to GA at re:Invent. He led the AWS IoT Console migration from Angular to React via a microfrontend architecture, enabling 5+ sub-teams to ship independently and cutting release lead time from weeks to days. He also designed and implemented SSO federation for SiteWise Monitor, and built automated canary testing with AWS Synthetics for the IoT Console to catch regressions before release."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "resume_technical_breadth",
+      "session_input": {
+        "app_name": "resume_agent",
+        "user_id": "eval_user",
+        "state": {}
+      },
+      "conversation": [
+        {
+          "invocation_id": "inv1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "What's Lucas's technical stack — is he frontend, backend, or full-stack?"
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "Lucas is full-stack with depth in both frontend and backend. Frontend: React, Redux, HTML5/CSS, TypeScript, JavaScript, Next.js, microfrontends (led AWS IoT Console migration from Angular to React). Backend: Java Spring, Ruby on Rails, Golang, DynamoDB, API Gateway, AWS CDK, Python and FastAPI for agents. AI and agents: Google ADK, MCP, AG-UI, CopilotKit, LLM-powered product features (Ask DoorDash, personal multi-agent platform). He's shipped end-to-end products (Ask DoorDash, AWS IoT SiteWise Monitor) and personal projects (multi-agent platform with web and mobile frontends)."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "resume_mcp_integration",
+      "session_input": {
+        "app_name": "resume_agent",
+        "user_id": "eval_user",
+        "state": {}
+      },
+      "conversation": [
+        {
+          "invocation_id": "inv1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Tell me about Lucas's MCP work — what was the ChatGPT integration?"
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "Lucas built DoorDash's external MCP (Model Context Protocol) integration for ChatGPT, extending DoorDash's catalog and commerce capabilities into assistant-driven discovery surfaces. This allowed ChatGPT users to interact with DoorDash's offerings through conversational AI, using MCP to bridge the gap between the assistant and DoorDash's systems."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "resume_product_thinking",
+      "session_input": {
+        "app_name": "resume_agent",
+        "user_id": "eval_user",
+        "state": {}
+      },
+      "conversation": [
+        {
+          "invocation_id": "inv1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Does Lucas have product experience? Can he think beyond implementation?"
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "Yes. Lucas pitched Ask DoorDash as a product vision before it was approved, built the prototype that secured leadership buy-in, and then served as lead engineer coordinating delivery across engineering, ML, product, and design to launch. He also drove DoorDash's external MCP integration for ChatGPT, extending the company's catalog into assistant-driven discovery surfaces. His personal multi-agent platform (grocery, fitness, travel agents) directly informed his product thinking — his hobby grocery agent became the prototype and vision for Ask DoorDash."
               }
             ]
           }
