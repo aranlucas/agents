@@ -14,7 +14,18 @@
     "react/self-closing-comp": "warn",
     "react/react-in-jsx-scope": "off",
     "react-hooks/exhaustive-deps": "warn",
-    "jsx-a11y/prefer-tag-over-role": "off"
+    "jsx-a11y/prefer-tag-over-role": "off",
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "react-test-renderer",
+            "message": "react-test-renderer is deprecated; use @testing-library/react instead."
+          }
+        ]
+      }
+    ]
   },
   "overrides": [
     {

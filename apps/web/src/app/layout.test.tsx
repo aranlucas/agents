@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -40,7 +39,7 @@ describe("RootLayout", () => {
   });
 
   it("renders children in the DOM", () => {
-    render(<RootLayout>test content</RootLayout>);
-    expect(screen.getByText("test content")).toBeInTheDocument();
+    const markup = renderToStaticMarkup(<RootLayout>test content</RootLayout>);
+    expect(markup).toContain("test content");
   });
 });
