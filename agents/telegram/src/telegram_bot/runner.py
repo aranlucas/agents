@@ -635,7 +635,8 @@ def _default_connect_url(link_base_url: str | None) -> str | None:
 
 def _connect_required_text(missing: tuple[str, ...], connect_url: str | None) -> str:
     providers = ", ".join(missing)
-    text = f"Your account is linked, but {providers} is not connected yet."
+    verb = "are" if len(missing) > 1 else "is"
+    text = f"Your account is linked, but {providers} {verb} not connected yet."
     if connect_url:
         return text + f"\nConnect it here: {connect_url}"
     return text + "\nOpen the web app settings page to connect it, then try again."

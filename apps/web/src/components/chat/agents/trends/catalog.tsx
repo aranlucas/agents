@@ -156,7 +156,7 @@ export function TrendTableRenderer({ props }: { props: TableProps }) {
           <tbody>
             {(props.rows ?? []).slice(0, props.maxRows).map((row, index) => (
               <tr
-                key={row[props.columns[0]?.key] ?? index}
+                key={String(row[props.columns[0]?.key] ?? index)}
                 className="border-border border-b last:border-0"
               >
                 {props.columns.map((column) => (
