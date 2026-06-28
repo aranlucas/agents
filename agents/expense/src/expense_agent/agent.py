@@ -63,7 +63,7 @@ class ExpenseState(BaseModel):
 def build_agent() -> LlmAgent:
     return LlmAgent(
         name="expense_desk_agent",
-        model=LiteLlm(model="openrouter/openai/gpt-oss-120b"),
+        model=LiteLlm(model="openrouter/openai/gpt-oss-120b:free"),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,
