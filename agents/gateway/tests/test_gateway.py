@@ -151,11 +151,11 @@ def test_lifespan_starts_and_stops_telegram_bot_when_token_set(monkeypatch):
     fake_ptb.bot = MagicMock()
     fake_ptb.bot.delete_webhook = AsyncMock()
 
-    fake_bot = MagicMock()
-    fake_bot.build_application = MagicMock(return_value=fake_ptb)
+    fake_runner = MagicMock()
+    fake_runner.application = fake_ptb
 
     with (
-        patch("telegram_bot.runner.TelegramAgentsBot", return_value=fake_bot),
+        patch("telegram_bot.runner.build_telegram_runner", return_value=fake_runner),
         TestClient(main.app) as client,
     ):
         assert client.get("/health").status_code in {200, 503}

@@ -25,6 +25,7 @@ from agents_shared.telegram_auth import (
     telegram_credential_state,
     unlink_telegram_user,
 )
+from google.adk.apps import App
 from google.adk.runners import Runner
 from google.adk.sessions import BaseSessionService
 from google.genai import types
@@ -713,9 +714,12 @@ def build_application(
 def build_orchestrator_runner(services: AgentServices) -> Runner:
     """Wrap the orchestrator agent in an ADK :class:`Runner`."""
     return Runner(
-        agent=build_orchestrator_agent(),
+        app=App(
+            name=ORCHESTRATOR_AGENT_ID,
+            root_agent=build_orchestrator_agent(),
+            plugins=[SlimMcpPlugin()],
+        ),
         app_name=ORCHESTRATOR_AGENT_ID,
-        plugins=[SlimMcpPlugin()],
         artifact_service=services.artifact_service,
         session_service=services.session_service,
         memory_service=services.memory_service,
