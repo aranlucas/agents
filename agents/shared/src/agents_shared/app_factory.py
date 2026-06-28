@@ -13,6 +13,7 @@ from ag_ui_adk import ADKAgent, add_adk_fastapi_endpoint
 from ag_ui_adk.config import PredictStateMapping
 from fastapi import APIRouter, FastAPI, Request
 from google.adk.agents import BaseAgent
+from google.adk.apps import App
 from google.adk.sessions import BaseSessionService
 
 from .dependencies import AgentServices
@@ -67,6 +68,26 @@ def build_adk_agent(
         # the same persisted session for a given thread instead of relying on an
         # in-memory cache + O(n) list_sessions scan that is lost on gateway
         # restarts.
+        use_thread_id_as_session_id=True,
+    )
+
+
+def build_adk_agent_from_app(
+    app: App,
+    *,
+    services: AgentServices,
+    predict_state: list[PredictStateMapping] | None = None,
+) -> ADKAgent:
+    """Like build_adk_agent() but wraps an ADK App, enabling App-level features
+    such as EventsCompactionConfig, plugins, and resumability."""
+    return ADKAgent.from_app(
+        app,
+        session_service=services.session_service,
+        artifact_service=services.artifact_service,
+        memory_service=services.memory_service,
+        credential_service=services.credential_service,
+        session_timeout_seconds=3600,
+        predict_state=predict_state,
         use_thread_id_as_session_id=True,
     )
 
