@@ -29,8 +29,12 @@ class SlimMcpPlugin(BasePlugin):
         tool: BaseTool,
         tool_args: dict[str, Any],
         tool_context: ToolContext,
-        result: dict[str, Any],
+        result: dict[str, Any] | None,
     ) -> dict[str, Any] | None:
-        if "content" in result and "structuredContent" in result:
-            return result["content"]
-        return result
+        if (
+            result is None
+            or "content" not in result
+            or "structuredContent" not in result
+        ):
+            return result
+        return result["content"]
