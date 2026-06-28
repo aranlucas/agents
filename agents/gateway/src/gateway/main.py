@@ -3,6 +3,8 @@
 import logging
 import os
 import time
+from contextlib import asynccontextmanager
+from typing import Any
 
 from agents_shared.clerk_auth import ClerkAuthMiddleware, clerk_auth_enabled
 from agents_shared.dependencies import (
@@ -90,6 +92,50 @@ tracer = setup_otel("agents-gateway")
 
 log = logging.getLogger("gateway")
 
+_DEFAULT_WEB_BASE = "https://agents-lucas.vercel.app"
+
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    token = os.getenv("TELEGRAM_BOT_TOKEN") or os.getenv("TELEGRAM_TOKEN")
+    ptb_app: Any = None
+    if token:
+        from telegram_bot.runner import (
+            TelegramAgentsBot,
+            env_flag,
+            parse_allowed_chat_ids,
+        )
+
+        bot = TelegramAgentsBot(
+            services=app.state.services,
+            allowed_chat_ids=parse_allowed_chat_ids(
+                os.getenv("TELEGRAM_ALLOWED_CHAT_IDS")
+            ),
+            link_base_url=os.getenv("TELEGRAM_LINK_BASE_URL")
+            or f"{_DEFAULT_WEB_BASE}/telegram/link",
+            connect_url=os.getenv("TELEGRAM_CONNECT_URL")
+            or f"{_DEFAULT_WEB_BASE}/console/settings",
+            mini_app_url=os.getenv("TELEGRAM_MINI_APP_URL"),
+            poll_timeout=int(os.getenv("TELEGRAM_POLL_TIMEOUT", "50")),
+            debug=env_flag("TELEGRAM_DEBUG"),
+        )
+        ptb_app = bot.build_application(token)
+        await ptb_app.initialize()
+        await ptb_app.updater.start_polling(
+            timeout=int(os.getenv("TELEGRAM_POLL_TIMEOUT", "50")),
+            allowed_updates=["message"],
+        )
+        await ptb_app.start()
+        log.info("Telegram bot polling started")
+
+    yield
+
+    if ptb_app is not None:
+        log.info("Stopping Telegram bot")
+        await ptb_app.updater.stop()
+        await ptb_app.stop()
+        await ptb_app.shutdown()
+
 
 def register_agents(app: FastAPI, services: AgentServices) -> None:
     app.state.services = services
@@ -116,7 +162,7 @@ def register_agents(app: FastAPI, services: AgentServices) -> None:
 _allowed_origins = os.getenv("ALLOWED_ORIGINS", "*")
 origins = [o.strip() for o in _allowed_origins.split(",") if o.strip()] or ["*"]
 
-app = FastAPI(title="Agents Gateway")
+app = FastAPI(title="Agents Gateway", lifespan=_lifespan)
 register_agents(app, create_agent_services())
 app.include_router(telegram_link_router)
 
