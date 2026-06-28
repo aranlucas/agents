@@ -155,6 +155,30 @@ DO UPDATE SET
         )
 
 
+async def _lookup_clerk_user_by_external_id(
+    telegram_user_id: str,
+    *,
+    clerk_secret_key: str | None = None,
+) -> str | None:
+    secret_key = clerk_secret_key or os.getenv("CLERK_SECRET_KEY")
+    if not secret_key:
+        return None
+    async with httpx.AsyncClient(timeout=10) as client:
+        response = await client.get(
+            f"{CLERK_BAPI_BASE_URL}/users",
+            params={"external_id": telegram_user_id, "limit": 1},
+            headers={"Authorization": f"Bearer {secret_key}"},
+        )
+    if not response.is_success:
+        return None
+    users = response.json()
+    if not isinstance(users, list) or not users:
+        return None
+    user = users[0]
+    user_id = user.get("id") if isinstance(user, dict) else None
+    return user_id if isinstance(user_id, str) and user_id else None
+
+
 async def get_linked_clerk_user_id(
     engine: AsyncEngine,
     *,
@@ -172,7 +196,10 @@ WHERE telegram_user_id = :telegram_user_id
             ),
             {"telegram_user_id": telegram_user_id},
         )
-        return result.scalar_one_or_none()
+        clerk_user_id = result.scalar_one_or_none()
+    if clerk_user_id is not None:
+        return clerk_user_id
+    return await _lookup_clerk_user_by_external_id(telegram_user_id)
 
 
 async def unlink_telegram_user(

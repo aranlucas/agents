@@ -87,6 +87,64 @@ async def test_unlink_revokes_existing_account_link(engine: AsyncEngine) -> None
     assert await unlink_telegram_user(engine, telegram_user_id="tg-user") is False
 
 
+@pytest.mark.asyncio
+async def test_get_linked_clerk_user_id_falls_back_to_bapi_external_id(
+    engine: AsyncEngine,
+    monkeypatch,
+) -> None:
+    async def fake_lookup(
+        tid: str, *, clerk_secret_key: str | None = None
+    ) -> str | None:
+        return "clerk-tma-user" if tid == "tg-tma-user" else None
+
+    monkeypatch.setattr(telegram_auth, "_lookup_clerk_user_by_external_id", fake_lookup)
+
+    result = await get_linked_clerk_user_id(engine, telegram_user_id="tg-tma-user")
+
+    assert result == "clerk-tma-user"
+
+
+@pytest.mark.asyncio
+async def test_get_linked_clerk_user_id_bapi_fallback_returns_none_when_not_found(
+    engine: AsyncEngine,
+    monkeypatch,
+) -> None:
+    async def fake_lookup(
+        tid: str, *, clerk_secret_key: str | None = None
+    ) -> str | None:
+        return None
+
+    monkeypatch.setattr(telegram_auth, "_lookup_clerk_user_by_external_id", fake_lookup)
+
+    assert await get_linked_clerk_user_id(engine, telegram_user_id="unknown") is None
+
+
+@pytest.mark.asyncio
+async def test_get_linked_clerk_user_id_skips_bapi_when_sqlite_row_exists(
+    engine: AsyncEngine,
+    monkeypatch,
+) -> None:
+    token = await create_link_token(
+        engine, telegram_user_id="tg-user", telegram_chat_id="tg-chat"
+    )
+    await consume_link_token(engine, token=token, clerk_user_id="clerk-linked")
+
+    bapi_calls: list[str] = []
+
+    async def fake_lookup(
+        tid: str, *, clerk_secret_key: str | None = None
+    ) -> str | None:
+        bapi_calls.append(tid)
+        return None
+
+    monkeypatch.setattr(telegram_auth, "_lookup_clerk_user_by_external_id", fake_lookup)
+
+    result = await get_linked_clerk_user_id(engine, telegram_user_id="tg-user")
+
+    assert result == "clerk-linked"
+    assert bapi_calls == []
+
+
 def test_check_link_secret_uses_constant_time_compare(monkeypatch) -> None:
     monkeypatch.setenv("TELEGRAM_LINK_SECRET", "expected")
 
