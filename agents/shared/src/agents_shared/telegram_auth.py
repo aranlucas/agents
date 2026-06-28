@@ -167,13 +167,12 @@ async def _lookup_clerk_user_by_external_id(
 
     def _fetch() -> str | None:
         with Clerk(bearer_auth=secret_key) as clerk:
-            res = clerk.users.list(
+            users = clerk.users.list(
                 request={"external_id": [telegram_user_id], "limit": 1}
             )
-            users = res.data if res and hasattr(res, "data") else None
             if not users:
                 return None
-            return users[0].id if users[0].id else None
+            return users[0].id or None
 
     try:
         return await asyncio.to_thread(_fetch)
@@ -249,15 +248,14 @@ async def fetch_clerk_oauth_token(
                 )
             except ClerkErrors:
                 return None
-            tokens = res.data if res and hasattr(res, "data") else None
-            if not tokens:
+            if not res:
                 return None
-            token_obj = tokens[0]
-            expires_at = getattr(token_obj, "expires_at", None)
+            token_obj = res[0]
+            expires_at = token_obj.expires_at
             if isinstance(expires_at, int | float) and expires_at < time.time():
                 return None
-            token = getattr(token_obj, "token", None)
-            return token if isinstance(token, str) and token else None
+            token = token_obj.token
+            return token if token else None
 
     try:
         return await asyncio.to_thread(_fetch)

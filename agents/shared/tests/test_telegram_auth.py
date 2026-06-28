@@ -160,10 +160,8 @@ async def test_lookup_by_external_id_returns_user_id_on_match(monkeypatch) -> No
     monkeypatch.setenv("CLERK_SECRET_KEY", "sk_test_fake")
     mock_user = MagicMock()
     mock_user.id = "user_abc"
-    mock_res = MagicMock()
-    mock_res.data = [mock_user]
     mock_users_sdk = MagicMock()
-    mock_users_sdk.list.return_value = mock_res
+    mock_users_sdk.list.return_value = [mock_user]
     mock_clerk = MagicMock()
     mock_clerk.users = mock_users_sdk
     mock_clerk.__enter__ = MagicMock(return_value=mock_clerk)
@@ -188,10 +186,8 @@ async def test_lookup_by_external_id_returns_none_on_exception(monkeypatch) -> N
 @pytest.mark.asyncio
 async def test_lookup_by_external_id_returns_none_when_list_empty(monkeypatch) -> None:
     monkeypatch.setenv("CLERK_SECRET_KEY", "sk_test_fake")
-    mock_res = MagicMock()
-    mock_res.data = []
     mock_clerk = MagicMock()
-    mock_clerk.users.list.return_value = mock_res
+    mock_clerk.users.list.return_value = []
     mock_clerk.__enter__ = MagicMock(return_value=mock_clerk)
     mock_clerk.__exit__ = MagicMock(return_value=None)
     with patch("agents_shared.telegram_auth.Clerk", return_value=mock_clerk):
