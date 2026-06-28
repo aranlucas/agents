@@ -79,6 +79,7 @@ def build_agent(
     mode: str | None = None,
     include_contents: str = "default",
     include_agui: bool = True,
+    model: str = "groq/llama-3.3-70b-versatile",
 ) -> LlmAgent:
     """Fresh LlmAgent instance — the gateway's wellness orchestrator builds its own."""
     tools = [
@@ -94,7 +95,7 @@ def build_agent(
 
     return LlmAgent(
         name="fitness_agent",
-        model=LiteLlm(model="groq/llama-3.3-70b-versatile"),
+        model=LiteLlm(model=model),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,
@@ -118,6 +119,7 @@ def build_telegram_agent(
         mode=mode,
         include_contents=include_contents,
         include_agui=False,
+        model="mistral/mistral-medium-latest",
     )
 
 

@@ -52,7 +52,9 @@ class WellnessState(BaseModel):
 # ---------------------------------------------------------------------------
 # Agent factory
 # ---------------------------------------------------------------------------
-def _build_agent(*, include_agui: bool, include_telegram_subagents: bool) -> LlmAgent:
+def _build_agent(
+    *, include_agui: bool, include_telegram_subagents: bool, model: str
+) -> LlmAgent:
     build_fitness = (
         build_fitness_telegram_agent
         if include_telegram_subagents
@@ -73,7 +75,8 @@ def _build_agent(*, include_agui: bool, include_telegram_subagents: bool) -> Llm
 
     return LlmAgent(
         name="wellness_agent",
-        model=LiteLlm(model="groq/llama-3.3-70b-versatile"),
+        model=LiteLlm(model=model),
+        rerun_on_resume=True,
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,
@@ -86,11 +89,19 @@ def _build_agent(*, include_agui: bool, include_telegram_subagents: bool) -> Llm
 
 
 def build_agent() -> LlmAgent:
-    return _build_agent(include_agui=True, include_telegram_subagents=False)
+    return _build_agent(
+        include_agui=True,
+        include_telegram_subagents=False,
+        model="groq/llama-3.3-70b-versatile",
+    )
 
 
 def build_telegram_agent() -> LlmAgent:
-    return _build_agent(include_agui=False, include_telegram_subagents=True)
+    return _build_agent(
+        include_agui=False,
+        include_telegram_subagents=True,
+        model="mistral/mistral-medium-latest",
+    )
 
 
 def build_eval_agent() -> LlmAgent:

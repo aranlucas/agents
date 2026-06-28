@@ -18,6 +18,7 @@ ORCHESTRATOR_TITLE = "Orchestrator"
 ORCHESTRATOR_DESCRIPTION = (
     "Default router that delegates to the best specialist sub-agent."
 )
+TELEGRAM_ORCHESTRATOR_MODEL = "mistral/mistral-medium-latest"
 
 
 class TelegramAgentLike(Protocol):
@@ -48,7 +49,8 @@ def build_orchestrator_agent() -> LlmAgent:
     return LlmAgent(
         name="telegram_orchestrator_agent",
         description="Routes Telegram user requests to the best ADK sub-agent.",
-        model=LiteLlm(model="groq/llama-3.3-70b-versatile"),
+        rerun_on_resume=True,
+        model=LiteLlm(model=TELEGRAM_ORCHESTRATOR_MODEL),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,

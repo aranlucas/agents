@@ -2,7 +2,11 @@ from collections.abc import Iterable
 
 from ag_ui_adk import AGUIToolset
 from telegram_bot.agent_registry import TELEGRAM_AGENT_IDS, TELEGRAM_SURFACED_AGENTS
-from telegram_bot.orchestrator import ORCHESTRATOR_AGENT_ID, build_orchestrator_agent
+from telegram_bot.orchestrator import (
+    ORCHESTRATOR_AGENT_ID,
+    TELEGRAM_ORCHESTRATOR_MODEL,
+    build_orchestrator_agent,
+)
 
 
 def _agent_tree(agent: object) -> Iterable[object]:
@@ -43,6 +47,9 @@ def test_orchestrator_wraps_base_agent_backed_specialists() -> None:
     orchestrator = build_orchestrator_agent()
 
     assert orchestrator.name == "telegram_orchestrator_agent"
+    assert orchestrator.rerun_on_resume is True
+    assert orchestrator.model.model == TELEGRAM_ORCHESTRATOR_MODEL
+    assert TELEGRAM_ORCHESTRATOR_MODEL == "mistral/mistral-medium-latest"
     assert len(orchestrator.sub_agents) == len(TELEGRAM_SURFACED_AGENTS) - 1
     assert {agent.name for agent in orchestrator.sub_agents} == {
         "excalidraw_agent",
@@ -80,3 +87,33 @@ def test_telegram_surfaced_agents_do_not_expose_agui_toolsets() -> None:
         assert not any(isinstance(tool, AGUIToolset) for tool in _agent_tools(agent)), (
             spec.id
         )
+
+
+def test_telegram_agents_with_subagents_rerun_on_resume() -> None:
+    orchestrator = build_orchestrator_agent()
+
+    for agent in _agent_tree(orchestrator):
+        if getattr(agent, "sub_agents", None):
+            assert getattr(agent, "rerun_on_resume", None) is True, agent.name
+
+
+def test_telegram_resume_agent_uses_paid_mistral_model() -> None:
+    resume_spec = next(spec for spec in TELEGRAM_SURFACED_AGENTS if spec.id == "resume")
+    agent = resume_spec.build()
+
+    assert agent.model.model == "mistral/mistral-medium-latest"
+
+
+def test_telegram_wellness_path_avoids_groq_models() -> None:
+    wellness_spec = next(
+        spec for spec in TELEGRAM_SURFACED_AGENTS if spec.id == "wellness"
+    )
+    agent = wellness_spec.build()
+    models = {
+        node.name: node.model.model
+        for node in _agent_tree(agent)
+        if hasattr(node, "model")
+    }
+
+    assert models["wellness_agent"] == "mistral/mistral-medium-latest"
+    assert models["fitness_agent"] == "mistral/mistral-medium-latest"
