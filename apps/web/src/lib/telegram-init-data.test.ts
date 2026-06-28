@@ -12,10 +12,9 @@ function makeInitData(user: object, botToken: string): string {
     chat_instance: "-123456789",
     chat_type: "private",
   };
-  const dataCheckString = Object.keys(fields)
-    .toSorted()
-    .map((k) => `${k}=${fields[k]}`)
-    .join("\n");
+  const keys: string[] = Object.keys(fields);
+  keys.sort();
+  const dataCheckString = keys.map((k) => `${k}=${fields[k]}`).join("\n");
   const secretKey = createHmac("sha256", "WebAppData").update(botToken).digest();
   const hash = createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
   return new URLSearchParams({ ...fields, hash }).toString();

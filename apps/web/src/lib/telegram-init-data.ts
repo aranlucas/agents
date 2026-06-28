@@ -18,10 +18,9 @@ export function verifyInitData(initData: string, botToken: string): TelegramUser
   if (!receivedHash) return null;
 
   params.delete("hash");
-  const dataCheckString = Array.from(params.entries())
-    .toSorted(([a], [b]) => a.localeCompare(b))
-    .map(([k, v]) => `${k}=${v}`)
-    .join("\n");
+  const entries: [string, string][] = Array.from(params.entries());
+  entries.sort(([a], [b]) => a.localeCompare(b));
+  const dataCheckString = entries.map(([k, v]) => `${k}=${v}`).join("\n");
 
   const secretKey = createHmac("sha256", "WebAppData").update(botToken).digest();
   const expectedHash = createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
