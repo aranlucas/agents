@@ -132,3 +132,24 @@ def test_resume_agui_is_public_with_auth_enabled(monkeypatch):
 
     monkeypatch.delenv("CLERK_JWKS_URL")
     importlib.reload(main)
+
+
+def test_telegram_link_consume_is_public_with_auth_enabled(monkeypatch):
+    monkeypatch.setenv(
+        "CLERK_JWKS_URL",
+        "https://example.clerk.accounts.dev/.well-known/jwks.json",
+    )
+    monkeypatch.setenv("TELEGRAM_LINK_SECRET", "secret")
+    module = importlib.reload(main)
+    with TestClient(module.app) as client:
+        response = client.post(
+            "/telegram/link/consume",
+            json={"token": "missing", "clerk_user_id": "clerk-user"},
+        )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid link secret"
+
+    monkeypatch.delenv("CLERK_JWKS_URL")
+    monkeypatch.delenv("TELEGRAM_LINK_SECRET")
+    importlib.reload(main)

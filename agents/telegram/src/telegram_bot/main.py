@@ -1,0 +1,42 @@
+"""Entrypoint for running the ADK agents Telegram bot."""
+
+from __future__ import annotations
+
+import logging
+import os
+
+from dotenv import load_dotenv
+
+from .runner import TelegramAgentsBot, env_flag, parse_allowed_chat_ids
+
+
+def run() -> None:
+    load_dotenv()
+    load_dotenv(".env.local", override=True)
+
+    logging.basicConfig(
+        level=logging.DEBUG if env_flag("TELEGRAM_DEBUG") else logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    )
+
+    token = os.getenv("TELEGRAM_BOT_TOKEN") or os.getenv("TELEGRAM_TOKEN")
+    if not token:
+        raise RuntimeError("Set TELEGRAM_BOT_TOKEN with the BotFather token.")
+
+    allowed_chat_ids = parse_allowed_chat_ids(os.getenv("TELEGRAM_ALLOWED_CHAT_IDS"))
+    link_base_url = os.getenv("TELEGRAM_LINK_BASE_URL")
+    connect_url = os.getenv("TELEGRAM_CONNECT_URL")
+    poll_timeout = int(os.getenv("TELEGRAM_POLL_TIMEOUT", "50"))
+
+    bot = TelegramAgentsBot(
+        allowed_chat_ids=allowed_chat_ids,
+        link_base_url=link_base_url,
+        connect_url=connect_url,
+        poll_timeout=poll_timeout,
+        debug=env_flag("TELEGRAM_DEBUG"),
+    )
+    bot.run_polling(token)
+
+
+if __name__ == "__main__":
+    run()

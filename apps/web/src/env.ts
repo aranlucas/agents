@@ -16,6 +16,7 @@ export const env = createEnv({
     OPENROUTER_API_KEY: z.string().optional(),
     HUGGING_FACE_API_KEY: z.string().optional(),
     GROQ_API_KEY: requiredUnlessOffline(),
+    TELEGRAM_LINK_SECRET: z.string().optional(),
     OTEL_EXPORTER_OTLP_ENDPOINT: z.string().optional(),
     OTEL_SERVICE_NAME: z.string().default("agents-nextjs"),
     COPILOTKIT_DEBUG: z
@@ -37,6 +38,7 @@ export const env = createEnv({
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     HUGGING_FACE_API_KEY: process.env.HUGGING_FACE_API_KEY,
     GROQ_API_KEY: process.env.GROQ_API_KEY,
+    TELEGRAM_LINK_SECRET: process.env.TELEGRAM_LINK_SECRET,
     OTEL_EXPORTER_OTLP_ENDPOINT: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
     OTEL_SERVICE_NAME: process.env.OTEL_SERVICE_NAME,
     COPILOTKIT_DEBUG: process.env.COPILOTKIT_DEBUG,

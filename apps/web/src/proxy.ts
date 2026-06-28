@@ -15,6 +15,7 @@ export const PROTECTED_ROUTES = [
   "/console/oral-boards(.*)",
   "/console/oral-boards-v2(.*)",
   "/console/settings(.*)",
+  "/telegram/link(.*)",
 ];
 
 const isProtectedRoute = createRouteMatcher(PROTECTED_ROUTES);

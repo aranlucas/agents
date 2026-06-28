@@ -9,7 +9,7 @@ import logging
 import time
 from dataclasses import dataclass
 from datetime import UTC
-from typing import Any, override
+from typing import Any, TypeGuard, override
 
 import litellm
 from fastapi import Request
@@ -22,6 +22,11 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 log = logging.getLogger("agents_shared")
+
+
+def _is_str_dict(v: object) -> TypeGuard[dict[str, Any]]:
+    return isinstance(v, dict)
+
 
 # ---------------------------------------------------------------------------
 # Rate limit configuration
@@ -150,7 +155,8 @@ class ProviderThrottle(CustomLogger):
     """
 
     def __init__(self, limits: dict[str, RateLimit]) -> None:
-        super().__init__()  # pyright: ignore[reportUnknownMemberType]
+        self.message_logging = True
+        self.turn_off_message_logging = False
         self._lock = asyncio.Lock()
         self._limits = limits
         self._rpm_windows: dict[str, collections.deque[float]] = {}
@@ -181,7 +187,7 @@ class ProviderThrottle(CustomLogger):
         # Strip reasoning_content that non-reasoning providers reject
         messages: list[Any] = data.get("messages") or []
         for message in messages:
-            if isinstance(message, dict):
+            if _is_str_dict(message):
                 message.pop("reasoning_content", None)
 
         provider = self._provider(str(data.get("model", "")))
@@ -229,7 +235,7 @@ class ProviderThrottle(CustomLogger):
         return data
 
 
-litellm.callbacks.append(ProviderThrottle(RATE_LIMITS))  # pyright: ignore[reportUnknownMemberType]
+litellm.callbacks.append(ProviderThrottle(RATE_LIMITS))
 
 CLERK_USER_ID_HEADER = "x-clerk-user-id"
 

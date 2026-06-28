@@ -19,6 +19,7 @@ describe("protected route matcher", () => {
     "/console/wellness",
     "/console/oral-boards",
     "/console/settings",
+    "/telegram/link",
   ])("protects %s", (path) => {
     expect(matcher(req(path))).toBe(true);
   });

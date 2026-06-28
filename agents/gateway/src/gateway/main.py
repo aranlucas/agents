@@ -33,6 +33,8 @@ from travel_agent.main import register as register_travel
 from trends_agent.main import register as register_trends
 from wellness_agent.main import register as register_wellness
 
+from .telegram_link import router as telegram_link_router
+
 
 def setup_otel(default_service_name: str) -> Tracer:
     if not os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
@@ -116,6 +118,7 @@ origins = [o.strip() for o in _allowed_origins.split(",") if o.strip()] or ["*"]
 
 app = FastAPI(title="Agents Gateway")
 register_agents(app, create_agent_services())
+app.include_router(telegram_link_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -126,7 +129,10 @@ app.add_middleware(
 )
 
 if clerk_auth_enabled():
-    app.add_middleware(ClerkAuthMiddleware, public_prefixes=("/resume",))
+    app.add_middleware(
+        ClerkAuthMiddleware,
+        public_prefixes=("/resume", "/telegram/link"),
+    )
 
 
 @app.middleware("http")
