@@ -35,7 +35,18 @@ class PresentationState(BaseModel):
     user_id: str = ""
 
 
-def build_agent() -> LlmAgent:
+def _build_agent(*, include_agui: bool) -> LlmAgent:
+    tools = [
+        set_presentation_meta,
+        create_slide,
+        update_slide,
+        delete_slide,
+        reorder_slides,
+        mark_presentation_ready,
+    ]
+    if include_agui:
+        tools.append(AGUIToolset())
+
     return LlmAgent(
         name="presentation_agent",
         model=LiteLlm(model="groq/llama-3.3-70b-versatile"),
@@ -45,13 +56,13 @@ def build_agent() -> LlmAgent:
         state_schema=PresentationState,
         instruction=_INSTRUCTION,
         before_agent_callback=make_state_initializer(PresentationState),
-        tools=[
-            set_presentation_meta,
-            create_slide,
-            update_slide,
-            delete_slide,
-            reorder_slides,
-            mark_presentation_ready,
-            AGUIToolset(),
-        ],
+        tools=tools,
     )
+
+
+def build_agent() -> LlmAgent:
+    return _build_agent(include_agui=True)
+
+
+def build_telegram_agent() -> LlmAgent:
+    return _build_agent(include_agui=False)

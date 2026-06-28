@@ -38,7 +38,18 @@ class ResearchState(BaseModel):
     user_id: str = ""
 
 
-def build_agent() -> LlmAgent:
+def _build_agent(*, include_agui: bool) -> LlmAgent:
+    tools = [
+        set_research_query,
+        create_section,
+        update_section,
+        add_source,
+        write_report,
+        mark_research_ready,
+    ]
+    if include_agui:
+        tools.append(AGUIToolset())
+
     return LlmAgent(
         name="research_canvas_agent",
         model=LiteLlm(model="cerebras/gpt-oss-120b"),
@@ -48,13 +59,13 @@ def build_agent() -> LlmAgent:
         state_schema=ResearchState,
         instruction=_INSTRUCTION,
         before_agent_callback=make_state_initializer(ResearchState),
-        tools=[
-            set_research_query,
-            create_section,
-            update_section,
-            add_source,
-            write_report,
-            mark_research_ready,
-            AGUIToolset(),
-        ],
+        tools=tools,
     )
+
+
+def build_agent() -> LlmAgent:
+    return _build_agent(include_agui=True)
+
+
+def build_telegram_agent() -> LlmAgent:
+    return _build_agent(include_agui=False)

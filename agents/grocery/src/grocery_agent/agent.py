@@ -55,9 +55,25 @@ class GroceryState(BaseModel):
 # Agent factory
 # ---------------------------------------------------------------------------
 def build_agent(
-    *, mode: str | None = None, include_contents: str = "default"
+    *,
+    mode: str | None = None,
+    include_contents: str = "default",
+    include_agui: bool = True,
 ) -> LlmAgent:
     """Fresh LlmAgent instance — the gateway's wellness orchestrator builds its own."""
+    tools = [
+        set_shopping_list,
+        update_cart,
+        update_pantry,
+        set_meal_plan,
+        set_weekly_deals,
+        mark_list_ready,
+        get_current_date,
+    ]
+    if include_agui:
+        tools.append(AGUIToolset())
+    tools.append(meal_planner_toolset())
+
     return LlmAgent(
         name="grocery_agent",
         model=LiteLlm(model="nvidia_nim/deepseek-ai/deepseek-v4-flash"),
@@ -72,17 +88,17 @@ def build_agent(
             GroceryState,
             token_flags={KROGER_AUTH.state_key: KROGER_AUTH.connected_flag},
         ),
-        tools=[
-            set_shopping_list,
-            update_cart,
-            update_pantry,
-            set_meal_plan,
-            set_weekly_deals,
-            mark_list_ready,
-            get_current_date,
-            AGUIToolset(),
-            meal_planner_toolset(),
-        ],
+        tools=tools,
+    )
+
+
+def build_telegram_agent(
+    *, mode: str | None = None, include_contents: str = "default"
+) -> LlmAgent:
+    return build_agent(
+        mode=mode,
+        include_contents=include_contents,
+        include_agui=False,
     )
 
 

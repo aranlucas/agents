@@ -1,5 +1,19 @@
+from collections.abc import Iterable
+
+from ag_ui_adk import AGUIToolset
 from telegram_bot.agent_registry import TELEGRAM_AGENT_IDS, TELEGRAM_SURFACED_AGENTS
 from telegram_bot.orchestrator import ORCHESTRATOR_AGENT_ID, build_orchestrator_agent
+
+
+def _agent_tree(agent: object) -> Iterable[object]:
+    yield agent
+    for child in getattr(agent, "sub_agents", []) or []:
+        yield from _agent_tree(child)
+
+
+def _agent_tools(agent: object) -> Iterable[object]:
+    for node in _agent_tree(agent):
+        yield from getattr(node, "tools", []) or []
 
 
 def test_telegram_registry_matches_surfaced_agent_order() -> None:
@@ -57,3 +71,12 @@ def test_orchestrator_only_sets_task_mode_on_leaf_specialists() -> None:
     assert modes["collab_trip_agent"] == "task"
     assert modes["grocery_agent"] == "task"
     assert modes["fitness_agent"] == "task"
+
+
+def test_telegram_surfaced_agents_do_not_expose_agui_toolsets() -> None:
+    for spec in TELEGRAM_SURFACED_AGENTS:
+        agent = spec.build()
+
+        assert not any(isinstance(tool, AGUIToolset) for tool in _agent_tools(agent)), (
+            spec.id
+        )

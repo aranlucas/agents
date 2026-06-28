@@ -11,10 +11,12 @@ from agents_shared.tools import (
     stop_on_terminal_text,
 )
 from fitness_agent.agent import build_agent as build_fitness_agent
+from fitness_agent.agent import build_telegram_agent as build_fitness_telegram_agent
 from fitness_agent.tools import StravaActivity
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
 from grocery_agent.agent import build_agent as build_grocery_agent
+from grocery_agent.agent import build_telegram_agent as build_grocery_telegram_agent
 from grocery_agent.tools import CartItem, PantryItem
 from pydantic import BaseModel
 
@@ -50,7 +52,25 @@ class WellnessState(BaseModel):
 # ---------------------------------------------------------------------------
 # Agent factory
 # ---------------------------------------------------------------------------
-def build_agent() -> LlmAgent:
+def _build_agent(*, include_agui: bool, include_telegram_subagents: bool) -> LlmAgent:
+    build_fitness = (
+        build_fitness_telegram_agent
+        if include_telegram_subagents
+        else build_fitness_agent
+    )
+    build_grocery = (
+        build_grocery_telegram_agent
+        if include_telegram_subagents
+        else build_grocery_agent
+    )
+    tools = [
+        get_current_date,
+        set_weekly_wellness_plan,
+        mark_plan_ready,
+    ]
+    if include_agui:
+        tools.append(AGUIToolset())
+
     return LlmAgent(
         name="wellness_agent",
         model=LiteLlm(model="groq/llama-3.3-70b-versatile"),
@@ -59,15 +79,18 @@ def build_agent() -> LlmAgent:
         after_model_callback=stop_on_terminal_text,
         state_schema=WellnessState,
         instruction=_INSTRUCTION,
-        sub_agents=[build_fitness_agent(mode="task"), build_grocery_agent(mode="task")],
+        sub_agents=[build_fitness(mode="task"), build_grocery(mode="task")],
         before_agent_callback=make_state_initializer(WellnessState),
-        tools=[
-            get_current_date,
-            set_weekly_wellness_plan,
-            mark_plan_ready,
-            AGUIToolset(),
-        ],
+        tools=tools,
     )
+
+
+def build_agent() -> LlmAgent:
+    return _build_agent(include_agui=True, include_telegram_subagents=False)
+
+
+def build_telegram_agent() -> LlmAgent:
+    return _build_agent(include_agui=False, include_telegram_subagents=True)
 
 
 def build_eval_agent() -> LlmAgent:

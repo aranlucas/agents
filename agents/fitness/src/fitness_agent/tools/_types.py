@@ -1,17 +1,17 @@
-from typing import TypedDict
+from typing import NotRequired, Required, TypedDict
 
 
 class StravaActivity(TypedDict):
-    id: str
-    name: str
-    sport_type: str | None
-    start_date: str | None
-    distance_m: float | None
-    moving_time_s: int | None
-    elapsed_time_s: int | None
-    total_elevation_gain_m: float | None
-    average_heartrate: float | None
-    perceived_effort: int | None
+    id: Required[str]
+    name: Required[str]
+    sport_type: NotRequired[str | None]
+    start_date: NotRequired[str | None]
+    distance_m: NotRequired[float | None]
+    moving_time_s: NotRequired[int | None]
+    elapsed_time_s: NotRequired[int | None]
+    total_elevation_gain_m: NotRequired[float | None]
+    average_heartrate: NotRequired[float | None]
+    perceived_effort: NotRequired[int | None]
 
 
 def normalize_strava_activity(activity: dict[str, object]) -> StravaActivity:
