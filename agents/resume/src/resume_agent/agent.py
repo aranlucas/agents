@@ -27,10 +27,10 @@ class ResumeState(BaseModel):
     user_id: str = ""
 
 
-def _build_agent(*, include_agui: bool) -> LlmAgent:
+def _build_agent(*, include_agui: bool, model: str) -> LlmAgent:
     return LlmAgent(
         name="resume_agent",
-        model=LiteLlm(model="openrouter/openai/gpt-oss-120b:free"),
+        model=LiteLlm(model=model),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,
@@ -42,11 +42,17 @@ def _build_agent(*, include_agui: bool) -> LlmAgent:
 
 
 def build_agent() -> LlmAgent:
-    return _build_agent(include_agui=True)
+    return _build_agent(
+        include_agui=True,
+        model="openrouter/openai/gpt-oss-120b:free",
+    )
 
 
 def build_telegram_agent() -> LlmAgent:
-    return _build_agent(include_agui=False)
+    return _build_agent(
+        include_agui=False,
+        model="mistral/mistral-medium-latest",
+    )
 
 
 def build_eval_agent() -> LlmAgent:

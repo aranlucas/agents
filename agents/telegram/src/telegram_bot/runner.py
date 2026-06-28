@@ -10,6 +10,7 @@ small :class:`TelegramAuth`, :class:`CredentialGate`, and
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from collections.abc import Awaitable, Callable, Iterable, Mapping
@@ -51,6 +52,13 @@ from .orchestrator import (
 log = logging.getLogger(__name__)
 
 TELEGRAM_MESSAGE_LIMIT = 4096
+DEFAULT_STATUS_UPDATE_SECONDS = 12.0
+DEFAULT_RUN_TIMEOUT_SECONDS = 180.0
+_STATUS_MESSAGES = (
+    "Still working...",
+    "Still working with the specialist agent...",
+    "Still waiting on tools...",
+)
 _HIDDEN_STATE_PREFIXES = ("temp:", "_")
 _HIDDEN_STATE_KEYS = frozenset(
     {
@@ -63,6 +71,12 @@ _HIDDEN_STATE_KEYS = frozenset(
 StateValue = object
 CredentialState = tuple[dict[str, StateValue], tuple[str, ...]]
 CredentialLoader = Callable[[str], Awaitable[CredentialState]]
+
+
+@dataclass
+class _ProgressState:
+    active_tool: str | None = None
+    last_text: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -260,6 +274,8 @@ class TelegramRunner:
         allowed_chat_ids: set[int] | None = None,
         mini_app_url: str | None = None,
         debug: bool = False,
+        status_update_seconds: float = DEFAULT_STATUS_UPDATE_SECONDS,
+        run_timeout_seconds: float = DEFAULT_RUN_TIMEOUT_SECONDS,
     ) -> None:
         self.runner = runner
         self.application = application
@@ -269,6 +285,9 @@ class TelegramRunner:
         self.allowed_chat_ids = frozenset(allowed_chat_ids or set())
         self.mini_app_url = mini_app_url
         self.debug = debug
+        self.status_update_seconds = status_update_seconds
+        self.run_timeout_seconds = run_timeout_seconds
+        self._event_tool_progress = _event_tool_progress
         self._setup_handlers()
 
     def _setup_handlers(self) -> None:
@@ -318,6 +337,15 @@ class TelegramRunner:
         )
 
         thinking_message = await self._send_reply(message, "Thinking...")
+        progress = _ProgressState(last_text="Thinking...")
+        stop_status_updates = asyncio.Event()
+        status_task = asyncio.create_task(
+            self._update_thinking_status(
+                thinking_message,
+                stop_status_updates,
+                progress,
+            )
+        )
 
         response_texts: list[str] = []
         state_delta: dict[str, StateValue] = {}
@@ -326,24 +354,43 @@ class TelegramRunner:
                 role="user",
                 parts=[types.Part(text=message.text)],
             )
-            async for event in self.runner.run_async(
-                user_id=clerk_user_id,
-                session_id=_session_id(message),
-                new_message=new_message,
-                state_delta={
-                    **credential_state,
-                    "telegram_chat_id": str(message.chat_id),
-                    "telegram_user_id": str(message.user_id),
-                },
-            ):
-                if event.actions and event.actions.state_delta:
-                    state_delta.update(event.actions.state_delta)
-                if event.error_message:
-                    raise RuntimeError(event.error_message)
-                if event.is_final_response() and event.content and event.content.parts:
-                    for part in event.content.parts:
-                        if part.text:
-                            response_texts.append(part.text.strip())
+            async with asyncio.timeout(self.run_timeout_seconds):
+                async for event in self.runner.run_async(
+                    user_id=clerk_user_id,
+                    session_id=_session_id(message),
+                    new_message=new_message,
+                    state_delta={
+                        **credential_state,
+                        "telegram_chat_id": str(message.chat_id),
+                        "telegram_user_id": str(message.user_id),
+                    },
+                ):
+                    if event.actions and event.actions.state_delta:
+                        state_delta.update(event.actions.state_delta)
+                    if event.error_message:
+                        raise RuntimeError(event.error_message)
+                    tool_status, active_tool = self._event_tool_progress(event)
+                    if tool_status:
+                        progress.active_tool = active_tool
+                        await self._edit_thinking_status(
+                            thinking_message,
+                            progress,
+                            tool_status,
+                        )
+                    if (
+                        event.is_final_response()
+                        and event.content
+                        and event.content.parts
+                    ):
+                        texts = _event_texts(event)
+                        if _is_subagent_author(getattr(event, "author", "")):
+                            for text in texts:
+                                await self._send_reply(
+                                    message,
+                                    _format_agent_message(event.author, text),
+                                )
+                        else:
+                            response_texts.extend(texts)
 
             text = _dedupe_join(response_texts)
             if not text:
@@ -355,9 +402,26 @@ class TelegramRunner:
                 )
             if not text:
                 text = "Done."
+            await self._stop_status_updates(stop_status_updates, status_task)
             await self._replace_thinking(message, thinking_message, text)
+        except TimeoutError:
+            log.warning(
+                "Telegram agent run timed out for %s after %.1fs",
+                ORCHESTRATOR_AGENT_ID,
+                self.run_timeout_seconds,
+            )
+            await self._stop_status_updates(stop_status_updates, status_task)
+            await self._replace_thinking(
+                message,
+                thinking_message,
+                (
+                    f"Sorry, {ORCHESTRATOR_TITLE} took too long to finish. "
+                    "Try again with a narrower request, or send /reset and retry."
+                ),
+            )
         except Exception as exc:
             log.exception("Telegram agent run failed for %s", ORCHESTRATOR_AGENT_ID)
+            await self._stop_status_updates(stop_status_updates, status_task)
             await self._replace_thinking(
                 message,
                 thinking_message,
@@ -542,6 +606,62 @@ class TelegramRunner:
     ) -> TelegramSentMessage | None:
         return await send_reply(message, text, reply_markup)
 
+    async def _update_thinking_status(
+        self,
+        thinking_message: TelegramSentMessage | None,
+        stop_updates: asyncio.Event,
+        progress: _ProgressState,
+    ) -> None:
+        if thinking_message is None or self.status_update_seconds <= 0:
+            return
+
+        update_count = 0
+        while not stop_updates.is_set():
+            try:
+                await asyncio.wait_for(
+                    stop_updates.wait(),
+                    timeout=self.status_update_seconds,
+                )
+                return
+            except TimeoutError:
+                status = _status_message(
+                    update_count,
+                    self.status_update_seconds,
+                    progress.active_tool,
+                )
+                update_count += 1
+                ok = await self._edit_thinking_status(
+                    thinking_message,
+                    progress,
+                    status,
+                )
+                if not ok:
+                    return
+
+    async def _stop_status_updates(
+        self,
+        stop_updates: asyncio.Event,
+        status_task: asyncio.Task[None],
+    ) -> None:
+        stop_updates.set()
+        await status_task
+
+    async def _edit_thinking_status(
+        self,
+        thinking_message: TelegramSentMessage | None,
+        progress: _ProgressState,
+        text: str,
+    ) -> bool:
+        if thinking_message is None or text == progress.last_text:
+            return True
+        try:
+            await thinking_message.edit_text(text, disable_web_page_preview=True)
+        except Exception:
+            log.exception("Failed to update Telegram thinking status")
+            return False
+        progress.last_text = text
+        return True
+
 
 # ---------------------------------------------------------------------------
 # Module-level helpers
@@ -638,6 +758,32 @@ def _dedupe_join(texts: list[str]) -> str:
     return "\n\n".join(output).strip()
 
 
+def _event_texts(event: object) -> list[str]:
+    content = getattr(event, "content", None)
+    parts = getattr(content, "parts", None)
+    if not parts:
+        return []
+    return [part.text.strip() for part in parts if getattr(part, "text", None)]
+
+
+def _is_subagent_author(author: str | None) -> bool:
+    if not author:
+        return False
+    return author not in {
+        ORCHESTRATOR_AGENT_ID,
+        "telegram_orchestrator_agent",
+    }
+
+
+def _format_agent_message(author: str, text: str) -> str:
+    return f"{_readable_agent_name(author)}:\n{text}"
+
+
+def _readable_agent_name(author: str) -> str:
+    name = author.removesuffix("_agent")
+    return _readable_tool_name(name).capitalize() + " agent"
+
+
 def format_state_summary(state: Mapping[str, StateValue]) -> str:
     visible: list[str] = []
     for key, value in state.items():
@@ -686,10 +832,78 @@ def _truncate(text: str, limit: int) -> str:
     return text[: limit - 3].rstrip() + "..."
 
 
+def _status_message(
+    update_count: int,
+    interval_seconds: float,
+    active_tool: str | None = None,
+) -> str:
+    if active_tool:
+        if update_count == 0:
+            return f"Still running {active_tool}..."
+        elapsed = int((update_count + 1) * interval_seconds)
+        return f"Still running {active_tool}... ({elapsed}s)"
+    if update_count < len(_STATUS_MESSAGES):
+        return _STATUS_MESSAGES[update_count]
+    elapsed = int((update_count + 1) * interval_seconds)
+    return f"Still working... ({elapsed}s)"
+
+
+def _event_tool_progress(event: object) -> tuple[str | None, str | None]:
+    content = getattr(event, "content", None)
+    parts = getattr(content, "parts", None)
+    if not parts:
+        return None, None
+
+    calls: list[str] = []
+    responses: list[str] = []
+    for part in parts:
+        function_call = getattr(part, "function_call", None)
+        if function_call and getattr(function_call, "name", None):
+            calls.append(str(function_call.name))
+        function_response = getattr(part, "function_response", None)
+        if function_response and getattr(function_response, "name", None):
+            responses.append(str(function_response.name))
+
+    if calls:
+        tool_names = _format_tool_names(calls)
+        return f"Running {tool_names}...", tool_names
+    if responses:
+        tool_names = _format_tool_names(responses)
+        return f"Finished {tool_names}.", None
+    return None, None
+
+
+def _format_tool_names(names: list[str]) -> str:
+    readable = [_readable_tool_name(name) for name in names if name]
+    if not readable:
+        return "tool"
+    if len(readable) == 1:
+        return readable[0]
+    if len(readable) == 2:
+        return f"{readable[0]} and {readable[1]}"
+    return ", ".join(readable[:-1]) + f", and {readable[-1]}"
+
+
+def _readable_tool_name(name: str) -> str:
+    return " ".join(name.replace("-", "_").split("_")).strip() or "tool"
+
+
 def _default_connect_url(link_base_url: str | None) -> str | None:
     if not link_base_url:
         return None
     return link_base_url.split("/telegram/link", 1)[0].rstrip("/") + "/console/settings"
+
+
+def _float_env(name: str, default: float) -> float:
+    value = os.getenv(name)
+    if not value:
+        return default
+    try:
+        parsed = float(value)
+    except ValueError:
+        log.warning("Ignoring invalid %s=%r; using %.1f", name, value, default)
+        return default
+    return parsed
 
 
 # ---------------------------------------------------------------------------
@@ -738,6 +952,8 @@ def build_telegram_runner(
     mini_app_url: str | None = None,
     credential_loader: CredentialLoader | None = None,
     debug: bool = False,
+    status_update_seconds: float | None = None,
+    run_timeout_seconds: float | None = None,
 ) -> TelegramRunner:
     """Compose a :class:`TelegramRunner` with all of its dependencies wired up."""
     services = services or create_agent_services()
@@ -757,6 +973,22 @@ def build_telegram_runner(
         allowed_chat_ids=allowed_chat_ids,
         mini_app_url=mini_app_url,
         debug=debug,
+        status_update_seconds=(
+            status_update_seconds
+            if status_update_seconds is not None
+            else _float_env(
+                "TELEGRAM_STATUS_UPDATE_SECONDS",
+                DEFAULT_STATUS_UPDATE_SECONDS,
+            )
+        ),
+        run_timeout_seconds=(
+            run_timeout_seconds
+            if run_timeout_seconds is not None
+            else _float_env(
+                "TELEGRAM_RUN_TIMEOUT_SECONDS",
+                DEFAULT_RUN_TIMEOUT_SECONDS,
+            )
+        ),
     )
 
 
