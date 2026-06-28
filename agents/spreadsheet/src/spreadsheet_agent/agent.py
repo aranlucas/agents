@@ -34,7 +34,18 @@ class SpreadsheetState(BaseModel):
     user_id: str = ""
 
 
-def build_agent() -> LlmAgent:
+def _build_agent(*, include_agui: bool) -> LlmAgent:
+    tools = [
+        create_sheet,
+        update_sheet,
+        append_rows,
+        delete_sheet,
+        set_active_sheet,
+        write_summary,
+    ]
+    if include_agui:
+        tools.append(AGUIToolset())
+
     return LlmAgent(
         name="spreadsheet_agent",
         model=LiteLlm(model="groq/llama-3.3-70b-versatile"),
@@ -44,13 +55,13 @@ def build_agent() -> LlmAgent:
         state_schema=SpreadsheetState,
         instruction=_INSTRUCTION,
         before_agent_callback=make_state_initializer(SpreadsheetState),
-        tools=[
-            create_sheet,
-            update_sheet,
-            append_rows,
-            delete_sheet,
-            set_active_sheet,
-            write_summary,
-            AGUIToolset(),
-        ],
+        tools=tools,
     )
+
+
+def build_agent() -> LlmAgent:
+    return _build_agent(include_agui=True)
+
+
+def build_telegram_agent() -> LlmAgent:
+    return _build_agent(include_agui=False)

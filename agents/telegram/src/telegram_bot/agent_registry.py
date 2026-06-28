@@ -5,19 +5,19 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from excalidraw_agent.agent import build_agent as build_excalidraw
-from expense_agent.agent import build_agent as build_expense
-from fitness_agent.agent import build_agent as build_fitness
-from grocery_agent.agent import build_agent as build_grocery
-from oralboards_agent.agent import build_agent as build_oralboards
+from excalidraw_agent.agent import build_telegram_agent as build_excalidraw
+from expense_agent.agent import build_telegram_agent as build_expense
+from fitness_agent.agent import build_telegram_agent as build_fitness
+from grocery_agent.agent import build_telegram_agent as build_grocery
+from oralboards_agent.agent import build_telegram_agent as build_oralboards
 from oralboards_agent.workflow_agent import build_workflow_agent
-from presentation_agent.agent import build_agent as build_presentation
-from research_agent.agent import build_agent as build_research
-from resume_agent.agent import build_agent as build_resume
-from spreadsheet_agent.agent import build_agent as build_spreadsheet
-from travel_agent.agent import build_agent as build_travel
+from presentation_agent.agent import build_telegram_agent as build_presentation
+from research_agent.agent import build_telegram_agent as build_research
+from resume_agent.agent import build_telegram_agent as build_resume
+from spreadsheet_agent.agent import build_telegram_agent as build_spreadsheet
+from travel_agent.agent import build_telegram_agent as build_travel
 from trends_agent.agent import build_agent as build_trends
-from wellness_agent.agent import build_agent as build_wellness
+from wellness_agent.agent import build_telegram_agent as build_wellness
 
 from .orchestrator import (
     ORCHESTRATOR_AGENT_ID,

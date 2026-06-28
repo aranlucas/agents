@@ -6,6 +6,7 @@ import httpx
 import pytest
 from agents_shared.state import STRAVA_AUTH, make_state_initializer
 from fitness_agent import agent
+from fitness_agent.agent import FitnessState
 from fitness_agent.tools._types import normalize_strava_activity, summarize_activities
 from fitness_agent.tools.fetch_activities import fetch_activities
 from fitness_agent.tools.mark_plan_ready import mark_plan_ready
@@ -167,6 +168,21 @@ def test_normalize_activity_uses_type_and_default_name() -> None:
         "name": "Untitled activity",
         "sport_type": "Ride",
     }
+
+
+def test_fitness_state_accepts_sparse_normalized_activity() -> None:
+    activity = normalize_strava_activity(
+        {
+            "id": 123,
+            "name": "Lunch run",
+            "sport_type": "Run",
+            "average_heartrate": 104.3,
+        },
+    )
+
+    state = FitnessState.model_validate({"activities": [activity]})
+
+    assert state.activities == [activity]
 
 
 def test_fitness_state_tools_write_state() -> None:

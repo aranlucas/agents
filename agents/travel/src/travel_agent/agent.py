@@ -57,8 +57,19 @@ class TravelState(BaseModel):
 # ---------------------------------------------------------------------------
 # Agent factory
 # ---------------------------------------------------------------------------
-def build_agent() -> LlmAgent:
+def _build_agent(*, include_agui: bool) -> LlmAgent:
     """Fresh LlmAgent instance for the trip-planning agent."""
+    tools = [
+        get_current_date,
+        set_trip_meta,
+        write_itinerary,
+        add_day,
+        mark_ready_to_book,
+    ]
+    if include_agui:
+        tools.append(AGUIToolset())
+    tools.append(trvl_toolset())
+
     return LlmAgent(
         name="collab_trip_agent",
         model=LiteLlm(model="cerebras/gpt-oss-120b"),
@@ -68,16 +79,16 @@ def build_agent() -> LlmAgent:
         state_schema=TravelState,
         instruction=_INSTRUCTION,
         before_agent_callback=make_state_initializer(TravelState),
-        tools=[
-            get_current_date,
-            set_trip_meta,
-            write_itinerary,
-            add_day,
-            mark_ready_to_book,
-            AGUIToolset(),
-            trvl_toolset(),
-        ],
+        tools=tools,
     )
+
+
+def build_agent() -> LlmAgent:
+    return _build_agent(include_agui=True)
+
+
+def build_telegram_agent() -> LlmAgent:
+    return _build_agent(include_agui=False)
 
 
 def build_eval_agent() -> LlmAgent:

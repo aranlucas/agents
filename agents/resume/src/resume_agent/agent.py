@@ -27,7 +27,7 @@ class ResumeState(BaseModel):
     user_id: str = ""
 
 
-def build_agent() -> LlmAgent:
+def _build_agent(*, include_agui: bool) -> LlmAgent:
     return LlmAgent(
         name="resume_agent",
         model=LiteLlm(model="openrouter/openai/gpt-oss-120b:free"),
@@ -37,8 +37,16 @@ def build_agent() -> LlmAgent:
         state_schema=ResumeState,
         instruction=INSTRUCTION,
         before_agent_callback=make_state_initializer(ResumeState),
-        tools=[AGUIToolset()],
+        tools=[AGUIToolset()] if include_agui else [],
     )
+
+
+def build_agent() -> LlmAgent:
+    return _build_agent(include_agui=True)
+
+
+def build_telegram_agent() -> LlmAgent:
+    return _build_agent(include_agui=False)
 
 
 def build_eval_agent() -> LlmAgent:

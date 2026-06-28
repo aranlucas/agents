@@ -20,7 +20,7 @@ class ExcalidrawState(BaseModel):
     user_id: str = ""
 
 
-def build_agent() -> LlmAgent:
+def _build_agent(*, include_agui: bool) -> LlmAgent:
     return LlmAgent(
         name="excalidraw_agent",
         model=LiteLlm(model="groq/llama-3.3-70b-versatile"),
@@ -30,5 +30,13 @@ def build_agent() -> LlmAgent:
         state_schema=ExcalidrawState,
         instruction=_INSTRUCTION,
         before_agent_callback=make_state_initializer(ExcalidrawState),
-        tools=[AGUIToolset()],
+        tools=[AGUIToolset()] if include_agui else [],
     )
+
+
+def build_agent() -> LlmAgent:
+    return _build_agent(include_agui=True)
+
+
+def build_telegram_agent() -> LlmAgent:
+    return _build_agent(include_agui=False)

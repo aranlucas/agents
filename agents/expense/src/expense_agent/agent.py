@@ -60,7 +60,17 @@ class ExpenseState(BaseModel):
     user_id: str = ""
 
 
-def build_agent() -> LlmAgent:
+def _build_agent(*, include_agui: bool) -> LlmAgent:
+    tools = [
+        submit_expense,
+        write_expense_review,
+        decide_expense,
+        set_expense_report,
+        mark_expense_ready,
+    ]
+    if include_agui:
+        tools.append(AGUIToolset())
+
     return LlmAgent(
         name="expense_desk_agent",
         model=LiteLlm(model="openrouter/openai/gpt-oss-120b:free"),
@@ -70,12 +80,13 @@ def build_agent() -> LlmAgent:
         state_schema=ExpenseState,
         instruction=_INSTRUCTION,
         before_agent_callback=make_state_initializer(ExpenseState),
-        tools=[
-            submit_expense,
-            write_expense_review,
-            decide_expense,
-            set_expense_report,
-            mark_expense_ready,
-            AGUIToolset(),
-        ],
+        tools=tools,
     )
+
+
+def build_agent() -> LlmAgent:
+    return _build_agent(include_agui=True)
+
+
+def build_telegram_agent() -> LlmAgent:
+    return _build_agent(include_agui=False)

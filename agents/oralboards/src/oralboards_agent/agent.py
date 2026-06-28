@@ -53,8 +53,20 @@ class OralBoardsState(BaseModel):
 # ---------------------------------------------------------------------------
 # Agent factory
 # ---------------------------------------------------------------------------
-def build_agent() -> LlmAgent:
+def _build_agent(*, include_agui: bool) -> LlmAgent:
     """Fresh LlmAgent instance for the oral-boards examiner."""
+    tools = [
+        search_docs,
+        read_doc,
+        set_case,
+        set_phase,
+        set_loading_step,
+        append_exchange,
+        set_score_card,
+    ]
+    if include_agui:
+        tools.append(AGUIToolset())
+
     return LlmAgent(
         name="oralboards_agent",
         model=LiteLlm(model="cerebras/gpt-oss-120b"),
@@ -64,17 +76,16 @@ def build_agent() -> LlmAgent:
         state_schema=OralBoardsState,
         instruction=_INSTRUCTION,
         before_agent_callback=make_state_initializer(OralBoardsState),
-        tools=[
-            search_docs,
-            read_doc,
-            set_case,
-            set_phase,
-            set_loading_step,
-            append_exchange,
-            set_score_card,
-            AGUIToolset(),
-        ],
+        tools=tools,
     )
+
+
+def build_agent() -> LlmAgent:
+    return _build_agent(include_agui=True)
+
+
+def build_telegram_agent() -> LlmAgent:
+    return _build_agent(include_agui=False)
 
 
 def build_eval_agent() -> LlmAgent:
