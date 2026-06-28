@@ -58,31 +58,36 @@ export class GatewayBackedRunner extends InMemoryAgentRunner {
 
       const urlsToCheck = targetUrl ? [targetUrl] : Object.values(this.agentUrls);
 
-      for (const agentUrl of urlsToCheck) {
-        const baseUrl = agentUrl.replace(/\/agui$/, "");
-        const stateUrl = `${baseUrl}/agents/state`;
-        const response = await fetch(stateUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...request.headers,
-          },
-          body: JSON.stringify({ threadId: request.threadId }),
-        });
+      const results = await Promise.all(
+        urlsToCheck.map(async (agentUrl) => {
+          const baseUrl = agentUrl.replace(/\/agui$/, "");
+          const stateUrl = `${baseUrl}/agents/state`;
+          try {
+            const response = await fetch(stateUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                ...request.headers,
+              },
+              body: JSON.stringify({ threadId: request.threadId }),
+            });
+            if (!response.ok) return null;
+            const data: {
+              threadExists?: boolean;
+              messages?: unknown[];
+              state?: Record<string, unknown>;
+            } = await response.json();
+            return data;
+          } catch {
+            return null;
+          }
+        }),
+      );
 
-        if (!response.ok) continue;
-
-        const data: {
-          threadExists?: boolean;
-          messages?: unknown[];
-          state?: Record<string, unknown>;
-        } = await response.json();
-
-        if (data.threadExists) {
-          threadMessages = data.messages ?? [];
-          threadState = data.state ?? {};
-          break;
-        }
+      const match = results.find((r) => r?.threadExists);
+      if (match) {
+        threadMessages = match.messages ?? [];
+        threadState = match.state ?? {};
       }
 
       this.emitSequence(subject, request.threadId, {

@@ -155,7 +155,10 @@ export function TrendTableRenderer({ props }: { props: TableProps }) {
           </thead>
           <tbody>
             {(props.rows ?? []).slice(0, props.maxRows).map((row, index) => (
-              <tr key={index} className="border-border border-b last:border-0">
+              <tr
+                key={row[props.columns[0]?.key] ?? index}
+                className="border-border border-b last:border-0"
+              >
                 {props.columns.map((column) => (
                   <td key={column.key} className="px-3 py-2">
                     {formatTrendValue(row[column.key], column.format)}
@@ -198,7 +201,9 @@ export function SqlDisclosureRenderer({ props }: { props: SqlProps }) {
 // this app's zod 4 runtime schemas. The `as unknown as` casts preserve the
 // exported shipping types (CatalogDefinitions / CatalogRenderers) at the seam
 // instead of erasing them.
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion
 const definitions = trendsCatalogDefinitions as unknown as CatalogDefinitions;
+/* oxlint-disable typescript/no-unsafe-type-assertion */
 const renderers = {
   TrendMetric: TrendMetricRenderer,
   TrendBarChart: TrendBarChartRenderer,
@@ -206,6 +211,7 @@ const renderers = {
   TrendTable: TrendTableRenderer,
   SqlDisclosure: SqlDisclosureRenderer,
 } as unknown as CatalogRenderers<CatalogDefinitions>;
+/* oxlint-enable typescript/no-unsafe-type-assertion */
 
 export const trendsCatalog = createCatalog(definitions, renderers, {
   catalogId: TRENDS_CATALOG_ID,

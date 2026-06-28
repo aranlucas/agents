@@ -52,8 +52,8 @@ function dedupeById(messages: AguiMessage[]): AguiMessage[] {
 
 function isTextPart(p: unknown): p is { type: "text"; text: string } {
   if (typeof p !== "object" || p === null) return false;
-  const obj = p as Record<string, unknown>;
-  return obj["type"] === "text" && typeof obj["text"] === "string";
+  const obj: Record<string, unknown> = p;
+  return obj.type === "text" && typeof obj.text === "string";
 }
 
 function extractText(content: unknown): string {

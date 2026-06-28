@@ -153,6 +153,28 @@ def test_on_model_error_callback_logs_and_returns_none():
     assert result is None
 
 
+async def test_slim_mcp_plugin_strips_structured_content() -> None:
+    from agents_shared.plugins import SlimMcpPlugin
+
+    plugin = SlimMcpPlugin()
+    result = {"content": "clean", "structuredContent": "raw"}
+    stripped = await plugin.after_tool_callback(
+        tool=None, tool_args={}, tool_context=None, result=result
+    )
+    assert stripped == "clean"
+
+
+async def test_slim_mcp_plugin_passes_through_without_structured_content() -> None:
+    from agents_shared.plugins import SlimMcpPlugin
+
+    plugin = SlimMcpPlugin()
+    result = {"content": "clean"}
+    passed = await plugin.after_tool_callback(
+        tool=None, tool_args={}, tool_context=None, result=result
+    )
+    assert passed == result
+
+
 def test_debug_enabled_true_when_env_set(monkeypatch):
     monkeypatch.setenv("AGENTS_DEBUG_LOGGING", "true")
     assert debug_enabled() is True

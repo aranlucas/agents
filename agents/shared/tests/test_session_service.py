@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 from agents_shared import session_service
+from agents_shared.session_service import _normalize_postgres_url
 
 
 def test_get_sqlite_db_path_default() -> None:
@@ -15,6 +16,11 @@ def test_get_sqlite_db_path_uses_env_override(monkeypatch, tmp_path) -> None:
     db_path = tmp_path / "sessions.sqlite"
     monkeypatch.setenv("ADK_SESSION_DB_PATH", str(db_path))
     assert session_service.get_sqlite_db_path() == db_path
+
+
+def test_normalize_postgres_url_passthrough_non_postgres() -> None:
+    assert _normalize_postgres_url("sqlite:///test.db") == "sqlite:///test.db"
+    assert _normalize_postgres_url("") == ""
 
 
 def test_get_database_url_returns_none_when_not_set(monkeypatch) -> None:
