@@ -1,7 +1,7 @@
 """Shared prompt UX contracts for artifact-producing agents."""
 
 import pytest
-from agents_shared.prompts import CANVAS_CONTRACT_MARKER
+from agents_shared.prompts import CANVAS_CONTRACT_MARKER, canvas_contract
 from fitness_agent.agent import build_agent as build_fitness_agent
 from grocery_agent.agent import build_agent as build_grocery_agent
 from oralboards_agent.agent import build_agent as build_oralboards_agent
@@ -26,6 +26,15 @@ def test_artifact_agents_include_shared_canvas_contract(build_agent) -> None:
     assert "Never paste the full" in instruction
     assert "1-2 sentences" in instruction
     assert "one concrete next step" in instruction
+
+
+def test_canvas_contract_returns_formatted_string() -> None:
+    result = canvas_contract(artifact="test plan", tools=("set_plan", "write_note"))
+    assert CANVAS_CONTRACT_MARKER in result
+    assert "test plan" in result
+    assert "`set_plan`" in result
+    assert "`write_note`" in result
+    assert "1-2 sentences" in result
 
 
 def test_grocery_cart_mutation_requires_user_approval() -> None:
