@@ -110,6 +110,20 @@ def test_build_application_registers_commands_and_text_handler(
     assert "MessageHandler" in handler_types
 
 
+def test_new_command_is_registered(engine: AsyncEngine) -> None:
+    bot = _bot(engine)
+    application = bot.build_application("123:test")
+
+    registered_commands: list[str] = []
+    for group_handlers in application.handlers.values():
+        for handler in group_handlers:
+            if hasattr(handler, "commands"):
+                registered_commands.extend(handler.commands)
+
+    assert "new" in registered_commands
+    assert "reset" in registered_commands
+
+
 def test_chunk_text_respects_telegram_message_limit() -> None:
     chunks = chunk_text("a" * (TELEGRAM_MESSAGE_LIMIT + 10))
 

@@ -122,7 +122,7 @@ class TelegramAgentsBot:
         application.add_handler(CommandHandler("agents", self._agents_update))
         application.add_handler(CommandHandler("agent", self._agent_update))
         application.add_handler(CommandHandler("current", self._current_update))
-        application.add_handler(CommandHandler("reset", self._reset_update))
+        application.add_handler(CommandHandler(["reset", "new"], self._reset_update))
         application.add_handler(CommandHandler("chat_id", self._chat_id_update))
         application.add_handler(MessageHandler(filters.COMMAND, self._unknown_update))
         application.add_handler(
@@ -604,7 +604,8 @@ def help_text() -> str:
         "/agents - list available agents\n"
         "/agent <id> - switch the active agent for this chat\n"
         "/current - show the selected agent\n"
-        "/reset - reset the selected agent session\n"
+        "/new - start a new conversation with the selected agent\n"
+        "/reset - alias for /new\n"
         "/chat_id - show this Telegram chat ID\n\n"
         "After selecting an agent, send normal messages to talk to it."
     )
