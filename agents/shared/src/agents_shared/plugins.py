@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, override
 
 from google.adk.plugins.base_plugin import BasePlugin
 from google.adk.tools.base_tool import BaseTool
@@ -22,14 +22,19 @@ class SlimMcpPlugin(BasePlugin):
     def __init__(self) -> None:
         super().__init__(name="slim_mcp")
 
+    @override
     async def after_tool_callback(
         self,
         *,
         tool: BaseTool,
         tool_args: dict[str, Any],
         tool_context: ToolContext,
-        tool_result: dict[str, Any],
+        result: dict[str, Any],
     ) -> dict[str, Any] | None:
-        if "structuredContent" not in tool_result:
-            return None
-        return {k: v for k, v in tool_result.items() if k != "structuredContent"}
+        if (
+            isinstance(result, dict)
+            and "content" in result
+            and "structuredContent" in result
+        ):
+            return result["content"]
+        return result
