@@ -20,7 +20,7 @@ from agents_shared.telegram_auth import (
 from google.adk.agents import BaseAgent
 from google.adk.runners import Runner
 from google.genai import types
-from telegram import Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
 from telegram.ext import (
     Application,
     ApplicationBuilder,
@@ -60,6 +60,7 @@ class TelegramReplyTarget(Protocol):
         text: str,
         *,
         disable_web_page_preview: bool = True,
+        reply_markup: object = None,
     ) -> TelegramSentMessage: ...
 
 
@@ -89,6 +90,7 @@ class TelegramAgentsBot:
         allowed_chat_ids: set[int] | None = None,
         link_base_url: str | None = None,
         connect_url: str | None = None,
+        mini_app_url: str | None = None,
         credential_state_loader: Callable[
             [str], Awaitable[tuple[dict[str, object], tuple[str, ...]]]
         ]
@@ -101,6 +103,7 @@ class TelegramAgentsBot:
         self.allowed_chat_ids = allowed_chat_ids or set()
         self.link_base_url = link_base_url
         self.connect_url = connect_url or _default_connect_url(link_base_url)
+        self.mini_app_url = mini_app_url
         self.credential_state_loader = credential_state_loader
         self.poll_timeout = poll_timeout
         self.debug = debug
@@ -152,7 +155,21 @@ class TelegramAgentsBot:
         del context
         message = telegram_message_from_update(update)
         if message is not None and self._is_allowed(message):
-            await self._send_chunks(message, help_text())
+            await self._help_update_for_message(message)
+
+    async def _help_update_for_message(self, message: TelegramMessage) -> None:
+        reply_markup: InlineKeyboardMarkup | None = None
+        if self.mini_app_url:
+            reply_markup = InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "Open App", web_app=WebAppInfo(url=self.mini_app_url)
+                        )
+                    ]
+                ]
+            )
+        await self._send_chunks(message, help_text(), reply_markup=reply_markup)
 
     async def _login_update(
         self,
@@ -527,14 +544,25 @@ class TelegramAgentsBot:
         for chunk in chunks[1:]:
             await self._send_reply(message, chunk)
 
-    async def _send_chunks(self, message: TelegramMessage, text: str) -> None:
-        for chunk in chunk_text(text):
-            await self._send_reply(message, chunk)
+    async def _send_chunks(
+        self,
+        message: TelegramMessage,
+        text: str,
+        reply_markup: InlineKeyboardMarkup | None = None,
+    ) -> None:
+        chunks = chunk_text(text)
+        for i, chunk in enumerate(chunks):
+            await self._send_reply(
+                message,
+                chunk,
+                reply_markup=reply_markup if i == 0 else None,
+            )
 
     async def _send_reply(
         self,
         message: TelegramMessage,
         text: str,
+        reply_markup: InlineKeyboardMarkup | None = None,
     ) -> TelegramSentMessage | None:
         if message.reply_target is None:
             log.warning("Cannot reply to Telegram message without a reply target")
@@ -542,6 +570,7 @@ class TelegramAgentsBot:
         return await message.reply_target.reply_text(
             text,
             disable_web_page_preview=True,
+            reply_markup=reply_markup,
         )
 
 
