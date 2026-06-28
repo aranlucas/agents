@@ -1,12 +1,20 @@
-"""Telegram Bot API runner for the surfaced ADK agents."""
+"""Telegram Bot API runner for the orchestrator ADK agent.
+
+Mirrors ``google.adk.integrations.slack.SlackRunner`` — a thin wrapper that
+bridges a :class:`telegram.ext.Application` with an ADK :class:`Runner`. The
+Telegram-specific auth, credential, and session concerns are factored out into
+small :class:`TelegramAuth`, :class:`CredentialGate`, and
+:class:`SessionManager` dependencies so the runner stays focused on the
+``receive message → run agent → edit thinking message`` loop.
+"""
 
 from __future__ import annotations
 
 import logging
 import os
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable, Iterable, Mapping
 from dataclasses import dataclass
-from typing import Any, Protocol, cast
+from typing import Protocol, cast
 from urllib.parse import urlencode
 
 from agents_shared.dependencies import AgentServices, create_agent_services
@@ -17,32 +25,48 @@ from agents_shared.telegram_auth import (
     telegram_credential_state,
     unlink_telegram_user,
 )
-from google.adk.agents import BaseAgent
 from google.adk.runners import Runner
+from google.adk.sessions import BaseSessionService
 from google.genai import types
+from sqlalchemy.ext.asyncio import AsyncEngine
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
 from telegram.ext import (
     Application,
     ApplicationBuilder,
     CommandHandler,
     ContextTypes,
+    ExtBot,
+    JobQueue,
     MessageHandler,
     filters,
 )
 
-from .agent_registry import TELEGRAM_AGENT_BY_ID, TELEGRAM_AGENTS, TelegramAgentSpec
-from .orchestrator import ORCHESTRATOR_AGENT_ID
+from .orchestrator import (
+    ORCHESTRATOR_AGENT_ID,
+    ORCHESTRATOR_TITLE,
+    build_orchestrator_agent,
+)
 
 log = logging.getLogger(__name__)
 
 TELEGRAM_MESSAGE_LIMIT = 4096
 _HIDDEN_STATE_PREFIXES = ("temp:", "_")
-_HIDDEN_STATE_KEYS = {
-    "user_id",
-    "telegram_chat_id",
-    "telegram_user_id",
-    "interests",
-}
+_HIDDEN_STATE_KEYS = frozenset(
+    {
+        "user_id",
+        "telegram_chat_id",
+        "telegram_user_id",
+        "interests",
+    }
+)
+StateValue = object
+CredentialState = tuple[dict[str, StateValue], tuple[str, ...]]
+CredentialLoader = Callable[[str], Awaitable[CredentialState]]
+
+
+# ---------------------------------------------------------------------------
+# Types
+# ---------------------------------------------------------------------------
 
 
 class TelegramSentMessage(Protocol):
@@ -60,11 +84,11 @@ class TelegramReplyTarget(Protocol):
         text: str,
         *,
         disable_web_page_preview: bool = True,
-        reply_markup: object = None,
+        reply_markup: InlineKeyboardMarkup | None = None,
     ) -> TelegramSentMessage: ...
 
 
-@dataclass
+@dataclass(frozen=True)
 class TelegramMessage:
     chat_id: int
     user_id: int
@@ -74,286 +98,220 @@ class TelegramMessage:
     reply_target: TelegramReplyTarget | None = None
 
 
+# ---------------------------------------------------------------------------
+# Dependencies
+# ---------------------------------------------------------------------------
+
+
 @dataclass
-class _AgentRuntime:
-    spec: TelegramAgentSpec
-    runner: Runner
+class TelegramAuth:
+    """Telegram ↔ Clerk account linking."""
+
+    engine: AsyncEngine
+    link_base_url: str | None = None
+
+    async def linked_user_id(self, telegram_user_id: int) -> str | None:
+        return await get_linked_clerk_user_id(
+            self.engine,
+            telegram_user_id=str(telegram_user_id),
+        )
+
+    async def build_login_url(
+        self, *, telegram_user_id: int, telegram_chat_id: int
+    ) -> str | None:
+        if not self.link_base_url:
+            return None
+        token = await create_link_token(
+            self.engine,
+            telegram_user_id=str(telegram_user_id),
+            telegram_chat_id=str(telegram_chat_id),
+        )
+        separator = "&" if "?" in self.link_base_url else "?"
+        return f"{self.link_base_url}{separator}{urlencode({'token': token})}"
+
+    async def unlink(self, telegram_user_id: int) -> bool:
+        return await unlink_telegram_user(
+            self.engine,
+            telegram_user_id=str(telegram_user_id),
+        )
 
 
-class TelegramAgentsBot:
-    """Long-polling Telegram adapter for all surfaced ADK agents."""
+@dataclass
+class CredentialGate:
+    """Verifies that the linked Clerk user has the required integrations."""
+
+    connect_url: str | None = None
+    loader: CredentialLoader | None = None
+
+    async def check(self, clerk_user_id: str) -> CredentialState:
+        if self.loader is not None:
+            return await self.loader(clerk_user_id)
+        state = await telegram_credential_state(clerk_user_id)
+        return state.state, state.missing
+
+    @staticmethod
+    def format_missing(missing: Iterable[str], connect_url: str | None) -> str:
+        providers = ", ".join(missing)
+        missing_list = list(missing)
+        verb = "are" if len(missing_list) > 1 else "is"
+        text = f"Your account is linked, but {providers} {verb} not connected yet."
+        if connect_url:
+            return text + f"\nConnect it here: {connect_url}"
+        return text + "\nOpen the web app settings page to connect it, then try again."
+
+
+# ---------------------------------------------------------------------------
+# Runner
+# ---------------------------------------------------------------------------
+
+
+_LOGIN_REQUIRED_TEXT = (
+    "Sign in is required before I can use your Strava and QFC credentials. "
+    "Send /login to link this Telegram account."
+)
+
+
+def _session_id(message: TelegramMessage) -> str:
+    return f"telegram:{message.chat_id}:{ORCHESTRATOR_AGENT_ID}"
+
+
+async def _ensure_session(
+    session_service: BaseSessionService,
+    *,
+    message: TelegramMessage,
+    clerk_user_id: str,
+    initial_state: Mapping[str, StateValue],
+) -> None:
+    session_id = _session_id(message)
+    session = await session_service.get_session(
+        app_name=ORCHESTRATOR_AGENT_ID,
+        user_id=clerk_user_id,
+        session_id=session_id,
+    )
+    if session is None:
+        await session_service.create_session(
+            app_name=ORCHESTRATOR_AGENT_ID,
+            user_id=clerk_user_id,
+            session_id=session_id,
+            state={
+                **initial_state,
+                "telegram_chat_id": str(message.chat_id),
+                "telegram_user_id": str(message.user_id),
+                "user_id": clerk_user_id,
+            },
+        )
+
+
+async def _reset_session(
+    session_service: BaseSessionService,
+    *,
+    message: TelegramMessage,
+    clerk_user_id: str,
+) -> None:
+    await session_service.delete_session(
+        app_name=ORCHESTRATOR_AGENT_ID,
+        user_id=clerk_user_id,
+        session_id=_session_id(message),
+    )
+    await _ensure_session(
+        session_service,
+        message=message,
+        clerk_user_id=clerk_user_id,
+        initial_state={"user_id": clerk_user_id},
+    )
+
+
+async def _state_summary(
+    session_service: BaseSessionService,
+    *,
+    message: TelegramMessage,
+    clerk_user_id: str,
+    delta: Mapping[str, StateValue],
+) -> str:
+    session = await session_service.get_session(
+        app_name=ORCHESTRATOR_AGENT_ID,
+        user_id=clerk_user_id,
+        session_id=_session_id(message),
+    )
+    state = dict(session.state) if session is not None else {}
+    state.update(delta)
+    return format_state_summary(state)
+
+
+class TelegramRunner:
+    """Telegram adapter for an ADK ``Runner`` — Slack-style messaging loop."""
 
     def __init__(
         self,
         *,
-        services: AgentServices | None = None,
+        runner: Runner,
+        application: Application[
+            ExtBot[None],
+            ContextTypes.DEFAULT_TYPE,
+            dict[str, object],
+            dict[str, object],
+            dict[str, object],
+            JobQueue[ContextTypes.DEFAULT_TYPE],
+        ],
+        session_service: BaseSessionService,
+        auth: TelegramAuth,
+        credentials: CredentialGate,
         allowed_chat_ids: set[int] | None = None,
-        link_base_url: str | None = None,
-        connect_url: str | None = None,
         mini_app_url: str | None = None,
-        credential_state_loader: Callable[
-            [str], Awaitable[tuple[dict[str, object], tuple[str, ...]]]
-        ]
-        | None = None,
-        poll_timeout: int = 50,
         debug: bool = False,
     ) -> None:
-        self.services = services or create_agent_services()
-        self.default_agent_id = ORCHESTRATOR_AGENT_ID
-        self.allowed_chat_ids = allowed_chat_ids or set()
-        self.link_base_url = link_base_url
-        self.connect_url = connect_url or _default_connect_url(link_base_url)
+        self.runner = runner
+        self.application = application
+        self.session_service = session_service
+        self.auth = auth
+        self.credentials = credentials
+        self.allowed_chat_ids = frozenset(allowed_chat_ids or set())
         self.mini_app_url = mini_app_url
-        self.credential_state_loader = credential_state_loader
-        self.poll_timeout = poll_timeout
         self.debug = debug
-        self._selected_agent_by_chat: dict[int, str] = {}
-        self._runtimes: dict[str, _AgentRuntime] = {}
+        self._setup_handlers()
 
-    def build_application(
-        self, token: str
-    ) -> Application[Any, Any, Any, Any, Any, Any]:
-        application = ApplicationBuilder().token(token).build()
-        application.add_handler(CommandHandler(["start", "help"], self._help_update))
-        application.add_handler(CommandHandler("login", self._login_update))
-        application.add_handler(
-            CommandHandler(["logout", "unlink"], self._logout_update)
+    def _setup_handlers(self) -> None:
+        self.application.add_handler(CommandHandler(["start", "help"], self._on_help))
+        self.application.add_handler(CommandHandler("login", self._on_login))
+        self.application.add_handler(
+            CommandHandler(["logout", "unlink"], self._on_logout)
         )
-        application.add_handler(CommandHandler("agents", self._agents_update))
-        application.add_handler(CommandHandler("agent", self._agent_update))
-        application.add_handler(CommandHandler("current", self._current_update))
-        application.add_handler(CommandHandler(["reset", "new"], self._reset_update))
-        application.add_handler(CommandHandler("chat_id", self._chat_id_update))
-        application.add_handler(MessageHandler(filters.COMMAND, self._unknown_update))
-        application.add_handler(
-            MessageHandler(filters.TEXT & ~filters.COMMAND, self._message_update)
+        self.application.add_handler(CommandHandler(["reset", "new"], self._on_reset))
+        self.application.add_handler(CommandHandler("chat_id", self._on_chat_id))
+        self.application.add_handler(MessageHandler(filters.COMMAND, self._on_unknown))
+        self.application.add_handler(
+            MessageHandler(filters.TEXT & ~filters.COMMAND, self._on_text)
         )
-        application.add_error_handler(self._error_update)
-        return application
+        self.application.add_error_handler(self._on_error)
 
-    def run_polling(self, token: str) -> None:
-        log.info("Telegram agents bot polling started")
-        self.build_application(token).run_polling(
-            timeout=self.poll_timeout,
+    def run_polling(self, *, timeout: int = 50) -> None:
+        log.info("Telegram runner polling started")
+        self.application.run_polling(
+            timeout=timeout,
             allowed_updates=["message"],
         )
 
     async def handle_message(self, message: TelegramMessage) -> None:
+        """Core agent run loop — the Telegram equivalent of ``SlackRunner._handle_message``."""
         if not self._is_allowed(message):
             return
 
-        agent_id = self._selected_agent_by_chat.get(
-            message.chat_id, self.default_agent_id
-        )
-        await self._run_agent(message, agent_id)
-
-    async def _help_update(
-        self,
-        update: Update,
-        context: ContextTypes.DEFAULT_TYPE,
-    ) -> None:
-        del context
-        message = telegram_message_from_update(update)
-        if message is not None and self._is_allowed(message):
-            await self._help_update_for_message(message)
-
-    async def _help_update_for_message(self, message: TelegramMessage) -> None:
-        reply_markup: InlineKeyboardMarkup | None = None
-        if self.mini_app_url:
-            reply_markup = InlineKeyboardMarkup(
-                [
-                    [
-                        InlineKeyboardButton(
-                            "Open App", web_app=WebAppInfo(url=self.mini_app_url)
-                        )
-                    ]
-                ]
-            )
-        await self._send_chunks(message, help_text(), reply_markup=reply_markup)
-
-    async def _login_update(
-        self,
-        update: Update,
-        context: ContextTypes.DEFAULT_TYPE,
-    ) -> None:
-        del context
-        message = telegram_message_from_update(update)
-        if message is not None and self._is_allowed(message):
-            await self.send_login_link(message)
-
-    async def _logout_update(
-        self,
-        update: Update,
-        context: ContextTypes.DEFAULT_TYPE,
-    ) -> None:
-        del context
-        message = telegram_message_from_update(update)
-        if message is not None and self._is_allowed(message):
-            await self._unlink(message)
-
-    async def _agents_update(
-        self,
-        update: Update,
-        context: ContextTypes.DEFAULT_TYPE,
-    ) -> None:
-        del context
-        message = telegram_message_from_update(update)
-        if message is not None and self._is_allowed(message):
-            await self._send_chunks(message, agents_text())
-
-    async def _agent_update(
-        self,
-        update: Update,
-        context: ContextTypes.DEFAULT_TYPE,
-    ) -> None:
-        message = telegram_message_from_update(update)
-        if message is not None and self._is_allowed(message):
-            await self._select_agent(message, " ".join(context.args or []))
-
-    async def _current_update(
-        self,
-        update: Update,
-        context: ContextTypes.DEFAULT_TYPE,
-    ) -> None:
-        del context
-        message = telegram_message_from_update(update)
-        if message is None or not self._is_allowed(message):
-            return
-        agent_id = self._selected_agent_by_chat.get(
-            message.chat_id, self.default_agent_id
-        )
-        spec = TELEGRAM_AGENT_BY_ID[agent_id]
-        await self._send_chunks(
-            message,
-            f"Current agent: {spec.id} - {spec.title}\n{spec.description}",
-        )
-
-    async def _reset_update(
-        self,
-        update: Update,
-        context: ContextTypes.DEFAULT_TYPE,
-    ) -> None:
-        del context
-        message = telegram_message_from_update(update)
-        if message is not None and self._is_allowed(message):
-            await self._reset_session(message)
-
-    async def _chat_id_update(
-        self,
-        update: Update,
-        context: ContextTypes.DEFAULT_TYPE,
-    ) -> None:
-        del context
-        message = telegram_message_from_update(update)
-        if message is not None and self._is_allowed(message):
-            await self._send_chunks(message, str(message.chat_id))
-
-    async def _unknown_update(
-        self,
-        update: Update,
-        context: ContextTypes.DEFAULT_TYPE,
-    ) -> None:
-        del context
-        message = telegram_message_from_update(update)
-        if message is not None and self._is_allowed(message):
-            await self._send_chunks(message, "Unknown command. Use /help.")
-
-    async def _message_update(
-        self,
-        update: Update,
-        context: ContextTypes.DEFAULT_TYPE,
-    ) -> None:
-        del context
-        message = telegram_message_from_update(update)
-        if message is not None:
-            await self.handle_message(message)
-
-    async def _error_update(
-        self,
-        update: object,
-        context: ContextTypes.DEFAULT_TYPE,
-    ) -> None:
-        del update
-        if context.error is None:
-            log.error("Telegram handler failed")
-            return
-        log.exception(
-            "Telegram handler failed",
-            exc_info=(
-                type(context.error),
-                context.error,
-                context.error.__traceback__,
-            ),
-        )
-
-    def _is_allowed(self, message: TelegramMessage) -> bool:
-        if self.allowed_chat_ids and message.chat_id not in self.allowed_chat_ids:
-            if self.debug:
-                log.info("Ignoring unauthorized Telegram chat %s", message.chat_id)
-            return False
-        return True
-
-    async def _select_agent(self, message: TelegramMessage, raw_agent_id: str) -> None:
-        agent_id = raw_agent_id.strip()
-        if not agent_id:
-            await self._send_chunks(message, agents_text())
-            return
-        if agent_id not in TELEGRAM_AGENT_BY_ID:
-            await self._send_chunks(
-                message,
-                f"Unknown agent '{agent_id}'.\n\n{agents_text()}",
-            )
-            return
-        self._selected_agent_by_chat[message.chat_id] = agent_id
-        spec = TELEGRAM_AGENT_BY_ID[agent_id]
-        await self._send_chunks(
-            message,
-            f"Switched to {spec.title}. Send a message to talk to {spec.id}.",
-        )
-
-    async def _reset_session(self, message: TelegramMessage) -> None:
-        clerk_user_id = await self._linked_clerk_user_id(message)
+        clerk_user_id = await self.auth.linked_user_id(message.user_id)
         if clerk_user_id is None:
-            await self._send_login_required(message)
-            return
-        agent_id = self._selected_agent_by_chat.get(
-            message.chat_id, self.default_agent_id
-        )
-        spec = TELEGRAM_AGENT_BY_ID[agent_id]
-        await self.services.session_service.delete_session(
-            app_name=spec.id,
-            user_id=clerk_user_id,
-            session_id=_session_id(message, spec.id),
-        )
-        await self._ensure_session(
-            message=message,
-            spec=spec,
-            clerk_user_id=clerk_user_id,
-            initial_state={"user_id": clerk_user_id},
-        )
-        await self._send_chunks(message, f"Reset {spec.title} for this chat.")
-
-    async def _run_agent(self, message: TelegramMessage, agent_id: str) -> None:
-        spec = TELEGRAM_AGENT_BY_ID[agent_id]
-
-        clerk_user_id = await self._linked_clerk_user_id(message)
-        if clerk_user_id is None:
-            await self._send_login_required(message)
+            await self._send_text(message, _LOGIN_REQUIRED_TEXT)
             return
 
-        credential_state, missing = await self._credential_state(clerk_user_id)
+        credential_state, missing = await self.credentials.check(clerk_user_id)
         if missing:
-            await self._send_chunks(
+            await self._send_text(
                 message,
-                _connect_required_text(missing, self.connect_url),
+                CredentialGate.format_missing(missing, self.credentials.connect_url),
             )
             return
 
-        runtime = self._get_runtime(spec)
-
-        await self._ensure_session(
+        await _ensure_session(
+            self.session_service,
             message=message,
-            spec=spec,
             clerk_user_id=clerk_user_id,
             initial_state=credential_state,
         )
@@ -361,15 +319,15 @@ class TelegramAgentsBot:
         thinking_message = await self._send_reply(message, "Thinking...")
 
         response_texts: list[str] = []
-        state_delta: dict[str, Any] = {}
+        state_delta: dict[str, StateValue] = {}
         try:
             new_message = types.Content(
                 role="user",
                 parts=[types.Part(text=message.text)],
             )
-            async for event in runtime.runner.run_async(
+            async for event in self.runner.run_async(
                 user_id=clerk_user_id,
-                session_id=_session_id(message, spec.id),
+                session_id=_session_id(message),
                 new_message=new_message,
                 state_delta={
                     **credential_state,
@@ -388,145 +346,168 @@ class TelegramAgentsBot:
 
             text = _dedupe_join(response_texts)
             if not text:
-                text = await self._state_summary(
-                    spec,
-                    message,
-                    clerk_user_id,
-                    {**credential_state, **state_delta},
+                text = await _state_summary(
+                    self.session_service,
+                    message=message,
+                    clerk_user_id=clerk_user_id,
+                    delta={**credential_state, **state_delta},
                 )
             if not text:
                 text = "Done."
-            await self._replace_thinking(
-                message=message,
-                thinking_message=thinking_message,
-                text=text,
-            )
+            await self._replace_thinking(message, thinking_message, text)
         except Exception as exc:
-            log.exception("Telegram agent run failed for %s", spec.id)
+            log.exception("Telegram agent run failed for %s", ORCHESTRATOR_AGENT_ID)
             await self._replace_thinking(
-                message=message,
-                thinking_message=thinking_message,
-                text=f"Sorry, {spec.title} hit an error: {exc}",
+                message,
+                thinking_message,
+                f"Sorry, {ORCHESTRATOR_TITLE} hit an error: {exc}",
             )
 
-    def _get_runtime(self, spec: TelegramAgentSpec) -> _AgentRuntime:
-        runtime = self._runtimes.get(spec.id)
-        if runtime is not None:
-            return runtime
+    # ----- command handlers ------------------------------------------------
 
-        root = spec.build()
-        runner_kwargs: dict[str, Any] = {
-            "app_name": spec.id,
-            "plugins": [SlimMcpPlugin()],
-            "artifact_service": self.services.artifact_service,
-            "session_service": self.services.session_service,
-            "memory_service": self.services.memory_service,
-            "credential_service": self.services.credential_service,
-            "auto_create_session": False,
-        }
-        if isinstance(root, BaseAgent):
-            runner = Runner(agent=root, **runner_kwargs)
-        else:
-            runner = Runner(node=root, **runner_kwargs)
-        runtime = _AgentRuntime(spec=spec, runner=runner)
-        self._runtimes[spec.id] = runtime
-        return runtime
-
-    async def _ensure_session(
+    async def _on_help(
         self,
-        *,
-        message: TelegramMessage,
-        spec: TelegramAgentSpec,
-        clerk_user_id: str,
-        initial_state: Mapping[str, object],
+        update: Update,
+        context: ContextTypes.DEFAULT_TYPE,
     ) -> None:
-        session = await self.services.session_service.get_session(
-            app_name=spec.id,
-            user_id=clerk_user_id,
-            session_id=_session_id(message, spec.id),
-        )
-        if session is None:
-            await self.services.session_service.create_session(
-                app_name=spec.id,
-                user_id=clerk_user_id,
-                session_id=_session_id(message, spec.id),
-                state={
-                    **initial_state,
-                    "telegram_chat_id": str(message.chat_id),
-                    "telegram_user_id": str(message.user_id),
-                    "user_id": clerk_user_id,
-                },
-            )
+        message = telegram_message_from_update(update)
+        if message is not None and self._is_allowed(message):
+            await self.send_help(message)
 
-    async def _state_summary(
+    async def send_help(self, message: TelegramMessage) -> None:
+        reply_markup: InlineKeyboardMarkup | None = None
+        if self.mini_app_url:
+            reply_markup = InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "Open App", web_app=WebAppInfo(url=self.mini_app_url)
+                        )
+                    ]
+                ]
+            )
+        await self._send_text(message, help_text(), reply_markup=reply_markup)
+
+    async def _on_login(
         self,
-        spec: TelegramAgentSpec,
-        message: TelegramMessage,
-        clerk_user_id: str,
-        state_delta: Mapping[str, Any],
-    ) -> str:
-        session = await self.services.session_service.get_session(
-            app_name=spec.id,
-            user_id=clerk_user_id,
-            session_id=_session_id(message, spec.id),
-        )
-        state = dict(session.state) if session is not None else {}
-        state.update(state_delta)
-        return format_state_summary(spec, state)
+        update: Update,
+        context: ContextTypes.DEFAULT_TYPE,
+    ) -> None:
+        message = telegram_message_from_update(update)
+        if message is not None and self._is_allowed(message):
+            await self.send_login_link(message)
 
     async def send_login_link(self, message: TelegramMessage) -> None:
-        if not self.link_base_url:
-            await self._send_chunks(
+        url = await self.auth.build_login_url(
+            telegram_user_id=message.user_id,
+            telegram_chat_id=message.chat_id,
+        )
+        if url is None:
+            await self._send_text(
                 message,
                 "Telegram login is not configured. Set TELEGRAM_LINK_BASE_URL.",
             )
             return
-        token = await create_link_token(
-            self.services.engine,
-            telegram_user_id=str(message.user_id),
-            telegram_chat_id=str(message.chat_id),
-        )
-        url = _url_with_token(self.link_base_url, token)
-        await self._send_chunks(
+        await self._send_text(
             message,
             "Sign in to connect this Telegram chat to your account:\n" + url,
         )
 
-    async def _send_login_required(self, message: TelegramMessage) -> None:
-        await self._send_chunks(
-            message,
-            "Sign in is required before I can use your Strava and QFC credentials. "
-            "Send /login to link this Telegram account.",
-        )
-
-    async def _unlink(self, message: TelegramMessage) -> None:
-        unlinked = await unlink_telegram_user(
-            self.services.engine,
-            telegram_user_id=str(message.user_id),
-        )
-        if unlinked:
-            await self._send_chunks(message, "Telegram access has been unlinked.")
-        else:
-            await self._send_chunks(message, "No linked account was found.")
-
-    async def _linked_clerk_user_id(self, message: TelegramMessage) -> str | None:
-        return await get_linked_clerk_user_id(
-            self.services.engine,
-            telegram_user_id=str(message.user_id),
-        )
-
-    async def _credential_state(
+    async def _on_logout(
         self,
-        clerk_user_id: str,
-    ) -> tuple[dict[str, object], tuple[str, ...]]:
-        if self.credential_state_loader is not None:
-            return await self.credential_state_loader(clerk_user_id)
-        credential_state = await telegram_credential_state(clerk_user_id)
-        return credential_state.state, credential_state.missing
+        update: Update,
+        context: ContextTypes.DEFAULT_TYPE,
+    ) -> None:
+        message = telegram_message_from_update(update)
+        if message is None or not self._is_allowed(message):
+            return
+        unlinked = await self.auth.unlink(message.user_id)
+        text = (
+            "Telegram access has been unlinked."
+            if unlinked
+            else "No linked account was found."
+        )
+        await self._send_text(message, text)
+
+    async def _on_reset(
+        self,
+        update: Update,
+        context: ContextTypes.DEFAULT_TYPE,
+    ) -> None:
+        message = telegram_message_from_update(update)
+        if message is not None and self._is_allowed(message):
+            await self._reset_session(message)
+
+    async def _on_chat_id(
+        self,
+        update: Update,
+        context: ContextTypes.DEFAULT_TYPE,
+    ) -> None:
+        message = telegram_message_from_update(update)
+        if message is not None and self._is_allowed(message):
+            await self._send_text(message, str(message.chat_id))
+
+    async def _on_unknown(
+        self,
+        update: Update,
+        context: ContextTypes.DEFAULT_TYPE,
+    ) -> None:
+        message = telegram_message_from_update(update)
+        if message is not None and self._is_allowed(message):
+            await self._send_text(message, "Unknown command. Use /help.")
+
+    async def _on_text(
+        self,
+        update: Update,
+        context: ContextTypes.DEFAULT_TYPE,
+    ) -> None:
+        message = telegram_message_from_update(update)
+        if message is not None:
+            await self.handle_message(message)
+
+    async def _on_error(
+        self,
+        update: object,
+        context: ContextTypes.DEFAULT_TYPE,
+    ) -> None:
+        del update
+        if context.error is None:
+            log.error("Telegram handler failed")
+            return
+        log.exception(
+            "Telegram handler failed",
+            exc_info=(
+                type(context.error),
+                context.error,
+                context.error.__traceback__,
+            ),
+        )
+
+    # ----- auth/session helpers --------------------------------------------
+
+    async def _reset_session(self, message: TelegramMessage) -> None:
+        clerk_user_id = await self.auth.linked_user_id(message.user_id)
+        if clerk_user_id is None:
+            await self._send_text(message, _LOGIN_REQUIRED_TEXT)
+            return
+        await _reset_session(
+            self.session_service,
+            message=message,
+            clerk_user_id=clerk_user_id,
+        )
+        await self._send_text(message, f"Reset {ORCHESTRATOR_TITLE} for this chat.")
+
+    # ----- message helpers -------------------------------------------------
+
+    def _is_allowed(self, message: TelegramMessage) -> bool:
+        if self.allowed_chat_ids and message.chat_id not in self.allowed_chat_ids:
+            if self.debug:
+                log.info("Ignoring unauthorized Telegram chat %s", message.chat_id)
+            return False
+        return True
 
     async def _replace_thinking(
         self,
-        *,
         message: TelegramMessage,
         thinking_message: TelegramSentMessage | None,
         text: str,
@@ -544,19 +525,13 @@ class TelegramAgentsBot:
         for chunk in chunks[1:]:
             await self._send_reply(message, chunk)
 
-    async def _send_chunks(
+    async def _send_text(
         self,
         message: TelegramMessage,
         text: str,
         reply_markup: InlineKeyboardMarkup | None = None,
     ) -> None:
-        chunks = chunk_text(text)
-        for i, chunk in enumerate(chunks):
-            await self._send_reply(
-                message,
-                chunk,
-                reply_markup=reply_markup if i == 0 else None,
-            )
+        await send_text_chunks(message, text, reply_markup)
 
     async def _send_reply(
         self,
@@ -564,14 +539,12 @@ class TelegramAgentsBot:
         text: str,
         reply_markup: InlineKeyboardMarkup | None = None,
     ) -> TelegramSentMessage | None:
-        if message.reply_target is None:
-            log.warning("Cannot reply to Telegram message without a reply target")
-            return None
-        return await message.reply_target.reply_text(
-            text,
-            disable_web_page_preview=True,
-            reply_markup=reply_markup,
-        )
+        return await send_reply(message, text, reply_markup)
+
+
+# ---------------------------------------------------------------------------
+# Module-level helpers
+# ---------------------------------------------------------------------------
 
 
 def telegram_message_from_update(update: Update) -> TelegramMessage | None:
@@ -597,106 +570,15 @@ def telegram_message_from_update(update: Update) -> TelegramMessage | None:
 def help_text() -> str:
     return (
         "ADK Telegram bot\n\n"
-        f"Default agent: {ORCHESTRATOR_AGENT_ID}\n\n"
+        f"Default agent: {ORCHESTRATOR_AGENT_ID} - {ORCHESTRATOR_TITLE}\n\n"
         "Commands:\n"
         "/login - link Telegram to your signed-in web account\n"
         "/logout - unlink Telegram from your web account\n"
-        "/agents - list available agents\n"
-        "/agent <id> - switch the active agent for this chat\n"
-        "/current - show the selected agent\n"
-        "/new - start a new conversation with the selected agent\n"
+        "/new - start a new conversation\n"
         "/reset - alias for /new\n"
         "/chat_id - show this Telegram chat ID\n\n"
-        "After selecting an agent, send normal messages to talk to it."
+        "After linking, send normal messages to talk to the orchestrator."
     )
-
-
-def agents_text() -> str:
-    lines = ["Available agents:"]
-    for spec in TELEGRAM_AGENTS:
-        lines.append(f"/agent {spec.id} - {spec.title}: {spec.description}")
-    return "\n".join(lines)
-
-
-def _session_id(message: TelegramMessage, agent_id: str) -> str:
-    return f"telegram:{message.chat_id}:{agent_id}"
-
-
-def _url_with_token(base_url: str, token: str) -> str:
-    separator = "&" if "?" in base_url else "?"
-    return f"{base_url}{separator}{urlencode({'token': token})}"
-
-
-def _default_connect_url(link_base_url: str | None) -> str | None:
-    if not link_base_url:
-        return None
-    return link_base_url.split("/telegram/link", 1)[0].rstrip("/") + "/console/settings"
-
-
-def _connect_required_text(missing: tuple[str, ...], connect_url: str | None) -> str:
-    providers = ", ".join(missing)
-    verb = "are" if len(missing) > 1 else "is"
-    text = f"Your account is linked, but {providers} {verb} not connected yet."
-    if connect_url:
-        return text + f"\nConnect it here: {connect_url}"
-    return text + "\nOpen the web app settings page to connect it, then try again."
-
-
-def _dedupe_join(texts: list[str]) -> str:
-    output: list[str] = []
-    seen: set[str] = set()
-    for text in texts:
-        normalized = text.strip()
-        if not normalized or normalized in seen:
-            continue
-        seen.add(normalized)
-        output.append(normalized)
-    return "\n\n".join(output).strip()
-
-
-def format_state_summary(spec: TelegramAgentSpec, state: Mapping[str, Any]) -> str:
-    visible: list[str] = []
-    for key, value in state.items():
-        if _is_hidden_state_key(key) or _is_empty(value):
-            continue
-        rendered = _render_state_value(value)
-        if rendered:
-            visible.append(f"{key}: {rendered}")
-        if len(visible) >= 6:
-            break
-    if not visible:
-        return ""
-    return f"{spec.title} updated state:\n" + "\n".join(visible)
-
-
-def _is_hidden_state_key(key: str) -> bool:
-    return key in _HIDDEN_STATE_KEYS or key.startswith(_HIDDEN_STATE_PREFIXES)
-
-
-def _is_empty(value: Any) -> bool:
-    return value is None or value == "" or value == [] or value == {}
-
-
-def _render_state_value(value: Any) -> str:
-    if isinstance(value, str):
-        return _truncate(value.replace("\n\n", "\n"), 900)
-    if isinstance(value, bool | int | float):
-        return str(value)
-    if isinstance(value, list):
-        preview = ", ".join(_truncate(str(item), 80) for item in value[:5])
-        suffix = f" (+{len(value) - 5} more)" if len(value) > 5 else ""
-        return _truncate(preview + suffix, 900)
-    if isinstance(value, Mapping):
-        parts = [f"{k}={_truncate(str(v), 80)}" for k, v in list(value.items())[:5]]
-        suffix = f" (+{len(value) - 5} more)" if len(value) > 5 else ""
-        return _truncate(", ".join(parts) + suffix, 900)
-    return _truncate(str(value), 900)
-
-
-def _truncate(text: str, limit: int) -> str:
-    if len(text) <= limit:
-        return text
-    return text[: limit - 3].rstrip() + "..."
 
 
 def chunk_text(text: str) -> list[str]:
@@ -712,6 +594,166 @@ def chunk_text(text: str) -> list[str]:
         remaining = remaining[split_at:].lstrip()
     chunks.append(remaining)
     return chunks
+
+
+async def send_text_chunks(
+    message: TelegramMessage,
+    text: str,
+    reply_markup: InlineKeyboardMarkup | None = None,
+) -> None:
+    chunks = chunk_text(text)
+    for i, chunk in enumerate(chunks):
+        await send_reply(
+            message,
+            chunk,
+            reply_markup=reply_markup if i == 0 else None,
+        )
+
+
+async def send_reply(
+    message: TelegramMessage,
+    text: str,
+    reply_markup: InlineKeyboardMarkup | None = None,
+) -> TelegramSentMessage | None:
+    if message.reply_target is None:
+        log.warning("Cannot reply to Telegram message without a reply target")
+        return None
+    return await message.reply_target.reply_text(
+        text,
+        disable_web_page_preview=True,
+        reply_markup=reply_markup,
+    )
+
+
+def _dedupe_join(texts: list[str]) -> str:
+    output: list[str] = []
+    seen: set[str] = set()
+    for text in texts:
+        normalized = text.strip()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        output.append(normalized)
+    return "\n\n".join(output).strip()
+
+
+def format_state_summary(state: Mapping[str, StateValue]) -> str:
+    visible: list[str] = []
+    for key, value in state.items():
+        if _is_hidden_state_key(key) or _is_empty(value):
+            continue
+        rendered = _render_state_value(value)
+        if rendered:
+            visible.append(f"{key}: {rendered}")
+        if len(visible) >= 6:
+            break
+    if not visible:
+        return ""
+    return f"{ORCHESTRATOR_TITLE} updated state:\n" + "\n".join(visible)
+
+
+def _is_hidden_state_key(key: str) -> bool:
+    return key in _HIDDEN_STATE_KEYS or key.startswith(_HIDDEN_STATE_PREFIXES)
+
+
+def _is_empty(value: StateValue) -> bool:
+    return value is None or value == "" or value == [] or value == {}
+
+
+def _render_state_value(value: StateValue) -> str:
+    if isinstance(value, str):
+        return _truncate(value.replace("\n\n", "\n"), 900)
+    if isinstance(value, bool | int | float):
+        return str(value)
+    if isinstance(value, list):
+        items = cast("list[StateValue]", value)
+        preview = ", ".join(_truncate(str(item), 80) for item in items[:5])
+        suffix = f" (+{len(items) - 5} more)" if len(items) > 5 else ""
+        return _truncate(preview + suffix, 900)
+    if isinstance(value, Mapping):
+        mapping = cast("Mapping[str, StateValue]", value)
+        entries = list(mapping.items())[:5]
+        parts = [f"{k}={_truncate(str(v), 80)}" for k, v in entries]
+        suffix = f" (+{len(mapping) - 5} more)" if len(mapping) > 5 else ""
+        return _truncate(", ".join(parts) + suffix, 900)
+    return _truncate(str(value), 900)
+
+
+def _truncate(text: str, limit: int) -> str:
+    if len(text) <= limit:
+        return text
+    return text[: limit - 3].rstrip() + "..."
+
+
+def _default_connect_url(link_base_url: str | None) -> str | None:
+    if not link_base_url:
+        return None
+    return link_base_url.split("/telegram/link", 1)[0].rstrip("/") + "/console/settings"
+
+
+# ---------------------------------------------------------------------------
+# Factories
+# ---------------------------------------------------------------------------
+
+
+def build_application(
+    token: str,
+) -> Application[
+    ExtBot[None],
+    ContextTypes.DEFAULT_TYPE,
+    dict[str, object],
+    dict[str, object],
+    dict[str, object],
+    JobQueue[ContextTypes.DEFAULT_TYPE],
+]:
+    """Build a :class:`telegram.ext.Application` for the given BotFather token."""
+    return ApplicationBuilder().token(token).build()
+
+
+def build_orchestrator_runner(services: AgentServices) -> Runner:
+    """Wrap the orchestrator agent in an ADK :class:`Runner`."""
+    return Runner(
+        agent=build_orchestrator_agent(),
+        app_name=ORCHESTRATOR_AGENT_ID,
+        plugins=[SlimMcpPlugin()],
+        artifact_service=services.artifact_service,
+        session_service=services.session_service,
+        memory_service=services.memory_service,
+        credential_service=services.credential_service,
+        auto_create_session=False,
+    )
+
+
+def build_telegram_runner(
+    *,
+    token: str,
+    services: AgentServices | None = None,
+    allowed_chat_ids: set[int] | None = None,
+    link_base_url: str | None = None,
+    connect_url: str | None = None,
+    mini_app_url: str | None = None,
+    credential_loader: CredentialLoader | None = None,
+    debug: bool = False,
+) -> TelegramRunner:
+    """Compose a :class:`TelegramRunner` with all of its dependencies wired up."""
+    services = services or create_agent_services()
+    application = build_application(token)
+    runner = build_orchestrator_runner(services)
+    auth = TelegramAuth(engine=services.engine, link_base_url=link_base_url)
+    credentials = CredentialGate(
+        connect_url=connect_url or _default_connect_url(link_base_url),
+        loader=credential_loader,
+    )
+    return TelegramRunner(
+        runner=runner,
+        application=application,
+        session_service=services.session_service,
+        auth=auth,
+        credentials=credentials,
+        allowed_chat_ids=allowed_chat_ids,
+        mini_app_url=mini_app_url,
+        debug=debug,
+    )
 
 
 def parse_allowed_chat_ids(value: str | None) -> set[int]:
