@@ -14,7 +14,4 @@ services:
       OTEL_SERVICE_NAME: agents-gateway
       ADK_SESSION_DB_PATH: /data/adk_sessions.sqlite
     volumes:
-      - adk-session-data:/data
-
-volumes:
-  adk-session-data:
+      - ./.data:/data
