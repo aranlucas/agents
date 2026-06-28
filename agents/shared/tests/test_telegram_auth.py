@@ -1,8 +1,10 @@
 from collections.abc import AsyncIterator
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from agents_shared import telegram_auth
 from agents_shared.telegram_auth import (
+    _lookup_clerk_user_by_external_id,
     check_link_secret,
     consume_link_token,
     create_link_token,
@@ -143,6 +145,61 @@ async def test_get_linked_clerk_user_id_skips_bapi_when_sqlite_row_exists(
 
     assert result == "clerk-linked"
     assert bapi_calls == []
+
+
+@pytest.mark.asyncio
+async def test_lookup_by_external_id_returns_none_without_secret_key(
+    monkeypatch,
+) -> None:
+    monkeypatch.delenv("CLERK_SECRET_KEY", raising=False)
+    assert await _lookup_clerk_user_by_external_id("tg-123") is None
+
+
+@pytest.mark.asyncio
+async def test_lookup_by_external_id_returns_user_id_on_match(monkeypatch) -> None:
+    monkeypatch.setenv("CLERK_SECRET_KEY", "sk_test_fake")
+    mock_resp = MagicMock(is_success=True)
+    mock_resp.json.return_value = [{"id": "user_abc", "external_id": "tg-123"}]
+    mock_client = AsyncMock()
+    mock_client.get = AsyncMock(return_value=mock_resp)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+    with patch(
+        "agents_shared.telegram_auth.httpx.AsyncClient", return_value=mock_client
+    ):
+        result = await _lookup_clerk_user_by_external_id("tg-123")
+    assert result == "user_abc"
+
+
+@pytest.mark.asyncio
+async def test_lookup_by_external_id_returns_none_on_http_error(monkeypatch) -> None:
+    monkeypatch.setenv("CLERK_SECRET_KEY", "sk_test_fake")
+    mock_resp = MagicMock(is_success=False)
+    mock_client = AsyncMock()
+    mock_client.get = AsyncMock(return_value=mock_resp)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+    with patch(
+        "agents_shared.telegram_auth.httpx.AsyncClient", return_value=mock_client
+    ):
+        result = await _lookup_clerk_user_by_external_id("tg-123")
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_lookup_by_external_id_returns_none_when_list_empty(monkeypatch) -> None:
+    monkeypatch.setenv("CLERK_SECRET_KEY", "sk_test_fake")
+    mock_resp = MagicMock(is_success=True)
+    mock_resp.json.return_value = []
+    mock_client = AsyncMock()
+    mock_client.get = AsyncMock(return_value=mock_resp)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+    with patch(
+        "agents_shared.telegram_auth.httpx.AsyncClient", return_value=mock_client
+    ):
+        result = await _lookup_clerk_user_by_external_id("tg-unknown")
+    assert result is None
 
 
 def test_check_link_secret_uses_constant_time_compare(monkeypatch) -> None:
