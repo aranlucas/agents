@@ -18,12 +18,12 @@ export const PROVIDERS: Record<
   strava: {
     id: "strava",
     label: "Strava",
-    clerkProviders: ["custom_strava", "oauth_custom_strava"],
+    clerkProviders: ["oauth_custom_strava", "custom_strava"],
   },
   kroger: {
     id: "kroger",
     label: "Kroger",
-    clerkProviders: ["custom_shopping", "oauth_custom_shopping"],
+    clerkProviders: ["oauth_custom_shopping", "custom_shopping"],
   },
 };
 

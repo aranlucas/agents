@@ -5,6 +5,7 @@ requires-python = ">=3.14"
 dependencies = [
   "ag-ui-adk>=0.6.5",
   "asyncpg>=0.30.0",
+  "clerk-backend-api>=2.0.0",
   "fastapi",
   "google-adk[eval,mcp]>=2.2.0",
   "google-genai",
