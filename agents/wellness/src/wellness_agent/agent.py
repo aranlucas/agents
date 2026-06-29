@@ -75,6 +75,7 @@ def _build_agent(
 
     return LlmAgent(
         name="wellness_agent",
+        description="In-process grocery and fitness orchestration.",
         model=LiteLlm(model=model),
         rerun_on_resume=True,
         retry_config=DEFAULT_RETRY_CONFIG,
@@ -115,6 +116,7 @@ def build_eval_agent() -> LlmAgent:
 
     return LlmAgent(
         name="wellness_agent",
+        description="In-process grocery and fitness orchestration.",
         model=LiteLlm(model="groq/llama-3.3-70b-versatile"),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,

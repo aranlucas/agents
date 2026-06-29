@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 from agents_shared.state import make_state_initializer
 from google.adk.tools.function_tool import FunctionTool
-from oralboards_agent.agent import OralBoardsState, build_agent
+from oralboards_agent.agent import OralBoardsState, build_agent, build_telegram_agent
 from oralboards_agent.tools.append_exchange import append_exchange
 from oralboards_agent.tools.read_doc import read_doc
 from oralboards_agent.tools.search_docs import search_docs
@@ -119,6 +119,16 @@ def test_agent_instruction_uses_adk_state_placeholders() -> None:
     assert "{transcript}" in instruction
     assert "{score_card}" in instruction
     assert "{loading_step}" in instruction
+
+
+def test_telegram_gemini_agent_has_http_retries() -> None:
+    agent = build_telegram_agent()
+
+    assert getattr(agent.model, "model", None) == "gemini-3.1-flash-lite"
+    retry_options = getattr(agent.model, "retry_options", None)
+    assert retry_options is not None
+    assert retry_options.initial_delay == 1
+    assert retry_options.attempts == 2
 
 
 def test_agent_instruction_includes_loading_step_protocol() -> None:

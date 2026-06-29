@@ -48,6 +48,7 @@ def _build_agent(*, include_agui: bool) -> LlmAgent:
 
     return LlmAgent(
         name="spreadsheet_agent",
+        description="Spreadsheet creation, editing, and summaries.",
         model=LiteLlm(model="groq/llama-3.3-70b-versatile"),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,

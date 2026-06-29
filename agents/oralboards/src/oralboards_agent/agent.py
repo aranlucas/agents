@@ -6,6 +6,7 @@ from ag_ui_adk import AGUIToolset
 from agents_shared.state import make_state_initializer
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
+    GEMINI_RETRY_OPTIONS,
     on_model_error_callback,
     stop_on_terminal_text,
 )
@@ -71,6 +72,7 @@ def _build_agent(*, include_agui: bool, model: BaseLlm | None = None) -> LlmAgen
 
     return LlmAgent(
         name="oralboards_agent",
+        description="Pediatric dentistry oral-board practice.",
         model=model or LiteLlm(model="cerebras/gpt-oss-120b"),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
@@ -89,7 +91,10 @@ def build_agent() -> LlmAgent:
 def build_telegram_agent() -> LlmAgent:
     return _build_agent(
         include_agui=False,
-        model=Gemini(model="gemini-3.1-flash-lite"),
+        model=Gemini(
+            model="gemini-3.1-flash-lite",
+            retry_options=GEMINI_RETRY_OPTIONS,
+        ),
     )
 
 
@@ -101,6 +106,7 @@ def build_eval_agent() -> LlmAgent:
     """
     return LlmAgent(
         name="oralboards_agent",
+        description="Pediatric dentistry oral-board practice.",
         model=LiteLlm(model="cerebras/gpt-oss-120b"),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,

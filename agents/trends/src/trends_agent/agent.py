@@ -7,6 +7,7 @@ from ag_ui_adk import get_a2ui_tool
 from agents_shared.state import make_state_initializer
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
+    GEMINI_RETRY_OPTIONS,
     on_model_error_callback,
     stop_on_terminal_text,
     strip_thinking_before_model,
@@ -110,7 +111,10 @@ def build_agent() -> LlmAgent:
             # because both may produce thought=True (reasoning) parts. ADK's
             # LiteLlm serialises those as reasoning_content in the OpenAI message
             # body, which Cerebras, Groq, and Mistral reject with 400.
-            "model": Gemini(model="gemini-2.5-flash"),
+            "model": Gemini(
+                model="gemini-2.5-flash",
+                retry_options=GEMINI_RETRY_OPTIONS,
+            ),
             "guidelines": {"composition_guide": TRENDS_A2UI_COMPOSITION_GUIDE},
             "default_surface_id": "trends-result",
             "default_catalog_id": TRENDS_CATALOG_ID,
@@ -125,7 +129,7 @@ def build_agent() -> LlmAgent:
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,
         instruction=INSTRUCTION,
-        description="Generates SQL, executes BigQuery, verifies findings against the web, and renders A2UI analysis.",
+        description="Google Trends BigQuery analysis and verification.",
         before_tool_callback=throttle_web_search,
         before_agent_callback=state_init,
         tools=[

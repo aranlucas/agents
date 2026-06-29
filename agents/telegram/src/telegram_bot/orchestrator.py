@@ -2,17 +2,26 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
-from typing import Protocol
-
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
     on_model_error_callback,
     stop_on_terminal_text,
     strip_thinking_before_model,
 )
-from google.adk.agents import BaseAgent, LlmAgent
+from excalidraw_agent.agent import build_telegram_agent as build_excalidraw
+from expense_agent.agent import build_telegram_agent as build_expense
+from fitness_agent.agent import build_telegram_agent as build_fitness
+from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
+from grocery_agent.agent import build_telegram_agent as build_grocery
+from oralboards_agent.agent import build_telegram_agent as build_oralboards
+from presentation_agent.agent import build_telegram_agent as build_presentation
+from research_agent.agent import build_telegram_agent as build_research
+from resume_agent.agent import build_telegram_agent as build_resume
+from spreadsheet_agent.agent import build_telegram_agent as build_spreadsheet
+from travel_agent.agent import build_telegram_agent as build_travel
+from trends_agent.agent import build_agent as build_trends
+from wellness_agent.agent import build_telegram_agent as build_wellness
 
 ORCHESTRATOR_AGENT_ID = "orchestrator"
 ORCHESTRATOR_TITLE = "Orchestrator"
@@ -22,31 +31,26 @@ ORCHESTRATOR_DESCRIPTION = (
 TELEGRAM_ORCHESTRATOR_MODEL = "mistral/mistral-medium-latest"
 
 
-class TelegramAgentLike(Protocol):
-    @property
-    def description(self) -> str: ...
-
-    @property
-    def build(self) -> Callable[[], object]: ...
-
-
-def _base_agents(specs: Iterable[TelegramAgentLike]) -> list[BaseAgent]:
-    base_agents: list[BaseAgent] = []
-    for spec in specs:
-        agent = spec.build()
-        if isinstance(agent, BaseAgent):
-            agent.description = spec.description
-            if isinstance(agent, LlmAgent) and not agent.sub_agents:
-                agent.mode = "task"
-            base_agents.append(agent)
-    return base_agents
-
-
 def build_orchestrator_agent() -> LlmAgent:
     """Build a Telegram-first router over the BaseAgent-backed agents."""
-    from .agent_registry import TELEGRAM_SURFACED_AGENTS
+    child_agents = [
+        build_excalidraw(),
+        build_travel(),
+        build_grocery(),
+        build_fitness(),
+        build_wellness(),
+        build_expense(),
+        build_oralboards(),
+        build_trends(),
+        build_resume(),
+        build_research(),
+        build_spreadsheet(),
+        build_presentation(),
+    ]
+    for agent in child_agents:
+        if isinstance(agent, LlmAgent) and not agent.sub_agents:
+            agent.mode = "task"
 
-    child_agents = _base_agents(TELEGRAM_SURFACED_AGENTS)
     return LlmAgent(
         name="telegram_orchestrator_agent",
         description="Routes Telegram user requests to the best ADK sub-agent.",

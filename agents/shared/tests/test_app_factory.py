@@ -13,6 +13,7 @@ from agents_shared.app_factory import (
 )
 from agents_shared.dependencies import AgentServices
 from agents_shared.tools import (
+    GEMINI_RETRY_OPTIONS,
     ProviderThrottle,
     RateLimit,
     get_current_date,
@@ -133,6 +134,11 @@ def test_get_current_date_returns_iso_keys():
     import datetime
 
     datetime.date.fromisoformat(result["date"])
+
+
+def test_gemini_retry_options_match_adk_429_guidance():
+    assert GEMINI_RETRY_OPTIONS.initial_delay == 1
+    assert GEMINI_RETRY_OPTIONS.attempts == 2
 
 
 def test_strip_thinking_removes_thought_true_parts():

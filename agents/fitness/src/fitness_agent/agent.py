@@ -96,6 +96,7 @@ def build_agent(
 
     return LlmAgent(
         name="fitness_agent",
+        description="Training plans and Strava-backed activity context.",
         model=LiteLlm(model=model),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
@@ -134,6 +135,7 @@ def build_eval_agent(
     """
     return LlmAgent(
         name="fitness_agent",
+        description="Training plans and Strava-backed activity context.",
         model=LiteLlm(model="groq/llama-3.3-70b-versatile"),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,

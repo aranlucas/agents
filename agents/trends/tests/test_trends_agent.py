@@ -110,6 +110,19 @@ def test_a2ui_tool_uses_composition_guide_not_generation_guidelines() -> None:
     assert "generation_guidelines" not in guidelines
 
 
+def test_a2ui_gemini_model_has_http_retries() -> None:
+    a = agent.build_agent()
+    a2ui_tools = [t for t in a.tools if getattr(t, "name", None) == "generate_a2ui"]
+    assert len(a2ui_tools) == 1
+    model = a2ui_tools[0]._cfg.get("model")
+
+    assert getattr(model, "model", None) == "gemini-2.5-flash"
+    retry_options = getattr(model, "retry_options", None)
+    assert retry_options is not None
+    assert retry_options.initial_delay == 1
+    assert retry_options.attempts == 2
+
+
 def test_trends_catalog_id_is_stable() -> None:
     assert agent.TRENDS_CATALOG_ID == ("copilotkit://trends/v1")
 

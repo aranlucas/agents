@@ -77,6 +77,7 @@ def build_agent(
 
     return LlmAgent(
         name="grocery_agent",
+        description="Meal planning, pantry, shopping list, and cart support.",
         model=LiteLlm(model="nvidia_nim/deepseek-ai/deepseek-v4-flash"),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
@@ -113,6 +114,7 @@ def build_eval_agent(
     """
     return LlmAgent(
         name="grocery_agent",
+        description="Meal planning, pantry, shopping list, and cart support.",
         model=LiteLlm(model="nvidia_nim/deepseek-ai/deepseek-v4-flash"),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,

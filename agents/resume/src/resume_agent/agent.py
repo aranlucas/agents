@@ -30,6 +30,7 @@ class ResumeState(BaseModel):
 def _build_agent(*, include_agui: bool, model: str) -> LlmAgent:
     return LlmAgent(
         name="resume_agent",
+        description="Public resume Q&A.",
         model=LiteLlm(model=model),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
@@ -63,6 +64,7 @@ def build_eval_agent() -> LlmAgent:
     """
     return LlmAgent(
         name="resume_agent",
+        description="Public resume Q&A.",
         model=LiteLlm(model="mistral/mistral-medium-latest"),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
