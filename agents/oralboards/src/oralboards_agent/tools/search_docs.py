@@ -2,7 +2,6 @@ import asyncio
 import sqlite3
 from typing import Annotated, Literal
 
-from google.adk.tools import FunctionTool
 from pydantic import Field, TypeAdapter, ValidationError
 
 from ..db import VALID_COLLECTIONS, connect
@@ -89,6 +88,3 @@ async def search_docs(
         for row in rows
     ]
     return {"status": "success", "results": results, "error": "", "count": len(results)}
-
-
-tool = FunctionTool(search_docs)

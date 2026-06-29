@@ -1,4 +1,4 @@
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 from ._types import Slide, normalize_slides
 
@@ -19,6 +19,3 @@ def reorder_slides(
     tool_context.state["slides"] = new_slides
     tool_context.state["active_slide_index"] = 0
     return {"ok": True}
-
-
-tool = FunctionTool(reorder_slides)

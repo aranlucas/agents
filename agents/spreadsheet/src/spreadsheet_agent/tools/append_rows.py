@@ -1,4 +1,4 @@
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 from ._types import Sheet, normalize_sheets
 
@@ -24,6 +24,3 @@ def append_rows(
         "sheet_index": sheet_index,
         "total_rows": len(sheets[sheet_index]["rows"]),
     }
-
-
-tool = FunctionTool(append_rows)

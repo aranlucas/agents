@@ -1,4 +1,4 @@
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 from ._types import Sheet, normalize_sheets
 
@@ -20,6 +20,3 @@ def create_sheet(
     tool_context.state["active_sheet_index"] = new_index
     tool_context.state["status"] = "ready"
     return {"ok": True, "sheet_index": new_index}
-
-
-tool = FunctionTool(create_sheet)

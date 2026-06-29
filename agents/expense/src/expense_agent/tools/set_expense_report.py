@@ -1,4 +1,4 @@
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 
 def set_expense_report(
@@ -9,6 +9,3 @@ def set_expense_report(
     tool_context.state["review_summary"] = summary
     tool_context.state["status"] = "ready"
     return {"ok": True, "length": len(report)}
-
-
-tool = FunctionTool(set_expense_report)

@@ -11,9 +11,10 @@ from agents_shared.tools import (
 )
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
+from google.adk.tools import FunctionTool
 from pydantic import BaseModel
 
-from .tools import create_excalidraw_scene
+from .tools.create_excalidraw_scene import create_excalidraw_scene
 
 _INSTRUCTION = (Path(__file__).parent / "instructions.md").read_text(encoding="utf-8")
 
@@ -55,7 +56,7 @@ def build_eval_agent() -> LlmAgent:
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,
         instruction=_INSTRUCTION,
-        tools=[create_excalidraw_scene],
+        tools=[FunctionTool(create_excalidraw_scene)],
     )
 
 

@@ -2,7 +2,8 @@
 
 from agents_shared.app_factory import add_agent_routes, build_adk_agent
 from agents_shared.dependencies import AgentServices
-from agents_shared.plugins import SlimMcpPlugin, WebSearchThrottlePlugin
+from agents_shared.plugins.slim_mcp import SlimMcpPlugin
+from agents_shared.plugins.web_search_throttle import WebSearchThrottlePlugin
 from agents_shared.state import make_extract_state
 from dotenv import load_dotenv
 from fastapi import FastAPI

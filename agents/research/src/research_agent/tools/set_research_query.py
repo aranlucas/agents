@@ -1,4 +1,4 @@
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 
 def set_research_query(
@@ -9,6 +9,3 @@ def set_research_query(
     tool_context.state["query"] = query
     tool_context.state["status"] = "drafting"
     return {"ok": True, "title": title}
-
-
-tool = FunctionTool(set_research_query)

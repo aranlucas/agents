@@ -1,4 +1,4 @@
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 from ._types import Sheet, normalize_sheets
 
@@ -23,6 +23,3 @@ def update_sheet(
     tool_context.state["sheets"] = sheets
     tool_context.state["status"] = "ready"
     return {"ok": True, "sheet_index": sheet_index}
-
-
-tool = FunctionTool(update_sheet)

@@ -6,7 +6,7 @@ from agents_shared.app_factory import (
     streaming_state_mapping,
 )
 from agents_shared.dependencies import AgentServices
-from agents_shared.plugins import SlimMcpPlugin
+from agents_shared.plugins.slim_mcp import SlimMcpPlugin
 from agents_shared.state import make_extract_state
 from dotenv import load_dotenv
 from fastapi import FastAPI

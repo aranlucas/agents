@@ -15,19 +15,17 @@ from agents_shared.tools import (
 )
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
+from google.adk.tools import FunctionTool
 from pydantic import BaseModel
 
-from .tools import (
-    CartItem,
-    KrogerToolset,
-    PantryItem,
-    mark_list_ready,
-    set_meal_plan,
-    set_shopping_list,
-    set_weekly_deals,
-    update_cart,
-    update_pantry,
-)
+from .tools._types import CartItem, PantryItem
+from .tools.kroger import KrogerToolset
+from .tools.mark_list_ready import mark_list_ready
+from .tools.set_meal_plan import set_meal_plan
+from .tools.set_shopping_list import set_shopping_list
+from .tools.set_weekly_deals import set_weekly_deals
+from .tools.update_cart import update_cart
+from .tools.update_pantry import update_pantry
 
 _INSTRUCTION = (Path(__file__).parent / "instructions.md").read_text(encoding="utf-8")
 
@@ -63,12 +61,12 @@ def build_agent(
 ) -> LlmAgent:
     """Fresh LlmAgent instance — the gateway's wellness orchestrator builds its own."""
     tools: list[object] = [
-        set_shopping_list,
-        update_cart,
-        update_pantry,
-        set_meal_plan,
-        set_weekly_deals,
-        mark_list_ready,
+        FunctionTool(set_shopping_list),
+        FunctionTool(update_cart),
+        FunctionTool(update_pantry),
+        FunctionTool(set_meal_plan),
+        FunctionTool(set_weekly_deals),
+        FunctionTool(mark_list_ready),
         get_current_date,
     ]
     if include_agui:
@@ -127,12 +125,12 @@ def build_eval_agent(
             token_flags={KROGER_AUTH.state_key: KROGER_AUTH.connected_flag},
         ),
         tools=[
-            set_shopping_list,
-            update_cart,
-            update_pantry,
-            set_meal_plan,
-            set_weekly_deals,
-            mark_list_ready,
+            FunctionTool(set_shopping_list),
+            FunctionTool(update_cart),
+            FunctionTool(update_pantry),
+            FunctionTool(set_meal_plan),
+            FunctionTool(set_weekly_deals),
+            FunctionTool(mark_list_ready),
             get_current_date,
         ],
     )

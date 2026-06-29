@@ -1,4 +1,4 @@
-"""Default Telegram orchestrator that delegates to surfaced ADK agents."""
+"""Default Telegram orchestrator that delegates to specialist ADK agents."""
 
 from __future__ import annotations
 
@@ -70,9 +70,6 @@ def build_orchestrator_agent() -> LlmAgent:
             "- Most specialists are task-mode leaf agents and return control to you "
             "automatically. Wellness is itself a coordinator with nested sub-agents, "
             "so do not treat it as a task-mode leaf.\n"
-            "- The oral-boards-v2 workflow is available in Telegram through "
-            "`/agent oral-boards-v2`; if a user specifically asks for v2, tell them "
-            "to switch to that agent.\n"
             "- If the sub-agent wrote a state artifact and returned little text, "
             "summarize what changed rather than saying nothing.\n"
             "- Keep replies short enough for Telegram.\n\n"

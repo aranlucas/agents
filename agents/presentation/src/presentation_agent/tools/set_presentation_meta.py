@@ -1,4 +1,4 @@
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 
 def set_presentation_meta(
@@ -9,6 +9,3 @@ def set_presentation_meta(
     tool_context.state["theme"] = theme
     tool_context.state["status"] = "drafting"
     return {"ok": True}
-
-
-tool = FunctionTool(set_presentation_meta)

@@ -392,10 +392,3 @@ export function getAllPdfResources(): ResourceItem[] {
     .flatMap((category) => category.resources)
     .filter((resource) => resource.isPdf);
 }
-
-// Helper function to get resources by type
-export function getResourcesByType(type: ResourceItem["type"]): ResourceItem[] {
-  return resourceCategories
-    .flatMap((category) => category.resources)
-    .filter((resource) => resource.type === type);
-}

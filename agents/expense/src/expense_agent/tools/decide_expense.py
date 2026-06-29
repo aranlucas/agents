@@ -1,6 +1,6 @@
 from typing import Literal
 
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 from ._types import ExpenseItem, normalize_expenses
 
@@ -29,6 +29,3 @@ def decide_expense(
     tool_context.state["status"] = "ready"
     tool_context.state["review_summary"] = note
     return {"ok": True, "expense_id": expense_id, "status": decision}
-
-
-tool = FunctionTool(decide_expense)

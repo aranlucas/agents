@@ -1,4 +1,4 @@
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 
 def write_report(tool_context: ToolContext, report: str) -> dict[str, object]:
@@ -6,6 +6,3 @@ def write_report(tool_context: ToolContext, report: str) -> dict[str, object]:
     tool_context.state["report"] = report
     tool_context.state["status"] = "drafting"
     return {"ok": True, "length": len(report)}
-
-
-tool = FunctionTool(write_report)

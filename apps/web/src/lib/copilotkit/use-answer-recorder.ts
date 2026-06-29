@@ -4,7 +4,7 @@ import type { ElementRef, RefObject } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CopilotChatAudioRecorder } from "@copilotkit/react-core/v2";
 
-export type AnswerRecorderRef = ElementRef<typeof CopilotChatAudioRecorder>;
+type AnswerRecorderRef = ElementRef<typeof CopilotChatAudioRecorder>;
 
 export interface UseAnswerRecorder {
   recording: boolean;

@@ -1,4 +1,4 @@
-export interface Reference {
+interface Reference {
   title: string;
   url: string;
   type: "guideline" | "article" | "textbook" | "video";

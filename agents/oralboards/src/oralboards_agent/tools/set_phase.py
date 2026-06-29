@@ -1,6 +1,6 @@
 from typing import Annotated, Literal
 
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 from pydantic import Field
 
 
@@ -14,6 +14,3 @@ def set_phase(
     """Set the current oral-exam status phase."""
     tool_context.state["status"] = phase
     return {"status": "success", "ok": True, "phase": phase}
-
-
-tool = FunctionTool(set_phase)

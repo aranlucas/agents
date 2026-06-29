@@ -22,7 +22,7 @@ A high-performance AI chatbot template built with [Expo](https://expo.dev) and [
 | Framework  | Expo SDK 55, React Native 0.83, React 19                                                                                |
 | Navigation | Expo Router (file-based) with typed routes, [Legend List](https://legendapp.com/open-source/list/) for virtualized chat |
 | Styling    | Tailwind CSS v4 via [Uniwind](https://uniwind.dev/) + `tailwind-merge`                                                  |
-| Native UI  | `@expo/ui` (SwiftUI), `expo-symbols`, `expo-haptics`, `expo-glass-effect`                                               |
+| Native UI  | `@expo/ui` (SwiftUI), `expo-haptics`, `expo-glass-effect`, SF symbols via `expo-image`                                  |
 | Web UI     | Radix UI (context menu, dropdown menu, tooltips), Lucide icons                                                          |
 | Markdown   | Custom AST renderer with `mdast-util-from-markdown` + `react-syntax-highlighter`                                        |
 | Animations | `react-native-reanimated`, `react-native-gesture-handler`                                                               |

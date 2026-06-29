@@ -1,4 +1,4 @@
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 
 def mark_ready_to_book(tool_context: ToolContext, summary: str) -> dict[str, bool]:
@@ -6,6 +6,3 @@ def mark_ready_to_book(tool_context: ToolContext, summary: str) -> dict[str, boo
     tool_context.state["status"] = "ready_to_book"
     tool_context.state["review_summary"] = summary
     return {"ok": True}
-
-
-tool = FunctionTool(mark_ready_to_book)

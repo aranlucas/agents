@@ -13,18 +13,20 @@ from agents_shared.tools import (
 from google.adk.agents import LlmAgent
 from google.adk.models.google_llm import Gemini
 from google.adk.models.lite_llm import LiteLlm
+from google.adk.tools import FunctionTool
 from google.adk.tools.agent_tool import AgentTool
 from pydantic import BaseModel, Field
 
-from .subagents import build_generator
-from .tools import (
-    begin_trends_query,
-    execute_bigquery_sql,
-    set_trends_verification,
-    validate_trends_sql,
-    web_search_toolset,
-    write_trends_result,
-)
+from ._credentials import bootstrap_gcp_credentials
+from .subagents.generator import build_generator
+from .tools.begin_trends_query import begin_trends_query
+from .tools.execute_bigquery_sql import execute_bigquery_sql
+from .tools.search import web_search_toolset
+from .tools.set_trends_verification import set_trends_verification
+from .tools.validate_trends_sql import validate_trends_sql
+from .tools.write_trends_result import write_trends_result
+
+bootstrap_gcp_credentials()
 
 log = logging.getLogger("trends_agent")
 
@@ -108,11 +110,11 @@ def build_agent() -> LlmAgent:
         before_agent_callback=state_init,
         tools=[
             AgentTool(build_generator()),
-            validate_trends_sql,
-            begin_trends_query,
-            execute_bigquery_sql,
-            write_trends_result,
-            set_trends_verification,
+            FunctionTool(validate_trends_sql),
+            FunctionTool(begin_trends_query),
+            FunctionTool(execute_bigquery_sql),
+            FunctionTool(write_trends_result),
+            FunctionTool(set_trends_verification),
             trends_a2ui_tool,
             web_search_toolset(),
         ],
@@ -135,11 +137,11 @@ def build_eval_agent() -> LlmAgent:
         before_agent_callback=state_init,
         tools=[
             AgentTool(build_generator(model="mistral/mistral-small-latest")),
-            validate_trends_sql,
-            begin_trends_query,
-            execute_bigquery_sql,
-            write_trends_result,
-            set_trends_verification,
+            FunctionTool(validate_trends_sql),
+            FunctionTool(begin_trends_query),
+            FunctionTool(execute_bigquery_sql),
+            FunctionTool(write_trends_result),
+            FunctionTool(set_trends_verification),
         ],
     )
 

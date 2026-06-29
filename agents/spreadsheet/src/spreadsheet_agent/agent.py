@@ -11,16 +11,15 @@ from agents_shared.tools import (
 )
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
+from google.adk.tools import FunctionTool
 from pydantic import BaseModel
 
-from .tools import (
-    append_rows,
-    create_sheet,
-    delete_sheet,
-    set_active_sheet,
-    update_sheet,
-    write_summary,
-)
+from .tools.append_rows import append_rows
+from .tools.create_sheet import create_sheet
+from .tools.delete_sheet import delete_sheet
+from .tools.set_active_sheet import set_active_sheet
+from .tools.update_sheet import update_sheet
+from .tools.write_summary import write_summary
 
 _INSTRUCTION = (Path(__file__).parent / "instructions.md").read_text(encoding="utf-8")
 
@@ -36,12 +35,12 @@ class SpreadsheetState(BaseModel):
 
 def _build_agent(*, include_agui: bool) -> LlmAgent:
     tools: list[object] = [
-        create_sheet,
-        update_sheet,
-        append_rows,
-        delete_sheet,
-        set_active_sheet,
-        write_summary,
+        FunctionTool(create_sheet),
+        FunctionTool(update_sheet),
+        FunctionTool(append_rows),
+        FunctionTool(delete_sheet),
+        FunctionTool(set_active_sheet),
+        FunctionTool(write_summary),
     ]
     if include_agui:
         tools.append(AGUIToolset())
@@ -80,12 +79,12 @@ def build_eval_agent() -> LlmAgent:
         instruction=_INSTRUCTION,
         before_agent_callback=make_state_initializer(SpreadsheetState),
         tools=[
-            create_sheet,
-            update_sheet,
-            append_rows,
-            delete_sheet,
-            set_active_sheet,
-            write_summary,
+            FunctionTool(create_sheet),
+            FunctionTool(update_sheet),
+            FunctionTool(append_rows),
+            FunctionTool(delete_sheet),
+            FunctionTool(set_active_sheet),
+            FunctionTool(write_summary),
         ],
     )
 

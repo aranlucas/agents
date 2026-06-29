@@ -38,17 +38,17 @@ class _StravaActivityPayload(BaseModel):
 
     @field_validator("id", mode="before")
     @classmethod
-    def _coerce_id(cls, value: object) -> str:
+    def _coerce_id(_cls, value: object) -> str:
         return str(value)
 
     @field_validator("name", mode="before")
     @classmethod
-    def _default_name(cls, value: object) -> str:
+    def _default_name(_cls, value: object) -> str:
         return str(value or "Untitled activity")
 
     @field_validator("sport_type", "start_date", mode="before")
     @classmethod
-    def _empty_string_to_none(cls, value: object) -> object:
+    def _empty_string_to_none(_cls, value: object) -> object:
         return None if value == "" else value
 
     @field_validator(
@@ -61,7 +61,7 @@ class _StravaActivityPayload(BaseModel):
         mode="before",
     )
     @classmethod
-    def _empty_number_to_none(cls, value: object) -> object:
+    def _empty_number_to_none(_cls, value: object) -> object:
         return None if value == "" else value
 
 

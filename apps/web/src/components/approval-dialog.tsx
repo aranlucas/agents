@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from "@agents/ui";
 
-export interface ApprovalRequest {
+interface ApprovalRequest {
   id: string;
   action: string;
   reason: string;

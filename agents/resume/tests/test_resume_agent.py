@@ -1,7 +1,7 @@
+import resume_agent.main as main
 from agents_shared.dependencies import create_agent_services
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from resume_agent import main
 from resume_agent.agent import INSTRUCTION, build_agent
 
 

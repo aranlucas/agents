@@ -3,7 +3,7 @@ import logging
 
 import httpx
 from agents_shared.state import STRAVA_AUTH
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 from pydantic import TypeAdapter, ValidationError
 
 from ._types import StravaActivity, normalize_strava_activity
@@ -92,6 +92,3 @@ async def fetch_activities(
         "activities": normalized_batch,
         **({"next_page_token": page + 1} if has_more else {}),
     }
-
-
-tool = FunctionTool(fetch_activities)

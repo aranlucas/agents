@@ -1,4 +1,4 @@
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 from ._types import Sheet, normalize_sheets
 
@@ -25,6 +25,3 @@ def delete_sheet(tool_context: ToolContext, sheet_index: int) -> dict[str, objec
         tool_context.state["active_sheet_index"] = sheet_index - 1
     tool_context.state["status"] = "ready"
     return {"ok": True, "remaining_sheets": len(sheets)}
-
-
-tool = FunctionTool(delete_sheet)
