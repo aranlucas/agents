@@ -66,3 +66,28 @@ def build_agent() -> LlmAgent:
 
 def build_telegram_agent() -> LlmAgent:
     return _build_agent(include_agui=False)
+
+
+def build_eval_agent() -> LlmAgent:
+    """Eval-compatible agent: no AGUIToolset."""
+    return LlmAgent(
+        name="spreadsheet_agent",
+        description="Spreadsheet creation, editing, and summaries.",
+        model=LiteLlm(model="mistral/mistral-small-latest"),
+        retry_config=DEFAULT_RETRY_CONFIG,
+        on_model_error_callback=on_model_error_callback,
+        after_model_callback=stop_on_terminal_text,
+        instruction=_INSTRUCTION,
+        before_agent_callback=make_state_initializer(SpreadsheetState),
+        tools=[
+            create_sheet,
+            update_sheet,
+            append_rows,
+            delete_sheet,
+            set_active_sheet,
+            write_summary,
+        ],
+    )
+
+
+root_agent = build_eval_agent()

@@ -3,9 +3,9 @@
   "name": "train_eval_set",
   "eval_cases": [
     {
-      "eval_id": "grocery_requires_kroger_connection",
+      "eval_id": "excalidraw_system_diagram_agui",
       "session_input": {
-        "app_name": "grocery_agent",
+        "app_name": "excalidraw_agent",
         "user_id": "eval_user",
         "state": {}
       },
@@ -16,7 +16,7 @@
             "role": "user",
             "parts": [
               {
-                "text": "Plan five quick weeknight dinners for this week and build the shopping list."
+                "text": "Draw a system architecture diagram for a web app with frontend, API, worker queue, database, and object storage. Use the drawing surface rather than describing it in chat."
               }
             ]
           },
@@ -24,7 +24,7 @@
             "role": "model",
             "parts": [
               {
-                "text": "Please connect Kroger first so I can plan the dinners and build the shopping list."
+                "text": "I've created a system architecture diagram for the web app."
               }
             ]
           }
@@ -32,13 +32,11 @@
       ]
     },
     {
-      "eval_id": "grocery_connected_meal_plan_canvas",
+      "eval_id": "excalidraw_telegram_flowchart_summary",
       "session_input": {
-        "app_name": "grocery_agent",
+        "app_name": "excalidraw_agent",
         "user_id": "eval_user",
-        "state": {
-          "kroger_connected": true
-        }
+        "state": {}
       },
       "conversation": [
         {
@@ -47,7 +45,7 @@
             "role": "user",
             "parts": [
               {
-                "text": "Plan 5 quick high-protein dinners for this week and write the meal plan and shopping list to the grocery canvas."
+                "text": "In Telegram, sketch a concise checkout flowchart: cart, address, payment, fraud check, confirmation."
               }
             ]
           },
@@ -55,7 +53,7 @@
             "role": "model",
             "parts": [
               {
-                "text": "I drafted the high-protein meal plan and shopping list in the grocery canvas."
+                "text": "I've created a checkout flowchart from cart to confirmation."
               }
             ]
           }
@@ -63,13 +61,11 @@
       ]
     },
     {
-      "eval_id": "grocery_telegram_deals_summary",
+      "eval_id": "excalidraw_non_drawing_question",
       "session_input": {
-        "app_name": "grocery_agent",
+        "app_name": "excalidraw_agent",
         "user_id": "eval_user",
-        "state": {
-          "kroger_connected": true
-        }
+        "state": {}
       },
       "conversation": [
         {
@@ -78,7 +74,7 @@
             "role": "user",
             "parts": [
               {
-                "text": "In Telegram, check weekly deals and suggest healthy swaps for snacks."
+                "text": "Do I need a diagram for a one-sentence status update?"
               }
             ]
           },
@@ -86,7 +82,7 @@
             "role": "model",
             "parts": [
               {
-                "text": "I checked weekly deals and suggested healthier snack swaps."
+                "text": "No, you don't need a diagram for a one-sentence status update."
               }
             ]
           }

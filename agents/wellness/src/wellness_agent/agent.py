@@ -106,7 +106,7 @@ def build_telegram_agent() -> LlmAgent:
 
 
 def build_eval_agent() -> LlmAgent:
-    """Eval-compatible agent: no AGUIToolset, no state_schema, eval sub-agents.
+    """Eval-compatible agent: no AGUIToolset, eval sub-agents.
 
     Uses eval versions of fitness and grocery so the full sub-agent graph is free
     of McpToolset objects that the Vertex AI eval SDK cannot introspect.
@@ -117,11 +117,12 @@ def build_eval_agent() -> LlmAgent:
     return LlmAgent(
         name="wellness_agent",
         description="In-process grocery and fitness orchestration.",
-        model=LiteLlm(model="groq/llama-3.3-70b-versatile"),
+        model=LiteLlm(model="mistral/mistral-small-latest"),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,
         instruction=_INSTRUCTION,
+        before_agent_callback=make_state_initializer(WellnessState),
         sub_agents=[build_fitness_eval(mode="task"), build_grocery_eval(mode="task")],
         tools=[
             get_current_date,

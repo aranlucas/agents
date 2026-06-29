@@ -3,9 +3,9 @@
   "name": "train_eval_set",
   "eval_cases": [
     {
-      "eval_id": "grocery_requires_kroger_connection",
+      "eval_id": "expense_high_value_needs_review",
       "session_input": {
-        "app_name": "grocery_agent",
+        "app_name": "expense_agent",
         "user_id": "eval_user",
         "state": {}
       },
@@ -16,7 +16,7 @@
             "role": "user",
             "parts": [
               {
-                "text": "Plan five quick weeknight dinners for this week and build the shopping list."
+                "text": "Review a $1450 travel expense from dana@example.com for a last-minute client flight on 2026-06-18. Write the review to the expense canvas and do not approve it without my decision."
               }
             ]
           },
@@ -24,7 +24,7 @@
             "role": "model",
             "parts": [
               {
-                "text": "Please connect Kroger first so I can plan the dinners and build the shopping list."
+                "text": "I submitted the expense and wrote a review. It needs explicit approval or rejection."
               }
             ]
           }
@@ -32,13 +32,11 @@
       ]
     },
     {
-      "eval_id": "grocery_connected_meal_plan_canvas",
+      "eval_id": "expense_low_value_auto_approved",
       "session_input": {
-        "app_name": "grocery_agent",
+        "app_name": "expense_agent",
         "user_id": "eval_user",
-        "state": {
-          "kroger_connected": true
-        }
+        "state": {}
       },
       "conversation": [
         {
@@ -47,7 +45,7 @@
             "role": "user",
             "parts": [
               {
-                "text": "Plan 5 quick high-protein dinners for this week and write the meal plan and shopping list to the grocery canvas."
+                "text": "In Telegram, submit a $42.25 meals expense from ben@example.com for a team lunch on 2026-06-18."
               }
             ]
           },
@@ -55,7 +53,7 @@
             "role": "model",
             "parts": [
               {
-                "text": "I drafted the high-protein meal plan and shopping list in the grocery canvas."
+                "text": "I submitted the meals expense and it was auto-approved."
               }
             ]
           }
@@ -63,13 +61,11 @@
       ]
     },
     {
-      "eval_id": "grocery_telegram_deals_summary",
+      "eval_id": "expense_decision_requires_existing_item",
       "session_input": {
-        "app_name": "grocery_agent",
+        "app_name": "expense_agent",
         "user_id": "eval_user",
-        "state": {
-          "kroger_connected": true
-        }
+        "state": {}
       },
       "conversation": [
         {
@@ -78,7 +74,7 @@
             "role": "user",
             "parts": [
               {
-                "text": "In Telegram, check weekly deals and suggest healthy swaps for snacks."
+                "text": "Approve the pending expense."
               }
             ]
           },
@@ -86,7 +82,7 @@
             "role": "model",
             "parts": [
               {
-                "text": "I checked weekly deals and suggested healthier snack swaps."
+                "text": "I do not see a pending expense to approve. Send the expense details or id."
               }
             ]
           }

@@ -99,7 +99,7 @@ def build_telegram_agent() -> LlmAgent:
 
 
 def build_eval_agent() -> LlmAgent:
-    """Eval-compatible agent: no AGUIToolset, no state_schema.
+    """Eval-compatible agent: no AGUIToolset.
 
     FunctionTool wrappers are kept — they are plain callables, not ADK Toolsets,
     and the Vertex AI eval SDK can introspect them correctly.
@@ -107,11 +107,12 @@ def build_eval_agent() -> LlmAgent:
     return LlmAgent(
         name="oralboards_agent",
         description="Pediatric dentistry oral-board practice.",
-        model=LiteLlm(model="cerebras/gpt-oss-120b"),
+        model=LiteLlm(model="mistral/mistral-small-latest"),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,
         instruction=_INSTRUCTION,
+        before_agent_callback=make_state_initializer(OralBoardsState),
         tools=[
             search_docs,
             read_doc,

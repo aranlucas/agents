@@ -3,11 +3,14 @@
   "name": "train_eval_set",
   "eval_cases": [
     {
-      "eval_id": "grocery_requires_kroger_connection",
+      "eval_id": "wellness_connected_week_plan_canvas",
       "session_input": {
-        "app_name": "grocery_agent",
+        "app_name": "wellness_agent",
         "user_id": "eval_user",
-        "state": {}
+        "state": {
+          "kroger_connected": true,
+          "strava_connected": true
+        }
       },
       "conversation": [
         {
@@ -16,7 +19,7 @@
             "role": "user",
             "parts": [
               {
-                "text": "Plan five quick weeknight dinners for this week and build the shopping list."
+                "text": "Create a coordinated one-week plan with workouts, meals, and one recommended hike. Use the wellness canvas as the source of truth."
               }
             ]
           },
@@ -24,7 +27,7 @@
             "role": "model",
             "parts": [
               {
-                "text": "Please connect Kroger first so I can plan the dinners and build the shopping list."
+                "text": "I wrote the combined weekly wellness plan to the canvas with workouts, meals, recovery, and a hike."
               }
             ]
           }
@@ -32,12 +35,13 @@
       ]
     },
     {
-      "eval_id": "grocery_connected_meal_plan_canvas",
+      "eval_id": "wellness_auth_gate_kroger_missing",
       "session_input": {
-        "app_name": "grocery_agent",
+        "app_name": "wellness_agent",
         "user_id": "eval_user",
         "state": {
-          "kroger_connected": true
+          "kroger_connected": false,
+          "strava_connected": true
         }
       },
       "conversation": [
@@ -47,7 +51,7 @@
             "role": "user",
             "parts": [
               {
-                "text": "Plan 5 quick high-protein dinners for this week and write the meal plan and shopping list to the grocery canvas."
+                "text": "In Telegram, make my wellness plan for this week."
               }
             ]
           },
@@ -55,7 +59,7 @@
             "role": "model",
             "parts": [
               {
-                "text": "I drafted the high-protein meal plan and shopping list in the grocery canvas."
+                "text": "Please connect Kroger first; I need both Kroger and Strava to create the wellness plan."
               }
             ]
           }
@@ -63,12 +67,13 @@
       ]
     },
     {
-      "eval_id": "grocery_telegram_deals_summary",
+      "eval_id": "wellness_auth_gate_strava_missing",
       "session_input": {
-        "app_name": "grocery_agent",
+        "app_name": "wellness_agent",
         "user_id": "eval_user",
         "state": {
-          "kroger_connected": true
+          "kroger_connected": true,
+          "strava_connected": false
         }
       },
       "conversation": [
@@ -78,7 +83,7 @@
             "role": "user",
             "parts": [
               {
-                "text": "In Telegram, check weekly deals and suggest healthy swaps for snacks."
+                "text": "Make a meal and training plan for this week."
               }
             ]
           },
@@ -86,7 +91,7 @@
             "role": "model",
             "parts": [
               {
-                "text": "I checked weekly deals and suggested healthier snack swaps."
+                "text": "Please connect Strava first; I need both Kroger and Strava to create the wellness plan."
               }
             ]
           }

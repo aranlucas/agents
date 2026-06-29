@@ -91,3 +91,27 @@ def build_agent() -> LlmAgent:
 
 def build_telegram_agent() -> LlmAgent:
     return _build_agent(include_agui=False)
+
+
+def build_eval_agent() -> LlmAgent:
+    """Eval-compatible agent: no AGUIToolset."""
+    return LlmAgent(
+        name="expense_desk_agent",
+        description="Expense review and approval-desk workflow.",
+        model=LiteLlm(model="mistral/mistral-small-latest"),
+        retry_config=DEFAULT_RETRY_CONFIG,
+        on_model_error_callback=on_model_error_callback,
+        after_model_callback=stop_on_terminal_text,
+        instruction=_INSTRUCTION,
+        before_agent_callback=make_state_initializer(ExpenseState),
+        tools=[
+            submit_expense,
+            write_expense_review,
+            decide_expense,
+            set_expense_report,
+            mark_expense_ready,
+        ],
+    )
+
+
+root_agent = build_eval_agent()

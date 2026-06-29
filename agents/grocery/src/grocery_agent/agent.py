@@ -107,7 +107,7 @@ def build_telegram_agent(
 def build_eval_agent(
     *, mode: str | None = None, include_contents: str = "default"
 ) -> LlmAgent:
-    """Eval-compatible agent: no AGUIToolset, no McpToolset, no state_schema.
+    """Eval-compatible agent: no AGUIToolset or McpToolset.
 
     The eval case tests the auth-gate path (kroger_connected=False by default),
     so no Kroger MCP stubs are needed — the agent should refuse before calling them.
@@ -115,13 +115,17 @@ def build_eval_agent(
     return LlmAgent(
         name="grocery_agent",
         description="Meal planning, pantry, shopping list, and cart support.",
-        model=LiteLlm(model="nvidia_nim/deepseek-ai/deepseek-v4-flash"),
+        model=LiteLlm(model="mistral/mistral-small-latest"),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,
         mode=mode,
         include_contents=include_contents,
         instruction=_INSTRUCTION,
+        before_agent_callback=make_state_initializer(
+            GroceryState,
+            token_flags={KROGER_AUTH.state_key: KROGER_AUTH.connected_flag},
+        ),
         tools=[
             set_shopping_list,
             update_cart,
