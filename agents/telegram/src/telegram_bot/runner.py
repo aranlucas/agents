@@ -140,6 +140,7 @@ class TelegramMessage:
     reply_target: TelegramReplyTarget | None = None
     user_name: str | None = None
     reply_to_bot: bool = False
+    reply_to_bot_username: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -846,7 +847,7 @@ def telegram_message_from_update(update: Update) -> TelegramMessage | None:
         return None
     sender_id = sender.id if sender is not None else chat.id
     user_name = _sender_display_name(sender, sender_id)
-    reply_to_bot = _is_reply_to_bot(raw)
+    reply_to_bot, reply_to_bot_username = _reply_to_bot(raw)
     return TelegramMessage(
         chat_id=chat.id,
         user_id=sender_id,
@@ -858,6 +859,7 @@ def telegram_message_from_update(update: Update) -> TelegramMessage | None:
         reply_target=raw,
         user_name=user_name,
         reply_to_bot=reply_to_bot,
+        reply_to_bot_username=reply_to_bot_username,
     )
 
 
@@ -873,14 +875,15 @@ def _sender_display_name(sender: object, sender_id: int) -> str | None:
     return str(sender_id)
 
 
-def _is_reply_to_bot(raw: object) -> bool:
+def _reply_to_bot(raw: object) -> tuple[bool, str | None]:
     reply = getattr(raw, "reply_to_message", None)
     if reply is None:
-        return False
+        return False, None
     from_user = getattr(reply, "from_user", None)
     if from_user is None:
-        return False
-    return bool(getattr(from_user, "is_bot", False))
+        return False, None
+    username = getattr(from_user, "username", None)
+    return bool(getattr(from_user, "is_bot", False)), _normalize_bot_username(username)
 
 
 def help_text() -> str:
@@ -1128,7 +1131,11 @@ def _is_unaddressed_group_message(
 ) -> bool:
     if message.chat_type not in {"group", "supergroup"}:
         return False
-    if message.reply_to_bot:
+    if (
+        message.reply_to_bot
+        and bot_username is not None
+        and message.reply_to_bot_username == bot_username
+    ):
         return False
     if bot_username is None:
         return True
