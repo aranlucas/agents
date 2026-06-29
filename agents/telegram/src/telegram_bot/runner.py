@@ -13,7 +13,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import re
 from collections.abc import Awaitable, Callable, Iterable, Mapping
 from dataclasses import dataclass
 from typing import Protocol, cast
@@ -36,6 +35,7 @@ from google.adk.sessions import BaseSessionService
 from google.genai import types
 from sqlalchemy.ext.asyncio import AsyncEngine
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
+from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
     ApplicationBuilder,
@@ -46,6 +46,7 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
+from telegram.helpers import escape_markdown
 
 from .orchestrator import (
     ORCHESTRATOR_AGENT_ID,
@@ -396,6 +397,7 @@ class TelegramRunner:
                                 await self._send_reply(
                                     message,
                                     _format_agent_message(event.author, text),
+                                    parse_mode=ParseMode.MARKDOWN_V2,
                                 )
                         else:
                             response_texts.extend(texts)
@@ -585,21 +587,22 @@ class TelegramRunner:
         thinking_message: TelegramSentMessage | None,
         text: str,
     ) -> None:
-        chunks = chunk_text(text)
-        first = chunks[0] if chunks else "Done."
+        chunks = [_escape_markdownv2(chunk) for chunk in chunk_text(text)]
+        first = chunks[0] if chunks else _escape_markdownv2("Done.")
         if thinking_message is not None:
             try:
                 await thinking_message.edit_text(
                     first,
                     disable_web_page_preview=True,
+                    parse_mode=ParseMode.MARKDOWN_V2,
                 )
             except Exception:
                 log.exception("Failed to edit Telegram thinking message")
-                await self._send_reply(message, first)
+                await self._send_reply(message, first, parse_mode=ParseMode.MARKDOWN_V2)
         else:
-            await self._send_reply(message, first)
+            await self._send_reply(message, first, parse_mode=ParseMode.MARKDOWN_V2)
         for chunk in chunks[1:]:
-            await self._send_reply(message, chunk)
+            await self._send_reply(message, chunk, parse_mode=ParseMode.MARKDOWN_V2)
 
     async def _send_text(
         self,
@@ -795,7 +798,9 @@ def _is_subagent_author(author: str | None) -> bool:
 
 
 def _format_agent_message(author: str, text: str) -> str:
-    return f"{_readable_agent_name(author)}:\n{text}"
+    label = _escape_markdownv2(_readable_agent_name(author))
+    body = _escape_markdownv2(text)
+    return f"*{label}:*\n{body}"
 
 
 def _readable_agent_name(author: str) -> str:
@@ -907,12 +912,9 @@ def _readable_tool_name(name: str) -> str:
     return " ".join(name.replace("-", "_").split("_")).strip() or "tool"
 
 
-_MARKDOWNV2_ESCAPE_RE = re.compile(r"([_*\[\]()~`>#+\-=|{}.!\\])")
-
-
-def escape_markdownv2(text: str) -> str:
+def _escape_markdownv2(text: str) -> str:
     """Escape all MarkdownV2 special characters in a plain-text string."""
-    return _MARKDOWNV2_ESCAPE_RE.sub(r"\\\1", text)
+    return escape_markdown(text, version=2)
 
 
 def _default_connect_url(link_base_url: str | None) -> str | None:

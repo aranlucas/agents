@@ -8,6 +8,7 @@ from agents_shared.telegram_auth import consume_link_token, create_link_token
 from google.adk.agents import LlmAgent
 from pytest_mock import MockerFixture
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from telegram.constants import ParseMode
 from telegram_bot.runner import (
     ORCHESTRATOR_COMPACTION_EVENT_RETENTION_SIZE,
     ORCHESTRATOR_COMPACTION_INTERVAL,
@@ -263,11 +264,12 @@ async def test_handle_message_runs_agent_and_replies(
 
     await runner.handle_message(_message("plan food", reply_target))
 
-    assert reply_target.messages[1] == (123, "Here is the plan.")
+    assert reply_target.messages[1] == (123, r"Here is the plan\.")
+    assert reply_target.parse_modes[1] == ParseMode.MARKDOWN_V2
 
 
 @pytest.mark.asyncio
-async def test_handle_message_sends_agent_text_without_markdown_parse_mode(
+async def test_handle_message_sends_agent_text_as_escaped_markdownv2(
     services: AgentServices,
     orchestrator_agent: Mock,
 ) -> None:
@@ -306,8 +308,8 @@ async def test_handle_message_sends_agent_text_without_markdown_parse_mode(
 
     await runner.handle_message(_message("plan food", reply_target))
 
-    assert reply_target.messages[1] == (123, "Done! Use A+B = C.")
-    assert reply_target.parse_modes[1] is None
+    assert reply_target.messages[1] == (123, r"Done\! Use A\+B \= C\.")
+    assert reply_target.parse_modes[1] == ParseMode.MARKDOWN_V2
 
 
 @pytest.mark.asyncio
@@ -442,7 +444,7 @@ async def test_handle_message_updates_thinking_while_agent_runs(
     await runner.handle_message(_message("plan food", reply_target))
 
     assert (123, "Still working...") in reply_target.messages
-    assert reply_target.messages[-1] == (123, "Finished.")
+    assert reply_target.messages[-1] == (123, r"Finished\.")
 
 
 @pytest.mark.asyncio
@@ -523,7 +525,7 @@ async def test_handle_message_updates_thinking_with_tool_progress(
     assert (123, "Running fetch activities...") in reply_target.messages
     assert (123, "Still running fetch activities...") in reply_target.messages
     assert (123, "Finished fetch activities.") in reply_target.messages
-    assert reply_target.messages[-1] == (123, "Finished.")
+    assert reply_target.messages[-1] == (123, r"Finished\.")
 
 
 @pytest.mark.asyncio
@@ -583,13 +585,13 @@ async def test_handle_message_emits_subagent_text_as_messages(
 
     assert (
         123,
-        "Grocery agent:\nI drafted meals for the week.",
+        "*Grocery agent:*\n" + r"I drafted meals for the week\.",
     ) in reply_target.messages
     assert (
         123,
-        "Fitness agent:\nI added three easy runs.",
+        "*Fitness agent:*\n" + r"I added three easy runs\.",
     ) in reply_target.messages
-    assert reply_target.messages[-1] == (123, "Your wellness plan is ready.")
+    assert reply_target.messages[-1] == (123, r"Your wellness plan is ready\.")
 
 
 @pytest.mark.asyncio
@@ -788,7 +790,7 @@ async def test_missing_connected_accounts_still_runs_agent(
     await runner.handle_message(_message("plan food", reply_target))
 
     # Agent ran and replied — no credential gate block
-    assert any("I can help with that." in text for _, text in reply_target.messages)
+    assert any(r"I can help with that\." in text for _, text in reply_target.messages)
 
 
 @pytest.mark.asyncio
