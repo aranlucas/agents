@@ -69,7 +69,18 @@ def build_orchestrator_agent() -> LlmAgent:
             "to switch to that agent.\n"
             "- If the sub-agent wrote a state artifact and returned little text, "
             "summarize what changed rather than saying nothing.\n"
-            "- Keep replies short enough for Telegram."
+            "- Keep replies short enough for Telegram.\n\n"
+            "Credential-gated agents (check before routing):\n"
+            "- kroger_connected: {kroger_connected?}\n"
+            "  grocery_agent and wellness_agent require Kroger/QFC.\n"
+            "  If kroger_connected is not True, do NOT route to them.\n"
+            "  Instead tell the user to connect Kroger in the web app settings.\n"
+            "- strava_connected: {strava_connected?}\n"
+            "  fitness_agent and wellness_agent require Strava.\n"
+            "  If strava_connected is not True, do NOT route to them.\n"
+            "  Instead tell the user to connect Strava in the web app settings.\n"
+            "- wellness_agent needs both Kroger AND Strava.\n"
+            "  Only route to wellness if both are connected."
         ),
         sub_agents=child_agents,
     )

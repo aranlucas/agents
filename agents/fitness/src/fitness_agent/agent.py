@@ -22,6 +22,7 @@ from pydantic import BaseModel
 
 from .tools import (
     StravaActivity,
+    StravaToolset,
     fetch_activities,
     mark_plan_ready,
     set_objective_research,
@@ -83,7 +84,7 @@ def build_agent(
 ) -> LlmAgent:
     """Fresh LlmAgent instance — the gateway's wellness orchestrator builds its own."""
     tools = [
-        fetch_activities,
+        StravaToolset(),
         get_current_date,
         set_objective_research,
         set_training_plan,
