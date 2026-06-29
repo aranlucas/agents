@@ -45,8 +45,9 @@ def append_exchange(
         Field(
             description="Source provenance for this exchange from search_docs results"
         ),
-    ] = (),
-) -> dict:
+    ]
+    | None = None,
+) -> dict[str, object]:
     """Append one examiner question, answer, cited feedback, score, and ideal response."""
     transcript = list(tool_context.state.get("transcript") or [])
     transcript.append(
@@ -58,7 +59,7 @@ def append_exchange(
             "feedback": feedback,
             "ideal_response": ideal_response,
             "score": score,
-            "citations": list(citations) or [],
+            "citations": citations or [],
         },
     )
     tool_context.state["transcript"] = transcript

@@ -6,7 +6,7 @@ def create_excalidraw_scene(
     title: str,
     description: str,
     elements: list[str],
-) -> dict:
+) -> dict[str, object]:
     """Record an eval-safe Excalidraw scene plan in state."""
     scene = {
         "title": title,

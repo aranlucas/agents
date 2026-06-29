@@ -2,15 +2,15 @@ from typing import Literal
 
 from google.adk.tools import FunctionTool, ToolContext
 
+from ._types import ExpenseItem, normalize_expenses
+
 RiskLevel = Literal["low", "medium", "high"]
 
 
-def _state_expenses(tool_context: ToolContext) -> list[dict]:
-    existing = tool_context.state.get("expenses")
-    if isinstance(existing, list):
-        return existing
-    tool_context.state["expenses"] = []
-    return tool_context.state["expenses"]
+def _state_expenses(tool_context: ToolContext) -> list[ExpenseItem]:
+    expenses = normalize_expenses(tool_context.state.get("expenses") or [])
+    tool_context.state["expenses"] = expenses
+    return expenses
 
 
 def write_expense_review(
@@ -19,7 +19,7 @@ def write_expense_review(
     risk_level: RiskLevel,
     risk_summary: str,
     recommendation: str,
-) -> dict:
+) -> dict[str, object]:
     """Write the AI risk review for an expense that needs human approval."""
     expenses = _state_expenses(tool_context)
     expense = next((e for e in expenses if e.get("id") == expense_id), None)

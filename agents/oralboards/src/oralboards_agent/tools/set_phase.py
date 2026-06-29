@@ -10,7 +10,7 @@ def set_phase(
         Literal["presenting", "questioning", "complete"],
         Field(description="Exam phase to transition to"),
     ],
-) -> dict:
+) -> dict[str, object]:
     """Set the current oral-exam status phase."""
     tool_context.state["status"] = phase
     return {"status": "success", "ok": True, "phase": phase}

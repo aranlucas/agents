@@ -2,15 +2,15 @@ from uuid import uuid4
 
 from google.adk.tools import FunctionTool, ToolContext
 
+from ._types import ExpenseItem, ExpenseStatus, normalize_expenses
+
 REVIEW_THRESHOLD_USD = 100.0
 
 
-def _state_expenses(tool_context: ToolContext) -> list[dict]:
-    existing = tool_context.state.get("expenses")
-    if isinstance(existing, list):
-        return existing
-    tool_context.state["expenses"] = []
-    return tool_context.state["expenses"]
+def _state_expenses(tool_context: ToolContext) -> list[ExpenseItem]:
+    expenses = normalize_expenses(tool_context.state.get("expenses") or [])
+    tool_context.state["expenses"] = expenses
+    return expenses
 
 
 def submit_expense(
@@ -20,7 +20,7 @@ def submit_expense(
     category: str,
     description: str,
     date: str,
-) -> dict:
+) -> dict[str, object]:
     """Create an expense and route it by amount.
 
     Amounts below the review threshold are auto-approved. Amounts at or above
@@ -36,8 +36,8 @@ def submit_expense(
     threshold = float(
         tool_context.state.get("review_threshold_usd", REVIEW_THRESHOLD_USD)
     )
-    status = "needs_review" if amount >= threshold else "auto_approved"
-    expense = {
+    status: ExpenseStatus = "needs_review" if amount >= threshold else "auto_approved"
+    expense: ExpenseItem = {
         "id": f"exp_{uuid4().hex[:8]}",
         "amount": amount,
         "submitter": submitter,

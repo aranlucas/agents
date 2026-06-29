@@ -14,7 +14,7 @@ def _search_flights(
     return_date: str | None = None,
     travelers: int = 1,
     cabin_class: str = "economy",
-) -> dict:
+) -> dict[str, object]:
     return {
         "flights": [
             {
@@ -49,7 +49,7 @@ def _search_hotels(
     check_out: str,
     travelers: int = 1,
     budget_tier: str = "comfort",
-) -> dict:
+) -> dict[str, object]:
     return {
         "hotels": [
             {
@@ -77,7 +77,7 @@ def _search_hotels(
     }
 
 
-def _get_weather(destination: str, date: str) -> dict:
+def _get_weather(destination: str, date: str) -> dict[str, object]:
     return {
         "destination": destination,
         "date": date,
@@ -89,7 +89,7 @@ def _get_weather(destination: str, date: str) -> dict:
     }
 
 
-def _check_visa(nationality: str, destination_country: str) -> dict:
+def _check_visa(nationality: str, destination_country: str) -> dict[str, object]:
     return {
         "required": False,
         "notes": "US passport holders do not require a visa for Portugal (Schengen, up to 90 days).",
@@ -97,7 +97,7 @@ def _check_visa(nationality: str, destination_country: str) -> dict:
     }
 
 
-def _destination_info(destination: str) -> dict:
+def _destination_info(destination: str) -> dict[str, object]:
     return {
         "destination": destination,
         "country": "Portugal",
@@ -116,7 +116,7 @@ def _destination_info(destination: str) -> dict:
     }
 
 
-def _get_preferences(user_id: str | None = None) -> dict:
+def _get_preferences(user_id: str | None = None) -> dict[str, object]:
     return {"preferences": {}, "note": "[eval stub — no user preferences loaded]"}
 
 
@@ -124,7 +124,7 @@ def _search_restaurants(
     destination: str,
     cuisine: str | None = None,
     budget_tier: str = "comfort",
-) -> dict:
+) -> dict[str, object]:
     return {
         "restaurants": [
             {"name": "Time Out Market", "cuisine": "varied", "price_tier": "moderate"},

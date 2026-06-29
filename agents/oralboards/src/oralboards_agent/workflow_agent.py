@@ -64,7 +64,7 @@ class _WorkflowWithSubAgents(Workflow):
     # traversal terminates at the Workflow root instead of raising AttributeError.
     parent_agent: Any = Field(default=None, exclude=True)
 
-    def model_post_init(self, __context: Any) -> None:
+    def model_post_init(self, __context: Any, /) -> None:
         super().model_post_init(__context)
         nodes = [
             n for n in (self.graph.nodes if self.graph else []) if hasattr(n, "tools")
@@ -87,11 +87,13 @@ class _WorkflowWithSubAgents(Workflow):
             super().__setattr__(name, value)
 
     @property
-    def sub_agents(self) -> list:
+    def sub_agents(self) -> list[Any]:
         return getattr(self, "_sub_agents", [])
 
-    def model_copy(self, *, deep: bool = False, **kwargs) -> _WorkflowWithSubAgents:
-        copied = super().model_copy(deep=deep, **kwargs)
+    def model_copy(
+        self, *, deep: bool = False, **kwargs: Any
+    ) -> _WorkflowWithSubAgents:
+        copied: _WorkflowWithSubAgents = super().model_copy(deep=deep, **kwargs)
         if copied.graph is not None:
             # Give the copy its own Graph with an independent nodes list so the
             # sub_agents setter can update graph.nodes without touching the
@@ -185,7 +187,7 @@ _LOADING_STEPS = (
 )
 
 
-def complete_examination(tool_context: ToolContext) -> dict:
+def complete_examination(tool_context: ToolContext) -> dict[str, object]:
     """End the questioning phase when all relevant skillsets are covered.
 
     Called by the evaluator after the last skillset has been assessed.
@@ -248,10 +250,10 @@ def build_case_builder() -> LlmAgent:
             "Do NOT ask any clinical questions in this phase."
         ),
         tools=[
-            FunctionTool(search_docs),
-            FunctionTool(set_case),
-            FunctionTool(set_phase),
-            FunctionTool(set_loading_step),
+            search_docs,
+            set_case,
+            set_phase,
+            set_loading_step,
         ],
     )
 
@@ -325,9 +327,9 @@ def _build_evaluator() -> LlmAgent:
             "will generate the final score card. If more skillsets remain, do NOT call it."
         ),
         tools=[
-            FunctionTool(append_exchange),
+            append_exchange,
             FunctionTool(complete_examination),
-            FunctionTool(set_loading_step),
+            set_loading_step,
         ],
     )
 
@@ -354,8 +356,8 @@ def _build_scorer() -> LlmAgent:
             "Do NOT compute a weighted composite or invent /100 or /5 scores."
         ),
         tools=[
-            FunctionTool(set_score_card),
-            FunctionTool(set_loading_step),
+            set_score_card,
+            set_loading_step,
         ],
     )
 

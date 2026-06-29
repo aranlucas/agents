@@ -2,6 +2,7 @@ import asyncio
 import logging
 import time
 from pathlib import Path
+from typing import Any
 
 from ag_ui_adk import get_a2ui_tool
 from agents_shared.state import make_state_initializer
@@ -15,6 +16,7 @@ from agents_shared.tools import (
 from google.adk.agents import LlmAgent
 from google.adk.models.google_llm import Gemini
 from google.adk.models.lite_llm import LiteLlm
+from google.adk.tools import BaseTool, ToolContext
 from google.adk.tools.agent_tool import AgentTool
 from pydantic import BaseModel, Field
 
@@ -69,8 +71,8 @@ INSTRUCTION = (Path(__file__).parent / "instructions.md").read_text(encoding="ut
 class TrendsState(BaseModel):
     query: str = ""
     generated_sql: str = ""
-    columns: list[str] = Field(default_factory=list)
-    rows: list[dict] = Field(default_factory=list)
+    columns: list[str] = Field(default_factory=list[str])
+    rows: list[dict[str, object]] = Field(default_factory=list[dict[str, object]])
     insights: str = ""
     status: str = "idle"
     error: str = ""
@@ -86,7 +88,9 @@ web_search_lock = asyncio.Lock()
 web_search_state: dict[str, float] = {"last_at": 0.0}
 
 
-async def throttle_web_search(tool, args, tool_context) -> None:
+async def throttle_web_search(
+    tool: BaseTool, _args: dict[str, Any], _tool_context: ToolContext
+) -> None:
     """Space out Brave web-search calls to respect the free-tier rate limit."""
     if not str(getattr(tool, "name", "")).startswith("brave_"):
         return

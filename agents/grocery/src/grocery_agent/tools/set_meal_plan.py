@@ -1,7 +1,7 @@
 from google.adk.tools import FunctionTool, ToolContext
 
 
-def set_meal_plan(tool_context: ToolContext, plan: str) -> dict:
+def set_meal_plan(tool_context: ToolContext, plan: str) -> dict[str, object]:
     r"""Write or overwrite the meal plan (token-streams into the UI).
 
     Use markdown day headings: ## Day 1: Theme\\n- Breakfast: ...

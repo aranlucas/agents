@@ -1,5 +1,7 @@
 from typing import NotRequired, Required, TypedDict
 
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
+
 
 class StravaActivity(TypedDict):
     id: Required[str]
@@ -14,20 +16,80 @@ class StravaActivity(TypedDict):
     perceived_effort: NotRequired[int | None]
 
 
+class _StravaActivityPayload(BaseModel):
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+    id: str = ""
+    name: str = "Untitled activity"
+    sport_type: str | None = Field(
+        default=None, validation_alias=AliasChoices("sport_type", "type")
+    )
+    start_date: str | None = None
+    distance_m: float | None = Field(default=None, validation_alias="distance")
+    moving_time_s: int | None = Field(default=None, validation_alias="moving_time")
+    elapsed_time_s: int | None = Field(default=None, validation_alias="elapsed_time")
+    total_elevation_gain_m: float | None = Field(
+        default=None, validation_alias="total_elevation_gain"
+    )
+    average_heartrate: float | None = None
+    perceived_effort: int | None = Field(
+        default=None, validation_alias="perceived_exertion"
+    )
+
+    @field_validator("id", mode="before")
+    @classmethod
+    def _coerce_id(cls, value: object) -> str:
+        return str(value)
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def _default_name(cls, value: object) -> str:
+        return str(value or "Untitled activity")
+
+    @field_validator("sport_type", "start_date", mode="before")
+    @classmethod
+    def _empty_string_to_none(cls, value: object) -> object:
+        return None if value == "" else value
+
+    @field_validator(
+        "distance_m",
+        "moving_time_s",
+        "elapsed_time_s",
+        "total_elevation_gain_m",
+        "average_heartrate",
+        "perceived_effort",
+        mode="before",
+    )
+    @classmethod
+    def _empty_number_to_none(cls, value: object) -> object:
+        return None if value == "" else value
+
+
 def normalize_strava_activity(activity: dict[str, object]) -> StravaActivity:
-    mapping = {
-        "id": str(activity.get("id", "")),
-        "name": activity.get("name") or "Untitled activity",
-        "sport_type": activity.get("sport_type") or activity.get("type"),
-        "start_date": activity.get("start_date"),
-        "distance_m": activity.get("distance"),
-        "moving_time_s": activity.get("moving_time"),
-        "elapsed_time_s": activity.get("elapsed_time"),
-        "total_elevation_gain_m": activity.get("total_elevation_gain"),
-        "average_heartrate": activity.get("average_heartrate"),
-        "perceived_effort": activity.get("perceived_exertion"),
+    payload = _StravaActivityPayload.model_validate(activity)
+    normalized: StravaActivity = {
+        "id": payload.id,
+        "name": payload.name,
     }
-    return {key: value for key, value in mapping.items() if value not in (None, "")}
+
+    if payload.sport_type is not None:
+        normalized["sport_type"] = payload.sport_type
+    if payload.start_date is not None:
+        normalized["start_date"] = payload.start_date
+    if payload.distance_m is not None:
+        normalized["distance_m"] = payload.distance_m
+    if payload.moving_time_s is not None:
+        normalized["moving_time_s"] = payload.moving_time_s
+    if payload.elapsed_time_s is not None:
+        normalized["elapsed_time_s"] = payload.elapsed_time_s
+    if payload.total_elevation_gain_m is not None:
+        normalized["total_elevation_gain_m"] = payload.total_elevation_gain_m
+    if payload.average_heartrate is not None:
+        normalized["average_heartrate"] = payload.average_heartrate
+    if payload.perceived_effort is not None:
+        normalized["perceived_effort"] = payload.perceived_effort
+
+    return normalized
 
 
 def summarize_activities(activities: list[StravaActivity]) -> dict[str, object]:

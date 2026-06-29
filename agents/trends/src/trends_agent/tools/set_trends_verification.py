@@ -1,7 +1,9 @@
 from google.adk.tools import FunctionTool, ToolContext
 
 
-def set_trends_verification(tool_context: ToolContext, verification: str) -> dict:
+def set_trends_verification(
+    tool_context: ToolContext, verification: str
+) -> dict[str, object]:
     """Append web-search verification notes to the trends insights in state."""
     existing = str(tool_context.state.get("insights") or "").rstrip()
     section = f"## Verification\n\n{verification}"

@@ -12,7 +12,7 @@ def set_loading_step(
             description="Human-readable progress message shown during long operations."
         ),
     ],
-) -> dict:
+) -> dict[str, object]:
     """Report a human-readable progress step during search or generation phases."""
     tool_context.state["loading_step"] = step
     return {"status": "success", "ok": True}

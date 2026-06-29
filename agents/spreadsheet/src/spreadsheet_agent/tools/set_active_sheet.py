@@ -1,15 +1,15 @@
 from google.adk.tools import FunctionTool, ToolContext
 
-
-def _state_sheets(tool_context: ToolContext) -> list:
-    existing = tool_context.state.get("sheets")
-    if isinstance(existing, list):
-        return existing
-    tool_context.state["sheets"] = []
-    return tool_context.state["sheets"]
+from ._types import Sheet, normalize_sheets
 
 
-def set_active_sheet(tool_context: ToolContext, sheet_index: int) -> dict:
+def _state_sheets(tool_context: ToolContext) -> list[Sheet]:
+    sheets = normalize_sheets(tool_context.state.get("sheets") or [])
+    tool_context.state["sheets"] = sheets
+    return sheets
+
+
+def set_active_sheet(tool_context: ToolContext, sheet_index: int) -> dict[str, object]:
     """Change which sheet tab is currently active."""
     sheets = _state_sheets(tool_context)
     if sheet_index < 0 or sheet_index >= len(sheets):

@@ -48,7 +48,7 @@ def build_orchestrator_agent() -> LlmAgent:
         build_presentation(),
     ]
     for agent in child_agents:
-        if isinstance(agent, LlmAgent) and not agent.sub_agents:
+        if not agent.sub_agents:
             agent.mode = "task"
 
     return LlmAgent(

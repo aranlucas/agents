@@ -1,7 +1,9 @@
 from google.adk.tools import FunctionTool, ToolContext
 
 
-def add_day(tool_context: ToolContext, day_number: int, theme: str, plan: str) -> dict:
+def add_day(
+    tool_context: ToolContext, day_number: int, theme: str, plan: str
+) -> dict[str, object]:
     """Append (or replace) a single day in the existing itinerary.
 
     `plan` should be a list of `- HH:MM — activity` bullets. Use this for

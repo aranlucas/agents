@@ -39,10 +39,11 @@ ORALBOARDS_V2_PREDICT_STATE = [
 _workflow_agent = build_workflow_agent()
 
 
-async def _health(engine: AsyncEngine) -> dict:
+async def _health(engine: AsyncEngine) -> dict[str, object]:
     if DB_STARTUP_ERROR:
         return {"status": "unhealthy", "database": "error", "error": DB_STARTUP_ERROR}
-    return await check_database_connection(engine)
+    result = await check_database_connection(engine)
+    return {"status": result["status"], "database": result["database"]}
 
 
 def register(app: FastAPI, services: AgentServices):

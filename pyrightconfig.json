@@ -2,14 +2,9 @@
   "include": ["agents/*/src", "agents/shared/src"],
   "typeCheckingMode": "strict",
   "pythonVersion": "3.14",
+  "stubPath": "stubs",
   "reportMissingImports": true,
   "reportMissingTypeStubs": false,
-  "reportUnknownVariableType": "warning",
-  "reportUnknownMemberType": "warning",
-  "reportUnknownArgumentType": "warning",
-  "reportUnknownParameterType": "warning",
-  "reportMissingParameterType": "none",
-  "reportUnknownLambdaType": "warning",
   "venvPath": ".",
   "venv": ".venv"
 }

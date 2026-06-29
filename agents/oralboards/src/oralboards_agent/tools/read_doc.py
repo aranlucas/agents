@@ -3,9 +3,16 @@ import sqlite3
 from typing import Annotated
 
 from google.adk.tools import FunctionTool
-from pydantic import Field
+from pydantic import Field, TypeAdapter, ValidationError
 
 from ..db import connect
+from ._types import DocRow
+
+_DOC_ROW = TypeAdapter(DocRow)
+
+
+def _row_to_dict(row: sqlite3.Row) -> dict[str, object]:
+    return {key: row[key] for key in tuple(row.keys())}
 
 
 async def read_doc(
@@ -15,7 +22,7 @@ async def read_doc(
             description='Filepath from a search_docs result (e.g. "aapd/some-guideline.md")',
         ),
     ],
-) -> dict:
+) -> dict[str, object]:
     """Read a full markdown document body by filepath from the bundled DB."""
     collection, _, path = filepath.partition("/")
     if not path:
@@ -32,7 +39,7 @@ async def read_doc(
         limit 1
     """
 
-    def _query() -> object:
+    def _query() -> sqlite3.Row | None:
         with connect() as conn:
             return conn.execute(sql, [path, collection, collection]).fetchone()
 
@@ -44,13 +51,18 @@ async def read_doc(
     if row is None:
         return {"status": "error", "error": "not found"}
 
+    try:
+        doc = _DOC_ROW.validate_python(_row_to_dict(row))
+    except ValidationError:
+        return {"status": "error", "error": "invalid document row"}
+
     return {
         "status": "success",
-        "docid": row["docid"],
-        "collection": row["collection"],
-        "filepath": f"{row['collection']}/{row['filepath']}",
-        "title": row["title"],
-        "body": row["body"],
+        "docid": doc["docid"],
+        "collection": doc["collection"],
+        "filepath": f"{doc['collection']}/{doc['filepath']}",
+        "title": doc["title"],
+        "body": doc["body"],
         "error": "",
     }
 

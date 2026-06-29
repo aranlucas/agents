@@ -31,15 +31,15 @@ class ResearchState(BaseModel):
     title: str = ""
     query: str = ""
     report: str = ""
-    sections: list = Field(default_factory=list)
-    sources: list = Field(default_factory=list)
+    sections: list[dict[str, object]] = Field(default_factory=list[dict[str, object]])
+    sources: list[dict[str, object]] = Field(default_factory=list[dict[str, object]])
     status: str = "idle"
     review_summary: str = ""
     user_id: str = ""
 
 
 def _build_agent(*, include_agui: bool) -> LlmAgent:
-    tools = [
+    tools: list[object] = [
         set_research_query,
         create_section,
         update_section,

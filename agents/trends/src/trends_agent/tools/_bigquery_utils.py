@@ -3,10 +3,14 @@ import os
 from datetime import date, datetime, time
 from decimal import Decimal
 
+from pydantic import TypeAdapter, ValidationError
+
 log = logging.getLogger(__name__)
 
 type JsonScalar = str | int | float | bool | None
 type JsonValue = JsonScalar | list[JsonValue] | dict[str, JsonValue]
+_OBJECT_DICT = TypeAdapter(dict[str, object])
+_OBJECT_LIST = TypeAdapter(list[object])
 
 
 def clean_sql_query(text: str) -> str:
@@ -27,14 +31,19 @@ def normalize_bigquery_value(value: object) -> JsonValue:
         return int(value) if value == value.to_integral_value() else float(value)
     if isinstance(value, (date, datetime, time)):
         return value.isoformat()
-    if isinstance(value, dict):
-        return {str(key): normalize_bigquery_value(item) for key, item in value.items()}
+    try:
+        mapping = _OBJECT_DICT.validate_python(value)
+    except ValidationError:
+        mapping = None
+    if mapping is not None:
+        return {key: normalize_bigquery_value(item) for key, item in mapping.items()}
     if isinstance(value, (list, tuple)):
-        return [normalize_bigquery_value(item) for item in value]
+        items = _OBJECT_LIST.validate_python(value)
+        return [normalize_bigquery_value(item) for item in items]
     return str(value)
 
 
-def run_bigquery_sql(sql: str) -> dict:
+def run_bigquery_sql(sql: str) -> dict[str, object]:
     """Execute bounded BigQuery SQL and return normalized rows."""
     from google.cloud import bigquery
 
@@ -45,13 +54,12 @@ def run_bigquery_sql(sql: str) -> dict:
             .result()
         )
         columns = [field.name for field in result.schema]
-        rows = [
-            {
-                str(key): normalize_bigquery_value(value)
-                for key, value in dict(row).items()
-            }
-            for row in result
-        ]
+        rows: list[dict[str, JsonValue]] = []
+        for row in _OBJECT_LIST.validate_python(result):
+            mapping = _OBJECT_DICT.validate_python(row)
+            rows.append(
+                {key: normalize_bigquery_value(value) for key, value in mapping.items()}
+            )
         return {"ok": True, "columns": columns, "rows": rows, "row_count": len(rows)}
     except Exception:  # noqa: BLE001
         log.exception("Google Trends BigQuery execution failed")

@@ -8,10 +8,10 @@ def write_trends_result(
     query: str,
     sql: str,
     columns: list[str],
-    rows: list[dict],
+    rows: list[dict[str, object]],
     insights: str,
     error: str = "",
-) -> dict:
+) -> dict[str, object]:
     normalized_rows = [normalize_bigquery_value(row) for row in rows]
     status = "error" if error else "ready" if normalized_rows else "empty"
     tool_context.state.update(

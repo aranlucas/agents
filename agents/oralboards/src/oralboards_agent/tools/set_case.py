@@ -16,14 +16,16 @@ def set_case(
         Field(
             description="Source provenance list from search_docs results: {docid, filepath, title, snippet, collection}"
         ),
-    ] = (),
+    ]
+    | None = None,
     case_passages: Annotated[
         list[str],
         Field(
             description="Relevant text passages from search_docs results (the 'passage' field of each result)."
         ),
-    ] = (),
-) -> dict:
+    ]
+    | None = None,
+) -> dict[str, object]:
     """Write the grounded case vignette, source provenance, and passages to shared state."""
     tool_context.state["case"] = case
     tool_context.state["case_sources"] = case_sources or []

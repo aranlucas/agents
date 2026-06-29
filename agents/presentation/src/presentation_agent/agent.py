@@ -28,7 +28,7 @@ _INSTRUCTION = (Path(__file__).parent / "instructions.md").read_text(encoding="u
 class PresentationState(BaseModel):
     title: str = ""
     theme: str = "light"
-    slides: list = Field(default_factory=list)
+    slides: list[dict[str, object]] = Field(default_factory=list[dict[str, object]])
     active_slide_index: int = 0
     status: str = "idle"
     review_summary: str = ""
@@ -36,7 +36,7 @@ class PresentationState(BaseModel):
 
 
 def _build_agent(*, include_agui: bool) -> LlmAgent:
-    tools = [
+    tools: list[object] = [
         set_presentation_meta,
         create_slide,
         update_slide,

@@ -58,7 +58,7 @@ class OralBoardsState(BaseModel):
 # ---------------------------------------------------------------------------
 def _build_agent(*, include_agui: bool, model: BaseLlm | None = None) -> LlmAgent:
     """Fresh LlmAgent instance for the oral-boards examiner."""
-    tools = [
+    tools: list[object] = [
         search_docs,
         read_doc,
         set_case,

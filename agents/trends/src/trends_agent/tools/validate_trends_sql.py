@@ -3,7 +3,7 @@ from google.adk.tools import FunctionTool
 from ._bigquery_utils import clean_sql_query
 
 
-def validate_trends_sql(sql: str) -> dict:
+def validate_trends_sql(sql: str) -> dict[str, object]:
     cleaned = clean_sql_query(sql)
     if not cleaned:
         return {

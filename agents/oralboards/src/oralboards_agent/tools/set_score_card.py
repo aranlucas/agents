@@ -26,7 +26,7 @@ def set_score_card(
             description="Overall practice-outcome estimate. The real OCE is Pass/Fail decided by examiners."
         ),
     ],
-) -> dict:
+) -> dict[str, object]:
     """Write the final cited score card, per-skillset scores, and practice outcome."""
     tool_context.state["score_card"] = markdown
     tool_context.state["score_summary"] = list(score_summary) or []

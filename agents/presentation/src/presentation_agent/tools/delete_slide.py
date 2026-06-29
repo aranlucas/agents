@@ -1,15 +1,15 @@
 from google.adk.tools import FunctionTool, ToolContext
 
-
-def _state_slides(tool_context: ToolContext) -> list[dict]:
-    existing = tool_context.state.get("slides")
-    if isinstance(existing, list):
-        return existing
-    tool_context.state["slides"] = []
-    return tool_context.state["slides"]
+from ._types import Slide, normalize_slides
 
 
-def delete_slide(tool_context: ToolContext, slide_id: str) -> dict:
+def _state_slides(tool_context: ToolContext) -> list[Slide]:
+    slides = normalize_slides(tool_context.state.get("slides") or [])
+    tool_context.state["slides"] = slides
+    return slides
+
+
+def delete_slide(tool_context: ToolContext, slide_id: str) -> dict[str, object]:
     """Remove a slide from the presentation by id."""
     slides = _state_slides(tool_context)
     new_slides = [s for s in slides if s.get("id") != slide_id]

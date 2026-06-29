@@ -5,10 +5,10 @@ from google.adk.tools import FunctionTool, ToolContext
 
 def add_source(
     tool_context: ToolContext, source_title: str, url: str, snippet: str
-) -> dict:
+) -> dict[str, object]:
     """Append a citation source to the report."""
     source_id = f"src_{uuid.uuid4().hex[:8]}"
-    sources: list[dict] = tool_context.state.get("sources") or []
+    sources: list[dict[str, object]] = tool_context.state.get("sources") or []
     sources.append(
         {"id": source_id, "title": source_title, "url": url, "snippet": snippet}
     )

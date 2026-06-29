@@ -3,7 +3,9 @@
 import asyncio
 import logging
 import time
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any, Literal
 
 from ag_ui_adk import AGUIToolset
 from agents_shared.state import (
@@ -18,6 +20,8 @@ from agents_shared.tools import (
 )
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
+from google.adk.tools import BaseTool, ToolContext
+from google.adk.tools.base_toolset import BaseToolset
 from pydantic import BaseModel
 
 from .tools import (
@@ -33,6 +37,9 @@ from .tools import (
 log = logging.getLogger("fitness_agent")
 
 _INSTRUCTION = (Path(__file__).parent / "instructions.md").read_text(encoding="utf-8")
+AgentMode = Literal["chat", "task", "single_turn"]
+IncludeContents = Literal["default", "none"]
+FitnessTool = Callable[..., object] | BaseTool | BaseToolset
 
 
 # ---------------------------------------------------------------------------
@@ -59,7 +66,9 @@ web_search_lock = asyncio.Lock()
 web_search_state: dict[str, float] = {"last_at": 0.0}
 
 
-async def throttle_web_search(tool, args, tool_context) -> None:
+async def throttle_web_search(
+    tool: BaseTool, _args: dict[str, Any], _tool_context: ToolContext
+) -> None:
     """Space out Brave web-search calls to respect the free-tier rate limit."""
     if not str(getattr(tool, "name", "")).startswith("brave_"):
         return
@@ -77,13 +86,13 @@ async def throttle_web_search(tool, args, tool_context) -> None:
 # ---------------------------------------------------------------------------
 def build_agent(
     *,
-    mode: str | None = None,
-    include_contents: str = "default",
+    mode: AgentMode | None = None,
+    include_contents: IncludeContents = "default",
     include_agui: bool = True,
     model: str = "groq/llama-3.3-70b-versatile",
 ) -> LlmAgent:
     """Fresh LlmAgent instance — the gateway's wellness orchestrator builds its own."""
-    tools = [
+    tools: list[FitnessTool] = [
         StravaToolset(),
         get_current_date,
         set_objective_research,
@@ -115,7 +124,7 @@ def build_agent(
 
 
 def build_telegram_agent(
-    *, mode: str | None = None, include_contents: str = "default"
+    *, mode: AgentMode | None = None, include_contents: IncludeContents = "default"
 ) -> LlmAgent:
     return build_agent(
         mode=mode,
@@ -126,7 +135,7 @@ def build_telegram_agent(
 
 
 def build_eval_agent(
-    *, mode: str | None = None, include_contents: str = "default"
+    *, mode: AgentMode | None = None, include_contents: IncludeContents = "default"
 ) -> LlmAgent:
     """Eval-compatible agent: no AGUIToolset or McpToolset.
 

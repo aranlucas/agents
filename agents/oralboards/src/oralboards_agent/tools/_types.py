@@ -1,5 +1,5 @@
 import re
-from typing import Literal, TypedDict
+from typing import Literal, NotRequired, TypedDict
 
 
 class CaseSource(TypedDict):
@@ -7,6 +7,11 @@ class CaseSource(TypedDict):
     filepath: str
     title: str
     collection: str
+
+
+class DocRow(CaseSource):
+    body: str
+    snippet: NotRequired[str]
 
 
 OralBoardsSkill = Literal["remember", "understand_apply", "analyze_evaluate"]

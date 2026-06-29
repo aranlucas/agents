@@ -2,13 +2,13 @@ from typing import Literal
 
 from google.adk.tools import FunctionTool, ToolContext
 
+from ._types import ExpenseItem, normalize_expenses
 
-def _state_expenses(tool_context: ToolContext) -> list[dict]:
-    existing = tool_context.state.get("expenses")
-    if isinstance(existing, list):
-        return existing
-    tool_context.state["expenses"] = []
-    return tool_context.state["expenses"]
+
+def _state_expenses(tool_context: ToolContext) -> list[ExpenseItem]:
+    expenses = normalize_expenses(tool_context.state.get("expenses") or [])
+    tool_context.state["expenses"] = expenses
+    return expenses
 
 
 def decide_expense(
@@ -16,7 +16,7 @@ def decide_expense(
     expense_id: str,
     decision: Literal["approved", "rejected"],
     note: str,
-) -> dict:
+) -> dict[str, object]:
     """Record a human approval or rejection for an expense."""
     expenses = _state_expenses(tool_context)
     expense = next((e for e in expenses if e.get("id") == expense_id), None)
