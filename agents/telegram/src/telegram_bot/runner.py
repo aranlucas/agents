@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import re
 from collections.abc import Awaitable, Callable, Iterable, Mapping
 from dataclasses import dataclass
 from typing import Protocol, cast
@@ -27,11 +28,15 @@ from agents_shared.telegram_auth import (
     unlink_telegram_user,
 )
 from google.adk.apps import App
+from google.adk.apps.app import EventsCompactionConfig
+from google.adk.apps.llm_event_summarizer import LlmEventSummarizer
+from google.adk.models.lite_llm import LiteLlm
 from google.adk.runners import Runner
 from google.adk.sessions import BaseSessionService
 from google.genai import types
 from sqlalchemy.ext.asyncio import AsyncEngine
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
+from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
     ApplicationBuilder,
@@ -46,6 +51,7 @@ from telegram.ext import (
 from .orchestrator import (
     ORCHESTRATOR_AGENT_ID,
     ORCHESTRATOR_TITLE,
+    TELEGRAM_ORCHESTRATOR_MODEL,
     build_orchestrator_agent,
 )
 
@@ -54,6 +60,10 @@ log = logging.getLogger(__name__)
 TELEGRAM_MESSAGE_LIMIT = 4096
 DEFAULT_STATUS_UPDATE_SECONDS = 12.0
 DEFAULT_RUN_TIMEOUT_SECONDS = 180.0
+ORCHESTRATOR_COMPACTION_INTERVAL = 20
+ORCHESTRATOR_COMPACTION_OVERLAP_SIZE = 2
+ORCHESTRATOR_COMPACTION_TOKEN_THRESHOLD = 120_000
+ORCHESTRATOR_COMPACTION_EVENT_RETENTION_SIZE = 20
 _STATUS_MESSAGES = (
     "Still working...",
     "Still working with the specialist agent...",
@@ -90,6 +100,7 @@ class TelegramSentMessage(Protocol):
         text: str,
         *,
         disable_web_page_preview: bool = True,
+        parse_mode: str | None = None,
     ) -> object: ...
 
 
@@ -100,6 +111,7 @@ class TelegramReplyTarget(Protocol):
         *,
         disable_web_page_preview: bool = True,
         reply_markup: InlineKeyboardMarkup | None = None,
+        parse_mode: str | None = None,
     ) -> TelegramSentMessage: ...
 
 
@@ -323,11 +335,11 @@ class TelegramRunner:
 
         credential_state, missing = await self.credentials.check(clerk_user_id)
         if missing:
-            await self._send_text(
-                message,
-                CredentialGate.format_missing(missing, self.credentials.connect_url),
+            log.debug(
+                "Telegram user %s missing credentials: %s",
+                clerk_user_id,
+                missing,
             )
-            return
 
         await _ensure_session(
             self.session_service,
@@ -388,6 +400,7 @@ class TelegramRunner:
                                 await self._send_reply(
                                     message,
                                     _format_agent_message(event.author, text),
+                                    parse_mode=ParseMode.MARKDOWN_V2,
                                 )
                         else:
                             response_texts.extend(texts)
@@ -581,14 +594,18 @@ class TelegramRunner:
         first = chunks[0] if chunks else "Done."
         if thinking_message is not None:
             try:
-                await thinking_message.edit_text(first, disable_web_page_preview=True)
+                await thinking_message.edit_text(
+                    first,
+                    disable_web_page_preview=True,
+                    parse_mode=ParseMode.MARKDOWN_V2,
+                )
             except Exception:
                 log.exception("Failed to edit Telegram thinking message")
-                await self._send_reply(message, first)
+                await self._send_reply(message, first, parse_mode=ParseMode.MARKDOWN_V2)
         else:
-            await self._send_reply(message, first)
+            await self._send_reply(message, first, parse_mode=ParseMode.MARKDOWN_V2)
         for chunk in chunks[1:]:
-            await self._send_reply(message, chunk)
+            await self._send_reply(message, chunk, parse_mode=ParseMode.MARKDOWN_V2)
 
     async def _send_text(
         self,
@@ -603,8 +620,10 @@ class TelegramRunner:
         message: TelegramMessage,
         text: str,
         reply_markup: InlineKeyboardMarkup | None = None,
+        *,
+        parse_mode: str | None = None,
     ) -> TelegramSentMessage | None:
-        return await send_reply(message, text, reply_markup)
+        return await send_reply(message, text, reply_markup, parse_mode=parse_mode)
 
     async def _update_thinking_status(
         self,
@@ -721,6 +740,8 @@ async def send_text_chunks(
     message: TelegramMessage,
     text: str,
     reply_markup: InlineKeyboardMarkup | None = None,
+    *,
+    parse_mode: str | None = None,
 ) -> None:
     chunks = chunk_text(text)
     for i, chunk in enumerate(chunks):
@@ -728,6 +749,7 @@ async def send_text_chunks(
             message,
             chunk,
             reply_markup=reply_markup if i == 0 else None,
+            parse_mode=parse_mode,
         )
 
 
@@ -735,6 +757,8 @@ async def send_reply(
     message: TelegramMessage,
     text: str,
     reply_markup: InlineKeyboardMarkup | None = None,
+    *,
+    parse_mode: str | None = None,
 ) -> TelegramSentMessage | None:
     if message.reply_target is None:
         log.warning("Cannot reply to Telegram message without a reply target")
@@ -743,6 +767,7 @@ async def send_reply(
         text,
         disable_web_page_preview=True,
         reply_markup=reply_markup,
+        parse_mode=parse_mode,
     )
 
 
@@ -888,6 +913,14 @@ def _readable_tool_name(name: str) -> str:
     return " ".join(name.replace("-", "_").split("_")).strip() or "tool"
 
 
+_MARKDOWNV2_ESCAPE_RE = re.compile(r"([_*\[\]()~`>#+\-=|{}.!\\])")
+
+
+def escape_markdownv2(text: str) -> str:
+    """Escape all MarkdownV2 special characters in a plain-text string."""
+    return _MARKDOWNV2_ESCAPE_RE.sub(r"\\\1", text)
+
+
 def _default_connect_url(link_base_url: str | None) -> str | None:
     if not link_base_url:
         return None
@@ -932,6 +965,15 @@ def build_orchestrator_runner(services: AgentServices) -> Runner:
             name=ORCHESTRATOR_AGENT_ID,
             root_agent=build_orchestrator_agent(),
             plugins=[SlimMcpPlugin()],
+            events_compaction_config=EventsCompactionConfig(
+                compaction_interval=ORCHESTRATOR_COMPACTION_INTERVAL,
+                overlap_size=ORCHESTRATOR_COMPACTION_OVERLAP_SIZE,
+                token_threshold=ORCHESTRATOR_COMPACTION_TOKEN_THRESHOLD,
+                event_retention_size=ORCHESTRATOR_COMPACTION_EVENT_RETENTION_SIZE,
+                summarizer=LlmEventSummarizer(
+                    llm=LiteLlm(model=TELEGRAM_ORCHESTRATOR_MODEL),
+                ),
+            ),
         ),
         app_name=ORCHESTRATOR_AGENT_ID,
         artifact_service=services.artifact_service,

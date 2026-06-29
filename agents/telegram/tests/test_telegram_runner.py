@@ -9,6 +9,10 @@ from google.adk.agents import LlmAgent
 from pytest_mock import MockerFixture
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from telegram_bot.runner import (
+    ORCHESTRATOR_COMPACTION_EVENT_RETENTION_SIZE,
+    ORCHESTRATOR_COMPACTION_INTERVAL,
+    ORCHESTRATOR_COMPACTION_OVERLAP_SIZE,
+    ORCHESTRATOR_COMPACTION_TOKEN_THRESHOLD,
     TELEGRAM_MESSAGE_LIMIT,
     TelegramMessage,
     TelegramRunner,
@@ -30,6 +34,7 @@ class FakeReplyTarget:
         self.messages: list[tuple[int, str]] = []
         self.disable_web_page_preview_values: list[bool] = []
         self.reply_markups: list[object] = []
+        self.parse_modes: list[str | None] = []
 
     async def reply_text(
         self,
@@ -37,10 +42,12 @@ class FakeReplyTarget:
         *,
         disable_web_page_preview: bool = True,
         reply_markup: object = None,
+        parse_mode: str | None = None,
     ) -> TelegramSentMessage:
         self.messages.append((self.chat_id, text))
         self.disable_web_page_preview_values.append(disable_web_page_preview)
         self.reply_markups.append(reply_markup)
+        self.parse_modes.append(parse_mode)
         return FakeSentMessage(self)
 
 
@@ -53,9 +60,11 @@ class FakeSentMessage:
         text: str,
         *,
         disable_web_page_preview: bool = True,
+        parse_mode: str | None = None,
     ) -> object:
         self.target.messages.append((self.target.chat_id, text))
         self.target.disable_web_page_preview_values.append(disable_web_page_preview)
+        self.target.parse_modes.append(parse_mode)
         return self
 
 
@@ -168,6 +177,21 @@ def test_build_telegram_runner_registers_new_and_reset_commands(
 
     assert "new" in registered_commands
     assert "reset" in registered_commands
+
+
+def test_build_telegram_runner_enables_orchestrator_compaction(
+    services: AgentServices,
+    orchestrator_agent: Mock,
+) -> None:
+    runner = _build(services)
+
+    config = runner.runner.app.events_compaction_config
+
+    assert config is not None
+    assert config.compaction_interval == ORCHESTRATOR_COMPACTION_INTERVAL
+    assert config.overlap_size == ORCHESTRATOR_COMPACTION_OVERLAP_SIZE
+    assert config.token_threshold == ORCHESTRATOR_COMPACTION_TOKEN_THRESHOLD
+    assert config.event_retention_size == ORCHESTRATOR_COMPACTION_EVENT_RETENTION_SIZE
 
 
 def test_chunk_text_respects_telegram_message_limit() -> None:
