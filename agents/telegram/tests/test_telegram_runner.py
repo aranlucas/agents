@@ -1,5 +1,5 @@
 from collections.abc import AsyncIterator, Awaitable, Callable
-from unittest.mock import Mock, create_autospec
+from unittest.mock import AsyncMock, Mock, create_autospec
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -9,6 +9,7 @@ from google.adk.agents import LlmAgent
 from pytest_mock import MockerFixture
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from telegram.constants import ParseMode
+from telegram.error import Forbidden
 from telegram_bot.runner import (
     ORCHESTRATOR_COMPACTION_EVENT_RETENTION_SIZE,
     ORCHESTRATOR_COMPACTION_INTERVAL,
@@ -18,6 +19,9 @@ from telegram_bot.runner import (
     TelegramMessage,
     TelegramRunner,
     TelegramSentMessage,
+    _agent_message_text,
+    _is_unaddressed_group_message,
+    _partition_user_id,
     bot_commands,
     build_telegram_runner,
     chunk_text,
@@ -125,10 +129,26 @@ def _update(
     chat_type: str = "private",
     message_thread_id: int | None = None,
     is_topic_message: bool = False,
+    user_id: int = 456,
+    user_name: str | None = None,
+    user_username: str | None = None,
+    is_bot: bool = False,
+    reply_to_bot: bool = False,
 ):
     """Build a minimal ``Update`` carrying one text message."""
     from types import SimpleNamespace
 
+    effective_user = SimpleNamespace(
+        id=user_id,
+        full_name=user_name,
+        username=user_username,
+        is_bot=is_bot,
+    )
+    reply_to_message = None
+    if reply_to_bot:
+        reply_to_message = SimpleNamespace(
+            from_user=SimpleNamespace(is_bot=True, id=999),
+        )
     return SimpleNamespace(
         effective_message=SimpleNamespace(
             text=text,
@@ -136,9 +156,10 @@ def _update(
             message_thread_id=message_thread_id,
             is_topic_message=is_topic_message,
             reply_text=reply_target.reply_text,
+            reply_to_message=reply_to_message,
         ),
         effective_chat=SimpleNamespace(id=chat_id, type=chat_type),
-        effective_user=SimpleNamespace(id=456),
+        effective_user=effective_user,
     )
 
 
@@ -355,6 +376,7 @@ async def test_topic_group_message_uses_topic_session_and_state(
 
     async def fake_run_async(*, user_id, session_id, new_message, state_delta):
         captured["session_id"] = session_id
+        captured["user_id"] = user_id
         captured["state_delta"] = state_delta
         captured["text"] = new_message.parts[0].text
         yield _Event(
@@ -376,12 +398,17 @@ async def test_topic_group_message_uses_topic_session_and_state(
             message_thread_id=42,
             is_topic_message=True,
             reply_target=reply_target,
+            user_name="Alice",
         )
     )
 
     assert captured["session_id"] == "telegram:-100123:topic:42:orchestrator"
-    assert captured["text"] == "plan food for this topic"
+    assert captured["user_id"] == "telegram:group:-100123:topic:42"
+    assert captured["text"] == "Alice: plan food for this topic"
     assert captured["state_delta"] == {
+        "sender_linked": True,
+        "kroger_connected": False,
+        "strava_connected": False,
         "user_id": "clerk-user",
         "telegram_chat_id": "-100123",
         "telegram_user_id": "456",
@@ -451,6 +478,9 @@ async def test_non_topic_group_message_does_not_use_reply_thread_as_session(
 
     assert captured["session_id"] == "telegram:-100123:orchestrator"
     assert captured["state_delta"] == {
+        "sender_linked": True,
+        "kroger_connected": False,
+        "strava_connected": False,
         "user_id": "clerk-user",
         "telegram_chat_id": "-100123",
         "telegram_user_id": "456",
@@ -909,21 +939,44 @@ async def test_login_command_sends_one_time_link(
 
 
 @pytest.mark.asyncio
-async def test_unlinked_message_requires_login(
+async def test_unlinked_message_runs_agent_anonymously(
     services: AgentServices,
     orchestrator_agent: Mock,
 ) -> None:
+    """Unlinked senders chat anonymously — no public 'sign in required' reply."""
+    from google.genai import types
+
     runner = _build(services)
     reply_target = FakeReplyTarget(chat_id=123)
+    captured: dict[str, object] = {}
+
+    async def fake_run_async(*, user_id, session_id, new_message, state_delta):
+        captured["user_id"] = user_id
+        captured["session_id"] = session_id
+        captured["state_delta"] = state_delta
+        yield _Event(
+            content=types.Content(
+                role="model",
+                parts=[types.Part(text="Hi there!")],
+            )
+        )
+
+    runner.runner.run_async = fake_run_async  # type: ignore[method-assign]
 
     await runner.handle_message(_message("plan food", reply_target))
 
-    assert reply_target.messages == [
-        (
-            123,
-            "Sign in is required. Send /login to link this Telegram account.",
-        )
-    ]
+    # No public "Sign in is required" reply.
+    assert all("Sign in is required" not in text for _, text in reply_target.messages)
+    # Agent ran with anonymous partition and credentials disabled.
+    assert captured["user_id"] == "telegram:anon:456"
+    assert captured["state_delta"] == {
+        "sender_linked": False,
+        "kroger_connected": False,
+        "strava_connected": False,
+        "telegram_chat_id": "123",
+        "telegram_user_id": "456",
+    }
+    assert reply_target.messages[-1] == (123, r"Hi there\!")
 
 
 @pytest.mark.asyncio
@@ -1008,21 +1061,17 @@ async def test_reset_session_clears_session_for_linked_user(
 
 
 @pytest.mark.asyncio
-async def test_reset_session_requires_login(
+async def test_reset_session_works_for_unlinked_user(
     services: AgentServices,
     orchestrator_agent: Mock,
 ) -> None:
+    """``/reset`` works for unlinked senders in any chat (room-scoped partition)."""
     reply_target = FakeReplyTarget(chat_id=123)
     runner = _build(services)
 
     await runner._reset_session(_message("/reset", reply_target))  # type: ignore[attr-defined]
 
-    assert reply_target.messages == [
-        (
-            123,
-            "Sign in is required. Send /login to link this Telegram account.",
-        )
-    ]
+    assert reply_target.messages == [(123, "Reset Orchestrator for this chat.")]
 
 
 @pytest.mark.asyncio
@@ -1112,3 +1161,440 @@ async def test_on_unknown_command_sends_help(
     await runner._on_unknown(update, Mock())  # type: ignore[arg-type]
 
     assert reply_target.messages == [(123, "Unknown command. Use /help.")]
+
+
+# ---------------------------------------------------------------------------
+# Group chat: per-topic shared sessions, mixed auth, DM nudge
+# ---------------------------------------------------------------------------
+
+
+def test_partition_user_id_returns_room_key_for_forum_topic() -> None:
+    """Forum topics share one room-scoped partition across participants."""
+    message = TelegramMessage(
+        chat_id=-100123,
+        user_id=456,
+        text="hi",
+        chat_type="supergroup",
+        message_thread_id=42,
+        is_topic_message=True,
+    )
+
+    assert (
+        _partition_user_id(message, "clerk-alice") == "telegram:group:-100123:topic:42"
+    )
+    assert _partition_user_id(message, "clerk-bob") == "telegram:group:-100123:topic:42"
+    assert _partition_user_id(message, None) == "telegram:group:-100123:topic:42"
+
+
+def test_partition_user_id_keeps_clerk_user_for_private_chats() -> None:
+    """Private chats keep the sender's Clerk id as the partition."""
+    message = TelegramMessage(
+        chat_id=123,
+        user_id=456,
+        text="hi",
+        chat_type="private",
+    )
+
+    assert _partition_user_id(message, "clerk-alice") == "clerk-alice"
+
+
+def test_partition_user_id_falls_back_to_anon_id_when_unlinked() -> None:
+    message = TelegramMessage(
+        chat_id=123,
+        user_id=456,
+        text="hi",
+        chat_type="private",
+    )
+
+    assert _partition_user_id(message, None) == "telegram:anon:456"
+
+
+def test_partition_user_id_keeps_clerk_user_for_non_topic_group() -> None:
+    """Plain (non-topic) group messages keep per-Clerk-user partitioning."""
+    message = TelegramMessage(
+        chat_id=-100123,
+        user_id=456,
+        text="hi",
+        chat_type="supergroup",
+        message_thread_id=987,
+        is_topic_message=False,
+    )
+
+    assert _partition_user_id(message, "clerk-alice") == "clerk-alice"
+    assert _partition_user_id(message, "clerk-bob") == "clerk-bob"
+    assert _partition_user_id(message, None) == "telegram:anon:456"
+
+
+def test_agent_message_text_prefixes_author_only_in_shared_topic() -> None:
+    private = TelegramMessage(
+        chat_id=123,
+        user_id=456,
+        text="hello",
+        chat_type="private",
+        user_name="Alice",
+    )
+    topic = TelegramMessage(
+        chat_id=-100123,
+        user_id=456,
+        text="@agents_bot plan food",
+        chat_type="supergroup",
+        message_thread_id=42,
+        is_topic_message=True,
+        user_name="Alice",
+    )
+    group = TelegramMessage(
+        chat_id=-100123,
+        user_id=456,
+        text="@agents_bot hello",
+        chat_type="supergroup",
+        message_thread_id=987,
+        is_topic_message=False,
+        user_name="Alice",
+    )
+
+    assert _agent_message_text(private, "agents_bot") == "hello"
+    assert _agent_message_text(topic, "agents_bot") == "Alice: plan food"
+    # Non-topic group: mention stripped, no author prefix.
+    assert _agent_message_text(group, "agents_bot") == "hello"
+
+
+def test_is_unaddressed_group_message_treats_reply_to_bot_as_addressed() -> None:
+    bot_username = "agents_bot"
+    reply = TelegramMessage(
+        chat_id=-100123,
+        user_id=456,
+        text="anything without a mention",
+        chat_type="supergroup",
+        reply_to_bot=True,
+    )
+    plain = TelegramMessage(
+        chat_id=-100123,
+        user_id=456,
+        text="ambient chatter",
+        chat_type="supergroup",
+    )
+
+    assert _is_unaddressed_group_message(reply, bot_username) is False
+    assert _is_unaddressed_group_message(plain, bot_username) is True
+
+
+@pytest.mark.asyncio
+async def test_two_senders_in_same_topic_share_one_session(
+    services: AgentServices,
+    orchestrator_agent: Mock,
+) -> None:
+    """Both speakers in a forum topic resolve to the same ADK session key."""
+    from google.genai import types
+
+    for telegram_user_id, clerk_user_id in (
+        ("111", "clerk-alice"),
+        ("222", "clerk-bob"),
+    ):
+        token = await create_link_token(
+            services.engine,
+            telegram_user_id=telegram_user_id,
+            telegram_chat_id="-100123",
+        )
+        assert (
+            await consume_link_token(
+                services.engine, token=token, clerk_user_id=clerk_user_id
+            )
+            is not None
+        )
+
+    async def credential_state_loader(
+        clerk_user_id: str,
+    ) -> tuple[dict[str, object], tuple[str, ...]]:
+        return {"user_id": clerk_user_id}, ()
+
+    runner = _build(
+        services,
+        credential_loader=credential_state_loader,
+        bot_username="agents_bot",
+    )
+    captured: list[dict[str, object]] = []
+
+    async def fake_run_async(*, user_id, session_id, new_message, state_delta):
+        captured.append(
+            {
+                "user_id": user_id,
+                "session_id": session_id,
+                "text": new_message.parts[0].text,
+            }
+        )
+        yield _Event(
+            content=types.Content(
+                role="model",
+                parts=[types.Part(text="ok")],
+            )
+        )
+
+    runner.runner.run_async = fake_run_async  # type: ignore[method-assign]
+
+    alice_reply = FakeReplyTarget(chat_id=-100123)
+    bob_reply = FakeReplyTarget(chat_id=-100123)
+    await runner.handle_message(
+        TelegramMessage(
+            chat_id=-100123,
+            user_id=111,
+            text="@agents_bot plan food",
+            chat_type="supergroup",
+            message_thread_id=42,
+            is_topic_message=True,
+            reply_target=alice_reply,
+            user_name="Alice",
+        )
+    )
+    await runner.handle_message(
+        TelegramMessage(
+            chat_id=-100123,
+            user_id=222,
+            text="@agents_bot add snacks",
+            chat_type="supergroup",
+            message_thread_id=42,
+            is_topic_message=True,
+            reply_target=bob_reply,
+            user_name="Bob",
+        )
+    )
+
+    assert len(captured) == 2
+    assert captured[0]["user_id"] == "telegram:group:-100123:topic:42"
+    assert captured[1]["user_id"] == "telegram:group:-100123:topic:42"
+    assert captured[0]["session_id"] == captured[1]["session_id"]
+    assert captured[0]["text"] == "Alice: plan food"
+    assert captured[1]["text"] == "Bob: add snacks"
+
+
+@pytest.mark.asyncio
+async def test_unlinked_user_in_topic_runs_anonymously_and_dms_login(
+    services: AgentServices,
+    orchestrator_agent: Mock,
+    mocker: MockerFixture,
+) -> None:
+    """Unlinked group speaker → agent runs anonymously + DM nudge attempted."""
+    from google.genai import types
+
+    runner = _build(
+        services,
+        link_base_url="https://agents.example.com/telegram/link",
+        bot_username="agents_bot",
+    )
+    reply_target = FakeReplyTarget(chat_id=-100123)
+    captured: dict[str, object] = {}
+
+    async def fake_run_async(*, user_id, session_id, new_message, state_delta):
+        captured["user_id"] = user_id
+        captured["state_delta"] = state_delta
+        yield _Event(
+            content=types.Content(
+                role="model",
+                parts=[types.Part(text="Hi!")],
+            )
+        )
+
+    runner.runner.run_async = fake_run_async  # type: ignore[method-assign]
+
+    send_message = AsyncMock(return_value=None)
+    fake_bot = Mock()
+    fake_bot.send_message = send_message
+    mocker.patch.object(runner.application, "bot", fake_bot)
+
+    await runner.handle_message(
+        TelegramMessage(
+            chat_id=-100123,
+            user_id=456,
+            text="@agents_bot plan food",
+            chat_type="supergroup",
+            message_thread_id=42,
+            is_topic_message=True,
+            reply_target=reply_target,
+            user_name="Guest",
+        )
+    )
+
+    # DM nudge sent to the user (group context).
+    send_message.assert_awaited_once()
+    args, kwargs = send_message.call_args
+    assert kwargs["chat_id"] == 456
+    assert "https://agents.example.com/telegram/link?token=" in kwargs["text"]
+    # Agent still ran anonymously in the shared room.
+    assert captured["user_id"] == "telegram:group:-100123:topic:42"
+    assert captured["state_delta"]["sender_linked"] is False  # type: ignore[index]
+    assert reply_target.messages[-1] == (-100123, r"Hi\!")
+
+
+@pytest.mark.asyncio
+async def test_unlinked_dm_nudge_falls_back_to_group_reply_on_forbidden(
+    services: AgentServices,
+    orchestrator_agent: Mock,
+    mocker: MockerFixture,
+) -> None:
+    """Bot cannot DM the user → a single in-group /login reply is sent instead."""
+    from google.genai import types
+
+    runner = _build(
+        services,
+        link_base_url="https://agents.example.com/telegram/link",
+        bot_username="agents_bot",
+    )
+    reply_target = FakeReplyTarget(chat_id=-100123)
+
+    async def fake_run_async(*, user_id, session_id, new_message, state_delta):
+        yield _Event(
+            content=types.Content(
+                role="model",
+                parts=[types.Part(text="ok")],
+            )
+        )
+
+    runner.runner.run_async = fake_run_async  # type: ignore[method-assign]
+
+    send_message = AsyncMock(side_effect=Forbidden("blocked"))
+    fake_bot = Mock()
+    fake_bot.send_message = send_message
+    mocker.patch.object(runner.application, "bot", fake_bot)
+
+    await runner.handle_message(
+        TelegramMessage(
+            chat_id=-100123,
+            user_id=789,
+            text="@agents_bot hi",
+            chat_type="supergroup",
+            message_thread_id=42,
+            is_topic_message=True,
+            reply_target=reply_target,
+        )
+    )
+
+    send_message.assert_awaited_once()
+    assert any(
+        "https://agents.example.com/telegram/link?token=" in text
+        for _, text in reply_target.messages
+    )
+
+
+@pytest.mark.asyncio
+async def test_login_nudge_is_one_time_per_process(
+    services: AgentServices,
+    orchestrator_agent: Mock,
+    mocker: MockerFixture,
+) -> None:
+    """The DM nudge is sent at most once per Telegram user per process."""
+    from google.genai import types
+
+    runner = _build(
+        services,
+        link_base_url="https://agents.example.com/telegram/link",
+        bot_username="agents_bot",
+    )
+    send_message = AsyncMock(return_value=None)
+    fake_bot = Mock()
+    fake_bot.send_message = send_message
+    mocker.patch.object(runner.application, "bot", fake_bot)
+
+    async def fake_run_async(*, user_id, session_id, new_message, state_delta):
+        yield _Event(
+            content=types.Content(
+                role="model",
+                parts=[types.Part(text="ok")],
+            )
+        )
+
+    runner.runner.run_async = fake_run_async  # type: ignore[method-assign]
+
+    for _ in range(2):
+        await runner.handle_message(
+            TelegramMessage(
+                chat_id=-100123,
+                user_id=789,
+                text="@agents_bot hi",
+                chat_type="supergroup",
+                message_thread_id=42,
+                is_topic_message=True,
+                reply_target=FakeReplyTarget(chat_id=-100123),
+            )
+        )
+
+    assert send_message.await_count == 1
+    assert 789 in runner._nudged_users  # type: ignore[attr-defined]
+
+
+@pytest.mark.asyncio
+async def test_concurrent_topic_runs_are_serialized(
+    services: AgentServices,
+    orchestrator_agent: Mock,
+) -> None:
+    """Concurrent messages in the same topic must not interleave ``run_async`` calls."""
+    import asyncio
+
+    from google.genai import types
+
+    token = await create_link_token(
+        services.engine,
+        telegram_user_id="456",
+        telegram_chat_id="-100123",
+    )
+    assert (
+        await consume_link_token(
+            services.engine, token=token, clerk_user_id="clerk-user"
+        )
+        is not None
+    )
+
+    async def credential_state_loader(
+        clerk_user_id: str,
+    ) -> tuple[dict[str, object], tuple[str, ...]]:
+        return {"user_id": clerk_user_id}, ()
+
+    runner = _build(
+        services,
+        credential_loader=credential_state_loader,
+        bot_username="agents_bot",
+    )
+
+    order: list[str] = []
+    finish = asyncio.Event()
+
+    async def fake_run_async(*, user_id, session_id, new_message, state_delta):
+        order.append(f"start:{new_message.parts[0].text}")
+        await finish.wait()
+        order.append(f"end:{new_message.parts[0].text}")
+        yield _Event(
+            content=types.Content(
+                role="model",
+                parts=[types.Part(text="ok")],
+            )
+        )
+
+    runner.runner.run_async = fake_run_async  # type: ignore[method-assign]
+
+    async def _send(text: str) -> None:
+        await runner.handle_message(
+            TelegramMessage(
+                chat_id=-100123,
+                user_id=456,
+                text=f"@agents_bot {text}",
+                chat_type="supergroup",
+                message_thread_id=42,
+                is_topic_message=True,
+                reply_target=FakeReplyTarget(chat_id=-100123),
+                user_name="Alice",
+            )
+        )
+
+    first = asyncio.create_task(_send("first"))
+    await asyncio.sleep(0)
+    second = asyncio.create_task(_send("second"))
+    await asyncio.sleep(0)
+    finish.set()
+    await asyncio.gather(first, second)
+
+    # The two runs cannot overlap — the second ``start`` is observed only after
+    # the first ``end`` because the per-session lock serializes them.
+    assert order == [
+        "start:Alice: first",
+        "end:Alice: first",
+        "start:Alice: second",
+        "end:Alice: second",
+    ]
