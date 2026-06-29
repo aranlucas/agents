@@ -90,7 +90,7 @@ def test_streaming_state_mapping_sets_streaming_flags():
     assert mapping.stream_tool_call is True
 
 
-async def test_provider_hook_strips_reasoning_content():
+async def test_provider_hook_strips_provider_reasoning_metadata():
     hook = ProviderThrottle({})
     data = {
         "model": "mistral/mistral-medium-latest",
@@ -100,6 +100,7 @@ async def test_provider_hook_strips_reasoning_content():
                 "role": "assistant",
                 "content": "answer",
                 "reasoning_content": "private chain of thought",
+                "reasoning": {"content": "private chain of thought"},
             },
         ],
     }

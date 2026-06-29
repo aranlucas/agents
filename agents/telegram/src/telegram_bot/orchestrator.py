@@ -9,6 +9,7 @@ from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
     on_model_error_callback,
     stop_on_terminal_text,
+    strip_thinking_before_model,
 )
 from google.adk.agents import BaseAgent, LlmAgent
 from google.adk.models.lite_llm import LiteLlm
@@ -52,6 +53,7 @@ def build_orchestrator_agent() -> LlmAgent:
         rerun_on_resume=True,
         model=LiteLlm(model=TELEGRAM_ORCHESTRATOR_MODEL),
         retry_config=DEFAULT_RETRY_CONFIG,
+        before_model_callback=strip_thinking_before_model,
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,
         instruction=(

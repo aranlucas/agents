@@ -1,6 +1,7 @@
 from collections.abc import Iterable
 
 from ag_ui_adk import AGUIToolset
+from agents_shared.tools import strip_thinking_before_model
 from telegram_bot.agent_registry import TELEGRAM_AGENT_IDS, TELEGRAM_SURFACED_AGENTS
 from telegram_bot.orchestrator import (
     ORCHESTRATOR_AGENT_ID,
@@ -49,6 +50,7 @@ def test_orchestrator_wraps_base_agent_backed_specialists() -> None:
     assert orchestrator.name == "telegram_orchestrator_agent"
     assert orchestrator.rerun_on_resume is True
     assert orchestrator.model.model == TELEGRAM_ORCHESTRATOR_MODEL
+    assert orchestrator.before_model_callback is strip_thinking_before_model
     assert TELEGRAM_ORCHESTRATOR_MODEL == "mistral/mistral-medium-latest"
     assert len(orchestrator.sub_agents) == len(TELEGRAM_SURFACED_AGENTS) - 1
     assert {agent.name for agent in orchestrator.sub_agents} == {
