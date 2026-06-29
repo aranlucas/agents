@@ -106,6 +106,17 @@ def test_telegram_resume_agent_uses_paid_mistral_model() -> None:
     assert agent.model.model == "mistral/mistral-medium-latest"
 
 
+def test_telegram_oralboards_agent_uses_flash_lite_to_accept_reasoning_history() -> (
+    None
+):
+    oralboards_spec = next(
+        spec for spec in TELEGRAM_SURFACED_AGENTS if spec.id == "oral-boards"
+    )
+    agent = oralboards_spec.build()
+
+    assert agent.model.model == "gemini-3.1-flash-lite"
+
+
 def test_telegram_wellness_path_avoids_groq_models() -> None:
     wellness_spec = next(
         spec for spec in TELEGRAM_SURFACED_AGENTS if spec.id == "wellness"
