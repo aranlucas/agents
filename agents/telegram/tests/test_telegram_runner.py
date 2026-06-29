@@ -1,4 +1,5 @@
 from collections.abc import AsyncIterator, Awaitable, Callable
+from pathlib import Path
 from unittest.mock import AsyncMock, Mock, create_autospec
 from urllib.parse import parse_qs, urlparse
 
@@ -27,6 +28,7 @@ from telegram_bot.runner import (
     chunk_text,
     format_state_summary,
     parse_allowed_chat_ids,
+    telegram_message_from_update,
 )
 
 CredentialLoader = Callable[[str], Awaitable[tuple[dict[str, object], tuple[str, ...]]]]
@@ -134,6 +136,7 @@ def _update(
     user_username: str | None = None,
     is_bot: bool = False,
     reply_to_bot: bool = False,
+    reply_to_bot_username: str | None = None,
 ):
     """Build a minimal ``Update`` carrying one text message."""
     from types import SimpleNamespace
@@ -147,7 +150,11 @@ def _update(
     reply_to_message = None
     if reply_to_bot:
         reply_to_message = SimpleNamespace(
-            from_user=SimpleNamespace(is_bot=True, id=999),
+            from_user=SimpleNamespace(
+                is_bot=True,
+                id=999,
+                username=reply_to_bot_username,
+            ),
         )
     return SimpleNamespace(
         effective_message=SimpleNamespace(
@@ -1266,6 +1273,7 @@ def test_is_unaddressed_group_message_treats_reply_to_bot_as_addressed() -> None
         text="anything without a mention",
         chat_type="supergroup",
         reply_to_bot=True,
+        reply_to_bot_username="agents_bot",
     )
     plain = TelegramMessage(
         chat_id=-100123,
@@ -1276,6 +1284,46 @@ def test_is_unaddressed_group_message_treats_reply_to_bot_as_addressed() -> None
 
     assert _is_unaddressed_group_message(reply, bot_username) is False
     assert _is_unaddressed_group_message(plain, bot_username) is True
+
+
+def test_group_reply_to_different_bot_is_not_addressed() -> None:
+    reply_target = FakeReplyTarget(chat_id=-100123)
+    update = _update(
+        -100123,
+        "this is for the other bot",
+        reply_target,
+        chat_type="supergroup",
+        reply_to_bot=True,
+        reply_to_bot_username="other_bot",
+    )
+    message = telegram_message_from_update(update)
+
+    assert message is not None
+    assert _is_unaddressed_group_message(message, "agents_bot") is True
+
+
+def test_group_reply_to_this_bot_is_addressed() -> None:
+    reply_target = FakeReplyTarget(chat_id=-100123)
+    update = _update(
+        -100123,
+        "continue",
+        reply_target,
+        chat_type="supergroup",
+        reply_to_bot=True,
+        reply_to_bot_username="agents_bot",
+    )
+    message = telegram_message_from_update(update)
+
+    assert message is not None
+    assert _is_unaddressed_group_message(message, "agents_bot") is False
+
+
+def test_readme_documents_current_anonymous_nudge_behavior() -> None:
+    readme = Path("agents/telegram/README.md").read_text(encoding="utf-8")
+
+    assert "normal messages require a linked Clerk account" not in readme
+    assert "Unlinked senders can chat anonymously" in readme
+    assert "TelegramAgentsBot" not in readme
 
 
 @pytest.mark.asyncio
