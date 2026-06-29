@@ -14,10 +14,10 @@ from ag_ui_adk.config import PredictStateMapping
 from fastapi import APIRouter, FastAPI, Request
 from google.adk.agents import BaseAgent
 from google.adk.apps import App
+from google.adk.plugins.base_plugin import BasePlugin
 from google.adk.sessions import BaseSessionService
 
 from .dependencies import AgentServices
-from .plugins import SlimMcpPlugin
 
 _DEBUG_ENV_VAR = "AGENTS_DEBUG_LOGGING"
 
@@ -55,11 +55,12 @@ def build_adk_agent(
     services: AgentServices,
     session_service: BaseSessionService | None = None,
     predict_state: list[PredictStateMapping] | None = None,
+    plugins: list[BasePlugin] | None = None,
 ) -> ADKAgent:
     app = App(
         name=agent.name,
         root_agent=agent,
-        plugins=[SlimMcpPlugin()],
+        plugins=plugins or [],
     )
     return ADKAgent.from_app(
         app,

@@ -6,6 +6,7 @@ from agents_shared.app_factory import (
     streaming_state_mapping,
 )
 from agents_shared.dependencies import AgentServices
+from agents_shared.plugins import SlimMcpPlugin, WebSearchThrottlePlugin
 from agents_shared.state import STRAVA_AUTH, make_extract_state
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -28,7 +29,10 @@ def register(app: FastAPI, services: AgentServices):
         app,
         prefix="/fitness",
         adk_agent=build_adk_agent(
-            _fitness_agent, services=services, predict_state=FITNESS_PREDICT_STATE
+            _fitness_agent,
+            services=services,
+            predict_state=FITNESS_PREDICT_STATE,
+            plugins=[SlimMcpPlugin(), WebSearchThrottlePlugin()],
         ),
         services=services,
         extract_state_from_request=make_extract_state(STRAVA_AUTH),

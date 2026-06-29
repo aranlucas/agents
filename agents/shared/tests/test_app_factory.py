@@ -1,6 +1,7 @@
 # pyright: reportPrivateUsage=false
 """Tests for the shared ADKAgent/app wiring helpers."""
 
+import asyncio
 import logging
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -78,6 +79,33 @@ def test_build_adk_agent_forwards_predict_state():
 def test_build_adk_agent_defaults_predict_state_to_none():
     services = _mock_services()
     assert build_adk_agent(_dummy_agent(), services=services)._predict_state is None
+
+
+def test_build_adk_agent_defaults_to_no_plugins():
+    services = _mock_services()
+    adk = build_adk_agent(_dummy_agent(), services=services)
+    assert adk._app.plugins == []
+
+
+def test_build_adk_agent_accepts_app_plugins():
+    from agents_shared.plugins import SlimMcpPlugin
+
+    services = _mock_services()
+    plugin = SlimMcpPlugin()
+    adk = build_adk_agent(_dummy_agent(), services=services, plugins=[plugin])
+
+    assert adk._app.plugins == [plugin]
+
+
+def test_plugin_package_exports_individual_plugin_modules():
+    from agents_shared.plugins import SlimMcpPlugin, WebSearchThrottlePlugin
+    from agents_shared.plugins.slim_mcp import SlimMcpPlugin as SlimMcpPluginModule
+    from agents_shared.plugins.web_search_throttle import (
+        WebSearchThrottlePlugin as WebSearchThrottlePluginModule,
+    )
+
+    assert SlimMcpPlugin is SlimMcpPluginModule
+    assert WebSearchThrottlePlugin is WebSearchThrottlePluginModule
 
 
 def test_streaming_state_mapping_sets_streaming_flags():
@@ -180,6 +208,53 @@ async def test_slim_mcp_plugin_passes_through_without_structured_content() -> No
         tool=None, tool_args={}, tool_context=None, result=result
     )
     assert passed == result
+
+
+async def test_web_search_throttle_plugin_ignores_non_matching_tools() -> None:
+    from agents_shared.plugins import WebSearchThrottlePlugin
+
+    plugin = WebSearchThrottlePlugin()
+    plugin.last_at = 1000.0
+
+    await plugin.before_tool_callback(
+        tool=SimpleNamespace(name="other_tool"), tool_args={}, tool_context=None
+    )
+
+    assert plugin.last_at == 1000.0
+
+
+async def test_web_search_throttle_plugin_spaces_matching_tools(monkeypatch) -> None:
+    from agents_shared.plugins import WebSearchThrottlePlugin
+    from agents_shared.plugins import web_search_throttle as throttle_mod
+
+    sleeps: list[float] = []
+    monotonic_values = [10.0, 10.0, 10.5, 11.7]
+
+    async def fake_sleep(seconds: float) -> None:
+        sleeps.append(seconds)
+
+    def fake_monotonic() -> float:
+        if len(monotonic_values) > 1:
+            return monotonic_values.pop(0)
+        return monotonic_values[0]
+
+    monkeypatch.setattr(throttle_mod.time, "monotonic", fake_monotonic)
+    monkeypatch.setattr(asyncio, "sleep", fake_sleep)
+
+    plugin = WebSearchThrottlePlugin(min_interval_s=1.2)
+    await plugin.before_tool_callback(
+        tool=SimpleNamespace(name="brave_web_search"),
+        tool_args={"query": "coffee"},
+        tool_context=None,
+    )
+    await plugin.before_tool_callback(
+        tool=SimpleNamespace(name="brave_web_search"),
+        tool_args={"query": "tea"},
+        tool_context=None,
+    )
+
+    assert sleeps == [0.7]
+    assert plugin.last_at == 11.7
 
 
 def test_debug_enabled_true_when_env_set(monkeypatch):
