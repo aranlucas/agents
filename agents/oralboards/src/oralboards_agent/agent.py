@@ -10,6 +10,8 @@ from agents_shared.tools import (
     stop_on_terminal_text,
 )
 from google.adk.agents import LlmAgent
+from google.adk.models.base_llm import BaseLlm
+from google.adk.models.google_llm import Gemini
 from google.adk.models.lite_llm import LiteLlm
 from pydantic import BaseModel
 
@@ -53,7 +55,7 @@ class OralBoardsState(BaseModel):
 # ---------------------------------------------------------------------------
 # Agent factory
 # ---------------------------------------------------------------------------
-def _build_agent(*, include_agui: bool) -> LlmAgent:
+def _build_agent(*, include_agui: bool, model: BaseLlm | None = None) -> LlmAgent:
     """Fresh LlmAgent instance for the oral-boards examiner."""
     tools = [
         search_docs,
@@ -69,7 +71,7 @@ def _build_agent(*, include_agui: bool) -> LlmAgent:
 
     return LlmAgent(
         name="oralboards_agent",
-        model=LiteLlm(model="cerebras/gpt-oss-120b"),
+        model=model or LiteLlm(model="cerebras/gpt-oss-120b"),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,
@@ -85,7 +87,10 @@ def build_agent() -> LlmAgent:
 
 
 def build_telegram_agent() -> LlmAgent:
-    return _build_agent(include_agui=False)
+    return _build_agent(
+        include_agui=False,
+        model=Gemini(model="gemini-3.1-flash-lite"),
+    )
 
 
 def build_eval_agent() -> LlmAgent:
