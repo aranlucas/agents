@@ -1,11 +1,9 @@
 """Fitness agent domain: state, tools, instructions."""
 
-import asyncio
 import logging
-import time
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Literal
+from typing import Literal
 
 from ag_ui_adk import AGUIToolset
 from agents_shared.state import (
@@ -20,7 +18,7 @@ from agents_shared.tools import (
 )
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.tools import BaseTool, ToolContext
+from google.adk.tools import BaseTool
 from google.adk.tools.base_toolset import BaseToolset
 from pydantic import BaseModel
 
@@ -56,29 +54,6 @@ class FitnessState(BaseModel):
     status: str = "idle"
     review_summary: str = ""
     user_id: str = ""
-
-
-# ---------------------------------------------------------------------------
-# Rate-limit throttle for Brave free-tier searches
-# ---------------------------------------------------------------------------
-_WEB_SEARCH_MIN_INTERVAL_S = 1.2
-web_search_lock = asyncio.Lock()
-web_search_state: dict[str, float] = {"last_at": 0.0}
-
-
-async def throttle_web_search(
-    tool: BaseTool, _args: dict[str, Any], _tool_context: ToolContext
-) -> None:
-    """Space out Brave web-search calls to respect the free-tier rate limit."""
-    if not str(getattr(tool, "name", "")).startswith("brave_"):
-        return
-    async with web_search_lock:
-        elapsed = time.monotonic() - web_search_state["last_at"]
-        if elapsed < _WEB_SEARCH_MIN_INTERVAL_S:
-            wait = _WEB_SEARCH_MIN_INTERVAL_S - elapsed
-            log.debug("throttle_web_search: sleeping %.2fs before %s", wait, tool.name)
-            await asyncio.sleep(wait)
-        web_search_state["last_at"] = time.monotonic()
 
 
 # ---------------------------------------------------------------------------
@@ -118,7 +93,6 @@ def build_agent(
             FitnessState,
             token_flags={STRAVA_AUTH.state_key: STRAVA_AUTH.connected_flag},
         ),
-        before_tool_callback=throttle_web_search,
         tools=tools,
     )
 

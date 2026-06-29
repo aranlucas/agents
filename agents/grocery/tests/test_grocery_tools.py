@@ -1,5 +1,7 @@
 from types import SimpleNamespace
 
+from agents_shared.plugins import SlimMcpPlugin
+from grocery_agent import main
 from grocery_agent.agent import build_agent
 from grocery_agent.tools.mark_list_ready import mark_list_ready
 from grocery_agent.tools.set_meal_plan import set_meal_plan
@@ -50,3 +52,7 @@ def test_agent_instruction_uses_adk_state_placeholders() -> None:
     assert "{meal_plan}" in instruction
     assert "{cart}" in instruction
     assert "{training_plan}" in instruction
+
+
+def test_app_configures_kroger_mcp_plugins() -> None:
+    assert [type(plugin) for plugin in main._app.plugins] == [SlimMcpPlugin]

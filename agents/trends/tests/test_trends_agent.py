@@ -1,6 +1,5 @@
 from unittest.mock import Mock
 
-import pytest
 from agents_shared.dependencies import create_agent_services
 from fastapi import FastAPI
 from google.adk.agents import LlmAgent
@@ -59,11 +58,32 @@ def test_instruction_describes_web_verification() -> None:
     )
 
 
-@pytest.mark.asyncio
-async def test_throttle_web_search_ignores_non_brave_tools() -> None:
-    agent.web_search_state["last_at"] = 1000.0
-    await agent.throttle_web_search(Mock(name="other_tool"), {}, Mock())
-    assert agent.web_search_state["last_at"] == 1000.0
+def test_build_agent_uses_app_plugin_for_web_search_throttling() -> None:
+    trends_agent = agent.build_agent()
+    assert trends_agent.before_tool_callback is None
+
+
+def test_register_configures_brave_search_plugins(monkeypatch) -> None:
+    from agents_shared.plugins import SlimMcpPlugin, WebSearchThrottlePlugin
+
+    captured: dict[str, object] = {}
+
+    def fake_build_adk_agent(*args, **kwargs):
+        captured.update(kwargs)
+        return object()
+
+    def fake_add_agent_routes(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(main, "build_adk_agent", fake_build_adk_agent)
+    monkeypatch.setattr(main, "add_agent_routes", fake_add_agent_routes)
+
+    main.register(FastAPI(), Mock())
+
+    assert [type(plugin) for plugin in captured["plugins"]] == [
+        SlimMcpPlugin,
+        WebSearchThrottlePlugin,
+    ]
 
 
 def test_instruction_persists_state_before_rendering() -> None:

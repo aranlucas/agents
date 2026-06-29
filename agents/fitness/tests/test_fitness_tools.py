@@ -5,7 +5,8 @@ import fitness_agent.tools.search as _search_mod
 import httpx
 import pytest
 from agents_shared.state import STRAVA_AUTH, make_state_initializer
-from fitness_agent import agent
+from fastapi import FastAPI
+from fitness_agent import agent, main
 from fitness_agent.agent import FitnessState
 from fitness_agent.tools._types import normalize_strava_activity, summarize_activities
 from fitness_agent.tools.fetch_activities import fetch_activities
@@ -222,11 +223,32 @@ def test_strava_token_read_from_state_key() -> None:
     assert str({}.get(STRAVA_AUTH.state_key) or "") == ""
 
 
-@pytest.mark.asyncio
-async def test_throttle_web_search_ignores_non_brave_tools() -> None:
-    agent.web_search_state["last_at"] = 1000
-    await agent.throttle_web_search(Mock(name="other_search"), {}, Mock())
-    assert agent.web_search_state["last_at"] == 1000
+def test_build_agent_uses_app_plugin_for_web_search_throttling() -> None:
+    fitness_agent = agent.build_agent()
+    assert fitness_agent.before_tool_callback is None
+
+
+def test_register_configures_brave_search_plugins(monkeypatch) -> None:
+    from agents_shared.plugins import SlimMcpPlugin, WebSearchThrottlePlugin
+
+    captured: dict[str, object] = {}
+
+    def fake_build_adk_agent(*args, **kwargs):
+        captured.update(kwargs)
+        return object()
+
+    def fake_add_agent_routes(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(main, "build_adk_agent", fake_build_adk_agent)
+    monkeypatch.setattr(main, "add_agent_routes", fake_add_agent_routes)
+
+    main.register(FastAPI(), Mock())
+
+    assert [type(plugin) for plugin in captured["plugins"]] == [
+        SlimMcpPlugin,
+        WebSearchThrottlePlugin,
+    ]
 
 
 def test_on_before_agent_derives_strava_connected_from_state_token() -> None:

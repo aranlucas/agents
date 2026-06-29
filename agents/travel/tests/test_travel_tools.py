@@ -96,3 +96,23 @@ def test_main_register_exposes_prefixed_routes() -> None:
     paths = _route_paths(app)
     assert "/travel/health" in paths
     assert any(path.startswith("/travel/agui") for path in paths)
+
+
+def test_main_register_configures_trvl_mcp_plugins(monkeypatch) -> None:
+    from agents_shared.plugins import SlimMcpPlugin
+
+    captured: dict[str, object] = {}
+
+    def fake_build_adk_agent(*args, **kwargs):
+        captured.update(kwargs)
+        return object()
+
+    def fake_add_agent_routes(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(main, "build_adk_agent", fake_build_adk_agent)
+    monkeypatch.setattr(main, "add_agent_routes", fake_add_agent_routes)
+
+    main.register(FastAPI(), create_agent_services())
+
+    assert [type(plugin) for plugin in captured["plugins"]] == [SlimMcpPlugin]
