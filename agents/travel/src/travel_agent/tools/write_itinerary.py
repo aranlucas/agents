@@ -6,7 +6,7 @@ def write_itinerary(
     summary: str,
     body: str,
     flights: str = "",
-) -> dict:
+) -> dict[str, object]:
     """Replace the full multi-day itinerary in shared state.
 
     `summary` is a 1-2 sentence pitch shown above the day list. `body` is

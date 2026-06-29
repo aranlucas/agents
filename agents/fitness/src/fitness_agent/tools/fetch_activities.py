@@ -4,18 +4,21 @@ import logging
 import httpx
 from agents_shared.state import STRAVA_AUTH
 from google.adk.tools import FunctionTool, ToolContext
+from pydantic import TypeAdapter, ValidationError
 
-from ._types import normalize_strava_activity
+from ._types import StravaActivity, normalize_strava_activity
 
 log = logging.getLogger("fitness_agent")
 STRAVA_ACTIVITIES_URL = "https://www.strava.com/api/v3/athlete/activities"
+_STRAVA_PAYLOADS = TypeAdapter(list[dict[str, object]])
+_STRAVA_ACTIVITIES = TypeAdapter(list[StravaActivity])
 
 
 async def fetch_activities(
     tool_context: ToolContext,
     after: int | None = None,
     next_page_token: int | None = None,
-) -> dict:
+) -> dict[str, object]:
     """Fetch one page of Strava activities (200 per page).
 
     Pass `after` as a Unix timestamp to limit to activities after that date.
@@ -47,7 +50,7 @@ async def fetch_activities(
                 params=params,
             )
             response.raise_for_status()
-            batch = response.json()
+            raw_batch: object = response.json()
     except httpx.HTTPStatusError as exc:
         tool_context.state["status"] = "idle"
         status_code = exc.response.status_code
@@ -65,8 +68,15 @@ async def fetch_activities(
         log.exception("fetch_activities: network error")
         return {"ok": False, "reason": "strava_network_error", "message": str(exc)}
 
+    try:
+        batch = _STRAVA_PAYLOADS.validate_python(raw_batch)
+    except ValidationError:
+        tool_context.state["status"] = "idle"
+        return {"ok": False, "reason": "strava_invalid_response"}
+
     normalized_batch = [normalize_strava_activity(a) for a in batch]
-    existing = tool_context.state.get("activities") or []
+    raw_existing: object = tool_context.state.get("activities") or []
+    existing = _STRAVA_ACTIVITIES.validate_python(raw_existing)
     all_activities = existing + normalized_batch if page > 1 else normalized_batch
     synced_at = datetime.datetime.now(datetime.UTC).isoformat()
 

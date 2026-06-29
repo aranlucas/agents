@@ -1,12 +1,12 @@
 from google.adk.tools import FunctionTool, ToolContext
 
+from ._types import Sheet, normalize_sheets
 
-def _state_sheets(tool_context: ToolContext) -> list:
-    existing = tool_context.state.get("sheets")
-    if isinstance(existing, list):
-        return existing
-    tool_context.state["sheets"] = []
-    return tool_context.state["sheets"]
+
+def _state_sheets(tool_context: ToolContext) -> list[Sheet]:
+    sheets = normalize_sheets(tool_context.state.get("sheets") or [])
+    tool_context.state["sheets"] = sheets
+    return sheets
 
 
 def update_sheet(
@@ -14,7 +14,7 @@ def update_sheet(
     sheet_index: int,
     title: str,
     rows: list[list[str]],
-) -> dict:
+) -> dict[str, object]:
     """Replace the title and rows of an existing sheet."""
     sheets = _state_sheets(tool_context)
     if sheet_index < 0 or sheet_index >= len(sheets):

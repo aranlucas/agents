@@ -3,7 +3,9 @@ from google.adk.tools import FunctionTool, ToolContext
 from ._bigquery_utils import clean_sql_query
 
 
-def begin_trends_query(tool_context: ToolContext, query: str, sql: str) -> dict:
+def begin_trends_query(
+    tool_context: ToolContext, query: str, sql: str
+) -> dict[str, object]:
     tool_context.state.update(
         {
             "query": query,

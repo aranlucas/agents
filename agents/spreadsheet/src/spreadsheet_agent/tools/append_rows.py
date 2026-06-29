@@ -1,17 +1,17 @@
 from google.adk.tools import FunctionTool, ToolContext
 
+from ._types import Sheet, normalize_sheets
 
-def _state_sheets(tool_context: ToolContext) -> list:
-    existing = tool_context.state.get("sheets")
-    if isinstance(existing, list):
-        return existing
-    tool_context.state["sheets"] = []
-    return tool_context.state["sheets"]
+
+def _state_sheets(tool_context: ToolContext) -> list[Sheet]:
+    sheets = normalize_sheets(tool_context.state.get("sheets") or [])
+    tool_context.state["sheets"] = sheets
+    return sheets
 
 
 def append_rows(
     tool_context: ToolContext, sheet_index: int, rows: list[list[str]]
-) -> dict:
+) -> dict[str, object]:
     """Extend an existing sheet with additional rows."""
     sheets = _state_sheets(tool_context)
     if sheet_index < 0 or sheet_index >= len(sheets):

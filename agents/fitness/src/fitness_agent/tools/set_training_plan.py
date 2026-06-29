@@ -1,7 +1,7 @@
 from google.adk.tools import FunctionTool, ToolContext
 
 
-def set_training_plan(tool_context: ToolContext, plan: str) -> dict:
+def set_training_plan(tool_context: ToolContext, plan: str) -> dict[str, bool | int]:
     """Write the complete weekly training plan to shared state."""
     tool_context.state["training_plan"] = plan
     tool_context.state["status"] = "planning"

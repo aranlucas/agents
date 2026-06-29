@@ -5,7 +5,7 @@ def set_shopping_list(
     tool_context: ToolContext,
     items: list[str],
     notes: str = "",
-) -> dict:
+) -> dict[str, object]:
     """Replace the full shopping list in shared state.
 
     `items` is a list of item strings (e.g. ["2x milk", "eggs", "bread"]).

@@ -65,7 +65,7 @@ def _build_agent(
         if include_telegram_subagents
         else build_grocery_agent
     )
-    tools = [
+    tools: list[object] = [
         get_current_date,
         set_weekly_wellness_plan,
         mark_plan_ready,

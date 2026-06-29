@@ -9,7 +9,7 @@ def set_trip_meta(  # noqa: PLR0913
     travelers: int = 1,
     budget_usd: int = 0,
     headline: str = "",
-) -> dict:
+) -> dict[str, object]:
     """Set the high-level trip card (destination, dates, party size, budget).
 
     Call this FIRST whenever the operator names a new trip. Dates are

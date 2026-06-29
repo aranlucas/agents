@@ -51,7 +51,7 @@ class ExpenseItem(BaseModel):
 
 
 class ExpenseState(BaseModel):
-    expenses: list[ExpenseItem] = Field(default_factory=list)
+    expenses: list[ExpenseItem] = Field(default_factory=list[ExpenseItem])
     selected_expense_id: str = ""
     expense_report: str = ""
     status: DeskStatus = "idle"
@@ -61,7 +61,7 @@ class ExpenseState(BaseModel):
 
 
 def _build_agent(*, include_agui: bool) -> LlmAgent:
-    tools = [
+    tools: list[object] = [
         submit_expense,
         write_expense_review,
         decide_expense,

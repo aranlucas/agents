@@ -3,6 +3,7 @@
 import logging
 import os
 import time
+from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -17,7 +18,7 @@ from agents_shared.tools import set_rate_limit_engine
 from dotenv import load_dotenv
 from excalidraw_agent.main import register as register_excalidraw
 from expense_agent.main import register as register_expense
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fitness_agent.main import register as register_fitness
 from grocery_agent.main import register as register_grocery
@@ -31,6 +32,7 @@ from presentation_agent.main import register as register_presentation
 from research_agent.main import register as register_research
 from resume_agent.main import register as register_resume
 from spreadsheet_agent.main import register as register_spreadsheet
+from starlette.responses import Response
 from travel_agent.main import register as register_travel
 from trends_agent.main import register as register_trends
 from wellness_agent.main import register as register_wellness
@@ -184,12 +186,14 @@ if clerk_auth_enabled():
 
 
 @app.middleware("http")
-async def trace_requests(request, call_next):
+async def trace_requests(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
     if request.url.path.endswith("/health"):
         return await call_next(request)
 
     start = time.perf_counter()
-    context = otel_extract(dict(request.headers))
+    context = otel_extract(dict[str, str](request.headers))
     with tracer.start_as_current_span(
         f"{request.method} {request.url.path}",
         context=context,

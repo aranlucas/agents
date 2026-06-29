@@ -8,7 +8,7 @@ def _write_itinerary(
     summary: str,
     body: str,
     flights: str = "",
-) -> dict:
+) -> dict[str, object]:
     """Eval compatibility alias for models that mirror underscored stub names."""
     return write_itinerary(tool_context, summary=summary, body=body, flights=flights)
 

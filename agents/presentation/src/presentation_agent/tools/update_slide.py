@@ -1,12 +1,12 @@
 from google.adk.tools import FunctionTool, ToolContext
 
+from ._types import Slide, normalize_slides
 
-def _state_slides(tool_context: ToolContext) -> list[dict]:
-    existing = tool_context.state.get("slides")
-    if isinstance(existing, list):
-        return existing
-    tool_context.state["slides"] = []
-    return tool_context.state["slides"]
+
+def _state_slides(tool_context: ToolContext) -> list[Slide]:
+    slides = normalize_slides(tool_context.state.get("slides") or [])
+    tool_context.state["slides"] = slides
+    return slides
 
 
 def update_slide(
@@ -15,7 +15,7 @@ def update_slide(
     heading: str,
     body: str,
     notes: str,
-) -> dict:
+) -> dict[str, object]:
     """Update an existing slide by id."""
     slides = _state_slides(tool_context)
     slide = next((s for s in slides if s.get("id") == slide_id), None)

@@ -1,0 +1,2 @@
+class BaseTool:
+    name: str

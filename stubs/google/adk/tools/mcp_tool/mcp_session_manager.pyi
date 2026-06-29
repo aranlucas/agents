@@ -1,0 +1,6 @@
+class StdioConnectionParams:
+    def __init__(self, *args: object, **kwargs: object) -> None: ...
+
+
+class StreamableHTTPConnectionParams:
+    def __init__(self, *args: object, **kwargs: object) -> None: ...

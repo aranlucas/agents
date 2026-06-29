@@ -59,7 +59,7 @@ class TravelState(BaseModel):
 # ---------------------------------------------------------------------------
 def _build_agent(*, include_agui: bool) -> LlmAgent:
     """Fresh LlmAgent instance for the trip-planning agent."""
-    tools = [
+    tools: list[object] = [
         get_current_date,
         set_trip_meta,
         write_itinerary,

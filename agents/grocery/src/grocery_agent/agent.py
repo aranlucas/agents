@@ -62,7 +62,7 @@ def build_agent(
     include_agui: bool = True,
 ) -> LlmAgent:
     """Fresh LlmAgent instance — the gateway's wellness orchestrator builds its own."""
-    tools = [
+    tools: list[object] = [
         set_shopping_list,
         update_cart,
         update_pantry,

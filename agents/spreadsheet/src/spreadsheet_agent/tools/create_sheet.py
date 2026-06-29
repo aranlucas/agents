@@ -1,15 +1,17 @@
 from google.adk.tools import FunctionTool, ToolContext
 
-
-def _state_sheets(tool_context: ToolContext) -> list:
-    existing = tool_context.state.get("sheets")
-    if isinstance(existing, list):
-        return existing
-    tool_context.state["sheets"] = []
-    return tool_context.state["sheets"]
+from ._types import Sheet, normalize_sheets
 
 
-def create_sheet(tool_context: ToolContext, title: str, rows: list[list[str]]) -> dict:
+def _state_sheets(tool_context: ToolContext) -> list[Sheet]:
+    sheets = normalize_sheets(tool_context.state.get("sheets") or [])
+    tool_context.state["sheets"] = sheets
+    return sheets
+
+
+def create_sheet(
+    tool_context: ToolContext, title: str, rows: list[list[str]]
+) -> dict[str, object]:
     """Create a new sheet. First row should be the header."""
     sheets = _state_sheets(tool_context)
     new_index = len(sheets)

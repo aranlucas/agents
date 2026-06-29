@@ -26,7 +26,7 @@ _INSTRUCTION = (Path(__file__).parent / "instructions.md").read_text(encoding="u
 
 
 class SpreadsheetState(BaseModel):
-    sheets: list = []
+    sheets: list[dict[str, object]] = []
     active_sheet_index: int = 0
     summary: str = ""
     status: str = "idle"
@@ -35,7 +35,7 @@ class SpreadsheetState(BaseModel):
 
 
 def _build_agent(*, include_agui: bool) -> LlmAgent:
-    tools = [
+    tools: list[object] = [
         create_sheet,
         update_sheet,
         append_rows,

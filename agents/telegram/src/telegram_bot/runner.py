@@ -15,7 +15,7 @@ import logging
 import os
 from collections.abc import Awaitable, Callable, Iterable, Mapping
 from dataclasses import dataclass
-from typing import Protocol, cast
+from typing import Protocol, runtime_checkable
 from urllib.parse import urlencode
 
 from agents_shared.dependencies import AgentServices, create_agent_services
@@ -33,6 +33,7 @@ from google.adk.models.lite_llm import LiteLlm
 from google.adk.runners import Runner
 from google.adk.sessions import BaseSessionService
 from google.genai import types
+from pydantic import TypeAdapter
 from sqlalchemy.ext.asyncio import AsyncEngine
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
 from telegram.constants import ParseMode
@@ -81,6 +82,8 @@ _HIDDEN_STATE_KEYS = frozenset(
 StateValue = object
 CredentialState = tuple[dict[str, StateValue], tuple[str, ...]]
 CredentialLoader = Callable[[str], Awaitable[CredentialState]]
+_OBJECT_LIST = TypeAdapter(list[object])
+_OBJECT_DICT = TypeAdapter(dict[object, object])
 
 
 @dataclass
@@ -104,6 +107,7 @@ class TelegramSentMessage(Protocol):
     ) -> object: ...
 
 
+@runtime_checkable
 class TelegramReplyTarget(Protocol):
     async def reply_text(
         self,
@@ -700,7 +704,7 @@ def telegram_message_from_update(update: Update) -> TelegramMessage | None:
         text=text.strip(),
         message_id=raw.message_id,
         chat_type=chat.type,
-        reply_target=cast(TelegramReplyTarget, raw),
+        reply_target=raw,
     )
 
 
@@ -837,12 +841,12 @@ def _render_state_value(value: StateValue) -> str:
     if isinstance(value, bool | int | float):
         return str(value)
     if isinstance(value, list):
-        items = cast("list[StateValue]", value)
+        items = _OBJECT_LIST.validate_python(value)
         preview = ", ".join(_truncate(str(item), 80) for item in items[:5])
         suffix = f" (+{len(items) - 5} more)" if len(items) > 5 else ""
         return _truncate(preview + suffix, 900)
     if isinstance(value, Mapping):
-        mapping = cast("Mapping[str, StateValue]", value)
+        mapping = _OBJECT_DICT.validate_python(value)
         entries = list(mapping.items())[:5]
         parts = [f"{k}={_truncate(str(v), 80)}" for k, v in entries]
         suffix = f" (+{len(mapping) - 5} more)" if len(mapping) > 5 else ""
