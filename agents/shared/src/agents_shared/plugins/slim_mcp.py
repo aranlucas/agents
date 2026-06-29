@@ -1,4 +1,4 @@
-"""Shared ADK plugins applied globally via build_adk_agent."""
+"""MCP result-shaping plugin."""
 
 from __future__ import annotations
 

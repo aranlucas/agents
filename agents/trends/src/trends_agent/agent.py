@@ -1,8 +1,5 @@
-import asyncio
 import logging
-import time
 from pathlib import Path
-from typing import Any
 
 from ag_ui_adk import get_a2ui_tool
 from agents_shared.state import make_state_initializer
@@ -16,7 +13,6 @@ from agents_shared.tools import (
 from google.adk.agents import LlmAgent
 from google.adk.models.google_llm import Gemini
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.tools import BaseTool, ToolContext
 from google.adk.tools.agent_tool import AgentTool
 from pydantic import BaseModel, Field
 
@@ -79,31 +75,6 @@ class TrendsState(BaseModel):
     user_id: str = ""
 
 
-# Brave's free search tier allows ~1 request/second and returns 429s when bursted,
-# which is the most common failure mode for verification. Enforce a minimum spacing
-# between web-search tool calls across the whole process as a hard floor; the
-# instruction also caps the total number of searches per verification.
-_WEB_SEARCH_MIN_INTERVAL_S = 1.2
-web_search_lock = asyncio.Lock()
-web_search_state: dict[str, float] = {"last_at": 0.0}
-
-
-async def throttle_web_search(
-    tool: BaseTool, _args: dict[str, Any], _tool_context: ToolContext
-) -> None:
-    """Space out Brave web-search calls to respect the free-tier rate limit."""
-    if not str(getattr(tool, "name", "")).startswith("brave_"):
-        return
-    async with web_search_lock:
-        elapsed = time.monotonic() - web_search_state["last_at"]
-        if elapsed < _WEB_SEARCH_MIN_INTERVAL_S:
-            wait = _WEB_SEARCH_MIN_INTERVAL_S - elapsed
-            log.debug("throttle_web_search: sleeping %.2fs before %s", wait, tool.name)
-            await asyncio.sleep(wait)
-        web_search_state["last_at"] = time.monotonic()
-    return
-
-
 def build_agent() -> LlmAgent:
     state_init = make_state_initializer(TrendsState)
 
@@ -134,7 +105,6 @@ def build_agent() -> LlmAgent:
         after_model_callback=stop_on_terminal_text,
         instruction=INSTRUCTION,
         description="Google Trends BigQuery analysis and verification.",
-        before_tool_callback=throttle_web_search,
         before_agent_callback=state_init,
         tools=[
             AgentTool(build_generator()),
