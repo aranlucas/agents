@@ -43,6 +43,7 @@ from telegram import (
     WebAppInfo,
 )
 from telegram.constants import ParseMode
+from telegram.error import Forbidden
 from telegram.ext import (
     Application,
     ApplicationBuilder,
@@ -137,6 +138,8 @@ class TelegramMessage:
     message_thread_id: int | None = None
     is_topic_message: bool = False
     reply_target: TelegramReplyTarget | None = None
+    user_name: str | None = None
+    reply_to_bot: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -216,6 +219,24 @@ def _session_id(message: TelegramMessage) -> str:
     return f"telegram:{message.chat_id}:{ORCHESTRATOR_AGENT_ID}"
 
 
+def _partition_user_id(message: TelegramMessage, clerk_user_id: str | None) -> str:
+    """Return the ADK ``user_id`` used to key the session for ``message``.
+
+    Forum topics share one room-scoped partition across all participants so
+    every speaker in the topic resolves to the same ADK session. Private
+    chats and non-topic group messages keep the sender's Clerk id (or an
+    anonymous fallback) as the partition.
+    """
+    topic_id = _session_topic_id(message)
+    if topic_id is not None:
+        return f"telegram:group:{message.chat_id}:topic:{topic_id}"
+    return clerk_user_id or f"telegram:anon:{message.user_id}"
+
+
+def _is_shared_topic_session(message: TelegramMessage) -> bool:
+    return _session_topic_id(message) is not None
+
+
 def _telegram_state(message: TelegramMessage) -> dict[str, str]:
     state = {
         "telegram_chat_id": str(message.chat_id),
@@ -227,28 +248,56 @@ def _telegram_state(message: TelegramMessage) -> dict[str, str]:
     return state
 
 
+def _identity_state(
+    message: TelegramMessage,
+    *,
+    clerk_user_id: str | None,
+    credential_state: Mapping[str, StateValue],
+) -> dict[str, StateValue]:
+    """Per-turn identity / credential flags for the orchestrator.
+
+    The values reflect the *current sender* even inside a shared topic
+    session. ``kroger_connected`` and ``strava_connected`` are written into
+    ``state_delta`` as plain keys (not ``temp:``) so the orchestrator's
+    instruction-template (``{kroger_connected?}``) resolves correctly; the
+    per-turn tokens stay ``temp:``-prefixed and never persist.
+    """
+    sender_linked = clerk_user_id is not None
+    identity: dict[str, StateValue] = {
+        "sender_linked": sender_linked,
+        "kroger_connected": False,
+        "strava_connected": False,
+    }
+    if sender_linked:
+        identity["user_id"] = clerk_user_id
+        for key, value in credential_state.items():
+            if key == "user_id":
+                continue
+            identity[key] = value
+    return identity
+
+
 async def _ensure_session(
     session_service: BaseSessionService,
     *,
     message: TelegramMessage,
-    clerk_user_id: str,
+    partition_user_id: str,
     initial_state: Mapping[str, StateValue],
 ) -> None:
     session_id = _session_id(message)
     session = await session_service.get_session(
         app_name=ORCHESTRATOR_AGENT_ID,
-        user_id=clerk_user_id,
+        user_id=partition_user_id,
         session_id=session_id,
     )
     if session is None:
         await session_service.create_session(
             app_name=ORCHESTRATOR_AGENT_ID,
-            user_id=clerk_user_id,
+            user_id=partition_user_id,
             session_id=session_id,
             state={
                 **initial_state,
                 **_telegram_state(message),
-                "user_id": clerk_user_id,
             },
         )
 
@@ -257,18 +306,18 @@ async def _reset_session(
     session_service: BaseSessionService,
     *,
     message: TelegramMessage,
-    clerk_user_id: str,
+    partition_user_id: str,
 ) -> None:
     await session_service.delete_session(
         app_name=ORCHESTRATOR_AGENT_ID,
-        user_id=clerk_user_id,
+        user_id=partition_user_id,
         session_id=_session_id(message),
     )
     await _ensure_session(
         session_service,
         message=message,
-        clerk_user_id=clerk_user_id,
-        initial_state={"user_id": clerk_user_id},
+        partition_user_id=partition_user_id,
+        initial_state={},
     )
 
 
@@ -276,12 +325,12 @@ async def _state_summary(
     session_service: BaseSessionService,
     *,
     message: TelegramMessage,
-    clerk_user_id: str,
+    partition_user_id: str,
     delta: Mapping[str, StateValue],
 ) -> str:
     session = await session_service.get_session(
         app_name=ORCHESTRATOR_AGENT_ID,
-        user_id=clerk_user_id,
+        user_id=partition_user_id,
         session_id=_session_id(message),
     )
     state = dict(session.state) if session is not None else {}
@@ -326,6 +375,9 @@ class TelegramRunner:
         self.status_update_seconds = status_update_seconds
         self.run_timeout_seconds = run_timeout_seconds
         self._event_tool_progress = _event_tool_progress
+        self._session_locks: dict[str, asyncio.Lock] = {}
+        self._session_locks_guard = asyncio.Lock()
+        self._nudged_users: set[int] = set()
         self._setup_handlers()
 
     def _setup_handlers(self) -> None:
@@ -357,23 +409,47 @@ class TelegramRunner:
             return
 
         clerk_user_id = await self.auth.linked_user_id(message.user_id)
-        if clerk_user_id is None:
-            await self._send_text(message, _LOGIN_REQUIRED_TEXT)
-            return
+        credential_state: dict[str, StateValue] = {}
+        if clerk_user_id is not None:
+            credential_state, missing = await self.credentials.check(clerk_user_id)
+            if missing:
+                log.debug(
+                    "Telegram user %s missing credentials: %s",
+                    clerk_user_id,
+                    missing,
+                )
+        elif message.user_id not in self._nudged_users:
+            await self._nudge_login(message)
 
-        credential_state, missing = await self.credentials.check(clerk_user_id)
-        if missing:
-            log.debug(
-                "Telegram user %s missing credentials: %s",
-                clerk_user_id,
-                missing,
+        partition_user_id = _partition_user_id(message, clerk_user_id)
+        session_lock = await self._session_lock_for(_session_id(message))
+        async with session_lock:
+            await self._run_agent(
+                message,
+                partition_user_id=partition_user_id,
+                clerk_user_id=clerk_user_id,
+                credential_state=credential_state,
             )
+
+    async def _run_agent(
+        self,
+        message: TelegramMessage,
+        *,
+        partition_user_id: str,
+        clerk_user_id: str | None,
+        credential_state: Mapping[str, StateValue],
+    ) -> None:
+        identity_state = _identity_state(
+            message,
+            clerk_user_id=clerk_user_id,
+            credential_state=credential_state,
+        )
 
         await _ensure_session(
             self.session_service,
             message=message,
-            clerk_user_id=clerk_user_id,
-            initial_state=credential_state,
+            partition_user_id=partition_user_id,
+            initial_state=identity_state,
         )
 
         thinking_message = await self._send_reply(message, "Thinking...")
@@ -398,11 +474,11 @@ class TelegramRunner:
             )
             async with asyncio.timeout(self.run_timeout_seconds):
                 async for event in self.runner.run_async(
-                    user_id=clerk_user_id,
+                    user_id=partition_user_id,
                     session_id=_session_id(message),
                     new_message=new_message,
                     state_delta={
-                        **credential_state,
+                        **identity_state,
                         **_telegram_state(message),
                     },
                 ):
@@ -439,8 +515,8 @@ class TelegramRunner:
                 text = await _state_summary(
                     self.session_service,
                     message=message,
-                    clerk_user_id=clerk_user_id,
-                    delta={**credential_state, **state_delta},
+                    partition_user_id=partition_user_id,
+                    delta={**identity_state, **state_delta},
                 )
             if not text:
                 text = "Done."
@@ -469,6 +545,51 @@ class TelegramRunner:
                 thinking_message,
                 f"Sorry, {ORCHESTRATOR_TITLE} hit an error: {exc}",
             )
+
+    async def _session_lock_for(self, session_id: str) -> asyncio.Lock:
+        """Return a stable :class:`asyncio.Lock` for ``session_id``."""
+        async with self._session_locks_guard:
+            lock = self._session_locks.get(session_id)
+            if lock is None:
+                lock = asyncio.Lock()
+                self._session_locks[session_id] = lock
+            return lock
+
+    async def _nudge_login(self, message: TelegramMessage) -> None:
+        """One-time ``/login`` nudge for an unlinked sender (DM first, fallback reply)."""
+        if message.user_id in self._nudged_users:
+            return
+        self._nudged_users.add(message.user_id)
+        url = await self.auth.build_login_url(
+            telegram_user_id=message.user_id,
+            telegram_chat_id=message.chat_id,
+        )
+        if url is None:
+            return
+        text = f"To link this Telegram account, sign in here:\n{url}"
+        bot = getattr(self.application, "bot", None)
+        if bot is None:
+            await self._send_text(message, text)
+            return
+        if message.chat_type == "private":
+            try:
+                await bot.send_message(chat_id=message.user_id, text=text)
+                return
+            except Forbidden:
+                log.debug(
+                    "Bot cannot DM private chat user %s; falling back", message.user_id
+                )
+            except Exception:
+                log.exception("Failed to send login nudge via bot.send_message")
+            await self._send_text(message, text)
+            return
+        try:
+            await bot.send_message(chat_id=message.user_id, text=text)
+        except Forbidden:
+            await self._send_text(message, text)
+        except Exception:
+            log.exception("Failed to send login nudge DM")
+            await self._send_text(message, text)
 
     # ----- command handlers ------------------------------------------------
 
@@ -594,13 +715,11 @@ class TelegramRunner:
 
     async def _reset_session(self, message: TelegramMessage) -> None:
         clerk_user_id = await self.auth.linked_user_id(message.user_id)
-        if clerk_user_id is None:
-            await self._send_text(message, _LOGIN_REQUIRED_TEXT)
-            return
+        partition_user_id = _partition_user_id(message, clerk_user_id)
         await _reset_session(
             self.session_service,
             message=message,
-            clerk_user_id=clerk_user_id,
+            partition_user_id=partition_user_id,
         )
         await self._send_text(message, f"Reset {ORCHESTRATOR_TITLE} for this chat.")
 
@@ -726,6 +845,8 @@ def telegram_message_from_update(update: Update) -> TelegramMessage | None:
     if not text:
         return None
     sender_id = sender.id if sender is not None else chat.id
+    user_name = _sender_display_name(sender, sender_id)
+    reply_to_bot = _is_reply_to_bot(raw)
     return TelegramMessage(
         chat_id=chat.id,
         user_id=sender_id,
@@ -735,7 +856,31 @@ def telegram_message_from_update(update: Update) -> TelegramMessage | None:
         message_thread_id=getattr(raw, "message_thread_id", None),
         is_topic_message=bool(getattr(raw, "is_topic_message", False)),
         reply_target=raw,
+        user_name=user_name,
+        reply_to_bot=reply_to_bot,
     )
+
+
+def _sender_display_name(sender: object, sender_id: int) -> str | None:
+    if sender is None:
+        return None
+    full_name = getattr(sender, "full_name", None)
+    if full_name:
+        return str(full_name).strip() or None
+    username = getattr(sender, "username", None)
+    if username:
+        return f"@{username}"
+    return str(sender_id)
+
+
+def _is_reply_to_bot(raw: object) -> bool:
+    reply = getattr(raw, "reply_to_message", None)
+    if reply is None:
+        return False
+    from_user = getattr(reply, "from_user", None)
+    if from_user is None:
+        return False
+    return bool(getattr(from_user, "is_bot", False))
 
 
 def help_text() -> str:
@@ -983,6 +1128,8 @@ def _is_unaddressed_group_message(
 ) -> bool:
     if message.chat_type not in {"group", "supergroup"}:
         return False
+    if message.reply_to_bot:
+        return False
     if bot_username is None:
         return True
     return f"@{bot_username}" not in message.text.lower()
@@ -990,11 +1137,13 @@ def _is_unaddressed_group_message(
 
 def _agent_message_text(message: TelegramMessage, bot_username: str | None) -> str:
     text = message.text.strip()
-    if message.chat_type not in {"group", "supergroup"} or bot_username is None:
-        return text
-    mention = f"@{bot_username}"
-    words = [word for word in text.split() if word.lower() != mention]
-    return " ".join(words).strip() or text
+    if message.chat_type in {"group", "supergroup"} and bot_username is not None:
+        mention = f"@{bot_username}"
+        words = [word for word in text.split() if word.lower() != mention]
+        text = " ".join(words).strip() or text
+    if _is_shared_topic_session(message) and message.user_name:
+        text = f"{message.user_name}: {text}"
+    return text
 
 
 def _session_topic_id(message: TelegramMessage) -> int | None:
