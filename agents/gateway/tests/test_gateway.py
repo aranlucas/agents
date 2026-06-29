@@ -1,10 +1,17 @@
 import importlib
 from collections import Counter
+from collections.abc import AsyncIterator
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+from agents_shared.telegram_auth import create_link_token
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from gateway import main
+from gateway.telegram_link import ConsumeTelegramLinkRequest, consume_telegram_link
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 
 def _route_paths(app) -> list[str]:
@@ -20,6 +27,16 @@ def _route_paths(app) -> list[str]:
                 if hasattr(sub, "path"):
                     paths.append(prefix + sub.path)
     return paths
+
+
+@pytest.fixture
+async def engine(tmp_path) -> AsyncIterator[AsyncEngine]:
+    db_path = tmp_path / "gateway.sqlite"
+    engine = create_async_engine(f"sqlite+aiosqlite:///{db_path}")
+    try:
+        yield engine
+    finally:
+        await engine.dispose()
 
 
 def test_mounts_every_agent():
@@ -187,3 +204,46 @@ def test_telegram_link_consume_is_public_with_auth_enabled(monkeypatch):
     monkeypatch.delenv("CLERK_JWKS_URL")
     monkeypatch.delenv("TELEGRAM_LINK_SECRET")
     importlib.reload(main)
+
+
+@pytest.mark.asyncio
+async def test_telegram_link_consume_rejects_invalid_token(
+    engine: AsyncEngine,
+    monkeypatch,
+):
+    monkeypatch.setenv("TELEGRAM_LINK_SECRET", "secret")
+    request = ConsumeTelegramLinkRequest(
+        token="missing",  # noqa: S106
+        clerk_user_id="clerk-user",
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await consume_telegram_link(
+            request,
+            SimpleNamespace(engine=engine),
+            x_telegram_link_secret="secret",  # noqa: S106
+        )
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "Invalid or expired link token"
+
+
+@pytest.mark.asyncio
+async def test_telegram_link_consume_returns_telegram_user_id(
+    engine: AsyncEngine,
+    monkeypatch,
+):
+    monkeypatch.setenv("TELEGRAM_LINK_SECRET", "secret")
+    token = await create_link_token(
+        engine,
+        telegram_user_id="tg-user",
+        telegram_chat_id="tg-chat",
+    )
+
+    response = await consume_telegram_link(
+        ConsumeTelegramLinkRequest(token=token, clerk_user_id="clerk-user"),
+        SimpleNamespace(engine=engine),
+        x_telegram_link_secret="secret",  # noqa: S106
+    )
+
+    assert response == {"ok": True, "telegram_user_id": "tg-user"}
