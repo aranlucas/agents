@@ -1,5 +1,5 @@
 from ._types import CartItem, PantryItem
-from .kroger import meal_planner_toolset
+from .kroger import KrogerToolset, meal_planner_toolset
 from .mark_list_ready import tool as mark_list_ready
 from .set_meal_plan import tool as set_meal_plan
 from .set_shopping_list import tool as set_shopping_list
@@ -17,4 +17,5 @@ __all__ = [
     "set_weekly_deals",
     "mark_list_ready",
     "meal_planner_toolset",
+    "KrogerToolset",
 ]

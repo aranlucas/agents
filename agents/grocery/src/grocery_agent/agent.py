@@ -19,9 +19,9 @@ from pydantic import BaseModel
 
 from .tools import (
     CartItem,
+    KrogerToolset,
     PantryItem,
     mark_list_ready,
-    meal_planner_toolset,
     set_meal_plan,
     set_shopping_list,
     set_weekly_deals,
@@ -43,6 +43,7 @@ class GroceryState(BaseModel):
     cart: list[CartItem] = []
     pantry: list[PantryItem] = []
     weekly_deals: str = ""
+    weekly_plan: str = ""
     status: str = "idle"
     notes: str = ""
     review_summary: str = ""
@@ -72,7 +73,7 @@ def build_agent(
     ]
     if include_agui:
         tools.append(AGUIToolset())
-    tools.append(meal_planner_toolset())
+    tools.append(KrogerToolset())
 
     return LlmAgent(
         name="grocery_agent",

@@ -192,10 +192,7 @@ class CredentialGate:
 # ---------------------------------------------------------------------------
 
 
-_LOGIN_REQUIRED_TEXT = (
-    "Sign in is required before I can use your Strava and QFC credentials. "
-    "Send /login to link this Telegram account."
-)
+_LOGIN_REQUIRED_TEXT = "Sign in is required. Send /login to link this Telegram account."
 
 
 def _session_id(message: TelegramMessage) -> str:

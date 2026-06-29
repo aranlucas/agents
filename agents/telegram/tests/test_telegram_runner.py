@@ -685,17 +685,20 @@ async def test_unlinked_message_requires_login(
     assert reply_target.messages == [
         (
             123,
-            "Sign in is required before I can use your Strava and QFC credentials. "
-            "Send /login to link this Telegram account.",
+            "Sign in is required. Send /login to link this Telegram account.",
         )
     ]
 
 
 @pytest.mark.asyncio
-async def test_missing_connected_accounts_blocks_agent_run(
+async def test_missing_connected_accounts_still_runs_agent(
     services: AgentServices,
     orchestrator_agent: Mock,
 ) -> None:
+    """Missing credentials no longer block the bot — the agent runs and credential-gated
+    tools simply return no tools to the LLM for that turn."""
+    from google.genai import types
+
     token = await create_link_token(
         services.engine,
         telegram_user_id="456",
@@ -713,7 +716,14 @@ async def test_missing_connected_accounts_blocks_agent_run(
         clerk_user_id: str,
     ) -> tuple[dict[str, object], tuple[str, ...]]:
         assert clerk_user_id == "clerk-user"
-        return {"user_id": clerk_user_id}, ("Strava", "Kroger/QFC")
+        return {
+            "user_id": clerk_user_id,
+            "kroger_connected": False,
+            "strava_connected": False,
+        }, (
+            "Strava",
+            "Kroger/QFC",
+        )
 
     runner = _build(
         services,
@@ -721,15 +731,20 @@ async def test_missing_connected_accounts_blocks_agent_run(
         credential_loader=credential_state_loader,
     )
 
+    async def fake_run_async(*, user_id, session_id, new_message, state_delta):
+        yield _Event(
+            content=types.Content(
+                role="model",
+                parts=[types.Part(text="I can help with that.")],
+            )
+        )
+
+    runner.runner.run_async = fake_run_async  # type: ignore[method-assign]
+
     await runner.handle_message(_message("plan food", reply_target))
 
-    assert reply_target.messages == [
-        (
-            123,
-            "Your account is linked, but Strava, Kroger/QFC are not connected yet.\n"
-            "Connect it here: https://agents.example.com/console/settings",
-        )
-    ]
+    # Agent ran and replied — no credential gate block
+    assert any("I can help with that." in text for _, text in reply_target.messages)
 
 
 @pytest.mark.asyncio
@@ -769,8 +784,7 @@ async def test_reset_session_requires_login(
     assert reply_target.messages == [
         (
             123,
-            "Sign in is required before I can use your Strava and QFC credentials. "
-            "Send /login to link this Telegram account.",
+            "Sign in is required. Send /login to link this Telegram account.",
         )
     ]
 
