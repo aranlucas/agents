@@ -184,11 +184,12 @@ class ProviderThrottle(CustomLogger):
         data: dict[str, Any],
         call_type: Any,
     ) -> dict[str, Any]:
-        # Strip reasoning_content that non-reasoning providers reject
+        # Strip provider-specific reasoning metadata that LiteLLM providers reject.
         messages: list[Any] = data.get("messages") or []
         for message in messages:
             if _is_str_dict(message):
                 message.pop("reasoning_content", None)
+                message.pop("reasoning", None)
 
         provider = self._provider(str(data.get("model", "")))
         if not provider:
