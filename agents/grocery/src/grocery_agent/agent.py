@@ -16,11 +16,13 @@ from agents_shared.tools import (
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import FunctionTool
+from google.adk.tools.load_web_page import load_web_page
 from pydantic import BaseModel
 
 from .tools._types import CartItem, PantryItem
 from .tools.kroger import KrogerToolset
 from .tools.mark_list_ready import mark_list_ready
+from .tools.search import web_search_toolset
 from .tools.set_meal_plan import set_meal_plan
 from .tools.set_shopping_list import set_shopping_list
 from .tools.set_weekly_deals import set_weekly_deals
@@ -68,10 +70,12 @@ def build_agent(
         FunctionTool(set_weekly_deals),
         FunctionTool(mark_list_ready),
         get_current_date,
+        load_web_page,
     ]
     if include_agui:
         tools.append(AGUIToolset())
     tools.append(KrogerToolset())
+    tools.append(web_search_toolset())
 
     return LlmAgent(
         name="grocery_agent",
