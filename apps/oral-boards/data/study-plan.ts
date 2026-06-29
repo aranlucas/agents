@@ -1,4 +1,4 @@
-export interface StudyResource {
+interface StudyResource {
   name: string;
   url?: string;
 }

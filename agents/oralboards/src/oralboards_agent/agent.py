@@ -14,20 +14,17 @@ from google.adk.agents import LlmAgent
 from google.adk.models.base_llm import BaseLlm
 from google.adk.models.google_llm import Gemini
 from google.adk.models.lite_llm import LiteLlm
+from google.adk.tools import FunctionTool
 from pydantic import BaseModel
 
-from .tools import (
-    CaseSource,
-    OralBoardsExchange,
-    SkillsetScore,
-    append_exchange,
-    read_doc,
-    search_docs,
-    set_case,
-    set_loading_step,
-    set_phase,
-    set_score_card,
-)
+from .tools._types import CaseSource, OralBoardsExchange, SkillsetScore
+from .tools.append_exchange import append_exchange
+from .tools.read_doc import read_doc
+from .tools.search_docs import search_docs
+from .tools.set_case import set_case
+from .tools.set_loading_step import set_loading_step
+from .tools.set_phase import set_phase
+from .tools.set_score_card import set_score_card
 
 _INSTRUCTION = (Path(__file__).parent / "instructions.md").read_text(encoding="utf-8")
 
@@ -59,13 +56,13 @@ class OralBoardsState(BaseModel):
 def _build_agent(*, include_agui: bool, model: BaseLlm | None = None) -> LlmAgent:
     """Fresh LlmAgent instance for the oral-boards examiner."""
     tools: list[object] = [
-        search_docs,
-        read_doc,
-        set_case,
-        set_phase,
-        set_loading_step,
-        append_exchange,
-        set_score_card,
+        FunctionTool(search_docs),
+        FunctionTool(read_doc),
+        FunctionTool(set_case),
+        FunctionTool(set_phase),
+        FunctionTool(set_loading_step),
+        FunctionTool(append_exchange),
+        FunctionTool(set_score_card),
     ]
     if include_agui:
         tools.append(AGUIToolset())
@@ -114,13 +111,13 @@ def build_eval_agent() -> LlmAgent:
         instruction=_INSTRUCTION,
         before_agent_callback=make_state_initializer(OralBoardsState),
         tools=[
-            search_docs,
-            read_doc,
-            set_case,
-            set_phase,
-            set_loading_step,
-            append_exchange,
-            set_score_card,
+            FunctionTool(search_docs),
+            FunctionTool(read_doc),
+            FunctionTool(set_case),
+            FunctionTool(set_phase),
+            FunctionTool(set_loading_step),
+            FunctionTool(append_exchange),
+            FunctionTool(set_score_card),
         ],
     )
 

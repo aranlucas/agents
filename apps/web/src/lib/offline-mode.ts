@@ -1,4 +1,4 @@
-export const OFFLINE_AGENT_TEST_MODE = "offline";
+const OFFLINE_AGENT_TEST_MODE = "offline";
 
 export function isOfflineAgentTestMode(): boolean {
   return (

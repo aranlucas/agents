@@ -1,12 +1,13 @@
 # pyright: reportPrivateUsage=false
 from unittest.mock import Mock
 
+import fitness_agent.agent as agent
+import fitness_agent.main as main
 import fitness_agent.tools.search as _search_mod
 import httpx
 import pytest
 from agents_shared.state import STRAVA_AUTH, make_state_initializer
 from fastapi import FastAPI
-from fitness_agent import agent, main
 from fitness_agent.agent import FitnessState
 from fitness_agent.tools._types import normalize_strava_activity, summarize_activities
 from fitness_agent.tools.fetch_activities import fetch_activities
@@ -229,7 +230,8 @@ def test_build_agent_uses_app_plugin_for_web_search_throttling() -> None:
 
 
 def test_register_configures_brave_search_plugins(monkeypatch) -> None:
-    from agents_shared.plugins import SlimMcpPlugin, WebSearchThrottlePlugin
+    from agents_shared.plugins.slim_mcp import SlimMcpPlugin
+    from agents_shared.plugins.web_search_throttle import WebSearchThrottlePlugin
 
     captured: dict[str, object] = {}
 

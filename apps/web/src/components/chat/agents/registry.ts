@@ -5,7 +5,7 @@ import type { ProviderId } from "@/lib/connections";
 export { AGENT_BACKEND_PATHS, AGENT_ORDER };
 export type { AgentId };
 
-export type ArtifactSource = {
+type ArtifactSource = {
   /** Agent-state field holding the live document content (string or string[]). */
   stateField: string;
   kind: ArtifactKind;
@@ -14,7 +14,7 @@ export type ArtifactSource = {
   name: string;
 };
 
-export type Suggestion = {
+type Suggestion = {
   title: string;
   message: string;
 };
@@ -33,7 +33,7 @@ export type AgentConfig = {
   suggestions?: Suggestion[];
 };
 
-export const AGENTS: Record<AgentId, AgentConfig> = {
+const AGENTS: Record<AgentId, AgentConfig> = {
   excalidraw: {
     id: "excalidraw",
     label: "Whiteboard",

@@ -1,4 +1,4 @@
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 
 def add_day(
@@ -16,6 +16,3 @@ def add_day(
     tool_context.state["itinerary"] = current + block
     tool_context.state["status"] = "drafting"
     return {"ok": True}
-
-
-tool = FunctionTool(add_day)

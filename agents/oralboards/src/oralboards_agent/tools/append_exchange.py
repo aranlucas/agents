@@ -1,6 +1,6 @@
 from typing import Annotated, Literal
 
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 from pydantic import Field
 
 from ._types import CaseSource, OralBoardsSkill
@@ -68,6 +68,3 @@ def append_exchange(
     tool_context.state["active_feedback"] = ""
     tool_context.state["active_ideal_response"] = ""
     return {"status": "success", "ok": True, "count": len(transcript)}
-
-
-tool = FunctionTool(append_exchange)

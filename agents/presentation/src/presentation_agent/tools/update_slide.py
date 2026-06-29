@@ -1,4 +1,4 @@
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 from ._types import Slide, normalize_slides
 
@@ -27,6 +27,3 @@ def update_slide(
     tool_context.state["slides"] = slides
     tool_context.state["status"] = "drafting"
     return {"ok": True, "slide_id": slide_id}
-
-
-tool = FunctionTool(update_slide)

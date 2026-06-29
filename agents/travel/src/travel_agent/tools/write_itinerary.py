@@ -1,4 +1,4 @@
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 
 def write_itinerary(
@@ -22,6 +22,3 @@ def write_itinerary(
     if flights:
         tool_context.state["flights"] = flights
     return {"ok": True, "length": len(body)}
-
-
-tool = FunctionTool(write_itinerary)

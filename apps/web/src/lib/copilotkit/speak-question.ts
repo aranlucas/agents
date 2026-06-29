@@ -84,10 +84,3 @@ export function stopSpeaking(deps: Pick<SpeakQuestionDeps, "speechSynthesis"> = 
   speech?.cancel();
   void import("./kokoro-worker-client").then(({ stopSpeechWorker }) => stopSpeechWorker());
 }
-
-export function speakQuestionWithBrowserSpeech(
-  question: string,
-  deps: SpeakQuestionDeps = {},
-): string {
-  return speakWithBrowserSpeech(question, deps, "Used browser speech synthesis.");
-}

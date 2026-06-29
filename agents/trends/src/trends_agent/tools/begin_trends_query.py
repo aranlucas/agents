@@ -1,4 +1,4 @@
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 from ._bigquery_utils import clean_sql_query
 
@@ -18,6 +18,3 @@ def begin_trends_query(
         }
     )
     return {"ok": True, "status": "querying"}
-
-
-tool = FunctionTool(begin_trends_query)

@@ -1,6 +1,6 @@
 import uuid
 
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 from ._types import Slide, normalize_slides
 
@@ -37,6 +37,3 @@ def create_slide(
     tool_context.state["active_slide_index"] = new_index
     tool_context.state["status"] = "drafting"
     return {"ok": True, "slide_id": slide_id}
-
-
-tool = FunctionTool(create_slide)

@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 from pydantic import Field
 
 
@@ -16,6 +16,3 @@ def set_loading_step(
     """Report a human-readable progress step during search or generation phases."""
     tool_context.state["loading_step"] = step
     return {"status": "success", "ok": True}
-
-
-tool = FunctionTool(set_loading_step)

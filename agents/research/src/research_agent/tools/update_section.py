@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 
 def _rebuild_report(tool_context: ToolContext) -> None:
@@ -31,6 +31,3 @@ def update_section(
             _rebuild_report(tool_context)
             return {"ok": True, "section_id": section_id}
     return {"ok": False, "error": "section_not_found"}
-
-
-tool = FunctionTool(update_section)

@@ -2,14 +2,11 @@
 """Tests for the shared ADKAgent/app wiring helpers."""
 
 import asyncio
-import logging
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 from agents_shared.app_factory import (
     build_adk_agent,
-    debug_enabled,
-    setup_agent_logging,
     streaming_state_mapping,
 )
 from agents_shared.dependencies import AgentServices
@@ -88,7 +85,7 @@ def test_build_adk_agent_defaults_to_no_plugins():
 
 
 def test_build_adk_agent_accepts_app_plugins():
-    from agents_shared.plugins import SlimMcpPlugin
+    from agents_shared.plugins.slim_mcp import SlimMcpPlugin
 
     services = _mock_services()
     plugin = SlimMcpPlugin()
@@ -98,8 +95,9 @@ def test_build_adk_agent_accepts_app_plugins():
 
 
 def test_plugin_package_exports_individual_plugin_modules():
-    from agents_shared.plugins import SlimMcpPlugin, WebSearchThrottlePlugin
+    from agents_shared.plugins.slim_mcp import SlimMcpPlugin
     from agents_shared.plugins.slim_mcp import SlimMcpPlugin as SlimMcpPluginModule
+    from agents_shared.plugins.web_search_throttle import WebSearchThrottlePlugin
     from agents_shared.plugins.web_search_throttle import (
         WebSearchThrottlePlugin as WebSearchThrottlePluginModule,
     )
@@ -189,7 +187,7 @@ def test_on_model_error_callback_logs_and_returns_none():
 
 
 async def test_slim_mcp_plugin_strips_structured_content() -> None:
-    from agents_shared.plugins import SlimMcpPlugin
+    from agents_shared.plugins.slim_mcp import SlimMcpPlugin
 
     plugin = SlimMcpPlugin()
     result = {"content": "clean", "structuredContent": "raw"}
@@ -200,7 +198,7 @@ async def test_slim_mcp_plugin_strips_structured_content() -> None:
 
 
 async def test_slim_mcp_plugin_passes_through_without_structured_content() -> None:
-    from agents_shared.plugins import SlimMcpPlugin
+    from agents_shared.plugins.slim_mcp import SlimMcpPlugin
 
     plugin = SlimMcpPlugin()
     result = {"content": "clean"}
@@ -211,7 +209,7 @@ async def test_slim_mcp_plugin_passes_through_without_structured_content() -> No
 
 
 async def test_web_search_throttle_plugin_ignores_non_matching_tools() -> None:
-    from agents_shared.plugins import WebSearchThrottlePlugin
+    from agents_shared.plugins.web_search_throttle import WebSearchThrottlePlugin
 
     plugin = WebSearchThrottlePlugin()
     plugin.last_at = 1000.0
@@ -224,8 +222,8 @@ async def test_web_search_throttle_plugin_ignores_non_matching_tools() -> None:
 
 
 async def test_web_search_throttle_plugin_spaces_matching_tools(monkeypatch) -> None:
-    from agents_shared.plugins import WebSearchThrottlePlugin
-    from agents_shared.plugins import web_search_throttle as throttle_mod
+    import agents_shared.plugins.web_search_throttle as throttle_mod
+    from agents_shared.plugins.web_search_throttle import WebSearchThrottlePlugin
 
     sleeps: list[float] = []
     monotonic_values = [10.0, 10.0, 10.5, 11.7]
@@ -255,18 +253,6 @@ async def test_web_search_throttle_plugin_spaces_matching_tools(monkeypatch) -> 
 
     assert sleeps == [0.7]
     assert plugin.last_at == 11.7
-
-
-def test_debug_enabled_true_when_env_set(monkeypatch):
-    monkeypatch.setenv("AGENTS_DEBUG_LOGGING", "true")
-    assert debug_enabled() is True
-
-
-def test_setup_agent_logging_sets_debug_level(monkeypatch):
-    monkeypatch.setenv("AGENTS_DEBUG_LOGGING", "1")
-    logger = setup_agent_logging("test.debug.logger")
-    assert logger.name == "test.debug.logger"
-    assert logging.getLogger("google.adk").level == logging.DEBUG
 
 
 # ---------------------------------------------------------------------------

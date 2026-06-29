@@ -12,16 +12,14 @@ from agents_shared.tools import (
 )
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
+from google.adk.tools import FunctionTool
 from pydantic import BaseModel, Field
 
-from .tools import (
-    REVIEW_THRESHOLD_USD,
-    decide_expense,
-    mark_expense_ready,
-    set_expense_report,
-    submit_expense,
-    write_expense_review,
-)
+from .tools.decide_expense import decide_expense
+from .tools.mark_expense_ready import mark_expense_ready
+from .tools.set_expense_report import set_expense_report
+from .tools.submit_expense import REVIEW_THRESHOLD_USD, submit_expense
+from .tools.write_expense_review import write_expense_review
 
 _INSTRUCTION = (Path(__file__).parent / "instructions.md").read_text(encoding="utf-8")
 
@@ -62,11 +60,11 @@ class ExpenseState(BaseModel):
 
 def _build_agent(*, include_agui: bool) -> LlmAgent:
     tools: list[object] = [
-        submit_expense,
-        write_expense_review,
-        decide_expense,
-        set_expense_report,
-        mark_expense_ready,
+        FunctionTool(submit_expense),
+        FunctionTool(write_expense_review),
+        FunctionTool(decide_expense),
+        FunctionTool(set_expense_report),
+        FunctionTool(mark_expense_ready),
     ]
     if include_agui:
         tools.append(AGUIToolset())
@@ -105,11 +103,11 @@ def build_eval_agent() -> LlmAgent:
         instruction=_INSTRUCTION,
         before_agent_callback=make_state_initializer(ExpenseState),
         tools=[
-            submit_expense,
-            write_expense_review,
-            decide_expense,
-            set_expense_report,
-            mark_expense_ready,
+            FunctionTool(submit_expense),
+            FunctionTool(write_expense_review),
+            FunctionTool(decide_expense),
+            FunctionTool(set_expense_report),
+            FunctionTool(mark_expense_ready),
         ],
     )
 

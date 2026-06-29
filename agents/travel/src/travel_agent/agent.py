@@ -12,15 +12,14 @@ from agents_shared.tools import (
 )
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
+from google.adk.tools import FunctionTool
 from pydantic import BaseModel
 
-from .tools import (
-    add_day,
-    mark_ready_to_book,
-    set_trip_meta,
-    trvl_toolset,
-    write_itinerary,
-)
+from .tools.add_day import add_day
+from .tools.mark_ready_to_book import mark_ready_to_book
+from .tools.set_trip_meta import set_trip_meta
+from .tools.trvl import trvl_toolset
+from .tools.write_itinerary import write_itinerary
 
 _INSTRUCTION = (Path(__file__).parent / "instructions.md").read_text(encoding="utf-8")
 
@@ -61,10 +60,10 @@ def _build_agent(*, include_agui: bool) -> LlmAgent:
     """Fresh LlmAgent instance for the trip-planning agent."""
     tools: list[object] = [
         get_current_date,
-        set_trip_meta,
-        write_itinerary,
-        add_day,
-        mark_ready_to_book,
+        FunctionTool(set_trip_meta),
+        FunctionTool(write_itinerary),
+        FunctionTool(add_day),
+        FunctionTool(mark_ready_to_book),
     ]
     if include_agui:
         tools.append(AGUIToolset())
@@ -98,7 +97,8 @@ def build_eval_agent() -> LlmAgent:
     AGUIToolset and McpToolset are replaced with stubs because the Vertex AI
     eval SDK requires plain callables when building AgentConfig tool declarations.
     """
-    from .tools import (
+    from .tools._write_itinerary import write_itinerary as write_itinerary_eval_alias
+    from .tools.stubs import (
         check_visa,
         destination_info,
         get_preferences,
@@ -106,7 +106,6 @@ def build_eval_agent() -> LlmAgent:
         search_flights,
         search_hotels,
         search_restaurants,
-        write_itinerary_eval_alias,
     )
 
     return LlmAgent(
@@ -120,11 +119,11 @@ def build_eval_agent() -> LlmAgent:
         before_agent_callback=make_state_initializer(TravelState),
         tools=[
             get_current_date,
-            set_trip_meta,
-            write_itinerary,
-            write_itinerary_eval_alias,
-            add_day,
-            mark_ready_to_book,
+            FunctionTool(set_trip_meta),
+            FunctionTool(write_itinerary),
+            FunctionTool(write_itinerary_eval_alias),
+            FunctionTool(add_day),
+            FunctionTool(mark_ready_to_book),
             search_flights,
             search_hotels,
             get_weather,

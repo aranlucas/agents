@@ -32,8 +32,6 @@ export const AGENT_BACKEND_PATHS = {
   presentation: "presentation",
 } as const satisfies Record<AgentId, string>;
 
-export type AgentBackendPath = (typeof AGENT_BACKEND_PATHS)[AgentId];
-
 // Travel agent state — matches what agents/travel writes to ADK shared state
 export type DocStatus = "idle" | "drafting" | "ready_to_book" | "booked";
 

@@ -1,4 +1,4 @@
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 
 def set_trends_verification(
@@ -10,6 +10,3 @@ def set_trends_verification(
     tool_context.state["insights"] = f"{existing}\n\n{section}" if existing else section
     tool_context.state["status"] = "ready"
     return {"ok": True}
-
-
-tool = FunctionTool(set_trends_verification)

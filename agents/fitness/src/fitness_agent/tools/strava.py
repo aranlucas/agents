@@ -1,10 +1,13 @@
 """Strava toolset — provides fetch_activities only when strava_connected is True."""
 
 from google.adk.agents.readonly_context import ReadonlyContext
+from google.adk.tools import FunctionTool
 from google.adk.tools.base_tool import BaseTool
 from google.adk.tools.base_toolset import BaseToolset
 
-from .fetch_activities import tool as fetch_activities_tool
+from .fetch_activities import fetch_activities
+
+fetch_activities_tool = FunctionTool(fetch_activities)
 
 
 class StravaToolset(BaseToolset):

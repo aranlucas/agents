@@ -11,16 +11,15 @@ from agents_shared.tools import (
 )
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
+from google.adk.tools import FunctionTool
 from pydantic import BaseModel, Field
 
-from .tools import (
-    create_slide,
-    delete_slide,
-    mark_presentation_ready,
-    reorder_slides,
-    set_presentation_meta,
-    update_slide,
-)
+from .tools.create_slide import create_slide
+from .tools.delete_slide import delete_slide
+from .tools.mark_presentation_ready import mark_presentation_ready
+from .tools.reorder_slides import reorder_slides
+from .tools.set_presentation_meta import set_presentation_meta
+from .tools.update_slide import update_slide
 
 _INSTRUCTION = (Path(__file__).parent / "instructions.md").read_text(encoding="utf-8")
 
@@ -37,12 +36,12 @@ class PresentationState(BaseModel):
 
 def _build_agent(*, include_agui: bool) -> LlmAgent:
     tools: list[object] = [
-        set_presentation_meta,
-        create_slide,
-        update_slide,
-        delete_slide,
-        reorder_slides,
-        mark_presentation_ready,
+        FunctionTool(set_presentation_meta),
+        FunctionTool(create_slide),
+        FunctionTool(update_slide),
+        FunctionTool(delete_slide),
+        FunctionTool(reorder_slides),
+        FunctionTool(mark_presentation_ready),
     ]
     if include_agui:
         tools.append(AGUIToolset())
@@ -81,12 +80,12 @@ def build_eval_agent() -> LlmAgent:
         instruction=_INSTRUCTION,
         before_agent_callback=make_state_initializer(PresentationState),
         tools=[
-            set_presentation_meta,
-            create_slide,
-            update_slide,
-            delete_slide,
-            reorder_slides,
-            mark_presentation_ready,
+            FunctionTool(set_presentation_meta),
+            FunctionTool(create_slide),
+            FunctionTool(update_slide),
+            FunctionTool(delete_slide),
+            FunctionTool(reorder_slides),
+            FunctionTool(mark_presentation_ready),
         ],
     )
 

@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 from pydantic import Field
 
 from ._types import CaseSource
@@ -35,6 +35,3 @@ def set_case(
     tool_context.state["interview_complete"] = False
     tool_context.state["status"] = "presenting"
     return {"status": "success", "ok": True, "length": len(case)}
-
-
-tool = FunctionTool(set_case)

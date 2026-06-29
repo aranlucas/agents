@@ -1,7 +1,7 @@
 from pathlib import Path
 
+import agents_shared.session_service as session_service
 import pytest
-from agents_shared import session_service
 from agents_shared.session_service import _normalize_postgres_url
 
 

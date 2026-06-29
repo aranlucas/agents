@@ -18,19 +18,17 @@ from agents_shared.tools import (
 )
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.tools import BaseTool
+from google.adk.tools import BaseTool, FunctionTool
 from google.adk.tools.base_toolset import BaseToolset
 from pydantic import BaseModel
 
-from .tools import (
-    StravaActivity,
-    StravaToolset,
-    fetch_activities,
-    mark_plan_ready,
-    set_objective_research,
-    set_training_plan,
-    web_search_toolset,
-)
+from .tools._types import StravaActivity
+from .tools.fetch_activities import fetch_activities
+from .tools.mark_plan_ready import mark_plan_ready
+from .tools.search import web_search_toolset
+from .tools.set_objective_research import set_objective_research
+from .tools.set_training_plan import set_training_plan
+from .tools.strava import StravaToolset
 
 log = logging.getLogger("fitness_agent")
 
@@ -70,9 +68,9 @@ def build_agent(
     tools: list[FitnessTool] = [
         StravaToolset(),
         get_current_date,
-        set_objective_research,
-        set_training_plan,
-        mark_plan_ready,
+        FunctionTool(set_objective_research),
+        FunctionTool(set_training_plan),
+        FunctionTool(mark_plan_ready),
     ]
     if include_agui:
         tools.append(AGUIToolset())
@@ -131,11 +129,11 @@ def build_eval_agent(
             token_flags={STRAVA_AUTH.state_key: STRAVA_AUTH.connected_flag},
         ),
         tools=[
-            fetch_activities,
+            FunctionTool(fetch_activities),
             get_current_date,
-            set_objective_research,
-            set_training_plan,
-            mark_plan_ready,
+            FunctionTool(set_objective_research),
+            FunctionTool(set_training_plan),
+            FunctionTool(mark_plan_ready),
         ],
     )
 

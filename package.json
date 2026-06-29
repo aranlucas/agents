@@ -35,13 +35,8 @@
     "doctor": "npx react-doctor@latest"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.2",
-    "@testing-library/user-event": "^14.6.1",
-    "@types/jsdom": "^28.0.3",
     "concurrently": "^10.0.3",
     "husky": "^9.1.7",
-    "jsdom": "^29.1.1",
     "lint-staged": "^17.0.8",
     "oxfmt": "^0.56.0",
     "oxlint": "^1.71.0",

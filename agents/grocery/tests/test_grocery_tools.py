@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
-from agents_shared.plugins import SlimMcpPlugin
-from grocery_agent import main
+import grocery_agent.main as main
+from agents_shared.plugins.slim_mcp import SlimMcpPlugin
 from grocery_agent.agent import build_agent
 from grocery_agent.tools.mark_list_ready import mark_list_ready
 from grocery_agent.tools.set_meal_plan import set_meal_plan

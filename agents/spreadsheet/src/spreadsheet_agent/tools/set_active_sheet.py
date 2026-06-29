@@ -1,4 +1,4 @@
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 from ._types import Sheet, normalize_sheets
 
@@ -16,6 +16,3 @@ def set_active_sheet(tool_context: ToolContext, sheet_index: int) -> dict[str, o
         return {"ok": False, "error": "sheet_index_out_of_range"}
     tool_context.state["active_sheet_index"] = sheet_index
     return {"ok": True, "active_sheet_index": sheet_index}
-
-
-tool = FunctionTool(set_active_sheet)

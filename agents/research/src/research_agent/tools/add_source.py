@@ -1,6 +1,6 @@
 import uuid
 
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 
 def add_source(
@@ -14,6 +14,3 @@ def add_source(
     )
     tool_context.state["sources"] = sources
     return {"ok": True, "source_id": source_id}
-
-
-tool = FunctionTool(add_source)

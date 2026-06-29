@@ -19,7 +19,7 @@ from typing import Protocol, runtime_checkable
 from urllib.parse import urlencode
 
 from agents_shared.dependencies import AgentServices, create_agent_services
-from agents_shared.plugins import SlimMcpPlugin
+from agents_shared.plugins.slim_mcp import SlimMcpPlugin
 from agents_shared.telegram_auth import (
     create_link_token,
     get_linked_clerk_user_id,
@@ -35,7 +35,13 @@ from google.adk.sessions import BaseSessionService
 from google.genai import types
 from pydantic import TypeAdapter
 from sqlalchemy.ext.asyncio import AsyncEngine
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
+from telegram import (
+    BotCommand,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Update,
+    WebAppInfo,
+)
 from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
@@ -75,6 +81,7 @@ _HIDDEN_STATE_KEYS = frozenset(
     {
         "user_id",
         "telegram_chat_id",
+        "telegram_message_thread_id",
         "telegram_user_id",
         "interests",
     }
@@ -116,6 +123,7 @@ class TelegramReplyTarget(Protocol):
         disable_web_page_preview: bool = True,
         reply_markup: InlineKeyboardMarkup | None = None,
         parse_mode: str | None = None,
+        message_thread_id: int | None = None,
     ) -> TelegramSentMessage: ...
 
 
@@ -126,6 +134,8 @@ class TelegramMessage:
     text: str
     message_id: int | None = None
     chat_type: str = "private"
+    message_thread_id: int | None = None
+    is_topic_message: bool = False
     reply_target: TelegramReplyTarget | None = None
 
 
@@ -200,7 +210,21 @@ _LOGIN_REQUIRED_TEXT = "Sign in is required. Send /login to link this Telegram a
 
 
 def _session_id(message: TelegramMessage) -> str:
+    topic_id = _session_topic_id(message)
+    if topic_id is not None:
+        return f"telegram:{message.chat_id}:topic:{topic_id}:{ORCHESTRATOR_AGENT_ID}"
     return f"telegram:{message.chat_id}:{ORCHESTRATOR_AGENT_ID}"
+
+
+def _telegram_state(message: TelegramMessage) -> dict[str, str]:
+    state = {
+        "telegram_chat_id": str(message.chat_id),
+        "telegram_user_id": str(message.user_id),
+    }
+    topic_id = _session_topic_id(message)
+    if topic_id is not None:
+        state["telegram_message_thread_id"] = str(topic_id)
+    return state
 
 
 async def _ensure_session(
@@ -223,8 +247,7 @@ async def _ensure_session(
             session_id=session_id,
             state={
                 **initial_state,
-                "telegram_chat_id": str(message.chat_id),
-                "telegram_user_id": str(message.user_id),
+                **_telegram_state(message),
                 "user_id": clerk_user_id,
             },
         )
@@ -286,6 +309,7 @@ class TelegramRunner:
         credentials: CredentialGate,
         allowed_chat_ids: set[int] | None = None,
         mini_app_url: str | None = None,
+        bot_username: str | None = None,
         debug: bool = False,
         status_update_seconds: float = DEFAULT_STATUS_UPDATE_SECONDS,
         run_timeout_seconds: float = DEFAULT_RUN_TIMEOUT_SECONDS,
@@ -297,6 +321,7 @@ class TelegramRunner:
         self.credentials = credentials
         self.allowed_chat_ids = frozenset(allowed_chat_ids or set())
         self.mini_app_url = mini_app_url
+        self.bot_username = _normalize_bot_username(bot_username)
         self.debug = debug
         self.status_update_seconds = status_update_seconds
         self.run_timeout_seconds = run_timeout_seconds
@@ -327,6 +352,8 @@ class TelegramRunner:
     async def handle_message(self, message: TelegramMessage) -> None:
         """Core agent run loop — the Telegram equivalent of ``SlackRunner._handle_message``."""
         if not self._is_allowed(message):
+            return
+        if _is_unaddressed_group_message(message, self.bot_username):
             return
 
         clerk_user_id = await self.auth.linked_user_id(message.user_id)
@@ -365,7 +392,9 @@ class TelegramRunner:
         try:
             new_message = types.Content(
                 role="user",
-                parts=[types.Part(text=message.text)],
+                parts=[
+                    types.Part(text=_agent_message_text(message, self.bot_username))
+                ],
             )
             async with asyncio.timeout(self.run_timeout_seconds):
                 async for event in self.runner.run_async(
@@ -374,8 +403,7 @@ class TelegramRunner:
                     new_message=new_message,
                     state_delta={
                         **credential_state,
-                        "telegram_chat_id": str(message.chat_id),
-                        "telegram_user_id": str(message.user_id),
+                        **_telegram_state(message),
                     },
                 ):
                     if event.actions and event.actions.state_delta:
@@ -524,7 +552,7 @@ class TelegramRunner:
     ) -> None:
         message = telegram_message_from_update(update)
         if message is not None and self._is_allowed(message):
-            await self._send_text(message, str(message.chat_id))
+            await self._send_text(message, chat_id_text(message))
 
     async def _on_unknown(
         self,
@@ -704,6 +732,8 @@ def telegram_message_from_update(update: Update) -> TelegramMessage | None:
         text=text.strip(),
         message_id=raw.message_id,
         chat_type=chat.type,
+        message_thread_id=getattr(raw, "message_thread_id", None),
+        is_topic_message=bool(getattr(raw, "is_topic_message", False)),
         reply_target=raw,
     )
 
@@ -713,12 +743,31 @@ def help_text() -> str:
         "ADK Telegram bot\n\n"
         f"Default agent: {ORCHESTRATOR_AGENT_ID} - {ORCHESTRATOR_TITLE}\n\n"
         "Commands:\n"
+        "/help - show help and onboarding\n"
         "/login - link Telegram to your signed-in web account\n"
         "/logout - unlink Telegram from your web account\n"
         "/new - start a new conversation\n"
         "/reset - alias for /new\n"
         "/chat_id - show this Telegram chat ID\n\n"
         "After linking, send normal messages to talk to the orchestrator."
+    )
+
+
+def chat_id_text(message: TelegramMessage) -> str:
+    topic_id = _session_topic_id(message)
+    if topic_id is None:
+        return str(message.chat_id)
+    return f"chat_id: {message.chat_id}\ntopic_id: {topic_id}"
+
+
+def bot_commands() -> tuple[BotCommand, ...]:
+    return (
+        BotCommand("help", "Show help and onboarding"),
+        BotCommand("login", "Link Telegram to your web account"),
+        BotCommand("logout", "Unlink Telegram from your web account"),
+        BotCommand("new", "Start a fresh AI conversation"),
+        BotCommand("reset", "Reset the current conversation"),
+        BotCommand("chat_id", "Show this chat ID"),
     )
 
 
@@ -769,6 +818,7 @@ async def send_reply(
         disable_web_page_preview=True,
         reply_markup=reply_markup,
         parse_mode=parse_mode,
+        message_thread_id=_session_topic_id(message),
     )
 
 
@@ -921,6 +971,40 @@ def _escape_markdownv2(text: str) -> str:
     return escape_markdown(text, version=2)
 
 
+def _normalize_bot_username(value: str | None) -> str | None:
+    if not value:
+        return None
+    return value.strip().removeprefix("@").lower() or None
+
+
+def _is_unaddressed_group_message(
+    message: TelegramMessage,
+    bot_username: str | None,
+) -> bool:
+    if message.chat_type not in {"group", "supergroup"}:
+        return False
+    if bot_username is None:
+        return True
+    return f"@{bot_username}" not in message.text.lower()
+
+
+def _agent_message_text(message: TelegramMessage, bot_username: str | None) -> str:
+    text = message.text.strip()
+    if message.chat_type not in {"group", "supergroup"} or bot_username is None:
+        return text
+    mention = f"@{bot_username}"
+    words = [word for word in text.split() if word.lower() != mention]
+    return " ".join(words).strip() or text
+
+
+def _session_topic_id(message: TelegramMessage) -> int | None:
+    if message.chat_type not in {"group", "supergroup"}:
+        return None
+    if not message.is_topic_message:
+        return None
+    return message.message_thread_id
+
+
 def _default_connect_url(link_base_url: str | None) -> str | None:
     if not link_base_url:
         return None
@@ -955,7 +1039,20 @@ def build_application(
     JobQueue[ContextTypes.DEFAULT_TYPE],
 ]:
     """Build a :class:`telegram.ext.Application` for the given BotFather token."""
-    return ApplicationBuilder().token(token).build()
+    return ApplicationBuilder().token(token).post_init(_set_bot_commands).build()
+
+
+async def _set_bot_commands(
+    application: Application[
+        ExtBot[None],
+        ContextTypes.DEFAULT_TYPE,
+        dict[str, object],
+        dict[str, object],
+        dict[str, object],
+        JobQueue[ContextTypes.DEFAULT_TYPE],
+    ],
+) -> None:
+    await application.bot.set_my_commands(bot_commands())
 
 
 def build_orchestrator_runner(services: AgentServices) -> Runner:
@@ -992,6 +1089,7 @@ def build_telegram_runner(
     link_base_url: str | None = None,
     connect_url: str | None = None,
     mini_app_url: str | None = None,
+    bot_username: str | None = None,
     credential_loader: CredentialLoader | None = None,
     debug: bool = False,
     status_update_seconds: float | None = None,
@@ -1014,6 +1112,7 @@ def build_telegram_runner(
         credentials=credentials,
         allowed_chat_ids=allowed_chat_ids,
         mini_app_url=mini_app_url,
+        bot_username=bot_username or os.getenv("TELEGRAM_BOT_USERNAME"),
         debug=debug,
         status_update_seconds=(
             status_update_seconds

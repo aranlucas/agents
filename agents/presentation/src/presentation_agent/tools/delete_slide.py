@@ -1,4 +1,4 @@
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 from ._types import Slide, normalize_slides
 
@@ -24,6 +24,3 @@ def delete_slide(tool_context: ToolContext, slide_id: str) -> dict[str, object]:
     else:
         tool_context.state["active_slide_index"] = 0
     return {"ok": True}
-
-
-tool = FunctionTool(delete_slide)

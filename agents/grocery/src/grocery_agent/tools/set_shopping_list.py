@@ -1,4 +1,4 @@
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 
 def set_shopping_list(
@@ -16,6 +16,3 @@ def set_shopping_list(
     if notes:
         tool_context.state["notes"] = notes
     return {"ok": True, "count": len(items)}
-
-
-tool = FunctionTool(set_shopping_list)

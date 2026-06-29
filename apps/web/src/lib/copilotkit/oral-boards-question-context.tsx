@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 
-export type OralBoardsInputKind = "ready" | "answer";
+type OralBoardsInputKind = "ready" | "answer";
 
 type PendingInput = {
   id: string;

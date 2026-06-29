@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 
 export type AgentStatus = "loading" | "ok" | "error";
 
-export interface AgentStatuses {
+interface AgentStatuses {
   excalidraw: AgentStatus;
   travel: AgentStatus;
   grocery: AgentStatus;

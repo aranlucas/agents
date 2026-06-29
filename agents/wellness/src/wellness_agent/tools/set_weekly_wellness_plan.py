@@ -1,4 +1,4 @@
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 
 def set_weekly_wellness_plan(tool_context: ToolContext, plan: str) -> dict[str, object]:
@@ -6,6 +6,3 @@ def set_weekly_wellness_plan(tool_context: ToolContext, plan: str) -> dict[str, 
     tool_context.state["weekly_plan"] = plan
     tool_context.state["status"] = "planning"
     return {"ok": True, "length": len(plan)}
-
-
-tool = FunctionTool(set_weekly_wellness_plan)

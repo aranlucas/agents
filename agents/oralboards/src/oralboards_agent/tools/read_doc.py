@@ -2,7 +2,6 @@ import asyncio
 import sqlite3
 from typing import Annotated
 
-from google.adk.tools import FunctionTool
 from pydantic import Field, TypeAdapter, ValidationError
 
 from ..db import connect
@@ -65,6 +64,3 @@ async def read_doc(
         "body": doc["body"],
         "error": "",
     }
-
-
-tool = FunctionTool(read_doc)

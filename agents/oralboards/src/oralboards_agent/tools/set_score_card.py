@@ -1,6 +1,6 @@
 from typing import Annotated, Literal
 
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 from pydantic import Field
 
 from ._types import SkillsetScore
@@ -33,6 +33,3 @@ def set_score_card(
     tool_context.state["outcome"] = outcome
     tool_context.state["status"] = "complete"
     return {"status": "success", "ok": True, "length": len(markdown)}
-
-
-tool = FunctionTool(set_score_card)

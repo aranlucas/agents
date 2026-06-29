@@ -13,16 +13,15 @@ from agents_shared.tools import (
 )
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
+from google.adk.tools import FunctionTool
 from pydantic import BaseModel, Field
 
-from .tools import (
-    add_source,
-    create_section,
-    mark_research_ready,
-    set_research_query,
-    update_section,
-    write_report,
-)
+from .tools.add_source import add_source
+from .tools.create_section import create_section
+from .tools.mark_research_ready import mark_research_ready
+from .tools.set_research_query import set_research_query
+from .tools.update_section import update_section
+from .tools.write_report import write_report
 
 _INSTRUCTION = (Path(__file__).parent / "instructions.md").read_text(encoding="utf-8")
 
@@ -40,12 +39,12 @@ class ResearchState(BaseModel):
 
 def _build_agent(*, include_agui: bool) -> LlmAgent:
     tools: list[object] = [
-        set_research_query,
-        create_section,
-        update_section,
-        add_source,
-        write_report,
-        mark_research_ready,
+        FunctionTool(set_research_query),
+        FunctionTool(create_section),
+        FunctionTool(update_section),
+        FunctionTool(add_source),
+        FunctionTool(write_report),
+        FunctionTool(mark_research_ready),
     ]
     if include_agui:
         tools.append(AGUIToolset())
@@ -84,12 +83,12 @@ def build_eval_agent() -> LlmAgent:
         instruction=_INSTRUCTION,
         before_agent_callback=make_state_initializer(ResearchState),
         tools=[
-            set_research_query,
-            create_section,
-            update_section,
-            add_source,
-            write_report,
-            mark_research_ready,
+            FunctionTool(set_research_query),
+            FunctionTool(create_section),
+            FunctionTool(update_section),
+            FunctionTool(add_source),
+            FunctionTool(write_report),
+            FunctionTool(mark_research_ready),
         ],
     )
 

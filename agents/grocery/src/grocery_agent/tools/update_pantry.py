@@ -1,4 +1,4 @@
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 from ._types import PantryItem
 
@@ -12,6 +12,3 @@ def update_pantry(
     """
     tool_context.state["pantry"] = items
     return {"ok": True}
-
-
-tool = FunctionTool(update_pantry)
