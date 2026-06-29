@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 
 def _rebuild_report(tool_context: ToolContext) -> None:
@@ -31,6 +31,3 @@ def create_section(
     tool_context.state["sections"] = sections
     _rebuild_report(tool_context)
     return {"ok": True, "section_id": section_id}
-
-
-tool = FunctionTool(create_section)

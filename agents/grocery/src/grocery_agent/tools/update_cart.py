@@ -1,4 +1,4 @@
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 from ._types import CartItem
 
@@ -10,6 +10,3 @@ def update_cart(tool_context: ToolContext, items: list[CartItem]) -> dict[str, o
     """
     tool_context.state["cart"] = items
     return {"ok": True, "count": len(items)}
-
-
-tool = FunctionTool(update_cart)

@@ -1,10 +1,11 @@
 from unittest.mock import Mock
 
+import trends_agent.agent as agent
+import trends_agent.main as main
 from agents_shared.dependencies import create_agent_services
 from fastapi import FastAPI
 from google.adk.agents import LlmAgent
 from google.adk.tools.agent_tool import AgentTool
-from trends_agent import agent, main
 from trends_agent.subagents.generator import build_generator
 
 
@@ -64,7 +65,8 @@ def test_build_agent_uses_app_plugin_for_web_search_throttling() -> None:
 
 
 def test_register_configures_brave_search_plugins(monkeypatch) -> None:
-    from agents_shared.plugins import SlimMcpPlugin, WebSearchThrottlePlugin
+    from agents_shared.plugins.slim_mcp import SlimMcpPlugin
+    from agents_shared.plugins.web_search_throttle import WebSearchThrottlePlugin
 
     captured: dict[str, object] = {}
 

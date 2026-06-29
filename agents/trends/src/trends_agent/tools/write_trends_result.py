@@ -1,4 +1,4 @@
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 from ._bigquery_utils import clean_sql_query, normalize_bigquery_value
 
@@ -26,6 +26,3 @@ def write_trends_result(
         }
     )
     return {"ok": not error, "status": status, "row_count": len(normalized_rows)}
-
-
-tool = FunctionTool(write_trends_result)

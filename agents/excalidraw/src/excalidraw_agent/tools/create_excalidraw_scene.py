@@ -1,4 +1,4 @@
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 
 def create_excalidraw_scene(
@@ -15,6 +15,3 @@ def create_excalidraw_scene(
     }
     tool_context.state["scene"] = scene
     return {"status": "created", "scene": scene}
-
-
-tool = FunctionTool(create_excalidraw_scene)

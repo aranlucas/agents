@@ -1,6 +1,6 @@
 from uuid import uuid4
 
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 from ._types import ExpenseItem, ExpenseStatus, normalize_expenses
 
@@ -57,6 +57,3 @@ def submit_expense(
     tool_context.state["review_threshold_usd"] = threshold
     tool_context.state["status"] = "reviewing" if status == "needs_review" else "ready"
     return {"ok": True, "expense_id": expense["id"], "status": status}
-
-
-tool = FunctionTool(submit_expense)

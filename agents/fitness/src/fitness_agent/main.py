@@ -6,7 +6,8 @@ from agents_shared.app_factory import (
     streaming_state_mapping,
 )
 from agents_shared.dependencies import AgentServices
-from agents_shared.plugins import SlimMcpPlugin, WebSearchThrottlePlugin
+from agents_shared.plugins.slim_mcp import SlimMcpPlugin
+from agents_shared.plugins.web_search_throttle import WebSearchThrottlePlugin
 from agents_shared.state import STRAVA_AUTH, make_extract_state
 from dotenv import load_dotenv
 from fastapi import FastAPI

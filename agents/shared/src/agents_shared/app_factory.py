@@ -4,8 +4,6 @@ Agents construct their ``ADKAgent`` with ``build_adk_agent()`` then register
 routes directly on the gateway app.
 """
 
-import logging
-import os
 from collections.abc import Awaitable, Callable
 
 from ag_ui.core.types import RunAgentInput
@@ -18,23 +16,6 @@ from google.adk.plugins.base_plugin import BasePlugin
 from google.adk.sessions import BaseSessionService
 
 from .dependencies import AgentServices
-
-_DEBUG_ENV_VAR = "AGENTS_DEBUG_LOGGING"
-
-
-def debug_enabled() -> bool:
-    return os.getenv(_DEBUG_ENV_VAR, "").strip().lower() in ("1", "true", "yes", "on")
-
-
-def setup_agent_logging(name: str) -> logging.Logger:
-    level = logging.DEBUG if debug_enabled() else logging.INFO
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    )
-    for logger_name in ("google.adk", "litellm", "ag_ui_adk"):
-        logging.getLogger(logger_name).setLevel(level)
-    return logging.getLogger(name)
 
 
 def streaming_state_mapping(

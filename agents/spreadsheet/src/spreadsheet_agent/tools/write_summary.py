@@ -1,4 +1,4 @@
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 
 def write_summary(tool_context: ToolContext, summary: str) -> dict[str, object]:
@@ -6,6 +6,3 @@ def write_summary(tool_context: ToolContext, summary: str) -> dict[str, object]:
     tool_context.state["summary"] = summary
     tool_context.state["status"] = "ready"
     return {"ok": True, "length": len(summary)}
-
-
-tool = FunctionTool(write_summary)

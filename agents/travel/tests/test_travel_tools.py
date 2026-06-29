@@ -1,10 +1,11 @@
 from types import SimpleNamespace
 
+import travel_agent.agent as agent
+import travel_agent.main as main
 from agents_shared.dependencies import create_agent_services
 from agents_shared.tools import extract_identity_state
 from fastapi import FastAPI
 from starlette.datastructures import Headers
-from travel_agent import agent, main
 from travel_agent.tools.add_day import add_day
 from travel_agent.tools.mark_ready_to_book import mark_ready_to_book
 from travel_agent.tools.set_trip_meta import set_trip_meta
@@ -99,7 +100,7 @@ def test_main_register_exposes_prefixed_routes() -> None:
 
 
 def test_main_register_configures_trvl_mcp_plugins(monkeypatch) -> None:
-    from agents_shared.plugins import SlimMcpPlugin
+    from agents_shared.plugins.slim_mcp import SlimMcpPlugin
 
     captured: dict[str, object] = {}
 

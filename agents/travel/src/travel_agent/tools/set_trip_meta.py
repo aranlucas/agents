@@ -1,4 +1,4 @@
-from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools import ToolContext
 
 
 def set_trip_meta(  # noqa: PLR0913
@@ -25,6 +25,3 @@ def set_trip_meta(  # noqa: PLR0913
     tool_context.state["status"] = "drafting"
     tool_context.state.setdefault("flights", "")
     return {"ok": True}
-
-
-tool = FunctionTool(set_trip_meta)

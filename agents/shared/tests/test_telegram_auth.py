@@ -1,8 +1,8 @@
 from collections.abc import AsyncIterator
 from unittest.mock import MagicMock, patch
 
+import agents_shared.telegram_auth as telegram_auth
 import pytest
-from agents_shared import telegram_auth
 from agents_shared.telegram_auth import (
     _lookup_clerk_user_by_external_id,
     check_link_secret,

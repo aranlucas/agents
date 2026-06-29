@@ -12,15 +12,17 @@ from agents_shared.tools import (
 )
 from fitness_agent.agent import build_agent as build_fitness_agent
 from fitness_agent.agent import build_telegram_agent as build_fitness_telegram_agent
-from fitness_agent.tools import StravaActivity
+from fitness_agent.tools._types import StravaActivity
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
+from google.adk.tools import FunctionTool
 from grocery_agent.agent import build_agent as build_grocery_agent
 from grocery_agent.agent import build_telegram_agent as build_grocery_telegram_agent
-from grocery_agent.tools import CartItem, PantryItem
+from grocery_agent.tools._types import CartItem, PantryItem
 from pydantic import BaseModel
 
-from .tools import mark_plan_ready, set_weekly_wellness_plan
+from .tools.mark_plan_ready import mark_plan_ready
+from .tools.set_weekly_wellness_plan import set_weekly_wellness_plan
 
 _INSTRUCTION = (Path(__file__).parent / "instructions.md").read_text(encoding="utf-8")
 
@@ -67,8 +69,8 @@ def _build_agent(
     )
     tools: list[object] = [
         get_current_date,
-        set_weekly_wellness_plan,
-        mark_plan_ready,
+        FunctionTool(set_weekly_wellness_plan),
+        FunctionTool(mark_plan_ready),
     ]
     if include_agui:
         tools.append(AGUIToolset())
@@ -126,8 +128,8 @@ def build_eval_agent() -> LlmAgent:
         sub_agents=[build_fitness_eval(mode="task"), build_grocery_eval(mode="task")],
         tools=[
             get_current_date,
-            set_weekly_wellness_plan,
-            mark_plan_ready,
+            FunctionTool(set_weekly_wellness_plan),
+            FunctionTool(mark_plan_ready),
         ],
     )
 

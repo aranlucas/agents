@@ -18,6 +18,7 @@ from telegram_bot.runner import (
     TelegramMessage,
     TelegramRunner,
     TelegramSentMessage,
+    bot_commands,
     build_telegram_runner,
     chunk_text,
     format_state_summary,
@@ -33,6 +34,7 @@ class FakeReplyTarget:
     def __init__(self, chat_id: int) -> None:
         self.chat_id = chat_id
         self.messages: list[tuple[int, str]] = []
+        self.message_thread_ids: list[int | None] = []
         self.disable_web_page_preview_values: list[bool] = []
         self.reply_markups: list[object] = []
         self.parse_modes: list[str | None] = []
@@ -44,8 +46,10 @@ class FakeReplyTarget:
         disable_web_page_preview: bool = True,
         reply_markup: object = None,
         parse_mode: str | None = None,
+        message_thread_id: int | None = None,
     ) -> TelegramSentMessage:
         self.messages.append((self.chat_id, text))
+        self.message_thread_ids.append(message_thread_id)
         self.disable_web_page_preview_values.append(disable_web_page_preview)
         self.reply_markups.append(reply_markup)
         self.parse_modes.append(parse_mode)
@@ -64,6 +68,7 @@ class FakeSentMessage:
         parse_mode: str | None = None,
     ) -> object:
         self.target.messages.append((self.target.chat_id, text))
+        self.target.message_thread_ids.append(None)
         self.target.disable_web_page_preview_values.append(disable_web_page_preview)
         self.target.parse_modes.append(parse_mode)
         return self
@@ -112,15 +117,27 @@ def _message(text: str, reply_target: FakeReplyTarget) -> TelegramMessage:
     )
 
 
-def _update(chat_id: int, text: str, reply_target: FakeReplyTarget):
+def _update(
+    chat_id: int,
+    text: str,
+    reply_target: FakeReplyTarget,
+    *,
+    chat_type: str = "private",
+    message_thread_id: int | None = None,
+    is_topic_message: bool = False,
+):
     """Build a minimal ``Update`` carrying one text message."""
     from types import SimpleNamespace
 
     return SimpleNamespace(
         effective_message=SimpleNamespace(
-            text=text, message_id=99, reply_text=reply_target.reply_text
+            text=text,
+            message_id=99,
+            message_thread_id=message_thread_id,
+            is_topic_message=is_topic_message,
+            reply_text=reply_target.reply_text,
         ),
-        effective_chat=SimpleNamespace(id=chat_id, type="private"),
+        effective_chat=SimpleNamespace(id=chat_id, type=chat_type),
         effective_user=SimpleNamespace(id=456),
     )
 
@@ -132,6 +149,7 @@ def _build(
     connect_url: str | None = None,
     credential_loader: CredentialLoader | None = None,
     mini_app_url: str | None = None,
+    bot_username: str | None = None,
     status_update_seconds: float = 12.0,
     run_timeout_seconds: float = 180.0,
 ) -> TelegramRunner:
@@ -143,6 +161,7 @@ def _build(
         connect_url=connect_url,
         credential_loader=credential_loader,
         mini_app_url=mini_app_url,
+        bot_username=bot_username,
         status_update_seconds=status_update_seconds,
         run_timeout_seconds=run_timeout_seconds,
     )
@@ -178,6 +197,16 @@ def test_build_telegram_runner_registers_new_and_reset_commands(
 
     assert "new" in registered_commands
     assert "reset" in registered_commands
+
+
+def test_bot_commands_expose_only_orchestrator_entrypoints() -> None:
+    commands = {command.command: command.description for command in bot_commands()}
+
+    assert commands["help"] == "Show help and onboarding"
+    assert commands["login"] == "Link Telegram to your web account"
+    assert commands["new"] == "Start a fresh AI conversation"
+    assert "agents" not in commands
+    assert "agent" not in commands
 
 
 def test_build_telegram_runner_enables_orchestrator_compaction(
@@ -266,6 +295,167 @@ async def test_handle_message_runs_agent_and_replies(
 
     assert reply_target.messages[1] == (123, r"Here is the plan\.")
     assert reply_target.parse_modes[1] == ParseMode.MARKDOWN_V2
+
+
+@pytest.mark.asyncio
+async def test_group_message_without_bot_mention_is_ignored(
+    services: AgentServices,
+    orchestrator_agent: Mock,
+) -> None:
+    """Group chats should not route every ambient message into an AI run."""
+    reply_target = FakeReplyTarget(chat_id=-123)
+    runner = _build(services, bot_username="agents_bot")
+
+    await runner.handle_message(
+        TelegramMessage(
+            chat_id=-123,
+            user_id=456,
+            text="what should we cook tonight?",
+            message_id=99,
+            chat_type="group",
+            reply_target=reply_target,
+        )
+    )
+
+    assert reply_target.messages == []
+
+
+@pytest.mark.asyncio
+async def test_topic_group_message_uses_topic_session_and_state(
+    services: AgentServices,
+    orchestrator_agent: Mock,
+) -> None:
+    """Forum topics should isolate ADK sessions inside the same group."""
+    from google.genai import types
+
+    token = await create_link_token(
+        services.engine,
+        telegram_user_id="456",
+        telegram_chat_id="-100123",
+    )
+    assert (
+        await consume_link_token(
+            services.engine, token=token, clerk_user_id="clerk-user"
+        )
+        is not None
+    )
+    reply_target = FakeReplyTarget(chat_id=-100123)
+
+    async def credential_state_loader(
+        clerk_user_id: str,
+    ) -> tuple[dict[str, object], tuple[str, ...]]:
+        return {"user_id": clerk_user_id}, ()
+
+    runner = _build(
+        services,
+        credential_loader=credential_state_loader,
+        bot_username="agents_bot",
+    )
+    captured: dict[str, object] = {}
+
+    async def fake_run_async(*, user_id, session_id, new_message, state_delta):
+        captured["session_id"] = session_id
+        captured["state_delta"] = state_delta
+        captured["text"] = new_message.parts[0].text
+        yield _Event(
+            content=types.Content(
+                role="model",
+                parts=[types.Part(text="Topic plan ready.")],
+            )
+        )
+
+    runner.runner.run_async = fake_run_async  # type: ignore[method-assign]
+
+    await runner.handle_message(
+        TelegramMessage(
+            chat_id=-100123,
+            user_id=456,
+            text="@agents_bot plan food for this topic",
+            message_id=99,
+            chat_type="supergroup",
+            message_thread_id=42,
+            is_topic_message=True,
+            reply_target=reply_target,
+        )
+    )
+
+    assert captured["session_id"] == "telegram:-100123:topic:42:orchestrator"
+    assert captured["text"] == "plan food for this topic"
+    assert captured["state_delta"] == {
+        "user_id": "clerk-user",
+        "telegram_chat_id": "-100123",
+        "telegram_user_id": "456",
+        "telegram_message_thread_id": "42",
+    }
+    assert reply_target.message_thread_ids[0] == 42
+    assert reply_target.messages[-1] == (-100123, r"Topic plan ready\.")
+
+
+@pytest.mark.asyncio
+async def test_non_topic_group_message_does_not_use_reply_thread_as_session(
+    services: AgentServices,
+    orchestrator_agent: Mock,
+) -> None:
+    """Reply-derived thread IDs in normal groups should not fragment sessions."""
+    from google.genai import types
+
+    token = await create_link_token(
+        services.engine,
+        telegram_user_id="456",
+        telegram_chat_id="-100123",
+    )
+    assert (
+        await consume_link_token(
+            services.engine, token=token, clerk_user_id="clerk-user"
+        )
+        is not None
+    )
+    reply_target = FakeReplyTarget(chat_id=-100123)
+
+    async def credential_state_loader(
+        clerk_user_id: str,
+    ) -> tuple[dict[str, object], tuple[str, ...]]:
+        return {"user_id": clerk_user_id}, ()
+
+    runner = _build(
+        services,
+        credential_loader=credential_state_loader,
+        bot_username="agents_bot",
+    )
+    captured: dict[str, object] = {}
+
+    async def fake_run_async(*, user_id, session_id, new_message, state_delta):
+        captured["session_id"] = session_id
+        captured["state_delta"] = state_delta
+        yield _Event(
+            content=types.Content(
+                role="model",
+                parts=[types.Part(text="Group plan ready.")],
+            )
+        )
+
+    runner.runner.run_async = fake_run_async  # type: ignore[method-assign]
+
+    await runner.handle_message(
+        TelegramMessage(
+            chat_id=-100123,
+            user_id=456,
+            text="@agents_bot plan food",
+            message_id=99,
+            chat_type="supergroup",
+            message_thread_id=987,
+            is_topic_message=False,
+            reply_target=reply_target,
+        )
+    )
+
+    assert captured["session_id"] == "telegram:-100123:orchestrator"
+    assert captured["state_delta"] == {
+        "user_id": "clerk-user",
+        "telegram_chat_id": "-100123",
+        "telegram_user_id": "456",
+    }
+    assert reply_target.message_thread_ids[0] is None
 
 
 @pytest.mark.asyncio
@@ -847,6 +1037,28 @@ async def test_on_chat_id_returns_chat_id(
     await runner._on_chat_id(update, Mock())  # type: ignore[arg-type]
 
     assert reply_target.messages == [(123, "123")]
+
+
+@pytest.mark.asyncio
+async def test_on_chat_id_returns_topic_id_in_forum_topic(
+    services: AgentServices,
+    orchestrator_agent: Mock,
+) -> None:
+    reply_target = FakeReplyTarget(chat_id=-100123)
+    runner = _build(services)
+    update = _update(
+        reply_target.chat_id,
+        "/chat_id",
+        reply_target,
+        chat_type="supergroup",
+        message_thread_id=42,
+        is_topic_message=True,
+    )
+
+    await runner._on_chat_id(update, Mock())  # type: ignore[arg-type]
+
+    assert reply_target.messages == [(-100123, "chat_id: -100123\ntopic_id: 42")]
+    assert reply_target.message_thread_ids == [42]
 
 
 @pytest.mark.asyncio
