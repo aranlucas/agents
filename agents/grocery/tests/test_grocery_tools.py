@@ -5,7 +5,6 @@ import grocery_agent.agent as agent
 import grocery_agent.main as main
 from agents_shared.plugins.slim_mcp import SlimMcpPlugin
 from google.adk.tools.load_web_page import load_web_page
-from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
 from grocery_agent.agent import build_agent
 from grocery_agent.tools.mark_list_ready import mark_list_ready
 from grocery_agent.tools.set_meal_plan import set_meal_plan
@@ -94,44 +93,3 @@ def test_register_uses_app_with_configured_plugins(monkeypatch) -> None:
     main.register(Mock(), Mock())
 
     assert captured["app"] is main._app
-
-
-def test_web_search_toolset_uses_npx_when_binary_absent(monkeypatch) -> None:
-    import grocery_agent.tools.search as _search_mod
-
-    monkeypatch.setenv("BRAVE_API_KEY", "brave-token")
-    monkeypatch.setattr(_search_mod.shutil, "which", lambda _: None)
-    from grocery_agent.tools.search import web_search_toolset
-
-    toolset = web_search_toolset()
-    params = toolset._connection_params
-    assert isinstance(params, StdioConnectionParams)
-    assert params.timeout == 30.0
-    assert params.server_params.command == "npx"
-    assert params.server_params.args == [
-        "-y",
-        "@brave/brave-search-mcp-server",
-        "--brave-api-key",
-        "brave-token",
-    ]
-    assert params.server_params.env == {"BRAVE_API_KEY": "brave-token"}
-    assert toolset._use_mcp_resources is False
-
-
-def test_web_search_toolset_uses_binary_when_installed(monkeypatch) -> None:
-    import grocery_agent.tools.search as _search_mod
-
-    monkeypatch.setenv("BRAVE_API_KEY", "brave-token")
-    monkeypatch.setattr(
-        _search_mod.shutil, "which", lambda name: f"/usr/local/bin/{name}"
-    )
-    from grocery_agent.tools.search import web_search_toolset
-
-    toolset = web_search_toolset()
-    params = toolset._connection_params
-    assert isinstance(params, StdioConnectionParams)
-    assert params.timeout == 30.0
-    assert params.server_params.command == "brave-search-mcp-server"
-    assert params.server_params.args == ["--brave-api-key", "brave-token"]
-    assert params.server_params.env == {"BRAVE_API_KEY": "brave-token"}
-    assert toolset._use_mcp_resources is False

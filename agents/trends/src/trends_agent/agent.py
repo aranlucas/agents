@@ -10,6 +10,7 @@ from agents_shared.tools import (
     stop_on_terminal_text,
     strip_thinking_before_model,
 )
+from agents_shared.toolsets import brave_web_search_toolset
 from google.adk.agents import LlmAgent
 from google.adk.models.google_llm import Gemini
 from google.adk.models.lite_llm import LiteLlm
@@ -21,7 +22,6 @@ from ._credentials import bootstrap_gcp_credentials
 from .subagents.generator import build_generator
 from .tools.begin_trends_query import begin_trends_query
 from .tools.execute_bigquery_sql import execute_bigquery_sql
-from .tools.search import web_search_toolset
 from .tools.set_trends_verification import set_trends_verification
 from .tools.validate_trends_sql import validate_trends_sql
 from .tools.write_trends_result import write_trends_result
@@ -116,7 +116,7 @@ def build_agent() -> LlmAgent:
             FunctionTool(write_trends_result),
             FunctionTool(set_trends_verification),
             trends_a2ui_tool,
-            web_search_toolset(),
+            brave_web_search_toolset(),
         ],
     )
 
