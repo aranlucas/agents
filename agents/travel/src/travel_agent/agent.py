@@ -106,20 +106,23 @@ def build_eval_agent() -> LlmAgent:
         search_flights,
         search_hotels,
         search_restaurants,
+        write_itinerary_eval_alias,
     )
 
     return LlmAgent(
         name="collab_trip_agent",
         description="Trip planning, itinerary drafting, and booking readiness.",
-        model=LiteLlm(model="cerebras/gpt-oss-120b"),
+        model=LiteLlm(model="mistral/mistral-small-latest"),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,
         instruction=_INSTRUCTION,
+        before_agent_callback=make_state_initializer(TravelState),
         tools=[
             get_current_date,
             set_trip_meta,
             write_itinerary,
+            write_itinerary_eval_alias,
             add_day,
             mark_ready_to_book,
             search_flights,

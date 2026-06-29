@@ -143,3 +143,31 @@ def build_agent() -> LlmAgent:
             web_search_toolset(),
         ],
     )
+
+
+def build_eval_agent() -> LlmAgent:
+    """Eval-compatible agent: no A2UI tool and no Brave MCP search toolset."""
+    state_init = make_state_initializer(TrendsState)
+
+    return LlmAgent(
+        name="GoogleTrendsAgent",
+        model=LiteLlm(model="mistral/mistral-small-latest"),
+        retry_config=DEFAULT_RETRY_CONFIG,
+        before_model_callback=strip_thinking_before_model,
+        on_model_error_callback=on_model_error_callback,
+        after_model_callback=stop_on_terminal_text,
+        instruction=INSTRUCTION,
+        description="Google Trends BigQuery analysis and verification.",
+        before_agent_callback=state_init,
+        tools=[
+            AgentTool(build_generator(model="mistral/mistral-small-latest")),
+            validate_trends_sql,
+            begin_trends_query,
+            execute_bigquery_sql,
+            write_trends_result,
+            set_trends_verification,
+        ],
+    )
+
+
+root_agent = build_eval_agent()

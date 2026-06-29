@@ -3,9 +3,9 @@
   "name": "train_eval_set",
   "eval_cases": [
     {
-      "eval_id": "grocery_requires_kroger_connection",
+      "eval_id": "research_ai_healthcare_canvas",
       "session_input": {
-        "app_name": "grocery_agent",
+        "app_name": "research_agent",
         "user_id": "eval_user",
         "state": {}
       },
@@ -16,7 +16,7 @@
             "role": "user",
             "parts": [
               {
-                "text": "Plan five quick weeknight dinners for this week and build the shopping list."
+                "text": "Research the current state of AI in healthcare and build a structured report in the canvas. Do not paste the full report into chat."
               }
             ]
           },
@@ -24,7 +24,7 @@
             "role": "model",
             "parts": [
               {
-                "text": "Please connect Kroger first so I can plan the dinners and build the shopping list."
+                "text": "I built the AI in healthcare report in the research canvas with sections and sources."
               }
             ]
           }
@@ -32,13 +32,11 @@
       ]
     },
     {
-      "eval_id": "grocery_connected_meal_plan_canvas",
+      "eval_id": "research_telegram_concise_summary",
       "session_input": {
-        "app_name": "grocery_agent",
+        "app_name": "research_agent",
         "user_id": "eval_user",
-        "state": {
-          "kroger_connected": true
-        }
+        "state": {}
       },
       "conversation": [
         {
@@ -47,7 +45,7 @@
             "role": "user",
             "parts": [
               {
-                "text": "Plan 5 quick high-protein dinners for this week and write the meal plan and shopping list to the grocery canvas."
+                "text": "In Telegram, research the benefits and risks of passkeys for consumer apps."
               }
             ]
           },
@@ -55,7 +53,7 @@
             "role": "model",
             "parts": [
               {
-                "text": "I drafted the high-protein meal plan and shopping list in the grocery canvas."
+                "text": "I drafted a structured passkeys research report with benefits, risks, and sources."
               }
             ]
           }
@@ -63,13 +61,11 @@
       ]
     },
     {
-      "eval_id": "grocery_telegram_deals_summary",
+      "eval_id": "research_recent_topic_limit",
       "session_input": {
-        "app_name": "grocery_agent",
+        "app_name": "research_agent",
         "user_id": "eval_user",
-        "state": {
-          "kroger_connected": true
-        }
+        "state": {}
       },
       "conversation": [
         {
@@ -78,7 +74,7 @@
             "role": "user",
             "parts": [
               {
-                "text": "In Telegram, check weekly deals and suggest healthy swaps for snacks."
+                "text": "Research the latest regulatory decision announced this morning about AI chips."
               }
             ]
           },
@@ -86,7 +82,7 @@
             "role": "model",
             "parts": [
               {
-                "text": "I checked weekly deals and suggested healthier snack swaps."
+                "text": "I do not have live web access for a decision announced this morning, so I will avoid claiming current facts."
               }
             ]
           }

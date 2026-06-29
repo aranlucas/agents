@@ -67,3 +67,28 @@ def build_agent() -> LlmAgent:
 
 def build_telegram_agent() -> LlmAgent:
     return _build_agent(include_agui=False)
+
+
+def build_eval_agent() -> LlmAgent:
+    """Eval-compatible agent: no AGUIToolset."""
+    return LlmAgent(
+        name="presentation_agent",
+        description="Presentation outline and slide authoring.",
+        model=LiteLlm(model="mistral/mistral-small-latest"),
+        retry_config=DEFAULT_RETRY_CONFIG,
+        on_model_error_callback=on_model_error_callback,
+        after_model_callback=stop_on_terminal_text,
+        instruction=_INSTRUCTION,
+        before_agent_callback=make_state_initializer(PresentationState),
+        tools=[
+            set_presentation_meta,
+            create_slide,
+            update_slide,
+            delete_slide,
+            reorder_slides,
+            mark_presentation_ready,
+        ],
+    )
+
+
+root_agent = build_eval_agent()

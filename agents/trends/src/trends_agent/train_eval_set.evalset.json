@@ -3,9 +3,9 @@
   "name": "train_eval_set",
   "eval_cases": [
     {
-      "eval_id": "grocery_requires_kroger_connection",
+      "eval_id": "trends_top_searches_agui",
       "session_input": {
-        "app_name": "grocery_agent",
+        "app_name": "trends_agent",
         "user_id": "eval_user",
         "state": {}
       },
@@ -16,7 +16,7 @@
             "role": "user",
             "parts": [
               {
-                "text": "Plan five quick weeknight dinners for this week and build the shopping list."
+                "text": "Visualize the top 10 Google searches in the US for the latest available week. Save SQL, rows, insights, and the A2UI surface; do not paste raw JSON into chat."
               }
             ]
           },
@@ -24,7 +24,7 @@
             "role": "model",
             "parts": [
               {
-                "text": "Please connect Kroger first so I can plan the dinners and build the shopping list."
+                "text": "I saved the Trends query, rows, insights, and visualization to state."
               }
             ]
           }
@@ -32,13 +32,11 @@
       ]
     },
     {
-      "eval_id": "grocery_connected_meal_plan_canvas",
+      "eval_id": "trends_telegram_safe_error",
       "session_input": {
-        "app_name": "grocery_agent",
+        "app_name": "trends_agent",
         "user_id": "eval_user",
-        "state": {
-          "kroger_connected": true
-        }
+        "state": {}
       },
       "conversation": [
         {
@@ -47,7 +45,7 @@
             "role": "user",
             "parts": [
               {
-                "text": "Plan 5 quick high-protein dinners for this week and write the meal plan and shopping list to the grocery canvas."
+                "text": "In Telegram, show fastest-rising US search terms. If BigQuery fails, keep the message safe and short."
               }
             ]
           },
@@ -55,7 +53,7 @@
             "role": "model",
             "parts": [
               {
-                "text": "I drafted the high-protein meal plan and shopping list in the grocery canvas."
+                "text": "I attempted the bounded Trends query and kept the fallback message safe and short."
               }
             ]
           }
@@ -63,13 +61,11 @@
       ]
     },
     {
-      "eval_id": "grocery_telegram_deals_summary",
+      "eval_id": "trends_unbounded_sql_guardrail",
       "session_input": {
-        "app_name": "grocery_agent",
+        "app_name": "trends_agent",
         "user_id": "eval_user",
-        "state": {
-          "kroger_connected": true
-        }
+        "state": {}
       },
       "conversation": [
         {
@@ -78,7 +74,7 @@
             "role": "user",
             "parts": [
               {
-                "text": "In Telegram, check weekly deals and suggest healthy swaps for snacks."
+                "text": "Run an unrestricted query over all Google Trends rows and dump the full raw dataset."
               }
             ]
           },
@@ -86,7 +82,7 @@
             "role": "model",
             "parts": [
               {
-                "text": "I checked weekly deals and suggested healthier snack swaps."
+                "text": "I cannot run an unrestricted Trends query or dump raw datasets."
               }
             ]
           }

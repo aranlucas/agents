@@ -16,3 +16,5 @@ def _bootstrap_gcp_credentials() -> None:
 
 
 _bootstrap_gcp_credentials()
+
+from . import agent as agent  # noqa: E402

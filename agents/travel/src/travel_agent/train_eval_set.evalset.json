@@ -24,7 +24,68 @@
             "role": "model",
             "parts": [
               {
-                "text": "I've drafted your 3-day Lisbon food and culture itinerary in the canvas. Want me to search hotels near Alfama for the comfort budget tier next?"
+                "text": "I've drafted your 3-day Lisbon food and culture itinerary in the canvas."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "travel_telegram_concise_weekend",
+      "session_input": {
+        "app_name": "travel_agent",
+        "user_id": "eval_user",
+        "state": {}
+      },
+      "conversation": [
+        {
+          "invocation_id": "inv1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "In Telegram, plan a relaxed 2-day Portland weekend from Seattle for two people, food and bookstores, under $900."
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "I drafted a relaxed 2-day Portland weekend plan with food, bookstores, and budget notes."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "travel_ready_to_book_requires_approval",
+      "session_input": {
+        "app_name": "travel_agent",
+        "user_id": "eval_user",
+        "state": {
+          "itinerary": "Draft itinerary for Lisbon is ready.",
+          "status": "idle"
+        }
+      },
+      "conversation": [
+        {
+          "invocation_id": "inv1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "This itinerary looks good. Get it ready to book, but do not claim anything is booked yet."
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "I marked the trip ready to book. Nothing is booked yet without your explicit approval."
               }
             ]
           }

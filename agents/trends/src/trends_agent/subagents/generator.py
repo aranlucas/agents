@@ -10,7 +10,7 @@ from google.adk.models.lite_llm import LiteLlm
 from ..prompt import load_agent_instructions
 
 
-def build_generator() -> LlmAgent:
+def build_generator(model: str = "groq/llama-3.3-70b-versatile") -> LlmAgent:
     """SQL-generation agent.
 
     Called as an AgentTool by the root GoogleTrendsAgent. It receives the
@@ -21,7 +21,7 @@ def build_generator() -> LlmAgent:
     """
     return LlmAgent(
         name="TrendsQueryGeneratorAgent",
-        model=LiteLlm(model="groq/llama-3.3-70b-versatile"),
+        model=LiteLlm(model=model),
         retry_config=DEFAULT_RETRY_CONFIG,
         before_model_callback=strip_thinking_before_model,
         on_model_error_callback=on_model_error_callback,

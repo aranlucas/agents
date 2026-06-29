@@ -128,7 +128,7 @@ def build_telegram_agent(
 def build_eval_agent(
     *, mode: str | None = None, include_contents: str = "default"
 ) -> LlmAgent:
-    """Eval-compatible agent: no AGUIToolset, no McpToolset, no state_schema.
+    """Eval-compatible agent: no AGUIToolset or McpToolset.
 
     The eval case tests the auth-gate path (strava_connected=False by default).
     fetch_activities gracefully returns an error when disconnected, so no stub needed.
@@ -136,13 +136,17 @@ def build_eval_agent(
     return LlmAgent(
         name="fitness_agent",
         description="Training plans and Strava-backed activity context.",
-        model=LiteLlm(model="groq/llama-3.3-70b-versatile"),
+        model=LiteLlm(model="mistral/mistral-small-latest"),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,
         mode=mode,
         include_contents=include_contents,
         instruction=_INSTRUCTION,
+        before_agent_callback=make_state_initializer(
+            FitnessState,
+            token_flags={STRAVA_AUTH.state_key: STRAVA_AUTH.connected_flag},
+        ),
         tools=[
             fetch_activities,
             get_current_date,
