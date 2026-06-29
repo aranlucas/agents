@@ -17,6 +17,7 @@ from google.adk.agents.callback_context import CallbackContext
 from google.adk.models.llm_request import LlmRequest
 from google.adk.models.llm_response import LlmResponse
 from google.adk.workflow._retry_config import RetryConfig
+from google.genai import types
 from litellm.integrations.custom_logger import CustomLogger
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -246,6 +247,8 @@ DEFAULT_RETRY_CONFIG = RetryConfig(
     max_delay=30.0,
     backoff_factor=2.0,
 )
+
+GEMINI_RETRY_OPTIONS = types.HttpRetryOptions(initial_delay=1, attempts=2)
 
 
 def get_current_date() -> dict[str, str]:

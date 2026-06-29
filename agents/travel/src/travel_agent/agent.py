@@ -72,6 +72,7 @@ def _build_agent(*, include_agui: bool) -> LlmAgent:
 
     return LlmAgent(
         name="collab_trip_agent",
+        description="Trip planning, itinerary drafting, and booking readiness.",
         model=LiteLlm(model="cerebras/gpt-oss-120b"),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
@@ -109,6 +110,7 @@ def build_eval_agent() -> LlmAgent:
 
     return LlmAgent(
         name="collab_trip_agent",
+        description="Trip planning, itinerary drafting, and booking readiness.",
         model=LiteLlm(model="cerebras/gpt-oss-120b"),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,

@@ -10,6 +10,10 @@ custom_metrics:
     judge_model: gemini-flash-latest
     judge_model_generation_config:
       temperature: 0
+      http_options:
+        retry_options:
+          initial_delay: 1
+          attempts: 2
     prompt_template: |
       You are grading an ADK agent trace from this monorepo.
 
