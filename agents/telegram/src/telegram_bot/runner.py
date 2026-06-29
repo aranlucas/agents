@@ -36,7 +36,6 @@ from google.adk.sessions import BaseSessionService
 from google.genai import types
 from sqlalchemy.ext.asyncio import AsyncEngine
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
-from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
     ApplicationBuilder,
@@ -397,7 +396,6 @@ class TelegramRunner:
                                 await self._send_reply(
                                     message,
                                     _format_agent_message(event.author, text),
-                                    parse_mode=ParseMode.MARKDOWN_V2,
                                 )
                         else:
                             response_texts.extend(texts)
@@ -594,15 +592,14 @@ class TelegramRunner:
                 await thinking_message.edit_text(
                     first,
                     disable_web_page_preview=True,
-                    parse_mode=ParseMode.MARKDOWN_V2,
                 )
             except Exception:
                 log.exception("Failed to edit Telegram thinking message")
-                await self._send_reply(message, first, parse_mode=ParseMode.MARKDOWN_V2)
+                await self._send_reply(message, first)
         else:
-            await self._send_reply(message, first, parse_mode=ParseMode.MARKDOWN_V2)
+            await self._send_reply(message, first)
         for chunk in chunks[1:]:
-            await self._send_reply(message, chunk, parse_mode=ParseMode.MARKDOWN_V2)
+            await self._send_reply(message, chunk)
 
     async def _send_text(
         self,
