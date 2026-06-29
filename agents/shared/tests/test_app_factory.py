@@ -5,7 +5,6 @@ import asyncio
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from agents_shared import toolsets as shared_toolsets
 from agents_shared.app_factory import (
     build_adk_agent,
     streaming_state_mapping,
@@ -109,10 +108,12 @@ def test_plugin_package_exports_individual_plugin_modules():
 
 
 def test_brave_web_search_toolset_uses_npx_when_binary_absent(monkeypatch) -> None:
-    monkeypatch.setenv("BRAVE_API_KEY", "brave-token")
-    monkeypatch.setattr(shared_toolsets.shutil, "which", lambda _: None)
+    from agents_shared.toolsets import brave as brave_toolset
 
-    toolset = shared_toolsets.brave_web_search_toolset()
+    monkeypatch.setenv("BRAVE_API_KEY", "brave-token")
+    monkeypatch.setattr(brave_toolset.shutil, "which", lambda _: None)
+
+    toolset = brave_toolset.brave_web_search_toolset()
 
     params = toolset._connection_params
     assert isinstance(params, StdioConnectionParams)
@@ -129,12 +130,14 @@ def test_brave_web_search_toolset_uses_npx_when_binary_absent(monkeypatch) -> No
 
 
 def test_brave_web_search_toolset_uses_binary_when_installed(monkeypatch) -> None:
+    from agents_shared.toolsets import brave as brave_toolset
+
     monkeypatch.setenv("BRAVE_API_KEY", "brave-token")
     monkeypatch.setattr(
-        shared_toolsets.shutil, "which", lambda name: f"/usr/local/bin/{name}"
+        brave_toolset.shutil, "which", lambda name: f"/usr/local/bin/{name}"
     )
 
-    toolset = shared_toolsets.brave_web_search_toolset()
+    toolset = brave_toolset.brave_web_search_toolset()
 
     params = toolset._connection_params
     assert isinstance(params, StdioConnectionParams)

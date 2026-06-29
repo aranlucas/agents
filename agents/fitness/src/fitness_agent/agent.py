@@ -16,7 +16,7 @@ from agents_shared.tools import (
     on_model_error_callback,
     stop_on_terminal_text,
 )
-from agents_shared.toolsets import brave_web_search_toolset
+from agents_shared.toolsets.brave import brave_web_search_toolset
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import BaseTool, FunctionTool

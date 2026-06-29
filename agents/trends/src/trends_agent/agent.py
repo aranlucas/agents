@@ -10,7 +10,7 @@ from agents_shared.tools import (
     stop_on_terminal_text,
     strip_thinking_before_model,
 )
-from agents_shared.toolsets import brave_web_search_toolset
+from agents_shared.toolsets.brave import brave_web_search_toolset
 from google.adk.agents import LlmAgent
 from google.adk.models.google_llm import Gemini
 from google.adk.models.lite_llm import LiteLlm
