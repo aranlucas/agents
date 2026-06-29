@@ -30,9 +30,9 @@
     "build": "turbo build",
     "update": "pnpm update:js && pnpm update:expo && pnpm update:py",
     "update:js": "pnpm up -r --latest",
-    "update:expo": "cd apps/mobile && pnpx expo install expo@latest && pnpx expo install --fix && pnpx expo-doctor",
+    "update:expo": "cd apps/mobile && pnpx expo@latest install expo@latest && pnpx expo@latest install --fix && pnpx expo-doctor",
     "update:py": "uv lock --upgrade && uv sync",
-    "doctor": "npx react-doctor@latest"
+    "doctor": "pnpx react-doctor@latest"
   },
   "devDependencies": {
     "concurrently": "^10.0.3",
@@ -44,5 +44,5 @@
     "react-doctor": "^0.5.8",
     "turbo": "^2.10.0"
   },
-  "packageManager": "pnpm@11.5.3"
+  "packageManager": "pnpm@11.9.0"
 }
