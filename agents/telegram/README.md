@@ -15,7 +15,7 @@ Optional environment variables:
 
 - `TELEGRAM_LINK_BASE_URL` is required for `/login`, for example `https://your-web-app.com/telegram/link`
 - `TELEGRAM_LINK_SECRET` must match the web/gateway secret used to consume link tokens
-- `TELEGRAM_ALLOWED_CHAT_IDS` is a comma-separated allowlist of Telegram chat IDs
+- `TELEGRAM_ALLOWED_CHAT_IDS` is a comma-separated allowlist of Telegram chat IDs. Use it as the access boundary when anonymous Telegram chat is enabled.
 - `TELEGRAM_CONNECT_URL` optionally overrides the settings page URL sent when Strava or Kroger/QFC is missing
 - `TELEGRAM_BOT_USERNAME` lets the bot ignore unmentioned group-chat messages, for example `agents_bot`
 - `TELEGRAM_POLL_TIMEOUT` defaults to `50`
@@ -60,11 +60,7 @@ The runner follows the same shape as
 - `build_telegram_runner(...)` — single entry point that composes the runner
   and all of its dependencies
 
-The previous `TelegramAgentsBot` class is preserved as a thin facade that
-mirrors the old public API on top of the new runner.
-
-Telegram use is account-gated. `/start`, `/help`, `/login`, `/logout`, and
-`/chat_id` work before linking; normal messages require a linked Clerk account
-with both Kroger/QFC and Strava connected. The bot never asks for credentials in
-chat. It reads account tokens through Clerk after the Telegram account has been
-linked.
+Unlinked senders can chat anonymously. The bot sends a one-time `/login` nudge
+when a link URL is configured, and linked senders get their Clerk-backed
+credential state on each turn. The bot never asks for credentials in chat. It
+reads account tokens through Clerk after the Telegram account has been linked.
