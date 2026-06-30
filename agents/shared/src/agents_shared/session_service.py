@@ -10,6 +10,8 @@ from google.adk.sessions.sqlite_session_service import SqliteSessionService
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from .d1_session_service import D1SessionService
+
 _HEALTH_CACHE_TTL = 5.0
 _health_cache: tuple[float, dict[str, str]] | None = None
 
@@ -30,6 +32,14 @@ def get_database_url() -> str | None:
 def get_sqlite_db_path() -> Path:
     default = Path(__file__).resolve().parents[4] / ".data" / "adk_sessions.sqlite"
     return Path(os.environ.get("ADK_SESSION_DB_PATH", str(default)))
+
+
+def create_d1_session_service() -> D1SessionService:
+    return D1SessionService(
+        account_id=os.environ["CF_ACCOUNT_ID"],
+        api_token=os.environ["CF_API_TOKEN"],
+        database_id=os.environ["CF_D1_DATABASE_ID"],
+    )
 
 
 def create_session_service() -> BaseSessionService:

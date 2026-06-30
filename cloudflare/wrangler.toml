@@ -5,8 +5,7 @@ name = "agents-infra"
 binding = "ARTIFACTS"
 bucket_name = "adk-artifacts"
 
-# Phase 2 — D1 sessions
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "adk-sessions"
-# database_id = "<CF_D1_DATABASE_ID>"
+[[d1_databases]]
+binding = "DB"
+database_name = "adk-sessions"
+database_id = "fc0f441b-737a-471a-9225-d2b5d3a2f446"
