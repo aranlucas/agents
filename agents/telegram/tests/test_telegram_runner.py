@@ -319,8 +319,8 @@ async def test_handle_message_runs_agent_and_replies(
 
     await runner.handle_message(_message("plan food", reply_target))
 
-    assert reply_target.messages[1] == (123, r"Here is the plan\.")
-    assert reply_target.parse_modes[1] == ParseMode.MARKDOWN_V2
+    assert reply_target.messages[0] == (123, r"Here is the plan\.")
+    assert reply_target.parse_modes[0] == ParseMode.MARKDOWN_V2
 
 
 @pytest.mark.asyncio
@@ -533,8 +533,8 @@ async def test_handle_message_sends_agent_text_as_escaped_markdownv2(
 
     await runner.handle_message(_message("plan food", reply_target))
 
-    assert reply_target.messages[1] == (123, r"Done\! Use A\+B \= C\.")
-    assert reply_target.parse_modes[1] == ParseMode.MARKDOWN_V2
+    assert reply_target.messages[0] == (123, r"Done\! Use A\+B \= C\.")
+    assert reply_target.parse_modes[0] == ParseMode.MARKDOWN_V2
 
 
 @pytest.mark.asyncio
