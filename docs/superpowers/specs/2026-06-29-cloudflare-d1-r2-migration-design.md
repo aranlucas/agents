@@ -2,7 +2,10 @@
 
 **Date:** 2026-06-29  
 **Status:** Draft  
-**Scope:** Migrate ADK session storage (Railway Postgres) → Cloudflare D1; migrate ADK artifact storage (in-memory) → Cloudflare R2. Railway Python gateway stays as compute.
+**Scope:** Two-phase migration. Railway Python gateway stays as compute throughout.
+
+- **Phase 1 (this plan):** Migrate ADK artifact storage (in-memory) → Cloudflare R2.
+- **Phase 2 (future):** Migrate ADK session storage (Railway Postgres) → Cloudflare D1.
 
 ---
 
@@ -93,10 +96,6 @@ All abstract methods from `BaseSessionService`:
 - `append_event` (overrides base; handles stale detection + batch write)
 - `get_user_state` (overrides base; single D1 query)
 
-### Health check
-
-`D1SessionService.health_check()` → single `SELECT 1` via D1 REST API, used by `GET /health`.
-
 ### Env vars
 
 | Var                 | Description                       |
@@ -169,10 +168,6 @@ def create_agent_services() -> AgentServices:
     )
 ```
 
-### `agents/gateway/src/gateway/main.py`
-
-Update `/health` to call `D1SessionService.health_check()` when D1 is active, instead of the SQLAlchemy `check_database_connection(engine)`.
-
 ---
 
 ## 4. Dependencies
@@ -204,13 +199,21 @@ For R2, create an API token in the CF dashboard with **R2:Edit** scope on the `a
 
 ## 6. Migration Path
 
-1. Provision D1 + R2 via Wrangler (above).
-2. Add CF env vars to Railway.
-3. Deploy gateway — on startup, `create_agent_services()` detects CF vars and uses D1 + R2.
-4. Verify via `/health` — should report D1 connected.
-5. Remove `DATABASE_URL` from Railway to drop the Postgres instance.
+### Phase 1 — R2 artifacts
 
-No data migration is needed: sessions are ephemeral (agents recover from a fresh session gracefully) and current artifacts are in-memory (already lost on redeploy).
+1. Provision R2 bucket via Wrangler.
+2. Add R2 env vars to Railway.
+3. Deploy gateway — on startup, `create_agent_services()` detects `CF_R2_BUCKET_NAME` and uses R2.
+4. `DATABASE_URL` and Postgres are untouched.
+
+No data migration needed: artifacts are currently in-memory and already lost on redeploy.
+
+### Phase 2 — D1 sessions (future)
+
+1. Provision D1 database via Wrangler.
+2. Add D1 env vars to Railway.
+3. Deploy — `create_agent_services()` detects `CF_D1_DATABASE_ID` and uses D1.
+4. Remove `DATABASE_URL` from Railway to drop the Postgres instance.
 
 ---
 
