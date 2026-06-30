@@ -7,9 +7,11 @@ httpx.MockTransport so no real D1 API is hit.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import aiosqlite
 import pytest
 from agents_shared.d1_session_service import (
     _DDL_STATEMENTS,
@@ -21,6 +23,7 @@ from agents_shared.d1_session_service import (
 from google.adk.errors.already_exists_error import AlreadyExistsError
 from google.adk.events.event import Event
 from google.adk.events.event_actions import EventActions
+from google.adk.sessions.database_session_service import DatabaseSessionService
 from google.adk.sessions.session import Session
 
 # ---------------------------------------------------------------------------
@@ -36,6 +39,33 @@ def _svc() -> D1SessionService:
     )
     svc._tables_ready = True  # skip DDL in unit tests
     return svc
+
+
+class SqliteBackedD1SessionService(D1SessionService):
+    def __init__(self, db_path: Path) -> None:
+        super().__init__(
+            account_id="acct",
+            api_token="tok",  # noqa: S106 - placeholder token for tests
+            database_id="db",
+        )
+        self._db_path = db_path
+
+    async def _batch(
+        self,
+        stmts: list[dict[str, Any]],
+        *,
+        client=None,
+    ) -> list[list[dict[str, Any]]]:
+        async with aiosqlite.connect(self._db_path) as db:
+            db.row_factory = aiosqlite.Row
+            results: list[list[dict[str, Any]]] = []
+            for stmt in stmts:
+                cursor = await db.execute(stmt["sql"], stmt.get("params", []))
+                rows = await cursor.fetchall()
+                results.append([dict(row) for row in rows])
+                await cursor.close()
+            await db.commit()
+            return results
 
 
 # ---------------------------------------------------------------------------
@@ -163,10 +193,12 @@ async def test_state_helpers_decode_rows() -> None:
     with patch.object(
         svc,
         "_query",
-        AsyncMock(side_effect=[
-            [{"state": json.dumps({"global": True})}],
-            [{"state": json.dumps({"theme": "dark"})}],
-        ]),
+        AsyncMock(
+            side_effect=[
+                [{"state": json.dumps({"global": True})}],
+                [{"state": json.dumps({"theme": "dark"})}],
+            ]
+        ),
     ):
         app_state = await svc._get_app_state("myapp", MagicMock())
         user_state = await svc._get_user_state_db("myapp", "u1", MagicMock())
@@ -236,7 +268,10 @@ async def test_create_session_generates_id_and_persists_state_deltas() -> None:
 
     with (
         patch.object(svc, "_batch", side_effect=fake_batch),
-        patch("agents_shared.d1_session_service.platform_uuid.new_uuid", return_value="new-id"),
+        patch(
+            "agents_shared.d1_session_service.platform_uuid.new_uuid",
+            return_value="new-id",
+        ),
     ):
         session = await svc.create_session(
             app_name="myapp",
@@ -664,7 +699,9 @@ async def test_list_sessions_with_user_id_fetches_that_user_state() -> None:
     with (
         patch.object(svc, "_query", side_effect=fake_query),
         patch.object(svc, "_get_app_state", AsyncMock(return_value={})),
-        patch.object(svc, "_get_user_state_db", AsyncMock(return_value={"pref": "dark"})),
+        patch.object(
+            svc, "_get_user_state_db", AsyncMock(return_value={"pref": "dark"})
+        ),
     ):
         result = await svc.list_sessions(app_name="myapp", user_id="u1")
 
@@ -674,6 +711,74 @@ async def test_list_sessions_with_user_id_fetches_that_user_state() -> None:
 # ---------------------------------------------------------------------------
 # create_d1_session_service factory
 # ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_d1_session_service_matches_database_session_service_core_behaviors(
+    tmp_path,
+) -> None:
+    database_service = DatabaseSessionService(
+        f"sqlite+aiosqlite:///{tmp_path / 'database.sqlite'}"
+    )
+    d1_service = SqliteBackedD1SessionService(tmp_path / "d1.sqlite")
+
+    async def run_scenario(service):
+        session = await service.create_session(
+            app_name="myapp",
+            user_id="u1",
+            session_id="s1",
+            state={
+                "app:global": "app-state",
+                "user:theme": "dark",
+                "local": "session-state",
+            },
+        )
+        event = Event(
+            invocation_id="inv1",
+            author="agent",
+            timestamp=session.last_update_time + 1,
+            actions=EventActions(
+                state_delta={
+                    "app:global": "app-updated",
+                    "user:theme": "light",
+                    "local": "session-updated",
+                }
+            ),
+        )
+        await service.append_event(session, event)
+
+        loaded = await service.get_session(
+            app_name="myapp",
+            user_id="u1",
+            session_id="s1",
+        )
+        listed = await service.list_sessions(app_name="myapp", user_id="u1")
+        user_state = await service.get_user_state(app_name="myapp", user_id="u1")
+        await service.delete_session(app_name="myapp", user_id="u1", session_id="s1")
+        deleted = await service.get_session(
+            app_name="myapp",
+            user_id="u1",
+            session_id="s1",
+        )
+
+        assert loaded is not None
+        return {
+            "created_state": dict(session.state),
+            "loaded_state": dict(loaded.state),
+            "loaded_events": [
+                {
+                    "author": e.author,
+                    "invocation_id": e.invocation_id,
+                    "state_delta": dict(e.actions.state_delta),
+                }
+                for e in loaded.events
+            ],
+            "listed_states": [dict(s.state) for s in listed.sessions],
+            "user_state": dict(user_state),
+            "deleted": deleted,
+        }
+
+    assert await run_scenario(d1_service) == await run_scenario(database_service)
 
 
 def test_create_d1_session_service_reads_env(monkeypatch) -> None:
