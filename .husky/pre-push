@@ -1,1 +1,2 @@
+pnpm typecheck:py
 uv run pytest --cov -q
