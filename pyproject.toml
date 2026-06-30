@@ -8,7 +8,7 @@ dependencies = [
   "clerk-backend-api>=6.0.0",
   "cloudflare>=5.4.0",
   "fastapi",
-  "google-adk[eval,extensions,mcp]>=2.2.0",
+  "google-adk[mcp]>=2.2.0",
   "google-genai",
   "httpx",
   "litellm",
@@ -24,13 +24,13 @@ dependencies = [
   "jinja2>=3.1.6,<4.0.0",
   "sqlalchemy[asyncio]>=2.0",
   "uvicorn[standard]",
-  "rouge-score>=0.1.2",
   "google-adk-community[s3]>=0.5.0",
 ]
 
 [project.optional-dependencies]
 eval = [
   "google-adk[eval]",
+  "rouge-score>=0.1.2",
 ]
 
 [build-system]
