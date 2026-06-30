@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.7
+
 FROM python:3.14.5-slim AS builder
 
 RUN apt-get update && \
@@ -10,22 +12,31 @@ WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1
 
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-install-project
 
 COPY agents/ ./agents/
-RUN uv sync --frozen --no-dev
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
+
+FROM node:24.12.0-slim AS brave-mcp
+
+RUN --mount=type=cache,target=/root/.npm \
+    npm install -g @brave/brave-search-mcp-server && \
+    npm cache clean --force
 
 FROM python:3.14.5-slim AS runtime
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates nodejs npm && \
+    apt-get install -y --no-install-recommends ca-certificates nodejs && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
-
-RUN npm install -g @brave/brave-search-mcp-server
 
 WORKDIR /app
 ENV PATH="/app/.venv/bin:$PATH" \
     PORT=8000
+
+COPY --from=brave-mcp /usr/local/lib/node_modules/@brave/brave-search-mcp-server /usr/local/lib/node_modules/@brave/brave-search-mcp-server
+RUN ln -s ../lib/node_modules/@brave/brave-search-mcp-server/dist/index.js /usr/local/bin/brave-search-mcp-server
 
 COPY --from=builder /app/.venv /app/.venv
 COPY --from=builder /app/agents /app/agents
