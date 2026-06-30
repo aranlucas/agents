@@ -756,6 +756,95 @@ async def test_handle_message_updates_thinking_with_tool_progress(
 
 
 @pytest.mark.asyncio
+async def test_handle_message_labels_subagent_tool_progress(
+    services: AgentServices,
+    orchestrator_agent: Mock,
+) -> None:
+    """Long grocery work should show progress as coming from the grocery agent."""
+    import asyncio
+
+    from google.genai import types
+
+    token = await create_link_token(
+        services.engine,
+        telegram_user_id="456",
+        telegram_chat_id="123",
+    )
+    assert (
+        await consume_link_token(
+            services.engine,
+            token=token,
+            clerk_user_id="clerk-user",
+        )
+        is not None
+    )
+    reply_target = FakeReplyTarget(chat_id=123)
+
+    async def credential_state_loader(
+        clerk_user_id: str,
+    ) -> tuple[dict[str, object], tuple[str, ...]]:
+        return {"user_id": clerk_user_id}, ()
+
+    runner = _build(
+        services,
+        credential_loader=credential_state_loader,
+        status_update_seconds=0.01,
+    )
+
+    async def fake_run_async(*, user_id, session_id, new_message, state_delta):
+        yield _Event(
+            author="grocery_agent",
+            content=types.Content(
+                role="model",
+                parts=[
+                    types.Part(
+                        function_call=types.FunctionCall(
+                            name="search_products",
+                            args={},
+                        )
+                    )
+                ],
+            ),
+            final=False,
+        )
+        await asyncio.sleep(0.02)
+        yield _Event(
+            author="grocery_agent",
+            content=types.Content(
+                role="user",
+                parts=[
+                    types.Part(
+                        function_response=types.FunctionResponse(
+                            name="search_products",
+                            response={"ok": True},
+                        )
+                    )
+                ],
+            ),
+            final=False,
+        )
+        yield _Event(
+            author="telegram_orchestrator_agent",
+            content=types.Content(
+                role="model",
+                parts=[types.Part(text="Done.")],
+            ),
+        )
+
+    runner.runner.run_async = fake_run_async  # type: ignore[method-assign]
+
+    await runner.handle_message(_message("plan food", reply_target))
+
+    assert (123, "Grocery agent: Running search products...") in reply_target.messages
+    assert (
+        123,
+        "Grocery agent: Still running search products...",
+    ) in reply_target.messages
+    assert (123, "Grocery agent: Finished search products.") in reply_target.messages
+    assert reply_target.messages[-1] == (123, r"Done\.")
+
+
+@pytest.mark.asyncio
 async def test_handle_message_emits_subagent_text_as_messages(
     services: AgentServices,
     orchestrator_agent: Mock,
@@ -819,6 +908,74 @@ async def test_handle_message_emits_subagent_text_as_messages(
         "*Fitness agent:*\n" + r"I added three easy runs\.",
     ) in reply_target.messages
     assert reply_target.messages[-1] == (123, r"Your wellness plan is ready\.")
+
+
+@pytest.mark.asyncio
+async def test_handle_message_emits_nonfinal_subagent_text_as_progress_messages(
+    services: AgentServices,
+    orchestrator_agent: Mock,
+) -> None:
+    """Sub-agent text should be posted while the root run is still in progress."""
+    from google.genai import types
+
+    token = await create_link_token(
+        services.engine,
+        telegram_user_id="456",
+        telegram_chat_id="123",
+    )
+    assert (
+        await consume_link_token(
+            services.engine, token=token, clerk_user_id="clerk-user"
+        )
+        is not None
+    )
+    reply_target = FakeReplyTarget(chat_id=123)
+
+    async def credential_state_loader(
+        clerk_user_id: str,
+    ) -> tuple[dict[str, object], tuple[str, ...]]:
+        return {"user_id": clerk_user_id}, ()
+
+    runner = _build(services, credential_loader=credential_state_loader)
+
+    async def fake_run_async(*, user_id, session_id, new_message, state_delta):
+        yield _Event(
+            author="grocery_agent",
+            content=types.Content(
+                role="model",
+                parts=[types.Part(text="I found current Kroger deals.")],
+            ),
+            final=False,
+        )
+        yield _Event(
+            author="grocery_agent",
+            content=types.Content(
+                role="model",
+                parts=[types.Part(text="I am matching products for the cart.")],
+            ),
+            final=False,
+        )
+        yield _Event(
+            author="telegram_orchestrator_agent",
+            content=types.Content(
+                role="model",
+                parts=[types.Part(text="Your grocery plan is ready.")],
+            ),
+        )
+
+    runner.runner.run_async = fake_run_async  # type: ignore[method-assign]
+
+    await runner.handle_message(_message("plan food", reply_target))
+
+    assert (
+        123,
+        "*Grocery agent:*\n" + r"I found current Kroger deals\.",
+    ) in reply_target.messages
+    assert (
+        123,
+        "*Grocery agent:*\n" + r"I am matching products for the cart\.",
+    ) in reply_target.messages
+    assert reply_target.messages[-1] == (123, r"Your grocery plan is ready\.")
 
 
 @pytest.mark.asyncio

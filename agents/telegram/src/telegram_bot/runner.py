@@ -97,6 +97,7 @@ _OBJECT_DICT = TypeAdapter(dict[object, object])
 @dataclass
 class _ProgressState:
     active_tool: str | None = None
+    active_agent: str | None = None
     last_text: str | None = None
 
 
@@ -487,29 +488,35 @@ class TelegramRunner:
                         state_delta.update(event.actions.state_delta)
                     if event.error_message:
                         raise RuntimeError(event.error_message)
-                    tool_status, active_tool = self._event_tool_progress(event)
+                    tool_status, active_tool, active_agent = self._event_tool_progress(
+                        event
+                    )
                     if tool_status:
                         progress.active_tool = active_tool
+                        progress.active_agent = active_agent
                         await self._edit_thinking_status(
                             thinking_message,
                             progress,
                             tool_status,
                         )
                     if (
+                        event.content
+                        and event.content.parts
+                        and _is_subagent_author(getattr(event, "author", ""))
+                    ):
+                        texts = _event_texts(event)
+                        for text in texts:
+                            await self._send_reply(
+                                message,
+                                _format_agent_message(event.author, text),
+                                parse_mode=ParseMode.MARKDOWN_V2,
+                            )
+                    elif (
                         event.is_final_response()
                         and event.content
                         and event.content.parts
                     ):
-                        texts = _event_texts(event)
-                        if _is_subagent_author(getattr(event, "author", "")):
-                            for text in texts:
-                                await self._send_reply(
-                                    message,
-                                    _format_agent_message(event.author, text),
-                                    parse_mode=ParseMode.MARKDOWN_V2,
-                                )
-                        else:
-                            response_texts.extend(texts)
+                        response_texts.extend(_event_texts(event))
 
             text = _dedupe_join(response_texts)
             if not text:
@@ -796,6 +803,7 @@ class TelegramRunner:
                     update_count,
                     self.status_update_seconds,
                     progress.active_tool,
+                    progress.active_agent,
                 )
                 update_count += 1
                 ok = await self._edit_thinking_status(
@@ -1062,23 +1070,25 @@ def _status_message(
     update_count: int,
     interval_seconds: float,
     active_tool: str | None = None,
+    active_agent: str | None = None,
 ) -> str:
     if active_tool:
+        prefix = f"{active_agent}: " if active_agent else ""
         if update_count == 0:
-            return f"Still running {active_tool}..."
+            return f"{prefix}Still running {active_tool}..."
         elapsed = int((update_count + 1) * interval_seconds)
-        return f"Still running {active_tool}... ({elapsed}s)"
+        return f"{prefix}Still running {active_tool}... ({elapsed}s)"
     if update_count < len(_STATUS_MESSAGES):
         return _STATUS_MESSAGES[update_count]
     elapsed = int((update_count + 1) * interval_seconds)
     return f"Still working... ({elapsed}s)"
 
 
-def _event_tool_progress(event: object) -> tuple[str | None, str | None]:
+def _event_tool_progress(event: object) -> tuple[str | None, str | None, str | None]:
     content = getattr(event, "content", None)
     parts = getattr(content, "parts", None)
     if not parts:
-        return None, None
+        return None, None, None
 
     calls: list[str] = []
     responses: list[str] = []
@@ -1090,13 +1100,34 @@ def _event_tool_progress(event: object) -> tuple[str | None, str | None]:
         if function_response and getattr(function_response, "name", None):
             responses.append(str(function_response.name))
 
+    agent_name = _progress_agent_name(getattr(event, "author", None))
     if calls:
         tool_names = _format_tool_names(calls)
-        return f"Running {tool_names}...", tool_names
+        return (
+            _format_progress_status(agent_name, f"Running {tool_names}..."),
+            tool_names,
+            agent_name,
+        )
     if responses:
         tool_names = _format_tool_names(responses)
-        return f"Finished {tool_names}.", None
-    return None, None
+        return (
+            _format_progress_status(agent_name, f"Finished {tool_names}."),
+            None,
+            agent_name,
+        )
+    return None, None, None
+
+
+def _progress_agent_name(author: str | None) -> str | None:
+    if not _is_subagent_author(author):
+        return None
+    return _readable_agent_name(str(author))
+
+
+def _format_progress_status(agent_name: str | None, status: str) -> str:
+    if not agent_name:
+        return status
+    return f"{agent_name}: {status}"
 
 
 def _format_tool_names(names: list[str]) -> str:
