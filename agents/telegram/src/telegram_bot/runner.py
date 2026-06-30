@@ -366,7 +366,7 @@ class TelegramRunner:
         mini_app_url: str | None = None,
         bot_username: str | None = None,
         debug: bool = False,
-        run_timeout_seconds: float = DEFAULT_RUN_TIMEOUT_SECONDS,
+        run_timeout_seconds: float | None = None,
     ) -> None:
         self.runner = runner
         self.application = application
@@ -380,6 +380,8 @@ class TelegramRunner:
         self.run_timeout_seconds = run_timeout_seconds
         self._session_locks: dict[str, asyncio.Lock] = {}
         self._session_locks_guard = asyncio.Lock()
+        self._session_tasks: dict[str, asyncio.Task[None]] = {}
+        self._session_tasks_guard = asyncio.Lock()
         self._nudged_users: set[int] = set()
         self._setup_handlers()
 
@@ -390,6 +392,7 @@ class TelegramRunner:
             CommandHandler(["logout", "unlink"], self._on_logout)
         )
         self.application.add_handler(CommandHandler(["reset", "new"], self._on_reset))
+        self.application.add_handler(CommandHandler("stop", self._on_stop))
         self.application.add_handler(CommandHandler("chat_id", self._on_chat_id))
         self.application.add_handler(MessageHandler(filters.COMMAND, self._on_unknown))
         self.application.add_handler(
@@ -425,14 +428,25 @@ class TelegramRunner:
             await self._nudge_login(message)
 
         partition_user_id = _partition_user_id(message, clerk_user_id)
-        session_lock = await self._session_lock_for(_session_id(message))
-        async with session_lock:
-            await self._run_agent(
-                message,
-                partition_user_id=partition_user_id,
-                clerk_user_id=clerk_user_id,
-                credential_state=credential_state,
-            )
+        session_id = _session_id(message)
+        session_lock = await self._session_lock_for(session_id)
+        current_task = asyncio.current_task()
+        if current_task is not None:
+            async with self._session_tasks_guard:
+                self._session_tasks[session_id] = current_task
+        try:
+            async with session_lock:
+                await self._run_agent(
+                    message,
+                    partition_user_id=partition_user_id,
+                    clerk_user_id=clerk_user_id,
+                    credential_state=credential_state,
+                )
+        finally:
+            if current_task is not None:
+                async with self._session_tasks_guard:
+                    if self._session_tasks.get(session_id) is current_task:
+                        self._session_tasks.pop(session_id, None)
 
     async def _run_agent(
         self,
@@ -455,8 +469,6 @@ class TelegramRunner:
             initial_state=identity_state,
         )
 
-        thinking_message = await self._send_reply(message, "Thinking...")
-
         response_texts: list[str] = []
         state_delta: dict[str, StateValue] = {}
         try:
@@ -466,38 +478,23 @@ class TelegramRunner:
                     types.Part(text=_agent_message_text(message, self.bot_username))
                 ],
             )
-            async with asyncio.timeout(self.run_timeout_seconds):
-                async for event in self.runner.run_async(
-                    user_id=partition_user_id,
-                    session_id=_session_id(message),
-                    new_message=new_message,
-                    state_delta={
-                        **identity_state,
-                        **_telegram_state(message),
-                    },
-                ):
-                    if event.actions and event.actions.state_delta:
-                        state_delta.update(event.actions.state_delta)
-                    if event.error_message:
-                        raise RuntimeError(event.error_message)
-                    if (
-                        event.content
-                        and event.content.parts
-                        and _is_subagent_author(event.author or "")
-                    ):
-                        texts = _event_texts(event)
-                        for text in texts:
-                            await self._send_reply(
-                                message,
-                                _format_agent_message(event.author, text),
-                                parse_mode=ParseMode.MARKDOWN_V2,
-                            )
-                    elif (
-                        event.is_final_response()
-                        and event.content
-                        and event.content.parts
-                    ):
-                        response_texts.extend(_event_texts(event))
+            iterator = self.runner.run_async(
+                user_id=partition_user_id,
+                session_id=_session_id(message),
+                new_message=new_message,
+                state_delta={
+                    **identity_state,
+                    **_telegram_state(message),
+                },
+            )
+            consume = self._consume_event
+            if self.run_timeout_seconds is None:
+                async for event in iterator:
+                    await consume(event, message, state_delta, response_texts)
+            else:
+                async with asyncio.timeout(self.run_timeout_seconds):
+                    async for event in iterator:
+                        await consume(event, message, state_delta, response_texts)
 
             text = _dedupe_join(response_texts)
             if not text:
@@ -509,16 +506,16 @@ class TelegramRunner:
                 )
             if not text:
                 text = "Done."
-            await self._replace_thinking(message, thinking_message, text)
+            await self._send_markdown(message, text)
         except TimeoutError:
-            log.warning(
-                "Telegram agent run timed out for %s after %.1fs",
-                ORCHESTRATOR_AGENT_ID,
-                self.run_timeout_seconds,
-            )
-            await self._replace_thinking(
+            if self.run_timeout_seconds is not None:
+                log.warning(
+                    "Telegram agent run timed out for %s after %.1fs",
+                    ORCHESTRATOR_AGENT_ID,
+                    self.run_timeout_seconds,
+                )
+            await self._send_markdown(
                 message,
-                thinking_message,
                 (
                     f"Sorry, {ORCHESTRATOR_TITLE} took too long to finish. "
                     "Try again with a narrower request, or send /reset and retry."
@@ -526,11 +523,36 @@ class TelegramRunner:
             )
         except Exception as exc:
             log.exception("Telegram agent run failed for %s", ORCHESTRATOR_AGENT_ID)
-            await self._replace_thinking(
+            await self._send_markdown(
                 message,
-                thinking_message,
                 f"Sorry, {ORCHESTRATOR_TITLE} hit an error: {exc}",
             )
+
+    async def _consume_event(
+        self,
+        event: Event,
+        message: TelegramMessage,
+        state_delta: dict[str, StateValue],
+        response_texts: list[str],
+    ) -> None:
+        if event.actions and event.actions.state_delta:
+            state_delta.update(event.actions.state_delta)
+        if event.error_message:
+            raise RuntimeError(event.error_message)
+        if (
+            event.content
+            and event.content.parts
+            and _is_subagent_author(event.author or "")
+        ):
+            texts = _event_texts(event)
+            for text in texts:
+                await self._send_reply(
+                    message,
+                    _format_agent_message(event.author, text),
+                    parse_mode=ParseMode.MARKDOWN_V2,
+                )
+        elif event.is_final_response() and event.content and event.content.parts:
+            response_texts.extend(_event_texts(event))
 
     async def _session_lock_for(self, session_id: str) -> asyncio.Lock:
         """Return a stable :class:`asyncio.Lock` for ``session_id``."""
@@ -649,6 +671,25 @@ class TelegramRunner:
         if message is not None and self._is_allowed(message):
             await self._reset_session(message)
 
+    async def _on_stop(
+        self,
+        update: Update,
+        context: ContextTypes.DEFAULT_TYPE,
+    ) -> None:
+        message = telegram_message_from_update(update)
+        if message is None or not self._is_allowed(message):
+            return
+        session_id = _session_id(message)
+        async with self._session_tasks_guard:
+            task = self._session_tasks.get(session_id)
+        if task is None or task.done():
+            await self._send_text(
+                message, f"Nothing in flight to stop for {ORCHESTRATOR_TITLE}."
+            )
+            return
+        task.cancel()
+        await self._send_text(message, f"Stopped {ORCHESTRATOR_TITLE} for this chat.")
+
     async def _on_chat_id(
         self,
         update: Update,
@@ -715,26 +756,10 @@ class TelegramRunner:
             return False
         return True
 
-    async def _replace_thinking(
-        self,
-        message: TelegramMessage,
-        thinking_message: TelegramSentMessage | None,
-        text: str,
-    ) -> None:
+    async def _send_markdown(self, message: TelegramMessage, text: str) -> None:
         chunks = [_escape_markdownv2(chunk) for chunk in chunk_text(text)]
         first = chunks[0] if chunks else _escape_markdownv2("Done.")
-        if thinking_message is not None:
-            try:
-                await thinking_message.edit_text(
-                    first,
-                    disable_web_page_preview=True,
-                    parse_mode=ParseMode.MARKDOWN_V2,
-                )
-            except Exception:
-                log.exception("Failed to edit Telegram thinking message")
-                await self._send_reply(message, first, parse_mode=ParseMode.MARKDOWN_V2)
-        else:
-            await self._send_reply(message, first, parse_mode=ParseMode.MARKDOWN_V2)
+        await self._send_reply(message, first, parse_mode=ParseMode.MARKDOWN_V2)
         for chunk in chunks[1:]:
             await self._send_reply(message, chunk, parse_mode=ParseMode.MARKDOWN_V2)
 
@@ -817,6 +842,7 @@ def help_text() -> str:
         "/logout - unlink Telegram from your web account\n"
         "/new - start a new conversation\n"
         "/reset - alias for /new\n"
+        "/stop - cancel the in-flight run for this chat\n"
         "/chat_id - show this Telegram chat ID\n\n"
         "After linking, send normal messages to talk to the orchestrator."
     )
@@ -836,6 +862,7 @@ def bot_commands() -> tuple[BotCommand, ...]:
         BotCommand("logout", "Unlink Telegram from your web account"),
         BotCommand("new", "Start a fresh AI conversation"),
         BotCommand("reset", "Reset the current conversation"),
+        BotCommand("stop", "Cancel the in-flight run for this chat"),
         BotCommand("chat_id", "Show this chat ID"),
     )
 
@@ -1035,15 +1062,17 @@ def _default_connect_url(link_base_url: str | None) -> str | None:
     return link_base_url.split("/telegram/link", 1)[0].rstrip("/") + "/console/settings"
 
 
-def _float_env(name: str, default: float) -> float:
+def _float_env(name: str, default: float | None) -> float | None:
     value = os.getenv(name)
     if not value:
         return default
     try:
         parsed = float(value)
     except ValueError:
-        log.warning("Ignoring invalid %s=%r; using %.1f", name, value, default)
+        log.warning("Ignoring invalid %s=%r; using %r", name, value, default)
         return default
+    if parsed <= 0:
+        return None
     return parsed
 
 
@@ -1127,10 +1156,7 @@ def build_telegram_runner(
         run_timeout_seconds=(
             run_timeout_seconds
             if run_timeout_seconds is not None
-            else _float_env(
-                "TELEGRAM_RUN_TIMEOUT_SECONDS",
-                DEFAULT_RUN_TIMEOUT_SECONDS,
-            )
+            else _float_env("TELEGRAM_RUN_TIMEOUT_SECONDS", None)
         ),
     )
 
