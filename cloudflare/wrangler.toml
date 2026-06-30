@@ -1,0 +1,12 @@
+name = "agents-infra"
+# account_id is read from CLOUDFLARE_ACCOUNT_ID env var (set via `wrangler login`)
+
+[[r2_buckets]]
+binding = "ARTIFACTS"
+bucket_name = "adk-artifacts"
+
+# Phase 2 — D1 sessions
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "adk-sessions"
+# database_id = "<CF_D1_DATABASE_ID>"
