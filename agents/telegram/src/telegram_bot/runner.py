@@ -29,6 +29,7 @@ from agents_shared.telegram_auth import (
 from google.adk.apps import App
 from google.adk.apps.app import EventsCompactionConfig
 from google.adk.apps.llm_event_summarizer import LlmEventSummarizer
+from google.adk.events import Event
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.runners import Runner
 from google.adk.sessions import BaseSessionService
@@ -39,7 +40,9 @@ from telegram import (
     BotCommand,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
+    Message,
     Update,
+    User,
     WebAppInfo,
 )
 from telegram.constants import ParseMode
@@ -66,17 +69,11 @@ from .orchestrator import (
 log = logging.getLogger(__name__)
 
 TELEGRAM_MESSAGE_LIMIT = 4096
-DEFAULT_STATUS_UPDATE_SECONDS = 12.0
 DEFAULT_RUN_TIMEOUT_SECONDS = 180.0
 ORCHESTRATOR_COMPACTION_INTERVAL = 20
 ORCHESTRATOR_COMPACTION_OVERLAP_SIZE = 2
 ORCHESTRATOR_COMPACTION_TOKEN_THRESHOLD = 120_000
 ORCHESTRATOR_COMPACTION_EVENT_RETENTION_SIZE = 20
-_STATUS_MESSAGES = (
-    "Still working...",
-    "Still working with the specialist agent...",
-    "Still waiting on tools...",
-)
 _HIDDEN_STATE_PREFIXES = ("temp:", "_")
 _HIDDEN_STATE_KEYS = frozenset(
     {
@@ -92,13 +89,6 @@ CredentialState = tuple[dict[str, StateValue], tuple[str, ...]]
 CredentialLoader = Callable[[str], Awaitable[CredentialState]]
 _OBJECT_LIST = TypeAdapter(list[object])
 _OBJECT_DICT = TypeAdapter(dict[object, object])
-
-
-@dataclass
-class _ProgressState:
-    active_tool: str | None = None
-    active_agent: str | None = None
-    last_text: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -376,7 +366,6 @@ class TelegramRunner:
         mini_app_url: str | None = None,
         bot_username: str | None = None,
         debug: bool = False,
-        status_update_seconds: float = DEFAULT_STATUS_UPDATE_SECONDS,
         run_timeout_seconds: float = DEFAULT_RUN_TIMEOUT_SECONDS,
     ) -> None:
         self.runner = runner
@@ -388,9 +377,7 @@ class TelegramRunner:
         self.mini_app_url = mini_app_url
         self.bot_username = _normalize_bot_username(bot_username)
         self.debug = debug
-        self.status_update_seconds = status_update_seconds
         self.run_timeout_seconds = run_timeout_seconds
-        self._event_tool_progress = _event_tool_progress
         self._session_locks: dict[str, asyncio.Lock] = {}
         self._session_locks_guard = asyncio.Lock()
         self._nudged_users: set[int] = set()
@@ -469,15 +456,6 @@ class TelegramRunner:
         )
 
         thinking_message = await self._send_reply(message, "Thinking...")
-        progress = _ProgressState(last_text="Thinking...")
-        stop_status_updates = asyncio.Event()
-        status_task = asyncio.create_task(
-            self._update_thinking_status(
-                thinking_message,
-                stop_status_updates,
-                progress,
-            )
-        )
 
         response_texts: list[str] = []
         state_delta: dict[str, StateValue] = {}
@@ -502,21 +480,10 @@ class TelegramRunner:
                         state_delta.update(event.actions.state_delta)
                     if event.error_message:
                         raise RuntimeError(event.error_message)
-                    tool_status, active_tool, active_agent = self._event_tool_progress(
-                        event
-                    )
-                    if tool_status:
-                        progress.active_tool = active_tool
-                        progress.active_agent = active_agent
-                        await self._edit_thinking_status(
-                            thinking_message,
-                            progress,
-                            tool_status,
-                        )
                     if (
                         event.content
                         and event.content.parts
-                        and _is_subagent_author(getattr(event, "author", ""))
+                        and _is_subagent_author(event.author or "")
                     ):
                         texts = _event_texts(event)
                         for text in texts:
@@ -542,7 +509,6 @@ class TelegramRunner:
                 )
             if not text:
                 text = "Done."
-            await self._stop_status_updates(stop_status_updates, status_task)
             await self._replace_thinking(message, thinking_message, text)
         except TimeoutError:
             log.warning(
@@ -550,7 +516,6 @@ class TelegramRunner:
                 ORCHESTRATOR_AGENT_ID,
                 self.run_timeout_seconds,
             )
-            await self._stop_status_updates(stop_status_updates, status_task)
             await self._replace_thinking(
                 message,
                 thinking_message,
@@ -561,7 +526,6 @@ class TelegramRunner:
             )
         except Exception as exc:
             log.exception("Telegram agent run failed for %s", ORCHESTRATOR_AGENT_ID)
-            await self._stop_status_updates(stop_status_updates, status_task)
             await self._replace_thinking(
                 message,
                 thinking_message,
@@ -589,10 +553,7 @@ class TelegramRunner:
         if url is None:
             return
         text = f"To link this Telegram account, sign in here:\n{url}"
-        bot = getattr(self.application, "bot", None)
-        if bot is None:
-            await self._send_text(message, text)
-            return
+        bot = self.application.bot
         if message.chat_type == "private":
             try:
                 await bot.send_message(chat_id=message.user_id, text=text)
@@ -795,63 +756,6 @@ class TelegramRunner:
     ) -> TelegramSentMessage | None:
         return await send_reply(message, text, reply_markup, parse_mode=parse_mode)
 
-    async def _update_thinking_status(
-        self,
-        thinking_message: TelegramSentMessage | None,
-        stop_updates: asyncio.Event,
-        progress: _ProgressState,
-    ) -> None:
-        if thinking_message is None or self.status_update_seconds <= 0:
-            return
-
-        update_count = 0
-        while not stop_updates.is_set():
-            try:
-                await asyncio.wait_for(
-                    stop_updates.wait(),
-                    timeout=self.status_update_seconds,
-                )
-                return
-            except TimeoutError:
-                status = _status_message(
-                    update_count,
-                    self.status_update_seconds,
-                    progress.active_tool,
-                    progress.active_agent,
-                )
-                update_count += 1
-                ok = await self._edit_thinking_status(
-                    thinking_message,
-                    progress,
-                    status,
-                )
-                if not ok:
-                    return
-
-    async def _stop_status_updates(
-        self,
-        stop_updates: asyncio.Event,
-        status_task: asyncio.Task[None],
-    ) -> None:
-        stop_updates.set()
-        await status_task
-
-    async def _edit_thinking_status(
-        self,
-        thinking_message: TelegramSentMessage | None,
-        progress: _ProgressState,
-        text: str,
-    ) -> bool:
-        if thinking_message is None or text == progress.last_text:
-            return True
-        try:
-            await thinking_message.edit_text(text, disable_web_page_preview=True)
-        except Exception:
-            log.exception("Failed to update Telegram thinking status")
-            return False
-        progress.last_text = text
-        return True
-
 
 # ---------------------------------------------------------------------------
 # Module-level helpers
@@ -876,8 +780,8 @@ def telegram_message_from_update(update: Update) -> TelegramMessage | None:
         text=text.strip(),
         message_id=raw.message_id,
         chat_type=chat.type,
-        message_thread_id=getattr(raw, "message_thread_id", None),
-        is_topic_message=bool(getattr(raw, "is_topic_message", False)),
+        message_thread_id=raw.message_thread_id,
+        is_topic_message=bool(raw.is_topic_message),
         reply_target=raw,
         user_name=user_name,
         reply_to_bot=reply_to_bot,
@@ -885,27 +789,22 @@ def telegram_message_from_update(update: Update) -> TelegramMessage | None:
     )
 
 
-def _sender_display_name(sender: object, sender_id: int) -> str | None:
+def _sender_display_name(sender: User | None, sender_id: int) -> str | None:
     if sender is None:
         return None
-    full_name = getattr(sender, "full_name", None)
-    if full_name:
-        return str(full_name).strip() or None
-    username = getattr(sender, "username", None)
-    if username:
-        return f"@{username}"
+    if sender.full_name:
+        return sender.full_name.strip() or None
+    if sender.username:
+        return f"@{sender.username}"
     return str(sender_id)
 
 
-def _reply_to_bot(raw: object) -> tuple[bool, str | None]:
-    reply = getattr(raw, "reply_to_message", None)
-    if reply is None:
+def _reply_to_bot(raw: Message) -> tuple[bool, str | None]:
+    reply = raw.reply_to_message
+    if reply is None or reply.from_user is None:
         return False, None
-    from_user = getattr(reply, "from_user", None)
-    if from_user is None:
-        return False, None
-    username = getattr(from_user, "username", None)
-    return bool(getattr(from_user, "is_bot", False)), _normalize_bot_username(username)
+    from_user = reply.from_user
+    return from_user.is_bot, _normalize_bot_username(from_user.username)
 
 
 def help_text() -> str:
@@ -1004,12 +903,11 @@ def _dedupe_join(texts: list[str]) -> str:
     return "\n\n".join(output).strip()
 
 
-def _event_texts(event: object) -> list[str]:
-    content = getattr(event, "content", None)
-    parts = getattr(content, "parts", None)
+def _event_texts(event: Event) -> list[str]:
+    parts = event.content.parts if event.content else None
     if not parts:
         return []
-    return [part.text.strip() for part in parts if getattr(part, "text", None)]
+    return [part.text.strip() for part in parts if part.text]
 
 
 def _is_subagent_author(author: str | None) -> bool:
@@ -1078,81 +976,6 @@ def _truncate(text: str, limit: int) -> str:
     if len(text) <= limit:
         return text
     return text[: limit - 3].rstrip() + "..."
-
-
-def _status_message(
-    update_count: int,
-    interval_seconds: float,
-    active_tool: str | None = None,
-    active_agent: str | None = None,
-) -> str:
-    if active_tool:
-        prefix = f"{active_agent}: " if active_agent else ""
-        if update_count == 0:
-            return f"{prefix}Still running {active_tool}..."
-        elapsed = int((update_count + 1) * interval_seconds)
-        return f"{prefix}Still running {active_tool}... ({elapsed}s)"
-    if update_count < len(_STATUS_MESSAGES):
-        return _STATUS_MESSAGES[update_count]
-    elapsed = int((update_count + 1) * interval_seconds)
-    return f"Still working... ({elapsed}s)"
-
-
-def _event_tool_progress(event: object) -> tuple[str | None, str | None, str | None]:
-    content = getattr(event, "content", None)
-    parts = getattr(content, "parts", None)
-    if not parts:
-        return None, None, None
-
-    calls: list[str] = []
-    responses: list[str] = []
-    for part in parts:
-        function_call = getattr(part, "function_call", None)
-        if function_call and getattr(function_call, "name", None):
-            calls.append(str(function_call.name))
-        function_response = getattr(part, "function_response", None)
-        if function_response and getattr(function_response, "name", None):
-            responses.append(str(function_response.name))
-
-    agent_name = _progress_agent_name(getattr(event, "author", None))
-    if calls:
-        tool_names = _format_tool_names(calls)
-        return (
-            _format_progress_status(agent_name, f"Running {tool_names}..."),
-            tool_names,
-            agent_name,
-        )
-    if responses:
-        tool_names = _format_tool_names(responses)
-        return (
-            _format_progress_status(agent_name, f"Finished {tool_names}."),
-            None,
-            agent_name,
-        )
-    return None, None, None
-
-
-def _progress_agent_name(author: str | None) -> str | None:
-    if not _is_subagent_author(author):
-        return None
-    return _readable_agent_name(str(author))
-
-
-def _format_progress_status(agent_name: str | None, status: str) -> str:
-    if not agent_name:
-        return status
-    return f"{agent_name}: {status}"
-
-
-def _format_tool_names(names: list[str]) -> str:
-    readable = [_readable_tool_name(name) for name in names if name]
-    if not readable:
-        return "tool"
-    if len(readable) == 1:
-        return readable[0]
-    if len(readable) == 2:
-        return f"{readable[0]} and {readable[1]}"
-    return ", ".join(readable[:-1]) + f", and {readable[-1]}"
 
 
 def _readable_tool_name(name: str) -> str:
@@ -1280,7 +1103,6 @@ def build_telegram_runner(
     bot_username: str | None = None,
     credential_loader: CredentialLoader | None = None,
     debug: bool = False,
-    status_update_seconds: float | None = None,
     run_timeout_seconds: float | None = None,
 ) -> TelegramRunner:
     """Compose a :class:`TelegramRunner` with all of its dependencies wired up."""
@@ -1302,14 +1124,6 @@ def build_telegram_runner(
         mini_app_url=mini_app_url,
         bot_username=bot_username or os.getenv("TELEGRAM_BOT_USERNAME"),
         debug=debug,
-        status_update_seconds=(
-            status_update_seconds
-            if status_update_seconds is not None
-            else _float_env(
-                "TELEGRAM_STATUS_UPDATE_SECONDS",
-                DEFAULT_STATUS_UPDATE_SECONDS,
-            )
-        ),
         run_timeout_seconds=(
             run_timeout_seconds
             if run_timeout_seconds is not None

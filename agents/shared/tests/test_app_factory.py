@@ -10,10 +10,9 @@ from agents_shared.app_factory import (
     streaming_state_mapping,
 )
 from agents_shared.dependencies import AgentServices
+from agents_shared.rate_limit import ProviderThrottle, RateLimit
 from agents_shared.tools import (
     GEMINI_RETRY_OPTIONS,
-    ProviderThrottle,
-    RateLimit,
     get_current_date,
     on_model_error_callback,
     strip_thinking_before_model,
@@ -384,7 +383,7 @@ def test_stop_on_terminal_text_logs_error_message_on_empty_content():
 
 
 async def test_rate_limit_store_round_trip():
-    from agents_shared.tools import RateLimitStore
+    from agents_shared.rate_limit import RateLimitStore
     from sqlalchemy.ext.asyncio import create_async_engine
 
     engine = create_async_engine("sqlite+aiosqlite://", echo=False)

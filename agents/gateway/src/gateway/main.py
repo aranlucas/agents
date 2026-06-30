@@ -13,8 +13,8 @@ from agents_shared.dependencies import (
     AgentServicesDep,
     create_agent_services,
 )
+from agents_shared.rate_limit import set_rate_limit_engine
 from agents_shared.session_service import check_database_connection
-from agents_shared.tools import set_rate_limit_engine
 from dotenv import load_dotenv
 from excalidraw_agent.main import register as register_excalidraw
 from expense_agent.main import register as register_expense
