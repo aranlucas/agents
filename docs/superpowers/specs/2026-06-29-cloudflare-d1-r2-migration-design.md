@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS user_state (
 - **`_batch(stmts)`** — internal helper; calls `AsyncCloudflare().d1.database.query(..., batch=[{sql, params}, ...])`; every mutating method uses it to stay at 1–2 HTTP calls.
 - **`_prepare_tables()`** — lazy, one-time DDL via batch; guarded by an `asyncio.Lock` so concurrent startup doesn't double-create.
 - **Stale detection** — no SQLAlchemy `update_marker` available. Uses `update_time` float comparison (same as `DatabaseSessionService`'s marker-less fallback path), plus a process-level `asyncio.Lock` per `(app_name, user_id, session_id)` to serialize concurrent `append_event` calls within the same process.
-- **State storage** — app/user/session state stored as JSON TEXT; Python `json.loads`/`json.dumps` on read/write. Same three-way `_merge_state` logic as `DatabaseSessionService`.
+- **State storage** — app/user/session state stored as JSON TEXT; Python `json.loads`/`json.dumps` on read/write. Same three-way state merge logic as `DatabaseSessionService`.
 - **`append_event` write** — one `/query` batch read for stale detection, then one `/query` batch containing UPDATE session + UPSERT app_state + UPSERT user_state + INSERT event as needed.
 - **`get_user_state`** — implemented (single SELECT on `user_state` table).
 

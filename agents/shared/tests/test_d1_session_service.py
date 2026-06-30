@@ -16,9 +16,9 @@ import pytest
 from agents_shared.d1_session_service import (
     _DDL_STATEMENTS,
     D1SessionService,
-    _merge_state,
     _stmt_upsert_app_state,
     _stmt_upsert_user_state,
+    merge_state,
 )
 from google.adk.errors.already_exists_error import AlreadyExistsError
 from google.adk.events.event import Event
@@ -73,8 +73,8 @@ class SqliteBackedD1SessionService(D1SessionService):
 # ---------------------------------------------------------------------------
 
 
-def test_merge_state_combines_all_three() -> None:
-    merged = _merge_state(
+def test_public_state_merge_combines_all_three() -> None:
+    merged = merge_state(
         app_state={"x": 1},
         user_state={"y": 2},
         session_state={"z": 3},

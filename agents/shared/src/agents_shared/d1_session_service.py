@@ -80,7 +80,7 @@ _session_locks: dict[tuple[str, str, str], asyncio.Lock] = {}
 _session_locks_mu = asyncio.Lock()
 
 
-def _merge_state(
+def merge_state(
     app_state: dict[str, Any],
     user_state: dict[str, Any],
     session_state: dict[str, Any],
@@ -289,7 +289,7 @@ class D1SessionService(BaseSessionService):
             app_name=app_name,
             user_id=user_id,
             id=session_id,
-            state=_merge_state(storage_app, storage_user, session_state),
+            state=merge_state(storage_app, storage_user, session_state),
             events=[],
             last_update_time=now,
         )
@@ -349,7 +349,7 @@ class D1SessionService(BaseSessionService):
             app_name=app_name,
             user_id=user_id,
             id=session_id,
-            state=_merge_state(app_state, user_state, session_state),
+            state=merge_state(app_state, user_state, session_state),
             events=events,
             last_update_time=last_update_time,
         )
@@ -397,7 +397,7 @@ class D1SessionService(BaseSessionService):
                 app_name=app_name,
                 user_id=row["user_id"],
                 id=row["id"],
-                state=_merge_state(
+                state=merge_state(
                     app_state,
                     user_states.get(row["user_id"], {}),
                     _load_json_object(row["state"]),
