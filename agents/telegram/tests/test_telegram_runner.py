@@ -178,7 +178,6 @@ def _build(
     credential_loader: CredentialLoader | None = None,
     mini_app_url: str | None = None,
     bot_username: str | None = None,
-    status_update_seconds: float = 12.0,
     run_timeout_seconds: float = 180.0,
 ) -> TelegramRunner:
     """Build a runner via the public factory."""
@@ -190,7 +189,6 @@ def _build(
         credential_loader=credential_loader,
         mini_app_url=mini_app_url,
         bot_username=bot_username,
-        status_update_seconds=status_update_seconds,
         run_timeout_seconds=run_timeout_seconds,
     )
 
@@ -624,227 +622,6 @@ async def test_handle_message_reports_runner_errors(
 
 
 @pytest.mark.asyncio
-async def test_handle_message_updates_thinking_while_agent_runs(
-    services: AgentServices,
-    orchestrator_agent: Mock,
-) -> None:
-    """Long-running subagent execution should visibly advance past Thinking."""
-    import asyncio
-
-    from google.genai import types
-
-    token = await create_link_token(
-        services.engine,
-        telegram_user_id="456",
-        telegram_chat_id="123",
-    )
-    assert (
-        await consume_link_token(
-            services.engine, token=token, clerk_user_id="clerk-user"
-        )
-        is not None
-    )
-    reply_target = FakeReplyTarget(chat_id=123)
-
-    async def credential_state_loader(
-        clerk_user_id: str,
-    ) -> tuple[dict[str, object], tuple[str, ...]]:
-        return {"user_id": clerk_user_id}, ()
-
-    runner = _build(
-        services,
-        credential_loader=credential_state_loader,
-        status_update_seconds=0.01,
-    )
-
-    async def fake_run_async(*, user_id, session_id, new_message, state_delta):
-        await asyncio.sleep(0.03)
-        yield _Event(
-            content=types.Content(
-                role="model",
-                parts=[types.Part(text="Finished.")],
-            )
-        )
-
-    runner.runner.run_async = fake_run_async  # type: ignore[method-assign]
-
-    await runner.handle_message(_message("plan food", reply_target))
-
-    assert (123, "Still working...") in reply_target.messages
-    assert reply_target.messages[-1] == (123, r"Finished\.")
-
-
-@pytest.mark.asyncio
-async def test_handle_message_updates_thinking_with_tool_progress(
-    services: AgentServices,
-    orchestrator_agent: Mock,
-) -> None:
-    """Tool-call events should update the placeholder with concrete progress."""
-    import asyncio
-
-    from google.genai import types
-
-    token = await create_link_token(
-        services.engine,
-        telegram_user_id="456",
-        telegram_chat_id="123",
-    )
-    assert (
-        await consume_link_token(
-            services.engine, token=token, clerk_user_id="clerk-user"
-        )
-        is not None
-    )
-    reply_target = FakeReplyTarget(chat_id=123)
-
-    async def credential_state_loader(
-        clerk_user_id: str,
-    ) -> tuple[dict[str, object], tuple[str, ...]]:
-        return {"user_id": clerk_user_id}, ()
-
-    runner = _build(
-        services,
-        credential_loader=credential_state_loader,
-        status_update_seconds=0.01,
-    )
-
-    async def fake_run_async(*, user_id, session_id, new_message, state_delta):
-        yield _Event(
-            content=types.Content(
-                role="model",
-                parts=[
-                    types.Part(
-                        function_call=types.FunctionCall(
-                            name="fetch_activities",
-                            args={},
-                        )
-                    )
-                ],
-            ),
-            final=False,
-        )
-        await asyncio.sleep(0.02)
-        yield _Event(
-            content=types.Content(
-                role="user",
-                parts=[
-                    types.Part(
-                        function_response=types.FunctionResponse(
-                            name="fetch_activities",
-                            response={"ok": True},
-                        )
-                    )
-                ],
-            ),
-            final=False,
-        )
-        yield _Event(
-            content=types.Content(
-                role="model",
-                parts=[types.Part(text="Finished.")],
-            )
-        )
-
-    runner.runner.run_async = fake_run_async  # type: ignore[method-assign]
-
-    await runner.handle_message(_message("sync my run", reply_target))
-
-    assert (123, "Running fetch activities...") in reply_target.messages
-    assert (123, "Still running fetch activities...") in reply_target.messages
-    assert (123, "Finished fetch activities.") in reply_target.messages
-    assert reply_target.messages[-1] == (123, r"Finished\.")
-
-
-@pytest.mark.asyncio
-async def test_handle_message_labels_subagent_tool_progress(
-    services: AgentServices,
-    orchestrator_agent: Mock,
-) -> None:
-    """Long grocery work should show progress as coming from the grocery agent."""
-    import asyncio
-
-    from google.genai import types
-
-    token = await create_link_token(
-        services.engine,
-        telegram_user_id="456",
-        telegram_chat_id="123",
-    )
-    assert (
-        await consume_link_token(
-            services.engine,
-            token=token,
-            clerk_user_id="clerk-user",
-        )
-        is not None
-    )
-    reply_target = FakeReplyTarget(chat_id=123)
-
-    async def credential_state_loader(
-        clerk_user_id: str,
-    ) -> tuple[dict[str, object], tuple[str, ...]]:
-        return {"user_id": clerk_user_id}, ()
-
-    runner = _build(
-        services,
-        credential_loader=credential_state_loader,
-        status_update_seconds=0.01,
-    )
-
-    async def fake_run_async(*, user_id, session_id, new_message, state_delta):
-        yield _Event(
-            author="grocery_agent",
-            content=types.Content(
-                role="model",
-                parts=[
-                    types.Part(
-                        function_call=types.FunctionCall(
-                            name="search_products",
-                            args={},
-                        )
-                    )
-                ],
-            ),
-            final=False,
-        )
-        await asyncio.sleep(0.02)
-        yield _Event(
-            author="grocery_agent",
-            content=types.Content(
-                role="user",
-                parts=[
-                    types.Part(
-                        function_response=types.FunctionResponse(
-                            name="search_products",
-                            response={"ok": True},
-                        )
-                    )
-                ],
-            ),
-            final=False,
-        )
-        yield _Event(
-            author="telegram_orchestrator_agent",
-            content=types.Content(
-                role="model",
-                parts=[types.Part(text="Done.")],
-            ),
-        )
-
-    runner.runner.run_async = fake_run_async  # type: ignore[method-assign]
-
-    await runner.handle_message(_message("plan food", reply_target))
-
-    assert (123, "Grocery agent: Running search products...") in reply_target.messages
-    assert (
-        123,
-        "Grocery agent: Still running search products...",
-    ) in reply_target.messages
-    assert (123, "Grocery agent: Finished search products.") in reply_target.messages
-    assert reply_target.messages[-1] == (123, r"Done\.")
-
-
-@pytest.mark.asyncio
 async def test_handle_message_emits_subagent_text_as_messages(
     services: AgentServices,
     orchestrator_agent: Mock,
@@ -1007,7 +784,6 @@ async def test_handle_message_times_out_stalled_agent_run(
     runner = _build(
         services,
         credential_loader=credential_state_loader,
-        status_update_seconds=0.01,
         run_timeout_seconds=0.02,
     )
 
