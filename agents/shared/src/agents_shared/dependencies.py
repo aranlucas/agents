@@ -24,6 +24,7 @@ from google.adk.sessions import BaseSessionService
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from .session_service import (
+    create_d1_session_service,
     create_session_service,
     get_database_url,
     get_sqlite_db_path,
@@ -60,13 +61,18 @@ def _create_r2_artifact_service() -> BaseArtifactService:
 
 
 def create_agent_services() -> AgentServices:
+    session_service = (
+        create_d1_session_service()
+        if os.getenv("CF_D1_DATABASE_ID")
+        else create_session_service()
+    )
     artifact_service: BaseArtifactService = (
         _create_r2_artifact_service()
         if os.getenv("CF_R2_BUCKET_NAME")
         else InMemoryArtifactService()
     )
     return AgentServices(
-        session_service=create_session_service(),
+        session_service=session_service,
         artifact_service=artifact_service,
         memory_service=InMemoryMemoryService(),
         credential_service=InMemoryCredentialService(),

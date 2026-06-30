@@ -1,7 +1,7 @@
 # Cloudflare D1 + R2 Migration Design
 
 **Date:** 2026-06-29  
-**Status:** Draft  
+**Status:** Implemented for D1 session service and R2 artifact wiring  
 **Scope:** Two-phase migration. Railway Python gateway stays as compute throughout.
 
 - **Phase 1 (this plan):** Migrate ADK artifact storage (in-memory) → Cloudflare R2.
@@ -20,7 +20,7 @@ All current LLM providers are free-tier (Cerebras, Groq, NVIDIA NIM, OpenRouter,
 ```
 Railway gateway (Python ADK, unchanged)
     │
-    ├── session reads/writes ──► CF D1  (httpx REST API)
+    ├── session reads/writes ──► CF D1  (official Cloudflare Python SDK)
     ├── artifact reads/writes ──► CF R2  (aioboto3, S3-compatible endpoint)
     └── rate-limit store ──────► SQLite  (in-container, ephemeral — acceptable)
 ```
@@ -37,7 +37,7 @@ The `AgentServices` dataclass in `dependencies.py` already abstracts both servic
 
 ### How it works
 
-D1 exposes a REST API (`POST /accounts/{id}/d1/database/{id}/query`) and a batch variant (`/batch`) that accepts an array of `{sql, params}` objects and returns all results in one HTTP call. The batch endpoint is used for all multi-statement operations to keep round-trips to 1–2 per method.
+D1 exposes a Cloudflare API (`POST /accounts/{id}/d1/database/{id}/query`) that accepts a single `{sql, params}` statement or a `{batch: [{sql, params}, ...]}` body and returns all results in one HTTP call. The implementation uses the official `cloudflare` Python SDK (`AsyncCloudflare().d1.database.query(...)`) with the batch payload for all multi-statement operations to keep round-trips to 1–2 per method.
 
 ### Schema (SQLite DDL, created on first use)
 
@@ -53,14 +53,13 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 
 CREATE TABLE IF NOT EXISTS events (
-    id         TEXT PRIMARY KEY,
-    app_name   TEXT NOT NULL,
-    user_id    TEXT NOT NULL,
-    session_id TEXT NOT NULL,
-    timestamp  REAL NOT NULL,
-    author     TEXT,
-    content    TEXT,
-    actions    TEXT
+    id            TEXT PRIMARY KEY,
+    app_name      TEXT NOT NULL,
+    user_id       TEXT NOT NULL,
+    session_id    TEXT NOT NULL,
+    invocation_id TEXT,
+    timestamp     REAL NOT NULL,
+    event_data    TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS app_state (
@@ -78,11 +77,11 @@ CREATE TABLE IF NOT EXISTS user_state (
 
 ### Key design decisions
 
-- **`_batch(stmts)`** — internal helper; posts `[{sql, params}, ...]` to `/batch`; every mutating method uses it to stay at 1–2 HTTP calls.
+- **`_batch(stmts)`** — internal helper; calls `AsyncCloudflare().d1.database.query(..., batch=[{sql, params}, ...])`; every mutating method uses it to stay at 1–2 HTTP calls.
 - **`_prepare_tables()`** — lazy, one-time DDL via batch; guarded by an `asyncio.Lock` so concurrent startup doesn't double-create.
 - **Stale detection** — no SQLAlchemy `update_marker` available. Uses `update_time` float comparison (same as `DatabaseSessionService`'s marker-less fallback path), plus a process-level `asyncio.Lock` per `(app_name, user_id, session_id)` to serialize concurrent `append_event` calls within the same process.
 - **State storage** — app/user/session state stored as JSON TEXT; Python `json.loads`/`json.dumps` on read/write. Same three-way `_merge_state` logic as `DatabaseSessionService`.
-- **`append_event` batch** — one `/batch` call containing: SELECT session + SELECT app_state + SELECT user_state → UPDATE session + UPSERT app_state + UPSERT user_state + INSERT event.
+- **`append_event` write** — one `/query` batch read for stale detection, then one `/query` batch containing UPDATE session + UPSERT app_state + UPSERT user_state + INSERT event as needed.
 - **`get_user_state`** — implemented (single SELECT on `user_state` table).
 
 ### Methods implemented
