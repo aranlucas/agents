@@ -12,16 +12,16 @@ WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1
 
 COPY pyproject.toml uv.lock ./
-RUN --mount=type=cache,target=/root/.cache/uv \
+RUN --mount=type=cache,id=s/418259b7-9f18-4ba2-81fc-04c1e712b318-agents-uv,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-install-project
 
 COPY agents/ ./agents/
-RUN --mount=type=cache,target=/root/.cache/uv \
+RUN --mount=type=cache,id=s/418259b7-9f18-4ba2-81fc-04c1e712b318-agents-uv,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
 FROM node:24.12.0-slim AS brave-mcp
 
-RUN --mount=type=cache,target=/root/.npm \
+RUN --mount=type=cache,id=s/418259b7-9f18-4ba2-81fc-04c1e712b318-agents-npm,target=/root/.npm \
     npm install -g @brave/brave-search-mcp-server && \
     npm cache clean --force
 
