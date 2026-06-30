@@ -13,9 +13,11 @@ from agents_shared.tools import (
     on_model_error_callback,
     stop_on_terminal_text,
 )
+from agents_shared.toolsets.brave import brave_web_search_toolset
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import FunctionTool
+from google.adk.tools.load_web_page import load_web_page
 from pydantic import BaseModel
 
 from .tools._types import CartItem, PantryItem
@@ -68,10 +70,12 @@ def build_agent(
         FunctionTool(set_weekly_deals),
         FunctionTool(mark_list_ready),
         get_current_date,
+        load_web_page,
     ]
     if include_agui:
         tools.append(AGUIToolset())
     tools.append(KrogerToolset())
+    tools.append(brave_web_search_toolset())
 
     return LlmAgent(
         name="grocery_agent",

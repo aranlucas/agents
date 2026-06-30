@@ -3,7 +3,6 @@ from unittest.mock import Mock
 
 import fitness_agent.agent as agent
 import fitness_agent.main as main
-import fitness_agent.tools.search as _search_mod
 import httpx
 import pytest
 from agents_shared.state import STRAVA_AUTH, make_state_initializer
@@ -14,7 +13,6 @@ from fitness_agent.tools.fetch_activities import fetch_activities
 from fitness_agent.tools.mark_plan_ready import mark_plan_ready
 from fitness_agent.tools.set_objective_research import set_objective_research
 from fitness_agent.tools.set_training_plan import set_training_plan
-from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
 from starlette.datastructures import Headers
 
 
@@ -262,40 +260,3 @@ def test_on_before_agent_derives_strava_connected_from_state_token() -> None:
     )
     initializer(callback_context)
     assert callback_context.state["strava_connected"] is True
-
-
-def test_web_search_toolset_uses_npx_when_binary_absent(monkeypatch) -> None:
-    monkeypatch.setenv("BRAVE_API_KEY", "brave-token")
-    monkeypatch.setattr(_search_mod.shutil, "which", lambda _: None)
-    from fitness_agent.tools.search import web_search_toolset
-
-    toolset = web_search_toolset()
-    params = toolset._connection_params
-    assert isinstance(params, StdioConnectionParams)
-    assert params.timeout == 30.0
-    assert params.server_params.command == "npx"
-    assert params.server_params.args == [
-        "-y",
-        "@brave/brave-search-mcp-server",
-        "--brave-api-key",
-        "brave-token",
-    ]
-    assert params.server_params.env == {"BRAVE_API_KEY": "brave-token"}
-    assert toolset._use_mcp_resources is False
-
-
-def test_web_search_toolset_uses_binary_when_installed(monkeypatch) -> None:
-    monkeypatch.setenv("BRAVE_API_KEY", "brave-token")
-    monkeypatch.setattr(
-        _search_mod.shutil, "which", lambda name: f"/usr/local/bin/{name}"
-    )
-    from fitness_agent.tools.search import web_search_toolset
-
-    toolset = web_search_toolset()
-    params = toolset._connection_params
-    assert isinstance(params, StdioConnectionParams)
-    assert params.timeout == 30.0
-    assert params.server_params.command == "brave-search-mcp-server"
-    assert params.server_params.args == ["--brave-api-key", "brave-token"]
-    assert params.server_params.env == {"BRAVE_API_KEY": "brave-token"}
-    assert toolset._use_mcp_resources is False

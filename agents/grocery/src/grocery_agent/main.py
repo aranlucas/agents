@@ -8,6 +8,7 @@ from agents_shared.app_factory import (
 )
 from agents_shared.dependencies import AgentServices
 from agents_shared.plugins.slim_mcp import SlimMcpPlugin
+from agents_shared.plugins.web_search_throttle import WebSearchThrottlePlugin
 from agents_shared.state import KROGER_AUTH, make_extract_state
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -53,7 +54,7 @@ _grocery_agent = build_agent()
 _app = App(
     name="grocery_agent",
     root_agent=_grocery_agent,
-    plugins=[SlimMcpPlugin()],
+    plugins=[SlimMcpPlugin(), WebSearchThrottlePlugin()],
     events_compaction_config=EventsCompactionConfig(
         # Sliding-window fallback: compact every 20 invocations (rarely fires
         # since the token threshold below triggers first in practice).
