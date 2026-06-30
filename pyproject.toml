@@ -3,12 +3,12 @@ name = "agents"
 version = "0.1.0"
 requires-python = ">=3.14"
 dependencies = [
-  "ag-ui-adk>=0.6.5",
+  "ag-ui-adk>=0.7.0",
   "asyncpg>=0.30.0",
   "clerk-backend-api>=6.0.0",
   "cloudflare>=5.4.0",
   "fastapi",
-  "google-adk[eval,mcp]>=2.2.0",
+  "google-adk[eval,extensions,mcp]>=2.2.0",
   "google-genai",
   "httpx",
   "litellm",
@@ -66,6 +66,11 @@ agents-telegram-bot = "telegram_bot.main:run"
 [tool.ruff]
 target-version = "py314"
 extend-exclude = [".venv", "__pycache__", ".pytest_cache"]
+
+[tool.uv]
+override-dependencies = [
+  "litellm>=1.85.7",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "UP", "B", "SIM", "I", "ASYNC", "S"]
