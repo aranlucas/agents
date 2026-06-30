@@ -5,6 +5,7 @@ Tests can call ``create_agent_services()`` for a fresh set or construct
 ``AgentServices(...)`` with mocked dependencies.
 """
 
+import os
 from dataclasses import dataclass
 from typing import Annotated
 
@@ -43,10 +44,30 @@ def _build_engine() -> AsyncEngine:
     return create_async_engine(url)
 
 
+def _create_r2_artifact_service() -> BaseArtifactService:
+    from google.adk_community.artifacts.s3_artifact_service import S3ArtifactService
+
+    account_id = os.environ["CF_ACCOUNT_ID"]
+    return S3ArtifactService(
+        bucket_name=os.environ["CF_R2_BUCKET_NAME"],
+        aws_configs={
+            "endpoint_url": f"https://{account_id}.r2.cloudflarestorage.com",
+            "region_name": "auto",
+            "aws_access_key_id": os.environ["CF_R2_ACCESS_KEY_ID"],
+            "aws_secret_access_key": os.environ["CF_R2_SECRET_ACCESS_KEY"],
+        },
+    )
+
+
 def create_agent_services() -> AgentServices:
+    artifact_service: BaseArtifactService = (
+        _create_r2_artifact_service()
+        if os.getenv("CF_R2_BUCKET_NAME")
+        else InMemoryArtifactService()
+    )
     return AgentServices(
         session_service=create_session_service(),
-        artifact_service=InMemoryArtifactService(),
+        artifact_service=artifact_service,
         memory_service=InMemoryMemoryService(),
         credential_service=InMemoryCredentialService(),
         engine=_build_engine(),
