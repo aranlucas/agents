@@ -97,7 +97,6 @@ def build_eval_agent() -> LlmAgent:
     AGUIToolset and McpToolset are replaced with stubs because the Vertex AI
     eval SDK requires plain callables when building AgentConfig tool declarations.
     """
-    from .tools._write_itinerary import write_itinerary as write_itinerary_eval_alias
     from .tools.stubs import (
         check_visa,
         destination_info,
@@ -107,6 +106,7 @@ def build_eval_agent() -> LlmAgent:
         search_hotels,
         search_restaurants,
     )
+    from .tools.write_itinerary import write_itinerary
 
     return LlmAgent(
         name="collab_trip_agent",
@@ -121,7 +121,6 @@ def build_eval_agent() -> LlmAgent:
             get_current_date,
             FunctionTool(set_trip_meta),
             FunctionTool(write_itinerary),
-            FunctionTool(write_itinerary_eval_alias),
             FunctionTool(add_day),
             FunctionTool(mark_ready_to_book),
             search_flights,

@@ -1,5 +1,5 @@
 {
-  "include": ["agents/*/src", "agents/shared/src"],
+  "include": ["agents/*/src/**/*.py"],
   "typeCheckingMode": "strict",
   "pythonVersion": "3.14",
   "stubPath": "stubs",
