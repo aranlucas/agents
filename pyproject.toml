@@ -4,11 +4,11 @@ version = "0.1.0"
 requires-python = ">=3.14"
 dependencies = [
   "ag-ui-adk>=0.7.0",
-  "asyncpg>=0.30.0",
-  "clerk-backend-api>=6.0.0",
+  "asyncpg>=0.31.0",
+  "clerk-backend-api>=6.0.1",
   "cloudflare>=5.4.0",
   "fastapi",
-  "google-adk[mcp]>=2.2.0",
+  "google-adk[mcp,extensions]>=2.2.0",
   "google-genai",
   "httpx",
   "litellm",
@@ -28,10 +28,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-eval = [
-  "google-adk[eval]",
-  "rouge-score>=0.1.2",
-]
+eval = ["google-adk[eval]", "rouge-score>=0.1.2"]
 
 [build-system]
 requires = ["hatchling"]
@@ -68,9 +65,7 @@ target-version = "py314"
 extend-exclude = [".venv", "__pycache__", ".pytest_cache"]
 
 [tool.uv]
-override-dependencies = [
-  "litellm>=1.85.7",
-]
+override-dependencies = ["litellm>=1.90.1"]
 
 [tool.ruff.lint]
 select = ["E", "F", "UP", "B", "SIM", "I", "ASYNC", "S"]
