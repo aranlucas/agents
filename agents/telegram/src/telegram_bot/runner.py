@@ -15,7 +15,7 @@ import logging
 import os
 from collections.abc import Awaitable, Callable, Iterable, Mapping
 from dataclasses import dataclass
-from typing import Protocol, runtime_checkable
+from typing import Protocol, cast, runtime_checkable
 from urllib.parse import urlencode
 
 from agents_shared.dependencies import AgentServices, create_agent_services
@@ -104,6 +104,27 @@ class _ProgressState:
 # ---------------------------------------------------------------------------
 # Types
 # ---------------------------------------------------------------------------
+
+
+type TelegramApplication = Application[
+    ExtBot[None],
+    ContextTypes.DEFAULT_TYPE,
+    dict[str, object],
+    dict[str, object],
+    dict[str, object],
+    JobQueue[ContextTypes.DEFAULT_TYPE],
+]
+
+
+class _TelegramApplicationBuilder(Protocol):
+    def token(self, token: str) -> _TelegramApplicationBuilder: ...
+
+    def post_init(
+        self,
+        post_init: Callable[[TelegramApplication], Awaitable[None]],
+    ) -> _TelegramApplicationBuilder: ...
+
+    def build(self) -> TelegramApplication: ...
 
 
 class TelegramSentMessage(Protocol):
@@ -347,14 +368,7 @@ class TelegramRunner:
         self,
         *,
         runner: Runner,
-        application: Application[
-            ExtBot[None],
-            ContextTypes.DEFAULT_TYPE,
-            dict[str, object],
-            dict[str, object],
-            dict[str, object],
-            JobQueue[ContextTypes.DEFAULT_TYPE],
-        ],
+        application: TelegramApplication,
         session_service: BaseSessionService,
         auth: TelegramAuth,
         credentials: CredentialGate,
@@ -1217,27 +1231,14 @@ def _float_env(name: str, default: float) -> float:
 
 def build_application(
     token: str,
-) -> Application[
-    ExtBot[None],
-    ContextTypes.DEFAULT_TYPE,
-    dict[str, object],
-    dict[str, object],
-    dict[str, object],
-    JobQueue[ContextTypes.DEFAULT_TYPE],
-]:
+) -> TelegramApplication:
     """Build a :class:`telegram.ext.Application` for the given BotFather token."""
-    return ApplicationBuilder().token(token).post_init(_set_bot_commands).build()
+    builder = cast(_TelegramApplicationBuilder, ApplicationBuilder())
+    return builder.token(token).post_init(_set_bot_commands).build()
 
 
 async def _set_bot_commands(
-    application: Application[
-        ExtBot[None],
-        ContextTypes.DEFAULT_TYPE,
-        dict[str, object],
-        dict[str, object],
-        dict[str, object],
-        JobQueue[ContextTypes.DEFAULT_TYPE],
-    ],
+    application: TelegramApplication,
 ) -> None:
     await application.bot.set_my_commands(bot_commands())
 
