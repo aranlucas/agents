@@ -46,7 +46,7 @@ from telegram import (
     WebAppInfo,
 )
 from telegram.constants import ParseMode
-from telegram.error import Forbidden
+from telegram.error import BadRequest, Forbidden
 from telegram.ext import (
     Application,
     ApplicationBuilder,
@@ -127,8 +127,23 @@ class TelegramSentMessage(Protocol):
     ) -> object: ...
 
 
+class TelegramBot(Protocol):
+    async def send_message(
+        self,
+        chat_id: int,
+        text: str,
+        *,
+        disable_web_page_preview: bool = True,
+        reply_markup: InlineKeyboardMarkup | None = None,
+        parse_mode: str | None = None,
+        message_thread_id: int | None = None,
+    ) -> TelegramSentMessage: ...
+
+
 @runtime_checkable
 class TelegramReplyTarget(Protocol):
+    def get_bot(self) -> TelegramBot: ...
+
     async def reply_text(
         self,
         text: str,
@@ -909,13 +924,29 @@ async def send_reply(
     if message.reply_target is None:
         log.warning("Cannot reply to Telegram message without a reply target")
         return None
-    return await message.reply_target.reply_text(
-        text,
-        disable_web_page_preview=True,
-        reply_markup=reply_markup,
-        parse_mode=parse_mode,
-        message_thread_id=_session_topic_id(message),
-    )
+    try:
+        return await message.reply_target.reply_text(
+            text,
+            disable_web_page_preview=True,
+            reply_markup=reply_markup,
+            parse_mode=parse_mode,
+            message_thread_id=_session_topic_id(message),
+        )
+    except BadRequest as exc:
+        if "Message to be replied not found" not in str(exc):
+            raise
+        log.warning(
+            "Original Telegram message %s was deleted before reply; sending as a new message",
+            message.message_id,
+        )
+        return await message.reply_target.get_bot().send_message(
+            chat_id=message.chat_id,
+            text=text,
+            disable_web_page_preview=True,
+            reply_markup=reply_markup,
+            parse_mode=parse_mode,
+            message_thread_id=_session_topic_id(message),
+        )
 
 
 def _dedupe_join(texts: list[str]) -> str:
