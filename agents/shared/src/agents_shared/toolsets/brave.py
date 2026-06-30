@@ -1,3 +1,5 @@
+"""Brave Search MCP toolset factory."""
+
 import os
 import shutil
 
@@ -9,7 +11,8 @@ BRAVE_SEARCH_MCP_BINARY = "brave-search-mcp-server"
 BRAVE_SEARCH_MCP_PACKAGE = "@brave/brave-search-mcp-server"
 
 
-def web_search_toolset() -> McpToolset:
+def brave_web_search_toolset() -> McpToolset:
+    """Create the shared Brave Search MCP toolset."""
     brave_api_key = os.getenv("BRAVE_API_KEY", "")
     if shutil.which(BRAVE_SEARCH_MCP_BINARY):
         command = BRAVE_SEARCH_MCP_BINARY

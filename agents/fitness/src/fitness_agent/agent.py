@@ -16,6 +16,7 @@ from agents_shared.tools import (
     on_model_error_callback,
     stop_on_terminal_text,
 )
+from agents_shared.toolsets.brave import brave_web_search_toolset
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import BaseTool, FunctionTool
@@ -25,7 +26,6 @@ from pydantic import BaseModel
 from .tools._types import StravaActivity
 from .tools.fetch_activities import fetch_activities
 from .tools.mark_plan_ready import mark_plan_ready
-from .tools.search import web_search_toolset
 from .tools.set_objective_research import set_objective_research
 from .tools.set_training_plan import set_training_plan
 from .tools.strava import StravaToolset
@@ -74,7 +74,7 @@ def build_agent(
     ]
     if include_agui:
         tools.append(AGUIToolset())
-    tools.append(web_search_toolset())
+    tools.append(brave_web_search_toolset())
 
     return LlmAgent(
         name="fitness_agent",

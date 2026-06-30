@@ -1,7 +1,10 @@
 from types import SimpleNamespace
+from unittest.mock import Mock
 
+import grocery_agent.agent as agent
 import grocery_agent.main as main
 from agents_shared.plugins.slim_mcp import SlimMcpPlugin
+from google.adk.tools.load_web_page import load_web_page
 from grocery_agent.agent import build_agent
 from grocery_agent.tools.mark_list_ready import mark_list_ready
 from grocery_agent.tools.set_meal_plan import set_meal_plan
@@ -54,5 +57,39 @@ def test_agent_instruction_uses_adk_state_placeholders() -> None:
     assert "{training_plan}" in instruction
 
 
-def test_app_configures_kroger_mcp_plugins() -> None:
-    assert [type(plugin) for plugin in main._app.plugins] == [SlimMcpPlugin]
+def test_build_agent_includes_web_fetch_tool() -> None:
+    grocery_agent = build_agent()
+    assert load_web_page in grocery_agent.tools
+
+
+def test_build_agent_uses_app_plugin_for_web_search_throttling() -> None:
+    grocery_agent = agent.build_agent()
+    assert grocery_agent.before_tool_callback is None
+
+
+def test_app_configures_kroger_and_web_search_plugins() -> None:
+    from agents_shared.plugins.web_search_throttle import WebSearchThrottlePlugin
+
+    assert [type(plugin) for plugin in main._app.plugins] == [
+        SlimMcpPlugin,
+        WebSearchThrottlePlugin,
+    ]
+
+
+def test_register_uses_app_with_configured_plugins(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_build_adk_agent_from_app(*args, **kwargs):
+        captured["app"] = args[0]
+        captured.update(kwargs)
+        return object()
+
+    def fake_add_agent_routes(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(main, "build_adk_agent_from_app", fake_build_adk_agent_from_app)
+    monkeypatch.setattr(main, "add_agent_routes", fake_add_agent_routes)
+
+    main.register(Mock(), Mock())
+
+    assert captured["app"] is main._app

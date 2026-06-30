@@ -1,11 +1,9 @@
-"""Shared MCP toolset factories for common connection patterns."""
+"""HTTP MCP toolset factory."""
 
 from collections.abc import Callable
 
 from google.adk.tools.mcp_tool import McpToolset
 from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
-
-__all__ = ["make_http_mcp_toolset"]
 
 
 def make_http_mcp_toolset(

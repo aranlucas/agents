@@ -1,13 +1,16 @@
 # pyright: reportPrivateUsage=false
-import trends_agent.tools.search as _search_mod
+"""Tests for the shared Brave Search MCP toolset."""
+
+from agents_shared.toolsets import brave as brave_toolset
 from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
-from trends_agent.tools.search import web_search_toolset
 
 
-def test_web_search_toolset_uses_npx_when_binary_absent(monkeypatch) -> None:
+def test_brave_web_search_toolset_uses_npx_when_binary_absent(monkeypatch) -> None:
     monkeypatch.setenv("BRAVE_API_KEY", "brave-token")
-    monkeypatch.setattr(_search_mod.shutil, "which", lambda _: None)
-    toolset = web_search_toolset()
+    monkeypatch.setattr(brave_toolset.shutil, "which", lambda _: None)
+
+    toolset = brave_toolset.brave_web_search_toolset()
+
     params = toolset._connection_params
     assert isinstance(params, StdioConnectionParams)
     assert params.timeout == 30.0
@@ -22,12 +25,14 @@ def test_web_search_toolset_uses_npx_when_binary_absent(monkeypatch) -> None:
     assert toolset._use_mcp_resources is False
 
 
-def test_web_search_toolset_uses_binary_when_installed(monkeypatch) -> None:
+def test_brave_web_search_toolset_uses_binary_when_installed(monkeypatch) -> None:
     monkeypatch.setenv("BRAVE_API_KEY", "brave-token")
     monkeypatch.setattr(
-        _search_mod.shutil, "which", lambda name: f"/usr/local/bin/{name}"
+        brave_toolset.shutil, "which", lambda name: f"/usr/local/bin/{name}"
     )
-    toolset = web_search_toolset()
+
+    toolset = brave_toolset.brave_web_search_toolset()
+
     params = toolset._connection_params
     assert isinstance(params, StdioConnectionParams)
     assert params.timeout == 30.0

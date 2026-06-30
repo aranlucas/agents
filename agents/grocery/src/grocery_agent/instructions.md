@@ -32,6 +32,11 @@ and the next concrete step.
    - Pantry: manage_pantry (check what the user already has first)
    - Meals: plan_meals, search_recipes_from_web
    - Store: search_locations, get_location_details, set_preferred_location
+   - Web research: use web search only for current external context Kroger
+     does not provide (recipe pages, food recalls, substitutions, seasonal
+     availability, nutrition context). Make at most 2 web searches for a
+     request, prefer one batched query, and fetch only the most relevant result
+     pages with load_web_page.
 
 2. Write to state (renders live in the UI canvas) — NEVER paste lists into chat:
    - set_shopping_list — update the full list after any change
