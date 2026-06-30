@@ -43,6 +43,26 @@ def test_get_database_url_normalizes_postgres(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
+async def test_create_agent_services_prefers_d1_when_configured(monkeypatch) -> None:
+    from agents_shared import dependencies
+    from agents_shared.d1_session_service import D1SessionService
+
+    monkeypatch.setenv("CF_ACCOUNT_ID", "acct123")
+    monkeypatch.setenv("CF_API_TOKEN", "tok456")
+    monkeypatch.setenv("CF_D1_DATABASE_ID", "db789")
+    monkeypatch.delenv("CF_R2_BUCKET_NAME", raising=False)
+
+    services = dependencies.create_agent_services()
+
+    try:
+        assert isinstance(services.session_service, D1SessionService)
+        assert "acct123" in services.session_service._base
+        assert "db789" in services.session_service._base
+    finally:
+        await services.engine.dispose()
+
+
+@pytest.mark.asyncio
 async def test_check_database_connection_reports_sqlite_error(
     monkeypatch, tmp_path
 ) -> None:

@@ -47,9 +47,6 @@ def build_orchestrator_agent() -> LlmAgent:
         build_spreadsheet(),
         build_presentation(),
     ]
-    for agent in child_agents:
-        if not agent.sub_agents:
-            agent.mode = "task"
 
     return LlmAgent(
         name="telegram_orchestrator_agent",
