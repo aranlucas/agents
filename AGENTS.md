@@ -285,7 +285,7 @@ for current best free models per provider.
 | Reasoning | Cerebras         | travel, research, oralboards (v1 + workflow root), oralboards eval runner |
 | Standard  | Groq             | fitness, wellness, trends (+ subagent), presentation,                     |
 |           |                  | spreadsheet, excalidraw                                                   |
-| Standard  | NVIDIA NIM       | grocery (`deepseek-ai/deepseek-v4-flash`, 1M ctx)                         |
+| Standard  | NVIDIA           | grocery (`nemotron-3-super-120b-a12b`, 128K ctx)                          |
 | Light     | OpenRouter       | expense, resume                                                           |
 | Light     | Mistral          | oralboards workflow sub-nodes (case_builder, questioner, evaluator,       |
 |           | (free-tier, low  | scorer) — only here because they are low-traffic sub-tasks                |

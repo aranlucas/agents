@@ -21,15 +21,11 @@ from .agent import build_agent
 
 load_dotenv()
 
-# NIM's deepseek-v4-flash endpoint enforces a 262 144-token cap (the model
-# supports 1 M but the free-tier API returns this limit). Register it so
-# LiteLLM can pre-validate and trigger context_window_fallbacks before the
-# request reaches the wire.
 litellm.register_model(
     {
-        "nvidia_nim/deepseek-ai/deepseek-v4-flash": {
-            "max_tokens": 262144,
-            "max_input_tokens": 262144,
+        "nvidia/nemotron-3-super-120b-a12b": {
+            "max_tokens": 131072,
+            "max_input_tokens": 131072,
             "max_output_tokens": 8192,
             "input_cost_per_token": 0,
             "output_cost_per_token": 0,
@@ -47,8 +43,8 @@ GROCERY_PREDICT_STATE = [
 
 _grocery_agent = build_agent()
 
-# Compact session history once it approaches the NIM context cap.
-# token_threshold=150_000 gives plenty of headroom below the 262 K limit;
+# Compact session history once it approaches the NVIDIA context cap.
+# token_threshold=80_000 gives headroom below the 128 K limit;
 # event_retention_size=15 keeps the most recent tool-call/response pairs intact
 # so the agent retains full short-term memory.
 _app = App(
@@ -56,13 +52,9 @@ _app = App(
     root_agent=_grocery_agent,
     plugins=[SlimMcpPlugin(), WebSearchThrottlePlugin()],
     events_compaction_config=EventsCompactionConfig(
-        # Sliding-window fallback: compact every 20 invocations (rarely fires
-        # since the token threshold below triggers first in practice).
         compaction_interval=20,
         overlap_size=2,
-        # Token-based trigger: compact once the session history hits 150 K —
-        # well under the NIM endpoint's 262 K cap, so we never hit the limit.
-        token_threshold=150_000,
+        token_threshold=80_000,
         event_retention_size=15,
         summarizer=LlmEventSummarizer(
             llm=LiteLlm(model="groq/llama-3.3-70b-versatile"),
