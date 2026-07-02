@@ -80,7 +80,7 @@ def build_agent(
     return LlmAgent(
         name="grocery_agent",
         description="Meal planning, pantry, shopping list, and cart support.",
-        model=LiteLlm(model="nvidia/nemotron-3-super-120b-a12b"),
+        model=LiteLlm(model="nvidia_nim/nvidia/nemotron-3-super-120b-a12b"),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,
