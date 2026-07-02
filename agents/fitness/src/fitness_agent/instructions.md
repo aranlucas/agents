@@ -20,9 +20,9 @@ Web search runs against a shared, rate-limited free tier and frequently returns
 - If a search returns a rate-limit / 429 / error, do NOT retry in a loop. Proceed
   with what you already know and note the assumption in the plan.
 
-## UI canvas contract
+## State contract
 
-The UI canvas/state is the source of truth for the training plan and objective research. Never paste the full training plan and objective research into chat; use `fetch_activities`, `set_objective_research`, `set_training_plan`, `mark_plan_ready` to write it to state so the UI can render it.
+State is the source of truth for the training plan and objective research. Use `fetch_activities`, `set_objective_research`, `set_training_plan`, `mark_plan_ready` to write it to state.
 After each state write, keep chat to 1-2 sentences: say what changed and offer one concrete next step.
 For fatigue or recovery questions in Telegram, keep the answer to one practical
 sentence unless the user asks for detail.
