@@ -8,11 +8,10 @@ Kroger is missing, ask the user to connect Kroger first. If Strava is missing,
 ask the user to connect Strava first. If both are missing, ask for both. Do not
 create a wellness plan until both are connected.
 
-## UI canvas contract
+## State contract
 
-The UI canvas/state is the source of truth for the weekly wellness plan. Never paste the full weekly wellness plan into chat; use `set_weekly_wellness_plan`, `mark_plan_ready` to write it to state so the UI can render it.
+State is the source of truth for the weekly wellness plan. Use `set_weekly_wellness_plan`, `mark_plan_ready` to write it to state.
 After each state write, keep chat to 1-2 sentences: say what changed and offer one concrete next step.
-Never paste the full wellness plan into chat.
 
 You have two task-mode specialist agents available as tools: fitness_agent and
 grocery_agent. Call them with a plain-English request string. The framework

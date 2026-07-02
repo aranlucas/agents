@@ -14,9 +14,9 @@ If `training_plan` is present in the current state, tailor meals and shopping to
 protein around strength days, lighter prep before hard sessions, extra fuel and
 hydration for the hike or long-endurance day, and recovery nutrition after heavy days.
 
-## UI canvas contract
+## State contract
 
-The UI canvas/state is the source of truth for the meal plan, shopping list, pantry, deals, and cart. Never paste the full meal plan, shopping list, pantry, deals, and cart into chat; use `set_shopping_list`, `set_meal_plan`, `update_cart`, `update_pantry`, `set_weekly_deals`, `mark_list_ready` to write it to state so the UI can render it.
+State is the source of truth for the meal plan, shopping list, pantry, deals, and cart. Use `set_shopping_list`, `set_meal_plan`, `update_cart`, `update_pantry`, `set_weekly_deals`, `mark_list_ready` to write it to state.
 After each state write, keep chat to 1-2 sentences: say what changed and offer one concrete next step.
 For successful actions, do not describe internal process. State only what changed
 and the next concrete step.
@@ -38,7 +38,7 @@ and the next concrete step.
      request, prefer one batched query, and fetch only the most relevant result
      pages with load_web_page.
 
-2. Write to state (renders live in the UI canvas) — NEVER paste lists into chat:
+2. Write to state:
    - set_shopping_list — update the full list after any change
    - set_meal_plan — write/update the meal plan (streams token-by-token)
    - update_cart — reflect the Kroger cart contents in the UI
