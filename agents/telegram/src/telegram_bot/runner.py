@@ -966,7 +966,11 @@ def _event_texts(event: Event) -> list[str]:
     parts = event.content.parts if event.content else None
     if not parts:
         return []
-    return [part.text.strip() for part in parts if part.text]
+    return [
+        part.text.strip()
+        for part in parts
+        if part.text and getattr(part, "thought", None) is not True
+    ]
 
 
 def _is_subagent_author(author: str | None) -> bool:
