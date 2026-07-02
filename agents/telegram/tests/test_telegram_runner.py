@@ -581,6 +581,55 @@ async def test_handle_message_sends_deduped_text(
 
 
 @pytest.mark.asyncio
+async def test_handle_message_strips_reasoning_parts(
+    services: AgentServices,
+    orchestrator_agent: Mock,
+) -> None:
+    """Reasoning (thought=True) parts are dropped; only the final answer is sent."""
+    from google.genai import types
+
+    token = await create_link_token(
+        services.engine,
+        telegram_user_id="456",
+        telegram_chat_id="123",
+    )
+    assert (
+        await consume_link_token(
+            services.engine, token=token, clerk_user_id="clerk-user"
+        )
+        is not None
+    )
+    reply_target = FakeReplyTarget(chat_id=123)
+
+    async def credential_state_loader(
+        clerk_user_id: str,
+    ) -> tuple[dict[str, object], tuple[str, ...]]:
+        return {"user_id": clerk_user_id}, ()
+
+    runner = _build(services, credential_loader=credential_state_loader)
+
+    async def fake_run_async(*, user_id, session_id, new_message, state_delta):
+        yield _Event(
+            content=types.Content(
+                role="model",
+                parts=[
+                    types.Part(text="Let me think this through...", thought=True),
+                    types.Part(text="Here is the answer."),
+                ],
+            )
+        )
+
+    runner.runner.run_async = fake_run_async  # type: ignore[method-assign]
+
+    await runner.handle_message(_message("hi", reply_target))
+
+    assert (123, r"Here is the answer\.") in reply_target.messages
+    assert not any(
+        "Let me think this through" in text for _, text in reply_target.messages
+    )
+
+
+@pytest.mark.asyncio
 async def test_handle_message_reports_runner_errors(
     services: AgentServices,
     orchestrator_agent: Mock,
