@@ -23,7 +23,7 @@ load_dotenv()
 
 litellm.register_model(
     {
-        "nvidia/nemotron-3-super-120b-a12b": {
+        "nvidia_nim/nvidia/nemotron-3-super-120b-a12b": {
             "max_tokens": 131072,
             "max_input_tokens": 131072,
             "max_output_tokens": 8192,
