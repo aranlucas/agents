@@ -756,6 +756,66 @@ async def test_handle_message_emits_nonfinal_subagent_text_as_progress_messages(
 
 
 @pytest.mark.asyncio
+async def test_handle_message_chunks_oversized_subagent_text(
+    services: AgentServices,
+    orchestrator_agent: Mock,
+) -> None:
+    """A sub-agent that dumps a huge blob of text must be split into chunks
+
+    that each stay under Telegram's 4096-char message limit, instead of
+    being forwarded as a single oversized message (which Telegram's API
+    rejects with "Message is too long").
+    """
+    from google.genai import types
+
+    token = await create_link_token(
+        services.engine,
+        telegram_user_id="456",
+        telegram_chat_id="123",
+    )
+    assert (
+        await consume_link_token(
+            services.engine, token=token, clerk_user_id="clerk-user"
+        )
+        is not None
+    )
+    reply_target = FakeReplyTarget(chat_id=123)
+
+    async def credential_state_loader(
+        clerk_user_id: str,
+    ) -> tuple[dict[str, object], tuple[str, ...]]:
+        return {"user_id": clerk_user_id}, ()
+
+    runner = _build(services, credential_loader=credential_state_loader)
+
+    huge_text = "line of grocery state\n" * 400  # well over TELEGRAM_MESSAGE_LIMIT
+
+    async def fake_run_async(*, user_id, session_id, new_message, state_delta):
+        yield _Event(
+            author="grocery_agent",
+            content=types.Content(
+                role="model",
+                parts=[types.Part(text=huge_text)],
+            ),
+        )
+        yield _Event(
+            author="telegram_orchestrator_agent",
+            content=types.Content(
+                role="model",
+                parts=[types.Part(text="Your grocery plan is ready.")],
+            ),
+        )
+
+    runner.runner.run_async = fake_run_async  # type: ignore[method-assign]
+
+    await runner.handle_message(_message("plan food", reply_target))
+
+    assert all(len(text) <= TELEGRAM_MESSAGE_LIMIT for _, text in reply_target.messages)
+    assert len(reply_target.messages) > 2
+    assert reply_target.messages[-1] == (123, r"Your grocery plan is ready\.")
+
+
+@pytest.mark.asyncio
 async def test_handle_message_times_out_stalled_agent_run(
     services: AgentServices,
     orchestrator_agent: Mock,

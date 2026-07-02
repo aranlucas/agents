@@ -1,5 +1,9 @@
 {
   "*.{js,jsx,ts,tsx,mjs,cjs}": ["oxlint --fix", "oxfmt --write"],
   "*.{json,jsonc,css,md,mdx,yml,yaml}": "oxfmt --write",
-  "*.py": ["uv run ruff check --fix agents", "uv run ruff format agents", "uv run pyright"]
+  "*.py": [
+    "uv run ruff check --fix agents",
+    "uv run ruff format agents",
+    "bash -c 'uv run pyright'"
+  ]
 }

@@ -561,11 +561,12 @@ class TelegramRunner:
         ):
             texts = _event_texts(event)
             for text in texts:
-                await self._send_reply(
-                    message,
-                    _format_agent_message(event.author, text),
-                    parse_mode=ParseMode.MARKDOWN_V2,
-                )
+                for chunk in chunk_text(_format_agent_message(event.author, text)):
+                    await self._send_reply(
+                        message,
+                        chunk,
+                        parse_mode=ParseMode.MARKDOWN_V2,
+                    )
         elif event.is_final_response() and event.content and event.content.parts:
             response_texts.extend(_event_texts(event))
 
@@ -772,9 +773,9 @@ class TelegramRunner:
         return True
 
     async def _send_markdown(self, message: TelegramMessage, text: str) -> None:
-        chunks = [_escape_markdownv2(chunk) for chunk in chunk_text(text)]
-        first = chunks[0] if chunks else _escape_markdownv2("Done.")
-        await self._send_reply(message, first, parse_mode=ParseMode.MARKDOWN_V2)
+        escaped = _escape_markdownv2(text) if text else _escape_markdownv2("Done.")
+        chunks = chunk_text(escaped)
+        await self._send_reply(message, chunks[0], parse_mode=ParseMode.MARKDOWN_V2)
         for chunk in chunks[1:]:
             await self._send_reply(message, chunk, parse_mode=ParseMode.MARKDOWN_V2)
 
