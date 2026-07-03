@@ -99,6 +99,31 @@ describe("POST /api/telegram/auth", () => {
     });
   });
 
+  it("signs into the linked account when the shadow user carries linked_clerk_user_id", async () => {
+    verifyInitDataMock.mockReturnValue({ id: 99, first_name: "Bob" });
+    clerkClientMock.users.getUserList.mockResolvedValue({
+      data: [
+        {
+          id: "user_shadow_789",
+          privateMetadata: { linked_clerk_user_id: "user_real_123" },
+        },
+      ],
+    });
+    clerkClientMock.signInTokens.createSignInToken.mockResolvedValue({ token: "sit_linked" });
+
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ initData: "valid_init_data" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toEqual({ token: "sit_linked" });
+
+    expect(clerkClientMock.users.createUser).not.toHaveBeenCalled();
+    expect(clerkClientMock.signInTokens.createSignInToken).toHaveBeenCalledWith({
+      userId: "user_real_123",
+      expiresInSeconds: 300,
+    });
+  });
+
   it("returns 500 when Clerk throws", async () => {
     verifyInitDataMock.mockReturnValue({ id: 1, first_name: "X" });
     clerkClientMock.users.getUserList.mockRejectedValue(new Error("clerk down"));

@@ -23,6 +23,7 @@ from agents_shared.plugins.slim_mcp import SlimMcpPlugin
 from agents_shared.telegram_auth import (
     create_link_token,
     get_linked_clerk_user_id,
+    sync_unlink_to_clerk,
     telegram_credential_state,
     unlink_telegram_user,
 )
@@ -202,10 +203,14 @@ class TelegramAuth:
         return f"{self.link_base_url}{separator}{urlencode({'token': token})}"
 
     async def unlink(self, telegram_user_id: int) -> bool:
-        return await unlink_telegram_user(
+        unlinked = await unlink_telegram_user(
             self.engine,
             telegram_user_id=str(telegram_user_id),
         )
+        # Also drop the Clerk-side mirror; otherwise the external_id fallback
+        # in get_linked_clerk_user_id would silently re-link the sender.
+        await sync_unlink_to_clerk(telegram_user_id=str(telegram_user_id))
+        return unlinked
 
 
 @dataclass
