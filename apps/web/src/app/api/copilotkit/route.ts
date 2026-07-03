@@ -9,7 +9,6 @@ import { getKrogerAccessToken } from "@/lib/kroger-token";
 import { getStravaAccessToken } from "@/lib/strava-token";
 import { AGENT_BACKEND_PATHS, AGENT_ORDER } from "@/components/chat/agents/registry";
 import { GroqTranscriptionService } from "@/lib/copilotkit/groq-transcription";
-import { GatewayBackedRunner } from "@/lib/copilotkit/gateway-backed-runner";
 import { isOfflineAgentTestMode } from "@/lib/offline-mode";
 import { isPublicCopilotPath } from "./guard";
 import { handleOfflineCopilotKitRequest } from "./offline";
@@ -43,7 +42,6 @@ function createRuntime(): CopilotSseRuntime {
         }),
       ]),
     ),
-    runner: new GatewayBackedRunner(agentUrls),
     transcriptionService: new GroqTranscriptionService(env.GROQ_API_KEY ?? ""),
     a2ui: A2UI_RUNTIME_CONFIG,
     debug: env.COPILOTKIT_DEBUG,
