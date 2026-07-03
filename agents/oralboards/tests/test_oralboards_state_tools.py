@@ -6,7 +6,11 @@ from types import SimpleNamespace
 
 from agents_shared.state import make_state_initializer
 from google.adk.tools.function_tool import FunctionTool
-from oralboards_agent.agent import OralBoardsState, build_agent, build_telegram_agent
+from oralboards_agent.agent import (
+    OralBoardsState,
+    build_eval_agent,
+    build_telegram_agent,
+)
 from oralboards_agent.tools.append_exchange import append_exchange
 from oralboards_agent.tools.read_doc import read_doc
 from oralboards_agent.tools.search_docs import search_docs
@@ -108,7 +112,7 @@ def test_state_initializer_preserves_existing_state_and_adds_defaults() -> None:
 
 
 def test_agent_instruction_uses_adk_state_placeholders() -> None:
-    agent = build_agent()
+    agent = build_eval_agent()
     instruction = agent.instruction
 
     assert isinstance(instruction, str)
@@ -132,7 +136,7 @@ def test_telegram_gemini_agent_has_http_retries() -> None:
 
 
 def test_agent_instruction_includes_loading_step_protocol() -> None:
-    agent = build_agent()
+    agent = build_eval_agent()
     instruction = agent.instruction
     assert isinstance(instruction, str)
     assert "set_loading_step" in instruction
@@ -141,7 +145,7 @@ def test_agent_instruction_includes_loading_step_protocol() -> None:
 
 
 def test_agent_instruction_requires_speaking_questions_before_chat() -> None:
-    agent = build_agent()
+    agent = build_eval_agent()
     instruction = agent.instruction
 
     assert isinstance(instruction, str)
@@ -154,7 +158,7 @@ def test_agent_instruction_requires_speaking_questions_before_chat() -> None:
 
 def test_instruction_grounded_in_oce_guide() -> None:
     """Instruction reflects the ABPD OCE guide, not the old 4a-4e model."""
-    agent = build_agent()
+    agent = build_eval_agent()
     instruction = agent.instruction
     assert isinstance(instruction, str)
 

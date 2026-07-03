@@ -2,7 +2,6 @@
 
 from pathlib import Path
 
-from ag_ui_adk import AGUIToolset
 from agents_shared.state import make_state_initializer
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
@@ -53,20 +52,8 @@ class OralBoardsState(BaseModel):
 # ---------------------------------------------------------------------------
 # Agent factory
 # ---------------------------------------------------------------------------
-def _build_agent(*, include_agui: bool, model: BaseLlm | None = None) -> LlmAgent:
-    """Fresh LlmAgent instance for the oral-boards examiner."""
-    tools: list[object] = [
-        FunctionTool(search_docs),
-        FunctionTool(read_doc),
-        FunctionTool(set_case),
-        FunctionTool(set_phase),
-        FunctionTool(set_loading_step),
-        FunctionTool(append_exchange),
-        FunctionTool(set_score_card),
-    ]
-    if include_agui:
-        tools.append(AGUIToolset())
-
+def _build_agent(*, model: BaseLlm | None = None) -> LlmAgent:
+    """Chat-only monolithic examiner (Telegram surface)."""
     return LlmAgent(
         name="oralboards_agent",
         description="Pediatric dentistry oral-board practice.",
@@ -77,17 +64,20 @@ def _build_agent(*, include_agui: bool, model: BaseLlm | None = None) -> LlmAgen
         state_schema=OralBoardsState,
         instruction=_INSTRUCTION,
         before_agent_callback=make_state_initializer(OralBoardsState),
-        tools=tools,
+        tools=[
+            FunctionTool(search_docs),
+            FunctionTool(read_doc),
+            FunctionTool(set_case),
+            FunctionTool(set_phase),
+            FunctionTool(set_loading_step),
+            FunctionTool(append_exchange),
+            FunctionTool(set_score_card),
+        ],
     )
-
-
-def build_agent() -> LlmAgent:
-    return _build_agent(include_agui=True)
 
 
 def build_telegram_agent() -> LlmAgent:
     return _build_agent(
-        include_agui=False,
         model=Gemini(
             model="gemini-3.1-flash-lite",
             retry_options=GEMINI_RETRY_OPTIONS,

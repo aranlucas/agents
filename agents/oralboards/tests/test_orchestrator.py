@@ -97,3 +97,16 @@ def test_build_orchestrator_exposes_sub_agents_for_agui() -> None:
         "evaluator",
         "scorer",
     ]
+
+
+def test_phase_prompts_keep_state_driven_question_contract() -> None:
+    from oralboards_agent.phases import build_case_builder, build_questioner
+
+    case_builder = build_case_builder()
+    questioner = build_questioner()
+
+    assert "ask_question" not in case_builder.static_instruction
+    assert "set_phase('presenting')" in case_builder.static_instruction
+    assert "ask_question" not in questioner.static_instruction
+    assert questioner.output_key == "current_question"
+    assert questioner.tools == []
