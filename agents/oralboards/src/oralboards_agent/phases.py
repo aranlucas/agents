@@ -86,6 +86,21 @@ _BLUEPRINT = (
     "Score each skillset independently. Do NOT compute a weighted composite or invent /100 or /5 scores."
 )
 
+_VIGNETTE_RULES = (
+    "## Vignette rules\n"
+    "Audience: the candidate under examination. Write the vignette TO them in\n"
+    "second person ('…presents to your office', 'the mother tells you').\n"
+    "Reveal only the exam stimulus — what an examiner presents before questioning:\n\n"
+    "**Patient:** age, sex, and chief complaint / reason for the visit\n"
+    "**History:** medical, dental, social, dietary — as reported\n"
+    "**Findings:** objective clinical and radiographic observations\n\n"
+    "Report findings neutrally; never interpret them — labeling a case 'classic\n"
+    "for ECC' hands the candidate the answer. Withhold anything the candidate\n"
+    "must supply during questioning: diagnosis, risk categorization, management\n"
+    "plan, preventive/recall advice, citations, discussion points. Supporting\n"
+    "source text goes in case_passages, never in the vignette."
+)
+
 _LOADING_STEPS = (
     "## Loading step protocol\n"
     "Call set_loading_step at each of these moments:\n"
@@ -119,6 +134,7 @@ def build_case_builder() -> LlmAgent:
             "Your ONLY job is to build and present a new case vignette.\n\n"
             f"{_CANVAS_HINT}\n\n"
             f"{_SOURCE_RULES}\n\n"
+            f"{_VIGNETTE_RULES}\n\n"
             f"{_LOADING_STEPS}\n\n"
             "## Your task\n"
             "1. Pick a topic from the user's request or choose one yourself.\n"
@@ -126,7 +142,9 @@ def build_case_builder() -> LlmAgent:
             "   (broad + collection-filtered, in parallel). Each result includes a 'passage'\n"
             "   field with the most relevant text — use it directly, no read_doc needed.\n"
             "3. Call set_loading_step('Composing case vignette…'), then call set_case with:\n"
-            "   - case: A concise markdown vignette grounded in the search passages.\n"
+            "   - case: A concise candidate-facing markdown vignette grounded in the search\n"
+            "     passages, following the vignette rules above (presentation only — no\n"
+            "     assessment, plan, or discussion points).\n"
             "   - case_sources: [{docid, filepath, title, collection}] from results.\n"
             "   - case_passages: the 'passage' strings from the top search results\n"
             "     (so the evaluator can ground feedback without re-searching).\n"

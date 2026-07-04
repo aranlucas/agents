@@ -9,7 +9,14 @@ from ._types import CaseSource
 def set_case(
     tool_context: ToolContext,
     case: Annotated[
-        str, Field(description="Grounded case vignette in concise markdown")
+        str,
+        Field(
+            description=(
+                "Candidate-facing case vignette in concise markdown: "
+                "presentation, history, and objective findings only — withhold "
+                "diagnosis, management plan, and discussion points"
+            )
+        ),
     ],
     case_sources: Annotated[
         list[CaseSource],
