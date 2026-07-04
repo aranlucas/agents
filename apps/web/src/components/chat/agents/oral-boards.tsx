@@ -135,22 +135,28 @@ function SetCaseToolCall({ status }: { status: ToolStatus }) {
  * and a default fallback for all other agent tool calls.
  */
 export function OralBoardsExtension({ agentId }: { agentId: AgentId }) {
-  const { setCurrentQuestion } = useOralBoardsQuestion();
+  const { setCurrentQuestion, clearCurrentQuestion } = useOralBoardsQuestion();
   const { agent } = useAgent({ agentId, updates: [UseAgentUpdate.OnStateChanged] });
   const lastSpokenQuestion = useRef("");
   const currentQuestion = getCurrentQuestion(agent?.state);
 
   // Seed the in-memory question context from agent state on mount / after
   // refresh, so the exam panel shows the last question without waiting for the
-  // next ask_question tool call.
+  // next ask_question tool call. Also clear it when state's current_question
+  // goes empty (e.g. append_exchange resets it while scoring), so the panel
+  // doesn't keep showing an already-answered question.
   useEffect(() => {
-    if (!currentQuestion) return;
+    if (!currentQuestion) {
+      clearCurrentQuestion();
+      lastSpokenQuestion.current = "";
+      return;
+    }
     setCurrentQuestion(currentQuestion);
     if (currentQuestion !== lastSpokenQuestion.current) {
       lastSpokenQuestion.current = currentQuestion;
       void speakQuestion(currentQuestion);
     }
-  }, [currentQuestion, setCurrentQuestion]);
+  }, [currentQuestion, setCurrentQuestion, clearCurrentQuestion]);
 
   useFrontendTool(
     {

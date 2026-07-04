@@ -49,7 +49,6 @@ const AGENT_EXTENSIONS: Partial<Record<AgentId, AgentExtension>> = {
   travel: { Mount: TravelHooks },
   grocery: { Mount: GroceryHooks },
   "oral-boards": { Mount: OralBoardsExtension },
-  "oral-boards-v2": { Mount: OralBoardsExtension },
   trends: { copilotKitProps: { a2ui: TRENDS_A2UI_CONFIG } },
 };
 

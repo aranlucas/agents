@@ -8,7 +8,6 @@ export type AgentTheme =
   | "wellness"
   | "expense"
   | "oral-boards"
-  | "oral-boards-v2"
   | "resume"
   | "research"
   | "spreadsheet"
@@ -62,12 +61,6 @@ export const AGENT_THEMES: Record<
   },
   "oral-boards": {
     label: "Oral Boards",
-    colorVar: "var(--oral-boards)",
-    softVar: "var(--oral-boards-soft)",
-    contrastVar: "var(--oral-boards-contrast)",
-  },
-  "oral-boards-v2": {
-    label: "Oral Boards v2",
     colorVar: "var(--oral-boards)",
     softVar: "var(--oral-boards-soft)",
     contrastVar: "var(--oral-boards-contrast)",

@@ -280,18 +280,19 @@ Free-tier model IDs and rate limits change frequently. Check
 [awesome-freellm-apis](https://github.com/open-free-llm-api/awesome-freellm-apis)
 for current best free models per provider.
 
-| Tier      | Primary provider | Agents                                                                    |
-| --------- | ---------------- | ------------------------------------------------------------------------- |
-| Reasoning | Cerebras         | travel, research, oralboards (v1 + workflow root), oralboards eval runner |
-| Standard  | Groq             | fitness, wellness, trends (+ subagent), presentation,                     |
-|           |                  | spreadsheet, excalidraw                                                   |
-| Standard  | NVIDIA           | grocery (`nemotron-3-super-120b-a12b`, 128K ctx)                          |
-| Light     | OpenRouter       | expense, resume                                                           |
-| Light     | Mistral          | oralboards workflow sub-nodes (case_builder, questioner, evaluator,       |
-|           | (free-tier, low  | scorer) — only here because they are low-traffic sub-tasks                |
-| A2UI      | Gemini           | trends A2UI rendering subagent (bypasses LiteLLM entirely — uses          |
-|           | (direct ADK)     | `Gemini(model="gemini-2.5-flash")` directly because Gemini can consume    |
-|           |                  | `reasoning_content` from prior turns that other providers reject.         |
+| Tier      | Primary provider | Agents                                                                 |
+| --------- | ---------------- | ---------------------------------------------------------------------- |
+| Reasoning | Cerebras         | travel, research, oralboards orchestrator case_builder phase           |
+| Standard  | Groq             | fitness, wellness, trends (+ subagent), presentation,                  |
+|           |                  | spreadsheet, excalidraw, oralboards orchestrator questioner phase      |
+| Standard  | NVIDIA           | grocery (`nemotron-3-super-120b-a12b`, 128K ctx)                       |
+| Light     | OpenRouter       | expense, resume                                                        |
+| Light     | Mistral          | oralboards orchestrator evaluator phase (`mistral-large-latest`),      |
+|           | (free-tier, low  | scorer phase + GEPA `optimizer_model` (both `mistral-medium-latest`),  |
+|           |                  | and the eval-harness agent (`mistral-small-latest`)                    |
+| A2UI      | Gemini           | trends A2UI rendering subagent (bypasses LiteLLM entirely — uses       |
+|           | (direct ADK)     | `Gemini(model="gemini-2.5-flash")` directly because Gemini can consume |
+|           |                  | `reasoning_content` from prior turns that other providers reject.      |
 
 ## Conventions
 

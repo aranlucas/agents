@@ -1,19 +1,8 @@
-"""Oral boards examiner — Workflow-based agent.
+"""Phase sub-agents for the oral-boards examiner.
 
-Reuses the state model, tools, and search functions from agent.py.
-Flow is enforced via ADK Workflow graph:
-
-    case_builder  →  questioner  →  evaluator  →  router  →  scorer
-
-The router checks whether ``complete_examination`` was called by the
-evaluator and either loops back to the questioner or proceeds to the scorer.
-
-- The frontend ``ask_question`` HITL tool pauses the invocation after each
-  question so the candidate must respond before the next step runs.
-- ``complete_examination`` sets a state flag that the router reads.
+Each phase is a small, single-purpose LlmAgent. Deterministic routing between
+them lives in orchestrator.py; nothing here knows about the routing.
 """
-
-from typing import Any
 
 from agents_shared.state import make_state_initializer, make_state_instruction
 from agents_shared.tools import (
@@ -21,97 +10,20 @@ from agents_shared.tools import (
     on_model_error_callback,
     strip_thinking_before_model,
 )
-from google.adk import Workflow
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import FunctionTool, ToolContext
-from google.adk.workflow import START, FunctionNode
-from pydantic import ConfigDict, Field
 
 from .agent import (
     OralBoardsState,
     append_exchange,
+    ask_probe,
     search_docs,
     set_case,
     set_loading_step,
     set_phase,
     set_score_card,
 )
-
-
-class _WorkflowWithSubAgents(Workflow):
-    """Workflow subclass that exposes graph nodes as ``sub_agents`` for ag_ui_adk.
-
-    ag_ui_adk's ``_shallow_copy_agent_tree`` and ``_update_agent_tools_recursive``
-    traverse ``sub_agents`` but not ``Workflow.graph.nodes``.  Without this shim,
-    ``AGUIToolset`` placeholders inside Workflow nodes are never replaced with the
-    per-run ``ClientProxyToolset`` and ``ask_question`` raises
-    ``ValueError: Tool 'ask_question' not found``.
-
-    This subclass exposes the graph's ``LlmAgent`` nodes via ``sub_agents`` and
-    syncs any write-back into ``graph.nodes`` so that the Workflow executor (which
-    calls ``_get_static_node_by_name`` → iterates ``graph.nodes``) uses the updated,
-    tool-replaced copies.
-
-    ``model_copy`` also clones the graph so each run has its own independent nodes
-    list — preventing concurrent requests from mutating the shared singleton.
-    """
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    # ADK's BaseAgent.root_agent walks parent_agent upward until None.
-    # Workflow (BaseNode) has no parent_agent, so we declare it here so the
-    # traversal terminates at the Workflow root instead of raising AttributeError.
-    parent_agent: Any = Field(default=None, exclude=True)
-
-    def model_post_init(self, __context: Any, /) -> None:
-        super().model_post_init(__context)
-        nodes = [
-            n for n in (self.graph.nodes if self.graph else []) if hasattr(n, "tools")
-        ]
-        object.__setattr__(self, "_sub_agents", nodes)
-
-    def __setattr__(self, name: str, value: Any) -> None:
-        if name == "sub_agents":
-            object.__setattr__(self, "_sub_agents", value)
-            # Sync the per-run copies back into graph.nodes so the Workflow
-            # executor's _get_static_node_by_name finds them (lookup is by name).
-            if self.graph is not None and value:
-                name_to_new = {n.name: n for n in value if hasattr(n, "name")}
-                object.__setattr__(
-                    self.graph,
-                    "nodes",
-                    [name_to_new.get(n.name, n) for n in self.graph.nodes],
-                )
-        else:
-            super().__setattr__(name, value)
-
-    @property
-    def sub_agents(self) -> list[Any]:
-        return getattr(self, "_sub_agents", [])
-
-    def model_copy(
-        self, *, deep: bool = False, **kwargs: Any
-    ) -> _WorkflowWithSubAgents:
-        copied: _WorkflowWithSubAgents = super().model_copy(deep=deep, **kwargs)
-        if copied.graph is not None:
-            # Give the copy its own Graph with an independent nodes list so the
-            # sub_agents setter can update graph.nodes without touching the
-            # shared original.  Pydantic's model_copy does NOT call
-            # model_post_init, so Graph.model_post_init's "nodes already set"
-            # guard never fires and _terminal_node_names is correctly carried
-            # over via __pydantic_private__.
-            fresh_graph = copied.graph.model_copy(deep=False)
-            object.__setattr__(fresh_graph, "nodes", list(fresh_graph.nodes))
-            object.__setattr__(copied, "graph", fresh_graph)
-        nodes = [
-            n
-            for n in (copied.graph.nodes if copied.graph else [])
-            if hasattr(n, "tools")
-        ]
-        object.__setattr__(copied, "_sub_agents", nodes)
-        return copied
-
 
 _STATE_INSTRUCTION = make_state_instruction(
     OralBoardsState, header="Current oral-boards state"
@@ -197,36 +109,9 @@ def complete_examination(tool_context: ToolContext) -> dict[str, object]:
     return {"status": "success", "message": "Interview complete."}
 
 
-def questioning_router(ctx: ToolContext) -> str:
-    """Read the interview_complete flag and set the route accordingly.
-
-    Returns:
-        ``""`` (the route is communicated via ``ctx.route``, not the return value).
-    """
-    if ctx.state.get("interview_complete"):
-        ctx.route = "complete"
-    else:
-        ctx.route = "continue"
-    return ""
-
-
-def workflow_entry_router(ctx: ToolContext) -> str:
-    """Route a new invocation from the persisted exam phase."""
-    status = ctx.state.get("status", "idle")
-    if status == "feedback":
-        ctx.route = "evaluate"
-    elif status == "complete":
-        ctx.route = "complete"
-    elif status == "idle" or not ctx.state.get("case"):
-        ctx.route = "build"
-    else:
-        ctx.route = "question"
-    return ""
-
-
 def build_case_builder() -> LlmAgent:
     return LlmAgent(
-        **{**_AGENT_DEFAULTS, "model": LiteLlm(model="mistral/mistral-medium-latest")},
+        **{**_AGENT_DEFAULTS, "model": LiteLlm(model="cerebras/gpt-oss-120b")},
         name="case_builder",
         include_contents="none",
         static_instruction=(
@@ -260,7 +145,7 @@ def build_case_builder() -> LlmAgent:
 
 def build_questioner() -> LlmAgent:
     return LlmAgent(
-        **{**_AGENT_DEFAULTS, "model": LiteLlm(model="mistral/mistral-medium-latest")},
+        **{**_AGENT_DEFAULTS, "model": LiteLlm(model="groq/llama-3.3-70b-versatile")},
         name="questioner",
         include_contents="none",
         output_key="current_question",
@@ -291,9 +176,9 @@ def build_questioner() -> LlmAgent:
     )
 
 
-def _build_evaluator() -> LlmAgent:
+def build_evaluator() -> LlmAgent:
     return LlmAgent(
-        **{**_AGENT_DEFAULTS, "model": LiteLlm(model="mistral/mistral-medium-latest")},
+        **{**_AGENT_DEFAULTS, "model": LiteLlm(model="mistral/mistral-large-latest")},
         name="evaluator",
         static_instruction=(
             "You are an ABPD OCE practice examiner evaluating a candidate's answer.\n\n"
@@ -301,10 +186,31 @@ def _build_evaluator() -> LlmAgent:
             f"{_BLUEPRINT}\n\n"
             f"{_LOADING_STEPS}\n\n"
             "## Clinical grounding\n"
-            "The case_passages field in state contains the relevant source text retrieved\n"
-            "when the case was built. Use it to verify the candidate's answer and write the\n"
-            "ideal response. Do not re-search unless the answer raises a topic clearly\n"
-            "outside those passages.\n\n"
+            "The case_passages field in state contains the source text retrieved when the\n"
+            "case was built. Ground feedback and the ideal response in it whenever it\n"
+            "covers the topic.\n"
+            "Re-search with search_docs when — and only when — the candidate's answer\n"
+            "raises clinical material the stored passages do not cover (a drug, technique,\n"
+            "guideline, or complication outside the case's original scope). Fire one broad\n"
+            "and one collection-filtered search_docs call in parallel, use the returned\n"
+            "'passage' fields, and add the new sources to the exchange's citations.\n"
+            "Never fill in clinical content from memory. If neither the stored passages\n"
+            "nor a re-search covers the point, say so in the feedback instead of\n"
+            "improvising.\n\n"
+            "## Probing (one per question, max)\n"
+            "If the candidate's answer is partial — it would score 2 because something\n"
+            "specific is missing or undefended — you MAY call ask_probe with ONE follow-up\n"
+            "question targeting exactly that gap, instead of scoring immediately. Real\n"
+            "examiners probe; use it when one more sentence from the candidate would\n"
+            "separate a 2 from a 3.\n"
+            "Rules:\n"
+            "- Check state: if active_probe is non-empty, the probe was already asked and\n"
+            "  the latest user message answers it. You MUST now call append_exchange,\n"
+            "  treating the original answer plus the probe answer together as the\n"
+            '  candidate\'s response (answer = original answer + " / " + probe answer).\n'
+            "- Never probe an answer that is clearly a 1 or clearly a 3 — score it.\n"
+            "- After calling ask_probe, end your turn with no chat text. The panel\n"
+            "  displays the probe.\n\n"
             "## Your task\n"
             "The active question is in state: {current_question}\n"
             "The candidate's answer is the latest user message. Evaluate that answer:\n"
@@ -315,7 +221,15 @@ def _build_evaluator() -> LlmAgent:
             "   - answer — the candidate's verbatim answer\n"
             "   - skillset — the blueprint domain assessed (exact domain name)\n"
             "   - skill — remember, understand_apply, or analyze_evaluate\n"
-            "   - feedback — markdown starting with **Skillset:** <domain> · <skill level>, then cited feedback\n"
+            "   - feedback — markdown with this exact structure:\n"
+            "     **Skillset:** <domain> · <skill level>\n"
+            "     **What you said:** one sentence crediting what was correct or relevant.\n"
+            "     **What was missing:** the specific gap that set the score, each point\n"
+            "     backed by a short direct quote from the case passages or re-searched\n"
+            '     passages ("...") with its source title.\n'
+            "     **What a 3 sounds like:** 2-3 sentences a full-marks candidate would\n"
+            "     actually say — concrete, committed, and clinically sequenced. Do not\n"
+            "     restate the ideal_response verbatim; this is the spoken version.\n"
             "   - ideal_response — the model answer, grounded in the case passages\n"
             "   - score — 1-3 practice score\n"
             "   - citations — the CaseSource chips from case_sources in state\n"
@@ -327,6 +241,8 @@ def _build_evaluator() -> LlmAgent:
             "will generate the final score card. If more skillsets remain, do NOT call it."
         ),
         tools=[
+            search_docs,
+            ask_probe,
             append_exchange,
             FunctionTool(complete_examination),
             set_loading_step,
@@ -334,7 +250,7 @@ def _build_evaluator() -> LlmAgent:
     )
 
 
-def _build_scorer() -> LlmAgent:
+def build_scorer() -> LlmAgent:
     return LlmAgent(
         **{**_AGENT_DEFAULTS, "model": LiteLlm(model="mistral/mistral-medium-latest")},
         name="scorer",
@@ -358,53 +274,5 @@ def _build_scorer() -> LlmAgent:
         tools=[
             set_score_card,
             set_loading_step,
-        ],
-    )
-
-
-def build_workflow_agent() -> Workflow:
-    """Graph-based oral-boards examiner with Workflow.
-
-    Each request enters through a state router:
-
-      idle → case_builder
-      presenting/questioning → questioner
-      feedback → evaluator → router → questioner/scorer
-
-    Case building and question generation are terminal steps. The browser
-    starts a new invocation after Begin Examination and after each answer.
-    - The evaluator calls ``complete_examination`` when all relevant skillsets
-      are covered, setting a state flag read by the router.
-    """
-    case_builder = build_case_builder()
-    questioner = build_questioner()
-    evaluator = _build_evaluator()
-    scorer = _build_scorer()
-
-    router = FunctionNode(
-        func=questioning_router,
-        name="questioning_router",
-    )
-    entry_router = FunctionNode(
-        func=workflow_entry_router,
-        name="workflow_entry_router",
-    )
-
-    return _WorkflowWithSubAgents(
-        name="oralboards_workflow",
-        description="Graph-based oral-boards examiner — workflow with conditional loop.",
-        edges=[
-            (START, entry_router),
-            (
-                entry_router,
-                {
-                    "build": case_builder,
-                    "evaluate": evaluator,
-                    "complete": scorer,
-                    "__DEFAULT__": questioner,
-                },
-            ),
-            (evaluator, router),
-            (router, {"__DEFAULT__": questioner, "complete": scorer}),
         ],
     )

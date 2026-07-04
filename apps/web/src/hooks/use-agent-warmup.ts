@@ -12,7 +12,6 @@ interface AgentStatuses {
   wellness: AgentStatus;
   expense: AgentStatus;
   "oral-boards": AgentStatus;
-  "oral-boards-v2": AgentStatus;
   trends: AgentStatus;
   resume: AgentStatus;
   research: AgentStatus;
@@ -34,7 +33,6 @@ const FALLBACK: AgentStatuses = {
   wellness: "loading",
   expense: "loading",
   "oral-boards": "loading",
-  "oral-boards-v2": "loading",
   trends: "loading",
   resume: "loading",
   research: "loading",

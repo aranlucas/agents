@@ -11,7 +11,6 @@ describe("agent registry", () => {
       "wellness",
       "expense",
       "oral-boards",
-      "oral-boards-v2",
       "trends",
       "resume",
       "research",
@@ -50,7 +49,6 @@ describe("agent registry", () => {
     expect(getAgentConfig("wellness").requires).toEqual(["kroger", "strava"]);
     expect(getAgentConfig("expense").requires ?? []).toEqual([]);
     expect(getAgentConfig("oral-boards").requires ?? []).toEqual([]);
-    expect(getAgentConfig("oral-boards-v2").requires ?? []).toEqual([]);
     expect(getAgentConfig("trends").requires ?? []).toEqual([]);
     expect(getAgentConfig("resume").requires ?? []).toEqual([]);
     expect(getAgentConfig("research").requires ?? []).toEqual([]);

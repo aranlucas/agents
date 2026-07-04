@@ -12,8 +12,8 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from .agent import build_agent
 from .db import DB_STARTUP_ERROR
+from .orchestrator import build_orchestrator_agent
 
 load_dotenv()
 
@@ -32,7 +32,7 @@ ORALBOARDS_PREDICT_STATE = [
     ),
 ]
 
-_oralboards_agent = build_agent()
+_oralboards_agent = build_orchestrator_agent()
 
 
 async def _health(engine: AsyncEngine) -> dict[str, object]:

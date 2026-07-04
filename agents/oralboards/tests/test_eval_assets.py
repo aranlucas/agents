@@ -1,6 +1,6 @@
 from pathlib import Path
 
-AGENT_IDS = {"oral-boards", "oral-boards-v2"}
+AGENT_IDS = {"oral-boards"}
 
 
 def test_agent_eval_assets_are_local() -> None:

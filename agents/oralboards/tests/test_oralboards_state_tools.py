@@ -6,7 +6,11 @@ from types import SimpleNamespace
 
 from agents_shared.state import make_state_initializer
 from google.adk.tools.function_tool import FunctionTool
-from oralboards_agent.agent import OralBoardsState, build_agent, build_telegram_agent
+from oralboards_agent.agent import (
+    OralBoardsState,
+    build_eval_agent,
+    build_telegram_agent,
+)
 from oralboards_agent.tools.append_exchange import append_exchange
 from oralboards_agent.tools.read_doc import read_doc
 from oralboards_agent.tools.search_docs import search_docs
@@ -108,7 +112,7 @@ def test_state_initializer_preserves_existing_state_and_adds_defaults() -> None:
 
 
 def test_agent_instruction_uses_adk_state_placeholders() -> None:
-    agent = build_agent()
+    agent = build_eval_agent()
     instruction = agent.instruction
 
     assert isinstance(instruction, str)
@@ -132,7 +136,7 @@ def test_telegram_gemini_agent_has_http_retries() -> None:
 
 
 def test_agent_instruction_includes_loading_step_protocol() -> None:
-    agent = build_agent()
+    agent = build_eval_agent()
     instruction = agent.instruction
     assert isinstance(instruction, str)
     assert "set_loading_step" in instruction
@@ -141,7 +145,7 @@ def test_agent_instruction_includes_loading_step_protocol() -> None:
 
 
 def test_agent_instruction_requires_speaking_questions_before_chat() -> None:
-    agent = build_agent()
+    agent = build_eval_agent()
     instruction = agent.instruction
 
     assert isinstance(instruction, str)
@@ -154,7 +158,7 @@ def test_agent_instruction_requires_speaking_questions_before_chat() -> None:
 
 def test_instruction_grounded_in_oce_guide() -> None:
     """Instruction reflects the ABPD OCE guide, not the old 4a-4e model."""
-    agent = build_agent()
+    agent = build_eval_agent()
     instruction = agent.instruction
     assert isinstance(instruction, str)
 
@@ -346,3 +350,49 @@ def test_run_async_with_typeddict_args() -> None:
     assert context.state["case"] == "## Test\nContent."
     assert context.state["case_sources"] == sources
     assert context.state["status"] == "presenting"
+
+
+def test_ask_probe_sets_question_and_flag() -> None:
+    from oralboards_agent.tools.ask_probe import ask_probe
+
+    ctx = SimpleNamespace(state={})
+    result = ask_probe("What would change if the tooth were necrotic?", ctx)
+
+    assert result["status"] == "success"
+    assert ctx.state["active_probe"] == "What would change if the tooth were necrotic?"
+    assert (
+        ctx.state["current_question"] == "What would change if the tooth were necrotic?"
+    )
+
+
+def test_ask_probe_refuses_second_probe() -> None:
+    from oralboards_agent.tools.ask_probe import ask_probe
+
+    ctx = SimpleNamespace(state={"active_probe": "first probe"})
+    result = ask_probe("second probe", ctx)
+
+    assert result["status"] == "error"
+    assert ctx.state["active_probe"] == "first probe"
+
+
+def test_append_exchange_clears_active_probe() -> None:
+    from oralboards_agent.tools.append_exchange import append_exchange
+
+    ctx = SimpleNamespace(state={"active_probe": "pending probe"})
+    append_exchange(
+        ctx,
+        question="Q",
+        answer="A",
+        skillset="Pulp Therapy",
+        skill="analyze_evaluate",
+        feedback="**Skillset:** Pulp Therapy · analyze_evaluate — fine",
+        ideal_response="ideal",
+        score=3,
+    )
+    assert ctx.state["active_probe"] == ""
+
+
+def test_state_declares_active_probe_default() -> None:
+    from oralboards_agent.agent import OralBoardsState
+
+    assert OralBoardsState().active_probe == ""
