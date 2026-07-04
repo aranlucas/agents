@@ -113,3 +113,12 @@ body {
 .copilotKitSidebarContentWrapper [role="toolbar"] {
   display: none !important;
 }
+
+/* Oral boards, phones only: the floating chat toggle sits on top of the
+   response composer's Record/Submit controls — the reasoning sidebar is a
+   desktop affordance there. */
+@media (max-width: 767px) {
+  .oral-boards-shell .copilotKitButton {
+    display: none !important;
+  }
+}

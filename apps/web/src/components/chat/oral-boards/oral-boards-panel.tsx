@@ -50,8 +50,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   Textarea,
 } from "@agents/ui";
+import { useIsMobile } from "@agents/ui/hooks/use-mobile";
 import {
   Artifact,
   ArtifactContent,
@@ -317,8 +322,8 @@ function VignettePanel({
   onNotesChange: React.Dispatch<React.SetStateAction<string>>;
 }) {
   return (
-    <ScrollArea className="bg-muted/25 h-full shrink-0 border-b md:border-r md:border-b-0">
-      <div className="flex flex-col gap-4 p-4 sm:px-5">
+    <ScrollArea className="bg-muted/25 h-full shrink-0 md:border-r">
+      <div className="mx-auto flex w-full max-w-[72ch] flex-col gap-4 p-4 sm:px-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <BookOpenIcon className="size-3 text-indigo-400" />
@@ -597,6 +602,195 @@ function ReviewingAnswer({ answer, loadingStep }: { answer: string; loadingStep:
   );
 }
 
+function ExamProgressHeader({
+  questionNumber,
+  stage,
+  transcript,
+}: {
+  questionNumber: number;
+  stage: "question" | "reviewing" | "scoring" | "complete";
+  transcript: OralBoardsExchange[];
+}) {
+  return (
+    <div className="shrink-0 border-b px-4 py-2">
+      <div className="flex flex-col gap-2">
+        <span className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
+          Examination
+        </span>
+        <ExamTimeline questionNumber={questionNumber} stage={stage} />
+      </div>
+      {transcript.length > 0 && (
+        <div className="mt-1.5 flex flex-wrap gap-1">
+          {[...new Set(transcript.map((x) => x.skillset).filter(Boolean))].map((skillset) => {
+            const scores = transcript
+              .filter((x) => x.skillset === skillset)
+              .map((x) => x.score)
+              .filter((s) => s != null);
+            const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
+            return (
+              <Badge
+                key={skillset}
+                variant="secondary"
+                className={`py-0 text-[9px] ${avg != null ? scoreClasses(Math.round(avg)) : ""}`}
+              >
+                {skillset}
+                {avg != null && <span className="ml-1 opacity-70">{avg.toFixed(1)}</span>}
+              </Badge>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Completed exchanges plus the live feedback stream. Returns null when there
+// is nothing to show yet (first question, nothing streaming).
+function TranscriptSection({
+  transcript,
+  isRunning,
+  activeFeedback,
+  activeIdealResponse,
+}: {
+  transcript: OralBoardsExchange[];
+  isRunning: boolean;
+  activeFeedback: string;
+  activeIdealResponse: string;
+}) {
+  const olderExchanges = transcript.slice(0, -1);
+  const lastExchange = transcript.at(-1);
+  if (![olderExchanges.length > 0, lastExchange, activeFeedback].some(Boolean)) return null;
+  return (
+    <div className="space-y-1.5">
+      {olderExchanges.map((x, i) => (
+        <CompletedExchangeRow key={x.question || i} exchange={x} index={i} />
+      ))}
+      {lastExchange && <LastFeedbackCard exchange={lastExchange} index={transcript.length - 1} />}
+      {isRunning && (
+        <LiveFeedbackPreview
+          activeFeedback={activeFeedback}
+          activeIdealResponse={activeIdealResponse}
+        />
+      )}
+    </div>
+  );
+}
+
+function ExaminerQuestionCard({
+  question,
+  questionNumber,
+  isRunning,
+  loadingStep,
+}: {
+  question: string;
+  questionNumber: number;
+  isRunning: boolean;
+  loadingStep: string;
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex-row items-start justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <Avatar className="size-8 ring-1 ring-indigo-500/30">
+            <AvatarFallback className="bg-indigo-500/15 text-indigo-300">
+              <StethoscopeIcon className="size-4" />
+            </AvatarFallback>
+          </Avatar>
+          <div className="leading-tight">
+            <p className="text-[10px] font-semibold tracking-[0.12em] text-indigo-300/80 uppercase">
+              Examiner
+            </p>
+            <p className="text-muted-foreground text-[11px]">Q{questionNumber}</p>
+          </div>
+        </div>
+        {question && <TtsButton text={question} label="Listen" />}
+      </CardHeader>
+      <CardContent>
+        {question ? (
+          <p className="text-[15px] leading-relaxed font-medium text-pretty">{question}</p>
+        ) : (
+          <ThinkingState isRunning={isRunning} loadingStep={loadingStep} />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ResponseComposer({
+  submittedAnswer,
+  isRunning,
+  isScoring,
+  reviewingStatus,
+  answerText,
+  setAnswerText,
+  recorder,
+  onSubmit,
+}: {
+  submittedAnswer: string;
+  isRunning: boolean;
+  isScoring: boolean;
+  reviewingStatus: string;
+  answerText: string;
+  setAnswerText: React.Dispatch<React.SetStateAction<string>>;
+  recorder: UseAnswerRecorder;
+  onSubmit: () => void;
+}) {
+  if (submittedAnswer && isRunning) {
+    return <ReviewingAnswer answer={submittedAnswer} loadingStep={reviewingStatus} />;
+  }
+  if (isScoring) {
+    return (
+      <div className="bg-muted/15 rounded-xl border p-3">
+        <p role="status" className="text-muted-foreground text-sm">
+          Computing score card…
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="bg-muted/15 flex shrink-0 flex-col gap-2 rounded-xl border p-3 md:min-h-0 md:flex-1">
+      <div className="flex shrink-0 items-center justify-between">
+        <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
+          Your response
+        </p>
+        <RecordButton recorder={recorder} />
+      </div>
+
+      {recorder.micSupported && <CopilotChatAudioRecorder ref={recorder.recorderRef} />}
+
+      <Textarea
+        aria-label="Your answer"
+        className="h-24 resize-none p-3 text-sm md:h-auto md:min-h-[80px] md:flex-1"
+        placeholder="Type your answer…"
+        value={answerText}
+        onChange={(e) => setAnswerText(e.target.value)}
+        disabled={isRunning || recorder.recording}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) onSubmit();
+        }}
+      />
+
+      <div className="flex shrink-0 items-center justify-between">
+        <span className="text-muted-foreground hidden items-center gap-1 text-[11px] md:flex">
+          <Kbd>⌘</Kbd>
+          <Kbd>↵</Kbd>
+          <span className="ml-0.5">to submit</span>
+        </span>
+        <Button
+          type="button"
+          size="sm"
+          disabled={isRunning || !answerText.trim()}
+          onClick={onSubmit}
+          className="ml-auto"
+        >
+          <SendHorizontalIcon className="size-3.5" />
+          Submit
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function QuestioningPane({
   caseBody,
   sources,
@@ -621,6 +815,7 @@ function QuestioningPane({
   activeIdealResponse?: string;
 }) {
   const { currentQuestion: question } = useOralBoardsQuestion();
+  const isMobile = useIsMobile();
   const [answerText, setAnswerText] = useState("");
   const [submittedAnswer, setSubmittedAnswer] = useState("");
   const previousQuestionRef = useRef(question);
@@ -665,13 +860,97 @@ function QuestioningPane({
     setAnswerText("");
   };
 
-  const olderExchanges = transcript.slice(0, -1);
-  const lastExchange = transcript.at(-1);
+  const hasHistory = transcript.length > 0 || Boolean(isRunning && activeFeedback.trim());
+
+  const composer = (
+    <ResponseComposer
+      submittedAnswer={submittedAnswer}
+      isRunning={isRunning}
+      isScoring={isScoring}
+      reviewingStatus={reviewingStatus}
+      answerText={answerText}
+      setAnswerText={setAnswerText}
+      recorder={recorder}
+      onSubmit={handleSubmit}
+    />
+  );
+
+  // Mobile: no room for side-by-side panes — the case vignette and the exam
+  // live on separate tabs, with the composer pinned below the exam scroll.
+  if (isMobile) {
+    return (
+      <Tabs defaultValue="exam" className="h-full gap-0">
+        <div className="shrink-0 border-b px-3 py-2">
+          <TabsList className="w-full">
+            <TabsTrigger value="case">
+              <BookOpenIcon />
+              Case
+            </TabsTrigger>
+            <TabsTrigger value="exam">
+              <StethoscopeIcon />
+              Exam
+            </TabsTrigger>
+          </TabsList>
+        </div>
+        <TabsContent value="case" className="min-h-0 flex-1 overflow-hidden">
+          <VignettePanel
+            caseBody={caseBody}
+            sources={sources}
+            notes={notes}
+            onNotesChange={onNotesChange}
+          />
+        </TabsContent>
+        {/* keepMounted so an in-progress recording survives a peek at the case */}
+        <TabsContent value="exam" keepMounted className="flex min-h-0 flex-1 flex-col">
+          <ExamProgressHeader
+            questionNumber={displayedQuestionNumber}
+            stage={stage}
+            transcript={transcript}
+          />
+          <ScrollArea className="min-h-0 flex-1">
+            <div className="flex flex-col gap-3 p-3">
+              <TranscriptSection
+                transcript={transcript}
+                isRunning={isRunning}
+                activeFeedback={activeFeedback}
+                activeIdealResponse={activeIdealResponse}
+              />
+              {!isScoring && (
+                <ExaminerQuestionCard
+                  question={question}
+                  questionNumber={displayedQuestionNumber}
+                  isRunning={isRunning}
+                  loadingStep={loadingStep}
+                />
+              )}
+            </div>
+          </ScrollArea>
+          <div className="bg-background shrink-0 border-t p-3">{composer}</div>
+        </TabsContent>
+      </Tabs>
+    );
+  }
+
+  const questionAndComposer = (
+    <ScrollArea className="h-full">
+      <div className="flex flex-col gap-3 p-4">
+        {!isScoring && (
+          <ExaminerQuestionCard
+            question={question}
+            questionNumber={displayedQuestionNumber}
+            isRunning={isRunning}
+            loadingStep={loadingStep}
+          />
+        )}
+        {composer}
+      </div>
+    </ScrollArea>
+  );
 
   return (
     <ResizablePanelGroup orientation="horizontal" className="h-full">
       {/* Left: case vignette — pinned, always in view */}
-      <ResizablePanel defaultSize="50%">
+      <ResizablePanel defaultSize="42%" minSize="28%" maxSize="60%">
         <VignettePanel
           caseBody={caseBody}
           sources={sources}
@@ -685,156 +964,36 @@ function QuestioningPane({
       {/* Right: examination Q&A */}
       <ResizablePanel>
         <div className="flex h-full flex-col">
-          {/* Progress header — fixed outside ResizablePanelGroup */}
-          <div className="shrink-0 border-b px-4 py-2">
-            <div className="flex flex-col gap-2">
-              <span className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
-                Examination
-              </span>
-              <ExamTimeline questionNumber={displayedQuestionNumber} stage={stage} />
-            </div>
-            {transcript.length > 0 && (
-              <div className="mt-1.5 flex flex-wrap gap-1">
-                {[...new Set(transcript.map((x) => x.skillset).filter(Boolean))].map((skillset) => {
-                  const scores = transcript
-                    .filter((x) => x.skillset === skillset)
-                    .map((x) => x.score)
-                    .filter((s) => s != null);
-                  const avg = scores.length
-                    ? scores.reduce((a, b) => a + b, 0) / scores.length
-                    : null;
-                  return (
-                    <Badge
-                      key={skillset}
-                      variant="secondary"
-                      className={`py-0 text-[9px] ${avg != null ? scoreClasses(Math.round(avg)) : ""}`}
-                    >
-                      {skillset}
-                      {avg != null && <span className="ml-1 opacity-70">{avg.toFixed(1)}</span>}
-                    </Badge>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          <ExamProgressHeader
+            questionNumber={displayedQuestionNumber}
+            stage={stage}
+            transcript={transcript}
+          />
 
-          <ResizablePanelGroup orientation="vertical" className="min-h-0 flex-1">
-            <ResizablePanel>
-              <ScrollArea className="h-full border-b">
-                {[olderExchanges.length > 0, lastExchange, activeFeedback].some(Boolean) && (
-                  <div className="space-y-1.5 px-4 py-3">
-                    {olderExchanges.map((x, i) => (
-                      <CompletedExchangeRow key={x.question || i} exchange={x} index={i} />
-                    ))}
-                    {lastExchange && (
-                      <LastFeedbackCard exchange={lastExchange} index={transcript.length - 1} />
-                    )}
-                    {isRunning && (
-                      <LiveFeedbackPreview
-                        activeFeedback={activeFeedback}
-                        activeIdealResponse={activeIdealResponse}
-                      />
-                    )}
+          {hasHistory ? (
+            <ResizablePanelGroup orientation="vertical" className="min-h-0 flex-1">
+              <ResizablePanel>
+                <ScrollArea className="h-full border-b">
+                  <div className="px-4 py-3">
+                    <TranscriptSection
+                      transcript={transcript}
+                      isRunning={isRunning}
+                      activeFeedback={activeFeedback}
+                      activeIdealResponse={activeIdealResponse}
+                    />
                   </div>
-                )}
-              </ScrollArea>
-            </ResizablePanel>
-            <ResizableHandle withHandle />
+                </ScrollArea>
+              </ResizablePanel>
+              <ResizableHandle withHandle />
 
-            {/* Active question + response composer */}
-            <ResizablePanel>
-              <ScrollArea className="h-full">
-                <div className="flex flex-col gap-3 p-4">
-                  {/* Examiner prompt */}
-                  {!isScoring && (
-                    <Card>
-                      <CardHeader className="flex-row items-start justify-between gap-2">
-                        <div className="flex items-center gap-2.5">
-                          <Avatar className="size-8 ring-1 ring-indigo-500/30">
-                            <AvatarFallback className="bg-indigo-500/15 text-indigo-300">
-                              <StethoscopeIcon className="size-4" />
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="leading-tight">
-                            <p className="text-[10px] font-semibold tracking-[0.12em] text-indigo-300/80 uppercase">
-                              Examiner
-                            </p>
-                            <p className="text-muted-foreground text-[11px]">
-                              Q{displayedQuestionNumber}
-                            </p>
-                          </div>
-                        </div>
-                        {question && <TtsButton text={question} label="Listen" />}
-                      </CardHeader>
-                      <CardContent>
-                        {question ? (
-                          <p className="text-[15px] leading-relaxed font-medium text-pretty">
-                            {question}
-                          </p>
-                        ) : (
-                          <ThinkingState isRunning={isRunning} loadingStep={loadingStep} />
-                        )}
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {/* Response composer */}
-                  {submittedAnswer && isRunning ? (
-                    <ReviewingAnswer answer={submittedAnswer} loadingStep={reviewingStatus} />
-                  ) : isScoring ? (
-                    <div className="bg-muted/15 rounded-xl border p-3">
-                      <p role="status" className="text-muted-foreground text-sm">
-                        Computing score card…
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="bg-muted/15 flex shrink-0 flex-col gap-2 rounded-xl border p-3 md:min-h-0 md:flex-1">
-                      <div className="flex shrink-0 items-center justify-between">
-                        <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
-                          Your response
-                        </p>
-                        <RecordButton recorder={recorder} />
-                      </div>
-
-                      {recorder.micSupported && (
-                        <CopilotChatAudioRecorder ref={recorder.recorderRef} />
-                      )}
-
-                      <Textarea
-                        aria-label="Your answer"
-                        className="h-24 resize-none p-3 text-sm md:h-auto md:min-h-[80px] md:flex-1"
-                        placeholder="Type your answer…"
-                        value={answerText}
-                        onChange={(e) => setAnswerText(e.target.value)}
-                        disabled={isRunning || recorder.recording}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSubmit();
-                        }}
-                      />
-
-                      <div className="flex shrink-0 items-center justify-between">
-                        <span className="text-muted-foreground hidden items-center gap-1 text-[11px] md:flex">
-                          <Kbd>⌘</Kbd>
-                          <Kbd>↵</Kbd>
-                          <span className="ml-0.5">to submit</span>
-                        </span>
-                        <Button
-                          type="button"
-                          size="sm"
-                          disabled={isRunning || !answerText.trim()}
-                          onClick={handleSubmit}
-                          className="ml-auto"
-                        >
-                          <SendHorizontalIcon className="size-3.5" />
-                          Submit
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
-            </ResizablePanel>
-          </ResizablePanelGroup>
+              {/* Active question + response composer */}
+              <ResizablePanel>{questionAndComposer}</ResizablePanel>
+            </ResizablePanelGroup>
+          ) : (
+            // First question: no transcript yet, so give the examiner card and
+            // composer the full column instead of an empty top pane.
+            <div className="min-h-0 flex-1">{questionAndComposer}</div>
+          )}
         </div>
       </ResizablePanel>
     </ResizablePanelGroup>

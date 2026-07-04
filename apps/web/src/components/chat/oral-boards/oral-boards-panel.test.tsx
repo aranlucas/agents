@@ -61,6 +61,10 @@ vi.mock("@agents/ui", async (importOriginal) => {
   };
 });
 
+vi.mock("@agents/ui/hooks/use-mobile", () => ({
+  useIsMobile: vi.fn().mockReturnValue(false),
+}));
+
 import { OralBoardsPanel } from "./oral-boards-panel";
 
 const noop = () => {};
@@ -503,6 +507,47 @@ describe("OralBoardsPanel — questioning", () => {
     expect(detailsTrigger).toHaveAttribute("data-panel-open", "");
     expect(screen.getByText("Use articaine with epinephrine.")).toBeInTheDocument();
     expect(screen.getByText(/Local Anesthesia Guideline/)).toBeInTheDocument();
+  });
+});
+
+describe("OralBoardsPanel — mobile questioning", () => {
+  const setMobile = async (value: boolean) => {
+    const { useIsMobile } = await import("@agents/ui/hooks/use-mobile");
+    vi.mocked(useIsMobile).mockReturnValue(value);
+  };
+
+  const state: OralBoardsState = {
+    case: "A 4-year-old presents with early childhood caries.",
+    case_sources: [],
+    status: "questioning",
+    transcript: [],
+  };
+
+  it("stacks the workspace into Case/Exam tabs with the exam active by default", async () => {
+    await setMobile(true);
+
+    render(<OralBoardsPanel state={state} {...baseProps} />);
+
+    expect(screen.getByRole("tab", { name: "Case" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Exam" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Your answer" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Case notes")).not.toBeInTheDocument();
+
+    await setMobile(false);
+  });
+
+  it("shows the vignette and notes on the Case tab", async () => {
+    await setMobile(true);
+
+    render(<OralBoardsPanel state={state} {...baseProps} />);
+    await userEvent.click(screen.getByRole("tab", { name: "Case" }));
+
+    expect(
+      screen.getByText("A 4-year-old presents with early childhood caries."),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Case notes")).toBeInTheDocument();
+
+    await setMobile(false);
   });
 });
 
