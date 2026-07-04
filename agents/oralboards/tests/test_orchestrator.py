@@ -52,6 +52,18 @@ class _ExchangingEvaluator(BaseAgent):
         yield SimpleNamespace(author=self.name)
 
 
+class _FinalExchangeEvaluator(BaseAgent):
+    """Mimics the final exchange: append_exchange AND complete_examination both
+    fire in the same turn, so status="questioning" and interview_complete=True
+    are set together. Scorer must still win over questioner."""
+
+    async def run_async(self, ctx):  # noqa: ANN001
+        ctx.calls.append(self.name)
+        ctx.session.state["status"] = "questioning"
+        ctx.session.state["interview_complete"] = True
+        yield SimpleNamespace(author=self.name)
+
+
 def _ctx(state: dict) -> SimpleNamespace:
     return SimpleNamespace(
         session=SimpleNamespace(state=state),
@@ -105,6 +117,18 @@ async def test_evaluator_chains_to_questioner_when_exchange_scored() -> None:
     ctx = _ctx({"status": "feedback", "case": "c"})
     await _drain(_orchestrator(evaluator=_ExchangingEvaluator(name="evaluator")), ctx)
     assert ctx.calls == ["evaluator", "questioner"]
+
+
+@pytest.mark.asyncio
+async def test_scorer_wins_over_questioner_on_final_exchange() -> None:
+    """Both status="questioning" and interview_complete=True can be set in the
+    same evaluator turn (final exchange). interview_complete must take
+    priority so the exam ends on the scorer, not one more question."""
+    ctx = _ctx({"status": "feedback", "case": "c"})
+    await _drain(
+        _orchestrator(evaluator=_FinalExchangeEvaluator(name="evaluator")), ctx
+    )
+    assert ctx.calls == ["evaluator", "scorer"]
 
 
 def test_build_orchestrator_exposes_sub_agents_for_agui() -> None:
