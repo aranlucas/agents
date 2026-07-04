@@ -196,7 +196,7 @@ function OralBoardsWorkspaceContent() {
   return (
     <SidebarProvider
       defaultOpen={false}
-      className="h-dvh overflow-hidden"
+      className="oral-boards-shell h-dvh overflow-hidden"
       style={cssVars({ "--page-color": `var(${config.colorVar})` })}
     >
       <AgentExtensionSlot agentId={AGENT_ID} />

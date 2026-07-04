@@ -8,3 +8,20 @@ import { afterEach } from "vitest";
 afterEach(() => {
   cleanup();
 });
+
+// jsdom does not implement matchMedia; useIsMobile (and CopilotKit's sidebar)
+// call it on mount. Default to desktop (no media query matches).
+if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
+  window.matchMedia = (query: string): MediaQueryList =>
+    ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    }) as MediaQueryList;
+}
