@@ -125,3 +125,14 @@ def test_phase_model_tiering() -> None:
     assert build_case_builder().model.model == "cerebras/gpt-oss-120b"
     assert build_questioner().model.model == "groq/llama-3.3-70b-versatile"
     assert build_scorer().model.model == "mistral/mistral-medium-latest"
+
+
+def test_evaluator_can_ground_beyond_case_passages() -> None:
+    from oralboards_agent.phases import build_evaluator
+
+    evaluator = build_evaluator()
+    tool_names = {
+        getattr(tool, "__name__", getattr(tool, "name", "")) for tool in evaluator.tools
+    }
+    assert "search_docs" in tool_names
+    assert "Re-search" in evaluator.static_instruction

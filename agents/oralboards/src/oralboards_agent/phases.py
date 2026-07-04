@@ -185,10 +185,17 @@ def build_evaluator() -> LlmAgent:
             f"{_BLUEPRINT}\n\n"
             f"{_LOADING_STEPS}\n\n"
             "## Clinical grounding\n"
-            "The case_passages field in state contains the relevant source text retrieved\n"
-            "when the case was built. Use it to verify the candidate's answer and write the\n"
-            "ideal response. Do not re-search unless the answer raises a topic clearly\n"
-            "outside those passages.\n\n"
+            "The case_passages field in state contains the source text retrieved when the\n"
+            "case was built. Ground feedback and the ideal response in it whenever it\n"
+            "covers the topic.\n"
+            "Re-search with search_docs when — and only when — the candidate's answer\n"
+            "raises clinical material the stored passages do not cover (a drug, technique,\n"
+            "guideline, or complication outside the case's original scope). Fire one broad\n"
+            "and one collection-filtered search_docs call in parallel, use the returned\n"
+            "'passage' fields, and add the new sources to the exchange's citations.\n"
+            "Never fill in clinical content from memory. If neither the stored passages\n"
+            "nor a re-search covers the point, say so in the feedback instead of\n"
+            "improvising.\n\n"
             "## Your task\n"
             "The active question is in state: {current_question}\n"
             "The candidate's answer is the latest user message. Evaluate that answer:\n"
@@ -211,6 +218,7 @@ def build_evaluator() -> LlmAgent:
             "will generate the final score card. If more skillsets remain, do NOT call it."
         ),
         tools=[
+            search_docs,
             append_exchange,
             FunctionTool(complete_examination),
             set_loading_step,
