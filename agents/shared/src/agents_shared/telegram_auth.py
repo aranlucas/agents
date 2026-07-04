@@ -267,9 +267,7 @@ async def sync_link_to_clerk(
                 return
             user = clerk.users.get(user_id=clerk_user_id)
             if not user.external_id:
-                clerk.users.update(
-                    user_id=clerk_user_id, external_id=telegram_user_id
-                )
+                clerk.users.update(user_id=clerk_user_id, external_id=telegram_user_id)
                 # Self-pointer marks the external_id as claimed by the link
                 # flow, so sync_unlink_to_clerk knows it may release it.
                 clerk.users.update_metadata(
