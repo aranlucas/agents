@@ -136,3 +136,13 @@ def test_evaluator_can_ground_beyond_case_passages() -> None:
     }
     assert "search_docs" in tool_names
     assert "Re-search" in evaluator.static_instruction
+
+
+def test_evaluator_feedback_is_contrastive_and_cited() -> None:
+    from oralboards_agent.phases import build_evaluator
+
+    instruction = build_evaluator().static_instruction
+    assert "What you said" in instruction
+    assert "What was missing" in instruction
+    assert "What a 3 sounds like" in instruction
+    assert "quote" in instruction.lower()
