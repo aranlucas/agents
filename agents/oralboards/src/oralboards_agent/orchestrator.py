@@ -37,8 +37,18 @@ def route_phase(state: Mapping[str, Any]) -> str:
 class OralBoardsOrchestrator(BaseAgent):
     """Runs exactly one phase per invocation, chosen by ``route_phase``.
 
-    The evaluator chains into the scorer in the same turn when it has called
-    ``complete_examination`` (which sets ``interview_complete``).
+    After the evaluator runs (and the invocation wasn't paused), the next
+    step is decided from state, in priority order:
+
+    1. ``interview_complete`` is set → chain into the scorer.
+    2. Otherwise, if ``status`` is now ``"questioning"`` (``append_exchange``
+       fired — the evaluator scored the exchange) → chain into the
+       questioner, so feedback and the next question land in the same AG-UI
+       turn.
+    3. Otherwise (``status`` is still ``"feedback"`` — the evaluator called
+       ``ask_probe`` instead of ``append_exchange``) → chain into nothing.
+       The next invocation's ``route_phase`` sees ``status == "feedback"``
+       and routes back to the evaluator for the probe follow-up.
     """
 
     async def _run_async_impl(self, ctx: InvocationContext) -> AsyncGenerator[Event]:
@@ -54,10 +64,20 @@ class OralBoardsOrchestrator(BaseAgent):
         if paused:
             return
 
-        if node.name == "evaluator" and ctx.session.state.get("interview_complete"):
-            async with Aclosing(nodes["scorer"].run_async(ctx)) as agen:
-                async for event in agen:
-                    yield event
+        if node.name != "evaluator":
+            return
+
+        state = ctx.session.state
+        if state.get("interview_complete"):
+            next_node = nodes["scorer"]
+        elif state.get("status") == "questioning":
+            next_node = nodes["questioner"]
+        else:
+            return
+
+        async with Aclosing(next_node.run_async(ctx)) as agen:
+            async for event in agen:
+                yield event
 
 
 def build_orchestrator_agent() -> OralBoardsOrchestrator:

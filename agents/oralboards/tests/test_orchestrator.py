@@ -43,6 +43,15 @@ class _CompletingEvaluator(BaseAgent):
         yield SimpleNamespace(author=self.name)
 
 
+class _ExchangingEvaluator(BaseAgent):
+    """Mimics append_exchange: scores the answer and advances to questioning."""
+
+    async def run_async(self, ctx):  # noqa: ANN001
+        ctx.calls.append(self.name)
+        ctx.session.state["status"] = "questioning"
+        yield SimpleNamespace(author=self.name)
+
+
 def _ctx(state: dict) -> SimpleNamespace:
     return SimpleNamespace(
         session=SimpleNamespace(state=state),
@@ -83,9 +92,19 @@ async def test_evaluator_chains_to_scorer_when_interview_complete() -> None:
 
 @pytest.mark.asyncio
 async def test_evaluator_without_completion_does_not_chain() -> None:
+    """Probe case (Task 8): status stays "feedback" (ask_probe, not
+    append_exchange), so nothing chains and the next invocation's
+    route_phase routes back to the evaluator."""
     ctx = _ctx({"status": "feedback", "case": "c"})
     await _drain(_orchestrator(), ctx)
     assert ctx.calls == ["evaluator"]
+
+
+@pytest.mark.asyncio
+async def test_evaluator_chains_to_questioner_when_exchange_scored() -> None:
+    ctx = _ctx({"status": "feedback", "case": "c"})
+    await _drain(_orchestrator(evaluator=_ExchangingEvaluator(name="evaluator")), ctx)
+    assert ctx.calls == ["evaluator", "questioner"]
 
 
 def test_build_orchestrator_exposes_sub_agents_for_agui() -> None:
