@@ -155,20 +155,49 @@ async def test_lookup_by_external_id_returns_none_without_secret_key(
     assert await _lookup_clerk_user_by_external_id("tg-123") is None
 
 
+def _mock_clerk(users_list: list[MagicMock]) -> MagicMock:
+    mock_clerk = MagicMock()
+    mock_clerk.users.list.return_value = users_list
+    mock_clerk.__enter__ = MagicMock(return_value=mock_clerk)
+    mock_clerk.__exit__ = MagicMock(return_value=None)
+    return mock_clerk
+
+
+def _mock_clerk_user(
+    user_id: str,
+    *,
+    private_metadata: dict[str, object] | None = None,
+    external_id: str | None = None,
+) -> MagicMock:
+    user = MagicMock()
+    user.id = user_id
+    user.private_metadata = private_metadata or {}
+    user.external_id = external_id
+    return user
+
+
 @pytest.mark.asyncio
 async def test_lookup_by_external_id_returns_user_id_on_match(monkeypatch) -> None:
     monkeypatch.setenv("CLERK_SECRET_KEY", "sk_test_fake")
-    mock_user = MagicMock()
-    mock_user.id = "user_abc"
-    mock_users_sdk = MagicMock()
-    mock_users_sdk.list.return_value = [mock_user]
-    mock_clerk = MagicMock()
-    mock_clerk.users = mock_users_sdk
-    mock_clerk.__enter__ = MagicMock(return_value=mock_clerk)
-    mock_clerk.__exit__ = MagicMock(return_value=None)
+    mock_clerk = _mock_clerk([_mock_clerk_user("user_abc")])
     with patch("agents_shared.telegram_auth.Clerk", return_value=mock_clerk):
         result = await _lookup_clerk_user_by_external_id("tg-123")
     assert result == "user_abc"
+
+
+@pytest.mark.asyncio
+async def test_lookup_by_external_id_follows_linked_metadata_pointer(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("CLERK_SECRET_KEY", "sk_test_fake")
+    shadow = _mock_clerk_user(
+        "user_shadow",
+        private_metadata={"linked_clerk_user_id": "user_real"},
+    )
+    mock_clerk = _mock_clerk([shadow])
+    with patch("agents_shared.telegram_auth.Clerk", return_value=mock_clerk):
+        result = await _lookup_clerk_user_by_external_id("tg-123")
+    assert result == "user_real"
 
 
 @pytest.mark.asyncio
@@ -193,6 +222,117 @@ async def test_lookup_by_external_id_returns_none_when_list_empty(monkeypatch) -
     with patch("agents_shared.telegram_auth.Clerk", return_value=mock_clerk):
         result = await _lookup_clerk_user_by_external_id("tg-unknown")
     assert result is None
+
+
+@pytest.mark.asyncio
+async def test_sync_link_to_clerk_stamps_shadow_user(monkeypatch) -> None:
+    monkeypatch.setenv("CLERK_SECRET_KEY", "sk_test_fake")
+    shadow = _mock_clerk_user("user_shadow")
+    mock_clerk = _mock_clerk([shadow])
+    with patch("agents_shared.telegram_auth.Clerk", return_value=mock_clerk):
+        await telegram_auth.sync_link_to_clerk(
+            telegram_user_id="tg-123", clerk_user_id="user_real"
+        )
+    mock_clerk.users.update_metadata.assert_called_once_with(
+        user_id="user_shadow",
+        private_metadata={"linked_clerk_user_id": "user_real"},
+    )
+    mock_clerk.users.update.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_sync_link_to_clerk_claims_external_id_when_no_shadow(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("CLERK_SECRET_KEY", "sk_test_fake")
+    mock_clerk = _mock_clerk([])
+    mock_clerk.users.get.return_value = _mock_clerk_user("user_real")
+    with patch("agents_shared.telegram_auth.Clerk", return_value=mock_clerk):
+        await telegram_auth.sync_link_to_clerk(
+            telegram_user_id="tg-123", clerk_user_id="user_real"
+        )
+    mock_clerk.users.update.assert_called_once_with(
+        user_id="user_real", external_id="tg-123"
+    )
+    mock_clerk.users.update_metadata.assert_called_once_with(
+        user_id="user_real",
+        private_metadata={"linked_clerk_user_id": "user_real"},
+    )
+
+
+@pytest.mark.asyncio
+async def test_sync_link_to_clerk_keeps_existing_external_id(monkeypatch) -> None:
+    monkeypatch.setenv("CLERK_SECRET_KEY", "sk_test_fake")
+    mock_clerk = _mock_clerk([])
+    mock_clerk.users.get.return_value = _mock_clerk_user(
+        "user_real", external_id="other-system-id"
+    )
+    with patch("agents_shared.telegram_auth.Clerk", return_value=mock_clerk):
+        await telegram_auth.sync_link_to_clerk(
+            telegram_user_id="tg-123", clerk_user_id="user_real"
+        )
+    mock_clerk.users.update.assert_not_called()
+    mock_clerk.users.update_metadata.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_sync_link_to_clerk_noop_without_secret(monkeypatch) -> None:
+    monkeypatch.delenv("CLERK_SECRET_KEY", raising=False)
+    with patch("agents_shared.telegram_auth.Clerk") as mock_clerk_cls:
+        await telegram_auth.sync_link_to_clerk(
+            telegram_user_id="tg-123", clerk_user_id="user_real"
+        )
+    mock_clerk_cls.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_sync_unlink_to_clerk_clears_shadow_pointer(monkeypatch) -> None:
+    monkeypatch.setenv("CLERK_SECRET_KEY", "sk_test_fake")
+    shadow = _mock_clerk_user(
+        "user_shadow",
+        private_metadata={"linked_clerk_user_id": "user_real"},
+    )
+    mock_clerk = _mock_clerk([shadow])
+    with patch("agents_shared.telegram_auth.Clerk", return_value=mock_clerk):
+        await telegram_auth.sync_unlink_to_clerk(telegram_user_id="tg-123")
+    mock_clerk.users.update_metadata.assert_called_once_with(
+        user_id="user_shadow",
+        private_metadata={"linked_clerk_user_id": None},
+    )
+    mock_clerk.users.update.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_sync_unlink_to_clerk_releases_claimed_external_id(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("CLERK_SECRET_KEY", "sk_test_fake")
+    owner = _mock_clerk_user(
+        "user_real",
+        private_metadata={"linked_clerk_user_id": "user_real"},
+        external_id="tg-123",
+    )
+    mock_clerk = _mock_clerk([owner])
+    with patch("agents_shared.telegram_auth.Clerk", return_value=mock_clerk):
+        await telegram_auth.sync_unlink_to_clerk(telegram_user_id="tg-123")
+    mock_clerk.users.update_metadata.assert_called_once_with(
+        user_id="user_real",
+        private_metadata={"linked_clerk_user_id": None},
+    )
+    mock_clerk.users.update.assert_called_once_with(
+        user_id="user_real", external_id=None
+    )
+
+
+@pytest.mark.asyncio
+async def test_sync_unlink_to_clerk_leaves_pure_shadow_user(monkeypatch) -> None:
+    monkeypatch.setenv("CLERK_SECRET_KEY", "sk_test_fake")
+    shadow = _mock_clerk_user("user_shadow")
+    mock_clerk = _mock_clerk([shadow])
+    with patch("agents_shared.telegram_auth.Clerk", return_value=mock_clerk):
+        await telegram_auth.sync_unlink_to_clerk(telegram_user_id="tg-123")
+    mock_clerk.users.update_metadata.assert_not_called()
+    mock_clerk.users.update.assert_not_called()
 
 
 def test_check_link_secret_uses_constant_time_compare(monkeypatch) -> None:

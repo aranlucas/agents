@@ -21,6 +21,7 @@ log = logging.getLogger(__name__)
 TELEGRAM_LINK_TOKEN_TTL_SECONDS = 10 * 60
 KROGER_PROVIDERS = ("oauth_custom_shopping", "custom_shopping")
 STRAVA_PROVIDERS = ("oauth_custom_strava", "custom_strava")
+LINKED_CLERK_USER_METADATA_KEY = "linked_clerk_user_id"
 
 
 @dataclass(frozen=True)
@@ -166,6 +167,10 @@ async def _lookup_clerk_user_by_external_id(
 ) -> str | None:
     secret_key = clerk_secret_key or os.getenv("CLERK_SECRET_KEY")
     if not secret_key:
+        log.warning(
+            "CLERK_SECRET_KEY is not set; cannot resolve Telegram user %s via Clerk",
+            telegram_user_id,
+        )
         return None
 
     def _fetch() -> str | None:
@@ -175,11 +180,25 @@ async def _lookup_clerk_user_by_external_id(
             )
             if not users:
                 return None
-            return users[0].id or None
+            user = users[0]
+            # A user found by external_id may be a Mini-App shadow account
+            # (created by /api/telegram/auth with no OAuth connections). When
+            # the web link flow stamped it with the real account's id, prefer
+            # that so credential checks hit the account that owns the tokens.
+            metadata = user.private_metadata or {}
+            linked = metadata.get(LINKED_CLERK_USER_METADATA_KEY)
+            if isinstance(linked, str) and linked:
+                return linked
+            return user.id or None
 
     try:
         return await asyncio.to_thread(_fetch)
     except Exception:
+        log.warning(
+            "Clerk external_id lookup failed for Telegram user %s",
+            telegram_user_id,
+            exc_info=True,
+        )
         return None
 
 
@@ -204,6 +223,108 @@ WHERE telegram_user_id = :telegram_user_id
     if clerk_user_id is not None:
         return clerk_user_id
     return await _lookup_clerk_user_by_external_id(telegram_user_id)
+
+
+async def sync_link_to_clerk(
+    *,
+    telegram_user_id: str,
+    clerk_user_id: str,
+    clerk_secret_key: str | None = None,
+) -> None:
+    """Mirror a Telegram link into Clerk so it survives database resets.
+
+    The telegram_account_links table may live in ephemeral container storage,
+    and the Mini App separately auto-creates a shadow Clerk user keyed by
+    ``external_id == telegram_user_id`` that owns no OAuth connections. Without
+    a durable pointer, losing the table silently resolves the sender to that
+    shadow user and every credential check (Strava, Kroger) fails. Stamp the
+    shadow user with the real account id — or claim the external_id on the
+    real account when no shadow exists — so lookups keep resolving correctly.
+    """
+    secret_key = clerk_secret_key or os.getenv("CLERK_SECRET_KEY")
+    if not secret_key:
+        log.warning(
+            "CLERK_SECRET_KEY is not set; Telegram link for user %s is only"
+            " stored locally and will not survive a database reset",
+            telegram_user_id,
+        )
+        return
+
+    def _sync() -> None:
+        with Clerk(bearer_auth=secret_key) as clerk:
+            users = clerk.users.list(
+                request={"external_id": [telegram_user_id], "limit": 1}
+            )
+            if users:
+                owner = users[0]
+                if owner.id and owner.id != clerk_user_id:
+                    clerk.users.update_metadata(
+                        user_id=owner.id,
+                        private_metadata={
+                            LINKED_CLERK_USER_METADATA_KEY: clerk_user_id
+                        },
+                    )
+                return
+            user = clerk.users.get(user_id=clerk_user_id)
+            if not user.external_id:
+                clerk.users.update(user_id=clerk_user_id, external_id=telegram_user_id)
+                # Self-pointer marks the external_id as claimed by the link
+                # flow, so sync_unlink_to_clerk knows it may release it.
+                clerk.users.update_metadata(
+                    user_id=clerk_user_id,
+                    private_metadata={LINKED_CLERK_USER_METADATA_KEY: clerk_user_id},
+                )
+
+    try:
+        await asyncio.to_thread(_sync)
+    except Exception:
+        log.warning(
+            "Failed to mirror Telegram link into Clerk for user %s",
+            telegram_user_id,
+            exc_info=True,
+        )
+
+
+async def sync_unlink_to_clerk(
+    *,
+    telegram_user_id: str,
+    clerk_secret_key: str | None = None,
+) -> None:
+    """Remove the Clerk-side mirror of a Telegram link, if one exists."""
+    secret_key = clerk_secret_key or os.getenv("CLERK_SECRET_KEY")
+    if not secret_key:
+        return
+
+    def _sync() -> None:
+        with Clerk(bearer_auth=secret_key) as clerk:
+            users = clerk.users.list(
+                request={"external_id": [telegram_user_id], "limit": 1}
+            )
+            if not users or not users[0].id:
+                return
+            owner = users[0]
+            metadata = owner.private_metadata or {}
+            linked = metadata.get(LINKED_CLERK_USER_METADATA_KEY)
+            if not linked:
+                # Pure Mini-App shadow user that was never web-linked; its
+                # external_id is its only tie to Telegram, so leave it alone.
+                return
+            clerk.users.update_metadata(
+                user_id=owner.id,
+                private_metadata={LINKED_CLERK_USER_METADATA_KEY: None},
+            )
+            if linked == owner.id:
+                # The real account claimed the external_id at link time.
+                clerk.users.update(user_id=owner.id, external_id=None)
+
+    try:
+        await asyncio.to_thread(_sync)
+    except Exception:
+        log.warning(
+            "Failed to remove Clerk-side Telegram link for user %s",
+            telegram_user_id,
+            exc_info=True,
+        )
 
 
 async def unlink_telegram_user(
