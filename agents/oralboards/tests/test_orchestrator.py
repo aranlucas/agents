@@ -110,3 +110,18 @@ def test_phase_prompts_keep_state_driven_question_contract() -> None:
     assert "ask_question" not in questioner.static_instruction
     assert questioner.output_key == "current_question"
     assert questioner.tools == []
+
+
+def test_phase_model_tiering() -> None:
+    """Strongest model on the evaluator (pedagogically critical); cheap on mechanical phases."""
+    from oralboards_agent.phases import (
+        build_case_builder,
+        build_evaluator,
+        build_questioner,
+        build_scorer,
+    )
+
+    assert build_evaluator().model.model == "mistral/mistral-large-latest"
+    assert build_case_builder().model.model == "cerebras/gpt-oss-120b"
+    assert build_questioner().model.model == "groq/llama-3.3-70b-versatile"
+    assert build_scorer().model.model == "mistral/mistral-medium-latest"

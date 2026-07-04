@@ -110,7 +110,7 @@ def complete_examination(tool_context: ToolContext) -> dict[str, object]:
 
 def build_case_builder() -> LlmAgent:
     return LlmAgent(
-        **{**_AGENT_DEFAULTS, "model": LiteLlm(model="mistral/mistral-medium-latest")},
+        **{**_AGENT_DEFAULTS, "model": LiteLlm(model="cerebras/gpt-oss-120b")},
         name="case_builder",
         include_contents="none",
         static_instruction=(
@@ -144,7 +144,7 @@ def build_case_builder() -> LlmAgent:
 
 def build_questioner() -> LlmAgent:
     return LlmAgent(
-        **{**_AGENT_DEFAULTS, "model": LiteLlm(model="mistral/mistral-medium-latest")},
+        **{**_AGENT_DEFAULTS, "model": LiteLlm(model="groq/llama-3.3-70b-versatile")},
         name="questioner",
         include_contents="none",
         output_key="current_question",
@@ -177,7 +177,7 @@ def build_questioner() -> LlmAgent:
 
 def build_evaluator() -> LlmAgent:
     return LlmAgent(
-        **{**_AGENT_DEFAULTS, "model": LiteLlm(model="mistral/mistral-medium-latest")},
+        **{**_AGENT_DEFAULTS, "model": LiteLlm(model="mistral/mistral-large-latest")},
         name="evaluator",
         static_instruction=(
             "You are an ABPD OCE practice examiner evaluating a candidate's answer.\n\n"
