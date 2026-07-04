@@ -32,7 +32,12 @@ export async function POST(req: Request) {
 
     let userId: string;
     if (existingUsers.length > 0) {
-      userId = existingUsers[0].id;
+      const existing = existingUsers[0];
+      // A user keyed by external_id may be a Mini-App shadow account. When the
+      // web link flow stamped it with the real account's id, sign into that
+      // account so OAuth connections (Strava, Kroger) made on the web apply.
+      const linked = existing.privateMetadata?.linked_clerk_user_id;
+      userId = typeof linked === "string" && linked ? linked : existing.id;
     } else {
       const newUser = await clerk.users.createUser({
         externalId: telegramId,

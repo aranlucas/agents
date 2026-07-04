@@ -240,10 +240,17 @@ async def test_telegram_link_consume_returns_telegram_user_id(
         telegram_chat_id="tg-chat",
     )
 
-    response = await consume_telegram_link(
-        ConsumeTelegramLinkRequest(token=token, clerk_user_id="clerk-user"),
-        SimpleNamespace(engine=engine),
-        x_telegram_link_secret="secret",  # noqa: S106
-    )
+    with patch(
+        "gateway.telegram_link.sync_link_to_clerk", new_callable=AsyncMock
+    ) as sync_mock:
+        response = await consume_telegram_link(
+            ConsumeTelegramLinkRequest(token=token, clerk_user_id="clerk-user"),
+            SimpleNamespace(engine=engine),
+            x_telegram_link_secret="secret",  # noqa: S106
+        )
 
     assert response == {"ok": True, "telegram_user_id": "tg-user"}
+    sync_mock.assert_awaited_once_with(
+        telegram_user_id="tg-user",
+        clerk_user_id="clerk-user",
+    )
