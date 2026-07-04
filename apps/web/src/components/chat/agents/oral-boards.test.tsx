@@ -34,7 +34,7 @@ function CurrentQuestion() {
 function Harness() {
   return (
     <OralBoardsQuestionProvider>
-      <OralBoardsExtension agentId="oral-boards-v2" />
+      <OralBoardsExtension agentId="oral-boards" />
       <CurrentQuestion />
     </OralBoardsQuestionProvider>
   );

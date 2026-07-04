@@ -39,8 +39,18 @@ describe("selectArtifact", () => {
     expect(selectArtifact({ foo: "bar" }, getAgentConfig("trends"))).toBeNull();
   });
 
-  it("returns null for oral-boards (no generic artifact config — uses bespoke pane)", () => {
+  it("builds a view for oral-boards from the case field (bespoke pane also reads state directly)", () => {
     const oralBoards = getAgentConfig("oral-boards");
-    expect(selectArtifact({ case: "## Case\nA 7-year-old patient." }, oralBoards)).toBeNull();
+    const view = selectArtifact(
+      { case: "## Case\nA 7-year-old patient.", status: "drafting" },
+      oralBoards,
+    );
+    expect(view).toEqual({
+      title: "Case",
+      kind: "markdown",
+      content: "## Case\nA 7-year-old patient.",
+      status: "drafting",
+      version: 1,
+    });
   });
 });

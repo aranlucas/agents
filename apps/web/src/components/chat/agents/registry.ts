@@ -198,32 +198,6 @@ const AGENTS: Record<AgentId, AgentConfig> = {
     colorVar: "--oral-boards",
     placeholder: "Start a pediatric dentistry oral-board case…",
     welcome: "Name a topic, or ask for a grounded mock oral-board case.",
-    suggestions: [
-      {
-        title: "Start a case",
-        message: "Run a grounded pediatric dentistry oral-board case.",
-      },
-      {
-        title: "Pulp therapy",
-        message: "Create an oral-board case focused on pulp therapy.",
-      },
-      {
-        title: "Trauma scenario",
-        message: "Give me a staged OCE-style trauma case.",
-      },
-      {
-        title: "Score my answer",
-        message: "Ask one question at a time and grade my answer with citations.",
-      },
-    ],
-  },
-  "oral-boards-v2": {
-    id: "oral-boards-v2",
-    label: "Oral Boards v2",
-    glyph: "◇",
-    colorVar: "--oral-boards",
-    placeholder: "Start a graph-based oral-board case (workflow)…",
-    welcome: "This is the workflow-based oral boards examiner. Name a topic or start a case.",
     artifact: {
       stateField: "case",
       kind: "markdown",
@@ -242,6 +216,10 @@ const AGENTS: Record<AgentId, AgentConfig> = {
       {
         title: "Trauma scenario",
         message: "Give me a staged OCE-style trauma case.",
+      },
+      {
+        title: "Score my answer",
+        message: "Ask one question at a time and grade my answer with citations.",
       },
     ],
   },
