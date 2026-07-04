@@ -287,8 +287,9 @@ for current best free models per provider.
 |           |                  | spreadsheet, excalidraw, oralboards orchestrator questioner phase      |
 | Standard  | NVIDIA           | grocery (`nemotron-3-super-120b-a12b`, 128K ctx)                       |
 | Light     | OpenRouter       | expense, resume                                                        |
-| Light     | Mistral          | oralboards orchestrator evaluator phase (`mistral-large-latest`) and   |
-|           | (free-tier, low  | scorer phase + GEPA `optimizer_model` (both `mistral-medium-latest`)   |
+| Light     | Mistral          | oralboards orchestrator evaluator phase (`mistral-large-latest`),      |
+|           | (free-tier, low  | scorer phase + GEPA `optimizer_model` (both `mistral-medium-latest`),  |
+|           |                  | and the eval-harness agent (`mistral-small-latest`)                    |
 | A2UI      | Gemini           | trends A2UI rendering subagent (bypasses LiteLLM entirely — uses       |
 |           | (direct ADK)     | `Gemini(model="gemini-2.5-flash")` directly because Gemini can consume |
 |           |                  | `reasoning_content` from prior turns that other providers reject.      |
