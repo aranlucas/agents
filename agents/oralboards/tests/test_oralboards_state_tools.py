@@ -350,3 +350,49 @@ def test_run_async_with_typeddict_args() -> None:
     assert context.state["case"] == "## Test\nContent."
     assert context.state["case_sources"] == sources
     assert context.state["status"] == "presenting"
+
+
+def test_ask_probe_sets_question_and_flag() -> None:
+    from oralboards_agent.tools.ask_probe import ask_probe
+
+    ctx = SimpleNamespace(state={})
+    result = ask_probe("What would change if the tooth were necrotic?", ctx)
+
+    assert result["status"] == "success"
+    assert ctx.state["active_probe"] == "What would change if the tooth were necrotic?"
+    assert (
+        ctx.state["current_question"] == "What would change if the tooth were necrotic?"
+    )
+
+
+def test_ask_probe_refuses_second_probe() -> None:
+    from oralboards_agent.tools.ask_probe import ask_probe
+
+    ctx = SimpleNamespace(state={"active_probe": "first probe"})
+    result = ask_probe("second probe", ctx)
+
+    assert result["status"] == "error"
+    assert ctx.state["active_probe"] == "first probe"
+
+
+def test_append_exchange_clears_active_probe() -> None:
+    from oralboards_agent.tools.append_exchange import append_exchange
+
+    ctx = SimpleNamespace(state={"active_probe": "pending probe"})
+    append_exchange(
+        ctx,
+        question="Q",
+        answer="A",
+        skillset="Pulp Therapy",
+        skill="analyze_evaluate",
+        feedback="**Skillset:** Pulp Therapy · analyze_evaluate — fine",
+        ideal_response="ideal",
+        score=3,
+    )
+    assert ctx.state["active_probe"] == ""
+
+
+def test_state_declares_active_probe_default() -> None:
+    from oralboards_agent.agent import OralBoardsState
+
+    assert OralBoardsState().active_probe == ""

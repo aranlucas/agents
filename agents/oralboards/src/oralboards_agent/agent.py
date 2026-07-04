@@ -18,6 +18,7 @@ from pydantic import BaseModel
 
 from .tools._types import CaseSource, OralBoardsExchange, SkillsetScore
 from .tools.append_exchange import append_exchange
+from .tools.ask_probe import ask_probe as ask_probe
 from .tools.read_doc import read_doc
 from .tools.search_docs import search_docs
 from .tools.set_case import set_case
@@ -47,6 +48,7 @@ class OralBoardsState(BaseModel):
     interview_complete: bool = False
     active_feedback: str = ""
     active_ideal_response: str = ""
+    active_probe: str = ""
 
 
 # ---------------------------------------------------------------------------

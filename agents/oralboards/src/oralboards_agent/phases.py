@@ -17,6 +17,7 @@ from google.adk.tools import FunctionTool, ToolContext
 from .agent import (
     OralBoardsState,
     append_exchange,
+    ask_probe,
     search_docs,
     set_case,
     set_loading_step,
@@ -196,6 +197,20 @@ def build_evaluator() -> LlmAgent:
             "Never fill in clinical content from memory. If neither the stored passages\n"
             "nor a re-search covers the point, say so in the feedback instead of\n"
             "improvising.\n\n"
+            "## Probing (one per question, max)\n"
+            "If the candidate's answer is partial — it would score 2 because something\n"
+            "specific is missing or undefended — you MAY call ask_probe with ONE follow-up\n"
+            "question targeting exactly that gap, instead of scoring immediately. Real\n"
+            "examiners probe; use it when one more sentence from the candidate would\n"
+            "separate a 2 from a 3.\n"
+            "Rules:\n"
+            "- Check state: if active_probe is non-empty, the probe was already asked and\n"
+            "  the latest user message answers it. You MUST now call append_exchange,\n"
+            "  treating the original answer plus the probe answer together as the\n"
+            '  candidate\'s response (answer = original answer + " / " + probe answer).\n'
+            "- Never probe an answer that is clearly a 1 or clearly a 3 — score it.\n"
+            "- After calling ask_probe, end your turn with no chat text. The panel\n"
+            "  displays the probe.\n\n"
             "## Your task\n"
             "The active question is in state: {current_question}\n"
             "The candidate's answer is the latest user message. Evaluate that answer:\n"
@@ -219,6 +234,7 @@ def build_evaluator() -> LlmAgent:
         ),
         tools=[
             search_docs,
+            ask_probe,
             append_exchange,
             FunctionTool(complete_examination),
             set_loading_step,

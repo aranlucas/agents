@@ -67,4 +67,5 @@ def append_exchange(
     tool_context.state["current_question"] = ""
     tool_context.state["active_feedback"] = ""
     tool_context.state["active_ideal_response"] = ""
+    tool_context.state["active_probe"] = ""
     return {"status": "success", "ok": True, "count": len(transcript)}
