@@ -4,6 +4,7 @@ from google.adk.tools import ToolContext
 from pydantic import Field
 
 from ._types import CaseSource
+from .search_docs import SEARCH_CALL_COUNT_KEY
 
 
 def set_case(
@@ -41,4 +42,5 @@ def set_case(
     )
     tool_context.state["interview_complete"] = False
     tool_context.state["status"] = "presenting"
+    tool_context.state[SEARCH_CALL_COUNT_KEY] = 0
     return {"status": "success", "ok": True, "length": len(case)}

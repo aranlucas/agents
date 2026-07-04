@@ -2,6 +2,7 @@ import asyncio
 import sqlite3
 from typing import Annotated, Literal
 
+from google.adk.tools import ToolContext
 from pydantic import Field, TypeAdapter, ValidationError
 
 from ..db import VALID_COLLECTIONS, connect
@@ -9,12 +10,21 @@ from ._types import DocRow, clean_query, extract_passage
 
 _DOC_ROWS = TypeAdapter(list[DocRow])
 
+# Hard budget per search episode (one case build, or one evaluator re-search).
+# Enforced in code, not just prompted, because small models don't reliably
+# stop after "fire two calls" — they keep reformulating the query. The
+# counter is reset by set_case / append_exchange / ask_probe, which mark the
+# end of the episode that earned the budget.
+MAX_SEARCH_CALLS = 2
+SEARCH_CALL_COUNT_KEY = "_search_docs_calls"
+
 
 def _row_to_dict(row: sqlite3.Row) -> dict[str, object]:
     return {key: row[key] for key in tuple(row.keys())}
 
 
 async def search_docs(
+    tool_context: ToolContext,
     query: Annotated[
         str,
         Field(
@@ -27,6 +37,17 @@ async def search_docs(
     ] = "",
 ) -> dict[str, object]:
     """Search bundled oral-board source documents with FTS5/BM25."""
+    calls = tool_context.state.get(SEARCH_CALL_COUNT_KEY, 0)
+    if calls >= MAX_SEARCH_CALLS:
+        return {
+            "status": "error",
+            "results": [],
+            "error": (
+                f"search budget exhausted ({MAX_SEARCH_CALLS} calls used) — "
+                "stop searching and proceed with the passages you already have"
+            ),
+        }
+
     clean = clean_query(query)
     if not clean:
         return {
@@ -40,6 +61,7 @@ async def search_docs(
             "results": [],
             "error": f"unknown collection: {collection}",
         }
+    tool_context.state[SEARCH_CALL_COUNT_KEY] = calls + 1
 
     collection_clause = "and d.collection = ?" if collection else ""
     params: list[str] = [clean]

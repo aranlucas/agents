@@ -3,6 +3,8 @@ from typing import Annotated
 from google.adk.tools import ToolContext
 from pydantic import Field
 
+from .search_docs import SEARCH_CALL_COUNT_KEY
+
 
 def ask_probe(
     question: Annotated[
@@ -21,4 +23,5 @@ def ask_probe(
         }
     tool_context.state["active_probe"] = question
     tool_context.state["current_question"] = question
+    tool_context.state[SEARCH_CALL_COUNT_KEY] = 0
     return {"status": "success", "message": "Probe question displayed."}

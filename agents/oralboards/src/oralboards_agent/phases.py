@@ -7,10 +7,12 @@ them lives in orchestrator.py; nothing here knows about the routing.
 from agents_shared.state import make_state_initializer, make_state_instruction
 from agents_shared.tools import (
     DEFAULT_RETRY_CONFIG,
+    GEMINI_RETRY_OPTIONS,
     on_model_error_callback,
     strip_thinking_before_model,
 )
 from google.adk.agents import LlmAgent
+from google.adk.models.google_llm import Gemini
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import FunctionTool, ToolContext
 
@@ -55,8 +57,10 @@ _SOURCE_RULES = (
     "Never fill in clinical content from memory.\n"
     "Each search result includes a 'passage' field with the most relevant text "
     "from that document — use it directly. No separate read_doc call is needed.\n"
-    "Search strategy: fire two search_docs calls in parallel (one broad, one "
-    "collection-filtered) to maximize coverage.\n"
+    "Search strategy: you have a HARD BUDGET of 2 search_docs calls — a 3rd call "
+    "is rejected. Spend both wisely in a single batch: one broad query, one "
+    "collection-filtered query. Do NOT reformulate and re-search if results look "
+    "thin — work with whatever the two calls return.\n"
     "If search returns no results, tell the user the corpus doesn't cover "
     "it and offer adjacent topics."
 )
@@ -126,7 +130,13 @@ def complete_examination(tool_context: ToolContext) -> dict[str, object]:
 
 def build_case_builder() -> LlmAgent:
     return LlmAgent(
-        **{**_AGENT_DEFAULTS, "model": LiteLlm(model="cerebras/gpt-oss-120b")},
+        **{
+            **_AGENT_DEFAULTS,
+            "model": Gemini(
+                model="gemini-3.1-flash-lite",
+                retry_options=GEMINI_RETRY_OPTIONS,
+            ),
+        },
         name="case_builder",
         include_contents="none",
         static_instruction=(
@@ -139,8 +149,13 @@ def build_case_builder() -> LlmAgent:
             "## Your task\n"
             "1. Pick a topic from the user's request or choose one yourself.\n"
             "2. Call set_loading_step('Searching clinical guidelines…'), then run search_docs\n"
-            "   (broad + collection-filtered, in parallel). Each result includes a 'passage'\n"
-            "   field with the most relevant text — use it directly, no read_doc needed.\n"
+            "   twice: one broad query (no collection filter), one query with\n"
+            "   collection='cody' — cody holds the actual clinical-case narratives, aapd/abpd\n"
+            "   are policy and guideline text. Each result includes a 'passage' field with the\n"
+            "   most relevant text — use it directly, no read_doc needed. You will not find a\n"
+            "   pre-written case matching the topic exactly — ground the clinical facts\n"
+            "   (risk factors, diagnostic criteria, staging) in the passages and author the\n"
+            "   vignette yourself.\n"
             "3. Call set_loading_step('Composing case vignette…'), then call set_case with:\n"
             "   - case: A concise candidate-facing markdown vignette grounded in the search\n"
             "     passages, following the vignette rules above (presentation only — no\n"
@@ -209,8 +224,9 @@ def build_evaluator() -> LlmAgent:
             "covers the topic.\n"
             "Re-search with search_docs when — and only when — the candidate's answer\n"
             "raises clinical material the stored passages do not cover (a drug, technique,\n"
-            "guideline, or complication outside the case's original scope). Fire one broad\n"
-            "and one collection-filtered search_docs call in parallel, use the returned\n"
+            "guideline, or complication outside the case's original scope). You have a HARD\n"
+            "BUDGET of 2 search_docs calls per exchange — a 3rd call is rejected. Spend both\n"
+            "wisely: one broad query, one collection-filtered query, use the returned\n"
             "'passage' fields, and add the new sources to the exchange's citations.\n"
             "Never fill in clinical content from memory. If neither the stored passages\n"
             "nor a re-search covers the point, say so in the feedback instead of\n"

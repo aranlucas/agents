@@ -1,12 +1,13 @@
 import asyncio
+from types import SimpleNamespace
 
 from oralboards_agent.tools._types import extract_passage
 from oralboards_agent.tools.read_doc import read_doc
-from oralboards_agent.tools.search_docs import search_docs
+from oralboards_agent.tools.search_docs import MAX_SEARCH_CALLS, search_docs
 
 
 def test_search_docs_returns_known_results() -> None:
-    result = asyncio.run(search_docs("pulpotomy"))
+    result = asyncio.run(search_docs(SimpleNamespace(state={}), "pulpotomy"))
 
     assert result["results"]
     assert {
@@ -19,16 +20,42 @@ def test_search_docs_returns_known_results() -> None:
 
 
 def test_search_docs_respects_collection_filter() -> None:
-    result = asyncio.run(search_docs("pulpotomy", collection="aapd"))
+    result = asyncio.run(
+        search_docs(SimpleNamespace(state={}), "pulpotomy", collection="aapd")
+    )
 
     assert result["results"]
     assert {row["collection"] for row in result["results"]} == {"aapd"}
 
 
 def test_search_docs_handles_fts_hostile_input() -> None:
-    result = asyncio.run(search_docs('"pulpotomy"*'))
+    result = asyncio.run(search_docs(SimpleNamespace(state={}), '"pulpotomy"*'))
 
     assert isinstance(result["results"], list)
+
+
+def test_search_docs_enforces_hard_budget() -> None:
+    context = SimpleNamespace(state={})
+    for _ in range(MAX_SEARCH_CALLS):
+        result = asyncio.run(search_docs(context, "pulpotomy"))
+        assert result["status"] == "success"
+
+    exhausted = asyncio.run(search_docs(context, "pulpotomy"))
+    assert exhausted["status"] == "error"
+    assert exhausted["results"] == []
+    assert "budget exhausted" in exhausted["error"]
+
+
+def test_search_docs_budget_resets_after_set_case() -> None:
+    from oralboards_agent.tools.set_case import set_case
+
+    context = SimpleNamespace(state={})
+    for _ in range(MAX_SEARCH_CALLS):
+        asyncio.run(search_docs(context, "pulpotomy"))
+
+    set_case(context, "## Case\nA child.")
+    result = asyncio.run(search_docs(context, "pulpotomy"))
+    assert result["status"] == "success"
 
 
 def test_read_doc_returns_body_for_known_filepath() -> None:
@@ -40,7 +67,7 @@ def test_read_doc_returns_body_for_known_filepath() -> None:
 
 
 def test_search_docs_empty_query_after_cleaning() -> None:
-    result = asyncio.run(search_docs('"***"'))
+    result = asyncio.run(search_docs(SimpleNamespace(state={}), '"***"'))
     assert result == {
         "status": "error",
         "results": [],
@@ -49,7 +76,9 @@ def test_search_docs_empty_query_after_cleaning() -> None:
 
 
 def test_search_docs_invalid_collection() -> None:
-    result = asyncio.run(search_docs("pulpotomy", collection="invalid"))
+    result = asyncio.run(
+        search_docs(SimpleNamespace(state={}), "pulpotomy", collection="invalid")
+    )
     assert result == {
         "status": "error",
         "results": [],

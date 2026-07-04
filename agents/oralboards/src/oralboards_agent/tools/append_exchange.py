@@ -4,6 +4,7 @@ from google.adk.tools import ToolContext
 from pydantic import Field
 
 from ._types import CaseSource, OralBoardsSkill
+from .search_docs import SEARCH_CALL_COUNT_KEY
 
 
 def append_exchange(
@@ -68,4 +69,5 @@ def append_exchange(
     tool_context.state["active_feedback"] = ""
     tool_context.state["active_ideal_response"] = ""
     tool_context.state["active_probe"] = ""
+    tool_context.state[SEARCH_CALL_COUNT_KEY] = 0
     return {"status": "success", "ok": True, "count": len(transcript)}

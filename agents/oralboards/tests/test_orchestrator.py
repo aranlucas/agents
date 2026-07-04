@@ -165,7 +165,7 @@ def test_phase_model_tiering() -> None:
     )
 
     assert build_evaluator().model.model == "mistral/mistral-large-latest"
-    assert build_case_builder().model.model == "cerebras/gpt-oss-120b"
+    assert build_case_builder().model.model == "gemini-3.1-flash-lite"
     assert build_questioner().model.model == "groq/llama-3.3-70b-versatile"
     assert build_scorer().model.model == "mistral/mistral-medium-latest"
 
