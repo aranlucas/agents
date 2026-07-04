@@ -90,7 +90,7 @@ const renderRules: RenderRules = {
       imageProps.alt = node.alt;
       imageProps.accessible = true;
     }
-    return <Image key={node.key} {...imageProps} />;
+    return <Image {...imageProps} key={node.key} />;
   },
   link: ({ node, styles, children, extras }) => {
     const onPress = () => extras?.onPress(node.url) ?? Linking.openURL(node.url);
