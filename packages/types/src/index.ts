@@ -242,6 +242,9 @@ export type OralBoardsState = {
   // Written by the ask_question frontend tool so the active question survives
   // a page refresh (reconstructed from agent state on mount).
   current_question?: string;
+  // Follow-up probe asked by the evaluator via ask_probe — shown as the active
+  // question until append_exchange clears it.
+  active_probe?: string;
 };
 
 // Research agent state — matches what agents/research writes to ADK shared state
