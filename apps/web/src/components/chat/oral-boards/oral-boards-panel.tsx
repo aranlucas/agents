@@ -22,6 +22,7 @@ import type {
   CaseSource,
   OralBoardsExchange,
   OralBoardsOutcome,
+  OralBoardsSkill,
   OralBoardsSkillsetScore,
   OralBoardsState,
 } from "@agents/types";
@@ -72,8 +73,50 @@ function truncate(text: string, len: number): string {
   return text.length <= len ? text : `${text.slice(0, len)}…`;
 }
 
+// --- LLM-written state guards ---------------------------------------------
+// OralBoardsState is written by an LLM tool call at runtime, so every typed
+// field can arrive missing, null, or the wrong shape even though the
+// declared type says otherwise. These helpers coerce defensively instead of
+// trusting the type at the point of use.
+
+function asText(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+// A non-empty string, or undefined — for `{x && <Badge>{x}</Badge>}`-style
+// conditional rendering where a non-string value would crash React as a
+// child (e.g. an object) instead of just rendering oddly.
+function safeString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function asArray<T>(value: unknown): T[] {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Array.isArray narrows to any[]
+  return Array.isArray(value) ? (value as T[]) : [];
+}
+
+// `score` fields are typed `1 | 2 | 3` but an LLM can write a string, null,
+// or anything else. `null`/`undefined` must stay "no score" rather than
+// coerce to 0 (Number(null) === 0).
+function scoreNumber(value: unknown): number | undefined {
+  if (value == null) return undefined;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+// Agent state is LLM-written at runtime, so enum-typed fields can carry
+// off-enum strings — look up display metadata defensively instead of trusting
+// the declared type.
+function skillMetaFor(
+  skill: OralBoardsSkill | undefined,
+): { label: string; description: string } | undefined {
+  return skill ? OCE_SKILL_LEVELS[skill] : undefined;
+}
+
 function stripMarkdownForSpeech(text: string): string {
-  return text
+  // Defense in depth: TtsButton's `text` prop is typed string, but every
+  // call site ultimately traces back to LLM-written state.
+  return asText(text)
     .replace(/^#{1,6}\s+/gm, "")
     .replace(/\*{1,3}([^*]+)\*{1,3}/g, "$1")
     .replace(/_{1,3}([^_]+)_{1,3}/g, "$1")
@@ -91,15 +134,21 @@ function CitationChips({ sources }: { sources: CaseSource[] }) {
   if (sources.length === 0) return null;
   return (
     <div className="flex min-w-0 flex-wrap gap-1">
-      {sources.map((s) => (
-        <Badge
-          key={`${s.collection}-${s.docid}`}
-          variant="secondary"
-          className="max-w-full min-w-0 truncate font-mono text-[10px]"
-        >
-          {s.collection.toUpperCase()} #{s.docid} · {s.title}
-        </Badge>
-      ))}
+      {sources.map((s, i) => {
+        const collection = safeString(s.collection) ?? "src";
+        const docid = typeof s.docid === "number" || typeof s.docid === "string" ? s.docid : "?";
+        const title = safeString(s.title) ?? "Untitled";
+        return (
+          <Badge
+            // oxlint-disable-next-line react/no-array-index-key -- fields can collide once defaulted
+            key={`${collection}-${docid}-${i}`}
+            variant="secondary"
+            className="max-w-full min-w-0 truncate font-mono text-[10px]"
+          >
+            {collection.toUpperCase()} #{docid} · {title}
+          </Badge>
+        );
+      })}
     </div>
   );
 }
@@ -113,13 +162,15 @@ function scoreClasses(score: number): string {
 // Blueprint skillset (domain), cognitive skill level, and 1-3 practice score
 // for one exchange. Hidden gracefully when the agent hasn't tagged the answer.
 function SkillsetBadges({ exchange }: { exchange: OralBoardsExchange }) {
-  const skillMeta = exchange.skill ? OCE_SKILL_LEVELS[exchange.skill] : undefined;
-  if (!exchange.skillset && !skillMeta && exchange.score == null) return null;
+  const skillMeta = skillMetaFor(exchange.skill);
+  const skillset = safeString(exchange.skillset);
+  const score = scoreNumber(exchange.score);
+  if (!skillset && !skillMeta && score == null) return null;
   return (
     <span className="flex flex-wrap items-center gap-1">
-      {exchange.skillset && (
+      {skillset && (
         <Badge variant="secondary" className="text-[10px]">
-          {exchange.skillset}
+          {skillset}
         </Badge>
       )}
       {skillMeta && (
@@ -127,11 +178,9 @@ function SkillsetBadges({ exchange }: { exchange: OralBoardsExchange }) {
           {skillMeta.label}
         </Badge>
       )}
-      {exchange.score != null && (
-        <Badge
-          className={`rounded border text-[10px] font-semibold ${scoreClasses(exchange.score)}`}
-        >
-          {exchange.score}/3
+      {score != null && (
+        <Badge className={`rounded border text-[10px] font-semibold ${scoreClasses(score)}`}>
+          {score}/3
         </Badge>
       )}
     </span>
@@ -153,12 +202,13 @@ function ModelAnswer({ text }: { text: string }) {
 }
 
 type FeedbackDetailsProps = {
-  idealResponse: string;
+  idealResponse: string | undefined;
   citations: CaseSource[];
 };
 
 function FeedbackDetails({ idealResponse, citations }: FeedbackDetailsProps) {
-  if (!idealResponse.trim() && citations.length === 0) return null;
+  const ideal = asText(idealResponse);
+  if (!ideal.trim() && citations.length === 0) return null;
 
   return (
     <Collapsible className="rounded-lg border border-dashed">
@@ -167,11 +217,35 @@ function FeedbackDetails({ idealResponse, citations }: FeedbackDetailsProps) {
         <ChevronDownIcon className="text-muted-foreground size-3 transition-transform group-data-panel-open:rotate-180" />
       </CollapsibleTrigger>
       <CollapsibleContent className="space-y-1.5 border-t px-2.5 py-2">
-        <ModelAnswer text={idealResponse} />
+        <ModelAnswer text={ideal} />
         <CitationChips sources={citations} />
       </CollapsibleContent>
     </Collapsible>
   );
+}
+
+// Top-level shape guard for the whole exam state: collects every "?? []" /
+// "?? \"\"" default in one place instead of scattering them, and — unlike a
+// bare `?? []` — also covers the case where the LLM wrote a non-array/
+// non-string value instead of omitting the field entirely.
+function normalizeState(state: OralBoardsState): {
+  status: NonNullable<OralBoardsState["status"]>;
+  caseBody: string;
+  sources: CaseSource[];
+  transcript: OralBoardsExchange[];
+  scoreCard: string;
+  scoreSummary: OralBoardsSkillsetScore[];
+  outcome: OralBoardsOutcome | undefined;
+} {
+  return {
+    status: state.status ?? "idle",
+    caseBody: asText(state.case),
+    sources: asArray<CaseSource>(state.case_sources),
+    transcript: asArray<OralBoardsExchange>(state.transcript),
+    scoreCard: asText(state.score_card),
+    scoreSummary: asArray<OralBoardsSkillsetScore>(state.score_summary),
+    outcome: state.outcome,
+  };
 }
 
 const OUTCOME_META: Record<OralBoardsOutcome, { label: string; cls: string }> = {
@@ -190,7 +264,9 @@ const OUTCOME_META: Record<OralBoardsOutcome, { label: string; cls: string }> = 
 };
 
 function OutcomeBanner({ outcome }: { outcome: OralBoardsOutcome }) {
-  const meta = OUTCOME_META[outcome];
+  // LLM-written state: an off-enum outcome hides the banner instead of crashing.
+  const meta: { label: string; cls: string } | undefined = OUTCOME_META[outcome];
+  if (!meta) return null;
   return (
     <Alert className={meta.cls}>
       <AlertTitle className="font-semibold">Practice outcome: {meta.label}</AlertTitle>
@@ -215,22 +291,31 @@ function ScoreSummaryTable({ summary }: { summary: OralBoardsSkillsetScore[] }) 
           </TableRow>
         </TableHeader>
         <TableBody>
-          {summary.map((row) => (
-            <TableRow key={`${row.skillset}-${row.skill ?? "na"}`} className="align-top">
-              <TableCell className="px-2.5 py-1.5">
-                <p className="font-medium">{row.skillset}</p>
-                {row.rationale && <p className="text-muted-foreground mt-0.5">{row.rationale}</p>}
-              </TableCell>
-              <TableCell className="text-muted-foreground px-2.5 py-1.5 whitespace-nowrap">
-                {row.skill ? OCE_SKILL_LEVELS[row.skill].label : "—"}
-              </TableCell>
-              <TableCell className="px-2.5 py-1.5 text-center">
-                <Badge className={`rounded border font-semibold ${scoreClasses(row.score)}`}>
-                  {row.score}/3
-                </Badge>
-              </TableCell>
-            </TableRow>
-          ))}
+          {summary.map((row, i) => {
+            const skillset = safeString(row.skillset) ?? "Unknown skillset";
+            const rationale = safeString(row.rationale);
+            const score = scoreNumber(row.score);
+            return (
+              <TableRow
+                // oxlint-disable-next-line react/no-array-index-key -- fields can collide once defaulted
+                key={`${skillset}-${row.skill ?? "na"}-${i}`}
+                className="align-top"
+              >
+                <TableCell className="px-2.5 py-1.5">
+                  <p className="font-medium">{skillset}</p>
+                  {rationale && <p className="text-muted-foreground mt-0.5">{rationale}</p>}
+                </TableCell>
+                <TableCell className="text-muted-foreground px-2.5 py-1.5 whitespace-nowrap">
+                  {skillMetaFor(row.skill)?.label ?? "—"}
+                </TableCell>
+                <TableCell className="px-2.5 py-1.5 text-center">
+                  <Badge className={`rounded border font-semibold ${scoreClasses(score ?? 0)}`}>
+                    {score ?? "—"}/3
+                  </Badge>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>
@@ -378,7 +463,7 @@ function CompletedExchangeRow({
         <CheckCircle2Icon className="size-3 shrink-0 text-emerald-400" />
         <span className="font-medium text-emerald-300/90">Q{index + 1}</span>
         <span className="text-muted-foreground flex-1 truncate">
-          {truncate(exchange.question, 52)}
+          {truncate(exchange.question ?? "", 52)}
         </span>
         <SkillsetBadges exchange={exchange} />
         <ChevronDownIcon className="text-muted-foreground size-3 transition-transform group-data-panel-open:rotate-180" />
@@ -394,7 +479,7 @@ function CompletedExchangeRow({
         {exchange.feedback && <Streamdown>{exchange.feedback}</Streamdown>}
         <FeedbackDetails
           idealResponse={exchange.ideal_response}
-          citations={exchange.citations ?? []}
+          citations={asArray<CaseSource>(exchange.citations)}
         />
       </CollapsibleContent>
     </Collapsible>
@@ -415,7 +500,7 @@ function LastFeedbackCard({ exchange, index }: { exchange: OralBoardsExchange; i
       {exchange.feedback && <Streamdown>{exchange.feedback}</Streamdown>}
       <FeedbackDetails
         idealResponse={exchange.ideal_response}
-        citations={exchange.citations ?? []}
+        citations={asArray<CaseSource>(exchange.citations)}
       />
     </div>
   );
@@ -621,11 +706,15 @@ function ExamProgressHeader({
       </div>
       {transcript.length > 0 && (
         <div className="mt-1.5 flex flex-wrap gap-1">
-          {[...new Set(transcript.map((x) => x.skillset).filter(Boolean))].map((skillset) => {
+          {[
+            ...new Set(
+              transcript.map((x) => safeString(x.skillset)).filter((v): v is string => v != null),
+            ),
+          ].map((skillset) => {
             const scores = transcript
               .filter((x) => x.skillset === skillset)
-              .map((x) => x.score)
-              .filter((s) => s != null);
+              .map((x) => scoreNumber(x.score))
+              .filter((s): s is number => s != null);
             const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
             return (
               <Badge
@@ -678,21 +767,36 @@ function TranscriptSection({
 
 function ExaminerQuestionCard({
   question,
+  probe = "",
   questionNumber,
   isRunning,
   loadingStep,
 }: {
   question: string;
+  probe?: string;
   questionNumber: number;
   isRunning: boolean;
   loadingStep: string;
 }) {
+  // A follow-up probe supersedes the original question as the active prompt.
+  // Coerce defensively: both props ultimately trace back to LLM-written
+  // state, which can carry a non-string value despite the declared type.
+  const probeText = asText(probe);
+  const questionText = asText(question);
+  const isProbe = Boolean(probeText.trim());
+  const activeText = isProbe ? probeText : questionText;
   return (
     <Card>
       <CardHeader className="flex-row items-start justify-between gap-2">
         <div className="flex items-center gap-2.5">
-          <Avatar className="size-8 ring-1 ring-indigo-500/30">
-            <AvatarFallback className="bg-indigo-500/15 text-indigo-300">
+          <Avatar
+            className={`size-8 ring-1 ${isProbe ? "ring-amber-500/30" : "ring-indigo-500/30"}`}
+          >
+            <AvatarFallback
+              className={
+                isProbe ? "bg-amber-500/15 text-amber-300" : "bg-indigo-500/15 text-indigo-300"
+              }
+            >
               <StethoscopeIcon className="size-4" />
             </AvatarFallback>
           </Avatar>
@@ -700,20 +804,39 @@ function ExaminerQuestionCard({
             <p className="text-[10px] font-semibold tracking-[0.12em] text-indigo-300/80 uppercase">
               Examiner
             </p>
-            <p className="text-muted-foreground text-[11px]">Q{questionNumber}</p>
+            <p className="text-muted-foreground text-[11px]">
+              Q{questionNumber}
+              {isProbe && <span className="text-amber-300/90"> · Follow-up</span>}
+            </p>
           </div>
         </div>
-        {question && <TtsButton text={question} label="Listen" />}
+        {activeText && <TtsButton text={activeText} label="Listen" />}
       </CardHeader>
-      <CardContent>
-        {question ? (
-          <p className="text-[15px] leading-relaxed font-medium text-pretty">{question}</p>
+      <CardContent className="space-y-2">
+        {isProbe && questionText && (
+          <p className="text-muted-foreground text-xs leading-relaxed">{questionText}</p>
+        )}
+        {activeText ? (
+          <p className="text-[15px] leading-relaxed font-medium text-pretty">{activeText}</p>
         ) : (
           <ThinkingState isRunning={isRunning} loadingStep={loadingStep} />
         )}
       </CardContent>
     </Card>
   );
+}
+
+// Invisible anchor that keeps the newest exam content in view: scrolls when
+// the feed signal changes, but never on initial mount.
+function ScrollToLatest({ signal }: { signal: string }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const previousSignalRef = useRef(signal);
+  useEffect(() => {
+    if (previousSignalRef.current === signal) return;
+    previousSignalRef.current = signal;
+    ref.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+  }, [signal]);
+  return <div ref={ref} aria-hidden="true" />;
 }
 
 function ResponseComposer({
@@ -802,6 +925,7 @@ function QuestioningPane({
   onNotesChange,
   activeFeedback = "",
   activeIdealResponse = "",
+  activeProbe = "",
 }: {
   caseBody: string;
   sources: CaseSource[];
@@ -813,26 +937,22 @@ function QuestioningPane({
   onNotesChange: React.Dispatch<React.SetStateAction<string>>;
   activeFeedback?: string;
   activeIdealResponse?: string;
+  activeProbe?: string;
 }) {
   const { currentQuestion: question } = useOralBoardsQuestion();
   const isMobile = useIsMobile();
   const [answerText, setAnswerText] = useState("");
   const [submittedAnswer, setSubmittedAnswer] = useState("");
-  const previousQuestionRef = useRef(question);
+  // A new probe is a new active prompt even though the question is unchanged.
+  const activePrompt = `${question} ${activeProbe}`;
+  const previousPromptRef = useRef(activePrompt);
 
   useEffect(() => {
-    if (question && question !== previousQuestionRef.current) {
-      previousQuestionRef.current = question;
+    if (activePrompt.trim() && activePrompt !== previousPromptRef.current) {
+      previousPromptRef.current = activePrompt;
       setSubmittedAnswer("");
     }
-  }, [question]);
-
-  useEffect(
-    () => () => {
-      previousQuestionRef.current = "";
-    },
-    [],
-  );
+  }, [activePrompt]);
 
   const isScoring = isRunning && loadingStep === "Computing score card…";
   const stage: "question" | "reviewing" | "scoring" | "complete" = isScoring
@@ -918,11 +1038,15 @@ function QuestioningPane({
               {!isScoring && (
                 <ExaminerQuestionCard
                   question={question}
+                  probe={activeProbe}
                   questionNumber={displayedQuestionNumber}
                   isRunning={isRunning}
                   loadingStep={loadingStep}
                 />
               )}
+              <ScrollToLatest
+                signal={`${transcript.length}:${activePrompt}:${activeFeedback.trim() ? "streaming" : ""}`}
+              />
             </div>
           </ScrollArea>
           <div className="bg-background shrink-0 border-t p-3">{composer}</div>
@@ -937,6 +1061,7 @@ function QuestioningPane({
         {!isScoring && (
           <ExaminerQuestionCard
             question={question}
+            probe={activeProbe}
             questionNumber={displayedQuestionNumber}
             isRunning={isRunning}
             loadingStep={loadingStep}
@@ -980,6 +1105,9 @@ function QuestioningPane({
                       isRunning={isRunning}
                       activeFeedback={activeFeedback}
                       activeIdealResponse={activeIdealResponse}
+                    />
+                    <ScrollToLatest
+                      signal={`${transcript.length}:${activeFeedback.trim() ? "streaming" : ""}`}
                     />
                   </div>
                 </ScrollArea>
@@ -1077,13 +1205,8 @@ export function OralBoardsPanel({
   activeFeedback?: string;
   activeIdealResponse?: string;
 }) {
-  const status = state.status ?? "idle";
-  const caseBody = state.case ?? "";
-  const sources = state.case_sources ?? [];
-  const transcript = state.transcript ?? [];
-  const scoreCard = state.score_card ?? "";
-  const scoreSummary = state.score_summary ?? [];
-  const outcome = state.outcome;
+  const { status, caseBody, sources, transcript, scoreCard, scoreSummary, outcome } =
+    normalizeState(state);
 
   // Scratch notes persist across presenting → questioning so the candidate
   // keeps what they jotted while reading the case.
@@ -1127,6 +1250,7 @@ export function OralBoardsPanel({
             onNotesChange={setNotes}
             activeFeedback={activeFeedback}
             activeIdealResponse={activeIdealResponse}
+            activeProbe={asText(state.active_probe)}
           />
         )}
         {showFinalFeedback && (

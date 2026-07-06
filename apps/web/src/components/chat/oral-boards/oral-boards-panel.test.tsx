@@ -2,9 +2,15 @@
 import React, { forwardRef, useImperativeHandle } from "react";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { OralBoardsState } from "@agents/types";
+import type {
+  CaseSource,
+  OralBoardsExchange,
+  OralBoardsOutcome,
+  OralBoardsSkill,
+  OralBoardsState,
+} from "@agents/types";
 
 vi.mock("@/lib/copilotkit/speak-question", () => ({
   speak: vi.fn().mockResolvedValue(""),
@@ -725,6 +731,419 @@ describe("OralBoardsPanel — complete", () => {
     expect(
       screen.queryByText("Your answer: I would use local anesthesia."),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows an empty-state message when there is no score card, summary, or transcript", () => {
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "complete",
+      transcript: [],
+    };
+
+    render(<OralBoardsPanel state={state} {...baseProps} />);
+
+    expect(screen.getByText("No feedback yet.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Start a new case/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("OralBoardsPanel — malformed agent state", () => {
+  // State is written by LLMs at runtime; the panel must degrade, not crash —
+  // an uncaught render error blanks the whole page (no error boundary above).
+  it("renders citation chips with fallback text when fields are missing", () => {
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [
+        {} as unknown as CaseSource,
+        { docid: 4 } as unknown as CaseSource,
+        { collection: 7 } as unknown as CaseSource,
+      ],
+      status: "presenting",
+      transcript: [],
+    };
+
+    expect(() => render(<OralBoardsPanel state={state} {...baseProps} />)).not.toThrow();
+    expect(screen.getAllByText(/Untitled/).length).toBeGreaterThan(0);
+  });
+
+  it("computes a correct per-skillset average when scores arrive as strings", () => {
+    // Naive `reduce((a, b) => a + b, 0)` string-concatenates "2" and "3" into
+    // "023" before dividing — 11.5, not 2.5. Two exchanges catch that; a
+    // single-score case can accidentally look right because "/" coerces its
+    // operands to numbers.
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: [
+        {
+          question: "Q1",
+          answer: "A1",
+          feedback: "F1",
+          ideal_response: "I1",
+          citations: [],
+          skillset: "Behavior Guidance",
+          score: "2" as unknown as 1 | 2 | 3,
+        },
+        {
+          question: "Q2",
+          answer: "A2",
+          feedback: "F2",
+          ideal_response: "I2",
+          citations: [],
+          skillset: "Behavior Guidance",
+          score: "3" as unknown as 1 | 2 | 3,
+        },
+      ],
+    };
+
+    render(<OralBoardsPanel state={state} {...baseProps} />);
+    expect(screen.getByText("2.5")).toBeInTheDocument();
+  });
+
+  it("colors a string score badge correctly instead of defaulting to red", () => {
+    // scoreClasses does `score === 2`, which is strictly false for the string
+    // "2" — a score of "2" was falling through to the red (failing) branch.
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: [
+        {
+          question: "Q1",
+          answer: "A1",
+          feedback: "F1",
+          ideal_response: "I1",
+          citations: [],
+          score: "2" as unknown as 1 | 2 | 3,
+        },
+      ],
+    };
+
+    render(<OralBoardsPanel state={state} {...baseProps} />);
+    const badge = screen.getByText("2/3");
+    expect(badge).toHaveClass("text-amber-300");
+  });
+
+  it("colors a string score correctly in the final score summary table", () => {
+    const state: OralBoardsState = {
+      case: "Case.",
+      status: "complete",
+      transcript: [],
+      score_card: "Done.",
+      score_summary: [
+        {
+          skillset: "Pulp Therapy",
+          score: "2" as unknown as 1 | 2 | 3,
+          rationale: "Solid.",
+        },
+      ],
+    };
+
+    render(<OralBoardsPanel state={state} {...baseProps} />);
+    const badge = screen.getByText("2/3");
+    expect(badge).toHaveClass("text-amber-300");
+  });
+
+  it("falls back to a placeholder skillset label instead of crashing on a non-string skillset", () => {
+    const state: OralBoardsState = {
+      case: "Case.",
+      status: "complete",
+      transcript: [],
+      score_card: "Done.",
+      score_summary: [
+        {
+          skillset: { nope: true } as unknown as string,
+          score: 2,
+          rationale: { nope: true } as unknown as string,
+        },
+      ],
+    };
+
+    expect(() => render(<OralBoardsPanel state={state} {...baseProps} />)).not.toThrow();
+    expect(screen.getByText("Unknown skillset")).toBeInTheDocument();
+  });
+
+  it("survives a non-array transcript, case_sources, and score_summary", () => {
+    const state = {
+      case: "Case.",
+      status: "complete",
+      transcript: "not-an-array",
+      case_sources: { nope: true },
+      score_summary: "also-not-an-array",
+      score_card: "Done.",
+    } as unknown as OralBoardsState;
+
+    expect(() => render(<OralBoardsPanel state={state} {...baseProps} />)).not.toThrow();
+  });
+
+  it("survives a non-string ideal_response inside feedback details", async () => {
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: [
+        {
+          question: "Q1",
+          answer: "A1",
+          feedback: "F1",
+          ideal_response: 42 as unknown as string,
+          citations: [],
+        },
+      ],
+    };
+
+    expect(() => render(<OralBoardsPanel state={state} {...baseProps} />)).not.toThrow();
+  });
+
+  it("survives a non-array citations list on a transcript exchange", () => {
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: [
+        {
+          question: "Q1",
+          answer: "A1",
+          feedback: "F1",
+          ideal_response: "I1",
+          citations: "not-an-array" as unknown as CaseSource[],
+        },
+      ],
+    };
+
+    expect(() => render(<OralBoardsPanel state={state} {...baseProps} />)).not.toThrow();
+  });
+
+  it("ignores a non-string active_probe instead of crashing on .trim()", () => {
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: [],
+      active_probe: 42 as unknown as string,
+    };
+
+    expect(() => render(<OralBoardsPanel state={state} {...baseProps} />)).not.toThrow();
+    expect(screen.queryByText(/follow-up/i)).not.toBeInTheDocument();
+  });
+
+  it("renders the score table when a skill label is off-enum", () => {
+    const state: OralBoardsState = {
+      case: "Case.",
+      status: "complete",
+      transcript: [],
+      score_card: "Overall solid.",
+      score_summary: [
+        {
+          skillset: "Pulp Therapy",
+          skill: "Remember" as OralBoardsSkill,
+          score: 2,
+          rationale: "",
+        },
+      ],
+    };
+
+    render(<OralBoardsPanel state={state} {...baseProps} />);
+
+    expect(screen.getByText("Pulp Therapy")).toBeInTheDocument();
+    expect(screen.getByText("—")).toBeInTheDocument();
+  });
+
+  it("survives transcript exchanges with missing fields", () => {
+    const partial = {
+      question: undefined,
+      answer: undefined,
+      feedback: undefined,
+      ideal_response: undefined,
+      citations: undefined,
+    } as unknown as OralBoardsExchange;
+    const state: OralBoardsState = {
+      case: "Case.",
+      status: "questioning",
+      transcript: [partial, partial],
+    };
+
+    expect(() => render(<OralBoardsPanel state={state} {...baseProps} />)).not.toThrow();
+  });
+
+  it("ignores an unknown outcome value instead of crashing", () => {
+    const state: OralBoardsState = {
+      case: "Case.",
+      status: "complete",
+      transcript: [],
+      score_card: "Done.",
+      outcome: "unknown_outcome" as OralBoardsOutcome,
+    };
+
+    expect(() => render(<OralBoardsPanel state={state} {...baseProps} />)).not.toThrow();
+  });
+});
+
+describe("OralBoardsPanel — examiner probe", () => {
+  it("shows the follow-up probe as the active question when active_probe is set", () => {
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: [],
+      active_probe: "How long would you splint the tooth?",
+    };
+
+    render(<OralBoardsPanel state={state} {...baseProps} />);
+
+    expect(screen.getByText("How long would you splint the tooth?")).toBeInTheDocument();
+    expect(screen.getByText(/follow-up/i)).toBeInTheDocument();
+  });
+
+  it("re-enables the composer when a probe arrives while still reviewing the prior answer", async () => {
+    const { useOralBoardsQuestion } = await import("@/lib/copilotkit/oral-boards-question-context");
+    vi.mocked(useOralBoardsQuestion).mockReturnValue({
+      currentQuestion: "What is your diagnosis?",
+      setCurrentQuestion: vi.fn(),
+      clearCurrentQuestion: vi.fn(),
+      pendingInputKind: "answer",
+      registerPendingInput: vi.fn(),
+      clearPendingInput: vi.fn(),
+      respondToPendingInput: vi.fn(),
+    });
+
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: [],
+    };
+
+    const { rerender } = render(
+      <OralBoardsPanel state={state} {...baseProps} onAnswer={vi.fn()} />,
+    );
+
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Your answer" }),
+      "Reversible pulpitis.",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Submit" }));
+
+    rerender(
+      <OralBoardsPanel
+        state={state}
+        {...baseProps}
+        isRunning={true}
+        loadingStep="Reviewing your answer…"
+        onAnswer={vi.fn()}
+      />,
+    );
+
+    // Still reviewing: the composer is replaced by the submitted-answer view.
+    expect(screen.queryByRole("textbox", { name: "Your answer" })).not.toBeInTheDocument();
+    expect(screen.getByText("Reversible pulpitis.")).toBeInTheDocument();
+
+    // A follow-up probe arrives mid-review — it supersedes the prior question,
+    // so the composer must come back even though isRunning is still true.
+    rerender(
+      <OralBoardsPanel
+        state={{ ...state, active_probe: "How long would you splint the tooth?" }}
+        {...baseProps}
+        isRunning={true}
+        loadingStep="Reviewing your answer…"
+        onAnswer={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("textbox", { name: "Your answer" })).toBeInTheDocument();
+
+    vi.mocked(useOralBoardsQuestion).mockReturnValue({
+      currentQuestion: "",
+      setCurrentQuestion: vi.fn(),
+      clearCurrentQuestion: vi.fn(),
+      pendingInputKind: null,
+      registerPendingInput: vi.fn(),
+      clearPendingInput: vi.fn(),
+      respondToPendingInput: vi.fn(),
+    });
+  });
+});
+
+describe("OralBoardsPanel — auto-scroll", () => {
+  afterEach(async () => {
+    const { useIsMobile } = await import("@agents/ui/hooks/use-mobile");
+    vi.mocked(useIsMobile).mockReturnValue(false);
+    const { useOralBoardsQuestion } = await import("@/lib/copilotkit/oral-boards-question-context");
+    vi.mocked(useOralBoardsQuestion).mockReturnValue({
+      currentQuestion: "",
+      setCurrentQuestion: vi.fn(),
+      clearCurrentQuestion: vi.fn(),
+      pendingInputKind: null,
+      registerPendingInput: vi.fn(),
+      clearPendingInput: vi.fn(),
+      respondToPendingInput: vi.fn(),
+    });
+  });
+
+  it("scrolls the newest exam content into view on mobile when the question changes", async () => {
+    const { useIsMobile } = await import("@agents/ui/hooks/use-mobile");
+    vi.mocked(useIsMobile).mockReturnValue(true);
+    const scrollSpy = vi.fn();
+    window.HTMLElement.prototype.scrollIntoView = scrollSpy;
+
+    const { useOralBoardsQuestion } = await import("@/lib/copilotkit/oral-boards-question-context");
+    const questionContext = {
+      currentQuestion: "What is your initial impression?",
+      setCurrentQuestion: vi.fn(),
+      clearCurrentQuestion: vi.fn(),
+      pendingInputKind: "answer" as const,
+      registerPendingInput: vi.fn(),
+      clearPendingInput: vi.fn(),
+      respondToPendingInput: vi.fn(),
+    };
+    vi.mocked(useOralBoardsQuestion).mockReturnValue(questionContext);
+
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: [],
+    };
+    const { rerender } = render(<OralBoardsPanel state={state} {...baseProps} />);
+    scrollSpy.mockClear();
+
+    vi.mocked(useOralBoardsQuestion).mockReturnValue({
+      ...questionContext,
+      currentQuestion: "What radiographs would you take?",
+    });
+    rerender(<OralBoardsPanel state={state} {...baseProps} />);
+
+    expect(scrollSpy).toHaveBeenCalled();
+  });
+
+  it("does not scroll on initial mount", async () => {
+    const { useIsMobile } = await import("@agents/ui/hooks/use-mobile");
+    vi.mocked(useIsMobile).mockReturnValue(true);
+    const scrollSpy = vi.fn();
+    window.HTMLElement.prototype.scrollIntoView = scrollSpy;
+
+    const { useOralBoardsQuestion } = await import("@/lib/copilotkit/oral-boards-question-context");
+    vi.mocked(useOralBoardsQuestion).mockReturnValue({
+      currentQuestion: "What is your initial impression?",
+      setCurrentQuestion: vi.fn(),
+      clearCurrentQuestion: vi.fn(),
+      pendingInputKind: "answer",
+      registerPendingInput: vi.fn(),
+      clearPendingInput: vi.fn(),
+      respondToPendingInput: vi.fn(),
+    });
+
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: [],
+    };
+    render(<OralBoardsPanel state={state} {...baseProps} />);
+
+    expect(scrollSpy).not.toHaveBeenCalled();
   });
 });
 

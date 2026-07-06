@@ -6,7 +6,14 @@ from google.adk.tools import ToolContext
 from pydantic import Field, TypeAdapter, ValidationError
 
 from ..db import VALID_COLLECTIONS, connect
-from ._types import DocRow, clean_query, extract_passage
+from ._types import (
+    SNIPPET_ELLIPSIS,
+    SNIPPET_MARK_CLOSE,
+    SNIPPET_MARK_OPEN,
+    DocRow,
+    anchor_passage,
+    clean_query,
+)
 
 _DOC_ROWS = TypeAdapter(list[DocRow])
 
@@ -17,6 +24,14 @@ _DOC_ROWS = TypeAdapter(list[DocRow])
 # end of the episode that earned the budget.
 MAX_SEARCH_CALLS = 2
 SEARCH_CALL_COUNT_KEY = "_search_docs_calls"
+
+# Candidate-pool shape handed to the reranking LLM: the overall BM25 top
+# slice, plus each collection's best hits so a single unfiltered call still
+# surfaces minority-collection docs (e.g. cody case narratives behind a wall
+# of aapd guidelines).
+OVERALL_TOP = 8
+PER_COLLECTION_TOP = 2
+RESULT_LIMIT = 10
 
 
 def _row_to_dict(row: sqlite3.Row) -> dict[str, object]:
@@ -61,29 +76,43 @@ async def search_docs(
             "results": [],
             "error": f"unknown collection: {collection}",
         }
-    tool_context.state[SEARCH_CALL_COUNT_KEY] = calls + 1
-
     collection_clause = "and d.collection = ?" if collection else ""
-    params: list[str] = [clean]
+    params: list[object] = [clean]
     if collection:
         params.append(collection)
+    params += [OVERALL_TOP, PER_COLLECTION_TOP, RESULT_LIMIT]
 
     sql = f"""
-        select
-          d.id as docid,
-          documents_fts.filepath as filepath,
-          d.title as title,
-          d.collection as collection,
-          snippet(documents_fts, 2, '[', ']', '...', 24) as snippet,
-          c.doc as body
-        from documents_fts
-        join documents d on d.collection || '/' || d.path = documents_fts.filepath
-        join content c on c.hash = d.hash
-        where documents_fts match ?
-          and d.active = 1
-          {collection_clause}
-        order by bm25(documents_fts)
-        limit 5
+        with matches as (
+          select
+            d.id as docid,
+            documents_fts.filepath as filepath,
+            d.title as title,
+            d.collection as collection,
+            snippet(documents_fts, 2,
+                    '{SNIPPET_MARK_OPEN}', '{SNIPPET_MARK_CLOSE}',
+                    '{SNIPPET_ELLIPSIS}', 24) as snippet,
+            c.doc as body,
+            -bm25(documents_fts) as score
+          from documents_fts
+          join documents d on d.collection || '/' || d.path = documents_fts.filepath
+          join content c on c.hash = d.hash
+          where documents_fts match ?
+            and d.active = 1
+            {collection_clause}
+        ),
+        ranked as (
+          select *,
+            row_number() over (order by score desc) as overall_rank,
+            row_number() over (partition by collection order by score desc)
+              as collection_rank
+          from matches
+        )
+        select docid, filepath, title, collection, snippet, body, score
+        from ranked
+        where overall_rank <= ? or collection_rank <= ?
+        order by score desc
+        limit ?
     """  # noqa: S608
 
     def _query() -> list[DocRow]:
@@ -98,6 +127,8 @@ async def search_docs(
     except ValidationError:
         return {"status": "error", "results": [], "error": "invalid search row"}
 
+    tool_context.state[SEARCH_CALL_COUNT_KEY] = calls + 1
+
     results = [
         {
             "docid": row["docid"],
@@ -105,7 +136,8 @@ async def search_docs(
             "title": row["title"],
             "snippet": row.get("snippet", ""),
             "collection": row["collection"],
-            "passage": extract_passage(row["body"], clean),
+            "score": round(row.get("score", 0.0), 2),
+            "passage": anchor_passage(row["body"], row.get("snippet", ""), clean),
         }
         for row in rows
     ]

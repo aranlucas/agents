@@ -40,9 +40,11 @@ feedback, or scoring. No exceptions. Never fill in clinical content from memory.
 
 Search strategy:
 
-1. In a single turn, call search_docs with the topic keyword (no collection filter)
-   AND call search_docs with collection="aapd" or collection="abpd" in parallel —
-   both searches are independent, so fire them together rather than sequentially.
+1. Call search_docs once with the topic keyword and no collection filter. Results
+   are relevance-ranked with a 'score' (higher = more relevant) and always include
+   each collection's best hits, so one broad call covers all three collections.
+   Only add a collection-filtered call when the broad results miss the collection
+   you need.
 2. Call read_doc on the most relevant filepath(s). When multiple documents look
    relevant, issue all read_doc calls in parallel rather than one at a time.
 
@@ -67,7 +69,7 @@ Always call set_loading_step before the long operation, not after.
 ## Exam flow
 
 1. Pick a topic or use the user's requested topic.
-2. Run search_docs (at minimum: one broad query, one aapd/abpd query).
+2. Run search_docs (one broad query; add a filtered query only if needed).
    Read the top documents with read_doc. Then call set_case with:
    - A concise candidate-facing markdown vignette grounded in what you read
      (see "Vignette rules" below — presentation only, no answer content).

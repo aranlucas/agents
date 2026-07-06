@@ -22,6 +22,9 @@ const jetbrains = JetBrains_Mono({
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // Shrink the layout viewport when the mobile keyboard opens so pinned
+  // composers (e.g. the oral-boards answer box) stay above the keyboard.
+  interactiveWidget: "resizes-content",
 };
 
 export const metadata: Metadata = {

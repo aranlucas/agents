@@ -3,17 +3,30 @@
 import { useCallback, useEffect, useRef } from "react";
 import { CopilotSidebar, useAgent, useCopilotKit, UseAgentUpdate } from "@copilotkit/react-core/v2";
 
+import { AlertCircleIcon } from "lucide-react";
+
 import type { OralBoardsState } from "@agents/types";
-import { Button, SidebarInset, SidebarProvider, SidebarTrigger, Spinner } from "@agents/ui";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Button,
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+  Spinner,
+} from "@agents/ui";
 import { getAgentConfig } from "@/components/chat/agents/registry";
 import { useNewThread } from "@/components/chat/use-new-thread";
 import { AgentExtensionSlot } from "@/components/chat/agents/extensions";
 import { AppSidebar } from "@/components/chat/app-sidebar";
+import { OralBoardsErrorBoundary } from "@/components/chat/oral-boards/error-boundary";
 import { OralBoardsPanel } from "@/components/chat/oral-boards/oral-boards-panel";
 import { OralBoardsQuestionProvider } from "@/lib/copilotkit/oral-boards-question-context";
 import { useArtifactPanel } from "@/components/workspace-shell";
 import { cssVars } from "@/lib/css";
 import { useAgentWarmup } from "@/hooks/use-agent-warmup";
+import { useGuardedRun } from "@/hooks/use-guarded-run";
 
 const AGENT_ID = "oral-boards" as const;
 
@@ -164,33 +177,43 @@ function OralBoardsWorkspaceContent() {
     if (!hasPanel) autoOpenedRef.current = false;
   }, [hasPanel, dispatch]);
 
+  // A rejected run surfaces as an inline banner with Retry instead of leaving
+  // the exam hanging on "Waiting for the next question…".
+  const { error: runError, run: guardedRun, retry } = useGuardedRun();
+
   const handleStart = useCallback(
-    async (content: string) => {
-      if (!agent) return;
-      agent.addMessage({ id: crypto.randomUUID(), role: "user", content });
-      await copilotkit.runAgent({ agent });
-    },
-    [agent, copilotkit],
+    (content: string) =>
+      guardedRun(async () => {
+        if (!agent) return;
+        agent.addMessage({ id: crypto.randomUUID(), role: "user", content });
+        await copilotkit.runAgent({ agent });
+      }),
+    [agent, copilotkit, guardedRun],
   );
 
-  const handleReady = useCallback(() => {
-    if (!agent) return;
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    agent.setState({ ...(agent.state as OralBoardsState), status: "questioning" });
-    agent.addMessage({ id: crypto.randomUUID(), role: "user", content: "ready" });
-    void copilotkit.runAgent({ agent });
-  }, [agent, copilotkit]);
+  const handleReady = useCallback(
+    () =>
+      guardedRun(async () => {
+        if (!agent) return;
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+        agent.setState({ ...(agent.state as OralBoardsState), status: "questioning" });
+        agent.addMessage({ id: crypto.randomUUID(), role: "user", content: "ready" });
+        await copilotkit.runAgent({ agent });
+      }),
+    [agent, copilotkit, guardedRun],
+  );
 
   const handleAnswer = useCallback(
-    async (text: string) => {
-      if (!text.trim()) return;
-      if (!agent) return;
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      agent.setState({ ...(agent.state as OralBoardsState), status: "feedback" });
-      agent.addMessage({ id: crypto.randomUUID(), role: "user", content: text });
-      await copilotkit.runAgent({ agent });
-    },
-    [agent, copilotkit],
+    (text: string) =>
+      guardedRun(async () => {
+        if (!text.trim()) return;
+        if (!agent) return;
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+        agent.setState({ ...(agent.state as OralBoardsState), status: "feedback" });
+        agent.addMessage({ id: crypto.randomUUID(), role: "user", content: text });
+        await copilotkit.runAgent({ agent });
+      }),
+    [agent, copilotkit, guardedRun],
   );
 
   return (
@@ -213,18 +236,32 @@ function OralBoardsWorkspaceContent() {
           <div className="flex shrink-0 items-center gap-3 border-b px-2 py-1.5 md:hidden">
             <SidebarTrigger />
           </div>
+          {runError && (
+            <Alert variant="destructive" className="m-2 shrink-0">
+              <AlertCircleIcon />
+              <AlertTitle>The examiner ran into a problem</AlertTitle>
+              <AlertDescription className="flex w-full items-center justify-between gap-3">
+                <span className="min-w-0 truncate">{runError.message}</span>
+                <Button type="button" size="xs" variant="outline" onClick={() => void retry()}>
+                  Retry
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
           <div className="min-h-0 flex-1 overflow-hidden">
             {hasPanel ? (
-              <OralBoardsPanel
-                state={examState}
-                onClose={startNewThread}
-                onReady={handleReady}
-                onAnswer={(text) => void handleAnswer(text)}
-                isRunning={isRunning}
-                loadingStep={examState.loading_step ?? ""}
-                activeFeedback={examState.active_feedback ?? ""}
-                activeIdealResponse={examState.active_ideal_response ?? ""}
-              />
+              <OralBoardsErrorBoundary onReset={startNewThread}>
+                <OralBoardsPanel
+                  state={examState}
+                  onClose={startNewThread}
+                  onReady={() => void handleReady()}
+                  onAnswer={(text) => void handleAnswer(text)}
+                  isRunning={isRunning}
+                  loadingStep={examState.loading_step ?? ""}
+                  activeFeedback={examState.active_feedback ?? ""}
+                  activeIdealResponse={examState.active_ideal_response ?? ""}
+                />
+              </OralBoardsErrorBoundary>
             ) : (
               <OralBoardsStartPage
                 onStart={(m) => void handleStart(m)}
