@@ -55,3 +55,14 @@ def test_agent_instruction_uses_adk_state_placeholders() -> None:
     assert "{training_plan}" in instruction
     assert "{meal_plan}" in instruction
     assert "{weekly_plan}" in instruction
+
+
+def test_agent_instruction_defines_grocery_list_vs_live_cart() -> None:
+    agent = build_agent()
+    instruction = agent.instruction
+
+    assert "shopping_list is an unmaterialized cart" in instruction
+    assert "cart is the live Kroger cart" in instruction
+    assert "Do not describe shopping_list items as being in the cart" in instruction
+    assert "Shopping List (not yet in live Kroger cart): {shopping_list}" in instruction
+    assert "Live Kroger Cart (moved/added for checkout): {cart}" in instruction

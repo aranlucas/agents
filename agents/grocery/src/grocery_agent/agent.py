@@ -109,11 +109,21 @@ def build_telegram_agent(
 def build_eval_agent(
     *, mode: str | None = None, include_contents: str = "default"
 ) -> LlmAgent:
-    """Eval-compatible agent: no AGUIToolset or McpToolset.
+    """Eval-compatible agent: plain function tools only, no AGUIToolset or McpToolset.
 
-    The eval case tests the auth-gate path (kroger_connected=False by default),
-    so no Kroger MCP stubs are needed — the agent should refuse before calling them.
+    Kroger MCP tools are replaced with local stubs so connected eval cases can
+    exercise the meal-planning, list, and live-cart workflows.
     """
+    from .tools.stubs import (
+        add_to_cart_tool,
+        get_product_details_tool,
+        get_weekly_deals_tool,
+        manage_pantry_tool,
+        manage_shopping_list_tool,
+        plan_meals_tool,
+        search_products_tool,
+    )
+
     return LlmAgent(
         name="grocery_agent",
         description="Meal planning, pantry, shopping list, and cart support.",
@@ -136,6 +146,13 @@ def build_eval_agent(
             FunctionTool(set_weekly_deals),
             FunctionTool(mark_list_ready),
             get_current_date,
+            get_weekly_deals_tool,
+            search_products_tool,
+            get_product_details_tool,
+            manage_shopping_list_tool,
+            manage_pantry_tool,
+            plan_meals_tool,
+            add_to_cart_tool,
         ],
     )
 

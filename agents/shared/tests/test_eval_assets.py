@@ -5,7 +5,6 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-SHARED_EVAL_CONFIG = ROOT / "agents/eval/eval_config.yaml"
 RUBRIC_GROUP = "agent_contract"
 
 
@@ -42,9 +41,9 @@ def _agent_dir_for_backend_path(backend_path: str) -> str:
 
 
 def _dataset_path(agent_id: str, backend_path: str) -> Path:
-    """Colocated dataset: agents/<dir>/tests/eval/<agent_id>.json."""
+    """Agent-local dataset: agents/<dir>/eval/datasets/<agent_id>.json."""
     agent_dir = _agent_dir_for_backend_path(backend_path)
-    return ROOT / "agents" / agent_dir / "tests" / "eval" / f"{agent_id}.json"
+    return ROOT / "agents" / agent_dir / "eval" / "datasets" / f"{agent_id}.json"
 
 
 def _agents_with_eval_datasets() -> list[tuple[str, str]]:
@@ -57,22 +56,28 @@ def _agents_with_eval_datasets() -> list[tuple[str, str]]:
     ]
 
 
-def test_shared_eval_config_exists_and_has_required_metrics() -> None:
-    assert SHARED_EVAL_CONFIG.exists(), (
-        f"Missing shared eval config: {SHARED_EVAL_CONFIG}"
-    )
-    text = SHARED_EVAL_CONFIG.read_text(encoding="utf-8")
+def test_agent_eval_configs_exist_and_have_required_metrics() -> None:
+    for agent_id, backend_path in _agents_with_eval_datasets():
+        agent_dir = _agent_dir_for_backend_path(backend_path)
+        eval_config = ROOT / "agents" / agent_dir / "eval" / "eval_config.yaml"
+        assert eval_config.exists(), (
+            f"Missing eval config for {agent_id}: {eval_config}"
+        )
+        text = eval_config.read_text(encoding="utf-8")
 
-    for metric in (
-        "task_success",
-        "response_quality",
-        "project_agent_contract",
-    ):
-        assert f"- {metric}" in text, f"Metric '{metric}' missing from eval_config.yaml"
+        for metric in (
+            "multi_turn_task_success",
+            "final_response_quality",
+            "safety",
+            "project_agent_contract",
+        ):
+            assert f"- {metric}" in text, (
+                f"Metric '{metric}' missing from {eval_config}"
+            )
 
 
 def test_every_registered_agent_with_eval_has_dataset() -> None:
-    """Agents that have a tests/eval/ directory must have a dataset for each registered ID."""
+    """Agents that have an eval/ directory must have a dataset for each registered ID."""
     agent_order, backend_paths = _agent_order_and_backend_paths()
     assert agent_order
 
@@ -80,7 +85,7 @@ def test_every_registered_agent_with_eval_has_dataset() -> None:
         backend_path = backend_paths[agent_id]
         agent_dir = _agent_dir_for_backend_path(backend_path)
         agent_root = ROOT / "agents" / agent_dir
-        eval_dir = agent_root / "tests" / "eval"
+        eval_dir = agent_root / "eval"
 
         if not eval_dir.exists():
             continue  # eval not yet scaffolded for this agent

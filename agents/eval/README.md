@@ -1,8 +1,8 @@
 # Agent Eval Setup
 
-This directory holds the shared eval configuration for all agents in this
-monorepo. Eval datasets live alongside each agent's source code at
-`agents/<name>/tests/eval/<name>.json`.
+This directory is legacy documentation for the monorepo eval scaffold. The
+canonical eval assets are agent-local: each eval-enabled agent owns its config
+and datasets under `agents/<name>/eval/`.
 
 ## Quick start
 
@@ -17,23 +17,25 @@ uv tool install google-agents-cli
 source .env.agents          # or set env vars manually — see Credentials below
 
 # Run inference + grade for the travel agent
-agents-cli eval generate --dataset agents/travel/tests/eval/travel.json
-agents-cli eval grade --config agents/eval/eval_config.yaml
+agents-cli eval generate --dataset agents/travel/eval/datasets/travel.json
+agents-cli eval grade --config agents/travel/eval/eval_config.yaml
 
 # One-shot shortcut (generate + grade)
-agents-cli eval run --dataset agents/travel/tests/eval/travel.json \
-    --config agents/eval/eval_config.yaml
+agents-cli eval run --dataset agents/travel/eval/datasets/travel.json \
+    --config agents/travel/eval/eval_config.yaml
 ```
 
 ## Directory layout
 
 ```
 agents/eval/
-  eval_config.yaml          shared grading config (metrics for all agents)
-  README.md                 this file
+  eval_config.yaml          legacy shared grading config; prefer agent-local configs
+  README.md                 legacy scaffold notes
 
-agents/<name>/tests/eval/
-  <name>.json               eval dataset for that agent
+agents/<name>/eval/
+  eval_config.yaml          grading config for that agent
+  datasets/
+    <agent-id>.json         eval dataset for that agent
 ```
 
 ## Credentials
@@ -51,7 +53,7 @@ Pull the service account credentials from the Railway project and save as
 
 ## Metrics
 
-`eval_config.yaml` defines three `CodeExecutionMetric` judges that run
+Each agent's `eval/eval_config.yaml` defines three `CodeExecutionMetric` judges that run
 entirely locally (no GCP required for grading). Each calls LiteLLM with the
 judge model configured via `EVAL_JUDGE_MODEL`.
 
@@ -155,12 +157,12 @@ from . import agent   # required for GEPA: module.agent.root_agent
 ### Agents with MCP tools
 
 For agents that use MCP toolsets (travel → trvl, grocery → Kroger), create
-`eval_stubs.py` with plain Python functions that return canned data. Import
+`tools/stubs.py` with plain Python functions that return canned data. Import
 them in `build_eval_agent()` instead of the MCP toolset.
 
-For agents whose eval cases exercise auth-gate behavior (grocery, fitness,
-wellness), no stubs are needed — the agent's auth check fires before any MCP
-calls. The eval state starts with `kroger_connected=false` / `strava_connected=false`.
+For agents whose eval cases exercise only auth-gate behavior, no stubs are
+needed — the agent's auth check fires before any MCP calls. If connected eval
+cases are added later, add local stubs at the same time.
 
 ## Running eval for each agent
 
@@ -176,8 +178,8 @@ region: us-central1
 Then run:
 
 ```bash
-agents-cli eval generate --dataset agents/grocery/tests/eval/grocery.json
-agents-cli eval grade --config agents/eval/eval_config.yaml
+agents-cli eval generate --dataset agents/grocery/eval/datasets/grocery.json
+agents-cli eval grade --config agents/grocery/eval/eval_config.yaml
 ```
 
 Compare two grade runs:
@@ -196,9 +198,9 @@ improve a target metric. It requires the eval agent to have no `state_schema`
 ```bash
 # Optimize travel agent instruction against the project_agent_contract metric
 agents-cli eval optimize \
-  --dataset agents/travel/tests/eval/travel.json \
+  --dataset agents/travel/eval/datasets/travel.json \
   --target-metric project_agent_contract \
-  --config agents/eval/eval_config.yaml
+  --config agents/travel/eval/eval_config.yaml
 ```
 
 GEPA is expensive (many LLM calls, several minutes). Only run it after manual

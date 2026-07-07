@@ -274,6 +274,25 @@ def test_format_state_summary_hides_internal_state() -> None:
     assert "hidden" not in summary
 
 
+def test_format_state_summary_labels_grocery_list_and_live_cart() -> None:
+    summary = format_state_summary(
+        {
+            "shopping_list": ["milk"],
+            "cart": [
+                {
+                    "name": "Simple Truth Organic Milk",
+                    "quantity": 1,
+                    "price": 4.29,
+                    "upc": "00011110042908",
+                }
+            ],
+        },
+    )
+
+    assert ("shopping_list (not yet in live Kroger cart): milk") in summary
+    assert "cart (live Kroger cart; moved/added for checkout):" in summary
+
+
 def test_parse_allowed_chat_ids() -> None:
     assert parse_allowed_chat_ids("123, -456,789") == {123, -456, 789}
     assert parse_allowed_chat_ids(None) == set()
