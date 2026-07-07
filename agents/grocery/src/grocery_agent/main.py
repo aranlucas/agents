@@ -1,5 +1,7 @@
 """Grocery Planning Agent — wiring (see agent.py for domain logic)."""
 
+import warnings
+
 import litellm
 from agents_shared.app_factory import (
     add_agent_routes,
@@ -18,6 +20,12 @@ from google.adk.apps.llm_event_summarizer import LlmEventSummarizer
 from google.adk.models.lite_llm import LiteLlm
 
 from .agent import build_agent
+
+# ADK marks EventsCompactionConfig as @experimental but it is the only
+# event-compaction path available. Suppress the UserWarning at our usage site.
+warnings.filterwarnings(
+    "ignore", message=".*EventsCompactionConfig.*", category=UserWarning
+)
 
 load_dotenv()
 

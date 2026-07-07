@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import warnings
 from collections.abc import Awaitable, Callable, Iterable, Mapping
 from dataclasses import dataclass
 from typing import Protocol, cast, runtime_checkable
@@ -65,6 +66,12 @@ from .orchestrator import (
     ORCHESTRATOR_TITLE,
     TELEGRAM_ORCHESTRATOR_MODEL,
     build_orchestrator_agent,
+)
+
+# ADK marks EventsCompactionConfig as @experimental but it is the only
+# event-compaction path available. Suppress the UserWarning at our usage site.
+warnings.filterwarnings(
+    "ignore", message=".*EventsCompactionConfig.*", category=UserWarning
 )
 
 log = logging.getLogger(__name__)

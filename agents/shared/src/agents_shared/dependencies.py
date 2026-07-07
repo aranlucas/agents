@@ -6,6 +6,7 @@ Tests can call ``create_agent_services()`` for a fresh set or construct
 """
 
 import os
+import warnings
 from dataclasses import dataclass
 from typing import Annotated
 
@@ -28,6 +29,15 @@ from .session_service import (
     create_session_service,
     get_database_url,
     get_sqlite_db_path,
+)
+
+# ADK marks every credential service as @experimental but there is no stable
+# alternative. Suppress the UserWarning at our instantiation site.
+warnings.filterwarnings(
+    "ignore", message=".*InMemoryCredentialService.*", category=UserWarning
+)
+warnings.filterwarnings(
+    "ignore", message=".*BaseCredentialService.*", category=UserWarning
 )
 
 

@@ -95,13 +95,20 @@ filterwarnings = [
   "ignore:.*_UnionGenericAlias.*:DeprecationWarning",
   # ADK API churn — BaseAgentConfig renamed upstream
   "ignore:BaseAgentConfig is deprecated:DeprecationWarning",
-  # ADK experimental features used intentionally
+  # ADK import-time feature-flag warnings (experimental features enabled
+  # via env var). These fire before our module-level filters can run.
   "ignore:.*PLUGGABLE_AUTH.*:UserWarning",
   "ignore:.*InMemoryCredentialService.*:UserWarning",
   "ignore:.*BaseCredentialService.*:UserWarning",
+  "ignore:.*EventsCompactionConfig.*:UserWarning",
   "ignore:.*JSON_SCHEMA_FOR_FUNC_DECL.*:UserWarning",
-  # ADK InMemoryCredentialService leaks SQLite handles during test teardown
+  # SQLite handles leaked by ADK's SqliteSessionService during event-loop
+  # teardown in tests (not our code).
   "ignore:.*unclosed database.*:ResourceWarning",
+  # aiosqlite connection garbage-collected before explicit close
+  "ignore:.*was deleted before being closed.*:ResourceWarning",
+  # clerk-backend-api uses a deprecated internal query-param helper
+  "ignore:.*DEPRECATED.*:DeprecationWarning:clerk_backend_api",
 ]
 
 [tool.coverage.run]
