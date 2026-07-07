@@ -63,6 +63,68 @@
       ]
     },
     {
+      "eval_id": "grocery_shopping_list_not_live_cart",
+      "session_input": {
+        "app_name": "grocery_agent",
+        "user_id": "eval_user",
+        "state": {
+          "kroger_connected": true
+        }
+      },
+      "conversation": [
+        {
+          "invocation_id": "inv1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Add milk, eggs, and cheese to my shopping list. Do not put anything in my Kroger cart yet."
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "I added milk, eggs, and cheese to the shopping list, not the live Kroger cart. Say \"add them to my cart\" when you want me to add them to Kroger."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "grocery_direct_cart_request_updates_live_cart",
+      "session_input": {
+        "app_name": "grocery_agent",
+        "user_id": "eval_user",
+        "state": {
+          "kroger_connected": true
+        }
+      },
+      "conversation": [
+        {
+          "invocation_id": "inv1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Add milk, eggs, and cheese to my cart."
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "I added the matched milk, eggs, and cheese items to your live Kroger cart."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
       "eval_id": "grocery_telegram_deals_summary",
       "session_input": {
         "app_name": "grocery_agent",
