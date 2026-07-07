@@ -944,15 +944,13 @@ function QuestioningPane({
   const [answerText, setAnswerText] = useState("");
   const [submittedAnswer, setSubmittedAnswer] = useState("");
   // A new probe is a new active prompt even though the question is unchanged.
-  const activePrompt = `${question} ${activeProbe}`;
-  const previousPromptRef = useRef(activePrompt);
+  const activePrompt = JSON.stringify([question, activeProbe]);
+  const [previousPrompt, setPreviousPrompt] = useState(activePrompt);
 
-  useEffect(() => {
-    if (activePrompt.trim() && activePrompt !== previousPromptRef.current) {
-      previousPromptRef.current = activePrompt;
-      setSubmittedAnswer("");
-    }
-  }, [activePrompt]);
+  if (activePrompt !== previousPrompt) {
+    setPreviousPrompt(activePrompt);
+    setSubmittedAnswer("");
+  }
 
   const isScoring = isRunning && loadingStep === "Computing score card…";
   const stage: "question" | "reviewing" | "scoring" | "complete" = isScoring
