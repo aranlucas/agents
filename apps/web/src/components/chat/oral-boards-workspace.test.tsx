@@ -5,10 +5,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { OralBoardsState } from "@agents/types";
 
+type AgentMethodMock = ReturnType<typeof vi.fn<(...args: unknown[]) => void>>;
+
 const copilotMocks = vi.hoisted(() => {
   const agent: {
-    addMessage: (...args: unknown[]) => void;
-    setState: (...args: unknown[]) => void;
+    addMessage: AgentMethodMock;
+    setState: AgentMethodMock;
     isRunning: boolean;
     state: OralBoardsState;
   } = {

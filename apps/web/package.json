@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "dev:offline": "AGENT_TEST_MODE=offline NEXT_PUBLIC_AGENT_TEST_MODE=offline next dev --turbopack",
-    "build": "next build",
+    "build": "COPILOTKIT_TELEMETRY_DISABLED=true next build",
     "start": "next start",
     "lint": "oxlint .",
     "fmt": "oxfmt .",
@@ -19,7 +19,7 @@
   "dependencies": {
     "@agents/types": "workspace:*",
     "@agents/ui": "workspace:*",
-    "@clerk/nextjs": "^7.5.12",
+    "@clerk/nextjs": "^7.5.13",
     "@copilotkit/a2ui-renderer": "^1.62.2",
     "@copilotkit/react-core": "^1.62.2",
     "@copilotkit/runtime": "^1.62.2",
@@ -45,14 +45,14 @@
     "@types/node": "^26.1.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@vitest/coverage-v8": "4.1.9",
+    "@vitest/coverage-v8": "4.1.10",
     "eas-cli": "^20.5.1",
     "jsdom": "^29.1.1",
     "msw": "^2.14.6",
     "tailwindcss": "^4.3.2",
-    "typescript": "npm:@typescript/typescript6@^6.0.1",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
     "typescript7": "npm:typescript@7.0.1-rc",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.10"
   },
   "peerDependencies": {
     "@ag-ui/client": "0.0.57"

@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import type { ReactElement } from "react";
+import type { RenderToolProps } from "@copilotkit/react-core/v2/headless";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 
 import {
   OralBoardsQuestionProvider,
@@ -29,18 +31,25 @@ vi.mock("@/lib/copilotkit/speak-question", () => ({
 import { useRenderTool } from "@copilotkit/react-core/v2";
 import { OralBoardsExtension } from "./oral-boards";
 
-type SearchDocsRenderArgs = {
-  status: "inProgress" | "executing" | "complete";
-  parameters?: { query?: string; collection?: string };
-  result?: string;
-};
+const searchDocsParameters = z.object({
+  query: z.string(),
+  collection: z.string().optional(),
+});
 
-function getSearchDocsRender(): (args: SearchDocsRenderArgs) => ReactElement {
+type SearchDocsRenderArgs = RenderToolProps<typeof searchDocsParameters>;
+type SearchDocsRenderer = (args: SearchDocsRenderArgs) => ReactElement;
+
+const searchDocsToolCall = {
+  name: "search_docs",
+  toolCallId: "test-search-docs",
+} as const;
+
+function getSearchDocsRender(): SearchDocsRenderer {
   const call = vi
     .mocked(useRenderTool)
     .mock.calls.find(([config]) => (config as { name: string }).name === "search_docs");
   if (!call) throw new Error("search_docs was not registered via useRenderTool");
-  return (call[0] as { render: (args: SearchDocsRenderArgs) => ReactElement }).render;
+  return (call[0] as { render: SearchDocsRenderer }).render;
 }
 
 function CurrentQuestion() {
@@ -95,6 +104,7 @@ describe("search_docs tool renderer", () => {
 
     const { getByRole, getByText, queryByText } = render(
       renderSearchDocs({
+        ...searchDocsToolCall,
         status: "complete",
         parameters: { query: "pulp therapy", collection: "aapd" },
         result: resultPayload,
@@ -118,6 +128,7 @@ describe("search_docs tool renderer", () => {
     expect(() =>
       render(
         renderSearchDocs({
+          ...searchDocsToolCall,
           status: "complete",
           parameters: { query: "pulp therapy" },
           result: "{not valid json",
@@ -132,23 +143,29 @@ describe("search_docs tool renderer", () => {
 
     const { queryByText } = render(
       renderSearchDocs({
+        ...searchDocsToolCall,
         status: "inProgress",
         parameters: { query: "pulp therapy" },
-        result: JSON.stringify({
-          results: [{ title: "Should not render", collection: "aapd", snippet: "x" }],
-        }),
+        result: undefined,
       }),
     );
 
     expect(queryByText("Should not render")).not.toBeInTheDocument();
   });
 
-  it("handles a missing result string without crashing", () => {
+  it("handles an executing call without a result string", () => {
     render(<Harness />);
     const renderSearchDocs = getSearchDocsRender();
 
     expect(() =>
-      render(renderSearchDocs({ status: "complete", parameters: { query: "pulp therapy" } })),
+      render(
+        renderSearchDocs({
+          ...searchDocsToolCall,
+          status: "executing",
+          parameters: { query: "pulp therapy" },
+          result: undefined,
+        }),
+      ),
     ).not.toThrow();
   });
 });
