@@ -1,10 +1,10 @@
 name: CI
 
 # Lints, typechecks, and tests the monorepo on every push to main and every
-# pull request. Four parallel jobs cut the critical path:
-#   js      — oxlint, oxfmt, turbo typecheck, vitest (web + mobile)
+# pull request. Three parallel jobs cut the critical path:
+#   check   — turbo-driven lint/fmt/typecheck/coverage across every workspace
+#             package (JS via pnpm, Python agents/ via uv), plus React Doctor
 #   build   — next build (slowest step; runs in parallel with the others)
-#   python  — ruff, compileall, pytest (no Node needed)
 #   docker  — Dockerfile smoke-build
 
 on:
@@ -17,8 +17,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  js:
-    name: Lint, typecheck & test (JS)
+  check:
+    name: Lint, typecheck & test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -27,6 +27,12 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+      - uses: astral-sh/setup-uv@v8.2.0
+        with:
+          version: "0.11.19"
+          enable-cache: true
+      - name: Install Python dependencies
+        run: uv sync --frozen
       - name: Install JS dependencies
         run: pnpm install --frozen-lockfile
       - name: Lint
@@ -35,8 +41,10 @@ jobs:
         run: pnpm fmt:check
       - name: Typecheck
         run: pnpm typecheck
-      - name: JS tests
-        run: pnpm --filter web test && pnpm --filter mobile test
+      - name: Compile Python (catches syntax errors ruff misses)
+        run: uv run python -m compileall -q agents packages
+      - name: Tests (with Python coverage gate)
+        run: pnpm coverage
       - name: React Doctor
         run: npx react-doctor@latest --scope changed
 
@@ -59,28 +67,6 @@ jobs:
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2xlcmsuZXhhbXBsZS5jb20k
           CLERK_SECRET_KEY: sk_test_placeholder
           GROQ_API_KEY: gsk_ci_placeholder
-
-  python:
-    name: Lint, compile & test (Python)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v8.2.0
-        with:
-          version: "0.11.19"
-          enable-cache: true
-      - name: Install Python dependencies
-        run: uv sync --frozen
-      - name: Lint
-        run: uv run ruff check agents
-      - name: Format check
-        run: uv run ruff format --check agents
-      - name: Compile (catches syntax errors ruff misses)
-        run: uv run python -m compileall -q agents packages
-      - name: Type check (pyright)
-        run: uv run pyright
-      - name: Tests (with coverage gate)
-        run: uv run pytest --cov
 
   docker:
     name: Build agent image

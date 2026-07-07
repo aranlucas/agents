@@ -1,14 +1,12 @@
 {
   "name": "agents",
-  "version": "1.0.0",
-  "description": "",
-  "keywords": [],
-  "license": "ISC",
-  "author": "",
-  "type": "commonjs",
-  "main": "index.js",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "lint": "uv run ruff format ."
+    "lint": "uv run ruff check .",
+    "fmt": "uv run ruff format .",
+    "fmt:check": "uv run ruff format --check .",
+    "typecheck": "uv run pyright",
+    "test": "uv run pytest",
+    "coverage": "uv run pytest --cov"
   }
 }

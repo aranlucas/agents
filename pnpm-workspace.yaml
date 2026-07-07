@@ -1,6 +1,7 @@
 packages:
   - "apps/*"
   - "packages/*"
+  - "agents"
 
 minimumReleaseAge: 0
 
