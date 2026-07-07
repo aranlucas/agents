@@ -2,16 +2,16 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace stale Cerebras and Groq model IDs with production-verified IDs and preserve the pending ADK `app_name` wiring change.
+**Goal:** Replace stale provider model IDs with production-verified IDs and preserve the pending ADK `app_name` wiring change.
 
-**Architecture:** Keep the existing shared `build_model()` boundary and fallback order. Update only the first two provider model IDs, and cover both the model chain and `ADKAgent.app_name` wiring in the existing shared regression test module.
+**Architecture:** Keep the existing shared `build_model()` boundary and fallback order. Update only the provider model IDs, and cover both the model chain and `ADKAgent.app_name` wiring in the existing shared regression test module.
 
 **Tech Stack:** Python, Google ADK, LiteLLM, pytest, Ruff
 
 ## Global Constraints
 
-- Use `cerebras/gpt-oss-120b` as the primary model.
-- Use `groq/openai/gpt-oss-120b` as the first fallback.
+- Use `openrouter/tencent/hy3:free` as the primary model.
+- Do not use deprecated OpenAI open-weight model IDs.
 - Keep the remaining fallback order unchanged.
 - Pass `agent.name` to `ADKAgent` as `app_name`.
 - Preserve unrelated workspace changes.
@@ -31,7 +31,7 @@
 
 - [ ] **Step 1: Update the model-chain expectations**
 
-Expect `cerebras/gpt-oss-120b` and `groq/openai/gpt-oss-120b`.
+Expect `openrouter/tencent/hy3:free` and no deprecated OpenAI open-weight model IDs.
 
 - [ ] **Step 2: Add an app-name assertion**
 
@@ -52,12 +52,12 @@ Expected: model-chain assertions fail against the stale IDs.
 
 **Interfaces:**
 
-- Consumes: production-verified Cerebras and Groq model IDs
+- Consumes: production-verified provider model IDs
 - Produces: updated `LiteLlm` primary/fallback configuration
 
 - [ ] **Step 1: Replace the stale provider IDs**
 
-Set the primary to `cerebras/gpt-oss-120b` and first fallback to `groq/openai/gpt-oss-120b`.
+Set the primary to `openrouter/tencent/hy3:free` and remove deprecated OpenAI open-weight model IDs.
 
 - [ ] **Step 2: Run focused tests**
 

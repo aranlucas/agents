@@ -59,7 +59,7 @@ def _build_agent(*, model: BaseLlm | None = None) -> LlmAgent:
     return LlmAgent(
         name="oralboards_agent",
         description="Pediatric dentistry oral-board practice.",
-        model=model or LiteLlm(model="cerebras/gpt-oss-120b"),
+        model=model or LiteLlm(model="openrouter/tencent/hy3:free"),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,

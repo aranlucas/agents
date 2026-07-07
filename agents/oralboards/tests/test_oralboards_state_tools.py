@@ -8,6 +8,7 @@ from agents_shared.state import make_state_initializer
 from google.adk.tools.function_tool import FunctionTool
 from oralboards_agent.agent import (
     OralBoardsState,
+    _build_agent,
     build_eval_agent,
     build_telegram_agent,
 )
@@ -133,6 +134,11 @@ def test_telegram_gemini_agent_has_http_retries() -> None:
     assert retry_options is not None
     assert retry_options.initial_delay == 1
     assert retry_options.attempts == 2
+
+
+def test_monolithic_default_agent_uses_hy3_free_model() -> None:
+    agent = _build_agent()
+    assert agent.model.model == "openrouter/tencent/hy3:free"
 
 
 def test_agent_instruction_includes_loading_step_protocol() -> None:

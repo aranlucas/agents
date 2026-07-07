@@ -32,7 +32,7 @@ _STATE_INSTRUCTION = make_state_instruction(
 )
 
 _AGENT_DEFAULTS = {
-    "model": LiteLlm(model="cerebras/gpt-oss-120b"),
+    "model": LiteLlm(model="openrouter/tencent/hy3:free"),
     "state_schema": OralBoardsState,
     "instruction": _STATE_INSTRUCTION,
     "before_agent_callback": make_state_initializer(OralBoardsState),

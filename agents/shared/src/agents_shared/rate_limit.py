@@ -36,10 +36,9 @@ RATE_LIMITS: dict[str, RateLimit] = {
     "gemini/gemini-3.1-flash-lite": RateLimit(rpm=15, rpd=400),
     "gemini": RateLimit(rpm=4, rpd=16),
     "nvidia_nim": RateLimit(rpm=32),
-    "cerebras/gpt-oss-120b": RateLimit(rpm=30, rpd=14400),
     "cerebras": RateLimit(rpm=10, rpd=100),
     "groq": RateLimit(rpm=30, rpd=1000),
-    "openrouter": RateLimit(rpd=1000),
+    "openrouter": RateLimit(rpm=20, rpd=1000),
 }
 
 

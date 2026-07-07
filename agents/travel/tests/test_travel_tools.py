@@ -76,6 +76,11 @@ def test_agent_instruction_uses_adk_state_placeholders() -> None:
     assert not hasattr(agent, "_build_instruction")
 
 
+def test_runtime_agent_uses_hy3_free_model() -> None:
+    travel_agent = agent.build_agent()
+    assert travel_agent.model.model == "openrouter/tencent/hy3:free"
+
+
 def _route_paths(app) -> set[str]:
     paths = set()
     for route in app.routes:

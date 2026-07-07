@@ -26,6 +26,11 @@ def test_agent_instruction_embeds_resume_content():
     assert "only answer questions" in resume_agent.instruction.lower()
 
 
+def test_public_resume_agent_uses_hy3_free_model():
+    resume_agent = build_agent()
+    assert resume_agent.model.model == "openrouter/tencent/hy3:free"
+
+
 def _route_paths(app) -> set[str]:
     paths = set()
     for route in app.routes:

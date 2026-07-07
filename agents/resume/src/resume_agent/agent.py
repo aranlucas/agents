@@ -83,7 +83,7 @@ def _build_agent(*, include_agui: bool, model: str) -> LlmAgent:
 def build_agent() -> LlmAgent:
     return _build_agent(
         include_agui=True,
-        model="openrouter/openai/gpt-oss-120b:free",
+        model="openrouter/tencent/hy3:free",
     )
 
 

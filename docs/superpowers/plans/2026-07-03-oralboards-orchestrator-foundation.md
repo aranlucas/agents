@@ -440,7 +440,7 @@ def _build_agent(*, model: BaseLlm | None = None) -> LlmAgent:
     return LlmAgent(
         name="oralboards_agent",
         description="Pediatric dentistry oral-board practice.",
-        model=model or LiteLlm(model="cerebras/gpt-oss-120b"),
+        model=model or LiteLlm(model="openrouter/tencent/hy3:free"),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,
@@ -639,7 +639,7 @@ def test_phase_model_tiering() -> None:
     )
 
     assert build_evaluator().model.model == "mistral/mistral-large-latest"
-    assert build_case_builder().model.model == "cerebras/gpt-oss-120b"
+    assert build_case_builder().model.model == "gemini-3.1-flash-lite"
     assert build_questioner().model.model == "groq/llama-3.3-70b-versatile"
     assert build_scorer().model.model == "mistral/mistral-medium-latest"
 ```
@@ -653,12 +653,12 @@ Expected: FAIL — all four currently use `mistral/mistral-medium-latest`.
 
 In `phases.py`, set each builder's model override (each builder currently passes `{**_AGENT_DEFAULTS, "model": LiteLlm(model="mistral/mistral-medium-latest")}`):
 
-- `build_case_builder`: `LiteLlm(model="cerebras/gpt-oss-120b")`
+- `build_case_builder`: `Gemini(model="gemini-3.1-flash-lite")`
 - `build_questioner`: `LiteLlm(model="groq/llama-3.3-70b-versatile")`
 - `build_evaluator`: `LiteLlm(model="mistral/mistral-large-latest")`
 - `build_scorer`: `LiteLlm(model="mistral/mistral-medium-latest")` (unchanged)
 
-Rationale (from spec §2): evaluator gets the strongest reliably-available paid model (`MISTRAL_API_KEY` is paid, no daily cap); case builder keeps the long-context Cerebras model already proven for vignette composition; questioner is mechanical (one open-ended sentence) and rides Groq's fast Llama; scorer synthesizes the transcript on mid-tier Mistral. The ambient LiteLLM fallback chain still covers provider outages.
+Rationale (from spec §2): evaluator gets the strongest reliably-available paid model (`MISTRAL_API_KEY` is paid, no daily cap); case builder uses direct Gemini for large-context vignette composition; questioner is mechanical (one open-ended sentence) and rides Groq's fast Llama; scorer synthesizes the transcript on mid-tier Mistral. The ambient LiteLLM fallback chain still covers provider outages.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
