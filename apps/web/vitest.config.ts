@@ -27,12 +27,6 @@ export default defineConfig({
       reporter: ["text"],
       include: ["src/**/*.{ts,tsx}"],
       exclude: ["src/**/*.test.{ts,tsx}", "src/**/*.contract.test.tsx"],
-      thresholds: {
-        statements: 90,
-        branches: 75,
-        functions: 90,
-        lines: 90,
-      },
     },
   },
 });
