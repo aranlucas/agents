@@ -44,6 +44,96 @@
           ]
         }
       }
+    },
+    {
+      "eval_case_id": "grocery_list_vs_live_cart_explanation",
+      "metadata": {
+        "agent_id": "grocery",
+        "backend_path": "grocery"
+      },
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Before I connect Kroger, explain the difference between adding milk to my shopping list and adding it to my cart. Do not add anything."
+          }
+        ]
+      },
+      "rubric_groups": {
+        "agent_contract": {
+          "rubrics": [
+            {
+              "rubric_id": "grocery_list_is_unmaterialized_cart",
+              "content": {
+                "property": {
+                  "description": "The agent explains that the shopping list is an unmaterialized cart: item intent that has not selected exact Kroger UPCs and has not changed the user's Kroger account."
+                }
+              }
+            },
+            {
+              "rubric_id": "grocery_list_request_does_not_touch_live_cart",
+              "content": {
+                "property": {
+                  "description": "For the explanation/list-only request, the agent does not call add_to_cart or update_cart and does not claim milk is in the live Kroger cart."
+                }
+              }
+            },
+            {
+              "rubric_id": "grocery_cart_is_live_kroger_cart",
+              "content": {
+                "property": {
+                  "description": "The agent explains that cart is the live Kroger cart, meaning items actually added to the user's Kroger account."
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "eval_case_id": "grocery_cart_success_language_contract",
+      "metadata": {
+        "agent_id": "grocery",
+        "backend_path": "grocery"
+      },
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "I am not asking you to add anything. What should you say after writing items to my shopping list versus after add_to_cart succeeds?"
+          }
+        ]
+      },
+      "rubric_groups": {
+        "agent_contract": {
+          "rubrics": [
+            {
+              "rubric_id": "grocery_list_language",
+              "content": {
+                "property": {
+                  "description": "The agent says list-only work should be described as adding items to the shopping list, not adding them to the cart."
+                }
+              }
+            },
+            {
+              "rubric_id": "grocery_live_cart_language",
+              "content": {
+                "property": {
+                  "description": "The agent states that cart is the live Kroger cart and should not be used for drafts, previews, or unmatched shopping-list items."
+                }
+              }
+            },
+            {
+              "rubric_id": "grocery_cart_claim_after_add_to_cart",
+              "content": {
+                "property": {
+                  "description": "Only says items were added to the cart after add_to_cart succeeds; otherwise it must avoid claiming the live cart changed."
+                }
+              }
+            }
+          ]
+        }
+      }
     }
   ]
 }

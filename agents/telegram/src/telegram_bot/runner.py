@@ -1012,12 +1012,20 @@ def format_state_summary(state: Mapping[str, StateValue]) -> str:
             continue
         rendered = _render_state_value(value)
         if rendered:
-            visible.append(f"{key}: {rendered}")
+            visible.append(f"{_state_summary_label(key)}: {rendered}")
         if len(visible) >= 6:
             break
     if not visible:
         return ""
     return f"{ORCHESTRATOR_TITLE} updated state:\n" + "\n".join(visible)
+
+
+def _state_summary_label(key: str) -> str:
+    if key == "shopping_list":
+        return "shopping_list (not yet in live Kroger cart)"
+    if key == "cart":
+        return "cart (live Kroger cart; moved/added for checkout)"
+    return key
 
 
 def _is_hidden_state_key(key: str) -> bool:

@@ -11,6 +11,11 @@ import type { AgentId } from "./registry";
 
 type ApprovalAgentId = Extract<AgentId, "travel" | "grocery">;
 
+export const GROCERY_APPROVAL_DESCRIPTION =
+  "Pause and ask the operator to approve a sensitive Kroger action " +
+  "(add items to the live Kroger cart or start checkout). " +
+  "Returns { approved: boolean, note?: string }.";
+
 function SensitiveActionApprovalHooks({
   agentId,
   description,
@@ -84,13 +89,6 @@ export function TravelHooks() {
 
 export function GroceryHooks() {
   return (
-    <SensitiveActionApprovalHooks
-      agentId="grocery"
-      description={
-        "Pause and ask the operator to approve a sensitive Kroger action " +
-        "(add items to cart or start checkout). " +
-        "Returns { approved: boolean, note?: string }."
-      }
-    />
+    <SensitiveActionApprovalHooks agentId="grocery" description={GROCERY_APPROVAL_DESCRIPTION} />
   );
 }

@@ -121,6 +121,22 @@ agents/<name>/src/<name>_agent/
 - `subagents/` is used for sub-LLM agents called via `AgentTool`; only add it when
   the agent orchestrates sub-agents.
 
+## Agent eval assets
+
+Agents CLI evals are per agent, not shared. Keep eval config and datasets under
+the owning agent:
+
+```
+agents/<name>/eval/
+  eval_config.yaml
+  datasets/<agent-id>.json
+```
+
+Do not create or restore a shared `agents/eval/` directory. Shared eval assets
+blur agent-specific contracts and make it unclear which agent owns a dataset or
+grading rule. When adding or changing evals, update the owning agent's `eval/`
+directory and its eval asset tests.
+
 ## Prompt optimization (`adk optimize`)
 
 **Canonical flow: drive everything through the `uv run adk optimize` CLI.** Do not write custom Python optimization scripts — the CLI handles `LocalEvalSamplerConfig` parsing, `LocalEvalSetsManager` construction, GEPA invocation, and result printing (`google/adk/cli/cli_tools_click.py::cli_optimize`). Custom scripts duplicate that path and rot against ADK upgrades.

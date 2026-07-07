@@ -8,6 +8,9 @@ def set_shopping_list(
 ) -> dict[str, object]:
     """Replace the full shopping list in shared state.
 
+    The shopping list is an unmaterialized cart: item intent only. This tool
+    does not change the live Kroger cart or mutate the user's Kroger account.
+
     `items` is a list of item strings (e.g. ["2x milk", "eggs", "bread"]).
     `notes` is an optional markdown block with shopping notes or substitutions.
     """

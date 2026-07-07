@@ -5,7 +5,7 @@ import grocery_agent.agent as agent
 import grocery_agent.main as main
 from agents_shared.plugins.slim_mcp import SlimMcpPlugin
 from google.adk.tools.load_web_page import load_web_page
-from grocery_agent.agent import build_agent
+from grocery_agent.agent import build_agent, build_eval_agent
 from grocery_agent.tools.mark_list_ready import mark_list_ready
 from grocery_agent.tools.set_meal_plan import set_meal_plan
 from grocery_agent.tools.set_shopping_list import set_shopping_list
@@ -57,9 +57,50 @@ def test_agent_instruction_uses_adk_state_placeholders() -> None:
     assert "{training_plan}" in instruction
 
 
+def test_agent_instruction_separates_shopping_list_from_live_cart() -> None:
+    grocery_agent = build_agent()
+    instruction = grocery_agent.instruction
+
+    assert "shopping list is an unmaterialized cart" in instruction
+    assert "cart is the live Kroger cart" in instruction
+    assert "Never call `update_cart` before `add_to_cart` succeeds" in instruction
+    assert (
+        "Only say items were added to the cart after `add_to_cart` succeeds"
+        in instruction
+    )
+    assert "Shopping List (not yet in live Kroger cart): {shopping_list}" in instruction
+    assert "Live Kroger Cart (moved/added for checkout): {cart}" in instruction
+    assert "ALWAYS build a proposed cart" not in instruction
+
+
+def test_update_cart_docstring_describes_live_cart_only() -> None:
+    assert update_cart.__doc__ is not None
+    assert "live Kroger cart" in update_cart.__doc__
+    assert "after `add_to_cart` succeeds" in update_cart.__doc__
+
+
+def test_set_shopping_list_docstring_describes_unmaterialized_cart() -> None:
+    assert set_shopping_list.__doc__ is not None
+    assert "unmaterialized cart" in set_shopping_list.__doc__
+    assert "does not change the live Kroger cart" in set_shopping_list.__doc__
+
+
 def test_build_agent_includes_web_fetch_tool() -> None:
     grocery_agent = build_agent()
     assert load_web_page in grocery_agent.tools
+
+
+def test_build_eval_agent_includes_kroger_stubs_for_connected_cases() -> None:
+    grocery_agent = build_eval_agent()
+    tool_names = {tool.name for tool in grocery_agent.tools if hasattr(tool, "name")}
+
+    assert {
+        "get_weekly_deals",
+        "search_products",
+        "get_product_details",
+        "add_to_cart",
+        "plan_meals",
+    } <= tool_names
 
 
 def test_build_agent_uses_app_plugin_for_web_search_throttling() -> None:
