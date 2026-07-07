@@ -72,7 +72,7 @@ def _build_agent(*, include_agui: bool) -> LlmAgent:
     return LlmAgent(
         name="expense_desk_agent",
         description="Expense review and approval-desk workflow.",
-        model=LiteLlm(model="openrouter/openai/gpt-oss-120b:free"),
+        model=LiteLlm(model="openrouter/tencent/hy3:free"),
         retry_config=DEFAULT_RETRY_CONFIG,
         on_model_error_callback=on_model_error_callback,
         after_model_callback=stop_on_terminal_text,

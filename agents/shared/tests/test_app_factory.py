@@ -10,7 +10,7 @@ from agents_shared.app_factory import (
     streaming_state_mapping,
 )
 from agents_shared.dependencies import AgentServices
-from agents_shared.rate_limit import ProviderThrottle, RateLimit
+from agents_shared.rate_limit import RATE_LIMITS, ProviderThrottle, RateLimit
 from agents_shared.tools import (
     GEMINI_RETRY_OPTIONS,
     get_current_date,
@@ -24,7 +24,7 @@ from google.adk.models.lite_llm import LiteLlm
 def _dummy_agent() -> LlmAgent:
     return LlmAgent(
         name="dummy_agent",
-        model=LiteLlm(model="cerebras/gpt-oss-120b"),
+        model=LiteLlm(model="openrouter/tencent/hy3:free"),
         instruction="hi",
     )
 
@@ -148,9 +148,14 @@ async def test_provider_hook_admits_request_under_rpm_limit():
 
 async def test_provider_hook_skips_throttle_for_unknown_model():
     hook = ProviderThrottle({"gemini": RateLimit(rpm=100)})
-    data = {"model": "cerebras/gpt-oss-120b", "messages": []}
+    data = {"model": "unknown/model-x", "messages": []}
     result = await hook.async_pre_call_hook(None, None, data, "completion")
     assert result is data
+
+
+def test_openrouter_free_models_are_limited_by_rpm_and_rpd():
+    assert RATE_LIMITS["openrouter"].rpm == 20
+    assert RATE_LIMITS["openrouter"].rpd == 1000
 
 
 def test_get_current_date_returns_iso_keys():

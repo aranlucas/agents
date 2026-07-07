@@ -1,3 +1,4 @@
+import research_agent.agent as agent
 from research_agent.tools.add_source import add_source
 from research_agent.tools.create_section import create_section
 from research_agent.tools.mark_research_ready import mark_research_ready
@@ -77,3 +78,8 @@ def test_mark_research_ready() -> None:
     assert result == {"ok": True}
     assert ctx.state["status"] == "ready"
     assert ctx.state["review_summary"] == "Research complete."
+
+
+def test_runtime_agent_uses_hy3_free_model() -> None:
+    research_agent = agent.build_agent()
+    assert research_agent.model.model == "openrouter/tencent/hy3:free"
