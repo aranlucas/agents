@@ -1361,7 +1361,8 @@ def test_group_reply_to_this_bot_is_addressed() -> None:
 
 
 def test_readme_documents_current_anonymous_nudge_behavior() -> None:
-    readme = Path("agents/telegram/README.md").read_text(encoding="utf-8")
+    readme_path = Path(__file__).parent.parent / "README.md"
+    readme = readme_path.read_text(encoding="utf-8")
 
     assert "normal messages require a linked Clerk account" not in readme
     assert "Unlinked senders can chat anonymously" in readme

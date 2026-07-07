@@ -49,19 +49,29 @@ agent at `/<agent>/agui` plus `/<agent>/health`.
 ## Quality checks
 
 This repo uses the Oxc toolchain for JavaScript/TypeScript and Ruff for Python.
+The Python agents live in the `agents` pnpm workspace package, so every root
+script below is a single `turbo` invocation that fans out to both toolchains
+(oxlint/oxfmt/tsc for JS, ruff/pyright/pytest for Python via `uv run`) — the
+root `package.json` is just an orchestrator, not where the logic lives.
 
 ```bash
-# Run all configured checks
+# Run all configured checks (lint + typecheck + fmt, JS and Python)
 pnpm check
 
-# JS/TS linting with Oxlint (type-aware via oxlint-tsgolint)
+# Lint (Oxlint for JS/TS, Ruff for Python)
 pnpm lint
 
-# Python linting with Ruff
-pnpm lint:py
+# Typecheck (tsc for JS/TS, Pyright for Python)
+pnpm typecheck
 
-# Format all supported files with Oxfmt
+# Format all supported files (Oxfmt for JS/TS, Ruff for Python)
 pnpm fmt
+
+# Run tests (Vitest for web/mobile, Pytest for Python)
+pnpm test
+
+# Run tests with coverage, including the Python 90% coverage gate
+pnpm coverage
 ```
 
 Conventions:
