@@ -3,12 +3,13 @@ name = "agents"
 version = "0.1.0"
 requires-python = ">=3.14"
 dependencies = [
+  "beautifulsoup4>=4.13.0",
   "ag-ui-adk>=0.7.0",
   "asyncpg>=0.31.0",
   "clerk-backend-api>=6.0.1",
   "cloudflare>=5.4.0",
   "fastapi",
-  "google-adk[mcp,extensions]>=2.2.0",
+  "google-adk[mcp]>=2.2.0",
   "google-genai",
   "httpx",
   "litellm",
@@ -20,7 +21,7 @@ dependencies = [
   "pyjwt[crypto]>=2.10",
   "python-dotenv",
   "python-telegram-bot>=22.0",
-  "google-cloud-bigquery>=3.35.0,<4.0.0",
+
   "jinja2>=3.1.6,<4.0.0",
   "sqlalchemy[asyncio]>=2.0",
   "uvicorn[standard]",
@@ -28,6 +29,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+bigquery = ["google-cloud-bigquery>=3.35.0,<4.0.0"]
 eval = ["google-adk[eval]", "rouge-score>=0.1.2"]
 
 [build-system]

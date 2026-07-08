@@ -28,12 +28,18 @@ RUN --mount=type=cache,id=s/418259b7-9f18-4ba2-81fc-04c1e712b318-agents-npm,targ
 FROM python:3.14.5-slim AS runtime
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates nodejs && \
+    apt-get install -y --no-install-recommends ca-certificates nodejs libjemalloc2 && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 ENV PATH="/app/.venv/bin:$PATH" \
-    PORT=8000
+    PORT=8000 \
+    PYTHONOPTIMIZE=2 \
+    LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2 \
+    MALLOC_CONF=background_thread:true,dirty_decay_ms:1000,muzzy_decay_ms:1000 \
+    LITELLM_MODE=PRODUCTION \
+    LITELLM_LOCAL_MODEL_COST_MAP=false \
+    LITELLM_SUPPRESS_DEBUG_INFO=true
 
 COPY --from=brave-mcp /usr/local/lib/node_modules/@brave/brave-search-mcp-server /usr/local/lib/node_modules/@brave/brave-search-mcp-server
 RUN ln -s ../lib/node_modules/@brave/brave-search-mcp-server/dist/index.js /usr/local/bin/brave-search-mcp-server
