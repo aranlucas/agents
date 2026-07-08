@@ -101,11 +101,19 @@ async def _lifespan(app: FastAPI):
     token = os.getenv("TELEGRAM_BOT_TOKEN") or os.getenv("TELEGRAM_TOKEN")
     ptb_app: Any = None
     if token:
-        from telegram_bot.runner import (
-            build_telegram_runner,
-            env_flag,
-            parse_allowed_chat_ids,
-        )
+        try:
+            from telegram_bot.runner import (  # type: ignore[import-untyped]
+                build_telegram_runner,
+                env_flag,
+                parse_allowed_chat_ids,
+            )
+        except ImportError:
+            log.warning(
+                "TELEGRAM_BOT_TOKEN is set but python-telegram-bot is not installed. "
+                "Install it with: uv sync --extra telegram"
+            )
+            yield
+            return
 
         runner = build_telegram_runner(
             token=token,
