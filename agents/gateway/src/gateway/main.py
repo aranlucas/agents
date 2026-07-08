@@ -5,7 +5,6 @@ import os
 import time
 from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
-from typing import Any
 
 from agents_shared.clerk_auth import ClerkAuthMiddleware, clerk_auth_enabled
 from agents_shared.dependencies import (
@@ -93,59 +92,10 @@ tracer = setup_otel("agents-gateway")
 
 log = logging.getLogger("gateway")
 
-_DEFAULT_WEB_BASE = "https://agents-lucas.vercel.app"
-
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
-    token = os.getenv("TELEGRAM_BOT_TOKEN") or os.getenv("TELEGRAM_TOKEN")
-    ptb_app: Any = None
-    if token:
-        try:
-            from telegram_bot.runner import (  # type: ignore[import-untyped]
-                build_telegram_runner,
-                env_flag,
-                parse_allowed_chat_ids,
-            )
-        except ImportError:
-            log.warning(
-                "TELEGRAM_BOT_TOKEN is set but python-telegram-bot is not installed. "
-                "Install it with: uv sync --extra telegram"
-            )
-            yield
-            return
-
-        runner = build_telegram_runner(
-            token=token,
-            services=app.state.services,
-            allowed_chat_ids=parse_allowed_chat_ids(
-                os.getenv("TELEGRAM_ALLOWED_CHAT_IDS")
-            ),
-            link_base_url=os.getenv("TELEGRAM_LINK_BASE_URL")
-            or f"{_DEFAULT_WEB_BASE}/telegram/link",
-            connect_url=os.getenv("TELEGRAM_CONNECT_URL")
-            or f"{_DEFAULT_WEB_BASE}/console/settings",
-            mini_app_url=os.getenv("TELEGRAM_MINI_APP_URL"),
-            debug=env_flag("TELEGRAM_DEBUG"),
-        )
-        ptb_app = runner.application
-        await ptb_app.initialize()
-        # Drop any stale long-poll held by a previous instance (e.g. rolling deploy).
-        await ptb_app.bot.delete_webhook(drop_pending_updates=False)
-        await ptb_app.updater.start_polling(
-            timeout=int(os.getenv("TELEGRAM_POLL_TIMEOUT", "50")),
-            allowed_updates=["message"],
-        )
-        await ptb_app.start()
-        log.info("Telegram bot polling started")
-
     yield
-
-    if ptb_app is not None:
-        log.info("Stopping Telegram bot")
-        await ptb_app.updater.stop()
-        await ptb_app.stop()
-        await ptb_app.shutdown()
 
 
 def register_agents(app: FastAPI, services: AgentServices) -> None:
