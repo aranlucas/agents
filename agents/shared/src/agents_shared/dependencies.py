@@ -61,7 +61,7 @@ def _build_engine() -> AsyncEngine:
 
 
 def _create_r2_artifact_service() -> BaseArtifactService:
-    from google.adk_community.artifacts.s3_artifact_service import S3ArtifactService
+    from ._s3_artifact_service import S3ArtifactService
 
     account_id = os.environ["CF_ACCOUNT_ID"]
     return S3ArtifactService(

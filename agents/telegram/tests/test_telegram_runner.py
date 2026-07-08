@@ -9,6 +9,11 @@ from agents_shared.telegram_auth import consume_link_token, create_link_token
 from google.adk.agents import LlmAgent
 from pytest_mock import MockerFixture
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+
+pytest.importorskip(
+    "telegram", reason="python-telegram-bot is not installed (uv sync --extra telegram)"
+)
+
 from telegram.constants import ParseMode
 from telegram.error import Forbidden
 from telegram_bot.runner import (

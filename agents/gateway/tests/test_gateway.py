@@ -153,6 +153,10 @@ def test_resume_agui_is_public_with_auth_enabled(monkeypatch):
 
 
 def test_lifespan_starts_and_stops_telegram_bot_when_token_set(monkeypatch):
+    pytest.importorskip(
+        "telegram",
+        reason="python-telegram-bot is not installed (uv sync --extra telegram)",
+    )
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "123:fake_token")
 
     fake_updater = MagicMock()
