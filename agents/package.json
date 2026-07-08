@@ -7,6 +7,7 @@
     "fmt:check": "uv run ruff format --check .",
     "typecheck": "uv run pyright",
     "test": "uv run pytest",
-    "coverage": "uv run pytest --cov"
+    "coverage": "uv run pytest --cov --cov-fail-under=90",
+    "sync": "uv sync"
   }
 }

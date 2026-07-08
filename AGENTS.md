@@ -74,6 +74,28 @@ pnpm test
 pnpm coverage
 ```
 
+The equivalent `uv` commands for working with Python directly (bypassing turbo):
+
+```bash
+# Lint Python
+uv run ruff check agents/
+
+# Typecheck Python
+uv run pyright
+
+# Format Python
+uv run ruff format agents/
+
+# Run Python tests
+uv run pytest
+
+# Run Python tests with coverage
+uv run pytest --cov --cov-fail-under=90
+
+# Sync dependencies (when adding/removing packages)
+uv sync
+```
+
 Conventions:
 
 - Use `oxlint` instead of ESLint. Keep `.oxlintrc.json` as the source of truth.

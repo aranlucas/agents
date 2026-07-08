@@ -52,7 +52,12 @@ class AgentServices:
 
 def _build_engine() -> AsyncEngine:
     url = get_database_url() or f"sqlite+aiosqlite:///{get_sqlite_db_path()}"
-    return create_async_engine(url)
+    return create_async_engine(
+        url,
+        pool_size=1,
+        max_overflow=2,
+        pool_pre_ping=True,
+    )
 
 
 def _create_r2_artifact_service() -> BaseArtifactService:

@@ -24,7 +24,6 @@ from fitness_agent.main import register as register_fitness
 from grocery_agent.main import register as register_grocery
 from opentelemetry import trace
 from opentelemetry.propagate import extract as otel_extract
-from opentelemetry.sdk.resources import Resource
 from opentelemetry.trace import Tracer
 from oralboards_agent.main import register as register_oralboards
 from presentation_agent.main import register as register_presentation
@@ -55,6 +54,7 @@ def setup_otel(default_service_name: str) -> Tracer:
     from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
     from opentelemetry.sdk.metrics import MeterProvider
     from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+    from opentelemetry.sdk.resources import Resource
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
