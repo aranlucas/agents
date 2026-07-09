@@ -7,6 +7,7 @@ import {
   BookOpenIcon,
   CheckCircle2Icon,
   ChevronDownIcon,
+  GraduationCapIcon,
   Loader2Icon,
   MicIcon,
   PencilIcon,
@@ -219,6 +220,47 @@ function FeedbackDetails({ idealResponse, citations }: FeedbackDetailsProps) {
       <CollapsibleContent className="space-y-1.5 border-t px-2.5 py-2">
         <ModelAnswer text={ideal} />
         <CitationChips sources={citations} />
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+// Generic OCE answer-technique guidance — never case-specific, so it is safe
+// to render as static content regardless of agent state. Collapsed by
+// default so it doesn't compete with the live question for attention.
+function AnswerCoach() {
+  return (
+    <Collapsible className="rounded-lg border border-dashed">
+      <CollapsibleTrigger className="group hover:bg-muted flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left text-xs transition-colors">
+        <span className="flex items-center gap-1.5 font-medium">
+          <GraduationCapIcon className="text-muted-foreground size-3.5" />
+          How to answer like a 3
+        </span>
+        <ChevronDownIcon className="text-muted-foreground size-3 transition-transform group-data-panel-open:rotate-180" />
+      </CollapsibleTrigger>
+      <CollapsibleContent className="space-y-1.5 border-t px-2.5 py-2 text-xs">
+        <ul className="text-muted-foreground list-disc space-y-1 pl-4 leading-relaxed">
+          <li>
+            <span className="text-foreground font-medium">Commit</span> — lead with your diagnosis
+            or decision; don&apos;t list options without choosing.
+          </li>
+          <li>
+            <span className="text-foreground font-medium">Anchor</span> — tie every point to THIS
+            patient&apos;s findings, not textbook generalities.
+          </li>
+          <li>
+            <span className="text-foreground font-medium">Justify</span> — give the
+            &quot;because&quot;: guideline, risk, or mechanism.
+          </li>
+          <li>
+            <span className="text-foreground font-medium">Close the loop</span> — say how a finding
+            changes management: &quot;if present → X, if absent → Y&quot;.
+          </li>
+          <li>
+            <span className="text-foreground font-medium">Don&apos;t parrot</span> — restating the
+            question&apos;s terms isn&apos;t an answer; add the implication.
+          </li>
+        </ul>
       </CollapsibleContent>
     </Collapsible>
   );
@@ -771,12 +813,16 @@ function ExaminerQuestionCard({
   questionNumber,
   isRunning,
   loadingStep,
+  targetSkillset,
+  targetSkill,
 }: {
   question: string;
   probe?: string;
   questionNumber: number;
   isRunning: boolean;
   loadingStep: string;
+  targetSkillset?: string;
+  targetSkill?: OralBoardsSkill;
 }) {
   // A follow-up probe supersedes the original question as the active prompt.
   // Coerce defensively: both props ultimately trace back to LLM-written
@@ -785,6 +831,10 @@ function ExaminerQuestionCard({
   const questionText = asText(question);
   const isProbe = Boolean(probeText.trim());
   const activeText = isProbe ? probeText : questionText;
+  // The declared assessment target (LLM-written state) — hidden gracefully
+  // when missing or off-enum, so an untagged question renders as before.
+  const targetSkillsetLabel = safeString(targetSkillset);
+  const targetSkillMeta = skillMetaFor(targetSkill);
   return (
     <Card>
       <CardHeader className="flex-row items-start justify-between gap-2">
@@ -817,7 +867,33 @@ function ExaminerQuestionCard({
           <p className="text-muted-foreground text-xs leading-relaxed">{questionText}</p>
         )}
         {activeText ? (
-          <p className="text-[15px] leading-relaxed font-medium text-pretty">{activeText}</p>
+          <>
+            {(targetSkillsetLabel ?? targetSkillMeta) && (
+              <div className="flex flex-wrap items-center gap-1">
+                {targetSkillsetLabel && (
+                  <Badge variant="secondary" className="text-[10px]">
+                    {targetSkillsetLabel}
+                  </Badge>
+                )}
+                {targetSkillMeta && (
+                  <Badge
+                    variant="secondary"
+                    title={targetSkillMeta.description}
+                    className="text-[10px]"
+                  >
+                    {targetSkillMeta.label}
+                  </Badge>
+                )}
+              </div>
+            )}
+            <p className="text-[15px] leading-relaxed font-medium text-pretty">{activeText}</p>
+            {targetSkillMeta && (
+              <p className="text-muted-foreground text-[11px]">
+                {targetSkillMeta.label} — {targetSkillMeta.description.charAt(0).toLowerCase()}
+                {targetSkillMeta.description.slice(1)}
+              </p>
+            )}
+          </>
         ) : (
           <ThinkingState isRunning={isRunning} loadingStep={loadingStep} />
         )}
@@ -926,6 +1002,8 @@ function QuestioningPane({
   activeFeedback = "",
   activeIdealResponse = "",
   activeProbe = "",
+  targetSkillset,
+  targetSkill,
 }: {
   caseBody: string;
   sources: CaseSource[];
@@ -938,6 +1016,8 @@ function QuestioningPane({
   activeFeedback?: string;
   activeIdealResponse?: string;
   activeProbe?: string;
+  targetSkillset?: string;
+  targetSkill?: OralBoardsSkill;
 }) {
   const { currentQuestion: question } = useOralBoardsQuestion();
   const isMobile = useIsMobile();
@@ -1034,13 +1114,18 @@ function QuestioningPane({
                 activeIdealResponse={activeIdealResponse}
               />
               {!isScoring && (
-                <ExaminerQuestionCard
-                  question={question}
-                  probe={activeProbe}
-                  questionNumber={displayedQuestionNumber}
-                  isRunning={isRunning}
-                  loadingStep={loadingStep}
-                />
+                <>
+                  <ExaminerQuestionCard
+                    question={question}
+                    probe={activeProbe}
+                    questionNumber={displayedQuestionNumber}
+                    isRunning={isRunning}
+                    loadingStep={loadingStep}
+                    targetSkillset={targetSkillset}
+                    targetSkill={targetSkill}
+                  />
+                  <AnswerCoach />
+                </>
               )}
               <ScrollToLatest
                 signal={`${transcript.length}:${activePrompt}:${activeFeedback.trim() ? "streaming" : ""}`}
@@ -1057,13 +1142,18 @@ function QuestioningPane({
     <ScrollArea className="h-full">
       <div className="flex flex-col gap-3 p-4">
         {!isScoring && (
-          <ExaminerQuestionCard
-            question={question}
-            probe={activeProbe}
-            questionNumber={displayedQuestionNumber}
-            isRunning={isRunning}
-            loadingStep={loadingStep}
-          />
+          <>
+            <ExaminerQuestionCard
+              question={question}
+              probe={activeProbe}
+              questionNumber={displayedQuestionNumber}
+              isRunning={isRunning}
+              loadingStep={loadingStep}
+              targetSkillset={targetSkillset}
+              targetSkill={targetSkill}
+            />
+            <AnswerCoach />
+          </>
         )}
         {composer}
       </div>
@@ -1249,6 +1339,8 @@ export function OralBoardsPanel({
             activeFeedback={activeFeedback}
             activeIdealResponse={activeIdealResponse}
             activeProbe={asText(state.active_probe)}
+            targetSkillset={asText(state.target_skillset)}
+            targetSkill={state.target_skill}
           />
         )}
         {showFinalFeedback && (

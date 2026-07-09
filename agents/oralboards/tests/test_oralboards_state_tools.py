@@ -18,6 +18,7 @@ from oralboards_agent.tools.search_docs import search_docs
 from oralboards_agent.tools.set_case import set_case
 from oralboards_agent.tools.set_loading_step import set_loading_step
 from oralboards_agent.tools.set_phase import set_phase
+from oralboards_agent.tools.set_question_target import set_question_target
 from oralboards_agent.tools.set_score_card import set_score_card
 from pydantic.fields import FieldInfo
 
@@ -199,6 +200,7 @@ _TOOL_FUNCTIONS = [
     set_case,
     set_phase,
     set_loading_step,
+    set_question_target,
     append_exchange,
     set_score_card,
 ]
@@ -369,6 +371,7 @@ def test_ask_probe_sets_question_and_flag() -> None:
     assert (
         ctx.state["current_question"] == "What would change if the tooth were necrotic?"
     )
+    assert ctx.state["temp:probe_asked_now"] is True
 
 
 def test_ask_probe_refuses_second_probe() -> None:
@@ -402,3 +405,87 @@ def test_state_declares_active_probe_default() -> None:
     from oralboards_agent.agent import OralBoardsState
 
     assert OralBoardsState().active_probe == ""
+
+
+def test_set_question_target_writes_target_skillset_and_skill() -> None:
+    ctx = SimpleNamespace(state={})
+    result = set_question_target("Pulp Therapy", "analyze_evaluate", ctx)
+
+    assert result == {"status": "success"}
+    assert ctx.state["target_skillset"] == "Pulp Therapy"
+    assert ctx.state["target_skill"] == "analyze_evaluate"
+
+
+def test_append_exchange_clears_question_targets() -> None:
+    ctx = SimpleNamespace(
+        state={"target_skillset": "Pulp Therapy", "target_skill": "analyze_evaluate"}
+    )
+    result = append_exchange(
+        ctx,
+        question="Q",
+        answer="A",
+        skillset="Pulp Therapy",
+        skill="analyze_evaluate",
+        feedback="**Skillset:** Pulp Therapy · analyze_evaluate — fine",
+        ideal_response="ideal",
+        score=3,
+    )
+
+    assert result["status"] == "success"
+    assert ctx.state["target_skillset"] == ""
+    assert ctx.state["target_skill"] == ""
+
+
+def test_state_declares_question_target_defaults() -> None:
+    state = OralBoardsState()
+    assert state.target_skillset == ""
+    assert state.target_skill == ""
+    assert state.question_craft_feedback == ""
+
+
+def test_append_exchange_refuses_to_score_right_after_a_probe() -> None:
+    """Regression: evaluator must not call ask_probe + append_exchange in one turn.
+
+    append_exchange must check the temp:probe_asked_now flag set by ask_probe
+    and refuse to append anything — the candidate hasn't answered the probe
+    yet, so scoring now would silently fold the probe QUESTION text into the
+    recorded answer instead of the candidate's reply.
+    """
+    from oralboards_agent.tools.append_exchange import append_exchange
+
+    ctx = SimpleNamespace(state={"temp:probe_asked_now": True, "transcript": []})
+    result = append_exchange(
+        ctx,
+        question="Q",
+        answer="A",
+        skillset="Pulp Therapy",
+        skill="analyze_evaluate",
+        feedback="**Skillset:** Pulp Therapy · analyze_evaluate — fine",
+        ideal_response="ideal",
+        score=3,
+    )
+
+    assert result["status"] == "error"
+    assert "message" in result
+    assert ctx.state["transcript"] == []
+
+
+def test_append_exchange_scores_normally_when_probe_flag_absent() -> None:
+    """Sanity check: the guard only fires when the temp flag is present."""
+    from oralboards_agent.tools.append_exchange import append_exchange
+
+    ctx = SimpleNamespace(state={})
+    result = append_exchange(
+        ctx,
+        question="Q",
+        answer="A",
+        skillset="Pulp Therapy",
+        skill="analyze_evaluate",
+        feedback="**Skillset:** Pulp Therapy · analyze_evaluate — fine",
+        ideal_response="ideal",
+        score=3,
+    )
+
+    assert result["status"] == "success"
+    assert result["ok"] is True
+    assert len(ctx.state["transcript"]) == 1

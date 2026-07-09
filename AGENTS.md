@@ -328,27 +328,28 @@ Free-tier model IDs and rate limits change frequently. Check
 [awesome-freellm-apis](https://github.com/open-free-llm-api/awesome-freellm-apis)
 for current best free models per provider.
 
-| Tier      | Primary provider | Agents                                                                        |
-| --------- | ---------------- | ----------------------------------------------------------------------------- |
-| Reasoning | OpenRouter       | travel, research (`tencent/hy3:free`, 262K ctx, shared 20 RPM / 1000 RPD cap) |
-| Standard  | Groq             | fitness, wellness, trends (+ subagent), presentation,                         |
-|           |                  | spreadsheet, excalidraw, oralboards orchestrator questioner phase             |
-| Standard  | NVIDIA           | grocery (`nemotron-3-super-120b-a12b`, 128K ctx)                              |
-| Light     | OpenRouter       | expense, resume (`tencent/hy3:free`, 262K ctx, 20 RPM / 1000 RPD cap)         |
-| Light     | Mistral          | oralboards orchestrator evaluator phase (`mistral-large-latest`),             |
-|           | (free-tier, low  | scorer phase + GEPA `optimizer_model` (both `mistral-medium-latest`),         |
-|           |                  | and the eval-harness agent (`mistral-small-latest`)                           |
-| Large ctx | Gemini           | oralboards orchestrator case_builder phase — direct ADK                       |
-|           | (direct ADK)     | `Gemini(model="gemini-3.1-flash-lite")`, not LiteLLM (Gemini models           |
-|           |                  | always go direct in this repo — see A2UI row below). Picked over              |
-|           |                  | `gemini-2.5-flash` for its 400 req/day free-tier quota vs. the                |
-|           |                  | latter's 20/day — case_builder fires on every new case. Note: direct          |
-|           |                  | ADK bypasses the shared `ProviderThrottle` RPM/RPD enforcement that           |
-|           |                  | LiteLLM-routed models get, since that throttle is a `litellm.callbacks`       |
-|           |                  | hook — nothing else currently backstops this phase's request rate.            |
-| A2UI      | Gemini           | trends A2UI rendering subagent (bypasses LiteLLM entirely — uses              |
-|           | (direct ADK)     | `Gemini(model="gemini-2.5-flash")` directly because Gemini can consume        |
-|           |                  | `reasoning_content` from prior turns that other providers reject.             |
+| Tier      | Primary provider | Agents                                                                  |
+| --------- | ---------------- | ----------------------------------------------------------------------- |
+| Reasoning | OpenRouter       | travel, research, oralboards orchestrator questioner phase              |
+|           |                  | (`tencent/hy3:free`, 262K ctx, shared 20 RPM / 1000 RPD cap)            |
+| Standard  | Groq             | fitness, wellness, trends (+ subagent), presentation,                   |
+|           |                  | spreadsheet, excalidraw                                                 |
+| Standard  | NVIDIA           | grocery (`nemotron-3-super-120b-a12b`, 128K ctx)                        |
+| Light     | OpenRouter       | expense, resume (`tencent/hy3:free`, 262K ctx, 20 RPM / 1000 RPD cap)   |
+| Light     | Mistral          | oralboards orchestrator evaluator phase (`mistral-large-latest`),       |
+|           | (free-tier, low  | scorer phase + GEPA `optimizer_model` (both `mistral-medium-latest`),   |
+|           |                  | and the eval-harness agent (`mistral-small-latest`)                     |
+| Large ctx | Gemini           | oralboards orchestrator case_builder phase — direct ADK                 |
+|           | (direct ADK)     | `Gemini(model="gemini-3.1-flash-lite")`, not LiteLLM (Gemini models     |
+|           |                  | always go direct in this repo — see A2UI row below). Picked over        |
+|           |                  | `gemini-2.5-flash` for its 400 req/day free-tier quota vs. the          |
+|           |                  | latter's 20/day — case_builder fires on every new case. Note: direct    |
+|           |                  | ADK bypasses the shared `ProviderThrottle` RPM/RPD enforcement that     |
+|           |                  | LiteLLM-routed models get, since that throttle is a `litellm.callbacks` |
+|           |                  | hook — nothing else currently backstops this phase's request rate.      |
+| A2UI      | Gemini           | trends A2UI rendering subagent (bypasses LiteLLM entirely — uses        |
+|           | (direct ADK)     | `Gemini(model="gemini-2.5-flash")` directly because Gemini can consume  |
+|           |                  | `reasoning_content` from prior turns that other providers reject.       |
 
 ## Conventions
 
