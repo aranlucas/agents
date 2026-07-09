@@ -64,20 +64,44 @@ class _FinalExchangeEvaluator(BaseAgent):
         yield SimpleNamespace(author=self.name)
 
 
+class _ScriptedQuestioner(BaseAgent):
+    """Writes a scripted question draft to state on each run.
+
+    Also records the question_craft_feedback visible at the start of each
+    run, so tests can assert the rewrite feedback was in state during the
+    retry and cleared afterwards.
+    """
+
+    questions: list[str] = []
+    seen_feedback: list[str] = []
+
+    async def run_async(self, ctx):  # noqa: ANN001
+        ctx.calls.append(self.name)
+        self.seen_feedback.append(ctx.session.state.get("question_craft_feedback", ""))
+        run_index = ctx.calls.count(self.name) - 1
+        draft = self.questions[min(run_index, len(self.questions) - 1)]
+        ctx.session.state["current_question"] = draft
+        yield SimpleNamespace(author=self.name)
+
+
 def _ctx(state: dict) -> SimpleNamespace:
     return SimpleNamespace(
         session=SimpleNamespace(state=state),
         should_pause_invocation=lambda event: False,
+        invocation_id="inv-test",
         calls=[],
     )
 
 
-def _orchestrator(evaluator: BaseAgent | None = None) -> OralBoardsOrchestrator:
+def _orchestrator(
+    evaluator: BaseAgent | None = None,
+    questioner: BaseAgent | None = None,
+) -> OralBoardsOrchestrator:
     return OralBoardsOrchestrator(
         name="oralboards_agent",
         sub_agents=[
             _StubPhase(name="case_builder"),
-            _StubPhase(name="questioner"),
+            questioner or _StubPhase(name="questioner"),
             evaluator or _StubPhase(name="evaluator"),
             _StubPhase(name="scorer"),
         ],
@@ -131,6 +155,95 @@ async def test_scorer_wins_over_questioner_on_final_exchange() -> None:
     assert ctx.calls == ["evaluator", "scorer"]
 
 
+# ---------------------------------------------------------------------------
+# Question-craft gate: leaky drafts are fed back and retried exactly once
+# ---------------------------------------------------------------------------
+
+_LEAKY_QUESTION = (
+    "What findings, such as caries or abscesses, would you note, "
+    "and how would they change your plan?"
+)
+_CLEAN_QUESTION = (
+    "How would radiographic findings change your treatment plan for this patient?"
+)
+
+
+def _craft_feedback_deltas(events: list) -> list[str]:
+    """question_craft_feedback values from orchestrator-authored delta events."""
+    return [
+        event.actions.state_delta["question_craft_feedback"]
+        for event in events
+        if hasattr(event, "actions")
+        and "question_craft_feedback" in event.actions.state_delta
+    ]
+
+
+@pytest.mark.asyncio
+async def test_leaky_question_sets_feedback_and_reruns_questioner_once() -> None:
+    questioner = _ScriptedQuestioner(
+        name="questioner", questions=[_LEAKY_QUESTION, _CLEAN_QUESTION]
+    )
+    ctx = _ctx({"status": "questioning", "case": "c"})
+
+    events = await _drain(_orchestrator(questioner=questioner), ctx)
+
+    assert ctx.calls == ["questioner", "questioner"]
+    deltas = _craft_feedback_deltas(events)
+    assert len(deltas) == 2
+    assert "such as" in deltas[0]  # violation feedback set for the retry…
+    assert deltas[1] == ""  # …then cleared once the retry ran
+    # The retry saw the feedback in state; it is cleared again afterwards.
+    assert questioner.seen_feedback[0] == ""
+    assert "such as" in questioner.seen_feedback[1]
+    assert ctx.session.state["question_craft_feedback"] == ""
+    assert ctx.session.state["current_question"] == _CLEAN_QUESTION
+
+
+@pytest.mark.asyncio
+async def test_clean_question_is_not_retried() -> None:
+    questioner = _ScriptedQuestioner(name="questioner", questions=[_CLEAN_QUESTION])
+    ctx = _ctx({"status": "questioning", "case": "c"})
+
+    events = await _drain(_orchestrator(questioner=questioner), ctx)
+
+    assert ctx.calls == ["questioner"]
+    assert _craft_feedback_deltas(events) == []
+
+
+@pytest.mark.asyncio
+async def test_second_leaky_attempt_is_accepted_without_third_run() -> None:
+    questioner = _ScriptedQuestioner(
+        name="questioner", questions=[_LEAKY_QUESTION, _LEAKY_QUESTION]
+    )
+    ctx = _ctx({"status": "questioning", "case": "c"})
+
+    await _drain(_orchestrator(questioner=questioner), ctx)
+
+    assert ctx.calls == ["questioner", "questioner"]  # never a third run
+    assert ctx.session.state["question_craft_feedback"] == ""
+    assert ctx.session.state["current_question"] == _LEAKY_QUESTION
+
+
+@pytest.mark.asyncio
+async def test_craft_gate_also_covers_evaluator_chained_questioner() -> None:
+    """The gate applies on the evaluator → questioner chained path too."""
+    questioner = _ScriptedQuestioner(
+        name="questioner", questions=[_LEAKY_QUESTION, _CLEAN_QUESTION]
+    )
+    ctx = _ctx({"status": "feedback", "case": "c"})
+
+    await _drain(
+        _orchestrator(
+            evaluator=_ExchangingEvaluator(name="evaluator"), questioner=questioner
+        ),
+        ctx,
+    )
+
+    assert ctx.calls == ["evaluator", "questioner", "questioner"]
+    assert ctx.session.state["current_question"] == _CLEAN_QUESTION
+    assert ctx.session.state["question_craft_feedback"] == ""
+
+
 def test_build_orchestrator_exposes_sub_agents_for_agui() -> None:
     orch = build_orchestrator_agent()
     assert orch.name == "oralboards_agent"
@@ -152,7 +265,15 @@ def test_phase_prompts_keep_state_driven_question_contract() -> None:
     assert "set_phase('presenting')" in case_builder.static_instruction
     assert "ask_question" not in questioner.static_instruction
     assert questioner.output_key == "current_question"
-    assert questioner.tools == []
+    # The questioner's only tool declares the assessment target; the question
+    # itself still travels via output_key, not a tool call.
+    tool_names = [
+        getattr(tool, "__name__", getattr(tool, "name", ""))
+        for tool in questioner.tools
+    ]
+    assert tool_names == ["set_question_target"]
+    assert "set_question_target EXACTLY ONCE" in questioner.static_instruction
+    assert "{question_craft_feedback}" in questioner.static_instruction
 
 
 def test_phase_model_tiering() -> None:
@@ -166,7 +287,9 @@ def test_phase_model_tiering() -> None:
 
     assert build_evaluator().model.model == "mistral/mistral-large-latest"
     assert build_case_builder().model.model == "gemini-3.1-flash-lite"
-    assert build_questioner().model.model == "groq/llama-3.3-70b-versatile"
+    # User directive: the questioner inherits the _AGENT_DEFAULTS OpenRouter
+    # reasoning model instead of a per-phase Groq override.
+    assert build_questioner().model.model == "openrouter/tencent/hy3:free"
     assert build_scorer().model.model == "mistral/mistral-medium-latest"
 
 

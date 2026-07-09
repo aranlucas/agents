@@ -24,6 +24,7 @@ from .agent import (
     set_case,
     set_loading_step,
     set_phase,
+    set_question_target,
     set_score_card,
 )
 
@@ -107,6 +108,21 @@ _VIGNETTE_RULES = (
     "source text goes in case_passages, never in the vignette."
 )
 
+_QUESTION_CRAFT = (
+    "## Question craft (non-negotiable)\n"
+    "Ask ONE question testing ONE cognitive act. Never stack two asks ('what\n"
+    "would you look for AND how would it change your plan') — the follow-up is\n"
+    "a later question or a probe.\n"
+    "NEVER include answer content in the question: no 'such as …' example\n"
+    "lists, no enumerating findings/diagnoses/materials/techniques the\n"
+    "candidate is expected to supply, no embedded differentials. If the\n"
+    "question names the items, the candidate can only parrot them back and\n"
+    "nothing is assessed.\n"
+    "Keep it under ~30 words, open-ended, second person.\n"
+    "Self-check before returning: 'Could a weak candidate answer this by\n"
+    "repeating words from my question?' If yes, rewrite."
+)
+
 _LOADING_STEPS = (
     "## Loading step protocol\n"
     "Call set_loading_step at each of these moments:\n"
@@ -181,7 +197,7 @@ def build_case_builder() -> LlmAgent:
 
 def build_questioner() -> LlmAgent:
     return LlmAgent(
-        **{**_AGENT_DEFAULTS, "model": LiteLlm(model="groq/llama-3.3-70b-versatile")},
+        **_AGENT_DEFAULTS,
         name="questioner",
         include_contents="none",
         output_key="current_question",
@@ -190,6 +206,7 @@ def build_questioner() -> LlmAgent:
             "Your ONLY job is to write ONE clinical question.\n\n"
             f"{_CANVAS_HINT}\n\n"
             f"{_BLUEPRINT}\n\n"
+            f"{_QUESTION_CRAFT}\n\n"
             "## Current case\n"
             "Read the case from state: {case}\n"
             "Review the transcript to see which skillsets have been covered: {transcript}\n\n"
@@ -204,11 +221,16 @@ def build_questioner() -> LlmAgent:
             "Do not let the candidate stall: if an answer is vague, ask them to commit.\n\n"
             "## Your task\n"
             "1. Identify the next uncovered skillset from the blueprint that this case can assess.\n"
-            "2. Return exactly the question text as one open-ended sentence.\n"
-            "The response is persisted to current_question automatically. Do not call tools.\n"
-            "Do NOT provide feedback. Do NOT reveal the model answer. Do NOT score."
+            "2. Call set_question_target EXACTLY ONCE with that blueprint domain name\n"
+            "   and the cognitive skill level the question will test.\n"
+            "3. Then return exactly the question text as one open-ended sentence.\n"
+            "The response is persisted to current_question automatically.\n"
+            "Do NOT provide feedback. Do NOT reveal the model answer. Do NOT score.\n\n"
+            "## Rewrite feedback\n"
+            "If the following is non-empty, your previous draft violated question craft —\n"
+            "write a NEW question fixing every listed violation: {question_craft_feedback}"
         ),
-        tools=[],
+        tools=[set_question_target],
     )
 
 
@@ -240,25 +262,40 @@ def build_evaluator() -> LlmAgent:
             "specific is missing or undefended — you MAY call ask_probe with ONE follow-up\n"
             "question targeting exactly that gap, instead of scoring immediately. Real\n"
             "examiners probe; use it when one more sentence from the candidate would\n"
-            "separate a 2 from a 3.\n"
-            "Rules:\n"
-            "- Check state: if active_probe is non-empty, the probe was already asked and\n"
-            "  the latest user message answers it. You MUST now call append_exchange,\n"
-            "  treating the original answer plus the probe answer together as the\n"
-            '  candidate\'s response (answer = original answer + " / " + probe answer).\n'
-            "- Never probe an answer that is clearly a 1 or clearly a 3 — score it.\n"
-            "- After calling ask_probe, end your turn with no chat text. The panel\n"
-            "  displays the probe.\n\n"
+            "separate a 2 from a 3. The probe question must follow the same\n"
+            "question-craft standard the questioner uses: one question, no 'such\n"
+            "as …' example lists, no enumerating the missing items — ask the\n"
+            "candidate to supply them, don't hand them over.\n\n"
             "## Your task\n"
             "The active question is in state: {current_question}\n"
             "The candidate's answer is the latest user message. Evaluate that answer:\n"
             "1. Call set_loading_step('Reviewing your answer…').\n"
-            "2. Call set_loading_step('Composing feedback…').\n"
-            "3. Call append_exchange with:\n"
+            "2. Decide: probe or score. Exactly one of these three branches applies —\n"
+            "   never call both ask_probe and append_exchange in the same turn.\n"
+            "   - If active_probe in state is non-empty: the probe was already asked,\n"
+            "     and the latest user message IS the candidate's reply to it. You MUST\n"
+            "     score now — go to step 3. The merged answer is the original answer\n"
+            "     plus the candidate's probe reply, joined as\n"
+            '     `original answer + " / " + <the candidate\'s probe reply text>`.\n'
+            "     NEVER use the probe QUESTION text in that join — only the candidate's\n"
+            "     reply to it.\n"
+            "   - Else if the answer is partial (a 2 where one more sentence could earn\n"
+            "     a 3): call ask_probe with ONE focused follow-up targeting exactly that\n"
+            "     gap, following the question-craft standard above, then END YOUR TURN\n"
+            "     IMMEDIATELY — no chat text, no append_exchange. The panel displays the\n"
+            "     probe and the candidate's reply arrives as the next user message.\n"
+            "   - Else (a clear 1 or a clear 3): go to step 3 and score now.\n"
+            "   Never probe an answer that is clearly a 1 or clearly a 3.\n"
+            "3. Call set_loading_step('Composing feedback…'), then call append_exchange with:\n"
             "   - question — the exact question text\n"
-            "   - answer — the candidate's verbatim answer\n"
-            "   - skillset — the blueprint domain assessed (exact domain name)\n"
-            "   - skill — remember, understand_apply, or analyze_evaluate\n"
+            "   - answer — the candidate's verbatim answer (merged with the probe reply\n"
+            "     per step 2 if this exchange included a probe)\n"
+            "   - skillset — the blueprint domain assessed (exact domain name). The\n"
+            "     questioner declared its target in state: {target_skillset} — use it\n"
+            "     when non-empty; fall back to your own judgment only if it is empty.\n"
+            "   - skill — remember, understand_apply, or analyze_evaluate. Prefer the\n"
+            "     declared target in state: {target_skill} — fall back to your own\n"
+            "     judgment only if it is empty.\n"
             "   - feedback — markdown with this exact structure:\n"
             "     **Skillset:** <domain> · <skill level>\n"
             "     **What you said:** one sentence crediting what was correct or relevant.\n"
@@ -268,6 +305,10 @@ def build_evaluator() -> LlmAgent:
             "     **What a 3 sounds like:** 2-3 sentences a full-marks candidate would\n"
             "     actually say — concrete, committed, and clinically sequenced. Do not\n"
             "     restate the ideal_response verbatim; this is the spoken version.\n"
+            "     **Technique tip:** one transferable exam-technique pointer drawn from\n"
+            "     THIS answer's main weakness (e.g. 'commit to a decision and defend\n"
+            "     it', 'tie each finding you name to how it changes your plan', \"don't\n"
+            "     restate the question's terms — add the implication\").\n"
             "   - ideal_response — the model answer, grounded in the case passages\n"
             "   - score — 1-3 practice score\n"
             "   - citations — the CaseSource chips from case_sources in state\n"
@@ -304,7 +345,14 @@ def build_scorer() -> LlmAgent:
             "3. Call set_score_card with:\n"
             "   - score_summary — one entry per skillset assessed: {skillset, skill, score (1-3), rationale}\n"
             "   - outcome — overall practice estimate: pass, borderline, or not_yet\n"
-            "   - markdown — narrative tying scores to performance, plus a note that the real OCE is Pass/Fail\n"
+            "   - markdown — narrative tying scores to performance, plus a note that the real\n"
+            "     OCE is Pass/Fail. The narrative MUST end with a short '## Answer technique\n"
+            "     coaching' section: 2-3 recurring answering-technique patterns observed\n"
+            "     across the whole transcript, with concrete advice on how to structure a\n"
+            "     3-level answer — commit to a decision, anchor it to this patient's\n"
+            "     findings, justify with a guideline or mechanism, and close the loop with\n"
+            "     if-present/if-absent management. This section is about answering\n"
+            "     technique, NOT a restatement of clinical content.\n"
             "4. Summarize in 1-2 chat sentences.\n"
             "Score each skillset independently on the 1-3 scale. "
             "Do NOT compute a weighted composite or invent /100 or /5 scores."

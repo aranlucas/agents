@@ -24,6 +24,7 @@ from .tools.search_docs import search_docs
 from .tools.set_case import set_case
 from .tools.set_loading_step import set_loading_step
 from .tools.set_phase import set_phase
+from .tools.set_question_target import set_question_target as set_question_target
 from .tools.set_score_card import set_score_card
 
 _INSTRUCTION = (Path(__file__).parent / "instructions.md").read_text(encoding="utf-8")
@@ -49,6 +50,9 @@ class OralBoardsState(BaseModel):
     active_feedback: str = ""
     active_ideal_response: str = ""
     active_probe: str = ""
+    target_skillset: str = ""
+    target_skill: str = ""
+    question_craft_feedback: str = ""
 
 
 # ---------------------------------------------------------------------------

@@ -50,6 +50,15 @@ def append_exchange(
     | None = None,
 ) -> dict[str, object]:
     """Append one examiner question, answer, cited feedback, score, and ideal response."""
+    if tool_context.state.get("temp:probe_asked_now"):
+        return {
+            "status": "error",
+            "message": (
+                "You just asked a probe this turn — do not score yet. End your "
+                "turn now; the candidate's answer to the probe arrives as the "
+                "next user message."
+            ),
+        }
     transcript = list(tool_context.state.get("transcript") or [])
     transcript.append(
         {
@@ -69,5 +78,7 @@ def append_exchange(
     tool_context.state["active_feedback"] = ""
     tool_context.state["active_ideal_response"] = ""
     tool_context.state["active_probe"] = ""
+    tool_context.state["target_skillset"] = ""
+    tool_context.state["target_skill"] = ""
     tool_context.state[SEARCH_CALL_COUNT_KEY] = 0
     return {"status": "success", "ok": True, "count": len(transcript)}

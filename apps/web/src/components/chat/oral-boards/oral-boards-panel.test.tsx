@@ -474,6 +474,132 @@ describe("OralBoardsPanel — questioning", () => {
     expect(screen.queryByText("Question 7")).not.toBeInTheDocument();
   });
 
+  it("shows the declared skillset/skill target with the active question", async () => {
+    const { useOralBoardsQuestion } = await import("@/lib/copilotkit/oral-boards-question-context");
+    vi.mocked(useOralBoardsQuestion).mockReturnValue({
+      currentQuestion: "What is your working diagnosis?",
+      setCurrentQuestion: vi.fn(),
+      clearCurrentQuestion: vi.fn(),
+      pendingInputKind: "answer",
+      registerPendingInput: vi.fn(),
+      clearPendingInput: vi.fn(),
+      respondToPendingInput: vi.fn(),
+    });
+
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: [],
+      target_skillset: "Pulp Therapy",
+      target_skill: "analyze_evaluate",
+    };
+
+    render(<OralBoardsPanel state={state} {...baseProps} />);
+
+    expect(screen.getByText("Pulp Therapy")).toBeInTheDocument();
+    expect(screen.getAllByText("Analyze / Evaluate").length).toBeGreaterThan(0);
+    // The one-line hint teaches what kind of answer is expected.
+    expect(screen.getByText(/reach and defend a decision/)).toBeInTheDocument();
+
+    vi.mocked(useOralBoardsQuestion).mockReturnValue({
+      currentQuestion: "",
+      setCurrentQuestion: vi.fn(),
+      clearCurrentQuestion: vi.fn(),
+      pendingInputKind: null,
+      registerPendingInput: vi.fn(),
+      clearPendingInput: vi.fn(),
+      respondToPendingInput: vi.fn(),
+    });
+  });
+
+  it("hides the target badges and hint when target fields are missing", async () => {
+    const { useOralBoardsQuestion } = await import("@/lib/copilotkit/oral-boards-question-context");
+    vi.mocked(useOralBoardsQuestion).mockReturnValue({
+      currentQuestion: "What is your working diagnosis?",
+      setCurrentQuestion: vi.fn(),
+      clearCurrentQuestion: vi.fn(),
+      pendingInputKind: "answer",
+      registerPendingInput: vi.fn(),
+      clearPendingInput: vi.fn(),
+      respondToPendingInput: vi.fn(),
+    });
+
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: [],
+    };
+
+    render(<OralBoardsPanel state={state} {...baseProps} />);
+
+    expect(screen.getByText("What is your working diagnosis?")).toBeInTheDocument();
+    expect(screen.queryByText("Pulp Therapy")).not.toBeInTheDocument();
+    expect(screen.queryByText(/reach and defend a decision/)).not.toBeInTheDocument();
+
+    vi.mocked(useOralBoardsQuestion).mockReturnValue({
+      currentQuestion: "",
+      setCurrentQuestion: vi.fn(),
+      clearCurrentQuestion: vi.fn(),
+      pendingInputKind: null,
+      registerPendingInput: vi.fn(),
+      clearPendingInput: vi.fn(),
+      respondToPendingInput: vi.fn(),
+    });
+  });
+
+  it("ignores an off-enum target skill instead of crashing", async () => {
+    const { useOralBoardsQuestion } = await import("@/lib/copilotkit/oral-boards-question-context");
+    vi.mocked(useOralBoardsQuestion).mockReturnValue({
+      currentQuestion: "What is your working diagnosis?",
+      setCurrentQuestion: vi.fn(),
+      clearCurrentQuestion: vi.fn(),
+      pendingInputKind: "answer",
+      registerPendingInput: vi.fn(),
+      clearPendingInput: vi.fn(),
+      respondToPendingInput: vi.fn(),
+    });
+
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: [],
+      target_skillset: "Pulp Therapy",
+      target_skill: "Analyze" as OralBoardsSkill,
+    };
+
+    expect(() => render(<OralBoardsPanel state={state} {...baseProps} />)).not.toThrow();
+    expect(screen.getByText("Pulp Therapy")).toBeInTheDocument();
+    expect(screen.queryByText(/reach and defend a decision/)).not.toBeInTheDocument();
+
+    vi.mocked(useOralBoardsQuestion).mockReturnValue({
+      currentQuestion: "",
+      setCurrentQuestion: vi.fn(),
+      clearCurrentQuestion: vi.fn(),
+      pendingInputKind: null,
+      registerPendingInput: vi.fn(),
+      clearPendingInput: vi.fn(),
+      respondToPendingInput: vi.fn(),
+    });
+  });
+
+  it("renders the collapsed 'How to answer like a 3' answer-coach trigger", () => {
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: [],
+    };
+
+    render(<OralBoardsPanel state={state} {...baseProps} />);
+
+    const trigger = screen.getByRole("button", { name: "How to answer like a 3" });
+    expect(trigger).toBeInTheDocument();
+    expect(trigger).not.toHaveAttribute("data-panel-open");
+  });
+
   it("collapses model answer and citations in live feedback by default", async () => {
     const citation = {
       docid: 17,
