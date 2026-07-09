@@ -193,6 +193,7 @@ CREATE TABLE IF NOT EXISTS agent_sessions (
   state_json TEXT NOT NULL,
   messages_json TEXT NOT NULL,
   expires_at INTEGER NOT NULL,
+  version INTEGER NOT NULL,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   PRIMARY KEY (app_name, user_id, thread_id)
@@ -206,6 +207,22 @@ CREATE TABLE IF NOT EXISTS agent_events (
   run_id TEXT NOT NULL,
   event_json TEXT NOT NULL,
   created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS agent_app_state (
+  app_name TEXT PRIMARY KEY,
+  state_json TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS agent_user_state (
+  app_name TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  state_json TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (app_name, user_id)
 );
 
 CREATE TABLE IF NOT EXISTS pending_client_tools (
@@ -227,10 +244,13 @@ CREATE TABLE IF NOT EXISTS provider_limits (
 );
 ```
 
-All user/session rows are scoped in every `WHERE` clause. Request-scoped keys
-such as `temp:kroger_token` and `temp:strava_token` live only in the invocation
-overlay and are excluded from `state_json`, event payloads, logs, and error
-messages.
+All user/session rows are scoped in every `WHERE` clause. The Go D1 session
+service follows ADK-Go state scopes: `app:` deltas update `agent_app_state`,
+`user:` deltas update `agent_user_state`, and ordinary keys update
+`agent_sessions.state_json`; reads merge those three layers. Request-scoped
+keys such as `temp:kroger_token` and `temp:strava_token` live only in the
+invocation overlay and are excluded from every persisted state/event payload,
+log, and error message.
 
 ### R2 artifacts
 
