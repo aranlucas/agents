@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/aranlucas/agents/agents/internal/agentruntime"
+	"github.com/aranlucas/agents/agents/internal/agents/presentation"
 	"github.com/aranlucas/agents/agents/internal/agents/resume"
 	"github.com/aranlucas/agents/agents/internal/agui"
 	"github.com/aranlucas/agents/agents/internal/auth"
@@ -130,7 +131,7 @@ func capabilitiesHandler(w http.ResponseWriter, _ *http.Request) {
 		"transport": map[string]any{"streaming": true},
 		"state":     map[string]any{"snapshots": true, "deltas": true, "persistentState": true},
 		"reasoning": map[string]any{"supported": true, "streaming": true},
-		"tools":     map[string]any{"supported": false, "clientProvided": false},
+		"tools":     map[string]any{"supported": true, "clientProvided": true},
 	})
 }
 
@@ -216,6 +217,43 @@ func resumeProviderConfig(cfg config.Config) (config.Provider, error) {
 	return provider, nil
 }
 
+func presentationProviderConfig(cfg config.Config) (config.Provider, error) {
+	provider, ok := cfg.Providers["groq"]
+	if !ok {
+		return config.Provider{}, errors.New("GROQ_API_KEY is required to configure the presentation agent")
+	}
+	provider.Model = "llama-3.3-70b-versatile"
+	provider.RequestsPerMinute = 30
+	provider.Fallbacks = configuredFallbacks(cfg.Providers, "mistral", "openrouter")
+	return provider, nil
+}
+
+func configuredFallbacks(providers map[string]config.Provider, names ...string) []string {
+	result := make([]string, 0, len(names))
+	for _, name := range names {
+		if _, ok := providers[name]; ok {
+			result = append(result, name)
+		}
+	}
+	return result
+}
+
+func presentationProviderPolicies(providers map[string]config.Provider) map[string]config.Provider {
+	result := make(map[string]config.Provider, len(providers))
+	for name, provider := range providers {
+		result[name] = provider
+	}
+	if provider, ok := result["mistral"]; ok {
+		provider.Model, provider.RequestsPerMinute = "mistral-small-latest", 20
+		result["mistral"] = provider
+	}
+	if provider, ok := result["openrouter"]; ok {
+		provider.Model, provider.RequestsPerMinute = "tencent/hy3:free", 20
+		result["openrouter"] = provider
+	}
+	return result
+}
+
 // resumeHealth reports the resume agent's readiness from local state only
 // (embedded grounding present, model wired at startup) — it never issues a
 // model request, so GET /resume/health cannot burn provider quota or block
@@ -273,15 +311,23 @@ func main() {
 	if err != nil {
 		log.Fatalf("build resume agent: %v", err)
 	}
+	presentationProvider, err := presentationProviderConfig(cfg)
+	if err != nil {
+		log.Fatalf("configure presentation model: %v", err)
+	}
+	presentationModel, err := openai.NewMulti(presentationProvider, presentationProviderPolicies(cfg.Providers), nil, limiter)
+	if err != nil {
+		log.Fatalf("configure presentation fallbacks: %v", err)
+	}
+	presentationAgent, err := presentation.New(presentationModel, agui.NewRequestScopedClientToolset(pending))
+	if err != nil {
+		log.Fatalf("build presentation agent: %v", err)
+	}
 
-	registry, err := agentruntime.NewRegistry(agentruntime.Entry{
-		Route:   "resume",
-		AppName: resume.AppName,
-		Agent:   resumeAgent,
-		Public:  true,
-		Timeout: 2 * time.Minute,
-		Health:  resumeHealth(resumeModel),
-	})
+	registry, err := agentruntime.NewRegistry(
+		agentruntime.Entry{Route: "resume", AppName: resume.AppName, Agent: resumeAgent, Public: true, Timeout: 2 * time.Minute, Health: resumeHealth(resumeModel)},
+		agentruntime.Entry{Route: "presentation", AppName: presentation.AppName, Agent: presentationAgent, StateDefaults: presentation.StateDefaults(), Timeout: 2 * time.Minute, Health: func(context.Context) error { return nil }},
+	)
 	if err != nil {
 		log.Fatalf("build agent registry: %v", err)
 	}
