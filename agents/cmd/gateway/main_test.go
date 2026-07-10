@@ -210,7 +210,7 @@ func TestGatewayTrendsRouteUsesExistingAGUIContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	trendsAgent, err := trends.New(fakeResumeModel{}, generatorAgent, nil, nil)
+	trendsAgent, err := trends.New(fakeResumeModel{}, generatorAgent, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

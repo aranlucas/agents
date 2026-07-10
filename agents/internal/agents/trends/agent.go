@@ -3,27 +3,28 @@
 // AgentTool, executes it against the public Google Trends dataset, and
 // renders the result as a catalog-valid A2UI surface.
 //
-// The A2UI step (generate_a2ui, see a2ui.go's BuildA2UI) is deterministic Go
-// code rather than an LLM call, unlike the Python port's ag_ui_adk-backed
-// composition tool. That is a required architectural change, not a
-// simplification of convenience: ADK-Go's tool/agenttool wraps a sub-agent
-// in its own throwaway in-memory session (see agenttool.Run), so any
-// temp:a2ui_activity: state write made by a tool nested inside a sub-agent
-// invoked via AgentTool never reaches the top-level session's
+// The A2UI step (generate_a2ui) calls its composer model.LLM inline rather
+// than through a Gemini-backed sub-agent, unlike the Python port's
+// ag_ui_adk-backed composition tool. That is a required architectural
+// change, not a simplification of convenience: ADK-Go's tool/agenttool wraps
+// a sub-agent in its own throwaway in-memory session (see agenttool.Run), so
+// any temp:a2ui_activity: state write made by a tool nested inside a
+// sub-agent invoked via AgentTool never reaches the top-level session's
 // event.Actions.StateDelta that internal/agui/converter.go reads to emit
 // ACTIVITY_SNAPSHOT events. The A2UI tool has to live directly on the root
 // agent to be observable by the AG-UI stream — the Python port's own comment
 // ("A2UI tool lives directly on the root agent — no sub-agent traversal
 // needed for ag_ui_adk's per-run event_queue wiring") documents the same
-// constraint. A genuinely Gemini-backed A2UI subagent would silently drop
-// its own output, so internal/providers/gemini is not wired into this
-// package; it exists as a general-purpose direct model.LLM adapter for
-// future direct-Gemini consumers instead.
+// constraint. New's composer parameter (internal/providers/gemini's direct
+// Gemini adapter in production) is a plain model.LLM invoked with
+// GenerateContent from inside generate_a2ui's own tool function — no nested
+// agent, no isolated session, so its state write lands on the root agent's
+// own context like every other trends tool. See compose.go's composeA2UI
+// for the composition-then-validate-then-fallback pipeline.
 package trends
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -62,12 +63,15 @@ const a2uiActivityStatePrefix = session.KeyPrefixTemp + "a2ui_activity:"
 // generator built by NewGenerator; executor may be nil in tests that never
 // exercise execute_bigquery_sql (the tool then returns a structured "not
 // configured" error instead of panicking); search is optional and, when
-// nil, omits the web_search tool entirely.
-func New(m model.LLM, generator agent.Agent, executor *BigQueryExecutor, search *common.BraveSearch, toolsets ...tool.Toolset) (agent.Agent, error) {
+// nil, omits the web_search tool entirely. composer is optional: when nil
+// (Gemini not configured — see cmd/gateway/main.go's trendsComposerModel),
+// generate_a2ui degrades to the deterministic BuildA2UI surface instead of
+// attempting an LLM composition; see compose.go's composeA2UI.
+func New(m model.LLM, generator agent.Agent, executor *BigQueryExecutor, search *common.BraveSearch, composer model.LLM, toolsets ...tool.Toolset) (agent.Agent, error) {
 	if generator == nil || generator.Name() != GeneratorAppName {
 		return nil, fmt.Errorf("trends requires a %s child agent", GeneratorAppName)
 	}
-	tools, err := rootTools(executor, search)
+	tools, err := rootTools(executor, search, composer)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +93,7 @@ func NewGenerator(m model.LLM) (agent.Agent, error) {
 	})
 }
 
-func rootTools(executor *BigQueryExecutor, search *common.BraveSearch) ([]tool.Tool, error) {
+func rootTools(executor *BigQueryExecutor, search *common.BraveSearch, composer model.LLM) ([]tool.Tool, error) {
 	var tools []tool.Tool
 	add := func(value tool.Tool, err error) error {
 		if err != nil {
@@ -119,7 +123,7 @@ func rootTools(executor *BigQueryExecutor, search *common.BraveSearch) ([]tool.T
 	}))); err != nil {
 		return nil, err
 	}
-	if err := add(functiontool.New(functiontool.Config{Name: "generate_a2ui", Description: "Render the saved Trends result as a catalog-valid A2UI surface."}, generateA2UITool())); err != nil {
+	if err := add(functiontool.New(functiontool.Config{Name: "generate_a2ui", Description: "Render the saved Trends result as a catalog-valid A2UI surface."}, generateA2UITool(composer))); err != nil {
 		return nil, err
 	}
 	if search != nil {
@@ -172,16 +176,22 @@ type activityEnvelope struct {
 	Content   any    `json:"content"`
 }
 
-func generateA2UITool() functiontool.Func[GenerateA2UIArgs, Result] {
+// generateA2UITool renders the saved TrendsState as a catalog-valid A2UI
+// surface. When composer is non-nil it prefers an LLM-composed surface
+// (composeA2UI), which itself falls back to the deterministic BuildA2UI
+// output on any composer failure or invalid composition — so this tool
+// always succeeds at rendering something, never fails because the composer
+// misbehaved.
+func generateA2UITool(composer model.LLM) functiontool.Func[GenerateA2UIArgs, Result] {
 	return func(ctx agent.Context, _ GenerateA2UIArgs) (Result, error) {
 		state := decodeState(agentruntime.NewTransactionFromState(ctx.State()))
-		event := BuildA2UI(TrendsResult{Query: state.Query, SQL: state.GeneratedSQL, Columns: state.Columns, Rows: state.Rows, Insights: state.Insights, Error: state.Error})
+		event := composeA2UI(ctx, composer, TrendsResult{Query: state.Query, SQL: state.GeneratedSQL, Columns: state.Columns, Rows: state.Rows, Insights: state.Insights, Error: state.Error})
 		key := strings.TrimSpace(ctx.FunctionCallID())
 		if key == "" {
 			key = event.MessageID
 		}
 		if err := ctx.State().Set(a2uiActivityStatePrefix+key, activityEnvelope{MessageID: event.MessageID, Content: event.Content}); err != nil {
-			return Result{}, errors.New("record trends A2UI activity")
+			return failure("a2ui_state_write_failed", "failed to record the Trends A2UI activity"), nil
 		}
 		return Result{OK: true}, nil
 	}

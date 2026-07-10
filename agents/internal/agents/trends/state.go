@@ -2,8 +2,23 @@ package trends
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	"github.com/aranlucas/agents/agents/internal/agentruntime"
+)
+
+// Size caps for trends state mutation inputs. Row/column bounds mirror
+// bigquery.go's defaultRowLimit so a tool can never persist more data than
+// BigQuery itself is allowed to return.
+const (
+	maxTrendsQueryLength        = 2_000
+	maxTrendsSQLLength          = 10_000
+	maxTrendsInsightsLength     = 20_000
+	maxTrendsErrorLength        = 10_000
+	maxTrendsVerificationLength = 10_000
+	maxTrendsColumns            = defaultRowLimit
+	maxTrendsColumnNameLength   = 200
 )
 
 const AppName = "GoogleTrendsAgent"
@@ -108,11 +123,23 @@ type BeginQueryArgs struct {
 
 // BeginTrendsQuery clears any previous result and marks the state
 // "querying" before BigQuery execution starts, matching
-// tools/begin_trends_query.py.
+// tools/begin_trends_query.py. Inputs are validated before any state
+// mutation: a rejected call leaves the prior state entirely untouched.
 func BeginTrendsQuery(tx *agentruntime.Transaction, input BeginQueryArgs) (Result, error) {
+	query := strings.TrimSpace(input.Query)
+	if query == "" || len(query) > maxTrendsQueryLength {
+		return failure("query_required", fmt.Sprintf("query is required and must be at most %d characters", maxTrendsQueryLength)), nil
+	}
+	cleaned := CleanSQL(input.SQL)
+	if cleaned == "" || len(cleaned) > maxTrendsSQLLength {
+		return failure("sql_required", fmt.Sprintf("sql is required and must be at most %d characters", maxTrendsSQLLength)), nil
+	}
+	if err := ValidateSQL(cleaned); err != nil {
+		return failure("unsafe_sql", "sql must be a bounded, read-only SELECT/WITH query"), nil
+	}
 	state := decodeState(tx)
-	state.Query = input.Query
-	state.GeneratedSQL = CleanSQL(input.SQL)
+	state.Query = query
+	state.GeneratedSQL = cleaned
 	state.Columns, state.Rows, state.Insights, state.Error = []string{}, []Row{}, "", ""
 	state.Status = StatusQuerying
 	writeState(tx, state)
@@ -132,7 +159,37 @@ type WriteResultArgs struct {
 // WriteTrendsResult persists the final (or failed) query outcome, deriving
 // status the same way tools/write_trends_result.py does: an explicit error
 // always wins over an empty row set, which in turn wins over "ready".
+// Inputs are validated before any state mutation: a rejected call leaves the
+// prior state entirely untouched.
 func WriteTrendsResult(tx *agentruntime.Transaction, input WriteResultArgs) (Result, error) {
+	query := strings.TrimSpace(input.Query)
+	if query == "" || len(query) > maxTrendsQueryLength {
+		return failure("query_required", fmt.Sprintf("query is required and must be at most %d characters", maxTrendsQueryLength)), nil
+	}
+	cleaned := CleanSQL(input.SQL)
+	if cleaned == "" || len(cleaned) > maxTrendsSQLLength {
+		return failure("sql_required", fmt.Sprintf("sql is required and must be at most %d characters", maxTrendsSQLLength)), nil
+	}
+	if err := ValidateSQL(cleaned); err != nil {
+		return failure("unsafe_sql", "sql must be a bounded, read-only SELECT/WITH query"), nil
+	}
+	if len(input.Columns) > maxTrendsColumns {
+		return failure("too_many_columns", fmt.Sprintf("result cannot exceed %d columns", maxTrendsColumns)), nil
+	}
+	for _, column := range input.Columns {
+		if len(column) > maxTrendsColumnNameLength {
+			return failure("column_name_too_large", fmt.Sprintf("a column name exceeds %d characters", maxTrendsColumnNameLength)), nil
+		}
+	}
+	if len(input.Rows) > defaultRowLimit {
+		return failure("too_many_rows", fmt.Sprintf("result cannot exceed %d rows", defaultRowLimit)), nil
+	}
+	if len(input.Insights) > maxTrendsInsightsLength {
+		return failure("insights_too_large", fmt.Sprintf("insights exceed %d characters", maxTrendsInsightsLength)), nil
+	}
+	if len(input.Error) > maxTrendsErrorLength {
+		return failure("error_too_large", fmt.Sprintf("error message exceeds %d characters", maxTrendsErrorLength)), nil
+	}
 	status := StatusReady
 	switch {
 	case input.Error != "":
@@ -141,8 +198,8 @@ func WriteTrendsResult(tx *agentruntime.Transaction, input WriteResultArgs) (Res
 		status = StatusEmpty
 	}
 	state := decodeState(tx)
-	state.Query = input.Query
-	state.GeneratedSQL = CleanSQL(input.SQL)
+	state.Query = query
+	state.GeneratedSQL = cleaned
 	state.Columns = input.Columns
 	if state.Columns == nil {
 		state.Columns = []string{}
@@ -163,14 +220,23 @@ type VerificationArgs struct {
 
 // SetTrendsVerification appends a web-search verification note to insights
 // and marks the state ready, matching tools/set_trends_verification.py.
+// Inputs are validated before any state mutation: a rejected call leaves the
+// prior state entirely untouched.
 func SetTrendsVerification(tx *agentruntime.Transaction, input VerificationArgs) (Result, error) {
-	state := decodeState(tx)
-	section := "## Verification\n\n" + input.Verification
-	if state.Insights != "" {
-		state.Insights = state.Insights + "\n\n" + section
-	} else {
-		state.Insights = section
+	verification := strings.TrimSpace(input.Verification)
+	if verification == "" || len(verification) > maxTrendsVerificationLength {
+		return failure("verification_required", fmt.Sprintf("verification is required and must be at most %d characters", maxTrendsVerificationLength)), nil
 	}
+	state := decodeState(tx)
+	section := "## Verification\n\n" + verification
+	appended := section
+	if state.Insights != "" {
+		appended = state.Insights + "\n\n" + section
+	}
+	if len(appended) > maxTrendsInsightsLength {
+		return failure("insights_too_large", fmt.Sprintf("insights exceed %d characters after appending verification", maxTrendsInsightsLength)), nil
+	}
+	state.Insights = appended
 	state.Status = StatusReady
 	writeState(tx, state)
 	return Result{OK: true}, nil

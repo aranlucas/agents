@@ -36,6 +36,7 @@ import (
 	"github.com/aranlucas/agents/agents/internal/config"
 	mcpbridge "github.com/aranlucas/agents/agents/internal/mcp"
 	"github.com/aranlucas/agents/agents/internal/observability"
+	"github.com/aranlucas/agents/agents/internal/providers/gemini"
 	"github.com/aranlucas/agents/agents/internal/providers/openai"
 	"github.com/aranlucas/agents/agents/internal/rate"
 	"google.golang.org/adk/v2/model"
@@ -351,6 +352,28 @@ func trendsBigQueryClient(ctx context.Context) (*bigquery.Client, error) {
 	return client, nil
 }
 
+// trendsComposerModel builds the direct Gemini adapter generate_a2ui uses to
+// choose and parameterize Trends catalog components (AGENTS.md's Model
+// Distribution table, A2UI row: "gemini-2.5-flash", direct ADK — not
+// LiteLLM). Unlike every other agent's provider config, this is optional
+// rather than fatal: GEMINI_API_KEY is the Railway Ambient Gemini free tier,
+// which is not guaranteed to be configured in every environment (local dev,
+// CI, a fresh Railway service). A missing key returns (nil, nil) so the
+// gateway still starts and trends.New's composer parameter degrades
+// generate_a2ui to its deterministic BuildA2UI surface (see
+// internal/agents/trends/compose.go's composeA2UI) instead of crashing.
+func trendsComposerModel(ctx context.Context) (model.LLM, error) {
+	apiKey := strings.TrimSpace(os.Getenv("GEMINI_API_KEY"))
+	if apiKey == "" {
+		return nil, nil
+	}
+	composer, err := gemini.New(ctx, apiKey, "gemini-2.5-flash", nil, "")
+	if err != nil {
+		return nil, fmt.Errorf("configure trends A2UI composer: %w", err)
+	}
+	return composer, nil
+}
+
 func configuredFallbacks(providers map[string]config.Provider, names ...string) []string {
 	result := make([]string, 0, len(names))
 	for _, name := range names {
@@ -588,7 +611,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("build trends generator agent: %v", err)
 	}
-	trendsAgent, err := trends.New(trendsModel, trendsGenerator, trendsExecutor, braveSearch, agui.NewRequestScopedClientToolset(pending))
+	trendsComposer, err := trendsComposerModel(context.Background())
+	if err != nil {
+		log.Fatalf("configure trends A2UI composer: %v", err)
+	}
+	trendsAgent, err := trends.New(trendsModel, trendsGenerator, trendsExecutor, braveSearch, trendsComposer, agui.NewRequestScopedClientToolset(pending))
 	if err != nil {
 		log.Fatalf("build trends agent: %v", err)
 	}
