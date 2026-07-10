@@ -47,7 +47,7 @@ func eventToMessages(event *session.Event) []aguitypes.Message {
 	if event == nil || event.Partial {
 		return nil
 	}
-	content := event.LLMResponse.Content
+	content := event.Content
 	if content == nil || len(content.Parts) == 0 {
 		return nil
 	}
