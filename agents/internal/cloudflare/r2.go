@@ -157,6 +157,17 @@ func (r *R2) getKey(ctx context.Context, key string) ([]byte, map[string]string,
 	return data, output.Metadata, nil
 }
 
+// Health verifies R2 accepts a bounded, harmless list request. It never
+// reads or writes object data, so it is safe to call on every gateway
+// health check without touching tenant artifacts.
+func (r *R2) Health(ctx context.Context) error {
+	_, err := r.client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{Bucket: aws.String(r.bucket), MaxKeys: aws.Int32(1)})
+	if err != nil {
+		return errors.New("R2 health check failed")
+	}
+	return nil
+}
+
 // Delete removes one private object. Missing objects are not errors.
 func (r *R2) Delete(ctx context.Context, app, user, thread, name string) error {
 	key, err := r.ObjectKey(app, user, thread, name)

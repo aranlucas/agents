@@ -11,6 +11,7 @@ require (
 	github.com/aws/smithy-go v1.27.3
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/jsonschema-go v0.4.3
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.69.0
 	google.golang.org/adk/v2 v2.0.0
 	google.golang.org/genai v1.63.0
 )
@@ -45,7 +46,6 @@ require (
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.69.0 // indirect
 	go.opentelemetry.io/otel v1.44.0 // indirect
 	go.opentelemetry.io/otel/log v0.20.0 // indirect
 	go.opentelemetry.io/otel/metric v1.44.0 // indirect
