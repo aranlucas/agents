@@ -69,7 +69,7 @@ func (c *streamConverter) Convert(event *session.Event) []aguievents.Event {
 	if event == nil {
 		return nil
 	}
-	content := event.LLMResponse.Content
+	content := event.Content
 
 	if event.Partial {
 		return c.convertPartial(content)
