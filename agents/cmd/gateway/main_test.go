@@ -53,10 +53,27 @@ func newGateway(t *testing.T) http.Handler {
 	if err != nil {
 		t.Fatalf("build registry: %v", err)
 	}
+	sessions := session.InMemoryService()
+	// assertRoute's POST fixture body always carries threadId
+	// "route-test-thread"; pre-create the matching session (public/
+	// anonymous identity, so the D1-shaped user ID is "anon:<threadId>",
+	// see effectiveUserID in internal/agui/handler.go) so
+	// /resume/agents/state exercises its normal "thread exists" path
+	// instead of a lookup error. session.InMemoryService's not-found error
+	// isn't cloudflare.ErrSessionNotFound (that sentinel is specific to
+	// the production cloudflare.SessionService StateHandler is built
+	// against), so relying on the not-found branch here would instead hit
+	// StateHandler's genuine-error 500 path.
+	if _, err := sessions.Create(context.Background(), &session.CreateRequest{
+		AppName: resume.AppName, UserID: "anon:route-test-thread", SessionID: "route-test-thread",
+	}); err != nil {
+		t.Fatalf("seed route-test-thread session: %v", err)
+	}
+
 	cfg := config.Config{HTTP: config.HTTP{Origins: []string{"http://localhost:3000"}}}
 	handler, err := New(cfg, Dependencies{
 		Registry: registry,
-		Sessions: session.InMemoryService(),
+		Sessions: sessions,
 		D1:       fakeHealth{},
 		R2:       fakeHealth{},
 		Now:      time.Now,
