@@ -26,12 +26,20 @@ type SearchResult struct {
 }
 
 func New(m model.LLM, strava *Strava, search *common.BraveSearch, toolsets ...tool.Toolset) (agent.Agent, error) {
+	return newAgent(m, strava, search, llmagent.ModeChat, toolsets...)
+}
+
+func NewTask(m model.LLM, strava *Strava, search *common.BraveSearch, toolsets ...tool.Toolset) (agent.Agent, error) {
+	return newAgent(m, strava, search, llmagent.ModeTask, toolsets...)
+}
+
+func newAgent(m model.LLM, strava *Strava, search *common.BraveSearch, mode llmagent.Mode, toolsets ...tool.Toolset) (agent.Agent, error) {
 	tools, err := staticTools(search)
 	if err != nil {
 		return nil, err
 	}
 	toolsets = append(toolsets, &stravaToolset{client: strava})
-	return llmagent.New(llmagent.Config{Name: AppName, Description: "Training plans and Strava-backed activity context.", Instruction: Instruction, Model: m, Tools: tools, Toolsets: toolsets})
+	return llmagent.New(llmagent.Config{Name: AppName, Description: "Training plans and Strava-backed activity context.", Instruction: Instruction, Model: m, Mode: mode, Tools: tools, Toolsets: toolsets})
 }
 
 func staticTools(search *common.BraveSearch) ([]tool.Tool, error) {
