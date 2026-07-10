@@ -2,12 +2,11 @@
   "name": "agents",
   "private": true,
   "scripts": {
-    "lint": "uv run ruff check .",
-    "fmt": "uv run ruff format .",
-    "fmt:check": "uv run ruff format --check .",
-    "typecheck": "uv run pyright",
-    "test": "uv run pytest",
-    "coverage": "uv run pytest --cov --cov-fail-under=90",
-    "sync": "uv sync"
+    "lint": "golangci-lint run ./...",
+    "fmt": "gofmt -w $(find . -name '*.go' -not -path './vendor/*')",
+    "fmt:check": "test -z \"$(gofmt -l $(find . -name '*.go' -not -path './vendor/*'))\"",
+    "typecheck": "go vet ./...",
+    "test": "go test -race ./...",
+    "coverage": "go test -race -coverprofile=coverage.out ./..."
   }
 }

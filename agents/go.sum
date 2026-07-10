@@ -1,0 +1,5 @@
+github.com/ag-ui-protocol/ag-ui/sdks/community/go v0.0.0-20260709155601-61b713253dfe/go.mod h1:ERAMOexUee4AIuoxksuuGoEcHl3aqLwaazjGwlR9ZCI=
+github.com/modelcontextprotocol/go-sdk v1.4.1/go.mod h1:Bo/mS87hPQqHSRkMv4dQq1XCu6zv4INdXnFZabkNU6s=
+google.golang.org/adk v1.3.0 h1:paUr9uM2qANnMUAQ4ydMXMCnM1HtymhDYl8y7gnKvqs=
+google.golang.org/adk v1.3.0/go.mod h1:R8tNFnI/eiBXHn7zJPJtqdiK/WXC+tVkyuZsXyNZXN4=
+google.golang.org/genai v1.57.0/go.mod h1:A3kkl0nyBjyFlNjgxIwKq70julKbIxpSxqKO5gw/gmk=
