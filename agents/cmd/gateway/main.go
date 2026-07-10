@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -15,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"cloud.google.com/go/bigquery"
 	"github.com/aranlucas/agents/agents/internal/agentruntime"
 	"github.com/aranlucas/agents/agents/internal/agents/common"
 	"github.com/aranlucas/agents/agents/internal/agents/excalidraw"
@@ -26,6 +28,7 @@ import (
 	"github.com/aranlucas/agents/agents/internal/agents/resume"
 	"github.com/aranlucas/agents/agents/internal/agents/spreadsheet"
 	"github.com/aranlucas/agents/agents/internal/agents/travel"
+	"github.com/aranlucas/agents/agents/internal/agents/trends"
 	"github.com/aranlucas/agents/agents/internal/agents/wellness"
 	"github.com/aranlucas/agents/agents/internal/agui"
 	"github.com/aranlucas/agents/agents/internal/auth"
@@ -37,6 +40,7 @@ import (
 	"github.com/aranlucas/agents/agents/internal/rate"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
+	"google.golang.org/api/option"
 )
 
 const healthCheckTimeout = 3 * time.Second
@@ -308,6 +312,45 @@ func groceryProviderConfig(cfg config.Config) (config.Provider, error) {
 	return provider, nil
 }
 
+// trendsProviderConfig configures both the root GoogleTrendsAgent and its
+// TrendsQueryGeneratorAgent child: AGENTS.md's Model Distribution table puts
+// "trends root agent + generator subagent" on the Groq Standard tier, same
+// model as fitness/wellness/excalidraw.
+func trendsProviderConfig(cfg config.Config) (config.Provider, error) {
+	provider, ok := cfg.Providers["groq"]
+	if !ok {
+		return config.Provider{}, errors.New("GROQ_API_KEY is required to configure the trends agent")
+	}
+	provider.Model, provider.RequestsPerMinute = "llama-3.3-70b-versatile", 30
+	provider.Fallbacks = configuredFallbacks(cfg.Providers, "mistral", "openrouter")
+	return provider, nil
+}
+
+// trendsBigQueryClient builds the official Go BigQuery client billed to
+// GOOGLE_CLOUD_PROJECT (the project of the trends agent's own GCP service
+// account), authenticated from GOOGLE_APPLICATION_CREDENTIALS_JSON when set
+// or Application Default Credentials otherwise — the same two-variable
+// contract the Python port's _credentials.py bootstrapped, minus the temp
+// file: cloud.google.com/go/bigquery accepts service-account JSON directly.
+// The queried dataset itself (bigquery-public-data.google_trends) is a
+// separate, hardcoded allowlist enforced by trends.NewBigQueryExecutor, not
+// this billing project.
+func trendsBigQueryClient(ctx context.Context) (*bigquery.Client, error) {
+	project := strings.TrimSpace(os.Getenv("GOOGLE_CLOUD_PROJECT"))
+	if project == "" {
+		return nil, errors.New("GOOGLE_CLOUD_PROJECT is required to configure the trends agent's BigQuery client")
+	}
+	var opts []option.ClientOption
+	if credentials := strings.TrimSpace(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")); credentials != "" {
+		opts = append(opts, option.WithCredentialsJSON([]byte(credentials)))
+	}
+	client, err := bigquery.NewClient(ctx, project, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("configure BigQuery client: %w", err)
+	}
+	return client, nil
+}
+
 func configuredFallbacks(providers map[string]config.Provider, names ...string) []string {
 	result := make([]string, 0, len(names))
 	for _, name := range names {
@@ -525,6 +568,30 @@ func main() {
 	if err != nil {
 		log.Fatalf("build Excalidraw agent: %v", err)
 	}
+	trendsProvider, err := trendsProviderConfig(cfg)
+	if err != nil {
+		log.Fatalf("configure trends model: %v", err)
+	}
+	trendsModel, err := openai.NewMulti(trendsProvider, presentationProviderPolicies(cfg.Providers), nil, limiter)
+	if err != nil {
+		log.Fatalf("configure trends fallbacks: %v", err)
+	}
+	trendsBigQuery, err := trendsBigQueryClient(context.Background())
+	if err != nil {
+		log.Fatalf("configure trends BigQuery client: %v", err)
+	}
+	trendsExecutor, err := trends.NewBigQueryExecutor(trendsBigQuery, "bigquery-public-data", "google_trends", 1<<30, 30*time.Second)
+	if err != nil {
+		log.Fatalf("configure trends BigQuery executor: %v", err)
+	}
+	trendsGenerator, err := trends.NewGenerator(trendsModel)
+	if err != nil {
+		log.Fatalf("build trends generator agent: %v", err)
+	}
+	trendsAgent, err := trends.New(trendsModel, trendsGenerator, trendsExecutor, braveSearch, agui.NewRequestScopedClientToolset(pending))
+	if err != nil {
+		log.Fatalf("build trends agent: %v", err)
+	}
 
 	registry, err := agentruntime.NewRegistry(
 		agentruntime.Entry{Route: "resume", AppName: resume.AppName, Agent: resumeAgent, Public: true, Timeout: 2 * time.Minute, Health: resumeHealth(resumeModel)},
@@ -537,6 +604,7 @@ func main() {
 		agentruntime.Entry{Route: "grocery", AppName: grocery.AppName, Agent: groceryAgent, StateDefaults: grocery.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }},
 		agentruntime.Entry{Route: "wellness", AppName: wellness.AppName, Agent: wellnessAgent, StateDefaults: wellness.StateDefaults(), Timeout: 5 * time.Minute, Health: func(context.Context) error { return nil }},
 		agentruntime.Entry{Route: "excalidraw", AppName: excalidraw.AppName, Agent: excalidrawAgent, StateDefaults: excalidraw.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }, Forwarded: excalidrawBridge},
+		agentruntime.Entry{Route: "trends", AppName: trends.AppName, Agent: trendsAgent, StateDefaults: trends.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }},
 	)
 	if err != nil {
 		log.Fatalf("build agent registry: %v", err)

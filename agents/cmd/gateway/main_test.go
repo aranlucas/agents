@@ -17,6 +17,7 @@ import (
 	"github.com/aranlucas/agents/agents/internal/agents/presentation"
 	"github.com/aranlucas/agents/agents/internal/agents/resume"
 	"github.com/aranlucas/agents/agents/internal/agents/travel"
+	"github.com/aranlucas/agents/agents/internal/agents/trends"
 	"github.com/aranlucas/agents/agents/internal/agents/wellness"
 	"github.com/aranlucas/agents/agents/internal/auth"
 	"github.com/aranlucas/agents/agents/internal/config"
@@ -201,6 +202,33 @@ func TestGatewayFitnessAndGroceryRoutesUseExistingAGUIContract(t *testing.T) {
 		if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"persistentState":true`) || !strings.Contains(recorder.Body.String(), `"clientProvided":true`) {
 			t.Fatalf("%s response = %d %s", route, recorder.Code, recorder.Body.String())
 		}
+	}
+}
+
+func TestGatewayTrendsRouteUsesExistingAGUIContract(t *testing.T) {
+	generatorAgent, err := trends.NewGenerator(fakeResumeModel{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	trendsAgent, err := trends.New(fakeResumeModel{}, generatorAgent, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry, err := agentruntime.NewRegistry(
+		agentruntime.Entry{Route: "trends", AppName: trends.AppName, Agent: trendsAgent, StateDefaults: trends.StateDefaults(), Timeout: 5 * time.Second},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler, err := New(config.Config{HTTP: config.HTTP{}}, Dependencies{Registry: registry, Sessions: session.InMemoryService(), Verifier: acceptingVerifier{}, Now: time.Now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequest(http.MethodGet, "/trends/agui/capabilities", nil)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"persistentState":true`) || !strings.Contains(recorder.Body.String(), `"clientProvided":true`) {
+		t.Fatalf("response = %d %s", recorder.Code, recorder.Body.String())
 	}
 }
 

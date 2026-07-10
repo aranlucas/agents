@@ -105,6 +105,60 @@ func TestSessionCreateAndAppendNeverPersistTemporaryState(t *testing.T) {
 	}
 }
 
+// TestSessionAppendEventPreservesTemporaryStateOnTheEventItself is a
+// regression test: ADK-Go's runner calls SessionService.AppendEvent and then
+// yields that same *session.Event to its caller (agui.Handler), which
+// converts temp:mcp_app_activity:/temp:a2ui_activity: state-delta keys into
+// ACTIVITY_SNAPSHOT events (see internal/agui/converter.go's
+// activityEvents). AppendEvent must still keep temp: keys out of D1 and out
+// of the live session.State() (covered above), but it must NOT strip them
+// from the event.Actions.StateDelta it was given — an earlier version of
+// this method reassigned event.Actions.StateDelta to a temp-filtered copy,
+// which silently broke every activity-emitting tool end-to-end (the MCP
+// Apps bridge, trends' generate_a2ui) despite passing unit tests that never
+// drove AppendEvent on the way to inspecting the event.
+func TestSessionAppendEventPreservesTemporaryStateOnTheEventItself(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var batch []Statement
+		if err := json.NewDecoder(r.Body).Decode(&batch); err != nil {
+			t.Fatal(err)
+		}
+		results := make([]map[string]any, len(batch))
+		for index := range results {
+			results[index] = map[string]any{"success": true, "results": []any{}, "meta": map[string]any{"changes": 1}}
+		}
+		writeEnvelope(t, w, results)
+	}))
+	defer server.Close()
+
+	d1, err := newD1(testCloudflare("token"), server.Client(), server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
+	service := NewSessionService(d1, func() time.Time { return now })
+	created, err := service.Create(context.Background(), &session.CreateRequest{
+		AppName: "trends_agent", UserID: "user-1", SessionID: "thread-1", State: map[string]any{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	event := session.NewEvent(t.Context(), "invocation-1")
+	event.Actions.StateDelta = map[string]any{
+		"status":                    "ready",
+		"temp:a2ui_activity:render": map[string]any{"messageId": "render", "content": "surface"},
+	}
+	if err := service.AppendEvent(context.Background(), created.Session, event); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := event.Actions.StateDelta["temp:a2ui_activity:render"]; !ok {
+		t.Fatalf("AppendEvent stripped temp: state from the event's own StateDelta: %#v", event.Actions.StateDelta)
+	}
+	if _, ok := event.Actions.StateDelta["status"]; !ok {
+		t.Fatalf("AppendEvent unexpectedly dropped a persistent key from the event's own StateDelta: %#v", event.Actions.StateDelta)
+	}
+}
+
 func TestSessionGetScopesEveryQueryAndReturnsEventsChronologically(t *testing.T) {
 	older := session.NewEvent(t.Context(), "inv-old")
 	older.ID = "event-old"

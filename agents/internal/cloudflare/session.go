@@ -179,8 +179,23 @@ func (s *SessionService) AppendEvent(ctx context.Context, current session.Sessio
 	if event.Timestamp.IsZero() {
 		event.Timestamp = s.now().UTC()
 	}
-	event.Actions.StateDelta = withoutTemporary(event.Actions.StateDelta)
-	appDelta, userDelta, sessionDelta := splitState(event.Actions.StateDelta)
+	// persistedDelta drops temp: keys for everything this method writes to
+	// D1 (app/user/session state rows and the archived event_json blob) and
+	// for the current.State().Set loop below, matching
+	// session.KeyPrefixTemp's contract ("discarded after the invocation
+	// completes"). event.Actions.StateDelta itself is deliberately left
+	// untouched: ADK-Go's runner calls AppendEvent and then yields this same
+	// *session.Event to its caller (see runner.go's "AppendEvent... yield
+	// (event, nil)" sequencing), and internal/agui/converter.go reads
+	// temp:mcp_app_activity:/temp:a2ui_activity: keys directly off that
+	// yielded event to emit ACTIVITY_SNAPSHOT frames. Reassigning
+	// event.Actions.StateDelta here (as an earlier version of this method
+	// did) silently stripped those keys before the converter ever saw them,
+	// breaking every activity-emitting tool (excalidraw's MCP Apps bridge,
+	// trends' generate_a2ui) end-to-end despite passing unit tests that
+	// construct events by hand instead of driving them through AppendEvent.
+	persistedDelta := withoutTemporary(event.Actions.StateDelta)
+	appDelta, userDelta, sessionDelta := splitState(persistedDelta)
 	stateJSON, err := json.Marshal(sessionDelta)
 	if err != nil {
 		return errors.New("encode session state")
@@ -193,7 +208,10 @@ func (s *SessionService) AppendEvent(ctx context.Context, current session.Sessio
 	if err != nil {
 		return errors.New("encode user state")
 	}
-	eventJSON, err := json.Marshal(event)
+	persistedEvent := *event
+	persistedEvent.Actions = event.Actions
+	persistedEvent.Actions.StateDelta = persistedDelta
+	eventJSON, err := json.Marshal(&persistedEvent)
 	if err != nil {
 		return errors.New("encode session event")
 	}
@@ -216,7 +234,7 @@ func (s *SessionService) AppendEvent(ctx context.Context, current session.Sessio
 	if len(results) < 3 || results[2].Meta.Changes == 0 {
 		return ErrSessionNotFound
 	}
-	for key, value := range event.Actions.StateDelta {
+	for key, value := range persistedDelta {
 		if err := current.State().Set(key, value); err != nil {
 			return fmt.Errorf("apply state delta: %w", err)
 		}

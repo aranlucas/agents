@@ -13,6 +13,7 @@ import (
 )
 
 const mcpAppActivityStatePrefix = "temp:mcp_app_activity:"
+const a2uiActivityStatePrefix = "temp:a2ui_activity:"
 
 type mcpAppActivity struct {
 	MessageID string `json:"messageId"`
@@ -149,7 +150,13 @@ func (c *streamConverter) convertFinal(event *session.Event, content *genai.Cont
 func (c *streamConverter) activityEvents(delta map[string]any) []aguievents.Event {
 	var out []aguievents.Event
 	for key, raw := range delta {
-		if !strings.HasPrefix(key, mcpAppActivityStatePrefix) {
+		activityType := ""
+		switch {
+		case strings.HasPrefix(key, mcpAppActivityStatePrefix):
+			activityType = "mcp-apps"
+		case strings.HasPrefix(key, a2uiActivityStatePrefix):
+			activityType = "a2ui-surface"
+		default:
 			continue
 		}
 		encoded, err := json.Marshal(raw)
@@ -165,7 +172,7 @@ func (c *streamConverter) activityEvents(delta map[string]any) []aguievents.Even
 		}
 		out = append(out, &aguievents.ActivitySnapshotEvent{
 			BaseEvent: newBase(aguievents.EventTypeActivitySnapshot), MessageID: activity.MessageID,
-			ActivityType: "mcp-apps", Content: activity.Content,
+			ActivityType: activityType, Content: activity.Content,
 		})
 	}
 	return out
