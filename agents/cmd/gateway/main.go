@@ -17,6 +17,7 @@ import (
 
 	"github.com/aranlucas/agents/agents/internal/agentruntime"
 	"github.com/aranlucas/agents/agents/internal/agents/common"
+	"github.com/aranlucas/agents/agents/internal/agents/excalidraw"
 	"github.com/aranlucas/agents/agents/internal/agents/expense"
 	"github.com/aranlucas/agents/agents/internal/agents/fitness"
 	"github.com/aranlucas/agents/agents/internal/agents/grocery"
@@ -30,6 +31,7 @@ import (
 	"github.com/aranlucas/agents/agents/internal/auth"
 	"github.com/aranlucas/agents/agents/internal/cloudflare"
 	"github.com/aranlucas/agents/agents/internal/config"
+	mcpbridge "github.com/aranlucas/agents/agents/internal/mcp"
 	"github.com/aranlucas/agents/agents/internal/observability"
 	"github.com/aranlucas/agents/agents/internal/providers/openai"
 	"github.com/aranlucas/agents/agents/internal/rate"
@@ -286,6 +288,16 @@ func fitnessProviderConfig(cfg config.Config) (config.Provider, error) {
 	return provider, nil
 }
 
+func excalidrawProviderConfig(cfg config.Config) (config.Provider, error) {
+	provider, ok := cfg.Providers["groq"]
+	if !ok {
+		return config.Provider{}, errors.New("GROQ_API_KEY is required to configure the Excalidraw agent")
+	}
+	provider.Model, provider.RequestsPerMinute = "llama-3.3-70b-versatile", 30
+	provider.Fallbacks = configuredFallbacks(cfg.Providers, "mistral", "openrouter")
+	return provider, nil
+}
+
 func groceryProviderConfig(cfg config.Config) (config.Provider, error) {
 	provider, ok := cfg.Providers["nvidia"]
 	if !ok {
@@ -493,6 +505,26 @@ func main() {
 	if err != nil {
 		log.Fatalf("build wellness agent: %v", err)
 	}
+	excalidrawProvider, err := excalidrawProviderConfig(cfg)
+	if err != nil {
+		log.Fatalf("configure Excalidraw model: %v", err)
+	}
+	excalidrawModel, err := openai.NewMulti(excalidrawProvider, presentationProviderPolicies(cfg.Providers), nil, limiter)
+	if err != nil {
+		log.Fatalf("configure Excalidraw fallbacks: %v", err)
+	}
+	excalidrawEndpoint := strings.TrimSpace(os.Getenv("EXCALIDRAW_MCP_URL"))
+	if excalidrawEndpoint == "" {
+		excalidrawEndpoint = "https://mcp.excalidraw.com/mcp"
+	}
+	excalidrawBridge, err := mcpbridge.NewExcalidraw(excalidrawEndpoint, common.NewHTTPClient(30*time.Second, 8<<20).Client)
+	if err != nil {
+		log.Fatalf("configure Excalidraw MCP: %v", err)
+	}
+	excalidrawAgent, err := excalidraw.New(excalidrawModel, excalidrawBridge, agui.NewRequestScopedClientToolset(pending))
+	if err != nil {
+		log.Fatalf("build Excalidraw agent: %v", err)
+	}
 
 	registry, err := agentruntime.NewRegistry(
 		agentruntime.Entry{Route: "resume", AppName: resume.AppName, Agent: resumeAgent, Public: true, Timeout: 2 * time.Minute, Health: resumeHealth(resumeModel)},
@@ -504,6 +536,7 @@ func main() {
 		agentruntime.Entry{Route: "fitness", AppName: fitness.AppName, Agent: fitnessAgent, StateDefaults: fitness.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }},
 		agentruntime.Entry{Route: "grocery", AppName: grocery.AppName, Agent: groceryAgent, StateDefaults: grocery.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }},
 		agentruntime.Entry{Route: "wellness", AppName: wellness.AppName, Agent: wellnessAgent, StateDefaults: wellness.StateDefaults(), Timeout: 5 * time.Minute, Health: func(context.Context) error { return nil }},
+		agentruntime.Entry{Route: "excalidraw", AppName: excalidraw.AppName, Agent: excalidrawAgent, StateDefaults: excalidraw.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }, Forwarded: excalidrawBridge},
 	)
 	if err != nil {
 		log.Fatalf("build agent registry: %v", err)

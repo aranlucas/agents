@@ -19,6 +19,15 @@ type Entry struct {
 	Public        bool
 	Timeout       time.Duration
 	Health        func(context.Context) error
+	Forwarded     ForwardedRequestHandler
+}
+
+// ForwardedRequestHandler handles library-defined forwarded AG-UI properties
+// without invoking the model. The input and result are intentionally dynamic:
+// forwardedProps is an AG-UI extension boundary whose concrete schema belongs
+// to the mounted integration (for example, MCP Apps).
+type ForwardedRequestHandler interface {
+	HandleForwarded(context.Context, any) (result any, handled bool, err error)
 }
 
 // Registry is immutable after construction and safe for concurrent lookups.
