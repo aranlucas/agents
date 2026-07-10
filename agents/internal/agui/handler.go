@@ -143,7 +143,7 @@ func (h *runHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	known := knownKeySet(snapshot)
 	frame.write(&aguievents.StateSnapshotEvent{BaseEvent: newBase(aguievents.EventTypeStateSnapshot), Snapshot: snapshot})
 
-	overlay := requestStateOverlay(r)
+	overlay := requestStateOverlay(r, entry.Route)
 	if clientToolsJSON != "" {
 		// Overlaid via runner.WithStateDelta, which lands on the session
 		// before the agent's Toolsets are resolved for this invocation

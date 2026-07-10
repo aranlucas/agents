@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/aranlucas/agents/agents/internal/agentruntime"
+	"github.com/aranlucas/agents/agents/internal/agents/fitness"
+	"github.com/aranlucas/agents/agents/internal/agents/grocery"
 	"github.com/aranlucas/agents/agents/internal/agents/presentation"
 	"github.com/aranlucas/agents/agents/internal/agents/resume"
 	"github.com/aranlucas/agents/agents/internal/agents/travel"
@@ -168,6 +170,36 @@ func TestGatewayTravelRouteUsesExistingAGUIContract(t *testing.T) {
 	handler.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"persistentState":true`) || !strings.Contains(recorder.Body.String(), `"clientProvided":true`) {
 		t.Fatalf("response = %d %s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestGatewayFitnessAndGroceryRoutesUseExistingAGUIContract(t *testing.T) {
+	fitnessAgent, err := fitness.New(fakeResumeModel{}, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	groceryAgent, err := grocery.New(fakeResumeModel{}, nil, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry, err := agentruntime.NewRegistry(
+		agentruntime.Entry{Route: "fitness", AppName: fitness.AppName, Agent: fitnessAgent, StateDefaults: fitness.StateDefaults(), Timeout: 5 * time.Second},
+		agentruntime.Entry{Route: "grocery", AppName: grocery.AppName, Agent: groceryAgent, StateDefaults: grocery.StateDefaults(), Timeout: 5 * time.Second},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler, err := New(config.Config{HTTP: config.HTTP{}}, Dependencies{Registry: registry, Sessions: session.InMemoryService(), Verifier: acceptingVerifier{}, Now: time.Now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, route := range []string{"fitness", "grocery"} {
+		request := httptest.NewRequest(http.MethodGet, "/"+route+"/agui/capabilities", nil)
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, request)
+		if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"persistentState":true`) || !strings.Contains(recorder.Body.String(), `"clientProvided":true`) {
+			t.Fatalf("%s response = %d %s", route, recorder.Code, recorder.Body.String())
+		}
 	}
 }
 

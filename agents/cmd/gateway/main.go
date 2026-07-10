@@ -16,7 +16,10 @@ import (
 	"time"
 
 	"github.com/aranlucas/agents/agents/internal/agentruntime"
+	"github.com/aranlucas/agents/agents/internal/agents/common"
 	"github.com/aranlucas/agents/agents/internal/agents/expense"
+	"github.com/aranlucas/agents/agents/internal/agents/fitness"
+	"github.com/aranlucas/agents/agents/internal/agents/grocery"
 	"github.com/aranlucas/agents/agents/internal/agents/presentation"
 	"github.com/aranlucas/agents/agents/internal/agents/research"
 	"github.com/aranlucas/agents/agents/internal/agents/resume"
@@ -272,6 +275,26 @@ func travelProviderConfig(cfg config.Config) (config.Provider, error) {
 	return provider, nil
 }
 
+func fitnessProviderConfig(cfg config.Config) (config.Provider, error) {
+	provider, ok := cfg.Providers["groq"]
+	if !ok {
+		return config.Provider{}, errors.New("GROQ_API_KEY is required to configure the fitness agent")
+	}
+	provider.Model, provider.RequestsPerMinute = "llama-3.3-70b-versatile", 30
+	provider.Fallbacks = configuredFallbacks(cfg.Providers, "mistral", "openrouter")
+	return provider, nil
+}
+
+func groceryProviderConfig(cfg config.Config) (config.Provider, error) {
+	provider, ok := cfg.Providers["nvidia"]
+	if !ok {
+		return config.Provider{}, errors.New("NVIDIA_NIM_API_KEY is required to configure the grocery agent")
+	}
+	provider.Model, provider.RequestsPerMinute = "nvidia/nemotron-3-super-120b-a12b", 20
+	provider.Fallbacks = configuredFallbacks(cfg.Providers, "mistral", "openrouter")
+	return provider, nil
+}
+
 func configuredFallbacks(providers map[string]config.Provider, names ...string) []string {
 	result := make([]string, 0, len(names))
 	for _, name := range names {
@@ -419,6 +442,41 @@ func main() {
 	if err != nil {
 		log.Fatalf("build travel agent: %v", err)
 	}
+	var braveSearch *common.BraveSearch
+	if braveKey := strings.TrimSpace(os.Getenv("BRAVE_API_KEY")); braveKey != "" {
+		braveSearch, err = common.NewBraveSearch(common.NewHTTPClient(15*time.Second, 4<<20).Client, "https://api.search.brave.com/res/v1/web/search", braveKey, 10)
+		if err != nil {
+			log.Fatalf("configure Brave search: %v", err)
+		}
+	}
+	fitnessProvider, err := fitnessProviderConfig(cfg)
+	if err != nil {
+		log.Fatalf("configure fitness model: %v", err)
+	}
+	fitnessModel, err := openai.NewMulti(fitnessProvider, presentationProviderPolicies(cfg.Providers), nil, limiter)
+	if err != nil {
+		log.Fatalf("configure fitness fallbacks: %v", err)
+	}
+	fitnessAgent, err := fitness.New(fitnessModel, fitness.NewStrava(common.NewHTTPClient(30*time.Second, 8<<20).Client, "https://www.strava.com/api/v3/athlete/activities"), braveSearch, agui.NewRequestScopedClientToolset(pending))
+	if err != nil {
+		log.Fatalf("build fitness agent: %v", err)
+	}
+	groceryProvider, err := groceryProviderConfig(cfg)
+	if err != nil {
+		log.Fatalf("configure grocery model: %v", err)
+	}
+	groceryModel, err := openai.NewMulti(groceryProvider, presentationProviderPolicies(cfg.Providers), nil, limiter)
+	if err != nil {
+		log.Fatalf("configure grocery fallbacks: %v", err)
+	}
+	krogerEndpoint := strings.TrimSpace(os.Getenv("KROGER_MCP_URL"))
+	if krogerEndpoint == "" {
+		krogerEndpoint = "https://ai-meal-planner-mcp.aranlucas.workers.dev/mcp"
+	}
+	groceryAgent, err := grocery.New(groceryModel, grocery.NewKroger(common.NewHTTPClient(30*time.Second, 8<<20).Client, krogerEndpoint), braveSearch, common.NewWebLoader(common.NewHTTPClient(20*time.Second, 4<<20), 100_000), agui.NewRequestScopedClientToolset(pending))
+	if err != nil {
+		log.Fatalf("build grocery agent: %v", err)
+	}
 
 	registry, err := agentruntime.NewRegistry(
 		agentruntime.Entry{Route: "resume", AppName: resume.AppName, Agent: resumeAgent, Public: true, Timeout: 2 * time.Minute, Health: resumeHealth(resumeModel)},
@@ -427,6 +485,8 @@ func main() {
 		agentruntime.Entry{Route: "spreadsheet", AppName: spreadsheet.AppName, Agent: spreadsheetAgent, StateDefaults: spreadsheet.StateDefaults(), Timeout: 2 * time.Minute, Health: func(context.Context) error { return nil }},
 		agentruntime.Entry{Route: "expense", AppName: expense.AppName, Agent: expenseAgent, StateDefaults: expense.StateDefaults(), Timeout: 2 * time.Minute, Health: func(context.Context) error { return nil }},
 		agentruntime.Entry{Route: "travel", AppName: travel.AppName, Agent: travelAgent, StateDefaults: travel.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }},
+		agentruntime.Entry{Route: "fitness", AppName: fitness.AppName, Agent: fitnessAgent, StateDefaults: fitness.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }},
+		agentruntime.Entry{Route: "grocery", AppName: grocery.AppName, Agent: groceryAgent, StateDefaults: grocery.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }},
 	)
 	if err != nil {
 		log.Fatalf("build agent registry: %v", err)
