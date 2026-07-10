@@ -12,6 +12,13 @@ import (
 	"google.golang.org/genai"
 )
 
+const mcpAppActivityStatePrefix = "temp:mcp_app_activity:"
+
+type mcpAppActivity struct {
+	MessageID string `json:"messageId"`
+	Content   any    `json:"content"`
+}
+
 // newBase builds a BaseEvent with no timestamp. The AG-UI SDK's New*Event
 // constructors always stamp TimestampMs from time.Now(), which would make
 // golden SSE fixtures non-deterministic; timestamp is optional
@@ -125,6 +132,7 @@ func (c *streamConverter) convertFinal(event *session.Event, content *genai.Cont
 		}
 	}
 
+	out = append(out, c.activityEvents(event.Actions.StateDelta)...)
 	if delta := statePatch(c.known, event.Actions.StateDelta); len(delta) > 0 {
 		out = append(out, &aguievents.StateDeltaEvent{BaseEvent: newBase(aguievents.EventTypeStateDelta), Delta: delta})
 	}
@@ -135,6 +143,31 @@ func (c *streamConverter) convertFinal(event *session.Event, content *genai.Cont
 		}
 	}
 
+	return out
+}
+
+func (c *streamConverter) activityEvents(delta map[string]any) []aguievents.Event {
+	var out []aguievents.Event
+	for key, raw := range delta {
+		if !strings.HasPrefix(key, mcpAppActivityStatePrefix) {
+			continue
+		}
+		encoded, err := json.Marshal(raw)
+		if err != nil {
+			continue
+		}
+		var activity mcpAppActivity
+		if err := json.Unmarshal(encoded, &activity); err != nil || activity.Content == nil {
+			continue
+		}
+		if activity.MessageID == "" {
+			activity.MessageID = c.ids.GenerateMessageID()
+		}
+		out = append(out, &aguievents.ActivitySnapshotEvent{
+			BaseEvent: newBase(aguievents.EventTypeActivitySnapshot), MessageID: activity.MessageID,
+			ActivityType: "mcp-apps", Content: activity.Content,
+		})
+	}
 	return out
 }
 

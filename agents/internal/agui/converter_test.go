@@ -2,12 +2,38 @@ package agui
 
 import (
 	"context"
+	"encoding/json"
+	"strings"
 	"testing"
 
+	aguievents "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
 )
+
+func TestConverterEmitsMCPAppActivityWithoutStateDelta(t *testing.T) {
+	converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, nil, ToolScope{}, nil)
+	event := &session.Event{Actions: session.EventActions{StateDelta: map[string]any{
+		"temp:mcp_app_activity:call-1": map[string]any{
+			"messageId": "call-1",
+			"content":   map[string]any{"resourceUri": "ui://excalidraw/mcp-app.html", "serverId": "excalidraw"},
+		},
+	}}}
+
+	out := converter.Convert(event)
+	if len(out) != 1 {
+		t.Fatalf("events = %#v", out)
+	}
+	activity, ok := out[0].(*aguievents.ActivitySnapshotEvent)
+	if !ok || activity.ActivityType != "mcp-apps" || activity.MessageID != "call-1" {
+		t.Fatalf("activity = %#v", out[0])
+	}
+	encoded, _ := json.Marshal(activity.Content)
+	if strings.Contains(string(encoded), "temp:mcp_app_activity") {
+		t.Fatalf("temporary state leaked: %s", encoded)
+	}
+}
 
 // TestConverterRegistersClientToolCallBeforeReturningToolCallEvents proves
 // the ordering half of Finding 1: toolCallEvents registers a client tool

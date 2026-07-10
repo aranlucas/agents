@@ -81,6 +81,14 @@ func (h *runHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), entry.Timeout)
 	defer cancel()
 
+	if entry.Forwarded != nil {
+		result, handled, forwardedErr := entry.Forwarded.HandleForwarded(ctx, input.ForwardedProps)
+		if handled {
+			h.writeForwarded(w, input.ThreadID, input.RunID, result, forwardedErr)
+			return
+		}
+	}
+
 	sess, err := h.restoreSession(ctx, entry, userID, input.ThreadID)
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "session_unavailable")
@@ -185,6 +193,25 @@ func (h *runHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		finished.Result = converter.lastFinalText
 	}
 	frame.write(finished)
+}
+
+func (h *runHandler) writeForwarded(w http.ResponseWriter, threadID, runID string, result any, runErr error) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		writeJSONError(w, http.StatusInternalServerError, "streaming_unsupported")
+		return
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.WriteHeader(http.StatusOK)
+	frame := &sseWriter{w: w, flusher: flusher}
+	frame.write(&aguievents.RunStartedEvent{BaseEvent: newBase(aguievents.EventTypeRunStarted), ThreadIDValue: threadID, RunIDValue: runID})
+	if runErr != nil {
+		frame.write(sanitizeRunError(runID, runErr))
+		return
+	}
+	frame.write(&aguievents.RunFinishedEvent{BaseEvent: newBase(aguievents.EventTypeRunFinished), ThreadIDValue: threadID, RunIDValue: runID, Result: result})
 }
 
 // restoreSession fetches the existing (app, user, thread) session or

@@ -75,6 +75,36 @@ func TestHandlerRejectsMalformedInput(t *testing.T) {
 	}
 }
 
+type fakeForwardedHandler struct{}
+
+func (fakeForwardedHandler) HandleForwarded(_ context.Context, props any) (any, bool, error) {
+	if props == nil {
+		return nil, false, nil
+	}
+	return map[string]any{"proxied": true}, true, nil
+}
+
+func TestHandlerCompletesForwardedRequestWithoutSessionOrModel(t *testing.T) {
+	a, err := llmagent.New(llmagent.Config{Name: "excalidraw_agent", Instruction: "unused", Model: &fakeResumeModel{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry, err := agentruntime.NewRegistry(agentruntime.Entry{
+		Route: "excalidraw", AppName: "excalidraw_agent", Agent: a, Public: true,
+		Forwarded: fakeForwardedHandler{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := `{"threadId":"thread-1","runId":"run-1","messages":[],"tools":[],"context":[],"forwardedProps":{"__proxiedMCPRequest":{}}}`
+	req := httptest.NewRequest(http.MethodPost, "/excalidraw/agui", strings.NewReader(body))
+	rr := httptest.NewRecorder()
+	Handler(registry, nil).ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), `"proxied":true`) || !strings.Contains(rr.Body.String(), "RUN_FINISHED") {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
 // ---- tool-result resume ------------------------------------------------
 
 func TestHandlerResumesFromPendingClientToolResult(t *testing.T) {
