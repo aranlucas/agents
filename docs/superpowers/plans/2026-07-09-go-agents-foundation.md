@@ -6,13 +6,13 @@
 
 **Architecture:** `agents/` becomes a Go module. The gateway parses AG-UI requests, authenticates the identity, overlays request-only state on a D1-backed ADK session, runs an ADK-Go agent through a custom OpenAI-compatible `model.LLM`, and converts emitted events into SSE. This plan deliberately delivers a vertical `/resume` slice first; later plans add the remaining agent packages and Telegram runtime to the same registry.
 
-**Tech Stack:** Go 1.26, ADK-Go v1.3.0, AG-UI Go SDK, standard `net/http`, Cloudflare D1 SQL API, AWS SDK v2 S3 client for R2, Clerk JWKS/JWT validation, OpenTelemetry, and Go test/race/vet.
+**Tech Stack:** Go 1.26, ADK-Go v2.0.0 (`google.golang.org/adk/v2`), AG-UI Go SDK, standard `net/http`, Cloudflare D1 SQL API, AWS SDK v2 S3 client for R2, Clerk JWKS/JWT validation, OpenTelemetry, and Go test/race/vet.
 
 ## Global Constraints
 
 - Production requires `CF_ACCOUNT_ID`, `CF_API_TOKEN`, `CF_D1_DATABASE_ID`, `CF_R2_BUCKET_NAME`, `CF_R2_ACCESS_KEY_ID`, and `CF_R2_SECRET_ACCESS_KEY`; startup fails if any is absent.
 - `DATABASE_URL`, `TURSO_DATABASE_URL`, SQLAlchemy, SQLite persistence, in-memory persistence, Python, LiteLLM, FastAPI, `uv`, Node, and a Brave MCP subprocess must not be runtime dependencies.
-- Pin `google.golang.org/adk` to `v1.3.0`; invoke agents with `agent.RunConfig{StreamingMode: agent.StreamingModeSSE}`.
+- Pin ADK-Go to `google.golang.org/adk/v2 v2.0.0` (per 2026-07-10 directive: use the v2 module, do not rely on v1); invoke agents with `agent.RunConfig{StreamingMode: agent.StreamingModeSSE}`.
 - Preserve current active AG-UI paths: `POST /resume/agui`, `POST /resume/agents/state`, `GET /resume/agui/capabilities`, `GET /resume/health`, and `GET /health`.
 - `/resume` is public; all other stateful agent routes become Clerk-protected, including `/agents/state`.
 - Sessions use `(app_name, user_id, thread_id)` with a one-hour expiry. Old Python sessions are not read or migrated.

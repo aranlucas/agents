@@ -6,7 +6,7 @@
 
 **Architecture:** `cmd/telegram` is a Go long-poll worker plus a lightweight health server. It uses the common Go registry, provider router, D1 store, and Clerk adapter but no AG-UI web code. The gateway owns the Go Telegram link-consume endpoint. Once both Go binaries pass full contract and production checks, Docker/Compose/CI/Railway configuration switches to Go-only images and Python runtime source/dependencies are deleted.
 
-**Tech Stack:** Go 1.26, ADK-Go v1.3.0, direct Telegram Bot API HTTP client, Cloudflare D1/R2, Clerk Backend API HTTP client, Go AG-UI gateway, Docker multi-stage builds, Railway CLI/metrics, and GitHub Actions.
+**Tech Stack:** Go 1.26, ADK-Go v2.0.0 (`google.golang.org/adk/v2`), direct Telegram Bot API HTTP client, Cloudflare D1/R2, Clerk Backend API HTTP client, Go AG-UI gateway, Docker multi-stage builds, Railway CLI/metrics, and GitHub Actions.
 
 ## Global Constraints
 

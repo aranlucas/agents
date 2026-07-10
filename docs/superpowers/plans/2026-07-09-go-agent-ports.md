@@ -6,7 +6,7 @@
 
 **Architecture:** Each package under `agents/internal/agents/<name>` owns embedded instructions, a typed state model, ADK-Go agent construction, and one focused tool file per behavior. `agentruntime.Registry` registers each package with its current route/app name/model policy. State changes pass through the common transaction and all external effects are injected interfaces, allowing deterministic unit and AG-UI integration tests.
 
-**Tech Stack:** Go 1.26, ADK-Go v1.3.0, Go standard library, official Google BigQuery client, pure-Go SQLite FTS driver, common Go AG-UI/D1/R2/provider layer from the foundation plan, and HTTP fixtures.
+**Tech Stack:** Go 1.26, ADK-Go v2.0.0 (`google.golang.org/adk/v2`), Go standard library, official Google BigQuery client, pure-Go SQLite FTS driver, common Go AG-UI/D1/R2/provider layer from the foundation plan, and HTTP fixtures.
 
 ## Global Constraints
 
