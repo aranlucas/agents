@@ -12,7 +12,9 @@ import (
 	"time"
 
 	"github.com/aranlucas/agents/agents/internal/agentruntime"
+	"github.com/aranlucas/agents/agents/internal/agents/presentation"
 	"github.com/aranlucas/agents/agents/internal/agents/resume"
+	"github.com/aranlucas/agents/agents/internal/auth"
 	"github.com/aranlucas/agents/agents/internal/config"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
@@ -113,6 +115,38 @@ func TestGatewayRejectsUnauthenticatedNonPublicRoute(t *testing.T) {
 	// Capabilities and health are metadata, not user data: never gated.
 	assertRoute(t, handler, http.MethodGet, "/travel/health", http.StatusOK)
 	assertRoute(t, handler, http.MethodGet, "/travel/agui/capabilities", http.StatusOK)
+}
+
+type acceptingVerifier struct{}
+
+func (acceptingVerifier) Verify(context.Context, string) (auth.Identity, error) {
+	return auth.Identity{UserID: "clerk-user"}, nil
+}
+
+func TestGatewayPresentationAGUIRoute(t *testing.T) {
+	presentationAgent, err := presentation.New(fakeResumeModel{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry, err := agentruntime.NewRegistry(agentruntime.Entry{Route: "presentation", AppName: presentation.AppName, Agent: presentationAgent, StateDefaults: presentation.StateDefaults(), Timeout: 5 * time.Second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sessions := session.InMemoryService()
+	if _, err := sessions.Create(context.Background(), &session.CreateRequest{AppName: presentation.AppName, UserID: "clerk-user", SessionID: "presentation-thread", State: presentation.StateDefaults()}); err != nil {
+		t.Fatal(err)
+	}
+	handler, err := New(config.Config{HTTP: config.HTTP{}}, Dependencies{Registry: registry, Sessions: sessions, Verifier: acceptingVerifier{}, Now: time.Now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequest(http.MethodPost, "/presentation/agui", strings.NewReader(`{"threadId":"presentation-thread","runId":"run-1","state":{},"messages":[{"id":"m1","role":"user","content":"Build a deck"}],"tools":[],"context":[],"forwardedProps":{}}`))
+	request.Header.Set("Authorization", "Bearer test")
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), "RUN_STARTED") || !strings.Contains(recorder.Body.String(), "RUN_FINISHED") {
+		t.Fatalf("response = %d %s", recorder.Code, recorder.Body.String())
+	}
 }
 
 func TestGatewayRootHealthChecksD1AndR2WithoutCredentials(t *testing.T) {
