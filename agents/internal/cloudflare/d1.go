@@ -87,7 +87,7 @@ func (d *D1) Run(ctx context.Context, statements ...Statement) ([]Result, error)
 	if err != nil {
 		return nil, fmt.Errorf("D1 request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	limited := io.LimitReader(resp.Body, maxD1Body+1)
 	payload, err := io.ReadAll(limited)
 	if err != nil {

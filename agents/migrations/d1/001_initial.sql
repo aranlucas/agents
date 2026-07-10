@@ -46,3 +46,13 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
     version TEXT PRIMARY KEY,
     applied_at INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS provider_limits (
+    provider TEXT NOT NULL,
+    minute_window INTEGER NOT NULL,
+    request_count INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL,
+    PRIMARY KEY (provider, minute_window)
+);
+
+CREATE INDEX IF NOT EXISTS provider_limits_expiry ON provider_limits (expires_at);
