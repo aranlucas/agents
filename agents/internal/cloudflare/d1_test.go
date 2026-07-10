@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/aranlucas/agents/agents/internal/config"
-	"google.golang.org/adk/session"
+	"google.golang.org/adk/v2/session"
 )
 
 func TestD1UsesBoundedAuthenticatedRequestsAndRedactsToken(t *testing.T) {
@@ -83,7 +83,7 @@ func TestSessionCreateAndAppendNeverPersistTemporaryState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	event := session.NewEvent("invocation-1")
+	event := session.NewEvent(t.Context(), "invocation-1")
 	event.Actions.StateDelta = map[string]any{"status": "ready", "temp:token": "also-never-store"}
 	if err := service.AppendEvent(context.Background(), created.Session, event); err != nil {
 		t.Fatal(err)
@@ -106,10 +106,10 @@ func TestSessionCreateAndAppendNeverPersistTemporaryState(t *testing.T) {
 }
 
 func TestSessionGetScopesEveryQueryAndReturnsEventsChronologically(t *testing.T) {
-	older := session.NewEvent("inv-old")
+	older := session.NewEvent(t.Context(), "inv-old")
 	older.ID = "event-old"
 	older.Timestamp = time.UnixMilli(1000).UTC()
-	newer := session.NewEvent("inv-new")
+	newer := session.NewEvent(t.Context(), "inv-new")
 	newer.ID = "event-new"
 	newer.Timestamp = time.UnixMilli(2000).UTC()
 	olderJSON, _ := json.Marshal(older)
@@ -179,7 +179,7 @@ func TestPartialEventIsNotSentToD1(t *testing.T) {
 	}
 	service := NewSessionService(d1, time.Now)
 	current := newStoredSession("thread", "app", "user", map[string]any{}, nil, time.Now())
-	event := session.NewEvent("inv")
+	event := session.NewEvent(t.Context(), "inv")
 	event.Partial = true
 	if err := service.AppendEvent(context.Background(), current, event); err != nil {
 		t.Fatal(err)
