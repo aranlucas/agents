@@ -23,21 +23,21 @@ func (fakeModel) GenerateContent(context.Context, *model.LLMRequest, bool) iter.
 }
 
 func TestNewRequiresTheTrendsQueryGeneratorChild(t *testing.T) {
-	if _, err := New(fakeModel{}, nil, nil, nil); err == nil {
+	if _, err := New(fakeModel{}, nil, nil, nil, nil); err == nil {
 		t.Fatal("New(nil generator) succeeded unexpectedly")
 	}
 	otherAgent, err := agent.New(agent.Config{Name: "not_the_generator"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := New(fakeModel{}, otherAgent, nil, nil); err == nil {
+	if _, err := New(fakeModel{}, otherAgent, nil, nil, nil); err == nil {
 		t.Fatal("New(wrong-named generator) succeeded unexpectedly")
 	}
 	generator, err := NewGenerator(fakeModel{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	built, err := New(fakeModel{}, generator, nil, nil)
+	built, err := New(fakeModel{}, generator, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +152,7 @@ func TestTrendsAgentPipelineWritesStateAndEmitsA2UI(t *testing.T) {
 		functionCall("render", "generate_a2ui", map[string]any{}),
 		{Content: genai.NewContentFromText("Trends analysis ready.", genai.RoleModel), TurnComplete: true},
 	}}
-	built, err := New(rootModel, generator, nil, nil)
+	built, err := New(rootModel, generator, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,6 +206,82 @@ func TestTrendsAgentPipelineWritesStateAndEmitsA2UI(t *testing.T) {
 	insights, _ := state["insights"].(string)
 	if !strings.Contains(insights, "Solar eclipse leads") || !strings.Contains(insights, "## Verification") || !strings.Contains(insights, "CONFIRMED") {
 		t.Fatalf("insights = %q", insights)
+	}
+}
+
+// TestTrendsAgentPipelineUsesComposerWhenConfigured drives the same real
+// ADK runner pipeline as TestTrendsAgentPipelineWritesStateAndEmitsA2UI, but
+// wires a composer model.LLM into New (its new 5th parameter, see agent.go)
+// that returns a valid Trends composition. It asserts the resulting
+// temp:a2ui_activity: state delta carries the LLM-composed TrendBarChart
+// rather than the deterministic-only TrendTable, proving generate_a2ui
+// actually calls the composer inline on the root agent's own context
+// (composeA2UI, see compose.go) rather than dropping it the way a
+// Gemini-backed AgentTool sub-agent would (see the package doc).
+func TestTrendsAgentPipelineUsesComposerWhenConfigured(t *testing.T) {
+	const generatedSQL = "SELECT term, rank FROM `bigquery-public-data.google_trends.top_terms` LIMIT 10"
+
+	generatorModel := &scriptedModel{responses: []*model.LLMResponse{
+		{Content: genai.NewContentFromText(generatedSQL, genai.RoleModel), TurnComplete: true},
+	}}
+	generator, err := NewGenerator(generatorModel)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rootModel := &scriptedModel{responses: []*model.LLMResponse{
+		functionCall("gen", GeneratorAppName, map[string]any{"request": "top terms in the US"}),
+		functionCall("validate", "validate_trends_sql", map[string]any{"sql": generatedSQL}),
+		functionCall("begin", "begin_trends_query", map[string]any{"query": "top terms in the US", "sql": generatedSQL}),
+		functionCall("write", "write_trends_result", map[string]any{
+			"query": "top terms in the US", "sql": generatedSQL,
+			"columns":  []any{"term", "rank"},
+			"rows":     []any{map[string]any{"term": "solar eclipse", "rank": int64(1)}, map[string]any{"term": "world cup", "rank": int64(2)}},
+			"insights": "Solar eclipse leads this week's results.",
+		}),
+		functionCall("verify", "set_trends_verification", map[string]any{"verification": "CONFIRMED: solar eclipse tracks a real event this week. High confidence."}),
+		functionCall("render", "generate_a2ui", map[string]any{}),
+		{Content: genai.NewContentFromText("Trends analysis ready.", genai.RoleModel), TurnComplete: true},
+	}}
+	composer := fakeComposerModel{text: `{"components":[{"component":"TrendBarChart","title":"Top terms by rank","categoryKey":"term","valueKey":"rank","valueFormat":"number"}]}`}
+	built, err := New(rootModel, generator, nil, nil, composer)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	service := preservesTempStateService{inner: session.InMemoryService()}
+	if _, err := service.Create(t.Context(), &session.CreateRequest{AppName: AppName, UserID: "user", SessionID: "thread", State: StateDefaults()}); err != nil {
+		t.Fatal(err)
+	}
+	run, err := runner.New(runner.Config{AppName: AppName, Agent: built, SessionService: service})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var composedActivity string
+	for event, runErr := range run.Run(t.Context(), "user", "thread", genai.NewContentFromText("What's trending this week?", genai.RoleUser), agent.RunConfig{}) {
+		if runErr != nil {
+			t.Fatal(runErr)
+		}
+		for key, raw := range event.Actions.StateDelta {
+			if !strings.HasPrefix(key, a2uiActivityStatePrefix) {
+				continue
+			}
+			encoded, err := json.Marshal(raw)
+			if err != nil {
+				t.Fatal(err)
+			}
+			composedActivity = string(encoded)
+		}
+	}
+	if composedActivity == "" {
+		t.Fatal("generate_a2ui never emitted a temp:a2ui_activity: state delta")
+	}
+	if !strings.Contains(composedActivity, "TrendBarChart") {
+		t.Fatalf("expected the composer's TrendBarChart to reach the state delta, got: %s", composedActivity)
+	}
+	if !strings.Contains(composedActivity, trendsCatalogID) || !strings.Contains(composedActivity, "SqlDisclosure") {
+		t.Fatalf("composed activity must still be catalog-valid and include SqlDisclosure: %s", composedActivity)
 	}
 }
 
