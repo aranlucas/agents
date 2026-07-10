@@ -131,6 +131,35 @@ func TestArtifactServiceConcurrentSavesAllocateDistinctVersions(t *testing.T) {
 	}
 }
 
+func TestR2HealthUsesBoundedListRequest(t *testing.T) {
+	store := newMemoryS3()
+	r2 := newR2(store, "bucket")
+	if err := r2.Health(context.Background()); err != nil {
+		t.Fatalf("Health() error = %v", err)
+	}
+	failing := newR2(failingS3{}, "bucket")
+	if err := failing.Health(context.Background()); err == nil {
+		t.Fatal("Health() with a failing client succeeded")
+	}
+}
+
+// failingS3 implements s3Client with every call failing; only ListObjectsV2
+// is exercised by Health, the rest are unused stubs to satisfy the interface.
+type failingS3 struct{}
+
+func (failingS3) PutObject(context.Context, *s3.PutObjectInput, ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
+	return nil, &fakeAPIError{code: "InternalError"}
+}
+func (failingS3) GetObject(context.Context, *s3.GetObjectInput, ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
+	return nil, &fakeAPIError{code: "InternalError"}
+}
+func (failingS3) DeleteObject(context.Context, *s3.DeleteObjectInput, ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
+	return nil, &fakeAPIError{code: "InternalError"}
+}
+func (failingS3) ListObjectsV2(context.Context, *s3.ListObjectsV2Input, ...func(*s3.Options)) (*s3.ListObjectsV2Output, error) {
+	return nil, &fakeAPIError{code: "InternalError"}
+}
+
 func TestR2DetectsTamperedObjectAndBoundsWrites(t *testing.T) {
 	store := newMemoryS3()
 	r2 := newR2(store, "bucket")
