@@ -120,7 +120,7 @@ func (p *PendingStore) Take(ctx context.Context, identity auth.Identity, app, th
 	}
 	now := p.now().UTC()
 	results, err := p.d1.Run(ctx,
-		cloudflare.Statement{SQL: `SELECT tool_name, result_json FROM pending_client_tools
+		cloudflare.Statement{SQL: `SELECT tool_name, args_json, result_json FROM pending_client_tools
 			WHERE app_name = ? AND user_id = ? AND thread_id = ? AND call_id = ? AND status = 'resolved' AND expires_at > ?`, Params: []any{app, identity.UserID, thread, callID, now.UnixMilli()}},
 		cloudflare.Statement{SQL: `DELETE FROM pending_client_tools
 			WHERE app_name = ? AND user_id = ? AND thread_id = ? AND call_id = ? AND status = 'resolved' AND expires_at > ?`, Params: []any{app, identity.UserID, thread, callID, now.UnixMilli()}},
@@ -133,8 +133,9 @@ func (p *PendingStore) Take(ctx context.Context, identity auth.Identity, app, th
 	}
 	row := results[0].Rows[0]
 	toolName, _ := row["tool_name"].(string)
+	argumentsJSON, _ := row["args_json"].(string)
 	encoded, _ := row["result_json"].(string)
-	if toolName == "" || encoded == "" {
+	if toolName == "" || argumentsJSON == "" || encoded == "" {
 		return nil, errors.New("invalid pending client tool record")
 	}
 	var raw any
@@ -145,6 +146,13 @@ func (p *PendingStore) Take(ctx context.Context, identity auth.Identity, app, th
 	if !ok {
 		response = map[string]any{"result": raw}
 	}
+	var arguments map[string]any
+	if json.Unmarshal([]byte(argumentsJSON), &arguments) != nil {
+		return nil, errors.New("invalid pending client tool arguments")
+	}
+	// This reserved server-authored field lets downstream policy bind an
+	// approved result to the original request without trusting client payload.
+	response["_agui_request"] = arguments
 	return &genai.FunctionResponse{ID: callID, Name: toolName, Response: response}, nil
 }
 
