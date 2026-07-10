@@ -14,6 +14,7 @@ import (
 	"github.com/aranlucas/agents/agents/internal/cloudflare"
 	"github.com/google/jsonschema-go/jsonschema"
 	"google.golang.org/adk/v2/agent"
+	"google.golang.org/adk/v2/session"
 	"google.golang.org/adk/v2/tool"
 	"google.golang.org/adk/v2/tool/functiontool"
 	"google.golang.org/genai"
@@ -187,6 +188,87 @@ func NewClientToolset(input []ClientTool, pending PendingTools) (tool.Toolset, e
 func (c *ClientToolset) Name() string { return "agui_client_tools" }
 func (c *ClientToolset) Tools(agent.ReadonlyContext) ([]tool.Tool, error) {
 	return append([]tool.Tool(nil), c.tools...), nil
+}
+
+// ClientToolsStateKey is the temp: state key the AG-UI handler overlays
+// with the current run's AG-UI tool declarations (JSON-encoded
+// []ClientTool) via runner.WithStateDelta, and that
+// RequestScopedClientToolset reads on every invocation.
+//
+// This is the per-invocation extension point ADK-Go v2 actually provides
+// for dynamic, request-scoped tools: tool.Toolset.Tools(ctx) is called
+// with a fresh agent.ReadonlyContext on every LLM turn (see
+// google.golang.org/adk/v2/internal/llminternal/tools_processor.go —
+// toolProcessor re-resolves every agent Toolset each call), and
+// runner.WithStateDelta lands on the session before that turn is built
+// (runner.Run -> appendMessageToSession -> SessionService.AppendEvent,
+// which happens before the node/workflow runs — see
+// google.golang.org/adk/v2/runner/run_node.go). So a single
+// RequestScopedClientToolset instance, attached once at agent-
+// construction time via llmagent.Config.Toolsets, transparently observes
+// a different set of client tools on every request without needing the
+// framework to reconstruct or swap the toolset itself.
+//
+// This mirrors the Python ag_ui_adk package's design one level up: there,
+// ADKAgent physically substitutes a placeholder AGUIToolset for a
+// per-run ClientProxyToolset in a shallow copy of the agent tree
+// (ag_ui_adk/agui_toolset.py, ag_ui_adk/client_proxy_toolset.py) because
+// ADK-Python's tool resolution is comparatively static. ADK-Go's
+// Toolset.Tools callback already receives per-invocation context, so the
+// same per-run behavior is achieved by reading invocation state instead
+// of replacing the toolset object.
+const ClientToolsStateKey = session.KeyPrefixTemp + "agui_client_tools"
+
+// RequestScopedClientToolset is a tool.Toolset that resolves its tool
+// list fresh on every invocation from ClientToolsStateKey instead of
+// once at construction time. Attach one instance to an agent's
+// llmagent.Config.Toolsets at agent-construction time to make that agent
+// support AG-UI client tools; the AG-UI Handler populates
+// ClientToolsStateKey for every run that declares tools (see
+// handler.go).
+type RequestScopedClientToolset struct {
+	pending PendingTools
+}
+
+// NewRequestScopedClientToolset builds a Toolset that resolves AG-UI
+// client tools per invocation via pending.
+func NewRequestScopedClientToolset(pending PendingTools) *RequestScopedClientToolset {
+	return &RequestScopedClientToolset{pending: pending}
+}
+
+func (r *RequestScopedClientToolset) Name() string { return "agui_client_tools" }
+
+// Tools reads this invocation's client tool declarations (a JSON-encoded
+// []ClientTool at ClientToolsStateKey) from ctx's readonly state and
+// builds fresh long-running proxy tools for them. Returns (nil, nil) —
+// not an error — when the current request declared no client tools (the
+// common case), so agents that mix static tools with AG-UI client tools
+// are unaffected on runs that supply none.
+func (r *RequestScopedClientToolset) Tools(ctx agent.ReadonlyContext) ([]tool.Tool, error) {
+	if r.pending == nil {
+		return nil, nil
+	}
+	state := ctx.ReadonlyState()
+	if state == nil {
+		return nil, nil
+	}
+	raw, err := state.Get(ClientToolsStateKey)
+	if err != nil || raw == nil {
+		return nil, nil
+	}
+	encoded, ok := raw.(string)
+	if !ok || encoded == "" {
+		return nil, nil
+	}
+	var defs []ClientTool
+	if err := json.Unmarshal([]byte(encoded), &defs); err != nil || len(defs) == 0 {
+		return nil, nil
+	}
+	toolset, err := NewClientToolset(defs, r.pending)
+	if err != nil {
+		return nil, fmt.Errorf("resolve request-scoped client tools: %w", err)
+	}
+	return toolset.Tools(ctx)
 }
 
 func clientSchema(value any) (*jsonschema.Schema, error) {

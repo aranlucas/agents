@@ -48,7 +48,18 @@ func (t *Transaction) Get(key string) (any, bool) {
 	return cloneValue(value), ok
 }
 
+// Set assigns value to key. Setting a nil value delegates to Delete
+// instead of storing a JSON null: state keys never hold JSON null, so a
+// nil value in a StateDelta always means "remove this key" codebase-wide
+// (internal/agui/state.go's statePatch relies on that invariant to
+// disambiguate RFC 6902 "remove" from "replace" — without it, a tool
+// calling Set(key, nil) to store a JSON null would be misread as a
+// delete).
 func (t *Transaction) Set(key string, value any) {
+	if value == nil {
+		t.Delete(key)
+		return
+	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	_, exists := t.values[key]

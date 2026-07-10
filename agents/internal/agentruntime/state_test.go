@@ -25,6 +25,23 @@ func TestTransactionEscapesPatchPathsAndOmitsTemporaryKeys(t *testing.T) {
 	}
 }
 
+func TestTransactionSetNilDelegatesToDelete(t *testing.T) {
+	tx := NewTransaction(map[string]any{"favorite_color": "blue"})
+	tx.Set("favorite_color", nil)
+	if _, ok := tx.Get("favorite_color"); ok {
+		t.Fatal("Set(key, nil) did not remove the key from the transaction")
+	}
+	patch := tx.Patch()
+	if len(patch) != 1 || patch[0].Op != "remove" || patch[0].Path != "/favorite_color" {
+		t.Fatalf("patch = %#v, want a single remove op", patch)
+	}
+	changes := tx.Changes()
+	value, ok := changes["favorite_color"]
+	if !ok || value != nil {
+		t.Fatalf("changes[favorite_color] = %#v, %v; want nil, true (Delete's delta shape)", value, ok)
+	}
+}
+
 func TestTransactionDeleteAndSnapshotsDoNotAlias(t *testing.T) {
 	tx := NewTransaction(map[string]any{"nested": map[string]any{"value": "old"}, "remove": true})
 	snapshot := tx.Snapshot()

@@ -100,6 +100,31 @@ func (h *runHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// AG-UI client tools require a PendingTools store to persist the
+	// call until a tool-result message resumes it; without one, a
+	// request that declares tools would silently run without them.
+	clientTools := clientToolsFromInput(input)
+	if len(clientTools) > 0 && h.pending == nil {
+		writeJSONError(w, http.StatusBadRequest, "client_tools_unsupported")
+		return
+	}
+	clientToolNames := make(map[string]bool, len(clientTools))
+	for _, definition := range clientTools {
+		clientToolNames[definition.Name] = true
+	}
+	// Encode client tools before any header is written: json.Marshal
+	// failing here must still produce a normal 4xx, which is impossible
+	// once the SSE response has started.
+	var clientToolsJSON string
+	if len(clientTools) > 0 {
+		encoded, err := json.Marshal(clientTools)
+		if err != nil {
+			writeJSONError(w, http.StatusBadRequest, "invalid_agui_input")
+			return
+		}
+		clientToolsJSON = string(encoded)
+	}
+
 	rn, err := runner.New(runner.Config{AppName: entry.AppName, Agent: entry.Agent, SessionService: h.sessions, AutoCreateSession: true})
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "agent_unavailable")
@@ -114,15 +139,28 @@ func (h *runHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	frame := &sseWriter{w: w, flusher: flusher}
 	frame.write(&aguievents.RunStartedEvent{BaseEvent: newBase(aguievents.EventTypeRunStarted), ThreadIDValue: input.ThreadID, RunIDValue: input.RunID})
 
-	known := knownKeySet(persistentSnapshot(sess.State()))
-	frame.write(&aguievents.StateSnapshotEvent{BaseEvent: newBase(aguievents.EventTypeStateSnapshot), Snapshot: persistentSnapshot(sess.State())})
+	snapshot := persistentSnapshot(sess.State())
+	known := knownKeySet(snapshot)
+	frame.write(&aguievents.StateSnapshotEvent{BaseEvent: newBase(aguievents.EventTypeStateSnapshot), Snapshot: snapshot})
 
+	overlay := requestStateOverlay(r)
+	if clientToolsJSON != "" {
+		// Overlaid via runner.WithStateDelta, which lands on the session
+		// before the agent's Toolsets are resolved for this invocation
+		// (see RequestScopedClientToolset in client_tools.go) — this is
+		// how the request's AG-UI tool declarations reach the running
+		// agent as callable tools.
+		if overlay == nil {
+			overlay = make(map[string]any)
+		}
+		overlay[ClientToolsStateKey] = clientToolsJSON
+	}
 	var runOpts []runner.RunOption
-	if overlay := requestStateOverlay(r); overlay != nil {
+	if overlay != nil {
 		runOpts = append(runOpts, runner.WithStateDelta(overlay))
 	}
 
-	converter := newStreamConverter(h.ids, known)
+	converter := newStreamConverter(ctx, h.ids, known, h.pending, scope, clientToolNames)
 	var runErr error
 	for event, evErr := range rn.Run(ctx, userID, input.ThreadID, content, agent.RunConfig{StreamingMode: agent.StreamingModeSSE}, runOpts...) {
 		if evErr != nil {

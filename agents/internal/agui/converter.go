@@ -25,9 +25,21 @@ func newBase(eventType aguievents.EventType) *aguievents.BaseEvent {
 // into ordered, typed AG-UI SDK events. Not safe for concurrent use; the
 // handler owns exactly one converter per in-flight run.
 type streamConverter struct {
+	ctx context.Context
 	ids aguievents.IDGenerator
 
 	known map[string]bool
+
+	// pending, scope, and clientToolNames let toolCallEvents
+	// pre-register a client tool call in the PendingStore before
+	// returning the TOOL_CALL_* events that describe it, so a client that
+	// answers instantly can never race the ClientToolset tool's own
+	// (authoritative) Register call. pending is nil when the handler has
+	// no PendingTools configured; clientToolNames is empty when the
+	// request declared no AG-UI tools.
+	pending         PendingTools
+	scope           ToolScope
+	clientToolNames map[string]bool
 
 	textMessageID      string
 	reasoningMessageID string
@@ -37,14 +49,14 @@ type streamConverter struct {
 	lastFinalText string
 }
 
-func newStreamConverter(ids aguievents.IDGenerator, known map[string]bool) *streamConverter {
+func newStreamConverter(ctx context.Context, ids aguievents.IDGenerator, known map[string]bool, pending PendingTools, scope ToolScope, clientToolNames map[string]bool) *streamConverter {
 	if ids == nil {
 		ids = aguievents.NewDefaultIDGenerator()
 	}
 	if known == nil {
 		known = make(map[string]bool)
 	}
-	return &streamConverter{ids: ids, known: known}
+	return &streamConverter{ctx: ctx, ids: ids, known: known, pending: pending, scope: scope, clientToolNames: clientToolNames}
 }
 
 // Convert converts one ADK session event into zero or more ordered AG-UI
@@ -216,6 +228,18 @@ func (c *streamConverter) toolCallEvents(call *genai.FunctionCall) []aguievents.
 	args := call.Args
 	if args == nil {
 		args = map[string]any{}
+	}
+	if c.pending != nil && c.clientToolNames[call.Name] {
+		// Best-effort pre-registration: client_tools.go's ClientToolset
+		// tool closure is the authoritative Register call (it runs with
+		// ctx.FunctionCallID(), inside the tool execution ADK drives
+		// after this event is yielded — see ADK-Go's base_flow.go, which
+		// yields the model-response event containing this FunctionCall
+		// *before* invoking the tool). Registering here too, before any
+		// TOOL_CALL_* frame is written to the SSE response, closes that
+		// gap: PendingStore.Register is idempotent (ON CONFLICT DO
+		// NOTHING), so the tool's later call is a harmless no-op.
+		_ = c.pending.Register(c.ctx, c.scope, id, call.Name, args)
 	}
 	encoded, err := json.Marshal(args)
 	if err != nil {

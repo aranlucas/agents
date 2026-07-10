@@ -179,6 +179,130 @@ func TestHandlerEndsWithSanitizedRunErrorOnUpstreamFailure(t *testing.T) {
 	}
 }
 
+// ---- AG-UI client tools reach the running agent (Finding 1a) -------------
+
+// TestHandlerWiresRequestClientToolsIntoRunningAgent proves that an AG-UI
+// request's tools declarations become callable tools for that run: the
+// agent under test has no static "highlight_row" tool, only a
+// RequestScopedClientToolset resolving it dynamically from the request's
+// declared tools. If the handler failed to overlay the client tools state
+// key before Runner.Run, ADK would fail to find "highlight_row" when the
+// fake model calls it and the stream would end in RUN_ERROR instead of
+// carrying TOOL_CALL_START/ARGS/END.
+func TestHandlerWiresRequestClientToolsIntoRunningAgent(t *testing.T) {
+	pending := newFakePending()
+	ids := &fakeIDs{}
+	h := newTestGatewayWithToolsets(t, &fakeClientToolModel{}, ids, []tool.Toolset{NewRequestScopedClientToolset(pending)}, WithPendingTools(pending))
+
+	body := `{
+		"threadId": "thread-highlight",
+		"runId": "run-highlight",
+		"state": {},
+		"messages": [{"id": "user-1", "role": "user", "content": "Highlight row 42."}],
+		"tools": [{"name": "highlight_row", "description": "Highlight a table row in the UI.", "parameters": {"type": "object", "properties": {"row": {"type": "string"}}}}],
+		"context": [],
+		"forwardedProps": null
+	}`
+	req := httptest.NewRequest(http.MethodPost, "/resume/agui", strings.NewReader(body))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rr.Code, rr.Body.String())
+	}
+	out := rr.Body.String()
+	for _, want := range []string{
+		`"type":"TOOL_CALL_START","toolCallId":"call-highlight-1","toolCallName":"highlight_row"`,
+		`"type":"TOOL_CALL_ARGS","toolCallId":"call-highlight-1"`,
+		`"type":"TOOL_CALL_END","toolCallId":"call-highlight-1"`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("missing %q in output: %s", want, out)
+		}
+	}
+	if strings.Contains(out, "RUN_ERROR") {
+		t.Fatalf("unexpected RUN_ERROR (client tool wiring failed): %s", out)
+	}
+	scope := ToolScope{AppName: "resume_agent", UserID: "anon:thread-highlight", ThreadID: "thread-highlight"}
+	if _, ok := pending.pending[key(scope, "call-highlight-1")]; !ok {
+		t.Fatalf("expected call-highlight-1 to be registered in the pending store")
+	}
+}
+
+// TestHandlerRejectsClientToolsWithoutPendingStore proves the handler
+// fails a request declaring client tools before starting the SSE stream
+// when it has no PendingTools configured — silently running without the
+// declared tools would be worse than a clear 400.
+func TestHandlerRejectsClientToolsWithoutPendingStore(t *testing.T) {
+	ids := &fakeIDs{}
+	h := newTestGateway(t, &fakeClientToolModel{}, ids) // no WithPendingTools
+
+	body := `{
+		"threadId": "thread-no-pending",
+		"runId": "run-no-pending",
+		"state": {},
+		"messages": [{"id": "user-1", "role": "user", "content": "Highlight row 42."}],
+		"tools": [{"name": "highlight_row", "description": "Highlight a table row in the UI.", "parameters": {"type": "object", "properties": {}}}],
+		"context": [],
+		"forwardedProps": null
+	}`
+	req := httptest.NewRequest(http.MethodPost, "/resume/agui", strings.NewReader(body))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d: %s", rr.Code, rr.Body.String())
+	}
+	if strings.Contains(rr.Body.String(), "RUN_STARTED") {
+		t.Fatalf("stream should not have started: %s", rr.Body.String())
+	}
+}
+
+// ---- AG-UI context reaches the model (Finding 1b) -------------------------
+
+// TestHandlerForwardsAGUIContextToModel proves input.context entries
+// reach the model's request, not just session state.
+func TestHandlerForwardsAGUIContextToModel(t *testing.T) {
+	ids := &fakeIDs{}
+	captured := &fakeCapturingModel{}
+	h := newTestGateway(t, captured, ids)
+
+	body := `{
+		"threadId": "thread-context",
+		"runId": "run-context",
+		"state": {},
+		"messages": [{"id": "user-1", "role": "user", "content": "What page am I on?"}],
+		"tools": [],
+		"context": [{"description": "current_page", "value": "/dashboard/settings"}],
+		"forwardedProps": null
+	}`
+	req := httptest.NewRequest(http.MethodPost, "/resume/agui", strings.NewReader(body))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rr.Code, rr.Body.String())
+	}
+	req2 := captured.request()
+	if req2 == nil {
+		t.Fatal("model never received a request")
+	}
+	var found bool
+	for _, content := range req2.Contents {
+		if content == nil {
+			continue
+		}
+		for _, part := range content.Parts {
+			if part == nil {
+				continue
+			}
+			if strings.Contains(part.Text, "current_page") && strings.Contains(part.Text, "/dashboard/settings") {
+				found = true
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("AG-UI context not present in model request contents: %#v", req2.Contents)
+	}
+}
+
 // ---- test gateway construction -------------------------------------------
 
 func newGatewayWithFakeResumeModel(t *testing.T) http.Handler {
@@ -188,11 +312,22 @@ func newGatewayWithFakeResumeModel(t *testing.T) http.Handler {
 
 func newTestGateway(t *testing.T, m model.LLM, ids aguievents.IDGenerator, opts ...Option) http.Handler {
 	t.Helper()
+	return newTestGatewayWithToolsets(t, m, ids, nil, opts...)
+}
+
+// newTestGatewayWithToolsets is newTestGateway plus the ability to attach
+// extra tool.Toolsets (e.g. a RequestScopedClientToolset) to the agent at
+// construction time — the same thing production agent wiring must do to
+// support AG-UI client tools (see client_tools.go's
+// RequestScopedClientToolset doc comment).
+func newTestGatewayWithToolsets(t *testing.T, m model.LLM, ids aguievents.IDGenerator, toolsets []tool.Toolset, opts ...Option) http.Handler {
+	t.Helper()
 	a, err := llmagent.New(llmagent.Config{
 		Name:        "resume_agent",
 		Instruction: "test resume agent",
 		Model:       m,
 		Tools:       []tool.Tool{rememberTool(t)},
+		Toolsets:    toolsets,
 	})
 	if err != nil {
 		t.Fatalf("build agent: %v", err)
@@ -300,6 +435,58 @@ func (m *fakeErrorModel) Name() string { return "fake-error-model" }
 func (m *fakeErrorModel) GenerateContent(ctx context.Context, req *model.LLMRequest, stream bool) iter.Seq2[*model.LLMResponse, error] {
 	return func(yield func(*model.LLMResponse, error) bool) {
 		yield(nil, m.err)
+	}
+}
+
+// fakeClientToolModel emits a function call for a tool name that has no
+// static ADK tool — only a RequestScopedClientToolset resolving the
+// request's AG-UI tool declarations can make this callable. Used to prove
+// input.Tools actually reaches the running agent (Finding 1a). Mirrors
+// fakeResumeModel's two-turn shape: NewClientToolset's wrapped tool
+// returns a non-nil {"status":"pending",...} acknowledgment immediately
+// (see client_tools.go), so the *next* LLM turn already has a
+// FunctionResponse in its contents — a well-behaved model responds to the
+// user instead of reissuing the identical call.
+type fakeClientToolModel struct{}
+
+func (m *fakeClientToolModel) Name() string { return "fake-client-tool-model" }
+
+func (m *fakeClientToolModel) GenerateContent(ctx context.Context, req *model.LLMRequest, stream bool) iter.Seq2[*model.LLMResponse, error] {
+	return func(yield func(*model.LLMResponse, error) bool) {
+		if hasFunctionResponse(req.Contents) {
+			yield(&model.LLMResponse{Content: &genai.Content{Role: "model", Parts: []*genai.Part{{Text: "Highlighting row 42."}}}, TurnComplete: true}, nil)
+			return
+		}
+		yield(&model.LLMResponse{
+			Content: &genai.Content{Role: "model", Parts: []*genai.Part{{
+				FunctionCall: &genai.FunctionCall{ID: "call-highlight-1", Name: "highlight_row", Args: map[string]any{"row": "42"}},
+			}}},
+			TurnComplete: true,
+		}, nil)
+	}
+}
+
+// fakeCapturingModel records the LLMRequest it receives (so a test can
+// assert on req.Contents) and returns a short fixed reply.
+type fakeCapturingModel struct {
+	mu  sync.Mutex
+	got *model.LLMRequest
+}
+
+func (m *fakeCapturingModel) Name() string { return "fake-capturing-model" }
+
+func (m *fakeCapturingModel) request() *model.LLMRequest {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.got
+}
+
+func (m *fakeCapturingModel) GenerateContent(ctx context.Context, req *model.LLMRequest, stream bool) iter.Seq2[*model.LLMResponse, error] {
+	m.mu.Lock()
+	m.got = req
+	m.mu.Unlock()
+	return func(yield func(*model.LLMResponse, error) bool) {
+		yield(&model.LLMResponse{Content: &genai.Content{Role: "model", Parts: []*genai.Part{{Text: "ok"}}}, TurnComplete: true}, nil)
 	}
 }
 
