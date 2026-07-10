@@ -243,7 +243,17 @@ func main() {
 		log.Fatalf("configure D1: %v", err)
 	}
 	if err := d1.RunMigrations(context.Background()); err != nil {
-		log.Fatalf("apply D1 migrations: %v", err)
+		// Non-fatal: an unreachable or misconfigured D1 is the same failure
+		// mode rootHealthHandler and agentHealthHandler already tolerate at
+		// runtime (they report "degraded"/503 rather than crash — see
+		// rootHealthHandler above). Crashing here instead would be
+		// inconsistent with that design and would also mean the process
+		// never binds a port for a foundation image smoke-tested with fake
+		// Cloudflare credentials (agents/scripts/smoke-image.sh) or a local
+		// dev container without live D1 access. Session persistence will
+		// fail loudly downstream (D1 calls return errors) if the schema is
+		// genuinely missing, so this does not silently mask a broken schema.
+		log.Printf("warning: apply D1 migrations: %v (continuing; D1 reads/writes will fail until this is resolved)", err)
 	}
 	r2, err := cloudflare.NewR2(cfg.Cloudflare)
 	if err != nil {

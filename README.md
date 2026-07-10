@@ -48,6 +48,17 @@ pnpm dev               # web on :3000 + the agents gateway on :8000
 
 Other entry points: `pnpm dev:web`, `pnpm dev:mobile`, `pnpm dev:agents`.
 
+An in-progress Go gateway foundation (currently `/resume` only) is also
+available as a Docker Compose dev service:
+
+```bash
+docker compose up agents-go   # Go gateway on :8001, fake Cloudflare env
+```
+
+It runs with mandatory fake `CF_*` credentials, so D1/R2-backed routes report
+"degraded" on `/health` rather than persisting anything real. It does not
+replace the `agents` service above until the Python cutover plan completes.
+
 For no-key web agent testing, run the offline web mode:
 
 ```bash
@@ -70,7 +81,10 @@ pnpm coverage  # both ecosystems with coverage
 ```
 
 CI (`.github/workflows/ci.yml`) gates lint, format, Python syntax, both test
-suites with a coverage floor, the web build, and the agent Docker image.
+suites with a coverage floor, the web build, and the agent Docker image. A
+separate `go` job gates the in-progress Go gateway foundation: `go test
+-race`, `go vet`, `gofmt`, and a no-Python image smoke test
+(`agents/scripts/smoke-image.sh` against `agents/Dockerfile.go-foundation`).
 
 ## Layout, conventions, deployment
 

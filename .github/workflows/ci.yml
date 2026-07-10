@@ -1,11 +1,15 @@
 name: CI
 
 # Lints, typechecks, and tests the monorepo on every push to main and every
-# pull request. Three parallel jobs cut the critical path:
+# pull request. Parallel jobs cut the critical path:
 #   check   — turbo-driven lint/fmt/typecheck/coverage across every workspace
 #             package (JS via pnpm, Python agents/ via uv), plus React Doctor
 #   build   — next build (slowest step; runs in parallel with the others)
-#   docker  — Dockerfile smoke-build
+#   docker  — Dockerfile smoke-build (production Python gateway)
+#   go      — Go gateway foundation: race tests, vet, gofmt, and a no-Python
+#             image smoke test (agents/Dockerfile.go-foundation). This is the
+#             in-progress Go port living alongside the Python gateway above —
+#             see agents/AGENTS.md's Architecture section.
 
 on:
   push:
@@ -75,3 +79,32 @@ jobs:
       - uses: actions/checkout@v6
       - name: Build Dockerfile
         run: docker build -f agents/Dockerfile .
+
+  go:
+    name: Go gateway foundation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: agents/go.mod
+          cache-dependency-path: agents/go.sum
+      - name: Race tests
+        working-directory: agents
+        run: go test -race ./...
+      - name: Vet
+        working-directory: agents
+        run: go vet ./...
+      - name: Format check
+        working-directory: agents
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "gofmt needs to be run on:" >&2
+            echo "$unformatted" >&2
+            exit 1
+          fi
+      - name: Build foundation image
+        run: docker build -f agents/Dockerfile.go-foundation -t agents-go-foundation:ci .
+      - name: Smoke test foundation image
+        run: bash agents/scripts/smoke-image.sh agents-go-foundation:ci

@@ -15,3 +15,30 @@ services:
       ADK_SESSION_DB_PATH: /data/adk_sessions.sqlite
     volumes:
       - ./.data:/data
+
+  # agents-go is the in-progress Go gateway foundation (currently /resume
+  # only — see agents/AGENTS.md's Architecture section). It requires real
+  # Cloudflare D1/R2 credentials to persist sessions or artifacts; without
+  # them it still starts and serves /health in a "degraded" state (see
+  # cmd/gateway/main.go). It does not replace the `agents` service above
+  # until the Python cutover plan completes — run both, or just this one,
+  # depending on which surface you're working on.
+  agents-go:
+    build:
+      context: .
+      dockerfile: agents/Dockerfile.go-foundation
+    ports:
+      - "8001:8000"
+    env_file:
+      - path: ./.env
+        required: false
+      - path: ./.env.local
+        required: false
+    environment:
+      PORT: "8000"
+      CF_ACCOUNT_ID: dev-fake-account
+      CF_API_TOKEN: dev-fake-token
+      CF_D1_DATABASE_ID: dev-fake-database
+      CF_R2_BUCKET_NAME: dev-fake-bucket
+      CF_R2_ACCESS_KEY_ID: dev-fake-access-key
+      CF_R2_SECRET_ACCESS_KEY: dev-fake-secret-key
