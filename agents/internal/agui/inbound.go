@@ -57,16 +57,58 @@ func runContent(ctx context.Context, input *aguitypes.RunAgentInput, identity au
 		return nil, nil
 	}
 	last := input.Messages[len(input.Messages)-1]
+	var content *genai.Content
+	var err error
 	switch last.Role {
 	case aguitypes.RoleUser:
-		return userContent(last)
+		content, err = userContent(last)
 	case aguitypes.RoleTool:
-		return toolResultContent(ctx, input.Messages, identity, pending, scope)
+		content, err = toolResultContent(ctx, input.Messages, identity, pending, scope)
 	default:
 		// Trailing assistant/system/other message: no fresh input for this
 		// run (e.g. a reconnect that only wants the current snapshot).
 		return nil, nil
 	}
+	if err != nil {
+		return nil, err
+	}
+	if part := contextPart(input.Context); part != nil && content != nil {
+		content.Parts = append([]*genai.Part{part}, content.Parts...)
+	}
+	return content, nil
+}
+
+// contextPart renders the AG-UI request's context entries (frontend-
+// supplied description/value pairs, e.g. {"description":"current_page",
+// "value":"/dashboard"}) as one text Part prepended to the turn's
+// content, so the model unconditionally sees them.
+//
+// The Python reference (ag_ui_adk) instead stores input.context in ADK
+// session state under a backend-managed '_ag_ui_context' key and leaves
+// surfacing it to each agent's own instruction template (a custom
+// instruction provider reading ctx.state) — see
+// .venv/lib/python*/site-packages/ag_ui_adk/adk_agent.py. That only
+// works because a Python agent author can wire an instruction provider
+// per agent. This Go handler is agent-agnostic (ag-ui.go has no
+// per-agent instruction template to reach into, and every ported agent
+// shares this one handler), so it renders context directly into the
+// turn's model input instead — protocol-equivalent (the model still
+// receives the same description/value data) without requiring every
+// ported agent to add a state-reading instruction hook.
+func contextPart(entries []aguitypes.Context) *genai.Part {
+	var b strings.Builder
+	for _, entry := range entries {
+		description := strings.TrimSpace(entry.Description)
+		value := strings.TrimSpace(entry.Value)
+		if description == "" && value == "" {
+			continue
+		}
+		fmt.Fprintf(&b, "- %s: %s\n", description, value)
+	}
+	if b.Len() == 0 {
+		return nil
+	}
+	return &genai.Part{Text: "Context:\n" + b.String()}
 }
 
 func userContent(msg aguitypes.Message) (*genai.Content, error) {
@@ -79,6 +121,12 @@ func userContent(msg aguitypes.Message) (*genai.Content, error) {
 	if fragments, ok := msg.ContentInputContents(); ok {
 		parts := make([]*genai.Part, 0, len(fragments))
 		for _, fragment := range fragments {
+			// Only text fragments are converted here; binary/image/audio/
+			// video InputContent fragments in a mixed multimodal user
+			// message are silently dropped rather than converted or
+			// erroring. No agent ported so far sends multimodal input to
+			// this handler — revisit before wiring a vision-capable agent
+			// (see task-7-report.md "Concerns").
 			if fragment.Type == aguitypes.InputContentTypeText && fragment.Text != "" {
 				parts = append(parts, &genai.Part{Text: fragment.Text})
 			}
