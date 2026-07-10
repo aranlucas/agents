@@ -3,7 +3,7 @@ package agentruntime
 import (
 	"errors"
 
-	"google.golang.org/adk/tool"
+	"google.golang.org/adk/v2/agent"
 )
 
 // StructuredError is safe for both tool results and AG-UI error events.
@@ -24,7 +24,7 @@ func Failure(code, message string) ToolResult {
 }
 
 // Commit applies a successful transaction to the invocation event delta.
-func Commit(ctx tool.Context, transaction *Transaction) error {
+func Commit(ctx agent.Context, transaction *Transaction) error {
 	if ctx == nil || transaction == nil {
 		return errors.New("tool context and transaction are required")
 	}

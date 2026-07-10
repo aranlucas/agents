@@ -10,7 +10,7 @@ require (
 	github.com/aws/smithy-go v1.27.3
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/jsonschema-go v0.4.3
-	google.golang.org/adk v1.5.0
+	google.golang.org/adk/v2 v2.0.0
 	google.golang.org/genai v1.63.0
 )
 

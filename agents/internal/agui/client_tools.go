@@ -13,9 +13,9 @@ import (
 	"github.com/aranlucas/agents/agents/internal/auth"
 	"github.com/aranlucas/agents/agents/internal/cloudflare"
 	"github.com/google/jsonschema-go/jsonschema"
-	"google.golang.org/adk/agent"
-	"google.golang.org/adk/tool"
-	"google.golang.org/adk/tool/functiontool"
+	"google.golang.org/adk/v2/agent"
+	"google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool/functiontool"
 	"google.golang.org/genai"
 )
 
@@ -169,7 +169,7 @@ func NewClientToolset(input []ClientTool, pending PendingTools) (tool.Toolset, e
 			return nil, fmt.Errorf("client tool %q schema: %w", definition.Name, err)
 		}
 		name := definition.Name
-		wrapped, err := functiontool.New[map[string]any, map[string]any](functiontool.Config{Name: name, Description: definition.Description, InputSchema: schema, IsLongRunning: true}, func(ctx tool.Context, args map[string]any) (map[string]any, error) {
+		wrapped, err := functiontool.New[map[string]any, map[string]any](functiontool.Config{Name: name, Description: definition.Description, InputSchema: schema, IsLongRunning: true}, func(ctx agent.Context, args map[string]any) (map[string]any, error) {
 			scope := ToolScope{AppName: ctx.AppName(), UserID: ctx.UserID(), ThreadID: ctx.SessionID()}
 			if err := pending.Register(ctx, scope, ctx.FunctionCallID(), name, args); err != nil {
 				return nil, err

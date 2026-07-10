@@ -24,7 +24,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
-	"google.golang.org/adk/artifact"
+	"google.golang.org/adk/v2/artifact"
 	"google.golang.org/genai"
 )
 
@@ -366,8 +366,14 @@ func (s *ArtifactService) GetArtifactVersion(ctx context.Context, req *artifact.
 	key, _ := s.r2.ObjectKey(req.AppName, req.UserID, req.SessionID, name)
 	return &artifact.GetArtifactVersionResponse{ArtifactVersion: &artifact.ArtifactVersion{
 		Version: envelope.Version, CanonicalURI: "r2://" + s.r2.bucket + "/" + key,
-		CustomMetadata: map[string]any{"sha256": metadata["sha256"]}, CreateTime: envelope.CreateTime, MimeType: envelope.MimeType,
+		CustomMetadata: map[string]any{"sha256": metadata["sha256"]}, CreateTime: secondsToTime(envelope.CreateTime), MimeType: envelope.MimeType,
 	}}, nil
+}
+
+// secondsToTime converts the artifact envelope's Unix-seconds-with-fraction
+// timestamp back into a time.Time for the ADK v2 artifact.ArtifactVersion API.
+func secondsToTime(seconds float64) time.Time {
+	return time.UnixMilli(int64(seconds*1000 + 0.5)).UTC()
 }
 
 func (s *ArtifactService) load(ctx context.Context, app, user, thread, fileName string, version int64) (artifactEnvelope, map[string]string, error) {
