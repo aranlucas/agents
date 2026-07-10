@@ -77,7 +77,8 @@ func (p *PendingStore) Register(ctx context.Context, scope ToolScope, callID, to
 		cloudflare.Statement{SQL: "DELETE FROM pending_client_tools WHERE expires_at <= ?", Params: []any{now.UnixMilli()}},
 		cloudflare.Statement{SQL: `INSERT INTO pending_client_tools
 			(app_name, user_id, thread_id, call_id, tool_name, args_json, status, created_at, expires_at)
-			VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)`, Params: []any{scope.AppName, scope.UserID, scope.ThreadID, callID, toolName, string(encoded), now.UnixMilli(), now.Add(pendingToolTTL).UnixMilli()}},
+			VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+			ON CONFLICT(app_name, user_id, thread_id, call_id) DO NOTHING`, Params: []any{scope.AppName, scope.UserID, scope.ThreadID, callID, toolName, string(encoded), now.UnixMilli(), now.Add(pendingToolTTL).UnixMilli()}},
 	)
 	if err != nil {
 		return fmt.Errorf("register pending client tool: %w", err)

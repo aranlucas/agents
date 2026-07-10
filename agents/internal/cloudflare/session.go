@@ -18,7 +18,9 @@ import (
 
 const sessionTTL = time.Hour
 
-var errSessionNotFound = errors.New("session not found")
+// ErrSessionNotFound is returned when the full app/user/thread identity does
+// not address a live session.
+var ErrSessionNotFound = errors.New("session not found")
 
 // SessionService persists ADK sessions and events exclusively in D1.
 type SessionService struct {
@@ -101,7 +103,7 @@ func (s *SessionService) Get(ctx context.Context, req *session.GetRequest) (*ses
 		return nil, fmt.Errorf("get session: %w", err)
 	}
 	if len(results) < 4 || len(results[0].Rows) == 0 {
-		return nil, errSessionNotFound
+		return nil, ErrSessionNotFound
 	}
 	state, updated, err := decodeSessionRow(results[0].Rows[0])
 	if err != nil {
@@ -212,7 +214,7 @@ func (s *SessionService) AppendEvent(ctx context.Context, current session.Sessio
 		return fmt.Errorf("append session event: %w", err)
 	}
 	if len(results) < 3 || results[2].Meta.Changes == 0 {
-		return errSessionNotFound
+		return ErrSessionNotFound
 	}
 	for key, value := range event.Actions.StateDelta {
 		if err := current.State().Set(key, value); err != nil {
