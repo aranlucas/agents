@@ -25,6 +25,7 @@ import (
 	"github.com/aranlucas/agents/agents/internal/agents/resume"
 	"github.com/aranlucas/agents/agents/internal/agents/spreadsheet"
 	"github.com/aranlucas/agents/agents/internal/agents/travel"
+	"github.com/aranlucas/agents/agents/internal/agents/wellness"
 	"github.com/aranlucas/agents/agents/internal/agui"
 	"github.com/aranlucas/agents/agents/internal/auth"
 	"github.com/aranlucas/agents/agents/internal/cloudflare"
@@ -457,7 +458,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("configure fitness fallbacks: %v", err)
 	}
-	fitnessAgent, err := fitness.New(fitnessModel, fitness.NewStrava(common.NewHTTPClient(30*time.Second, 8<<20).Client, "https://www.strava.com/api/v3/athlete/activities"), braveSearch, agui.NewRequestScopedClientToolset(pending))
+	stravaClient := fitness.NewStrava(common.NewHTTPClient(30*time.Second, 8<<20).Client, "https://www.strava.com/api/v3/athlete/activities")
+	fitnessAgent, err := fitness.New(fitnessModel, stravaClient, braveSearch, agui.NewRequestScopedClientToolset(pending))
 	if err != nil {
 		log.Fatalf("build fitness agent: %v", err)
 	}
@@ -473,9 +475,23 @@ func main() {
 	if krogerEndpoint == "" {
 		krogerEndpoint = "https://ai-meal-planner-mcp.aranlucas.workers.dev/mcp"
 	}
-	groceryAgent, err := grocery.New(groceryModel, grocery.NewKroger(common.NewHTTPClient(30*time.Second, 8<<20).Client, krogerEndpoint), braveSearch, common.NewWebLoader(common.NewHTTPClient(20*time.Second, 4<<20), 100_000), agui.NewRequestScopedClientToolset(pending))
+	krogerClient := grocery.NewKroger(common.NewHTTPClient(30*time.Second, 8<<20).Client, krogerEndpoint)
+	webLoader := common.NewWebLoader(common.NewHTTPClient(20*time.Second, 4<<20), 100_000)
+	groceryAgent, err := grocery.New(groceryModel, krogerClient, braveSearch, webLoader, agui.NewRequestScopedClientToolset(pending))
 	if err != nil {
 		log.Fatalf("build grocery agent: %v", err)
+	}
+	fitnessTaskAgent, err := fitness.NewTask(fitnessModel, stravaClient, braveSearch, agui.NewRequestScopedClientToolset(pending))
+	if err != nil {
+		log.Fatalf("build wellness fitness task agent: %v", err)
+	}
+	groceryTaskAgent, err := grocery.NewTask(groceryModel, krogerClient, braveSearch, webLoader, agui.NewRequestScopedClientToolset(pending))
+	if err != nil {
+		log.Fatalf("build wellness grocery task agent: %v", err)
+	}
+	wellnessAgent, err := wellness.New(wellness.ModelSet{Coordinator: fitnessModel}, fitnessTaskAgent, groceryTaskAgent, agui.NewRequestScopedClientToolset(pending))
+	if err != nil {
+		log.Fatalf("build wellness agent: %v", err)
 	}
 
 	registry, err := agentruntime.NewRegistry(
@@ -487,6 +503,7 @@ func main() {
 		agentruntime.Entry{Route: "travel", AppName: travel.AppName, Agent: travelAgent, StateDefaults: travel.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }},
 		agentruntime.Entry{Route: "fitness", AppName: fitness.AppName, Agent: fitnessAgent, StateDefaults: fitness.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }},
 		agentruntime.Entry{Route: "grocery", AppName: grocery.AppName, Agent: groceryAgent, StateDefaults: grocery.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }},
+		agentruntime.Entry{Route: "wellness", AppName: wellness.AppName, Agent: wellnessAgent, StateDefaults: wellness.StateDefaults(), Timeout: 5 * time.Minute, Health: func(context.Context) error { return nil }},
 	)
 	if err != nil {
 		log.Fatalf("build agent registry: %v", err)

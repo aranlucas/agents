@@ -17,6 +17,7 @@ import (
 	"github.com/aranlucas/agents/agents/internal/agents/presentation"
 	"github.com/aranlucas/agents/agents/internal/agents/resume"
 	"github.com/aranlucas/agents/agents/internal/agents/travel"
+	"github.com/aranlucas/agents/agents/internal/agents/wellness"
 	"github.com/aranlucas/agents/agents/internal/auth"
 	"github.com/aranlucas/agents/agents/internal/config"
 	"google.golang.org/adk/v2/model"
@@ -200,6 +201,35 @@ func TestGatewayFitnessAndGroceryRoutesUseExistingAGUIContract(t *testing.T) {
 		if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"persistentState":true`) || !strings.Contains(recorder.Body.String(), `"clientProvided":true`) {
 			t.Fatalf("%s response = %d %s", route, recorder.Code, recorder.Body.String())
 		}
+	}
+}
+
+func TestGatewayWellnessRouteUsesExistingAGUIContract(t *testing.T) {
+	fitnessAgent, err := fitness.NewTask(fakeResumeModel{}, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	groceryAgent, err := grocery.NewTask(fakeResumeModel{}, nil, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wellnessAgent, err := wellness.New(wellness.ModelSet{Coordinator: fakeResumeModel{}}, fitnessAgent, groceryAgent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry, err := agentruntime.NewRegistry(agentruntime.Entry{Route: "wellness", AppName: wellness.AppName, Agent: wellnessAgent, StateDefaults: wellness.StateDefaults(), Timeout: 5 * time.Second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler, err := New(config.Config{HTTP: config.HTTP{}}, Dependencies{Registry: registry, Sessions: session.InMemoryService(), Verifier: acceptingVerifier{}, Now: time.Now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequest(http.MethodGet, "/wellness/agui/capabilities", nil)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"persistentState":true`) || !strings.Contains(recorder.Body.String(), `"clientProvided":true`) {
+		t.Fatalf("response = %d %s", recorder.Code, recorder.Body.String())
 	}
 }
 

@@ -31,6 +31,14 @@ type LoadPageResult struct {
 }
 
 func New(m model.LLM, kroger *Kroger, search *common.BraveSearch, loader *common.WebLoader, toolsets ...tool.Toolset) (agent.Agent, error) {
+	return newAgent(m, kroger, search, loader, llmagent.ModeChat, toolsets...)
+}
+
+func NewTask(m model.LLM, kroger *Kroger, search *common.BraveSearch, loader *common.WebLoader, toolsets ...tool.Toolset) (agent.Agent, error) {
+	return newAgent(m, kroger, search, loader, llmagent.ModeTask, toolsets...)
+}
+
+func newAgent(m model.LLM, kroger *Kroger, search *common.BraveSearch, loader *common.WebLoader, mode llmagent.Mode, toolsets ...tool.Toolset) (agent.Agent, error) {
 	tools, err := groceryTools(search, loader)
 	if err != nil {
 		return nil, err
@@ -38,7 +46,7 @@ func New(m model.LLM, kroger *Kroger, search *common.BraveSearch, loader *common
 	if kroger != nil {
 		toolsets = append(toolsets, kroger)
 	}
-	return llmagent.New(llmagent.Config{Name: AppName, Description: "Meal planning, pantry, shopping list, and cart support.", Instruction: Instruction, Model: m, Tools: tools, Toolsets: toolsets, BeforeModelCallbacks: []llmagent.BeforeModelCallback{compactGroceryContext}})
+	return llmagent.New(llmagent.Config{Name: AppName, Description: "Meal planning, pantry, shopping list, and cart support.", Instruction: Instruction, Model: m, Mode: mode, Tools: tools, Toolsets: toolsets, BeforeModelCallbacks: []llmagent.BeforeModelCallback{compactGroceryContext}})
 }
 
 func groceryTools(search *common.BraveSearch, loader *common.WebLoader) ([]tool.Tool, error) {
