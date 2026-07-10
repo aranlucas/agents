@@ -17,6 +17,7 @@ import (
 
 	"github.com/aranlucas/agents/agents/internal/agentruntime"
 	"github.com/aranlucas/agents/agents/internal/agents/presentation"
+	"github.com/aranlucas/agents/agents/internal/agents/research"
 	"github.com/aranlucas/agents/agents/internal/agents/resume"
 	"github.com/aranlucas/agents/agents/internal/agui"
 	"github.com/aranlucas/agents/agents/internal/auth"
@@ -228,6 +229,16 @@ func presentationProviderConfig(cfg config.Config) (config.Provider, error) {
 	return provider, nil
 }
 
+func researchProviderConfig(cfg config.Config) (config.Provider, error) {
+	provider, ok := cfg.Providers["openrouter"]
+	if !ok {
+		return config.Provider{}, errors.New("OPENROUTER_API_KEY is required to configure the research agent")
+	}
+	provider.Model, provider.RequestsPerMinute, provider.RequestsPerDay = "tencent/hy3:free", 20, 1000
+	provider.Fallbacks = configuredFallbacks(cfg.Providers, "mistral")
+	return provider, nil
+}
+
 func configuredFallbacks(providers map[string]config.Provider, names ...string) []string {
 	result := make([]string, 0, len(names))
 	for _, name := range names {
@@ -323,10 +334,23 @@ func main() {
 	if err != nil {
 		log.Fatalf("build presentation agent: %v", err)
 	}
+	researchProvider, err := researchProviderConfig(cfg)
+	if err != nil {
+		log.Fatalf("configure research model: %v", err)
+	}
+	researchModel, err := openai.NewMulti(researchProvider, presentationProviderPolicies(cfg.Providers), nil, limiter)
+	if err != nil {
+		log.Fatalf("configure research fallbacks: %v", err)
+	}
+	researchAgent, err := research.New(researchModel, agui.NewRequestScopedClientToolset(pending))
+	if err != nil {
+		log.Fatalf("build research agent: %v", err)
+	}
 
 	registry, err := agentruntime.NewRegistry(
 		agentruntime.Entry{Route: "resume", AppName: resume.AppName, Agent: resumeAgent, Public: true, Timeout: 2 * time.Minute, Health: resumeHealth(resumeModel)},
 		agentruntime.Entry{Route: "presentation", AppName: presentation.AppName, Agent: presentationAgent, StateDefaults: presentation.StateDefaults(), Timeout: 2 * time.Minute, Health: func(context.Context) error { return nil }},
+		agentruntime.Entry{Route: "research", AppName: research.AppName, Agent: researchAgent, StateDefaults: research.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }},
 	)
 	if err != nil {
 		log.Fatalf("build agent registry: %v", err)
