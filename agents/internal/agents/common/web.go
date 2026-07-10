@@ -17,7 +17,11 @@ import (
 
 var ErrEmptyQuery = errors.New("search query is required")
 
-type SearchResult struct{ Title, URL, Description string }
+type SearchResult struct {
+	Title       string `json:"title"`
+	URL         string `json:"url"`
+	Description string `json:"description"`
+}
 type BraveSearch struct {
 	client           *HTTPClient
 	endpoint, apiKey string
@@ -90,8 +94,10 @@ func (s *BraveSearch) Search(ctx context.Context, query string, count int) ([]Se
 }
 
 type WebPage struct {
-	URL, Title, Text string
-	Truncated        bool
+	URL       string `json:"url"`
+	Title     string `json:"title"`
+	Text      string `json:"text"`
+	Truncated bool   `json:"truncated"`
 }
 type WebLoader struct {
 	client       *HTTPClient

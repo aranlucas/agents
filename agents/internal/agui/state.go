@@ -18,18 +18,26 @@ var stateHeaderOverlay = map[string]string{
 	"X-Strava-Access-Token": session.KeyPrefixTemp + "strava_token",
 }
 
-// requestStateOverlay extracts request-scoped state (OAuth bearer tokens
-// forwarded by the web proxy) that must reach ADK tool state for this
-// invocation only. It is applied via runner.WithStateDelta, which lands on
-// the same user-message event that SessionService.AppendEvent already
-// strips of temp: keys before persistence, while still applying the delta
-// to the in-memory session.State() that tools observe during the run.
-func requestStateOverlay(r *http.Request) map[string]any {
+// requestStateOverlay extracts request-scoped OAuth bearer tokens forwarded
+// by the web proxy and derives the route's public connected flags. Tokens use
+// temp: keys and are stripped before persistence; the non-secret booleans may
+// persist and are authoritatively overwritten on every applicable run. The
+// delta still reaches the in-memory session.State() that tools observe.
+func requestStateOverlay(r *http.Request, route string) map[string]any {
 	overlay := make(map[string]any)
 	for header, key := range stateHeaderOverlay {
 		if value := strings.TrimSpace(r.Header.Get(header)); value != "" {
 			overlay[key] = value
 		}
+	}
+	switch route {
+	case "fitness":
+		_, overlay["strava_connected"] = overlay[session.KeyPrefixTemp+"strava_token"]
+	case "grocery":
+		_, overlay["kroger_connected"] = overlay[session.KeyPrefixTemp+"kroger_token"]
+	case "wellness":
+		_, overlay["strava_connected"] = overlay[session.KeyPrefixTemp+"strava_token"]
+		_, overlay["kroger_connected"] = overlay[session.KeyPrefixTemp+"kroger_token"]
 	}
 	if len(overlay) == 0 {
 		return nil

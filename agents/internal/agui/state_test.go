@@ -1,10 +1,33 @@
 package agui
 
 import (
+	"net/http/httptest"
 	"testing"
 
 	aguievents "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
+	"github.com/aranlucas/agents/agents/internal/agentruntime"
 )
+
+func TestOAuthHeadersBecomeRouteScopedFlagsWithoutChangingTokenNames(t *testing.T) {
+	request := httptest.NewRequest("POST", "/fitness/agui", nil)
+	request.Header.Set("X-Strava-Access-Token", "strava-secret")
+	overlay := requestStateOverlay(request, "fitness")
+	if overlay["temp:strava_token"] != "strava-secret" || overlay["strava_connected"] != true {
+		t.Fatalf("overlay = %#v", overlay)
+	}
+	if _, exists := overlay["kroger_connected"]; exists {
+		t.Fatalf("fitness overlay included grocery flag: %#v", overlay)
+	}
+
+	disconnected := requestStateOverlay(httptest.NewRequest("POST", "/fitness/agui", nil), "fitness")
+	if disconnected["strava_connected"] != false {
+		t.Fatalf("disconnected overlay = %#v", disconnected)
+	}
+	persisted := persistentSnapshot(agentruntime.StateMap(overlay))
+	if _, leaked := persisted["temp:strava_token"]; leaked || persisted["strava_connected"] != true {
+		t.Fatalf("persistent snapshot = %#v", persisted)
+	}
+}
 
 // TestStatePatchAddReplaceRemoveAndEscaping is the committed state-differ-
 // level coverage the review asked for: an existing key changing value
