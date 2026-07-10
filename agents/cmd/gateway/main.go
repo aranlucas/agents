@@ -21,6 +21,7 @@ import (
 	"github.com/aranlucas/agents/agents/internal/agents/research"
 	"github.com/aranlucas/agents/agents/internal/agents/resume"
 	"github.com/aranlucas/agents/agents/internal/agents/spreadsheet"
+	"github.com/aranlucas/agents/agents/internal/agents/travel"
 	"github.com/aranlucas/agents/agents/internal/agui"
 	"github.com/aranlucas/agents/agents/internal/auth"
 	"github.com/aranlucas/agents/agents/internal/cloudflare"
@@ -261,6 +262,16 @@ func expenseProviderConfig(cfg config.Config) (config.Provider, error) {
 	return provider, nil
 }
 
+func travelProviderConfig(cfg config.Config) (config.Provider, error) {
+	provider, ok := cfg.Providers["openrouter"]
+	if !ok {
+		return config.Provider{}, errors.New("OPENROUTER_API_KEY is required to configure the travel agent")
+	}
+	provider.Model, provider.RequestsPerMinute, provider.RequestsPerDay = "tencent/hy3:free", 20, 1000
+	provider.Fallbacks = configuredFallbacks(cfg.Providers, "mistral")
+	return provider, nil
+}
+
 func configuredFallbacks(providers map[string]config.Provider, names ...string) []string {
 	result := make([]string, 0, len(names))
 	for _, name := range names {
@@ -392,6 +403,22 @@ func main() {
 	if err != nil {
 		log.Fatalf("build expense agent: %v", err)
 	}
+	travelProvider, err := travelProviderConfig(cfg)
+	if err != nil {
+		log.Fatalf("configure travel model: %v", err)
+	}
+	travelModel, err := openai.NewMulti(travelProvider, presentationProviderPolicies(cfg.Providers), nil, limiter)
+	if err != nil {
+		log.Fatalf("configure travel fallbacks: %v", err)
+	}
+	trvlEndpoint := strings.TrimSpace(os.Getenv("TRVL_MCP_URL"))
+	if trvlEndpoint == "" {
+		trvlEndpoint = "https://trvl-production.up.railway.app/mcp"
+	}
+	travelAgent, err := travel.New(travelModel, agui.NewRequestScopedClientToolset(pending), travel.NewTRVL(trvlEndpoint, &http.Client{Timeout: 20 * time.Second}))
+	if err != nil {
+		log.Fatalf("build travel agent: %v", err)
+	}
 
 	registry, err := agentruntime.NewRegistry(
 		agentruntime.Entry{Route: "resume", AppName: resume.AppName, Agent: resumeAgent, Public: true, Timeout: 2 * time.Minute, Health: resumeHealth(resumeModel)},
@@ -399,6 +426,7 @@ func main() {
 		agentruntime.Entry{Route: "research", AppName: research.AppName, Agent: researchAgent, StateDefaults: research.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }},
 		agentruntime.Entry{Route: "spreadsheet", AppName: spreadsheet.AppName, Agent: spreadsheetAgent, StateDefaults: spreadsheet.StateDefaults(), Timeout: 2 * time.Minute, Health: func(context.Context) error { return nil }},
 		agentruntime.Entry{Route: "expense", AppName: expense.AppName, Agent: expenseAgent, StateDefaults: expense.StateDefaults(), Timeout: 2 * time.Minute, Health: func(context.Context) error { return nil }},
+		agentruntime.Entry{Route: "travel", AppName: travel.AppName, Agent: travelAgent, StateDefaults: travel.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }},
 	)
 	if err != nil {
 		log.Fatalf("build agent registry: %v", err)

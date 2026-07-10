@@ -43,6 +43,33 @@ func TestClientToolResultCannotResolveOrResumeAnotherUsersCall(t *testing.T) {
 	}
 }
 
+func TestApprovalResultResumesOnlyOriginalTravelThread(t *testing.T) {
+	store := newPendingFixture(t)
+	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
+	pending := NewPendingStore(store.d1, func() time.Time { return now })
+	scope := ToolScope{AppName: "collab_trip_agent", UserID: "user-a", ThreadID: "travel-thread-a"}
+	if err := pending.Register(context.Background(), scope, "approval-1", "request_user_approval", map[string]any{"action": "book_flight"}); err != nil {
+		t.Fatal(err)
+	}
+	identity := auth.Identity{UserID: "user-a"}
+	for _, other := range []struct{ app, thread string }{{"collab_trip_agent", "travel-thread-b"}, {"grocery_agent", "travel-thread-a"}} {
+		if err := pending.Resolve(context.Background(), identity, other.app, other.thread, "approval-1", map[string]any{"approved": true}); !errors.Is(err, ErrPendingToolNotFound) {
+			t.Fatalf("cross-scope resolve %s/%s = %v", other.app, other.thread, err)
+		}
+	}
+	if err := pending.Resolve(context.Background(), identity, scope.AppName, scope.ThreadID, "approval-1", map[string]any{"approved": true}); err != nil {
+		t.Fatal(err)
+	}
+	response, err := pending.Take(context.Background(), identity, scope.AppName, scope.ThreadID, "approval-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	request, _ := response.Response["_agui_request"].(map[string]any)
+	if response.Name != "request_user_approval" || response.Response["approved"] != true || request["action"] != "book_flight" {
+		t.Fatalf("Take() = %#v, %v", response, err)
+	}
+}
+
 func TestClientToolsetPreservesDynamicSchemaAndLongRunningMarker(t *testing.T) {
 	store := newPendingFixture(t)
 	toolset, err := NewClientToolset([]ClientTool{{Name: "choose_flight", Description: "Choose a flight", Parameters: map[string]any{
@@ -90,8 +117,8 @@ func TestPendingToolExpiryAndPublicIdentityFailClosed(t *testing.T) {
 }
 
 type pendingRecord struct {
-	app, user, thread, call, name, result, status string
-	expires                                       int64
+	app, user, thread, call, name, args, result, status string
+	expires                                             int64
 }
 type pendingFixture struct {
 	d1      *cloudflare.D1
@@ -130,7 +157,7 @@ func (f *pendingFixture) handle(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case strings.HasPrefix(sql, "INSERT INTO pending_client_tools"):
 			key := recordKey(textParam(statement.Params[0]), textParam(statement.Params[1]), textParam(statement.Params[2]), textParam(statement.Params[3]))
-			f.records[key] = pendingRecord{app: textParam(statement.Params[0]), user: textParam(statement.Params[1]), thread: textParam(statement.Params[2]), call: textParam(statement.Params[3]), name: textParam(statement.Params[4]), status: "pending", expires: int64(statement.Params[7].(float64))}
+			f.records[key] = pendingRecord{app: textParam(statement.Params[0]), user: textParam(statement.Params[1]), thread: textParam(statement.Params[2]), call: textParam(statement.Params[3]), name: textParam(statement.Params[4]), args: textParam(statement.Params[5]), status: "pending", expires: int64(statement.Params[7].(float64))}
 			changes = 1
 		case strings.HasPrefix(sql, "UPDATE pending_client_tools"):
 			key := recordKey(textParam(statement.Params[1]), textParam(statement.Params[2]), textParam(statement.Params[3]), textParam(statement.Params[4]))
@@ -147,7 +174,7 @@ func (f *pendingFixture) handle(w http.ResponseWriter, r *http.Request) {
 			record, ok := f.records[key]
 			now := int64(statement.Params[4].(float64))
 			if ok && record.status == "resolved" && record.expires > now {
-				rows = append(rows, map[string]any{"tool_name": record.name, "result_json": record.result})
+				rows = append(rows, map[string]any{"tool_name": record.name, "args_json": record.args, "result_json": record.result})
 			}
 		case strings.HasPrefix(sql, "DELETE FROM pending_client_tools") && strings.Contains(sql, "call_id"):
 			key := recordKey(textParam(statement.Params[0]), textParam(statement.Params[1]), textParam(statement.Params[2]), textParam(statement.Params[3]))

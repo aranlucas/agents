@@ -14,6 +14,7 @@ import (
 	"github.com/aranlucas/agents/agents/internal/agentruntime"
 	"github.com/aranlucas/agents/agents/internal/agents/presentation"
 	"github.com/aranlucas/agents/agents/internal/agents/resume"
+	"github.com/aranlucas/agents/agents/internal/agents/travel"
 	"github.com/aranlucas/agents/agents/internal/auth"
 	"github.com/aranlucas/agents/agents/internal/config"
 	"google.golang.org/adk/v2/model"
@@ -145,6 +146,27 @@ func TestGatewayPresentationAGUIRoute(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), "RUN_STARTED") || !strings.Contains(recorder.Body.String(), "RUN_FINISHED") {
+		t.Fatalf("response = %d %s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestGatewayTravelRouteUsesExistingAGUIContract(t *testing.T) {
+	travelAgent, err := travel.New(fakeResumeModel{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry, err := agentruntime.NewRegistry(agentruntime.Entry{Route: "travel", AppName: travel.AppName, Agent: travelAgent, StateDefaults: travel.StateDefaults(), Timeout: 5 * time.Second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler, err := New(config.Config{HTTP: config.HTTP{}}, Dependencies{Registry: registry, Sessions: session.InMemoryService(), Verifier: acceptingVerifier{}, Now: time.Now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequest(http.MethodGet, "/travel/agui/capabilities", nil)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"persistentState":true`) || !strings.Contains(recorder.Body.String(), `"clientProvided":true`) {
 		t.Fatalf("response = %d %s", recorder.Code, recorder.Body.String())
 	}
 }
