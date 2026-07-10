@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/aranlucas/agents/agents/internal/agentruntime"
+	"github.com/aranlucas/agents/agents/internal/agents/expense"
 	"github.com/aranlucas/agents/agents/internal/agents/presentation"
 	"github.com/aranlucas/agents/agents/internal/agents/research"
 	"github.com/aranlucas/agents/agents/internal/agents/resume"
@@ -250,6 +251,16 @@ func spreadsheetProviderConfig(cfg config.Config) (config.Provider, error) {
 	return provider, nil
 }
 
+func expenseProviderConfig(cfg config.Config) (config.Provider, error) {
+	provider, ok := cfg.Providers["openrouter"]
+	if !ok {
+		return config.Provider{}, errors.New("OPENROUTER_API_KEY is required to configure the expense agent")
+	}
+	provider.Model, provider.RequestsPerMinute, provider.RequestsPerDay = "tencent/hy3:free", 20, 1000
+	provider.Fallbacks = configuredFallbacks(cfg.Providers, "mistral")
+	return provider, nil
+}
+
 func configuredFallbacks(providers map[string]config.Provider, names ...string) []string {
 	result := make([]string, 0, len(names))
 	for _, name := range names {
@@ -369,12 +380,25 @@ func main() {
 	if err != nil {
 		log.Fatalf("build spreadsheet agent: %v", err)
 	}
+	expenseProvider, err := expenseProviderConfig(cfg)
+	if err != nil {
+		log.Fatalf("configure expense model: %v", err)
+	}
+	expenseModel, err := openai.NewMulti(expenseProvider, presentationProviderPolicies(cfg.Providers), nil, limiter)
+	if err != nil {
+		log.Fatalf("configure expense fallbacks: %v", err)
+	}
+	expenseAgent, err := expense.New(expenseModel, agui.NewRequestScopedClientToolset(pending))
+	if err != nil {
+		log.Fatalf("build expense agent: %v", err)
+	}
 
 	registry, err := agentruntime.NewRegistry(
 		agentruntime.Entry{Route: "resume", AppName: resume.AppName, Agent: resumeAgent, Public: true, Timeout: 2 * time.Minute, Health: resumeHealth(resumeModel)},
 		agentruntime.Entry{Route: "presentation", AppName: presentation.AppName, Agent: presentationAgent, StateDefaults: presentation.StateDefaults(), Timeout: 2 * time.Minute, Health: func(context.Context) error { return nil }},
 		agentruntime.Entry{Route: "research", AppName: research.AppName, Agent: researchAgent, StateDefaults: research.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }},
 		agentruntime.Entry{Route: "spreadsheet", AppName: spreadsheet.AppName, Agent: spreadsheetAgent, StateDefaults: spreadsheet.StateDefaults(), Timeout: 2 * time.Minute, Health: func(context.Context) error { return nil }},
+		agentruntime.Entry{Route: "expense", AppName: expense.AppName, Agent: expenseAgent, StateDefaults: expense.StateDefaults(), Timeout: 2 * time.Minute, Health: func(context.Context) error { return nil }},
 	)
 	if err != nil {
 		log.Fatalf("build agent registry: %v", err)
