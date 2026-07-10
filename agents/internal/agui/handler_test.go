@@ -658,10 +658,22 @@ func (e *fakeEvents) At(i int) *session.Event {
 type fakeSessionService struct {
 	mu        sync.Mutex
 	persisted map[string]map[string]any
+	events    map[string][]*session.Event
 }
 
 func newFakeSessionService() *fakeSessionService {
-	return &fakeSessionService{persisted: make(map[string]map[string]any)}
+	return &fakeSessionService{persisted: make(map[string]map[string]any), events: make(map[string][]*session.Event)}
+}
+
+// seedEvents installs a session's event history directly, bypassing
+// AppendEvent, so tests can exercise message reconstruction (see
+// messages.go's eventsToMessages) without driving a full agent run. The
+// session must already exist (via Create) for the corresponding Get to
+// succeed.
+func (f *fakeSessionService) seedEvents(app, user, id string, events ...*session.Event) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.events[sessionKey(app, user, id)] = events
 }
 
 func sessionKey(app, user, id string) string { return app + "\x00" + user + "\x00" + id }
@@ -686,11 +698,13 @@ func (f *fakeSessionService) Create(ctx context.Context, req *session.CreateRequ
 func (f *fakeSessionService) Get(ctx context.Context, req *session.GetRequest) (*session.GetResponse, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	state, ok := f.persisted[sessionKey(req.AppName, req.UserID, req.SessionID)]
+	key := sessionKey(req.AppName, req.UserID, req.SessionID)
+	state, ok := f.persisted[key]
 	if !ok {
 		return nil, cloudflare.ErrSessionNotFound
 	}
-	sess := &fakeSession{id: req.SessionID, appName: req.AppName, userID: req.UserID, state: newFakeState(state), updated: time.Now()}
+	events := append([]*session.Event(nil), f.events[key]...)
+	sess := &fakeSession{id: req.SessionID, appName: req.AppName, userID: req.UserID, state: newFakeState(state), events: events, updated: time.Now()}
 	return &session.GetResponse{Session: sess}, nil
 }
 
@@ -713,8 +727,9 @@ func (f *fakeSessionService) AppendEvent(ctx context.Context, curSession session
 	if !ok {
 		return fmt.Errorf("unexpected session type %T", curSession)
 	}
+	sessKey := sessionKey(fs.appName, fs.userID, fs.id)
 	f.mu.Lock()
-	persisted, ok := f.persisted[sessionKey(fs.appName, fs.userID, fs.id)]
+	persisted, ok := f.persisted[sessKey]
 	f.mu.Unlock()
 	if !ok {
 		return cloudflare.ErrSessionNotFound
@@ -731,6 +746,9 @@ func (f *fakeSessionService) AppendEvent(ctx context.Context, curSession session
 	fs.events = append(fs.events, event)
 	fs.updated = time.Now()
 	fs.mu.Unlock()
+	f.mu.Lock()
+	f.events[sessKey] = append(f.events[sessKey], event)
+	f.mu.Unlock()
 	return nil
 }
 

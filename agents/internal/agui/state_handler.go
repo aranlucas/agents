@@ -3,12 +3,16 @@ package agui
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 
+	aguitypes "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"github.com/aranlucas/agents/agents/internal/agentruntime"
 	"github.com/aranlucas/agents/agents/internal/auth"
+	"github.com/aranlucas/agents/agents/internal/cloudflare"
 	"google.golang.org/adk/v2/session"
 )
 
@@ -25,24 +29,28 @@ type stateRequest struct {
 }
 
 // stateResponse mirrors ag_ui_adk's AgentStateResponse shape so existing
-// AG-UI frontend clients need no changes. Messages is always an empty array:
-// reconstructing AG-UI messages from ADK session events is not yet
-// implemented in the Go runtime (see converter.go for the streaming-only
-// event translation that does exist), so this endpoint only advertises
-// state, not history.
+// AG-UI frontend clients need no changes. Messages carries the thread's
+// history reconstructed from persisted ADK session events (see
+// eventsToMessages in messages.go); State carries only non-temporary state.
 type stateResponse struct {
-	ThreadID     string         `json:"threadId"`
-	ThreadExists bool           `json:"threadExists"`
-	State        map[string]any `json:"state"`
-	Messages     []any          `json:"messages"`
+	ThreadID     string              `json:"threadId"`
+	ThreadExists bool                `json:"threadExists"`
+	State        map[string]any      `json:"state"`
+	Messages     []aguitypes.Message `json:"messages"`
 }
 
 // StateHandler implements the experimental POST /<agent>/agents/state
-// endpoint: on-demand retrieval of a thread's persisted, non-temporary
-// state without starting a new agent run. Any session lookup failure
-// (including "not found") is reported as threadExists: false rather than an
-// HTTP error, mirroring ag_ui_adk's endpoint, which never surfaces a 5xx for
-// this experimental read path.
+// endpoint: on-demand retrieval of a thread's persisted, non-temporary state
+// and message history without starting a new agent run.
+//
+// A session that genuinely does not exist yet (cloudflare.ErrSessionNotFound)
+// is reported as threadExists: false with a 200 — that is an expected,
+// unremarkable outcome for a thread the client hasn't started. Any other
+// sessions.Get failure (a D1 outage, a decode error, ...) is a real backend
+// problem: it is logged server-side and reported as a 500 with a sanitized
+// error code, mirroring ag_ui_adk's endpoint, which returns a 500 with an
+// error field on unexpected exceptions instead of silently downgrading them
+// to "thread not found".
 func StateHandler(registry *agentruntime.Registry, sessions session.Service) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var input stateRequest
@@ -66,10 +74,19 @@ func StateHandler(registry *agentruntime.Registry, sessions session.Service) htt
 		ctx, cancel := context.WithTimeout(r.Context(), entry.Timeout)
 		defer cancel()
 
-		response := stateResponse{ThreadID: input.ThreadID, State: map[string]any{}, Messages: []any{}}
-		if found, err := sessions.Get(ctx, &session.GetRequest{AppName: entry.AppName, UserID: userID, SessionID: input.ThreadID}); err == nil {
+		response := stateResponse{ThreadID: input.ThreadID, State: map[string]any{}, Messages: []aguitypes.Message{}}
+		found, err := sessions.Get(ctx, &session.GetRequest{AppName: entry.AppName, UserID: userID, SessionID: input.ThreadID})
+		switch {
+		case err == nil:
 			response.ThreadExists = true
 			response.State = persistentSnapshot(found.Session.State())
+			response.Messages = eventsToMessages(found.Session.Events())
+		case errors.Is(err, cloudflare.ErrSessionNotFound):
+			// Expected: no session has been created for this thread yet.
+		default:
+			log.Printf("state route: session lookup failed for app=%s thread=%s: %v", entry.AppName, input.ThreadID, err)
+			writeJSONError(w, http.StatusInternalServerError, "state_unavailable")
+			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")

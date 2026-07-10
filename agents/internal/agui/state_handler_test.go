@@ -3,15 +3,19 @@ package agui
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	aguitypes "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"github.com/aranlucas/agents/agents/internal/agentruntime"
 	"google.golang.org/adk/v2/agent/llmagent"
+	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
+	"google.golang.org/genai"
 )
 
 func testResumeRegistry(t *testing.T) *agentruntime.Registry {
@@ -112,5 +116,137 @@ func TestStateHandlerNeverLeaksTemporaryState(t *testing.T) {
 	}
 	if got.State["favorite_color"] != "blue" {
 		t.Fatalf("persistent state missing: %#v", got.State)
+	}
+}
+
+// erroringSessionService always fails Get with a non-ErrSessionNotFound
+// error, standing in for a genuine D1 outage or decode failure — the
+// branch StateHandler must distinguish from "no session yet".
+type erroringSessionService struct{ err error }
+
+func (e *erroringSessionService) Create(context.Context, *session.CreateRequest) (*session.CreateResponse, error) {
+	return nil, e.err
+}
+func (e *erroringSessionService) Get(context.Context, *session.GetRequest) (*session.GetResponse, error) {
+	return nil, e.err
+}
+func (e *erroringSessionService) List(context.Context, *session.ListRequest) (*session.ListResponse, error) {
+	return nil, e.err
+}
+func (e *erroringSessionService) Delete(context.Context, *session.DeleteRequest) error { return e.err }
+func (e *erroringSessionService) AppendEvent(context.Context, session.Session, *session.Event) error {
+	return e.err
+}
+
+func TestStateHandlerReturns500OnUnexpectedSessionError(t *testing.T) {
+	sessions := &erroringSessionService{err: errors.New("D1 request returned HTTP 500 for token sk-live-abc123")}
+	h := StateHandler(testResumeRegistry(t), sessions)
+	req := httptest.NewRequest(http.MethodPost, "/resume/agents/state", strings.NewReader(`{"threadId":"thread-error"}`))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d: %s", rr.Code, rr.Body.String())
+	}
+	if strings.Contains(rr.Body.String(), "sk-live-abc123") || strings.Contains(rr.Body.String(), "D1 request") {
+		t.Fatalf("raw backend error leaked to client: %s", rr.Body.String())
+	}
+	var got map[string]string
+	if err := json.Unmarshal(rr.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got["error"] == "" {
+		t.Fatalf("expected a sanitized error field, got %#v", got)
+	}
+}
+
+func TestStateHandlerReturnsMessagesFromSessionEvents(t *testing.T) {
+	sessions := newFakeSessionService()
+	_, err := sessions.Create(context.Background(), &session.CreateRequest{
+		AppName: "resume_agent", UserID: "anon:thread-messages", SessionID: "thread-messages",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sessions.seedEvents("resume_agent", "anon:thread-messages", "thread-messages",
+		&session.Event{
+			ID: "ev-user", Author: "user",
+			LLMResponse: model.LLMResponse{Content: &genai.Content{Parts: []*genai.Part{
+				{Text: "What experience do you have?"},
+			}}},
+		},
+		&session.Event{
+			ID: "ev-call", Author: "resume_agent",
+			LLMResponse: model.LLMResponse{Content: &genai.Content{Parts: []*genai.Part{
+				{FunctionCall: &genai.FunctionCall{ID: "call-1", Name: "lookup_resume", Args: map[string]any{"query": "experience"}}},
+			}}},
+		},
+		&session.Event{
+			ID: "ev-result", Author: "resume_agent",
+			LLMResponse: model.LLMResponse{Content: &genai.Content{Parts: []*genai.Part{
+				{FunctionResponse: &genai.FunctionResponse{ID: "call-1", Name: "lookup_resume", Response: map[string]any{"years": float64(5)}}},
+			}}},
+		},
+		&session.Event{
+			ID: "ev-assistant", Author: "resume_agent",
+			LLMResponse: model.LLMResponse{Content: &genai.Content{Parts: []*genai.Part{
+				{Text: "Five years of experience."},
+			}}},
+		},
+	)
+
+	h := StateHandler(testResumeRegistry(t), sessions)
+	req := httptest.NewRequest(http.MethodPost, "/resume/agents/state", strings.NewReader(`{"threadId":"thread-messages"}`))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rr.Code, rr.Body.String())
+	}
+
+	var got stateResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if !got.ThreadExists {
+		t.Fatal("expected threadExists = true")
+	}
+	if len(got.Messages) != 4 {
+		t.Fatalf("messages = %#v", got.Messages)
+	}
+
+	user := got.Messages[0]
+	if user.Role != aguitypes.RoleUser {
+		t.Fatalf("messages[0].role = %q", user.Role)
+	}
+	if text, ok := user.ContentString(); !ok || text != "What experience do you have?" {
+		t.Fatalf("messages[0].content = %#v", user.Content)
+	}
+
+	toolCall := got.Messages[1]
+	if toolCall.Role != aguitypes.RoleAssistant || len(toolCall.ToolCalls) != 1 {
+		t.Fatalf("messages[1] = %#v", toolCall)
+	}
+	if name := toolCall.ToolCalls[0].Function.Name; name != "lookup_resume" {
+		t.Fatalf("messages[1].toolCalls[0].function.name = %q", name)
+	}
+	if args := toolCall.ToolCalls[0].Function.Arguments; args != `{"query":"experience"}` {
+		t.Fatalf("messages[1].toolCalls[0].function.arguments = %q", args)
+	}
+
+	toolResult := got.Messages[2]
+	if toolResult.Role != aguitypes.RoleTool || toolResult.ToolCallID != "call-1" {
+		t.Fatalf("messages[2] = %#v", toolResult)
+	}
+	if resultText, ok := toolResult.ContentString(); !ok || resultText != `{"years":5}` {
+		t.Fatalf("messages[2].content = %#v", toolResult.Content)
+	}
+
+	assistant := got.Messages[3]
+	if assistant.Role != aguitypes.RoleAssistant {
+		t.Fatalf("messages[3].role = %q", assistant.Role)
+	}
+	if text, ok := assistant.ContentString(); !ok || text != "Five years of experience." {
+		t.Fatalf("messages[3].content = %#v", assistant.Content)
 	}
 }
