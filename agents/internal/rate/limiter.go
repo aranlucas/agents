@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aranlucas/agents/agents/internal/cloudflare"
+	"agents/internal/cloudflare"
 )
 
 // ErrLimitReached indicates that the provider's current minute window is full.
@@ -46,7 +46,8 @@ func (l *ProviderLimiter) Acquire(ctx context.Context, provider string, maximum 
 	}
 	now := l.clock().UTC()
 	window := now.Truncate(time.Minute).Unix()
-	results, err := l.d1.Run(ctx,
+	results, err := l.d1.Run(
+		ctx,
 		cloudflare.Statement{SQL: "DELETE FROM provider_limits WHERE expires_at <= ?", Params: []any{now.Unix()}},
 		cloudflare.Statement{
 			SQL: `INSERT INTO provider_limits (provider, minute_window, request_count, expires_at)

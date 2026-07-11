@@ -13,26 +13,26 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/aranlucas/agents/agents/internal/agents/common"
-	"github.com/aranlucas/agents/agents/internal/agents/excalidraw"
-	"github.com/aranlucas/agents/agents/internal/agents/expense"
-	"github.com/aranlucas/agents/agents/internal/agents/fitness"
-	"github.com/aranlucas/agents/agents/internal/agents/grocery"
-	"github.com/aranlucas/agents/agents/internal/agents/oralboards"
-	"github.com/aranlucas/agents/agents/internal/agents/presentation"
-	"github.com/aranlucas/agents/agents/internal/agents/research"
-	"github.com/aranlucas/agents/agents/internal/agents/resume"
-	"github.com/aranlucas/agents/agents/internal/agents/spreadsheet"
-	"github.com/aranlucas/agents/agents/internal/agents/travel"
-	"github.com/aranlucas/agents/agents/internal/agents/trends"
-	"github.com/aranlucas/agents/agents/internal/agents/wellness"
-	clerkbackend "github.com/aranlucas/agents/agents/internal/clerk"
-	"github.com/aranlucas/agents/agents/internal/cloudflare"
-	"github.com/aranlucas/agents/agents/internal/config"
-	mcpbridge "github.com/aranlucas/agents/agents/internal/mcp"
-	"github.com/aranlucas/agents/agents/internal/providers/openai"
-	"github.com/aranlucas/agents/agents/internal/rate"
-	telegramruntime "github.com/aranlucas/agents/agents/internal/telegram"
+	"agents/excalidraw/agent"
+	"agents/expense/agent"
+	"agents/fitness/agent"
+	"agents/grocery/agent"
+	clerkbackend "agents/internal/clerk"
+	"agents/internal/cloudflare"
+	"agents/internal/common"
+	"agents/internal/config"
+	mcpbridge "agents/internal/mcp"
+	"agents/internal/providers/openai"
+	"agents/internal/rate"
+	telegramruntime "agents/internal/telegram"
+	"agents/oralboards/agent"
+	"agents/presentation/agent"
+	"agents/research/agent"
+	"agents/resume/agent"
+	"agents/spreadsheet/agent"
+	"agents/travel/agent"
+	"agents/trends/agent"
+	"agents/wellness/agent"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/tool"
@@ -146,6 +146,7 @@ func buildOrchestrator(model *openai.Model, specialists map[string]agent.Agent) 
 	}
 	return llmagent.New(llmagent.Config{Name: telegramruntime.OrchestratorAppName, Description: "Routes Telegram requests to exactly one specialist.", Model: model, Instruction: "Choose exactly one specialist tool for the request. Respect current sender credential flags. Return a concise Telegram-friendly answer; never call multiple specialists.", Tools: tools})
 }
+
 func buildSearch() *common.BraveSearch {
 	key := strings.TrimSpace(os.Getenv("BRAVE_API_KEY"))
 	if key == "" {
@@ -155,6 +156,7 @@ func buildSearch() *common.BraveSearch {
 	must(err)
 	return result
 }
+
 func parseChatIDs(raw string) []int64 {
 	var result []int64
 	for value := range strings.SplitSeq(raw, ",") {
@@ -165,17 +167,20 @@ func parseChatIDs(raw string) []int64 {
 	}
 	return result
 }
+
 func envDefault(key, fallback string) string {
 	if value := strings.TrimSpace(os.Getenv(key)); value != "" {
 		return value
 	}
 	return fallback
 }
+
 func must(err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
 }
+
 func healthHandler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) {

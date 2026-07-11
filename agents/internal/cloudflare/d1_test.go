@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aranlucas/agents/agents/internal/config"
+	"agents/internal/config"
 	"google.golang.org/adk/v2/session"
 )
 

@@ -12,28 +12,94 @@ import (
 )
 
 type chatRequest struct {
-	Model            string        `json:"model"`
-	Messages         []chatMessage `json:"messages"`
-	Tools            []chatTool    `json:"tools,omitempty"`
-	ToolChoice       any           `json:"tool_choice,omitempty"`
-	Temperature      *float32      `json:"temperature,omitempty"`
-	TopP             *float32      `json:"top_p,omitempty"`
-	MaxTokens        int32         `json:"max_tokens,omitempty"`
-	Stop             []string      `json:"stop,omitempty"`
-	PresencePenalty  *float32      `json:"presence_penalty,omitempty"`
-	FrequencyPenalty *float32      `json:"frequency_penalty,omitempty"`
-	Seed             *int32        `json:"seed,omitempty"`
-	ResponseFormat   any           `json:"response_format,omitempty"`
-	Stream           bool          `json:"stream"`
-	StreamOptions    any           `json:"stream_options,omitempty"`
+	Model            string          `json:"model"`
+	Messages         []chatMessage   `json:"messages"`
+	Tools            []chatTool      `json:"tools,omitempty"`
+	ToolChoice       *toolChoice     `json:"tool_choice,omitempty"`
+	Temperature      *float32        `json:"temperature,omitempty"`
+	TopP             *float32        `json:"top_p,omitempty"`
+	MaxTokens        int32           `json:"max_tokens,omitempty"`
+	Stop             []string        `json:"stop,omitempty"`
+	PresencePenalty  *float32        `json:"presence_penalty,omitempty"`
+	FrequencyPenalty *float32        `json:"frequency_penalty,omitempty"`
+	Seed             *int32          `json:"seed,omitempty"`
+	ResponseFormat   *responseFormat `json:"response_format,omitempty"`
+	Stream           bool            `json:"stream"`
+	StreamOptions    *streamOptions  `json:"stream_options,omitempty"`
+}
+
+type streamOptions struct {
+	IncludeUsage bool `json:"include_usage"`
+}
+
+type responseFormat struct {
+	Type       string              `json:"type"`
+	JSONSchema *responseJSONSchema `json:"json_schema,omitempty"`
+}
+
+type responseJSONSchema struct {
+	Name   string          `json:"name"`
+	Schema json.RawMessage `json:"schema"`
+}
+
+// toolChoice models OpenAI's string-or-object wire union without leaking an
+// untyped value through the rest of the adapter.
+type toolChoice struct {
+	Mode         string
+	FunctionName string
+}
+
+func (c toolChoice) MarshalJSON() ([]byte, error) {
+	if c.FunctionName == "" {
+		return json.Marshal(c.Mode)
+	}
+	return json.Marshal(struct {
+		Type     string `json:"type"`
+		Function struct {
+			Name string `json:"name"`
+		} `json:"function"`
+	}{Type: "function", Function: struct {
+		Name string `json:"name"`
+	}{Name: c.FunctionName}})
 }
 
 type chatMessage struct {
 	Role       string         `json:"role"`
-	Content    any            `json:"content,omitempty"`
+	Content    *chatContent   `json:"content,omitempty"`
 	ToolCalls  []chatToolCall `json:"tool_calls,omitempty"`
 	ToolCallID string         `json:"tool_call_id,omitempty"`
 	Name       string         `json:"name,omitempty"`
+}
+
+// chatContent models OpenAI's string-or-array message content union.
+type chatContent struct {
+	Text  *string
+	Parts []contentPart
+}
+
+func textChatContent(value string) *chatContent { return &chatContent{Text: &value} }
+
+func (c chatContent) MarshalJSON() ([]byte, error) {
+	if c.Text != nil {
+		return json.Marshal(*c.Text)
+	}
+	return json.Marshal(c.Parts)
+}
+
+func (c *chatContent) UnmarshalJSON(data []byte) error {
+	var text string
+	if err := json.Unmarshal(data, &text); err == nil {
+		c.Text = &text
+		c.Parts = nil
+		return nil
+	}
+	var parts []contentPart
+	if err := json.Unmarshal(data, &parts); err != nil {
+		return err
+	}
+	c.Text = nil
+	c.Parts = parts
+	return nil
 }
 
 type contentPart struct {
@@ -52,9 +118,9 @@ type chatTool struct {
 }
 
 type chatFunction struct {
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
-	Parameters  any    `json:"parameters"`
+	Name        string          `json:"name"`
+	Description string          `json:"description,omitempty"`
+	Parameters  json.RawMessage `json:"parameters"`
 }
 
 type chatToolCall struct {
@@ -106,7 +172,7 @@ func buildChatRequest(req *model.LLMRequest, modelName string, stream bool) (cha
 	}
 	result := chatRequest{Model: modelName, Stream: stream}
 	if stream {
-		result.StreamOptions = map[string]bool{"include_usage": true}
+		result.StreamOptions = &streamOptions{IncludeUsage: true}
 	}
 	if req.Config != nil {
 		config := req.Config
@@ -116,17 +182,21 @@ func buildChatRequest(req *model.LLMRequest, modelName string, stream bool) (cha
 				return chatRequest{}, fmt.Errorf("system instruction: %w", err)
 			}
 			if content != "" {
-				result.Messages = append(result.Messages, chatMessage{Role: "system", Content: content})
+				result.Messages = append(result.Messages, chatMessage{Role: "system", Content: textChatContent(content)})
 			}
 		}
 		result.Temperature, result.TopP, result.MaxTokens = config.Temperature, config.TopP, config.MaxOutputTokens
 		result.Stop, result.PresencePenalty, result.FrequencyPenalty, result.Seed = config.StopSequences, config.PresencePenalty, config.FrequencyPenalty, config.Seed
 		if config.ResponseJsonSchema != nil {
-			result.ResponseFormat = map[string]any{"type": "json_schema", "json_schema": map[string]any{"name": "response", "schema": config.ResponseJsonSchema}}
+			schema, err := marshalSchema(config.ResponseJsonSchema)
+			if err != nil {
+				return chatRequest{}, errors.New("encode response JSON schema")
+			}
+			result.ResponseFormat = &responseFormat{Type: "json_schema", JSONSchema: &responseJSONSchema{Name: "response", Schema: schema}}
 		} else if config.ResponseSchema != nil {
-			result.ResponseFormat = map[string]any{"type": "json_schema", "json_schema": map[string]any{"name": "response", "schema": schemaMap(config.ResponseSchema)}}
+			result.ResponseFormat = &responseFormat{Type: "json_schema", JSONSchema: &responseJSONSchema{Name: "response", Schema: schemaMap(config.ResponseSchema)}}
 		} else if config.ResponseMIMEType == "application/json" {
-			result.ResponseFormat = map[string]string{"type": "json_object"}
+			result.ResponseFormat = &responseFormat{Type: "json_object"}
 		}
 		for _, tool := range config.Tools {
 			if tool == nil {
@@ -136,12 +206,18 @@ func buildChatRequest(req *model.LLMRequest, modelName string, stream bool) (cha
 				if declaration == nil || declaration.Name == "" {
 					continue
 				}
-				parameters := declaration.ParametersJsonSchema
-				if parameters == nil && declaration.Parameters != nil {
+				var parameters json.RawMessage
+				if declaration.ParametersJsonSchema != nil {
+					var schemaErr error
+					parameters, schemaErr = marshalSchema(declaration.ParametersJsonSchema)
+					if schemaErr != nil {
+						return chatRequest{}, fmt.Errorf("encode tool %q JSON schema", declaration.Name)
+					}
+				} else if declaration.Parameters != nil {
 					parameters = schemaMap(declaration.Parameters)
 				}
 				if parameters == nil {
-					parameters = map[string]any{"type": "object", "properties": map[string]any{}}
+					parameters = json.RawMessage(`{"type":"object","properties":{}}`)
 				}
 				result.Tools = append(result.Tools, chatTool{Type: "function", Function: chatFunction{Name: declaration.Name, Description: declaration.Description, Parameters: parameters}})
 			}
@@ -150,15 +226,15 @@ func buildChatRequest(req *model.LLMRequest, modelName string, stream bool) (cha
 			calling := config.ToolConfig.FunctionCallingConfig
 			switch calling.Mode {
 			case genai.FunctionCallingConfigModeNone:
-				result.ToolChoice = "none"
+				result.ToolChoice = &toolChoice{Mode: "none"}
 			case genai.FunctionCallingConfigModeAny:
 				if len(calling.AllowedFunctionNames) == 1 {
-					result.ToolChoice = map[string]any{"type": "function", "function": map[string]string{"name": calling.AllowedFunctionNames[0]}}
+					result.ToolChoice = &toolChoice{FunctionName: calling.AllowedFunctionNames[0]}
 				} else {
-					result.ToolChoice = "required"
+					result.ToolChoice = &toolChoice{Mode: "required"}
 				}
 			case genai.FunctionCallingConfigModeAuto, genai.FunctionCallingConfigModeValidated:
-				result.ToolChoice = "auto"
+				result.ToolChoice = &toolChoice{Mode: "auto"}
 			}
 		}
 	}
@@ -170,7 +246,7 @@ func buildChatRequest(req *model.LLMRequest, modelName string, stream bool) (cha
 		result.Messages = append(result.Messages, messages...)
 	}
 	if len(result.Messages) == 0 {
-		result.Messages = append(result.Messages, chatMessage{Role: "user", Content: "Continue processing the request as instructed."})
+		result.Messages = append(result.Messages, chatMessage{Role: "user", Content: textChatContent("Continue processing the request as instructed.")})
 	}
 	return result, nil
 }
@@ -209,15 +285,15 @@ func contentMessages(content *genai.Content) ([]chatMessage, error) {
 			if err != nil {
 				return nil, errors.New("encode function response")
 			}
-			responses = append(responses, chatMessage{Role: "tool", ToolCallID: part.FunctionResponse.ID, Name: part.FunctionResponse.Name, Content: string(encoded)})
+			responses = append(responses, chatMessage{Role: "tool", ToolCallID: part.FunctionResponse.ID, Name: part.FunctionResponse.Name, Content: textChatContent(string(encoded))})
 		default:
 			return nil, errors.New("unsupported content part for OpenAI-compatible provider")
 		}
 	}
 	if len(parts) == 1 && parts[0].Type == "text" {
-		message.Content = parts[0].Text
+		message.Content = textChatContent(parts[0].Text)
 	} else if len(parts) > 0 {
-		message.Content = parts
+		message.Content = &chatContent{Parts: parts}
 	}
 	var messages []chatMessage
 	if message.Content != nil || len(message.ToolCalls) > 0 {
@@ -241,12 +317,24 @@ func textContent(content *genai.Content) (string, error) {
 	return builder.String(), nil
 }
 
-func schemaMap(schema *genai.Schema) any {
+func schemaMap(schema *genai.Schema) json.RawMessage {
 	data, _ := json.Marshal(schema)
 	var value any
 	_ = json.Unmarshal(data, &value)
 	normalizeSchema(value)
-	return value
+	data, _ = json.Marshal(value)
+	return data
+}
+
+func marshalSchema(value any) (json.RawMessage, error) {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+	if !json.Valid(data) {
+		return nil, errors.New("invalid JSON schema")
+	}
+	return data, nil
 }
 
 func normalizeSchema(value any) {

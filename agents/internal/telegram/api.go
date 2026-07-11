@@ -155,9 +155,11 @@ func (c *HTTPClient) jsonRequest(ctx context.Context, method string, input any) 
 	request.Header.Set("Content-Type", "application/json")
 	return request, nil
 }
+
 func (c *HTTPClient) methodURL(method string) string {
 	return c.baseURL + "/bot" + c.token + "/" + method
 }
+
 func (c *HTTPClient) do(request *http.Request, output any) error {
 	response, err := c.client.Do(request)
 	if err != nil {
@@ -184,6 +186,7 @@ func (c *HTTPClient) do(request *http.Request, output any) error {
 	}
 	return nil
 }
+
 func isTelegramLoopback(host string) bool {
 	ip := net.ParseIP(host)
 	return strings.EqualFold(host, "localhost") || ip != nil && ip.IsLoopback()

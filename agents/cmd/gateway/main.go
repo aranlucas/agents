@@ -17,32 +17,32 @@ import (
 	"sync"
 	"time"
 
+	"agents/excalidraw/agent"
+	"agents/expense/agent"
+	"agents/fitness/agent"
+	"agents/grocery/agent"
+	"agents/internal/agentruntime"
+	"agents/internal/agui"
+	"agents/internal/auth"
+	clerkbackend "agents/internal/clerk"
+	"agents/internal/cloudflare"
+	"agents/internal/common"
+	"agents/internal/config"
+	mcpbridge "agents/internal/mcp"
+	"agents/internal/observability"
+	"agents/internal/providers/gemini"
+	"agents/internal/providers/openai"
+	"agents/internal/rate"
+	telegramruntime "agents/internal/telegram"
+	"agents/oralboards/agent"
+	"agents/presentation/agent"
+	"agents/research/agent"
+	"agents/resume/agent"
+	"agents/spreadsheet/agent"
+	"agents/travel/agent"
+	"agents/trends/agent"
+	"agents/wellness/agent"
 	"cloud.google.com/go/bigquery"
-	"github.com/aranlucas/agents/agents/internal/agentruntime"
-	"github.com/aranlucas/agents/agents/internal/agents/common"
-	"github.com/aranlucas/agents/agents/internal/agents/excalidraw"
-	"github.com/aranlucas/agents/agents/internal/agents/expense"
-	"github.com/aranlucas/agents/agents/internal/agents/fitness"
-	"github.com/aranlucas/agents/agents/internal/agents/grocery"
-	"github.com/aranlucas/agents/agents/internal/agents/oralboards"
-	"github.com/aranlucas/agents/agents/internal/agents/presentation"
-	"github.com/aranlucas/agents/agents/internal/agents/research"
-	"github.com/aranlucas/agents/agents/internal/agents/resume"
-	"github.com/aranlucas/agents/agents/internal/agents/spreadsheet"
-	"github.com/aranlucas/agents/agents/internal/agents/travel"
-	"github.com/aranlucas/agents/agents/internal/agents/trends"
-	"github.com/aranlucas/agents/agents/internal/agents/wellness"
-	"github.com/aranlucas/agents/agents/internal/agui"
-	"github.com/aranlucas/agents/agents/internal/auth"
-	clerkbackend "github.com/aranlucas/agents/agents/internal/clerk"
-	"github.com/aranlucas/agents/agents/internal/cloudflare"
-	"github.com/aranlucas/agents/agents/internal/config"
-	mcpbridge "github.com/aranlucas/agents/agents/internal/mcp"
-	"github.com/aranlucas/agents/agents/internal/observability"
-	"github.com/aranlucas/agents/agents/internal/providers/gemini"
-	"github.com/aranlucas/agents/agents/internal/providers/openai"
-	"github.com/aranlucas/agents/agents/internal/rate"
-	telegramruntime "github.com/aranlucas/agents/agents/internal/telegram"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/api/option"
@@ -149,6 +149,50 @@ type telegramLinkConsumeRequest struct {
 	ClerkUserID string `json:"clerk_user_id"`
 }
 
+type telegramLinkConsumeResponse struct {
+	OK             bool  `json:"ok"`
+	TelegramUserID int64 `json:"telegram_user_id"`
+}
+
+type capabilityFlag struct {
+	Streaming bool `json:"streaming"`
+}
+
+type stateCapabilities struct {
+	Snapshots       bool `json:"snapshots"`
+	Deltas          bool `json:"deltas"`
+	PersistentState bool `json:"persistentState"`
+}
+
+type reasoningCapabilities struct {
+	Supported bool `json:"supported"`
+	Streaming bool `json:"streaming"`
+}
+
+type toolCapabilities struct {
+	Supported      bool `json:"supported"`
+	ClientProvided bool `json:"clientProvided"`
+}
+
+type capabilitiesResponse struct {
+	Transport capabilityFlag        `json:"transport"`
+	State     stateCapabilities     `json:"state"`
+	Reasoning reasoningCapabilities `json:"reasoning"`
+	Tools     toolCapabilities      `json:"tools"`
+}
+
+type agentHealthResponse struct {
+	Status string `json:"status"`
+	Agent  string `json:"agent"`
+}
+
+type rootHealthResponse struct {
+	Status  string            `json:"status"`
+	Service string            `json:"service"`
+	Time    string            `json:"time"`
+	Checks  map[string]string `json:"checks"`
+}
+
 func telegramLinkConsumeHandler(secret string, links *telegramruntime.LinkStore, backend clerkbackend.Backend) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		provided := r.Header.Get("x-telegram-link-secret")
@@ -172,7 +216,7 @@ func telegramLinkConsumeHandler(secret string, links *telegramruntime.LinkStore,
 			_ = backend.MirrorTelegramLink(r.Context(), link.TelegramUserID, link.ClerkUserID)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "telegram_user_id": link.TelegramUserID})
+		_ = json.NewEncoder(w).Encode(telegramLinkConsumeResponse{OK: true, TelegramUserID: link.TelegramUserID})
 	}
 }
 
@@ -190,11 +234,11 @@ func writeGatewayJSONError(w http.ResponseWriter, status int, code string) {
 func capabilitiesHandler(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"transport": map[string]any{"streaming": true},
-		"state":     map[string]any{"snapshots": true, "deltas": true, "persistentState": true},
-		"reasoning": map[string]any{"supported": true, "streaming": true},
-		"tools":     map[string]any{"supported": true, "clientProvided": true},
+	_ = json.NewEncoder(w).Encode(capabilitiesResponse{
+		Transport: capabilityFlag{Streaming: true},
+		State:     stateCapabilities{Snapshots: true, Deltas: true, PersistentState: true},
+		Reasoning: reasoningCapabilities{Supported: true, Streaming: true},
+		Tools:     toolCapabilities{Supported: true, ClientProvided: true},
 	})
 }
 
@@ -213,7 +257,7 @@ func agentHealthHandler(entry agentruntime.Entry) http.HandlerFunc {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(code)
-		_ = json.NewEncoder(w).Encode(map[string]any{"status": status, "agent": entry.AppName})
+		_ = json.NewEncoder(w).Encode(agentHealthResponse{Status: status, Agent: entry.AppName})
 	}
 }
 
@@ -255,11 +299,9 @@ func rootHealthHandler(deps Dependencies) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(code)
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"status":  status,
-			"service": "agents-gateway",
-			"time":    deps.Now().UTC().Format(time.RFC3339),
-			"checks":  checks,
+		_ = json.NewEncoder(w).Encode(rootHealthResponse{
+			Status: status, Service: "agents-gateway",
+			Time: deps.Now().UTC().Format(time.RFC3339), Checks: checks,
 		})
 	}
 }
@@ -411,7 +453,7 @@ func trendsBigQueryClient(ctx context.Context) (*bigquery.Client, error) {
 // CI, a fresh Railway service). A missing key returns (nil, nil) so the
 // gateway still starts and trends.New's composer parameter degrades
 // generate_a2ui to its deterministic BuildA2UI surface (see
-// internal/agents/trends/compose.go's composeA2UI) instead of crashing.
+// trends/agent/compose.go's composeA2UI) instead of crashing.
 func trendsComposerModel(ctx context.Context) (model.LLM, error) {
 	apiKey := strings.TrimSpace(os.Getenv("GEMINI_API_KEY"))
 	if apiKey == "" {

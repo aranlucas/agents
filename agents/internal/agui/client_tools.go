@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aranlucas/agents/agents/internal/auth"
-	"github.com/aranlucas/agents/agents/internal/cloudflare"
+	"agents/internal/auth"
+	"agents/internal/cloudflare"
 	"github.com/google/jsonschema-go/jsonschema"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/session"
@@ -74,7 +74,8 @@ func (p *PendingStore) Register(ctx context.Context, scope ToolScope, callID, to
 		return errors.New("invalid client tool arguments")
 	}
 	now := p.now().UTC()
-	_, err = p.d1.Run(ctx,
+	_, err = p.d1.Run(
+		ctx,
 		cloudflare.Statement{SQL: "DELETE FROM pending_client_tools WHERE expires_at <= ?", Params: []any{now.UnixMilli()}},
 		cloudflare.Statement{SQL: `INSERT INTO pending_client_tools
 			(app_name, user_id, thread_id, call_id, tool_name, args_json, status, created_at, expires_at)
@@ -99,11 +100,14 @@ func (p *PendingStore) Resolve(ctx context.Context, identity auth.Identity, app,
 		return errors.New("invalid client tool result")
 	}
 	now := p.now().UTC()
-	results, err := p.d1.Run(ctx,
+	results, err := p.d1.Run(
+		ctx,
 		cloudflare.Statement{SQL: "DELETE FROM pending_client_tools WHERE expires_at <= ?", Params: []any{now.UnixMilli()}},
-		cloudflare.Statement{SQL: `UPDATE pending_client_tools SET result_json = ?, status = 'resolved'
+		cloudflare.Statement{
+			SQL: `UPDATE pending_client_tools SET result_json = ?, status = 'resolved'
 			WHERE app_name = ? AND user_id = ? AND thread_id = ? AND call_id = ? AND status = 'pending' AND expires_at > ?`,
-			Params: []any{string(encoded), app, identity.UserID, thread, callID, now.UnixMilli()}},
+			Params: []any{string(encoded), app, identity.UserID, thread, callID, now.UnixMilli()},
+		},
 	)
 	if err != nil {
 		return fmt.Errorf("resolve pending client tool: %w", err)
@@ -119,7 +123,8 @@ func (p *PendingStore) Take(ctx context.Context, identity auth.Identity, app, th
 		return nil, ErrPendingToolNotFound
 	}
 	now := p.now().UTC()
-	results, err := p.d1.Run(ctx,
+	results, err := p.d1.Run(
+		ctx,
 		cloudflare.Statement{SQL: `SELECT tool_name, args_json, result_json FROM pending_client_tools
 			WHERE app_name = ? AND user_id = ? AND thread_id = ? AND call_id = ? AND status = 'resolved' AND expires_at > ?`, Params: []any{app, identity.UserID, thread, callID, now.UnixMilli()}},
 		cloudflare.Statement{SQL: `DELETE FROM pending_client_tools
@@ -138,13 +143,13 @@ func (p *PendingStore) Take(ctx context.Context, identity auth.Identity, app, th
 	if toolName == "" || argumentsJSON == "" || encoded == "" {
 		return nil, errors.New("invalid pending client tool record")
 	}
-	var raw any
-	if json.Unmarshal([]byte(encoded), &raw) != nil {
+	resultJSON := json.RawMessage(encoded)
+	if !json.Valid(resultJSON) {
 		return nil, errors.New("invalid pending client tool result")
 	}
-	response, ok := raw.(map[string]any)
-	if !ok {
-		response = map[string]any{"result": raw}
+	var response map[string]any
+	if json.Unmarshal(resultJSON, &response) != nil || response == nil {
+		response = map[string]any{"result": resultJSON}
 	}
 	var arguments map[string]any
 	if json.Unmarshal([]byte(argumentsJSON), &arguments) != nil {

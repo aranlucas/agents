@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	clerkbackend "github.com/aranlucas/agents/agents/internal/clerk"
+	clerkbackend "agents/internal/clerk"
 )
 
 var (
@@ -112,6 +112,7 @@ func parseCommand(text string) string {
 	}
 	return strings.SplitN(strings.TrimPrefix(fields[0], "/"), "@", 2)[0]
 }
+
 func cleanAddressedText(text, username string) string {
 	username = strings.TrimPrefix(strings.TrimSpace(username), "@")
 	if username != "" {
@@ -120,6 +121,7 @@ func cleanAddressedText(text, username string) string {
 	}
 	return strings.TrimSpace(text)
 }
+
 func specialistForText(text string) string {
 	lower := strings.ToLower(text)
 	if containsAny(lower, "wellness", "meals and workout", "food and training") {
@@ -133,6 +135,7 @@ func specialistForText(text string) string {
 	}
 	return "orchestrator"
 }
+
 func requiredCredentials(agent string) []string {
 	switch agent {
 	case "grocery":
@@ -145,6 +148,7 @@ func requiredCredentials(agent string) []string {
 		return nil
 	}
 }
+
 func containsAny(value string, candidates ...string) bool {
 	for _, candidate := range candidates {
 		if strings.Contains(value, candidate) {

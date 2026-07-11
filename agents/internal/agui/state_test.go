@@ -4,8 +4,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"agents/internal/agentruntime"
 	aguievents "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
-	"github.com/aranlucas/agents/agents/internal/agentruntime"
 )
 
 func TestOAuthHeadersBecomeRouteScopedFlagsWithoutChangingTokenNames(t *testing.T) {

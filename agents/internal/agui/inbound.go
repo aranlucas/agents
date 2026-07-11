@@ -8,8 +8,8 @@ import (
 	"io"
 	"strings"
 
+	"agents/internal/auth"
 	aguitypes "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
-	"github.com/aranlucas/agents/agents/internal/auth"
 	"google.golang.org/genai"
 )
 

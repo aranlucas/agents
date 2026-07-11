@@ -72,8 +72,12 @@ func NewBackend(client *http.Client, baseURL, secret string) (*HTTPBackend, erro
 }
 
 type clerkUser struct {
-	ID              string         `json:"id"`
-	PrivateMetadata map[string]any `json:"private_metadata"`
+	ID              string               `json:"id"`
+	PrivateMetadata clerkPrivateMetadata `json:"private_metadata"`
+}
+
+type clerkPrivateMetadata struct {
+	LinkedClerkUserID string `json:"linked_clerk_user_id"`
 }
 
 func (b *HTTPBackend) LinkedUserID(ctx context.Context, telegramUserID int64) (string, error) {
@@ -81,8 +85,8 @@ func (b *HTTPBackend) LinkedUserID(ctx context.Context, telegramUserID int64) (s
 	if err != nil || len(users) == 0 {
 		return "", err
 	}
-	if linked, ok := users[0].PrivateMetadata["linked_clerk_user_id"].(string); ok && linked != "" {
-		return linked, nil
+	if users[0].PrivateMetadata.LinkedClerkUserID != "" {
+		return users[0].PrivateMetadata.LinkedClerkUserID, nil
 	}
 	return users[0].ID, nil
 }

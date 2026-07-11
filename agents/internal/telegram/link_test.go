@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aranlucas/agents/agents/internal/cloudflare"
+	"agents/internal/cloudflare"
 )
 
 type memoryLinkDB struct {
@@ -21,6 +21,7 @@ type memoryLinkDB struct {
 func newMemoryLinkDB() *memoryLinkDB {
 	return &memoryLinkDB{tokens: map[string]map[string]any{}, links: map[int64]AccountLink{}}
 }
+
 func (d *memoryLinkDB) Run(_ context.Context, statements ...cloudflare.Statement) ([]cloudflare.Result, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()

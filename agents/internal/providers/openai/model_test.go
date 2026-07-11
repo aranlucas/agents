@@ -12,8 +12,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/aranlucas/agents/agents/internal/config"
-	"github.com/aranlucas/agents/agents/internal/rate"
+	"agents/internal/config"
+	"agents/internal/rate"
 	adkmodel "google.golang.org/adk/v2/model"
 	"google.golang.org/genai"
 )
@@ -102,7 +102,8 @@ func TestGenerateContentMapsMessagesToolsAndNonStreamingResponse(t *testing.T) {
 	defer server.Close()
 	request := toolRequest()
 	request.Config.SystemInstruction = genai.NewContentFromText("system", "user")
-	request.Contents = append(request.Contents,
+	request.Contents = append(
+		request.Contents,
 		&genai.Content{Role: "model", Parts: []*genai.Part{{FunctionCall: &genai.FunctionCall{ID: "call-1", Name: "lookup", Args: map[string]any{"q": "x"}}}}},
 		&genai.Content{Role: "user", Parts: []*genai.Part{{FunctionResponse: &genai.FunctionResponse{ID: "call-1", Name: "lookup", Response: map[string]any{"result": "y"}}}}},
 	)

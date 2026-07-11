@@ -8,7 +8,7 @@ This pnpm monorepo contains an ADK-Go multi-agent backend and Next.js/Expo clien
 agents/
   cmd/gateway/            Go AG-UI gateway
   cmd/telegram/           Go Telegram long-poll worker
-  internal/agents/        12 typed ADK-Go agent packages
+  <name>/agent/           12 typed ADK-Go authored agent packages
   internal/agui/          AG-UI request/event bridge
   internal/cloudflare/    D1 sessions/rates/links and R2 artifacts
   internal/providers/     in-process OpenAI-compatible and Gemini adapters
@@ -39,8 +39,9 @@ The gateway runs on port 8000. It mounts `/<agent>/agui`,
 ## Go agent conventions
 
 - Use strong domain types. Restrict `any` to JSON, ADK, MCP, and other library boundaries.
-- Keep each agent under `agents/internal/agents/<name>/` with `agent.go`, typed
-  state/tools, embedded `instructions.md`, and deterministic tests.
+- Keep each agent under `agents/<name>/agent/` with `agent.go`, typed state,
+  embedded `instructions.md`, deterministic tests, and a `tools/` package with
+  one file per registered tool.
 - Construct tools with ADK-Go `functiontool.New`; use task-mode child agents or
   `agent.New` custom routing for deterministic orchestration.
 - State is authoritative. Commit validated state deltas through the shared
@@ -54,7 +55,7 @@ The gateway runs on port 8000. It mounts `/<agent>/agui`,
 
 ## Adding an agent
 
-1. Add its typed package and tests under `agents/internal/agents/`.
+1. Add its typed package and tests under `agents/<name>/agent/`.
 2. Register it explicitly in `agents/cmd/gateway/main.go`.
 3. Add shared TypeScript state only for fields active clients consume.
 4. Add route/identity/state contract coverage.

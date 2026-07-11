@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aranlucas/agents/agents/internal/auth"
-	"github.com/aranlucas/agents/agents/internal/cloudflare"
-	"github.com/aranlucas/agents/agents/internal/config"
+	"agents/internal/auth"
+	"agents/internal/cloudflare"
+	"agents/internal/config"
 	"google.golang.org/genai"
 )
 
