@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -18,6 +19,8 @@ import (
 )
 
 const sessionTTL = time.Hour
+
+var ErrStaleSession = errors.New("session has been modified in storage; reload it before appending events")
 
 // SessionService persists ADK sessions and events exclusively in D1.
 type SessionService struct {
@@ -59,13 +62,23 @@ func (s *SessionService) Create(ctx context.Context, req *session.CreateRequest)
 	if err != nil {
 		return nil, errors.New("encode user state")
 	}
+	appUpdate, appUpdateParams, err := stateUpdateExpression("state_json", appState)
+	if err != nil {
+		return nil, errors.New("encode app state")
+	}
+	userUpdate, userUpdateParams, err := stateUpdateExpression("state_json", userState)
+	if err != nil {
+		return nil, errors.New("encode user state")
+	}
 	now := s.now().UTC()
+	appParams := append([]any{req.AppName, string(appJSON)}, appUpdateParams...)
+	userParams := append([]any{req.AppName, req.UserID, string(userJSON)}, userUpdateParams...)
 	result, err := s.d1.Run(
 		ctx,
 		Statement{SQL: `INSERT INTO app_states (app_name, state_json) VALUES (?, ?)
-			ON CONFLICT(app_name) DO UPDATE SET state_json = json_patch(state_json, excluded.state_json)`, Params: []any{req.AppName, string(appJSON)}},
+			ON CONFLICT(app_name) DO UPDATE SET state_json = ` + appUpdate, Params: appParams},
 		Statement{SQL: `INSERT INTO user_states (app_name, user_id, state_json) VALUES (?, ?, ?)
-			ON CONFLICT(app_name, user_id) DO UPDATE SET state_json = json_patch(state_json, excluded.state_json)`, Params: []any{req.AppName, req.UserID, string(userJSON)}},
+			ON CONFLICT(app_name, user_id) DO UPDATE SET state_json = ` + userUpdate, Params: userParams},
 		Statement{
 			SQL: `INSERT INTO sessions (app_name, user_id, session_id, state_json, created_at, updated_at, expires_at)
 			VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -119,14 +132,21 @@ func (s *SessionService) Get(ctx context.Context, req *session.GetRequest) (*ses
 }
 
 func (s *SessionService) List(ctx context.Context, req *session.ListRequest) (*session.ListResponse, error) {
-	if req == nil || !validIdentity(req.AppName) || !validIdentity(req.UserID) {
-		return nil, errors.New("app name and user ID are required")
+	if req == nil || !validIdentity(req.AppName) || req.UserID != "" && !validIdentity(req.UserID) {
+		return nil, errors.New("app name is required and user ID must be valid when provided")
 	}
-	results, err := s.d1.Run(ctx, Statement{SQL: `SELECT session_id, state_json, updated_at,
+	query := `SELECT session_id, user_id, state_json, updated_at,
 		(SELECT state_json FROM app_states WHERE app_name = sessions.app_name) AS app_state_json,
 		(SELECT state_json FROM user_states WHERE app_name = sessions.app_name AND user_id = sessions.user_id) AS user_state_json
 		FROM sessions
-		WHERE app_name = ? AND user_id = ? AND expires_at > ? ORDER BY updated_at DESC`, Params: []any{req.AppName, req.UserID, s.now().UTC().UnixMilli()}})
+		WHERE app_name = ? AND expires_at > ?`
+	params := []any{req.AppName, s.now().UTC().UnixMilli()}
+	if req.UserID != "" {
+		query += " AND user_id = ?"
+		params = append(params, req.UserID)
+	}
+	query += " ORDER BY updated_at DESC"
+	results, err := s.d1.Run(ctx, Statement{SQL: query, Params: params})
 	if err != nil {
 		return nil, fmt.Errorf("list sessions: %w", err)
 	}
@@ -139,12 +159,16 @@ func (s *SessionService) List(ctx context.Context, req *session.ListRequest) (*s
 		if !ok {
 			return nil, errors.New("decode session ID")
 		}
+		userID, ok := row["user_id"].(string)
+		if !ok {
+			return nil, errors.New("decode session user ID")
+		}
 		state, updated, err := decodeSessionRow(row)
 		if err != nil {
 			return nil, err
 		}
 		state = mergeScopedJSON(state, stringValue(row["app_state_json"]), stringValue(row["user_state_json"]))
-		response.Sessions = append(response.Sessions, newStoredSession(id, req.AppName, req.UserID, state, nil, updated))
+		response.Sessions = append(response.Sessions, newStoredSession(id, req.AppName, userID, state, nil, updated))
 	}
 	return response, nil
 }
@@ -203,10 +227,6 @@ func (s *SessionService) AppendEvent(ctx context.Context, current session.Sessio
 	// driving them through AppendEvent.
 	persistedDelta := withoutTemporary(event.Actions.StateDelta)
 	appDelta, userDelta, sessionDelta := splitState(persistedDelta)
-	stateJSON, err := json.Marshal(sessionDelta)
-	if err != nil {
-		return errors.New("encode session state")
-	}
 	appJSON, err := json.Marshal(appDelta)
 	if err != nil {
 		return errors.New("encode app state")
@@ -214,6 +234,18 @@ func (s *SessionService) AppendEvent(ctx context.Context, current session.Sessio
 	userJSON, err := json.Marshal(userDelta)
 	if err != nil {
 		return errors.New("encode user state")
+	}
+	appUpdate, appUpdateParams, err := stateUpdateExpression("state_json", appDelta)
+	if err != nil {
+		return errors.New("encode app state")
+	}
+	userUpdate, userUpdateParams, err := stateUpdateExpression("state_json", userDelta)
+	if err != nil {
+		return errors.New("encode user state")
+	}
+	sessionUpdate, sessionUpdateParams, err := stateUpdateExpression("state_json", sessionDelta)
+	if err != nil {
+		return errors.New("encode session state")
 	}
 	persistedEvent := *event
 	persistedEvent.Actions = event.Actions
@@ -223,16 +255,23 @@ func (s *SessionService) AppendEvent(ctx context.Context, current session.Sessio
 		return errors.New("encode session event")
 	}
 	now := s.now().UTC()
+	expectedUpdate := current.LastUpdateTime().UTC().UnixMilli()
+	updatedMillis := max(now.UnixMilli(), expectedUpdate+1)
+	appParams := []any{current.AppName(), string(appJSON), current.AppName(), current.UserID(), current.ID(), now.UnixMilli(), expectedUpdate}
+	appParams = append(appParams, appUpdateParams...)
+	userParams := []any{current.AppName(), current.UserID(), string(userJSON), current.AppName(), current.UserID(), current.ID(), now.UnixMilli(), expectedUpdate}
+	userParams = append(userParams, userUpdateParams...)
+	sessionParams := append(sessionUpdateParams, updatedMillis, now.Add(sessionTTL).UnixMilli(), current.AppName(), current.UserID(), current.ID(), now.UnixMilli(), expectedUpdate)
 	results, err := s.d1.Run(
 		ctx,
 		Statement{SQL: `INSERT INTO app_states (app_name, state_json)
-			SELECT ?, ? WHERE EXISTS (SELECT 1 FROM sessions WHERE app_name = ? AND user_id = ? AND session_id = ? AND expires_at > ?)
-			ON CONFLICT(app_name) DO UPDATE SET state_json = json_patch(state_json, excluded.state_json)`, Params: []any{current.AppName(), string(appJSON), current.AppName(), current.UserID(), current.ID(), now.UnixMilli()}},
+			SELECT ?, ? WHERE EXISTS (SELECT 1 FROM sessions WHERE app_name = ? AND user_id = ? AND session_id = ? AND expires_at > ? AND updated_at = ?)
+			ON CONFLICT(app_name) DO UPDATE SET state_json = ` + appUpdate, Params: appParams},
 		Statement{SQL: `INSERT INTO user_states (app_name, user_id, state_json)
-			SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM sessions WHERE app_name = ? AND user_id = ? AND session_id = ? AND expires_at > ?)
-			ON CONFLICT(app_name, user_id) DO UPDATE SET state_json = json_patch(state_json, excluded.state_json)`, Params: []any{current.AppName(), current.UserID(), string(userJSON), current.AppName(), current.UserID(), current.ID(), now.UnixMilli()}},
-		Statement{SQL: `UPDATE sessions SET state_json = json_patch(state_json, ?), updated_at = ?, expires_at = ?
-			WHERE app_name = ? AND user_id = ? AND session_id = ? AND expires_at > ?`, Params: []any{string(stateJSON), now.UnixMilli(), now.Add(sessionTTL).UnixMilli(), current.AppName(), current.UserID(), current.ID(), now.UnixMilli()}},
+			SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM sessions WHERE app_name = ? AND user_id = ? AND session_id = ? AND expires_at > ? AND updated_at = ?)
+			ON CONFLICT(app_name, user_id) DO UPDATE SET state_json = ` + userUpdate, Params: userParams},
+		Statement{SQL: `UPDATE sessions SET state_json = ` + sessionUpdate + `, updated_at = ?, expires_at = ?
+			WHERE app_name = ? AND user_id = ? AND session_id = ? AND expires_at > ? AND updated_at = ?`, Params: sessionParams},
 		Statement{SQL: `INSERT INTO session_events (app_name, user_id, session_id, event_id, invocation_id, event_json, created_at)
 			SELECT ?, ?, ?, ?, ?, ?, ? WHERE changes() > 0`, Params: []any{current.AppName(), current.UserID(), current.ID(), event.ID, event.InvocationID, string(eventJSON), event.Timestamp.UTC().UnixMilli()}},
 	)
@@ -240,6 +279,14 @@ func (s *SessionService) AppendEvent(ctx context.Context, current session.Sessio
 		return fmt.Errorf("append session event: %w", err)
 	}
 	if len(results) < 3 || results[2].Meta.Changes == 0 {
+		active, lookupErr := s.d1.Run(ctx, Statement{SQL: `SELECT 1 AS present FROM sessions
+			WHERE app_name = ? AND user_id = ? AND session_id = ? AND expires_at > ?`, Params: []any{current.AppName(), current.UserID(), current.ID(), now.UnixMilli()}})
+		if lookupErr != nil {
+			return fmt.Errorf("check session revision: %w", lookupErr)
+		}
+		if len(active) > 0 && len(active[0].Rows) > 0 {
+			return ErrStaleSession
+		}
 		return agui.ErrSessionNotFound
 	}
 	for key, value := range event.Actions.StateDelta {
@@ -248,7 +295,7 @@ func (s *SessionService) AppendEvent(ctx context.Context, current session.Sessio
 		}
 	}
 	if stored, ok := current.(*storedSession); ok {
-		stored.append(event, now)
+		stored.append(event, time.UnixMilli(updatedMillis).UTC())
 	}
 	return nil
 }
@@ -337,10 +384,35 @@ func afterMillis(after time.Time) int64 {
 }
 
 func eventLimit(requested int) int {
-	if requested <= 0 || requested > 1000 {
-		return 1000
+	if requested <= 0 {
+		return -1
 	}
 	return requested
+}
+
+// stateUpdateExpression implements ADK's maps.Copy delta semantics in SQLite:
+// every top-level value replaces the old value wholesale, including objects
+// and null. json_patch instead recursively merges objects and deletes nulls.
+func stateUpdateExpression(column string, delta map[string]any) (string, []any, error) {
+	if len(delta) == 0 {
+		return column, nil, nil
+	}
+	keys := make([]string, 0, len(delta))
+	for key := range delta {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	args := []string{column}
+	params := make([]any, 0, len(keys)*2)
+	for _, key := range keys {
+		encoded, err := json.Marshal(delta[key])
+		if err != nil {
+			return "", nil, err
+		}
+		args = append(args, `'$.' || json_quote(?)`, `json(?)`)
+		params = append(params, key, string(encoded))
+	}
+	return "json_set(" + strings.Join(args, ", ") + ")", params, nil
 }
 
 func decodeSessionRow(row map[string]any) (map[string]any, time.Time, error) {

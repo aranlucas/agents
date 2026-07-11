@@ -15,7 +15,7 @@
 // agent to be observable by the AG-UI stream — the Python port's own comment
 // ("A2UI tool lives directly on the root agent — no sub-agent traversal
 // needed for ag_ui_adk's per-run event_queue wiring") documents the same
-// constraint. New's composer parameter (internal/providers/gemini's direct
+// constraint. New's composer parameter (ADK-Go's official direct
 // Gemini adapter in production) is a plain model.LLM invoked with
 // GenerateContent from inside generate_a2ui's own tool function — no nested
 // agent, no isolated session, so its state write lands on the root agent's

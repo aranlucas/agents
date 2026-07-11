@@ -11,7 +11,6 @@ import (
 	"agents/internal/agui"
 	"agents/internal/common"
 	"agents/internal/config"
-	"agents/internal/providers/gemini"
 	"agents/internal/providers/openai"
 
 	expense "agents/expense/agent"
@@ -27,6 +26,8 @@ import (
 
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/model"
+	adkgemini "google.golang.org/adk/v2/model/gemini"
+	"google.golang.org/genai"
 )
 
 // Built is one constructed agent ready for eval, plus any provider
@@ -169,7 +170,7 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		}
 		var caseBuilder model.LLM = questioner
 		if key := strings.TrimSpace(os.Getenv("GEMINI_API_KEY")); key != "" {
-			gm, err := gemini.New(ctx, key, "gemini-3.1-flash-lite", nil, "")
+			gm, err := adkgemini.NewModel(ctx, "gemini-3.1-flash-lite", &genai.ClientConfig{APIKey: key, Backend: genai.BackendGeminiAPI})
 			if err != nil {
 				return Built{}, err
 			}

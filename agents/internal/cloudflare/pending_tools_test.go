@@ -115,6 +115,7 @@ type batchEnvelope struct {
 }
 
 func (f *pendingFixture) handle(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	var env batchEnvelope
 	if json.NewDecoder(r.Body).Decode(&env) != nil || len(env.Batch) == 0 {
 		http.Error(w, "bad request", 400)

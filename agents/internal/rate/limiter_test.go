@@ -22,6 +22,7 @@ func TestProviderLimiterRejectsWindowOverflowAndResets(t *testing.T) {
 	var mu sync.Mutex
 	counts := map[int64]int{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		var env batchEnvelope
 		if err := json.NewDecoder(r.Body).Decode(&env); err != nil || len(env.Batch) == 0 {
 			t.Fatal("bad batch envelope")

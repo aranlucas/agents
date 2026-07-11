@@ -30,7 +30,6 @@ import (
 	"agents/internal/config"
 	mcpbridge "agents/internal/mcp"
 	"agents/internal/observability"
-	"agents/internal/providers/gemini"
 	"agents/internal/providers/openai"
 	"agents/internal/rate"
 	telegramruntime "agents/internal/telegram"
@@ -44,8 +43,10 @@ import (
 	"agents/wellness/agent"
 	"cloud.google.com/go/bigquery"
 	"google.golang.org/adk/v2/model"
+	adkgemini "google.golang.org/adk/v2/model/gemini"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/api/option"
+	"google.golang.org/genai"
 )
 
 const healthCheckTimeout = 3 * time.Second
@@ -455,7 +456,7 @@ func trendsBigQueryClient(ctx context.Context) (*bigquery.Client, error) {
 	return client, nil
 }
 
-// trendsComposerModel builds the direct Gemini adapter generate_a2ui uses to
+// trendsComposerModel builds the official ADK-Go Gemini model generate_a2ui uses to
 // choose and parameterize Trends catalog components (AGENTS.md's Model
 // Distribution table, A2UI row: "gemini-2.5-flash", direct ADK — not
 // LiteLLM). Unlike every other agent's provider config, this is optional
@@ -470,7 +471,7 @@ func trendsComposerModel(ctx context.Context) (model.LLM, error) {
 	if apiKey == "" {
 		return nil, nil
 	}
-	composer, err := gemini.New(ctx, apiKey, "gemini-2.5-flash", nil, "")
+	composer, err := adkgemini.NewModel(ctx, "gemini-2.5-flash", &genai.ClientConfig{APIKey: apiKey, Backend: genai.BackendGeminiAPI})
 	if err != nil {
 		return nil, fmt.Errorf("configure trends A2UI composer: %w", err)
 	}
@@ -506,7 +507,7 @@ func oralboardsModels(ctx context.Context, cfg config.Config, limiter *rate.Prov
 	if key == "" {
 		return oralboards.PhaseModels{}, errors.New("GEMINI_API_KEY is required to configure oralboards case builder")
 	}
-	caseBuilder, err := gemini.New(ctx, key, "gemini-3.1-flash-lite", nil, "")
+	caseBuilder, err := adkgemini.NewModel(ctx, "gemini-3.1-flash-lite", &genai.ClientConfig{APIKey: key, Backend: genai.BackendGeminiAPI})
 	if err != nil {
 		return oralboards.PhaseModels{}, err
 	}

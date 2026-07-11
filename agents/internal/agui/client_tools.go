@@ -9,6 +9,7 @@ import (
 	"regexp"
 
 	"agents/internal/auth"
+	aguitypes "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"github.com/google/jsonschema-go/jsonschema"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/session"
@@ -28,12 +29,8 @@ var (
 	ClientToolName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_.:-]{0,63}$`)
 )
 
-// ClientTool is a frontend function declaration supplied with an AG-UI run.
-type ClientTool struct {
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
-	Parameters  any    `json:"parameters,omitempty"`
-}
+// ClientTool is the official AG-UI frontend tool declaration.
+type ClientTool = aguitypes.Tool
 
 // ToolScope is the complete authorization boundary for one pending call.
 type ToolScope struct{ AppName, UserID, ThreadID string }
