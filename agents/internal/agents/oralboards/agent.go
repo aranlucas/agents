@@ -160,12 +160,24 @@ func wrap[A any](handler stateHandler[A]) functiontool.Func[A, Result] {
 func runOrchestrator(ctx agent.InvocationContext, children map[string]agent.Agent) iter.Seq2[*session.Event, error] {
 	return func(yield func(*session.Event, error) bool) {
 		state := stateFromSession(ctx.Session().State())
+		// The AG-UI gateway never applies RunAgentInput.state (server state
+		// is authoritative — see internal/agui/state.go's
+		// requestStateOverlay), so the exam transitions the web client
+		// performs via agent.setState must be derived here from the turn's
+		// user message: "ready" starts questioning, and any other candidate
+		// text during questioning is an answer for the evaluator.
+		if transition := messageTransition(state, userText(ctx)); transition != "" {
+			if !yield(stateDeltaEvent(ctx, map[string]any{"status": transition}), nil) {
+				return
+			}
+			state.Status = transition
+		}
 		phase := RoutePhase(state)
-		if !runChild(ctx, children[phase], yield) {
+		if phase == "questioner" {
+			runQuestioner(ctx, children[phase], yield)
 			return
 		}
-		if phase == "questioner" {
-			rerunQuestionerIfNeeded(ctx, children[phase], yield)
+		if !runChild(ctx, children[phase], yield) {
 			return
 		}
 		if phase != "evaluator" {
@@ -175,23 +187,89 @@ func runOrchestrator(ctx agent.InvocationContext, children map[string]agent.Agen
 		if state.InterviewComplete {
 			runChild(ctx, children["scorer"], yield)
 		} else if state.Status == "questioning" {
-			if runChild(ctx, children["questioner"], yield) {
-				rerunQuestionerIfNeeded(ctx, children["questioner"], yield)
-			}
+			runQuestioner(ctx, children["questioner"], yield)
 		}
 	}
+}
+
+// messageTransition returns the status the session must move to before
+// routing, or "" when the turn does not change phase.
+func messageTransition(state State, text string) string {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return ""
+	}
+	ready := strings.EqualFold(text, "ready")
+	if state.Status == "presenting" && ready {
+		return "questioning"
+	}
+	if state.Status == "questioning" && !ready {
+		return "feedback"
+	}
+	return ""
+}
+
+func userText(ctx agent.InvocationContext) string {
+	content := ctx.UserContent()
+	if content == nil {
+		return ""
+	}
+	var b strings.Builder
+	for _, part := range content.Parts {
+		if part != nil && !part.Thought && part.Text != "" {
+			b.WriteString(part.Text)
+		}
+	}
+	return b.String()
 }
 
 func runChild(ctx agent.InvocationContext, child agent.Agent, yield func(*session.Event, error) bool) bool {
-	for event, err := range child.Run(ctx) {
-		if !yield(event, err) || err != nil || ctx.Ended() {
-			return false
-		}
-	}
-	return true
+	_, ok := runChildCapturingText(ctx, child, yield)
+	return ok
 }
 
-func rerunQuestionerIfNeeded(ctx agent.InvocationContext, questioner agent.Agent, yield func(*session.Event, error) bool) {
+// runChildCapturingText forwards a child's events and returns the plain text
+// of its last complete response.
+func runChildCapturingText(ctx agent.InvocationContext, child agent.Agent, yield func(*session.Event, error) bool) (string, bool) {
+	text := ""
+	for event, err := range child.Run(ctx) {
+		if err == nil && event != nil && !event.Partial {
+			if t := eventText(event); t != "" {
+				text = t
+			}
+		}
+		if !yield(event, err) || err != nil || ctx.Ended() {
+			return text, false
+		}
+	}
+	return text, true
+}
+
+func eventText(event *session.Event) string {
+	if event.Content == nil {
+		return ""
+	}
+	var b strings.Builder
+	for _, part := range event.Content.Parts {
+		if part != nil && !part.Thought && part.Text != "" {
+			b.WriteString(part.Text)
+		}
+	}
+	return strings.TrimSpace(b.String())
+}
+
+// runQuestioner runs the questioner child, persists the question it returned
+// as text (the ask_question client tool used to write current_question via
+// client state, which the gateway no longer accepts), and reruns it once with
+// craft feedback when the question violates question-craft rules.
+func runQuestioner(ctx agent.InvocationContext, questioner agent.Agent, yield func(*session.Event, error) bool) {
+	question, ok := runChildCapturingText(ctx, questioner, yield)
+	if !ok {
+		return
+	}
+	if !persistQuestion(ctx, question, yield) {
+		return
+	}
 	state := stateFromSession(ctx.Session().State())
 	violations := QuestionCraftViolations(state.CurrentQuestion)
 	if len(violations) == 0 {
@@ -201,9 +279,20 @@ func rerunQuestionerIfNeeded(ctx agent.InvocationContext, questioner agent.Agent
 	if !yield(stateDeltaEvent(ctx, map[string]any{"question_craft_feedback": feedback}), nil) {
 		return
 	}
-	if runChild(ctx, questioner, yield) {
+	question, ok = runChildCapturingText(ctx, questioner, yield)
+	if !ok {
+		return
+	}
+	if persistQuestion(ctx, question, yield) {
 		yield(stateDeltaEvent(ctx, map[string]any{"question_craft_feedback": ""}), nil)
 	}
+}
+
+func persistQuestion(ctx agent.InvocationContext, question string, yield func(*session.Event, error) bool) bool {
+	if question == "" {
+		return true
+	}
+	return yield(stateDeltaEvent(ctx, map[string]any{"current_question": question}), nil)
 }
 
 func stateDeltaEvent(ctx agent.InvocationContext, delta map[string]any) *session.Event {
