@@ -53,6 +53,8 @@ docker run -d --rm --name "$runtime_name" -p "${port}:8000" \
   -e OPENROUTER_API_KEY=smoke-fake-openrouter-key \
   -e GROQ_API_KEY=smoke-fake-groq-key \
   -e NVIDIA_NIM_API_KEY=smoke-fake-nvidia-key \
+  -e MISTRAL_API_KEY=smoke-fake-mistral-key \
+  -e GEMINI_API_KEY=smoke-fake-gemini-key \
   "$image" >/dev/null
 
 status=""

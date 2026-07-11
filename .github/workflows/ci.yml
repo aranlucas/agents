@@ -3,13 +3,9 @@ name: CI
 # Lints, typechecks, and tests the monorepo on every push to main and every
 # pull request. Parallel jobs cut the critical path:
 #   check   — turbo-driven lint/fmt/typecheck/coverage across every workspace
-#             package (JS via pnpm, Python agents/ via uv), plus React Doctor
+#             package (JS via pnpm, Go agents via the agents workspace), plus React Doctor
 #   build   — next build (slowest step; runs in parallel with the others)
-#   docker  — Dockerfile smoke-build (production Python gateway)
-#   go      — Go gateway foundation: race tests, vet, gofmt, and a no-Python
-#             image smoke test (agents/Dockerfile.go-foundation). This is the
-#             in-progress Go port living alongside the Python gateway above —
-#             see agents/AGENTS.md's Architecture section.
+#   docker  — Go-only gateway and Telegram image build/content/runtime smoke
 
 on:
   push:
@@ -31,12 +27,10 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-      - uses: astral-sh/setup-uv@v8.2.0
+      - uses: actions/setup-go@v5
         with:
-          version: "0.11.19"
-          enable-cache: true
-      - name: Install Python dependencies
-        run: uv sync --frozen
+          go-version-file: agents/go.mod
+          cache-dependency-path: agents/go.sum
       - name: Install JS dependencies
         run: pnpm install --frozen-lockfile
       - name: Lint
@@ -45,9 +39,7 @@ jobs:
         run: pnpm fmt:check
       - name: Typecheck
         run: pnpm typecheck
-      - name: Compile Python (catches syntax errors ruff misses)
-        run: uv run python -m compileall -q agents packages
-      - name: Tests (with Python coverage gate)
+      - name: Tests
         run: pnpm coverage
       - name: React Doctor
         run: npx react-doctor@latest --scope changed
@@ -73,15 +65,21 @@ jobs:
           GROQ_API_KEY: gsk_ci_placeholder
 
   docker:
-    name: Build agent image
+    name: Build Go runtime images
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Build Dockerfile
-        run: docker build -f agents/Dockerfile .
+      - name: Build gateway
+        run: docker build -f agents/Dockerfile -t agents-gateway-go:ci .
+      - name: Build Telegram
+        run: docker build -f agents/Dockerfile.telegram -t agents-telegram-go:ci .
+      - name: Smoke gateway
+        run: bash agents/scripts/smoke-image.sh agents-gateway-go:ci
+      - name: Smoke Telegram
+        run: bash agents/scripts/smoke-telegram.sh agents-telegram-go:ci
 
   go:
-    name: Go gateway foundation
+    name: Go runtimes
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -104,7 +102,3 @@ jobs:
             echo "$unformatted" >&2
             exit 1
           fi
-      - name: Build foundation image
-        run: docker build -f agents/Dockerfile.go-foundation -t agents-go-foundation:ci .
-      - name: Smoke test foundation image
-        run: bash agents/scripts/smoke-image.sh agents-go-foundation:ci

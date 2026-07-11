@@ -51,7 +51,7 @@ func main() {
 		log.Fatalf("configure D1: %v", err)
 	}
 	if err := d1.RunMigrations(ctx); err != nil {
-		log.Fatalf("apply D1 migrations: %v", err)
+		log.Printf("warning: apply D1 migrations: %v", err)
 	}
 	r2, err := cloudflare.NewR2(cfg.Cloudflare)
 	if err != nil {
