@@ -1,0 +1,57 @@
+{
+  "eval_cases": [
+    {
+      "eval_case_id": "resume_senior_staff_ai_fit",
+      "metadata": {
+        "agent_id": "resume",
+        "backend_path": "resume"
+      },
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Why is Lucas a strong fit for a senior or staff engineering role involving AI agents?"
+          }
+        ]
+      },
+      "rubric_groups": {
+        "agent_contract": {
+          "rubrics": [
+            {
+              "rubric_id": "resume_grounded_in_resume",
+              "content": {
+                "property": {
+                  "description": "The answer grounds claims in the resume, including Lucas being a Senior Software Engineer at DoorDash when discussing current experience."
+                }
+              }
+            },
+            {
+              "rubric_id": "resume_ai_agent_relevance",
+              "content": {
+                "property": {
+                  "description": "The answer highlights relevant AI or agentic work from the resume and may mention this resume Q&A agent as an example when appropriate."
+                }
+              }
+            },
+            {
+              "rubric_id": "resume_no_invention",
+              "content": {
+                "property": {
+                  "description": "The answer does not invent employers, dates, credentials, or accomplishments that are absent from the resume."
+                }
+              }
+            },
+            {
+              "rubric_id": "resume_concise_positive",
+              "content": {
+                "property": {
+                  "description": "The answer is short, specific, positive, and focused on senior or staff engineering fit."
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

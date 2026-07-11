@@ -1,0 +1,102 @@
+{
+  "eval_cases": [
+    {
+      "eval_case_id": "oral_boards_pulp_therapy_case_start",
+      "metadata": {
+        "agent_id": "oral-boards",
+        "backend_path": "oralboards"
+      },
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Start a grounded pediatric dentistry oral-board case focused on pulp therapy."
+          }
+        ]
+      },
+      "rubric_groups": {
+        "agent_contract": {
+          "rubrics": [
+            {
+              "rubric_id": "oralboards_search_before_content",
+              "content": {
+                "property": {
+                  "description": "The agent calls set_loading_step, search_docs, and read_doc before producing clinical case content."
+                }
+              }
+            },
+            {
+              "rubric_id": "oralboards_sets_case_with_sources",
+              "content": {
+                "property": {
+                  "description": "The agent calls set_case with a concise vignette and source chips grounded in the retrieved documents."
+                }
+              }
+            },
+            {
+              "rubric_id": "oralboards_presenting_phase_only",
+              "content": {
+                "property": {
+                  "description": "The agent sets the phase to presenting, introduces the case, explains the real OCE feedback/pass-fail difference, and does not ask a clinical question yet."
+                }
+              }
+            },
+            {
+              "rubric_id": "oralboards_no_improvised_clinical_claims",
+              "content": {
+                "property": {
+                  "description": "If the local corpus does not cover the requested topic, the agent says so and offers adjacent sourced topics instead of improvising clinical content."
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "eval_case_id": "oral_boards_contrastive_feedback_on_partial_answer",
+      "metadata": {
+        "agent_id": "oral-boards",
+        "backend_path": "oralboards"
+      },
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "My answer: I would place a stainless steel crown on the tooth after the pulpotomy because it protects the tooth."
+          }
+        ]
+      },
+      "rubric_groups": {
+        "agent_contract": {
+          "rubrics": [
+            {
+              "rubric_id": "oralboards_feedback_is_contrastive",
+              "content": {
+                "property": {
+                  "description": "The feedback separately identifies what the candidate got right, what specific content was missing for full marks, and models what a score-3 answer sounds like."
+                }
+              }
+            },
+            {
+              "rubric_id": "oralboards_feedback_quotes_sources",
+              "content": {
+                "property": {
+                  "description": "Each missing-content point is supported by a direct quotation from a retrieved guideline or course passage with its source identified, not paraphrased from memory."
+                }
+              }
+            },
+            {
+              "rubric_id": "oralboards_score_stays_on_abpd_scale",
+              "content": {
+                "property": {
+                  "description": "Any score given is an integer 1, 2, or 3 for a named blueprint skillset; no percentage, /5, or composite scores appear."
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

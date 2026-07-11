@@ -325,7 +325,12 @@ func decodeStream(body io.Reader, provider string, yield func(*model.LLMResponse
 		parts = append(parts, &genai.Part{FunctionCall: &genai.FunctionCall{ID: call.ID, Name: call.Name, Args: arguments}})
 	}
 	if len(parts) == 0 {
-		return emitted, &ProviderError{Provider: provider, Kind: "empty_response"}
+		// A provider that streams a fully-formed, done response with no
+		// text, reasoning, or tool call is not a malformed-output bug the
+		// same request would just repeat (like response_schema below) —
+		// it is the same class of transient provider flakiness as
+		// truncated_stream above, so it must fall back the same way.
+		return emitted, &ProviderError{Provider: provider, Retryable: true, Kind: "empty_response"}
 	}
 	yield(&model.LLMResponse{Content: &genai.Content{Role: "model", Parts: parts}, UsageMetadata: usageMetadata(usage), ModelVersion: modelVersion, TurnComplete: true, FinishReason: finishReason(finish)}, nil)
 	return true, nil

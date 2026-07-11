@@ -1,0 +1,93 @@
+{
+  "eval_set_id": "train_eval_set",
+  "name": "train_eval_set",
+  "eval_cases": [
+    {
+      "eval_id": "oral_boards_trauma_case_start",
+      "session_input": {
+        "app_name": "oralboards_agent",
+        "user_id": "eval_user",
+        "state": {}
+      },
+      "conversation": [
+        {
+          "invocation_id": "inv1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Start a pediatric dentistry oral-board case focused on trauma management. Ground it in the bundled sources and write the case to the UI canvas."
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "I started a grounded pediatric dentistry trauma case in the UI canvas."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "oral_boards_telegram_one_question",
+      "session_input": {
+        "app_name": "oralboards_agent",
+        "user_id": "eval_user",
+        "state": {}
+      },
+      "conversation": [
+        {
+          "invocation_id": "inv1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "In Telegram, run a short pulp therapy oral-board drill. Ask one question at a time."
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "I will run a concise pulp therapy drill and ask one question at a time."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "oral_boards_corpus_gap",
+      "session_input": {
+        "app_name": "oralboards_agent",
+        "user_id": "eval_user",
+        "state": {}
+      },
+      "conversation": [
+        {
+          "invocation_id": "inv1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Create a case about an adult implant complication outside pediatric dentistry."
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "That topic is outside the pediatric dentistry oral-board corpus, so I should not invent unsupported clinical content."
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

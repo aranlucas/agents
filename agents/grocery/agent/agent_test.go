@@ -22,7 +22,7 @@ func TestGroceryAgentBuildsWithAuthAndApprovalContracts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, required := range []string{"connect\nKroger first", "checkout_shopping_list", "exact\nremote tool name"} {
+	for _, required := range []string{"Kroger needs to be", "checkout_shopping_list", "exact\nremote tool name"} {
 		if built.Name() != AppName || !strings.Contains(Instruction, required) {
 			t.Fatalf("agent/instruction missing %q", required)
 		}

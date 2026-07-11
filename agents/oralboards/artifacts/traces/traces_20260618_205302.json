@@ -1,0 +1,521 @@
+{
+  "eval_cases": [
+    {
+      "eval_case_id": "case_gen_ecc",
+      "agent_data": {
+        "agents": {
+          "oralboards_agent": {
+            "agent_id": "oralboards_agent"
+          }
+        },
+        "turns": [
+          {
+            "turn_index": 0,
+            "events": [
+              {
+                "author": "user",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "text": "Create an oral-board case on early childhood caries."
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "oralboards_agent",
+                "content": {
+                  "role": "model",
+                  "parts": []
+                }
+              },
+              {
+                "author": "oralboards_agent",
+                "content": {
+                  "role": "model",
+                  "parts": []
+                }
+              },
+              {
+                "author": "oralboards_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "set_loading_step",
+                        "args": {
+                          "step": "Searching clinical guidelines…"
+                        }
+                      }
+                    },
+                    {
+                      "function_call": {
+                        "name": "search_docs",
+                        "args": {
+                          "query": "early childhood caries"
+                        }
+                      }
+                    },
+                    {
+                      "function_call": {
+                        "name": "search_docs",
+                        "args": {
+                          "query": "early childhood caries",
+                          "collection": "aapd"
+                        }
+                      }
+                    },
+                    {
+                      "function_call": {
+                        "name": "search_docs",
+                        "args": {
+                          "query": "caries risk assessment infant toddler",
+                          "collection": "abpd"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "oralboards_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "set_loading_step",
+                        "response": {
+                          "status": "success",
+                          "ok": true
+                        }
+                      }
+                    },
+                    {
+                      "function_response": {
+                        "name": "search_docs",
+                        "response": {
+                          "status": "success",
+                          "results": [
+                            {
+                              "docid": 87,
+                              "filepath": "aapd/p-eccconsequences.md",
+                              "title": "Policy on Early Childhood Caries[(] ECC[)] : Consequences and Preventive Strategies",
+                              "snippet": "...American Academy  of  Pediatric  Dentistry;  2025:96-100. \n\n## Purpose \n\n[Early] [childhood] [caries] ( **ECC** ), formerly referred to as nursing bottle [caries] and baby bottle tooth...",
+                              "collection": "aapd"
+                            },
+                            {
+                              "docid": 88,
+                              "filepath": "aapd/p-eccuniquechallenges25.md",
+                              "title": "Policy on Early Childhood Caries[(] ECC[)] : Unique Challen es and Mana ement Considerations g g",
+                              "snippet": "...Does [early] [childhood] [caries] increase [caries] development among school children and adolescents? A systematic review and meta-analysis. Int J Environ Res Public Health...",
+                              "collection": "aapd"
+                            },
+                            {
+                              "docid": 45,
+                              "filepath": "aapd/bp-perinataloralhealthcare25.md",
+                              "title": "Perinatal and Infant Oral Health Care",
+                              "snippet": "...Prenatal oral health care and [early] [childhood] [caries] prevention: A systematic review and meta-analysis. [Caries] Res 2019;53(4):411-21. \n\n11.  Dogramaci...",
+                              "collection": "aapd"
+                            },
+                            {
+                              "docid": 46,
+                              "filepath": "aapd/bp-periodicity25.md",
+                              "title": "Periodicity of Examination, Preventive Dental Services, Anticipatory Guidance[/] Counseling, and Oral Treatment for Infants, Children, and Adolescents",
+                              "snippet": "...The clinical, environmental, and behavioral factors that foster [early] [childhood] [caries]: Evidence for [caries] risk assessment. Pediatr Dent 2015;37(3):217-25. \n\n7...",
+                              "collection": "aapd"
+                            },
+                            {
+                              "docid": 126,
+                              "filepath": "aapd/p-socialdeterminants25.md",
+                              "title": "Policy on Social Determinants of Children’s Oral Health and Health Disparities",
+                              "snippet": "...Parental factors influencing the development of [early] [childhood] [caries] in developing nations: A systematic review. Front Public Health 2018;6:64. \n\n23.  Arora A...",
+                              "collection": "aapd"
+                            },
+                            {
+                              "docid": 118,
+                              "filepath": "aapd/p-recdietary25.md",
+                              "title": "Policy on Dietary Recommendations for Infants, Children, and Adolescents",
+                              "snippet": "...[early] [childhood] have been noted.[4] \n\nDental [caries] prevalence in children has been variable but remains high.[16] The prevalence of dental [caries] (untreated...",
+                              "collection": "aapd"
+                            },
+                            {
+                              "docid": 121,
+                              "filepath": "aapd/p-schoolexms25.md",
+                              "title": "Policy on School-Entrance Oral Health Examinations",
+                              "snippet": "...[Early] [childhood]  [caries]. \n\nTHE REFERENCE MANUAL OF PEDIATRIC DENTISTRY ( _WWW.AAPD.ORG/RESEARCH/ORAL-HEALTH-POLICIES--RECOMMENDATIONS_ )           125 \n\nORAL HEALTH POLICIES:   SCHOOL-ENTRANCE ORAL...",
+                              "collection": "aapd"
+                            },
+                            {
+                              "docid": 107,
+                              "filepath": "aapd/p-ochcarecenters25.md",
+                              "title": "Policy on Oral Health in Child Care Centers",
+                              "snippet": "...[Early]  [childhood]  [caries]. \n\nTHE REFERENCE MANUAL OF PEDIATRIC DENTISTRY ( _WWW.AAPD.ORG/RESEARCH/ORAL-HEALTH-POLICIES--RECOMMENDATIONS_ )           93 \n\nORAL HEALTH POLICIES:   ORAL HEALTH IN...",
+                              "collection": "aapd"
+                            },
+                            {
+                              "docid": 133,
+                              "filepath": "aapd/p-tobaccouse.md",
+                              "title": "Policy  on  Tobacco  Use",
+                              "snippet": "...Prenatal, maternal, and [early] [childhood] factors associated with dental general anesthesia to treat severe [early] [childhood] [caries]. Pediatr Dent 2019;41(6):477-85...",
+                              "collection": "aapd"
+                            },
+                            {
+                              "docid": 101,
+                              "filepath": "aapd/p-medicallynecessarycare.md",
+                              "title": "Policy  on  Medically-Necessary  Care",
+                              "snippet": "...Future [caries] susceptibility in children with [early] [childhood] [caries] following treatment under general anesthesia. Pediatr Dent 2000;22(4):302-6. \n\n39.  Samnaliev M...",
+                              "collection": "aapd"
+                            }
+                          ],
+                          "error": "",
+                          "count": 10
+                        }
+                      }
+                    },
+                    {
+                      "function_response": {
+                        "name": "search_docs",
+                        "response": {
+                          "status": "success",
+                          "results": [
+                            {
+                              "docid": 87,
+                              "filepath": "aapd/p-eccconsequences.md",
+                              "title": "Policy on Early Childhood Caries[(] ECC[)] : Consequences and Preventive Strategies",
+                              "snippet": "...American Academy  of  Pediatric  Dentistry;  2025:96-100. \n\n## Purpose \n\n[Early] [childhood] [caries] ( **ECC** ), formerly referred to as nursing bottle [caries] and baby bottle tooth...",
+                              "collection": "aapd"
+                            },
+                            {
+                              "docid": 88,
+                              "filepath": "aapd/p-eccuniquechallenges25.md",
+                              "title": "Policy on Early Childhood Caries[(] ECC[)] : Unique Challen es and Mana ement Considerations g g",
+                              "snippet": "...Does [early] [childhood] [caries] increase [caries] development among school children and adolescents? A systematic review and meta-analysis. Int J Environ Res Public Health...",
+                              "collection": "aapd"
+                            },
+                            {
+                              "docid": 45,
+                              "filepath": "aapd/bp-perinataloralhealthcare25.md",
+                              "title": "Perinatal and Infant Oral Health Care",
+                              "snippet": "...Prenatal oral health care and [early] [childhood] [caries] prevention: A systematic review and meta-analysis. [Caries] Res 2019;53(4):411-21. \n\n11.  Dogramaci...",
+                              "collection": "aapd"
+                            },
+                            {
+                              "docid": 46,
+                              "filepath": "aapd/bp-periodicity25.md",
+                              "title": "Periodicity of Examination, Preventive Dental Services, Anticipatory Guidance[/] Counseling, and Oral Treatment for Infants, Children, and Adolescents",
+                              "snippet": "...The clinical, environmental, and behavioral factors that foster [early] [childhood] [caries]: Evidence for [caries] risk assessment. Pediatr Dent 2015;37(3):217-25. \n\n7...",
+                              "collection": "aapd"
+                            },
+                            {
+                              "docid": 126,
+                              "filepath": "aapd/p-socialdeterminants25.md",
+                              "title": "Policy on Social Determinants of Children’s Oral Health and Health Disparities",
+                              "snippet": "...Parental factors influencing the development of [early] [childhood] [caries] in developing nations: A systematic review. Front Public Health 2018;6:64. \n\n23.  Arora A...",
+                              "collection": "aapd"
+                            },
+                            {
+                              "docid": 118,
+                              "filepath": "aapd/p-recdietary25.md",
+                              "title": "Policy on Dietary Recommendations for Infants, Children, and Adolescents",
+                              "snippet": "...[early] [childhood] have been noted.[4] \n\nDental [caries] prevalence in children has been variable but remains high.[16] The prevalence of dental [caries] (untreated...",
+                              "collection": "aapd"
+                            },
+                            {
+                              "docid": 121,
+                              "filepath": "aapd/p-schoolexms25.md",
+                              "title": "Policy on School-Entrance Oral Health Examinations",
+                              "snippet": "...[Early] [childhood]  [caries]. \n\nTHE REFERENCE MANUAL OF PEDIATRIC DENTISTRY ( _WWW.AAPD.ORG/RESEARCH/ORAL-HEALTH-POLICIES--RECOMMENDATIONS_ )           125 \n\nORAL HEALTH POLICIES:   SCHOOL-ENTRANCE ORAL...",
+                              "collection": "aapd"
+                            },
+                            {
+                              "docid": 107,
+                              "filepath": "aapd/p-ochcarecenters25.md",
+                              "title": "Policy on Oral Health in Child Care Centers",
+                              "snippet": "...[Early]  [childhood]  [caries]. \n\nTHE REFERENCE MANUAL OF PEDIATRIC DENTISTRY ( _WWW.AAPD.ORG/RESEARCH/ORAL-HEALTH-POLICIES--RECOMMENDATIONS_ )           93 \n\nORAL HEALTH POLICIES:   ORAL HEALTH IN...",
+                              "collection": "aapd"
+                            },
+                            {
+                              "docid": 133,
+                              "filepath": "aapd/p-tobaccouse.md",
+                              "title": "Policy  on  Tobacco  Use",
+                              "snippet": "...Prenatal, maternal, and [early] [childhood] factors associated with dental general anesthesia to treat severe [early] [childhood] [caries]. Pediatr Dent 2019;41(6):477-85...",
+                              "collection": "aapd"
+                            },
+                            {
+                              "docid": 101,
+                              "filepath": "aapd/p-medicallynecessarycare.md",
+                              "title": "Policy  on  Medically-Necessary  Care",
+                              "snippet": "...Future [caries] susceptibility in children with [early] [childhood] [caries] following treatment under general anesthesia. Pediatr Dent 2000;22(4):302-6. \n\n39.  Samnaliev M...",
+                              "collection": "aapd"
+                            }
+                          ],
+                          "error": "",
+                          "count": 10
+                        }
+                      }
+                    },
+                    {
+                      "function_response": {
+                        "name": "search_docs",
+                        "response": {
+                          "status": "success",
+                          "results": [],
+                          "error": "",
+                          "count": 0
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "oralboards_agent",
+                "content": {
+                  "role": "model",
+                  "parts": []
+                }
+              },
+              {
+                "author": "oralboards_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "set_loading_step",
+                        "args": {
+                          "step": "Reading: Policy on Early Childhood Caries (ECC): Consequences and Preventive Strategies…"
+                        }
+                      }
+                    },
+                    {
+                      "function_call": {
+                        "name": "set_loading_step",
+                        "args": {
+                          "step": "Reading: Policy on Early Childhood Caries (ECC): Unique Challenges and Management Considerations…"
+                        }
+                      }
+                    },
+                    {
+                      "function_call": {
+                        "name": "set_loading_step",
+                        "args": {
+                          "step": "Reading: Perinatal and Infant Oral Health Care…"
+                        }
+                      }
+                    },
+                    {
+                      "function_call": {
+                        "name": "read_doc",
+                        "args": {
+                          "filepath": "aapd/p-eccconsequences.md"
+                        }
+                      }
+                    },
+                    {
+                      "function_call": {
+                        "name": "read_doc",
+                        "args": {
+                          "filepath": "aapd/p-eccuniquechallenges25.md"
+                        }
+                      }
+                    },
+                    {
+                      "function_call": {
+                        "name": "read_doc",
+                        "args": {
+                          "filepath": "aapd/bp-perinataloralhealthcare25.md"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "oralboards_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "set_loading_step",
+                        "response": {
+                          "status": "success",
+                          "ok": true
+                        }
+                      }
+                    },
+                    {
+                      "function_response": {
+                        "name": "set_loading_step",
+                        "response": {
+                          "status": "success",
+                          "ok": true
+                        }
+                      }
+                    },
+                    {
+                      "function_response": {
+                        "name": "set_loading_step",
+                        "response": {
+                          "status": "success",
+                          "ok": true
+                        }
+                      }
+                    },
+                    {
+                      "function_response": {
+                        "name": "read_doc",
+                        "response": {
+                          "status": "success",
+                          "docid": 87,
+                          "collection": "aapd",
+                          "filepath": "aapd/p-eccconsequences.md",
+                          "title": "Policy on Early Childhood Caries[(] ECC[)] : Consequences and Preventive Strategies",
+                          "body": "ORAL HEALTH POLICIES:   ECC: CONSEQUENCES & PREVENTIVE STRATEGIES \n\n## Policy on Early Childhood Caries[(] ECC[)] : Consequences and Preventive Strategies \n\n## Latest Revision \n\n2025 \n\nHow to Cite: American Academy of Pediatric Dentistry. Policy on early childhood caries (ECC): Consequences and preventive strategies. The Reference Manual of Pediatric Dentistry. Chicago, IL: American Academy  of  Pediatric  Dentistry;  2025:96-100. \n\n## Purpose \n\nEarly childhood caries ( **ECC** ), formerly referred to as nursing bottle caries and baby bottle tooth decay, remains a significant chronic disease of childhood and public health problem.[1] The American Academy of Pediatric Dentistry ( **AAPD** ) encourages health care professionals and caregivers to implement preventive practices that can decrease a child’s risks of developing this preventable disease to reduce the burden on the child, the family, and society. \n\n## Methods \n\nThis policy, initially developed by the American Academy of Pedodontics (now known as the AAPD) in collaboration with the American Academy of Pediatrics and adopted in 1978,[2] was last revised by the AAPD in 2021.[3] This update used an electronic search of English written articles in the dental and medical literature within the last 10 years, using the search terms ( _evidence based dentistry_ [ **Majr** ] OR _pediatric dentistry_ [Majr] OR _dental care for children_ [Majr]) AND ( _dental caries_ [Majr] OR _dental caries susceptibility_ [Majr] OR _early childhood caries_ [ **Tiab** ] OR _infant oral health_ [Tiab] OR _oral microbiome_ [Tiab] OR _ECC prevention_ [Tiab] OR _patient well-being_ [Tiab] OR _nutrition_ [Tiab] OR _quality of life_ [Majr] OR _ECC_ [Tiab]). Two hundred forty-eight articles were identified in the search. Thirty-six articles were selected for review from this search and from references within the selected papers. When information from these articles did not appear sufficient or was inconclusive, expert and consensus opinions by experienced researchers and clinicians were considered. \n\n## Background \n\nIn 1978, the American Academy of Pedodontics and the American Academy of Pediatrics released a joint statement, _Nursing Bottle Caries,_ to address a severe form of caries associated with bottle usage.[2] Initial policy recommendations were limited to feeding habits, concluding that nursing bottle caries could be avoided if bottle feedings were discontinued soon after the first birthday.[2] An early policy revision added ad libitum breastfeeding as a causative factor.[4] Over the next 2 decades, however, recognizing that ECC was not solely associated with poor feeding practices, the AAPD adopted the term ECC to better reflect its multifactorial etiology. Contributors to ECC include[5-9] developmental (eg, enamel hypoplasia and hypomineralization), biological (eg, cariogenic oral microbiome \n\n—especially Mutans streptococci [ **MS** ] and fungi), and behavioral (eg, poor oral hygiene, high-frequency sugar consumption) factors. Additionally, social and structural considerations (eg, socioeconomic status) have an overarching influence on the development of ECC.[10] \n\nECC is defined as “the presence of one or more decayed (noncavitated or cavitated lesions), missing (due to caries), or filled tooth surfaces in any primary tooth” in a child less than 72 months of age.[11] The definition of severe early childhood caries (S-ECC) is 1) any sign of smooth-surface caries in a child younger than 3 years of age; 2) from ages 3 through 5 years, 1 or more cavitated, missing (secondary to caries), or filled smooth surfaces in primary maxillary anterior teeth; or 3) a decayed, missing, or filled score of greater than or equal to 4 (age 3), greater than or equal to 5 (age 4), or greater than or equal to 6 (age 5).[11] \n\nEpidemiologic data from a 2013-2018 national health survey clearly indicate that ECC remains highly prevalent in poor and near-poor US preschool children.[12] For the overall population of preschool children, the prevalence of ECC, as measured by decayed and filled tooth surfaces (dfs), is unchanged from previous surveys.[12] However, the proportion of children with severe ECC (S-ECC) increased significantly.[12] The consequences of ECC include a higher risk of new caries lesions in both the primary and permanent dentitions,[13,14] hospitalizations and emergency room visits,[15 ] high treatment costs,[16] loss of school days,[17,18] diminished ability to learn,[18] nutritional deficiencies,[19-21 ] and reduced[22-24] oral health-related quality of life. \n\nTraditional microbial risk markers for ECC include acidogenic-aciduric bacterial species, particularly MS.[25] Studies using direct culture with arbitrarily primed polymerase chain reaction (AP-PCR) fingerprinting and other traditional techniques have shown that MS may be transmitted vertically from parent or caregiver to child and horizontally from other individuals in the immediate environment.[26,27] Advanced technologies that include DNA and RNA sequencing (ie, next \n\n## ABBREVIATIONS \n\nAAPD:  American  Academy  of  Pediatric  Dentistry.  CWF:  Community water fluoridation. ECC: Early childhood caries. Majr: MeSH major topic. MeSH: Medical subject heading. MS: Mutans streptococci. Tiab:  Title  and  abstract. \n\n96          THE REFERENCE MANUAL OF PEDIATRIC DENTISTRY ( _WWW.AAPD.ORG/RESEARCH/ORAL-HEALTH-POLICIES--RECOMMENDATIONS_ ) \n\nORAL HEALTH POLICIES:   ECC: CONSEQUENCES & PREVENTIVE STRATEGIES \n\ngeneration sequencing), along with machine learning and artificial intelligence, reveal the complexity of the oral microbiome and have highlighted other bacterial species (eg, _Scardovia wiggsiae_ , Veillonella ssp.) and fungi (eg, _Candida_ species) that also may be associated with ECC.[28-31 ] In addition to vertical and horizontal transmission, studies on the development of the oral microbiome since birth support the importance of healthy diets and environmental exposures.[32,33 ] It is recommended that parental education and counseling on the importance of a healthy microbiome and diet in infancy be conducted as early as possible as the oral microbiome associated with ECC can be influenced[6,7,29,34,35] by the child’s sex, genetic variants in taste, socioeconomic factors, dietary practices, and lifestyle behaviors. \n\nAn associated risk factor to microbial etiology is high consumption of sugars.[36] Bottle feeding, particularly nighttime bottle feeding with sweet drinks or sugar-sweetened beverages[7] (eg, juice, fruit-flavored drinks), continuous  use of a sippy or no-spill cup containing sugar-sweetened beverages, and frequent in-between meal consumption of sugar-sweetened snacks or drinks increase the risk of caries.[37] Although benefits of breastfeeding are clear,[38] frequent (on demand) or nocturnal breastfeeding beyond the first year of life is associated with ECC.[39-42] A 2019 consensus statement via the American Academy of Pediatrics, American Heart Association, Academy of Nutrition and Dietetics, and AAPD recommends that sugar in foods and drinks should be avoided in children under 2 years of age.[43] Additional recommendations include complete avoidance of juice in children younger than 1 year and no more than 4 ounces of 100% fruit juice a day for children between the ages of 1 and 3 years.[43,44] \n\nCommunity water fluoridation ( **CWF** ) as a primary prevention method is considered a key strategy for preventing dental caries.[45] Children with lifetime exposure to CWF show significantly lower dental caries levels than those without, with the benefit being most pronounced in primary teeth.[46] In addition to reducing the prevalence of severe caries, the use of CWF in high-risk populations may reduce caries-related visits and help avoid preventable dental surgery under general anesthesia.[47] CWF has multiple benefits and attenuates income-related inequalities in dental caries in the US.[48] Despite conflicting reports[49-51] of an association between fluoride consumption and a child’s intelligence quotient (IQ), apart from an increased incidence of enamel fluorosis, the literature fails to provide credible evidence linking CWF with negative health outcome in the US at the currently regulated CWF level (0.7 ppm).[52-54] \n\nCurrent best practice to reduce the risk of ECC includes twice-daily brushing with 1000 ppm fluoridated toothpaste for all children in optimally-fluoridated and fluoridedeficient communities.[55-57] When determining the risk-benefit of fluoride, the key issue is mild fluorosis versus preventing dental disease. A smear or rice-sized amount of 1000 ppm fluoridated toothpaste (approximately 0.1 mg fluoride; see Figure) should be used for children younger than 3 years of \n\n**==> picture [246 x 132] intentionally omitted <==**\n\n**----- Start of picture text -----**<br>\nSmear – under 3 yrs.            Pea-sized – 3 to 6 yrs.<br>Figure. Comparison of a smear (left) with a pea-sized (right) amount<br>of toothpaste.<br>**----- End of picture text -----**<br>\n\n\nage. A pea-sized amount of 1000 ppm fluoridated toothpaste (approximately 0.25 mg fluoride) is appropriate for children aged 3 to 6 years.[58] Parents can ensure their child uses an appropriate amount of toothpaste by dispensing it onto a soft, age-appropriate sized toothbrush and performing or assisting with toothbrushing of preschool-aged children. Minimal or no rinsing can maximize the beneficial effect of fluoride in the toothpaste.[59] Less than twice daily toothbrushing and difficulties in performing the procedure during the preschool years were significant determinants of caries prevalence at the age of 5 years.[56] \n\nProfessionally-applied topical fluoride treatments are efficacious in reducing the incidence of ECC. The recommended professionally-applied fluoride treatment for children at risk for ECC who are younger than 6 years is 5% sodium fluoride varnish (NaFV; 22,500 ppm fluoride).[60-62] Evidence suggests that preventive interventions within the first year of life are critical.[63] For this reason, establishment of a dental home within 6 months of the eruption of the first tooth and no later than 12 months of age is especially important in populations at risk for ECC. This may be implemented with the help of medical professionals who, in many cases, are being trained to provide oral screenings, apply preventive measures, counsel caregivers, and refer infants and toddlers for dental care.[64 ] Additionally, 38% silver diammine fluoride (SDF) is effective for the arrest of cavitated caries lesions in primary teeth[65,66] and may be used as part of an ongoing caries management plan within the context of a dental home. \n\n## Policy statement \n\nThe AAPD recognizes ECC as a significant chronic disease resulting from an imbalance of multiple risk and protective factors over time. The AAPD encourages the following evidence-based preventive measures to decrease the risk of developing ECC and to promote optimal oral health for infants and children. \n\n- Establishment of a dental home within 6 months of eruption of the first tooth and no later than 12 months of age to conduct caries-risk assessment and parental education. \n\n- At the initial dental visit and periodic dental appointments, delivery of anticipatory guidance including home \n\nTHE REFERENCE MANUAL OF PEDIATRIC DENTISTRY ( _WWW.AAPD.ORG/RESEARCH/ORAL-HEALTH-POLICIES--RECOMMENDATIONS_ )           97 \n\nORAL HEALTH POLICIES:   ECC: CONSEQUENCES & PREVENTIVE STRATEGIES \n\noral hygiene instructions (eg, parental brushing with an age-appropriate sized toothbrush and volume of fluoridated toothpaste) and dietary counseling that emphasizes \n\n   - avoidance of on-demand or nocturnal baby bottleand breastfeeding beyond 12 months of age. \n\n   - encouragement for children between 6 and 12 months old to drink 4 to 8 ounces of water per day and to abstain from all juice consumption. \n\n   - avoidance of foods and drink with added sugars in children under 2 years of age and restriction of 100% fresh or reconstituted juice to no more than 4 ounces a day for children between the ages of 1 and 3 years. \n\n   - avoidance of frequent consumption of sugarcontaining liquids and/or solid foods. \n\n- Professional application of fluoride varnish for children at risk for ECC. \n\nAdditionally, the AAPD supports interprofessional education and public health efforts to promote oral prevention, including \n\n- working with medical health care professionals to ensure all infants and toddlers have access to dental screenings, counseling, and preventive procedures with a consistent, unified message. \n\n- supporting CWF as a primary prevention for dental caries to reach underserved and vulnerable communities. \n\n- educating legislators, policy makers, and third-party payors regarding the consequences of and preventive strategies for ECC, emphasizing the importance of access to care for all. \n\n- advocating for reimbursement systems to allow access for all children and educational reforms that emphasize evidence-based preventive and comprehensive management of ECC. \n\n## References \n\n1.  American Academy of Pediatric Dentistry. Proceedings of the conference: Innovations in the Prevention and Management of Early Childhood Caries. October 2014. Chicago, IL. Pediatr Dent 2015;37(3):198-299. \n\n2.  American Academy of Pedodontics, American Academy of Pediatrics. Nursing bottle caries. January 1978. Reference Manual 1991-1992. Chicago, IL: American Academy of Pediatric Dentistry; 1991:27. \n\n3.  American Academy of Pediatric Dentistry. Policy on early childhood caries (ECC): Consequences and preventive strategies. The Reference Manual of Pediatric Dentistry. Chicago, IL: American Academy of Pediatric Dentistry; 2021;81-4. \n\n4.  American Academy of Pediatric Dentistry. Baby bottle tooth decay, revised 1993. Pediatr Dent 1993;15(7):27. \n\n5.  Americano GCA, Jacobsen PE, Soviero VM, Haubek D. A systematic review on the association between molar incisor hypomineralization and dental caries. Int J Paediatr Dent 2017:27(1):1-78. \n\n6.  de Jesus VC, Shikder R, Oryniak D, et al. Sex-based diverse plaque microbiota in children with severe caries. J Dent Res 2020;99(6):703-12. \n\n7.  Khan SY, Schroth RJ, Cruz de Jesus V, et al. A systematic review of caries risk in children <6 years of age. Int J Paediatr Dent 2024;34(4):410-31. Available at: “https:// onlinelibrary.wiley.com/doi/10.1111/ipd.13140”.  Accessed July 20, 2025. \n\n- \n\n- 8.  Lu Y, Lin Y, Li M, He J. Roles of _Streptococcus mutans Candida albicans_ interaction in early childhood caries: A literature review. Front Cell Infect Microbiol 2023;13: 1-7. \n\n9.  Tinanoff N. Introduction to the conference: Innovations in the Prevention and Management of Early Childhood Caries. Pediatr Dent 2015;37(4):198-9. \n\n10.  American Academy of Pediatric Dentistry. Policy on social determinants of oral health and oral health disparities. The Reference Manual of Pediatric Dentistry. Chicago, IL: American Academy of Pediatric Dentistry; 2025: 47-51. \n\n11.  Drury TF, Horowitz AM, Ismail AI, et al. Diagnosing and reporting early childhood caries for research purposes. J Public Health Dent 1999;59(3):192-7. \n\n12.  Kotha A, Vemulapalli A, Mandapati SR, Aryal S. Prevalence, trends, and severity of early childhood caries in the United States: National health and nutritional examination survey data 2013 to 2018. Pediatr Dent 2022;44 (4):261-8. \n\n13.  Lam PPY, Chua H, Ekamaram M, Lo ECM, You CKY. Does early childhood caries increase caries development among school children and adolescents? A systematic review and meta-analysis. Int J Environ Res Public Health 2022;19(20):7-12. \n\n14.  Schroth RJ, Rothney J, Sturym M, et al. A systematic review to inform the development of a Canadian caries risk assessment tool for use by primary healthcare providers. Int J Paediatr Dent 2021:31(6):767-91 \n\n15.  Musa AAR, Sethi S, Poirier BF, Oliver KJ, Jensen ED. Non-traumatic emergency department dental visits among patients 0-25 years of age: A systematic review and meta-analysis. Int J. Paediatr Dent 2023;33(5): 457-67. \n\n16.  Owens PL, Manski RJ, Weiss AJ. Emergency Department Visits Involving Dental Conditions, 2018. Healthcare Cost and Utilization Project, Statistical Brief #280. Agency for Healthcare Research and Quality; August 2021. Available at: “https://hcup-us.ahrq.gov/reports/stat briefs/sb280-Dental-ED-Visits-2018.pdf ”. Accessed August 7, 2025. \n\n17.  Edelstein BL, Reisine S. Fifty-one million: A mythical number that matters. J Am Dent Assoc 2015;146(8): 565-6. \n\n18.  Ruff RR, Senthi S, Susser SR, Tsutsui A. Oral health, academic performance, and school absenteeism in children and adolescents. J Am Dent Assoc 2019;150(2):111-21. \n\n98          THE REFERENCE MANUAL OF PEDIATRIC DENTISTRY ( _WWW.AAPD.ORG/RESEARCH/ORAL-HEALTH-POLICIES--RECOMMENDATIONS_ ) \n\nORAL HEALTH POLICIES:   ECC: CONSEQUENCES & PREVENTIVE STRATEGIES \n\n19.  Carvalho Silva C, Mendes R, Manso MDC, Gavinha S, Melo P. Prenatal or childhood serum levels of vitamin D and dental caries in paediatric patients: A systematic review. Oral Health Prev Dent 2020;18(4):653-67. \n\n20.  Easwaran HN, Annadurai A, Muthu MS, et al. Early childhood caries and iron deficiency anaemia: A systematic review and meta-analysis. Caries Res 2022;56(1):36-46. \n\n21.  Schroth RJ, Pierce A, Rodd C, et al. Improvement in serum vitamin D following dental rehabilitation to treat severe early childhood caries. Pediatr Dent 2022;44(4): 278-83. \n\n22.  Farsi DJ, Farsi NJ, El-Housseiny AA, Turkistani JM, Farsi NM. Impact of dental rehabilitation on oral healthrelated quality-of-life in healthy children and those with special health care needs. J Contemp Dent Pract 2018; 19(4):367-74. \n\n23.  Grant CG, Daymont C, Rodd C, et al. Oral health-related quality of life of Canadian preschoolers with severe caries after dental rehabilitation under general anesthesia. Pediatr Dent 2019;41(3):221-8. \n\n24.  Raghu R, Gauba K, Goyal A, Kapur A, Supta A, Singh SK. Oral health-related quality of life of children with early childhood caries before and after receiving complete oral rehabilitation under general anesthesia. Int J Clin Pediatr Dent 2021;14(Suppl 2):S117-S123. \n\n25.  Kopycka-Kedzierawski DT, Billings RJ, Feng C, et al. A prospective longitudinal study of early childhood caries onset in initially caries-free children. JDR Clin Trans Res 2023;8(4):394-401. \n\n26.  Doméjean S, Zhan L, DenBesten PK, Stamper J, Boyce WT, Featherstone JD. Horizontal transmission of mutans streptococci in children. J Dent Res 2010;89(1):51-5. \n\n27.  Manchanda S, Sardana D, Liu P, et al. Horizontal transmission of streptococcus mutans in children and its association with dental caries: A systematic review and meta-analysis. Pediatr Dent 2021;43(1):E1-E12. \n\n28.  Hahishengallis E, Parsaei Y, Klein MI, Koo H. Advances in the microbial etiology and pathogenesis of early childhood caries. Mol Oral Microbiol 2017;32(1):24-34. \n\n29.  Khan MW, de Jesus VC, Mittermuller BA, et al. Role of socioeconomic factors and interkingdom crosstalk in the dental plaque microbiome in early childhood caries. Cell Rep 2024;43(8):1-17. Available at: “https://www.cell. com/cell-reports/pdf/S2211-1247(24)00985-9.pdf ”. Accessed August 7, 2025. \n\n30.  Li Y, Tanner A. Effect of antimicrobial interactions on the oral microbiota associated with early childhood caries. Pediatr Dent 2015;37(3):226-44. \n\n31.  Mira A. Oral microbiome studies: Potential diagnostic and therapeutic implications. Adv Dent Res 2018;29(1):71-7. \n\n32.  Dashper SG, Mitchel HL, Lê Cao KA, et al. Temporal development of the oral microbiome and prediction of early childhood caries. Sci Rep 2019;9(1):19732. Available at: “https://doi.org/10.1038/s41598-019-56233-0”. Accessed August 7, 2025. \n\n33.  Dzidic M, Collado MC, Abrahamsson T, et al. Oral microbiome development during childhood: An ecological succession influenced by postnatal factors and associated with tooth decay. ISME J 2018;12(9):2292-306. \n\n34.  de Jesus VC, Mittermuller BA, Hu P, Schroth RJ, Chelikani P. Genetic variants in taste genes play a role in oral microbial composition and severe early childhood caries. iScience 2022;25(12):105489. \n\n35.  Kopycka-Kedzierawski DT, Scott-Anne K, Ragusa PG, et al. Social, psychological, and behavioral predictors of salivary bacteria, yeast in caries-free children. JDR Clin Trans Res 2022;7(2):163-73. \n\n36.  Moynihan PJ, Kelly SAM. Effect on caries of restricting sugars intake: Systematic review to inform WHO guidelines. J Dent Res 2014;93(1):8-18. \n\n37.  Tinanoff NT, Kanellis MJ, Vargas CM. Current understanding of the epidemiology, mechanism, and prevention of dental caries in preschool children. Pediatr Dent 2002;24(6):543-51. \n\n38.  Salone LR, Vann WF, Dee DL. Breastfeeding: An overview of oral and general health benefits. J Am Dent Assoc 2013;144(2):143-51. \n\n39.  Panchanadikar NT, Abirami S, Muthu MS, Selvakumar H, Jayakumar P, Agarwal A. Breastfeeding and its association with early childhood caries – An umbrella review. J Clin Pediatr Dent 2022;46(2):75-85. \n\n40.  Peres KG, Chaffee BW, Feldens CA. Breastfeeding and oral health: Evidence and methodological challenges. J Dent Res 2018;97(3):251-8. \n\n41.  Shrestha SK, Arora A, Manohar N, Ekanayake K, Foster J. Association of breastfeeding and early childhood caries: A systematic review and meta-analysis. Nutrients 2024; 16(9):1355. \n\n42.  Wong PD, Birken CS, Parkin PC, et al. Total breast-feeding duration and dental caries in healthy urban children. Acad Pediatr 2017;17(3):310-5. \n\n43.  Lott M, Callahan E, Welker Duffy E, Story M, Daniels S. Healthy Beverage Consumption in Early Childhood: Recommendations from Key National Health and Nutrition Organizations. Consensus Statement. Durham, NC: Healthy Eating Research; 2019. Available at: “https:// healthyeatingresearch.org/wp-content/uploads/2019/09/ HER-HealthyBeverage-ConsensusStatement.pdf”.  Accessed August 7, 2025. \n\n44.  Heyman MB, Abrams SA; American Academy of Pediatrics Committee on Nutrition. Fruit juice in infants, children, and adolescents: Current recommendations. Pediatrics 2017;139(6):e20170967. \n\n45.  Iheozor-Ejiofor Z, Walsh T, Lewis SR, et al. Water fluoridation for the prevention of dental caries. Cochrane Database Syst Rev 2024;10(10):CD010856. Available at: “https://doi.org/10.1002/14651858.CD010856. pub2”. Accessed August 7, 2025. \n\n_References continued on the next page._ \n\nTHE REFERENCE MANUAL OF PEDIATRIC DENTISTRY ( _WWW.AAPD.ORG/RESEARCH/ORAL-HEALTH-POLICIES--RECOMMENDATIONS_ )           99 \n\nORAL HEALTH POLICIES:   ECC: CONSEQUENCES & PREVENTIVE STRATEGIES \n\n46.  Slade GD, Grider WB, Maas WR, Sanders AE. Water fluoridation and dental caries in U.S. children and adolescents. J Dent Res 2018;97(10):1122-8. \n\n47.  Lee HH, Faundez MA, LoSasso AT. A cross-sectional analysis of community water fluoridation and prevalence of pediatric dental surgery among Medicaid enrollees. JAMA Network Open 2020;3(8):e205882. \n\n48.  Sanders AE, Grider WB, Mass WR, Curiel JA, Slade GD. Association between water fluoridation and incomerelated dental caries of U.S. children and adolescents. JAMA Pediatr 2019;173(3):288-90. \n\n49.  Broadbent JM, Thomson WM, Ramrakha S, et al. Community water fluoridation and intelligence: Prospective study in New Zealand. Am J Public Health 2015;105(1): 72-6. \n\n50.  Green R, Lanphear B, Hornung R, et al. Association between maternal fluoride exposure during pregnancy and IQ scores in offspring in Canada. JAMA Pediatr 2019; 173(10):940-8. Available at: “https://jamanetwork.com/ journals/jamapediatrics/fullarticle/2748634”. Accessed August 7, 2025. \n\n51.  Taylor KW, Eftim SE, Sibrizzi CA, et al. Fluoride exposure and children’s IQ scores: A systematic review and meta-analysis. JAMA Pediatr 2025;179(3):282-92. \n\n52.  Centers for Disease Control and Prevention. CDC Scientific Statement on Community Water Fluoridation. May 2024. Available at: “https://www.cdc.gov/fluoridation/ about/statement-on-the-evidence-supporting-the-safetyand-effectiveness-of-community-water-fluoridation.html”. Accessed August 7, 2025. \n\n53.  Levy SM. Caution needed in interpreting the evidence base on fluoride and IQ. JAMA Pediatr 2025;179(3): 231-4. \n\n54.  Tinanoff N, Dhar V, Caffrey E. Community water fluoridation: Evidence of efficacy and risks. Pediatr Dent 2024;46(6):370-1. \n\n55.  American Dental Association Council on Scientific Affairs. Fluoride toothpaste use for young children. J Am Dent Assoc 2014;145(2):190-1. \n\n   57.  Santos AP, Oliveira BH, Nadanovsky P. Effects of low and standard fluoride toothpastes on caries and fluorosis: Systematic review and meta-analysis. Caries Res 2013;47 (5):382-90. \n\n   58.  Wright JT, Hanson N, Ristic H, Whall CW, Estrich CG, Zentz RR. Fluoride toothpaste efficacy and safety in children younger than 6 years. J Am Dent Assoc 2014; 145(2):182-9. \n\n   59.  Sjögren K, Birkhed D. Factors related to fluoride retention after toothbrushing and possible connection to caries activity. Caries Res 1993;27(6):474-7. \n\n   60.  American Academy of Pediatric Dentistry. Fluoride therapy. The Reference Manual of Pediatric Dentistry. Chicago, IL: American Academy of Pediatric Dentistry; 2025:372-8. \n\n   61.  American Academy of Pediatric Dentistry. Policy on use of fluoride. The Reference Manual of Pediatric Dentistry. Chicago, IL: American Academy of Pediatric Dentistry; 2025:110-2. \n\n   62.  Weyant RJ, Tracy SL, Anselmo T, Beltrán-Aguilar EJ, Donly KJ, Frese WA. Topical fluoride for caries prevention: Executive summary of the updated clinical recommendations and supporting systematic review. J Am Dent Assoc 2013;144(11):1279-91. \n\n   63.  Lee JY, Bouwens TJ, Savage MF, Vann WF. Examining the cost-effectiveness of early dental visits. Pediatr Dent 2006;28(2):102-5, discussion 192-8. \n\n   64.  Douglass AB, Douglass JM, Krol DM. Educating pediatricians and family physicians in children’s oral health. Academic Pediatr 2009;9(6):452-6. \n\n   65.  Crystal YO, Marghalani AA, Ureles SD, et al. Use of silver diamine fluoride for dental caries management in children and adolescents, including those with special health care needs. Pediatr Dent 2017;39(5):E135-E145. \n\n   66.  Gao SS, Zhao IS, Hiraishi N, et al. Clinical trials of SDF in arresting caries among children: A systematic review. JDR Clin Trans Res 2016;1(3):201-10. \n\n56.  Boustedt K, Dahlgren J, Twetman S, Roswall J. Toothbrushing habits and prevalence of early childhood caries: A prospective cohort study. Eur Arch Paediatr Dent 2020; 21(1):155-9. \n\n100          THE REFERENCE MANUAL OF PEDIATRIC DENTISTRY ( _WWW.AAPD.ORG/RESEARCH/ORAL-HEALTH-POLICIES--RECOMMENDATIONS_ ) \n\n",
+                          "error": ""
+                        }
+                      }
+                    },
+                    {
+                      "function_response": {
+                        "name": "read_doc",
+                        "response": {
+                          "status": "success",
+                          "docid": 88,
+                          "collection": "aapd",
+                          "filepath": "aapd/p-eccuniquechallenges25.md",
+                          "title": "Policy on Early Childhood Caries[(] ECC[)] : Unique Challen es and Mana ement Considerations g g",
+                          "body": "ORAL HEALTH POLICIES:   ECC: UNIQUE CHALLENGES, MANAGEMENT CONSIDERATIONS \n\n## Policy on Early Childhood Caries[(] ECC[)] : Unique Challen es and Mana ement Considerations g g \n\n## Latest Revision \n\n2025 \n\nHow to Cite: American Academy of Pediatric Dentistry. Policy on early childhood caries (ECC): Unique challenges and management considerations. The Reference Manual of Pediatric Dentistry. Chicago, IL:  American  Academy  of  Pediatric  Dentistry;  2025:101-3. \n\n## Purpose \n\nThe American Academy of Pediatric Dentistry ( **AAPD** ), to promote appropriate, quality oral health care for infants and children with early childhood caries ( **ECC** ), addresses the unique challenges and management of this disease, including the need for advanced preventive, restorative, and behavioral guidance techniques. \n\n## Methods \n\nThis policy was developed by the Council on Clinical Affairs, adopted in 2000,[1] and last revised in 2021.[2] An electronic search of articles in the dental and medical literature in English within the last 10 years was conducted using the PubMed/MEDLINE database with the following search terms: _(evidence based dentistry_ [ **Majr** ] _OR pediatric dentistry_ [Majr] _OR dental care for children_ [Majr] _) AND (dental caries_ [Majr] _OR dental caries susceptibility_ [Majr] _OR early childhood caries_ [ **Tiab** ] _OR infant oral health_ [Tiab] _OR oral microbiome_ [Tiab] _OR ECC  prevention_ [Tiab] OR _patient well-being_ [Tiab] OR _nutrition_ [Tiab] OR _quality of life_ [Majr] OR _ECC_ [Tiab]). Two hundred forty-seven articles met the defined criteria, and 36 articles were selected for review from this search and from references within the selected papers. When information from these articles did not appear sufficient or was inconclusive, expert and/or consensus opinions by experienced researchers and clinicians were considered. \n\n## Background \n\nEpidemiologic data from a 2013-2018 national health survey clearly indicate that ECC remains highly prevalent in poor and near poor United States preschool children.[3] For the overall population of preschool children, the prevalence of ECC, as measured by decayed and filled tooth surfaces (dfs), is unchanged from previous surveys.[3 ] However, the proportion of children with severe ECC (S-ECC) increased significantly.[3] The consequences of ECC include a higher risk of new caries lesions in both the primary and permanent dentitions,[4-6] hospitalizations and emergency room visits,[7] high treatment costs,[8] loss of school days,[9] diminished ability to learn,[9] nutritional deficiencies,[10-13] and reduced[14-16 ] oral health-related quality of life. \n\nDue to the added costs and potential health risks of sedation and general anesthesia,[17-19] which often is required to enable provision of restorative and surgical care for young children, \n\nas well as the high recurrence of lesions following these procedures,[20] strategies to prevent and arrest the disease process[21] have come into greater focus. This includes utilizing methods referred to as chronic disease management in combination with 1) active surveillance and 2) minimal intervention. \n\nChronic disease management involves actively engaging parents to facilitate and promote preventive measures, including the identification and reduction of individual risk factors to sustain oral health in the long term.[22,23] Active surveillance refers to careful monitoring of caries progression and implementation of prevention programs (eg, more frequent recalls and fluoride varnish applications) in children with incipient lesions.[24,25] Minimal intervention approaches include caries arrest with silver diammine fluoride (SDF),[26,27] sealants,[28] and interim therapeutic restorations (ITR)[29] that temporarily restore teeth in young children until a time when traditional cavity preparation and restoration is possible, as well as the use of Hall-technique[30] for crown placement. \n\nChildren with known risk factors for ECC benefit from care provided by oral health professionals with the training and expertise to manage both the child and the disease process. The use of anticariogenic agents, especially twice daily brushing with fluoridated toothpaste[31] and the frequent application of fluoride varnish, may reduce the risk of development and progression of caries. In some children for whom preventive programs fail to halt the caries disease process, areas of demineralization and hypoplasia can rapidly develop into cavitations. If left untreated, caries lesions can invade the dental pulp, leading to infection and possibly life-threatening complications involving fascial spaces. Such infections may result in a medical emergency requiring hospitalization, antibiotics, and extraction of the offending tooth.[32] The extent of the disease process as well as the patient’s age, cognitive development, and level of comprehension affect the practitioner’s management decisions. The establishment of a dental home[33] when the first tooth erupts is imperative to implement primary prevention and early intervention before advanced disease becomes established. For cases of severe ECC, the child may benefit from advanced \n\n## ABBREVIATIONS \n\nAAPD:  American  Academy  of  Pediatric  Dentistry.  ECC:  Early  childhood  caries.  Majr:  Medical  subject  heading  major  topic.  Tiab:  Title and  abstract. \n\nTHE REFERENCE MANUAL OF PEDIATRIC DENTISTRY ( _WWW.AAPD.ORG/RESEARCH/ORAL-HEALTH-POLICIES--RECOMMENDATIONS_ )           101 \n\nORAL HEALTH POLICIES:   ECC: UNIQUE CHALLENGES, MANAGEMENT CONSIDERATIONS \n\nbehavior guidance techniques[34] (ie, sedation, general anesthesia) if unable to cooperate for extensive treatment. In such situations, stainless steel crowns often are indicated to restore teeth with large or interproximal caries lesions and extensive white spot lesions since stainless steel crowns are less likely than other restorations to require retreatment.[35] \n\n## Policy statement \n\nThe AAPD recognizes the unique and often virulent nature of ECC and the value of preventive care and interventions to halt disease progression. The AAPD encourages nondental health care providers who identify a child as having ECC or risk factors for the disease to refer the patient to a dentist for treatment and establishment of a dental home. Timely intervention is indicated and includes nonsurgical interventions that may reduce or postpone the need for sedation or general anesthesia. Because children who experience ECC are at greater risk for subsequent caries development, the AAPD encourages preventive measures (eg, dietary counseling, reinforcement of toothbrushing with fluoridated toothpaste, sealants on primary molars), more frequent professional visits with applications of topical fluoride, and minimally invasive and restorative care (as necessary) for this vulnerable population. \n\n## References \n\n1.  American Academy of Pediatric Dentistry. Policy on early childhood caries: Unique challenges and treatment options. Pediatr Dent 2000;22(suppl):21. \n\n2.  American Academy of Pediatric Dentistry. Policy on early childhood caries: Unique challenges and treatment options. The Reference Manual of Pediatric Dentistry. Chicago, IL: American Academy of Pediatric Dentistry; 2021:85-6. \n\n3.  Kotha A, Vemulapalli A, Mandapati SR, Aryal S. Prevalence, trends, and severity of early childhood caries in the United States: National health and nutritional examination survey data 2013 to 2018. Pediatr Dent 2022;44(4): 261-8. \n\n4.  Khan SY, Schroth RJ, Cruz de Jesus V, et al. A systematic review of caries risk in children <6 years of age. Int J Paediatr Dent 2024;34(4):410-31. \n\n5.  Lam PPY, Chua H, Ekamaram M, Lo ECM, You CKY. Does early childhood caries increase caries development among school children and adolescents? A systematic review and meta-analysis. Int J Environ Res Public Health 2022;19(20):7-12. \n\n6.  Schroth RJ, Rothney J, Sturym M, et al. A systematic review to inform the development of a Canadian caries risk assessment tool for use by primary healthcare providers. Int J Paediatr Dent 2021:31(6):767-91. \n\n7.  Musa AAR, Sethi S, Poirier BF, Oliver KJ, Jensen ED. Non-traumatic emergency department dental visits among patients 0-25 years of age: A systematic review and meta-analysis. Int J Paediatr Dent 2023;33(5):457-67. \n\n8.  Owens PL, Manski RJ, Weiss AJ. Emergency Department Visits Involving Dental Conditions, 2018. Healthcare Cost and Utilization Project, Statistical Brief #280. Agency for Healthcare Research and Quality; August 2021. Available at: “https://hcup-us.ahrq.gov/reports/ statbriefs/sb280-Dental-ED-Visits-2018.pdf”. Accessed August 7, 2025. \n\n9.  Ruff RR, Senthu S, Susser SR, Tsutsui A. Oral health, academic performance, and school absenteeism in children and adolescents. J Am Dent Assoc 2019;150(2): 111-21. \n\n10.  Carvalho Silva C, Mendes R, Manso MDC, Gavinha S, Melo P. Prenatal or childhood serum levels of vitamin D and dental caries in paediatric patients: A systematic review. Oral Health Prev Dent 2020;18(4):653-67. \n\n11.  Easwaran HN, Annadurai A, Muthu MS, et al. Early childhood caries and iron deficiency anaemia: A systematic review and meta-analysis. Caries Res 2022;56(1): 36-46. \n\n12.  Ji S, Zhao K, Ma L, Chen X, Zheng D, Lu Y. The association between vitamin D and early childhood caries: A systematic review and meta-analysis. Oral Health Prev Dent 2024;22:63-72. \n\n13.  Schroth RJ, Pierce A, Rodd C, et al. Improvement in serum vitamin D following dental rehabilitation to treat severe early childhood caries. Pediatr Dent 2022;44(4): 278-83. \n\n14.  Farsi DJ, Farsi NJ, El-Housseiny AA, Turkistani JM, Farsi NM. Impact of dental rehabilitation on oral healthrelated quality-of-life in healthy children and those with special health care needs. J Contemp Dent Pract 2018;19 (4):367-74. \n\n15.  Grant CG, Daymont C, Rodd C. Oral health-related quality of life of Canadian preschoolers with severe caries after dental rehabilitation under general anesthesia. Pediatr Dent 2019;41(3):221-8. \n\n16.  Park JS, Anthonappa RP, Yawary R, King NM, Martens LC. Oral health-related quality of life changes in children following dental treatment under general anaesthesia: A meta-analysis. Clin Oral Investig 2018;22(8):2809-18. \n\n17.  Bruen BK, Steinmetz E, Bysshe T, Glassman P, Ku L. Potentially preventable dental care in operating rooms for children enrolled in Medicaid. J Am Dent Assoc 2016; 147(9):702-8. \n\n18.  Schroth RJ, Quiñonez C, Shwart L, Wagar B. Treating early childhood caries under general anesthesia: A national review of Canadian data. J Can Dent Assoc 2016;82:g20. \n\n19.  Sinner B, Beck K, Engelhard K. General anesthetics and the developing brain: An overview. Anesthesia 2014;69 (9):1009-22. \n\n20.  Lin YT, Lin YJ. Factors associated with the risk of caries development after comprehensive dental rehabilitation under general anesthesia. J Dent Sci 2016;11(2):164-9. \n\n102          THE REFERENCE MANUAL OF PEDIATRIC DENTISTRY ( _WWW.AAPD.ORG/RESEARCH/ORAL-HEALTH-POLICIES--RECOMMENDATIONS_ ) \n\nORAL HEALTH POLICIES:   ECC: UNIQUE CHALLENGES, MANAGEMENT CONSIDERATIONS \n\n21.  Tickle M, O’Neill C, Donaldson M, et al. A randomized controlled trial of caries prevention in dental practice. J Dent Res 2017;96(7):741-6. \n\n22.  Edelstein BL, Ng MW. Chronic disease management strategies of early childhood caries: Support from the medical and dental literature. Pediatr Dent 2015;37(7): 281-7. \n\n23.  Featherstone JDB, Crystal YO, Alston P, et al. Evidencebased caries management for all ages – Practical guidelines. Front Oral Health 2021;2(657518):1-19. Available at: “https://doi.org/10.3389/froh.2021.657518”. Accessed January 27, 2025. \n\n24.  American Academy of Pediatric Dentistry. Caries-risk assessment and management for infants, children, and adolescents. The Reference Manual of Pediatric Dentistry. Chicago, IL: American Academy of Pediatric Dentistry; 2025:325-31. \n\n25.  Fontana M, Gonzalez-Cabezas C, Tenuta LMA. Evidencebased approaches and considerations for nonrestorative treatments within modern caries management: Integrating science into practice. J Am Dent Assoc 2024;155(12): 1000-11. \n\n26.  Crystal YO, Marghalani AA, Ureles SD, et al. Use of silver diamine fluoride for dental caries management in children and adolescents, including those with special health care needs. Pediatr Dent 2017;39(5):E135-E145. \n\n27.  Crystal YO, Niederman R. Evidence-based dentistry update on silver diamine fluoride. Dent Clin North Am 2019;63(1):45-68. \n\n28.  Wright JT, Crall JJ, Fontana M, et al. Evidence-based clinical practice guideline for the use of pit-and-fissure sealants. American Academy of Pediatric Dentistry, American Dental Association. Pediatr Dent 2016;38(5): E120-E36. \n\n29.  American Academy of Pediatric Dentistry. Policy on interim therapeutic restorations (ITR). The Reference Manual of Pediatric Dentistry. Chicago, IL: American Academy of Pediatric Dentistry; 2025:116-7. \n\n30.  Crystal YO, Janal M, Kim S, Nelson T. Teaching and utilization of SDF and Hall-style crowns in U.S. pediatric dental programs. J Am Dent Assoc 2020;151(10):755-63. \n\n31.  Kühnisch J, Ekstrand KR, Pretty I, et al. Best clinical practice guidance for management of early caries lesions in children and young adults: An EAPD policy document. Eur Arch Paediatr Dent 2016;17(1):3-12. \n\n32.  Sheller B, Williams BJ, Lombardi SM. Diagnosis and treatment of dental caries-related emergencies in a children’s hospital. Pediatr Dent 1997;19(8):470-5. \n\n33.  American Academy of Pediatric Dentistry. Policy on the dental home. The Reference Manual of Pediatric Dentistry. Chicago, IL: American Academy of Pediatric Dentistry; 2025:42-4. \n\n34.  American Academy of Pediatric Dentistry. Behavior guidance for the pediatric dental patient. The Reference Manual of Pediatric Dentistry. Chicago, IL: American Academy of Pediatric Dentistry; 2025:379-99. \n\n35.  Innes NP, Ricketts D, Chong LY, Keightley AJ, Lamont T, Santamaria RM. Preformed crowns for decayed primary molar teeth. Cochrane Database Syst Rev 2015;2015 (12):CD005512. \n\nTHE REFERENCE MANUAL OF PEDIATRIC DENTISTRY ( _WWW.AAPD.ORG/RESEARCH/ORAL-HEALTH-POLICIES--RECOMMENDATIONS_ )           103 \n\n",
+                          "error": ""
+                        }
+                      }
+                    },
+                    {
+                      "function_response": {
+                        "name": "read_doc",
+                        "response": {
+                          "status": "success",
+                          "docid": 45,
+                          "collection": "aapd",
+                          "filepath": "aapd/bp-perinataloralhealthcare25.md",
+                          "title": "Perinatal and Infant Oral Health Care",
+                          "body": "BEST PRACTICES:   PERINATAL AND INFANT OHC \n\n## Perinatal and Infant Oral Health Care \n\n## Latest Revision \n\n2025 \n\nHow to Cite: American Academy of Pediatric Dentistry. Perinatal and infant oral health care. The Reference Manual of Pediatric Dentistry. Chicago, IL: American Academy of Pediatric Dentistry; 2025:337-41. \n\n## Abstract \n\n_This best practice presents recommendations regarding perinatal and infant oral health care, including caries risk assessment, anticipatory guidance, preventive strategies, and therapeutic interventions. Oral health care professionals play an invaluable role in optimizing the oral health of infants, particularly through the establishment of a dental home, caries prevention, and management of common oral conditions. Relevant oral findings including developmental cysts, pathognomonic viral and fungal lesions, cleft lip and palate, natal and neonatal teeth, ankyloglossia, and tooth eruption are discussed. The document emphasizes the importance of dental visits during pregnancy and highlights feeding practices and caries risk factors during infancy. Strategies for prevention of early childhood caries, including dietary modifications and use of fluoride, are encouraged. Additional elements of anticipatory guidance addressed are oral hygiene instruction, frequency of dental examinations, consequences of nonnutritive sucking habits, and safety practices to avoid orofacial trauma. Providers may use this document to help frame discussions with expectant and new parents regarding essential aspects of perinatal and infant oral health._ \n\n_This document was developed through a collaborative effort of the American Academy of Pediatric Dentistry Councils on Clinical Affairs and Scientific Affairs to offer updated information and recommendations regarding perinatal and infant oral health care._ \n\nKEYWORDS: ANTICIPATORY GUIDANCE;  CARIES RISK FACTORS;  DENTAL HOME;  INFANT ORAL HEALTH;  ORAL HYGIENE INSTRUCTION;  PERINATAL ORAL HEALTH \n\n## Purpose \n\nThe American Academy of Pediatric Dentistry ( **AAPD** ) recognizes that perinatal and infant oral health are the foundations upon which preventive education and dental care must be built to enhance the opportunity for a child to have a lifetime free from preventable oral disease. Recognizing that dentists, physicians, allied health professionals, and community organizations must be involved as partners to achieve this goal, the AAPD proposes best practices for perinatal and infant oral health care, including caries-risk assessment, anticipatory guidance, preventive strategies, and therapeutic interventions, to be followed by stakeholders in pediatric oral health. \n\n## Method \n\nRecommendations on perinatal and infant oral health care were developed by the Infant Oral Health Subcommittee of the Clinical Affairs Committee and adopted in 1986.[1] The Guideline on Perinatal Oral Health Care was originally developed by the Infant Oral Health Committee of the Council on Clinical Affairs and adopted in 2009.[2] Those documents were combined in 2016[3] and last revised in 2021.[4] A search of the PubMed/MEDLINE database was completed with the terms: _infant oral health_ , _infant oral health care_ , _dental caries_ , _early childhood caries_ , _perinatal care_ , _perinatal oral health_ , and _early childhood caries prevention_ ; fields: all; limits: within the last 5 years, English, systematic reviews, randomized controlled trials, and child: birth to 18 years. The search resulted in 626 papers that were reviewed by title and abstract. From those, papers were selected to update this document. When data did not appear sufficient or were inconclusive, recommendations were \n\nbased upon expert and/or consensus opinion by experienced researchers and clinicians. \n\n## Background \n\n## **Role of oral health professionals in perinatal and infant oral health care** \n\nThe perinatal period is defined as the time before birth and ending 28 days after birth.[5] The infant period extends to the child’s first birthday. Oral health professionals have a vital role in perinatal and infant oral health care, particularly regarding the establishment of a dental home,[6] education of new parents, and the timing of a child’s first dental visit. Oral health care professionals need to be knowledgeable about the perinatal period and first year of a child’s life with respect to common oral conditions, components of anticipatory guidance, and early childhood caries ( **ECC** ) preventive care including oral cleaning, dietary recommendations, and optimal fluoride exposure. \n\n## **Pregnancy and the perinatal period** \n\nThe perinatal period is crucial for the well-being of pregnant women and the health and well-being of their newborn children.[7] Mothers’ poor oral health is associated with poor oral health of their offspring.[8] Despite the value of oral health care to prevent or delay vertical transmission of Mutans streptococci ( **MS)** from mother to infant,[9,10] pregnant  women may avoid \n\n## ABBREVIATIONS \n\nAAPD: American Academy of Pediatric Dentistry. ECC: Early childhood  caries.  MS:  Mutans  streptococci. \n\nTHE REFERENCE MANUAL OF PEDIATRIC DENTISTRY ( _WWW.AAPD.ORG/RESEARCH/ORAL-HEALTH-POLICIES--RECOMMENDATIONS_ )           337 \n\nBEST PRACTICES:   PERINATAL AND INFANT OHC \n\nthe dentist or have difficulty finding a dentist willing to provide care.[9] \n\nNewborns and infants often have nonnutritive habits, such as sucking a digit or using a pacifier. Prolonged digit sucking can cause flaring of the maxillary incisors, an open bite, and a posterior crossbite.[11] However, oral effects of these habits are of little concern during infancy. In fact, pacifier use during infancy has been associated with a decreased incidence of sudden infant death syndrome and decreased incidence of ear infections.[12] \n\n## **Common oral conditions in newborns and infants** \n\nDevelopment cysts of the newborn typically present as asymptomatic small papules.[13] Palatal cysts of the newborn include Bohn’s nodules and Epstein pearls.[13] Bohn’s nodules are remnants of salivary gland epithelium and are located at the junction of the hard and soft palates or on the buccal and lingual aspects of the ridge away from the midline.[13] Epstein pearls are keratin-filled cysts found in the midpalatal raphe; they are the result of trapped epithelial remnants along the line of fusion of the palatal halves.[13] Gingival cysts of the newborn, or dental lamina cysts, may be found along the crest of the mandibular and maxillary ridges of neonates. These lesions arise from epithelial remnants of the dental lamina.[14] These 3 developmental remnants generally disappear shortly after birth, and no treatment is necessary.[13] Fordyce granules are common aberrant yellow-white sebaceous glands most often found on the buccal mucosa or lips. No management is needed as these lesions are inconsequential and resolve on their own.[14] \n\nA restrictive oral frenum may hinder an infant’s ability to feed or speak.[15,16] Infants with a restrictive frenum may experience poor weight gain, reflux, and prolonged feeding time.[17] Because breastfeeding difficulties may have multiple etiologies, a team approach is necessary to accurately determine the cause and recommended intervention for each mother-infant dyad.[16] Evidence to support the rationale and timing for surgical intervention is limited, but frenectomy may be indicated on an individual basis for functional improvement and symptomatic relief.[15] \n\nThe prevalence of cleft lip with cleft palate in the US is 1 in 1600 live births.[18] The prevalence of cleft palate alone is 1 in 1700.[18] Cleft lip may vary from a small notch in the vermilion border to a complete separation involving skin, muscle, mucosa, dentition, and bone. Clefts may be unilateral or bilateral and may involve the alveolar ridge. Isolated cleft palate occurs in the midline and may involve only the uvula or may extend into or through the soft and hard palates to the incisive foramen. Rehabilitation for the child with a cleft lip or palate may require years of specialized treatment by a craniofacial team. Feeding challenges are prevalent but can be overcome. Typically, patients with cleft lip can breastfeed successfully, while those with cleft palate usually are unsuccessful.[19] Specialized bottle systems exist to improve feeding practices for infants with cleft lip and palate.[19] Surgical closure of a cleft lip usually is performed around 3 months of age; closure of the palate usually occurs around 1 year.[14] \n\nDue to their developing immune system,[20] infants are prone to fungal and viral infections. A common fungus is oropharyngeal candidiasis which appears as white plaques and erythematous mucosa in the oropharynx. Candidiasis usually is self-limiting in the healthy newborn infant, but topical application of nystatin may be indicated.[14] Primary herpetic gingivostomatitis is a viral infection which can present erythematous gingiva, bleeding mucosa, and clusters of small vesicles throughout the mouth. Somatic signs may include fever, malaise, lymphadenopathy, and difficulty eating and drinking. Usually, symptoms regress within 2 weeks, and lesions heal without scarring.[14] Less commonly, coxsackievirus infections, including herpangina and hand-foot-mouth disease, will present with oral signs and symptoms.[14] \n\n## **Tooth eruption (teething)** \n\nThe first teeth usually erupt around 6 months of age. However, some children may be born with teeth or have teeth erupt soon after birth. Natal teeth are evident at birth, whereas neonatal teeth present in the first month of life. Attachment of natal and neonatal teeth generally is limited to the gingival margin due to little root formation or bony support. Natal and neonatal teeth typically are part of the normal complement of primary teeth[14] and can be maintained if there is no concern for feeding disruption, aspiration risk, or interference with oral function. Neonatal teeth are more common in patients with cleft palate compared to the general population (10% versus 0.02%).[21] \n\nNatal or neonatal teeth occasionally result in maternal nipple abrasion and pain during breastfeeding. Similarly, natal or neonatal teeth can cause ulceration, bleeding, and discomfort of the infant’s tongue (ie, Riga-Fede disease) due to its repetitive rubbing across the tooth during swallowing and movement.[14] Treatment options for feeding problems due to a natal or neonatal tooth include extraction or smoothing of the incisal edge. Natal or neonatal teeth may also be so mobile as to cause concern for aspiration in the infant.  If the tooth is mobile with a danger of detachment, extraction may be warranted.[22] Patients preparing for presurgical infant orthopedics (eg, nasoalveolar molding) may benefit from extraction of neonatal teeth that interfere with appliances.[21] Recommendations for intervention are made on an individual basis after discussion of the risks specific to the mother and infant. \n\nEruption of teeth (teething) can lead to intermittent localized discomfort, irritability, low-grade fever, and excessive salivation[23] ; however, many children have no apparent difficulties. Treatment of symptoms includes oral analgesics and teething rings for the child to chew.[14] Use of topical medications containing lidocaine or benzocaine are not recommended, as they offer little to no benefit and are associated with serious risks when used for teething.[24] Because of the risk of methemoglobinemia, benzocaine use is contraindicated in children younger than 2 years of age.[25] Teething jewelry also is not recommended; serious injuries (eg, strangulation, choking) and death have been reported with amber teething necklaces.[24] \n\n338          THE REFERENCE MANUAL OF PEDIATRIC DENTISTRY ( _WWW.AAPD.ORG/RESEARCH/ORAL-HEALTH-POLICIES--RECOMMENDATIONS_ ) \n\nBEST PRACTICES:   PERINATAL AND INFANT OHC \n\n## **Diet for newborns and infants** \n\nBreastmilk is beneficial during infancy and beyond.[26-28] Exclusive breastfeeding is recommended until 6 months of age and then as long as mutually desired.[26,27] However, breastfeeding and bottle use beyond 12 months, especially if frequent and/ or nocturnal, are associated with ECC.[29,30] Low serum levels of vitamin D, both prenatally and during childhood, are associated with increased caries experience.[31,32] Further, prenatal vitamin D supplementation may contribute to lower rates of ECC in the offspring.[33] Cohort studies provide evidence that 2 key characteristics of perinatal/infant dietary practices are critical to prevent dental caries: the age at which sugar is introduced to a child and the frequency of its consumption.[34,35] The American Heart Association recommends that added sugar in foods and drink be avoided by children under 2 years.[36] Additionally, no juice should be introduced before 12 months of age.[37,38] \n\nfeeding patterns, frequency of periodic oral examinations, and information regarding nonnutritive habits.[11,49] Counselling regarding safety and prevention of orofacial trauma would include discussions of play objects, pacifiers, car seats, electrical cords, and injuries due to falls when learning to walk. The benefits of systemic fluoride for prevention of caries are well established, and community water fluoridation has been championed by national health organizations for decades.[50.51] Potential risks of fluoridated community water recently have received increased attention. While some studies suggest prenatal exposure to systemic fluoride may be associated with lower intelligence quotient (IQ) scores in children,[52] flaws have been identified in the methodology of these studies[53,54] that undermine a causative link. Furthermore, there is no evidence to support that consuming water containing 0.7 ppm fluoride, the fluoridation level currently recommended by the US Environmental Protection Agency, is associated with a reduction in intelligence quotient.[55,56] \n\n## **Dental caries risk in newborns and infants** \n\nTraditional microbial risk markers for ECC include acidogenicaciduric bacterial species, namely MS.[39] MS may be transmitted vertically from caregiver to child through salivary contact or horizontally from others in the immediate environment (eg, between other members of a family, children in daycare).[40,41] Dental caries in primary teeth may lead to chronic pain, infection, and other morbidities. ECC has a major impact on the quality of life of children and their families and is a significant health and financial burden to society.[42] \n\nGestational age is a factor in caries-risk assessment.[43-45] ECC is significantly more prevalent in children born preterm compared to those born at full gestational age.[44,45] Preterm birth is strongly associated with enamel defects[43] and hypomineralization that increase caries susceptibility. Preterm birth also is associated with low birth weight,[46] requiring more frequent feedings that increase caries risk[44,45] as well. Additionally, a weakened immune system in preterm infants may promote early colonization of MS and increase caries risk.[44,45] \n\nImplementing preventive measures during the prenatal period and continuing them throughout infancy can enhance the opportunity for a child to have a lifetime free from preventable oral disease. Physicians, nurses, and other health care workers may have more opportunities to educate the parent/ caregiver than dental professionals because of the frequency of contact with the family during the prenatal and infancy periods.[47] Understanding the multitude of factors that contribute to caries allows medical providers to customize preventive messaging and help parents make appropriate decisions regarding timely and effective oral health interventions for their newborns.[48] \n\n## **Anticipatory guidance** \n\nAnticipatory guidance in the perinatal and infant period includes assessment of any growth and development considerations that the parents should be aware of or that need referral to the child’s medical provider.[49] It also entails oral hygiene instruction, dietary counselling regarding sugar consumption and \n\n## Recommendations \n\nThe AAPD recognizes that infants present with unique conditions, behaviors, and treatment needs that are best addressed through oral health education, preventive dental care, and partnership with other stakeholders (eg, pediatricians, obstetricians, lactation specialists). Medical-dental collaboration during the prenatal and postnatal periods is critical to reduce caries risk and improve preventive strategies and therapeutic interventions.  To optimize the benefits of preventive strategies and interventions, oral health care professionals should incorporate the following into infant oral health visits. \n\n- Advise expecting and new parents on the importance of their own oral health and how their caries experience can affect their child, both positively and negatively. \n\n- Determine need for intervention for restrictive frena based on individualized assessment of function and symptoms related to feeding. \n\n- Consider interference with feeding, the risk of exfoliation and aspiration, and any medical or contributing factors when managing a patient with a prematurely erupted primary tooth (ie, natal or neonatal tooth). \n\n- Encourage establishment of a dental home that includes medical history, dental examination, risk assessment, and anticipatory guidance for infants by 12 months of age. \n\n- Provide information to parents regarding common oral conditions in newborns and infants, nonnutritive oral habits (eg, digit sucking, use of a pacifier), teething (including use of analgesics and avoidance of topical anesthetics), growth and development, and orofacial trauma (including play objects, pacifiers, car seats, electric cords, and falls when learning to walk). \n\n- Assess caries risk to facilitate individualized preventive strategies as the primary dentition begins to erupt and provide caries prevention information regarding high frequency sugar consumption, prolonged breastfeeding, oral hygiene practices, and safety and efficacy of optimally-fluoridated community water. \n\nTHE REFERENCE MANUAL OF PEDIATRIC DENTISTRY ( _WWW.AAPD.ORG/RESEARCH/ORAL-HEALTH-POLICIES--RECOMMENDATIONS_ )           339 \n\nBEST PRACTICES:   PERINATAL AND INFANT OHC \n\n## References \n\n1.  American Academy of Pediatric Dentistry. Infant oral health care. American Academy of Pediatric Dentistry, Colorado Springs, Colorado. 1986. \n\n2.  American Academy of Pediatric Dentistry. Guideline on perinatal oral health. Pediatr Dent 2009;31(special issue): 90-4. \n\n3.  American Academy of Pediatric Dentistry. Guideline on perinatal and infant oral health care. Pediatr Dent 2016; 38(special issue):150-4. \n\n4. American Academy of Pediatric Dentistry. Perinatal and infant oral health care. The Reference Manual of Pediatric Dentistry. Chicago, IL: American Academy of Pediatric Dentistry; 2021:262-6. \n\n5.  Pearlman S, Martin G. Clarification: Perinatal period definition. AAP Pediatric Coding Newsletter 2011;7(3). Available at: “https://doi.org/10.1542/pcco_book092_ document002”. Accessed August 8, 2025. \n\n6.  American Academy of Pediatric Dentistry. Policy on the dental home. The Reference Manual of Pediatric Dentistry. Chicago, IL: American Academy of Pediatric Dentistry; 2025:42-4. \n\n7.  American College of Obstetricians and Gynecologists. Committee Opinion No. 736: Optimizing Postpartum Care. Obstet Gynecol 2018;131(5):e140-e150. \n\n8.  Shearer DM, Thomson WM, Broadbent JM, Poulton R. Maternal oral health predicts their children’s caries experience in adulthood. J Dent Res 2011;90(5):672-7. \n\n9.  Barzel R, Holt K. Oral Health During Pregnancy: A Resource Guide. 3rd ed. Washington, DC: National Maternal and Child Oral Health Resource Center; 2020. Available at: “https://www.mchoralhealth.org/PDFs/oral healthpregnancyresguide.pdf”. Accessed August 8, 2024. \n\n10.  Xiao J, Alkhers N, Kopycha-Kedzierawski DT, Billings RJ, Wu TT. Prenatal oral health care and early childhood caries prevention: A systematic review and meta-analysis. Caries Res 2019;53(4):411-21. \n\n11.  Dogramaci ES, Rossi-Fedele G. Establishing the association between nonnutritive sucking behavior and malocclusions: A systematic review and meta-analysis. J Am Dent Assoc 2016;147(12):926-34. \n\n12.  Schwartz RH, Guthrie KL. Infant pacifiers: An overview. Clin Pediatr (Phila) 2008;47(4):327-31. \n\n13.  Flaitz CM. Differential diagnosis of oral lesions and developmental anomalies. In: Nowak AJ, Christensen JR, Mabry TR, Townsend JA, Wells MH, eds. Pediatric Dentistry: Infancy through Adolescence. 6th ed. Philadelphia, PA: Elsevier; 2019:16. \n\n14.  Dhar V. Common lesions of the oral soft tissue. In: Kliegman RM, St Geme JW, Blum NJ, Tasker RC, Shaw SS, Wilson KM, eds. Nelson Textbook of Pediatrics, 22nd ed. Philadelphia, PA: Elsevier; 2025:2252-4. \n\n15.  American Academy of Pediatric Dentistry. Policy on management of the frenulum in pediatric patients. The Reference Manual of Pediatric Dentistry. Chicago, IL: American Academy of Pediatric Dentistry; 2025:80-5. \n\n16.  Thomas J, Bunik M, Holmes A, et al. Identification and management of ankyloglossia and its effect on breastfeeding in infants: Clinical report. Pediatrics 2024;154(2): e2024067605. \n\n17.  Ghaheri BA, Cole M, Fausel SC, Chuop M, Mace JC. Breastfeeding improvement following tongue-tie and lip-tie release: A prospective cohort study. Laryngoscope 2017;127(5):1217-23. \n\n18.  National Institute Dental and Craniofacial Research. Cleft Lip & Palate. Last reviewed December 2024. Available at: “https://www.nidcr.nih.gov/health-info/cleft-lip-palate”. Accessed August 8, 2025. \n\n19.  Worley ML, Patel KG, Kilpatrick LA. Cleft lip and palate. Clin Perinatol 2018;45(4):661-78. \n\n20.  Basha S, Surendran N, Pichichero M. Immune responses in neonates. Expert Rev Clin Immunol 2014;10(9): 1171-84. \n\n21.  Yilmaz RBN, Cakan DG, Mesgarzadeh N. Prevalence and management of natal/neonatal teeth in cleft lip and palate patients. Eur J Dent 2016;10(1):54-8. \n\n22.  Khandelwal V, Nayak UA, Nayak PA, Bafna Y. Management of an infant having natal teeth. BMJ Case Rep 2013;2013:bcr2013010049. \n\n23.  American Dental Association MouthHealthy. Teething. Available at: “https://www.mouthhealthy.org/all-topics -a-z/teething”. Accessed August 8, 2025. \n\n24.  US Food and Drug Administration. Safely soothing teething pain in infants and children. Available at: “https: //www.fda.gov/consumers/consumer-updates/safely -soothing-teething-pain-infants-and-children#:~:text= Benzocaine%2C%20a%20local%20anesthetic%20(a,be cause%20they%20can%20be%20dangerous”. Accessed August 8, 2025. \n\n25.  US Food and Drug Administration. Risk of serious and potentially fatal blood disorder prompts FDA action on oral over-the-counter benzocaine products used for teething and mouth pain and prescription local anesthetics. May 23, 2018. Available at: “https://www.fda.gov/drugs /drug-safety-and-availability/risk-serious-and-potentially -fatal-blood-disorder-prompts-fda-action-oral-over-counter -benzocaine”. Accessed August 8, 2025. \n\n26.  Kramer MS, Kakuma R. Optimal duration of exclusive breastfeeding. Cochrane Database Syst Rev 2012;2012 (8):CD003517. \n\n27.  Meek JY, Noble L; American Academy of Pediatrics Section on Breastfeeding. Policy statement: Breastfeeding and the use of human milk. Pediatrics 2022;150(1): e2022057988. \n\n28.  Salone LR, Vann WF, Dee DL. Breastfeeding: An overview of oral and general health benefits. J Am Dent Assoc 2013;144(2):143-51. \n\n29. Peres KG, Chaffee BW, Feldens CA. Breastfeeding and oral health: Evidence and methodological challenges. J Dent Res 2018;97(3):251-8. \n\n30.  Shrestha SK, Arora A, Manohar N, Ekanayake K, Foster J. Association of breastfeeding and early childhood caries: A systematic review and meta-analysis. Nutrients 2024;16 (9):1355. \n\n340          THE REFERENCE MANUAL OF PEDIATRIC DENTISTRY ( _WWW.AAPD.ORG/RESEARCH/ORAL-HEALTH-POLICIES--RECOMMENDATIONS_ ) \n\nBEST PRACTICES:   PERINATAL AND INFANT OHC \n\n31.  Carvalho Silva C, Mendes R, Manso MDC, Gavinha S, Melo P. Prenatal or childhood serum levels of vitamin D and dental caries in paediatric patients: A systematic review. Oral Health Prev Dent 2020;18(4):653-67. \n\n32.  Schroth RJ, Christensen J, Morris M, Gregory P, Mittermuller BA, Rockman-Greenberg C. The influence of prenatal vitamin D supplementation on dental caries in infants. J Can Dent Assoc 2020;86:k13. \n\n33.  Singleton RJ, Day GM, Thomas TK, et al. Impact of a prenatal vitamin D supplementation program on vitamin D deficiency, rickets and early childhood caries in an Alaska Native population. Nutrients 2022;14(19):3935. \n\n34.  Chaffee BW, Feldens CA, Rodrigues PH, Vítolo MR. Feeding practices in infancy associated with caries incidence in early childhood. Community Dent Oral Epidemiol 2015;43(4):338-48. \n\n35.  Feldens CA, Rodrigues PH, de Anastácio G, Vítolo MR, Chaffee BW. Feeding frequency in infancy and dental caries in childhood: A prospective cohort study. Int Dent J 2018;68(2):113-21. \n\n36.  Voss MB, Kaar JL, Welsh JA, et al. Added sugars and cardiovascular disease risk in children: American Heart Association. Circulation 2017;135(19):e1017-e1034. \n\n37.  Heyman MB, Abrams SA; Section on Gastroenterology, Hepatology, and Nutrition, Committee on Nutrition, et al. Fruit juice in infants, children, and adolescents: Current recommendations. Pediatrics 2017;139(6):e20170967. \n\n38.  Lott M, Callahan E, Welker Duffy E, Story M, Daniels S. Healthy Beverage Consumption in Early Childhood: Recommendations from Key National Health and Nutrition Organizations. Consensus Statement. Durham, NC: Healthy Eating Research; 2019. Available at: “https:// healthyeatingresearch.org/wp-content/uploads/2019/09/ HER-HealthyBeverage-ConsensusStatement.pdf”.  Accessed August 8, 2025. \n\n39.  Kanasi E, Johansson J, Lu SC, et al. Microbial risk markers for childhood caries in pediatrician’s offices. J Dent Res 2010;89(4):378-83. \n\n40.  Berkowitz RJ. Mutans streptococci: Acquisition and transmission. Pediatr Dent 2006;28(2):106-9. \n\n41.  Manchanda S, Sardana D, Liu P, Lee GHM, Lo ECM, Yiu CKY. Horizontal transmission of _Streptococcus mutans_ in children and its association with dental caries: A systematic review and meta-analysis. Pediatr Dent 2021;43 (1):E1-E12. \n\n42.  Pitts NB, Baez R, Diaz-Guallory C, et al. Early childhood caries: IAPD Bangkok declaration. Pediatr Dent 2019;41 (3):176-8. \n\n43.  Costa FS, Silveira ER, Pinto GS, Nascimento GG, Thomson WM, Demarco FF. Developmental defects of enamel and dental caries in the primary dentition: A systematic review and meta-analysis. J Dent 2017;60:1-7. \n\n   45.  Twetman S, Boustedt K, Roswell J, Dahlgren J. Systematic review suggests a relationship between moderate to late preterm birth and early childhood caries. Acta Paediatr 2020;109(12):2472-8. \n\n   46.  Care of Preterm or Low Birthweight Infants Group. New World Health Organization recommendations for care of preterm or low birth weight infants: Health policy. EClinicalMedicine 2023;63:102155. \n\n   47.  Chi DL, Momany ET, Jones MP, et al. Relationship between medical well baby visits and first dental examinations for young children in Medicaid. Am J Public Health 2013;103(2):347-54. \n\n   48.  Frese W, Nowak A, Royston L, et al. Caries risk factors for primary care providers based on shared determinants of health. Chicago, IL: Pediatric Oral Health Research and Policy Center, American Academy of Pediatric Dentistry; 2016. Available at: “https://www.aapd.org/assets/1/ 7/DentaQuest-RE.pdf ”. Accessed August 8, 2025. \n\n   49.  American Academy of Pediatric Dentistry. Periodicity of examination, preventive dental services, anticipatory guidance/counseling, and oral treatment for infants, children, and adolescents. The Reference Manual of Pediatric Dentistry. Chicago, IL: American Academy of Pediatric Dentistry; 2025:312-24. \n\n   50.  American Academy of Pediatric Dentistry. Fluoride therapy. The Reference Manual of Pediatric Dentistry, Chicago, IL: American Academy of Pediatric Dentistry; 2025:372-8. \n\n   51.  Centers for Disease Control and Prevention. Ten Great Public Health Achievements—United States, 1900-1999. Last reviewed May 2, 2001. Available at: “https://www. cdc.gov/mmwr/preview/mmwrhtml/00056796.htm”. Accessed February 18, 2025. \n\n   52.  Green R, Lanphear B, Hornung R, et al. Association between maternal fluoride exposure during pregnancy and IQ scores in offspring in Canada. JAMA Pediatr 2019; 173(10):940-8. \n\n   53.  Guichon JR, Cooper C, Rugg-Gunn A, Dickinson JA. Flawed MIREC fluoride and intelligence quotient publications: A failed attempt to undermine community water fluoridation. Community Dent Oral Epidemiol 2024;52 (4):365-74. \n\n   54.  Moore D, Glenny AM. Fluoride and children’s IQ: Evidence of causation lacking. Evid Based Dent 2024;25 (2):95-7. \n\n   55.  Levy SM. Caution needed in interpreting the evidence base on fluoride and IQ. JAMA Pediatr 2025;179(3): 231-4. \n\n   56.  Tinanoff N, Dhar V, Caffrey E. Community water fluoridation: Evidence of efficacy and risks. Pediatr Dent 2024;46(6):370-1. \n\n44.  Shi L, Jia J, Li C, et al. Relationship between preterm, low birth weight and early childhood caries: A meta-analysis of the case-control and cross-sectional study. Biosci Rep 2020;40(8):BSR20200870. \n\nTHE REFERENCE MANUAL OF PEDIATRIC DENTISTRY ( _WWW.AAPD.ORG/RESEARCH/ORAL-HEALTH-POLICIES--RECOMMENDATIONS_ )           341 \n\n",
+                          "error": ""
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "oralboards_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "set_loading_step",
+                        "args": {
+                          "step": "Composing case vignette…"
+                        }
+                      }
+                    },
+                    {
+                      "function_call": {
+                        "name": "set_case",
+                        "args": {
+                          "case": "## Early Childhood Caries (ECC) Case\n\n**Patient:** 28-month-old male\n\n**Chief Concern:** \"My son has brown spots on his front teeth, and he cries when he eats cold or sweet foods.\"\n\n**History of Present Illness:**\n- The child is a 28-month-old male brought in by his mother for a routine checkup. She reports noticing brown discoloration on his maxillary anterior teeth for the past 3 months. He has been crying when consuming cold or sweet foods, suggesting sensitivity or pain. The mother admits to putting the child to bed with a bottle of milk and occasionally juice. She also reports that the child frequently snacks on crackers and fruit pouches throughout the day.\n\n**Medical History:**\n- Full-term birth with no complications.\n- No known allergies.\n- No chronic medical conditions.\n- Immunizations are up to date.\n\n**Dietary History:**\n- Breastfed until 12 months, then transitioned to whole milk in a bottle.\n- Currently uses a sippy cup with milk or juice between meals.\n- Frequent snacking on carbohydrates (crackers, fruit pouches, and cereal).\n\n**Oral Hygiene:**\n- Mother reports brushing the child’s teeth \"sometimes\" with a small amount of fluoridated toothpaste.\n- No dental visits prior to this appointment.\n\n**Social History:**\n- Lives with both parents and a 4-year-old sibling.\n- No fluoride supplements or community water fluoridation in their area.\n- Mother has a high caries experience (multiple unrestored cavities).\n\n**Clinical Examination:**\n- **Extraoral:** No swelling or lymphadenopathy.\n- **Intraoral:**\n  - Maxillary anterior teeth (51, 52, 61, 62) exhibit **cavitated lesions** on the labial and proximal surfaces.\n  - White spot lesions are present on the buccal surfaces of the primary molars (54, 55, 64, 65, 74, 75, 84, 85).\n  - Plaque is visible on all teeth, and gingiva appears erythematous.\n  - No mobility or swelling noted.\n\n**Radiographic Findings (if available):**\n- Bitewing radiographs (if obtainable) would likely show interproximal caries and demineralization in the primary molars.\n\n**Behavior:**\n- The child is cooperative but anxious during the examination.",
+                          "case_sources": [
+                            {
+                              "docid": 87,
+                              "filepath": "aapd/p-eccconsequences.md",
+                              "title": "Policy on Early Childhood Caries (ECC): Consequences and Preventive Strategies",
+                              "collection": "aapd"
+                            },
+                            {
+                              "docid": 88,
+                              "filepath": "aapd/p-eccuniquechallenges25.md",
+                              "title": "Policy on Early Childhood Caries (ECC): Unique Challenges and Management Considerations",
+                              "collection": "aapd"
+                            },
+                            {
+                              "docid": 45,
+                              "filepath": "aapd/bp-perinataloralhealthcare25.md",
+                              "title": "Perinatal and Infant Oral Health Care",
+                              "collection": "aapd"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "oralboards_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "set_loading_step",
+                        "response": {
+                          "status": "success",
+                          "ok": true
+                        }
+                      }
+                    },
+                    {
+                      "function_response": {
+                        "name": "set_case",
+                        "response": {
+                          "status": "success",
+                          "ok": true,
+                          "length": 2108
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "oralboards_agent",
+                "content": {
+                  "role": "model",
+                  "parts": []
+                }
+              },
+              {
+                "author": "oralboards_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "You are meeting a 28-month-old boy brought in by his mother. She's noticed brown spots on his front teeth for the past few months, and he cries when eating cold or sweet foods. He goes to bed with a bottle of milk, frequently snacks on crackers and fruit pouches, his teeth are brushed only \"sometimes,\" this is his first dental visit, there's no community water fluoridation where they live, and his mother herself has extensive unrestored caries. Clinically, you see cavitated lesions on the maxillary anterior teeth and white spot lesions on the primary molars.\n\n**A quick note before we begin:** In the real ABPD Oral Clinical Exam, examiners give no feedback and the result is simply Pass/Fail. This practice tool coaches you with cited feedback and model answers to help you learn.\n\nTake your time reviewing the details. When you're ready, click **Begin Examination** below."
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "responses": [
+        {
+          "response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "You are meeting a 28-month-old boy brought in by his mother. She's noticed brown spots on his front teeth for the past few months, and he cries when eating cold or sweet foods. He goes to bed with a bottle of milk, frequently snacks on crackers and fruit pouches, his teeth are brushed only \"sometimes,\" this is his first dental visit, there's no community water fluoridation where they live, and his mother herself has extensive unrestored caries. Clinically, you see cavitated lesions on the maxillary anterior teeth and white spot lesions on the primary molars.\n\n**A quick note before we begin:** In the real ABPD Oral Clinical Exam, examiners give no feedback and the result is simply Pass/Fail. This practice tool coaches you with cited feedback and model answers to help you learn.\n\nTake your time reviewing the details. When you're ready, click **Begin Examination** below."
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
