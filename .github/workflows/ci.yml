@@ -31,6 +31,11 @@ jobs:
         with:
           go-version-file: agents/go.mod
           cache-dependency-path: agents/go.sum
+      - uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.12.2
+          working-directory: agents
+          args: --version
       - name: Install JS dependencies
         run: pnpm install --frozen-lockfile
       - name: Lint
