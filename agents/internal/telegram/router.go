@@ -46,11 +46,13 @@ const (
 )
 
 type Route struct {
-	Kind    RouteKind
-	Agent   string
-	Command string
-	Text    string
-	Missing []string
+	Kind        RouteKind
+	Agent       string
+	Command     string
+	Text        string
+	Missing     []string
+	KrogerToken string
+	StravaToken string
 }
 
 type Router struct {
@@ -98,6 +100,7 @@ func (r *Router) Route(ctx context.Context, message Message, identity SessionIde
 		if len(missing) > 0 {
 			return Route{Missing: missing}, ErrCredentialRequired
 		}
+		return Route{Kind: RouteAgent, Agent: agentName, Text: text, KrogerToken: state.KrogerToken, StravaToken: state.StravaToken}, nil
 	}
 	return Route{Kind: RouteAgent, Agent: agentName, Text: text}, nil
 }
