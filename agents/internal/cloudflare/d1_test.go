@@ -16,6 +16,18 @@ import (
 	"google.golang.org/adk/v2/session"
 )
 
+type batchRequest struct {
+	Batch []Statement `json:"batch"`
+}
+
+func writeEnvelope(t *testing.T, w http.ResponseWriter, results []Result) {
+	t.Helper()
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]any{"success": true, "result": results}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestD1UsesBoundedAuthenticatedRequestsAndRedactsToken(t *testing.T) {
 	const secret = "d1-secret"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -55,16 +67,17 @@ func TestSessionCreateAndAppendNeverPersistTemporaryState(t *testing.T) {
 	var mu sync.Mutex
 	var batches [][]Statement
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var batch []Statement
-		if err := json.NewDecoder(r.Body).Decode(&batch); err != nil {
+		var req batchRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			t.Fatal(err)
 		}
 		mu.Lock()
-		batches = append(batches, batch)
+		batches = append(batches, req.Batch)
 		mu.Unlock()
-		results := make([]map[string]any, len(batch))
-		for index := range results {
-			results[index] = map[string]any{"success": true, "results": []any{}, "meta": map[string]any{"changes": 1}}
+		results := make([]Result, len(req.Batch))
+		for i := range results {
+			results[i] = Result{Success: true}
+			results[i].Meta.Changes = 1
 		}
 		writeEnvelope(t, w, results)
 	}))
@@ -119,13 +132,14 @@ func TestSessionCreateAndAppendNeverPersistTemporaryState(t *testing.T) {
 // drove AppendEvent on the way to inspecting the event.
 func TestSessionAppendEventPreservesTemporaryStateOnTheEventItself(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var batch []Statement
-		if err := json.NewDecoder(r.Body).Decode(&batch); err != nil {
+		var req batchRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			t.Fatal(err)
 		}
-		results := make([]map[string]any, len(batch))
-		for index := range results {
-			results[index] = map[string]any{"success": true, "results": []any{}, "meta": map[string]any{"changes": 1}}
+		results := make([]Result, len(req.Batch))
+		for i := range results {
+			results[i] = Result{Success: true}
+			results[i].Meta.Changes = 1
 		}
 		writeEnvelope(t, w, results)
 	}))
@@ -170,14 +184,14 @@ func TestSessionGetScopesEveryQueryAndReturnsEventsChronologically(t *testing.T)
 	newerJSON, _ := json.Marshal(newer)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var batch []Statement
-		if err := json.NewDecoder(r.Body).Decode(&batch); err != nil {
+		var req batchRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			t.Fatal(err)
 		}
-		if len(batch) != 4 {
-			t.Fatalf("statements = %d", len(batch))
+		if len(req.Batch) != 4 {
+			t.Fatalf("statements = %d", len(req.Batch))
 		}
-		for index, statement := range batch {
+		for index, statement := range req.Batch {
 			joined := fmt.Sprint(statement.Params)
 			if !strings.Contains(joined, "travel_agent") {
 				t.Fatalf("unscoped params: %#v", statement.Params)
@@ -189,11 +203,11 @@ func TestSessionGetScopesEveryQueryAndReturnsEventsChronologically(t *testing.T)
 				t.Fatalf("unscoped session params: %#v", statement.Params)
 			}
 		}
-		writeEnvelope(t, w, []map[string]any{
-			{"success": true, "results": []map[string]any{{"state_json": `{"destination":"Paris"}`, "updated_at": 1500}}, "meta": map[string]any{"changes": 0}},
-			{"success": true, "results": []map[string]any{{"state_json": `{"policy":"shared"}`}}, "meta": map[string]any{"changes": 0}},
-			{"success": true, "results": []map[string]any{{"state_json": `{"preference":"window"}`}}, "meta": map[string]any{"changes": 0}},
-			{"success": true, "results": []map[string]any{{"event_json": string(newerJSON)}, {"event_json": string(olderJSON)}}, "meta": map[string]any{"changes": 0}},
+		writeEnvelope(t, w, []Result{
+			{Success: true, Rows: []map[string]any{{"state_json": `{"destination":"Paris"}`, "updated_at": float64(1500)}}},
+			{Success: true, Rows: []map[string]any{{"state_json": `{"policy":"shared"}`}}},
+			{Success: true, Rows: []map[string]any{{"state_json": `{"preference":"window"}`}}},
+			{Success: true, Rows: []map[string]any{{"event_json": string(newerJSON)}, {"event_json": string(olderJSON)}}},
 		})
 	}))
 	defer server.Close()
@@ -224,7 +238,7 @@ func TestPartialEventIsNotSentToD1(t *testing.T) {
 	requests := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		requests++
-		writeEnvelope(t, w, []map[string]any{})
+		writeEnvelope(t, w, []Result{})
 	}))
 	defer server.Close()
 	d1, err := newD1(testCloudflare("token"), server.Client(), server.URL)
@@ -246,14 +260,14 @@ func TestPartialEventIsNotSentToD1(t *testing.T) {
 func TestRunMigrationsIsIdempotentSQLBatch(t *testing.T) {
 	var batches [][]Statement
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var batch []Statement
-		if err := json.NewDecoder(r.Body).Decode(&batch); err != nil {
+		var req batchRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			t.Fatal(err)
 		}
-		batches = append(batches, batch)
-		results := make([]map[string]any, len(batch))
+		batches = append(batches, req.Batch)
+		results := make([]Result, len(req.Batch))
 		for i := range results {
-			results[i] = map[string]any{"success": true, "results": []any{}, "meta": map[string]any{"changes": 0}}
+			results[i] = Result{Success: true}
 		}
 		writeEnvelope(t, w, results)
 	}))
@@ -283,12 +297,4 @@ func TestRunMigrationsIsIdempotentSQLBatch(t *testing.T) {
 
 func testCloudflare(token string) config.Cloudflare {
 	return config.Cloudflare{AccountID: "account", APIToken: token, D1DatabaseID: "database"}
-}
-
-func writeEnvelope(t *testing.T, w http.ResponseWriter, results any) {
-	t.Helper()
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(map[string]any{"success": true, "result": results}); err != nil {
-		t.Fatal(err)
-	}
 }

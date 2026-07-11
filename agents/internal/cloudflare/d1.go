@@ -72,7 +72,7 @@ func (d *D1) Run(ctx context.Context, statements ...Statement) ([]Result, error)
 	if len(statements) == 0 {
 		return nil, errors.New("at least one D1 statement is required")
 	}
-	body, err := json.Marshal(statements)
+	body, err := json.Marshal(map[string]any{"batch": statements})
 	if err != nil {
 		return nil, fmt.Errorf("encode D1 request: %w", err)
 	}
