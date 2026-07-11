@@ -683,13 +683,16 @@ func main() {
 	if err != nil {
 		log.Fatalf("configure trends fallbacks: %v", err)
 	}
-	trendsBigQuery, err := trendsBigQueryClient(context.Background())
-	if err != nil {
-		log.Fatalf("configure trends BigQuery client: %v", err)
-	}
-	trendsExecutor, err := trends.NewBigQueryExecutor(trendsBigQuery, "bigquery-public-data", "google_trends", 1<<30, 30*time.Second)
-	if err != nil {
-		log.Fatalf("configure trends BigQuery executor: %v", err)
+	var trendsExecutor *trends.BigQueryExecutor
+	trendsBigQuery, bigQueryErr := trendsBigQueryClient(context.Background())
+	if bigQueryErr != nil {
+		log.Printf("warning: trends BigQuery unavailable: %v", bigQueryErr)
+	} else {
+		trendsExecutor, err = trends.NewBigQueryExecutor(trendsBigQuery, "bigquery-public-data", "google_trends", 1<<30, 30*time.Second)
+		if err != nil {
+			log.Printf("warning: trends BigQuery executor unavailable: %v", err)
+			trendsExecutor = nil
+		}
 	}
 	trendsGenerator, err := trends.NewGenerator(trendsModel)
 	if err != nil {
