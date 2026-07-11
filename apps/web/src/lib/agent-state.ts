@@ -11,6 +11,13 @@ import type {
   FitnessState,
   FitnessStatus,
   GroceryState,
+  OralBoardsExchange,
+  OralBoardsOutcome,
+  OralBoardsPhase,
+  OralBoardsSkill,
+  OralBoardsSkillsetScore,
+  OralBoardsState,
+  CaseSource,
   PantryItem,
   TripState,
   WellnessState,
@@ -61,6 +68,19 @@ const DOC_STATUSES: readonly DocStatus[] = ["idle", "drafting", "ready_to_book",
 const GROCERY_STATUSES = ["idle", "planning", "ready"] as const;
 const FITNESS_STATUSES: readonly FitnessStatus[] = ["idle", "syncing", "planning", "ready"];
 const WELLNESS_STATUSES: readonly WellnessStatus[] = ["idle", "delegating", "planning", "ready"];
+const ORAL_PHASES: readonly OralBoardsPhase[] = [
+  "idle",
+  "presenting",
+  "questioning",
+  "feedback",
+  "complete",
+];
+const ORAL_SKILLS: readonly OralBoardsSkill[] = [
+  "remember",
+  "understand_apply",
+  "analyze_evaluate",
+];
+const ORAL_OUTCOMES: readonly OralBoardsOutcome[] = ["pass", "borderline", "not_yet"];
 
 export function asDocStatus(value: unknown): DocStatus {
   return oneOf(value, DOC_STATUSES, "idle");
@@ -158,5 +178,70 @@ export function toWellnessState(raw: unknown): WellnessState {
     user_id: optionalStr(s.user_id),
     kroger_connected: bool(s.kroger_connected),
     strava_connected: bool(s.strava_connected),
+  };
+}
+
+function toCaseSource(raw: unknown): CaseSource {
+  const source = asRecord(raw);
+  return {
+    docid: num(source.docid),
+    filepath: str(source.filepath),
+    title: str(source.title),
+    collection: oneOf(source.collection, ["abpd", "aapd", "cody"] as const, "aapd"),
+  };
+}
+
+function toOralExchange(raw: unknown): OralBoardsExchange {
+  const exchange = asRecord(raw);
+  const score = num(exchange.score);
+  return {
+    question: str(exchange.question),
+    answer: str(exchange.answer),
+    feedback: str(exchange.feedback),
+    ideal_response: str(exchange.ideal_response),
+    citations: Array.isArray(exchange.citations) ? exchange.citations.map(toCaseSource) : [],
+    skillset: optionalStr(exchange.skillset),
+    skill: ORAL_SKILLS.find((value) => value === exchange.skill),
+    score: score === 1 || score === 2 || score === 3 ? score : undefined,
+  };
+}
+
+function toSkillsetScore(raw: unknown): OralBoardsSkillsetScore | undefined {
+  const score = asRecord(raw);
+  const value = num(score.score);
+  if (value !== 1 && value !== 2 && value !== 3) return undefined;
+  return {
+    skillset: str(score.skillset),
+    skill: ORAL_SKILLS.find((item) => item === score.skill),
+    score: value,
+    rationale: str(score.rationale),
+  };
+}
+
+export function toOralBoardsState(raw: unknown): OralBoardsState {
+  const state = asRecord(raw);
+  return {
+    case: str(state.case),
+    case_sources: Array.isArray(state.case_sources) ? state.case_sources.map(toCaseSource) : [],
+    case_passages: str(state.case_passages),
+    transcript: Array.isArray(state.transcript) ? state.transcript.map(toOralExchange) : [],
+    score_card: str(state.score_card),
+    score_summary: Array.isArray(state.score_summary)
+      ? state.score_summary
+          .map(toSkillsetScore)
+          .filter((value): value is OralBoardsSkillsetScore => value !== undefined)
+      : [],
+    outcome: ORAL_OUTCOMES.find((value) => value === state.outcome),
+    status: oneOf(state.status, ORAL_PHASES, "idle"),
+    loading_step: str(state.loading_step),
+    current_question: str(state.current_question),
+    interview_complete: bool(state.interview_complete),
+    active_feedback: str(state.active_feedback),
+    active_ideal_response: str(state.active_ideal_response),
+    active_probe: str(state.active_probe),
+    target_skillset: str(state.target_skillset),
+    target_skill: ORAL_SKILLS.find((value) => value === state.target_skill),
+    question_craft_feedback: str(state.question_craft_feedback),
+    user_id: optionalStr(state.user_id),
   };
 }

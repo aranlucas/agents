@@ -86,7 +86,9 @@ describe("OralBoardsPanel — presenting", () => {
   it("renders the vignette and Ready to begin button", () => {
     const state: OralBoardsState = {
       case: "A 4-year-old presents with early childhood caries.",
-      case_sources: [{ docid: 1, title: "AAPD Guideline", collection: "aapd" }],
+      case_sources: [
+        { docid: 1, filepath: "aapd/guideline.md", title: "AAPD Guideline", collection: "aapd" },
+      ],
       status: "presenting",
       transcript: [],
     };
@@ -603,6 +605,7 @@ describe("OralBoardsPanel — questioning", () => {
   it("collapses model answer and citations in live feedback by default", async () => {
     const citation = {
       docid: 17,
+      filepath: "aapd/local-anesthesia.md",
       title: "Local Anesthesia Guideline",
       collection: "aapd" as const,
     };

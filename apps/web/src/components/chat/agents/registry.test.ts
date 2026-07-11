@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import { AGENT_BACKEND_PATHS, AGENT_ORDER, getAgentConfig, isAgentId } from "./registry";
 
 describe("agent registry", () => {
+  it("uses the Go fitness training_plan state field", () => {
+    expect(getAgentConfig("fitness").artifact?.stateField).toBe("training_plan");
+  });
   it("lists all agents in display order", () => {
     expect(AGENT_ORDER).toEqual([
       "excalidraw",

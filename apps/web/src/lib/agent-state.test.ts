@@ -6,6 +6,7 @@ import {
   oneOf,
   toFitnessState,
   toGroceryState,
+  toOralBoardsState,
   toTripState,
   toWellnessState,
 } from "./agent-state";
@@ -153,6 +154,24 @@ describe("toWellnessState", () => {
     expect(toWellnessState({ last_delegation: { a: 1 } }).last_delegation).toEqual({ a: 1 });
     expect(toWellnessState({ last_delegation: "x" }).last_delegation).toBeUndefined();
     expect(toWellnessState({ status: "planning" }).status).toBe("planning");
+  });
+});
+
+describe("toOralBoardsState", () => {
+  it("retains the complete Go oralboards state contract", () => {
+    expect(
+      toOralBoardsState({
+        case_passages: "source",
+        interview_complete: false,
+        question_craft_feedback: "rewrite",
+        case_sources: [{ docid: 1, filepath: "aapd/x.md", title: "X", collection: "aapd" }],
+      }),
+    ).toMatchObject({
+      case_passages: "source",
+      interview_complete: false,
+      question_craft_feedback: "rewrite",
+      case_sources: [{ docid: 1, filepath: "aapd/x.md", title: "X", collection: "aapd" }],
+    });
   });
 });
 

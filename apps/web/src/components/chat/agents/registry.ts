@@ -120,7 +120,7 @@ const AGENTS: Record<AgentId, AgentConfig> = {
     colorVar: "--fitness",
     placeholder: "Plan training, log a workout, or set a goal…",
     artifact: {
-      stateField: "weekly_plan",
+      stateField: "training_plan",
       kind: "plan",
       title: "Training plan",
       name: "training_plan.md",
