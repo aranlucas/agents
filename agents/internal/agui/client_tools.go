@@ -7,11 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-	"strings"
-	"time"
 
 	"agents/internal/auth"
-	"agents/internal/cloudflare"
 	"github.com/google/jsonschema-go/jsonschema"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/session"
@@ -20,16 +17,15 @@ import (
 	"google.golang.org/genai"
 )
 
-const (
-	pendingToolTTL    = 15 * time.Minute
-	maximumToolArgs   = 256 << 10
-	maximumToolResult = 1 << 20
-	maximumToolSchema = 64 << 10
-)
+const maximumToolSchema = 64 << 10
 
 var (
 	ErrPendingToolNotFound = errors.New("pending client tool not found")
-	clientToolName         = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_.:-]{0,63}$`)
+	// ClientToolName validates a frontend tool name or call ID. Exported so
+	// PendingTools implementations outside this package (e.g. a D1-backed
+	// store) can apply the same identifier contract without this package
+	// depending on them.
+	ClientToolName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_.:-]{0,63}$`)
 )
 
 // ClientTool is a frontend function declaration supplied with an AG-UI run.
@@ -43,122 +39,12 @@ type ClientTool struct {
 type ToolScope struct{ AppName, UserID, ThreadID string }
 
 // PendingTools persists frontend calls until a scoped result resumes them.
+// Handler depends only on this interface — never on a concrete store — so
+// any backend (D1, or otherwise) can be plugged in via WithPendingTools.
 type PendingTools interface {
 	Register(context.Context, ToolScope, string, string, map[string]any) error
 	Resolve(context.Context, auth.Identity, string, string, string, any) error
 	Take(context.Context, auth.Identity, string, string, string) (*genai.FunctionResponse, error)
-}
-
-// PendingStore is a D1-backed single-consumption pending call store.
-type PendingStore struct {
-	d1  *cloudflare.D1
-	now func() time.Time
-}
-
-func NewPendingStore(d1 *cloudflare.D1, now func() time.Time) *PendingStore {
-	if now == nil {
-		now = time.Now
-	}
-	return &PendingStore{d1: d1, now: now}
-}
-
-func (p *PendingStore) Register(ctx context.Context, scope ToolScope, callID, toolName string, args map[string]any) error {
-	if p == nil || p.d1 == nil {
-		return errors.New("D1 pending tool store is required")
-	}
-	if !validScope(scope) || !clientToolName.MatchString(callID) || !clientToolName.MatchString(toolName) {
-		return errors.New("invalid pending tool identity")
-	}
-	encoded, err := json.Marshal(args)
-	if err != nil || len(encoded) > maximumToolArgs {
-		return errors.New("invalid client tool arguments")
-	}
-	now := p.now().UTC()
-	_, err = p.d1.Run(
-		ctx,
-		cloudflare.Statement{SQL: "DELETE FROM pending_client_tools WHERE expires_at <= ?", Params: []any{now.UnixMilli()}},
-		cloudflare.Statement{SQL: `INSERT INTO pending_client_tools
-			(app_name, user_id, thread_id, call_id, tool_name, args_json, status, created_at, expires_at)
-			VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)
-			ON CONFLICT(app_name, user_id, thread_id, call_id) DO NOTHING`, Params: []any{scope.AppName, scope.UserID, scope.ThreadID, callID, toolName, string(encoded), now.UnixMilli(), now.Add(pendingToolTTL).UnixMilli()}},
-	)
-	if err != nil {
-		return fmt.Errorf("register pending client tool: %w", err)
-	}
-	return nil
-}
-
-func (p *PendingStore) Resolve(ctx context.Context, identity auth.Identity, app, thread, callID string, result any) error {
-	if p == nil || p.d1 == nil {
-		return errors.New("D1 pending tool store is required")
-	}
-	if identity.Public || !validScope(ToolScope{AppName: app, UserID: identity.UserID, ThreadID: thread}) || !clientToolName.MatchString(callID) {
-		return ErrPendingToolNotFound
-	}
-	encoded, err := json.Marshal(result)
-	if err != nil || len(encoded) > maximumToolResult {
-		return errors.New("invalid client tool result")
-	}
-	now := p.now().UTC()
-	results, err := p.d1.Run(
-		ctx,
-		cloudflare.Statement{SQL: "DELETE FROM pending_client_tools WHERE expires_at <= ?", Params: []any{now.UnixMilli()}},
-		cloudflare.Statement{
-			SQL: `UPDATE pending_client_tools SET result_json = ?, status = 'resolved'
-			WHERE app_name = ? AND user_id = ? AND thread_id = ? AND call_id = ? AND status = 'pending' AND expires_at > ?`,
-			Params: []any{string(encoded), app, identity.UserID, thread, callID, now.UnixMilli()},
-		},
-	)
-	if err != nil {
-		return fmt.Errorf("resolve pending client tool: %w", err)
-	}
-	if len(results) < 2 || results[1].Meta.Changes != 1 {
-		return ErrPendingToolNotFound
-	}
-	return nil
-}
-
-func (p *PendingStore) Take(ctx context.Context, identity auth.Identity, app, thread, callID string) (*genai.FunctionResponse, error) {
-	if p == nil || p.d1 == nil || identity.Public || !validScope(ToolScope{AppName: app, UserID: identity.UserID, ThreadID: thread}) || !clientToolName.MatchString(callID) {
-		return nil, ErrPendingToolNotFound
-	}
-	now := p.now().UTC()
-	results, err := p.d1.Run(
-		ctx,
-		cloudflare.Statement{SQL: `SELECT tool_name, args_json, result_json FROM pending_client_tools
-			WHERE app_name = ? AND user_id = ? AND thread_id = ? AND call_id = ? AND status = 'resolved' AND expires_at > ?`, Params: []any{app, identity.UserID, thread, callID, now.UnixMilli()}},
-		cloudflare.Statement{SQL: `DELETE FROM pending_client_tools
-			WHERE app_name = ? AND user_id = ? AND thread_id = ? AND call_id = ? AND status = 'resolved' AND expires_at > ?`, Params: []any{app, identity.UserID, thread, callID, now.UnixMilli()}},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("consume pending client tool: %w", err)
-	}
-	if len(results) < 2 || len(results[0].Rows) != 1 || results[1].Meta.Changes != 1 {
-		return nil, ErrPendingToolNotFound
-	}
-	row := results[0].Rows[0]
-	toolName, _ := row["tool_name"].(string)
-	argumentsJSON, _ := row["args_json"].(string)
-	encoded, _ := row["result_json"].(string)
-	if toolName == "" || argumentsJSON == "" || encoded == "" {
-		return nil, errors.New("invalid pending client tool record")
-	}
-	resultJSON := json.RawMessage(encoded)
-	if !json.Valid(resultJSON) {
-		return nil, errors.New("invalid pending client tool result")
-	}
-	var response map[string]any
-	if json.Unmarshal(resultJSON, &response) != nil || response == nil {
-		response = map[string]any{"result": resultJSON}
-	}
-	var arguments map[string]any
-	if json.Unmarshal([]byte(argumentsJSON), &arguments) != nil {
-		return nil, errors.New("invalid pending client tool arguments")
-	}
-	// This reserved server-authored field lets downstream policy bind an
-	// approved result to the original request without trusting client payload.
-	response["_agui_request"] = arguments
-	return &genai.FunctionResponse{ID: callID, Name: toolName, Response: response}, nil
 }
 
 // ClientToolset exposes request-provided frontend tools as long-running ADK tools.
@@ -174,7 +60,7 @@ func NewClientToolset(input []ClientTool, pending PendingTools) (tool.Toolset, e
 	toolset := &ClientToolset{pending: pending}
 	seen := make(map[string]bool)
 	for _, definition := range input {
-		if !clientToolName.MatchString(definition.Name) || seen[definition.Name] {
+		if !ClientToolName.MatchString(definition.Name) || seen[definition.Name] {
 			return nil, fmt.Errorf("invalid or duplicate client tool %q", definition.Name)
 		}
 		seen[definition.Name] = true
@@ -206,7 +92,7 @@ func (c *ClientToolset) Tools(agent.ReadonlyContext) ([]tool.Tool, error) {
 // ClientToolsStateKey is the temp: state key the AG-UI handler overlays
 // with the current run's AG-UI tool declarations (JSON-encoded
 // []ClientTool) via runner.WithStateDelta, and that
-// RequestScopedClientToolset reads on every invocation.
+// AGUIToolset reads on every invocation.
 //
 // This is the per-invocation extension point ADK-Go v2 actually provides
 // for dynamic, request-scoped tools: tool.Toolset.Tools(ctx) is called
@@ -217,7 +103,7 @@ func (c *ClientToolset) Tools(agent.ReadonlyContext) ([]tool.Tool, error) {
 // (runner.Run -> appendMessageToSession -> SessionService.AppendEvent,
 // which happens before the node/workflow runs — see
 // google.golang.org/adk/v2/runner/run_node.go). So a single
-// RequestScopedClientToolset instance, attached once at agent-
+// AGUIToolset instance, attached once at agent-
 // construction time via llmagent.Config.Toolsets, transparently observes
 // a different set of client tools on every request without needing the
 // framework to reconstruct or swap the toolset itself.
@@ -232,24 +118,42 @@ func (c *ClientToolset) Tools(agent.ReadonlyContext) ([]tool.Tool, error) {
 // of replacing the toolset object.
 const ClientToolsStateKey = session.KeyPrefixTemp + "agui_client_tools"
 
-// RequestScopedClientToolset is a tool.Toolset that resolves its tool
-// list fresh on every invocation from ClientToolsStateKey instead of
-// once at construction time. Attach one instance to an agent's
-// llmagent.Config.Toolsets at agent-construction time to make that agent
-// support AG-UI client tools; the AG-UI Handler populates
-// ClientToolsStateKey for every run that declares tools (see
-// handler.go).
-type RequestScopedClientToolset struct {
-	pending PendingTools
+// AGUIToolset is the construction-time declaration for frontend tools. Like
+// the official Python middleware's AGUIToolset placeholder, it becomes a
+// fresh set of client proxy tools for each AG-UI run. ADK-Go resolves
+// Toolset.Tools with invocation context on every turn, so no shared agent
+// mutation or per-run agent-tree copy is needed.
+type AGUIToolset struct {
+	pending        PendingTools
+	toolFilter     tool.Predicate
+	toolNamePrefix string
 }
 
-// NewRequestScopedClientToolset builds a Toolset that resolves AG-UI
-// client tools per invocation via pending.
-func NewRequestScopedClientToolset(pending PendingTools) *RequestScopedClientToolset {
-	return &RequestScopedClientToolset{pending: pending}
+// AGUIToolsetOption configures frontend tool filtering and naming.
+type AGUIToolsetOption func(*AGUIToolset)
+
+// WithToolFilter applies an ADK tool predicate before frontend tools are
+// exposed to the model.
+func WithToolFilter(predicate tool.Predicate) AGUIToolsetOption {
+	return func(t *AGUIToolset) { t.toolFilter = predicate }
 }
 
-func (r *RequestScopedClientToolset) Name() string { return "agui_client_tools" }
+// WithToolNamePrefix prepends prefix to frontend tool names exposed to the
+// model, matching the official ADK middleware's tool_name_prefix option.
+func WithToolNamePrefix(prefix string) AGUIToolsetOption {
+	return func(t *AGUIToolset) { t.toolNamePrefix = prefix }
+}
+
+// NewAGUIToolset declares request-scoped AG-UI frontend tools on an agent.
+func NewAGUIToolset(pending PendingTools, opts ...AGUIToolsetOption) *AGUIToolset {
+	result := &AGUIToolset{pending: pending}
+	for _, opt := range opts {
+		opt(result)
+	}
+	return result
+}
+
+func (r *AGUIToolset) Name() string { return "agui_client_tools" }
 
 // Tools reads this invocation's client tool declarations (a JSON-encoded
 // []ClientTool at ClientToolsStateKey) from ctx's readonly state and
@@ -257,7 +161,7 @@ func (r *RequestScopedClientToolset) Name() string { return "agui_client_tools" 
 // not an error — when the current request declared no client tools (the
 // common case), so agents that mix static tools with AG-UI client tools
 // are unaffected on runs that supply none.
-func (r *RequestScopedClientToolset) Tools(ctx agent.ReadonlyContext) ([]tool.Tool, error) {
+func (r *AGUIToolset) Tools(ctx agent.ReadonlyContext) ([]tool.Tool, error) {
 	if r.pending == nil {
 		return nil, nil
 	}
@@ -276,6 +180,33 @@ func (r *RequestScopedClientToolset) Tools(ctx agent.ReadonlyContext) ([]tool.To
 	var defs []ClientTool
 	if err := json.Unmarshal([]byte(encoded), &defs); err != nil || len(defs) == 0 {
 		return nil, nil
+	}
+	if r.toolFilter != nil || r.toolNamePrefix != "" {
+		base, err := NewClientToolset(defs, r.pending)
+		if err != nil {
+			return nil, fmt.Errorf("resolve request-scoped client tools: %w", err)
+		}
+		available, err := base.Tools(ctx)
+		if err != nil {
+			return nil, err
+		}
+		allowed := make(map[string]bool, len(available))
+		for _, candidate := range available {
+			if r.toolFilter == nil || r.toolFilter(ctx, candidate) {
+				allowed[candidate.Name()] = true
+			}
+		}
+		filtered := make([]ClientTool, 0, len(defs))
+		for _, definition := range defs {
+			if allowed[definition.Name] {
+				definition.Name = r.toolNamePrefix + definition.Name
+				filtered = append(filtered, definition)
+			}
+		}
+		defs = filtered
+		if len(defs) == 0 {
+			return nil, nil
+		}
 	}
 	toolset, err := NewClientToolset(defs, r.pending)
 	if err != nil {
@@ -300,13 +231,4 @@ func clientSchema(value any) (*jsonschema.Schema, error) {
 		return nil, errors.New("client tool parameters must be an object")
 	}
 	return &schema, nil
-}
-
-func validScope(scope ToolScope) bool {
-	for _, value := range []string{scope.AppName, scope.UserID, scope.ThreadID} {
-		if strings.TrimSpace(value) == "" || len(value) > 256 || strings.ContainsAny(value, "\x00\r\n") {
-			return false
-		}
-	}
-	return true
 }

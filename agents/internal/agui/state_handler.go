@@ -11,7 +11,6 @@ import (
 
 	"agents/internal/agentruntime"
 	"agents/internal/auth"
-	"agents/internal/cloudflare"
 	aguitypes "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"google.golang.org/adk/v2/session"
 )
@@ -43,7 +42,7 @@ type stateResponse struct {
 // endpoint: on-demand retrieval of a thread's persisted, non-temporary state
 // and message history without starting a new agent run.
 //
-// A session that genuinely does not exist yet (cloudflare.ErrSessionNotFound)
+// A session that genuinely does not exist yet (ErrSessionNotFound)
 // is reported as threadExists: false with a 200 — that is an expected,
 // unremarkable outcome for a thread the client hasn't started. Any other
 // sessions.Get failure (a D1 outage, a decode error, ...) is a real backend
@@ -81,7 +80,7 @@ func StateHandler(registry *agentruntime.Registry, sessions session.Service) htt
 			response.ThreadExists = true
 			response.State = persistentSnapshot(found.Session.State())
 			response.Messages = eventsToMessages(found.Session.Events())
-		case errors.Is(err, cloudflare.ErrSessionNotFound):
+		case errors.Is(err, ErrSessionNotFound):
 			// Expected: no session has been created for this thread yet.
 		default:
 			log.Printf("state route: session lookup failed for app=%s thread=%s: %v", entry.AppName, input.ThreadID, err)

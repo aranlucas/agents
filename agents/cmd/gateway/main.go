@@ -76,10 +76,8 @@ type Dependencies struct {
 // capability routes registered from every agentruntime.Entry in
 // deps.Registry, a root /health, Clerk auth (bypassed only for entries
 // marked Public), and the configured browser-origin policy. It mounts the
-// same shared agui.Handler and agui.StateHandler across every route — both
-// resolve the target agent from the request path via registry.Lookup, so
-// building one instance per entry would be redundant work, not additional
-// isolation.
+// one prebuilt AG-UI handler per entry and a shared state handler. Binding
+// the agent at construction validates and reuses its ADK runner across runs.
 func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 	if deps.Registry == nil {
 		return nil, errors.New("agent registry is required")
@@ -91,7 +89,6 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 		deps.Now = time.Now
 	}
 
-	runHandler := agui.Handler(deps.Registry, deps.Sessions, agui.WithPendingTools(deps.Pending))
 	stateHandler := agui.StateHandler(deps.Registry, deps.Sessions)
 
 	mux := http.NewServeMux()
@@ -99,7 +96,21 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 
 	for _, entry := range deps.Registry.Entries() {
 		base := "/" + entry.Route
-		mux.Handle("POST "+base+"/agui", runHandler)
+		adapter, err := agui.NewADKAgent(agui.ADKAgentConfig{
+			Agent:            entry.Agent,
+			AppName:          entry.AppName,
+			SessionService:   deps.Sessions,
+			ExecutionTimeout: entry.Timeout,
+			StateDefaults:    entry.StateDefaults,
+			PendingTools:     deps.Pending,
+			Forwarded:        entry.Forwarded,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("build AG-UI adapter for %s: %w", entry.Route, err)
+		}
+		if err := agui.AddADKHTTPHandler(mux, adapter, base+"/agui"); err != nil {
+			return nil, fmt.Errorf("mount AG-UI adapter for %s: %w", entry.Route, err)
+		}
 		mux.Handle("POST "+base+"/agents/state", stateHandler)
 		mux.HandleFunc("GET "+base+"/agui/capabilities", capabilitiesHandler)
 		mux.HandleFunc("GET "+base+"/health", agentHealthHandler(entry))
@@ -573,7 +584,7 @@ func main() {
 	}
 
 	sessions := cloudflare.NewSessionService(d1, time.Now)
-	pending := agui.NewPendingStore(d1, time.Now)
+	pending := cloudflare.NewPendingStore(d1, time.Now)
 	limiter := rate.NewProviderLimiter(d1, time.Now)
 
 	resumeProvider, err := resumeProviderConfig(cfg)
@@ -593,7 +604,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("configure presentation fallbacks: %v", err)
 	}
-	presentationAgent, err := presentation.New(presentationModel, agui.NewRequestScopedClientToolset(pending))
+	presentationAgent, err := presentation.New(presentationModel, agui.NewAGUIToolset(pending))
 	if err != nil {
 		log.Fatalf("build presentation agent: %v", err)
 	}
@@ -605,7 +616,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("configure research fallbacks: %v", err)
 	}
-	researchAgent, err := research.New(researchModel, agui.NewRequestScopedClientToolset(pending))
+	researchAgent, err := research.New(researchModel, agui.NewAGUIToolset(pending))
 	if err != nil {
 		log.Fatalf("build research agent: %v", err)
 	}
@@ -617,7 +628,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("configure spreadsheet fallbacks: %v", err)
 	}
-	spreadsheetAgent, err := spreadsheet.New(spreadsheetModel, agui.NewRequestScopedClientToolset(pending))
+	spreadsheetAgent, err := spreadsheet.New(spreadsheetModel, agui.NewAGUIToolset(pending))
 	if err != nil {
 		log.Fatalf("build spreadsheet agent: %v", err)
 	}
@@ -629,7 +640,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("configure expense fallbacks: %v", err)
 	}
-	expenseAgent, err := expense.New(expenseModel, agui.NewRequestScopedClientToolset(pending))
+	expenseAgent, err := expense.New(expenseModel, agui.NewAGUIToolset(pending))
 	if err != nil {
 		log.Fatalf("build expense agent: %v", err)
 	}
@@ -645,7 +656,7 @@ func main() {
 	if trvlEndpoint == "" {
 		trvlEndpoint = "https://trvl-production.up.railway.app/mcp"
 	}
-	travelAgent, err := travel.New(travelModel, agui.NewRequestScopedClientToolset(pending), travel.NewTRVL(trvlEndpoint, &http.Client{Timeout: 20 * time.Second}))
+	travelAgent, err := travel.New(travelModel, agui.NewAGUIToolset(pending), travel.NewTRVL(trvlEndpoint, &http.Client{Timeout: 20 * time.Second}))
 	if err != nil {
 		log.Fatalf("build travel agent: %v", err)
 	}
@@ -665,7 +676,7 @@ func main() {
 		log.Fatalf("configure fitness fallbacks: %v", err)
 	}
 	stravaClient := fitness.NewStrava(common.NewHTTPClient(30*time.Second, 8<<20).Client, "https://www.strava.com/api/v3/athlete/activities")
-	fitnessAgent, err := fitness.New(fitnessModel, stravaClient, braveSearch, agui.NewRequestScopedClientToolset(pending))
+	fitnessAgent, err := fitness.New(fitnessModel, stravaClient, braveSearch, agui.NewAGUIToolset(pending))
 	if err != nil {
 		log.Fatalf("build fitness agent: %v", err)
 	}
@@ -683,19 +694,19 @@ func main() {
 	}
 	krogerClient := grocery.NewKroger(common.NewHTTPClient(30*time.Second, 8<<20).Client, krogerEndpoint)
 	webLoader := common.NewWebLoader(common.NewHTTPClient(20*time.Second, 4<<20), 100_000)
-	groceryAgent, err := grocery.New(groceryModel, krogerClient, braveSearch, webLoader, agui.NewRequestScopedClientToolset(pending))
+	groceryAgent, err := grocery.New(groceryModel, krogerClient, braveSearch, webLoader, agui.NewAGUIToolset(pending))
 	if err != nil {
 		log.Fatalf("build grocery agent: %v", err)
 	}
-	fitnessTaskAgent, err := fitness.NewTask(fitnessModel, stravaClient, braveSearch, agui.NewRequestScopedClientToolset(pending))
+	fitnessTaskAgent, err := fitness.NewTask(fitnessModel, stravaClient, braveSearch, agui.NewAGUIToolset(pending))
 	if err != nil {
 		log.Fatalf("build wellness fitness task agent: %v", err)
 	}
-	groceryTaskAgent, err := grocery.NewTask(groceryModel, krogerClient, braveSearch, webLoader, agui.NewRequestScopedClientToolset(pending))
+	groceryTaskAgent, err := grocery.NewTask(groceryModel, krogerClient, braveSearch, webLoader, agui.NewAGUIToolset(pending))
 	if err != nil {
 		log.Fatalf("build wellness grocery task agent: %v", err)
 	}
-	wellnessAgent, err := wellness.New(wellness.ModelSet{Coordinator: fitnessModel}, fitnessTaskAgent, groceryTaskAgent, agui.NewRequestScopedClientToolset(pending))
+	wellnessAgent, err := wellness.New(wellness.ModelSet{Coordinator: fitnessModel}, fitnessTaskAgent, groceryTaskAgent, agui.NewAGUIToolset(pending))
 	if err != nil {
 		log.Fatalf("build wellness agent: %v", err)
 	}
@@ -715,7 +726,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("configure Excalidraw MCP: %v", err)
 	}
-	excalidrawAgent, err := excalidraw.New(excalidrawModel, excalidrawBridge, agui.NewRequestScopedClientToolset(pending))
+	excalidrawAgent, err := excalidraw.New(excalidrawModel, excalidrawBridge, agui.NewAGUIToolset(pending))
 	if err != nil {
 		log.Fatalf("build Excalidraw agent: %v", err)
 	}
@@ -746,7 +757,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("configure trends A2UI composer: %v", err)
 	}
-	trendsAgent, err := trends.New(trendsModel, trendsGenerator, trendsExecutor, braveSearch, trendsComposer, agui.NewRequestScopedClientToolset(pending))
+	trendsAgent, err := trends.New(trendsModel, trendsGenerator, trendsExecutor, braveSearch, trendsComposer, agui.NewAGUIToolset(pending))
 	if err != nil {
 		log.Fatalf("build trends agent: %v", err)
 	}
@@ -762,7 +773,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("configure oralboards corpus: %v", err)
 	}
-	oralboardsAgent, err := oralboards.New(oralboardsPhaseModels, oralboardsCorpus, agui.NewRequestScopedClientToolset(pending))
+	oralboardsAgent, err := oralboards.New(oralboardsPhaseModels, oralboardsCorpus, agui.NewAGUIToolset(pending))
 	if err != nil {
 		log.Fatalf("build oralboards agent: %v", err)
 	}

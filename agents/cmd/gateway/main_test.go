@@ -142,10 +142,9 @@ func newGateway(t *testing.T) http.Handler {
 	// see effectiveUserID in internal/agui/handler.go) so
 	// /resume/agents/state exercises its normal "thread exists" path
 	// instead of a lookup error. session.InMemoryService's not-found error
-	// isn't cloudflare.ErrSessionNotFound (that sentinel is specific to
-	// the production cloudflare.SessionService StateHandler is built
-	// against), so relying on the not-found branch here would instead hit
-	// StateHandler's genuine-error 500 path.
+	// isn't agui.ErrSessionNotFound (only the production
+	// cloudflare.SessionService returns that), so relying on the not-found
+	// branch here would instead hit StateHandler's genuine-error 500 path.
 	if _, err := sessions.Create(context.Background(), &session.CreateRequest{
 		AppName: resume.AppName, UserID: "anon:route-test-thread", SessionID: "route-test-thread",
 	}); err != nil {

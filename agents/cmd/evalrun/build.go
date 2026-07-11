@@ -57,7 +57,7 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		if err != nil {
 			return Built{}, err
 		}
-		built, err := expense.New(m, agui.NewRequestScopedClientToolset(nil))
+		built, err := expense.New(m, agui.NewAGUIToolset(nil))
 		return Built{Name: name, Agent: built, StateDefaults: expense.StateDefaults(), Notes: notes}, err
 
 	case "research":
@@ -65,7 +65,7 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		if err != nil {
 			return Built{}, err
 		}
-		built, err := research.New(m, agui.NewRequestScopedClientToolset(nil))
+		built, err := research.New(m, agui.NewAGUIToolset(nil))
 		return Built{Name: name, Agent: built, StateDefaults: research.StateDefaults(), Notes: notes}, err
 
 	case "travel":
@@ -77,7 +77,7 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		if trvlEndpoint == "" {
 			trvlEndpoint = "https://trvl-production.up.railway.app/mcp"
 		}
-		built, err := travel.New(m, agui.NewRequestScopedClientToolset(nil), travel.NewTRVL(trvlEndpoint, &http.Client{Timeout: 20 * time.Second}))
+		built, err := travel.New(m, agui.NewAGUIToolset(nil), travel.NewTRVL(trvlEndpoint, &http.Client{Timeout: 20 * time.Second}))
 		return Built{Name: name, Agent: built, StateDefaults: travel.StateDefaults(), Notes: notes}, err
 
 	case "resume":
@@ -93,7 +93,7 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		if err != nil {
 			return Built{}, err
 		}
-		built, err := presentation.New(m, agui.NewRequestScopedClientToolset(nil))
+		built, err := presentation.New(m, agui.NewAGUIToolset(nil))
 		return Built{Name: name, Agent: built, StateDefaults: presentation.StateDefaults(), Notes: notes}, err
 
 	case "spreadsheet":
@@ -101,7 +101,7 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		if err != nil {
 			return Built{}, err
 		}
-		built, err := spreadsheet.New(m, agui.NewRequestScopedClientToolset(nil))
+		built, err := spreadsheet.New(m, agui.NewAGUIToolset(nil))
 		return Built{Name: name, Agent: built, StateDefaults: spreadsheet.StateDefaults(), Notes: notes}, err
 
 	case "fitness":
@@ -110,7 +110,7 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 			return Built{}, err
 		}
 		strava := fitness.NewStrava(common.NewHTTPClient(30*time.Second, 8<<20).Client, "https://www.strava.com/api/v3/athlete/activities")
-		built, err := fitness.New(m, strava, nil, agui.NewRequestScopedClientToolset(nil))
+		built, err := fitness.New(m, strava, nil, agui.NewAGUIToolset(nil))
 		return Built{Name: name, Agent: built, StateDefaults: fitness.StateDefaults(), Notes: notes}, err
 
 	case "grocery":
@@ -124,7 +124,7 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		}
 		kroger := grocery.NewKroger(common.NewHTTPClient(30*time.Second, 8<<20).Client, krogerEndpoint)
 		loader := common.NewWebLoader(common.NewHTTPClient(20*time.Second, 4<<20), 100_000)
-		built, err := grocery.New(m, kroger, nil, loader, agui.NewRequestScopedClientToolset(nil))
+		built, err := grocery.New(m, kroger, nil, loader, agui.NewAGUIToolset(nil))
 		return Built{Name: name, Agent: built, StateDefaults: grocery.StateDefaults(), Notes: notes}, err
 
 	case "wellness":
@@ -133,7 +133,7 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 			return Built{}, err
 		}
 		strava := fitness.NewStrava(common.NewHTTPClient(30*time.Second, 8<<20).Client, "https://www.strava.com/api/v3/athlete/activities")
-		fitnessTask, err := fitness.NewTask(fm, strava, nil, agui.NewRequestScopedClientToolset(nil))
+		fitnessTask, err := fitness.NewTask(fm, strava, nil, agui.NewAGUIToolset(nil))
 		if err != nil {
 			return Built{}, fmt.Errorf("build fitness task agent: %w", err)
 		}
@@ -147,11 +147,11 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		}
 		kroger := grocery.NewKroger(common.NewHTTPClient(30*time.Second, 8<<20).Client, krogerEndpoint)
 		loader := common.NewWebLoader(common.NewHTTPClient(20*time.Second, 4<<20), 100_000)
-		groceryTask, err := grocery.NewTask(gm, kroger, nil, loader, agui.NewRequestScopedClientToolset(nil))
+		groceryTask, err := grocery.NewTask(gm, kroger, nil, loader, agui.NewAGUIToolset(nil))
 		if err != nil {
 			return Built{}, fmt.Errorf("build grocery task agent: %w", err)
 		}
-		built, err := wellness.New(wellness.ModelSet{Coordinator: fm}, fitnessTask, groceryTask, agui.NewRequestScopedClientToolset(nil))
+		built, err := wellness.New(wellness.ModelSet{Coordinator: fm}, fitnessTask, groceryTask, agui.NewAGUIToolset(nil))
 		return Built{Name: name, Agent: built, StateDefaults: wellness.StateDefaults(), Notes: notes}, err
 
 	case "oralboards":
@@ -190,7 +190,7 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		}
 		built, err := oralboards.New(oralboards.PhaseModels{
 			CaseBuilder: caseBuilder, Questioner: questioner, Evaluator: evaluator, Scorer: scorer,
-		}, corpus, agui.NewRequestScopedClientToolset(nil))
+		}, corpus, agui.NewAGUIToolset(nil))
 		return Built{Name: name, Agent: built, StateDefaults: oralboards.StateDefaults(), Notes: notes}, err
 	}
 	return Built{}, fmt.Errorf("unknown agent %q", name)

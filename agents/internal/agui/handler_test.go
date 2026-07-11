@@ -18,7 +18,6 @@ import (
 
 	"agents/internal/agentruntime"
 	"agents/internal/auth"
-	"agents/internal/cloudflare"
 	aguievents "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
@@ -44,6 +43,20 @@ func TestHandlerStreamsResumeGoldenEvents(t *testing.T) {
 }
 
 // ---- malformed input --------------------------------------------------
+
+func TestNewADKHandlerBindsOneAgentAndDefaultsAppName(t *testing.T) {
+	a, err := llmagent.New(llmagent.Config{Name: "test_agent", Instruction: "test", Model: &fakeResumeModel{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler, err := NewADKHandler(a, newFakeSessionService(), "")
+	if err != nil {
+		t.Fatalf("NewADKHandler: %v", err)
+	}
+	if handler.entry.AppName != "adk-agent" || handler.runner == nil {
+		t.Fatalf("handler = app %q runner %v", handler.entry.AppName, handler.runner)
+	}
+}
 
 func TestHandlerRejectsMalformedInput(t *testing.T) {
 	h := newGatewayWithFakeResumeModel(t)
@@ -89,17 +102,18 @@ func TestHandlerCompletesForwardedRequestWithoutSessionOrModel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry, err := agentruntime.NewRegistry(agentruntime.Entry{
+	entry := agentruntime.Entry{
 		Route: "excalidraw", AppName: "excalidraw_agent", Agent: a, Public: true,
 		Forwarded: fakeForwardedHandler{},
-	})
+	}
+	handler, err := NewEntryHandler(entry, newFakeSessionService())
 	if err != nil {
 		t.Fatal(err)
 	}
 	body := `{"threadId":"thread-1","runId":"run-1","messages":[],"tools":[],"context":[],"forwardedProps":{"__proxiedMCPRequest":{}}}`
 	req := httptest.NewRequest(http.MethodPost, "/excalidraw/agui", strings.NewReader(body))
 	rr := httptest.NewRecorder()
-	Handler(registry, nil).ServeHTTP(rr, req)
+	handler.ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), `"proxied":true`) || !strings.Contains(rr.Body.String(), "RUN_FINISHED") {
 		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
 	}
@@ -214,7 +228,7 @@ func TestHandlerEndsWithSanitizedRunErrorOnUpstreamFailure(t *testing.T) {
 // TestHandlerWiresRequestClientToolsIntoRunningAgent proves that an AG-UI
 // request's tools declarations become callable tools for that run: the
 // agent under test has no static "highlight_row" tool, only a
-// RequestScopedClientToolset resolving it dynamically from the request's
+// AGUIToolset resolving it dynamically from the request's
 // declared tools. If the handler failed to overlay the client tools state
 // key before Runner.Run, ADK would fail to find "highlight_row" when the
 // fake model calls it and the stream would end in RUN_ERROR instead of
@@ -222,7 +236,7 @@ func TestHandlerEndsWithSanitizedRunErrorOnUpstreamFailure(t *testing.T) {
 func TestHandlerWiresRequestClientToolsIntoRunningAgent(t *testing.T) {
 	pending := newFakePending()
 	ids := &fakeIDs{}
-	h := newTestGatewayWithToolsets(t, &fakeClientToolModel{}, ids, []tool.Toolset{NewRequestScopedClientToolset(pending)}, WithPendingTools(pending))
+	h := newTestGatewayWithToolsets(t, &fakeClientToolModel{}, ids, []tool.Toolset{NewAGUIToolset(pending)}, WithPendingTools(pending))
 
 	body := `{
 		"threadId": "thread-highlight",
@@ -241,9 +255,11 @@ func TestHandlerWiresRequestClientToolsIntoRunningAgent(t *testing.T) {
 	}
 	out := rr.Body.String()
 	for _, want := range []string{
-		`"type":"TOOL_CALL_START","toolCallId":"call-highlight-1","toolCallName":"highlight_row"`,
-		`"type":"TOOL_CALL_ARGS","toolCallId":"call-highlight-1"`,
-		`"type":"TOOL_CALL_END","toolCallId":"call-highlight-1"`,
+		`"type":"TOOL_CALL_START"`,
+		`"type":"TOOL_CALL_ARGS"`,
+		`"type":"TOOL_CALL_END"`,
+		`"toolCallId":"call-highlight-1"`,
+		`"toolCallName":"highlight_row"`,
 	} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("missing %q in output: %s", want, out)
@@ -346,10 +362,10 @@ func newTestGateway(t *testing.T, m model.LLM, ids aguievents.IDGenerator, opts 
 }
 
 // newTestGatewayWithToolsets is newTestGateway plus the ability to attach
-// extra tool.Toolsets (e.g. a RequestScopedClientToolset) to the agent at
+// extra tool.Toolsets (e.g. an AGUIToolset) to the agent at
 // construction time — the same thing production agent wiring must do to
 // support AG-UI client tools (see client_tools.go's
-// RequestScopedClientToolset doc comment).
+// AGUIToolset doc comment).
 func newTestGatewayWithToolsets(t *testing.T, m model.LLM, ids aguievents.IDGenerator, toolsets []tool.Toolset, opts ...Option) http.Handler {
 	t.Helper()
 	a, err := llmagent.New(llmagent.Config{
@@ -362,19 +378,20 @@ func newTestGatewayWithToolsets(t *testing.T, m model.LLM, ids aguievents.IDGene
 	if err != nil {
 		t.Fatalf("build agent: %v", err)
 	}
-	registry, err := agentruntime.NewRegistry(agentruntime.Entry{
+	entry := agentruntime.Entry{
 		Route:   "resume",
 		AppName: "resume_agent",
 		Agent:   a,
 		Public:  true,
 		Timeout: 5 * time.Second,
-	})
-	if err != nil {
-		t.Fatalf("build registry: %v", err)
 	}
 	sessions := newFakeSessionService()
 	allOpts := append([]Option{WithIDGenerator(ids)}, opts...)
-	return Handler(registry, sessions, allOpts...)
+	handler, err := NewEntryHandler(entry, sessions, allOpts...)
+	if err != nil {
+		t.Fatalf("build AG-UI handler: %v", err)
+	}
+	return handler
 }
 
 // ---- fake tool ------------------------------------------------------------
@@ -467,7 +484,7 @@ func (m *fakeErrorModel) GenerateContent(ctx context.Context, req *model.LLMRequ
 }
 
 // fakeClientToolModel emits a function call for a tool name that has no
-// static ADK tool — only a RequestScopedClientToolset resolving the
+// static ADK tool — only an AGUIToolset resolving the
 // request's AG-UI tool declarations can make this callable. Used to prove
 // input.Tools actually reaches the running agent (Finding 1a). Mirrors
 // fakeResumeModel's two-turn shape: NewClientToolset's wrapped tool
@@ -677,12 +694,12 @@ func (e *fakeEvents) At(i int) *session.Event {
 }
 
 // fakeSessionService is an in-memory session.Service double. Unlike
-// session.InMemoryService (bundled with ADK-Go), it reproduces the
-// production cloudflare.SessionService error contract (returning
-// cloudflare.ErrSessionNotFound from Get) that Handler.restoreSession
-// depends on, and it keeps a strict separation between the persisted
-// backing state and the in-flight session's state so a temp: key applied
-// mid-invocation never leaks into a later Get.
+// session.InMemoryService (bundled with ADK-Go), it returns ErrSessionNotFound
+// from Get/AppendEvent like the production cloudflare.SessionService does, so
+// tests can exercise StateHandler's threadExists branch and converter.go's
+// session_not_found error classification. It also keeps a strict separation
+// between the persisted backing state and the in-flight session's state so a
+// temp: key applied mid-invocation never leaks into a later Get.
 type fakeSessionService struct {
 	mu        sync.Mutex
 	persisted map[string]map[string]any
@@ -729,7 +746,7 @@ func (f *fakeSessionService) Get(ctx context.Context, req *session.GetRequest) (
 	key := sessionKey(req.AppName, req.UserID, req.SessionID)
 	state, ok := f.persisted[key]
 	if !ok {
-		return nil, cloudflare.ErrSessionNotFound
+		return nil, ErrSessionNotFound
 	}
 	events := append([]*session.Event(nil), f.events[key]...)
 	sess := &fakeSession{id: req.SessionID, appName: req.AppName, userID: req.UserID, state: newFakeState(state), events: events, updated: time.Now()}
@@ -760,7 +777,7 @@ func (f *fakeSessionService) AppendEvent(ctx context.Context, curSession session
 	persisted, ok := f.persisted[sessKey]
 	f.mu.Unlock()
 	if !ok {
-		return cloudflare.ErrSessionNotFound
+		return ErrSessionNotFound
 	}
 	for key, value := range event.Actions.StateDelta {
 		_ = fs.state.Set(key, value)
@@ -816,6 +833,9 @@ func readFixture(t *testing.T, name string) []byte {
 // line in expected. Comparison is JSON-semantic (not byte-exact) so it is
 // insensitive to Go's deterministic-but-incidental map key/whitespace
 // choices while still requiring the exact same event vocabulary and fields.
+// SDK constructors add a live millisecond timestamp to every event, so the
+// golden asserts that each timestamp is present and valid, then compares the
+// stable protocol fields.
 func assertSSEEqual(t *testing.T, actual, expected []byte) {
 	t.Helper()
 	actualFrames := parseSSEFrames(t, actual)
@@ -824,6 +844,15 @@ func assertSSEEqual(t *testing.T, actual, expected []byte) {
 		t.Fatalf("frame count = %d, want %d\nactual:\n%s\nwant:\n%s", len(actualFrames), len(expectedFrames), actual, expected)
 	}
 	for i := range expectedFrames {
+		actualEvent, ok := actualFrames[i].(map[string]any)
+		if !ok {
+			t.Fatalf("frame %d is not a JSON object: %#v", i, actualFrames[i])
+		}
+		timestamp, ok := actualEvent["timestamp"].(float64)
+		if !ok || timestamp <= 0 {
+			t.Fatalf("frame %d has invalid SDK timestamp: %#v", i, actualEvent["timestamp"])
+		}
+		delete(actualEvent, "timestamp")
 		if !reflect.DeepEqual(actualFrames[i], expectedFrames[i]) {
 			t.Fatalf("frame %d mismatch:\n got: %#v\nwant: %#v\n\nfull actual:\n%s", i, actualFrames[i], expectedFrames[i], actual)
 		}
@@ -838,8 +867,14 @@ func parseSSEFrames(t *testing.T, data []byte) []any {
 		if len(chunk) == 0 {
 			continue
 		}
-		payload, ok := bytes.CutPrefix(chunk, []byte("data: "))
-		if !ok {
+		var payload []byte
+		for _, line := range bytes.Split(chunk, []byte("\n")) {
+			if candidate, ok := bytes.CutPrefix(line, []byte("data: ")); ok {
+				payload = candidate
+				break
+			}
+		}
+		if payload == nil {
 			t.Fatalf("frame missing data prefix: %s", chunk)
 		}
 		var value any

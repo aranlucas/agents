@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"agents/internal/cloudflare"
+	"agents/internal/agui"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/artifact"
 	"google.golang.org/adk/v2/runner"
@@ -296,7 +296,7 @@ func (e *ADKExecutor) Run(ctx context.Context, identity SessionIdentity, route R
 func (e *ADKExecutor) Reset(ctx context.Context, identity SessionIdentity) error {
 	for _, built := range e.agents {
 		err := e.sessions.Delete(ctx, &session.DeleteRequest{AppName: built.Name(), UserID: identity.UserID, SessionID: identity.SessionID})
-		if err != nil && !errors.Is(err, cloudflare.ErrSessionNotFound) {
+		if err != nil && !errors.Is(err, agui.ErrSessionNotFound) {
 			return err
 		}
 	}
