@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 
@@ -62,12 +63,14 @@ func Handler(registry *agentruntime.Registry, sessions session.Service, opts ...
 func (h *runHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	input, err := decodeRunInput(r.Body)
 	if err != nil {
+		log.Printf("run: decode input failed: %v", err)
 		writeJSONError(w, http.StatusBadRequest, "invalid_agui_input")
 		return
 	}
 
 	entry, err := h.registry.Lookup(routeAgent(r.URL.Path))
 	if err != nil {
+		log.Printf("run: agent lookup failed for path=%s: %v", r.URL.Path, err)
 		writeJSONError(w, http.StatusNotFound, "unknown_agent")
 		return
 	}
@@ -91,12 +94,14 @@ func (h *runHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	sess, err := h.restoreSession(ctx, entry, userID, input.ThreadID)
 	if err != nil {
+		log.Printf("run: session restore failed: agent=%s thread=%s user=%s err=%v", entry.AppName, input.ThreadID, userID, err)
 		writeJSONError(w, http.StatusInternalServerError, "session_unavailable")
 		return
 	}
 
 	flusher, ok := w.(http.Flusher)
 	if !ok {
+		log.Printf("run: response writer does not support flushing")
 		writeJSONError(w, http.StatusInternalServerError, "streaming_unsupported")
 		return
 	}
@@ -104,6 +109,7 @@ func (h *runHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	scope := ToolScope{AppName: entry.AppName, UserID: userID, ThreadID: input.ThreadID}
 	content, err := runContent(ctx, input, identity, h.pending, scope)
 	if err != nil {
+		log.Printf("run: content conversion failed: agent=%s thread=%s user=%s err=%v", entry.AppName, input.ThreadID, userID, err)
 		writeJSONError(w, http.StatusBadRequest, "invalid_agui_input")
 		return
 	}
@@ -113,6 +119,7 @@ func (h *runHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// request that declares tools would silently run without them.
 	clientTools := clientToolsFromInput(input)
 	if len(clientTools) > 0 && h.pending == nil {
+		log.Printf("run: client tools declared but pending store unavailable: agent=%s thread=%s", entry.AppName, input.ThreadID)
 		writeJSONError(w, http.StatusBadRequest, "client_tools_unsupported")
 		return
 	}
@@ -127,6 +134,7 @@ func (h *runHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if len(clientTools) > 0 {
 		encoded, err := json.Marshal(clientTools)
 		if err != nil {
+			log.Printf("run: client tools encode failed: agent=%s thread=%s err=%v", entry.AppName, input.ThreadID, err)
 			writeJSONError(w, http.StatusBadRequest, "invalid_agui_input")
 			return
 		}
@@ -135,6 +143,7 @@ func (h *runHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	rn, err := runner.New(runner.Config{AppName: entry.AppName, Agent: entry.Agent, SessionService: h.sessions, AutoCreateSession: true})
 	if err != nil {
+		log.Printf("run: runner creation failed: agent=%s thread=%s err=%v", entry.AppName, input.ThreadID, err)
 		writeJSONError(w, http.StatusInternalServerError, "agent_unavailable")
 		return
 	}
@@ -184,6 +193,7 @@ func (h *runHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		for _, converted := range converter.Flush() {
 			frame.write(converted)
 		}
+		log.Printf("run failed: agent=%s thread=%s user=%s run=%s err=%v", entry.AppName, input.ThreadID, userID, input.RunID, runErr)
 		frame.write(sanitizeRunError(input.RunID, runErr))
 		return
 	}
@@ -198,6 +208,7 @@ func (h *runHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h *runHandler) writeForwarded(w http.ResponseWriter, threadID, runID string, result any, runErr error) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
+		log.Printf("forwarded: response writer does not support flushing")
 		writeJSONError(w, http.StatusInternalServerError, "streaming_unsupported")
 		return
 	}
@@ -208,6 +219,7 @@ func (h *runHandler) writeForwarded(w http.ResponseWriter, threadID, runID strin
 	frame := &sseWriter{w: w, flusher: flusher}
 	frame.write(&aguievents.RunStartedEvent{BaseEvent: newBase(aguievents.EventTypeRunStarted), ThreadIDValue: threadID, RunIDValue: runID})
 	if runErr != nil {
+		log.Printf("forwarded run failed: thread=%s run=%s err=%v", threadID, runID, runErr)
 		frame.write(sanitizeRunError(runID, runErr))
 		return
 	}
@@ -222,10 +234,12 @@ func (h *runHandler) restoreSession(ctx context.Context, entry agentruntime.Entr
 		return response.Session, nil
 	}
 	if !errors.Is(err, cloudflare.ErrSessionNotFound) {
+		log.Printf("restoreSession: get failed: app=%s user=%s thread=%s err=%v", entry.AppName, userID, threadID, err)
 		return nil, err
 	}
 	created, err := h.sessions.Create(ctx, &session.CreateRequest{AppName: entry.AppName, UserID: userID, SessionID: threadID, State: entry.StateDefaults})
 	if err != nil {
+		log.Printf("restoreSession: create failed: app=%s user=%s thread=%s err=%v", entry.AppName, userID, threadID, err)
 		return nil, err
 	}
 	return created.Session, nil
