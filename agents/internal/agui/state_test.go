@@ -27,6 +27,26 @@ func TestOAuthHeadersBecomeRouteScopedFlagsWithoutChangingTokenNames(t *testing.
 	if _, leaked := persisted["temp:strava_token"]; leaked || persisted["strava_connected"] != true {
 		t.Fatalf("persistent snapshot = %#v", persisted)
 	}
+
+	groceryRequest := httptest.NewRequest("POST", "/grocery/agui", nil)
+	groceryRequest.Header.Set("X-Kroger-Access-Token", "kroger-secret")
+	grocery := requestStateOverlay(groceryRequest, "grocery")
+	if grocery["temp:kroger_token"] != "kroger-secret" || grocery["kroger_connected"] != true {
+		t.Fatalf("grocery overlay = %#v", grocery)
+	}
+	if _, exists := grocery["strava_connected"]; exists {
+		t.Fatalf("grocery overlay included fitness flag: %#v", grocery)
+	}
+
+	wellnessRequest := httptest.NewRequest("POST", "/wellness/agui", nil)
+	wellnessRequest.Header.Set("X-Kroger-Access-Token", "kroger-secret")
+	wellness := requestStateOverlay(wellnessRequest, "wellness")
+	if wellness["temp:kroger_token"] != "kroger-secret" || wellness["kroger_connected"] != true {
+		t.Fatalf("wellness overlay = %#v", wellness)
+	}
+	if wellness["strava_connected"] != false {
+		t.Fatalf("wellness overlay should mark absent strava as disconnected: %#v", wellness)
+	}
 }
 
 // TestStatePatchAddReplaceRemoveAndEscaping is the committed state-differ-
