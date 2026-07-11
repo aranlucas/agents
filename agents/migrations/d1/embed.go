@@ -7,3 +7,8 @@ import _ "embed"
 //
 //go:embed 001_initial.sql
 var Initial string
+
+// TelegramLinks is the idempotent Telegram account-link schema.
+//
+//go:embed 002_telegram_links.sql
+var TelegramLinks string

@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -33,6 +34,7 @@ import (
 	"github.com/aranlucas/agents/agents/internal/agents/wellness"
 	"github.com/aranlucas/agents/agents/internal/agui"
 	"github.com/aranlucas/agents/agents/internal/auth"
+	clerkbackend "github.com/aranlucas/agents/agents/internal/clerk"
 	"github.com/aranlucas/agents/agents/internal/cloudflare"
 	"github.com/aranlucas/agents/agents/internal/config"
 	mcpbridge "github.com/aranlucas/agents/agents/internal/mcp"
@@ -40,6 +42,7 @@ import (
 	"github.com/aranlucas/agents/agents/internal/providers/gemini"
 	"github.com/aranlucas/agents/agents/internal/providers/openai"
 	"github.com/aranlucas/agents/agents/internal/rate"
+	telegramruntime "github.com/aranlucas/agents/agents/internal/telegram"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/api/option"
@@ -64,6 +67,8 @@ type Dependencies struct {
 	Verifier auth.TokenVerifier
 	D1       healthChecker
 	R2       healthChecker
+	Links    *telegramruntime.LinkStore
+	Clerk    clerkbackend.Backend
 	Now      func() time.Time
 }
 
@@ -110,6 +115,10 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 	}
 
 	mux.HandleFunc("GET /health", rootHealthHandler(deps))
+	if deps.Links != nil && cfg.TelegramLinkSecret != "" {
+		mux.HandleFunc("POST /telegram/link/consume", telegramLinkConsumeHandler(cfg.TelegramLinkSecret, deps.Links, deps.Clerk))
+		publicRoutes["/telegram/link/consume"] = true
+	}
 
 	var verifiers []auth.TokenVerifier
 	if deps.Verifier != nil {
@@ -133,6 +142,44 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 		protected.ServeHTTP(w, r)
 	})
 	return auth.CORS(cfg.HTTP.Origins, routed), nil
+}
+
+type telegramLinkConsumeRequest struct {
+	Token       string `json:"token"`
+	ClerkUserID string `json:"clerk_user_id"`
+}
+
+func telegramLinkConsumeHandler(secret string, links *telegramruntime.LinkStore, backend clerkbackend.Backend) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		provided := r.Header.Get("x-telegram-link-secret")
+		if len(provided) != len(secret) || subtle.ConstantTimeCompare([]byte(provided), []byte(secret)) != 1 {
+			writeGatewayJSONError(w, http.StatusUnauthorized, "invalid_link_secret")
+			return
+		}
+		var input telegramLinkConsumeRequest
+		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10))
+		decoder.DisallowUnknownFields()
+		if decoder.Decode(&input) != nil || strings.TrimSpace(input.Token) == "" || strings.TrimSpace(input.ClerkUserID) == "" {
+			writeGatewayJSONError(w, http.StatusBadRequest, "invalid_link_request")
+			return
+		}
+		link, err := links.Consume(r.Context(), input.Token, input.ClerkUserID)
+		if err != nil {
+			writeGatewayJSONError(w, http.StatusBadRequest, "invalid_or_expired_link_token")
+			return
+		}
+		if backend != nil {
+			_ = backend.MirrorTelegramLink(r.Context(), link.TelegramUserID, link.ClerkUserID)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "telegram_user_id": link.TelegramUserID})
+	}
+}
+
+func writeGatewayJSONError(w http.ResponseWriter, status int, code string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": code})
 }
 
 // capabilitiesHandler advertises only the AG-UI features the Go runtime's
@@ -707,6 +754,7 @@ func main() {
 		Verifier: verifier,
 		D1:       d1,
 		R2:       r2,
+		Links:    telegramruntime.NewLinkStore(d1, time.Now),
 		Now:      time.Now,
 	})
 	if err != nil {

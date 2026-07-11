@@ -90,6 +90,17 @@ func TestEveryActiveAgentExposesScopedEndpoints(t *testing.T) {
 	}
 }
 
+func TestLinkConsumeRejectsWrongSharedSecret(t *testing.T) {
+	handler := telegramLinkConsumeHandler("correct", nil, nil)
+	request := httptest.NewRequest(http.MethodPost, "/telegram/link/consume", strings.NewReader(`{"token":"raw","clerk_user_id":"user"}`))
+	request.Header.Set("x-telegram-link-secret", "wrong")
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusUnauthorized {
+		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
 // fakeResumeModel is a minimal model.LLM double satisfying resume.New's
 // signature; the routing tests below never trigger a model call.
 type fakeResumeModel struct{}
