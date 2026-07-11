@@ -18,8 +18,20 @@ import (
 // D1 remains the authoritative account-link store.
 type Backend interface {
 	MirrorTelegramLink(context.Context, int64, string) error
+	MirrorTelegramUnlink(context.Context, int64) error
 	LinkedUserID(context.Context, int64) (string, error)
 	OAuthConnections(context.Context, string) (ConnectionState, error)
+}
+
+func (b *HTTPBackend) MirrorTelegramUnlink(ctx context.Context, telegramUserID int64) error {
+	users, err := b.usersByExternalID(ctx, telegramUserID)
+	if err != nil || len(users) == 0 {
+		return err
+	}
+	body := struct {
+		PrivateMetadata map[string]*string `json:"private_metadata"`
+	}{map[string]*string{"linked_clerk_user_id": nil}}
+	return b.request(ctx, http.MethodPatch, "/users/"+url.PathEscape(users[0].ID)+"/metadata", nil, body, nil)
 }
 
 type ConnectionState struct {

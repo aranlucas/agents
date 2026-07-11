@@ -52,3 +52,19 @@ bash agents/scripts/smoke-telegram.sh agents-telegram-go:local
 Deployment uses [railway.toml](railway.toml) for the gateway and
 [agents/railway.telegram.toml](agents/railway.telegram.toml) for the worker.
 The web deploys to Vercel and mobile through EAS.
+
+Production acceptance requires an authenticated Clerk session token and both
+deployed service URLs. It exercises every registered route, public and
+protected state, a client tool, Trends A2UI, request-scoped OAuth headers, and
+Telegram health before recording Railway's raw RSS samples:
+
+```bash
+AGENTS_BASE_URL=https://agents-gateway.example \
+SMOKE_AUTH_TOKEN="$CLERK_SESSION_TOKEN" \
+TELEGRAM_HEALTH_URL=https://agents-telegram.example \
+  bash agents/scripts/production-smoke.sh
+bash agents/scripts/measure-rss.sh agents-gateway production 15m
+```
+
+The RSS check fails unless Railway returns at least one sample and the peak is
+strictly below 0.4 GB.

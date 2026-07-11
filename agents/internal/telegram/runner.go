@@ -197,6 +197,9 @@ func (r *Runner) handleCommand(ctx context.Context, message Message, identity Se
 		if !unlinked {
 			return r.sendText(ctx, message, "This Telegram account is not linked.")
 		}
+		if r.router.clerk != nil {
+			_ = r.router.clerk.MirrorTelegramUnlink(ctx, message.From.ID)
+		}
 		return r.sendText(ctx, message, "Telegram account unlinked.")
 	case "new", "reset":
 		if err := r.executor.Reset(ctx, identity); err != nil {
