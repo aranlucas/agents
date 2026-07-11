@@ -14,14 +14,19 @@ import (
 	"github.com/aranlucas/agents/agents/internal/config"
 )
 
+type batchEnvelope struct {
+	Batch []cloudflare.Statement `json:"batch"`
+}
+
 func TestProviderLimiterRejectsWindowOverflowAndResets(t *testing.T) {
 	var mu sync.Mutex
 	counts := map[int64]int{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var statements []cloudflare.Statement
-		if err := json.NewDecoder(r.Body).Decode(&statements); err != nil {
-			t.Fatal(err)
+		var env batchEnvelope
+		if err := json.NewDecoder(r.Body).Decode(&env); err != nil || len(env.Batch) == 0 {
+			t.Fatal("bad batch envelope")
 		}
+		statements := env.Batch
 		window := int64(statements[1].Params[1].(float64))
 		maximum := int(statements[1].Params[3].(float64))
 		mu.Lock()
