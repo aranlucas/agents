@@ -23,6 +23,7 @@ import (
 	"github.com/aranlucas/agents/agents/internal/agents/expense"
 	"github.com/aranlucas/agents/agents/internal/agents/fitness"
 	"github.com/aranlucas/agents/agents/internal/agents/grocery"
+	"github.com/aranlucas/agents/agents/internal/agents/oralboards"
 	"github.com/aranlucas/agents/agents/internal/agents/presentation"
 	"github.com/aranlucas/agents/agents/internal/agents/research"
 	"github.com/aranlucas/agents/agents/internal/agents/resume"
@@ -343,7 +344,7 @@ func trendsBigQueryClient(ctx context.Context) (*bigquery.Client, error) {
 	}
 	var opts []option.ClientOption
 	if credentials := strings.TrimSpace(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")); credentials != "" {
-		opts = append(opts, option.WithCredentialsJSON([]byte(credentials)))
+		opts = append(opts, option.WithAuthCredentialsJSON(option.ServiceAccount, []byte(credentials)))
 	}
 	client, err := bigquery.NewClient(ctx, project, opts...)
 	if err != nil {
@@ -372,6 +373,42 @@ func trendsComposerModel(ctx context.Context) (model.LLM, error) {
 		return nil, fmt.Errorf("configure trends A2UI composer: %w", err)
 	}
 	return composer, nil
+}
+
+func oralboardsModels(ctx context.Context, cfg config.Config, limiter *rate.ProviderLimiter) (oralboards.PhaseModels, error) {
+	openrouter, ok := cfg.Providers["openrouter"]
+	if !ok {
+		return oralboards.PhaseModels{}, errors.New("OPENROUTER_API_KEY is required to configure oralboards")
+	}
+	openrouter.Model, openrouter.RequestsPerMinute, openrouter.RequestsPerDay = "tencent/hy3:free", 20, 1000
+	openrouter.Fallbacks = configuredFallbacks(cfg.Providers, "mistral")
+	questioner, err := openai.NewMulti(openrouter, presentationProviderPolicies(cfg.Providers), nil, limiter)
+	if err != nil {
+		return oralboards.PhaseModels{}, err
+	}
+	mistral, ok := cfg.Providers["mistral"]
+	if !ok {
+		return oralboards.PhaseModels{}, errors.New("MISTRAL_API_KEY is required to configure oralboards")
+	}
+	mistral.Model, mistral.RequestsPerMinute = "mistral-large-latest", 20
+	evaluator, err := openai.NewMulti(mistral, presentationProviderPolicies(cfg.Providers), nil, limiter)
+	if err != nil {
+		return oralboards.PhaseModels{}, err
+	}
+	mistral.Model = "mistral-medium-latest"
+	scorer, err := openai.NewMulti(mistral, presentationProviderPolicies(cfg.Providers), nil, limiter)
+	if err != nil {
+		return oralboards.PhaseModels{}, err
+	}
+	key := strings.TrimSpace(os.Getenv("GEMINI_API_KEY"))
+	if key == "" {
+		return oralboards.PhaseModels{}, errors.New("GEMINI_API_KEY is required to configure oralboards case builder")
+	}
+	caseBuilder, err := gemini.New(ctx, key, "gemini-3.1-flash-lite", nil, "")
+	if err != nil {
+		return oralboards.PhaseModels{}, err
+	}
+	return oralboards.PhaseModels{CaseBuilder: caseBuilder, Questioner: questioner, Evaluator: evaluator, Scorer: scorer}, nil
 }
 
 func configuredFallbacks(providers map[string]config.Provider, names ...string) []string {
@@ -619,6 +656,22 @@ func main() {
 	if err != nil {
 		log.Fatalf("build trends agent: %v", err)
 	}
+	oralboardsPhaseModels, err := oralboardsModels(context.Background(), cfg, limiter)
+	if err != nil {
+		log.Fatalf("configure oralboards models: %v", err)
+	}
+	corpusPath := strings.TrimSpace(os.Getenv("ORALBOARDS_CORPUS_PATH"))
+	if corpusPath == "" {
+		corpusPath = "assets/oralboards/search.sqlite"
+	}
+	oralboardsCorpus, err := oralboards.OpenCorpus(corpusPath)
+	if err != nil {
+		log.Fatalf("configure oralboards corpus: %v", err)
+	}
+	oralboardsAgent, err := oralboards.New(oralboardsPhaseModels, oralboardsCorpus, agui.NewRequestScopedClientToolset(pending))
+	if err != nil {
+		log.Fatalf("build oralboards agent: %v", err)
+	}
 
 	registry, err := agentruntime.NewRegistry(
 		agentruntime.Entry{Route: "resume", AppName: resume.AppName, Agent: resumeAgent, Public: true, Timeout: 2 * time.Minute, Health: resumeHealth(resumeModel)},
@@ -632,6 +685,7 @@ func main() {
 		agentruntime.Entry{Route: "wellness", AppName: wellness.AppName, Agent: wellnessAgent, StateDefaults: wellness.StateDefaults(), Timeout: 5 * time.Minute, Health: func(context.Context) error { return nil }},
 		agentruntime.Entry{Route: "excalidraw", AppName: excalidraw.AppName, Agent: excalidrawAgent, StateDefaults: excalidraw.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }, Forwarded: excalidrawBridge},
 		agentruntime.Entry{Route: "trends", AppName: trends.AppName, Agent: trendsAgent, StateDefaults: trends.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }},
+		agentruntime.Entry{Route: "oralboards", AppName: oralboards.AppName, Agent: oralboardsAgent, StateDefaults: oralboards.StateDefaults(), Timeout: 5 * time.Minute, Health: func(context.Context) error { return nil }},
 	)
 	if err != nil {
 		log.Fatalf("build agent registry: %v", err)
