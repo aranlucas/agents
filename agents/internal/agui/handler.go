@@ -3,28 +3,27 @@ package agui
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"strings"
 
 	"agents/internal/agentruntime"
 	"agents/internal/auth"
-	"agents/internal/cloudflare"
 	aguievents "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
+	aguisse "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/encoding/sse"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/runner"
 	"google.golang.org/adk/v2/session"
 )
 
-// Option configures a Handler built by Handler(...).
+// Option configures an ADKHandler.
 type Option func(*handlerConfig)
 
 type handlerConfig struct {
 	pending PendingTools
 	ids     aguievents.IDGenerator
+	userID  string
 }
 
 // WithPendingTools wires the D1-backed pending client-tool store used to
@@ -40,27 +39,61 @@ func WithIDGenerator(ids aguievents.IDGenerator) Option {
 	return func(c *handlerConfig) { c.ids = ids }
 }
 
-// runHandler implements the POST /<agent>/agui endpoint: it converts one
-// AG-UI RunAgentInput into an ADK-Go invocation and streams typed AG-UI SSE
-// events back.
-type runHandler struct {
-	registry *agentruntime.Registry
+// WithUserID fixes the ADK session user for every request handled by a
+// standalone adapter. Authenticated gateways should leave this unset so the
+// verified request identity remains authoritative.
+func WithUserID(userID string) Option {
+	return func(c *handlerConfig) { c.userID = strings.TrimSpace(userID) }
+}
+
+// ADKHandler binds one ADK agent and session service to an AG-UI HTTP
+// endpoint. The runner is built once at construction rather than once per
+// request.
+type ADKHandler struct {
+	entry    agentruntime.Entry
+	runner   *runner.Runner
 	sessions session.Service
 	pending  PendingTools
 	ids      aguievents.IDGenerator
+	userID   string
 }
 
-// Handler builds the AG-UI run endpoint for every agent mounted in
-// registry, persisting session state through sessions.
-func Handler(registry *agentruntime.Registry, sessions session.Service, opts ...Option) http.Handler {
+// NewADKHandler creates a standalone AG-UI handler for one ADK agent. Use
+// NewEntryHandler when mounting a registry entry with route-specific state,
+// timeout, or forwarded-request behavior.
+func NewADKHandler(ag agent.Agent, sessions session.Service, appName string, opts ...Option) (*ADKHandler, error) {
+	if strings.TrimSpace(appName) == "" {
+		appName = "adk-agent"
+	}
+	return NewEntryHandler(agentruntime.Entry{Route: "agui", AppName: appName, Agent: ag}, sessions, opts...)
+}
+
+// NewEntryHandler creates one AG-UI handler from the gateway's complete
+// runtime metadata.
+func NewEntryHandler(entry agentruntime.Entry, sessions session.Service, opts ...Option) (*ADKHandler, error) {
+	if sessions == nil {
+		return nil, fmt.Errorf("session service is required")
+	}
+	registry, err := agentruntime.NewRegistry(entry)
+	if err != nil {
+		return nil, err
+	}
+	entry, err = registry.Lookup(entry.Route)
+	if err != nil {
+		return nil, err
+	}
+	rn, err := runner.New(runner.Config{AppName: entry.AppName, Agent: entry.Agent, SessionService: sessions, AutoCreateSession: true})
+	if err != nil {
+		return nil, fmt.Errorf("create ADK runner: %w", err)
+	}
 	cfg := &handlerConfig{ids: aguievents.NewDefaultIDGenerator()}
 	for _, opt := range opts {
 		opt(cfg)
 	}
-	return &runHandler{registry: registry, sessions: sessions, pending: cfg.pending, ids: cfg.ids}
+	return &ADKHandler{entry: entry, runner: rn, sessions: sessions, pending: cfg.pending, ids: cfg.ids, userID: cfg.userID}, nil
 }
 
-func (h *runHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	input, err := decodeRunInput(r.Body)
 	if err != nil {
 		log.Printf("run: decode input failed: %v", err)
@@ -68,18 +101,16 @@ func (h *runHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	entry, err := h.registry.Lookup(routeAgent(r.URL.Path))
-	if err != nil {
-		log.Printf("run: agent lookup failed for path=%s: %v", r.URL.Path, err)
-		writeJSONError(w, http.StatusNotFound, "unknown_agent")
-		return
-	}
+	entry := h.entry
 
 	identity, ok := auth.FromContext(r.Context())
 	if !ok {
 		identity = auth.Identity{UserID: "anonymous", Public: true}
 	}
 	userID := effectiveUserID(identity, input.ThreadID)
+	if h.userID != "" {
+		userID = h.userID
+	}
 
 	ctx, cancel := context.WithTimeout(r.Context(), entry.Timeout)
 	defer cancel()
@@ -99,7 +130,7 @@ func (h *runHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	flusher, ok := w.(http.Flusher)
+	_, ok = w.(http.Flusher)
 	if !ok {
 		log.Printf("run: response writer does not support flushing")
 		writeJSONError(w, http.StatusInternalServerError, "streaming_unsupported")
@@ -141,30 +172,24 @@ func (h *runHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		clientToolsJSON = string(encoded)
 	}
 
-	rn, err := runner.New(runner.Config{AppName: entry.AppName, Agent: entry.Agent, SessionService: h.sessions, AutoCreateSession: true})
-	if err != nil {
-		log.Printf("run: runner creation failed: agent=%s thread=%s err=%v", entry.AppName, input.ThreadID, err)
-		writeJSONError(w, http.StatusInternalServerError, "agent_unavailable")
-		return
-	}
-
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
 	w.WriteHeader(http.StatusOK)
 
-	frame := &sseWriter{w: w, flusher: flusher}
-	frame.write(&aguievents.RunStartedEvent{BaseEvent: newBase(aguievents.EventTypeRunStarted), ThreadIDValue: input.ThreadID, RunIDValue: input.RunID})
+	frame := aguisse.NewSSEWriter()
+	_ = frame.WriteEvent(ctx, w, aguievents.NewRunStartedEvent(input.ThreadID, input.RunID))
 
 	snapshot := persistentSnapshot(sess.State())
 	known := knownKeySet(snapshot)
-	frame.write(&aguievents.StateSnapshotEvent{BaseEvent: newBase(aguievents.EventTypeStateSnapshot), Snapshot: snapshot})
+	_ = frame.WriteEvent(ctx, w, aguievents.NewStateSnapshotEvent(snapshot))
 
 	overlay := requestStateOverlay(r, entry.Route)
 	if clientToolsJSON != "" {
 		// Overlaid via runner.WithStateDelta, which lands on the session
 		// before the agent's Toolsets are resolved for this invocation
-		// (see RequestScopedClientToolset in client_tools.go) — this is
+		// (see AGUIToolset in client_tools.go) — this is
 		// how the request's AG-UI tool declarations reach the running
 		// agent as callable tools.
 		if overlay == nil {
@@ -179,34 +204,34 @@ func (h *runHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	converter := newStreamConverter(ctx, h.ids, known, h.pending, scope, clientToolNames)
 	var runErr error
-	for event, evErr := range rn.Run(ctx, userID, input.ThreadID, content, agent.RunConfig{StreamingMode: agent.StreamingModeSSE}, runOpts...) {
+	for event, evErr := range h.runner.Run(ctx, userID, input.ThreadID, content, agent.RunConfig{StreamingMode: agent.StreamingModeSSE}, runOpts...) {
 		if evErr != nil {
 			runErr = evErr
 			break
 		}
 		for _, converted := range converter.Convert(event) {
-			frame.write(converted)
+			_ = frame.WriteEvent(ctx, w, converted)
 		}
 	}
 
 	if runErr != nil {
 		for _, converted := range converter.Flush() {
-			frame.write(converted)
+			_ = frame.WriteEvent(ctx, w, converted)
 		}
 		log.Printf("run failed: agent=%s thread=%s user=%s run=%s err=%v", entry.AppName, input.ThreadID, userID, input.RunID, runErr)
-		frame.write(sanitizeRunError(input.RunID, runErr))
+		_ = frame.WriteEvent(ctx, w, sanitizeRunError(input.RunID, runErr))
 		return
 	}
 
-	finished := &aguievents.RunFinishedEvent{BaseEvent: newBase(aguievents.EventTypeRunFinished), ThreadIDValue: input.ThreadID, RunIDValue: input.RunID}
+	finished := aguievents.NewRunFinishedEvent(input.ThreadID, input.RunID)
 	if converter.lastFinalText != "" {
 		finished.Result = converter.lastFinalText
 	}
-	frame.write(finished)
+	_ = frame.WriteEvent(ctx, w, finished)
 }
 
-func (h *runHandler) writeForwarded(w http.ResponseWriter, threadID, runID string, result any, runErr error) {
-	flusher, ok := w.(http.Flusher)
+func (h *ADKHandler) writeForwarded(w http.ResponseWriter, threadID, runID string, result any, runErr error) {
+	_, ok := w.(http.Flusher)
 	if !ok {
 		log.Printf("forwarded: response writer does not support flushing")
 		writeJSONError(w, http.StatusInternalServerError, "streaming_unsupported")
@@ -215,27 +240,32 @@ func (h *runHandler) writeForwarded(w http.ResponseWriter, threadID, runID strin
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
 	w.WriteHeader(http.StatusOK)
-	frame := &sseWriter{w: w, flusher: flusher}
-	frame.write(&aguievents.RunStartedEvent{BaseEvent: newBase(aguievents.EventTypeRunStarted), ThreadIDValue: threadID, RunIDValue: runID})
+	frame := aguisse.NewSSEWriter()
+	ctx := context.Background()
+	_ = frame.WriteEvent(ctx, w, aguievents.NewRunStartedEvent(threadID, runID))
 	if runErr != nil {
 		log.Printf("forwarded run failed: thread=%s run=%s err=%v", threadID, runID, runErr)
-		frame.write(sanitizeRunError(runID, runErr))
+		_ = frame.WriteEvent(ctx, w, sanitizeRunError(runID, runErr))
 		return
 	}
-	frame.write(&aguievents.RunFinishedEvent{BaseEvent: newBase(aguievents.EventTypeRunFinished), ThreadIDValue: threadID, RunIDValue: runID, Result: result})
+	_ = frame.WriteEvent(ctx, w, aguievents.NewRunFinishedEventWithOptions(threadID, runID, aguievents.WithResult(result)))
 }
 
 // restoreSession fetches the existing (app, user, thread) session or
-// creates one seeded with the agent's declared state defaults.
-func (h *runHandler) restoreSession(ctx context.Context, entry agentruntime.Entry, userID, threadID string) (session.Session, error) {
+// creates one seeded with the agent's declared state defaults. It depends
+// only on session.Service's Get/Create methods — mirroring
+// runner.Runner.getOrCreateSession's own convention of treating any Get
+// failure as "no session yet" rather than checking for a specific error —
+// since session.Service documents no not-found contract to distinguish a
+// missing session from a backend failure. Unlike the runner's internal
+// getOrCreateSession, Create here must seed entry.StateDefaults, so this
+// can't just rely on runner.Config.AutoCreateSession.
+func (h *ADKHandler) restoreSession(ctx context.Context, entry agentruntime.Entry, userID, threadID string) (session.Session, error) {
 	response, err := h.sessions.Get(ctx, &session.GetRequest{AppName: entry.AppName, UserID: userID, SessionID: threadID})
 	if err == nil {
 		return response.Session, nil
-	}
-	if !errors.Is(err, cloudflare.ErrSessionNotFound) {
-		log.Printf("restoreSession: get failed: app=%s user=%s thread=%s err=%v", entry.AppName, userID, threadID, err)
-		return nil, err
 	}
 	created, err := h.sessions.Create(ctx, &session.CreateRequest{AppName: entry.AppName, UserID: userID, SessionID: threadID, State: entry.StateDefaults})
 	if err != nil {
@@ -256,8 +286,7 @@ func effectiveUserID(identity auth.Identity, threadID string) string {
 	return "anon:" + threadID
 }
 
-// routeAgent extracts the mounted agent route prefix ("resume") from a
-// request path such as "/resume/agui".
+// routeAgent extracts the mounted route prefix for the shared state handler.
 func routeAgent(path string) string {
 	trimmed := strings.Trim(path, "/")
 	segments := strings.SplitN(trimmed, "/", 2)
@@ -268,20 +297,4 @@ func writeJSONError(w http.ResponseWriter, status int, code string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(map[string]string{"error": code})
-}
-
-// sseWriter frames one AG-UI event as `data: <json>\n\n` and flushes it
-// immediately so clients observe the run as it streams.
-type sseWriter struct {
-	w       io.Writer
-	flusher http.Flusher
-}
-
-func (s *sseWriter) write(event aguievents.Event) {
-	data, err := event.ToJSON()
-	if err != nil {
-		return
-	}
-	_, _ = fmt.Fprintf(s.w, "data: %s\n\n", data)
-	s.flusher.Flush()
 }
