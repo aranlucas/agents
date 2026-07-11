@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aranlucas/agents/agents/internal/cloudflare"
+	"agents/internal/cloudflare"
 )
 
 var (
@@ -38,6 +38,7 @@ type LinkStore struct {
 }
 
 func NewLinkStore(db *cloudflare.D1, now func() time.Time) *LinkStore { return newLinkStore(db, now) }
+
 func newLinkStore(db d1Runner, now func() time.Time) *LinkStore {
 	if now == nil {
 		now = time.Now
@@ -153,6 +154,7 @@ func hashToken(raw string) string {
 	sum := sha256.Sum256([]byte(raw))
 	return hex.EncodeToString(sum[:])
 }
+
 func rowInt64(value any) (int64, bool) {
 	switch typed := value.(type) {
 	case float64:

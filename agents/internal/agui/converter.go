@@ -6,15 +6,17 @@ import (
 	"errors"
 	"strings"
 
+	"agents/internal/cloudflare"
 	aguievents "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 	aguitypes "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
-	"github.com/aranlucas/agents/agents/internal/cloudflare"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
 )
 
-const mcpAppActivityStatePrefix = "temp:mcp_app_activity:"
-const a2uiActivityStatePrefix = "temp:a2ui_activity:"
+const (
+	mcpAppActivityStatePrefix = "temp:mcp_app_activity:"
+	a2uiActivityStatePrefix   = "temp:a2ui_activity:"
+)
 
 type mcpAppActivity struct {
 	MessageID string `json:"messageId"`
@@ -200,7 +202,8 @@ func (c *streamConverter) oneShotLanes(content *genai.Content, hadText, hadReaso
 	var out []aguievents.Event
 	if reasoningText.Len() > 0 && !hadReasoning {
 		id := c.ids.GenerateMessageID()
-		out = append(out,
+		out = append(
+			out,
 			&aguievents.ReasoningStartEvent{BaseEvent: newBase(aguievents.EventTypeReasoningStart), MessageID: id},
 			&aguievents.ReasoningMessageStartEvent{BaseEvent: newBase(aguievents.EventTypeReasoningMessageStart), MessageID: id, Role: "assistant"},
 			&aguievents.ReasoningMessageContentEvent{BaseEvent: newBase(aguievents.EventTypeReasoningMessageContent), MessageID: id, Delta: reasoningText.String()},
@@ -211,7 +214,8 @@ func (c *streamConverter) oneShotLanes(content *genai.Content, hadText, hadReaso
 	if plainText.Len() > 0 && !hadText {
 		id := c.ids.GenerateMessageID()
 		role := "assistant"
-		out = append(out,
+		out = append(
+			out,
 			&aguievents.TextMessageStartEvent{BaseEvent: newBase(aguievents.EventTypeTextMessageStart), MessageID: id, Role: &role},
 			&aguievents.TextMessageContentEvent{BaseEvent: newBase(aguievents.EventTypeTextMessageContent), MessageID: id, Delta: plainText.String()},
 			&aguievents.TextMessageEndEvent{BaseEvent: newBase(aguievents.EventTypeTextMessageEnd), MessageID: id},

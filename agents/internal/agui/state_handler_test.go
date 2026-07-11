@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"agents/internal/agentruntime"
 	aguitypes "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
-	"github.com/aranlucas/agents/agents/internal/agentruntime"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
@@ -127,13 +127,17 @@ type erroringSessionService struct{ err error }
 func (e *erroringSessionService) Create(context.Context, *session.CreateRequest) (*session.CreateResponse, error) {
 	return nil, e.err
 }
+
 func (e *erroringSessionService) Get(context.Context, *session.GetRequest) (*session.GetResponse, error) {
 	return nil, e.err
 }
+
 func (e *erroringSessionService) List(context.Context, *session.ListRequest) (*session.ListResponse, error) {
 	return nil, e.err
 }
+
 func (e *erroringSessionService) Delete(context.Context, *session.DeleteRequest) error { return e.err }
+
 func (e *erroringSessionService) AppendEvent(context.Context, session.Session, *session.Event) error {
 	return e.err
 }
@@ -169,7 +173,8 @@ func TestStateHandlerReturnsMessagesFromSessionEvents(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sessions.seedEvents("resume_agent", "anon:thread-messages", "thread-messages",
+	sessions.seedEvents(
+		"resume_agent", "anon:thread-messages", "thread-messages",
 		&session.Event{
 			ID: "ev-user", Author: "user",
 			LLMResponse: model.LLMResponse{Content: &genai.Content{Parts: []*genai.Part{

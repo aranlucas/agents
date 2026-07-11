@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aranlucas/agents/agents/internal/config"
+	"agents/internal/config"
 )
 
 const (
@@ -25,6 +25,10 @@ const (
 type Statement struct {
 	SQL    string `json:"sql"`
 	Params []any  `json:"params,omitempty"`
+}
+
+type d1BatchRequest struct {
+	Batch []Statement `json:"batch"`
 }
 
 // Result contains rows and mutation metadata returned for a statement.
@@ -72,7 +76,7 @@ func (d *D1) Run(ctx context.Context, statements ...Statement) ([]Result, error)
 	if len(statements) == 0 {
 		return nil, errors.New("at least one D1 statement is required")
 	}
-	body, err := json.Marshal(map[string]any{"batch": statements})
+	body, err := json.Marshal(d1BatchRequest{Batch: statements})
 	if err != nil {
 		return nil, fmt.Errorf("encode D1 request: %w", err)
 	}

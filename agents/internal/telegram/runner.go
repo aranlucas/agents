@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aranlucas/agents/agents/internal/cloudflare"
+	"agents/internal/cloudflare"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/artifact"
 	"google.golang.org/adk/v2/runner"
@@ -17,11 +17,13 @@ import (
 	"google.golang.org/genai"
 )
 
-type ProgressFunc func(context.Context, string) error
-type Executor interface {
-	Run(context.Context, SessionIdentity, Route, string, ProgressFunc) (string, error)
-	Reset(context.Context, SessionIdentity) error
-}
+type (
+	ProgressFunc func(context.Context, string) error
+	Executor     interface {
+		Run(context.Context, SessionIdentity, Route, string, ProgressFunc) (string, error)
+		Reset(context.Context, SessionIdentity) error
+	}
+)
 
 type taskSet struct {
 	mu     sync.Mutex
@@ -51,6 +53,7 @@ func (t *taskSet) Stop(id string) bool {
 	}
 	return exists
 }
+
 func (t *taskSet) Has(id string) bool {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -219,6 +222,7 @@ func (r *Runner) sendText(ctx context.Context, message Message, text string) err
 	}
 	return nil
 }
+
 func missingCredentialText(missing []string, connectURL string) string {
 	names := strings.Join(missing, " and ")
 	text := "Your account is linked, but " + names + " is not connected yet."
@@ -241,6 +245,7 @@ func NewADKExecutor(sessions session.Service, artifacts artifact.Service, agents
 	}
 	return &ADKExecutor{sessions: sessions, artifacts: artifacts, agents: agents}, nil
 }
+
 func (e *ADKExecutor) Run(ctx context.Context, identity SessionIdentity, route Route, text string, progress ProgressFunc) (string, error) {
 	built := e.agents[route.Agent]
 	if built == nil {
@@ -287,6 +292,7 @@ func (e *ADKExecutor) Run(ctx context.Context, identity SessionIdentity, route R
 	}
 	return strings.TrimSpace(strings.Join(texts, "\n")), nil
 }
+
 func (e *ADKExecutor) Reset(ctx context.Context, identity SessionIdentity) error {
 	for _, built := range e.agents {
 		err := e.sessions.Delete(ctx, &session.DeleteRequest{AppName: built.Name(), UserID: identity.UserID, SessionID: identity.SessionID})

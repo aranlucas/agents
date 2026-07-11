@@ -63,12 +63,14 @@ func (s *SessionService) Create(ctx context.Context, req *session.CreateRequest)
 		return nil, errors.New("encode user state")
 	}
 	now := s.now().UTC()
-	result, err := s.d1.Run(ctx,
+	result, err := s.d1.Run(
+		ctx,
 		Statement{SQL: `INSERT INTO app_states (app_name, state_json) VALUES (?, ?)
 			ON CONFLICT(app_name) DO UPDATE SET state_json = json_patch(state_json, excluded.state_json)`, Params: []any{req.AppName, string(appJSON)}},
 		Statement{SQL: `INSERT INTO user_states (app_name, user_id, state_json) VALUES (?, ?, ?)
 			ON CONFLICT(app_name, user_id) DO UPDATE SET state_json = json_patch(state_json, excluded.state_json)`, Params: []any{req.AppName, req.UserID, string(userJSON)}},
-		Statement{SQL: `INSERT INTO sessions (app_name, user_id, session_id, state_json, created_at, updated_at, expires_at)
+		Statement{
+			SQL: `INSERT INTO sessions (app_name, user_id, session_id, state_json, created_at, updated_at, expires_at)
 			VALUES (?, ?, ?, ?, ?, ?, ?)`,
 			Params: []any{req.AppName, req.UserID, id, string(encoded), now.UnixMilli(), now.UnixMilli(), now.Add(sessionTTL).UnixMilli()},
 		},
@@ -90,7 +92,8 @@ func (s *SessionService) Get(ctx context.Context, req *session.GetRequest) (*ses
 		return nil, errors.New("app name, user ID, and session ID are required")
 	}
 	now := s.now().UTC()
-	results, err := s.d1.Run(ctx,
+	results, err := s.d1.Run(
+		ctx,
 		Statement{SQL: `SELECT state_json, updated_at FROM sessions
 			WHERE app_name = ? AND user_id = ? AND session_id = ? AND expires_at > ?`, Params: []any{req.AppName, req.UserID, req.SessionID, now.UnixMilli()}},
 		Statement{SQL: "SELECT state_json FROM app_states WHERE app_name = ?", Params: []any{req.AppName}},
@@ -153,7 +156,8 @@ func (s *SessionService) Delete(ctx context.Context, req *session.DeleteRequest)
 	if req == nil || !validIdentity(req.AppName) || !validIdentity(req.UserID) || !validIdentity(req.SessionID) {
 		return errors.New("app name, user ID, and session ID are required")
 	}
-	_, err := s.d1.Run(ctx,
+	_, err := s.d1.Run(
+		ctx,
 		Statement{SQL: "DELETE FROM session_events WHERE app_name = ? AND user_id = ? AND session_id = ?", Params: []any{req.AppName, req.UserID, req.SessionID}},
 		Statement{SQL: "DELETE FROM sessions WHERE app_name = ? AND user_id = ? AND session_id = ?", Params: []any{req.AppName, req.UserID, req.SessionID}},
 	)
@@ -222,7 +226,8 @@ func (s *SessionService) AppendEvent(ctx context.Context, current session.Sessio
 		return errors.New("encode session event")
 	}
 	now := s.now().UTC()
-	results, err := s.d1.Run(ctx,
+	results, err := s.d1.Run(
+		ctx,
 		Statement{SQL: `INSERT INTO app_states (app_name, state_json)
 			SELECT ?, ? WHERE EXISTS (SELECT 1 FROM sessions WHERE app_name = ? AND user_id = ? AND session_id = ? AND expires_at > ?)
 			ON CONFLICT(app_name) DO UPDATE SET state_json = json_patch(state_json, excluded.state_json)`, Params: []any{current.AppName(), string(appJSON), current.AppName(), current.UserID(), current.ID(), now.UnixMilli()}},
@@ -416,6 +421,7 @@ func (s *storedSession) LastUpdateTime() time.Time {
 	defer s.mu.RUnlock()
 	return s.updated
 }
+
 func (s *storedSession) append(event *session.Event, updated time.Time) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

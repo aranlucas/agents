@@ -12,7 +12,7 @@
 // translation and no provider rejects it. This package exists for callers
 // that must preserve that reasoning content across turns (see AGENTS.md's
 // Model Distribution table, A2UI row, and the trends renderer discussion in
-// agents/internal/agents/trends).
+// agents/trends/agent).
 package gemini
 
 import (

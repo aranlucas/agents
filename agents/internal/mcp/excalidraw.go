@@ -27,11 +27,13 @@ const (
 	maxToolInputBytes     = 512 << 10
 )
 
-var modelTools = map[string]bool{"read_me": true, "create_view": true}
-var appTools = map[string]bool{
-	"read_me": true, "create_view": true, "export_to_excalidraw": true,
-	"save_checkpoint": true, "read_checkpoint": true,
-}
+var (
+	modelTools = map[string]bool{"read_me": true, "create_view": true}
+	appTools   = map[string]bool{
+		"read_me": true, "create_view": true, "export_to_excalidraw": true,
+		"save_checkpoint": true, "read_checkpoint": true,
+	}
+)
 
 type Excalidraw struct {
 	endpoint    string
@@ -90,6 +92,7 @@ func (e *Excalidraw) discover(ctx context.Context) ([]tool.Tool, error) {
 
 func (e *Excalidraw) connect(ctx context.Context) (*mcpsdk.ClientSession, error) {
 	capabilities := &mcpsdk.ClientCapabilities{}
+	// AddExtension requires map[string]any at the MCP SDK boundary.
 	capabilities.AddExtension("io.modelcontextprotocol/ui", map[string]any{"mimeTypes": []string{"text/html;profile=mcp-app"}})
 	client := mcpsdk.NewClient(&mcpsdk.Implementation{Name: "agents-go-excalidraw", Version: "1"}, &mcpsdk.ClientOptions{Capabilities: capabilities})
 	session, err := client.Connect(ctx, &mcpsdk.StreamableClientTransport{Endpoint: e.endpoint, HTTPClient: e.httpClient, MaxRetries: 1, DisableStandaloneSSE: true}, nil)
@@ -142,8 +145,8 @@ func (t *remoteTool) Run(ctx agent.Context, args any) (map[string]any, error) {
 			callID = "excalidraw-view"
 		}
 		activity := struct {
-			MessageID string `json:"messageId"`
-			Content   any    `json:"content"`
+			MessageID string          `json:"messageId"`
+			Content   activityPayload `json:"content"`
 		}{MessageID: callID, Content: content}
 		if err := ctx.State().Set(activityStatePrefix+callID, activity); err != nil {
 			return nil, errors.New("record Excalidraw activity")
@@ -245,30 +248,48 @@ func sanitizeMCPError(err error) error {
 }
 
 func resourceURI(meta mcpsdk.Meta) string {
-	if ui, ok := meta["ui"].(map[string]any); ok {
-		if value, ok := ui["resourceUri"].(string); ok {
-			return value
-		}
+	if ui, ok := decodeUIMetadata(meta); ok && ui.ResourceURI != "" {
+		return ui.ResourceURI
 	}
 	value, _ := meta["ui/resourceUri"].(string)
 	return value
 }
 
 func modelVisible(meta mcpsdk.Meta) bool {
-	ui, ok := meta["ui"].(map[string]any)
+	ui, ok := decodeUIMetadata(meta)
 	if !ok {
 		return true
 	}
-	visibility, ok := ui["visibility"].([]any)
-	if !ok {
+	if len(ui.Visibility) == 0 {
 		return true
 	}
-	for _, entry := range visibility {
+	for _, entry := range ui.Visibility {
 		if entry == "model" {
 			return true
 		}
 	}
 	return false
+}
+
+type uiMetadata struct {
+	ResourceURI string   `json:"resourceUri"`
+	Visibility  []string `json:"visibility"`
+}
+
+func decodeUIMetadata(meta mcpsdk.Meta) (uiMetadata, bool) {
+	raw, ok := meta["ui"]
+	if !ok {
+		return uiMetadata{}, false
+	}
+	encoded, err := json.Marshal(raw)
+	if err != nil {
+		return uiMetadata{}, false
+	}
+	var ui uiMetadata
+	if json.Unmarshal(encoded, &ui) != nil {
+		return uiMetadata{}, false
+	}
+	return ui, true
 }
 
 func secureMCPEndpoint(raw string) (string, error) {

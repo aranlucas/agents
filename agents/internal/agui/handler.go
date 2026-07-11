@@ -10,10 +10,10 @@ import (
 	"net/http"
 	"strings"
 
+	"agents/internal/agentruntime"
+	"agents/internal/auth"
+	"agents/internal/cloudflare"
 	aguievents "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
-	"github.com/aranlucas/agents/agents/internal/agentruntime"
-	"github.com/aranlucas/agents/agents/internal/auth"
-	"github.com/aranlucas/agents/agents/internal/cloudflare"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/runner"
 	"google.golang.org/adk/v2/session"

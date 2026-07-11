@@ -57,6 +57,7 @@ func newTestRunner(t *testing.T, executor *fakeExecutor) (*Runner, *fakeClient) 
 	}
 	return runner, client
 }
+
 func privateMessage(chatID int64, text string) Message {
 	return Message{Chat: Chat{ID: chatID, Type: "private"}, From: &User{ID: chatID}, Text: text}
 }

@@ -17,8 +17,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aranlucas/agents/agents/internal/config"
-	"github.com/aranlucas/agents/agents/internal/rate"
+	"agents/internal/config"
+	"agents/internal/rate"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/genai"
 )

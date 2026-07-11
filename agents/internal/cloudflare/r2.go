@@ -17,7 +17,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/aranlucas/agents/agents/internal/config"
+	"agents/internal/config"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -64,7 +64,8 @@ func NewR2(cfg config.Cloudflare) (*R2, error) {
 		}
 	}
 	endpoint := "https://" + cfg.AccountID + ".r2.cloudflarestorage.com"
-	loaded, err := awsconfig.LoadDefaultConfig(context.Background(),
+	loaded, err := awsconfig.LoadDefaultConfig(
+		context.Background(),
 		awsconfig.WithRegion("auto"),
 		awsconfig.WithBaseEndpoint(endpoint),
 		awsconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(cfg.R2AccessKeyID, cfg.R2SecretAccessKey, "")),

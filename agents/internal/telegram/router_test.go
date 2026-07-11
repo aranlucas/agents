@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	clerkbackend "github.com/aranlucas/agents/agents/internal/clerk"
+	clerkbackend "agents/internal/clerk"
 )
 
 func TestTopicSessionUsesSharedGroupPartition(t *testing.T) {

@@ -1,4 +1,4 @@
-module github.com/aranlucas/agents/agents
+module agents
 
 go 1.25.0
 

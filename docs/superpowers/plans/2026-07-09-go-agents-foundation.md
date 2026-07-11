@@ -120,7 +120,7 @@ func Load(getenv func(string) string) (Config, error) {
 }
 ```
 
-Create `agents/go.mod` with module path `github.com/aranlucas/agents/agents`,
+Create `agents/go.mod` with local module path `agents`,
 `go 1.25.0`, `google.golang.org/adk v1.3.0`,
 `google.golang.org/genai v1.57.0`,
 `github.com/modelcontextprotocol/go-sdk v1.4.1`, and

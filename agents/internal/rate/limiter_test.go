@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aranlucas/agents/agents/internal/cloudflare"
-	"github.com/aranlucas/agents/agents/internal/config"
+	"agents/internal/cloudflare"
+	"agents/internal/config"
 )
 
 type batchEnvelope struct {
