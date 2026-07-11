@@ -385,15 +385,17 @@ func trendsProviderConfig(cfg config.Config) (config.Provider, error) {
 // separate, hardcoded allowlist enforced by trends.NewBigQueryExecutor, not
 // this billing project.
 func trendsBigQueryClient(ctx context.Context) (*bigquery.Client, error) {
-	project := strings.TrimSpace(os.Getenv("GOOGLE_CLOUD_PROJECT"))
-	if project == "" {
-		return nil, errors.New("GOOGLE_CLOUD_PROJECT is required to configure the trends agent's BigQuery client")
+	credentials := strings.TrimSpace(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON"))
+	if credentials == "" {
+		return nil, errors.New("GOOGLE_APPLICATION_CREDENTIALS_JSON is required to configure the trends agent's BigQuery client")
 	}
-	var opts []option.ClientOption
-	if credentials := strings.TrimSpace(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")); credentials != "" {
-		opts = append(opts, option.WithAuthCredentialsJSON(option.ServiceAccount, []byte(credentials)))
+	var sa struct {
+		ProjectID string `json:"project_id"`
 	}
-	client, err := bigquery.NewClient(ctx, project, opts...)
+	if json.Unmarshal([]byte(credentials), &sa) != nil || sa.ProjectID == "" {
+		return nil, errors.New("GOOGLE_APPLICATION_CREDENTIALS_JSON must contain a valid service account with project_id")
+	}
+	client, err := bigquery.NewClient(ctx, sa.ProjectID, option.WithAuthCredentialsJSON(option.ServiceAccount, []byte(credentials)))
 	if err != nil {
 		return nil, fmt.Errorf("configure BigQuery client: %w", err)
 	}
