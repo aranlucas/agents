@@ -141,12 +141,17 @@ func newPendingFixture(t *testing.T) *pendingFixture {
 	return fixture
 }
 
+type batchEnvelope struct {
+	Batch []cloudflare.Statement `json:"batch"`
+}
+
 func (f *pendingFixture) handle(w http.ResponseWriter, r *http.Request) {
-	var statements []cloudflare.Statement
-	if json.NewDecoder(r.Body).Decode(&statements) != nil {
+	var env batchEnvelope
+	if json.NewDecoder(r.Body).Decode(&env) != nil || len(env.Batch) == 0 {
 		http.Error(w, "bad request", 400)
 		return
 	}
+	statements := env.Batch
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	results := make([]map[string]any, len(statements))

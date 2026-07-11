@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	aguievents "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
+	aguitypes "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"github.com/aranlucas/agents/agents/internal/cloudflare"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
@@ -244,7 +245,7 @@ func (c *streamConverter) openReasoning() []aguievents.Event {
 	c.reasoningMessageID = c.ids.GenerateMessageID()
 	return []aguievents.Event{
 		&aguievents.ReasoningStartEvent{BaseEvent: newBase(aguievents.EventTypeReasoningStart), MessageID: c.reasoningMessageID},
-		&aguievents.ReasoningMessageStartEvent{BaseEvent: newBase(aguievents.EventTypeReasoningMessageStart), MessageID: c.reasoningMessageID, Role: "assistant"},
+		&aguievents.ReasoningMessageStartEvent{BaseEvent: newBase(aguievents.EventTypeReasoningMessageStart), MessageID: c.reasoningMessageID, Role: string(aguitypes.RoleReasoning)},
 	}
 }
 
