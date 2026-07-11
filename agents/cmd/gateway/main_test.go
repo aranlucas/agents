@@ -7,6 +7,7 @@ import (
 	"iter"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -21,10 +22,73 @@ import (
 	"github.com/aranlucas/agents/agents/internal/agents/wellness"
 	"github.com/aranlucas/agents/agents/internal/auth"
 	"github.com/aranlucas/agents/agents/internal/config"
+	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
 )
+
+func TestEveryActiveAgentExposesScopedEndpoints(t *testing.T) {
+	routes := []string{"excalidraw", "travel", "trends", "grocery", "fitness", "wellness", "expense", "oralboards", "presentation", "research", "spreadsheet", "resume"}
+	entries := make([]agentruntime.Entry, 0, len(routes))
+	for _, route := range routes {
+		built, err := llmagent.New(llmagent.Config{Name: strings.ReplaceAll(route, "-", "_") + "_contract_agent", Instruction: "contract", Model: fakeResumeModel{}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		entries = append(entries, agentruntime.Entry{Route: route, AppName: built.Name(), Agent: built, Public: route == "resume", Health: func(context.Context) error { return nil }})
+	}
+	registry, err := agentruntime.NewRegistry(entries...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := make([]string, 0, len(routes))
+	for _, entry := range registry.All() {
+		got = append(got, entry.Route)
+	}
+	want := append([]string(nil), routes...)
+	slices.Sort(want)
+	if !slices.Equal(got, want) {
+		t.Fatalf("registry routes=%#v want=%#v", got, want)
+	}
+	sessions := session.InMemoryService()
+	for _, entry := range entries {
+		userID := "clerk-user"
+		if entry.Public {
+			userID = "anon:contract-thread"
+		}
+		if _, createErr := sessions.Create(t.Context(), &session.CreateRequest{AppName: entry.AppName, UserID: userID, SessionID: "contract-thread", State: entry.StateDefaults}); createErr != nil {
+			t.Fatal(createErr)
+		}
+	}
+	handler, err := New(config.Config{HTTP: config.HTTP{}}, Dependencies{Registry: registry, Sessions: sessions, Verifier: acceptingVerifier{}, Now: time.Now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, route := range routes {
+		for _, suffix := range []string{"/health", "/agui/capabilities"} {
+			request := httptest.NewRequest(http.MethodGet, "/"+route+suffix, nil)
+			recorder := httptest.NewRecorder()
+			handler.ServeHTTP(recorder, request)
+			if recorder.Code != http.StatusOK {
+				t.Fatalf("GET /%s%s=%d %s", route, suffix, recorder.Code, recorder.Body.String())
+			}
+		}
+		request := httptest.NewRequest(http.MethodPost, "/"+route+"/agents/state", strings.NewReader(`{"threadId":"contract-thread"}`))
+		request.Header.Set("Authorization", "Bearer test")
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, request)
+		if recorder.Code != http.StatusOK {
+			t.Fatalf("POST /%s/agents/state=%d %s", route, recorder.Code, recorder.Body.String())
+		}
+	}
+	request := httptest.NewRequest(http.MethodPost, "/agents/state", strings.NewReader(`{"threadId":"contract-thread"}`))
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusNotFound {
+		t.Fatalf("root state endpoint=%d", recorder.Code)
+	}
+}
 
 // fakeResumeModel is a minimal model.LLM double satisfying resume.New's
 // signature; the routing tests below never trigger a model call.

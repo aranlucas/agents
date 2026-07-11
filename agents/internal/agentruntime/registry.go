@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -66,11 +67,23 @@ func (r *Registry) Lookup(route string) (Entry, error) {
 }
 
 func (r *Registry) Entries() []Entry {
+	return r.All()
+}
+
+// All returns every explicit registry entry in stable route order. Registry
+// construction remains filesystem-independent; this method only enumerates
+// entries that callers supplied to NewRegistry.
+func (r *Registry) All() []Entry {
 	if r == nil {
 		return nil
 	}
-	entries := make([]Entry, 0, len(r.entries))
+	routes := make([]string, 0, len(r.entries))
 	for route := range r.entries {
+		routes = append(routes, route)
+	}
+	sort.Strings(routes)
+	entries := make([]Entry, 0, len(routes))
+	for _, route := range routes {
 		entry, _ := r.Lookup(route)
 		entries = append(entries, entry)
 	}
