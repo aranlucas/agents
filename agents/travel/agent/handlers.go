@@ -57,7 +57,9 @@ func SetTripMeta(ctx agent.Context, input SetTripMetaArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := setTripMeta(&state, input)
 	if err == nil && result.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return result, err
 }
@@ -90,7 +92,9 @@ func WriteItinerary(ctx agent.Context, input WriteItineraryArgs) (Result, error)
 	state := readState(ctx.State())
 	result, err := writeItinerary(&state, input)
 	if err == nil && result.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return result, err
 }
@@ -112,7 +116,9 @@ func AddDay(ctx agent.Context, input AddDayArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := addDay(&state, input)
 	if err == nil && result.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return result, err
 }
@@ -137,7 +143,9 @@ func MarkReadyToBook(ctx agent.Context, input ReadyArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := markReadyToBook(&state, input)
 	if err == nil && result.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return result, err
 }

@@ -2,6 +2,7 @@ package spreadsheet
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/session"
@@ -54,12 +55,23 @@ func readState(source session.ReadonlyState) SpreadsheetState {
 	return state
 }
 
-func publishState(ctx agent.Context, state SpreadsheetState) {
+func publishState(ctx agent.Context, state SpreadsheetState) error {
 	s := ctx.State()
-	s.Set("sheets", state.Sheets)
-	s.Set("active_sheet_index", state.ActiveSheetIndex)
-	s.Set("summary", state.Summary)
-	s.Set("status", state.Status)
-	s.Set("review_summary", state.ReviewSummary)
-	s.Set("user_id", state.UserID)
+	fields := []struct {
+		key   string
+		value any
+	}{
+		{"sheets", state.Sheets},
+		{"active_sheet_index", state.ActiveSheetIndex},
+		{"summary", state.Summary},
+		{"status", state.Status},
+		{"review_summary", state.ReviewSummary},
+		{"user_id", state.UserID},
+	}
+	for _, field := range fields {
+		if err := s.Set(field.key, field.value); err != nil {
+			return fmt.Errorf("set %s: %w", field.key, err)
+		}
+	}
+	return nil
 }

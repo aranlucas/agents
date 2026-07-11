@@ -31,11 +31,17 @@ jobs:
         with:
           go-version-file: agents/go.mod
           cache-dependency-path: agents/go.sum
-      - uses: golangci/golangci-lint-action@v7
+      - uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.12.2
+          version: v2.12
           working-directory: agents
-          args: --version
+      - name: Put golangci-lint on PATH
+        # golangci-lint-action lints agents/ itself but doesn't export the
+        # binary it installed, so the later `pnpm lint` step (which shells
+        # out to it via turbo) can't find it without this.
+        run: |
+          dir="$(find "$HOME" -maxdepth 1 -type d -name 'golangci-lint-*-linux-amd64' | head -n1)"
+          echo "$dir" >> "$GITHUB_PATH"
       - name: Install JS dependencies
         run: pnpm install --frozen-lockfile
       - name: Lint

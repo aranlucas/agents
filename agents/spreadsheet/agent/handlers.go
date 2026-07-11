@@ -48,7 +48,9 @@ func CreateSheet(ctx agent.Context, input CreateSheetArgs) (Result, error) {
 	state := readState(ctx.State())
 	r, e := createSheet(&state, input)
 	if e == nil && r.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return r, e
 }
@@ -74,7 +76,9 @@ func UpdateSheet(ctx agent.Context, input UpdateSheetArgs) (Result, error) {
 	state := readState(ctx.State())
 	r, e := updateSheet(&state, input)
 	if e == nil && r.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return r, e
 }
@@ -99,7 +103,9 @@ func AppendRows(ctx agent.Context, input AppendRowsArgs) (Result, error) {
 	state := readState(ctx.State())
 	r, e := appendRows(&state, input)
 	if e == nil && r.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return r, e
 }
@@ -123,7 +129,9 @@ func DeleteSheet(ctx agent.Context, input SheetIndexArgs) (Result, error) {
 	state := readState(ctx.State())
 	r, e := deleteSheet(&state, input)
 	if e == nil && r.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return r, e
 }
@@ -148,7 +156,9 @@ func SetActiveSheet(ctx agent.Context, input SheetIndexArgs) (Result, error) {
 	state := readState(ctx.State())
 	r, e := setActiveSheet(&state, input)
 	if e == nil && r.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return r, e
 }
@@ -165,7 +175,9 @@ func WriteSummary(ctx agent.Context, input SummaryArgs) (Result, error) {
 	state := readState(ctx.State())
 	r, e := writeSummary(&state, input)
 	if e == nil && r.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return r, e
 }

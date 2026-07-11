@@ -49,7 +49,9 @@ func SubmitExpense(ctx agent.Context, input SubmitExpenseArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := submitExpense(&state, input)
 	if err == nil && result.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return result, err
 }
@@ -97,7 +99,9 @@ func WriteExpenseReview(ctx agent.Context, input WriteReviewArgs) (Result, error
 	state := readState(ctx.State())
 	result, err := writeExpenseReview(&state, input)
 	if err == nil && result.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return result, err
 }
@@ -130,7 +134,9 @@ func DecideExpense(ctx agent.Context, input DecideExpenseArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := decideExpense(&state, input)
 	if err == nil && result.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return result, err
 }
@@ -161,7 +167,9 @@ func SetExpenseReport(ctx agent.Context, input SetReportArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := setExpenseReport(&state, input)
 	if err == nil && result.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return result, err
 }
@@ -180,7 +188,9 @@ func MarkExpenseReady(ctx agent.Context, input ReadyArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := markExpenseReady(&state, input)
 	if err == nil && result.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return result, err
 }

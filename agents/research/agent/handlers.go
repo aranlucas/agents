@@ -47,7 +47,9 @@ func SetQuery(ctx agent.Context, input SetQueryArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := setQuery(&state, input)
 	if err == nil && result.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return result, err
 }
@@ -67,7 +69,9 @@ func CreateSection(ctx agent.Context, input CreateSectionArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := createSection(&state, input)
 	if err == nil && result.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return result, err
 }
@@ -96,7 +100,9 @@ func UpdateSection(ctx agent.Context, input UpdateSectionArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := updateSection(&state, input)
 	if err == nil && result.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return result, err
 }
@@ -124,7 +130,9 @@ func AddSource(ctx agent.Context, input AddSourceArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := addSource(&state, input)
 	if err == nil && result.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return result, err
 }
@@ -154,7 +162,9 @@ func WriteReport(ctx agent.Context, input WriteReportArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := writeReport(&state, input)
 	if err == nil && result.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return result, err
 }
@@ -171,7 +181,9 @@ func MarkReady(ctx agent.Context, input ReadyArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := markReady(&state, input)
 	if err == nil && result.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return result, err
 }

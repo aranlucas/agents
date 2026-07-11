@@ -31,7 +31,9 @@ func SetWeeklyWellnessPlan(ctx agent.Context, input PlanArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := setWeeklyWellnessPlan(&state, input)
 	if err == nil && result.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return result, err
 }
@@ -56,7 +58,9 @@ func MarkPlanReady(ctx agent.Context, input ReadyArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := markPlanReady(&state, input)
 	if err == nil && result.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return result, err
 }
