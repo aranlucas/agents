@@ -1,202 +1,93 @@
 package openai
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 
+	"github.com/openai/openai-go"
+	"github.com/openai/openai-go/shared"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/genai"
 )
 
-type chatRequest struct {
-	Model            string          `json:"model"`
-	Messages         []chatMessage   `json:"messages"`
-	Tools            []chatTool      `json:"tools,omitempty"`
-	ToolChoice       *toolChoice     `json:"tool_choice,omitempty"`
-	Temperature      *float32        `json:"temperature,omitempty"`
-	TopP             *float32        `json:"top_p,omitempty"`
-	MaxTokens        int32           `json:"max_tokens,omitempty"`
-	Stop             []string        `json:"stop,omitempty"`
-	PresencePenalty  *float32        `json:"presence_penalty,omitempty"`
-	FrequencyPenalty *float32        `json:"frequency_penalty,omitempty"`
-	Seed             *int32          `json:"seed,omitempty"`
-	ResponseFormat   *responseFormat `json:"response_format,omitempty"`
-	Stream           bool            `json:"stream"`
-	StreamOptions    *streamOptions  `json:"stream_options,omitempty"`
-}
-
-type streamOptions struct {
-	IncludeUsage bool `json:"include_usage"`
-}
-
-type responseFormat struct {
-	Type       string              `json:"type"`
-	JSONSchema *responseJSONSchema `json:"json_schema,omitempty"`
-}
-
-type responseJSONSchema struct {
-	Name   string          `json:"name"`
-	Schema json.RawMessage `json:"schema"`
-}
-
-// toolChoice models OpenAI's string-or-object wire union without leaking an
-// untyped value through the rest of the adapter.
-type toolChoice struct {
-	Mode         string
-	FunctionName string
-}
-
-func (c toolChoice) MarshalJSON() ([]byte, error) {
-	if c.FunctionName == "" {
-		return json.Marshal(c.Mode)
-	}
-	return json.Marshal(struct {
-		Type     string `json:"type"`
-		Function struct {
-			Name string `json:"name"`
-		} `json:"function"`
-	}{Type: "function", Function: struct {
-		Name string `json:"name"`
-	}{Name: c.FunctionName}})
-}
-
-type chatMessage struct {
-	Role       string         `json:"role"`
-	Content    *chatContent   `json:"content,omitempty"`
-	ToolCalls  []chatToolCall `json:"tool_calls,omitempty"`
-	ToolCallID string         `json:"tool_call_id,omitempty"`
-	Name       string         `json:"name,omitempty"`
-}
-
-// chatContent models OpenAI's string-or-array message content union.
-type chatContent struct {
-	Text  *string
-	Parts []contentPart
-}
-
-func textChatContent(value string) *chatContent { return &chatContent{Text: &value} }
-
-func (c chatContent) MarshalJSON() ([]byte, error) {
-	if c.Text != nil {
-		return json.Marshal(*c.Text)
-	}
-	return json.Marshal(c.Parts)
-}
-
-func (c *chatContent) UnmarshalJSON(data []byte) error {
-	var text string
-	if err := json.Unmarshal(data, &text); err == nil {
-		c.Text = &text
-		c.Parts = nil
-		return nil
-	}
-	var parts []contentPart
-	if err := json.Unmarshal(data, &parts); err != nil {
-		return err
-	}
-	c.Text = nil
-	c.Parts = parts
-	return nil
-}
-
-type contentPart struct {
-	Type     string         `json:"type"`
-	Text     string         `json:"text,omitempty"`
-	ImageURL *imageURLValue `json:"image_url,omitempty"`
-}
-
-type imageURLValue struct {
-	URL string `json:"url"`
-}
-
-type chatTool struct {
-	Type     string       `json:"type"`
-	Function chatFunction `json:"function"`
-}
-
-type chatFunction struct {
-	Name        string          `json:"name"`
-	Description string          `json:"description,omitempty"`
-	Parameters  json.RawMessage `json:"parameters"`
-}
-
-type chatToolCall struct {
-	Index    int              `json:"index,omitempty"`
-	ID       string           `json:"id,omitempty"`
-	Type     string           `json:"type,omitempty"`
-	Function chatFunctionCall `json:"function"`
-}
-
-type chatFunctionCall struct {
-	Name      string `json:"name,omitempty"`
-	Arguments string `json:"arguments,omitempty"`
-}
-
-type chatResponse struct {
-	ID      string       `json:"id"`
-	Model   string       `json:"model"`
-	Choices []chatChoice `json:"choices"`
-	Usage   *chatUsage   `json:"usage,omitempty"`
-}
-
-type chatChoice struct {
-	Index        int       `json:"index"`
-	Message      chatDelta `json:"message"`
-	Delta        chatDelta `json:"delta"`
-	FinishReason string    `json:"finish_reason"`
-}
-
-type chatDelta struct {
-	Role             string         `json:"role,omitempty"`
-	Content          string         `json:"content,omitempty"`
-	ReasoningContent string         `json:"reasoning_content,omitempty"`
-	Reasoning        string         `json:"reasoning,omitempty"`
-	ToolCalls        []chatToolCall `json:"tool_calls,omitempty"`
-}
-
-type chatUsage struct {
-	PromptTokens     int32 `json:"prompt_tokens"`
-	CompletionTokens int32 `json:"completion_tokens"`
-	TotalTokens      int32 `json:"total_tokens"`
-}
-
-func buildChatRequest(req *model.LLMRequest, modelName string, stream bool) (chatRequest, error) {
+func buildRequest(req *model.LLMRequest, modelName string, stream bool) (openai.ChatCompletionNewParams, error) {
 	if req == nil {
-		return chatRequest{}, errors.New("LLM request is required")
+		return openai.ChatCompletionNewParams{}, errors.New("LLM request is required")
 	}
 	if strings.TrimSpace(modelName) == "" {
-		return chatRequest{}, errors.New("provider model is required")
+		return openai.ChatCompletionNewParams{}, errors.New("provider model is required")
 	}
-	result := chatRequest{Model: modelName, Stream: stream}
+	result := openai.ChatCompletionNewParams{
+		Model: openai.ChatModel(modelName),
+	}
 	if stream {
-		result.StreamOptions = &streamOptions{IncludeUsage: true}
+		result.StreamOptions = openai.ChatCompletionStreamOptionsParam{IncludeUsage: openai.Bool(true)}
 	}
 	if req.Config != nil {
 		config := req.Config
 		if config.SystemInstruction != nil {
-			content, err := textContent(config.SystemInstruction)
+			text, err := textContent(config.SystemInstruction)
 			if err != nil {
-				return chatRequest{}, fmt.Errorf("system instruction: %w", err)
+				return openai.ChatCompletionNewParams{}, fmt.Errorf("system instruction: %w", err)
 			}
-			if content != "" {
-				result.Messages = append(result.Messages, chatMessage{Role: "system", Content: textChatContent(content)})
+			if text != "" {
+				result.Messages = append(result.Messages, openai.SystemMessage(text))
 			}
 		}
-		result.Temperature, result.TopP, result.MaxTokens = config.Temperature, config.TopP, config.MaxOutputTokens
-		result.Stop, result.PresencePenalty, result.FrequencyPenalty, result.Seed = config.StopSequences, config.PresencePenalty, config.FrequencyPenalty, config.Seed
+		if config.Temperature != nil {
+			result.Temperature = openai.Float(float64(*config.Temperature))
+		}
+		if config.TopP != nil {
+			result.TopP = openai.Float(float64(*config.TopP))
+		}
+		if config.MaxOutputTokens > 0 {
+			result.MaxCompletionTokens = openai.Int(int64(config.MaxOutputTokens))
+		}
+		if len(config.StopSequences) > 0 {
+			result.Stop = openai.ChatCompletionNewParamsStopUnion{
+				OfStringArray: config.StopSequences,
+			}
+		}
+		if config.PresencePenalty != nil {
+			result.PresencePenalty = openai.Float(float64(*config.PresencePenalty))
+		}
+		if config.FrequencyPenalty != nil {
+			result.FrequencyPenalty = openai.Float(float64(*config.FrequencyPenalty))
+		}
+		if config.Seed != nil {
+			result.Seed = openai.Int(int64(*config.Seed))
+		}
 		if config.ResponseJsonSchema != nil {
 			schema, err := marshalSchema(config.ResponseJsonSchema)
 			if err != nil {
-				return chatRequest{}, errors.New("encode response JSON schema")
+				return openai.ChatCompletionNewParams{}, errors.New("encode response JSON schema")
 			}
-			result.ResponseFormat = &responseFormat{Type: "json_schema", JSONSchema: &responseJSONSchema{Name: "response", Schema: schema}}
+			var m map[string]any
+			json.Unmarshal(schema, &m)
+			result.ResponseFormat = openai.ChatCompletionNewParamsResponseFormatUnion{
+				OfJSONSchema: &openai.ResponseFormatJSONSchemaParam{
+					JSONSchema: shared.ResponseFormatJSONSchemaJSONSchemaParam{
+						Name:   "response",
+						Schema: m,
+						Strict: openai.Bool(true),
+					},
+				},
+			}
 		} else if config.ResponseSchema != nil {
-			result.ResponseFormat = &responseFormat{Type: "json_schema", JSONSchema: &responseJSONSchema{Name: "response", Schema: schemaMap(config.ResponseSchema)}}
+			result.ResponseFormat = openai.ChatCompletionNewParamsResponseFormatUnion{
+				OfJSONSchema: &openai.ResponseFormatJSONSchemaParam{
+					JSONSchema: shared.ResponseFormatJSONSchemaJSONSchemaParam{
+						Name:   "response",
+						Schema: schemaMap(config.ResponseSchema),
+					},
+				},
+			}
 		} else if config.ResponseMIMEType == "application/json" {
-			result.ResponseFormat = &responseFormat{Type: "json_object"}
+			result.ResponseFormat = openai.ChatCompletionNewParamsResponseFormatUnion{
+				OfJSONObject: &openai.ResponseFormatJSONObjectParam{},
+			}
 		}
 		for _, tool := range config.Tools {
 			if tool == nil {
@@ -206,52 +97,76 @@ func buildChatRequest(req *model.LLMRequest, modelName string, stream bool) (cha
 				if declaration == nil || declaration.Name == "" {
 					continue
 				}
-				var parameters json.RawMessage
+				var parameters shared.FunctionParameters
 				if declaration.ParametersJsonSchema != nil {
-					var schemaErr error
-					parameters, schemaErr = marshalSchema(declaration.ParametersJsonSchema)
+					schema, schemaErr := marshalSchema(declaration.ParametersJsonSchema)
 					if schemaErr != nil {
-						return chatRequest{}, fmt.Errorf("encode tool %q JSON schema", declaration.Name)
+						return openai.ChatCompletionNewParams{}, fmt.Errorf("encode tool %q JSON schema", declaration.Name)
 					}
+					var m map[string]any
+					json.Unmarshal(schema, &m)
+					parameters = m
 				} else if declaration.Parameters != nil {
-					parameters = schemaMap(declaration.Parameters)
+					var m map[string]any
+					json.Unmarshal(schemaMap(declaration.Parameters), &m)
+					parameters = m
 				}
 				if parameters == nil {
-					parameters = json.RawMessage(`{"type":"object","properties":{}}`)
+					parameters = shared.FunctionParameters{"type": "object", "properties": map[string]any{}}
 				}
-				result.Tools = append(result.Tools, chatTool{Type: "function", Function: chatFunction{Name: declaration.Name, Description: declaration.Description, Parameters: parameters}})
+				result.Tools = append(result.Tools, openai.ChatCompletionToolParam{
+					Type: "function",
+					Function: openai.FunctionDefinitionParam{
+						Name:        declaration.Name,
+						Description: openai.String(declaration.Description),
+						Parameters:  parameters,
+					},
+				})
 			}
 		}
 		if config.ToolConfig != nil && config.ToolConfig.FunctionCallingConfig != nil {
 			calling := config.ToolConfig.FunctionCallingConfig
 			switch calling.Mode {
 			case genai.FunctionCallingConfigModeNone:
-				result.ToolChoice = &toolChoice{Mode: "none"}
+				result.ToolChoice = openai.ChatCompletionToolChoiceOptionUnionParam{
+					OfAuto: openai.String("none"),
+				}
 			case genai.FunctionCallingConfigModeAny:
 				if len(calling.AllowedFunctionNames) == 1 {
-					result.ToolChoice = &toolChoice{FunctionName: calling.AllowedFunctionNames[0]}
+					result.ToolChoice = openai.ChatCompletionToolChoiceOptionUnionParam{
+					OfChatCompletionNamedToolChoice: &openai.ChatCompletionNamedToolChoiceParam{
+						Type: "function",
+						Function: openai.ChatCompletionNamedToolChoiceFunctionParam{
+							Name: calling.AllowedFunctionNames[0],
+						},
+						},
+					}
 				} else {
-					result.ToolChoice = &toolChoice{Mode: "required"}
+					result.ToolChoice = openai.ChatCompletionToolChoiceOptionUnionParam{
+						OfAuto: openai.String("required"),
+					}
 				}
 			case genai.FunctionCallingConfigModeAuto, genai.FunctionCallingConfigModeValidated:
-				result.ToolChoice = &toolChoice{Mode: "auto"}
+				result.ToolChoice = openai.ChatCompletionToolChoiceOptionUnionParam{
+					OfAuto: openai.String("auto"),
+				}
 			}
 		}
 	}
 	for _, content := range req.Contents {
-		messages, err := contentMessages(content)
+		msgs, err := contentMessages(content)
 		if err != nil {
-			return chatRequest{}, err
+			return openai.ChatCompletionNewParams{}, err
 		}
-		result.Messages = append(result.Messages, messages...)
+		result.Messages = append(result.Messages, msgs...)
 	}
 	if len(result.Messages) == 0 {
-		result.Messages = append(result.Messages, chatMessage{Role: "user", Content: textChatContent("Continue processing the request as instructed.")})
+		result.Messages = append(result.Messages, openai.UserMessage("Continue processing the request as instructed."))
 	}
 	return result, nil
 }
 
-func contentMessages(content *genai.Content) ([]chatMessage, error) {
+func contentMessages(content *genai.Content) ([]openai.ChatCompletionMessageParamUnion, error) {
 	if content == nil {
 		return nil, nil
 	}
@@ -259,47 +174,80 @@ func contentMessages(content *genai.Content) ([]chatMessage, error) {
 	if content.Role == "model" {
 		role = "assistant"
 	}
-	message := chatMessage{Role: role}
-	var parts []contentPart
-	var responses []chatMessage
+	var contentParts []openai.ChatCompletionContentPartUnionParam
+	var toolMessages []openai.ChatCompletionMessageParamUnion
 	for _, part := range content.Parts {
 		if part == nil || part.Thought {
 			continue
 		}
 		switch {
 		case part.Text != "":
-			parts = append(parts, contentPart{Type: "text", Text: part.Text})
+			contentParts = append(contentParts, openai.TextContentPart(part.Text))
 		case part.InlineData != nil:
 			if !strings.HasPrefix(part.InlineData.MIMEType, "image/") {
 				return nil, errors.New("OpenAI-compatible adapter supports only inline images")
 			}
-			parts = append(parts, contentPart{Type: "image_url", ImageURL: &imageURLValue{URL: "data:" + part.InlineData.MIMEType + ";base64," + base64.StdEncoding.EncodeToString(part.InlineData.Data)}})
+			dataURI := fmt.Sprintf("data:%s;base64,%s", part.InlineData.MIMEType, part.InlineData.Data)
+			contentParts = append(contentParts, openai.ImageContentPart(openai.ChatCompletionContentPartImageImageURLParam{
+				URL: dataURI,
+			}))
 		case part.FunctionCall != nil:
-			arguments, err := json.Marshal(part.FunctionCall.Args)
-			if err != nil {
-				return nil, errors.New("encode function call")
-			}
-			message.ToolCalls = append(message.ToolCalls, chatToolCall{ID: part.FunctionCall.ID, Type: "function", Function: chatFunctionCall{Name: part.FunctionCall.Name, Arguments: string(arguments)}})
+			contentParts = append(contentParts, openai.TextContentPart("")) // placeholder; handled below
 		case part.FunctionResponse != nil:
 			encoded, err := json.Marshal(part.FunctionResponse.Response)
 			if err != nil {
 				return nil, errors.New("encode function response")
 			}
-			responses = append(responses, chatMessage{Role: "tool", ToolCallID: part.FunctionResponse.ID, Name: part.FunctionResponse.Name, Content: textChatContent(string(encoded))})
+			toolMessages = append(toolMessages, openai.ChatCompletionMessageParamUnion{
+				OfTool: &openai.ChatCompletionToolMessageParam{
+					Content:    openai.ChatCompletionToolMessageParamContentUnion{OfString: openai.String(string(encoded))},
+					ToolCallID: part.FunctionResponse.ID,
+				},
+			})
 		default:
 			return nil, errors.New("unsupported content part for OpenAI-compatible provider")
 		}
 	}
-	if len(parts) == 1 && parts[0].Type == "text" {
-		message.Content = textChatContent(parts[0].Text)
-	} else if len(parts) > 0 {
-		message.Content = &chatContent{Parts: parts}
+	var messages []openai.ChatCompletionMessageParamUnion
+	switch {
+	case role == "assistant" && len(content.Parts) > 0:
+		msg := openai.ChatCompletionAssistantMessageParam{}
+		var textParts []string
+		for _, part := range content.Parts {
+			if part == nil || part.Thought {
+				continue
+			}
+			if part.Text != "" {
+				textParts = append(textParts, part.Text)
+			}
+			if part.FunctionCall != nil {
+				arguments, err := json.Marshal(part.FunctionCall.Args)
+				if err != nil {
+					return nil, errors.New("encode function call")
+				}
+				msg.ToolCalls = append(msg.ToolCalls, openai.ChatCompletionMessageToolCallParam{
+					ID:   part.FunctionCall.ID,
+					Type: "function",
+					Function: openai.ChatCompletionMessageToolCallFunctionParam{
+						Name:      part.FunctionCall.Name,
+						Arguments: string(arguments),
+					},
+				})
+			}
+		}
+		joined := strings.Join(textParts, "")
+		if joined != "" {
+			msg.Content = openai.ChatCompletionAssistantMessageParamContentUnion{
+				OfString: openai.String(joined),
+			}
+		}
+		messages = append(messages, openai.ChatCompletionMessageParamUnion{OfAssistant: &msg})
+	case len(contentParts) == 1 && contentParts[0].OfText != nil:
+		messages = append(messages, openai.UserMessage(contentParts[0].OfText.Text))
+	case len(contentParts) > 0:
+		messages = append(messages, openai.UserMessage(contentParts))
 	}
-	var messages []chatMessage
-	if message.Content != nil || len(message.ToolCalls) > 0 {
-		messages = append(messages, message)
-	}
-	messages = append(messages, responses...)
+	messages = append(messages, toolMessages...)
 	return messages, nil
 }
 
@@ -353,11 +301,54 @@ func normalizeSchema(value any) {
 	}
 }
 
-func usageMetadata(usage *chatUsage) *genai.GenerateContentResponseUsageMetadata {
-	if usage == nil {
-		return nil
+func usageMetadata(usage openai.CompletionUsage) *genai.GenerateContentResponseUsageMetadata {
+	return &genai.GenerateContentResponseUsageMetadata{
+		PromptTokenCount:     int32(usage.PromptTokens),
+		CandidatesTokenCount: int32(usage.CompletionTokens),
+		TotalTokenCount:      int32(usage.TotalTokens),
 	}
-	return &genai.GenerateContentResponseUsageMetadata{PromptTokenCount: usage.PromptTokens, CandidatesTokenCount: usage.CompletionTokens, TotalTokenCount: usage.TotalTokens}
+}
+
+// reasoningChunk is used to re-parse raw JSON for reasoning_content fields
+// that the official SDK does not expose on its typed structs.
+type reasoningChunk struct {
+	Choices []struct {
+		Delta struct {
+			ReasoningContent string `json:"reasoning_content"`
+			Reasoning        string `json:"reasoning"`
+		} `json:"delta"`
+	} `json:"choices"`
+	Message struct {
+		ReasoningContent string `json:"reasoning_content"`
+		Reasoning        string `json:"reasoning"`
+	} `json:"message"`
+}
+
+// extractReasoning re-parses raw JSON from the SDK to extract
+// reasoning_content or reasoning fields not in the typed structs.
+func extractReasoning(rawJSON string) string {
+	if rawJSON == "" {
+		return ""
+	}
+	var rc reasoningChunk
+	if json.Unmarshal([]byte(rawJSON), &rc) != nil {
+		return ""
+	}
+	if len(rc.Choices) > 0 {
+		if rc.Choices[0].Delta.ReasoningContent != "" {
+			return rc.Choices[0].Delta.ReasoningContent
+		}
+		if rc.Choices[0].Delta.Reasoning != "" {
+			return rc.Choices[0].Delta.Reasoning
+		}
+	}
+	if rc.Message.ReasoningContent != "" {
+		return rc.Message.ReasoningContent
+	}
+	if rc.Message.Reasoning != "" {
+		return rc.Message.Reasoning
+	}
+	return ""
 }
 
 func finishReason(reason string) genai.FinishReason {

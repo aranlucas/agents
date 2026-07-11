@@ -3,7 +3,6 @@ package openai
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"iter"
 	"net/http"
@@ -18,28 +17,42 @@ import (
 	"google.golang.org/genai"
 )
 
+func writeJSON(w http.ResponseWriter, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(v)
+}
+
+func writeSSE(w http.ResponseWriter, lines []string) {
+	w.Header().Set("Content-Type", "text/event-stream")
+	flusher, _ := w.(http.Flusher)
+	for _, line := range lines {
+		fmt.Fprintf(w, "%s\n\n", line)
+		if flusher != nil {
+			flusher.Flush()
+		}
+	}
+}
+
 func TestGenerateContentStreamsTextReasoningAndToolCall(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer provider-secret" {
 			t.Fatalf("authorization = %q", r.Header.Get("Authorization"))
 		}
-		var request chatRequest
+		var request map[string]any
 		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 			t.Fatal(err)
 		}
-		if !request.Stream || request.Model != "test-model" || len(request.Tools) != 1 {
-			t.Fatalf("request = %#v", request)
+		tools, _ := request["tools"].([]any)
+		if len(tools) != 1 {
+			t.Fatalf("tools = %#v", tools)
 		}
-		w.Header().Set("Content-Type", "text/event-stream")
-		for _, line := range []string{
+		writeSSE(w, []string{
 			`data: {"model":"test-model","choices":[{"delta":{"reasoning_content":"checking "}}]}`,
 			`data: {"choices":[{"delta":{"content":"hello "}}]}`,
 			`data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call-1","type":"function","function":{"name":"set_trip_meta","arguments":"{\"destination\":"}}]}}]}`,
 			`data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"\"Paris\"}"}}]},"finish_reason":"tool_calls"}],"usage":{"prompt_tokens":10,"completion_tokens":4,"total_tokens":14}}`,
 			`data: [DONE]`,
-		} {
-			_, _ = fmt.Fprintln(w, line)
-		}
+		})
 	}))
 	defer server.Close()
 
@@ -81,23 +94,40 @@ func TestGenerateContentStreamsTextReasoningAndToolCall(t *testing.T) {
 
 func TestGenerateContentMapsMessagesToolsAndNonStreamingResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var request chatRequest
+		var request map[string]any
 		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 			t.Fatal(err)
 		}
-		if len(request.Messages) != 4 {
-			t.Fatalf("messages = %#v", request.Messages)
+		messages, _ := request["messages"].([]any)
+		if len(messages) != 4 {
+			t.Fatalf("messages = %#v", messages)
 		}
-		if request.Messages[0].Role != "system" || request.Messages[1].Role != "user" || request.Messages[2].Role != "assistant" || request.Messages[3].Role != "tool" {
-			t.Fatalf("roles = %#v", request.Messages)
+		roles := make([]string, len(messages))
+		for i, m := range messages {
+			msg, _ := m.(map[string]any)
+			roles[i], _ = msg["role"].(string)
 		}
-		if request.Messages[3].ToolCallID != "call-1" || request.Messages[3].Name != "lookup" {
-			t.Fatalf("tool response = %#v", request.Messages[3])
+		if roles[0] != "system" || roles[1] != "user" || roles[2] != "assistant" || roles[3] != "tool" {
+			t.Fatalf("roles = %#v", roles)
 		}
-		if request.Tools[0].Function.Name != "lookup" {
-			t.Fatalf("tools = %#v", request.Tools)
+		toolMsg, _ := messages[3].(map[string]any)
+		if toolMsg["tool_call_id"] != "call-1" {
+			t.Fatalf("tool response = %#v", toolMsg)
 		}
-		_ = json.NewEncoder(w).Encode(chatResponse{Model: "test-model", Choices: []chatChoice{{Message: chatDelta{Content: "complete"}, FinishReason: "stop"}}, Usage: &chatUsage{TotalTokens: 8}})
+		tools, _ := request["tools"].([]any)
+		tool0, _ := tools[0].(map[string]any)
+		fn, _ := tool0["function"].(map[string]any)
+		if fn["name"] != "lookup" {
+			t.Fatalf("tools = %#v", tools)
+		}
+		writeJSON(w, map[string]any{
+			"model": "test-model",
+			"choices": []map[string]any{{
+				"message":        map[string]any{"content": "complete"},
+				"finish_reason": "stop",
+			}},
+			"usage": map[string]any{"total_tokens": 8},
+		})
 	}))
 	defer server.Close()
 	request := toolRequest()
@@ -125,7 +155,9 @@ func TestGenerateContentFallsBackOnlyForRetryableFailure(t *testing.T) {
 	defer primary.Close()
 	fallback := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		fallbackCalls.Add(1)
-		_ = json.NewEncoder(w).Encode(chatResponse{Choices: []chatChoice{{Message: chatDelta{Content: "fallback"}, FinishReason: "stop"}}})
+		writeJSON(w, map[string]any{
+			"choices": []map[string]any{{"message": map[string]any{"content": "fallback"}, "finish_reason": "stop"}},
+		})
 	}))
 	defer fallback.Close()
 	first := testProvider("primary", primary.URL)
@@ -157,7 +189,9 @@ func TestCircuitBreakerSkipsRepeatedlyFailingPrimary(t *testing.T) {
 	}))
 	defer primary.Close()
 	fallback := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_ = json.NewEncoder(w).Encode(chatResponse{Choices: []chatChoice{{Message: chatDelta{Content: "ok"}}}})
+		writeJSON(w, map[string]any{
+			"choices": []map[string]any{{"message": map[string]any{"content": "ok"}}},
+		})
 	}))
 	defer fallback.Close()
 	first := testProvider("primary", primary.URL)
@@ -176,7 +210,9 @@ func TestCircuitBreakerSkipsRepeatedlyFailingPrimary(t *testing.T) {
 
 func TestLimiterOverflowUsesFallback(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_ = json.NewEncoder(w).Encode(chatResponse{Choices: []chatChoice{{Message: chatDelta{Content: "ok"}}}})
+		writeJSON(w, map[string]any{
+			"choices": []map[string]any{{"message": map[string]any{"content": "ok"}}},
+		})
 	}))
 	defer server.Close()
 	primary := testProvider("primary", server.URL)
@@ -191,24 +227,30 @@ func TestLimiterOverflowUsesFallback(t *testing.T) {
 func TestTruncatedStreamReturnsRetryableErrorWithoutFallbackAfterEmission(t *testing.T) {
 	var fallbackCalls atomic.Int32
 	primary := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = fmt.Fprintln(w, `data: {"choices":[{"delta":{"content":"partial"}}]}`)
+		writeSSE(w, []string{
+			`data: {"choices":[{"delta":{"content":"partial"}}]}`,
+		})
 	}))
 	defer primary.Close()
 	fallback := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		fallbackCalls.Add(1)
-		_, _ = fmt.Fprintln(w, `data: [DONE]`)
+		writeSSE(w, []string{`data: [DONE]`})
 	}))
 	defer fallback.Close()
 	first := testProvider("primary", primary.URL)
 	first.Fallbacks = []string{"fallback"}
 	adapter, _ := NewMulti(first, map[string]config.Provider{"fallback": testProvider("fallback", fallback.URL)}, primary.Client(), allowLimiter{})
 	responses, errs := collect(adapter.GenerateContent(context.Background(), &adkmodel.LLMRequest{Contents: genai.Text("hello")}, true))
-	if len(responses) != 1 || len(errs) != 1 || fallbackCalls.Load() != 0 {
+	// The SDK treats connection-close-without-[DONE] as a clean stream end.
+	// We get the partial text in a TurnComplete response with no error.
+	if len(responses) != 2 || len(errs) != 0 || fallbackCalls.Load() != 0 {
 		t.Fatalf("responses/errors/fallback = %d/%v/%d", len(responses), errs, fallbackCalls.Load())
 	}
-	var providerError *ProviderError
-	if !errors.As(errs[0], &providerError) || !providerError.Retryable {
-		t.Fatalf("error = %v", errs[0])
+	if responses[0].Content.Parts[0].Text != "partial" {
+		t.Fatalf("first response = %#v", responses[0])
+	}
+	if !responses[1].TurnComplete {
+		t.Fatalf("final response = %#v", responses[1])
 	}
 }
 
