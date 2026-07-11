@@ -43,6 +43,7 @@ type Config struct {
 	Cloudflare         Cloudflare
 	ClerkJWKS          string
 	ClerkIssuer        string
+	ClerkSecret        string
 	TelegramLinkSecret string
 	HTTP               HTTP
 	Providers          map[string]Provider
@@ -99,6 +100,7 @@ func Load(getenv func(string) string) (Config, error) {
 		Cloudflare:         cloudflare,
 		ClerkJWKS:          strings.TrimSpace(getenv("CLERK_JWKS_URL")),
 		ClerkIssuer:        strings.TrimSpace(getenv("CLERK_ISSUER")),
+		ClerkSecret:        strings.TrimSpace(getenv("CLERK_SECRET_KEY")),
 		TelegramLinkSecret: strings.TrimSpace(getenv("TELEGRAM_LINK_SECRET")),
 		HTTP:               HTTP{Port: port, Origins: origins},
 		Providers:          providers,
