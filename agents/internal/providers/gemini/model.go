@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"iter"
 	"net/http"
+	"reflect"
 	"strings"
 
 	"google.golang.org/adk/v2/model"
@@ -89,12 +90,13 @@ func (m *Model) GenerateContent(ctx context.Context, req *model.LLMRequest, stre
 			yield(result, nil)
 			return
 		}
+		agg := &streamAggregator{}
 		for chunk, err := range m.client.Models.GenerateContentStream(ctx, m.modelName, req.Contents, req.Config) {
 			if err != nil {
 				yield(nil, fmt.Errorf("gemini generateContentStream: %w", err))
 				return
 			}
-			result, ok := streamResponse(chunk)
+			result, ok := agg.observe(chunk)
 			if !ok {
 				continue
 			}
@@ -102,6 +104,131 @@ func (m *Model) GenerateContent(ctx context.Context, req *model.LLMRequest, stre
 				return
 			}
 		}
+		if final := agg.final(); final != nil {
+			yield(final, nil)
+		}
+	}
+}
+
+// streamAggregator accumulates streamed chunks so the stream can end with one
+// complete non-partial response. Gemini 3 models deliver function calls on
+// intermediate chunks and close the stream with an empty STOP frame; ADK's
+// flow executes tools only from the final non-partial response (see
+// google.golang.org/adk/v2/model.LLMResponse: "The Runner fully processes
+// only the final non-partial event"), so replaying chunks verbatim would
+// silently drop every tool call. Mirrors ADK's own gemini adapter
+// (model/gemini + llminternal.StreamingResponseAggregator) and this repo's
+// openai adapter, which also re-sends the full content on the final frame.
+type streamAggregator struct {
+	parts         []*genai.Part
+	textBuffer    strings.Builder
+	textIsThought bool
+	pendingSig    []byte
+
+	sawContent        bool
+	finishReason      genai.FinishReason
+	usageMetadata     *genai.GenerateContentResponseUsageMetadata
+	groundingMetadata *genai.GroundingMetadata
+	citationMetadata  *genai.CitationMetadata
+	modelVersion      string
+}
+
+// observe records one chunk and returns it as a partial response for
+// incremental streaming, or ok=false for chunks with no candidate content
+// (e.g. a prompt-feedback-only or trailing empty frame), whose metadata is
+// still captured for the final aggregated response.
+func (a *streamAggregator) observe(chunk *genai.GenerateContentResponse) (*model.LLMResponse, bool) {
+	if chunk == nil {
+		return nil, false
+	}
+	if chunk.UsageMetadata != nil {
+		a.usageMetadata = chunk.UsageMetadata
+	}
+	if chunk.ModelVersion != "" {
+		a.modelVersion = chunk.ModelVersion
+	}
+	if len(chunk.Candidates) == 0 {
+		return nil, false
+	}
+	candidate := chunk.Candidates[0]
+	if candidate.FinishReason != "" {
+		a.finishReason = candidate.FinishReason
+	}
+	if candidate.CitationMetadata != nil {
+		a.citationMetadata = candidate.CitationMetadata
+	}
+	if candidate.GroundingMetadata != nil {
+		a.groundingMetadata = candidate.GroundingMetadata
+	}
+	if candidate.Content == nil {
+		return nil, false
+	}
+	a.accumulate(candidate.Content.Parts)
+	result, ok := streamResponse(chunk)
+	if !ok {
+		return nil, false
+	}
+	result.Partial, result.TurnComplete = true, false
+	return result, true
+}
+
+func (a *streamAggregator) accumulate(parts []*genai.Part) {
+	for _, part := range parts {
+		if part == nil || reflect.ValueOf(*part).IsZero() {
+			continue
+		}
+		a.sawContent = true
+		if len(part.ThoughtSignature) > 0 && part.FunctionCall == nil && part.Text == "" {
+			a.pendingSig = part.ThoughtSignature
+			continue
+		}
+		switch {
+		case part.Text != "":
+			if a.textBuffer.Len() > 0 && part.Thought != a.textIsThought {
+				a.flushText()
+			}
+			a.textIsThought = part.Thought
+			a.textBuffer.WriteString(part.Text)
+		case part.FunctionCall != nil:
+			a.flushText()
+			clone := *part
+			if len(clone.ThoughtSignature) == 0 && a.pendingSig != nil {
+				clone.ThoughtSignature = a.pendingSig
+			}
+			a.pendingSig = nil
+			a.parts = append(a.parts, &clone)
+		default:
+			a.flushText()
+			a.parts = append(a.parts, part)
+		}
+	}
+}
+
+func (a *streamAggregator) flushText() {
+	if a.textBuffer.Len() == 0 {
+		return
+	}
+	a.parts = append(a.parts, &genai.Part{Text: a.textBuffer.String(), Thought: a.textIsThought})
+	a.textBuffer.Reset()
+	a.textIsThought = false
+}
+
+// final returns the aggregated non-partial response, or nil when the stream
+// carried no candidate content at all (matching the previous behavior of
+// yielding nothing for a contentless stream).
+func (a *streamAggregator) final() *model.LLMResponse {
+	if !a.sawContent {
+		return nil
+	}
+	a.flushText()
+	return &model.LLMResponse{
+		Content:           &genai.Content{Role: genai.RoleModel, Parts: a.parts},
+		UsageMetadata:     a.usageMetadata,
+		GroundingMetadata: a.groundingMetadata,
+		CitationMetadata:  a.citationMetadata,
+		ModelVersion:      a.modelVersion,
+		TurnComplete:      true,
+		FinishReason:      a.finishReason,
 	}
 }
 
