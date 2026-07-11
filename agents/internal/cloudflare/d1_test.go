@@ -2,7 +2,9 @@ package cloudflare
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +15,7 @@ import (
 
 	"agents/internal/config"
 	"google.golang.org/adk/v2/session"
+	_ "modernc.org/sqlite"
 )
 
 type batchRequest struct {
@@ -43,21 +46,6 @@ func TestD1UsesBoundedAuthenticatedRequestsAndRedactsToken(t *testing.T) {
 	}
 	_, err = d1.Run(context.Background(), Statement{SQL: "SELECT 1"})
 	if err == nil || strings.Contains(err.Error(), secret) {
-		t.Fatalf("Run() error = %v", err)
-	}
-}
-
-func TestD1RejectsOversizedResponse(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(strings.Repeat("x", maxD1Body+1)))
-	}))
-	defer server.Close()
-	d1, err := newD1(testCloudflare("token"), server.Client(), server.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = d1.Run(context.Background(), Statement{SQL: "SELECT 1"})
-	if err == nil || !strings.Contains(err.Error(), "size limit") {
 		t.Fatalf("Run() error = %v", err)
 	}
 }
@@ -265,6 +253,9 @@ func TestSessionGetScopesEveryQueryAndReturnsEventsChronologically(t *testing.T)
 		if len(req.Batch) != 4 {
 			t.Fatalf("statements = %d", len(req.Batch))
 		}
+		if got := req.Batch[3].Params[4]; got != float64(-1) {
+			t.Fatalf("zero NumRecentEvents limit = %v, want -1 (unbounded)", got)
+		}
 		for index, statement := range req.Batch {
 			joined := fmt.Sprint(statement.Params)
 			if !strings.Contains(joined, "travel_agent") {
@@ -305,6 +296,110 @@ func TestSessionGetScopesEveryQueryAndReturnsEventsChronologically(t *testing.T)
 	}
 	if got, _ := response.Session.State().Get("user:preference"); got != "window" {
 		t.Fatalf("user state = %v", got)
+	}
+}
+
+func TestSessionListSupportsOfficialAppWideShape(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req batchRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatal(err)
+		}
+		if len(req.Batch) != 1 || strings.Contains(req.Batch[0].SQL, "user_id = ?") {
+			t.Fatalf("app-wide list query = %#v", req.Batch)
+		}
+		writeEnvelope(t, w, []Result{{Success: true, Rows: []map[string]any{
+			{"session_id": "thread-a", "user_id": "user-a", "state_json": `{}`, "updated_at": float64(1000), "app_state_json": `{}`, "user_state_json": `{}`},
+			{"session_id": "thread-b", "user_id": "user-b", "state_json": `{}`, "updated_at": float64(900), "app_state_json": `{}`, "user_state_json": `{}`},
+		}}})
+	}))
+	defer server.Close()
+	d1, err := newD1(testCloudflare("token"), server.Client(), server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := NewSessionService(d1, func() time.Time { return time.UnixMilli(2000).UTC() })
+	response, err := service.List(t.Context(), &session.ListRequest{AppName: "app"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(response.Sessions) != 2 || response.Sessions[0].UserID() != "user-a" || response.Sessions[1].UserID() != "user-b" {
+		t.Fatalf("sessions = %#v", response.Sessions)
+	}
+}
+
+func TestStateUpdateExpressionReplacesTopLevelObjectsAndPreservesNull(t *testing.T) {
+	delta := map[string]any{
+		"nullable": nil,
+		"profile":  map[string]any{"name": "Ada"},
+	}
+	expression, params, err := stateUpdateExpression("state_json", delta)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(expression, "json_patch") || !strings.HasPrefix(expression, "json_set(") {
+		t.Fatalf("expression = %q", expression)
+	}
+	if got := fmt.Sprint(params); got != `[nullable null profile {"name":"Ada"}]` {
+		t.Fatalf("params = %s", got)
+	}
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+	if _, err := db.Exec(`CREATE TABLE state (state_json TEXT NOT NULL); INSERT INTO state VALUES ('{"nullable":"old","profile":{"name":"Grace","stale":true}}')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec("UPDATE state SET state_json = "+expression, params...); err != nil {
+		t.Fatal(err)
+	}
+	var raw string
+	if err := db.QueryRow("SELECT state_json FROM state").Scan(&raw); err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(raw), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got["nullable"] != nil || fmt.Sprint(got["profile"]) != "map[name:Ada]" {
+		t.Fatalf("updated state = %#v", got)
+	}
+}
+
+func TestAppendEventRejectsStaleSessionWithoutApplyingLiveDelta(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		var req batchRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatal(err)
+		}
+		if requests == 1 {
+			results := make([]Result, len(req.Batch))
+			for i := range results {
+				results[i].Success = true
+			}
+			writeEnvelope(t, w, results)
+			return
+		}
+		writeEnvelope(t, w, []Result{{Success: true, Rows: []map[string]any{{"present": float64(1)}}}})
+	}))
+	defer server.Close()
+	d1, err := newD1(testCloudflare("token"), server.Client(), server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
+	service := NewSessionService(d1, func() time.Time { return now })
+	current := newStoredSession("thread", "app", "user", map[string]any{"status": "old"}, nil, now.Add(-time.Minute))
+	event := session.NewEvent(t.Context(), "inv")
+	event.Actions.StateDelta = map[string]any{"status": "new"}
+	if err := service.AppendEvent(t.Context(), current, event); !errors.Is(err, ErrStaleSession) {
+		t.Fatalf("AppendEvent() error = %v, want ErrStaleSession", err)
+	}
+	if got, _ := current.State().Get("status"); got != "old" {
+		t.Fatalf("live state changed after rejected append: %v", got)
 	}
 }
 

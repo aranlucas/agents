@@ -67,13 +67,12 @@ func NewR2(cfg config.Cloudflare) (*R2, error) {
 	loaded, err := awsconfig.LoadDefaultConfig(
 		context.Background(),
 		awsconfig.WithRegion("auto"),
-		awsconfig.WithBaseEndpoint(endpoint),
 		awsconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(cfg.R2AccessKeyID, cfg.R2SecretAccessKey, "")),
 	)
 	if err != nil {
 		return nil, errors.New("configure R2 client")
 	}
-	client := s3.NewFromConfig(loaded, func(options *s3.Options) { options.UsePathStyle = true })
+	client := s3.NewFromConfig(loaded, func(options *s3.Options) { options.BaseEndpoint = aws.String(endpoint) })
 	return &R2{client: client, bucket: cfg.R2Bucket}, nil
 }
 

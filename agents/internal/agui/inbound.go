@@ -39,11 +39,7 @@ func decodeRunInput(body io.Reader) (*aguitypes.RunAgentInput, error) {
 // clientToolsFromInput converts the AG-UI request's tool declarations into
 // the frontend tool definitions NewClientToolset expects.
 func clientToolsFromInput(input *aguitypes.RunAgentInput) []ClientTool {
-	tools := make([]ClientTool, 0, len(input.Tools))
-	for _, t := range input.Tools {
-		tools = append(tools, ClientTool{Name: t.Name, Description: t.Description, Parameters: t.Parameters})
-	}
-	return tools
+	return append([]aguitypes.Tool(nil), input.Tools...)
 }
 
 // runContent converts the newest turn of an AG-UI request into ADK-Go

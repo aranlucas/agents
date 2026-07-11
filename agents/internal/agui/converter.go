@@ -6,7 +6,6 @@ import (
 	"errors"
 	"strings"
 
-	"agents/internal/cloudflare"
 	aguievents "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 	aguitypes "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"google.golang.org/adk/v2/session"
@@ -21,15 +20,6 @@ const (
 type mcpAppActivity struct {
 	MessageID string `json:"messageId"`
 	Content   any    `json:"content"`
-}
-
-// newBase builds a BaseEvent with no timestamp. The AG-UI SDK's New*Event
-// constructors always stamp TimestampMs from time.Now(), which would make
-// golden SSE fixtures non-deterministic; timestamp is optional
-// (`json:"timestamp,omitempty"`) per the AG-UI wire format, so omitting it
-// is protocol-valid and keeps every emitted frame byte-for-byte reproducible.
-func newBase(eventType aguievents.EventType) *aguievents.BaseEvent {
-	return &aguievents.BaseEvent{EventType: eventType}
 }
 
 // streamConverter turns a stream of ADK session events for one invocation
@@ -100,10 +90,10 @@ func (c *streamConverter) convertPartial(content *genai.Content) []aguievents.Ev
 		switch {
 		case part.Thought && part.Text != "":
 			out = append(out, c.openReasoning()...)
-			out = append(out, &aguievents.ReasoningMessageContentEvent{BaseEvent: newBase(aguievents.EventTypeReasoningMessageContent), MessageID: c.reasoningMessageID, Delta: part.Text})
+			out = append(out, aguievents.NewReasoningMessageContentEvent(c.reasoningMessageID, part.Text))
 		case !part.Thought && part.Text != "":
 			out = append(out, c.openText()...)
-			out = append(out, &aguievents.TextMessageContentEvent{BaseEvent: newBase(aguievents.EventTypeTextMessageContent), MessageID: c.textMessageID, Delta: part.Text})
+			out = append(out, aguievents.NewTextMessageContentEvent(c.textMessageID, part.Text))
 		}
 	}
 	return out
@@ -138,7 +128,7 @@ func (c *streamConverter) convertFinal(event *session.Event, content *genai.Cont
 
 	out = append(out, c.activityEvents(event.Actions.StateDelta)...)
 	if delta := statePatch(c.known, event.Actions.StateDelta); len(delta) > 0 {
-		out = append(out, &aguievents.StateDeltaEvent{BaseEvent: newBase(aguievents.EventTypeStateDelta), Delta: delta})
+		out = append(out, aguievents.NewStateDeltaEvent(delta))
 	}
 
 	if event.IsFinalResponse() {
@@ -173,10 +163,7 @@ func (c *streamConverter) activityEvents(delta map[string]any) []aguievents.Even
 		if activity.MessageID == "" {
 			activity.MessageID = c.ids.GenerateMessageID()
 		}
-		out = append(out, &aguievents.ActivitySnapshotEvent{
-			BaseEvent: newBase(aguievents.EventTypeActivitySnapshot), MessageID: activity.MessageID,
-			ActivityType: activityType, Content: activity.Content,
-		})
+		out = append(out, aguievents.NewActivitySnapshotEvent(activity.MessageID, activityType, activity.Content))
 	}
 	return out
 }
@@ -204,21 +191,20 @@ func (c *streamConverter) oneShotLanes(content *genai.Content, hadText, hadReaso
 		id := c.ids.GenerateMessageID()
 		out = append(
 			out,
-			&aguievents.ReasoningStartEvent{BaseEvent: newBase(aguievents.EventTypeReasoningStart), MessageID: id},
-			&aguievents.ReasoningMessageStartEvent{BaseEvent: newBase(aguievents.EventTypeReasoningMessageStart), MessageID: id, Role: "assistant"},
-			&aguievents.ReasoningMessageContentEvent{BaseEvent: newBase(aguievents.EventTypeReasoningMessageContent), MessageID: id, Delta: reasoningText.String()},
-			&aguievents.ReasoningMessageEndEvent{BaseEvent: newBase(aguievents.EventTypeReasoningMessageEnd), MessageID: id},
-			&aguievents.ReasoningEndEvent{BaseEvent: newBase(aguievents.EventTypeReasoningEnd), MessageID: id},
+			aguievents.NewReasoningStartEvent(id),
+			aguievents.NewReasoningMessageStartEvent(id, "assistant"),
+			aguievents.NewReasoningMessageContentEvent(id, reasoningText.String()),
+			aguievents.NewReasoningMessageEndEvent(id),
+			aguievents.NewReasoningEndEvent(id),
 		)
 	}
 	if plainText.Len() > 0 && !hadText {
 		id := c.ids.GenerateMessageID()
-		role := "assistant"
 		out = append(
 			out,
-			&aguievents.TextMessageStartEvent{BaseEvent: newBase(aguievents.EventTypeTextMessageStart), MessageID: id, Role: &role},
-			&aguievents.TextMessageContentEvent{BaseEvent: newBase(aguievents.EventTypeTextMessageContent), MessageID: id, Delta: plainText.String()},
-			&aguievents.TextMessageEndEvent{BaseEvent: newBase(aguievents.EventTypeTextMessageEnd), MessageID: id},
+			aguievents.NewTextMessageStartEvent(id, aguievents.WithRole("assistant")),
+			aguievents.NewTextMessageContentEvent(id, plainText.String()),
+			aguievents.NewTextMessageEndEvent(id),
 		)
 	}
 	return out
@@ -229,8 +215,7 @@ func (c *streamConverter) openText() []aguievents.Event {
 		return nil
 	}
 	c.textMessageID = c.ids.GenerateMessageID()
-	role := "assistant"
-	return []aguievents.Event{&aguievents.TextMessageStartEvent{BaseEvent: newBase(aguievents.EventTypeTextMessageStart), MessageID: c.textMessageID, Role: &role}}
+	return []aguievents.Event{aguievents.NewTextMessageStartEvent(c.textMessageID, aguievents.WithRole("assistant"))}
 }
 
 func (c *streamConverter) closeText() []aguievents.Event {
@@ -239,7 +224,7 @@ func (c *streamConverter) closeText() []aguievents.Event {
 	}
 	id := c.textMessageID
 	c.textMessageID = ""
-	return []aguievents.Event{&aguievents.TextMessageEndEvent{BaseEvent: newBase(aguievents.EventTypeTextMessageEnd), MessageID: id}}
+	return []aguievents.Event{aguievents.NewTextMessageEndEvent(id)}
 }
 
 func (c *streamConverter) openReasoning() []aguievents.Event {
@@ -248,8 +233,8 @@ func (c *streamConverter) openReasoning() []aguievents.Event {
 	}
 	c.reasoningMessageID = c.ids.GenerateMessageID()
 	return []aguievents.Event{
-		&aguievents.ReasoningStartEvent{BaseEvent: newBase(aguievents.EventTypeReasoningStart), MessageID: c.reasoningMessageID},
-		&aguievents.ReasoningMessageStartEvent{BaseEvent: newBase(aguievents.EventTypeReasoningMessageStart), MessageID: c.reasoningMessageID, Role: string(aguitypes.RoleReasoning)},
+		aguievents.NewReasoningStartEvent(c.reasoningMessageID),
+		aguievents.NewReasoningMessageStartEvent(c.reasoningMessageID, string(aguitypes.RoleReasoning)),
 	}
 }
 
@@ -260,8 +245,8 @@ func (c *streamConverter) closeReasoning() []aguievents.Event {
 	id := c.reasoningMessageID
 	c.reasoningMessageID = ""
 	return []aguievents.Event{
-		&aguievents.ReasoningMessageEndEvent{BaseEvent: newBase(aguievents.EventTypeReasoningMessageEnd), MessageID: id},
-		&aguievents.ReasoningEndEvent{BaseEvent: newBase(aguievents.EventTypeReasoningEnd), MessageID: id},
+		aguievents.NewReasoningMessageEndEvent(id),
+		aguievents.NewReasoningEndEvent(id),
 	}
 }
 
@@ -291,9 +276,9 @@ func (c *streamConverter) toolCallEvents(call *genai.FunctionCall) []aguievents.
 		encoded = []byte("{}")
 	}
 	return []aguievents.Event{
-		&aguievents.ToolCallStartEvent{BaseEvent: newBase(aguievents.EventTypeToolCallStart), ToolCallID: id, ToolCallName: call.Name},
-		&aguievents.ToolCallArgsEvent{BaseEvent: newBase(aguievents.EventTypeToolCallArgs), ToolCallID: id, Delta: string(encoded)},
-		&aguievents.ToolCallEndEvent{BaseEvent: newBase(aguievents.EventTypeToolCallEnd), ToolCallID: id},
+		aguievents.NewToolCallStartEvent(id, call.Name),
+		aguievents.NewToolCallArgsEvent(id, string(encoded)),
+		aguievents.NewToolCallEndEvent(id),
 	}
 }
 
@@ -307,7 +292,7 @@ func (c *streamConverter) toolResultEvents(response *genai.FunctionResponse) []a
 		encoded = []byte("{}")
 	}
 	return []aguievents.Event{
-		&aguievents.ToolCallResultEvent{BaseEvent: newBase(aguievents.EventTypeToolCallResult), MessageID: c.ids.GenerateMessageID(), ToolCallID: response.ID, Content: string(encoded)},
+		aguievents.NewToolCallResultEvent(c.ids.GenerateMessageID(), response.ID, string(encoded)),
 	}
 }
 
@@ -340,7 +325,7 @@ func contentText(content *genai.Content) string {
 // human-readable message; everything else collapses to a generic message.
 func sanitizeRunError(runID string, err error) *aguievents.RunErrorEvent {
 	code, message := classifyError(err)
-	return &aguievents.RunErrorEvent{BaseEvent: newBase(aguievents.EventTypeRunError), Code: &code, Message: message, RunIDValue: runID}
+	return aguievents.NewRunErrorEvent(message, aguievents.WithErrorCode(code), aguievents.WithRunID(runID))
 }
 
 func classifyError(err error) (code, message string) {
@@ -351,7 +336,7 @@ func classifyError(err error) (code, message string) {
 		return "timeout", "the agent run timed out"
 	case errors.Is(err, context.Canceled):
 		return "canceled", "the agent run was canceled"
-	case errors.Is(err, cloudflare.ErrSessionNotFound):
+	case errors.Is(err, ErrSessionNotFound):
 		return "session_not_found", "the session could not be found"
 	case errors.Is(err, ErrInvalidRunInput):
 		return "invalid_input", "the request could not be processed"
