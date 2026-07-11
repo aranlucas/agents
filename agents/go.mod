@@ -14,6 +14,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/jsonschema-go v0.4.3
 	github.com/modelcontextprotocol/go-sdk v1.6.1
+	github.com/openai/openai-go v1.12.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.69.0
 	golang.org/x/net v0.57.0
 	google.golang.org/adk/v2 v2.0.0
