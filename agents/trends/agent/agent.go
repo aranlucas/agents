@@ -24,13 +24,11 @@
 package trends
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
 	_ "embed"
 
-	"agents/internal/agentruntime"
 	"agents/internal/common"
 	"agents/trends/agent/tools"
 	"google.golang.org/adk/v2/agent"
@@ -95,46 +93,56 @@ func NewGenerator(m model.LLM) (agent.Agent, error) {
 }
 
 func rootTools(executor *BigQueryExecutor, search *common.BraveSearch, composer model.LLM) ([]adktool.Tool, error) {
-	var result []adktool.Tool
-	add := func(value adktool.Tool, err error) error {
-		if err != nil {
-			return err
-		}
-		result = append(result, value)
-		return nil
-	}
-	if err := add(tools.NewValidateTrendsSql(validateSQLTool)); err != nil {
+	validateTrendsSQLTool, err := tools.NewValidateTrendsSql(validateSQLTool)
+	if err != nil {
 		return nil, err
 	}
-	if err := add(tools.NewBeginTrendsQuery(wrap(func(_ context.Context, tx *agentruntime.Transaction, input BeginQueryArgs) (Result, error) {
-		return BeginTrendsQuery(tx, input)
-	}))); err != nil {
+
+	beginTrendsQueryTool, err := tools.NewBeginTrendsQuery(BeginTrendsQuery)
+	if err != nil {
 		return nil, err
 	}
-	if err := add(tools.NewExecuteBigquerySql(executeSQLTool(executor))); err != nil {
+
+	executeBigquerySQLTool, err := tools.NewExecuteBigquerySql(executeSQLTool(executor))
+	if err != nil {
 		return nil, err
 	}
-	if err := add(tools.NewWriteTrendsResult(wrap(func(_ context.Context, tx *agentruntime.Transaction, input WriteResultArgs) (Result, error) {
-		return WriteTrendsResult(tx, input)
-	}))); err != nil {
+
+	writeTrendsResultTool, err := tools.NewWriteTrendsResult(WriteTrendsResult)
+	if err != nil {
 		return nil, err
 	}
-	if err := add(tools.NewSetTrendsVerification(wrap(func(_ context.Context, tx *agentruntime.Transaction, input VerificationArgs) (Result, error) {
-		return SetTrendsVerification(tx, input)
-	}))); err != nil {
+
+	setTrendsVerificationTool, err := tools.NewSetTrendsVerification(SetTrendsVerification)
+	if err != nil {
 		return nil, err
 	}
-	if err := add(tools.NewGenerateA2ui(generateA2UITool(composer))); err != nil {
+
+	generateA2uiTool, err := tools.NewGenerateA2ui(generateA2UITool(composer))
+	if err != nil {
 		return nil, err
 	}
+
+	result := []adktool.Tool{
+		validateTrendsSQLTool,
+		beginTrendsQueryTool,
+		executeBigquerySQLTool,
+		writeTrendsResultTool,
+		setTrendsVerificationTool,
+		generateA2uiTool,
+	}
+
 	if search != nil {
-		if err := add(tools.NewWebSearch(func(ctx agent.Context, input SearchArgs) (SearchResult, error) {
+		webSearchTool, err := tools.NewWebSearch(func(ctx agent.Context, input SearchArgs) (SearchResult, error) {
 			results, err := search.Search(ctx, input.Query, input.Count)
 			return SearchResult{Results: results}, err
-		})); err != nil {
+		})
+		if err != nil {
 			return nil, err
 		}
+		result = append(result, webSearchTool)
 	}
+
 	return result, nil
 }
 
@@ -185,7 +193,7 @@ type activityEnvelope struct {
 // misbehaved.
 func generateA2UITool(composer model.LLM) functiontool.Func[GenerateA2UIArgs, Result] {
 	return func(ctx agent.Context, _ GenerateA2UIArgs) (Result, error) {
-		state := decodeState(agentruntime.NewTransactionFromState(ctx.State()))
+		state := readState(ctx.State())
 		event := composeA2UI(ctx, composer, TrendsResult{Query: state.Query, SQL: state.GeneratedSQL, Columns: state.Columns, Rows: state.Rows, Insights: state.Insights, Error: state.Error})
 		key := strings.TrimSpace(ctx.FunctionCallID())
 		if key == "" {
@@ -205,28 +213,4 @@ type SearchArgs struct {
 
 type SearchResult struct {
 	Results []common.SearchResult `json:"results"`
-}
-
-type handler[A any] func(context.Context, *agentruntime.Transaction, A) (Result, error)
-
-// wrap adapts a state-mutating handler into a functiontool.Func. Unlike
-// several other ported agents' wrap helpers, every trends handler wrapped
-// this way (BeginTrendsQuery, WriteTrendsResult, SetTrendsVerification)
-// unconditionally mutates state — including on a query failure, since
-// recording the error in state is the point of write_trends_result — so
-// there is no validate-then-reject-without-mutating branch to gate Commit
-// on; a returned Go error is the only "don't commit" case, and that already
-// skips Commit by returning early.
-func wrap[A any](handler handler[A]) functiontool.Func[A, Result] {
-	return func(ctx agent.Context, input A) (Result, error) {
-		tx := agentruntime.NewTransactionFromState(ctx.State())
-		result, err := handler(ctx, tx, input)
-		if err != nil {
-			return Result{}, err
-		}
-		if err := agentruntime.Commit(ctx, tx); err != nil {
-			return Result{}, fmt.Errorf("commit trends state: %w", err)
-		}
-		return result, nil
-	}
 }

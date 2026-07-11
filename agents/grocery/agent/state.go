@@ -2,9 +2,11 @@ package grocery
 
 import (
 	"encoding/json"
+	"fmt"
 
-	"agents/internal/agentruntime"
 	"agents/internal/common"
+	"google.golang.org/adk/v2/agent"
+	"google.golang.org/adk/v2/session"
 )
 
 const AppName = "grocery_agent"
@@ -48,12 +50,17 @@ func StateDefaults() map[string]any {
 	return values
 }
 
-func decodeState(tx *agentruntime.Transaction) GroceryState {
+func readState(source session.ReadonlyState) GroceryState {
 	state := Defaults()
-	if tx != nil {
-		if encoded, err := json.Marshal(tx.Snapshot()); err == nil {
-			_ = json.Unmarshal(encoded, &state)
+	values := make(map[string]any)
+	if source != nil {
+		for key, value := range source.All() {
+			values[key] = value
 		}
+	}
+	encoded, err := json.Marshal(values)
+	if err == nil {
+		_ = json.Unmarshal(encoded, &state)
 	}
 	if state.ShoppingList == nil {
 		state.ShoppingList = []string{}
@@ -70,17 +77,29 @@ func decodeState(tx *agentruntime.Transaction) GroceryState {
 	return state
 }
 
-func writeState(tx *agentruntime.Transaction, state GroceryState) {
-	tx.Set("shopping_list", state.ShoppingList)
-	tx.Set("meal_plan", state.MealPlan)
-	tx.Set("cart", state.Cart)
-	tx.Set("pantry", state.Pantry)
-	tx.Set("weekly_deals", state.WeeklyDeals)
-	tx.Set("weekly_plan", state.WeeklyPlan)
-	tx.Set("status", state.Status)
-	tx.Set("notes", state.Notes)
-	tx.Set("review_summary", state.ReviewSummary)
-	tx.Set("kroger_connected", state.KrogerConnected)
-	tx.Set("training_plan", state.TrainingPlan)
-	tx.Set("user_id", state.UserID)
+func publishState(ctx agent.Context, state GroceryState) error {
+	s := ctx.State()
+	fields := []struct {
+		key   string
+		value any
+	}{
+		{"shopping_list", state.ShoppingList},
+		{"meal_plan", state.MealPlan},
+		{"cart", state.Cart},
+		{"pantry", state.Pantry},
+		{"weekly_deals", state.WeeklyDeals},
+		{"weekly_plan", state.WeeklyPlan},
+		{"status", state.Status},
+		{"notes", state.Notes},
+		{"review_summary", state.ReviewSummary},
+		{"kroger_connected", state.KrogerConnected},
+		{"training_plan", state.TrainingPlan},
+		{"user_id", state.UserID},
+	}
+	for _, field := range fields {
+		if err := s.Set(field.key, field.value); err != nil {
+			return fmt.Errorf("set %s: %w", field.key, err)
+		}
+	}
+	return nil
 }

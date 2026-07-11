@@ -1,20 +1,16 @@
 package fitness
 
 import (
-	"context"
-	"fmt"
 	"strings"
 	"time"
 
 	"agents/fitness/agent/tools"
-	"agents/internal/agentruntime"
 	"agents/internal/common"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
 	adktool "google.golang.org/adk/v2/tool"
-	"google.golang.org/adk/v2/tool/functiontool"
 )
 
 type SearchArgs struct {
@@ -44,34 +40,44 @@ func newAgent(m model.LLM, strava *Strava, search *common.BraveSearch, mode llma
 }
 
 func staticTools(search *common.BraveSearch) ([]adktool.Tool, error) {
-	var result []adktool.Tool
-	add := func(value adktool.Tool, err error) error {
-		if err != nil {
-			return err
-		}
-		result = append(result, value)
-		return nil
-	}
-	if err := add(tools.NewGetCurrentDate(wrap(GetCurrentDate))); err != nil {
+	getCurrentDateTool, err := tools.NewGetCurrentDate(GetCurrentDate)
+	if err != nil {
 		return nil, err
 	}
-	if err := add(tools.NewSetObjectiveResearch(wrap(SetObjectiveResearch))); err != nil {
+
+	setObjectiveResearchTool, err := tools.NewSetObjectiveResearch(SetObjectiveResearch)
+	if err != nil {
 		return nil, err
 	}
-	if err := add(tools.NewSetTrainingPlan(wrap(SetTrainingPlan))); err != nil {
+
+	setTrainingPlanTool, err := tools.NewSetTrainingPlan(SetTrainingPlan)
+	if err != nil {
 		return nil, err
 	}
-	if err := add(tools.NewMarkPlanReady(wrap(MarkPlanReady))); err != nil {
+
+	markReadyTool, err := tools.NewMarkPlanReady(MarkPlanReady)
+	if err != nil {
 		return nil, err
 	}
+
+	result := []adktool.Tool{
+		getCurrentDateTool,
+		setObjectiveResearchTool,
+		setTrainingPlanTool,
+		markReadyTool,
+	}
+
 	if search != nil {
-		if err := add(tools.NewWebSearch(func(ctx agent.Context, input SearchArgs) (SearchResult, error) {
+		webSearchTool, err := tools.NewWebSearch(func(ctx agent.Context, input SearchArgs) (SearchResult, error) {
 			results, err := search.Search(ctx, input.Query, input.Count)
 			return SearchResult{Results: results}, err
-		})); err != nil {
+		})
+		if err != nil {
 			return nil, err
 		}
+		result = append(result, webSearchTool)
 	}
+
 	return result, nil
 }
 
@@ -88,36 +94,10 @@ func (s *stravaToolset) Tools(ctx agent.ReadonlyContext) ([]adktool.Tool, error)
 		return nil, nil
 	}
 	fetch, err := tools.NewFetchActivities(func(ctx agent.Context, input FetchActivitiesArgs) (Result, error) {
-		tx := agentruntime.NewTransactionFromState(ctx.State())
-		result, err := FetchActivities(WithStravaToken(ctx, token), tx, input, s.client, time.Now)
-		if err != nil {
-			return Result{}, err
-		}
-		if err := agentruntime.Commit(ctx, tx); err != nil {
-			return Result{}, fmt.Errorf("commit fitness state: %w", err)
-		}
-		return result, nil
+		return FetchActivities(ctx, WithStravaToken(ctx, token), input, s.client, time.Now)
 	})
 	if err != nil {
 		return nil, err
 	}
 	return []adktool.Tool{fetch}, nil
-}
-
-type handler[A any] func(context.Context, *agentruntime.Transaction, A) (Result, error)
-
-func wrap[A any](handler handler[A]) functiontool.Func[A, Result] {
-	return func(ctx agent.Context, input A) (Result, error) {
-		tx := agentruntime.NewTransactionFromState(ctx.State())
-		result, err := handler(ctx, tx, input)
-		if err != nil {
-			return Result{}, err
-		}
-		if result.OK {
-			if err := agentruntime.Commit(ctx, tx); err != nil {
-				return Result{}, fmt.Errorf("commit fitness state: %w", err)
-			}
-		}
-		return result, nil
-	}
 }

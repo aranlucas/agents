@@ -11,8 +11,3 @@ type PantryItem struct {
 	Quantity string  `json:"quantity"`
 	Expires  *string `json:"expires,omitempty"`
 }
-type ApprovalResult struct {
-	Approved  bool   `json:"approved"`
-	Reason    string `json:"reason,omitempty"`
-	Reference string `json:"reference,omitempty"`
-}

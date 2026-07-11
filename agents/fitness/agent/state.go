@@ -2,8 +2,10 @@ package fitness
 
 import (
 	"encoding/json"
+	"fmt"
 
-	"agents/internal/agentruntime"
+	"google.golang.org/adk/v2/agent"
+	"google.golang.org/adk/v2/session"
 )
 
 const AppName = "fitness_agent"
@@ -50,12 +52,17 @@ func StateDefaults() map[string]any {
 	return values
 }
 
-func decodeState(tx *agentruntime.Transaction) FitnessState {
+func readState(source session.ReadonlyState) FitnessState {
 	state := Defaults()
-	if tx != nil {
-		if encoded, err := json.Marshal(tx.Snapshot()); err == nil {
-			_ = json.Unmarshal(encoded, &state)
+	values := make(map[string]any)
+	if source != nil {
+		for key, value := range source.All() {
+			values[key] = value
 		}
+	}
+	encoded, err := json.Marshal(values)
+	if err == nil {
+		_ = json.Unmarshal(encoded, &state)
 	}
 	if state.Activities == nil {
 		state.Activities = []Activity{}
@@ -66,13 +73,25 @@ func decodeState(tx *agentruntime.Transaction) FitnessState {
 	return state
 }
 
-func writeState(tx *agentruntime.Transaction, state FitnessState) {
-	tx.Set("strava_connected", state.StravaConnected)
-	tx.Set("activities", state.Activities)
-	tx.Set("activities_synced_at", state.ActivitiesSyncedAt)
-	tx.Set("objective_research", state.ObjectiveResearch)
-	tx.Set("training_plan", state.TrainingPlan)
-	tx.Set("status", state.Status)
-	tx.Set("review_summary", state.ReviewSummary)
-	tx.Set("user_id", state.UserID)
+func publishState(ctx agent.Context, state FitnessState) error {
+	s := ctx.State()
+	fields := []struct {
+		key   string
+		value any
+	}{
+		{"strava_connected", state.StravaConnected},
+		{"activities", state.Activities},
+		{"activities_synced_at", state.ActivitiesSyncedAt},
+		{"objective_research", state.ObjectiveResearch},
+		{"training_plan", state.TrainingPlan},
+		{"status", state.Status},
+		{"review_summary", state.ReviewSummary},
+		{"user_id", state.UserID},
+	}
+	for _, field := range fields {
+		if err := s.Set(field.key, field.value); err != nil {
+			return fmt.Errorf("set %s: %w", field.key, err)
+		}
+	}
+	return nil
 }

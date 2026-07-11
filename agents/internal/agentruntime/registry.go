@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 	"time"
@@ -88,4 +89,68 @@ func (r *Registry) All() []Entry {
 		entries = append(entries, entry)
 	}
 	return entries
+}
+
+func cloneMap(input map[string]any) map[string]any {
+	output := make(map[string]any, len(input))
+	for key, value := range input {
+		output[key] = cloneValue(value)
+	}
+	return output
+}
+
+func cloneValue(value any) any {
+	if value == nil {
+		return nil
+	}
+	return cloneReflect(reflect.ValueOf(value)).Interface()
+}
+
+func cloneReflect(value reflect.Value) reflect.Value {
+	if !value.IsValid() {
+		return value
+	}
+	switch value.Kind() {
+	case reflect.Interface:
+		if value.IsNil() {
+			return reflect.Zero(value.Type())
+		}
+		result := reflect.New(value.Type()).Elem()
+		result.Set(cloneReflect(value.Elem()))
+		return result
+	case reflect.Pointer:
+		if value.IsNil() {
+			return reflect.Zero(value.Type())
+		}
+		result := reflect.New(value.Type().Elem())
+		result.Elem().Set(cloneReflect(value.Elem()))
+		return result
+	case reflect.Map:
+		if value.IsNil() {
+			return reflect.Zero(value.Type())
+		}
+		result := reflect.MakeMapWithSize(value.Type(), value.Len())
+		iterator := value.MapRange()
+		for iterator.Next() {
+			result.SetMapIndex(iterator.Key(), cloneReflect(iterator.Value()))
+		}
+		return result
+	case reflect.Slice:
+		if value.IsNil() {
+			return reflect.Zero(value.Type())
+		}
+		result := reflect.MakeSlice(value.Type(), value.Len(), value.Len())
+		for index := range value.Len() {
+			result.Index(index).Set(cloneReflect(value.Index(index)))
+		}
+		return result
+	case reflect.Array:
+		result := reflect.New(value.Type()).Elem()
+		for index := range value.Len() {
+			result.Index(index).Set(cloneReflect(value.Index(index)))
+		}
+		return result
+	default:
+		return value
+	}
 }

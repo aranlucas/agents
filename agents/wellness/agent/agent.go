@@ -33,24 +33,35 @@ func New(models ModelSet, fitnessAgent, groceryAgent agent.Agent, toolsets ...ad
 }
 
 func wellnessTools() ([]adktool.Tool, error) {
-	var result []adktool.Tool
-	add := func(value adktool.Tool, err error) error {
-		if err != nil {
-			return err
-		}
-		result = append(result, value)
-		return nil
-	}
-	if err := add(functiontool.New(functiontool.Config{Name: "get_current_date", Description: "Return the current UTC date."}, GetCurrentDate)); err != nil {
+	getCurrentDateTool, err := functiontool.New(functiontool.Config{
+		Name:        "get_current_date",
+		Description: "Return the current UTC date.",
+	}, GetCurrentDate)
+	if err != nil {
 		return nil, err
 	}
-	if err := add(functiontool.New(functiontool.Config{Name: "set_weekly_wellness_plan", Description: "Write the combined weekly plan to streamed state."}, SetWeeklyWellnessPlan)); err != nil {
+
+	setWeeklyWellnessPlanTool, err := functiontool.New(functiontool.Config{
+		Name:        "set_weekly_wellness_plan",
+		Description: "Write the combined weekly plan to streamed state.",
+	}, SetWeeklyWellnessPlan)
+	if err != nil {
 		return nil, err
 	}
-	if err := add(functiontool.New(functiontool.Config{Name: "mark_plan_ready", Description: "Mark a complete combined wellness plan ready."}, MarkPlanReady)); err != nil {
+
+	markReadyTool, err := functiontool.New(functiontool.Config{
+		Name:        "mark_plan_ready",
+		Description: "Mark a complete combined wellness plan ready.",
+	}, MarkPlanReady)
+	if err != nil {
 		return nil, err
 	}
-	return result, nil
+
+	return []adktool.Tool{
+		getCurrentDateTool,
+		setWeeklyWellnessPlanTool,
+		markReadyTool,
+	}, nil
 }
 
 func enforceSpecialistOrder(ctx agent.Context, called adktool.Tool, _ map[string]any) (map[string]any, error) {

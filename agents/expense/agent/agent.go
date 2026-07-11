@@ -13,32 +13,62 @@ func New(m model.LLM, toolsets ...adktool.Toolset) (agent.Agent, error) {
 	if err != nil {
 		return nil, err
 	}
-	return llmagent.New(llmagent.Config{Name: AppName, Description: "Expense review and approval-desk workflow.", Instruction: Instruction, Model: m, Tools: tools, Toolsets: toolsets})
+	return llmagent.New(llmagent.Config{
+		Name:        AppName,
+		Description: "Expense review and approval-desk workflow.",
+		Instruction: Instruction,
+		Model:       m,
+		Tools:       tools,
+		Toolsets:    toolsets,
+	})
 }
 
 func expenseTools() ([]adktool.Tool, error) {
-	var result []adktool.Tool
-	add := func(value adktool.Tool, err error) error {
-		if err != nil {
-			return err
-		}
-		result = append(result, value)
-		return nil
-	}
-	if err := add(functiontool.New(functiontool.Config{Name: "submit_expense", Description: "Submit an expense and route it deterministically by threshold."}, SubmitExpense)); err != nil {
+	submitExpenseTool, err := functiontool.New(functiontool.Config{
+		Name:        "submit_expense",
+		Description: "Submit an expense and route it deterministically by threshold.",
+	}, SubmitExpense)
+	if err != nil {
 		return nil, err
 	}
-	if err := add(functiontool.New(functiontool.Config{Name: "write_expense_review", Description: "Write a risk review without making the human decision."}, WriteExpenseReview)); err != nil {
+
+	writeExpenseReviewTool, err := functiontool.New(functiontool.Config{
+		Name:        "write_expense_review",
+		Description: "Write a risk review without making the human decision.",
+	}, WriteExpenseReview)
+	if err != nil {
 		return nil, err
 	}
-	if err := add(functiontool.New(functiontool.Config{Name: "decide_expense", Description: "Record an explicit human approval or rejection."}, DecideExpense)); err != nil {
+
+	decideExpenseTool, err := functiontool.New(functiontool.Config{
+		Name:        "decide_expense",
+		Description: "Record an explicit human approval or rejection.",
+	}, DecideExpense)
+	if err != nil {
 		return nil, err
 	}
-	if err := add(functiontool.New(functiontool.Config{Name: "set_expense_report", Description: "Write the streamed markdown expense report state."}, SetExpenseReport)); err != nil {
+
+	setExpenseReportTool, err := functiontool.New(functiontool.Config{
+		Name:        "set_expense_report",
+		Description: "Write the streamed markdown expense report state.",
+	}, SetExpenseReport)
+	if err != nil {
 		return nil, err
 	}
-	if err := add(functiontool.New(functiontool.Config{Name: "mark_expense_ready", Description: "Mark the expense desk ready."}, MarkExpenseReady)); err != nil {
+
+	markReadyTool, err := functiontool.New(functiontool.Config{
+		Name:        "mark_expense_ready",
+		Description: "Mark the expense desk ready.",
+	}, MarkExpenseReady)
+	if err != nil {
 		return nil, err
 	}
-	return result, nil
+
+	return []adktool.Tool{
+		submitExpenseTool,
+		writeExpenseReviewTool,
+		decideExpenseTool,
+		setExpenseReportTool,
+		markReadyTool,
+	}, nil
 }

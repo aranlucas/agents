@@ -8,6 +8,7 @@ import (
 
 	"agents/internal/agentruntime"
 	"agents/internal/common"
+	"google.golang.org/adk/v2/agent"
 )
 
 const maxFitnessDocument = 1 << 20
@@ -40,28 +41,49 @@ type ReadyArgs struct {
 }
 type CurrentDateArgs struct{}
 
-func FetchActivities(ctx context.Context, tx *agentruntime.Transaction, input FetchActivitiesArgs, client *Strava, now func() time.Time) (Result, error) {
+// FetchActivities is the ADK-facing tool handler: it resolves the Strava
+// token, performs the API call, and publishes the resulting state. tokenCtx
+// carries the Strava token (via WithStravaToken) separately from ctx because
+// wrapping ctx directly would shadow its agent.Context-specific methods
+// (State, Actions) that publishState needs.
+func FetchActivities(ctx agent.Context, tokenCtx context.Context, input FetchActivitiesArgs, client *Strava, now func() time.Time) (Result, error) {
 	if client == nil {
 		return Result{}, errors.New("Strava client is required")
 	}
-	state := decodeState(tx)
-	if _, ok := StravaToken(ctx); !ok {
+	state := readState(ctx.State())
+	if _, ok := StravaToken(tokenCtx); !ok {
 		state.StravaConnected, state.Status = false, StatusIdle
-		writeState(tx, state)
+		if err := publishState(ctx, state); err != nil {
+			return Result{}, err
+		}
 		return fitnessFailure("strava_not_connected", "Connect Strava before syncing activities."), nil
 	}
 	state.StravaConnected, state.Status = true, StatusSyncing
-	activities, next, err := client.Activities(ctx, input.After, input.NextPageToken)
+	activities, next, err := client.Activities(tokenCtx, input.After, input.NextPageToken)
 	if err != nil {
 		state.Status = StatusIdle
-		writeState(tx, state)
-		if errors.Is(err, ErrStravaDisconnected) {
+		disconnected := errors.Is(err, ErrStravaDisconnected)
+		if disconnected {
 			state.StravaConnected = false
-			writeState(tx, state)
+		}
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
+		if disconnected {
 			return fitnessFailure("strava_unauthorized", "Reconnect Strava before syncing activities."), nil
 		}
 		return fitnessFailure("strava_api_error", "Strava activities could not be loaded."), nil
 	}
+	result := mergeFetchedActivities(&state, input, activities, next, now)
+	if err := publishState(ctx, state); err != nil {
+		return Result{}, err
+	}
+	return result, nil
+}
+
+// mergeFetchedActivities applies one fetched page to state: pure logic,
+// tested directly without a Strava client or ADK context.
+func mergeFetchedActivities(state *FitnessState, input FetchActivitiesArgs, activities []Activity, next string, now func() time.Time) Result {
 	if input.NextPageToken == nil || strings.TrimSpace(*input.NextPageToken) == "" || strings.TrimSpace(*input.NextPageToken) == "1" {
 		state.Activities = activities
 	} else {
@@ -75,44 +97,70 @@ func FetchActivities(ctx context.Context, tx *agentruntime.Transaction, input Fe
 	}
 	state.ActivitiesSyncedAt = now().UTC().Format(time.RFC3339)
 	state.Status = StatusPlanning
-	writeState(tx, state)
-	return Result{OK: true, Count: len(state.Activities), SyncedAt: state.ActivitiesSyncedAt, Activities: activities, NextPageToken: next}, nil
+	return Result{OK: true, Count: len(state.Activities), SyncedAt: state.ActivitiesSyncedAt, Activities: activities, NextPageToken: next}
 }
 
-func SetObjectiveResearch(_ context.Context, tx *agentruntime.Transaction, input ResearchArgs) (Result, error) {
+func SetObjectiveResearch(ctx agent.Context, input ResearchArgs) (Result, error) {
+	state := readState(ctx.State())
+	result, err := setObjectiveResearch(&state, input)
+	if err == nil && result.OK {
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
+	}
+	return result, err
+}
+
+func setObjectiveResearch(state *FitnessState, input ResearchArgs) (Result, error) {
 	if len(input.Research) > maxFitnessDocument {
 		return fitnessFailure("research_too_large", "objective research exceeds the allowed size"), nil
 	}
-	state := decodeState(tx)
 	state.ObjectiveResearch, state.Status = input.Research, StatusPlanning
-	writeState(tx, state)
 	return Result{OK: true, Length: len(input.Research)}, nil
 }
 
-func SetTrainingPlan(_ context.Context, tx *agentruntime.Transaction, input TrainingPlanArgs) (Result, error) {
+func SetTrainingPlan(ctx agent.Context, input TrainingPlanArgs) (Result, error) {
+	state := readState(ctx.State())
+	result, err := setTrainingPlan(&state, input)
+	if err == nil && result.OK {
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
+	}
+	return result, err
+}
+
+func setTrainingPlan(state *FitnessState, input TrainingPlanArgs) (Result, error) {
 	if len(input.Plan) > maxFitnessDocument {
 		return fitnessFailure("plan_too_large", "training plan exceeds the allowed size"), nil
 	}
-	state := decodeState(tx)
 	state.TrainingPlan, state.Status = input.Plan, StatusPlanning
-	writeState(tx, state)
 	return Result{OK: true, Length: len(input.Plan)}, nil
 }
 
-func MarkPlanReady(_ context.Context, tx *agentruntime.Transaction, input ReadyArgs) (Result, error) {
+func MarkPlanReady(ctx agent.Context, input ReadyArgs) (Result, error) {
+	state := readState(ctx.State())
+	result, err := markPlanReady(&state, input)
+	if err == nil && result.OK {
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
+	}
+	return result, err
+}
+
+func markPlanReady(state *FitnessState, input ReadyArgs) (Result, error) {
 	if len(input.Summary) > 10_000 {
 		return fitnessFailure("summary_too_large", "review summary exceeds the allowed size"), nil
 	}
-	state := decodeState(tx)
 	if strings.TrimSpace(state.TrainingPlan) == "" {
 		return fitnessFailure("training_plan_required", "a training plan is required before marking ready"), nil
 	}
 	state.Status, state.ReviewSummary = StatusReady, strings.TrimSpace(input.Summary)
-	writeState(tx, state)
 	return Result{OK: true}, nil
 }
 
-func GetCurrentDate(_ context.Context, _ *agentruntime.Transaction, _ CurrentDateArgs) (Result, error) {
+func GetCurrentDate(_ agent.Context, _ CurrentDateArgs) (Result, error) {
 	date := common.DateDetails(nil)
 	return Result{OK: true, Date: date.Date, Weekday: date.Weekday, Month: date.Month}, nil
 }

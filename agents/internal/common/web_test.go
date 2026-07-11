@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 )
 
 func TestBraveSearchCapsResultsAndNeverLeaksKey(t *testing.T) {
@@ -70,15 +69,5 @@ func TestWebLoaderExtractsAndTruncatesHTML(t *testing.T) {
 	}
 	if page.Title != "Example" || page.Text != "Example\nHel" || !page.Truncated || strings.Contains(page.Text, "secret") {
 		t.Fatalf("page = %#v", page)
-	}
-}
-
-type fixedClock struct{ value time.Time }
-
-func (f fixedClock) Now() time.Time { return f.value }
-func TestTodayUsesUTC(t *testing.T) {
-	got := Today(fixedClock{time.Date(2026, 7, 10, 23, 0, 0, 0, time.FixedZone("west", -8*3600))})
-	if got != "2026-07-11" {
-		t.Fatalf("Today() = %q", got)
 	}
 }
