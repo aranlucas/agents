@@ -53,6 +53,7 @@ func TestAllowedChatIDsFailClosed(t *testing.T) {
 type fakeClerk struct{ state clerkbackend.ConnectionState }
 
 func (f fakeClerk) MirrorTelegramLink(context.Context, int64, string) error { return nil }
+func (f fakeClerk) MirrorTelegramUnlink(context.Context, int64) error       { return nil }
 func (f fakeClerk) LinkedUserID(context.Context, int64) (string, error)     { return "", nil }
 func (f fakeClerk) OAuthConnections(context.Context, string) (clerkbackend.ConnectionState, error) {
 	return f.state, nil
