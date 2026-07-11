@@ -1,7 +1,6 @@
 package grocery
 
 import (
-	"context"
 	"errors"
 	"math"
 	"regexp"
@@ -10,6 +9,7 @@ import (
 
 	"agents/internal/agentruntime"
 	"agents/internal/common"
+	"google.golang.org/adk/v2/agent"
 )
 
 var (
@@ -50,7 +50,18 @@ type ReadyArgs struct {
 }
 type CurrentDateArgs struct{}
 
-func SetShoppingList(_ context.Context, tx *agentruntime.Transaction, input ShoppingListArgs) (Result, error) {
+func SetShoppingList(ctx agent.Context, input ShoppingListArgs) (Result, error) {
+	state := readState(ctx.State())
+	result, err := setShoppingList(&state, input)
+	if err == nil && result.OK {
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
+	}
+	return result, err
+}
+
+func setShoppingList(state *GroceryState, input ShoppingListArgs) (Result, error) {
 	if len(input.Items) > 500 || len(input.Notes) > 100_000 {
 		return groceryFailure("shopping_list_too_large", "shopping list or notes exceeds the allowed size"), nil
 	}
@@ -62,17 +73,25 @@ func SetShoppingList(_ context.Context, tx *agentruntime.Transaction, input Shop
 		}
 		items = append(items, item)
 	}
-	state := decodeState(tx)
 	state.ShoppingList, state.Status = items, StatusPlanning
 	if input.Notes != "" {
 		state.Notes = input.Notes
 	}
-	writeState(tx, state)
 	return Result{OK: true, Count: len(items)}, nil
 }
 
-func UpdateCart(_ context.Context, tx *agentruntime.Transaction, input CartArgs) (Result, error) {
-	state := decodeState(tx)
+func UpdateCart(ctx agent.Context, input CartArgs) (Result, error) {
+	state := readState(ctx.State())
+	result, err := updateCart(&state, input)
+	if err == nil && result.OK {
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
+	}
+	return result, err
+}
+
+func updateCart(state *GroceryState, input CartArgs) (Result, error) {
 	if !state.KrogerConnected {
 		return Result{}, ErrKrogerDisconnected
 	}
@@ -80,11 +99,21 @@ func UpdateCart(_ context.Context, tx *agentruntime.Transaction, input CartArgs)
 		return groceryFailure("invalid_cart", err.Error()), nil
 	}
 	state.Cart = append([]CartItem(nil), input.Items...)
-	writeState(tx, state)
 	return Result{OK: true, Count: len(input.Items)}, nil
 }
 
-func UpdatePantry(_ context.Context, tx *agentruntime.Transaction, input PantryArgs) (Result, error) {
+func UpdatePantry(ctx agent.Context, input PantryArgs) (Result, error) {
+	state := readState(ctx.State())
+	result, err := updatePantry(&state, input)
+	if err == nil && result.OK {
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
+	}
+	return result, err
+}
+
+func updatePantry(state *GroceryState, input PantryArgs) (Result, error) {
 	if len(input.Items) > 500 {
 		return groceryFailure("pantry_too_large", "pantry cannot exceed 500 items"), nil
 	}
@@ -98,46 +127,71 @@ func UpdatePantry(_ context.Context, tx *agentruntime.Transaction, input PantryA
 			}
 		}
 	}
-	state := decodeState(tx)
 	state.Pantry = append([]PantryItem(nil), input.Items...)
-	writeState(tx, state)
 	return Result{OK: true, Count: len(input.Items)}, nil
 }
 
-func SetMealPlan(_ context.Context, tx *agentruntime.Transaction, input MealPlanArgs) (Result, error) {
+func SetMealPlan(ctx agent.Context, input MealPlanArgs) (Result, error) {
+	state := readState(ctx.State())
+	result, err := setMealPlan(&state, input)
+	if err == nil && result.OK {
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
+	}
+	return result, err
+}
+
+func setMealPlan(state *GroceryState, input MealPlanArgs) (Result, error) {
 	if len(input.Plan) > maxGroceryDocument {
 		return groceryFailure("meal_plan_too_large", "meal plan exceeds the allowed size"), nil
 	}
-	state := decodeState(tx)
 	state.MealPlan, state.Status = input.Plan, StatusPlanning
-	writeState(tx, state)
 	return Result{OK: true, Length: len(input.Plan)}, nil
 }
 
-func SetWeeklyDeals(_ context.Context, tx *agentruntime.Transaction, input DealsArgs) (Result, error) {
+func SetWeeklyDeals(ctx agent.Context, input DealsArgs) (Result, error) {
+	state := readState(ctx.State())
+	result, err := setWeeklyDeals(&state, input)
+	if err == nil && result.OK {
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
+	}
+	return result, err
+}
+
+func setWeeklyDeals(state *GroceryState, input DealsArgs) (Result, error) {
 	if len(input.Deals) > maxGroceryDocument {
 		return groceryFailure("deals_too_large", "weekly deals exceed the allowed size"), nil
 	}
-	state := decodeState(tx)
 	state.WeeklyDeals = input.Deals
-	writeState(tx, state)
 	return Result{OK: true, Length: len(input.Deals)}, nil
 }
 
-func MarkListReady(_ context.Context, tx *agentruntime.Transaction, input ReadyArgs) (Result, error) {
+func MarkListReady(ctx agent.Context, input ReadyArgs) (Result, error) {
+	state := readState(ctx.State())
+	result, err := markListReady(&state, input)
+	if err == nil && result.OK {
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
+	}
+	return result, err
+}
+
+func markListReady(state *GroceryState, input ReadyArgs) (Result, error) {
 	if len(input.Summary) > 10_000 {
 		return groceryFailure("summary_too_large", "review summary exceeds the allowed size"), nil
 	}
-	state := decodeState(tx)
 	if len(state.ShoppingList) == 0 {
 		return groceryFailure("shopping_list_required", "a shopping list is required before marking ready"), nil
 	}
 	state.Status, state.ReviewSummary = StatusReady, strings.TrimSpace(input.Summary)
-	writeState(tx, state)
 	return Result{OK: true}, nil
 }
 
-func GetCurrentDate(_ context.Context, _ *agentruntime.Transaction, _ CurrentDateArgs) (Result, error) {
+func GetCurrentDate(_ agent.Context, _ CurrentDateArgs) (Result, error) {
 	date := common.DateDetails(nil)
 	return Result{OK: true, Date: date.Date, Weekday: date.Weekday, Month: date.Month}, nil
 }

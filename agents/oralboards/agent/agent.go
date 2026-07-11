@@ -1,20 +1,16 @@
 package oralboards
 
 import (
-	"context"
 	"errors"
-	"fmt"
 	"iter"
 	"strings"
 
-	"agents/internal/agentruntime"
 	"agents/oralboards/agent/tools"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
 	adktool "google.golang.org/adk/v2/tool"
-	"google.golang.org/adk/v2/tool/functiontool"
 )
 
 type PhaseModels struct {
@@ -84,78 +80,78 @@ func buildPhase(name, instruction string, m model.LLM, corpus *Corpus, allowed [
 }
 
 func phaseTools(corpus *Corpus) ([]adktool.Tool, error) {
-	var result []adktool.Tool
-	add := func(value adktool.Tool, err error) error {
-		if err != nil {
-			return err
-		}
-		result = append(result, value)
-		return nil
-	}
-	if err := add(tools.NewSearchDocs(func(ctx agent.Context, in SearchArgs) (SearchResponse, error) {
-		tx := agentruntime.NewTransactionFromState(ctx.State())
-		response, err := corpus.SearchDocs(ctx, tx, in.Query, in.Collection)
+	searchDocsTool, err := tools.NewSearchDocs(func(ctx agent.Context, in SearchArgs) (SearchResponse, error) {
+		state := readState(ctx.State())
+		response, err := corpus.SearchDocs(ctx, &state, in.Query, in.Collection)
 		if err != nil {
 			return SearchResponse{}, err
 		}
-		if err := agentruntime.Commit(ctx, tx); err != nil {
+		if err := publishState(ctx, state); err != nil {
 			return SearchResponse{}, err
 		}
 		return response, nil
-	})); err != nil {
+	})
+	if err != nil {
 		return nil, err
 	}
-	if err := add(tools.NewReadDoc(func(ctx agent.Context, in ReadDocArgs) (Document, error) { return corpus.ReadDoc(ctx, in.Filepath) })); err != nil {
-		return nil, err
-	}
-	if err := add(tools.NewSetCase(wrap(SetCase))); err != nil {
-		return nil, err
-	}
-	if err := add(tools.NewSetPhase(wrap(SetPhase))); err != nil {
-		return nil, err
-	}
-	if err := add(tools.NewSetLoadingStep(wrap(SetLoadingStep))); err != nil {
-		return nil, err
-	}
-	if err := add(tools.NewSetQuestionTarget(wrap(SetQuestionTarget))); err != nil {
-		return nil, err
-	}
-	if err := add(tools.NewAskProbe(wrap(AskProbe))); err != nil {
-		return nil, err
-	}
-	if err := add(tools.NewAppendExchange(wrap(AppendExchange))); err != nil {
-		return nil, err
-	}
-	if err := add(tools.NewSetScoreCard(wrap(SetScoreCard))); err != nil {
-		return nil, err
-	}
-	if err := add(tools.NewCompleteExamination(wrap(CompleteExamination))); err != nil {
-		return nil, err
-	}
-	return result, nil
-}
 
-type stateHandler[A any] func(context.Context, *agentruntime.Transaction, A) (Result, error)
-
-func wrap[A any](handler stateHandler[A]) functiontool.Func[A, Result] {
-	return func(ctx agent.Context, input A) (Result, error) {
-		tx := agentruntime.NewTransactionFromState(ctx.State())
-		output, err := handler(ctx, tx, input)
-		if err != nil {
-			return Result{}, err
-		}
-		if output.OK {
-			if probeFlag, exists := tx.Get(session.KeyPrefixTemp + "probe_asked_now"); exists {
-				if err := ctx.State().Set(session.KeyPrefixTemp+"probe_asked_now", probeFlag); err != nil {
-					return Result{}, fmt.Errorf("set oralboards invocation guard: %w", err)
-				}
-			}
-			if err := agentruntime.Commit(ctx, tx); err != nil {
-				return Result{}, fmt.Errorf("commit oralboards state: %w", err)
-			}
-		}
-		return output, nil
+	readDocTool, err := tools.NewReadDoc(func(ctx agent.Context, in ReadDocArgs) (Document, error) { return corpus.ReadDoc(ctx, in.Filepath) })
+	if err != nil {
+		return nil, err
 	}
+
+	setCaseTool, err := tools.NewSetCase(SetCase)
+	if err != nil {
+		return nil, err
+	}
+
+	setPhaseTool, err := tools.NewSetPhase(SetPhase)
+	if err != nil {
+		return nil, err
+	}
+
+	setLoadingStepTool, err := tools.NewSetLoadingStep(SetLoadingStep)
+	if err != nil {
+		return nil, err
+	}
+
+	setQuestionTargetTool, err := tools.NewSetQuestionTarget(SetQuestionTarget)
+	if err != nil {
+		return nil, err
+	}
+
+	askProbeTool, err := tools.NewAskProbe(AskProbe)
+	if err != nil {
+		return nil, err
+	}
+
+	appendExchangeTool, err := tools.NewAppendExchange(AppendExchange)
+	if err != nil {
+		return nil, err
+	}
+
+	setScoreCardTool, err := tools.NewSetScoreCard(SetScoreCard)
+	if err != nil {
+		return nil, err
+	}
+
+	completeExaminationTool, err := tools.NewCompleteExamination(CompleteExamination)
+	if err != nil {
+		return nil, err
+	}
+
+	return []adktool.Tool{
+		searchDocsTool,
+		readDocTool,
+		setCaseTool,
+		setPhaseTool,
+		setLoadingStepTool,
+		setQuestionTargetTool,
+		askProbeTool,
+		appendExchangeTool,
+		setScoreCardTool,
+		completeExaminationTool,
+	}, nil
 }
 
 func runOrchestrator(ctx agent.InvocationContext, children map[string]agent.Agent) iter.Seq2[*session.Event, error] {
@@ -337,7 +333,7 @@ func stateDeltaEvent(ctx agent.InvocationContext, delta map[string]any) *session
 }
 
 func stateFromSession(state session.ReadonlyState) State {
-	return decodeState(agentruntime.NewTransactionFromState(state))
+	return readState(state)
 }
 
 const (

@@ -3,7 +3,6 @@ package common
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -256,5 +255,3 @@ func truncateUTF8(value string, maximum int) string {
 	}
 	return value[:end]
 }
-
-func (r SearchResult) String() string { return fmt.Sprintf("%s (%s)", r.Title, r.URL) }

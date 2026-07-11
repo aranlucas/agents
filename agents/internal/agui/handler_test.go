@@ -393,9 +393,7 @@ func rememberTool(t *testing.T) tool.Tool {
 		Name:        "remember_fact",
 		Description: "Persist a fact to session state.",
 	}, func(ctx agent.Context, args rememberArgs) (rememberResult, error) {
-		txn := agentruntime.NewTransactionFromState(ctx.State())
-		txn.Set("favorite_color", args.Note)
-		if err := agentruntime.Commit(ctx, txn); err != nil {
+		if err := ctx.State().Set("favorite_color", args.Note); err != nil {
 			return rememberResult{}, err
 		}
 		return rememberResult{OK: true}, nil

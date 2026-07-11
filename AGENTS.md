@@ -38,20 +38,18 @@ The gateway runs on port 8000. It mounts `/<agent>/agui`,
 
 ## Go agent conventions
 
-- Use strong domain types. Restrict `any` to JSON, ADK, MCP, and other library boundaries.
+- Use strong domain types. Restrict `any`
 - Keep each agent under `agents/<name>/agent/` with `agent.go`, typed state,
   embedded `instructions.md`, deterministic tests, and a `tools/` package with
   one file per registered tool.
-- Construct tools with ADK-Go `functiontool.New`; use task-mode child agents or
-  `agent.New` custom routing for deterministic orchestration.
-- State is authoritative. Commit validated state deltas through the shared
-  transaction helper; never paste full artifacts into chat.
-- Temporary secrets use `session.KeyPrefixTemp` and must never enter D1,
-  AG-UI state snapshots, logs, or errors.
-- Remote HTTP/MCP clients require TLS (loopback HTTP is test-only), bounded
-  bodies, deadlines, allowlists, and sanitized errors.
+- Register tools by building each `functiontool.New` (or `tools.NewXxx`) call
+  as its own named variable with an individual `if err != nil` check, then
+  return them via an explicit slice literal — not a generic `add`-closure
+  helper. This is more verbose than the generic-helper version, but it's the
+  "boring and obvious" style the ADK docs consistently use — worth preferring
+  here since anyone maintaining this alongside other ADK agents will expect
+  it.
 - D1 and R2 are mandatory. Never add a local database or alternate persistence fallback.
-- Preserve `/resume` as the only public agent route.
 
 ## Adding an agent
 

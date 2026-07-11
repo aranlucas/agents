@@ -3,7 +3,6 @@ package oralboards
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -13,8 +12,6 @@ import (
 	"strings"
 
 	_ "modernc.org/sqlite"
-
-	"agents/internal/agentruntime"
 )
 
 const maxSearchCalls = 2
@@ -72,11 +69,10 @@ func (c *Corpus) Close() error {
 	return c.db.Close()
 }
 
-func (c *Corpus) SearchDocs(ctx context.Context, tx *agentruntime.Transaction, query, collection string) (SearchResponse, error) {
-	if c == nil || c.db == nil || tx == nil {
-		return SearchResponse{}, errors.New("corpus and transaction are required")
+func (c *Corpus) SearchDocs(ctx context.Context, state *State, query, collection string) (SearchResponse, error) {
+	if c == nil || c.db == nil || state == nil {
+		return SearchResponse{}, errors.New("corpus and state are required")
 	}
-	state := decodeState(tx)
 	if state.SearchCalls >= maxSearchCalls {
 		return SearchResponse{}, ErrSearchBudgetExhausted
 	}
@@ -125,7 +121,7 @@ WHERE overall_rank <= ? OR collection_rank <= ? ORDER BY score DESC LIMIT ?`, ar
 	if err := rows.Err(); err != nil {
 		return SearchResponse{}, errors.New("oralboards corpus search failed")
 	}
-	tx.Set("_search_docs_calls", state.SearchCalls+1)
+	state.SearchCalls++
 	return SearchResponse{Status: "success", Results: results, Count: len(results)}, nil
 }
 
@@ -185,25 +181,4 @@ func boundedPassage(body string, center, maxChars int) string {
 	start := max(0, center-maxChars/2)
 	end := min(len(body), start+maxChars)
 	return body[start:end]
-}
-
-func decodeState(tx *agentruntime.Transaction) State {
-	state := Defaults()
-	if tx == nil {
-		return state
-	}
-	raw, err := json.Marshal(tx.Snapshot())
-	if err == nil {
-		_ = json.Unmarshal(raw, &state)
-	}
-	if state.CaseSources == nil {
-		state.CaseSources = []CaseSource{}
-	}
-	if state.Transcript == nil {
-		state.Transcript = []Exchange{}
-	}
-	if state.ScoreSummary == nil {
-		state.ScoreSummary = []SkillsetScore{}
-	}
-	return state
 }

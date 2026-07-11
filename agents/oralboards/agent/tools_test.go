@@ -1,11 +1,8 @@
 package oralboards
 
 import (
-	"context"
 	"errors"
 	"testing"
-
-	"agents/internal/agentruntime"
 )
 
 func TestRoutePhase(t *testing.T) {
@@ -37,20 +34,20 @@ func TestQuestionCraftRejectsStackedAndAnswerLeakingQuestions(t *testing.T) {
 }
 
 func TestProbePreventsScoringInSameTurn(t *testing.T) {
-	tx := agentruntime.NewTransaction(StateDefaults())
-	if _, err := AskProbe(context.Background(), tx, ProbeArgs{Question: "What supports that decision?"}); err != nil {
+	state := Defaults()
+	if _, err := askProbe(&state, ProbeArgs{Question: "What supports that decision?"}); err != nil {
 		t.Fatal(err)
 	}
-	_, err := AppendExchange(context.Background(), tx, AppendExchangeArgs{Skill: SkillAnalyzeEvaluate, Score: 2})
+	_, err := appendExchange(&state, true, AppendExchangeArgs{Skill: SkillAnalyzeEvaluate, Score: 2})
 	if !errors.Is(err, ErrProbeNotAnswered) {
 		t.Fatalf("error = %v", err)
 	}
 }
 
 func TestInvalidScoreDoesNotMutateTranscript(t *testing.T) {
-	tx := agentruntime.NewTransaction(StateDefaults())
-	_, err := AppendExchange(context.Background(), tx, AppendExchangeArgs{Skill: SkillRemember, Score: 4})
-	if !errors.Is(err, ErrInvalidScore) || len(decodeState(tx).Transcript) != 0 {
-		t.Fatalf("error=%v state=%#v", err, decodeState(tx))
+	state := Defaults()
+	_, err := appendExchange(&state, false, AppendExchangeArgs{Skill: SkillRemember, Score: 4})
+	if !errors.Is(err, ErrInvalidScore) || len(state.Transcript) != 0 {
+		t.Fatalf("error=%v state=%#v", err, state)
 	}
 }

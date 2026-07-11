@@ -1,9 +1,9 @@
 package agentruntime
 
 import (
-	"errors"
+	"iter"
 
-	"google.golang.org/adk/v2/agent"
+	"google.golang.org/adk/v2/session"
 )
 
 // StructuredError is safe for both tool results and AG-UI error events.
@@ -12,31 +12,23 @@ type StructuredError struct {
 	Message string `json:"message"`
 }
 
-// ToolResult gives every state tool a stable success/error envelope.
-type ToolResult struct {
-	OK    bool             `json:"ok"`
-	Error *StructuredError `json:"error,omitempty"`
-}
+// StateMap is a small state implementation useful for deterministic tool tests.
+type StateMap map[string]any
 
-func Success() ToolResult { return ToolResult{OK: true} }
-func Failure(code, message string) ToolResult {
-	return ToolResult{Error: &StructuredError{Code: code, Message: message}}
+func (s StateMap) Get(key string) (any, error) {
+	value, ok := s[key]
+	if !ok {
+		return nil, session.ErrStateKeyNotExist
+	}
+	return value, nil
 }
-
-// Commit applies a successful transaction to the invocation event delta.
-func Commit(ctx agent.Context, transaction *Transaction) error {
-	if ctx == nil || transaction == nil {
-		return errors.New("tool context and transaction are required")
+func (s StateMap) Set(key string, value any) error { s[key] = value; return nil }
+func (s StateMap) All() iter.Seq2[string, any] {
+	return func(yield func(string, any) bool) {
+		for key, value := range s {
+			if !yield(key, value) {
+				return
+			}
+		}
 	}
-	actions := ctx.Actions()
-	if actions == nil {
-		return errors.New("tool actions are unavailable")
-	}
-	if actions.StateDelta == nil {
-		actions.StateDelta = make(map[string]any)
-	}
-	for key, value := range transaction.Changes() {
-		actions.StateDelta[key] = value
-	}
-	return nil
 }

@@ -1,19 +1,15 @@
 package grocery
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 
 	"agents/grocery/agent/tools"
-	"agents/internal/agentruntime"
 	"agents/internal/common"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
 	adktool "google.golang.org/adk/v2/tool"
-	"google.golang.org/adk/v2/tool/functiontool"
 	"google.golang.org/genai"
 )
 
@@ -51,51 +47,73 @@ func newAgent(m model.LLM, kroger *Kroger, search *common.BraveSearch, loader *c
 }
 
 func groceryTools(search *common.BraveSearch, loader *common.WebLoader) ([]adktool.Tool, error) {
-	var result []adktool.Tool
-	add := func(value adktool.Tool, err error) error {
-		if err != nil {
-			return err
-		}
-		result = append(result, value)
-		return nil
-	}
-	if err := add(tools.NewSetShoppingList(wrap(SetShoppingList))); err != nil {
+	setShoppingListTool, err := tools.NewSetShoppingList(SetShoppingList)
+	if err != nil {
 		return nil, err
 	}
-	if err := add(tools.NewUpdateCart(wrap(UpdateCart))); err != nil {
+
+	updateCartTool, err := tools.NewUpdateCart(UpdateCart)
+	if err != nil {
 		return nil, err
 	}
-	if err := add(tools.NewUpdatePantry(wrap(UpdatePantry))); err != nil {
+
+	updatePantryTool, err := tools.NewUpdatePantry(UpdatePantry)
+	if err != nil {
 		return nil, err
 	}
-	if err := add(tools.NewSetMealPlan(wrap(SetMealPlan))); err != nil {
+
+	setMealPlanTool, err := tools.NewSetMealPlan(SetMealPlan)
+	if err != nil {
 		return nil, err
 	}
-	if err := add(tools.NewSetWeeklyDeals(wrap(SetWeeklyDeals))); err != nil {
+
+	setWeeklyDealsTool, err := tools.NewSetWeeklyDeals(SetWeeklyDeals)
+	if err != nil {
 		return nil, err
 	}
-	if err := add(tools.NewMarkListReady(wrap(MarkListReady))); err != nil {
+
+	markListReadyTool, err := tools.NewMarkListReady(MarkListReady)
+	if err != nil {
 		return nil, err
 	}
-	if err := add(tools.NewGetCurrentDate(wrap(GetCurrentDate))); err != nil {
+
+	getCurrentDateTool, err := tools.NewGetCurrentDate(GetCurrentDate)
+	if err != nil {
 		return nil, err
 	}
+
+	result := []adktool.Tool{
+		setShoppingListTool,
+		updateCartTool,
+		updatePantryTool,
+		setMealPlanTool,
+		setWeeklyDealsTool,
+		markListReadyTool,
+		getCurrentDateTool,
+	}
+
 	if search != nil {
-		if err := add(tools.NewWebSearch(func(ctx agent.Context, input SearchArgs) (SearchResult, error) {
+		webSearchTool, err := tools.NewWebSearch(func(ctx agent.Context, input SearchArgs) (SearchResult, error) {
 			results, err := search.Search(ctx, input.Query, input.Count)
 			return SearchResult{Results: results}, err
-		})); err != nil {
+		})
+		if err != nil {
 			return nil, err
 		}
+		result = append(result, webSearchTool)
 	}
+
 	if loader != nil {
-		if err := add(tools.NewLoadWebPage(func(ctx agent.Context, input LoadPageArgs) (LoadPageResult, error) {
+		loadWebPageTool, err := tools.NewLoadWebPage(func(ctx agent.Context, input LoadPageArgs) (LoadPageResult, error) {
 			page, err := loader.Load(ctx, input.URL)
 			return LoadPageResult{Page: page}, err
-		})); err != nil {
+		})
+		if err != nil {
 			return nil, err
 		}
+		result = append(result, loadWebPageTool)
 	}
+
 	return result, nil
 }
 
@@ -133,22 +151,4 @@ func safeContextBoundary(content *genai.Content) bool {
 		}
 	}
 	return true
-}
-
-type handler[A any] func(context.Context, *agentruntime.Transaction, A) (Result, error)
-
-func wrap[A any](handler handler[A]) functiontool.Func[A, Result] {
-	return func(ctx agent.Context, input A) (Result, error) {
-		tx := agentruntime.NewTransactionFromState(ctx.State())
-		result, err := handler(ctx, tx, input)
-		if err != nil {
-			return Result{}, err
-		}
-		if result.OK {
-			if err := agentruntime.Commit(ctx, tx); err != nil {
-				return Result{}, fmt.Errorf("commit grocery state: %w", err)
-			}
-		}
-		return result, nil
-	}
 }

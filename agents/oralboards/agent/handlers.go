@@ -1,12 +1,12 @@
 package oralboards
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strings"
 
-	"agents/internal/agentruntime"
+	"google.golang.org/adk/v2/agent"
+	"google.golang.org/adk/v2/session"
 )
 
 var (
@@ -58,8 +58,20 @@ type ScoreCardArgs struct {
 	Outcome      string          `json:"outcome"`
 }
 
-func SetCase(_ context.Context, tx *agentruntime.Transaction, in SetCaseArgs) (Result, error) {
-	if tx == nil || strings.TrimSpace(in.Case) == "" {
+func SetCase(ctx agent.Context, in SetCaseArgs) (Result, error) {
+	state := readState(ctx.State())
+	result, err := setCase(&state, in)
+	if err != nil {
+		return Result{}, err
+	}
+	if pubErr := publishState(ctx, state); pubErr != nil {
+		return Result{}, pubErr
+	}
+	return result, nil
+}
+
+func setCase(state *State, in SetCaseArgs) (Result, error) {
+	if strings.TrimSpace(in.Case) == "" {
 		return Result{}, errors.New("case is required")
 	}
 	if in.CaseSources == nil {
@@ -68,44 +80,95 @@ func SetCase(_ context.Context, tx *agentruntime.Transaction, in SetCaseArgs) (R
 	if in.CasePassages == nil {
 		in.CasePassages = []string{}
 	}
-	tx.Set("case", in.Case)
-	tx.Set("case_sources", in.CaseSources)
-	tx.Set("case_passages", strings.Join(in.CasePassages, "\n\n---\n\n"))
-	tx.Set("interview_complete", false)
-	tx.Set("status", "presenting")
-	tx.Set("_search_docs_calls", 0)
+	state.Case = in.Case
+	state.CaseSources = in.CaseSources
+	state.CasePassages = strings.Join(in.CasePassages, "\n\n---\n\n")
+	state.InterviewComplete = false
+	state.Status = "presenting"
+	state.SearchCalls = 0
 	return Result{OK: true, Status: "success", Length: len(in.Case)}, nil
 }
 
-func SetPhase(_ context.Context, tx *agentruntime.Transaction, in SetPhaseArgs) (Result, error) {
+func SetPhase(ctx agent.Context, in SetPhaseArgs) (Result, error) {
+	state := readState(ctx.State())
+	result, err := setPhase(&state, in)
+	if err != nil {
+		return Result{}, err
+	}
+	if pubErr := publishState(ctx, state); pubErr != nil {
+		return Result{}, pubErr
+	}
+	return result, nil
+}
+
+func setPhase(state *State, in SetPhaseArgs) (Result, error) {
 	switch in.Phase {
 	case "presenting", "questioning", "complete":
 	default:
 		return Result{}, ErrInvalidPhase
 	}
-	tx.Set("status", in.Phase)
+	state.Status = in.Phase
 	return Result{OK: true, Status: "success"}, nil
 }
 
-func SetLoadingStep(_ context.Context, tx *agentruntime.Transaction, in LoadingArgs) (Result, error) {
-	if tx == nil {
-		return Result{}, errors.New("transaction is required")
+func SetLoadingStep(ctx agent.Context, in LoadingArgs) (Result, error) {
+	state := readState(ctx.State())
+	result, err := setLoadingStep(&state, in)
+	if err != nil {
+		return Result{}, err
 	}
-	tx.Set("loading_step", strings.TrimSpace(in.Step))
+	if pubErr := publishState(ctx, state); pubErr != nil {
+		return Result{}, pubErr
+	}
+	return result, nil
+}
+
+func setLoadingStep(state *State, in LoadingArgs) (Result, error) {
+	state.LoadingStep = strings.TrimSpace(in.Step)
 	return Result{OK: true, Status: "success"}, nil
 }
 
-func SetQuestionTarget(_ context.Context, tx *agentruntime.Transaction, in TargetArgs) (Result, error) {
+func SetQuestionTarget(ctx agent.Context, in TargetArgs) (Result, error) {
+	state := readState(ctx.State())
+	result, err := setQuestionTarget(&state, in)
+	if err != nil {
+		return Result{}, err
+	}
+	if pubErr := publishState(ctx, state); pubErr != nil {
+		return Result{}, pubErr
+	}
+	return result, nil
+}
+
+func setQuestionTarget(state *State, in TargetArgs) (Result, error) {
 	if strings.TrimSpace(in.Skillset) == "" || !validSkill(in.Skill) {
 		return Result{}, errors.New("valid skillset and skill are required")
 	}
-	tx.Set("target_skillset", in.Skillset)
-	tx.Set("target_skill", in.Skill)
+	state.TargetSkillset = in.Skillset
+	state.TargetSkill = in.Skill
 	return Result{OK: true, Status: "success"}, nil
 }
 
-func AskProbe(_ context.Context, tx *agentruntime.Transaction, in ProbeArgs) (Result, error) {
-	state := decodeState(tx)
+// AskProbe is the ADK-facing tool handler for ask_probe. It sets the
+// temp:probe_asked_now invocation guard directly on ctx.State() (not part of
+// the typed State struct) so append_exchange can refuse to score in the same
+// turn as an unanswered probe.
+func AskProbe(ctx agent.Context, in ProbeArgs) (Result, error) {
+	state := readState(ctx.State())
+	result, err := askProbe(&state, in)
+	if err != nil {
+		return Result{}, err
+	}
+	if pubErr := publishState(ctx, state); pubErr != nil {
+		return Result{}, pubErr
+	}
+	if err := ctx.State().Set(session.KeyPrefixTemp+"probe_asked_now", true); err != nil {
+		return Result{}, fmt.Errorf("set oralboards invocation guard: %w", err)
+	}
+	return result, nil
+}
+
+func askProbe(state *State, in ProbeArgs) (Result, error) {
 	if state.ActiveProbe != "" {
 		return Result{}, ErrProbeAlreadyUsed
 	}
@@ -113,15 +176,30 @@ func AskProbe(_ context.Context, tx *agentruntime.Transaction, in ProbeArgs) (Re
 	if question == "" {
 		return Result{}, errors.New("probe question is required")
 	}
-	tx.Set("active_probe", question)
-	tx.Set("current_question", question)
-	tx.Set("_search_docs_calls", 0)
-	tx.Set("temp:probe_asked_now", true)
+	state.ActiveProbe = question
+	state.CurrentQuestion = question
+	state.SearchCalls = 0
 	return Result{OK: true, Status: "success", Message: "Probe question displayed."}, nil
 }
 
-func AppendExchange(_ context.Context, tx *agentruntime.Transaction, in AppendExchangeArgs) (Result, error) {
-	if value, _ := tx.Get("temp:probe_asked_now"); value == true {
+// AppendExchange is the ADK-facing tool handler for append_exchange. It
+// reads the temp:probe_asked_now invocation guard directly from ctx.State()
+// (set by AskProbe above) before running the pure state-mutation logic.
+func AppendExchange(ctx agent.Context, in AppendExchangeArgs) (Result, error) {
+	probeAskedNow, _ := ctx.State().Get(session.KeyPrefixTemp + "probe_asked_now")
+	state := readState(ctx.State())
+	result, err := appendExchange(&state, probeAskedNow == true, in)
+	if err != nil {
+		return Result{}, err
+	}
+	if pubErr := publishState(ctx, state); pubErr != nil {
+		return Result{}, pubErr
+	}
+	return result, nil
+}
+
+func appendExchange(state *State, probeAskedNow bool, in AppendExchangeArgs) (Result, error) {
+	if probeAskedNow {
 		return Result{}, ErrProbeNotAnswered
 	}
 	if in.Score < 1 || in.Score > 3 {
@@ -130,21 +208,30 @@ func AppendExchange(_ context.Context, tx *agentruntime.Transaction, in AppendEx
 	if !validSkill(in.Skill) {
 		return Result{}, errors.New("invalid skill")
 	}
-	state := decodeState(tx)
 	if in.Citations == nil {
 		in.Citations = []CaseSource{}
 	}
 	state.Transcript = append(state.Transcript, Exchange{Question: in.Question, Answer: in.Answer, Skillset: in.Skillset, Skill: in.Skill, Feedback: in.Feedback, IdealResponse: in.IdealResponse, Score: in.Score, Citations: in.Citations})
-	tx.Set("transcript", state.Transcript)
-	tx.Set("status", "questioning")
-	for _, key := range []string{"current_question", "active_feedback", "active_ideal_response", "active_probe", "target_skillset", "target_skill"} {
-		tx.Set(key, "")
-	}
-	tx.Set("_search_docs_calls", 0)
+	state.Status = "questioning"
+	state.CurrentQuestion, state.ActiveFeedback, state.ActiveIdealResponse, state.ActiveProbe, state.TargetSkillset = "", "", "", "", ""
+	state.TargetSkill = ""
+	state.SearchCalls = 0
 	return Result{OK: true, Status: "success", Count: len(state.Transcript)}, nil
 }
 
-func SetScoreCard(_ context.Context, tx *agentruntime.Transaction, in ScoreCardArgs) (Result, error) {
+func SetScoreCard(ctx agent.Context, in ScoreCardArgs) (Result, error) {
+	state := readState(ctx.State())
+	result, err := setScoreCard(&state, in)
+	if err != nil {
+		return Result{}, err
+	}
+	if pubErr := publishState(ctx, state); pubErr != nil {
+		return Result{}, pubErr
+	}
+	return result, nil
+}
+
+func setScoreCard(state *State, in ScoreCardArgs) (Result, error) {
 	if strings.TrimSpace(in.Markdown) == "" {
 		return Result{}, errors.New("score card is required")
 	}
@@ -159,15 +246,19 @@ func SetScoreCard(_ context.Context, tx *agentruntime.Transaction, in ScoreCardA
 	if in.ScoreSummary == nil {
 		in.ScoreSummary = []SkillsetScore{}
 	}
-	tx.Set("score_card", in.Markdown)
-	tx.Set("score_summary", in.ScoreSummary)
-	tx.Set("outcome", in.Outcome)
-	tx.Set("status", "complete")
+	state.ScoreCard = in.Markdown
+	state.ScoreSummary = in.ScoreSummary
+	state.Outcome = in.Outcome
+	state.Status = "complete"
 	return Result{OK: true, Status: "success", Length: len(in.Markdown)}, nil
 }
 
-func CompleteExamination(_ context.Context, tx *agentruntime.Transaction, _ struct{}) (Result, error) {
-	tx.Set("interview_complete", true)
+func CompleteExamination(ctx agent.Context, _ struct{}) (Result, error) {
+	state := readState(ctx.State())
+	state.InterviewComplete = true
+	if err := publishState(ctx, state); err != nil {
+		return Result{}, err
+	}
 	return Result{OK: true, Status: "success"}, nil
 }
 

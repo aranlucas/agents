@@ -4,8 +4,6 @@ import (
 	"errors"
 	"path/filepath"
 	"testing"
-
-	"agents/internal/agentruntime"
 )
 
 func openTestCorpus(t *testing.T) *Corpus {
@@ -20,20 +18,21 @@ func openTestCorpus(t *testing.T) *Corpus {
 
 func TestSearchDocsEnforcesTwoCallBudget(t *testing.T) {
 	corpus := openTestCorpus(t)
-	tx := agentruntime.NewTransaction(StateDefaults())
+	state := Defaults()
 	for range 2 {
-		result, err := corpus.SearchDocs(t.Context(), tx, "pulp therapy", "")
+		result, err := corpus.SearchDocs(t.Context(), &state, "pulp therapy", "")
 		if err != nil || result.Count == 0 {
 			t.Fatalf("search result=%#v err=%v", result, err)
 		}
 	}
-	if _, err := corpus.SearchDocs(t.Context(), tx, "trauma", ""); !errors.Is(err, ErrSearchBudgetExhausted) {
+	if _, err := corpus.SearchDocs(t.Context(), &state, "trauma", ""); !errors.Is(err, ErrSearchBudgetExhausted) {
 		t.Fatalf("error = %v", err)
 	}
 }
 
 func TestSearchDocsIncludesEveryCollectionInBroadCandidatePool(t *testing.T) {
-	result, err := openTestCorpus(t).SearchDocs(t.Context(), agentruntime.NewTransaction(StateDefaults()), "caries", "")
+	state := Defaults()
+	result, err := openTestCorpus(t).SearchDocs(t.Context(), &state, "caries", "")
 	if err != nil {
 		t.Fatal(err)
 	}

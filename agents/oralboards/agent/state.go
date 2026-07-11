@@ -1,6 +1,12 @@
 package oralboards
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+
+	"google.golang.org/adk/v2/agent"
+	"google.golang.org/adk/v2/session"
+)
 
 const AppName = "oralboards_agent"
 
@@ -68,4 +74,62 @@ func StateDefaults() map[string]any {
 	var result map[string]any
 	_ = json.Unmarshal(raw, &result)
 	return result
+}
+
+func readState(source session.ReadonlyState) State {
+	state := Defaults()
+	values := make(map[string]any)
+	if source != nil {
+		for key, value := range source.All() {
+			values[key] = value
+		}
+	}
+	encoded, err := json.Marshal(values)
+	if err == nil {
+		_ = json.Unmarshal(encoded, &state)
+	}
+	if state.CaseSources == nil {
+		state.CaseSources = []CaseSource{}
+	}
+	if state.Transcript == nil {
+		state.Transcript = []Exchange{}
+	}
+	if state.ScoreSummary == nil {
+		state.ScoreSummary = []SkillsetScore{}
+	}
+	return state
+}
+
+func publishState(ctx agent.Context, state State) error {
+	s := ctx.State()
+	fields := []struct {
+		key   string
+		value any
+	}{
+		{"case", state.Case},
+		{"case_sources", state.CaseSources},
+		{"case_passages", state.CasePassages},
+		{"transcript", state.Transcript},
+		{"score_card", state.ScoreCard},
+		{"score_summary", state.ScoreSummary},
+		{"outcome", state.Outcome},
+		{"status", state.Status},
+		{"loading_step", state.LoadingStep},
+		{"current_question", state.CurrentQuestion},
+		{"interview_complete", state.InterviewComplete},
+		{"active_feedback", state.ActiveFeedback},
+		{"active_ideal_response", state.ActiveIdealResponse},
+		{"active_probe", state.ActiveProbe},
+		{"target_skillset", state.TargetSkillset},
+		{"target_skill", state.TargetSkill},
+		{"question_craft_feedback", state.QuestionCraftFeedback},
+		{"_search_docs_calls", state.SearchCalls},
+		{"user_id", state.UserID},
+	}
+	for _, field := range fields {
+		if err := s.Set(field.key, field.value); err != nil {
+			return fmt.Errorf("set %s: %w", field.key, err)
+		}
+	}
+	return nil
 }

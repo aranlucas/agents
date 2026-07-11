@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"agents/internal/agentruntime"
+	"google.golang.org/adk/v2/agent"
+	"google.golang.org/adk/v2/session"
 )
 
 // Size caps for trends state mutation inputs. Row/column bounds mirror
@@ -84,12 +86,17 @@ func failure(code, message string) Result {
 	return Result{Error: &agentruntime.StructuredError{Code: code, Message: message}}
 }
 
-func decodeState(tx *agentruntime.Transaction) TrendsState {
+func readState(source session.ReadonlyState) TrendsState {
 	state := Defaults()
-	if tx != nil {
-		if encoded, err := json.Marshal(tx.Snapshot()); err == nil {
-			_ = json.Unmarshal(encoded, &state)
+	values := make(map[string]any)
+	if source != nil {
+		for key, value := range source.All() {
+			values[key] = value
 		}
+	}
+	encoded, err := json.Marshal(values)
+	if err == nil {
+		_ = json.Unmarshal(encoded, &state)
 	}
 	if state.Columns == nil {
 		state.Columns = []string{}
@@ -103,15 +110,27 @@ func decodeState(tx *agentruntime.Transaction) TrendsState {
 	return state
 }
 
-func writeState(tx *agentruntime.Transaction, state TrendsState) {
-	tx.Set("query", state.Query)
-	tx.Set("generated_sql", state.GeneratedSQL)
-	tx.Set("columns", state.Columns)
-	tx.Set("rows", state.Rows)
-	tx.Set("insights", state.Insights)
-	tx.Set("status", state.Status)
-	tx.Set("error", state.Error)
-	tx.Set("user_id", state.UserID)
+func publishState(ctx agent.Context, state TrendsState) error {
+	s := ctx.State()
+	fields := []struct {
+		key   string
+		value any
+	}{
+		{"query", state.Query},
+		{"generated_sql", state.GeneratedSQL},
+		{"columns", state.Columns},
+		{"rows", state.Rows},
+		{"insights", state.Insights},
+		{"status", state.Status},
+		{"error", state.Error},
+		{"user_id", state.UserID},
+	}
+	for _, field := range fields {
+		if err := s.Set(field.key, field.value); err != nil {
+			return fmt.Errorf("set %s: %w", field.key, err)
+		}
+	}
+	return nil
 }
 
 // BeginQueryArgs is begin_trends_query's tool input: the analytical question
@@ -121,11 +140,27 @@ type BeginQueryArgs struct {
 	SQL   string `json:"sql"`
 }
 
-// BeginTrendsQuery clears any previous result and marks the state
+// BeginTrendsQuery is the ADK-facing tool handler for begin_trends_query. It
+// always publishes state on success (not gated on result.OK): a rejected
+// call never touches state, so publishing the unchanged read-back is a
+// no-op, matching the unconditional-commit behavior this replaces.
+func BeginTrendsQuery(ctx agent.Context, input BeginQueryArgs) (Result, error) {
+	state := readState(ctx.State())
+	result, err := beginTrendsQuery(&state, input)
+	if err != nil {
+		return Result{}, err
+	}
+	if pubErr := publishState(ctx, state); pubErr != nil {
+		return Result{}, pubErr
+	}
+	return result, nil
+}
+
+// beginTrendsQuery clears any previous result and marks the state
 // "querying" before BigQuery execution starts, matching
 // tools/begin_trends_query.py. Inputs are validated before any state
 // mutation: a rejected call leaves the prior state entirely untouched.
-func BeginTrendsQuery(tx *agentruntime.Transaction, input BeginQueryArgs) (Result, error) {
+func beginTrendsQuery(state *TrendsState, input BeginQueryArgs) (Result, error) {
 	query := strings.TrimSpace(input.Query)
 	if query == "" || len(query) > maxTrendsQueryLength {
 		return failure("query_required", fmt.Sprintf("query is required and must be at most %d characters", maxTrendsQueryLength)), nil
@@ -137,12 +172,10 @@ func BeginTrendsQuery(tx *agentruntime.Transaction, input BeginQueryArgs) (Resul
 	if err := ValidateSQL(cleaned); err != nil {
 		return failure("unsafe_sql", "sql must be a bounded, read-only SELECT/WITH query"), nil
 	}
-	state := decodeState(tx)
 	state.Query = query
 	state.GeneratedSQL = cleaned
 	state.Columns, state.Rows, state.Insights, state.Error = []string{}, []Row{}, "", ""
 	state.Status = StatusQuerying
-	writeState(tx, state)
 	return Result{OK: true, Status: state.Status}, nil
 }
 
@@ -156,12 +189,29 @@ type WriteResultArgs struct {
 	Error    string   `json:"error,omitempty"`
 }
 
-// WriteTrendsResult persists the final (or failed) query outcome, deriving
+// WriteTrendsResult is the ADK-facing tool handler for write_trends_result.
+// It always publishes state on success (not gated on result.OK): recording
+// a query failure is itself a legitimate, accepted mutation (result.OK is
+// false but state.Error/state.Status must still persist), so gating on OK
+// would silently drop that write.
+func WriteTrendsResult(ctx agent.Context, input WriteResultArgs) (Result, error) {
+	state := readState(ctx.State())
+	result, err := writeTrendsResult(&state, input)
+	if err != nil {
+		return Result{}, err
+	}
+	if pubErr := publishState(ctx, state); pubErr != nil {
+		return Result{}, pubErr
+	}
+	return result, nil
+}
+
+// writeTrendsResult persists the final (or failed) query outcome, deriving
 // status the same way tools/write_trends_result.py does: an explicit error
 // always wins over an empty row set, which in turn wins over "ready".
 // Inputs are validated before any state mutation: a rejected call leaves the
 // prior state entirely untouched.
-func WriteTrendsResult(tx *agentruntime.Transaction, input WriteResultArgs) (Result, error) {
+func writeTrendsResult(state *TrendsState, input WriteResultArgs) (Result, error) {
 	query := strings.TrimSpace(input.Query)
 	if query == "" || len(query) > maxTrendsQueryLength {
 		return failure("query_required", fmt.Sprintf("query is required and must be at most %d characters", maxTrendsQueryLength)), nil
@@ -197,7 +247,6 @@ func WriteTrendsResult(tx *agentruntime.Transaction, input WriteResultArgs) (Res
 	case len(input.Rows) == 0:
 		status = StatusEmpty
 	}
-	state := decodeState(tx)
 	state.Query = query
 	state.GeneratedSQL = cleaned
 	state.Columns = input.Columns
@@ -209,7 +258,6 @@ func WriteTrendsResult(tx *agentruntime.Transaction, input WriteResultArgs) (Res
 		state.Rows = []Row{}
 	}
 	state.Insights, state.Error, state.Status = input.Insights, input.Error, status
-	writeState(tx, state)
 	return Result{OK: input.Error == "", Status: status, RowCount: len(state.Rows)}, nil
 }
 
@@ -218,16 +266,30 @@ type VerificationArgs struct {
 	Verification string `json:"verification"`
 }
 
-// SetTrendsVerification appends a web-search verification note to insights
+// SetTrendsVerification is the ADK-facing tool handler for
+// set_trends_verification. It always publishes state on success (not gated
+// on result.OK), matching BeginTrendsQuery and WriteTrendsResult above.
+func SetTrendsVerification(ctx agent.Context, input VerificationArgs) (Result, error) {
+	state := readState(ctx.State())
+	result, err := setTrendsVerification(&state, input)
+	if err != nil {
+		return Result{}, err
+	}
+	if pubErr := publishState(ctx, state); pubErr != nil {
+		return Result{}, pubErr
+	}
+	return result, nil
+}
+
+// setTrendsVerification appends a web-search verification note to insights
 // and marks the state ready, matching tools/set_trends_verification.py.
 // Inputs are validated before any state mutation: a rejected call leaves the
 // prior state entirely untouched.
-func SetTrendsVerification(tx *agentruntime.Transaction, input VerificationArgs) (Result, error) {
+func setTrendsVerification(state *TrendsState, input VerificationArgs) (Result, error) {
 	verification := strings.TrimSpace(input.Verification)
 	if verification == "" || len(verification) > maxTrendsVerificationLength {
 		return failure("verification_required", fmt.Sprintf("verification is required and must be at most %d characters", maxTrendsVerificationLength)), nil
 	}
-	state := decodeState(tx)
 	section := "## Verification\n\n" + verification
 	appended := section
 	if state.Insights != "" {
@@ -238,6 +300,5 @@ func SetTrendsVerification(tx *agentruntime.Transaction, input VerificationArgs)
 	}
 	state.Insights = appended
 	state.Status = StatusReady
-	writeState(tx, state)
 	return Result{OK: true}, nil
 }
