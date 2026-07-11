@@ -1,6 +1,7 @@
 package agentruntime
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -16,6 +17,27 @@ func testAgent(t *testing.T, name string) agent.Agent {
 		t.Fatalf("build test agent %q: %v", name, err)
 	}
 	return a
+}
+
+func TestAllReturnsEveryActiveAgentInStableOrder(t *testing.T) {
+	routes := []string{"excalidraw", "travel", "trends", "grocery", "fitness", "wellness", "expense", "oralboards", "presentation", "research", "spreadsheet", "resume"}
+	entries := make([]Entry, 0, len(routes))
+	for _, route := range routes {
+		entries = append(entries, Entry{Route: route, AppName: route + "_agent", Agent: testAgent(t, route+"_runtime")})
+	}
+	registry, err := NewRegistry(entries...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := make([]string, 0, len(routes))
+	for _, entry := range registry.All() {
+		got = append(got, entry.Route)
+	}
+	want := append([]string(nil), routes...)
+	slices.Sort(want)
+	if !slices.Equal(got, want) {
+		t.Fatalf("routes=%#v want=%#v", got, want)
+	}
 }
 
 func TestNewRegistryRejectsInvalidEntries(t *testing.T) {
