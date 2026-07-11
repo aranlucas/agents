@@ -1,99 +1,54 @@
-# Agents Monorepo — CopilotKit x Google ADK
+# Agents Monorepo — CopilotKit x ADK-Go
 
-A collection of collaborative AI agents served from a single gateway, sharing live state
-with web and mobile UIs over the [AG-UI](https://docs.copilotkit.ai/ag-ui)
-protocol. Built with [CopilotKit](https://copilotkit.ai) v2,
-[Google ADK](https://google.github.io/adk-docs/), Next.js 16, and Expo.
+A production multi-agent workspace with a Go ADK gateway, a Go Telegram worker,
+and web/mobile clients sharing live state over AG-UI.
 
-A2UI is currently rendered by the web Trends console only; mobile does not
-render A2UI surfaces.
-
-| Agent       | What it does                                              | Access           |
-| ----------- | --------------------------------------------------------- | ---------------- |
-| travel      | Trip planning with a live shared itinerary (trvl MCP)     | Sign-in required |
-| grocery     | Meal planning + shopping lists with live Kroger data      | Sign-in + Kroger |
-| fitness     | Training plans from Strava activity                       | Sign-in + Strava |
-| wellness    | Orchestrates grocery + fitness in-process                 | Sign-in + both   |
-| oral-boards | Pediatric dentistry mock oral-board exams with sources    | Sign-in required |
-| trends      | BigQuery-backed Google Trends analysis rendered with A2UI | Sign-in required |
-| resume      | Public Q&A about Lucas's resume (no account needed)       | Public           |
+The gateway exposes 12 agents: travel, grocery, fitness, wellness, expense,
+oral boards, trends, Excalidraw, presentation, research, spreadsheet, and the
+public resume assistant. Cloudflare D1 is the sole session/link/rate-limit
+store and R2 is the sole artifact store. There is no local or Postgres fallback.
 
 ## Architecture
 
 ```text
-apps/web    -> CopilotKit runtime (/api/copilotkit) -> gateway /<agent>/agui
-apps/mobile -> @ag-ui/client (HttpAgent)            -> gateway /<agent>/agui (direct)
-wellness    -> AgentTool (in-process)               -> grocery + fitness sub-agents
+apps/web    -> CopilotKit runtime -> Go gateway /<agent>/agui
+apps/mobile -> @ag-ui/client     -> Go gateway /<agent>/agui
+Telegram    -> Go long poller    -> ADK-Go specialist agents
+                                -> D1 sessions + R2 artifacts
 ```
 
-- All agents run in one FastAPI process (`agents/gateway/` mounts each
-  `agents/<name>/` app under a path prefix) — one Railway service.
-- State (itineraries, shopping lists, plans) is written to ADK shared state by
-  tools, never pasted into chat; the UI re-renders on every state delta.
-- Auth is Clerk end to end: the web runtime mints a session JWT per request and
-  the gateway verifies it against the Clerk JWKS (`agents-shared`'s
-  `ClerkAuthMiddleware`), rewriting the identity header to the verified
-  subject. The resume agent is intentionally unauthenticated.
+State is the source of truth: agents write typed state through tools and the
+clients render state snapshots/deltas. Clerk protects every agent except
+`resume`; OAuth credentials are overlaid only for the current invocation.
 
-## Getting started
+## Local development
 
-Prerequisites: pnpm, Docker, [uv](https://docs.astral.sh/uv/), and API keys
-per `.env.example`.
+Prerequisites: pnpm, Go 1.26, Docker, and the credentials documented in
+[.env.example](.env.example).
 
 ```bash
-cp .env.example .env   # fill in Clerk + model provider keys
-pnpm install           # JS deps + uv sync for Python
-pnpm dev               # web on :3000 + the agents gateway on :8000
+cp .env.example .env
+pnpm install
+pnpm dev                 # web + Go gateway + Go Telegram worker
+pnpm dev:web             # web only
+pnpm dev:agents          # gateway and Telegram containers
+pnpm dev:mobile
 ```
 
-Other entry points: `pnpm dev:web`, `pnpm dev:mobile`, `pnpm dev:agents`.
+The web app uses port 3000, the gateway 8000, and Telegram health 8082.
 
-An in-progress Go gateway foundation (currently `/resume` only) is also
-available as a Docker Compose dev service:
+## Verification
 
 ```bash
-docker compose up agents-go   # Go gateway on :8001, fake Cloudflare env
+pnpm check
+pnpm test
+cd agents && golangci-lint run ./... && go test -race ./... && go vet ./...
+docker build -f agents/Dockerfile -t agents-gateway-go:local .
+docker build -f agents/Dockerfile.telegram -t agents-telegram-go:local .
+bash agents/scripts/smoke-image.sh agents-gateway-go:local
+bash agents/scripts/smoke-telegram.sh agents-telegram-go:local
 ```
 
-It runs with mandatory fake `CF_*` credentials, so D1/R2-backed routes report
-"degraded" on `/health` rather than persisting anything real. It does not
-replace the `agents` service above until the Python cutover plan completes.
-
-For no-key web agent testing, run the offline web mode:
-
-```bash
-pnpm dev:web:offline
-pnpm test:web:offline
-```
-
-Offline mode sets `AGENT_TEST_MODE=offline` and
-`NEXT_PUBLIC_AGENT_TEST_MODE=offline`. It bypasses Clerk/Groq, serves local
-CopilotKit/health/token fixtures shaped from
-`https://agents-lucas.vercel.app/`, and exposes reusable MSW handlers from
-`apps/web/src/testing/msw-handlers.ts` for browser or component agent tests.
-
-## Quality checks
-
-```bash
-pnpm check     # oxlint + ruff + tailwind canon + oxfmt --check
-pnpm test      # vitest (web, mobile) + pytest (agents, agents-shared)
-pnpm coverage  # both ecosystems with coverage
-```
-
-CI (`.github/workflows/ci.yml`) gates lint, format, Python syntax, both test
-suites with a coverage floor, the web build, and the agent Docker image. A
-separate `go` job gates the in-progress Go gateway foundation: `go test
--race`, `go vet`, `gofmt`, and a no-Python image smoke test
-(`agents/scripts/smoke-image.sh` against `agents/Dockerfile.go-foundation`).
-
-## Layout, conventions, deployment
-
-See [AGENTS.md](AGENTS.md) — repository guide (also loaded by coding agents),
-including the "Adding a new agent" checklist and the Railway/Vercel/EAS
-deployment table. Design docs live in `docs/superpowers/`; the forward-looking
-roadmap is [docs/ROADMAP.md](docs/ROADMAP.md).
-
-## Acknowledgements
-
-The shared-state, streaming, and HITL patterns are adapted from the CopilotKit
-[`google-adk` showcase](https://github.com/CopilotKit/CopilotKit/tree/main/showcase/integrations/google-adk).
+Deployment uses [railway.toml](railway.toml) for the gateway and
+[agents/railway.telegram.toml](agents/railway.telegram.toml) for the worker.
+The web deploys to Vercel and mobile through EAS.

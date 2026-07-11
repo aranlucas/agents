@@ -1,9 +1,0 @@
-from google.adk.tools.base_tool import BaseTool
-from google.adk.tools.base_toolset import BaseToolset
-
-class McpToolset(BaseToolset):
-    def __init__(self, *args: object, **kwargs: object) -> None: ...
-    async def get_tools(self, *args: object, **kwargs: object) -> list[BaseTool]: ...
-    async def close(self) -> None: ...
-
-MCPToolset = McpToolset
