@@ -61,17 +61,11 @@ var providerEnvs = []providerEnv{
 	{name: "openrouter", key: "OPENROUTER_API_KEY", baseURL: "https://openrouter.ai/api/v1"},
 }
 
-// Load reads and validates environment-backed configuration. It deliberately
-// has no database fallback: D1 and R2 are required in every runtime mode.
+// Load reads and validates environment-backed configuration.
+// Legacy DATABASE_URL / TURSO_DATABASE_URL are silently ignored.
 func Load(getenv func(string) string) (Config, error) {
 	if getenv == nil {
 		return Config{}, errors.New("environment reader is required")
-	}
-	if strings.TrimSpace(getenv("DATABASE_URL")) != "" {
-		return Config{}, errors.New("DATABASE_URL is unsupported; configure Cloudflare D1")
-	}
-	if strings.TrimSpace(getenv("TURSO_DATABASE_URL")) != "" {
-		return Config{}, errors.New("TURSO_DATABASE_URL is unsupported; configure Cloudflare D1")
 	}
 
 	cloudflare, err := loadCloudflare(getenv)
