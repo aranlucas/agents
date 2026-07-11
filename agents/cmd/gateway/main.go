@@ -739,6 +739,14 @@ func main() {
 	}
 
 	var verifier auth.TokenVerifier
+	var clerkBackend clerkbackend.Backend
+	if cfg.ClerkSecret != "" {
+		configured, clerkErr := clerkbackend.NewBackend(common.NewHTTPClient(15*time.Second, 1<<20).Client, "", cfg.ClerkSecret)
+		if clerkErr != nil {
+			log.Fatalf("configure Clerk backend: %v", clerkErr)
+		}
+		clerkBackend = configured
+	}
 	if cfg.ClerkJWKS != "" {
 		clerkVerifier, err := auth.NewClerkVerifier(cfg.ClerkJWKS, cfg.ClerkIssuer, "", nil)
 		if err != nil {
@@ -755,6 +763,7 @@ func main() {
 		D1:       d1,
 		R2:       r2,
 		Links:    telegramruntime.NewLinkStore(d1, time.Now),
+		Clerk:    clerkBackend,
 		Now:      time.Now,
 	})
 	if err != nil {

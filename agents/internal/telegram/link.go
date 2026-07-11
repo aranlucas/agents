@@ -115,6 +115,40 @@ ON CONFLICT(telegram_user_id) DO UPDATE SET clerk_user_id=excluded.clerk_user_id
 	return AccountLink{TelegramUserID: userID, TelegramChatID: chatID, ClerkUserID: clerkUserID, LinkedAt: now}, nil
 }
 
+func (s *LinkStore) Lookup(ctx context.Context, telegramUserID int64) (AccountLink, bool, error) {
+	if s == nil || s.db == nil || telegramUserID <= 0 {
+		return AccountLink{}, false, nil
+	}
+	results, err := s.db.Run(ctx, cloudflare.Statement{SQL: `SELECT telegram_user_id, telegram_chat_id, clerk_user_id, linked_at FROM telegram_account_links WHERE telegram_user_id=? AND unlinked_at IS NULL`, Params: []any{telegramUserID}})
+	if err != nil {
+		return AccountLink{}, false, errors.New("lookup Telegram account link")
+	}
+	if len(results) != 1 || len(results[0].Rows) == 0 {
+		return AccountLink{}, false, nil
+	}
+	row := results[0].Rows[0]
+	userID, okUser := rowInt64(row["telegram_user_id"])
+	chatID, okChat := rowInt64(row["telegram_chat_id"])
+	linkedAt, okTime := rowInt64(row["linked_at"])
+	clerkID, okClerk := row["clerk_user_id"].(string)
+	if !okUser || !okChat || !okTime || !okClerk {
+		return AccountLink{}, false, errors.New("telegram account link is malformed")
+	}
+	return AccountLink{TelegramUserID: userID, TelegramChatID: chatID, ClerkUserID: clerkID, LinkedAt: linkedAt}, true, nil
+}
+
+func (s *LinkStore) Unlink(ctx context.Context, telegramUserID int64) (bool, error) {
+	if s == nil || s.db == nil || telegramUserID <= 0 {
+		return false, nil
+	}
+	now := s.now().UTC().UnixMilli()
+	results, err := s.db.Run(ctx, cloudflare.Statement{SQL: `UPDATE telegram_account_links SET unlinked_at=? WHERE telegram_user_id=? AND unlinked_at IS NULL`, Params: []any{now, telegramUserID}})
+	if err != nil {
+		return false, errors.New("unlink Telegram account")
+	}
+	return len(results) == 1 && results[0].Meta.Changes == 1, nil
+}
+
 func hashToken(raw string) string {
 	sum := sha256.Sum256([]byte(raw))
 	return hex.EncodeToString(sum[:])
