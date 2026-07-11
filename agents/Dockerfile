@@ -2,10 +2,9 @@
 FROM golang:1.26-bookworm AS build
 WORKDIR /src/agents
 COPY agents/go.mod agents/go.sum ./
-RUN --mount=type=cache,id=gomod,target=/go/pkg/mod go mod download
+RUN go mod download
 COPY agents/ ./
-RUN --mount=type=cache,id=gomod,target=/go/pkg/mod --mount=type=cache,id=gobuild,target=/root/.cache/go-build \
-    CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/gateway ./cmd/gateway
+RUN CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/gateway ./cmd/gateway
 
 FROM gcr.io/distroless/static-debian12:nonroot
 WORKDIR /app
