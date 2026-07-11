@@ -1,0 +1,93 @@
+{
+  "eval_set_id": "train_eval_set",
+  "name": "train_eval_set",
+  "eval_cases": [
+    {
+      "eval_id": "excalidraw_system_diagram_agui",
+      "session_input": {
+        "app_name": "excalidraw_agent",
+        "user_id": "eval_user",
+        "state": {}
+      },
+      "conversation": [
+        {
+          "invocation_id": "inv1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Draw a system architecture diagram for a web app with frontend, API, worker queue, database, and object storage. Use the drawing surface rather than describing it in chat."
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "I've created a system architecture diagram for the web app."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "excalidraw_telegram_flowchart_summary",
+      "session_input": {
+        "app_name": "excalidraw_agent",
+        "user_id": "eval_user",
+        "state": {}
+      },
+      "conversation": [
+        {
+          "invocation_id": "inv1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "In Telegram, sketch a concise checkout flowchart: cart, address, payment, fraud check, confirmation."
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "I've created a checkout flowchart from cart to confirmation."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "excalidraw_non_drawing_question",
+      "session_input": {
+        "app_name": "excalidraw_agent",
+        "user_id": "eval_user",
+        "state": {}
+      },
+      "conversation": [
+        {
+          "invocation_id": "inv1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Do I need a diagram for a one-sentence status update?"
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "No, you don't need a diagram for a one-sentence status update."
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

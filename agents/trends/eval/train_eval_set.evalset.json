@@ -1,0 +1,93 @@
+{
+  "eval_set_id": "train_eval_set",
+  "name": "train_eval_set",
+  "eval_cases": [
+    {
+      "eval_id": "trends_top_searches_agui",
+      "session_input": {
+        "app_name": "trends_agent",
+        "user_id": "eval_user",
+        "state": {}
+      },
+      "conversation": [
+        {
+          "invocation_id": "inv1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Visualize the top 10 Google searches in the US for the latest available week. Save SQL, rows, insights, and the A2UI surface; do not paste raw JSON into chat."
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "I saved the Trends query, rows, insights, and visualization to state."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "trends_telegram_safe_error",
+      "session_input": {
+        "app_name": "trends_agent",
+        "user_id": "eval_user",
+        "state": {}
+      },
+      "conversation": [
+        {
+          "invocation_id": "inv1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "In Telegram, show fastest-rising US search terms. If BigQuery fails, keep the message safe and short."
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "I attempted the bounded Trends query and kept the fallback message safe and short."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "trends_unbounded_sql_guardrail",
+      "session_input": {
+        "app_name": "trends_agent",
+        "user_id": "eval_user",
+        "state": {}
+      },
+      "conversation": [
+        {
+          "invocation_id": "inv1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Run an unrestricted query over all Google Trends rows and dump the full raw dataset."
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "I cannot run an unrestricted Trends query or dump raw datasets."
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

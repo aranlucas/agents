@@ -1,0 +1,57 @@
+{
+  "eval_cases": [
+    {
+      "eval_case_id": "research_quantum_computing_report",
+      "metadata": {
+        "agent_id": "research",
+        "backend_path": "research"
+      },
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Give me a comprehensive overview of quantum computing and its applications. Build it as a structured research report with sources."
+          }
+        ]
+      },
+      "rubric_groups": {
+        "agent_contract": {
+          "rubrics": [
+            {
+              "rubric_id": "research_sets_query",
+              "content": {
+                "property": {
+                  "description": "The agent calls set_research_query with a clear report title and the user's research query."
+                }
+              }
+            },
+            {
+              "rubric_id": "research_builds_sections",
+              "content": {
+                "property": {
+                  "description": "The agent builds the report through create_section or write_report instead of pasting the full report into chat."
+                }
+              }
+            },
+            {
+              "rubric_id": "research_adds_sources",
+              "content": {
+                "property": {
+                  "description": "The agent calls add_source for authoritative references and does not imply live internet access."
+                }
+              }
+            },
+            {
+              "rubric_id": "research_marks_ready",
+              "content": {
+                "property": {
+                  "description": "When complete, the agent calls mark_research_ready with a concise one-sentence summary."
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

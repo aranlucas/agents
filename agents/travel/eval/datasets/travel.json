@@ -1,0 +1,57 @@
+{
+  "eval_cases": [
+    {
+      "eval_case_id": "travel_lisbon_itinerary_state_workflow",
+      "metadata": {
+        "agent_id": "travel",
+        "backend_path": "travel"
+      },
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Plan a 3-day Lisbon food and culture trip for two travelers from SFO, November 12-15, 2026, with a comfort budget. Use the live planning workflow and write the itinerary to the canvas instead of pasting the full plan into chat."
+          }
+        ]
+      },
+      "rubric_groups": {
+        "agent_contract": {
+          "rubrics": [
+            {
+              "rubric_id": "travel_sets_trip_meta",
+              "content": {
+                "property": {
+                  "description": "The agent calls set_trip_meta when the destination, dates, party size, and budget tier are known."
+                }
+              }
+            },
+            {
+              "rubric_id": "travel_uses_live_data_or_discloses_limits",
+              "content": {
+                "property": {
+                  "description": "The agent uses available travel/date lookup tools before making specific availability or logistics claims, or clearly states when live data is unavailable instead of fabricating details."
+                }
+              }
+            },
+            {
+              "rubric_id": "travel_writes_itinerary_to_state",
+              "content": {
+                "property": {
+                  "description": "The agent writes the itinerary through write_itinerary or add_day using Day headings and timed bullets, and keeps chat to a short summary."
+                }
+              }
+            },
+            {
+              "rubric_id": "travel_no_booking_without_approval",
+              "content": {
+                "property": {
+                  "description": "The agent does not book, reserve, charge, share, or lock in the trip without explicit approval."
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
