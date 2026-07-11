@@ -1,6 +1,0 @@
-from ._bigquery_utils import run_bigquery_sql
-
-
-def execute_bigquery_sql(sql: str) -> dict[str, object]:
-    """Execute bounded BigQuery SQL and return normalized rows."""
-    return run_bigquery_sql(sql)

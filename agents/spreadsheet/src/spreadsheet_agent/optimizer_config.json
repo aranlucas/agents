@@ -1,5 +1,0 @@
-{
-  "optimizer_model": "mistral/mistral-medium-latest",
-  "model_configuration": {},
-  "max_metric_calls": 12
-}

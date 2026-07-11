@@ -276,7 +276,9 @@ func TestRunMigrationsIsIdempotentSQLBatch(t *testing.T) {
 		t.Fatalf("initial schema missing: %s", encoded)
 	}
 	telegramSchema, _ := json.Marshal(batches[1])
-	if !strings.Contains(string(telegramSchema), "telegram_account_links") { t.Fatalf("Telegram schema missing: %s", telegramSchema) }
+	if !strings.Contains(string(telegramSchema), "telegram_account_links") {
+		t.Fatalf("Telegram schema missing: %s", telegramSchema)
+	}
 }
 
 func testCloudflare(token string) config.Cloudflare {

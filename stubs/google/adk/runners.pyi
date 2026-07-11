@@ -1,6 +1,0 @@
-from collections.abc import AsyncIterator
-from typing import Any
-
-class Runner:
-    def __init__(self, *args: Any, **kwargs: Any) -> None: ...
-    def run_async(self, *args: Any, **kwargs: Any) -> AsyncIterator[Any]: ...
