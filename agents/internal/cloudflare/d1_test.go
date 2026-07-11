@@ -268,13 +268,15 @@ func TestRunMigrationsIsIdempotentSQLBatch(t *testing.T) {
 	if err := d1.RunMigrations(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if len(batches) != 2 || len(batches[0]) != len(batches[1]) {
+	if len(batches) != 4 || len(batches[0]) != len(batches[2]) || len(batches[1]) != len(batches[3]) {
 		t.Fatalf("migration batches = %#v", batches)
 	}
 	encoded, _ := json.Marshal(batches[0])
 	if !strings.Contains(string(encoded), "CREATE TABLE IF NOT EXISTS sessions") {
 		t.Fatalf("initial schema missing: %s", encoded)
 	}
+	telegramSchema, _ := json.Marshal(batches[1])
+	if !strings.Contains(string(telegramSchema), "telegram_account_links") { t.Fatalf("Telegram schema missing: %s", telegramSchema) }
 }
 
 func testCloudflare(token string) config.Cloudflare {

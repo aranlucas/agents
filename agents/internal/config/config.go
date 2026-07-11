@@ -40,11 +40,12 @@ type HTTP struct {
 
 // Config is fully validated before the gateway opens a listener.
 type Config struct {
-	Cloudflare  Cloudflare
-	ClerkJWKS   string
-	ClerkIssuer string
-	HTTP        HTTP
-	Providers   map[string]Provider
+	Cloudflare         Cloudflare
+	ClerkJWKS          string
+	ClerkIssuer        string
+	TelegramLinkSecret string
+	HTTP               HTTP
+	Providers          map[string]Provider
 }
 
 type providerEnv struct {
@@ -95,11 +96,12 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 
 	return Config{
-		Cloudflare:  cloudflare,
-		ClerkJWKS:   strings.TrimSpace(getenv("CLERK_JWKS_URL")),
-		ClerkIssuer: strings.TrimSpace(getenv("CLERK_ISSUER")),
-		HTTP:        HTTP{Port: port, Origins: origins},
-		Providers:   providers,
+		Cloudflare:         cloudflare,
+		ClerkJWKS:          strings.TrimSpace(getenv("CLERK_JWKS_URL")),
+		ClerkIssuer:        strings.TrimSpace(getenv("CLERK_ISSUER")),
+		TelegramLinkSecret: strings.TrimSpace(getenv("TELEGRAM_LINK_SECRET")),
+		HTTP:               HTTP{Port: port, Origins: origins},
+		Providers:          providers,
 	}, nil
 }
 
