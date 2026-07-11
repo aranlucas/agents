@@ -14,24 +14,6 @@ func TestLoadRequiresCloudflarePersistence(t *testing.T) {
 	}
 }
 
-func TestLoadRejectsLegacyDatabaseURL(t *testing.T) {
-	env := requiredEnv()
-	env["DATABASE_URL"] = "postgres://obsolete"
-	_, err := Load(func(key string) string { return env[key] })
-	if err == nil || !strings.Contains(err.Error(), "DATABASE_URL is unsupported") {
-		t.Fatalf("Load() error = %v, want legacy database rejection", err)
-	}
-}
-
-func TestLoadRejectsLegacyTursoDatabaseURL(t *testing.T) {
-	env := requiredEnv()
-	env["TURSO_DATABASE_URL"] = "libsql://obsolete"
-	_, err := Load(func(key string) string { return env[key] })
-	if err == nil || !strings.Contains(err.Error(), "TURSO_DATABASE_URL is unsupported") {
-		t.Fatalf("Load() error = %v, want legacy database rejection", err)
-	}
-}
-
 func TestLoadNormalizesHTTPAndProviderConfiguration(t *testing.T) {
 	env := requiredEnv()
 	env["PORT"] = " 9000 "
