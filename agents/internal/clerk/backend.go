@@ -23,8 +23,10 @@ type Backend interface {
 }
 
 type ConnectionState struct {
-	Strava bool `json:"strava"`
-	Kroger bool `json:"kroger"`
+	Strava      bool   `json:"strava"`
+	Kroger      bool   `json:"kroger"`
+	StravaToken string `json:"-"`
+	KrogerToken string `json:"-"`
 }
 
 var ErrNotConfigured = errors.New("clerk backend is not configured")
@@ -99,10 +101,17 @@ func (b *HTTPBackend) OAuthConnections(ctx context.Context, clerkUserID string) 
 		if *provider.target {
 			continue
 		}
-		var tokens []json.RawMessage
+		var tokens []struct {
+			Token string `json:"token"`
+		}
 		err := b.request(ctx, http.MethodGet, "/users/"+url.PathEscape(clerkUserID)+"/oauth_access_tokens/"+url.PathEscape(provider.name), nil, nil, &tokens)
-		if err == nil && len(tokens) > 0 {
+		if err == nil && len(tokens) > 0 && tokens[0].Token != "" {
 			*provider.target = true
+			if provider.target == &state.Kroger {
+				state.KrogerToken = tokens[0].Token
+			} else {
+				state.StravaToken = tokens[0].Token
+			}
 		}
 	}
 	return state, nil
