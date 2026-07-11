@@ -31,9 +31,13 @@ func (d *memoryLinkDB) Run(_ context.Context, statements ...cloudflare.Statement
 		switch {
 		case strings.HasPrefix(statement.SQL, "INSERT INTO telegram_link_tokens"):
 			d.tokens[statement.Params[0].(string)] = map[string]any{"telegram_user_id": statement.Params[1], "telegram_chat_id": statement.Params[2], "expires_at": statement.Params[3], "consumed_at": nil}
-		case strings.HasPrefix(statement.SQL, "SELECT telegram_user_id"):
+		case strings.HasPrefix(statement.SQL, "SELECT telegram_user_id") && strings.Contains(statement.SQL, "FROM telegram_link_tokens"):
 			if row, ok := d.tokens[statement.Params[0].(string)]; ok {
 				result.Rows = []map[string]any{row}
+			}
+		case strings.HasPrefix(statement.SQL, "SELECT telegram_user_id") && strings.Contains(statement.SQL, "FROM telegram_account_links"):
+			if link, ok := d.links[statement.Params[0].(int64)]; ok {
+				result.Rows = []map[string]any{{"telegram_user_id": link.TelegramUserID, "telegram_chat_id": link.TelegramChatID, "clerk_user_id": link.ClerkUserID, "linked_at": link.LinkedAt}}
 			}
 		case strings.HasPrefix(statement.SQL, "UPDATE telegram_link_tokens"):
 			row := d.tokens[statement.Params[1].(string)]
@@ -44,6 +48,11 @@ func (d *memoryLinkDB) Run(_ context.Context, statements ...cloudflare.Statement
 		case strings.HasPrefix(statement.SQL, "INSERT INTO telegram_account_links"):
 			userID := statement.Params[0].(int64)
 			d.links[userID] = AccountLink{TelegramUserID: userID, ClerkUserID: statement.Params[1].(string), TelegramChatID: statement.Params[2].(int64), LinkedAt: statement.Params[3].(int64)}
+		case strings.HasPrefix(statement.SQL, "UPDATE telegram_account_links"):
+			if _, ok := d.links[statement.Params[1].(int64)]; ok {
+				delete(d.links, statement.Params[1].(int64))
+				result.Meta.Changes = 1
+			}
 		}
 		results = append(results, result)
 	}
