@@ -49,7 +49,9 @@ func SetMeta(ctx agent.Context, input SetMetaArgs) (Result, error) {
 	state := readState(ctx.State())
 	r, e := setMeta(&state, input)
 	if e == nil && r.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return r, e
 }
@@ -69,7 +71,9 @@ func CreateSlide(ctx agent.Context, input CreateSlideArgs) (Result, error) {
 	state := readState(ctx.State())
 	r, e := createSlide(&state, input)
 	if e == nil && r.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return r, e
 }
@@ -101,7 +105,9 @@ func UpdateSlide(ctx agent.Context, input UpdateSlideArgs) (Result, error) {
 	state := readState(ctx.State())
 	r, e := updateSlide(&state, input)
 	if e == nil && r.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return r, e
 }
@@ -148,7 +154,9 @@ func DeleteSlide(ctx agent.Context, input SlideIDArgs) (Result, error) {
 	state := readState(ctx.State())
 	r, e := deleteSlide(&state, input)
 	if e == nil && r.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return r, e
 }
@@ -171,7 +179,9 @@ func ReorderSlides(ctx agent.Context, input ReorderArgs) (Result, error) {
 	state := readState(ctx.State())
 	r, e := reorderSlides(&state, input)
 	if e == nil && r.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return r, e
 }
@@ -202,7 +212,9 @@ func MarkReady(ctx agent.Context, input ReadyArgs) (Result, error) {
 	state := readState(ctx.State())
 	r, e := markReady(&state, input)
 	if e == nil && r.OK {
-		publishState(ctx, state)
+		if pubErr := publishState(ctx, state); pubErr != nil {
+			return Result{}, pubErr
+		}
 	}
 	return r, e
 }

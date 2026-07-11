@@ -2,6 +2,7 @@ package wellness
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"agents/fitness/agent"
 	"agents/internal/common"
@@ -79,22 +80,33 @@ func readState(source session.ReadonlyState) WellnessState {
 	return state
 }
 
-func publishState(ctx agent.Context, state WellnessState) {
+func publishState(ctx agent.Context, state WellnessState) error {
 	s := ctx.State()
-	s.Set("status", state.Status)
-	s.Set("meal_plan", state.MealPlan)
-	s.Set("weekly_plan", state.WeeklyPlan)
-	s.Set("review_summary", state.ReviewSummary)
-	s.Set("user_id", state.UserID)
-	s.Set("kroger_connected", state.KrogerConnected)
-	s.Set("strava_connected", state.StravaConnected)
-	s.Set("shopping_list", state.ShoppingList)
-	s.Set("cart", state.Cart)
-	s.Set("pantry", state.Pantry)
-	s.Set("weekly_deals", state.WeeklyDeals)
-	s.Set("notes", state.Notes)
-	s.Set("activities", state.Activities)
-	s.Set("activities_synced_at", state.ActivitiesSyncedAt)
-	s.Set("objective_research", state.ObjectiveResearch)
-	s.Set("training_plan", state.TrainingPlan)
+	fields := []struct {
+		key   string
+		value any
+	}{
+		{"status", state.Status},
+		{"meal_plan", state.MealPlan},
+		{"weekly_plan", state.WeeklyPlan},
+		{"review_summary", state.ReviewSummary},
+		{"user_id", state.UserID},
+		{"kroger_connected", state.KrogerConnected},
+		{"strava_connected", state.StravaConnected},
+		{"shopping_list", state.ShoppingList},
+		{"cart", state.Cart},
+		{"pantry", state.Pantry},
+		{"weekly_deals", state.WeeklyDeals},
+		{"notes", state.Notes},
+		{"activities", state.Activities},
+		{"activities_synced_at", state.ActivitiesSyncedAt},
+		{"objective_research", state.ObjectiveResearch},
+		{"training_plan", state.TrainingPlan},
+	}
+	for _, field := range fields {
+		if err := s.Set(field.key, field.value); err != nil {
+			return fmt.Errorf("set %s: %w", field.key, err)
+		}
+	}
+	return nil
 }

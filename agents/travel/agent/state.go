@@ -2,6 +2,7 @@ package travel
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"google.golang.org/adk/v2/agent"
@@ -123,27 +124,38 @@ func readState(source session.ReadonlyState) TravelState {
 	return state
 }
 
-func publishState(ctx agent.Context, state TravelState) {
+func publishState(ctx agent.Context, state TravelState) error {
 	s := ctx.State()
-	s.Set("destination", state.Destination)
-	s.Set("start_date", state.StartDate)
-	s.Set("end_date", state.EndDate)
-	s.Set("travelers", state.Travelers)
-	s.Set("budget_usd", state.BudgetUSD)
-	s.Set("headline", state.Headline)
-	s.Set("flights", state.Flights)
-	s.Set("itinerary", state.Itinerary)
-	s.Set("summary", state.Summary)
-	s.Set("status", state.Status)
-	s.Set("review_summary", state.ReviewSummary)
-	s.Set("user_id", state.UserID)
-	s.Set("travelerName", state.TravelerName)
-	s.Set("homeAirport", state.HomeAirport)
-	s.Set("transportMode", state.TransportMode)
-	s.Set("budgetTier", state.BudgetTier)
-	s.Set("vibe", state.Vibe)
-	s.Set("pace", state.Pace)
-	s.Set("interests", state.Interests)
-	s.Set("dietary", state.Dietary)
-	s.Set("mobility", state.Mobility)
+	fields := []struct {
+		key   string
+		value any
+	}{
+		{"destination", state.Destination},
+		{"start_date", state.StartDate},
+		{"end_date", state.EndDate},
+		{"travelers", state.Travelers},
+		{"budget_usd", state.BudgetUSD},
+		{"headline", state.Headline},
+		{"flights", state.Flights},
+		{"itinerary", state.Itinerary},
+		{"summary", state.Summary},
+		{"status", state.Status},
+		{"review_summary", state.ReviewSummary},
+		{"user_id", state.UserID},
+		{"travelerName", state.TravelerName},
+		{"homeAirport", state.HomeAirport},
+		{"transportMode", state.TransportMode},
+		{"budgetTier", state.BudgetTier},
+		{"vibe", state.Vibe},
+		{"pace", state.Pace},
+		{"interests", state.Interests},
+		{"dietary", state.Dietary},
+		{"mobility", state.Mobility},
+	}
+	for _, field := range fields {
+		if err := s.Set(field.key, field.value); err != nil {
+			return fmt.Errorf("set %s: %w", field.key, err)
+		}
+	}
+	return nil
 }

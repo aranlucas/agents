@@ -2,6 +2,7 @@ package presentation
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/session"
@@ -66,13 +67,24 @@ func readState(source session.ReadonlyState) PresentationState {
 	return state
 }
 
-func publishState(ctx agent.Context, state PresentationState) {
+func publishState(ctx agent.Context, state PresentationState) error {
 	s := ctx.State()
-	s.Set("title", state.Title)
-	s.Set("theme", state.Theme)
-	s.Set("slides", state.Slides)
-	s.Set("active_slide_index", state.ActiveSlideIndex)
-	s.Set("status", state.Status)
-	s.Set("review_summary", state.ReviewSummary)
-	s.Set("user_id", state.UserID)
+	fields := []struct {
+		key   string
+		value any
+	}{
+		{"title", state.Title},
+		{"theme", state.Theme},
+		{"slides", state.Slides},
+		{"active_slide_index", state.ActiveSlideIndex},
+		{"status", state.Status},
+		{"review_summary", state.ReviewSummary},
+		{"user_id", state.UserID},
+	}
+	for _, field := range fields {
+		if err := s.Set(field.key, field.value); err != nil {
+			return fmt.Errorf("set %s: %w", field.key, err)
+		}
+	}
+	return nil
 }
