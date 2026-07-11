@@ -49,7 +49,6 @@ func requiredEnv() map[string]string {
 	return map[string]string{
 		"CF_ACCOUNT_ID":           "account",
 		"CF_API_TOKEN":            "token",
-		"CF_R2_BUCKET_NAME":       "bucket",
 		"CF_R2_ACCESS_KEY_ID":     "access",
 		"CF_R2_SECRET_ACCESS_KEY": "secret",
 	}

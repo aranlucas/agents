@@ -113,11 +113,11 @@ func loadCloudflare(getenv func(string) string) (Cloudflare, error) {
 		"CF_ACCOUNT_ID":           strings.TrimSpace(getenv("CF_ACCOUNT_ID")),
 		"CF_API_TOKEN":            strings.TrimSpace(getenv("CF_API_TOKEN")),
 		"CF_D1_DATABASE_ID":       orDefault(strings.TrimSpace(getenv("CF_D1_DATABASE_ID")), "fc0f441b-737a-471a-9225-d2b5d3a2f446"),
-		"CF_R2_BUCKET_NAME":       strings.TrimSpace(getenv("CF_R2_BUCKET_NAME")),
+		"CF_R2_BUCKET_NAME":       orDefault(strings.TrimSpace(getenv("CF_R2_BUCKET_NAME")), "adk-artifacts"),
 		"CF_R2_ACCESS_KEY_ID":     strings.TrimSpace(getenv("CF_R2_ACCESS_KEY_ID")),
 		"CF_R2_SECRET_ACCESS_KEY": strings.TrimSpace(getenv("CF_R2_SECRET_ACCESS_KEY")),
 	}
-	for _, key := range []string{"CF_ACCOUNT_ID", "CF_API_TOKEN", "CF_R2_BUCKET_NAME", "CF_R2_ACCESS_KEY_ID", "CF_R2_SECRET_ACCESS_KEY"} {
+	for _, key := range []string{"CF_ACCOUNT_ID", "CF_API_TOKEN", "CF_R2_ACCESS_KEY_ID", "CF_R2_SECRET_ACCESS_KEY"} {
 		if values[key] == "" {
 			return Cloudflare{}, fmt.Errorf("%s is required", key)
 		}
