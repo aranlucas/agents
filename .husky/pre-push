@@ -1,2 +1,2 @@
 pnpm build
-uv run pytest --cov -q
+cd agents && go test -race -count=0 ./...
