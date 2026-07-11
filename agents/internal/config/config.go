@@ -99,8 +99,8 @@ func Load(getenv func(string) string) (Config, error) {
 
 	return Config{
 		Cloudflare:         cloudflare,
-		ClerkJWKS:          strings.TrimSpace(getenv("CLERK_JWKS_URL")),
-		ClerkIssuer:        strings.TrimSpace(getenv("CLERK_ISSUER")),
+		ClerkJWKS:          orDefault(strings.TrimSpace(getenv("CLERK_JWKS_URL")), "https://logical-viper-33.clerk.accounts.dev/.well-known/jwks.json"),
+		ClerkIssuer:        orDefault(strings.TrimSpace(getenv("CLERK_ISSUER")), "https://logical-viper-33.clerk.accounts.dev"),
 		ClerkSecret:        strings.TrimSpace(getenv("CLERK_SECRET_KEY")),
 		TelegramLinkSecret: strings.TrimSpace(getenv("TELEGRAM_LINK_SECRET")),
 		HTTP:               HTTP{Port: port, Origins: origins},
