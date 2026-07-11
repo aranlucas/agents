@@ -16,6 +16,7 @@ import (
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 	"google.golang.org/adk/v2/agent"
+	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/tool"
 	"google.golang.org/genai"
 )
@@ -112,6 +113,39 @@ func (t *remoteTool) Description() string { return t.definition.Description }
 func (t *remoteTool) IsLongRunning() bool { return false }
 func (t *remoteTool) Declaration() *genai.FunctionDeclaration {
 	return &genai.FunctionDeclaration{Name: t.Name(), Description: t.Description(), ParametersJsonSchema: t.definition.InputSchema}
+}
+
+func (t *remoteTool) ProcessRequest(ctx agent.Context, req *model.LLMRequest) error {
+	if req.Tools == nil {
+		req.Tools = make(map[string]any)
+	}
+	name := t.Name()
+	if _, ok := req.Tools[name]; ok {
+		return fmt.Errorf("duplicate tool: %q", name)
+	}
+	req.Tools[name] = t
+	if req.Config == nil {
+		req.Config = &genai.GenerateContentConfig{}
+	}
+	decl := t.Declaration()
+	if decl == nil {
+		return nil
+	}
+	var funcTool *genai.Tool
+	for _, gt := range req.Config.Tools {
+		if gt != nil && gt.FunctionDeclarations != nil {
+			funcTool = gt
+			break
+		}
+	}
+	if funcTool == nil {
+		req.Config.Tools = append(req.Config.Tools, &genai.Tool{
+			FunctionDeclarations: []*genai.FunctionDeclaration{decl},
+		})
+	} else {
+		funcTool.FunctionDeclarations = append(funcTool.FunctionDeclarations, decl)
+	}
+	return nil
 }
 
 func (t *remoteTool) Run(ctx agent.Context, args any) (map[string]any, error) {
