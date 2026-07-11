@@ -173,6 +173,7 @@ export type OralBoardsPhase = "idle" | "presenting" | "questioning" | "feedback"
 
 export type CaseSource = {
   docid: number;
+  filepath: string;
   title: string;
   collection: "abpd" | "aapd" | "cody";
 };
@@ -226,7 +227,7 @@ export type OralBoardsSkillsetScore = {
 export type OralBoardsState = {
   case?: string;
   case_sources?: CaseSource[];
-  phase?: OralBoardsPhase;
+  case_passages?: string;
   transcript?: OralBoardsExchange[];
   score_card?: string;
   // Structured per-skillset scores backing the feedback score table.
@@ -235,6 +236,7 @@ export type OralBoardsState = {
   outcome?: OralBoardsOutcome;
   status?: OralBoardsPhase | "idle";
   loading_step?: string;
+  interview_complete?: boolean;
   // Streamed token-by-token while append_exchange generates — rendered live in
   // the panel before the exchange commits to transcript.
   active_feedback?: string;
@@ -249,6 +251,8 @@ export type OralBoardsState = {
   // question (via set_question_target) — cleared when the exchange commits.
   target_skillset?: string;
   target_skill?: OralBoardsSkill;
+  question_craft_feedback?: string;
+  user_id?: string;
 };
 
 // Research agent state — matches what agents/research writes to ADK shared state

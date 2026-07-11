@@ -50,8 +50,8 @@ func SetMeta(_ context.Context, tx *agentruntime.Transaction, input SetMetaArgs)
 	if title == "" || len(title) > 200 {
 		return failure("invalid_title", "title is required and must be at most 200 characters"), nil
 	}
-	if theme == "" || len(theme) > 64 {
-		return failure("invalid_theme", "theme is required and must be at most 64 characters"), nil
+	if theme != "light" && theme != "dark" && theme != "minimal" {
+		return failure("invalid_theme", "theme must be light, dark, or minimal"), nil
 	}
 	state := decodeState(tx)
 	state.Title, state.Theme, state.Status = title, theme, "drafting"
