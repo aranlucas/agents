@@ -37,7 +37,7 @@
               "rubric_id": "wellness_no_ready_on_blocker",
               "content": {
                 "property": {
-                  "description": "If specialist agents cannot complete because Strava or Kroger is disconnected, the orchestrator explains the blocker and does not call mark_plan_ready."
+                  "description": "If Kroger is disconnected or the fitness specialist lacks synced Health Connect data, the orchestrator explains the blocker and does not call mark_plan_ready."
                 }
               }
             },

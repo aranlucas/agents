@@ -67,6 +67,7 @@ export function oneOf<T extends string>(value: unknown, allowed: readonly T[], f
 const DOC_STATUSES: readonly DocStatus[] = ["idle", "drafting", "ready_to_book", "booked"];
 const GROCERY_STATUSES = ["idle", "planning", "ready"] as const;
 const FITNESS_STATUSES: readonly FitnessStatus[] = ["idle", "syncing", "planning", "ready"];
+const FITNESS_SOURCES = ["health_connect", "healthkit", "strava", "strava_import"] as const;
 const WELLNESS_STATUSES: readonly WellnessStatus[] = ["idle", "delegating", "planning", "ready"];
 const ORAL_PHASES: readonly OralBoardsPhase[] = [
   "idle",
@@ -141,22 +142,26 @@ function toFitnessActivity(raw: unknown): FitnessActivity {
   const s = asRecord(raw);
   return {
     id: str(s.id),
+    source: FITNESS_SOURCES.find((source) => source === s.source),
     name: str(s.name),
     sport_type: optionalStr(s.sport_type),
     start_date: optionalStr(s.start_date),
+    end_date: optionalStr(s.end_date),
     distance_m: optionalNum(s.distance_m),
     moving_time_s: optionalNum(s.moving_time_s),
     elapsed_time_s: optionalNum(s.elapsed_time_s),
     total_elevation_gain_m: optionalNum(s.total_elevation_gain_m),
     average_heartrate: optionalNum(s.average_heartrate),
     perceived_effort: optionalNum(s.perceived_effort),
+    data_origin: optionalStr(s.data_origin),
   };
 }
 
 export function toFitnessState(raw: unknown): FitnessState {
   const s = asRecord(raw);
   return {
-    strava_connected: bool(s.strava_connected),
+    fitness_data_connected: bool(s.fitness_data_connected),
+    activity_source: optionalStr(s.activity_source),
     activities: Array.isArray(s.activities) ? s.activities.map(toFitnessActivity) : [],
     activities_synced_at: optionalStr(s.activities_synced_at),
     objective_research: str(s.objective_research),
@@ -177,7 +182,8 @@ export function toWellnessState(raw: unknown): WellnessState {
     last_delegation: isRecord(s.last_delegation) ? s.last_delegation : undefined,
     user_id: optionalStr(s.user_id),
     kroger_connected: bool(s.kroger_connected),
-    strava_connected: bool(s.strava_connected),
+    fitness_data_connected: bool(s.fitness_data_connected),
+    activity_source: optionalStr(s.activity_source),
   };
 }
 

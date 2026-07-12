@@ -28,12 +28,12 @@ describe("useRequiredConnections", () => {
     const reload = vi.fn(async () => {
       if (!clerk.user) throw new Error("missing test user");
       clerk.user.externalAccounts = [
-        { provider: "custom_strava", verification: { status: "verified" } },
+        { provider: "custom_shopping", verification: { status: "verified" } },
       ];
     });
     clerk.user = { id: "user_123", externalAccounts: [], reload };
 
-    const { result } = renderHook(() => useRequiredConnections("fitness"));
+    const { result } = renderHook(() => useRequiredConnections("grocery"));
 
     expect(result.current.isLoading).toBe(true);
     await waitFor(() => expect(result.current).toEqual({ isLoading: false, missing: [] }));
@@ -46,9 +46,9 @@ describe("useRequiredConnections", () => {
     });
     clerk.user = { id: "user_123", externalAccounts: [], reload };
 
-    const { result } = renderHook(() => useRequiredConnections("fitness"));
+    const { result } = renderHook(() => useRequiredConnections("grocery"));
 
-    await waitFor(() => expect(result.current).toEqual({ isLoading: false, missing: ["strava"] }));
+    await waitFor(() => expect(result.current).toEqual({ isLoading: false, missing: ["kroger"] }));
     expect(reload).toHaveBeenCalledOnce();
   });
 
@@ -63,8 +63,8 @@ describe("useRequiredConnections", () => {
   });
 
   it("does not report a missing account while Clerk is still hydrating the user", () => {
-    const { result } = renderHook(() => useRequiredConnections("fitness"));
+    const { result } = renderHook(() => useRequiredConnections("grocery"));
 
-    expect(result.current).toEqual({ isLoading: true, missing: ["strava"] });
+    expect(result.current).toEqual({ isLoading: true, missing: ["kroger"] });
   });
 });

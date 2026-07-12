@@ -97,19 +97,23 @@ export type FitnessStatus = "idle" | "syncing" | "planning" | "ready";
 
 export type FitnessActivity = {
   id: string;
+  source?: "health_connect" | "healthkit" | "strava" | "strava_import";
   name: string;
   sport_type?: string;
   start_date?: string;
+  end_date?: string;
   distance_m?: number;
   moving_time_s?: number;
   elapsed_time_s?: number;
   total_elevation_gain_m?: number;
   average_heartrate?: number;
   perceived_effort?: number;
+  data_origin?: string;
 };
 
 export type FitnessState = {
-  strava_connected?: boolean;
+  fitness_data_connected?: boolean;
+  activity_source?: string;
   activities?: FitnessActivity[];
   activities_synced_at?: string;
   objective_research?: string;
@@ -130,7 +134,8 @@ export type WellnessState = {
   last_delegation?: Record<string, unknown>;
   user_id?: string;
   kroger_connected?: boolean;
-  strava_connected?: boolean;
+  fitness_data_connected?: boolean;
+  activity_source?: string;
 };
 
 // Expense Desk state — matches what agents/expense writes to ADK shared state

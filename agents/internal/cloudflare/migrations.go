@@ -17,6 +17,9 @@ func (d *D1) RunMigrations(ctx context.Context) error {
 	if err := d.runMigration(ctx, "002_telegram_links", d1migrations.TelegramLinks); err != nil {
 		return err
 	}
+	if err := d.runMigration(ctx, "003_fitness_activities", d1migrations.FitnessActivities); err != nil {
+		return err
+	}
 	return nil
 }
 

@@ -132,16 +132,16 @@ func gradeRubric(agentName, rubricID, description string, trace Trace) RubricRes
 
 	// --- fitness ---
 	case "fitness_auth_gate":
-		res.Pass = textContainsAny(text, "strava") && textContainsAny(text, "connect")
-		res.Explanation = fmt.Sprintf("response mentions Strava connection requirement=%v", res.Pass)
+		res.Pass = textContainsAny(text, "health connect") && textContainsAny(text, "connect", "sync")
+		res.Explanation = fmt.Sprintf("response mentions the Health Connect sync requirement=%v", res.Pass)
 	case "fitness_no_fetch_when_disconnected":
-		fetched, planned := trace.called("fetch_activities"), trace.called("set_training_plan")
-		res.Pass = !fetched && !planned
-		res.Explanation = fmt.Sprintf("fetch_activities called=%v, set_training_plan called=%v", fetched, planned)
+		planned := trace.called("set_training_plan")
+		res.Pass = !planned
+		res.Explanation = fmt.Sprintf("set_training_plan called without synced fitness data=%v", planned)
 	case "fitness_no_invented_history":
-		fetched := trace.called("fetch_activities")
-		res.Pass = !fetched
-		res.Explanation = fmt.Sprintf("fetch_activities called=%v (no tool call means no data to invent from)", fetched)
+		planned := trace.called("set_training_plan")
+		res.Pass = !planned
+		res.Explanation = fmt.Sprintf("set_training_plan called without synced fitness data=%v", planned)
 
 	// --- grocery ---
 	case "grocery_auth_gate":
@@ -298,14 +298,13 @@ func gradeRubric(agentName, rubricID, description string, trace Trace) RubricRes
 		res.Explanation = fmt.Sprintf("response claims a booking/charge=%v (must not, without explicit approval)", booked)
 
 	// --- wellness ---
-	// wellness/agent/instructions.md: "Before tools, verify both
-	// kroger_connected and strava_connected... do not plan until both are
-	// present." When both are disconnected up front, the correct behavior
-	// is a zero-tool-call combined blocker, not a get_current_date /
+	// wellness/agent/instructions.md gates on Kroger before orchestration.
+	// When Kroger is disconnected up front, the correct behavior is a
+	// zero-tool-call blocker, not a get_current_date /
 	// fitness_agent / grocery_agent sequence — that sequence is the
 	// connected happy path this rubric dataset was written against.
 	case "wellness_gets_current_date":
-		blocked := len(trace.calledTools()) == 0 && textContainsAny(text, "strava") && textContainsAny(text, "kroger")
+		blocked := len(trace.calledTools()) == 0 && textContainsAny(text, "kroger")
 		res.Pass = trace.called("get_current_date") || blocked
 		res.Explanation = fmt.Sprintf("get_current_date called=%v, or cleanly blocked upfront on both integrations=%v", trace.called("get_current_date"), blocked)
 	case "wellness_specialist_order":
@@ -318,16 +317,16 @@ func gradeRubric(agentName, rubricID, description string, trace Trace) RubricRes
 				groceryIdx = i
 			}
 		}
-		blocked := len(trace.calledTools()) == 0 && textContainsAny(text, "strava") && textContainsAny(text, "kroger")
+		blocked := len(trace.calledTools()) == 0 && textContainsAny(text, "kroger")
 		res.Pass = blocked || (fitnessIdx >= 0 && (groceryIdx == -1 || fitnessIdx < groceryIdx))
 		res.Explanation = fmt.Sprintf("fitness_agent step idx=%d, grocery_agent step idx=%d, or cleanly blocked upfront=%v", fitnessIdx, groceryIdx, blocked)
 	case "wellness_no_ready_on_blocker":
-		blocked := textContainsAny(text, "connect strava", "connect kroger", "disconnected")
+		blocked := textContainsAny(text, "connect health connect", "sync health connect", "connect kroger", "disconnected")
 		ready := trace.called("mark_plan_ready")
 		res.Pass = !blocked || !ready
 		res.Explanation = fmt.Sprintf("blocker mentioned=%v, mark_plan_ready called=%v", blocked, ready)
 	case "wellness_state_source_of_truth":
-		blocked := len(trace.calledTools()) == 0 && textContainsAny(text, "strava") && textContainsAny(text, "kroger")
+		blocked := len(trace.calledTools()) == 0 && textContainsAny(text, "kroger")
 		res.Pass = trace.called("set_weekly_wellness_plan") || blocked
 		res.Explanation = fmt.Sprintf("set_weekly_wellness_plan called=%v, or cleanly blocked upfront=%v", trace.called("set_weekly_wellness_plan"), blocked)
 

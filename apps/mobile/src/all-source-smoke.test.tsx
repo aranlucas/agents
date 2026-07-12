@@ -96,7 +96,24 @@ vi.mock("expo-router", () => ({
 
 vi.mock("@clerk/clerk-expo", () => ({
   ClerkProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
-  useAuth: () => ({ userId: "user_123" }),
+  useAuth: () => ({ userId: "user_123", getToken: vi.fn(async () => "session-jwt") }),
+}));
+
+vi.mock("../modules/health-data", () => ({
+  default: {
+    getAvailabilityAsync: vi.fn(async () => ({ status: "unavailable", providerPackage: "" })),
+    getPermissionStatusAsync: vi.fn(async () => ({
+      granted: false,
+      grantedPermissions: [],
+      requiredPermissions: [],
+    })),
+    requestPermissionsAsync: vi.fn(async () => ({
+      granted: false,
+      grantedPermissions: [],
+      requiredPermissions: [],
+    })),
+    readActivitiesAsync: vi.fn(async () => ({ activities: [] })),
+  },
 }));
 
 const mockCopilotkit = { runAgent: vi.fn(async () => undefined), stopAgent: vi.fn() };
@@ -561,7 +578,8 @@ describe("mobile all-source smoke coverage", () => {
 
     currentState = {
       status: "ready",
-      strava_connected: true,
+      fitness_data_connected: true,
+      activity_source: "health_connect",
       activities: [{ id: "1" }],
       training_plan: "Run easy",
     };

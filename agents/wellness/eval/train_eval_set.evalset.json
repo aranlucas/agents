@@ -9,7 +9,8 @@
         "user_id": "eval_user",
         "state": {
           "kroger_connected": true,
-          "strava_connected": true
+          "fitness_data_connected": true,
+          "activity_source": "health_connect"
         }
       },
       "conversation": [
@@ -41,7 +42,8 @@
         "user_id": "eval_user",
         "state": {
           "kroger_connected": false,
-          "strava_connected": true
+          "fitness_data_connected": true,
+          "activity_source": "health_connect"
         }
       },
       "conversation": [
@@ -59,7 +61,7 @@
             "role": "model",
             "parts": [
               {
-                "text": "Please connect Kroger first; I need both Kroger and Strava to create the wellness plan."
+                "text": "Please connect Kroger first so I can create the wellness plan."
               }
             ]
           }
@@ -67,13 +69,13 @@
       ]
     },
     {
-      "eval_id": "wellness_auth_gate_strava_missing",
+      "eval_id": "wellness_fitness_data_missing",
       "session_input": {
         "app_name": "wellness_agent",
         "user_id": "eval_user",
         "state": {
           "kroger_connected": true,
-          "strava_connected": false
+          "fitness_data_connected": false
         }
       },
       "conversation": [
@@ -91,7 +93,7 @@
             "role": "model",
             "parts": [
               {
-                "text": "Please connect Strava first; I need both Kroger and Strava to create the wellness plan."
+                "text": "Please connect and sync Health Connect in the mobile app before I create the training portion of the wellness plan."
               }
             ]
           }

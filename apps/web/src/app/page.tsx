@@ -40,10 +40,11 @@ const AGENTS: Agent[] = [
     id: "04",
     href: "/console/fitness",
     name: "Fitness Studio",
-    tagline: "Strava-aware weekly training",
-    description: "Build weekly training from Strava history and mountain objectives.",
+    tagline: "Health-aware weekly training",
+    description:
+      "Build weekly training from synced Health Connect workouts and mountain objectives.",
     cta: "Plan training",
-    tags: ["Fitness", "Strava", "Recovery"],
+    tags: ["Fitness", "Health Connect", "Recovery"],
     theme: "fitness",
   },
   {

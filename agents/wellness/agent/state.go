@@ -22,22 +22,23 @@ const (
 )
 
 type WellnessState struct {
-	Status             Status              `json:"status"`
-	MealPlan           string              `json:"meal_plan"`
-	WeeklyPlan         string              `json:"weekly_plan"`
-	ReviewSummary      string              `json:"review_summary"`
-	UserID             string              `json:"user_id"`
-	KrogerConnected    bool                `json:"kroger_connected"`
-	StravaConnected    bool                `json:"strava_connected"`
-	ShoppingList       []string            `json:"shopping_list"`
-	Cart               []common.CartItem   `json:"cart"`
-	Pantry             []common.PantryItem `json:"pantry"`
-	WeeklyDeals        string              `json:"weekly_deals"`
-	Notes              string              `json:"notes"`
-	Activities         []fitness.Activity  `json:"activities"`
-	ActivitiesSyncedAt string              `json:"activities_synced_at"`
-	ObjectiveResearch  string              `json:"objective_research"`
-	TrainingPlan       string              `json:"training_plan"`
+	Status               Status              `json:"status"`
+	MealPlan             string              `json:"meal_plan"`
+	WeeklyPlan           string              `json:"weekly_plan"`
+	ReviewSummary        string              `json:"review_summary"`
+	UserID               string              `json:"user_id"`
+	KrogerConnected      bool                `json:"kroger_connected"`
+	FitnessDataConnected bool                `json:"fitness_data_connected"`
+	ActivitySource       string              `json:"activity_source"`
+	ShoppingList         []string            `json:"shopping_list"`
+	Cart                 []common.CartItem   `json:"cart"`
+	Pantry               []common.PantryItem `json:"pantry"`
+	WeeklyDeals          string              `json:"weekly_deals"`
+	Notes                string              `json:"notes"`
+	Activities           []fitness.Activity  `json:"activities"`
+	ActivitiesSyncedAt   string              `json:"activities_synced_at"`
+	ObjectiveResearch    string              `json:"objective_research"`
+	TrainingPlan         string              `json:"training_plan"`
 }
 
 func Defaults() WellnessState {
@@ -92,7 +93,8 @@ func publishState(ctx agent.Context, state WellnessState) error {
 		{"review_summary", state.ReviewSummary},
 		{"user_id", state.UserID},
 		{"kroger_connected", state.KrogerConnected},
-		{"strava_connected", state.StravaConnected},
+		{"fitness_data_connected", state.FitnessDataConnected},
+		{"activity_source", state.ActivitySource},
 		{"shopping_list", state.ShoppingList},
 		{"cart", state.Cart},
 		{"pantry", state.Pantry},

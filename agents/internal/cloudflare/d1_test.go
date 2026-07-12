@@ -451,7 +451,7 @@ func TestRunMigrationsIsIdempotentSQLBatch(t *testing.T) {
 	if err := d1.RunMigrations(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if len(batches) != 4 || len(batches[0]) != len(batches[2]) || len(batches[1]) != len(batches[3]) {
+	if len(batches) != 6 || len(batches[0]) != len(batches[3]) || len(batches[1]) != len(batches[4]) || len(batches[2]) != len(batches[5]) {
 		t.Fatalf("migration batches = %#v", batches)
 	}
 	encoded, _ := json.Marshal(batches[0])
@@ -461,6 +461,10 @@ func TestRunMigrationsIsIdempotentSQLBatch(t *testing.T) {
 	telegramSchema, _ := json.Marshal(batches[1])
 	if !strings.Contains(string(telegramSchema), "telegram_account_links") {
 		t.Fatalf("Telegram schema missing: %s", telegramSchema)
+	}
+	fitnessSchema, _ := json.Marshal(batches[2])
+	if !strings.Contains(string(fitnessSchema), "fitness_activities") {
+		t.Fatalf("fitness schema missing: %s", fitnessSchema)
 	}
 }
 

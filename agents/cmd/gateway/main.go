@@ -29,6 +29,7 @@ import (
 	"agents/internal/cloudflare"
 	"agents/internal/common"
 	"agents/internal/config"
+	"agents/internal/fitnessdata"
 	"agents/internal/observability"
 	"agents/internal/providers/openai"
 	"agents/internal/rate"
@@ -70,6 +71,7 @@ type Dependencies struct {
 	R2       healthChecker
 	Links    *telegramruntime.LinkStore
 	Clerk    clerkbackend.Backend
+	Fitness  fitnessdata.Repository
 	Now      func() time.Time
 }
 
@@ -131,6 +133,9 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 	if deps.Links != nil && cfg.TelegramLinkSecret != "" {
 		mux.HandleFunc("POST /telegram/link/consume", telegramLinkConsumeHandler(cfg.TelegramLinkSecret, deps.Links, deps.Clerk))
 		publicRoutes["/telegram/link/consume"] = true
+	}
+	if deps.Fitness != nil {
+		mux.HandleFunc("POST /fitness/activities/sync", fitnessSyncHandler(deps.Fitness, deps.Now))
 	}
 
 	var verifiers []auth.TokenVerifier
@@ -684,8 +689,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("configure fitness fallbacks: %v", err)
 	}
-	stravaClient := fitness.NewStrava(common.NewHTTPClient(30*time.Second, 8<<20).Client, "https://www.strava.com/api/v3/athlete/activities")
-	fitnessAgent, err := fitness.New(fitnessModel, stravaClient, braveSearch, agui.NewAGUIToolset(pending))
+	fitnessActivities := fitnessdata.NewStore(d1)
+	fitnessAgent, err := fitness.New(fitnessModel, fitnessActivities, braveSearch, agui.NewAGUIToolset(pending))
 	if err != nil {
 		log.Fatalf("build fitness agent: %v", err)
 	}
@@ -707,7 +712,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("build grocery agent: %v", err)
 	}
-	fitnessTaskAgent, err := fitness.NewTask(fitnessModel, stravaClient, braveSearch, agui.NewAGUIToolset(pending))
+	fitnessTaskAgent, err := fitness.NewTask(fitnessModel, fitnessActivities, braveSearch, agui.NewAGUIToolset(pending))
 	if err != nil {
 		log.Fatalf("build wellness fitness task agent: %v", err)
 	}
@@ -831,6 +836,7 @@ func main() {
 		R2:       r2,
 		Links:    telegramruntime.NewLinkStore(d1, time.Now),
 		Clerk:    clerkBackend,
+		Fitness:  fitnessActivities,
 		Now:      time.Now,
 	})
 	if err != nil {

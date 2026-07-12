@@ -48,8 +48,8 @@ describe("agent registry", () => {
     expect(getAgentConfig("excalidraw").requires ?? []).toEqual([]);
     expect(getAgentConfig("travel").requires ?? []).toEqual([]);
     expect(getAgentConfig("grocery").requires).toEqual(["kroger"]);
-    expect(getAgentConfig("fitness").requires).toEqual(["strava"]);
-    expect(getAgentConfig("wellness").requires).toEqual(["kroger", "strava"]);
+    expect(getAgentConfig("fitness").requires).toEqual([]);
+    expect(getAgentConfig("wellness").requires).toEqual(["kroger"]);
     expect(getAgentConfig("expense").requires ?? []).toEqual([]);
     expect(getAgentConfig("oral-boards").requires ?? []).toEqual([]);
     expect(getAgentConfig("trends").requires ?? []).toEqual([]);

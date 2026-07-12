@@ -62,6 +62,16 @@ export function getCopilotKitRuntimeBaseUrl(
   return normalizeLocalhostForPlatform(stripTrailingSlash(url), os);
 }
 
+export function getAgentsBaseUrl(
+  config: AgentRuntimeConfig,
+  os: string,
+  env: Record<string, string | undefined> = process.env,
+): string {
+  const configured = envOrConfig(env, AGENTS_BASE_ENV_KEY, config.agentsBaseUrl);
+  const baseUrl = configured ?? `http://${os === "android" ? "10.0.2.2" : "localhost"}:8000`;
+  return stripTrailingSlash(normalizeLocalhostForPlatform(baseUrl, os));
+}
+
 export function getAgentUrl(
   agentId: AgentId,
   config: AgentRuntimeConfig,
@@ -76,8 +86,7 @@ export function getAgentUrl(
     );
   }
 
-  const configured = envOrConfig(env, AGENTS_BASE_ENV_KEY, config.agentsBaseUrl);
-  const baseUrl = configured ?? `http://${os === "android" ? "10.0.2.2" : "localhost"}:8000`;
+  const baseUrl = getAgentsBaseUrl(config, os, env);
   const backendPath = AGENT_BACKEND_PATHS[agentId];
   return normalizeAguiUrl(
     `${stripTrailingSlash(normalizeLocalhostForPlatform(baseUrl, os))}/${backendPath}`,

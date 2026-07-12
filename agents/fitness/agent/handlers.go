@@ -1,13 +1,11 @@
 package fitness
 
 import (
-	"context"
-	"errors"
 	"strings"
-	"time"
 
 	"agents/internal/agentruntime"
 	"agents/internal/common"
+	"agents/internal/fitnessdata"
 	"google.golang.org/adk/v2/agent"
 )
 
@@ -27,8 +25,7 @@ type Result struct {
 }
 
 type FetchActivitiesArgs struct {
-	After         *int64  `json:"after,omitempty"`
-	NextPageToken *string `json:"next_page_token,omitempty"`
+	Limit int `json:"limit,omitempty"`
 }
 type ResearchArgs struct {
 	Research string `json:"research"`
@@ -41,63 +38,38 @@ type ReadyArgs struct {
 }
 type CurrentDateArgs struct{}
 
-// FetchActivities is the ADK-facing tool handler: it resolves the Strava
-// token, performs the API call, and publishes the resulting state. tokenCtx
-// carries the Strava token (via WithStravaToken) separately from ctx because
-// wrapping ctx directly would shadow its agent.Context-specific methods
-// (State, Actions) that publishState needs.
-func FetchActivities(ctx agent.Context, tokenCtx context.Context, input FetchActivitiesArgs, client *Strava, now func() time.Time) (Result, error) {
-	if client == nil {
-		return Result{}, errors.New("Strava client is required")
+// FetchActivities loads the authenticated user's provider-neutral D1 snapshot
+// and publishes the bounded activity context used by the planning agent.
+func FetchActivities(ctx agent.Context, input FetchActivitiesArgs, repository fitnessdata.Repository) (Result, error) {
+	if repository == nil {
+		return Result{}, nil
 	}
 	state := readState(ctx.State())
-	if _, ok := StravaToken(tokenCtx); !ok {
-		state.StravaConnected, state.Status = false, StatusIdle
-		if err := publishState(ctx, state); err != nil {
-			return Result{}, err
-		}
-		return fitnessFailure("strava_not_connected", "Connect Strava before syncing activities."), nil
+	state.Status = StatusSyncing
+	limit := input.Limit
+	if limit <= 0 {
+		limit = fitnessdata.DefaultListLimit
 	}
-	state.StravaConnected, state.Status = true, StatusSyncing
-	activities, next, err := client.Activities(tokenCtx, input.After, input.NextPageToken)
+	snapshot, err := repository.Snapshot(ctx, ctx.UserID(), limit)
 	if err != nil {
 		state.Status = StatusIdle
-		disconnected := errors.Is(err, ErrStravaDisconnected)
-		if disconnected {
-			state.StravaConnected = false
-		}
 		if pubErr := publishState(ctx, state); pubErr != nil {
 			return Result{}, pubErr
 		}
-		if disconnected {
-			return fitnessFailure("strava_unauthorized", "Reconnect Strava before syncing activities."), nil
-		}
-		return fitnessFailure("strava_api_error", "Strava activities could not be loaded."), nil
+		return fitnessFailure("fitness_data_load_error", "Synced fitness activities could not be loaded."), nil
 	}
-	result := mergeFetchedActivities(&state, input, activities, next, now)
+	state.FitnessDataConnected = snapshot.Connected
+	state.ActivitySource = snapshot.Source
+	state.Activities = snapshot.Activities
+	state.ActivitiesSyncedAt = snapshot.SyncedAt
+	state.Status = StatusPlanning
 	if err := publishState(ctx, state); err != nil {
 		return Result{}, err
 	}
-	return result, nil
-}
-
-// mergeFetchedActivities applies one fetched page to state: pure logic,
-// tested directly without a Strava client or ADK context.
-func mergeFetchedActivities(state *FitnessState, input FetchActivitiesArgs, activities []Activity, next string, now func() time.Time) Result {
-	if input.NextPageToken == nil || strings.TrimSpace(*input.NextPageToken) == "" || strings.TrimSpace(*input.NextPageToken) == "1" {
-		state.Activities = activities
-	} else {
-		state.Activities = mergeActivities(state.Activities, activities)
+	if !snapshot.Connected {
+		return fitnessFailure("fitness_data_not_connected", "Connect Health Connect in the mobile app before planning from recent activity."), nil
 	}
-	if len(state.Activities) > 10_000 {
-		state.Activities = state.Activities[:10_000]
-	}
-	if now == nil {
-		now = time.Now
-	}
-	state.ActivitiesSyncedAt = now().UTC().Format(time.RFC3339)
-	state.Status = StatusPlanning
-	return Result{OK: true, Count: len(state.Activities), SyncedAt: state.ActivitiesSyncedAt, Activities: activities, NextPageToken: next}
+	return Result{OK: true, Count: len(snapshot.Activities), SyncedAt: snapshot.SyncedAt, Activities: snapshot.Activities}, nil
 }
 
 func SetObjectiveResearch(ctx agent.Context, input ResearchArgs) (Result, error) {
@@ -163,21 +135,6 @@ func markPlanReady(state *FitnessState, input ReadyArgs) (Result, error) {
 func GetCurrentDate(_ agent.Context, _ CurrentDateArgs) (Result, error) {
 	date := common.DateDetails(nil)
 	return Result{OK: true, Date: date.Date, Weekday: date.Weekday, Month: date.Month}, nil
-}
-
-func mergeActivities(existing, batch []Activity) []Activity {
-	result := make([]Activity, 0, len(existing)+len(batch))
-	seen := make(map[string]bool, len(existing)+len(batch))
-	for _, group := range [][]Activity{existing, batch} {
-		for _, activity := range group {
-			if activity.ID == "" || seen[activity.ID] {
-				continue
-			}
-			seen[activity.ID] = true
-			result = append(result, activity)
-		}
-	}
-	return result
 }
 
 func fitnessFailure(code, message string) Result {

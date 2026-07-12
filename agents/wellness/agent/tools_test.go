@@ -4,12 +4,12 @@ import (
 	"testing"
 )
 
-func TestWellnessSpecialistPolicyRequiresConnectionsAndFitnessFirst(t *testing.T) {
+func TestWellnessSpecialistPolicyRequiresKrogerAndFitnessFirst(t *testing.T) {
 	state := Defaults()
 	if got := specialistPolicy(state, "fitness_agent"); got == nil || got.Code != "connections_required" {
 		t.Fatalf("disconnected policy = %#v", got)
 	}
-	state.StravaConnected, state.KrogerConnected = true, true
+	state.KrogerConnected = true
 	if got := specialistPolicy(state, "grocery_agent"); got == nil || got.Code != "fitness_plan_required" {
 		t.Fatalf("out-of-order policy = %#v", got)
 	}
@@ -28,7 +28,7 @@ func TestWellnessCombinedPlanRequiresBothSpecialistOutputs(t *testing.T) {
 	if result.OK || result.Error == nil || result.Error.Code != "specialist_plans_required" {
 		t.Fatalf("result = %#v", result)
 	}
-	state.StravaConnected, state.KrogerConnected = true, true
+	state.FitnessDataConnected, state.KrogerConnected = true, true
 	state.TrainingPlan, state.MealPlan = "run", "eat"
 	result, _ = setWeeklyWellnessPlan(&state, PlanArgs{Plan: validWeeklyPlan()})
 	ready, _ := markPlanReady(&state, ReadyArgs{Summary: "Balanced week"})

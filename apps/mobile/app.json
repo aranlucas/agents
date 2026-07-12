@@ -40,7 +40,8 @@
       "expo-image",
       "expo-web-browser",
       ["expo-system-ui", { "android": { "edgeToEdge": true } }],
-      "expo-secure-store"
+      "expo-secure-store",
+      "./modules/health-data/app.plugin.js"
     ],
     "extra": {
       "clerkPublishableKey": "pk_test_bG9naWNhbC12aXBlci0zMy5jbGVyay5hY2NvdW50cy5kZXYk",

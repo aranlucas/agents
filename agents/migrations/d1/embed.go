@@ -12,3 +12,8 @@ var Initial string
 //
 //go:embed 002_telegram_links.sql
 var TelegramLinks string
+
+// FitnessActivities is the provider-neutral workout sync schema.
+//
+//go:embed 003_fitness_activities.sql
+var FitnessActivities string

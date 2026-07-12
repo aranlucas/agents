@@ -114,7 +114,7 @@ const AGENTS: Record<AgentId, AgentConfig> = {
   },
   fitness: {
     id: "fitness",
-    requires: ["strava"],
+    requires: [],
     label: "Fitness",
     glyph: "💪",
     colorVar: "--fitness",
@@ -137,7 +137,7 @@ const AGENTS: Record<AgentId, AgentConfig> = {
   },
   wellness: {
     id: "wellness",
-    requires: ["kroger", "strava"],
+    requires: ["kroger"],
     label: "Wellness",
     glyph: "☯",
     colorVar: "--wellness",

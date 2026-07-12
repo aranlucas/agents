@@ -6,7 +6,6 @@ import { auth } from "@clerk/nextjs/server";
 import { env } from "@/env";
 import { agentBaseUrl } from "@/lib/agent-url";
 import { getKrogerAccessToken } from "@/lib/kroger-token";
-import { getStravaAccessToken } from "@/lib/strava-token";
 import { AGENT_BACKEND_PATHS, AGENT_ORDER } from "@/components/chat/agents/registry";
 import { GroqTranscriptionService } from "@/lib/copilotkit/groq-transcription";
 import { isOfflineAgentTestMode } from "@/lib/offline-mode";
@@ -15,7 +14,6 @@ import { handleOfflineCopilotKitRequest } from "./offline";
 
 const CLERK_USER_ID_HEADER = "x-clerk-user-id";
 const KROGER_TOKEN_HEADER = "x-kroger-access-token";
-const STRAVA_TOKEN_HEADER = "x-strava-access-token";
 
 const TRENDS_CATALOG_ID = "copilotkit://trends/v1";
 
@@ -72,10 +70,6 @@ const handler: (request: Request) => Response | Promise<Response> = isOfflineAge
             connected: false,
             token: null,
           }));
-          const { token: stravaToken } = await getStravaAccessToken().catch((err) => {
-            console.error("[copilotkit] getStravaAccessToken error:", err);
-            return { connected: false, token: null };
-          });
 
           if (userId) {
             request.headers.set(CLERK_USER_ID_HEADER, userId);
@@ -85,9 +79,6 @@ const handler: (request: Request) => Response | Promise<Response> = isOfflineAge
           }
           if (krogerToken) {
             request.headers.set(KROGER_TOKEN_HEADER, krogerToken);
-          }
-          if (stravaToken) {
-            request.headers.set(STRAVA_TOKEN_HEADER, stravaToken);
           }
 
           // Expose the agentId to the runner so it can query the correct

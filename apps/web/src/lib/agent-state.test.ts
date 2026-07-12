@@ -126,24 +126,37 @@ describe("toGroceryState", () => {
 describe("toFitnessState", () => {
   it("maps activities and coerces numbers", () => {
     const result = toFitnessState({
-      strava_connected: true,
-      activities: [{ id: "1", name: "Run", distance_m: 5000, average_heartrate: "bad" }],
+      fitness_data_connected: true,
+      activity_source: "health_connect",
+      activities: [
+        {
+          id: "1",
+          source: "health_connect",
+          name: "Run",
+          distance_m: 5000,
+          average_heartrate: "bad",
+        },
+      ],
       status: "syncing",
     });
-    expect(result.strava_connected).toBe(true);
+    expect(result.fitness_data_connected).toBe(true);
+    expect(result.activity_source).toBe("health_connect");
     expect(result.status).toBe("syncing");
     expect(result.activities).toEqual([
       {
         id: "1",
+        source: "health_connect",
         name: "Run",
         sport_type: undefined,
         start_date: undefined,
+        end_date: undefined,
         distance_m: 5000,
         moving_time_s: undefined,
         elapsed_time_s: undefined,
         total_elevation_gain_m: undefined,
         average_heartrate: undefined,
         perceived_effort: undefined,
+        data_origin: undefined,
       },
     ]);
   });

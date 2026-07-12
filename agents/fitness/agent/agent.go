@@ -1,14 +1,11 @@
 package fitness
 
 import (
-	"strings"
-	"time"
-
 	"agents/internal/common"
+	"agents/internal/fitnessdata"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
-	"google.golang.org/adk/v2/session"
 	adktool "google.golang.org/adk/v2/tool"
 	"google.golang.org/adk/v2/tool/functiontool"
 )
@@ -22,21 +19,21 @@ type SearchResult struct {
 	Results []common.SearchResult `json:"results"`
 }
 
-func New(m model.LLM, strava *Strava, search *common.BraveSearch, toolsets ...adktool.Toolset) (agent.Agent, error) {
-	return newAgent(m, strava, search, llmagent.ModeChat, toolsets...)
+func New(m model.LLM, activities fitnessdata.Repository, search *common.BraveSearch, toolsets ...adktool.Toolset) (agent.Agent, error) {
+	return newAgent(m, activities, search, llmagent.ModeChat, toolsets...)
 }
 
-func NewTask(m model.LLM, strava *Strava, search *common.BraveSearch, toolsets ...adktool.Toolset) (agent.Agent, error) {
-	return newAgent(m, strava, search, llmagent.ModeTask, toolsets...)
+func NewTask(m model.LLM, activities fitnessdata.Repository, search *common.BraveSearch, toolsets ...adktool.Toolset) (agent.Agent, error) {
+	return newAgent(m, activities, search, llmagent.ModeTask, toolsets...)
 }
 
-func newAgent(m model.LLM, strava *Strava, search *common.BraveSearch, mode llmagent.Mode, toolsets ...adktool.Toolset) (agent.Agent, error) {
+func newAgent(m model.LLM, activities fitnessdata.Repository, search *common.BraveSearch, mode llmagent.Mode, toolsets ...adktool.Toolset) (agent.Agent, error) {
 	tools, err := staticTools(search)
 	if err != nil {
 		return nil, err
 	}
-	toolsets = append(toolsets, &stravaToolset{client: strava})
-	return llmagent.New(llmagent.Config{Name: AppName, Description: "Training plans and Strava-backed activity context.", Instruction: Instruction, Model: m, Mode: mode, Tools: tools, Toolsets: toolsets})
+	toolsets = append(toolsets, &activityToolset{repository: activities})
+	return llmagent.New(llmagent.Config{Name: AppName, Description: "Training plans with synced health activity context.", Instruction: Instruction, Model: m, Mode: mode, Tools: tools, Toolsets: toolsets})
 }
 
 func staticTools(search *common.BraveSearch) ([]adktool.Tool, error) {
@@ -96,23 +93,18 @@ func staticTools(search *common.BraveSearch) ([]adktool.Tool, error) {
 	return result, nil
 }
 
-type stravaToolset struct{ client *Strava }
+type activityToolset struct{ repository fitnessdata.Repository }
 
-func (*stravaToolset) Name() string { return "strava" }
-func (s *stravaToolset) Tools(ctx agent.ReadonlyContext) ([]adktool.Tool, error) {
-	if s.client == nil || ctx == nil || ctx.ReadonlyState() == nil {
-		return nil, nil
-	}
-	raw, err := ctx.ReadonlyState().Get(session.KeyPrefixTemp + "strava_token")
-	token, ok := raw.(string)
-	if err != nil || !ok || strings.TrimSpace(token) == "" {
+func (*activityToolset) Name() string { return "fitness_activities" }
+func (s *activityToolset) Tools(agent.ReadonlyContext) ([]adktool.Tool, error) {
+	if s.repository == nil {
 		return nil, nil
 	}
 	fetch, err := functiontool.New(functiontool.Config{
 		Name:        "fetch_activities",
-		Description: "Fetch and merge one bounded page of Strava activities.",
+		Description: "Load the authenticated user's recent synced fitness activities.",
 	}, func(ctx agent.Context, input FetchActivitiesArgs) (Result, error) {
-		return FetchActivities(ctx, WithStravaToken(ctx, token), input, s.client, time.Now)
+		return FetchActivities(ctx, input, s.repository)
 	})
 	if err != nil {
 		return nil, err

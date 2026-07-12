@@ -81,7 +81,7 @@ The template ships with mock streaming responses in `app/index.tsx`. Replace `mo
 
 The agent tabs use the [AG-UI](https://docs.ag-ui.com/) protocol via [`@ag-ui/client`](https://www.npmjs.com/package/@ag-ui/client). The production path should point at the web CopilotKit runtime, while direct ADK service URLs remain useful for local agent development.
 
-- Set `EXPO_PUBLIC_COPILOTKIT_RUNTIME_URL=https://your-web-app.example.com/api/copilotkit` for production APKs. Mobile will call `/agent/{agentId}/run`, so the Next.js runtime can resolve Clerk OAuth provider tokens for Kroger and Strava before forwarding to the ADK services.
+- Set `EXPO_PUBLIC_COPILOTKIT_RUNTIME_URL=https://your-web-app.example.com/api/copilotkit` for production APKs. Mobile will call `/agent/{agentId}/run`, so the Next.js runtime can resolve the Kroger OAuth token before forwarding to the ADK services. Fitness data syncs separately from Android Health Connect to the authenticated gateway endpoint.
 - Leave `EXPO_PUBLIC_COPILOTKIT_RUNTIME_URL` unset for local direct-agent testing. `EXPO_PUBLIC_AGENTS_BASE_URL` points at the gateway and mobile builds `/<agent>/agui` URLs from it; Android local defaults use `10.0.2.2` so emulator APKs can reach host-machine agents.
 - `src/utils/use-agent.ts` wraps a long-lived `HttpAgent`, streams assistant tokens through `onMessagesChanged`, and applies AG-UI state snapshots/JSON-patch deltas through `onStateChanged`. Mobile does not currently render A2UI surfaces.
 - Each screen renders from agent state (e.g. trip cards, shopping-list chips, fitness/wellness summaries) -- **state is the source of truth**, not chat text.
