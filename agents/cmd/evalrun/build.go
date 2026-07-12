@@ -110,8 +110,7 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		if err != nil {
 			return Built{}, err
 		}
-		strava := fitness.NewStrava(common.NewHTTPClient(30*time.Second, 8<<20).Client, "https://www.strava.com/api/v3/athlete/activities")
-		built, err := fitness.New(m, strava, nil, agui.NewAGUIToolset(nil))
+		built, err := fitness.New(m, nil, nil, agui.NewAGUIToolset(nil))
 		return Built{Name: name, Agent: built, StateDefaults: fitness.StateDefaults(), Notes: notes}, err
 
 	case "grocery":
@@ -133,8 +132,7 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		if err != nil {
 			return Built{}, err
 		}
-		strava := fitness.NewStrava(common.NewHTTPClient(30*time.Second, 8<<20).Client, "https://www.strava.com/api/v3/athlete/activities")
-		fitnessTask, err := fitness.NewTask(fm, strava, nil, agui.NewAGUIToolset(nil))
+		fitnessTask, err := fitness.NewTask(fm, nil, nil, agui.NewAGUIToolset(nil))
 		if err != nil {
 			return Built{}, fmt.Errorf("build fitness task agent: %w", err)
 		}

@@ -1,18 +1,27 @@
 package fitness
 
 import (
+	"context"
 	"testing"
 	"time"
+
+	"agents/internal/fitnessdata"
 )
 
-func TestFitnessFetchMergesPagesWithoutDuplicateActivities(t *testing.T) {
-	state := Defaults()
-	now := func() time.Time { return time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC) }
-	first := mergeFetchedActivities(&state, FetchActivitiesArgs{}, []Activity{{ID: "a", Name: "Run"}}, "2", now)
-	page := "2"
-	second := mergeFetchedActivities(&state, FetchActivitiesArgs{NextPageToken: &page}, []Activity{{ID: "a", Name: "Run"}, {ID: "b", Name: "Hike"}}, "", now)
-	if !first.OK || !second.OK || len(state.Activities) != 2 || state.ActivitiesSyncedAt != "2026-07-10T12:00:00Z" || state.Status != StatusPlanning {
-		t.Fatalf("results/state = %#v / %#v / %#v", first, second, state)
+type fakeActivityRepository struct{}
+
+func (fakeActivityRepository) Sync(context.Context, string, string, []fitnessdata.Activity, time.Time) (fitnessdata.SyncResult, error) {
+	return fitnessdata.SyncResult{}, nil
+}
+
+func (fakeActivityRepository) Snapshot(context.Context, string, int) (fitnessdata.Snapshot, error) {
+	return fitnessdata.Snapshot{Connected: true, Source: fitnessdata.SourceHealthConnect, Activities: []fitnessdata.Activity{}}, nil
+}
+
+func TestFitnessActivityToolExistsWhenRepositoryIsConfigured(t *testing.T) {
+	tools, err := (&activityToolset{repository: fakeActivityRepository{}}).Tools(nil)
+	if err != nil || len(tools) != 1 || tools[0].Name() != "fetch_activities" {
+		t.Fatalf("tools/error = %#v / %v", tools, err)
 	}
 }
 

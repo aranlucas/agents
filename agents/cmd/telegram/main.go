@@ -22,6 +22,7 @@ import (
 	"agents/internal/cloudflare"
 	"agents/internal/common"
 	"agents/internal/config"
+	"agents/internal/fitnessdata"
 	"agents/internal/providers/openai"
 	"agents/internal/rate"
 	telegramruntime "agents/internal/telegram"
@@ -68,12 +69,12 @@ func main() {
 	krogerEndpoint := envDefault("KROGER_MCP_URL", "https://ai-meal-planner-mcp.aranlucas.workers.dev/mcp")
 	kroger := grocery.NewKroger(common.NewHTTPClient(30*time.Second, 8<<20).Client, krogerEndpoint)
 	loader := common.NewWebLoader(common.NewHTTPClient(20*time.Second, 4<<20), 100_000)
-	strava := fitness.NewStrava(common.NewHTTPClient(30*time.Second, 8<<20).Client, "https://www.strava.com/api/v3/athlete/activities")
-	fitnessAgent, err := fitness.New(model, strava, search)
+	fitnessActivities := fitnessdata.NewStore(d1)
+	fitnessAgent, err := fitness.New(model, fitnessActivities, search)
 	must(err)
 	groceryAgent, err := grocery.New(model, kroger, search, loader)
 	must(err)
-	fitnessTask, err := fitness.NewTask(model, strava, search)
+	fitnessTask, err := fitness.NewTask(model, fitnessActivities, search)
 	must(err)
 	groceryTask, err := grocery.NewTask(model, kroger, search, loader)
 	must(err)

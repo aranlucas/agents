@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"agents/internal/fitnessdata"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/session"
 )
@@ -19,28 +20,18 @@ const (
 	StatusReady    Status = "ready"
 )
 
-type Activity struct {
-	ID                  string   `json:"id"`
-	Name                string   `json:"name"`
-	SportType           *string  `json:"sport_type,omitempty"`
-	StartDate           *string  `json:"start_date,omitempty"`
-	DistanceM           *float64 `json:"distance_m,omitempty"`
-	MovingTimeS         *int     `json:"moving_time_s,omitempty"`
-	ElapsedTimeS        *int     `json:"elapsed_time_s,omitempty"`
-	TotalElevationGainM *float64 `json:"total_elevation_gain_m,omitempty"`
-	AverageHeartrate    *float64 `json:"average_heartrate,omitempty"`
-	PerceivedEffort     *int     `json:"perceived_effort,omitempty"`
-}
+type Activity = fitnessdata.Activity
 
 type FitnessState struct {
-	StravaConnected    bool       `json:"strava_connected"`
-	Activities         []Activity `json:"activities"`
-	ActivitiesSyncedAt string     `json:"activities_synced_at"`
-	ObjectiveResearch  string     `json:"objective_research"`
-	TrainingPlan       string     `json:"training_plan"`
-	Status             Status     `json:"status"`
-	ReviewSummary      string     `json:"review_summary"`
-	UserID             string     `json:"user_id"`
+	FitnessDataConnected bool       `json:"fitness_data_connected"`
+	ActivitySource       string     `json:"activity_source"`
+	Activities           []Activity `json:"activities"`
+	ActivitiesSyncedAt   string     `json:"activities_synced_at"`
+	ObjectiveResearch    string     `json:"objective_research"`
+	TrainingPlan         string     `json:"training_plan"`
+	Status               Status     `json:"status"`
+	ReviewSummary        string     `json:"review_summary"`
+	UserID               string     `json:"user_id"`
 }
 
 func Defaults() FitnessState { return FitnessState{Activities: []Activity{}, Status: StatusIdle} }
@@ -79,7 +70,8 @@ func publishState(ctx agent.Context, state FitnessState) error {
 		key   string
 		value any
 	}{
-		{"strava_connected", state.StravaConnected},
+		{"fitness_data_connected", state.FitnessDataConnected},
+		{"activity_source", state.ActivitySource},
 		{"activities", state.Activities},
 		{"activities_synced_at", state.ActivitiesSyncedAt},
 		{"objective_research", state.ObjectiveResearch},

@@ -124,7 +124,7 @@ func functionCall(id, name string, args map[string]any) *model.LLMResponse {
 
 func connectedWellnessState() map[string]any {
 	state := StateDefaults()
-	state["strava_connected"], state["kroger_connected"] = true, true
+	state["fitness_data_connected"], state["kroger_connected"] = true, true
 	return state
 }
 

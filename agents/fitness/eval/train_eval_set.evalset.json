@@ -3,7 +3,7 @@
   "name": "train_eval_set",
   "eval_cases": [
     {
-      "eval_id": "fitness_requires_strava_connection",
+      "eval_id": "fitness_requires_health_connect_sync",
       "session_input": {
         "app_name": "fitness_agent",
         "user_id": "eval_user",
@@ -24,7 +24,7 @@
             "role": "model",
             "parts": [
               {
-                "text": "Please connect Strava first so I can tailor the training plan to your recent activity."
+                "text": "Please connect and sync Health Connect in the mobile app first so I can tailor the training plan to your recent activity."
               }
             ]
           }
@@ -37,7 +37,8 @@
         "app_name": "fitness_agent",
         "user_id": "eval_user",
         "state": {
-          "strava_connected": true,
+          "fitness_data_connected": true,
+          "activity_source": "health_connect",
           "activities": [
             {
               "id": "a1",
@@ -77,7 +78,8 @@
         "app_name": "fitness_agent",
         "user_id": "eval_user",
         "state": {
-          "strava_connected": true
+          "fitness_data_connected": true,
+          "activity_source": "health_connect"
         }
       },
       "conversation": [

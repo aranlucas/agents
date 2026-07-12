@@ -16,12 +16,12 @@ func (fakeModel) GenerateContent(context.Context, *model.LLMRequest, bool) iter.
 	return func(func(*model.LLMResponse, error) bool) {}
 }
 
-func TestFitnessAgentBuildsWithAuthGate(t *testing.T) {
+func TestFitnessAgentBuildsWithHealthDataGate(t *testing.T) {
 	built, err := New(fakeModel{}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if built.Name() != AppName || !strings.Contains(Instruction, "connect Strava first") {
+	if built.Name() != AppName || !strings.Contains(Instruction, "connect Health Connect") {
 		t.Fatalf("agent/instruction = %q / %q", built.Name(), Instruction)
 	}
 }

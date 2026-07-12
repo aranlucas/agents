@@ -47,7 +47,7 @@ func setWeeklyWellnessPlan(state *WellnessState, input PlanArgs) (Result, error)
 			return wellnessFailure("invalid_weekly_plan", "weekly plan is missing required sections"), nil
 		}
 	}
-	if !state.KrogerConnected || !state.StravaConnected || strings.TrimSpace(state.TrainingPlan) == "" || strings.TrimSpace(state.MealPlan) == "" {
+	if !state.KrogerConnected || !state.FitnessDataConnected || strings.TrimSpace(state.TrainingPlan) == "" || strings.TrimSpace(state.MealPlan) == "" {
 		return wellnessFailure("specialist_plans_required", "connected fitness and grocery specialist plans are required"), nil
 	}
 	state.WeeklyPlan, state.Status = input.Plan, StatusPlanning
@@ -85,8 +85,8 @@ func specialistPolicy(state WellnessState, toolName string) *agentruntime.Struct
 	if toolName != "fitness_agent" && toolName != "grocery_agent" {
 		return nil
 	}
-	if !state.StravaConnected || !state.KrogerConnected {
-		return &agentruntime.StructuredError{Code: "connections_required", Message: "connect both Strava and Kroger before delegation"}
+	if !state.KrogerConnected {
+		return &agentruntime.StructuredError{Code: "connections_required", Message: "connect Kroger before delegation"}
 	}
 	if toolName == "grocery_agent" && strings.TrimSpace(state.TrainingPlan) == "" {
 		return &agentruntime.StructuredError{Code: "fitness_plan_required", Message: "fitness_agent must complete before grocery_agent"}
