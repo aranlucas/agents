@@ -9,12 +9,12 @@ import (
 	"regexp"
 
 	"agents/internal/auth"
+	"agents/internal/functiontool"
 	aguitypes "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"github.com/google/jsonschema-go/jsonschema"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/adk/v2/tool"
-	"google.golang.org/adk/v2/tool/functiontool"
 	"google.golang.org/genai"
 )
 

@@ -30,13 +30,13 @@ import (
 	_ "embed"
 
 	"agents/internal/common"
+	"agents/internal/functiontool"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
 	adktool "google.golang.org/adk/v2/tool"
 	"google.golang.org/adk/v2/tool/agenttool"
-	"google.golang.org/adk/v2/tool/functiontool"
 )
 
 //go:embed instructions.md

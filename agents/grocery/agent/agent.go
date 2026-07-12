@@ -5,11 +5,12 @@ import (
 	"errors"
 
 	"agents/internal/common"
+	"agents/internal/functiontool"
+	"github.com/google/jsonschema-go/jsonschema"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
 	adktool "google.golang.org/adk/v2/tool"
-	"google.golang.org/adk/v2/tool/functiontool"
 	"google.golang.org/genai"
 )
 
@@ -47,9 +48,15 @@ func newAgent(m model.LLM, kroger *Kroger, search *common.BraveSearch, loader *c
 }
 
 func groceryTools(search *common.BraveSearch, loader *common.WebLoader) ([]adktool.Tool, error) {
+	shoppingListSchema, err := shoppingListInputSchema()
+	if err != nil {
+		return nil, err
+	}
+
 	setShoppingListTool, err := functiontool.New(functiontool.Config{
 		Name:        "set_shopping_list",
 		Description: "Replace the unmaterialized shopping list.",
+		InputSchema: shoppingListSchema,
 	}, SetShoppingList)
 	if err != nil {
 		return nil, err
@@ -142,6 +149,17 @@ func groceryTools(search *common.BraveSearch, loader *common.WebLoader) ([]adkto
 	}
 
 	return result, nil
+}
+
+func shoppingListInputSchema() (*jsonschema.Schema, error) {
+	schema, err := jsonschema.For[ShoppingListArgs](nil)
+	if err != nil {
+		return nil, err
+	}
+	items := schema.Properties["items"]
+	items.Type = "array"
+	items.Types = nil
+	return schema, nil
 }
 
 func compactGroceryContext(_ agent.Context, request *model.LLMRequest) (*model.LLMResponse, error) {
