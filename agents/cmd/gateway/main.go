@@ -104,6 +104,7 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 			StateDefaults:    entry.StateDefaults,
 			PendingTools:     deps.Pending,
 			Forwarded:        entry.Forwarded,
+			Route:            entry.Route,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("build AG-UI adapter for %s: %w", entry.Route, err)

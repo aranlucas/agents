@@ -19,6 +19,7 @@ func TestADKAgentOfficialStyleComposition(t *testing.T) {
 		AppName:             "demo_app",
 		UserID:              "demo_user",
 		UseInMemoryServices: true,
+		Route:               "agui",
 	})
 	if err != nil {
 		t.Fatalf("NewADKAgent: %v", err)
@@ -39,12 +40,45 @@ func TestADKAgentOfficialStyleComposition(t *testing.T) {
 	}
 }
 
+// TestNewADKAgentRequiresRoute guards against reintroducing a silent route
+// default: entry.Route drives requestStateOverlay's provider-connected
+// switch, so a caller that forgets to set it must fail loudly rather than
+// fall back to "agui" and silently drop kroger_connected/strava_connected.
+func TestNewADKAgentRequiresRoute(t *testing.T) {
+	ag, err := llmagent.New(llmagent.Config{Name: "demo", Instruction: "demo", Model: &fakeResumeModel{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewADKAgent(ADKAgentConfig{Agent: ag, UseInMemoryServices: true}); err == nil {
+		t.Fatal("expected missing route error")
+	}
+}
+
+// TestNewADKAgentPropagatesRoute guards against the regression where every
+// gateway-mounted agent's entry.Route silently defaulted to "agui" instead of
+// its registry route (e.g. "grocery"), which made requestStateOverlay's
+// route switch never match and silently drop kroger_connected/
+// strava_connected from every request's state overlay.
+func TestNewADKAgentPropagatesRoute(t *testing.T) {
+	ag, err := llmagent.New(llmagent.Config{Name: "demo", Instruction: "demo", Model: &fakeResumeModel{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	adapter, err := NewADKAgent(ADKAgentConfig{Agent: ag, UseInMemoryServices: true, Route: "grocery"})
+	if err != nil {
+		t.Fatalf("NewADKAgent: %v", err)
+	}
+	if adapter.handler.entry.Route != "grocery" {
+		t.Fatalf("route = %q, want %q", adapter.handler.entry.Route, "grocery")
+	}
+}
+
 func TestNewADKAgentRequiresExplicitSessionChoice(t *testing.T) {
 	ag, err := llmagent.New(llmagent.Config{Name: "demo", Instruction: "demo", Model: &fakeResumeModel{}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := NewADKAgent(ADKAgentConfig{Agent: ag}); err == nil {
+	if _, err := NewADKAgent(ADKAgentConfig{Agent: ag, Route: "agui"}); err == nil {
 		t.Fatal("expected missing session service error")
 	}
 }
