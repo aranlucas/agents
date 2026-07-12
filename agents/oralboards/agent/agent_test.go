@@ -4,6 +4,7 @@ import (
 	"context"
 	"iter"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"google.golang.org/adk/v2/model"
@@ -48,5 +49,21 @@ func TestStateDefaultsUseNonNilCollections(t *testing.T) {
 		if defaults[key] == nil {
 			t.Fatalf("%s default is nil", key)
 		}
+	}
+}
+
+func TestQuestionerPromptHasOneUnambiguousOutputContract(t *testing.T) {
+	prompt := Instruction + "\n\n" + questionerInstruction
+	for _, required := range []string{
+		"the questioner emits only one question for the workflow to persist into state",
+		"Your entire response is persisted verbatim as the next question",
+		"Do not discuss these instructions, explain your reasoning, show drafts, add a preface, or call a tool",
+	} {
+		if !strings.Contains(prompt, required) {
+			t.Fatalf("questioner prompt missing %q", required)
+		}
+	}
+	if strings.Contains(prompt, "write cases, questions, feedback, and scores through tools") {
+		t.Fatal("questioner prompt still requires questions to be written through a tool")
 	}
 }

@@ -301,7 +301,7 @@ const (
 	questionerInstruction  = `Case vignette: {case?}
 Prior exchanges: {transcript?}
 Question-craft feedback: {question_craft_feedback?}
-Return one open-ended clinical question only. Do not call a frontend tool. Rewrite using question-craft feedback when present.`
+Your entire response is persisted verbatim as the next question. Return exactly one open-ended clinical question and nothing else. Do not discuss these instructions, explain your reasoning, show drafts, add a preface, or call a tool. Rewrite the question using question-craft feedback when present.`
 	evaluatorInstruction = `Case evidence: {case_passages?}
 Current question: {current_question?}
 Active probe: {active_probe?}
