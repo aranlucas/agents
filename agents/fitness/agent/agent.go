@@ -4,13 +4,13 @@ import (
 	"strings"
 	"time"
 
-	"agents/fitness/agent/tools"
 	"agents/internal/common"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
 	adktool "google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool/functiontool"
 )
 
 type SearchArgs struct {
@@ -40,22 +40,34 @@ func newAgent(m model.LLM, strava *Strava, search *common.BraveSearch, mode llma
 }
 
 func staticTools(search *common.BraveSearch) ([]adktool.Tool, error) {
-	getCurrentDateTool, err := tools.NewGetCurrentDate(GetCurrentDate)
+	getCurrentDateTool, err := functiontool.New(functiontool.Config{
+		Name:        "get_current_date",
+		Description: "Return the current UTC date.",
+	}, GetCurrentDate)
 	if err != nil {
 		return nil, err
 	}
 
-	setObjectiveResearchTool, err := tools.NewSetObjectiveResearch(SetObjectiveResearch)
+	setObjectiveResearchTool, err := functiontool.New(functiontool.Config{
+		Name:        "set_objective_research",
+		Description: "Write concise sourced objective research to state.",
+	}, SetObjectiveResearch)
 	if err != nil {
 		return nil, err
 	}
 
-	setTrainingPlanTool, err := tools.NewSetTrainingPlan(SetTrainingPlan)
+	setTrainingPlanTool, err := functiontool.New(functiontool.Config{
+		Name:        "set_training_plan",
+		Description: "Write the complete weekly training plan to state.",
+	}, SetTrainingPlan)
 	if err != nil {
 		return nil, err
 	}
 
-	markReadyTool, err := tools.NewMarkPlanReady(MarkPlanReady)
+	markReadyTool, err := functiontool.New(functiontool.Config{
+		Name:        "mark_plan_ready",
+		Description: "Mark a complete training plan ready.",
+	}, MarkPlanReady)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +80,10 @@ func staticTools(search *common.BraveSearch) ([]adktool.Tool, error) {
 	}
 
 	if search != nil {
-		webSearchTool, err := tools.NewWebSearch(func(ctx agent.Context, input SearchArgs) (SearchResult, error) {
+		webSearchTool, err := functiontool.New(functiontool.Config{
+			Name:        "web_search",
+			Description: "Search current public web results with the limited Brave budget.",
+		}, func(ctx agent.Context, input SearchArgs) (SearchResult, error) {
 			results, err := search.Search(ctx, input.Query, input.Count)
 			return SearchResult{Results: results}, err
 		})
@@ -93,7 +108,10 @@ func (s *stravaToolset) Tools(ctx agent.ReadonlyContext) ([]adktool.Tool, error)
 	if err != nil || !ok || strings.TrimSpace(token) == "" {
 		return nil, nil
 	}
-	fetch, err := tools.NewFetchActivities(func(ctx agent.Context, input FetchActivitiesArgs) (Result, error) {
+	fetch, err := functiontool.New(functiontool.Config{
+		Name:        "fetch_activities",
+		Description: "Fetch and merge one bounded page of Strava activities.",
+	}, func(ctx agent.Context, input FetchActivitiesArgs) (Result, error) {
 		return FetchActivities(ctx, WithStravaToken(ctx, token), input, s.client, time.Now)
 	})
 	if err != nil {

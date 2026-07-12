@@ -26,7 +26,7 @@ func writeSSE(w http.ResponseWriter, lines []string) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	flusher, _ := w.(http.Flusher)
 	for _, line := range lines {
-		fmt.Fprintf(w, "%s\n\n", line)
+		_, _ = fmt.Fprintf(w, "%s\n\n", line)
 		if flusher != nil {
 			flusher.Flush()
 		}
@@ -123,7 +123,7 @@ func TestGenerateContentMapsMessagesToolsAndNonStreamingResponse(t *testing.T) {
 		writeJSON(w, map[string]any{
 			"model": "test-model",
 			"choices": []map[string]any{{
-				"message":        map[string]any{"content": "complete"},
+				"message":       map[string]any{"content": "complete"},
 				"finish_reason": "stop",
 			}},
 			"usage": map[string]any{"total_tokens": 8},

@@ -33,12 +33,14 @@ type ShoppingListArgs struct {
 	Items []string `json:"items"`
 	Notes string   `json:"notes"`
 }
+
 type CartArgs struct {
 	Items []CartItem `json:"items"`
 }
 type PantryArgs struct {
 	Items []PantryItem `json:"items"`
 }
+
 type MealPlanArgs struct {
 	Plan string `json:"plan"`
 }

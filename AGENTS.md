@@ -40,15 +40,12 @@ The gateway runs on port 8000. It mounts `/<agent>/agui`,
 
 - Use strong domain types. Restrict `any`
 - Keep each agent under `agents/<name>/agent/` with `agent.go`, typed state,
-  embedded `instructions.md`, deterministic tests, and a `tools/` package with
-  one file per registered tool.
-- Register tools by building each `functiontool.New` (or `tools.NewXxx`) call
-  as its own named variable with an individual `if err != nil` check, then
-  return them via an explicit slice literal — not a generic `add`-closure
-  helper. This is more verbose than the generic-helper version, but it's the
-  "boring and obvious" style the ADK docs consistently use — worth preferring
-  here since anyone maintaining this alongside other ADK agents will expect
-  it.
+  embedded `instructions.md`, and deterministic tests.
+- Register tools inline in `agent.go`: build each
+  `functiontool.New(functiontool.Config{...}, handler)` call as its own named
+  variable with an individual `if err != nil` check, then return them via an
+  explicit slice literal — not a generic per-tool wrapper package, and not a
+  generic `add`-closure helper.
 - D1 and R2 are mandatory. Never add a local database or alternate persistence fallback.
 
 ## Adding an agent
