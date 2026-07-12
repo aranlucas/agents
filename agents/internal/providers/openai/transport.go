@@ -134,11 +134,11 @@ func buildRequest(req *model.LLMRequest, modelName string, stream bool) (openai.
 			case genai.FunctionCallingConfigModeAny:
 				if len(calling.AllowedFunctionNames) == 1 {
 					result.ToolChoice = openai.ChatCompletionToolChoiceOptionUnionParam{
-					OfChatCompletionNamedToolChoice: &openai.ChatCompletionNamedToolChoiceParam{
-						Type: "function",
-						Function: openai.ChatCompletionNamedToolChoiceFunctionParam{
-							Name: calling.AllowedFunctionNames[0],
-						},
+						OfChatCompletionNamedToolChoice: &openai.ChatCompletionNamedToolChoiceParam{
+							Type: "function",
+							Function: openai.ChatCompletionNamedToolChoiceFunctionParam{
+								Name: calling.AllowedFunctionNames[0],
+							},
 						},
 					}
 				} else {
@@ -204,6 +204,17 @@ func contentMessages(content *genai.Content) ([]openai.ChatCompletionMessagePara
 					ToolCallID: part.FunctionResponse.ID,
 				},
 			})
+		case len(part.ThoughtSignature) > 0:
+			// A signature-only part with no accompanying text, image, or
+			// function call/response carries nothing an OpenAI-compatible
+			// provider can represent. ADK's cross-agent history conversion
+			// (ConvertForeignEvent) passes non-text/non-function parts
+			// through unmodified, and a thinking-enabled Gemini phase (e.g.
+			// case_builder) can emit these bare signature parts alongside
+			// its thought summary — which is already dropped above via
+			// part.Thought. Dropping this one too is safe: it's an opaque
+			// continuation marker for Gemini's own thinking, meaningless
+			// once separated from that summary.
 		default:
 			return nil, errors.New("unsupported content part for OpenAI-compatible provider")
 		}

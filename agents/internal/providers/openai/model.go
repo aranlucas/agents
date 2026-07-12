@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"log"
 	"net/http"
 	"net/url"
 	"slices"
@@ -166,6 +167,11 @@ func (m *Model) runProvider(ctx context.Context, pc providerClient, req *model.L
 	}
 	params, err := buildRequest(req, modelName, stream)
 	if err != nil {
+		// buildRequest errors are always local schema-construction failures
+		// (our own code, never raw HTTP bodies or credentials), so logging
+		// the cause in full here is safe and is the only place it survives —
+		// ProviderError.Error() deliberately omits cause for other Kinds.
+		log.Printf("provider %s request_schema: %v", pc.config.Name, err)
 		return false, &ProviderError{Provider: pc.config.Name, Kind: "request_schema", cause: err}
 	}
 	if stream {
@@ -285,20 +291,20 @@ func (m *Model) streamResponse(ctx context.Context, pc providerClient, params op
 		return emitted, &ProviderError{Provider: pc.config.Name, Retryable: true, Kind: "empty_response"}
 	}
 	yield(&model.LLMResponse{
-		Content:      &genai.Content{Role: "model", Parts: parts},
+		Content:       &genai.Content{Role: "model", Parts: parts},
 		UsageMetadata: usageMetadata(usage),
-		ModelVersion: modelVersion,
-		TurnComplete: true,
-		FinishReason: finishReason(finish),
+		ModelVersion:  modelVersion,
+		TurnComplete:  true,
+		FinishReason:  finishReason(finish),
 	}, nil)
 	return true, nil
 }
 
 func completionToResponse(completion *openai.ChatCompletion) *model.LLMResponse {
 	resp := &model.LLMResponse{
-		TurnComplete: true,
+		TurnComplete:  true,
 		UsageMetadata: usageMetadata(completion.Usage),
-		ModelVersion: completion.Model,
+		ModelVersion:  completion.Model,
 	}
 	if len(completion.Choices) > 0 {
 		choice := completion.Choices[0]
