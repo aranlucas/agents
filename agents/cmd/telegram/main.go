@@ -17,11 +17,11 @@ import (
 	"agents/expense/agent"
 	"agents/fitness/agent"
 	"agents/grocery/agent"
+	"agents/internal/agui"
 	clerkbackend "agents/internal/clerk"
 	"agents/internal/cloudflare"
 	"agents/internal/common"
 	"agents/internal/config"
-	mcpbridge "agents/internal/mcp"
 	"agents/internal/providers/openai"
 	"agents/internal/rate"
 	telegramruntime "agents/internal/telegram"
@@ -84,7 +84,7 @@ func main() {
 	defer func() { _ = corpus.Close() }()
 	oralAgent, err := oralboards.New(oralboards.PhaseModels{CaseBuilder: model, Questioner: model, Evaluator: model, Scorer: model}, corpus)
 	must(err)
-	excalBridge, err := mcpbridge.NewExcalidraw(envDefault("EXCALIDRAW_MCP_URL", "https://mcp.excalidraw.com/mcp"), common.NewHTTPClient(30*time.Second, 8<<20).Client)
+	excalBridge, err := agui.NewMCPApps([]agui.MCPAppsServer{{URL: envDefault("EXCALIDRAW_MCP_URL", "https://mcp.excalidraw.com/mcp"), ServerID: "excalidraw"}}, common.NewHTTPClient(30*time.Second, 8<<20).Client)
 	must(err)
 	excalAgent, err := excalidraw.New(model, excalBridge)
 	must(err)

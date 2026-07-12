@@ -55,7 +55,8 @@ const GeneratorAppName = "TrendsQueryGeneratorAgent"
 // a2uiActivityStatePrefix matches internal/agui/converter.go's unexported
 // a2uiActivityStatePrefix constant. Duplicated here rather than imported
 // because agui intentionally keeps that constant private (see
-// internal/mcp/excalidraw.go's activityStatePrefix for the same pattern).
+// internal/agui/mcpapps.go's use of mcpAppActivityStatePrefix for the same
+// pattern).
 const a2uiActivityStatePrefix = session.KeyPrefixTemp + "a2ui_activity:"
 
 // New builds the root GoogleTrendsAgent. generator must be the child SQL

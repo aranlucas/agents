@@ -247,10 +247,6 @@ export type OralBoardsState = {
   // Follow-up probe asked by the evaluator via ask_probe — shown as the active
   // question until append_exchange clears it.
   active_probe?: string;
-  // Blueprint domain and skill level the questioner declared for the active
-  // question (via set_question_target) — cleared when the exchange commits.
-  target_skillset?: string;
-  target_skill?: OralBoardsSkill;
   question_craft_feedback?: string;
   user_id?: string;
 };
