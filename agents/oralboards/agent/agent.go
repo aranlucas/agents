@@ -13,7 +13,6 @@ import (
 	"google.golang.org/adk/v2/session"
 	adktool "google.golang.org/adk/v2/tool"
 	"google.golang.org/adk/v2/workflow"
-	"google.golang.org/genai"
 )
 
 type PhaseModels struct {
@@ -42,7 +41,7 @@ func New(models PhaseModels, corpus *Corpus, toolsets ...adktool.Toolset) (agent
 	if err != nil {
 		return nil, err
 	}
-	questioner, err := buildPhase("questioner", questionerInstruction, models.Questioner, corpus, []string{"set_question_target"}, nil)
+	questioner, err := buildPhase("questioner", questionerInstruction, models.Questioner, corpus, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -54,18 +53,29 @@ func New(models PhaseModels, corpus *Corpus, toolsets ...adktool.Toolset) (agent
 	if err != nil {
 		return nil, err
 	}
-	children := map[string]agent.Agent{"case_builder": caseBuilder, "questioner": questioner, "evaluator": evaluator, "scorer": scorer}
-	return newWorkflowAgent(children, []agent.Agent{caseBuilder, questioner, evaluator, scorer})
+	return newWorkflowAgent(caseBuilder, questioner, evaluator, scorer)
 }
 
-// newWorkflowAgent expresses the phase transitions as an ADK graph while
-// keeping the phase LLMs in task mode. ADK deliberately rejects task-mode
-// LLM agents as static graph nodes, so the graph nodes below invoke them and
-// forward their events instead of wrapping them with workflow.NewAgentNode.
-func newWorkflowAgent(children map[string]agent.Agent, subAgents []agent.Agent) (agent.Agent, error) {
-	caseBuilder := phaseNode("run_case_builder", func(ctx agent.Context, yield func(*session.Event, error) bool) {
-		runChild(ctx, children["case_builder"], yield)
-	})
+// newWorkflowAgent expresses the entire exam as native ADK graph nodes. Each
+// LLM phase is single-turn: it may chain tools, but completes on its final
+// model response instead of requiring the task-mode finish_task handshake.
+func newWorkflowAgent(caseBuilderAgent, questionerAgent, evaluatorAgent, scorerAgent agent.Agent) (agent.Agent, error) {
+	caseBuilder, err := workflow.NewAgentNode(caseBuilderAgent, workflow.NodeConfig{})
+	if err != nil {
+		return nil, err
+	}
+	questioner, err := workflow.NewAgentNode(questionerAgent, workflow.NodeConfig{})
+	if err != nil {
+		return nil, err
+	}
+	evaluator, err := workflow.NewAgentNode(evaluatorAgent, workflow.NodeConfig{})
+	if err != nil {
+		return nil, err
+	}
+	scorer, err := workflow.NewAgentNode(scorerAgent, workflow.NodeConfig{})
+	if err != nil {
+		return nil, err
+	}
 	waitReady := requestInputNode("wait_for_ready", func(state State) session.RequestInput {
 		return session.RequestInput{
 			InterruptID: "oralboards-ready",
@@ -75,9 +85,26 @@ func newWorkflowAgent(children map[string]agent.Agent, subAgents []agent.Agent) 
 	}, func(_ any) map[string]any {
 		return map[string]any{"status": "questioning"}
 	})
-	questioner := phaseNode("run_questioner", func(ctx agent.Context, yield func(*session.Event, error) bool) {
-		runQuestioner(ctx, children["questioner"], yield)
-	})
+	persistQuestion := workflow.NewEmittingFunctionNode("persist_question", func(ctx agent.Context, question string, emit func(*session.Event) error) (any, error) {
+		question = strings.TrimSpace(question)
+		violations := QuestionCraftViolations(question)
+		delta := map[string]any{"current_question": question, "question_craft_feedback": ""}
+		route := "valid"
+		if len(violations) > 0 {
+			delta["question_craft_feedback"] = strings.Join(violations, "; ")
+			route = "retry"
+		}
+		if err := emit(stateDeltaEvent(ctx, delta)); err != nil {
+			return nil, err
+		}
+		event := session.NewEvent(ctx, ctx.InvocationID())
+		event.Output = question
+		event.Routes = []string{route}
+		if err := emit(event); err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}, workflow.NodeConfig{})
 	waitAnswer := requestInputNode("wait_for_answer", func(state State) session.RequestInput {
 		return session.RequestInput{
 			InterruptID: "oralboards-answer-" + fmt.Sprint(len(state.Transcript)),
@@ -86,9 +113,6 @@ func newWorkflowAgent(children map[string]agent.Agent, subAgents []agent.Agent) 
 		}
 	}, func(_ any) map[string]any {
 		return map[string]any{"status": "feedback"}
-	})
-	evaluator := phaseNode("run_evaluator", func(ctx agent.Context, yield func(*session.Event, error) bool) {
-		runChild(ctx, children["evaluator"], yield)
 	})
 	decision := workflow.NewFunctionNode("continue_or_score", func(ctx agent.Context, _ any) (*session.Event, error) {
 		state := stateFromSession(ctx.Session().State())
@@ -100,15 +124,13 @@ func newWorkflowAgent(children map[string]agent.Agent, subAgents []agent.Agent) 
 		event.Routes = []string{route}
 		return event, nil
 	}, workflow.NodeConfig{})
-	scorer := phaseNode("run_scorer", func(ctx agent.Context, yield func(*session.Event, error) bool) {
-		runChild(ctx, children["scorer"], yield)
-	})
-
 	edges := []workflow.Edge{
 		{From: workflow.Start, To: caseBuilder},
 		{From: caseBuilder, To: waitReady},
 		{From: waitReady, To: questioner},
-		{From: questioner, To: waitAnswer},
+		{From: questioner, To: persistQuestion},
+		{From: persistQuestion, To: waitAnswer, Route: workflow.StringRoute("valid")},
+		{From: persistQuestion, To: questioner, Route: workflow.StringRoute("retry")},
 		{From: waitAnswer, To: evaluator},
 		{From: evaluator, To: decision},
 		{From: decision, To: questioner, Route: workflow.StringRoute("questioner")},
@@ -117,7 +139,7 @@ func newWorkflowAgent(children map[string]agent.Agent, subAgents []agent.Agent) 
 	return workflowagent.New(workflowagent.Config{
 		Name:        AppName,
 		Description: "Pediatric dentistry oral-board practice with deterministic graph phases.",
-		SubAgents:   subAgents,
+		SubAgents:   []agent.Agent{caseBuilderAgent, questionerAgent, evaluatorAgent, scorerAgent},
 		Edges:       edges,
 	})
 }
@@ -140,38 +162,6 @@ func requestInputNode(name string, request func(State) session.RequestInput, res
 	}, workflow.NodeConfig{RerunOnResume: &rerun})
 }
 
-func phaseNode(name string, run func(agent.Context, func(*session.Event, error) bool)) workflow.Node {
-	return workflow.NewEmittingFunctionNode(name, func(ctx agent.Context, input any, emit func(*session.Event) error) (any, error) {
-		userContent := phaseInputContent(input, ctx.UserContent())
-		scope := name + "-" + fmt.Sprint(len(stateFromSession(ctx.Session().State()).Transcript))
-		childCtx := ctx.WithDelta(&agent.CommonContextDelta{InvocationContextDelta: &agent.InvocationContextDelta{
-			UserContent: &userContent, IsolationScope: &scope,
-		}})
-		var emitErr error
-		run(childCtx, func(event *session.Event, err error) bool {
-			if err != nil {
-				emitErr = err
-				return false
-			}
-			emitErr = emit(event)
-			return emitErr == nil
-		})
-		return nil, emitErr
-	}, workflow.NodeConfig{})
-}
-
-func phaseInputContent(input any, fallback *genai.Content) *genai.Content {
-	if values, ok := input.(map[string]any); ok {
-		if answer, ok := values["answer"].(string); ok && strings.TrimSpace(answer) != "" {
-			return genai.NewContentFromText(answer, genai.RoleUser)
-		}
-	}
-	if answer, ok := input.(string); ok && strings.TrimSpace(answer) != "" {
-		return genai.NewContentFromText(answer, genai.RoleUser)
-	}
-	return fallback
-}
-
 func buildPhase(name, instruction string, m model.LLM, corpus *Corpus, allowed []string, toolsets []adktool.Toolset, afterModel ...llmagent.AfterModelCallback) (agent.Agent, error) {
 	all, err := phaseTools(corpus)
 	if err != nil {
@@ -187,7 +177,7 @@ func buildPhase(name, instruction string, m model.LLM, corpus *Corpus, allowed [
 			selected = append(selected, candidate)
 		}
 	}
-	return llmagent.New(llmagent.Config{Name: name, Description: name + " phase", Instruction: Instruction + "\n\n" + instruction, Model: m, Mode: llmagent.ModeTask, Tools: selected, Toolsets: toolsets, AfterModelCallbacks: afterModel})
+	return llmagent.New(llmagent.Config{Name: name, Description: name + " phase", Instruction: Instruction + "\n\n" + instruction, Model: m, Mode: llmagent.ModeSingleTurn, Tools: selected, Toolsets: toolsets, AfterModelCallbacks: afterModel})
 }
 
 func phaseTools(corpus *Corpus) ([]adktool.Tool, error) {
@@ -226,11 +216,6 @@ func phaseTools(corpus *Corpus) ([]adktool.Tool, error) {
 		return nil, err
 	}
 
-	setQuestionTargetTool, err := tools.NewSetQuestionTarget(SetQuestionTarget)
-	if err != nil {
-		return nil, err
-	}
-
 	askProbeTool, err := tools.NewAskProbe(AskProbe)
 	if err != nil {
 		return nil, err
@@ -257,7 +242,6 @@ func phaseTools(corpus *Corpus) ([]adktool.Tool, error) {
 		setCaseTool,
 		setPhaseTool,
 		setLoadingStepTool,
-		setQuestionTargetTool,
 		askProbeTool,
 		appendExchangeTool,
 		setScoreCardTool,
@@ -383,7 +367,14 @@ func stateFromSession(state session.ReadonlyState) State {
 
 const (
 	caseBuilderInstruction = `Build one grounded candidate-facing vignette. Call set_loading_step, search_docs, then set_case and set_phase("presenting"). Do not ask a clinical question.`
-	questionerInstruction  = `Read case and transcript state. Call set_question_target exactly once, then return one open-ended clinical question only. Do not call a frontend tool. Rewrite using question_craft_feedback when present.`
-	evaluatorInstruction   = `Evaluate the latest candidate answer against case_passages. Use at most one probe and do not score until its answer arrives. Otherwise call append_exchange; call complete_examination after the final relevant skillset.`
-	scorerInstruction      = `Call set_loading_step then set_score_card with cited narrative feedback, structured per-skillset ABPD 1-3 scores, and pass, borderline, or not_yet outcome.`
+	questionerInstruction  = `Case vignette: {case?}
+Prior exchanges: {transcript?}
+Question-craft feedback: {question_craft_feedback?}
+Return one open-ended clinical question only. Do not call a frontend tool. Rewrite using question-craft feedback when present.`
+	evaluatorInstruction = `Case evidence: {case_passages?}
+Current question: {current_question?}
+Prior exchanges: {transcript?}
+Evaluate the candidate answer supplied as this node's input. Use at most one probe and do not score until its answer arrives. Otherwise call append_exchange; call complete_examination after the final relevant skillset.`
+	scorerInstruction = `Completed exchanges: {transcript?}
+Call set_loading_step then set_score_card with cited narrative feedback, structured per-skillset ABPD 1-3 scores, and pass, borderline, or not_yet outcome.`
 )

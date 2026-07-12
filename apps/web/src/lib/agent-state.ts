@@ -239,8 +239,6 @@ export function toOralBoardsState(raw: unknown): OralBoardsState {
     active_feedback: str(state.active_feedback),
     active_ideal_response: str(state.active_ideal_response),
     active_probe: str(state.active_probe),
-    target_skillset: str(state.target_skillset),
-    target_skill: ORAL_SKILLS.find((value) => value === state.target_skill),
     question_craft_feedback: str(state.question_craft_feedback),
     user_id: optionalStr(state.user_id),
   };

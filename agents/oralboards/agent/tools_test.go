@@ -33,6 +33,13 @@ func TestQuestionCraftRejectsStackedAndAnswerLeakingQuestions(t *testing.T) {
 	}
 }
 
+func TestQuestionCraftAllowsSingleActWithCompoundClinicalNouns(t *testing.T) {
+	question := "What factors in this child's history and examination explain the observed findings?"
+	if violations := QuestionCraftViolations(question); len(violations) != 0 {
+		t.Fatalf("violations = %v", violations)
+	}
+}
+
 func TestProbePreventsScoringInSameTurn(t *testing.T) {
 	state := Defaults()
 	if _, err := askProbe(&state, ProbeArgs{Question: "What supports that decision?"}); err != nil {

@@ -1339,8 +1339,6 @@ export function OralBoardsPanel({
             activeFeedback={activeFeedback}
             activeIdealResponse={activeIdealResponse}
             activeProbe={asText(state.active_probe)}
-            targetSkillset={asText(state.target_skillset)}
-            targetSkill={state.target_skill}
           />
         )}
         {showFinalFeedback && (

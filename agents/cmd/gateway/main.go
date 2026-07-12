@@ -28,7 +28,6 @@ import (
 	"agents/internal/cloudflare"
 	"agents/internal/common"
 	"agents/internal/config"
-	mcpbridge "agents/internal/mcp"
 	"agents/internal/observability"
 	"agents/internal/providers/openai"
 	"agents/internal/rate"
@@ -723,11 +722,11 @@ func main() {
 	if excalidrawEndpoint == "" {
 		excalidrawEndpoint = "https://mcp.excalidraw.com/mcp"
 	}
-	excalidrawBridge, err := mcpbridge.NewExcalidraw(excalidrawEndpoint, common.NewHTTPClient(30*time.Second, 8<<20).Client)
+	excalidrawMCPApps, err := agui.NewMCPApps([]agui.MCPAppsServer{{URL: excalidrawEndpoint, ServerID: "excalidraw"}}, common.NewHTTPClient(30*time.Second, 8<<20).Client)
 	if err != nil {
 		log.Fatalf("configure Excalidraw MCP: %v", err)
 	}
-	excalidrawAgent, err := excalidraw.New(excalidrawModel, excalidrawBridge, agui.NewAGUIToolset(pending))
+	excalidrawAgent, err := excalidraw.New(excalidrawModel, excalidrawMCPApps, agui.NewAGUIToolset(pending))
 	if err != nil {
 		log.Fatalf("build Excalidraw agent: %v", err)
 	}
@@ -789,7 +788,7 @@ func main() {
 		agentruntime.Entry{Route: "fitness", AppName: fitness.AppName, Agent: fitnessAgent, StateDefaults: fitness.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }},
 		agentruntime.Entry{Route: "grocery", AppName: grocery.AppName, Agent: groceryAgent, StateDefaults: grocery.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }},
 		agentruntime.Entry{Route: "wellness", AppName: wellness.AppName, Agent: wellnessAgent, StateDefaults: wellness.StateDefaults(), Timeout: 5 * time.Minute, Health: func(context.Context) error { return nil }},
-		agentruntime.Entry{Route: "excalidraw", AppName: excalidraw.AppName, Agent: excalidrawAgent, StateDefaults: excalidraw.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }, Forwarded: excalidrawBridge},
+		agentruntime.Entry{Route: "excalidraw", AppName: excalidraw.AppName, Agent: excalidrawAgent, StateDefaults: excalidraw.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }, Forwarded: excalidrawMCPApps},
 		agentruntime.Entry{Route: "trends", AppName: trends.AppName, Agent: trendsAgent, StateDefaults: trends.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }},
 		agentruntime.Entry{Route: "oralboards", AppName: oralboards.AppName, Agent: oralboardsAgent, StateDefaults: oralboards.StateDefaults(), Timeout: 5 * time.Minute, Health: func(context.Context) error { return nil }},
 	)

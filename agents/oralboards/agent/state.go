@@ -58,8 +58,6 @@ type State struct {
 	ActiveFeedback        string          `json:"active_feedback"`
 	ActiveIdealResponse   string          `json:"active_ideal_response"`
 	ActiveProbe           string          `json:"active_probe"`
-	TargetSkillset        string          `json:"target_skillset"`
-	TargetSkill           Skill           `json:"target_skill"`
 	QuestionCraftFeedback string          `json:"question_craft_feedback"`
 	SearchCalls           int             `json:"_search_docs_calls"`
 	UserID                string          `json:"user_id"`
@@ -120,8 +118,6 @@ func publishState(ctx agent.Context, state State) error {
 		{"active_feedback", state.ActiveFeedback},
 		{"active_ideal_response", state.ActiveIdealResponse},
 		{"active_probe", state.ActiveProbe},
-		{"target_skillset", state.TargetSkillset},
-		{"target_skill", state.TargetSkill},
 		{"question_craft_feedback", state.QuestionCraftFeedback},
 		{"_search_docs_calls", state.SearchCalls},
 		{"user_id", state.UserID},

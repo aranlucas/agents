@@ -35,10 +35,6 @@ type SetPhaseArgs struct {
 type LoadingArgs struct {
 	Step string `json:"step"`
 }
-type TargetArgs struct {
-	Skillset string `json:"skillset"`
-	Skill    Skill  `json:"skill"`
-}
 type ProbeArgs struct {
 	Question string `json:"question"`
 }
@@ -128,27 +124,6 @@ func setLoadingStep(state *State, in LoadingArgs) (Result, error) {
 	return Result{OK: true, Status: "success"}, nil
 }
 
-func SetQuestionTarget(ctx agent.Context, in TargetArgs) (Result, error) {
-	state := readState(ctx.State())
-	result, err := setQuestionTarget(&state, in)
-	if err != nil {
-		return Result{}, err
-	}
-	if pubErr := publishState(ctx, state); pubErr != nil {
-		return Result{}, pubErr
-	}
-	return result, nil
-}
-
-func setQuestionTarget(state *State, in TargetArgs) (Result, error) {
-	if strings.TrimSpace(in.Skillset) == "" || !validSkill(in.Skill) {
-		return Result{}, errors.New("valid skillset and skill are required")
-	}
-	state.TargetSkillset = in.Skillset
-	state.TargetSkill = in.Skill
-	return Result{OK: true, Status: "success"}, nil
-}
-
 // AskProbe is the ADK-facing tool handler for ask_probe. It sets the
 // temp:probe_asked_now invocation guard directly on ctx.State() (not part of
 // the typed State struct) so append_exchange can refuse to score in the same
@@ -213,8 +188,7 @@ func appendExchange(state *State, probeAskedNow bool, in AppendExchangeArgs) (Re
 	}
 	state.Transcript = append(state.Transcript, Exchange{Question: in.Question, Answer: in.Answer, Skillset: in.Skillset, Skill: in.Skill, Feedback: in.Feedback, IdealResponse: in.IdealResponse, Score: in.Score, Citations: in.Citations})
 	state.Status = "questioning"
-	state.CurrentQuestion, state.ActiveFeedback, state.ActiveIdealResponse, state.ActiveProbe, state.TargetSkillset = "", "", "", "", ""
-	state.TargetSkill = ""
+	state.CurrentQuestion, state.ActiveFeedback, state.ActiveIdealResponse, state.ActiveProbe = "", "", "", ""
 	state.SearchCalls = 0
 	return Result{OK: true, Status: "success", Count: len(state.Transcript)}, nil
 }
@@ -285,11 +259,23 @@ func QuestionCraftViolations(question string) []string {
 	if strings.Contains(lower, " such as ") || strings.Contains(lower, " including ") || strings.Contains(lower, " for example") {
 		violations = append(violations, "question leaks answer examples")
 	}
-	if strings.Count(question, "?") > 1 || (strings.Contains(lower, " and ") && (strings.Contains(lower, "what ") || strings.Contains(lower, "how "))) {
+	if strings.Count(question, "?") > 1 || questionStemCount(lower) > 1 {
 		violations = append(violations, "question stacks multiple cognitive acts")
 	}
 	if len(strings.Fields(question)) > 30 {
 		violations = append(violations, "question exceeds 30 words")
 	}
 	return violations
+}
+
+func questionStemCount(question string) int {
+	stems := map[string]bool{"what": true, "how": true, "why": true, "which": true, "when": true, "where": true}
+	count := 0
+	for _, word := range strings.Fields(question) {
+		word = strings.Trim(word, "\"'()[]{}.,:;!?")
+		if stems[word] {
+			count++
+		}
+	}
+	return count
 }
