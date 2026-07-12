@@ -2,8 +2,23 @@ package grocery
 
 import (
 	"errors"
+	"slices"
 	"testing"
 )
+
+func TestShoppingListInputSchemaRequiresAnArray(t *testing.T) {
+	schema, err := shoppingListInputSchema()
+	if err != nil {
+		t.Fatal(err)
+	}
+	items := schema.Properties["items"]
+	if items.Type != "array" || len(items.Types) != 0 {
+		t.Fatalf("items schema type = %q, types = %v", items.Type, items.Types)
+	}
+	if !slices.Contains(schema.Required, "items") {
+		t.Fatalf("required fields = %v", schema.Required)
+	}
+}
 
 func TestGroceryCartUpdateRequiresConnectedState(t *testing.T) {
 	state := newGroceryState(false)
@@ -18,10 +33,7 @@ func TestGroceryCartUpdateRequiresConnectedState(t *testing.T) {
 
 func TestGroceryShoppingListAndLiveCartRemainDistinct(t *testing.T) {
 	state := newGroceryState(true)
-	list, err := setShoppingList(&state, ShoppingListArgs{Items: []string{"2x milk", "eggs"}, Notes: "Use deal"})
-	if err != nil || !list.OK || len(state.Cart) != 0 {
-		t.Fatalf("list/state/error = %#v / %#v / %v", list, state, err)
-	}
+	state.ShoppingList = []string{"2x milk", "eggs"}
 	cart, err := updateCart(&state, CartArgs{Items: []CartItem{{Name: "Milk", Quantity: 2, Price: 4.29, UPC: "00011110042908"}}})
 	if err != nil || !cart.OK || len(state.ShoppingList) != 2 || len(state.Cart) != 1 || state.Cart[0].UPC != "00011110042908" {
 		t.Fatalf("cart/state/error = %#v / %#v / %v", cart, state, err)

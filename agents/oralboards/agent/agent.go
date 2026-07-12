@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"strings"
 
+	"agents/internal/functiontool"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/agent/workflowagent"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
 	adktool "google.golang.org/adk/v2/tool"
-	"google.golang.org/adk/v2/tool/functiontool"
 	"google.golang.org/adk/v2/workflow"
 	"google.golang.org/genai"
 )

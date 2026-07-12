@@ -1,11 +1,11 @@
 package travel
 
 import (
+	"agents/internal/functiontool"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
 	adktool "google.golang.org/adk/v2/tool"
-	"google.golang.org/adk/v2/tool/functiontool"
 )
 
 func New(m model.LLM, toolsets ...adktool.Toolset) (agent.Agent, error) {

@@ -5,11 +5,11 @@ import (
 
 	"agents/fitness/agent"
 	"agents/grocery/agent"
+	"agents/internal/functiontool"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
 	adktool "google.golang.org/adk/v2/tool"
-	"google.golang.org/adk/v2/tool/functiontool"
 )
 
 type ModelSet struct{ Coordinator model.LLM }

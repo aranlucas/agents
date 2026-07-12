@@ -30,8 +30,7 @@ type Result struct {
 }
 
 type ShoppingListArgs struct {
-	Items []string `json:"items"`
-	Notes string   `json:"notes"`
+	Items []string `json:"items" jsonschema:"The complete shopping list. Always provide a JSON array of strings; use an empty array when there are no items."`
 }
 
 type CartArgs struct {
@@ -53,33 +52,10 @@ type ReadyArgs struct {
 type CurrentDateArgs struct{}
 
 func SetShoppingList(ctx agent.Context, input ShoppingListArgs) (Result, error) {
-	state := readState(ctx.State())
-	result, err := setShoppingList(&state, input)
-	if err == nil && result.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
-		}
+	if err := ctx.State().Set("shopping_list", input.Items); err != nil {
+		return Result{}, err
 	}
-	return result, err
-}
-
-func setShoppingList(state *GroceryState, input ShoppingListArgs) (Result, error) {
-	if len(input.Items) > 500 || len(input.Notes) > 100_000 {
-		return groceryFailure("shopping_list_too_large", "shopping list or notes exceeds the allowed size"), nil
-	}
-	items := make([]string, 0, len(input.Items))
-	for _, item := range input.Items {
-		item = strings.TrimSpace(item)
-		if item == "" || len(item) > 500 {
-			return groceryFailure("invalid_shopping_item", "shopping items must be non-empty and at most 500 characters"), nil
-		}
-		items = append(items, item)
-	}
-	state.ShoppingList, state.Status = items, StatusPlanning
-	if input.Notes != "" {
-		state.Notes = input.Notes
-	}
-	return Result{OK: true, Count: len(items)}, nil
+	return Result{OK: true, Count: len(input.Items)}, nil
 }
 
 func UpdateCart(ctx agent.Context, input CartArgs) (Result, error) {
