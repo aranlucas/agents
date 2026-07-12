@@ -39,7 +39,7 @@ func New(models PhaseModels, corpus *Corpus, toolsets ...adktool.Toolset) (agent
 	if err != nil {
 		return nil, err
 	}
-	questioner, err := buildPhase("questioner", questionerInstruction, models.Questioner, corpus, []string{"set_question_target"}, toolsets)
+	questioner, err := buildPhase("questioner", questionerInstruction, models.Questioner, corpus, []string{"set_question_target"}, toolsets, stopAfterFunctionCall("ask_question"))
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +61,7 @@ func New(models PhaseModels, corpus *Corpus, toolsets ...adktool.Toolset) (agent
 	})
 }
 
-func buildPhase(name, instruction string, m model.LLM, corpus *Corpus, allowed []string, toolsets []adktool.Toolset) (agent.Agent, error) {
+func buildPhase(name, instruction string, m model.LLM, corpus *Corpus, allowed []string, toolsets []adktool.Toolset, afterModel ...llmagent.AfterModelCallback) (agent.Agent, error) {
 	all, err := phaseTools(corpus)
 	if err != nil {
 		return nil, err
@@ -76,7 +76,30 @@ func buildPhase(name, instruction string, m model.LLM, corpus *Corpus, allowed [
 			selected = append(selected, candidate)
 		}
 	}
-	return llmagent.New(llmagent.Config{Name: name, Description: name + " phase", Instruction: Instruction + "\n\n" + instruction, Model: m, Mode: llmagent.ModeTask, Tools: selected, Toolsets: toolsets})
+	return llmagent.New(llmagent.Config{Name: name, Description: name + " phase", Instruction: Instruction + "\n\n" + instruction, Model: m, Mode: llmagent.ModeTask, Tools: selected, Toolsets: toolsets, AfterModelCallbacks: afterModel})
+}
+
+// stopAfterFunctionCall ends the invocation as soon as the model calls the
+// named tool. ModeTask otherwise keeps looping — call LLM, run tools, call
+// LLM again — until the model itself calls finish_task, and every one of
+// those extra rounds gets its plain-text content surfaced to the user. For
+// the questioner, calling toolName ("ask_question") already delivers the
+// phase's entire output, so any further round is nothing but the model
+// narrating whether it's done; cutting the invocation off here removes that
+// round instead of relying on the model to stay terse across it.
+func stopAfterFunctionCall(toolName string) llmagent.AfterModelCallback {
+	return func(ctx agent.Context, resp *model.LLMResponse, err error) (*model.LLMResponse, error) {
+		if err != nil || resp == nil || resp.Partial || resp.Content == nil {
+			return nil, nil
+		}
+		for _, part := range resp.Content.Parts {
+			if part != nil && part.FunctionCall != nil && part.FunctionCall.Name == toolName {
+				ctx.EndInvocation()
+				break
+			}
+		}
+		return nil, nil
+	}
 }
 
 func phaseTools(corpus *Corpus) ([]adktool.Tool, error) {
