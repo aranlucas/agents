@@ -13,6 +13,7 @@ import (
 	adktool "google.golang.org/adk/v2/tool"
 	"google.golang.org/adk/v2/tool/functiontool"
 	"google.golang.org/adk/v2/workflow"
+	"google.golang.org/genai"
 )
 
 type PhaseModels struct {
@@ -37,19 +38,19 @@ func New(models PhaseModels, corpus *Corpus, toolsets ...adktool.Toolset) (agent
 	if corpus == nil || corpus.db == nil {
 		return nil, errors.New("oralboards corpus is required")
 	}
-	caseBuilder, err := buildPhase("case_builder", caseBuilderInstruction, models.CaseBuilder, corpus, []string{"search_docs", "set_case", "set_loading_step"}, nil)
+	caseBuilder, err := buildPhase("case_builder", caseBuilderInstruction, models.CaseBuilder, corpus, []string{"search_docs", "set_case", "set_loading_step"}, nil, nil)
 	if err != nil {
 		return nil, err
 	}
-	questioner, err := buildPhase("questioner", questionerInstruction, models.Questioner, corpus, nil, nil)
+	questioner, err := buildPhase("questioner", questionerInstruction, models.Questioner, corpus, nil, nil, nil)
 	if err != nil {
 		return nil, err
 	}
-	evaluator, err := buildPhase("evaluator", evaluatorInstruction, models.Evaluator, corpus, []string{"search_docs", "ask_probe", "append_exchange", "set_loading_step", "complete_examination"}, nil)
+	evaluator, err := buildPhase("evaluator", evaluatorInstruction, models.Evaluator, corpus, []string{"search_docs", "ask_probe", "append_exchange", "set_loading_step", "complete_examination"}, nil, []llmagent.BeforeModelCallback{stopEvaluatorAfterProbe})
 	if err != nil {
 		return nil, err
 	}
-	scorer, err := buildPhase("scorer", scorerInstruction, models.Scorer, corpus, []string{"set_score_card", "set_loading_step"}, nil)
+	scorer, err := buildPhase("scorer", scorerInstruction, models.Scorer, corpus, []string{"set_score_card", "set_loading_step"}, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +175,7 @@ func requestInputNode(name string, request func(State) session.RequestInput, res
 	}, workflow.NodeConfig{RerunOnResume: &rerun})
 }
 
-func buildPhase(name, instruction string, m model.LLM, corpus *Corpus, allowed []string, toolsets []adktool.Toolset, afterModel ...llmagent.AfterModelCallback) (agent.Agent, error) {
+func buildPhase(name, instruction string, m model.LLM, corpus *Corpus, allowed []string, toolsets []adktool.Toolset, beforeModel []llmagent.BeforeModelCallback, afterModel ...llmagent.AfterModelCallback) (agent.Agent, error) {
 	all, err := phaseTools(corpus)
 	if err != nil {
 		return nil, err
@@ -189,7 +190,22 @@ func buildPhase(name, instruction string, m model.LLM, corpus *Corpus, allowed [
 			selected = append(selected, candidate)
 		}
 	}
-	return llmagent.New(llmagent.Config{Name: name, Description: name + " phase", Instruction: Instruction + "\n\n" + instruction, Model: m, Mode: llmagent.ModeSingleTurn, Tools: selected, Toolsets: toolsets, AfterModelCallbacks: afterModel})
+	return llmagent.New(llmagent.Config{Name: name, Description: name + " phase", Instruction: Instruction + "\n\n" + instruction, Model: m, Mode: llmagent.ModeSingleTurn, Tools: selected, Toolsets: toolsets, BeforeModelCallbacks: beforeModel, AfterModelCallbacks: afterModel})
+}
+
+// stopEvaluatorAfterProbe turns ask_probe into a deterministic phase boundary.
+// Without it, the LLM receives the successful tool result and may continue in
+// the same turn, attempt append_exchange, and prevent the workflow from
+// reaching the RequestInput node that collects the probe answer.
+func stopEvaluatorAfterProbe(ctx agent.Context, _ *model.LLMRequest) (*model.LLMResponse, error) {
+	probeAskedNow, _ := ctx.State().Get(session.KeyPrefixTemp + "probe_asked_now")
+	if probeAskedNow != true {
+		return nil, nil
+	}
+	return &model.LLMResponse{
+		Content:      genai.NewContentFromText("Probe requested.", genai.RoleModel),
+		TurnComplete: true,
+	}, nil
 }
 
 func phaseTools(corpus *Corpus) ([]adktool.Tool, error) {

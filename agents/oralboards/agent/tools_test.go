@@ -42,8 +42,12 @@ func TestQuestionCraftAllowsSingleActWithCompoundClinicalNouns(t *testing.T) {
 
 func TestProbePreventsScoringInSameTurn(t *testing.T) {
 	state := Defaults()
+	state.LoadingStep = "Assessing answer and drafting exchange."
 	if _, err := askProbe(&state, ProbeArgs{Question: "What supports that decision?"}); err != nil {
 		t.Fatal(err)
+	}
+	if state.LoadingStep != "" {
+		t.Fatalf("loading step = %q, want cleared while awaiting probe answer", state.LoadingStep)
 	}
 	_, err := appendExchange(&state, true, AppendExchangeArgs{Skill: SkillAnalyzeEvaluate, Score: 2})
 	if !errors.Is(err, ErrProbeNotAnswered) {

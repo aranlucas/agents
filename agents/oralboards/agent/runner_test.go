@@ -188,7 +188,6 @@ func TestEvaluatorProbeReturnsDirectlyToAnswerInterrupt(t *testing.T) {
 	}}
 	evaluator := &sequenceModel{responses: []*model.LLMResponse{
 		toolCall("probe", "ask_probe", map[string]any{"question": "Which radiographic finding argues against pulp necrosis?"}),
-		{Content: genai.NewContentFromText("Please answer the follow-up.", genai.RoleModel), TurnComplete: true},
 		toolCall("score", "append_exchange", map[string]any{
 			"question":       "What is the pulpal diagnosis for tooth #K?",
 			"answer":         "There is no radiolucency or pathologic resorption.",
@@ -243,6 +242,9 @@ func TestEvaluatorProbeReturnsDirectlyToAnswerInterrupt(t *testing.T) {
 	if got := questioner.callCount(); got != 1 {
 		t.Fatalf("questioner ran %d times before the probe answer, want 1", got)
 	}
+	if got := evaluator.callCount(); got != 1 {
+		t.Fatalf("evaluator ran %d model turns before the probe answer, want 1", got)
+	}
 
 	resumeTurn(t, rn, probeID, "There is no radiolucency or pathologic resorption.")
 	state = sessionState(t, sessions)
@@ -257,6 +259,9 @@ func TestEvaluatorProbeReturnsDirectlyToAnswerInterrupt(t *testing.T) {
 	}
 	if got := scorer.callCount(); got != 3 {
 		t.Fatalf("scorer ran %d model turns, want 3", got)
+	}
+	if got := evaluator.callCount(); got != 4 {
+		t.Fatalf("evaluator ran %d total model turns, want 4", got)
 	}
 	if request := scorer.firstRequest(); request == nil || len(request.Contents) == 0 {
 		t.Fatal("scorer received an empty model request")

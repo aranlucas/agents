@@ -153,6 +153,7 @@ func AskProbe(ctx agent.Context, in ProbeArgs) (Result, error) {
 		stateField{"active_probe", state.ActiveProbe},
 		stateField{"_probe_used", state.ProbeUsed},
 		stateField{"_search_docs_calls", state.SearchCalls},
+		stateField{"loading_step", state.LoadingStep},
 	); pubErr != nil {
 		return Result{}, pubErr
 	}
@@ -173,6 +174,7 @@ func askProbe(state *State, in ProbeArgs) (Result, error) {
 	state.ActiveProbe = question
 	state.ProbeUsed = true
 	state.SearchCalls = 0
+	state.LoadingStep = ""
 	return Result{OK: true, Status: "success", Message: "Probe question displayed."}, nil
 }
 
