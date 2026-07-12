@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/openai/openai-go"
-	"github.com/openai/openai-go/shared"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/shared"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/genai"
 )
@@ -120,15 +120,21 @@ func buildRequest(req *model.LLMRequest, modelName string, stream bool) (openai.
 				if parameters == nil {
 					parameters = shared.FunctionParameters{"type": "object", "properties": map[string]any{}}
 				}
-				result.Tools = append(result.Tools, openai.ChatCompletionToolParam{
-					Type: "function",
-					Function: openai.FunctionDefinitionParam{
+				result.Tools = append(result.Tools, openai.ChatCompletionFunctionTool(
+					openai.FunctionDefinitionParam{
 						Name:        declaration.Name,
 						Description: openai.String(declaration.Description),
 						Parameters:  parameters,
 					},
-				})
+				))
 			}
+		}
+		if len(result.Tools) > 0 {
+			// ADK tool handlers commonly mutate shared session state. Providers
+			// otherwise may emit multiple calls in one response and ADK executes
+			// them concurrently, allowing whole-state publications to clobber one
+			// another (for example append_exchange + complete_examination).
+			result.ParallelToolCalls = openai.Bool(false)
 		}
 		if config.ToolConfig != nil && config.ToolConfig.FunctionCallingConfig != nil {
 			calling := config.ToolConfig.FunctionCallingConfig
@@ -139,14 +145,9 @@ func buildRequest(req *model.LLMRequest, modelName string, stream bool) (openai.
 				}
 			case genai.FunctionCallingConfigModeAny:
 				if len(calling.AllowedFunctionNames) == 1 {
-					result.ToolChoice = openai.ChatCompletionToolChoiceOptionUnionParam{
-						OfChatCompletionNamedToolChoice: &openai.ChatCompletionNamedToolChoiceParam{
-							Type: "function",
-							Function: openai.ChatCompletionNamedToolChoiceFunctionParam{
-								Name: calling.AllowedFunctionNames[0],
-							},
-						},
-					}
+					result.ToolChoice = openai.ToolChoiceOptionFunctionToolChoice(
+						openai.ChatCompletionNamedToolChoiceFunctionParam{Name: calling.AllowedFunctionNames[0]},
+					)
 				} else {
 					result.ToolChoice = openai.ChatCompletionToolChoiceOptionUnionParam{
 						OfAuto: openai.String("required"),
@@ -242,12 +243,13 @@ func contentMessages(content *genai.Content) ([]openai.ChatCompletionMessagePara
 				if err != nil {
 					return nil, errors.New("encode function call")
 				}
-				msg.ToolCalls = append(msg.ToolCalls, openai.ChatCompletionMessageToolCallParam{
-					ID:   part.FunctionCall.ID,
-					Type: "function",
-					Function: openai.ChatCompletionMessageToolCallFunctionParam{
-						Name:      part.FunctionCall.Name,
-						Arguments: string(arguments),
+				msg.ToolCalls = append(msg.ToolCalls, openai.ChatCompletionMessageToolCallUnionParam{
+					OfFunction: &openai.ChatCompletionMessageFunctionToolCallParam{
+						ID: part.FunctionCall.ID,
+						Function: openai.ChatCompletionMessageFunctionToolCallFunctionParam{
+							Name:      part.FunctionCall.Name,
+							Arguments: string(arguments),
+						},
 					},
 				})
 			}

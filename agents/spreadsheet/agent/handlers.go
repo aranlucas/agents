@@ -54,6 +54,7 @@ func CreateSheet(ctx agent.Context, input CreateSheetArgs) (Result, error) {
 	}
 	return r, e
 }
+
 func createSheet(state *SpreadsheetState, input CreateSheetArgs) (Result, error) {
 	if len(state.Sheets) >= maxSheets {
 		return fail("sheet_limit_reached", "workbook cannot exceed 50 sheets"), nil
@@ -68,7 +69,7 @@ func createSheet(state *SpreadsheetState, input CreateSheetArgs) (Result, error)
 	index := len(state.Sheets)
 	state.Sheets = append(state.Sheets, Sheet{Title: title, Rows: input.Rows})
 	state.ActiveSheetIndex = index
-	state.Status = "ready"
+	state.Status = StatusReady
 	return Result{OK: true, SheetIndex: &index}, nil
 }
 
@@ -82,6 +83,7 @@ func UpdateSheet(ctx agent.Context, input UpdateSheetArgs) (Result, error) {
 	}
 	return r, e
 }
+
 func updateSheet(state *SpreadsheetState, input UpdateSheetArgs) (Result, error) {
 	if !validIndex(state, input.SheetIndex) {
 		return fail("sheet_index_out_of_range", "sheet index is out of range"), nil
@@ -94,7 +96,7 @@ func updateSheet(state *SpreadsheetState, input UpdateSheetArgs) (Result, error)
 		return fail(code, message), nil
 	}
 	state.Sheets[input.SheetIndex] = Sheet{Title: title, Rows: input.Rows}
-	state.Status = "ready"
+	state.Status = StatusReady
 	index := input.SheetIndex
 	return Result{OK: true, SheetIndex: &index}, nil
 }
@@ -109,6 +111,7 @@ func AppendRows(ctx agent.Context, input AppendRowsArgs) (Result, error) {
 	}
 	return r, e
 }
+
 func appendRows(state *SpreadsheetState, input AppendRowsArgs) (Result, error) {
 	if !validIndex(state, input.SheetIndex) {
 		return fail("sheet_index_out_of_range", "sheet index is out of range"), nil
@@ -120,7 +123,7 @@ func appendRows(state *SpreadsheetState, input AppendRowsArgs) (Result, error) {
 		return fail(code, message), nil
 	}
 	state.Sheets[input.SheetIndex].Rows = combined
-	state.Status = "ready"
+	state.Status = StatusReady
 	index := input.SheetIndex
 	return Result{OK: true, SheetIndex: &index, TotalRows: len(combined)}, nil
 }
@@ -135,6 +138,7 @@ func DeleteSheet(ctx agent.Context, input SheetIndexArgs) (Result, error) {
 	}
 	return r, e
 }
+
 func deleteSheet(state *SpreadsheetState, input SheetIndexArgs) (Result, error) {
 	if !validIndex(state, input.SheetIndex) {
 		return fail("sheet_index_out_of_range", "sheet index is out of range"), nil
@@ -148,7 +152,7 @@ func deleteSheet(state *SpreadsheetState, input SheetIndexArgs) (Result, error) 
 	case state.ActiveSheetIndex == input.SheetIndex && input.SheetIndex > 0:
 		state.ActiveSheetIndex = input.SheetIndex - 1
 	}
-	state.Status = "ready"
+	state.Status = StatusReady
 	return Result{OK: true, RemainingSheets: len(state.Sheets)}, nil
 }
 
@@ -162,6 +166,7 @@ func SetActiveSheet(ctx agent.Context, input SheetIndexArgs) (Result, error) {
 	}
 	return r, e
 }
+
 func setActiveSheet(state *SpreadsheetState, input SheetIndexArgs) (Result, error) {
 	if !validIndex(state, input.SheetIndex) {
 		return fail("sheet_index_out_of_range", "sheet index is out of range"), nil
@@ -181,12 +186,13 @@ func WriteSummary(ctx agent.Context, input SummaryArgs) (Result, error) {
 	}
 	return r, e
 }
+
 func writeSummary(state *SpreadsheetState, input SummaryArgs) (Result, error) {
 	if len(input.Summary) > 1<<20 {
 		return fail("summary_too_large", "summary exceeds the 1 MiB state limit"), nil
 	}
 	state.Summary = input.Summary
-	state.Status = "ready"
+	state.Status = StatusReady
 	return Result{OK: true, Length: len(input.Summary)}, nil
 }
 

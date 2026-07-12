@@ -22,9 +22,15 @@ var ErrInvalidRunInput = errors.New("invalid AG-UI run input")
 
 // decodeRunInput parses and validates one AG-UI RunAgentInput request body.
 func decodeRunInput(body io.Reader) (*aguitypes.RunAgentInput, error) {
+	payload, err := io.ReadAll(io.LimitReader(body, maxRunInputBytes+1))
+	if err != nil {
+		return nil, fmt.Errorf("%w: read request body", ErrInvalidRunInput)
+	}
+	if len(payload) > maxRunInputBytes {
+		return nil, fmt.Errorf("%w: request body exceeds %d bytes", ErrInvalidRunInput, maxRunInputBytes)
+	}
 	var input aguitypes.RunAgentInput
-	decoder := json.NewDecoder(io.LimitReader(body, maxRunInputBytes+1))
-	if err := decoder.Decode(&input); err != nil {
+	if err := json.Unmarshal(payload, &input); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrInvalidRunInput, err)
 	}
 	if strings.TrimSpace(input.ThreadID) == "" {

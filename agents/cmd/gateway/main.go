@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -215,7 +216,10 @@ func telegramLinkConsumeHandler(secret string, links *telegramruntime.LinkStore,
 		var input telegramLinkConsumeRequest
 		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10))
 		decoder.DisallowUnknownFields()
-		if decoder.Decode(&input) != nil || strings.TrimSpace(input.Token) == "" || strings.TrimSpace(input.ClerkUserID) == "" {
+		decodeErr := decoder.Decode(&input)
+		var trailing struct{}
+		trailingErr := decoder.Decode(&trailing)
+		if decodeErr != nil || !errors.Is(trailingErr, io.EOF) || strings.TrimSpace(input.Token) == "" || strings.TrimSpace(input.ClerkUserID) == "" {
 			writeGatewayJSONError(w, http.StatusBadRequest, "invalid_link_request")
 			return
 		}
@@ -494,12 +498,8 @@ func oralboardsModels(ctx context.Context, cfg config.Config, limiter *rate.Prov
 		return oralboards.PhaseModels{}, errors.New("MISTRAL_API_KEY is required to configure oralboards")
 	}
 	mistral.Model, mistral.RequestsPerMinute = "mistral-large-latest", 20
+	mistral.Fallbacks = configuredFallbacks(cfg.Providers, "groq", "openrouter")
 	evaluator, err := openai.NewMulti(mistral, presentationProviderPolicies(cfg.Providers), nil, limiter)
-	if err != nil {
-		return oralboards.PhaseModels{}, err
-	}
-	mistral.Model = "mistral-medium-latest"
-	scorer, err := openai.NewMulti(mistral, presentationProviderPolicies(cfg.Providers), nil, limiter)
 	if err != nil {
 		return oralboards.PhaseModels{}, err
 	}
@@ -511,7 +511,11 @@ func oralboardsModels(ctx context.Context, cfg config.Config, limiter *rate.Prov
 	if err != nil {
 		return oralboards.PhaseModels{}, err
 	}
-	return oralboards.PhaseModels{CaseBuilder: caseBuilder, Questioner: questioner, Evaluator: evaluator, Scorer: scorer}, nil
+	// Case construction and final scoring are sequential graph phases, so they
+	// can share the official Gemini model without coupling their conversations.
+	// Keeping the scorer off the rate-limited OpenAI-compatible chain also avoids
+	// losing an otherwise-complete examination to an exhausted fallback tier.
+	return oralboards.PhaseModels{CaseBuilder: caseBuilder, Questioner: questioner, Evaluator: evaluator, Scorer: caseBuilder}, nil
 }
 
 func configuredFallbacks(providers map[string]config.Provider, names ...string) []string {
@@ -532,6 +536,10 @@ func presentationProviderPolicies(providers map[string]config.Provider) map[stri
 	if provider, ok := result["mistral"]; ok {
 		provider.Model, provider.RequestsPerMinute = "mistral-small-latest", 20
 		result["mistral"] = provider
+	}
+	if provider, ok := result["groq"]; ok {
+		provider.Model, provider.RequestsPerMinute = "llama-3.3-70b-versatile", 30
+		result["groq"] = provider
 	}
 	if provider, ok := result["openrouter"]; ok {
 		provider.Model, provider.RequestsPerMinute = "tencent/hy3:free", 20

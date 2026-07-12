@@ -3,6 +3,7 @@ package openai
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"iter"
 	"net/http"
@@ -251,6 +252,41 @@ func TestTruncatedStreamReturnsRetryableErrorWithoutFallbackAfterEmission(t *tes
 	}
 	if !responses[1].TurnComplete {
 		t.Fatalf("final response = %#v", responses[1])
+	}
+}
+
+func TestGenerateContentRejectsMalformedToolArguments(t *testing.T) {
+	for _, stream := range []bool{false, true} {
+		t.Run(fmt.Sprintf("stream=%t", stream), func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				if stream {
+					writeSSE(w, []string{
+						`data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call-1","type":"function","function":{"name":"lookup","arguments":"not-json"}}]},"finish_reason":"tool_calls"}]}`,
+						`data: [DONE]`,
+					})
+					return
+				}
+				writeJSON(w, map[string]any{
+					"choices": []map[string]any{{
+						"message": map[string]any{"tool_calls": []map[string]any{{
+							"id": "call-1", "type": "function", "function": map[string]any{"name": "lookup", "arguments": "not-json"},
+						}}},
+						"finish_reason": "tool_calls",
+					}},
+				})
+			}))
+			t.Cleanup(server.Close)
+
+			adapter := New(testProvider("primary", server.URL), server.Client(), allowLimiter{})
+			responses, errs := collect(adapter.GenerateContent(t.Context(), toolRequest(), stream))
+			if len(responses) != 0 || len(errs) != 1 {
+				t.Fatalf("responses/errors = %#v/%v", responses, errs)
+			}
+			var providerErr *ProviderError
+			if !errors.As(errs[0], &providerErr) || providerErr.Kind != ProviderErrorResponseSchema {
+				t.Fatalf("error = %#v", errs[0])
+			}
+		})
 	}
 }
 

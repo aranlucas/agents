@@ -53,6 +53,7 @@ func SetQuery(ctx agent.Context, input SetQueryArgs) (Result, error) {
 	}
 	return result, err
 }
+
 func setQuery(state *ResearchState, input SetQueryArgs) (Result, error) {
 	title, query := strings.TrimSpace(input.Title), strings.TrimSpace(input.Query)
 	if title == "" || len(title) > 300 {
@@ -61,7 +62,7 @@ func setQuery(state *ResearchState, input SetQueryArgs) (Result, error) {
 	if query == "" || len(query) > 2000 {
 		return fail("invalid_query", "query is required and must be at most 2000 characters"), nil
 	}
-	state.Title, state.Query, state.Status = title, query, "drafting"
+	state.Title, state.Query, state.Status = title, query, StatusDrafting
 	return Result{OK: true, Title: title}, nil
 }
 
@@ -75,6 +76,7 @@ func CreateSection(ctx agent.Context, input CreateSectionArgs) (Result, error) {
 	}
 	return result, err
 }
+
 func createSection(state *ResearchState, input CreateSectionArgs) (Result, error) {
 	if len(state.Sections) >= 200 {
 		return fail("section_limit_reached", "report cannot exceed 200 sections"), nil
@@ -92,7 +94,7 @@ func createSection(state *ResearchState, input CreateSectionArgs) (Result, error
 	}
 	state.Sections = append(state.Sections, Section{ID: id, Title: title, Content: input.Content})
 	state.Report = rebuildReport(state.Sections)
-	state.Status = "drafting"
+	state.Status = StatusDrafting
 	return Result{OK: true, SectionID: id}, nil
 }
 
@@ -106,6 +108,7 @@ func UpdateSection(ctx agent.Context, input UpdateSectionArgs) (Result, error) {
 	}
 	return result, err
 }
+
 func updateSection(state *ResearchState, input UpdateSectionArgs) (Result, error) {
 	if len(input.Content) > 100_000 {
 		return fail("section_too_large", "section content exceeds the allowed size"), nil
@@ -122,7 +125,7 @@ func updateSection(state *ResearchState, input UpdateSectionArgs) (Result, error
 	}
 	state.Sections[index].Content = input.Content
 	state.Report = rebuildReport(state.Sections)
-	state.Status = "drafting"
+	state.Status = StatusDrafting
 	return Result{OK: true, SectionID: input.SectionID}, nil
 }
 
@@ -136,6 +139,7 @@ func AddSource(ctx agent.Context, input AddSourceArgs) (Result, error) {
 	}
 	return result, err
 }
+
 func addSource(state *ResearchState, input AddSourceArgs) (Result, error) {
 	if len(state.Sources) >= 500 {
 		return fail("source_limit_reached", "report cannot exceed 500 sources"), nil
@@ -168,12 +172,13 @@ func WriteReport(ctx agent.Context, input WriteReportArgs) (Result, error) {
 	}
 	return result, err
 }
+
 func writeReport(state *ResearchState, input WriteReportArgs) (Result, error) {
 	if len(input.Report) > 1<<20 {
 		return fail("report_too_large", "report exceeds the 1 MiB state limit"), nil
 	}
 	state.Report = input.Report
-	state.Status = "drafting"
+	state.Status = StatusDrafting
 	return Result{OK: true, Length: len(input.Report)}, nil
 }
 
@@ -187,11 +192,12 @@ func MarkReady(ctx agent.Context, input ReadyArgs) (Result, error) {
 	}
 	return result, err
 }
+
 func markReady(state *ResearchState, input ReadyArgs) (Result, error) {
 	if len(input.Summary) > 5000 {
 		return fail("summary_too_large", "review summary exceeds the allowed size"), nil
 	}
-	state.Status, state.ReviewSummary = "ready", input.Summary
+	state.Status, state.ReviewSummary = StatusReady, input.Summary
 	return Result{OK: true}, nil
 }
 

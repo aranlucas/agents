@@ -27,18 +27,22 @@ const AppName = "GoogleTrendsAgent"
 
 type Row map[string]any
 
+type Status string
+
 type TrendsState struct {
 	Query        string   `json:"query"`
 	GeneratedSQL string   `json:"generated_sql"`
 	Columns      []string `json:"columns"`
 	Rows         []Row    `json:"rows"`
 	Insights     string   `json:"insights"`
-	Status       string   `json:"status"`
+	Status       Status   `json:"status"`
 	Error        string   `json:"error"`
 	UserID       string   `json:"user_id"`
 }
 
-func Defaults() TrendsState { return TrendsState{Columns: []string{}, Rows: []Row{}, Status: "idle"} }
+func Defaults() TrendsState {
+	return TrendsState{Columns: []string{}, Rows: []Row{}, Status: StatusIdle}
+}
 
 func StateDefaults() map[string]any {
 	raw, _ := json.Marshal(Defaults())
@@ -64,18 +68,18 @@ type ColumnsRows struct {
 // Status values mirror the Python port's tools/*.py state machine exactly:
 // idle -> querying -> (ready | empty | error).
 const (
-	StatusIdle     = "idle"
-	StatusQuerying = "querying"
-	StatusReady    = "ready"
-	StatusEmpty    = "empty"
-	StatusError    = "error"
+	StatusIdle     Status = "idle"
+	StatusQuerying Status = "querying"
+	StatusReady    Status = "ready"
+	StatusEmpty    Status = "empty"
+	StatusError    Status = "error"
 )
 
 // Result is the stable success/error envelope every Trends tool returns.
 type Result struct {
 	OK       bool                          `json:"ok"`
 	SQL      string                        `json:"sql,omitempty"`
-	Status   string                        `json:"status,omitempty"`
+	Status   Status                        `json:"status,omitempty"`
 	RowCount int                           `json:"row_count,omitempty"`
 	Columns  []string                      `json:"columns,omitempty"`
 	Rows     []Row                         `json:"rows,omitempty"`
