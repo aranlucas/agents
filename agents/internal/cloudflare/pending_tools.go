@@ -39,7 +39,7 @@ func (p *PendingStore) Register(ctx context.Context, scope agui.ToolScope, callI
 	if p == nil || p.d1 == nil {
 		return errors.New("D1 pending tool store is required")
 	}
-	if !validScope(scope) || !agui.ClientToolName.MatchString(callID) || !agui.ClientToolName.MatchString(toolName) {
+	if !validScope(scope) || !agui.ClientCallID.MatchString(callID) || !agui.ClientToolName.MatchString(toolName) {
 		return errors.New("invalid pending tool identity")
 	}
 	encoded, err := json.Marshal(args)
@@ -65,7 +65,7 @@ func (p *PendingStore) Resolve(ctx context.Context, identity auth.Identity, app,
 	if p == nil || p.d1 == nil {
 		return errors.New("D1 pending tool store is required")
 	}
-	if identity.Public || !validScope(agui.ToolScope{AppName: app, UserID: identity.UserID, ThreadID: thread}) || !agui.ClientToolName.MatchString(callID) {
+	if identity.Public || !validScope(agui.ToolScope{AppName: app, UserID: identity.UserID, ThreadID: thread}) || !agui.ClientCallID.MatchString(callID) {
 		return agui.ErrPendingToolNotFound
 	}
 	encoded, err := json.Marshal(result)
@@ -92,7 +92,7 @@ func (p *PendingStore) Resolve(ctx context.Context, identity auth.Identity, app,
 }
 
 func (p *PendingStore) Take(ctx context.Context, identity auth.Identity, app, thread, callID string) (*genai.FunctionResponse, error) {
-	if p == nil || p.d1 == nil || identity.Public || !validScope(agui.ToolScope{AppName: app, UserID: identity.UserID, ThreadID: thread}) || !agui.ClientToolName.MatchString(callID) {
+	if p == nil || p.d1 == nil || identity.Public || !validScope(agui.ToolScope{AppName: app, UserID: identity.UserID, ThreadID: thread}) || !agui.ClientCallID.MatchString(callID) {
 		return nil, agui.ErrPendingToolNotFound
 	}
 	now := p.now().UTC()

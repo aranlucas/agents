@@ -69,6 +69,36 @@ func TestApprovalResultResumesOnlyOriginalTravelThread(t *testing.T) {
 	}
 }
 
+func TestRegisterAcceptsNonIdentifierShapedProviderCallID(t *testing.T) {
+	store := newPendingFixture(t)
+	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
+	pending := NewPendingStore(store.d1, func() time.Time { return now })
+	scope := agui.ToolScope{AppName: "oralboards", UserID: "user-a", ThreadID: "thread-a"}
+	// Some providers (e.g. OpenRouter's tencent/hy3:free) issue tool-call IDs
+	// that don't look like identifiers, such as a bare leading digit. These
+	// are still valid opaque correlation tokens and must round-trip.
+	if err := pending.Register(context.Background(), scope, "0", "ask_question", map[string]any{"question": "..."}); err != nil {
+		t.Fatalf("Register() with numeric call ID = %v", err)
+	}
+	if err := pending.Resolve(context.Background(), auth.Identity{UserID: "user-a"}, "oralboards", "thread-a", "0", map[string]any{"answer": "..."}); err != nil {
+		t.Fatalf("Resolve() with numeric call ID = %v", err)
+	}
+	response, err := pending.Take(context.Background(), auth.Identity{UserID: "user-a"}, "oralboards", "thread-a", "0")
+	if err != nil || response.ID != "0" {
+		t.Fatalf("Take() = %#v, %v", response, err)
+	}
+}
+
+func TestRegisterRejectsControlCharacterCallID(t *testing.T) {
+	store := newPendingFixture(t)
+	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
+	pending := NewPendingStore(store.d1, func() time.Time { return now })
+	scope := agui.ToolScope{AppName: "oralboards", UserID: "user-a", ThreadID: "thread-a"}
+	if err := pending.Register(context.Background(), scope, "call\n1", "ask_question", nil); err == nil {
+		t.Fatal("Register() with control character in call ID should fail")
+	}
+}
+
 func TestPendingToolExpiryAndPublicIdentityFailClosed(t *testing.T) {
 	store := newPendingFixture(t)
 	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)

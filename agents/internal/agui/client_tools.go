@@ -22,11 +22,19 @@ const maximumToolSchema = 64 << 10
 
 var (
 	ErrPendingToolNotFound = errors.New("pending client tool not found")
-	// ClientToolName validates a frontend tool name or call ID. Exported so
-	// PendingTools implementations outside this package (e.g. a D1-backed
-	// store) can apply the same identifier contract without this package
-	// depending on them.
+	// ClientToolName validates a frontend tool name. These come from our own
+	// AG-UI client tool declarations, so they're required to look like
+	// identifiers. Exported so PendingTools implementations outside this
+	// package (e.g. a D1-backed store) can apply the same contract without
+	// depending on this package.
 	ClientToolName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_.:-]{0,63}$`)
+	// ClientCallID validates a tool-call identity token. Unlike
+	// ClientToolName, call IDs are assigned by the model provider (or by
+	// ADK's own "adk-"+uuid fallback when a provider omits one), not by us —
+	// some providers issue IDs that don't look like identifiers (e.g. a bare
+	// leading digit), so this only bounds length and excludes control
+	// characters rather than requiring identifier shape.
+	ClientCallID = regexp.MustCompile(`^[^\x00-\x1f]{1,128}$`)
 )
 
 // ClientTool is the official AG-UI frontend tool declaration.
