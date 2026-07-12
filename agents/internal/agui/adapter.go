@@ -24,6 +24,12 @@ type ADKAgentConfig struct {
 	StateDefaults       map[string]any
 	PendingTools        PendingTools
 	Forwarded           agentruntime.ForwardedRequestHandler
+	// Route is the mounted path segment (e.g. "grocery", "fitness"). Required:
+	// requestStateOverlay switches on it to decide which provider-connected
+	// flags (kroger_connected, strava_connected) a request carries, so a
+	// silently-defaulted value would drop those flags without any signal —
+	// exactly the bug this field exists to prevent recurring.
+	Route string
 }
 
 // ADKAgent bridges one Google ADK agent to AG-UI independently of HTTP route
@@ -40,6 +46,10 @@ func NewADKAgent(cfg ADKAgentConfig) (*ADKAgent, error) {
 	if cfg.Agent == nil {
 		return nil, errors.New("ADK agent is required")
 	}
+	route := strings.TrimSpace(cfg.Route)
+	if route == "" {
+		return nil, errors.New("route is required")
+	}
 	if strings.TrimSpace(cfg.AppName) == "" {
 		cfg.AppName = "adk-agent"
 	}
@@ -53,7 +63,7 @@ func NewADKAgent(cfg ADKAgentConfig) (*ADKAgent, error) {
 		cfg.ExecutionTimeout = 10 * time.Minute
 	}
 	handler, err := NewEntryHandler(agentruntime.Entry{
-		Route:         "agui",
+		Route:         route,
 		AppName:       cfg.AppName,
 		Agent:         cfg.Agent,
 		StateDefaults: cfg.StateDefaults,

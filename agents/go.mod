@@ -4,7 +4,7 @@ go 1.25.8
 
 require (
 	cloud.google.com/go/bigquery v1.78.0
-	github.com/ag-ui-protocol/ag-ui/sdks/community/go v0.0.0-20260710221951-ff3c815d02ef
+	github.com/ag-ui-protocol/ag-ui/sdks/community/go v0.0.0-20260712023522-e0d48fd100c1
 	github.com/aws/aws-sdk-go-v2 v1.42.1
 	github.com/aws/aws-sdk-go-v2/config v1.32.29
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.28

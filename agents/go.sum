@@ -26,8 +26,8 @@ github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.55
 github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.55.0/go.mod h1:IA1C1U7jO/ENqm/vhi7V9YYpBsp+IMyqNrEN94N7tVc=
 github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.55.0 h1:0s6TxfCu2KHkkZPnBfsQ2y5qia0jl3MMrmBhu3nCOYk=
 github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.55.0/go.mod h1:Mf6O40IAyB9zR/1J8nGDDPirZQQPbYJni8Yisy7NTMc=
-github.com/ag-ui-protocol/ag-ui/sdks/community/go v0.0.0-20260710221951-ff3c815d02ef h1:oLINZIuRuwX/yMZ2RXo6oE84LY5Vf4K+d0/B0FyDkx4=
-github.com/ag-ui-protocol/ag-ui/sdks/community/go v0.0.0-20260710221951-ff3c815d02ef/go.mod h1:ERAMOexUee4AIuoxksuuGoEcHl3aqLwaazjGwlR9ZCI=
+github.com/ag-ui-protocol/ag-ui/sdks/community/go v0.0.0-20260712023522-e0d48fd100c1 h1:pyivkUQE4SjxJJxuNp+ra+LJ5Tbs+moSDbFiwgnahT4=
+github.com/ag-ui-protocol/ag-ui/sdks/community/go v0.0.0-20260712023522-e0d48fd100c1/go.mod h1:ERAMOexUee4AIuoxksuuGoEcHl3aqLwaazjGwlR9ZCI=
 github.com/apache/arrow/go/v15 v15.0.2 h1:60IliRbiyTWCWjERBCkO1W4Qun9svcYoZrSLcyOsMLE=
 github.com/apache/arrow/go/v15 v15.0.2/go.mod h1:DGXsR3ajT524njufqf95822i+KTh+yea1jass9YXgjA=
 github.com/aws/aws-sdk-go-v2 v1.42.1 h1:9eOTgu1z/dVtYpNZ3/8/XbbaX0x/BqE3HUzAzs6K0ek=
