@@ -17,7 +17,7 @@
     "@tanstack/react-query": "^5.101.2",
     "@types/better-sqlite3": "^7.6.13",
     "better-sqlite3": "^12.11.1",
-    "lucide-react": "^1.23.0",
+    "lucide-react": "^1.24.0",
     "next": "^16.2.10",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
@@ -27,12 +27,12 @@
   "devDependencies": {
     "@agents/typescript-config": "workspace:*",
     "@tailwindcss/postcss": "^4.3.2",
-    "@types/node": "^26.1.0",
+    "@types/node": "^26.1.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "tailwindcss": "^4.3.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "typescript7": "npm:typescript@7.0.1-rc",
+    "typescript7": "npm:typescript@7.0.2",
     "vitest": "^4.1.10"
   }
 }
