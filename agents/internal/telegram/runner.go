@@ -234,30 +234,42 @@ func missingCredentialText(missing []string, connectURL string) string {
 func (r *Runner) HasTask(id string) bool { return r.tasks.Has(id) }
 
 type ADKExecutor struct {
-	sessions  session.Service
-	artifacts artifact.Service
-	agents    map[string]agent.Agent
+	sessions session.Service
+	agents   map[string]boundAgent
+}
+
+type boundAgent struct {
+	agent  agent.Agent
+	runner *runner.Runner
 }
 
 func NewADKExecutor(sessions session.Service, artifacts artifact.Service, agents map[string]agent.Agent) (*ADKExecutor, error) {
 	if sessions == nil || len(agents) == 0 {
 		return nil, errors.New("telegram ADK sessions and agents are required")
 	}
-	return &ADKExecutor{sessions: sessions, artifacts: artifacts, agents: agents}, nil
+	bound := make(map[string]boundAgent, len(agents))
+	for route, built := range agents {
+		if built == nil {
+			return nil, fmt.Errorf("telegram agent %q is required", route)
+		}
+		run, err := runner.New(runner.Config{AppName: built.Name(), Agent: built, SessionService: sessions, ArtifactService: artifacts, AutoCreateSession: true})
+		if err != nil {
+			return nil, fmt.Errorf("build Telegram ADK runner for %q: %w", route, err)
+		}
+		bound[route] = boundAgent{agent: built, runner: run}
+	}
+	return &ADKExecutor{sessions: sessions, agents: bound}, nil
 }
 
 func (e *ADKExecutor) Run(ctx context.Context, identity SessionIdentity, route Route, text string, progress ProgressFunc) (string, error) {
-	built := e.agents[route.Agent]
-	if built == nil {
-		built = e.agents["orchestrator"]
+	bound, ok := e.agents[route.Agent]
+	if !ok {
+		bound, ok = e.agents["orchestrator"]
 	}
-	if built == nil {
+	if !ok {
 		return "", errors.New("telegram route has no agent")
 	}
-	run, err := runner.New(runner.Config{AppName: built.Name(), Agent: built, SessionService: e.sessions, ArtifactService: e.artifacts, AutoCreateSession: true})
-	if err != nil {
-		return "", errors.New("build Telegram ADK runner")
-	}
+	built := bound.agent
 	state := map[string]any{"sender_linked": identity.ClerkUserID != ""}
 	if route.KrogerToken != "" {
 		state[session.KeyPrefixTemp+"kroger_token"] = route.KrogerToken
@@ -270,7 +282,7 @@ func (e *ADKExecutor) Run(ctx context.Context, identity SessionIdentity, route R
 	var texts []string
 	seen := map[string]bool{}
 	lastAuthor := ""
-	for event, runErr := range run.Run(ctx, identity.UserID, identity.SessionID, genai.NewContentFromText(text, genai.RoleUser), agent.RunConfig{StreamingMode: agent.StreamingModeNone}, runner.WithStateDelta(state)) {
+	for event, runErr := range bound.runner.Run(ctx, identity.UserID, identity.SessionID, genai.NewContentFromText(text, genai.RoleUser), agent.RunConfig{StreamingMode: agent.StreamingModeNone}, runner.WithStateDelta(state)) {
 		if runErr != nil {
 			return "", runErr
 		}
@@ -294,8 +306,8 @@ func (e *ADKExecutor) Run(ctx context.Context, identity SessionIdentity, route R
 }
 
 func (e *ADKExecutor) Reset(ctx context.Context, identity SessionIdentity) error {
-	for _, built := range e.agents {
-		err := e.sessions.Delete(ctx, &session.DeleteRequest{AppName: built.Name(), UserID: identity.UserID, SessionID: identity.SessionID})
+	for _, bound := range e.agents {
+		err := e.sessions.Delete(ctx, &session.DeleteRequest{AppName: bound.agent.Name(), UserID: identity.UserID, SessionID: identity.SessionID})
 		if err != nil && !errors.Is(err, agui.ErrSessionNotFound) {
 			return err
 		}

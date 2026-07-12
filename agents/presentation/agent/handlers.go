@@ -55,6 +55,7 @@ func SetMeta(ctx agent.Context, input SetMetaArgs) (Result, error) {
 	}
 	return r, e
 }
+
 func setMeta(state *PresentationState, input SetMetaArgs) (Result, error) {
 	title, theme := strings.TrimSpace(input.Title), strings.TrimSpace(input.Theme)
 	if title == "" || len(title) > 200 {
@@ -63,7 +64,7 @@ func setMeta(state *PresentationState, input SetMetaArgs) (Result, error) {
 	if theme != "light" && theme != "dark" && theme != "minimal" {
 		return failure("invalid_theme", "theme must be light, dark, or minimal"), nil
 	}
-	state.Title, state.Theme, state.Status = title, theme, "drafting"
+	state.Title, state.Theme, state.Status = title, theme, StatusDrafting
 	return Result{OK: true}, nil
 }
 
@@ -77,6 +78,7 @@ func CreateSlide(ctx agent.Context, input CreateSlideArgs) (Result, error) {
 	}
 	return r, e
 }
+
 func createSlide(state *PresentationState, input CreateSlideArgs) (Result, error) {
 	if len(state.Slides) >= maxSlides {
 		return failure("slide_limit_reached", "presentation cannot exceed 100 slides"), nil
@@ -97,7 +99,7 @@ func createSlide(state *PresentationState, input CreateSlideArgs) (Result, error
 	}
 	state.Slides = append(state.Slides, Slide{ID: id, Type: input.SlideType, Heading: heading, Body: input.Body, Notes: input.Notes})
 	state.ActiveSlideIndex = len(state.Slides) - 1
-	state.Status = "drafting"
+	state.Status = StatusDrafting
 	return Result{OK: true, SlideID: id}, nil
 }
 
@@ -111,6 +113,7 @@ func UpdateSlide(ctx agent.Context, input UpdateSlideArgs) (Result, error) {
 	}
 	return r, e
 }
+
 func updateSlide(state *PresentationState, input UpdateSlideArgs) (Result, error) {
 	if strings.TrimSpace(input.SlideID) == "" {
 		return failure("invalid_slide_id", "slide_id is required"), nil
@@ -146,7 +149,7 @@ func updateSlide(state *PresentationState, input UpdateSlideArgs) (Result, error
 		updated.Type = *input.SlideType
 	}
 	state.Slides[index] = updated
-	state.Status = "drafting"
+	state.Status = StatusDrafting
 	return Result{OK: true, SlideID: input.SlideID}, nil
 }
 
@@ -160,6 +163,7 @@ func DeleteSlide(ctx agent.Context, input SlideIDArgs) (Result, error) {
 	}
 	return r, e
 }
+
 func deleteSlide(state *PresentationState, input SlideIDArgs) (Result, error) {
 	index := slideIndex(state.Slides, input.SlideID)
 	if index < 0 {
@@ -171,7 +175,7 @@ func deleteSlide(state *PresentationState, input SlideIDArgs) (Result, error) {
 	} else if state.ActiveSlideIndex >= len(state.Slides) {
 		state.ActiveSlideIndex = len(state.Slides) - 1
 	}
-	state.Status = "drafting"
+	state.Status = StatusDrafting
 	return Result{OK: true}, nil
 }
 
@@ -185,6 +189,7 @@ func ReorderSlides(ctx agent.Context, input ReorderArgs) (Result, error) {
 	}
 	return r, e
 }
+
 func reorderSlides(state *PresentationState, input ReorderArgs) (Result, error) {
 	if len(input.SlideIDs) > maxSlides {
 		return failure("invalid_slide_order", "slide order exceeds the slide limit"), nil
@@ -204,7 +209,7 @@ func reorderSlides(state *PresentationState, input ReorderArgs) (Result, error) 
 			reordered = append(reordered, slide)
 		}
 	}
-	state.Slides, state.ActiveSlideIndex, state.Status = reordered, 0, "drafting"
+	state.Slides, state.ActiveSlideIndex, state.Status = reordered, 0, StatusDrafting
 	return Result{OK: true}, nil
 }
 
@@ -218,11 +223,12 @@ func MarkReady(ctx agent.Context, input ReadyArgs) (Result, error) {
 	}
 	return r, e
 }
+
 func markReady(state *PresentationState, input ReadyArgs) (Result, error) {
 	if len(input.Summary) > 5000 {
 		return failure("summary_too_large", "review summary exceeds the allowed size"), nil
 	}
-	state.Status, state.ReviewSummary = "ready", input.Summary
+	state.Status, state.ReviewSummary = StatusReady, input.Summary
 	return Result{OK: true}, nil
 }
 

@@ -5,6 +5,9 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"google.golang.org/adk/v2/agent"
+	"google.golang.org/adk/v2/session"
 )
 
 type fakeClient struct {
@@ -114,5 +117,29 @@ func TestBusySessionDoesNotLeakTaskEntries(t *testing.T) {
 	<-done
 	if runner.HasTask("telegram:2:orchestrator") {
 		t.Fatal("task retained")
+	}
+}
+
+func TestNewADKExecutorBindsOfficialRunnersOnce(t *testing.T) {
+	built, err := agent.New(agent.Config{Name: "orchestrator"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	executor, err := NewADKExecutor(session.InMemoryService(), nil, map[string]agent.Agent{"orchestrator": built})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bound := executor.agents["orchestrator"]
+	if bound.agent != built || bound.runner == nil {
+		t.Fatalf("bound agent = %#v", bound)
+	}
+}
+
+func TestNewADKExecutorRejectsInvalidAgentTreeAtConstruction(t *testing.T) {
+	first, _ := agent.New(agent.Config{Name: "duplicate"})
+	second, _ := agent.New(agent.Config{Name: "duplicate"})
+	root, _ := agent.New(agent.Config{Name: "orchestrator", SubAgents: []agent.Agent{first, second}})
+	if _, err := NewADKExecutor(session.InMemoryService(), nil, map[string]agent.Agent{"orchestrator": root}); err == nil {
+		t.Fatal("expected duplicate agent name to fail during executor construction")
 	}
 }

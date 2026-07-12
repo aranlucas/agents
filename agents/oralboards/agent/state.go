@@ -12,10 +12,18 @@ const AppName = "oralboards_agent"
 
 type Skill string
 
+type Phase string
+
 const (
 	SkillRemember        Skill = "remember"
 	SkillUnderstandApply Skill = "understand_apply"
 	SkillAnalyzeEvaluate Skill = "analyze_evaluate"
+
+	PhaseIdle        Phase = "idle"
+	PhasePresenting  Phase = "presenting"
+	PhaseQuestioning Phase = "questioning"
+	PhaseFeedback    Phase = "feedback"
+	PhaseComplete    Phase = "complete"
 )
 
 type CaseSource struct {
@@ -51,20 +59,21 @@ type State struct {
 	ScoreCard             string          `json:"score_card"`
 	ScoreSummary          []SkillsetScore `json:"score_summary"`
 	Outcome               string          `json:"outcome"`
-	Status                string          `json:"status"`
+	Status                Phase           `json:"status"`
 	LoadingStep           string          `json:"loading_step"`
 	CurrentQuestion       string          `json:"current_question"`
 	InterviewComplete     bool            `json:"interview_complete"`
 	ActiveFeedback        string          `json:"active_feedback"`
 	ActiveIdealResponse   string          `json:"active_ideal_response"`
 	ActiveProbe           string          `json:"active_probe"`
+	ProbeUsed             bool            `json:"_probe_used"`
 	QuestionCraftFeedback string          `json:"question_craft_feedback"`
 	SearchCalls           int             `json:"_search_docs_calls"`
 	UserID                string          `json:"user_id"`
 }
 
 func Defaults() State {
-	return State{CaseSources: []CaseSource{}, Transcript: []Exchange{}, ScoreSummary: []SkillsetScore{}, Status: "idle"}
+	return State{CaseSources: []CaseSource{}, Transcript: []Exchange{}, ScoreSummary: []SkillsetScore{}, Status: PhaseIdle}
 }
 
 func StateDefaults() map[string]any {
@@ -95,33 +104,19 @@ func readState(source session.ReadonlyState) State {
 	if state.ScoreSummary == nil {
 		state.ScoreSummary = []SkillsetScore{}
 	}
+	if state.Status == "" {
+		state.Status = PhaseIdle
+	}
 	return state
 }
 
-func publishState(ctx agent.Context, state State) error {
+type stateField struct {
+	key   string
+	value any
+}
+
+func publishFields(ctx agent.Context, fields ...stateField) error {
 	s := ctx.State()
-	fields := []struct {
-		key   string
-		value any
-	}{
-		{"case", state.Case},
-		{"case_sources", state.CaseSources},
-		{"case_passages", state.CasePassages},
-		{"transcript", state.Transcript},
-		{"score_card", state.ScoreCard},
-		{"score_summary", state.ScoreSummary},
-		{"outcome", state.Outcome},
-		{"status", state.Status},
-		{"loading_step", state.LoadingStep},
-		{"current_question", state.CurrentQuestion},
-		{"interview_complete", state.InterviewComplete},
-		{"active_feedback", state.ActiveFeedback},
-		{"active_ideal_response", state.ActiveIdealResponse},
-		{"active_probe", state.ActiveProbe},
-		{"question_craft_feedback", state.QuestionCraftFeedback},
-		{"_search_docs_calls", state.SearchCalls},
-		{"user_id", state.UserID},
-	}
 	for _, field := range fields {
 		if err := s.Set(field.key, field.value); err != nil {
 			return fmt.Errorf("set %s: %w", field.key, err)

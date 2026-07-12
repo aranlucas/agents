@@ -10,6 +10,13 @@ import (
 
 const AppName = "spreadsheet_agent"
 
+type Status string
+
+const (
+	StatusIdle  Status = "idle"
+	StatusReady Status = "ready"
+)
+
 type Sheet struct {
 	Title string     `json:"title"`
 	Rows  [][]string `json:"rows"`
@@ -18,12 +25,12 @@ type SpreadsheetState struct {
 	Sheets           []Sheet `json:"sheets"`
 	ActiveSheetIndex int     `json:"active_sheet_index"`
 	Summary          string  `json:"summary"`
-	Status           string  `json:"status"`
+	Status           Status  `json:"status"`
 	ReviewSummary    string  `json:"review_summary"`
 	UserID           string  `json:"user_id"`
 }
 
-func Defaults() SpreadsheetState { return SpreadsheetState{Sheets: []Sheet{}, Status: "idle"} }
+func Defaults() SpreadsheetState { return SpreadsheetState{Sheets: []Sheet{}, Status: StatusIdle} }
 func StateDefaults() map[string]any {
 	encoded, _ := json.Marshal(Defaults())
 	var values map[string]any
@@ -47,7 +54,7 @@ func readState(source session.ReadonlyState) SpreadsheetState {
 		state.Sheets = []Sheet{}
 	}
 	if state.Status == "" {
-		state.Status = "idle"
+		state.Status = StatusIdle
 	}
 	if state.ActiveSheetIndex < 0 || state.ActiveSheetIndex >= len(state.Sheets) {
 		state.ActiveSheetIndex = 0

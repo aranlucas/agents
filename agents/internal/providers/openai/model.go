@@ -10,15 +10,14 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"slices"
 	"strings"
 	"sync"
 	"time"
 
 	"agents/internal/config"
 	"agents/internal/rate"
-	"github.com/openai/openai-go"
-	"github.com/openai/openai-go/option"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/option"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/genai"
 )
@@ -34,11 +33,24 @@ type Limiter interface {
 }
 
 // ProviderError contains safe classification without credentials or prompts.
+type ProviderErrorKind string
+
+const (
+	ProviderErrorRateLimit      ProviderErrorKind = "rate_limit"
+	ProviderErrorRequestSchema  ProviderErrorKind = "request_schema"
+	ProviderErrorResponseSchema ProviderErrorKind = "response_schema"
+	ProviderErrorEmptyResponse  ProviderErrorKind = "empty_response"
+	ProviderErrorHTTP           ProviderErrorKind = "http"
+	ProviderErrorNetwork        ProviderErrorKind = "network"
+	ProviderErrorConfiguration  ProviderErrorKind = "configuration"
+	ProviderErrorCircuitOpen    ProviderErrorKind = "circuit_open"
+)
+
 type ProviderError struct {
 	Provider  string
 	Status    int
 	Retryable bool
-	Kind      string
+	Kind      ProviderErrorKind
 	cause     error
 }
 
@@ -159,7 +171,7 @@ func (m *Model) runProvider(ctx context.Context, pc providerClient, req *model.L
 		return false, err
 	}
 	if err := m.limiter.Acquire(ctx, pc.config.Name, pc.config.RequestsPerMinute); err != nil {
-		return false, &ProviderError{Provider: pc.config.Name, Retryable: errors.Is(err, rate.ErrLimitReached), Kind: "rate_limit", cause: err}
+		return false, &ProviderError{Provider: pc.config.Name, Retryable: errors.Is(err, rate.ErrLimitReached), Kind: ProviderErrorRateLimit, cause: err}
 	}
 	modelName := pc.config.Model
 	if modelName == "" && req != nil {
@@ -172,7 +184,7 @@ func (m *Model) runProvider(ctx context.Context, pc providerClient, req *model.L
 		// the cause in full here is safe and is the only place it survives —
 		// ProviderError.Error() deliberately omits cause for other Kinds.
 		log.Printf("provider %s request_schema: %v", pc.config.Name, err)
-		return false, &ProviderError{Provider: pc.config.Name, Kind: "request_schema", cause: err}
+		return false, &ProviderError{Provider: pc.config.Name, Kind: ProviderErrorRequestSchema, cause: err}
 	}
 	if stream {
 		return m.streamResponse(ctx, pc, params, yield)
@@ -185,41 +197,31 @@ func (m *Model) completeResponse(ctx context.Context, pc providerClient, params 
 	if err != nil {
 		return false, sdkError(pc.config.Name, err)
 	}
-	resp := completionToResponse(completion)
+	resp, err := completionToResponse(completion)
+	if err != nil {
+		return false, &ProviderError{Provider: pc.config.Name, Kind: ProviderErrorResponseSchema, cause: err}
+	}
 	yield(resp, nil)
 	return true, nil
-}
-
-type toolAccumulator struct {
-	ID, Name  string
-	Arguments strings.Builder
 }
 
 func (m *Model) streamResponse(ctx context.Context, pc providerClient, params openai.ChatCompletionNewParams, yield func(*model.LLMResponse, error) bool) (bool, error) {
 	stream := pc.client.Chat.Completions.NewStreaming(ctx, params)
 	defer func() { _ = stream.Close() }()
 
-	var text, reasoning strings.Builder
-	toolCalls := make(map[int64]*toolAccumulator)
-	var usage openai.CompletionUsage
-	var modelVersion, finish string
+	var accumulator openai.ChatCompletionAccumulator
+	var reasoning strings.Builder
 	emitted := false
 
 	for stream.Next() {
 		chunk := stream.Current()
-		if chunk.Model != "" {
-			modelVersion = chunk.Model
-		}
-		if chunk.Usage.TotalTokens > 0 {
-			usage = chunk.Usage
+		if !accumulator.AddChunk(chunk) {
+			return emitted, &ProviderError{Provider: pc.config.Name, Kind: ProviderErrorResponseSchema}
 		}
 		if len(chunk.Choices) == 0 {
 			continue
 		}
 		choice := chunk.Choices[0]
-		if choice.FinishReason != "" {
-			finish = choice.FinishReason
-		}
 
 		// Re-parse raw JSON for reasoning_content which the SDK doesn't expose.
 		if r := extractReasoning(chunk.RawJSON()); r != "" {
@@ -228,79 +230,45 @@ func (m *Model) streamResponse(ctx context.Context, pc providerClient, params op
 			if !yield(&model.LLMResponse{
 				Content:      &genai.Content{Role: "model", Parts: []*genai.Part{{Text: r, Thought: true}}},
 				Partial:      true,
-				ModelVersion: modelVersion,
+				ModelVersion: accumulator.Model,
 			}, nil) {
 				return true, nil
 			}
 		}
 
 		if choice.Delta.Content != "" {
-			text.WriteString(choice.Delta.Content)
 			emitted = true
 			if !yield(&model.LLMResponse{
 				Content:      genai.NewContentFromText(choice.Delta.Content, "model"),
 				Partial:      true,
-				ModelVersion: modelVersion,
+				ModelVersion: accumulator.Model,
 			}, nil) {
 				return true, nil
 			}
-		}
-		for _, tc := range choice.Delta.ToolCalls {
-			accumulator := toolCalls[tc.Index]
-			if accumulator == nil {
-				accumulator = &toolAccumulator{}
-				toolCalls[tc.Index] = accumulator
-			}
-			if tc.ID != "" {
-				accumulator.ID = tc.ID
-			}
-			if tc.Function.Name != "" {
-				accumulator.Name = tc.Function.Name
-			}
-			accumulator.Arguments.WriteString(tc.Function.Arguments)
 		}
 	}
 	if err := stream.Err(); err != nil {
 		return emitted, sdkError(pc.config.Name, err)
 	}
 
-	parts := make([]*genai.Part, 0, 2+len(toolCalls))
+	response, err := completionToResponse(&accumulator.ChatCompletion)
+	if err != nil {
+		return emitted, &ProviderError{Provider: pc.config.Name, Kind: ProviderErrorResponseSchema, cause: err}
+	}
+	if response.Content == nil {
+		response.Content = &genai.Content{Role: "model"}
+	}
 	if reasoning.Len() > 0 {
-		parts = append(parts, &genai.Part{Text: reasoning.String(), Thought: true})
+		response.Content.Parts = append([]*genai.Part{{Text: reasoning.String(), Thought: true}}, response.Content.Parts...)
 	}
-	if text.Len() > 0 {
-		parts = append(parts, genai.NewPartFromText(text.String()))
+	if len(response.Content.Parts) == 0 {
+		return emitted, &ProviderError{Provider: pc.config.Name, Retryable: true, Kind: ProviderErrorEmptyResponse}
 	}
-	indexes := make([]int64, 0, len(toolCalls))
-	for index := range toolCalls {
-		indexes = append(indexes, index)
-	}
-	slices.Sort(indexes)
-	for _, index := range indexes {
-		call := toolCalls[index]
-		if call == nil || call.Name == "" {
-			return emitted, &ProviderError{Provider: pc.config.Name, Kind: "response_schema"}
-		}
-		arguments := map[string]any{}
-		if raw := call.Arguments.String(); raw != "" && json.Unmarshal([]byte(raw), &arguments) != nil {
-			return emitted, &ProviderError{Provider: pc.config.Name, Kind: "response_schema"}
-		}
-		parts = append(parts, &genai.Part{FunctionCall: &genai.FunctionCall{ID: call.ID, Name: call.Name, Args: arguments}})
-	}
-	if len(parts) == 0 {
-		return emitted, &ProviderError{Provider: pc.config.Name, Retryable: true, Kind: "empty_response"}
-	}
-	yield(&model.LLMResponse{
-		Content:       &genai.Content{Role: "model", Parts: parts},
-		UsageMetadata: usageMetadata(usage),
-		ModelVersion:  modelVersion,
-		TurnComplete:  true,
-		FinishReason:  finishReason(finish),
-	}, nil)
+	yield(response, nil)
 	return true, nil
 }
 
-func completionToResponse(completion *openai.ChatCompletion) *model.LLMResponse {
+func completionToResponse(completion *openai.ChatCompletion) (*model.LLMResponse, error) {
 	resp := &model.LLMResponse{
 		TurnComplete:  true,
 		UsageMetadata: usageMetadata(completion.Usage),
@@ -309,12 +277,16 @@ func completionToResponse(completion *openai.ChatCompletion) *model.LLMResponse 
 	if len(completion.Choices) > 0 {
 		choice := completion.Choices[0]
 		resp.FinishReason = finishReason(string(choice.FinishReason))
-		resp.Content = choiceToContent(choice)
+		content, err := choiceToContent(choice)
+		if err != nil {
+			return nil, err
+		}
+		resp.Content = content
 	}
-	return resp
+	return resp, nil
 }
 
-func choiceToContent(choice openai.ChatCompletionChoice) *genai.Content {
+func choiceToContent(choice openai.ChatCompletionChoice) (*genai.Content, error) {
 	content := &genai.Content{Role: "model"}
 	msg := choice.Message
 	if msg.Content != "" {
@@ -325,12 +297,14 @@ func choiceToContent(choice openai.ChatCompletionChoice) *genai.Content {
 		content.Parts = append([]*genai.Part{{Text: r, Thought: true}}, content.Parts...)
 	}
 	for _, tc := range msg.ToolCalls {
-		var args map[string]any
-		if tc.Function.Arguments != "" {
-			_ = json.Unmarshal([]byte(tc.Function.Arguments), &args)
+		if tc.Function.Name == "" {
+			return nil, errors.New("tool call has no function name")
 		}
-		if args == nil {
-			args = make(map[string]any)
+		args := make(map[string]any)
+		if tc.Function.Arguments != "" {
+			if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
+				return nil, errors.New("tool call has invalid function arguments")
+			}
 		}
 		content.Parts = append(content.Parts, &genai.Part{
 			FunctionCall: &genai.FunctionCall{
@@ -340,7 +314,7 @@ func choiceToContent(choice openai.ChatCompletionChoice) *genai.Content {
 			},
 		})
 	}
-	return content
+	return content, nil
 }
 
 func sdkError(provider string, err error) error {
@@ -351,24 +325,24 @@ func sdkError(provider string, err error) error {
 			Provider:  provider,
 			Status:    apiErr.StatusCode,
 			Retryable: retryable,
-			Kind:      "http",
+			Kind:      ProviderErrorHTTP,
 			cause:     err,
 		}
 	}
-	return &ProviderError{Provider: provider, Retryable: true, Kind: "network", cause: err}
+	return &ProviderError{Provider: provider, Retryable: true, Kind: ProviderErrorNetwork, cause: err}
 }
 
 func validateProvider(provider config.Provider) error {
 	parsed, err := url.Parse(provider.BaseURL)
 	if err != nil || parsed.Host == "" {
-		return &ProviderError{Provider: provider.Name, Kind: "configuration"}
+		return &ProviderError{Provider: provider.Name, Kind: ProviderErrorConfiguration}
 	}
 	loopback := parsed.Hostname() == "127.0.0.1" || parsed.Hostname() == "localhost" || parsed.Hostname() == "::1"
 	if parsed.Scheme != "https" && (parsed.Scheme != "http" || !loopback) {
-		return &ProviderError{Provider: provider.Name, Kind: "configuration"}
+		return &ProviderError{Provider: provider.Name, Kind: ProviderErrorConfiguration}
 	}
 	if provider.Name == "" || provider.APIKey == "" || provider.RequestsPerMinute <= 0 {
-		return &ProviderError{Provider: provider.Name, Kind: "configuration"}
+		return &ProviderError{Provider: provider.Name, Kind: ProviderErrorConfiguration}
 	}
 	return nil
 }
@@ -383,7 +357,7 @@ func (m *Model) circuitAvailable(name string) error {
 	defer m.mu.Unlock()
 	state := m.circuits[name]
 	if m.now().Before(state.openUntil) {
-		return &ProviderError{Provider: name, Retryable: true, Kind: "circuit_open"}
+		return &ProviderError{Provider: name, Retryable: true, Kind: ProviderErrorCircuitOpen}
 	}
 	return nil
 }

@@ -37,7 +37,7 @@ func New(models PhaseModels, corpus *Corpus, toolsets ...adktool.Toolset) (agent
 	if corpus == nil || corpus.db == nil {
 		return nil, errors.New("oralboards corpus is required")
 	}
-	caseBuilder, err := buildPhase("case_builder", caseBuilderInstruction, models.CaseBuilder, corpus, []string{"search_docs", "set_case", "set_phase", "set_loading_step"}, nil)
+	caseBuilder, err := buildPhase("case_builder", caseBuilderInstruction, models.CaseBuilder, corpus, []string{"search_docs", "set_case", "set_loading_step"}, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -83,12 +83,12 @@ func newWorkflowAgent(caseBuilderAgent, questionerAgent, evaluatorAgent, scorerA
 			Payload:     map[string]any{"kind": "ready", "question": "Ready to begin?"},
 		}
 	}, func(_ any) map[string]any {
-		return map[string]any{"status": "questioning"}
+		return map[string]any{"status": "questioning", "loading_step": ""}
 	})
 	persistQuestion := workflow.NewEmittingFunctionNode("persist_question", func(ctx agent.Context, question string, emit func(*session.Event) error) (any, error) {
 		question = strings.TrimSpace(question)
 		violations := QuestionCraftViolations(question)
-		delta := map[string]any{"current_question": question, "question_craft_feedback": ""}
+		delta := map[string]any{"current_question": question, "question_craft_feedback": "", "_probe_used": false}
 		route := "valid"
 		if len(violations) > 0 {
 			delta["question_craft_feedback"] = strings.Join(violations, "; ")
@@ -106,22 +106,33 @@ func newWorkflowAgent(caseBuilderAgent, questionerAgent, evaluatorAgent, scorerA
 		return nil, nil
 	}, workflow.NodeConfig{})
 	waitAnswer := requestInputNode("wait_for_answer", func(state State) session.RequestInput {
+		interruptID := "oralboards-answer-" + fmt.Sprint(len(state.Transcript))
+		question := state.CurrentQuestion
+		if state.ActiveProbe != "" {
+			interruptID = "oralboards-probe-" + fmt.Sprint(len(state.Transcript))
+			question = state.ActiveProbe
+		}
 		return session.RequestInput{
-			InterruptID: "oralboards-answer-" + fmt.Sprint(len(state.Transcript)),
-			Message:     state.CurrentQuestion,
-			Payload:     map[string]any{"kind": "answer", "question": state.CurrentQuestion},
+			InterruptID: interruptID,
+			Message:     question,
+			Payload:     map[string]any{"kind": "answer", "question": question},
 		}
 	}, func(_ any) map[string]any {
-		return map[string]any{"status": "feedback"}
+		return map[string]any{"status": "feedback", "loading_step": "Reviewing your answer…"}
 	})
 	decision := workflow.NewFunctionNode("continue_or_score", func(ctx agent.Context, _ any) (*session.Event, error) {
 		state := stateFromSession(ctx.Session().State())
 		route := "questioner"
-		if state.InterviewComplete {
+		if state.ActiveProbe != "" {
+			route = "probe"
+		} else if state.InterviewComplete {
 			route = "scorer"
 		}
 		event := session.NewEvent(ctx, ctx.InvocationID())
 		event.Routes = []string{route}
+		if route == "scorer" {
+			event.Output = "Generate the final score card from the completed exchanges."
+		}
 		return event, nil
 	}, workflow.NodeConfig{})
 	edges := []workflow.Edge{
@@ -133,6 +144,7 @@ func newWorkflowAgent(caseBuilderAgent, questionerAgent, evaluatorAgent, scorerA
 		{From: persistQuestion, To: questioner, Route: workflow.StringRoute("retry")},
 		{From: waitAnswer, To: evaluator},
 		{From: evaluator, To: decision},
+		{From: decision, To: waitAnswer, Route: workflow.StringRoute("probe")},
 		{From: decision, To: questioner, Route: workflow.StringRoute("questioner")},
 		{From: decision, To: scorer, Route: workflow.StringRoute("scorer")},
 	}
@@ -190,7 +202,7 @@ func phaseTools(corpus *Corpus) ([]adktool.Tool, error) {
 		if err != nil {
 			return SearchResponse{}, err
 		}
-		if err := publishState(ctx, state); err != nil {
+		if err := publishFields(ctx, stateField{"_search_docs_calls", state.SearchCalls}); err != nil {
 			return SearchResponse{}, err
 		}
 		return response, nil
@@ -209,7 +221,7 @@ func phaseTools(corpus *Corpus) ([]adktool.Tool, error) {
 
 	setCaseTool, err := functiontool.New(functiontool.Config{
 		Name:        "set_case",
-		Description: "Write the grounded candidate vignette and source passages.",
+		Description: "Write only the grounded neutral candidate vignette and source passages. The case must not contain an examination question, reveal the management answer, or include image placeholders.",
 	}, SetCase)
 	if err != nil {
 		return nil, err
@@ -241,7 +253,7 @@ func phaseTools(corpus *Corpus) ([]adktool.Tool, error) {
 
 	appendExchangeTool, err := functiontool.New(functiontool.Config{
 		Name:        "append_exchange",
-		Description: "Append one scored exchange after the candidate has answered.",
+		Description: "Append one scored exchange after the candidate has answered. skillset is a concise clinical domain label; skill must be exactly remember, understand_apply, or analyze_evaluate.",
 	}, AppendExchange)
 	if err != nil {
 		return nil, err
@@ -249,7 +261,7 @@ func phaseTools(corpus *Corpus) ([]adktool.Tool, error) {
 
 	setScoreCardTool, err := functiontool.New(functiontool.Config{
 		Name:        "set_score_card",
-		Description: "Write final ABPD 1-3 per-skillset scores and outcome.",
+		Description: "Write final ABPD 1-3 per-skillset scores and outcome. Every score_summary skill must be exactly remember, understand_apply, or analyze_evaluate.",
 	}, SetScoreCard)
 	if err != nil {
 		return nil, err
@@ -285,15 +297,16 @@ func stateFromSession(state session.ReadonlyState) State {
 }
 
 const (
-	caseBuilderInstruction = `Build one grounded candidate-facing vignette. Call set_loading_step, search_docs, then set_case and set_phase("presenting"). Do not ask a clinical question.`
+	caseBuilderInstruction = `Build one grounded candidate-facing vignette. Call set_loading_step, search_docs, then set_case; set_case performs the presenting transition atomically. Do not ask a clinical question. After the tools finish, reply exactly: Case ready.`
 	questionerInstruction  = `Case vignette: {case?}
 Prior exchanges: {transcript?}
 Question-craft feedback: {question_craft_feedback?}
 Return one open-ended clinical question only. Do not call a frontend tool. Rewrite using question-craft feedback when present.`
 	evaluatorInstruction = `Case evidence: {case_passages?}
 Current question: {current_question?}
+Active probe: {active_probe?}
 Prior exchanges: {transcript?}
-Evaluate the candidate answer supplied as this node's input. Use at most one probe and do not score until its answer arrives. Otherwise call append_exchange; call complete_examination after the final relevant skillset.`
+Evaluate the candidate answer supplied as this node's input. Use at most one probe and do not score until its answer arrives. Otherwise call append_exchange, using a concise clinical domain for skillset and exactly one of remember, understand_apply, or analyze_evaluate for skill; call complete_examination after the final relevant skillset.`
 	scorerInstruction = `Completed exchanges: {transcript?}
-Call set_loading_step then set_score_card with cited narrative feedback, structured per-skillset ABPD 1-3 scores, and pass, borderline, or not_yet outcome.`
+Call set_loading_step then set_score_card with cited narrative feedback, structured per-skillset ABPD 1-3 scores, and pass, borderline, or not_yet outcome. For every score_summary item, use a concise clinical domain for skillset and exactly one of remember, understand_apply, or analyze_evaluate for skill.`
 )

@@ -89,6 +89,23 @@ func TestStateHandlerRejectsMissingThreadID(t *testing.T) {
 	}
 }
 
+func TestStateHandlerRejectsMultipleOrOversizedJSONDocuments(t *testing.T) {
+	h := StateHandler(testResumeRegistry(t), newFakeSessionService())
+	for name, body := range map[string]string{
+		"multiple documents": `{"threadId":"first"}{"threadId":"second"}`,
+		"oversized":          `{"threadId":"thread-state"}` + strings.Repeat(" ", maximumStateRequestBytes),
+	} {
+		t.Run(name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/resume/agents/state", strings.NewReader(body))
+			rr := httptest.NewRecorder()
+			h.ServeHTTP(rr, req)
+			if rr.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d: %s", rr.Code, rr.Body.String())
+			}
+		})
+	}
+}
+
 func TestStateHandlerNeverLeaksTemporaryState(t *testing.T) {
 	sessions := newFakeSessionService()
 	// fakeSessionService.Create (unlike the production cloudflare.SessionService)

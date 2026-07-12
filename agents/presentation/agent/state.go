@@ -10,6 +10,14 @@ import (
 
 const AppName = "presentation_agent"
 
+type Status string
+
+const (
+	StatusIdle     Status = "idle"
+	StatusDrafting Status = "drafting"
+	StatusReady    Status = "ready"
+)
+
 type Slide struct {
 	ID      string `json:"id"`
 	Type    string `json:"type"`
@@ -23,13 +31,13 @@ type PresentationState struct {
 	Theme            string  `json:"theme"`
 	Slides           []Slide `json:"slides"`
 	ActiveSlideIndex int     `json:"active_slide_index"`
-	Status           string  `json:"status"`
+	Status           Status  `json:"status"`
 	ReviewSummary    string  `json:"review_summary"`
 	UserID           string  `json:"user_id"`
 }
 
 func Defaults() PresentationState {
-	return PresentationState{Theme: "light", Slides: []Slide{}, Status: "idle"}
+	return PresentationState{Theme: "light", Slides: []Slide{}, Status: StatusIdle}
 }
 
 func StateDefaults() map[string]any {
@@ -56,7 +64,7 @@ func readState(source session.ReadonlyState) PresentationState {
 		state.Theme = "light"
 	}
 	if state.Status == "" {
-		state.Status = "idle"
+		state.Status = StatusIdle
 	}
 	if state.Slides == nil {
 		state.Slides = []Slide{}

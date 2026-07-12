@@ -10,6 +10,14 @@ import (
 
 const AppName = "research_canvas_agent"
 
+type Status string
+
+const (
+	StatusIdle     Status = "idle"
+	StatusDrafting Status = "drafting"
+	StatusReady    Status = "ready"
+)
+
 type Section struct {
 	ID      string `json:"id"`
 	Title   string `json:"title"`
@@ -27,13 +35,13 @@ type ResearchState struct {
 	Report        string    `json:"report"`
 	Sections      []Section `json:"sections"`
 	Sources       []Source  `json:"sources"`
-	Status        string    `json:"status"`
+	Status        Status    `json:"status"`
 	ReviewSummary string    `json:"review_summary"`
 	UserID        string    `json:"user_id"`
 }
 
 func Defaults() ResearchState {
-	return ResearchState{Sections: []Section{}, Sources: []Source{}, Status: "idle"}
+	return ResearchState{Sections: []Section{}, Sources: []Source{}, Status: StatusIdle}
 }
 
 func StateDefaults() map[string]any {
@@ -62,7 +70,7 @@ func readState(source session.ReadonlyState) ResearchState {
 		state.Sources = []Source{}
 	}
 	if state.Status == "" {
-		state.Status = "idle"
+		state.Status = StatusIdle
 	}
 	return state
 }

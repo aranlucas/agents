@@ -1036,6 +1036,33 @@ describe("OralBoardsPanel — malformed agent state", () => {
 });
 
 describe("OralBoardsPanel — examiner probe", () => {
+  it("keeps the original question and renders a mirrored probe only once", async () => {
+    const { useOralBoardsQuestion } = await import("@/lib/copilotkit/oral-boards-question-context");
+    const probe = "Which finding would exclude pulpotomy?";
+    vi.mocked(useOralBoardsQuestion).mockReturnValue({
+      currentQuestion: probe,
+      setCurrentQuestion: vi.fn(),
+      clearCurrentQuestion: vi.fn(),
+      pendingInputKind: "answer",
+      registerPendingInput: vi.fn(),
+      clearPendingInput: vi.fn(),
+      respondToPendingInput: vi.fn(),
+    });
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: [],
+      current_question: "How would you manage the pulp exposure?",
+      active_probe: probe,
+    };
+
+    render(<OralBoardsPanel state={state} {...baseProps} />);
+
+    expect(screen.getByText("How would you manage the pulp exposure?")).toBeInTheDocument();
+    expect(screen.getAllByText(probe)).toHaveLength(1);
+  });
+
   it("shows the follow-up probe as the active question when active_probe is set", () => {
     const state: OralBoardsState = {
       case: "Case.",

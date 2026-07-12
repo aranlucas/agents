@@ -62,9 +62,11 @@ func TestHandlerRejectsMalformedInput(t *testing.T) {
 	h := newGatewayWithFakeResumeModel(t)
 
 	cases := map[string]string{
-		"not json":         `{not valid json`,
-		"missing threadId": `{"runId":"run-1","messages":[]}`,
-		"missing runId":    `{"threadId":"thread-1","messages":[]}`,
+		"not json":           `{not valid json`,
+		"multiple documents": `{"threadId":"thread-1","runId":"run-1"}{"threadId":"thread-2","runId":"run-2"}`,
+		"missing threadId":   `{"runId":"run-1","messages":[]}`,
+		"missing runId":      `{"threadId":"thread-1","messages":[]}`,
+		"oversized":          `{"threadId":"thread-1","runId":"run-1"}` + strings.Repeat(" ", maxRunInputBytes),
 	}
 	for name, body := range cases {
 		t.Run(name, func(t *testing.T) {

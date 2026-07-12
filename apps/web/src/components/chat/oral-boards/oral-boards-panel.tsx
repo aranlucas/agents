@@ -1002,6 +1002,7 @@ function QuestioningPane({
   activeFeedback = "",
   activeIdealResponse = "",
   activeProbe = "",
+  stateQuestion = "",
   targetSkillset,
   targetSkill,
 }: {
@@ -1016,10 +1017,18 @@ function QuestioningPane({
   activeFeedback?: string;
   activeIdealResponse?: string;
   activeProbe?: string;
+  stateQuestion?: string;
   targetSkillset?: string;
   targetSkill?: OralBoardsSkill;
 }) {
-  const { currentQuestion: question } = useOralBoardsQuestion();
+  const { currentQuestion } = useOralBoardsQuestion();
+  // RequestInput registration temporarily mirrors a probe into the client
+  // question context. Keep the backend's original current_question as the
+  // parent prompt so the follow-up is not rendered twice.
+  const question =
+    activeProbe.trim() && currentQuestion.trim() === activeProbe.trim()
+      ? stateQuestion
+      : currentQuestion || stateQuestion;
   const isMobile = useIsMobile();
   const [answerText, setAnswerText] = useState("");
   const [submittedAnswer, setSubmittedAnswer] = useState("");
@@ -1339,6 +1348,7 @@ export function OralBoardsPanel({
             activeFeedback={activeFeedback}
             activeIdealResponse={activeIdealResponse}
             activeProbe={asText(state.active_probe)}
+            stateQuestion={asText(state.current_question)}
           />
         )}
         {showFinalFeedback && (

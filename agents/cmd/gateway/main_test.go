@@ -101,6 +101,24 @@ func TestLinkConsumeRejectsWrongSharedSecret(t *testing.T) {
 	}
 }
 
+func TestLinkConsumeRejectsMultipleOrOversizedJSONDocuments(t *testing.T) {
+	handler := telegramLinkConsumeHandler("correct", nil, nil)
+	for name, body := range map[string]string{
+		"multiple documents": `{"token":"raw","clerk_user_id":"user"}{}`,
+		"oversized":          `{"token":"raw","clerk_user_id":"user"}` + strings.Repeat(" ", 8<<10),
+	} {
+		t.Run(name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodPost, "/telegram/link/consume", strings.NewReader(body))
+			request.Header.Set("x-telegram-link-secret", "correct")
+			recorder := httptest.NewRecorder()
+			handler.ServeHTTP(recorder, request)
+			if recorder.Code != http.StatusBadRequest {
+				t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
+			}
+		})
+	}
+}
+
 // fakeResumeModel is a minimal model.LLM double satisfying resume.New's
 // signature; the routing tests below never trigger a model call.
 type fakeResumeModel struct{}

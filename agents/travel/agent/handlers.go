@@ -63,6 +63,7 @@ func SetTripMeta(ctx agent.Context, input SetTripMetaArgs) (Result, error) {
 	}
 	return result, err
 }
+
 func setTripMeta(state *TravelState, input SetTripMetaArgs) (Result, error) {
 	destination, headline := strings.TrimSpace(input.Destination), strings.TrimSpace(input.Headline)
 	if destination == "" || len(destination) > 300 {
@@ -98,6 +99,7 @@ func WriteItinerary(ctx agent.Context, input WriteItineraryArgs) (Result, error)
 	}
 	return result, err
 }
+
 func writeItinerary(state *TravelState, input WriteItineraryArgs) (Result, error) {
 	if len(input.Body) > maxTravelDocument || len(input.Flights) > maxTravelDocument || len(input.Summary) > 10_000 {
 		return travelFailure("itinerary_too_large", "itinerary, flights, or summary exceeds the allowed size"), nil
@@ -122,6 +124,7 @@ func AddDay(ctx agent.Context, input AddDayArgs) (Result, error) {
 	}
 	return result, err
 }
+
 func addDay(state *TravelState, input AddDayArgs) (Result, error) {
 	theme, plan := strings.TrimSpace(input.Theme), strings.TrimSpace(input.Plan)
 	if input.DayNumber < 1 || input.DayNumber > 365 || theme == "" || len(theme) > 200 || len(plan) > 100_000 {
@@ -149,6 +152,7 @@ func MarkReadyToBook(ctx agent.Context, input ReadyArgs) (Result, error) {
 	}
 	return result, err
 }
+
 func markReadyToBook(state *TravelState, input ReadyArgs) (Result, error) {
 	if len(input.Summary) > 10_000 {
 		return travelFailure("summary_too_large", "review summary exceeds the allowed size"), nil

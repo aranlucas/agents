@@ -52,8 +52,13 @@ type stateResponse struct {
 // to "thread not found".
 func StateHandler(registry *agentruntime.Registry, sessions session.Service) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		payload, err := io.ReadAll(io.LimitReader(r.Body, maximumStateRequestBytes+1))
+		if err != nil || len(payload) > maximumStateRequestBytes {
+			writeJSONError(w, http.StatusBadRequest, "invalid_state_request")
+			return
+		}
 		var input stateRequest
-		if err := json.NewDecoder(io.LimitReader(r.Body, maximumStateRequestBytes)).Decode(&input); err != nil || strings.TrimSpace(input.ThreadID) == "" {
+		if json.Unmarshal(payload, &input) != nil || strings.TrimSpace(input.ThreadID) == "" {
 			writeJSONError(w, http.StatusBadRequest, "invalid_state_request")
 			return
 		}

@@ -30,7 +30,7 @@ type SetCaseArgs struct {
 	CasePassages []string     `json:"case_passages"`
 }
 type SetPhaseArgs struct {
-	Phase string `json:"phase"`
+	Phase Phase `json:"phase"`
 }
 type LoadingArgs struct {
 	Step string `json:"step"`
@@ -60,7 +60,15 @@ func SetCase(ctx agent.Context, in SetCaseArgs) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	if pubErr := publishState(ctx, state); pubErr != nil {
+	if pubErr := publishFields(ctx,
+		stateField{"case", state.Case},
+		stateField{"case_sources", state.CaseSources},
+		stateField{"case_passages", state.CasePassages},
+		stateField{"interview_complete", state.InterviewComplete},
+		stateField{"_probe_used", state.ProbeUsed},
+		stateField{"status", state.Status},
+		stateField{"_search_docs_calls", state.SearchCalls},
+	); pubErr != nil {
 		return Result{}, pubErr
 	}
 	return result, nil
@@ -69,6 +77,12 @@ func SetCase(ctx agent.Context, in SetCaseArgs) (Result, error) {
 func setCase(state *State, in SetCaseArgs) (Result, error) {
 	if strings.TrimSpace(in.Case) == "" {
 		return Result{}, errors.New("case is required")
+	}
+	if strings.Contains(in.Case, "?") {
+		return Result{}, errors.New("case vignette must be neutral and must not contain an examination question")
+	}
+	if strings.Contains(strings.ToLower(in.Case), "[insert image") {
+		return Result{}, errors.New("case vignette must not contain unrealized image placeholders")
 	}
 	if in.CaseSources == nil {
 		in.CaseSources = []CaseSource{}
@@ -80,7 +94,8 @@ func setCase(state *State, in SetCaseArgs) (Result, error) {
 	state.CaseSources = in.CaseSources
 	state.CasePassages = strings.Join(in.CasePassages, "\n\n---\n\n")
 	state.InterviewComplete = false
-	state.Status = "presenting"
+	state.ProbeUsed = false
+	state.Status = PhasePresenting
 	state.SearchCalls = 0
 	return Result{OK: true, Status: "success", Length: len(in.Case)}, nil
 }
@@ -91,7 +106,7 @@ func SetPhase(ctx agent.Context, in SetPhaseArgs) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	if pubErr := publishState(ctx, state); pubErr != nil {
+	if pubErr := publishFields(ctx, stateField{"status", state.Status}); pubErr != nil {
 		return Result{}, pubErr
 	}
 	return result, nil
@@ -99,7 +114,7 @@ func SetPhase(ctx agent.Context, in SetPhaseArgs) (Result, error) {
 
 func setPhase(state *State, in SetPhaseArgs) (Result, error) {
 	switch in.Phase {
-	case "presenting", "questioning", "complete":
+	case PhasePresenting, PhaseQuestioning, PhaseComplete:
 	default:
 		return Result{}, ErrInvalidPhase
 	}
@@ -113,7 +128,7 @@ func SetLoadingStep(ctx agent.Context, in LoadingArgs) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	if pubErr := publishState(ctx, state); pubErr != nil {
+	if pubErr := publishFields(ctx, stateField{"loading_step", state.LoadingStep}); pubErr != nil {
 		return Result{}, pubErr
 	}
 	return result, nil
@@ -134,7 +149,11 @@ func AskProbe(ctx agent.Context, in ProbeArgs) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	if pubErr := publishState(ctx, state); pubErr != nil {
+	if pubErr := publishFields(ctx,
+		stateField{"active_probe", state.ActiveProbe},
+		stateField{"_probe_used", state.ProbeUsed},
+		stateField{"_search_docs_calls", state.SearchCalls},
+	); pubErr != nil {
 		return Result{}, pubErr
 	}
 	if err := ctx.State().Set(session.KeyPrefixTemp+"probe_asked_now", true); err != nil {
@@ -144,7 +163,7 @@ func AskProbe(ctx agent.Context, in ProbeArgs) (Result, error) {
 }
 
 func askProbe(state *State, in ProbeArgs) (Result, error) {
-	if state.ActiveProbe != "" {
+	if state.ActiveProbe != "" || state.ProbeUsed {
 		return Result{}, ErrProbeAlreadyUsed
 	}
 	question := strings.TrimSpace(in.Question)
@@ -152,7 +171,7 @@ func askProbe(state *State, in ProbeArgs) (Result, error) {
 		return Result{}, errors.New("probe question is required")
 	}
 	state.ActiveProbe = question
-	state.CurrentQuestion = question
+	state.ProbeUsed = true
 	state.SearchCalls = 0
 	return Result{OK: true, Status: "success", Message: "Probe question displayed."}, nil
 }
@@ -167,7 +186,16 @@ func AppendExchange(ctx agent.Context, in AppendExchangeArgs) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	if pubErr := publishState(ctx, state); pubErr != nil {
+	if pubErr := publishFields(ctx,
+		stateField{"transcript", state.Transcript},
+		stateField{"status", state.Status},
+		stateField{"loading_step", state.LoadingStep},
+		stateField{"current_question", state.CurrentQuestion},
+		stateField{"active_feedback", state.ActiveFeedback},
+		stateField{"active_ideal_response", state.ActiveIdealResponse},
+		stateField{"active_probe", state.ActiveProbe},
+		stateField{"_search_docs_calls", state.SearchCalls},
+	); pubErr != nil {
 		return Result{}, pubErr
 	}
 	return result, nil
@@ -181,13 +209,14 @@ func appendExchange(state *State, probeAskedNow bool, in AppendExchangeArgs) (Re
 		return Result{}, ErrInvalidScore
 	}
 	if !validSkill(in.Skill) {
-		return Result{}, errors.New("invalid skill")
+		return Result{}, fmt.Errorf("invalid skill %q: must be exactly remember, understand_apply, or analyze_evaluate", in.Skill)
 	}
 	if in.Citations == nil {
 		in.Citations = []CaseSource{}
 	}
 	state.Transcript = append(state.Transcript, Exchange{Question: in.Question, Answer: in.Answer, Skillset: in.Skillset, Skill: in.Skill, Feedback: in.Feedback, IdealResponse: in.IdealResponse, Score: in.Score, Citations: in.Citations})
-	state.Status = "questioning"
+	state.Status = PhaseQuestioning
+	state.LoadingStep = ""
 	state.CurrentQuestion, state.ActiveFeedback, state.ActiveIdealResponse, state.ActiveProbe = "", "", "", ""
 	state.SearchCalls = 0
 	return Result{OK: true, Status: "success", Count: len(state.Transcript)}, nil
@@ -199,7 +228,12 @@ func SetScoreCard(ctx agent.Context, in ScoreCardArgs) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	if pubErr := publishState(ctx, state); pubErr != nil {
+	if pubErr := publishFields(ctx,
+		stateField{"score_card", state.ScoreCard},
+		stateField{"score_summary", state.ScoreSummary},
+		stateField{"outcome", state.Outcome},
+		stateField{"status", state.Status},
+	); pubErr != nil {
 		return Result{}, pubErr
 	}
 	return result, nil
@@ -214,7 +248,7 @@ func setScoreCard(state *State, in ScoreCardArgs) (Result, error) {
 	}
 	for _, score := range in.ScoreSummary {
 		if score.Score < 1 || score.Score > 3 || !validSkill(score.Skill) {
-			return Result{}, fmt.Errorf("%w in summary", ErrInvalidScore)
+			return Result{}, fmt.Errorf("invalid score summary item for %q: score must be 1, 2, or 3 and skill must be exactly remember, understand_apply, or analyze_evaluate", score.Skillset)
 		}
 	}
 	if in.ScoreSummary == nil {
@@ -223,14 +257,14 @@ func setScoreCard(state *State, in ScoreCardArgs) (Result, error) {
 	state.ScoreCard = in.Markdown
 	state.ScoreSummary = in.ScoreSummary
 	state.Outcome = in.Outcome
-	state.Status = "complete"
+	state.Status = PhaseComplete
 	return Result{OK: true, Status: "success", Length: len(in.Markdown)}, nil
 }
 
 func CompleteExamination(ctx agent.Context, _ struct{}) (Result, error) {
 	state := readState(ctx.State())
 	state.InterviewComplete = true
-	if err := publishState(ctx, state); err != nil {
+	if err := publishFields(ctx, stateField{"interview_complete", state.InterviewComplete}); err != nil {
 		return Result{}, err
 	}
 	return Result{OK: true, Status: "success"}, nil
@@ -241,13 +275,13 @@ func validSkill(skill Skill) bool {
 }
 
 func RoutePhase(state State) string {
-	if state.Status == "feedback" {
+	if state.Status == PhaseFeedback {
 		return "evaluator"
 	}
-	if state.Status == "complete" {
+	if state.Status == PhaseComplete {
 		return "scorer"
 	}
-	if state.Status == "idle" || state.Case == "" {
+	if state.Status == PhaseIdle || state.Case == "" {
 		return "case_builder"
 	}
 	return "questioner"

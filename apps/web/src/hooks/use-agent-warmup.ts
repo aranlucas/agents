@@ -46,6 +46,14 @@ export function useAgentWarmup() {
     queryFn: () => fetch("/api/agents/health").then((r) => r.json()),
     staleTime: 30_000,
     retry: 2,
+    // The health endpoint intentionally returns 200 with per-agent error
+    // statuses, so React Query's transport retry does not cover a gateway
+    // that is still starting. Poll only while something is unready and stop
+    // as soon as the whole registry reports healthy.
+    refetchInterval: (query) =>
+      Object.values(query.state.data?.agents ?? FALLBACK).some((status) => status !== "ok")
+        ? 2_000
+        : false,
   });
 
   return {
