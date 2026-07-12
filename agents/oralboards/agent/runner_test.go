@@ -96,14 +96,6 @@ func sessionState(t *testing.T, sessions session.Service) State {
 	return stateFromSession(response.Session.State())
 }
 
-func presentingSeed() map[string]any {
-	seed := StateDefaults()
-	seed["status"] = "presenting"
-	seed["case"] = "A 5-year-old presents with a carious primary molar."
-	seed["case_passages"] = "passage"
-	return seed
-}
-
 func TestReadyRequestResumesAtQuestionerAndPersistsQuestion(t *testing.T) {
 	rn, sessions := buildRunner(t, nil)
 	readyID := requestID(t, runTurn(t, rn, "Create a case"), "ready")

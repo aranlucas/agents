@@ -197,7 +197,7 @@ type toolAccumulator struct {
 
 func (m *Model) streamResponse(ctx context.Context, pc providerClient, params openai.ChatCompletionNewParams, yield func(*model.LLMResponse, error) bool) (bool, error) {
 	stream := pc.client.Chat.Completions.NewStreaming(ctx, params)
-	defer stream.Close()
+	defer func() { _ = stream.Close() }()
 
 	var text, reasoning strings.Builder
 	toolCalls := make(map[int64]*toolAccumulator)

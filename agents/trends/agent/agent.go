@@ -30,7 +30,6 @@ import (
 	_ "embed"
 
 	"agents/internal/common"
-	"agents/trends/agent/tools"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
@@ -94,32 +93,50 @@ func NewGenerator(m model.LLM) (agent.Agent, error) {
 }
 
 func rootTools(executor *BigQueryExecutor, search *common.BraveSearch, composer model.LLM) ([]adktool.Tool, error) {
-	validateTrendsSQLTool, err := tools.NewValidateTrendsSql(validateSQLTool)
+	validateTrendsSQLTool, err := functiontool.New(functiontool.Config{
+		Name:        "validate_trends_sql",
+		Description: "Validate that generated SQL is a bounded, read-only SELECT/WITH query.",
+	}, validateSQLTool)
 	if err != nil {
 		return nil, err
 	}
 
-	beginTrendsQueryTool, err := tools.NewBeginTrendsQuery(BeginTrendsQuery)
+	beginTrendsQueryTool, err := functiontool.New(functiontool.Config{
+		Name:        "begin_trends_query",
+		Description: "Mark the trends state 'querying' before BigQuery execution starts.",
+	}, BeginTrendsQuery)
 	if err != nil {
 		return nil, err
 	}
 
-	executeBigquerySQLTool, err := tools.NewExecuteBigquerySql(executeSQLTool(executor))
+	executeBigquerySQLTool, err := functiontool.New(functiontool.Config{
+		Name:        "execute_bigquery_sql",
+		Description: "Execute bounded BigQuery SQL and return normalized columns and rows.",
+	}, executeSQLTool(executor))
 	if err != nil {
 		return nil, err
 	}
 
-	writeTrendsResultTool, err := tools.NewWriteTrendsResult(WriteTrendsResult)
+	writeTrendsResultTool, err := functiontool.New(functiontool.Config{
+		Name:        "write_trends_result",
+		Description: "Persist the final (or failed) Trends query result to state.",
+	}, WriteTrendsResult)
 	if err != nil {
 		return nil, err
 	}
 
-	setTrendsVerificationTool, err := tools.NewSetTrendsVerification(SetTrendsVerification)
+	setTrendsVerificationTool, err := functiontool.New(functiontool.Config{
+		Name:        "set_trends_verification",
+		Description: "Append web-search verification notes to the trends insights in state.",
+	}, SetTrendsVerification)
 	if err != nil {
 		return nil, err
 	}
 
-	generateA2uiTool, err := tools.NewGenerateA2ui(generateA2UITool(composer))
+	generateA2uiTool, err := functiontool.New(functiontool.Config{
+		Name:        "generate_a2ui",
+		Description: "Render the saved Trends result as a catalog-valid A2UI surface.",
+	}, generateA2UITool(composer))
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +151,10 @@ func rootTools(executor *BigQueryExecutor, search *common.BraveSearch, composer 
 	}
 
 	if search != nil {
-		webSearchTool, err := tools.NewWebSearch(func(ctx agent.Context, input SearchArgs) (SearchResult, error) {
+		webSearchTool, err := functiontool.New(functiontool.Config{
+			Name:        "web_search",
+			Description: "Search current public web results with the limited Brave budget.",
+		}, func(ctx agent.Context, input SearchArgs) (SearchResult, error) {
 			results, err := search.Search(ctx, input.Query, input.Count)
 			return SearchResult{Results: results}, err
 		})

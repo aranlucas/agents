@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 
-	"agents/grocery/agent/tools"
 	"agents/internal/common"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
 	adktool "google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool/functiontool"
 	"google.golang.org/genai"
 )
 
@@ -47,37 +47,58 @@ func newAgent(m model.LLM, kroger *Kroger, search *common.BraveSearch, loader *c
 }
 
 func groceryTools(search *common.BraveSearch, loader *common.WebLoader) ([]adktool.Tool, error) {
-	setShoppingListTool, err := tools.NewSetShoppingList(SetShoppingList)
+	setShoppingListTool, err := functiontool.New(functiontool.Config{
+		Name:        "set_shopping_list",
+		Description: "Replace the unmaterialized shopping list.",
+	}, SetShoppingList)
 	if err != nil {
 		return nil, err
 	}
 
-	updateCartTool, err := tools.NewUpdateCart(UpdateCart)
+	updateCartTool, err := functiontool.New(functiontool.Config{
+		Name:        "update_cart",
+		Description: "Reflect only confirmed live Kroger cart contents in state.",
+	}, UpdateCart)
 	if err != nil {
 		return nil, err
 	}
 
-	updatePantryTool, err := tools.NewUpdatePantry(UpdatePantry)
+	updatePantryTool, err := functiontool.New(functiontool.Config{
+		Name:        "update_pantry",
+		Description: "Replace validated pantry state.",
+	}, UpdatePantry)
 	if err != nil {
 		return nil, err
 	}
 
-	setMealPlanTool, err := tools.NewSetMealPlan(SetMealPlan)
+	setMealPlanTool, err := functiontool.New(functiontool.Config{
+		Name:        "set_meal_plan",
+		Description: "Write the meal plan to streamed state.",
+	}, SetMealPlan)
 	if err != nil {
 		return nil, err
 	}
 
-	setWeeklyDealsTool, err := tools.NewSetWeeklyDeals(SetWeeklyDeals)
+	setWeeklyDealsTool, err := functiontool.New(functiontool.Config{
+		Name:        "set_weekly_deals",
+		Description: "Write current weekly deals to state.",
+	}, SetWeeklyDeals)
 	if err != nil {
 		return nil, err
 	}
 
-	markListReadyTool, err := tools.NewMarkListReady(MarkListReady)
+	markListReadyTool, err := functiontool.New(functiontool.Config{
+		Name:        "mark_list_ready",
+		Description: "Mark a complete shopping list ready.",
+	}, MarkListReady)
 	if err != nil {
 		return nil, err
 	}
 
-	getCurrentDateTool, err := tools.NewGetCurrentDate(GetCurrentDate)
+	getCurrentDateTool, err := functiontool.New(functiontool.Config{
+		Name:        "get_current_date",
+		Description: "Return the current UTC date.",
+	}, GetCurrentDate)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +114,10 @@ func groceryTools(search *common.BraveSearch, loader *common.WebLoader) ([]adkto
 	}
 
 	if search != nil {
-		webSearchTool, err := tools.NewWebSearch(func(ctx agent.Context, input SearchArgs) (SearchResult, error) {
+		webSearchTool, err := functiontool.New(functiontool.Config{
+			Name:        "web_search",
+			Description: "Search current public web results with the limited Brave budget.",
+		}, func(ctx agent.Context, input SearchArgs) (SearchResult, error) {
 			results, err := search.Search(ctx, input.Query, input.Count)
 			return SearchResult{Results: results}, err
 		})
@@ -104,7 +128,10 @@ func groceryTools(search *common.BraveSearch, loader *common.WebLoader) ([]adkto
 	}
 
 	if loader != nil {
-		loadWebPageTool, err := tools.NewLoadWebPage(func(ctx agent.Context, input LoadPageArgs) (LoadPageResult, error) {
+		loadWebPageTool, err := functiontool.New(functiontool.Config{
+			Name:        "load_web_page",
+			Description: "Load bounded public HTTPS page text.",
+		}, func(ctx agent.Context, input LoadPageArgs) (LoadPageResult, error) {
 			page, err := loader.Load(ctx, input.URL)
 			return LoadPageResult{Page: page}, err
 		})

@@ -65,7 +65,9 @@ func buildRequest(req *model.LLMRequest, modelName string, stream bool) (openai.
 				return openai.ChatCompletionNewParams{}, errors.New("encode response JSON schema")
 			}
 			var m map[string]any
-			json.Unmarshal(schema, &m)
+			if err := json.Unmarshal(schema, &m); err != nil {
+				return openai.ChatCompletionNewParams{}, errors.New("decode response JSON schema")
+			}
 			result.ResponseFormat = openai.ChatCompletionNewParamsResponseFormatUnion{
 				OfJSONSchema: &openai.ResponseFormatJSONSchemaParam{
 					JSONSchema: shared.ResponseFormatJSONSchemaJSONSchemaParam{
@@ -104,11 +106,15 @@ func buildRequest(req *model.LLMRequest, modelName string, stream bool) (openai.
 						return openai.ChatCompletionNewParams{}, fmt.Errorf("encode tool %q JSON schema", declaration.Name)
 					}
 					var m map[string]any
-					json.Unmarshal(schema, &m)
+					if err := json.Unmarshal(schema, &m); err != nil {
+						return openai.ChatCompletionNewParams{}, fmt.Errorf("decode tool %q JSON schema", declaration.Name)
+					}
 					parameters = m
 				} else if declaration.Parameters != nil {
 					var m map[string]any
-					json.Unmarshal(schemaMap(declaration.Parameters), &m)
+					if err := json.Unmarshal(schemaMap(declaration.Parameters), &m); err != nil {
+						return openai.ChatCompletionNewParams{}, fmt.Errorf("decode tool %q parameters", declaration.Name)
+					}
 					parameters = m
 				}
 				if parameters == nil {
