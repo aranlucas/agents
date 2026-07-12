@@ -22,7 +22,10 @@ import { AgentExtensionSlot } from "@/components/chat/agents/extensions";
 import { AppSidebar } from "@/components/chat/app-sidebar";
 import { OralBoardsErrorBoundary } from "@/components/chat/oral-boards/error-boundary";
 import { OralBoardsPanel } from "@/components/chat/oral-boards/oral-boards-panel";
-import { OralBoardsQuestionProvider } from "@/lib/copilotkit/oral-boards-question-context";
+import {
+  OralBoardsQuestionProvider,
+  useOralBoardsQuestion,
+} from "@/lib/copilotkit/oral-boards-question-context";
 import { useArtifactPanel } from "@/components/workspace-shell";
 import { cssVars } from "@/lib/css";
 import { useAgentWarmup } from "@/hooks/use-agent-warmup";
@@ -148,6 +151,7 @@ function OralBoardsStartPage({
 
 function OralBoardsWorkspaceContent() {
   const config = getAgentConfig(AGENT_ID);
+  const { pendingInputKind, respondToPendingInput } = useOralBoardsQuestion();
   const { dispatch } = useArtifactPanel(AGENT_ID);
   const { agent } = useAgent({
     agentId: AGENT_ID,
@@ -194,26 +198,24 @@ function OralBoardsWorkspaceContent() {
   const handleReady = useCallback(
     () =>
       guardedRun(async () => {
+        if (pendingInputKind === "ready" && respondToPendingInput("ready")) return;
         if (!agent) return;
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-        agent.setState({ ...(agent.state as OralBoardsState), status: "questioning" });
         agent.addMessage({ id: crypto.randomUUID(), role: "user", content: "ready" });
         await copilotkit.runAgent({ agent });
       }),
-    [agent, copilotkit, guardedRun],
+    [agent, copilotkit, guardedRun, pendingInputKind, respondToPendingInput],
   );
 
   const handleAnswer = useCallback(
     (text: string) =>
       guardedRun(async () => {
         if (!text.trim()) return;
+        if (pendingInputKind === "answer" && respondToPendingInput(text)) return;
         if (!agent) return;
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-        agent.setState({ ...(agent.state as OralBoardsState), status: "feedback" });
         agent.addMessage({ id: crypto.randomUUID(), role: "user", content: text });
         await copilotkit.runAgent({ agent });
       }),
-    [agent, copilotkit, guardedRun],
+    [agent, copilotkit, guardedRun, pendingInputKind, respondToPendingInput],
   );
 
   return (

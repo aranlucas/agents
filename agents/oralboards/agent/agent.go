@@ -2,15 +2,18 @@ package oralboards
 
 import (
 	"errors"
-	"iter"
+	"fmt"
 	"strings"
 
 	"agents/oralboards/agent/tools"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
+	"google.golang.org/adk/v2/agent/workflowagent"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
 	adktool "google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/workflow"
+	"google.golang.org/genai"
 )
 
 type PhaseModels struct {
@@ -35,30 +38,138 @@ func New(models PhaseModels, corpus *Corpus, toolsets ...adktool.Toolset) (agent
 	if corpus == nil || corpus.db == nil {
 		return nil, errors.New("oralboards corpus is required")
 	}
-	caseBuilder, err := buildPhase("case_builder", caseBuilderInstruction, models.CaseBuilder, corpus, []string{"search_docs", "set_case", "set_phase", "set_loading_step"}, toolsets)
+	caseBuilder, err := buildPhase("case_builder", caseBuilderInstruction, models.CaseBuilder, corpus, []string{"search_docs", "set_case", "set_phase", "set_loading_step"}, nil)
 	if err != nil {
 		return nil, err
 	}
-	questioner, err := buildPhase("questioner", questionerInstruction, models.Questioner, corpus, []string{"set_question_target"}, toolsets, stopAfterFunctionCall("ask_question"))
+	questioner, err := buildPhase("questioner", questionerInstruction, models.Questioner, corpus, []string{"set_question_target"}, nil)
 	if err != nil {
 		return nil, err
 	}
-	evaluator, err := buildPhase("evaluator", evaluatorInstruction, models.Evaluator, corpus, []string{"search_docs", "ask_probe", "append_exchange", "set_loading_step", "complete_examination"}, toolsets)
+	evaluator, err := buildPhase("evaluator", evaluatorInstruction, models.Evaluator, corpus, []string{"search_docs", "ask_probe", "append_exchange", "set_loading_step", "complete_examination"}, nil)
 	if err != nil {
 		return nil, err
 	}
-	scorer, err := buildPhase("scorer", scorerInstruction, models.Scorer, corpus, []string{"set_score_card", "set_loading_step"}, toolsets)
+	scorer, err := buildPhase("scorer", scorerInstruction, models.Scorer, corpus, []string{"set_score_card", "set_loading_step"}, nil)
 	if err != nil {
 		return nil, err
 	}
 	children := map[string]agent.Agent{"case_builder": caseBuilder, "questioner": questioner, "evaluator": evaluator, "scorer": scorer}
-	return agent.New(agent.Config{
-		Name: AppName, Description: "Pediatric dentistry oral-board practice with deterministic phases.",
-		SubAgents: []agent.Agent{caseBuilder, questioner, evaluator, scorer},
-		Run: func(ctx agent.InvocationContext) iter.Seq2[*session.Event, error] {
-			return runOrchestrator(ctx, children)
-		},
+	return newWorkflowAgent(children, []agent.Agent{caseBuilder, questioner, evaluator, scorer})
+}
+
+// newWorkflowAgent expresses the phase transitions as an ADK graph while
+// keeping the phase LLMs in task mode. ADK deliberately rejects task-mode
+// LLM agents as static graph nodes, so the graph nodes below invoke them and
+// forward their events instead of wrapping them with workflow.NewAgentNode.
+func newWorkflowAgent(children map[string]agent.Agent, subAgents []agent.Agent) (agent.Agent, error) {
+	caseBuilder := phaseNode("run_case_builder", func(ctx agent.Context, yield func(*session.Event, error) bool) {
+		runChild(ctx, children["case_builder"], yield)
 	})
+	waitReady := requestInputNode("wait_for_ready", func(state State) session.RequestInput {
+		return session.RequestInput{
+			InterruptID: "oralboards-ready",
+			Message:     "Start the oral-board examination when the candidate is ready.",
+			Payload:     map[string]any{"kind": "ready", "question": "Ready to begin?"},
+		}
+	}, func(_ any) map[string]any {
+		return map[string]any{"status": "questioning"}
+	})
+	questioner := phaseNode("run_questioner", func(ctx agent.Context, yield func(*session.Event, error) bool) {
+		runQuestioner(ctx, children["questioner"], yield)
+	})
+	waitAnswer := requestInputNode("wait_for_answer", func(state State) session.RequestInput {
+		return session.RequestInput{
+			InterruptID: "oralboards-answer-" + fmt.Sprint(len(state.Transcript)),
+			Message:     state.CurrentQuestion,
+			Payload:     map[string]any{"kind": "answer", "question": state.CurrentQuestion},
+		}
+	}, func(_ any) map[string]any {
+		return map[string]any{"status": "feedback"}
+	})
+	evaluator := phaseNode("run_evaluator", func(ctx agent.Context, yield func(*session.Event, error) bool) {
+		runChild(ctx, children["evaluator"], yield)
+	})
+	decision := workflow.NewFunctionNode("continue_or_score", func(ctx agent.Context, _ any) (*session.Event, error) {
+		state := stateFromSession(ctx.Session().State())
+		route := "questioner"
+		if state.InterviewComplete {
+			route = "scorer"
+		}
+		event := session.NewEvent(ctx, ctx.InvocationID())
+		event.Routes = []string{route}
+		return event, nil
+	}, workflow.NodeConfig{})
+	scorer := phaseNode("run_scorer", func(ctx agent.Context, yield func(*session.Event, error) bool) {
+		runChild(ctx, children["scorer"], yield)
+	})
+
+	edges := []workflow.Edge{
+		{From: workflow.Start, To: caseBuilder},
+		{From: caseBuilder, To: waitReady},
+		{From: waitReady, To: questioner},
+		{From: questioner, To: waitAnswer},
+		{From: waitAnswer, To: evaluator},
+		{From: evaluator, To: decision},
+		{From: decision, To: questioner, Route: workflow.StringRoute("questioner")},
+		{From: decision, To: scorer, Route: workflow.StringRoute("scorer")},
+	}
+	return workflowagent.New(workflowagent.Config{
+		Name:        AppName,
+		Description: "Pediatric dentistry oral-board practice with deterministic graph phases.",
+		SubAgents:   subAgents,
+		Edges:       edges,
+	})
+}
+
+func requestInputNode(name string, request func(State) session.RequestInput, resumed func(any) map[string]any) workflow.Node {
+	rerun := true
+	return workflow.NewEmittingFunctionNode(name, func(ctx agent.Context, _ any, emit func(*session.Event) error) (any, error) {
+		state := stateFromSession(ctx.Session().State())
+		req := request(state)
+		value, err := workflow.ResumeOrRequestInput(ctx, emit, req)
+		if err != nil {
+			return nil, err
+		}
+		if delta := resumed(value); len(delta) > 0 {
+			if err := emit(stateDeltaEvent(ctx, delta)); err != nil {
+				return nil, err
+			}
+		}
+		return value, nil
+	}, workflow.NodeConfig{RerunOnResume: &rerun})
+}
+
+func phaseNode(name string, run func(agent.Context, func(*session.Event, error) bool)) workflow.Node {
+	return workflow.NewEmittingFunctionNode(name, func(ctx agent.Context, input any, emit func(*session.Event) error) (any, error) {
+		userContent := phaseInputContent(input, ctx.UserContent())
+		scope := name + "-" + fmt.Sprint(len(stateFromSession(ctx.Session().State()).Transcript))
+		childCtx := ctx.WithDelta(&agent.CommonContextDelta{InvocationContextDelta: &agent.InvocationContextDelta{
+			UserContent: &userContent, IsolationScope: &scope,
+		}})
+		var emitErr error
+		run(childCtx, func(event *session.Event, err error) bool {
+			if err != nil {
+				emitErr = err
+				return false
+			}
+			emitErr = emit(event)
+			return emitErr == nil
+		})
+		return nil, emitErr
+	}, workflow.NodeConfig{})
+}
+
+func phaseInputContent(input any, fallback *genai.Content) *genai.Content {
+	if values, ok := input.(map[string]any); ok {
+		if answer, ok := values["answer"].(string); ok && strings.TrimSpace(answer) != "" {
+			return genai.NewContentFromText(answer, genai.RoleUser)
+		}
+	}
+	if answer, ok := input.(string); ok && strings.TrimSpace(answer) != "" {
+		return genai.NewContentFromText(answer, genai.RoleUser)
+	}
+	return fallback
 }
 
 func buildPhase(name, instruction string, m model.LLM, corpus *Corpus, allowed []string, toolsets []adktool.Toolset, afterModel ...llmagent.AfterModelCallback) (agent.Agent, error) {
@@ -77,29 +188,6 @@ func buildPhase(name, instruction string, m model.LLM, corpus *Corpus, allowed [
 		}
 	}
 	return llmagent.New(llmagent.Config{Name: name, Description: name + " phase", Instruction: Instruction + "\n\n" + instruction, Model: m, Mode: llmagent.ModeTask, Tools: selected, Toolsets: toolsets, AfterModelCallbacks: afterModel})
-}
-
-// stopAfterFunctionCall ends the invocation as soon as the model calls the
-// named tool. ModeTask otherwise keeps looping — call LLM, run tools, call
-// LLM again — until the model itself calls finish_task, and every one of
-// those extra rounds gets its plain-text content surfaced to the user. For
-// the questioner, calling toolName ("ask_question") already delivers the
-// phase's entire output, so any further round is nothing but the model
-// narrating whether it's done; cutting the invocation off here removes that
-// round instead of relying on the model to stay terse across it.
-func stopAfterFunctionCall(toolName string) llmagent.AfterModelCallback {
-	return func(ctx agent.Context, resp *model.LLMResponse, err error) (*model.LLMResponse, error) {
-		if err != nil || resp == nil || resp.Partial || resp.Content == nil {
-			return nil, nil
-		}
-		for _, part := range resp.Content.Parts {
-			if part != nil && part.FunctionCall != nil && part.FunctionCall.Name == toolName {
-				ctx.EndInvocation()
-				break
-			}
-		}
-		return nil, nil
-	}
 }
 
 func phaseTools(corpus *Corpus) ([]adktool.Tool, error) {
@@ -175,72 +263,6 @@ func phaseTools(corpus *Corpus) ([]adktool.Tool, error) {
 		setScoreCardTool,
 		completeExaminationTool,
 	}, nil
-}
-
-func runOrchestrator(ctx agent.InvocationContext, children map[string]agent.Agent) iter.Seq2[*session.Event, error] {
-	return func(yield func(*session.Event, error) bool) {
-		state := stateFromSession(ctx.Session().State())
-		// The AG-UI gateway never applies RunAgentInput.state (server state
-		// is authoritative — see internal/agui/state.go's
-		// requestStateOverlay), so the exam transitions the web client
-		// performs via agent.setState must be derived here from the turn's
-		// user message: "ready" starts questioning, and any other candidate
-		// text during questioning is an answer for the evaluator.
-		if transition := messageTransition(state, userText(ctx)); transition != "" {
-			if !yield(stateDeltaEvent(ctx, map[string]any{"status": transition}), nil) {
-				return
-			}
-			state.Status = transition
-		}
-		phase := RoutePhase(state)
-		if phase == "questioner" {
-			runQuestioner(ctx, children[phase], yield)
-			return
-		}
-		if !runChild(ctx, children[phase], yield) {
-			return
-		}
-		if phase != "evaluator" {
-			return
-		}
-		state = stateFromSession(ctx.Session().State())
-		if state.InterviewComplete {
-			runChild(ctx, children["scorer"], yield)
-		} else if state.Status == "questioning" {
-			runQuestioner(ctx, children["questioner"], yield)
-		}
-	}
-}
-
-// messageTransition returns the status the session must move to before
-// routing, or "" when the turn does not change phase.
-func messageTransition(state State, text string) string {
-	text = strings.TrimSpace(text)
-	if text == "" {
-		return ""
-	}
-	ready := strings.EqualFold(text, "ready")
-	if state.Status == "presenting" && ready {
-		return "questioning"
-	}
-	if state.Status == "questioning" && !ready {
-		return "feedback"
-	}
-	return ""
-}
-
-func userText(ctx agent.InvocationContext) string {
-	content := ctx.UserContent()
-	if content == nil {
-		return ""
-	}
-	var b strings.Builder
-	for _, part := range content.Parts {
-		if part != nil && !part.Thought && part.Text != "" {
-			b.WriteString(part.Text)
-		}
-	}
-	return b.String()
 }
 
 func runChild(ctx agent.InvocationContext, child agent.Agent, yield func(*session.Event, error) bool) bool {
@@ -361,7 +383,7 @@ func stateFromSession(state session.ReadonlyState) State {
 
 const (
 	caseBuilderInstruction = `Build one grounded candidate-facing vignette. Call set_loading_step, search_docs, then set_case and set_phase("presenting"). Do not ask a clinical question.`
-	questionerInstruction  = `Read case and transcript state. Call set_question_target exactly once, then return one open-ended clinical question only. Rewrite using question_craft_feedback when present.`
+	questionerInstruction  = `Read case and transcript state. Call set_question_target exactly once, then return one open-ended clinical question only. Do not call a frontend tool. Rewrite using question_craft_feedback when present.`
 	evaluatorInstruction   = `Evaluate the latest candidate answer against case_passages. Use at most one probe and do not score until its answer arrives. Otherwise call append_exchange; call complete_examination after the final relevant skillset.`
 	scorerInstruction      = `Call set_loading_step then set_score_card with cited narrative feedback, structured per-skillset ABPD 1-3 scores, and pass, borderline, or not_yet outcome.`
 )

@@ -20,7 +20,7 @@ vi.mock("@copilotkit/react-core/v2", () => ({
   UseAgentUpdate: { OnStateChanged: "OnStateChanged" },
   useAgent: () => ({ agent: stableAgent }),
   useDefaultRenderTool: vi.fn(),
-  useFrontendTool: vi.fn(),
+  useHumanInTheLoop: vi.fn(),
   useRenderTool: vi.fn(),
 }));
 
