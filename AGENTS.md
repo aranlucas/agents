@@ -15,6 +15,7 @@ agents/
   migrations/d1/          idempotent D1 schemas
 apps/web/                  Next.js 16 + CopilotKit
 apps/mobile/               Expo Router AG-UI client
+apps/ai-shopping-mcp/      Cloudflare Worker MCP server for Kroger/QFC
 packages/types/            shared client state contracts
 ```
 
@@ -63,5 +64,7 @@ The gateway runs on port 8000. It mounts `/<agent>/agui`,
   `agents/railway.telegram.toml`.
 - Both final images are static, non-root, and contain neither scripting runtime nor Node.
 - Web: Vercel (`apps/web`). Mobile: EAS (`apps/mobile`).
+- Shopping MCP: Cloudflare Workers (`apps/ai-shopping-mcp`) using its local
+  `wrangler.jsonc`; keep the Worker name, KV bindings, and migration history stable.
 - Production acceptance includes `agents/scripts/production-smoke.sh` and a
   Railway gateway RSS maximum below 0.4 GB measured by `measure-rss.sh`.

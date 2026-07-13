@@ -5,7 +5,13 @@ packages:
 
 minimumReleaseAge: 0
 
+overrides:
+  "@modelcontextprotocol/sdk": "1.29.0"
+  ws: "8.20.1"
+
 allowBuilds:
+  "@modelcontextprotocol/ext-apps": true
+  "@mongodb-js/zstd": true
   agents-monorepo: true
   "@clerk/shared": true
   "@scarf/scarf": true
@@ -13,6 +19,7 @@ allowBuilds:
   browser-tabs-lock: true
   bufferutil: true
   core-js: true
+  core-js-pure: true
   msgpackr-extract: true
   sharp: true
   unrs-resolver: true
@@ -20,7 +27,10 @@ allowBuilds:
   onnxruntime-node: false
   protobufjs: true
   dtrace-provider: false
+  esbuild: true
   msw: true
+  node-liblzma: true
+  workerd: true
 
 onlyBuiltDependencies:
   - "agents-monorepo"
