@@ -53,8 +53,13 @@ func TestNewGeneratorInstructionCoversTableStructureAndFewShots(t *testing.T) {
 	if generator.Name() != GeneratorAppName {
 		t.Fatalf("Name() = %q, want %q", generator.Name(), GeneratorAppName)
 	}
-	if !strings.Contains(GeneratorInstruction, "top_terms") || !strings.Contains(GeneratorInstruction, "MAX(refresh_date)") {
-		t.Fatal("generator instruction missing table structure or few-shot content")
+	for _, want := range []string{"top_terms", "MAX(refresh_date)", "ranked rows per DMA", "COUNT(DISTINCT dma_name)", "average_dma_rank"} {
+		if !strings.Contains(GeneratorInstruction, want) {
+			t.Fatalf("generator instruction missing %q", want)
+		}
+	}
+	if strings.Contains(GeneratorInstruction, "identical rank/score") {
+		t.Fatal("generator instruction still describes DMA metrics as identical")
 	}
 }
 
@@ -83,6 +88,14 @@ func TestValidateSQLToolCleansAndAcceptsBoundedQueries(t *testing.T) {
 	result, err = validateSQLTool(nil, ValidateSQLArgs{SQL: "SELECT * FROM x"})
 	if err != nil || result.OK || result.Error == nil {
 		t.Fatalf("unbounded query should fail safely: result = %#v, err = %v", result, err)
+	}
+	result, err = validateSQLTool(nil, ValidateSQLArgs{SQL: "SELECT term, rank, score FROM `bigquery-public-data.google_trends.top_terms` GROUP BY term, rank, score LIMIT 10"})
+	if err != nil || result.OK || result.Error == nil {
+		t.Fatalf("US query that ignores the DMA grain should fail safely: result = %#v, err = %v", result, err)
+	}
+	result, err = validateSQLTool(nil, ValidateSQLArgs{SQL: "SELECT term, COUNT(DISTINCT dma_name) AS dma_count FROM `bigquery-public-data.google_trends.top_terms` GROUP BY term LIMIT 10"})
+	if err != nil || !result.OK {
+		t.Fatalf("US query that handles the DMA grain should pass: result = %#v, err = %v", result, err)
 	}
 }
 
@@ -126,7 +139,7 @@ func functionCall(id, name string, args map[string]any) *model.LLMResponse {
 }
 
 func TestTrendsAgentPipelineWritesVerifiedState(t *testing.T) {
-	const generatedSQL = "SELECT\n  term, rank\nFROM `bigquery-public-data.google_trends.top_terms`\nLIMIT 10;"
+	const generatedSQL = "SELECT\n  term, COUNT(DISTINCT dma_name) AS dma_count\nFROM `bigquery-public-data.google_trends.top_terms`\nGROUP BY term\nLIMIT 10;"
 	generator, err := NewGenerator(&scriptedModel{responses: []*model.LLMResponse{{Content: genai.NewContentFromText(generatedSQL, genai.RoleModel), TurnComplete: true}}})
 	if err != nil {
 		t.Fatal(err)
