@@ -24,7 +24,7 @@ clients render state snapshots/deltas. Clerk protects every agent except
 
 ## Local development
 
-Prerequisites: pnpm, Go 1.26, Docker, and the credentials documented in
+Prerequisites: pnpm, Go 1.26.5, Docker, and the credentials documented in
 [.env.example](.env.example).
 
 ```bash

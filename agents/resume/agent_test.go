@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"agents/resume/agent"
+	"agents/resume"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/genai"
 )

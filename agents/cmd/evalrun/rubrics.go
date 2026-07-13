@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"strings"
 
-	"agents/expense/agent"
-	"agents/oralboards/agent"
-	"agents/presentation/agent"
-	"agents/research/agent"
-	"agents/spreadsheet/agent"
-	"agents/travel/agent"
+	"agents/expense"
+	"agents/oralboards"
+	"agents/presentation"
+	"agents/research"
+	"agents/spreadsheet"
+	"agents/travel"
 )
 
 // RubricResult is the outcome of one local structural check.
@@ -291,7 +291,7 @@ func gradeRubric(agentName, rubricID, description string, trace Trace) RubricRes
 		res.Pass = trace.called("write_itinerary") || trace.called("add_day")
 		res.Explanation = "itinerary written via write_itinerary/add_day rather than pasted into chat"
 	// --- wellness ---
-	// wellness/agent/instructions.md gates on Kroger before orchestration.
+	// wellness/instructions.md gates on Kroger before orchestration.
 	// When Kroger is disconnected up front, the correct behavior is a
 	// zero-tool-call blocker, not a get_current_date /
 	// fitness_agent / grocery_agent sequence — that sequence is the

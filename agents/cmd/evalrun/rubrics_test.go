@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"agents/expense/agent"
+	"agents/expense"
 )
 
 func TestFirstCallArgsDecodesTheRegisteredToolType(t *testing.T) {

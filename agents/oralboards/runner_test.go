@@ -89,7 +89,7 @@ func toolCall(id, name string, args map[string]any) *model.LLMResponse {
 
 func buildRunner(t *testing.T, seed map[string]any) (*runner.Runner, session.Service) {
 	t.Helper()
-	corpus, err := OpenCorpus(filepath.Join("..", "..", "assets", "oralboards", "search.sqlite"))
+	corpus, err := OpenCorpus(filepath.Join("..", "assets", "oralboards", "search.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -248,7 +248,7 @@ func TestAnswerRequestResumesAtEvaluator(t *testing.T) {
 }
 
 func TestEvaluatorProbeReturnsDirectlyToAnswerInterrupt(t *testing.T) {
-	corpus, err := OpenCorpus(filepath.Join("..", "..", "assets", "oralboards", "search.sqlite"))
+	corpus, err := OpenCorpus(filepath.Join("..", "assets", "oralboards", "search.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -341,7 +341,7 @@ func TestEvaluatorProbeReturnsDirectlyToAnswerInterrupt(t *testing.T) {
 }
 
 func TestFullInterviewContinuesThroughSixScoredExchangesBeforeScoring(t *testing.T) {
-	corpus, err := OpenCorpus(filepath.Join("..", "..", "assets", "oralboards", "search.sqlite"))
+	corpus, err := OpenCorpus(filepath.Join("..", "assets", "oralboards", "search.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -433,7 +433,7 @@ func TestFullInterviewContinuesThroughSixScoredExchangesBeforeScoring(t *testing
 // case_builder child and yield its events (guards against the custom
 // orchestrator silently producing an empty run).
 func TestRunnerRoutesFreshSessionToCaseBuilder(t *testing.T) {
-	corpus, err := OpenCorpus(filepath.Join("..", "..", "assets", "oralboards", "search.sqlite"))
+	corpus, err := OpenCorpus(filepath.Join("..", "assets", "oralboards", "search.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}

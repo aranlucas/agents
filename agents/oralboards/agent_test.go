@@ -21,7 +21,7 @@ func (m fakeModel) GenerateContent(context.Context, *model.LLMRequest, bool) ite
 }
 
 func TestAgentExposesFourDeterministicPhaseChildren(t *testing.T) {
-	corpus, err := OpenCorpus(filepath.Join("..", "..", "assets", "oralboards", "search.sqlite"))
+	corpus, err := OpenCorpus(filepath.Join("..", "assets", "oralboards", "search.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}

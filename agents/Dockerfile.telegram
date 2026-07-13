@@ -1,10 +1,13 @@
 # syntax=docker/dockerfile:1.7
-FROM golang:1.26-bookworm AS build
+FROM golang:1.26.5-bookworm AS build
 WORKDIR /src/agents
 COPY agents/go.mod agents/go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
+    go mod download
 COPY agents/ ./
-RUN CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/telegram ./cmd/telegram
+RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
+    --mount=type=cache,target=/root/.cache/go-build,sharing=locked \
+    CGO_ENABLED=0 go build -mod=readonly -trimpath -ldflags='-s -w' -o /out/telegram ./cmd/telegram
 
 FROM gcr.io/distroless/static-debian12:nonroot
 WORKDIR /app

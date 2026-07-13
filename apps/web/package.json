@@ -45,7 +45,7 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitest/coverage-v8": "4.1.10",
-    "eas-cli": "^20.5.1",
+    "eas-cli": "^21.0.0",
     "jsdom": "^29.1.1",
     "msw": "^2.15.0",
     "tailwindcss": "^4.3.2",

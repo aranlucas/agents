@@ -13,7 +13,7 @@
     "env:railway": "railway variables --json | jq -r 'to_entries[] | \"\\(.key)=\\(.value|@sh)\"' > .env.local",
     "dev:agents": "docker compose up --build",
     "lint": "turbo lint",
-    "check": "turbo run lint typecheck fmt",
+    "check": "turbo run lint typecheck fmt:check",
     "test": "turbo test --concurrency=2",
     "test:web:offline": "pnpm --filter web test:offline",
     "coverage": "turbo coverage",
@@ -21,11 +21,11 @@
     "fmt:check": "turbo fmt:check",
     "typecheck": "turbo typecheck",
     "graph": "turbo graph",
-    "build": "turbo build",
+    "build": "turbo build --filter='!mobile'",
     "update": "pnpm update:js && pnpm update:expo",
     "update:js": "pnpm up -r --latest",
     "update:expo": "cd apps/mobile && pnpx expo@latest install expo@latest && pnpx expo@latest install --fix && pnpx expo-doctor",
-    "doctor": "pnpx react-doctor@latest"
+    "doctor": "react-doctor"
   },
   "devDependencies": {
     "concurrently": "^10.0.3",
@@ -34,8 +34,8 @@
     "oxfmt": "^0.58.0",
     "oxlint": "^1.73.0",
     "oxlint-tsgolint": "^0.24.0",
-    "react-doctor": "^0.7.6",
-    "turbo": "^2.10.4"
+    "react-doctor": "^0.7.7",
+    "turbo": "^2.10.5"
   },
   "packageManager": "pnpm@11.12.0"
 }

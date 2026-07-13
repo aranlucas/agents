@@ -3,7 +3,7 @@ package wellness
 import (
 	"encoding/json"
 
-	"agents/fitness/agent"
+	"agents/fitness"
 	"agents/internal/common"
 	"google.golang.org/adk/v2/session"
 )
