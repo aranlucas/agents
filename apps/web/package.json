@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "dev:offline": "AGENT_TEST_MODE=offline NEXT_PUBLIC_AGENT_TEST_MODE=offline next dev --turbopack",
-    "build": "COPILOTKIT_TELEMETRY_DISABLED=true next build",
+    "build": "SKIP_ENV_VALIDATION=1 COPILOTKIT_TELEMETRY_DISABLED=true next build",
     "start": "next start",
     "lint": "oxlint .",
     "fmt": "oxfmt .",
