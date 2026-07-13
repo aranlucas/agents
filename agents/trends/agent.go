@@ -5,6 +5,7 @@ package trends
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 
 	"agents/internal/common"
@@ -148,10 +149,17 @@ func executeSQLTool(executor *BigQueryExecutor) functiontool.Func[ExecuteSQLArgs
 		}
 		result, err := executor.ExecuteBigQuery(ctx, input.SQL)
 		if err != nil {
-			return failure("bigquery_query_failed", "BigQuery query failed."), nil
+			return bigQueryExecutionFailure(err), nil
 		}
 		return Result{OK: true, Columns: result.Columns, Rows: result.Rows, RowCount: len(result.Rows)}, nil
 	}
+}
+
+func bigQueryExecutionFailure(err error) Result {
+	if errors.Is(err, errBigQueryBytesLimitExceeded) {
+		return failure("bigquery_bytes_limit_exceeded", "This Trends query exceeds the configured BigQuery processing limit.")
+	}
+	return failure("bigquery_query_failed", "BigQuery query failed.")
 }
 
 type SearchArgs struct {

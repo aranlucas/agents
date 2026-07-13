@@ -4,15 +4,28 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"regexp"
 	"strings"
 	"time"
 
 	"cloud.google.com/go/bigquery"
+	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iterator"
 )
 
-const defaultRowLimit = 100
+const (
+	defaultRowLimit = 100
+	// DefaultMaxBytesBilled keeps every query cost-bounded while allowing the
+	// current public Trends tables, which require just over 2 GiB to scan.
+	DefaultMaxBytesBilled = 4 << 30
+)
+
+var (
+	errBigQueryFailed             = errors.New("BigQuery query failed")
+	errBigQueryResultFailed       = errors.New("BigQuery result failed")
+	errBigQueryBytesLimitExceeded = errors.New("BigQuery bytes billed limit exceeded")
+)
 
 type BigQueryExecutor struct {
 	client         *bigquery.Client
@@ -28,7 +41,7 @@ func NewBigQueryExecutor(client *bigquery.Client, project, dataset string, maxBy
 		return nil, errors.New("BigQuery client, project, and dataset are required")
 	}
 	if maxBytesBilled <= 0 {
-		maxBytesBilled = 1 << 30
+		maxBytesBilled = DefaultMaxBytesBilled
 	}
 	if timeout <= 0 {
 		timeout = 30 * time.Second
@@ -51,7 +64,8 @@ func (e *BigQueryExecutor) ExecuteBigQuery(ctx context.Context, sql string) (Col
 	query.UseLegacySQL = false
 	rows, err := query.Read(ctx)
 	if err != nil {
-		return ColumnsRows{}, errors.New("BigQuery query failed")
+		log.Printf("trends BigQuery query failed: %v", err)
+		return ColumnsRows{}, classifyBigQueryError(err)
 	}
 	result := ColumnsRows{Columns: []string{}, Rows: []Row{}}
 	for _, field := range rows.Schema {
@@ -62,7 +76,8 @@ func (e *BigQueryExecutor) ExecuteBigQuery(ctx context.Context, sql string) (Col
 		if err := rows.Next(&values); errors.Is(err, iterator.Done) {
 			break
 		} else if err != nil {
-			return ColumnsRows{}, errors.New("BigQuery result failed")
+			log.Printf("trends BigQuery result iteration failed: %v", err)
+			return ColumnsRows{}, errBigQueryResultFailed
 		}
 		if len(result.Columns) == 0 {
 			for _, field := range rows.Schema {
@@ -78,6 +93,18 @@ func (e *BigQueryExecutor) ExecuteBigQuery(ctx context.Context, sql string) (Col
 		result.Rows = append(result.Rows, row)
 	}
 	return result, nil
+}
+
+func classifyBigQueryError(err error) error {
+	var apiError *googleapi.Error
+	if errors.As(err, &apiError) {
+		for _, detail := range apiError.Errors {
+			if detail.Reason == "bytesBilledLimitExceeded" {
+				return errBigQueryBytesLimitExceeded
+			}
+		}
+	}
+	return errBigQueryFailed
 }
 
 func (e *BigQueryExecutor) validateTables(sql string) error {

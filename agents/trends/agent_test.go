@@ -70,6 +70,9 @@ func TestInstructionOrdersExecutionAndVerification(t *testing.T) {
 	if strings.Index(Instruction, "TrendsQueryGeneratorAgent") > strings.Index(Instruction, "validate_trends_sql") {
 		t.Fatal("instruction must generate SQL before validating it")
 	}
+	if !strings.Contains(Instruction, "Never describe an execution failure as an unsafe") {
+		t.Fatal("instruction must distinguish execution failures from SQL validation failures")
+	}
 }
 
 func TestValidateSQLToolCleansAndAcceptsBoundedQueries(t *testing.T) {
@@ -87,6 +90,13 @@ func TestExecuteSQLToolReportsUnconfiguredBigQueryWithoutPanicking(t *testing.T)
 	result, err := executeSQLTool(nil)(nil, ExecuteSQLArgs{SQL: "SELECT 1 LIMIT 10"})
 	if err != nil || result.OK || result.Error == nil || result.Error.Code != "bigquery_not_configured" {
 		t.Fatalf("result = %#v, err = %v", result, err)
+	}
+}
+
+func TestBigQueryExecutionFailureReportsProcessingLimit(t *testing.T) {
+	result := bigQueryExecutionFailure(errBigQueryBytesLimitExceeded)
+	if result.Error == nil || result.Error.Code != "bigquery_bytes_limit_exceeded" || !strings.Contains(result.Error.Message, "processing limit") {
+		t.Fatalf("result = %#v, want safe processing-limit error", result)
 	}
 }
 
