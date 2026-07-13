@@ -19,12 +19,14 @@ func TestBackendResolvesLinkedUserAndConnections(t *testing.T) {
 				t.Fatalf("query=%s", request.URL.RawQuery)
 			}
 			_ = json.NewEncoder(w).Encode([]any{map[string]any{"id": "shadow", "private_metadata": map[string]any{"linked_clerk_user_id": "real-user"}}})
+		case request.URL.Path == "/users/count":
+			_ = json.NewEncoder(w).Encode(map[string]any{"total_count": 1})
 		case strings.Contains(request.URL.Path, "oauth_custom_shopping"):
-			_ = json.NewEncoder(w).Encode([]any{map[string]any{"token": "redacted"}})
+			_ = json.NewEncoder(w).Encode(map[string]any{"data": []any{map[string]any{"token": "redacted"}}, "total_count": 1})
 		case strings.Contains(request.URL.Path, "oauth_custom_strava"):
-			_ = json.NewEncoder(w).Encode([]any{map[string]any{"token": "redacted"}})
+			_ = json.NewEncoder(w).Encode(map[string]any{"data": []any{map[string]any{"token": "redacted"}}, "total_count": 1})
 		default:
-			_ = json.NewEncoder(w).Encode([]any{})
+			_ = json.NewEncoder(w).Encode(map[string]any{"data": []any{}, "total_count": 0})
 		}
 	}))
 	defer server.Close()

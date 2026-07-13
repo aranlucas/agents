@@ -2,61 +2,12 @@ package agui
 
 import (
 	"context"
-	"encoding/json"
-	"strings"
 	"testing"
 
-	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
 )
-
-func TestConverterEmitsMCPAppActivityWithoutStateDelta(t *testing.T) {
-	converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, nil, ToolScope{}, nil)
-	event := &session.Event{Actions: session.EventActions{StateDelta: map[string]any{
-		"temp:mcp_app_activity:call-1": map[string]any{
-			"messageId": "call-1",
-			"content":   map[string]any{"resourceUri": "ui://excalidraw/mcp-app.html", "serverId": "excalidraw"},
-		},
-	}}}
-
-	out := converter.Convert(event)
-	if len(out) != 1 {
-		t.Fatalf("events = %#v", out)
-	}
-	activity, ok := out[0].(*events.ActivitySnapshotEvent)
-	if !ok || activity.ActivityType != "mcp-apps" || activity.MessageID != "call-1" {
-		t.Fatalf("activity = %#v", out[0])
-	}
-	if _, ok := activity.Content.(json.RawMessage); !ok {
-		t.Fatalf("activity content type = %T, want json.RawMessage", activity.Content)
-	}
-	encoded, err := json.Marshal(activity.Content)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(encoded) != `{"resourceUri":"ui://excalidraw/mcp-app.html","serverId":"excalidraw"}` {
-		t.Fatalf("activity content was double encoded: %s", encoded)
-	}
-	if strings.Contains(string(encoded), "temp:mcp_app_activity") {
-		t.Fatalf("temporary state leaked: %s", encoded)
-	}
-}
-
-func TestConverterRejectsInvalidOrNullActivityContent(t *testing.T) {
-	for name, content := range map[string]json.RawMessage{"invalid": json.RawMessage(`{`), "null": json.RawMessage(`null`)} {
-		t.Run(name, func(t *testing.T) {
-			converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, nil, ToolScope{}, nil)
-			event := &session.Event{Actions: session.EventActions{StateDelta: map[string]any{
-				"temp:mcp_app_activity:call-1": mcpAppActivity{MessageID: "call-1", Content: content},
-			}}}
-			if out := converter.Convert(event); len(out) != 0 {
-				t.Fatalf("events = %#v", out)
-			}
-		})
-	}
-}
 
 // TestConverterRegistersClientToolCallBeforeReturningToolCallEvents proves
 // the ordering half of Finding 1: toolCallEvents registers a client tool

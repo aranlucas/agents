@@ -16,7 +16,7 @@
             "role": "user",
             "parts": [
               {
-                "text": "Visualize the top 10 Google searches in the US for the latest available week. Save SQL, rows, insights, and the A2UI surface; do not paste raw JSON into chat."
+                "text": "Analyze the top 10 Google searches in the US for the latest available week. Save SQL, rows, insights, and verification, then summarize the result concisely."
               }
             ]
           },

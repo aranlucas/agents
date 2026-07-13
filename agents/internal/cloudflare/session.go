@@ -261,15 +261,9 @@ func (s *SessionService) AppendEvent(ctx context.Context, current session.Sessio
 	// InMemory-backed tests kept passing. event.Actions.StateDelta itself is
 	// deliberately left untouched: ADK-Go's runner calls AppendEvent and then
 	// yields this same *session.Event to its caller (see runner.go's
-	// "AppendEvent... yield (event, nil)" sequencing), and
-	// internal/agui/converter.go reads temp:mcp_app_activity:/
-	// temp:a2ui_activity: keys directly off that yielded event to emit
-	// ACTIVITY_SNAPSHOT frames. Reassigning event.Actions.StateDelta here (as
-	// an earlier version of this method did) silently stripped those keys
-	// before the converter ever saw them, breaking every activity-emitting
-	// tool (excalidraw's MCP Apps bridge, trends' generate_a2ui) end-to-end
-	// despite passing unit tests that construct events by hand instead of
-	// driving them through AppendEvent.
+	// "AppendEvent... yield (event, nil)" sequencing). Reassigning the delta
+	// here would make downstream consumers observe a different event than the
+	// agent produced.
 	persistedDelta := withoutTemporary(event.Actions.StateDelta)
 	appDelta, userDelta, sessionDelta := splitState(persistedDelta)
 	appJSON, err := json.Marshal(appDelta)

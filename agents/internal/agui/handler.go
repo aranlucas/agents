@@ -1,10 +1,8 @@
 package agui
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -94,24 +92,6 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel := context.WithTimeout(r.Context(), entry.Timeout)
 	defer cancel()
-
-	if entry.Forwarded != nil {
-		forwardedProps, ok := input.ForwardedProps.(json.RawMessage)
-		if !ok {
-			var encodeErr error
-			forwardedProps, encodeErr = json.Marshal(input.ForwardedProps)
-			if encodeErr != nil {
-				log.Printf("run: forwarded props encode failed: agent=%s thread=%s err=%v", entry.AppName, input.ThreadID, encodeErr)
-				writeJSONError(w, http.StatusBadRequest, "invalid_agui_input")
-				return
-			}
-		}
-		result, handled, forwardedErr := entry.Forwarded.HandleForwarded(ctx, forwardedProps)
-		if handled {
-			h.writeForwarded(w, input.ThreadID, input.RunID, result, forwardedErr)
-			return
-		}
-	}
 
 	sess, err := h.restoreSession(ctx, entry, userID, input.ThreadID)
 	if err != nil {
@@ -233,33 +213,6 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		finished.Result = converter.lastFinalText
 	}
 	_ = frame.WriteEvent(ctx, w, finished)
-}
-
-func (h *ADKHandler) writeForwarded(w http.ResponseWriter, threadID, runID string, result json.RawMessage, runErr error) {
-	_, ok := w.(http.Flusher)
-	if !ok {
-		log.Printf("forwarded: response writer does not support flushing")
-		writeJSONError(w, http.StatusInternalServerError, "streaming_unsupported")
-		return
-	}
-	result = bytes.TrimSpace(result)
-	if runErr == nil && (len(result) == 0 || !json.Valid(result) || bytes.Equal(result, []byte("null"))) {
-		runErr = errors.New("forwarded result is invalid")
-	}
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("X-Accel-Buffering", "no")
-	w.WriteHeader(http.StatusOK)
-	frame := sse.NewSSEWriter()
-	ctx := context.Background()
-	_ = frame.WriteEvent(ctx, w, events.NewRunStartedEvent(threadID, runID))
-	if runErr != nil {
-		log.Printf("forwarded run failed: thread=%s run=%s err=%v", threadID, runID, runErr)
-		_ = frame.WriteEvent(ctx, w, sanitizeRunError(runID, runErr))
-		return
-	}
-	_ = frame.WriteEvent(ctx, w, events.NewRunFinishedEventWithOptions(threadID, runID, events.WithResult(result)))
 }
 
 // restoreSession fetches the existing (app, user, thread) session or

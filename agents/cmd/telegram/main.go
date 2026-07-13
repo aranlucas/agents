@@ -13,11 +13,9 @@ import (
 	"syscall"
 	"time"
 
-	"agents/excalidraw/agent"
 	"agents/expense/agent"
 	"agents/fitness/agent"
 	"agents/grocery/agent"
-	"agents/internal/agui"
 	"agents/internal/clerk"
 	"agents/internal/cloudflare"
 	"agents/internal/common"
@@ -85,15 +83,11 @@ func main() {
 	defer func() { _ = corpus.Close() }()
 	oralAgent, err := oralboards.New(oralboards.PhaseModels{CaseBuilder: model, Questioner: model, Evaluator: model, Scorer: model}, corpus)
 	must(err)
-	excalBridge, err := agui.NewMCPApps([]agui.MCPAppsServer{{URL: envDefault("EXCALIDRAW_MCP_URL", "https://mcp.excalidraw.com/mcp"), ServerID: "excalidraw"}}, common.NewHTTPClient(30*time.Second, 8<<20).Client)
-	must(err)
-	excalAgent, err := excalidraw.New(model, excalBridge)
-	must(err)
 	travelAgent, err := travel.New(model, travel.NewTRVL(envDefault("TRVL_MCP_URL", "https://trvl-production.up.railway.app/mcp"), common.NewHTTPClient(20*time.Second, 8<<20).Client))
 	must(err)
 	trendGenerator, err := trends.NewGenerator(model)
 	must(err)
-	trendAgent, err := trends.New(model, trendGenerator, nil, search, nil)
+	trendAgent, err := trends.New(model, trendGenerator, nil, search)
 	must(err)
 	resumeAgent, err := resume.New(model)
 	must(err)
@@ -105,7 +99,7 @@ func main() {
 	must(err)
 	expenseAgent, err := expense.New(model)
 	must(err)
-	specialists := map[string]agent.Agent{"excalidraw": excalAgent, "travel": travelAgent, "trends": trendAgent, "grocery": groceryAgent, "fitness": fitnessAgent, "wellness": wellnessAgent, "expense": expenseAgent, "oralboards": oralAgent, "presentation": presentationAgent, "research": researchAgent, "spreadsheet": spreadsheetAgent, "resume": resumeAgent}
+	specialists := map[string]agent.Agent{"travel": travelAgent, "trends": trendAgent, "grocery": groceryAgent, "fitness": fitnessAgent, "wellness": wellnessAgent, "expense": expenseAgent, "oralboards": oralAgent, "presentation": presentationAgent, "research": researchAgent, "spreadsheet": spreadsheetAgent, "resume": resumeAgent}
 	orchestrator, err := buildOrchestrator(model, specialists)
 	must(err)
 	specialists["orchestrator"] = orchestrator
@@ -142,7 +136,7 @@ func main() {
 
 func buildOrchestrator(model *openai.Model, specialists map[string]agent.Agent) (agent.Agent, error) {
 	tools := make([]tool.Tool, 0, len(specialists))
-	for _, name := range []string{"excalidraw", "travel", "trends", "grocery", "fitness", "wellness", "expense", "oralboards", "presentation", "research", "spreadsheet", "resume"} {
+	for _, name := range []string{"travel", "trends", "grocery", "fitness", "wellness", "expense", "oralboards", "presentation", "research", "spreadsheet", "resume"} {
 		tools = append(tools, agenttool.New(specialists[name], nil))
 	}
 	return llmagent.New(llmagent.Config{Name: telegram.OrchestratorAppName, Description: "Routes Telegram requests to exactly one specialist.", Model: model, Instruction: "Choose exactly one specialist tool for the request. Respect current sender credential flags. Return a concise Telegram-friendly answer; never call multiple specialists.", Tools: tools})

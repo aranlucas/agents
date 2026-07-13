@@ -1,5 +1,4 @@
 export const AGENT_ORDER = [
-  "excalidraw",
   "travel",
   "grocery",
   "fitness",
@@ -16,7 +15,6 @@ export const AGENT_ORDER = [
 export type AgentId = (typeof AGENT_ORDER)[number];
 
 export const AGENT_BACKEND_PATHS = {
-  excalidraw: "excalidraw",
   travel: "travel",
   grocery: "grocery",
   fitness: "fitness",

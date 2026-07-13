@@ -2,7 +2,6 @@ package agentruntime
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -21,15 +20,6 @@ type Entry struct {
 	Public        bool
 	Timeout       time.Duration
 	Health        func(context.Context) error
-	Forwarded     ForwardedRequestHandler
-}
-
-// ForwardedRequestHandler handles library-defined forwarded AG-UI properties
-// without invoking the model. The integration owns the concrete JSON schema;
-// keeping the wire document raw prevents an app-specific shape from escaping
-// into the shared runtime registry.
-type ForwardedRequestHandler interface {
-	HandleForwarded(context.Context, json.RawMessage) (result json.RawMessage, handled bool, err error)
 }
 
 // Registry is immutable after construction and safe for concurrent lookups.

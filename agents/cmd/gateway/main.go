@@ -20,7 +20,6 @@ import (
 	"syscall"
 	"time"
 
-	"agents/excalidraw/agent"
 	"agents/expense/agent"
 	"agents/fitness/agent"
 	"agents/grocery/agent"
@@ -142,7 +141,7 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 	// before mux ever sees the request. Route unmatched paths straight to
 	// mux (its normal 404) and only push matched paths through the auth
 	// gate.
-	protected := auth.RequireIdentity(publicRoutes, mux, verifiers...)
+	protected := auth.RequireIdentity(publicRoutes, withOAuthCredentials(deps.Clerk, mux), verifiers...)
 	routed := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if _, pattern := mux.Handler(r); pattern == "" {
 			mux.ServeHTTP(w, r)
@@ -151,6 +150,43 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 		protected.ServeHTTP(w, r)
 	})
 	return auth.CORS(cfg.HTTP.Origins, routed), nil
+}
+
+// withOAuthCredentials resolves provider access tokens inside the trusted
+// Railway process after Clerk authentication. Direct browser-to-AG-UI clients
+// therefore only carry their Clerk session JWT; third-party OAuth tokens never
+// pass through the browser or the Vercel app.
+func withOAuthCredentials(backend clerk.Backend, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		identity, ok := auth.FromContext(r.Context())
+		if backend == nil || !ok || identity.Public || !routeNeedsOAuth(r.URL.Path) {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		connections, err := backend.OAuthConnections(r.Context(), identity.UserID)
+		if err != nil {
+			log.Printf("resolve agent OAuth credentials: user=%s path=%s err=%v", identity.UserID, r.URL.Path, err)
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		clone := r.Clone(r.Context())
+		clone.Header = r.Header.Clone()
+		if connections.KrogerToken != "" {
+			clone.Header.Set("X-Kroger-Access-Token", connections.KrogerToken)
+		}
+		if connections.StravaToken != "" {
+			clone.Header.Set("X-Strava-Access-Token", connections.StravaToken)
+		}
+		next.ServeHTTP(w, clone)
+	})
+}
+
+func routeNeedsOAuth(path string) bool {
+	return strings.HasPrefix(path, "/grocery/") ||
+		strings.HasPrefix(path, "/fitness/") ||
+		strings.HasPrefix(path, "/wellness/")
 }
 
 type telegramLinkConsumeRequest struct {
@@ -395,16 +431,6 @@ func fitnessProviderConfig(cfg config.Config) (config.Provider, error) {
 	return provider, nil
 }
 
-func excalidrawProviderConfig(cfg config.Config) (config.Provider, error) {
-	provider, ok := cfg.Providers["groq"]
-	if !ok {
-		return config.Provider{}, errors.New("GROQ_API_KEY is required to configure the Excalidraw agent")
-	}
-	provider.Model, provider.RequestsPerMinute = "llama-3.3-70b-versatile", 30
-	provider.Fallbacks = configuredFallbacks(cfg.Providers, "mistral", "openrouter")
-	return provider, nil
-}
-
 func groceryProviderConfig(cfg config.Config) (config.Provider, error) {
 	provider, ok := cfg.Providers["nvidia"]
 	if !ok {
@@ -418,7 +444,7 @@ func groceryProviderConfig(cfg config.Config) (config.Provider, error) {
 // trendsProviderConfig configures both the root GoogleTrendsAgent and its
 // TrendsQueryGeneratorAgent child: AGENTS.md's Model Distribution table puts
 // "trends root agent + generator subagent" on the Groq Standard tier, same
-// model as fitness/wellness/excalidraw.
+// model as fitness/wellness.
 func trendsProviderConfig(cfg config.Config) (config.Provider, error) {
 	provider, ok := cfg.Providers["groq"]
 	if !ok {
@@ -454,28 +480,6 @@ func trendsBigQueryClient(ctx context.Context) (*bigquery.Client, error) {
 		return nil, fmt.Errorf("configure BigQuery client: %w", err)
 	}
 	return client, nil
-}
-
-// trendsComposerModel builds the official ADK-Go Gemini model generate_a2ui uses to
-// choose and parameterize Trends catalog components (AGENTS.md's Model
-// Distribution table, A2UI row: "gemini-2.5-flash", direct ADK — not
-// LiteLLM). Unlike every other agent's provider config, this is optional
-// rather than fatal: GEMINI_API_KEY is the Railway Ambient Gemini free tier,
-// which is not guaranteed to be configured in every environment (local dev,
-// CI, a fresh Railway service). A missing key returns (nil, nil) so the
-// gateway still starts and trends.New's composer parameter degrades
-// generate_a2ui to its deterministic BuildA2UI surface (see
-// trends/agent/compose.go's composeA2UI) instead of crashing.
-func trendsComposerModel(ctx context.Context) (model.LLM, error) {
-	apiKey := strings.TrimSpace(os.Getenv("GEMINI_API_KEY"))
-	if apiKey == "" {
-		return nil, nil
-	}
-	composer, err := gemini.NewModel(ctx, "gemini-2.5-flash", &genai.ClientConfig{APIKey: apiKey, Backend: genai.BackendGeminiAPI})
-	if err != nil {
-		return nil, fmt.Errorf("configure trends A2UI composer: %w", err)
-	}
-	return composer, nil
 }
 
 func oralboardsModels(ctx context.Context, cfg config.Config, availableProviders map[string]config.Provider, limiter *rate.ProviderLimiter) (oralboards.PhaseModels, error) {
@@ -716,26 +720,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("build wellness agent: %v", err)
 	}
-	excalidrawProvider, err := excalidrawProviderConfig(cfg)
-	if err != nil {
-		log.Fatalf("configure Excalidraw model: %v", err)
-	}
-	excalidrawModel, err := openai.NewMulti(excalidrawProvider, availableProviders, nil, limiter)
-	if err != nil {
-		log.Fatalf("configure Excalidraw fallbacks: %v", err)
-	}
-	excalidrawEndpoint := strings.TrimSpace(os.Getenv("EXCALIDRAW_MCP_URL"))
-	if excalidrawEndpoint == "" {
-		excalidrawEndpoint = "https://mcp.excalidraw.com/mcp"
-	}
-	excalidrawMCPApps, err := agui.NewMCPApps([]agui.MCPAppsServer{{URL: excalidrawEndpoint, ServerID: "excalidraw"}}, common.NewHTTPClient(30*time.Second, 8<<20).Client)
-	if err != nil {
-		log.Fatalf("configure Excalidraw MCP: %v", err)
-	}
-	excalidrawAgent, err := excalidraw.New(excalidrawModel, excalidrawMCPApps, agui.NewAGUIToolset(pending))
-	if err != nil {
-		log.Fatalf("build Excalidraw agent: %v", err)
-	}
 	trendsProvider, err := trendsProviderConfig(cfg)
 	if err != nil {
 		log.Fatalf("configure trends model: %v", err)
@@ -759,11 +743,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("build trends generator agent: %v", err)
 	}
-	trendsComposer, err := trendsComposerModel(context.Background())
-	if err != nil {
-		log.Fatalf("configure trends A2UI composer: %v", err)
-	}
-	trendsAgent, err := trends.New(trendsModel, trendsGenerator, trendsExecutor, braveSearch, trendsComposer, agui.NewAGUIToolset(pending))
+	trendsAgent, err := trends.New(trendsModel, trendsGenerator, trendsExecutor, braveSearch, agui.NewAGUIToolset(pending))
 	if err != nil {
 		log.Fatalf("build trends agent: %v", err)
 	}
@@ -794,7 +774,6 @@ func main() {
 		agentruntime.Entry{Route: "fitness", AppName: fitness.AppName, Agent: fitnessAgent, StateDefaults: fitness.StateDefaults, Timeout: 3 * time.Minute},
 		agentruntime.Entry{Route: "grocery", AppName: grocery.AppName, Agent: groceryAgent, StateDefaults: grocery.StateDefaults, Timeout: 3 * time.Minute},
 		agentruntime.Entry{Route: "wellness", AppName: wellness.AppName, Agent: wellnessAgent, StateDefaults: wellness.StateDefaults, Timeout: 5 * time.Minute},
-		agentruntime.Entry{Route: "excalidraw", AppName: excalidraw.AppName, Agent: excalidrawAgent, StateDefaults: excalidraw.StateDefaults, Timeout: 3 * time.Minute, Forwarded: excalidrawMCPApps},
 		agentruntime.Entry{Route: "trends", AppName: trends.AppName, Agent: trendsAgent, StateDefaults: trends.StateDefaults, Timeout: 3 * time.Minute},
 		agentruntime.Entry{Route: "oralboards", AppName: oralboards.AppName, Agent: oralboardsAgent, StateDefaults: oralboards.StateDefaults, Timeout: 5 * time.Minute},
 	)

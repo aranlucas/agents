@@ -1,7 +1,6 @@
 package agui
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -13,16 +12,6 @@ import (
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
 )
-
-const (
-	mcpAppActivityStatePrefix = "temp:mcp_app_activity:"
-	a2uiActivityStatePrefix   = "temp:a2ui_activity:"
-)
-
-type mcpAppActivity struct {
-	MessageID string          `json:"messageId"`
-	Content   json.RawMessage `json:"content"`
-}
 
 // streamConverter turns a stream of ADK session events for one invocation
 // into ordered, typed AG-UI SDK events. Not safe for concurrent use; the
@@ -128,7 +117,6 @@ func (c *streamConverter) convertFinal(event *session.Event, content *genai.Cont
 		}
 	}
 
-	out = append(out, c.activityEvents(event.Actions.StateDelta)...)
 	delta, err := statePatch(c.state, event.Actions.StateDelta)
 	if err != nil {
 		log.Printf("convert state delta: %v", err)
@@ -142,38 +130,6 @@ func (c *streamConverter) convertFinal(event *session.Event, content *genai.Cont
 		}
 	}
 
-	return out
-}
-
-func (c *streamConverter) activityEvents(delta map[string]any) []events.Event {
-	var out []events.Event
-	for key, raw := range delta {
-		activityType := ""
-		switch {
-		case strings.HasPrefix(key, mcpAppActivityStatePrefix):
-			activityType = "mcp-apps"
-		case strings.HasPrefix(key, a2uiActivityStatePrefix):
-			activityType = "a2ui-surface"
-		default:
-			continue
-		}
-		encoded, err := json.Marshal(raw)
-		if err != nil {
-			continue
-		}
-		var activity mcpAppActivity
-		if err := json.Unmarshal(encoded, &activity); err != nil {
-			continue
-		}
-		activity.Content = bytes.TrimSpace(activity.Content)
-		if len(activity.Content) == 0 || !json.Valid(activity.Content) || bytes.Equal(activity.Content, []byte("null")) {
-			continue
-		}
-		if activity.MessageID == "" {
-			activity.MessageID = c.ids.GenerateMessageID()
-		}
-		out = append(out, events.NewActivitySnapshotEvent(activity.MessageID, activityType, activity.Content))
-	}
 	return out
 }
 

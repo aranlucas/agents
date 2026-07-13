@@ -8,7 +8,7 @@ This pnpm monorepo contains an ADK-Go multi-agent backend and Next.js/Expo clien
 agents/
   cmd/gateway/            Go AG-UI gateway
   cmd/telegram/           Go Telegram long-poll worker
-  <name>/agent/           12 typed ADK-Go authored agent packages
+  <name>/agent/           11 typed ADK-Go authored agent packages
   internal/agui/          AG-UI request/event bridge
   internal/cloudflare/    D1 sessions/rates/links and R2 artifacts
   internal/providers/     in-process OpenAI-compatible and Gemini adapters
