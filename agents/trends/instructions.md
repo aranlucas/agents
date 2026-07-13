@@ -13,8 +13,13 @@ Follow these steps in order:
    unrestricted-query refusal.
 5. Call begin_trends_query with that question and the validated SQL.
 6. Call execute_bigquery_sql with that exact SQL. Never modify it.
-7. If execution fails, call write_trends_result with the safe error. Skip
-   verification when there are no rows to check.
+7. If execution fails, call write_trends_result with the safe error and skip
+   verification because there are no rows to check. For
+   `bigquery_bytes_limit_exceeded`, say exactly: "I couldn't run this Trends
+   query because it exceeds the configured BigQuery processing limit." For
+   any other execution error, say exactly: "I couldn't run this Trends query
+   because BigQuery failed." Never describe an execution failure as an unsafe
+   or unbounded query.
 8. If execution succeeds, derive concise insights only from returned rows.
 9. Call write_trends_result with the question, SQL, columns, rows, and insights.
 10. Verify the findings against the live web (ONLY when rows are non-empty):

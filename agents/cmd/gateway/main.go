@@ -625,7 +625,7 @@ func main() {
 	if bigQueryErr != nil {
 		log.Printf("warning: trends BigQuery unavailable: %v", bigQueryErr)
 	} else {
-		trendsExecutor, err = trends.NewBigQueryExecutor(trendsBigQuery, "bigquery-public-data", "google_trends", 1<<30, 30*time.Second)
+		trendsExecutor, err = trends.NewBigQueryExecutor(trendsBigQuery, "bigquery-public-data", "google_trends", trends.DefaultMaxBytesBilled, 30*time.Second)
 		if err != nil {
 			log.Printf("warning: trends BigQuery executor unavailable: %v", err)
 			trendsExecutor = nil
