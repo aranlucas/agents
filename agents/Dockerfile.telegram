@@ -2,11 +2,11 @@
 FROM golang:1.26.5-bookworm AS build
 WORKDIR /src/agents
 COPY agents/go.mod agents/go.sum ./
-RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
+RUN --mount=type=cache,id=agents-go-mod,target=/go/pkg/mod,sharing=locked \
     go mod download
 COPY agents/ ./
-RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
-    --mount=type=cache,target=/root/.cache/go-build,sharing=locked \
+RUN --mount=type=cache,id=agents-go-mod,target=/go/pkg/mod,sharing=locked \
+    --mount=type=cache,id=agents-go-build,target=/root/.cache/go-build,sharing=locked \
     CGO_ENABLED=0 go build -mod=readonly -trimpath -ldflags='-s -w' -o /out/telegram ./cmd/telegram && \
     CGO_ENABLED=0 go build -mod=readonly -trimpath -ldflags='-s -w' -o /out/migrate ./cmd/migrate
 
