@@ -76,6 +76,32 @@ func TestInvalidScoreDoesNotMutateTranscript(t *testing.T) {
 	}
 }
 
+func TestExaminationCannotCompleteBeforeFullInterview(t *testing.T) {
+	state := Defaults()
+	state.Transcript = make([]Exchange, MinimumInterviewExchanges-1)
+
+	_, err := completeExamination(&state)
+	if !errors.Is(err, ErrInterviewTooShort) {
+		t.Fatalf("error = %v, want %v", err, ErrInterviewTooShort)
+	}
+	if state.InterviewComplete {
+		t.Fatal("short interview was marked complete")
+	}
+}
+
+func TestExaminationCanCompleteAfterMinimumFullInterview(t *testing.T) {
+	state := Defaults()
+	state.Transcript = make([]Exchange, MinimumInterviewExchanges)
+
+	result, err := completeExamination(&state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !state.InterviewComplete || result.Count != MinimumInterviewExchanges {
+		t.Fatalf("state=%#v result=%#v", state, result)
+	}
+}
+
 func TestCaseVignetteRejectsEmbeddedExamQuestion(t *testing.T) {
 	state := Defaults()
 	_, err := setCase(&state, SetCaseArgs{Case: "A child presents with deep caries. What would you do?"})

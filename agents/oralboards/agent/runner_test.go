@@ -2,6 +2,7 @@ package oralboards
 
 import (
 	"context"
+	"fmt"
 	"iter"
 	"path/filepath"
 	"sync"
@@ -246,7 +247,7 @@ func TestEvaluatorProbeReturnsDirectlyToAnswerInterrupt(t *testing.T) {
 		t.Fatalf("evaluator ran %d model turns before the probe answer, want 1", got)
 	}
 
-	resumeTurn(t, rn, probeID, "There is no radiolucency or pathologic resorption.")
+	nextQuestionEvents := resumeTurn(t, rn, probeID, "There is no radiolucency or pathologic resorption.")
 	state = sessionState(t, sessions)
 	if len(state.Transcript) != 1 {
 		t.Fatalf("transcript length = %d, want 1", len(state.Transcript))
@@ -254,14 +255,100 @@ func TestEvaluatorProbeReturnsDirectlyToAnswerInterrupt(t *testing.T) {
 	if state.ActiveProbe != "" {
 		t.Fatalf("active probe = %q, want cleared", state.ActiveProbe)
 	}
-	if state.Status != PhaseComplete || state.Outcome != "pass" || state.ScoreCard == "" {
-		t.Fatalf("final state = status %q outcome %q score card %q", state.Status, state.Outcome, state.ScoreCard)
+	if state.Status != PhaseQuestioning || state.InterviewComplete || state.ScoreCard != "" {
+		t.Fatalf("state after first exchange = status %q complete %v score card %q", state.Status, state.InterviewComplete, state.ScoreCard)
 	}
-	if got := scorer.callCount(); got != 3 {
-		t.Fatalf("scorer ran %d model turns, want 3", got)
+	requestID(t, nextQuestionEvents, "next answer")
+	if got := scorer.callCount(); got != 0 {
+		t.Fatalf("scorer ran %d model turns after one exchange, want 0", got)
 	}
 	if got := evaluator.callCount(); got != 4 {
 		t.Fatalf("evaluator ran %d total model turns, want 4", got)
+	}
+}
+
+func TestFullInterviewContinuesThroughSixScoredExchangesBeforeScoring(t *testing.T) {
+	corpus, err := OpenCorpus(filepath.Join("..", "..", "assets", "oralboards", "search.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = corpus.Close() })
+
+	questioner := &sequenceModel{}
+	evaluator := &sequenceModel{}
+	for index := 1; index <= MinimumInterviewExchanges; index++ {
+		question := fmt.Sprintf("Clinical question %d?", index)
+		questioner.responses = append(questioner.responses, &model.LLMResponse{
+			Content:      genai.NewContentFromText(question, genai.RoleModel),
+			TurnComplete: true,
+		})
+		evaluator.responses = append(evaluator.responses, toolCall(fmt.Sprintf("exchange-%d", index), "append_exchange", map[string]any{
+			"question":       question,
+			"answer":         fmt.Sprintf("Candidate answer %d", index),
+			"skillset":       fmt.Sprintf("Skillset %d", index),
+			"skill":          string(SkillUnderstandApply),
+			"feedback":       fmt.Sprintf("Feedback %d", index),
+			"ideal_response": fmt.Sprintf("Ideal response %d", index),
+			"score":          3,
+			"citations":      []any{},
+		}))
+		if index == MinimumInterviewExchanges {
+			evaluator.responses = append(evaluator.responses, toolCall("complete", "complete_examination", map[string]any{}))
+		}
+		evaluator.responses = append(evaluator.responses, &model.LLMResponse{
+			Content:      genai.NewContentFromText("Feedback recorded.", genai.RoleModel),
+			TurnComplete: true,
+		})
+	}
+	scorer := &sequenceModel{responses: []*model.LLMResponse{
+		toolCall("loading", "set_loading_step", map[string]any{"step": "Computing score card…"}),
+		toolCall("card", "set_score_card", map[string]any{
+			"markdown":      "## Final feedback\nFull interview completed.",
+			"score_summary": []any{},
+			"outcome":       "pass",
+		}),
+		{Content: genai.NewContentFromText("Score card ready.", genai.RoleModel), TurnComplete: true},
+	}}
+	built, err := New(PhaseModels{
+		CaseBuilder: reproModel{"case"},
+		Questioner:  questioner,
+		Evaluator:   evaluator,
+		Scorer:      scorer,
+	}, corpus)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sessions := session.InMemoryService()
+	rn, err := runner.New(runner.Config{AppName: AppName, Agent: built, SessionService: sessions, AutoCreateSession: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	readyID := requestID(t, runTurn(t, rn, "Create a case"), "ready")
+	answerID := requestID(t, resumeTurn(t, rn, readyID, "ready"), "first answer")
+	for index := 1; index <= MinimumInterviewExchanges; index++ {
+		events := resumeTurn(t, rn, answerID, fmt.Sprintf("Candidate answer %d", index))
+		state := sessionState(t, sessions)
+		if len(state.Transcript) != index {
+			t.Fatalf("after answer %d transcript length = %d", index, len(state.Transcript))
+		}
+		if index < MinimumInterviewExchanges {
+			if state.InterviewComplete || state.ScoreCard != "" {
+				t.Fatalf("interview completed after only %d exchanges", index)
+			}
+			answerID = requestID(t, events, "next answer")
+		}
+	}
+
+	state := sessionState(t, sessions)
+	if state.Status != PhaseComplete || !state.InterviewComplete || state.Outcome != "pass" || state.ScoreCard == "" {
+		t.Fatalf("final state = status %q complete %v outcome %q score card %q", state.Status, state.InterviewComplete, state.Outcome, state.ScoreCard)
+	}
+	if got := questioner.callCount(); got != MinimumInterviewExchanges {
+		t.Fatalf("questioner ran %d times, want %d", got, MinimumInterviewExchanges)
+	}
+	if got := scorer.callCount(); got != 3 {
+		t.Fatalf("scorer ran %d model turns, want 3", got)
 	}
 	if request := scorer.firstRequest(); request == nil || len(request.Contents) == 0 {
 		t.Fatal("scorer received an empty model request")

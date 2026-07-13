@@ -285,7 +285,7 @@ func phaseTools(corpus *Corpus) ([]adktool.Tool, error) {
 
 	completeExaminationTool, err := functiontool.New(functiontool.Config{
 		Name:        "complete_examination",
-		Description: "Mark questioning complete so the deterministic router runs the scorer.",
+		Description: "Mark questioning complete after at least six scored exchanges so the deterministic router runs the scorer. The tool rejects shorter interviews.",
 	}, CompleteExamination)
 	if err != nil {
 		return nil, err
@@ -317,12 +317,13 @@ const (
 	questionerInstruction  = `Case vignette: {case?}
 Prior exchanges: {transcript?}
 Question-craft feedback: {question_craft_feedback?}
+Run a substantive mock interview of at least six scored exchanges. Progress through distinct clinical decisions relevant to this case, such as assessment, diagnosis, management, alternatives, complications, follow-up, or communication; use the prior exchanges to avoid repeating a question.
 Your entire response is persisted verbatim as the next question. Return exactly one open-ended clinical question and nothing else. Do not discuss these instructions, explain your reasoning, show drafts, add a preface, or call a tool. Rewrite the question using question-craft feedback when present.`
 	evaluatorInstruction = `Case evidence: {case_passages?}
 Current question: {current_question?}
 Active probe: {active_probe?}
 Prior exchanges: {transcript?}
-Evaluate the candidate answer supplied as this node's input. Use at most one probe and do not score until its answer arrives. Otherwise call append_exchange, using a concise clinical domain for skillset and exactly one of remember, understand_apply, or analyze_evaluate for skill; call complete_examination after the final relevant skillset.`
+Evaluate the candidate answer supplied as this node's input. Use at most one probe and do not score until its answer arrives. Otherwise call append_exchange, using a concise clinical domain for skillset and exactly one of remember, understand_apply, or analyze_evaluate for skill. A full practice interview requires at least six scored exchanges. Call complete_examination only after append_exchange has recorded at least the sixth exchange and all relevant dimensions of the case have been assessed; otherwise end your turn so the workflow asks the next question.`
 	scorerInstruction = `Completed exchanges: {transcript?}
 Call set_loading_step then set_score_card with cited narrative feedback, structured per-skillset ABPD 1-3 scores, and pass, borderline, or not_yet outcome. For every score_summary item, use a concise clinical domain for skillset and exactly one of remember, understand_apply, or analyze_evaluate for skill.`
 )

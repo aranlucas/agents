@@ -10,11 +10,18 @@ import (
 )
 
 var (
-	ErrProbeAlreadyUsed = errors.New("probe already used for this question")
-	ErrProbeNotAnswered = errors.New("cannot score in the same turn as a probe")
-	ErrInvalidPhase     = errors.New("invalid oralboards phase")
-	ErrInvalidScore     = errors.New("oralboards score must be 1, 2, or 3")
+	ErrProbeAlreadyUsed  = errors.New("probe already used for this question")
+	ErrProbeNotAnswered  = errors.New("cannot score in the same turn as a probe")
+	ErrInterviewTooShort = errors.New("oralboards interview is not complete")
+	ErrInvalidPhase      = errors.New("invalid oralboards phase")
+	ErrInvalidScore      = errors.New("oralboards score must be 1, 2, or 3")
 )
+
+// MinimumInterviewExchanges keeps a practice vignette from collapsing into a
+// one-question quiz. ABPD does not publish a fixed question count per
+// vignette, so this is an application-level floor for a substantive mock
+// interview; the examiner may continue beyond it when the case warrants.
+const MinimumInterviewExchanges = 6
 
 type Result struct {
 	OK      bool   `json:"ok"`
@@ -265,11 +272,28 @@ func setScoreCard(state *State, in ScoreCardArgs) (Result, error) {
 
 func CompleteExamination(ctx agent.Context, _ struct{}) (Result, error) {
 	state := readState(ctx.State())
-	state.InterviewComplete = true
+	result, err := completeExamination(&state)
+	if err != nil {
+		return Result{}, err
+	}
 	if err := publishFields(ctx, stateField{"interview_complete", state.InterviewComplete}); err != nil {
 		return Result{}, err
 	}
-	return Result{OK: true, Status: "success"}, nil
+	return result, nil
+}
+
+func completeExamination(state *State) (Result, error) {
+	if len(state.Transcript) < MinimumInterviewExchanges {
+		return Result{}, fmt.Errorf(
+			"%w: %d of %d required scored exchanges recorded; ask %d more question(s)",
+			ErrInterviewTooShort,
+			len(state.Transcript),
+			MinimumInterviewExchanges,
+			MinimumInterviewExchanges-len(state.Transcript),
+		)
+	}
+	state.InterviewComplete = true
+	return Result{OK: true, Status: "success", Count: len(state.Transcript)}, nil
 }
 
 func validSkill(skill Skill) bool {

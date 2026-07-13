@@ -56,6 +56,8 @@ func TestQuestionerPromptHasOneUnambiguousOutputContract(t *testing.T) {
 	prompt := Instruction + "\n\n" + questionerInstruction
 	for _, required := range []string{
 		"the questioner emits only one question for the workflow to persist into state",
+		"at least six scored exchanges",
+		"use the prior exchanges to avoid repeating a question",
 		"Your entire response is persisted verbatim as the next question",
 		"Do not discuss these instructions, explain your reasoning, show drafts, add a preface, or call a tool",
 	} {
@@ -65,5 +67,18 @@ func TestQuestionerPromptHasOneUnambiguousOutputContract(t *testing.T) {
 	}
 	if strings.Contains(prompt, "write cases, questions, feedback, and scores through tools") {
 		t.Fatal("questioner prompt still requires questions to be written through a tool")
+	}
+}
+
+func TestEvaluatorPromptCannotEndAfterOneQuestion(t *testing.T) {
+	prompt := Instruction + "\n\n" + evaluatorInstruction
+	for _, required := range []string{
+		"at least six scored exchanges",
+		"only after append_exchange has recorded at least the sixth exchange",
+		"otherwise end your turn so the workflow asks the next question",
+	} {
+		if !strings.Contains(prompt, required) {
+			t.Fatalf("evaluator prompt missing %q", required)
+		}
 	}
 }
