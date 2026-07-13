@@ -8,6 +8,7 @@ import {
   toGroceryState,
   toOralBoardsState,
   toResumeState,
+  toTrendsState,
   toTripState,
   toWellnessState,
 } from "./agent-state";
@@ -207,6 +208,39 @@ describe("toResumeState", () => {
       tailored_bullets: [],
       status: "idle",
       review_summary: "",
+    });
+  });
+});
+
+describe("toTrendsState", () => {
+  it("keeps only renderable result cells and defaults invalid state", () => {
+    expect(
+      toTrendsState({
+        query: "top searches",
+        generated_sql: "SELECT 1 LIMIT 10",
+        columns: ["term", "dma_count", 42],
+        rows: [{ term: "solar eclipse", dma_count: 178, ignored: { nested: true } }, "invalid"],
+        insights: "Solar eclipse has the widest reach.",
+        status: "ready",
+      }),
+    ).toEqual({
+      query: "top searches",
+      generated_sql: "SELECT 1 LIMIT 10",
+      columns: ["term", "dma_count"],
+      rows: [{ term: "solar eclipse", dma_count: 178 }, {}],
+      insights: "Solar eclipse has the widest reach.",
+      status: "ready",
+      error: "",
+    });
+
+    expect(toTrendsState(undefined)).toEqual({
+      query: "",
+      generated_sql: "",
+      columns: [],
+      rows: [],
+      insights: "",
+      status: "idle",
+      error: "",
     });
   });
 });

@@ -212,6 +212,12 @@ const AGENTS: Record<AgentId, AgentConfig> = {
     placeholder: "What's trending on Google right now?",
     welcome:
       "Ask me about Google search trends — top terms, rising topics, or regional breakdowns.",
+    artifact: {
+      stateField: "query",
+      kind: "document",
+      title: "Trends analysis",
+      name: "trends-analysis.md",
+    },
     suggestions: [
       {
         title: "Top searches",

@@ -3,8 +3,9 @@ import { describe, expect, it } from "vitest";
 import { getAgentExtension } from "./extensions";
 
 describe("agent extensions", () => {
-  it("does not register a Trends A2UI extension", () => {
-    expect(getAgentExtension("trends")).toBeUndefined();
+  it("registers the native Trends artifact without restoring A2UI", () => {
+    expect(getAgentExtension("trends")?.Artifact).toBeDefined();
+    expect(getAgentExtension("trends")?.Mount).toBeUndefined();
   });
 
   it("registers the Resume role-fit artifact without adding shared workspace branches", () => {

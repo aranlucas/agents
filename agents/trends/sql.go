@@ -9,8 +9,10 @@ import (
 var ErrUnsafeSQL = errors.New("unsafe Trends SQL")
 
 var (
-	forbiddenSQL = regexp.MustCompile(`(?i)\b(INSERT|UPDATE|DELETE|MERGE|DROP|CREATE|ALTER|TRUNCATE|GRANT|REVOKE|CALL|EXPORT|LOAD)\b`)
-	limitSQL     = regexp.MustCompile(`(?i)\bLIMIT\s+[0-9]+\b`)
+	forbiddenSQL  = regexp.MustCompile(`(?i)\b(INSERT|UPDATE|DELETE|MERGE|DROP|CREATE|ALTER|TRUNCATE|GRANT|REVOKE|CALL|EXPORT|LOAD)\b`)
+	limitSQL      = regexp.MustCompile(`(?i)\bLIMIT\s+[0-9]+\b`)
+	usDMATableSQL = regexp.MustCompile("(?i)`bigquery-public-data\\.google_trends\\.(top_terms|top_rising_terms)`")
+	dmaColumnSQL  = regexp.MustCompile(`(?i)\bdma_(id|name)\b`)
 )
 
 func CleanSQL(sql string) string {
@@ -32,6 +34,9 @@ func ValidateSQL(sql string) error {
 		return ErrUnsafeSQL
 	}
 	if !limitSQL.MatchString(trimmed) {
+		return ErrUnsafeSQL
+	}
+	if usDMATableSQL.MatchString(trimmed) && !dmaColumnSQL.MatchString(trimmed) {
 		return ErrUnsafeSQL
 	}
 	return nil

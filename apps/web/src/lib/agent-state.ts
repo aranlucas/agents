@@ -21,6 +21,9 @@ import type {
   PantryItem,
   ResumeState,
   ResumeStatus,
+  TrendsRow,
+  TrendsState,
+  TrendsStatus,
   TripState,
   WellnessState,
   WellnessStatus,
@@ -85,6 +88,7 @@ const ORAL_SKILLS: readonly OralBoardsSkill[] = [
 ];
 const ORAL_OUTCOMES: readonly OralBoardsOutcome[] = ["pass", "borderline", "not_yet"];
 const RESUME_STATUSES: readonly ResumeStatus[] = ["idle", "analyzing", "ready"];
+const TRENDS_STATUSES: readonly TrendsStatus[] = ["idle", "querying", "ready", "empty", "error"];
 
 export function asDocStatus(value: unknown): DocStatus {
   return oneOf(value, DOC_STATUSES, "idle");
@@ -198,6 +202,35 @@ export function toResumeState(raw: unknown): ResumeState {
     tailored_bullets: strArray(state.tailored_bullets),
     status: oneOf(state.status, RESUME_STATUSES, "idle"),
     review_summary: str(state.review_summary),
+  };
+}
+
+function toTrendsRow(raw: unknown): TrendsRow {
+  const source = asRecord(raw);
+  const row: TrendsRow = {};
+  for (const [key, value] of Object.entries(source)) {
+    if (
+      value === null ||
+      typeof value === "string" ||
+      typeof value === "boolean" ||
+      (typeof value === "number" && Number.isFinite(value))
+    ) {
+      row[key] = value;
+    }
+  }
+  return row;
+}
+
+export function toTrendsState(raw: unknown): TrendsState {
+  const state = asRecord(raw);
+  return {
+    query: str(state.query),
+    generated_sql: str(state.generated_sql),
+    columns: strArray(state.columns),
+    rows: Array.isArray(state.rows) ? state.rows.map(toTrendsRow) : [],
+    insights: str(state.insights),
+    status: oneOf(state.status, TRENDS_STATUSES, "idle"),
+    error: str(state.error),
   };
 }
 

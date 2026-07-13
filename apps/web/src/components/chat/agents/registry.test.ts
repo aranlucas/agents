@@ -57,8 +57,12 @@ describe("agent registry", () => {
     expect(getAgentConfig("presentation").requires ?? []).toEqual([]);
   });
 
-  it("keeps Trends as a chat-only analysis agent", () => {
-    expect(getAgentConfig("trends").artifact).toBeUndefined();
+  it("surfaces Trends state through a native analysis artifact", () => {
+    expect(getAgentConfig("trends").artifact).toMatchObject({
+      stateField: "query",
+      kind: "document",
+      title: "Trends analysis",
+    });
   });
 
   it("surfaces the Resume role-fit summary as a document artifact", () => {
