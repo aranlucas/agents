@@ -39,5 +39,12 @@
     "react-doctor": "^0.7.7",
     "turbo": "^2.10.5"
   },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "^24.18.0",
+      "onFail": "download"
+    }
+  },
   "packageManager": "pnpm@11.10.0"
 }
