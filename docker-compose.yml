@@ -11,6 +11,7 @@ services:
       - path: ./.env.local
         required: false
     environment:
+      APP_ENV: development
       PORT: "8000"
       OTEL_SERVICE_NAME: agents-gateway
 
@@ -26,5 +27,6 @@ services:
       - path: ./.env.local
         required: false
     environment:
+      APP_ENV: development
       PORT: "8080"
       OTEL_SERVICE_NAME: agents-telegram

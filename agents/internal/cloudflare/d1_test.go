@@ -314,7 +314,8 @@ func TestSessionListSupportsOfficialAppWideShape(t *testing.T) {
 		if len(req.Batch) != 1 || strings.Contains(req.Batch[0].SQL, "user_id = ?") {
 			t.Fatalf("app-wide list query = %#v", req.Batch)
 		}
-		writeEnvelope(t, w, []Result{{Success: true, Rows: rawRows(t,
+		writeEnvelope(t, w, []Result{{Success: true, Rows: rawRows(
+			t,
 			map[string]any{"session_id": "thread-a", "user_id": "user-a", "state_json": `{}`, "updated_at": int64(1000), "app_state_json": `{}`, "user_state_json": `{}`},
 			map[string]any{"session_id": "thread-b", "user_id": "user-b", "state_json": `{}`, "updated_at": int64(900), "app_state_json": `{}`, "user_state_json": `{}`},
 		)}})
@@ -535,6 +536,173 @@ func TestRunMigrationsIsIdempotentSQLBatch(t *testing.T) {
 	fitnessSchema, _ := json.Marshal(batches[2])
 	if !strings.Contains(string(fitnessSchema), "fitness_activities") {
 		t.Fatalf("fitness schema missing: %s", fitnessSchema)
+	}
+	if got := migrations[len(migrations)-1].version; got != LatestMigrationVersion {
+		t.Fatalf("last migration = %q, latest = %q", got, LatestMigrationVersion)
+	}
+}
+
+func TestEmbeddedMigrationsExecuteTwiceAndProduceRequiredSchema(t *testing.T) {
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+
+	for range 2 {
+		for _, item := range migrations {
+			for statement := range strings.SplitSeq(item.source, ";") {
+				if statement = strings.TrimSpace(statement); statement != "" {
+					if _, err := db.Exec(statement); err != nil {
+						t.Fatalf("execute migration %s statement %q: %v", item.version, statement, err)
+					}
+				}
+			}
+			if _, err := db.Exec("INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (?, ?)", item.version, int64(1)); err != nil {
+				t.Fatalf("record migration %s: %v", item.version, err)
+			}
+		}
+	}
+
+	var markerCount int
+	if err := db.QueryRow("SELECT COUNT(*) FROM schema_migrations").Scan(&markerCount); err != nil || markerCount != len(migrations) {
+		t.Fatalf("migration markers = %d, want %d (err=%v)", markerCount, len(migrations), err)
+	}
+	for _, table := range requiredSchemaTables {
+		rows, err := db.Query("SELECT name FROM pragma_table_info(?)", table.name)
+		if err != nil {
+			t.Fatalf("inspect table %s: %v", table.name, err)
+		}
+		found := map[string]bool{}
+		for rows.Next() {
+			var name string
+			if err := rows.Scan(&name); err != nil {
+				_ = rows.Close()
+				t.Fatal(err)
+			}
+			found[name] = true
+		}
+		if err := rows.Close(); err != nil {
+			t.Fatal(err)
+		}
+		for _, column := range table.columns {
+			if !found[column] {
+				t.Fatalf("table %s is missing column %s", table.name, column)
+			}
+		}
+	}
+	for _, index := range requiredSchemaIndexes {
+		var count int
+		if err := db.QueryRow("SELECT COUNT(*) FROM sqlite_schema WHERE type = 'index' AND name = ?", index).Scan(&count); err != nil || count != 1 {
+			t.Fatalf("required index %s count = %d (err=%v)", index, count, err)
+		}
+	}
+}
+
+func TestD1LivenessAndSchemaHealth(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		var req batchRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatal(err)
+		}
+		if requests == 1 {
+			if len(req.Batch) != 1 {
+				t.Fatalf("liveness statements = %d", len(req.Batch))
+			}
+			if req.Batch[0].SQL != "SELECT 1 AS ok" {
+				t.Fatalf("liveness SQL = %q", req.Batch[0].SQL)
+			}
+			writeEnvelope(t, w, []Result{{Success: true, Rows: rawRows(t, map[string]any{"ok": 1})}})
+			return
+		}
+		if got, want := len(req.Batch), len(requiredSchemaTables)+2; got != want {
+			t.Fatalf("schema health statements = %d, want %d", got, want)
+		}
+		markers := req.Batch[0]
+		if !strings.Contains(markers.SQL, "schema_migrations") || len(markers.Params) != len(migrations) {
+			t.Fatalf("migration marker check = %#v", markers)
+		}
+		for index, version := range migrationVersions() {
+			if markers.Params[index] != version {
+				t.Fatalf("migration marker %d = %v, want %s", index, markers.Params[index], version)
+			}
+		}
+		results := make([]Result, 0, len(req.Batch))
+		results = append(results, Result{Success: true, Rows: rawRows(t, map[string]any{"present": len(migrations)})})
+		for index, table := range requiredSchemaTables {
+			statement := req.Batch[index+1]
+			if !strings.Contains(statement.SQL, "pragma_table_info") || statement.Params[0] != table.name {
+				t.Fatalf("table check %d = %#v", index, statement)
+			}
+			results = append(results, Result{Success: true, Rows: rawRows(t, map[string]any{"present": len(table.columns)})})
+		}
+		indexes := req.Batch[len(req.Batch)-1]
+		if !strings.Contains(indexes.SQL, "sqlite_schema") || len(indexes.Params) != len(requiredSchemaIndexes) {
+			t.Fatalf("index check = %#v", indexes)
+		}
+		results = append(results, Result{Success: true, Rows: rawRows(t, map[string]any{"present": len(requiredSchemaIndexes)})})
+		writeEnvelope(t, w, results)
+	}))
+	defer server.Close()
+	d1, err := newD1(testCloudflare("token"), server.Client(), server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := d1.Liveness(t.Context()); err != nil {
+		t.Fatalf("Liveness() error = %v", err)
+	}
+	if err := d1.SchemaHealth(t.Context()); err != nil {
+		t.Fatalf("SchemaHealth() error = %v", err)
+	}
+}
+
+func TestD1SchemaHealthFailsClosed(t *testing.T) {
+	for name, rows := range map[string][]json.RawMessage{
+		"missing marker or table": nil,
+		"malformed result":        rawRows(t, map[string]any{"ready": "yes"}),
+		"not ready":               rawRows(t, map[string]any{"ready": 0}),
+	} {
+		t.Run(name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				writeEnvelope(t, w, []Result{{Success: true, Rows: rows}})
+			}))
+			defer server.Close()
+			d1, err := newD1(testCloudflare("token"), server.Client(), server.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := d1.SchemaHealth(t.Context()); !errors.Is(err, ErrSchemaNotReady) {
+				t.Fatalf("SchemaHealth() error = %v", err)
+			}
+			if err := d1.Health(t.Context()); !errors.Is(err, ErrSchemaNotReady) {
+				t.Fatalf("Health() error = %v", err)
+			}
+		})
+	}
+}
+
+func TestD1SchemaHealthRejectsMissingRequiredColumn(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		results := []Result{{Success: true, Rows: rawRows(t, map[string]any{"present": len(migrations)})}}
+		for index, table := range requiredSchemaTables {
+			present := len(table.columns)
+			if index == 0 {
+				present--
+			}
+			results = append(results, Result{Success: true, Rows: rawRows(t, map[string]any{"present": present})})
+		}
+		results = append(results, Result{Success: true, Rows: rawRows(t, map[string]any{"present": len(requiredSchemaIndexes)})})
+		writeEnvelope(t, w, results)
+	}))
+	defer server.Close()
+	d1, err := newD1(testCloudflare("token"), server.Client(), server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := d1.SchemaHealth(t.Context()); !errors.Is(err, ErrSchemaNotReady) {
+		t.Fatalf("SchemaHealth() error = %v", err)
 	}
 }
 

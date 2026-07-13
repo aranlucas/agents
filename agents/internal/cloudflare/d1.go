@@ -19,6 +19,10 @@ const (
 	defaultD1Timeout = 10 * time.Second
 )
 
+// ErrSchemaNotReady means D1 is reachable but does not have the complete
+// migration history and tables required by this binary.
+var ErrSchemaNotReady = errors.New("D1 schema is not ready")
+
 // Statement is one parameterized D1 SQL statement.
 type Statement struct {
 	SQL    string `json:"sql"`
@@ -96,8 +100,86 @@ func (d *D1) Run(ctx context.Context, statements ...Statement) ([]Result, error)
 	return results, nil
 }
 
-// Health verifies that D1 accepts a bounded trivial query.
-func (d *D1) Health(ctx context.Context) error {
+// Liveness verifies that the configured D1 database accepts a bounded query.
+// Process liveness endpoints should normally avoid remote dependencies; this
+// method is provided for diagnostics while SchemaHealth is the readiness gate.
+func (d *D1) Liveness(ctx context.Context) error {
 	_, err := d.Run(ctx, Statement{SQL: "SELECT 1 AS ok"})
 	return err
 }
+
+// SchemaHealth verifies every migration marker plus the tables, columns, and
+// indexes the current runtime requires. It inspects SQLite metadata rather
+// than tenant data, so it cannot expose or mutate persisted application state.
+func (d *D1) SchemaHealth(ctx context.Context) error {
+	type check struct {
+		statement Statement
+		want      int
+	}
+	versions := migrationVersions()
+	versionParams := make([]any, 0, len(versions))
+	for _, version := range versions {
+		versionParams = append(versionParams, version)
+	}
+	checks := []check{{
+		statement: Statement{
+			SQL:    "SELECT COUNT(*) AS present FROM schema_migrations WHERE version IN (" + placeholders(len(versions)) + ")",
+			Params: versionParams,
+		},
+		want: len(versions),
+	}}
+	for _, table := range requiredSchemaTables {
+		params := make([]any, 0, len(table.columns)+1)
+		params = append(params, table.name)
+		for _, column := range table.columns {
+			params = append(params, column)
+		}
+		checks = append(checks, check{
+			statement: Statement{
+				SQL:    "SELECT COUNT(*) AS present FROM pragma_table_info(?) WHERE name IN (" + placeholders(len(table.columns)) + ")",
+				Params: params,
+			},
+			want: len(table.columns),
+		})
+	}
+	indexParams := make([]any, 0, len(requiredSchemaIndexes))
+	for _, index := range requiredSchemaIndexes {
+		indexParams = append(indexParams, index)
+	}
+	checks = append(checks, check{
+		statement: Statement{
+			SQL:    "SELECT COUNT(*) AS present FROM sqlite_schema WHERE type = 'index' AND name IN (" + placeholders(len(requiredSchemaIndexes)) + ")",
+			Params: indexParams,
+		},
+		want: len(requiredSchemaIndexes),
+	})
+
+	statements := make([]Statement, 0, len(checks))
+	for _, item := range checks {
+		statements = append(statements, item.statement)
+	}
+	results, err := d.Run(ctx, statements...)
+	if err != nil || len(results) != len(checks) {
+		return ErrSchemaNotReady
+	}
+	for index, result := range results {
+		if len(result.Rows) != 1 {
+			return ErrSchemaNotReady
+		}
+		var row struct {
+			Present int `json:"present"`
+		}
+		if err := json.Unmarshal(result.Rows[0], &row); err != nil || row.Present != checks[index].want {
+			return ErrSchemaNotReady
+		}
+	}
+	return nil
+}
+
+func placeholders(count int) string {
+	return strings.TrimSuffix(strings.Repeat("?,", count), ",")
+}
+
+// Health is the readiness-compatible health contract used by existing
+// gateway wiring. Use Liveness for a connectivity-only diagnostic.
+func (d *D1) Health(ctx context.Context) error { return d.SchemaHealth(ctx) }

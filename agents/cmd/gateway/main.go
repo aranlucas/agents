@@ -26,12 +26,14 @@ import (
 	"agents/internal/agentruntime"
 	"agents/internal/agui"
 	"agents/internal/auth"
+	"agents/internal/bootstrap"
 	"agents/internal/clerk"
 	"agents/internal/cloudflare"
 	"agents/internal/common"
 	"agents/internal/config"
 	"agents/internal/fitnessdata"
 	"agents/internal/observability"
+	"agents/internal/providerpolicy"
 	"agents/internal/providers/openai"
 	"agents/internal/rate"
 	"agents/internal/telegram"
@@ -96,7 +98,7 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 	stateHandler := agui.StateHandler(deps.Registry, deps.Sessions)
 
 	mux := http.NewServeMux()
-	publicRoutes := map[string]bool{"/health": true}
+	publicRoutes := map[string]bool{"/health": true, "/live": true, "/ready": true}
 
 	for _, entry := range deps.Registry.Entries() {
 		base := "/" + entry.Route
@@ -119,6 +121,9 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 		}
 	}
 
+	mux.HandleFunc("GET /live", livenessHandler(deps))
+	mux.HandleFunc("GET /ready", rootHealthHandler(deps))
+	// Keep /health as a readiness alias for existing monitors and clients.
 	mux.HandleFunc("GET /health", rootHealthHandler(deps))
 	if deps.Links != nil && cfg.TelegramLinkSecret != "" {
 		mux.HandleFunc("POST /telegram/link/consume", telegramLinkConsumeHandler(cfg.TelegramLinkSecret, deps.Links, deps.Clerk))
@@ -238,6 +243,12 @@ type rootHealthResponse struct {
 	Checks  map[string]string `json:"checks"`
 }
 
+type livenessResponse struct {
+	Status  string `json:"status"`
+	Service string `json:"service"`
+	Time    string `json:"time"`
+}
+
 func telegramLinkConsumeHandler(secret string, links *telegram.LinkStore, backend clerk.Backend) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		provided := r.Header.Get("x-telegram-link-secret")
@@ -309,6 +320,18 @@ func agentHealthHandler(entry agentruntime.Entry) http.HandlerFunc {
 	}
 }
 
+// livenessHandler reports only process responsiveness. Remote D1/R2/schema
+// checks belong to /ready so an upstream outage does not make the process look
+// dead to operators or image smokes.
+func livenessHandler(deps Dependencies) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(livenessResponse{
+			Status: "ok", Service: "agents-gateway", Time: deps.Now().UTC().Format(time.RFC3339),
+		})
+	}
+}
+
 // rootHealthHandler checks D1 and R2 once each through healthCheckTimeout,
 // and never calls a model provider or echoes credentials: the response
 // contains only status strings and process metadata.
@@ -354,107 +377,6 @@ func rootHealthHandler(deps Dependencies) http.HandlerFunc {
 	}
 }
 
-// resumeProviderConfig selects the resume agent's inference provider: the
-// same OpenRouter free-tier model (tencent/hy3:free) the Python resume
-// agent used in agents/resume/src/resume_agent/agent.py's build_agent(),
-// sharing OpenRouter's documented 20 RPM / 1000 RPD cap (AGENTS.md's Model
-// Distribution table, "Light" tier).
-func resumeProviderConfig(cfg config.Config) (config.Provider, error) {
-	provider, ok := cfg.Providers["openrouter"]
-	if !ok {
-		return config.Provider{}, errors.New("OPENROUTER_API_KEY is required to configure the resume agent")
-	}
-	provider.Model = "tencent/hy3:free"
-	provider.RequestsPerMinute = 20
-	provider.RequestsPerDay = 1000
-	return provider, nil
-}
-
-func presentationProviderConfig(cfg config.Config) (config.Provider, error) {
-	provider, ok := cfg.Providers["groq"]
-	if !ok {
-		return config.Provider{}, errors.New("GROQ_API_KEY is required to configure the presentation agent")
-	}
-	provider.Model = "llama-3.3-70b-versatile"
-	provider.RequestsPerMinute = 30
-	provider.Fallbacks = configuredFallbacks(cfg.Providers, "mistral", "openrouter")
-	return provider, nil
-}
-
-func researchProviderConfig(cfg config.Config) (config.Provider, error) {
-	provider, ok := cfg.Providers["openrouter"]
-	if !ok {
-		return config.Provider{}, errors.New("OPENROUTER_API_KEY is required to configure the research agent")
-	}
-	provider.Model, provider.RequestsPerMinute, provider.RequestsPerDay = "tencent/hy3:free", 20, 1000
-	provider.Fallbacks = configuredFallbacks(cfg.Providers, "mistral")
-	return provider, nil
-}
-
-func spreadsheetProviderConfig(cfg config.Config) (config.Provider, error) {
-	provider, ok := cfg.Providers["groq"]
-	if !ok {
-		return config.Provider{}, errors.New("GROQ_API_KEY is required to configure the spreadsheet agent")
-	}
-	provider.Model, provider.RequestsPerMinute = "llama-3.3-70b-versatile", 30
-	provider.Fallbacks = configuredFallbacks(cfg.Providers, "mistral", "openrouter")
-	return provider, nil
-}
-
-func expenseProviderConfig(cfg config.Config) (config.Provider, error) {
-	provider, ok := cfg.Providers["openrouter"]
-	if !ok {
-		return config.Provider{}, errors.New("OPENROUTER_API_KEY is required to configure the expense agent")
-	}
-	provider.Model, provider.RequestsPerMinute, provider.RequestsPerDay = "tencent/hy3:free", 20, 1000
-	provider.Fallbacks = configuredFallbacks(cfg.Providers, "mistral")
-	return provider, nil
-}
-
-func travelProviderConfig(cfg config.Config) (config.Provider, error) {
-	provider, ok := cfg.Providers["openrouter"]
-	if !ok {
-		return config.Provider{}, errors.New("OPENROUTER_API_KEY is required to configure the travel agent")
-	}
-	provider.Model, provider.RequestsPerMinute, provider.RequestsPerDay = "tencent/hy3:free", 20, 1000
-	provider.Fallbacks = configuredFallbacks(cfg.Providers, "mistral")
-	return provider, nil
-}
-
-func fitnessProviderConfig(cfg config.Config) (config.Provider, error) {
-	provider, ok := cfg.Providers["groq"]
-	if !ok {
-		return config.Provider{}, errors.New("GROQ_API_KEY is required to configure the fitness agent")
-	}
-	provider.Model, provider.RequestsPerMinute = "llama-3.3-70b-versatile", 30
-	provider.Fallbacks = configuredFallbacks(cfg.Providers, "mistral", "openrouter")
-	return provider, nil
-}
-
-func groceryProviderConfig(cfg config.Config) (config.Provider, error) {
-	provider, ok := cfg.Providers["nvidia"]
-	if !ok {
-		return config.Provider{}, errors.New("NVIDIA_NIM_API_KEY is required to configure the grocery agent")
-	}
-	provider.Model, provider.RequestsPerMinute = "nvidia/nemotron-3-super-120b-a12b", 20
-	provider.Fallbacks = configuredFallbacks(cfg.Providers, "mistral", "openrouter")
-	return provider, nil
-}
-
-// trendsProviderConfig configures both the root GoogleTrendsAgent and its
-// TrendsQueryGeneratorAgent child: AGENTS.md's Model Distribution table puts
-// "trends root agent + generator subagent" on the Groq Standard tier, same
-// model as fitness/wellness.
-func trendsProviderConfig(cfg config.Config) (config.Provider, error) {
-	provider, ok := cfg.Providers["groq"]
-	if !ok {
-		return config.Provider{}, errors.New("GROQ_API_KEY is required to configure the trends agent")
-	}
-	provider.Model, provider.RequestsPerMinute = "llama-3.3-70b-versatile", 30
-	provider.Fallbacks = configuredFallbacks(cfg.Providers, "mistral", "openrouter")
-	return provider, nil
-}
-
 // trendsBigQueryClient builds the official Go BigQuery client billed to
 // GOOGLE_CLOUD_PROJECT (the project of the trends agent's own GCP service
 // account), authenticated from GOOGLE_APPLICATION_CREDENTIALS_JSON when set
@@ -483,22 +405,19 @@ func trendsBigQueryClient(ctx context.Context) (*bigquery.Client, error) {
 }
 
 func oralboardsModels(ctx context.Context, cfg config.Config, availableProviders map[string]config.Provider, limiter *rate.ProviderLimiter) (oralboards.PhaseModels, error) {
-	openrouter, ok := cfg.Providers["openrouter"]
-	if !ok {
-		return oralboards.PhaseModels{}, errors.New("OPENROUTER_API_KEY is required to configure oralboards")
+	policy := providerpolicy.GatewayOralBoards()
+	openrouter, err := providerpolicy.ResolveRequired(cfg.Providers, policy.Questioner)
+	if err != nil {
+		return oralboards.PhaseModels{}, err
 	}
-	openrouter.Model, openrouter.RequestsPerMinute, openrouter.RequestsPerDay = "tencent/hy3:free", 20, 1000
-	openrouter.Fallbacks = configuredFallbacks(cfg.Providers, "mistral")
 	questioner, err := openai.NewMulti(openrouter, availableProviders, nil, limiter)
 	if err != nil {
 		return oralboards.PhaseModels{}, err
 	}
-	mistral, ok := cfg.Providers["mistral"]
-	if !ok {
-		return oralboards.PhaseModels{}, errors.New("MISTRAL_API_KEY is required to configure oralboards")
+	mistral, err := providerpolicy.ResolveRequired(cfg.Providers, policy.Evaluator)
+	if err != nil {
+		return oralboards.PhaseModels{}, err
 	}
-	mistral.Model, mistral.RequestsPerMinute = "mistral-large-latest", 20
-	mistral.Fallbacks = configuredFallbacks(cfg.Providers, "groq", "openrouter")
 	evaluator, err := openai.NewMulti(mistral, availableProviders, nil, limiter)
 	if err != nil {
 		return oralboards.PhaseModels{}, err
@@ -507,7 +426,7 @@ func oralboardsModels(ctx context.Context, cfg config.Config, availableProviders
 	if key == "" {
 		return oralboards.PhaseModels{}, errors.New("GEMINI_API_KEY is required to configure oralboards case builder")
 	}
-	caseBuilder, err := gemini.NewModel(ctx, "gemini-3.1-flash-lite", &genai.ClientConfig{APIKey: key, Backend: genai.BackendGeminiAPI})
+	caseBuilder, err := gemini.NewModel(ctx, policy.GeminiModel, &genai.ClientConfig{APIKey: key, Backend: genai.BackendGeminiAPI})
 	if err != nil {
 		return oralboards.PhaseModels{}, err
 	}
@@ -516,36 +435,6 @@ func oralboardsModels(ctx context.Context, cfg config.Config, availableProviders
 	// Keeping the scorer off the rate-limited OpenAI-compatible chain also avoids
 	// losing an otherwise-complete examination to an exhausted fallback tier.
 	return oralboards.PhaseModels{CaseBuilder: caseBuilder, Questioner: questioner, Evaluator: evaluator, Scorer: caseBuilder}, nil
-}
-
-func configuredFallbacks(providers map[string]config.Provider, names ...string) []string {
-	result := make([]string, 0, len(names))
-	for _, name := range names {
-		if _, ok := providers[name]; ok {
-			result = append(result, name)
-		}
-	}
-	return result
-}
-
-func presentationProviderPolicies(providers map[string]config.Provider) map[string]config.Provider {
-	result := make(map[string]config.Provider, len(providers))
-	for name, provider := range providers {
-		result[name] = provider
-	}
-	if provider, ok := result["mistral"]; ok {
-		provider.Model, provider.RequestsPerMinute = "mistral-small-latest", 20
-		result["mistral"] = provider
-	}
-	if provider, ok := result["groq"]; ok {
-		provider.Model, provider.RequestsPerMinute = "llama-3.3-70b-versatile", 30
-		result["groq"] = provider
-	}
-	if provider, ok := result["openrouter"]; ok {
-		provider.Model, provider.RequestsPerMinute = "tencent/hy3:free", 20
-		result["openrouter"] = provider
-	}
-	return result
 }
 
 // resumeHealth reports the resume agent's readiness from local state only
@@ -569,23 +458,26 @@ func main() {
 	if err != nil {
 		log.Fatalf("load configuration: %v", err)
 	}
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	shutdownTelemetry, err := observability.Setup(ctx, observability.Config{
+		ServiceName: "agents-gateway", ServiceVersion: os.Getenv("RAILWAY_GIT_COMMIT_SHA"),
+		Environment: string(cfg.Environment),
+	})
+	if err != nil {
+		log.Fatalf("configure OpenTelemetry: %v", err)
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := shutdownTelemetry(shutdownCtx); err != nil {
+			log.Printf("flush OpenTelemetry: %v", err)
+		}
+	}()
 
 	d1, err := cloudflare.NewD1(cfg.Cloudflare, nil)
 	if err != nil {
 		log.Fatalf("configure D1: %v", err)
-	}
-	if err := d1.RunMigrations(context.Background()); err != nil {
-		// Non-fatal: an unreachable or misconfigured D1 is the same failure
-		// mode rootHealthHandler and agentHealthHandler already tolerate at
-		// runtime (they report "degraded"/503 rather than crash — see
-		// rootHealthHandler above). Crashing here instead would be
-		// inconsistent with that design and would also mean the process
-		// never binds a port for a foundation image smoke-tested with fake
-		// Cloudflare credentials (agents/scripts/smoke-image.sh) or a local
-		// dev container without live D1 access. Session persistence will
-		// fail loudly downstream (D1 calls return errors) if the schema is
-		// genuinely missing, so this does not silently mask a broken schema.
-		log.Printf("warning: apply D1 migrations: %v (continuing; D1 reads/writes will fail until this is resolved)", err)
 	}
 	r2, err := cloudflare.NewR2(cfg.Cloudflare)
 	if err != nil {
@@ -595,9 +487,9 @@ func main() {
 	sessions := cloudflare.NewSessionService(d1, time.Now)
 	pending := cloudflare.NewPendingStore(d1, time.Now)
 	limiter := rate.NewProviderLimiter(d1, time.Now)
-	availableProviders := presentationProviderPolicies(cfg.Providers)
+	availableProviders := providerpolicy.FallbackProviders(cfg.Providers)
 
-	resumeProvider, err := resumeProviderConfig(cfg)
+	resumeProvider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Resume)
 	if err != nil {
 		log.Fatalf("configure resume model: %v", err)
 	}
@@ -606,7 +498,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("build resume agent: %v", err)
 	}
-	presentationProvider, err := presentationProviderConfig(cfg)
+	presentationProvider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Presentation)
 	if err != nil {
 		log.Fatalf("configure presentation model: %v", err)
 	}
@@ -618,7 +510,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("build presentation agent: %v", err)
 	}
-	researchProvider, err := researchProviderConfig(cfg)
+	researchProvider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Research)
 	if err != nil {
 		log.Fatalf("configure research model: %v", err)
 	}
@@ -630,7 +522,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("build research agent: %v", err)
 	}
-	spreadsheetProvider, err := spreadsheetProviderConfig(cfg)
+	spreadsheetProvider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Spreadsheet)
 	if err != nil {
 		log.Fatalf("configure spreadsheet model: %v", err)
 	}
@@ -642,7 +534,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("build spreadsheet agent: %v", err)
 	}
-	expenseProvider, err := expenseProviderConfig(cfg)
+	expenseProvider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Expense)
 	if err != nil {
 		log.Fatalf("configure expense model: %v", err)
 	}
@@ -654,7 +546,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("build expense agent: %v", err)
 	}
-	travelProvider, err := travelProviderConfig(cfg)
+	travelProvider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Travel)
 	if err != nil {
 		log.Fatalf("configure travel model: %v", err)
 	}
@@ -677,7 +569,7 @@ func main() {
 			log.Fatalf("configure Brave search: %v", err)
 		}
 	}
-	fitnessProvider, err := fitnessProviderConfig(cfg)
+	fitnessProvider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Fitness)
 	if err != nil {
 		log.Fatalf("configure fitness model: %v", err)
 	}
@@ -690,7 +582,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("build fitness agent: %v", err)
 	}
-	groceryProvider, err := groceryProviderConfig(cfg)
+	groceryProvider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Grocery)
 	if err != nil {
 		log.Fatalf("configure grocery model: %v", err)
 	}
@@ -720,7 +612,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("build wellness agent: %v", err)
 	}
-	trendsProvider, err := trendsProviderConfig(cfg)
+	trendsProvider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Trends)
 	if err != nil {
 		log.Fatalf("configure trends model: %v", err)
 	}
@@ -729,7 +621,7 @@ func main() {
 		log.Fatalf("configure trends fallbacks: %v", err)
 	}
 	var trendsExecutor *trends.BigQueryExecutor
-	trendsBigQuery, bigQueryErr := trendsBigQueryClient(context.Background())
+	trendsBigQuery, bigQueryErr := trendsBigQueryClient(ctx)
 	if bigQueryErr != nil {
 		log.Printf("warning: trends BigQuery unavailable: %v", bigQueryErr)
 	} else {
@@ -747,7 +639,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("build trends agent: %v", err)
 	}
-	oralboardsPhaseModels, err := oralboardsModels(context.Background(), cfg, availableProviders, limiter)
+	oralboardsPhaseModels, err := oralboardsModels(ctx, cfg, availableProviders, limiter)
 	if err != nil {
 		log.Fatalf("configure oralboards models: %v", err)
 	}
@@ -763,20 +655,22 @@ func main() {
 	if err != nil {
 		log.Fatalf("build oralboards agent: %v", err)
 	}
+	defer func() { _ = oralboardsCorpus.Close() }()
 
-	registry, err := agentruntime.NewRegistry(
-		agentruntime.Entry{Route: "resume", AppName: resume.AppName, Agent: resumeAgent, StateDefaults: resume.StateDefaults, Public: true, Timeout: 2 * time.Minute, Health: resumeHealth(resumeModel)},
-		agentruntime.Entry{Route: "presentation", AppName: presentation.AppName, Agent: presentationAgent, StateDefaults: presentation.StateDefaults, Timeout: 2 * time.Minute},
-		agentruntime.Entry{Route: "research", AppName: research.AppName, Agent: researchAgent, StateDefaults: research.StateDefaults, Timeout: 3 * time.Minute},
-		agentruntime.Entry{Route: "spreadsheet", AppName: spreadsheet.AppName, Agent: spreadsheetAgent, StateDefaults: spreadsheet.StateDefaults, Timeout: 2 * time.Minute},
-		agentruntime.Entry{Route: "expense", AppName: expense.AppName, Agent: expenseAgent, StateDefaults: expense.StateDefaults, Timeout: 2 * time.Minute},
-		agentruntime.Entry{Route: "travel", AppName: travel.AppName, Agent: travelAgent, StateDefaults: travel.StateDefaults, Timeout: 3 * time.Minute},
-		agentruntime.Entry{Route: "fitness", AppName: fitness.AppName, Agent: fitnessAgent, StateDefaults: fitness.StateDefaults, Timeout: 3 * time.Minute},
-		agentruntime.Entry{Route: "grocery", AppName: grocery.AppName, Agent: groceryAgent, StateDefaults: grocery.StateDefaults, Timeout: 3 * time.Minute},
-		agentruntime.Entry{Route: "wellness", AppName: wellness.AppName, Agent: wellnessAgent, StateDefaults: wellness.StateDefaults, Timeout: 5 * time.Minute},
-		agentruntime.Entry{Route: "trends", AppName: trends.AppName, Agent: trendsAgent, StateDefaults: trends.StateDefaults, Timeout: 3 * time.Minute},
-		agentruntime.Entry{Route: "oralboards", AppName: oralboards.AppName, Agent: oralboardsAgent, StateDefaults: oralboards.StateDefaults, Timeout: 5 * time.Minute},
-	)
+	specialists := bootstrap.Specialists{
+		Travel:       bootstrap.Binding{Agent: travelAgent, StateDefaults: travel.StateDefaults},
+		Grocery:      bootstrap.Binding{Agent: groceryAgent, StateDefaults: grocery.StateDefaults},
+		Fitness:      bootstrap.Binding{Agent: fitnessAgent, StateDefaults: fitness.StateDefaults},
+		Wellness:     bootstrap.Binding{Agent: wellnessAgent, StateDefaults: wellness.StateDefaults},
+		Expense:      bootstrap.Binding{Agent: expenseAgent, StateDefaults: expense.StateDefaults},
+		OralBoards:   bootstrap.Binding{Agent: oralboardsAgent, StateDefaults: oralboards.StateDefaults},
+		Trends:       bootstrap.Binding{Agent: trendsAgent, StateDefaults: trends.StateDefaults},
+		Resume:       bootstrap.Binding{Agent: resumeAgent, StateDefaults: resume.StateDefaults, Health: resumeHealth(resumeModel)},
+		Research:     bootstrap.Binding{Agent: researchAgent, StateDefaults: research.StateDefaults},
+		Spreadsheet:  bootstrap.Binding{Agent: spreadsheetAgent, StateDefaults: spreadsheet.StateDefaults},
+		Presentation: bootstrap.Binding{Agent: presentationAgent, StateDefaults: presentation.StateDefaults},
+	}
+	registry, err := specialists.Registry()
 	if err != nil {
 		log.Fatalf("build agent registry: %v", err)
 	}
@@ -826,9 +720,6 @@ func main() {
 		WriteTimeout:      5 * time.Minute,
 		IdleTimeout:       120 * time.Second,
 	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
 
 	go func() {
 		<-ctx.Done()

@@ -155,7 +155,8 @@ func (s *Store) Snapshot(ctx context.Context, userID string, limit int) (Snapsho
 	if limit > MaxListLimit {
 		limit = MaxListLimit
 	}
-	results, err := s.d1.Run(ctx,
+	results, err := s.d1.Run(
+		ctx,
 		cloudflare.Statement{
 			SQL:    `SELECT source, synced_at FROM fitness_sync_sources WHERE user_id = ? ORDER BY synced_at DESC LIMIT 1`,
 			Params: []any{userID},

@@ -1,0 +1,37 @@
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string"
+    },
+    "generated_sql": {
+      "type": "string"
+    },
+    "columns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "insights": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["idle", "querying", "ready", "empty", "error"]
+    },
+    "error": {
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TrendsState",
+  "additionalProperties": false
+}

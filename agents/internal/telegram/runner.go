@@ -10,6 +10,11 @@ import (
 	"time"
 
 	"agents/internal/agui"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	semconv "go.opentelemetry.io/otel/semconv/v1.41.0"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/artifact"
 	"google.golang.org/adk/v2/runner"
@@ -109,8 +114,24 @@ func (r *Runner) Run(ctx context.Context) error {
 	return nil
 }
 
-func (r *Runner) HandleMessage(parent context.Context, message Message) error {
-	if !AllowMessage(r.config, message) {
+func (r *Runner) HandleMessage(parent context.Context, message Message) (err error) {
+	allowed := AllowMessage(r.config, message)
+	parent, span := otel.Tracer("agents/internal/telegram").Start(
+		parent,
+		"telegram.message.process",
+		trace.WithSpanKind(trace.SpanKindConsumer),
+		trace.WithAttributes(
+			semconv.MessagingSystemKey.String("telegram"),
+			semconv.MessagingOperationTypeProcess,
+			attribute.String("telegram.chat.type", safeChatType(message.Chat.Type)),
+			attribute.Bool("telegram.message.allowed", allowed),
+		),
+	)
+	defer func() {
+		finishSpan(span, err)
+		span.End()
+	}()
+	if !allowed {
 		return nil
 	}
 	link := AccountLink{}
@@ -137,16 +158,24 @@ func (r *Runner) HandleMessage(parent context.Context, message Message) error {
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrLoginRequired):
+			span.SetAttributes(attribute.String("telegram.message.outcome", "login_required"))
 			return r.sendText(ctx, message, "Sign in is required. Send /login to link this Telegram account.")
 		case errors.Is(err, ErrCredentialRequired):
+			span.SetAttributes(attribute.String("telegram.message.outcome", "credential_required"))
 			return r.sendText(ctx, message, missingCredentialText(route.Missing, r.config.ConnectURL))
 		default:
+			span.SetAttributes(attribute.String("telegram.message.outcome", "routing_failed"))
 			return nil
 		}
 	}
 	if route.Kind == RouteCommand {
+		span.SetAttributes(attribute.String("telegram.route.kind", "command"))
 		return r.handleCommand(ctx, message, identity, route.Command)
 	}
+	span.SetAttributes(
+		attribute.String("telegram.route.kind", "agent"),
+		semconv.GenAIAgentName(route.Agent),
+	)
 	_ = r.client.SendChatAction(ctx, message.Chat.ID, message.MessageThreadID, "typing")
 	seenProgress := map[string]bool{}
 	progress := func(progressCtx context.Context, label string) error {
@@ -261,15 +290,34 @@ func NewADKExecutor(sessions session.Service, artifacts artifact.Service, agents
 	return &ADKExecutor{sessions: sessions, agents: bound}, nil
 }
 
-func (e *ADKExecutor) Run(ctx context.Context, identity SessionIdentity, route Route, text string, progress ProgressFunc) (string, error) {
+func (e *ADKExecutor) Run(ctx context.Context, identity SessionIdentity, route Route, text string, progress ProgressFunc) (output string, err error) {
+	ctx, span := otel.Tracer("agents/internal/telegram").Start(
+		ctx,
+		"telegram.adk.run",
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			semconv.GenAIOperationNameInvokeAgent,
+			attribute.Bool("telegram.session.shared", identity.Shared),
+		),
+	)
+	defer func() {
+		finishSpan(span, err)
+		span.End()
+	}()
 	bound, ok := e.agents[route.Agent]
+	fallback := false
 	if !ok {
 		bound, ok = e.agents["orchestrator"]
+		fallback = ok
 	}
 	if !ok {
 		return "", errors.New("telegram route has no agent")
 	}
 	built := bound.agent
+	span.SetAttributes(
+		semconv.GenAIAgentName(built.Name()),
+		attribute.Bool("telegram.route.fallback", fallback),
+	)
 	state := map[string]any{"sender_linked": identity.ClerkUserID != ""}
 	if route.KrogerToken != "" {
 		state[session.KeyPrefixTemp+"kroger_token"] = route.KrogerToken
@@ -303,6 +351,23 @@ func (e *ADKExecutor) Run(ctx context.Context, identity SessionIdentity, route R
 		}
 	}
 	return strings.TrimSpace(strings.Join(texts, "\n")), nil
+}
+
+func safeChatType(chatType string) string {
+	switch strings.ToLower(strings.TrimSpace(chatType)) {
+	case "private", "group", "supergroup", "channel":
+		return strings.ToLower(strings.TrimSpace(chatType))
+	default:
+		return "unknown"
+	}
+}
+
+func finishSpan(span trace.Span, err error) {
+	if err == nil {
+		return
+	}
+	span.SetAttributes(semconv.ErrorTypeOther)
+	span.SetStatus(codes.Error, "operation failed")
 }
 
 func (e *ADKExecutor) Reset(ctx context.Context, identity SessionIdentity) error {

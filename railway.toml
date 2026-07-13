@@ -3,5 +3,6 @@ builder = "DOCKERFILE"
 dockerfilePath = "agents/Dockerfile"
 
 [deploy]
-healthcheckPath = "/health"
+preDeployCommand = ["/app/migrate"]
+healthcheckPath = "/ready"
 restartPolicyType = "ON_FAILURE"

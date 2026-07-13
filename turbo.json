@@ -48,6 +48,9 @@
       "cache": false
     },
     "fmt:check": {},
+    "contracts:check": {
+      "cache": false
+    },
     "test": {},
     "coverage": {
       "outputs": ["coverage/**"]
