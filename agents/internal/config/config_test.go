@@ -36,12 +36,26 @@ func TestLoadNormalizesHTTPAndProviderConfiguration(t *testing.T) {
 	}
 }
 
-func TestLoadRejectsWildcardOrigin(t *testing.T) {
+func TestLoadAcceptsWildcardOrigin(t *testing.T) {
 	env := requiredEnv()
 	env["ALLOWED_ORIGINS"] = "*"
-	_, err := Load(func(key string) string { return env[key] })
-	if err == nil || !strings.Contains(err.Error(), "wildcard") {
-		t.Fatalf("Load() error = %v, want wildcard rejection", err)
+	cfg, err := Load(func(key string) string { return env[key] })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(cfg.HTTP.Origins, ","); got != "*" {
+		t.Fatalf("origins = %q", got)
+	}
+}
+
+func TestLoadDefaultsToWildcardOrigin(t *testing.T) {
+	env := requiredEnv()
+	cfg, err := Load(func(key string) string { return env[key] })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(cfg.HTTP.Origins, ","); got != "*" {
+		t.Fatalf("origins = %q", got)
 	}
 }
 

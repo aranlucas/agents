@@ -131,13 +131,13 @@ func loadCloudflare(getenv func(string) string) (Cloudflare, error) {
 
 func loadOrigins(raw string) ([]string, error) {
 	if strings.TrimSpace(raw) == "" {
-		return []string{"http://localhost:3000", "http://localhost:8081"}, nil
+		return []string{"*"}, nil
 	}
 	var origins []string
 	for value := range strings.SplitSeq(raw, ",") {
 		origin := strings.TrimSpace(value)
 		if origin == "*" {
-			return nil, errors.New("wildcard ALLOWED_ORIGINS is unsupported")
+			return []string{"*"}, nil
 		}
 		parsed, err := url.Parse(origin)
 		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" || parsed.Path != "" {
