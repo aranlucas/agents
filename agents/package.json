@@ -6,8 +6,9 @@
     "fmt": "gofmt -w $(find . -name '*.go' -not -path './vendor/*')",
     "fmt:check": "test -z \"$(gofmt -l $(find . -name '*.go' -not -path './vendor/*'))\"",
     "typecheck": "go vet ./...",
-    "build": "go build -o ./bin/gateway ./cmd/gateway && go build -o ./bin/telegram ./cmd/telegram",
+    "build": "CGO_ENABLED=0 go build -mod=readonly -trimpath -o ./bin/gateway ./cmd/gateway && CGO_ENABLED=0 go build -mod=readonly -trimpath -o ./bin/telegram ./cmd/telegram",
     "test": "go test -race ./...",
-    "coverage": "go test -race -coverprofile=coverage.out ./..."
+    "coverage": "go test -race -coverprofile=coverage.out ./...",
+    "vulncheck": "go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./..."
   }
 }

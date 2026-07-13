@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"agents/fitness/agent"
+	"agents/fitness"
 	"agents/internal/agentruntime"
 	"agents/internal/config"
 	"agents/internal/fitnessdata"

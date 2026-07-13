@@ -1,4 +1,10 @@
 .git
+.github
+.gitignore
+.gitattributes
+.turbo
+**/.turbo
+.DS_Store
 .venv
 **/.venv
 node_modules
@@ -6,6 +12,13 @@ node_modules
 .next
 **/.next
 .claude
+**/bin
+**/coverage
+**/coverage.*
+**/*.out
+**/*.log
+**/tmp
+**/.cache
 **/__pycache__
 **/*.pyc
 **/*.egg-info

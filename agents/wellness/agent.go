@@ -3,8 +3,8 @@ package wellness
 import (
 	"errors"
 
-	"agents/fitness/agent"
-	"agents/grocery/agent"
+	"agents/fitness"
+	"agents/grocery"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"

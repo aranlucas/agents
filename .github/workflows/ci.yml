@@ -2,9 +2,9 @@ name: CI
 
 # Lints, typechecks, and tests the monorepo on every push to main and every
 # pull request. Parallel jobs cut the critical path:
-#   check   — turbo-driven lint/fmt/typecheck/coverage across every workspace
-#             package (JS via pnpm, Go agents via the agents workspace), plus React Doctor
-#   build   — next build (slowest step; runs in parallel with the others)
+#   check   — turbo-driven lint/fmt/typecheck/coverage for JS workspaces
+#   build   — deterministic JS builds (web, oral boards, and Worker views)
+#   go      — the single Go lint/vet/race/build/vulnerability lane
 #   docker  — Go-only gateway and Telegram image build/content/runtime smoke
 
 on:
@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   check:
-    name: Lint, typecheck & test
+    name: JS lint, typecheck & test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -27,36 +27,13 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: agents/go.mod
-          cache-dependency-path: agents/go.sum
-      - uses: golangci/golangci-lint-action@v9
-        with:
-          version: v2.12
-          working-directory: agents
-      - name: Put golangci-lint on PATH
-        # golangci-lint-action lints agents/ itself but doesn't export the
-        # binary it installed, so the later `pnpm lint` step (which shells
-        # out to it via turbo) can't find it without this.
-        run: |
-          dir="$(find "$HOME" -maxdepth 1 -type d -name 'golangci-lint-*-linux-amd64' | head -n1)"
-          echo "$dir" >> "$GITHUB_PATH"
       - name: Install JS dependencies
         run: pnpm install --frozen-lockfile
-      - name: Lint
-        run: pnpm lint
-      - name: Format check
-        run: pnpm fmt:check
-      - name: Typecheck
-        run: pnpm typecheck
-      - name: Tests
-        run: pnpm coverage
-      - name: React Doctor
-        run: npx react-doctor@latest --scope changed
+      - name: Check JS workspaces
+        run: pnpm exec turbo run lint fmt:check typecheck coverage --filter='!agents'
 
   build:
-    name: Build web
+    name: Build JS applications
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -68,7 +45,9 @@ jobs:
       - name: Install JS dependencies
         run: pnpm install --frozen-lockfile
       - name: Build
-        run: pnpm --filter web build
+        # Mobile's `build` script is a credentialed EAS release operation, not
+        # a deterministic compile. Its release workflows own that operation.
+        run: pnpm exec turbo build --filter='!agents' --filter='!mobile'
         env:
           SKIP_ENV_VALIDATION: "1"
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2xlcmsuZXhhbXBsZS5jb20k
@@ -78,6 +57,7 @@ jobs:
   docker:
     name: Build Go runtime images
     runs-on: ubuntu-latest
+    needs: go
     steps:
       - uses: actions/checkout@v6
       - name: Build gateway
@@ -90,20 +70,18 @@ jobs:
         run: bash agents/scripts/smoke-telegram.sh agents-telegram-go:ci
 
   go:
-    name: Go runtimes
+    name: Go lint, test & build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v5
         with:
-          go-version-file: agents/go.mod
+          go-version: 1.26.5
           cache-dependency-path: agents/go.sum
-      - name: Race tests
-        working-directory: agents
-        run: go test -race ./...
-      - name: Vet
-        working-directory: agents
-        run: go vet ./...
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.2
+          working-directory: agents
       - name: Format check
         working-directory: agents
         run: |
@@ -113,3 +91,15 @@ jobs:
             echo "$unformatted" >&2
             exit 1
           fi
+      - name: Vet
+        working-directory: agents
+        run: go vet ./...
+      - name: Race tests with coverage
+        working-directory: agents
+        run: go test -race -coverprofile=coverage.out ./...
+      - name: Build commands
+        working-directory: agents
+        run: CGO_ENABLED=0 go build -mod=readonly ./cmd/...
+      - name: Vulnerability check
+        working-directory: agents
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./...
