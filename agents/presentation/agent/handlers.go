@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"strings"
 
 	"agents/internal/agentruntime"
@@ -49,8 +50,14 @@ func SetMeta(ctx agent.Context, input SetMetaArgs) (Result, error) {
 	state := readState(ctx.State())
 	r, e := setMeta(&state, input)
 	if e == nil && r.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
+		if err := ctx.State().Set("title", state.Title); err != nil {
+			return Result{}, fmt.Errorf("set title: %w", err)
+		}
+		if err := ctx.State().Set("theme", state.Theme); err != nil {
+			return Result{}, fmt.Errorf("set theme: %w", err)
+		}
+		if err := ctx.State().Set("status", state.Status); err != nil {
+			return Result{}, fmt.Errorf("set status: %w", err)
 		}
 	}
 	return r, e
@@ -72,8 +79,14 @@ func CreateSlide(ctx agent.Context, input CreateSlideArgs) (Result, error) {
 	state := readState(ctx.State())
 	r, e := createSlide(&state, input)
 	if e == nil && r.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
+		if err := ctx.State().Set("slides", state.Slides); err != nil {
+			return Result{}, fmt.Errorf("set slides: %w", err)
+		}
+		if err := ctx.State().Set("active_slide_index", state.ActiveSlideIndex); err != nil {
+			return Result{}, fmt.Errorf("set active_slide_index: %w", err)
+		}
+		if err := ctx.State().Set("status", state.Status); err != nil {
+			return Result{}, fmt.Errorf("set status: %w", err)
 		}
 	}
 	return r, e
@@ -107,8 +120,11 @@ func UpdateSlide(ctx agent.Context, input UpdateSlideArgs) (Result, error) {
 	state := readState(ctx.State())
 	r, e := updateSlide(&state, input)
 	if e == nil && r.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
+		if err := ctx.State().Set("slides", state.Slides); err != nil {
+			return Result{}, fmt.Errorf("set slides: %w", err)
+		}
+		if err := ctx.State().Set("status", state.Status); err != nil {
+			return Result{}, fmt.Errorf("set status: %w", err)
 		}
 	}
 	return r, e
@@ -157,8 +173,14 @@ func DeleteSlide(ctx agent.Context, input SlideIDArgs) (Result, error) {
 	state := readState(ctx.State())
 	r, e := deleteSlide(&state, input)
 	if e == nil && r.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
+		if err := ctx.State().Set("slides", state.Slides); err != nil {
+			return Result{}, fmt.Errorf("set slides: %w", err)
+		}
+		if err := ctx.State().Set("active_slide_index", state.ActiveSlideIndex); err != nil {
+			return Result{}, fmt.Errorf("set active_slide_index: %w", err)
+		}
+		if err := ctx.State().Set("status", state.Status); err != nil {
+			return Result{}, fmt.Errorf("set status: %w", err)
 		}
 	}
 	return r, e
@@ -183,8 +205,14 @@ func ReorderSlides(ctx agent.Context, input ReorderArgs) (Result, error) {
 	state := readState(ctx.State())
 	r, e := reorderSlides(&state, input)
 	if e == nil && r.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
+		if err := ctx.State().Set("slides", state.Slides); err != nil {
+			return Result{}, fmt.Errorf("set slides: %w", err)
+		}
+		if err := ctx.State().Set("active_slide_index", state.ActiveSlideIndex); err != nil {
+			return Result{}, fmt.Errorf("set active_slide_index: %w", err)
+		}
+		if err := ctx.State().Set("status", state.Status); err != nil {
+			return Result{}, fmt.Errorf("set status: %w", err)
 		}
 	}
 	return r, e
@@ -217,8 +245,11 @@ func MarkReady(ctx agent.Context, input ReadyArgs) (Result, error) {
 	state := readState(ctx.State())
 	r, e := markReady(&state, input)
 	if e == nil && r.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
+		if err := ctx.State().Set("status", state.Status); err != nil {
+			return Result{}, fmt.Errorf("set status: %w", err)
+		}
+		if err := ctx.State().Set("review_summary", state.ReviewSummary); err != nil {
+			return Result{}, fmt.Errorf("set review_summary: %w", err)
 		}
 	}
 	return r, e
@@ -227,6 +258,17 @@ func MarkReady(ctx agent.Context, input ReadyArgs) (Result, error) {
 func markReady(state *PresentationState, input ReadyArgs) (Result, error) {
 	if len(input.Summary) > 5000 {
 		return failure("summary_too_large", "review summary exceeds the allowed size"), nil
+	}
+	if strings.TrimSpace(state.Title) == "" {
+		return failure("presentation_title_required", "a presentation title is required before marking ready"), nil
+	}
+	if len(state.Slides) == 0 {
+		return failure("slides_required", "at least one slide is required before marking ready"), nil
+	}
+	for _, slide := range state.Slides {
+		if strings.TrimSpace(slide.Heading) == "" && strings.TrimSpace(slide.Body) == "" {
+			return failure("empty_slide", "every slide must contain a heading or body before marking ready"), nil
+		}
 	}
 	state.Status, state.ReviewSummary = StatusReady, input.Summary
 	return Result{OK: true}, nil

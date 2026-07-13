@@ -16,7 +16,7 @@ func (fakeModel) GenerateContent(context.Context, *model.LLMRequest, bool) iter.
 	return func(func(*model.LLMResponse, error) bool) {}
 }
 
-func TestTravelAgentBuildsWithApprovalBoundary(t *testing.T) {
+func TestTravelAgentBuildsWithBookingTools(t *testing.T) {
 	built, err := New(fakeModel{})
 	if err != nil {
 		t.Fatal(err)
@@ -24,9 +24,18 @@ func TestTravelAgentBuildsWithApprovalBoundary(t *testing.T) {
 	if built.Name() != AppName {
 		t.Fatalf("name = %q", built.Name())
 	}
-	for _, required := range []string{"request_user_approval", "matching tool result", "Never paste the itinerary"} {
-		if !strings.Contains(Instruction, required) {
+	normalized := strings.Join(strings.Fields(Instruction), " ")
+	for _, required := range []string{
+		"Never paste the itinerary",
+		"at most three read-only TRVL",
+		"Do not search flights, hotels, prices, or availability unless the user explicitly asks for them",
+		"mark it ready in the same turn",
+	} {
+		if !strings.Contains(normalized, required) {
 			t.Fatalf("instruction missing %q", required)
 		}
+	}
+	if strings.Contains(Instruction, "request_user_approval") || strings.Contains(Instruction, "approval") {
+		t.Fatal("travel instructions still request approval")
 	}
 }

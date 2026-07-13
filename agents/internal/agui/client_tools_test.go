@@ -5,20 +5,20 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"google.golang.org/genai"
 )
 
-func TestClientToolsetPreservesDynamicSchemaAndLongRunningMarker(t *testing.T) {
+func TestBuildClientToolsPreservesDynamicSchemaAndLongRunningMarker(t *testing.T) {
 	pending := newFakePending()
-	toolset, err := NewClientToolset([]ClientTool{{Name: "choose_flight", Description: "Choose a flight", Parameters: map[string]any{
+	tools, err := buildClientTools([]types.Tool{{Name: "choose_flight", Description: "Choose a flight", Parameters: map[string]any{
 		"type": "object", "properties": map[string]any{"flight_id": map[string]any{"type": "string"}}, "required": []string{"flight_id"},
 	}}}, pending)
 	if err != nil {
 		t.Fatal(err)
 	}
-	tools, err := toolset.Tools(nil)
-	if err != nil || len(tools) != 1 {
-		t.Fatalf("Tools() = %#v, %v", tools, err)
+	if len(tools) != 1 {
+		t.Fatalf("tools = %#v", tools)
 	}
 	if !tools[0].IsLongRunning() || tools[0].Name() != "choose_flight" {
 		t.Fatalf("tool = %#v", tools[0])
@@ -33,7 +33,11 @@ func TestClientToolsetPreservesDynamicSchemaAndLongRunningMarker(t *testing.T) {
 	if !strings.Contains(string(encoded), "flight_id") {
 		t.Fatalf("schema = %s", encoded)
 	}
-	if _, err := NewClientToolset([]ClientTool{{Name: "choose_flight"}, {Name: "choose_flight"}}, pending); err == nil {
+	encoded, _ = json.Marshal(declarer.Declaration().ResponseJsonSchema)
+	if !strings.Contains(string(encoded), `"status"`) || !strings.Contains(string(encoded), `"call_id"`) {
+		t.Fatalf("result schema = %s", encoded)
+	}
+	if _, err := buildClientTools([]types.Tool{{Name: "choose_flight"}, {Name: "choose_flight"}}, pending); err == nil {
 		t.Fatal("duplicate tool accepted")
 	}
 }

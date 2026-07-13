@@ -2,11 +2,68 @@ package telegram
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 )
+
+type telegramRoundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f telegramRoundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {
+	return f(request)
+}
+
+func TestTelegramResultDecodesConcreteTypeWithoutNetwork(t *testing.T) {
+	client := &HTTPClient{client: &http.Client{Transport: telegramRoundTripFunc(func(request *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Status:     "200 OK",
+			Header:     make(http.Header),
+			Body:       io.NopCloser(strings.NewReader(`{"ok":true,"result":{"message_id":7,"chat":{"id":3,"type":"private"},"date":1,"text":"hello"}}`)),
+			Request:    request,
+		}, nil
+	})}}
+	request, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "https://api.telegram.test/sendMessage", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	message, err := telegramResult[Message](client, request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if message.MessageID != 7 || message.Text != "hello" {
+		t.Fatalf("message = %#v", message)
+	}
+}
+
+func TestTelegramResultRejectsMissingNullOrWrongTypeWithoutNetwork(t *testing.T) {
+	for name, body := range map[string]string{
+		"missing":           `{"ok":true}`,
+		"null":              `{"ok":true,"result":null}`,
+		"wrong result type": `{"ok":true,"result":""}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			client := &HTTPClient{client: &http.Client{Transport: telegramRoundTripFunc(func(request *http.Request) (*http.Response, error) {
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Status:     "200 OK",
+					Header:     make(http.Header),
+					Body:       io.NopCloser(strings.NewReader(body)),
+					Request:    request,
+				}, nil
+			})}}
+			request, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "https://api.telegram.test/sendMessage", nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result, err := telegramResult[Message](client, request); err == nil {
+				t.Fatalf("telegramResult() = %#v, want error", result)
+			}
+		})
+	}
+}
 
 func TestGetUpdatesUsesLongPollTimeoutAndOffset(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {

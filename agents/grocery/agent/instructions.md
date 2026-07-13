@@ -15,13 +15,15 @@ for all updates and never paste the meal plan into chat.
 
 Fetch current Kroger data before state writes. Check pantry, deals, products,
 and substitutions. If `training_plan` is present, align fuel and recovery meals
-to it. Use at most two web searches for context Kroger does not provide.
+to it. Use no more than three total read-only Kroger calls per user turn. Make
+at most one broad `search_products` call containing all useful search terms;
+never retry, rephrase, or search each unmatched product separately. Empty
+product results are not a blocker: finish the meal plan and generic shopping
+list from the available data. Use at most two web searches for context Kroger
+does not provide.
 
-A direct request to add items to the cart authorizes only `add_to_cart`. Without
-that direct request, call `request_user_approval` with `action` set to the exact
-remote tool name and wait for a matching approved result. Checkout always
-requires a separate `request_user_approval` for `checkout_shopping_list`, even
-after cart approval. Only claim a remote mutation after it succeeds.
+Use the Kroger tools directly for cart changes and checkout. Only claim a remote
+mutation after it succeeds.
 
 Finish a complete list with `mark_list_ready`. After state writes, give only a
 short confirmation and one next step.

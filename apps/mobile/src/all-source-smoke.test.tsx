@@ -12,6 +12,7 @@ vi.mock("expo-crypto", () => ({
 vi.mock("@/shims/node-crypto", () => ({}));
 
 let currentState: Record<string, unknown> = {};
+let copilotKitProviderRenderCount = 0;
 
 function Host({ children, ...props }: { children?: ReactNode }) {
   return createElement("Host", props, children);
@@ -116,7 +117,12 @@ vi.mock("../modules/health-data", () => ({
   },
 }));
 
-const mockCopilotkit = { runAgent: vi.fn(async () => undefined), stopAgent: vi.fn() };
+const mockCopilotkit = {
+  headers: { "x-client-version": "1" },
+  runAgent: vi.fn(async () => undefined),
+  setHeaders: vi.fn(),
+  stopAgent: vi.fn(),
+};
 const mockAgent = {
   get messages() {
     return [
@@ -133,7 +139,10 @@ const mockAgent = {
 };
 
 vi.mock("@copilotkit/react-native", () => ({
-  CopilotKitProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
+  CopilotKitProvider: ({ children }: { children: ReactNode }) => {
+    copilotKitProviderRenderCount += 1;
+    return <>{children}</>;
+  },
   useAgent: vi.fn(() => ({ agent: mockAgent })),
   useCopilotKit: vi.fn(() => ({ copilotkit: mockCopilotkit })),
 }));
@@ -588,7 +597,7 @@ describe("mobile all-source smoke coverage", () => {
     currentState = {
       status: "ready",
       weekly_plan: "Week",
-      workout_plan: "Lift",
+      training_plan: "Lift",
       meal_plan: "Eat",
     };
     await render("wellness", providers(<WellnessScreen />));
@@ -722,5 +731,11 @@ describe("mobile all-source smoke coverage", () => {
     );
 
     expect(mockAgent.addMessage).toHaveBeenCalled();
+    expect(mockCopilotkit.setHeaders).toHaveBeenCalledWith({
+      "x-client-version": "1",
+      Authorization: "Bearer session-jwt",
+      "x-clerk-user-id": "user_123",
+    });
+    expect(copilotKitProviderRenderCount).toBeGreaterThanOrEqual(2);
   });
 });

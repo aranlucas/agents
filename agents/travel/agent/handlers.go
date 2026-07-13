@@ -56,12 +56,31 @@ type CurrentDateArgs struct{}
 func SetTripMeta(ctx agent.Context, input SetTripMetaArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := setTripMeta(&state, input)
-	if err == nil && result.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
-		}
+	if err != nil || !result.OK {
+		return result, err
 	}
-	return result, err
+	if err := ctx.State().Set("destination", state.Destination); err != nil {
+		return Result{}, err
+	}
+	if err := ctx.State().Set("start_date", state.StartDate); err != nil {
+		return Result{}, err
+	}
+	if err := ctx.State().Set("end_date", state.EndDate); err != nil {
+		return Result{}, err
+	}
+	if err := ctx.State().Set("travelers", state.Travelers); err != nil {
+		return Result{}, err
+	}
+	if err := ctx.State().Set("budget_usd", state.BudgetUSD); err != nil {
+		return Result{}, err
+	}
+	if err := ctx.State().Set("headline", state.Headline); err != nil {
+		return Result{}, err
+	}
+	if err := ctx.State().Set("status", state.Status); err != nil {
+		return Result{}, err
+	}
+	return result, nil
 }
 
 func setTripMeta(state *TravelState, input SetTripMetaArgs) (Result, error) {
@@ -92,12 +111,24 @@ func setTripMeta(state *TravelState, input SetTripMetaArgs) (Result, error) {
 func WriteItinerary(ctx agent.Context, input WriteItineraryArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := writeItinerary(&state, input)
-	if err == nil && result.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
+	if err != nil || !result.OK {
+		return result, err
+	}
+	if err := ctx.State().Set("itinerary", state.Itinerary); err != nil {
+		return Result{}, err
+	}
+	if err := ctx.State().Set("summary", state.Summary); err != nil {
+		return Result{}, err
+	}
+	if err := ctx.State().Set("status", state.Status); err != nil {
+		return Result{}, err
+	}
+	if input.Flights != "" {
+		if err := ctx.State().Set("flights", state.Flights); err != nil {
+			return Result{}, err
 		}
 	}
-	return result, err
+	return result, nil
 }
 
 func writeItinerary(state *TravelState, input WriteItineraryArgs) (Result, error) {
@@ -117,12 +148,16 @@ func writeItinerary(state *TravelState, input WriteItineraryArgs) (Result, error
 func AddDay(ctx agent.Context, input AddDayArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := addDay(&state, input)
-	if err == nil && result.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
-		}
+	if err != nil || !result.OK {
+		return result, err
 	}
-	return result, err
+	if err := ctx.State().Set("itinerary", state.Itinerary); err != nil {
+		return Result{}, err
+	}
+	if err := ctx.State().Set("status", state.Status); err != nil {
+		return Result{}, err
+	}
+	return result, nil
 }
 
 func addDay(state *TravelState, input AddDayArgs) (Result, error) {
@@ -145,12 +180,16 @@ func addDay(state *TravelState, input AddDayArgs) (Result, error) {
 func MarkReadyToBook(ctx agent.Context, input ReadyArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := markReadyToBook(&state, input)
-	if err == nil && result.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
-		}
+	if err != nil || !result.OK {
+		return result, err
 	}
-	return result, err
+	if err := ctx.State().Set("status", state.Status); err != nil {
+		return Result{}, err
+	}
+	if err := ctx.State().Set("review_summary", state.ReviewSummary); err != nil {
+		return Result{}, err
+	}
+	return result, nil
 }
 
 func markReadyToBook(state *TravelState, input ReadyArgs) (Result, error) {
@@ -187,10 +226,19 @@ func validateItinerary(body string) error {
 			seenDay[day] = true
 			continue
 		}
-		if !activityPattern.MatchString(line) {
-			return errors.New("each activity must use '- HH:MM — activity' format")
+		if activityPattern.MatchString(line) {
+			activities++
+			continue
 		}
-		activities++
+		if strings.HasPrefix(line, "-") {
+			return errors.New("each bulleted activity must use '- HH:MM — activity' format")
+		}
+		if strings.HasPrefix(line, "##") {
+			return errors.New("each day heading must use '## Day N: theme' format")
+		}
+		// Plain markdown prose is valid supporting context (for example a
+		// reservation or holiday note). Only activity bullets are required to
+		// carry a time so the client can render them on the day timeline.
 	}
 	if activities == 0 {
 		return errors.New("itinerary must contain at least one timed activity")

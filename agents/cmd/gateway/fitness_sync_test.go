@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	fitness "agents/fitness/agent"
+	"agents/fitness/agent"
 	"agents/internal/agentruntime"
 	"agents/internal/config"
 	"agents/internal/fitnessdata"
@@ -82,7 +82,7 @@ func newFitnessSyncGateway(t *testing.T, repository fitnessdata.Repository) http
 		t.Fatal(err)
 	}
 	registry, err := agentruntime.NewRegistry(agentruntime.Entry{
-		Route: "fitness", AppName: fitness.AppName, Agent: built, StateDefaults: fitness.StateDefaults(), Timeout: time.Minute,
+		Route: "fitness", AppName: fitness.AppName, Agent: built, StateDefaults: fitness.StateDefaults, Timeout: time.Minute,
 	})
 	if err != nil {
 		t.Fatal(err)

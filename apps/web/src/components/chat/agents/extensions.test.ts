@@ -28,4 +28,9 @@ describe("agent extensions", () => {
   it("does not enable A2UI provider props for unrelated agents", () => {
     expect(getAgentExtension("resume")?.copilotKitProps?.a2ui).toBeUndefined();
   });
+
+  it("registers the Resume role-fit artifact without adding shared workspace branches", () => {
+    expect(getAgentExtension("resume")?.Artifact).toBeDefined();
+    expect(getAgentExtension("research")?.Artifact).toBeUndefined();
+  });
 });

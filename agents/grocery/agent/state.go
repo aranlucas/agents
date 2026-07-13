@@ -2,10 +2,8 @@ package grocery
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"agents/internal/common"
-	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/session"
 )
 
@@ -75,31 +73,4 @@ func readState(source session.ReadonlyState) GroceryState {
 		state.Status = StatusIdle
 	}
 	return state
-}
-
-func publishState(ctx agent.Context, state GroceryState) error {
-	s := ctx.State()
-	fields := []struct {
-		key   string
-		value any
-	}{
-		{"shopping_list", state.ShoppingList},
-		{"meal_plan", state.MealPlan},
-		{"cart", state.Cart},
-		{"pantry", state.Pantry},
-		{"weekly_deals", state.WeeklyDeals},
-		{"weekly_plan", state.WeeklyPlan},
-		{"status", state.Status},
-		{"notes", state.Notes},
-		{"review_summary", state.ReviewSummary},
-		{"kroger_connected", state.KrogerConnected},
-		{"training_plan", state.TrainingPlan},
-		{"user_id", state.UserID},
-	}
-	for _, field := range fields {
-		if err := s.Set(field.key, field.value); err != nil {
-			return fmt.Errorf("set %s: %w", field.key, err)
-		}
-	}
-	return nil
 }

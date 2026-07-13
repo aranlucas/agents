@@ -2,9 +2,7 @@ package expense
 
 import (
 	"encoding/json"
-	"fmt"
 
-	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/session"
 )
 
@@ -87,26 +85,4 @@ func readState(source session.ReadonlyState) ExpenseState {
 		state.ReviewThresholdUSD = DefaultReviewThresholdUSD
 	}
 	return state
-}
-
-func publishState(ctx agent.Context, state ExpenseState) error {
-	s := ctx.State()
-	fields := []struct {
-		key   string
-		value any
-	}{
-		{"expenses", state.Expenses},
-		{"selected_expense_id", state.SelectedExpenseID},
-		{"expense_report", state.ExpenseReport},
-		{"status", state.Status},
-		{"review_summary", state.ReviewSummary},
-		{"review_threshold_usd", state.ReviewThresholdUSD},
-		{"user_id", state.UserID},
-	}
-	for _, field := range fields {
-		if err := s.Set(field.key, field.value); err != nil {
-			return fmt.Errorf("set %s: %w", field.key, err)
-		}
-	}
-	return nil
 }

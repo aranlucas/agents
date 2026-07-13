@@ -27,4 +27,7 @@ func TestResearchAgentEmbedsCutoffDisclaimer(t *testing.T) {
 	if !strings.Contains(Instruction, "early 2025") || !strings.Contains(Instruction, "does not have live internet") {
 		t.Fatal("cutoff disclaimer missing")
 	}
+	if !strings.Contains(Instruction, "final state mutation") || !strings.Contains(Instruction, "do not call\n   `write_report`") || !strings.Contains(Instruction, "must never be batched") {
+		t.Fatal("ready-state sequencing guidance missing")
+	}
 }

@@ -41,7 +41,15 @@
       "expo-web-browser",
       ["expo-system-ui", { "android": { "edgeToEdge": true } }],
       "expo-secure-store",
-      "./modules/health-data/app.plugin.js"
+      "./modules/health-data/app.plugin.js",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
+        }
+      ]
     ],
     "extra": {
       "clerkPublishableKey": "pk_test_bG9naWNhbC12aXBlci0zMy5jbGVyay5hY2NvdW50cy5kZXYk",

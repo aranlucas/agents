@@ -1,5 +1,10 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { AGENT_ORDER } from "@agents/types";
 import { isOfflineAgentTestMode } from "@/lib/offline-mode";
+
+const PROTECTED_CONSOLE_ROUTES = AGENT_ORDER.filter((agentId) => agentId !== "resume").map(
+  (agentId) => `/console/${agentId}(.*)`,
+);
 
 export const PROTECTED_ROUTES = [
   "/travel(.*)",
@@ -7,11 +12,7 @@ export const PROTECTED_ROUTES = [
   "/fitness(.*)",
   "/wellness(.*)",
   "/oral-boards(.*)",
-  "/console/travel(.*)",
-  "/console/grocery(.*)",
-  "/console/fitness(.*)",
-  "/console/wellness(.*)",
-  "/console/oral-boards(.*)",
+  ...PROTECTED_CONSOLE_ROUTES,
   "/console/settings(.*)",
   "/telegram/link(.*)",
 ];

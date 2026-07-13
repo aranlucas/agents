@@ -61,12 +61,13 @@ func SetShoppingList(ctx agent.Context, input ShoppingListArgs) (Result, error) 
 func UpdateCart(ctx agent.Context, input CartArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := updateCart(&state, input)
-	if err == nil && result.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
-		}
+	if err != nil || !result.OK {
+		return result, err
 	}
-	return result, err
+	if err := ctx.State().Set("cart", state.Cart); err != nil {
+		return Result{}, err
+	}
+	return result, nil
 }
 
 func updateCart(state *GroceryState, input CartArgs) (Result, error) {
@@ -83,12 +84,13 @@ func updateCart(state *GroceryState, input CartArgs) (Result, error) {
 func UpdatePantry(ctx agent.Context, input PantryArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := updatePantry(&state, input)
-	if err == nil && result.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
-		}
+	if err != nil || !result.OK {
+		return result, err
 	}
-	return result, err
+	if err := ctx.State().Set("pantry", state.Pantry); err != nil {
+		return Result{}, err
+	}
+	return result, nil
 }
 
 func updatePantry(state *GroceryState, input PantryArgs) (Result, error) {
@@ -112,12 +114,16 @@ func updatePantry(state *GroceryState, input PantryArgs) (Result, error) {
 func SetMealPlan(ctx agent.Context, input MealPlanArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := setMealPlan(&state, input)
-	if err == nil && result.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
-		}
+	if err != nil || !result.OK {
+		return result, err
 	}
-	return result, err
+	if err := ctx.State().Set("meal_plan", state.MealPlan); err != nil {
+		return Result{}, err
+	}
+	if err := ctx.State().Set("status", state.Status); err != nil {
+		return Result{}, err
+	}
+	return result, nil
 }
 
 func setMealPlan(state *GroceryState, input MealPlanArgs) (Result, error) {
@@ -131,12 +137,13 @@ func setMealPlan(state *GroceryState, input MealPlanArgs) (Result, error) {
 func SetWeeklyDeals(ctx agent.Context, input DealsArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := setWeeklyDeals(&state, input)
-	if err == nil && result.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
-		}
+	if err != nil || !result.OK {
+		return result, err
 	}
-	return result, err
+	if err := ctx.State().Set("weekly_deals", state.WeeklyDeals); err != nil {
+		return Result{}, err
+	}
+	return result, nil
 }
 
 func setWeeklyDeals(state *GroceryState, input DealsArgs) (Result, error) {
@@ -150,12 +157,16 @@ func setWeeklyDeals(state *GroceryState, input DealsArgs) (Result, error) {
 func MarkListReady(ctx agent.Context, input ReadyArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := markListReady(&state, input)
-	if err == nil && result.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
-		}
+	if err != nil || !result.OK {
+		return result, err
 	}
-	return result, err
+	if err := ctx.State().Set("status", state.Status); err != nil {
+		return Result{}, err
+	}
+	if err := ctx.State().Set("review_summary", state.ReviewSummary); err != nil {
+		return Result{}, err
+	}
+	return result, nil
 }
 
 func markListReady(state *GroceryState, input ReadyArgs) (Result, error) {

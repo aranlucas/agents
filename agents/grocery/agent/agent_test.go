@@ -17,15 +17,18 @@ func (fakeModel) GenerateContent(context.Context, *model.LLMRequest, bool) iter.
 	return func(func(*model.LLMResponse, error) bool) {}
 }
 
-func TestGroceryAgentBuildsWithAuthAndApprovalContracts(t *testing.T) {
+func TestGroceryAgentBuildsWithAuthContract(t *testing.T) {
 	built, err := New(fakeModel{}, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, required := range []string{"Kroger needs to be", "checkout_shopping_list", "exact\nremote tool name"} {
+	for _, required := range []string{"Kroger needs to be", "three total read-only Kroger calls", "never retry"} {
 		if built.Name() != AppName || !strings.Contains(Instruction, required) {
 			t.Fatalf("agent/instruction missing %q", required)
 		}
+	}
+	if strings.Contains(Instruction, "request_user_approval") || strings.Contains(Instruction, "approval") {
+		t.Fatal("grocery instructions still request approval")
 	}
 }
 

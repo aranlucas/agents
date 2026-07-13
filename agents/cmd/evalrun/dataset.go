@@ -19,7 +19,6 @@ type Dataset struct {
 
 type EvalCase struct {
 	EvalCaseID   string                 `json:"eval_case_id"`
-	Metadata     map[string]any         `json:"metadata"`
 	Prompt       Content                `json:"prompt"`
 	RubricGroups map[string]RubricGroup `json:"rubric_groups"`
 }

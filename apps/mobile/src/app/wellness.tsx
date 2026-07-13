@@ -8,11 +8,11 @@ const WELLNESS_CONFIG = {
   placeholder: "Plan my week...",
   accentColor: "#7c3aed",
   renderSummary: (state: WellnessState) =>
-    state.weekly_plan || state.meal_plan || state.workout_plan ? (
+    state.weekly_plan || state.meal_plan || state.training_plan ? (
       <SummaryCard>
         <Field label="Status" value={state.status} />
         <Field label="Weekly plan" value={state.weekly_plan} />
-        <Field label="Workout plan" value={state.workout_plan} />
+        <Field label="Training plan" value={state.training_plan} />
         <Field label="Meal plan" value={state.meal_plan} />
       </SummaryCard>
     ) : null,

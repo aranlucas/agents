@@ -53,4 +53,21 @@ describe("ExpenseDesk", () => {
 
     expect(onDecision).toHaveBeenCalledWith("exp_1", "approved");
   });
+
+  it("hides decision controls after the selected expense is resolved", () => {
+    const resolvedState: ExpenseState = {
+      ...state,
+      status: "ready",
+      expenses: state.expenses?.map((expense) =>
+        expense.id === "exp_1"
+          ? { ...expense, status: "approved", decision_note: "Approved by operator" }
+          : expense,
+      ),
+    };
+
+    render(<ExpenseDesk state={resolvedState} onDecision={vi.fn()} isRunning={false} />);
+
+    expect(screen.queryByRole("button", { name: "Approve" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Reject" })).not.toBeInTheDocument();
+  });
 });

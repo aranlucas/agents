@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"net/url"
 	"strings"
 
@@ -47,8 +48,14 @@ func SetQuery(ctx agent.Context, input SetQueryArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := setQuery(&state, input)
 	if err == nil && result.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
+		if err := ctx.State().Set("title", state.Title); err != nil {
+			return Result{}, fmt.Errorf("set title: %w", err)
+		}
+		if err := ctx.State().Set("query", state.Query); err != nil {
+			return Result{}, fmt.Errorf("set query: %w", err)
+		}
+		if err := ctx.State().Set("status", state.Status); err != nil {
+			return Result{}, fmt.Errorf("set status: %w", err)
 		}
 	}
 	return result, err
@@ -70,8 +77,14 @@ func CreateSection(ctx agent.Context, input CreateSectionArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := createSection(&state, input)
 	if err == nil && result.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
+		if err := ctx.State().Set("sections", state.Sections); err != nil {
+			return Result{}, fmt.Errorf("set sections: %w", err)
+		}
+		if err := ctx.State().Set("report", state.Report); err != nil {
+			return Result{}, fmt.Errorf("set report: %w", err)
+		}
+		if err := ctx.State().Set("status", state.Status); err != nil {
+			return Result{}, fmt.Errorf("set status: %w", err)
 		}
 	}
 	return result, err
@@ -102,8 +115,14 @@ func UpdateSection(ctx agent.Context, input UpdateSectionArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := updateSection(&state, input)
 	if err == nil && result.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
+		if err := ctx.State().Set("sections", state.Sections); err != nil {
+			return Result{}, fmt.Errorf("set sections: %w", err)
+		}
+		if err := ctx.State().Set("report", state.Report); err != nil {
+			return Result{}, fmt.Errorf("set report: %w", err)
+		}
+		if err := ctx.State().Set("status", state.Status); err != nil {
+			return Result{}, fmt.Errorf("set status: %w", err)
 		}
 	}
 	return result, err
@@ -133,8 +152,8 @@ func AddSource(ctx agent.Context, input AddSourceArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := addSource(&state, input)
 	if err == nil && result.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
+		if err := ctx.State().Set("sources", state.Sources); err != nil {
+			return Result{}, fmt.Errorf("set sources: %w", err)
 		}
 	}
 	return result, err
@@ -166,8 +185,11 @@ func WriteReport(ctx agent.Context, input WriteReportArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := writeReport(&state, input)
 	if err == nil && result.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
+		if err := ctx.State().Set("report", state.Report); err != nil {
+			return Result{}, fmt.Errorf("set report: %w", err)
+		}
+		if err := ctx.State().Set("status", state.Status); err != nil {
+			return Result{}, fmt.Errorf("set status: %w", err)
 		}
 	}
 	return result, err
@@ -186,8 +208,11 @@ func MarkReady(ctx agent.Context, input ReadyArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := markReady(&state, input)
 	if err == nil && result.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
+		if err := ctx.State().Set("status", state.Status); err != nil {
+			return Result{}, fmt.Errorf("set status: %w", err)
+		}
+		if err := ctx.State().Set("review_summary", state.ReviewSummary); err != nil {
+			return Result{}, fmt.Errorf("set review_summary: %w", err)
 		}
 	}
 	return result, err
@@ -196,6 +221,23 @@ func MarkReady(ctx agent.Context, input ReadyArgs) (Result, error) {
 func markReady(state *ResearchState, input ReadyArgs) (Result, error) {
 	if len(input.Summary) > 5000 {
 		return fail("summary_too_large", "review summary exceeds the allowed size"), nil
+	}
+	if strings.TrimSpace(state.Title) == "" || strings.TrimSpace(state.Query) == "" {
+		return fail("research_query_required", "a title and research query are required before marking ready"), nil
+	}
+	if strings.TrimSpace(state.Report) == "" {
+		return fail("report_required", "a report is required before marking ready"), nil
+	}
+	if len(state.Sections) == 0 {
+		return fail("sections_required", "at least one report section is required before marking ready"), nil
+	}
+	for _, section := range state.Sections {
+		if strings.TrimSpace(section.Title) == "" || strings.TrimSpace(section.Content) == "" {
+			return fail("incomplete_section", "every report section must contain a title and content before marking ready"), nil
+		}
+	}
+	if len(state.Sources) == 0 {
+		return fail("sources_required", "at least one citation source is required before marking ready"), nil
 	}
 	state.Status, state.ReviewSummary = StatusReady, input.Summary
 	return Result{OK: true}, nil

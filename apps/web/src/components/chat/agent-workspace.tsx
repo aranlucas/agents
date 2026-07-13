@@ -6,7 +6,7 @@ import { useAgent, UseAgentUpdate } from "@copilotkit/react-core/v2";
 import { SidebarInset, SidebarProvider } from "@agents/ui";
 import { getAgentConfig, type AgentId } from "@/components/chat/agents/registry";
 import { useNewThread } from "@/components/chat/use-new-thread";
-import { AgentExtensionSlot } from "@/components/chat/agents/extensions";
+import { AgentExtensionSlot, getAgentExtension } from "@/components/chat/agents/extensions";
 import { AgentSuggestions } from "@/components/chat/agents/suggestions";
 import { ChatSurface } from "@/components/chat/chat-surface";
 import { ArtifactPanel } from "@/components/chat/artifact-panel";
@@ -33,6 +33,7 @@ export function AgentWorkspace({ agentId, threadId }: { agentId: AgentId; thread
   // the fields it needs for the active agent.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const artifact = selectArtifact(agent?.state as Record<string, unknown>, config);
+  const ArtifactRenderer = getAgentExtension(agentId)?.Artifact;
 
   const startNewThread = useNewThread(agentId);
 
@@ -58,7 +59,17 @@ export function AgentWorkspace({ agentId, threadId }: { agentId: AgentId; thread
             />
           }
           artifact={
-            artifact ? <ArtifactPanel view={artifact} onClose={() => dispatch("close")} /> : null
+            artifact ? (
+              ArtifactRenderer ? (
+                <ArtifactRenderer
+                  state={agent?.state}
+                  view={artifact}
+                  onClose={() => dispatch("close")}
+                />
+              ) : (
+                <ArtifactPanel view={artifact} onClose={() => dispatch("close")} />
+              )
+            ) : null
           }
         />
       </SidebarInset>

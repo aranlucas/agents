@@ -1,4 +1,6 @@
-import { render } from "@testing-library/react";
+import { act, render, waitFor } from "@testing-library/react";
+import { hydrateRoot, type Root } from "react-dom/client";
+import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@agents/ui", () => ({
@@ -6,7 +8,63 @@ vi.mock("@agents/ui", () => ({
 }));
 
 import { nextPanelState } from "./workspace-shell-utils";
-import { WorkspaceShell } from "./workspace-shell";
+import { useArtifactPanel, WorkspaceShell } from "./workspace-shell";
+
+const HYDRATION_AGENT_ID = "hydration-regression";
+const HYDRATION_STORAGE_KEY = `agents-artifact-panel:${HYDRATION_AGENT_ID}`;
+
+function StoredPanelHarness() {
+  const panel = useArtifactPanel(HYDRATION_AGENT_ID);
+  return (
+    <WorkspaceShell
+      hasArtifact
+      panelState={panel.state}
+      chat={<div data-testid="chat">CHAT_MARKER</div>}
+      artifact={<div data-testid="artifact">ARTIFACT_MARKER</div>}
+    />
+  );
+}
+
+describe("useArtifactPanel hydration", () => {
+  it("hydrates from a closed server snapshot before restoring stored split state", async () => {
+    window.localStorage.setItem(HYDRATION_STORAGE_KEY, "split");
+    const container = document.createElement("div");
+    document.body.append(container);
+    let root: Root | undefined;
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const recoverableErrors: unknown[] = [];
+
+    try {
+      container.innerHTML = renderToString(<StoredPanelHarness />);
+      const serverChatColumn = container.querySelector('[data-testid="chat"]')?.parentElement;
+      expect(serverChatColumn).not.toBeNull();
+      expect(serverChatColumn?.classList.contains("max-md:hidden")).toBe(false);
+
+      await act(async () => {
+        root = hydrateRoot(container, <StoredPanelHarness />, {
+          onRecoverableError: (error) => recoverableErrors.push(error),
+        });
+      });
+
+      await waitFor(() => {
+        const chatColumn = container.querySelector('[data-testid="chat"]')?.parentElement;
+        const artifactPanel = container.querySelector('[data-testid="artifact"]')?.parentElement;
+        expect(chatColumn).toHaveClass("max-md:hidden");
+        expect(artifactPanel).toHaveClass("max-md:flex", "md:w-[48%]");
+      });
+
+      expect(recoverableErrors).toEqual([]);
+      expect(consoleError).not.toHaveBeenCalled();
+    } finally {
+      if (root) {
+        await act(async () => root?.unmount());
+      }
+      consoleError.mockRestore();
+      container.remove();
+      window.localStorage.removeItem(HYDRATION_STORAGE_KEY);
+    }
+  });
+});
 
 describe("WorkspaceShell layout invariants", () => {
   // Regression guard for the mobile scroll bug: in the mobile flex-col layout the

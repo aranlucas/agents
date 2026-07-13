@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	d1migrations "agents/migrations/d1"
+	"agents/migrations/d1"
 )
 
 // RunMigrations applies the embedded idempotent D1 schema.

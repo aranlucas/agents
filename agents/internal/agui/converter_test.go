@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	aguievents "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
+	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
@@ -25,13 +25,36 @@ func TestConverterEmitsMCPAppActivityWithoutStateDelta(t *testing.T) {
 	if len(out) != 1 {
 		t.Fatalf("events = %#v", out)
 	}
-	activity, ok := out[0].(*aguievents.ActivitySnapshotEvent)
+	activity, ok := out[0].(*events.ActivitySnapshotEvent)
 	if !ok || activity.ActivityType != "mcp-apps" || activity.MessageID != "call-1" {
 		t.Fatalf("activity = %#v", out[0])
 	}
-	encoded, _ := json.Marshal(activity.Content)
+	if _, ok := activity.Content.(json.RawMessage); !ok {
+		t.Fatalf("activity content type = %T, want json.RawMessage", activity.Content)
+	}
+	encoded, err := json.Marshal(activity.Content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(encoded) != `{"resourceUri":"ui://excalidraw/mcp-app.html","serverId":"excalidraw"}` {
+		t.Fatalf("activity content was double encoded: %s", encoded)
+	}
 	if strings.Contains(string(encoded), "temp:mcp_app_activity") {
 		t.Fatalf("temporary state leaked: %s", encoded)
+	}
+}
+
+func TestConverterRejectsInvalidOrNullActivityContent(t *testing.T) {
+	for name, content := range map[string]json.RawMessage{"invalid": json.RawMessage(`{`), "null": json.RawMessage(`null`)} {
+		t.Run(name, func(t *testing.T) {
+			converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, nil, ToolScope{}, nil)
+			event := &session.Event{Actions: session.EventActions{StateDelta: map[string]any{
+				"temp:mcp_app_activity:call-1": mcpAppActivity{MessageID: "call-1", Content: content},
+			}}}
+			if out := converter.Convert(event); len(out) != 0 {
+				t.Fatalf("events = %#v", out)
+			}
+		})
 	}
 }
 
@@ -42,7 +65,7 @@ func TestConverterEmitsMCPAppActivityWithoutStateDelta(t *testing.T) {
 // returns its full event slice (see handler.go's run loop), so this
 // ordering guarantees no TOOL_CALL_START frame ever reaches the client
 // before the pending call exists server-side — otherwise a client that
-// resolves the call instantly could race ClientToolset's own (later)
+// resolves the call instantly could race the client proxy tool's own (later)
 // Register call and get ErrPendingToolNotFound.
 func TestConverterRegistersClientToolCallBeforeReturningToolCallEvents(t *testing.T) {
 	pending := newFakePending()
@@ -60,8 +83,12 @@ func TestConverterRegistersClientToolCallBeforeReturningToolCallEvents(t *testin
 
 	out := converter.Convert(event)
 
-	if _, ok := pending.pending[key(scope, "call-highlight-1")]; !ok {
+	record, ok := pending.pending[key(scope, "call-highlight-1")]
+	if !ok {
 		t.Fatalf("expected call-highlight-1 to be registered before Convert returned; events=%#v", out)
+	}
+	if string(record.args) != `{"row":"42"}` {
+		t.Fatalf("registered args = %s", record.args)
 	}
 	if len(out) != 3 {
 		t.Fatalf("expected TOOL_CALL_START/ARGS/END, got %#v", out)

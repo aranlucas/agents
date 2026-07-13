@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	aguievents "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
+	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/genai"
 )
@@ -91,7 +91,7 @@ var allowedValueFormats = map[string]bool{"": true, "text": true, "number": true
 // catalog-valid composition. It never returns nil and never fails the
 // calling tool — a misbehaving composer degrades the surface, it does not
 // break generate_a2ui.
-func composeA2UI(ctx context.Context, composer model.LLM, result TrendsResult) *aguievents.ActivitySnapshotEvent {
+func composeA2UI(ctx context.Context, composer model.LLM, result TrendsResult) *events.ActivitySnapshotEvent {
 	fallback := BuildA2UI(result)
 	if composer == nil || len(result.Columns) == 0 || len(result.Rows) == 0 {
 		return fallback

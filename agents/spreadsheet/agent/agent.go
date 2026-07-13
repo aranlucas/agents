@@ -1,14 +1,14 @@
 package spreadsheet
 
 import (
-	"agents/internal/functiontool"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
-	adktool "google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool/functiontool"
 )
 
-func New(m model.LLM, toolsets ...adktool.Toolset) (agent.Agent, error) {
+func New(m model.LLM, toolsets ...tool.Toolset) (agent.Agent, error) {
 	tools, err := spreadsheetTools()
 	if err != nil {
 		return nil, err
@@ -23,7 +23,7 @@ func New(m model.LLM, toolsets ...adktool.Toolset) (agent.Agent, error) {
 	})
 }
 
-func spreadsheetTools() ([]adktool.Tool, error) {
+func spreadsheetTools() ([]tool.Tool, error) {
 	createSheetTool, err := functiontool.New(functiontool.Config{
 		Name:        "create_sheet",
 		Description: "Create a typed sheet; the first row should be headers.",
@@ -72,7 +72,7 @@ func spreadsheetTools() ([]adktool.Tool, error) {
 		return nil, err
 	}
 
-	return []adktool.Tool{
+	return []tool.Tool{
 		createSheetTool,
 		updateSheetTool,
 		appendRowsTool,

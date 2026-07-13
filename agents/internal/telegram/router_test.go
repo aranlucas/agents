@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	clerkbackend "agents/internal/clerk"
+	"agents/internal/clerk"
 )
 
 func TestTopicSessionUsesSharedGroupPartition(t *testing.T) {
@@ -50,23 +50,23 @@ func TestAllowedChatIDsFailClosed(t *testing.T) {
 	}
 }
 
-type fakeClerk struct{ state clerkbackend.ConnectionState }
+type fakeClerk struct{ state clerk.ConnectionState }
 
 func (f fakeClerk) MirrorTelegramLink(context.Context, int64, string) error { return nil }
 func (f fakeClerk) MirrorTelegramUnlink(context.Context, int64) error       { return nil }
 func (f fakeClerk) LinkedUserID(context.Context, int64) (string, error)     { return "", nil }
-func (f fakeClerk) OAuthConnections(context.Context, string) (clerkbackend.ConnectionState, error) {
+func (f fakeClerk) OAuthConnections(context.Context, string) (clerk.ConnectionState, error) {
 	return f.state, nil
 }
 
 func TestCredentialGatesUseLinkedSenderConnections(t *testing.T) {
 	message := Message{Chat: Chat{ID: 1, Type: "private"}, From: &User{ID: 9}, Text: "make a wellness plan"}
 	identity := SessionIdentityFor(message, AccountLink{ClerkUserID: "user-a"})
-	_, err := NewRouter(Config{}, fakeClerk{state: clerkbackend.ConnectionState{Kroger: true}}).Route(t.Context(), message, identity)
+	_, err := NewRouter(Config{}, fakeClerk{state: clerk.ConnectionState{Kroger: true}}).Route(t.Context(), message, identity)
 	if !errors.Is(err, ErrCredentialRequired) {
 		t.Fatalf("error=%v", err)
 	}
-	route, err := NewRouter(Config{}, fakeClerk{state: clerkbackend.ConnectionState{Kroger: true, Strava: true}}).Route(t.Context(), message, identity)
+	route, err := NewRouter(Config{}, fakeClerk{state: clerk.ConnectionState{Kroger: true, Strava: true}}).Route(t.Context(), message, identity)
 	if err != nil || route.Agent != "wellness" {
 		t.Fatalf("route=%#v err=%v", route, err)
 	}

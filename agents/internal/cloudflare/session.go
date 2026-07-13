@@ -1,6 +1,7 @@
 package cloudflare
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -9,7 +10,6 @@ import (
 	"fmt"
 	"iter"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -21,6 +21,32 @@ import (
 const sessionTTL = time.Hour
 
 var ErrStaleSession = errors.New("session has been modified in storage; reload it before appending events")
+
+type scopedStateRow struct {
+	StateJSON string `json:"state_json"`
+}
+
+type sessionStateRow struct {
+	StateJSON string `json:"state_json"`
+	UpdatedAt int64  `json:"updated_at"`
+}
+
+type listedSessionRow struct {
+	SessionID     string `json:"session_id"`
+	UserID        string `json:"user_id"`
+	StateJSON     string `json:"state_json"`
+	UpdatedAt     int64  `json:"updated_at"`
+	AppStateJSON  string `json:"app_state_json"`
+	UserStateJSON string `json:"user_state_json"`
+}
+
+type storedEventRow struct {
+	EventJSON string `json:"event_json"`
+}
+
+type sessionPresenceRow struct {
+	Present int `json:"present"`
+}
 
 // SessionService persists ADK sessions and events exclusively in D1.
 type SessionService struct {
@@ -50,15 +76,16 @@ func (s *SessionService) Create(ctx context.Context, req *session.CreateRequest)
 		return nil, errors.New("invalid session ID")
 	}
 	appState, userState, state := splitState(req.State)
+	state = withoutNil(state)
 	encoded, err := json.Marshal(state)
 	if err != nil {
 		return nil, errors.New("encode session state")
 	}
-	appJSON, err := json.Marshal(appState)
+	appJSON, err := json.Marshal(withoutNil(appState))
 	if err != nil {
 		return nil, errors.New("encode app state")
 	}
-	userJSON, err := json.Marshal(userState)
+	userJSON, err := json.Marshal(withoutNil(userState))
 	if err != nil {
 		return nil, errors.New("encode user state")
 	}
@@ -93,7 +120,10 @@ func (s *SessionService) Create(ctx context.Context, req *session.CreateRequest)
 	if len(result) < 5 {
 		return nil, errors.New("create session returned no result")
 	}
-	state = mergeScopedRows(state, result[3].Rows, result[4].Rows)
+	state, err = mergeScopedRows(state, result[3].Rows, result[4].Rows)
+	if err != nil {
+		return nil, err
+	}
 	return &session.CreateResponse{Session: newStoredSession(id, req.AppName, req.UserID, state, nil, now)}, nil
 }
 
@@ -122,7 +152,10 @@ func (s *SessionService) Get(ctx context.Context, req *session.GetRequest) (*ses
 	if err != nil {
 		return nil, err
 	}
-	state = mergeScopedRows(state, results[1].Rows, results[2].Rows)
+	state, err = mergeScopedRows(state, results[1].Rows, results[2].Rows)
+	if err != nil {
+		return nil, err
+	}
 	events, err := decodeEvents(results[3].Rows)
 	if err != nil {
 		return nil, err
@@ -154,21 +187,29 @@ func (s *SessionService) List(ctx context.Context, req *session.ListRequest) (*s
 	if len(results) == 0 {
 		return response, nil
 	}
-	for _, row := range results[0].Rows {
-		id, ok := row["session_id"].(string)
-		if !ok {
+	for _, raw := range results[0].Rows {
+		var row listedSessionRow
+		if err := json.Unmarshal(raw, &row); err != nil {
+			return nil, errors.New("decode listed session")
+		}
+		if !validIdentity(row.SessionID) {
 			return nil, errors.New("decode session ID")
 		}
-		userID, ok := row["user_id"].(string)
-		if !ok {
+		if !validIdentity(row.UserID) {
 			return nil, errors.New("decode session user ID")
 		}
-		state, updated, err := decodeSessionRow(row)
+		if row.UpdatedAt <= 0 {
+			return nil, errors.New("decode session timestamp")
+		}
+		state, err := decodeStateJSON(row.StateJSON)
 		if err != nil {
 			return nil, err
 		}
-		state = mergeScopedJSON(state, stringValue(row["app_state_json"]), stringValue(row["user_state_json"]))
-		response.Sessions = append(response.Sessions, newStoredSession(id, req.AppName, userID, state, nil, updated))
+		state, err = mergeScopedJSON(state, row.AppStateJSON, row.UserStateJSON)
+		if err != nil {
+			return nil, err
+		}
+		response.Sessions = append(response.Sessions, newStoredSession(row.SessionID, req.AppName, row.UserID, state, nil, time.UnixMilli(row.UpdatedAt).UTC()))
 	}
 	return response, nil
 }
@@ -194,6 +235,10 @@ func (s *SessionService) AppendEvent(ctx context.Context, current session.Sessio
 	}
 	if !validIdentity(current.AppName()) || !validIdentity(current.UserID()) || !validIdentity(current.ID()) {
 		return errors.New("invalid session identity")
+	}
+	stored, ok := current.(*storedSession)
+	if !ok {
+		return fmt.Errorf("unexpected session type %T", current)
 	}
 	if event.Partial {
 		return nil
@@ -285,18 +330,16 @@ func (s *SessionService) AppendEvent(ctx context.Context, current session.Sessio
 			return fmt.Errorf("check session revision: %w", lookupErr)
 		}
 		if len(active) > 0 && len(active[0].Rows) > 0 {
+			var row sessionPresenceRow
+			if err := json.Unmarshal(active[0].Rows[0], &row); err != nil || row.Present != 1 {
+				return errors.New("decode session presence")
+			}
 			return ErrStaleSession
 		}
 		return agui.ErrSessionNotFound
 	}
-	for key, value := range event.Actions.StateDelta {
-		if err := current.State().Set(key, value); err != nil {
-			return fmt.Errorf("apply state delta: %w", err)
-		}
-	}
-	if stored, ok := current.(*storedSession); ok {
-		stored.append(event, time.UnixMilli(updatedMillis).UTC())
-	}
+	stored.state.applyDelta(event.Actions.StateDelta)
+	stored.append(event, time.UnixMilli(updatedMillis).UTC())
 	return nil
 }
 
@@ -323,6 +366,16 @@ func withoutTemporary(input map[string]any) map[string]any {
 	return output
 }
 
+func withoutNil(input map[string]any) map[string]any {
+	output := make(map[string]any, len(input))
+	for key, value := range input {
+		if !isStateDeletion(value) {
+			output[key] = value
+		}
+	}
+	return output
+}
+
 func splitState(input map[string]any) (app, user, local map[string]any) {
 	app, user, local = make(map[string]any), make(map[string]any), make(map[string]any)
 	for key, value := range input {
@@ -340,40 +393,47 @@ func splitState(input map[string]any) (app, user, local map[string]any) {
 	return app, user, local
 }
 
-func mergeScopedRows(local map[string]any, appRows, userRows []map[string]any) map[string]any {
+func mergeScopedRows(local map[string]any, appRows, userRows []json.RawMessage) (map[string]any, error) {
 	var appJSON, userJSON string
 	if len(appRows) > 0 {
-		appJSON = stringValue(appRows[0]["state_json"])
+		var row scopedStateRow
+		if err := json.Unmarshal(appRows[0], &row); err != nil || row.StateJSON == "" {
+			return nil, errors.New("decode app state row")
+		}
+		appJSON = row.StateJSON
 	}
 	if len(userRows) > 0 {
-		userJSON = stringValue(userRows[0]["state_json"])
+		var row scopedStateRow
+		if err := json.Unmarshal(userRows[0], &row); err != nil || row.StateJSON == "" {
+			return nil, errors.New("decode user state row")
+		}
+		userJSON = row.StateJSON
 	}
 	return mergeScopedJSON(local, appJSON, userJSON)
 }
 
-func mergeScopedJSON(local map[string]any, appJSON, userJSON string) map[string]any {
+func mergeScopedJSON(local map[string]any, appJSON, userJSON string) (map[string]any, error) {
 	merged := make(map[string]any, len(local))
 	for key, value := range local {
-		merged[key] = value
+		if value != nil {
+			merged[key] = value
+		}
 	}
 	for prefix, raw := range map[string]string{session.KeyPrefixApp: appJSON, session.KeyPrefixUser: userJSON} {
 		if raw == "" {
 			continue
 		}
 		var values map[string]any
-		if json.Unmarshal([]byte(raw), &values) != nil {
-			continue
+		if err := json.Unmarshal([]byte(raw), &values); err != nil || values == nil {
+			return nil, errors.New("decode scoped state")
 		}
 		for key, value := range values {
-			merged[prefix+key] = value
+			if value != nil {
+				merged[prefix+key] = value
+			}
 		}
 	}
-	return merged
-}
-
-func stringValue(value any) string {
-	text, _ := value.(string)
-	return text
+	return merged, nil
 }
 
 func afterMillis(after time.Time) int64 {
@@ -390,9 +450,10 @@ func eventLimit(requested int) int {
 	return requested
 }
 
-// stateUpdateExpression implements ADK's maps.Copy delta semantics in SQLite:
-// every top-level value replaces the old value wholesale, including objects
-// and null. json_patch instead recursively merges objects and deletes nulls.
+// stateUpdateExpression applies the gateway's cross-language state-delta
+// semantics in SQLite: JSON values replace the old top-level value and values
+// that encode as JSON null (including typed nils) remove the key. json_patch
+// cannot be used because it recursively merges object values.
 func stateUpdateExpression(column string, delta map[string]any) (string, []any, error) {
 	if len(delta) == 0 {
 		return column, nil, nil
@@ -402,64 +463,87 @@ func stateUpdateExpression(column string, delta map[string]any) (string, []any, 
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
-	args := []string{column}
-	params := make([]any, 0, len(keys)*2)
+	expression := column
+	setArgs := []string{column}
+	setParams := make([]any, 0, len(keys)*2)
+	removeArgs := make([]string, 0, len(keys)+1)
+	removeParams := make([]any, 0, len(keys))
 	for _, key := range keys {
-		encoded, err := json.Marshal(delta[key])
+		encoded, deletion, err := encodeStateValue(delta[key])
 		if err != nil {
 			return "", nil, err
 		}
-		args = append(args, `'$.' || json_quote(?)`, `json(?)`)
-		params = append(params, key, string(encoded))
+		if deletion {
+			removeArgs = append(removeArgs, `'$.' || json_quote(?)`)
+			removeParams = append(removeParams, key)
+			continue
+		}
+		setArgs = append(setArgs, `'$.' || json_quote(?)`, `json(?)`)
+		setParams = append(setParams, key, string(encoded))
 	}
-	return "json_set(" + strings.Join(args, ", ") + ")", params, nil
+	if len(setArgs) > 1 {
+		expression = "json_set(" + strings.Join(setArgs, ", ") + ")"
+	}
+	if len(removeArgs) > 0 {
+		removeArgs = append([]string{expression}, removeArgs...)
+		expression = "json_remove(" + strings.Join(removeArgs, ", ") + ")"
+	}
+	return expression, append(setParams, removeParams...), nil
 }
 
-func decodeSessionRow(row map[string]any) (map[string]any, time.Time, error) {
-	raw, ok := row["state_json"].(string)
-	if !ok {
-		return nil, time.Time{}, errors.New("decode session state")
+func encodeStateValue(value any) (json.RawMessage, bool, error) {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return nil, false, err
+	}
+	return encoded, bytes.Equal(bytes.TrimSpace(encoded), []byte("null")), nil
+}
+
+func isStateDeletion(value any) bool {
+	_, deletion, err := encodeStateValue(value)
+	return err == nil && deletion
+}
+
+func decodeSessionRow(raw json.RawMessage) (map[string]any, time.Time, error) {
+	var row sessionStateRow
+	if err := json.Unmarshal(raw, &row); err != nil || row.UpdatedAt <= 0 {
+		return nil, time.Time{}, errors.New("decode session row")
+	}
+	state, err := decodeStateJSON(row.StateJSON)
+	if err != nil {
+		return nil, time.Time{}, err
+	}
+	return state, time.UnixMilli(row.UpdatedAt).UTC(), nil
+}
+
+func decodeStateJSON(raw string) (map[string]any, error) {
+	if raw == "" {
+		return nil, errors.New("decode session state")
 	}
 	var state map[string]any
 	if err := json.Unmarshal([]byte(raw), &state); err != nil {
-		return nil, time.Time{}, errors.New("decode session state")
+		return nil, errors.New("decode session state")
 	}
-	millis, err := int64Value(row["updated_at"])
-	if err != nil {
-		return nil, time.Time{}, errors.New("decode session timestamp")
+	if state == nil {
+		return nil, errors.New("decode session state")
 	}
-	return state, time.UnixMilli(millis).UTC(), nil
+	return state, nil
 }
 
-func decodeEvents(rows []map[string]any) ([]*session.Event, error) {
+func decodeEvents(rows []json.RawMessage) ([]*session.Event, error) {
 	events := make([]*session.Event, 0, len(rows))
-	for _, row := range rows {
-		raw, ok := row["event_json"].(string)
-		if !ok {
+	for _, raw := range rows {
+		var row storedEventRow
+		if err := json.Unmarshal(raw, &row); err != nil || row.EventJSON == "" {
 			return nil, errors.New("decode session event")
 		}
 		var event session.Event
-		if err := json.Unmarshal([]byte(raw), &event); err != nil {
+		if err := json.Unmarshal([]byte(row.EventJSON), &event); err != nil {
 			return nil, errors.New("decode session event")
 		}
 		events = append(events, &event)
 	}
 	return events, nil
-}
-
-func int64Value(value any) (int64, error) {
-	switch value := value.(type) {
-	case float64:
-		return int64(value), nil
-	case json.Number:
-		return value.Int64()
-	case int64:
-		return value, nil
-	case string:
-		return strconv.ParseInt(value, 10, 64)
-	default:
-		return 0, fmt.Errorf("unexpected numeric type %T", value)
-	}
 }
 
 func reverse(events []*session.Event) {
@@ -518,6 +602,18 @@ func (s *storedState) Set(key string, value any) error {
 	defer s.mu.Unlock()
 	s.values[key] = value
 	return nil
+}
+
+func (s *storedState) applyDelta(delta map[string]any) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for key, value := range delta {
+		if isStateDeletion(value) {
+			delete(s.values, key)
+			continue
+		}
+		s.values[key] = value
+	}
 }
 
 func (s *storedState) All() iter.Seq2[string, any] {

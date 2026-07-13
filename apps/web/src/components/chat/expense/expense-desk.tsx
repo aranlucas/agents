@@ -186,23 +186,25 @@ export function ExpenseDesk({ state, isRunning, onDecision, onPrompt }: ExpenseD
                   </p>
                 ) : null}
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  disabled={isRunning}
-                  onClick={() => onDecision(selected.id, "approved")}
-                >
-                  Approve
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={isRunning}
-                  onClick={() => onDecision(selected.id, "rejected")}
-                >
-                  Reject
-                </Button>
-              </div>
+              {selected.status === "needs_review" ? (
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    disabled={isRunning}
+                    onClick={() => onDecision(selected.id, "approved")}
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isRunning}
+                    onClick={() => onDecision(selected.id, "rejected")}
+                  >
+                    Reject
+                  </Button>
+                </div>
+              ) : null}
             </div>
           ) : (
             <div className="flex h-full items-center justify-center text-sm text-[#c7c0b4]">

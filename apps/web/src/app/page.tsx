@@ -21,9 +21,9 @@ const AGENTS: Agent[] = [
     href: "/console/travel",
     name: "Trip Studio",
     tagline: "Real-time itinerary planning",
-    description: "Co-plan an itinerary, stream day-by-day, and book with approval.",
+    description: "Co-plan an itinerary, stream day-by-day, and book when ready.",
     cta: "Plan trip",
-    tags: ["Travel", "Approvals", "Streaming"],
+    tags: ["Travel", "Booking", "Streaming"],
     theme: "travel",
   },
   {
@@ -151,8 +151,8 @@ export default function Home() {
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-(--ink-soft) md:text-base">
               A compact control surface for whiteboard, travel, grocery, fitness, wellness, expense,
-              oral boards, research, spreadsheet, and slides agents. Pick a workspace, give
-              direction in chat, and watch the live artifact update.
+              oral boards, trends, resume, research, spreadsheet, and slides agents. Pick a
+              workspace, give direction in chat, and watch the live artifact update.
             </p>
           </div>
           <AgentKey />

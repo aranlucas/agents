@@ -14,7 +14,7 @@ import (
 
 	"agents/internal/config"
 	"agents/internal/rate"
-	adkmodel "google.golang.org/adk/v2/model"
+	"google.golang.org/adk/v2/model"
 	"google.golang.org/genai"
 )
 
@@ -167,13 +167,13 @@ func TestGenerateContentFallsBackOnlyForRetryableFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	responses, errs := collect(adapter.GenerateContent(context.Background(), &adkmodel.LLMRequest{Contents: genai.Text("hello")}, false))
+	responses, errs := collect(adapter.GenerateContent(context.Background(), &model.LLMRequest{Contents: genai.Text("hello")}, false))
 	if len(errs) != 0 || responses[0].Content.Parts[0].Text != "fallback" || primaryCalls.Load() != 1 || fallbackCalls.Load() != 1 {
 		t.Fatalf("retryable result = %#v %v calls=%d/%d", responses, errs, primaryCalls.Load(), fallbackCalls.Load())
 	}
 
 	primaryStatus.Store(http.StatusUnauthorized)
-	_, errs = collect(adapter.GenerateContent(context.Background(), &adkmodel.LLMRequest{Contents: genai.Text("secret prompt")}, false))
+	_, errs = collect(adapter.GenerateContent(context.Background(), &model.LLMRequest{Contents: genai.Text("secret prompt")}, false))
 	if len(errs) != 1 || fallbackCalls.Load() != 1 {
 		t.Fatalf("terminal errors/calls = %v/%d", errs, fallbackCalls.Load())
 	}
@@ -199,7 +199,7 @@ func TestCircuitBreakerSkipsRepeatedlyFailingPrimary(t *testing.T) {
 	first.Fallbacks = []string{"fallback"}
 	adapter, _ := NewMulti(first, map[string]config.Provider{"fallback": testProvider("fallback", fallback.URL)}, primary.Client(), allowLimiter{})
 	for range 4 {
-		_, errs := collect(adapter.GenerateContent(context.Background(), &adkmodel.LLMRequest{Contents: genai.Text("hello")}, false))
+		_, errs := collect(adapter.GenerateContent(context.Background(), &model.LLMRequest{Contents: genai.Text("hello")}, false))
 		if len(errs) != 0 {
 			t.Fatal(errs)
 		}
@@ -219,7 +219,7 @@ func TestLimiterOverflowUsesFallback(t *testing.T) {
 	primary := testProvider("primary", server.URL)
 	primary.Fallbacks = []string{"fallback"}
 	adapter, _ := NewMulti(primary, map[string]config.Provider{"fallback": testProvider("fallback", server.URL)}, server.Client(), selectiveLimiter{})
-	responses, errs := collect(adapter.GenerateContent(context.Background(), &adkmodel.LLMRequest{Contents: genai.Text("hello")}, false))
+	responses, errs := collect(adapter.GenerateContent(context.Background(), &model.LLMRequest{Contents: genai.Text("hello")}, false))
 	if len(errs) != 0 || responses[0].Content.Parts[0].Text != "ok" {
 		t.Fatalf("responses/errors = %#v/%v", responses, errs)
 	}
@@ -241,7 +241,7 @@ func TestTruncatedStreamReturnsRetryableErrorWithoutFallbackAfterEmission(t *tes
 	first := testProvider("primary", primary.URL)
 	first.Fallbacks = []string{"fallback"}
 	adapter, _ := NewMulti(first, map[string]config.Provider{"fallback": testProvider("fallback", fallback.URL)}, primary.Client(), allowLimiter{})
-	responses, errs := collect(adapter.GenerateContent(context.Background(), &adkmodel.LLMRequest{Contents: genai.Text("hello")}, true))
+	responses, errs := collect(adapter.GenerateContent(context.Background(), &model.LLMRequest{Contents: genai.Text("hello")}, true))
 	// The SDK treats connection-close-without-[DONE] as a clean stream end.
 	// We get the partial text in a TurnComplete response with no error.
 	if len(responses) != 2 || len(errs) != 0 || fallbackCalls.Load() != 0 {
@@ -290,8 +290,8 @@ func TestGenerateContentRejectsMalformedToolArguments(t *testing.T) {
 	}
 }
 
-func toolRequest() *adkmodel.LLMRequest {
-	return &adkmodel.LLMRequest{
+func toolRequest() *model.LLMRequest {
+	return &model.LLMRequest{
 		Contents: genai.Text("plan a trip"),
 		Config: &genai.GenerateContentConfig{
 			Tools: []*genai.Tool{{
@@ -321,8 +321,8 @@ func (selectiveLimiter) Acquire(_ context.Context, provider string, _ int) error
 	return nil
 }
 
-func collect(sequence iter.Seq2[*adkmodel.LLMResponse, error]) ([]*adkmodel.LLMResponse, []error) {
-	var responses []*adkmodel.LLMResponse
+func collect(sequence iter.Seq2[*model.LLMResponse, error]) ([]*model.LLMResponse, []error) {
+	var responses []*model.LLMResponse
 	var errs []error
 	for response, err := range sequence {
 		if response != nil {

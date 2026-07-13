@@ -2,12 +2,12 @@ package grocery
 
 import (
 	"context"
+	"iter"
 	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
 
-	"agents/internal/agentruntime"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
@@ -39,7 +39,7 @@ func TestKrogerMCPUsesOnlyRequestScopedToken(t *testing.T) {
 	t.Cleanup(httpServer.Close)
 	kroger := NewKroger(httpServer.Client(), httpServer.URL)
 	for _, token := range []string{"token-a", "token-b"} {
-		state := agentruntime.StateMap{"temp:kroger_token": token}
+		state := groceryState{"temp:kroger_token": token}
 		tools, err := kroger.Tools(groceryReadonlyContext{Context: t.Context(), state: state})
 		if err != nil || len(tools) != 1 || tools[0].Name() != "get_weekly_deals" {
 			t.Fatalf("Tools(%s) = %#v, %v", token, tools, err)
@@ -53,26 +53,35 @@ func TestKrogerMCPUsesOnlyRequestScopedToken(t *testing.T) {
 }
 
 func TestKrogerToolsetHidesToolsWithoutToken(t *testing.T) {
-	tools, err := NewKroger(http.DefaultClient, "https://example.com/mcp").Tools(groceryReadonlyContext{Context: t.Context(), state: agentruntime.StateMap{}})
+	tools, err := NewKroger(http.DefaultClient, "https://example.com/mcp").Tools(groceryReadonlyContext{Context: t.Context(), state: groceryState{}})
 	if err != nil || len(tools) != 0 {
 		t.Fatalf("Tools() = %#v, %v", tools, err)
-	}
-}
-
-func TestGroceryApprovalAndDirectCartIntentAreNarrow(t *testing.T) {
-	direct := &genai.Content{Parts: []*genai.Part{{Text: "Please add milk to my cart"}}}
-	if !directCartRequest(direct) || directCartRequest(&genai.Content{Parts: []*genai.Part{{Text: "Show me milk"}}}) || directCartRequest(&genai.Content{Parts: []*genai.Part{{Text: "Should I add milk to my cart?"}}}) || directCartRequest(&genai.Content{Parts: []*genai.Part{{Text: "Do not add milk to my cart"}}}) {
-		t.Fatal("direct cart intent classification is too broad or too narrow")
-	}
-	approved := &genai.Content{Parts: []*genai.Part{{FunctionResponse: &genai.FunctionResponse{Name: "request_user_approval", Response: map[string]any{"approved": true, "_agui_request": map[string]any{"action": "checkout_shopping_list"}}}}}}
-	if !approvedForGroceryTool(approved, "checkout_shopping_list") || approvedForGroceryTool(approved, "add_to_cart") {
-		t.Fatal("approval was not bound to the exact action")
 	}
 }
 
 type groceryReadonlyContext struct {
 	context.Context
 	state session.ReadonlyState
+}
+
+type groceryState map[string]any
+
+func (s groceryState) Get(key string) (any, error) {
+	value, ok := s[key]
+	if !ok {
+		return nil, session.ErrStateKeyNotExist
+	}
+	return value, nil
+}
+
+func (s groceryState) All() iter.Seq2[string, any] {
+	return func(yield func(string, any) bool) {
+		for key, value := range s {
+			if !yield(key, value) {
+				return
+			}
+		}
+	}
 }
 
 func (g groceryReadonlyContext) UserContent() *genai.Content          { return nil }

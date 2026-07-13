@@ -3,11 +3,6 @@ import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("next/font/google", () => ({
-  Schibsted_Grotesk: () => ({ variable: "font-sans" }),
-  JetBrains_Mono: () => ({ variable: "font-mono" }),
-}));
-
 vi.mock("@agents/ui/globals.css", () => ({}));
 vi.mock("./globals.css", () => ({}));
 

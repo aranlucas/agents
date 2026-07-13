@@ -7,6 +7,7 @@ import {
   toFitnessState,
   toGroceryState,
   toOralBoardsState,
+  toResumeState,
   toTripState,
   toWellnessState,
 } from "./agent-state";
@@ -167,6 +168,48 @@ describe("toWellnessState", () => {
     expect(toWellnessState({ last_delegation: { a: 1 } }).last_delegation).toEqual({ a: 1 });
     expect(toWellnessState({ last_delegation: "x" }).last_delegation).toBeUndefined();
     expect(toWellnessState({ status: "planning" }).status).toBe("planning");
+  });
+
+  it("maps the backend training plan field", () => {
+    expect(toWellnessState({ training_plan: "Three easy sessions" }).training_plan).toBe(
+      "Three easy sessions",
+    );
+  });
+});
+
+describe("toResumeState", () => {
+  it("coerces the role-fit contract defensively", () => {
+    expect(
+      toResumeState({
+        target_role: "Staff AI Platform Engineer",
+        job_description: "Build reliable agent infrastructure.",
+        fit_summary: "Strong platform and applied AI match.",
+        gaps: ["No direct model-training ownership", 42],
+        tailored_bullets: ["Built Ask DoorDash", null, "Led MCP integrations"],
+        status: "ready",
+        review_summary: "Grounded in the source resume.",
+      }),
+    ).toEqual({
+      target_role: "Staff AI Platform Engineer",
+      job_description: "Build reliable agent infrastructure.",
+      fit_summary: "Strong platform and applied AI match.",
+      gaps: ["No direct model-training ownership"],
+      tailored_bullets: ["Built Ask DoorDash", "Led MCP integrations"],
+      status: "ready",
+      review_summary: "Grounded in the source resume.",
+    });
+  });
+
+  it("returns the backend initial state for invalid input", () => {
+    expect(toResumeState(undefined)).toEqual({
+      target_role: "",
+      job_description: "",
+      fit_summary: "",
+      gaps: [],
+      tailored_bullets: [],
+      status: "idle",
+      review_summary: "",
+    });
   });
 });
 

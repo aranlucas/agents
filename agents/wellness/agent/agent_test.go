@@ -95,19 +95,35 @@ func TestWellnessTaskAgentsShareStateInRequiredOrder(t *testing.T) {
 	if state["training_plan"] != "Monday: easy run" || state["meal_plan"] != "Monday: salmon bowl" || state["weekly_plan"] != validWeeklyPlan() || state["status"] != StatusReady {
 		t.Fatalf("state = %#v", state)
 	}
+	if fitnessModel.sawTransferTool || groceryModel.sawTransferTool {
+		t.Fatalf("task child advertised transfer_to_agent: fitness=%t grocery=%t", fitnessModel.sawTransferTool, groceryModel.sawTransferTool)
+	}
 }
 
 type scriptedModel struct {
-	mu        sync.Mutex
-	responses []*model.LLMResponse
-	index     int
+	mu              sync.Mutex
+	responses       []*model.LLMResponse
+	index           int
+	sawTransferTool bool
 }
 
 func (*scriptedModel) Name() string { return "scripted" }
-func (m *scriptedModel) GenerateContent(context.Context, *model.LLMRequest, bool) iter.Seq2[*model.LLMResponse, error] {
+func (m *scriptedModel) GenerateContent(_ context.Context, request *model.LLMRequest, _ bool) iter.Seq2[*model.LLMResponse, error] {
 	m.mu.Lock()
 	index := m.index
 	m.index++
+	if request != nil && request.Config != nil {
+		for _, tools := range request.Config.Tools {
+			if tools == nil {
+				continue
+			}
+			for _, declaration := range tools.FunctionDeclarations {
+				if declaration != nil && declaration.Name == "transfer_to_agent" {
+					m.sawTransferTool = true
+				}
+			}
+		}
+	}
 	m.mu.Unlock()
 	return func(yield func(*model.LLMResponse, error) bool) {
 		if index < len(m.responses) {

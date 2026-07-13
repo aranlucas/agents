@@ -27,8 +27,8 @@ type Statement struct {
 
 // Result contains rows and mutation metadata returned for a statement.
 type Result struct {
-	Rows    []map[string]any `json:"results"`
-	Success bool             `json:"success"`
+	Rows    []json.RawMessage `json:"results"`
+	Success bool              `json:"success"`
 	Meta    struct {
 		Changes int64 `json:"changes"`
 	} `json:"meta"`
@@ -72,13 +72,9 @@ func (d *D1) Run(ctx context.Context, statements ...Statement) ([]Result, error)
 	if len(statements) == 0 {
 		return nil, errors.New("at least one D1 statement is required")
 	}
-	batch := make([]map[string]any, len(statements))
-	for i, statement := range statements {
-		batch[i] = map[string]any{"sql": statement.SQL, "params": statement.Params}
-	}
 	page, err := d.client.D1.Database.Query(ctx, d.databaseID, d1.DatabaseQueryParams{
 		AccountID: cfapi.F(d.accountID),
-		Body:      d1.DatabaseQueryParamsBody{Batch: cfapi.F[any](batch)},
+		Body:      d1.DatabaseQueryParamsBody{Batch: cfapi.F[any](statements)},
 	})
 	if err != nil {
 		// The SDK error can include the response body. Do not risk reflecting

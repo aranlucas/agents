@@ -53,8 +53,8 @@ func FetchActivities(ctx agent.Context, input FetchActivitiesArgs, repository fi
 	snapshot, err := repository.Snapshot(ctx, ctx.UserID(), limit)
 	if err != nil {
 		state.Status = StatusIdle
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
+		if err := ctx.State().Set("status", state.Status); err != nil {
+			return Result{}, err
 		}
 		return fitnessFailure("fitness_data_load_error", "Synced fitness activities could not be loaded."), nil
 	}
@@ -63,7 +63,19 @@ func FetchActivities(ctx agent.Context, input FetchActivitiesArgs, repository fi
 	state.Activities = snapshot.Activities
 	state.ActivitiesSyncedAt = snapshot.SyncedAt
 	state.Status = StatusPlanning
-	if err := publishState(ctx, state); err != nil {
+	if err := ctx.State().Set("fitness_data_connected", state.FitnessDataConnected); err != nil {
+		return Result{}, err
+	}
+	if err := ctx.State().Set("activity_source", state.ActivitySource); err != nil {
+		return Result{}, err
+	}
+	if err := ctx.State().Set("activities", state.Activities); err != nil {
+		return Result{}, err
+	}
+	if err := ctx.State().Set("activities_synced_at", state.ActivitiesSyncedAt); err != nil {
+		return Result{}, err
+	}
+	if err := ctx.State().Set("status", state.Status); err != nil {
 		return Result{}, err
 	}
 	if !snapshot.Connected {
@@ -75,12 +87,16 @@ func FetchActivities(ctx agent.Context, input FetchActivitiesArgs, repository fi
 func SetObjectiveResearch(ctx agent.Context, input ResearchArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := setObjectiveResearch(&state, input)
-	if err == nil && result.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
-		}
+	if err != nil || !result.OK {
+		return result, err
 	}
-	return result, err
+	if err := ctx.State().Set("objective_research", state.ObjectiveResearch); err != nil {
+		return Result{}, err
+	}
+	if err := ctx.State().Set("status", state.Status); err != nil {
+		return Result{}, err
+	}
+	return result, nil
 }
 
 func setObjectiveResearch(state *FitnessState, input ResearchArgs) (Result, error) {
@@ -94,12 +110,16 @@ func setObjectiveResearch(state *FitnessState, input ResearchArgs) (Result, erro
 func SetTrainingPlan(ctx agent.Context, input TrainingPlanArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := setTrainingPlan(&state, input)
-	if err == nil && result.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
-		}
+	if err != nil || !result.OK {
+		return result, err
 	}
-	return result, err
+	if err := ctx.State().Set("training_plan", state.TrainingPlan); err != nil {
+		return Result{}, err
+	}
+	if err := ctx.State().Set("status", state.Status); err != nil {
+		return Result{}, err
+	}
+	return result, nil
 }
 
 func setTrainingPlan(state *FitnessState, input TrainingPlanArgs) (Result, error) {
@@ -113,12 +133,16 @@ func setTrainingPlan(state *FitnessState, input TrainingPlanArgs) (Result, error
 func MarkPlanReady(ctx agent.Context, input ReadyArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := markPlanReady(&state, input)
-	if err == nil && result.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
-		}
+	if err != nil || !result.OK {
+		return result, err
 	}
-	return result, err
+	if err := ctx.State().Set("status", state.Status); err != nil {
+		return Result{}, err
+	}
+	if err := ctx.State().Set("review_summary", state.ReviewSummary); err != nil {
+		return Result{}, err
+	}
+	return result, nil
 }
 
 func markPlanReady(state *FitnessState, input ReadyArgs) (Result, error) {

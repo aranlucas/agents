@@ -128,7 +128,7 @@ func functionCall(id, name string, args map[string]any) *model.LLMResponse {
 // trends catalog ID (the same mechanism internal/agui/converter.go turns
 // into an ACTIVITY_SNAPSHOT event).
 func TestTrendsAgentPipelineWritesStateAndEmitsA2UI(t *testing.T) {
-	const generatedSQL = "SELECT term, rank FROM `bigquery-public-data.google_trends.top_terms` LIMIT 10"
+	const generatedSQL = "SELECT\n  term, rank\nFROM `bigquery-public-data.google_trends.top_terms`\nLIMIT 10;"
 
 	generatorModel := &scriptedModel{responses: []*model.LLMResponse{
 		{Content: genai.NewContentFromText(generatedSQL, genai.RoleModel), TurnComplete: true},

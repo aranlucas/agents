@@ -50,6 +50,31 @@ func TestExpenseReportIsBoundedStreamTarget(t *testing.T) {
 	}
 }
 
+func TestDeskCannotBecomeReadyWhileExpenseReviewIsPending(t *testing.T) {
+	state := newExpenseState(100)
+	pending, _ := submitExpense(&state, SubmitExpenseArgs{Amount: 120, Submitter: "A", Category: "meal", Date: "2026-07-09"})
+
+	report, _ := setExpenseReport(&state, SetReportArgs{Report: "## Review\n- pending", Summary: "One pending"})
+	if !report.OK || state.Status == "ready" {
+		t.Fatalf("pending report/state = %#v/%#v", report, state)
+	}
+	ready, _ := markExpenseReady(&state, ReadyArgs{Summary: "Done"})
+	if ready.OK || ready.Error == nil || ready.Error.Code != "pending_expense_review" || state.Status == "ready" {
+		t.Fatalf("premature ready/state = %#v/%#v", ready, state)
+	}
+
+	_, _ = writeExpenseReview(&state, WriteReviewArgs{ExpenseID: pending.ExpenseID, RiskLevel: RiskLow, RiskSummary: "Within policy", Recommendation: "approve"})
+	ready, _ = markExpenseReady(&state, ReadyArgs{Summary: "Done"})
+	if ready.OK || ready.Error == nil || ready.Error.Code != "pending_expense_review" || state.Status != "needs_approval" {
+		t.Fatalf("approval-pending ready/state = %#v/%#v", ready, state)
+	}
+	_, _ = decideExpense(&state, DecideExpenseArgs{ExpenseID: pending.ExpenseID, Decision: StatusApproved, Note: "Approved"})
+	ready, _ = markExpenseReady(&state, ReadyArgs{Summary: "Done"})
+	if !ready.OK || state.Status != "ready" {
+		t.Fatalf("resolved ready/state = %#v/%#v", ready, state)
+	}
+}
+
 func newExpenseState(threshold float64) ExpenseState {
 	state := Defaults()
 	state.ReviewThresholdUSD = threshold

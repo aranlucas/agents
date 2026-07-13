@@ -44,6 +44,7 @@ describe("Home page", () => {
 
   it("renders all agent cards", () => {
     render(<Home />);
+    expect(screen.getByText("Whiteboard")).toBeInTheDocument();
     expect(screen.getByText("Trip Studio")).toBeInTheDocument();
     expect(screen.getByText("Grocery Studio")).toBeInTheDocument();
     expect(screen.getByText("Fitness Studio")).toBeInTheDocument();
@@ -75,6 +76,7 @@ describe("Home page", () => {
     render(<Home />);
     const links = screen.getAllByRole("link");
     const hrefs = links.map((link) => link.getAttribute("href"));
+    expect(hrefs).toContain("/console/excalidraw");
     expect(hrefs).toContain("/console/travel");
     expect(hrefs).toContain("/console/grocery");
     expect(hrefs).toContain("/console/fitness");
@@ -86,6 +88,11 @@ describe("Home page", () => {
     expect(hrefs).toContain("/console/research");
     expect(hrefs).toContain("/console/spreadsheet");
     expect(hrefs).toContain("/console/presentation");
+  });
+
+  it("names Trends and Resume in the landing description", () => {
+    render(<Home />);
+    expect(screen.getByText(/oral boards, trends, resume, research/i)).toBeInTheDocument();
   });
 
   it("renders the footer with agent labels", () => {

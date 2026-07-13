@@ -1,17 +1,19 @@
 package oralboards
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 
-	"agents/internal/functiontool"
+	"github.com/google/jsonschema-go/jsonschema"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/agent/workflowagent"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
-	adktool "google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool/functiontool"
 	"google.golang.org/adk/v2/workflow"
 	"google.golang.org/genai"
 )
@@ -31,7 +33,23 @@ type ReadDocArgs struct {
 	Filepath string `json:"filepath"`
 }
 
-func New(models PhaseModels, corpus *Corpus, toolsets ...adktool.Toolset) (agent.Agent, error) {
+type requestInputKind string
+
+const (
+	requestInputReady  requestInputKind = "ready"
+	requestInputAnswer requestInputKind = "answer"
+)
+
+type requestInputPayload struct {
+	Kind     requestInputKind `json:"kind"`
+	Question string           `json:"question"`
+}
+
+type requestInputResponse struct {
+	Answer string `json:"answer"`
+}
+
+func New(models PhaseModels, corpus *Corpus, toolsets ...tool.Toolset) (agent.Agent, error) {
 	if models.CaseBuilder == nil || models.Questioner == nil || models.Evaluator == nil || models.Scorer == nil {
 		return nil, errors.New("all oralboards phase models are required")
 	}
@@ -61,41 +79,47 @@ func New(models PhaseModels, corpus *Corpus, toolsets ...adktool.Toolset) (agent
 // LLM phase is single-turn: it may chain tools, but completes on its final
 // model response instead of requiring the task-mode finish_task handshake.
 func newWorkflowAgent(caseBuilderAgent, questionerAgent, evaluatorAgent, scorerAgent agent.Agent) (agent.Agent, error) {
-	caseBuilder, err := workflow.NewAgentNode(caseBuilderAgent, workflow.NodeConfig{})
+	caseBuilder, err := workflow.NewAgentNodeTyped[string, string](caseBuilderAgent, workflow.NodeConfig{})
 	if err != nil {
 		return nil, err
 	}
-	questioner, err := workflow.NewAgentNode(questionerAgent, workflow.NodeConfig{})
+	questioner, err := workflow.NewAgentNodeTyped[string, string](questionerAgent, workflow.NodeConfig{})
 	if err != nil {
 		return nil, err
 	}
-	evaluator, err := workflow.NewAgentNode(evaluatorAgent, workflow.NodeConfig{})
+	evaluator, err := workflow.NewAgentNodeTyped[string, string](evaluatorAgent, workflow.NodeConfig{})
 	if err != nil {
 		return nil, err
 	}
-	scorer, err := workflow.NewAgentNode(scorerAgent, workflow.NodeConfig{})
+	scorer, err := workflow.NewAgentNodeTyped[string, string](scorerAgent, workflow.NodeConfig{})
 	if err != nil {
 		return nil, err
 	}
-	waitReady := requestInputNode("wait_for_ready", func(state State) session.RequestInput {
+	responseSchema, err := jsonschema.For[requestInputResponse](nil)
+	if err != nil {
+		return nil, fmt.Errorf("build oralboards input response schema: %w", err)
+	}
+	waitReady := requestInputNode("wait_for_ready", PhaseQuestioning, "", func(state State) session.RequestInput {
 		return session.RequestInput{
-			InterruptID: "oralboards-ready",
-			Message:     "Start the oral-board examination when the candidate is ready.",
-			Payload:     map[string]any{"kind": "ready", "question": "Ready to begin?"},
+			InterruptID:    "oralboards-ready",
+			Message:        "Start the oral-board examination when the candidate is ready.",
+			ResponseSchema: responseSchema,
+			Payload: requestInputPayload{
+				Kind:     requestInputReady,
+				Question: "Ready to begin?",
+			},
 		}
-	}, func(_ any) map[string]any {
-		return map[string]any{"status": "questioning", "loading_step": ""}
 	})
 	persistQuestion := workflow.NewEmittingFunctionNode("persist_question", func(ctx agent.Context, question string, emit func(*session.Event) error) (any, error) {
 		question = strings.TrimSpace(question)
 		violations := QuestionCraftViolations(question)
-		delta := map[string]any{"current_question": question, "question_craft_feedback": "", "_probe_used": false}
+		feedback := ""
 		route := "valid"
 		if len(violations) > 0 {
-			delta["question_craft_feedback"] = strings.Join(violations, "; ")
+			feedback = strings.Join(violations, "; ")
 			route = "retry"
 		}
-		if err := emit(stateDeltaEvent(ctx, delta)); err != nil {
+		if err := emit(questionStateDeltaEvent(ctx, question, feedback)); err != nil {
 			return nil, err
 		}
 		event := session.NewEvent(ctx, ctx.InvocationID())
@@ -106,7 +130,7 @@ func newWorkflowAgent(caseBuilderAgent, questionerAgent, evaluatorAgent, scorerA
 		}
 		return nil, nil
 	}, workflow.NodeConfig{})
-	waitAnswer := requestInputNode("wait_for_answer", func(state State) session.RequestInput {
+	waitAnswer := requestInputNode("wait_for_answer", PhaseFeedback, "Reviewing your answer…", func(state State) session.RequestInput {
 		interruptID := "oralboards-answer-" + fmt.Sprint(len(state.Transcript))
 		question := state.CurrentQuestion
 		if state.ActiveProbe != "" {
@@ -114,14 +138,16 @@ func newWorkflowAgent(caseBuilderAgent, questionerAgent, evaluatorAgent, scorerA
 			question = state.ActiveProbe
 		}
 		return session.RequestInput{
-			InterruptID: interruptID,
-			Message:     question,
-			Payload:     map[string]any{"kind": "answer", "question": question},
+			InterruptID:    interruptID,
+			Message:        question,
+			ResponseSchema: responseSchema,
+			Payload: requestInputPayload{
+				Kind:     requestInputAnswer,
+				Question: question,
+			},
 		}
-	}, func(_ any) map[string]any {
-		return map[string]any{"status": "feedback", "loading_step": "Reviewing your answer…"}
 	})
-	decision := workflow.NewFunctionNode("continue_or_score", func(ctx agent.Context, _ any) (*session.Event, error) {
+	decision := workflow.NewFunctionNode("continue_or_score", func(ctx agent.Context, _ string) (*session.Event, error) {
 		state := stateFromSession(ctx.Session().State())
 		route := "questioner"
 		if state.ActiveProbe != "" {
@@ -157,25 +183,44 @@ func newWorkflowAgent(caseBuilderAgent, questionerAgent, evaluatorAgent, scorerA
 	})
 }
 
-func requestInputNode(name string, request func(State) session.RequestInput, resumed func(any) map[string]any) workflow.Node {
+func requestInputNode(name string, resumedPhase Phase, loadingStep string, request func(State) session.RequestInput) workflow.Node {
 	rerun := true
-	return workflow.NewEmittingFunctionNode(name, func(ctx agent.Context, _ any, emit func(*session.Event) error) (any, error) {
+	return workflow.NewEmittingFunctionNode(name, func(ctx agent.Context, _ string, emit func(*session.Event) error) (string, error) {
 		state := stateFromSession(ctx.Session().State())
 		req := request(state)
+		interruptPrefix := strings.TrimSpace(req.InterruptID)
+		if interruptPrefix == "" {
+			interruptPrefix = name
+		}
+		req.InterruptID = interruptPrefix + "-" + ctx.InvocationID()
 		value, err := workflow.ResumeOrRequestInput(ctx, emit, req)
 		if err != nil {
-			return nil, err
+			return "", err
 		}
-		if delta := resumed(value); len(delta) > 0 {
-			if err := emit(stateDeltaEvent(ctx, delta)); err != nil {
-				return nil, err
-			}
+		answer, err := decodeRequestInputResponse(value)
+		if err != nil {
+			return "", err
 		}
-		return value, nil
+		if err := emit(resumedPhaseStateDeltaEvent(ctx, resumedPhase, loadingStep)); err != nil {
+			return "", err
+		}
+		return answer, nil
 	}, workflow.NodeConfig{RerunOnResume: &rerun})
 }
 
-func buildPhase(name, instruction string, m model.LLM, corpus *Corpus, allowed []string, toolsets []adktool.Toolset, beforeModel []llmagent.BeforeModelCallback, afterModel ...llmagent.AfterModelCallback) (agent.Agent, error) {
+func decodeRequestInputResponse(value any) (string, error) {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return "", errors.New("encode oralboards input response")
+	}
+	var response requestInputResponse
+	if json.Unmarshal(encoded, &response) != nil || strings.TrimSpace(response.Answer) == "" {
+		return "", errors.New("oralboards input response requires a non-empty answer")
+	}
+	return strings.TrimSpace(response.Answer), nil
+}
+
+func buildPhase(name, instruction string, m model.LLM, corpus *Corpus, allowed []string, toolsets []tool.Toolset, beforeModel []llmagent.BeforeModelCallback, afterModel ...llmagent.AfterModelCallback) (agent.Agent, error) {
 	all, err := phaseTools(corpus)
 	if err != nil {
 		return nil, err
@@ -184,7 +229,7 @@ func buildPhase(name, instruction string, m model.LLM, corpus *Corpus, allowed [
 	for _, value := range allowed {
 		allowedSet[value] = true
 	}
-	selected := make([]adktool.Tool, 0, len(allowed))
+	selected := make([]tool.Tool, 0, len(allowed))
 	for _, candidate := range all {
 		if allowedSet[candidate.Name()] {
 			selected = append(selected, candidate)
@@ -208,7 +253,7 @@ func stopEvaluatorAfterProbe(ctx agent.Context, _ *model.LLMRequest) (*model.LLM
 	}, nil
 }
 
-func phaseTools(corpus *Corpus) ([]adktool.Tool, error) {
+func phaseTools(corpus *Corpus) ([]tool.Tool, error) {
 	searchDocsTool, err := functiontool.New(functiontool.Config{
 		Name:        "search_docs",
 		Description: "Search the bundled pediatric dentistry corpus; maximum two calls per episode.",
@@ -218,8 +263,8 @@ func phaseTools(corpus *Corpus) ([]adktool.Tool, error) {
 		if err != nil {
 			return SearchResponse{}, err
 		}
-		if err := publishFields(ctx, stateField{"_search_docs_calls", state.SearchCalls}); err != nil {
-			return SearchResponse{}, err
+		if err := ctx.State().Set("_search_docs_calls", state.SearchCalls); err != nil {
+			return SearchResponse{}, fmt.Errorf("set _search_docs_calls: %w", err)
 		}
 		return response, nil
 	})
@@ -291,7 +336,7 @@ func phaseTools(corpus *Corpus) ([]adktool.Tool, error) {
 		return nil, err
 	}
 
-	return []adktool.Tool{
+	return []tool.Tool{
 		searchDocsTool,
 		readDocTool,
 		setCaseTool,
@@ -304,8 +349,25 @@ func phaseTools(corpus *Corpus) ([]adktool.Tool, error) {
 	}, nil
 }
 
-func stateDeltaEvent(ctx agent.InvocationContext, delta map[string]any) *session.Event {
-	return &session.Event{InvocationID: ctx.InvocationID(), Author: AppName, Actions: session.EventActions{StateDelta: delta}}
+func resumedPhaseStateDeltaEvent(ctx agent.InvocationContext, status Phase, loadingStep string) *session.Event {
+	event := session.NewEvent(ctx, ctx.InvocationID())
+	event.Author = AppName
+	event.Actions.StateDelta = map[string]any{
+		"status":       status,
+		"loading_step": loadingStep,
+	}
+	return event
+}
+
+func questionStateDeltaEvent(ctx agent.InvocationContext, question, feedback string) *session.Event {
+	event := session.NewEvent(ctx, ctx.InvocationID())
+	event.Author = AppName
+	event.Actions.StateDelta = map[string]any{
+		"current_question":        question,
+		"question_craft_feedback": feedback,
+		"_probe_used":             false,
+	}
+	return event
 }
 
 func stateFromSession(state session.ReadonlyState) State {

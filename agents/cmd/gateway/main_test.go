@@ -43,7 +43,7 @@ func TestEveryActiveAgentExposesScopedEndpoints(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := make([]string, 0, len(routes))
-	for _, entry := range registry.All() {
+	for _, entry := range registry.Entries() {
 		got = append(got, entry.Route)
 	}
 	want := append([]string(nil), routes...)
@@ -52,12 +52,12 @@ func TestEveryActiveAgentExposesScopedEndpoints(t *testing.T) {
 		t.Fatalf("registry routes=%#v want=%#v", got, want)
 	}
 	sessions := session.InMemoryService()
-	for _, entry := range entries {
+	for _, entry := range registry.Entries() {
 		userID := "clerk-user"
 		if entry.Public {
 			userID = "anon:contract-thread"
 		}
-		if _, createErr := sessions.Create(t.Context(), &session.CreateRequest{AppName: entry.AppName, UserID: userID, SessionID: "contract-thread", State: entry.StateDefaults}); createErr != nil {
+		if _, createErr := sessions.Create(t.Context(), &session.CreateRequest{AppName: entry.AppName, UserID: userID, SessionID: "contract-thread", State: entry.StateDefaults()}); createErr != nil {
 			t.Fatal(createErr)
 		}
 	}
@@ -225,7 +225,7 @@ func TestGatewayPresentationAGUIRoute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry, err := agentruntime.NewRegistry(agentruntime.Entry{Route: "presentation", AppName: presentation.AppName, Agent: presentationAgent, StateDefaults: presentation.StateDefaults(), Timeout: 5 * time.Second})
+	registry, err := agentruntime.NewRegistry(agentruntime.Entry{Route: "presentation", AppName: presentation.AppName, Agent: presentationAgent, StateDefaults: presentation.StateDefaults, Timeout: 5 * time.Second})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -251,7 +251,7 @@ func TestGatewayTravelRouteUsesExistingAGUIContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry, err := agentruntime.NewRegistry(agentruntime.Entry{Route: "travel", AppName: travel.AppName, Agent: travelAgent, StateDefaults: travel.StateDefaults(), Timeout: 5 * time.Second})
+	registry, err := agentruntime.NewRegistry(agentruntime.Entry{Route: "travel", AppName: travel.AppName, Agent: travelAgent, StateDefaults: travel.StateDefaults, Timeout: 5 * time.Second})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -277,8 +277,8 @@ func TestGatewayFitnessAndGroceryRoutesUseExistingAGUIContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry, err := agentruntime.NewRegistry(
-		agentruntime.Entry{Route: "fitness", AppName: fitness.AppName, Agent: fitnessAgent, StateDefaults: fitness.StateDefaults(), Timeout: 5 * time.Second},
-		agentruntime.Entry{Route: "grocery", AppName: grocery.AppName, Agent: groceryAgent, StateDefaults: grocery.StateDefaults(), Timeout: 5 * time.Second},
+		agentruntime.Entry{Route: "fitness", AppName: fitness.AppName, Agent: fitnessAgent, StateDefaults: fitness.StateDefaults, Timeout: 5 * time.Second},
+		agentruntime.Entry{Route: "grocery", AppName: grocery.AppName, Agent: groceryAgent, StateDefaults: grocery.StateDefaults, Timeout: 5 * time.Second},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -307,7 +307,7 @@ func TestGatewayTrendsRouteUsesExistingAGUIContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry, err := agentruntime.NewRegistry(
-		agentruntime.Entry{Route: "trends", AppName: trends.AppName, Agent: trendsAgent, StateDefaults: trends.StateDefaults(), Timeout: 5 * time.Second},
+		agentruntime.Entry{Route: "trends", AppName: trends.AppName, Agent: trendsAgent, StateDefaults: trends.StateDefaults, Timeout: 5 * time.Second},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -337,7 +337,7 @@ func TestGatewayWellnessRouteUsesExistingAGUIContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry, err := agentruntime.NewRegistry(agentruntime.Entry{Route: "wellness", AppName: wellness.AppName, Agent: wellnessAgent, StateDefaults: wellness.StateDefaults(), Timeout: 5 * time.Second})
+	registry, err := agentruntime.NewRegistry(agentruntime.Entry{Route: "wellness", AppName: wellness.AppName, Agent: wellnessAgent, StateDefaults: wellness.StateDefaults, Timeout: 5 * time.Second})
 	if err != nil {
 		t.Fatal(err)
 	}

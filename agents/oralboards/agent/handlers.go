@@ -67,16 +67,26 @@ func SetCase(ctx agent.Context, in SetCaseArgs) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	if pubErr := publishFields(ctx,
-		stateField{"case", state.Case},
-		stateField{"case_sources", state.CaseSources},
-		stateField{"case_passages", state.CasePassages},
-		stateField{"interview_complete", state.InterviewComplete},
-		stateField{"_probe_used", state.ProbeUsed},
-		stateField{"status", state.Status},
-		stateField{"_search_docs_calls", state.SearchCalls},
-	); pubErr != nil {
-		return Result{}, pubErr
+	if err := ctx.State().Set("case", state.Case); err != nil {
+		return Result{}, fmt.Errorf("set case: %w", err)
+	}
+	if err := ctx.State().Set("case_sources", state.CaseSources); err != nil {
+		return Result{}, fmt.Errorf("set case_sources: %w", err)
+	}
+	if err := ctx.State().Set("case_passages", state.CasePassages); err != nil {
+		return Result{}, fmt.Errorf("set case_passages: %w", err)
+	}
+	if err := ctx.State().Set("interview_complete", state.InterviewComplete); err != nil {
+		return Result{}, fmt.Errorf("set interview_complete: %w", err)
+	}
+	if err := ctx.State().Set("_probe_used", state.ProbeUsed); err != nil {
+		return Result{}, fmt.Errorf("set _probe_used: %w", err)
+	}
+	if err := ctx.State().Set("status", state.Status); err != nil {
+		return Result{}, fmt.Errorf("set status: %w", err)
+	}
+	if err := ctx.State().Set("_search_docs_calls", state.SearchCalls); err != nil {
+		return Result{}, fmt.Errorf("set _search_docs_calls: %w", err)
 	}
 	return result, nil
 }
@@ -113,8 +123,8 @@ func SetPhase(ctx agent.Context, in SetPhaseArgs) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	if pubErr := publishFields(ctx, stateField{"status", state.Status}); pubErr != nil {
-		return Result{}, pubErr
+	if err := ctx.State().Set("status", state.Status); err != nil {
+		return Result{}, fmt.Errorf("set status: %w", err)
 	}
 	return result, nil
 }
@@ -135,8 +145,8 @@ func SetLoadingStep(ctx agent.Context, in LoadingArgs) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	if pubErr := publishFields(ctx, stateField{"loading_step", state.LoadingStep}); pubErr != nil {
-		return Result{}, pubErr
+	if err := ctx.State().Set("loading_step", state.LoadingStep); err != nil {
+		return Result{}, fmt.Errorf("set loading_step: %w", err)
 	}
 	return result, nil
 }
@@ -156,13 +166,17 @@ func AskProbe(ctx agent.Context, in ProbeArgs) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	if pubErr := publishFields(ctx,
-		stateField{"active_probe", state.ActiveProbe},
-		stateField{"_probe_used", state.ProbeUsed},
-		stateField{"_search_docs_calls", state.SearchCalls},
-		stateField{"loading_step", state.LoadingStep},
-	); pubErr != nil {
-		return Result{}, pubErr
+	if err := ctx.State().Set("active_probe", state.ActiveProbe); err != nil {
+		return Result{}, fmt.Errorf("set active_probe: %w", err)
+	}
+	if err := ctx.State().Set("_probe_used", state.ProbeUsed); err != nil {
+		return Result{}, fmt.Errorf("set _probe_used: %w", err)
+	}
+	if err := ctx.State().Set("_search_docs_calls", state.SearchCalls); err != nil {
+		return Result{}, fmt.Errorf("set _search_docs_calls: %w", err)
+	}
+	if err := ctx.State().Set("loading_step", state.LoadingStep); err != nil {
+		return Result{}, fmt.Errorf("set loading_step: %w", err)
 	}
 	if err := ctx.State().Set(session.KeyPrefixTemp+"probe_asked_now", true); err != nil {
 		return Result{}, fmt.Errorf("set oralboards invocation guard: %w", err)
@@ -195,17 +209,29 @@ func AppendExchange(ctx agent.Context, in AppendExchangeArgs) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	if pubErr := publishFields(ctx,
-		stateField{"transcript", state.Transcript},
-		stateField{"status", state.Status},
-		stateField{"loading_step", state.LoadingStep},
-		stateField{"current_question", state.CurrentQuestion},
-		stateField{"active_feedback", state.ActiveFeedback},
-		stateField{"active_ideal_response", state.ActiveIdealResponse},
-		stateField{"active_probe", state.ActiveProbe},
-		stateField{"_search_docs_calls", state.SearchCalls},
-	); pubErr != nil {
-		return Result{}, pubErr
+	if err := ctx.State().Set("transcript", state.Transcript); err != nil {
+		return Result{}, fmt.Errorf("set transcript: %w", err)
+	}
+	if err := ctx.State().Set("status", state.Status); err != nil {
+		return Result{}, fmt.Errorf("set status: %w", err)
+	}
+	if err := ctx.State().Set("loading_step", state.LoadingStep); err != nil {
+		return Result{}, fmt.Errorf("set loading_step: %w", err)
+	}
+	if err := ctx.State().Set("current_question", state.CurrentQuestion); err != nil {
+		return Result{}, fmt.Errorf("set current_question: %w", err)
+	}
+	if err := ctx.State().Set("active_feedback", state.ActiveFeedback); err != nil {
+		return Result{}, fmt.Errorf("set active_feedback: %w", err)
+	}
+	if err := ctx.State().Set("active_ideal_response", state.ActiveIdealResponse); err != nil {
+		return Result{}, fmt.Errorf("set active_ideal_response: %w", err)
+	}
+	if err := ctx.State().Set("active_probe", state.ActiveProbe); err != nil {
+		return Result{}, fmt.Errorf("set active_probe: %w", err)
+	}
+	if err := ctx.State().Set("_search_docs_calls", state.SearchCalls); err != nil {
+		return Result{}, fmt.Errorf("set _search_docs_calls: %w", err)
 	}
 	return result, nil
 }
@@ -237,13 +263,17 @@ func SetScoreCard(ctx agent.Context, in ScoreCardArgs) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	if pubErr := publishFields(ctx,
-		stateField{"score_card", state.ScoreCard},
-		stateField{"score_summary", state.ScoreSummary},
-		stateField{"outcome", state.Outcome},
-		stateField{"status", state.Status},
-	); pubErr != nil {
-		return Result{}, pubErr
+	if err := ctx.State().Set("score_card", state.ScoreCard); err != nil {
+		return Result{}, fmt.Errorf("set score_card: %w", err)
+	}
+	if err := ctx.State().Set("score_summary", state.ScoreSummary); err != nil {
+		return Result{}, fmt.Errorf("set score_summary: %w", err)
+	}
+	if err := ctx.State().Set("outcome", state.Outcome); err != nil {
+		return Result{}, fmt.Errorf("set outcome: %w", err)
+	}
+	if err := ctx.State().Set("status", state.Status); err != nil {
+		return Result{}, fmt.Errorf("set status: %w", err)
 	}
 	return result, nil
 }
@@ -276,8 +306,8 @@ func CompleteExamination(ctx agent.Context, _ struct{}) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	if err := publishFields(ctx, stateField{"interview_complete", state.InterviewComplete}); err != nil {
-		return Result{}, err
+	if err := ctx.State().Set("interview_complete", state.InterviewComplete); err != nil {
+		return Result{}, fmt.Errorf("set interview_complete: %w", err)
 	}
 	return result, nil
 }

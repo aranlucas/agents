@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { CopilotSidebar, useAgent, useCopilotKit, UseAgentUpdate } from "@copilotkit/react-core/v2";
+import { useState } from "react";
+import { CopilotSidebar, useAgent, UseAgentUpdate } from "@copilotkit/react-core/v2";
 
 import type { PresentationSlide, PresentationState } from "@agents/types";
 import { cn, ScrollArea } from "@agents/ui";
@@ -113,7 +113,6 @@ export function PresentationWorkspace({ threadId: _threadId }: { threadId: strin
     agentId: AGENT_ID,
     updates: [UseAgentUpdate.OnStateChanged, UseAgentUpdate.OnRunStatusChanged],
   });
-  const { copilotkit } = useCopilotKit();
   const startNewThread = useNewThread(AGENT_ID);
 
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
@@ -121,29 +120,14 @@ export function PresentationWorkspace({ threadId: _threadId }: { threadId: strin
   const slides = state.slides ?? [];
   const theme = state.theme ?? "light";
 
-  const [localActiveIndex, setLocalActiveIndex] = useState(0);
+  // The backend-selected slide is the initial view. User navigation is local UI
+  // state: moving between existing slides must not spend an LLM turn.
+  const [localActiveIndex, setLocalActiveIndex] = useState<number | null>(null);
   const activeIndex =
     slides.length > 0
-      ? Math.min(state.active_slide_index ?? localActiveIndex, slides.length - 1)
+      ? Math.max(0, Math.min(localActiveIndex ?? state.active_slide_index ?? 0, slides.length - 1))
       : 0;
   const activeSlide = slides[activeIndex];
-
-  const sendPrompt = useCallback(
-    async (content: string) => {
-      if (!agent) return;
-      agent.addMessage({ id: crypto.randomUUID(), role: "user", content });
-      await copilotkit.runAgent({ agent });
-    },
-    [agent, copilotkit],
-  );
-
-  const goTo = useCallback(
-    (i: number) => {
-      setLocalActiveIndex(i);
-      void sendPrompt(`Switch to slide ${i + 1}.`);
-    },
-    [sendPrompt],
-  );
 
   return (
     <SidebarProvider
@@ -184,7 +168,7 @@ export function PresentationWorkspace({ threadId: _threadId }: { threadId: strin
                       slide={slide}
                       index={i}
                       active={i === activeIndex}
-                      onClick={() => goTo(i)}
+                      onClick={() => setLocalActiveIndex(i)}
                     />
                   ))}
                 </div>
@@ -222,7 +206,7 @@ export function PresentationWorkspace({ threadId: _threadId }: { threadId: strin
                 <button
                   type="button"
                   disabled={activeIndex === 0}
-                  onClick={() => goTo(activeIndex - 1)}
+                  onClick={() => setLocalActiveIndex(activeIndex - 1)}
                   className="hover:bg-muted rounded px-3 py-1 text-sm transition-colors disabled:opacity-30"
                 >
                   ← Prev
@@ -233,7 +217,7 @@ export function PresentationWorkspace({ threadId: _threadId }: { threadId: strin
                 <button
                   type="button"
                   disabled={activeIndex === slides.length - 1}
-                  onClick={() => goTo(activeIndex + 1)}
+                  onClick={() => setLocalActiveIndex(activeIndex + 1)}
                   className="hover:bg-muted rounded px-3 py-1 text-sm transition-colors disabled:opacity-30"
                 >
                   Next →

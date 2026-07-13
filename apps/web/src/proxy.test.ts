@@ -1,5 +1,6 @@
 import { createRouteMatcher } from "@clerk/nextjs/server";
 import { NextRequest } from "next/server";
+import { AGENT_ORDER } from "@agents/types";
 import { describe, expect, it } from "vitest";
 import { PROTECTED_ROUTES } from "./proxy";
 
@@ -7,6 +8,8 @@ const matcher = createRouteMatcher(PROTECTED_ROUTES);
 const req = (path: string) => new NextRequest(new URL(path, "http://localhost:3000"));
 
 describe("protected route matcher", () => {
+  const protectedConsoleAgents = AGENT_ORDER.filter((agentId) => agentId !== "resume");
+
   it.each([
     "/travel",
     "/grocery",
@@ -22,6 +25,11 @@ describe("protected route matcher", () => {
     "/telegram/link",
   ])("protects %s", (path) => {
     expect(matcher(req(path))).toBe(true);
+  });
+
+  it.each(protectedConsoleAgents)("protects every %s console thread", (agentId) => {
+    expect(matcher(req(`/console/${agentId}`))).toBe(true);
+    expect(matcher(req(`/console/${agentId}/thread-123`))).toBe(true);
   });
 
   it.each([

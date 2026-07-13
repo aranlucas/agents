@@ -31,9 +31,16 @@ export function AppSidebar({
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <div className="flex items-center justify-center py-2">
-          <div className="bg-primary grid size-7.5 place-items-center rounded-lg text-sm font-bold text-white">
-            A
-          </div>
+          <Link
+            href="/"
+            aria-label="All agents"
+            title="All agents"
+            className="focus-visible:ring-ring rounded-lg outline-none focus-visible:ring-2"
+          >
+            <div className="bg-primary grid size-7.5 place-items-center rounded-lg text-sm font-bold text-white">
+              A
+            </div>
+          </Link>
         </div>
       </SidebarHeader>
 

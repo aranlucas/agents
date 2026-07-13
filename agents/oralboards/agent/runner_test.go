@@ -2,9 +2,11 @@ package oralboards
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"iter"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
@@ -64,6 +66,20 @@ func (m *sequenceModel) firstRequest() *model.LLMRequest {
 	return m.requests[0]
 }
 
+func requestContainsText(request *model.LLMRequest, text string) bool {
+	if request == nil {
+		return false
+	}
+	for _, content := range request.Contents {
+		for _, part := range content.Parts {
+			if part != nil && strings.Contains(part.Text, text) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func toolCall(id, name string, args map[string]any) *model.LLMResponse {
 	return &model.LLMResponse{
 		Content:      &genai.Content{Role: genai.RoleModel, Parts: []*genai.Part{{FunctionCall: &genai.FunctionCall{ID: id, Name: name, Args: args}}}},
@@ -111,17 +127,25 @@ func runTurn(t *testing.T, rn *runner.Runner, text string) []*session.Event {
 
 func resumeTurn(t *testing.T, rn *runner.Runner, interruptID, answer string) []*session.Event {
 	t.Helper()
+	events, err := resumeResponse(rn, interruptID, map[string]any{"answer": answer})
+	if err != nil {
+		t.Fatalf("resume %s failed after %d events: %v", interruptID, len(events), err)
+	}
+	return events
+}
+
+func resumeResponse(rn *runner.Runner, interruptID string, response map[string]any) ([]*session.Event, error) {
 	content := &genai.Content{Role: genai.RoleUser, Parts: []*genai.Part{{FunctionResponse: &genai.FunctionResponse{
-		ID: interruptID, Name: workflow.WorkflowInputFunctionCallName, Response: map[string]any{"answer": answer},
+		ID: interruptID, Name: workflow.WorkflowInputFunctionCallName, Response: response,
 	}}}}
 	var events []*session.Event
 	for event, err := range rn.Run(context.Background(), "user-1", "thread-1", content, agent.RunConfig{StreamingMode: agent.StreamingModeSSE}) {
 		if err != nil {
-			t.Fatalf("resume %s failed after %d events: %v", interruptID, len(events), err)
+			return events, err
 		}
 		events = append(events, event)
 	}
-	return events
+	return events, nil
 }
 
 func requestID(t *testing.T, events []*session.Event, kind string) string {
@@ -133,6 +157,52 @@ func requestID(t *testing.T, events []*session.Event, kind string) string {
 	}
 	t.Fatalf("run emitted no %s RequestInput event", kind)
 	return ""
+}
+
+func TestReadyRequestUsesTypedPayload(t *testing.T) {
+	rn, _ := buildRunner(t, nil)
+	for _, event := range runTurn(t, rn, "Create a case") {
+		if event.RequestedInput == nil {
+			continue
+		}
+		payload, ok := event.RequestedInput.Payload.(requestInputPayload)
+		if !ok {
+			t.Fatalf("request payload type = %T, want requestInputPayload", event.RequestedInput.Payload)
+		}
+		if payload.Kind != requestInputReady || payload.Question != "Ready to begin?" {
+			t.Fatalf("request payload = %#v", payload)
+		}
+		if event.RequestedInput.ResponseSchema == nil {
+			t.Fatal("ready request has no response schema")
+		}
+		if event.RequestedInput.InterruptID == "oralboards-ready" || !strings.HasPrefix(event.RequestedInput.InterruptID, "oralboards-ready-") {
+			t.Fatalf("interrupt ID = %q, want invocation-scoped ID", event.RequestedInput.InterruptID)
+		}
+		return
+	}
+	t.Fatal("run emitted no RequestInput event")
+}
+
+func TestReadyRequestRejectsInvalidAnswerBeforePhaseTransition(t *testing.T) {
+	for name, response := range map[string]map[string]any{
+		"null":       {"answer": nil},
+		"whitespace": {"answer": "   "},
+	} {
+		t.Run(name, func(t *testing.T) {
+			rn, sessions := buildRunner(t, nil)
+			readyID := requestID(t, runTurn(t, rn, "Create a case"), "ready")
+			_, err := resumeResponse(rn, readyID, response)
+			if err == nil {
+				t.Fatal("invalid answer resumed the workflow")
+			}
+			if name == "null" && !errors.Is(err, workflow.ErrInvalidResumeResponse) {
+				t.Fatalf("null answer error = %v", err)
+			}
+			if state := sessionState(t, sessions); state.Status == "questioning" {
+				t.Fatalf("invalid answer advanced state = %#v", state)
+			}
+		})
+	}
 }
 
 func sessionState(t *testing.T, sessions session.Service) State {
@@ -246,6 +316,9 @@ func TestEvaluatorProbeReturnsDirectlyToAnswerInterrupt(t *testing.T) {
 	if got := evaluator.callCount(); got != 1 {
 		t.Fatalf("evaluator ran %d model turns before the probe answer, want 1", got)
 	}
+	if request := evaluator.firstRequest(); !requestContainsText(request, "Symptomatic irreversible pulpitis.") {
+		t.Fatal("evaluator did not receive the validated answer text")
+	}
 
 	nextQuestionEvents := resumeTurn(t, rn, probeID, "There is no radiolucency or pathologic resorption.")
 	state = sessionState(t, sessions)
@@ -350,8 +423,8 @@ func TestFullInterviewContinuesThroughSixScoredExchangesBeforeScoring(t *testing
 	if got := scorer.callCount(); got != 3 {
 		t.Fatalf("scorer ran %d model turns, want 3", got)
 	}
-	if request := scorer.firstRequest(); request == nil || len(request.Contents) == 0 {
-		t.Fatal("scorer received an empty model request")
+	if request := scorer.firstRequest(); !requestContainsText(request, "Generate the final score card from the completed exchanges.") {
+		t.Fatal("scorer did not receive the decision node's string output")
 	}
 }
 

@@ -44,6 +44,7 @@ func TestUpdateSlidePreservesUntouchedFieldsAndMissingDoesNotMutate(t *testing.T
 
 func TestCreateDeleteAndReadyWorkflow(t *testing.T) {
 	state := Defaults()
+	_, _ = setMeta(&state, SetMetaArgs{Title: "Demo", Theme: "light"})
 	created, err := createSlide(&state, CreateSlideArgs{Heading: "Intro", SlideType: "title"})
 	if err != nil || !created.OK || created.SlideID == "" {
 		t.Fatalf("CreateSlide() = %#v, %v", created, err)
@@ -55,9 +56,28 @@ func TestCreateDeleteAndReadyWorkflow(t *testing.T) {
 	if !deleted.OK || len(state.Slides) != 0 {
 		t.Fatalf("DeleteSlide() = %#v", deleted)
 	}
+	notReady, _ := markReady(&state, ReadyArgs{Summary: "Looks good"})
+	if notReady.OK || notReady.Error == nil || notReady.Error.Code != "slides_required" || state.Status == StatusReady {
+		t.Fatalf("empty deck ready/state = %#v/%#v", notReady, state)
+	}
+	_, _ = createSlide(&state, CreateSlideArgs{Heading: "Intro", SlideType: "title"})
 	ready, _ := markReady(&state, ReadyArgs{Summary: "Looks good"})
 	if !ready.OK || state.Status != "ready" || state.ReviewSummary != "Looks good" {
 		t.Fatalf("ready/state = %#v/%#v", ready, state)
+	}
+}
+
+func TestReadyRejectsMissingTitleAndEmptySlides(t *testing.T) {
+	state := Defaults()
+	state.Slides = []Slide{{ID: "empty", Type: "content"}}
+	missingTitle, _ := markReady(&state, ReadyArgs{})
+	if missingTitle.OK || missingTitle.Error == nil || missingTitle.Error.Code != "presentation_title_required" {
+		t.Fatalf("missing title result = %#v", missingTitle)
+	}
+	state.Title = "Deck"
+	emptySlide, _ := markReady(&state, ReadyArgs{})
+	if emptySlide.OK || emptySlide.Error == nil || emptySlide.Error.Code != "empty_slide" || state.Status == StatusReady {
+		t.Fatalf("empty slide result/state = %#v/%#v", emptySlide, state)
 	}
 }
 

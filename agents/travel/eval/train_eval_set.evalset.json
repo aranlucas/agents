@@ -61,7 +61,7 @@
       ]
     },
     {
-      "eval_id": "travel_ready_to_book_requires_approval",
+      "eval_id": "travel_ready_to_book",
       "session_input": {
         "app_name": "travel_agent",
         "user_id": "eval_user",
@@ -85,7 +85,7 @@
             "role": "model",
             "parts": [
               {
-                "text": "I marked the trip ready to book. Nothing is booked yet without your explicit approval."
+                "text": "I marked the trip ready to book."
               }
             ]
           }

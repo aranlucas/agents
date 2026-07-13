@@ -128,7 +128,7 @@ export type WellnessStatus = "idle" | "delegating" | "planning" | "ready";
 export type WellnessState = {
   status?: WellnessStatus;
   meal_plan?: string;
-  workout_plan?: string;
+  training_plan?: string;
   weekly_plan?: string;
   review_summary?: string;
   last_delegation?: Record<string, unknown>;
@@ -335,4 +335,17 @@ export type TrendsState = {
   status?: TrendsStatus;
   error?: string;
   user_id?: string;
+};
+
+// Resume role-fit state — matches what agents/resume writes to ADK shared state
+export type ResumeStatus = "idle" | "analyzing" | "ready";
+
+export type ResumeState = {
+  target_role?: string;
+  job_description?: string;
+  fit_summary?: string;
+  gaps?: string[];
+  tailored_bullets?: string[];
+  status?: ResumeStatus;
+  review_summary?: string;
 };

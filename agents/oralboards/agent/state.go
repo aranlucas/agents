@@ -2,9 +2,7 @@ package oralboards
 
 import (
 	"encoding/json"
-	"fmt"
 
-	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/session"
 )
 
@@ -108,19 +106,4 @@ func readState(source session.ReadonlyState) State {
 		state.Status = PhaseIdle
 	}
 	return state
-}
-
-type stateField struct {
-	key   string
-	value any
-}
-
-func publishFields(ctx agent.Context, fields ...stateField) error {
-	s := ctx.State()
-	for _, field := range fields {
-		if err := s.Set(field.key, field.value); err != nil {
-			return fmt.Errorf("set %s: %w", field.key, err)
-		}
-	}
-	return nil
 }

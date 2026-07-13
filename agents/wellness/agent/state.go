@@ -2,11 +2,9 @@ package wellness
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"agents/fitness/agent"
 	"agents/internal/common"
-	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/session"
 )
 
@@ -79,36 +77,4 @@ func readState(source session.ReadonlyState) WellnessState {
 		state.Status = StatusIdle
 	}
 	return state
-}
-
-func publishState(ctx agent.Context, state WellnessState) error {
-	s := ctx.State()
-	fields := []struct {
-		key   string
-		value any
-	}{
-		{"status", state.Status},
-		{"meal_plan", state.MealPlan},
-		{"weekly_plan", state.WeeklyPlan},
-		{"review_summary", state.ReviewSummary},
-		{"user_id", state.UserID},
-		{"kroger_connected", state.KrogerConnected},
-		{"fitness_data_connected", state.FitnessDataConnected},
-		{"activity_source", state.ActivitySource},
-		{"shopping_list", state.ShoppingList},
-		{"cart", state.Cart},
-		{"pantry", state.Pantry},
-		{"weekly_deals", state.WeeklyDeals},
-		{"notes", state.Notes},
-		{"activities", state.Activities},
-		{"activities_synced_at", state.ActivitiesSyncedAt},
-		{"objective_research", state.ObjectiveResearch},
-		{"training_plan", state.TrainingPlan},
-	}
-	for _, field := range fields {
-		if err := s.Set(field.key, field.value); err != nil {
-			return fmt.Errorf("set %s: %w", field.key, err)
-		}
-	}
-	return nil
 }

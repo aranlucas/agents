@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	aguievents "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
+	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/genai"
 )
@@ -117,7 +117,7 @@ func TestComposeA2UISkipsComposerWhenResultHasNoRows(t *testing.T) {
 	assertDeterministicFallback(t, event)
 }
 
-func assertDeterministicFallback(t *testing.T, event *aguievents.ActivitySnapshotEvent) {
+func assertDeterministicFallback(t *testing.T, event *events.ActivitySnapshotEvent) {
 	t.Helper()
 	encoded, err := json.Marshal(event)
 	if err != nil {

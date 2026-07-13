@@ -19,6 +19,8 @@ import type {
   OralBoardsState,
   CaseSource,
   PantryItem,
+  ResumeState,
+  ResumeStatus,
   TripState,
   WellnessState,
   WellnessStatus,
@@ -82,6 +84,7 @@ const ORAL_SKILLS: readonly OralBoardsSkill[] = [
   "analyze_evaluate",
 ];
 const ORAL_OUTCOMES: readonly OralBoardsOutcome[] = ["pass", "borderline", "not_yet"];
+const RESUME_STATUSES: readonly ResumeStatus[] = ["idle", "analyzing", "ready"];
 
 export function asDocStatus(value: unknown): DocStatus {
   return oneOf(value, DOC_STATUSES, "idle");
@@ -176,7 +179,7 @@ export function toWellnessState(raw: unknown): WellnessState {
   return {
     status: oneOf(s.status, WELLNESS_STATUSES, "idle"),
     meal_plan: str(s.meal_plan),
-    workout_plan: str(s.workout_plan),
+    training_plan: str(s.training_plan),
     weekly_plan: str(s.weekly_plan),
     review_summary: optionalStr(s.review_summary),
     last_delegation: isRecord(s.last_delegation) ? s.last_delegation : undefined,
@@ -184,6 +187,19 @@ export function toWellnessState(raw: unknown): WellnessState {
     kroger_connected: bool(s.kroger_connected),
     fitness_data_connected: bool(s.fitness_data_connected),
     activity_source: optionalStr(s.activity_source),
+  };
+}
+
+export function toResumeState(raw: unknown): ResumeState {
+  const state = asRecord(raw);
+  return {
+    target_role: str(state.target_role),
+    job_description: str(state.job_description),
+    fit_summary: str(state.fit_summary),
+    gaps: strArray(state.gaps),
+    tailored_bullets: strArray(state.tailored_bullets),
+    status: oneOf(state.status, RESUME_STATUSES, "idle"),
+    review_summary: str(state.review_summary),
   };
 }
 

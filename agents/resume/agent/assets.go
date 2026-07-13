@@ -1,6 +1,5 @@
-// Package resume implements the public resume Q&A agent for the Go ADK
-// runtime: a Q&A surface over Lucas Arango's professional background, with
-// no authentication and no tools.
+// Package resume implements the public resume assistant for the Go ADK
+// runtime: grounded Q&A plus an optional stateful job-fit workflow.
 package resume
 
 import (

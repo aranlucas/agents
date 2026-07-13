@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -47,6 +46,27 @@ type Snapshot struct {
 type SyncResult struct {
 	Accepted int    `json:"accepted"`
 	SyncedAt string `json:"synced_at"`
+}
+
+type syncSourceRow struct {
+	Source   string `json:"source"`
+	SyncedAt string `json:"synced_at"`
+}
+
+type activityRow struct {
+	SourceActivityID    string   `json:"source_activity_id"`
+	Source              string   `json:"source"`
+	Name                string   `json:"name"`
+	SportType           *string  `json:"sport_type"`
+	StartDate           *string  `json:"start_date"`
+	EndDate             *string  `json:"end_date"`
+	DistanceM           *float64 `json:"distance_m"`
+	MovingTimeS         *int     `json:"moving_time_s"`
+	ElapsedTimeS        *int     `json:"elapsed_time_s"`
+	TotalElevationGainM *float64 `json:"total_elevation_gain_m"`
+	AverageHeartrate    *float64 `json:"average_heartrate"`
+	PerceivedEffort     *int     `json:"perceived_effort"`
+	DataOrigin          *string  `json:"data_origin"`
 }
 
 type Repository interface {
@@ -153,9 +173,13 @@ func (s *Store) Snapshot(ctx context.Context, userID string, limit int) (Snapsho
 	}
 	snapshot := Snapshot{Activities: []Activity{}}
 	if len(results) > 0 && len(results[0].Rows) > 0 {
+		var row syncSourceRow
+		if err := json.Unmarshal(results[0].Rows[0], &row); err != nil || row.Source == "" || row.SyncedAt == "" {
+			return Snapshot{}, errors.New("decode fitness sync source")
+		}
 		snapshot.Connected = true
-		snapshot.Source = stringValue(results[0].Rows[0]["source"])
-		snapshot.SyncedAt = stringValue(results[0].Rows[0]["synced_at"])
+		snapshot.Source = row.Source
+		snapshot.SyncedAt = row.SyncedAt
 	}
 	if len(results) < 2 {
 		return snapshot, nil
@@ -170,65 +194,39 @@ func (s *Store) Snapshot(ctx context.Context, userID string, limit int) (Snapsho
 	return snapshot, nil
 }
 
-func decodeActivity(row map[string]any) (Activity, error) {
-	id, name, startDate := stringValue(row["source_activity_id"]), stringValue(row["name"]), stringValue(row["start_date"])
-	if id == "" || name == "" || startDate == "" {
+func decodeActivity(raw json.RawMessage) (Activity, error) {
+	var row activityRow
+	if err := json.Unmarshal(raw, &row); err != nil {
 		return Activity{}, errors.New("decode fitness activity")
 	}
-	activity := Activity{ID: id, Source: stringValue(row["source"]), Name: name, StartDate: &startDate}
-	activity.SportType = optionalString(row["sport_type"])
-	activity.EndDate = optionalString(row["end_date"])
-	activity.DistanceM = optionalFloat(row["distance_m"])
-	activity.MovingTimeS = optionalInt(row["moving_time_s"])
-	activity.ElapsedTimeS = optionalInt(row["elapsed_time_s"])
-	activity.TotalElevationGainM = optionalFloat(row["total_elevation_gain_m"])
-	activity.AverageHeartrate = optionalFloat(row["average_heartrate"])
-	activity.PerceivedEffort = optionalInt(row["perceived_effort"])
-	activity.DataOrigin = optionalString(row["data_origin"])
-	return activity, nil
+	if row.SourceActivityID == "" || row.Name == "" || row.StartDate == nil || strings.TrimSpace(*row.StartDate) == "" {
+		return Activity{}, errors.New("decode fitness activity")
+	}
+	startDate := strings.TrimSpace(*row.StartDate)
+	return Activity{
+		ID:                  row.SourceActivityID,
+		Source:              row.Source,
+		Name:                row.Name,
+		SportType:           normalizedString(row.SportType),
+		StartDate:           &startDate,
+		EndDate:             normalizedString(row.EndDate),
+		DistanceM:           row.DistanceM,
+		MovingTimeS:         row.MovingTimeS,
+		ElapsedTimeS:        row.ElapsedTimeS,
+		TotalElevationGainM: row.TotalElevationGainM,
+		AverageHeartrate:    row.AverageHeartrate,
+		PerceivedEffort:     row.PerceivedEffort,
+		DataOrigin:          normalizedString(row.DataOrigin),
+	}, nil
 }
 
-func stringValue(value any) string {
-	text, _ := value.(string)
-	return text
-}
-
-func optionalString(value any) *string {
-	text := strings.TrimSpace(stringValue(value))
+func normalizedString(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	text := strings.TrimSpace(*value)
 	if text == "" {
 		return nil
 	}
 	return &text
-}
-
-func optionalFloat(value any) *float64 {
-	var number float64
-	switch value := value.(type) {
-	case float64:
-		number = value
-	case json.Number:
-		parsed, err := value.Float64()
-		if err != nil {
-			return nil
-		}
-		number = parsed
-	case string:
-		parsed, err := strconv.ParseFloat(value, 64)
-		if err != nil {
-			return nil
-		}
-		number = parsed
-	default:
-		return nil
-	}
-	return &number
-}
-
-func optionalInt(value any) *int {
-	number := optionalFloat(value)
-	if number == nil {
-		return nil
-	}
-	integer := int(*number)
-	return &integer
 }

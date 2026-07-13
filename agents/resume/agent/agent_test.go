@@ -31,7 +31,9 @@ func TestResumeAgentEmbedsGroundingAndDefaults(t *testing.T) {
 	if ag.Name() != "resume_agent" {
 		t.Fatalf("name = %q", ag.Name())
 	}
-	if !strings.Contains(resume.Instruction, "DoorDash") {
+	if !strings.Contains(resume.Instruction, "DoorDash") ||
+		!strings.Contains(resume.Instruction, "set_target_role") ||
+		!strings.Contains(resume.Instruction, "ordinary questions with no concrete target job") {
 		t.Fatal("resume grounding was not embedded")
 	}
 }
@@ -47,5 +49,33 @@ func TestResumeAgentRejectsNilModel(t *testing.T) {
 	}
 	if ag == nil {
 		t.Fatal("New(nil) returned a nil agent")
+	}
+}
+
+func TestResumeAgentEmbedsCurrentPlatformArchitecture(t *testing.T) {
+	for _, required := range []string{
+		"Google ADK-Go + AG-UI",
+		"12 typed Go agents",
+		"single Go AG-UI gateway",
+		"D1 session state",
+		"R2 artifact storage",
+		"MCP integrations connect Kroger, travel, and Excalidraw",
+		"synced from Health Connect",
+		"ADK task agents over shared typed state",
+	} {
+		if !strings.Contains(resume.Instruction, required) {
+			t.Errorf("embedded resume is missing current architecture fact %q", required)
+		}
+	}
+
+	for _, retired := range []string{
+		"Multiple Python agents",
+		"FastAPI gateway",
+		"Strava for training data",
+		"in-process as ADK tools",
+	} {
+		if strings.Contains(resume.Instruction, retired) {
+			t.Errorf("embedded resume still contains retired architecture %q", retired)
+		}
 	}
 }

@@ -1,11 +1,14 @@
 package agui
 
 import (
+	"encoding/json"
+	"fmt"
+	"iter"
 	"net/http/httptest"
 	"testing"
 
-	"agents/internal/agentruntime"
-	aguievents "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
+	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
+	"google.golang.org/adk/v2/session"
 )
 
 func TestOAuthHeadersBecomeRouteScopedFlagsWithoutChangingTokenNames(t *testing.T) {
@@ -23,8 +26,11 @@ func TestOAuthHeadersBecomeRouteScopedFlagsWithoutChangingTokenNames(t *testing.
 	if disconnected["strava_connected"] != false {
 		t.Fatalf("disconnected overlay = %#v", disconnected)
 	}
-	persisted := persistentSnapshot(agentruntime.StateMap(overlay))
-	if _, leaked := persisted["temp:strava_token"]; leaked || persisted["strava_connected"] != true {
+	persisted, err := persistentSnapshot(testState(overlay))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, leaked := persisted["temp:strava_token"]; leaked || string(persisted["strava_connected"]) != "true" {
 		t.Fatalf("persistent snapshot = %#v", persisted)
 	}
 
@@ -49,21 +55,55 @@ func TestOAuthHeadersBecomeRouteScopedFlagsWithoutChangingTokenNames(t *testing.
 	}
 }
 
-// TestStatePatchAddReplaceRemoveAndEscaping is the committed state-differ-
-// level coverage the review asked for: an existing key changing value
-// emits "replace"; a nil delta for an existing key emits "remove"; and a
-// key containing "/" and "~" produces a correctly escaped RFC 6901 JSON
-// Pointer path. The golden SSE fixture (testdata/agui/resume-events.jsonl)
-// only exercises the "add" case, so these cases would otherwise never run.
+type testState map[string]any
+
+func (s testState) Get(key string) (any, error) {
+	value, ok := s[key]
+	if !ok {
+		return nil, session.ErrStateKeyNotExist
+	}
+	return value, nil
+}
+
+func (s testState) All() iter.Seq2[string, any] {
+	return func(yield func(string, any) bool) {
+		for key, value := range s {
+			if !yield(key, value) {
+				return
+			}
+		}
+	}
+}
+
+func TestPersistentSnapshotValidatesValuesAndOmitsTypedNil(t *testing.T) {
+	var deleted *string
+	snapshot, err := persistentSnapshot(testState{"present": "value", "deleted": deleted})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(snapshot["present"]) != `"value"` {
+		t.Fatalf("snapshot = %#v", snapshot)
+	}
+	if _, ok := snapshot["deleted"]; ok {
+		t.Fatalf("typed nil leaked into snapshot: %#v", snapshot)
+	}
+	if _, err := persistentSnapshot(testState{"invalid": make(chan int)}); err == nil {
+		t.Fatal("non-JSON state value was accepted")
+	}
+}
+
 func TestStatePatchAddReplaceRemoveAndEscaping(t *testing.T) {
-	known := knownKeySet(map[string]any{"count": 1})
+	state := stateDocument{"count": json.RawMessage("1")}
 
 	t.Run("add with JSON Pointer escaping", func(t *testing.T) {
-		patches := statePatch(known, map[string]any{"profile/name": "new", "a~b": true})
+		patches, err := statePatch(state, map[string]any{"profile/name": "new", "a~b": true})
+		if err != nil {
+			t.Fatal(err)
+		}
 		if len(patches) != 2 {
 			t.Fatalf("patches = %#v, want 2", patches)
 		}
-		byPath := map[string]aguievents.JSONPatchOperation{}
+		byPath := map[string]events.JSONPatchOperation{}
 		for _, p := range patches {
 			byPath[p.Path] = p
 		}
@@ -75,26 +115,47 @@ func TestStatePatchAddReplaceRemoveAndEscaping(t *testing.T) {
 		if !ok || tildeOp.Op != "add" || tildeOp.Value != true {
 			t.Fatalf("a~b op = %#v", tildeOp)
 		}
-		if !known["profile/name"] || !known["a~b"] {
-			t.Fatalf("known set not updated after add: %#v", known)
+		if string(state["profile/name"]) != `"new"` || string(state["a~b"]) != "true" {
+			t.Fatalf("state not updated after add: %#v", state)
 		}
 	})
 
 	t.Run("replace on existing key", func(t *testing.T) {
-		patches := statePatch(known, map[string]any{"count": 2})
+		patches, err := statePatch(state, map[string]any{"count": 2})
+		if err != nil {
+			t.Fatal(err)
+		}
 		if len(patches) != 1 {
 			t.Fatalf("patches = %#v, want 1", patches)
 		}
-		if patches[0].Op != "replace" || patches[0].Path != "/count" || patches[0].Value != 2 {
+		if patches[0].Op != "replace" || patches[0].Path != "/count" || fmt.Sprint(patches[0].Value) != "2" {
 			t.Fatalf("patch = %#v", patches[0])
 		}
-		if !known["count"] {
-			t.Fatal("replace must not remove the key from known")
+		if string(state["count"]) != "2" {
+			t.Fatalf("replace did not update state: %#v", state)
+		}
+	})
+
+	t.Run("typed nil delta also emits remove", func(t *testing.T) {
+		state["typed-nil"] = json.RawMessage(`"present"`)
+		var deleted *string
+		patches, err := statePatch(state, map[string]any{"typed-nil": deleted})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(patches) != 1 || patches[0].Op != "remove" || patches[0].Path != "/typed-nil" {
+			t.Fatalf("patches = %#v", patches)
+		}
+		if _, ok := state["typed-nil"]; ok {
+			t.Fatalf("typed nil did not delete state key: %#v", state)
 		}
 	})
 
 	t.Run("nil delta on existing key emits remove", func(t *testing.T) {
-		patches := statePatch(known, map[string]any{"count": nil})
+		patches, err := statePatch(state, map[string]any{"count": nil})
+		if err != nil {
+			t.Fatal(err)
+		}
 		if len(patches) != 1 {
 			t.Fatalf("patches = %#v, want 1", patches)
 		}
@@ -104,34 +165,47 @@ func TestStatePatchAddReplaceRemoveAndEscaping(t *testing.T) {
 		if patches[0].Value != nil {
 			t.Fatalf("remove op carried a value: %#v", patches[0].Value)
 		}
-		if known["count"] {
-			t.Fatal("remove must delete the key from known")
+		if _, ok := state["count"]; ok {
+			t.Fatalf("remove did not delete state key: %#v", state)
 		}
 	})
 
 	t.Run("nil delta on never-known key is a no-op", func(t *testing.T) {
-		patches := statePatch(known, map[string]any{"never-known": nil})
+		patches, err := statePatch(state, map[string]any{"never-known": nil})
+		if err != nil {
+			t.Fatal(err)
+		}
 		if len(patches) != 0 {
 			t.Fatalf("patches = %#v, want none", patches)
 		}
 	})
 
 	t.Run("temp: keys are always excluded", func(t *testing.T) {
-		patches := statePatch(known, map[string]any{"temp:token": "secret"})
+		patches, err := statePatch(state, map[string]any{"temp:token": "secret"})
+		if err != nil {
+			t.Fatal(err)
+		}
 		if len(patches) != 0 {
 			t.Fatalf("patches = %#v, want none", patches)
 		}
 	})
 
 	t.Run("empty delta short-circuits", func(t *testing.T) {
-		if patches := statePatch(known, nil); patches != nil {
+		patches, err := statePatch(state, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if patches != nil {
 			t.Fatalf("patches = %#v, want nil", patches)
 		}
 	})
 }
 
 func TestStreamedExpenseReportStateField(t *testing.T) {
-	patches := statePatch(map[string]bool{}, map[string]any{"expense_report": "## Review\n- pending"})
+	patches, err := statePatch(stateDocument{}, map[string]any{"expense_report": "## Review\n- pending"})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(patches) != 1 || patches[0].Op != "add" || patches[0].Path != "/expense_report" || patches[0].Value != "## Review\n- pending" {
 		t.Fatalf("patches = %#v", patches)
 	}

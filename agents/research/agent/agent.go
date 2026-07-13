@@ -1,14 +1,14 @@
 package research
 
 import (
-	"agents/internal/functiontool"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
-	adktool "google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool/functiontool"
 )
 
-func New(m model.LLM, toolsets ...adktool.Toolset) (agent.Agent, error) {
+func New(m model.LLM, toolsets ...tool.Toolset) (agent.Agent, error) {
 	tools, err := researchTools()
 	if err != nil {
 		return nil, err
@@ -23,7 +23,7 @@ func New(m model.LLM, toolsets ...adktool.Toolset) (agent.Agent, error) {
 	})
 }
 
-func researchTools() ([]adktool.Tool, error) {
+func researchTools() ([]tool.Tool, error) {
 	setQueryTool, err := functiontool.New(functiontool.Config{
 		Name:        "set_research_query",
 		Description: "Set the report title and research query.",
@@ -72,7 +72,7 @@ func researchTools() ([]adktool.Tool, error) {
 		return nil, err
 	}
 
-	return []adktool.Tool{
+	return []tool.Tool{
 		setQueryTool,
 		createSectionTool,
 		updateSectionTool,

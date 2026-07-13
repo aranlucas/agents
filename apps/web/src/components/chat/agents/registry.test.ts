@@ -62,4 +62,12 @@ describe("agent registry", () => {
   it("uses A2UI inline instead of a markdown artifact for Trends", () => {
     expect(getAgentConfig("trends").artifact).toBeUndefined();
   });
+
+  it("surfaces the Resume role-fit summary as a document artifact", () => {
+    expect(getAgentConfig("resume").artifact).toMatchObject({
+      stateField: "fit_summary",
+      kind: "document",
+      title: "Role fit brief",
+    });
+  });
 });

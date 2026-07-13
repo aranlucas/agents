@@ -11,9 +11,11 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useAuth } from "@clerk/clerk-expo";
 import { useAgent, useCopilotKit } from "@copilotkit/react-native";
 import type { FitnessState, GroceryState, TripState, WellnessState } from "@agents/types";
 import type { AgentId } from "@/utils/agent-config";
+import { runWithCurrentClerkToken } from "@/utils/copilotkit-auth";
 
 type AgentState = TripState | GroceryState | FitnessState | WellnessState;
 
@@ -51,6 +53,7 @@ export function AgentScreen<TState extends AgentState>({ config, initialState }:
 
   const { agent } = useAgent({ agentId: config.id });
   const { copilotkit } = useCopilotKit();
+  const { getToken, userId } = useAuth();
 
   const messages = (agent?.messages ?? [])
     .map(toDisplayMessage)
@@ -60,17 +63,28 @@ export function AgentScreen<TState extends AgentState>({ config, initialState }:
   const state = (agent?.state ?? initialState) as TState;
   const isLoading = agent?.isRunning ?? false;
 
-  const onSend = useCallback(() => {
+  const onSend = useCallback(async () => {
     const content = input.trim();
     if (!content || isLoading || !agent) return;
-    setInput("");
-    agent.addMessage({
-      id: `user_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-      role: "user",
-      content,
-    });
-    void copilotkit.runAgent({ agent });
-  }, [input, isLoading, agent, copilotkit]);
+    try {
+      await runWithCurrentClerkToken({
+        copilotkit,
+        getToken,
+        userId,
+        run: () => {
+          setInput("");
+          agent.addMessage({
+            id: `user_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+            role: "user",
+            content,
+          });
+          return copilotkit.runAgent({ agent });
+        },
+      });
+    } catch (error) {
+      console.error("Unable to start authenticated agent run", error);
+    }
+  }, [input, isLoading, agent, copilotkit, getToken, userId]);
 
   const summary = config.renderSummary(state);
 

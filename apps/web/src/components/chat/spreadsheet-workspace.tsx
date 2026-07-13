@@ -120,10 +120,12 @@ export function SpreadsheetWorkspace({ threadId: _threadId }: { threadId: string
   const state = (agent?.state ?? {}) as SpreadsheetState;
   const sheets = state.sheets ?? [];
 
-  const [localActiveIndex, setLocalActiveIndex] = useState(0);
+  // Until the user picks a tab, follow the agent's active sheet. Once they do,
+  // keep navigation local and immediate instead of asking the model to switch.
+  const [localActiveIndex, setLocalActiveIndex] = useState<number | null>(null);
   const activeIndex =
     sheets.length > 0
-      ? Math.min(state.active_sheet_index ?? localActiveIndex, sheets.length - 1)
+      ? Math.max(0, Math.min(localActiveIndex ?? state.active_sheet_index ?? 0, sheets.length - 1))
       : 0;
   const activeSheet = sheets[activeIndex];
 

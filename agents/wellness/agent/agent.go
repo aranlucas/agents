@@ -5,16 +5,16 @@ import (
 
 	"agents/fitness/agent"
 	"agents/grocery/agent"
-	"agents/internal/functiontool"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
-	adktool "google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool/functiontool"
 )
 
 type ModelSet struct{ Coordinator model.LLM }
 
-func New(models ModelSet, fitnessAgent, groceryAgent agent.Agent, toolsets ...adktool.Toolset) (agent.Agent, error) {
+func New(models ModelSet, fitnessAgent, groceryAgent agent.Agent, toolsets ...tool.Toolset) (agent.Agent, error) {
 	if models.Coordinator == nil {
 		return nil, errors.New("wellness coordinator model is required")
 	}
@@ -32,7 +32,7 @@ func New(models ModelSet, fitnessAgent, groceryAgent agent.Agent, toolsets ...ad
 	})
 }
 
-func wellnessTools() ([]adktool.Tool, error) {
+func wellnessTools() ([]tool.Tool, error) {
 	getCurrentDateTool, err := functiontool.New(functiontool.Config{
 		Name:        "get_current_date",
 		Description: "Return the current UTC date.",
@@ -57,14 +57,14 @@ func wellnessTools() ([]adktool.Tool, error) {
 		return nil, err
 	}
 
-	return []adktool.Tool{
+	return []tool.Tool{
 		getCurrentDateTool,
 		setWeeklyWellnessPlanTool,
 		markReadyTool,
 	}, nil
 }
 
-func enforceSpecialistOrder(ctx agent.Context, called adktool.Tool, _ map[string]any) (map[string]any, error) {
+func enforceSpecialistOrder(ctx agent.Context, called tool.Tool, _ map[string]any) (map[string]any, error) {
 	state := readState(ctx.State())
 	if policyError := specialistPolicy(state, called.Name()); policyError != nil {
 		return map[string]any{"ok": false, "error": policyError}, nil

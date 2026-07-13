@@ -82,7 +82,7 @@ const AGENTS: Record<AgentId, AgentConfig> = {
       },
       {
         title: "Ready to book?",
-        message: "If the itinerary looks good, propose locking it in and ask for my approval.",
+        message: "If the itinerary looks good, get it ready to book.",
       },
     ],
   },
@@ -255,16 +255,31 @@ const AGENTS: Record<AgentId, AgentConfig> = {
     label: "Resume",
     glyph: "▣",
     colorVar: "--resume",
-    placeholder: "Ask about Lucas's experience, skills, or projects…",
+    placeholder: "Paste a role or job description to assess Lucas's fit…",
     welcome:
-      "Hi! I can answer questions about Lucas's background, experience, and skills. What would you like to know?",
+      "Share a role title or job description and I'll build a grounded fit brief from Lucas's resume.",
+    artifact: {
+      stateField: "fit_summary",
+      kind: "document",
+      title: "Role fit brief",
+      name: "role_fit.md",
+    },
     suggestions: [
-      { title: "Experience", message: "Walk me through Lucas's work experience." },
-      { title: "Tech stack", message: "What technologies is Lucas strongest in?" },
-      { title: "Recent projects", message: "What has Lucas built recently?" },
       {
-        title: "Good fit?",
-        message: "Why would Lucas be a good fit for a senior engineering role?",
+        title: "AI platform role",
+        message: "Assess Lucas's fit for a Staff AI Platform Engineer role.",
+      },
+      {
+        title: "Go platform role",
+        message: "Assess Lucas's fit for a Senior Go Platform Engineer role.",
+      },
+      {
+        title: "Surface gaps",
+        message: "What are the clearest gaps for an AI infrastructure lead role?",
+      },
+      {
+        title: "Tailor bullets",
+        message: "Tailor Lucas's strongest resume bullets for a Staff AI Platform Engineer role.",
       },
     ],
   },

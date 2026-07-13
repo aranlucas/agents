@@ -5,12 +5,11 @@ import (
 	"errors"
 
 	"agents/internal/common"
-	"agents/internal/functiontool"
-	"github.com/google/jsonschema-go/jsonschema"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
-	adktool "google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool/functiontool"
 	"google.golang.org/genai"
 )
 
@@ -28,15 +27,15 @@ type LoadPageResult struct {
 	Page common.WebPage `json:"page"`
 }
 
-func New(m model.LLM, kroger *Kroger, search *common.BraveSearch, loader *common.WebLoader, toolsets ...adktool.Toolset) (agent.Agent, error) {
+func New(m model.LLM, kroger *Kroger, search *common.BraveSearch, loader *common.WebLoader, toolsets ...tool.Toolset) (agent.Agent, error) {
 	return newAgent(m, kroger, search, loader, llmagent.ModeChat, toolsets...)
 }
 
-func NewTask(m model.LLM, kroger *Kroger, search *common.BraveSearch, loader *common.WebLoader, toolsets ...adktool.Toolset) (agent.Agent, error) {
+func NewTask(m model.LLM, kroger *Kroger, search *common.BraveSearch, loader *common.WebLoader, toolsets ...tool.Toolset) (agent.Agent, error) {
 	return newAgent(m, kroger, search, loader, llmagent.ModeTask, toolsets...)
 }
 
-func newAgent(m model.LLM, kroger *Kroger, search *common.BraveSearch, loader *common.WebLoader, mode llmagent.Mode, toolsets ...adktool.Toolset) (agent.Agent, error) {
+func newAgent(m model.LLM, kroger *Kroger, search *common.BraveSearch, loader *common.WebLoader, mode llmagent.Mode, toolsets ...tool.Toolset) (agent.Agent, error) {
 	tools, err := groceryTools(search, loader)
 	if err != nil {
 		return nil, err
@@ -44,19 +43,18 @@ func newAgent(m model.LLM, kroger *Kroger, search *common.BraveSearch, loader *c
 	if kroger != nil {
 		toolsets = append(toolsets, kroger)
 	}
-	return llmagent.New(llmagent.Config{Name: AppName, Description: "Meal planning, pantry, shopping list, and cart support.", Instruction: Instruction, Model: m, Mode: mode, Tools: tools, Toolsets: toolsets, BeforeModelCallbacks: []llmagent.BeforeModelCallback{compactGroceryContext}})
+	config := llmagent.Config{Name: AppName, Description: "Meal planning, pantry, shopping list, and cart support.", Instruction: Instruction, Model: m, Mode: mode, Tools: tools, Toolsets: toolsets, BeforeModelCallbacks: []llmagent.BeforeModelCallback{compactGroceryContext}}
+	if mode == llmagent.ModeTask {
+		config.DisallowTransferToParent = true
+		config.DisallowTransferToPeers = true
+	}
+	return llmagent.New(config)
 }
 
-func groceryTools(search *common.BraveSearch, loader *common.WebLoader) ([]adktool.Tool, error) {
-	shoppingListSchema, err := shoppingListInputSchema()
-	if err != nil {
-		return nil, err
-	}
-
+func groceryTools(search *common.BraveSearch, loader *common.WebLoader) ([]tool.Tool, error) {
 	setShoppingListTool, err := functiontool.New(functiontool.Config{
 		Name:        "set_shopping_list",
 		Description: "Replace the unmaterialized shopping list.",
-		InputSchema: shoppingListSchema,
 	}, SetShoppingList)
 	if err != nil {
 		return nil, err
@@ -110,7 +108,7 @@ func groceryTools(search *common.BraveSearch, loader *common.WebLoader) ([]adkto
 		return nil, err
 	}
 
-	result := []adktool.Tool{
+	result := []tool.Tool{
 		setShoppingListTool,
 		updateCartTool,
 		updatePantryTool,
@@ -149,17 +147,6 @@ func groceryTools(search *common.BraveSearch, loader *common.WebLoader) ([]adkto
 	}
 
 	return result, nil
-}
-
-func shoppingListInputSchema() (*jsonschema.Schema, error) {
-	schema, err := jsonschema.For[ShoppingListArgs](nil)
-	if err != nil {
-		return nil, err
-	}
-	items := schema.Properties["items"]
-	items.Type = "array"
-	items.Types = nil
-	return schema, nil
 }
 
 func compactGroceryContext(_ agent.Context, request *model.LLMRequest) (*model.LLMResponse, error) {

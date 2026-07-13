@@ -27,7 +27,8 @@ func ValidateSQL(sql string) error {
 	if trimmed == "" || strings.Contains(trimmed, ";") || forbiddenSQL.MatchString(trimmed) {
 		return ErrUnsafeSQL
 	}
-	if !strings.HasPrefix(upper, "SELECT ") && !strings.HasPrefix(upper, "WITH ") {
+	fields := strings.Fields(upper)
+	if len(fields) == 0 || (fields[0] != "SELECT" && fields[0] != "WITH") {
 		return ErrUnsafeSQL
 	}
 	if !limitSQL.MatchString(trimmed) {

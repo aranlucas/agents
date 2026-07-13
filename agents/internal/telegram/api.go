@@ -91,8 +91,8 @@ func (c *HTTPClient) GetUpdates(ctx context.Context, offset int64, timeout int) 
 		return nil, errors.New("build Telegram request")
 	}
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	var updates []Update
-	if err := c.do(request, &updates); err != nil {
+	updates, err := telegramResult[[]Update](c, request)
+	if err != nil {
 		return nil, err
 	}
 	filtered := updates[:0]
@@ -116,22 +116,18 @@ func (c *HTTPClient) SendMessage(ctx context.Context, input SendMessageRequest) 
 	if input.ChatID == 0 || strings.TrimSpace(input.Text) == "" {
 		return Message{}, errors.New("telegram chat and text are required")
 	}
-	request, err := c.jsonRequest(ctx, "sendMessage", input)
+	request, err := telegramJSONRequest(c, ctx, "sendMessage", input)
 	if err != nil {
 		return Message{}, err
 	}
-	var message Message
-	if err := c.do(request, &message); err != nil {
-		return Message{}, err
-	}
-	return message, nil
+	return telegramResult[Message](c, request)
 }
 
 func (c *HTTPClient) SendChatAction(ctx context.Context, chatID, threadID int64, action string) error {
 	if chatID == 0 || strings.TrimSpace(action) == "" {
 		return errors.New("telegram chat and action are required")
 	}
-	request, err := c.jsonRequest(ctx, "sendChatAction", struct {
+	request, err := telegramJSONRequest(c, ctx, "sendChatAction", struct {
 		ChatID          int64  `json:"chat_id"`
 		MessageThreadID int64  `json:"message_thread_id,omitempty"`
 		Action          string `json:"action"`
@@ -139,11 +135,11 @@ func (c *HTTPClient) SendChatAction(ctx context.Context, chatID, threadID int64,
 	if err != nil {
 		return err
 	}
-	var accepted bool
-	return c.do(request, &accepted)
+	_, err = telegramResult[bool](c, request)
+	return err
 }
 
-func (c *HTTPClient) jsonRequest(ctx context.Context, method string, input any) (*http.Request, error) {
+func telegramJSONRequest[T any](c *HTTPClient, ctx context.Context, method string, input T) (*http.Request, error) {
 	body, err := json.Marshal(input)
 	if err != nil {
 		return nil, errors.New("encode Telegram request")
@@ -160,18 +156,19 @@ func (c *HTTPClient) methodURL(method string) string {
 	return c.baseURL + "/bot" + c.token + "/" + method
 }
 
-func (c *HTTPClient) do(request *http.Request, output any) error {
+func telegramResult[T any](c *HTTPClient, request *http.Request) (T, error) {
+	var output T
 	response, err := c.client.Do(request)
 	if err != nil {
-		return errors.New("telegram request failed")
+		return output, errors.New("telegram request failed")
 	}
 	defer func() { _ = response.Body.Close() }()
 	data, err := io.ReadAll(io.LimitReader(response.Body, maxTelegramBody+1))
 	if err != nil || len(data) > maxTelegramBody {
-		return errors.New("telegram response invalid or too large")
+		return output, errors.New("telegram response invalid or too large")
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return fmt.Errorf("telegram returned HTTP %d", response.StatusCode)
+		return output, fmt.Errorf("telegram returned HTTP %d", response.StatusCode)
 	}
 	var envelope struct {
 		OK        bool            `json:"ok"`
@@ -179,12 +176,13 @@ func (c *HTTPClient) do(request *http.Request, output any) error {
 		ErrorCode int             `json:"error_code"`
 	}
 	if json.Unmarshal(data, &envelope) != nil || !envelope.OK {
-		return errors.New("telegram API rejected request")
+		return output, errors.New("telegram API rejected request")
 	}
-	if output != nil && json.Unmarshal(envelope.Result, output) != nil {
-		return errors.New("telegram response is malformed")
+	result := bytes.TrimSpace(envelope.Result)
+	if len(result) == 0 || bytes.Equal(result, []byte("null")) || json.Unmarshal(result, &output) != nil {
+		return output, errors.New("telegram response is malformed")
 	}
-	return nil
+	return output, nil
 }
 
 func isTelegramLoopback(host string) bool {

@@ -1,10 +1,11 @@
 package travel
 
 import (
+	"iter"
 	"strings"
 	"testing"
 
-	"agents/internal/agentruntime"
+	"google.golang.org/adk/v2/session"
 )
 
 func TestWriteItineraryStreamsBodyAndFlightsState(t *testing.T) {
@@ -31,6 +32,27 @@ func TestWriteItineraryRejectsRendererBreakingFormatTransactionally(t *testing.T
 	}
 }
 
+func TestWriteItineraryAllowsSupportingProseButRejectsUntimedBullets(t *testing.T) {
+	state := Defaults()
+	valid, err := writeItinerary(&state, WriteItineraryArgs{
+		Body: "## Day 1: Arrival\n\n- 09:00 — Coffee\n\nPlanning notes: Reserve ahead for the holiday.",
+	})
+	if err != nil || !valid.OK {
+		t.Fatalf("supporting prose result/error = %#v / %v", valid, err)
+	}
+
+	before := state.Itinerary
+	invalid, err := writeItinerary(&state, WriteItineraryArgs{
+		Body: "## Day 1: Arrival\n\n- 09:00 — Coffee\n- Reserve ahead",
+	})
+	if err != nil || invalid.OK || invalid.Error == nil || invalid.Error.Code != "invalid_itinerary" {
+		t.Fatalf("untimed bullet result/error = %#v / %v", invalid, err)
+	}
+	if state.Itinerary != before {
+		t.Fatalf("failed write mutated itinerary: %q", state.Itinerary)
+	}
+}
+
 func TestAddDayReplacesExistingDayInsteadOfDuplicatingIt(t *testing.T) {
 	state := Defaults()
 	_, _ = writeItinerary(&state, WriteItineraryArgs{Body: "## Day 1: Old\n\n- 09:00 — Coffee\n\n## Day 2: Harbor\n\n- 10:00 — Ferry"})
@@ -43,8 +65,28 @@ func TestAddDayReplacesExistingDayInsteadOfDuplicatingIt(t *testing.T) {
 func TestLegacyStringInterestsDecodeAsStrongList(t *testing.T) {
 	state := StateDefaults()
 	state["interests"] = "food, museums, food"
-	decoded := readState(agentruntime.StateMap(state))
+	decoded := readState(travelState(state))
 	if len(decoded.Interests) != 2 || decoded.Interests[0] != "food" || decoded.Interests[1] != "museums" {
 		t.Fatalf("interests = %#v", decoded.Interests)
+	}
+}
+
+type travelState map[string]any
+
+func (s travelState) Get(key string) (any, error) {
+	value, ok := s[key]
+	if !ok {
+		return nil, session.ErrStateKeyNotExist
+	}
+	return value, nil
+}
+
+func (s travelState) All() iter.Seq2[string, any] {
+	return func(yield func(string, any) bool) {
+		for key, value := range s {
+			if !yield(key, value) {
+				return
+			}
+		}
 	}
 }

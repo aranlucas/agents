@@ -2,7 +2,6 @@ package travel
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net"
 	"net/http"
@@ -12,10 +11,8 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"google.golang.org/adk/v2/agent"
-	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/tool"
 	"google.golang.org/adk/v2/tool/mcptoolset"
-	"google.golang.org/genai"
 )
 
 const (
@@ -66,69 +63,8 @@ func (c *cachedToolset) Tools(ctx agent.ReadonlyContext) ([]tool.Tool, error) {
 	if err != nil {
 		return nil, err
 	}
-	c.tools, c.expires = guardConsequentialTools(tools), time.Now().Add(trvlDiscoveryTTL)
+	c.tools, c.expires = tools, time.Now().Add(trvlDiscoveryTTL)
 	return append([]tool.Tool(nil), c.tools...), nil
-}
-
-type executableTool interface {
-	tool.Tool
-	Declaration() *genai.FunctionDeclaration
-	ProcessRequest(agent.Context, *model.LLMRequest) error
-	Run(agent.Context, any) (map[string]any, error)
-}
-
-type approvalGuardTool struct{ executableTool }
-
-func (t *approvalGuardTool) Run(ctx agent.Context, args any) (map[string]any, error) {
-	if !approvedForTravelTool(ctx.UserContent(), t.Name()) {
-		return nil, errors.New("matching explicit travel approval is required")
-	}
-	return t.executableTool.Run(ctx, args)
-}
-
-func guardConsequentialTools(tools []tool.Tool) []tool.Tool {
-	result := append([]tool.Tool(nil), tools...)
-	for index, candidate := range result {
-		if !isConsequentialTravelTool(candidate.Name()) {
-			continue
-		}
-		if executable, ok := candidate.(executableTool); ok {
-			result[index] = &approvalGuardTool{executableTool: executable}
-		}
-	}
-	return result
-}
-
-func isConsequentialTravelTool(name string) bool {
-	switch name {
-	case "mark_trip_booked", "book_flight", "book_hotel", "reserve_hotel", "share_itinerary", "charge_card", "confirm_booking", "purchase_ticket":
-		return true
-	default:
-		return false
-	}
-}
-
-func approvedForTravelTool(content *genai.Content, toolName string) bool {
-	if content == nil {
-		return false
-	}
-	for _, part := range content.Parts {
-		response := part.FunctionResponse
-		if response == nil || response.Name != "request_user_approval" {
-			continue
-		}
-		var approval struct {
-			Approved bool `json:"approved"`
-			Request  struct {
-				Action string `json:"action"`
-			} `json:"_agui_request"`
-		}
-		encoded, err := json.Marshal(response.Response)
-		if err == nil && json.Unmarshal(encoded, &approval) == nil && approval.Approved && approval.Request.Action == toolName {
-			return true
-		}
-	}
-	return false
 }
 
 type readonlyDeadlineContext struct {

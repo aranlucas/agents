@@ -1,14 +1,14 @@
 package travel
 
 import (
-	"agents/internal/functiontool"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
-	adktool "google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool/functiontool"
 )
 
-func New(m model.LLM, toolsets ...adktool.Toolset) (agent.Agent, error) {
+func New(m model.LLM, toolsets ...tool.Toolset) (agent.Agent, error) {
 	tools, err := travelTools()
 	if err != nil {
 		return nil, err
@@ -23,7 +23,7 @@ func New(m model.LLM, toolsets ...adktool.Toolset) (agent.Agent, error) {
 	})
 }
 
-func travelTools() ([]adktool.Tool, error) {
+func travelTools() ([]tool.Tool, error) {
 	setTripMetaTool, err := functiontool.New(functiontool.Config{
 		Name:        "set_trip_meta",
 		Description: "Set validated destination, dates, party size, and budget before drafting.",
@@ -50,7 +50,7 @@ func travelTools() ([]adktool.Tool, error) {
 
 	markReadyToBookTool, err := functiontool.New(functiontool.Config{
 		Name:        "mark_ready_to_book",
-		Description: "Mark a complete itinerary ready for explicit booking approval.",
+		Description: "Mark a complete itinerary ready for booking.",
 	}, MarkReadyToBook)
 	if err != nil {
 		return nil, err
@@ -64,7 +64,7 @@ func travelTools() ([]adktool.Tool, error) {
 		return nil, err
 	}
 
-	return []adktool.Tool{
+	return []tool.Tool{
 		setTripMetaTool,
 		writeItineraryTool,
 		addDayTool,

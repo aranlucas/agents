@@ -30,12 +30,16 @@ type CurrentDateArgs struct{}
 func SetWeeklyWellnessPlan(ctx agent.Context, input PlanArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := setWeeklyWellnessPlan(&state, input)
-	if err == nil && result.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
-		}
+	if err != nil || !result.OK {
+		return result, err
 	}
-	return result, err
+	if err := ctx.State().Set("weekly_plan", state.WeeklyPlan); err != nil {
+		return Result{}, err
+	}
+	if err := ctx.State().Set("status", state.Status); err != nil {
+		return Result{}, err
+	}
+	return result, nil
 }
 
 func setWeeklyWellnessPlan(state *WellnessState, input PlanArgs) (Result, error) {
@@ -57,12 +61,16 @@ func setWeeklyWellnessPlan(state *WellnessState, input PlanArgs) (Result, error)
 func MarkPlanReady(ctx agent.Context, input ReadyArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := markPlanReady(&state, input)
-	if err == nil && result.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
-		}
+	if err != nil || !result.OK {
+		return result, err
 	}
-	return result, err
+	if err := ctx.State().Set("status", state.Status); err != nil {
+		return Result{}, err
+	}
+	if err := ctx.State().Set("review_summary", state.ReviewSummary); err != nil {
+		return Result{}, err
+	}
+	return result, nil
 }
 
 func markPlanReady(state *WellnessState, input ReadyArgs) (Result, error) {

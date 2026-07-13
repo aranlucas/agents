@@ -82,7 +82,36 @@
             "role": "model",
             "parts": [
               {
-                "text": "Lucas is full-stack: React, TypeScript, Next.js, microfrontends, Java Spring, Ruby on Rails, Golang, DynamoDB, API Gateway, AWS CDK, Python, FastAPI, Google ADK, MCP, AG-UI, and CopilotKit."
+                "text": "Lucas is full-stack: React, TypeScript, Next.js, Expo, microfrontends, Java Spring, Ruby on Rails, Go, Python, DynamoDB, API Gateway, AWS CDK, Google ADK-Go, MCP, AG-UI, CopilotKit, and Cloudflare D1 and R2."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "resume_current_personal_agent_platform",
+      "session_input": {
+        "app_name": "resume_agent",
+        "user_id": "eval_user",
+        "state": {}
+      },
+      "conversation": [
+        {
+          "invocation_id": "inv1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "What has Lucas built in his personal agent platform?"
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "Lucas runs 12 typed Go agents behind a Go AG-UI gateway, with Next.js and Expo clients, D1 session state, R2 artifacts, live MCP integrations for Kroger, travel, and Excalidraw, and Health Connect activity data for fitness planning."
               }
             ]
           }

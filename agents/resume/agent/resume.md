@@ -78,10 +78,10 @@ Software engineer with 10+ years of experience shipping products at DoorDash, Am
 
 Building AI agents is Lucas's main hobby. He runs a personal multi-agent platform in production, end to end:
 
-- **Multi-agent monorepo (Google ADK + AG-UI)** — Multiple Python agents, including travel, grocery, fitness, wellness, Google Trends A2UI analysis, oral-board practice, and resume Q&A, behind a single FastAPI gateway deployed on Railway.
+- **Multi-agent monorepo (Google ADK-Go + AG-UI)** — 12 typed Go agents, including travel, grocery, fitness, wellness, Google Trends A2UI analysis, oral-board practice, and resume Q&A, behind a single Go AG-UI gateway deployed on Railway, with D1 session state and R2 artifact storage.
 - **Full-stack agent UX** — Next.js + CopilotKit web console and an Expo (iOS/Android) app speaking the AG-UI protocol, with token-level streaming and shared agent state driving generative UI instead of plain chat.
-- **Real-world tool use via MCP** — Agents call live MCP servers (Kroger for groceries, Strava for training data, travel search) so they act on real data, not demos.
-- **Cross-agent orchestration** — The wellness agent composes the grocery and fitness agents in-process as ADK tools, an architecture he later applied to conversational shopping at DoorDash: the grocery agent was the prototype that shaped his vision for Ask DoorDash.
+- **Real-world tools and data** — Live MCP integrations connect Kroger, travel, and Excalidraw; fitness plans use activity snapshots synced from Health Connect.
+- **Cross-agent orchestration** — The wellness agent delegates to the grocery and fitness agents in-process as ADK task agents over shared typed state. The grocery agent was the prototype that shaped his vision for Ask DoorDash.
 - **You're experiencing one right now** — this resume Q&A is itself one of his agents.
 
 ## Education

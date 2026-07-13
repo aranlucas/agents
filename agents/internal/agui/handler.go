@@ -1,8 +1,10 @@
 package agui
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,8 +12,8 @@ import (
 
 	"agents/internal/agentruntime"
 	"agents/internal/auth"
-	aguievents "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
-	aguisse "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/encoding/sse"
+	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
+	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/encoding/sse"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/runner"
 	"google.golang.org/adk/v2/session"
@@ -22,8 +24,7 @@ type Option func(*handlerConfig)
 
 type handlerConfig struct {
 	pending PendingTools
-	ids     aguievents.IDGenerator
-	userID  string
+	ids     events.IDGenerator
 }
 
 // WithPendingTools wires the D1-backed pending client-tool store used to
@@ -33,17 +34,10 @@ func WithPendingTools(pending PendingTools) Option {
 }
 
 // WithIDGenerator overrides the AG-UI message/tool-call ID generator.
-// Production defaults to aguievents.NewDefaultIDGenerator(); tests inject a
+// Production defaults to events.NewDefaultIDGenerator(); tests inject a
 // deterministic generator so golden SSE fixtures are reproducible.
-func WithIDGenerator(ids aguievents.IDGenerator) Option {
+func WithIDGenerator(ids events.IDGenerator) Option {
 	return func(c *handlerConfig) { c.ids = ids }
-}
-
-// WithUserID fixes the ADK session user for every request handled by a
-// standalone adapter. Authenticated gateways should leave this unset so the
-// verified request identity remains authoritative.
-func WithUserID(userID string) Option {
-	return func(c *handlerConfig) { c.userID = strings.TrimSpace(userID) }
 }
 
 // ADKHandler binds one ADK agent and session service to an AG-UI HTTP
@@ -54,18 +48,7 @@ type ADKHandler struct {
 	runner   *runner.Runner
 	sessions session.Service
 	pending  PendingTools
-	ids      aguievents.IDGenerator
-	userID   string
-}
-
-// NewADKHandler creates a standalone AG-UI handler for one ADK agent. Use
-// NewEntryHandler when mounting a registry entry with route-specific state,
-// timeout, or forwarded-request behavior.
-func NewADKHandler(ag agent.Agent, sessions session.Service, appName string, opts ...Option) (*ADKHandler, error) {
-	if strings.TrimSpace(appName) == "" {
-		appName = "adk-agent"
-	}
-	return NewEntryHandler(agentruntime.Entry{Route: "agui", AppName: appName, Agent: ag}, sessions, opts...)
+	ids      events.IDGenerator
 }
 
 // NewEntryHandler creates one AG-UI handler from the gateway's complete
@@ -86,11 +69,11 @@ func NewEntryHandler(entry agentruntime.Entry, sessions session.Service, opts ..
 	if err != nil {
 		return nil, fmt.Errorf("create ADK runner: %w", err)
 	}
-	cfg := &handlerConfig{ids: aguievents.NewDefaultIDGenerator()}
+	cfg := &handlerConfig{ids: events.NewDefaultIDGenerator()}
 	for _, opt := range opts {
 		opt(cfg)
 	}
-	return &ADKHandler{entry: entry, runner: rn, sessions: sessions, pending: cfg.pending, ids: cfg.ids, userID: cfg.userID}, nil
+	return &ADKHandler{entry: entry, runner: rn, sessions: sessions, pending: cfg.pending, ids: cfg.ids}, nil
 }
 
 func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -108,15 +91,22 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		identity = auth.Identity{UserID: "anonymous", Public: true}
 	}
 	userID := effectiveUserID(identity, input.ThreadID)
-	if h.userID != "" {
-		userID = h.userID
-	}
 
 	ctx, cancel := context.WithTimeout(r.Context(), entry.Timeout)
 	defer cancel()
 
 	if entry.Forwarded != nil {
-		result, handled, forwardedErr := entry.Forwarded.HandleForwarded(ctx, input.ForwardedProps)
+		forwardedProps, ok := input.ForwardedProps.(json.RawMessage)
+		if !ok {
+			var encodeErr error
+			forwardedProps, encodeErr = json.Marshal(input.ForwardedProps)
+			if encodeErr != nil {
+				log.Printf("run: forwarded props encode failed: agent=%s thread=%s err=%v", entry.AppName, input.ThreadID, encodeErr)
+				writeJSONError(w, http.StatusBadRequest, "invalid_agui_input")
+				return
+			}
+		}
+		result, handled, forwardedErr := entry.Forwarded.HandleForwarded(ctx, forwardedProps)
 		if handled {
 			h.writeForwarded(w, input.ThreadID, input.RunID, result, forwardedErr)
 			return
@@ -148,7 +138,7 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// AG-UI client tools require a PendingTools store to persist the
 	// call until a tool-result message resumes it; without one, a
 	// request that declares tools would silently run without them.
-	clientTools := clientToolsFromInput(input)
+	clientTools := input.Tools
 	if len(clientTools) > 0 && h.pending == nil {
 		log.Printf("run: client tools declared but pending store unavailable: agent=%s thread=%s", entry.AppName, input.ThreadID)
 		writeJSONError(w, http.StatusBadRequest, "client_tools_unsupported")
@@ -171,6 +161,12 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		clientToolsJSON = string(encoded)
 	}
+	snapshot, err := persistentSnapshot(sess.State())
+	if err != nil {
+		log.Printf("run: session state encode failed: agent=%s thread=%s err=%v", entry.AppName, input.ThreadID, err)
+		writeJSONError(w, http.StatusInternalServerError, "session_unavailable")
+		return
+	}
 
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -178,12 +174,10 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Accel-Buffering", "no")
 	w.WriteHeader(http.StatusOK)
 
-	frame := aguisse.NewSSEWriter()
-	_ = frame.WriteEvent(ctx, w, aguievents.NewRunStartedEvent(input.ThreadID, input.RunID))
+	frame := sse.NewSSEWriter()
+	_ = frame.WriteEvent(ctx, w, events.NewRunStartedEvent(input.ThreadID, input.RunID))
 
-	snapshot := persistentSnapshot(sess.State())
-	known := knownKeySet(snapshot)
-	_ = frame.WriteEvent(ctx, w, aguievents.NewStateSnapshotEvent(snapshot))
+	_ = frame.WriteEvent(ctx, w, events.NewStateSnapshotEvent(snapshot))
 
 	overlay := requestStateOverlay(r, entry.Route)
 	if clientToolsJSON != "" {
@@ -202,7 +196,7 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		runOpts = append(runOpts, runner.WithStateDelta(overlay))
 	}
 
-	converter := newStreamConverter(ctx, h.ids, known, h.pending, scope, clientToolNames)
+	converter := newStreamConverter(ctx, h.ids, snapshot, h.pending, scope, clientToolNames)
 	var runErr error
 	for event, evErr := range h.runner.Run(ctx, userID, input.ThreadID, content, agent.RunConfig{StreamingMode: agent.StreamingModeSSE}, runOpts...) {
 		if evErr != nil {
@@ -213,44 +207,59 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			_ = frame.WriteEvent(ctx, w, converted)
 		}
 	}
+	// Runner implementations may stop iteration when their context expires
+	// without yielding the context error. Treat an expired execution context as
+	// the run failure so every started stream still receives a terminal event.
+	if runErr == nil {
+		runErr = ctx.Err()
+	}
 
 	if runErr != nil {
+		// SSE encoding checks ctx.Err before it writes. The per-entry execution
+		// context is intentionally canceled on timeout, so use a non-cancelable
+		// derivative for the best-effort terminal flush and RUN_ERROR frame.
+		// This does not extend agent execution; it only closes the protocol stream.
+		terminalCtx := context.WithoutCancel(ctx)
 		for _, converted := range converter.Flush() {
-			_ = frame.WriteEvent(ctx, w, converted)
+			_ = frame.WriteEvent(terminalCtx, w, converted)
 		}
 		log.Printf("run failed: agent=%s thread=%s user=%s run=%s err=%v", entry.AppName, input.ThreadID, userID, input.RunID, runErr)
-		_ = frame.WriteEvent(ctx, w, sanitizeRunError(input.RunID, runErr))
+		_ = frame.WriteEvent(terminalCtx, w, sanitizeRunError(input.RunID, runErr))
 		return
 	}
 
-	finished := aguievents.NewRunFinishedEvent(input.ThreadID, input.RunID)
+	finished := events.NewRunFinishedEvent(input.ThreadID, input.RunID)
 	if converter.lastFinalText != "" {
 		finished.Result = converter.lastFinalText
 	}
 	_ = frame.WriteEvent(ctx, w, finished)
 }
 
-func (h *ADKHandler) writeForwarded(w http.ResponseWriter, threadID, runID string, result any, runErr error) {
+func (h *ADKHandler) writeForwarded(w http.ResponseWriter, threadID, runID string, result json.RawMessage, runErr error) {
 	_, ok := w.(http.Flusher)
 	if !ok {
 		log.Printf("forwarded: response writer does not support flushing")
 		writeJSONError(w, http.StatusInternalServerError, "streaming_unsupported")
 		return
 	}
+	result = bytes.TrimSpace(result)
+	if runErr == nil && (len(result) == 0 || !json.Valid(result) || bytes.Equal(result, []byte("null"))) {
+		runErr = errors.New("forwarded result is invalid")
+	}
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("X-Accel-Buffering", "no")
 	w.WriteHeader(http.StatusOK)
-	frame := aguisse.NewSSEWriter()
+	frame := sse.NewSSEWriter()
 	ctx := context.Background()
-	_ = frame.WriteEvent(ctx, w, aguievents.NewRunStartedEvent(threadID, runID))
+	_ = frame.WriteEvent(ctx, w, events.NewRunStartedEvent(threadID, runID))
 	if runErr != nil {
 		log.Printf("forwarded run failed: thread=%s run=%s err=%v", threadID, runID, runErr)
 		_ = frame.WriteEvent(ctx, w, sanitizeRunError(runID, runErr))
 		return
 	}
-	_ = frame.WriteEvent(ctx, w, aguievents.NewRunFinishedEventWithOptions(threadID, runID, aguievents.WithResult(result)))
+	_ = frame.WriteEvent(ctx, w, events.NewRunFinishedEventWithOptions(threadID, runID, events.WithResult(result)))
 }
 
 // restoreSession fetches the existing (app, user, thread) session or
@@ -267,7 +276,7 @@ func (h *ADKHandler) restoreSession(ctx context.Context, entry agentruntime.Entr
 	if err == nil {
 		return response.Session, nil
 	}
-	created, err := h.sessions.Create(ctx, &session.CreateRequest{AppName: entry.AppName, UserID: userID, SessionID: threadID, State: entry.StateDefaults})
+	created, err := h.sessions.Create(ctx, &session.CreateRequest{AppName: entry.AppName, UserID: userID, SessionID: threadID, State: entry.StateDefaults()})
 	if err != nil {
 		log.Printf("restoreSession: create failed: app=%s user=%s thread=%s err=%v", entry.AppName, userID, threadID, err)
 		return nil, err

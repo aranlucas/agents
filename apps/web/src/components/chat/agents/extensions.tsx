@@ -4,8 +4,8 @@ import type { ComponentProps, ComponentType } from "react";
 import type { CopilotKit } from "@copilotkit/react-core/v2";
 import dynamic from "next/dynamic";
 
-import { GroceryHooks, TravelHooks } from "./approval";
 import { trendsCatalog } from "./trends/catalog";
+import type { ArtifactView } from "../artifact";
 import type { AgentId } from "./registry";
 
 /**
@@ -21,9 +21,16 @@ import type { AgentId } from "./registry";
  * - `Mount` is a headless client component rendered inside `<CopilotKit>` that
  *   registers tools/handlers or kicks off preloads on entry.
  */
+export type AgentArtifactProps = {
+  state: unknown;
+  view: ArtifactView;
+  onClose: () => void;
+};
+
 export type AgentExtension = {
   copilotKitProps?: Partial<ComponentProps<typeof CopilotKit>>;
   Mount?: ComponentType<{ agentId: AgentId }>;
+  Artifact?: ComponentType<AgentArtifactProps>;
 };
 
 // The runtime advertises A2UI via /info for the Trends agent only. The provider
@@ -45,11 +52,14 @@ const OralBoardsExtension = dynamic(
   { ssr: false },
 );
 
+const ResumeArtifact = dynamic(() => import("./resume").then((mod) => mod.ResumeArtifact), {
+  ssr: false,
+});
+
 const AGENT_EXTENSIONS: Partial<Record<AgentId, AgentExtension>> = {
-  travel: { Mount: TravelHooks },
-  grocery: { Mount: GroceryHooks },
   "oral-boards": { Mount: OralBoardsExtension },
   trends: { copilotKitProps: { a2ui: TRENDS_A2UI_CONFIG } },
+  resume: { Artifact: ResumeArtifact },
 };
 
 export function getAgentExtension(agentId: AgentId): AgentExtension | undefined {
