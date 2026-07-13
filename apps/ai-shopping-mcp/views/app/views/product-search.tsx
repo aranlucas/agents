@@ -1,0 +1,169 @@
+import type { App, McpUiHostContext } from "@modelcontextprotocol/ext-apps/react";
+
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/shared/ui/carousel.js";
+
+import { DisplayModeToggle, ProductCard, SectionHeader } from "../../shared/components.js";
+import { EmptyState } from "../../shared/status.js";
+import { type ProductData, type ProductSearchResultsContent } from "../../shared/types.js";
+import { addProductToCart, saveProductToList } from "../tool-calls.js";
+
+function ProductCarousel({
+  products,
+  onAddToCart,
+  onAddToList,
+  canCallTools,
+}: {
+  products: ProductData[];
+  onAddToCart: (name: string, upc: string, qty: number) => Promise<void>;
+  onAddToList: (name: string, upc: string) => Promise<void>;
+  canCallTools: boolean;
+}) {
+  return (
+    <Carousel opts={{ align: "start" }}>
+      <CarouselContent className="-ml-2">
+        {products.map((product) => (
+          <CarouselItem key={product.upc ?? product.description} className="pl-2 basis-52">
+            <ProductCard
+              product={product}
+              onAddToCart={onAddToCart}
+              onAddToList={onAddToList}
+              canCallTools={canCallTools}
+            />
+          </CarouselItem>
+        ))}
+      </CarouselContent>
+      <CarouselPrevious className="left-2 bg-white/90 hover:bg-white shadow-md border-gray-200" />
+      <CarouselNext className="right-2 bg-white/90 hover:bg-white shadow-md border-gray-200" />
+    </Carousel>
+  );
+}
+
+export function ProductSearchView({
+  data,
+  app,
+  canCallTools,
+  hostContext,
+}: {
+  data: ProductSearchResultsContent;
+  app: App | null;
+  canCallTools: boolean;
+  hostContext?: McpUiHostContext;
+}) {
+  const { results, totalProducts } = data;
+
+  const handleAddToCart = async (name: string, upc: string, qty: number) => {
+    await addProductToCart(app, {
+      listName: `Cart: ${name}`,
+      productName: name,
+      quantity: qty,
+      upc,
+    });
+  };
+
+  const handleAddToList = async (name: string, upc: string) => {
+    await saveProductToList(app, {
+      productName: name,
+      quantity: 1,
+      upc,
+    });
+  };
+
+  const hasResults = results.some((r) => !r.failed && r.products.length > 0);
+
+  return (
+    <div className="px-3.5 py-3 max-w-4xl mx-auto animate-view-in">
+      <SectionHeader
+        title="Product Search"
+        badge={<span className="text-[11px] text-gray-400 font-mono">{totalProducts} items</span>}
+        subtitle={`${results.length} search term${results.length !== 1 ? "s" : ""}`}
+        trailing={<DisplayModeToggle app={app} hostContext={hostContext} />}
+      />
+
+      {!hasResults && (
+        <EmptyState
+          icon={
+            <svg
+              aria-hidden="true"
+              className="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+              />
+            </svg>
+          }
+          message="No products found"
+          description="Try different search terms or check your store location."
+        />
+      )}
+
+      {results.map((result) => {
+        if (result.failed) {
+          return (
+            <div
+              key={result.term}
+              className="bg-red-50 rounded-lg px-3 py-2 mb-4 border border-red-100 text-xs text-red-600 flex items-center gap-1.5"
+            >
+              <svg
+                aria-hidden="true"
+                className="w-3.5 h-3.5 shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"
+                />
+              </svg>
+              Search failed for &ldquo;{result.term}&rdquo;
+            </div>
+          );
+        }
+        if (result.products.length === 0) {
+          return (
+            <div key={result.term} className="mb-5">
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                  {result.term}
+                </span>
+                <span className="text-[11px] text-gray-300">·</span>
+                <span className="text-[11px] text-gray-400">No results</span>
+              </div>
+            </div>
+          );
+        }
+        return (
+          <div key={result.term} className="mb-6">
+            <div className="flex items-center gap-2 mb-2.5">
+              <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                {result.term}
+              </span>
+              <span className="text-[11px] text-gray-300">·</span>
+              <span className="text-[11px] text-gray-400">{result.products.length} items</span>
+            </div>
+            <ProductCarousel
+              products={result.products}
+              onAddToCart={handleAddToCart}
+              onAddToList={handleAddToList}
+              canCallTools={canCallTools}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}

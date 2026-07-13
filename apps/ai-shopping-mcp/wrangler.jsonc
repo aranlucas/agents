@@ -1,0 +1,50 @@
+/**
+ * For more details on how to configure Wrangler, refer to:
+ * https://developers.cloudflare.com/workers/wrangler/configuration/
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ai-meal-planner-mcp",
+  "main": "src/server.ts",
+  "compatibility_date": "2025-03-10",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "build": {
+    "command": "pnpm build:views",
+  },
+  "assets": {
+    "directory": "./dist/views",
+    "binding": "ASSETS",
+  },
+  // v1 is retained as migration history so Wrangler can apply v2. The v2
+  // migration deletes the retired MyMCP Durable Object, and there is no active
+  // `durable_objects` binding below.
+  "migrations": [
+    {
+      "new_sqlite_classes": ["MyMCP"],
+      "tag": "v1",
+    },
+    {
+      "deleted_classes": ["MyMCP"],
+      "tag": "v2",
+    },
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "OAUTH_KV",
+      "id": "8bd5ecd7157942228263703abbabc25f",
+    },
+    {
+      "binding": "USER_DATA_KV",
+      "id": "d7f0b87afb2b49cdbab0ead481cef6ed",
+    },
+  ],
+  "ai": {
+    "binding": "AI",
+  },
+  "observability": {
+    "enabled": true,
+  },
+  "dev": {
+    "port": 8788,
+  },
+}
