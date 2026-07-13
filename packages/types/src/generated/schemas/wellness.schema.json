@@ -1,0 +1,33 @@
+{
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["idle", "delegating", "planning", "ready"]
+    },
+    "meal_plan": {
+      "type": "string"
+    },
+    "training_plan": {
+      "type": "string"
+    },
+    "weekly_plan": {
+      "type": "string"
+    },
+    "review_summary": {
+      "type": "string"
+    },
+    "kroger_connected": {
+      "type": "boolean"
+    },
+    "fitness_data_connected": {
+      "type": "boolean"
+    },
+    "activity_source": {
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WellnessState",
+  "additionalProperties": false
+}

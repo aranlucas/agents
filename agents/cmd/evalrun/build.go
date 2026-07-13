@@ -10,6 +10,7 @@ import (
 
 	"agents/internal/common"
 	"agents/internal/config"
+	"agents/internal/providerpolicy"
 	"agents/internal/providers/openai"
 
 	"agents/expense"
@@ -38,8 +39,8 @@ type Built struct {
 	Notes         []string
 }
 
-func newModel(providers map[string]config.Provider, preferred, model string, rpm, rpd int, notes *[]string) (*openai.Model, error) {
-	provider, note, err := resolveProvider(providers, preferred, model, rpm, rpd)
+func newModel(providers map[string]config.Provider, policy providerpolicy.Policy, notes *[]string) (*openai.Model, error) {
+	provider, note, err := providerpolicy.ResolveEval(providers, policy)
 	if err != nil {
 		return nil, err
 	}
@@ -49,11 +50,19 @@ func newModel(providers map[string]config.Provider, preferred, model string, rpm
 	return openai.New(provider, nil, noopLimiter{}), nil
 }
 
+func newAgentModel(providers map[string]config.Provider, workload providerpolicy.Workload, notes *[]string) (*openai.Model, error) {
+	policy, err := providerpolicy.Agent(workload)
+	if err != nil {
+		return nil, err
+	}
+	return newModel(providers, policy, notes)
+}
+
 func buildAgent(ctx context.Context, name string, providers map[string]config.Provider) (Built, error) {
 	var notes []string
 	switch name {
 	case "expense":
-		m, err := newModel(providers, "openrouter", "tencent/hy3:free", 20, 1000, &notes)
+		m, err := newAgentModel(providers, providerpolicy.Expense, &notes)
 		if err != nil {
 			return Built{}, err
 		}
@@ -61,7 +70,7 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		return Built{Name: name, Agent: built, StateDefaults: expense.StateDefaults, Notes: notes}, err
 
 	case "research":
-		m, err := newModel(providers, "openrouter", "tencent/hy3:free", 20, 1000, &notes)
+		m, err := newAgentModel(providers, providerpolicy.Research, &notes)
 		if err != nil {
 			return Built{}, err
 		}
@@ -69,7 +78,7 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		return Built{Name: name, Agent: built, StateDefaults: research.StateDefaults, Notes: notes}, err
 
 	case "travel":
-		m, err := newModel(providers, "openrouter", "tencent/hy3:free", 20, 1000, &notes)
+		m, err := newAgentModel(providers, providerpolicy.Travel, &notes)
 		if err != nil {
 			return Built{}, err
 		}
@@ -81,7 +90,7 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		return Built{Name: name, Agent: built, StateDefaults: travel.StateDefaults, Notes: notes}, err
 
 	case "resume":
-		m, err := newModel(providers, "openrouter", "tencent/hy3:free", 20, 1000, &notes)
+		m, err := newAgentModel(providers, providerpolicy.Resume, &notes)
 		if err != nil {
 			return Built{}, err
 		}
@@ -89,7 +98,7 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		return Built{Name: name, Agent: built, StateDefaults: resume.StateDefaults, Notes: notes}, err
 
 	case "presentation":
-		m, err := newModel(providers, "groq", "llama-3.3-70b-versatile", 30, 0, &notes)
+		m, err := newAgentModel(providers, providerpolicy.Presentation, &notes)
 		if err != nil {
 			return Built{}, err
 		}
@@ -97,7 +106,7 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		return Built{Name: name, Agent: built, StateDefaults: presentation.StateDefaults, Notes: notes}, err
 
 	case "spreadsheet":
-		m, err := newModel(providers, "groq", "llama-3.3-70b-versatile", 30, 0, &notes)
+		m, err := newAgentModel(providers, providerpolicy.Spreadsheet, &notes)
 		if err != nil {
 			return Built{}, err
 		}
@@ -105,7 +114,7 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		return Built{Name: name, Agent: built, StateDefaults: spreadsheet.StateDefaults, Notes: notes}, err
 
 	case "fitness":
-		m, err := newModel(providers, "groq", "llama-3.3-70b-versatile", 30, 0, &notes)
+		m, err := newAgentModel(providers, providerpolicy.Fitness, &notes)
 		if err != nil {
 			return Built{}, err
 		}
@@ -113,7 +122,7 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		return Built{Name: name, Agent: built, StateDefaults: fitness.StateDefaults, Notes: notes}, err
 
 	case "grocery":
-		m, err := newModel(providers, "nvidia", "nvidia/nemotron-3-super-120b-a12b", 20, 0, &notes)
+		m, err := newAgentModel(providers, providerpolicy.Grocery, &notes)
 		if err != nil {
 			return Built{}, err
 		}
@@ -127,7 +136,7 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		return Built{Name: name, Agent: built, StateDefaults: grocery.StateDefaults, Notes: notes}, err
 
 	case "wellness":
-		fm, err := newModel(providers, "groq", "llama-3.3-70b-versatile", 30, 0, &notes)
+		fm, err := newAgentModel(providers, providerpolicy.Wellness, &notes)
 		if err != nil {
 			return Built{}, err
 		}
@@ -135,7 +144,7 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		if err != nil {
 			return Built{}, fmt.Errorf("build fitness task agent: %w", err)
 		}
-		gm, err := newModel(providers, "nvidia", "nvidia/nemotron-3-super-120b-a12b", 20, 0, &notes)
+		gm, err := newAgentModel(providers, providerpolicy.Grocery, &notes)
 		if err != nil {
 			return Built{}, err
 		}
@@ -153,27 +162,30 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		return Built{Name: name, Agent: built, StateDefaults: wellness.StateDefaults, Notes: notes}, err
 
 	case "oralboards":
-		questioner, err := newModel(providers, "openrouter", "tencent/hy3:free", 20, 1000, &notes)
+		policy := providerpolicy.EvalOralBoards()
+		questioner, err := newModel(providers, policy.Questioner, &notes)
 		if err != nil {
 			return Built{}, err
 		}
-		evaluator, err := newModel(providers, "mistral", "mistral-large-latest", 20, 0, &notes)
+		evaluator, err := newModel(providers, policy.Evaluator, &notes)
 		if err != nil {
 			return Built{}, err
 		}
-		scorer, err := newModel(providers, "mistral", "mistral-medium-latest", 20, 0, &notes)
+		scorer, err := newModel(providers, policy.Scorer, &notes)
 		if err != nil {
 			return Built{}, err
 		}
 		var caseBuilder model.LLM = questioner
 		if key := strings.TrimSpace(os.Getenv("GEMINI_API_KEY")); key != "" {
-			gm, err := gemini.NewModel(ctx, "gemini-3.1-flash-lite", &genai.ClientConfig{APIKey: key, Backend: genai.BackendGeminiAPI})
+			gm, err := gemini.NewModel(ctx, policy.GeminiModel, &genai.ClientConfig{APIKey: key, Backend: genai.BackendGeminiAPI})
 			if err != nil {
 				return Built{}, err
 			}
 			caseBuilder = gm
-		} else {
+		} else if policy.AllowQuestionerCaseBuilderFallback {
 			notes = append(notes, "GEMINI_API_KEY unavailable locally; substituted questioner's provider for oralboards' case builder")
+		} else {
+			return Built{}, fmt.Errorf("GEMINI_API_KEY is required to configure oralboards case builder")
 		}
 		corpusPath := strings.TrimSpace(os.Getenv("ORALBOARDS_CORPUS_PATH"))
 		if corpusPath == "" {

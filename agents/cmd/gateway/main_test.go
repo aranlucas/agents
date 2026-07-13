@@ -417,7 +417,7 @@ func TestGatewayWellnessRouteUsesExistingAGUIContract(t *testing.T) {
 
 func TestGatewayRootHealthChecksD1AndR2WithoutCredentials(t *testing.T) {
 	h := newGateway(t)
-	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	req := httptest.NewRequest(http.MethodGet, "/ready", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {
@@ -436,6 +436,8 @@ func TestGatewayRootHealthChecksD1AndR2WithoutCredentials(t *testing.T) {
 			t.Fatalf("health response leaked a credential-shaped field: %s", rr.Body.String())
 		}
 	}
+	assertRoute(t, h, http.MethodGet, "/health", http.StatusOK)
+	assertRoute(t, h, http.MethodGet, "/live", http.StatusOK)
 }
 
 func TestGatewayRootHealthReportsDegradedOnFailingCheck(t *testing.T) {
@@ -457,7 +459,9 @@ func TestGatewayRootHealthReportsDegradedOnFailingCheck(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	assertRoute(t, handler, http.MethodGet, "/ready", http.StatusServiceUnavailable)
 	assertRoute(t, handler, http.MethodGet, "/health", http.StatusServiceUnavailable)
+	assertRoute(t, handler, http.MethodGet, "/live", http.StatusOK)
 }
 
 func assertRoute(t *testing.T, h http.Handler, method, path string, want int) {

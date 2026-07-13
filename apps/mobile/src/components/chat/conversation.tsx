@@ -1,8 +1,8 @@
 import { SymbolImage } from "@/components/symbol-image";
-import { LegendList, LegendListRef } from "@legendapp/list";
+import { LegendList, type LegendListRef } from "@legendapp/list/react-native";
 import { createContext, use, useCallback, useMemo, useRef, useState } from "react";
 import type { ComponentProps, ReactElement, ReactNode } from "react";
-import { LayoutChangeEvent, Text, View } from "react-native";
+import { LayoutChangeEvent, Text, View, type ViewStyle } from "react-native";
 import { useKeyboardHandler } from "react-native-keyboard-controller";
 import Animated, {
   createAnimatedComponent,
@@ -25,16 +25,16 @@ const IS_GLASS = isLiquidGlassAvailable();
 
 const AnimatedLegendList = createAnimatedComponent(LegendList);
 
-type AnimatedStyle = Record<string, unknown>;
+type AnimatedViewStyle = ReturnType<typeof useAnimatedStyle<ViewStyle>>;
 
 type ConversationContextValue = {
   scrollToBottom: () => void;
   /** Animated style that positions the prompt input above the keyboard. */
-  promptInputStyle: AnimatedStyle;
+  promptInputStyle: AnimatedViewStyle;
   /** Prompt input reports its measured height through this callback. */
   onPromptInputLayout: (e: LayoutChangeEvent) => void;
   /** Animated style for the scroll-to-bottom button. */
-  scrollButtonStyle: AnimatedStyle;
+  scrollButtonStyle: AnimatedViewStyle;
 };
 
 const ConversationCtx = createContext<ConversationContextValue | null>(null);
@@ -166,7 +166,7 @@ export function Conversation({
 
     if (wasAtBottom && heightIncreased && listRef.current) {
       requestAnimationFrame(() => {
-        listRef.current?.scrollToEnd({
+        void listRef.current?.scrollToEnd({
           animated: true,
           viewOffset: -bottomInset.value,
         });
@@ -175,7 +175,7 @@ export function Conversation({
   }, []);
 
   const scrollToBottom = useCallback(() => {
-    listRef.current?.scrollToEnd({
+    void listRef.current?.scrollToEnd({
       animated: true,
       viewOffset: -bottomInset.value,
     });
@@ -198,11 +198,11 @@ export function Conversation({
     return { height: footerHeight };
   });
 
-  const promptInputStyle = useAnimatedStyle(() => ({
+  const promptInputStyle = useAnimatedStyle<ViewStyle>(() => ({
     bottom: Math.max(insets.bottom, Math.abs(keyboardHeight.value)),
   }));
 
-  const scrollButtonStyle = useAnimatedStyle(() => ({
+  const scrollButtonStyle = useAnimatedStyle<ViewStyle>(() => ({
     opacity: withTiming(shouldShowScrollButton.value ? 1 : 0, {
       duration: 200,
     }),
@@ -259,7 +259,12 @@ export function Conversation({
             data={messages}
             // eslint-disable-next-line typescript/no-unsafe-type-assertion
             renderItem={renderMessage as unknown as ComponentProps<typeof LegendList>["renderItem"]}
-            keyExtractor={(item: ChatMessage) => item.id}
+            keyExtractor={(item) => {
+              // The animated wrapper erases LegendList's item generic to
+              // `unknown`; `data` remains the typed ChatMessage array above.
+              // eslint-disable-next-line typescript/no-unsafe-type-assertion
+              return (item as ChatMessage).id;
+            }}
             contentContainerStyle={{
               padding: 16,
               // transparent header spacing.

@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -16,11 +17,15 @@ import (
 	"agents/expense"
 	"agents/fitness"
 	"agents/grocery"
+	"agents/internal/bootstrap"
+	"agents/internal/catalog"
 	"agents/internal/clerk"
 	"agents/internal/cloudflare"
 	"agents/internal/common"
 	"agents/internal/config"
 	"agents/internal/fitnessdata"
+	"agents/internal/observability"
+	"agents/internal/providerpolicy"
 	"agents/internal/providers/openai"
 	"agents/internal/rate"
 	"agents/internal/telegram"
@@ -39,29 +44,39 @@ import (
 )
 
 func main() {
-	cfg, err := config.Load(os.Getenv)
+	cfg, err := config.LoadTelegram(os.Getenv)
 	if err != nil {
 		log.Fatalf("load configuration: %v", err)
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	shutdownTelemetry, err := observability.Setup(ctx, observability.Config{
+		ServiceName: "agents-telegram", ServiceVersion: os.Getenv("RAILWAY_GIT_COMMIT_SHA"),
+		Environment: string(cfg.Environment),
+	})
+	if err != nil {
+		log.Fatalf("configure OpenTelemetry: %v", err)
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := shutdownTelemetry(shutdownCtx); err != nil {
+			log.Printf("flush OpenTelemetry: %v", err)
+		}
+	}()
 	d1, err := cloudflare.NewD1(cfg.Cloudflare, nil)
 	if err != nil {
 		log.Fatalf("configure D1: %v", err)
-	}
-	if err := d1.RunMigrations(ctx); err != nil {
-		log.Printf("warning: apply D1 migrations: %v", err)
 	}
 	r2, err := cloudflare.NewR2(cfg.Cloudflare)
 	if err != nil {
 		log.Fatalf("configure R2: %v", err)
 	}
 	limiter := rate.NewProviderLimiter(d1, time.Now)
-	provider, ok := cfg.Providers["mistral"]
-	if !ok {
-		log.Fatal("MISTRAL_API_KEY is required for Telegram")
+	provider, err := providerpolicy.ResolveRequired(cfg.Providers, providerpolicy.Telegram())
+	if err != nil {
+		log.Fatal(err)
 	}
-	provider.Model, provider.RequestsPerMinute = "mistral-medium-latest", 20
 	model := openai.New(provider, common.NewHTTPClient(180*time.Second, 32<<20).Client, limiter)
 	search := buildSearch()
 	krogerEndpoint := envDefault("KROGER_MCP_URL", "https://ai-meal-planner-mcp.aranlucas.workers.dev/mcp")
@@ -99,7 +114,16 @@ func main() {
 	must(err)
 	expenseAgent, err := expense.New(model)
 	must(err)
-	specialists := map[string]agent.Agent{"travel": travelAgent, "trends": trendAgent, "grocery": groceryAgent, "fitness": fitnessAgent, "wellness": wellnessAgent, "expense": expenseAgent, "oralboards": oralAgent, "presentation": presentationAgent, "research": researchAgent, "spreadsheet": spreadsheetAgent, "resume": resumeAgent}
+	bindings := bootstrap.Specialists{
+		Travel: bootstrap.Binding{Agent: travelAgent}, Grocery: bootstrap.Binding{Agent: groceryAgent},
+		Fitness: bootstrap.Binding{Agent: fitnessAgent}, Wellness: bootstrap.Binding{Agent: wellnessAgent},
+		Expense: bootstrap.Binding{Agent: expenseAgent}, OralBoards: bootstrap.Binding{Agent: oralAgent},
+		Trends: bootstrap.Binding{Agent: trendAgent}, Resume: bootstrap.Binding{Agent: resumeAgent},
+		Research: bootstrap.Binding{Agent: researchAgent}, Spreadsheet: bootstrap.Binding{Agent: spreadsheetAgent},
+		Presentation: bootstrap.Binding{Agent: presentationAgent},
+	}
+	specialists, err := bindings.Agents(catalog.Telegram())
+	must(err)
 	orchestrator, err := buildOrchestrator(model, specialists)
 	must(err)
 	specialists["orchestrator"] = orchestrator
@@ -118,7 +142,7 @@ func main() {
 	links := telegram.NewLinkStore(d1, time.Now)
 	telegramRunner, err := telegram.NewRunner(bot, telegram.NewRouter(telegramConfig, backend), links, executor, telegramConfig, 180*time.Second)
 	must(err)
-	server := &http.Server{Addr: ":" + envDefault("PORT", "8080"), Handler: healthHandler(), ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 30 * time.Second}
+	server := &http.Server{Addr: ":" + cfg.HTTP.Port, Handler: observability.Wrap("agents-telegram-health", healthHandler(d1, r2)), ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 30 * time.Second}
 	go func() {
 		if serveErr := server.ListenAndServe(); serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
 			log.Printf("health server: %v", serveErr)
@@ -136,8 +160,11 @@ func main() {
 
 func buildOrchestrator(model *openai.Model, specialists map[string]agent.Agent) (agent.Agent, error) {
 	tools := make([]tool.Tool, 0, len(specialists))
-	for _, name := range []string{"travel", "trends", "grocery", "fitness", "wellness", "expense", "oralboards", "presentation", "research", "spreadsheet", "resume"} {
-		tools = append(tools, agenttool.New(specialists[name], nil))
+	for _, spec := range catalog.Telegram() {
+		// These authored specialists are chat-mode agents. Keeping the official
+		// agenttool adapter makes each delegation a single tool result; ADK
+		// SubAgents would instead use chat transfer semantics.
+		tools = append(tools, agenttool.New(specialists[spec.Route], nil))
 	}
 	return llmagent.New(llmagent.Config{Name: telegram.OrchestratorAppName, Description: "Routes Telegram requests to exactly one specialist.", Model: model, Instruction: "Choose exactly one specialist tool for the request. Respect current sender credential flags. Return a concise Telegram-friendly answer; never call multiple specialists.", Tools: tools})
 }
@@ -176,11 +203,44 @@ func must(err error) {
 	}
 }
 
-func healthHandler() http.Handler {
+type healthChecker interface {
+	Health(context.Context) error
+}
+
+type healthResponse struct {
+	Status  string            `json:"status"`
+	Service string            `json:"service"`
+	Checks  map[string]string `json:"checks,omitempty"`
+}
+
+func healthHandler(d1, r2 healthChecker) http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("GET /live", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"status":"ok"}`))
+		_ = json.NewEncoder(w).Encode(healthResponse{Status: "ok", Service: "agents-telegram"})
 	})
+	ready := func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+		defer cancel()
+		checks := map[string]string{"d1": "unconfigured", "r2": "unconfigured"}
+		for name, checker := range map[string]healthChecker{"d1": d1, "r2": r2} {
+			if checker == nil {
+				continue
+			}
+			checks[name] = "ok"
+			if err := checker.Health(ctx); err != nil {
+				checks[name] = "unavailable"
+			}
+		}
+		status, code := "ok", http.StatusOK
+		if checks["d1"] != "ok" || checks["r2"] != "ok" {
+			status, code = "degraded", http.StatusServiceUnavailable
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(code)
+		_ = json.NewEncoder(w).Encode(healthResponse{Status: status, Service: "agents-telegram", Checks: checks})
+	}
+	mux.HandleFunc("GET /ready", ready)
+	mux.HandleFunc("GET /health", ready)
 	return mux
 }

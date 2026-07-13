@@ -9,20 +9,13 @@ import {
   View,
   type TextStyle,
 } from "react-native";
-import SyntaxHighlighter from "react-syntax-highlighter";
+import SyntaxHighlighter, { type SyntaxHighlighterProps } from "react-syntax-highlighter";
 import { githubGist, irBlack } from "react-syntax-highlighter/dist/esm/styles/hljs";
 
 type HighlighterStyleSheet = { [key: string]: TextStyle };
 type ReactStyle = { [key: string]: CSSProperties };
 
-interface RendererNode {
-  children?: RendererNode[];
-  properties?: {
-    className?: string[];
-  };
-  tagName?: string;
-  value?: string;
-}
+type RendererNode = Parameters<NonNullable<SyntaxHighlighterProps["renderer"]>>[0]["rows"][number];
 
 const ALLOWED_STYLE_PROPERTIES: Record<string, boolean> = {
   color: true,
@@ -58,8 +51,8 @@ function trimNewlines(string: string): string {
 }
 
 // Pre-compute stylesheets for both themes
-const darkStylesheet = getRNStylesFromHljsStyle(irBlack as ReactStyle);
-const lightStylesheet = getRNStylesFromHljsStyle(githubGist as ReactStyle);
+const darkStylesheet = getRNStylesFromHljsStyle(irBlack);
+const lightStylesheet = getRNStylesFromHljsStyle(githubGist);
 
 interface CodeBlockProps {
   code: string;
@@ -88,7 +81,9 @@ export const CodeBlock = memo(function CodeBlock({ code, language }: CodeBlockPr
 
   const getStylesForNode = useCallback(
     (node: RendererNode): TextStyle[] => {
-      const classes: string[] = node.properties?.className ?? [];
+      const classes = (node.properties?.className ?? []).filter(
+        (className): className is string => typeof className === "string",
+      );
       return classes.map((c: string) => stylesheet[c]).filter((c) => !!c);
     },
     [stylesheet],
@@ -107,8 +102,8 @@ export const CodeBlock = memo(function CodeBlock({ code, language }: CodeBlockPr
             </Text>,
           );
         }
-        if (node.value) {
-          acc.push(trimNewlines(node.value));
+        if (node.value !== undefined) {
+          acc.push(trimNewlines(String(node.value)));
         }
         return acc;
       }, []);

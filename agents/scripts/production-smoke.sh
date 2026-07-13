@@ -5,7 +5,9 @@ base_url="${AGENTS_BASE_URL:?AGENTS_BASE_URL is required}"
 base_url="${base_url%/}"
 auth_token="${SMOKE_AUTH_TOKEN:-}"
 telegram_url="${TELEGRAM_HEALTH_URL:-}"
-agents=(travel trends grocery fitness wellness expense oralboards presentation research spreadsheet resume)
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$script_dir/generated-agent-routes.sh"
+agents=("${agent_routes[@]}")
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
@@ -14,7 +16,7 @@ pass() { printf 'PASS: %s\n' "$1"; }
 fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
 get_json() { curl --fail --silent --show-error --max-time 20 "$1"; }
 
-root_health="$(get_json "$base_url/health")"
+root_health="$(get_json "$base_url/ready")"
 jq -e '.status == "ok" and .checks.d1 == "ok" and .checks.r2 == "ok"' <<<"$root_health" >/dev/null || fail "gateway storage health"
 pass "gateway storage health"
 
@@ -64,5 +66,5 @@ oauth_status="$(curl --silent --output "$tmp/oauth.out" --write-out '%{http_code
 pass "gateway OAuth credential path"
 
 [[ -n "$telegram_url" ]] || fail "TELEGRAM_HEALTH_URL is required for worker acceptance"
-get_json "${telegram_url%/}/health" | jq -e '.status == "ok"' >/dev/null || fail "Telegram worker health"
-pass "Telegram worker health"
+get_json "${telegram_url%/}/ready" | jq -e '.status == "ok" and .checks.d1 == "ok" and .checks.r2 == "ok"' >/dev/null || fail "Telegram worker readiness"
+pass "Telegram worker readiness"

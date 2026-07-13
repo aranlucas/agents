@@ -3,9 +3,9 @@
 A production multi-agent workspace with a Go ADK gateway, a Go Telegram worker,
 and web/mobile clients sharing live state over AG-UI.
 
-The gateway exposes 12 agents: travel, grocery, fitness, wellness, expense,
-oral boards, trends, Excalidraw, presentation, research, spreadsheet, and the
-public resume assistant. Cloudflare D1 is the sole session/link/rate-limit
+The gateway exposes 11 agents: travel, grocery, fitness, wellness, expense,
+oral boards, trends, presentation, research, spreadsheet, and the public
+resume assistant. Cloudflare D1 is the sole session/link/rate-limit
 store and R2 is the sole artifact store. There is no local or Postgres fallback.
 
 ## Architecture
@@ -43,6 +43,7 @@ The web app uses port 3000, the gateway 8000, and Telegram health 8082.
 ```bash
 pnpm check
 pnpm test
+pnpm --filter agents contracts:check
 cd agents && golangci-lint run ./... && go test -race ./... && go vet ./...
 docker build -f agents/Dockerfile -t agents-gateway-go:local .
 docker build -f agents/Dockerfile.telegram -t agents-telegram-go:local .
@@ -55,10 +56,20 @@ Deployment uses [railway.toml](railway.toml) for the gateway and
 The web deploys to Vercel, mobile through EAS, and the Kroger shopping MCP from
 `apps/ai-shopping-mcp` to the existing `ai-meal-planner-mcp` Cloudflare Worker.
 
+Both Railway services run the same idempotent `/app/migrate` binary before
+starting, expose process-only `/live`, and use schema/D1/R2-aware `/ready` for
+deployment health. Set `APP_ENV=production` on both services. The gateway also
+requires all `CF_*` values, exact HTTPS `ALLOWED_ORIGINS`, `CLERK_JWKS_URL`,
+`CLERK_ISSUER`, and the OpenRouter, Groq, NVIDIA NIM, Mistral, and Gemini keys.
+The Telegram service requires all `CF_*` values, `MISTRAL_API_KEY`, and
+`TELEGRAM_BOT_TOKEN`; browser-origin and Clerk-JWT settings are intentionally
+gateway-only. `CLERK_SECRET_KEY` enables OAuth/account-link mirroring on either
+runtime where that feature is used.
+
 Production acceptance requires an authenticated Clerk session token and both
 deployed service URLs. It exercises every registered route, public and
 protected state, a client tool, Trends A2UI, request-scoped OAuth headers, and
-Telegram health before recording Railway's raw RSS samples:
+Telegram readiness before recording Railway's raw RSS samples:
 
 ```bash
 AGENTS_BASE_URL=https://agents-gateway.example \

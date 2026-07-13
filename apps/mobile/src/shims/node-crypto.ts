@@ -1,12 +1,9 @@
-import { randomUUID as expoRandomUUID, getRandomValues as expoGetRandomValues } from "expo-crypto";
+import { getRandomValues, randomUUID as expoRandomUUID } from "expo-crypto";
+
+export { getRandomValues };
 
 export function randomUUID() {
   return expoRandomUUID();
-}
-
-export function getRandomValues<T extends ArrayBufferView | null>(array: T): T {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return expoGetRandomValues(array as ArrayBufferView) as T;
 }
 
 // Patch global.crypto so uuid and other libs can call crypto.getRandomValues directly.

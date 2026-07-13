@@ -164,9 +164,7 @@ describe("toFitnessState", () => {
 });
 
 describe("toWellnessState", () => {
-  it("keeps last_delegation only when it is an object", () => {
-    expect(toWellnessState({ last_delegation: { a: 1 } }).last_delegation).toEqual({ a: 1 });
-    expect(toWellnessState({ last_delegation: "x" }).last_delegation).toBeUndefined();
+  it("coerces only the client-visible Go wellness projection", () => {
     expect(toWellnessState({ status: "planning" }).status).toBe("planning");
   });
 
@@ -214,18 +212,14 @@ describe("toResumeState", () => {
 });
 
 describe("toOralBoardsState", () => {
-  it("retains the complete Go oralboards state contract", () => {
+  it("retains the client-visible oralboards state contract", () => {
     expect(
       toOralBoardsState({
-        case_passages: "source",
         interview_complete: false,
-        question_craft_feedback: "rewrite",
         case_sources: [{ docid: 1, filepath: "aapd/x.md", title: "X", collection: "aapd" }],
       }),
     ).toMatchObject({
-      case_passages: "source",
       interview_complete: false,
-      question_craft_feedback: "rewrite",
       case_sources: [{ docid: 1, filepath: "aapd/x.md", title: "X", collection: "aapd" }],
     });
   });

@@ -27,13 +27,25 @@ export type NodeTypeMap = Prettify<
   }
 >;
 
+export interface RenderExtras {
+  onPress?: (url: string) => void;
+  ordered?: boolean;
+  customListStyleType?: ReactNode;
+  listStyleType?: ReactNode;
+  isHeader?: boolean;
+  index?: number;
+  start?: number;
+  rowIndex?: number;
+  cellIndex?: number;
+}
+
 // Render function types
 export type RenderFunction<K extends ValidNodeKey = ValidNodeKey> = (params: {
   node: NodeTypeMap[K];
   styles: StyleMap;
   children: ReactNode[];
   parentStack: Node[];
-  extras?: Record<string, unknown>;
+  extras?: RenderExtras;
 }) => ReactNode;
 
 export type RenderRules = {

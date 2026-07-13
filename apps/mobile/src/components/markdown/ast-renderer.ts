@@ -6,7 +6,7 @@ import type {
   StyleMap,
   ASTRendererOptions,
   ListBulletStyle,
-  NodeTypeMap,
+  RenderExtras,
   RenderFunction,
   RenderRules,
   ValidNodeKey,
@@ -65,11 +65,7 @@ export default class ASTRenderer {
     return fn as RenderFunction;
   }
 
-  private renderNode = (
-    node: Node,
-    parentStack: Node[] = [],
-    extras?: Record<string, unknown>,
-  ): ReactNode => {
+  private renderNode = (node: Node, parentStack: Node[] = [], extras?: RenderExtras): ReactNode => {
     const children: ReactNode[] = [];
     // `node.type` is a runtime string; narrow it to the renderer's key union.
     // eslint-disable-next-line typescript/no-unsafe-type-assertion
@@ -152,7 +148,7 @@ export default class ASTRenderer {
     this.debugLog(parentStack.length, type);
 
     return renderFunction({
-      node: node as NodeTypeMap[typeof type],
+      node,
       styles: this._styles,
       children,
       parentStack,

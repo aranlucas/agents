@@ -2,12 +2,20 @@ package telegram
 
 import (
 	"context"
+	"iter"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"go.opentelemetry.io/otel"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/adk/v2/agent"
+	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
+	"google.golang.org/genai"
 )
 
 type fakeClient struct {
@@ -104,6 +112,30 @@ func TestRunnerSendsProgressThenDeduplicatedFinalText(t *testing.T) {
 	}
 }
 
+func TestHandleMessageCreatesSafeProcessingSpan(t *testing.T) {
+	recorder := installTelegramSpanRecorder(t)
+	executor := &fakeExecutor{output: "response-secret"}
+	runner, _ := newTestRunner(t, executor)
+	message := privateMessage(987654321, "prompt-secret")
+	if err := runner.HandleMessage(t.Context(), message); err != nil {
+		t.Fatal(err)
+	}
+	span := findEndedSpan(t, recorder, "telegram.message.process")
+	if span.SpanKind() != trace.SpanKindConsumer {
+		t.Fatalf("span kind = %v", span.SpanKind())
+	}
+	attributes := spanAttributeStrings(span)
+	if attributes["messaging.system"] != "telegram" || attributes["messaging.operation.type"] != "process" || attributes["telegram.chat.type"] != "private" || attributes["gen_ai.agent.name"] != "orchestrator" {
+		t.Fatalf("attributes = %#v", attributes)
+	}
+	assertSpanExcludes(t, span, "prompt-secret", "response-secret", "987654321")
+	for _, key := range []string{"user.id", "user_id", "chat.id", "chat_id", "message.text"} {
+		if _, ok := attributes[key]; ok {
+			t.Fatalf("sensitive attribute %q recorded", key)
+		}
+	}
+}
+
 func TestBusySessionDoesNotLeakTaskEntries(t *testing.T) {
 	executor := &fakeExecutor{started: make(chan struct{}), block: true}
 	runner, _ := newTestRunner(t, executor)
@@ -141,5 +173,90 @@ func TestNewADKExecutorRejectsInvalidAgentTreeAtConstruction(t *testing.T) {
 	root, _ := agent.New(agent.Config{Name: "orchestrator", SubAgents: []agent.Agent{first, second}})
 	if _, err := NewADKExecutor(session.InMemoryService(), nil, map[string]agent.Agent{"orchestrator": root}); err == nil {
 		t.Fatal("expected duplicate agent name to fail during executor construction")
+	}
+}
+
+func TestADKExecutorCreatesSafeRunSpan(t *testing.T) {
+	recorder := installTelegramSpanRecorder(t)
+	built, err := agent.New(agent.Config{
+		Name: "orchestrator",
+		Run: func(agent.InvocationContext) iter.Seq2[*session.Event, error] {
+			return func(yield func(*session.Event, error) bool) {
+				yield(&session.Event{
+					LLMResponse: model.LLMResponse{Content: genai.NewContentFromText("response-secret", genai.RoleModel)},
+					Author:      "orchestrator",
+				}, nil)
+			}
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	executor, err := NewADKExecutor(session.InMemoryService(), nil, map[string]agent.Agent{"orchestrator": built})
+	if err != nil {
+		t.Fatal(err)
+	}
+	identity := SessionIdentity{SessionID: "chat-id-secret", UserID: "user-id-secret", ClerkUserID: "credential-secret", Shared: true}
+	route := Route{Kind: RouteAgent, Agent: "orchestrator", Text: "prompt-secret", KrogerToken: "kroger-secret", StravaToken: "strava-secret"}
+	output, err := executor.Run(t.Context(), identity, route, route.Text, func(context.Context, string) error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if output != "response-secret" {
+		t.Fatalf("output = %q", output)
+	}
+	span := findEndedSpan(t, recorder, "telegram.adk.run")
+	if span.SpanKind() != trace.SpanKindInternal {
+		t.Fatalf("span kind = %v", span.SpanKind())
+	}
+	attributes := spanAttributeStrings(span)
+	if attributes["gen_ai.operation.name"] != "invoke_agent" || attributes["gen_ai.agent.name"] != "orchestrator" || attributes["telegram.session.shared"] != "true" {
+		t.Fatalf("attributes = %#v", attributes)
+	}
+	assertSpanExcludes(t, span, "prompt-secret", "response-secret", "chat-id-secret", "user-id-secret", "credential-secret", "kroger-secret", "strava-secret")
+}
+
+func installTelegramSpanRecorder(t *testing.T) *tracetest.SpanRecorder {
+	t.Helper()
+	previous := otel.GetTracerProvider()
+	recorder := tracetest.NewSpanRecorder()
+	provider := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(recorder))
+	otel.SetTracerProvider(provider)
+	t.Cleanup(func() {
+		_ = provider.Shutdown(context.Background())
+		otel.SetTracerProvider(previous)
+	})
+	return recorder
+}
+
+func findEndedSpan(t *testing.T, recorder *tracetest.SpanRecorder, name string) sdktrace.ReadOnlySpan {
+	t.Helper()
+	for _, span := range recorder.Ended() {
+		if span.Name() == name {
+			return span
+		}
+	}
+	t.Fatalf("span %q not found in %d ended spans", name, len(recorder.Ended()))
+	return nil
+}
+
+func spanAttributeStrings(span sdktrace.ReadOnlySpan) map[string]string {
+	attributes := make(map[string]string, len(span.Attributes()))
+	for _, value := range span.Attributes() {
+		attributes[string(value.Key)] = value.Value.String()
+	}
+	return attributes
+}
+
+func assertSpanExcludes(t *testing.T, span sdktrace.ReadOnlySpan, values ...string) {
+	t.Helper()
+	serialized := span.Name() + span.Status().Description
+	for key, value := range spanAttributeStrings(span) {
+		serialized += key + value
+	}
+	for _, value := range values {
+		if strings.Contains(serialized, value) {
+			t.Fatalf("sensitive value %q reached span", value)
+		}
 	}
 }

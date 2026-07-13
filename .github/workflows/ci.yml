@@ -85,12 +85,15 @@ jobs:
       - name: Format check
         working-directory: agents
         run: |
-          unformatted="$(gofmt -l .)"
+          unformatted="$(go run mvdan.cc/gofumpt@v0.10.0 -l .)"
           if [ -n "$unformatted" ]; then
-            echo "gofmt needs to be run on:" >&2
+            echo "gofumpt needs to be run on:" >&2
             echo "$unformatted" >&2
             exit 1
           fi
+      - name: Generated contract drift
+        working-directory: agents
+        run: go run ./cmd/contracts -check
       - name: Vet
         working-directory: agents
         run: go vet ./...

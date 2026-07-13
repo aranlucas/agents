@@ -1,0 +1,143 @@
+{
+  "type": "object",
+  "properties": {
+    "case": {
+      "type": "string"
+    },
+    "case_sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "docid": {
+            "type": "integer"
+          },
+          "filepath": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "collection": {
+            "type": "string",
+            "enum": ["abpd", "aapd", "cody"]
+          }
+        },
+        "required": ["docid", "filepath", "title", "collection"],
+        "additionalProperties": false
+      }
+    },
+    "transcript": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string"
+          },
+          "answer": {
+            "type": "string"
+          },
+          "feedback": {
+            "type": "string"
+          },
+          "ideal_response": {
+            "type": "string"
+          },
+          "citations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "docid": {
+                  "type": "integer"
+                },
+                "filepath": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "collection": {
+                  "type": "string",
+                  "enum": ["abpd", "aapd", "cody"]
+                }
+              },
+              "required": ["docid", "filepath", "title", "collection"],
+              "additionalProperties": false
+            }
+          },
+          "skillset": {
+            "type": "string"
+          },
+          "skill": {
+            "type": "string",
+            "enum": ["remember", "understand_apply", "analyze_evaluate"]
+          },
+          "score": {
+            "type": "integer",
+            "enum": [1, 2, 3]
+          }
+        },
+        "required": ["question", "answer", "feedback", "ideal_response", "citations"],
+        "additionalProperties": false
+      }
+    },
+    "score_card": {
+      "type": "string"
+    },
+    "score_summary": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "skillset": {
+            "type": "string"
+          },
+          "skill": {
+            "type": "string",
+            "enum": ["remember", "understand_apply", "analyze_evaluate"]
+          },
+          "score": {
+            "type": "integer",
+            "enum": [1, 2, 3]
+          },
+          "rationale": {
+            "type": "string"
+          }
+        },
+        "required": ["skillset", "score", "rationale"],
+        "additionalProperties": false
+      }
+    },
+    "outcome": {
+      "type": "string",
+      "enum": ["pass", "borderline", "not_yet"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["idle", "presenting", "questioning", "feedback", "complete"]
+    },
+    "loading_step": {
+      "type": "string"
+    },
+    "interview_complete": {
+      "type": "boolean"
+    },
+    "active_feedback": {
+      "type": "string"
+    },
+    "active_ideal_response": {
+      "type": "string"
+    },
+    "current_question": {
+      "type": "string"
+    },
+    "active_probe": {
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OralBoardsState",
+  "additionalProperties": false
+}

@@ -14,6 +14,9 @@ import (
 
 	"agents/internal/config"
 	"agents/internal/rate"
+	"go.opentelemetry.io/otel"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/genai"
 )
@@ -142,6 +145,42 @@ func TestGenerateContentMapsMessagesToolsAndNonStreamingResponse(t *testing.T) {
 	responses, errs := collect(adapter.GenerateContent(context.Background(), request, false))
 	if len(errs) != 0 || len(responses) != 1 || responses[0].Content.Parts[0].Text != "complete" || responses[0].UsageMetadata.TotalTokenCount != 8 {
 		t.Fatalf("responses/errors = %#v/%v", responses, errs)
+	}
+}
+
+func TestNilHTTPClientUsesSharedSafeTracingTransport(t *testing.T) {
+	previousProvider := otel.GetTracerProvider()
+	recorder := tracetest.NewSpanRecorder()
+	provider := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(recorder))
+	otel.SetTracerProvider(provider)
+	t.Cleanup(func() {
+		_ = provider.Shutdown(context.Background())
+		otel.SetTracerProvider(previousProvider)
+	})
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, map[string]any{
+			"choices": []map[string]any{{"message": map[string]any{"content": "complete"}, "finish_reason": "stop"}},
+		})
+	}))
+	t.Cleanup(server.Close)
+	adapter := New(testProvider("primary", server.URL), nil, allowLimiter{})
+	responses, errs := collect(adapter.GenerateContent(t.Context(), &model.LLMRequest{Contents: genai.Text("prompt-secret")}, false))
+	if len(errs) != 0 || len(responses) != 1 {
+		t.Fatalf("responses/errors = %#v/%v", responses, errs)
+	}
+	spans := recorder.Ended()
+	if len(spans) != 1 || spans[0].Name() != "HTTP POST" {
+		t.Fatalf("spans = %#v", spans)
+	}
+	serialized := spans[0].Name()
+	for _, value := range spans[0].Attributes() {
+		serialized += string(value.Key) + value.Value.String()
+	}
+	for _, secret := range []string{"prompt-secret", "provider-secret", "/chat/completions"} {
+		if strings.Contains(serialized, secret) {
+			t.Fatalf("sensitive value %q reached span", secret)
+		}
 	}
 }
 

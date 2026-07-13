@@ -182,8 +182,6 @@ export function toWellnessState(raw: unknown): WellnessState {
     training_plan: str(s.training_plan),
     weekly_plan: str(s.weekly_plan),
     review_summary: optionalStr(s.review_summary),
-    last_delegation: isRecord(s.last_delegation) ? s.last_delegation : undefined,
-    user_id: optionalStr(s.user_id),
     kroger_connected: bool(s.kroger_connected),
     fitness_data_connected: bool(s.fitness_data_connected),
     activity_source: optionalStr(s.activity_source),
@@ -245,7 +243,6 @@ export function toOralBoardsState(raw: unknown): OralBoardsState {
   return {
     case: str(state.case),
     case_sources: Array.isArray(state.case_sources) ? state.case_sources.map(toCaseSource) : [],
-    case_passages: str(state.case_passages),
     transcript: Array.isArray(state.transcript) ? state.transcript.map(toOralExchange) : [],
     score_card: str(state.score_card),
     score_summary: Array.isArray(state.score_summary)
@@ -261,7 +258,5 @@ export function toOralBoardsState(raw: unknown): OralBoardsState {
     active_feedback: str(state.active_feedback),
     active_ideal_response: str(state.active_ideal_response),
     active_probe: str(state.active_probe),
-    question_craft_feedback: str(state.question_craft_feedback),
-    user_id: optionalStr(state.user_id),
   };
 }

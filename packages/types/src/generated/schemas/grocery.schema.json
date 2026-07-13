@@ -1,0 +1,74 @@
+{
+  "type": "object",
+  "properties": {
+    "shopping_list": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "cart": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "price": {
+            "type": "number"
+          },
+          "upc": {
+            "type": "string"
+          }
+        },
+        "required": ["name", "quantity"],
+        "additionalProperties": false
+      }
+    },
+    "pantry": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "expires": {
+            "type": "string"
+          }
+        },
+        "required": ["name", "quantity"],
+        "additionalProperties": false
+      }
+    },
+    "meal_plan": {
+      "type": "string"
+    },
+    "weekly_deals": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["idle", "planning", "ready"]
+    },
+    "notes": {
+      "type": "string"
+    },
+    "review_summary": {
+      "type": "string"
+    },
+    "kroger_connected": {
+      "type": "boolean"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GroceryState",
+  "additionalProperties": false
+}

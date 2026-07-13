@@ -93,7 +93,13 @@ const renderRules: RenderRules = {
     return <Image key={node.key} {...imageProps} />;
   },
   link: ({ node, styles, children, extras }) => {
-    const onPress = () => extras?.onPress(node.url) ?? Linking.openURL(node.url);
+    const onPress = () => {
+      if (extras?.onPress) {
+        extras.onPress(node.url);
+        return;
+      }
+      void Linking.openURL(node.url);
+    };
     return (
       <Text key={node.key} onPress={onPress} style={getTextStyle(styles, "link")}>
         {children}

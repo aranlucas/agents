@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"agents/internal/common"
 	"agents/internal/config"
 	"agents/internal/rate"
 	"github.com/openai/openai-go/v3"
@@ -23,8 +24,10 @@ import (
 )
 
 const (
-	circuitThreshold = 3
-	circuitCooldown  = 30 * time.Second
+	circuitThreshold         = 3
+	circuitCooldown          = 30 * time.Second
+	defaultModelHTTPTimeout  = 180 * time.Second
+	defaultModelResponseSize = 32 << 20
 )
 
 // Limiter is the provider rate-limit boundary.
@@ -107,6 +110,9 @@ func NewMulti(primary config.Provider, available map[string]config.Provider, cli
 }
 
 func newModel(providers []config.Provider, httpClient *http.Client, limiter Limiter) *Model {
+	if httpClient == nil {
+		httpClient = common.NewHTTPClient(defaultModelHTTPTimeout, defaultModelResponseSize).Client
+	}
 	pcs := make([]providerClient, len(providers))
 	for i, p := range providers {
 		opts := []option.RequestOption{}
@@ -116,9 +122,7 @@ func newModel(providers []config.Provider, httpClient *http.Client, limiter Limi
 		if p.BaseURL != "" {
 			opts = append(opts, option.WithBaseURL(p.BaseURL))
 		}
-		if httpClient != nil {
-			opts = append(opts, option.WithHTTPClient(httpClient))
-		}
+		opts = append(opts, option.WithHTTPClient(httpClient))
 		opts = append(opts, option.WithMaxRetries(0))
 		pcs[i] = providerClient{config: p, client: openai.NewClient(opts...)}
 	}

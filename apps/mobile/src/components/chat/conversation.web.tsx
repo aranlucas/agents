@@ -1,6 +1,6 @@
-import { LegendList, LegendListRef } from "@legendapp/list";
+import { LegendList, type LegendListRef } from "@legendapp/list/react-native";
 import { createContext, use, useCallback, useMemo, useRef, useState } from "react";
-import type { ComponentProps, ReactElement, ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { LayoutChangeEvent, Pressable, Text, View } from "react-native";
 
 import { useChatContext } from "./chat-context";
@@ -82,7 +82,7 @@ export function Conversation({
 
       if (wasAtBottom && heightIncreased && listRef.current) {
         requestAnimationFrame(() => {
-          listRef.current?.scrollToEnd({ animated: true });
+          void listRef.current?.scrollToEnd({ animated: true });
         });
       }
     },
@@ -90,7 +90,7 @@ export function Conversation({
   );
 
   const scrollToBottom = useCallback(() => {
-    listRef.current?.scrollToEnd({ animated: true });
+    void listRef.current?.scrollToEnd({ animated: true });
   }, []);
 
   const onPromptInputLayout = useCallback((e: LayoutChangeEvent) => {
@@ -122,8 +122,7 @@ export function Conversation({
         <LegendList
           ref={listRef}
           data={messages}
-          // eslint-disable-next-line typescript/no-unsafe-type-assertion
-          renderItem={renderMessage as unknown as ComponentProps<typeof LegendList>["renderItem"]}
+          renderItem={renderMessage}
           keyExtractor={(item: ChatMessage) => item.id}
           contentContainerStyle={{
             paddingBottom: composerHeight + 16,

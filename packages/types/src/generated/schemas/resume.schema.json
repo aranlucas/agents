@@ -1,0 +1,36 @@
+{
+  "type": "object",
+  "properties": {
+    "target_role": {
+      "type": "string"
+    },
+    "job_description": {
+      "type": "string"
+    },
+    "fit_summary": {
+      "type": "string"
+    },
+    "gaps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tailored_bullets": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["idle", "analyzing", "ready"]
+    },
+    "review_summary": {
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ResumeState",
+  "additionalProperties": false
+}

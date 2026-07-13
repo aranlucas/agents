@@ -1,0 +1,43 @@
+{
+  "type": "object",
+  "properties": {
+    "sheets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": ["null", "array"],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": ["title", "rows"],
+        "additionalProperties": false
+      }
+    },
+    "active_sheet_index": {
+      "type": "integer"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["idle", "ready"]
+    },
+    "review_summary": {
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SpreadsheetState",
+  "additionalProperties": false
+}

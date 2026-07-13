@@ -16,12 +16,19 @@ import (
 	"path/filepath"
 	"strings"
 
+	"agents/internal/catalog"
 	"agents/internal/config"
 )
 
-var allAgents = []string{
-	"expense", "fitness", "grocery", "oralboards", "presentation",
-	"research", "resume", "spreadsheet", "travel", "wellness",
+var allAgents = evalAgentRoutes()
+
+func evalAgentRoutes() []string {
+	specs := catalog.Eval()
+	routes := make([]string, 0, len(specs))
+	for _, spec := range specs {
+		routes = append(routes, spec.Route)
+	}
+	return routes
 }
 
 type CaseReport struct {

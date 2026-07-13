@@ -9,16 +9,67 @@ import (
 	"agents/migrations/d1"
 )
 
+// LatestMigrationVersion is the newest schema marker reported by migration
+// diagnostics. Readiness requires every marker in migrations. Keep existing
+// version strings stable; append instead of editing or renaming applied work.
+const LatestMigrationVersion = "003_fitness_activities"
+
+type migration struct {
+	version string
+	source  string
+}
+
+var migrations = []migration{
+	{version: "001_initial", source: d1migrations.Initial},
+	{version: "002_telegram_links", source: d1migrations.TelegramLinks},
+	{version: LatestMigrationVersion, source: d1migrations.FitnessActivities},
+}
+
+type schemaTable struct {
+	name    string
+	columns []string
+}
+
+var requiredSchemaTables = []schemaTable{
+	{name: "sessions", columns: []string{"app_name", "user_id", "session_id", "state_json", "created_at", "updated_at", "expires_at"}},
+	{name: "app_states", columns: []string{"app_name", "state_json"}},
+	{name: "user_states", columns: []string{"app_name", "user_id", "state_json"}},
+	{name: "session_events", columns: []string{"app_name", "user_id", "session_id", "event_id", "invocation_id", "event_json", "created_at"}},
+	{name: "schema_migrations", columns: []string{"version", "applied_at"}},
+	{name: "provider_limits", columns: []string{"provider", "minute_window", "request_count", "expires_at"}},
+	{name: "pending_client_tools", columns: []string{"app_name", "user_id", "thread_id", "call_id", "tool_name", "args_json", "result_json", "status", "created_at", "expires_at"}},
+	{name: "telegram_link_tokens", columns: []string{"token_hash", "telegram_user_id", "telegram_chat_id", "expires_at", "consumed_at", "created_at"}},
+	{name: "telegram_account_links", columns: []string{"telegram_user_id", "clerk_user_id", "telegram_chat_id", "linked_at", "unlinked_at"}},
+	{name: "fitness_activities", columns: []string{"user_id", "source", "source_activity_id", "name", "sport_type", "start_date", "end_date", "distance_m", "moving_time_s", "elapsed_time_s", "total_elevation_gain_m", "average_heartrate", "perceived_effort", "data_origin", "updated_at"}},
+	{name: "fitness_sync_sources", columns: []string{"user_id", "source", "synced_at", "accepted_count"}},
+}
+
+var requiredSchemaIndexes = []string{
+	"sessions_identity_updated",
+	"sessions_expiry",
+	"session_events_order",
+	"provider_limits_expiry",
+	"pending_client_tools_expiry",
+	"telegram_link_tokens_expiry",
+	"telegram_account_links_clerk",
+	"fitness_activities_user_start",
+	"fitness_sync_sources_user_synced",
+}
+
+func migrationVersions() []string {
+	versions := make([]string, 0, len(migrations))
+	for _, item := range migrations {
+		versions = append(versions, item.version)
+	}
+	return versions
+}
+
 // RunMigrations applies the embedded idempotent D1 schema.
 func (d *D1) RunMigrations(ctx context.Context) error {
-	if err := d.runMigration(ctx, "001_initial", d1migrations.Initial); err != nil {
-		return err
-	}
-	if err := d.runMigration(ctx, "002_telegram_links", d1migrations.TelegramLinks); err != nil {
-		return err
-	}
-	if err := d.runMigration(ctx, "003_fitness_activities", d1migrations.FitnessActivities); err != nil {
-		return err
+	for _, item := range migrations {
+		if err := d.runMigration(ctx, item.version, item.source); err != nil {
+			return err
+		}
 	}
 	return nil
 }

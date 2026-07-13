@@ -1,0 +1,51 @@
+{
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "theme": {
+      "type": "string",
+      "enum": ["light", "dark", "minimal"]
+    },
+    "slides": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["title", "content", "bullets", "two-column"]
+          },
+          "heading": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "type", "heading", "body", "notes"],
+        "additionalProperties": false
+      }
+    },
+    "active_slide_index": {
+      "type": "integer"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["idle", "drafting", "ready"]
+    },
+    "review_summary": {
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PresentationState",
+  "additionalProperties": false
+}

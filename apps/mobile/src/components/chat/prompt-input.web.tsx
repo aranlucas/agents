@@ -1,10 +1,11 @@
 import { ArrowUp, Paperclip } from "lucide-react";
 import { Children, type ReactNode, isValidElement } from "react";
-import type { CSSProperties } from "react";
 import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
 
 import { useChatContext } from "./chat-context";
 import { useConversationContext } from "./conversation";
+
+const webTextareaStyle = { maxHeight: 200, resize: "none" } as const;
 
 /**
  * Root container for the message composer matching Vercel chatbot design.
@@ -114,8 +115,7 @@ export function PromptInputTextarea({
     <TextInput
       nativeID="composer"
       className="text-foreground placeholder:text-muted-foreground/35 min-h-24 w-full bg-transparent px-4 pt-3.5 pb-1.5 text-[13px] leading-relaxed outline-none"
-      // eslint-disable-next-line typescript/no-unsafe-type-assertion
-      style={{ maxHeight: 200, resize: "none" } as unknown as CSSProperties}
+      style={webTextareaStyle}
       value={input}
       onChangeText={setInput}
       placeholder={placeholder}
