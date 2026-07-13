@@ -34,25 +34,6 @@ export type AgentConfig = {
 };
 
 const AGENTS: Record<AgentId, AgentConfig> = {
-  excalidraw: {
-    id: "excalidraw",
-    label: "Whiteboard",
-    glyph: "✏",
-    colorVar: "--excalidraw",
-    placeholder: "Ask me to draw a diagram, flowchart, or sketch…",
-    welcome:
-      "Tell me what you want to visualize and I'll create an interactive Excalidraw drawing.",
-    suggestions: [
-      {
-        title: "System diagram",
-        message:
-          "Draw a system architecture diagram for a web app with a frontend, API, and database.",
-      },
-      { title: "Flowchart", message: "Create a flowchart for a user authentication flow." },
-      { title: "Wireframe", message: "Sketch a simple wireframe for a login page." },
-      { title: "Mind map", message: "Draw a mind map for brainstorming a new product feature." },
-    ],
-  },
   travel: {
     id: "travel",
     label: "Trip Studio",

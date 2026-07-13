@@ -136,14 +136,13 @@ describe("toRenderItems", () => {
     expect(item.message).toBe(activity);
   });
 
-  it("preserves A2UI activity metadata for the custom chat renderer", () => {
+  it("preserves activity metadata for the custom chat renderer", () => {
     const message: AguiMessage = {
       id: "surface-1",
       role: "activity",
-      activityType: "a2ui-surface",
+      activityType: "progress",
       content: {
-        status: "painted",
-        a2ui_operations: [{ createSurface: { surfaceId: "trends-result" } }],
+        status: "running",
       },
     };
 

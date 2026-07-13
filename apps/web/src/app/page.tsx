@@ -7,17 +7,6 @@ import type { Agent } from "@/components/agent-card";
 const AGENTS: Agent[] = [
   {
     id: "01",
-    href: "/console/excalidraw",
-    name: "Whiteboard",
-    tagline: "Generative Excalidraw diagrams",
-    description:
-      "Describe a system, flow, or sketch and watch an interactive Excalidraw drawing build in real time.",
-    cta: "Open whiteboard",
-    tags: ["Excalidraw", "Diagrams", "Generative"],
-    theme: "excalidraw",
-  },
-  {
-    id: "02",
     href: "/console/travel",
     name: "Trip Studio",
     tagline: "Real-time itinerary planning",
@@ -27,7 +16,7 @@ const AGENTS: Agent[] = [
     theme: "travel",
   },
   {
-    id: "03",
+    id: "02",
     href: "/console/grocery",
     name: "Grocery Studio",
     tagline: "Meal plans to Kroger carts",
@@ -37,7 +26,7 @@ const AGENTS: Agent[] = [
     theme: "grocery",
   },
   {
-    id: "04",
+    id: "03",
     href: "/console/fitness",
     name: "Fitness Studio",
     tagline: "Health-aware weekly training",
@@ -48,7 +37,7 @@ const AGENTS: Agent[] = [
     theme: "fitness",
   },
   {
-    id: "05",
+    id: "04",
     href: "/console/wellness",
     name: "Wellness Studio",
     tagline: "Meals and workouts together",
@@ -58,7 +47,7 @@ const AGENTS: Agent[] = [
     theme: "wellness",
   },
   {
-    id: "06",
+    id: "05",
     href: "/console/expense",
     name: "Expense Desk",
     tagline: "Policy-aware expense review",
@@ -69,7 +58,7 @@ const AGENTS: Agent[] = [
     theme: "expense",
   },
   {
-    id: "07",
+    id: "06",
     href: "/console/oral-boards",
     name: "Oral Boards",
     tagline: "Cited pediatric dentistry exams",
@@ -80,18 +69,18 @@ const AGENTS: Agent[] = [
     theme: "oral-boards",
   },
   {
-    id: "08",
+    id: "07",
     href: "/console/trends",
     name: "Google Trends",
-    tagline: "Live visual search analysis",
+    tagline: "Live search analysis",
     description:
-      "Ask a question in natural language, run bounded BigQuery SQL, and explore the result as an A2UI chart and table.",
+      "Ask a question in natural language and run bounded BigQuery SQL against Google Trends data.",
     cta: "Explore trends",
-    tags: ["BigQuery", "A2UI", "Live data"],
+    tags: ["BigQuery", "Analysis", "Live data"],
     theme: "trends",
   },
   {
-    id: "09",
+    id: "08",
     href: "/console/resume",
     name: "Resume",
     tagline: "Public Q&A for Lucas",
@@ -101,7 +90,7 @@ const AGENTS: Agent[] = [
     theme: "resume",
   },
   {
-    id: "10",
+    id: "09",
     href: "/console/research",
     name: "Research",
     tagline: "Structured research reports",
@@ -111,7 +100,7 @@ const AGENTS: Agent[] = [
     theme: "research",
   },
   {
-    id: "11",
+    id: "10",
     href: "/console/spreadsheet",
     name: "Spreadsheet",
     tagline: "Generate and analyze sheets",
@@ -121,7 +110,7 @@ const AGENTS: Agent[] = [
     theme: "spreadsheet",
   },
   {
-    id: "12",
+    id: "11",
     href: "/console/presentation",
     name: "Slides",
     tagline: "Build slide decks from a prompt",

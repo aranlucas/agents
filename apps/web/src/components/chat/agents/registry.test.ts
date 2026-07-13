@@ -7,7 +7,6 @@ describe("agent registry", () => {
   });
   it("lists all agents in display order", () => {
     expect(AGENT_ORDER).toEqual([
-      "excalidraw",
       "travel",
       "grocery",
       "fitness",
@@ -45,7 +44,6 @@ describe("agent registry", () => {
   });
 
   it("declares external-account requirements per agent", () => {
-    expect(getAgentConfig("excalidraw").requires ?? []).toEqual([]);
     expect(getAgentConfig("travel").requires ?? []).toEqual([]);
     expect(getAgentConfig("grocery").requires).toEqual(["kroger"]);
     expect(getAgentConfig("fitness").requires).toEqual([]);
@@ -59,7 +57,7 @@ describe("agent registry", () => {
     expect(getAgentConfig("presentation").requires ?? []).toEqual([]);
   });
 
-  it("uses A2UI inline instead of a markdown artifact for Trends", () => {
+  it("keeps Trends as a chat-only analysis agent", () => {
     expect(getAgentConfig("trends").artifact).toBeUndefined();
   });
 

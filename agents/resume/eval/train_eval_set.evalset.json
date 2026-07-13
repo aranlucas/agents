@@ -111,7 +111,7 @@
             "role": "model",
             "parts": [
               {
-                "text": "Lucas runs 12 typed Go agents behind a Go AG-UI gateway, with Next.js and Expo clients, D1 session state, R2 artifacts, live MCP integrations for Kroger, travel, and Excalidraw, and Health Connect activity data for fitness planning."
+                "text": "Lucas runs 11 typed Go agents behind a Go AG-UI gateway, with Next.js and Expo clients, D1 session state, R2 artifacts, live integrations for Kroger and travel, and Health Connect activity data for fitness planning."
               }
             ]
           }

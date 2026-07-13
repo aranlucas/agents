@@ -27,6 +27,7 @@ export const env = createEnv({
   },
   client: {
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: requiredUnlessOffline(),
+    NEXT_PUBLIC_AGENTS_BASE_URL: z.url().default("https://agents-gateway.up.railway.app"),
   },
   skipValidation: process.env.SKIP_ENV_VALIDATION === "1",
   runtimeEnv: {
@@ -45,5 +46,7 @@ export const env = createEnv({
     OTEL_SERVICE_NAME: process.env.OTEL_SERVICE_NAME,
     COPILOTKIT_DEBUG: process.env.COPILOTKIT_DEBUG,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+    NEXT_PUBLIC_AGENTS_BASE_URL:
+      process.env.NEXT_PUBLIC_AGENTS_BASE_URL ?? "https://agents-gateway.up.railway.app",
   },
 });

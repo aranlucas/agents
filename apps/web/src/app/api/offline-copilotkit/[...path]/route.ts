@@ -1,18 +1,15 @@
 import { NextResponse } from "next/server";
 
 import { isAgentId } from "@/components/chat/agents/registry";
-import {
-  OFFLINE_COPILOTKIT_INFO_RESPONSE,
-  OFFLINE_AUTH_CONNECTION_RESPONSE,
-  offlineAgentReply,
-} from "@/lib/offline-fixtures";
+import { OFFLINE_COPILOTKIT_INFO_RESPONSE, offlineAgentReply } from "@/lib/offline-fixtures";
+import { isOfflineAgentTestMode } from "@/lib/offline-mode";
 
 function sseEvent(event: Record<string, unknown>): string {
   return `data: ${JSON.stringify(event)}\n\n`;
 }
 
 function getAgentId(pathname: string): string | null {
-  return /^\/api\/copilotkit\/agent\/([^/]+)\/(?:run|connect)$/.exec(pathname)?.[1] ?? null;
+  return /^\/api\/offline-copilotkit\/agent\/([^/]+)\/(?:run|connect)$/.exec(pathname)?.[1] ?? null;
 }
 
 function createOfflineAgentStream(agentId: string): Response {
@@ -23,15 +20,13 @@ function createOfflineAgentStream(agentId: string): Response {
   const content = offlineAgentReply(agentId);
   const stream = new ReadableStream({
     start(controller) {
-      const events = [
+      for (const event of [
         { type: "RUN_STARTED", threadId, runId },
         { type: "TEXT_MESSAGE_START", messageId, role: "assistant" },
         { type: "TEXT_MESSAGE_CONTENT", messageId, delta: content },
         { type: "TEXT_MESSAGE_END", messageId },
         { type: "RUN_FINISHED", threadId, runId, outcome: "success" },
-      ];
-
-      for (const event of events) {
+      ]) {
         controller.enqueue(encoder.encode(sseEvent(event)));
       }
       controller.close();
@@ -48,23 +43,15 @@ function createOfflineAgentStream(agentId: string): Response {
   });
 }
 
-export async function handleOfflineCopilotKitRequest(request: Request): Promise<Response> {
+async function handle(request: Request): Promise<Response> {
+  if (!isOfflineAgentTestMode()) {
+    return NextResponse.json({ error: "Offline fixtures are disabled" }, { status: 404 });
+  }
+
   const { pathname } = new URL(request.url);
-
-  if (request.method === "OPTIONS") {
-    return new Response(null, { status: 204 });
-  }
-
-  if (pathname === "/api/copilotkit/info" && request.method === "GET") {
+  if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+  if (pathname === "/api/offline-copilotkit/info" && request.method === "GET") {
     return NextResponse.json(OFFLINE_COPILOTKIT_INFO_RESPONSE);
-  }
-
-  if (pathname === "/api/copilotkit/transcribe") {
-    return NextResponse.json({ text: "Offline transcription is not available." });
-  }
-
-  if (pathname === "/api/copilotkit" && request.method === "POST") {
-    return NextResponse.json(OFFLINE_AUTH_CONNECTION_RESPONSE);
   }
 
   const agentId = getAgentId(pathname);
@@ -72,5 +59,11 @@ export async function handleOfflineCopilotKitRequest(request: Request): Promise<
     return createOfflineAgentStream(agentId);
   }
 
-  return NextResponse.json({ error: "Offline CopilotKit mock route not found" }, { status: 404 });
+  return NextResponse.json({ error: "Offline fixture route not found" }, { status: 404 });
 }
+
+export const GET = handle;
+export const POST = handle;
+export const PATCH = handle;
+export const DELETE = handle;
+export const OPTIONS = handle;

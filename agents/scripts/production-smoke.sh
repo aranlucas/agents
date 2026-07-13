@@ -5,7 +5,7 @@ base_url="${AGENTS_BASE_URL:?AGENTS_BASE_URL is required}"
 base_url="${base_url%/}"
 auth_token="${SMOKE_AUTH_TOKEN:-}"
 telegram_url="${TELEGRAM_HEALTH_URL:-}"
-agents=(excalidraw travel trends grocery fitness wellness expense oralboards presentation research spreadsheet resume)
+agents=(travel trends grocery fitness wellness expense oralboards presentation research spreadsheet resume)
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
@@ -56,19 +56,12 @@ curl --fail --silent --show-error --no-buffer --max-time 90 "${auth[@]}" -H 'con
 rg -q 'TOOL_CALL_START' "$tmp/client-tool.sse" || fail "client-tool AG-UI request"
 pass "client-tool AG-UI request"
 
-a2ui_run="smoke-a2ui-$(date -u +%s)"
-a2ui_body="$(jq -nc --arg run "$a2ui_run" '{threadId:$run,runId:$run,messages:[{id:"user-1",role:"user",content:"Show a small A2UI trend card for Go adoption with two sample data points; do not query external data."}],tools:[],context:[],state:{}}')"
-curl --fail --silent --show-error --no-buffer --max-time 120 "${auth[@]}" -H 'content-type: application/json' \
-  --data "$a2ui_body" "$base_url/trends/agui" >"$tmp/a2ui.sse"
-rg -q 'ACTIVITY_SNAPSHOT' "$tmp/a2ui.sse" || fail "Trends A2UI activity"
-pass "Trends A2UI activity"
-
 oauth_status="$(curl --silent --output "$tmp/oauth.out" --write-out '%{http_code}' --max-time 90 "${auth[@]}" \
-  -H 'content-type: application/json' -H 'x-kroger-token: smoke-non-secret-token' \
+  -H 'content-type: application/json' \
   --data "$(jq -nc '{threadId:"smoke-oauth",runId:"smoke-oauth",messages:[{id:"user-1",role:"user",content:"Say whether a Kroger credential was supplied; do not call Kroger."}],tools:[],context:[],state:{}}')" \
   "$base_url/grocery/agui")"
-[[ "$oauth_status" == "200" ]] && rg -q 'RUN_FINISHED' "$tmp/oauth.out" || fail "OAuth header injection path"
-pass "OAuth header injection path"
+[[ "$oauth_status" == "200" ]] && rg -q 'RUN_FINISHED' "$tmp/oauth.out" || fail "gateway OAuth credential path"
+pass "gateway OAuth credential path"
 
 [[ -n "$telegram_url" ]] || fail "TELEGRAM_HEALTH_URL is required for worker acceptance"
 get_json "${telegram_url%/}/health" | jq -e '.status == "ok"' >/dev/null || fail "Telegram worker health"

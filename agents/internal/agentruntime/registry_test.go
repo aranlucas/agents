@@ -20,7 +20,7 @@ func testAgent(t *testing.T, name string) agent.Agent {
 }
 
 func TestAllReturnsEveryActiveAgentInStableOrder(t *testing.T) {
-	routes := []string{"excalidraw", "travel", "trends", "grocery", "fitness", "wellness", "expense", "oralboards", "presentation", "research", "spreadsheet", "resume"}
+	routes := []string{"travel", "trends", "grocery", "fitness", "wellness", "expense", "oralboards", "presentation", "research", "spreadsheet", "resume"}
 	entries := make([]Entry, 0, len(routes))
 	for _, route := range routes {
 		entries = append(entries, Entry{Route: route, AppName: route + "_agent", Agent: testAgent(t, route+"_runtime")})

@@ -24,7 +24,10 @@ export function useAnswerRecorder(onTranscript: (text: string) => void): UseAnsw
   const recorderRef = useRef<AnswerRecorderRef | null>(null);
   const recordingRef = useRef(false);
   const onTranscriptRef = useRef(onTranscript);
-  onTranscriptRef.current = onTranscript;
+
+  useEffect(() => {
+    onTranscriptRef.current = onTranscript;
+  }, [onTranscript]);
 
   useEffect(() => {
     setMicSupported(typeof navigator.mediaDevices?.getUserMedia === "function");
@@ -54,7 +57,7 @@ export function useAnswerRecorder(onTranscript: (text: string) => void): UseAnsw
       setRecording(false);
       const formData = new FormData();
       formData.append("audio", blob, "recording.webm");
-      const res = await fetch("/api/copilotkit/transcribe", {
+      const res = await fetch("/api/transcribe", {
         method: "POST",
         body: formData,
       });

@@ -1,7 +1,6 @@
 import { cssVars } from "@/lib/css";
 
 export type AgentTheme =
-  | "excalidraw"
   | "travel"
   | "grocery"
   | "fitness"
@@ -23,12 +22,6 @@ export const AGENT_THEMES: Record<
     contrastVar: string;
   }
 > = {
-  excalidraw: {
-    label: "Whiteboard",
-    colorVar: "var(--excalidraw)",
-    softVar: "var(--excalidraw-soft)",
-    contrastVar: "var(--excalidraw-contrast)",
-  },
   travel: {
     label: "Travel",
     colorVar: "var(--travel)",

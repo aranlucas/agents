@@ -55,11 +55,11 @@ func TestResumeAgentRejectsNilModel(t *testing.T) {
 func TestResumeAgentEmbedsCurrentPlatformArchitecture(t *testing.T) {
 	for _, required := range []string{
 		"Google ADK-Go + AG-UI",
-		"12 typed Go agents",
+		"11 typed Go agents",
 		"single Go AG-UI gateway",
 		"D1 session state",
 		"R2 artifact storage",
-		"MCP integrations connect Kroger, travel, and Excalidraw",
+		"Live integrations connect Kroger and travel data",
 		"synced from Health Connect",
 		"ADK task agents over shared typed state",
 	} {

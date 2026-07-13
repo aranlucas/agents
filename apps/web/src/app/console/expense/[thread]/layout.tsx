@@ -1,7 +1,8 @@
 "use client";
 
 import { use, type ReactNode } from "react";
-import { CopilotKit } from "@copilotkit/react-core/v2";
+
+import { ConsoleSession } from "@/components/chat/console-session";
 
 export default function Layout({
   children,
@@ -12,14 +13,8 @@ export default function Layout({
 }) {
   const { thread } = use(params);
   return (
-    <CopilotKit
-      runtimeUrl="/api/copilotkit"
-      agent="expense"
-      threadId={thread}
-      useSingleEndpoint={false}
-      enableInspector={process.env.NODE_ENV !== "production"}
-    >
+    <ConsoleSession agent="expense" thread={thread}>
       {children}
-    </CopilotKit>
+    </ConsoleSession>
   );
 }

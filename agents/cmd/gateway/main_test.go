@@ -16,6 +16,7 @@ import (
 	"agents/grocery/agent"
 	"agents/internal/agentruntime"
 	"agents/internal/auth"
+	"agents/internal/clerk"
 	"agents/internal/config"
 	"agents/presentation/agent"
 	"agents/resume/agent"
@@ -29,7 +30,7 @@ import (
 )
 
 func TestEveryActiveAgentExposesScopedEndpoints(t *testing.T) {
-	routes := []string{"excalidraw", "travel", "trends", "grocery", "fitness", "wellness", "expense", "oralboards", "presentation", "research", "spreadsheet", "resume"}
+	routes := []string{"travel", "trends", "grocery", "fitness", "wellness", "expense", "oralboards", "presentation", "research", "spreadsheet", "resume"}
 	entries := make([]agentruntime.Entry, 0, len(routes))
 	for _, route := range routes {
 		built, err := llmagent.New(llmagent.Config{Name: strings.ReplaceAll(route, "-", "_") + "_contract_agent", Instruction: "contract", Model: fakeResumeModel{}})
@@ -218,6 +219,67 @@ type acceptingVerifier struct{}
 
 func (acceptingVerifier) Verify(context.Context, string) (auth.Identity, error) {
 	return auth.Identity{UserID: "clerk-user"}, nil
+}
+
+type fakeClerkBackend struct {
+	connections clerk.ConnectionState
+	lookups     []string
+}
+
+func (*fakeClerkBackend) MirrorTelegramLink(context.Context, int64, string) error { return nil }
+func (*fakeClerkBackend) MirrorTelegramUnlink(context.Context, int64) error       { return nil }
+func (*fakeClerkBackend) LinkedUserID(context.Context, int64) (string, error)     { return "", nil }
+func (f *fakeClerkBackend) OAuthConnections(_ context.Context, userID string) (clerk.ConnectionState, error) {
+	f.lookups = append(f.lookups, userID)
+	return f.connections, nil
+}
+
+func TestOAuthCredentialsAreResolvedAfterClerkAuthentication(t *testing.T) {
+	backend := &fakeClerkBackend{connections: clerk.ConnectionState{
+		KrogerToken: "kroger-secret",
+		StravaToken: "strava-secret",
+	}}
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("X-Kroger-Access-Token"); got != "kroger-secret" {
+			t.Errorf("Kroger token = %q", got)
+		}
+		if got := r.Header.Get("X-Strava-Access-Token"); got != "strava-secret" {
+			t.Errorf("Strava token = %q", got)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+	handler := auth.RequireIdentity(nil, withOAuthCredentials(backend, next), acceptingVerifier{})
+	request := httptest.NewRequest(http.MethodPost, "/grocery/agui", nil)
+	request.Header.Set("Authorization", "Bearer clerk-session")
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	if !slices.Equal(backend.lookups, []string{"clerk-user"}) {
+		t.Fatalf("Clerk lookups=%v", backend.lookups)
+	}
+}
+
+func TestOAuthCredentialsSkipRoutesWithoutProviderTools(t *testing.T) {
+	backend := &fakeClerkBackend{}
+	handler := auth.RequireIdentity(nil, withOAuthCredentials(backend, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})), acceptingVerifier{})
+	request := httptest.NewRequest(http.MethodPost, "/travel/agui", nil)
+	request.Header.Set("Authorization", "Bearer clerk-session")
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	if len(backend.lookups) != 0 {
+		t.Fatalf("unexpected Clerk lookups=%v", backend.lookups)
+	}
 }
 
 func TestGatewayPresentationAGUIRoute(t *testing.T) {

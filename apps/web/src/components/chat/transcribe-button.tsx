@@ -30,7 +30,7 @@ export function TranscribeButton() {
       const blob = await recorder.stop();
       const formData = new FormData();
       formData.append("audio", blob, "recording.webm");
-      const res = await fetch("/api/copilotkit/transcribe", {
+      const res = await fetch("/api/transcribe", {
         method: "POST",
         body: formData,
       });

@@ -195,16 +195,9 @@ func TestAppendEventRetainsTempKeysInMemory(t *testing.T) {
 
 // TestSessionAppendEventPreservesTemporaryStateOnTheEventItself is a
 // regression test: ADK-Go's runner calls SessionService.AppendEvent and then
-// yields that same *session.Event to its caller (agui.Handler), which
-// converts temp:mcp_app_activity:/temp:a2ui_activity: state-delta keys into
-// ACTIVITY_SNAPSHOT events (see internal/agui/converter.go's
-// activityEvents). AppendEvent must still keep temp: keys out of D1
-// (covered above), and it must NOT strip them
-// from the event.Actions.StateDelta it was given — an earlier version of
-// this method reassigned event.Actions.StateDelta to a temp-filtered copy,
-// which silently broke every activity-emitting tool end-to-end (the MCP
-// Apps bridge, trends' generate_a2ui) despite passing unit tests that never
-// drove AppendEvent on the way to inspecting the event.
+// yields that same *session.Event to its caller. AppendEvent must keep temp:
+// keys out of D1 without mutating the event object observed by downstream
+// consumers.
 func TestSessionAppendEventPreservesTemporaryStateOnTheEventItself(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req batchRequest
@@ -234,13 +227,13 @@ func TestSessionAppendEventPreservesTemporaryStateOnTheEventItself(t *testing.T)
 	}
 	event := session.NewEvent(t.Context(), "invocation-1")
 	event.Actions.StateDelta = map[string]any{
-		"status":                    "ready",
-		"temp:a2ui_activity:render": map[string]any{"messageId": "render", "content": "surface"},
+		"status":         "ready",
+		"temp:ephemeral": map[string]any{"value": "available during the run"},
 	}
 	if err := service.AppendEvent(context.Background(), created.Session, event); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := event.Actions.StateDelta["temp:a2ui_activity:render"]; !ok {
+	if _, ok := event.Actions.StateDelta["temp:ephemeral"]; !ok {
 		t.Fatalf("AppendEvent stripped temp: state from the event's own StateDelta: %#v", event.Actions.StateDelta)
 	}
 	if _, ok := event.Actions.StateDelta["status"]; !ok {

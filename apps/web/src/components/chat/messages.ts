@@ -23,7 +23,7 @@ export type RenderItem =
   | { kind: "assistant"; id: string; text: string; toolCalls: AguiToolCall[] }
   // Reasoning renders as its own standalone block in message order.
   | { kind: "reasoning"; id: string; text: string }
-  // Activity messages (e.g. A2UI surfaces) are rendered standalone via the
+  // Activity messages are rendered standalone via the
   // `useRenderActivityMessage` resolver; we carry the raw message through.
   | { kind: "activity"; id: string; message: AguiMessage };
 

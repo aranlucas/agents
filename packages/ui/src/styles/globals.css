@@ -90,9 +90,6 @@
   --trends: #1a5fcb;
   --trends-soft: #dce8f9;
   --trends-contrast: #ffffff;
-  --excalidraw: #7c3aed;
-  --excalidraw-soft: #ede9fb;
-  --excalidraw-contrast: #ffffff;
 
   --success: #0f7a45;
   --success-soft: #e2f3e8;
@@ -145,9 +142,6 @@
   --oral-boards: #ff9ca8;
   --oral-boards-soft: #3d1a20;
   --oral-boards-contrast: #21070b;
-  --a2ui: #7edee8;
-  --a2ui-soft: #17383c;
-  --a2ui-contrast: #051719;
   --resume: #aec0d5;
   --resume-soft: #202b38;
   --resume-contrast: #09111a;
@@ -163,9 +157,6 @@
   --trends: #7eb8f7;
   --trends-soft: #0f2a4d;
   --trends-contrast: #040f1f;
-  --excalidraw: #c4b5fd;
-  --excalidraw-soft: #2d1f5e;
-  --excalidraw-contrast: #150d31;
 
   --success: #79d99d;
   --success-soft: #153525;
@@ -228,9 +219,6 @@
     --trends: #7eb8f7;
     --trends-soft: #0f2a4d;
     --trends-contrast: #040f1f;
-    --excalidraw: #c4b5fd;
-    --excalidraw-soft: #2d1f5e;
-    --excalidraw-contrast: #150d31;
     --success: #79d99d;
     --success-soft: #153525;
     --warning: #f2c56d;

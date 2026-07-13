@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 export type AgentStatus = "loading" | "ok" | "error";
 
 interface AgentStatuses {
-  excalidraw: AgentStatus;
   travel: AgentStatus;
   grocery: AgentStatus;
   fitness: AgentStatus;
@@ -26,7 +25,6 @@ interface HealthResponse {
 }
 
 const FALLBACK: AgentStatuses = {
-  excalidraw: "loading",
   travel: "loading",
   grocery: "loading",
   fitness: "loading",

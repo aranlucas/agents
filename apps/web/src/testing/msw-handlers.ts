@@ -17,13 +17,7 @@ export const offlineApiHandlers = [
   http.get(`${OFFLINE_SOURCE_OF_TRUTH_URL}/api/agents/health`, () =>
     HttpResponse.json(OFFLINE_AGENT_HEALTH_RESPONSE),
   ),
-  http.get(`${OFFLINE_SOURCE_OF_TRUTH_URL}/api/copilotkit/info`, () =>
+  http.get(`${OFFLINE_SOURCE_OF_TRUTH_URL}/api/offline-copilotkit/info`, () =>
     HttpResponse.json(OFFLINE_COPILOTKIT_INFO_RESPONSE),
-  ),
-  http.get(`${OFFLINE_SOURCE_OF_TRUTH_URL}/api/mcp/token`, () =>
-    HttpResponse.json(OFFLINE_AUTH_CONNECTION_RESPONSE),
-  ),
-  http.get(`${OFFLINE_SOURCE_OF_TRUTH_URL}/api/strava/token`, () =>
-    HttpResponse.json(OFFLINE_AUTH_CONNECTION_RESPONSE),
   ),
 ];

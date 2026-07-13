@@ -17,6 +17,7 @@ const copilotMocks = vi.hoisted(() => ({
   runAgent: vi.fn(async () => undefined),
   stopAgent: vi.fn(),
   runtimeConnectionStatus: "connected",
+  runtimeUrl: "/api/offline-copilotkit" as string | undefined,
 }));
 
 vi.mock("@copilotkit/react-core/v2", () => ({
@@ -31,6 +32,7 @@ vi.mock("@copilotkit/react-core/v2", () => ({
       connectAgent: copilotMocks.connectAgent,
       runAgent: copilotMocks.runAgent,
       runtimeConnectionStatus: copilotMocks.runtimeConnectionStatus,
+      runtimeUrl: copilotMocks.runtimeUrl,
       stopAgent: copilotMocks.stopAgent,
     },
   }),
@@ -159,6 +161,7 @@ describe("ChatSurface history replay", () => {
   beforeEach(() => {
     copilotMocks.connectAgent.mockClear();
     copilotMocks.runtimeConnectionStatus = "connected";
+    copilotMocks.runtimeUrl = "/api/offline-copilotkit";
     copilotMocks.agent.abortController = undefined;
     copilotMocks.agent.threadId = undefined;
     copilotMocks.agent.messages = [];
@@ -200,15 +203,32 @@ describe("ChatSurface history replay", () => {
     expect(copilotMocks.connectAgent).not.toHaveBeenCalled();
   });
 
-  it("renders A2UI activity messages through CopilotKit's resolver", () => {
+  it("connects a self-managed agent without a CopilotRuntime", async () => {
+    copilotMocks.runtimeConnectionStatus = "disconnected";
+    copilotMocks.runtimeUrl = undefined;
+
+    render(
+      <ChatSurface
+        config={getAgentConfig("travel")}
+        threadId="thread-123"
+        onSwitchAgent={() => {}}
+        onOpenArtifact={() => {}}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(copilotMocks.connectAgent).toHaveBeenCalledWith({ agent: copilotMocks.agent });
+    });
+  });
+
+  it("renders generic activity messages through CopilotKit's resolver", () => {
     copilotMocks.agent.messages = [
       {
         id: "surface-1",
         role: "activity",
-        activityType: "a2ui-surface",
+        activityType: "progress",
         content: {
-          status: "painted",
-          a2ui_operations: [{ createSurface: { surfaceId: "trends-result" } }],
+          status: "running",
         },
       },
     ];

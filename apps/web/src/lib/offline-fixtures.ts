@@ -26,11 +26,7 @@ export const OFFLINE_COPILOTKIT_INFO_RESPONSE = {
   ),
   audioFileTranscriptionEnabled: true,
   mode: "sse",
-  a2uiEnabled: true,
-  a2ui: {
-    enabled: true,
-    agents: ["trends"],
-  },
+  a2uiEnabled: false,
   openGenerativeUIEnabled: false,
   telemetryDisabled: false,
 };

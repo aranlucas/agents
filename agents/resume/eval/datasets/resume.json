@@ -74,7 +74,7 @@
               "rubric_id": "resume_platform_current_go_architecture",
               "content": {
                 "property": {
-                  "description": "The answer describes the current Go platform: 12 typed Go agents behind a Go AG-UI gateway, without claiming the platform uses Python agents or a FastAPI gateway."
+                  "description": "The answer describes the current Go platform: 11 typed Go agents behind a Go AG-UI gateway, without claiming the platform uses Python agents or a FastAPI gateway."
                 }
               }
             },
@@ -82,7 +82,7 @@
               "rubric_id": "resume_platform_current_integrations",
               "content": {
                 "property": {
-                  "description": "The answer accurately distinguishes live MCP integrations for Kroger, travel, and Excalidraw from fitness activity data synced through Health Connect; it does not call Strava an MCP training-data source."
+                  "description": "The answer accurately distinguishes live Kroger and travel integrations from fitness activity data synced through Health Connect; it does not call Strava an MCP training-data source."
                 }
               }
             },
