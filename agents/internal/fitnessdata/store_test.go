@@ -2,12 +2,26 @@ package fitnessdata
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
 
 	"agents/internal/cloudflare"
 )
+
+func rawRows(t *testing.T, rows ...any) []json.RawMessage {
+	t.Helper()
+	encoded := make([]json.RawMessage, len(rows))
+	for i, row := range rows {
+		data, err := json.Marshal(row)
+		if err != nil {
+			t.Fatal(err)
+		}
+		encoded[i] = data
+	}
+	return encoded
+}
 
 type fakeRunner struct {
 	statements []cloudflare.Statement
@@ -42,12 +56,12 @@ func TestSyncUsesIdempotentActivityUpsertAndSourceCheckpoint(t *testing.T) {
 
 func TestSnapshotDecodesProviderNeutralActivities(t *testing.T) {
 	runner := &fakeRunner{results: []cloudflare.Result{
-		{Rows: []map[string]any{{"source": SourceHealthConnect, "synced_at": "2026-07-12T13:00:00Z"}}, Success: true},
-		{Rows: []map[string]any{{
+		{Rows: rawRows(t, map[string]any{"source": SourceHealthConnect, "synced_at": "2026-07-12T13:00:00Z"}), Success: true},
+		{Rows: rawRows(t, map[string]any{
 			"source_activity_id": "activity-1", "source": SourceHealthConnect,
 			"name": "Morning run", "start_date": "2026-07-12T12:00:00Z",
-			"distance_m": 5000.0, "elapsed_time_s": 1500.0,
-		}}, Success: true},
+			"distance_m": 5000.0, "elapsed_time_s": 1500,
+		}), Success: true},
 	}}
 	snapshot, err := (&Store{d1: runner}).Snapshot(t.Context(), "user-1", 10)
 	if err != nil || !snapshot.Connected || snapshot.Source != SourceHealthConnect || len(snapshot.Activities) != 1 {

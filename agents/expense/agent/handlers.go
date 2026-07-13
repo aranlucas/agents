@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"math"
 	"strings"
 	"time"
@@ -49,8 +50,14 @@ func SubmitExpense(ctx agent.Context, input SubmitExpenseArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := submitExpense(&state, input)
 	if err == nil && result.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
+		if err := ctx.State().Set("expenses", state.Expenses); err != nil {
+			return Result{}, fmt.Errorf("set expenses: %w", err)
+		}
+		if err := ctx.State().Set("selected_expense_id", state.SelectedExpenseID); err != nil {
+			return Result{}, fmt.Errorf("set selected_expense_id: %w", err)
+		}
+		if err := ctx.State().Set("status", state.Status); err != nil {
+			return Result{}, fmt.Errorf("set status: %w", err)
 		}
 	}
 	return result, err
@@ -99,8 +106,17 @@ func WriteExpenseReview(ctx agent.Context, input WriteReviewArgs) (Result, error
 	state := readState(ctx.State())
 	result, err := writeExpenseReview(&state, input)
 	if err == nil && result.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
+		if err := ctx.State().Set("expenses", state.Expenses); err != nil {
+			return Result{}, fmt.Errorf("set expenses: %w", err)
+		}
+		if err := ctx.State().Set("selected_expense_id", state.SelectedExpenseID); err != nil {
+			return Result{}, fmt.Errorf("set selected_expense_id: %w", err)
+		}
+		if err := ctx.State().Set("status", state.Status); err != nil {
+			return Result{}, fmt.Errorf("set status: %w", err)
+		}
+		if err := ctx.State().Set("review_summary", state.ReviewSummary); err != nil {
+			return Result{}, fmt.Errorf("set review_summary: %w", err)
 		}
 	}
 	return result, err
@@ -134,8 +150,17 @@ func DecideExpense(ctx agent.Context, input DecideExpenseArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := decideExpense(&state, input)
 	if err == nil && result.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
+		if err := ctx.State().Set("expenses", state.Expenses); err != nil {
+			return Result{}, fmt.Errorf("set expenses: %w", err)
+		}
+		if err := ctx.State().Set("selected_expense_id", state.SelectedExpenseID); err != nil {
+			return Result{}, fmt.Errorf("set selected_expense_id: %w", err)
+		}
+		if err := ctx.State().Set("status", state.Status); err != nil {
+			return Result{}, fmt.Errorf("set status: %w", err)
+		}
+		if err := ctx.State().Set("review_summary", state.ReviewSummary); err != nil {
+			return Result{}, fmt.Errorf("set review_summary: %w", err)
 		}
 	}
 	return result, err
@@ -167,8 +192,14 @@ func SetExpenseReport(ctx agent.Context, input SetReportArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := setExpenseReport(&state, input)
 	if err == nil && result.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
+		if err := ctx.State().Set("expense_report", state.ExpenseReport); err != nil {
+			return Result{}, fmt.Errorf("set expense_report: %w", err)
+		}
+		if err := ctx.State().Set("review_summary", state.ReviewSummary); err != nil {
+			return Result{}, fmt.Errorf("set review_summary: %w", err)
+		}
+		if err := ctx.State().Set("status", state.Status); err != nil {
+			return Result{}, fmt.Errorf("set status: %w", err)
 		}
 	}
 	return result, err
@@ -180,7 +211,11 @@ func setExpenseReport(state *ExpenseState, input SetReportArgs) (Result, error) 
 	}
 	state.ExpenseReport = input.Report
 	state.ReviewSummary = input.Summary
-	state.Status = "ready"
+	if !hasPendingExpenseReview(state) {
+		state.Status = "ready"
+	} else if state.Status != "needs_approval" {
+		state.Status = "reviewing"
+	}
 	return Result{OK: true, Length: len(input.Report)}, nil
 }
 
@@ -188,8 +223,11 @@ func MarkExpenseReady(ctx agent.Context, input ReadyArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := markExpenseReady(&state, input)
 	if err == nil && result.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
+		if err := ctx.State().Set("status", state.Status); err != nil {
+			return Result{}, fmt.Errorf("set status: %w", err)
+		}
+		if err := ctx.State().Set("review_summary", state.ReviewSummary); err != nil {
+			return Result{}, fmt.Errorf("set review_summary: %w", err)
 		}
 	}
 	return result, err
@@ -199,9 +237,21 @@ func markExpenseReady(state *ExpenseState, input ReadyArgs) (Result, error) {
 	if len(input.Summary) > 10_000 {
 		return fail("summary_too_large", "review summary exceeds the allowed size"), nil
 	}
+	if hasPendingExpenseReview(state) || state.Status == "reviewing" || state.Status == "needs_approval" {
+		return fail("pending_expense_review", "all expenses requiring review must be approved or rejected before marking ready"), nil
+	}
 	state.Status = "ready"
 	state.ReviewSummary = input.Summary
 	return Result{OK: true}, nil
+}
+
+func hasPendingExpenseReview(state *ExpenseState) bool {
+	for _, item := range state.Expenses {
+		if item.Status == StatusNeedsReview {
+			return true
+		}
+	}
+	return false
 }
 
 func expenseIndex(expenses []Expense, id string) int {

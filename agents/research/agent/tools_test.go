@@ -39,10 +39,38 @@ func TestAddSourceRequiresHTTPS(t *testing.T) {
 
 func TestWriteAndReady(t *testing.T) {
 	state := Defaults()
+	_, _ = setQuery(&state, SetQueryArgs{Title: "Report", Query: "What changed?"})
+	_, _ = createSection(&state, CreateSectionArgs{SectionTitle: "Findings", Content: "Grounded body"})
+	_, _ = addSource(&state, AddSourceArgs{SourceTitle: "Standard", URL: "https://example.com/reference"})
 	written, _ := writeReport(&state, WriteReportArgs{Report: "# Report\n\nBody"})
 	ready, _ := markReady(&state, ReadyArgs{Summary: "Complete"})
 	if !written.OK || written.Length != len("# Report\n\nBody") || !ready.OK || state.Status != "ready" || state.ReviewSummary != "Complete" {
 		t.Fatalf("results/state=%#v/%#v/%#v", written, ready, state)
+	}
+}
+
+func TestReadyRequiresMeaningfulReportSectionsAndSources(t *testing.T) {
+	state := Defaults()
+	_, _ = setQuery(&state, SetQueryArgs{Title: "Report", Query: "What changed?"})
+
+	missingReport, _ := markReady(&state, ReadyArgs{})
+	if missingReport.OK || missingReport.Error == nil || missingReport.Error.Code != "report_required" {
+		t.Fatalf("missing report result = %#v", missingReport)
+	}
+	_, _ = writeReport(&state, WriteReportArgs{Report: "# Findings\n\nGrounded body"})
+	missingSections, _ := markReady(&state, ReadyArgs{})
+	if missingSections.OK || missingSections.Error == nil || missingSections.Error.Code != "sections_required" {
+		t.Fatalf("missing sections result = %#v", missingSections)
+	}
+	state.Sections = []Section{{ID: "empty", Title: "Findings"}}
+	incompleteSection, _ := markReady(&state, ReadyArgs{})
+	if incompleteSection.OK || incompleteSection.Error == nil || incompleteSection.Error.Code != "incomplete_section" {
+		t.Fatalf("incomplete section result = %#v", incompleteSection)
+	}
+	state.Sections[0].Content = "Grounded body"
+	missingSources, _ := markReady(&state, ReadyArgs{})
+	if missingSources.OK || missingSources.Error == nil || missingSources.Error.Code != "sources_required" || state.Status == StatusReady {
+		t.Fatalf("missing sources result/state = %#v/%#v", missingSources, state)
 	}
 }
 

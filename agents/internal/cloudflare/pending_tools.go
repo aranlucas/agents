@@ -1,6 +1,7 @@
 package cloudflare
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -19,6 +20,40 @@ const (
 	maximumToolResult = 1 << 20
 )
 
+type pendingToolRow struct {
+	ToolName   string `json:"tool_name"`
+	ArgsJSON   string `json:"args_json"`
+	ResultJSON string `json:"result_json"`
+}
+
+type pendingToolResolution struct {
+	Status     string `json:"status"`
+	ResultJSON string `json:"result_json"`
+}
+
+func (r pendingToolRow) functionResponse(callID string) (*genai.FunctionResponse, error) {
+	if r.ToolName == "" || r.ArgsJSON == "" || r.ResultJSON == "" {
+		return nil, errors.New("invalid pending client tool record")
+	}
+	resultJSON := json.RawMessage(r.ResultJSON)
+	if !json.Valid(resultJSON) {
+		return nil, errors.New("invalid pending client tool result")
+	}
+	var response map[string]any
+	if json.Unmarshal(resultJSON, &response) != nil || response == nil {
+		response = map[string]any{"result": resultJSON}
+	}
+	arguments := json.RawMessage(r.ArgsJSON)
+	trimmedArguments := bytes.TrimSpace(arguments)
+	if !json.Valid(arguments) || len(trimmedArguments) == 0 || trimmedArguments[0] != '{' {
+		return nil, errors.New("invalid pending client tool arguments")
+	}
+	// This reserved server-authored field lets downstream policy bind an
+	// approved result to the original request without trusting client payload.
+	response["_agui_request"] = arguments
+	return &genai.FunctionResponse{ID: callID, Name: r.ToolName, Response: response}, nil
+}
+
 // PendingStore is a D1-backed single-consumption implementation of
 // agui.PendingTools.
 type PendingStore struct {
@@ -35,19 +70,22 @@ func NewPendingStore(d1 *D1, now func() time.Time) *PendingStore {
 
 var _ agui.PendingTools = (*PendingStore)(nil)
 
-func (p *PendingStore) Register(ctx context.Context, scope agui.ToolScope, callID, toolName string, args map[string]any) error {
+func (p *PendingStore) Register(ctx context.Context, scope agui.ToolScope, callID, toolName string, args json.RawMessage) error {
 	if p == nil || p.d1 == nil {
 		return errors.New("D1 pending tool store is required")
 	}
 	if !validScope(scope) || !agui.ClientCallID.MatchString(callID) || !agui.ClientToolName.MatchString(toolName) {
 		return errors.New("invalid pending tool identity")
 	}
-	encoded, err := json.Marshal(args)
-	if err != nil || len(encoded) > maximumToolArgs {
+	encoded := bytes.TrimSpace(args)
+	if len(encoded) == 0 || bytes.Equal(encoded, []byte("null")) {
+		encoded = []byte("{}")
+	}
+	if !json.Valid(encoded) || encoded[0] != '{' || len(encoded) > maximumToolArgs {
 		return errors.New("invalid client tool arguments")
 	}
 	now := p.now().UTC()
-	_, err = p.d1.Run(
+	_, err := p.d1.Run(
 		ctx,
 		Statement{SQL: "DELETE FROM pending_client_tools WHERE expires_at <= ?", Params: []any{now.UnixMilli()}},
 		Statement{SQL: `INSERT INTO pending_client_tools
@@ -61,21 +99,46 @@ func (p *PendingStore) Register(ctx context.Context, scope agui.ToolScope, callI
 	return nil
 }
 
-func (p *PendingStore) Resolve(ctx context.Context, identity auth.Identity, app, thread, callID string, result any) error {
+func (p *PendingStore) Resolve(ctx context.Context, identity auth.Identity, app, thread, callID string, result json.RawMessage) error {
 	if p == nil || p.d1 == nil {
 		return errors.New("D1 pending tool store is required")
 	}
 	if identity.Public || !validScope(agui.ToolScope{AppName: app, UserID: identity.UserID, ThreadID: thread}) || !agui.ClientCallID.MatchString(callID) {
 		return agui.ErrPendingToolNotFound
 	}
-	encoded, err := json.Marshal(result)
-	if err != nil || len(encoded) > maximumToolResult {
-		return errors.New("invalid client tool result")
-	}
 	now := p.now().UTC()
-	results, err := p.d1.Run(
+	authorized, err := p.d1.Run(
 		ctx,
 		Statement{SQL: "DELETE FROM pending_client_tools WHERE expires_at <= ?", Params: []any{now.UnixMilli()}},
+		Statement{SQL: `SELECT status, result_json FROM pending_client_tools
+			WHERE app_name = ? AND user_id = ? AND thread_id = ? AND call_id = ? AND status IN ('pending', 'resolved') AND expires_at > ?
+			LIMIT 1`, Params: []any{app, identity.UserID, thread, callID, now.UnixMilli()}},
+	)
+	if err != nil {
+		return fmt.Errorf("authorize pending client tool: %w", err)
+	}
+	if len(authorized) < 2 || len(authorized[1].Rows) != 1 {
+		return agui.ErrPendingToolNotFound
+	}
+	var resolution pendingToolResolution
+	if json.Unmarshal(authorized[1].Rows[0], &resolution) != nil || resolution.Status == "" {
+		return errors.New("invalid pending client tool record")
+	}
+	encoded := bytes.TrimSpace(result)
+	if len(encoded) == 0 || len(encoded) > maximumToolResult || !json.Valid(encoded) || encoded[0] != '{' {
+		return errors.New("invalid client tool result")
+	}
+	if resolution.Status == "resolved" {
+		if strings.TrimSpace(resolution.ResultJSON) == string(encoded) {
+			return nil
+		}
+		return agui.ErrPendingToolNotFound
+	}
+	if resolution.Status != "pending" {
+		return errors.New("invalid pending client tool status")
+	}
+	results, err := p.d1.Run(
+		ctx,
 		Statement{
 			SQL: `UPDATE pending_client_tools SET result_json = ?, status = 'resolved'
 			WHERE app_name = ? AND user_id = ? AND thread_id = ? AND call_id = ? AND status = 'pending' AND expires_at > ?`,
@@ -85,7 +148,7 @@ func (p *PendingStore) Resolve(ctx context.Context, identity auth.Identity, app,
 	if err != nil {
 		return fmt.Errorf("resolve pending client tool: %w", err)
 	}
-	if len(results) < 2 || results[1].Meta.Changes != 1 {
+	if len(results) != 1 || results[0].Meta.Changes != 1 {
 		return agui.ErrPendingToolNotFound
 	}
 	return nil
@@ -109,29 +172,11 @@ func (p *PendingStore) Take(ctx context.Context, identity auth.Identity, app, th
 	if len(results) < 2 || len(results[0].Rows) != 1 || results[1].Meta.Changes != 1 {
 		return nil, agui.ErrPendingToolNotFound
 	}
-	row := results[0].Rows[0]
-	toolName, _ := row["tool_name"].(string)
-	argumentsJSON, _ := row["args_json"].(string)
-	encoded, _ := row["result_json"].(string)
-	if toolName == "" || argumentsJSON == "" || encoded == "" {
+	var row pendingToolRow
+	if err := json.Unmarshal(results[0].Rows[0], &row); err != nil {
 		return nil, errors.New("invalid pending client tool record")
 	}
-	resultJSON := json.RawMessage(encoded)
-	if !json.Valid(resultJSON) {
-		return nil, errors.New("invalid pending client tool result")
-	}
-	var response map[string]any
-	if json.Unmarshal(resultJSON, &response) != nil || response == nil {
-		response = map[string]any{"result": resultJSON}
-	}
-	var arguments map[string]any
-	if json.Unmarshal([]byte(argumentsJSON), &arguments) != nil {
-		return nil, errors.New("invalid pending client tool arguments")
-	}
-	// This reserved server-authored field lets downstream policy bind an
-	// approved result to the original request without trusting client payload.
-	response["_agui_request"] = arguments
-	return &genai.FunctionResponse{ID: callID, Name: toolName, Response: response}, nil
+	return row.functionResponse(callID)
 }
 
 func validScope(scope agui.ToolScope) bool {

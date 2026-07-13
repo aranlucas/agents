@@ -11,7 +11,7 @@ import (
 
 	"agents/internal/agentruntime"
 	"agents/internal/auth"
-	aguitypes "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
+	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"google.golang.org/adk/v2/session"
 )
 
@@ -32,10 +32,10 @@ type stateRequest struct {
 // history reconstructed from persisted ADK session events (see
 // eventsToMessages in messages.go); State carries only non-temporary state.
 type stateResponse struct {
-	ThreadID     string              `json:"threadId"`
-	ThreadExists bool                `json:"threadExists"`
-	State        map[string]any      `json:"state"`
-	Messages     []aguitypes.Message `json:"messages"`
+	ThreadID     string          `json:"threadId"`
+	ThreadExists bool            `json:"threadExists"`
+	State        stateDocument   `json:"state"`
+	Messages     []types.Message `json:"messages"`
 }
 
 // StateHandler implements the experimental POST /<agent>/agents/state
@@ -78,12 +78,17 @@ func StateHandler(registry *agentruntime.Registry, sessions session.Service) htt
 		ctx, cancel := context.WithTimeout(r.Context(), entry.Timeout)
 		defer cancel()
 
-		response := stateResponse{ThreadID: input.ThreadID, State: map[string]any{}, Messages: []aguitypes.Message{}}
+		response := stateResponse{ThreadID: input.ThreadID, State: stateDocument{}, Messages: []types.Message{}}
 		found, err := sessions.Get(ctx, &session.GetRequest{AppName: entry.AppName, UserID: userID, SessionID: input.ThreadID})
 		switch {
 		case err == nil:
 			response.ThreadExists = true
-			response.State = persistentSnapshot(found.Session.State())
+			response.State, err = persistentSnapshot(found.Session.State())
+			if err != nil {
+				log.Printf("state route: session state encode failed for app=%s thread=%s: %v", entry.AppName, input.ThreadID, err)
+				writeJSONError(w, http.StatusInternalServerError, "state_unavailable")
+				return
+			}
 			response.Messages = eventsToMessages(found.Session.Events())
 		case errors.Is(err, ErrSessionNotFound):
 			// Expected: no session has been created for this thread yet.

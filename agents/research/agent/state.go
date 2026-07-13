@@ -2,9 +2,7 @@ package research
 
 import (
 	"encoding/json"
-	"fmt"
 
-	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/session"
 )
 
@@ -73,27 +71,4 @@ func readState(source session.ReadonlyState) ResearchState {
 		state.Status = StatusIdle
 	}
 	return state
-}
-
-func publishState(ctx agent.Context, state ResearchState) error {
-	s := ctx.State()
-	fields := []struct {
-		key   string
-		value any
-	}{
-		{"title", state.Title},
-		{"query", state.Query},
-		{"report", state.Report},
-		{"sections", state.Sections},
-		{"sources", state.Sources},
-		{"status", state.Status},
-		{"review_summary", state.ReviewSummary},
-		{"user_id", state.UserID},
-	}
-	for _, field := range fields {
-		if err := s.Set(field.key, field.value); err != nil {
-			return fmt.Errorf("set %s: %w", field.key, err)
-		}
-	}
-	return nil
 }

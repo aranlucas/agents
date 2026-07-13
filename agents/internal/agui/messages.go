@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	aguitypes "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
+	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
 )
@@ -32,8 +32,8 @@ import (
 //     the agent's own name. Any Part.Thought text is split into a
 //     preceding role:"reasoning" Message, and function calls become
 //     ToolCalls on a role:"assistant" Message.
-func eventsToMessages(events session.Events) []aguitypes.Message {
-	messages := []aguitypes.Message{}
+func eventsToMessages(events session.Events) []types.Message {
+	messages := []types.Message{}
 	if events == nil {
 		return messages
 	}
@@ -43,7 +43,7 @@ func eventsToMessages(events session.Events) []aguitypes.Message {
 	return messages
 }
 
-func eventToMessages(event *session.Event) []aguitypes.Message {
+func eventToMessages(event *session.Event) []types.Message {
 	if event == nil || event.Partial {
 		return nil
 	}
@@ -75,7 +75,7 @@ func eventToMessages(event *session.Event) []aguitypes.Message {
 	}
 
 	if len(responses) > 0 {
-		out := make([]aguitypes.Message, 0, len(responses))
+		out := make([]types.Message, 0, len(responses))
 		for index, response := range responses {
 			out = append(out, toolResultMessage(event.ID, index, response))
 		}
@@ -91,17 +91,17 @@ func eventToMessages(event *session.Event) []aguitypes.Message {
 		if textContent == "" {
 			return nil
 		}
-		return []aguitypes.Message{{ID: event.ID, Role: aguitypes.RoleUser, Content: textContent}}
+		return []types.Message{{ID: event.ID, Role: types.RoleUser, Content: textContent}}
 	}
 
-	var out []aguitypes.Message
+	var out []types.Message
 	if thinkingContent != "" {
-		out = append(out, aguitypes.Message{ID: event.ID + "-reasoning", Role: aguitypes.RoleReasoning, Content: thinkingContent})
+		out = append(out, types.Message{ID: event.ID + "-reasoning", Role: types.RoleReasoning, Content: thinkingContent})
 	}
 
 	toolCalls := toAGUIToolCalls(calls)
 	if textContent != "" || len(toolCalls) > 0 {
-		assistant := aguitypes.Message{ID: event.ID, Role: aguitypes.RoleAssistant, ToolCalls: toolCalls}
+		assistant := types.Message{ID: event.ID, Role: types.RoleAssistant, ToolCalls: toolCalls}
 		if textContent != "" {
 			assistant.Content = textContent
 		}
@@ -120,16 +120,16 @@ func eventToMessages(event *session.Event) []aguitypes.Message {
 // toAGUIToolCalls mirrors converter.go's toolCallEvents argument encoding
 // (json.Marshal, falling back to "{}" on error) so a session's replayed
 // history and its live SSE stream serialize tool arguments identically.
-func toAGUIToolCalls(calls []*genai.FunctionCall) []aguitypes.ToolCall {
+func toAGUIToolCalls(calls []*genai.FunctionCall) []types.ToolCall {
 	if len(calls) == 0 {
 		return nil
 	}
-	out := make([]aguitypes.ToolCall, 0, len(calls))
+	out := make([]types.ToolCall, 0, len(calls))
 	for _, call := range calls {
-		out = append(out, aguitypes.ToolCall{
+		out = append(out, types.ToolCall{
 			ID:   call.ID,
 			Type: "function",
-			Function: aguitypes.FunctionCall{
+			Function: types.FunctionCall{
 				Name:      call.Name,
 				Arguments: encodeToolArgs(call.Args),
 			},
@@ -142,7 +142,7 @@ func toAGUIToolCalls(calls []*genai.FunctionCall) []aguitypes.ToolCall {
 // encoding. The message ID is synthesized from the owning event's ID
 // (unlike the Python reference's random uuid4) so replaying the same
 // session twice yields byte-identical output.
-func toolResultMessage(eventID string, index int, response *genai.FunctionResponse) aguitypes.Message {
+func toolResultMessage(eventID string, index int, response *genai.FunctionResponse) types.Message {
 	payload := response.Response
 	if payload == nil {
 		payload = map[string]any{}
@@ -151,9 +151,9 @@ func toolResultMessage(eventID string, index int, response *genai.FunctionRespon
 	if err != nil {
 		encoded = []byte("{}")
 	}
-	return aguitypes.Message{
+	return types.Message{
 		ID:         fmt.Sprintf("%s-tool-%d", eventID, index),
-		Role:       aguitypes.RoleTool,
+		Role:       types.RoleTool,
 		Content:    string(encoded),
 		ToolCallID: response.ID,
 	}

@@ -30,7 +30,7 @@ func TestAllReturnsEveryActiveAgentInStableOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := make([]string, 0, len(routes))
-	for _, entry := range registry.All() {
+	for _, entry := range registry.Entries() {
 		got = append(got, entry.Route)
 	}
 	want := append([]string(nil), routes...)
@@ -97,10 +97,14 @@ func TestLookupTrimsSlashesAndRejectsUnknownRoutes(t *testing.T) {
 	}
 }
 
-func TestLookupReturnsIndependentStateDefaultsCopies(t *testing.T) {
+func TestStateDefaultsFactoryReturnsIndependentState(t *testing.T) {
+	calls := 0
 	registry, err := NewRegistry(Entry{
 		Route: "resume", AppName: "resume_agent", Agent: testAgentFor(t),
-		StateDefaults: map[string]any{"user_id": ""},
+		StateDefaults: func() map[string]any {
+			calls++
+			return map[string]any{"profile": map[string]any{"user_id": ""}}
+		},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -109,14 +113,19 @@ func TestLookupReturnsIndependentStateDefaultsCopies(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	first.StateDefaults["user_id"] = "mutated"
+	firstDefaults := first.StateDefaults()
+	firstDefaults["profile"].(map[string]any)["user_id"] = "mutated"
 
 	second, err := registry.Lookup("resume")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if second.StateDefaults["user_id"] != "" {
-		t.Fatalf("StateDefaults leaked a mutation across Lookup calls: %#v", second.StateDefaults)
+	secondDefaults := second.StateDefaults()
+	if secondDefaults["profile"].(map[string]any)["user_id"] != "" {
+		t.Fatalf("StateDefaults leaked a mutation across factory calls: %#v", secondDefaults)
+	}
+	if calls != 2 {
+		t.Fatalf("StateDefaults factory calls = %d, want 2", calls)
 	}
 }
 

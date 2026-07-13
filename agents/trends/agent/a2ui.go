@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	aguievents "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
+	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 )
 
 // metricValue is the catalog's scalar-only metric value. Keeping the raw JSON
@@ -67,7 +67,7 @@ type a2uiEnvelope struct {
 // executed query. compose.go's composeA2UI prefers an LLM-composed surface
 // when a composer model is configured, but always falls back to this
 // function whenever that composition is unavailable or invalid.
-func BuildA2UI(result TrendsResult) *aguievents.ActivitySnapshotEvent {
+func BuildA2UI(result TrendsResult) *events.ActivitySnapshotEvent {
 	columns := make([]a2uiColumn, 0, len(result.Columns))
 	for _, column := range result.Columns {
 		columns = append(columns, a2uiColumn{Key: column, Label: humanLabel(column), Format: columnFormat(column, result.Rows)})
@@ -96,12 +96,12 @@ func cappedRows(rows []Row) []Row {
 
 // assembleA2UI wraps a component list in the createSurface/updateComponents
 // envelope every Trends A2UI surface uses, deterministic or LLM-composed.
-func assembleA2UI(components []a2uiComponent) *aguievents.ActivitySnapshotEvent {
+func assembleA2UI(components []a2uiComponent) *events.ActivitySnapshotEvent {
 	content := a2uiEnvelope{Operations: []a2uiOperation{
 		{Version: "v0.9", CreateSurface: &createSurface{SurfaceID: "trends-result", CatalogID: trendsCatalogID}},
 		{Version: "v0.9", UpdateComponents: &updateComponents{SurfaceID: "trends-result", Components: components}},
 	}}
-	return &aguievents.ActivitySnapshotEvent{BaseEvent: &aguievents.BaseEvent{EventType: aguievents.EventTypeActivitySnapshot}, MessageID: "trends-result", ActivityType: "a2ui-surface", Content: content}
+	return &events.ActivitySnapshotEvent{BaseEvent: &events.BaseEvent{EventType: events.EventTypeActivitySnapshot}, MessageID: "trends-result", ActivityType: "a2ui-surface", Content: content}
 }
 
 func humanLabel(value string) string {

@@ -30,6 +30,19 @@ func writeEnvelope(t *testing.T, w http.ResponseWriter, results []Result) {
 	}
 }
 
+func rawRows(t *testing.T, rows ...any) []json.RawMessage {
+	t.Helper()
+	encoded := make([]json.RawMessage, len(rows))
+	for i, row := range rows {
+		data, err := json.Marshal(row)
+		if err != nil {
+			t.Fatal(err)
+		}
+		encoded[i] = data
+	}
+	return encoded
+}
+
 func TestD1UsesBoundedAuthenticatedRequestsAndRedactsToken(t *testing.T) {
 	const secret = "d1-secret"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -269,10 +282,10 @@ func TestSessionGetScopesEveryQueryAndReturnsEventsChronologically(t *testing.T)
 			}
 		}
 		writeEnvelope(t, w, []Result{
-			{Success: true, Rows: []map[string]any{{"state_json": `{"destination":"Paris"}`, "updated_at": float64(1500)}}},
-			{Success: true, Rows: []map[string]any{{"state_json": `{"policy":"shared"}`}}},
-			{Success: true, Rows: []map[string]any{{"state_json": `{"preference":"window"}`}}},
-			{Success: true, Rows: []map[string]any{{"event_json": string(newerJSON)}, {"event_json": string(olderJSON)}}},
+			{Success: true, Rows: rawRows(t, map[string]any{"state_json": `{"destination":"Paris"}`, "updated_at": int64(1500)})},
+			{Success: true, Rows: rawRows(t, map[string]any{"state_json": `{"policy":"shared"}`})},
+			{Success: true, Rows: rawRows(t, map[string]any{"state_json": `{"preference":"window"}`})},
+			{Success: true, Rows: rawRows(t, map[string]any{"event_json": string(newerJSON)}, map[string]any{"event_json": string(olderJSON)})},
 		})
 	}))
 	defer server.Close()
@@ -308,10 +321,10 @@ func TestSessionListSupportsOfficialAppWideShape(t *testing.T) {
 		if len(req.Batch) != 1 || strings.Contains(req.Batch[0].SQL, "user_id = ?") {
 			t.Fatalf("app-wide list query = %#v", req.Batch)
 		}
-		writeEnvelope(t, w, []Result{{Success: true, Rows: []map[string]any{
-			{"session_id": "thread-a", "user_id": "user-a", "state_json": `{}`, "updated_at": float64(1000), "app_state_json": `{}`, "user_state_json": `{}`},
-			{"session_id": "thread-b", "user_id": "user-b", "state_json": `{}`, "updated_at": float64(900), "app_state_json": `{}`, "user_state_json": `{}`},
-		}}})
+		writeEnvelope(t, w, []Result{{Success: true, Rows: rawRows(t,
+			map[string]any{"session_id": "thread-a", "user_id": "user-a", "state_json": `{}`, "updated_at": int64(1000), "app_state_json": `{}`, "user_state_json": `{}`},
+			map[string]any{"session_id": "thread-b", "user_id": "user-b", "state_json": `{}`, "updated_at": int64(900), "app_state_json": `{}`, "user_state_json": `{}`},
+		)}})
 	}))
 	defer server.Close()
 	d1, err := newD1(testCloudflare("token"), server.Client(), server.URL)
@@ -328,19 +341,21 @@ func TestSessionListSupportsOfficialAppWideShape(t *testing.T) {
 	}
 }
 
-func TestStateUpdateExpressionReplacesTopLevelObjectsAndPreservesNull(t *testing.T) {
+func TestStateUpdateExpressionReplacesTopLevelObjectsAndDeletesNil(t *testing.T) {
+	var typedNil *string
 	delta := map[string]any{
-		"nullable": nil,
-		"profile":  map[string]any{"name": "Ada"},
+		"nullable":       nil,
+		"profile":        map[string]any{"name": "Ada"},
+		"typed_nullable": typedNil,
 	}
 	expression, params, err := stateUpdateExpression("state_json", delta)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(expression, "json_patch") || !strings.HasPrefix(expression, "json_set(") {
+	if strings.Contains(expression, "json_patch") || !strings.HasPrefix(expression, "json_remove(json_set(") {
 		t.Fatalf("expression = %q", expression)
 	}
-	if got := fmt.Sprint(params); got != `[nullable null profile {"name":"Ada"}]` {
+	if got := fmt.Sprint(params); got != `[profile {"name":"Ada"} nullable typed_nullable]` {
 		t.Fatalf("params = %s", got)
 	}
 	db, err := sql.Open("sqlite", ":memory:")
@@ -348,7 +363,7 @@ func TestStateUpdateExpressionReplacesTopLevelObjectsAndPreservesNull(t *testing
 		t.Fatal(err)
 	}
 	defer func() { _ = db.Close() }()
-	if _, err := db.Exec(`CREATE TABLE state (state_json TEXT NOT NULL); INSERT INTO state VALUES ('{"nullable":"old","profile":{"name":"Grace","stale":true}}')`); err != nil {
+	if _, err := db.Exec(`CREATE TABLE state (state_json TEXT NOT NULL); INSERT INTO state VALUES ('{"nullable":"old","typed_nullable":"old","profile":{"name":"Grace","stale":true}}')`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := db.Exec("UPDATE state SET state_json = "+expression, params...); err != nil {
@@ -362,8 +377,70 @@ func TestStateUpdateExpressionReplacesTopLevelObjectsAndPreservesNull(t *testing
 	if err := json.Unmarshal([]byte(raw), &got); err != nil {
 		t.Fatal(err)
 	}
-	if got["nullable"] != nil || fmt.Sprint(got["profile"]) != "map[name:Ada]" {
+	_, hasNil := got["nullable"]
+	_, hasTypedNil := got["typed_nullable"]
+	if hasNil || hasTypedNil || fmt.Sprint(got["profile"]) != "map[name:Ada]" {
 		t.Fatalf("updated state = %#v", got)
+	}
+}
+
+func TestTypedSessionRowsRejectMissingOrWrongColumns(t *testing.T) {
+	valid := rawRows(t, map[string]any{"state_json": `{"status":"ready"}`, "updated_at": int64(1500)})[0]
+	state, updated, err := decodeSessionRow(valid)
+	if err != nil || state["status"] != "ready" || updated.UnixMilli() != 1500 {
+		t.Fatalf("state=%#v updated=%v err=%v", state, updated, err)
+	}
+
+	for name, row := range map[string]any{
+		"missing timestamp": map[string]any{"state_json": `{}`},
+		"wrong timestamp":   map[string]any{"state_json": `{}`, "updated_at": "recently"},
+		"missing state":     map[string]any{"updated_at": int64(1500)},
+	} {
+		t.Run(name, func(t *testing.T) {
+			raw := rawRows(t, row)[0]
+			if _, _, err := decodeSessionRow(raw); err == nil {
+				t.Fatalf("malformed row accepted: %s", raw)
+			}
+		})
+	}
+}
+
+func TestAppendEventDeletesNilFromLiveSession(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req batchRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatal(err)
+		}
+		if len(req.Batch) == 4 && !strings.Contains(req.Batch[2].SQL, "json_remove(") {
+			t.Fatalf("session update does not delete nil state: %s", req.Batch[2].SQL)
+		}
+		results := make([]Result, len(req.Batch))
+		for i := range results {
+			results[i].Success = true
+			results[i].Meta.Changes = 1
+		}
+		writeEnvelope(t, w, results)
+	}))
+	defer server.Close()
+
+	d1, err := newD1(testCloudflare("token"), server.Client(), server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := NewSessionService(d1, func() time.Time { return time.Date(2026, 7, 12, 12, 0, 0, 0, time.UTC) })
+	created, err := service.Create(t.Context(), &session.CreateRequest{
+		AppName: "resume_agent", UserID: "user-1", SessionID: "thread-1", State: map[string]any{"obsolete": "value"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	event := session.NewEvent(t.Context(), "invocation-1")
+	event.Actions.StateDelta = map[string]any{"obsolete": nil}
+	if err := service.AppendEvent(t.Context(), created.Session, event); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := created.Session.State().Get("obsolete"); !errors.Is(err, session.ErrStateKeyNotExist) {
+		t.Fatalf("deleted state Get() error = %v", err)
 	}
 }
 
@@ -383,7 +460,7 @@ func TestAppendEventRejectsStaleSessionWithoutApplyingLiveDelta(t *testing.T) {
 			writeEnvelope(t, w, results)
 			return
 		}
-		writeEnvelope(t, w, []Result{{Success: true, Rows: []map[string]any{{"present": float64(1)}}}})
+		writeEnvelope(t, w, []Result{{Success: true, Rows: rawRows(t, map[string]any{"present": 1})}})
 	}))
 	defer server.Close()
 	d1, err := newD1(testCloudflare("token"), server.Client(), server.URL)

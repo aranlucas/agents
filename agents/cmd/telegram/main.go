@@ -18,14 +18,14 @@ import (
 	"agents/fitness/agent"
 	"agents/grocery/agent"
 	"agents/internal/agui"
-	clerkbackend "agents/internal/clerk"
+	"agents/internal/clerk"
 	"agents/internal/cloudflare"
 	"agents/internal/common"
 	"agents/internal/config"
 	"agents/internal/fitnessdata"
 	"agents/internal/providers/openai"
 	"agents/internal/rate"
-	telegramruntime "agents/internal/telegram"
+	"agents/internal/telegram"
 	"agents/oralboards/agent"
 	"agents/presentation/agent"
 	"agents/research/agent"
@@ -110,19 +110,19 @@ func main() {
 	must(err)
 	specialists["orchestrator"] = orchestrator
 	sessions := cloudflare.NewSessionService(d1, time.Now)
-	executor, err := telegramruntime.NewADKExecutor(sessions, cloudflare.NewArtifactService(r2), specialists)
+	executor, err := telegram.NewADKExecutor(sessions, cloudflare.NewArtifactService(r2), specialists)
 	must(err)
-	var backend clerkbackend.Backend
+	var backend clerk.Backend
 	if cfg.ClerkSecret != "" {
-		configured, backendErr := clerkbackend.NewBackend(common.NewHTTPClient(15*time.Second, 1<<20).Client, "", cfg.ClerkSecret)
+		configured, backendErr := clerk.NewBackend(common.NewHTTPClient(15*time.Second, 1<<20).Client, "", cfg.ClerkSecret)
 		must(backendErr)
 		backend = configured
 	}
-	telegramConfig := telegramruntime.Config{BotUsername: strings.TrimSpace(os.Getenv("TELEGRAM_BOT_USERNAME")), AllowedChatIDs: parseChatIDs(os.Getenv("TELEGRAM_ALLOWED_CHAT_IDS")), LinkBaseURL: strings.TrimSpace(os.Getenv("TELEGRAM_LINK_BASE_URL")), ConnectURL: strings.TrimSpace(os.Getenv("TELEGRAM_CONNECT_URL"))}
-	bot, err := telegramruntime.NewHTTPClient(common.NewHTTPClient(60*time.Second, 2<<20).Client, envDefault("TELEGRAM_API_BASE_URL", "https://api.telegram.org"), os.Getenv("TELEGRAM_BOT_TOKEN"))
+	telegramConfig := telegram.Config{BotUsername: strings.TrimSpace(os.Getenv("TELEGRAM_BOT_USERNAME")), AllowedChatIDs: parseChatIDs(os.Getenv("TELEGRAM_ALLOWED_CHAT_IDS")), LinkBaseURL: strings.TrimSpace(os.Getenv("TELEGRAM_LINK_BASE_URL")), ConnectURL: strings.TrimSpace(os.Getenv("TELEGRAM_CONNECT_URL"))}
+	bot, err := telegram.NewHTTPClient(common.NewHTTPClient(60*time.Second, 2<<20).Client, envDefault("TELEGRAM_API_BASE_URL", "https://api.telegram.org"), os.Getenv("TELEGRAM_BOT_TOKEN"))
 	must(err)
-	links := telegramruntime.NewLinkStore(d1, time.Now)
-	telegramRunner, err := telegramruntime.NewRunner(bot, telegramruntime.NewRouter(telegramConfig, backend), links, executor, telegramConfig, 180*time.Second)
+	links := telegram.NewLinkStore(d1, time.Now)
+	telegramRunner, err := telegram.NewRunner(bot, telegram.NewRouter(telegramConfig, backend), links, executor, telegramConfig, 180*time.Second)
 	must(err)
 	server := &http.Server{Addr: ":" + envDefault("PORT", "8080"), Handler: healthHandler(), ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 30 * time.Second}
 	go func() {
@@ -145,7 +145,7 @@ func buildOrchestrator(model *openai.Model, specialists map[string]agent.Agent) 
 	for _, name := range []string{"excalidraw", "travel", "trends", "grocery", "fitness", "wellness", "expense", "oralboards", "presentation", "research", "spreadsheet", "resume"} {
 		tools = append(tools, agenttool.New(specialists[name], nil))
 	}
-	return llmagent.New(llmagent.Config{Name: telegramruntime.OrchestratorAppName, Description: "Routes Telegram requests to exactly one specialist.", Model: model, Instruction: "Choose exactly one specialist tool for the request. Respect current sender credential flags. Return a concise Telegram-friendly answer; never call multiple specialists.", Tools: tools})
+	return llmagent.New(llmagent.Config{Name: telegram.OrchestratorAppName, Description: "Routes Telegram requests to exactly one specialist.", Model: model, Instruction: "Choose exactly one specialist tool for the request. Respect current sender credential flags. Return a concise Telegram-friendly answer; never call multiple specialists.", Tools: tools})
 }
 
 func buildSearch() *common.BraveSearch {

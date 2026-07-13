@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	clerkbackend "agents/internal/clerk"
+	"agents/internal/clerk"
 )
 
 var (
@@ -57,10 +57,10 @@ type Route struct {
 
 type Router struct {
 	cfg   Config
-	clerk clerkbackend.Backend
+	clerk clerk.Backend
 }
 
-func NewRouter(cfg Config, clerk clerkbackend.Backend) *Router {
+func NewRouter(cfg Config, clerk clerk.Backend) *Router {
 	return &Router{cfg: cfg, clerk: clerk}
 }
 

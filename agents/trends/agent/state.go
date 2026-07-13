@@ -114,29 +114,6 @@ func readState(source session.ReadonlyState) TrendsState {
 	return state
 }
 
-func publishState(ctx agent.Context, state TrendsState) error {
-	s := ctx.State()
-	fields := []struct {
-		key   string
-		value any
-	}{
-		{"query", state.Query},
-		{"generated_sql", state.GeneratedSQL},
-		{"columns", state.Columns},
-		{"rows", state.Rows},
-		{"insights", state.Insights},
-		{"status", state.Status},
-		{"error", state.Error},
-		{"user_id", state.UserID},
-	}
-	for _, field := range fields {
-		if err := s.Set(field.key, field.value); err != nil {
-			return fmt.Errorf("set %s: %w", field.key, err)
-		}
-	}
-	return nil
-}
-
 // BeginQueryArgs is begin_trends_query's tool input: the analytical question
 // and the validated SQL about to run.
 type BeginQueryArgs struct {
@@ -144,18 +121,36 @@ type BeginQueryArgs struct {
 	SQL   string `json:"sql"`
 }
 
-// BeginTrendsQuery is the ADK-facing tool handler for begin_trends_query. It
-// always publishes state on success (not gated on result.OK): a rejected
-// call never touches state, so publishing the unchanged read-back is a
-// no-op, matching the unconditional-commit behavior this replaces.
+// BeginTrendsQuery is the ADK-facing tool handler for begin_trends_query.
 func BeginTrendsQuery(ctx agent.Context, input BeginQueryArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := beginTrendsQuery(&state, input)
 	if err != nil {
 		return Result{}, err
 	}
-	if pubErr := publishState(ctx, state); pubErr != nil {
-		return Result{}, pubErr
+	if result.Error != nil {
+		return result, nil
+	}
+	if err := ctx.State().Set("query", state.Query); err != nil {
+		return Result{}, fmt.Errorf("set query: %w", err)
+	}
+	if err := ctx.State().Set("generated_sql", state.GeneratedSQL); err != nil {
+		return Result{}, fmt.Errorf("set generated_sql: %w", err)
+	}
+	if err := ctx.State().Set("columns", state.Columns); err != nil {
+		return Result{}, fmt.Errorf("set columns: %w", err)
+	}
+	if err := ctx.State().Set("rows", state.Rows); err != nil {
+		return Result{}, fmt.Errorf("set rows: %w", err)
+	}
+	if err := ctx.State().Set("insights", state.Insights); err != nil {
+		return Result{}, fmt.Errorf("set insights: %w", err)
+	}
+	if err := ctx.State().Set("error", state.Error); err != nil {
+		return Result{}, fmt.Errorf("set error: %w", err)
+	}
+	if err := ctx.State().Set("status", state.Status); err != nil {
+		return Result{}, fmt.Errorf("set status: %w", err)
 	}
 	return result, nil
 }
@@ -194,18 +189,35 @@ type WriteResultArgs struct {
 }
 
 // WriteTrendsResult is the ADK-facing tool handler for write_trends_result.
-// It always publishes state on success (not gated on result.OK): recording
-// a query failure is itself a legitimate, accepted mutation (result.OK is
-// false but state.Error/state.Status must still persist), so gating on OK
-// would silently drop that write.
 func WriteTrendsResult(ctx agent.Context, input WriteResultArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := writeTrendsResult(&state, input)
 	if err != nil {
 		return Result{}, err
 	}
-	if pubErr := publishState(ctx, state); pubErr != nil {
-		return Result{}, pubErr
+	if result.Error != nil {
+		return result, nil
+	}
+	if err := ctx.State().Set("query", state.Query); err != nil {
+		return Result{}, fmt.Errorf("set query: %w", err)
+	}
+	if err := ctx.State().Set("generated_sql", state.GeneratedSQL); err != nil {
+		return Result{}, fmt.Errorf("set generated_sql: %w", err)
+	}
+	if err := ctx.State().Set("columns", state.Columns); err != nil {
+		return Result{}, fmt.Errorf("set columns: %w", err)
+	}
+	if err := ctx.State().Set("rows", state.Rows); err != nil {
+		return Result{}, fmt.Errorf("set rows: %w", err)
+	}
+	if err := ctx.State().Set("insights", state.Insights); err != nil {
+		return Result{}, fmt.Errorf("set insights: %w", err)
+	}
+	if err := ctx.State().Set("error", state.Error); err != nil {
+		return Result{}, fmt.Errorf("set error: %w", err)
+	}
+	if err := ctx.State().Set("status", state.Status); err != nil {
+		return Result{}, fmt.Errorf("set status: %w", err)
 	}
 	return result, nil
 }
@@ -271,16 +283,21 @@ type VerificationArgs struct {
 }
 
 // SetTrendsVerification is the ADK-facing tool handler for
-// set_trends_verification. It always publishes state on success (not gated
-// on result.OK), matching BeginTrendsQuery and WriteTrendsResult above.
+// set_trends_verification.
 func SetTrendsVerification(ctx agent.Context, input VerificationArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := setTrendsVerification(&state, input)
 	if err != nil {
 		return Result{}, err
 	}
-	if pubErr := publishState(ctx, state); pubErr != nil {
-		return Result{}, pubErr
+	if result.Error != nil {
+		return result, nil
+	}
+	if err := ctx.State().Set("insights", state.Insights); err != nil {
+		return Result{}, fmt.Errorf("set insights: %w", err)
+	}
+	if err := ctx.State().Set("status", state.Status); err != nil {
+		return Result{}, fmt.Errorf("set status: %w", err)
 	}
 	return result, nil
 }

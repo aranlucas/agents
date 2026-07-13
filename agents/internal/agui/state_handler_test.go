@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"agents/internal/agentruntime"
-	aguitypes "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
+	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
@@ -54,7 +54,7 @@ func TestStateHandlerReturnsPersistedStateForExistingThread(t *testing.T) {
 	if err := json.Unmarshal(rr.Body.Bytes(), &got); err != nil {
 		t.Fatal(err)
 	}
-	if !got.ThreadExists || got.State["favorite_color"] != "blue" || got.ThreadID != "thread-state" {
+	if !got.ThreadExists || string(got.State["favorite_color"]) != `"blue"` || got.ThreadID != "thread-state" {
 		t.Fatalf("response = %#v", got)
 	}
 	if got.Messages == nil {
@@ -131,7 +131,7 @@ func TestStateHandlerNeverLeaksTemporaryState(t *testing.T) {
 	if err := json.Unmarshal(rr.Body.Bytes(), &got); err != nil {
 		t.Fatal(err)
 	}
-	if got.State["favorite_color"] != "blue" {
+	if string(got.State["favorite_color"]) != `"blue"` {
 		t.Fatalf("persistent state missing: %#v", got.State)
 	}
 }
@@ -238,7 +238,7 @@ func TestStateHandlerReturnsMessagesFromSessionEvents(t *testing.T) {
 	}
 
 	user := got.Messages[0]
-	if user.Role != aguitypes.RoleUser {
+	if user.Role != types.RoleUser {
 		t.Fatalf("messages[0].role = %q", user.Role)
 	}
 	if text, ok := user.ContentString(); !ok || text != "What experience do you have?" {
@@ -246,7 +246,7 @@ func TestStateHandlerReturnsMessagesFromSessionEvents(t *testing.T) {
 	}
 
 	toolCall := got.Messages[1]
-	if toolCall.Role != aguitypes.RoleAssistant || len(toolCall.ToolCalls) != 1 {
+	if toolCall.Role != types.RoleAssistant || len(toolCall.ToolCalls) != 1 {
 		t.Fatalf("messages[1] = %#v", toolCall)
 	}
 	if name := toolCall.ToolCalls[0].Function.Name; name != "lookup_resume" {
@@ -257,7 +257,7 @@ func TestStateHandlerReturnsMessagesFromSessionEvents(t *testing.T) {
 	}
 
 	toolResult := got.Messages[2]
-	if toolResult.Role != aguitypes.RoleTool || toolResult.ToolCallID != "call-1" {
+	if toolResult.Role != types.RoleTool || toolResult.ToolCallID != "call-1" {
 		t.Fatalf("messages[2] = %#v", toolResult)
 	}
 	if resultText, ok := toolResult.ContentString(); !ok || resultText != `{"years":5}` {
@@ -265,7 +265,7 @@ func TestStateHandlerReturnsMessagesFromSessionEvents(t *testing.T) {
 	}
 
 	assistant := got.Messages[3]
-	if assistant.Role != aguitypes.RoleAssistant {
+	if assistant.Role != types.RoleAssistant {
 		t.Fatalf("messages[3].role = %q", assistant.Role)
 	}
 	if text, ok := assistant.ContentString(); !ok || text != "Five years of experience." {

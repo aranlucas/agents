@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"google.golang.org/adk/v2/agent"
@@ -13,11 +14,11 @@ import (
 // Step is one normalized unit of an agent run: a model text chunk, a tool
 // call, or a tool result.
 type Step struct {
-	Author           string         `json:"author"`
-	Text             string         `json:"text,omitempty"`
-	FunctionCall     string         `json:"function_call,omitempty"`
-	FunctionCallArgs map[string]any `json:"function_call_args,omitempty"`
-	FunctionResponse string         `json:"function_response,omitempty"`
+	Author           string          `json:"author"`
+	Text             string          `json:"text,omitempty"`
+	FunctionCall     string          `json:"function_call,omitempty"`
+	FunctionCallArgs json.RawMessage `json:"function_call_args,omitempty"`
+	FunctionResponse string          `json:"function_response,omitempty"`
 }
 
 // Trace is the full normalized record of one eval case's run, used as
@@ -31,13 +32,13 @@ type Trace struct {
 }
 
 // runCase executes one turn of built against a fresh in-memory session
-// seeded with stateDefaults, and returns the normalized trace.
-func runCase(ctx context.Context, appName string, built agent.Agent, stateDefaults map[string]any, caseID, prompt string) Trace {
+// seeded from stateDefaults, and returns the normalized trace.
+func runCase(ctx context.Context, appName string, built agent.Agent, stateDefaults func() map[string]any, caseID, prompt string) Trace {
 	trace := Trace{CaseID: caseID, Prompt: prompt}
 
 	sessions := session.InMemoryService()
 	userID, threadID := "eval_user", "eval_thread_"+caseID
-	if _, err := sessions.Create(ctx, &session.CreateRequest{AppName: appName, UserID: userID, SessionID: threadID, State: stateDefaults}); err != nil {
+	if _, err := sessions.Create(ctx, &session.CreateRequest{AppName: appName, UserID: userID, SessionID: threadID, State: stateDefaults()}); err != nil {
 		trace.RunError = fmt.Sprintf("create session: %v", err)
 		return trace
 	}
@@ -70,7 +71,11 @@ func runCase(ctx context.Context, appName string, built agent.Agent, stateDefaul
 			switch {
 			case part.FunctionCall != nil:
 				step.FunctionCall = part.FunctionCall.Name
-				step.FunctionCallArgs = part.FunctionCall.Args
+				step.FunctionCallArgs, err = json.Marshal(part.FunctionCall.Args)
+				if err != nil {
+					trace.RunError = fmt.Sprintf("encode %s arguments: %v", part.FunctionCall.Name, err)
+					return trace
+				}
 			case part.FunctionResponse != nil:
 				step.FunctionResponse = part.FunctionResponse.Name
 			case part.Text != "":

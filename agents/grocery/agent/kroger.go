@@ -2,7 +2,6 @@ package grocery
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"io"
 	"net"
@@ -13,11 +12,9 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"google.golang.org/adk/v2/agent"
-	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/adk/v2/tool"
 	"google.golang.org/adk/v2/tool/mcptoolset"
-	"google.golang.org/genai"
 )
 
 type krogerTokenKey struct{}
@@ -79,7 +76,7 @@ func (k *Kroger) Tools(ctx agent.ReadonlyContext) ([]tool.Tool, error) {
 	if err != nil {
 		return nil, err
 	}
-	return guardKrogerTools(tools), nil
+	return tools, nil
 }
 
 type bearerTransport struct {
@@ -113,75 +110,6 @@ func (c krogerReadonlyContext) Deadline() (time.Time, bool) { return c.Context.D
 func (c krogerReadonlyContext) Done() <-chan struct{}       { return c.Context.Done() }
 func (c krogerReadonlyContext) Err() error                  { return c.Context.Err() }
 func (c krogerReadonlyContext) Value(key any) any           { return c.Context.Value(key) }
-
-type executableTool interface {
-	tool.Tool
-	Declaration() *genai.FunctionDeclaration
-	ProcessRequest(agent.Context, *model.LLMRequest) error
-	Run(agent.Context, any) (map[string]any, error)
-}
-
-type groceryGuardTool struct{ executableTool }
-
-func (t *groceryGuardTool) Run(ctx agent.Context, args any) (map[string]any, error) {
-	if t.Name() == "checkout_shopping_list" && !approvedForGroceryTool(ctx.UserContent(), t.Name()) {
-		return nil, errors.New("matching explicit checkout approval is required")
-	}
-	if t.Name() == "add_to_cart" && !approvedForGroceryTool(ctx.UserContent(), t.Name()) && !directCartRequest(ctx.UserContent()) {
-		return nil, errors.New("direct cart request or matching approval is required")
-	}
-	return t.executableTool.Run(ctx, args)
-}
-
-func guardKrogerTools(tools []tool.Tool) []tool.Tool {
-	result := append([]tool.Tool(nil), tools...)
-	for index, candidate := range result {
-		if candidate.Name() != "add_to_cart" && candidate.Name() != "checkout_shopping_list" {
-			continue
-		}
-		if executable, ok := candidate.(executableTool); ok {
-			result[index] = &groceryGuardTool{executableTool: executable}
-		}
-	}
-	return result
-}
-
-func approvedForGroceryTool(content *genai.Content, toolName string) bool {
-	if content == nil {
-		return false
-	}
-	for _, part := range content.Parts {
-		response := part.FunctionResponse
-		if response == nil || response.Name != "request_user_approval" {
-			continue
-		}
-		var approval struct {
-			Approved bool `json:"approved"`
-			Request  struct {
-				Action string `json:"action"`
-			} `json:"_agui_request"`
-		}
-		encoded, err := json.Marshal(response.Response)
-		if err == nil && json.Unmarshal(encoded, &approval) == nil && approval.Approved && approval.Request.Action == toolName {
-			return true
-		}
-	}
-	return false
-}
-
-func directCartRequest(content *genai.Content) bool {
-	if content == nil {
-		return false
-	}
-	for _, part := range content.Parts {
-		text := strings.TrimSpace(strings.ToLower(part.Text))
-		direct := strings.HasPrefix(text, "add ") || strings.HasPrefix(text, "please add ") || strings.HasPrefix(text, "put ") || strings.HasPrefix(text, "please put ")
-		if direct && strings.Contains(text, "cart") {
-			return true
-		}
-	}
-	return false
-}
 
 func secureKrogerEndpoint(parsed *url.URL) bool {
 	if parsed.Scheme == "https" {

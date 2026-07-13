@@ -15,6 +15,7 @@ require (
 	github.com/google/jsonschema-go v0.4.3
 	github.com/modelcontextprotocol/go-sdk v1.6.1
 	github.com/openai/openai-go/v3 v3.42.0
+	github.com/wI2L/jsondiff v0.7.1
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.69.0
 	golang.org/x/net v0.57.0
 	google.golang.org/adk/v2 v2.0.0

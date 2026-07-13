@@ -2,9 +2,9 @@ package agentruntime
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"reflect"
 	"sort"
 	"strings"
 	"time"
@@ -17,7 +17,7 @@ type Entry struct {
 	Route         string
 	AppName       string
 	Agent         agent.Agent
-	StateDefaults map[string]any
+	StateDefaults func() map[string]any
 	Public        bool
 	Timeout       time.Duration
 	Health        func(context.Context) error
@@ -25,11 +25,11 @@ type Entry struct {
 }
 
 // ForwardedRequestHandler handles library-defined forwarded AG-UI properties
-// without invoking the model. The input and result are intentionally dynamic:
-// forwardedProps is an AG-UI extension boundary whose concrete schema belongs
-// to the mounted integration (for example, MCP Apps).
+// without invoking the model. The integration owns the concrete JSON schema;
+// keeping the wire document raw prevents an app-specific shape from escaping
+// into the shared runtime registry.
 type ForwardedRequestHandler interface {
-	HandleForwarded(context.Context, any) (result any, handled bool, err error)
+	HandleForwarded(context.Context, json.RawMessage) (result json.RawMessage, handled bool, err error)
 }
 
 // Registry is immutable after construction and safe for concurrent lookups.
@@ -48,7 +48,9 @@ func NewRegistry(entries ...Entry) (*Registry, error) {
 		if entry.Timeout <= 0 {
 			entry.Timeout = 2 * time.Minute
 		}
-		entry.StateDefaults = cloneMap(entry.StateDefaults)
+		if entry.StateDefaults == nil {
+			entry.StateDefaults = func() map[string]any { return nil }
+		}
 		registry.entries[entry.Route] = entry
 	}
 	return registry, nil
@@ -63,18 +65,13 @@ func (r *Registry) Lookup(route string) (Entry, error) {
 	if !ok {
 		return Entry{}, fmt.Errorf("unknown agent route %q", route)
 	}
-	entry.StateDefaults = cloneMap(entry.StateDefaults)
 	return entry, nil
 }
 
-func (r *Registry) Entries() []Entry {
-	return r.All()
-}
-
-// All returns every explicit registry entry in stable route order. Registry
+// Entries returns every explicit registry entry in stable route order. Registry
 // construction remains filesystem-independent; this method only enumerates
 // entries that callers supplied to NewRegistry.
-func (r *Registry) All() []Entry {
+func (r *Registry) Entries() []Entry {
 	if r == nil {
 		return nil
 	}
@@ -89,68 +86,4 @@ func (r *Registry) All() []Entry {
 		entries = append(entries, entry)
 	}
 	return entries
-}
-
-func cloneMap(input map[string]any) map[string]any {
-	output := make(map[string]any, len(input))
-	for key, value := range input {
-		output[key] = cloneValue(value)
-	}
-	return output
-}
-
-func cloneValue(value any) any {
-	if value == nil {
-		return nil
-	}
-	return cloneReflect(reflect.ValueOf(value)).Interface()
-}
-
-func cloneReflect(value reflect.Value) reflect.Value {
-	if !value.IsValid() {
-		return value
-	}
-	switch value.Kind() {
-	case reflect.Interface:
-		if value.IsNil() {
-			return reflect.Zero(value.Type())
-		}
-		result := reflect.New(value.Type()).Elem()
-		result.Set(cloneReflect(value.Elem()))
-		return result
-	case reflect.Pointer:
-		if value.IsNil() {
-			return reflect.Zero(value.Type())
-		}
-		result := reflect.New(value.Type().Elem())
-		result.Elem().Set(cloneReflect(value.Elem()))
-		return result
-	case reflect.Map:
-		if value.IsNil() {
-			return reflect.Zero(value.Type())
-		}
-		result := reflect.MakeMapWithSize(value.Type(), value.Len())
-		iterator := value.MapRange()
-		for iterator.Next() {
-			result.SetMapIndex(iterator.Key(), cloneReflect(iterator.Value()))
-		}
-		return result
-	case reflect.Slice:
-		if value.IsNil() {
-			return reflect.Zero(value.Type())
-		}
-		result := reflect.MakeSlice(value.Type(), value.Len(), value.Len())
-		for index := range value.Len() {
-			result.Index(index).Set(cloneReflect(value.Index(index)))
-		}
-		return result
-	case reflect.Array:
-		result := reflect.New(value.Type()).Elem()
-		for index := range value.Len() {
-			result.Index(index).Set(cloneReflect(value.Index(index)))
-		}
-		return result
-	default:
-		return value
-	}
 }

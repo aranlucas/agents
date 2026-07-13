@@ -14,8 +14,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"agents/excalidraw/agent"
@@ -25,7 +27,7 @@ import (
 	"agents/internal/agentruntime"
 	"agents/internal/agui"
 	"agents/internal/auth"
-	clerkbackend "agents/internal/clerk"
+	"agents/internal/clerk"
 	"agents/internal/cloudflare"
 	"agents/internal/common"
 	"agents/internal/config"
@@ -33,7 +35,7 @@ import (
 	"agents/internal/observability"
 	"agents/internal/providers/openai"
 	"agents/internal/rate"
-	telegramruntime "agents/internal/telegram"
+	"agents/internal/telegram"
 	"agents/oralboards/agent"
 	"agents/presentation/agent"
 	"agents/research/agent"
@@ -44,7 +46,7 @@ import (
 	"agents/wellness/agent"
 	"cloud.google.com/go/bigquery"
 	"google.golang.org/adk/v2/model"
-	adkgemini "google.golang.org/adk/v2/model/gemini"
+	"google.golang.org/adk/v2/model/gemini"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/api/option"
 	"google.golang.org/genai"
@@ -69,8 +71,8 @@ type Dependencies struct {
 	Verifier auth.TokenVerifier
 	D1       healthChecker
 	R2       healthChecker
-	Links    *telegramruntime.LinkStore
-	Clerk    clerkbackend.Backend
+	Links    *telegram.LinkStore
+	Clerk    clerk.Backend
 	Fitness  fitnessdata.Repository
 	Now      func() time.Time
 }
@@ -99,22 +101,11 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 
 	for _, entry := range deps.Registry.Entries() {
 		base := "/" + entry.Route
-		adapter, err := agui.NewADKAgent(agui.ADKAgentConfig{
-			Agent:            entry.Agent,
-			AppName:          entry.AppName,
-			SessionService:   deps.Sessions,
-			ExecutionTimeout: entry.Timeout,
-			StateDefaults:    entry.StateDefaults,
-			PendingTools:     deps.Pending,
-			Forwarded:        entry.Forwarded,
-			Route:            entry.Route,
-		})
+		handler, err := agui.NewEntryHandler(entry, deps.Sessions, agui.WithPendingTools(deps.Pending))
 		if err != nil {
-			return nil, fmt.Errorf("build AG-UI adapter for %s: %w", entry.Route, err)
+			return nil, fmt.Errorf("build AG-UI handler for %s: %w", entry.Route, err)
 		}
-		if err := agui.AddADKHTTPHandler(mux, adapter, base+"/agui"); err != nil {
-			return nil, fmt.Errorf("mount AG-UI adapter for %s: %w", entry.Route, err)
-		}
+		mux.Handle("POST "+base+"/agui", handler)
 		mux.Handle("POST "+base+"/agents/state", stateHandler)
 		mux.HandleFunc("GET "+base+"/agui/capabilities", capabilitiesHandler)
 		mux.HandleFunc("GET "+base+"/health", agentHealthHandler(entry))
@@ -211,7 +202,7 @@ type rootHealthResponse struct {
 	Checks  map[string]string `json:"checks"`
 }
 
-func telegramLinkConsumeHandler(secret string, links *telegramruntime.LinkStore, backend clerkbackend.Backend) http.HandlerFunc {
+func telegramLinkConsumeHandler(secret string, links *telegram.LinkStore, backend clerk.Backend) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		provided := r.Header.Get("x-telegram-link-secret")
 		if len(provided) != len(secret) || subtle.ConstantTimeCompare([]byte(provided), []byte(secret)) != 1 {
@@ -480,21 +471,21 @@ func trendsComposerModel(ctx context.Context) (model.LLM, error) {
 	if apiKey == "" {
 		return nil, nil
 	}
-	composer, err := adkgemini.NewModel(ctx, "gemini-2.5-flash", &genai.ClientConfig{APIKey: apiKey, Backend: genai.BackendGeminiAPI})
+	composer, err := gemini.NewModel(ctx, "gemini-2.5-flash", &genai.ClientConfig{APIKey: apiKey, Backend: genai.BackendGeminiAPI})
 	if err != nil {
 		return nil, fmt.Errorf("configure trends A2UI composer: %w", err)
 	}
 	return composer, nil
 }
 
-func oralboardsModels(ctx context.Context, cfg config.Config, limiter *rate.ProviderLimiter) (oralboards.PhaseModels, error) {
+func oralboardsModels(ctx context.Context, cfg config.Config, availableProviders map[string]config.Provider, limiter *rate.ProviderLimiter) (oralboards.PhaseModels, error) {
 	openrouter, ok := cfg.Providers["openrouter"]
 	if !ok {
 		return oralboards.PhaseModels{}, errors.New("OPENROUTER_API_KEY is required to configure oralboards")
 	}
 	openrouter.Model, openrouter.RequestsPerMinute, openrouter.RequestsPerDay = "tencent/hy3:free", 20, 1000
 	openrouter.Fallbacks = configuredFallbacks(cfg.Providers, "mistral")
-	questioner, err := openai.NewMulti(openrouter, presentationProviderPolicies(cfg.Providers), nil, limiter)
+	questioner, err := openai.NewMulti(openrouter, availableProviders, nil, limiter)
 	if err != nil {
 		return oralboards.PhaseModels{}, err
 	}
@@ -504,7 +495,7 @@ func oralboardsModels(ctx context.Context, cfg config.Config, limiter *rate.Prov
 	}
 	mistral.Model, mistral.RequestsPerMinute = "mistral-large-latest", 20
 	mistral.Fallbacks = configuredFallbacks(cfg.Providers, "groq", "openrouter")
-	evaluator, err := openai.NewMulti(mistral, presentationProviderPolicies(cfg.Providers), nil, limiter)
+	evaluator, err := openai.NewMulti(mistral, availableProviders, nil, limiter)
 	if err != nil {
 		return oralboards.PhaseModels{}, err
 	}
@@ -512,7 +503,7 @@ func oralboardsModels(ctx context.Context, cfg config.Config, limiter *rate.Prov
 	if key == "" {
 		return oralboards.PhaseModels{}, errors.New("GEMINI_API_KEY is required to configure oralboards case builder")
 	}
-	caseBuilder, err := adkgemini.NewModel(ctx, "gemini-3.1-flash-lite", &genai.ClientConfig{APIKey: key, Backend: genai.BackendGeminiAPI})
+	caseBuilder, err := gemini.NewModel(ctx, "gemini-3.1-flash-lite", &genai.ClientConfig{APIKey: key, Backend: genai.BackendGeminiAPI})
 	if err != nil {
 		return oralboards.PhaseModels{}, err
 	}
@@ -600,6 +591,7 @@ func main() {
 	sessions := cloudflare.NewSessionService(d1, time.Now)
 	pending := cloudflare.NewPendingStore(d1, time.Now)
 	limiter := rate.NewProviderLimiter(d1, time.Now)
+	availableProviders := presentationProviderPolicies(cfg.Providers)
 
 	resumeProvider, err := resumeProviderConfig(cfg)
 	if err != nil {
@@ -614,7 +606,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("configure presentation model: %v", err)
 	}
-	presentationModel, err := openai.NewMulti(presentationProvider, presentationProviderPolicies(cfg.Providers), nil, limiter)
+	presentationModel, err := openai.NewMulti(presentationProvider, availableProviders, nil, limiter)
 	if err != nil {
 		log.Fatalf("configure presentation fallbacks: %v", err)
 	}
@@ -626,7 +618,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("configure research model: %v", err)
 	}
-	researchModel, err := openai.NewMulti(researchProvider, presentationProviderPolicies(cfg.Providers), nil, limiter)
+	researchModel, err := openai.NewMulti(researchProvider, availableProviders, nil, limiter)
 	if err != nil {
 		log.Fatalf("configure research fallbacks: %v", err)
 	}
@@ -638,7 +630,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("configure spreadsheet model: %v", err)
 	}
-	spreadsheetModel, err := openai.NewMulti(spreadsheetProvider, presentationProviderPolicies(cfg.Providers), nil, limiter)
+	spreadsheetModel, err := openai.NewMulti(spreadsheetProvider, availableProviders, nil, limiter)
 	if err != nil {
 		log.Fatalf("configure spreadsheet fallbacks: %v", err)
 	}
@@ -650,7 +642,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("configure expense model: %v", err)
 	}
-	expenseModel, err := openai.NewMulti(expenseProvider, presentationProviderPolicies(cfg.Providers), nil, limiter)
+	expenseModel, err := openai.NewMulti(expenseProvider, availableProviders, nil, limiter)
 	if err != nil {
 		log.Fatalf("configure expense fallbacks: %v", err)
 	}
@@ -662,7 +654,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("configure travel model: %v", err)
 	}
-	travelModel, err := openai.NewMulti(travelProvider, presentationProviderPolicies(cfg.Providers), nil, limiter)
+	travelModel, err := openai.NewMulti(travelProvider, availableProviders, nil, limiter)
 	if err != nil {
 		log.Fatalf("configure travel fallbacks: %v", err)
 	}
@@ -685,7 +677,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("configure fitness model: %v", err)
 	}
-	fitnessModel, err := openai.NewMulti(fitnessProvider, presentationProviderPolicies(cfg.Providers), nil, limiter)
+	fitnessModel, err := openai.NewMulti(fitnessProvider, availableProviders, nil, limiter)
 	if err != nil {
 		log.Fatalf("configure fitness fallbacks: %v", err)
 	}
@@ -698,7 +690,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("configure grocery model: %v", err)
 	}
-	groceryModel, err := openai.NewMulti(groceryProvider, presentationProviderPolicies(cfg.Providers), nil, limiter)
+	groceryModel, err := openai.NewMulti(groceryProvider, availableProviders, nil, limiter)
 	if err != nil {
 		log.Fatalf("configure grocery fallbacks: %v", err)
 	}
@@ -728,7 +720,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("configure Excalidraw model: %v", err)
 	}
-	excalidrawModel, err := openai.NewMulti(excalidrawProvider, presentationProviderPolicies(cfg.Providers), nil, limiter)
+	excalidrawModel, err := openai.NewMulti(excalidrawProvider, availableProviders, nil, limiter)
 	if err != nil {
 		log.Fatalf("configure Excalidraw fallbacks: %v", err)
 	}
@@ -748,7 +740,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("configure trends model: %v", err)
 	}
-	trendsModel, err := openai.NewMulti(trendsProvider, presentationProviderPolicies(cfg.Providers), nil, limiter)
+	trendsModel, err := openai.NewMulti(trendsProvider, availableProviders, nil, limiter)
 	if err != nil {
 		log.Fatalf("configure trends fallbacks: %v", err)
 	}
@@ -775,7 +767,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("build trends agent: %v", err)
 	}
-	oralboardsPhaseModels, err := oralboardsModels(context.Background(), cfg, limiter)
+	oralboardsPhaseModels, err := oralboardsModels(context.Background(), cfg, availableProviders, limiter)
 	if err != nil {
 		log.Fatalf("configure oralboards models: %v", err)
 	}
@@ -793,27 +785,27 @@ func main() {
 	}
 
 	registry, err := agentruntime.NewRegistry(
-		agentruntime.Entry{Route: "resume", AppName: resume.AppName, Agent: resumeAgent, Public: true, Timeout: 2 * time.Minute, Health: resumeHealth(resumeModel)},
-		agentruntime.Entry{Route: "presentation", AppName: presentation.AppName, Agent: presentationAgent, StateDefaults: presentation.StateDefaults(), Timeout: 2 * time.Minute, Health: func(context.Context) error { return nil }},
-		agentruntime.Entry{Route: "research", AppName: research.AppName, Agent: researchAgent, StateDefaults: research.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }},
-		agentruntime.Entry{Route: "spreadsheet", AppName: spreadsheet.AppName, Agent: spreadsheetAgent, StateDefaults: spreadsheet.StateDefaults(), Timeout: 2 * time.Minute, Health: func(context.Context) error { return nil }},
-		agentruntime.Entry{Route: "expense", AppName: expense.AppName, Agent: expenseAgent, StateDefaults: expense.StateDefaults(), Timeout: 2 * time.Minute, Health: func(context.Context) error { return nil }},
-		agentruntime.Entry{Route: "travel", AppName: travel.AppName, Agent: travelAgent, StateDefaults: travel.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }},
-		agentruntime.Entry{Route: "fitness", AppName: fitness.AppName, Agent: fitnessAgent, StateDefaults: fitness.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }},
-		agentruntime.Entry{Route: "grocery", AppName: grocery.AppName, Agent: groceryAgent, StateDefaults: grocery.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }},
-		agentruntime.Entry{Route: "wellness", AppName: wellness.AppName, Agent: wellnessAgent, StateDefaults: wellness.StateDefaults(), Timeout: 5 * time.Minute, Health: func(context.Context) error { return nil }},
-		agentruntime.Entry{Route: "excalidraw", AppName: excalidraw.AppName, Agent: excalidrawAgent, StateDefaults: excalidraw.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }, Forwarded: excalidrawMCPApps},
-		agentruntime.Entry{Route: "trends", AppName: trends.AppName, Agent: trendsAgent, StateDefaults: trends.StateDefaults(), Timeout: 3 * time.Minute, Health: func(context.Context) error { return nil }},
-		agentruntime.Entry{Route: "oralboards", AppName: oralboards.AppName, Agent: oralboardsAgent, StateDefaults: oralboards.StateDefaults(), Timeout: 5 * time.Minute, Health: func(context.Context) error { return nil }},
+		agentruntime.Entry{Route: "resume", AppName: resume.AppName, Agent: resumeAgent, StateDefaults: resume.StateDefaults, Public: true, Timeout: 2 * time.Minute, Health: resumeHealth(resumeModel)},
+		agentruntime.Entry{Route: "presentation", AppName: presentation.AppName, Agent: presentationAgent, StateDefaults: presentation.StateDefaults, Timeout: 2 * time.Minute},
+		agentruntime.Entry{Route: "research", AppName: research.AppName, Agent: researchAgent, StateDefaults: research.StateDefaults, Timeout: 3 * time.Minute},
+		agentruntime.Entry{Route: "spreadsheet", AppName: spreadsheet.AppName, Agent: spreadsheetAgent, StateDefaults: spreadsheet.StateDefaults, Timeout: 2 * time.Minute},
+		agentruntime.Entry{Route: "expense", AppName: expense.AppName, Agent: expenseAgent, StateDefaults: expense.StateDefaults, Timeout: 2 * time.Minute},
+		agentruntime.Entry{Route: "travel", AppName: travel.AppName, Agent: travelAgent, StateDefaults: travel.StateDefaults, Timeout: 3 * time.Minute},
+		agentruntime.Entry{Route: "fitness", AppName: fitness.AppName, Agent: fitnessAgent, StateDefaults: fitness.StateDefaults, Timeout: 3 * time.Minute},
+		agentruntime.Entry{Route: "grocery", AppName: grocery.AppName, Agent: groceryAgent, StateDefaults: grocery.StateDefaults, Timeout: 3 * time.Minute},
+		agentruntime.Entry{Route: "wellness", AppName: wellness.AppName, Agent: wellnessAgent, StateDefaults: wellness.StateDefaults, Timeout: 5 * time.Minute},
+		agentruntime.Entry{Route: "excalidraw", AppName: excalidraw.AppName, Agent: excalidrawAgent, StateDefaults: excalidraw.StateDefaults, Timeout: 3 * time.Minute, Forwarded: excalidrawMCPApps},
+		agentruntime.Entry{Route: "trends", AppName: trends.AppName, Agent: trendsAgent, StateDefaults: trends.StateDefaults, Timeout: 3 * time.Minute},
+		agentruntime.Entry{Route: "oralboards", AppName: oralboards.AppName, Agent: oralboardsAgent, StateDefaults: oralboards.StateDefaults, Timeout: 5 * time.Minute},
 	)
 	if err != nil {
 		log.Fatalf("build agent registry: %v", err)
 	}
 
 	var verifier auth.TokenVerifier
-	var clerkBackend clerkbackend.Backend
+	var clerkBackend clerk.Backend
 	if cfg.ClerkSecret != "" {
-		configured, clerkErr := clerkbackend.NewBackend(common.NewHTTPClient(15*time.Second, 1<<20).Client, "", cfg.ClerkSecret)
+		configured, clerkErr := clerk.NewBackend(common.NewHTTPClient(15*time.Second, 1<<20).Client, "", cfg.ClerkSecret)
 		if clerkErr != nil {
 			log.Fatalf("configure Clerk backend: %v", clerkErr)
 		}
@@ -834,7 +826,7 @@ func main() {
 		Verifier: verifier,
 		D1:       d1,
 		R2:       r2,
-		Links:    telegramruntime.NewLinkStore(d1, time.Now),
+		Links:    telegram.NewLinkStore(d1, time.Now),
 		Clerk:    clerkBackend,
 		Fitness:  fitnessActivities,
 		Now:      time.Now,
@@ -855,6 +847,20 @@ func main() {
 		WriteTimeout:      5 * time.Minute,
 		IdleTimeout:       120 * time.Second,
 	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	go func() {
+		<-ctx.Done()
+		log.Printf("shutting down agents gateway")
+
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			log.Printf("gateway server shutdown failed: %v", err)
+		}
+	}()
 
 	log.Printf("agents gateway listening on :%s", cfg.HTTP.Port)
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {

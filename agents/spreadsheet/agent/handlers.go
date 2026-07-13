@@ -1,6 +1,7 @@
 package spreadsheet
 
 import (
+	"fmt"
 	"strings"
 
 	"agents/internal/agentruntime"
@@ -48,8 +49,14 @@ func CreateSheet(ctx agent.Context, input CreateSheetArgs) (Result, error) {
 	state := readState(ctx.State())
 	r, e := createSheet(&state, input)
 	if e == nil && r.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
+		if err := ctx.State().Set("sheets", state.Sheets); err != nil {
+			return Result{}, fmt.Errorf("set sheets: %w", err)
+		}
+		if err := ctx.State().Set("active_sheet_index", state.ActiveSheetIndex); err != nil {
+			return Result{}, fmt.Errorf("set active_sheet_index: %w", err)
+		}
+		if err := ctx.State().Set("status", state.Status); err != nil {
+			return Result{}, fmt.Errorf("set status: %w", err)
 		}
 	}
 	return r, e
@@ -77,8 +84,11 @@ func UpdateSheet(ctx agent.Context, input UpdateSheetArgs) (Result, error) {
 	state := readState(ctx.State())
 	r, e := updateSheet(&state, input)
 	if e == nil && r.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
+		if err := ctx.State().Set("sheets", state.Sheets); err != nil {
+			return Result{}, fmt.Errorf("set sheets: %w", err)
+		}
+		if err := ctx.State().Set("status", state.Status); err != nil {
+			return Result{}, fmt.Errorf("set status: %w", err)
 		}
 	}
 	return r, e
@@ -105,8 +115,11 @@ func AppendRows(ctx agent.Context, input AppendRowsArgs) (Result, error) {
 	state := readState(ctx.State())
 	r, e := appendRows(&state, input)
 	if e == nil && r.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
+		if err := ctx.State().Set("sheets", state.Sheets); err != nil {
+			return Result{}, fmt.Errorf("set sheets: %w", err)
+		}
+		if err := ctx.State().Set("status", state.Status); err != nil {
+			return Result{}, fmt.Errorf("set status: %w", err)
 		}
 	}
 	return r, e
@@ -132,8 +145,14 @@ func DeleteSheet(ctx agent.Context, input SheetIndexArgs) (Result, error) {
 	state := readState(ctx.State())
 	r, e := deleteSheet(&state, input)
 	if e == nil && r.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
+		if err := ctx.State().Set("sheets", state.Sheets); err != nil {
+			return Result{}, fmt.Errorf("set sheets: %w", err)
+		}
+		if err := ctx.State().Set("active_sheet_index", state.ActiveSheetIndex); err != nil {
+			return Result{}, fmt.Errorf("set active_sheet_index: %w", err)
+		}
+		if err := ctx.State().Set("status", state.Status); err != nil {
+			return Result{}, fmt.Errorf("set status: %w", err)
 		}
 	}
 	return r, e
@@ -160,8 +179,8 @@ func SetActiveSheet(ctx agent.Context, input SheetIndexArgs) (Result, error) {
 	state := readState(ctx.State())
 	r, e := setActiveSheet(&state, input)
 	if e == nil && r.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
+		if err := ctx.State().Set("active_sheet_index", state.ActiveSheetIndex); err != nil {
+			return Result{}, fmt.Errorf("set active_sheet_index: %w", err)
 		}
 	}
 	return r, e
@@ -180,8 +199,11 @@ func WriteSummary(ctx agent.Context, input SummaryArgs) (Result, error) {
 	state := readState(ctx.State())
 	r, e := writeSummary(&state, input)
 	if e == nil && r.OK {
-		if pubErr := publishState(ctx, state); pubErr != nil {
-			return Result{}, pubErr
+		if err := ctx.State().Set("summary", state.Summary); err != nil {
+			return Result{}, fmt.Errorf("set summary: %w", err)
+		}
+		if err := ctx.State().Set("status", state.Status); err != nil {
+			return Result{}, fmt.Errorf("set status: %w", err)
 		}
 	}
 	return r, e

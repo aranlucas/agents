@@ -1,13 +1,15 @@
 package agui
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"strings"
 
-	aguievents "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
-	aguitypes "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
+	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
+	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
 )
@@ -18,8 +20,8 @@ const (
 )
 
 type mcpAppActivity struct {
-	MessageID string `json:"messageId"`
-	Content   any    `json:"content"`
+	MessageID string          `json:"messageId"`
+	Content   json.RawMessage `json:"content"`
 }
 
 // streamConverter turns a stream of ADK session events for one invocation
@@ -27,14 +29,14 @@ type mcpAppActivity struct {
 // handler owns exactly one converter per in-flight run.
 type streamConverter struct {
 	ctx context.Context
-	ids aguievents.IDGenerator
+	ids events.IDGenerator
 
-	known map[string]bool
+	state stateDocument
 
 	// pending, scope, and clientToolNames let toolCallEvents
 	// pre-register a client tool call in the PendingStore before
 	// returning the TOOL_CALL_* events that describe it, so a client that
-	// answers instantly can never race the ClientToolset tool's own
+	// answers instantly can never race the client proxy tool's own
 	// (authoritative) Register call. pending is nil when the handler has
 	// no PendingTools configured; clientToolNames is empty when the
 	// request declared no AG-UI tools.
@@ -50,14 +52,14 @@ type streamConverter struct {
 	lastFinalText string
 }
 
-func newStreamConverter(ctx context.Context, ids aguievents.IDGenerator, known map[string]bool, pending PendingTools, scope ToolScope, clientToolNames map[string]bool) *streamConverter {
+func newStreamConverter(ctx context.Context, ids events.IDGenerator, state stateDocument, pending PendingTools, scope ToolScope, clientToolNames map[string]bool) *streamConverter {
 	if ids == nil {
-		ids = aguievents.NewDefaultIDGenerator()
+		ids = events.NewDefaultIDGenerator()
 	}
-	if known == nil {
-		known = make(map[string]bool)
+	if state == nil {
+		state = make(stateDocument)
 	}
-	return &streamConverter{ctx: ctx, ids: ids, known: known, pending: pending, scope: scope, clientToolNames: clientToolNames}
+	return &streamConverter{ctx: ctx, ids: ids, state: state, pending: pending, scope: scope, clientToolNames: clientToolNames}
 }
 
 // Convert converts one ADK session event into zero or more ordered AG-UI
@@ -66,7 +68,7 @@ func newStreamConverter(ctx context.Context, ids aguievents.IDGenerator, known m
 // event contract: Partial is set only for incremental plain-text/reasoning
 // deltas, while function calls, function responses, and state deltas always
 // arrive on a final (non-partial) event.
-func (c *streamConverter) Convert(event *session.Event) []aguievents.Event {
+func (c *streamConverter) Convert(event *session.Event) []events.Event {
 	if event == nil {
 		return nil
 	}
@@ -78,11 +80,11 @@ func (c *streamConverter) Convert(event *session.Event) []aguievents.Event {
 	return c.convertFinal(event, content)
 }
 
-func (c *streamConverter) convertPartial(content *genai.Content) []aguievents.Event {
+func (c *streamConverter) convertPartial(content *genai.Content) []events.Event {
 	if content == nil {
 		return nil
 	}
-	var out []aguievents.Event
+	var out []events.Event
 	for _, part := range content.Parts {
 		if part == nil {
 			continue
@@ -90,17 +92,17 @@ func (c *streamConverter) convertPartial(content *genai.Content) []aguievents.Ev
 		switch {
 		case part.Thought && part.Text != "":
 			out = append(out, c.openReasoning()...)
-			out = append(out, aguievents.NewReasoningMessageContentEvent(c.reasoningMessageID, part.Text))
+			out = append(out, events.NewReasoningMessageContentEvent(c.reasoningMessageID, part.Text))
 		case !part.Thought && part.Text != "":
 			out = append(out, c.openText()...)
-			out = append(out, aguievents.NewTextMessageContentEvent(c.textMessageID, part.Text))
+			out = append(out, events.NewTextMessageContentEvent(c.textMessageID, part.Text))
 		}
 	}
 	return out
 }
 
-func (c *streamConverter) convertFinal(event *session.Event, content *genai.Content) []aguievents.Event {
-	var out []aguievents.Event
+func (c *streamConverter) convertFinal(event *session.Event, content *genai.Content) []events.Event {
+	var out []events.Event
 	// Capture whether a lane was already streaming before closing it: model
 	// adapters (see internal/providers/openai) commonly resend the full
 	// cumulative text on the final frame after streaming it incrementally,
@@ -127,8 +129,11 @@ func (c *streamConverter) convertFinal(event *session.Event, content *genai.Cont
 	}
 
 	out = append(out, c.activityEvents(event.Actions.StateDelta)...)
-	if delta := statePatch(c.known, event.Actions.StateDelta); len(delta) > 0 {
-		out = append(out, aguievents.NewStateDeltaEvent(delta))
+	delta, err := statePatch(c.state, event.Actions.StateDelta)
+	if err != nil {
+		log.Printf("convert state delta: %v", err)
+	} else if len(delta) > 0 {
+		out = append(out, events.NewStateDeltaEvent(delta))
 	}
 
 	if event.IsFinalResponse() {
@@ -140,8 +145,8 @@ func (c *streamConverter) convertFinal(event *session.Event, content *genai.Cont
 	return out
 }
 
-func (c *streamConverter) activityEvents(delta map[string]any) []aguievents.Event {
-	var out []aguievents.Event
+func (c *streamConverter) activityEvents(delta map[string]any) []events.Event {
+	var out []events.Event
 	for key, raw := range delta {
 		activityType := ""
 		switch {
@@ -157,13 +162,17 @@ func (c *streamConverter) activityEvents(delta map[string]any) []aguievents.Even
 			continue
 		}
 		var activity mcpAppActivity
-		if err := json.Unmarshal(encoded, &activity); err != nil || activity.Content == nil {
+		if err := json.Unmarshal(encoded, &activity); err != nil {
+			continue
+		}
+		activity.Content = bytes.TrimSpace(activity.Content)
+		if len(activity.Content) == 0 || !json.Valid(activity.Content) || bytes.Equal(activity.Content, []byte("null")) {
 			continue
 		}
 		if activity.MessageID == "" {
 			activity.MessageID = c.ids.GenerateMessageID()
 		}
-		out = append(out, aguievents.NewActivitySnapshotEvent(activity.MessageID, activityType, activity.Content))
+		out = append(out, events.NewActivitySnapshotEvent(activity.MessageID, activityType, activity.Content))
 	}
 	return out
 }
@@ -172,7 +181,7 @@ func (c *streamConverter) activityEvents(delta map[string]any) []aguievents.Even
 // partial delta but returned complete text/reasoning directly on the final
 // event. Streaming models close an already-open lane above instead of
 // re-emitting content here.
-func (c *streamConverter) oneShotLanes(content *genai.Content, hadText, hadReasoning bool) []aguievents.Event {
+func (c *streamConverter) oneShotLanes(content *genai.Content, hadText, hadReasoning bool) []events.Event {
 	var reasoningText, plainText strings.Builder
 	for _, part := range content.Parts {
 		if part == nil {
@@ -186,71 +195,71 @@ func (c *streamConverter) oneShotLanes(content *genai.Content, hadText, hadReaso
 		}
 	}
 
-	var out []aguievents.Event
+	var out []events.Event
 	if reasoningText.Len() > 0 && !hadReasoning {
 		id := c.ids.GenerateMessageID()
 		out = append(
 			out,
-			aguievents.NewReasoningStartEvent(id),
-			aguievents.NewReasoningMessageStartEvent(id, "assistant"),
-			aguievents.NewReasoningMessageContentEvent(id, reasoningText.String()),
-			aguievents.NewReasoningMessageEndEvent(id),
-			aguievents.NewReasoningEndEvent(id),
+			events.NewReasoningStartEvent(id),
+			events.NewReasoningMessageStartEvent(id, "assistant"),
+			events.NewReasoningMessageContentEvent(id, reasoningText.String()),
+			events.NewReasoningMessageEndEvent(id),
+			events.NewReasoningEndEvent(id),
 		)
 	}
 	if plainText.Len() > 0 && !hadText {
 		id := c.ids.GenerateMessageID()
 		out = append(
 			out,
-			aguievents.NewTextMessageStartEvent(id, aguievents.WithRole("assistant")),
-			aguievents.NewTextMessageContentEvent(id, plainText.String()),
-			aguievents.NewTextMessageEndEvent(id),
+			events.NewTextMessageStartEvent(id, events.WithRole("assistant")),
+			events.NewTextMessageContentEvent(id, plainText.String()),
+			events.NewTextMessageEndEvent(id),
 		)
 	}
 	return out
 }
 
-func (c *streamConverter) openText() []aguievents.Event {
+func (c *streamConverter) openText() []events.Event {
 	if c.textMessageID != "" {
 		return nil
 	}
 	c.textMessageID = c.ids.GenerateMessageID()
-	return []aguievents.Event{aguievents.NewTextMessageStartEvent(c.textMessageID, aguievents.WithRole("assistant"))}
+	return []events.Event{events.NewTextMessageStartEvent(c.textMessageID, events.WithRole("assistant"))}
 }
 
-func (c *streamConverter) closeText() []aguievents.Event {
+func (c *streamConverter) closeText() []events.Event {
 	if c.textMessageID == "" {
 		return nil
 	}
 	id := c.textMessageID
 	c.textMessageID = ""
-	return []aguievents.Event{aguievents.NewTextMessageEndEvent(id)}
+	return []events.Event{events.NewTextMessageEndEvent(id)}
 }
 
-func (c *streamConverter) openReasoning() []aguievents.Event {
+func (c *streamConverter) openReasoning() []events.Event {
 	if c.reasoningMessageID != "" {
 		return nil
 	}
 	c.reasoningMessageID = c.ids.GenerateMessageID()
-	return []aguievents.Event{
-		aguievents.NewReasoningStartEvent(c.reasoningMessageID),
-		aguievents.NewReasoningMessageStartEvent(c.reasoningMessageID, string(aguitypes.RoleReasoning)),
+	return []events.Event{
+		events.NewReasoningStartEvent(c.reasoningMessageID),
+		events.NewReasoningMessageStartEvent(c.reasoningMessageID, string(types.RoleReasoning)),
 	}
 }
 
-func (c *streamConverter) closeReasoning() []aguievents.Event {
+func (c *streamConverter) closeReasoning() []events.Event {
 	if c.reasoningMessageID == "" {
 		return nil
 	}
 	id := c.reasoningMessageID
 	c.reasoningMessageID = ""
-	return []aguievents.Event{
-		aguievents.NewReasoningMessageEndEvent(id),
-		aguievents.NewReasoningEndEvent(id),
+	return []events.Event{
+		events.NewReasoningMessageEndEvent(id),
+		events.NewReasoningEndEvent(id),
 	}
 }
 
-func (c *streamConverter) toolCallEvents(call *genai.FunctionCall) []aguievents.Event {
+func (c *streamConverter) toolCallEvents(call *genai.FunctionCall) []events.Event {
 	id := call.ID
 	if id == "" {
 		id = c.ids.GenerateToolCallID()
@@ -259,8 +268,9 @@ func (c *streamConverter) toolCallEvents(call *genai.FunctionCall) []aguievents.
 	if args == nil {
 		args = map[string]any{}
 	}
-	if c.pending != nil && c.clientToolNames[call.Name] {
-		// Best-effort pre-registration: client_tools.go's ClientToolset
+	encoded, err := json.Marshal(args)
+	if c.pending != nil && c.clientToolNames[call.Name] && err == nil {
+		// Best-effort pre-registration: client_tools.go's proxy tool
 		// tool closure is the authoritative Register call (it runs with
 		// ctx.FunctionCallID(), inside the tool execution ADK drives
 		// after this event is yielded — see ADK-Go's base_flow.go, which
@@ -269,20 +279,19 @@ func (c *streamConverter) toolCallEvents(call *genai.FunctionCall) []aguievents.
 		// TOOL_CALL_* frame is written to the SSE response, closes that
 		// gap: PendingStore.Register is idempotent (ON CONFLICT DO
 		// NOTHING), so the tool's later call is a harmless no-op.
-		_ = c.pending.Register(c.ctx, c.scope, id, call.Name, args)
+		_ = c.pending.Register(c.ctx, c.scope, id, call.Name, encoded)
 	}
-	encoded, err := json.Marshal(args)
 	if err != nil {
 		encoded = []byte("{}")
 	}
-	return []aguievents.Event{
-		aguievents.NewToolCallStartEvent(id, call.Name),
-		aguievents.NewToolCallArgsEvent(id, string(encoded)),
-		aguievents.NewToolCallEndEvent(id),
+	return []events.Event{
+		events.NewToolCallStartEvent(id, call.Name),
+		events.NewToolCallArgsEvent(id, string(encoded)),
+		events.NewToolCallEndEvent(id),
 	}
 }
 
-func (c *streamConverter) toolResultEvents(response *genai.FunctionResponse) []aguievents.Event {
+func (c *streamConverter) toolResultEvents(response *genai.FunctionResponse) []events.Event {
 	payload := response.Response
 	if payload == nil {
 		payload = map[string]any{}
@@ -291,16 +300,16 @@ func (c *streamConverter) toolResultEvents(response *genai.FunctionResponse) []a
 	if err != nil {
 		encoded = []byte("{}")
 	}
-	return []aguievents.Event{
-		aguievents.NewToolCallResultEvent(c.ids.GenerateMessageID(), response.ID, string(encoded)),
+	return []events.Event{
+		events.NewToolCallResultEvent(c.ids.GenerateMessageID(), response.ID, string(encoded)),
 	}
 }
 
 // Flush closes any dangling open text/reasoning lane. Called before an
 // error event so a well-formed TEXT_MESSAGE_START/REASONING_START is never
 // left without its matching END when a run is aborted mid-stream.
-func (c *streamConverter) Flush() []aguievents.Event {
-	var out []aguievents.Event
+func (c *streamConverter) Flush() []events.Event {
+	var out []events.Event
 	out = append(out, c.closeReasoning()...)
 	out = append(out, c.closeText()...)
 	return out
@@ -323,9 +332,9 @@ func contentText(content *genai.Content) string {
 // never leaks provider keys, OAuth tokens, raw database errors, or stack
 // traces: only a small allow-listed set of sentinel errors gets a
 // human-readable message; everything else collapses to a generic message.
-func sanitizeRunError(runID string, err error) *aguievents.RunErrorEvent {
+func sanitizeRunError(runID string, err error) *events.RunErrorEvent {
 	code, message := classifyError(err)
-	return aguievents.NewRunErrorEvent(message, aguievents.WithErrorCode(code), aguievents.WithRunID(runID))
+	return events.NewRunErrorEvent(message, events.WithErrorCode(code), events.WithRunID(runID))
 }
 
 func classifyError(err error) (code, message string) {

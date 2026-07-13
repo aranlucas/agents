@@ -64,15 +64,11 @@ func buildRequest(req *model.LLMRequest, modelName string, stream bool) (openai.
 			if err != nil {
 				return openai.ChatCompletionNewParams{}, errors.New("encode response JSON schema")
 			}
-			var m map[string]any
-			if err := json.Unmarshal(schema, &m); err != nil {
-				return openai.ChatCompletionNewParams{}, errors.New("decode response JSON schema")
-			}
 			result.ResponseFormat = openai.ChatCompletionNewParamsResponseFormatUnion{
 				OfJSONSchema: &openai.ResponseFormatJSONSchemaParam{
 					JSONSchema: shared.ResponseFormatJSONSchemaJSONSchemaParam{
 						Name:   "response",
-						Schema: m,
+						Schema: schema,
 						Strict: openai.Bool(true),
 					},
 				},
@@ -105,20 +101,17 @@ func buildRequest(req *model.LLMRequest, modelName string, stream bool) (openai.
 					if schemaErr != nil {
 						return openai.ChatCompletionNewParams{}, fmt.Errorf("encode tool %q JSON schema", declaration.Name)
 					}
-					var m map[string]any
-					if err := json.Unmarshal(schema, &m); err != nil {
+					if err := json.Unmarshal(schema, &parameters); err != nil {
 						return openai.ChatCompletionNewParams{}, fmt.Errorf("decode tool %q JSON schema", declaration.Name)
 					}
-					parameters = m
+					normalizeToolSchema(map[string]any(parameters))
 				} else if declaration.Parameters != nil {
-					var m map[string]any
-					if err := json.Unmarshal(schemaMap(declaration.Parameters), &m); err != nil {
+					if err := json.Unmarshal(schemaMap(declaration.Parameters), &parameters); err != nil {
 						return openai.ChatCompletionNewParams{}, fmt.Errorf("decode tool %q parameters", declaration.Name)
 					}
-					parameters = m
 				}
 				if parameters == nil {
-					parameters = shared.FunctionParameters{"type": "object", "properties": map[string]any{}}
+					parameters = shared.FunctionParameters{"type": "object", "properties": shared.FunctionParameters{}}
 				}
 				result.Tools = append(result.Tools, openai.ChatCompletionFunctionTool(
 					openai.FunctionDefinitionParam{
@@ -128,13 +121,6 @@ func buildRequest(req *model.LLMRequest, modelName string, stream bool) (openai.
 					},
 				))
 			}
-		}
-		if len(result.Tools) > 0 {
-			// ADK tool handlers commonly mutate shared session state. Providers
-			// otherwise may emit multiple calls in one response and ADK executes
-			// them concurrently, allowing whole-state publications to clobber one
-			// another (for example append_exchange + complete_examination).
-			result.ParallelToolCalls = openai.Bool(false)
 		}
 		if config.ToolConfig != nil && config.ToolConfig.FunctionCallingConfig != nil {
 			calling := config.ToolConfig.FunctionCallingConfig
@@ -316,6 +302,42 @@ func normalizeSchema(value any) {
 	case []any:
 		for _, child := range value {
 			normalizeSchema(child)
+		}
+	}
+}
+
+// normalizeToolSchema applies the narrow compatibility transform required by
+// OpenAI-compatible tool endpoints. jsonschema-go represents Go pointers,
+// slices, and maps as unions such as ["null", "array"], which some providers
+// reject for function parameters. Keep ADK's native schema everywhere else,
+// especially response schemas where nullability is part of the contract.
+func normalizeToolSchema(value any) {
+	normalizeSchema(value)
+	removeNullToolTypes(value)
+}
+
+func removeNullToolTypes(value any) {
+	switch value := value.(type) {
+	case map[string]any:
+		if types, ok := value["type"].([]any); ok {
+			nonNull := make([]any, 0, len(types))
+			for _, schemaType := range types {
+				if schemaType != "null" {
+					nonNull = append(nonNull, schemaType)
+				}
+			}
+			if len(nonNull) == 1 {
+				value["type"] = nonNull[0]
+			} else {
+				value["type"] = nonNull
+			}
+		}
+		for _, child := range value {
+			removeNullToolTypes(child)
+		}
+	case []any:
+		for _, child := range value {
+			removeNullToolTypes(child)
 		}
 	}
 }

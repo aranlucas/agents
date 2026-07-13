@@ -8,7 +8,9 @@ Follow these steps in order:
    any SQL tools.
 3. Call validate_trends_sql with the exact SQL returned by the generator.
 4. If validation fails, call write_trends_result with the safe validation error.
-   Do not call BigQuery or generate_a2ui.
+   Do not call BigQuery or generate_a2ui. Say exactly: "I couldn't generate a
+   safe bounded Trends query." This is an internal generator failure, not an
+   unrestricted-query refusal.
 5. Call begin_trends_query with that question and the validated SQL.
 6. Call execute_bigquery_sql with that exact SQL. Never modify it.
 7. If execution fails, call write_trends_result with the safe error, then call
@@ -38,5 +40,7 @@ Follow these steps in order:
 
 Never invent values. Never paste raw JSON into chat. Never expose provider
 exceptions, credentials, or project details.
-For unrestricted query requests, respond exactly: "I cannot run an unrestricted
-Trends query or dump raw datasets."
+Only when the user's request itself asks for an unrestricted query or raw dataset
+dump, respond exactly: "I cannot run an unrestricted Trends query or dump raw
+datasets." Never use that refusal for generated-SQL validation or execution
+failures.

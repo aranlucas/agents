@@ -1,6 +1,7 @@
 package agui
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -15,7 +16,7 @@ import (
 	"strings"
 	"sync"
 
-	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/tool"
@@ -165,12 +166,12 @@ func (s *mcpAppsServerState) discover(ctx context.Context) {
 	}
 }
 
-func (s *mcpAppsServerState) connect(ctx context.Context) (*mcpsdk.ClientSession, error) {
-	capabilities := &mcpsdk.ClientCapabilities{}
+func (s *mcpAppsServerState) connect(ctx context.Context) (*mcp.ClientSession, error) {
+	capabilities := &mcp.ClientCapabilities{}
 	// AddExtension requires map[string]any at the MCP SDK boundary.
 	capabilities.AddExtension(mcpAppsUIExtension, map[string]any{"mimeTypes": []string{"text/html;profile=mcp-app"}})
-	client := mcpsdk.NewClient(&mcpsdk.Implementation{Name: "agents-go-mcp-apps", Version: "1"}, &mcpsdk.ClientOptions{Capabilities: capabilities})
-	session, err := client.Connect(ctx, &mcpsdk.StreamableClientTransport{Endpoint: s.endpoint, HTTPClient: s.httpClient, MaxRetries: 1, DisableStandaloneSSE: true}, nil)
+	client := mcp.NewClient(&mcp.Implementation{Name: "agents-go-mcp-apps", Version: "1"}, &mcp.ClientOptions{Capabilities: capabilities})
+	session, err := client.Connect(ctx, &mcp.StreamableClientTransport{Endpoint: s.endpoint, HTTPClient: s.httpClient, MaxRetries: 1, DisableStandaloneSSE: true}, nil)
 	if err != nil {
 		return nil, fmt.Errorf("connect to MCP Apps server %q", s.id)
 	}
@@ -179,7 +180,7 @@ func (s *mcpAppsServerState) connect(ctx context.Context) (*mcpsdk.ClientSession
 
 type mcpAppsTool struct {
 	server     *mcpAppsServerState
-	definition *mcpsdk.Tool
+	definition *mcp.Tool
 }
 
 func (t *mcpAppsTool) Name() string        { return t.definition.Name }
@@ -227,8 +228,10 @@ func (t *mcpAppsTool) Run(ctx agent.Context, args any) (map[string]any, error) {
 	if err != nil || len(encoded) > maxToolInputBytes {
 		return nil, errors.New("MCP Apps tool input is invalid or too large")
 	}
-	var input map[string]any
-	if err := json.Unmarshal(encoded, &input); err != nil {
+	if string(encoded) == "null" {
+		encoded = []byte("{}")
+	}
+	if len(encoded) == 0 || encoded[0] != '{' {
 		return nil, errors.New("MCP Apps tool input must be an object")
 	}
 	session, err := t.server.connect(ctx)
@@ -236,7 +239,7 @@ func (t *mcpAppsTool) Run(ctx agent.Context, args any) (map[string]any, error) {
 		return nil, err
 	}
 	defer func() { _ = session.Close() }()
-	result, err := session.CallTool(ctx, &mcpsdk.CallToolParams{Name: t.Name(), Arguments: input})
+	result, err := session.CallTool(ctx, &mcp.CallToolParams{Name: t.Name(), Arguments: json.RawMessage(encoded)})
 	if err != nil {
 		return nil, errors.New("MCP Apps tool call failed")
 	}
@@ -244,7 +247,7 @@ func (t *mcpAppsTool) Run(ctx agent.Context, args any) (map[string]any, error) {
 		return nil, errors.New("MCP Apps server rejected the tool call")
 	}
 	if uri := resourceURI(t.definition.Meta); uri != "" {
-		content, normalizeErr := activityContent(result, t.server.id, t.server.hash, uri, input)
+		content, normalizeErr := activityContent(result, t.server.id, t.server.hash, uri, encoded)
 		if normalizeErr != nil {
 			return nil, normalizeErr
 		}
@@ -265,21 +268,29 @@ type activityPayload struct {
 	ResourceURI string          `json:"resourceUri"`
 	ServerHash  string          `json:"serverHash"`
 	ServerID    string          `json:"serverId"`
-	ToolInput   map[string]any  `json:"toolInput,omitempty"`
+	ToolInput   json.RawMessage `json:"toolInput,omitempty"`
 }
 
-func activityContent(result *mcpsdk.CallToolResult, serverID, hash, resourceURI string, input map[string]any) (activityPayload, error) {
-	raw, err := json.Marshal(result)
-	if err != nil || len(raw) > maxMCPResponseBytes {
-		return activityPayload{}, errors.New("MCP Apps result is invalid or too large")
+func activityContent(result *mcp.CallToolResult, serverID, hash, resourceURI string, input json.RawMessage) (json.RawMessage, error) {
+	input = bytes.TrimSpace(input)
+	if len(input) == 0 || !json.Valid(input) || bytes.Equal(input, []byte("null")) || input[0] != '{' {
+		return nil, errors.New("MCP Apps tool input must be a JSON object")
 	}
-	return activityPayload{Result: raw, ResourceURI: resourceURI, ServerHash: hash, ServerID: serverID, ToolInput: input}, nil
+	raw, err := json.Marshal(result)
+	if err != nil || len(raw) > maxMCPResponseBytes || bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+		return nil, errors.New("MCP Apps result is invalid or too large")
+	}
+	content, err := json.Marshal(activityPayload{Result: raw, ResourceURI: resourceURI, ServerHash: hash, ServerID: serverID, ToolInput: input})
+	if err != nil || !json.Valid(content) || bytes.Equal(bytes.TrimSpace(content), []byte("null")) {
+		return nil, errors.New("MCP Apps activity content is invalid")
+	}
+	return content, nil
 }
 
-func resultText(result *mcpsdk.CallToolResult) string {
+func resultText(result *mcp.CallToolResult) string {
 	var values []string
 	for _, content := range result.Content {
-		if text, ok := content.(*mcpsdk.TextContent); ok && strings.TrimSpace(text.Text) != "" {
+		if text, ok := content.(*mcp.TextContent); ok && strings.TrimSpace(text.Text) != "" {
 			values = append(values, text.Text)
 		}
 	}
@@ -309,12 +320,9 @@ type proxiedRequest struct {
 // identity — id plus a hash of its endpoint — is checked before any
 // discovery or network call, so a request naming an unknown or spoofed
 // server fails closed immediately.
-func (m *MCPApps) HandleForwarded(ctx context.Context, props any) (any, bool, error) {
-	if props == nil {
-		return nil, false, nil
-	}
-	raw, err := json.Marshal(props)
-	if err != nil || len(raw) > maxToolInputBytes {
+func (m *MCPApps) HandleForwarded(ctx context.Context, props json.RawMessage) (json.RawMessage, bool, error) {
+	raw := bytes.TrimSpace(props)
+	if len(raw) == 0 || len(raw) > maxToolInputBytes || !json.Valid(raw) || bytes.Equal(raw, []byte("null")) {
 		return nil, false, nil
 	}
 	var envelope forwardedEnvelope
@@ -334,19 +342,35 @@ func (m *MCPApps) HandleForwarded(ctx context.Context, props any) (any, bool, er
 	defer func() { _ = session.Close() }()
 	switch request.Method {
 	case "resources/read":
-		var params mcpsdk.ReadResourceParams
+		var params mcp.ReadResourceParams
 		if json.Unmarshal(request.Params, &params) != nil || !srv.resourceURIs[params.URI] {
 			return nil, true, errors.New("invalid MCP Apps resource request")
 		}
 		result, callErr := session.ReadResource(ctx, &params)
-		return result, true, sanitizeMCPError(callErr)
+		if err := sanitizeMCPError(callErr); err != nil {
+			return nil, true, err
+		}
+		encoded, err := json.Marshal(result)
+		encoded = bytes.TrimSpace(encoded)
+		if err != nil || len(encoded) == 0 || len(encoded) > maxMCPResponseBytes || !json.Valid(encoded) || bytes.Equal(encoded, []byte("null")) {
+			return nil, true, errors.New("MCP Apps response is invalid")
+		}
+		return encoded, true, nil
 	case "tools/call":
-		var params mcpsdk.CallToolParams
+		var params mcp.CallToolParams
 		if json.Unmarshal(request.Params, &params) != nil || !srv.appToolNames[params.Name] {
 			return nil, true, errors.New("invalid MCP Apps app tool request")
 		}
 		result, callErr := session.CallTool(ctx, &params)
-		return result, true, sanitizeMCPError(callErr)
+		if err := sanitizeMCPError(callErr); err != nil {
+			return nil, true, err
+		}
+		encoded, err := json.Marshal(result)
+		encoded = bytes.TrimSpace(encoded)
+		if err != nil || len(encoded) == 0 || len(encoded) > maxMCPResponseBytes || !json.Valid(encoded) || bytes.Equal(encoded, []byte("null")) {
+			return nil, true, errors.New("MCP Apps response is invalid")
+		}
+		return encoded, true, nil
 	default:
 		return nil, true, errors.New("unsupported MCP Apps method")
 	}
@@ -359,7 +383,7 @@ func sanitizeMCPError(err error) error {
 	return nil
 }
 
-func resourceURI(meta mcpsdk.Meta) string {
+func resourceURI(meta mcp.Meta) string {
 	if ui, ok := decodeUIMetadata(meta); ok && ui.ResourceURI != "" {
 		return ui.ResourceURI
 	}
@@ -367,7 +391,7 @@ func resourceURI(meta mcpsdk.Meta) string {
 	return value
 }
 
-func modelVisible(meta mcpsdk.Meta) bool {
+func modelVisible(meta mcp.Meta) bool {
 	ui, ok := decodeUIMetadata(meta)
 	if !ok {
 		return true
@@ -388,7 +412,7 @@ type uiMetadata struct {
 	Visibility  []string `json:"visibility"`
 }
 
-func decodeUIMetadata(meta mcpsdk.Meta) (uiMetadata, bool) {
+func decodeUIMetadata(meta mcp.Meta) (uiMetadata, bool) {
 	raw, ok := meta["ui"]
 	if !ok {
 		return uiMetadata{}, false

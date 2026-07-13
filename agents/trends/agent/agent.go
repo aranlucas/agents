@@ -5,7 +5,7 @@
 //
 // The A2UI step (generate_a2ui) calls its composer model.LLM inline rather
 // than through a Gemini-backed sub-agent, unlike the Python port's
-// ag_ui_adk-backed composition adktool. That is a required architectural
+// ag_ui_adk-backed composition tool. That is a required architectural
 // change, not a simplification of convenience: ADK-Go's tool/agenttool wraps
 // a sub-agent in its own throwaway in-memory session (see agenttool.Run), so
 // any temp:a2ui_activity: state write made by a tool nested inside a
@@ -19,7 +19,7 @@
 // Gemini adapter in production) is a plain model.LLM invoked with
 // GenerateContent from inside generate_a2ui's own tool function — no nested
 // agent, no isolated session, so its state write lands on the root agent's
-// own context like every other trends adktool. See compose.go's composeA2UI
+// own context like every other trends tool. See compose.go's composeA2UI
 // for the composition-then-validate-then-fallback pipeline.
 package trends
 
@@ -30,13 +30,13 @@ import (
 	_ "embed"
 
 	"agents/internal/common"
-	"agents/internal/functiontool"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
-	adktool "google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool"
 	"google.golang.org/adk/v2/tool/agenttool"
+	"google.golang.org/adk/v2/tool/functiontool"
 )
 
 //go:embed instructions.md
@@ -66,7 +66,7 @@ const a2uiActivityStatePrefix = session.KeyPrefixTemp + "a2ui_activity:"
 // (Gemini not configured — see cmd/gateway/main.go's trendsComposerModel),
 // generate_a2ui degrades to the deterministic BuildA2UI surface instead of
 // attempting an LLM composition; see compose.go's composeA2UI.
-func New(m model.LLM, generator agent.Agent, executor *BigQueryExecutor, search *common.BraveSearch, composer model.LLM, toolsets ...adktool.Toolset) (agent.Agent, error) {
+func New(m model.LLM, generator agent.Agent, executor *BigQueryExecutor, search *common.BraveSearch, composer model.LLM, toolsets ...tool.Toolset) (agent.Agent, error) {
 	if generator == nil || generator.Name() != GeneratorAppName {
 		return nil, fmt.Errorf("trends requires a %s child agent", GeneratorAppName)
 	}
@@ -92,7 +92,7 @@ func NewGenerator(m model.LLM) (agent.Agent, error) {
 	})
 }
 
-func rootTools(executor *BigQueryExecutor, search *common.BraveSearch, composer model.LLM) ([]adktool.Tool, error) {
+func rootTools(executor *BigQueryExecutor, search *common.BraveSearch, composer model.LLM) ([]tool.Tool, error) {
 	validateTrendsSQLTool, err := functiontool.New(functiontool.Config{
 		Name:        "validate_trends_sql",
 		Description: "Validate that generated SQL is a bounded, read-only SELECT/WITH query.",
@@ -141,7 +141,7 @@ func rootTools(executor *BigQueryExecutor, search *common.BraveSearch, composer 
 		return nil, err
 	}
 
-	result := []adktool.Tool{
+	result := []tool.Tool{
 		validateTrendsSQLTool,
 		beginTrendsQueryTool,
 		executeBigquerySQLTool,
@@ -202,8 +202,8 @@ func executeSQLTool(executor *BigQueryExecutor) functiontool.Func[ExecuteSQLArgs
 type GenerateA2UIArgs struct{}
 
 type activityEnvelope struct {
-	MessageID string `json:"messageId"`
-	Content   any    `json:"content"`
+	MessageID string       `json:"messageId"`
+	Content   a2uiEnvelope `json:"content"`
 }
 
 // generateA2UITool renders the saved TrendsState as a catalog-valid A2UI
@@ -216,11 +216,18 @@ func generateA2UITool(composer model.LLM) functiontool.Func[GenerateA2UIArgs, Re
 	return func(ctx agent.Context, _ GenerateA2UIArgs) (Result, error) {
 		state := readState(ctx.State())
 		event := composeA2UI(ctx, composer, TrendsResult{Query: state.Query, SQL: state.GeneratedSQL, Columns: state.Columns, Rows: state.Rows, Insights: state.Insights, Error: state.Error})
+		if event == nil {
+			return failure("a2ui_invalid_surface", "failed to build the Trends A2UI surface"), nil
+		}
+		content, ok := event.Content.(a2uiEnvelope)
+		if !ok || len(content.Operations) == 0 {
+			return failure("a2ui_invalid_surface", "failed to build the Trends A2UI surface"), nil
+		}
 		key := strings.TrimSpace(ctx.FunctionCallID())
 		if key == "" {
 			key = event.MessageID
 		}
-		if err := ctx.State().Set(a2uiActivityStatePrefix+key, activityEnvelope{MessageID: event.MessageID, Content: event.Content}); err != nil {
+		if err := ctx.State().Set(a2uiActivityStatePrefix+key, activityEnvelope{MessageID: event.MessageID, Content: content}); err != nil {
 			return failure("a2ui_state_write_failed", "failed to record the Trends A2UI activity"), nil
 		}
 		return Result{OK: true}, nil

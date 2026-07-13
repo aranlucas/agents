@@ -3,6 +3,7 @@ package rate
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -13,6 +14,10 @@ import (
 
 // ErrLimitReached indicates that the provider's current minute window is full.
 var ErrLimitReached = errors.New("provider rate limit reached")
+
+type limitRow struct {
+	RequestCount int `json:"request_count"`
+}
 
 // Clock returns the current time and allows deterministic window tests.
 type Clock func() time.Time
@@ -62,6 +67,10 @@ func (l *ProviderLimiter) Acquire(ctx context.Context, provider string, maximum 
 	}
 	if len(results) < 2 || len(results[1].Rows) == 0 {
 		return ErrLimitReached
+	}
+	var row limitRow
+	if err := json.Unmarshal(results[1].Rows[0], &row); err != nil || row.RequestCount <= 0 || row.RequestCount > maximum {
+		return errors.New("decode provider limit")
 	}
 	return nil
 }

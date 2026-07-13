@@ -5,11 +5,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/jsonschema-go/jsonschema"
+	"github.com/openai/openai-go/v3"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/genai"
 )
 
-func TestBuildRequestDisablesParallelToolCalls(t *testing.T) {
+func TestBuildRequestLeavesParallelToolCallsToProvider(t *testing.T) {
 	req := &model.LLMRequest{Config: &genai.GenerateContentConfig{Tools: []*genai.Tool{{
 		FunctionDeclarations: []*genai.FunctionDeclaration{{
 			Name:       "write_state",
@@ -24,8 +26,72 @@ func TestBuildRequestDisablesParallelToolCalls(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(encoded), `"parallel_tool_calls":false`) {
-		t.Fatalf("request does not disable parallel tool calls: %s", encoded)
+	if strings.Contains(string(encoded), `"parallel_tool_calls"`) {
+		t.Fatalf("request overrides provider parallel tool-call behavior: %s", encoded)
+	}
+}
+
+func TestChoiceToContentPreservesProviderParallelToolCalls(t *testing.T) {
+	content, err := choiceToContent(openai.ChatCompletionChoice{Message: openai.ChatCompletionMessage{
+		ToolCalls: []openai.ChatCompletionMessageToolCallUnion{
+			{ID: "call-1", Type: "function", Function: openai.ChatCompletionMessageFunctionToolCallFunction{Name: "first", Arguments: `{"value":1}`}},
+			{ID: "call-2", Type: "function", Function: openai.ChatCompletionMessageFunctionToolCallFunction{Name: "second", Arguments: `{"value":2}`}},
+		},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(content.Parts) != 2 || content.Parts[0].FunctionCall == nil || content.Parts[1].FunctionCall == nil {
+		t.Fatalf("content parts = %#v", content.Parts)
+	}
+	if call := content.Parts[0].FunctionCall; call.ID != "call-1" || call.Name != "first" || call.Args["value"] != float64(1) {
+		t.Fatalf("function call = %#v", call)
+	}
+	if call := content.Parts[1].FunctionCall; call.ID != "call-2" || call.Name != "second" || call.Args["value"] != float64(2) {
+		t.Fatalf("function call = %#v", call)
+	}
+}
+
+func TestBuildRequestNormalizesNullableToolSchemaOnly(t *testing.T) {
+	nullable := &jsonschema.Schema{
+		Type: "object",
+		Properties: map[string]*jsonschema.Schema{
+			"items": {
+				Types: []string{"null", "array"},
+				Items: &jsonschema.Schema{Types: []string{"null", "string"}},
+			},
+		},
+	}
+	req := &model.LLMRequest{Config: &genai.GenerateContentConfig{
+		Tools: []*genai.Tool{{FunctionDeclarations: []*genai.FunctionDeclaration{{
+			Name:                 "write_items",
+			ParametersJsonSchema: nullable,
+		}}}},
+		ResponseJsonSchema: nullable,
+	}}
+	params, err := buildRequest(req, "some-model", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := json.Marshal(params)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(encoded, &payload); err != nil {
+		t.Fatal(err)
+	}
+	tools := payload["tools"].([]any)
+	function := tools[0].(map[string]any)["function"].(map[string]any)
+	parameters := function["parameters"].(map[string]any)
+	items := parameters["properties"].(map[string]any)["items"].(map[string]any)
+	if items["type"] != "array" || items["items"].(map[string]any)["type"] != "string" {
+		t.Fatalf("tool schema = %#v", parameters)
+	}
+	response := payload["response_format"].(map[string]any)["json_schema"].(map[string]any)["schema"].(map[string]any)
+	responseItems := response["properties"].(map[string]any)["items"].(map[string]any)
+	if got, ok := responseItems["type"].([]any); !ok || len(got) != 2 || got[0] != "null" || got[1] != "array" {
+		t.Fatalf("response schema lost nullability: %#v", response)
 	}
 }
 

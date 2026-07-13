@@ -2,10 +2,8 @@ package fitness
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"agents/internal/fitnessdata"
-	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/session"
 )
 
@@ -62,28 +60,4 @@ func readState(source session.ReadonlyState) FitnessState {
 		state.Status = StatusIdle
 	}
 	return state
-}
-
-func publishState(ctx agent.Context, state FitnessState) error {
-	s := ctx.State()
-	fields := []struct {
-		key   string
-		value any
-	}{
-		{"fitness_data_connected", state.FitnessDataConnected},
-		{"activity_source", state.ActivitySource},
-		{"activities", state.Activities},
-		{"activities_synced_at", state.ActivitiesSyncedAt},
-		{"objective_research", state.ObjectiveResearch},
-		{"training_plan", state.TrainingPlan},
-		{"status", state.Status},
-		{"review_summary", state.ReviewSummary},
-		{"user_id", state.UserID},
-	}
-	for _, field := range fields {
-		if err := s.Set(field.key, field.value); err != nil {
-			return fmt.Errorf("set %s: %w", field.key, err)
-		}
-	}
-	return nil
 }

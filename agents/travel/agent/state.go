@@ -2,10 +2,8 @@ package travel
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 
-	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/session"
 )
 
@@ -122,40 +120,4 @@ func readState(source session.ReadonlyState) TravelState {
 		state.Interests = Interests{}
 	}
 	return state
-}
-
-func publishState(ctx agent.Context, state TravelState) error {
-	s := ctx.State()
-	fields := []struct {
-		key   string
-		value any
-	}{
-		{"destination", state.Destination},
-		{"start_date", state.StartDate},
-		{"end_date", state.EndDate},
-		{"travelers", state.Travelers},
-		{"budget_usd", state.BudgetUSD},
-		{"headline", state.Headline},
-		{"flights", state.Flights},
-		{"itinerary", state.Itinerary},
-		{"summary", state.Summary},
-		{"status", state.Status},
-		{"review_summary", state.ReviewSummary},
-		{"user_id", state.UserID},
-		{"travelerName", state.TravelerName},
-		{"homeAirport", state.HomeAirport},
-		{"transportMode", state.TransportMode},
-		{"budgetTier", state.BudgetTier},
-		{"vibe", state.Vibe},
-		{"pace", state.Pace},
-		{"interests", state.Interests},
-		{"dietary", state.Dietary},
-		{"mobility", state.Mobility},
-	}
-	for _, field := range fields {
-		if err := s.Set(field.key, field.value); err != nil {
-			return fmt.Errorf("set %s: %w", field.key, err)
-		}
-	}
-	return nil
 }

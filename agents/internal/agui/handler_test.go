@@ -18,7 +18,7 @@ import (
 
 	"agents/internal/agentruntime"
 	"agents/internal/auth"
-	aguievents "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
+	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
@@ -43,20 +43,6 @@ func TestHandlerStreamsResumeGoldenEvents(t *testing.T) {
 }
 
 // ---- malformed input --------------------------------------------------
-
-func TestNewADKHandlerBindsOneAgentAndDefaultsAppName(t *testing.T) {
-	a, err := llmagent.New(llmagent.Config{Name: "test_agent", Instruction: "test", Model: &fakeResumeModel{}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	handler, err := NewADKHandler(a, newFakeSessionService(), "")
-	if err != nil {
-		t.Fatalf("NewADKHandler: %v", err)
-	}
-	if handler.entry.AppName != "adk-agent" || handler.runner == nil {
-		t.Fatalf("handler = app %q runner %v", handler.entry.AppName, handler.runner)
-	}
-}
 
 func TestHandlerRejectsMalformedInput(t *testing.T) {
 	h := newGatewayWithFakeResumeModel(t)
@@ -92,11 +78,45 @@ func TestHandlerRejectsMalformedInput(t *testing.T) {
 
 type fakeForwardedHandler struct{}
 
-func (fakeForwardedHandler) HandleForwarded(_ context.Context, props any) (any, bool, error) {
-	if props == nil {
+func (fakeForwardedHandler) HandleForwarded(_ context.Context, props json.RawMessage) (json.RawMessage, bool, error) {
+	if bytes.Equal(bytes.TrimSpace(props), []byte("null")) {
 		return nil, false, nil
 	}
-	return map[string]any{"proxied": true}, true, nil
+	return json.RawMessage(`{"proxied":true}`), true, nil
+}
+
+type recordingForwardedHandler struct {
+	props json.RawMessage
+}
+
+func (h *recordingForwardedHandler) HandleForwarded(_ context.Context, props json.RawMessage) (json.RawMessage, bool, error) {
+	h.props = append(h.props[:0], props...)
+	return json.RawMessage(`{"proxied":true}`), true, nil
+}
+
+func TestHandlerForwardsLargeJSONIntegerWithoutPrecisionLoss(t *testing.T) {
+	a, err := llmagent.New(llmagent.Config{Name: "excalidraw_agent", Instruction: "unused", Model: &fakeResumeModel{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	recorder := &recordingForwardedHandler{}
+	handler, err := NewEntryHandler(agentruntime.Entry{
+		Route: "excalidraw", AppName: "excalidraw_agent", Agent: a, Public: true, Forwarded: recorder,
+	}, newFakeSessionService())
+	if err != nil {
+		t.Fatal(err)
+	}
+	const forwardedProps = `{ "__proxiedMCPRequest": { "params": { "cursor": 9007199254740993 } } }`
+	body := `{"threadId":"thread-1","runId":"run-1","messages":[],"tools":[],"context":[],"forwardedProps":` + forwardedProps + `}`
+	req := httptest.NewRequest(http.MethodPost, "/excalidraw/agui", strings.NewReader(body))
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if string(recorder.props) != forwardedProps {
+		t.Fatalf("forwardedProps = %s, want %s", recorder.props, forwardedProps)
+	}
 }
 
 func TestHandlerCompletesForwardedRequestWithoutSessionOrModel(t *testing.T) {
@@ -116,8 +136,37 @@ func TestHandlerCompletesForwardedRequestWithoutSessionOrModel(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/excalidraw/agui", strings.NewReader(body))
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
-	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), `"proxied":true`) || !strings.Contains(rr.Body.String(), "RUN_FINISHED") {
+	if rr.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	frames := parseSSEFrames(t, rr.Body.Bytes())
+	if len(frames) != 2 {
+		t.Fatalf("frames = %#v", frames)
+	}
+	finished, ok := frames[1].(map[string]any)
+	if !ok || finished["type"] != "RUN_FINISHED" {
+		t.Fatalf("finished = %#v", frames[1])
+	}
+	result, ok := finished["result"].(map[string]any)
+	if !ok || result["proxied"] != true {
+		t.Fatalf("forwarded result was not embedded JSON: %#v", finished["result"])
+	}
+}
+
+func TestWriteForwardedRejectsInvalidOrNullResult(t *testing.T) {
+	for name, result := range map[string]json.RawMessage{"invalid": json.RawMessage(`{`), "null": json.RawMessage(`null`)} {
+		t.Run(name, func(t *testing.T) {
+			rr := httptest.NewRecorder()
+			new(ADKHandler).writeForwarded(rr, "thread-1", "run-1", result, nil)
+			frames := parseSSEFrames(t, rr.Body.Bytes())
+			if len(frames) != 2 {
+				t.Fatalf("frames = %#v", frames)
+			}
+			terminal, ok := frames[1].(map[string]any)
+			if !ok || terminal["type"] != "RUN_ERROR" {
+				t.Fatalf("terminal = %#v", frames[1])
+			}
+		})
 	}
 }
 
@@ -129,7 +178,7 @@ func TestHandlerResumesFromPendingClientToolResult(t *testing.T) {
 	h := newTestGateway(t, &fakeResumeModel{}, ids, WithPendingTools(pending))
 
 	scope := ToolScope{AppName: "resume_agent", UserID: "anon:thread-resume", ThreadID: "thread-resume"}
-	if err := pending.Register(context.Background(), scope, "call-9", "remember_fact", map[string]any{"note": "blue"}); err != nil {
+	if err := pending.Register(context.Background(), scope, "call-9", "remember_fact", json.RawMessage(`{"note":"blue"}`)); err != nil {
 		t.Fatalf("register pending: %v", err)
 	}
 
@@ -222,6 +271,46 @@ func TestHandlerEndsWithSanitizedRunErrorOnUpstreamFailure(t *testing.T) {
 	}
 	if strings.Contains(out, "RUN_FINISHED") {
 		t.Fatalf("must not emit RUN_FINISHED after RUN_ERROR: %s", out)
+	}
+}
+
+func TestHandlerTimeoutStillEmitsOneTerminalRunError(t *testing.T) {
+	ids := &fakeIDs{}
+	h := newTestGatewayWithTimeout(t, &fakeTimeoutModel{}, ids, 20*time.Millisecond)
+
+	body := `{
+		"threadId": "thread-timeout",
+		"runId": "run-timeout",
+		"state": {},
+		"messages": [{"id": "user-1", "role": "user", "content": "Wait forever"}],
+		"tools": [],
+		"context": [],
+		"forwardedProps": null
+	}`
+	req := httptest.NewRequest(http.MethodPost, "/resume/agui", strings.NewReader(body))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rr.Code, rr.Body.String())
+	}
+
+	frames := parseSSEFrames(t, rr.Body.Bytes())
+	terminalCount := 0
+	for _, frame := range frames {
+		event, ok := frame.(map[string]any)
+		if !ok {
+			continue
+		}
+		if event["type"] == "RUN_ERROR" || event["type"] == "RUN_FINISHED" {
+			terminalCount++
+		}
+	}
+	last, ok := frames[len(frames)-1].(map[string]any)
+	if !ok || last["type"] != "RUN_ERROR" || last["code"] != "timeout" {
+		t.Fatalf("last frame = %#v, want timeout RUN_ERROR; body=%s", frames[len(frames)-1], rr.Body.String())
+	}
+	if terminalCount != 1 {
+		t.Fatalf("terminal event count = %d, want 1; body=%s", terminalCount, rr.Body.String())
 	}
 }
 
@@ -358,9 +447,14 @@ func newGatewayWithFakeResumeModel(t *testing.T) http.Handler {
 	return newTestGateway(t, &fakeResumeModel{}, &fakeIDs{})
 }
 
-func newTestGateway(t *testing.T, m model.LLM, ids aguievents.IDGenerator, opts ...Option) http.Handler {
+func newTestGateway(t *testing.T, m model.LLM, ids events.IDGenerator, opts ...Option) http.Handler {
 	t.Helper()
 	return newTestGatewayWithToolsets(t, m, ids, nil, opts...)
+}
+
+func newTestGatewayWithTimeout(t *testing.T, m model.LLM, ids events.IDGenerator, timeout time.Duration, opts ...Option) http.Handler {
+	t.Helper()
+	return newTestGatewayWithToolsetsAndTimeout(t, m, ids, nil, timeout, opts...)
 }
 
 // newTestGatewayWithToolsets is newTestGateway plus the ability to attach
@@ -368,7 +462,12 @@ func newTestGateway(t *testing.T, m model.LLM, ids aguievents.IDGenerator, opts 
 // construction time — the same thing production agent wiring must do to
 // support AG-UI client tools (see client_tools.go's
 // AGUIToolset doc comment).
-func newTestGatewayWithToolsets(t *testing.T, m model.LLM, ids aguievents.IDGenerator, toolsets []tool.Toolset, opts ...Option) http.Handler {
+func newTestGatewayWithToolsets(t *testing.T, m model.LLM, ids events.IDGenerator, toolsets []tool.Toolset, opts ...Option) http.Handler {
+	t.Helper()
+	return newTestGatewayWithToolsetsAndTimeout(t, m, ids, toolsets, 5*time.Second, opts...)
+}
+
+func newTestGatewayWithToolsetsAndTimeout(t *testing.T, m model.LLM, ids events.IDGenerator, toolsets []tool.Toolset, timeout time.Duration, opts ...Option) http.Handler {
 	t.Helper()
 	a, err := llmagent.New(llmagent.Config{
 		Name:        "resume_agent",
@@ -385,7 +484,7 @@ func newTestGatewayWithToolsets(t *testing.T, m model.LLM, ids aguievents.IDGene
 		AppName: "resume_agent",
 		Agent:   a,
 		Public:  true,
-		Timeout: 5 * time.Second,
+		Timeout: timeout,
 	}
 	sessions := newFakeSessionService()
 	allOpts := append([]Option{WithIDGenerator(ids)}, opts...)
@@ -485,11 +584,25 @@ func (m *fakeErrorModel) GenerateContent(ctx context.Context, req *model.LLMRequ
 	}
 }
 
+// fakeTimeoutModel waits for the handler's per-entry execution deadline and
+// then returns that context error. The handler must use a separate terminal
+// write context or the SSE encoder will reject the final RUN_ERROR frame.
+type fakeTimeoutModel struct{}
+
+func (*fakeTimeoutModel) Name() string { return "fake-timeout-model" }
+
+func (*fakeTimeoutModel) GenerateContent(ctx context.Context, _ *model.LLMRequest, _ bool) iter.Seq2[*model.LLMResponse, error] {
+	return func(yield func(*model.LLMResponse, error) bool) {
+		<-ctx.Done()
+		yield(nil, ctx.Err())
+	}
+}
+
 // fakeClientToolModel emits a function call for a tool name that has no
 // static ADK tool — only an AGUIToolset resolving the
 // request's AG-UI tool declarations can make this callable. Used to prove
 // input.Tools actually reaches the running agent (Finding 1a). Mirrors
-// fakeResumeModel's two-turn shape: NewClientToolset's wrapped tool
+// fakeResumeModel's two-turn shape: the wrapped client proxy tool
 // returns a non-nil {"status":"pending",...} acknowledgment immediately
 // (see client_tools.go), so the *next* LLM turn already has a
 // FunctionResponse in its contents — a well-behaved model responds to the
@@ -555,33 +668,34 @@ func hasFunctionResponse(contents []*genai.Content) bool {
 
 type fakePendingRecord struct {
 	name string
+	args json.RawMessage
 }
 
 type fakePending struct {
 	mu       sync.Mutex
 	pending  map[string]fakePendingRecord
-	resolved map[string]any
+	resolved map[string]json.RawMessage
 }
 
 func newFakePending() *fakePending {
-	return &fakePending{pending: make(map[string]fakePendingRecord), resolved: make(map[string]any)}
+	return &fakePending{pending: make(map[string]fakePendingRecord), resolved: make(map[string]json.RawMessage)}
 }
 
-func (p *fakePending) Register(ctx context.Context, scope ToolScope, callID, toolName string, args map[string]any) error {
+func (p *fakePending) Register(ctx context.Context, scope ToolScope, callID, toolName string, args json.RawMessage) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	p.pending[key(scope, callID)] = fakePendingRecord{name: toolName}
+	p.pending[key(scope, callID)] = fakePendingRecord{name: toolName, args: append(json.RawMessage(nil), args...)}
 	return nil
 }
 
-func (p *fakePending) Resolve(ctx context.Context, identity auth.Identity, app, thread, callID string, result any) error {
+func (p *fakePending) Resolve(ctx context.Context, identity auth.Identity, app, thread, callID string, result json.RawMessage) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	k := app + "\x00" + thread + "\x00" + callID
 	if _, ok := p.pending[k]; !ok {
 		return ErrPendingToolNotFound
 	}
-	p.resolved[k] = result
+	p.resolved[k] = append(json.RawMessage(nil), result...)
 	return nil
 }
 
@@ -596,9 +710,9 @@ func (p *fakePending) Take(ctx context.Context, identity auth.Identity, app, thr
 	}
 	delete(p.pending, k)
 	delete(p.resolved, k)
-	response, ok := result.(map[string]any)
-	if !ok {
-		response = map[string]any{"result": result}
+	var response map[string]any
+	if json.Unmarshal(result, &response) != nil || response == nil {
+		return nil, ErrPendingToolNotFound
 	}
 	return &genai.FunctionResponse{ID: callID, Name: record.name, Response: response}, nil
 }

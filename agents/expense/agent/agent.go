@@ -1,14 +1,14 @@
 package expense
 
 import (
-	"agents/internal/functiontool"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
-	adktool "google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool/functiontool"
 )
 
-func New(m model.LLM, toolsets ...adktool.Toolset) (agent.Agent, error) {
+func New(m model.LLM, toolsets ...tool.Toolset) (agent.Agent, error) {
 	tools, err := expenseTools()
 	if err != nil {
 		return nil, err
@@ -23,7 +23,7 @@ func New(m model.LLM, toolsets ...adktool.Toolset) (agent.Agent, error) {
 	})
 }
 
-func expenseTools() ([]adktool.Tool, error) {
+func expenseTools() ([]tool.Tool, error) {
 	submitExpenseTool, err := functiontool.New(functiontool.Config{
 		Name:        "submit_expense",
 		Description: "Submit an expense and route it deterministically by threshold.",
@@ -64,7 +64,7 @@ func expenseTools() ([]adktool.Tool, error) {
 		return nil, err
 	}
 
-	return []adktool.Tool{
+	return []tool.Tool{
 		submitExpenseTool,
 		writeExpenseReviewTool,
 		decideExpenseTool,

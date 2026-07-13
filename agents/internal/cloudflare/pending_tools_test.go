@@ -21,16 +21,16 @@ func TestClientToolResultCannotResolveOrResumeAnotherUsersCall(t *testing.T) {
 	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
 	pending := NewPendingStore(store.d1, func() time.Time { return now })
 	scope := agui.ToolScope{AppName: "travel", UserID: "user-a", ThreadID: "thread-a"}
-	if err := pending.Register(context.Background(), scope, "call-1", "confirm_booking", map[string]any{"flight": "one"}); err != nil {
+	if err := pending.Register(context.Background(), scope, "call-1", "confirm_booking", json.RawMessage(`{"flight":"one"}`)); err != nil {
 		t.Fatal(err)
 	}
-	if err := pending.Resolve(context.Background(), auth.Identity{UserID: "user-b"}, "travel", "thread-a", "call-1", map[string]any{"approved": true}); !errors.Is(err, agui.ErrPendingToolNotFound) {
+	if err := pending.Resolve(context.Background(), auth.Identity{UserID: "user-b"}, "travel", "thread-a", "call-1", json.RawMessage(`not-json`)); !errors.Is(err, agui.ErrPendingToolNotFound) {
 		t.Fatalf("cross-user Resolve() error = %v", err)
 	}
 	if _, err := pending.Take(context.Background(), auth.Identity{UserID: "user-b"}, "travel", "thread-a", "call-1"); !errors.Is(err, agui.ErrPendingToolNotFound) {
 		t.Fatalf("cross-user Take() error = %v", err)
 	}
-	if err := pending.Resolve(context.Background(), auth.Identity{UserID: "user-a"}, "travel", "thread-a", "call-1", map[string]any{"approved": true}); err != nil {
+	if err := pending.Resolve(context.Background(), auth.Identity{UserID: "user-a"}, "travel", "thread-a", "call-1", json.RawMessage(`{"approved":true}`)); err != nil {
 		t.Fatal(err)
 	}
 	response, err := pending.Take(context.Background(), auth.Identity{UserID: "user-a"}, "travel", "thread-a", "call-1")
@@ -47,24 +47,30 @@ func TestApprovalResultResumesOnlyOriginalTravelThread(t *testing.T) {
 	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
 	pending := NewPendingStore(store.d1, func() time.Time { return now })
 	scope := agui.ToolScope{AppName: "collab_trip_agent", UserID: "user-a", ThreadID: "travel-thread-a"}
-	if err := pending.Register(context.Background(), scope, "approval-1", "request_user_approval", map[string]any{"action": "book_flight"}); err != nil {
+	if err := pending.Register(context.Background(), scope, "approval-1", "request_user_approval", json.RawMessage(`{"action":"book_flight"}`)); err != nil {
 		t.Fatal(err)
 	}
 	identity := auth.Identity{UserID: "user-a"}
 	for _, other := range []struct{ app, thread string }{{"collab_trip_agent", "travel-thread-b"}, {"grocery_agent", "travel-thread-a"}} {
-		if err := pending.Resolve(context.Background(), identity, other.app, other.thread, "approval-1", map[string]any{"approved": true}); !errors.Is(err, agui.ErrPendingToolNotFound) {
+		if err := pending.Resolve(context.Background(), identity, other.app, other.thread, "approval-1", json.RawMessage(`not-json`)); !errors.Is(err, agui.ErrPendingToolNotFound) {
 			t.Fatalf("cross-scope resolve %s/%s = %v", other.app, other.thread, err)
 		}
 	}
-	if err := pending.Resolve(context.Background(), identity, scope.AppName, scope.ThreadID, "approval-1", map[string]any{"approved": true}); err != nil {
+	if err := pending.Resolve(context.Background(), identity, scope.AppName, scope.ThreadID, "approval-1", json.RawMessage(`{"approved":true}`)); err != nil {
 		t.Fatal(err)
 	}
 	response, err := pending.Take(context.Background(), identity, scope.AppName, scope.ThreadID, "approval-1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	request, _ := response.Response["_agui_request"].(map[string]any)
-	if response.Name != "request_user_approval" || response.Response["approved"] != true || request["action"] != "book_flight" {
+	requestJSON, ok := response.Response["_agui_request"].(json.RawMessage)
+	var request struct {
+		Action string `json:"action"`
+	}
+	if !ok || json.Unmarshal(requestJSON, &request) != nil {
+		t.Fatalf("Take() request = %#v", response.Response["_agui_request"])
+	}
+	if response.Name != "request_user_approval" || response.Response["approved"] != true || request.Action != "book_flight" {
 		t.Fatalf("Take() = %#v, %v", response, err)
 	}
 }
@@ -77,10 +83,10 @@ func TestRegisterAcceptsNonIdentifierShapedProviderCallID(t *testing.T) {
 	// Some providers (e.g. OpenRouter's tencent/hy3:free) issue tool-call IDs
 	// that don't look like identifiers, such as a bare leading digit. These
 	// are still valid opaque correlation tokens and must round-trip.
-	if err := pending.Register(context.Background(), scope, "0", "ask_question", map[string]any{"question": "..."}); err != nil {
+	if err := pending.Register(context.Background(), scope, "0", "ask_question", json.RawMessage(`{"question":"..."}`)); err != nil {
 		t.Fatalf("Register() with numeric call ID = %v", err)
 	}
-	if err := pending.Resolve(context.Background(), auth.Identity{UserID: "user-a"}, "oralboards", "thread-a", "0", map[string]any{"answer": "..."}); err != nil {
+	if err := pending.Resolve(context.Background(), auth.Identity{UserID: "user-a"}, "oralboards", "thread-a", "0", json.RawMessage(`{"answer":"..."}`)); err != nil {
 		t.Fatalf("Resolve() with numeric call ID = %v", err)
 	}
 	response, err := pending.Take(context.Background(), auth.Identity{UserID: "user-a"}, "oralboards", "thread-a", "0")
@@ -99,6 +105,24 @@ func TestRegisterRejectsControlCharacterCallID(t *testing.T) {
 	}
 }
 
+func TestPendingToolRowKeepsOriginalRequestAsValidatedJSON(t *testing.T) {
+	response, err := (pendingToolRow{
+		ToolName:   "request_user_approval",
+		ArgsJSON:   `{"action":"book_flight"}`,
+		ResultJSON: `{"approved":true}`,
+	}).functionResponse("call-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	requestJSON, ok := response.Response["_agui_request"].(json.RawMessage)
+	if !ok || string(requestJSON) != `{"action":"book_flight"}` {
+		t.Fatalf("_agui_request = %#v", response.Response["_agui_request"])
+	}
+	if _, err := (pendingToolRow{ToolName: "tool", ArgsJSON: `[]`, ResultJSON: `{}`}).functionResponse("call-1"); err == nil {
+		t.Fatal("array arguments should be rejected")
+	}
+}
+
 func TestPendingToolExpiryAndPublicIdentityFailClosed(t *testing.T) {
 	store := newPendingFixture(t)
 	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
@@ -106,12 +130,69 @@ func TestPendingToolExpiryAndPublicIdentityFailClosed(t *testing.T) {
 	if err := pending.Register(context.Background(), agui.ToolScope{AppName: "travel", UserID: "user-a", ThreadID: "thread-a"}, "call-1", "approve", nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := pending.Resolve(context.Background(), auth.Identity{UserID: "anonymous", Public: true}, "travel", "thread-a", "call-1", true); !errors.Is(err, agui.ErrPendingToolNotFound) {
+	if err := pending.Resolve(context.Background(), auth.Identity{UserID: "anonymous", Public: true}, "travel", "thread-a", "call-1", json.RawMessage(`not-json`)); !errors.Is(err, agui.ErrPendingToolNotFound) {
 		t.Fatalf("public Resolve() = %v", err)
 	}
 	now = now.Add(pendingToolTTL + time.Second)
-	if err := pending.Resolve(context.Background(), auth.Identity{UserID: "user-a"}, "travel", "thread-a", "call-1", true); !errors.Is(err, agui.ErrPendingToolNotFound) {
+	if err := pending.Resolve(context.Background(), auth.Identity{UserID: "user-a"}, "travel", "thread-a", "call-1", json.RawMessage(`{}`)); !errors.Is(err, agui.ErrPendingToolNotFound) {
 		t.Fatalf("expired Resolve() = %v", err)
+	}
+}
+
+func TestResolvePersistsOnlyBoundedJSONObject(t *testing.T) {
+	store := newPendingFixture(t)
+	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
+	pending := NewPendingStore(store.d1, func() time.Time { return now })
+	scope := agui.ToolScope{AppName: "travel", UserID: "user-a", ThreadID: "thread-a"}
+	if err := pending.Register(context.Background(), scope, "call-1", "confirm_booking", json.RawMessage(`{}`)); err != nil {
+		t.Fatal(err)
+	}
+	invalid := map[string]json.RawMessage{
+		"empty":        nil,
+		"null":         json.RawMessage(`null`),
+		"array":        json.RawMessage(`[]`),
+		"boolean":      json.RawMessage(`true`),
+		"malformed":    json.RawMessage(`{"approved":`),
+		"over maximum": json.RawMessage(`{"value":"` + strings.Repeat("x", maximumToolResult) + `"}`),
+	}
+	for name, payload := range invalid {
+		t.Run(name, func(t *testing.T) {
+			if err := pending.Resolve(context.Background(), auth.Identity{UserID: "user-a"}, scope.AppName, scope.ThreadID, "call-1", payload); err == nil || errors.Is(err, agui.ErrPendingToolNotFound) {
+				t.Fatalf("Resolve() error = %v, want invalid payload error", err)
+			}
+		})
+	}
+	if err := pending.Resolve(context.Background(), auth.Identity{UserID: "user-a"}, scope.AppName, scope.ThreadID, "call-1", json.RawMessage(" \n {\"approved\":true} \t")); err != nil {
+		t.Fatal(err)
+	}
+	response, err := pending.Take(context.Background(), auth.Identity{UserID: "user-a"}, scope.AppName, scope.ThreadID, "call-1")
+	if err != nil || response.Response["approved"] != true {
+		t.Fatalf("Take() = %#v, %v", response, err)
+	}
+}
+
+func TestResolveIsIdempotentUntilTheResultIsConsumed(t *testing.T) {
+	store := newPendingFixture(t)
+	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
+	pending := NewPendingStore(store.d1, func() time.Time { return now })
+	scope := agui.ToolScope{AppName: "travel", UserID: "user-a", ThreadID: "thread-a"}
+	identity := auth.Identity{UserID: scope.UserID}
+	if err := pending.Register(context.Background(), scope, "call-1", "confirm_booking", json.RawMessage(`{}`)); err != nil {
+		t.Fatal(err)
+	}
+	result := json.RawMessage(`{"approved":true}`)
+	if err := pending.Resolve(context.Background(), identity, scope.AppName, scope.ThreadID, "call-1", result); err != nil {
+		t.Fatal(err)
+	}
+	if err := pending.Resolve(context.Background(), identity, scope.AppName, scope.ThreadID, "call-1", result); err != nil {
+		t.Fatalf("retry Resolve() = %v", err)
+	}
+	if err := pending.Resolve(context.Background(), identity, scope.AppName, scope.ThreadID, "call-1", json.RawMessage(`{"approved":false}`)); !errors.Is(err, agui.ErrPendingToolNotFound) {
+		t.Fatalf("conflicting retry Resolve() = %v", err)
+	}
+	response, err := pending.Take(context.Background(), identity, scope.AppName, scope.ThreadID, "call-1")
+	if err != nil || response.Response["approved"] != true {
+		t.Fatalf("Take() = %#v, %v", response, err)
 	}
 }
 
@@ -128,16 +209,19 @@ type pendingFixture struct {
 func newPendingFixture(t *testing.T) *pendingFixture {
 	t.Helper()
 	fixture := &pendingFixture{records: map[string]pendingRecord{}}
-	server := httptest.NewServer(http.HandlerFunc(fixture.handle))
-	t.Cleanup(server.Close)
-	client := server.Client()
-	client.Transport = pendingRewriteTransport{target: server.URL, base: client.Transport}
+	client := &http.Client{Transport: fixture}
 	d1, err := NewD1(config.Cloudflare{AccountID: "account", APIToken: "token", D1DatabaseID: "database"}, client)
 	if err != nil {
 		t.Fatal(err)
 	}
 	fixture.d1 = d1
 	return fixture
+}
+
+func (f *pendingFixture) RoundTrip(request *http.Request) (*http.Response, error) {
+	recorder := httptest.NewRecorder()
+	f.handle(recorder, request)
+	return recorder.Result(), nil
 }
 
 type batchEnvelope struct {
@@ -174,6 +258,13 @@ func (f *pendingFixture) handle(w http.ResponseWriter, r *http.Request) {
 				f.records[key] = record
 				changes = 1
 			}
+		case strings.HasPrefix(sql, "SELECT status, result_json"):
+			key := recordKey(textParam(statement.Params[0]), textParam(statement.Params[1]), textParam(statement.Params[2]), textParam(statement.Params[3]))
+			record, ok := f.records[key]
+			now := int64(statement.Params[4].(float64))
+			if ok && (record.status == "pending" || record.status == "resolved") && record.expires > now {
+				rows = append(rows, map[string]any{"status": record.status, "result_json": record.result})
+			}
 		case strings.HasPrefix(sql, "SELECT tool_name"):
 			key := recordKey(textParam(statement.Params[0]), textParam(statement.Params[1]), textParam(statement.Params[2]), textParam(statement.Params[3]))
 			record, ok := f.records[key]
@@ -207,15 +298,3 @@ func recordKey(app, user, thread, call string) string {
 	return strings.Join([]string{app, user, thread, call}, "\x00")
 }
 func textParam(value any) string { text, _ := value.(string); return text }
-
-type pendingRewriteTransport struct {
-	target string
-	base   http.RoundTripper
-}
-
-func (p pendingRewriteTransport) RoundTrip(request *http.Request) (*http.Response, error) {
-	clone := request.Clone(request.Context())
-	parsed, _ := clone.URL.Parse(p.target)
-	clone.URL = parsed
-	return p.base.RoundTrip(clone)
-}

@@ -9,12 +9,12 @@ import (
 	"regexp"
 
 	"agents/internal/auth"
-	"agents/internal/functiontool"
-	aguitypes "github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
+	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"github.com/google/jsonschema-go/jsonschema"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool/functiontool"
 	"google.golang.org/genai"
 )
 
@@ -37,9 +37,6 @@ var (
 	ClientCallID = regexp.MustCompile(`^[^\x00-\x1f]{1,128}$`)
 )
 
-// ClientTool is the official AG-UI frontend tool declaration.
-type ClientTool = aguitypes.Tool
-
 // ToolScope is the complete authorization boundary for one pending call.
 type ToolScope struct{ AppName, UserID, ThreadID string }
 
@@ -47,22 +44,25 @@ type ToolScope struct{ AppName, UserID, ThreadID string }
 // Handler depends only on this interface — never on a concrete store — so
 // any backend (D1, or otherwise) can be plugged in via WithPendingTools.
 type PendingTools interface {
-	Register(context.Context, ToolScope, string, string, map[string]any) error
-	Resolve(context.Context, auth.Identity, string, string, string, any) error
+	Register(context.Context, ToolScope, string, string, json.RawMessage) error
+	Resolve(context.Context, auth.Identity, string, string, string, json.RawMessage) error
 	Take(context.Context, auth.Identity, string, string, string) (*genai.FunctionResponse, error)
 }
 
-// ClientToolset exposes request-provided frontend tools as long-running ADK tools.
-type ClientToolset struct {
-	tools   []tool.Tool
-	pending PendingTools
+type clientToolStatus string
+
+const clientToolStatusPending clientToolStatus = "pending"
+
+type clientToolPendingResult struct {
+	Status clientToolStatus `json:"status"`
+	CallID string           `json:"call_id"`
 }
 
-func NewClientToolset(input []ClientTool, pending PendingTools) (tool.Toolset, error) {
+func buildClientTools(input []types.Tool, pending PendingTools) ([]tool.Tool, error) {
 	if pending == nil {
 		return nil, errors.New("pending client tool store is required")
 	}
-	toolset := &ClientToolset{pending: pending}
+	tools := make([]tool.Tool, 0, len(input))
 	seen := make(map[string]bool)
 	for _, definition := range input {
 		if !ClientToolName.MatchString(definition.Name) || seen[definition.Name] {
@@ -74,29 +74,28 @@ func NewClientToolset(input []ClientTool, pending PendingTools) (tool.Toolset, e
 			return nil, fmt.Errorf("client tool %q schema: %w", definition.Name, err)
 		}
 		name := definition.Name
-		wrapped, err := functiontool.New[map[string]any, map[string]any](functiontool.Config{Name: name, Description: definition.Description, InputSchema: schema, IsLongRunning: true}, func(ctx agent.Context, args map[string]any) (map[string]any, error) {
+		wrapped, err := functiontool.New[map[string]json.RawMessage, clientToolPendingResult](functiontool.Config{Name: name, Description: definition.Description, InputSchema: schema, IsLongRunning: true}, func(ctx agent.Context, args map[string]json.RawMessage) (clientToolPendingResult, error) {
 			scope := ToolScope{AppName: ctx.AppName(), UserID: ctx.UserID(), ThreadID: ctx.SessionID()}
-			if err := pending.Register(ctx, scope, ctx.FunctionCallID(), name, args); err != nil {
-				return nil, err
+			encoded, err := json.Marshal(args)
+			if err != nil {
+				return clientToolPendingResult{}, errors.New("encode client tool arguments")
 			}
-			return map[string]any{"status": "pending", "call_id": ctx.FunctionCallID()}, nil
+			if err := pending.Register(ctx, scope, ctx.FunctionCallID(), name, encoded); err != nil {
+				return clientToolPendingResult{}, err
+			}
+			return clientToolPendingResult{Status: clientToolStatusPending, CallID: ctx.FunctionCallID()}, nil
 		})
 		if err != nil {
 			return nil, err
 		}
-		toolset.tools = append(toolset.tools, wrapped)
+		tools = append(tools, wrapped)
 	}
-	return toolset, nil
-}
-
-func (c *ClientToolset) Name() string { return "agui_client_tools" }
-func (c *ClientToolset) Tools(agent.ReadonlyContext) ([]tool.Tool, error) {
-	return append([]tool.Tool(nil), c.tools...), nil
+	return tools, nil
 }
 
 // ClientToolsStateKey is the temp: state key the AG-UI handler overlays
 // with the current run's AG-UI tool declarations (JSON-encoded
-// []ClientTool) via runner.WithStateDelta, and that
+// []AG-UI Tool) via runner.WithStateDelta, and that
 // AGUIToolset reads on every invocation.
 //
 // This is the per-invocation extension point ADK-Go v2 actually provides
@@ -129,39 +128,18 @@ const ClientToolsStateKey = session.KeyPrefixTemp + "agui_client_tools"
 // Toolset.Tools with invocation context on every turn, so no shared agent
 // mutation or per-run agent-tree copy is needed.
 type AGUIToolset struct {
-	pending        PendingTools
-	toolFilter     tool.Predicate
-	toolNamePrefix string
-}
-
-// AGUIToolsetOption configures frontend tool filtering and naming.
-type AGUIToolsetOption func(*AGUIToolset)
-
-// WithToolFilter applies an ADK tool predicate before frontend tools are
-// exposed to the model.
-func WithToolFilter(predicate tool.Predicate) AGUIToolsetOption {
-	return func(t *AGUIToolset) { t.toolFilter = predicate }
-}
-
-// WithToolNamePrefix prepends prefix to frontend tool names exposed to the
-// model, matching the official ADK middleware's tool_name_prefix option.
-func WithToolNamePrefix(prefix string) AGUIToolsetOption {
-	return func(t *AGUIToolset) { t.toolNamePrefix = prefix }
+	pending PendingTools
 }
 
 // NewAGUIToolset declares request-scoped AG-UI frontend tools on an agent.
-func NewAGUIToolset(pending PendingTools, opts ...AGUIToolsetOption) *AGUIToolset {
-	result := &AGUIToolset{pending: pending}
-	for _, opt := range opts {
-		opt(result)
-	}
-	return result
+func NewAGUIToolset(pending PendingTools) *AGUIToolset {
+	return &AGUIToolset{pending: pending}
 }
 
 func (r *AGUIToolset) Name() string { return "agui_client_tools" }
 
 // Tools reads this invocation's client tool declarations (a JSON-encoded
-// []ClientTool at ClientToolsStateKey) from ctx's readonly state and
+// []AG-UI Tool at ClientToolsStateKey) from ctx's readonly state and
 // builds fresh long-running proxy tools for them. Returns (nil, nil) —
 // not an error — when the current request declared no client tools (the
 // common case), so agents that mix static tools with AG-UI client tools
@@ -182,42 +160,15 @@ func (r *AGUIToolset) Tools(ctx agent.ReadonlyContext) ([]tool.Tool, error) {
 	if !ok || encoded == "" {
 		return nil, nil
 	}
-	var defs []ClientTool
+	var defs []types.Tool
 	if err := json.Unmarshal([]byte(encoded), &defs); err != nil || len(defs) == 0 {
 		return nil, nil
 	}
-	if r.toolFilter != nil || r.toolNamePrefix != "" {
-		base, err := NewClientToolset(defs, r.pending)
-		if err != nil {
-			return nil, fmt.Errorf("resolve request-scoped client tools: %w", err)
-		}
-		available, err := base.Tools(ctx)
-		if err != nil {
-			return nil, err
-		}
-		allowed := make(map[string]bool, len(available))
-		for _, candidate := range available {
-			if r.toolFilter == nil || r.toolFilter(ctx, candidate) {
-				allowed[candidate.Name()] = true
-			}
-		}
-		filtered := make([]ClientTool, 0, len(defs))
-		for _, definition := range defs {
-			if allowed[definition.Name] {
-				definition.Name = r.toolNamePrefix + definition.Name
-				filtered = append(filtered, definition)
-			}
-		}
-		defs = filtered
-		if len(defs) == 0 {
-			return nil, nil
-		}
-	}
-	toolset, err := NewClientToolset(defs, r.pending)
+	tools, err := buildClientTools(defs, r.pending)
 	if err != nil {
 		return nil, fmt.Errorf("resolve request-scoped client tools: %w", err)
 	}
-	return toolset.Tools(ctx)
+	return tools, nil
 }
 
 func clientSchema(value any) (*jsonschema.Schema, error) {

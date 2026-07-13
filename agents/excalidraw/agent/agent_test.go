@@ -28,3 +28,26 @@ func TestAgentEmbedsMCPAppsInstructionsAndTypedDefaults(t *testing.T) {
 		t.Fatalf("user_id default = %#v", got)
 	}
 }
+
+func TestInstructionRequiresCurrentMCPAppsElementSyntax(t *testing.T) {
+	for _, required := range []string{
+		"always call `read_me` and wait",
+		"Never call `read_me` and `create_view` in parallel",
+		`"label":{"text":"Frontend","fontSize":16}`,
+		"never the unsupported `fillColor`",
+		"`startBinding`",
+		"`endBinding`",
+		"Never use an unsupported",
+		"`target` field for arrows",
+		"New scenes must start with a supported 4:3 `cameraUpdate`",
+		"Modifications must start with `restoreCheckpoint`, followed by a supported",
+		"4:3 `cameraUpdate` before the changed elements",
+	} {
+		if !strings.Contains(Instruction, required) {
+			t.Errorf("instruction does not contain %q", required)
+		}
+	}
+	if strings.Contains(Instruction, "when you need the server's current syntax guidance") {
+		t.Fatal("read_me must be mandatory before the first create_view")
+	}
+}

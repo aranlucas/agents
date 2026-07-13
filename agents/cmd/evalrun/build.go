@@ -8,25 +8,24 @@ import (
 	"strings"
 	"time"
 
-	"agents/internal/agui"
 	"agents/internal/common"
 	"agents/internal/config"
 	"agents/internal/providers/openai"
 
-	expense "agents/expense/agent"
-	fitness "agents/fitness/agent"
-	grocery "agents/grocery/agent"
-	oralboards "agents/oralboards/agent"
-	presentation "agents/presentation/agent"
-	research "agents/research/agent"
-	resume "agents/resume/agent"
-	spreadsheet "agents/spreadsheet/agent"
-	travel "agents/travel/agent"
-	wellness "agents/wellness/agent"
+	"agents/expense/agent"
+	"agents/fitness/agent"
+	"agents/grocery/agent"
+	"agents/oralboards/agent"
+	"agents/presentation/agent"
+	"agents/research/agent"
+	"agents/resume/agent"
+	"agents/spreadsheet/agent"
+	"agents/travel/agent"
+	"agents/wellness/agent"
 
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/model"
-	adkgemini "google.golang.org/adk/v2/model/gemini"
+	"google.golang.org/adk/v2/model/gemini"
 	"google.golang.org/genai"
 )
 
@@ -35,7 +34,7 @@ import (
 type Built struct {
 	Name          string
 	Agent         agent.Agent
-	StateDefaults map[string]any
+	StateDefaults func() map[string]any
 	Notes         []string
 }
 
@@ -58,16 +57,16 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		if err != nil {
 			return Built{}, err
 		}
-		built, err := expense.New(m, agui.NewAGUIToolset(nil))
-		return Built{Name: name, Agent: built, StateDefaults: expense.StateDefaults(), Notes: notes}, err
+		built, err := expense.New(m)
+		return Built{Name: name, Agent: built, StateDefaults: expense.StateDefaults, Notes: notes}, err
 
 	case "research":
 		m, err := newModel(providers, "openrouter", "tencent/hy3:free", 20, 1000, &notes)
 		if err != nil {
 			return Built{}, err
 		}
-		built, err := research.New(m, agui.NewAGUIToolset(nil))
-		return Built{Name: name, Agent: built, StateDefaults: research.StateDefaults(), Notes: notes}, err
+		built, err := research.New(m)
+		return Built{Name: name, Agent: built, StateDefaults: research.StateDefaults, Notes: notes}, err
 
 	case "travel":
 		m, err := newModel(providers, "openrouter", "tencent/hy3:free", 20, 1000, &notes)
@@ -78,8 +77,8 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		if trvlEndpoint == "" {
 			trvlEndpoint = "https://trvl-production.up.railway.app/mcp"
 		}
-		built, err := travel.New(m, agui.NewAGUIToolset(nil), travel.NewTRVL(trvlEndpoint, &http.Client{Timeout: 20 * time.Second}))
-		return Built{Name: name, Agent: built, StateDefaults: travel.StateDefaults(), Notes: notes}, err
+		built, err := travel.New(m, travel.NewTRVL(trvlEndpoint, &http.Client{Timeout: 20 * time.Second}))
+		return Built{Name: name, Agent: built, StateDefaults: travel.StateDefaults, Notes: notes}, err
 
 	case "resume":
 		m, err := newModel(providers, "openrouter", "tencent/hy3:free", 20, 1000, &notes)
@@ -87,31 +86,31 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 			return Built{}, err
 		}
 		built, err := resume.New(m)
-		return Built{Name: name, Agent: built, StateDefaults: nil, Notes: notes}, err
+		return Built{Name: name, Agent: built, StateDefaults: resume.StateDefaults, Notes: notes}, err
 
 	case "presentation":
 		m, err := newModel(providers, "groq", "llama-3.3-70b-versatile", 30, 0, &notes)
 		if err != nil {
 			return Built{}, err
 		}
-		built, err := presentation.New(m, agui.NewAGUIToolset(nil))
-		return Built{Name: name, Agent: built, StateDefaults: presentation.StateDefaults(), Notes: notes}, err
+		built, err := presentation.New(m)
+		return Built{Name: name, Agent: built, StateDefaults: presentation.StateDefaults, Notes: notes}, err
 
 	case "spreadsheet":
 		m, err := newModel(providers, "groq", "llama-3.3-70b-versatile", 30, 0, &notes)
 		if err != nil {
 			return Built{}, err
 		}
-		built, err := spreadsheet.New(m, agui.NewAGUIToolset(nil))
-		return Built{Name: name, Agent: built, StateDefaults: spreadsheet.StateDefaults(), Notes: notes}, err
+		built, err := spreadsheet.New(m)
+		return Built{Name: name, Agent: built, StateDefaults: spreadsheet.StateDefaults, Notes: notes}, err
 
 	case "fitness":
 		m, err := newModel(providers, "groq", "llama-3.3-70b-versatile", 30, 0, &notes)
 		if err != nil {
 			return Built{}, err
 		}
-		built, err := fitness.New(m, nil, nil, agui.NewAGUIToolset(nil))
-		return Built{Name: name, Agent: built, StateDefaults: fitness.StateDefaults(), Notes: notes}, err
+		built, err := fitness.New(m, nil, nil)
+		return Built{Name: name, Agent: built, StateDefaults: fitness.StateDefaults, Notes: notes}, err
 
 	case "grocery":
 		m, err := newModel(providers, "nvidia", "nvidia/nemotron-3-super-120b-a12b", 20, 0, &notes)
@@ -124,15 +123,15 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		}
 		kroger := grocery.NewKroger(common.NewHTTPClient(30*time.Second, 8<<20).Client, krogerEndpoint)
 		loader := common.NewWebLoader(common.NewHTTPClient(20*time.Second, 4<<20), 100_000)
-		built, err := grocery.New(m, kroger, nil, loader, agui.NewAGUIToolset(nil))
-		return Built{Name: name, Agent: built, StateDefaults: grocery.StateDefaults(), Notes: notes}, err
+		built, err := grocery.New(m, kroger, nil, loader)
+		return Built{Name: name, Agent: built, StateDefaults: grocery.StateDefaults, Notes: notes}, err
 
 	case "wellness":
 		fm, err := newModel(providers, "groq", "llama-3.3-70b-versatile", 30, 0, &notes)
 		if err != nil {
 			return Built{}, err
 		}
-		fitnessTask, err := fitness.NewTask(fm, nil, nil, agui.NewAGUIToolset(nil))
+		fitnessTask, err := fitness.NewTask(fm, nil, nil)
 		if err != nil {
 			return Built{}, fmt.Errorf("build fitness task agent: %w", err)
 		}
@@ -146,12 +145,12 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		}
 		kroger := grocery.NewKroger(common.NewHTTPClient(30*time.Second, 8<<20).Client, krogerEndpoint)
 		loader := common.NewWebLoader(common.NewHTTPClient(20*time.Second, 4<<20), 100_000)
-		groceryTask, err := grocery.NewTask(gm, kroger, nil, loader, agui.NewAGUIToolset(nil))
+		groceryTask, err := grocery.NewTask(gm, kroger, nil, loader)
 		if err != nil {
 			return Built{}, fmt.Errorf("build grocery task agent: %w", err)
 		}
-		built, err := wellness.New(wellness.ModelSet{Coordinator: fm}, fitnessTask, groceryTask, agui.NewAGUIToolset(nil))
-		return Built{Name: name, Agent: built, StateDefaults: wellness.StateDefaults(), Notes: notes}, err
+		built, err := wellness.New(wellness.ModelSet{Coordinator: fm}, fitnessTask, groceryTask)
+		return Built{Name: name, Agent: built, StateDefaults: wellness.StateDefaults, Notes: notes}, err
 
 	case "oralboards":
 		questioner, err := newModel(providers, "openrouter", "tencent/hy3:free", 20, 1000, &notes)
@@ -168,7 +167,7 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		}
 		var caseBuilder model.LLM = questioner
 		if key := strings.TrimSpace(os.Getenv("GEMINI_API_KEY")); key != "" {
-			gm, err := adkgemini.NewModel(ctx, "gemini-3.1-flash-lite", &genai.ClientConfig{APIKey: key, Backend: genai.BackendGeminiAPI})
+			gm, err := gemini.NewModel(ctx, "gemini-3.1-flash-lite", &genai.ClientConfig{APIKey: key, Backend: genai.BackendGeminiAPI})
 			if err != nil {
 				return Built{}, err
 			}
@@ -189,8 +188,8 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		}
 		built, err := oralboards.New(oralboards.PhaseModels{
 			CaseBuilder: caseBuilder, Questioner: questioner, Evaluator: evaluator, Scorer: scorer,
-		}, corpus, agui.NewAGUIToolset(nil))
-		return Built{Name: name, Agent: built, StateDefaults: oralboards.StateDefaults(), Notes: notes}, err
+		}, corpus)
+		return Built{Name: name, Agent: built, StateDefaults: oralboards.StateDefaults, Notes: notes}, err
 	}
 	return Built{}, fmt.Errorf("unknown agent %q", name)
 }

@@ -2,23 +2,8 @@ package grocery
 
 import (
 	"errors"
-	"slices"
 	"testing"
 )
-
-func TestShoppingListInputSchemaRequiresAnArray(t *testing.T) {
-	schema, err := shoppingListInputSchema()
-	if err != nil {
-		t.Fatal(err)
-	}
-	items := schema.Properties["items"]
-	if items.Type != "array" || len(items.Types) != 0 {
-		t.Fatalf("items schema type = %q, types = %v", items.Type, items.Types)
-	}
-	if !slices.Contains(schema.Required, "items") {
-		t.Fatalf("required fields = %v", schema.Required)
-	}
-}
 
 func TestGroceryCartUpdateRequiresConnectedState(t *testing.T) {
 	state := newGroceryState(false)

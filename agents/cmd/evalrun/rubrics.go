@@ -1,8 +1,16 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
+
+	"agents/expense/agent"
+	"agents/oralboards/agent"
+	"agents/presentation/agent"
+	"agents/research/agent"
+	"agents/spreadsheet/agent"
+	"agents/travel/agent"
 )
 
 // RubricResult is the outcome of one local structural check.
@@ -23,13 +31,17 @@ func (t Trace) calledTools() []string {
 	return names
 }
 
-func (t Trace) firstCallArgs(name string) (map[string]any, bool) {
-	for _, s := range t.Steps {
+func firstCallArgs[T any](trace Trace, name string) (T, bool) {
+	var args T
+	for _, s := range trace.Steps {
 		if s.FunctionCall == name {
-			return s.FunctionCallArgs, true
+			if len(s.FunctionCallArgs) == 0 || json.Unmarshal(s.FunctionCallArgs, &args) != nil {
+				return args, false
+			}
+			return args, true
 		}
 	}
-	return nil, false
+	return args, false
 }
 
 func (t Trace) called(name string) bool {
@@ -50,34 +62,14 @@ func (t Trace) indexOfCall(name string) int {
 	return -1
 }
 
-// nonEmptyArgCount counts how many of the given keys hold a non-zero,
-// non-empty value in args — a loose stand-in for "the model actually
-// supplied this field" without asserting an exact type per key.
-func nonEmptyArgCount(args map[string]any, keys ...string) int {
-	n := 0
-	for _, k := range keys {
-		v, ok := args[k]
-		if !ok || v == nil {
-			continue
-		}
-		switch val := v.(type) {
-		case string:
-			if strings.TrimSpace(val) != "" {
-				n++
-			}
-		case []any:
-			if len(val) > 0 {
-				n++
-			}
-		case float64:
-			if val != 0 {
-				n++
-			}
-		default:
-			n++
+func trueCount(values ...bool) int {
+	count := 0
+	for _, value := range values {
+		if value {
+			count++
 		}
 	}
-	return n
+	return count
 }
 
 func textContainsAny(text string, needles ...string) bool {
@@ -114,8 +106,14 @@ func gradeRubric(agentName, rubricID, description string, trace Trace) RubricRes
 
 	// --- expense ---
 	case "expense_submits_details":
-		args, ok := trace.firstCallArgs("submit_expense")
-		n := nonEmptyArgCount(args, "amount", "submitter", "category", "description", "date")
+		args, ok := firstCallArgs[expense.SubmitExpenseArgs](trace, "submit_expense")
+		n := trueCount(
+			args.Amount != 0,
+			strings.TrimSpace(args.Submitter) != "",
+			strings.TrimSpace(args.Category) != "",
+			strings.TrimSpace(args.Description) != "",
+			strings.TrimSpace(args.Date) != "",
+		)
 		res.Pass = ok && n >= 4
 		res.Explanation = fmt.Sprintf("submit_expense called=%v, non-empty fields=%d/5", ok, n)
 	case "expense_reviews_high_value":
@@ -193,15 +191,14 @@ func gradeRubric(agentName, rubricID, description string, trace Trace) RubricRes
 
 	// --- presentation ---
 	case "presentation_sets_meta":
-		args, ok := trace.firstCallArgs("set_presentation_meta")
-		n := nonEmptyArgCount(args, "title", "theme")
+		args, ok := firstCallArgs[presentation.SetMetaArgs](trace, "set_presentation_meta")
+		n := trueCount(strings.TrimSpace(args.Title) != "", strings.TrimSpace(args.Theme) != "")
 		res.Pass = ok && n >= 1
 		res.Explanation = fmt.Sprintf("set_presentation_meta called=%v with %d/2 fields set", ok, n)
 	case "presentation_creates_title_slide_first":
-		args, ok := trace.firstCallArgs("create_slide")
-		slideType, _ := args["slide_type"].(string)
-		res.Pass = ok && strings.Contains(strings.ToLower(slideType), "title")
-		res.Explanation = fmt.Sprintf("first create_slide call had slide_type=%q", slideType)
+		args, ok := firstCallArgs[presentation.CreateSlideArgs](trace, "create_slide")
+		res.Pass = ok && strings.Contains(strings.ToLower(args.SlideType), "title")
+		res.Explanation = fmt.Sprintf("first create_slide call had slide_type=%q", args.SlideType)
 	case "presentation_slide_quality":
 		count := 0
 		for _, name := range trace.calledTools() {
@@ -218,8 +215,8 @@ func gradeRubric(agentName, rubricID, description string, trace Trace) RubricRes
 
 	// --- research ---
 	case "research_sets_query":
-		args, ok := trace.firstCallArgs("set_research_query")
-		n := nonEmptyArgCount(args, "title", "query")
+		args, ok := firstCallArgs[research.SetQueryArgs](trace, "set_research_query")
+		n := trueCount(strings.TrimSpace(args.Title) != "", strings.TrimSpace(args.Query) != "")
 		res.Pass = ok && n == 2
 		res.Explanation = fmt.Sprintf("set_research_query called=%v with %d/2 fields set", ok, n)
 	case "research_builds_sections":
@@ -231,10 +228,9 @@ func gradeRubric(agentName, rubricID, description string, trace Trace) RubricRes
 		res.Pass = added && !claims
 		res.Explanation = fmt.Sprintf("add_source called=%v, false live-access claim=%v", added, claims)
 	case "research_marks_ready":
-		args, ok := trace.firstCallArgs("mark_research_ready")
-		summary, _ := args["summary"].(string)
-		res.Pass = ok && strings.TrimSpace(summary) != ""
-		res.Explanation = fmt.Sprintf("mark_research_ready called=%v with summary set=%v", ok, strings.TrimSpace(summary) != "")
+		args, ok := firstCallArgs[research.ReadyArgs](trace, "mark_research_ready")
+		res.Pass = ok && strings.TrimSpace(args.Summary) != ""
+		res.Explanation = fmt.Sprintf("mark_research_ready called=%v with summary set=%v", ok, strings.TrimSpace(args.Summary) != "")
 
 	// --- resume ---
 	case "resume_grounded_in_resume":
@@ -252,19 +248,15 @@ func gradeRubric(agentName, rubricID, description string, trace Trace) RubricRes
 
 	// --- spreadsheet ---
 	case "spreadsheet_creates_sheet":
-		args, ok := trace.firstCallArgs("create_sheet")
-		rows, _ := args["rows"].([]any)
-		title, _ := args["title"].(string)
-		res.Pass = ok && strings.TrimSpace(title) != "" && len(rows) >= 2
-		res.Explanation = fmt.Sprintf("create_sheet called=%v, title set=%v, rows=%d", ok, strings.TrimSpace(title) != "", len(rows))
+		args, ok := firstCallArgs[spreadsheet.CreateSheetArgs](trace, "create_sheet")
+		res.Pass = ok && strings.TrimSpace(args.Title) != "" && len(args.Rows) >= 2
+		res.Explanation = fmt.Sprintf("create_sheet called=%v, title set=%v, rows=%d", ok, strings.TrimSpace(args.Title) != "", len(args.Rows))
 	case "spreadsheet_clean_values":
-		args, _ := trace.firstCallArgs("create_sheet")
-		rows, _ := args["rows"].([]any)
+		args, _ := firstCallArgs[spreadsheet.CreateSheetArgs](trace, "create_sheet")
 		hasFormula := false
-		for _, row := range rows {
-			cells, _ := row.([]any)
-			for _, c := range cells {
-				if s, ok := c.(string); ok && strings.HasPrefix(strings.TrimSpace(s), "=") {
+		for _, row := range args.Rows {
+			for _, cell := range row {
+				if strings.HasPrefix(strings.TrimSpace(cell), "=") {
 					hasFormula = true
 				}
 			}
@@ -280,8 +272,14 @@ func gradeRubric(agentName, rubricID, description string, trace Trace) RubricRes
 
 	// --- travel ---
 	case "travel_sets_trip_meta":
-		args, ok := trace.firstCallArgs("set_trip_meta")
-		n := nonEmptyArgCount(args, "destination", "start_date", "end_date", "travelers", "budget_usd")
+		args, ok := firstCallArgs[travel.SetTripMetaArgs](trace, "set_trip_meta")
+		n := trueCount(
+			strings.TrimSpace(args.Destination) != "",
+			strings.TrimSpace(args.StartDate) != "",
+			strings.TrimSpace(args.EndDate) != "",
+			args.Travelers != 0,
+			args.BudgetUSD != 0,
+		)
 		res.Pass = ok && n >= 4
 		res.Explanation = fmt.Sprintf("set_trip_meta called=%v with %d/5 fields set", ok, n)
 	case "travel_uses_live_data_or_discloses_limits":
@@ -292,11 +290,6 @@ func gradeRubric(agentName, rubricID, description string, trace Trace) RubricRes
 	case "travel_writes_itinerary_to_state":
 		res.Pass = trace.called("write_itinerary") || trace.called("add_day")
 		res.Explanation = "itinerary written via write_itinerary/add_day rather than pasted into chat"
-	case "travel_no_booking_without_approval":
-		booked := textContainsAny(text, "i've booked", "i have booked", "reservation confirmed", "charged your card")
-		res.Pass = !booked
-		res.Explanation = fmt.Sprintf("response claims a booking/charge=%v (must not, without explicit approval)", booked)
-
 	// --- wellness ---
 	// wellness/agent/instructions.md gates on Kroger before orchestration.
 	// When Kroger is disconnected up front, the correct behavior is a
@@ -346,17 +339,14 @@ func gradeRubric(agentName, rubricID, description string, trace Trace) RubricRes
 		res.Pass = ok
 		res.Explanation = fmt.Sprintf("set_loading_step=%d search_docs=%d read_doc=%d(optional) set_case=%d", loadingIdx, searchIdx, trace.indexOfCall("read_doc"), caseIdx)
 	case "oralboards_sets_case_with_sources":
-		args, ok := trace.firstCallArgs("set_case")
-		caseText, _ := args["case"].(string)
-		sources, _ := args["case_sources"].([]any)
-		res.Pass = ok && strings.TrimSpace(caseText) != "" && len(sources) > 0
-		res.Explanation = fmt.Sprintf("set_case called=%v, case text set=%v, case_sources=%d", ok, strings.TrimSpace(caseText) != "", len(sources))
+		args, ok := firstCallArgs[oralboards.SetCaseArgs](trace, "set_case")
+		res.Pass = ok && strings.TrimSpace(args.Case) != "" && len(args.CaseSources) > 0
+		res.Explanation = fmt.Sprintf("set_case called=%v, case text set=%v, case_sources=%d", ok, strings.TrimSpace(args.Case) != "", len(args.CaseSources))
 	case "oralboards_presenting_phase_only":
-		args, _ := trace.firstCallArgs("set_phase")
-		phase, _ := args["phase"].(string)
+		args, _ := firstCallArgs[oralboards.SetPhaseArgs](trace, "set_phase")
 		asked := trace.called("ask_probe")
-		res.Pass = phase == "presenting" && !asked
-		res.Explanation = fmt.Sprintf("set_phase phase=%q, ask_probe called=%v (must not be, yet)", phase, asked)
+		res.Pass = args.Phase == oralboards.PhasePresenting && !asked
+		res.Explanation = fmt.Sprintf("set_phase phase=%q, ask_probe called=%v (must not be, yet)", args.Phase, asked)
 	case "oralboards_no_improvised_clinical_claims":
 		caseSet := trace.called("set_case")
 		disclosed := textContainsAny(text, "don't have", "doesn't cover", "adjacent", "couldn't find")

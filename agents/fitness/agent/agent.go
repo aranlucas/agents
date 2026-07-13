@@ -3,11 +3,11 @@ package fitness
 import (
 	"agents/internal/common"
 	"agents/internal/fitnessdata"
-	"agents/internal/functiontool"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
-	adktool "google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool/functiontool"
 )
 
 type SearchArgs struct {
@@ -19,24 +19,32 @@ type SearchResult struct {
 	Results []common.SearchResult `json:"results"`
 }
 
-func New(m model.LLM, activities fitnessdata.Repository, search *common.BraveSearch, toolsets ...adktool.Toolset) (agent.Agent, error) {
+func New(m model.LLM, activities fitnessdata.Repository, search *common.BraveSearch, toolsets ...tool.Toolset) (agent.Agent, error) {
 	return newAgent(m, activities, search, llmagent.ModeChat, toolsets...)
 }
 
-func NewTask(m model.LLM, activities fitnessdata.Repository, search *common.BraveSearch, toolsets ...adktool.Toolset) (agent.Agent, error) {
+func NewTask(m model.LLM, activities fitnessdata.Repository, search *common.BraveSearch, toolsets ...tool.Toolset) (agent.Agent, error) {
 	return newAgent(m, activities, search, llmagent.ModeTask, toolsets...)
 }
 
-func newAgent(m model.LLM, activities fitnessdata.Repository, search *common.BraveSearch, mode llmagent.Mode, toolsets ...adktool.Toolset) (agent.Agent, error) {
+func newAgent(m model.LLM, activities fitnessdata.Repository, search *common.BraveSearch, mode llmagent.Mode, toolsets ...tool.Toolset) (agent.Agent, error) {
 	tools, err := staticTools(search)
 	if err != nil {
 		return nil, err
 	}
 	toolsets = append(toolsets, &activityToolset{repository: activities})
-	return llmagent.New(llmagent.Config{Name: AppName, Description: "Training plans with synced health activity context.", Instruction: Instruction, Model: m, Mode: mode, Tools: tools, Toolsets: toolsets})
+	config := llmagent.Config{Name: AppName, Description: "Training plans with synced health activity context.", Instruction: Instruction, Model: m, Mode: mode, Tools: tools, Toolsets: toolsets}
+	if mode == llmagent.ModeTask {
+		// Delegated task children return through finish_task. Advertising
+		// transfer_to_agent inside a dynamic task can make ADK attempt a nested
+		// workflow outside the task node.
+		config.DisallowTransferToParent = true
+		config.DisallowTransferToPeers = true
+	}
+	return llmagent.New(config)
 }
 
-func staticTools(search *common.BraveSearch) ([]adktool.Tool, error) {
+func staticTools(search *common.BraveSearch) ([]tool.Tool, error) {
 	getCurrentDateTool, err := functiontool.New(functiontool.Config{
 		Name:        "get_current_date",
 		Description: "Return the current UTC date.",
@@ -69,7 +77,7 @@ func staticTools(search *common.BraveSearch) ([]adktool.Tool, error) {
 		return nil, err
 	}
 
-	result := []adktool.Tool{
+	result := []tool.Tool{
 		getCurrentDateTool,
 		setObjectiveResearchTool,
 		setTrainingPlanTool,
@@ -96,7 +104,7 @@ func staticTools(search *common.BraveSearch) ([]adktool.Tool, error) {
 type activityToolset struct{ repository fitnessdata.Repository }
 
 func (*activityToolset) Name() string { return "fitness_activities" }
-func (s *activityToolset) Tools(agent.ReadonlyContext) ([]adktool.Tool, error) {
+func (s *activityToolset) Tools(agent.ReadonlyContext) ([]tool.Tool, error) {
 	if s.repository == nil {
 		return nil, nil
 	}
@@ -109,5 +117,5 @@ func (s *activityToolset) Tools(agent.ReadonlyContext) ([]adktool.Tool, error) {
 	if err != nil {
 		return nil, err
 	}
-	return []adktool.Tool{fetch}, nil
+	return []tool.Tool{fetch}, nil
 }
