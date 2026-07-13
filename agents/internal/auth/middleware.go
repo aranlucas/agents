@@ -66,18 +66,24 @@ func writeUnauthorized(w http.ResponseWriter) {
 	_ = json.NewEncoder(w).Encode(map[string]string{"detail": "Unauthorized"})
 }
 
-// CORS emits credentialed browser headers only for configured exact origins.
+// CORS emits credentialed browser headers for configured exact origins. A
+// wildcard policy reflects the request origin because browsers reject
+// Access-Control-Allow-Origin: * on credentialed requests.
 func CORS(origins []string, next http.Handler) http.Handler {
 	allowed := make(map[string]bool, len(origins))
+	allowAll := false
 	for _, origin := range origins {
-		if origin = strings.TrimSpace(origin); origin != "" && origin != "*" {
+		if origin = strings.TrimSpace(origin); origin == "*" {
+			allowAll = true
+		} else if origin != "" {
 			allowed[origin] = true
 		}
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		w.Header().Add("Vary", "Origin")
-		if origin != "" && allowed[origin] {
+		originAllowed := origin != "" && (allowAll || allowed[origin])
+		if originAllowed {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
@@ -85,7 +91,7 @@ func CORS(origins []string, next http.Handler) http.Handler {
 			w.Header().Set("Access-Control-Max-Age", "600")
 		}
 		if r.Method == http.MethodOptions {
-			if origin == "" || !allowed[origin] {
+			if !originAllowed {
 				http.Error(w, "origin not allowed", http.StatusForbidden)
 				return
 			}

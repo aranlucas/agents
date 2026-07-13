@@ -146,6 +146,28 @@ func TestCORSAllowsOnlyConfiguredOrigin(t *testing.T) {
 	}
 }
 
+func TestCORSWildcardReflectsAnyOriginForCredentialedRequests(t *testing.T) {
+	handler := CORS([]string{"*"}, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) }))
+
+	for _, method := range []string{http.MethodOptions, http.MethodPost} {
+		request := httptest.NewRequest(method, "/grocery/agui", nil)
+		request.Header.Set("Origin", "https://agents-lucas.vercel.app")
+		recorder := httptest.NewRecorder()
+
+		handler.ServeHTTP(recorder, request)
+
+		if recorder.Code != http.StatusNoContent {
+			t.Fatalf("%s status = %d", method, recorder.Code)
+		}
+		if got := recorder.Header().Get("Access-Control-Allow-Origin"); got != "https://agents-lucas.vercel.app" {
+			t.Fatalf("%s allow origin = %q", method, got)
+		}
+		if got := recorder.Header().Get("Access-Control-Allow-Credentials"); got != "true" {
+			t.Fatalf("%s allow credentials = %q", method, got)
+		}
+	}
+}
+
 func jwksDocument(kid string, key *rsa.PublicKey) map[string]any {
 	exponent := big.NewInt(int64(key.E)).Bytes()
 	return map[string]any{"keys": []any{map[string]any{"kty": "RSA", "kid": kid, "use": "sig", "alg": "RS256", "n": base64.RawURLEncoding.EncodeToString(key.N.Bytes()), "e": base64.RawURLEncoding.EncodeToString(exponent)}}}
