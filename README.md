@@ -15,6 +15,7 @@ apps/web    -> CopilotKit runtime -> Go gateway /<agent>/agui
 apps/mobile -> @ag-ui/client     -> Go gateway /<agent>/agui
 Telegram    -> Go long poller    -> ADK-Go specialist agents
                                 -> D1 sessions + R2 artifacts
+Go gateway  -> MCP client        -> Cloudflare Kroger shopping Worker
 ```
 
 State is the source of truth: agents write typed state through tools and the
@@ -51,7 +52,8 @@ bash agents/scripts/smoke-telegram.sh agents-telegram-go:local
 
 Deployment uses [railway.toml](railway.toml) for the gateway and
 [agents/railway.telegram.toml](agents/railway.telegram.toml) for the worker.
-The web deploys to Vercel and mobile through EAS.
+The web deploys to Vercel, mobile through EAS, and the Kroger shopping MCP from
+`apps/ai-shopping-mcp` to the existing `ai-meal-planner-mcp` Cloudflare Worker.
 
 Production acceptance requires an authenticated Clerk session token and both
 deployed service URLs. It exercises every registered route, public and
