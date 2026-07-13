@@ -74,3 +74,4 @@ artifacts/
 .google-credentials.json
 # GEPA working directory (created by agents-cli eval optimize)
 **/.tmp/
+bin/
