@@ -11,6 +11,7 @@ import (
 	"agents/internal/agentruntime"
 	"agents/internal/auth"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
+	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/encoding/sse"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/runner"
@@ -93,7 +94,7 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), entry.Timeout)
 	defer cancel()
 
-	sess, err := h.restoreSession(ctx, entry, userID, input.ThreadID)
+	sess, err := h.restoreSession(ctx, entry, userID, input.ThreadID, sessionNameFromInput(input, entry.Route))
 	if err != nil {
 		log.Printf("run: session restore failed: agent=%s thread=%s user=%s err=%v", entry.AppName, input.ThreadID, userID, err)
 		writeJSONError(w, http.StatusInternalServerError, "session_unavailable")
@@ -224,17 +225,51 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // missing session from a backend failure. Unlike the runner's internal
 // getOrCreateSession, Create here must seed entry.StateDefaults, so this
 // can't just rely on runner.Config.AutoCreateSession.
-func (h *ADKHandler) restoreSession(ctx context.Context, entry agentruntime.Entry, userID, threadID string) (session.Session, error) {
+func (h *ADKHandler) restoreSession(ctx context.Context, entry agentruntime.Entry, userID, threadID, name string) (session.Session, error) {
 	response, err := h.sessions.Get(ctx, &session.GetRequest{AppName: entry.AppName, UserID: userID, SessionID: threadID})
 	if err == nil {
 		return response.Session, nil
 	}
-	created, err := h.sessions.Create(ctx, &session.CreateRequest{AppName: entry.AppName, UserID: userID, SessionID: threadID, State: entry.StateDefaults()})
+	state := entry.StateDefaults()
+	if state == nil {
+		state = make(map[string]any)
+	}
+	state[sessionNameStateKey] = name
+	created, err := h.sessions.Create(ctx, &session.CreateRequest{AppName: entry.AppName, UserID: userID, SessionID: threadID, State: state})
 	if err != nil {
 		log.Printf("restoreSession: create failed: app=%s user=%s thread=%s err=%v", entry.AppName, userID, threadID, err)
 		return nil, err
 	}
 	return created.Session, nil
+}
+
+func sessionNameFromInput(input *types.RunAgentInput, route string) string {
+	for index := len(input.Messages) - 1; index >= 0; index-- {
+		message := input.Messages[index]
+		if message.Role != types.RoleUser {
+			continue
+		}
+		text, ok := message.ContentString()
+		if !ok {
+			continue
+		}
+		name := strings.Join(strings.Fields(text), " ")
+		if name == "" || strings.EqualFold(name, "ready") {
+			break
+		}
+		const maximumRunes = 64
+		runes := []rune(name)
+		if len(runes) > maximumRunes {
+			return strings.TrimSpace(string(runes[:maximumRunes-1])) + "…"
+		}
+		return name
+	}
+
+	name := strings.ReplaceAll(strings.TrimSpace(route), "-", " ")
+	if name == "" {
+		return "New session"
+	}
+	return strings.ToUpper(name[:1]) + name[1:] + " session"
 }
 
 // effectiveUserID returns the D1 session-key user ID. The verified Clerk

@@ -43,6 +43,7 @@ vi.mock("@/components/chat/agents/suggestions", () => ({
 }));
 
 vi.mock("@/components/chat/app-sidebar", () => ({ AppSidebar: () => null }));
+vi.mock("@/components/chat/console-top-bar", () => ({ ConsoleTopBar: () => null }));
 vi.mock("@/components/chat/artifact-panel", () => ({ ArtifactPanel: () => <div>GENERIC</div> }));
 vi.mock("@/components/chat/chat-surface", () => ({ ChatSurface: () => <div>CHAT</div> }));
 vi.mock("@/components/chat/use-new-thread", () => ({ useNewThread: () => vi.fn() }));

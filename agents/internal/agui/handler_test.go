@@ -19,6 +19,7 @@ import (
 	"agents/internal/agentruntime"
 	"agents/internal/auth"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
+	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
@@ -73,6 +74,54 @@ func TestHandlerRejectsMalformedInput(t *testing.T) {
 				t.Fatalf("stream should not have started: %s", rr.Body.String())
 			}
 		})
+	}
+}
+
+func TestSessionNameFromInput(t *testing.T) {
+	cases := map[string]struct {
+		input *types.RunAgentInput
+		route string
+		want  string
+	}{
+		"first prompt": {
+			input: &types.RunAgentInput{Messages: []types.Message{{Role: types.RoleUser, Content: "  Plan   a trip to Japan  "}}},
+			route: "travel", want: "Plan a trip to Japan",
+		},
+		"synthetic ready": {
+			input: &types.RunAgentInput{Messages: []types.Message{{Role: types.RoleUser, Content: "ready"}}},
+			route: "oral-boards", want: "Oral boards session",
+		},
+		"no user prompt": {
+			input: &types.RunAgentInput{}, route: "travel", want: "Travel session",
+		},
+		"long prompt": {
+			input: &types.RunAgentInput{Messages: []types.Message{{Role: types.RoleUser, Content: strings.Repeat("a", 70)}}},
+			route: "travel", want: strings.Repeat("a", 63) + "…",
+		},
+	}
+	for name, test := range cases {
+		t.Run(name, func(t *testing.T) {
+			if got := sessionNameFromInput(test.input, test.route); got != test.want {
+				t.Fatalf("sessionNameFromInput() = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestRestoreSessionPersistsNameInSessionState(t *testing.T) {
+	sessions := newFakeSessionService()
+	handler := &ADKHandler{sessions: sessions}
+	entry := agentruntime.Entry{
+		Route: "travel", AppName: "travel_agent",
+		StateDefaults: func() map[string]any { return map[string]any{"itinerary": ""} },
+	}
+	created, err := handler.restoreSession(t.Context(), entry, "user-1", "thread-1", "Plan Japan")
+	if err != nil {
+		t.Fatal(err)
+	}
+	name, err := created.State().Get(sessionNameStateKey)
+	if err != nil || name != "Plan Japan" {
+		t.Fatalf("session name = %#v, err = %v", name, err)
 	}
 }
 

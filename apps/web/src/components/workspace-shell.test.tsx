@@ -17,6 +17,7 @@ function StoredPanelHarness() {
   const panel = useArtifactPanel(HYDRATION_AGENT_ID);
   return (
     <WorkspaceShell
+      topBar={<div>TOP BAR</div>}
       hasArtifact
       panelState={panel.state}
       chat={<div data-testid="chat">CHAT_MARKER</div>}
@@ -76,6 +77,7 @@ describe("WorkspaceShell layout invariants", () => {
   it("gives the chat column min-h-0 so the conversation can scroll on mobile", () => {
     const { container } = render(
       <WorkspaceShell
+        topBar={<div>TOP BAR</div>}
         hasArtifact={false}
         panelState="closed"
         chat={<span>CHAT_MARKER</span>}
@@ -97,6 +99,7 @@ describe("WorkspaceShell layout invariants", () => {
   it("bounds the shell height and clips overflow at the root", () => {
     const { container } = render(
       <WorkspaceShell
+        topBar={<div>TOP BAR</div>}
         hasArtifact={false}
         panelState="closed"
         chat={<span>CHAT_MARKER</span>}

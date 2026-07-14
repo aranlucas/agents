@@ -8,6 +8,7 @@ import { getAgentConfig } from "./chat/agents/registry";
 export function ContractExample() {
   return (
     <WorkspaceShell
+      topBar={<div>TOP BAR</div>}
       hasArtifact
       panelState="split"
       chat={

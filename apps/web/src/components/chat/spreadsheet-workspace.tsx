@@ -9,6 +9,7 @@ import { SidebarInset, SidebarProvider } from "@agents/ui";
 import { Streamdown } from "@agents/ui";
 import { getAgentConfig } from "@/components/chat/agents/registry";
 import { AppSidebar } from "@/components/chat/app-sidebar";
+import { ConsoleTopBar } from "@/components/chat/console-top-bar";
 import { useNewThread } from "@/components/chat/use-new-thread";
 import { cssVars } from "@/lib/css";
 
@@ -108,7 +109,7 @@ function SpreadsheetTable({ rows }: { rows: string[][] }) {
   );
 }
 
-export function SpreadsheetWorkspace({ threadId: _threadId }: { threadId: string }) {
+export function SpreadsheetWorkspace({ threadId }: { threadId: string }) {
   const config = getAgentConfig(AGENT_ID);
   const { agent } = useAgent({
     agentId: AGENT_ID,
@@ -142,9 +143,15 @@ export function SpreadsheetWorkspace({ threadId: _threadId }: { threadId: string
           chatInputPlaceholder: config.placeholder,
         }}
       />
-      <AppSidebar activePath={`/console/${AGENT_ID}`} onNewThread={startNewThread} />
+      <AppSidebar
+        activePath={`/console/${AGENT_ID}`}
+        agentId={AGENT_ID}
+        activeThreadId={threadId}
+        onNewThread={startNewThread}
+      />
       <SidebarInset className="min-h-0 overflow-hidden">
-        <div className="bg-background flex h-full flex-col">
+        <ConsoleTopBar agentId={AGENT_ID} threadId={threadId} isRunning={agent?.isRunning} />
+        <div className="bg-background flex min-h-0 flex-1 flex-col">
           {/* Sheet tabs */}
           <div className="flex shrink-0 items-end border-b px-4 pt-2">
             {sheets.length === 0 ? (

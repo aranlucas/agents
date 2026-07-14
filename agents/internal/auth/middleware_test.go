@@ -40,6 +40,32 @@ func TestPublicRouteUsesAnonymousIdentity(t *testing.T) {
 	}
 }
 
+func TestPublicRouteUsesVerifiedIdentityWhenBearerTokenIsPresent(t *testing.T) {
+	verifier := tokenVerifierFunc(func(context.Context, string) (Identity, error) {
+		return Identity{UserID: "clerk-user"}, nil
+	})
+	handler := RequireIdentity(map[string]bool{"/resume/agui": true}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		identity, ok := FromContext(r.Context())
+		if !ok || identity.Public || identity.UserID != "clerk-user" {
+			t.Fatalf("identity = %#v, %v", identity, ok)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}), verifier)
+	request := httptest.NewRequest(http.MethodPost, "/resume/agui", nil)
+	request.Header.Set("Authorization", "Bearer session-token")
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("status = %d", recorder.Code)
+	}
+}
+
+type tokenVerifierFunc func(context.Context, string) (Identity, error)
+
+func (f tokenVerifierFunc) Verify(ctx context.Context, token string) (Identity, error) {
+	return f(ctx, token)
+}
+
 func TestVerifiedSubjectOverridesSpoofedHeaderAndCachesJWKS(t *testing.T) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {

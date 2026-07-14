@@ -52,6 +52,10 @@ vi.mock("@/components/chat/app-sidebar", () => ({
   AppSidebar: () => <div data-testid="app-sidebar" />,
 }));
 
+vi.mock("@/components/chat/console-top-bar", () => ({
+  ConsoleTopBar: () => <div data-testid="console-top-bar" />,
+}));
+
 vi.mock("@/components/workspace-shell", () => ({
   useArtifactPanel: () => ({ state: "closed", dispatch: vi.fn() }),
 }));
@@ -93,7 +97,7 @@ describe("OralBoardsWorkspace", () => {
   });
 
   it("renders the start page when there is no case yet", () => {
-    render(<OralBoardsWorkspace />);
+    render(<OralBoardsWorkspace threadId="thread-1" />);
 
     expect(screen.getByRole("button", { name: "Start a case" })).toBeInTheDocument();
     expect(screen.queryByTestId("oral-boards-panel")).not.toBeInTheDocument();
@@ -102,7 +106,7 @@ describe("OralBoardsWorkspace", () => {
   it("renders the exam panel once the agent state has a case", () => {
     copilotMocks.agent.state = { case: "A case vignette.", status: "presenting" };
 
-    render(<OralBoardsWorkspace />);
+    render(<OralBoardsWorkspace threadId="thread-1" />);
 
     expect(screen.getByTestId("oral-boards-panel")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Start a case" })).not.toBeInTheDocument();
@@ -113,7 +117,7 @@ describe("OralBoardsWorkspace", () => {
     panelMocks.shouldThrow = true;
     vi.spyOn(console, "error").mockImplementation(() => {});
 
-    render(<OralBoardsWorkspace />);
+    render(<OralBoardsWorkspace threadId="thread-1" />);
 
     expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
     expect(screen.queryByTestId("oral-boards-panel")).not.toBeInTheDocument();
@@ -126,7 +130,7 @@ describe("OralBoardsWorkspace", () => {
     panelMocks.shouldThrow = true;
     vi.spyOn(console, "error").mockImplementation(() => {});
 
-    render(<OralBoardsWorkspace />);
+    render(<OralBoardsWorkspace threadId="thread-1" />);
     await userEvent.click(screen.getByRole("button", { name: /start a new case/i }));
 
     expect(newThreadMocks.startNewThread).toHaveBeenCalledOnce();
@@ -137,7 +141,7 @@ describe("OralBoardsWorkspace", () => {
   it("shows a retry banner when starting a case rejects, and Retry re-fires the same action", async () => {
     copilotMocks.runAgent.mockReset().mockRejectedValueOnce(new Error("agent unreachable"));
 
-    render(<OralBoardsWorkspace />);
+    render(<OralBoardsWorkspace threadId="thread-1" />);
     await userEvent.click(screen.getByRole("button", { name: "Start a case" }));
 
     await waitFor(() => {

@@ -29,6 +29,7 @@ vi.mock("@agents/ui", () => ({
   ScrollArea: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   SidebarInset: ({ children }: { children: ReactNode }) => <main>{children}</main>,
   SidebarProvider: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  SidebarTrigger: () => <button type="button">Toggle sidebar</button>,
   Streamdown: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
@@ -36,6 +37,7 @@ vi.mock("./agents/registry", () => ({
   getAgentConfig: () => ({ colorVar: "--presentation", placeholder: "Build slides" }),
 }));
 vi.mock("./app-sidebar", () => ({ AppSidebar: () => null }));
+vi.mock("./console-top-bar", () => ({ ConsoleTopBar: () => null }));
 vi.mock("./use-new-thread", () => ({ useNewThread: () => vi.fn() }));
 vi.mock("@/lib/css", () => ({ cssVars: () => undefined }));
 

@@ -9,6 +9,7 @@ import { SidebarInset, SidebarProvider } from "@agents/ui";
 import { Streamdown } from "@agents/ui";
 import { getAgentConfig } from "@/components/chat/agents/registry";
 import { AppSidebar } from "@/components/chat/app-sidebar";
+import { ConsoleTopBar } from "@/components/chat/console-top-bar";
 import { useNewThread } from "@/components/chat/use-new-thread";
 import { cssVars } from "@/lib/css";
 
@@ -107,7 +108,7 @@ function SlidePreview({
   );
 }
 
-export function PresentationWorkspace({ threadId: _threadId }: { threadId: string }) {
+export function PresentationWorkspace({ threadId }: { threadId: string }) {
   const config = getAgentConfig(AGENT_ID);
   const { agent } = useAgent({
     agentId: AGENT_ID,
@@ -142,9 +143,15 @@ export function PresentationWorkspace({ threadId: _threadId }: { threadId: strin
           chatInputPlaceholder: config.placeholder,
         }}
       />
-      <AppSidebar activePath={`/console/${AGENT_ID}`} onNewThread={startNewThread} />
+      <AppSidebar
+        activePath={`/console/${AGENT_ID}`}
+        agentId={AGENT_ID}
+        activeThreadId={threadId}
+        onNewThread={startNewThread}
+      />
       <SidebarInset className="min-h-0 overflow-hidden">
-        <div className="bg-background flex h-full min-h-0">
+        <ConsoleTopBar agentId={AGENT_ID} threadId={threadId} isRunning={agent?.isRunning} />
+        <div className="bg-background flex min-h-0 flex-1">
           {/* Slide list sidebar */}
           <aside className="flex w-48 shrink-0 flex-col border-r">
             {/* Deck title */}

@@ -63,18 +63,16 @@ func requestStateOverlay(r *http.Request, route string) map[string]any {
 	return overlay
 }
 
-// persistentSnapshot copies session state excluding temp: keys for
-// STATE_SNAPSHOT payloads and as the JSON Patch base line. Defense in
-// depth: the production SessionService already excludes temp: keys from
-// persisted/returned state, but this guards against any session.Service
-// implementation (including test doubles) that does not.
+// persistentSnapshot copies public session state for STATE_SNAPSHOT payloads
+// and as the JSON Patch base line. Invocation-local temp: keys and the
+// sidebar-only session name are not part of the agent's client state document.
 func persistentSnapshot(state session.ReadonlyState) (stateDocument, error) {
 	snapshot := make(stateDocument)
 	if state == nil {
 		return snapshot, nil
 	}
 	for key, value := range state.All() {
-		if strings.HasPrefix(key, session.KeyPrefixTemp) {
+		if strings.HasPrefix(key, session.KeyPrefixTemp) || key == sessionNameStateKey {
 			continue
 		}
 		encoded, err := json.Marshal(value)
@@ -106,7 +104,7 @@ func statePatch(current stateDocument, delta map[string]any) ([]events.JSONPatch
 	}
 	changed := false
 	for key, value := range delta {
-		if strings.HasPrefix(key, session.KeyPrefixTemp) {
+		if strings.HasPrefix(key, session.KeyPrefixTemp) || key == sessionNameStateKey {
 			continue
 		}
 		encoded, err := json.Marshal(value)

@@ -97,6 +97,7 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 	}
 
 	stateHandler := agui.StateHandler(deps.Registry, deps.Sessions)
+	sessionsHandler := agui.SessionsHandler(deps.Registry, deps.Sessions)
 
 	mux := http.NewServeMux()
 	publicRoutes := map[string]bool{"/health": true, "/live": true, "/ready": true}
@@ -109,6 +110,7 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 		}
 		mux.Handle("POST "+base+"/agui", handler)
 		mux.Handle("POST "+base+"/agents/state", stateHandler)
+		mux.Handle("GET "+base+"/agents/sessions", sessionsHandler)
 		mux.HandleFunc("GET "+base+"/agui/capabilities", capabilitiesHandler)
 		mux.HandleFunc("GET "+base+"/health", agentHealthHandler(entry))
 

@@ -11,6 +11,7 @@ import { AgentSuggestions } from "@/components/chat/agents/suggestions";
 import { ChatSurface } from "@/components/chat/chat-surface";
 import { ArtifactPanel } from "@/components/chat/artifact-panel";
 import { AppSidebar } from "@/components/chat/app-sidebar";
+import { ConsoleTopBar } from "@/components/chat/console-top-bar";
 import { WorkspaceShell, useArtifactPanel } from "@/components/workspace-shell";
 import { selectArtifact } from "@/components/chat/artifact";
 import { cssVars } from "@/lib/css";
@@ -28,7 +29,10 @@ export function AgentWorkspace({ agentId, threadId }: { agentId: AgentId; thread
   const router = useRouter();
   const config = getAgentConfig(agentId);
   const { state, dispatch } = useArtifactPanel(agentId);
-  const { agent } = useAgent({ agentId, updates: [UseAgentUpdate.OnStateChanged] });
+  const { agent } = useAgent({
+    agentId,
+    updates: [UseAgentUpdate.OnStateChanged, UseAgentUpdate.OnRunStatusChanged],
+  });
   // CopilotKit agent state is intentionally dynamic; artifact selection validates
   // the fields it needs for the active agent.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
@@ -45,9 +49,17 @@ export function AgentWorkspace({ agentId, threadId }: { agentId: AgentId; thread
     >
       <AgentExtensionSlot agentId={agentId} />
       <AgentSuggestions config={config} />
-      <AppSidebar activePath={`/console/${agentId}`} onNewThread={startNewThread} />
+      <AppSidebar
+        activePath={`/console/${agentId}`}
+        agentId={agentId}
+        activeThreadId={threadId}
+        onNewThread={startNewThread}
+      />
       <SidebarInset className="min-h-0 overflow-hidden">
         <WorkspaceShell
+          topBar={
+            <ConsoleTopBar agentId={agentId} threadId={threadId} isRunning={agent?.isRunning} />
+          }
           hasArtifact={Boolean(artifact)}
           panelState={state}
           chat={

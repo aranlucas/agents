@@ -2,7 +2,7 @@
 
 import { useAuth } from "@clerk/nextjs";
 import { HttpAgent } from "@ag-ui/client";
-import { CopilotKit } from "@copilotkit/react-core/v2";
+import { CopilotKit, type CopilotKitProps } from "@copilotkit/react-core/v2";
 import { useQuery } from "@tanstack/react-query";
 import { type ReactNode, useCallback, useMemo } from "react";
 
@@ -18,6 +18,15 @@ type ConsoleSessionProps = {
   children: ReactNode;
 };
 
+type CopilotKitErrorEvent = Parameters<NonNullable<CopilotKitProps["onError"]>>[0];
+
+export function reportCopilotKitError(event: CopilotKitErrorEvent) {
+  const error: unknown = event.error;
+  if (error instanceof Error && error.name === "AbortError") return;
+
+  console.error("[CopilotKit] Error:", error, event.context);
+}
+
 function OfflineConsoleSession({ agent, thread, children }: ConsoleSessionProps) {
   return (
     <CopilotKit
@@ -26,6 +35,7 @@ function OfflineConsoleSession({ agent, thread, children }: ConsoleSessionProps)
       threadId={thread}
       useSingleEndpoint={false}
       enableInspector={process.env.NODE_ENV !== "production"}
+      onError={reportCopilotKitError}
     >
       {children}
     </CopilotKit>
@@ -58,10 +68,10 @@ function DirectConsoleSession({ agent: agentId, thread, children }: ConsoleSessi
   const authenticatedFetch = useCallback(
     async (url: string, init: RequestInit = {}) => {
       const headers = new Headers(init.headers);
-      const token = await getToken();
+      const currentToken = await getToken();
 
-      if (token) {
-        headers.set("Authorization", `Bearer ${token}`);
+      if (currentToken) {
+        headers.set("Authorization", `Bearer ${currentToken}`);
       } else if (agentId !== "resume") {
         throw new Error("A signed-in session is required to connect to this agent.");
       } else {
@@ -98,6 +108,7 @@ function DirectConsoleSession({ agent: agentId, thread, children }: ConsoleSessi
       agent={agentId}
       threadId={thread}
       enableInspector={process.env.NODE_ENV !== "production"}
+      onError={reportCopilotKitError}
     >
       {children}
     </CopilotKit>

@@ -2,7 +2,6 @@
 
 import { useCallback, useSyncExternalStore, type ReactNode } from "react";
 import { cn } from "@agents/ui/lib/utils";
-import { SidebarTrigger } from "@agents/ui";
 
 export type { PanelState, PanelAction } from "./workspace-shell-utils";
 import type { PanelState, PanelAction } from "./workspace-shell-utils";
@@ -56,11 +55,13 @@ export function useArtifactPanel(agentId: string) {
 }
 
 export function WorkspaceShell({
+  topBar,
   chat,
   artifact,
   hasArtifact,
   panelState,
 }: {
+  topBar: ReactNode;
   chat: ReactNode;
   artifact: ReactNode;
   hasArtifact: boolean;
@@ -70,12 +71,9 @@ export function WorkspaceShell({
   return (
     // Height comes from the parent SidebarInset; overflow-hidden clips panels.
     <div className="flex h-full flex-col overflow-hidden md:flex-row">
-      {/* Chat column: mobile trigger bar on top, chat content below */}
+      {/* Chat column: sidebar trigger bar on top, chat content below */}
       <div className={cn("flex min-h-0 min-w-0 flex-1 flex-col", open && "max-md:hidden")}>
-        {/* Mobile-only top bar with sidebar trigger */}
-        <div className="flex shrink-0 items-center border-b px-2 py-1.5 md:hidden">
-          <SidebarTrigger />
-        </div>
+        {topBar}
         {chat}
       </div>
       {hasArtifact && (

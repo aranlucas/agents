@@ -13,13 +13,13 @@ import {
   Button,
   SidebarInset,
   SidebarProvider,
-  SidebarTrigger,
   Spinner,
 } from "@agents/ui";
 import { getAgentConfig } from "@/components/chat/agents/registry";
 import { useNewThread } from "@/components/chat/use-new-thread";
 import { AgentExtensionSlot } from "@/components/chat/agents/extensions";
 import { AppSidebar } from "@/components/chat/app-sidebar";
+import { ConsoleTopBar } from "@/components/chat/console-top-bar";
 import { OralBoardsErrorBoundary } from "@/components/chat/oral-boards/error-boundary";
 import { OralBoardsPanel } from "@/components/chat/oral-boards/oral-boards-panel";
 import {
@@ -149,7 +149,7 @@ function OralBoardsStartPage({
   );
 }
 
-function OralBoardsWorkspaceContent() {
+function OralBoardsWorkspaceContent({ threadId }: { threadId: string }) {
   const config = getAgentConfig(AGENT_ID);
   const { pendingInputKind, respondToPendingInput } = useOralBoardsQuestion();
   const { dispatch } = useArtifactPanel(AGENT_ID);
@@ -232,12 +232,15 @@ function OralBoardsWorkspaceContent() {
           chatInputPlaceholder: config.placeholder,
         }}
       />
-      <AppSidebar activePath={`/console/${AGENT_ID}`} onNewThread={startNewThread} />
+      <AppSidebar
+        activePath={`/console/${AGENT_ID}`}
+        agentId={AGENT_ID}
+        activeThreadId={threadId}
+        onNewThread={startNewThread}
+      />
       <SidebarInset className="min-h-0 overflow-hidden">
         <div className="flex h-full flex-col overflow-hidden">
-          <div className="flex shrink-0 items-center gap-3 border-b px-2 py-1.5 md:hidden">
-            <SidebarTrigger />
-          </div>
+          <ConsoleTopBar agentId={AGENT_ID} threadId={threadId} isRunning={isRunning} />
           {runError && (
             <Alert variant="destructive" className="m-2 shrink-0">
               <AlertCircleIcon />
@@ -280,10 +283,10 @@ function OralBoardsWorkspaceContent() {
   );
 }
 
-export function OralBoardsWorkspace() {
+export function OralBoardsWorkspace({ threadId }: { threadId: string }) {
   return (
     <OralBoardsQuestionProvider>
-      <OralBoardsWorkspaceContent />
+      <OralBoardsWorkspaceContent threadId={threadId} />
     </OralBoardsQuestionProvider>
   );
 }

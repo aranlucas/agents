@@ -92,4 +92,40 @@ describe("ConsoleSession direct AG-UI connection", () => {
     expect(agents.travel.config).not.toHaveProperty("initialMessages");
     expect(agents.travel.config).not.toHaveProperty("initialState");
   });
+
+  it("ignores expected abort errors but reports real CopilotKit failures", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ConsoleSession agent="travel" thread="thread-123">
+          <span>Conversation ready</span>
+        </ConsoleSession>
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("Conversation ready")).toBeInTheDocument();
+    const onError = mocks.copilotProps?.onError as (event: {
+      error: Error;
+      context: Record<string, unknown>;
+    }) => void;
+    const abortError = new Error("BodyStreamBuffer was aborted");
+    abortError.name = "AbortError";
+
+    onError({ error: abortError, context: {} });
+    expect(consoleError).not.toHaveBeenCalled();
+
+    const realError = new Error("connection failed");
+    onError({ error: realError, context: { source: "network" } });
+    expect(consoleError).toHaveBeenCalledWith(
+      "[CopilotKit] Error:",
+      realError,
+      expect.objectContaining({ source: "network" }),
+    );
+
+    consoleError.mockRestore();
+  });
 });

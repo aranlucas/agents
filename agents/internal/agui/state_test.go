@@ -75,9 +75,9 @@ func (s testState) All() iter.Seq2[string, any] {
 	}
 }
 
-func TestPersistentSnapshotValidatesValuesAndOmitsTypedNil(t *testing.T) {
+func TestPersistentSnapshotValidatesValuesAndOmitsInternalState(t *testing.T) {
 	var deleted *string
-	snapshot, err := persistentSnapshot(testState{"present": "value", "deleted": deleted})
+	snapshot, err := persistentSnapshot(testState{"present": "value", "deleted": deleted, sessionNameStateKey: "Plan Japan"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,6 +86,9 @@ func TestPersistentSnapshotValidatesValuesAndOmitsTypedNil(t *testing.T) {
 	}
 	if _, ok := snapshot["deleted"]; ok {
 		t.Fatalf("typed nil leaked into snapshot: %#v", snapshot)
+	}
+	if _, ok := snapshot[sessionNameStateKey]; ok {
+		t.Fatalf("session name leaked into snapshot: %#v", snapshot)
 	}
 	if _, err := persistentSnapshot(testState{"invalid": make(chan int)}); err == nil {
 		t.Fatal("non-JSON state value was accepted")

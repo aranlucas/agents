@@ -7,13 +7,14 @@ import type { ExpenseState } from "@agents/types";
 import { SidebarInset, SidebarProvider } from "@agents/ui";
 import { getAgentConfig } from "@/components/chat/agents/registry";
 import { AppSidebar } from "@/components/chat/app-sidebar";
+import { ConsoleTopBar } from "@/components/chat/console-top-bar";
 import { ExpenseDesk } from "@/components/chat/expense/expense-desk";
 import { useNewThread } from "@/components/chat/use-new-thread";
 import { cssVars } from "@/lib/css";
 
 const AGENT_ID = "expense" as const;
 
-export function ExpenseWorkspace() {
+export function ExpenseWorkspace({ threadId }: { threadId: string }) {
   const config = getAgentConfig(AGENT_ID);
   const { agent } = useAgent({
     agentId: AGENT_ID,
@@ -55,14 +56,22 @@ export function ExpenseWorkspace() {
           chatInputPlaceholder: config.placeholder,
         }}
       />
-      <AppSidebar activePath={`/console/${AGENT_ID}`} onNewThread={startNewThread} />
+      <AppSidebar
+        activePath={`/console/${AGENT_ID}`}
+        agentId={AGENT_ID}
+        activeThreadId={threadId}
+        onNewThread={startNewThread}
+      />
       <SidebarInset className="min-h-0 overflow-hidden">
-        <ExpenseDesk
-          state={expenseState}
-          isRunning={agent?.isRunning ?? false}
-          onDecision={handleDecision}
-          onPrompt={sendPrompt}
-        />
+        <ConsoleTopBar agentId={AGENT_ID} threadId={threadId} isRunning={agent?.isRunning} />
+        <div className="min-h-0 flex-1">
+          <ExpenseDesk
+            state={expenseState}
+            isRunning={agent?.isRunning ?? false}
+            onDecision={handleDecision}
+            onPrompt={sendPrompt}
+          />
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );
