@@ -59,7 +59,7 @@ The web deploys to Vercel, mobile through EAS, and the Kroger shopping MCP from
 Both Railway services run the same idempotent `/app/migrate` binary before
 starting, expose process-only `/live`, and use schema/D1/R2-aware `/ready` for
 deployment health. Set `APP_ENV=production` on both services. The gateway also
-requires all `CF_*` values, exact HTTPS `ALLOWED_ORIGINS`, `CLERK_JWKS_URL`,
+requires all `CF_*` values, `ALLOWED_ORIGINS` (including `*` for open CORS),
 `CLERK_ISSUER`, and the OpenRouter, Groq, NVIDIA NIM, Mistral, and Gemini keys.
 It also requires `GOOGLE_APPLICATION_CREDENTIALS_JSON` for the advertised
 Google Trends surface.

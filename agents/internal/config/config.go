@@ -309,9 +309,6 @@ func loadOrigins(raw string, environment Environment) ([]string, error) {
 	for value := range strings.SplitSeq(raw, ",") {
 		origin := strings.TrimSpace(value)
 		if origin == "*" {
-			if environment.IsProduction() {
-				return nil, errors.New("ALLOWED_ORIGINS cannot contain a wildcard in production")
-			}
 			return []string{"*"}, nil
 		}
 		parsed, err := url.Parse(origin)

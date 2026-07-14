@@ -92,7 +92,6 @@ func TestLoadProductionFailsClosed(t *testing.T) {
 		"missing D1 database": func(env map[string]string) { delete(env, "CF_D1_DATABASE_ID") },
 		"missing R2 bucket":   func(env map[string]string) { delete(env, "CF_R2_BUCKET_NAME") },
 		"missing origins":     func(env map[string]string) { delete(env, "ALLOWED_ORIGINS") },
-		"wildcard origin":     func(env map[string]string) { env["ALLOWED_ORIGINS"] = "*" },
 		"HTTP origin":         func(env map[string]string) { env["ALLOWED_ORIGINS"] = "http://agents.example.com" },
 		"missing Clerk JWKS":  func(env map[string]string) { delete(env, "CLERK_JWKS_URL") },
 		"missing Clerk issuer": func(env map[string]string) {
@@ -114,6 +113,22 @@ func TestLoadProductionFailsClosed(t *testing.T) {
 	}
 	if !cfg.Environment.IsProduction() || strings.Join(cfg.HTTP.Origins, ",") != "https://agents.example.com" {
 		t.Fatalf("production config = %#v", cfg)
+	}
+}
+
+func TestLoadProductionAcceptsWildcardOrigin(t *testing.T) {
+	env := requiredEnv()
+	env["APP_ENV"] = "production"
+	env["ALLOWED_ORIGINS"] = "*"
+	env["CLERK_JWKS_URL"] = "https://clerk.example.com/.well-known/jwks.json"
+	env["CLERK_ISSUER"] = "https://clerk.example.com"
+
+	cfg, err := Load(func(key string) string { return env[key] })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.Environment.IsProduction() || strings.Join(cfg.HTTP.Origins, ",") != "*" {
+		t.Fatalf("production wildcard config = %#v", cfg)
 	}
 }
 
