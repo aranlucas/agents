@@ -24,13 +24,14 @@ func RequireIdentity(publicRoutes map[string]bool, next http.Handler, verifiers 
 		verifier = verifiers[0]
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if publicRoutes[r.URL.Path] {
+		public := publicRoutes[r.URL.Path]
+		token, hasToken := bearerToken(r.Header.Get("Authorization"))
+		if public && (!hasToken || verifier == nil) {
 			identity := Identity{UserID: "anonymous", Public: true}
 			next.ServeHTTP(w, withIdentity(r, identity))
 			return
 		}
-		token, ok := bearerToken(r.Header.Get("Authorization"))
-		if !ok || verifier == nil {
+		if !hasToken || verifier == nil {
 			writeUnauthorized(w)
 			return
 		}

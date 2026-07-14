@@ -256,28 +256,26 @@ func TestSessionGetScopesEveryQueryAndReturnsEventsChronologically(t *testing.T)
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			t.Fatal(err)
 		}
-		if len(req.Batch) != 4 {
+		if len(req.Batch) != 2 {
 			t.Fatalf("statements = %d", len(req.Batch))
 		}
-		if got := req.Batch[3].Params[4]; got != float64(-1) {
+		if got := req.Batch[1].Params[4]; got != float64(-1) {
 			t.Fatalf("zero NumRecentEvents limit = %v, want -1 (unbounded)", got)
 		}
-		for index, statement := range req.Batch {
+		for _, statement := range req.Batch {
 			joined := fmt.Sprint(statement.Params)
 			if !strings.Contains(joined, "travel_agent") {
 				t.Fatalf("unscoped params: %#v", statement.Params)
 			}
-			if index != 1 && !strings.Contains(joined, "user-1") {
+			if !strings.Contains(joined, "user-1") {
 				t.Fatalf("unscoped user params: %#v", statement.Params)
 			}
-			if (index == 0 || index == 3) && !strings.Contains(joined, "thread-1") {
+			if !strings.Contains(joined, "thread-1") {
 				t.Fatalf("unscoped session params: %#v", statement.Params)
 			}
 		}
 		writeEnvelope(t, w, []Result{
-			{Success: true, Rows: rawRows(t, map[string]any{"state_json": `{"destination":"Paris"}`, "updated_at": int64(1500)})},
-			{Success: true, Rows: rawRows(t, map[string]any{"state_json": `{"policy":"shared"}`})},
-			{Success: true, Rows: rawRows(t, map[string]any{"state_json": `{"preference":"window"}`})},
+			{Success: true, Rows: rawRows(t, map[string]any{"session_id": "thread-1", "user_id": "user-1", "state_json": `{"destination":"Paris"}`, "updated_at": int64(1500), "app_state_json": `{"policy":"shared"}`, "user_state_json": `{"preference":"window"}`})},
 			{Success: true, Rows: rawRows(t, map[string]any{"event_json": string(newerJSON)}, map[string]any{"event_json": string(olderJSON)})},
 		})
 	}))
@@ -379,10 +377,10 @@ func TestStateUpdateExpressionReplacesTopLevelObjectsAndDeletesNil(t *testing.T)
 }
 
 func TestTypedSessionRowsRejectMissingOrWrongColumns(t *testing.T) {
-	valid := rawRows(t, map[string]any{"state_json": `{"status":"ready"}`, "updated_at": int64(1500)})[0]
-	state, updated, err := decodeSessionRow(valid)
-	if err != nil || state["status"] != "ready" || updated.UnixMilli() != 1500 {
-		t.Fatalf("state=%#v updated=%v err=%v", state, updated, err)
+	valid := rawRows(t, map[string]any{"session_id": "thread", "user_id": "user", "state_json": `{"status":"ready"}`, "updated_at": int64(1500)})[0]
+	stored, err := decodeStoredSession(valid, "app", nil)
+	if err != nil || stored.ID() != "thread" || stored.LastUpdateTime().UnixMilli() != 1500 {
+		t.Fatalf("session=%#v err=%v", stored, err)
 	}
 
 	for name, row := range map[string]any{
@@ -392,7 +390,7 @@ func TestTypedSessionRowsRejectMissingOrWrongColumns(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			raw := rawRows(t, row)[0]
-			if _, _, err := decodeSessionRow(raw); err == nil {
+			if _, err := decodeStoredSession(raw, "app", nil); err == nil {
 				t.Fatalf("malformed row accepted: %s", raw)
 			}
 		})
@@ -405,7 +403,7 @@ func TestAppendEventDeletesNilFromLiveSession(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			t.Fatal(err)
 		}
-		if len(req.Batch) == 4 && !strings.Contains(req.Batch[2].SQL, "json_remove(") {
+		if strings.HasPrefix(strings.TrimSpace(req.Batch[2].SQL), "UPDATE sessions") && !strings.Contains(req.Batch[2].SQL, "json_remove(") {
 			t.Fatalf("session update does not delete nil state: %s", req.Batch[2].SQL)
 		}
 		results := make([]Result, len(req.Batch))

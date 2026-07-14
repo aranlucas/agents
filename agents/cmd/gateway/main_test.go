@@ -54,11 +54,7 @@ func TestEveryActiveAgentExposesScopedEndpoints(t *testing.T) {
 	}
 	sessions := session.InMemoryService()
 	for _, entry := range registry.Entries() {
-		userID := "clerk-user"
-		if entry.Public {
-			userID = "anon:contract-thread"
-		}
-		if _, createErr := sessions.Create(t.Context(), &session.CreateRequest{AppName: entry.AppName, UserID: userID, SessionID: "contract-thread", State: entry.StateDefaults()}); createErr != nil {
+		if _, createErr := sessions.Create(t.Context(), &session.CreateRequest{AppName: entry.AppName, UserID: "clerk-user", SessionID: "contract-thread", State: entry.StateDefaults()}); createErr != nil {
 			t.Fatal(createErr)
 		}
 	}
@@ -81,6 +77,13 @@ func TestEveryActiveAgentExposesScopedEndpoints(t *testing.T) {
 		handler.ServeHTTP(recorder, request)
 		if recorder.Code != http.StatusOK {
 			t.Fatalf("POST /%s/agents/state=%d %s", route, recorder.Code, recorder.Body.String())
+		}
+		request = httptest.NewRequest(http.MethodGet, "/"+route+"/agents/sessions", nil)
+		request.Header.Set("Authorization", "Bearer test")
+		recorder = httptest.NewRecorder()
+		handler.ServeHTTP(recorder, request)
+		if recorder.Code != http.StatusOK {
+			t.Fatalf("GET /%s/agents/sessions=%d %s", route, recorder.Code, recorder.Body.String())
 		}
 	}
 	request := httptest.NewRequest(http.MethodPost, "/agents/state", strings.NewReader(`{"threadId":"contract-thread"}`))
@@ -210,6 +213,7 @@ func TestGatewayRejectsUnauthenticatedNonPublicRoute(t *testing.T) {
 	}
 	assertRoute(t, handler, http.MethodPost, "/travel/agui", http.StatusUnauthorized)
 	assertRoute(t, handler, http.MethodPost, "/travel/agents/state", http.StatusUnauthorized)
+	assertRoute(t, handler, http.MethodGet, "/travel/agents/sessions", http.StatusUnauthorized)
 	// Capabilities and health are metadata, not user data: never gated.
 	assertRoute(t, handler, http.MethodGet, "/travel/health", http.StatusOK)
 	assertRoute(t, handler, http.MethodGet, "/travel/agui/capabilities", http.StatusOK)
