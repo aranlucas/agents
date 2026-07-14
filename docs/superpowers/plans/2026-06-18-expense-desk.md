@@ -589,11 +589,7 @@ Add:
 
 ```ts
 export type ExpenseStatus =
-  | "submitted"
-  | "auto_approved"
-  | "needs_review"
-  | "approved"
-  | "rejected";
+  "submitted" | "auto_approved" | "needs_review" | "approved" | "rejected";
 
 export type ExpenseRiskLevel = "low" | "medium" | "high";
 export type ExpenseDeskStatus = "idle" | "reviewing" | "needs_approval" | "ready";

@@ -206,9 +206,7 @@ import { CopilotRuntime, createCopilotRuntimeHandler } from "@copilotkit/runtime
 
 const app = express();
 const runtime = new CopilotRuntime({
-  agents: {
-    /* ... */
-  } as any,
+  agents: {/* ... */} as any,
 });
 const handler = createCopilotRuntimeHandler({
   runtime,
@@ -248,9 +246,7 @@ import { CopilotRuntime, createCopilotRuntimeHandler } from "@copilotkit/runtime
 
 const app = new Hono();
 const runtime = new CopilotRuntime({
-  agents: {
-    /* ... */
-  } as any,
+  agents: {/* ... */} as any,
 });
 const handler = createCopilotRuntimeHandler({
   runtime,

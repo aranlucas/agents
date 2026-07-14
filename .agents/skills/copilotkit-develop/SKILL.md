@@ -34,9 +34,7 @@ import { handle } from "hono/vercel";
 
 const runtime = new CopilotRuntime({
   agents: {
-    myAgent: new LangGraphAgent({
-      /* ... */
-    }),
+    myAgent: new LangGraphAgent({/* ... */}),
   },
 });
 

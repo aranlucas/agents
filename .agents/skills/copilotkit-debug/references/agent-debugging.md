@@ -36,9 +36,7 @@
    ```ts
    new CopilotRuntime({
      agents: {
-       myAgent: new BuiltInAgent({
-         /* ... */
-       }), // Key "myAgent" is the agent ID
+       myAgent: new BuiltInAgent({/* ... */}), // Key "myAgent" is the agent ID
      },
    });
    ```

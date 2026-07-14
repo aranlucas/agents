@@ -13,7 +13,7 @@ description: >
 metadata:
   author: Google
   license: Apache-2.0
-  version: 0.5.0
+  version: 1.1.0
   requires:
     bins:
       - agents-cli
@@ -72,13 +72,13 @@ invocation
 
 ### Setup by Deployment Type
 
-| Deployment                   | Setup                                                               |
-| ---------------------------- | ------------------------------------------------------------------- |
-| **Agent Runtime**            | Automatic — traces are exported to Cloud Trace by default           |
-| **Cloud Run (scaffolded)**   | Automatic — `otel_to_cloud=True` in the FastAPI app                 |
-| **GKE (scaffolded)**         | Automatic — `otel_to_cloud=True` in the FastAPI app                 |
-| **Cloud Run / GKE (manual)** | Configure OpenTelemetry exporter in your app                        |
-| **Local dev**                | Works with `agents-cli playground`; traces visible in Cloud Console |
+| Deployment                   | Setup                                                                    |
+| ---------------------------- | ------------------------------------------------------------------------ |
+| **Agent Runtime**            | Automatic — traces are exported to Cloud Trace by default                |
+| **Cloud Run (scaffolded)**   | Automatic — `setup_telemetry()` configures Cloud Trace/Logging exporters |
+| **GKE (scaffolded)**         | Automatic — `setup_telemetry()` configures Cloud Trace/Logging exporters |
+| **Cloud Run / GKE (manual)** | Configure OpenTelemetry exporter in your app                             |
+| **Local dev**                | Works with `agents-cli playground`; traces visible in Cloud Console      |
 
 View traces: **Cloud Console → Trace → Trace explorer**
 
@@ -126,7 +126,7 @@ ADK supports several third-party observability platforms. Each uses OpenTelemetr
 
 | Issue                                       | Solution                                                                                                                          |
 | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| No traces in Cloud Trace                    | Verify `otel_to_cloud=True` in FastAPI app; check service account has `cloudtrace.agent` role                                     |
+| No traces in Cloud Trace                    | Verify `setup_telemetry()` runs at startup and the service account has the `cloudtrace.agent` role                                |
 | Prompt-response data not appearing          | Check `LOGS_BUCKET_NAME` is set; verify SA has `storage.objectCreator` on the bucket; check app logs for telemetry setup warnings |
 | Privacy mode misconfigured                  | Check `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` value — use `NO_CONTENT` for metadata-only, `false` to disable         |
 | BigQuery Analytics not logging              | Verify plugin is configured in `app/agent.py`; check `BQ_ANALYTICS_DATASET_ID` env var is set                                     |

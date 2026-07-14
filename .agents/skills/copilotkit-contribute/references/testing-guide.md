@@ -175,9 +175,7 @@ import { MockAgent, MockAgentOptions } from "../test-utils";
 
 const agent = new MockAgent({
   messages: [],
-  newMessages: [
-    /* messages returned by runAgent */
-  ],
+  newMessages: [/* messages returned by runAgent */],
   agentId: "test-agent",
   threadId: "test-thread",
   state: { key: "value" },

@@ -256,9 +256,7 @@ Wrong:
 ```typescript
 new CopilotRuntime({
   agents: {
-    mcpApps: new MCPAppsAgent({
-      /* ... */
-    } as any),
+    mcpApps: new MCPAppsAgent({/* ... */} as any),
   } as any,
 });
 ```
@@ -267,9 +265,7 @@ Correct:
 
 ```typescript
 new CopilotRuntime({
-  agents: {
-    /* your real agents */
-  },
+  agents: {/* your real agents */},
   mcpApps: {
     servers: [{ type: "http", url: "https://mcp.example.com/mcp" }],
   },

@@ -34,9 +34,7 @@ new BuiltInAgent({
       adapter: openaiText("gpt-4o"),
       messages,
       systemPrompts,
-      tools: [
-        /* TanStack AI toolDefinition()s */
-      ],
+      tools: [/* TanStack AI toolDefinition()s */],
       abortController,
     });
   },

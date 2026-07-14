@@ -28,9 +28,7 @@ class OpenAIWhisperTranscription extends TranscriptionService {
 }
 
 const runtime = new CopilotRuntime({
-  agents: {
-    /* ... */
-  } as any,
+  agents: {/* ... */} as any,
   transcriptionService: new OpenAIWhisperTranscription(),
 });
 
@@ -253,9 +251,7 @@ class MyService extends TranscriptionService {
     // @ts-expect-error returning the wrong shape
     return {
       text: "hi",
-      segments: [
-        /* ... */
-      ],
+      segments: [/* ... */],
     };
   }
 }

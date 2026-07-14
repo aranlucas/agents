@@ -513,9 +513,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 type AuthState =
-  | { status: "loading" }
-  | { status: "error"; message: string }
-  | { status: "success" };
+  { status: "loading" } | { status: "error"; message: string } | { status: "success" };
 
 function getInitData(): string {
   if (typeof window === "undefined") return "";

@@ -475,9 +475,7 @@ Wrong:
 ```typescript
 factory: (ctx) => {
   ctx.abortController.abort(); // JSDoc says don't
-  return streamText({
-    /* ... */
-  });
+  return streamText({/* ... */});
 };
 ```
 

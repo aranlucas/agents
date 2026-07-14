@@ -45,9 +45,7 @@ const intelligence = new CopilotKitIntelligence({
 });
 
 const runtime = new CopilotRuntime({
-  agents: {
-    /* ... */
-  } as any,
+  agents: {/* ... */} as any,
   intelligence,
   identifyUser: (request) => ({
     id: request.headers.get("x-user-id") ?? "anonymous",

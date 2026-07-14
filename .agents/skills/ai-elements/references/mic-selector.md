@@ -137,7 +137,7 @@ export default function Example() {
 #### Return Value
 
 | Prop            | Type                  | Default | Description                                                      |
-| --------------- | --------------------- | ------- | ---------------------------------------------------------------- | --------------------------------------- |
+| --------------- | --------------------- | ------- | ---------------------------------------------------------------- |
 | `devices`       | `MediaDeviceInfo[]`   | -       | Array of available audio input devices.                          |
 | `loading`       | `boolean`             | -       | Whether devices are currently being loaded.                      |
 | `error`         | `string               | null`   | -                                                                | Error message if device loading failed. |

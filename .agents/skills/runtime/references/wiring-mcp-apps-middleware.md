@@ -51,9 +51,7 @@ exposed to that agent. Omit it to expose to all agents.
 // WRONG
 new CopilotRuntime({
   agents: {
-    mcpApps: new MCPAppsAgent({
-      /* ... */
-    }),
+    mcpApps: new MCPAppsAgent({/* ... */}),
   } as any,
 });
 ```

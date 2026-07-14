@@ -32,7 +32,7 @@ npx ai-elements@latest add voice-selector
 Root Dialog component that provides context for all child components. Manages both voice selection and dialog open states.
 
 | Prop            | Type                                  | Default             | Description                                                                 |
-| --------------- | ------------------------------------- | ------------------- | --------------------------------------------------------------------------- | ----------------------------------------------- |
+| --------------- | ------------------------------------- | ------------------- | --------------------------------------------------------------------------- |
 | `value`         | `string`                              | -                   | The selected voice ID (controlled).                                         |
 | `defaultValue`  | `string`                              | -                   | The default selected voice ID (uncontrolled).                               |
 | `onValueChange` | `(value: string                       | undefined) => void` | -                                                                           | Callback fired when the selected voice changes. |
@@ -234,7 +234,7 @@ export default function CustomVoiceDisplay() {
 #### Return Value
 
 | Prop       | Type                      | Default             | Description                                |
-| ---------- | ------------------------- | ------------------- | ------------------------------------------ | ----------------------------------------- |
+| ---------- | ------------------------- | ------------------- | ------------------------------------------ |
 | `value`    | `string                   | undefined`          | -                                          | The currently selected voice ID.          |
 | `setValue` | `(value: string           | undefined) => void` | -                                          | Function to update the selected voice ID. |
 | `open`     | `boolean`                 | -                   | Whether the dialog is currently open.      |

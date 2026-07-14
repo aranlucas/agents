@@ -221,9 +221,7 @@ Headers are sent with every request to the runtime, including `/info`, `/agent/:
 
 ```ts
 const runtime = new CopilotRuntime({
-  agents: {
-    /* ... */
-  },
+  agents: {/* ... */},
   beforeRequestMiddleware: async ({ request }) => {
     const auth = request.headers.get("Authorization");
     // Validate auth, modify request, or throw to reject

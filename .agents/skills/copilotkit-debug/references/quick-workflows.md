@@ -242,9 +242,7 @@ Voice input fails or produces errors.
 
 ```ts
 const runtime = new CopilotRuntime({
-  agents: {
-    /* ... */
-  },
+  agents: {/* ... */},
   transcriptionService: myTranscriptionService, // Must be provided
 });
 ```

@@ -29,7 +29,7 @@
       "source": "vercel/ai-elements",
       "sourceType": "github",
       "skillPath": "skills/ai-elements/SKILL.md",
-      "computedHash": "7e81acdd3028bb68aa4387b2bd083c5812a50e2be1bea08c76994dcfb8f6a3d3"
+      "computedHash": "6d7ccc65b98adb04d6c47632746dbfea55528903de9b027f6b39b80983d5aa55"
     },
     "building-native-ui": {
       "source": "expo/skills",
@@ -83,13 +83,13 @@
       "source": "CopilotKit/CopilotKit",
       "sourceType": "github",
       "skillPath": "skills/copilotkit-upgrade/SKILL.md",
-      "computedHash": "80ba66af791c5aa50eed4267f4f2b4975c8fc84f3c4cec8529a6420299b6623e"
+      "computedHash": "2e5ad642cd45292425a49f5bcd81061217940dc45a7ecabc04a78222d9c9f243"
     },
     "eas-update-insights": {
       "source": "expo/skills",
       "sourceType": "github",
       "skillPath": "plugins/expo/skills/eas-update-insights/SKILL.md",
-      "computedHash": "160b705dd270cfc554c572b8f829cebcce711f1279820f4f55527b0981bf125c"
+      "computedHash": "295e60284aff7236a8a3bf65e91db0fd52d27c4f0d6507cbc39f65e836748de0"
     },
     "expo-api-routes": {
       "source": "expo/skills",
@@ -101,7 +101,7 @@
       "source": "expo/skills",
       "sourceType": "github",
       "skillPath": "plugins/expo/skills/expo-brownfield/SKILL.md",
-      "computedHash": "b7e46eba9d7643fd0488adedabc224914f45af2f0aa20c6ee6516aea81acdff9"
+      "computedHash": "393bb62ec8661deb43ea593116f7073dbd8c24f489aaeb0df52029995f36e044"
     },
     "expo-cicd-workflows": {
       "source": "expo/skills",
@@ -119,13 +119,13 @@
       "source": "expo/skills",
       "sourceType": "github",
       "skillPath": "plugins/expo/skills/expo-dev-client/SKILL.md",
-      "computedHash": "af7b1cc2824db64888aa10d5d8c009b960d2c649dd7be2b86ae6b9f092a73ae6"
+      "computedHash": "1e6884aa880a5d1cec669d37935a0fe0a57507cc0ff4cb17e7b183adcf2ff535"
     },
     "expo-module": {
       "source": "expo/skills",
       "sourceType": "github",
       "skillPath": "plugins/expo/skills/expo-module/SKILL.md",
-      "computedHash": "fe91e433d28dcc49439c4edc016e7f931e6f699bc84d65cf6975dd494bc04bfa"
+      "computedHash": "ecb77b398e277259838b560fa9d1478a5cf92b7cf6ce5f5e637dc83db80e2cac"
     },
     "expo-observe": {
       "source": "expo/skills",
@@ -137,37 +137,37 @@
       "source": "expo/skills",
       "sourceType": "github",
       "skillPath": "plugins/expo/skills/expo-tailwind-setup/SKILL.md",
-      "computedHash": "85d932863950a9837dd4ab528c2908eff7c119e8c7f59c47963815ee7341e826"
+      "computedHash": "dc063bbbc49d87cd68e681a8af2104ce08c52a8b507c90c8549e4a8a3ac24715"
     },
     "google-agents-cli-adk-code": {
       "source": "google/agents-cli",
       "sourceType": "github",
       "skillPath": "skills/google-agents-cli-adk-code/SKILL.md",
-      "computedHash": "165a9574237869c1da9bbc4919d105187bf34318415be72b9346f2f9cb2fd6a8"
+      "computedHash": "a207fa743a15fb1f146473196ea1e56ba0565c2dc43b42640ebe17b762b00ede"
     },
     "google-agents-cli-eval": {
       "source": "google/agents-cli",
       "sourceType": "github",
       "skillPath": "skills/google-agents-cli-eval/SKILL.md",
-      "computedHash": "496b846036d01ea64bd273557086c59db92ceedb846f72efcbe2f6d51b8366df"
+      "computedHash": "99aa163245f24a3e89ab12f9a6ba11260a700fa1274aadf2b8521f615fc1c7e6"
     },
     "google-agents-cli-observability": {
       "source": "google/agents-cli",
       "sourceType": "github",
       "skillPath": "skills/google-agents-cli-observability/SKILL.md",
-      "computedHash": "ff8b881eb11579d6f81a133c930711551cc451f20acad05ae9fb461c62998f89"
+      "computedHash": "014deeb97e407f33b81b6e21ad1a7195290c5c534017baa8e521bb952f22d60d"
     },
     "google-agents-cli-scaffold": {
       "source": "google/agents-cli",
       "sourceType": "github",
       "skillPath": "skills/google-agents-cli-scaffold/SKILL.md",
-      "computedHash": "27e7fac50601c6b2f271846be3b3597b68b40c829ad1d5341db5f9c12b67f232"
+      "computedHash": "d9f88f7aab8fb1ddb0441c2bbffd41efdf2443523cb08f51c8f26b8aa824166f"
     },
     "google-agents-cli-workflow": {
       "source": "google/agents-cli",
       "sourceType": "github",
       "skillPath": "skills/google-agents-cli-workflow/SKILL.md",
-      "computedHash": "4560a8ba1b62f7d96c7d2c08212de4af74e914492e13e51d913d239b4bc4feac"
+      "computedHash": "2634f70c491f566656eac01c6cec77c53b4f2421a668bb21a93bb44e738df95d"
     },
     "native-data-fetching": {
       "source": "expo/skills",
@@ -179,7 +179,7 @@
       "source": "CopilotKit/CopilotKit",
       "sourceType": "github",
       "skillPath": "skills/react-core/SKILL.md",
-      "computedHash": "9dc600a4247d5255d14348ccfb19df2ebb68c73d6e8a8004641627fbe442c09c"
+      "computedHash": "fb8fa5239c63cd8316adff911d0d662aa082c3485157ce4cba3ce3bedca61d6d"
     },
     "runtime": {
       "source": "CopilotKit/CopilotKit",
@@ -191,7 +191,7 @@
       "source": "shadcn/ui",
       "sourceType": "github",
       "skillPath": "skills/shadcn/SKILL.md",
-      "computedHash": "ac9d0d69caac7de1d1e5647f3db3bcd2f13af355d6b3a78780fbf7fc80e8dca0"
+      "computedHash": "d81caa0f86aabab65b25e302d454f23a3328760386ed9078345584c0d5c8058e"
     },
     "upgrading-expo": {
       "source": "expo/skills",

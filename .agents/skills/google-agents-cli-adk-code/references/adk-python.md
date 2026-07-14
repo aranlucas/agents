@@ -234,7 +234,6 @@ For a production LoopAgent with EscalationChecker, BuiltInPlanner, and grounding
     ```
 
 4.  **Task Delegation (ADK 2.0)**: Set `mode` on a sub-agent for structured, schema-typed delegation — the coordinator gets a `request_task_{name}` tool; the sub-agent returns typed output via the auto-injected `finish_task` tool.
-
     ```python
     from pydantic import BaseModel
 
@@ -251,7 +250,6 @@ For a production LoopAgent with EscalationChecker, BuiltInPlanner, and grounding
     )
     coordinator = Agent(name="coordinator", model="gemini-flash-latest", sub_agents=[researcher])
     ```
-
     Modes: `task` (multi-turn, structured I/O) · `single_turn` (autonomous, no user turn). Sub-agents need a `description`; default I/O schemas (`goal`/`background` in, `result` out) are used if none set. Disabled inside graph `Workflow`s.
 
 ---
@@ -302,8 +300,8 @@ class EscalationChecker(BaseAgent):
 ### Google Gemini (Default)
 
 ```python
-# AI Studio (dev)
-# Set: GOOGLE_API_KEY, GOOGLE_GENAI_USE_VERTEXAI=False
+# AI Studio (dev): in the project .env, comment the GOOGLE_* lines and
+# uncomment GEMINI_API_KEY (GOOGLE_API_KEY is also accepted).
 
 # Vertex AI (prod)
 # Set: GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION, GOOGLE_GENAI_USE_VERTEXAI=True
@@ -773,7 +771,7 @@ Requires `pip install google-adk[a2a]`.
 
 ```python
 # Expose an agent as an A2A service
-# Prefer scaffolding over manual code — use --agent adk_a2a (see /google-agents-cli-scaffold)
+# Prefer scaffolding over manual code — scaffold a normal `adk` agent; A2A is built in (see /google-agents-cli-scaffold)
 from google.adk.a2a.utils.agent_to_a2a import to_a2a
 from a2a.types import AgentCard
 to_a2a(root_agent, port=8001)
@@ -787,13 +785,36 @@ remote = RemoteA2aAgent(
 )
 ```
 
+### A2UI
+
+Agents can return declarative UI via [a2ui](https://github.com/google/A2UI) (cards, forms, charts; rendered client-side over A2A) instead of plain text. Public preview; current release v0.9.1 (v1.0 release candidate). Docs: https://github.com/google/A2UI/tree/main/docs · ADK guide: https://adk.dev/integrations/a2ui/index.md
+
+```python
+# pip install a2ui-agent-sdk
+from a2ui.core.schema.manager import A2uiSchemaManager
+from a2ui.basic_catalog.provider import BasicCatalog
+from a2ui.a2a import create_a2ui_part, parse_response_to_parts
+
+# 1. Build the system prompt from a component catalog
+manager = A2uiSchemaManager(...)        # loads catalog(s) + few-shot examples
+instruction = manager.generate_system_prompt(...)
+
+# 2. Use it as the agent instruction
+root_agent = Agent(name="ui_agent", model="gemini-flash-latest", instruction=instruction)
+
+# 3. Validate the model's JSON output, then wrap as an A2A DataPart
+#    (MIME application/a2ui+json) via a2ui.a2a before streaming to the client.
+```
+
+Runnable samples: https://github.com/google/A2UI/tree/main/samples/agent/adk
+
 ---
 
 ## 12. Event-Driven / Ambient Agents
 
 Ambient agents process events (Pub/Sub, Eventarc, schedules) autonomously. ADK provides built-in trigger endpoints that handle payload decoding, session creation, concurrency, and retries.
 
-> **Deployment:** Trigger endpoints require **Cloud Run** or **GKE**. Agent Runtime does not support event-driven or scheduled triggers.
+> **Deployment:** `trigger_sources` registers `/apps/{app}/trigger/*` on the standard FastAPI app, so it works on **all** targets. On **Cloud Run** / **GKE** the endpoints are public HTTP routes you point a Pub/Sub push subscription or Eventarc trigger at. On **Agent Runtime** the same routes are reachable through Agent Engine's `/api` passthrough (`https://{location}-aiplatform.googleapis.com/reasoningEngines/v1/{resource}/api/apps/{app}/trigger/pubsub`). The scaffolded `fast_api_app.py` does not pass `trigger_sources` by default — add it to enable these endpoints.
 
 ```python
 from google.adk.cli.fast_api import get_fast_api_app
@@ -801,7 +822,7 @@ from google.adk.cli.fast_api import get_fast_api_app
 app = get_fast_api_app(
     agents_dir=AGENTS_DIR,
     web=False,
-    trigger_sources=["pubsub", "eventarc"],  # enables /apps/{app}/trigger/pubsub and /trigger/eventarc
+    trigger_sources=["pubsub", "eventarc"],  # enables /apps/{app}/trigger/pubsub and /apps/{app}/trigger/eventarc
 )
 ```
 
@@ -825,7 +846,7 @@ Sessions are ephemeral by default (`InMemorySessionService`); use `DatabaseSessi
 
 Since ambient agents have no interactive user, route outputs via structured logging (JSON stdout → Cloud Logging → Cloud Monitoring alerts), Pub/Sub, or tool-based integrations (email, Jira, Slack).
 
-**Before implementing an ambient agent, clone and study the production sample** — it covers trigger wiring, middleware, structured logging, and Terraform. See the Notable Samples table in `/google-agents-cli-workflow` Phase 1. [Full docs](https://adk.dev/runtime/ambient-agents/).
+**Before implementing an ambient agent, clone and study the production sample** — it covers trigger wiring, middleware, structured logging, and Terraform. See the Notable Samples catalog in `/google-agents-cli-workflow` Phase 1. [Full docs](https://adk.dev/runtime/ambient-agents/).
 
 ---
 

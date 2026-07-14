@@ -18,9 +18,7 @@ import { CopilotRuntime } from "@copilotkit/runtime/v2";
 import { SqliteAgentRunner } from "@copilotkit/sqlite-runner";
 
 const runtime = new CopilotRuntime({
-  agents: {
-    /* ... */
-  } as any,
+  agents: {/* ... */} as any,
   runner: new SqliteAgentRunner({
     dbPath: "./data/threads.db", // REQUIRED — default is ":memory:"
   }),

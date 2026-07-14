@@ -30,15 +30,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── Agent row hover ── */
-.agent-row {
-  background-color: transparent;
-  transition: background-color 0.15s ease;
-}
-.agent-row:hover {
-  background-color: var(--row-hover, transparent);
-}
-
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -52,45 +43,6 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--ink-mute);
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-@keyframes blink {
-  0%,
-  60% {
-    opacity: 1;
-  }
-  61%,
-  100% {
-    opacity: 0;
-  }
-}
-
-@keyframes intro-word-rise {
-  0% {
-    opacity: 0;
-    transform: translateY(6px) scale(0.985);
-    filter: blur(0.4px);
-    background-position: 100% 0;
-  }
-  75% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-    filter: blur(0);
-    background-position: 0 0;
-  }
-  100% {
-    opacity: 1;
-    filter: blur(0);
-    background-position: -120% 0;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

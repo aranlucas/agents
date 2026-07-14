@@ -705,8 +705,7 @@ export function getStore() {
     async get(docRef: string): Promise<DocMeta | { error: string }> {
       const id = docRef.startsWith("#") ? docRef.slice(1) : docRef;
       const row = getByIdStmt.get(Number(id)) as
-        | { id: number; collection: string; filepath: string; title: string }
-        | undefined;
+        { id: number; collection: string; filepath: string; title: string } | undefined;
 
       if (!row) return { error: "Not found" };
 

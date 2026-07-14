@@ -31,15 +31,16 @@ agents-cli eval dataset synthesize --model gemini-2.5-pro
 
 CLI flags exposed by `agents-cli eval dataset synthesize`:
 
-| Flag                     | What it controls                                                                                                                                                                                       |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `-n / --count`           | Number of scenarios to generate (default 3)                                                                                                                                                            |
-| `--instruction`          | Natural-language steering for scenario generation                                                                                                                                                      |
-| `--environment-context`  | World context the simulator can rely on (e.g., available data)                                                                                                                                         |
-| `--model`                | Model used for **scenario generation** (server-side; not the simulated user model)                                                                                                                     |
-| `--max-turns`            | Cap on user↔agent turns per scenario (default 5)                                                                                                                                                       |
-| `-o / --output`          | Output path; defaults to `artifacts/traces/traces_<ts>.json`                                                                                                                                           |
-| `--project` / `--region` | GCP project / region overrides. `synthesize` defaults to the `global` eval endpoint (ignores the manifest `region`); pass `--region` only for data residency — the service rejects an unsupported one. |
+| Flag                    | What it controls                                                                   |
+| ----------------------- | ---------------------------------------------------------------------------------- |
+| `-n / --count`          | Number of scenarios to generate (default 3)                                        |
+| `--instruction`         | Natural-language steering for scenario generation                                  |
+| `--environment-context` | World context the simulator can rely on (e.g., available data)                     |
+| `--model`               | Model used for **scenario generation** (server-side; not the simulated user model) |
+| `--max-turns`           | Cap on user↔agent turns per scenario (default 5)                                   |
+| `-o / --output`         | Output path; defaults to `artifacts/traces/traces_<ts>.json`                       |
+
+`synthesize` runs your agent locally and reads its config from the agent's `.env` (the whole file — `GOOGLE_GENAI_USE_VERTEXAI`, `GEMINI_API_KEY`, `GOOGLE_CLOUD_*`, app vars); there are no `--project` / `--region` flags. On Vertex AI, `GOOGLE_CLOUD_LOCATION` also picks the endpoint for the **server-side scenario-generation** call, which only supports a subset of eval regions — keep it `global` (the scaffold default) unless you know your region is supported.
 
 **Simulator internals are NOT user-configurable from agents-cli.** The LLM-backed user simulator that plays the user side runs inside `_synthesize_runner.py` with hardcoded ADK defaults (`gemini-2.5-flash` for the user voice, default thinking config, no `custom_instructions`). Only `--max-turns` reaches it (as `LlmBackedUserSimulatorConfig.max_allowed_invocations`). There is no `eval_config.yaml` key, no `--simulator-model` flag, and no way to override `custom_instructions` or `model_configuration` short of editing `_synthesize_runner.py` directly.
 

@@ -33,6 +33,14 @@
   --color-sidebar-accent-foreground: var(--ink);
   --color-sidebar-border: var(--border-soft);
   --color-sidebar-ring: var(--accent);
+  --color-page: var(--page-color);
+  --color-surface-raised: var(--surface-raised);
+  --color-ink-soft: var(--ink-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger-soft: var(--danger-soft);
   --radius-md: 0.5rem;
   --radius-lg: 0.5rem;
   --radius-xl: 0.5rem;

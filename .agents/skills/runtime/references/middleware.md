@@ -16,9 +16,7 @@ Use **hooks** for new code.
 import { CopilotRuntime, createCopilotRuntimeHandler } from "@copilotkit/runtime/v2";
 
 const runtime = new CopilotRuntime({
-  agents: {
-    /* ... */
-  } as any,
+  agents: {/* ... */} as any,
 });
 
 const handler = createCopilotRuntimeHandler({
@@ -141,9 +139,7 @@ work that the user's response waits on.
 import { CopilotRuntime } from "@copilotkit/runtime/v2";
 
 const runtime = new CopilotRuntime({
-  agents: {
-    /* ... */
-  } as any,
+  agents: {/* ... */} as any,
   afterRequestMiddleware: async ({ threadId, messages }) => {
     // fire-and-forget; do not await heavy work that blocks response
     void queue.enqueue({ type: "chat", threadId, messages });
