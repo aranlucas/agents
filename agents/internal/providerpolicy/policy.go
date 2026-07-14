@@ -70,7 +70,7 @@ func Agent(workload Workload) (Policy, error) {
 		return openRouterLight("OPENROUTER_API_KEY is required to configure the research agent", "mistral"), nil
 	case Resume:
 		return Policy{
-			Provider: "openrouter", Model: "liquid/lfm-2.5-1.2b-instruct:free", RequestsPerMinute: 20, RequestsPerDay: 1000,
+			Provider: "openrouter", Model: "google/gemma-4-26b-a4b-it:free", RequestsPerMinute: 20, RequestsPerDay: 1000,
 			missingProviderMessage: "OPENROUTER_API_KEY is required to configure the resume agent",
 		}, nil
 	case Spreadsheet:
