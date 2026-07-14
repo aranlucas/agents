@@ -176,7 +176,7 @@ export function SpreadsheetWorkspace({ threadId }: { threadId: string }) {
               {activeSheet ? (
                 <SpreadsheetTable rows={activeSheet.rows} />
               ) : (
-                <div className="text-muted-foreground flex h-full min-h-[300px] flex-col items-center justify-center gap-3 text-center">
+                <div className="text-muted-foreground flex h-full min-h-72 flex-col items-center justify-center gap-3 text-center">
                   <p className="text-4xl">📊</p>
                   <p className="text-sm">
                     Ask me to create a spreadsheet in the chat.

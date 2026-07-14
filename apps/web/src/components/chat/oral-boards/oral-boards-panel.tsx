@@ -479,7 +479,7 @@ function VignettePanel({
             </p>
             <Textarea
               aria-label="Case notes"
-              className="min-h-[56px] resize-none p-2.5 text-xs leading-relaxed"
+              className="min-h-14 resize-none p-2.5 text-xs leading-relaxed"
               placeholder="Jot notes as you reason through the case…"
               value={notes}
               onChange={(e) => onNotesChange(e.target.value)}
@@ -601,7 +601,7 @@ function PresentingPane({
         {recorder.micSupported && <CopilotChatAudioRecorder ref={recorder.recorderRef} />}
         <Textarea
           aria-label="Case notes"
-          className="min-h-[60px] resize-none p-3 text-sm"
+          className="min-h-16 resize-none p-3 text-sm"
           placeholder="Record or type your notes about the case…"
           value={notes}
           onChange={(e) => onNotesChange(e.target.value)}
@@ -932,7 +932,7 @@ function ResponseComposer({
 
       <Textarea
         aria-label="Your answer"
-        className="h-24 resize-none p-3 text-sm md:h-auto md:min-h-[80px] md:flex-1"
+        className="h-24 resize-none p-3 text-sm md:h-auto md:min-h-20 md:flex-1"
         placeholder="Type your answer…"
         value={answerText}
         onChange={(e) => setAnswerText(e.target.value)}

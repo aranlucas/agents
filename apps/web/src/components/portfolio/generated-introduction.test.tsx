@@ -67,7 +67,8 @@ describe("GeneratedIntroduction", () => {
     ];
     view.rerender(<GeneratedIntroduction />);
 
-    expect(screen.getByText("I build agents.")).toBeVisible();
+    const introParagraph = view.container.querySelector("p");
+    expect(introParagraph).toHaveTextContent("I build agents.");
     expect(screen.queryByLabelText("Resume agent is connecting")).not.toBeInTheDocument();
 
     agentMocks.agent.isRunning = false;

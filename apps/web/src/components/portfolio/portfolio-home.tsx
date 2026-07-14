@@ -230,7 +230,10 @@ function AgentDemos() {
 
 function About() {
   return (
-    <section aria-labelledby="about-heading" className="border-border mt-20 border-t pt-7 sm:mt-24">
+    <section
+      aria-labelledby="about-heading"
+      className="border-border mt-20 h-56 overflow-hidden border-t pt-7 sm:mt-24"
+    >
       <h2 id="about-heading" className="text-sm font-semibold tracking-[-0.01em]">
         About me
       </h2>
