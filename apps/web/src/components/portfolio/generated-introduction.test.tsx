@@ -59,6 +59,7 @@ describe("GeneratedIntroduction", () => {
     const view = render(<GeneratedIntroduction />);
 
     expect(await screen.findByLabelText("Resume agent is connecting")).toBeVisible();
+    expect(screen.queryByRole("link", { name: /Ask the Resume agent/i })).not.toBeInTheDocument();
 
     agentMocks.agent.isRunning = true;
     agentMocks.agent.messages = [
@@ -70,9 +71,11 @@ describe("GeneratedIntroduction", () => {
     const introParagraph = view.container.querySelector("p");
     expect(introParagraph).toHaveTextContent("I build agents.");
     expect(screen.queryByLabelText("Resume agent is connecting")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Ask the Resume agent/i })).not.toBeInTheDocument();
 
     agentMocks.agent.isRunning = false;
     await act(async () => finishRun?.());
+    expect(await screen.findByRole("link", { name: /Ask the Resume agent/i })).toBeVisible();
   });
 
   it("does not start multiple times in a row", async () => {
@@ -89,7 +92,7 @@ describe("GeneratedIntroduction", () => {
     render(<GeneratedIntroduction />);
 
     expect(await screen.findByText("The introduction is unavailable right now.")).toBeVisible();
-    expect(screen.getByRole("link", { name: /Ask the Resume agent/i })).toHaveAttribute(
+    expect(await screen.findByRole("link", { name: /Ask the Resume agent/i })).toHaveAttribute(
       "href",
       "/console/resume",
     );

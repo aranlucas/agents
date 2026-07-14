@@ -25,8 +25,12 @@ function IntroductionWriter() {
   const [previousText, setPreviousText] = useState("");
   const [animatedTokens, setAnimatedTokens] = useState<AnimatedToken[]>([]);
   const nextTokenId = useRef(0);
-  const [started, setStarted] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [streamCompleted, setStreamCompleted] = useState(false);
+  const [showAskResumeAnimation, setShowAskResumeAnimation] = useState(false);
+  const [showAskResumeLink, setShowAskResumeLink] = useState(false);
+
+  const showAskResume = failed || streamCompleted;
 
   const items = toRenderItems(agent?.messages ?? []);
   let text = "";
@@ -42,21 +46,14 @@ function IntroductionWriter() {
     if (!agent || requested.current) return;
 
     requested.current = true;
-    setStarted(true);
-    console.info("[portfolio:introduction] run:start", {
-      agentId: agent.agentId,
-      threadId: agent.threadId,
-    });
     agent.addMessage({ id: crypto.randomUUID(), role: "user", content: prompt });
 
     try {
       await copilotkit.runAgent({ agent });
-      console.info("[portfolio:introduction] run:finish", {
-        messageCount: agent.messages.length,
-      });
-    } catch (error) {
-      console.error("[portfolio:introduction] run:error", error);
+    } catch {
       setFailed(true);
+    } finally {
+      setStreamCompleted(true);
     }
   }, [agent, copilotkit]);
 
@@ -67,13 +64,27 @@ function IntroductionWriter() {
   }, [agent, generate]);
 
   useEffect(() => {
-    if (!started) return;
-    console.info("[portfolio:introduction] stream:update", {
-      isRunning: agent?.isRunning ?? false,
-      messageCount: agent?.messages.length ?? 0,
-      assistantText: text,
-    });
-  }, [agent?.isRunning, agent?.messages, started, text]);
+    if (!showAskResume) {
+      setShowAskResumeLink(false);
+      setShowAskResumeAnimation(false);
+      return;
+    }
+
+    let frame: number | undefined;
+
+    const showDelay = setTimeout(() => {
+      setShowAskResumeLink(true);
+      setShowAskResumeAnimation(false);
+      frame = requestAnimationFrame(() => {
+        setShowAskResumeAnimation(true);
+      });
+    }, 180);
+
+    return () => {
+      clearTimeout(showDelay);
+      if (frame !== undefined) cancelAnimationFrame(frame);
+    };
+  }, [showAskResume]);
 
   const showSkeleton = !failed && !text;
 
@@ -115,9 +126,6 @@ function IntroductionWriter() {
     setPreviousText(text);
   }, [text, previousText]);
 
-  const streamFinished = !!text && !agent?.isRunning;
-  const showAskResume = failed || streamFinished;
-
   return (
     <div aria-live="polite" className="mt-4 h-42 overflow-hidden">
       {showSkeleton ? (
@@ -153,8 +161,14 @@ function IntroductionWriter() {
           The introduction is unavailable right now.
         </p>
       ) : null}
-      {showAskResume ? (
-        <p className="mt-4 text-[14px]">
+      {showAskResumeLink ? (
+        <p
+          className={`mt-4 text-[14px] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            showAskResumeAnimation
+              ? "translate-y-0 opacity-100"
+              : "pointer-events-none translate-y-1 opacity-0"
+          }`}
+        >
           <Link
             className="text-primary decoration-primary/35 hover:text-accent-foreground focus-visible:outline-ring rounded-sm font-medium underline underline-offset-[3px] transition-colors hover:decoration-current focus-visible:outline-2 focus-visible:outline-offset-4"
             href="/console/resume"
