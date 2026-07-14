@@ -14,11 +14,15 @@ import (
 const maxSlides = 100
 
 type Result struct {
-	OK         bool                          `json:"ok"`
-	SlideID    string                        `json:"slide_id,omitempty"`
-	SlideIDs   []string                      `json:"slide_ids,omitempty"`
-	SlideCount int                           `json:"slide_count,omitempty"`
-	Error      *agentruntime.StructuredError `json:"error,omitempty"`
+	OK                bool                          `json:"ok"`
+	SlideID           string                        `json:"slide_id,omitempty"`
+	SlideIDs          []string                      `json:"slide_ids,omitempty"`
+	UpdatedSlideIDs   []string                      `json:"updated_slide_ids,omitempty"`
+	DeletedSlideIDs   []string                      `json:"deleted_slide_ids,omitempty"`
+	SlideCount        int                           `json:"slide_count,omitempty"`
+	UpdatedSlideCount int                           `json:"updated_slide_count,omitempty"`
+	Status            Status                        `json:"status,omitempty"`
+	Error             *agentruntime.StructuredError `json:"error,omitempty"`
 }
 
 type SetMetaArgs struct {
@@ -54,22 +58,15 @@ type ReadyArgs struct {
 	Summary            string `json:"summary"`
 	ExpectedSlideCount int    `json:"expected_slide_count"`
 }
-
-func SetMeta(ctx agent.Context, input SetMetaArgs) (Result, error) {
-	state := readState(ctx.State())
-	r, e := setMeta(&state, input)
-	if e == nil && r.OK {
-		if err := ctx.State().Set("title", state.Title); err != nil {
-			return Result{}, fmt.Errorf("set title: %w", err)
-		}
-		if err := ctx.State().Set("theme", state.Theme); err != nil {
-			return Result{}, fmt.Errorf("set theme: %w", err)
-		}
-		if err := ctx.State().Set("status", state.Status); err != nil {
-			return Result{}, fmt.Errorf("set status: %w", err)
-		}
-	}
-	return r, e
+type RevisePresentationArgs struct {
+	Title              *string           `json:"title,omitempty"`
+	Theme              *string           `json:"theme,omitempty"`
+	Updates            []UpdateSlideArgs `json:"updates,omitempty"`
+	DeleteSlideIDs     []string          `json:"delete_slide_ids,omitempty"`
+	SlideIDs           []string          `json:"slide_ids,omitempty"`
+	MarkReady          bool              `json:"mark_ready"`
+	Summary            string            `json:"summary,omitempty"`
+	ExpectedSlideCount int               `json:"expected_slide_count,omitempty"`
 }
 
 func setMeta(state *PresentationState, input SetMetaArgs) (Result, error) {
@@ -90,25 +87,44 @@ func BuildPresentation(ctx agent.Context, input BuildPresentationArgs) (Result, 
 	if err != nil || !result.OK {
 		return result, err
 	}
-	if err := ctx.State().Set("title", state.Title); err != nil {
-		return Result{}, fmt.Errorf("set title: %w", err)
-	}
-	if err := ctx.State().Set("theme", state.Theme); err != nil {
-		return Result{}, fmt.Errorf("set theme: %w", err)
-	}
-	if err := ctx.State().Set("slides", state.Slides); err != nil {
-		return Result{}, fmt.Errorf("set slides: %w", err)
-	}
-	if err := ctx.State().Set("active_slide_index", state.ActiveSlideIndex); err != nil {
-		return Result{}, fmt.Errorf("set active_slide_index: %w", err)
-	}
-	if err := ctx.State().Set("status", state.Status); err != nil {
-		return Result{}, fmt.Errorf("set status: %w", err)
-	}
-	if err := ctx.State().Set("review_summary", state.ReviewSummary); err != nil {
-		return Result{}, fmt.Errorf("set review_summary: %w", err)
+	if err := writeState(ctx, state); err != nil {
+		return Result{}, err
 	}
 	return result, nil
+}
+
+func RevisePresentation(ctx agent.Context, input RevisePresentationArgs) (Result, error) {
+	state := readState(ctx.State())
+	result, err := revisePresentation(&state, input)
+	if err != nil || !result.OK {
+		return result, err
+	}
+	if err := writeState(ctx, state); err != nil {
+		return Result{}, err
+	}
+	return result, nil
+}
+
+func writeState(ctx agent.Context, state PresentationState) error {
+	if err := ctx.State().Set("title", state.Title); err != nil {
+		return fmt.Errorf("set title: %w", err)
+	}
+	if err := ctx.State().Set("theme", state.Theme); err != nil {
+		return fmt.Errorf("set theme: %w", err)
+	}
+	if err := ctx.State().Set("slides", state.Slides); err != nil {
+		return fmt.Errorf("set slides: %w", err)
+	}
+	if err := ctx.State().Set("active_slide_index", state.ActiveSlideIndex); err != nil {
+		return fmt.Errorf("set active_slide_index: %w", err)
+	}
+	if err := ctx.State().Set("status", state.Status); err != nil {
+		return fmt.Errorf("set status: %w", err)
+	}
+	if err := ctx.State().Set("review_summary", state.ReviewSummary); err != nil {
+		return fmt.Errorf("set review_summary: %w", err)
+	}
+	return nil
 }
 
 func buildPresentation(userID string, input BuildPresentationArgs) (PresentationState, Result, error) {
@@ -136,7 +152,7 @@ func buildPresentation(userID string, input BuildPresentationArgs) (Presentation
 	if err != nil || !ready.OK {
 		return state, ready, err
 	}
-	return state, Result{OK: true, SlideIDs: slideIDs, SlideCount: len(state.Slides)}, nil
+	return state, Result{OK: true, SlideIDs: slideIDs, SlideCount: len(state.Slides), Status: state.Status}, nil
 }
 
 func createSlide(state *PresentationState, input CreateSlideArgs) (Result, error) {
@@ -161,20 +177,6 @@ func createSlide(state *PresentationState, input CreateSlideArgs) (Result, error
 	state.ActiveSlideIndex = len(state.Slides) - 1
 	state.Status = StatusDrafting
 	return Result{OK: true, SlideID: id}, nil
-}
-
-func UpdateSlide(ctx agent.Context, input UpdateSlideArgs) (Result, error) {
-	state := readState(ctx.State())
-	r, e := updateSlide(&state, input)
-	if e == nil && r.OK {
-		if err := ctx.State().Set("slides", state.Slides); err != nil {
-			return Result{}, fmt.Errorf("set slides: %w", err)
-		}
-		if err := ctx.State().Set("status", state.Status); err != nil {
-			return Result{}, fmt.Errorf("set status: %w", err)
-		}
-	}
-	return r, e
 }
 
 func updateSlide(state *PresentationState, input UpdateSlideArgs) (Result, error) {
@@ -216,23 +218,6 @@ func updateSlide(state *PresentationState, input UpdateSlideArgs) (Result, error
 	return Result{OK: true, SlideID: input.SlideID}, nil
 }
 
-func DeleteSlide(ctx agent.Context, input SlideIDArgs) (Result, error) {
-	state := readState(ctx.State())
-	r, e := deleteSlide(&state, input)
-	if e == nil && r.OK {
-		if err := ctx.State().Set("slides", state.Slides); err != nil {
-			return Result{}, fmt.Errorf("set slides: %w", err)
-		}
-		if err := ctx.State().Set("active_slide_index", state.ActiveSlideIndex); err != nil {
-			return Result{}, fmt.Errorf("set active_slide_index: %w", err)
-		}
-		if err := ctx.State().Set("status", state.Status); err != nil {
-			return Result{}, fmt.Errorf("set status: %w", err)
-		}
-	}
-	return r, e
-}
-
 func deleteSlide(state *PresentationState, input SlideIDArgs) (Result, error) {
 	index := slideIndex(state.Slides, input.SlideID)
 	if index < 0 {
@@ -246,23 +231,6 @@ func deleteSlide(state *PresentationState, input SlideIDArgs) (Result, error) {
 	}
 	state.Status = StatusDrafting
 	return Result{OK: true}, nil
-}
-
-func ReorderSlides(ctx agent.Context, input ReorderArgs) (Result, error) {
-	state := readState(ctx.State())
-	r, e := reorderSlides(&state, input)
-	if e == nil && r.OK {
-		if err := ctx.State().Set("slides", state.Slides); err != nil {
-			return Result{}, fmt.Errorf("set slides: %w", err)
-		}
-		if err := ctx.State().Set("active_slide_index", state.ActiveSlideIndex); err != nil {
-			return Result{}, fmt.Errorf("set active_slide_index: %w", err)
-		}
-		if err := ctx.State().Set("status", state.Status); err != nil {
-			return Result{}, fmt.Errorf("set status: %w", err)
-		}
-	}
-	return r, e
 }
 
 func reorderSlides(state *PresentationState, input ReorderArgs) (Result, error) {
@@ -290,18 +258,85 @@ func reorderSlides(state *PresentationState, input ReorderArgs) (Result, error) 
 	return Result{OK: true}, nil
 }
 
-func MarkReady(ctx agent.Context, input ReadyArgs) (Result, error) {
-	state := readState(ctx.State())
-	r, e := markReady(&state, input)
-	if e == nil && r.OK {
-		if err := ctx.State().Set("status", state.Status); err != nil {
-			return Result{}, fmt.Errorf("set status: %w", err)
+func revisePresentation(state *PresentationState, input RevisePresentationArgs) (Result, error) {
+	if input.Title == nil && input.Theme == nil && len(input.Updates) == 0 && len(input.DeleteSlideIDs) == 0 && input.SlideIDs == nil && !input.MarkReady {
+		return failure("no_changes", "revision must include at least one change or mark_ready"), nil
+	}
+
+	next := *state
+	next.Slides = append([]Slide(nil), state.Slides...)
+	if input.Title != nil || input.Theme != nil {
+		title, theme := next.Title, next.Theme
+		if input.Title != nil {
+			title = *input.Title
 		}
-		if err := ctx.State().Set("review_summary", state.ReviewSummary); err != nil {
-			return Result{}, fmt.Errorf("set review_summary: %w", err)
+		if input.Theme != nil {
+			theme = *input.Theme
+		}
+		result, err := setMeta(&next, SetMetaArgs{Title: title, Theme: theme})
+		if err != nil || !result.OK {
+			return result, err
 		}
 	}
-	return r, e
+
+	updatedIDs := make([]string, 0, len(input.Updates))
+	updated := make(map[string]bool, len(input.Updates))
+	for _, update := range input.Updates {
+		if updated[update.SlideID] {
+			return failure("duplicate_slide_id", "updates cannot contain duplicate slide IDs"), nil
+		}
+		updated[update.SlideID] = true
+		result, err := updateSlide(&next, update)
+		if err != nil || !result.OK {
+			return result, err
+		}
+		updatedIDs = append(updatedIDs, update.SlideID)
+	}
+
+	deletedIDs := make([]string, 0, len(input.DeleteSlideIDs))
+	deleted := make(map[string]bool, len(input.DeleteSlideIDs))
+	for _, id := range input.DeleteSlideIDs {
+		if deleted[id] {
+			return failure("duplicate_slide_id", "delete_slide_ids cannot contain duplicate slide IDs"), nil
+		}
+		if updated[id] {
+			return failure("conflicting_slide_change", "a slide cannot be updated and deleted in the same revision"), nil
+		}
+		deleted[id] = true
+		result, err := deleteSlide(&next, SlideIDArgs{SlideID: id})
+		if err != nil || !result.OK {
+			return result, err
+		}
+		deletedIDs = append(deletedIDs, id)
+	}
+
+	if input.SlideIDs != nil {
+		result, err := reorderSlides(&next, ReorderArgs{SlideIDs: input.SlideIDs})
+		if err != nil || !result.OK {
+			return result, err
+		}
+	}
+	if input.MarkReady {
+		result, err := markReady(&next, ReadyArgs{Summary: input.Summary, ExpectedSlideCount: input.ExpectedSlideCount})
+		if err != nil || !result.OK {
+			return result, err
+		}
+	}
+
+	*state = next
+	slideIDs := make([]string, 0, len(state.Slides))
+	for _, slide := range state.Slides {
+		slideIDs = append(slideIDs, slide.ID)
+	}
+	return Result{
+		OK:                true,
+		SlideIDs:          slideIDs,
+		UpdatedSlideIDs:   updatedIDs,
+		DeletedSlideIDs:   deletedIDs,
+		SlideCount:        len(state.Slides),
+		UpdatedSlideCount: len(updatedIDs),
+		Status:            state.Status,
+	}, nil
 }
 
 func markReady(state *PresentationState, input ReadyArgs) (Result, error) {

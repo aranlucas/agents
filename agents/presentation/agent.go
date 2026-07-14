@@ -24,14 +24,6 @@ func New(m model.LLM, toolsets ...tool.Toolset) (agent.Agent, error) {
 }
 
 func presentationTools() ([]tool.Tool, error) {
-	setMetaTool, err := functiontool.New(functiontool.Config{
-		Name:        "set_presentation_meta",
-		Description: "Set presentation title and theme.",
-	}, SetMeta)
-	if err != nil {
-		return nil, err
-	}
-
 	buildPresentationTool, err := functiontool.New(functiontool.Config{
 		Name:        "build_presentation",
 		Description: "Create or replace the complete presentation in one ordered slides array.",
@@ -40,44 +32,16 @@ func presentationTools() ([]tool.Tool, error) {
 		return nil, err
 	}
 
-	updateSlideTool, err := functiontool.New(functiontool.Config{
-		Name:        "update_slide",
-		Description: "Update selected fields of an existing slide.",
-	}, UpdateSlide)
-	if err != nil {
-		return nil, err
-	}
-
-	deleteSlideTool, err := functiontool.New(functiontool.Config{
-		Name:        "delete_slide",
-		Description: "Delete a slide by ID.",
-	}, DeleteSlide)
-	if err != nil {
-		return nil, err
-	}
-
-	reorderSlidesTool, err := functiontool.New(functiontool.Config{
-		Name:        "reorder_slides",
-		Description: "Reorder slides using the explicit list of IDs; unlisted slides are removed.",
-	}, ReorderSlides)
-	if err != nil {
-		return nil, err
-	}
-
-	markReadyTool, err := functiontool.New(functiontool.Config{
-		Name:        "mark_presentation_ready",
-		Description: "Mark the deck ready and record a review summary.",
-	}, MarkReady)
+	revisePresentationTool, err := functiontool.New(functiontool.Config{
+		Name:        "revise_presentation",
+		Description: "Atomically revise an existing presentation with arrays of slide updates, deletions, and an optional complete slide order.",
+	}, RevisePresentation)
 	if err != nil {
 		return nil, err
 	}
 
 	return []tool.Tool{
-		setMetaTool,
 		buildPresentationTool,
-		updateSlideTool,
-		deleteSlideTool,
-		reorderSlidesTool,
-		markReadyTool,
+		revisePresentationTool,
 	}, nil
 }
