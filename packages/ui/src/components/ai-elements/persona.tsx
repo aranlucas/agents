@@ -208,19 +208,26 @@ export const Persona: FC<PersonaProps> = memo(
       };
     }, [onLoad, onLoadError, onPause, onPlay, onReady, onStop]);
 
-    const stableCallbacks = useMemo(
-      () => ({
-        onLoad: ((loadedRive) =>
-          callbacksRef.current.onLoad?.(loadedRive)) as RiveParameters["onLoad"],
-        onLoadError: ((err) =>
-          callbacksRef.current.onLoadError?.(err)) as RiveParameters["onLoadError"],
-        onPause: ((event) => callbacksRef.current.onPause?.(event)) as RiveParameters["onPause"],
-        onPlay: ((event) => callbacksRef.current.onPlay?.(event)) as RiveParameters["onPlay"],
-        onReady: () => callbacksRef.current.onReady?.(),
-        onStop: ((event) => callbacksRef.current.onStop?.(event)) as RiveParameters["onStop"],
-      }),
-      [],
-    );
+    const stableCallbacks = useMemo(() => {
+      const handleLoad: RiveParameters["onLoad"] = (loadedRive) =>
+        callbacksRef.current.onLoad?.(loadedRive);
+      const handleLoadError: RiveParameters["onLoadError"] = (err) =>
+        callbacksRef.current.onLoadError?.(err);
+      const handlePause: RiveParameters["onPause"] = (event) =>
+        callbacksRef.current.onPause?.(event);
+      const handlePlay: RiveParameters["onPlay"] = (event) => callbacksRef.current.onPlay?.(event);
+      const handleRiveReady = () => callbacksRef.current.onReady?.();
+      const handleStop: RiveParameters["onStop"] = (event) => callbacksRef.current.onStop?.(event);
+
+      return {
+        onLoad: handleLoad,
+        onLoadError: handleLoadError,
+        onPause: handlePause,
+        onPlay: handlePlay,
+        onRiveReady: handleRiveReady,
+        onStop: handleStop,
+      };
+    }, []);
 
     // Delay initialisation by one frame to avoid creating (and leaking)
     // a WebGL2 context during React Strict Mode's first throw-away mount.
@@ -234,7 +241,7 @@ export const Persona: FC<PersonaProps> = memo(
             onLoadError: stableCallbacks.onLoadError,
             onPause: stableCallbacks.onPause,
             onPlay: stableCallbacks.onPlay,
-            onRiveReady: stableCallbacks.onReady,
+            onRiveReady: stableCallbacks.onRiveReady,
             onStop: stableCallbacks.onStop,
             src: source.source,
             stateMachines: stateMachine,

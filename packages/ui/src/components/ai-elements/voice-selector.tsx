@@ -72,7 +72,17 @@ export const VoiceSelector = ({
   const [open, setOpen] = useControllableState({
     defaultProp: defaultOpen,
     onChange: onOpenChange
-      ? (value) => onOpenChange(value, { reason: "none", preventUnmountOnClose: () => {} } as any)
+      ? (isOpen) =>
+          onOpenChange(isOpen, {
+            reason: "none",
+            event: new Event("dialog-open-change"),
+            cancel: () => {},
+            allowPropagation: () => {},
+            isCanceled: false,
+            isPropagationAllowed: true,
+            trigger: undefined,
+            preventUnmountOnClose: () => {},
+          })
       : undefined,
     prop: openProp,
   });

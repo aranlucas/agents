@@ -31,6 +31,8 @@ type ChartContextProps = {
   config: ChartConfig;
 };
 
+type CSSVariableStyle = React.CSSProperties & Record<`--${string}`, string | number>;
+
 const ChartContext = React.createContext<ChartContextProps | null>(null);
 
 function useChart() {
@@ -218,7 +220,7 @@ function ChartTooltipContent({
                             {
                               "--color-bg": indicatorColor,
                               "--color-border": indicatorColor,
-                            } as React.CSSProperties
+                            } as CSSVariableStyle
                           }
                         />
                       )

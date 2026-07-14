@@ -17,13 +17,12 @@ interface FileTreeContextType {
   onSelect?: (path: string) => void;
 }
 
-// Default noop for context default value
-// oxlint-disable-next-line eslint(no-empty-function)
 const noop = () => {};
 
+const EMPTY_PATH_SET = new Set<string>();
+
 const FileTreeContext = createContext<FileTreeContextType>({
-  // oxlint-disable-next-line eslint-plugin-unicorn(no-new-builtin)
-  expandedPaths: new Set(),
+  expandedPaths: EMPTY_PATH_SET,
   togglePath: noop,
 });
 
@@ -37,7 +36,7 @@ export type FileTreeProps = Omit<HTMLAttributes<HTMLDivElement>, "onSelect"> & {
 
 export const FileTree = ({
   expanded: controlledExpanded,
-  defaultExpanded = new Set(),
+  defaultExpanded = EMPTY_PATH_SET,
   selectedPath,
   onSelect,
   onExpandedChange,
