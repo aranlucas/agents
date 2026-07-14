@@ -133,16 +133,21 @@ function stripMarkdownForSpeech(text: string): string {
 
 function CitationChips({ sources }: { sources: CaseSource[] }) {
   if (sources.length === 0) return null;
+  const sourceKeyCounts = new Map<string, number>();
+
   return (
     <div className="flex min-w-0 flex-wrap gap-1">
-      {sources.map((s, i) => {
+      {sources.map((s) => {
         const collection = safeString(s.collection) ?? "src";
         const docid = typeof s.docid === "number" || typeof s.docid === "string" ? s.docid : "?";
         const title = safeString(s.title) ?? "Untitled";
+        const keySeed = `${collection}-${docid}-${title}`;
+        const duplicate = sourceKeyCounts.get(keySeed) ?? 0;
+        sourceKeyCounts.set(keySeed, duplicate + 1);
+        const key = `${keySeed}-${duplicate + 1}`;
         return (
           <Badge
-            // oxlint-disable-next-line react/no-array-index-key -- fields can collide once defaulted
-            key={`${collection}-${docid}-${i}`}
+            key={key}
             variant="secondary"
             className="max-w-full min-w-0 truncate font-mono text-[10px]"
           >
@@ -322,6 +327,8 @@ function OutcomeBanner({ outcome }: { outcome: OralBoardsOutcome }) {
 
 function ScoreSummaryTable({ summary }: { summary: OralBoardsSkillsetScore[] }) {
   if (summary.length === 0) return null;
+  const scoreRowKeyCounts = new Map<string, number>();
+
   return (
     <div className="overflow-hidden rounded-lg border">
       <Table className="text-xs">
@@ -333,16 +340,16 @@ function ScoreSummaryTable({ summary }: { summary: OralBoardsSkillsetScore[] }) 
           </TableRow>
         </TableHeader>
         <TableBody>
-          {summary.map((row, i) => {
+          {summary.map((row) => {
             const skillset = safeString(row.skillset) ?? "Unknown skillset";
             const rationale = safeString(row.rationale);
             const score = scoreNumber(row.score);
+            const keySeed = `${skillset}-${row.skill ?? "na"}-${score ?? "na"}-${rationale}`;
+            const duplicate = scoreRowKeyCounts.get(keySeed) ?? 0;
+            scoreRowKeyCounts.set(keySeed, duplicate + 1);
+            const key = `${keySeed}-${duplicate + 1}`;
             return (
-              <TableRow
-                // oxlint-disable-next-line react/no-array-index-key -- fields can collide once defaulted
-                key={`${skillset}-${row.skill ?? "na"}-${i}`}
-                className="align-top"
-              >
+              <TableRow key={key} className="align-top">
                 <TableCell className="px-2.5 py-1.5">
                   <p className="font-medium">{skillset}</p>
                   {rationale && <p className="text-muted-foreground mt-0.5">{rationale}</p>}
@@ -813,16 +820,12 @@ function ExaminerQuestionCard({
   questionNumber,
   isRunning,
   loadingStep,
-  targetSkillset,
-  targetSkill,
 }: {
   question: string;
   probe?: string;
   questionNumber: number;
   isRunning: boolean;
   loadingStep: string;
-  targetSkillset?: string;
-  targetSkill?: OralBoardsSkill;
 }) {
   // A follow-up probe supersedes the original question as the active prompt.
   // Coerce defensively: both props ultimately trace back to LLM-written
@@ -831,10 +834,6 @@ function ExaminerQuestionCard({
   const questionText = asText(question);
   const isProbe = Boolean(probeText.trim());
   const activeText = isProbe ? probeText : questionText;
-  // The declared assessment target (LLM-written state) — hidden gracefully
-  // when missing or off-enum, so an untagged question renders as before.
-  const targetSkillsetLabel = safeString(targetSkillset);
-  const targetSkillMeta = skillMetaFor(targetSkill);
   return (
     <Card>
       <CardHeader className="flex-row items-start justify-between gap-2">
@@ -867,33 +866,7 @@ function ExaminerQuestionCard({
           <p className="text-muted-foreground text-xs leading-relaxed">{questionText}</p>
         )}
         {activeText ? (
-          <>
-            {(targetSkillsetLabel ?? targetSkillMeta) && (
-              <div className="flex flex-wrap items-center gap-1">
-                {targetSkillsetLabel && (
-                  <Badge variant="secondary" className="text-[10px]">
-                    {targetSkillsetLabel}
-                  </Badge>
-                )}
-                {targetSkillMeta && (
-                  <Badge
-                    variant="secondary"
-                    title={targetSkillMeta.description}
-                    className="text-[10px]"
-                  >
-                    {targetSkillMeta.label}
-                  </Badge>
-                )}
-              </div>
-            )}
-            <p className="text-[15px] leading-relaxed font-medium text-pretty">{activeText}</p>
-            {targetSkillMeta && (
-              <p className="text-muted-foreground text-[11px]">
-                {targetSkillMeta.label} — {targetSkillMeta.description.charAt(0).toLowerCase()}
-                {targetSkillMeta.description.slice(1)}
-              </p>
-            )}
-          </>
+          <p className="text-[15px] leading-relaxed font-medium text-pretty">{activeText}</p>
         ) : (
           <ThinkingState isRunning={isRunning} loadingStep={loadingStep} />
         )}
@@ -1003,8 +976,6 @@ function QuestioningPane({
   activeIdealResponse = "",
   activeProbe = "",
   stateQuestion = "",
-  targetSkillset,
-  targetSkill,
 }: {
   caseBody: string;
   sources: CaseSource[];
@@ -1018,8 +989,6 @@ function QuestioningPane({
   activeIdealResponse?: string;
   activeProbe?: string;
   stateQuestion?: string;
-  targetSkillset?: string;
-  targetSkill?: OralBoardsSkill;
 }) {
   const { currentQuestion } = useOralBoardsQuestion();
   // RequestInput registration temporarily mirrors a probe into the client
@@ -1031,15 +1000,10 @@ function QuestioningPane({
       : currentQuestion || stateQuestion;
   const isMobile = useIsMobile();
   const [answerText, setAnswerText] = useState("");
-  const [submittedAnswer, setSubmittedAnswer] = useState("");
   // A new probe is a new active prompt even though the question is unchanged.
   const activePrompt = JSON.stringify([question, activeProbe]);
-  const [previousPrompt, setPreviousPrompt] = useState(activePrompt);
-
-  if (activePrompt !== previousPrompt) {
-    setPreviousPrompt(activePrompt);
-    setSubmittedAnswer("");
-  }
+  const [submission, setSubmission] = useState({ prompt: "", answer: "" });
+  const submittedAnswer = submission.prompt === activePrompt ? submission.answer : "";
 
   const isScoring = isRunning && loadingStep === "Computing score card…";
   const stage: "question" | "reviewing" | "scoring" | "complete" = isScoring
@@ -1062,7 +1026,7 @@ function QuestioningPane({
   const handleSubmit = () => {
     const trimmed = answerText.trim();
     if (!trimmed || isRunning) return;
-    setSubmittedAnswer(trimmed);
+    setSubmission({ prompt: activePrompt, answer: trimmed });
     onAnswer(trimmed);
     setAnswerText("");
   };
@@ -1130,8 +1094,6 @@ function QuestioningPane({
                     questionNumber={displayedQuestionNumber}
                     isRunning={isRunning}
                     loadingStep={loadingStep}
-                    targetSkillset={targetSkillset}
-                    targetSkill={targetSkill}
                   />
                   <AnswerCoach />
                 </>
@@ -1158,8 +1120,6 @@ function QuestioningPane({
               questionNumber={displayedQuestionNumber}
               isRunning={isRunning}
               loadingStep={loadingStep}
-              targetSkillset={targetSkillset}
-              targetSkill={targetSkill}
             />
             <AnswerCoach />
           </>
@@ -1289,18 +1249,12 @@ export function OralBoardsPanel({
   onReady,
   onAnswer,
   isRunning,
-  loadingStep = "",
-  activeFeedback = "",
-  activeIdealResponse = "",
 }: {
   state: OralBoardsState;
   onClose: () => void;
   onReady: () => void;
   onAnswer: (text: string) => void;
   isRunning: boolean;
-  loadingStep?: string;
-  activeFeedback?: string;
-  activeIdealResponse?: string;
 }) {
   const { status, caseBody, sources, transcript, scoreCard, scoreSummary, outcome } =
     normalizeState(state);
@@ -1308,6 +1262,9 @@ export function OralBoardsPanel({
   // Scratch notes persist across presenting → questioning so the candidate
   // keeps what they jotted while reading the case.
   const [notes, setNotes] = useState("");
+  const loadingStep = asText(state.loading_step);
+  const activeFeedback = asText(state.active_feedback);
+  const activeIdealResponse = asText(state.active_ideal_response);
 
   const showFinalFeedback = status === "complete" || Boolean(scoreCard.trim());
   const isExamActive = (status === "questioning" || status === "feedback") && !showFinalFeedback;

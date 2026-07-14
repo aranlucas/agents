@@ -73,22 +73,24 @@ function SearchDocsToolCall({
       {status === "complete" && results && results.length > 0 && (
         <ToolContent>
           <div className="space-y-1.5 border-t px-3 py-2.5">
-            {results.slice(0, 5).map((r, i) => (
-              // oxlint-disable-next-line react/no-array-index-key -- result list has no stable id
-              <div key={i} className="space-y-0.5">
-                <div className="flex items-center gap-1.5">
-                  <Badge variant="secondary" className="font-mono text-[10px]">
-                    {r.collection.toUpperCase()}
-                  </Badge>
-                  <span className="truncate text-xs font-medium">{r.title}</span>
+            {results.slice(0, 5).map((r) => {
+              const resultKey = `${r.collection}-${r.title}-${r.snippet}`;
+              return (
+                <div key={resultKey} className="space-y-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant="secondary" className="font-mono text-[10px]">
+                      {r.collection.toUpperCase()}
+                    </Badge>
+                    <span className="truncate text-xs font-medium">{r.title}</span>
+                  </div>
+                  {r.snippet && (
+                    <p className="text-muted-foreground line-clamp-2 pl-0.5 text-[11px] leading-snug">
+                      {r.snippet}
+                    </p>
+                  )}
                 </div>
-                {r.snippet && (
-                  <p className="text-muted-foreground line-clamp-2 pl-0.5 text-[11px] leading-snug">
-                    {r.snippet}
-                  </p>
-                )}
-              </div>
-            ))}
+              );
+            })}
             {results.length > 5 && (
               <p className="text-muted-foreground text-[11px]">+{results.length - 5} more</p>
             )}
@@ -147,7 +149,7 @@ function RequestInputToolCall({
   const question = args.payload?.question ?? args.message ?? "Please respond.";
 
   useEffect(() => {
-    if (status !== "executing" || !respond) return;
+    if (status !== "executing" || !respond) return undefined;
     registerPendingInput({ id, kind, question, respond });
     return () => clearPendingInput(id);
   }, [status, respond, id, kind, question, registerPendingInput, clearPendingInput]);
