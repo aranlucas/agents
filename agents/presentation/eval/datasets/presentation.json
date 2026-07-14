@@ -18,10 +18,10 @@
         "agent_contract": {
           "rubrics": [
             {
-              "rubric_id": "presentation_sets_meta",
+              "rubric_id": "presentation_builds_atomically",
               "content": {
                 "property": {
-                  "description": "The agent calls set_presentation_meta with an appropriate deck title and theme."
+                  "description": "The agent calls build_presentation exactly once with an appropriate title, theme, summary, and all 10 slides in one ordered array."
                 }
               }
             },
@@ -42,10 +42,10 @@
               }
             },
             {
-              "rubric_id": "presentation_marks_ready",
+              "rubric_id": "presentation_reports_persisted_count",
               "content": {
                 "property": {
-                  "description": "The agent calls mark_presentation_ready only after the deck content has been written to state."
+                  "description": "The agent reports completion only when build_presentation succeeds with a persisted slide_count of 10."
                 }
               }
             }

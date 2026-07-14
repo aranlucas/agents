@@ -32,10 +32,10 @@ func presentationTools() ([]tool.Tool, error) {
 		return nil, err
 	}
 
-	createSlideTool, err := functiontool.New(functiontool.Config{
-		Name:        "create_slide",
-		Description: "Add a slide to the presentation.",
-	}, CreateSlide)
+	buildPresentationTool, err := functiontool.New(functiontool.Config{
+		Name:        "build_presentation",
+		Description: "Create or replace the complete presentation in one ordered slides array.",
+	}, BuildPresentation)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func presentationTools() ([]tool.Tool, error) {
 
 	return []tool.Tool{
 		setMetaTool,
-		createSlideTool,
+		buildPresentationTool,
 		updateSlideTool,
 		deleteSlideTool,
 		reorderSlidesTool,
