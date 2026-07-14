@@ -272,7 +272,9 @@ ownership before issuing a response or URL.
   a request-aware transport, not global mutable configuration.
 - D1/R2 credentials are validated at startup but never echoed in health output.
 - CORS uses `ALLOWED_ORIGINS`; a literal `*` origin is treated as open CORS and
-  still uses origin reflection so credentialed browser requests are accepted.
+  still uses origin reflection so credentialed browser requests are accepted. HTTP
+  origins are rejected in production except local loopback origins used for local
+  debugging.
 - Body size, client-tool argument size, artifact size, tool-call depth, and
   model output duration are bounded. Context cancellation terminates upstream
   HTTP/MCP calls.
