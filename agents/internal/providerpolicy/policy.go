@@ -130,6 +130,15 @@ func Telegram() Policy {
 	}
 }
 
+// SessionTitle uses a tiny model for the one-shot title generated from a
+// session's first user message. Failure falls back to a local truncated title.
+func SessionTitle() Policy {
+	return Policy{
+		Provider: "mistral", Model: "ministral-3b-latest", RequestsPerMinute: 20,
+		missingProviderMessage: "MISTRAL_API_KEY is required to configure session titles",
+	}
+}
+
 // ResolveRequired applies a production policy to configured providers. Its
 // fallback list is filtered without reordering so optional provider keys stay
 // optional and openai.NewMulti never receives an unavailable fallback name.

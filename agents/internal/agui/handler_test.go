@@ -115,7 +115,9 @@ func TestRestoreSessionPersistsNameInSessionState(t *testing.T) {
 		Route: "travel", AppName: "travel_agent",
 		StateDefaults: func() map[string]any { return map[string]any{"itinerary": ""} },
 	}
-	created, err := handler.restoreSession(t.Context(), entry, "user-1", "thread-1", "Plan Japan")
+	created, err := handler.restoreSession(t.Context(), entry, "user-1", "thread-1", &types.RunAgentInput{
+		Messages: []types.Message{{Role: types.RoleUser, Content: "Plan Japan"}},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
