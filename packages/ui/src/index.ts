@@ -166,6 +166,14 @@ export {
 } from "./components/sheet";
 export { Skeleton } from "./components/skeleton";
 export {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyContent,
+} from "./components/empty";
+export {
   Table,
   TableBody,
   TableCaption,
