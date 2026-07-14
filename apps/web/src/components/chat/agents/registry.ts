@@ -21,7 +21,6 @@ type Suggestion = {
 export type AgentConfig = {
   id: AgentId;
   label: string;
-  glyph: string;
   /** CSS custom property holding the agent accent, e.g. "--travel". */
   colorVar: string;
   /** Tailwind theme utility for the same agent accent. */
@@ -38,7 +37,6 @@ const AGENTS: Record<AgentId, AgentConfig> = {
   travel: {
     id: "travel",
     label: "Trip Studio",
-    glyph: "✈",
     colorVar: "--travel",
     colorClass: "text-travel",
     placeholder: "Plan a trip, rework a day, or ask for tradeoffs…",
@@ -73,7 +71,6 @@ const AGENTS: Record<AgentId, AgentConfig> = {
     id: "grocery",
     requiresKroger: true,
     label: "Grocery",
-    glyph: "🛒",
     colorVar: "--grocery",
     colorClass: "text-grocery",
     placeholder: "Plan meals, build a list, or find deals…",
@@ -99,7 +96,6 @@ const AGENTS: Record<AgentId, AgentConfig> = {
   fitness: {
     id: "fitness",
     label: "Fitness",
-    glyph: "💪",
     colorVar: "--fitness",
     colorClass: "text-fitness",
     placeholder: "Plan training, log a workout, or set a goal…",
@@ -123,7 +119,6 @@ const AGENTS: Record<AgentId, AgentConfig> = {
     id: "wellness",
     requiresKroger: true,
     label: "Wellness",
-    glyph: "☯",
     colorVar: "--wellness",
     colorClass: "text-wellness",
     placeholder: "Coordinate a week of meals and training…",
@@ -149,7 +144,6 @@ const AGENTS: Record<AgentId, AgentConfig> = {
   expense: {
     id: "expense",
     label: "Expense Desk",
-    glyph: "$",
     colorVar: "--expense",
     colorClass: "text-expense",
     placeholder: "Submit an expense or review the queue...",
@@ -180,7 +174,6 @@ const AGENTS: Record<AgentId, AgentConfig> = {
   "oral-boards": {
     id: "oral-boards",
     label: "Oral Boards",
-    glyph: "◆",
     colorVar: "--oral-boards",
     colorClass: "text-oral-boards",
     placeholder: "Start a pediatric dentistry oral-board case…",
@@ -213,7 +206,6 @@ const AGENTS: Record<AgentId, AgentConfig> = {
   trends: {
     id: "trends",
     label: "Trends",
-    glyph: "📈",
     colorVar: "--trends",
     colorClass: "text-trends",
     placeholder: "What's trending on Google right now?",
@@ -247,7 +239,6 @@ const AGENTS: Record<AgentId, AgentConfig> = {
   resume: {
     id: "resume",
     label: "Resume",
-    glyph: "▣",
     colorVar: "--resume",
     colorClass: "text-resume",
     placeholder: "Ask about Lucas…",
@@ -263,7 +254,6 @@ const AGENTS: Record<AgentId, AgentConfig> = {
   research: {
     id: "research",
     label: "Research",
-    glyph: "🔬",
     colorVar: "--research",
     colorClass: "text-research",
     placeholder: "Ask me to research any topic…",
@@ -293,7 +283,6 @@ const AGENTS: Record<AgentId, AgentConfig> = {
   spreadsheet: {
     id: "spreadsheet",
     label: "Spreadsheet",
-    glyph: "📊",
     colorVar: "--spreadsheet",
     colorClass: "text-spreadsheet",
     placeholder: "Ask me to create or analyze a spreadsheet…",
@@ -320,7 +309,6 @@ const AGENTS: Record<AgentId, AgentConfig> = {
   presentation: {
     id: "presentation",
     label: "Slides",
-    glyph: "🎞",
     colorVar: "--presentation",
     colorClass: "text-presentation",
     placeholder: "Ask me to build a presentation…",

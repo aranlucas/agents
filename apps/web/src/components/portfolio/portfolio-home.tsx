@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { cn } from "@agents/ui/lib/utils";
+import { ArrowRight } from "lucide-react";
 
+import { AgentIcon } from "@/components/agent-icon";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 import { GeneratedIntroduction } from "./generated-introduction";
@@ -30,73 +32,73 @@ const ideas = [
 
 const agentDemos = [
   {
+    id: "travel",
     title: "Trip Studio",
     description: "Create durable itineraries.",
     href: "/console/travel",
-    glyph: "✈",
     colorClass: "text-travel",
   },
   {
+    id: "grocery",
     title: "Grocery",
     description: "Ground meal plans and shopping lists in commerce tools.",
     href: "/console/grocery",
-    glyph: "🛒",
     colorClass: "text-grocery",
   },
   {
+    id: "fitness",
     title: "Fitness",
     description: "Turn goals and activity into a training plan.",
     href: "/console/fitness",
-    glyph: "💪",
     colorClass: "text-fitness",
   },
   {
+    id: "wellness",
     title: "Wellness",
     description: "Coordinate grocery and fitness into one week.",
     href: "/console/wellness",
-    glyph: "☯",
     colorClass: "text-wellness",
   },
   {
+    id: "expense",
     title: "Expense Desk",
     description: "Audit expenses and produce a report.",
     href: "/console/expense",
-    glyph: "$",
     colorClass: "text-expense",
   },
   {
+    id: "oral-boards",
     title: "Oral Boards",
     description: "Run a staged clinical examination.",
     href: "/console/oral-boards",
-    glyph: "◆",
     colorClass: "text-oral-boards",
   },
   {
+    id: "trends",
     title: "Trends",
     description: "Explore search trends visually.",
     href: "/console/trends",
-    glyph: "↗",
     colorClass: "text-trends",
   },
   {
+    id: "research",
     title: "Research",
     description: "Turn a question into a structured report.",
     href: "/console/research",
-    glyph: "⌕",
     colorClass: "text-research",
   },
   {
+    id: "spreadsheet",
     title: "Spreadsheet",
     description: "Create and revise spreadsheets.",
     href: "/console/spreadsheet",
-    glyph: "▦",
     colorClass: "text-spreadsheet",
   },
   {
+    id: "presentation",
     title: "Slides",
     description: "Build a presentation on a live surface.",
     href: "/console/presentation",
-    glyph: "▤",
     colorClass: "text-presentation",
   },
 ] as const;
@@ -166,7 +168,7 @@ function AgentDemos() {
         Working agents
       </h2>
       <ul className="mt-5 border-t border-border">
-        {agentDemos.map(({ title, description, href, glyph, colorClass }) => (
+        {agentDemos.map(({ id, title, description, href, colorClass }) => (
           <li className="border-b border-border" key={title}>
             <Link
               className="group grid grid-cols-12 items-center gap-x-3 gap-y-1 rounded-sm py-3.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring sm:gap-4"
@@ -175,11 +177,11 @@ function AgentDemos() {
             >
               <span
                 className={cn(
-                  "col-span-1 row-span-2 grid size-7 place-items-center rounded-md border border-border bg-surface-raised font-mono text-xs sm:row-span-1",
+                  "col-span-1 row-span-2 grid size-7 place-items-center sm:row-span-1",
                   colorClass,
                 )}
               >
-                {glyph}
+                <AgentIcon agentId={id} />
               </span>
               <span className="col-span-9 text-base font-medium tracking-tight group-hover:underline group-hover:underline-offset-4 sm:col-span-3">
                 {title}
@@ -191,7 +193,7 @@ function AgentDemos() {
                 aria-hidden="true"
                 className="col-span-2 col-start-11 row-start-1 text-right text-sm text-muted-foreground transition-transform group-hover:translate-x-0.5 sm:col-span-1 sm:col-start-auto sm:row-start-auto"
               >
-                →
+                <ArrowRight className="ms-auto size-3.5" strokeWidth={1.75} />
               </span>
             </Link>
           </li>
