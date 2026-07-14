@@ -130,8 +130,8 @@ function IntroductionWriter() {
     <div aria-live="polite" className="mt-4 h-42 overflow-hidden">
       {showSkeleton ? (
         <div aria-label="Resume agent is connecting" className="space-y-2 py-1">
-          <div className="bg-muted h-3 w-full animate-[shimmer_1.6s_ease-in-out_infinite] rounded bg-[linear-gradient(90deg,transparent_0%,_color-mix(in_srgb,_var(--foreground)_10%,_transparent)_50%,_transparent_100%)] bg-[size:200%_100%]" />
-          <div className="bg-muted h-3 w-4/5 animate-[shimmer_1.6s_ease-in-out_infinite] rounded bg-[linear-gradient(90deg,transparent_0%,_color-mix(in_srgb,_var(--foreground)_10%,_transparent)_50%,_transparent_100%)] bg-[size:200%_100%]" />
+          <div className="bg-muted h-3 w-full rounded" />
+          <div className="bg-muted h-3 w-4/5 rounded" />
         </div>
       ) : null}
       {text ? (
@@ -140,7 +140,7 @@ function IntroductionWriter() {
             token.isWord ? (
               <span
                 key={token.id}
-                className="inline-block animate-[intro-word-rise_0.55s_cubic-bezier(0.16,1,0.3,1)_both] bg-[linear-gradient(90deg,transparent_0%,_color-mix(in_srgb,_var(--accent)_25%,_transparent)_50%,_transparent_100%)] bg-[size:220%_100%]"
+                className="inline-block animate-[intro-word-rise_0.55s_cubic-bezier(0.16,1,0.3,1)_both]"
               >
                 {token.text}
               </span>
