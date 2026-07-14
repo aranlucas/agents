@@ -46,8 +46,8 @@ const ShimmerComponent = ({
     <MotionComponent
       animate={{ backgroundPosition: "0% center" }}
       className={cn(
-        "relative inline-block bg-[length:250%_100%,auto] bg-clip-text text-transparent",
-        "[background-repeat:no-repeat,padding-box] [--bg:linear-gradient(90deg,#0000_calc(50%-var(--spread)),var(--color-background),#0000_calc(50%+var(--spread)))]",
+        "relative inline-block shimmer-size bg-clip-text text-transparent",
+        "shimmer-background",
         className,
       )}
       initial={{ backgroundPosition: "100% center" }}

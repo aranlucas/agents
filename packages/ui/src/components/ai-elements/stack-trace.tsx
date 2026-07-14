@@ -191,7 +191,7 @@ export const StackTrace = memo(
       <StackTraceContext.Provider value={contextValue}>
         <div
           className={cn(
-            "not-prose bg-background w-full overflow-hidden rounded-lg border font-mono text-sm",
+            "not-prose w-full overflow-hidden rounded-lg border bg-background font-mono text-sm",
             className,
           )}
           {...props}
@@ -215,7 +215,7 @@ export const StackTraceHeader = memo(({ className, children, ...props }: StackTr
         render={
           <div
             className={cn(
-              "hover:bg-muted/50 flex w-full cursor-pointer items-center gap-3 p-3 text-left transition-colors",
+              "flex w-full cursor-pointer items-center gap-3 p-3 text-left transition-colors hover:bg-muted/50",
               className,
             )}
           />
@@ -231,7 +231,7 @@ export type StackTraceErrorProps = ComponentProps<"div">;
 
 export const StackTraceError = memo(({ className, children, ...props }: StackTraceErrorProps) => (
   <div className={cn("flex flex-1 items-center gap-2 overflow-hidden", className)} {...props}>
-    <AlertTriangleIcon className="text-destructive size-4 shrink-0" />
+    <AlertTriangleIcon className="size-4 shrink-0 text-destructive" />
     {children}
   </div>
 ));
@@ -243,7 +243,7 @@ export const StackTraceErrorType = memo(
     const { trace } = useStackTrace();
 
     return (
-      <span className={cn("text-destructive shrink-0 font-semibold", className)} {...props}>
+      <span className={cn("shrink-0 font-semibold text-destructive", className)} {...props}>
         {children ?? trace.errorType}
       </span>
     );
@@ -257,7 +257,7 @@ export const StackTraceErrorMessage = memo(
     const { trace } = useStackTrace();
 
     return (
-      <span className={cn("text-foreground truncate", className)} {...props}>
+      <span className={cn("truncate text-foreground", className)} {...props}>
         {children ?? trace.errorMessage}
       </span>
     );
@@ -355,7 +355,7 @@ export const StackTraceExpandButton = memo(
       <div className={cn("flex size-7 items-center justify-center", className)} {...props}>
         <ChevronDownIcon
           className={cn(
-            "text-muted-foreground size-4 transition-transform",
+            "size-4 text-muted-foreground transition-transform",
             isOpen ? "rotate-180" : "rotate-0",
           )}
         />
@@ -376,8 +376,8 @@ export const StackTraceContent = memo(
       <Collapsible open={isOpen}>
         <CollapsibleContent
           className={cn(
-            "bg-muted/30 overflow-auto border-t",
-            "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=open]:animate-in",
+            "overflow-auto border-t bg-muted/30",
+            "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
             className,
           )}
           style={{ maxHeight }}
@@ -413,7 +413,7 @@ const FilePathButton = memo(({ frame, onFilePathClick }: FilePathButtonProps) =>
   return (
     <button
       className={cn(
-        "hover:text-primary underline decoration-dotted",
+        "underline decoration-dotted hover:text-primary",
         onFilePathClick && "cursor-pointer",
       )}
       disabled={!onFilePathClick}
@@ -438,7 +438,7 @@ export const StackTraceFrames = memo(
       : trace.frames.filter((f) => !f.isInternal);
 
     return (
-      <div className={cn("space-y-1 p-3", className)} {...props}>
+      <div className={cn("flex flex-col gap-1 p-3", className)} {...props}>
         {framesToShow.map((frame) => (
           <div
             className={cn(
@@ -466,7 +466,7 @@ export const StackTraceFrames = memo(
           </div>
         ))}
         {framesToShow.length === 0 && (
-          <div className="text-muted-foreground text-xs">No stack frames</div>
+          <div className="text-xs text-muted-foreground">No stack frames</div>
         )}
       </div>
     );

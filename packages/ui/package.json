@@ -15,6 +15,7 @@
   },
   "scripts": {
     "lint": "oxlint .",
+    "lint:fix": "oxlint --fix --fix-suggestions .",
     "fmt": "oxfmt .",
     "fmt:check": "oxfmt --check .",
     "typecheck": "tsc --noEmit"

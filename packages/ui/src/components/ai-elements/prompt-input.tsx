@@ -414,7 +414,7 @@ export const PromptInputActionAddAttachments = ({
 
   return (
     <DropdownMenuItem {...props} onSelect={handleSelect}>
-      <ImageIcon className="mr-2 size-4" /> {label}
+      <ImageIcon className="me-2 size-4" /> {label}
     </DropdownMenuItem>
   );
 };
@@ -459,7 +459,7 @@ export const PromptInputActionAddScreenshot = ({
 
   return (
     <DropdownMenuItem {...props} onSelect={handleSelect}>
-      <Monitor className="mr-2 size-4" />
+      <Monitor className="me-2 size-4" />
       {label}
     </DropdownMenuItem>
   );
@@ -794,7 +794,10 @@ export const PromptInput = ({
     () => ({
       add: (incoming: SourceDocumentUIPart[] | SourceDocumentUIPart) => {
         const array = Array.isArray(incoming) ? incoming : [incoming];
-        setReferencedSources((prev) => [...prev, ...array.map((s) => ({ ...s, id: nanoid() }))]);
+        setReferencedSources((prev) => [
+          ...prev,
+          ...array.map((s) => Object.assign(s, { id: nanoid() })),
+        ]);
       },
       clear: clearReferencedSources,
       remove: (id: string) => {
@@ -1088,7 +1091,7 @@ export const PromptInputButton = ({
       <TooltipTrigger render={<span className="contents" />}>{button}</TooltipTrigger>
       <TooltipContent side={side}>
         {tooltipContent}
-        {shortcut && <span className="text-muted-foreground ml-2">{shortcut}</span>}
+        {shortcut && <span className="ms-2 text-muted-foreground">{shortcut}</span>}
       </TooltipContent>
     </Tooltip>
   );
@@ -1194,8 +1197,8 @@ export const PromptInputSelectTrigger = ({
 }: PromptInputSelectTriggerProps) => (
   <SelectTrigger
     className={cn(
-      "text-muted-foreground border-none bg-transparent font-medium shadow-none transition-colors",
-      "hover:bg-accent hover:text-foreground aria-expanded:bg-accent aria-expanded:text-foreground",
+      "border-none bg-transparent font-medium text-muted-foreground shadow-none transition-colors",
+      "hover:bg-accent aria-expanded:bg-accent aria-expanded:text-foreground",
       className,
     )}
     {...props}
@@ -1257,7 +1260,7 @@ export const PromptInputTabLabel = ({
   children,
   ...props
 }: PromptInputTabLabelProps) => (
-  <h3 className={cn("text-muted-foreground mb-2 px-3 text-xs font-medium", className)} {...props}>
+  <h3 className={cn("mb-2 px-3 text-xs font-medium text-muted-foreground", className)} {...props}>
     {children}
   </h3>
 );
@@ -1265,14 +1268,14 @@ export const PromptInputTabLabel = ({
 export type PromptInputTabBodyProps = HTMLAttributes<HTMLDivElement>;
 
 export const PromptInputTabBody = ({ className, ...props }: PromptInputTabBodyProps) => (
-  <div className={cn("space-y-1", className)} {...props} />
+  <div className={cn("flex flex-col gap-1", className)} {...props} />
 );
 
 export type PromptInputTabItemProps = HTMLAttributes<HTMLDivElement>;
 
 export const PromptInputTabItem = ({ className, ...props }: PromptInputTabItemProps) => (
   <div
-    className={cn("hover:bg-accent flex items-center gap-2 px-3 py-2 text-xs", className)}
+    className={cn("flex items-center gap-2 px-3 py-2 text-xs hover:bg-accent", className)}
     {...props}
   />
 );

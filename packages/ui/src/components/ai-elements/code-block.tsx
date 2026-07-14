@@ -51,7 +51,7 @@ const addKeysToTokens = (lines: ThemedToken[][]): KeyedLine[] =>
 // Token rendering component
 const TokenSpan = ({ token }: { token: ThemedToken }) => (
   <span
-    className="dark:!bg-[var(--shiki-dark-bg)] dark:!text-[var(--shiki-dark)]"
+    className="dark:bg-(--shiki-dark-bg)! dark:text-(--shiki-dark)!"
     style={{
       backgroundColor: token.bgColor,
       color: token.color,
@@ -68,11 +68,10 @@ const TokenSpan = ({ token }: { token: ThemedToken }) => (
 // Line number styles using CSS counters
 const LINE_NUMBER_CLASSES = cn(
   "block",
-  "before:content-[counter(line)]",
+  "code-line-counter",
   "before:inline-block",
-  "before:[counter-increment:line]",
   "before:w-8",
-  "before:mr-4",
+  "before:me-4",
   "before:text-right",
   "before:text-muted-foreground/50",
   "before:font-mono",
@@ -252,17 +251,12 @@ const CodeBlockBody = memo(
     return (
       <pre
         className={cn(
-          "m-0 p-4 text-sm dark:!bg-[var(--shiki-dark-bg)] dark:!text-[var(--shiki-dark)]",
+          "m-0 p-4 text-sm dark:bg-(--shiki-dark-bg)! dark:text-(--shiki-dark)!",
           className,
         )}
         style={preStyle}
       >
-        <code
-          className={cn(
-            "font-mono text-sm",
-            showLineNumbers && "[counter-increment:line_0] [counter-reset:line]",
-          )}
-        >
+        <code className={cn("font-mono text-sm", showLineNumbers && "code-line-reset")}>
           {keyedLines.map((keyedLine) => (
             <LineSpan key={keyedLine.key} keyedLine={keyedLine} showLineNumbers={showLineNumbers} />
           ))}
@@ -286,7 +280,7 @@ export const CodeBlockContainer = ({
 }: HTMLAttributes<HTMLDivElement> & { language: string }) => (
   <div
     className={cn(
-      "group bg-background text-foreground relative w-full overflow-hidden rounded-md border",
+      "group relative w-full overflow-hidden rounded-md border bg-background text-foreground",
       className,
     )}
     data-language={language}
@@ -306,7 +300,7 @@ export const CodeBlockHeader = ({
 }: HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "bg-muted/80 text-muted-foreground flex items-center justify-between border-b px-3 py-2 text-xs",
+      "flex items-center justify-between border-b bg-muted/80 px-3 py-2 text-xs text-muted-foreground",
       className,
     )}
     {...props}
@@ -340,7 +334,7 @@ export const CodeBlockActions = ({
   className,
   ...props
 }: HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("-my-1 -mr-1 flex items-center gap-2", className)} {...props}>
+  <div className={cn("-my-1 -me-1 flex items-center gap-2", className)} {...props}>
     {children}
   </div>
 );

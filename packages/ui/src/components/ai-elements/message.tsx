@@ -26,8 +26,8 @@ export type MessageProps = HTMLAttributes<HTMLDivElement> & {
 export const Message = ({ className, from, ...props }: MessageProps) => (
   <div
     className={cn(
-      "group flex w-full max-w-[95%] flex-col gap-2",
-      from === "user" ? "is-user ml-auto justify-end" : "is-assistant",
+      "group flex w-full max-w-message-max flex-col gap-2",
+      from === "user" ? "is-user ms-auto justify-end" : "is-assistant",
       className,
     )}
     {...props}
@@ -40,7 +40,7 @@ export const MessageContent = ({ children, className, ...props }: MessageContent
   <div
     className={cn(
       "is-user:dark flex w-fit max-w-full min-w-0 flex-col gap-2 overflow-hidden text-sm",
-      "group-[.is-user]:bg-secondary group-[.is-user]:text-foreground group-[.is-user]:ml-auto group-[.is-user]:rounded-lg group-[.is-user]:px-4 group-[.is-user]:py-3",
+      "group-[.is-user]:ms-auto group-[.is-user]:rounded-lg group-[.is-user]:bg-secondary group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-foreground",
       "group-[.is-assistant]:text-foreground",
       className,
     )}
@@ -209,7 +209,7 @@ export const MessageBranchSelector = ({ className, ...props }: MessageBranchSele
   return (
     <ButtonGroup
       className={cn(
-        "[&>*:not(:first-child)]:rounded-l-md [&>*:not(:last-child)]:rounded-r-md",
+        "[&>*:not(:first-child)]:rounded-s-md [&>*:not(:last-child)]:rounded-e-md",
         className,
       )}
       orientation="horizontal"
@@ -265,7 +265,7 @@ export const MessageBranchPage = ({ className, ...props }: MessageBranchPageProp
 
   return (
     <ButtonGroupText
-      className={cn("text-muted-foreground border-none bg-transparent shadow-none", className)}
+      className={cn("border-none bg-transparent text-muted-foreground shadow-none", className)}
       {...props}
     >
       {currentBranch + 1} of {totalBranches}

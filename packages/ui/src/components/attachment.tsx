@@ -7,7 +7,7 @@ import { cn } from "@agents/ui/lib/utils";
 import { Button } from "@agents/ui/components/button";
 
 const attachmentVariants = cva(
-  "group/attachment relative flex w-fit max-w-full min-w-0 shrink-0 flex-wrap rounded-xl border bg-card text-card-foreground transition-colors focus-within:ring-1 focus-within:ring-ring/50 has-[>a,>button]:hover:bg-muted/50 data-[state=error]:border-destructive/30 data-[state=idle]:border-dashed",
+  "group/attachment relative flex w-fit max-w-full min-w-0 shrink-0 flex-wrap rounded-xl border bg-card text-card-foreground transition-colors focus-within:ring-1 focus-within:ring-ring/50 hover:has-[>a,>button]:bg-muted/50 data-[state=error]:border-destructive/30 data-[state=idle]:border-dashed",
   {
     variants: {
       size: {
@@ -97,7 +97,7 @@ function AttachmentTitle({ className, ...props }: React.ComponentProps<"span">) 
     <span
       data-slot="attachment-title"
       className={cn(
-        "group-data-[state=processing]/attachment:shimmer group-data-[state=uploading]/attachment:shimmer block max-w-full min-w-0 truncate font-medium",
+        "block max-w-full min-w-0 truncate font-medium group-data-[state=processing]/attachment:shimmer group-data-[state=uploading]/attachment:shimmer",
         className,
       )}
       {...props}
@@ -110,7 +110,7 @@ function AttachmentDescription({ className, ...props }: React.ComponentProps<"sp
     <span
       data-slot="attachment-description"
       className={cn(
-        "text-muted-foreground group-data-[state=error]/attachment:text-destructive/80 mt-0.5 block min-w-0 truncate text-xs",
+        "mt-0.5 block min-w-0 truncate text-xs text-muted-foreground group-data-[state=error]/attachment:text-destructive/80",
         "max-w-full",
         className,
       )}
@@ -124,7 +124,7 @@ function AttachmentActions({ className, ...props }: React.ComponentProps<"div">)
     <div
       data-slot="attachment-actions"
       className={cn(
-        "relative z-20 flex shrink-0 items-center group-data-[orientation=vertical]/attachment:absolute group-data-[orientation=vertical]/attachment:top-3 group-data-[orientation=vertical]/attachment:right-3 group-data-[orientation=vertical]/attachment:gap-1",
+        "relative z-20 flex shrink-0 items-center group-data-[orientation=vertical]/attachment:absolute group-data-[orientation=vertical]/attachment:inset-e-3 group-data-[orientation=vertical]/attachment:top-3 group-data-[orientation=vertical]/attachment:gap-1",
         className,
       )}
       {...props}
@@ -176,7 +176,7 @@ function AttachmentGroup({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="attachment-group"
       className={cn(
-        "scroll-fade-x flex min-w-0 snap-x snap-mandatory scroll-px-1 scrollbar-none gap-3 overflow-x-auto overscroll-x-contain py-1 *:data-[slot=attachment]:flex-none *:data-[slot=attachment]:snap-start",
+        "flex min-w-0 scroll-fade-x snap-x snap-mandatory scroll-px-1 scrollbar-none gap-3 overflow-x-auto overscroll-x-contain py-1 *:data-[slot=attachment]:flex-none *:data-[slot=attachment]:snap-start",
         className,
       )}
       {...props}

@@ -69,7 +69,7 @@ export const FileTree = ({
   return (
     <FileTreeContext.Provider value={contextValue}>
       <div
-        className={cn("bg-background rounded-lg border font-mono text-sm", className)}
+        className={cn("rounded-lg border bg-background font-mono text-sm", className)}
         role="tree"
         {...props}
       >
@@ -139,7 +139,7 @@ export const FileTreeFolder = ({
         <div className={cn("", className)} role="treeitem" tabIndex={0} {...props}>
           <div
             className={cn(
-              "hover:bg-muted/50 flex w-full items-center gap-1 rounded px-2 py-1 text-left transition-colors",
+              "flex w-full items-center gap-1 rounded px-2 py-1 text-left transition-colors hover:bg-muted/50",
               isSelected && "bg-muted",
             )}
           >
@@ -153,7 +153,7 @@ export const FileTreeFolder = ({
             >
               <ChevronRightIcon
                 className={cn(
-                  "text-muted-foreground size-4 shrink-0 transition-transform",
+                  "size-4 shrink-0 text-muted-foreground transition-transform",
                   isExpanded && "rotate-90",
                 )}
               />
@@ -174,7 +174,7 @@ export const FileTreeFolder = ({
             </button>
           </div>
           <CollapsibleContent>
-            <div className="ml-4 border-l pl-2">{children}</div>
+            <div className="ms-4 border-s ps-2">{children}</div>
           </CollapsibleContent>
         </div>
       </Collapsible>
@@ -228,7 +228,7 @@ export const FileTreeFile = ({
     <FileTreeFileContext.Provider value={fileContextValue}>
       <div
         className={cn(
-          "hover:bg-muted/50 flex cursor-pointer items-center gap-1 rounded px-2 py-1 transition-colors",
+          "flex cursor-pointer items-center gap-1 rounded px-2 py-1 transition-colors hover:bg-muted/50",
           isSelected && "bg-muted",
           className,
         )}
@@ -243,7 +243,7 @@ export const FileTreeFile = ({
             {/* Spacer for alignment */}
             <span className="size-4 shrink-0" />
             <FileTreeIcon>
-              {icon ?? <FileIcon className="text-muted-foreground size-4" />}
+              {icon ?? <FileIcon className="size-4 text-muted-foreground" />}
             </FileTreeIcon>
             <FileTreeName>{name}</FileTreeName>
           </>
@@ -259,7 +259,7 @@ const stopPropagation = (e: React.SyntheticEvent) => e.stopPropagation();
 
 export const FileTreeActions = ({ className, children, ...props }: FileTreeActionsProps) => (
   <div
-    className={cn("ml-auto flex items-center gap-1", className)}
+    className={cn("ms-auto flex items-center gap-1", className)}
     onClick={stopPropagation}
     onKeyDown={stopPropagation}
     role="group"

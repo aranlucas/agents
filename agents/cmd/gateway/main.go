@@ -59,7 +59,7 @@ const healthCheckTimeout = 3 * time.Second
 const (
 	defaultStreamCharsPerChunk = 64
 	defaultStreamChunkDelayMs  = 18
-	defaultStreamChunking     = "word"
+	defaultStreamChunking      = "word"
 )
 
 // healthChecker is satisfied by *cloudflare.D1 and *cloudflare.R2. It is

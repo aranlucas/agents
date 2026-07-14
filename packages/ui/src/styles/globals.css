@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "streamdown/styles.css";
+@plugin "@tailwindcss/typography";
 @source "../../../apps/**/*.{ts,tsx}";
 @source "../**/*.{ts,tsx}";
 @source "../../node_modules/streamdown/dist/*.js";
@@ -41,9 +42,105 @@
   --color-warning: var(--warning);
   --color-warning-soft: var(--warning-soft);
   --color-danger-soft: var(--danger-soft);
+  --color-travel: var(--travel);
+  --color-grocery: var(--grocery);
+  --color-fitness: var(--fitness);
+  --color-wellness: var(--wellness);
+  --color-expense: var(--expense);
+  --color-oral-boards: var(--oral-boards);
+  --color-resume: var(--resume);
+  --color-research: var(--research);
+  --color-spreadsheet: var(--spreadsheet);
+  --color-presentation: var(--presentation);
+  --color-trends: var(--trends);
+  --color-canvas: Canvas;
+  --color-canvas-text: CanvasText;
+  --color-secondary-hover: color-mix(in oklch, var(--surface-soft), var(--ink) 5%);
+  --color-muted-hover: color-mix(in oklch, var(--bg-soft), var(--ink) 5%);
+  --color-bubble-primary: oklch(from var(--accent) 0.93 calc(c * 0.4) h);
+  --color-bubble-primary-dark: oklch(from var(--accent) 0.3 calc(c * 0.4) h);
+  --color-bubble-primary-hover: oklch(from var(--accent) 0.88 calc(c * 0.5) h);
+  --color-bubble-primary-hover-dark: oklch(from var(--accent) 0.35 calc(c * 0.5) h);
   --radius-md: 0.5rem;
   --radius-lg: 0.5rem;
   --radius-xl: 0.5rem;
+  --radius-inherit: inherit;
+  --radius-control-sm: calc(var(--radius-md) - 3px);
+  --radius-kbd: calc(var(--radius-md) - 5px);
+  --spacing-bubble-max: 80%;
+  --spacing-combobox-max: min(calc(18rem - 2.25rem), calc(var(--available-height) - 2.25rem));
+  --spacing-combobox-min: calc(var(--anchor-width) + 1.75rem);
+  --spacing-dialog-max: calc(100% - 2rem);
+  --spacing-drawer-max: 80vh;
+  --spacing-message-max: 95%;
+  --spacing-safe-bottom: max(1rem, env(safe-area-inset-bottom));
+  --spacing-sidebar-icon-gap: calc(var(--sidebar-width-icon) + 1rem);
+  --spacing-sidebar-icon-rail: calc(var(--sidebar-width-icon) + 1rem + 2px);
+  --spacing-switch-height: 18.4px;
+  --spacing-switch-translate: calc(100% - 2px);
+  --spacing-tabs-trigger: calc(100% - 1px);
+  --spacing-tooltip-arrow: calc(-50% - 2px);
+  --ease-navigation: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-scroller-enter: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-scroller-exit: cubic-bezier(0.7, 0, 0.84, 0);
+  --shadow-sidebar-border: 0 0 0 1px var(--sidebar-border);
+  --shadow-sidebar-accent: 0 0 0 1px var(--sidebar-accent);
+  --grid-template-columns-icon-content: auto 1fr;
+  --grid-template-columns-card-action: 1fr auto;
+  --grid-template-rows-alert: auto 1fr;
+  --grid-template-rows-alert-media: auto auto 1fr;
+  --grid-template-rows-card-description: auto auto;
+  --background-size-shimmer: 250% 100%, auto;
+}
+
+@utility calendar-cell-metrics {
+  --cell-radius: var(--radius-md);
+  --cell-size: --spacing(7);
+}
+
+@utility card-spacing {
+  --card-spacing: --spacing(4);
+}
+
+@utility card-spacing-sm {
+  --card-spacing: --spacing(3);
+}
+
+@utility code-line-counter {
+  &::before {
+    content: counter(line);
+    counter-increment: line;
+  }
+}
+
+@utility code-line-reset {
+  counter-increment: line 0;
+  counter-reset: line;
+}
+
+@utility dynamic-gap {
+  gap: calc(var(--gap) * var(--spacing));
+}
+
+@utility shimmer-background {
+  --bg: linear-gradient(
+    90deg,
+    #0000 calc(50% - var(--spread)),
+    var(--color-background),
+    #0000 calc(50% + var(--spread))
+  );
+  background-repeat: no-repeat, padding-box;
+}
+
+@utility shimmer-size {
+  background-size:
+    250% 100%,
+    auto;
+}
+
+@utility virtualized-content {
+  contain-intrinsic-size: auto 10rem;
+  content-visibility: auto;
 }
 
 :root {
