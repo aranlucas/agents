@@ -89,12 +89,35 @@ func TestLinkTokenIsHashedOneTimeAndExpires(t *testing.T) {
 	if _, err := store.Consume(t.Context(), raw, "user-a"); !errors.Is(err, ErrLinkTokenUsed) {
 		t.Fatalf("error=%v", err)
 	}
-	rawExpired, err := store.Create(t.Context(), 43, time.Minute)
+	rawExpired, err := store.CreateForChat(t.Context(), 43, 43, time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
 	now = now.Add(2 * time.Minute)
 	if _, err := store.Consume(t.Context(), rawExpired, "user-b"); !errors.Is(err, ErrLinkTokenExpired) {
 		t.Fatalf("error=%v", err)
+	}
+}
+
+func TestLinkStoreOwnsAccountLifecycle(t *testing.T) {
+	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
+	store := newLinkStore(newMemoryLinkDB(), func() time.Time { return now })
+	raw, err := store.CreateForChat(t.Context(), 42, 42, 10*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Consume(t.Context(), raw, "user-a"); err != nil {
+		t.Fatal(err)
+	}
+	link, linked, err := store.Lookup(t.Context(), 42)
+	if err != nil || !linked || link.ClerkUserID != "user-a" {
+		t.Fatalf("link=%#v linked=%t err=%v", link, linked, err)
+	}
+	unlinked, err := store.Unlink(t.Context(), 42)
+	if err != nil || !unlinked {
+		t.Fatalf("unlinked=%t err=%v", unlinked, err)
+	}
+	if link, linked, err := store.Lookup(t.Context(), 42); err != nil || linked {
+		t.Fatalf("link=%#v linked=%t err=%v", link, linked, err)
 	}
 }

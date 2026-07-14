@@ -22,4 +22,3 @@ Current expense desk state:
 - Status: {status}
 - Review summary: {review_summary}
 - Review threshold USD: {review_threshold_usd}
-- User ID: {user_id}

@@ -3,10 +3,7 @@
 // package deliberately contains no agent constructors or tool registration.
 package catalog
 
-import (
-	"fmt"
-	"time"
-)
+import "time"
 
 // Spec is deployment-independent metadata for one authored agent.
 //
@@ -49,17 +46,6 @@ func ByRoute(route string) (Spec, bool) {
 		}
 	}
 	return Spec{}, false
-}
-
-// MustByRoute returns metadata for a statically-known backend route. It is for
-// command composition and code generation, where an unknown route is a
-// programmer error rather than user input.
-func MustByRoute(route string) Spec {
-	spec, ok := ByRoute(route)
-	if !ok {
-		panic(fmt.Sprintf("unknown agent route %q", route))
-	}
-	return spec
 }
 
 // Telegram returns the specialists exposed through the Telegram orchestrator.

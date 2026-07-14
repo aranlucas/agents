@@ -41,7 +41,6 @@ type Provider struct {
 	APIKey            string
 	Model             string
 	RequestsPerMinute int
-	RequestsPerDay    int
 	Fallbacks         []string
 }
 
@@ -131,8 +130,8 @@ func Load(getenv func(string) string) (Config, error) {
 
 // LoadTelegram validates only the worker's process boundary. D1 and R2 remain
 // mandatory, while browser-origin and Clerk-JWT verification settings stay a
-// gateway concern. The worker may still use CLERK_SECRET_KEY for account-link
-// mirroring when it is configured.
+// gateway concern. The worker may still use CLERK_SECRET_KEY for invocation-
+// scoped OAuth lookup when it is configured.
 func LoadTelegram(getenv func(string) string) (Config, error) {
 	if getenv == nil {
 		return Config{}, errors.New("environment reader is required")

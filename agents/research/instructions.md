@@ -35,4 +35,3 @@ Current research state:
 - Sources: {sources}
 - Status: {status}
 - Review summary: {review_summary}
-- User ID: {user_id}

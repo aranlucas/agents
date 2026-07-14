@@ -28,4 +28,3 @@ Current fitness state:
 - Training Plan: {training_plan}
 - Status: {status}
 - Review Summary: {review_summary}
-- User ID: {user_id}

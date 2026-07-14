@@ -48,4 +48,3 @@ Current presentation state:
 - Active slide index: {active_slide_index}
 - Status: {status}
 - Review summary: {review_summary}
-- User ID: {user_id}

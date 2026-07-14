@@ -153,9 +153,6 @@ func buildRequest(req *model.LLMRequest, modelName string, stream bool) (openai.
 		}
 		result.Messages = append(result.Messages, msgs...)
 	}
-	if len(result.Messages) == 0 {
-		result.Messages = append(result.Messages, openai.UserMessage("Continue processing the request as instructed."))
-	}
 	return result, nil
 }
 

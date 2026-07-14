@@ -11,37 +11,29 @@ import (
 	"google.golang.org/adk/v2/session"
 )
 
-func TestOAuthHeadersBecomeRouteScopedFlagsWithoutChangingTokenNames(t *testing.T) {
-	request := httptest.NewRequest("POST", "/fitness/agui", nil)
-	request.Header.Set("X-Strava-Access-Token", "strava-secret")
-	overlay := requestStateOverlay(request, "fitness")
-	if overlay["temp:strava_token"] != "strava-secret" || overlay["strava_connected"] != true {
+func TestKrogerHeaderBecomesRouteScopedFlagWithoutChangingTokenName(t *testing.T) {
+	request := httptest.NewRequest("POST", "/grocery/agui", nil)
+	request.Header.Set("X-Kroger-Access-Token", "kroger-secret")
+	overlay := requestStateOverlay(request, "grocery")
+	if overlay["temp:kroger_token"] != "kroger-secret" || overlay["kroger_connected"] != true {
 		t.Fatalf("overlay = %#v", overlay)
 	}
-	if _, exists := overlay["kroger_connected"]; exists {
-		t.Fatalf("fitness overlay included grocery flag: %#v", overlay)
-	}
-
-	disconnected := requestStateOverlay(httptest.NewRequest("POST", "/fitness/agui", nil), "fitness")
-	if disconnected["strava_connected"] != false {
+	disconnected := requestStateOverlay(httptest.NewRequest("POST", "/grocery/agui", nil), "grocery")
+	if disconnected["kroger_connected"] != false {
 		t.Fatalf("disconnected overlay = %#v", disconnected)
 	}
 	persisted, err := persistentSnapshot(testState(overlay))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, leaked := persisted["temp:strava_token"]; leaked || string(persisted["strava_connected"]) != "true" {
+	if _, leaked := persisted["temp:kroger_token"]; leaked || string(persisted["kroger_connected"]) != "true" {
 		t.Fatalf("persistent snapshot = %#v", persisted)
 	}
 
-	groceryRequest := httptest.NewRequest("POST", "/grocery/agui", nil)
-	groceryRequest.Header.Set("X-Kroger-Access-Token", "kroger-secret")
-	grocery := requestStateOverlay(groceryRequest, "grocery")
-	if grocery["temp:kroger_token"] != "kroger-secret" || grocery["kroger_connected"] != true {
-		t.Fatalf("grocery overlay = %#v", grocery)
-	}
-	if _, exists := grocery["strava_connected"]; exists {
-		t.Fatalf("grocery overlay included fitness flag: %#v", grocery)
+	fitnessRequest := httptest.NewRequest("POST", "/fitness/agui", nil)
+	fitnessRequest.Header.Set("X-Kroger-Access-Token", "ignored")
+	if fitness := requestStateOverlay(fitnessRequest, "fitness"); fitness != nil {
+		t.Fatalf("fitness overlay = %#v", fitness)
 	}
 
 	wellnessRequest := httptest.NewRequest("POST", "/wellness/agui", nil)
@@ -49,9 +41,6 @@ func TestOAuthHeadersBecomeRouteScopedFlagsWithoutChangingTokenNames(t *testing.
 	wellness := requestStateOverlay(wellnessRequest, "wellness")
 	if wellness["temp:kroger_token"] != "kroger-secret" || wellness["kroger_connected"] != true {
 		t.Fatalf("wellness overlay = %#v", wellness)
-	}
-	if wellness["strava_connected"] != false {
-		t.Fatalf("wellness overlay should mark absent strava as disconnected: %#v", wellness)
 	}
 }
 

@@ -8,22 +8,13 @@ import (
 	"testing"
 )
 
-func TestBackendResolvesLinkedUserAndConnections(t *testing.T) {
+func TestBackendResolvesOAuthConnections(t *testing.T) {
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		if request.Header.Get("Authorization") != "Bearer secret" {
 			t.Fatal("missing authorization")
 		}
 		switch {
-		case request.URL.Path == "/users":
-			if request.URL.Query().Get("external_id") != "42" {
-				t.Fatalf("query=%s", request.URL.RawQuery)
-			}
-			_ = json.NewEncoder(w).Encode([]any{map[string]any{"id": "shadow", "private_metadata": map[string]any{"linked_clerk_user_id": "real-user"}}})
-		case request.URL.Path == "/users/count":
-			_ = json.NewEncoder(w).Encode(map[string]any{"total_count": 1})
 		case strings.Contains(request.URL.Path, "oauth_custom_shopping"):
-			_ = json.NewEncoder(w).Encode(map[string]any{"data": []any{map[string]any{"token": "redacted"}}, "total_count": 1})
-		case strings.Contains(request.URL.Path, "oauth_custom_strava"):
 			_ = json.NewEncoder(w).Encode(map[string]any{"data": []any{map[string]any{"token": "redacted"}}, "total_count": 1})
 		default:
 			_ = json.NewEncoder(w).Encode(map[string]any{"data": []any{}, "total_count": 0})
@@ -34,12 +25,8 @@ func TestBackendResolvesLinkedUserAndConnections(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	linked, err := backend.LinkedUserID(t.Context(), 42)
-	if err != nil || linked != "real-user" {
-		t.Fatalf("linked=%q err=%v", linked, err)
-	}
 	state, err := backend.OAuthConnections(t.Context(), "real-user")
-	if err != nil || !state.Kroger || !state.Strava {
+	if err != nil || !state.Kroger || state.KrogerToken != "redacted" {
 		t.Fatalf("state=%#v err=%v", state, err)
 	}
 }
@@ -47,5 +34,44 @@ func TestBackendResolvesLinkedUserAndConnections(t *testing.T) {
 func TestBackendRejectsInsecureBaseURL(t *testing.T) {
 	if _, err := NewBackend(nil, "http://clerk.example", "secret"); err == nil {
 		t.Fatal("insecure URL accepted")
+	}
+}
+
+func TestBackendReturnsOAuthLookupErrorsWhenNoAliasResolves(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "Clerk unavailable", http.StatusServiceUnavailable)
+	}))
+	defer server.Close()
+	backend, err := NewBackend(server.Client(), server.URL, "secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	state, err := backend.OAuthConnections(t.Context(), "real-user")
+	if err == nil {
+		t.Fatal("OAuth lookup failure was treated as a disconnected account")
+	}
+	if state != (ConnectionState{}) {
+		t.Fatalf("state=%#v", state)
+	}
+}
+
+func TestBackendUsesWorkingOAuthAliasAfterAnotherAliasFails(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if strings.Contains(request.URL.Path, "oauth_custom_shopping") {
+			http.Error(w, "alias unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"data": []any{map[string]any{"token": "redacted"}}, "total_count": 1})
+	}))
+	defer server.Close()
+	backend, err := NewBackend(server.Client(), server.URL, "secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	state, err := backend.OAuthConnections(t.Context(), "real-user")
+	if err != nil || !state.Kroger || state.KrogerToken != "redacted" {
+		t.Fatalf("state=%#v err=%v", state, err)
 	}
 }

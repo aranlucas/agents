@@ -30,7 +30,6 @@ Current wellness state:
 - Meal Plan: {meal_plan}
 - Weekly Plan: {weekly_plan}
 - Review Summary: {review_summary}
-- User ID: {user_id}
 - Kroger Connected: {kroger_connected}
 - Fitness Data Connected: {fitness_data_connected}
 - Activity Source: {activity_source}

@@ -35,7 +35,6 @@ type ResearchState struct {
 	Sources       []Source  `json:"sources"`
 	Status        Status    `json:"status"`
 	ReviewSummary string    `json:"review_summary"`
-	UserID        string    `json:"user_id"`
 }
 
 func Defaults() ResearchState {

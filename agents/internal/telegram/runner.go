@@ -229,9 +229,6 @@ func (r *Runner) handleCommand(ctx context.Context, message Message, identity Se
 		if !unlinked {
 			return r.sendText(ctx, message, "This Telegram account is not linked.")
 		}
-		if r.router.clerk != nil {
-			_ = r.router.clerk.MirrorTelegramUnlink(ctx, message.From.ID)
-		}
 		return r.sendText(ctx, message, "Telegram account unlinked.")
 	case "new", "reset":
 		if err := r.executor.Reset(ctx, identity); err != nil {
@@ -260,7 +257,6 @@ func missingCredentialText(missing []string, connectURL string) string {
 	}
 	return text
 }
-func (r *Runner) HasTask(id string) bool { return r.tasks.Has(id) }
 
 type ADKExecutor struct {
 	sessions session.Service
@@ -322,10 +318,6 @@ func (e *ADKExecutor) Run(ctx context.Context, identity SessionIdentity, route R
 	if route.KrogerToken != "" {
 		state[session.KeyPrefixTemp+"kroger_token"] = route.KrogerToken
 		state["kroger_connected"] = true
-	}
-	if route.StravaToken != "" {
-		state[session.KeyPrefixTemp+"strava_token"] = route.StravaToken
-		state["strava_connected"] = true
 	}
 	var texts []string
 	seen := map[string]bool{}

@@ -115,7 +115,7 @@ func TestSessionCreateAndAppendNeverPersistTemporaryState(t *testing.T) {
 	}
 	// Temp keys must stay OUT of D1 (checked above) but IN the live
 	// in-memory session state: ADK-Go's runner delivers request-scoped
-	// OAuth tokens (temp:kroger_token, temp:strava_token) through
+	// OAuth tokens (for example, temp:kroger_token) through
 	// AppendEvent's StateDelta, and toolsets gate on reading them back
 	// via ctx.ReadonlyState(). Mirrors ADK's InMemory service, which
 	// maps.Copy's the full delta into session state and only trims temp:
@@ -127,11 +127,11 @@ func TestSessionCreateAndAppendNeverPersistTemporaryState(t *testing.T) {
 }
 
 // TestAppendEventRetainsTempKeysInMemory is a regression test for the
-// production bug where grocery and fitness agents had no MCP tools: the
-// AG-UI handler forwards X-Kroger-Access-Token / X-Strava-Access-Token as
-// temp: state keys via runner.WithStateDelta, the runner hands that delta to
-// AppendEvent, and Kroger.Tools / the Strava toolset then read the token
-// back from ctx.ReadonlyState(). An earlier version of AppendEvent applied
+// production bug where the grocery agent had no MCP tools: the AG-UI handler
+// forwards X-Kroger-Access-Token as a temp: state key via
+// runner.WithStateDelta, the runner hands that delta to AppendEvent, and
+// Kroger.Tools then reads the token back from ctx.ReadonlyState(). An earlier
+// version of AppendEvent applied
 // the temp-filtered persistedDelta to the in-memory session state, so the
 // tokens vanished before any toolset ran — in production only, because
 // InMemory-backed tests apply the full delta.

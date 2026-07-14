@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -46,6 +47,10 @@ import (
 
 func main() {
 	cfg, err := config.LoadTelegram(os.Getenv)
+	if err != nil {
+		log.Fatalf("load configuration: %v", err)
+	}
+	allowedChatIDs, err := parseChatIDs(os.Getenv("TELEGRAM_ALLOWED_CHAT_IDS"))
 	if err != nil {
 		log.Fatalf("load configuration: %v", err)
 	}
@@ -137,7 +142,7 @@ func main() {
 		must(backendErr)
 		backend = configured
 	}
-	telegramConfig := telegram.Config{BotUsername: strings.TrimSpace(os.Getenv("TELEGRAM_BOT_USERNAME")), AllowedChatIDs: parseChatIDs(os.Getenv("TELEGRAM_ALLOWED_CHAT_IDS")), LinkBaseURL: strings.TrimSpace(os.Getenv("TELEGRAM_LINK_BASE_URL")), ConnectURL: strings.TrimSpace(os.Getenv("TELEGRAM_CONNECT_URL"))}
+	telegramConfig := telegram.Config{BotUsername: strings.TrimSpace(os.Getenv("TELEGRAM_BOT_USERNAME")), AllowedChatIDs: allowedChatIDs, LinkBaseURL: strings.TrimSpace(os.Getenv("TELEGRAM_LINK_BASE_URL")), ConnectURL: strings.TrimSpace(os.Getenv("TELEGRAM_CONNECT_URL"))}
 	bot, err := telegram.NewHTTPClient(common.NewHTTPClient(60*time.Second, 2<<20).Client, envDefault("TELEGRAM_API_BASE_URL", "https://api.telegram.org"), os.Getenv("TELEGRAM_BOT_TOKEN"))
 	must(err)
 	links := telegram.NewLinkStore(d1, time.Now)
@@ -180,15 +185,20 @@ func buildSearch() *bravesearch.Client {
 	return result
 }
 
-func parseChatIDs(raw string) []int64 {
+func parseChatIDs(raw string) ([]int64, error) {
+	if strings.TrimSpace(raw) == "" {
+		return nil, nil
+	}
 	var result []int64
 	for value := range strings.SplitSeq(raw, ",") {
-		parsed, err := strconv.ParseInt(strings.TrimSpace(value), 10, 64)
-		if err == nil {
-			result = append(result, parsed)
+		value = strings.TrimSpace(value)
+		parsed, err := strconv.ParseInt(value, 10, 64)
+		if err != nil || parsed == 0 {
+			return nil, fmt.Errorf("TELEGRAM_ALLOWED_CHAT_IDS contains invalid chat ID %q", value)
 		}
+		result = append(result, parsed)
 	}
-	return result
+	return result, nil
 }
 
 func envDefault(key, fallback string) string {

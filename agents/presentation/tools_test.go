@@ -32,7 +32,7 @@ func TestReorderSlidesRequiresEveryCurrentID(t *testing.T) {
 }
 
 func TestBuildPresentationCreatesOneOrderedReadyDeck(t *testing.T) {
-	state, result, err := buildPresentation("user-1", BuildPresentationArgs{
+	state, result, err := buildPresentation(BuildPresentationArgs{
 		Title: "Demo",
 		Theme: "minimal",
 		Slides: []CreateSlideArgs{
@@ -45,7 +45,7 @@ func TestBuildPresentationCreatesOneOrderedReadyDeck(t *testing.T) {
 	if err != nil || !result.OK {
 		t.Fatalf("buildPresentation() = %#v, %#v, %v", state, result, err)
 	}
-	if state.UserID != "user-1" || state.Title != "Demo" || state.Theme != "minimal" || state.Status != StatusReady || state.ActiveSlideIndex != 0 {
+	if state.Title != "Demo" || state.Theme != "minimal" || state.Status != StatusReady || state.ActiveSlideIndex != 0 {
 		t.Fatalf("state metadata = %#v", state)
 	}
 	if result.SlideCount != 3 || len(result.SlideIDs) != 3 || len(state.Slides) != 3 {
@@ -57,7 +57,7 @@ func TestBuildPresentationCreatesOneOrderedReadyDeck(t *testing.T) {
 }
 
 func TestBuildPresentationRejectsInvalidDeckBeforePublication(t *testing.T) {
-	state, result, err := buildPresentation("user-1", BuildPresentationArgs{
+	state, result, err := buildPresentation(BuildPresentationArgs{
 		Title:   "Demo",
 		Theme:   "light",
 		Slides:  []CreateSlideArgs{{Heading: "Not a title", SlideType: "content"}},

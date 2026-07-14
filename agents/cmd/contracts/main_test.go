@@ -96,7 +96,7 @@ func TestGeneratedOutputsAreDeterministic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range outputNames(first) {
+	for name := range first {
 		if !bytes.Equal(first[name], second[name]) {
 			t.Fatalf("generated output %s is not deterministic", name)
 		}

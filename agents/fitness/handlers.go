@@ -12,16 +12,15 @@ import (
 const maxFitnessDocument = 1 << 20
 
 type Result struct {
-	OK            bool                          `json:"ok"`
-	Length        int                           `json:"length,omitempty"`
-	Count         int                           `json:"count,omitempty"`
-	SyncedAt      string                        `json:"synced_at,omitempty"`
-	Activities    []Activity                    `json:"activities,omitempty"`
-	NextPageToken string                        `json:"next_page_token,omitempty"`
-	Date          string                        `json:"date,omitempty"`
-	Weekday       string                        `json:"weekday,omitempty"`
-	Month         string                        `json:"month,omitempty"`
-	Error         *agentruntime.StructuredError `json:"error,omitempty"`
+	OK         bool                          `json:"ok"`
+	Length     int                           `json:"length,omitempty"`
+	Count      int                           `json:"count,omitempty"`
+	SyncedAt   string                        `json:"synced_at,omitempty"`
+	Activities []Activity                    `json:"activities,omitempty"`
+	Date       string                        `json:"date,omitempty"`
+	Weekday    string                        `json:"weekday,omitempty"`
+	Month      string                        `json:"month,omitempty"`
+	Error      *agentruntime.StructuredError `json:"error,omitempty"`
 }
 
 type FetchActivitiesArgs struct {

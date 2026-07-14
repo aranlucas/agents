@@ -20,4 +20,3 @@ Current spreadsheet state:
 - Summary: {summary}
 - Status: {status}
 - Review summary: {review_summary}
-- User ID: {user_id}

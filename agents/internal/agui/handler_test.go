@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"iter"
 	"net/http"
@@ -124,6 +125,132 @@ func TestRestoreSessionPersistsNameInSessionState(t *testing.T) {
 	name, err := created.State().Get(sessionNameStateKey)
 	if err != nil || name != "Plan Japan" {
 		t.Fatalf("session name = %#v, err = %v", name, err)
+	}
+}
+
+type getOverrideSessionService struct {
+	session.Service
+	getErr      error
+	createCalls int
+}
+
+func (s *getOverrideSessionService) Get(context.Context, *session.GetRequest) (*session.GetResponse, error) {
+	return nil, s.getErr
+}
+
+func (s *getOverrideSessionService) Create(ctx context.Context, req *session.CreateRequest) (*session.CreateResponse, error) {
+	s.createCalls++
+	return s.Service.Create(ctx, req)
+}
+
+func TestRestoreSessionCreatesOnlyWhenNotFound(t *testing.T) {
+	entry := agentruntime.Entry{
+		Route: "travel", AppName: "travel_agent",
+		StateDefaults: func() map[string]any { return map[string]any{"itinerary": ""} },
+	}
+
+	t.Run("wrapped not found", func(t *testing.T) {
+		sessions := &getOverrideSessionService{
+			Service: newFakeSessionService(),
+			getErr:  fmt.Errorf("D1 lookup: %w", ErrSessionNotFound),
+		}
+		handler := &ADKHandler{sessions: sessions}
+		created, err := handler.restoreSession(t.Context(), entry, "user-1", "thread-1", &types.RunAgentInput{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if created.ID() != "thread-1" || sessions.createCalls != 1 {
+			t.Fatalf("session = %q, create calls = %d", created.ID(), sessions.createCalls)
+		}
+	})
+
+	t.Run("storage failure", func(t *testing.T) {
+		backendErr := errors.New("D1 unavailable")
+		sessions := &getOverrideSessionService{Service: newFakeSessionService(), getErr: backendErr}
+		handler := &ADKHandler{sessions: sessions}
+		if _, err := handler.restoreSession(t.Context(), entry, "user-1", "thread-1", &types.RunAgentInput{}); !errors.Is(err, backendErr) {
+			t.Fatalf("restore error = %v, want %v", err, backendErr)
+		}
+		if sessions.createCalls != 0 {
+			t.Fatalf("create calls = %d, want 0", sessions.createCalls)
+		}
+	})
+}
+
+func TestHandlerReturns500OnSessionGetFailure(t *testing.T) {
+	backendErr := errors.New("D1 unavailable")
+	sessions := &getOverrideSessionService{Service: newFakeSessionService(), getErr: backendErr}
+	captured := &fakeCapturingModel{}
+	a, err := llmagent.New(llmagent.Config{Name: "resume_agent", Instruction: "test", Model: captured})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler, err := NewEntryHandler(agentruntime.Entry{
+		Route: "resume", AppName: "resume_agent", Agent: a, Public: true, Timeout: time.Second,
+	}, sessions)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := `{"threadId":"thread-error","runId":"run-error","messages":[]}`
+	req := httptest.NewRequest(http.MethodPost, "/resume/agui", strings.NewReader(body))
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d: %s", rr.Code, rr.Body.String())
+	}
+	if rr.Body.String() != "{\"error\":\"session_unavailable\"}\n" {
+		t.Fatalf("body = %q", rr.Body.String())
+	}
+	if sessions.createCalls != 0 {
+		t.Fatalf("create calls = %d, want 0", sessions.createCalls)
+	}
+	if captured.request() != nil {
+		t.Fatal("model was invoked after session restore failure")
+	}
+}
+
+func TestHandlerCompletesWithoutModelInput(t *testing.T) {
+	tests := map[string][]types.Message{
+		"empty history":      nil,
+		"trailing assistant": {{ID: "assistant-1", Role: types.RoleAssistant, Content: "Already answered."}},
+	}
+	for name, messages := range tests {
+		t.Run(name, func(t *testing.T) {
+			captured := &fakeCapturingModel{}
+			handler := newTestGateway(t, captured, &fakeIDs{})
+			payload, err := json.Marshal(types.RunAgentInput{
+				ThreadID: "thread-no-input",
+				RunID:    "run-no-input",
+				Messages: messages,
+				Tools: []types.Tool{{
+					Name: "unused_client_tool", Parameters: map[string]any{"type": "object"},
+				}},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			req := httptest.NewRequest(http.MethodPost, "/resume/agui", bytes.NewReader(payload))
+			rr := httptest.NewRecorder()
+			handler.ServeHTTP(rr, req)
+
+			if rr.Code != http.StatusOK {
+				t.Fatalf("status = %d: %s", rr.Code, rr.Body.String())
+			}
+			out := rr.Body.String()
+			started := strings.Index(out, "RUN_STARTED")
+			snapshot := strings.Index(out, "STATE_SNAPSHOT")
+			finished := strings.Index(out, "RUN_FINISHED")
+			if started < 0 || snapshot < started || finished < snapshot {
+				t.Fatalf("incomplete or unordered terminal stream: %s", out)
+			}
+			if strings.Contains(out, "RUN_ERROR") {
+				t.Fatalf("unexpected RUN_ERROR: %s", out)
+			}
+			if captured.request() != nil {
+				t.Fatal("model was invoked without fresh input")
+			}
+		})
 	}
 }
 

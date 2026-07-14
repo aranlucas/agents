@@ -76,7 +76,6 @@ type Dependencies struct {
 	Links    *telegram.LinkStore
 	Clerk    clerk.Backend
 	Fitness  fitnessdata.Repository
-	Titles   model.LLM
 	Now      func() time.Time
 }
 
@@ -105,7 +104,7 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 
 	for _, entry := range deps.Registry.Entries() {
 		base := "/" + entry.Route
-		handler, err := agui.NewEntryHandler(entry, deps.Sessions, agui.WithPendingTools(deps.Pending), agui.WithTitleModel(deps.Titles))
+		handler, err := agui.NewEntryHandler(entry, deps.Sessions, agui.WithPendingTools(deps.Pending))
 		if err != nil {
 			return nil, fmt.Errorf("build AG-UI handler for %s: %w", entry.Route, err)
 		}
@@ -130,8 +129,10 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 	// Keep /health as a readiness alias for existing monitors and clients.
 	mux.HandleFunc("GET /health", rootHealthHandler(deps))
 	if deps.Links != nil && cfg.TelegramLinkSecret != "" {
-		mux.HandleFunc("POST /telegram/link/consume", telegramLinkConsumeHandler(cfg.TelegramLinkSecret, deps.Links, deps.Clerk))
+		mux.HandleFunc("POST /telegram/link/consume", telegramLinkConsumeHandler(cfg.TelegramLinkSecret, deps.Links))
+		mux.HandleFunc("POST /telegram/link/resolve", telegramLinkResolveHandler(cfg.TelegramLinkSecret, deps.Links))
 		publicRoutes["/telegram/link/consume"] = true
+		publicRoutes["/telegram/link/resolve"] = true
 	}
 	if deps.Fitness != nil {
 		mux.HandleFunc("POST /fitness/activities/sync", fitnessSyncHandler(deps.Fitness, deps.Now))
@@ -176,7 +177,7 @@ func withOAuthCredentials(backend clerk.Backend, next http.Handler) http.Handler
 		connections, err := backend.OAuthConnections(r.Context(), identity.UserID)
 		if err != nil {
 			log.Printf("resolve agent OAuth credentials: user=%s path=%s err=%v", identity.UserID, r.URL.Path, err)
-			next.ServeHTTP(w, r)
+			writeGatewayJSONError(w, http.StatusServiceUnavailable, "oauth_credentials_unavailable")
 			return
 		}
 
@@ -185,16 +186,12 @@ func withOAuthCredentials(backend clerk.Backend, next http.Handler) http.Handler
 		if connections.KrogerToken != "" {
 			clone.Header.Set("X-Kroger-Access-Token", connections.KrogerToken)
 		}
-		if connections.StravaToken != "" {
-			clone.Header.Set("X-Strava-Access-Token", connections.StravaToken)
-		}
 		next.ServeHTTP(w, clone)
 	})
 }
 
 func routeNeedsOAuth(path string) bool {
 	return strings.HasPrefix(path, "/grocery/") ||
-		strings.HasPrefix(path, "/fitness/") ||
 		strings.HasPrefix(path, "/wellness/")
 }
 
@@ -206,6 +203,18 @@ type telegramLinkConsumeRequest struct {
 type telegramLinkConsumeResponse struct {
 	OK             bool  `json:"ok"`
 	TelegramUserID int64 `json:"telegram_user_id"`
+}
+
+type telegramLinkResolveRequest struct {
+	TelegramUserID int64 `json:"telegram_user_id"`
+}
+
+type telegramLinkResolveResponse struct {
+	ClerkUserID string `json:"clerk_user_id"`
+}
+
+type telegramLinkLookup interface {
+	Lookup(context.Context, int64) (telegram.AccountLink, bool, error)
 }
 
 type capabilityFlag struct {
@@ -253,10 +262,9 @@ type livenessResponse struct {
 	Time    string `json:"time"`
 }
 
-func telegramLinkConsumeHandler(secret string, links *telegram.LinkStore, backend clerk.Backend) http.HandlerFunc {
+func telegramLinkConsumeHandler(secret string, links *telegram.LinkStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		provided := r.Header.Get("x-telegram-link-secret")
-		if len(provided) != len(secret) || subtle.ConstantTimeCompare([]byte(provided), []byte(secret)) != 1 {
+		if !validTelegramLinkSecret(r.Header.Get("x-telegram-link-secret"), secret) {
 			writeGatewayJSONError(w, http.StatusUnauthorized, "invalid_link_secret")
 			return
 		}
@@ -275,12 +283,43 @@ func telegramLinkConsumeHandler(secret string, links *telegram.LinkStore, backen
 			writeGatewayJSONError(w, http.StatusBadRequest, "invalid_or_expired_link_token")
 			return
 		}
-		if backend != nil {
-			_ = backend.MirrorTelegramLink(r.Context(), link.TelegramUserID, link.ClerkUserID)
-		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(telegramLinkConsumeResponse{OK: true, TelegramUserID: link.TelegramUserID})
 	}
+}
+
+func telegramLinkResolveHandler(secret string, links telegramLinkLookup) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !validTelegramLinkSecret(r.Header.Get("x-telegram-link-secret"), secret) {
+			writeGatewayJSONError(w, http.StatusUnauthorized, "invalid_link_secret")
+			return
+		}
+		var input telegramLinkResolveRequest
+		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10))
+		decoder.DisallowUnknownFields()
+		decodeErr := decoder.Decode(&input)
+		var trailing struct{}
+		trailingErr := decoder.Decode(&trailing)
+		if decodeErr != nil || !errors.Is(trailingErr, io.EOF) || input.TelegramUserID <= 0 {
+			writeGatewayJSONError(w, http.StatusBadRequest, "invalid_link_request")
+			return
+		}
+		link, linked, err := links.Lookup(r.Context(), input.TelegramUserID)
+		if err != nil {
+			writeGatewayJSONError(w, http.StatusServiceUnavailable, "link_lookup_failed")
+			return
+		}
+		if !linked {
+			writeGatewayJSONError(w, http.StatusNotFound, "telegram_account_not_linked")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(telegramLinkResolveResponse{ClerkUserID: link.ClerkUserID})
+	}
+}
+
+func validTelegramLinkSecret(provided, expected string) bool {
+	return expected != "" && len(provided) == len(expected) && subtle.ConstantTimeCompare([]byte(provided), []byte(expected)) == 1
 }
 
 func writeGatewayJSONError(w http.ResponseWriter, status int, code string) {
@@ -492,11 +531,6 @@ func main() {
 	pending := cloudflare.NewPendingStore(d1, time.Now)
 	limiter := rate.NewProviderLimiter(d1, time.Now)
 	availableProviders := providerpolicy.FallbackProviders(cfg.Providers)
-	titleProvider, err := providerpolicy.ResolveRequired(cfg.Providers, providerpolicy.SessionTitle())
-	if err != nil {
-		log.Fatalf("configure session title model: %v", err)
-	}
-	titleModel := openai.New(titleProvider, nil, limiter)
 	var braveSearch *bravesearch.Client
 	if braveKey := strings.TrimSpace(os.Getenv("BRAVE_API_KEY")); braveKey != "" {
 		braveSearch, err = bravesearch.New(common.NewHTTPClient(15*time.Second, 4<<20).Client, "https://api.search.brave.com/res/v1/web/search", braveKey, 10)
@@ -629,16 +663,13 @@ func main() {
 	if err != nil {
 		log.Fatalf("configure trends fallbacks: %v", err)
 	}
-	var trendsExecutor *trends.BigQueryExecutor
-	trendsBigQuery, bigQueryErr := trendsBigQueryClient(ctx)
-	if bigQueryErr != nil {
-		log.Printf("warning: trends BigQuery unavailable: %v", bigQueryErr)
-	} else {
-		trendsExecutor, err = trends.NewBigQueryExecutor(trendsBigQuery, "bigquery-public-data", "google_trends", trends.DefaultMaxBytesBilled, 30*time.Second)
-		if err != nil {
-			log.Printf("warning: trends BigQuery executor unavailable: %v", err)
-			trendsExecutor = nil
-		}
+	trendsBigQuery, err := trendsBigQueryClient(ctx)
+	if err != nil {
+		log.Fatalf("configure trends BigQuery client: %v", err)
+	}
+	trendsExecutor, err := trends.NewBigQueryExecutor(trendsBigQuery, "bigquery-public-data", "google_trends", trends.DefaultMaxBytesBilled, 30*time.Second)
+	if err != nil {
+		log.Fatalf("configure trends BigQuery executor: %v", err)
 	}
 	trendsGenerator, err := trends.NewGenerator(trendsModel)
 	if err != nil {
@@ -711,7 +742,6 @@ func main() {
 		Links:    telegram.NewLinkStore(d1, time.Now),
 		Clerk:    clerkBackend,
 		Fitness:  fitnessActivities,
-		Titles:   titleModel,
 		Now:      time.Now,
 	})
 	if err != nil {

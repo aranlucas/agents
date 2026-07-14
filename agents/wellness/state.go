@@ -24,7 +24,6 @@ type WellnessState struct {
 	MealPlan             string              `json:"meal_plan"`
 	WeeklyPlan           string              `json:"weekly_plan"`
 	ReviewSummary        string              `json:"review_summary"`
-	UserID               string              `json:"user_id"`
 	KrogerConnected      bool                `json:"kroger_connected"`
 	FitnessDataConnected bool                `json:"fitness_data_connected"`
 	ActivitySource       string              `json:"activity_source"`

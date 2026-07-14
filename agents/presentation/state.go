@@ -31,7 +31,6 @@ type PresentationState struct {
 	ActiveSlideIndex int     `json:"active_slide_index"`
 	Status           Status  `json:"status"`
 	ReviewSummary    string  `json:"review_summary"`
-	UserID           string  `json:"user_id"`
 }
 
 func Defaults() PresentationState {

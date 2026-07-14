@@ -12,7 +12,7 @@ store and R2 is the sole artifact store. There is no local or Postgres fallback.
 
 ```text
 apps/web    -> CopilotKit runtime -> Go gateway /<agent>/agui
-apps/mobile -> @ag-ui/client     -> Go gateway /<agent>/agui
+apps/mobile -> CopilotKit runtime -> Go gateway /<agent>/agui
 Telegram    -> Go long poller    -> ADK-Go specialist agents
                                 -> D1 sessions + R2 artifacts
 Go gateway  -> MCP client        -> Cloudflare Kroger shopping Worker
@@ -61,15 +61,17 @@ starting, expose process-only `/live`, and use schema/D1/R2-aware `/ready` for
 deployment health. Set `APP_ENV=production` on both services. The gateway also
 requires all `CF_*` values, exact HTTPS `ALLOWED_ORIGINS`, `CLERK_JWKS_URL`,
 `CLERK_ISSUER`, and the OpenRouter, Groq, NVIDIA NIM, Mistral, and Gemini keys.
+It also requires `GOOGLE_APPLICATION_CREDENTIALS_JSON` for the advertised
+Google Trends surface.
 The Telegram service requires all `CF_*` values, `MISTRAL_API_KEY`, and
 `TELEGRAM_BOT_TOKEN`; browser-origin and Clerk-JWT settings are intentionally
-gateway-only. `CLERK_SECRET_KEY` enables OAuth/account-link mirroring on either
+gateway-only. `CLERK_SECRET_KEY` enables OAuth account lookup on either
 runtime where that feature is used.
 
 Production acceptance requires an authenticated Clerk session token and both
-deployed service URLs. It exercises every registered route, public and
-protected state, a client tool, Trends A2UI, request-scoped OAuth headers, and
-Telegram readiness before recording Railway's raw RSS samples:
+deployed service URLs. The smoke script health-checks every registered route,
+runs the Resume agent, exercises a client tool and Grocery OAuth headers, and
+checks Telegram readiness before recording Railway's raw RSS samples:
 
 ```bash
 AGENTS_BASE_URL=https://agents-gateway.example \

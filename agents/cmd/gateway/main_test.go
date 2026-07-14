@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"iter"
 	"net/http"
@@ -18,6 +19,7 @@ import (
 	"agents/internal/auth"
 	"agents/internal/clerk"
 	"agents/internal/config"
+	"agents/internal/telegram"
 	"agents/presentation"
 	"agents/resume"
 	"agents/travel"
@@ -95,7 +97,7 @@ func TestEveryActiveAgentExposesScopedEndpoints(t *testing.T) {
 }
 
 func TestLinkConsumeRejectsWrongSharedSecret(t *testing.T) {
-	handler := telegramLinkConsumeHandler("correct", nil, nil)
+	handler := telegramLinkConsumeHandler("correct", nil)
 	request := httptest.NewRequest(http.MethodPost, "/telegram/link/consume", strings.NewReader(`{"token":"raw","clerk_user_id":"user"}`))
 	request.Header.Set("x-telegram-link-secret", "wrong")
 	recorder := httptest.NewRecorder()
@@ -106,7 +108,7 @@ func TestLinkConsumeRejectsWrongSharedSecret(t *testing.T) {
 }
 
 func TestLinkConsumeRejectsMultipleOrOversizedJSONDocuments(t *testing.T) {
-	handler := telegramLinkConsumeHandler("correct", nil, nil)
+	handler := telegramLinkConsumeHandler("correct", nil)
 	for name, body := range map[string]string{
 		"multiple documents": `{"token":"raw","clerk_user_id":"user"}{}`,
 		"oversized":          `{"token":"raw","clerk_user_id":"user"}` + strings.Repeat(" ", 8<<10),
@@ -118,6 +120,66 @@ func TestLinkConsumeRejectsMultipleOrOversizedJSONDocuments(t *testing.T) {
 			handler.ServeHTTP(recorder, request)
 			if recorder.Code != http.StatusBadRequest {
 				t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
+			}
+		})
+	}
+}
+
+type fakeTelegramLinkLookup struct {
+	link   telegram.AccountLink
+	linked bool
+	err    error
+}
+
+func (f fakeTelegramLinkLookup) Lookup(context.Context, int64) (telegram.AccountLink, bool, error) {
+	return f.link, f.linked, f.err
+}
+
+func TestLinkResolveUsesD1AccountLink(t *testing.T) {
+	handler := telegramLinkResolveHandler("correct", fakeTelegramLinkLookup{
+		link: telegram.AccountLink{
+			TelegramUserID: 42,
+			TelegramChatID: 42,
+			ClerkUserID:    "user_real_123",
+			LinkedAt:       time.Now().UnixMilli(),
+		},
+		linked: true,
+	})
+	request := httptest.NewRequest(http.MethodPost, "/telegram/link/resolve", strings.NewReader(`{"telegram_user_id":42}`))
+	request.Header.Set("x-telegram-link-secret", "correct")
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"clerk_user_id":"user_real_123"`) {
+		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestLinkResolveFailsClosed(t *testing.T) {
+	tests := []struct {
+		name   string
+		secret string
+		body   string
+		lookup fakeTelegramLinkLookup
+		want   int
+	}{
+		{name: "wrong secret", secret: "wrong", body: `{"telegram_user_id":42}`, want: http.StatusUnauthorized},
+		{name: "invalid identity", secret: "correct", body: `{"telegram_user_id":0}`, want: http.StatusBadRequest},
+		{name: "unknown field", secret: "correct", body: `{"telegram_user_id":42,"extra":true}`, want: http.StatusBadRequest},
+		{name: "not linked", secret: "correct", body: `{"telegram_user_id":42}`, want: http.StatusNotFound},
+		{name: "D1 unavailable", secret: "correct", body: `{"telegram_user_id":42}`, lookup: fakeTelegramLinkLookup{err: errors.New("D1 unavailable")}, want: http.StatusServiceUnavailable},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			handler := telegramLinkResolveHandler("correct", test.lookup)
+			request := httptest.NewRequest(http.MethodPost, "/telegram/link/resolve", strings.NewReader(test.body))
+			request.Header.Set("x-telegram-link-secret", test.secret)
+			recorder := httptest.NewRecorder()
+			handler.ServeHTTP(recorder, request)
+			if recorder.Code != test.want {
+				t.Fatalf("status=%d want=%d body=%s", recorder.Code, test.want, recorder.Body.String())
+			}
+			if strings.Contains(recorder.Body.String(), "clerk_user_id") {
+				t.Fatalf("failure leaked linked identity: %s", recorder.Body.String())
 			}
 		})
 	}
@@ -228,27 +290,21 @@ func (acceptingVerifier) Verify(context.Context, string) (auth.Identity, error) 
 type fakeClerkBackend struct {
 	connections clerk.ConnectionState
 	lookups     []string
+	err         error
 }
 
-func (*fakeClerkBackend) MirrorTelegramLink(context.Context, int64, string) error { return nil }
-func (*fakeClerkBackend) MirrorTelegramUnlink(context.Context, int64) error       { return nil }
-func (*fakeClerkBackend) LinkedUserID(context.Context, int64) (string, error)     { return "", nil }
 func (f *fakeClerkBackend) OAuthConnections(_ context.Context, userID string) (clerk.ConnectionState, error) {
 	f.lookups = append(f.lookups, userID)
-	return f.connections, nil
+	return f.connections, f.err
 }
 
 func TestOAuthCredentialsAreResolvedAfterClerkAuthentication(t *testing.T) {
 	backend := &fakeClerkBackend{connections: clerk.ConnectionState{
 		KrogerToken: "kroger-secret",
-		StravaToken: "strava-secret",
 	}}
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if got := r.Header.Get("X-Kroger-Access-Token"); got != "kroger-secret" {
 			t.Errorf("Kroger token = %q", got)
-		}
-		if got := r.Header.Get("X-Strava-Access-Token"); got != "strava-secret" {
-			t.Errorf("Strava token = %q", got)
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})
@@ -268,21 +324,45 @@ func TestOAuthCredentialsAreResolvedAfterClerkAuthentication(t *testing.T) {
 }
 
 func TestOAuthCredentialsSkipRoutesWithoutProviderTools(t *testing.T) {
-	backend := &fakeClerkBackend{}
-	handler := auth.RequireIdentity(nil, withOAuthCredentials(backend, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusNoContent)
+	for _, path := range []string{"/travel/agui", "/fitness/agui"} {
+		t.Run(path, func(t *testing.T) {
+			backend := &fakeClerkBackend{}
+			handler := auth.RequireIdentity(nil, withOAuthCredentials(backend, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusNoContent)
+			})), acceptingVerifier{})
+			request := httptest.NewRequest(http.MethodPost, path, nil)
+			request.Header.Set("Authorization", "Bearer clerk-session")
+			recorder := httptest.NewRecorder()
+
+			handler.ServeHTTP(recorder, request)
+
+			if recorder.Code != http.StatusNoContent {
+				t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
+			}
+			if len(backend.lookups) != 0 {
+				t.Fatalf("unexpected Clerk lookups=%v", backend.lookups)
+			}
+		})
+	}
+}
+
+func TestOAuthCredentialLookupFailuresStopTheRequest(t *testing.T) {
+	backend := &fakeClerkBackend{err: errors.New("Clerk unavailable")}
+	nextCalled := false
+	handler := auth.RequireIdentity(nil, withOAuthCredentials(backend, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		nextCalled = true
 	})), acceptingVerifier{})
-	request := httptest.NewRequest(http.MethodPost, "/travel/agui", nil)
+	request := httptest.NewRequest(http.MethodPost, "/grocery/agui", nil)
 	request.Header.Set("Authorization", "Bearer clerk-session")
 	recorder := httptest.NewRecorder()
 
 	handler.ServeHTTP(recorder, request)
 
-	if recorder.Code != http.StatusNoContent {
+	if recorder.Code != http.StatusServiceUnavailable || recorder.Body.String() != "{\"error\":\"oauth_credentials_unavailable\"}\n" {
 		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
 	}
-	if len(backend.lookups) != 0 {
-		t.Fatalf("unexpected Clerk lookups=%v", backend.lookups)
+	if nextCalled {
+		t.Fatal("request continued without resolved OAuth credentials")
 	}
 }
 

@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
@@ -51,10 +50,6 @@ func newLinkStore(db d1Runner, now func() time.Time) *LinkStore {
 		now = time.Now
 	}
 	return &LinkStore{db: db, now: now}
-}
-
-func (s *LinkStore) Create(ctx context.Context, telegramUserID int64, ttl time.Duration) (string, error) {
-	return s.CreateForChat(ctx, telegramUserID, telegramUserID, ttl)
 }
 
 func (s *LinkStore) CreateForChat(ctx context.Context, telegramUserID, telegramChatID int64, ttl time.Duration) (string, error) {
@@ -150,8 +145,4 @@ func (s *LinkStore) Unlink(ctx context.Context, telegramUserID int64) (bool, err
 func hashToken(raw string) string {
 	sum := sha256.Sum256([]byte(raw))
 	return hex.EncodeToString(sum[:])
-}
-
-func (a AccountLink) String() string {
-	return fmt.Sprintf("telegram:%d->clerk:%s", a.TelegramUserID, a.ClerkUserID)
 }
