@@ -463,7 +463,7 @@ importers:
         version: 7.5.17(next@16.2.10(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@copilotkit/react-core':
         specifier: ^1.62.3
-        version: 1.62.3(@types/mdast@4.0.4)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(graphql@16.8.1)(micromark-util-types@2.0.2)(micromark@4.0.2)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(zod@4.4.3)
+        version: 1.62.3(@types/mdast@4.0.4)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(graphql@16.8.1)(micromark-util-types@2.0.2)(micromark@4.0.2)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(supports-color@8.1.1)(zod@4.4.3)
       '@opentelemetry/exporter-trace-otlp-http':
         specifier: ^0.220.0
         version: 0.220.0(@opentelemetry/api@1.9.1)
@@ -13394,7 +13394,7 @@ snapshots:
 
   '@copilotkit/license-verifier@0.5.0': {}
 
-  '@copilotkit/react-core@1.62.3(@types/mdast@4.0.4)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(graphql@16.8.1)(micromark-util-types@2.0.2)(micromark@4.0.2)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(zod@4.4.3)':
+  '@copilotkit/react-core@1.62.3(@types/mdast@4.0.4)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(graphql@16.8.1)(micromark-util-types@2.0.2)(micromark@4.0.2)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(supports-color@8.1.1)(zod@4.4.3)':
     dependencies:
       '@ag-ui/client': 0.0.57
       '@ag-ui/core': 0.0.57
@@ -13418,7 +13418,7 @@ snapshots:
       lucide-react: 0.525.0(react@19.2.7)
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
-      react-markdown: 8.0.7(@types/react@19.2.17)(react@19.2.7)
+      react-markdown: 8.0.7(@types/react@19.2.17)(react@19.2.7)(supports-color@8.1.1)
       rxjs: 7.8.1
       streamdown: 1.6.11(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(react@19.2.7)
       tailwind-merge: 3.6.0
@@ -14826,7 +14826,7 @@ snapshots:
   '@mcp-ui/server@6.1.0(@cfworker/json-schema@4.1.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(zod@4.4.3)':
     dependencies:
       '@modelcontextprotocol/ext-apps': 0.3.1(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(supports-color@8.1.1)(zod@4.4.3))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(zod@4.4.3)
-      '@modelcontextprotocol/sdk': 1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3)
+      '@modelcontextprotocol/sdk': 1.29.0(@cfworker/json-schema@4.1.1)(supports-color@8.1.1)(zod@4.4.3)
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - react
@@ -14915,30 +14915,6 @@ snapshots:
       raw-body: 3.0.2
       zod: 3.25.76
       zod-to-json-schema: 3.25.2(zod@3.25.76)
-    optionalDependencies:
-      '@cfworker/json-schema': 4.1.1
-    transitivePeerDependencies:
-      - supports-color
-
-  '@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3)':
-    dependencies:
-      '@hono/node-server': 1.19.14(hono@4.12.30)
-      ajv: 8.20.0
-      ajv-formats: 3.0.1(ajv@8.20.0)
-      content-type: 1.0.5
-      cors: 2.8.6
-      cross-spawn: 7.0.6
-      eventsource: 3.0.7
-      eventsource-parser: 3.1.0
-      express: 5.2.1(supports-color@8.1.1)
-      express-rate-limit: 8.5.2(express@5.2.1(supports-color@8.1.1))
-      hono: 4.12.30
-      jose: 6.2.3
-      json-schema-typed: 8.0.2
-      pkce-challenge: 5.0.1
-      raw-body: 3.0.2
-      zod: 4.4.3
-      zod-to-json-schema: 3.25.2(zod@4.4.3)
     optionalDependencies:
       '@cfworker/json-schema': 4.1.1
     transitivePeerDependencies:
@@ -18509,7 +18485,7 @@ snapshots:
       magicast: 0.5.3
       obug: 2.1.3
       tinyrainbow: 3.1.0
-      vitest: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@26.1.1)(@vitest/coverage-istanbul@4.1.10)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1(@noble/hashes@1.8.0))(msw@2.15.0(@types/node@26.1.1)(typescript@7.0.2))(vite@8.1.4(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.49.0)(yaml@2.9.0))
+      vitest: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@26.1.1)(@vitest/coverage-istanbul@4.1.10)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1(@noble/hashes@1.8.0))(msw@2.15.0(@types/node@26.1.1)(@typescript/typescript6@6.0.2))(vite@8.1.4(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.49.0)(yaml@2.9.0))
     transitivePeerDependencies:
       - supports-color
 
@@ -18525,7 +18501,7 @@ snapshots:
       obug: 2.1.3
       std-env: 4.2.0
       tinyrainbow: 3.1.0
-      vitest: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@26.1.1)(@vitest/coverage-istanbul@4.1.10)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1(@noble/hashes@1.8.0))(msw@2.15.0(@types/node@26.1.1)(typescript@7.0.2))(vite@8.1.4(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.49.0)(yaml@2.9.0))
+      vitest: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@26.1.1)(@vitest/coverage-istanbul@4.1.10)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1(@noble/hashes@1.8.0))(msw@2.15.0(@types/node@26.1.1)(@typescript/typescript6@6.0.2))(vite@8.1.4(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.49.0)(yaml@2.9.0))
 
   '@vitest/expect@4.1.10':
     dependencies:
@@ -18723,7 +18699,7 @@ snapshots:
       '@babel/plugin-proposal-decorators': 8.0.2(@babel/core@7.29.7)
       '@cfworker/json-schema': 4.1.1
       '@cloudflare/codemode': 0.4.3(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(supports-color@8.1.1)(zod@4.4.3))(zod@4.4.3)
-      '@modelcontextprotocol/sdk': 1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3)
+      '@modelcontextprotocol/sdk': 1.29.0(@cfworker/json-schema@4.1.1)(supports-color@8.1.1)(zod@4.4.3)
       '@rolldown/plugin-babel': 0.2.3(@babel/core@7.29.7)(@babel/plugin-transform-runtime@7.29.7(@babel/core@7.29.7))(@babel/runtime@7.29.7)(rolldown@1.1.5)(vite@8.1.4(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.49.0)(yaml@2.9.0))
       cron-schedule: 6.0.0
       esbuild: 0.28.1
@@ -22017,13 +21993,13 @@ snapshots:
       unist-util-is: 6.0.1
       unist-util-visit-parents: 6.0.2
 
-  mdast-util-from-markdown@1.3.1:
+  mdast-util-from-markdown@1.3.1(supports-color@8.1.1):
     dependencies:
       '@types/mdast': 3.0.15
       '@types/unist': 2.0.11
       decode-named-character-reference: 1.3.0
       mdast-util-to-string: 3.2.0
-      micromark: 3.2.0
+      micromark: 3.2.0(supports-color@8.1.1)
       micromark-util-decode-numeric-character-reference: 1.1.0
       micromark-util-decode-string: 1.1.0
       micromark-util-normalize-identifier: 1.1.0
@@ -22812,7 +22788,7 @@ snapshots:
 
   micromark-util-types@2.0.2: {}
 
-  micromark@3.2.0:
+  micromark@3.2.0(supports-color@8.1.1):
     dependencies:
       '@types/debug': 4.1.13
       debug: 4.4.3(supports-color@8.1.1)
@@ -24004,7 +23980,7 @@ snapshots:
       property-information: 6.5.0
       react: 19.2.3
       react-is: 18.3.1
-      remark-parse: 10.0.2
+      remark-parse: 10.0.2(supports-color@8.1.1)
       remark-rehype: 10.1.0
       space-separated-tokens: 2.0.2
       style-to-object: 0.4.4
@@ -24014,7 +23990,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  react-markdown@8.0.7(@types/react@19.2.17)(react@19.2.7):
+  react-markdown@8.0.7(@types/react@19.2.17)(react@19.2.7)(supports-color@8.1.1):
     dependencies:
       '@types/hast': 2.3.10
       '@types/prop-types': 15.7.15
@@ -24026,7 +24002,7 @@ snapshots:
       property-information: 6.5.0
       react: 19.2.7
       react-is: 18.3.1
-      remark-parse: 10.0.2
+      remark-parse: 10.0.2(supports-color@8.1.1)
       remark-rehype: 10.1.0
       space-separated-tokens: 2.0.2
       style-to-object: 0.4.4
@@ -24449,10 +24425,10 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  remark-parse@10.0.2:
+  remark-parse@10.0.2(supports-color@8.1.1):
     dependencies:
       '@types/mdast': 3.0.15
-      mdast-util-from-markdown: 1.3.1
+      mdast-util-from-markdown: 1.3.1(supports-color@8.1.1)
       unified: 10.1.2
     transitivePeerDependencies:
       - supports-color

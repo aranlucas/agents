@@ -69,7 +69,10 @@ func Agent(workload Workload) (Policy, error) {
 	case Research:
 		return openRouterLight("OPENROUTER_API_KEY is required to configure the research agent", "mistral"), nil
 	case Resume:
-		return openRouterLight("OPENROUTER_API_KEY is required to configure the resume agent"), nil
+		return Policy{
+			Provider: "openrouter", Model: "liquid/lfm-2.5-1.2b-instruct:free", RequestsPerMinute: 20, RequestsPerDay: 1000,
+			missingProviderMessage: "OPENROUTER_API_KEY is required to configure the resume agent",
+		}, nil
 	case Spreadsheet:
 		return groqStandard("GROQ_API_KEY is required to configure the spreadsheet agent"), nil
 	case Travel:
