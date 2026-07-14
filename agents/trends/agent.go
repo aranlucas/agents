@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 
-	"agents/internal/common"
+	"agents/internal/bravesearch"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
@@ -34,7 +34,7 @@ const GeneratorAppName = "TrendsQueryGeneratorAgent"
 // exercise execute_bigquery_sql (the tool then returns a structured "not
 // configured" error instead of panicking); search is optional and, when
 // nil, omits the web_search tool entirely.
-func New(m model.LLM, generator agent.Agent, executor *BigQueryExecutor, search *common.BraveSearch, toolsets ...tool.Toolset) (agent.Agent, error) {
+func New(m model.LLM, generator agent.Agent, executor *BigQueryExecutor, search *bravesearch.Client, toolsets ...tool.Toolset) (agent.Agent, error) {
 	if generator == nil || generator.Name() != GeneratorAppName {
 		return nil, fmt.Errorf("trends requires a %s child agent", GeneratorAppName)
 	}
@@ -60,7 +60,7 @@ func NewGenerator(m model.LLM) (agent.Agent, error) {
 	})
 }
 
-func rootTools(executor *BigQueryExecutor, search *common.BraveSearch) ([]tool.Tool, error) {
+func rootTools(executor *BigQueryExecutor, search *bravesearch.Client) ([]tool.Tool, error) {
 	validateTrendsSQLTool, err := functiontool.New(functiontool.Config{
 		Name:        "validate_trends_sql",
 		Description: "Validate that generated SQL is a bounded, read-only SELECT/WITH query.",
@@ -168,5 +168,5 @@ type SearchArgs struct {
 }
 
 type SearchResult struct {
-	Results []common.SearchResult `json:"results"`
+	Results []bravesearch.Result `json:"results"`
 }

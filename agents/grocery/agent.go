@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 
+	"agents/internal/bravesearch"
 	"agents/internal/common"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
@@ -18,7 +19,7 @@ type SearchArgs struct {
 	Count int    `json:"count"`
 }
 type SearchResult struct {
-	Results []common.SearchResult `json:"results"`
+	Results []bravesearch.Result `json:"results"`
 }
 type LoadPageArgs struct {
 	URL string `json:"url"`
@@ -27,15 +28,15 @@ type LoadPageResult struct {
 	Page common.WebPage `json:"page"`
 }
 
-func New(m model.LLM, kroger *Kroger, search *common.BraveSearch, loader *common.WebLoader, toolsets ...tool.Toolset) (agent.Agent, error) {
+func New(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *common.WebLoader, toolsets ...tool.Toolset) (agent.Agent, error) {
 	return newAgent(m, kroger, search, loader, llmagent.ModeChat, toolsets...)
 }
 
-func NewTask(m model.LLM, kroger *Kroger, search *common.BraveSearch, loader *common.WebLoader, toolsets ...tool.Toolset) (agent.Agent, error) {
+func NewTask(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *common.WebLoader, toolsets ...tool.Toolset) (agent.Agent, error) {
 	return newAgent(m, kroger, search, loader, llmagent.ModeTask, toolsets...)
 }
 
-func newAgent(m model.LLM, kroger *Kroger, search *common.BraveSearch, loader *common.WebLoader, mode llmagent.Mode, toolsets ...tool.Toolset) (agent.Agent, error) {
+func newAgent(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *common.WebLoader, mode llmagent.Mode, toolsets ...tool.Toolset) (agent.Agent, error) {
 	tools, err := groceryTools(search, loader)
 	if err != nil {
 		return nil, err
@@ -51,7 +52,7 @@ func newAgent(m model.LLM, kroger *Kroger, search *common.BraveSearch, loader *c
 	return llmagent.New(config)
 }
 
-func groceryTools(search *common.BraveSearch, loader *common.WebLoader) ([]tool.Tool, error) {
+func groceryTools(search *bravesearch.Client, loader *common.WebLoader) ([]tool.Tool, error) {
 	setShoppingListTool, err := functiontool.New(functiontool.Config{
 		Name:        "set_shopping_list",
 		Description: "Replace the unmaterialized shopping list.",
