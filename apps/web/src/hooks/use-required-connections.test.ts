@@ -36,7 +36,7 @@ describe("useRequiredConnections", () => {
     const { result } = renderHook(() => useRequiredConnections("grocery"));
 
     expect(result.current.isLoading).toBe(true);
-    await waitFor(() => expect(result.current).toEqual({ isLoading: false, missing: [] }));
+    await waitFor(() => expect(result.current).toEqual({ isLoading: false, isMissing: false }));
     expect(reload).toHaveBeenCalledOnce();
   });
 
@@ -48,7 +48,7 @@ describe("useRequiredConnections", () => {
 
     const { result } = renderHook(() => useRequiredConnections("grocery"));
 
-    await waitFor(() => expect(result.current).toEqual({ isLoading: false, missing: ["kroger"] }));
+    await waitFor(() => expect(result.current).toEqual({ isLoading: false, isMissing: true }));
     expect(reload).toHaveBeenCalledOnce();
   });
 
@@ -58,13 +58,13 @@ describe("useRequiredConnections", () => {
 
     const { result } = renderHook(() => useRequiredConnections("research"));
 
-    expect(result.current).toEqual({ isLoading: false, missing: [] });
+    expect(result.current).toEqual({ isLoading: false, isMissing: false });
     expect(reload).not.toHaveBeenCalled();
   });
 
   it("does not report a missing account while Clerk is still hydrating the user", () => {
     const { result } = renderHook(() => useRequiredConnections("grocery"));
 
-    expect(result.current).toEqual({ isLoading: true, missing: ["kroger"] });
+    expect(result.current).toEqual({ isLoading: true, isMissing: true });
   });
 });

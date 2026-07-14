@@ -34,7 +34,6 @@ type GroceryState struct {
 	ReviewSummary   string       `json:"review_summary"`
 	KrogerConnected bool         `json:"kroger_connected"`
 	TrainingPlan    string       `json:"training_plan"`
-	UserID          string       `json:"user_id"`
 }
 
 func Defaults() GroceryState {

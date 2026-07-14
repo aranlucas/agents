@@ -29,7 +29,6 @@ type FitnessState struct {
 	TrainingPlan         string     `json:"training_plan"`
 	Status               Status     `json:"status"`
 	ReviewSummary        string     `json:"review_summary"`
-	UserID               string     `json:"user_id"`
 }
 
 func Defaults() FitnessState { return FitnessState{Activities: []Activity{}, Status: StatusIdle} }

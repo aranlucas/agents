@@ -50,8 +50,23 @@ func TestHealthHandlerKeepsLivenessHealthyWhenDependencyIsDown(t *testing.T) {
 	}
 }
 
-func TestParseChatIDsIgnoresInvalidValues(t *testing.T) {
-	if got := parseChatIDs("1, -100, nope"); !slices.Equal(got, []int64{1, -100}) {
-		t.Fatalf("ids=%#v", got)
+func TestParseChatIDs(t *testing.T) {
+	got, err := parseChatIDs("1, -100")
+	if err != nil || !slices.Equal(got, []int64{1, -100}) {
+		t.Fatalf("ids=%#v err=%v", got, err)
+	}
+	got, err = parseChatIDs("  ")
+	if err != nil || got != nil {
+		t.Fatalf("empty ids=%#v err=%v", got, err)
+	}
+}
+
+func TestParseChatIDsRejectsMalformedConfiguration(t *testing.T) {
+	for _, raw := range []string{"1, nope", "1,,2", "0"} {
+		t.Run(raw, func(t *testing.T) {
+			if ids, err := parseChatIDs(raw); err == nil || ids != nil {
+				t.Fatalf("ids=%#v err=%v", ids, err)
+			}
+		})
 	}
 }

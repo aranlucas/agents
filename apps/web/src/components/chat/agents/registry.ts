@@ -1,9 +1,8 @@
 import { AGENT_BACKEND_PATHS, AGENT_ORDER, type AgentId, type ArtifactKind } from "@agents/types";
 
-import type { ProviderId } from "@/lib/connections";
-
 export { AGENT_BACKEND_PATHS, AGENT_ORDER };
 export type { AgentId };
+export type ConsoleAgentId = Exclude<AgentId, "oral-boards">;
 
 type ArtifactSource = {
   /** Agent-state field holding the live document content (string or string[]). */
@@ -28,8 +27,8 @@ export type AgentConfig = {
   placeholder: string;
   welcome?: string;
   artifact?: ArtifactSource;
-  /** External OAuth providers that must be connected before this agent is usable. */
-  requires?: ProviderId[];
+  /** Whether this agent needs the user's Kroger account. */
+  requiresKroger?: true;
   suggestions?: Suggestion[];
 };
 
@@ -69,7 +68,7 @@ const AGENTS: Record<AgentId, AgentConfig> = {
   },
   grocery: {
     id: "grocery",
-    requires: ["kroger"],
+    requiresKroger: true,
     label: "Grocery",
     glyph: "🛒",
     colorVar: "--grocery",
@@ -95,7 +94,6 @@ const AGENTS: Record<AgentId, AgentConfig> = {
   },
   fitness: {
     id: "fitness",
-    requires: [],
     label: "Fitness",
     glyph: "💪",
     colorVar: "--fitness",
@@ -118,7 +116,7 @@ const AGENTS: Record<AgentId, AgentConfig> = {
   },
   wellness: {
     id: "wellness",
-    requires: ["kroger"],
+    requiresKroger: true,
     label: "Wellness",
     glyph: "☯",
     colorVar: "--wellness",
@@ -355,6 +353,10 @@ const AGENTS: Record<AgentId, AgentConfig> = {
 
 export function isAgentId(value: string): value is AgentId {
   return value in AGENTS;
+}
+
+export function isConsoleAgentId(value: string): value is ConsoleAgentId {
+  return value !== "oral-boards" && isAgentId(value);
 }
 
 export function getAgentConfig(id: AgentId): AgentConfig;

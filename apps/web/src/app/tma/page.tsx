@@ -9,10 +9,16 @@ type AuthState =
   | { status: "error"; message: string }
   | { status: "success" };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 function getInitData(): string {
   if (typeof window === "undefined") return "";
-  const twa = (window as { Telegram?: { WebApp?: { initData?: string } } }).Telegram?.WebApp;
-  if (twa?.initData) return twa.initData;
+  const telegram: unknown = Reflect.get(window, "Telegram");
+  const webApp = isRecord(telegram) ? telegram.WebApp : undefined;
+  const initData = isRecord(webApp) ? webApp.initData : undefined;
+  if (typeof initData === "string" && initData) return initData;
   // Dev fallback: pass ?initData=... in the URL
   return new URLSearchParams(window.location.search).get("initData") ?? "";
 }
@@ -27,7 +33,7 @@ export default function TmaPage() {
   useEffect(() => {
     if (!isLoaded) return;
     if (isSignedIn) {
-      router.replace("/console");
+      router.replace("/");
       return;
     }
 
@@ -45,21 +51,26 @@ export default function TmaPage() {
           body: JSON.stringify({ initData }),
         });
         if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
+          const body: unknown = await res.json().catch(() => null);
           setState({
             status: "error",
-            message: (body as { error?: string }).error ?? "Auth failed.",
+            message: isRecord(body) && typeof body.error === "string" ? body.error : "Auth failed.",
           });
           return;
         }
-        const { token } = (await res.json()) as { token: string };
-        const { error } = await signIn!.ticket({ ticket: token });
+        const body: unknown = await res.json();
+        if (!isRecord(body) || typeof body.token !== "string" || !body.token) {
+          setState({ status: "error", message: "Auth response was invalid." });
+          return;
+        }
+        const token = body.token;
+        const { error } = await signIn.ticket({ ticket: token });
         if (error) {
           setState({ status: "error", message: error.message ?? "Sign-in failed." });
           return;
         }
-        await clerk.setActive({ session: signIn!.createdSessionId });
-        router.replace("/console");
+        await clerk.setActive({ session: signIn.createdSessionId });
+        router.replace("/");
       } catch {
         setState({ status: "error", message: "Unexpected error. Please try again." });
       }

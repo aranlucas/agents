@@ -3,6 +3,7 @@ package agui
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -14,7 +15,6 @@ import (
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/encoding/sse"
 	"google.golang.org/adk/v2/agent"
-	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/runner"
 	"google.golang.org/adk/v2/session"
 )
@@ -25,7 +25,6 @@ type Option func(*handlerConfig)
 type handlerConfig struct {
 	pending PendingTools
 	ids     events.IDGenerator
-	titles  model.LLM
 }
 
 // WithPendingTools wires the D1-backed pending client-tool store used to
@@ -41,11 +40,6 @@ func WithIDGenerator(ids events.IDGenerator) Option {
 	return func(c *handlerConfig) { c.ids = ids }
 }
 
-// WithTitleModel generates a short title when a session is first created.
-func WithTitleModel(titleModel model.LLM) Option {
-	return func(c *handlerConfig) { c.titles = titleModel }
-}
-
 // ADKHandler binds one ADK agent and session service to an AG-UI HTTP
 // endpoint. The runner is built once at construction rather than once per
 // request.
@@ -55,7 +49,6 @@ type ADKHandler struct {
 	sessions session.Service
 	pending  PendingTools
 	ids      events.IDGenerator
-	titles   model.LLM
 }
 
 // NewEntryHandler creates one AG-UI handler from the gateway's complete
@@ -80,7 +73,7 @@ func NewEntryHandler(entry agentruntime.Entry, sessions session.Service, opts ..
 	for _, opt := range opts {
 		opt(cfg)
 	}
-	return &ADKHandler{entry: entry, runner: rn, sessions: sessions, pending: cfg.pending, ids: cfg.ids, titles: cfg.titles}, nil
+	return &ADKHandler{entry: entry, runner: rn, sessions: sessions, pending: cfg.pending, ids: cfg.ids}, nil
 }
 
 func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -124,11 +117,11 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// AG-UI client tools require a PendingTools store to persist the
-	// call until a tool-result message resumes it; without one, a
-	// request that declares tools would silently run without them.
+	// A model run with AG-UI client tools requires a PendingTools store to
+	// persist the call until a tool-result message resumes it; without one,
+	// a request that declares tools would silently run without them.
 	clientTools := input.Tools
-	if len(clientTools) > 0 && h.pending == nil {
+	if content != nil && len(clientTools) > 0 && h.pending == nil {
 		log.Printf("run: client tools declared but pending store unavailable: agent=%s thread=%s", entry.AppName, input.ThreadID)
 		writeJSONError(w, http.StatusBadRequest, "client_tools_unsupported")
 		return
@@ -141,7 +134,7 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// failing here must still produce a normal 4xx, which is impossible
 	// once the SSE response has started.
 	var clientToolsJSON string
-	if len(clientTools) > 0 {
+	if content != nil && len(clientTools) > 0 {
 		encoded, err := json.Marshal(clientTools)
 		if err != nil {
 			log.Printf("run: client tools encode failed: agent=%s thread=%s err=%v", entry.AppName, input.ThreadID, err)
@@ -167,6 +160,10 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_ = frame.WriteEvent(ctx, w, events.NewRunStartedEvent(input.ThreadID, input.RunID))
 
 	_ = frame.WriteEvent(ctx, w, events.NewStateSnapshotEvent(snapshot))
+	if content == nil {
+		_ = frame.WriteEvent(ctx, w, events.NewRunFinishedEvent(input.ThreadID, input.RunID))
+		return
+	}
 
 	overlay := requestStateOverlay(r, entry.Route)
 	if clientToolsJSON != "" {
@@ -225,28 +222,20 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // restoreSession fetches the existing (app, user, thread) session or
-// creates one seeded with the agent's declared state defaults. It depends
-// only on session.Service's Get/Create methods — mirroring
-// runner.Runner.getOrCreateSession's own convention of treating any Get
-// failure as "no session yet" rather than checking for a specific error —
-// since session.Service documents no not-found contract to distinguish a
-// missing session from a backend failure. Unlike the runner's internal
-// getOrCreateSession, Create here must seed entry.StateDefaults, so this
-// can't just rely on runner.Config.AutoCreateSession.
+// creates one seeded with the agent's declared state defaults. Only
+// ErrSessionNotFound means creation is safe; storage outages and decode
+// failures must propagate instead of being mistaken for a missing row.
+// Create must seed entry.StateDefaults, so this cannot rely on the runner's
+// automatic session creation.
 func (h *ADKHandler) restoreSession(ctx context.Context, entry agentruntime.Entry, userID, threadID string, input *types.RunAgentInput) (session.Session, error) {
 	response, err := h.sessions.Get(ctx, &session.GetRequest{AppName: entry.AppName, UserID: userID, SessionID: threadID})
 	if err == nil {
 		return response.Session, nil
 	}
-	name := sessionNameFromInput(input, entry.Route)
-	if prompt := firstUserMessage(input); h.titles != nil && prompt != "" {
-		generated, titleErr := generateSessionName(ctx, h.titles, prompt)
-		if titleErr != nil {
-			log.Printf("restoreSession: title generation failed: app=%s model=%s err=%v", entry.AppName, h.titles.Name(), titleErr)
-		} else {
-			name = generated
-		}
+	if !errors.Is(err, ErrSessionNotFound) {
+		return nil, fmt.Errorf("get session: %w", err)
 	}
+	name := sessionNameFromInput(input, entry.Route)
 	state := entry.StateDefaults()
 	if state == nil {
 		state = make(map[string]any)
@@ -270,6 +259,15 @@ func sessionNameFromInput(input *types.RunAgentInput, route string) string {
 		return "New session"
 	}
 	return strings.ToUpper(name[:1]) + name[1:] + " session"
+}
+
+func truncateSessionName(value string) string {
+	const maximum = 64
+	runes := []rune(strings.TrimSpace(value))
+	if len(runes) <= maximum {
+		return string(runes)
+	}
+	return strings.TrimSpace(string(runes[:maximum-1])) + "…"
 }
 
 func firstUserMessage(input *types.RunAgentInput) string {

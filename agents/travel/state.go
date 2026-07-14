@@ -72,7 +72,6 @@ type TravelState struct {
 	Summary       string        `json:"summary"`
 	Status        TravelStatus  `json:"status"`
 	ReviewSummary string        `json:"review_summary"`
-	UserID        string        `json:"user_id"`
 	TravelerName  string        `json:"travelerName"`
 	HomeAirport   string        `json:"homeAirport"`
 	TransportMode TransportMode `json:"transportMode"`

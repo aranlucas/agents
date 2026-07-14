@@ -1,47 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { missingProviders, type ExternalAccountLike } from "./connections";
+import { hasKrogerConnection, type ExternalAccountLike } from "./connections";
 
 const verified = (provider: string): ExternalAccountLike => ({
   provider,
   verification: { status: "verified" },
 });
 
-describe("missingProviders", () => {
-  it("is empty when nothing is required", () => {
-    expect(missingProviders([], [])).toEqual([]);
-  });
-
-  it("reports a required-but-unlinked provider", () => {
-    expect(missingProviders(["strava"], [])).toEqual(["strava"]);
-  });
-
-  it("clears once the provider is verified (strava)", () => {
-    expect(missingProviders(["strava"], [verified("custom_strava")])).toEqual([]);
-    expect(missingProviders(["strava"], [verified("oauth_custom_strava")])).toEqual([]);
-  });
-
-  it("clears once the provider is verified (kroger)", () => {
-    expect(missingProviders(["kroger"], [verified("custom_shopping")])).toEqual([]);
-    expect(missingProviders(["kroger"], [verified("oauth_custom_shopping")])).toEqual([]);
+describe("hasKrogerConnection", () => {
+  it("recognizes both verified Kroger provider names", () => {
+    expect(hasKrogerConnection([verified("custom_shopping")])).toBe(true);
+    expect(hasKrogerConnection([verified("oauth_custom_shopping")])).toBe(true);
   });
 
   it("ignores unverified accounts", () => {
     expect(
-      missingProviders(
-        ["strava"],
-        [{ provider: "custom_strava", verification: { status: "unverified" } }],
-      ),
-    ).toEqual(["strava"]);
-    expect(missingProviders(["strava"], [{ provider: "custom_strava" }])).toEqual(["strava"]);
-  });
-
-  it("reports both for wellness with neither linked", () => {
-    expect(missingProviders(["kroger", "strava"], [])).toEqual(["kroger", "strava"]);
-  });
-
-  it("reports only the still-missing one (order follows required)", () => {
-    expect(missingProviders(["kroger", "strava"], [verified("custom_shopping")])).toEqual([
-      "strava",
-    ]);
+      hasKrogerConnection([
+        { provider: "custom_shopping", verification: { status: "unverified" } },
+      ]),
+    ).toBe(false);
+    expect(hasKrogerConnection([{ provider: "custom_shopping" }])).toBe(false);
   });
 });

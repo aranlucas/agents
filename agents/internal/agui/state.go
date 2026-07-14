@@ -27,40 +27,22 @@ var ErrSessionNotFound = errors.New("agui: session not found")
 // encoded as JSON.
 type stateDocument map[string]json.RawMessage
 
-// stateHeaderOverlay maps inbound HTTP headers carrying ephemeral OAuth
-// bearer tokens to invocation-scoped temp: state keys. session.KeyPrefixTemp
-// keys are excluded by SessionService.AppendEvent before anything reaches
-// D1, so these values live only for the duration of one run.
-var stateHeaderOverlay = map[string]string{
-	"X-Kroger-Access-Token": session.KeyPrefixTemp + "kroger_token",
-	"X-Strava-Access-Token": session.KeyPrefixTemp + "strava_token",
-}
-
-// requestStateOverlay extracts request-scoped OAuth bearer tokens forwarded
-// by the web proxy and derives the route's public connected flags. Tokens use
-// temp: keys and are stripped before persistence; the non-secret booleans may
-// persist and are authoritatively overwritten on every applicable run. The
-// delta still reaches the in-memory session.State() that tools observe.
+// requestStateOverlay extracts the request-scoped Kroger bearer token for the
+// routes that use Kroger tools. The temp: key is stripped before persistence;
+// the public connected flag is authoritatively overwritten on every applicable
+// run and still reaches the in-memory session.State() that tools observe.
 func requestStateOverlay(r *http.Request, route string) map[string]any {
-	overlay := make(map[string]any)
-	for header, key := range stateHeaderOverlay {
-		if value := strings.TrimSpace(r.Header.Get(header)); value != "" {
-			overlay[key] = value
-		}
-	}
 	switch route {
-	case "fitness":
-		_, overlay["strava_connected"] = overlay[session.KeyPrefixTemp+"strava_token"]
-	case "grocery":
-		_, overlay["kroger_connected"] = overlay[session.KeyPrefixTemp+"kroger_token"]
-	case "wellness":
-		_, overlay["strava_connected"] = overlay[session.KeyPrefixTemp+"strava_token"]
-		_, overlay["kroger_connected"] = overlay[session.KeyPrefixTemp+"kroger_token"]
-	}
-	if len(overlay) == 0 {
+	case "grocery", "wellness":
+		value := strings.TrimSpace(r.Header.Get("X-Kroger-Access-Token"))
+		overlay := map[string]any{"kroger_connected": value != ""}
+		if value != "" {
+			overlay[session.KeyPrefixTemp+"kroger_token"] = value
+		}
+		return overlay
+	default:
 		return nil
 	}
-	return overlay
 }
 
 // persistentSnapshot copies public session state for STATE_SNAPSHOT payloads

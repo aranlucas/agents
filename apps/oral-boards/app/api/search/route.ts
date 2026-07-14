@@ -9,8 +9,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const store = getStore();
-    const raw = await store.searchLex(q, { limit: 10 });
-    const results = raw.map(({ body: _body, ...r }) => r);
+    const results = await store.searchLex(q, { limit: 10 });
     return NextResponse.json({ results });
   } catch (err) {
     console.error("Search error:", err);

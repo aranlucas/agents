@@ -22,6 +22,5 @@ if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
       addEventListener: () => {},
       removeEventListener: () => {},
       dispatchEvent: () => false,
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     }) as MediaQueryList;
 }

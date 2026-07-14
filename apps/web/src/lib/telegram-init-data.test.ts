@@ -55,4 +55,12 @@ describe("verifyInitData", () => {
     params.set("hash", hash);
     expect(verifyInitData(params.toString(), BOT_TOKEN)).toBeNull();
   });
+
+  it.each([
+    { id: "42", first_name: "Alice" },
+    { id: 42 },
+    { id: 42, first_name: "Alice", username: 7 },
+  ])("returns null when the signed user shape is invalid", (user) => {
+    expect(verifyInitData(makeInitData(user, BOT_TOKEN), BOT_TOKEN)).toBeNull();
+  });
 });

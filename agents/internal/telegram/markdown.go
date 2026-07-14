@@ -4,18 +4,6 @@ import "strings"
 
 const markdownV2Special = "_[]()~`>#+-=|{}.!*\\"
 
-func EscapeMarkdownV2(text string) string {
-	var output strings.Builder
-	output.Grow(len(text) + len(text)/8)
-	for _, value := range text {
-		if strings.ContainsRune(markdownV2Special, value) {
-			output.WriteRune('\\')
-		}
-		output.WriteRune(value)
-	}
-	return output.String()
-}
-
 func ChunkMarkdownV2(text string, maximum int) []string {
 	if maximum <= 0 {
 		maximum = 4096

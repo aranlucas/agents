@@ -34,7 +34,6 @@ type Policy struct {
 	Provider          string
 	Model             string
 	RequestsPerMinute int
-	RequestsPerDay    int
 	Fallbacks         []string
 
 	missingProviderMessage string
@@ -70,7 +69,7 @@ func Agent(workload Workload) (Policy, error) {
 		return openRouterLight("OPENROUTER_API_KEY is required to configure the research agent", "mistral"), nil
 	case Resume:
 		return Policy{
-			Provider: "openrouter", Model: "google/gemma-4-26b-a4b-it:free", RequestsPerMinute: 20, RequestsPerDay: 1000,
+			Provider: "openrouter", Model: "google/gemma-4-26b-a4b-it:free", RequestsPerMinute: 20,
 			missingProviderMessage: "OPENROUTER_API_KEY is required to configure the resume agent",
 		}, nil
 	case Spreadsheet:
@@ -133,15 +132,6 @@ func Telegram() Policy {
 	}
 }
 
-// SessionTitle uses a tiny model for the one-shot title generated from a
-// session's first user message. Failure falls back to a local truncated title.
-func SessionTitle() Policy {
-	return Policy{
-		Provider: "mistral", Model: "ministral-3b-latest", RequestsPerMinute: 20,
-		missingProviderMessage: "MISTRAL_API_KEY is required to configure session titles",
-	}
-}
-
 // ResolveRequired applies a production policy to configured providers. Its
 // fallback list is filtered without reordering so optional provider keys stay
 // optional and openai.NewMulti never receives an unavailable fallback name.
@@ -155,7 +145,6 @@ func ResolveRequired(providers map[string]config.Provider, policy Policy) (confi
 	}
 	provider.Model = policy.Model
 	provider.RequestsPerMinute = policy.RequestsPerMinute
-	provider.RequestsPerDay = policy.RequestsPerDay
 	provider.Fallbacks = configuredFallbacks(providers, policy.Fallbacks)
 	return provider, nil
 }
@@ -191,7 +180,6 @@ func ResolveEval(providers map[string]config.Provider, policy Policy) (config.Pr
 	if provider, ok := providers[policy.Provider]; ok {
 		provider.Model = policy.Model
 		provider.RequestsPerMinute = policy.RequestsPerMinute
-		provider.RequestsPerDay = policy.RequestsPerDay
 		return provider, "", nil
 	}
 	for _, name := range []string{"openrouter", "mistral", "nvidia", "cerebras"} {
@@ -204,7 +192,6 @@ func ResolveEval(providers map[string]config.Provider, policy Policy) (config.Pr
 		}
 		provider.Model = evalDefaultModel(name)
 		provider.RequestsPerMinute = policy.RequestsPerMinute
-		provider.RequestsPerDay = policy.RequestsPerDay
 		note := policy.Provider + " unavailable locally; substituted " + name + "/" + provider.Model + " for eval"
 		return provider, note, nil
 	}
@@ -213,7 +200,7 @@ func ResolveEval(providers map[string]config.Provider, policy Policy) (config.Pr
 
 func openRouterLight(missingProviderMessage string, fallbacks ...string) Policy {
 	return Policy{
-		Provider: "openrouter", Model: "tencent/hy3:free", RequestsPerMinute: 20, RequestsPerDay: 1000,
+		Provider: "openrouter", Model: "tencent/hy3:free", RequestsPerMinute: 20,
 		Fallbacks: append([]string(nil), fallbacks...), missingProviderMessage: missingProviderMessage,
 	}
 }

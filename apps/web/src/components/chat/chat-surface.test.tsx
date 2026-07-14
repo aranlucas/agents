@@ -17,6 +17,8 @@ const copilotMocks = vi.hoisted(() => ({
   runAgent: vi.fn(async () => undefined),
   stopAgent: vi.fn(),
   runtimeConnectionStatus: "connected",
+  // Widen the mutable mock so the disconnected test can assign undefined.
+  // oxlint-disable-next-line typescript/no-unnecessary-type-assertion
   runtimeUrl: "/api/offline-copilotkit" as string | undefined,
 }));
 
@@ -127,7 +129,7 @@ vi.mock("@agents/ui/components/ai-elements/tool", () => ({
 }));
 
 vi.mock("@/hooks/use-required-connections", () => ({
-  useRequiredConnections: () => ({ isLoading: false, missing: [] }),
+  useRequiredConnections: () => ({ isLoading: false, isMissing: false }),
 }));
 
 vi.mock("./agent-selector", () => ({

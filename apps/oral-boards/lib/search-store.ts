@@ -14,7 +14,6 @@ export interface SearchResult {
   score: number;
   snippet?: string;
   collectionName?: string;
-  body?: string;
 }
 
 export interface DocMeta {
@@ -40,7 +39,6 @@ const FTS_SQL = `
     d.collection,
     fts.filepath,
     fts.title,
-    fts.body,
     bm25(documents_fts) AS score,
     snippet(documents_fts, 2, '[[', ']]', '...', 32) AS snippet
   FROM documents_fts fts
@@ -75,13 +73,23 @@ function scoreBm25(score: number) {
   return abs / (1 + abs);
 }
 
-export function getStore() {
+type SearchStore = {
+  searchLex(q: string, options?: { limit?: number }): Promise<SearchResult[]>;
+  get(docRef: string): Promise<DocMeta | { error: string }>;
+  getDocumentBody(filepath: string): Promise<string>;
+};
+
+let store: SearchStore | null = null;
+
+export function getStore(): SearchStore {
+  if (store) return store;
+
   const database = getDb();
   const ftsStmt = database.prepare(FTS_SQL);
   const getByIdStmt = database.prepare(GET_BY_ID_SQL);
   const getBodyStmt = database.prepare(GET_BODY_SQL);
 
-  return {
+  store = {
     async searchLex(q: string, options: { limit?: number } = {}): Promise<SearchResult[]> {
       const limit = options.limit ?? 10;
       const escaped = cleanQuery(q);
@@ -93,7 +101,6 @@ export function getStore() {
         collection: string;
         filepath: string;
         title: string;
-        body: string;
         score: number;
         snippet: string;
       }>;
@@ -102,7 +109,6 @@ export function getStore() {
         docid: String(row.id),
         filepath: row.filepath,
         title: row.title,
-        body: row.body,
         score: scoreBm25(row.score),
         snippet: row.snippet,
         collectionName: COLLECTION_LABELS[row.collection] ?? row.collection,
@@ -132,4 +138,6 @@ export function getStore() {
       return row?.doc ?? "";
     },
   };
+
+  return store;
 }

@@ -82,8 +82,7 @@ func setMeta(state *PresentationState, input SetMetaArgs) (Result, error) {
 }
 
 func BuildPresentation(ctx agent.Context, input BuildPresentationArgs) (Result, error) {
-	current := readState(ctx.State())
-	state, result, err := buildPresentation(current.UserID, input)
+	state, result, err := buildPresentation(input)
 	if err != nil || !result.OK {
 		return result, err
 	}
@@ -127,9 +126,8 @@ func writeState(ctx agent.Context, state PresentationState) error {
 	return nil
 }
 
-func buildPresentation(userID string, input BuildPresentationArgs) (PresentationState, Result, error) {
+func buildPresentation(input BuildPresentationArgs) (PresentationState, Result, error) {
 	state := Defaults()
-	state.UserID = userID
 	if len(input.Slides) == 0 || len(input.Slides) > maxSlides {
 		return state, failure("invalid_slide_count", "presentation must contain between 1 and 100 slides"), nil
 	}

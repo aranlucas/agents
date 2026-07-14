@@ -52,7 +52,6 @@ type Route struct {
 	Text        string
 	Missing     []string
 	KrogerToken string
-	StravaToken string
 }
 
 type Router struct {
@@ -94,13 +93,10 @@ func (r *Router) Route(ctx context.Context, message Message, identity SessionIde
 		if (agentName == "grocery" || agentName == "wellness") && !state.Kroger {
 			missing = append(missing, "Kroger")
 		}
-		if (agentName == "fitness" || agentName == "wellness") && !state.Strava {
-			missing = append(missing, "Strava")
-		}
 		if len(missing) > 0 {
 			return Route{Missing: missing}, ErrCredentialRequired
 		}
-		return Route{Kind: RouteAgent, Agent: agentName, Text: text, KrogerToken: state.KrogerToken, StravaToken: state.StravaToken}, nil
+		return Route{Kind: RouteAgent, Agent: agentName, Text: text, KrogerToken: state.KrogerToken}, nil
 	}
 	return Route{Kind: RouteAgent, Agent: agentName, Text: text}, nil
 }
@@ -130,7 +126,7 @@ func specialistForText(text string) string {
 	if containsAny(lower, "grocery", "groceries", "meal plan", "kroger", "pantry") {
 		return "grocery"
 	}
-	if containsAny(lower, "fitness", "workout", "training plan", "strava", "run plan") {
+	if containsAny(lower, "fitness", "workout", "training plan", "run plan") {
 		return "fitness"
 	}
 	return "orchestrator"
@@ -140,10 +136,8 @@ func requiredCredentials(agent string) []string {
 	switch agent {
 	case "grocery":
 		return []string{"Kroger"}
-	case "fitness":
-		return []string{"Strava"}
 	case "wellness":
-		return []string{"Kroger", "Strava"}
+		return []string{"Kroger"}
 	default:
 		return nil
 	}

@@ -22,11 +22,3 @@ func TestChunkMarkdownV2EscapesAndNeverExceedsTelegramLimit(t *testing.T) {
 		}
 	}
 }
-
-func TestEscapeMarkdownV2EscapesEveryReservedCharacter(t *testing.T) {
-	for _, special := range markdownV2Special {
-		if got := EscapeMarkdownV2(string(special)); got != `\`+string(special) {
-			t.Fatalf("%q => %q", special, got)
-		}
-	}
-}

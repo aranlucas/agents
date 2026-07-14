@@ -33,21 +33,21 @@ const OralBoardsQuestionContext = createContext<OralBoardsQuestionContextValue |
 
 export function OralBoardsQuestionProvider({ children }: { children: ReactNode }) {
   const [currentQuestion, setCurrentQuestion] = useState("");
-  const [pendingInput, setPendingInput] = useState<PendingInput | null>(null);
+  const [pendingInputKind, setPendingInputKind] = useState<OralBoardsInputKind | null>(null);
   const pendingInputRef = useRef<PendingInput | null>(null);
 
   const clearCurrentQuestion = useCallback(() => setCurrentQuestion(""), []);
 
   const registerPendingInput = useCallback((input: PendingInput) => {
     pendingInputRef.current = input;
-    setPendingInput(input);
+    setPendingInputKind(input.kind);
     if (input.kind === "answer") setCurrentQuestion(input.question);
   }, []);
 
   const clearPendingInput = useCallback((id: string) => {
     if (pendingInputRef.current?.id !== id) return;
     pendingInputRef.current = null;
-    setPendingInput(null);
+    setPendingInputKind(null);
   }, []);
 
   const respondToPendingInput = useCallback((answer: string) => {
@@ -55,7 +55,7 @@ export function OralBoardsQuestionProvider({ children }: { children: ReactNode }
     if (!input) return false;
 
     pendingInputRef.current = null;
-    setPendingInput(null);
+    setPendingInputKind(null);
     void input.respond({ answer });
     return true;
   }, []);
@@ -65,14 +65,14 @@ export function OralBoardsQuestionProvider({ children }: { children: ReactNode }
       currentQuestion,
       setCurrentQuestion,
       clearCurrentQuestion,
-      pendingInputKind: pendingInput?.kind ?? null,
+      pendingInputKind,
       registerPendingInput,
       clearPendingInput,
       respondToPendingInput,
     }),
     [
       currentQuestion,
-      pendingInput?.kind,
+      pendingInputKind,
       clearCurrentQuestion,
       registerPendingInput,
       clearPendingInput,

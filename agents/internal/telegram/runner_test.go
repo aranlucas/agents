@@ -91,7 +91,7 @@ func TestStopCancelsOnlyCurrentSessionTask(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("task was not cancelled")
 	}
-	if runner.HasTask("telegram:1:orchestrator") {
+	if runner.tasks.Has("telegram:1:orchestrator") {
 		t.Fatal("cancelled task retained")
 	}
 }
@@ -107,7 +107,7 @@ func TestRunnerSendsProgressThenDeduplicatedFinalText(t *testing.T) {
 	if len(client.sent) != 2 {
 		t.Fatalf("sent=%#v", client.sent)
 	}
-	if client.sent[0].Text != EscapeMarkdownV2("Working with travel…") || client.sent[1].Text != EscapeMarkdownV2("Final answer") {
+	if client.sent[0].Text != ChunkMarkdownV2("Working with travel…", 4096)[0] || client.sent[1].Text != ChunkMarkdownV2("Final answer", 4096)[0] {
 		t.Fatalf("sent=%#v", client.sent)
 	}
 }
@@ -147,7 +147,7 @@ func TestBusySessionDoesNotLeakTaskEntries(t *testing.T) {
 	}
 	_ = runner.HandleMessage(t.Context(), privateMessage(2, "/stop"))
 	<-done
-	if runner.HasTask("telegram:2:orchestrator") {
+	if runner.tasks.Has("telegram:2:orchestrator") {
 		t.Fatal("task retained")
 	}
 }
@@ -197,7 +197,7 @@ func TestADKExecutorCreatesSafeRunSpan(t *testing.T) {
 		t.Fatal(err)
 	}
 	identity := SessionIdentity{SessionID: "chat-id-secret", UserID: "user-id-secret", ClerkUserID: "credential-secret", Shared: true}
-	route := Route{Kind: RouteAgent, Agent: "orchestrator", Text: "prompt-secret", KrogerToken: "kroger-secret", StravaToken: "strava-secret"}
+	route := Route{Kind: RouteAgent, Agent: "orchestrator", Text: "prompt-secret", KrogerToken: "kroger-secret"}
 	output, err := executor.Run(t.Context(), identity, route, route.Text, func(context.Context, string) error { return nil })
 	if err != nil {
 		t.Fatal(err)
@@ -213,7 +213,7 @@ func TestADKExecutorCreatesSafeRunSpan(t *testing.T) {
 	if attributes["gen_ai.operation.name"] != "invoke_agent" || attributes["gen_ai.agent.name"] != "orchestrator" || attributes["telegram.session.shared"] != "true" {
 		t.Fatalf("attributes = %#v", attributes)
 	}
-	assertSpanExcludes(t, span, "prompt-secret", "response-secret", "chat-id-secret", "user-id-secret", "credential-secret", "kroger-secret", "strava-secret")
+	assertSpanExcludes(t, span, "prompt-secret", "response-secret", "chat-id-secret", "user-id-secret", "credential-secret", "kroger-secret")
 }
 
 func installTelegramSpanRecorder(t *testing.T) *tracetest.SpanRecorder {

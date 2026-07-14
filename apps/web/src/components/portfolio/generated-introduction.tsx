@@ -2,7 +2,7 @@
 
 import { useAgent, useCopilotKit } from "@copilotkit/react-core/v2";
 import Link from "next/link";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ConsoleSession } from "@/components/chat/console-session";
 import { toRenderItems } from "@/components/chat/messages";
@@ -118,11 +118,8 @@ function IntroductionWriter() {
 }
 
 export function GeneratedIntroduction() {
-  const reactId = useId();
-  const threadId = `portfolio-introduction-${reactId.replaceAll(":", "")}`;
-
   return (
-    <ConsoleSession agent="resume" thread={threadId}>
+    <ConsoleSession agent="resume">
       <IntroductionWriter />
     </ConsoleSession>
   );

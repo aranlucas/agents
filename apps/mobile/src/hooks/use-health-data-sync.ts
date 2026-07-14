@@ -37,8 +37,8 @@ export function useHealthDataSync() {
     void Promise.all([HealthData.getAvailabilityAsync(), SecureStore.getItemAsync(LAST_SYNC_KEY)])
       .then(async ([nextAvailability, storedSync]) => {
         if (!active) return;
-        setAvailability(nextAvailability);
-        if (storedSync) setLastSyncedAt(storedSync);
+        setAvailability(() => nextAvailability);
+        if (storedSync) setLastSyncedAt(() => storedSync);
         if (nextAvailability.status !== "available") {
           setPhase("unavailable");
           return;

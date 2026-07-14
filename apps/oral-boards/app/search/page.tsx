@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { PageLayout } from "@/components/page-layout";
 import { Navigation } from "@/components/navigation";
 import { PageHeader } from "@/components/page-header";
+import QueryProvider from "@/components/query-provider";
 import { Search, FileText, Loader2, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 
 interface SearchResult {
@@ -38,29 +39,30 @@ async function fetchSearch(q: string): Promise<SearchResult[]> {
 async function fetchDoc(docid: string): Promise<string> {
   const res = await fetch(`/api/doc/${docid}`);
   const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "Document failed to load");
   return data.doc?.body ?? "";
 }
 
 function highlightTerms(text: string, query: string): React.ReactNode {
-  const terms = query
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const terms = query.trim().split(/\s+/).filter(Boolean);
   if (terms.length === 0) return text;
-  const pattern = new RegExp(`(${terms.join("|")})`, "gi");
+  const escapedTerms = terms.map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const pattern = new RegExp(`(${escapedTerms.join("|")})`, "gi");
+  const exactTerm = new RegExp(`^(?:${escapedTerms.join("|")})$`, "i");
   const parts = text.split(pattern);
+  let offset = 0;
   const cls = "rounded-sm bg-yellow-200 px-0.5 text-gray-900 dark:bg-yellow-700 dark:text-gray-100";
-  const keys = parts.map(() => crypto.randomUUID());
-  return parts.map((part, i) =>
-    pattern.test(part) ? (
-      <mark key={keys[i]} className={cls}>
+  return parts.map((part) => {
+    const start = offset;
+    offset += part.length;
+    return exactTerm.test(part) ? (
+      <mark key={`${start}-${part}`} className={cls}>
         {part}
       </mark>
     ) : (
       part
-    ),
-  );
+    );
+  });
 }
 
 function ResultCard({ result, query }: { result: SearchResult; query: string }) {
@@ -77,43 +79,42 @@ function ResultCard({ result, query }: { result: SearchResult; query: string }) 
 
   return (
     <div className="overflow-hidden rounded-lg border border-gray-200 bg-white transition-colors hover:border-indigo-300 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-indigo-600">
-      <button
-        onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-start gap-3 p-4 text-left"
-      >
-        <FileText className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" />
-        <div className="min-w-0 flex-1">
-          <div className="mb-1 flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              {result.title}
-            </span>
-            {label && (
-              <span className="rounded bg-indigo-100 px-1.5 py-0.5 text-xs text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300">
-                {label}
+      <div className="flex items-stretch">
+        <button
+          onClick={() => setExpanded((value) => !value)}
+          className="flex min-w-0 flex-1 items-start gap-3 p-4 pr-2 text-left"
+        >
+          <FileText className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" />
+          <div className="min-w-0 flex-1">
+            <div className="mb-1 flex flex-wrap items-center gap-2">
+              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                {result.title}
               </span>
-            )}
+              {label && (
+                <span className="rounded bg-indigo-100 px-1.5 py-0.5 text-xs text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300">
+                  {label}
+                </span>
+              )}
+            </div>
+            <p className="truncate text-xs text-gray-400 dark:text-gray-600">{result.filepath}</p>
           </div>
-          <p className="truncate text-xs text-gray-400 dark:text-gray-600">{result.filepath}</p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
           <span className="text-xs text-gray-400 tabular-nums">
             {Math.round(result.score * 100)}%
           </span>
-          <Link
-            href={`/doc/${result.docid}`}
-            onClick={(e) => e.stopPropagation()}
-            className="text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300"
-            title="Open document"
-          >
-            <ExternalLink className="h-4 w-4" />
-          </Link>
           {expanded ? (
             <ChevronUp className="h-4 w-4 text-gray-400" />
           ) : (
             <ChevronDown className="h-4 w-4 text-gray-400" />
           )}
-        </div>
-      </button>
+        </button>
+        <Link
+          href={`/doc/${result.docid}`}
+          className="flex items-center px-4 pl-2 text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300"
+          title="Open document"
+        >
+          <ExternalLink className="h-4 w-4" />
+        </Link>
+      </div>
 
       {expanded && (
         <div className="border-t border-gray-100 px-4 py-3 dark:border-gray-800">
@@ -132,10 +133,17 @@ function ResultCard({ result, query }: { result: SearchResult; query: string }) 
   );
 }
 
-export default function SearchPage() {
+function SearchPageContent() {
   const [input, setInput] = useState("");
   const [query, setQuery] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    },
+    [],
+  );
 
   const {
     data: results,
@@ -203,7 +211,7 @@ export default function SearchPage() {
 
       {isLoading && (
         <div className="mx-auto max-w-2xl space-y-2">
-          {Array.from({ length: 4 }, () => crypto.randomUUID()).map((id) => (
+          {[0, 1, 2, 3].map((id) => (
             <div
               key={id}
               className="animate-pulse rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900"
@@ -230,5 +238,13 @@ export default function SearchPage() {
         </div>
       )}
     </PageLayout>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <QueryProvider>
+      <SearchPageContent />
+    </QueryProvider>
   );
 }

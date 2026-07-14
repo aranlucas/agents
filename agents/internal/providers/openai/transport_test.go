@@ -31,6 +31,16 @@ func TestBuildRequestLeavesParallelToolCallsToProvider(t *testing.T) {
 	}
 }
 
+func TestBuildRequestDoesNotInventUserMessage(t *testing.T) {
+	params, err := buildRequest(&model.LLMRequest{}, "some-model", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(params.Messages) != 0 {
+		t.Fatalf("messages = %#v, want none", params.Messages)
+	}
+}
+
 func TestChoiceToContentPreservesProviderParallelToolCalls(t *testing.T) {
 	content, err := choiceToContent(openai.ChatCompletionChoice{Message: openai.ChatCompletionMessage{
 		ToolCalls: []openai.ChatCompletionMessageToolCallUnion{

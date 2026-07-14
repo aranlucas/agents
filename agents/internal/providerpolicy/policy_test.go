@@ -14,19 +14,19 @@ func TestAgentPolicies(t *testing.T) {
 		workload  Workload
 		provider  string
 		model     string
-		rpm, rpd  int
+		rpm       int
 		fallbacks []string
 	}{
-		{Expense, "openrouter", "tencent/hy3:free", 20, 1000, []string{"mistral"}},
-		{Fitness, "groq", "llama-3.3-70b-versatile", 30, 0, []string{"mistral", "openrouter"}},
-		{Grocery, "nvidia", "nvidia/nemotron-3-super-120b-a12b", 20, 0, []string{"mistral", "openrouter"}},
-		{Presentation, "groq", "llama-3.3-70b-versatile", 30, 0, []string{"mistral", "openrouter"}},
-		{Research, "openrouter", "tencent/hy3:free", 20, 1000, []string{"mistral"}},
-		{Resume, "openrouter", "google/gemma-4-26b-a4b-it:free", 20, 1000, nil},
-		{Spreadsheet, "groq", "llama-3.3-70b-versatile", 30, 0, []string{"mistral", "openrouter"}},
-		{Travel, "openrouter", "tencent/hy3:free", 20, 1000, []string{"mistral"}},
-		{Trends, "groq", "llama-3.3-70b-versatile", 30, 0, []string{"mistral", "openrouter"}},
-		{Wellness, "groq", "llama-3.3-70b-versatile", 30, 0, []string{"mistral", "openrouter"}},
+		{Expense, "openrouter", "tencent/hy3:free", 20, []string{"mistral"}},
+		{Fitness, "groq", "llama-3.3-70b-versatile", 30, []string{"mistral", "openrouter"}},
+		{Grocery, "nvidia", "nvidia/nemotron-3-super-120b-a12b", 20, []string{"mistral", "openrouter"}},
+		{Presentation, "groq", "llama-3.3-70b-versatile", 30, []string{"mistral", "openrouter"}},
+		{Research, "openrouter", "tencent/hy3:free", 20, []string{"mistral"}},
+		{Resume, "openrouter", "google/gemma-4-26b-a4b-it:free", 20, nil},
+		{Spreadsheet, "groq", "llama-3.3-70b-versatile", 30, []string{"mistral", "openrouter"}},
+		{Travel, "openrouter", "tencent/hy3:free", 20, []string{"mistral"}},
+		{Trends, "groq", "llama-3.3-70b-versatile", 30, []string{"mistral", "openrouter"}},
+		{Wellness, "groq", "llama-3.3-70b-versatile", 30, []string{"mistral", "openrouter"}},
 	}
 	for _, test := range tests {
 		test := test
@@ -36,7 +36,7 @@ func TestAgentPolicies(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if policy.Provider != test.provider || policy.Model != test.model || policy.RequestsPerMinute != test.rpm || policy.RequestsPerDay != test.rpd || !reflect.DeepEqual(policy.Fallbacks, test.fallbacks) {
+			if policy.Provider != test.provider || policy.Model != test.model || policy.RequestsPerMinute != test.rpm || !reflect.DeepEqual(policy.Fallbacks, test.fallbacks) {
 				t.Fatalf("Agent(%q) = %#v", test.workload, policy)
 			}
 		})
@@ -60,7 +60,7 @@ func TestResolveRequiredFiltersFallbacksAndPreservesOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resolved.Model != "llama-3.3-70b-versatile" || resolved.RequestsPerMinute != 30 || resolved.RequestsPerDay != 0 {
+	if resolved.Model != "llama-3.3-70b-versatile" || resolved.RequestsPerMinute != 30 {
 		t.Fatalf("resolved policy = %#v", resolved)
 	}
 	if want := []string{"openrouter"}; !reflect.DeepEqual(resolved.Fallbacks, want) {
@@ -118,7 +118,7 @@ func TestResolveEvalPreservesSubstitutionOrderAndLimits(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resolved.Name != "openrouter" || resolved.Model != "tencent/hy3:free" || resolved.RequestsPerMinute != 30 || resolved.RequestsPerDay != 0 {
+	if resolved.Name != "openrouter" || resolved.Model != "tencent/hy3:free" || resolved.RequestsPerMinute != 30 {
 		t.Fatalf("substitution = %#v", resolved)
 	}
 	if note != "groq unavailable locally; substituted openrouter/tencent/hy3:free for eval" {
@@ -149,10 +149,6 @@ func TestOralBoardsAndTelegramPoliciesStayDistinct(t *testing.T) {
 	telegram := Telegram()
 	if telegram.Provider != "mistral" || telegram.Model != "mistral-medium-latest" || telegram.RequestsPerMinute != 20 || len(telegram.Fallbacks) != 0 {
 		t.Fatalf("telegram policy = %#v", telegram)
-	}
-	title := SessionTitle()
-	if title.Provider != "mistral" || title.Model != "ministral-3b-latest" || title.RequestsPerMinute != 20 || len(title.Fallbacks) != 0 {
-		t.Fatalf("session title policy = %#v", title)
 	}
 }
 

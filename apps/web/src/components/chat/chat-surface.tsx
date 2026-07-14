@@ -185,7 +185,7 @@ export function ChatSurface({
   const { renderActivityMessage: activityMessage } = useRenderActivityMessage();
   const { suggestions } = useSuggestions({ agentId: config.id });
   const connections = useRequiredConnections(config.id);
-  const gated = !connections.isLoading && connections.missing.length > 0;
+  const gated = !connections.isLoading && connections.isMissing;
   const connectedAgentRef = useRef<typeof agent | null>(null);
   const isRuntimeConnected = isConnectedRuntimeStatus(copilotkit.runtimeConnectionStatus);
   const isConnectionReady = copilotkit.runtimeUrl === undefined || isRuntimeConnected;
@@ -416,7 +416,7 @@ export function ChatSurface({
       <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <div className="mx-auto w-full max-w-190">
           {gated ? (
-            <ConnectNotice agentLabel={config.label} missing={connections.missing} />
+            <ConnectNotice agentLabel={config.label} />
           ) : (
             <>
               {isAgentConnected && !isRunning && suggestions.length > 0 && (

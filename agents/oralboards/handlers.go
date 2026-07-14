@@ -330,19 +330,6 @@ func validSkill(skill Skill) bool {
 	return skill == SkillRemember || skill == SkillUnderstandApply || skill == SkillAnalyzeEvaluate
 }
 
-func RoutePhase(state State) string {
-	if state.Status == PhaseFeedback {
-		return "evaluator"
-	}
-	if state.Status == PhaseComplete {
-		return "scorer"
-	}
-	if state.Status == PhaseIdle || state.Case == "" {
-		return "case_builder"
-	}
-	return "questioner"
-}
-
 func QuestionCraftViolations(question string) []string {
 	lower := strings.ToLower(question)
 	violations := []string{}

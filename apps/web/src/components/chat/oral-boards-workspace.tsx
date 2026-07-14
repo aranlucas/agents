@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback } from "react";
 import { CopilotSidebar, useAgent, useCopilotKit, UseAgentUpdate } from "@copilotkit/react-core/v2";
 
 import { AlertCircleIcon } from "lucide-react";
@@ -26,7 +26,6 @@ import {
   OralBoardsQuestionProvider,
   useOralBoardsQuestion,
 } from "@/lib/copilotkit/oral-boards-question-context";
-import { useArtifactPanel } from "@/components/workspace-shell";
 import { cssVars } from "@/lib/css";
 import { useAgentWarmup } from "@/hooks/use-agent-warmup";
 import { useGuardedRun } from "@/hooks/use-guarded-run";
@@ -152,7 +151,6 @@ function OralBoardsStartPage({
 function OralBoardsWorkspaceContent({ threadId }: { threadId: string }) {
   const config = getAgentConfig(AGENT_ID);
   const { pendingInputKind, respondToPendingInput } = useOralBoardsQuestion();
-  const { dispatch } = useArtifactPanel(AGENT_ID);
   const { agent } = useAgent({
     agentId: AGENT_ID,
     updates: [UseAgentUpdate.OnStateChanged, UseAgentUpdate.OnRunStatusChanged],
@@ -169,17 +167,6 @@ function OralBoardsWorkspaceContent({ threadId }: { threadId: string }) {
   const hasPanel = Boolean(examState.case?.trim());
   const isRunning = agent?.isRunning ?? false;
   const isGenerating = isRunning && !hasPanel;
-
-  // Auto-open the panel the first time a case appears; don't re-open after
-  // the user explicitly closes it (would fight the close button).
-  const autoOpenedRef = useRef(false);
-  useEffect(() => {
-    if (hasPanel && !autoOpenedRef.current) {
-      autoOpenedRef.current = true;
-      dispatch("open");
-    }
-    if (!hasPanel) autoOpenedRef.current = false;
-  }, [hasPanel, dispatch]);
 
   // A rejected run surfaces as an inline banner with Retry instead of leaving
   // the exam hanging on "Waiting for the next question…".
@@ -262,9 +249,6 @@ function OralBoardsWorkspaceContent({ threadId }: { threadId: string }) {
                   onReady={() => void handleReady()}
                   onAnswer={(text) => void handleAnswer(text)}
                   isRunning={isRunning}
-                  loadingStep={examState.loading_step ?? ""}
-                  activeFeedback={examState.active_feedback ?? ""}
-                  activeIdealResponse={examState.active_ideal_response ?? ""}
                 />
               </OralBoardsErrorBoundary>
             ) : (

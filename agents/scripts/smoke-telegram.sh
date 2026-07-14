@@ -5,19 +5,40 @@ image="${1:?usage: smoke-telegram.sh <image>}"
 port="${SMOKE_TELEGRAM_PORT:-18098}"
 container="$(docker create "$image")"
 runtime_name=""
+tmp="$(mktemp -d)"
 cleanup() {
   [[ -z "$runtime_name" ]] || docker rm -f "$runtime_name" >/dev/null 2>&1 || true
   docker rm -f "$container" >/dev/null 2>&1 || true
+  rm -rf "$tmp"
 }
 trap cleanup EXIT
 
 files="$(docker export "$container" | tar -tf -)"
 grep -Eqx '(\./)?app/telegram' <<<"$files"
 grep -Eqx '(\./)?app/migrate' <<<"$files"
-if grep -Eq '(^|/)python3?$|(^|/)node$|(^|/)uv$' <<<"$files"; then
-  echo "FAIL: Telegram image contains Python, Node, or uv" >&2
+if grep -Eq '(^|/)(sh|bash|dash|ash|zsh|csh|tcsh|ksh|fish|busybox|python([0-9]+(\.[0-9]+)*)?|pypy[0-9]*|node(js)?|deno|bun|uv|perl([0-9.]+)?|ruby([0-9.]+)?|php([0-9.]+)?|lua([0-9.]+)?|tclsh([0-9.]+)?|pwsh|powershell)(\.exe)?$' <<<"$files"; then
+  echo "FAIL: Telegram image contains a shell or scripting runtime" >&2
   exit 1
 fi
+
+image_user="$(docker image inspect --format '{{.Config.User}}' "$image")"
+case "$image_user" in
+  nonroot | nonroot:nonroot | 65532 | 65532:65532) ;;
+  *)
+    echo "FAIL: Telegram image runs as '$image_user', expected non-root user 65532" >&2
+    exit 1
+    ;;
+esac
+
+for binary in telegram migrate; do
+  docker cp "$container:/app/$binary" "$tmp/$binary"
+  if ! file "$tmp/$binary" | grep -q 'statically linked'; then
+    echo "FAIL: /app/$binary is not statically linked" >&2
+    file "$tmp/$binary" >&2
+    exit 1
+  fi
+done
+echo "OK: static telegram/migrate binaries, non-root image, no scripting runtimes"
 
 runtime_name="agents-telegram-smoke-$$"
 docker run -d --rm --name "$runtime_name" -p "${port}:8080" \

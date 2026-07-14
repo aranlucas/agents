@@ -49,7 +49,6 @@ type ExpenseState struct {
 	Status             string    `json:"status"`
 	ReviewSummary      string    `json:"review_summary"`
 	ReviewThresholdUSD float64   `json:"review_threshold_usd"`
-	UserID             string    `json:"user_id"`
 }
 
 func Defaults() ExpenseState {

@@ -12,10 +12,6 @@ export default defineConfig({
       },
       { find: "expo/fetch", replacement: resolve(__dirname, "./test/expo-fetch-stub.ts") },
       { find: "react-native", replacement: resolve(__dirname, "./test/react-native-stub.ts") },
-      {
-        find: /^@legendapp\/list(?:\/react-native)?$/,
-        replacement: resolve(__dirname, "./test/legend-list-stub.tsx"),
-      },
       { find: "@", replacement: resolve(__dirname, "./src") },
     ],
   },

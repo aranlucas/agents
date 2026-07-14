@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -666,15 +665,4 @@ func isFile(path string) bool {
 func fatal(err error) {
 	fmt.Fprintln(os.Stderr, err)
 	os.Exit(1)
-}
-
-// Keep generated output iteration stable if additional outputs are added and
-// a caller chooses to expose their names in diagnostics.
-func outputNames(outputs map[string][]byte) []string {
-	names := make([]string, 0, len(outputs))
-	for name := range outputs {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	return names
 }

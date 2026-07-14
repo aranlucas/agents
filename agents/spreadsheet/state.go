@@ -25,7 +25,6 @@ type SpreadsheetState struct {
 	Summary          string  `json:"summary"`
 	Status           Status  `json:"status"`
 	ReviewSummary    string  `json:"review_summary"`
-	UserID           string  `json:"user_id"`
 }
 
 func Defaults() SpreadsheetState { return SpreadsheetState{Sheets: []Sheet{}, Status: StatusIdle} }

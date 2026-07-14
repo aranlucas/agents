@@ -1,7 +1,3 @@
-import { AGENT_BACKEND_PATHS, type AgentId } from "@agents/types";
-
-export type { AgentId };
-
 export type AgentRuntimeConfig = {
   agentsBaseUrl?: string;
   copilotKitRuntimeUrl?: string;
@@ -12,18 +8,6 @@ const COPILOTKIT_RUNTIME_ENV_KEY = "EXPO_PUBLIC_COPILOTKIT_RUNTIME_URL";
 
 function stripTrailingSlash(value: string) {
   return value.replace(/\/+$/, "");
-}
-
-export function normalizeAguiUrl(value: string) {
-  const withoutTrailingSlash = stripTrailingSlash(value);
-  return withoutTrailingSlash.endsWith("/agui")
-    ? withoutTrailingSlash
-    : `${withoutTrailingSlash}/agui`;
-}
-
-export function normalizeCopilotKitRuntimeUrl(value: string, agentId: AgentId) {
-  const withoutTrailingSlash = stripTrailingSlash(value);
-  return `${withoutTrailingSlash}/agent/${agentId}/run`;
 }
 
 function normalizeLocalhostForPlatform(value: string, os: string) {
@@ -70,25 +54,4 @@ export function getAgentsBaseUrl(
   const configured = envOrConfig(env, AGENTS_BASE_ENV_KEY, config.agentsBaseUrl);
   const baseUrl = configured ?? `http://${os === "android" ? "10.0.2.2" : "localhost"}:8000`;
   return stripTrailingSlash(normalizeLocalhostForPlatform(baseUrl, os));
-}
-
-export function getAgentUrl(
-  agentId: AgentId,
-  config: AgentRuntimeConfig,
-  os: string,
-  env: Record<string, string | undefined> = process.env,
-) {
-  const runtimeBaseUrl = envOrConfig(env, COPILOTKIT_RUNTIME_ENV_KEY, config.copilotKitRuntimeUrl);
-  if (runtimeBaseUrl) {
-    return normalizeLocalhostForPlatform(
-      normalizeCopilotKitRuntimeUrl(runtimeBaseUrl, agentId),
-      os,
-    );
-  }
-
-  const baseUrl = getAgentsBaseUrl(config, os, env);
-  const backendPath = AGENT_BACKEND_PATHS[agentId];
-  return normalizeAguiUrl(
-    `${stripTrailingSlash(normalizeLocalhostForPlatform(baseUrl, os))}/${backendPath}`,
-  );
 }

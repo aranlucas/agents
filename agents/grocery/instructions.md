@@ -41,4 +41,3 @@ Current grocery state:
 - Review Summary: {review_summary}
 - Kroger Connected: {kroger_connected}
 - Training Plan: {training_plan}
-- User ID: {user_id}

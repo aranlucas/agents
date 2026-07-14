@@ -3,8 +3,6 @@ import { Platform } from "react-native";
 import {
   getAgentsBaseUrl as getAgentsBaseUrlCore,
   getCopilotKitRuntimeBaseUrl,
-  getAgentUrl as getAgentUrlCore,
-  type AgentId,
   type AgentRuntimeConfig,
 } from "./agent-config-core";
 
@@ -16,17 +14,17 @@ const config: AgentRuntimeConfig = {
     typeof extra.copilotKitRuntimeUrl === "string" ? extra.copilotKitRuntimeUrl : undefined,
 };
 
-export function getAgentUrl(agentId: AgentId) {
-  return getAgentUrlCore(agentId, config, Platform.OS);
-}
-
 /** Returns the CopilotKit runtime base URL for use with CopilotKitProvider. */
-export function getCopilotKitRuntimeUrl(): string | undefined {
-  return getCopilotKitRuntimeBaseUrl(config, Platform.OS);
+export function getCopilotKitRuntimeUrl(): string {
+  const runtimeUrl = getCopilotKitRuntimeBaseUrl(config, Platform.OS);
+  if (!runtimeUrl) {
+    throw new Error("EXPO_PUBLIC_COPILOTKIT_RUNTIME_URL is required");
+  }
+  return runtimeUrl;
 }
 
 export function getAgentsBaseUrl(): string {
   return getAgentsBaseUrlCore(config, Platform.OS);
 }
 
-export type { AgentId };
+export type { AgentId } from "@agents/types";

@@ -2,11 +2,11 @@
 # Smoke-tests a Go gateway foundation image built from
 # agents/Dockerfile:
 #
-#   1. static check — the image contains ./app/gateway and no Python, Node,
-#      or uv binary anywhere in its filesystem.
+#   1. image policy — the runtime binaries are statically linked, the image
+#      runs as non-root, and no shell or scripting runtime is present.
 #   2. runtime check — the image boots and serves process-only GET /live over
 #      fake Cloudflare and provider credentials. The point of this script is
-#      "binary starts, serves HTTP, contains no Python/Node"; production
+#      "binary starts, serves HTTP, contains no scripting runtime"; production
 #      readiness is covered separately against real D1 and R2 bindings.
 #
 # Usage: smoke-image.sh <image>
@@ -17,6 +17,7 @@ port="${SMOKE_IMAGE_PORT:-18099}"
 
 container=""
 runtime_name=""
+tmp=""
 cleanup() {
   if [[ -n "$runtime_name" ]]; then
     docker rm -f "$runtime_name" >/dev/null 2>&1 || true
@@ -24,20 +25,42 @@ cleanup() {
   if [[ -n "$container" ]]; then
     docker rm -f "$container" >/dev/null 2>&1 || true
   fi
+  if [[ -n "$tmp" ]]; then
+    rm -rf "$tmp"
+  fi
 }
 trap cleanup EXIT
 
 echo "== static image contents =="
 container="$(docker create "$image")"
 files="$(docker export "$container" | tar -tf -)"
+tmp="$(mktemp -d)"
 
 grep -Eqx '(\./)?app/gateway' <<<"$files"
 grep -Eqx '(\./)?app/migrate' <<<"$files"
-if grep -Eq '(^|/)python3?$|(^|/)node$|(^|/)uv$' <<<"$files"; then
-  echo "FAIL: image contains a Python/Node/uv binary" >&2
+if grep -Eq '(^|/)(sh|bash|dash|ash|zsh|csh|tcsh|ksh|fish|busybox|python([0-9]+(\.[0-9]+)*)?|pypy[0-9]*|node(js)?|deno|bun|uv|perl([0-9.]+)?|ruby([0-9.]+)?|php([0-9.]+)?|lua([0-9.]+)?|tclsh([0-9.]+)?|pwsh|powershell)(\.exe)?$' <<<"$files"; then
+  echo "FAIL: image contains a shell or scripting runtime" >&2
   exit 1
 fi
-echo "OK: ./app/gateway and ./app/migrate present, no Python/Node/uv binaries"
+
+image_user="$(docker image inspect --format '{{.Config.User}}' "$image")"
+case "$image_user" in
+  nonroot | nonroot:nonroot | 65532 | 65532:65532) ;;
+  *)
+    echo "FAIL: image runs as '$image_user', expected non-root user 65532" >&2
+    exit 1
+    ;;
+esac
+
+for binary in gateway migrate; do
+  docker cp "$container:/app/$binary" "$tmp/$binary"
+  if ! file "$tmp/$binary" | grep -q 'statically linked'; then
+    echo "FAIL: /app/$binary is not statically linked" >&2
+    file "$tmp/$binary" >&2
+    exit 1
+  fi
+done
+echo "OK: static gateway/migrate binaries, non-root image, no scripting runtimes"
 
 echo "== runtime liveness check (fake Cloudflare credentials) =="
 runtime_name="agents-go-smoke-$$"

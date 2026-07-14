@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { AGENT_BACKEND_PATHS, AGENT_ORDER, getAgentConfig, isAgentId } from "./registry";
+import {
+  AGENT_BACKEND_PATHS,
+  AGENT_ORDER,
+  getAgentConfig,
+  isAgentId,
+  isConsoleAgentId,
+} from "./registry";
 
 describe("agent registry", () => {
   it("uses the Go fitness training_plan state field", () => {
@@ -26,6 +32,12 @@ describe("agent registry", () => {
     expect(isAgentId("nope")).toBe(false);
   });
 
+  it("keeps oral boards on its specialized route", () => {
+    expect(isConsoleAgentId("travel")).toBe(true);
+    expect(isConsoleAgentId("oral-boards")).toBe(false);
+    expect(isConsoleAgentId("nope")).toBe(false);
+  });
+
   it("returns config for a known agent", () => {
     const cfg = getAgentConfig("travel");
     expect(cfg.label).toBe("Trip Studio");
@@ -43,18 +55,11 @@ describe("agent registry", () => {
     expect(getAgentConfig("nope")).toBeUndefined();
   });
 
-  it("declares external-account requirements per agent", () => {
-    expect(getAgentConfig("travel").requires ?? []).toEqual([]);
-    expect(getAgentConfig("grocery").requires).toEqual(["kroger"]);
-    expect(getAgentConfig("fitness").requires).toEqual([]);
-    expect(getAgentConfig("wellness").requires).toEqual(["kroger"]);
-    expect(getAgentConfig("expense").requires ?? []).toEqual([]);
-    expect(getAgentConfig("oral-boards").requires ?? []).toEqual([]);
-    expect(getAgentConfig("trends").requires ?? []).toEqual([]);
-    expect(getAgentConfig("resume").requires ?? []).toEqual([]);
-    expect(getAgentConfig("research").requires ?? []).toEqual([]);
-    expect(getAgentConfig("spreadsheet").requires ?? []).toEqual([]);
-    expect(getAgentConfig("presentation").requires ?? []).toEqual([]);
+  it("declares the two agents that require Kroger", () => {
+    expect(AGENT_ORDER.filter((id) => getAgentConfig(id).requiresKroger)).toEqual([
+      "grocery",
+      "wellness",
+    ]);
   });
 
   it("surfaces Trends state through a native analysis artifact", () => {

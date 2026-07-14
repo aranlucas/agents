@@ -7,11 +7,6 @@ const PROTECTED_CONSOLE_ROUTES = AGENT_ORDER.filter((agentId) => agentId !== "re
 );
 
 export const PROTECTED_ROUTES = [
-  "/travel(.*)",
-  "/grocery(.*)",
-  "/fitness(.*)",
-  "/wellness(.*)",
-  "/oral-boards(.*)",
   ...PROTECTED_CONSOLE_ROUTES,
   "/console/settings(.*)",
   "/telegram/link(.*)",

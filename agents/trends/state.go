@@ -37,7 +37,6 @@ type TrendsState struct {
 	Insights     string   `json:"insights"`
 	Status       Status   `json:"status"`
 	Error        string   `json:"error"`
-	UserID       string   `json:"user_id"`
 }
 
 func Defaults() TrendsState {

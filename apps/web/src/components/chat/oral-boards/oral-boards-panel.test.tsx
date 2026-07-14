@@ -340,10 +340,9 @@ describe("OralBoardsPanel — questioning", () => {
 
     rerender(
       <OralBoardsPanel
-        state={state}
+        state={{ ...state, loading_step: "Reviewing your answer…" }}
         {...baseProps}
         isRunning={true}
-        loadingStep="Reviewing your answer…"
         onAnswer={vi.fn()}
       />,
     );
@@ -402,10 +401,13 @@ describe("OralBoardsPanel — questioning", () => {
 
     rerender(
       <OralBoardsPanel
-        state={{ ...questioningState, status: "feedback" }}
+        state={{
+          ...questioningState,
+          status: "feedback",
+          loading_step: "Reviewing your answer…",
+        }}
         {...baseProps}
         isRunning={true}
-        loadingStep="Reviewing your answer…"
         onAnswer={onAnswer}
       />,
     );
@@ -457,10 +459,9 @@ describe("OralBoardsPanel — questioning", () => {
 
     render(
       <OralBoardsPanel
-        state={state}
+        state={{ ...state, loading_step: "Computing score card…" }}
         {...baseProps}
         isRunning={true}
-        loadingStep="Computing score card…"
       />,
     );
 
@@ -623,10 +624,9 @@ describe("OralBoardsPanel — complete", () => {
 
     render(
       <OralBoardsPanel
-        state={state}
+        state={{ ...state, loading_step: "Computing score card…" }}
         {...baseProps}
         isRunning={true}
-        loadingStep="Computing score card…"
       />,
     );
 
@@ -1109,10 +1109,9 @@ describe("OralBoardsPanel — examiner probe", () => {
 
     rerender(
       <OralBoardsPanel
-        state={state}
+        state={{ ...state, loading_step: "Reviewing your answer…" }}
         {...baseProps}
         isRunning={true}
-        loadingStep="Reviewing your answer…"
         onAnswer={vi.fn()}
       />,
     );
@@ -1125,10 +1124,13 @@ describe("OralBoardsPanel — examiner probe", () => {
     // so the composer must come back even though isRunning is still true.
     rerender(
       <OralBoardsPanel
-        state={{ ...state, active_probe: "How long would you splint the tooth?" }}
+        state={{
+          ...state,
+          active_probe: "How long would you splint the tooth?",
+          loading_step: "Reviewing your answer…",
+        }}
         {...baseProps}
         isRunning={true}
-        loadingStep="Reviewing your answer…"
         onAnswer={vi.fn()}
       />,
     );

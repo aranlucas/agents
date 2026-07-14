@@ -35,7 +35,7 @@ run_id="smoke-$(date -u +%s)"
 resume_body="$(jq -nc --arg run "$run_id" '{threadId:$run,runId:$run,messages:[{id:"user-1",role:"user",content:"Reply with exactly: GO_RUNTIME_OK"}],tools:[],context:[],state:{}}')"
 curl --fail --silent --show-error --no-buffer --max-time 90 \
   -H 'content-type: application/json' --data "$resume_body" "$base_url/resume/agui" >"$tmp/resume.sse"
-rg -q 'RUN_STARTED' "$tmp/resume.sse" && rg -q 'RUN_FINISHED' "$tmp/resume.sse" || fail "public resume AG-UI run"
+grep -q 'RUN_STARTED' "$tmp/resume.sse" && grep -q 'RUN_FINISHED' "$tmp/resume.sse" || fail "public resume AG-UI run"
 pass "public resume AG-UI run"
 
 curl --fail --silent --show-error --max-time 20 -H 'content-type: application/json' \
@@ -55,14 +55,14 @@ tool_run="smoke-tool-$(date -u +%s)"
 tool_body="$(jq -nc --arg run "$tool_run" '{threadId:$run,runId:$run,messages:[{id:"user-1",role:"user",content:"Use the highlight_resume_section client tool to highlight experience."}],tools:[{name:"highlight_resume_section",description:"Highlight a resume section in the UI",parameters:{type:"object",properties:{section:{type:"string"}},required:["section"]}}],context:[],state:{}}')"
 curl --fail --silent --show-error --no-buffer --max-time 90 "${auth[@]}" -H 'content-type: application/json' \
   --data "$tool_body" "$base_url/resume/agui" >"$tmp/client-tool.sse"
-rg -q 'TOOL_CALL_START' "$tmp/client-tool.sse" || fail "client-tool AG-UI request"
+grep -q 'TOOL_CALL_START' "$tmp/client-tool.sse" || fail "client-tool AG-UI request"
 pass "client-tool AG-UI request"
 
 oauth_status="$(curl --silent --output "$tmp/oauth.out" --write-out '%{http_code}' --max-time 90 "${auth[@]}" \
   -H 'content-type: application/json' \
   --data "$(jq -nc '{threadId:"smoke-oauth",runId:"smoke-oauth",messages:[{id:"user-1",role:"user",content:"Say whether a Kroger credential was supplied; do not call Kroger."}],tools:[],context:[],state:{}}')" \
   "$base_url/grocery/agui")"
-[[ "$oauth_status" == "200" ]] && rg -q 'RUN_FINISHED' "$tmp/oauth.out" || fail "gateway OAuth credential path"
+[[ "$oauth_status" == "200" ]] && grep -q 'RUN_FINISHED' "$tmp/oauth.out" || fail "gateway OAuth credential path"
 pass "gateway OAuth credential path"
 
 [[ -n "$telegram_url" ]] || fail "TELEGRAM_HEALTH_URL is required for worker acceptance"

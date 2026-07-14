@@ -11,11 +11,6 @@ describe("protected route matcher", () => {
   const protectedConsoleAgents = AGENT_ORDER.filter((agentId) => agentId !== "resume");
 
   it.each([
-    "/travel",
-    "/grocery",
-    "/fitness",
-    "/wellness",
-    "/oral-boards",
     "/console/travel",
     "/console/grocery",
     "/console/fitness",

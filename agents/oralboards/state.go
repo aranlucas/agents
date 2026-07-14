@@ -67,7 +67,6 @@ type State struct {
 	ProbeUsed             bool            `json:"_probe_used"`
 	QuestionCraftFeedback string          `json:"question_craft_feedback"`
 	SearchCalls           int             `json:"_search_docs_calls"`
-	UserID                string          `json:"user_id"`
 }
 
 func Defaults() State {

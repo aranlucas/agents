@@ -10,6 +10,20 @@ export type TelegramUser = {
   photo_url?: string;
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isTelegramUser(value: unknown): value is TelegramUser {
+  if (!isRecord(value)) return false;
+  const user = value;
+  if (!Number.isSafeInteger(user.id) || typeof user.first_name !== "string") return false;
+  for (const field of ["last_name", "username", "language_code", "photo_url"] as const) {
+    if (user[field] !== undefined && typeof user[field] !== "string") return false;
+  }
+  return user.is_premium === undefined || typeof user.is_premium === "boolean";
+}
+
 export function verifyInitData(initData: string, botToken: string): TelegramUser | null {
   if (!initData) return null;
 
@@ -37,7 +51,8 @@ export function verifyInitData(initData: string, botToken: string): TelegramUser
   if (!userRaw) return null;
 
   try {
-    return JSON.parse(userRaw) as TelegramUser;
+    const user: unknown = JSON.parse(userRaw);
+    return isTelegramUser(user) ? user : null;
   } catch {
     return null;
   }

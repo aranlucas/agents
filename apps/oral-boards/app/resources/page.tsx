@@ -194,12 +194,7 @@ export default function ResourcesPage() {
               <span className="mb-1.5 block text-xs font-medium sm:mb-2 sm:text-sm">
                 Resource Type
               </span>
-              <Select
-                value={filterType}
-                onValueChange={(value) => {
-                  if (value) setFilterType(value);
-                }}
-              >
+              <Select value={filterType} onValueChange={(value) => setFilterType(value ?? "all")}>
                 <SelectTrigger className="text-sm" aria-label="Resource type">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>

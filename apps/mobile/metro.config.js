@@ -1,12 +1,10 @@
 const { getDefaultConfig } = require("expo/metro-config");
 const path = require("node:path");
-const { withUniwindConfig } = require("uniwind/metro");
 
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
 
-// Node-only packages pulled in by CopilotKit's server-side telemetry and
-// @ag-ui/client transitive deps that should never run on native.
+// Node-only packages pulled in by CopilotKit that should never run on native.
 const NODE_ONLY_STUBS = new Set([
   "@segment/analytics-node",
   "node:buffer",
@@ -16,25 +14,9 @@ const NODE_ONLY_STUBS = new Set([
   "node:util",
 ]);
 
-// Apply uniwind first so we can compose our resolver on top of whatever it sets.
-const finalConfig = withUniwindConfig(config, {
-  cssEntryFile: "./src/global.css",
-  debug: true,
-});
+const innerResolveRequest = config.resolver?.resolveRequest;
 
-const innerResolveRequest = finalConfig.resolver?.resolveRequest;
-
-finalConfig.resolver.resolveRequest = (context, moduleName, platform) => {
-  if (
-    platform === "web" &&
-    ["@expo/ui/swift-ui", "@expo/ui/swift-ui/modifiers"].includes(moduleName)
-  ) {
-    return { type: "empty" };
-  }
-  // @legendapp/list ships no "." export; redirect bare import to the RN subpath.
-  if (moduleName === "@legendapp/list") {
-    return context.resolveRequest(context, "@legendapp/list/react-native", platform);
-  }
+config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (moduleName === "crypto" || moduleName === "node:crypto") {
     return {
       type: "sourceFile",
@@ -50,4 +32,4 @@ finalConfig.resolver.resolveRequest = (context, moduleName, platform) => {
   return context.resolveRequest(context, moduleName, platform);
 };
 
-module.exports = finalConfig;
+module.exports = config;

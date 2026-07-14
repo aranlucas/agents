@@ -42,6 +42,9 @@ jobs:
           cache: pnpm
       - name: Install JS dependencies
         run: pnpm install --frozen-lockfile
+      - name: Check Worker bindings
+        working-directory: apps/ai-shopping-mcp
+        run: pnpm exec wrangler types --check
       - name: Build
         # Mobile's `build` script is a credentialed EAS release operation, not
         # a deterministic compile. Its release workflows own that operation.

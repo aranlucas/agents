@@ -63,9 +63,7 @@ export default function AllCasesPage() {
                   <span className="text-sm font-medium">Category</span>
                   <Select
                     value={selectedCategory}
-                    onValueChange={(value) => {
-                      if (value) setSelectedCategory(value);
-                    }}
+                    onValueChange={(value) => setSelectedCategory(value ?? "all")}
                   >
                     <SelectTrigger aria-label="Category">
                       <SelectValue placeholder="Select category" />
@@ -83,9 +81,7 @@ export default function AllCasesPage() {
                   <span className="text-sm font-medium">Difficulty</span>
                   <Select
                     value={selectedDifficulty}
-                    onValueChange={(value) => {
-                      if (value) setSelectedDifficulty(value);
-                    }}
+                    onValueChange={(value) => setSelectedDifficulty(value ?? "all")}
                   >
                     <SelectTrigger aria-label="Difficulty">
                       <SelectValue placeholder="Select difficulty" />

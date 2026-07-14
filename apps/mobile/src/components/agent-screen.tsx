@@ -35,7 +35,7 @@ type Props<TState extends AgentState> = {
 
 type DisplayMessage = { id: string; role: "user" | "assistant"; content: string };
 
-function toDisplayMessage(m: unknown): DisplayMessage | null {
+function toDisplayMessage(m: unknown, index: number): DisplayMessage | null {
   if (typeof m !== "object" || m === null) return null;
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const msg = m as Record<string, unknown>;
@@ -43,7 +43,7 @@ function toDisplayMessage(m: unknown): DisplayMessage | null {
   if (role !== "user" && role !== "assistant") return null;
   const content = msg.content;
   if (typeof content !== "string" || content.length === 0) return null;
-  const id = typeof msg.id === "string" ? msg.id : String(Math.random());
+  const id = typeof msg.id === "string" ? msg.id : `${role}-${index}`;
   return { id, role, content };
 }
 
