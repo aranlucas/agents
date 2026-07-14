@@ -61,6 +61,8 @@ starting, expose process-only `/live`, and use schema/D1/R2-aware `/ready` for
 deployment health. Set `APP_ENV=production` on both services. The gateway also
 requires all `CF_*` values, `ALLOWED_ORIGINS` (including `*` for open CORS),
 `CLERK_ISSUER`, and the OpenRouter, Groq, NVIDIA NIM, Mistral, and Gemini keys.
+`ALLOWED_ORIGINS` also accepts local HTTP origins like `http://localhost:3000` in
+production for local debugging.
 It also requires `GOOGLE_APPLICATION_CREDENTIALS_JSON` for the advertised
 Google Trends surface.
 The Telegram service requires all `CF_*` values, `MISTRAL_API_KEY`, and

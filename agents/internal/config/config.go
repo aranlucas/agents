@@ -315,7 +315,7 @@ func loadOrigins(raw string, environment Environment) ([]string, error) {
 		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" || parsed.Path != "" || parsed.RawQuery != "" || parsed.Fragment != "" || parsed.User != nil {
 			return nil, fmt.Errorf("invalid allowed origin %q", origin)
 		}
-		if environment.IsProduction() && parsed.Scheme != "https" {
+		if environment.IsProduction() && parsed.Scheme == "http" && !isLocalHTTPOrigin(parsed) {
 			return nil, fmt.Errorf("production allowed origin %q must use HTTPS", origin)
 		}
 		if !slices.Contains(origins, origin) {
@@ -323,4 +323,9 @@ func loadOrigins(raw string, environment Environment) ([]string, error) {
 		}
 	}
 	return origins, nil
+}
+
+func isLocalHTTPOrigin(parsed *url.URL) bool {
+	host := parsed.Hostname()
+	return parsed.Scheme == "http" && (host == "localhost" || host == "127.0.0.1" || host == "::1")
 }

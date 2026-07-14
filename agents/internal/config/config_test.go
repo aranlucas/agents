@@ -148,6 +148,33 @@ func TestLoadRejectsInvalidPortAndOriginComponents(t *testing.T) {
 	}
 }
 
+func TestLoadAllowsLocalhostHTTPOriginInProduction(t *testing.T) {
+	env := requiredEnv()
+	env["APP_ENV"] = "production"
+	env["ALLOWED_ORIGINS"] = "http://localhost:3000"
+	env["CLERK_JWKS_URL"] = "https://clerk.example.com/.well-known/jwks.json"
+	env["CLERK_ISSUER"] = "https://clerk.example.com"
+
+	cfg, err := Load(func(key string) string { return env[key] })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.Environment.IsProduction() || strings.Join(cfg.HTTP.Origins, ",") != "http://localhost:3000" {
+		t.Fatalf("production localhost cors config = %#v", cfg)
+	}
+}
+
+func TestLoadRejectsNonLocalHTTPOriginInProduction(t *testing.T) {
+	env := requiredEnv()
+	env["APP_ENV"] = "production"
+	env["ALLOWED_ORIGINS"] = "http://app.example.com"
+	env["CLERK_JWKS_URL"] = "https://clerk.example.com/.well-known/jwks.json"
+	env["CLERK_ISSUER"] = "https://clerk.example.com"
+	if _, err := Load(func(key string) string { return env[key] }); err == nil {
+		t.Fatal("Load() succeeded")
+	}
+}
+
 func TestLoadTelegramRequiresWorkerDependenciesOnly(t *testing.T) {
 	env := requiredEnv()
 	env["APP_ENV"] = "production"
