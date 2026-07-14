@@ -2,13 +2,8 @@ export const maxDuration = 60;
 
 import { env } from "@/env";
 import { GroqTranscriptionService } from "@/lib/copilotkit/groq-transcription";
-import { isOfflineAgentTestMode } from "@/lib/offline-mode";
 
 export async function POST(request: Request): Promise<Response> {
-  if (isOfflineAgentTestMode()) {
-    return Response.json({ text: "Offline transcription is not available." });
-  }
-
   const form = await request.formData();
   const audio = form.get("audio");
   if (!(audio instanceof File)) {

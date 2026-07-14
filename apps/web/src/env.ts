@@ -1,21 +1,16 @@
 import { createEnv } from "@t3-oss/env-nextjs";
 import * as z from "zod";
 
-const requiredUnlessOffline = () =>
-  process.env.AGENT_TEST_MODE === "offline" || process.env.NEXT_PUBLIC_AGENT_TEST_MODE === "offline"
-    ? z.string().min(1).optional()
-    : z.string().min(1);
-
 export const env = createEnv({
   server: {
-    CLERK_SECRET_KEY: requiredUnlessOffline(),
+    CLERK_SECRET_KEY: z.string().min(1),
     AGENTS_BASE_URL: z.url().default("https://agents-gateway.up.railway.app"),
     TRVL_MCP_URL: z.url().default("https://trvl-production.up.railway.app/mcp"),
     KROGER_MCP_URL: z.url().default("https://ai-meal-planner-mcp.aranlucas.workers.dev"),
     MISTRAL_API_KEY: z.string().optional(),
     OPENROUTER_API_KEY: z.string().optional(),
     HUGGING_FACE_API_KEY: z.string().optional(),
-    GROQ_API_KEY: requiredUnlessOffline(),
+    GROQ_API_KEY: z.string().min(1),
     TELEGRAM_LINK_SECRET: z.string().optional(),
     TELEGRAM_BOT_TOKEN: z.string().optional(),
     OTEL_EXPORTER_OTLP_ENDPOINT: z.string().optional(),
@@ -26,7 +21,7 @@ export const env = createEnv({
       .transform((v) => v === "true"),
   },
   client: {
-    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: requiredUnlessOffline(),
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1),
     NEXT_PUBLIC_AGENTS_BASE_URL: z.url().default("https://agents-gateway.up.railway.app"),
   },
   skipValidation: process.env.SKIP_ENV_VALIDATION === "1",

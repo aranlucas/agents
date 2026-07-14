@@ -19,7 +19,7 @@ const copilotMocks = vi.hoisted(() => ({
   runtimeConnectionStatus: "connected",
   // Widen the mutable mock so the disconnected test can assign undefined.
   // oxlint-disable-next-line typescript/no-unnecessary-type-assertion
-  runtimeUrl: "/api/offline-copilotkit" as string | undefined,
+  runtimeUrl: "/api/copilotkit" as string | undefined,
 }));
 
 vi.mock("@copilotkit/react-core/v2", () => ({
@@ -163,7 +163,7 @@ describe("ChatSurface history replay", () => {
   beforeEach(() => {
     copilotMocks.connectAgent.mockClear();
     copilotMocks.runtimeConnectionStatus = "connected";
-    copilotMocks.runtimeUrl = "/api/offline-copilotkit";
+    copilotMocks.runtimeUrl = "/api/copilotkit";
     copilotMocks.agent.abortController = undefined;
     copilotMocks.agent.threadId = undefined;
     copilotMocks.agent.messages = [];

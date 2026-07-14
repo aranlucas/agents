@@ -14,6 +14,7 @@ type ConsoleSessionProps = {
   agent: AgentId;
   thread?: string;
   children: ReactNode;
+  loading?: ReactNode;
 };
 
 const AGENTS_BASE_URL = agentBaseUrl(env.NEXT_PUBLIC_AGENTS_BASE_URL);
@@ -51,7 +52,7 @@ export function reportCopilotKitError(event: CopilotKitErrorEvent) {
   console.error("[CopilotKit] Error:", error, event.context);
 }
 
-function DirectConsoleSession({ agent: agentId, thread, children }: ConsoleSessionProps) {
+function DirectConsoleSession({ agent: agentId, thread, children, loading }: ConsoleSessionProps) {
   const { getToken, isLoaded, sessionId } = useAuth();
 
   // Seed HttpAgent's native headers once per Clerk session. The fetch override
@@ -96,7 +97,11 @@ function DirectConsoleSession({ agent: agentId, thread, children }: ConsoleSessi
   );
 
   if (!isLoaded || isTokenPending) {
-    return <div className="min-h-0 flex-1" aria-busy="true" aria-label="Loading conversation" />;
+    return (
+      loading ?? (
+        <div className="min-h-0 flex-1" aria-busy="true" aria-label="Loading conversation" />
+      )
+    );
   }
 
   return (
@@ -121,7 +126,7 @@ function DirectConsoleSession({ agent: agentId, thread, children }: ConsoleSessi
  *
  * Production sessions connect the browser straight to the Railway AG-UI
  * endpoint. This keeps long-lived SSE runs out of Vercel's request-duration
- * path. Offline fixture tests use a separate deterministic transport.
+ * path.
  */
 export function ConsoleSession(props: ConsoleSessionProps) {
   return <DirectConsoleSession {...props} />;

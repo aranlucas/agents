@@ -449,7 +449,7 @@ separately if credentials or external services are unavailable.
 4. Switch runtime and provider A2UI scope from `a2ui` to `trends`.
 5. Remove the markdown Trends artifact path.
 6. Remove the standalone A2UI agent and all surfaced registrations.
-7. Update offline fixtures and focused tests.
+7. Update focused tests.
 8. Run repository gates and a credentialed live smoke test when available.
 
 ## Acceptance Criteria

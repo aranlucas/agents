@@ -10,6 +10,7 @@ const agentMocks = vi.hoisted(() => ({
     messages: [] as Array<{ id: string; role: string; content: string }>,
   },
   runAgent: vi.fn<() => Promise<void>>(),
+  sessionReady: true,
 }));
 
 vi.mock("@copilotkit/react-core/v2", () => ({
@@ -18,7 +19,9 @@ vi.mock("@copilotkit/react-core/v2", () => ({
 }));
 
 vi.mock("@/components/chat/console-session", () => ({
-  ConsoleSession: ({ children }: { children: ReactNode }) => <>{children}</>,
+  ConsoleSession: ({ children, loading }: { children: ReactNode; loading?: ReactNode }) => (
+    <>{agentMocks.sessionReady ? children : loading}</>
+  ),
 }));
 
 vi.mock("next/link", () => ({
@@ -36,9 +39,27 @@ beforeEach(() => {
   agentMocks.agent.isRunning = false;
   agentMocks.agent.addMessage.mockClear();
   agentMocks.runAgent.mockReset();
+  agentMocks.sessionReady = true;
 });
 
 describe("GeneratedIntroduction", () => {
+  it("keeps the same skeleton height while the session starts", () => {
+    agentMocks.sessionReady = false;
+    agentMocks.runAgent.mockImplementation(() => new Promise<void>(() => undefined));
+
+    const view = render(<GeneratedIntroduction />);
+    const initialFrame = view.container.firstElementChild;
+
+    expect(screen.getByLabelText("Resume agent is connecting")).toBeVisible();
+    expect(initialFrame).toHaveClass("mt-4", "min-h-42");
+
+    agentMocks.sessionReady = true;
+    view.rerender(<GeneratedIntroduction />);
+
+    expect(screen.getByLabelText("Resume agent is connecting")).toBeVisible();
+    expect(view.container.firstElementChild).toHaveClass("mt-4", "min-h-42");
+  });
+
   it("starts the Resume agent when the component mounts", async () => {
     agentMocks.runAgent.mockImplementation(async () => undefined);
     render(<GeneratedIntroduction />);

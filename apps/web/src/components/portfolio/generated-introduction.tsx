@@ -2,7 +2,7 @@
 
 import { useAgent, useCopilotKit } from "@copilotkit/react-core/v2";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
 import { ConsoleSession } from "@/components/chat/console-session";
 import { toRenderItems } from "@/components/chat/messages";
@@ -11,6 +11,34 @@ const prompt = `Write a first-person introduction for Lucas Arango's personal we
 Use only facts from your embedded source resume. Focus on how he thinks and builds, not employers,
 job history, dates, credentials, or a career summary. Use plain language and no hype. Write no more
 than two short sentences and 45 words.`;
+
+function IntroductionFrame({ children }: { children: ReactNode }) {
+  return (
+    <div aria-live="polite" className="mt-4 min-h-42">
+      {children}
+    </div>
+  );
+}
+
+function IntroductionSkeletonContent() {
+  return (
+    <div
+      aria-label="Resume agent is connecting"
+      className="flex animate-pulse flex-col gap-2 py-1 motion-reduce:animate-none"
+    >
+      <div className="h-3 w-full rounded bg-muted" />
+      <div className="h-3 w-4/5 rounded bg-muted" />
+    </div>
+  );
+}
+
+function IntroductionSkeleton() {
+  return (
+    <IntroductionFrame>
+      <IntroductionSkeletonContent />
+    </IntroductionFrame>
+  );
+}
 
 function IntroductionWriter() {
   const { agent } = useAgent({ agentId: "resume" });
@@ -80,16 +108,8 @@ function IntroductionWriter() {
   const showSkeleton = !failed && !text;
 
   return (
-    <div aria-live="polite" className="mt-4 min-h-42">
-      {showSkeleton ? (
-        <div
-          aria-label="Resume agent is connecting"
-          className="flex animate-pulse flex-col gap-2 py-1 motion-reduce:animate-none"
-        >
-          <div className="h-3 w-full rounded bg-muted" />
-          <div className="h-3 w-4/5 rounded bg-muted" />
-        </div>
-      ) : null}
+    <IntroductionFrame>
+      {showSkeleton ? <IntroductionSkeletonContent /> : null}
       {text ? (
         <p className="animate-in text-base leading-7 text-ink-soft duration-500 ease-out fade-in motion-reduce:animate-none">
           {text}
@@ -123,13 +143,13 @@ function IntroductionWriter() {
           </Link>
         </p>
       ) : null}
-    </div>
+    </IntroductionFrame>
   );
 }
 
 export function GeneratedIntroduction() {
   return (
-    <ConsoleSession agent="resume">
+    <ConsoleSession agent="resume" loading={<IntroductionSkeleton />}>
       <IntroductionWriter />
     </ConsoleSession>
   );

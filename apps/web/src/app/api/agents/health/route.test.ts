@@ -64,7 +64,7 @@ describe("GET /api/agents/health", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => {
-        throw new Error("offline");
+        throw new Error("unavailable");
       }),
     );
 
@@ -84,33 +84,5 @@ describe("GET /api/agents/health", () => {
       "error",
       "error",
     ]);
-  });
-
-  it("returns the offline fixture without network calls when agent test mode is offline", async () => {
-    vi.stubEnv("AGENT_TEST_MODE", "offline");
-    const fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
-    vi.resetModules();
-
-    const { GET } = await import("./route");
-    const body = await (await GET()).json();
-
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(body.runningCount).toBe(11);
-    expect(Object.values(body.agents)).toEqual([
-      "ok",
-      "ok",
-      "ok",
-      "ok",
-      "ok",
-      "ok",
-      "ok",
-      "ok",
-      "ok",
-      "ok",
-      "ok",
-    ]);
-
-    vi.unstubAllEnvs();
   });
 });

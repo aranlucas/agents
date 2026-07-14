@@ -6,8 +6,6 @@ import { useEffect, useRef, useState } from "react";
 import { getAgentConfig, type AgentId } from "@/components/chat/agents/registry";
 import { hasKrogerConnection, type ExternalAccountLike } from "@/lib/connections";
 
-const isOfflineAgentTestMode = process.env.NEXT_PUBLIC_AGENT_TEST_MODE === "offline";
-
 /**
  * Reports whether the agent's required Kroger account is missing. Clerk's client-side user can remain stale
  * after linking an account in UserProfile, so refresh it once before deciding
@@ -34,10 +32,6 @@ export function useRequiredConnections(agentId: AgentId): {
         setCompletedRefreshKey(refreshKey);
       });
   }, [refreshKey, user]);
-
-  if (isOfflineAgentTestMode) {
-    return { isLoading: false, isMissing: false };
-  }
 
   const accounts = (user?.externalAccounts ?? []) as ExternalAccountLike[];
 

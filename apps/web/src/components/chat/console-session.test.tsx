@@ -27,13 +27,18 @@ const mocks = vi.hoisted(() => {
     MockHttpAgent,
     copilotProps: null as Record<string, unknown> | null,
     getToken: vi.fn(async () => "clerk-session-token"),
+    isLoaded: true,
   };
 });
 
 vi.mock("@ag-ui/client", () => ({ HttpAgent: mocks.MockHttpAgent }));
 
 vi.mock("@clerk/nextjs", () => ({
-  useAuth: () => ({ getToken: mocks.getToken, isLoaded: true, sessionId: "session-123" }),
+  useAuth: () => ({
+    getToken: mocks.getToken,
+    isLoaded: mocks.isLoaded,
+    sessionId: "session-123",
+  }),
 }));
 
 vi.mock("@copilotkit/react-core/v2", () => ({
@@ -60,6 +65,25 @@ describe("ConsoleSession direct AG-UI connection", () => {
   beforeEach(() => {
     mocks.copilotProps = null;
     mocks.getToken.mockClear();
+    mocks.isLoaded = true;
+  });
+
+  it("renders a custom loading state while Clerk is loading", () => {
+    mocks.isLoaded = false;
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ConsoleSession agent="travel" loading={<span>Introduction skeleton</span>}>
+          <span>Conversation ready</span>
+        </ConsoleSession>
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByText("Introduction skeleton")).toBeVisible();
+    expect(screen.queryByText("Conversation ready")).not.toBeInTheDocument();
   });
 
   it("loads Clerk headers and gives CopilotKit a self-managed Railway agent", async () => {

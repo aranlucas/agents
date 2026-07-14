@@ -24,7 +24,6 @@ import { getAgentConfig, type AgentId } from "@/components/chat/agents/registry"
 import { useAgentSessions } from "@/components/chat/use-agent-sessions";
 
 export const SETTINGS_PATH = "/console/settings";
-const isOfflineAgentTestMode = process.env.NEXT_PUBLIC_AGENT_TEST_MODE === "offline";
 const sessionDate = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
@@ -161,7 +160,7 @@ export function AppSidebar({
             </SidebarGroupContent>
           </SidebarGroup>
         )}
-        {!isOfflineAgentTestMode && agentId && activeThreadId ? (
+        {agentId && activeThreadId ? (
           <AgentSessions agentId={agentId} activeThreadId={activeThreadId} />
         ) : null}
       </SidebarContent>

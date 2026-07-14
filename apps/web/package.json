@@ -4,7 +4,6 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "dev:offline": "AGENT_TEST_MODE=offline NEXT_PUBLIC_AGENT_TEST_MODE=offline next dev --turbopack",
     "build": "SKIP_ENV_VALIDATION=1 COPILOTKIT_TELEMETRY_DISABLED=true next build",
     "start": "next start",
     "lint": "oxlint .",
@@ -12,7 +11,6 @@
     "fmt": "oxfmt .",
     "fmt:check": "oxfmt --check .",
     "test": "vitest run",
-    "test:offline": "AGENT_TEST_MODE=offline NEXT_PUBLIC_AGENT_TEST_MODE=offline vitest run -t offline",
     "coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
@@ -48,7 +46,6 @@
     "@vitest/coverage-v8": "4.1.10",
     "eas-cli": "^21.0.0",
     "jsdom": "^29.1.1",
-    "msw": "^2.15.0",
     "tailwindcss": "^4.3.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "typescript7": "npm:typescript@7.0.2",
