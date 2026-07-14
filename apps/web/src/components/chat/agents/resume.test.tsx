@@ -1,7 +1,15 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { ResumeArtifact } from "./resume";
+const mocks = vi.hoisted(() => ({
+  configureSuggestions: vi.fn(),
+}));
+
+vi.mock("@copilotkit/react-core/v2", () => ({
+  useConfigureSuggestions: mocks.configureSuggestions,
+}));
+
+import { ResumeArtifact, ResumeExtension } from "./resume";
 
 const view = {
   title: "Role fit brief",
@@ -12,6 +20,21 @@ const view = {
 };
 
 describe("ResumeArtifact", () => {
+  it("offers home-page-aligned prompts before the first message", () => {
+    render(<ResumeExtension agentId="resume" />);
+
+    expect(mocks.configureSuggestions).toHaveBeenCalledWith({
+      suggestions: [
+        expect.objectContaining({ title: "Why personal agents?" }),
+        expect.objectContaining({ title: "From idea to launch" }),
+        expect.objectContaining({ title: "AI product experience" }),
+        expect.objectContaining({ title: "Assess a role" }),
+      ],
+      consumerAgentId: "resume",
+      available: "before-first-message",
+    });
+  });
+
   it("renders a complete role-fit brief from typed agent state", () => {
     render(
       <ResumeArtifact

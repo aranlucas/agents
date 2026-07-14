@@ -250,33 +250,15 @@ const AGENTS: Record<AgentId, AgentConfig> = {
     glyph: "▣",
     colorVar: "--resume",
     colorClass: "text-resume",
-    placeholder: "Ask about Lucas, this lab, or a specific role…",
+    placeholder: "Ask about Lucas…",
     welcome:
-      "Ask how this agent lab connects to Lucas's work, ask about his background, or share a job description for a grounded fit brief.",
+      "Ask what Lucas has built, how his personal agents connect to his product work, or share a role and job description for a grounded fit brief.",
     artifact: {
       stateField: "fit_summary",
       kind: "document",
       title: "Role fit brief",
       name: "role_fit.md",
     },
-    suggestions: [
-      {
-        title: "What is this lab?",
-        message: "What is Lucas building in this agent lab, and how does it connect to his work?",
-      },
-      {
-        title: "How he works",
-        message: "How does Lucas take an AI product from an idea to a working launch?",
-      },
-      {
-        title: "AI platform role",
-        message: "Assess Lucas's fit for a Staff AI Platform Engineer role.",
-      },
-      {
-        title: "Tailor bullets",
-        message: "Tailor Lucas's strongest resume bullets for a Staff AI Platform Engineer role.",
-      },
-    ],
   },
   research: {
     id: "research",

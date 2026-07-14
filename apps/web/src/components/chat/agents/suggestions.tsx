@@ -4,9 +4,13 @@ import { useConfigureSuggestions } from "@copilotkit/react-core/v2";
 import type { AgentConfig } from "./registry";
 
 export function AgentSuggestions({ config }: { config: AgentConfig }) {
-  useConfigureSuggestions({
-    suggestions: config.suggestions ?? [],
-    available: "always",
-  });
+  useConfigureSuggestions(
+    config.suggestions
+      ? {
+          suggestions: config.suggestions,
+          available: "always",
+        }
+      : null,
+  );
   return null;
 }

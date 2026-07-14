@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfigureSuggestions } from "@copilotkit/react-core/v2";
 import type { ResumeStatus } from "@agents/types";
 import {
   Artifact,
@@ -17,6 +18,27 @@ import { CheckCircle2, CircleAlert, Sparkles, Target } from "lucide-react";
 import { toResumeState } from "@/lib/agent-state";
 
 import type { AgentArtifactProps } from "./extensions";
+import type { AgentId } from "./registry";
+
+const RESUME_SUGGESTIONS = [
+  {
+    title: "Why personal agents?",
+    message:
+      "Why does Lucas build personal agents for his own life, and how has that shaped his professional work?",
+  },
+  {
+    title: "From idea to launch",
+    message: "How does Lucas take an agent idea from a personal experiment to a product launch?",
+  },
+  {
+    title: "AI product experience",
+    message: "What has Lucas shipped across AI products, agent platforms, and user experiences?",
+  },
+  {
+    title: "Assess a role",
+    message: "I want to assess Lucas's fit for a role. What details do you need from me?",
+  },
+];
 
 const STATUS_META: Record<ResumeStatus, { label: string; className: string }> = {
   idle: {
@@ -46,6 +68,15 @@ function nonBlank(value: string | undefined, fallback: string) {
   const trimmed = value?.trim();
   if (!trimmed) return fallback;
   return trimmed;
+}
+
+export function ResumeExtension({ agentId }: { agentId: AgentId }) {
+  useConfigureSuggestions({
+    suggestions: RESUME_SUGGESTIONS,
+    consumerAgentId: agentId,
+    available: "before-first-message",
+  });
+  return null;
 }
 
 export function ResumeArtifact({ state: rawState, view, onClose }: AgentArtifactProps) {

@@ -36,13 +36,17 @@ const ResumeArtifact = dynamic(() => import("./resume").then((mod) => mod.Resume
   ssr: false,
 });
 
+const ResumeExtension = dynamic(() => import("./resume").then((mod) => mod.ResumeExtension), {
+  ssr: false,
+});
+
 const TrendsArtifact = dynamic(() => import("./trends").then((mod) => mod.TrendsArtifact), {
   ssr: false,
 });
 
 const AGENT_EXTENSIONS: Partial<Record<AgentId, AgentExtension>> = {
   "oral-boards": { Mount: OralBoardsExtension },
-  resume: { Artifact: ResumeArtifact },
+  resume: { Mount: ResumeExtension, Artifact: ResumeArtifact },
   trends: { Artifact: TrendsArtifact },
 };
 

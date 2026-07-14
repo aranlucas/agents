@@ -8,7 +8,8 @@ describe("agent extensions", () => {
     expect(getAgentExtension("trends")?.Mount).toBeUndefined();
   });
 
-  it("registers the Resume role-fit artifact without adding shared workspace branches", () => {
+  it("registers the Resume suggestions and role-fit artifact without shared workspace branches", () => {
+    expect(getAgentExtension("resume")?.Mount).toBeDefined();
     expect(getAgentExtension("resume")?.Artifact).toBeDefined();
     expect(getAgentExtension("research")?.Artifact).toBeUndefined();
   });

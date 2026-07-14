@@ -77,4 +77,11 @@ describe("agent registry", () => {
       title: "Role fit brief",
     });
   });
+
+  it("frames Resume suggestions around the personal-agent story", () => {
+    const resume = getAgentConfig("resume");
+
+    expect(resume.placeholder).toBe("Ask about Lucas…");
+    expect(resume.welcome).toContain("personal agents");
+  });
 });
