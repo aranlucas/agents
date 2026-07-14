@@ -72,8 +72,7 @@ export const VoiceSelector = ({
   const [open, setOpen] = useControllableState({
     defaultProp: defaultOpen,
     onChange: onOpenChange
-      ? // oxlint-disable-next-line typescript/no-explicit-any
-        (isOpen) => onOpenChange(isOpen, { reason: "none", preventUnmountOnClose: () => {} } as any)
+      ? (value) => onOpenChange(value, { reason: "none", preventUnmountOnClose: () => {} } as any)
       : undefined,
     prop: openProp,
   });
