@@ -242,9 +242,9 @@ const AGENTS: Record<AgentId, AgentConfig> = {
     label: "Resume",
     glyph: "▣",
     colorVar: "--resume",
-    placeholder: "Paste a role or job description to assess Lucas's fit…",
+    placeholder: "Ask about Lucas, this lab, or a specific role…",
     welcome:
-      "Share a role title or job description and I'll build a grounded fit brief from Lucas's resume.",
+      "Ask how this agent lab connects to Lucas's work, ask about his background, or share a job description for a grounded fit brief.",
     artifact: {
       stateField: "fit_summary",
       kind: "document",
@@ -253,16 +253,16 @@ const AGENTS: Record<AgentId, AgentConfig> = {
     },
     suggestions: [
       {
+        title: "What is this lab?",
+        message: "What is Lucas building in this agent lab, and how does it connect to his work?",
+      },
+      {
+        title: "How he works",
+        message: "How does Lucas take an AI product from an idea to a working launch?",
+      },
+      {
         title: "AI platform role",
         message: "Assess Lucas's fit for a Staff AI Platform Engineer role.",
-      },
-      {
-        title: "Go platform role",
-        message: "Assess Lucas's fit for a Senior Go Platform Engineer role.",
-      },
-      {
-        title: "Surface gaps",
-        message: "What are the clearest gaps for an AI infrastructure lead role?",
       },
       {
         title: "Tailor bullets",

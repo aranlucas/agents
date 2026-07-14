@@ -13,9 +13,20 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Agents — AI planning network",
+  title: {
+    default: "Lucas Arango — Software Engineer",
+    template: "%s | Lucas Arango",
+  },
   description:
-    "Trip, grocery, and fitness agents that collaborate — powered by Google ADK + CopilotKit.",
+    "A personal index of ideas and working demos for specialist agents, typed state, real tools, and durable artifacts.",
+  metadataBase: new URL("https://agents-lucas.vercel.app"),
+  openGraph: {
+    title: "Lucas Arango — Software Engineer",
+    description:
+      "Ideas and working experiments for agents that coordinate, use tools, and create durable artifacts.",
+    type: "website",
+    url: "/",
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

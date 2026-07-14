@@ -4,99 +4,93 @@ import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next/link", () => ({
-  default: ({ children, href }: { children: ReactNode; href: string }) => (
-    <a href={href}>{children}</a>
+  default: ({ children, href, ...props }: { children: ReactNode; href: string }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
   ),
 }));
 
-vi.mock("@/components/providers", () => ({
-  Providers: ({ children }: { children: ReactNode }) => <>{children}</>,
-}));
-
-vi.mock("@clerk/nextjs", () => ({
-  ClerkProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
-  useUser: () => ({
-    isLoaded: true,
-    user: null,
-  }),
-}));
-
-vi.mock("@tanstack/react-query", () => ({
-  QueryClient: class QueryClient {},
-  QueryClientProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
-  useQuery: () => ({ data: null, isLoading: false, error: null }),
+vi.mock("@/components/portfolio/generated-introduction", () => ({
+  GeneratedIntroduction: () => (
+    <div>
+      <p>The Resume agent will write this introduction as you browse.</p>
+      {/* oxlint-disable-next-line next/no-html-link-for-pages -- isolated Link test fixture */}
+      <a href="/console/resume">Ask the Resume agent →</a>
+    </div>
+  ),
 }));
 
 import Home from "./page";
 
-describe("Home page", () => {
-  it("renders the main heading", () => {
+describe("Portfolio home page", () => {
+  it("opens as a minimal personal index", () => {
     render(<Home />);
+
+    expect(screen.getByRole("heading", { name: "Hi, I’m Lucas." })).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /Agents that coordinate useful work/i }),
-    ).toBeInTheDocument();
+      screen.getByText("I’m exploring what agents can do by building them for my own life."),
+    ).toBeVisible();
+    expect(screen.queryByRole("navigation", { name: "Portfolio" })).not.toBeInTheDocument();
   });
 
-  it("renders the Planning system badge", () => {
+  it("presents the three ideas without a career chronology", () => {
     render(<Home />);
-    expect(screen.getByText("Planning system")).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("heading", {
+        name: "What can I stop doing manually?",
+      }),
+    ).toBeVisible();
+    expect(screen.getByRole("heading", { name: "What should an agent remember?" })).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "How should it hand the work back?" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(/DoorDash|AWS|Amazon|senior software engineer/i),
+    ).not.toBeInTheDocument();
   });
 
-  it("renders all agent cards", () => {
+  it("keeps every working demo discoverable", () => {
     render(<Home />);
-    expect(screen.getByText("Trip Studio")).toBeInTheDocument();
-    expect(screen.getByText("Grocery Studio")).toBeInTheDocument();
-    expect(screen.getByText("Fitness Studio")).toBeInTheDocument();
-    expect(screen.getByText("Wellness Studio")).toBeInTheDocument();
-    expect(screen.getByText("Expense Desk")).toBeInTheDocument();
-    expect(screen.getByText("Oral Boards")).toBeInTheDocument();
-    expect(screen.getByText("Resume")).toBeInTheDocument();
-    expect(screen.getByText("Google Trends")).toBeInTheDocument();
-    expect(screen.getAllByText("Research").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("Spreadsheet")).toBeInTheDocument();
-    expect(screen.getAllByText("Slides").length).toBeGreaterThanOrEqual(1);
+
+    const demoRoutes = [
+      "/console/travel",
+      "/console/grocery",
+      "/console/fitness",
+      "/console/wellness",
+      "/console/expense",
+      "/console/oral-boards",
+      "/console/trends",
+      "/console/research",
+      "/console/spreadsheet",
+      "/console/presentation",
+    ];
+    const hrefs = screen.getAllByRole("link").map((link) => link.getAttribute("href"));
+
+    for (const route of demoRoutes) expect(hrefs).toContain(route);
   });
 
-  it("shows a single consolidated Oral Boards card (no separate v2)", () => {
+  it("uses the Resume agent as optional personal context", () => {
     render(<Home />);
-    expect(screen.getByText("Oral Boards")).toBeInTheDocument();
-    expect(screen.queryByText("Oral Boards v2")).not.toBeInTheDocument();
+
+    expect(screen.getByText(/The Resume agent will write this introduction/i)).toBeVisible();
+    expect(screen.getByRole("link", { name: /Ask the Resume agent/i })).toHaveAttribute(
+      "href",
+      "/console/resume",
+    );
   });
 
-  it("does not surface the standalone A2UI showcase card", () => {
+  it("links to the source without publishing an email address", () => {
     render(<Home />);
-    expect(screen.queryByText("A2UI Studio")).not.toBeInTheDocument();
-    const links = screen.getAllByRole("link");
-    const hrefs = links.map((link) => link.getAttribute("href"));
-    expect(hrefs).not.toContain("/console/a2ui");
-  });
 
-  it("renders links to each agent console", () => {
-    render(<Home />);
-    const links = screen.getAllByRole("link");
-    const hrefs = links.map((link) => link.getAttribute("href"));
-    expect(hrefs).toContain("/console/travel");
-    expect(hrefs).toContain("/console/grocery");
-    expect(hrefs).toContain("/console/fitness");
-    expect(hrefs).toContain("/console/wellness");
-    expect(hrefs).toContain("/console/expense");
-    expect(hrefs).toContain("/console/oral-boards");
-    expect(hrefs).toContain("/console/resume");
-    expect(hrefs).toContain("/console/trends");
-    expect(hrefs).toContain("/console/research");
-    expect(hrefs).toContain("/console/spreadsheet");
-    expect(hrefs).toContain("/console/presentation");
-  });
-
-  it("names Trends and Resume in the landing description", () => {
-    render(<Home />);
-    expect(screen.getByText(/oral boards, trends, resume, research/i)).toBeInTheDocument();
-  });
-
-  it("renders the footer with agent labels", () => {
-    render(<Home />);
-    expect(screen.getAllByText("Grocery").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Fitness").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("Wellness orchestration")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Source" })).toHaveAttribute(
+      "href",
+      "https://github.com/aranlucas/agents",
+    );
+    expect(screen.queryByRole("link", { name: "Email" })).not.toBeInTheDocument();
+    expect(
+      screen.getAllByRole("link").some((link) => link.getAttribute("href")?.startsWith("mailto:")),
+    ).toBe(false);
   });
 });
