@@ -48,7 +48,8 @@ vi.mock("@/env", () => ({
 }));
 
 vi.mock("@/components/chat/agents/registry", () => ({
-  AGENT_BACKEND_PATHS: { travel: "travel" },
+  AGENT_ORDER: ["travel", "grocery"],
+  AGENT_BACKEND_PATHS: { travel: "travel", grocery: "grocery" },
 }));
 
 vi.mock("@/lib/agent-url", () => ({ agentBaseUrl: (value: string) => value }));
@@ -83,14 +84,23 @@ describe("ConsoleSession direct AG-UI connection", () => {
       string,
       InstanceType<typeof mocks.MockHttpAgent>
     >;
+    expect(Object.keys(agents)).toEqual(["travel", "grocery"]);
     expect(agents.travel.config).toMatchObject({
       agentId: "travel",
-      threadId: "thread-123",
       url: "https://gateway.example/travel/agui",
       headers: { Authorization: "Bearer clerk-session-token" },
     });
+    expect(agents.grocery.config).toMatchObject({
+      agentId: "grocery",
+      url: "https://gateway.example/grocery/agui",
+      headers: { Authorization: "Bearer clerk-session-token" },
+    });
+    expect(agents.travel.config).not.toHaveProperty("threadId");
+    expect(agents.grocery.config).not.toHaveProperty("threadId");
     expect(agents.travel.config).not.toHaveProperty("initialMessages");
     expect(agents.travel.config).not.toHaveProperty("initialState");
+    expect(agents.grocery.config).not.toHaveProperty("initialMessages");
+    expect(agents.grocery.config).not.toHaveProperty("initialState");
   });
 
   it("ignores expected abort errors but reports real CopilotKit failures", async () => {

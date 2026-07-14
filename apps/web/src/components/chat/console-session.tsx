@@ -6,40 +6,53 @@ import { CopilotKit, type CopilotKitProps } from "@copilotkit/react-core/v2";
 import { useQuery } from "@tanstack/react-query";
 import { type ReactNode, useCallback, useMemo } from "react";
 
-import { AGENT_BACKEND_PATHS, type AgentId } from "@/components/chat/agents/registry";
+import { AGENT_BACKEND_PATHS, AGENT_ORDER, type AgentId } from "@/components/chat/agents/registry";
 import { env } from "@/env";
 import { agentBaseUrl } from "@/lib/agent-url";
 
-const isOfflineAgentTestMode = process.env.NEXT_PUBLIC_AGENT_TEST_MODE === "offline";
-
 type ConsoleSessionProps = {
   agent: AgentId;
-  thread: string;
+  thread?: string;
   children: ReactNode;
 };
 
+const AGENTS_BASE_URL = agentBaseUrl(env.NEXT_PUBLIC_AGENTS_BASE_URL);
+
 type CopilotKitErrorEvent = Parameters<NonNullable<CopilotKitProps["onError"]>>[0];
+
+type DirectAgentMap = Record<string, HttpAgent>;
+
+type BuildSelfManagedAgentsArgs = {
+  baseUrl: string;
+  headers: Record<string, string>;
+  fetchAgent: (url: string, init?: RequestInit) => Promise<Response>;
+};
+
+function buildSelfManagedAgents({
+  baseUrl,
+  headers,
+  fetchAgent,
+}: BuildSelfManagedAgentsArgs): DirectAgentMap {
+  const agents: DirectAgentMap = {};
+
+  for (const id of AGENT_ORDER) {
+    agents[id] = new HttpAgent({
+      agentId: id,
+      url: `${baseUrl}/${AGENT_BACKEND_PATHS[id]}/agui`,
+      headers,
+      fetch: fetchAgent,
+      debug: process.env.NODE_ENV !== "production",
+    });
+  }
+
+  return agents;
+}
 
 export function reportCopilotKitError(event: CopilotKitErrorEvent) {
   const error: unknown = event.error;
   if (error instanceof Error && error.name === "AbortError") return;
 
   console.error("[CopilotKit] Error:", error, event.context);
-}
-
-function OfflineConsoleSession({ agent, thread, children }: ConsoleSessionProps) {
-  return (
-    <CopilotKit
-      runtimeUrl="/api/offline-copilotkit"
-      agent={agent}
-      threadId={thread}
-      useSingleEndpoint={false}
-      enableInspector={process.env.NODE_ENV !== "production"}
-      onError={reportCopilotKitError}
-    >
-      {children}
-    </CopilotKit>
-  );
 }
 
 function DirectConsoleSession({ agent: agentId, thread, children }: ConsoleSessionProps) {
@@ -60,11 +73,6 @@ function DirectConsoleSession({ agent: agentId, thread, children }: ConsoleSessi
     return headers;
   }, [token]);
 
-  const endpoint = useMemo(
-    () => `${agentBaseUrl(env.NEXT_PUBLIC_AGENTS_BASE_URL)}/${AGENT_BACKEND_PATHS[agentId]}`,
-    [agentId],
-  );
-
   const authenticatedFetch = useCallback(
     async (url: string, init: RequestInit = {}) => {
       const headers = new Headers(init.headers);
@@ -72,31 +80,24 @@ function DirectConsoleSession({ agent: agentId, thread, children }: ConsoleSessi
 
       if (currentToken) {
         headers.set("Authorization", `Bearer ${currentToken}`);
-      } else if (agentId !== "resume") {
-        throw new Error("A signed-in session is required to connect to this agent.");
       } else {
         headers.delete("Authorization");
       }
 
       return fetch(url, { ...init, headers });
     },
-    [agentId, getToken],
+    [getToken],
   );
 
-  const directAgent = useMemo(
+  const selfManagedAgents = useMemo(
     () =>
-      new HttpAgent({
-        agentId,
-        threadId: thread,
-        url: `${endpoint}/agui`,
+      buildSelfManagedAgents({
+        baseUrl: AGENTS_BASE_URL,
         headers: agentHeaders,
-        fetch: authenticatedFetch,
-        debug: process.env.NODE_ENV !== "production",
+        fetchAgent: authenticatedFetch,
       }),
-    [agentHeaders, agentId, authenticatedFetch, endpoint, thread],
+    [agentHeaders, authenticatedFetch],
   );
-
-  const selfManagedAgents = useMemo(() => ({ [agentId]: directAgent }), [agentId, directAgent]);
 
   if (!isLoaded || isTokenPending) {
     return <div className="min-h-0 flex-1" aria-busy="true" aria-label="Loading conversation" />;
@@ -127,9 +128,5 @@ function DirectConsoleSession({ agent: agentId, thread, children }: ConsoleSessi
  * path. Offline fixture tests use a separate deterministic transport.
  */
 export function ConsoleSession(props: ConsoleSessionProps) {
-  return isOfflineAgentTestMode ? (
-    <OfflineConsoleSession {...props} />
-  ) : (
-    <DirectConsoleSession {...props} />
-  );
+  return <DirectConsoleSession {...props} />;
 }
