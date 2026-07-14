@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
@@ -21,7 +22,7 @@ import (
 func TestConverterRegistersClientToolCallBeforeReturningToolCallEvents(t *testing.T) {
 	pending := newFakePending()
 	scope := ToolScope{AppName: "resume_agent", UserID: "anon:thread-1", ThreadID: "thread-1"}
-	converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, pending, scope, map[string]bool{"highlight_row": true})
+	converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, pending, scope, map[string]bool{"highlight_row": true}, streamSmoothing{})
 
 	event := &session.Event{
 		LLMResponse: model.LLMResponse{
@@ -53,7 +54,7 @@ func TestConverterRegistersClientToolCallBeforeReturningToolCallEvents(t *testin
 func TestConverterDoesNotRegisterNonClientToolCalls(t *testing.T) {
 	pending := newFakePending()
 	scope := ToolScope{AppName: "resume_agent", UserID: "anon:thread-1", ThreadID: "thread-1"}
-	converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, pending, scope, map[string]bool{"highlight_row": true})
+	converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, pending, scope, map[string]bool{"highlight_row": true}, streamSmoothing{})
 
 	event := &session.Event{
 		LLMResponse: model.LLMResponse{
@@ -68,5 +69,63 @@ func TestConverterDoesNotRegisterNonClientToolCalls(t *testing.T) {
 
 	if _, ok := pending.pending[key(scope, "call-1")]; ok {
 		t.Fatal("remember_fact is not a declared client tool and must not be registered")
+	}
+}
+
+func TestConverterSplitsPartialTextIntoChunks(t *testing.T) {
+	pending := newFakePending()
+	scope := ToolScope{AppName: "resume_agent", UserID: "anon:thread-1", ThreadID: "thread-1"}
+	converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, pending, scope, map[string]bool{}, streamSmoothing{enabled: true, charsPerChunk: 4, chunking: streamChunkingChar})
+
+	event := &session.Event{LLMResponse: model.LLMResponse{Partial: true, Content: &genai.Content{Parts: []*genai.Part{{Text: "hello world"}}}}}
+
+	out := converter.Convert(event)
+	// 1 start event + 3 content chunks for 4/4/3 rune split.
+	if len(out) != 4 {
+		t.Fatalf("expected 4 chunks events, got %d", len(out))
+	}
+}
+
+func TestConverterSkipsChunkingWhenDisabled(t *testing.T) {
+	pending := newFakePending()
+	scope := ToolScope{AppName: "resume_agent", UserID: "anon:thread-1", ThreadID: "thread-1"}
+	converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, pending, scope, map[string]bool{}, streamSmoothing{enabled: false, charsPerChunk: 4, chunking: streamChunkingChar})
+
+	event := &session.Event{LLMResponse: model.LLMResponse{Partial: true, Content: &genai.Content{Parts: []*genai.Part{{Text: "hello world"}}}}}
+
+	out := converter.Convert(event)
+	// 1 start event + 1 content event when smoothing is disabled.
+	if len(out) != 2 {
+		t.Fatalf("expected 2 events, got %d", len(out))
+	}
+}
+
+func TestConverterCanSplitTextByWords(t *testing.T) {
+	pending := newFakePending()
+	scope := ToolScope{AppName: "resume_agent", UserID: "anon:thread-1", ThreadID: "thread-1"}
+	converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, pending, scope, map[string]bool{}, streamSmoothing{enabled: true, chunking: streamChunkingWord})
+
+	event := &session.Event{LLMResponse: model.LLMResponse{Partial: true, Content: &genai.Content{Parts: []*genai.Part{{Text: "Hello  world"}}}}}
+
+	out := converter.Convert(event)
+	if len(out) != 4 {
+		t.Fatalf("expected 4 events (start + word + spaces + word), got %d", len(out))
+	}
+	if out[1].Type() != events.EventTypeTextMessageContent {
+		t.Fatalf("expected chunk event at index 1, got %s", out[1].Type())
+	}
+}
+
+func TestConverterCanSplitTextByLines(t *testing.T) {
+	pending := newFakePending()
+	scope := ToolScope{AppName: "resume_agent", UserID: "anon:thread-1", ThreadID: "thread-1"}
+	converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, pending, scope, map[string]bool{}, streamSmoothing{enabled: true, chunking: streamChunkingLine})
+
+	event := &session.Event{LLMResponse: model.LLMResponse{Partial: true, Content: &genai.Content{Parts: []*genai.Part{{Text: "line1\nline2\nline3"}}}}}
+
+	out := converter.Convert(event)
+	// 1 start + 3 lines.
+	if len(out) != 4 {
+		t.Fatalf("expected 4 events, got %d", len(out))
 	}
 }

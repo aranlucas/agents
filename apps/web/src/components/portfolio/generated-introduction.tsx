@@ -16,6 +16,9 @@ function IntroductionWriter() {
   const { agent } = useAgent({ agentId: "resume" });
   const { copilotkit } = useCopilotKit();
   const requested = useRef(false);
+  const [previousText, setPreviousText] = useState("");
+  const [animatedChunk, setAnimatedChunk] = useState("");
+  const [chunkSequence, setChunkSequence] = useState(0);
   const [started, setStarted] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -52,21 +55,9 @@ function IntroductionWriter() {
   }, [agent, copilotkit]);
 
   useEffect(() => {
-    let listening = false;
-    const onFirstScroll = () => void generate();
-
     if (agent && !requested.current) {
-      if (window.scrollY > 0) {
-        void generate();
-      } else {
-        listening = true;
-        window.addEventListener("scroll", onFirstScroll, { once: true, passive: true });
-      }
+      void generate();
     }
-
-    return () => {
-      if (listening) window.removeEventListener("scroll", onFirstScroll);
-    };
   }, [agent, generate]);
 
   useEffect(() => {
@@ -78,15 +69,30 @@ function IntroductionWriter() {
     });
   }, [agent?.isRunning, agent?.messages, started, text]);
 
-  const showSkeleton = started && !text && !failed;
+  const showSkeleton = !failed && !text;
+
+  useEffect(() => {
+    if (!text) {
+      setPreviousText("");
+      setAnimatedChunk("");
+      setChunkSequence(0);
+      return;
+    }
+
+    if (text === previousText) {
+      return;
+    }
+
+    const nextChunk = text.startsWith(previousText) ? text.slice(previousText.length) : text;
+    setPreviousText(text);
+    setAnimatedChunk(nextChunk);
+    setChunkSequence((current) => current + 1);
+  }, [text, previousText]);
+
+  const visibleBaseText = text.slice(0, text.length - animatedChunk.length);
 
   return (
-    <div aria-live="polite" className="mt-4">
-      {!started ? (
-        <p className="text-muted-foreground text-[14px] leading-6">
-          The Resume agent will write this introduction as you browse.
-        </p>
-      ) : null}
+    <div aria-live="polite" className="mt-4 min-h-[136px]">
       {showSkeleton ? (
         <div aria-label="Resume agent is connecting" className="space-y-2 py-1">
           <div className="shimmer h-3 w-full rounded" />
@@ -95,7 +101,12 @@ function IntroductionWriter() {
       ) : null}
       {text ? (
         <p className="text-[16px] leading-7 text-(--ink-soft) transition-opacity duration-300">
-          {text}
+          <span>{visibleBaseText}</span>
+          {animatedChunk ? (
+            <span key={`intro-chunk-${chunkSequence}`} className="intro-text-chunk">
+              {animatedChunk}
+            </span>
+          ) : null}
           {agent?.isRunning ? <span aria-hidden="true" className="caret" /> : null}
         </p>
       ) : null}

@@ -571,7 +571,7 @@ func newTestGatewayWithToolsetsAndTimeout(t *testing.T, m model.LLM, ids events.
 		Timeout: timeout,
 	}
 	sessions := newFakeSessionService()
-	allOpts := append([]Option{WithIDGenerator(ids)}, opts...)
+	allOpts := append([]Option{WithIDGenerator(ids), WithTextStreamSmoothing(false, streamChunkingWord, 0, 0)}, opts...)
 	handler, err := NewEntryHandler(entry, sessions, allOpts...)
 	if err != nil {
 		t.Fatalf("build AG-UI handler: %v", err)

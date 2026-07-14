@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -55,6 +56,11 @@ import (
 )
 
 const healthCheckTimeout = 3 * time.Second
+const (
+	defaultStreamCharsPerChunk = 64
+	defaultStreamChunkDelayMs  = 18
+	defaultStreamChunking     = "word"
+)
 
 // healthChecker is satisfied by *cloudflare.D1 and *cloudflare.R2. It is
 // declared here (not in cloudflare) so Dependencies can be exercised with
@@ -102,9 +108,10 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 	mux := http.NewServeMux()
 	publicRoutes := map[string]bool{"/health": true, "/live": true, "/ready": true}
 
+	enabled, chunking, charsPerChunk, delay := parseStreamSmoothingConfigFromEnv()
 	for _, entry := range deps.Registry.Entries() {
 		base := "/" + entry.Route
-		handler, err := agui.NewEntryHandler(entry, deps.Sessions, agui.WithPendingTools(deps.Pending))
+		handler, err := agui.NewEntryHandler(entry, deps.Sessions, agui.WithPendingTools(deps.Pending), agui.WithTextStreamSmoothing(enabled, chunking, delay, charsPerChunk))
 		if err != nil {
 			return nil, fmt.Errorf("build AG-UI handler for %s: %w", entry.Route, err)
 		}
@@ -160,6 +167,48 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 		protected.ServeHTTP(w, r)
 	})
 	return auth.CORS(cfg.HTTP.Origins, routed), nil
+}
+
+func parseStreamSmoothingConfigFromEnv() (bool, string, int, time.Duration) {
+	chunking := defaultStreamChunking
+	if rawChunking := strings.TrimSpace(strings.ToLower(os.Getenv("AGUI_STREAM_CHUNKING"))); rawChunking != "" {
+		chunking = rawChunking
+	}
+	enabled := true
+	if rawEnabled := strings.TrimSpace(os.Getenv("AGUI_STREAM_SMOOTHING")); rawEnabled != "" {
+		parsed, err := strconv.ParseBool(rawEnabled)
+		if err != nil {
+			log.Printf("invalid AGUI_STREAM_SMOOTHING=%q, defaulting to true", rawEnabled)
+		} else {
+			enabled = parsed
+		}
+	}
+
+	charsPerChunk := defaultStreamCharsPerChunk
+	if rawChunkSize := strings.TrimSpace(os.Getenv("AGUI_STREAM_CHUNK_SIZE")); rawChunkSize != "" {
+		parsed, err := strconv.Atoi(rawChunkSize)
+		if err != nil {
+			log.Printf("invalid AGUI_STREAM_CHUNK_SIZE=%q, defaulting to %d", rawChunkSize, charsPerChunk)
+		} else if parsed > 0 {
+			charsPerChunk = parsed
+		} else {
+			log.Printf("AGUI_STREAM_CHUNK_SIZE=%d must be >0, using %d", parsed, charsPerChunk)
+		}
+	}
+
+	chunkDelay := time.Duration(defaultStreamChunkDelayMs) * time.Millisecond
+	if rawDelay := strings.TrimSpace(os.Getenv("AGUI_STREAM_CHUNK_DELAY_MS")); rawDelay != "" {
+		parsed, err := strconv.Atoi(rawDelay)
+		if err != nil {
+			log.Printf("invalid AGUI_STREAM_CHUNK_DELAY_MS=%q, defaulting to %dms", rawDelay, defaultStreamChunkDelayMs)
+		} else if parsed >= 0 {
+			chunkDelay = time.Duration(parsed) * time.Millisecond
+		} else {
+			log.Printf("AGUI_STREAM_CHUNK_DELAY_MS=%d is negative, using %dms", parsed, defaultStreamChunkDelayMs)
+		}
+	}
+
+	return enabled, chunking, charsPerChunk, chunkDelay
 }
 
 // withOAuthCredentials resolves provider access tokens inside the trusted

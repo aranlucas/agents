@@ -94,6 +94,38 @@ body {
   animation: blink 1s steps(2) infinite;
 }
 
+@keyframes intro-magic-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+    filter: blur(0.4px);
+    background-position: 100% 0;
+  }
+  75% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+    background-position: 0 0;
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    background-position: -120% 0;
+  }
+}
+
+.intro-text-chunk {
+  display: inline;
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--accent) 25%, transparent) 50%,
+    transparent 100%
+  );
+  background-size: 220% 100%;
+  animation: intro-magic-rise 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
