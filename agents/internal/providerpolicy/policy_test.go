@@ -150,6 +150,10 @@ func TestOralBoardsAndTelegramPoliciesStayDistinct(t *testing.T) {
 	if telegram.Provider != "mistral" || telegram.Model != "mistral-medium-latest" || telegram.RequestsPerMinute != 20 || len(telegram.Fallbacks) != 0 {
 		t.Fatalf("telegram policy = %#v", telegram)
 	}
+	title := SessionTitle()
+	if title.Provider != "mistral" || title.Model != "ministral-3b-latest" || title.RequestsPerMinute != 20 || len(title.Fallbacks) != 0 {
+		t.Fatalf("session title policy = %#v", title)
+	}
 }
 
 func testProvider(name string) config.Provider {

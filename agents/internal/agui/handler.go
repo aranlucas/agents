@@ -14,6 +14,7 @@ import (
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/encoding/sse"
 	"google.golang.org/adk/v2/agent"
+	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/runner"
 	"google.golang.org/adk/v2/session"
 )
@@ -24,6 +25,7 @@ type Option func(*handlerConfig)
 type handlerConfig struct {
 	pending PendingTools
 	ids     events.IDGenerator
+	titles  model.LLM
 }
 
 // WithPendingTools wires the D1-backed pending client-tool store used to
@@ -39,6 +41,11 @@ func WithIDGenerator(ids events.IDGenerator) Option {
 	return func(c *handlerConfig) { c.ids = ids }
 }
 
+// WithTitleModel generates a short title when a session is first created.
+func WithTitleModel(titleModel model.LLM) Option {
+	return func(c *handlerConfig) { c.titles = titleModel }
+}
+
 // ADKHandler binds one ADK agent and session service to an AG-UI HTTP
 // endpoint. The runner is built once at construction rather than once per
 // request.
@@ -48,6 +55,7 @@ type ADKHandler struct {
 	sessions session.Service
 	pending  PendingTools
 	ids      events.IDGenerator
+	titles   model.LLM
 }
 
 // NewEntryHandler creates one AG-UI handler from the gateway's complete
@@ -72,7 +80,7 @@ func NewEntryHandler(entry agentruntime.Entry, sessions session.Service, opts ..
 	for _, opt := range opts {
 		opt(cfg)
 	}
-	return &ADKHandler{entry: entry, runner: rn, sessions: sessions, pending: cfg.pending, ids: cfg.ids}, nil
+	return &ADKHandler{entry: entry, runner: rn, sessions: sessions, pending: cfg.pending, ids: cfg.ids, titles: cfg.titles}, nil
 }
 
 func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -94,7 +102,7 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), entry.Timeout)
 	defer cancel()
 
-	sess, err := h.restoreSession(ctx, entry, userID, input.ThreadID, sessionNameFromInput(input, entry.Route))
+	sess, err := h.restoreSession(ctx, entry, userID, input.ThreadID, input)
 	if err != nil {
 		log.Printf("run: session restore failed: agent=%s thread=%s user=%s err=%v", entry.AppName, input.ThreadID, userID, err)
 		writeJSONError(w, http.StatusInternalServerError, "session_unavailable")
@@ -225,10 +233,19 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // missing session from a backend failure. Unlike the runner's internal
 // getOrCreateSession, Create here must seed entry.StateDefaults, so this
 // can't just rely on runner.Config.AutoCreateSession.
-func (h *ADKHandler) restoreSession(ctx context.Context, entry agentruntime.Entry, userID, threadID, name string) (session.Session, error) {
+func (h *ADKHandler) restoreSession(ctx context.Context, entry agentruntime.Entry, userID, threadID string, input *types.RunAgentInput) (session.Session, error) {
 	response, err := h.sessions.Get(ctx, &session.GetRequest{AppName: entry.AppName, UserID: userID, SessionID: threadID})
 	if err == nil {
 		return response.Session, nil
+	}
+	name := sessionNameFromInput(input, entry.Route)
+	if prompt := firstUserMessage(input); h.titles != nil && prompt != "" {
+		generated, titleErr := generateSessionName(ctx, h.titles, prompt)
+		if titleErr != nil {
+			log.Printf("restoreSession: title generation failed: app=%s model=%s err=%v", entry.AppName, h.titles.Name(), titleErr)
+		} else {
+			name = generated
+		}
 	}
 	state := entry.StateDefaults()
 	if state == nil {
@@ -244,8 +261,19 @@ func (h *ADKHandler) restoreSession(ctx context.Context, entry agentruntime.Entr
 }
 
 func sessionNameFromInput(input *types.RunAgentInput, route string) string {
-	for index := len(input.Messages) - 1; index >= 0; index-- {
-		message := input.Messages[index]
+	if name := firstUserMessage(input); name != "" {
+		return truncateSessionName(name)
+	}
+
+	name := strings.ReplaceAll(strings.TrimSpace(route), "-", " ")
+	if name == "" {
+		return "New session"
+	}
+	return strings.ToUpper(name[:1]) + name[1:] + " session"
+}
+
+func firstUserMessage(input *types.RunAgentInput) string {
+	for _, message := range input.Messages {
 		if message.Role != types.RoleUser {
 			continue
 		}
@@ -255,21 +283,11 @@ func sessionNameFromInput(input *types.RunAgentInput, route string) string {
 		}
 		name := strings.Join(strings.Fields(text), " ")
 		if name == "" || strings.EqualFold(name, "ready") {
-			break
-		}
-		const maximumRunes = 64
-		runes := []rune(name)
-		if len(runes) > maximumRunes {
-			return strings.TrimSpace(string(runes[:maximumRunes-1])) + "…"
+			continue
 		}
 		return name
 	}
-
-	name := strings.ReplaceAll(strings.TrimSpace(route), "-", " ")
-	if name == "" {
-		return "New session"
-	}
-	return strings.ToUpper(name[:1]) + name[1:] + " session"
+	return ""
 }
 
 // effectiveUserID returns the D1 session-key user ID. The verified Clerk

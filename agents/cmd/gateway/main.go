@@ -76,6 +76,7 @@ type Dependencies struct {
 	Links    *telegram.LinkStore
 	Clerk    clerk.Backend
 	Fitness  fitnessdata.Repository
+	Titles   model.LLM
 	Now      func() time.Time
 }
 
@@ -104,7 +105,7 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 
 	for _, entry := range deps.Registry.Entries() {
 		base := "/" + entry.Route
-		handler, err := agui.NewEntryHandler(entry, deps.Sessions, agui.WithPendingTools(deps.Pending))
+		handler, err := agui.NewEntryHandler(entry, deps.Sessions, agui.WithPendingTools(deps.Pending), agui.WithTitleModel(deps.Titles))
 		if err != nil {
 			return nil, fmt.Errorf("build AG-UI handler for %s: %w", entry.Route, err)
 		}
@@ -491,6 +492,11 @@ func main() {
 	pending := cloudflare.NewPendingStore(d1, time.Now)
 	limiter := rate.NewProviderLimiter(d1, time.Now)
 	availableProviders := providerpolicy.FallbackProviders(cfg.Providers)
+	titleProvider, err := providerpolicy.ResolveRequired(cfg.Providers, providerpolicy.SessionTitle())
+	if err != nil {
+		log.Fatalf("configure session title model: %v", err)
+	}
+	titleModel := openai.New(titleProvider, nil, limiter)
 	var braveSearch *bravesearch.Client
 	if braveKey := strings.TrimSpace(os.Getenv("BRAVE_API_KEY")); braveKey != "" {
 		braveSearch, err = bravesearch.New(common.NewHTTPClient(15*time.Second, 4<<20).Client, "https://api.search.brave.com/res/v1/web/search", braveKey, 10)
@@ -705,6 +711,7 @@ func main() {
 		Links:    telegram.NewLinkStore(d1, time.Now),
 		Clerk:    clerkBackend,
 		Fitness:  fitnessActivities,
+		Titles:   titleModel,
 		Now:      time.Now,
 	})
 	if err != nil {
