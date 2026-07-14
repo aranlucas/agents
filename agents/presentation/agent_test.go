@@ -39,7 +39,7 @@ func TestPresentationAgentEmbedsInstructionAndBuilds(t *testing.T) {
 	if agent.Name() != AppName {
 		t.Fatalf("name = %q", agent.Name())
 	}
-	if !strings.Contains(Instruction, "build_presentation") || !strings.Contains(Instruction, "revise_presentation") || !strings.Contains(Instruction, "State is the source of truth") {
+	if !strings.Contains(Instruction, "build_presentation") || !strings.Contains(Instruction, "revise_presentation") || !strings.Contains(Instruction, "including the title slide") || !strings.Contains(Instruction, "updated_slide_count") || !strings.Contains(Instruction, "State is the source of truth") {
 		t.Fatal("instruction assets are incomplete")
 	}
 }
