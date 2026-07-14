@@ -249,10 +249,10 @@ export function PortfolioHome() {
           <h1 className="max-w-[620px] text-[clamp(2.25rem,6vw,2.8rem)] leading-[1.08] font-medium tracking-[-0.045em] text-balance">
             Hi, I’m Lucas.
           </h1>
-          <About />
           <p className="mt-7 max-w-[640px] text-[18px] leading-8 tracking-[-0.015em] text-(--ink-soft) sm:text-[19px]">
             I’m exploring what agents can do by building them for my own life.
           </p>
+          <About />
         </section>
 
         <Ideas />
