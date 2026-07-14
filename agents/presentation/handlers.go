@@ -14,9 +14,11 @@ import (
 const maxSlides = 100
 
 type Result struct {
-	OK      bool                          `json:"ok"`
-	SlideID string                        `json:"slide_id,omitempty"`
-	Error   *agentruntime.StructuredError `json:"error,omitempty"`
+	OK         bool                          `json:"ok"`
+	SlideID    string                        `json:"slide_id,omitempty"`
+	SlideIDs   []string                      `json:"slide_ids,omitempty"`
+	SlideCount int                           `json:"slide_count,omitempty"`
+	Error      *agentruntime.StructuredError `json:"error,omitempty"`
 }
 
 type SetMetaArgs struct {
@@ -28,6 +30,12 @@ type CreateSlideArgs struct {
 	Body      string `json:"body"`
 	SlideType string `json:"slide_type"`
 	Notes     string `json:"notes"`
+}
+type BuildPresentationArgs struct {
+	Title   string            `json:"title"`
+	Theme   string            `json:"theme"`
+	Slides  []CreateSlideArgs `json:"slides"`
+	Summary string            `json:"summary"`
 }
 type UpdateSlideArgs struct {
 	SlideID   string  `json:"slide_id"`
@@ -43,7 +51,8 @@ type ReorderArgs struct {
 	SlideIDs []string `json:"slide_ids"`
 }
 type ReadyArgs struct {
-	Summary string `json:"summary"`
+	Summary            string `json:"summary"`
+	ExpectedSlideCount int    `json:"expected_slide_count"`
 }
 
 func SetMeta(ctx agent.Context, input SetMetaArgs) (Result, error) {
@@ -75,21 +84,59 @@ func setMeta(state *PresentationState, input SetMetaArgs) (Result, error) {
 	return Result{OK: true}, nil
 }
 
-func CreateSlide(ctx agent.Context, input CreateSlideArgs) (Result, error) {
-	state := readState(ctx.State())
-	r, e := createSlide(&state, input)
-	if e == nil && r.OK {
-		if err := ctx.State().Set("slides", state.Slides); err != nil {
-			return Result{}, fmt.Errorf("set slides: %w", err)
-		}
-		if err := ctx.State().Set("active_slide_index", state.ActiveSlideIndex); err != nil {
-			return Result{}, fmt.Errorf("set active_slide_index: %w", err)
-		}
-		if err := ctx.State().Set("status", state.Status); err != nil {
-			return Result{}, fmt.Errorf("set status: %w", err)
-		}
+func BuildPresentation(ctx agent.Context, input BuildPresentationArgs) (Result, error) {
+	current := readState(ctx.State())
+	state, result, err := buildPresentation(current.UserID, input)
+	if err != nil || !result.OK {
+		return result, err
 	}
-	return r, e
+	if err := ctx.State().Set("title", state.Title); err != nil {
+		return Result{}, fmt.Errorf("set title: %w", err)
+	}
+	if err := ctx.State().Set("theme", state.Theme); err != nil {
+		return Result{}, fmt.Errorf("set theme: %w", err)
+	}
+	if err := ctx.State().Set("slides", state.Slides); err != nil {
+		return Result{}, fmt.Errorf("set slides: %w", err)
+	}
+	if err := ctx.State().Set("active_slide_index", state.ActiveSlideIndex); err != nil {
+		return Result{}, fmt.Errorf("set active_slide_index: %w", err)
+	}
+	if err := ctx.State().Set("status", state.Status); err != nil {
+		return Result{}, fmt.Errorf("set status: %w", err)
+	}
+	if err := ctx.State().Set("review_summary", state.ReviewSummary); err != nil {
+		return Result{}, fmt.Errorf("set review_summary: %w", err)
+	}
+	return result, nil
+}
+
+func buildPresentation(userID string, input BuildPresentationArgs) (PresentationState, Result, error) {
+	state := Defaults()
+	state.UserID = userID
+	if len(input.Slides) == 0 || len(input.Slides) > maxSlides {
+		return state, failure("invalid_slide_count", "presentation must contain between 1 and 100 slides"), nil
+	}
+	if input.Slides[0].SlideType != "title" {
+		return state, failure("title_slide_required", "the first slide must have slide_type title"), nil
+	}
+	if result, err := setMeta(&state, SetMetaArgs{Title: input.Title, Theme: input.Theme}); err != nil || !result.OK {
+		return state, result, err
+	}
+	slideIDs := make([]string, 0, len(input.Slides))
+	for _, slide := range input.Slides {
+		result, err := createSlide(&state, slide)
+		if err != nil || !result.OK {
+			return state, result, err
+		}
+		slideIDs = append(slideIDs, result.SlideID)
+	}
+	state.ActiveSlideIndex = 0
+	ready, err := markReady(&state, ReadyArgs{Summary: input.Summary, ExpectedSlideCount: len(input.Slides)})
+	if err != nil || !ready.OK {
+		return state, ready, err
+	}
+	return state, Result{OK: true, SlideIDs: slideIDs, SlideCount: len(state.Slides)}, nil
 }
 
 func createSlide(state *PresentationState, input CreateSlideArgs) (Result, error) {
@@ -219,8 +266,8 @@ func ReorderSlides(ctx agent.Context, input ReorderArgs) (Result, error) {
 }
 
 func reorderSlides(state *PresentationState, input ReorderArgs) (Result, error) {
-	if len(input.SlideIDs) > maxSlides {
-		return failure("invalid_slide_order", "slide order exceeds the slide limit"), nil
+	if len(input.SlideIDs) != len(state.Slides) {
+		return failure("invalid_slide_order", "slide order must contain every current slide exactly once"), nil
 	}
 	byID := make(map[string]Slide, len(state.Slides))
 	for _, slide := range state.Slides {
@@ -233,9 +280,11 @@ func reorderSlides(state *PresentationState, input ReorderArgs) (Result, error) 
 			return failure("duplicate_slide_id", "slide order cannot contain duplicate IDs"), nil
 		}
 		seen[id] = true
-		if slide, ok := byID[id]; ok {
-			reordered = append(reordered, slide)
+		slide, ok := byID[id]
+		if !ok {
+			return failure("slide_not_found", "slide order contains an unknown slide ID"), nil
 		}
+		reordered = append(reordered, slide)
 	}
 	state.Slides, state.ActiveSlideIndex, state.Status = reordered, 0, StatusDrafting
 	return Result{OK: true}, nil
@@ -259,11 +308,14 @@ func markReady(state *PresentationState, input ReadyArgs) (Result, error) {
 	if len(input.Summary) > 5000 {
 		return failure("summary_too_large", "review summary exceeds the allowed size"), nil
 	}
+	if input.ExpectedSlideCount < 1 || input.ExpectedSlideCount > maxSlides {
+		return failure("invalid_expected_slide_count", "expected_slide_count must be between 1 and 100"), nil
+	}
 	if strings.TrimSpace(state.Title) == "" {
 		return failure("presentation_title_required", "a presentation title is required before marking ready"), nil
 	}
-	if len(state.Slides) == 0 {
-		return failure("slides_required", "at least one slide is required before marking ready"), nil
+	if len(state.Slides) != input.ExpectedSlideCount {
+		return failure("slide_count_mismatch", fmt.Sprintf("presentation has %d slides; expected %d", len(state.Slides), input.ExpectedSlideCount)), nil
 	}
 	for _, slide := range state.Slides {
 		if strings.TrimSpace(slide.Heading) == "" && strings.TrimSpace(slide.Body) == "" {

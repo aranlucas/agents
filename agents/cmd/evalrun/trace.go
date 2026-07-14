@@ -14,11 +14,12 @@ import (
 // Step is one normalized unit of an agent run: a model text chunk, a tool
 // call, or a tool result.
 type Step struct {
-	Author           string          `json:"author"`
-	Text             string          `json:"text,omitempty"`
-	FunctionCall     string          `json:"function_call,omitempty"`
-	FunctionCallArgs json.RawMessage `json:"function_call_args,omitempty"`
-	FunctionResponse string          `json:"function_response,omitempty"`
+	Author                string          `json:"author"`
+	Text                  string          `json:"text,omitempty"`
+	FunctionCall          string          `json:"function_call,omitempty"`
+	FunctionCallArgs      json.RawMessage `json:"function_call_args,omitempty"`
+	FunctionResponse      string          `json:"function_response,omitempty"`
+	FunctionResponseValue json.RawMessage `json:"function_response_value,omitempty"`
 }
 
 // Trace is the full normalized record of one eval case's run, used as
@@ -78,6 +79,11 @@ func runCase(ctx context.Context, appName string, built agent.Agent, stateDefaul
 				}
 			case part.FunctionResponse != nil:
 				step.FunctionResponse = part.FunctionResponse.Name
+				step.FunctionResponseValue, err = json.Marshal(part.FunctionResponse.Response)
+				if err != nil {
+					trace.RunError = fmt.Sprintf("encode %s response: %v", part.FunctionResponse.Name, err)
+					return trace
+				}
 			case part.Text != "":
 				step.Text = part.Text
 				trace.FinalText = part.Text

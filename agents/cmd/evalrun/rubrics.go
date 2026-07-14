@@ -44,6 +44,19 @@ func firstCallArgs[T any](trace Trace, name string) (T, bool) {
 	return args, false
 }
 
+func firstResponse[T any](trace Trace, name string) (T, bool) {
+	var response T
+	for _, step := range trace.Steps {
+		if step.FunctionResponse == name {
+			if len(step.FunctionResponseValue) == 0 || json.Unmarshal(step.FunctionResponseValue, &response) != nil {
+				return response, false
+			}
+			return response, true
+		}
+	}
+	return response, false
+}
+
 func (t Trace) called(name string) bool {
 	for _, s := range t.Steps {
 		if s.FunctionCall == name {
@@ -190,28 +203,38 @@ func gradeRubric(agentName, rubricID, description string, trace Trace) RubricRes
 		res.Explanation = fmt.Sprintf("add_to_cart called=%v, text makes a live (non-hypothetical) cart claim=%v", called, claims)
 
 	// --- presentation ---
-	case "presentation_sets_meta":
-		args, ok := firstCallArgs[presentation.SetMetaArgs](trace, "set_presentation_meta")
-		n := trueCount(strings.TrimSpace(args.Title) != "", strings.TrimSpace(args.Theme) != "")
-		res.Pass = ok && n >= 1
-		res.Explanation = fmt.Sprintf("set_presentation_meta called=%v with %d/2 fields set", ok, n)
-	case "presentation_creates_title_slide_first":
-		args, ok := firstCallArgs[presentation.CreateSlideArgs](trace, "create_slide")
-		res.Pass = ok && strings.Contains(strings.ToLower(args.SlideType), "title")
-		res.Explanation = fmt.Sprintf("first create_slide call had slide_type=%q", args.SlideType)
-	case "presentation_slide_quality":
+	case "presentation_builds_atomically":
+		args, ok := firstCallArgs[presentation.BuildPresentationArgs](trace, "build_presentation")
 		count := 0
 		for _, name := range trace.calledTools() {
-			if name == "create_slide" {
+			if name == "build_presentation" {
 				count++
 			}
 		}
-		res.Pass = count >= 3
-		res.Explanation = fmt.Sprintf("create_slide called %d time(s) (want a multi-slide deck)", count)
-	case "presentation_marks_ready":
-		readyIdx, createIdx := trace.indexOfCall("mark_presentation_ready"), trace.indexOfCall("create_slide")
-		res.Pass = readyIdx >= 0 && createIdx >= 0 && createIdx < readyIdx
-		res.Explanation = fmt.Sprintf("mark_presentation_ready idx=%d, first create_slide idx=%d", readyIdx, createIdx)
+		res.Pass = ok && count == 1 && strings.TrimSpace(args.Title) != "" && strings.TrimSpace(args.Theme) != "" && strings.TrimSpace(args.Summary) != "" && len(args.Slides) == 10
+		res.Explanation = fmt.Sprintf("build_presentation called %d time(s) with %d slides", count, len(args.Slides))
+	case "presentation_creates_title_slide_first":
+		args, ok := firstCallArgs[presentation.BuildPresentationArgs](trace, "build_presentation")
+		res.Pass = ok && len(args.Slides) > 0 && args.Slides[0].SlideType == "title"
+		firstType := ""
+		if len(args.Slides) > 0 {
+			firstType = args.Slides[0].SlideType
+		}
+		res.Explanation = fmt.Sprintf("first build_presentation slide had slide_type=%q", firstType)
+	case "presentation_slide_quality":
+		args, ok := firstCallArgs[presentation.BuildPresentationArgs](trace, "build_presentation")
+		withNotes := 0
+		for _, slide := range args.Slides {
+			if strings.TrimSpace(slide.Notes) != "" {
+				withNotes++
+			}
+		}
+		res.Pass = ok && len(args.Slides) == 10 && withNotes == len(args.Slides)
+		res.Explanation = fmt.Sprintf("build contains %d slides, %d with speaker notes", len(args.Slides), withNotes)
+	case "presentation_reports_persisted_count":
+		response, ok := firstResponse[presentation.Result](trace, "build_presentation")
+		res.Pass = ok && response.OK && response.SlideCount == 10 && len(response.SlideIDs) == 10
+		res.Explanation = fmt.Sprintf("build response ok=%v, slide_count=%d, slide_ids=%d", response.OK, response.SlideCount, len(response.SlideIDs))
 
 	// --- research ---
 	case "research_sets_query":
