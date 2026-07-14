@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"unicode"
 	"strings"
 
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
@@ -17,8 +18,9 @@ import (
 // into ordered, typed AG-UI SDK events. Not safe for concurrent use; the
 // handler owns exactly one converter per in-flight run.
 type streamConverter struct {
-	ctx context.Context
-	ids events.IDGenerator
+	ctx       context.Context
+	ids       events.IDGenerator
+	smoothing streamSmoothing
 
 	state stateDocument
 
@@ -41,14 +43,23 @@ type streamConverter struct {
 	lastFinalText string
 }
 
-func newStreamConverter(ctx context.Context, ids events.IDGenerator, state stateDocument, pending PendingTools, scope ToolScope, clientToolNames map[string]bool) *streamConverter {
+func newStreamConverter(ctx context.Context, ids events.IDGenerator, state stateDocument, pending PendingTools, scope ToolScope, clientToolNames map[string]bool, smoothing streamSmoothing) *streamConverter {
 	if ids == nil {
 		ids = events.NewDefaultIDGenerator()
 	}
 	if state == nil {
 		state = make(stateDocument)
 	}
-	return &streamConverter{ctx: ctx, ids: ids, state: state, pending: pending, scope: scope, clientToolNames: clientToolNames}
+	if !smoothing.enabled {
+		smoothing.enabled = false
+	}
+	if smoothing.charsPerChunk <= 0 {
+		smoothing.charsPerChunk = 64
+	}
+	if smoothing.chunkDelay < 0 {
+		smoothing.chunkDelay = 0
+	}
+	return &streamConverter{ctx: ctx, ids: ids, state: state, pending: pending, scope: scope, clientToolNames: clientToolNames, smoothing: smoothing}
 }
 
 // Convert converts one ADK session event into zero or more ordered AG-UI
@@ -84,7 +95,7 @@ func (c *streamConverter) convertPartial(content *genai.Content) []events.Event 
 			out = append(out, events.NewReasoningMessageContentEvent(c.reasoningMessageID, part.Text))
 		case !part.Thought && part.Text != "":
 			out = append(out, c.openText()...)
-			out = append(out, events.NewTextMessageContentEvent(c.textMessageID, part.Text))
+			out = append(out, c.textContentEvents(c.textMessageID, part.Text)...)
 		}
 	}
 	return out
@@ -168,7 +179,10 @@ func (c *streamConverter) oneShotLanes(content *genai.Content, hadText, hadReaso
 		out = append(
 			out,
 			events.NewTextMessageStartEvent(id, events.WithRole("assistant")),
-			events.NewTextMessageContentEvent(id, plainText.String()),
+		)
+		out = append(out, c.textContentEvents(id, plainText.String())...)
+		out = append(
+			out,
 			events.NewTextMessageEndEvent(id),
 		)
 	}
@@ -181,6 +195,98 @@ func (c *streamConverter) openText() []events.Event {
 	}
 	c.textMessageID = c.ids.GenerateMessageID()
 	return []events.Event{events.NewTextMessageStartEvent(c.textMessageID, events.WithRole("assistant"))}
+}
+
+func (c *streamConverter) textContentEvents(messageID, text string) []events.Event {
+	if text == "" {
+		return nil
+	}
+	if !c.smoothing.enabled || c.smoothing.charsPerChunk <= 0 {
+		return []events.Event{events.NewTextMessageContentEvent(messageID, text)}
+	}
+
+	chunks := splitTextChunks(text, c.smoothing)
+	out := make([]events.Event, 0, len(chunks))
+	for _, chunk := range chunks {
+		out = append(out, events.NewTextMessageContentEvent(messageID, chunk))
+	}
+	return out
+}
+
+func splitTextChunks(text string, cfg streamSmoothing) []string {
+	switch cfg.chunking {
+	case streamChunkingLine:
+		return splitByLine(text)
+	case streamChunkingChar:
+		return splitIntoRuneChunks(text, cfg.charsPerChunk)
+	case streamChunkingWord:
+		fallthrough
+	default:
+		return splitByWord(text)
+	}
+}
+
+func splitByLine(text string) []string {
+	if text == "" {
+		return nil
+	}
+	lines := strings.SplitAfter(text, "\n")
+	if len(lines) == 0 {
+		return []string{text}
+	}
+	if strings.HasSuffix(text, "\n") {
+		return lines
+	}
+	return lines
+}
+
+func splitByWord(text string) []string {
+	if text == "" {
+		return nil
+	}
+	runes := []rune(text)
+	var chunks []string
+	for i := 0; i < len(runes); {
+		j := i
+		for j < len(runes) && !unicode.IsSpace(runes[j]) {
+			j++
+		}
+		if j > i {
+			chunks = append(chunks, string(runes[i:j]))
+			i = j
+		}
+		j = i
+		for j < len(runes) && unicode.IsSpace(runes[j]) {
+			j++
+		}
+		if j > i {
+			chunks = append(chunks, string(runes[i:j]))
+			i = j
+		}
+	}
+	if len(chunks) == 0 {
+		return []string{text}
+	}
+	return chunks
+}
+
+func splitIntoRuneChunks(text string, chunkSize int) []string {
+	if chunkSize <= 0 {
+		return []string{text}
+	}
+	parts := []rune(text)
+	if len(parts) <= chunkSize {
+		return []string{text}
+	}
+	out := make([]string, 0, (len(parts)+chunkSize-1)/chunkSize)
+	for i := 0; i < len(parts); i += chunkSize {
+		j := i + chunkSize
+		if j > len(parts) {
+			j = len(parts)
+		}
+		out = append(out, string(parts[i:j]))
+	}
+	return out
 }
 
 func (c *streamConverter) closeText() []events.Event {

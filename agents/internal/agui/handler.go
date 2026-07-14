@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"agents/internal/agentruntime"
 	"agents/internal/auth"
@@ -23,8 +24,9 @@ import (
 type Option func(*handlerConfig)
 
 type handlerConfig struct {
-	pending PendingTools
-	ids     events.IDGenerator
+	pending   PendingTools
+	ids       events.IDGenerator
+	smoothing streamSmoothing
 }
 
 // WithPendingTools wires the D1-backed pending client-tool store used to
@@ -40,15 +42,65 @@ func WithIDGenerator(ids events.IDGenerator) Option {
 	return func(c *handlerConfig) { c.ids = ids }
 }
 
+// streamSmoothing controls optional server-side pacing for AG-UI text
+// streaming. The default is enabled and keeps short turns intact while
+// splitting long turns into small chunks with a delay between each chunk.
+type streamSmoothing struct {
+	enabled       bool
+	chunking      string
+	charsPerChunk int
+	chunkDelay    time.Duration
+}
+
+const (
+	streamChunkingWord = "word"
+	streamChunkingLine = "line"
+	streamChunkingChar = "char"
+)
+
+var defaultStreamSmoothing = streamSmoothing{
+	enabled:       true,
+	chunking:      streamChunkingWord,
+	charsPerChunk: 64,
+	chunkDelay:    18 * time.Millisecond,
+}
+
+// WithStreamSmoothing overrides the converter's pacing behavior.
+func WithStreamSmoothing(cfg streamSmoothing) Option {
+	switch strings.ToLower(cfg.chunking) {
+	case "", streamChunkingWord:
+		cfg.chunking = streamChunkingWord
+	case streamChunkingLine, streamChunkingChar:
+		cfg.chunking = strings.ToLower(cfg.chunking)
+	default:
+		cfg.chunking = streamChunkingWord
+	}
+	if cfg.charsPerChunk <= 0 {
+		cfg.charsPerChunk = defaultStreamSmoothing.charsPerChunk
+	}
+	if cfg.chunkDelay < 0 {
+		cfg.chunkDelay = 0
+	}
+	return func(c *handlerConfig) { c.smoothing = cfg }
+}
+
+// WithTextStreamSmoothing is the public builder for text pacing settings.
+// Use it from gateway/main.go (or other assembly points) to mirror ai-sdk-like
+// behavior without leaking internals.
+func WithTextStreamSmoothing(enabled bool, chunking string, chunkDelay time.Duration, charsPerChunk int) Option {
+	return WithStreamSmoothing(streamSmoothing{enabled: enabled, chunking: chunking, charsPerChunk: charsPerChunk, chunkDelay: chunkDelay})
+}
+
 // ADKHandler binds one ADK agent and session service to an AG-UI HTTP
 // endpoint. The runner is built once at construction rather than once per
 // request.
 type ADKHandler struct {
-	entry    agentruntime.Entry
-	runner   *runner.Runner
-	sessions session.Service
-	pending  PendingTools
-	ids      events.IDGenerator
+	entry     agentruntime.Entry
+	runner    *runner.Runner
+	sessions  session.Service
+	pending   PendingTools
+	ids       events.IDGenerator
+	smoothing streamSmoothing
 }
 
 // NewEntryHandler creates one AG-UI handler from the gateway's complete
@@ -69,11 +121,11 @@ func NewEntryHandler(entry agentruntime.Entry, sessions session.Service, opts ..
 	if err != nil {
 		return nil, fmt.Errorf("create ADK runner: %w", err)
 	}
-	cfg := &handlerConfig{ids: events.NewDefaultIDGenerator()}
+	cfg := &handlerConfig{ids: events.NewDefaultIDGenerator(), smoothing: defaultStreamSmoothing}
 	for _, opt := range opts {
 		opt(cfg)
 	}
-	return &ADKHandler{entry: entry, runner: rn, sessions: sessions, pending: cfg.pending, ids: cfg.ids}, nil
+	return &ADKHandler{entry: entry, runner: rn, sessions: sessions, pending: cfg.pending, ids: cfg.ids, smoothing: cfg.smoothing}, nil
 }
 
 func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -182,15 +234,26 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		runOpts = append(runOpts, runner.WithStateDelta(overlay))
 	}
 
-	converter := newStreamConverter(ctx, h.ids, snapshot, h.pending, scope, clientToolNames)
+	converter := newStreamConverter(ctx, h.ids, snapshot, h.pending, scope, clientToolNames, h.smoothing)
 	var runErr error
+	lastWasTextContent := false
+runLoop:
 	for event, evErr := range h.runner.Run(ctx, userID, input.ThreadID, content, agent.RunConfig{StreamingMode: agent.StreamingModeSSE}, runOpts...) {
 		if evErr != nil {
 			runErr = evErr
 			break
 		}
 		for _, converted := range converter.Convert(event) {
+			if h.smoothing.enabled && h.smoothing.chunkDelay > 0 && converted.Type() == events.EventTypeTextMessageContent && lastWasTextContent {
+				select {
+				case <-time.After(h.smoothing.chunkDelay):
+				case <-ctx.Done():
+					runErr = ctx.Err()
+					break runLoop
+				}
+			}
 			_ = frame.WriteEvent(ctx, w, converted)
+			lastWasTextContent = converted.Type() == events.EventTypeTextMessageContent
 		}
 	}
 	// Runner implementations may stop iteration when their context expires
