@@ -1,6 +1,7 @@
 package presentation
 
 import (
+	"agents/internal/bravesearch"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
@@ -8,8 +9,8 @@ import (
 	"google.golang.org/adk/v2/tool/functiontool"
 )
 
-func New(m model.LLM, toolsets ...tool.Toolset) (agent.Agent, error) {
-	tools, err := presentationTools()
+func New(m model.LLM, search *bravesearch.Client, toolsets ...tool.Toolset) (agent.Agent, error) {
+	tools, err := presentationTools(search)
 	if err != nil {
 		return nil, err
 	}
@@ -23,7 +24,7 @@ func New(m model.LLM, toolsets ...tool.Toolset) (agent.Agent, error) {
 	})
 }
 
-func presentationTools() ([]tool.Tool, error) {
+func presentationTools(search *bravesearch.Client) ([]tool.Tool, error) {
 	buildPresentationTool, err := functiontool.New(functiontool.Config{
 		Name:        "build_presentation",
 		Description: "Create or replace the complete presentation in one ordered slides array.",
@@ -40,8 +41,31 @@ func presentationTools() ([]tool.Tool, error) {
 		return nil, err
 	}
 
-	return []tool.Tool{
+	result := []tool.Tool{
 		buildPresentationTool,
 		revisePresentationTool,
-	}, nil
+	}
+	if search != nil {
+		webSearchTool, err := functiontool.New(functiontool.Config{
+			Name:        "web_search",
+			Description: "Search current public web results with the limited Brave budget.",
+		}, func(ctx agent.Context, input SearchArgs) (SearchResult, error) {
+			results, err := search.Search(ctx, input.Query, input.Count)
+			return SearchResult{Results: results}, err
+		})
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, webSearchTool)
+	}
+	return result, nil
+}
+
+type SearchArgs struct {
+	Query string `json:"query"`
+	Count int    `json:"count"`
+}
+
+type SearchResult struct {
+	Results []bravesearch.Result `json:"results"`
 }

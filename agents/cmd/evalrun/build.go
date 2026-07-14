@@ -102,7 +102,7 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		if err != nil {
 			return Built{}, err
 		}
-		built, err := presentation.New(m)
+		built, err := presentation.New(m, nil)
 		return Built{Name: name, Agent: built, StateDefaults: presentation.StateDefaults, Notes: notes}, err
 
 	case "spreadsheet":

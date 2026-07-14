@@ -18,6 +18,7 @@ import (
 	"agents/fitness"
 	"agents/grocery"
 	"agents/internal/bootstrap"
+	"agents/internal/bravesearch"
 	"agents/internal/catalog"
 	"agents/internal/clerk"
 	"agents/internal/cloudflare"
@@ -106,7 +107,7 @@ func main() {
 	must(err)
 	resumeAgent, err := resume.New(model)
 	must(err)
-	presentationAgent, err := presentation.New(model)
+	presentationAgent, err := presentation.New(model, search)
 	must(err)
 	researchAgent, err := research.New(model)
 	must(err)
@@ -169,12 +170,12 @@ func buildOrchestrator(model *openai.Model, specialists map[string]agent.Agent) 
 	return llmagent.New(llmagent.Config{Name: telegram.OrchestratorAppName, Description: "Routes Telegram requests to exactly one specialist.", Model: model, Instruction: "Choose exactly one specialist tool for the request. Respect current sender credential flags. Return a concise Telegram-friendly answer; never call multiple specialists.", Tools: tools})
 }
 
-func buildSearch() *common.BraveSearch {
+func buildSearch() *bravesearch.Client {
 	key := strings.TrimSpace(os.Getenv("BRAVE_API_KEY"))
 	if key == "" {
 		return nil
 	}
-	result, err := common.NewBraveSearch(common.NewHTTPClient(15*time.Second, 4<<20).Client, "https://api.search.brave.com/res/v1/web/search", key, 10)
+	result, err := bravesearch.New(common.NewHTTPClient(15*time.Second, 4<<20).Client, "https://api.search.brave.com/res/v1/web/search", key, 10)
 	must(err)
 	return result
 }

@@ -7,90 +7,11 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
 	"golang.org/x/net/html"
 )
-
-var ErrEmptyQuery = errors.New("search query is required")
-
-type SearchResult struct {
-	Title       string `json:"title"`
-	URL         string `json:"url"`
-	Description string `json:"description"`
-}
-type BraveSearch struct {
-	client           *HTTPClient
-	endpoint, apiKey string
-	maximum          int
-}
-
-func NewBraveSearch(client *http.Client, endpoint, apiKey string, maximum int) (*BraveSearch, error) {
-	if client == nil {
-		client = NewHTTPClient(15*time.Second, defaultMaxBody).Client
-	}
-	parsed, err := url.Parse(endpoint)
-	if err != nil || parsed.Host == "" || !secureOrLoopback(parsed) {
-		return nil, errors.New("invalid Brave endpoint")
-	}
-	if strings.TrimSpace(apiKey) == "" {
-		return nil, errors.New("missing Brave API key")
-	}
-	if maximum <= 0 || maximum > 20 {
-		maximum = 10
-	}
-	return &BraveSearch{client: &HTTPClient{Client: client, MaxBody: defaultMaxBody}, endpoint: strings.TrimRight(endpoint, "/"), apiKey: apiKey, maximum: maximum}, nil
-}
-
-func (s *BraveSearch) Search(ctx context.Context, query string, count int) ([]SearchResult, error) {
-	query = strings.TrimSpace(query)
-	if query == "" {
-		return nil, ErrEmptyQuery
-	}
-	if len(query) > 500 {
-		return nil, errors.New("search query exceeds limit")
-	}
-	if count < 1 {
-		count = 1
-	}
-	if count > s.maximum {
-		count = s.maximum
-	}
-	parsed, _ := url.Parse(s.endpoint)
-	values := parsed.Query()
-	values.Set("q", query)
-	values.Set("count", strconv.Itoa(count))
-	parsed.RawQuery = values.Encode()
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, parsed.String(), nil)
-	if err != nil {
-		return nil, errors.New("create Brave request")
-	}
-	request.Header.Set("Accept", "application/json")
-	request.Header.Set("X-Subscription-Token", s.apiKey)
-	type braveResponse struct {
-		Web struct {
-			Results []struct{ Title, URL, Description string } `json:"results"`
-		} `json:"web"`
-	}
-	response, err := DecodeJSON[braveResponse](ctx, s.client, request)
-	if err != nil {
-		return nil, err
-	}
-	results := make([]SearchResult, 0, min(len(response.Web.Results), count))
-	for _, result := range response.Web.Results {
-		if len(results) == count {
-			break
-		}
-		parsedURL, err := url.Parse(result.URL)
-		if err != nil || parsedURL.Scheme != "https" {
-			continue
-		}
-		results = append(results, SearchResult{Title: result.Title, URL: result.URL, Description: result.Description})
-	}
-	return results, nil
-}
 
 type WebPage struct {
 	URL       string `json:"url"`
@@ -215,10 +136,6 @@ func (l *WebLoader) safeDialContext(ctx context.Context, network, address string
 
 func unsafeIP(ip net.IP) bool {
 	return ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() || ip.IsMulticast()
-}
-
-func secureOrLoopback(parsed *url.URL) bool {
-	return parsed.Scheme == "https" || parsed.Scheme == "http" && (parsed.Hostname() == "127.0.0.1" || parsed.Hostname() == "localhost" || parsed.Hostname() == "::1")
 }
 
 func extractPageText(data []byte, contentType string) (string, string) {

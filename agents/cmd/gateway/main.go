@@ -27,6 +27,7 @@ import (
 	"agents/internal/agui"
 	"agents/internal/auth"
 	"agents/internal/bootstrap"
+	"agents/internal/bravesearch"
 	"agents/internal/clerk"
 	"agents/internal/cloudflare"
 	"agents/internal/common"
@@ -488,6 +489,13 @@ func main() {
 	pending := cloudflare.NewPendingStore(d1, time.Now)
 	limiter := rate.NewProviderLimiter(d1, time.Now)
 	availableProviders := providerpolicy.FallbackProviders(cfg.Providers)
+	var braveSearch *bravesearch.Client
+	if braveKey := strings.TrimSpace(os.Getenv("BRAVE_API_KEY")); braveKey != "" {
+		braveSearch, err = bravesearch.New(common.NewHTTPClient(15*time.Second, 4<<20).Client, "https://api.search.brave.com/res/v1/web/search", braveKey, 10)
+		if err != nil {
+			log.Fatalf("configure Brave search: %v", err)
+		}
+	}
 
 	resumeProvider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Resume)
 	if err != nil {
@@ -506,7 +514,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("configure presentation fallbacks: %v", err)
 	}
-	presentationAgent, err := presentation.New(presentationModel, agui.NewAGUIToolset(pending))
+	presentationAgent, err := presentation.New(presentationModel, braveSearch, agui.NewAGUIToolset(pending))
 	if err != nil {
 		log.Fatalf("build presentation agent: %v", err)
 	}
@@ -561,13 +569,6 @@ func main() {
 	travelAgent, err := travel.New(travelModel, agui.NewAGUIToolset(pending), travel.NewTRVL(trvlEndpoint, &http.Client{Timeout: 20 * time.Second}))
 	if err != nil {
 		log.Fatalf("build travel agent: %v", err)
-	}
-	var braveSearch *common.BraveSearch
-	if braveKey := strings.TrimSpace(os.Getenv("BRAVE_API_KEY")); braveKey != "" {
-		braveSearch, err = common.NewBraveSearch(common.NewHTTPClient(15*time.Second, 4<<20).Client, "https://api.search.brave.com/res/v1/web/search", braveKey, 10)
-		if err != nil {
-			log.Fatalf("configure Brave search: %v", err)
-		}
 	}
 	fitnessProvider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Fitness)
 	if err != nil {

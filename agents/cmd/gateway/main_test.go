@@ -283,7 +283,7 @@ func TestOAuthCredentialsSkipRoutesWithoutProviderTools(t *testing.T) {
 }
 
 func TestGatewayPresentationAGUIRoute(t *testing.T) {
-	presentationAgent, err := presentation.New(fakeResumeModel{})
+	presentationAgent, err := presentation.New(fakeResumeModel{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

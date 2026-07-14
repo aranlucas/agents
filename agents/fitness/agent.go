@@ -1,7 +1,7 @@
 package fitness
 
 import (
-	"agents/internal/common"
+	"agents/internal/bravesearch"
 	"agents/internal/fitnessdata"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
@@ -16,18 +16,18 @@ type SearchArgs struct {
 }
 
 type SearchResult struct {
-	Results []common.SearchResult `json:"results"`
+	Results []bravesearch.Result `json:"results"`
 }
 
-func New(m model.LLM, activities fitnessdata.Repository, search *common.BraveSearch, toolsets ...tool.Toolset) (agent.Agent, error) {
+func New(m model.LLM, activities fitnessdata.Repository, search *bravesearch.Client, toolsets ...tool.Toolset) (agent.Agent, error) {
 	return newAgent(m, activities, search, llmagent.ModeChat, toolsets...)
 }
 
-func NewTask(m model.LLM, activities fitnessdata.Repository, search *common.BraveSearch, toolsets ...tool.Toolset) (agent.Agent, error) {
+func NewTask(m model.LLM, activities fitnessdata.Repository, search *bravesearch.Client, toolsets ...tool.Toolset) (agent.Agent, error) {
 	return newAgent(m, activities, search, llmagent.ModeTask, toolsets...)
 }
 
-func newAgent(m model.LLM, activities fitnessdata.Repository, search *common.BraveSearch, mode llmagent.Mode, toolsets ...tool.Toolset) (agent.Agent, error) {
+func newAgent(m model.LLM, activities fitnessdata.Repository, search *bravesearch.Client, mode llmagent.Mode, toolsets ...tool.Toolset) (agent.Agent, error) {
 	tools, err := staticTools(search)
 	if err != nil {
 		return nil, err
@@ -44,7 +44,7 @@ func newAgent(m model.LLM, activities fitnessdata.Repository, search *common.Bra
 	return llmagent.New(config)
 }
 
-func staticTools(search *common.BraveSearch) ([]tool.Tool, error) {
+func staticTools(search *bravesearch.Client) ([]tool.Tool, error) {
 	getCurrentDateTool, err := functiontool.New(functiontool.Config{
 		Name:        "get_current_date",
 		Description: "Return the current UTC date.",
