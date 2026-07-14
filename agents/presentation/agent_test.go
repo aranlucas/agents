@@ -17,7 +17,7 @@ func (fakeModel) GenerateContent(context.Context, *model.LLMRequest, bool) iter.
 	return func(func(*model.LLMResponse, error) bool) {}
 }
 
-func TestPresentationToolsExposeBulkBuildOnly(t *testing.T) {
+func TestPresentationToolsExposeOnlyAtomicMutationTools(t *testing.T) {
 	tools, err := presentationTools()
 	if err != nil {
 		t.Fatal(err)
@@ -26,7 +26,7 @@ func TestPresentationToolsExposeBulkBuildOnly(t *testing.T) {
 	for _, item := range tools {
 		names = append(names, item.Name())
 	}
-	if !slices.Contains(names, "build_presentation") || slices.Contains(names, "create_slide") {
+	if !slices.Equal(names, []string{"build_presentation", "revise_presentation"}) {
 		t.Fatalf("tool names = %v", names)
 	}
 }
@@ -39,7 +39,7 @@ func TestPresentationAgentEmbedsInstructionAndBuilds(t *testing.T) {
 	if agent.Name() != AppName {
 		t.Fatalf("name = %q", agent.Name())
 	}
-	if !strings.Contains(Instruction, "build_presentation") || !strings.Contains(Instruction, "State is the source of truth") {
+	if !strings.Contains(Instruction, "build_presentation") || !strings.Contains(Instruction, "revise_presentation") || !strings.Contains(Instruction, "State is the source of truth") {
 		t.Fatal("instruction assets are incomplete")
 	}
 }

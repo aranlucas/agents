@@ -92,6 +92,59 @@ func TestUpdateSlidePreservesUntouchedFieldsAndMissingDoesNotMutate(t *testing.T
 	}
 }
 
+func TestRevisePresentationAppliesAllChangesAtomically(t *testing.T) {
+	state := newPresentationState(
+		Slide{ID: "a", Type: "title", Heading: "Old title", Body: "Keep"},
+		Slide{ID: "b", Type: "content", Heading: "Old problem", Body: "Old body"},
+		Slide{ID: "c", Type: "content", Heading: "Delete me"},
+	)
+	state.Title, state.Theme, state.Status = "Deck", "light", StatusReady
+	title, body := "New title", "Detailed problem"
+	result, err := revisePresentation(&state, RevisePresentationArgs{
+		Updates: []UpdateSlideArgs{
+			{SlideID: "a", Heading: &title},
+			{SlideID: "b", Body: &body},
+		},
+		DeleteSlideIDs:     []string{"c"},
+		SlideIDs:           []string{"b", "a"},
+		MarkReady:          true,
+		Summary:            "Updated both remaining slides.",
+		ExpectedSlideCount: 2,
+	})
+	if err != nil || !result.OK {
+		t.Fatalf("revisePresentation() = %#v, %v", result, err)
+	}
+	if result.UpdatedSlideCount != 2 || result.SlideCount != 2 || result.Status != StatusReady {
+		t.Fatalf("result = %#v", result)
+	}
+	if !slices.Equal(result.UpdatedSlideIDs, []string{"a", "b"}) || !slices.Equal(result.DeletedSlideIDs, []string{"c"}) || !slices.Equal(result.SlideIDs, []string{"b", "a"}) {
+		t.Fatalf("result IDs = %#v", result)
+	}
+	if state.Slides[0].ID != "b" || state.Slides[0].Body != body || state.Slides[1].ID != "a" || state.Slides[1].Heading != title {
+		t.Fatalf("slides = %#v", state.Slides)
+	}
+	if state.ReviewSummary != "Updated both remaining slides." || state.Status != StatusReady {
+		t.Fatalf("state = %#v", state)
+	}
+}
+
+func TestRevisePresentationFailureLeavesStateUnchanged(t *testing.T) {
+	state := newPresentationState(Slide{ID: "a", Type: "content", Heading: "Original", Body: "Keep"})
+	state.Title = "Deck"
+	snapshot := state
+	heading := "Changed"
+	result, err := revisePresentation(&state, RevisePresentationArgs{Updates: []UpdateSlideArgs{
+		{SlideID: "a", Heading: &heading},
+		{SlideID: "missing", Heading: &heading},
+	}})
+	if err != nil || result.OK || result.Error == nil || result.Error.Code != "slide_not_found" {
+		t.Fatalf("revisePresentation() = %#v, %v", result, err)
+	}
+	if !equalJSON(snapshot, state) {
+		t.Fatalf("failed atomic revision mutated state: %#v", state)
+	}
+}
+
 func TestCreateDeleteAndReadyWorkflow(t *testing.T) {
 	state := Defaults()
 	_, _ = setMeta(&state, SetMetaArgs{Title: "Demo", Theme: "light"})

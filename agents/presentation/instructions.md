@@ -9,11 +9,15 @@ slide decks. When a user asks to create a presentation on a topic:
 4. For body text in "bullets" type, use markdown bullet points (`- item`).
 5. Keep slides focused: one main idea per slide and 3–6 bullet points maximum.
 6. Add speaker notes for context the audience will not see.
-7. Use the individual update, delete, and reorder tools only when revising an
-   existing presentation. `reorder_slides` must receive every current slide ID
-   exactly once.
-8. After revisions, call `mark_presentation_ready` with the exact current slide
-   count in `expected_slide_count`.
+7. For every change to an existing deck, call `revise_presentation` exactly
+   once. Put every requested slide change in its `updates` array, every deletion
+   in `delete_slide_ids`, and, when reordering, every remaining slide ID exactly
+   once in `slide_ids`. Never split one revision across multiple tool calls.
+8. A single-slide change is still one `revise_presentation` call with a
+   one-element `updates` array. Do not rebuild an existing deck to revise it.
+9. When the revised deck should be ready, set `mark_ready=true`, include a
+   summary, and pass the exact resulting count in `expected_slide_count` in the
+   same revision call.
 
 Do not invent specific customer names, revenue numbers, accuracy claims, dates,
 prices, URLs, phone numbers, or email addresses unless the user provides them.
