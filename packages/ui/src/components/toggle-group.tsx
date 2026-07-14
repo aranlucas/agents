@@ -20,6 +20,8 @@ const ToggleGroupContext = React.createContext<
   orientation: "horizontal",
 });
 
+type CSSVariableStyle = React.CSSProperties & Record<`--${string}`, string | number>;
+
 function ToggleGroup({
   className,
   variant,
@@ -45,7 +47,11 @@ function ToggleGroup({
       data-size={size}
       data-spacing={spacing}
       data-orientation={orientation}
-      style={{ "--gap": spacing } as React.CSSProperties}
+      style={
+        {
+          "--gap": spacing,
+        } as CSSVariableStyle
+      }
       className={cn(
         "group/toggle-group flex w-fit flex-row items-center gap-[--spacing(var(--gap))] rounded-lg data-vertical:flex-col data-vertical:items-stretch data-[size=sm]:rounded-[min(var(--radius-md),10px)]",
         className,

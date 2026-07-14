@@ -9,6 +9,9 @@ import {
   OctagonXIcon,
   Loader2Icon,
 } from "lucide-react";
+import type { CSSProperties } from "react";
+
+type CSSVariableStyle = CSSProperties & Record<`--${string}`, string | number>;
 
 const Toaster = ({ ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme();
@@ -32,7 +35,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--normal-text": "var(--popover-foreground)",
           "--normal-border": "var(--border)",
           "--border-radius": "var(--radius)",
-        } as React.CSSProperties
+        } as CSSVariableStyle
       }
       toastOptions={{
         classNames: {

@@ -77,10 +77,13 @@ export type AgentToolProps = ComponentProps<typeof AccordionItem> & {
 export const AgentTool = memo(({ className, tool, value, ...props }: AgentToolProps) => {
   const schema = "jsonSchema" in tool && tool.jsonSchema ? tool.jsonSchema : tool.inputSchema;
 
+  const description =
+    typeof tool.description === "function" ? tool.description({ context: tool }) : tool.description;
+
   return (
     <AccordionItem className={cn("border-b last:border-b-0", className)} value={value} {...props}>
       <AccordionTrigger className="px-3 py-2 text-sm hover:no-underline">
-        {tool.description ?? "No description"}
+        {description ?? "No description"}
       </AccordionTrigger>
       <AccordionContent className="px-3 pb-3">
         <div className="bg-muted/50 rounded-md">

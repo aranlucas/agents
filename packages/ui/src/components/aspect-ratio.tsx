@@ -1,4 +1,7 @@
 import { cn } from "@agents/ui/lib/utils";
+import type { CSSProperties } from "react";
+
+type CSSVariableStyle = CSSProperties & Record<`--${string}`, string | number>;
 
 function AspectRatio({
   ratio,
@@ -11,7 +14,7 @@ function AspectRatio({
       style={
         {
           "--ratio": ratio,
-        } as React.CSSProperties
+        } as CSSVariableStyle
       }
       className={cn("relative aspect-(--ratio)", className)}
       {...props}
