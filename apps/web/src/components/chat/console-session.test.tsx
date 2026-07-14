@@ -80,7 +80,7 @@ describe("ConsoleSession direct AG-UI connection", () => {
 
     await waitFor(() => expect(mocks.copilotProps).not.toBeNull());
     expect(mocks.copilotProps).not.toHaveProperty("runtimeUrl");
-    const agents = mocks.copilotProps?.selfManagedAgents as Record<
+    const agents = mocks.copilotProps?.agents__unsafe_dev_only as Record<
       string,
       InstanceType<typeof mocks.MockHttpAgent>
     >;

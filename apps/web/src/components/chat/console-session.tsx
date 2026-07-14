@@ -28,11 +28,7 @@ type BuildSelfManagedAgentsArgs = {
   fetchAgent: (url: string, init?: RequestInit) => Promise<Response>;
 };
 
-function buildSelfManagedAgents({
-  baseUrl,
-  headers,
-  fetchAgent,
-}: BuildSelfManagedAgentsArgs): DirectAgentMap {
+function buildAgents({ baseUrl, headers, fetchAgent }: BuildSelfManagedAgentsArgs): DirectAgentMap {
   const agents: DirectAgentMap = {};
 
   for (const id of AGENT_ORDER) {
@@ -89,9 +85,9 @@ function DirectConsoleSession({ agent: agentId, thread, children }: ConsoleSessi
     [getToken],
   );
 
-  const selfManagedAgents = useMemo(
+  const agents__unsafe_dev_only = useMemo(
     () =>
-      buildSelfManagedAgents({
+      buildAgents({
         baseUrl: AGENTS_BASE_URL,
         headers: agentHeaders,
         fetchAgent: authenticatedFetch,
@@ -105,7 +101,7 @@ function DirectConsoleSession({ agent: agentId, thread, children }: ConsoleSessi
 
   return (
     <CopilotKit
-      selfManagedAgents={selfManagedAgents}
+      agents__unsafe_dev_only={agents__unsafe_dev_only}
       agent={agentId}
       threadId={thread}
       enableInspector={process.env.NODE_ENV !== "production"}
