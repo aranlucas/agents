@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cn } from "@agents/ui/lib/utils";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -11,17 +12,19 @@ const externalLinkProps = {
 
 const ideas = [
   {
-    title: "What can I stop doing manually?",
+    title: "What would I build for my own life?",
     description:
-      "I’m looking for repetitive planning, research, and coordination an agent can own.",
+      "Bring the way I build software into everyday life: break down a problem, automate the repeatable parts, and keep the result useful.",
   },
   {
-    title: "What should an agent remember?",
-    description: "Automation gets useful when preferences, decisions, and state carry forward.",
+    title: "What should it research for me?",
+    description:
+      "Compare options, surface tradeoffs, and bring back the details I need to make a decision.",
   },
   {
-    title: "How should it hand the work back?",
-    description: "The result should be something I can inspect, change, and use.",
+    title: "What should it finish?",
+    description:
+      "Turn decisions into useful next steps: an itinerary, shopping list, workout, reminder, or draft I can review.",
   },
 ] as const;
 
@@ -31,116 +34,89 @@ const agentDemos = [
     description: "Create durable itineraries.",
     href: "/console/travel",
     glyph: "✈",
-    color: "var(--travel)",
+    colorClass: "text-travel",
   },
   {
     title: "Grocery",
     description: "Ground meal plans and shopping lists in commerce tools.",
     href: "/console/grocery",
     glyph: "🛒",
-    color: "var(--grocery)",
+    colorClass: "text-grocery",
   },
   {
     title: "Fitness",
     description: "Turn goals and activity into a training plan.",
     href: "/console/fitness",
     glyph: "💪",
-    color: "var(--fitness)",
+    colorClass: "text-fitness",
   },
   {
     title: "Wellness",
     description: "Coordinate grocery and fitness into one week.",
     href: "/console/wellness",
     glyph: "☯",
-    color: "var(--wellness)",
+    colorClass: "text-wellness",
   },
   {
     title: "Expense Desk",
     description: "Audit expenses and produce a report.",
     href: "/console/expense",
     glyph: "$",
-    color: "var(--expense)",
+    colorClass: "text-expense",
   },
   {
     title: "Oral Boards",
     description: "Run a staged clinical examination.",
     href: "/console/oral-boards",
     glyph: "◆",
-    color: "var(--oral-boards)",
+    colorClass: "text-oral-boards",
   },
   {
     title: "Trends",
     description: "Explore search trends visually.",
     href: "/console/trends",
     glyph: "↗",
-    color: "var(--trends)",
+    colorClass: "text-trends",
   },
   {
     title: "Research",
     description: "Turn a question into a structured report.",
     href: "/console/research",
     glyph: "⌕",
-    color: "var(--research)",
+    colorClass: "text-research",
   },
   {
     title: "Spreadsheet",
     description: "Create and revise spreadsheets.",
     href: "/console/spreadsheet",
     glyph: "▦",
-    color: "var(--spreadsheet)",
+    colorClass: "text-spreadsheet",
   },
   {
     title: "Slides",
     description: "Build a presentation on a live surface.",
     href: "/console/presentation",
     glyph: "▤",
-    color: "var(--presentation)",
+    colorClass: "text-presentation",
   },
 ] as const;
 
-function TextLink({
-  href,
-  children,
-  external = false,
-}: {
-  href: string;
-  children: React.ReactNode;
-  external?: boolean;
-}) {
-  const className =
-    "text-primary decoration-primary/35 hover:text-accent-foreground focus-visible:outline-ring rounded-sm font-medium underline underline-offset-[3px] transition-colors hover:decoration-current focus-visible:outline-2 focus-visible:outline-offset-4";
-
-  if (external) {
-    return (
-      <a className={className} href={href} {...externalLinkProps}>
-        {children}
-      </a>
-    );
-  }
-
-  return (
-    <Link className={className} href={href} target="_top">
-      {children}
-    </Link>
-  );
-}
-
 function SiteHeader() {
   return (
-    <header className="mx-auto flex max-w-[680px] items-center justify-between gap-6 px-5 pt-7 sm:px-0 sm:pt-10">
+    <header className="mx-auto flex max-w-2xl items-center justify-between gap-6 px-5 pt-7 sm:px-0 sm:pt-10">
       <Link
-        className="focus-visible:outline-ring flex items-center gap-2.5 rounded-sm text-[15px] font-semibold tracking-[-0.015em] focus-visible:outline-2 focus-visible:outline-offset-4"
+        className="flex items-center gap-2.5 rounded-sm text-base font-semibold tracking-tight focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
         href="/"
         target="_top"
       >
-        <span className="border-border text-primary grid size-7 place-items-center rounded-md border bg-(--surface-raised) font-mono text-[9px] font-semibold">
+        <span className="grid size-7 place-items-center rounded-md border border-border bg-surface-raised font-mono text-xs font-semibold text-primary">
           LA
         </span>
         <span>Lucas Arango</span>
       </Link>
       <nav
         aria-label="External links"
-        className="text-muted-foreground flex items-center gap-3 text-[13px]"
+        className="flex items-center gap-3 text-sm text-muted-foreground"
       >
         <a
           className="hover:text-foreground"
@@ -158,21 +134,21 @@ function SiteHeader() {
 function Ideas() {
   return (
     <section aria-labelledby="ideas-heading" className="mt-20 sm:mt-24">
-      <h2 id="ideas-heading" className="text-sm font-semibold tracking-[-0.01em]">
-        What I want to automate
+      <h2 id="ideas-heading" className="text-sm font-semibold tracking-tight">
+        What I want personal agents to handle
       </h2>
-      <ol className="border-border mt-5 border-t">
+      <ol className="mt-5 border-t border-border">
         {ideas.map((idea, index) => (
           <li
-            className="border-border grid gap-3 border-b py-6 sm:grid-cols-[2rem_1fr] sm:gap-5"
+            className="grid gap-3 border-b border-border py-6 sm:grid-cols-12 sm:gap-5"
             key={idea.title}
           >
-            <span className="text-muted-foreground font-mono text-[11px] leading-6">
+            <span className="font-mono text-xs leading-6 text-muted-foreground sm:col-span-1">
               {String(index + 1).padStart(2, "0")}
             </span>
-            <article>
-              <h3 className="text-[18px] leading-7 font-medium tracking-[-0.02em]">{idea.title}</h3>
-              <p className="text-muted-foreground mt-2 max-w-[590px] text-[15px] leading-7">
+            <article className="sm:col-span-11">
+              <h3 className="text-base leading-6 font-medium tracking-tight">{idea.title}</h3>
+              <p className="mt-2 max-w-xl text-base leading-7 text-muted-foreground">
                 {idea.description}
               </p>
             </article>
@@ -186,37 +162,34 @@ function Ideas() {
 function AgentDemos() {
   return (
     <section aria-labelledby="agents-heading" className="mt-20 sm:mt-24">
-      <div className="flex items-end justify-between gap-6">
-        <h2 id="agents-heading" className="text-sm font-semibold tracking-[-0.01em]">
-          Working agents
-        </h2>
-        <TextLink external href="https://github.com/aranlucas/agents">
-          Source
-        </TextLink>
-      </div>
-      <ul className="border-border mt-5 border-t">
-        {agentDemos.map(({ title, description, href, glyph, color }) => (
-          <li className="border-border border-b" key={title}>
+      <h2 id="agents-heading" className="text-sm font-semibold tracking-tight">
+        Working agents
+      </h2>
+      <ul className="mt-5 border-t border-border">
+        {agentDemos.map(({ title, description, href, glyph, colorClass }) => (
+          <li className="border-b border-border" key={title}>
             <Link
-              className="agent-index-row focus-visible:outline-ring group grid grid-cols-[1.75rem_1fr_auto] items-center gap-x-3 gap-y-1 rounded-sm py-3.5 focus-visible:outline-2 focus-visible:outline-offset-4 sm:grid-cols-[1.75rem_8rem_1fr_auto] sm:gap-4"
+              className="group grid grid-cols-12 items-center gap-x-3 gap-y-1 rounded-sm py-3.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring sm:gap-4"
               href={href}
               target="_top"
             >
               <span
-                className="border-border row-span-2 grid size-7 place-items-center rounded-md border bg-(--surface-raised) font-mono text-[11px] sm:row-span-1"
-                style={{ color }}
+                className={cn(
+                  "col-span-1 row-span-2 grid size-7 place-items-center rounded-md border border-border bg-surface-raised font-mono text-xs sm:row-span-1",
+                  colorClass,
+                )}
               >
                 {glyph}
               </span>
-              <span className="text-[15px] font-medium tracking-[-0.01em] group-hover:underline group-hover:underline-offset-4">
+              <span className="col-span-9 text-base font-medium tracking-tight group-hover:underline group-hover:underline-offset-4 sm:col-span-3">
                 {title}
               </span>
-              <span className="text-muted-foreground col-span-2 col-start-2 pr-6 text-[14px] leading-6 sm:col-span-1 sm:col-start-auto">
+              <span className="col-span-11 col-start-2 pe-6 text-sm leading-6 text-muted-foreground sm:col-span-7 sm:col-start-auto">
                 {description}
               </span>
               <span
                 aria-hidden="true"
-                className="text-muted-foreground col-start-3 row-start-1 text-sm transition-transform group-hover:translate-x-0.5 sm:col-start-auto sm:row-start-auto"
+                className="col-span-2 col-start-11 row-start-1 text-right text-sm text-muted-foreground transition-transform group-hover:translate-x-0.5 sm:col-span-1 sm:col-start-auto sm:row-start-auto"
               >
                 →
               </span>
@@ -232,9 +205,9 @@ function About() {
   return (
     <section
       aria-labelledby="about-heading"
-      className="border-border mt-20 h-56 overflow-hidden border-t pt-7 sm:mt-24"
+      className="mt-20 min-h-56 border-t border-border pt-7 sm:mt-24"
     >
-      <h2 id="about-heading" className="text-sm font-semibold tracking-[-0.01em]">
+      <h2 id="about-heading" className="text-sm font-semibold tracking-tight">
         About me
       </h2>
       <GeneratedIntroduction />
@@ -244,15 +217,15 @@ function About() {
 
 export function PortfolioHome() {
   return (
-    <div className="bg-background text-foreground min-h-screen font-sans selection:bg-(--accent-soft)">
+    <div className="min-h-screen bg-background font-sans text-foreground selection:bg-accent">
       <SiteHeader />
 
-      <main className="mx-auto max-w-[680px] px-5 pb-20 sm:px-0 sm:pb-28">
+      <main className="mx-auto max-w-2xl px-5 pb-20 sm:px-0 sm:pb-28">
         <section className="pt-20 sm:pt-28">
-          <h1 className="max-w-[620px] text-[clamp(2.25rem,6vw,2.8rem)] leading-[1.08] font-medium tracking-[-0.045em] text-balance">
+          <h1 className="max-w-2xl text-4xl leading-none font-medium tracking-tighter text-balance sm:text-5xl">
             Hi, I’m Lucas.
           </h1>
-          <p className="mt-7 max-w-[640px] text-[18px] leading-8 tracking-[-0.015em] text-(--ink-soft) sm:text-[19px]">
+          <p className="mt-7 max-w-2xl text-lg leading-8 tracking-tight text-ink-soft sm:text-xl">
             I’m exploring what agents can do by building them for my own life.
           </p>
           <About />
@@ -262,7 +235,7 @@ export function PortfolioHome() {
         <AgentDemos />
       </main>
 
-      <footer className="border-border text-muted-foreground mx-auto flex max-w-[680px] items-center justify-between border-t px-5 py-7 text-[13px] sm:px-0">
+      <footer className="mx-auto flex max-w-2xl items-center justify-between border-t border-border px-5 py-7 text-sm text-muted-foreground sm:px-0">
         <span>Lucas Arango</span>
         <span>Agents as software.</span>
       </footer>

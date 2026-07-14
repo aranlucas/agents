@@ -31,8 +31,7 @@ const STATUS_META: Record<TrendsStatus, { label: string; className: string }> = 
   },
   querying: {
     label: "Querying",
-    className:
-      "border-[color-mix(in_srgb,var(--page-color)_35%,transparent)] bg-[color-mix(in_srgb,var(--page-color)_10%,transparent)] text-[var(--page-color)]",
+    className: "border-page/35 bg-page/10 text-page",
   },
   ready: {
     label: "Ready",
@@ -109,7 +108,7 @@ function buildChartData(rows: TrendsRow[], labelColumn: string, metric: Metric):
     const max = Math.max(...items.map((item) => item.value));
     return items.map((item) => ({ ...item, barValue: max - item.value + 1 }));
   }
-  return items.map((item) => ({ ...item, barValue: Math.max(item.value, 0) }));
+  return items.map((item) => Object.assign(item, { barValue: Math.max(item.value, 0) }));
 }
 
 function formatMetric(value: number, metric: Metric) {
@@ -147,31 +146,35 @@ function ComparisonChart({ rows, columns }: { rows: TrendsRow[]; columns: string
       <div className="mb-4 flex items-end justify-between gap-3">
         <div>
           <div className="mb-1 flex items-center gap-2">
-            <BarChart3 aria-hidden="true" className="size-4 text-[var(--page-color)]" />
+            <BarChart3 aria-hidden="true" className="size-4 text-page" />
             <h3 id="trends-comparison" className="text-sm font-semibold">
               Comparison
             </h3>
           </div>
-          <p className="text-muted-foreground text-xs">{metric.label}</p>
+          <p className="text-xs text-muted-foreground">{metric.label}</p>
         </div>
-        <span className="text-muted-foreground text-xs tabular-nums">Top {data.length}</span>
+        <span className="text-xs text-muted-foreground tabular-nums">Top {data.length}</span>
       </div>
 
-      <div className="space-y-3" role="img" aria-label={`${metric.label} by ${labelColumn}`}>
+      <div
+        className="flex flex-col gap-3"
+        role="img"
+        aria-label={`${metric.label} by ${labelColumn}`}
+      >
         {data.map((item, index) => (
-          <div key={item.label} className="grid grid-cols-[minmax(0,1fr)_6rem] gap-3">
-            <div className="min-w-0">
+          <div key={item.label} className="grid grid-cols-4 gap-3">
+            <div className="col-span-3 min-w-0">
               <div className="mb-1.5 flex items-baseline gap-2 text-sm">
-                <span className="text-muted-foreground w-5 shrink-0 text-right text-xs tabular-nums">
+                <span className="w-5 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
                   {index + 1}
                 </span>
                 <span className="truncate font-medium" title={item.label}>
                   {item.label}
                 </span>
               </div>
-              <div className="bg-muted ml-7 h-2 overflow-hidden rounded-full">
+              <div className="ms-7 h-2 overflow-hidden rounded-full bg-muted">
                 <div
-                  className="h-full min-w-1 rounded-full bg-[var(--page-color)] transition-[width] duration-500 motion-reduce:transition-none"
+                  className="h-full min-w-1 rounded-full bg-page transition-all duration-500 motion-reduce:transition-none"
                   data-testid="trends-chart-bar"
                   style={{ width: `${Math.max((item.barValue / maxBarValue) * 100, 2)}%` }}
                 />
@@ -197,7 +200,7 @@ export function TrendsArtifact({ state: rawState, view, onClose }: AgentArtifact
   const question = state.query?.trim() ? state.query.trim() : view.content;
 
   return (
-    <Artifact className="h-full rounded-none border-0 border-l" data-testid="trends-artifact">
+    <Artifact className="h-full rounded-none border-0 border-s" data-testid="trends-artifact">
       <ArtifactHeader className="items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -216,17 +219,17 @@ export function TrendsArtifact({ state: rawState, view, onClose }: AgentArtifact
       </ArtifactHeader>
 
       <ArtifactContent className="p-0">
-        <section className="border-b bg-[color-mix(in_srgb,var(--page-color)_7%,transparent)] px-5 py-5">
-          <div className="mb-2 flex items-center gap-2 text-[var(--page-color)]">
+        <section className="border-b bg-page/10 p-5">
+          <div className="mb-2 flex items-center gap-2 text-page">
             <Search aria-hidden="true" className="size-4" />
-            <p className="text-xs font-semibold tracking-[0.16em] uppercase">Question</p>
+            <p className="text-xs font-semibold tracking-widest uppercase">Question</p>
           </div>
           <h2 className="text-lg leading-snug font-semibold">{question}</h2>
         </section>
 
-        <div className="space-y-8 p-5">
+        <div className="flex flex-col gap-8 p-5">
           {state.error?.trim() ? (
-            <p className="border-destructive/25 bg-destructive/5 text-destructive rounded-md border px-3 py-3 text-sm">
+            <p className="rounded-md border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive">
               {state.error}
             </p>
           ) : null}
@@ -236,12 +239,12 @@ export function TrendsArtifact({ state: rawState, view, onClose }: AgentArtifact
           {state.insights?.trim() ? (
             <section aria-labelledby="trends-insights">
               <div className="mb-3 flex items-center gap-2">
-                <Sparkles aria-hidden="true" className="size-4 text-[var(--page-color)]" />
+                <Sparkles aria-hidden="true" className="size-4 text-page" />
                 <h3 id="trends-insights" className="text-sm font-semibold">
                   Insights
                 </h3>
               </div>
-              <div className="prose prose-sm dark:prose-invert max-w-none">
+              <div className="prose prose-sm max-w-none dark:prose-invert">
                 <Streamdown>{state.insights}</Streamdown>
               </div>
             </section>
@@ -251,19 +254,19 @@ export function TrendsArtifact({ state: rawState, view, onClose }: AgentArtifact
             <section aria-labelledby="trends-data">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <Database aria-hidden="true" className="size-4 text-[var(--page-color)]" />
+                  <Database aria-hidden="true" className="size-4 text-page" />
                   <h3 id="trends-data" className="text-sm font-semibold">
                     Result data
                   </h3>
                 </div>
-                <span className="text-muted-foreground text-xs tabular-nums">
+                <span className="text-xs text-muted-foreground tabular-nums">
                   {rows.length} rows
                 </span>
               </div>
               <div className="overflow-hidden rounded-md border">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-muted/35 hover:bg-muted/35">
+                    <TableRow className="bg-muted/35">
                       {columns.map((column) => (
                         <TableHead key={column} className="text-xs">
                           {column.replaceAll("_", " ")}
@@ -289,10 +292,10 @@ export function TrendsArtifact({ state: rawState, view, onClose }: AgentArtifact
 
           {state.generated_sql?.trim() ? (
             <details className="group border-t pt-4">
-              <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-xs font-semibold tracking-wide uppercase transition-colors">
+              <summary className="cursor-pointer text-xs font-semibold tracking-wide text-muted-foreground uppercase transition-colors hover:text-foreground">
                 Generated SQL
               </summary>
-              <pre className="bg-muted/45 mt-3 overflow-x-auto rounded-md border p-3 text-xs leading-relaxed">
+              <pre className="mt-3 overflow-x-auto rounded-md border bg-muted/45 p-3 text-xs leading-relaxed">
                 <code>{state.generated_sql}</code>
               </pre>
             </details>

@@ -37,7 +37,7 @@ export default function Home() {
 
       <div className="mb-4 text-center sm:mb-6">
         <Badge className="bg-indigo-600 px-3 py-1.5 text-xs text-white hover:bg-indigo-700 sm:px-4 sm:py-2 sm:text-sm">
-          <Calendar className="mr-1.5 h-3 w-3 sm:h-4 sm:w-4" />
+          <Calendar className="me-1.5 size-3 sm:size-4" />
           Case of the Day -{" "}
           {new Date().toLocaleDateString("en-US", {
             weekday: "long",

@@ -40,12 +40,12 @@ export default function StudyPlanPage() {
         <CardHeader>
           <CardTitle className="text-xl sm:text-2xl">How to Use This Study Plan</CardTitle>
         </CardHeader>
-        <CardContent className="text-muted-foreground space-y-3 text-sm sm:text-base">
+        <CardContent className="flex flex-col gap-3 text-sm text-muted-foreground sm:text-base">
           <p>
             This comprehensive 10-month study plan is designed to help you systematically prepare
             for the Pediatric Dentistry Oral Boards fall examination cycle.
           </p>
-          <ul className="ml-2 list-inside list-disc space-y-2 sm:ml-4">
+          <ul className="ms-2 flex list-inside list-disc flex-col gap-2 sm:ms-4">
             <li>Each month focuses on specific topics with clear goals and activities</li>
             <li>Use the daily case presentations on this site to reinforce monthly topics</li>
             <li>Adjust the pace based on your baseline knowledge and learning needs</li>
@@ -62,25 +62,25 @@ export default function StudyPlanPage() {
       <Card className="mx-auto mb-6 max-w-4xl border-indigo-200 sm:mb-8 dark:border-indigo-800">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-            <Calendar className="h-5 w-5 text-indigo-600" />
+            <Calendar className="size-5 text-indigo-600" />
             ABPD OCE Milestones (2026 Guide)
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="flex flex-col gap-3">
           {examTimeline.map((item) => (
             <div key={`${item.timeframe}-${item.milestone}`} className="rounded border p-3">
               <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
                 {item.timeframe}
               </p>
               <p className="text-sm font-medium">{item.milestone}</p>
-              <p className="text-muted-foreground text-sm">{item.detail}</p>
+              <p className="text-sm text-muted-foreground">{item.detail}</p>
             </div>
           ))}
         </CardContent>
       </Card>
 
       {/* Study Plan Timeline */}
-      <div className="mx-auto max-w-4xl space-y-4 sm:space-y-6">
+      <div className="mx-auto flex max-w-4xl flex-col gap-4 sm:gap-6">
         {studyPlan.map((month, index) => {
           const isCurrentMonth = month.monthNumber === currentMonth;
           const isPastMonth = month.monthNumber < currentMonth;
@@ -114,7 +114,7 @@ export default function StudyPlanPage() {
                     <p className="mt-1 text-sm opacity-90 sm:text-lg">{month.focus}</p>
                   </div>
                   {isCurrentMonth && (
-                    <Badge className="self-start bg-white text-indigo-600 hover:bg-white sm:self-auto">
+                    <Badge className="self-start bg-white text-indigo-600 sm:self-auto">
                       CURRENT
                     </Badge>
                   )}
@@ -122,18 +122,18 @@ export default function StudyPlanPage() {
               </div>
 
               {/* Month Content */}
-              <CardContent className="space-y-4 p-4 sm:space-y-6 sm:p-6">
+              <CardContent className="flex flex-col gap-4 p-4 sm:gap-6 sm:p-6">
                 {/* Topics */}
                 <section>
                   <h4 className="mb-2 flex items-center gap-2 text-base font-semibold sm:mb-3 sm:text-lg">
-                    <Target className="h-4 w-4 text-indigo-600 sm:h-5 sm:w-5" />
+                    <Target className="size-4 text-indigo-600 sm:size-5" />
                     Key Topics
                   </h4>
                   <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 sm:gap-2">
                     {month.topics.map((topic) => (
                       <li
                         key={topic}
-                        className="text-muted-foreground flex items-start gap-2 text-sm sm:text-base"
+                        className="flex items-start gap-2 text-sm text-muted-foreground sm:text-base"
                       >
                         <span className="mt-0.5 text-indigo-600 sm:mt-1">•</span>
                         <span>{topic}</span>
@@ -145,14 +145,14 @@ export default function StudyPlanPage() {
                 {/* Goals */}
                 <section>
                   <h4 className="mb-2 flex items-center gap-2 text-base font-semibold sm:mb-3 sm:text-lg">
-                    <CheckCircle2 className="h-4 w-4 text-green-600 sm:h-5 sm:w-5" />
+                    <CheckCircle2 className="size-4 text-green-600 sm:size-5" />
                     Learning Goals
                   </h4>
-                  <ul className="space-y-1.5 sm:space-y-2">
+                  <ul className="flex flex-col gap-1.5 sm:gap-2">
                     {month.goals.map((goal) => (
                       <li
                         key={goal}
-                        className="text-muted-foreground flex items-start gap-2 text-sm sm:text-base"
+                        className="flex items-start gap-2 text-sm text-muted-foreground sm:text-base"
                       >
                         <span className="mt-0.5 font-bold text-green-600 sm:mt-1">✓</span>
                         <span>{goal}</span>
@@ -164,14 +164,14 @@ export default function StudyPlanPage() {
                 {/* Activities */}
                 <section>
                   <h4 className="mb-2 flex items-center gap-2 text-base font-semibold sm:mb-3 sm:text-lg">
-                    <ArrowRight className="h-4 w-4 text-blue-600 sm:h-5 sm:w-5" />
+                    <ArrowRight className="size-4 text-blue-600 sm:size-5" />
                     Study Activities
                   </h4>
-                  <ul className="space-y-1.5 sm:space-y-2">
+                  <ul className="flex flex-col gap-1.5 sm:gap-2">
                     {month.activities.map((activity) => (
                       <li
                         key={activity}
-                        className="text-muted-foreground flex items-start gap-2 text-sm sm:text-base"
+                        className="flex items-start gap-2 text-sm text-muted-foreground sm:text-base"
                       >
                         <span className="mt-0.5 text-blue-600 sm:mt-1">→</span>
                         <span>{activity}</span>
@@ -183,25 +183,25 @@ export default function StudyPlanPage() {
                 {/* Resources */}
                 <InfoBox variant="blue" className="p-3 sm:p-4">
                   <h4 className="mb-2 flex items-center gap-2 text-base font-semibold sm:mb-3 sm:text-lg">
-                    <BookOpen className="h-4 w-4 text-blue-600 sm:h-5 sm:w-5" />
+                    <BookOpen className="size-4 text-blue-600 sm:size-5" />
                     Recommended Resources
                   </h4>
-                  <ul className="space-y-1.5 sm:space-y-2">
+                  <ul className="flex flex-col gap-1.5 sm:gap-2">
                     {month.resources.map((resource) => (
                       <li
                         key={resource.name}
-                        className="text-muted-foreground flex items-start gap-2 text-sm sm:text-base"
+                        className="flex items-start gap-2 text-sm text-muted-foreground sm:text-base"
                       >
-                        <span className="mt-0.5 flex-shrink-0 text-blue-600 sm:mt-1">📚</span>
+                        <span className="mt-0.5 shrink-0 text-blue-600 sm:mt-1">📚</span>
                         {resource.url ? (
                           <a
                             href={resource.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
+                            className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 hover:dark:text-blue-300"
                           >
                             {resource.name}
-                            <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                            <ExternalLink className="size-3 shrink-0" />
                           </a>
                         ) : (
                           <span>{resource.name}</span>
@@ -220,12 +220,12 @@ export default function StudyPlanPage() {
       <Card className="mx-auto mt-6 max-w-4xl border-2 border-yellow-300 bg-yellow-50/50 sm:mt-8 dark:border-yellow-700 dark:bg-yellow-950/20">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-            <Lightbulb className="h-5 w-5 text-yellow-600" />
+            <Lightbulb className="size-5 text-yellow-600" />
             Study Tips for Success
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <ul className="text-muted-foreground space-y-1.5 text-sm sm:space-y-2 sm:text-base">
+          <ul className="flex flex-col gap-1.5 text-sm text-muted-foreground sm:gap-2 sm:text-base">
             <li className="flex items-start gap-2">
               <span className="text-green-600">✓</span>
               Consistency is key - study a little every day rather than cramming

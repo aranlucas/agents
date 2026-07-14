@@ -15,7 +15,7 @@ import type { ArtifactView } from "./artifact";
 
 export function ArtifactPanel({ view, onClose }: { view: ArtifactView; onClose: () => void }) {
   return (
-    <Artifact className="h-full rounded-none border-0 border-l">
+    <Artifact className="h-full rounded-none border-0 border-s">
       <ArtifactHeader>
         <div className="min-w-0">
           <ArtifactTitle>{view.title}</ArtifactTitle>

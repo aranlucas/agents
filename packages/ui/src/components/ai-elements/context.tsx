@@ -106,7 +106,7 @@ export const ContextTrigger = ({ children, ...props }: ContextTriggerProps) => {
     <HoverCardTrigger>
       {children ?? (
         <Button type="button" variant="ghost" {...props}>
-          <span className="text-muted-foreground font-medium">{renderedPercent}</span>
+          <span className="font-medium text-muted-foreground">{renderedPercent}</span>
           <ContextIcon />
         </Button>
       )}
@@ -141,16 +141,16 @@ export const ContextContentHeader = ({
   }).format(maxTokens);
 
   return (
-    <div className={cn("w-full space-y-2 p-3", className)} {...props}>
+    <div className={cn("flex w-full flex-col gap-2 p-3", className)} {...props}>
       {children ?? (
         <>
           <div className="flex items-center justify-between gap-3 text-xs">
             <p>{displayPct}</p>
-            <p className="text-muted-foreground font-mono">
+            <p className="font-mono text-muted-foreground">
               {used} / {total}
             </p>
           </div>
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <Progress className="bg-muted" value={usedPercent * PERCENT_MAX} />
           </div>
         </>
@@ -192,7 +192,7 @@ export const ContextContentFooter = ({
   return (
     <div
       className={cn(
-        "bg-secondary flex w-full items-center justify-between gap-3 p-3 text-xs",
+        "flex w-full items-center justify-between gap-3 bg-secondary p-3 text-xs",
         className,
       )}
       {...props}
@@ -214,7 +214,7 @@ const TokensWithCost = ({ tokens, costText }: { tokens?: number; costText?: stri
       : new Intl.NumberFormat("en-US", {
           notation: "compact",
         }).format(tokens)}
-    {costText ? <span className="text-muted-foreground ml-2">• {costText}</span> : null}
+    {costText ? <span className="ms-2 text-muted-foreground">• {costText}</span> : null}
   </span>
 );
 

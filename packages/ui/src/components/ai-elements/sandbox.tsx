@@ -35,11 +35,11 @@ export const SandboxHeader = ({ className, title, state, ...props }: SandboxHead
     {...props}
   >
     <div className="flex items-center gap-2">
-      <Code className="text-muted-foreground size-4" />
+      <Code className="size-4 text-muted-foreground" />
       <span className="text-sm font-medium">{title}</span>
       {getStatusBadge(state)}
     </div>
-    <ChevronDownIcon className="text-muted-foreground size-4 transition-transform group-data-[state=open]:rotate-180" />
+    <ChevronDownIcon className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
   </CollapsibleTrigger>
 );
 
@@ -48,7 +48,7 @@ export type SandboxContentProps = ComponentProps<typeof CollapsibleContent>;
 export const SandboxContent = ({ className, ...props }: SandboxContentProps) => (
   <CollapsibleContent
     className={cn(
-      "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 data-[state=closed]:animate-out data-[state=open]:animate-in outline-none",
+      "outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:animate-in data-[state=open]:slide-in-from-top-2",
       className,
     )}
     {...props}
@@ -65,7 +65,7 @@ export type SandboxTabsBarProps = ComponentProps<"div">;
 
 export const SandboxTabsBar = ({ className, ...props }: SandboxTabsBarProps) => (
   <div
-    className={cn("border-border flex w-full items-center border-t border-b", className)}
+    className={cn("flex w-full items-center border-t border-b border-border", className)}
     {...props}
   />
 );
@@ -84,7 +84,7 @@ export type SandboxTabsTriggerProps = ComponentProps<typeof TabsTrigger>;
 export const SandboxTabsTrigger = ({ className, ...props }: SandboxTabsTriggerProps) => (
   <TabsTrigger
     className={cn(
-      "text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground rounded-none border-0 border-b-2 border-transparent px-4 py-2 text-sm font-medium transition-colors data-[state=active]:bg-transparent data-[state=active]:shadow-none",
+      "rounded-none border-0 border-b-2 border-transparent px-4 py-2 text-sm font-medium text-muted-foreground transition-colors data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none",
       className,
     )}
     {...props}

@@ -8,6 +8,7 @@
     "build": "SKIP_ENV_VALIDATION=1 COPILOTKIT_TELEMETRY_DISABLED=true next build",
     "start": "next start",
     "lint": "oxlint .",
+    "lint:fix": "oxlint --fix --fix-suggestions .",
     "fmt": "oxfmt .",
     "fmt:check": "oxfmt --check .",
     "test": "vitest run",

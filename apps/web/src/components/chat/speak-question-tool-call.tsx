@@ -40,13 +40,13 @@ export function SpeakQuestionToolCall({
     <Tool>
       <ToolHeader type="dynamic-tool" toolName="ask_question" state={toToolState(status)} />
       <ToolContent>
-        <div className="space-y-3 border-t px-3 py-3">
+        <div className="flex flex-col gap-3 border-t p-3">
           <div className="flex items-start gap-3">
-            <div className="border-border bg-muted text-muted-foreground flex size-8 shrink-0 items-center justify-center rounded-md border">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground">
               <Volume2Icon className="size-4" />
             </div>
-            <div className="min-w-0 flex-1 space-y-1">
-              <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                 Examiner question
               </p>
               <p className="text-sm leading-relaxed">
@@ -60,7 +60,7 @@ export function SpeakQuestionToolCall({
               </Button>
             )}
           </div>
-          {resultText && <p className="text-muted-foreground text-xs">{resultText}</p>}
+          {resultText && <p className="text-xs text-muted-foreground">{resultText}</p>}
         </div>
       </ToolContent>
     </Tool>

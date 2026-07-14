@@ -78,7 +78,7 @@ function OralBoardsStartPage({
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4">
         <Spinner className="size-8" />
-        <p className="text-muted-foreground text-sm">{loadingStep || "Building your case…"}</p>
+        <p className="text-sm text-muted-foreground">{loadingStep || "Building your case…"}</p>
       </div>
     );
   }
@@ -87,7 +87,7 @@ function OralBoardsStartPage({
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4">
         <Spinner className="size-8" />
-        <p className="text-muted-foreground text-sm">Warming up the search database…</p>
+        <p className="text-sm text-muted-foreground">Warming up the search database…</p>
       </div>
     );
   }
@@ -95,7 +95,7 @@ function OralBoardsStartPage({
   if (warmupError) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 p-8">
-        <p className="text-muted-foreground text-sm">
+        <p className="text-sm text-muted-foreground">
           Could not connect to the agent backend. You can still start a case — the first question
           may be slower than usual.
         </p>
@@ -108,12 +108,12 @@ function OralBoardsStartPage({
 
   return (
     <div className="flex h-full flex-col items-center justify-center gap-6 p-8">
-      <div className="max-w-md space-y-2.5 text-center">
-        <p className="text-[10px] font-semibold tracking-[0.18em] text-indigo-400 uppercase">
+      <div className="flex max-w-md flex-col gap-2.5 text-center">
+        <p className="text-xs font-semibold tracking-widest text-indigo-400 uppercase">
           ABPD Oral Clinical Exam
         </p>
         <h2 className="text-xl font-semibold">Practice the oral boards</h2>
-        <p className="text-muted-foreground text-sm leading-relaxed">
+        <p className="text-sm leading-relaxed text-muted-foreground">
           Get a grounded clinical vignette, field the examiner&apos;s open-ended questions one at a
           time, then receive cited per-skillset feedback scored on the ABPD 1–3 scale.
         </p>
@@ -127,8 +127,8 @@ function OralBoardsStartPage({
         Start a case
       </Button>
 
-      <div className="w-full max-w-lg space-y-2 text-center">
-        <p className="text-muted-foreground text-[11px]">or focus on a blueprint domain</p>
+      <div className="flex w-full max-w-lg flex-col gap-2 text-center">
+        <p className="text-xs text-muted-foreground">or focus on a blueprint domain</p>
         <div className="flex flex-wrap justify-center gap-2">
           {TOPICS.map((t) => (
             <Button

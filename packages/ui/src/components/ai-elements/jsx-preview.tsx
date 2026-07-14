@@ -269,7 +269,7 @@ export const JSXPreviewError = memo(({ className, children, ...props }: JSXPrevi
   return (
     <div
       className={cn(
-        "border-destructive/50 bg-destructive/10 text-destructive flex items-center gap-2 rounded-md border p-3 text-sm",
+        "flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive",
         className,
       )}
       {...props}

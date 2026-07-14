@@ -134,12 +134,12 @@ export function AppSidebar({
               render={<Link href="/" aria-label="All agents" />}
               tooltip="All agents"
             >
-              <div className="bg-primary text-primary-foreground grid size-8 shrink-0 place-items-center rounded-lg text-sm font-bold">
+              <div className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
                 A
               </div>
               <div className="grid min-w-0 flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                 <span className="truncate font-semibold">{sidebarName}</span>
-                <span className="text-muted-foreground truncate text-xs">Agent console</span>
+                <span className="truncate text-xs text-muted-foreground">Agent console</span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -181,7 +181,7 @@ export function AppSidebar({
         </SidebarMenu>
         <SidebarSeparator />
         <div className="flex items-center justify-center p-2">
-          <div className="size-2.5 rounded-full bg-(--success)" />
+          <div className="size-2.5 rounded-full bg-success" />
         </div>
       </SidebarFooter>
       <SidebarRail />

@@ -24,6 +24,8 @@ export type AgentConfig = {
   glyph: string;
   /** CSS custom property holding the agent accent, e.g. "--travel". */
   colorVar: string;
+  /** Tailwind theme utility for the same agent accent. */
+  colorClass: string;
   placeholder: string;
   welcome?: string;
   artifact?: ArtifactSource;
@@ -38,6 +40,7 @@ const AGENTS: Record<AgentId, AgentConfig> = {
     label: "Trip Studio",
     glyph: "✈",
     colorVar: "--travel",
+    colorClass: "text-travel",
     placeholder: "Plan a trip, rework a day, or ask for tradeoffs…",
     welcome: "Tell me where you want to go, your dates, and the kind of trip you want.",
     artifact: {
@@ -72,6 +75,7 @@ const AGENTS: Record<AgentId, AgentConfig> = {
     label: "Grocery",
     glyph: "🛒",
     colorVar: "--grocery",
+    colorClass: "text-grocery",
     placeholder: "Plan meals, build a list, or find deals…",
     artifact: {
       stateField: "shopping_list",
@@ -97,6 +101,7 @@ const AGENTS: Record<AgentId, AgentConfig> = {
     label: "Fitness",
     glyph: "💪",
     colorVar: "--fitness",
+    colorClass: "text-fitness",
     placeholder: "Plan training, log a workout, or set a goal…",
     artifact: {
       stateField: "training_plan",
@@ -120,6 +125,7 @@ const AGENTS: Record<AgentId, AgentConfig> = {
     label: "Wellness",
     glyph: "☯",
     colorVar: "--wellness",
+    colorClass: "text-wellness",
     placeholder: "Coordinate a week of meals and training…",
     artifact: {
       stateField: "weekly_plan",
@@ -145,6 +151,7 @@ const AGENTS: Record<AgentId, AgentConfig> = {
     label: "Expense Desk",
     glyph: "$",
     colorVar: "--expense",
+    colorClass: "text-expense",
     placeholder: "Submit an expense or review the queue...",
     welcome: "Submit an expense with amount, submitter, category, description, and date.",
     artifact: {
@@ -175,6 +182,7 @@ const AGENTS: Record<AgentId, AgentConfig> = {
     label: "Oral Boards",
     glyph: "◆",
     colorVar: "--oral-boards",
+    colorClass: "text-oral-boards",
     placeholder: "Start a pediatric dentistry oral-board case…",
     welcome: "Name a topic, or ask for a grounded mock oral-board case.",
     artifact: {
@@ -207,6 +215,7 @@ const AGENTS: Record<AgentId, AgentConfig> = {
     label: "Trends",
     glyph: "📈",
     colorVar: "--trends",
+    colorClass: "text-trends",
     placeholder: "What's trending on Google right now?",
     welcome:
       "Ask me about Google search trends — top terms, rising topics, or regional breakdowns.",
@@ -240,6 +249,7 @@ const AGENTS: Record<AgentId, AgentConfig> = {
     label: "Resume",
     glyph: "▣",
     colorVar: "--resume",
+    colorClass: "text-resume",
     placeholder: "Ask about Lucas, this lab, or a specific role…",
     welcome:
       "Ask how this agent lab connects to Lucas's work, ask about his background, or share a job description for a grounded fit brief.",
@@ -273,6 +283,7 @@ const AGENTS: Record<AgentId, AgentConfig> = {
     label: "Research",
     glyph: "🔬",
     colorVar: "--research",
+    colorClass: "text-research",
     placeholder: "Ask me to research any topic…",
     welcome: "Tell me what you want to research and I'll build a structured report.",
     artifact: {
@@ -302,6 +313,7 @@ const AGENTS: Record<AgentId, AgentConfig> = {
     label: "Spreadsheet",
     glyph: "📊",
     colorVar: "--spreadsheet",
+    colorClass: "text-spreadsheet",
     placeholder: "Ask me to create or analyze a spreadsheet…",
     welcome: "Tell me what kind of spreadsheet you need and I'll build it.",
     suggestions: [
@@ -328,6 +340,7 @@ const AGENTS: Record<AgentId, AgentConfig> = {
     label: "Slides",
     glyph: "🎞",
     colorVar: "--presentation",
+    colorClass: "text-presentation",
     placeholder: "Ask me to build a presentation…",
     welcome: "Tell me your topic and I'll build a slide deck for you.",
     suggestions: [

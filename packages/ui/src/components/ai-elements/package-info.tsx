@@ -34,7 +34,7 @@ export const PackageInfoName = ({ className, children, ...props }: PackageInfoNa
 
   return (
     <div className={cn("flex items-center gap-2", className)} {...props}>
-      <PackageIcon className="text-muted-foreground size-4" />
+      <PackageIcon className="size-4 text-muted-foreground" />
       <span className="font-mono text-sm font-medium">{children ?? name}</span>
     </div>
   );
@@ -93,7 +93,7 @@ export const PackageInfoVersion = ({ className, children, ...props }: PackageInf
   return (
     <div
       className={cn(
-        "text-muted-foreground mt-2 flex items-center gap-2 font-mono text-sm",
+        "mt-2 flex items-center gap-2 font-mono text-sm text-muted-foreground",
         className,
       )}
       {...props}
@@ -102,7 +102,7 @@ export const PackageInfoVersion = ({ className, children, ...props }: PackageInf
         <>
           {currentVersion && <span>{currentVersion}</span>}
           {currentVersion && newVersion && <ArrowRightIcon className="size-3" />}
-          {newVersion && <span className="text-foreground font-medium">{newVersion}</span>}
+          {newVersion && <span className="font-medium text-foreground">{newVersion}</span>}
         </>
       )}
     </div>
@@ -132,7 +132,7 @@ export const PackageInfo = ({
 
   return (
     <PackageInfoContext.Provider value={contextValue}>
-      <div className={cn("bg-background rounded-lg border p-4", className)} {...props}>
+      <div className={cn("rounded-lg border bg-background p-4", className)} {...props}>
         {children ?? (
           <>
             <PackageInfoHeader>
@@ -154,7 +154,7 @@ export const PackageInfoDescription = ({
   children,
   ...props
 }: PackageInfoDescriptionProps) => (
-  <p className={cn("text-muted-foreground mt-2 text-sm", className)} {...props}>
+  <p className={cn("mt-2 text-sm text-muted-foreground", className)} {...props}>
     {children}
   </p>
 );
@@ -174,11 +174,11 @@ export const PackageInfoDependencies = ({
   children,
   ...props
 }: PackageInfoDependenciesProps) => (
-  <div className={cn("space-y-2", className)} {...props}>
-    <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+  <div className={cn("flex flex-col gap-2", className)} {...props}>
+    <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
       Dependencies
     </span>
-    <div className="space-y-1">{children}</div>
+    <div className="flex flex-col gap-1">{children}</div>
   </div>
 );
 
@@ -197,7 +197,7 @@ export const PackageInfoDependency = ({
   <div className={cn("flex items-center justify-between text-sm", className)} {...props}>
     {children ?? (
       <>
-        <span className="text-muted-foreground font-mono">{name}</span>
+        <span className="font-mono text-muted-foreground">{name}</span>
         {version && <span className="font-mono text-xs">{version}</span>}
       </>
     )}

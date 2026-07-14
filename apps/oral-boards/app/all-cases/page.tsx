@@ -59,7 +59,7 @@ export default function AllCasesPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-                <div className="space-y-2">
+                <div className="flex flex-col gap-2">
                   <span className="text-sm font-medium">Category</span>
                   <Select
                     value={selectedCategory}
@@ -77,7 +77,7 @@ export default function AllCasesPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
+                <div className="flex flex-col gap-2">
                   <span className="text-sm font-medium">Difficulty</span>
                   <Select
                     value={selectedDifficulty}
@@ -98,20 +98,20 @@ export default function AllCasesPage() {
                   </Select>
                 </div>
               </div>
-              <p className="text-muted-foreground mt-3 text-sm sm:mt-4">
+              <p className="mt-3 text-sm text-muted-foreground sm:mt-4">
                 Showing {filteredCases.length} of {allCases.length} cases
               </p>
             </CardContent>
           </Card>
 
           {/* Cases List */}
-          <div className="mx-auto max-w-4xl space-y-3 sm:space-y-4">
+          <div className="mx-auto flex max-w-4xl flex-col gap-3 sm:gap-4">
             {filteredCases.map((caseData) => {
               const originalIndex = allCases.indexOf(caseData);
               return (
                 <Card
                   key={caseData.id}
-                  className="active:bg-muted/50 cursor-pointer transition hover:shadow-lg"
+                  className="cursor-pointer transition hover:shadow-lg active:bg-muted/50"
                   onClick={() => setSelectedCaseIndex(originalIndex)}
                 >
                   <CardContent className="p-4 sm:p-6">
@@ -124,21 +124,21 @@ export default function AllCasesPage() {
                         {caseData.difficulty.charAt(0).toUpperCase() + caseData.difficulty.slice(1)}
                       </Badge>
                     </div>
-                    <div className="text-muted-foreground mb-3 flex flex-wrap items-center gap-2 text-xs sm:gap-4 sm:text-sm">
+                    <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground sm:gap-4 sm:text-sm">
                       <IconLabel icon={BookOpen} className="font-medium">
                         {caseData.category}
                       </IconLabel>
-                      <span className="text-border hidden sm:inline">|</span>
+                      <span className="hidden text-border sm:inline">|</span>
                       <IconLabel icon={Clock}>{caseData.estimatedTime} min</IconLabel>
                     </div>
-                    <p className="text-muted-foreground line-clamp-2 text-sm sm:text-base">
+                    <p className="line-clamp-2 text-sm text-muted-foreground sm:text-base">
                       {caseData.presentation}
                     </p>
                     <Button
                       variant="link"
                       className="mt-2 h-auto p-0 text-indigo-600 hover:text-indigo-800 sm:mt-3"
                     >
-                      View Full Case <ChevronRight className="ml-1 h-4 w-4" />
+                      View Full Case <ChevronRight className="ms-1 size-4" />
                     </Button>
                   </CardContent>
                 </Card>
@@ -153,9 +153,9 @@ export default function AllCasesPage() {
             <Button
               variant="ghost"
               onClick={() => setSelectedCaseIndex(null)}
-              className="text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800 dark:hover:bg-indigo-950"
+              className="text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800 hover:dark:bg-indigo-950"
             >
-              <ArrowLeft className="mr-2 h-4 w-4" />
+              <ArrowLeft className="me-2 size-4" />
               Back to All Cases
             </Button>
           </div>

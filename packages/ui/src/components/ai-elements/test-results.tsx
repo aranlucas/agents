@@ -62,7 +62,7 @@ export const TestResultsDuration = ({
   }
 
   return (
-    <span className={cn("text-muted-foreground text-sm", className)} {...props}>
+    <span className={cn("text-sm text-muted-foreground", className)} {...props}>
       {children ?? formatDuration(summary.duration)}
     </span>
   );
@@ -121,7 +121,7 @@ export const TestResults = ({ summary, className, children, ...props }: TestResu
 
   return (
     <TestResultsContext.Provider value={contextValue}>
-      <div className={cn("bg-background rounded-lg border", className)} {...props}>
+      <div className={cn("rounded-lg border bg-background", className)} {...props}>
         {children ??
           (summary && (
             <TestResultsHeader>
@@ -151,14 +151,14 @@ export const TestResultsProgress = ({
   const failedPercent = (summary.failed / summary.total) * 100;
 
   return (
-    <div className={cn("space-y-2", className)} {...props}>
+    <div className={cn("flex flex-col gap-2", className)} {...props}>
       {children ?? (
         <>
-          <div className="bg-muted flex h-2 overflow-hidden rounded-full">
+          <div className="flex h-2 overflow-hidden rounded-full bg-muted">
             <div className="bg-green-500 transition-all" style={{ width: `${passedPercent}%` }} />
             <div className="bg-red-500 transition-all" style={{ width: `${failedPercent}%` }} />
           </div>
-          <div className="text-muted-foreground flex justify-between text-xs">
+          <div className="flex justify-between text-xs text-muted-foreground">
             <span>
               {summary.passed}/{summary.total} tests passed
             </span>
@@ -173,7 +173,7 @@ export const TestResultsProgress = ({
 export type TestResultsContentProps = HTMLAttributes<HTMLDivElement>;
 
 export const TestResultsContent = ({ className, children, ...props }: TestResultsContentProps) => (
-  <div className={cn("space-y-2 p-4", className)} {...props}>
+  <div className={cn("flex flex-col gap-2 p-4", className)} {...props}>
     {children}
   </div>
 );
@@ -231,12 +231,12 @@ export const TestSuiteName = ({ className, children, ...props }: TestSuiteNamePr
   return (
     <CollapsibleTrigger
       className={cn(
-        "group hover:bg-muted/50 flex w-full items-center gap-2 px-4 py-3 text-left transition-colors",
+        "group flex w-full items-center gap-2 px-4 py-3 text-left transition-colors hover:bg-muted/50",
         className,
       )}
       {...props}
     >
-      <ChevronRightIcon className="text-muted-foreground size-4 shrink-0 transition-transform group-data-[state=open]:rotate-90" />
+      <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
       <TestStatusIcon status={status} />
       <span className="text-sm font-medium">{children ?? name}</span>
     </CollapsibleTrigger>
@@ -257,7 +257,7 @@ export const TestSuiteStats = ({
   children,
   ...props
 }: TestSuiteStatsProps) => (
-  <div className={cn("ml-auto flex items-center gap-2 text-xs", className)} {...props}>
+  <div className={cn("ms-auto flex items-center gap-2 text-xs", className)} {...props}>
     {children ?? (
       <>
         {passed > 0 && <span className="text-green-600 dark:text-green-400">{passed} passed</span>}
@@ -311,7 +311,7 @@ export const TestDuration = ({ className, children, ...props }: TestDurationProp
   }
 
   return (
-    <span className={cn("text-muted-foreground ml-auto text-xs", className)} {...props}>
+    <span className={cn("ms-auto text-xs text-muted-foreground", className)} {...props}>
       {children ?? `${duration}ms`}
     </span>
   );

@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "oxlint .",
+    "lint:fix": "oxlint --fix --fix-suggestions .",
     "fmt": "oxfmt .",
     "fmt:check": "oxfmt --check .",
     "test": "vitest run --passWithNoTests",

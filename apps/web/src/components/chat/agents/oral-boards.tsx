@@ -72,19 +72,19 @@ function SearchDocsToolCall({
       />
       {status === "complete" && results && results.length > 0 && (
         <ToolContent>
-          <div className="space-y-1.5 border-t px-3 py-2.5">
+          <div className="flex flex-col gap-1.5 border-t px-3 py-2.5">
             {results.slice(0, 5).map((r) => {
               const resultKey = `${r.collection}-${r.title}-${r.snippet}`;
               return (
-                <div key={resultKey} className="space-y-0.5">
+                <div key={resultKey} className="flex flex-col gap-0.5">
                   <div className="flex items-center gap-1.5">
-                    <Badge variant="secondary" className="font-mono text-[10px]">
+                    <Badge variant="secondary" className="font-mono text-xs">
                       {r.collection.toUpperCase()}
                     </Badge>
                     <span className="truncate text-xs font-medium">{r.title}</span>
                   </div>
                   {r.snippet && (
-                    <p className="text-muted-foreground line-clamp-2 pl-0.5 text-[11px] leading-snug">
+                    <p className="line-clamp-2 ps-0.5 text-xs leading-snug text-muted-foreground">
                       {r.snippet}
                     </p>
                   )}
@@ -92,7 +92,7 @@ function SearchDocsToolCall({
               );
             })}
             {results.length > 5 && (
-              <p className="text-muted-foreground text-[11px]">+{results.length - 5} more</p>
+              <p className="text-xs text-muted-foreground">+{results.length - 5} more</p>
             )}
           </div>
         </ToolContent>

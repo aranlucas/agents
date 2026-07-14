@@ -39,13 +39,11 @@ describe("Portfolio home page", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: "What can I stop doing manually?",
+        name: "What would I build for my own life?",
       }),
     ).toBeVisible();
-    expect(screen.getByRole("heading", { name: "What should an agent remember?" })).toBeVisible();
-    expect(
-      screen.getByRole("heading", { name: "How should it hand the work back?" }),
-    ).toBeVisible();
+    expect(screen.getByRole("heading", { name: "What should it research for me?" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "What should it finish?" })).toBeVisible();
     expect(
       screen.queryByText(/DoorDash|AWS|Amazon|senior software engineer/i),
     ).not.toBeInTheDocument();
@@ -81,13 +79,9 @@ describe("Portfolio home page", () => {
     );
   });
 
-  it("links to the source without publishing an email address", () => {
+  it("does not publish an email address", () => {
     render(<Home />);
 
-    expect(screen.getByRole("link", { name: "Source" })).toHaveAttribute(
-      "href",
-      "https://github.com/aranlucas/agents",
-    );
     expect(screen.queryByRole("link", { name: "Email" })).not.toBeInTheDocument();
     expect(
       screen.getAllByRole("link").some((link) => link.getAttribute("href")?.startsWith("mailto:")),

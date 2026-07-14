@@ -79,12 +79,12 @@ export function WorkspaceShell({
       {hasArtifact && (
         <div
           className={cn(
-            "border-border overflow-hidden",
+            "overflow-hidden border-border",
             // Mobile: full-screen takeover when open, removed when closed.
             open ? "max-md:flex max-md:flex-1" : "max-md:hidden",
             // Desktop: animated side panel that widens from the right edge.
-            "md:flex-none md:border-l md:transition-[width] md:duration-300",
-            open ? "md:w-[48%]" : "md:w-0",
+            "md:flex-none md:border-s md:transition-all md:duration-300",
+            open ? "md:w-1/2" : "md:w-0",
           )}
         >
           {artifact}

@@ -31,8 +31,8 @@ function SheetTab({
       className={cn(
         "rounded-t border-b-2 px-4 py-1.5 text-sm font-medium whitespace-nowrap transition-colors",
         active
-          ? "border-[var(--page-color)] text-[var(--page-color)]"
-          : "text-muted-foreground hover:text-foreground border-transparent",
+          ? "border-page text-page"
+          : "border-transparent text-muted-foreground hover:text-foreground",
       )}
     >
       {title}
@@ -59,7 +59,7 @@ function keyedValues(values: string[], fallback: string) {
 function SpreadsheetTable({ rows }: { rows: string[][] }) {
   if (!rows.length) {
     return (
-      <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
+      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
         No data yet.
       </div>
     );
@@ -83,7 +83,7 @@ function SpreadsheetTable({ rows }: { rows: string[][] }) {
             {columns.map((column) => (
               <th
                 key={column.key}
-                className="border-border text-foreground border px-3 py-2 text-left font-semibold"
+                className="border border-border px-3 py-2 text-left font-semibold text-foreground"
               >
                 {column.value}
               </th>
@@ -96,7 +96,7 @@ function SpreadsheetTable({ rows }: { rows: string[][] }) {
               {columns.map((column) => (
                 <td
                   key={column.key}
-                  className="border-border text-muted-foreground border px-3 py-1.5"
+                  className="border border-border px-3 py-1.5 text-muted-foreground"
                 >
                   {row[column.index] ?? ""}
                 </td>
@@ -151,11 +151,11 @@ export function SpreadsheetWorkspace({ threadId }: { threadId: string }) {
       />
       <SidebarInset className="min-h-0 overflow-hidden">
         <ConsoleTopBar agentId={AGENT_ID} threadId={threadId} isRunning={agent?.isRunning} />
-        <div className="bg-background flex min-h-0 flex-1 flex-col">
+        <div className="flex min-h-0 flex-1 flex-col bg-background">
           {/* Sheet tabs */}
           <div className="flex shrink-0 items-end border-b px-4 pt-2">
             {sheets.length === 0 ? (
-              <span className="text-muted-foreground pb-2 text-xs">
+              <span className="pb-2 text-xs text-muted-foreground">
                 No sheets yet — ask in chat
               </span>
             ) : (
@@ -176,7 +176,7 @@ export function SpreadsheetWorkspace({ threadId }: { threadId: string }) {
               {activeSheet ? (
                 <SpreadsheetTable rows={activeSheet.rows} />
               ) : (
-                <div className="text-muted-foreground flex h-full min-h-72 flex-col items-center justify-center gap-3 text-center">
+                <div className="flex h-full min-h-72 flex-col items-center justify-center gap-3 text-center text-muted-foreground">
                   <p className="text-4xl">📊</p>
                   <p className="text-sm">
                     Ask me to create a spreadsheet in the chat.
@@ -191,10 +191,10 @@ export function SpreadsheetWorkspace({ threadId }: { threadId: string }) {
           {/* Summary strip */}
           {state.summary && (
             <div className="shrink-0 border-t px-4 py-3">
-              <p className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
+              <p className="mb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
                 Analysis
               </p>
-              <div className="prose prose-sm dark:prose-invert max-w-none">
+              <div className="prose prose-sm max-w-none dark:prose-invert">
                 <Streamdown>{state.summary}</Streamdown>
               </div>
             </div>

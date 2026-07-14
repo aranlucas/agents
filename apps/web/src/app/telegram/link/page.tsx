@@ -54,8 +54,8 @@ export default async function TelegramLinkPage({ searchParams }: PageProps) {
 function TelegramLinkResult({ ok, message }: { ok: boolean; message: string }) {
   return (
     <main className="mx-auto flex min-h-screen max-w-xl flex-col justify-center px-6">
-      <div className="space-y-4">
-        <p className="text-muted-foreground text-sm font-medium">Telegram</p>
+      <div className="flex flex-col gap-4">
+        <p className="text-sm font-medium text-muted-foreground">Telegram</p>
         <h1 className="text-2xl font-semibold">{ok ? "Account linked" : "Link failed"}</h1>
         <p className="text-muted-foreground">{message}</p>
         <Link className="text-sm font-medium underline" href="/console/settings">

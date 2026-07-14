@@ -51,7 +51,7 @@ describe("useArtifactPanel hydration", () => {
         const chatColumn = container.querySelector('[data-testid="chat"]')?.parentElement;
         const artifactPanel = container.querySelector('[data-testid="artifact"]')?.parentElement;
         expect(chatColumn).toHaveClass("max-md:hidden");
-        expect(artifactPanel).toHaveClass("max-md:flex", "md:w-[48%]");
+        expect(artifactPanel).toHaveClass("max-md:flex", "md:w-1/2");
       });
 
       expect(recoverableErrors).toEqual([]);

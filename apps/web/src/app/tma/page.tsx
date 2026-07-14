@@ -82,14 +82,14 @@ export default function TmaPage() {
   if (state.status === "error") {
     return (
       <main className="flex min-h-screen items-center justify-center p-6">
-        <p className="text-muted-foreground text-sm">{state.message}</p>
+        <p className="text-sm text-muted-foreground">{state.message}</p>
       </main>
     );
   }
 
   return (
     <main className="flex min-h-screen items-center justify-center p-6">
-      <p className="text-muted-foreground text-sm">Signing in…</p>
+      <p className="text-sm text-muted-foreground">Signing in…</p>
     </main>
   );
 }

@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
-	"unicode"
 	"strings"
+	"unicode"
 
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"

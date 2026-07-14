@@ -25,8 +25,7 @@ const STATUS_META: Record<ResumeStatus, { label: string; className: string }> = 
   },
   analyzing: {
     label: "Analyzing",
-    className:
-      "border-[color-mix(in_srgb,var(--page-color)_35%,transparent)] bg-[color-mix(in_srgb,var(--page-color)_10%,transparent)] text-[var(--page-color)]",
+    className: "border-page/35 bg-page/10 text-page",
   },
   ready: {
     label: "Ready",
@@ -61,7 +60,7 @@ export function ResumeArtifact({ state: rawState, view, onClose }: AgentArtifact
   );
 
   return (
-    <Artifact className="h-full rounded-none border-0 border-l" data-testid="resume-artifact">
+    <Artifact className="h-full rounded-none border-0 border-s" data-testid="resume-artifact">
       <ArtifactHeader className="items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -80,33 +79,30 @@ export function ResumeArtifact({ state: rawState, view, onClose }: AgentArtifact
       </ArtifactHeader>
 
       <ArtifactContent className="p-0">
-        <section
-          aria-labelledby="resume-target-role"
-          className="border-b bg-[color-mix(in_srgb,var(--page-color)_7%,transparent)] px-5 py-5"
-        >
-          <div className="mb-2 flex items-center gap-2 text-[var(--page-color)]">
+        <section aria-labelledby="resume-target-role" className="border-b bg-page/10 p-5">
+          <div className="mb-2 flex items-center gap-2 text-page">
             <Target aria-hidden="true" className="size-4" />
-            <p className="text-xs font-semibold tracking-[0.16em] uppercase">Target role</p>
+            <p className="text-xs font-semibold tracking-widest uppercase">Target role</p>
           </div>
           <h2 id="resume-target-role" className="text-xl leading-tight font-semibold">
             {targetRole}
           </h2>
           {state.job_description?.trim() ? (
-            <p className="text-muted-foreground mt-2 line-clamp-4 text-sm leading-relaxed whitespace-pre-wrap">
+            <p className="mt-2 line-clamp-4 text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground">
               {state.job_description}
             </p>
           ) : null}
         </section>
 
-        <div className="space-y-7 p-5">
+        <div className="flex flex-col gap-7 p-5">
           <section aria-labelledby="resume-fit-summary">
             <div className="mb-3 flex items-center gap-2">
-              <Sparkles aria-hidden="true" className="size-4 text-[var(--page-color)]" />
+              <Sparkles aria-hidden="true" className="size-4 text-page" />
               <h3 id="resume-fit-summary" className="text-sm font-semibold">
                 Fit summary
               </h3>
             </div>
-            <div className="prose prose-sm dark:prose-invert max-w-none">
+            <div className="prose prose-sm max-w-none dark:prose-invert">
               <Streamdown>{fitSummary}</Streamdown>
             </div>
           </section>
@@ -119,14 +115,14 @@ export function ResumeArtifact({ state: rawState, view, onClose }: AgentArtifact
                   Gaps to address
                 </h3>
               </div>
-              <span className="text-muted-foreground text-xs tabular-nums">{gaps.length}</span>
+              <span className="text-xs text-muted-foreground tabular-nums">{gaps.length}</span>
             </div>
             {gaps.length ? (
-              <ul className="space-y-2">
+              <ul className="flex flex-col gap-2">
                 {gaps.map(({ item, key }) => (
                   <li
                     key={key}
-                    className="border-border/70 bg-muted/25 rounded-md border px-3 py-2.5 text-sm leading-relaxed"
+                    className="rounded-md border border-border/70 bg-muted/25 px-3 py-2.5 text-sm leading-relaxed"
                   >
                     {item}
                   </li>
@@ -147,29 +143,29 @@ export function ResumeArtifact({ state: rawState, view, onClose }: AgentArtifact
           <section aria-labelledby="resume-tailored-bullets">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <CheckCircle2 aria-hidden="true" className="size-4 text-[var(--page-color)]" />
+                <CheckCircle2 aria-hidden="true" className="size-4 text-page" />
                 <h3 id="resume-tailored-bullets" className="text-sm font-semibold">
                   Tailored evidence
                 </h3>
               </div>
-              <span className="text-muted-foreground text-xs tabular-nums">
+              <span className="text-xs text-muted-foreground tabular-nums">
                 {tailoredBullets.length}
               </span>
             </div>
             {tailoredBullets.length ? (
-              <ul className="space-y-2.5">
+              <ul className="flex flex-col gap-2.5">
                 {tailoredBullets.map(({ item, key }) => (
                   <li key={key} className="flex gap-3 text-sm leading-relaxed">
                     <span
                       aria-hidden="true"
-                      className="mt-2 size-1.5 shrink-0 rounded-full bg-[var(--page-color)]"
+                      className="mt-2 size-1.5 shrink-0 rounded-full bg-page"
                     />
                     <span>{item}</span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-muted-foreground rounded-md border border-dashed px-3 py-3 text-sm">
+              <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
                 Tailored evidence will appear when the role analysis is complete.
               </p>
             )}
@@ -179,11 +175,11 @@ export function ResumeArtifact({ state: rawState, view, onClose }: AgentArtifact
             <section aria-labelledby="resume-review" className="border-t pt-4">
               <h3
                 id="resume-review"
-                className="text-muted-foreground mb-1 text-xs font-semibold tracking-wide uppercase"
+                className="mb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase"
               >
                 Ready check
               </h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">
+              <p className="text-sm leading-relaxed text-muted-foreground">
                 {state.review_summary}
               </p>
             </section>

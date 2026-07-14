@@ -1,6 +1,10 @@
 {
   "$schema": "../../node_modules/oxlint/configuration_schema.json",
-  "extends": ["../../packages/oxlint-config/base.json"],
+  "extends": [
+    "../../packages/oxlint-config/base.json",
+    "../../packages/oxlint-config/tailwind.json"
+  ],
+  "jsPlugins": ["oxlint-tailwindcss"],
   "plugins": ["import", "jsx-a11y", "nextjs", "react", "typescript", "unicorn"],
   "settings": {
     "next": {
@@ -8,6 +12,9 @@
     },
     "react": {
       "version": "19.2.7"
+    },
+    "tailwindcss": {
+      "entryPoint": "app/globals.css"
     }
   },
   "rules": {

@@ -68,38 +68,38 @@ export default function ExamFramework() {
       <Card className="mb-6 border-indigo-200 dark:border-indigo-800">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-indigo-900 dark:text-indigo-100">
-            <BookOpen className="h-5 w-5" />
+            <BookOpen className="size-5" />
             Examination Overview
           </CardTitle>
           <CardDescription>{examOverview.description}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
+        <CardContent className="flex flex-col gap-4">
+          <ul className="flex list-inside list-disc flex-col gap-1 text-sm text-muted-foreground">
             <li>Format: {examOverview.structure.format}</li>
             <li>Sessions: {examOverview.structure.sessions}</li>
             <li>Candidate Time at Center: {examOverview.structure.timing}</li>
             <li>Language: {examOverview.structure.language}</li>
           </ul>
-          <p className="text-muted-foreground text-xs font-medium">{examOverview.sourceNote}</p>
+          <p className="text-xs font-medium text-muted-foreground">{examOverview.sourceNote}</p>
         </CardContent>
       </Card>
 
       <Card className="mb-6 border-indigo-200 dark:border-indigo-800">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-indigo-900 dark:text-indigo-100">
-            <Calendar className="h-5 w-5" />
+            <Calendar className="size-5" />
             ABPD OCE Timeline
           </CardTitle>
           <CardDescription>Milestones published in the 2026 OCE guide</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="flex flex-col gap-3">
           {examTimeline.map((item) => (
             <div key={item.timeframe + item.milestone} className="rounded-md border p-3">
               <p className="text-sm font-semibold text-indigo-900 dark:text-indigo-100">
                 {item.timeframe}
               </p>
               <p className="text-sm font-medium">{item.milestone}</p>
-              <p className="text-muted-foreground text-sm">{item.detail}</p>
+              <p className="text-sm text-muted-foreground">{item.detail}</p>
             </div>
           ))}
         </CardContent>
@@ -110,14 +110,14 @@ export default function ExamFramework() {
           <CardTitle className="text-indigo-900 dark:text-indigo-100">OCE Lifecycle</CardTitle>
           <CardDescription>How ABPD frames the candidate journey</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="flex flex-col gap-4">
           {examPhases.map((phase) => (
-            <div key={phase.phase} className="border-l-4 border-indigo-600 pl-4">
+            <div key={phase.phase} className="border-s-4 border-indigo-600 ps-4">
               <h3 className="mb-1 font-bold text-indigo-900 dark:text-indigo-100">
                 {phase.phase}: {phase.title}
               </h3>
-              <p className="text-muted-foreground mb-2 text-sm">{phase.description}</p>
-              <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
+              <p className="mb-2 text-sm text-muted-foreground">{phase.description}</p>
+              <ul className="flex list-inside list-disc flex-col gap-1 text-sm text-muted-foreground">
                 {phase.keyFocus.map((focus) => (
                   <li key={`${phase.phase}-${focus}`}>{focus}</li>
                 ))}
@@ -130,7 +130,7 @@ export default function ExamFramework() {
       <Card className="mb-6 border-indigo-200 dark:border-indigo-800">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-indigo-900 dark:text-indigo-100">
-            <ShieldAlert className="h-5 w-5" />
+            <ShieldAlert className="size-5" />
             Need to Know Information
           </CardTitle>
           <CardDescription>Operational and integrity requirements for candidates</CardDescription>
@@ -141,7 +141,7 @@ export default function ExamFramework() {
               <h3 className="mb-2 font-semibold text-indigo-900 dark:text-indigo-100">
                 {section.title}
               </h3>
-              <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
+              <ul className="flex list-inside list-disc flex-col gap-1 text-sm text-muted-foreground">
                 {section.details.map((detail) => (
                   <li key={`${section.title}-${detail}`}>{detail}</li>
                 ))}
@@ -154,12 +154,12 @@ export default function ExamFramework() {
       <Card className="mb-6 border-indigo-200 dark:border-indigo-800">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-indigo-900 dark:text-indigo-100">
-            <ClipboardCheck className="h-5 w-5" />
+            <ClipboardCheck className="size-5" />
             Scoring and Results
           </CardTitle>
           <CardDescription>Published ABPD OCE scoring scale and post-exam policies</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="flex flex-col gap-4">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-indigo-50 dark:bg-indigo-950">
@@ -172,13 +172,13 @@ export default function ExamFramework() {
                 {scoringCriteria.map((item) => (
                   <tr key={item.score} className="border-t">
                     <td className="p-2 font-semibold">{item.score}</td>
-                    <td className="text-muted-foreground p-2">{item.descriptor}</td>
+                    <td className="p-2 text-muted-foreground">{item.descriptor}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
+          <ul className="flex list-inside list-disc flex-col gap-1 text-sm text-muted-foreground">
             {afterTestPolicies.map((policy) => (
               <li key={policy}>{policy}</li>
             ))}
@@ -196,7 +196,7 @@ export default function ExamFramework() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
+          <ul className="flex list-inside list-disc flex-col gap-1 text-sm text-muted-foreground">
             {preparationStrategies.map((item) => (
               <li key={item}>{item}</li>
             ))}
@@ -213,7 +213,7 @@ export default function ExamFramework() {
         </Button>
       </div>
 
-      <div className="mb-6 space-y-4">
+      <div className="mb-6 flex flex-col gap-4">
         <h2 className="mb-4 text-center text-2xl font-bold text-indigo-900 dark:text-indigo-100">
           {domains.length} OCE Blueprint Domains
         </h2>
@@ -225,7 +225,7 @@ export default function ExamFramework() {
               onOpenChange={() => toggleDomain(domain.id)}
             >
               <CollapsibleTrigger className="w-full">
-                <CardHeader className="cursor-pointer transition-colors hover:bg-indigo-50 dark:hover:bg-indigo-950">
+                <CardHeader className="cursor-pointer transition-colors hover:bg-indigo-50 hover:dark:bg-indigo-950">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 text-left">
                       <div className="mb-2 flex items-center gap-2">
@@ -242,21 +242,21 @@ export default function ExamFramework() {
                       <CardDescription>{domain.description}</CardDescription>
                     </div>
                     {openDomains.includes(domain.id) ? (
-                      <ChevronUp className="ml-2 h-5 w-5 flex-shrink-0 text-indigo-600" />
+                      <ChevronUp className="ms-2 size-5 shrink-0 text-indigo-600" />
                     ) : (
-                      <ChevronDown className="ml-2 h-5 w-5 flex-shrink-0 text-indigo-600" />
+                      <ChevronDown className="ms-2 size-5 shrink-0 text-indigo-600" />
                     )}
                   </div>
                 </CardHeader>
               </CollapsibleTrigger>
 
               <CollapsibleContent>
-                <CardContent className="space-y-4 pt-0">
+                <CardContent className="flex flex-col gap-4 pt-0">
                   <div>
                     <h4 className="mb-2 font-semibold text-indigo-900 dark:text-indigo-100">
                       Key Components
                     </h4>
-                    <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
+                    <ul className="flex list-inside list-disc flex-col gap-1 text-sm text-muted-foreground">
                       {domain.keyComponents.map((component) => (
                         <li key={`${domain.id}-${component}`}>{component}</li>
                       ))}
@@ -267,7 +267,7 @@ export default function ExamFramework() {
                     <h4 className="mb-2 font-semibold text-indigo-900 dark:text-indigo-100">
                       Clinical Tasks
                     </h4>
-                    <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
+                    <ul className="flex list-inside list-disc flex-col gap-1 text-sm text-muted-foreground">
                       {domain.clinicalTasks.map((task) => (
                         <li key={`${domain.id}-${task}`}>{task}</li>
                       ))}
@@ -278,7 +278,7 @@ export default function ExamFramework() {
                     <h4 className="mb-2 font-semibold text-indigo-900 dark:text-indigo-100">
                       Proficiency Descriptors
                     </h4>
-                    <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
+                    <ul className="flex list-inside list-disc flex-col gap-1 text-sm text-muted-foreground">
                       {domain.proficiencyDescriptors.map((descriptor) => (
                         <li key={`${domain.id}-${descriptor}`}>{descriptor}</li>
                       ))}

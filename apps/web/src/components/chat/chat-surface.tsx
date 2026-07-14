@@ -323,7 +323,7 @@ export function ChatSurface({
               {items.length === 0 && isAgentConnected ? (
                 <Empty className="border-none">
                   <EmptyMedia>
-                    <SparklesIcon className="text-muted-foreground size-5" />
+                    <SparklesIcon className="size-5 text-muted-foreground" />
                   </EmptyMedia>
                   <EmptyHeader>
                     <EmptyTitle>{config.label} is ready</EmptyTitle>
@@ -376,7 +376,7 @@ export function ChatSurface({
                       <MessageScrollerItem key={item.id} messageId={item.id}>
                         <Message align="start">
                           <MessageAvatar>
-                            <SparklesIcon className="text-muted-foreground size-4" />
+                            <SparklesIcon className="size-4 text-muted-foreground" />
                           </MessageAvatar>
                           <MessageContent>
                             {item.toolCalls.map((tc) => (
@@ -413,7 +413,7 @@ export function ChatSurface({
         </MessageScroller>
       </MessageScrollerProvider>
 
-      <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <div className="px-4 pb-safe-bottom">
         <div className="mx-auto w-full max-w-190">
           {gated ? (
             <ConnectNotice agentLabel={config.label} />

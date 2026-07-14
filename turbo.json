@@ -44,6 +44,9 @@
       "dependsOn": ["^typecheck"]
     },
     "lint": {},
+    "lint:fix": {
+      "cache": false
+    },
     "fmt": {
       "cache": false
     },

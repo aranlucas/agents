@@ -149,7 +149,7 @@ function CitationChips({ sources }: { sources: CaseSource[] }) {
           <Badge
             key={key}
             variant="secondary"
-            className="max-w-full min-w-0 truncate font-mono text-[10px]"
+            className="max-w-full min-w-0 truncate font-mono text-xs"
           >
             {collection.toUpperCase()} #{docid} · {title}
           </Badge>
@@ -175,17 +175,17 @@ function SkillsetBadges({ exchange }: { exchange: OralBoardsExchange }) {
   return (
     <span className="flex flex-wrap items-center gap-1">
       {skillset && (
-        <Badge variant="secondary" className="text-[10px]">
+        <Badge variant="secondary" className="text-xs">
           {skillset}
         </Badge>
       )}
       {skillMeta && (
-        <Badge variant="secondary" title={skillMeta.description} className="text-[10px]">
+        <Badge variant="secondary" title={skillMeta.description} className="text-xs">
           {skillMeta.label}
         </Badge>
       )}
       {score != null && (
-        <Badge className={`rounded border text-[10px] font-semibold ${scoreClasses(score)}`}>
+        <Badge className={`rounded border text-xs font-semibold ${scoreClasses(score)}`}>
           {score}/3
         </Badge>
       )}
@@ -198,8 +198,8 @@ function SkillsetBadges({ exchange }: { exchange: OralBoardsExchange }) {
 function ModelAnswer({ text }: { text: string }) {
   if (!text.trim()) return null;
   return (
-    <div className="border-border/60 rounded border border-dashed px-2.5 py-2 text-xs">
-      <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide uppercase">
+    <div className="rounded border border-dashed border-border/60 px-2.5 py-2 text-xs">
+      <p className="mb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
         Model answer
       </p>
       <Streamdown>{text}</Streamdown>
@@ -218,11 +218,11 @@ function FeedbackDetails({ idealResponse, citations }: FeedbackDetailsProps) {
 
   return (
     <Collapsible className="rounded-lg border border-dashed">
-      <CollapsibleTrigger className="group hover:bg-muted flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left text-xs transition-colors">
+      <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left text-xs transition-colors hover:bg-muted">
         <span className="font-medium">Show model answer and sources</span>
-        <ChevronDownIcon className="text-muted-foreground size-3 transition-transform group-data-panel-open:rotate-180" />
+        <ChevronDownIcon className="size-3 text-muted-foreground transition-transform group-data-panel-open:rotate-180" />
       </CollapsibleTrigger>
-      <CollapsibleContent className="space-y-1.5 border-t px-2.5 py-2">
+      <CollapsibleContent className="flex flex-col gap-1.5 border-t px-2.5 py-2">
         <ModelAnswer text={ideal} />
         <CitationChips sources={citations} />
       </CollapsibleContent>
@@ -236,33 +236,33 @@ function FeedbackDetails({ idealResponse, citations }: FeedbackDetailsProps) {
 function AnswerCoach() {
   return (
     <Collapsible className="rounded-lg border border-dashed">
-      <CollapsibleTrigger className="group hover:bg-muted flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left text-xs transition-colors">
+      <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left text-xs transition-colors hover:bg-muted">
         <span className="flex items-center gap-1.5 font-medium">
-          <GraduationCapIcon className="text-muted-foreground size-3.5" />
+          <GraduationCapIcon className="size-3.5 text-muted-foreground" />
           How to answer like a 3
         </span>
-        <ChevronDownIcon className="text-muted-foreground size-3 transition-transform group-data-panel-open:rotate-180" />
+        <ChevronDownIcon className="size-3 text-muted-foreground transition-transform group-data-panel-open:rotate-180" />
       </CollapsibleTrigger>
-      <CollapsibleContent className="space-y-1.5 border-t px-2.5 py-2 text-xs">
-        <ul className="text-muted-foreground list-disc space-y-1 pl-4 leading-relaxed">
+      <CollapsibleContent className="flex flex-col gap-1.5 border-t px-2.5 py-2 text-xs">
+        <ul className="flex list-disc flex-col gap-1 ps-4 leading-relaxed text-muted-foreground">
           <li>
-            <span className="text-foreground font-medium">Commit</span> — lead with your diagnosis
+            <span className="font-medium text-foreground">Commit</span> — lead with your diagnosis
             or decision; don&apos;t list options without choosing.
           </li>
           <li>
-            <span className="text-foreground font-medium">Anchor</span> — tie every point to THIS
+            <span className="font-medium text-foreground">Anchor</span> — tie every point to THIS
             patient&apos;s findings, not textbook generalities.
           </li>
           <li>
-            <span className="text-foreground font-medium">Justify</span> — give the
+            <span className="font-medium text-foreground">Justify</span> — give the
             &quot;because&quot;: guideline, risk, or mechanism.
           </li>
           <li>
-            <span className="text-foreground font-medium">Close the loop</span> — say how a finding
+            <span className="font-medium text-foreground">Close the loop</span> — say how a finding
             changes management: &quot;if present → X, if absent → Y&quot;.
           </li>
           <li>
-            <span className="text-foreground font-medium">Don&apos;t parrot</span> — restating the
+            <span className="font-medium text-foreground">Don&apos;t parrot</span> — restating the
             question&apos;s terms isn&apos;t an answer; add the implication.
           </li>
         </ul>
@@ -317,7 +317,7 @@ function OutcomeBanner({ outcome }: { outcome: OralBoardsOutcome }) {
   return (
     <Alert className={meta.cls}>
       <AlertTitle className="font-semibold">Practice outcome: {meta.label}</AlertTitle>
-      <AlertDescription className="text-[11px] opacity-80">
+      <AlertDescription className="text-xs opacity-80">
         Study estimate only — the real OCE is reported Pass/Fail and each skillset is scored
         independently by two examiners.
       </AlertDescription>
@@ -352,9 +352,9 @@ function ScoreSummaryTable({ summary }: { summary: OralBoardsSkillsetScore[] }) 
               <TableRow key={key} className="align-top">
                 <TableCell className="px-2.5 py-1.5">
                   <p className="font-medium">{skillset}</p>
-                  {rationale && <p className="text-muted-foreground mt-0.5">{rationale}</p>}
+                  {rationale && <p className="mt-0.5 text-muted-foreground">{rationale}</p>}
                 </TableCell>
-                <TableCell className="text-muted-foreground px-2.5 py-1.5 whitespace-nowrap">
+                <TableCell className="px-2.5 py-1.5 whitespace-nowrap text-muted-foreground">
                   {skillMetaFor(row.skill)?.label ?? "—"}
                 </TableCell>
                 <TableCell className="px-2.5 py-1.5 text-center">
@@ -385,7 +385,7 @@ function RecordButton({ recorder }: { recorder: UseAnswerRecorder }) {
             variant="link"
             size="xs"
             onClick={clearError}
-            className="ml-1 h-auto p-0 underline"
+            className="ms-1 h-auto p-0 underline"
           >
             Dismiss
           </Button>
@@ -403,12 +403,12 @@ function RecordButton({ recorder }: { recorder: UseAnswerRecorder }) {
           <Loader2Icon className="size-3.5 animate-spin" />
         ) : recording ? (
           <>
-            <span className="mr-1.5 inline-block size-2 animate-pulse rounded-full bg-red-500" />
+            <span className="me-1.5 inline-block size-2 animate-pulse rounded-full bg-red-500" />
             Stop
           </>
         ) : (
           <>
-            <MicIcon className="mr-1 size-3.5" />
+            <MicIcon className="me-1 size-3.5" />
             Record
           </>
         )}
@@ -456,24 +456,24 @@ function VignettePanel({
   onNotesChange: React.Dispatch<React.SetStateAction<string>>;
 }) {
   return (
-    <ScrollArea className="bg-muted/25 h-full shrink-0 md:border-r">
-      <div className="mx-auto flex w-full max-w-[72ch] flex-col gap-4 p-4 sm:px-5">
+    <ScrollArea className="h-full shrink-0 bg-muted/25 md:border-e">
+      <div className="mx-auto flex w-full max-w-prose flex-col gap-4 p-4 sm:px-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <BookOpenIcon className="size-3 text-indigo-400" />
-            <span className="text-[10px] font-semibold tracking-[0.15em] text-indigo-400 uppercase">
+            <span className="text-xs font-semibold tracking-widest text-indigo-400 uppercase">
               Case Vignette
             </span>
           </div>
           <TtsButton text={caseBody} label="Listen" />
         </div>
-        <div className="text-[13px] leading-[1.7]">
+        <div className="text-sm leading-relaxed">
           <Streamdown>{caseBody}</Streamdown>
         </div>
 
-        <div className="mt-auto space-y-3">
+        <div className="mt-auto flex flex-col gap-3">
           <div className="border-t pt-3">
-            <p className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-[10px] font-medium tracking-wide uppercase">
+            <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
               <PencilIcon className="size-3" />
               Your notes
             </p>
@@ -487,7 +487,7 @@ function VignettePanel({
           </div>
           {sources.length > 0 && (
             <div className="border-t pt-3">
-              <p className="text-muted-foreground mb-1.5 text-[10px] font-medium tracking-wide uppercase">
+              <p className="mb-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
                 Sources
               </p>
               <CitationChips sources={sources} />
@@ -508,20 +508,20 @@ function CompletedExchangeRow({
 }) {
   return (
     <Collapsible className="overflow-hidden rounded-lg border">
-      <CollapsibleTrigger className="group hover:bg-muted flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors">
+      <CollapsibleTrigger className="group flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-muted">
         <CheckCircle2Icon className="size-3 shrink-0 text-emerald-400" />
         <span className="font-medium text-emerald-300/90">Q{index + 1}</span>
-        <span className="text-muted-foreground flex-1 truncate">
+        <span className="flex-1 truncate text-muted-foreground">
           {truncate(exchange.question ?? "", 52)}
         </span>
         <SkillsetBadges exchange={exchange} />
-        <ChevronDownIcon className="text-muted-foreground size-3 transition-transform group-data-panel-open:rotate-180" />
+        <ChevronDownIcon className="size-3 text-muted-foreground transition-transform group-data-panel-open:rotate-180" />
       </CollapsibleTrigger>
-      <CollapsibleContent className="space-y-1.5 border-t px-3 py-2.5 text-xs">
+      <CollapsibleContent className="flex flex-col gap-1.5 border-t px-3 py-2.5 text-xs">
         <p className="text-sm font-medium">{exchange.question}</p>
         {exchange.answer && (
           <p className="text-muted-foreground">
-            <span className="text-foreground/60 font-medium">Your answer: </span>
+            <span className="font-medium text-foreground/60">Your answer: </span>
             {exchange.answer}
           </p>
         )}
@@ -537,14 +537,14 @@ function CompletedExchangeRow({
 
 function LastFeedbackCard({ exchange, index }: { exchange: OralBoardsExchange; index: number }) {
   return (
-    <div className="shrink-0 space-y-1.5 rounded-lg border p-3 text-sm">
-      <p className="text-[10px] font-semibold tracking-[0.15em] text-emerald-400 uppercase">
+    <div className="flex shrink-0 flex-col gap-1.5 rounded-lg border p-3 text-sm">
+      <p className="text-xs font-semibold tracking-widest text-emerald-400 uppercase">
         Q{index + 1} · Feedback
       </p>
       <SkillsetBadges exchange={exchange} />
       <p className="font-medium">{exchange.question}</p>
       {exchange.answer && (
-        <p className="text-muted-foreground text-xs">Your answer: {exchange.answer}</p>
+        <p className="text-xs text-muted-foreground">Your answer: {exchange.answer}</p>
       )}
       {exchange.feedback && <Streamdown>{exchange.feedback}</Streamdown>}
       <FeedbackDetails
@@ -575,15 +575,15 @@ function PresentingPane({
   return (
     <div className="flex h-full flex-col gap-4">
       <div className="flex shrink-0 items-center justify-between">
-        <p className="text-muted-foreground text-xs">
+        <p className="text-xs text-muted-foreground">
           Read and analyze the case. Take notes before beginning.
         </p>
         <TtsButton text={caseBody} label="Present case" />
       </div>
 
-      <ScrollArea className="bg-muted/20 min-h-0 flex-1 rounded-lg border">
+      <ScrollArea className="min-h-0 flex-1 rounded-lg border bg-muted/20">
         <div className="p-4 sm:p-5">
-          <div className="text-[13.5px] leading-[1.75]">
+          <div className="text-sm leading-relaxed">
             <Streamdown>{caseBody}</Streamdown>
           </div>
           {sources.length > 0 && (
@@ -594,8 +594,8 @@ function PresentingPane({
         </div>
       </ScrollArea>
 
-      <div className="shrink-0 space-y-2">
-        <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
+      <div className="flex shrink-0 flex-col gap-2">
+        <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
           Your Notes
         </p>
         {recorder.micSupported && <CopilotChatAudioRecorder ref={recorder.recorderRef} />}
@@ -686,13 +686,13 @@ function ExamTimeline({
 // "Examiner is thinking" placeholder shown until the next question streams in.
 function ThinkingState({ isRunning, loadingStep }: { isRunning: boolean; loadingStep: string }) {
   return (
-    <div className="text-muted-foreground flex items-center gap-2.5">
+    <div className="flex items-center gap-2.5 text-muted-foreground">
       <span className="flex gap-1">
-        <span className="size-1.5 animate-pulse rounded-full bg-current [animation-delay:-0.3s]" />
-        <span className="size-1.5 animate-pulse rounded-full bg-current [animation-delay:-0.15s]" />
+        <span className="size-1.5 animate-pulse rounded-full bg-current" />
+        <span className="size-1.5 animate-pulse rounded-full bg-current" />
         <span className="size-1.5 animate-pulse rounded-full bg-current" />
       </span>
-      <span className="text-[13px] italic">
+      <span className="text-sm italic">
         {isRunning ? loadingStep || "The examiner is thinking…" : "Waiting for the next question…"}
       </span>
     </div>
@@ -710,8 +710,8 @@ function LiveFeedbackPreview({
 }) {
   if (!activeFeedback.trim()) return null;
   return (
-    <div className="shrink-0 space-y-1.5 rounded-lg border border-dashed p-3 text-sm">
-      <p className="text-[10px] font-semibold tracking-[0.15em] text-amber-400 uppercase">
+    <div className="flex shrink-0 flex-col gap-1.5 rounded-lg border border-dashed p-3 text-sm">
+      <p className="text-xs font-semibold tracking-widest text-amber-400 uppercase">
         Feedback · generating…
       </p>
       <Streamdown>{activeFeedback}</Streamdown>
@@ -722,12 +722,12 @@ function LiveFeedbackPreview({
 
 function ReviewingAnswer({ answer, loadingStep }: { answer: string; loadingStep: string }) {
   return (
-    <div className="bg-muted/15 flex shrink-0 flex-col gap-3 rounded-xl border p-3">
+    <div className="flex shrink-0 flex-col gap-3 rounded-xl border bg-muted/15 p-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
+        <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
           Your response
         </p>
-        <p role="status" className="text-muted-foreground text-xs">
+        <p role="status" className="text-xs text-muted-foreground">
           {loadingStep}
         </p>
       </div>
@@ -748,7 +748,7 @@ function ExamProgressHeader({
   return (
     <div className="shrink-0 border-b px-4 py-2">
       <div className="flex flex-col gap-2">
-        <span className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
+        <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
           Examination
         </span>
         <ExamTimeline questionNumber={questionNumber} stage={stage} />
@@ -769,10 +769,10 @@ function ExamProgressHeader({
               <Badge
                 key={skillset}
                 variant="secondary"
-                className={`py-0 text-[9px] ${avg != null ? scoreClasses(Math.round(avg)) : ""}`}
+                className={`py-0 text-xs ${avg != null ? scoreClasses(Math.round(avg)) : ""}`}
               >
                 {skillset}
-                {avg != null && <span className="ml-1 opacity-70">{avg.toFixed(1)}</span>}
+                {avg != null && <span className="ms-1 opacity-70">{avg.toFixed(1)}</span>}
               </Badge>
             );
           })}
@@ -799,7 +799,7 @@ function TranscriptSection({
   const lastExchange = transcript.at(-1);
   if (![olderExchanges.length > 0, lastExchange, activeFeedback].some(Boolean)) return null;
   return (
-    <div className="space-y-1.5">
+    <div className="flex flex-col gap-1.5">
       {olderExchanges.map((x, i) => (
         <CompletedExchangeRow key={x.question || i} exchange={x} index={i} />
       ))}
@@ -850,10 +850,10 @@ function ExaminerQuestionCard({
             </AvatarFallback>
           </Avatar>
           <div className="leading-tight">
-            <p className="text-[10px] font-semibold tracking-[0.12em] text-indigo-300/80 uppercase">
+            <p className="text-xs font-semibold tracking-widest text-indigo-300/80 uppercase">
               Examiner
             </p>
-            <p className="text-muted-foreground text-[11px]">
+            <p className="text-xs text-muted-foreground">
               Q{questionNumber}
               {isProbe && <span className="text-amber-300/90"> · Follow-up</span>}
             </p>
@@ -861,12 +861,12 @@ function ExaminerQuestionCard({
         </div>
         {activeText && <TtsButton text={activeText} label="Listen" />}
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="flex flex-col gap-2">
         {isProbe && questionText && (
-          <p className="text-muted-foreground text-xs leading-relaxed">{questionText}</p>
+          <p className="text-xs leading-relaxed text-muted-foreground">{questionText}</p>
         )}
         {activeText ? (
-          <p className="text-[15px] leading-relaxed font-medium text-pretty">{activeText}</p>
+          <p className="text-base leading-relaxed font-medium text-pretty">{activeText}</p>
         ) : (
           <ThinkingState isRunning={isRunning} loadingStep={loadingStep} />
         )}
@@ -912,17 +912,17 @@ function ResponseComposer({
   }
   if (isScoring) {
     return (
-      <div className="bg-muted/15 rounded-xl border p-3">
-        <p role="status" className="text-muted-foreground text-sm">
+      <div className="rounded-xl border bg-muted/15 p-3">
+        <p role="status" className="text-sm text-muted-foreground">
           Computing score card…
         </p>
       </div>
     );
   }
   return (
-    <div className="bg-muted/15 flex shrink-0 flex-col gap-2 rounded-xl border p-3 md:min-h-0 md:flex-1">
+    <div className="flex shrink-0 flex-col gap-2 rounded-xl border bg-muted/15 p-3 md:min-h-0 md:flex-1">
       <div className="flex shrink-0 items-center justify-between">
-        <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase">
+        <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
           Your response
         </p>
         <RecordButton recorder={recorder} />
@@ -943,17 +943,17 @@ function ResponseComposer({
       />
 
       <div className="flex shrink-0 items-center justify-between">
-        <span className="text-muted-foreground hidden items-center gap-1 text-[11px] md:flex">
+        <span className="hidden items-center gap-1 text-xs text-muted-foreground md:flex">
           <Kbd>⌘</Kbd>
           <Kbd>↵</Kbd>
-          <span className="ml-0.5">to submit</span>
+          <span className="ms-0.5">to submit</span>
         </span>
         <Button
           type="button"
           size="sm"
           disabled={isRunning || !answerText.trim()}
           onClick={onSubmit}
-          className="ml-auto"
+          className="ms-auto"
         >
           <SendHorizontalIcon className="size-3.5" />
           Submit
@@ -1103,7 +1103,7 @@ function QuestioningPane({
               />
             </div>
           </ScrollArea>
-          <div className="bg-background shrink-0 border-t p-3">{composer}</div>
+          <div className="shrink-0 border-t bg-background p-3">{composer}</div>
         </TabsContent>
       </Tabs>
     );
@@ -1200,10 +1200,10 @@ function FeedbackPane({
 }) {
   const isEmpty = !scoreCard.trim() && scoreSummary.length === 0 && transcript.length === 0;
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4">
       {outcome && <OutcomeBanner outcome={outcome} />}
       {scoreSummary.length > 0 && (
-        <p className="text-muted-foreground text-xs">
+        <p className="text-xs text-muted-foreground">
           {scoreSummary.length} skillset{scoreSummary.length === 1 ? "" : "s"} assessed · scored
           independently on the ABPD 1–3 scale
         </p>
@@ -1211,14 +1211,14 @@ function FeedbackPane({
       <ScoreSummaryTable summary={scoreSummary} />
       {scoreCard.trim() && <Streamdown key={scoreCard}>{scoreCard}</Streamdown>}
       {transcript.length > 0 && (
-        <div className="space-y-3">
+        <div className="flex flex-col gap-3">
           <h2
             id="question-review-heading"
-            className="text-muted-foreground text-[10px] font-semibold tracking-[0.15em] uppercase"
+            className="text-xs font-semibold tracking-widest text-muted-foreground uppercase"
           >
             Question review
           </h2>
-          <div className="space-y-2" aria-labelledby="question-review-heading">
+          <div className="flex flex-col gap-2" aria-labelledby="question-review-heading">
             {transcript.map((exchange, index) => (
               <CompletedExchangeRow
                 key={exchange.question || index}
@@ -1230,7 +1230,7 @@ function FeedbackPane({
         </div>
       )}
       {isEmpty ? (
-        <p className="text-muted-foreground text-sm">No feedback yet.</p>
+        <p className="text-sm text-muted-foreground">No feedback yet.</p>
       ) : (
         <div className="border-t pt-4">
           <Button type="button" className="w-full" onClick={onNewCase}>
@@ -1280,7 +1280,7 @@ export function OralBoardsPanel({
             ? "flex overflow-hidden p-0"
             : status === "presenting"
               ? "flex flex-col overflow-hidden"
-              : "space-y-4"
+              : "flex flex-col gap-4"
         }
       >
         {status === "presenting" && (

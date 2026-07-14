@@ -17,7 +17,7 @@ export default function SettingsPage() {
         </div>
         <ScrollArea className="flex min-w-0 flex-1 flex-col">
           <div className="mx-auto w-full max-w-225 px-4 py-6">
-            <h1 className="text-foreground mb-4 text-lg font-semibold">Settings</h1>
+            <h1 className="mb-4 text-lg font-semibold text-foreground">Settings</h1>
             <UserProfile routing="hash" />
           </div>
         </ScrollArea>

@@ -12,7 +12,8 @@
   "sortTailwindcss": {
     "functions": ["cn", "tw"],
     "preserveDuplicates": false,
-    "preserveWhitespace": false
+    "preserveWhitespace": false,
+    "stylesheet": "./packages/ui/src/styles/globals.css"
   },
   "ignorePatterns": ["apps/mobile/uniwind-types.d.ts", "pnpm-lock.yaml"]
 }

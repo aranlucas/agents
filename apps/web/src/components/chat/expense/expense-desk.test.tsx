@@ -60,7 +60,10 @@ describe("ExpenseDesk", () => {
       status: "ready",
       expenses: state.expenses?.map((expense) =>
         expense.id === "exp_1"
-          ? { ...expense, status: "approved", decision_note: "Approved by operator" }
+          ? Object.assign(expense, {
+              status: "approved",
+              decision_note: "Approved by operator",
+            })
           : expense,
       ),
     };

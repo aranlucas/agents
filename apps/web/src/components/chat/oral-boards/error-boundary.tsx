@@ -22,7 +22,7 @@ export class OralBoardsErrorBoundary extends Component<Props, State> {
     if (!error) return this.props.children;
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <div className="w-full max-w-md space-y-4">
+        <div className="flex w-full max-w-md flex-col gap-4">
           <Alert variant="destructive">
             <AlertCircleIcon />
             <AlertTitle>Something went wrong</AlertTitle>

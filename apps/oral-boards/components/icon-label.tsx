@@ -12,7 +12,7 @@ interface IconLabelProps {
 export function IconLabel({ icon: Icon, children, className, iconClassName }: IconLabelProps) {
   return (
     <span className={cn("flex items-center gap-1", className)}>
-      <Icon className={cn("h-3 w-3 sm:h-4 sm:w-4", iconClassName)} />
+      <Icon className={cn("size-3 sm:size-4", iconClassName)} />
       {children}
     </span>
   );

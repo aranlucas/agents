@@ -44,7 +44,7 @@ export function ConsoleTopBar({
       <Breadcrumb className="min-w-0">
         <BreadcrumbList className="flex-nowrap">
           <BreadcrumbItem className="min-w-0">
-            <span className="text-muted-foreground truncate">{config.label}</span>
+            <span className="truncate text-muted-foreground">{config.label}</span>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem className="min-w-0">
@@ -52,7 +52,7 @@ export function ConsoleTopBar({
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
-      <Badge variant="outline" className="ml-auto">
+      <Badge variant="outline" className="ms-auto">
         {isRunning === false ? (
           <CircleCheckIcon data-icon="inline-start" />
         ) : (

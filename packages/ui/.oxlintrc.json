@@ -1,18 +1,29 @@
 {
   "$schema": "../../node_modules/oxlint/configuration_schema.json",
-  "extends": ["../oxlint-config/base.json"],
+  "extends": ["../oxlint-config/base.json", "../oxlint-config/tailwind.json"],
+  "jsPlugins": ["oxlint-tailwindcss"],
   "plugins": ["import", "jsx-a11y", "react", "typescript", "unicorn"],
   "settings": {
     "react": {
       "version": "19.2.7"
+    },
+    "tailwindcss": {
+      "entryPoint": "src/styles/globals.css"
     }
   },
   "rules": {
+    "tailwindcss/no-arbitrary-value": "error",
     "react/self-closing-comp": "warn",
     "react/react-in-jsx-scope": "off",
     "jsx-a11y/prefer-tag-over-role": "off"
   },
   "overrides": [
+    {
+      "files": ["src/components/ai-elements/code-block.tsx", "src/components/tabs.tsx"],
+      "rules": {
+        "tailwindcss/no-dark-without-light": "off"
+      }
+    },
     {
       "files": ["src/components/ai-elements/**"],
       "rules": {
