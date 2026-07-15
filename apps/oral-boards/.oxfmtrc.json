@@ -1,0 +1,9 @@
+{
+  "$schema": "../../node_modules/oxfmt/configuration_schema.json",
+  "sortTailwindcss": {
+    "functions": ["cn", "tw"],
+    "preserveDuplicates": false,
+    "preserveWhitespace": false,
+    "stylesheet": "./app/globals.css"
+  }
+}
