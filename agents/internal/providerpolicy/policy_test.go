@@ -22,7 +22,7 @@ func TestAgentPolicies(t *testing.T) {
 		{Grocery, "nvidia", "nvidia/nemotron-3-super-120b-a12b", 20, []string{"mistral", "openrouter"}},
 		{Presentation, "groq", "llama-3.3-70b-versatile", 30, []string{"mistral", "openrouter"}},
 		{Research, "openrouter", "tencent/hy3:free", 20, []string{"mistral"}},
-		{Resume, "groq", "llama-3.3-70b-versatile", 30, []string{"openrouter"}},
+		{Resume, "groq", "llama-3.3-70b-versatile", 30, []string{"mistral"}},
 		{Spreadsheet, "groq", "llama-3.3-70b-versatile", 30, []string{"mistral", "openrouter"}},
 		{Travel, "openrouter", "tencent/hy3:free", 20, []string{"mistral"}},
 		{Trends, "groq", "llama-3.3-70b-versatile", 30, []string{"mistral", "openrouter"}},
