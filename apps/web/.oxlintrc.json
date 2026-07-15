@@ -33,6 +33,7 @@
           "src/app",
           "src/app/api/agents/health/**",
           "src/app/api/telegram/auth/**",
+          "src/app/console/[agent]/**",
           "src/app/sign-in/**",
           "src/app/sign-up/**",
           "src/app/tma/**"

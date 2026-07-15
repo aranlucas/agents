@@ -13,7 +13,6 @@ import { agentBaseUrl } from "@/lib/agent-url";
 type ConsoleSessionProps = {
   agent: AgentId;
   thread?: string;
-  initialToken?: string | null;
   children: ReactNode;
   loading?: ReactNode;
 };
@@ -29,15 +28,8 @@ export function reportCopilotKitError(event: CopilotKitErrorEvent) {
   console.error("[CopilotKit] Error:", error, event.context);
 }
 
-function GatewayConsoleSession({
-  agent: agentId,
-  thread,
-  initialToken,
-  children,
-  loading,
-}: ConsoleSessionProps) {
+function GatewayConsoleSession({ agent: agentId, thread, children, loading }: ConsoleSessionProps) {
   const { getToken, isLoaded, sessionId } = useAuth();
-  const hasInitialToken = initialToken !== undefined;
 
   // CopilotKit applies these headers to runtime discovery, run, connect, stop,
   // and stateless suggestion requests. The gateway verifies and forwards the
@@ -46,7 +38,6 @@ function GatewayConsoleSession({
     queryKey: ["clerk-agent-token", sessionId, agentId, thread],
     queryFn: async () => (await getToken()) ?? null,
     enabled: isLoaded,
-    initialData: initialToken,
     staleTime: 20_000,
     refetchInterval: 30_000,
   });
@@ -57,7 +48,7 @@ function GatewayConsoleSession({
     return headers;
   }, [token]);
 
-  if (!hasInitialToken && (!isLoaded || isTokenPending)) {
+  if (!isLoaded || isTokenPending) {
     return (
       loading ?? (
         <div className="min-h-0 flex-1" aria-busy="true" aria-label="Loading conversation" />

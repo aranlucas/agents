@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 
 import { IntroductionSkeleton, StreamingIntroduction } from "./streaming-introduction";
-import { loadResumeIntroductionStream } from "@/lib/resume-snapshot.server";
+import { loadResumeIntroductionStream } from "@/lib/resume-introduction.server";
 
 export { IntroductionSkeleton } from "./streaming-introduction";
 
