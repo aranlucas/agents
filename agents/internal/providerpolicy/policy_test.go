@@ -14,19 +14,20 @@ func TestAgentPolicies(t *testing.T) {
 		workload  Workload
 		provider  string
 		model     string
+		reasoning string
 		rpm       int
 		fallbacks []string
 	}{
-		{Expense, "openrouter", "tencent/hy3:free", 20, []string{"mistral"}},
-		{Fitness, "groq", "llama-3.3-70b-versatile", 30, []string{"mistral", "openrouter"}},
-		{Grocery, "nvidia", "nvidia/nemotron-3-super-120b-a12b", 20, []string{"mistral", "openrouter"}},
-		{Presentation, "groq", "llama-3.3-70b-versatile", 30, []string{"mistral", "openrouter"}},
-		{Research, "openrouter", "tencent/hy3:free", 20, []string{"mistral"}},
-		{Resume, "groq", "llama-3.3-70b-versatile", 30, []string{"mistral"}},
-		{Spreadsheet, "groq", "llama-3.3-70b-versatile", 30, []string{"mistral", "openrouter"}},
-		{Travel, "openrouter", "tencent/hy3:free", 20, []string{"mistral"}},
-		{Trends, "groq", "llama-3.3-70b-versatile", 30, []string{"mistral", "openrouter"}},
-		{Wellness, "groq", "llama-3.3-70b-versatile", 30, []string{"mistral", "openrouter"}},
+		{Expense, "openrouter", "tencent/hy3:free", "", 20, []string{"mistral"}},
+		{Fitness, "groq", "llama-3.3-70b-versatile", "", 30, []string{"mistral", "openrouter"}},
+		{Grocery, "nvidia", "nvidia/nemotron-3-super-120b-a12b", "", 20, []string{"mistral", "openrouter"}},
+		{Presentation, "groq", "llama-3.3-70b-versatile", "", 30, []string{"mistral", "openrouter"}},
+		{Research, "openrouter", "tencent/hy3:free", "", 20, []string{"mistral"}},
+		{Resume, "cerebras", "gpt-oss-120b", "low", 5, []string{"groq", "mistral"}},
+		{Spreadsheet, "groq", "llama-3.3-70b-versatile", "", 30, []string{"mistral", "openrouter"}},
+		{Travel, "openrouter", "tencent/hy3:free", "", 20, []string{"mistral"}},
+		{Trends, "groq", "llama-3.3-70b-versatile", "", 30, []string{"mistral", "openrouter"}},
+		{Wellness, "groq", "llama-3.3-70b-versatile", "", 30, []string{"mistral", "openrouter"}},
 	}
 	for _, test := range tests {
 		test := test
@@ -36,7 +37,7 @@ func TestAgentPolicies(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if policy.Provider != test.provider || policy.Model != test.model || policy.RequestsPerMinute != test.rpm || !reflect.DeepEqual(policy.Fallbacks, test.fallbacks) {
+			if policy.Provider != test.provider || policy.Model != test.model || policy.ReasoningEffort != test.reasoning || policy.RequestsPerMinute != test.rpm || !reflect.DeepEqual(policy.Fallbacks, test.fallbacks) {
 				t.Fatalf("Agent(%q) = %#v", test.workload, policy)
 			}
 		})

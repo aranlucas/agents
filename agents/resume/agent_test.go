@@ -7,7 +7,10 @@ import (
 	"testing"
 
 	"agents/resume"
+	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/model"
+	"google.golang.org/adk/v2/runner"
+	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
 )
 
@@ -20,6 +23,19 @@ func (fakeModel) Name() string { return "fake-model" }
 func (fakeModel) GenerateContent(_ context.Context, _ *model.LLMRequest, _ bool) iter.Seq2[*model.LLMResponse, error] {
 	return func(yield func(*model.LLMResponse, error) bool) {
 		yield(&model.LLMResponse{Content: &genai.Content{Role: "model", Parts: []*genai.Part{{Text: "ok"}}}, TurnComplete: true}, nil)
+	}
+}
+
+type captureModel struct {
+	request *model.LLMRequest
+}
+
+func (*captureModel) Name() string { return "capture-model" }
+
+func (m *captureModel) GenerateContent(_ context.Context, req *model.LLMRequest, _ bool) iter.Seq2[*model.LLMResponse, error] {
+	m.request = req
+	return func(yield func(*model.LLMResponse, error) bool) {
+		yield(&model.LLMResponse{Content: genai.NewContentFromText("ok", genai.RoleModel), TurnComplete: true}, nil)
 	}
 }
 
@@ -49,6 +65,32 @@ func TestResumeAgentRejectsNilModel(t *testing.T) {
 	}
 	if ag == nil {
 		t.Fatal("New(nil) returned a nil agent")
+	}
+}
+
+func TestResumeAgentCapsCompletionTokens(t *testing.T) {
+	captured := &captureModel{}
+	built, err := resume.New(captured)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sessions := session.InMemoryService()
+	if _, err := sessions.Create(t.Context(), &session.CreateRequest{
+		AppName: resume.AppName, UserID: "user", SessionID: "thread", State: resume.StateDefaults(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	run, err := runner.New(runner.Config{AppName: resume.AppName, Agent: built, SessionService: sessions})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, runErr := range run.Run(t.Context(), "user", "thread", genai.NewContentFromText("hello", genai.RoleUser), agent.RunConfig{}) {
+		if runErr != nil {
+			t.Fatal(runErr)
+		}
+	}
+	if captured.request == nil || captured.request.Config == nil || captured.request.Config.MaxOutputTokens != 2048 {
+		t.Fatalf("request config = %#v", captured.request)
 	}
 }
 

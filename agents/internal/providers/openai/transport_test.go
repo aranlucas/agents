@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/shared"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/genai"
 )
@@ -18,7 +19,7 @@ func TestBuildRequestLeavesParallelToolCallsToProvider(t *testing.T) {
 			Parameters: &genai.Schema{Type: genai.TypeObject},
 		}},
 	}}}}
-	params, err := buildRequest(req, "some-model", true)
+	params, err := buildRequest(req, "some-model", "low", true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,15 +30,28 @@ func TestBuildRequestLeavesParallelToolCallsToProvider(t *testing.T) {
 	if strings.Contains(string(encoded), `"parallel_tool_calls"`) {
 		t.Fatalf("request overrides provider parallel tool-call behavior: %s", encoded)
 	}
+	if params.ReasoningEffort != shared.ReasoningEffortLow {
+		t.Fatalf("reasoning effort = %q", params.ReasoningEffort)
+	}
 }
 
 func TestBuildRequestDoesNotInventUserMessage(t *testing.T) {
-	params, err := buildRequest(&model.LLMRequest{}, "some-model", false)
+	params, err := buildRequest(&model.LLMRequest{}, "some-model", "", false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(params.Messages) != 0 {
 		t.Fatalf("messages = %#v, want none", params.Messages)
+	}
+}
+
+func TestBuildRequestSupportsDisabledReasoning(t *testing.T) {
+	params, err := buildRequest(&model.LLMRequest{}, "zai-glm-4.7", "none", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if params.ReasoningEffort != shared.ReasoningEffortNone {
+		t.Fatalf("reasoning effort = %q", params.ReasoningEffort)
 	}
 }
 
@@ -79,7 +93,7 @@ func TestBuildRequestNormalizesNullableToolSchemaOnly(t *testing.T) {
 		}}}},
 		ResponseJsonSchema: nullable,
 	}}
-	params, err := buildRequest(req, "some-model", false)
+	params, err := buildRequest(req, "some-model", "", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +136,7 @@ func TestBuildRequestDropsThoughtSignatureOnlyPart(t *testing.T) {
 			}},
 		},
 	}
-	if _, err := buildRequest(req, "some-model", false); err != nil {
+	if _, err := buildRequest(req, "some-model", "", false); err != nil {
 		t.Fatalf("buildRequest returned error for a thought-signature-only part: %v", err)
 	}
 }

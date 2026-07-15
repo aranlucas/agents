@@ -15,6 +15,7 @@ import { ConsoleTopBar } from "@/components/chat/console-top-bar";
 import { WorkspaceShell, useArtifactPanel } from "@/components/workspace-shell";
 import { selectArtifact } from "@/components/chat/artifact";
 import { cssVars } from "@/lib/css";
+import type { AgentSnapshot } from "@/lib/agent-snapshot";
 
 /**
  * The default console experience: sidebar + chat + artifact panel, wired to the
@@ -25,7 +26,15 @@ import { cssVars } from "@/lib/css";
  * Must render inside a `<ConsoleSession>` provider (the agent's `[thread]`
  * layout supplies it).
  */
-export function AgentWorkspace({ agentId, threadId }: { agentId: AgentId; threadId: string }) {
+export function AgentWorkspace({
+  agentId,
+  threadId,
+  initialSnapshot,
+}: {
+  agentId: AgentId;
+  threadId: string;
+  initialSnapshot?: AgentSnapshot | null;
+}) {
   const router = useRouter();
   const config = getAgentConfig(agentId);
   const { state, dispatch } = useArtifactPanel(agentId);
@@ -36,7 +45,10 @@ export function AgentWorkspace({ agentId, threadId }: { agentId: AgentId; thread
   // CopilotKit agent state is intentionally dynamic; artifact selection validates
   // the fields it needs for the active agent.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  const artifact = selectArtifact(agent?.state as Record<string, unknown>, config);
+  const liveState = agent?.state as Record<string, unknown> | undefined;
+  const snapshotState =
+    liveState && Object.keys(liveState).length > 0 ? liveState : initialSnapshot?.state;
+  const artifact = selectArtifact(snapshotState, config);
   const ArtifactRenderer = getAgentExtension(agentId)?.Artifact;
 
   const startNewThread = useNewThread(agentId);
@@ -66,6 +78,7 @@ export function AgentWorkspace({ agentId, threadId }: { agentId: AgentId; thread
             <ChatSurface
               config={config}
               threadId={threadId}
+              initialSnapshot={initialSnapshot}
               onSwitchAgent={(id) => router.push(`/console/${id}/${crypto.randomUUID()}`)}
               onOpenArtifact={() => dispatch("open")}
             />
@@ -74,7 +87,7 @@ export function AgentWorkspace({ agentId, threadId }: { agentId: AgentId; thread
             artifact ? (
               ArtifactRenderer ? (
                 <ArtifactRenderer
-                  state={agent?.state}
+                  state={snapshotState}
                   view={artifact}
                   onClose={() => dispatch("close")}
                 />

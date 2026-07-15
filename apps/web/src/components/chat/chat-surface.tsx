@@ -78,6 +78,7 @@ import { AgentSelector } from "./agent-selector";
 import { ConnectNotice } from "./connect-notice";
 import { TranscribeButton } from "./transcribe-button";
 import { useRequiredConnections } from "@/hooks/use-required-connections";
+import type { AgentSnapshot } from "@/lib/agent-snapshot";
 
 type SuggestionIdentity = { title: string; message: string };
 
@@ -180,11 +181,13 @@ export function getRunCompletionPromise(value: unknown): Promise<unknown> | unde
 export function ChatSurface({
   config,
   threadId,
+  initialSnapshot,
   onSwitchAgent,
   onOpenArtifact,
 }: {
   config: AgentConfig;
   threadId: string;
+  initialSnapshot?: AgentSnapshot | null;
   onSwitchAgent: (id: AgentId) => void;
   onOpenArtifact: () => void;
 }) {
@@ -256,11 +259,15 @@ export function ChatSurface({
 
   // CopilotKit's public agent message type is looser than the AG-UI runtime
   // shape this renderer consumes; keep that cast at the integration boundary.
-  const messages = (agent?.messages ?? []) as AguiMessage[];
+  const liveMessages = (agent?.messages ?? []) as AguiMessage[];
+  const messages = liveMessages.length > 0 ? liveMessages : (initialSnapshot?.messages ?? []);
   const items = toRenderItems(messages);
   const isRunning = agent?.isRunning ?? false;
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  const artifact = selectArtifact(agent?.state as Record<string, unknown>, config);
+  const liveState = agent?.state as Record<string, unknown> | undefined;
+  const snapshotState =
+    liveState && Object.keys(liveState).length > 0 ? liveState : initialSnapshot?.state;
+  const artifact = selectArtifact(snapshotState, config);
 
   // The artifact button hangs off the most recent assistant turn.
   let lastAssistantId: string | undefined;

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { ButtonHTMLAttributes, ReactNode } from "react";
-import { render, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const copilotMocks = vi.hoisted(() => ({
@@ -190,6 +190,36 @@ describe("ChatSurface history replay", () => {
     });
     expect(copilotMocks.agent.threadId).toBe("thread-123");
     expect(copilotMocks.agent.abortController).toBeInstanceOf(AbortController);
+  });
+
+  it("renders a server snapshot before the client runtime connects", () => {
+    copilotMocks.runtimeConnectionStatus = "connecting";
+
+    render(
+      <ChatSurface
+        config={getAgentConfig("resume")}
+        threadId="thread-123"
+        initialSnapshot={{
+          threadId: "thread-123",
+          threadExists: true,
+          state: {},
+          messages: [
+            { id: "user-1", role: "user", content: "What is Lucas's current role?" },
+            {
+              id: "assistant-1",
+              role: "assistant",
+              content: "Lucas is a Senior Software Engineer at DoorDash.",
+            },
+          ],
+        }}
+        onSwitchAgent={() => {}}
+        onOpenArtifact={() => {}}
+      />,
+    );
+
+    expect(screen.getByText("What is Lucas's current role?")).toBeVisible();
+    expect(screen.getByText("Lucas is a Senior Software Engineer at DoorDash.")).toBeVisible();
+    expect(copilotMocks.connectAgent).not.toHaveBeenCalled();
   });
 
   it("waits until the runtime connection is ready before replaying history", () => {

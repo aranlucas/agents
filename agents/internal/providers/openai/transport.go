@@ -12,7 +12,7 @@ import (
 	"google.golang.org/genai"
 )
 
-func buildRequest(req *model.LLMRequest, modelName string, stream bool) (openai.ChatCompletionNewParams, error) {
+func buildRequest(req *model.LLMRequest, modelName, reasoningEffort string, stream bool) (openai.ChatCompletionNewParams, error) {
 	if req == nil {
 		return openai.ChatCompletionNewParams{}, errors.New("LLM request is required")
 	}
@@ -21,6 +21,19 @@ func buildRequest(req *model.LLMRequest, modelName string, stream bool) (openai.
 	}
 	result := openai.ChatCompletionNewParams{
 		Model: openai.ChatModel(modelName),
+	}
+	switch reasoningEffort {
+	case "":
+	case "none":
+		result.ReasoningEffort = shared.ReasoningEffortNone
+	case "low":
+		result.ReasoningEffort = shared.ReasoningEffortLow
+	case "medium":
+		result.ReasoningEffort = shared.ReasoningEffortMedium
+	case "high":
+		result.ReasoningEffort = shared.ReasoningEffortHigh
+	default:
+		return openai.ChatCompletionNewParams{}, fmt.Errorf("unsupported reasoning effort %q", reasoningEffort)
 	}
 	if stream {
 		result.StreamOptions = openai.ChatCompletionStreamOptionsParam{IncludeUsage: openai.Bool(true)}

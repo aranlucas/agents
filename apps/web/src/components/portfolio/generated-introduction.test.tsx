@@ -1,164 +1,79 @@
 // @vitest-environment jsdom
 import { act, render, screen, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-const agentMocks = vi.hoisted(() => ({
-  agent: {
-    addMessage: vi.fn(),
-    isRunning: false,
-    messages: [] as Array<{ id: string; role: string; content: string }>,
-  },
-  runAgent: vi.fn<() => Promise<void>>(),
-  runtimeConnectionStatus: "connected",
-  sessionReady: true,
+vi.mock("@/env", () => ({
+  env: { NEXT_PUBLIC_AGENTS_BASE_URL: "https://gateway.example" },
 }));
 
-vi.mock("@copilotkit/react-core/v2", () => ({
-  useAgent: () => ({ agent: agentMocks.agent }),
-  useCopilotKit: () => ({
-    copilotkit: {
-      runAgent: agentMocks.runAgent,
-      runtimeConnectionStatus: agentMocks.runtimeConnectionStatus,
-    },
-  }),
-}));
+import {
+  IntroductionContent,
+  IntroductionSkeleton,
+  StreamingIntroduction,
+} from "./streaming-introduction";
 
-vi.mock("@/components/chat/console-session", () => ({
-  ConsoleSession: ({ children, loading }: { children: ReactNode; loading?: ReactNode }) => (
-    <>{agentMocks.sessionReady ? children : loading}</>
-  ),
-}));
-
-vi.mock("next/link", () => ({
-  default: ({ children, href, ...props }: { children: ReactNode; href: string }) => (
-    <a href={href} {...props}>
-      {children}
-    </a>
-  ),
-}));
-
-import { GeneratedIntroduction } from "./generated-introduction";
-
-beforeEach(() => {
-  agentMocks.agent.messages = [];
-  agentMocks.agent.isRunning = false;
-  agentMocks.agent.addMessage.mockClear();
-  agentMocks.runAgent.mockReset();
-  agentMocks.runtimeConnectionStatus = "connected";
-  agentMocks.sessionReady = true;
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 describe("GeneratedIntroduction", () => {
-  it("keeps the same skeleton height while the session starts", () => {
-    agentMocks.sessionReady = false;
-    agentMocks.runAgent.mockImplementation(() => new Promise<void>(() => undefined));
+  it("keeps the same frame height while the server agent writes", () => {
+    render(<IntroductionSkeleton />);
 
-    const view = render(<GeneratedIntroduction />);
-    const initialFrame = view.container.firstElementChild;
-
-    expect(screen.getByLabelText("Resume agent is connecting")).toBeVisible();
-    expect(initialFrame).toHaveClass("mt-5", "min-h-80", "sm:min-h-64");
-
-    agentMocks.sessionReady = true;
-    view.rerender(<GeneratedIntroduction />);
-
-    expect(screen.getByLabelText("Resume agent is connecting")).toBeVisible();
-    expect(view.container.firstElementChild).toHaveClass("mt-5", "min-h-80", "sm:min-h-64");
-  });
-
-  it("starts the Resume agent when the component mounts", async () => {
-    agentMocks.runAgent.mockImplementation(async () => undefined);
-    render(<GeneratedIntroduction />);
-
-    await waitFor(() => expect(agentMocks.runAgent).toHaveBeenCalledTimes(1));
-    expect(agentMocks.agent.addMessage).toHaveBeenCalledTimes(1);
-    expect(agentMocks.agent.addMessage).toHaveBeenCalledWith(
-      expect.objectContaining({
-        content: expect.stringMatching(/DoorDash, Amazon, and AWS[\s\S]*90 to 120 words/),
-      }),
+    expect(screen.getByLabelText("Resume agent is writing")).toHaveClass(
+      "mt-5",
+      "min-h-80",
+      "sm:min-h-64",
     );
   });
 
-  it("waits for runtime agent registration before starting", async () => {
-    agentMocks.runtimeConnectionStatus = "connecting";
-    agentMocks.runAgent.mockImplementation(async () => undefined);
-
-    const view = render(<GeneratedIntroduction />);
-
-    expect(agentMocks.runAgent).not.toHaveBeenCalled();
-    expect(agentMocks.agent.addMessage).not.toHaveBeenCalled();
-
-    agentMocks.runtimeConnectionStatus = "connected";
-    view.rerender(<GeneratedIntroduction />);
-
-    await waitFor(() => expect(agentMocks.runAgent).toHaveBeenCalledTimes(1));
-    expect(agentMocks.agent.addMessage).toHaveBeenCalledTimes(1);
-  });
-
-  it("shows the loading skeleton before assistant text arrives", async () => {
-    let finishRun: (() => void) | undefined;
-    agentMocks.runAgent.mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
-          finishRun = resolve;
-        }),
+  it("renders a generated introduction as paragraphs", () => {
+    const view = render(
+      <IntroductionContent
+        text={"I build products from idea to launch.\n\nOutside work, I build agents and climb."}
+      />,
     );
-
-    const view = render(<GeneratedIntroduction />);
-
-    expect(await screen.findByLabelText("Resume agent is connecting")).toBeVisible();
-    expect(screen.queryByRole("link", { name: /Resume agent/i })).not.toBeInTheDocument();
-
-    agentMocks.agent.isRunning = true;
-    agentMocks.agent.messages = [
-      { id: "user-1", role: "user", content: "Write an introduction" },
-      { id: "assistant-1", role: "assistant", content: "I build agents." },
-    ];
-    view.rerender(<GeneratedIntroduction />);
-
-    const introParagraph = view.container.querySelector("p");
-    expect(introParagraph).toHaveTextContent("I build agents.");
-    expect(screen.queryByLabelText("Resume agent is connecting")).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /Resume agent/i })).not.toBeInTheDocument();
-
-    agentMocks.agent.isRunning = false;
-    await act(async () => finishRun?.());
-    expect(screen.queryByRole("link", { name: /Resume agent/i })).not.toBeInTheDocument();
-  });
-
-  it("does not start multiple times in a row", async () => {
-    agentMocks.runAgent.mockImplementation(async () => undefined);
-
-    const view = render(<GeneratedIntroduction />);
-    view.rerender(<GeneratedIntroduction />);
-
-    await waitFor(() => expect(agentMocks.runAgent).toHaveBeenCalledTimes(1));
-  });
-
-  it("keeps a direct Resume agent path when generation fails", async () => {
-    agentMocks.runAgent.mockRejectedValue(new Error("unavailable"));
-    render(<GeneratedIntroduction />);
-
-    expect(await screen.findByText(/The introduction is unavailable right now/)).toBeVisible();
-    expect(await screen.findByRole("link", { name: /ask my Resume agent/i })).toHaveAttribute(
-      "href",
-      "/console/resume",
-    );
-  });
-
-  it("renders a generated introduction as two paragraphs", () => {
-    agentMocks.runAgent.mockImplementation(() => new Promise<void>(() => undefined));
-    agentMocks.agent.messages = [
-      {
-        id: "assistant-1",
-        role: "assistant",
-        content: "I build products from idea to launch.\n\nOutside work, I build agents and climb.",
-      },
-    ];
-
-    const view = render(<GeneratedIntroduction />);
 
     expect(view.container.querySelectorAll("p")).toHaveLength(2);
+    expect(screen.getByText("I build products from idea to launch.")).toBeVisible();
+    expect(screen.getByText("Outside work, I build agents and climb.")).toBeVisible();
+  });
+
+  it("starts empty and renders only fresh streamed text", async () => {
+    let streamController: ReadableStreamDefaultController<Uint8Array> | undefined;
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        streamController = controller;
+      },
+    });
+    const fetchMock = vi.fn(async () => new Response(stream, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<StreamingIntroduction />);
+    expect(screen.getByLabelText("Resume agent is writing")).toBeVisible();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://gateway.example/agent/resume/suggest",
+      expect.objectContaining({ cache: "no-store", method: "POST" }),
+    );
+
+    await act(async () => {
+      streamController?.enqueue(
+        new TextEncoder().encode(
+          'data: {"type":"TEXT_MESSAGE_CONTENT","delta":"Fresh introduction"}\n\n',
+        ),
+      );
+    });
+    expect(screen.getByText("Fresh introduction")).toBeVisible();
+
+    await act(async () => {
+      streamController?.enqueue(
+        new TextEncoder().encode(
+          'data: {"type":"TEXT_MESSAGE_CONTENT","delta":" streams in."}\n\n',
+        ),
+      );
+      streamController?.close();
+    });
+    expect(screen.getByText("Fresh introduction streams in.")).toBeVisible();
   });
 });

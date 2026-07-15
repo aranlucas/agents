@@ -65,6 +65,27 @@ describe("ConsoleSession gateway runtime connection", () => {
     expect(screen.queryByText("Conversation ready")).not.toBeInTheDocument();
   });
 
+  it("renders immediately from a server-resolved token while Clerk hydrates", () => {
+    mocks.isLoaded = false;
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ConsoleSession agent="resume" thread="thread-123" initialToken="server-token">
+          <span>Server conversation ready</span>
+        </ConsoleSession>
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByText("Server conversation ready")).toBeVisible();
+    expect(mocks.getToken).not.toHaveBeenCalled();
+    expect(mocks.copilotProps).toMatchObject({
+      headers: { Authorization: "Bearer server-token" },
+    });
+  });
+
   it("loads Clerk headers and configures chat plus stateless suggestions", async () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },

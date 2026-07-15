@@ -19,6 +19,7 @@ vi.mock("@/components/portfolio/generated-introduction", () => ({
       <a href="/console/resume">Ask the Resume agent →</a>
     </div>
   ),
+  IntroductionSkeleton: () => <div>Writing introduction</div>,
 }));
 
 import Home from "./page";

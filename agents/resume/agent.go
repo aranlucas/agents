@@ -6,6 +6,7 @@ import (
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/tool"
 	"google.golang.org/adk/v2/tool/functiontool"
+	"google.golang.org/genai"
 )
 
 // AppName is the ADK app name resume sessions and D1 rows are scoped under.
@@ -45,6 +46,9 @@ func New(m model.LLM, toolsets ...tool.Toolset) (agent.Agent, error) {
 		Description: "Public grounded resume Q&A and job-fit tailoring.",
 		Instruction: Instruction,
 		Model:       m,
+		GenerateContentConfig: &genai.GenerateContentConfig{
+			MaxOutputTokens: 2048,
+		},
 		Tools: []tool.Tool{
 			setTargetRoleTool,
 			writeFitAssessmentTool,

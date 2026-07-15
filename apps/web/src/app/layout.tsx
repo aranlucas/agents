@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Providers } from "@/components/providers";
 import "@agents/ui/globals.css";
 import "./globals.css";
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
       <body className="antialiased">
         <Providers>{children}</Providers>
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

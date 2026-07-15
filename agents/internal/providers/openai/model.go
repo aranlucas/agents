@@ -181,7 +181,7 @@ func (m *Model) runProvider(ctx context.Context, pc providerClient, req *model.L
 	if modelName == "" && req != nil {
 		modelName = req.Model
 	}
-	params, err := buildRequest(req, modelName, stream)
+	params, err := buildRequest(req, modelName, pc.config.ReasoningEffort, stream)
 	if err != nil {
 		// buildRequest errors are always local schema-construction failures
 		// (our own code, never raw HTTP bodies or credentials), so logging

@@ -33,6 +33,7 @@ const (
 type Policy struct {
 	Provider          string
 	Model             string
+	ReasoningEffort   string
 	RequestsPerMinute int
 	Fallbacks         []string
 
@@ -69,9 +70,9 @@ func Agent(workload Workload) (Policy, error) {
 		return openRouterLight("OPENROUTER_API_KEY is required to configure the research agent", "mistral"), nil
 	case Resume:
 		return Policy{
-			Provider: "groq", Model: "llama-3.3-70b-versatile", RequestsPerMinute: 30,
-			Fallbacks:              []string{"mistral"},
-			missingProviderMessage: "GROQ_API_KEY is required to configure the resume agent",
+			Provider: "cerebras", Model: "gpt-oss-120b", ReasoningEffort: "low", RequestsPerMinute: 5,
+			Fallbacks:              []string{"groq", "mistral"},
+			missingProviderMessage: "CEREBRAS_API_KEY is required to configure the resume agent",
 		}, nil
 	case Spreadsheet:
 		return groqStandard("GROQ_API_KEY is required to configure the spreadsheet agent"), nil
@@ -145,6 +146,7 @@ func ResolveRequired(providers map[string]config.Provider, policy Policy) (confi
 		return config.Provider{}, fmt.Errorf("provider %q is required", policy.Provider)
 	}
 	provider.Model = policy.Model
+	provider.ReasoningEffort = policy.ReasoningEffort
 	provider.RequestsPerMinute = policy.RequestsPerMinute
 	provider.Fallbacks = configuredFallbacks(providers, policy.Fallbacks)
 	return provider, nil
@@ -180,6 +182,7 @@ func FallbackProviders(providers map[string]config.Provider) map[string]config.P
 func ResolveEval(providers map[string]config.Provider, policy Policy) (config.Provider, string, error) {
 	if provider, ok := providers[policy.Provider]; ok {
 		provider.Model = policy.Model
+		provider.ReasoningEffort = policy.ReasoningEffort
 		provider.RequestsPerMinute = policy.RequestsPerMinute
 		return provider, "", nil
 	}

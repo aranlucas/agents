@@ -1,26 +1,8 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { AGENT_ORDER } from "@agents/types";
+import { clerkMiddleware } from "@clerk/nextjs/server";
 
-const PROTECTED_CONSOLE_ROUTES = AGENT_ORDER.filter((agentId) => agentId !== "resume").map(
-  (agentId) => `/console/${agentId}(.*)`,
-);
-
-export const PROTECTED_ROUTES = [
-  ...PROTECTED_CONSOLE_ROUTES,
-  "/console/settings(.*)",
-  "/telegram/link(.*)",
-];
-
-const isProtectedRoute = createRouteMatcher(PROTECTED_ROUTES);
-
-export default clerkMiddleware(async (auth, req) => {
-  if (isProtectedRoute(req)) {
-    const signInUrl = new URL("/sign-in", req.url);
-    signInUrl.searchParams.set("redirect_url", req.url);
-
-    await auth.protect({ unauthenticatedUrl: signInUrl.toString() });
-  }
-});
+// Protect resources at their page/layout/route boundary instead of matching
+// URL paths in middleware.
+export default clerkMiddleware();
 
 export const config = {
   matcher: [
