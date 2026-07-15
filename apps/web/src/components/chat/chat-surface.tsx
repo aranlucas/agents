@@ -20,7 +20,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@agents/ui/components/empty";
-import { Message, MessageAvatar, MessageContent } from "@agents/ui/components/message";
+import { Message, MessageContent } from "@agents/ui/components/message";
 import { Bubble, BubbleContent } from "@agents/ui/components/bubble";
 import {
   MessageScrollerProvider,
@@ -391,9 +391,6 @@ export function ChatSurface({
                     return (
                       <MessageScrollerItem key={item.id} messageId={item.id}>
                         <Message align="start">
-                          <MessageAvatar>
-                            <SparklesIcon className="size-4 text-muted-foreground" />
-                          </MessageAvatar>
                           <MessageContent>
                             {item.toolCalls.map((tc) => (
                               <Fragment key={tc.id}>{toolCallContent(tc)}</Fragment>

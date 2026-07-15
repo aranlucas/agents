@@ -1,17 +1,12 @@
 package agui
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 
 	"agents/internal/agentruntime"
-	"agents/internal/auth"
-	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
-	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/encoding/sse"
 	"google.golang.org/adk/v2/session"
 )
 
@@ -83,10 +78,10 @@ type copilotKitAgent struct {
 // directly from the Go gateway. D1-backed ADK sessions provide durable connect
 // replay; activeRuns adds only process-local live replay and cancellation.
 type CopilotKitRuntime struct {
-	sessions session.Service
-	active   *activeRuns
-	agents   []copilotKitAgent
-	byRoute  map[string]copilotKitAgent
+	runner  *D1AgentRunner
+	agents  []copilotKitAgent
+	byID    map[string]copilotKitAgent
+	byRoute map[string]copilotKitAgent
 }
 
 // NewCopilotKitRuntime binds every registry entry once and reuses the same ADK
@@ -103,10 +98,14 @@ func NewCopilotKitRuntime(registry *agentruntime.Registry, sessions session.Serv
 		clientID = func(route string) string { return route }
 	}
 
+	runner, err := NewD1AgentRunner(sessions)
+	if err != nil {
+		return nil, err
+	}
 	runtime := &CopilotKitRuntime{
-		sessions: sessions,
-		active:   newActiveRuns(),
-		byRoute:  make(map[string]copilotKitAgent),
+		runner:  runner,
+		byID:    make(map[string]copilotKitAgent),
+		byRoute: make(map[string]copilotKitAgent),
 	}
 	seenIDs := make(map[string]bool)
 	for _, entry := range registry.Entries() {
@@ -116,9 +115,7 @@ func NewCopilotKitRuntime(registry *agentruntime.Registry, sessions session.Serv
 		}
 		seenIDs[id] = true
 
-		runOptions := append([]Option(nil), opts...)
-		runOptions = append(runOptions, withActiveRuns(runtime.active))
-		run, err := NewEntryHandler(entry, sessions, runOptions...)
+		run, err := runtime.runner.newRunHandler(entry, opts...)
 		if err != nil {
 			return nil, fmt.Errorf("build CopilotKit run handler for %s: %w", entry.Route, err)
 		}
@@ -128,6 +125,7 @@ func NewCopilotKitRuntime(registry *agentruntime.Registry, sessions session.Serv
 		}
 		agent := copilotKitAgent{id: id, entry: entry, run: run, suggestion: suggestion}
 		runtime.agents = append(runtime.agents, agent)
+		runtime.byID[id] = agent
 		runtime.byRoute[entry.Route] = agent
 	}
 	return runtime, nil
@@ -142,12 +140,13 @@ func (r *CopilotKitRuntime) EntryHandler(route string) (http.Handler, bool) {
 // Register mounts the multi-route CopilotKit v2 REST/SSE contract.
 func (r *CopilotKitRuntime) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /info", r.info)
+	mux.HandleFunc("GET /threads", r.listThreads)
 	for _, agent := range r.agents {
 		base := "/agent/" + agent.id
 		mux.Handle("POST "+base+"/run", agent.run)
 		mux.Handle("POST "+base+"/suggest", agent.suggestion)
-		mux.Handle("POST "+base+"/connect", r.connectHandler(agent))
-		mux.Handle("POST "+base+"/stop/{threadId}", r.stopHandler(agent))
+		mux.Handle("POST "+base+"/connect", r.runner.connectHandler(agent))
+		mux.Handle("POST "+base+"/stop/{threadId}", r.runner.stopHandler(agent))
 	}
 }
 
@@ -192,94 +191,7 @@ func (r *CopilotKitRuntime) info(w http.ResponseWriter, _ *http.Request) {
 		Version:         CopilotKitRuntimeVersion,
 		Agents:          agents,
 		Mode:            "sse",
-		ThreadEndpoints: runtimeThreadEndpoints{},
+		ThreadEndpoints: runtimeThreadEndpoints{List: true},
 		Suggestions:     true,
 	})
-}
-
-func (r *CopilotKitRuntime) connectHandler(agent copilotKitAgent) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
-		input, err := decodeRunInput(request.Body)
-		if err != nil {
-			writeJSONErrorMessage(w, http.StatusBadRequest, "Invalid request body", err.Error())
-			return
-		}
-		identity, ok := auth.FromContext(request.Context())
-		if !ok {
-			identity = auth.Identity{UserID: "anonymous", Public: true}
-		}
-		key := runKey{
-			AgentRoute: agent.entry.Route,
-			UserID:     effectiveUserID(identity, input.ThreadID),
-			ThreadID:   input.ThreadID,
-		}
-
-		writeSSEHeaders(w)
-		frame := sse.NewSSEWriter()
-		if active := r.active.lookup(key); active != nil {
-			w.WriteHeader(http.StatusOK)
-			if err := active.replay(request.Context(), func(event events.Event) error {
-				return frame.WriteEvent(request.Context(), w, event)
-			}); err != nil && request.Context().Err() == nil {
-				log.Printf("CopilotKit connect: active replay failed for agent=%s thread=%s: %v", agent.id, input.ThreadID, err)
-			}
-			return
-		}
-
-		ctx, cancel := context.WithTimeout(request.Context(), agent.entry.Timeout)
-		defer cancel()
-		state, err := loadThreadState(ctx, r.sessions, agent.entry, identity, input.ThreadID)
-		if err != nil {
-			log.Printf("CopilotKit connect: session lookup failed for agent=%s thread=%s: %v", agent.id, input.ThreadID, err)
-			writeJSONError(w, http.StatusInternalServerError, "state_unavailable")
-			return
-		}
-
-		w.WriteHeader(http.StatusOK)
-		_ = frame.WriteEvent(ctx, w, events.NewRunStartedEvent(input.ThreadID, input.RunID))
-		_ = frame.WriteEvent(ctx, w, events.NewMessagesSnapshotEvent(state.Messages))
-		_ = frame.WriteEvent(ctx, w, events.NewStateSnapshotEvent(state.State))
-		_ = frame.WriteEvent(ctx, w, events.NewRunFinishedEventWithOptions(input.ThreadID, input.RunID, events.WithSuccessOutcome()))
-	})
-}
-
-func (r *CopilotKitRuntime) stopHandler(agent copilotKitAgent) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
-		threadID := strings.TrimSpace(request.PathValue("threadId"))
-		if threadID == "" {
-			writeJSONErrorMessage(w, http.StatusBadRequest, "Invalid request", "threadId is required")
-			return
-		}
-		identity, ok := auth.FromContext(request.Context())
-		if !ok {
-			identity = auth.Identity{UserID: "anonymous", Public: true}
-		}
-		stopped := r.active.stop(runKey{
-			AgentRoute: agent.entry.Route,
-			UserID:     effectiveUserID(identity, threadID),
-			ThreadID:   threadID,
-		})
-
-		w.Header().Set("Content-Type", "application/json")
-		if !stopped {
-			_ = json.NewEncoder(w).Encode(map[string]any{
-				"stopped": false,
-				"message": fmt.Sprintf("No active run for thread '%s'.", threadID),
-			})
-			return
-		}
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"stopped": true,
-			"interrupt": map[string]string{
-				"type": "RUN_ERROR", "message": "Run stopped by user", "code": "STOPPED",
-			},
-		})
-	})
-}
-
-func writeSSEHeaders(w http.ResponseWriter) {
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("X-Accel-Buffering", "no")
 }

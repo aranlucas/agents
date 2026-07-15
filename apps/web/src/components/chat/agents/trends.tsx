@@ -145,13 +145,13 @@ function ComparisonChart({ rows, columns }: { rows: TrendsRow[]; columns: string
     <section aria-labelledby="trends-comparison">
       <div className="mb-4 flex items-end justify-between gap-3">
         <div>
-          <div className="mb-1 flex items-center gap-2">
+          <div className="typeset typeset-site mb-1 flex items-center gap-2">
             <BarChart3 aria-hidden="true" className="size-4 text-page" />
-            <h3 id="trends-comparison" className="text-sm font-semibold">
+            <h3 id="trends-comparison" className="mt-0">
               Comparison
             </h3>
           </div>
-          <p className="text-xs text-muted-foreground">{metric.label}</p>
+          <p className="mt-0 text-xs text-muted-foreground">{metric.label}</p>
         </div>
         <span className="text-xs text-muted-foreground tabular-nums">Top {data.length}</span>
       </div>
@@ -219,17 +219,17 @@ export function TrendsArtifact({ state: rawState, view, onClose }: AgentArtifact
       </ArtifactHeader>
 
       <ArtifactContent className="p-0">
-        <section className="border-b bg-page/10 p-5">
+        <section className="typeset typeset-site border-b bg-page/10 p-5">
           <div className="mb-2 flex items-center gap-2 text-page">
             <Search aria-hidden="true" className="size-4" />
             <p className="text-xs font-semibold tracking-widest uppercase">Question</p>
           </div>
-          <h2 className="text-lg leading-snug font-semibold">{question}</h2>
+          <h2 className="mt-0">{question}</h2>
         </section>
 
         <div className="flex flex-col gap-8 p-5">
           {state.error?.trim() ? (
-            <p className="rounded-md border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive">
+            <p className="rounded-md border border-destructive/25 bg-destructive/5 p-3 text-destructive">
               {state.error}
             </p>
           ) : null}
@@ -238,24 +238,22 @@ export function TrendsArtifact({ state: rawState, view, onClose }: AgentArtifact
 
           {state.insights?.trim() ? (
             <section aria-labelledby="trends-insights">
-              <div className="mb-3 flex items-center gap-2">
+              <div className="typeset typeset-site mb-3 flex items-center gap-2">
                 <Sparkles aria-hidden="true" className="size-4 text-page" />
-                <h3 id="trends-insights" className="text-sm font-semibold">
+                <h3 id="trends-insights" className="mt-0">
                   Insights
                 </h3>
               </div>
-              <div className="prose prose-sm max-w-none dark:prose-invert">
-                <Streamdown>{state.insights}</Streamdown>
-              </div>
+              <Streamdown>{state.insights}</Streamdown>
             </section>
           ) : null}
 
           {rows.length && columns.length ? (
             <section aria-labelledby="trends-data">
               <div className="mb-3 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
+                <div className="typeset typeset-site flex items-center gap-2">
                   <Database aria-hidden="true" className="size-4 text-page" />
-                  <h3 id="trends-data" className="text-sm font-semibold">
+                  <h3 id="trends-data" className="mt-0">
                     Result data
                   </h3>
                 </div>
@@ -291,11 +289,11 @@ export function TrendsArtifact({ state: rawState, view, onClose }: AgentArtifact
           ) : null}
 
           {state.generated_sql?.trim() ? (
-            <details className="group border-t pt-4">
+            <details className="typeset typeset-site group border-t pt-4">
               <summary className="cursor-pointer text-xs font-semibold tracking-wide text-muted-foreground uppercase transition-colors hover:text-foreground">
                 Generated SQL
               </summary>
-              <pre className="mt-3 overflow-x-auto rounded-md border bg-muted/45 p-3 text-xs leading-relaxed">
+              <pre className="mt-3 overflow-x-auto rounded-md border bg-muted/45 p-3">
                 <code>{state.generated_sql}</code>
               </pre>
             </details>

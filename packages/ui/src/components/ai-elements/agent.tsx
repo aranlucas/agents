@@ -18,7 +18,7 @@ import { CodeBlock } from "./code-block";
 export type AgentProps = ComponentProps<"div">;
 
 export const Agent = memo(({ className, ...props }: AgentProps) => (
-  <div className={cn("not-prose w-full rounded-md border", className)} {...props} />
+  <div className={cn("not-typeset w-full rounded-md border", className)} {...props} />
 ));
 
 export type AgentHeaderProps = ComponentProps<"div"> & {

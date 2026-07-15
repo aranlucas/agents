@@ -53,7 +53,7 @@ export const ChainOfThought = memo(
 
     return (
       <ChainOfThoughtContext.Provider value={chainOfThoughtContext}>
-        <div className={cn("not-prose flex w-full flex-col gap-4", className)} {...props}>
+        <div className={cn("not-typeset flex w-full flex-col gap-4", className)} {...props}>
           {children}
         </div>
       </ChainOfThoughtContext.Provider>

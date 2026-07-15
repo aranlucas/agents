@@ -58,9 +58,10 @@ type streamSmoothing struct {
 }
 
 const (
-	streamChunkingWord = "word"
-	streamChunkingLine = "line"
-	streamChunkingChar = "char"
+	streamChunkingWord  = "word"
+	streamChunkingLine  = "line"
+	streamChunkingChar  = "char"
+	sessionNameStateKey = "session_name"
 )
 
 var defaultStreamSmoothing = streamSmoothing{

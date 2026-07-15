@@ -98,13 +98,6 @@ func TestEveryActiveAgentExposesScopedEndpoints(t *testing.T) {
 		if recorder.Code != http.StatusOK {
 			t.Fatalf("POST /%s/agents/state=%d %s", route, recorder.Code, recorder.Body.String())
 		}
-		request = httptest.NewRequest(http.MethodGet, "/"+route+"/agents/sessions", nil)
-		request.Header.Set("Authorization", "Bearer test")
-		recorder = httptest.NewRecorder()
-		handler.ServeHTTP(recorder, request)
-		if recorder.Code != http.StatusOK {
-			t.Fatalf("GET /%s/agents/sessions=%d %s", route, recorder.Code, recorder.Body.String())
-		}
 		request = httptest.NewRequest(http.MethodPost, "/agent/"+frontendAgentID(route)+"/suggest", strings.NewReader(`{"threadId":"suggestion-thread","runId":"suggestion-run","messages":[]}`))
 		if route != "resume" {
 			request.Header.Set("Authorization", "Bearer test")
@@ -129,6 +122,12 @@ func TestEveryActiveAgentExposesScopedEndpoints(t *testing.T) {
 	handler.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusNotFound {
 		t.Fatalf("root state endpoint=%d", recorder.Code)
+	}
+	request = httptest.NewRequest(http.MethodGet, "/travel/agents/sessions", nil)
+	recorder = httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusNotFound {
+		t.Fatalf("removed sessions endpoint=%d", recorder.Code)
 	}
 }
 
@@ -319,8 +318,8 @@ func TestGatewayRejectsUnauthenticatedNonPublicRoute(t *testing.T) {
 	assertSuggestionRoute(t, handler, "/agent/travel/connect", "", http.StatusUnauthorized)
 	assertRoute(t, handler, http.MethodPost, "/agent/travel/stop/thread-123", http.StatusUnauthorized)
 	assertSuggestionRoute(t, handler, "/agent/travel/suggest", "", http.StatusUnauthorized)
+	assertRoute(t, handler, http.MethodGet, "/threads?agentId=travel", http.StatusUnauthorized)
 	assertRoute(t, handler, http.MethodPost, "/travel/agents/state", http.StatusUnauthorized)
-	assertRoute(t, handler, http.MethodGet, "/travel/agents/sessions", http.StatusUnauthorized)
 	// Capabilities and health are metadata, not user data: never gated.
 	assertRoute(t, handler, http.MethodGet, "/travel/health", http.StatusOK)
 	assertRoute(t, handler, http.MethodGet, "/travel/agui/capabilities", http.StatusOK)
@@ -353,8 +352,8 @@ func TestRuntimeInfoAdvertisesConcreteAgents(t *testing.T) {
 	if recorder.Code != http.StatusOK || response.Version != agui.CopilotKitRuntimeVersion || !response.Suggestions || response.Mode != "sse" || len(response.Agents) != 1 || response.Agents["resume"] == nil {
 		t.Fatalf("response = %d %#v", recorder.Code, response)
 	}
-	if response.ThreadEndpoints.List || response.ThreadEndpoints.Inspect || response.ThreadEndpoints.Mutations || response.ThreadEndpoints.RealtimeMetadata {
-		t.Fatalf("thread endpoints must be disabled: %#v", response.ThreadEndpoints)
+	if !response.ThreadEndpoints.List || response.ThreadEndpoints.Inspect || response.ThreadEndpoints.Mutations || response.ThreadEndpoints.RealtimeMetadata {
+		t.Fatalf("only read-only thread listing must be enabled: %#v", response.ThreadEndpoints)
 	}
 	if response.AudioFileTranscriptionEnabled || response.A2UIEnabled || response.OpenGenerativeUIEnabled || response.TelemetryDisabled {
 		t.Fatalf("unsupported runtime capabilities were advertised: %#v", response)

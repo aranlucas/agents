@@ -11,7 +11,7 @@ import {
   BreadcrumbSeparator,
 } from "@agents/ui/components/breadcrumb";
 import { getAgentConfig, type AgentId } from "@/components/chat/agents/registry";
-import { useAgentSessions } from "@/components/chat/use-agent-sessions";
+import { useConsoleThreads } from "@/components/chat/console-threads";
 
 const sessionDate = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -30,10 +30,10 @@ export function ConsoleTopBar({
   isRunning: boolean | undefined;
 }) {
   const config = getAgentConfig(agentId);
-  const { data: sessions = [] } = useAgentSessions(agentId);
-  const activeSession = sessions.find((session) => session.id === threadId);
+  const { threads } = useConsoleThreads();
+  const activeSession = threads.find((thread) => thread.id === threadId);
   const sessionLabel = activeSession
-    ? (activeSession.name ?? sessionDate.format(new Date(activeSession.lastUpdateTime * 1000)))
+    ? (activeSession.name ?? sessionDate.format(new Date(activeSession.updatedAt)))
     : "Current session";
   const status = isRunning === undefined ? "Connecting" : isRunning ? "Working" : "Ready";
 

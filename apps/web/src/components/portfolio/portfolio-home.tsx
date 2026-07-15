@@ -136,23 +136,21 @@ function SiteHeader() {
 function Ideas() {
   return (
     <section aria-labelledby="ideas-heading" className="mt-20 sm:mt-24">
-      <h2 id="ideas-heading" className="text-sm font-semibold tracking-tight">
+      <h2 id="ideas-heading" className="mt-0">
         What I want personal agents to handle
       </h2>
-      <ol className="mt-5 border-t border-border">
+      <ol className="mt-5 list-none border-t border-border p-0">
         {ideas.map((idea, index) => (
           <li
-            className="grid gap-3 border-b border-border py-6 sm:grid-cols-12 sm:gap-5"
+            className="mt-0 grid gap-3 border-b border-border py-6 ps-0 sm:grid-cols-12 sm:gap-5"
             key={idea.title}
           >
             <span className="font-mono text-xs leading-6 text-muted-foreground sm:col-span-1">
               {String(index + 1).padStart(2, "0")}
             </span>
-            <article className="sm:col-span-11">
-              <h3 className="text-base leading-6 font-medium tracking-tight">{idea.title}</h3>
-              <p className="mt-2 max-w-xl text-base leading-7 text-muted-foreground">
-                {idea.description}
-              </p>
+            <article className="typeset typeset-site sm:col-span-11">
+              <h3>{idea.title}</h3>
+              <p className="mt-2 max-w-xl text-muted-foreground">{idea.description}</p>
             </article>
           </li>
         ))}
@@ -164,12 +162,12 @@ function Ideas() {
 function AgentDemos() {
   return (
     <section aria-labelledby="agents-heading" className="mt-20 sm:mt-24">
-      <h2 id="agents-heading" className="text-sm font-semibold tracking-tight">
+      <h2 id="agents-heading" className="mt-0">
         Working agents
       </h2>
-      <ul className="mt-5 border-t border-border">
+      <ul className="mt-5 list-none border-t border-border p-0">
         {agentDemos.map(({ id, title, description, href, colorClass }) => (
-          <li className="border-b border-border" key={title}>
+          <li className="mt-0 border-b border-border ps-0" key={title}>
             <Link
               className="group grid grid-cols-12 items-center gap-x-3 gap-y-1 rounded-sm py-3.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring sm:gap-4"
               href={href}
@@ -209,7 +207,7 @@ function About() {
       aria-labelledby="about-heading"
       className="mt-20 min-h-56 border-t border-border pt-7 sm:mt-24"
     >
-      <h2 id="about-heading" className="text-sm font-semibold tracking-tight">
+      <h2 id="about-heading" className="mt-0">
         About me
       </h2>
       <GeneratedIntroduction />
@@ -222,12 +220,12 @@ export function PortfolioHome() {
     <div className="min-h-screen bg-background font-sans text-foreground selection:bg-accent">
       <SiteHeader />
 
-      <main className="mx-auto max-w-2xl px-5 pb-20 sm:px-0 sm:pb-28">
+      <main className="typeset typeset-site mx-auto max-w-2xl px-5 pb-20 sm:px-0 sm:pb-28">
         <section className="pt-20 sm:pt-28">
-          <h1 className="max-w-2xl text-4xl leading-none font-medium tracking-tighter text-balance sm:text-5xl">
+          <h1 className="max-w-2xl text-4xl/10 font-medium tracking-tighter text-balance sm:text-5xl/12">
             Hi, I’m Lucas.
           </h1>
-          <p className="mt-7 max-w-2xl text-lg leading-8 tracking-tight text-ink-soft sm:text-xl">
+          <p className="mt-7 max-w-2xl text-lg/8 tracking-tight text-ink-soft sm:text-xl/8">
             I’m exploring what agents can do by building them for my own life.
           </p>
           <About />

@@ -5,9 +5,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SidebarProvider } from "@agents/ui";
 
 const mocks = vi.hoisted(() => ({
-  sessions: [
-    { id: "thread-current", name: "Plan Japan", lastUpdateTime: 1_783_900_000 },
-    { id: "thread-older", lastUpdateTime: 1_783_800_000 },
+  threads: [
+    { id: "thread-current", name: "Plan Japan", updatedAt: "2026-07-14T12:00:00Z" },
+    { id: "thread-older", name: null, updatedAt: "2026-07-13T12:00:00Z" },
   ],
 }));
 
@@ -24,13 +24,13 @@ vi.mock("@copilotkit/react-core/v2", () => ({
   UseAgentUpdate: { OnRunStatusChanged: "run-status" },
 }));
 
-vi.mock("./use-agent-sessions", () => ({
-  useAgentSessions: () => ({
-    data: mocks.sessions,
+vi.mock("./console-threads", () => ({
+  useConsoleThreads: () => ({
+    threads: mocks.threads,
+    isLoading: false,
+    error: null,
+    refetchThreads: vi.fn(),
     isAuthenticated: true,
-    isPending: false,
-    isError: false,
-    refetch: vi.fn(),
   }),
 }));
 
@@ -38,13 +38,13 @@ import { AppSidebar } from "./app-sidebar";
 
 describe("AppSidebar session history", () => {
   beforeEach(() => {
-    mocks.sessions = [
-      { id: "thread-current", name: "Plan Japan", lastUpdateTime: 1_783_900_000 },
-      { id: "thread-older", lastUpdateTime: 1_783_800_000 },
+    mocks.threads = [
+      { id: "thread-current", name: "Plan Japan", updatedAt: "2026-07-14T12:00:00Z" },
+      { id: "thread-older", name: null, updatedAt: "2026-07-13T12:00:00Z" },
     ];
   });
 
-  it("links every ADK session for the active agent and highlights the current thread", () => {
+  it("links every runtime thread for the active agent and highlights the current thread", () => {
     render(
       <SidebarProvider defaultOpen>
         <AppSidebar agentId="travel" activeThreadId="thread-current" />
@@ -67,7 +67,7 @@ describe("AppSidebar session history", () => {
   });
 
   it("lists the current route before ADK persists its session", () => {
-    mocks.sessions = [];
+    mocks.threads = [];
 
     render(
       <SidebarProvider defaultOpen>

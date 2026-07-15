@@ -21,7 +21,7 @@ import {
 } from "@agents/ui";
 
 import { getAgentConfig, type AgentId } from "@/components/chat/agents/registry";
-import { useAgentSessions } from "@/components/chat/use-agent-sessions";
+import { useConsoleThreads } from "@/components/chat/console-threads";
 
 export const SETTINGS_PATH = "/console/settings";
 const sessionDate = new Intl.DateTimeFormat("en-US", {
@@ -33,17 +33,11 @@ const sessionDate = new Intl.DateTimeFormat("en-US", {
 
 function AgentSessions({ agentId, activeThreadId }: { agentId: AgentId; activeThreadId: string }) {
   const { agent } = useAgent({ agentId, updates: [UseAgentUpdate.OnRunStatusChanged] });
-  const {
-    data: sessions = [],
-    isAuthenticated,
-    isPending,
-    isError,
-    refetch,
-  } = useAgentSessions(agentId);
+  const { threads, isLoading, error, refetchThreads, isAuthenticated } = useConsoleThreads();
   const wasRunning = useRef(false);
-  const visibleSessions = sessions.some((session) => session.id === activeThreadId)
-    ? sessions
-    : [{ id: activeThreadId, name: undefined, lastUpdateTime: null }, ...sessions];
+  const visibleSessions = threads.some((thread) => thread.id === activeThreadId)
+    ? threads
+    : [{ id: activeThreadId, name: null, updatedAt: null }, ...threads];
 
   useEffect(() => {
     if (agent?.isRunning) {
@@ -52,9 +46,9 @@ function AgentSessions({ agentId, activeThreadId }: { agentId: AgentId; activeTh
     }
     if (wasRunning.current) {
       wasRunning.current = false;
-      void refetch();
+      refetchThreads();
     }
-  }, [agent?.isRunning, refetch]);
+  }, [agent?.isRunning, refetchThreads]);
 
   if (!isAuthenticated) return null;
 
@@ -63,7 +57,7 @@ function AgentSessions({ agentId, activeThreadId }: { agentId: AgentId; activeTh
       <SidebarGroupLabel>Sessions</SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
-          {isPending ? (
+          {isLoading ? (
             <>
               <SidebarMenuSkeleton showIcon />
               <SidebarMenuSkeleton showIcon />
@@ -74,9 +68,9 @@ function AgentSessions({ agentId, activeThreadId }: { agentId: AgentId; activeTh
               {visibleSessions.map((session) => {
                 const label =
                   session.name ??
-                  (session.lastUpdateTime === null
+                  (session.updatedAt === null
                     ? "Current session"
-                    : sessionDate.format(new Date(session.lastUpdateTime * 1000)));
+                    : sessionDate.format(new Date(session.updatedAt)));
                 return (
                   <SidebarMenuItem key={session.id}>
                     <SidebarMenuButton
@@ -90,11 +84,11 @@ function AgentSessions({ agentId, activeThreadId }: { agentId: AgentId; activeTh
                   </SidebarMenuItem>
                 );
               })}
-              {isError ? (
+              {error ? (
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     tooltip="Retry loading sessions"
-                    onClick={() => void refetch()}
+                    onClick={() => refetchThreads()}
                   >
                     <RefreshCwIcon />
                     <span>Retry sessions</span>

@@ -7,8 +7,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => {
   return {
     copilotProps: null as Record<string, unknown> | null,
-    getToken: vi.fn(async () => "clerk-session-token"),
+    getToken: vi.fn<() => Promise<string | null>>(async () => "clerk-session-token"),
     isLoaded: true,
+    useThreads: vi.fn(() => ({ threads: [] })),
   };
 });
 
@@ -17,6 +18,7 @@ vi.mock("@clerk/nextjs", () => ({
     getToken: mocks.getToken,
     isLoaded: mocks.isLoaded,
     sessionId: "session-123",
+    userId: "user-123",
   }),
 }));
 
@@ -25,6 +27,7 @@ vi.mock("@copilotkit/react-core/v2", () => ({
     mocks.copilotProps = props;
     return <>{props.children}</>;
   },
+  useThreads: mocks.useThreads,
 }));
 
 vi.mock("@/env", () => ({
@@ -39,6 +42,8 @@ describe("ConsoleSession gateway runtime connection", () => {
   beforeEach(() => {
     mocks.copilotProps = null;
     mocks.getToken.mockClear();
+    mocks.getToken.mockResolvedValue("clerk-session-token");
+    mocks.useThreads.mockClear();
     mocks.isLoaded = true;
   });
 
@@ -85,6 +90,27 @@ describe("ConsoleSession gateway runtime connection", () => {
       enableInspector: false,
       threadId: "thread-123",
     });
+    expect(mocks.useThreads).toHaveBeenCalledOnce();
+    expect(mocks.useThreads).toHaveBeenCalledWith({ agentId: "travel", enabled: true });
+  });
+
+  it("does not load protected thread history without a Clerk token", async () => {
+    mocks.getToken.mockResolvedValue(null);
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ConsoleSession agent="resume" thread="public-thread">
+          <span>Public conversation ready</span>
+        </ConsoleSession>
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("Public conversation ready")).toBeInTheDocument();
+    expect(mocks.useThreads).toHaveBeenCalledOnce();
+    expect(mocks.useThreads).toHaveBeenCalledWith({ agentId: "resume", enabled: false });
   });
 
   it("ignores expected abort errors but reports real CopilotKit failures", async () => {

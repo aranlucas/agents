@@ -17,16 +17,6 @@ vi.mock("@copilotkit/react-core/v2", () => ({
   UseAgentUpdate: { OnRunStatusChanged: "run-status" },
 }));
 
-vi.mock("./use-agent-sessions", () => ({
-  useAgentSessions: () => ({
-    data: [],
-    isAuthenticated: false,
-    isPending: false,
-    isError: false,
-    refetch: vi.fn(),
-  }),
-}));
-
 import { AppSidebar } from "./app-sidebar";
 
 describe("AppSidebar", () => {

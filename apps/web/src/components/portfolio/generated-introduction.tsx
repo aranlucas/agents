@@ -80,7 +80,7 @@ function IntroductionWriter() {
     <IntroductionFrame>
       {showSkeleton ? <IntroductionSkeletonContent /> : null}
       {text ? (
-        <p className="animate-in text-base leading-7 text-ink-soft duration-500 ease-out fade-in motion-reduce:animate-none">
+        <p className="animate-in text-ink-soft duration-500 ease-out fade-in motion-reduce:animate-none">
           {text}
           {agent.isRunning ? (
             <span
@@ -91,12 +91,10 @@ function IntroductionWriter() {
         </p>
       ) : null}
       {failed ? (
-        <p className="text-sm leading-6 text-muted-foreground">
-          The introduction is unavailable right now.
-        </p>
+        <p className="text-muted-foreground">The introduction is unavailable right now.</p>
       ) : null}
       {streamCompleted ? (
-        <p className="mt-4 animate-in text-sm duration-500 ease-out fade-in slide-in-from-bottom-1 motion-reduce:animate-none">
+        <p className="mt-4 animate-in duration-500 ease-out fade-in slide-in-from-bottom-1 motion-reduce:animate-none">
           <Link
             className="rounded-sm font-medium text-primary underline decoration-primary/35 underline-offset-4 transition-colors hover:text-accent-foreground hover:decoration-current focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
             href="/console/resume"

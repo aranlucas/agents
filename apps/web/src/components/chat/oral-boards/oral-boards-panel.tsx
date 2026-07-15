@@ -198,7 +198,7 @@ function SkillsetBadges({ exchange }: { exchange: OralBoardsExchange }) {
 function ModelAnswer({ text }: { text: string }) {
   if (!text.trim()) return null;
   return (
-    <div className="rounded border border-dashed border-border/60 px-2.5 py-2 text-xs">
+    <div className="rounded border border-dashed border-border/60 px-2.5 py-2">
       <p className="mb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
         Model answer
       </p>
@@ -243,8 +243,8 @@ function AnswerCoach() {
         </span>
         <ChevronDownIcon className="size-3 text-muted-foreground transition-transform group-data-panel-open:rotate-180" />
       </CollapsibleTrigger>
-      <CollapsibleContent className="flex flex-col gap-1.5 border-t px-2.5 py-2 text-xs">
-        <ul className="flex list-disc flex-col gap-1 ps-4 leading-relaxed text-muted-foreground">
+      <CollapsibleContent className="typeset typeset-site border-t px-2.5 py-2">
+        <ul className="text-muted-foreground">
           <li>
             <span className="font-medium text-foreground">Commit</span> — lead with your diagnosis
             or decision; don&apos;t list options without choosing.
@@ -467,9 +467,7 @@ function VignettePanel({
           </div>
           <TtsButton text={caseBody} label="Listen" />
         </div>
-        <div className="text-sm leading-relaxed">
-          <Streamdown>{caseBody}</Streamdown>
-        </div>
+        <Streamdown>{caseBody}</Streamdown>
 
         <div className="mt-auto flex flex-col gap-3">
           <div className="border-t pt-3">
@@ -583,9 +581,7 @@ function PresentingPane({
 
       <ScrollArea className="min-h-0 flex-1 rounded-lg border bg-muted/20">
         <div className="p-4 sm:p-5">
-          <div className="text-sm leading-relaxed">
-            <Streamdown>{caseBody}</Streamdown>
-          </div>
+          <Streamdown>{caseBody}</Streamdown>
           {sources.length > 0 && (
             <div className="mt-4 border-t pt-3">
               <CitationChips sources={sources} />

@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { type ReactNode, useMemo } from "react";
 
 import type { AgentId } from "@/components/chat/agents/registry";
+import { ConsoleThreadsProvider } from "@/components/chat/console-threads";
 import { env } from "@/env";
 import { agentBaseUrl } from "@/lib/agent-url";
 
@@ -65,7 +66,9 @@ function GatewayConsoleSession({ agent: agentId, thread, children, loading }: Co
       enableInspector={false}
       onError={reportCopilotKitError}
     >
-      {children}
+      <ConsoleThreadsProvider agentId={agentId} enabled={Boolean(token)}>
+        {children}
+      </ConsoleThreadsProvider>
     </CopilotKit>
   );
 }

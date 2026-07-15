@@ -247,6 +247,28 @@ describe("ChatSurface history replay", () => {
     expect(getByTestId("activity-surface")).toHaveTextContent("surface-1");
   });
 
+  it("renders assistant text without a decorative agent icon", () => {
+    copilotMocks.agent.messages = [
+      {
+        id: "assistant-1",
+        role: "assistant",
+        content: "Assistant answer",
+      },
+    ];
+
+    const { getByText, queryByTestId } = render(
+      <ChatSurface
+        config={getAgentConfig("resume")}
+        threadId="thread-123"
+        onSwitchAgent={() => {}}
+        onOpenArtifact={() => {}}
+      />,
+    );
+
+    expect(getByText("Assistant answer")).toBeInTheDocument();
+    expect(queryByTestId("sparkles")).not.toBeInTheDocument();
+  });
+
   it("gives duplicate suggestion titles unique React keys", async () => {
     copilotMocks.suggestions = [
       {

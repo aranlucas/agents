@@ -71,9 +71,9 @@ export function ExpenseDesk({ state, isRunning, onDecision, onPrompt }: ExpenseD
   return (
     <div className="grid h-full min-h-0 grid-cols-4 bg-zinc-950 text-zinc-100">
       <aside className="col-span-1 min-h-0 overflow-y-auto border-e border-white/10 bg-zinc-900 p-4">
-        <div className="mb-4">
+        <div className="typeset typeset-site mb-4">
           <p className="text-xs tracking-widest text-zinc-400 uppercase">Expense Desk</p>
-          <h2 className="text-lg font-semibold">Review queue</h2>
+          <h2 className="mt-0">Review queue</h2>
         </div>
         {expenses.length === 0 ? (
           <div className="flex flex-col gap-3 rounded-md border border-dashed border-white/15 p-4 text-sm text-zinc-300">
@@ -153,11 +153,11 @@ export function ExpenseDesk({ state, isRunning, onDecision, onPrompt }: ExpenseD
           {selected ? (
             <div className="mx-auto flex max-w-3xl flex-col gap-5">
               <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-4">
-                <div>
+                <div className="typeset typeset-site">
                   <p className="text-xs tracking-widest text-zinc-400 uppercase">
                     {selected.category} / {selected.date}
                   </p>
-                  <h1 className="mt-1 text-2xl font-semibold">{selected.description}</h1>
+                  <h1 className="mt-1">{selected.description}</h1>
                   <p className="mt-1 text-sm text-zinc-300">{selected.submitter}</p>
                 </div>
                 <div className="text-right">
@@ -167,24 +167,22 @@ export function ExpenseDesk({ state, isRunning, onDecision, onPrompt }: ExpenseD
                   </p>
                 </div>
               </div>
-              <div className="rounded-md border border-white/10 bg-zinc-900 p-4">
+              <div className="typeset typeset-site rounded-md border border-white/10 bg-zinc-900 p-4">
                 <div className="mb-2 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold">Risk review</h3>
+                  <h3 className="mt-0">Risk review</h3>
                   <span
                     className={`text-xs tracking-widest uppercase ${riskClass(selected.risk_level)}`}
                   >
                     {selected.risk_level ?? "pending"}
                   </span>
                 </div>
-                <p className="text-sm leading-6 text-zinc-300">
+                <p className="mt-2 text-zinc-300">
                   {selected.risk_summary?.trim()
                     ? selected.risk_summary
                     : "No risk review has been written yet."}
                 </p>
                 {selected.recommendation ? (
-                  <p className="mt-3 text-sm text-zinc-400">
-                    Recommendation: {selected.recommendation}
-                  </p>
+                  <p className="mt-3 text-zinc-400">Recommendation: {selected.recommendation}</p>
                 ) : null}
               </div>
               {selected.status === "needs_review" ? (
@@ -215,7 +213,7 @@ export function ExpenseDesk({ state, isRunning, onDecision, onPrompt }: ExpenseD
         </section>
         <section className="h-56 shrink-0 overflow-y-auto border-t border-white/10 bg-black p-4">
           <p className="mb-2 text-xs tracking-widest text-zinc-400 uppercase">Report</p>
-          <div className="flex flex-col gap-1 text-sm leading-6 whitespace-pre-wrap text-zinc-300">
+          <div className="typeset typeset-site flex flex-col gap-1 whitespace-pre-wrap text-zinc-300 [&>p]:mt-0">
             <ReportLines report={state.expense_report} />
           </div>
         </section>

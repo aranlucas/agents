@@ -108,12 +108,12 @@ function OralBoardsStartPage({
 
   return (
     <div className="flex h-full flex-col items-center justify-center gap-6 p-8">
-      <div className="flex max-w-md flex-col gap-2.5 text-center">
+      <div className="typeset typeset-site max-w-md text-center">
         <p className="text-xs font-semibold tracking-widest text-indigo-400 uppercase">
           ABPD Oral Clinical Exam
         </p>
-        <h2 className="text-xl font-semibold">Practice the oral boards</h2>
-        <p className="text-sm leading-relaxed text-muted-foreground">
+        <h2>Practice the oral boards</h2>
+        <p className="text-muted-foreground">
           Get a grounded clinical vignette, field the examiner&apos;s open-ended questions one at a
           time, then receive cited per-skillset feedback scored on the ABPD 1–3 scale.
         </p>

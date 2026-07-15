@@ -194,7 +194,7 @@ export function SpreadsheetWorkspace({ threadId }: { threadId: string }) {
               <p className="mb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
                 Analysis
               </p>
-              <div className="prose prose-sm max-w-none dark:prose-invert">
+              <div>
                 <Streamdown>{state.summary}</Streamdown>
               </div>
             </div>

@@ -85,7 +85,7 @@ function SlidePreview({
       {/* Body */}
       {slide.body && (
         <div className="min-h-0 flex-1 overflow-auto">
-          <div className="prose-sm max-w-none grow dark:prose-invert">
+          <div className="grow">
             <Streamdown>{slide.body}</Streamdown>
           </div>
         </div>
@@ -93,11 +93,11 @@ function SlidePreview({
 
       {/* Speaker notes */}
       {slide.notes && (
-        <div className="mt-6 border-t pt-4">
+        <div className="typeset typeset-site mt-6 border-t pt-4">
           <p className="mb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
             Speaker notes
           </p>
-          <p className="text-xs text-muted-foreground">{slide.notes}</p>
+          <p className="mt-0 text-muted-foreground">{slide.notes}</p>
         </div>
       )}
     </div>

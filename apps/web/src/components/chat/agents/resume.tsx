@@ -79,57 +79,58 @@ export function ResumeArtifact({ state: rawState, view, onClose }: AgentArtifact
       </ArtifactHeader>
 
       <ArtifactContent className="p-0">
-        <section aria-labelledby="resume-target-role" className="border-b bg-page/10 p-5">
+        <section
+          aria-labelledby="resume-target-role"
+          className="typeset typeset-site border-b bg-page/10 p-5"
+        >
           <div className="mb-2 flex items-center gap-2 text-page">
             <Target aria-hidden="true" className="size-4" />
             <p className="text-xs font-semibold tracking-widest uppercase">Target role</p>
           </div>
-          <h2 id="resume-target-role" className="text-xl leading-tight font-semibold">
+          <h2 id="resume-target-role" className="mt-0">
             {targetRole}
           </h2>
           {state.job_description?.trim() ? (
-            <p className="mt-2 line-clamp-4 text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground">
+            <p className="mt-2 line-clamp-4 whitespace-pre-wrap text-muted-foreground">
               {state.job_description}
             </p>
           ) : null}
         </section>
 
-        <div className="flex flex-col gap-7 p-5">
+        <div className="typeset typeset-site flex flex-col gap-7 p-5">
           <section aria-labelledby="resume-fit-summary">
             <div className="mb-3 flex items-center gap-2">
               <Sparkles aria-hidden="true" className="size-4 text-page" />
-              <h3 id="resume-fit-summary" className="text-sm font-semibold">
+              <h3 id="resume-fit-summary" className="mt-0">
                 Fit summary
               </h3>
             </div>
-            <div className="prose prose-sm max-w-none dark:prose-invert">
-              <Streamdown>{fitSummary}</Streamdown>
-            </div>
+            <Streamdown>{fitSummary}</Streamdown>
           </section>
 
           <section aria-labelledby="resume-gaps">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <CircleAlert aria-hidden="true" className="size-4 text-amber-600" />
-                <h3 id="resume-gaps" className="text-sm font-semibold">
+                <h3 id="resume-gaps" className="mt-0">
                   Gaps to address
                 </h3>
               </div>
               <span className="text-xs text-muted-foreground tabular-nums">{gaps.length}</span>
             </div>
             {gaps.length ? (
-              <ul className="flex flex-col gap-2">
+              <ul className="mt-0 flex list-none flex-col gap-2 p-0">
                 {gaps.map(({ item, key }) => (
                   <li
                     key={key}
-                    className="rounded-md border border-border/70 bg-muted/25 px-3 py-2.5 text-sm leading-relaxed"
+                    className="mt-0 rounded-md border border-border/70 bg-muted/25 px-3 py-2.5"
                   >
                     {item}
                   </li>
                 ))}
               </ul>
             ) : (
-              <div className="flex items-center gap-2 rounded-md border border-emerald-500/20 bg-emerald-500/5 px-3 py-2.5 text-sm text-emerald-700 dark:text-emerald-300">
+              <div className="flex items-center gap-2 rounded-md border border-emerald-500/20 bg-emerald-500/5 px-3 py-2.5 text-emerald-700 dark:text-emerald-300">
                 <CheckCircle2 aria-hidden="true" className="size-4 shrink-0" />
                 <p>
                   {status === "ready"
@@ -144,7 +145,7 @@ export function ResumeArtifact({ state: rawState, view, onClose }: AgentArtifact
             <div className="mb-3 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <CheckCircle2 aria-hidden="true" className="size-4 text-page" />
-                <h3 id="resume-tailored-bullets" className="text-sm font-semibold">
+                <h3 id="resume-tailored-bullets" className="mt-0">
                   Tailored evidence
                 </h3>
               </div>
@@ -153,9 +154,9 @@ export function ResumeArtifact({ state: rawState, view, onClose }: AgentArtifact
               </span>
             </div>
             {tailoredBullets.length ? (
-              <ul className="flex flex-col gap-2.5">
+              <ul className="mt-0 flex list-none flex-col gap-2.5 p-0">
                 {tailoredBullets.map(({ item, key }) => (
-                  <li key={key} className="flex gap-3 text-sm leading-relaxed">
+                  <li key={key} className="mt-0 flex gap-3 ps-0">
                     <span
                       aria-hidden="true"
                       className="mt-2 size-1.5 shrink-0 rounded-full bg-page"
@@ -165,7 +166,7 @@ export function ResumeArtifact({ state: rawState, view, onClose }: AgentArtifact
                 ))}
               </ul>
             ) : (
-              <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+              <p className="rounded-md border border-dashed p-3 text-muted-foreground">
                 Tailored evidence will appear when the role analysis is complete.
               </p>
             )}
@@ -179,9 +180,7 @@ export function ResumeArtifact({ state: rawState, view, onClose }: AgentArtifact
               >
                 Ready check
               </h3>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                {state.review_summary}
-              </p>
+              <p className="text-muted-foreground">{state.review_summary}</p>
             </section>
           ) : null}
         </div>

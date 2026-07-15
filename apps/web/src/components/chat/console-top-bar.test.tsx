@@ -4,11 +4,11 @@ import { describe, expect, it, vi } from "vitest";
 import { SidebarProvider } from "@agents/ui";
 
 const mocks = vi.hoisted(() => ({
-  sessions: [] as Array<{ id: string; name?: string; lastUpdateTime: number }>,
+  threads: [] as Array<{ id: string; name: string | null; updatedAt: string }>,
 }));
 
-vi.mock("./use-agent-sessions", () => ({
-  useAgentSessions: () => ({ data: mocks.sessions }),
+vi.mock("./console-threads", () => ({
+  useConsoleThreads: () => ({ threads: mocks.threads }),
 }));
 
 import { ConsoleTopBar } from "./console-top-bar";
@@ -28,8 +28,7 @@ describe("ConsoleTopBar", () => {
   });
 
   it("uses the persisted session name and ready state", () => {
-    const lastUpdateTime = 1_783_900_000;
-    mocks.sessions = [{ id: "saved-thread", name: "Plan Japan", lastUpdateTime }];
+    mocks.threads = [{ id: "saved-thread", name: "Plan Japan", updatedAt: "2026-07-14T12:00:00Z" }];
 
     render(
       <SidebarProvider>
