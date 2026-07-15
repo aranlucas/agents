@@ -8,7 +8,8 @@
       "version": "19.2.7"
     },
     "tailwindcss": {
-      "entryPoint": "src/styles/globals.css"
+      "entryPoint": "src/styles/globals.css",
+      "timeout": 120000
     }
   },
   "rules": {
