@@ -1,9 +1,7 @@
-@import "tailwindcss";
+@import "./primitives.css";
 @import "./typeset.css";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
 @import "streamdown/styles.css";
-@source "../../../apps/**/*.{ts,tsx}";
+@source "../../../apps/web/**/*.{ts,tsx}";
 @source "../**/*.{ts,tsx}";
 @source "../../node_modules/streamdown/dist/*.js";
 
@@ -66,7 +64,6 @@
   --color-trends: var(--trends);
   --color-canvas: Canvas;
   --color-canvas-text: CanvasText;
-  --color-secondary-hover: color-mix(in oklch, var(--surface-soft), var(--ink) 5%);
   --color-muted-hover: color-mix(in oklch, var(--bg-soft), var(--ink) 5%);
   --color-bubble-primary: oklch(from var(--accent) 0.93 calc(c * 0.4) h);
   --color-bubble-primary-dark: oklch(from var(--accent) 0.3 calc(c * 0.4) h);
@@ -96,25 +93,14 @@
   --ease-scroller-exit: cubic-bezier(0.7, 0, 0.84, 0);
   --shadow-sidebar-border: 0 0 0 1px var(--sidebar-border);
   --shadow-sidebar-accent: 0 0 0 1px var(--sidebar-accent);
-  --grid-template-columns-icon-content: auto 1fr;
-  --grid-template-columns-card-action: 1fr auto;
   --grid-template-rows-alert: auto 1fr;
   --grid-template-rows-alert-media: auto auto 1fr;
-  --grid-template-rows-card-description: auto auto;
   --background-size-shimmer: 250% 100%, auto;
 }
 
 @utility calendar-cell-metrics {
   --cell-radius: var(--radius-md);
   --cell-size: --spacing(7);
-}
-
-@utility card-spacing {
-  --card-spacing: --spacing(4);
-}
-
-@utility card-spacing-sm {
-  --card-spacing: --spacing(3);
 }
 
 @utility code-line-counter {

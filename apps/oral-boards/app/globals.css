@@ -1,7 +1,11 @@
-@import "tailwindcss";
+@import "@agents/ui/styles/primitives.css";
 @plugin "@tailwindcss/typography";
 
-@source "../../../packages/ui/src/**/*.{ts,tsx}";
+@source "../../../packages/ui/src/components/badge.tsx";
+@source "../../../packages/ui/src/components/button.tsx";
+@source "../../../packages/ui/src/components/card.tsx";
+@source "../../../packages/ui/src/components/collapsible.tsx";
+@source "../../../packages/ui/src/components/select.tsx";
 
 @theme inline {
   --color-background: var(--bg);
