@@ -18,12 +18,11 @@ export const metadata: Metadata = {
     template: "%s | Lucas Arango",
   },
   description:
-    "A personal index of ideas and working demos for specialist agents, typed state, real tools, and durable artifacts.",
+    "Software engineer building conversational AI products, personal agents, and useful tools.",
   metadataBase: new URL("https://agents-lucas.vercel.app"),
   openGraph: {
     title: "Lucas Arango — Software Engineer",
-    description:
-      "Ideas and working experiments for agents that coordinate, use tools, and create durable artifacts.",
+    description: "Software engineer building conversational AI products and personal agents.",
     type: "website",
     url: "/",
   },

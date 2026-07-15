@@ -28,54 +28,39 @@ describe("Portfolio home page", () => {
     render(<Home />);
 
     expect(screen.getByRole("heading", { name: "Hi, I’m Lucas." })).toBeInTheDocument();
-    expect(
-      screen.getByText("I’m exploring what agents can do by building them for my own life."),
-    ).toBeVisible();
+    expect(screen.getByRole("region", { name: "About me" })).toBeVisible();
     expect(screen.queryByRole("navigation", { name: "Portfolio" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("banner")).not.toBeInTheDocument();
+    expect(screen.queryByRole("contentinfo")).not.toBeInTheDocument();
   });
 
-  it("presents the three ideas without a career chronology", () => {
+  it("keeps only the three featured agents", () => {
     render(<Home />);
 
-    expect(
-      screen.getByRole("heading", {
-        name: "What would I build for my own life?",
-      }),
-    ).toBeVisible();
-    expect(screen.getByRole("heading", { name: "What should it research for me?" })).toBeVisible();
-    expect(screen.getByRole("heading", { name: "What should it finish?" })).toBeVisible();
-    expect(
-      screen.queryByText(/DoorDash|AWS|Amazon|senior software engineer/i),
-    ).not.toBeInTheDocument();
-  });
-
-  it("keeps every working demo discoverable", () => {
-    render(<Home />);
-
-    const demoRoutes = [
-      "/console/travel",
-      "/console/grocery",
-      "/console/fitness",
-      "/console/wellness",
-      "/console/expense",
-      "/console/oral-boards",
-      "/console/trends",
-      "/console/research",
-      "/console/spreadsheet",
-      "/console/presentation",
-    ];
+    const demoRoutes = ["/console/grocery", "/console/resume", "/console/trends"];
     const hrefs = screen.getAllByRole("link").map((link) => link.getAttribute("href"));
 
     for (const route of demoRoutes) expect(hrefs).toContain(route);
+    expect(hrefs).not.toContain("/console/travel");
   });
 
   it("uses the Resume agent as optional personal context", () => {
     render(<Home />);
 
     expect(screen.getByText(/The Resume agent will write this introduction/i)).toBeVisible();
-    expect(screen.getByRole("link", { name: /Ask the Resume agent/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Resume" })).toHaveAttribute("href", "/console/resume");
+  });
+
+  it("folds external links into the closing sentence", () => {
+    render(<Home />);
+
+    expect(screen.getByRole("link", { name: "GitHub" })).toHaveAttribute(
       "href",
-      "/console/resume",
+      "https://github.com/aranlucas",
+    );
+    expect(screen.getByRole("link", { name: "LinkedIn" })).toHaveAttribute(
+      "href",
+      "https://www.linkedin.com/in/lucasarango/",
     );
   });
 

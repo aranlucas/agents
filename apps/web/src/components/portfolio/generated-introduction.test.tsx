@@ -58,13 +58,13 @@ describe("GeneratedIntroduction", () => {
     const initialFrame = view.container.firstElementChild;
 
     expect(screen.getByLabelText("Resume agent is connecting")).toBeVisible();
-    expect(initialFrame).toHaveClass("mt-4", "min-h-42");
+    expect(initialFrame).toHaveClass("mt-5", "min-h-80", "sm:min-h-64");
 
     agentMocks.sessionReady = true;
     view.rerender(<GeneratedIntroduction />);
 
     expect(screen.getByLabelText("Resume agent is connecting")).toBeVisible();
-    expect(view.container.firstElementChild).toHaveClass("mt-4", "min-h-42");
+    expect(view.container.firstElementChild).toHaveClass("mt-5", "min-h-80", "sm:min-h-64");
   });
 
   it("starts the Resume agent when the component mounts", async () => {
@@ -73,6 +73,11 @@ describe("GeneratedIntroduction", () => {
 
     await waitFor(() => expect(agentMocks.runAgent).toHaveBeenCalledTimes(1));
     expect(agentMocks.agent.addMessage).toHaveBeenCalledTimes(1);
+    expect(agentMocks.agent.addMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringMatching(/DoorDash, Amazon, and AWS[\s\S]*90 to 120 words/),
+      }),
+    );
   });
 
   it("waits for runtime agent registration before starting", async () => {
@@ -103,7 +108,7 @@ describe("GeneratedIntroduction", () => {
     const view = render(<GeneratedIntroduction />);
 
     expect(await screen.findByLabelText("Resume agent is connecting")).toBeVisible();
-    expect(screen.queryByRole("link", { name: /Ask the Resume agent/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Resume agent/i })).not.toBeInTheDocument();
 
     agentMocks.agent.isRunning = true;
     agentMocks.agent.messages = [
@@ -115,11 +120,11 @@ describe("GeneratedIntroduction", () => {
     const introParagraph = view.container.querySelector("p");
     expect(introParagraph).toHaveTextContent("I build agents.");
     expect(screen.queryByLabelText("Resume agent is connecting")).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /Ask the Resume agent/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Resume agent/i })).not.toBeInTheDocument();
 
     agentMocks.agent.isRunning = false;
     await act(async () => finishRun?.());
-    expect(await screen.findByRole("link", { name: /Ask the Resume agent/i })).toBeVisible();
+    expect(screen.queryByRole("link", { name: /Resume agent/i })).not.toBeInTheDocument();
   });
 
   it("does not start multiple times in a row", async () => {
@@ -135,10 +140,25 @@ describe("GeneratedIntroduction", () => {
     agentMocks.runAgent.mockRejectedValue(new Error("unavailable"));
     render(<GeneratedIntroduction />);
 
-    expect(await screen.findByText("The introduction is unavailable right now.")).toBeVisible();
-    expect(await screen.findByRole("link", { name: /Ask the Resume agent/i })).toHaveAttribute(
+    expect(await screen.findByText(/The introduction is unavailable right now/)).toBeVisible();
+    expect(await screen.findByRole("link", { name: /ask my Resume agent/i })).toHaveAttribute(
       "href",
       "/console/resume",
     );
+  });
+
+  it("renders a generated introduction as two paragraphs", () => {
+    agentMocks.runAgent.mockImplementation(() => new Promise<void>(() => undefined));
+    agentMocks.agent.messages = [
+      {
+        id: "assistant-1",
+        role: "assistant",
+        content: "I build products from idea to launch.\n\nOutside work, I build agents and climb.",
+      },
+    ];
+
+    const view = render(<GeneratedIntroduction />);
+
+    expect(view.container.querySelectorAll("p")).toHaveLength(2);
   });
 });
