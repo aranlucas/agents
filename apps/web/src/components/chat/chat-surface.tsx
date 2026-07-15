@@ -79,6 +79,22 @@ import { ConnectNotice } from "./connect-notice";
 import { TranscribeButton } from "./transcribe-button";
 import { useRequiredConnections } from "@/hooks/use-required-connections";
 
+type SuggestionIdentity = { title: string; message: string };
+
+function suggestionKey(suggestion: SuggestionIdentity): string {
+  return JSON.stringify([suggestion.title, suggestion.message]);
+}
+
+function uniqueSuggestions<T extends SuggestionIdentity>(suggestions: readonly T[]): T[] {
+  const seen = new Set<string>();
+  return suggestions.filter((suggestion) => {
+    const key = suggestionKey(suggestion);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 const AssistantText = memo(
   ({ children }: { children: string }) => (
     <Streamdown className="[&>*:first-child]:mt-0 [&>*:last-child]:mb-0">{children}</Streamdown>
@@ -184,6 +200,7 @@ export function ChatSurface({
   const renderToolCall = useRenderToolCall();
   const { renderActivityMessage: activityMessage } = useRenderActivityMessage();
   const { suggestions } = useSuggestions({ agentId: config.id });
+  const visibleSuggestions = uniqueSuggestions(suggestions);
   const connections = useRequiredConnections(config.id);
   const gated = !connections.isLoading && connections.isMissing;
   const connectedAgentRef = useRef<typeof agent | null>(null);
@@ -419,11 +436,11 @@ export function ChatSurface({
             <ConnectNotice agentLabel={config.label} />
           ) : (
             <>
-              {isAgentConnected && !isRunning && suggestions.length > 0 && (
+              {isAgentConnected && !isRunning && visibleSuggestions.length > 0 && (
                 <Suggestions className="mb-2">
-                  {suggestions.map((s) => (
+                  {visibleSuggestions.map((s) => (
                     <Suggestion
-                      key={s.title}
+                      key={suggestionKey(s)}
                       suggestion={s.title}
                       onClick={() => void send(s.message)}
                     />

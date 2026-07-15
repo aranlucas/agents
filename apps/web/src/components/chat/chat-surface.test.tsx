@@ -16,6 +16,7 @@ const copilotMocks = vi.hoisted(() => ({
   connectAgent: vi.fn(async (_options: { agent: { threadId?: string } }) => undefined),
   runAgent: vi.fn(async () => undefined),
   stopAgent: vi.fn(),
+  suggestions: [] as Array<{ title: string; message: string; isLoading: boolean }>,
   runtimeConnectionStatus: "connected",
   // Widen the mutable mock so the disconnected test can assign undefined.
   // oxlint-disable-next-line typescript/no-unnecessary-type-assertion
@@ -45,7 +46,7 @@ vi.mock("@copilotkit/react-core/v2", () => ({
     ),
   }),
   useRenderToolCall: () => () => null,
-  useSuggestions: () => ({ suggestions: [] }),
+  useSuggestions: () => ({ suggestions: copilotMocks.suggestions }),
 }));
 
 vi.mock("lucide-react", () => ({
@@ -167,6 +168,7 @@ describe("ChatSurface history replay", () => {
     copilotMocks.agent.abortController = undefined;
     copilotMocks.agent.threadId = undefined;
     copilotMocks.agent.messages = [];
+    copilotMocks.suggestions = [];
   });
 
   it("binds the route thread and connects the agent so reloads replay thread history", async () => {
@@ -245,5 +247,46 @@ describe("ChatSurface history replay", () => {
     );
 
     expect(getByTestId("activity-surface")).toHaveTextContent("surface-1");
+  });
+
+  it("gives duplicate suggestion titles unique React keys", async () => {
+    copilotMocks.suggestions = [
+      {
+        title: "Create a weekly meal plan",
+        message: "Create a weekly meal plan for two people.",
+        isLoading: false,
+      },
+      {
+        title: "Create a weekly meal plan",
+        message: "Create a vegetarian weekly meal plan.",
+        isLoading: false,
+      },
+      {
+        title: "Create a weekly meal plan",
+        message: "Create a vegetarian weekly meal plan.",
+        isLoading: false,
+      },
+    ];
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      const { getAllByRole } = render(
+        <ChatSurface
+          config={getAgentConfig("grocery")}
+          threadId="thread-123"
+          onSwitchAgent={() => {}}
+          onOpenArtifact={() => {}}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(getAllByRole("button", { name: "Create a weekly meal plan" })).toHaveLength(2);
+      });
+      expect(consoleError.mock.calls.flat().join(" ")).not.toContain(
+        "Encountered two children with the same key",
+      );
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 });
