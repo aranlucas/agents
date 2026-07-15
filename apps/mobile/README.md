@@ -7,7 +7,7 @@ Expo app for the four agent workflows that currently have native screens:
 - Fitness planning with Android Health Connect sync
 - Coordinated wellness planning
 
-Each tab uses the shared CopilotKit runtime, renders backend state as a compact summary, and refreshes the Clerk session token immediately before a run. Fitness activity data is sent separately to the authenticated Go gateway and persisted in D1.
+Each tab uses the CopilotKit-compatible runtime hosted by the Go gateway, renders backend state as a compact summary, and refreshes the Clerk session token immediately before a run. Fitness activity data is sent to that same authenticated gateway and persisted in D1.
 
 ## Configuration
 

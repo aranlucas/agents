@@ -1,12 +1,11 @@
 "use client";
 
 import { useAuth } from "@clerk/nextjs";
-import { HttpAgent } from "@ag-ui/client";
 import { CopilotKit, type CopilotKitProps } from "@copilotkit/react-core/v2";
 import { useQuery } from "@tanstack/react-query";
-import { type ReactNode, useCallback, useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 
-import { AGENT_BACKEND_PATHS, type AgentId } from "@/components/chat/agents/registry";
+import type { AgentId } from "@/components/chat/agents/registry";
 import { env } from "@/env";
 import { agentBaseUrl } from "@/lib/agent-url";
 
@@ -21,32 +20,6 @@ const AGENTS_BASE_URL = agentBaseUrl(env.NEXT_PUBLIC_AGENTS_BASE_URL);
 
 type CopilotKitErrorEvent = Parameters<NonNullable<CopilotKitProps["onError"]>>[0];
 
-type DirectAgentMap = Record<string, HttpAgent>;
-
-type BuildSelfManagedAgentsArgs = {
-  agentId: AgentId;
-  baseUrl: string;
-  headers: Record<string, string>;
-  fetchAgent: (url: string, init?: RequestInit) => Promise<Response>;
-};
-
-function buildAgents({
-  agentId,
-  baseUrl,
-  headers,
-  fetchAgent,
-}: BuildSelfManagedAgentsArgs): DirectAgentMap {
-  return {
-    [agentId]: new HttpAgent({
-      agentId,
-      url: `${baseUrl}/${AGENT_BACKEND_PATHS[agentId]}/agui`,
-      headers,
-      fetch: fetchAgent,
-      debug: process.env.NODE_ENV !== "production",
-    }),
-  };
-}
-
 export function reportCopilotKitError(event: CopilotKitErrorEvent) {
   const error: unknown = event.error;
   if (error instanceof Error && error.name === "AbortError") return;
@@ -54,11 +27,12 @@ export function reportCopilotKitError(event: CopilotKitErrorEvent) {
   console.error("[CopilotKit] Error:", error, event.context);
 }
 
-function DirectConsoleSession({ agent: agentId, thread, children, loading }: ConsoleSessionProps) {
+function GatewayConsoleSession({ agent: agentId, thread, children, loading }: ConsoleSessionProps) {
   const { getToken, isLoaded, sessionId } = useAuth();
 
-  // Seed both HttpAgent and CopilotKit's runtime headers. The fetch override
-  // still gets a current token before every normal chat run.
+  // CopilotKit applies these headers to runtime discovery, run, connect, stop,
+  // and stateless suggestion requests. The gateway verifies and forwards the
+  // Clerk identity before dispatching to the selected ADK agent.
   const { data: token, isPending: isTokenPending } = useQuery({
     queryKey: ["clerk-agent-token", sessionId, agentId, thread],
     queryFn: () => getToken(),
@@ -73,33 +47,6 @@ function DirectConsoleSession({ agent: agentId, thread, children, loading }: Con
     return headers;
   }, [token]);
 
-  const authenticatedFetch = useCallback(
-    async (url: string, init: RequestInit = {}) => {
-      const headers = new Headers(init.headers);
-      const currentToken = await getToken();
-
-      if (currentToken) {
-        headers.set("Authorization", `Bearer ${currentToken}`);
-      } else {
-        headers.delete("Authorization");
-      }
-
-      return fetch(url, { ...init, headers });
-    },
-    [getToken],
-  );
-
-  const agents__unsafe_dev_only = useMemo(
-    () =>
-      buildAgents({
-        agentId,
-        baseUrl: AGENTS_BASE_URL,
-        headers: agentHeaders,
-        fetchAgent: authenticatedFetch,
-      }),
-    [agentHeaders, agentId, authenticatedFetch],
-  );
-
   if (!isLoaded || isTokenPending) {
     return (
       loading ?? (
@@ -110,7 +57,6 @@ function DirectConsoleSession({ agent: agentId, thread, children, loading }: Con
 
   return (
     <CopilotKit
-      agents__unsafe_dev_only={agents__unsafe_dev_only}
       agent={agentId}
       runtimeUrl={AGENTS_BASE_URL}
       headers={agentHeaders}
@@ -131,10 +77,10 @@ function DirectConsoleSession({ agent: agentId, thread, children, loading }: Con
  * the view. The thread id is the durable session key that CopilotKit forwards
  * to the gateway's persisted ADK session.
  *
- * Production sessions connect the browser straight to the Railway AG-UI
- * endpoint. This keeps long-lived SSE runs out of Vercel's request-duration
- * path.
+ * Production sessions connect to the CopilotKit-compatible runtime hosted by
+ * the Railway Go gateway. Long-lived SSE runs stay out of Vercel while agents
+ * are discovered through the standard runtime /info contract.
  */
 export function ConsoleSession(props: ConsoleSessionProps) {
-  return <DirectConsoleSession {...props} />;
+  return <GatewayConsoleSession {...props} />;
 }

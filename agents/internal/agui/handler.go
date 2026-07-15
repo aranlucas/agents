@@ -27,6 +27,7 @@ type handlerConfig struct {
 	pending   PendingTools
 	ids       events.IDGenerator
 	smoothing streamSmoothing
+	active    *activeRuns
 }
 
 // WithPendingTools wires the D1-backed pending client-tool store used to
@@ -40,6 +41,10 @@ func WithPendingTools(pending PendingTools) Option {
 // deterministic generator so golden SSE fixtures are reproducible.
 func WithIDGenerator(ids events.IDGenerator) Option {
 	return func(c *handlerConfig) { c.ids = ids }
+}
+
+func withActiveRuns(active *activeRuns) Option {
+	return func(c *handlerConfig) { c.active = active }
 }
 
 // streamSmoothing controls optional server-side pacing for AG-UI text
@@ -102,6 +107,7 @@ type ADKHandler struct {
 	pending   PendingTools
 	ids       events.IDGenerator
 	smoothing streamSmoothing
+	active    *activeRuns
 }
 
 // NewEntryHandler creates one AG-UI handler from the gateway's complete
@@ -140,7 +146,7 @@ func newEntryHandler(entry agentruntime.Entry, sessions session.Service, statele
 	}
 	return &ADKHandler{
 		entry: entry, runner: rn, sessions: sessions, stateless: stateless,
-		pending: cfg.pending, ids: cfg.ids, smoothing: cfg.smoothing,
+		pending: cfg.pending, ids: cfg.ids, smoothing: cfg.smoothing, active: cfg.active,
 	}, nil
 }
 
@@ -162,6 +168,17 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel := context.WithTimeout(r.Context(), entry.Timeout)
 	defer cancel()
+	var active *activeRunLease
+	if h.active != nil {
+		key := runKey{AgentRoute: entry.Route, UserID: userID, ThreadID: input.ThreadID}
+		var started bool
+		active, started = h.active.start(key, cancel)
+		if !started {
+			writeJSONErrorMessage(w, http.StatusInternalServerError, "Failed to run agent", "Thread already running")
+			return
+		}
+		defer active.finish()
+	}
 
 	var sess session.Session
 	if h.stateless {
@@ -246,11 +263,15 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	frame := sse.NewSSEWriter()
-	_ = frame.WriteEvent(ctx, w, events.NewRunStartedEvent(input.ThreadID, input.RunID))
+	emit := func(writeCtx context.Context, event events.Event) {
+		active.publish(event)
+		_ = frame.WriteEvent(writeCtx, w, event)
+	}
+	emit(ctx, events.NewRunStartedEvent(input.ThreadID, input.RunID))
 
-	_ = frame.WriteEvent(ctx, w, events.NewStateSnapshotEvent(snapshot))
+	emit(ctx, events.NewStateSnapshotEvent(snapshot))
 	if content == nil {
-		_ = frame.WriteEvent(ctx, w, events.NewRunFinishedEvent(input.ThreadID, input.RunID))
+		emit(ctx, events.NewRunFinishedEventWithOptions(input.ThreadID, input.RunID, events.WithSuccessOutcome()))
 		return
 	}
 
@@ -289,7 +310,7 @@ runLoop:
 					break runLoop
 				}
 			}
-			_ = frame.WriteEvent(ctx, w, converted)
+			emit(ctx, converted)
 			lastWasTextContent = converted.Type() == events.EventTypeTextMessageContent
 		}
 	}
@@ -307,18 +328,18 @@ runLoop:
 		// This does not extend agent execution; it only closes the protocol stream.
 		terminalCtx := context.WithoutCancel(ctx)
 		for _, converted := range converter.Flush() {
-			_ = frame.WriteEvent(terminalCtx, w, converted)
+			emit(terminalCtx, converted)
 		}
 		log.Printf("run failed: agent=%s thread=%s user=%s run=%s err=%v", entry.AppName, input.ThreadID, userID, input.RunID, runErr)
-		_ = frame.WriteEvent(terminalCtx, w, sanitizeRunError(input.RunID, runErr))
+		emit(terminalCtx, sanitizeRunError(input.RunID, runErr))
 		return
 	}
 
-	finished := events.NewRunFinishedEvent(input.ThreadID, input.RunID)
+	finished := events.NewRunFinishedEventWithOptions(input.ThreadID, input.RunID, events.WithSuccessOutcome())
 	if converter.lastFinalText != "" {
 		finished.Result = converter.lastFinalText
 	}
-	_ = frame.WriteEvent(ctx, w, finished)
+	emit(ctx, finished)
 }
 
 // restoreSession fetches the existing (app, user, thread) session or
@@ -410,4 +431,10 @@ func writeJSONError(w http.ResponseWriter, status int, code string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(map[string]string{"error": code})
+}
+
+func writeJSONErrorMessage(w http.ResponseWriter, status int, code, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": code, "message": message})
 }

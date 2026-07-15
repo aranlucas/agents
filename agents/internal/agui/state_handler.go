@@ -38,6 +38,26 @@ type stateResponse struct {
 	Messages     []types.Message `json:"messages"`
 }
 
+func loadThreadState(ctx context.Context, sessions session.Service, entry agentruntime.Entry, identity auth.Identity, threadID string) (stateResponse, error) {
+	response := stateResponse{ThreadID: threadID, State: stateDocument{}, Messages: []types.Message{}}
+	userID := effectiveUserID(identity, threadID)
+	found, err := sessions.Get(ctx, &session.GetRequest{AppName: entry.AppName, UserID: userID, SessionID: threadID})
+	switch {
+	case err == nil:
+		response.ThreadExists = true
+		response.State, err = persistentSnapshot(found.Session.State())
+		if err != nil {
+			return stateResponse{}, err
+		}
+		response.Messages = eventsToMessages(found.Session.Events())
+		return response, nil
+	case errors.Is(err, ErrSessionNotFound):
+		return response, nil
+	default:
+		return stateResponse{}, err
+	}
+}
+
 // StateHandler implements the experimental POST /<agent>/agents/state
 // endpoint: on-demand retrieval of a thread's persisted, non-temporary state
 // and message history without starting a new agent run.
@@ -73,26 +93,11 @@ func StateHandler(registry *agentruntime.Registry, sessions session.Service) htt
 		if !ok {
 			identity = auth.Identity{UserID: "anonymous", Public: true}
 		}
-		userID := effectiveUserID(identity, input.ThreadID)
-
 		ctx, cancel := context.WithTimeout(r.Context(), entry.Timeout)
 		defer cancel()
 
-		response := stateResponse{ThreadID: input.ThreadID, State: stateDocument{}, Messages: []types.Message{}}
-		found, err := sessions.Get(ctx, &session.GetRequest{AppName: entry.AppName, UserID: userID, SessionID: input.ThreadID})
-		switch {
-		case err == nil:
-			response.ThreadExists = true
-			response.State, err = persistentSnapshot(found.Session.State())
-			if err != nil {
-				log.Printf("state route: session state encode failed for app=%s thread=%s: %v", entry.AppName, input.ThreadID, err)
-				writeJSONError(w, http.StatusInternalServerError, "state_unavailable")
-				return
-			}
-			response.Messages = eventsToMessages(found.Session.Events())
-		case errors.Is(err, ErrSessionNotFound):
-			// Expected: no session has been created for this thread yet.
-		default:
+		response, err := loadThreadState(ctx, sessions, entry, identity, input.ThreadID)
+		if err != nil {
 			log.Printf("state route: session lookup failed for app=%s thread=%s: %v", entry.AppName, input.ThreadID, err)
 			writeJSONError(w, http.StatusInternalServerError, "state_unavailable")
 			return

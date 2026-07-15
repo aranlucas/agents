@@ -5,33 +5,12 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
-  class MockHttpAgent {
-    config: Record<string, unknown>;
-    messages: unknown[] = [];
-    state: unknown = {};
-
-    constructor(config: Record<string, unknown>) {
-      this.config = config;
-    }
-
-    setMessages(messages: unknown[]) {
-      this.messages = messages;
-    }
-
-    setState(state: unknown) {
-      this.state = state;
-    }
-  }
-
   return {
-    MockHttpAgent,
     copilotProps: null as Record<string, unknown> | null,
     getToken: vi.fn(async () => "clerk-session-token"),
     isLoaded: true,
   };
 });
-
-vi.mock("@ag-ui/client", () => ({ HttpAgent: mocks.MockHttpAgent }));
 
 vi.mock("@clerk/nextjs", () => ({
   useAuth: () => ({
@@ -52,15 +31,11 @@ vi.mock("@/env", () => ({
   env: { NEXT_PUBLIC_AGENTS_BASE_URL: "https://gateway.example" },
 }));
 
-vi.mock("@/components/chat/agents/registry", () => ({
-  AGENT_BACKEND_PATHS: { travel: "travel", grocery: "grocery" },
-}));
-
 vi.mock("@/lib/agent-url", () => ({ agentBaseUrl: (value: string) => value }));
 
 import { ConsoleSession } from "./console-session";
 
-describe("ConsoleSession direct AG-UI connection", () => {
+describe("ConsoleSession gateway runtime connection", () => {
   beforeEach(() => {
     mocks.copilotProps = null;
     mocks.getToken.mockClear();
@@ -103,20 +78,12 @@ describe("ConsoleSession direct AG-UI connection", () => {
 
     await waitFor(() => expect(mocks.copilotProps).not.toBeNull());
     expect(mocks.copilotProps).toMatchObject({
+      agent: "travel",
       runtimeUrl: "https://gateway.example",
       headers: { Authorization: "Bearer clerk-session-token" },
       useSingleEndpoint: false,
       enableInspector: false,
-    });
-    const agents = mocks.copilotProps?.agents__unsafe_dev_only as Record<
-      string,
-      InstanceType<typeof mocks.MockHttpAgent>
-    >;
-    expect(Object.keys(agents)).toEqual(["travel"]);
-    expect(agents.travel.config).toMatchObject({
-      agentId: "travel",
-      url: "https://gateway.example/travel/agui",
-      headers: { Authorization: "Bearer clerk-session-token" },
+      threadId: "thread-123",
     });
   });
 

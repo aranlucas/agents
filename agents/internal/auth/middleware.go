@@ -15,16 +15,18 @@ func FromContext(ctx context.Context) (Identity, bool) {
 	return identity, ok
 }
 
-// RequireIdentity protects every route except exact explicitly public paths.
-// A verifier is optional so construction can fail closed while configuration is
-// assembled; protected requests always return 401 when none is supplied.
+// RequireIdentity protects every route except explicitly public paths. Entries
+// ending in * are prefix matches, used for runtime paths whose final segment is
+// a caller-supplied thread ID. A verifier is optional so construction can fail
+// closed while configuration is assembled; protected requests always return
+// 401 when none is supplied.
 func RequireIdentity(publicRoutes map[string]bool, next http.Handler, verifiers ...TokenVerifier) http.Handler {
 	var verifier TokenVerifier
 	if len(verifiers) > 0 {
 		verifier = verifiers[0]
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		public := publicRoutes[r.URL.Path]
+		public := isPublicRoute(publicRoutes, r.URL.Path)
 		token, hasToken := bearerToken(r.Header.Get("Authorization"))
 		if public && (!hasToken || verifier == nil) {
 			identity := Identity{UserID: "anonymous", Public: true}
@@ -42,6 +44,18 @@ func RequireIdentity(publicRoutes map[string]bool, next http.Handler, verifiers 
 		}
 		next.ServeHTTP(w, withIdentity(r, identity))
 	})
+}
+
+func isPublicRoute(publicRoutes map[string]bool, path string) bool {
+	if publicRoutes[path] {
+		return true
+	}
+	for pattern, enabled := range publicRoutes {
+		if enabled && strings.HasSuffix(pattern, "*") && strings.HasPrefix(path, strings.TrimSuffix(pattern, "*")) {
+			return true
+		}
+	}
+	return false
 }
 
 func withIdentity(r *http.Request, identity Identity) *http.Request {

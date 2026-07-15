@@ -207,7 +207,7 @@ describe("ChatSurface history replay", () => {
     expect(copilotMocks.connectAgent).not.toHaveBeenCalled();
   });
 
-  it("connects a self-managed agent without a CopilotRuntime", async () => {
+  it("does not connect without a ready CopilotKit runtime", () => {
     copilotMocks.runtimeConnectionStatus = "disconnected";
     copilotMocks.runtimeUrl = undefined;
 
@@ -220,9 +220,7 @@ describe("ChatSurface history replay", () => {
       />,
     );
 
-    await waitFor(() => {
-      expect(copilotMocks.connectAgent).toHaveBeenCalledWith({ agent: copilotMocks.agent });
-    });
+    expect(copilotMocks.connectAgent).not.toHaveBeenCalled();
   });
 
   it("renders generic activity messages through CopilotKit's resolver", () => {

@@ -205,7 +205,6 @@ export function ChatSurface({
   const gated = !connections.isLoading && connections.isMissing;
   const connectedAgentRef = useRef<typeof agent | null>(null);
   const isRuntimeConnected = isConnectedRuntimeStatus(copilotkit.runtimeConnectionStatus);
-  const isConnectionReady = copilotkit.runtimeUrl === undefined || isRuntimeConnected;
   // Track which agent instance has finished connecting. Deriving isAgentConnected
   // by comparing to the current agent avoids a synchronous setState in the
   // effect body (no-adjust-state-on-prop-change).
@@ -216,7 +215,7 @@ export function ChatSurface({
     let detached = false;
     const connectAbortController = new AbortController();
 
-    if (!agent || connectedAgentRef.current === agent || !isConnectionReady) {
+    if (!agent || connectedAgentRef.current === agent || !isRuntimeConnected) {
       return undefined;
     }
 
@@ -253,7 +252,7 @@ export function ChatSurface({
       setConnectedAgent(null);
       void agent.detachActiveRun?.();
     };
-  }, [agent, copilotkit, isConnectionReady, threadId]);
+  }, [agent, copilotkit, isRuntimeConnected, threadId]);
 
   // CopilotKit's public agent message type is looser than the AG-UI runtime
   // shape this renderer consumes; keep that cast at the integration boundary.

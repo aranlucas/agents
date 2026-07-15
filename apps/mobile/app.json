@@ -52,7 +52,7 @@
     ],
     "extra": {
       "clerkPublishableKey": "pk_test_bG9naWNhbC12aXBlci0zMy5jbGVyay5hY2NvdW50cy5kZXYk",
-      "copilotKitRuntimeUrl": "https://agents-lucas.vercel.app/api/copilotkit",
+      "copilotKitRuntimeUrl": "https://agents-gateway-production.up.railway.app",
       "agentsBaseUrl": "https://agents-gateway-production.up.railway.app",
       "router": {},
       "eas": {
