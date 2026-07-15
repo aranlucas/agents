@@ -2,7 +2,7 @@
 
 import { useAgent, useCopilotKit } from "@copilotkit/react-core/v2";
 import Link from "next/link";
-import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { ConsoleSession } from "@/components/chat/console-session";
 import { toRenderItems } from "@/components/chat/messages";
@@ -11,6 +11,10 @@ const prompt = `Write a first-person introduction for Lucas Arango's personal we
 Use only facts from your embedded source resume. Focus on how he thinks and builds, not employers,
 job history, dates, credentials, or a career summary. Use plain language and no hype. Write no more
 than two short sentences and 45 words.`;
+
+function isConnectedRuntimeStatus(status: unknown) {
+  return status === "connected";
+}
 
 function IntroductionFrame({ children }: { children: ReactNode }) {
   return (
@@ -43,15 +47,12 @@ function IntroductionSkeleton() {
 function IntroductionWriter() {
   const { agent } = useAgent({ agentId: "resume" });
   const { copilotkit } = useCopilotKit();
+  const isRuntimeConnected = isConnectedRuntimeStatus(copilotkit.runtimeConnectionStatus);
   const requested = useRef(false);
   const [failed, setFailed] = useState(false);
   const [streamCompleted, setStreamCompleted] = useState(false);
-  const [showAskResumeAnimation, setShowAskResumeAnimation] = useState(false);
-  const [showAskResumeLink, setShowAskResumeLink] = useState(false);
 
-  const showAskResume = failed || streamCompleted;
-
-  const items = toRenderItems(agent?.messages ?? []);
+  const items = toRenderItems(agent.messages);
   let text = "";
   for (let index = items.length - 1; index >= 0; index -= 1) {
     const item = items[index];
@@ -61,49 +62,17 @@ function IntroductionWriter() {
     }
   }
 
-  const generate = useCallback(async () => {
-    if (!agent || requested.current) return;
+  useEffect(() => {
+    if (!isRuntimeConnected || requested.current) return;
 
     requested.current = true;
     agent.addMessage({ id: crypto.randomUUID(), role: "user", content: prompt });
 
-    try {
-      await copilotkit.runAgent({ agent });
-    } catch {
-      setFailed(true);
-    } finally {
-      setStreamCompleted(true);
-    }
-  }, [agent, copilotkit]);
-
-  useEffect(() => {
-    if (agent && !requested.current) {
-      void generate();
-    }
-  }, [agent, generate]);
-
-  useEffect(() => {
-    if (!showAskResume) {
-      setShowAskResumeLink(false);
-      setShowAskResumeAnimation(false);
-      return undefined;
-    }
-
-    let frame: number | undefined;
-
-    const showDelay = setTimeout(() => {
-      setShowAskResumeLink(true);
-      setShowAskResumeAnimation(false);
-      frame = requestAnimationFrame(() => {
-        setShowAskResumeAnimation(true);
-      });
-    }, 180);
-
-    return () => {
-      clearTimeout(showDelay);
-      if (frame !== undefined) cancelAnimationFrame(frame);
-    };
-  }, [showAskResume]);
+    void copilotkit
+      .runAgent({ agent })
+      .catch(() => setFailed(true))
+      .finally(() => setStreamCompleted(true));
+  }, [agent, copilotkit, isRuntimeConnected]);
 
   const showSkeleton = !failed && !text;
 
@@ -113,7 +82,7 @@ function IntroductionWriter() {
       {text ? (
         <p className="animate-in text-base leading-7 text-ink-soft duration-500 ease-out fade-in motion-reduce:animate-none">
           {text}
-          {agent?.isRunning ? (
+          {agent.isRunning ? (
             <span
               aria-hidden="true"
               className="inline-block h-4 w-0.5 animate-pulse bg-primary align-text-bottom motion-reduce:animate-none"
@@ -126,14 +95,8 @@ function IntroductionWriter() {
           The introduction is unavailable right now.
         </p>
       ) : null}
-      {showAskResumeLink ? (
-        <p
-          className={`mt-4 text-sm transition duration-500 ease-out motion-reduce:transition-none ${
-            showAskResumeAnimation
-              ? "translate-y-0 opacity-100"
-              : "pointer-events-none translate-y-1 opacity-0"
-          }`}
-        >
+      {streamCompleted ? (
+        <p className="mt-4 animate-in text-sm duration-500 ease-out fade-in slide-in-from-bottom-1 motion-reduce:animate-none">
           <Link
             className="rounded-sm font-medium text-primary underline decoration-primary/35 underline-offset-4 transition-colors hover:text-accent-foreground hover:decoration-current focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
             href="/console/resume"

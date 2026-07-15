@@ -10,12 +10,18 @@ const agentMocks = vi.hoisted(() => ({
     messages: [] as Array<{ id: string; role: string; content: string }>,
   },
   runAgent: vi.fn<() => Promise<void>>(),
+  runtimeConnectionStatus: "connected",
   sessionReady: true,
 }));
 
 vi.mock("@copilotkit/react-core/v2", () => ({
   useAgent: () => ({ agent: agentMocks.agent }),
-  useCopilotKit: () => ({ copilotkit: { runAgent: agentMocks.runAgent } }),
+  useCopilotKit: () => ({
+    copilotkit: {
+      runAgent: agentMocks.runAgent,
+      runtimeConnectionStatus: agentMocks.runtimeConnectionStatus,
+    },
+  }),
 }));
 
 vi.mock("@/components/chat/console-session", () => ({
@@ -39,6 +45,7 @@ beforeEach(() => {
   agentMocks.agent.isRunning = false;
   agentMocks.agent.addMessage.mockClear();
   agentMocks.runAgent.mockReset();
+  agentMocks.runtimeConnectionStatus = "connected";
   agentMocks.sessionReady = true;
 });
 
@@ -63,6 +70,22 @@ describe("GeneratedIntroduction", () => {
   it("starts the Resume agent when the component mounts", async () => {
     agentMocks.runAgent.mockImplementation(async () => undefined);
     render(<GeneratedIntroduction />);
+
+    await waitFor(() => expect(agentMocks.runAgent).toHaveBeenCalledTimes(1));
+    expect(agentMocks.agent.addMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it("waits for runtime agent registration before starting", async () => {
+    agentMocks.runtimeConnectionStatus = "connecting";
+    agentMocks.runAgent.mockImplementation(async () => undefined);
+
+    const view = render(<GeneratedIntroduction />);
+
+    expect(agentMocks.runAgent).not.toHaveBeenCalled();
+    expect(agentMocks.agent.addMessage).not.toHaveBeenCalled();
+
+    agentMocks.runtimeConnectionStatus = "connected";
+    view.rerender(<GeneratedIntroduction />);
 
     await waitFor(() => expect(agentMocks.runAgent).toHaveBeenCalledTimes(1));
     expect(agentMocks.agent.addMessage).toHaveBeenCalledTimes(1);
