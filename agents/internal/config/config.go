@@ -40,6 +40,7 @@ type Provider struct {
 	BaseURL           string
 	APIKey            string
 	Model             string
+	ReasoningEffort   string
 	RequestsPerMinute int
 	Fallbacks         []string
 }

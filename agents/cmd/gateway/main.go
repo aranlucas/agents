@@ -49,6 +49,7 @@ import (
 	"agents/trends"
 	"agents/wellness"
 	"cloud.google.com/go/bigquery"
+	"github.com/joho/godotenv"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/model/gemini"
 	"google.golang.org/adk/v2/session"
@@ -569,6 +570,18 @@ func resumeHealth(m model.LLM) func(context.Context) error {
 }
 
 func main() {
+	// Load local development values without overriding explicitly exported env vars.
+	for _, path := range []string{".env", "../.env"} {
+		if err := godotenv.Load(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+			log.Printf("load %s: %v", path, err)
+		}
+	}
+	if strings.EqualFold(strings.TrimSpace(os.Getenv("APP_ENV")), "development") {
+		for _, key := range []string{"RAILWAY_ENVIRONMENT_ID", "RAILWAY_ENVIRONMENT_NAME", "RAILWAY_PROJECT_ID", "RAILWAY_SERVICE_ID"} {
+			_ = os.Unsetenv(key)
+		}
+	}
+
 	cfg, err := config.Load(os.Getenv)
 	if err != nil {
 		log.Fatalf("load configuration: %v", err)

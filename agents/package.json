@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "lint": "golangci-lint run ./...",
+    "dev": "go run ./cmd/gateway",
     "fmt": "go run mvdan.cc/gofumpt@v0.10.0 -w .",
     "fmt:check": "test -z \"$(go run mvdan.cc/gofumpt@v0.10.0 -l .)\"",
     "typecheck": "go vet ./...",
