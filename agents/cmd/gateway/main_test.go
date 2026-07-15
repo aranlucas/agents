@@ -59,6 +59,11 @@ func TestEveryActiveAgentExposesScopedEndpoints(t *testing.T) {
 		if _, createErr := sessions.Create(t.Context(), &session.CreateRequest{AppName: entry.AppName, UserID: "clerk-user", SessionID: "contract-thread", State: entry.StateDefaults()}); createErr != nil {
 			t.Fatal(createErr)
 		}
+		if entry.Public {
+			if _, createErr := sessions.Create(t.Context(), &session.CreateRequest{AppName: entry.AppName, UserID: "anon:contract-thread", SessionID: "contract-thread", State: entry.StateDefaults()}); createErr != nil {
+				t.Fatal(createErr)
+			}
+		}
 	}
 	handler, err := New(config.Config{HTTP: config.HTTP{}}, Dependencies{Registry: registry, Sessions: sessions, Verifier: acceptingVerifier{}, Now: time.Now})
 	if err != nil {
@@ -86,6 +91,21 @@ func TestEveryActiveAgentExposesScopedEndpoints(t *testing.T) {
 		handler.ServeHTTP(recorder, request)
 		if recorder.Code != http.StatusOK {
 			t.Fatalf("GET /%s/agents/sessions=%d %s", route, recorder.Code, recorder.Body.String())
+		}
+		request = httptest.NewRequest(http.MethodPost, "/agent/"+frontendAgentID(route)+"/suggest", strings.NewReader(`{"threadId":"suggestion-thread","runId":"suggestion-run","messages":[]}`))
+		if route != "resume" {
+			request.Header.Set("Authorization", "Bearer test")
+		}
+		recorder = httptest.NewRecorder()
+		handler.ServeHTTP(recorder, request)
+		if recorder.Code != http.StatusOK {
+			t.Fatalf("POST /agent/%s/suggest=%d %s", frontendAgentID(route), recorder.Code, recorder.Body.String())
+		}
+		request = httptest.NewRequest(http.MethodPost, "/agent/"+frontendAgentID(route)+"/run", strings.NewReader(`{"threadId":"contract-thread","runId":"runtime-run","messages":[]}`))
+		recorder = httptest.NewRecorder()
+		handler.ServeHTTP(recorder, request)
+		if recorder.Code != http.StatusNotFound {
+			t.Fatalf("POST /agent/%s/run=%d, want 404", frontendAgentID(route), recorder.Code)
 		}
 	}
 	request := httptest.NewRequest(http.MethodPost, "/agents/state", strings.NewReader(`{"threadId":"contract-thread"}`))
@@ -251,8 +271,11 @@ func newGateway(t *testing.T) http.Handler {
 
 func TestGatewayRegistersOnlyScopedStateRoutes(t *testing.T) {
 	h := newGateway(t)
+	assertRoute(t, h, http.MethodGet, "/info", http.StatusOK)
 	assertRoute(t, h, http.MethodGet, "/resume/health", http.StatusOK)
 	assertRoute(t, h, http.MethodGet, "/resume/agui/capabilities", http.StatusOK)
+	assertSuggestionRoute(t, h, "/agent/resume/run", "", http.StatusNotFound)
+	assertSuggestionRoute(t, h, "/agent/resume/suggest", "", http.StatusOK)
 	assertRoute(t, h, http.MethodPost, "/resume/agents/state", http.StatusOK)
 	assertRoute(t, h, http.MethodPost, "/agents/state", http.StatusNotFound)
 }
@@ -274,11 +297,33 @@ func TestGatewayRejectsUnauthenticatedNonPublicRoute(t *testing.T) {
 		t.Fatalf("build gateway: %v", err)
 	}
 	assertRoute(t, handler, http.MethodPost, "/travel/agui", http.StatusUnauthorized)
+	assertSuggestionRoute(t, handler, "/agent/travel/run", "", http.StatusNotFound)
+	assertSuggestionRoute(t, handler, "/agent/travel/suggest", "", http.StatusUnauthorized)
 	assertRoute(t, handler, http.MethodPost, "/travel/agents/state", http.StatusUnauthorized)
 	assertRoute(t, handler, http.MethodGet, "/travel/agents/sessions", http.StatusUnauthorized)
 	// Capabilities and health are metadata, not user data: never gated.
 	assertRoute(t, handler, http.MethodGet, "/travel/health", http.StatusOK)
 	assertRoute(t, handler, http.MethodGet, "/travel/agui/capabilities", http.StatusOK)
+}
+
+func TestRuntimeInfoAdvertisesStatelessSuggestions(t *testing.T) {
+	request := httptest.NewRequest(http.MethodGet, "/info", nil)
+	recorder := httptest.NewRecorder()
+	runtimeInfoHandler()(recorder, request)
+
+	var response runtimeInfoResponse
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if recorder.Code != http.StatusOK || !response.Suggestions || response.Mode != "sse" || len(response.Agents) != 0 {
+		t.Fatalf("response = %d %#v", recorder.Code, response)
+	}
+	if response.ThreadEndpoints.List || response.ThreadEndpoints.Inspect || response.ThreadEndpoints.Mutations || response.ThreadEndpoints.RealtimeMetadata {
+		t.Fatalf("thread endpoints must be disabled: %#v", response.ThreadEndpoints)
+	}
+	if response.AudioFileTranscriptionEnabled || response.A2UIEnabled || response.OpenGenerativeUIEnabled || response.TelemetryDisabled {
+		t.Fatalf("unsupported runtime capabilities were advertised: %#v", response)
+	}
 }
 
 type acceptingVerifier struct{}
@@ -559,5 +604,18 @@ func assertRoute(t *testing.T, h http.Handler, method, path string, want int) {
 	h.ServeHTTP(rr, req)
 	if rr.Code != want {
 		t.Fatalf("%s %s = %d, want %d: %s", method, path, rr.Code, want, rr.Body.String())
+	}
+}
+
+func assertSuggestionRoute(t *testing.T, h http.Handler, path, token string, want int) {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"threadId":"route-test-thread","runId":"route-test-run","messages":[]}`))
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != want {
+		t.Fatalf("POST %s = %d, want %d: %s", path, rr.Code, want, rr.Body.String())
 	}
 }
