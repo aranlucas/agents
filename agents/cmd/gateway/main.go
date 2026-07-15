@@ -29,6 +29,7 @@ import (
 	"agents/internal/auth"
 	"agents/internal/bootstrap"
 	"agents/internal/bravesearch"
+	"agents/internal/catalog"
 	"agents/internal/clerk"
 	"agents/internal/cloudflare"
 	"agents/internal/common"
@@ -178,8 +179,8 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 }
 
 func frontendAgentID(route string) string {
-	if route == "oralboards" {
-		return "oral-boards"
+	if spec, ok := catalog.ByRoute(route); ok {
+		return spec.ClientID
 	}
 	return route
 }

@@ -17,6 +17,7 @@ import (
 	"agents/grocery"
 	"agents/internal/agentruntime"
 	"agents/internal/auth"
+	"agents/internal/catalog"
 	"agents/internal/clerk"
 	"agents/internal/config"
 	"agents/internal/telegram"
@@ -30,6 +31,17 @@ import (
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
 )
+
+func TestFrontendAgentIDUsesCatalogIdentity(t *testing.T) {
+	for _, spec := range catalog.All() {
+		if got := frontendAgentID(spec.Route); got != spec.ClientID {
+			t.Errorf("frontendAgentID(%q) = %q, want %q", spec.Route, got, spec.ClientID)
+		}
+	}
+	if got := frontendAgentID("custom"); got != "custom" {
+		t.Errorf("frontendAgentID(custom) = %q, want custom", got)
+	}
+}
 
 func TestEveryActiveAgentExposesScopedEndpoints(t *testing.T) {
 	routes := []string{"travel", "trends", "grocery", "fitness", "wellness", "expense", "oralboards", "presentation", "research", "spreadsheet", "resume"}
