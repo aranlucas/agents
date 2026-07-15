@@ -76,3 +76,5 @@ artifacts/
 **/.tmp/
 bin/
 .playwright-cli/
+.idea
+build/

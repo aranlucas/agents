@@ -27,5 +27,6 @@
     "ios",
     "**/*.test.ts",
     "**/*.test.tsx"
-  ]
+  ],
+  "extends": "expo/tsconfig.base"
 }
