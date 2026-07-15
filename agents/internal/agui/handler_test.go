@@ -210,6 +210,51 @@ func TestHandlerReturns500OnSessionGetFailure(t *testing.T) {
 	}
 }
 
+func TestStatelessHandlerUsesEphemeralSession(t *testing.T) {
+	pending := newFakePending()
+	a, err := llmagent.New(llmagent.Config{
+		Name: "resume_agent", Instruction: "test", Model: &fakeSuggestionToolModel{},
+		Toolsets: []tool.Toolset{NewAGUIToolset(pending)},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler, err := NewStatelessEntryHandler(agentruntime.Entry{
+		Route: "resume", AppName: "resume_agent", Agent: a, Public: true, Timeout: time.Second,
+	}, WithPendingTools(pending))
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload, err := json.Marshal(types.RunAgentInput{
+		ThreadID: "thread-suggest",
+		RunID:    "run-suggest",
+		Messages: []types.Message{{Role: types.RoleUser, Content: "Suggest what the user could say next."}},
+		Tools:    []types.Tool{{Name: "copilotkitSuggest", Parameters: map[string]any{"type": "object"}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/resume/agui", bytes.NewReader(payload))
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), `"toolCallName":"copilotkitSuggest"`) {
+		t.Fatalf("suggestion frontend tool was not emitted: %s", rr.Body.String())
+	}
+	listed, err := handler.sessions.List(t.Context(), &session.ListRequest{
+		AppName: "resume_agent", UserID: "anon:thread-suggest",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(listed.Sessions) != 0 {
+		t.Fatalf("ephemeral sessions remaining = %d, want 0", len(listed.Sessions))
+	}
+}
+
 func TestHandlerCompletesWithoutModelInput(t *testing.T) {
 	tests := map[string][]types.Message{
 		"empty history":      nil,
@@ -704,6 +749,27 @@ func (m *fakeClientToolModel) GenerateContent(ctx context.Context, req *model.LL
 		yield(&model.LLMResponse{
 			Content: &genai.Content{Role: "model", Parts: []*genai.Part{{
 				FunctionCall: &genai.FunctionCall{ID: "call-highlight-1", Name: "highlight_row", Args: map[string]any{"row": "42"}},
+			}}},
+			TurnComplete: true,
+		}, nil)
+	}
+}
+
+type fakeSuggestionToolModel struct{}
+
+func (m *fakeSuggestionToolModel) Name() string { return "fake-suggestion-tool-model" }
+
+func (m *fakeSuggestionToolModel) GenerateContent(ctx context.Context, req *model.LLMRequest, stream bool) iter.Seq2[*model.LLMResponse, error] {
+	return func(yield func(*model.LLMResponse, error) bool) {
+		if hasFunctionResponse(req.Contents) {
+			yield(&model.LLMResponse{Content: &genai.Content{Role: "model", Parts: []*genai.Part{{Text: "Suggestions ready."}}}, TurnComplete: true}, nil)
+			return
+		}
+		yield(&model.LLMResponse{
+			Content: &genai.Content{Role: "model", Parts: []*genai.Part{{
+				FunctionCall: &genai.FunctionCall{ID: "call-suggest-1", Name: "copilotkitSuggest", Args: map[string]any{
+					"suggestions": []any{map[string]any{"title": "Ask about Lucas", "message": "What has Lucas shipped?"}},
+				}},
 			}}},
 			TurnComplete: true,
 		}, nil)

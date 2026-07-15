@@ -98,6 +98,7 @@ type ADKHandler struct {
 	entry     agentruntime.Entry
 	runner    *runner.Runner
 	sessions  session.Service
+	stateless bool
 	pending   PendingTools
 	ids       events.IDGenerator
 	smoothing streamSmoothing
@@ -106,6 +107,18 @@ type ADKHandler struct {
 // NewEntryHandler creates one AG-UI handler from the gateway's complete
 // runtime metadata.
 func NewEntryHandler(entry agentruntime.Entry, sessions session.Service, opts ...Option) (*ADKHandler, error) {
+	return newEntryHandler(entry, sessions, false, opts...)
+}
+
+// NewStatelessEntryHandler creates the dedicated CopilotKit dynamic-
+// suggestions endpoint. It uses the same ADK agent and request-scoped frontend
+// tool injection as a normal run, but stores the synthetic suggestion session
+// only in memory and deletes it as soon as the stream ends.
+func NewStatelessEntryHandler(entry agentruntime.Entry, opts ...Option) (*ADKHandler, error) {
+	return newEntryHandler(entry, session.InMemoryService(), true, opts...)
+}
+
+func newEntryHandler(entry agentruntime.Entry, sessions session.Service, stateless bool, opts ...Option) (*ADKHandler, error) {
 	if sessions == nil {
 		return nil, fmt.Errorf("session service is required")
 	}
@@ -125,7 +138,10 @@ func NewEntryHandler(entry agentruntime.Entry, sessions session.Service, opts ..
 	for _, opt := range opts {
 		opt(cfg)
 	}
-	return &ADKHandler{entry: entry, runner: rn, sessions: sessions, pending: cfg.pending, ids: cfg.ids, smoothing: cfg.smoothing}, nil
+	return &ADKHandler{
+		entry: entry, runner: rn, sessions: sessions, stateless: stateless,
+		pending: cfg.pending, ids: cfg.ids, smoothing: cfg.smoothing,
+	}, nil
 }
 
 func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -147,7 +163,28 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), entry.Timeout)
 	defer cancel()
 
-	sess, err := h.restoreSession(ctx, entry, userID, input.ThreadID, input)
+	var sess session.Session
+	if h.stateless {
+		state := entry.StateDefaults()
+		if state == nil {
+			state = make(map[string]any)
+		}
+		created, createErr := h.sessions.Create(ctx, &session.CreateRequest{
+			AppName: entry.AppName, UserID: userID, SessionID: input.ThreadID, State: state,
+		})
+		if createErr != nil {
+			err = createErr
+		} else {
+			sess = created.Session
+			defer func() {
+				_ = h.sessions.Delete(context.WithoutCancel(ctx), &session.DeleteRequest{
+					AppName: entry.AppName, UserID: userID, SessionID: input.ThreadID,
+				})
+			}()
+		}
+	} else {
+		sess, err = h.restoreSession(ctx, entry, userID, input.ThreadID, input)
+	}
 	if err != nil {
 		log.Printf("run: session restore failed: agent=%s thread=%s user=%s err=%v", entry.AppName, input.ThreadID, userID, err)
 		writeJSONError(w, http.StatusInternalServerError, "session_unavailable")

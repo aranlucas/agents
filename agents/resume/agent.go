@@ -15,7 +15,7 @@ const AppName = "resume_agent"
 
 // New builds the public resume assistant, using m for inference. It preserves
 // grounded Q&A while adding an optional stateful job-fit workflow.
-func New(m model.LLM) (agent.Agent, error) {
+func New(m model.LLM, toolsets ...tool.Toolset) (agent.Agent, error) {
 	setTargetRoleTool, err := functiontool.New(functiontool.Config{
 		Name:        "set_target_role",
 		Description: "Capture a target role and its job description, resetting any stale assessment.",
@@ -50,5 +50,6 @@ func New(m model.LLM) (agent.Agent, error) {
 			writeFitAssessmentTool,
 			markResumeReadyTool,
 		},
+		Toolsets: toolsets,
 	})
 }

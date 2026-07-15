@@ -69,8 +69,9 @@ func Agent(workload Workload) (Policy, error) {
 		return openRouterLight("OPENROUTER_API_KEY is required to configure the research agent", "mistral"), nil
 	case Resume:
 		return Policy{
-			Provider: "openrouter", Model: "google/gemma-4-26b-a4b-it:free", RequestsPerMinute: 20,
-			missingProviderMessage: "OPENROUTER_API_KEY is required to configure the resume agent",
+			Provider: "groq", Model: "llama-3.3-70b-versatile", RequestsPerMinute: 30,
+			Fallbacks:              []string{"openrouter"},
+			missingProviderMessage: "GROQ_API_KEY is required to configure the resume agent",
 		}, nil
 	case Spreadsheet:
 		return groqStandard("GROQ_API_KEY is required to configure the spreadsheet agent"), nil

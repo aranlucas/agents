@@ -83,5 +83,12 @@ describe("agent registry", () => {
 
     expect(resume.placeholder).toBe("Ask about Lucas…");
     expect(resume.welcome).toContain("personal agents");
+    expect(resume.suggestionInstructions).toContain("personal-agent philosophy");
+  });
+
+  it("gives every agent guidance for dynamic suggestions", () => {
+    expect(AGENT_ORDER.every((id) => getAgentConfig(id).suggestionInstructions.length > 0)).toBe(
+      true,
+    );
   });
 });

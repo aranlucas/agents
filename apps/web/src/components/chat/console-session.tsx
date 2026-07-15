@@ -6,7 +6,7 @@ import { CopilotKit, type CopilotKitProps } from "@copilotkit/react-core/v2";
 import { useQuery } from "@tanstack/react-query";
 import { type ReactNode, useCallback, useMemo } from "react";
 
-import { AGENT_BACKEND_PATHS, AGENT_ORDER, type AgentId } from "@/components/chat/agents/registry";
+import { AGENT_BACKEND_PATHS, type AgentId } from "@/components/chat/agents/registry";
 import { env } from "@/env";
 import { agentBaseUrl } from "@/lib/agent-url";
 
@@ -24,25 +24,27 @@ type CopilotKitErrorEvent = Parameters<NonNullable<CopilotKitProps["onError"]>>[
 type DirectAgentMap = Record<string, HttpAgent>;
 
 type BuildSelfManagedAgentsArgs = {
+  agentId: AgentId;
   baseUrl: string;
   headers: Record<string, string>;
   fetchAgent: (url: string, init?: RequestInit) => Promise<Response>;
 };
 
-function buildAgents({ baseUrl, headers, fetchAgent }: BuildSelfManagedAgentsArgs): DirectAgentMap {
-  const agents: DirectAgentMap = {};
-
-  for (const id of AGENT_ORDER) {
-    agents[id] = new HttpAgent({
-      agentId: id,
-      url: `${baseUrl}/${AGENT_BACKEND_PATHS[id]}/agui`,
+function buildAgents({
+  agentId,
+  baseUrl,
+  headers,
+  fetchAgent,
+}: BuildSelfManagedAgentsArgs): DirectAgentMap {
+  return {
+    [agentId]: new HttpAgent({
+      agentId,
+      url: `${baseUrl}/${AGENT_BACKEND_PATHS[agentId]}/agui`,
       headers,
       fetch: fetchAgent,
       debug: process.env.NODE_ENV !== "production",
-    });
-  }
-
-  return agents;
+    }),
+  };
 }
 
 export function reportCopilotKitError(event: CopilotKitErrorEvent) {
@@ -55,13 +57,14 @@ export function reportCopilotKitError(event: CopilotKitErrorEvent) {
 function DirectConsoleSession({ agent: agentId, thread, children, loading }: ConsoleSessionProps) {
   const { getToken, isLoaded, sessionId } = useAuth();
 
-  // Seed HttpAgent's native headers once per Clerk session. The fetch override
-  // below still gets a current token before every request.
+  // Seed both HttpAgent and CopilotKit's runtime headers. The fetch override
+  // still gets a current token before every normal chat run.
   const { data: token, isPending: isTokenPending } = useQuery({
-    queryKey: ["clerk-agent-token", sessionId],
+    queryKey: ["clerk-agent-token", sessionId, agentId, thread],
     queryFn: () => getToken(),
     enabled: isLoaded,
-    staleTime: Number.POSITIVE_INFINITY,
+    staleTime: 20_000,
+    refetchInterval: 30_000,
   });
 
   const agentHeaders = useMemo(() => {
@@ -89,11 +92,12 @@ function DirectConsoleSession({ agent: agentId, thread, children, loading }: Con
   const agents__unsafe_dev_only = useMemo(
     () =>
       buildAgents({
+        agentId,
         baseUrl: AGENTS_BASE_URL,
         headers: agentHeaders,
         fetchAgent: authenticatedFetch,
       }),
-    [agentHeaders, authenticatedFetch],
+    [agentHeaders, agentId, authenticatedFetch],
   );
 
   if (!isLoaded || isTokenPending) {
@@ -108,8 +112,11 @@ function DirectConsoleSession({ agent: agentId, thread, children, loading }: Con
     <CopilotKit
       agents__unsafe_dev_only={agents__unsafe_dev_only}
       agent={agentId}
+      runtimeUrl={AGENTS_BASE_URL}
+      headers={agentHeaders}
+      useSingleEndpoint={false}
       threadId={thread}
-      enableInspector={process.env.NODE_ENV !== "production"}
+      enableInspector={false}
       onError={reportCopilotKitError}
     >
       {children}

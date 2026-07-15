@@ -53,7 +53,6 @@ vi.mock("@/env", () => ({
 }));
 
 vi.mock("@/components/chat/agents/registry", () => ({
-  AGENT_ORDER: ["travel", "grocery"],
   AGENT_BACKEND_PATHS: { travel: "travel", grocery: "grocery" },
 }));
 
@@ -86,7 +85,7 @@ describe("ConsoleSession direct AG-UI connection", () => {
     expect(screen.queryByText("Conversation ready")).not.toBeInTheDocument();
   });
 
-  it("loads Clerk headers and gives CopilotKit a self-managed Railway agent", async () => {
+  it("loads Clerk headers and configures chat plus stateless suggestions", async () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
@@ -103,28 +102,22 @@ describe("ConsoleSession direct AG-UI connection", () => {
     expect(mocks.getToken).toHaveBeenCalledOnce();
 
     await waitFor(() => expect(mocks.copilotProps).not.toBeNull());
-    expect(mocks.copilotProps).not.toHaveProperty("runtimeUrl");
+    expect(mocks.copilotProps).toMatchObject({
+      runtimeUrl: "https://gateway.example",
+      headers: { Authorization: "Bearer clerk-session-token" },
+      useSingleEndpoint: false,
+      enableInspector: false,
+    });
     const agents = mocks.copilotProps?.agents__unsafe_dev_only as Record<
       string,
       InstanceType<typeof mocks.MockHttpAgent>
     >;
-    expect(Object.keys(agents)).toEqual(["travel", "grocery"]);
+    expect(Object.keys(agents)).toEqual(["travel"]);
     expect(agents.travel.config).toMatchObject({
       agentId: "travel",
       url: "https://gateway.example/travel/agui",
       headers: { Authorization: "Bearer clerk-session-token" },
     });
-    expect(agents.grocery.config).toMatchObject({
-      agentId: "grocery",
-      url: "https://gateway.example/grocery/agui",
-      headers: { Authorization: "Bearer clerk-session-token" },
-    });
-    expect(agents.travel.config).not.toHaveProperty("threadId");
-    expect(agents.grocery.config).not.toHaveProperty("threadId");
-    expect(agents.travel.config).not.toHaveProperty("initialMessages");
-    expect(agents.travel.config).not.toHaveProperty("initialState");
-    expect(agents.grocery.config).not.toHaveProperty("initialMessages");
-    expect(agents.grocery.config).not.toHaveProperty("initialState");
   });
 
   it("ignores expected abort errors but reports real CopilotKit failures", async () => {

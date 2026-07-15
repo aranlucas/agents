@@ -106,7 +106,7 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 	sessionsHandler := agui.SessionsHandler(deps.Registry, deps.Sessions)
 
 	mux := http.NewServeMux()
-	publicRoutes := map[string]bool{"/health": true, "/live": true, "/ready": true}
+	publicRoutes := map[string]bool{"/health": true, "/info": true, "/live": true, "/ready": true}
 
 	enabled, chunking, charsPerChunk, delay := parseStreamSmoothingConfigFromEnv()
 	for _, entry := range deps.Registry.Entries() {
@@ -115,7 +115,13 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 		if err != nil {
 			return nil, fmt.Errorf("build AG-UI handler for %s: %w", entry.Route, err)
 		}
+		suggestionHandler, err := agui.NewStatelessEntryHandler(entry, agui.WithPendingTools(deps.Pending), agui.WithTextStreamSmoothing(enabled, chunking, delay, charsPerChunk))
+		if err != nil {
+			return nil, fmt.Errorf("build suggestion handler for %s: %w", entry.Route, err)
+		}
+		suggestionPath := "/agent/" + frontendAgentID(entry.Route) + "/suggest"
 		mux.Handle("POST "+base+"/agui", handler)
+		mux.Handle("POST "+suggestionPath, suggestionHandler)
 		mux.Handle("POST "+base+"/agents/state", stateHandler)
 		mux.Handle("GET "+base+"/agents/sessions", sessionsHandler)
 		mux.HandleFunc("GET "+base+"/agui/capabilities", capabilitiesHandler)
@@ -128,9 +134,11 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 		if entry.Public {
 			publicRoutes[base+"/agui"] = true
 			publicRoutes[base+"/agents/state"] = true
+			publicRoutes[suggestionPath] = true
 		}
 	}
 
+	mux.HandleFunc("GET /info", runtimeInfoHandler())
 	mux.HandleFunc("GET /live", livenessHandler(deps))
 	mux.HandleFunc("GET /ready", rootHealthHandler(deps))
 	// Keep /health as a readiness alias for existing monitors and clients.
@@ -167,6 +175,13 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 		protected.ServeHTTP(w, r)
 	})
 	return auth.CORS(cfg.HTTP.Origins, routed), nil
+}
+
+func frontendAgentID(route string) string {
+	if route == "oralboards" {
+		return "oral-boards"
+	}
+	return route
 }
 
 func parseStreamSmoothingConfigFromEnv() (bool, string, int, time.Duration) {
@@ -293,6 +308,44 @@ type capabilitiesResponse struct {
 	Tools     toolCapabilities      `json:"tools"`
 }
 
+type threadEndpointRuntimeInfo struct {
+	List             bool `json:"list"`
+	Inspect          bool `json:"inspect"`
+	Mutations        bool `json:"mutations"`
+	RealtimeMetadata bool `json:"realtimeMetadata"`
+}
+
+type runtimeAgentDescription struct {
+	Name         string `json:"name"`
+	ClassName    string `json:"className"`
+	Description  string `json:"description"`
+	Capabilities any    `json:"capabilities,omitempty"`
+}
+
+type intelligenceRuntimeInfo struct {
+	WebSocketURL string `json:"wsUrl"`
+}
+
+type a2UIRuntimeInfo struct {
+	Enabled bool     `json:"enabled"`
+	Agents  []string `json:"agents,omitempty"`
+}
+
+type runtimeInfoResponse struct {
+	Version                       string                             `json:"version"`
+	Agents                        map[string]runtimeAgentDescription `json:"agents"`
+	AudioFileTranscriptionEnabled bool                               `json:"audioFileTranscriptionEnabled"`
+	Mode                          string                             `json:"mode"`
+	Intelligence                  *intelligenceRuntimeInfo           `json:"intelligence,omitempty"`
+	ThreadEndpoints               threadEndpointRuntimeInfo          `json:"threadEndpoints"`
+	Suggestions                   bool                               `json:"suggestions"`
+	A2UIEnabled                   bool                               `json:"a2uiEnabled"`
+	A2UI                          *a2UIRuntimeInfo                   `json:"a2ui,omitempty"`
+	OpenGenerativeUIEnabled       bool                               `json:"openGenerativeUIEnabled"`
+	LicenseStatus                 string                             `json:"licenseStatus,omitempty"`
+	TelemetryDisabled             bool                               `json:"telemetryDisabled"`
+}
+
 type agentHealthResponse struct {
 	Status string `json:"status"`
 	Agent  string `json:"agent"`
@@ -375,6 +428,23 @@ func writeGatewayJSONError(w http.ResponseWriter, status int, code string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(map[string]string{"error": code})
+}
+
+// runtimeInfoHandler advertises only the CopilotKit REST capabilities this Go
+// gateway implements. Chat agents remain frontend-managed HttpAgents; listing
+// them here would make CopilotKit proxy them through the runtime's unimplemented
+// connect, stop, and thread lifecycle endpoints.
+func runtimeInfoHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(runtimeInfoResponse{
+			Version:         "1.0.0",
+			Agents:          map[string]runtimeAgentDescription{},
+			Mode:            "sse",
+			ThreadEndpoints: threadEndpointRuntimeInfo{},
+			Suggestions:     true,
+		})
+	}
 }
 
 // capabilitiesHandler advertises only the AG-UI features the Go runtime's
@@ -592,8 +662,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("configure resume model: %v", err)
 	}
-	resumeModel := openai.New(resumeProvider, nil, limiter)
-	resumeAgent, err := resume.New(resumeModel)
+	resumeModel, err := openai.NewMulti(resumeProvider, availableProviders, nil, limiter)
+	if err != nil {
+		log.Fatalf("build resume model chain: %v", err)
+	}
+	resumeAgent, err := resume.New(resumeModel, agui.NewAGUIToolset(pending))
 	if err != nil {
 		log.Fatalf("build resume agent: %v", err)
 	}
