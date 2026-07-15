@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -17,6 +18,17 @@ import (
 )
 
 type runtimeTestVerifier struct{}
+
+type headerSignalRecorder struct {
+	*httptest.ResponseRecorder
+	once        sync.Once
+	wroteHeader chan struct{}
+}
+
+func (r *headerSignalRecorder) WriteHeader(statusCode int) {
+	r.once.Do(func() { close(r.wroteHeader) })
+	r.ResponseRecorder.WriteHeader(statusCode)
+}
 
 func (runtimeTestVerifier) Verify(context.Context, string) (auth.Identity, error) {
 	return auth.Identity{UserID: "user-123"}, nil
@@ -154,12 +166,18 @@ func TestCopilotKitRuntimeStopCancelsAndConnectFollowsActiveRun(t *testing.T) {
 		t.Fatal("run never became active")
 	}
 
+	connectStarted := make(chan struct{})
 	connectDone := make(chan *httptest.ResponseRecorder, 1)
 	go func() {
 		recorder := httptest.NewRecorder()
-		mux.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/agent/resume/connect", strings.NewReader(`{"threadId":"thread-active","runId":"connect-active","messages":[]}`)))
+		mux.ServeHTTP(&headerSignalRecorder{ResponseRecorder: recorder, wroteHeader: connectStarted}, httptest.NewRequest(http.MethodPost, "/agent/resume/connect", strings.NewReader(`{"threadId":"thread-active","runId":"connect-active","messages":[]}`)))
 		connectDone <- recorder
 	}()
+	select {
+	case <-connectStarted:
+	case <-time.After(2 * time.Second):
+		t.Fatal("connect did not start")
+	}
 
 	stop := httptest.NewRecorder()
 	stopRequest := httptest.NewRequest(http.MethodPost, "/agent/resume/stop/thread-active", nil)
