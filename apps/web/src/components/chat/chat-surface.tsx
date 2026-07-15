@@ -259,7 +259,7 @@ export function ChatSurface({
 
   // CopilotKit's public agent message type is looser than the AG-UI runtime
   // shape this renderer consumes; keep that cast at the integration boundary.
-  const liveMessages = (agent?.messages ?? []) as AguiMessage[];
+  const liveMessages = agent?.messages ?? [];
   const messages = liveMessages.length > 0 ? liveMessages : (initialSnapshot?.messages ?? []);
   const items = toRenderItems(messages);
   const isRunning = agent?.isRunning ?? false;

@@ -1,10 +1,7 @@
 // @vitest-environment jsdom
 import { act, render, screen, waitFor } from "@testing-library/react";
+import { Suspense } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("@/env", () => ({
-  env: { NEXT_PUBLIC_AGENTS_BASE_URL: "https://gateway.example" },
-}));
 
 import {
   IntroductionContent,
@@ -39,23 +36,22 @@ describe("GeneratedIntroduction", () => {
     expect(screen.getByText("Outside work, I build agents and climb.")).toBeVisible();
   });
 
-  it("starts empty and renders only fresh streamed text", async () => {
+  it("renders fresh text from the server-provided stream", async () => {
     let streamController: ReadableStreamDefaultController<Uint8Array> | undefined;
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
         streamController = controller;
       },
     });
-    const fetchMock = vi.fn(async () => new Response(stream, { status: 200 }));
-    vi.stubGlobal("fetch", fetchMock);
-
-    render(<StreamingIntroduction />);
+    const streamPromise = Promise.resolve(stream);
+    await act(async () => {
+      render(
+        <Suspense fallback={<IntroductionSkeleton />}>
+          <StreamingIntroduction stream={streamPromise} />
+        </Suspense>,
+      );
+    });
     expect(screen.getByLabelText("Resume agent is writing")).toBeVisible();
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
-    expect(fetchMock).toHaveBeenCalledWith(
-      "https://gateway.example/agent/resume/suggest",
-      expect.objectContaining({ cache: "no-store", method: "POST" }),
-    );
 
     await act(async () => {
       streamController?.enqueue(
@@ -64,7 +60,7 @@ describe("GeneratedIntroduction", () => {
         ),
       );
     });
-    expect(screen.getByText("Fresh introduction")).toBeVisible();
+    await waitFor(() => expect(screen.getByText("Fresh introduction")).toBeVisible());
 
     await act(async () => {
       streamController?.enqueue(
@@ -74,6 +70,6 @@ describe("GeneratedIntroduction", () => {
       );
       streamController?.close();
     });
-    expect(screen.getByText("Fresh introduction streams in.")).toBeVisible();
+    await waitFor(() => expect(screen.getByText("Fresh introduction streams in.")).toBeVisible());
   });
 });

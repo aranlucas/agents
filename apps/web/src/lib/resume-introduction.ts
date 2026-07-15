@@ -14,6 +14,42 @@ outside work such as travel, camping and climbing in the Cascades, running, or l
 Write two short paragraphs and 90 to 120 words total. Do not use a heading, bullets, a call to action,
 hype, clichés, or language copied from another person's website.`;
 
+type ResumeIntroductionRequest = {
+  baseUrl: string;
+  token: string | null;
+};
+
+export async function startResumeIntroductionStream({
+  baseUrl,
+  token,
+}: ResumeIntroductionRequest): Promise<ReadableStream<Uint8Array>> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const id = crypto.randomUUID();
+  const response = await fetch(`${baseUrl}/agent/resume/suggest`, {
+    method: "POST",
+    cache: "no-store",
+    headers,
+    body: JSON.stringify({
+      threadId: `homepage-${id}`,
+      runId: id,
+      messages: [{ id: crypto.randomUUID(), role: "user", content: RESUME_INTRODUCTION_PROMPT }],
+      state: {},
+      tools: [],
+      context: [],
+      forwardedProps: {},
+    }),
+    signal: AbortSignal.timeout(20_000),
+  });
+
+  if (!response.ok || !response.body) {
+    throw new Error("Resume introduction stream unavailable");
+  }
+
+  return response.body;
+}
+
 export function textFromAguiStream(stream: string): string {
   return textDeltasFromAguiLines(stream.split("\n")).join("").trim();
 }

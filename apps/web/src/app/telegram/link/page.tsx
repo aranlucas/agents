@@ -8,7 +8,8 @@ type PageProps = {
 };
 
 async function consumeTelegramLink(token: string, clerkUserId: string) {
-  if (!env.TELEGRAM_LINK_SECRET) {
+  const linkSecret = env.TELEGRAM_LINK_SECRET;
+  if (!linkSecret) {
     return {
       ok: false,
       message: "Telegram linking is not configured.",
@@ -19,7 +20,7 @@ async function consumeTelegramLink(token: string, clerkUserId: string) {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "x-telegram-link-secret": env.TELEGRAM_LINK_SECRET,
+      "x-telegram-link-secret": linkSecret,
     },
     body: JSON.stringify({ token, clerk_user_id: clerkUserId }),
     cache: "no-store",

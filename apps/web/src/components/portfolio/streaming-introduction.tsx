@@ -1,13 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 
-import { env } from "@/env";
-import { agentBaseUrl } from "@/lib/agent-url";
-import { RESUME_INTRODUCTION_PROMPT, textDeltasFromAguiLines } from "@/lib/resume-introduction";
-
-const AGENTS_BASE_URL = agentBaseUrl(env.NEXT_PUBLIC_AGENTS_BASE_URL);
+import { textDeltasFromAguiLines } from "@/lib/resume-introduction";
 
 export function IntroductionSkeleton() {
   return (
@@ -53,40 +49,25 @@ export function IntroductionContent({
   );
 }
 
-export function StreamingIntroduction() {
+export function StreamingIntroduction({
+  stream,
+}: {
+  stream: Promise<ReadableStream<Uint8Array> | null>;
+}) {
+  const serverStream = use(stream);
   const [text, setText] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    const controller = new AbortController();
+    let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
 
-    async function refresh() {
-      const id = crypto.randomUUID();
-      const response = await fetch(`${AGENTS_BASE_URL}/agent/resume/suggest`, {
-        method: "POST",
-        cache: "no-store",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          threadId: `homepage-${id}`,
-          runId: id,
-          messages: [
-            {
-              id: crypto.randomUUID(),
-              role: "user",
-              content: RESUME_INTRODUCTION_PROMPT,
-            },
-          ],
-          state: {},
-          tools: [],
-          context: [],
-          forwardedProps: {},
-        }),
-        signal: controller.signal,
-      });
-      if (!response.ok || !response.body) throw new Error("Resume introduction stream unavailable");
-
-      const reader = response.body.getReader();
+    async function readStream() {
+      if (!serverStream) {
+        setFailed(true);
+        return;
+      }
+      reader = serverStream.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
       let generated = "";
@@ -107,14 +88,15 @@ export function StreamingIntroduction() {
       setStreaming(false);
     }
 
-    void refresh().catch((error: unknown) => {
-      if (error instanceof Error && error.name === "AbortError") return;
+    void readStream().catch(() => {
       setStreaming(false);
       setFailed(true);
     });
 
-    return () => controller.abort();
-  }, []);
+    return () => {
+      void reader?.cancel();
+    };
+  }, [serverStream]);
 
   if (!text && !failed) return <IntroductionSkeleton />;
   if (!text) {
