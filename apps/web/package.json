@@ -19,7 +19,7 @@
     "@ag-ui/client": "0.0.57",
     "@agents/types": "workspace:*",
     "@agents/ui": "workspace:*",
-    "@clerk/nextjs": "^7.5.17",
+    "@clerk/nextjs": "^7.5.18",
     "@copilotkit/react-core": "^1.62.3",
     "@opentelemetry/exporter-trace-otlp-http": "^0.220.0",
     "@t3-oss/env-nextjs": "^0.13.11",
