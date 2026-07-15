@@ -40,6 +40,22 @@ func TestPublicRouteUsesAnonymousIdentity(t *testing.T) {
 	}
 }
 
+func TestPublicRoutePrefixUsesAnonymousIdentity(t *testing.T) {
+	handler := RequireIdentity(map[string]bool{"/agent/resume/stop/*": true}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		identity, ok := FromContext(r.Context())
+		if !ok || !identity.Public {
+			t.Fatalf("identity = %#v, %v", identity, ok)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/agent/resume/stop/thread-123", nil))
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("status = %d", recorder.Code)
+	}
+}
+
 func TestPublicRouteUsesVerifiedIdentityWhenBearerTokenIsPresent(t *testing.T) {
 	verifier := tokenVerifierFunc(func(context.Context, string) (Identity, error) {
 		return Identity{UserID: "clerk-user"}, nil

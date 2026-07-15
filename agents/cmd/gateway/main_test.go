@@ -16,6 +16,7 @@ import (
 	"agents/fitness"
 	"agents/grocery"
 	"agents/internal/agentruntime"
+	"agents/internal/agui"
 	"agents/internal/auth"
 	"agents/internal/catalog"
 	"agents/internal/clerk"
@@ -114,10 +115,13 @@ func TestEveryActiveAgentExposesScopedEndpoints(t *testing.T) {
 			t.Fatalf("POST /agent/%s/suggest=%d %s", frontendAgentID(route), recorder.Code, recorder.Body.String())
 		}
 		request = httptest.NewRequest(http.MethodPost, "/agent/"+frontendAgentID(route)+"/run", strings.NewReader(`{"threadId":"contract-thread","runId":"runtime-run","messages":[]}`))
+		if route != "resume" {
+			request.Header.Set("Authorization", "Bearer test")
+		}
 		recorder = httptest.NewRecorder()
 		handler.ServeHTTP(recorder, request)
-		if recorder.Code != http.StatusNotFound {
-			t.Fatalf("POST /agent/%s/run=%d, want 404", frontendAgentID(route), recorder.Code)
+		if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), "RUN_FINISHED") {
+			t.Fatalf("POST /agent/%s/run=%d %s", frontendAgentID(route), recorder.Code, recorder.Body.String())
 		}
 	}
 	request := httptest.NewRequest(http.MethodPost, "/agents/state", strings.NewReader(`{"threadId":"contract-thread"}`))
@@ -286,7 +290,9 @@ func TestGatewayRegistersOnlyScopedStateRoutes(t *testing.T) {
 	assertRoute(t, h, http.MethodGet, "/info", http.StatusOK)
 	assertRoute(t, h, http.MethodGet, "/resume/health", http.StatusOK)
 	assertRoute(t, h, http.MethodGet, "/resume/agui/capabilities", http.StatusOK)
-	assertSuggestionRoute(t, h, "/agent/resume/run", "", http.StatusNotFound)
+	assertSuggestionRoute(t, h, "/agent/resume/run", "", http.StatusOK)
+	assertSuggestionRoute(t, h, "/agent/resume/connect", "", http.StatusOK)
+	assertRoute(t, h, http.MethodPost, "/agent/resume/stop/route-test-thread", http.StatusOK)
 	assertSuggestionRoute(t, h, "/agent/resume/suggest", "", http.StatusOK)
 	assertRoute(t, h, http.MethodPost, "/resume/agents/state", http.StatusOK)
 	assertRoute(t, h, http.MethodPost, "/agents/state", http.StatusNotFound)
@@ -309,7 +315,9 @@ func TestGatewayRejectsUnauthenticatedNonPublicRoute(t *testing.T) {
 		t.Fatalf("build gateway: %v", err)
 	}
 	assertRoute(t, handler, http.MethodPost, "/travel/agui", http.StatusUnauthorized)
-	assertSuggestionRoute(t, handler, "/agent/travel/run", "", http.StatusNotFound)
+	assertSuggestionRoute(t, handler, "/agent/travel/run", "", http.StatusUnauthorized)
+	assertSuggestionRoute(t, handler, "/agent/travel/connect", "", http.StatusUnauthorized)
+	assertRoute(t, handler, http.MethodPost, "/agent/travel/stop/thread-123", http.StatusUnauthorized)
 	assertSuggestionRoute(t, handler, "/agent/travel/suggest", "", http.StatusUnauthorized)
 	assertRoute(t, handler, http.MethodPost, "/travel/agents/state", http.StatusUnauthorized)
 	assertRoute(t, handler, http.MethodGet, "/travel/agents/sessions", http.StatusUnauthorized)
@@ -318,16 +326,31 @@ func TestGatewayRejectsUnauthenticatedNonPublicRoute(t *testing.T) {
 	assertRoute(t, handler, http.MethodGet, "/travel/agui/capabilities", http.StatusOK)
 }
 
-func TestRuntimeInfoAdvertisesStatelessSuggestions(t *testing.T) {
+func TestRuntimeInfoAdvertisesConcreteAgents(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/info", nil)
 	recorder := httptest.NewRecorder()
-	runtimeInfoHandler()(recorder, request)
+	newGateway(t).ServeHTTP(recorder, request)
 
-	var response runtimeInfoResponse
+	var response struct {
+		Version                       string                     `json:"version"`
+		Agents                        map[string]json.RawMessage `json:"agents"`
+		AudioFileTranscriptionEnabled bool                       `json:"audioFileTranscriptionEnabled"`
+		Mode                          string                     `json:"mode"`
+		ThreadEndpoints               struct {
+			List             bool `json:"list"`
+			Inspect          bool `json:"inspect"`
+			Mutations        bool `json:"mutations"`
+			RealtimeMetadata bool `json:"realtimeMetadata"`
+		} `json:"threadEndpoints"`
+		Suggestions             bool `json:"suggestions"`
+		A2UIEnabled             bool `json:"a2uiEnabled"`
+		OpenGenerativeUIEnabled bool `json:"openGenerativeUIEnabled"`
+		TelemetryDisabled       bool `json:"telemetryDisabled"`
+	}
 	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
 		t.Fatal(err)
 	}
-	if recorder.Code != http.StatusOK || !response.Suggestions || response.Mode != "sse" || len(response.Agents) != 0 {
+	if recorder.Code != http.StatusOK || response.Version != agui.CopilotKitRuntimeVersion || !response.Suggestions || response.Mode != "sse" || len(response.Agents) != 1 || response.Agents["resume"] == nil {
 		t.Fatalf("response = %d %#v", recorder.Code, response)
 	}
 	if response.ThreadEndpoints.List || response.ThreadEndpoints.Inspect || response.ThreadEndpoints.Mutations || response.ThreadEndpoints.RealtimeMetadata {
@@ -356,32 +379,36 @@ func (f *fakeClerkBackend) OAuthConnections(_ context.Context, userID string) (c
 }
 
 func TestOAuthCredentialsAreResolvedAfterClerkAuthentication(t *testing.T) {
-	backend := &fakeClerkBackend{connections: clerk.ConnectionState{
-		KrogerToken: "kroger-secret",
-	}}
-	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if got := r.Header.Get("X-Kroger-Access-Token"); got != "kroger-secret" {
-			t.Errorf("Kroger token = %q", got)
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
-	handler := auth.RequireIdentity(nil, withOAuthCredentials(backend, next), acceptingVerifier{})
-	request := httptest.NewRequest(http.MethodPost, "/grocery/agui", nil)
-	request.Header.Set("Authorization", "Bearer clerk-session")
-	recorder := httptest.NewRecorder()
+	for _, path := range []string{"/grocery/agui", "/agent/grocery/run"} {
+		t.Run(path, func(t *testing.T) {
+			backend := &fakeClerkBackend{connections: clerk.ConnectionState{
+				KrogerToken: "kroger-secret",
+			}}
+			next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if got := r.Header.Get("X-Kroger-Access-Token"); got != "kroger-secret" {
+					t.Errorf("Kroger token = %q", got)
+				}
+				w.WriteHeader(http.StatusNoContent)
+			})
+			handler := auth.RequireIdentity(nil, withOAuthCredentials(backend, next), acceptingVerifier{})
+			request := httptest.NewRequest(http.MethodPost, path, nil)
+			request.Header.Set("Authorization", "Bearer clerk-session")
+			recorder := httptest.NewRecorder()
 
-	handler.ServeHTTP(recorder, request)
+			handler.ServeHTTP(recorder, request)
 
-	if recorder.Code != http.StatusNoContent {
-		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
-	}
-	if !slices.Equal(backend.lookups, []string{"clerk-user"}) {
-		t.Fatalf("Clerk lookups=%v", backend.lookups)
+			if recorder.Code != http.StatusNoContent {
+				t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
+			}
+			if !slices.Equal(backend.lookups, []string{"clerk-user"}) {
+				t.Fatalf("Clerk lookups=%v", backend.lookups)
+			}
+		})
 	}
 }
 
 func TestOAuthCredentialsSkipRoutesWithoutProviderTools(t *testing.T) {
-	for _, path := range []string{"/travel/agui", "/fitness/agui"} {
+	for _, path := range []string{"/travel/agui", "/fitness/agui", "/agent/travel/run"} {
 		t.Run(path, func(t *testing.T) {
 			backend := &fakeClerkBackend{}
 			handler := auth.RequireIdentity(nil, withOAuthCredentials(backend, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
