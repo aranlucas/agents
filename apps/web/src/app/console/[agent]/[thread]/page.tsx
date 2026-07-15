@@ -3,7 +3,6 @@ import { ConsoleWorkspace } from "@/components/chat/console-workspace";
 import { isConsoleAgentId } from "@/components/chat/agents/registry";
 import { requireConsoleAuth } from "@/lib/console-auth.server";
 
-// oxlint-disable-next-line @clerk/next/require-auth-protection -- requireConsoleAuth protects every non-public agent.
 export default async function Page({
   params,
 }: {
