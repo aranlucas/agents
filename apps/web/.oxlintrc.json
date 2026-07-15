@@ -14,7 +14,8 @@
       "version": "19.2.7"
     },
     "tailwindcss": {
-      "entryPoint": "../../packages/ui/src/styles/globals.css"
+      "entryPoint": "../../packages/ui/src/styles/globals.css",
+      "timeout": 120000
     }
   },
   "rules": {
