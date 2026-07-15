@@ -18,6 +18,7 @@ port="${SMOKE_IMAGE_PORT:-18099}"
 container=""
 runtime_name=""
 tmp=""
+google_credentials=""
 cleanup() {
   if [[ -n "$runtime_name" ]]; then
     docker rm -f "$runtime_name" >/dev/null 2>&1 || true
@@ -64,7 +65,24 @@ echo "OK: static gateway/migrate binaries, non-root image, no scripting runtimes
 
 echo "== runtime liveness check (fake Cloudflare credentials) =="
 runtime_name="agents-go-smoke-$$"
-docker run -d --rm --name "$runtime_name" -p "${port}:8000" \
+# The gateway validates BigQuery credentials at startup. Generate an ephemeral
+# service-account key so the smoke exercises the production startup path
+# without storing or contacting a real GCP identity.
+private_key="$(openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 2>/dev/null)"
+google_credentials="$(jq -nc --arg private_key "$private_key" '{
+  type: "service_account",
+  project_id: "smoke-project",
+  private_key_id: "smoke",
+  private_key: $private_key,
+  client_email: "smoke@smoke-project.iam.gserviceaccount.com",
+  client_id: "123",
+  auth_uri: "https://accounts.google.com/o/oauth2/auth",
+  token_uri: "https://oauth2.googleapis.com/token",
+  auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+  client_x509_cert_url: "https://www.googleapis.com/robot/v1/metadata/x509/smoke%40smoke-project.iam.gserviceaccount.com",
+  universe_domain: "googleapis.com"
+}')"
+docker run -d --name "$runtime_name" -p "${port}:8000" \
   -e APP_ENV=development \
   -e PORT=8000 \
   -e CF_ACCOUNT_ID=smoke-fake-account \
@@ -78,6 +96,7 @@ docker run -d --rm --name "$runtime_name" -p "${port}:8000" \
   -e NVIDIA_NIM_API_KEY=smoke-fake-nvidia-key \
   -e MISTRAL_API_KEY=smoke-fake-mistral-key \
   -e GEMINI_API_KEY=smoke-fake-gemini-key \
+  -e GOOGLE_APPLICATION_CREDENTIALS_JSON="$google_credentials" \
   "$image" >/dev/null
 
 status=""
