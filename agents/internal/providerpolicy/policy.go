@@ -70,7 +70,7 @@ func Agent(workload Workload) (Policy, error) {
 	case Resume:
 		return Policy{
 			Provider: "groq", Model: "llama-3.3-70b-versatile", RequestsPerMinute: 30,
-			Fallbacks:              []string{"openrouter"},
+			Fallbacks:              []string{"mistral"},
 			missingProviderMessage: "GROQ_API_KEY is required to configure the resume agent",
 		}, nil
 	case Spreadsheet:
