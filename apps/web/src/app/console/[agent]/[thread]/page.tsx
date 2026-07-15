@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 import { ConsoleWorkspace } from "@/components/chat/console-workspace";
 import { isConsoleAgentId } from "@/components/chat/agents/registry";
-import { loadResumeSnapshot } from "@/lib/resume-snapshot.server";
+import { requireConsoleAuth } from "@/lib/console-auth.server";
 
+// oxlint-disable-next-line @clerk/next/require-auth-protection -- requireConsoleAuth protects every non-public agent.
 export default async function Page({
   params,
 }: {
@@ -10,7 +11,7 @@ export default async function Page({
 }) {
   const { agent, thread } = await params;
   if (!isConsoleAgentId(agent)) notFound();
-  const initialSnapshot = agent === "resume" ? await loadResumeSnapshot(thread) : null;
+  await requireConsoleAuth(agent);
 
-  return <ConsoleWorkspace agentId={agent} threadId={thread} initialSnapshot={initialSnapshot} />;
+  return <ConsoleWorkspace agentId={agent} threadId={thread} />;
 }

@@ -5,7 +5,6 @@ import { auth } from "@clerk/nextjs/server";
 // thread always lives in the URL — making the conversation refreshable and
 // shareable, and giving CopilotKit/ADK a stable session key (see [thread]/page).
 export default async function Page() {
-  const { isAuthenticated } = await auth();
-  if (!isAuthenticated) redirect("/sign-in");
+  await auth.protect();
   redirect(`/console/oral-boards/${crypto.randomUUID()}`);
 }

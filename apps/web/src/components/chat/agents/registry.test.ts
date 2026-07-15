@@ -45,6 +45,10 @@ describe("agent registry", () => {
     expect(cfg.artifact?.stateField).toBe("itinerary");
   });
 
+  it("declares Resume as the only public agent", () => {
+    expect(AGENT_ORDER.filter((id) => getAgentConfig(id).access === "public")).toEqual(["resume"]);
+  });
+
   it("uses canonical backend paths for gateway routes", () => {
     expect(AGENT_BACKEND_PATHS.expense).toBe("expense");
     expect(AGENT_BACKEND_PATHS["oral-boards"]).toBe("oralboards");

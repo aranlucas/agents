@@ -15,6 +15,7 @@ type ArtifactSource = {
 
 export type AgentConfig = {
   id: AgentId;
+  access: "authenticated" | "public";
   label: string;
   /** CSS custom property holding the agent accent, e.g. "--travel". */
   colorVar: string;
@@ -32,6 +33,7 @@ export type AgentConfig = {
 const AGENTS: Record<AgentId, AgentConfig> = {
   travel: {
     id: "travel",
+    access: "authenticated",
     label: "Trip Studio",
     colorVar: "--travel",
     colorClass: "text-travel",
@@ -48,6 +50,7 @@ const AGENTS: Record<AgentId, AgentConfig> = {
   },
   grocery: {
     id: "grocery",
+    access: "authenticated",
     requiresKroger: true,
     label: "Grocery",
     colorVar: "--grocery",
@@ -64,6 +67,7 @@ const AGENTS: Record<AgentId, AgentConfig> = {
   },
   fitness: {
     id: "fitness",
+    access: "authenticated",
     label: "Fitness",
     colorVar: "--fitness",
     colorClass: "text-fitness",
@@ -79,6 +83,7 @@ const AGENTS: Record<AgentId, AgentConfig> = {
   },
   wellness: {
     id: "wellness",
+    access: "authenticated",
     requiresKroger: true,
     label: "Wellness",
     colorVar: "--wellness",
@@ -95,6 +100,7 @@ const AGENTS: Record<AgentId, AgentConfig> = {
   },
   expense: {
     id: "expense",
+    access: "authenticated",
     label: "Expense Desk",
     colorVar: "--expense",
     colorClass: "text-expense",
@@ -111,6 +117,7 @@ const AGENTS: Record<AgentId, AgentConfig> = {
   },
   "oral-boards": {
     id: "oral-boards",
+    access: "authenticated",
     label: "Oral Boards",
     colorVar: "--oral-boards",
     colorClass: "text-oral-boards",
@@ -127,6 +134,7 @@ const AGENTS: Record<AgentId, AgentConfig> = {
   },
   trends: {
     id: "trends",
+    access: "authenticated",
     label: "Trends",
     colorVar: "--trends",
     colorClass: "text-trends",
@@ -144,6 +152,7 @@ const AGENTS: Record<AgentId, AgentConfig> = {
   },
   resume: {
     id: "resume",
+    access: "public",
     label: "Resume",
     colorVar: "--resume",
     colorClass: "text-resume",
@@ -161,6 +170,7 @@ const AGENTS: Record<AgentId, AgentConfig> = {
   },
   research: {
     id: "research",
+    access: "authenticated",
     label: "Research",
     colorVar: "--research",
     colorClass: "text-research",
@@ -177,6 +187,7 @@ const AGENTS: Record<AgentId, AgentConfig> = {
   },
   spreadsheet: {
     id: "spreadsheet",
+    access: "authenticated",
     label: "Spreadsheet",
     colorVar: "--spreadsheet",
     colorClass: "text-spreadsheet",
@@ -187,6 +198,7 @@ const AGENTS: Record<AgentId, AgentConfig> = {
   },
   presentation: {
     id: "presentation",
+    access: "authenticated",
     label: "Slides",
     colorVar: "--presentation",
     colorClass: "text-presentation",

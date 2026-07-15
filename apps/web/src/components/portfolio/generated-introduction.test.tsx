@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, render, screen, waitFor } from "@testing-library/react";
-import { Suspense } from "react";
+import { StrictMode, Suspense } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -34,6 +34,7 @@ describe("GeneratedIntroduction", () => {
     expect(view.container.querySelectorAll("p")).toHaveLength(2);
     expect(screen.getByText("I build products from idea to launch.")).toBeVisible();
     expect(screen.getByText("Outside work, I build agents and climb.")).toBeVisible();
+    expect(screen.getByRole("status")).toHaveTextContent("Resume introduction ready");
   });
 
   it("renders fresh text from the server-provided stream", async () => {
@@ -71,5 +72,59 @@ describe("GeneratedIntroduction", () => {
       streamController?.close();
     });
     await waitFor(() => expect(screen.getByText("Fresh introduction streams in.")).toBeVisible());
+  });
+
+  it("keeps a final text delta when the stream closes without a trailing newline", async () => {
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode(
+            'data: {"type":"TEXT_MESSAGE_CONTENT","delta":"Complete introduction"}',
+          ),
+        );
+        controller.close();
+      },
+    });
+
+    await act(async () => {
+      render(
+        <Suspense fallback={<IntroductionSkeleton />}>
+          <StreamingIntroduction stream={Promise.resolve(stream)} />
+        </Suspense>,
+      );
+    });
+
+    await waitFor(() => expect(screen.getByText("Complete introduction")).toBeVisible());
+    expect(screen.getByRole("status")).toHaveTextContent("Resume introduction ready");
+  });
+
+  it("does not cancel the stream during the Strict Mode effect probe", async () => {
+    let streamController: ReadableStreamDefaultController<Uint8Array> | undefined;
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        streamController = controller;
+      },
+    });
+
+    await act(async () => {
+      render(
+        <StrictMode>
+          <Suspense fallback={<IntroductionSkeleton />}>
+            <StreamingIntroduction stream={Promise.resolve(stream)} />
+          </Suspense>
+        </StrictMode>,
+      );
+    });
+
+    await act(async () => {
+      streamController?.enqueue(
+        new TextEncoder().encode(
+          'data: {"type":"TEXT_MESSAGE_CONTENT","delta":"Strict-safe introduction"}\n\n',
+        ),
+      );
+      streamController?.close();
+    });
+
+    await waitFor(() => expect(screen.getByText("Strict-safe introduction")).toBeVisible());
   });
 });

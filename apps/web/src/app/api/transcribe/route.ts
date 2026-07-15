@@ -1,9 +1,11 @@
 export const maxDuration = 60;
 
+import { auth } from "@clerk/nextjs/server";
 import { env } from "@/env";
 import { GroqTranscriptionService } from "@/lib/copilotkit/groq-transcription";
 
 export async function POST(request: Request): Promise<Response> {
+  await auth.protect();
   const form = await request.formData();
   const audio = form.get("audio");
   if (!(audio instanceof File)) {

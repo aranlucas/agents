@@ -4,7 +4,13 @@
     "../../packages/oxlint-config/base.json",
     "../../packages/oxlint-config/tailwind.json"
   ],
-  "jsPlugins": ["oxlint-tailwindcss"],
+  "jsPlugins": [
+    "oxlint-tailwindcss",
+    {
+      "name": "@clerk/next",
+      "specifier": "@clerk/eslint-plugin/next"
+    }
+  ],
   "plugins": ["import", "jsx-a11y", "nextjs", "react", "typescript", "unicorn"],
   "settings": {
     "next": {
@@ -19,6 +25,20 @@
     }
   },
   "rules": {
+    "@clerk/next/require-auth-protection": [
+      "error",
+      {
+        "protected": ["**"],
+        "public": [
+          "src/app",
+          "src/app/api/agents/health/**",
+          "src/app/api/telegram/auth/**",
+          "src/app/sign-in/**",
+          "src/app/sign-up/**",
+          "src/app/tma/**"
+        ]
+      }
+    ],
     "react/self-closing-comp": "warn",
     "react/react-in-jsx-scope": "off",
     "react-hooks/exhaustive-deps": "warn",

@@ -38,9 +38,8 @@ async function consumeTelegramLink(token: string, clerkUserId: string) {
 }
 
 export default async function TelegramLinkPage({ searchParams }: PageProps) {
+  const { userId } = await auth.protect();
   const { token } = await searchParams;
-  const { userId } = await auth();
-  if (!userId) return <TelegramLinkResult ok={false} message="Sign in before linking Telegram." />;
 
   if (!token) {
     return <TelegramLinkResult ok={false} message="Missing Telegram link token." />;

@@ -1,21 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 
 import { textDeltasFromAguiLines } from "@/lib/resume-introduction";
+
+const INTRODUCTION_FRAME_CLASS = "mt-5 min-h-80 sm:min-h-64";
 
 export function IntroductionSkeleton() {
   return (
     <div
       aria-label="Resume agent is writing"
-      className="mt-5 flex min-h-80 animate-pulse flex-col gap-2 py-1 motion-reduce:animate-none sm:min-h-64"
+      className={`${INTRODUCTION_FRAME_CLASS} flex animate-pulse flex-col gap-5 py-1 motion-reduce:animate-none`}
+      role="status"
     >
-      <div className="h-3 w-full rounded bg-muted" />
-      <div className="h-3 w-11/12 rounded bg-muted" />
-      <div className="h-3 w-2/3 rounded bg-muted" />
-      <div className="mt-3 h-3 w-full rounded bg-muted" />
-      <div className="h-3 w-4/5 rounded bg-muted" />
+      <div aria-hidden="true" className="flex flex-col gap-3">
+        <div className="h-3 w-full rounded-full bg-muted" />
+        <div className="h-3 w-11/12 rounded-full bg-muted" />
+        <div className="h-3 w-full rounded-full bg-muted" />
+        <div className="h-3 w-3/5 rounded-full bg-muted" />
+      </div>
+      <div aria-hidden="true" className="flex flex-col gap-3">
+        <div className="h-3 w-full rounded-full bg-muted" />
+        <div className="h-3 w-10/12 rounded-full bg-muted" />
+        <div className="h-3 w-11/12 rounded-full bg-muted" />
+        <div className="h-3 w-2/5 rounded-full bg-muted" />
+      </div>
     </div>
   );
 }
@@ -33,7 +43,10 @@ export function IntroductionContent({
     .filter(Boolean);
 
   return (
-    <div aria-live="polite" className="mt-5 flex min-h-80 flex-col gap-5 text-ink-soft sm:min-h-64">
+    <div
+      aria-busy={streaming}
+      className={`${INTRODUCTION_FRAME_CLASS} flex flex-col gap-5 text-ink-soft`}
+    >
       {paragraphs.map((paragraph, index) => (
         <p key={paragraph}>
           {paragraph}
@@ -45,6 +58,9 @@ export function IntroductionContent({
           ) : null}
         </p>
       ))}
+      <span className="sr-only" role="status">
+        {streaming ? "Resume agent is writing" : "Resume introduction ready"}
+      </span>
     </div>
   );
 }
@@ -58,16 +74,17 @@ export function StreamingIntroduction({
   const [text, setText] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [failed, setFailed] = useState(false);
+  const mountedRef = useRef(false);
+  const readingStreamRef = useRef<ReadableStream<Uint8Array> | null | undefined>(undefined);
+  const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
 
   useEffect(() => {
-    let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+    mountedRef.current = true;
 
-    async function readStream() {
-      if (!serverStream) {
-        setFailed(true);
-        return;
-      }
-      reader = serverStream.getReader();
+    async function readStream(
+      currentStream: ReadableStream<Uint8Array>,
+      reader: ReadableStreamDefaultReader<Uint8Array>,
+    ) {
       const decoder = new TextDecoder();
       let buffer = "";
       let generated = "";
@@ -76,32 +93,58 @@ export function StreamingIntroduction({
         const { value, done } = await reader.read();
         buffer += decoder.decode(value, { stream: !done });
         const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
+        buffer = done ? "" : (lines.pop() ?? "");
         const deltas = textDeltasFromAguiLines(lines);
         if (deltas.length > 0) {
           generated += deltas.join("");
-          setStreaming(true);
-          setText(generated);
+          if (mountedRef.current && readingStreamRef.current === currentStream) {
+            setStreaming(!done);
+            setText(generated);
+          }
         }
         if (done) break;
       }
-      setStreaming(false);
+      if (mountedRef.current && readingStreamRef.current === currentStream) {
+        setStreaming(false);
+      }
     }
 
-    void readStream().catch(() => {
+    if (readingStreamRef.current !== serverStream) {
+      void readerRef.current?.cancel();
+      readerRef.current = null;
+      readingStreamRef.current = serverStream;
+      setText("");
       setStreaming(false);
-      setFailed(true);
-    });
+      setFailed(false);
+
+      if (!serverStream) {
+        setFailed(true);
+      } else {
+        const reader = serverStream.getReader();
+        readerRef.current = reader;
+        void readStream(serverStream, reader).catch(() => {
+          if (mountedRef.current && readingStreamRef.current === serverStream) {
+            setStreaming(false);
+            setFailed(true);
+          }
+        });
+      }
+    }
 
     return () => {
-      void reader?.cancel();
+      mountedRef.current = false;
+      queueMicrotask(() => {
+        if (!mountedRef.current && readingStreamRef.current === serverStream) {
+          void readerRef.current?.cancel();
+        }
+      });
     };
   }, [serverStream]);
 
   if (!text && !failed) return <IntroductionSkeleton />;
   if (!text) {
     return (
-      <p className="mt-5 min-h-80 text-muted-foreground sm:min-h-64">
+      <p className={`${INTRODUCTION_FRAME_CLASS} text-muted-foreground`} role="status">
         The introduction is unavailable right now. You can still{" "}
         <Link
           className="rounded-sm font-medium underline decoration-muted-foreground underline-offset-3 transition-colors hover:text-foreground hover:decoration-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
