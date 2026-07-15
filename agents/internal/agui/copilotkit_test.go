@@ -1,6 +1,7 @@
 package agui
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -9,9 +10,17 @@ import (
 	"time"
 
 	"agents/internal/agentruntime"
+	"agents/internal/auth"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
+	"google.golang.org/adk/v2/session"
 )
+
+type runtimeTestVerifier struct{}
+
+func (runtimeTestVerifier) Verify(context.Context, string) (auth.Identity, error) {
+	return auth.Identity{UserID: "user-123"}, nil
+}
 
 func testCopilotKitRuntime(t *testing.T, llm model.LLM) *CopilotKitRuntime {
 	t.Helper()
@@ -50,6 +59,60 @@ func TestCopilotKitRuntimeInfoAdvertisesBoundAgents(t *testing.T) {
 	if !agent.Capabilities.Transport.Streaming || !agent.Capabilities.State.PersistentState || !agent.Capabilities.Tools.ClientProvided {
 		t.Fatalf("capabilities=%#v", agent.Capabilities)
 	}
+	if !response.ThreadEndpoints.List || response.ThreadEndpoints.Inspect || response.ThreadEndpoints.Mutations || response.ThreadEndpoints.RealtimeMetadata {
+		t.Fatalf("thread endpoints=%#v", response.ThreadEndpoints)
+	}
+}
+
+func TestCopilotKitRuntimeListsD1BackedThreads(t *testing.T) {
+	runtime := testCopilotKitRuntime(t, &fakeReasoningModel{})
+	service := runtime.runner.sessions.(*fakeSessionService)
+	for _, seed := range []struct {
+		user, id, name string
+	}{
+		{user: "user-123", id: "thread-plan", name: "Plan Japan"},
+		{user: "user-123", id: "thread-unnamed"},
+		{user: "other-user", id: "thread-private", name: "Private"},
+	} {
+		state := map[string]any{}
+		if seed.name != "" {
+			state[sessionNameStateKey] = seed.name
+		}
+		if _, err := service.Create(t.Context(), &session.CreateRequest{
+			AppName: "resume_agent", UserID: seed.user, SessionID: seed.id, State: state,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	mux := http.NewServeMux()
+	runtime.Register(mux)
+	handler := auth.RequireIdentity(map[string]bool{}, mux, runtimeTestVerifier{})
+	request := httptest.NewRequest(http.MethodGet, "/threads?agentId=resume", nil)
+	request.Header.Set("Authorization", "Bearer test")
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	var response runtimeThreadsResponse
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if recorder.Code != http.StatusOK || len(response.Threads) != 2 || response.NextCursor != nil {
+		t.Fatalf("status=%d response=%#v", recorder.Code, response)
+	}
+	byID := make(map[string]runtimeThread, len(response.Threads))
+	for _, thread := range response.Threads {
+		byID[thread.ID] = thread
+	}
+	if thread := byID["thread-plan"]; thread.Name == nil || *thread.Name != "Plan Japan" || thread.AgentID != "resume" || thread.CreatedByID != "user-123" {
+		t.Fatalf("named thread=%#v", thread)
+	}
+	if thread := byID["thread-unnamed"]; thread.Name != nil || thread.UpdatedAt == "" {
+		t.Fatalf("unnamed thread=%#v", thread)
+	}
+	if _, leaked := byID["thread-private"]; leaked {
+		t.Fatal("another user's thread was returned")
+	}
 }
 
 func TestCopilotKitRuntimeRunAndConnectReplayPersistedThread(t *testing.T) {
@@ -84,10 +147,10 @@ func TestCopilotKitRuntimeStopCancelsAndConnectFollowsActiveRun(t *testing.T) {
 
 	key := runKey{AgentRoute: "resume", UserID: "anon:thread-active", ThreadID: "thread-active"}
 	deadline := time.Now().Add(2 * time.Second)
-	for runtime.active.lookup(key) == nil && time.Now().Before(deadline) {
+	for runtime.runner.active.lookup(key) == nil && time.Now().Before(deadline) {
 		time.Sleep(time.Millisecond)
 	}
-	if runtime.active.lookup(key) == nil {
+	if runtime.runner.active.lookup(key) == nil {
 		t.Fatal("run never became active")
 	}
 

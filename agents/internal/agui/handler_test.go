@@ -1020,7 +1020,21 @@ func (f *fakeSessionService) Get(ctx context.Context, req *session.GetRequest) (
 }
 
 func (f *fakeSessionService) List(ctx context.Context, req *session.ListRequest) (*session.ListResponse, error) {
-	return &session.ListResponse{}, nil
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := &session.ListResponse{}
+	prefix := req.AppName + "\x00" + req.UserID + "\x00"
+	for key, state := range f.persisted {
+		if !strings.HasPrefix(key, prefix) {
+			continue
+		}
+		id := strings.TrimPrefix(key, prefix)
+		result.Sessions = append(result.Sessions, &fakeSession{
+			id: id, appName: req.AppName, userID: req.UserID,
+			state: newFakeState(state), events: append([]*session.Event(nil), f.events[key]...), updated: time.Now(),
+		})
+	}
+	return result, nil
 }
 
 func (f *fakeSessionService) Delete(ctx context.Context, req *session.DeleteRequest) error {
