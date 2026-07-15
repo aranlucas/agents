@@ -75,3 +75,4 @@ artifacts/
 # GEPA working directory (created by agents-cli eval optimize)
 **/.tmp/
 bin/
+.playwright-cli/
