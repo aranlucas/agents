@@ -54,6 +54,7 @@ export function GroceryHeader() {
         </nav>
 
         <Link
+          aria-label="Try it on the web"
           className={cn(groceryPrimaryLinkClassName, "h-10 shrink-0 px-4 sm:h-12 sm:px-7")}
           href="/console/grocery"
         >
@@ -107,7 +108,9 @@ export function GroceryDocument({
           <p className="mt-5 max-w-2xl text-lg leading-8 text-ink-soft">{description}</p>
         </div>
       </header>
-      <div className="mx-auto max-w-3xl space-y-12 px-5 py-14 sm:px-8 sm:py-16">{children}</div>
+      <div className="mx-auto flex max-w-3xl flex-col gap-12 px-5 py-14 sm:px-8 sm:py-16">
+        {children}
+      </div>
     </main>
   );
 }
@@ -120,9 +123,9 @@ export function GroceryDocumentSection({
   children: ReactNode;
 }) {
   return (
-    <section className="space-y-4">
+    <section className="flex flex-col gap-4">
       <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
-      <div className="space-y-4 text-base leading-7 text-ink-soft">{children}</div>
+      <div className="flex flex-col gap-4 text-base leading-7 text-ink-soft">{children}</div>
     </section>
   );
 }

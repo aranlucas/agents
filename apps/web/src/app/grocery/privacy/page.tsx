@@ -27,7 +27,7 @@ export default function GroceryPrivacyPage() {
       </GroceryDocumentSection>
 
       <GroceryDocumentSection title="Information the service processes">
-        <ul className="list-disc space-y-3 ps-6">
+        <ul className="flex list-disc flex-col gap-3 ps-6">
           <li>
             <strong className="text-foreground">Account information.</strong> Clerk provides the
             sign-in experience and supplies account identifiers and profile information needed to
@@ -57,7 +57,7 @@ export default function GroceryPrivacyPage() {
       </GroceryDocumentSection>
 
       <GroceryDocumentSection title="How information is used">
-        <ul className="list-disc space-y-3 ps-6">
+        <ul className="flex list-disc flex-col gap-3 ps-6">
           <li>Authenticate accounts and maintain sessions.</li>
           <li>Generate meal ideas, pantry-aware lists, and product matches.</li>
           <li>Perform a Kroger lookup or cart action only when the relevant feature is used.</li>

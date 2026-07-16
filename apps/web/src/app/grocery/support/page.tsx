@@ -54,7 +54,7 @@ export default function GrocerySupportPage() {
       </GroceryDocumentSection>
 
       <GroceryDocumentSection title="Common questions">
-        <div className="space-y-7">
+        <div className="flex flex-col gap-7">
           <div className="flex gap-4">
             <CircleHelp aria-hidden="true" className="mt-1 size-6 shrink-0 text-grocery" />
             <div>
