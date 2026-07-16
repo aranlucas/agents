@@ -58,7 +58,11 @@ export default function RootLayout() {
                     <Stack.Screen name="index" options={{ title: "Grocery Agent" }} />
                     <Stack.Screen name="list" options={{ title: "Your grocery plan" }} />
                     <Stack.Screen name="saved-recipes" options={{ title: "Saved recipes" }} />
+                    <Stack.Screen name="households" options={{ title: "Shared households" }} />
+                    <Stack.Screen name="shared-list" options={{ title: "Shared list" }} />
                     <Stack.Screen name="chat-history" options={{ title: "Chat history" }} />
+                    <Stack.Screen name="households" options={{ title: "Households" }} />
+                    <Stack.Screen name="shared-list" options={{ title: "Shared list" }} />
                     <Stack.Screen name="account" options={{ title: "Account" }} />
                     <Stack.Screen
                       name="report"

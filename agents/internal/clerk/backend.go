@@ -2,6 +2,7 @@ package clerk
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -81,6 +82,9 @@ func (b *SDKBackend) OAuthConnections(ctx context.Context, clerkUserID string) (
 			ID: clerkUserID, Provider: provider.name,
 		})
 		if err != nil {
+			if isDisconnectedOAuthGrant(err) {
+				continue
+			}
 			lookupErrors = append(lookupErrors, fmt.Errorf("list %s OAuth tokens: %w", provider.name, err))
 			continue
 		}
@@ -93,6 +97,25 @@ func (b *SDKBackend) OAuthConnections(ctx context.Context, clerkUserID string) (
 		return ConnectionState{}, errors.Join(lookupErrors...)
 	}
 	return state, nil
+}
+
+func isDisconnectedOAuthGrant(err error) bool {
+	var response *clerksdk.APIErrorResponse
+	if !errors.As(err, &response) || response.HTTPStatusCode != http.StatusBadRequest {
+		return false
+	}
+	for _, clerkError := range response.Errors {
+		if clerkError.Code != "oauth_token_retrieval_error" {
+			continue
+		}
+		var meta struct {
+			ProviderError string `json:"provider_error"`
+		}
+		if json.Unmarshal(clerkError.Meta, &meta) == nil && strings.Contains(meta.ProviderError, `"invalid_grant"`) {
+			return true
+		}
+	}
+	return false
 }
 
 func secureBackendURL(parsed *url.URL) bool {

@@ -6,6 +6,7 @@ import (
 
 	"agents/internal/bravesearch"
 	"agents/internal/common"
+	"agents/internal/groceries"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
@@ -29,15 +30,23 @@ type LoadPageResult struct {
 }
 
 func New(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *common.WebLoader, toolsets ...tool.Toolset) (agent.Agent, error) {
-	return newAgent(m, kroger, search, loader, llmagent.ModeChat, toolsets...)
+	return newAgent(m, kroger, search, loader, nil, llmagent.ModeChat, toolsets...)
+}
+
+func NewWithSharedLists(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *common.WebLoader, repository groceries.Repository, toolsets ...tool.Toolset) (agent.Agent, error) {
+	return newAgent(m, kroger, search, loader, repository, llmagent.ModeChat, toolsets...)
 }
 
 func NewTask(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *common.WebLoader, toolsets ...tool.Toolset) (agent.Agent, error) {
-	return newAgent(m, kroger, search, loader, llmagent.ModeTask, toolsets...)
+	return newAgent(m, kroger, search, loader, nil, llmagent.ModeTask, toolsets...)
 }
 
-func newAgent(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *common.WebLoader, mode llmagent.Mode, toolsets ...tool.Toolset) (agent.Agent, error) {
-	tools, err := groceryTools(search, loader)
+func NewTaskWithSharedLists(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *common.WebLoader, repository groceries.Repository, toolsets ...tool.Toolset) (agent.Agent, error) {
+	return newAgent(m, kroger, search, loader, repository, llmagent.ModeTask, toolsets...)
+}
+
+func newAgent(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *common.WebLoader, repository groceries.Repository, mode llmagent.Mode, toolsets ...tool.Toolset) (agent.Agent, error) {
+	tools, err := groceryTools(search, loader, repository)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +61,7 @@ func newAgent(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *c
 	return llmagent.New(config)
 }
 
-func groceryTools(search *bravesearch.Client, loader *common.WebLoader) ([]tool.Tool, error) {
+func groceryTools(search *bravesearch.Client, loader *common.WebLoader, repository groceries.Repository) ([]tool.Tool, error) {
 	setShoppingListTool, err := functiontool.New(functiontool.Config{
 		Name:        "set_shopping_list",
 		Description: "Replace the unmaterialized shopping list.",
@@ -126,6 +135,18 @@ func groceryTools(search *bravesearch.Client, loader *common.WebLoader) ([]tool.
 		setWeeklyDealsTool,
 		markListReadyTool,
 		getCurrentDateTool,
+	}
+
+	if repository != nil {
+		sharedLists := SharedLists{Repository: repository}
+		saveListTool, err := functiontool.New(functiontool.Config{
+			Name:        "save_list_to_household",
+			Description: "Save the current ready shopping list to a household, defaulting only when the user belongs to exactly one household.",
+		}, sharedLists.SaveListToHousehold)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, saveListTool)
 	}
 
 	if search != nil {

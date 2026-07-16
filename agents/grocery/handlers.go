@@ -21,13 +21,15 @@ var (
 const maxGroceryDocument = 1 << 20
 
 type Result struct {
-	OK      bool                          `json:"ok"`
-	Count   int                           `json:"count,omitempty"`
-	Length  int                           `json:"length,omitempty"`
-	Date    string                        `json:"date,omitempty"`
-	Weekday string                        `json:"weekday,omitempty"`
-	Month   string                        `json:"month,omitempty"`
-	Error   *agentruntime.StructuredError `json:"error,omitempty"`
+	OK          bool                          `json:"ok"`
+	Count       int                           `json:"count,omitempty"`
+	Length      int                           `json:"length,omitempty"`
+	Date        string                        `json:"date,omitempty"`
+	Weekday     string                        `json:"weekday,omitempty"`
+	Month       string                        `json:"month,omitempty"`
+	ListID      string                        `json:"list_id,omitempty"`
+	HouseholdID string                        `json:"household_id,omitempty"`
+	Error       *agentruntime.StructuredError `json:"error,omitempty"`
 }
 
 type ShoppingListArgs struct {
