@@ -53,6 +53,10 @@ const copilotMocks = vi.hoisted(() => {
   };
 });
 
+const messageScrollerMocks = vi.hoisted(() => ({
+  scrollToMessage: vi.fn(() => true),
+}));
+
 vi.mock("@copilotkit/react-core/v2", () => ({
   UseAgentUpdate: {
     OnMessagesChanged: "OnMessagesChanged",
@@ -106,6 +110,7 @@ vi.mock("@agents/ui/components/message-scroller", () => ({
   MessageScrollerContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   MessageScrollerItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   MessageScrollerButton: () => null,
+  useMessageScroller: () => ({ scrollToMessage: messageScrollerMocks.scrollToMessage }),
 }));
 
 vi.mock("@agents/ui/components/message", () => ({
@@ -130,14 +135,17 @@ vi.mock("@agents/ui/components/ai-elements/prompt-input", () => ({
   PromptInput: ({
     children,
     onSubmit,
+    onSubmitCapture,
   }: {
     children: ReactNode;
     onSubmit: (message: { text: string; files: [] }) => void;
+    onSubmitCapture?: () => void;
   }) => (
     <form
       data-testid="prompt-input"
       onSubmit={(event) => {
         event.preventDefault();
+        onSubmitCapture?.();
         onSubmit({ text: "Animate this message", files: [] });
       }}
     >
@@ -214,7 +222,9 @@ describe("getRunCompletionPromise", () => {
 
 describe("ChatSurface history replay", () => {
   beforeEach(() => {
+    copilotMocks.agent.addMessage.mockReset();
     copilotMocks.connectAgent.mockClear();
+    messageScrollerMocks.scrollToMessage.mockClear();
     copilotMocks.runtimeConnectionStatus = "connected";
     copilotMocks.runtimeUrl = "/api/copilotkit";
     copilotMocks.agent.abortController = undefined;
@@ -322,7 +332,10 @@ describe("ChatSurface history replay", () => {
   });
 
   it("smoothly anchors a submitted user message at the top of the viewport", async () => {
-    const { getByTestId, getByText } = render(
+    copilotMocks.agent.addMessage.mockImplementationOnce((message: unknown) => {
+      copilotMocks.agent.messages = [...copilotMocks.agent.messages, message];
+    });
+    const { getByRole, getByTestId, getByText } = render(
       <ChatSurface
         config={getAgentConfig("resume")}
         threadId="thread-123"
@@ -333,19 +346,25 @@ describe("ChatSurface history replay", () => {
 
     await waitFor(() => {
       expect(getByText("Resume is ready")).toBeInTheDocument();
-      expect(getByTestId("message-scroller-viewport")).not.toHaveClass("scroll-smooth");
     });
+
+    const composer = getByRole("textbox");
+    composer.focus();
+    expect(composer).toHaveFocus();
 
     fireEvent.submit(getByTestId("prompt-input"));
 
+    expect(composer).not.toHaveFocus();
     expect(copilotMocks.agent.addMessage).toHaveBeenCalledWith(
       expect.objectContaining({ role: "user", content: "Animate this message" }),
     );
     expect(getByTestId("message-scroller")).toHaveAttribute("data-previous-item-peek", "0");
-    expect(getByTestId("message-scroller-viewport")).toHaveClass(
-      "scroll-smooth",
-      "motion-reduce:scroll-auto",
-    );
+    await waitFor(() => {
+      expect(messageScrollerMocks.scrollToMessage).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ align: "start", behavior: "smooth", scrollMargin: 0 }),
+      );
+    });
   });
 
   it("gives duplicate suggestion titles unique React keys", async () => {

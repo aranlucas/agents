@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { memo, useCallback, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Keyboard,
@@ -47,22 +47,25 @@ export function GroceryChat() {
   const scrollRef = useRef<MessageScrollerHandle>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [composerVersion, setComposerVersion] = useState(0);
+  const [reasoningDurations, setReasoningDurations] = useState<Record<string, number>>({});
   const { state, messages, isRunning, error, clearError, send, startNewChat, suggestions } =
     useGroceryAgent();
   const connection = useKrogerConnection();
   const { connected } = connection;
-  const { latestAssistant, latestReasoning, latestGroceryList, timelineRevision } = useMemo(
-    () => ({
-      latestAssistant: messages.findLast((message) => message.role === "assistant"),
-      latestReasoning: messages.findLast((message) => message.role === "reasoning"),
-      latestGroceryList: messages.findLast((message) => message.role === "grocery-list"),
-      timelineRevision: `${messages.length}:${messages.reduce(
-        (length, message) => length + ("content" in message ? message.content.length : 0),
-        0,
-      )}:${messages.at(-1)?.id ?? ""}`,
-    }),
-    [messages],
-  );
+  const { latestAssistant, latestReasoning, latestGroceryList, latestMessage, timelineRevision } =
+    useMemo(
+      () => ({
+        latestAssistant: messages.findLast((message) => message.role === "assistant"),
+        latestReasoning: messages.findLast((message) => message.role === "reasoning"),
+        latestGroceryList: messages.findLast((message) => message.role === "grocery-list"),
+        latestMessage: messages.at(-1),
+        timelineRevision: `${messages.length}:${messages.reduce(
+          (length, message) => length + ("content" in message ? message.content.length : 0),
+          0,
+        )}:${messages.at(-1)?.id ?? ""}`,
+      }),
+      [messages],
+    );
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -92,6 +95,11 @@ export function GroceryChat() {
       ],
     );
   }, [sendMessage]);
+  const recordReasoningDuration = useCallback((messageId: string, seconds: number) => {
+    setReasoningDurations((current) =>
+      current[messageId] === seconds ? current : { ...current, [messageId]: seconds },
+    );
+  }, []);
   const renderMessage = useCallback(
     ({ item: message }: { item: DisplayMessage }) => {
       const assistantContent =
@@ -109,11 +117,16 @@ export function GroceryChat() {
           isAdding={isRunning && isLatestGroceryList}
           isLatestGroceryList={isLatestGroceryList}
           isStreaming={
-            message.role === "reasoning" && isRunning && message.id === latestReasoning?.id
+            message.role === "reasoning" &&
+            isRunning &&
+            message.id === latestReasoning?.id &&
+            message.id === latestMessage?.id
           }
           message={message}
           onAddToCart={confirmAddToCart}
           onOpenList={openLatestList}
+          onReasoningDuration={recordReasoningDuration}
+          reasoningDuration={reasoningDurations[message.id]}
         />
       );
     },
@@ -123,8 +136,11 @@ export function GroceryChat() {
       isRunning,
       latestAssistant?.id,
       latestGroceryList?.id,
+      latestMessage?.id,
       latestReasoning?.id,
       openLatestList,
+      reasoningDurations,
+      recordReasoningDuration,
       state.review_summary,
       state.status,
     ],
@@ -134,6 +150,7 @@ export function GroceryChat() {
     setMenuOpen(false);
     if (!(await startNewChat())) return;
     setComposerVersion((current) => current + 1);
+    setReasoningDurations({});
     scrollRef.current?.scrollToStart();
   };
 
@@ -341,6 +358,8 @@ type GroceryMessageProps = {
   message: DisplayMessage;
   onAddToCart: () => void;
   onOpenList: () => void;
+  onReasoningDuration: (messageId: string, seconds: number) => void;
+  reasoningDuration?: number;
 };
 
 const GroceryMessage = memo(
@@ -353,6 +372,8 @@ const GroceryMessage = memo(
     message,
     onAddToCart,
     onOpenList,
+    onReasoningDuration,
+    reasoningDuration,
   }: GroceryMessageProps) {
     return (
       <View
@@ -377,9 +398,11 @@ const GroceryMessage = memo(
           </Text>
         ) : message.role === "reasoning" ? (
           <ReasoningSection
-            key={isStreaming ? "streaming" : "complete"}
+            completedDuration={reasoningDuration}
             content={message.content}
             isStreaming={isStreaming}
+            messageId={message.id}
+            onDurationComplete={onReasoningDuration}
           />
         ) : message.role === "tool" ? (
           <ToolCallSection
@@ -412,13 +435,64 @@ const GroceryMessage = memo(
     previous.isLatestGroceryList === next.isLatestGroceryList &&
     previous.isStreaming === next.isStreaming &&
     previous.onAddToCart === next.onAddToCart &&
-    previous.onOpenList === next.onOpenList,
+    previous.onOpenList === next.onOpenList &&
+    previous.onReasoningDuration === next.onReasoningDuration &&
+    previous.reasoningDuration === next.reasoningDuration,
 );
 
-function ReasoningSection({ content, isStreaming }: { content: string; isStreaming: boolean }) {
+function formatReasoningDuration(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  if (minutes === 0) return `${remainingSeconds}s`;
+  if (remainingSeconds === 0) return `${minutes}m`;
+  return `${minutes}m ${remainingSeconds}s`;
+}
+
+function ReasoningSection({
+  completedDuration,
+  content,
+  isStreaming,
+  messageId,
+  onDurationComplete,
+}: {
+  completedDuration?: number;
+  content: string;
+  isStreaming: boolean;
+  messageId: string;
+  onDurationComplete: (messageId: string, seconds: number) => void;
+}) {
   const { releaseFollow } = useMessageScrollerControls();
   const [expanded, setExpanded] = useState(false);
+  const startedAtRef = useRef<number | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState<number | null>(completedDuration ?? null);
   const scrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    if (!isStreaming) {
+      if (startedAtRef.current !== null) {
+        const duration = Math.max(1, Math.ceil((Date.now() - startedAtRef.current) / 1000));
+        setElapsedSeconds(duration);
+        onDurationComplete(messageId, duration);
+        startedAtRef.current = null;
+      }
+      return;
+    }
+
+    startedAtRef.current ??= Date.now();
+    const updateElapsed = () => {
+      setElapsedSeconds(Math.floor((Date.now() - (startedAtRef.current ?? Date.now())) / 1000));
+    };
+    const interval = setInterval(updateElapsed, 1000);
+    return () => clearInterval(interval);
+  }, [isStreaming, messageId, onDurationComplete]);
+
+  const reasoningLabel = isStreaming
+    ? elapsedSeconds && elapsedSeconds > 0
+      ? `Thinking for ${formatReasoningDuration(elapsedSeconds)}`
+      : "Thinking…"
+    : elapsedSeconds === null
+      ? "Thought"
+      : `Thought for ${formatReasoningDuration(elapsedSeconds)}`;
 
   return (
     <View style={styles.reasoning}>
@@ -439,7 +513,7 @@ function ReasoningSection({ content, isStreaming }: { content: string; isStreami
             <ChevronRight color={colors.muted} size={16} />
           )}
         </View>
-        <Text style={styles.reasoningLabel}>{isStreaming ? "Thinking…" : "Worked"}</Text>
+        <Text style={styles.reasoningLabel}>{reasoningLabel}</Text>
       </Pressable>
       {expanded ? (
         <View style={styles.reasoningContent}>

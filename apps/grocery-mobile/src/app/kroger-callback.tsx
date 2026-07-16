@@ -1,6 +1,5 @@
 import { useUser } from "@clerk/clerk-expo";
-import * as Linking from "expo-linking";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { readableError } from "@/lib/auth";
@@ -9,41 +8,27 @@ import { colors } from "@/lib/theme";
 
 export default function KrogerCallbackScreen() {
   const router = useRouter();
-  const callbackUrl = Linking.useURL();
   const { isLoaded, user } = useUser();
-  const { rotating_token_nonce: rotatingTokenNonceParam } = useLocalSearchParams<{
-    rotating_token_nonce?: string | string[];
-  }>();
   const [error, setError] = useState("");
-  const rotatingTokenNonce = Array.isArray(rotatingTokenNonceParam)
-    ? rotatingTokenNonceParam[0]
-    : rotatingTokenNonceParam;
-
-  useEffect(() => {
-    if (!callbackUrl) return;
-    const parsed = new URL(callbackUrl);
-    console.warn("Kroger callback URL metadata", {
-      protocol: parsed.protocol,
-      host: parsed.host,
-      pathname: parsed.pathname,
-      queryKeys: [...parsed.searchParams.keys()],
-      hashKeys: [...new URLSearchParams(parsed.hash.slice(1)).keys()],
-    });
-  }, [callbackUrl]);
 
   useEffect(() => {
     if (!isLoaded || !user) return;
     let active = true;
     void (async () => {
       try {
-        if (!rotatingTokenNonce) {
-          throw new Error("Kroger returned without the account verification token.");
+        // The auth-session owner consumes Clerk's one-time nonce. This route only waits for
+        // the refreshed external account so both screens cannot race to use the same token.
+        for (const delay of [250, 500, 1_000, 1_500, 2_000]) {
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          if (!active) return;
+          const refreshedUser = await user.reload();
+          if (!active) return;
+          if (hasKrogerConnection(refreshedUser.externalAccounts)) {
+            router.replace("/");
+            return;
+          }
         }
-        const refreshedUser = await user.reload({ rotatingTokenNonce });
-        if (!hasKrogerConnection(refreshedUser.externalAccounts)) {
-          throw new Error("Kroger returned without completing the account connection.");
-        }
-        if (active) router.replace("/");
+        throw new Error("Kroger returned without completing the account connection.");
       } catch (caught) {
         if (active) setError(readableError(caught));
       }
@@ -51,7 +36,7 @@ export default function KrogerCallbackScreen() {
     return () => {
       active = false;
     };
-  }, [isLoaded, rotatingTokenNonce, router, user]);
+  }, [isLoaded, router, user]);
 
   return (
     <View style={styles.screen}>

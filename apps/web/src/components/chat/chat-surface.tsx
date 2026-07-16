@@ -29,6 +29,7 @@ import {
   MessageScrollerContent,
   MessageScrollerItem,
   MessageScrollerButton,
+  useMessageScroller,
 } from "@agents/ui/components/message-scroller";
 import { Marker, MarkerContent } from "@agents/ui/components/marker";
 import { Suggestion, Suggestions } from "@agents/ui/components/ai-elements/suggestion";
@@ -103,8 +104,6 @@ const AssistantText = memo(
 );
 AssistantText.displayName = "AssistantText";
 
-const SUBMISSION_SCROLL_DURATION_MS = 500;
-
 function StagedAttachments() {
   const { files, remove } = usePromptInputAttachments();
   if (files.length === 0) return null;
@@ -139,6 +138,51 @@ function StagedAttachments() {
   );
 }
 
+function SubmittedMessageScroll({
+  messageId,
+  onScrollStarted,
+}: {
+  messageId: string | null;
+  onScrollStarted: (messageId: string) => void;
+}) {
+  const { scrollToMessage } = useMessageScroller();
+
+  useEffect(() => {
+    if (!messageId) return undefined;
+
+    const scheduleFrame =
+      typeof requestAnimationFrame === "function"
+        ? requestAnimationFrame
+        : (callback: FrameRequestCallback) => setTimeout(callback, 16);
+    const cancelFrame =
+      typeof cancelAnimationFrame === "function" ? cancelAnimationFrame : clearTimeout;
+    let frame: number;
+    let attempts = 0;
+
+    const scroll = () => {
+      attempts += 1;
+      const reducedMotion =
+        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+      const started = scrollToMessage(messageId, {
+        align: "start",
+        behavior: reducedMotion ? "auto" : "smooth",
+        scrollMargin: 0,
+      });
+
+      if (started) {
+        onScrollStarted(messageId);
+      } else if (attempts < 3) {
+        frame = scheduleFrame(scroll);
+      }
+    };
+
+    frame = scheduleFrame(scroll);
+    return () => cancelFrame(frame);
+  }, [messageId, onScrollStarted, scrollToMessage]);
+
+  return null;
+}
+
 // Registers the wildcard tool renderer that `useRenderToolCall()` resolves to
 // for our custom message list. Maps CopilotKit status -> ai-elements Tool state.
 function ToolRendererRegistration() {
@@ -158,6 +202,12 @@ function ToolRendererRegistration() {
 
 function isConnectedRuntimeStatus(status: unknown) {
   return status === "connected";
+}
+
+function dismissKeyboard() {
+  if (document.activeElement instanceof HTMLElement) {
+    document.activeElement.blur();
+  }
 }
 
 // activeRunCompletionPromise is private on AbstractAgent, so a type predicate
@@ -206,34 +256,19 @@ export function ChatSurface({
   const connections = useRequiredConnections(config.id);
   const gated = !connections.isLoading && connections.isMissing;
   const connectedAgentRef = useRef<typeof agent | null>(null);
-  const submissionScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isRuntimeConnected = isConnectedRuntimeStatus(copilotkit.runtimeConnectionStatus);
   // Track which agent instance has finished connecting. Deriving isAgentConnected
   // by comparing to the current agent avoids a synchronous setState in the
   // effect body (no-adjust-state-on-prop-change).
   const [connectedAgent, setConnectedAgent] = useState<typeof agent | null>(null);
-  const [isAnimatingSubmission, setIsAnimatingSubmission] = useState(false);
+  const [submittedMessageId, setSubmittedMessageId] = useState<string | null>(null);
   const isAgentConnected = connectedAgent === agent;
 
-  const animateSubmissionScroll = useCallback(() => {
-    if (submissionScrollTimerRef.current !== null) {
-      clearTimeout(submissionScrollTimerRef.current);
-    }
-    setIsAnimatingSubmission(true);
-    submissionScrollTimerRef.current = setTimeout(() => {
-      submissionScrollTimerRef.current = null;
-      setIsAnimatingSubmission(false);
-    }, SUBMISSION_SCROLL_DURATION_MS);
+  const handleSubmissionScrollStarted = useCallback((messageId: string) => {
+    setSubmittedMessageId((currentMessageId) =>
+      currentMessageId === messageId ? null : currentMessageId,
+    );
   }, []);
-
-  useEffect(
-    () => () => {
-      if (submissionScrollTimerRef.current !== null) {
-        clearTimeout(submissionScrollTimerRef.current);
-      }
-    },
-    [],
-  );
 
   useEffect(() => {
     let detached = false;
@@ -333,11 +368,12 @@ export function ChatSurface({
               ),
             ].join("\n\n")
           : trimmed;
-      animateSubmissionScroll();
-      agent.addMessage({ id: crypto.randomUUID(), role: "user", content });
+      const messageId = crypto.randomUUID();
+      setSubmittedMessageId(messageId);
+      agent.addMessage({ id: messageId, role: "user", content });
       void copilotkit.runAgent({ agent });
     },
-    [agent, animateSubmissionScroll, copilotkit, isAgentConnected],
+    [agent, copilotkit, isAgentConnected],
   );
 
   const stop = useCallback(() => {
@@ -362,12 +398,12 @@ export function ChatSurface({
         defaultScrollPosition="last-anchor"
         scrollPreviousItemPeek={0}
       >
+        <SubmittedMessageScroll
+          messageId={submittedMessageId}
+          onScrollStarted={handleSubmissionScrollStarted}
+        />
         <MessageScroller className="flex-1">
-          <MessageScrollerViewport
-            className={
-              isAnimatingSubmission ? "scroll-smooth motion-reduce:scroll-auto" : undefined
-            }
-          >
+          <MessageScrollerViewport>
             <MessageScrollerContent aria-busy={isRunning} className="mx-auto w-full max-w-190 p-4">
               {items.length === 0 && isAgentConnected ? (
                 <Empty className="border-none">
@@ -399,7 +435,11 @@ export function ChatSurface({
                     }
                     if (item.kind === "user") {
                       return (
-                        <MessageScrollerItem key={item.id} messageId={item.id} scrollAnchor>
+                        <MessageScrollerItem
+                          key={item.id}
+                          messageId={item.id}
+                          scrollAnchor={item.id !== submittedMessageId}
+                        >
                           <Message align="end">
                             <MessageContent>
                               <Bubble variant="secondary" align="end">
@@ -478,6 +518,7 @@ export function ChatSurface({
               )}
               <PromptInputProvider>
                 <PromptInput
+                  onSubmitCapture={dismissKeyboard}
                   onSubmit={(message: PromptInputMessage) => {
                     void send(message.text ?? "", message.files);
                   }}
