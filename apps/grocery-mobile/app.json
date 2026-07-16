@@ -53,14 +53,24 @@
       "expo-asset",
       "expo-font",
       "expo-web-browser",
-      ["expo-system-ui", { "android": { "edgeToEdge": true } }],
+      [
+        "expo-system-ui",
+        {
+          "android": {
+            "edgeToEdge": true
+          }
+        }
+      ],
       "expo-secure-store"
     ],
     "extra": {
       "clerkPublishableKey": "",
       "copilotKitRuntimeUrl": "https://agents-gateway.up.railway.app",
       "marketingBaseUrl": "https://agents-lucas.vercel.app/grocery",
-      "router": {}
+      "router": {},
+      "eas": {
+        "projectId": "72e1079f-c7ef-425c-b2d7-10dec7598c78"
+      }
     },
     "experiments": {
       "typedRoutes": true,

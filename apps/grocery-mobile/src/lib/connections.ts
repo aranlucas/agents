@@ -11,3 +11,7 @@ export function hasKrogerConnection(accounts: readonly ExternalAccountLike[]): b
       KROGER_PROVIDERS.has(account.provider) && account.verification?.status === "verified",
   );
 }
+
+export function rotatingTokenNonceFromCallback(callbackUrl: string): string {
+  return new URL(callbackUrl).searchParams.get("rotating_token_nonce") ?? "";
+}

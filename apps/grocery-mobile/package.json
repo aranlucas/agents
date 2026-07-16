@@ -10,6 +10,8 @@
     "web": "expo start --web",
     "build:preview:android": "npx eas-cli build --profile preview --platform android",
     "build:production:android": "npx eas-cli build --profile production --platform android",
+    "build:production-apk:android": "node ./scripts/android-release.mjs build",
+    "publish:production-apk:android": "node ./scripts/android-release.mjs publish",
     "lint": "oxlint .",
     "fmt": "oxfmt .",
     "fmt:check": "oxfmt --check .",

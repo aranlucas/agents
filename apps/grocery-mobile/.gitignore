@@ -9,5 +9,6 @@ ios/
 .env*.local
 *.jks
 *.keystore
+credentials.json
 *.tsbuildinfo
 *.iml

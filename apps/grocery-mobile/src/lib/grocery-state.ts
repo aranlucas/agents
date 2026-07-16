@@ -1,9 +1,32 @@
 import type { CartItem, GroceryState, PantryItem, ProductMatch } from "@agents/types";
 
-export type DisplayMessage = {
+export type DisplayTextMessage = {
   id: string;
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "reasoning";
   content: string;
+};
+
+export type DisplayToolCall = {
+  id: string;
+  role: "tool";
+  name: string;
+  parameters: unknown;
+  result?: unknown;
+  status: "running" | "complete" | "failed";
+};
+
+export type DisplayGroceryList = {
+  id: string;
+  role: "grocery-list";
+  state: GroceryState;
+};
+
+export type DisplayMessage = DisplayTextMessage | DisplayToolCall | DisplayGroceryList;
+
+type ToolCall = {
+  id: string;
+  name: string;
+  parameters: unknown;
 };
 
 function textFromContent(content: unknown): string {
@@ -21,10 +44,12 @@ function textFromContent(content: unknown): string {
     .trim();
 }
 
-export function toDisplayMessage(message: unknown, index: number): DisplayMessage | null {
+export function toDisplayMessage(message: unknown, index: number): DisplayTextMessage | null {
   if (!message || typeof message !== "object") return null;
   const record = message as Record<string, unknown>;
-  if (record.role !== "user" && record.role !== "assistant") return null;
+  if (record.role !== "user" && record.role !== "assistant" && record.role !== "reasoning") {
+    return null;
+  }
   const content = textFromContent(record.content);
   if (!content) return null;
   return {
@@ -34,10 +59,125 @@ export function toDisplayMessage(message: unknown, index: number): DisplayMessag
   };
 }
 
+function recordValue(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+}
+
+function decodedValue(value: unknown): unknown {
+  if (typeof value !== "string") return value;
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  try {
+    return JSON.parse(trimmed) as unknown;
+  } catch {
+    return trimmed;
+  }
+}
+
+function messageToolCalls(message: Record<string, unknown>): ToolCall[] {
+  if (!Array.isArray(message.toolCalls)) return [];
+  return message.toolCalls.flatMap((value, index) => {
+    const call = recordValue(value);
+    const fn = recordValue(call?.function);
+    if (!call || !fn || typeof fn.name !== "string") return [];
+    return [
+      {
+        id: typeof call.id === "string" ? call.id : `${message.id ?? "tool"}-${index}`,
+        name: fn.name,
+        parameters: decodedValue(fn.arguments),
+      },
+    ];
+  });
+}
+
+function toolFailed(result: unknown): boolean {
+  const record = recordValue(result);
+  return record?.ok === false || record?.error != null;
+}
+
+function applyGroceryTool(state: GroceryState, name: string, parameters: unknown): GroceryState {
+  const input = recordValue(parameters);
+  if (!input) return state;
+
+  switch (name) {
+    case "set_shopping_list":
+      return normalizeGroceryState({
+        ...state,
+        shopping_list: stringArray(input.items),
+        product_matches: [],
+      });
+    case "set_product_matches":
+      return normalizeGroceryState({ ...state, product_matches: input.items });
+    case "update_cart":
+      return normalizeGroceryState({ ...state, cart: input.items });
+    case "update_pantry":
+      return normalizeGroceryState({ ...state, pantry: input.items });
+    case "set_meal_plan":
+      return normalizeGroceryState({ ...state, meal_plan: input.plan, status: "planning" });
+    case "set_weekly_deals":
+      return normalizeGroceryState({ ...state, weekly_deals: input.deals });
+    case "mark_list_ready":
+      return normalizeGroceryState({ ...state, review_summary: input.summary, status: "ready" });
+    default:
+      return state;
+  }
+}
+
 export function toDisplayMessages(messages: readonly unknown[]): DisplayMessage[] {
-  return messages
-    .map(toDisplayMessage)
-    .filter((message): message is DisplayMessage => message !== null);
+  const records = messages.map(recordValue).filter((message) => message !== null);
+  const toolResults = new Map<string, unknown>();
+  for (const message of records) {
+    if (message.role === "tool" && typeof message.toolCallId === "string") {
+      toolResults.set(message.toolCallId, decodedValue(textFromContent(message.content)));
+    }
+  }
+
+  const items: DisplayMessage[] = [];
+  let groceryState = normalizeGroceryState({});
+  for (const [index, message] of records.entries()) {
+    if (message.role === "assistant") {
+      for (const toolCall of messageToolCalls(message)) {
+        const hasResult = toolResults.has(toolCall.id);
+        const result = toolResults.get(toolCall.id);
+        const failed = hasResult && toolFailed(result);
+        if (hasResult && !failed) {
+          groceryState = applyGroceryTool(groceryState, toolCall.name, toolCall.parameters);
+        }
+        items.push({
+          id: toolCall.id,
+          role: "tool",
+          name: toolCall.name,
+          parameters: toolCall.parameters,
+          ...(hasResult ? { result } : {}),
+          status: !hasResult ? "running" : failed ? "failed" : "complete",
+        });
+        if (
+          toolCall.name === "mark_list_ready" &&
+          hasResult &&
+          !failed &&
+          (groceryState.shopping_list?.length ?? 0) > 0
+        ) {
+          items.push({
+            id: `${toolCall.id}-grocery-list`,
+            role: "grocery-list",
+            state: normalizeGroceryState(groceryState),
+          });
+        }
+      }
+    }
+
+    const textMessage = toDisplayMessage(message, index);
+    if (!textMessage) continue;
+    const previous = items.at(-1);
+    if (textMessage.role === "reasoning" && previous?.role === "reasoning") {
+      if (textMessage.content !== previous.content) {
+        previous.content = `${previous.content}\n\n${textMessage.content}`;
+      }
+      continue;
+    }
+    items.push(textMessage);
+  }
+  return items;
 }
 
 function stringArray(value: unknown): string[] {

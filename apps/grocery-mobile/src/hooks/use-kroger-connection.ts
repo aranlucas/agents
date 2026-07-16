@@ -4,7 +4,11 @@ import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
 import { readableError } from "@/lib/auth";
-import { hasKrogerConnection, type ExternalAccountLike } from "@/lib/connections";
+import {
+  hasKrogerConnection,
+  rotatingTokenNonceFromCallback,
+  type ExternalAccountLike,
+} from "@/lib/connections";
 
 export function useKrogerConnection() {
   const { isLoaded, user } = useUser();
@@ -54,8 +58,15 @@ export function useKrogerConnection() {
       if (!verificationUrl) throw new Error("Kroger did not return a connection page.");
 
       const result = await WebBrowser.openAuthSessionAsync(verificationUrl.href, redirectUrl);
-      if (result.type !== "success") return false;
+      if (result.type !== "success" || !result.url) return false;
+
+      const linkedAccount = await externalAccount.reload({
+        rotatingTokenNonce: rotatingTokenNonceFromCallback(result.url),
+      });
       await user.reload();
+      if (linkedAccount.verification?.status !== "verified") {
+        throw new Error("Kroger returned without completing the account connection.");
+      }
       return true;
     } catch (caught) {
       setError(readableError(caught));

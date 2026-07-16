@@ -11,13 +11,13 @@ export function GroceryStateCard({
   state,
   onOpenList,
   onAddToCart,
-  adding,
+  adding = false,
   connected,
 }: {
   state: GroceryState;
-  onOpenList: () => void;
-  onAddToCart: () => void;
-  adding: boolean;
+  onOpenList?: () => void;
+  onAddToCart?: () => void;
+  adding?: boolean;
   connected: boolean;
 }) {
   const list = state.shopping_list ?? [];
@@ -83,7 +83,12 @@ export function GroceryStateCard({
         ) : null}
       </View>
 
-      <Pressable accessibilityRole="button" onPress={onOpenList} style={styles.reviewRow}>
+      <Pressable
+        accessibilityRole={onOpenList ? "button" : undefined}
+        disabled={!onOpenList}
+        onPress={onOpenList}
+        style={styles.reviewRow}
+      >
         <View>
           <Text style={styles.reviewTitle}>Review {Math.max(list.length, cart.length)} items</Text>
           <Text style={styles.reviewMeta}>
@@ -96,7 +101,7 @@ export function GroceryStateCard({
         <ArrowRight size={20} color={colors.forest} />
       </Pressable>
 
-      {connected && list.length > 0 ? (
+      {connected && list.length > 0 && onAddToCart ? (
         <PrimaryButton loading={adding} onPress={onAddToCart}>
           <View style={styles.buttonContent}>
             <ShoppingCart size={18} color={colors.white} />
@@ -104,7 +109,7 @@ export function GroceryStateCard({
           </View>
         </PrimaryButton>
       ) : null}
-      {connected ? (
+      {connected && onAddToCart ? (
         <Text selectable style={styles.disclaimer}>
           Nothing changes in your Kroger cart until you approve this action.
         </Text>

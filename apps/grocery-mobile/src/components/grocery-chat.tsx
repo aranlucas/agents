@@ -14,12 +14,30 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { ArrowUp, BookMarked, Menu, MessageSquareText, Plus, Sparkles } from "lucide-react-native";
+import {
+  ArrowUp,
+  BookMarked,
+  ChevronDown,
+  ChevronRight,
+  Menu,
+  MessageSquareText,
+  Plus,
+  Sparkles,
+} from "lucide-react-native";
 import { NativeMarkdown, type NativeMarkdownStyle } from "@agents/native-markdown";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GroceryStateCard } from "@/components/grocery-state-card";
 import { useGroceryAgent } from "@/components/grocery-agent-provider";
 import { KrogerConnectionCard } from "@/components/kroger-connection-card";
+import {
+  MessageScroller,
+  MessageScrollerButton,
+  MessageScrollerContent,
+  MessageScrollerItem,
+  MessageScrollerViewport,
+  type MessageScrollerHandle,
+  useMessageScrollerControls,
+} from "@/components/message-scroller";
 import { InlineError } from "@/components/ui";
 import { useKrogerConnection } from "@/hooks/use-kroger-connection";
 import { suggestionKey } from "@/lib/grocery-suggestions";
@@ -28,7 +46,7 @@ import { colors } from "@/lib/theme";
 export function GroceryChat() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<MessageScrollerHandle>(null);
   const [input, setInput] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const {
@@ -45,6 +63,12 @@ export function GroceryChat() {
   const connection = useKrogerConnection();
   const { connected } = connection;
   const latestAssistant = messages.findLast((message) => message.role === "assistant");
+  const latestReasoning = messages.findLast((message) => message.role === "reasoning");
+  const latestGroceryList = messages.findLast((message) => message.role === "grocery-list");
+  const timelineRevision = `${messages.length}:${messages.reduce(
+    (length, message) => length + ("content" in message ? message.content.length : 0),
+    0,
+  )}:${messages.at(-1)?.id ?? ""}`;
 
   const submit = async (content = input) => {
     if (await send(content)) setInput("");
@@ -54,7 +78,7 @@ export function GroceryChat() {
     setMenuOpen(false);
     if (!(await startNewChat())) return;
     setInput("");
-    scrollRef.current?.scrollTo({ y: 0, animated: false });
+    scrollRef.current?.scrollToStart();
   };
 
   const openMenuRoute = (route: "/saved-recipes" | "/chat-history") => {
@@ -83,93 +107,114 @@ export function GroceryChat() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={92}
     >
-      <ScrollView
-        ref={scrollRef}
-        style={styles.messages}
-        contentInsetAdjustmentBehavior="automatic"
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.messageContent}
-        onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
-      >
-        {messages.length === 0 ? (
-          <View style={styles.welcome}>
-            <View style={styles.sparkle}>
-              <Sparkles color={colors.green} size={26} />
-            </View>
-            <Text selectable style={styles.welcomeTitle}>
-              What are you shopping for?
-            </Text>
-            <Text selectable style={styles.welcomeText}>
-              Describe a recipe, a weekly budget, or the meals you need. I’ll turn it into a
-              practical list you control.
-            </Text>
-            <View style={styles.starters}>
-              {suggestionsLoading && suggestions.length === 0 ? (
-                <View accessibilityRole="progressbar" style={styles.suggestionLoading}>
-                  <ActivityIndicator color={colors.green} size="small" />
-                  <Text style={styles.suggestionLoadingText}>Finding a few ideas…</Text>
+      <MessageScroller ref={scrollRef} autoScroll revision={timelineRevision}>
+        <MessageScrollerViewport
+          contentInsetAdjustmentBehavior="automatic"
+          keyboardShouldPersistTaps="handled"
+        >
+          <MessageScrollerContent style={styles.messageContent}>
+            {messages.length === 0 ? (
+              <View style={styles.welcome}>
+                <View style={styles.sparkle}>
+                  <Sparkles color={colors.green} size={26} />
                 </View>
-              ) : null}
-              {suggestions.map((suggestion) => (
-                <Pressable
-                  key={suggestionKey(suggestion)}
-                  accessibilityLabel={suggestion.title}
-                  accessibilityRole="button"
-                  disabled={suggestion.isLoading || isRunning}
-                  onPress={() => void submit(suggestion.message)}
-                  style={({ pressed }) => [styles.starter, pressed && styles.starterPressed]}
-                >
-                  <Text style={styles.starterText}>{suggestion.title}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        ) : null}
+                <Text selectable style={styles.welcomeTitle}>
+                  What are you shopping for?
+                </Text>
+                <Text selectable style={styles.welcomeText}>
+                  Describe a recipe, a weekly budget, or the meals you need. I’ll turn it into a
+                  practical list you control.
+                </Text>
+                <View style={styles.starters}>
+                  {suggestionsLoading && suggestions.length === 0 ? (
+                    <View accessibilityRole="progressbar" style={styles.suggestionLoading}>
+                      <ActivityIndicator color={colors.green} size="small" />
+                      <Text style={styles.suggestionLoadingText}>Finding a few ideas…</Text>
+                    </View>
+                  ) : null}
+                  {suggestions.map((suggestion) => (
+                    <Pressable
+                      key={suggestionKey(suggestion)}
+                      accessibilityLabel={suggestion.title}
+                      accessibilityRole="button"
+                      disabled={suggestion.isLoading || isRunning}
+                      onPress={() => void submit(suggestion.message)}
+                      style={({ pressed }) => [styles.starter, pressed && styles.starterPressed]}
+                    >
+                      <Text style={styles.starterText}>{suggestion.title}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            ) : null}
 
-        {messages.map((message) => (
-          <View
-            key={message.id}
-            style={[
-              styles.bubble,
-              message.role === "user" ? styles.userBubble : styles.agentBubble,
-            ]}
-          >
-            {message.role === "user" ? (
-              <Text selectable style={[styles.bubbleText, styles.userText]}>
-                {message.content}
-              </Text>
-            ) : (
-              <NativeMarkdown style={markdownStyle}>
-                {message.id === latestAssistant?.id && state.status === "ready"
-                  ? state.review_summary || "Your grocery list is ready to review."
-                  : message.content}
-              </NativeMarkdown>
-            )}
-          </View>
-        ))}
+            {messages.map((message) => (
+              <MessageScrollerItem
+                key={message.id}
+                messageId={message.id}
+                scrollAnchor={message.role === "user"}
+                style={[
+                  message.role === "reasoning"
+                    ? styles.reasoning
+                    : message.role === "user" || message.role === "assistant"
+                      ? styles.bubble
+                      : styles.timelineItem,
+                  message.role === "user"
+                    ? styles.userBubble
+                    : message.role === "assistant"
+                      ? styles.agentBubble
+                      : null,
+                ]}
+              >
+                {message.role === "user" ? (
+                  <Text selectable style={[styles.bubbleText, styles.userText]}>
+                    {message.content}
+                  </Text>
+                ) : message.role === "reasoning" ? (
+                  <ReasoningSection
+                    key={isRunning && message.id === latestReasoning?.id ? "streaming" : "complete"}
+                    content={message.content}
+                    isStreaming={isRunning && message.id === latestReasoning?.id}
+                  />
+                ) : message.role === "tool" ? (
+                  <ToolCallSection
+                    name={message.name}
+                    parameters={message.parameters}
+                    result={message.result}
+                    status={message.status}
+                  />
+                ) : message.role === "grocery-list" ? (
+                  <GroceryStateCard
+                    state={message.state}
+                    adding={isRunning && message.id === latestGroceryList?.id}
+                    onOpenList={
+                      message.id === latestGroceryList?.id ? () => router.push("/list") : undefined
+                    }
+                    onAddToCart={
+                      message.id === latestGroceryList?.id ? confirmAddToCart : undefined
+                    }
+                    connected={connected}
+                  />
+                ) : (
+                  <NativeMarkdown style={markdownStyle}>
+                    {message.id === latestAssistant?.id && state.status === "ready"
+                      ? state.review_summary || "Your grocery list is ready to review."
+                      : message.content}
+                  </NativeMarkdown>
+                )}
+              </MessageScrollerItem>
+            ))}
 
-        <GroceryStateCard
-          state={state}
-          adding={isRunning}
-          onOpenList={() => router.push("/list")}
-          onAddToCart={confirmAddToCart}
-          connected={connected}
-        />
-        <KrogerConnectionCard connection={connection} />
-        {isRunning ? (
-          <View style={styles.thinking}>
-            <ActivityIndicator color={colors.green} />
-            <Text style={styles.thinkingText}>
-              {connected ? "Matching your Kroger items…" : "Building your grocery plan…"}
-            </Text>
-          </View>
-        ) : null}
-        {error ? (
-          <Pressable onPress={clearError}>
-            <InlineError message={error} />
-          </Pressable>
-        ) : null}
-      </ScrollView>
+            <KrogerConnectionCard connection={connection} />
+            {error ? (
+              <Pressable onPress={clearError}>
+                <InlineError message={error} />
+              </Pressable>
+            ) : null}
+          </MessageScrollerContent>
+        </MessageScrollerViewport>
+        <MessageScrollerButton />
+      </MessageScroller>
 
       <Modal
         animationType="fade"
@@ -267,9 +312,153 @@ export function GroceryChat() {
   );
 }
 
+function ReasoningSection({ content, isStreaming }: { content: string; isStreaming: boolean }) {
+  const { releaseFollow } = useMessageScrollerControls();
+  const [expanded, setExpanded] = useState(isStreaming);
+  const scrollRef = useRef<ScrollView>(null);
+
+  return (
+    <View style={styles.reasoning}>
+      <Pressable
+        accessibilityLabel={expanded ? "Hide reasoning" : "Show reasoning"}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        onPress={() => {
+          releaseFollow();
+          setExpanded((current) => !current);
+        }}
+        style={({ pressed }) => [styles.reasoningToggle, pressed && styles.reasoningTogglePressed]}
+      >
+        <View style={styles.disclosureIcon}>
+          {expanded ? (
+            <ChevronDown color={colors.muted} size={16} />
+          ) : (
+            <ChevronRight color={colors.muted} size={16} />
+          )}
+        </View>
+        <Text style={styles.reasoningLabel}>{isStreaming ? "Working…" : "Worked"}</Text>
+      </Pressable>
+      {expanded ? (
+        <View style={styles.reasoningContent}>
+          <ScrollView
+            ref={scrollRef}
+            nestedScrollEnabled
+            onContentSizeChange={() => {
+              if (isStreaming) scrollRef.current?.scrollToEnd({ animated: false });
+            }}
+            showsVerticalScrollIndicator={false}
+          >
+            <Text selectable style={styles.reasoningText}>
+              {content}
+            </Text>
+          </ScrollView>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function ToolCallSection({
+  name,
+  parameters,
+  result,
+  status,
+}: {
+  name: string;
+  parameters: unknown;
+  result?: unknown;
+  status: "running" | "complete" | "failed";
+}) {
+  const { releaseFollow } = useMessageScrollerControls();
+  const [expanded, setExpanded] = useState(false);
+  const label = toolLabel(name);
+  return (
+    <View style={styles.toolCall}>
+      <Pressable
+        accessibilityLabel={`${expanded ? "Hide" : "Show"} details for ${label}`}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        onPress={() => {
+          releaseFollow();
+          setExpanded((current) => !current);
+        }}
+        style={({ pressed }) => [styles.toolToggle, pressed && styles.reasoningTogglePressed]}
+      >
+        <View style={styles.disclosureIcon}>
+          {expanded ? (
+            <ChevronDown color={colors.muted} size={16} />
+          ) : (
+            <ChevronRight color={colors.muted} size={16} />
+          )}
+        </View>
+        <Text numberOfLines={1} style={styles.toolLabel}>
+          {label}
+        </Text>
+        <Text style={[styles.toolStatus, status === "failed" && styles.toolStatusFailed]}>
+          {status === "running" ? "Running" : status === "failed" ? "Failed" : "Done"}
+        </Text>
+      </Pressable>
+      {expanded ? (
+        <ScrollView nestedScrollEnabled style={styles.toolDetails}>
+          <Text selectable style={styles.toolDetailsLabel}>
+            Input
+          </Text>
+          <Text selectable style={styles.toolDetailsText}>
+            {formatToolValue(parameters)}
+          </Text>
+          {status !== "running" ? (
+            <>
+              <Text selectable style={styles.toolDetailsLabel}>
+                Result
+              </Text>
+              <Text selectable style={styles.toolDetailsText}>
+                {formatToolValue(result)}
+              </Text>
+            </>
+          ) : null}
+        </ScrollView>
+      ) : null}
+    </View>
+  );
+}
+
+function toolLabel(name: string): string {
+  const labels: Record<string, string> = {
+    set_shopping_list: "Created shopping list",
+    set_product_matches: "Matched Kroger products",
+    update_cart: "Updated Kroger cart",
+    update_pantry: "Updated pantry",
+    set_meal_plan: "Created meal plan",
+    set_weekly_deals: "Saved weekly deals",
+    mark_list_ready: "Prepared grocery list",
+    get_current_date: "Checked current date",
+    get_weekly_deals: "Checked weekly deals",
+    search_products: "Searched Kroger products",
+    web_search: "Searched the web",
+    load_web_page: "Read web page",
+  };
+  return (
+    labels[name] ??
+    name
+      .split("_")
+      .filter(Boolean)
+      .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
+      .join(" ")
+  );
+}
+
+function formatToolValue(value: unknown): string {
+  if (typeof value === "string") return value || "None";
+  if (value === undefined) return "None";
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  messages: { flex: 1 },
   messageContent: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 18, gap: 12 },
   welcome: { alignItems: "center", paddingHorizontal: 12, paddingVertical: 24, gap: 10 },
   sparkle: {
@@ -332,14 +521,54 @@ const styles = StyleSheet.create({
   },
   bubbleText: { color: colors.ink, fontSize: 15, lineHeight: 22 },
   userText: { color: colors.white },
-  thinking: {
+  timelineItem: { width: "100%", alignSelf: "stretch" },
+  reasoning: { width: "100%", alignSelf: "stretch", gap: 4 },
+  reasoningToggle: {
+    alignSelf: "flex-start",
     flexDirection: "row",
     alignItems: "center",
-    gap: 9,
-    paddingVertical: 6,
-    paddingHorizontal: 3,
+    gap: 4,
+    paddingVertical: 3,
   },
-  thinkingText: { color: colors.muted, fontSize: 13 },
+  reasoningTogglePressed: { opacity: 0.65 },
+  reasoningLabel: { color: colors.muted, fontSize: 13, lineHeight: 18, fontWeight: "500" },
+  disclosureIcon: { width: 16, height: 16, alignItems: "center", justifyContent: "center" },
+  reasoningContent: {
+    height: 156,
+    borderLeftWidth: 1,
+    borderLeftColor: colors.line,
+    marginLeft: 7,
+    paddingLeft: 13,
+    paddingVertical: 3,
+  },
+  reasoningText: { color: colors.muted, fontSize: 14, lineHeight: 21 },
+  toolCall: { width: "100%", alignSelf: "stretch", gap: 4 },
+  toolToggle: {
+    minHeight: 32,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingVertical: 3,
+  },
+  toolLabel: { color: colors.ink, fontSize: 13, lineHeight: 18, fontWeight: "600", flexShrink: 1 },
+  toolStatus: { color: colors.muted, fontSize: 11, lineHeight: 16, marginLeft: "auto" },
+  toolStatusFailed: { color: colors.danger },
+  toolDetails: {
+    maxHeight: 156,
+    borderLeftWidth: 1,
+    borderLeftColor: colors.line,
+    marginLeft: 7,
+    paddingLeft: 13,
+    paddingVertical: 3,
+  },
+  toolDetailsLabel: {
+    color: colors.muted,
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: "700",
+    marginBottom: 2,
+  },
+  toolDetailsText: { color: colors.muted, fontSize: 12, lineHeight: 18, marginBottom: 8 },
   menuLayer: { flex: 1 },
   chatMenu: {
     position: "absolute",
