@@ -48,9 +48,9 @@ export function GroceryAgentProvider({ children }: { children: ReactNode }) {
   const reloadSuggestions = suggestionStore.reloadSuggestions;
 
   const startNewChat = useCallback(async () => {
-    const started = await resetChat();
-    if (started) reloadSuggestions();
-    return started;
+    const outcome = await resetChat();
+    if (outcome.status === "success") reloadSuggestions();
+    return outcome;
   }, [reloadSuggestions, resetChat]);
 
   const value = useMemo<GroceryAgentContextValue>(

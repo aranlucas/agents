@@ -7,7 +7,7 @@ import {
   stabilizeGroceryState,
   toDisplayMessage,
   toDisplayMessages,
-} from "./grocery-state";
+} from "@/lib/grocery-state";
 
 describe("grocery state", () => {
   it("normalizes the streamed grocery contract", () => {

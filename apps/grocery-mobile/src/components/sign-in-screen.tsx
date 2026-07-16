@@ -3,7 +3,7 @@ import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { useState } from "react";
 import { ScrollView, View } from "react-native";
-import { BrandMark } from "@/components/ui";
+import { BrandMark } from "@/components/brand-mark";
 import { ErrorAlert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

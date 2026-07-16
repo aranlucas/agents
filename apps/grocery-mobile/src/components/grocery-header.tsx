@@ -1,7 +1,7 @@
 import { useUser } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import { View } from "react-native";
-import { BrandMark } from "@/components/ui";
+import { BrandMark } from "@/components/brand-mark";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {

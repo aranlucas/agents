@@ -46,8 +46,8 @@ jobs:
         working-directory: apps/ai-shopping-mcp
         run: pnpm exec wrangler types --check
       - name: Build
-        # Mobile's `build` script is a credentialed EAS release operation, not
-        # a deterministic compile. Its release workflows own that operation.
+        # Legacy apps/mobile uses credentialed native release commands, so CI excludes
+        # it. Grocery Mobile exposes a deterministic Expo export through `build`.
         run: pnpm exec turbo build --filter='!agents' --filter='!mobile'
         env:
           SKIP_ENV_VALIDATION: "1"

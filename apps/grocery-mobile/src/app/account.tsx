@@ -15,6 +15,7 @@ import {
 } from "lucide-react-native";
 import { ErrorAlert } from "@/components/ui/alert";
 import { Avatar } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Icon } from "@/components/ui/icon";
@@ -89,21 +90,11 @@ export default function AccountScreen() {
                 : "Optional for live products and cart actions"}
             </Text>
           </View>
-          <View
-            className={cn(
-              "rounded-full px-2 py-1",
-              connected ? "bg-muted" : "bg-destructive-surface",
-            )}
-          >
-            <Text
-              className={cn(
-                "text-xs font-extrabold",
-                connected ? "text-primary" : "text-destructive",
-              )}
-            >
+          <Badge variant={connected ? "secondary" : "destructive"}>
+            <Text className="text-xs font-extrabold">
               {connected ? "Connected" : "Action needed"}
             </Text>
-          </View>
+          </Badge>
         </View>
         <Button disabled={isLoading} size="lg" variant="secondary" onPress={updateKrogerConnection}>
           {reconnecting

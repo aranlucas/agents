@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Keyboard, Pressable, ScrollView, View } from "react-native";
+import { Keyboard, ScrollView, View } from "react-native";
 import { ChevronDown, ChevronRight, Menu, Sparkles } from "lucide-react-native";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeMarkdown, type NativeMarkdownStyle } from "@agents/native-markdown";
@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ActionSheet } from "@/components/ui/action-sheet";
 import { Button } from "@/components/ui/button";
+import { Chip } from "@/components/ui/chip";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Icon } from "@/components/ui/icon";
 import { KeyboardView } from "@/components/ui/keyboard-view";
@@ -43,6 +44,7 @@ import { SafeArea } from "@/components/ui/safe-area";
 import { Text } from "@/components/ui/text";
 import { TypingIndicator } from "@/components/ui/typing-indicator";
 import { useKrogerConnection } from "@/hooks/use-kroger-connection";
+import type { GroceryOperationOutcome } from "@/hooks/use-grocery-agent";
 import type { DisplayMessage } from "@/lib/grocery-state";
 import { suggestionKey } from "@/lib/grocery-suggestions";
 import { cn } from "@/lib/utils";
@@ -54,8 +56,20 @@ export function GroceryChat() {
   const [cartDialogOpen, setCartDialogOpen] = useState(false);
   const [composerVersion, setComposerVersion] = useState(0);
   const [reasoningDurations, setReasoningDurations] = useState<Record<string, number>>({});
-  const { state, messages, isRunning, error, clearError, send, stop, startNewChat, suggestions } =
-    useGroceryAgent();
+  const {
+    state,
+    messages,
+    isRunning,
+    isStreaming,
+    error,
+    failedInput,
+    clearError,
+    retry,
+    send,
+    stop,
+    startNewChat,
+    suggestions,
+  } = useGroceryAgent();
   const connection = useKrogerConnection();
   const { connected } = connection;
   const foreground = useResolveClassNames("text-foreground").color;
@@ -91,14 +105,7 @@ export function GroceryChat() {
       [messages],
     );
 
-  const sendMessage = useCallback(
-    async (content: string) => {
-      const message = content.trim();
-      if (!message || isRunning) return false;
-      return send(message);
-    },
-    [isRunning, send],
-  );
+  const sendMessage = useCallback(async (content: string) => send(content), [send]);
   const closeMenu = useCallback(() => menuSheetRef.current?.dismiss(), []);
   const openMenu = useCallback(() => {
     Keyboard.dismiss();
@@ -128,9 +135,9 @@ export function GroceryChat() {
         <GroceryMessage
           assistantContent={assistantContent}
           connected={connected}
-          isAdding={isRunning && isLatestGroceryList}
+          isAdding={isStreaming && isLatestGroceryList}
           isLatestGroceryList={isLatestGroceryList}
-          isStreaming={isRunning && message.id === latestMessage?.id}
+          isStreaming={isStreaming && message.id === latestMessage?.id}
           markdownStyle={markdownStyle}
           message={message}
           onAddToCart={confirmAddToCart}
@@ -143,7 +150,7 @@ export function GroceryChat() {
     [
       connected,
       confirmAddToCart,
-      isRunning,
+      isStreaming,
       latestAssistant?.id,
       latestGroceryList?.id,
       latestMessage?.id,
@@ -159,7 +166,8 @@ export function GroceryChat() {
 
   const newChat = async () => {
     closeMenu();
-    if (!(await startNewChat())) return;
+    const outcome = await startNewChat();
+    if (outcome.status !== "success") return;
     setComposerVersion((current) => current + 1);
     setReasoningDurations({});
     scrollRef.current?.scrollToStart();
@@ -200,19 +208,18 @@ export function GroceryChat() {
                 Describe a recipe, a weekly budget, or the meals you need. I’ll turn it into a
                 practical list you control.
               </Text>
-              <View className="mt-2.5 w-full gap-2">
+              <View className="mt-2.5 w-full flex-row flex-wrap justify-center gap-2">
                 {suggestions.map((suggestion) => (
-                  <Button
+                  <Chip
                     key={suggestionKey(suggestion)}
                     accessibilityLabel={suggestion.title}
-                    className="h-auto min-h-12 items-start rounded-2xl px-4 py-3"
                     disabled={suggestion.isLoading || isRunning}
-                    loading={suggestion.isLoading}
                     onPress={() => void sendMessage(suggestion.message)}
+                    textClassName="text-secondary"
                     variant="outline"
                   >
-                    <Text className="text-sm font-semibold text-secondary">{suggestion.title}</Text>
-                  </Button>
+                    {suggestion.title}
+                  </Chip>
                 ))}
               </View>
             </View>
@@ -222,9 +229,30 @@ export function GroceryChat() {
               {isRunning && latestMessage?.role === "user" ? <TypingIndicator /> : null}
               <KrogerConnectionCard connection={connection} />
               {error ? (
-                <Pressable onPress={clearError}>
+                <View className="gap-2">
                   <ErrorAlert message={error} />
-                </Pressable>
+                  <View className="flex-row justify-end gap-2">
+                    {failedInput ? (
+                      <Button
+                        accessibilityLabel="Retry failed message"
+                        disabled={isRunning}
+                        onPress={() => void retry()}
+                        size="sm"
+                        variant="secondary"
+                      >
+                        Retry
+                      </Button>
+                    ) : null}
+                    <Button
+                      accessibilityLabel="Dismiss chat error"
+                      onPress={clearError}
+                      size="sm"
+                      variant="ghost"
+                    >
+                      Dismiss
+                    </Button>
+                  </View>
+                </View>
               ) : null}
             </View>
           }
@@ -285,8 +313,8 @@ const ChatComposer = memo(function ChatComposer({
 }: {
   isRunning: boolean;
   onOpenMenu: () => void;
-  onSend: (content: string) => Promise<boolean>;
-  onStop: () => void;
+  onSend: (content: string) => Promise<GroceryOperationOutcome>;
+  onStop: () => Promise<GroceryOperationOutcome>;
 }) {
   const [input, setInput] = useState("");
 
@@ -295,7 +323,8 @@ const ChatComposer = memo(function ChatComposer({
       if (!composerContent.trim() || isRunning) return;
 
       setInput("");
-      if (!(await onSend(composerContent))) {
+      const outcome = await onSend(composerContent);
+      if (outcome.status === "failed") {
         setInput((current) => current || composerContent);
       }
     },

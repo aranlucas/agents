@@ -2,6 +2,7 @@ import * as React from "react";
 import { Pressable, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { entering, exiting } from "@/components/ui/animate";
+import { cn } from "@/lib/utils";
 
 const CollapsibleContext = React.createContext<{ isOpen: boolean; toggle: () => void }>({
   isOpen: false,
@@ -13,30 +14,46 @@ type CollapsibleProps = React.ComponentProps<typeof View> & {
   open?: boolean;
 };
 
-function Collapsible({ open: controlledOpen, onOpenChange, children, ...props }: CollapsibleProps) {
+function Collapsible({
+  open: controlledOpen,
+  onOpenChange,
+  className,
+  children,
+  ...props
+}: CollapsibleProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
   const isOpen = controlledOpen ?? uncontrolledOpen;
-  const toggle = () => {
+  const toggle = React.useCallback(() => {
     const next = !isOpen;
     if (controlledOpen === undefined) setUncontrolledOpen(next);
     onOpenChange?.(next);
-  };
+  }, [controlledOpen, isOpen, onOpenChange]);
 
   return (
     <CollapsibleContext.Provider value={{ isOpen, toggle }}>
-      <View {...props}>{children}</View>
+      <View className={cn(className)} {...props}>
+        {children}
+      </View>
     </CollapsibleContext.Provider>
   );
 }
 
-function CollapsibleTrigger({ className, ...props }: React.ComponentProps<typeof Pressable>) {
+function CollapsibleTrigger({
+  accessibilityState,
+  className,
+  onPress,
+  ...props
+}: React.ComponentProps<typeof Pressable>) {
   const { isOpen, toggle } = React.use(CollapsibleContext);
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ expanded: isOpen }}
-      className={className}
-      onPress={toggle}
+      accessibilityState={{ ...accessibilityState, expanded: isOpen }}
+      className={cn(className)}
+      onPress={(event) => {
+        toggle();
+        onPress?.(event);
+      }}
       {...props}
     />
   );
@@ -47,7 +64,7 @@ function CollapsibleContent({ className, children, ...props }: React.ComponentPr
   if (!isOpen) return null;
   return (
     <Animated.View entering={entering.fadeInDown} exiting={exiting.fadeOutUp}>
-      <View className={className} {...props}>
+      <View className={cn(className)} {...props}>
         {children}
       </View>
     </Animated.View>

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
 import { readableError } from "@/lib/auth";
+import { groceryQueryKeys } from "@/lib/query-keys";
 
 const EMPTY_HEADERS: Record<string, string> = {};
 
@@ -21,7 +22,7 @@ export function GroceryCopilotSession({
 }) {
   const { getToken, isLoaded, userId } = useAuth();
   const session = useQuery({
-    queryKey: ["clerk-grocery-token", userId],
+    queryKey: groceryQueryKeys.copilotSession(userId),
     queryFn: async () => {
       if (!userId) throw new Error("Your session has expired. Please sign in again.");
       const token = await getToken();
@@ -32,6 +33,10 @@ export function GroceryCopilotSession({
     retry: false,
     staleTime: 20_000,
     refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    gcTime: 0,
   });
 
   const headers = useMemo<Record<string, string>>(() => {

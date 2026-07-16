@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { readableError, runAuthenticated } from "./auth";
+import { readableError, runAuthenticated } from "@/lib/auth";
 
 describe("runAuthenticated", () => {
   it("refreshes Clerk auth before starting a run", async () => {

@@ -1,5 +1,5 @@
 import { View } from "react-native";
-import { BrandMark } from "@/components/ui";
+import { BrandMark } from "@/components/brand-mark";
 import { Card } from "@/components/ui/card";
 import { SafeArea } from "@/components/ui/safe-area";
 import { Text } from "@/components/ui/text";

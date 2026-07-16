@@ -2,13 +2,14 @@ import { useAuth } from "@clerk/clerk-expo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { ListPlus, Plus, Trash2 } from "lucide-react-native";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { ErrorAlert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Chip } from "@/components/ui/chip";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { RefreshControl } from "@/components/ui/refresh-control";
@@ -16,6 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { getRuntimeUrl } from "@/lib/config";
 import { createHouseholdApi, type GroceryList } from "@/lib/household-api";
+import { groceryQueryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 
 function firstParam(value: string | string[] | undefined): string {
@@ -40,7 +42,10 @@ export default function SharedListScreen() {
     [getToken, userId],
   );
   const queryClient = useQueryClient();
-  const listsKey = ["grocery-lists", userId, householdId] as const;
+  const listsKey = groceryQueryKeys.lists(userId, householdId);
+  const createListInFlight = useRef(false);
+  const addItemInFlight = useRef(false);
+  const [isFocused, setIsFocused] = useState(false);
   const [selectedListId, setSelectedListId] = useState("");
   const [newListTitle, setNewListTitle] = useState("");
   const [newItemName, setNewItemName] = useState("");
@@ -49,7 +54,7 @@ export default function SharedListScreen() {
   const listsQuery = useQuery({
     queryKey: listsKey,
     queryFn: () => api.listLists(householdId),
-    enabled: Boolean(householdId),
+    enabled: isFocused && Boolean(householdId),
   });
   const lists = listsQuery.data ?? [];
   const selectedList =
@@ -57,11 +62,11 @@ export default function SharedListScreen() {
     lists.find((list) => list.status === "active") ??
     lists[0];
   const activeListId = selectedList?.id ?? "";
-  const listKey = ["grocery-list", userId, activeListId] as const;
+  const listKey = groceryQueryKeys.list(userId, activeListId);
   const activeListQuery = useQuery({
     queryKey: listKey,
     queryFn: () => api.getList(activeListId),
-    enabled: Boolean(activeListId),
+    enabled: isFocused && Boolean(activeListId),
   });
   const activeList = activeListQuery.data ?? selectedList ?? null;
   const { refetch: refetchLists } = listsQuery;
@@ -69,9 +74,9 @@ export default function SharedListScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      void refetchLists();
-      if (activeListId) void refetchActiveList();
-    }, [activeListId, refetchActiveList, refetchLists]),
+      setIsFocused(true);
+      return () => setIsFocused(false);
+    }, []),
   );
 
   const createList = useMutation({
@@ -80,7 +85,7 @@ export default function SharedListScreen() {
       setNewListTitle("");
       setSelectedListId(created.id);
       queryClient.setQueryData<GroceryList[]>(listsKey, (current = []) => [created, ...current]);
-      queryClient.setQueryData(["grocery-list", userId, created.id], created);
+      queryClient.setQueryData(groceryQueryKeys.list(userId, created.id), created);
     },
   });
 
@@ -98,10 +103,36 @@ export default function SharedListScreen() {
     onSuccess: async (_, mutation) => {
       if (mutation.type === "add") setNewItemName("");
       await queryClient.invalidateQueries({
-        queryKey: ["grocery-list", userId, mutation.listId],
+        queryKey: groceryQueryKeys.list(userId, mutation.listId),
       });
     },
   });
+
+  const submitCreateList = async () => {
+    const title = newListTitle.trim();
+    if (!title || !householdId || createListInFlight.current || createList.isPending) return;
+    createListInFlight.current = true;
+    try {
+      await createList.mutateAsync(title);
+    } catch {
+      // Mutation state owns the user-visible error; keep the submitted input for retry.
+    } finally {
+      createListInFlight.current = false;
+    }
+  };
+
+  const submitAddItem = async () => {
+    const name = newItemName.trim();
+    if (!name || !activeList || addItemInFlight.current || mutateItem.isPending) return;
+    addItemInFlight.current = true;
+    try {
+      await mutateItem.mutateAsync({ type: "add", listId: activeList.id, name });
+    } catch {
+      // Mutation state owns the user-visible error; keep the submitted input for retry.
+    } finally {
+      addItemInFlight.current = false;
+    }
+  };
 
   const refresh = async () => {
     setRefreshing(true);
@@ -147,6 +178,8 @@ export default function SharedListScreen() {
 
       {lists.length > 1 ? (
         <ScrollView
+          accessibilityLabel="Grocery list selector"
+          accessibilityRole="radiogroup"
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerClassName="gap-2 px-px"
@@ -155,7 +188,7 @@ export default function SharedListScreen() {
             const selected = list.id === activeList?.id;
             return (
               <Chip
-                accessibilityRole="button"
+                role="radio"
                 key={list.id}
                 onPress={() => setSelectedListId(list.id)}
                 selected={selected}
@@ -242,9 +275,12 @@ export default function SharedListScreen() {
                 );
               })
             ) : (
-              <Text className="p-4 text-sm text-muted-foreground">
-                No items yet. Add the first one below.
-              </Text>
+              <EmptyState
+                className="p-4"
+                description="Add the first grocery item below."
+                icon={<Icon as={ListPlus} className="size-6 text-primary" />}
+                title="No items yet"
+              />
             )}
           </Card>
 
@@ -253,14 +289,7 @@ export default function SharedListScreen() {
               accessibilityLabel="New grocery item"
               className="min-h-12 flex-1 rounded-2xl bg-card px-4 text-base"
               onChangeText={setNewItemName}
-              onSubmitEditing={() =>
-                activeList &&
-                mutateItem.mutate({
-                  type: "add",
-                  listId: activeList.id,
-                  name: newItemName.trim(),
-                })
-              }
+              onSubmitEditing={() => void submitAddItem()}
               placeholder="Add an item"
               returnKeyType="done"
               value={newItemName}
@@ -270,14 +299,7 @@ export default function SharedListScreen() {
               className="size-12 rounded-2xl"
               disabled={!newItemName.trim() || busy === "add-item"}
               loading={busy === "add-item"}
-              onPress={() =>
-                activeList &&
-                mutateItem.mutate({
-                  type: "add",
-                  listId: activeList.id,
-                  name: newItemName.trim(),
-                })
-              }
+              onPress={() => void submitAddItem()}
               size="icon"
             >
               <Icon as={Plus} className="size-5.5 text-primary-foreground" />
@@ -295,27 +317,27 @@ export default function SharedListScreen() {
         </View>
       ) : (
         <Card className="items-stretch gap-3 rounded-2xl p-5">
-          <Icon as={ListPlus} className="size-7 text-primary" />
-          <Text className="text-xl font-extrabold">Start a shared list</Text>
-          <Text className="text-sm text-muted-foreground">
-            Create the first list for {householdName}.
-          </Text>
+          <EmptyState
+            className="p-0"
+            description={`Create the first list for ${householdName}.`}
+            icon={<Icon as={ListPlus} className="size-7 text-primary" />}
+            title="Start a shared list"
+          />
           <Input
             accessibilityLabel="List title"
             autoCapitalize="words"
             className="min-h-12 rounded-2xl bg-card px-4 text-base"
             onChangeText={setNewListTitle}
-            onSubmitEditing={() =>
-              createList.mutate(newListTitle.trim() || `${householdName} groceries`)
-            }
+            onSubmitEditing={() => void submitCreateList()}
             placeholder={`${householdName} groceries`}
             returnKeyType="done"
             value={newListTitle}
           />
           <Button
+            disabled={!newListTitle.trim() || busy === "create-list"}
             loading={busy === "create-list"}
             size="lg"
-            onPress={() => createList.mutate(newListTitle.trim() || `${householdName} groceries`)}
+            onPress={() => void submitCreateList()}
           >
             Create shared list
           </Button>
