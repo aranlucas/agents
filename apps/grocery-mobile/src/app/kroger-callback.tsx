@@ -1,4 +1,5 @@
 import { useUser } from "@clerk/clerk-expo";
+import * as Linking from "expo-linking";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
@@ -8,6 +9,7 @@ import { colors } from "@/lib/theme";
 
 export default function KrogerCallbackScreen() {
   const router = useRouter();
+  const callbackUrl = Linking.useURL();
   const { isLoaded, user } = useUser();
   const { rotating_token_nonce: rotatingTokenNonceParam } = useLocalSearchParams<{
     rotating_token_nonce?: string | string[];
@@ -16,6 +18,18 @@ export default function KrogerCallbackScreen() {
   const rotatingTokenNonce = Array.isArray(rotatingTokenNonceParam)
     ? rotatingTokenNonceParam[0]
     : rotatingTokenNonceParam;
+
+  useEffect(() => {
+    if (!callbackUrl) return;
+    const parsed = new URL(callbackUrl);
+    console.warn("Kroger callback URL metadata", {
+      protocol: parsed.protocol,
+      host: parsed.host,
+      pathname: parsed.pathname,
+      queryKeys: [...parsed.searchParams.keys()],
+      hashKeys: [...new URLSearchParams(parsed.hash.slice(1)).keys()],
+    });
+  }, [callbackUrl]);
 
   useEffect(() => {
     if (!isLoaded || !user) return;
