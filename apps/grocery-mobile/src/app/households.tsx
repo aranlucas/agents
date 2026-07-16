@@ -2,17 +2,14 @@ import { useAuth } from "@clerk/clerk-expo";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Check, Copy, Home, Users } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
-import {
-  AppState,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { Card, InlineError, PrimaryButton, SecondaryButton } from "@/components/ui";
+import { AppState, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { ErrorAlert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Text } from "@/components/ui/text";
 import { getRuntimeUrl } from "@/lib/config";
 import { createHouseholdApi, type Household, type HouseholdInvite } from "@/lib/household-api";
 import { colors } from "@/lib/theme";
@@ -110,7 +107,7 @@ export default function HouseholdsScreen() {
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} />}
     >
-      <Card style={styles.formCard}>
+      <Card className="gap-3 rounded-2xl p-4">
         <View style={styles.cardHeading}>
           <View style={styles.icon}>
             <Home color={colors.green} size={21} />
@@ -122,27 +119,27 @@ export default function HouseholdsScreen() {
             </Text>
           </View>
         </View>
-        <TextInput
+        <Input
           accessibilityLabel="Household name"
           autoCapitalize="words"
+          className="min-h-12 rounded-2xl bg-card px-4 text-base"
           onChangeText={setName}
           onSubmitEditing={() => void create()}
           placeholder="Household name"
-          placeholderTextColor={colors.muted}
           returnKeyType="done"
-          style={styles.input}
           value={name}
         />
-        <PrimaryButton
+        <Button
           disabled={!name.trim()}
           loading={busy === "create"}
+          size="lg"
           onPress={() => void create()}
         >
           Create household
-        </PrimaryButton>
+        </Button>
       </Card>
 
-      <Card style={styles.formCard}>
+      <Card className="gap-3 rounded-2xl p-4">
         <View style={styles.cardHeading}>
           <View style={styles.icon}>
             <Users color={colors.green} size={21} />
@@ -154,35 +151,51 @@ export default function HouseholdsScreen() {
             </Text>
           </View>
         </View>
-        <TextInput
+        <Input
           accessibilityLabel="Invite code"
           autoCapitalize="characters"
           autoCorrect={false}
+          className="min-h-12 rounded-2xl bg-card px-4 text-base font-extrabold tracking-widest"
           maxLength={8}
           onChangeText={setInviteCode}
           onSubmitEditing={() => void join()}
           placeholder="ABCDEFGH"
-          placeholderTextColor={colors.muted}
           returnKeyType="done"
-          style={[styles.input, styles.codeInput]}
           value={inviteCode}
         />
-        <SecondaryButton disabled={!inviteCode.trim()} onPress={() => void join()}>
+        <Button
+          disabled={!inviteCode.trim()}
+          loading={busy === "join"}
+          size="lg"
+          variant="secondary"
+          onPress={() => void join()}
+        >
           {busy === "join" ? "Joining…" : "Join household"}
-        </SecondaryButton>
+        </Button>
       </Card>
 
-      {error ? <InlineError message={error} /> : null}
+      {error ? <ErrorAlert message={error} /> : null}
 
       <View style={styles.sectionHeading}>
         <Text style={styles.sectionTitle}>Your households</Text>
-        <Text style={styles.count}>{households.length}</Text>
+        <Badge variant="outline">
+          <Text className="text-secondary tabular-nums" variant="small">
+            {households.length}
+          </Text>
+        </Badge>
       </View>
 
       {loading ? (
-        <Text style={styles.emptyText}>Loading households…</Text>
+        <View
+          accessibilityLabel="Loading households"
+          accessibilityRole="progressbar"
+          style={styles.loadingCards}
+        >
+          <Skeleton className="h-28 w-full rounded-2xl" />
+          <Skeleton className="h-28 w-full rounded-2xl" />
+        </View>
       ) : households.length === 0 ? (
-        <Card style={styles.emptyCard}>
+        <Card className="items-center gap-2 rounded-2xl p-6">
           <Users color={colors.green} size={28} />
           <Text style={styles.emptyTitle}>No shared households yet</Text>
           <Text style={styles.emptyText}>Create one above or join with an invite code.</Text>
@@ -191,7 +204,7 @@ export default function HouseholdsScreen() {
         households.map((household) => {
           const invite = createdInvites[household.id];
           return (
-            <Card key={household.id} style={styles.householdCard}>
+            <Card className="gap-3.5 rounded-2xl p-4" key={household.id}>
               <View style={styles.householdRow}>
                 <View style={styles.householdCopy}>
                   <Text selectable style={styles.householdName}>
@@ -199,19 +212,19 @@ export default function HouseholdsScreen() {
                   </Text>
                   <Text style={styles.role}>{household.role === "owner" ? "Owner" : "Member"}</Text>
                 </View>
-                <Pressable
-                  accessibilityRole="button"
+                <Button
+                  className="min-h-10 rounded-xl px-3"
                   onPress={() =>
                     router.push({
                       pathname: "/shared-list",
                       params: { householdId: household.id, householdName: household.name },
                     })
                   }
-                  style={styles.openButton}
+                  size="sm"
                 >
-                  <Text style={styles.openText}>Open list</Text>
+                  <Text className="text-sm font-extrabold text-primary-foreground">Open list</Text>
                   <Check color={colors.white} size={17} />
-                </Pressable>
+                </Button>
               </View>
               {household.role === "owner" ? (
                 invite ? (
@@ -226,12 +239,15 @@ export default function HouseholdsScreen() {
                     <Text style={styles.inviteExpiry}>7 days</Text>
                   </View>
                 ) : (
-                  <SecondaryButton
+                  <Button
                     disabled={busy === `invite:${household.id}`}
+                    loading={busy === `invite:${household.id}`}
+                    size="lg"
+                    variant="secondary"
                     onPress={() => void createInvite(household.id)}
                   >
                     {busy === `invite:${household.id}` ? "Creating invite…" : "Create invite code"}
-                  </SecondaryButton>
+                  </Button>
                 )
               ) : null}
             </Card>
@@ -245,7 +261,6 @@ export default function HouseholdsScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: 18, gap: 16, paddingBottom: 40 },
-  formCard: { padding: 16, gap: 13 },
   cardHeading: { flexDirection: "row", alignItems: "center", gap: 11 },
   icon: {
     width: 42,
@@ -258,18 +273,6 @@ const styles = StyleSheet.create({
   headingCopy: { flex: 1, gap: 2 },
   cardTitle: { color: colors.ink, fontSize: 16, lineHeight: 22, fontWeight: "800" },
   cardBody: { color: colors.muted, fontSize: 12, lineHeight: 17 },
-  input: {
-    minHeight: 50,
-    borderRadius: 15,
-    borderCurve: "continuous",
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
-    color: colors.ink,
-    fontSize: 16,
-    paddingHorizontal: 15,
-  },
-  codeInput: { fontWeight: "800", letterSpacing: 2 },
   sectionHeading: {
     flexDirection: "row",
     alignItems: "center",
@@ -278,37 +281,13 @@ const styles = StyleSheet.create({
     paddingTop: 4,
   },
   sectionTitle: { color: colors.ink, fontSize: 20, lineHeight: 26, fontWeight: "800" },
-  count: {
-    minWidth: 28,
-    borderRadius: 999,
-    backgroundColor: colors.surfaceMuted,
-    color: colors.forest,
-    fontSize: 12,
-    fontWeight: "800",
-    fontVariant: ["tabular-nums"],
-    overflow: "hidden",
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    textAlign: "center",
-  },
-  emptyCard: { alignItems: "center", padding: 24, gap: 8 },
+  loadingCards: { gap: 12 },
   emptyTitle: { color: colors.ink, fontSize: 17, lineHeight: 23, fontWeight: "800" },
   emptyText: { color: colors.muted, fontSize: 14, lineHeight: 20, textAlign: "center" },
-  householdCard: { padding: 16, gap: 14 },
   householdRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   householdCopy: { flex: 1, gap: 2 },
   householdName: { color: colors.ink, fontSize: 17, lineHeight: 23, fontWeight: "800" },
   role: { color: colors.muted, fontSize: 12, lineHeight: 17, textTransform: "capitalize" },
-  openButton: {
-    minHeight: 42,
-    borderRadius: 14,
-    backgroundColor: colors.green,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 13,
-  },
-  openText: { color: colors.white, fontSize: 13, lineHeight: 18, fontWeight: "800" },
   inviteResult: {
     borderRadius: 15,
     borderCurve: "continuous",

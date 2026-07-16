@@ -3,7 +3,7 @@ import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import {
   ChevronRight,
   CircleHelp,
@@ -13,7 +13,10 @@ import {
   ShoppingBasket,
   Trash2,
 } from "lucide-react-native";
-import { Card, InlineError, PrimaryButton, SecondaryButton } from "@/components/ui";
+import { ErrorAlert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Text } from "@/components/ui/text";
 import { useKrogerConnection } from "@/hooks/use-kroger-connection";
 import { getLegalLinks } from "@/lib/config";
 import { colors } from "@/lib/theme";
@@ -65,7 +68,7 @@ export default function AccountScreen() {
         </View>
       </View>
 
-      <Card style={styles.connectionCard}>
+      <Card className="gap-3.5 rounded-2xl p-4">
         <View style={styles.connectionTop}>
           <View style={styles.connectionIcon}>
             <ShoppingBasket color={colors.green} size={22} />
@@ -86,17 +89,17 @@ export default function AccountScreen() {
             </Text>
           </View>
         </View>
-        <SecondaryButton disabled={isLoading} onPress={updateKrogerConnection}>
+        <Button disabled={isLoading} size="lg" variant="secondary" onPress={updateKrogerConnection}>
           {reconnecting
             ? "Reconnecting Kroger…"
             : connected
               ? "Reconnect Kroger"
               : "Connect Kroger"}
-        </SecondaryButton>
+        </Button>
       </Card>
 
       <Text style={styles.groupTitle}>Help and legal</Text>
-      <Card style={styles.rows}>
+      <Card className="gap-0 overflow-hidden rounded-2xl p-0">
         <AccountRow
           icon={<Shield color={colors.green} size={20} />}
           label="Privacy policy"
@@ -122,14 +125,16 @@ export default function AccountScreen() {
         />
       </Card>
 
-      {connectionError || pageError ? <InlineError message={connectionError || pageError} /> : null}
-      <SecondaryButton onPress={() => router.push("/report")}>Report a problem</SecondaryButton>
-      <PrimaryButton onPress={() => void signOut()}>
+      {connectionError || pageError ? <ErrorAlert message={connectionError || pageError} /> : null}
+      <Button size="lg" variant="secondary" onPress={() => router.push("/report")}>
+        Report a problem
+      </Button>
+      <Button size="lg" onPress={() => void signOut()}>
         <View style={styles.signOut}>
           <LogOut color={colors.white} size={18} />
           <Text style={styles.signOutText}>Sign out</Text>
         </View>
-      </PrimaryButton>
+      </Button>
       <Text selectable style={styles.version}>
         Grocery Agent 1.0.0
       </Text>
@@ -175,7 +180,6 @@ const styles = StyleSheet.create({
   profileCopy: { flex: 1, gap: 2 },
   name: { color: colors.ink, fontSize: 19, lineHeight: 25, fontWeight: "800" },
   email: { color: colors.muted, fontSize: 13, lineHeight: 18 },
-  connectionCard: { padding: 16, gap: 14 },
   connectionTop: { flexDirection: "row", alignItems: "center", gap: 11 },
   connectionIcon: {
     width: 42,
@@ -204,7 +208,6 @@ const styles = StyleSheet.create({
     marginTop: 5,
     marginLeft: 3,
   },
-  rows: { overflow: "hidden" },
   row: {
     minHeight: 58,
     flexDirection: "row",

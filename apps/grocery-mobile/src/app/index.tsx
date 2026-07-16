@@ -1,8 +1,10 @@
 import { Stack, useRouter } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { UserRound } from "lucide-react-native";
 import { GroceryChat } from "@/components/grocery-chat";
 import { BrandMark } from "@/components/ui";
+import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
 import { colors } from "@/lib/theme";
 
 export default function GroceryHomeScreen() {
@@ -14,18 +16,19 @@ export default function GroceryHomeScreen() {
           headerTitle: () => (
             <View style={styles.brand}>
               <BrandMark size={34} />
-              <Text style={styles.brandText}>Grocery Agent</Text>
+              <Text className="text-xl font-extrabold">Grocery Agent</Text>
             </View>
           ),
           headerRight: () => (
-            <Pressable
+            <Button
               accessibilityLabel="Account"
-              accessibilityRole="button"
+              className="rounded-full"
               onPress={() => router.push("/account")}
-              style={styles.account}
+              size="icon"
+              variant="outline"
             >
               <UserRound color={colors.forest} size={21} />
-            </Pressable>
+            </Button>
           ),
         }}
       />
@@ -36,15 +39,4 @@ export default function GroceryHomeScreen() {
 
 const styles = StyleSheet.create({
   brand: { flexDirection: "row", alignItems: "center", gap: 9 },
-  brandText: { color: colors.ink, fontSize: 19, lineHeight: 24, fontWeight: "800" },
-  account: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.line,
-    alignItems: "center",
-    justifyContent: "center",
-  },
 });

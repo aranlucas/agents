@@ -156,7 +156,7 @@ export function AgentScreen<TState extends AgentState>({ config, initialState }:
         contentContainerStyle={styles.messageContent}
         onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
       >
-        {messages.map((m) => {
+        {messages.map((m, index) => {
           if ("kind" in m) {
             const renderTool = toolRenderers.get(m.name);
             return renderTool ? (
@@ -178,7 +178,12 @@ export function AgentScreen<TState extends AgentState>({ config, initialState }:
                   {m.content}
                 </Text>
               ) : (
-                <NativeMarkdown style={markdownStyle}>{m.content}</NativeMarkdown>
+                <NativeMarkdown
+                  isStreaming={isLoading && index === messages.length - 1}
+                  style={markdownStyle}
+                >
+                  {m.content}
+                </NativeMarkdown>
               )}
             </View>
           );

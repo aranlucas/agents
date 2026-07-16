@@ -170,7 +170,7 @@ const SourceCommandItem = memo(({ source, onAdd }: SourceCommandItemProps) => {
       <GlobeIcon className="text-primary" />
       <div className="flex flex-col">
         <span className="text-sm font-medium">{source.title}</span>
-        <span className="text-muted-foreground text-xs">{source.filename}</span>
+        <span className="text-xs text-muted-foreground">{source.filename}</span>
       </div>
     </PromptInputCommandItem>
   );
@@ -262,14 +262,14 @@ const SampleFilesMenu = () => {
         placeholder="Add files, folders, docs..."
       />
       <PromptInputCommandList>
-        <PromptInputCommandEmpty className="text-muted-foreground p-3 text-sm">
+        <PromptInputCommandEmpty className="p-3 text-sm text-muted-foreground">
           No results found.
         </PromptInputCommandEmpty>
         <PromptInputCommandGroup heading="Added">
           <PromptInputCommandItem>
             <GlobeIcon />
             <span>Active Tabs</span>
-            <span className="text-muted-foreground ml-auto">✓</span>
+            <span className="ml-auto text-muted-foreground">✓</span>
           </PromptInputCommandItem>
         </PromptInputCommandGroup>
         <PromptInputCommandSeparator />
@@ -349,13 +349,13 @@ const Example = () => {
               </PromptInputHoverCardTrigger>
               <PromptInputHoverCardContent className="divide-y overflow-hidden p-0">
                 <div className="space-y-2 p-3">
-                  <p className="text-muted-foreground text-sm font-medium">
+                  <p className="text-sm font-medium text-muted-foreground">
                     Attached Project Rules
                   </p>
-                  <p className="text-muted-foreground ml-4 text-sm">Always Apply:</p>
+                  <p className="ml-4 text-sm text-muted-foreground">Always Apply:</p>
                   <p className="ml-8 text-sm">ultracite.mdc</p>
                 </div>
-                <p className="bg-sidebar text-muted-foreground px-4 py-3 text-sm">
+                <p className="bg-sidebar px-4 py-3 text-sm text-muted-foreground">
                   Click to manage
                 </p>
               </PromptInputHoverCardContent>
@@ -394,7 +394,7 @@ const Example = () => {
                     ))}
                   </PromptInputTabBody>
                 </PromptInputTab>
-                <div className="text-muted-foreground border-t px-3 pt-2 text-xs">
+                <div className="border-t px-3 pt-2 text-xs text-muted-foreground">
                   Only file paths are included
                 </div>
               </PromptInputHoverCardContent>

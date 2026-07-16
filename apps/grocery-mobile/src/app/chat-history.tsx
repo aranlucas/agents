@@ -1,9 +1,13 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { ChevronRight, MessageSquareText } from "lucide-react-native";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from "react-native";
 import { useGroceryAgent } from "@/components/grocery-agent-provider";
-import { InlineError, SecondaryButton } from "@/components/ui";
+import { ErrorAlert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Text } from "@/components/ui/text";
 import { colors } from "@/lib/theme";
 
 function activityLabel(value: string): string {
@@ -55,9 +59,14 @@ export default function ChatHistoryScreen() {
 
   if (threadsLoading && threads.length === 0) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator color={colors.green} />
-        <Text style={styles.loadingText}>Loading your chats…</Text>
+      <View
+        accessibilityLabel="Loading your chats"
+        accessibilityRole="progressbar"
+        style={styles.loadingList}
+      >
+        {[0, 1, 2].map((index) => (
+          <Skeleton className="h-20 w-full rounded-2xl" key={index} />
+        ))}
       </View>
     );
   }
@@ -65,8 +74,10 @@ export default function ChatHistoryScreen() {
   if (threadsError && threads.length === 0) {
     return (
       <View style={styles.centered}>
-        <InlineError message="Your chat history could not be loaded." />
-        <SecondaryButton onPress={refetchThreads}>Try again</SecondaryButton>
+        <ErrorAlert message="Your chat history could not be loaded." />
+        <Button size="lg" variant="secondary" onPress={refetchThreads}>
+          Try again
+        </Button>
       </View>
     );
   }
@@ -84,7 +95,7 @@ export default function ChatHistoryScreen() {
       onEndReachedThreshold={0.35}
       onRefresh={refetchThreads}
       refreshing={threadsLoading}
-      ItemSeparatorComponent={() => <View style={styles.divider} />}
+      ItemSeparatorComponent={() => <Separator className="ml-16" />}
       renderItem={({ item: thread }) => {
         const selected = thread.id === activeThreadId;
         return (
@@ -131,20 +142,24 @@ export default function ChatHistoryScreen() {
           <Text selectable style={styles.emptyText}>
             Your Grocery Agent conversations will appear here after you send a message.
           </Text>
-          <SecondaryButton onPress={returnToChat}>Start a chat</SecondaryButton>
+          <Button size="lg" variant="secondary" onPress={returnToChat}>
+            Start a chat
+          </Button>
         </View>
       }
       ListFooterComponent={
         replayError || threadsError || fetchMoreThreadsError || isFetchingMoreThreads ? (
           <View style={styles.footer}>
-            {replayError ? <InlineError message={replayError} /> : null}
+            {replayError ? <ErrorAlert message={replayError} /> : null}
             {threadsError && threads.length > 0 ? (
-              <InlineError message="Your chats could not be refreshed." />
+              <ErrorAlert message="Your chats could not be refreshed." />
             ) : null}
             {fetchMoreThreadsError ? (
               <>
-                <InlineError message="More chats could not be loaded." />
-                <SecondaryButton onPress={fetchMoreThreads}>Try again</SecondaryButton>
+                <ErrorAlert message="More chats could not be loaded." />
+                <Button size="lg" variant="secondary" onPress={fetchMoreThreads}>
+                  Try again
+                </Button>
               </>
             ) : null}
             {isFetchingMoreThreads ? <ActivityIndicator color={colors.green} /> : null}
@@ -175,7 +190,12 @@ const styles = StyleSheet.create({
     padding: 28,
     backgroundColor: colors.background,
   },
-  loadingText: { color: colors.muted, fontSize: 14, lineHeight: 20 },
+  loadingList: {
+    flex: 1,
+    gap: 12,
+    padding: 18,
+    backgroundColor: colors.background,
+  },
   row: {
     minHeight: 76,
     flexDirection: "row",
@@ -197,7 +217,6 @@ const styles = StyleSheet.create({
   rowCopy: { flex: 1, gap: 2 },
   rowTitle: { color: colors.ink, fontSize: 15, lineHeight: 21, fontWeight: "700" },
   rowMeta: { color: colors.muted, fontSize: 12, lineHeight: 17 },
-  divider: { height: 1, marginLeft: 69, backgroundColor: colors.line },
   empty: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 10 },
   emptyIcon: {
     width: 64,

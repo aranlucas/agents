@@ -78,3 +78,4 @@ bin/
 .playwright-cli/
 .idea
 build/
+.pnpm-store/

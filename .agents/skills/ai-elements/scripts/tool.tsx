@@ -76,7 +76,7 @@ const Example = () => (
               <span>Accepted</span>
             </ConfirmationAccepted>
             <ConfirmationRejected>
-              <XIcon className="text-destructive size-4" />
+              <XIcon className="size-4 text-destructive" />
               <span>Rejected</span>
             </ConfirmationRejected>
           </ConfirmationTitle>
@@ -111,7 +111,7 @@ const Example = () => (
               <span>Accepted</span>
             </ConfirmationAccepted>
             <ConfirmationRejected>
-              <XIcon className="text-destructive size-4" />
+              <XIcon className="size-4 text-destructive" />
               <span>Rejected</span>
             </ConfirmationRejected>
           </ConfirmationTitle>
@@ -142,7 +142,7 @@ const Example = () => (
               <span>Accepted</span>
             </ConfirmationAccepted>
             <ConfirmationRejected>
-              <XIcon className="text-destructive size-4" />
+              <XIcon className="size-4 text-destructive" />
               <span>Rejected</span>
             </ConfirmationRejected>
           </ConfirmationTitle>
@@ -191,7 +191,7 @@ const Example = () => (
               <span>Accepted</span>
             </ConfirmationAccepted>
             <ConfirmationRejected>
-              <XIcon className="text-destructive size-4" />
+              <XIcon className="size-4 text-destructive" />
               <span>Rejected: Query could impact production performance</span>
             </ConfirmationRejected>
           </ConfirmationTitle>

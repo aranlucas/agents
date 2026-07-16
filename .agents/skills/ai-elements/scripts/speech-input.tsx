@@ -54,7 +54,7 @@ const Example = () => {
         />
         {transcript && (
           <button
-            className="text-muted-foreground hover:text-foreground text-sm underline"
+            className="text-sm text-muted-foreground underline hover:text-foreground"
             onClick={handleClear}
             type="button"
           >
@@ -63,14 +63,14 @@ const Example = () => {
         )}
       </div>
       {transcript ? (
-        <div className="bg-card max-w-md rounded-lg border p-4 text-sm">
+        <div className="max-w-md rounded-lg border bg-card p-4 text-sm">
           <p className="text-muted-foreground">
             <strong>Transcript:</strong>
           </p>
           <p className="mt-2">{transcript}</p>
         </div>
       ) : (
-        <p className="text-muted-foreground text-sm">Click the microphone to start speaking</p>
+        <p className="text-sm text-muted-foreground">Click the microphone to start speaking</p>
       )}
     </div>
   );

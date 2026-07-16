@@ -1,9 +1,11 @@
 import type { GroceryState } from "@agents/types";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { ArrowRight, Check, ShoppingBasket, ShoppingCart, Sparkles } from "lucide-react-native";
 import { NativeMarkdown, type NativeMarkdownStyle } from "@agents/native-markdown";
 import { KrogerProductImage } from "@/components/kroger-product-image";
-import { Card, PrimaryButton } from "@/components/ui";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Text } from "@/components/ui/text";
 import { cartSubtotal, pantryNames } from "@/lib/grocery-state";
 import { colors } from "@/lib/theme";
 
@@ -34,7 +36,7 @@ export function GroceryStateCard({
   if (!list.length && !state.meal_plan && !cart.length) return null;
 
   return (
-    <Card style={styles.card}>
+    <Card className="gap-3.5 rounded-2xl p-4">
       <View style={styles.storeRow}>
         <View style={styles.storeMark}>
           <ShoppingBasket color={colors.green} size={22} />
@@ -102,12 +104,12 @@ export function GroceryStateCard({
       </Pressable>
 
       {connected && list.length > 0 && onAddToCart ? (
-        <PrimaryButton loading={adding} onPress={onAddToCart}>
+        <Button loading={adding} size="lg" onPress={onAddToCart}>
           <View style={styles.buttonContent}>
             <ShoppingCart size={18} color={colors.white} />
             <Text style={styles.buttonText}>Add to Kroger cart</Text>
           </View>
-        </PrimaryButton>
+        </Button>
       ) : null}
       {connected && onAddToCart ? (
         <Text selectable style={styles.disclaimer}>
@@ -125,7 +127,6 @@ function previewTone(index: number) {
 }
 
 const styles = StyleSheet.create({
-  card: { padding: 16, gap: 14 },
   storeRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   storeMark: {
     width: 42,

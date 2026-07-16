@@ -1,119 +1,190 @@
-# Component structure plan: adopting React Native Reusables
+# Component structure plan: adopting AniUI
 
 How Grocery Agent moves from bespoke `StyleSheet.create` components to
-[React Native Reusables](https://reactnativereusables.com/docs/components/)
-(RNR) — the shadcn/ui port for React Native — as the component foundation.
+[AniUI](https://www.aniui.dev/) as the preferred source registry for native UI.
+AniUI follows the shadcn model: components are copied into the app, reviewed,
+and owned by this repo rather than added as a runtime component-library
+dependency.
 
-## Why RNR fits this repo
+## Decision
 
-- It follows the shadcn copy-in registry model already used by
-  `packages/ui` on the web side: components are vendored source, not a
-  runtime dependency, so we own and restyle them freely.
-- It is built on NativeWind + `class-variance-authority` + `tailwind-merge`
-  — the same stack as `packages/ui` — which satisfies the repo rule to use
-  Tailwind's utility scale and shared semantic theme tokens instead of
-  ad-hoc style objects.
-- Accessibility (roles, states, focus) comes from `@rn-primitives/*`
-  instead of being re-implemented per component (today every Pressable
-  hand-rolls `accessibilityRole`/`accessibilityState`).
+- Use AniUI's Uniwind variants and install only the components the app needs.
+- Keep the existing `src/components/ui/` files. They are already owned source
+  and use the same semantic tokens, aliases, `cn()`, and `cva()` conventions as
+  AniUI. Replace one only when the AniUI version provides a concrete benefit.
+- Treat AniUI blocks as reference implementations, not drop-in screens. Grocery
+  Agent's CopilotKit state, Expo Router navigation, Clerk auth, markdown, and
+  product-tool rendering remain authoritative.
+- Do not mix in NativeWind. This app is already on Uniwind and Tailwind v4.
 
-## Current pain being solved
+## Why AniUI fits this repo
 
-- `src/components/ui.tsx` hand-rolls PrimaryButton, SecondaryButton, Card,
-  InlineError with one-off StyleSheet objects and hex colors from
-  `src/lib/theme.ts`.
-- `grocery-chat.tsx` carries ~200 lines of StyleSheet for chat bubbles,
-  a hand-built Modal menu, disclosure toggles, and suggestion chips —
-  all of which have direct RNR equivalents.
-- No dark mode story; colors are hard-coded light-theme hex values.
+- Its [registry](https://www.aniui.dev/docs/shadcn-registry) is compatible with
+  an existing shadcn/RNR-style project, including the `ui` and `lib` aliases and
+  semantic tokens already present here.
+- Uniwind is AniUI's recommended engine for Expo SDK 55+; its
+  [compatibility matrix](https://www.aniui.dev/docs/compatibility) explicitly
+  covers Expo SDK 57, React Native 0.86, React 19.2, Reanimated 4.5, and
+  `react-native-worklets` 0.10 — the versions used by this app.
+- It provides a broader mobile-first catalog than the current primitive set:
+  chat, loading, empty-state, connection, list, product, and overlay patterns
+  are available without inventing another local abstraction.
+- Complex controls use `@rn-primitives/*` for behavior and accessibility;
+  styling stays in Tailwind utilities backed by `global.css` theme tokens.
+- The CLI supports `doctor`, `status`, `diff`, and selective updates, which
+  gives vendored components an explicit maintenance path.
 
-## Phase 0 — Foundation (one PR)
+## Current baseline
 
-1. Install NativeWind + Tailwind in `apps/grocery-mobile` (follow the
-   expo-tailwind-setup skill; Tailwind v4 to match `packages/ui`).
-2. Define the semantic token layer as CSS variables in `global.css`,
-   mapping the existing palette from `src/lib/theme.ts`:
-   `--background` #f7f8f2, `--card`/`--popover` #ffffff, `--muted`
-   #eef2e8, `--primary` #15803d (pressed #166534), `--secondary` forest
-   #14532d, `--foreground` #17201a, `--muted-foreground` #667067,
-   `--border` #dfe5dc, `--destructive` #b42318 (+ surface #fef3f2).
-   Add a `dark:` block with placeholder values so dark mode is a token
-   edit, not a refactor.
-3. Run the RNR CLI init (`npx react-native-reusables/cli@latest init` or
-   add `components.json`) targeting `src/components/ui/`.
-4. Keep `src/lib/theme.ts` exporting the same names during migration
-   (re-derived from the CSS variables) so unmigrated screens keep working.
+The current worktree already has the foundation AniUI expects:
 
-## Phase 1 — Core primitives (vendored via CLI)
+- Uniwind + Tailwind v4 configured in `metro.config.js` and `global.css`.
+- Semantic light/dark tokens in `global.css`.
+- `@/components/ui`, `@/lib`, and `@/lib/utils` aliases.
+- Vendored `text`, `button`, `card`, `input`, `textarea`, `label`, `alert`,
+  `badge`, `separator`, `skeleton`, and `icon` components.
+- Reanimated, Worklets, Gesture Handler, Lucide, `cva`, `clsx`, and
+  `tailwind-merge` already installed.
 
-Add: `text`, `button`, `card`, `input`, `textarea`, `label`, `alert`,
-`badge`, `separator`, `skeleton`, `icon`.
+Because this foundation exists, do **not** run `aniui init` in place: it can
+rewrite Metro, theme, utility, and TypeScript configuration. Add the registry
+namespace to `components.json`, then install components selectively:
 
-Replace the bespoke pieces:
+```json
+{
+  "registries": {
+    "@aniui": "https://aniui.dev/r/{name}.json"
+  }
+}
+```
 
-| Today                                        | Becomes                                                           |
-| -------------------------------------------- | ----------------------------------------------------------------- |
-| `PrimaryButton` / `SecondaryButton` (ui.tsx) | `Button` with `variant="default"` / `"secondary"`, `size="lg"`    |
-| `Card` (ui.tsx)                              | RNR `Card` (+ `CardHeader`/`CardContent` where useful)            |
-| `InlineError` (ui.tsx)                       | `Alert` with `variant="destructive"`                              |
-| Raw `Text` + per-screen font styles          | RNR `Text` typography variants (`h1`–`h4`, `p`, `muted`, `small`) |
-| Composer `TextInput` (grocery-chat)          | `Textarea` (auto-grow, themed)                                    |
-| Suggestion starter chips                     | `Button variant="outline"` or `Badge`                             |
-| Loading placeholders / spinners              | `Skeleton` where layout is known                                  |
+Use the repo package manager for CLI commands:
 
-`BrandMark` stays bespoke (it's an asset, not a primitive).
+```sh
+pnpm dlx shadcn@latest add @aniui/chip
+```
 
-## Phase 2 — Overlays and disclosure
+Review every generated source and dependency diff before keeping it. AniUI's
+own CLI may be used for diagnostics and upstream comparison after the registry
+is established:
 
-Add: `dropdown-menu`, `alert-dialog`, `dialog`, `collapsible`, `avatar`,
-`progress`, `switch`, `checkbox`, `tooltip` (as needed).
+```sh
+pnpm dlx @aniui/cli doctor
+pnpm dlx @aniui/cli status
+pnpm dlx @aniui/cli diff chip
+```
 
-- The hand-built chat menu `Modal` in `grocery-chat.tsx` (menuLayer /
-  chatMenu / menuItem styles) → `DropdownMenu` anchored to the menu
-  button; `Separator` replaces `menuDivider`.
-- `Alert.alert("Add this list to Kroger?", …)` → `AlertDialog` so the
-  confirmation is styled, testable, and consistent on both platforms.
-- `ReasoningSection` / `ToolCallSection` disclosure toggles →
-  `Collapsible` (keeps the custom streamed content inside).
-- Checkbox lands with the shared-lists work (item check-off).
+## Phase 1 — Consolidate the existing primitives
 
-## Phase 3 — Convergence and cleanup
+Keep the current core files and finish replacing the bespoke exports from
+`src/components/ui.tsx`:
+
+| Today                                  | Target                                                    |
+| -------------------------------------- | --------------------------------------------------------- |
+| `PrimaryButton` / `SecondaryButton`    | `Button` with `variant="default"` / `"secondary"`         |
+| `Card`                                 | `Card` plus `CardHeader` / `CardContent` where useful     |
+| `InlineError`                          | `Alert variant="destructive"`                             |
+| Raw `Text` plus per-screen font styles | Shared `Text` typography variants                         |
+| Raw composer `TextInput`               | Shared `Textarea`, preserving auto-grow and send behavior |
+| Known-layout loading placeholders      | `Skeleton`                                                |
+| Indeterminate loading                  | AniUI `Spinner` or the shared button `loading` state      |
+
+`BrandMark` stays bespoke because it is an asset, not a primitive.
+
+## Phase 2 — Add high-value AniUI components
+
+Add components in small, reviewable groups rather than importing the catalog:
+
+1. `chip`, `empty-state`, `spinner`, and `typing-indicator`.
+2. `dropdown-menu`, `alert-dialog`, and `collapsible`.
+3. `checkbox`, `switch`, `avatar`, and `progress` when their owning screens are
+   migrated.
+
+Concrete replacements:
+
+| Grocery surface                                      | AniUI component                                                     |
+| ---------------------------------------------------- | ------------------------------------------------------------------- |
+| Starter suggestions and filter pills                 | `Chip` (interactive), not `Badge` (display-only)                    |
+| Empty grocery list, recipes, households, and history | `EmptyState`                                                        |
+| Agent waiting state before streamed content arrives  | `TypingIndicator`                                                   |
+| Offline/reconnecting state                           | `ConnectionBanner`, if CopilotKit exposes reliable connection state |
+| Chat overflow menu                                   | `DropdownMenu`                                                      |
+| “Add this list to Kroger?” confirmation              | `AlertDialog`                                                       |
+| Reasoning and tool-call disclosure                   | `Collapsible`                                                       |
+| Shared-list item completion                          | `Checkbox`                                                          |
+
+Overlay components require `PortalHost` from `@rn-primitives/portal` as the
+last child of the root `GestureHandlerRootView`. Add it in the same change as
+the first overlay, not during unrelated primitive work.
+
+## Phase 3 — Chat and commerce patterns
+
+Use AniUI's [Chat block](https://www.aniui.dev/blocks/chat),
+[Chat Bubble](https://www.aniui.dev/docs/chat-bubble), and
+[Product List block](https://www.aniui.dev/blocks/product-list) as visual and
+accessibility references only.
+
+- Keep Grocery Agent's message renderer custom. It must support streamed
+  CopilotKit messages, `NativeMarkdown`, reasoning/tool sections, frontend tool
+  results, retry/cancel behavior, and history replay; AniUI's simple chat bubble
+  does not replace that contract.
+- Evaluate AniUI `PromptInput` only as a composer shell. Adopt it only if it can
+  preserve the existing controlled text, submit, cancel, keyboard, safe-area,
+  and accessibility behavior without adapter-heavy code.
+- Do not add AniUI `StreamingText`: CopilotKit already owns token streaming and
+  `NativeMarkdown` already owns incremental markdown rendering.
+- Reuse AniUI's `Price`, `Rating`, `Badge`, `Card`, `Chip`, and empty/loading
+  patterns inside `GroceryStateCard` and product results where they improve the
+  existing domain components. Keep `KrogerProductImage` and product actions
+  custom.
+
+## Phase 4 — Convergence and cleanup
 
 1. Migrate remaining screens (`list`, `saved-recipes`, `chat-history`,
-   `account`, `report`, sign-in) to the vendored primitives.
-2. Delete `src/components/ui.tsx` once no imports remain; shrink
-   `theme.ts` to non-component constants (or delete it).
-3. Add an oxlint/review convention: no new `StyleSheet.create` for
-   anything a vendored `ui/` component covers; layout-only styles are
-   fine.
-4. If `apps/mobile` (or a future native app) needs the same primitives,
-   hoist `src/components/ui/` + tokens into a `packages/native-ui`
-   workspace package; do not do this preemptively.
+   `account`, `report`, and sign-in) to the shared primitives.
+2. Delete `src/components/ui.tsx` once no imports remain; shrink `theme.ts` to
+   non-component constants or remove it after all colors come from tokens.
+3. Do not add new `StyleSheet.create` rules for typography, color, borders,
+   radii, or spacing that a shared component or Tailwind utility already
+   covers. Native-only layout and third-party `style` props remain valid.
+4. Before updating vendored AniUI source, run `aniui status` and `aniui diff`;
+   never overwrite local variants blindly.
+5. If another native app needs the same primitives, first prove the APIs stable
+   here, then hoist them into `packages/native-ui`. Do not share prematurely.
 
-## What we deliberately keep custom
+## What remains custom
 
-- Chat message bubbles, `MessageScroller`, `NativeMarkdown`,
-  `GroceryStateCard`, `KrogerProductImage` — domain components; they sit
-  _on top of_ the primitives (Card, Text, Collapsible) rather than being
-  replaced by them.
-- Navigation/layout remains Expo Router; RNR is view-layer only.
+- CopilotKit session/state and history replay.
+- Message scrolling and streamed markdown.
+- Reasoning and frontend-tool result content.
+- `GroceryStateCard`, `KrogerProductImage`, Kroger actions, and list mutations.
+- Expo Router navigation and Clerk authentication.
+
+These domain components sit on top of AniUI primitives; they are not registry
+components themselves.
 
 ## Verification gates per phase
 
-- `pnpm --filter grocery-mobile typecheck && lint && test`, then repo-wide
-  `pnpm check && pnpm test`.
-- `npx expo export --platform android` still succeeds (NativeWind/Metro
-  config is the risky part of Phase 0).
-- Visual pass on the Pixel API 35 emulator over ADB for the chat screen,
-  menu, and confirmation dialog.
+- `pnpm --filter grocery-mobile typecheck && pnpm --filter grocery-mobile lint && pnpm --filter grocery-mobile test`
+- `pnpm --filter grocery-mobile fmt:check`
+- `pnpm dlx @aniui/cli doctor` after registry or dependency changes.
+- `pnpm exec expo export --platform android` from `apps/grocery-mobile` after
+  Metro, Uniwind, Reanimated, Worklets, or portal changes.
+- Visual and accessibility pass on Android for chat, keyboard avoidance, menu
+  positioning, dialogs, screen-reader labels, reduced motion, and dark mode.
+- Repo-wide `pnpm check && pnpm test` before merge.
 
 ## Risks
 
-- NativeWind + Metro config interplay with the existing
-  `metro.config.js` shims (node-crypto) — validate in Phase 0 before any
-  component work.
-- RNR targets NativeWind v4+/Uniwind; pin whichever the CLI scaffolds and
-  match `tailwindcss` major with `packages/ui` (v4) to share token
-  conventions.
-- Mixed styling during migration is expected; phases are small enough
-  that each PR leaves the app fully working.
+- Registry additions can overwrite existing files with the same name. Inspect
+  the CLI diff and prefer adding missing components over replacing stable ones.
+- AniUI's defaults may not match Grocery Agent's token names, touch targets, or
+  component APIs exactly. Normalize source once when vendoring; do not add
+  wrappers solely to preserve upstream examples.
+- Uniwind uses a 16px rem base by default while this app configures `rem: 14`.
+  Keep the app's existing scale and visually check vendored spacing and type.
+- Overlay components add portal and positioning behavior that must be tested on
+  Android with the keyboard open.
+- AniUI's catalog evolves. Pin the reviewed source in git and update
+  intentionally through `status` / `diff`; do not depend on latest registry
+  output during normal builds.

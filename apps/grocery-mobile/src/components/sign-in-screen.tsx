@@ -2,18 +2,15 @@ import { useSignIn, useSignUp, useSSO } from "@clerk/clerk-expo";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { useState } from "react";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BrandMark, InlineError, PrimaryButton, SecondaryButton } from "@/components/ui";
+import { BrandMark } from "@/components/ui";
+import { ErrorAlert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Text } from "@/components/ui/text";
 import { readableError } from "@/lib/auth";
 import { colors } from "@/lib/theme";
 
@@ -104,11 +101,13 @@ export function SignInScreen() {
         <View style={styles.hero}>
           <BrandMark size={58} />
           <View style={styles.heroCopy}>
-            <Text style={styles.eyebrow}>GROCERY AGENT</Text>
-            <Text selectable style={styles.title}>
+            <Text className="tracking-wider text-primary" variant="small">
+              GROCERY AGENT
+            </Text>
+            <Text className="text-left text-3xl font-extrabold" selectable variant="h1">
               Dinner plans, done.
             </Text>
-            <Text selectable style={styles.subtitle}>
+            <Text className="leading-6 text-muted-foreground" selectable>
               Turn a recipe or idea into a practical grocery list. Connect Kroger only when you want
               live products and cart actions.
             </Text>
@@ -116,90 +115,83 @@ export function SignInScreen() {
         </View>
 
         {mode !== "verify" && (
-          <SecondaryButton disabled={busy} onPress={authenticateWithGoogle}>
+          <Button disabled={busy} size="lg" variant="secondary" onPress={authenticateWithGoogle}>
             Continue with Google
-          </SecondaryButton>
+          </Button>
         )}
 
         {mode !== "verify" && (
           <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or use email</Text>
-            <View style={styles.dividerLine} />
+            <Separator className="flex-1" />
+            <Text variant="muted">or use email</Text>
+            <Separator className="flex-1" />
           </View>
         )}
 
         <View style={styles.form}>
           {mode !== "verify" ? (
             <>
-              <Text style={styles.label}>Email</Text>
-              <TextInput
+              <Label>Email</Label>
+              <Input
                 accessibilityLabel="Email"
                 autoCapitalize="none"
                 autoComplete="email"
+                className="min-h-13 rounded-2xl bg-card px-4 text-base"
                 keyboardType="email-address"
                 placeholder="you@example.com"
-                placeholderTextColor="#8a928b"
-                style={styles.input}
                 value={email}
                 onChangeText={setEmail}
               />
-              <Text style={styles.label}>Password</Text>
-              <TextInput
+              <Label>Password</Label>
+              <Input
                 accessibilityLabel="Password"
                 autoCapitalize="none"
                 autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
+                className="min-h-13 rounded-2xl bg-card px-4 text-base"
                 placeholder="At least 8 characters"
-                placeholderTextColor="#8a928b"
                 secureTextEntry
-                style={styles.input}
                 value={password}
                 onChangeText={setPassword}
               />
             </>
           ) : (
             <>
-              <Text selectable style={styles.verifyCopy}>
+              <Text className="mb-1.5 leading-6 text-muted-foreground" selectable>
                 We sent a verification code to {email}.
               </Text>
-              <Text style={styles.label}>Verification code</Text>
-              <TextInput
+              <Label>Verification code</Label>
+              <Input
                 accessibilityLabel="Verification code"
                 autoComplete="one-time-code"
+                className="min-h-13 rounded-2xl bg-card px-4 text-base"
                 keyboardType="number-pad"
                 placeholder="123456"
-                placeholderTextColor="#8a928b"
-                style={styles.input}
                 value={code}
                 onChangeText={setCode}
               />
             </>
           )}
 
-          {error ? <InlineError message={error} /> : null}
-          <PrimaryButton disabled={!isReady} loading={busy} onPress={submitCredentials}>
+          {error ? <ErrorAlert message={error} /> : null}
+          <Button disabled={!isReady} loading={busy} size="lg" onPress={submitCredentials}>
             {mode === "sign-in"
               ? "Sign in"
               : mode === "sign-up"
                 ? "Create account"
                 : "Verify email"}
-          </PrimaryButton>
+          </Button>
         </View>
 
-        <Pressable
-          accessibilityRole="button"
+        <Button
+          className="self-center"
           onPress={() => {
             setError("");
             setMode(mode === "sign-in" ? "sign-up" : "sign-in");
           }}
-          style={styles.switcher}
+          variant="link"
         >
-          <Text style={styles.switcherText}>
-            {mode === "sign-in"
-              ? "New here? Create an account"
-              : "Already have an account? Sign in"}
-          </Text>
-        </Pressable>
+          {mode === "sign-in" ? "New here? Create an account" : "Already have an account? Sign in"}
+        </Button>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -210,37 +202,6 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1, justifyContent: "center", paddingHorizontal: 24, gap: 18 },
   hero: { gap: 22, marginBottom: 10 },
   heroCopy: { gap: 8 },
-  eyebrow: {
-    color: colors.green,
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "800",
-    letterSpacing: 1.4,
-  },
-  title: {
-    color: colors.ink,
-    fontSize: 32,
-    lineHeight: 38,
-    fontWeight: "800",
-    letterSpacing: -1.1,
-  },
-  subtitle: { color: colors.muted, fontSize: 16, lineHeight: 24 },
   divider: { flexDirection: "row", alignItems: "center", gap: 12 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: colors.line },
-  dividerText: { color: colors.muted, fontSize: 13 },
   form: { gap: 10 },
-  label: { color: colors.ink, fontSize: 13, lineHeight: 18, fontWeight: "700", marginTop: 2 },
-  input: {
-    minHeight: 52,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
-    color: colors.ink,
-    fontSize: 16,
-    paddingHorizontal: 16,
-  },
-  verifyCopy: { color: colors.muted, fontSize: 15, lineHeight: 22, marginBottom: 6 },
-  switcher: { alignItems: "center", padding: 10 },
-  switcherText: { color: colors.green, fontSize: 14, lineHeight: 20, fontWeight: "700" },
 });

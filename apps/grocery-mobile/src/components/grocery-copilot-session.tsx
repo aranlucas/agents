@@ -1,9 +1,11 @@
 import { useAuth } from "@clerk/clerk-expo";
 import { CopilotKitProvider } from "@copilotkit/react-native";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { GroceryAgentProvider } from "@/components/grocery-agent-provider";
-import { InlineError, SecondaryButton } from "@/components/ui";
+import { ErrorAlert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
 import { readableError } from "@/lib/auth";
 import { colors } from "@/lib/theme";
 
@@ -71,7 +73,7 @@ export function GroceryCopilotSession({
         style={styles.centered}
       >
         <ActivityIndicator color={colors.green} size="large" />
-        <Text style={styles.statusText}>Loading Grocery Agent…</Text>
+        <Text variant="muted">Loading Grocery Agent…</Text>
       </View>
     );
   }
@@ -79,8 +81,10 @@ export function GroceryCopilotSession({
   if (session.status === "error") {
     return (
       <View style={styles.centered}>
-        <InlineError message={session.message} />
-        <SecondaryButton onPress={retry}>Try again</SecondaryButton>
+        <ErrorAlert message={session.message} />
+        <Button size="lg" variant="secondary" onPress={retry}>
+          Try again
+        </Button>
       </View>
     );
   }
@@ -101,5 +105,4 @@ const styles = StyleSheet.create({
     padding: 28,
     backgroundColor: colors.background,
   },
-  statusText: { color: colors.muted, fontSize: 14, lineHeight: 20 },
 });

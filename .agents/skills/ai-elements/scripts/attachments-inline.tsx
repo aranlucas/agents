@@ -85,7 +85,7 @@ const AttachmentItem = memo(({ attachment, onRemove }: AttachmentItemProps) => {
           <div className="space-y-1 px-0.5">
             <h4 className="text-sm leading-none font-semibold">{label}</h4>
             {attachment.mediaType && (
-              <p className="text-muted-foreground font-mono text-xs">{attachment.mediaType}</p>
+              <p className="font-mono text-xs text-muted-foreground">{attachment.mediaType}</p>
             )}
           </div>
         </div>

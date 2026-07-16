@@ -291,7 +291,7 @@ const Example = () => {
 
   return (
     <div className="flex size-full flex-col justify-end">
-      <Queue className="border-input mx-auto max-h-[150px] w-[95%] overflow-y-auto rounded-b-none border-b-0">
+      <Queue className="mx-auto max-h-[150px] w-[95%] overflow-y-auto rounded-b-none border-b-0 border-input">
         {todos.length > 0 && (
           <QueueSection>
             <QueueSectionContent>

@@ -2,16 +2,13 @@ import { useAuth } from "@clerk/clerk-expo";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Check, Circle, ListPlus, Plus, Trash2 } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
-import {
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { Card, InlineError, PrimaryButton } from "@/components/ui";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { ErrorAlert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Text } from "@/components/ui/text";
 import { getRuntimeUrl } from "@/lib/config";
 import { createHouseholdApi, type GroceryList } from "@/lib/household-api";
 import { colors } from "@/lib/theme";
@@ -184,7 +181,7 @@ export default function SharedListScreen() {
 
       {activeList ? (
         <>
-          <Card style={styles.listCard}>
+          <Card className="gap-0 overflow-hidden rounded-2xl p-0">
             <View style={styles.listHeading}>
               <View style={styles.listHeadingCopy}>
                 <Text selectable style={styles.listTitle}>
@@ -248,56 +245,58 @@ export default function SharedListScreen() {
           </Card>
 
           <View style={styles.addRow}>
-            <TextInput
+            <Input
               accessibilityLabel="New grocery item"
+              className="min-h-12 flex-1 rounded-2xl bg-card px-4 text-base"
               onChangeText={setNewItemName}
               onSubmitEditing={() => void addItem()}
               placeholder="Add an item"
-              placeholderTextColor={colors.muted}
               returnKeyType="done"
-              style={styles.input}
               value={newItemName}
             />
-            <Pressable
+            <Button
               accessibilityLabel="Add item"
-              accessibilityRole="button"
+              className="size-12 rounded-2xl"
               disabled={!newItemName.trim() || busy === "add-item"}
+              loading={busy === "add-item"}
               onPress={() => void addItem()}
-              style={({ pressed }) => [
-                styles.addButton,
-                pressed && styles.addButtonPressed,
-                (!newItemName.trim() || busy === "add-item") && styles.busy,
-              ]}
+              size="icon"
             >
               <Plus color={colors.white} size={22} />
-            </Pressable>
+            </Button>
           </View>
         </>
       ) : loading ? (
-        <Text style={styles.empty}>Loading shared lists…</Text>
+        <View
+          accessibilityLabel="Loading shared lists"
+          accessibilityRole="progressbar"
+          style={styles.loadingCards}
+        >
+          <Skeleton className="h-36 w-full rounded-2xl" />
+          <Skeleton className="h-12 w-full rounded-2xl" />
+        </View>
       ) : (
-        <Card style={styles.createCard}>
+        <Card className="items-stretch gap-3 rounded-2xl p-5">
           <ListPlus color={colors.green} size={28} />
           <Text style={styles.createTitle}>Start a shared list</Text>
           <Text style={styles.empty}>Create the first list for {householdName}.</Text>
-          <TextInput
+          <Input
             accessibilityLabel="List title"
             autoCapitalize="words"
+            className="min-h-12 rounded-2xl bg-card px-4 text-base"
             onChangeText={setNewListTitle}
             onSubmitEditing={() => void createList()}
             placeholder={`${householdName} groceries`}
-            placeholderTextColor={colors.muted}
             returnKeyType="done"
-            style={styles.input}
             value={newListTitle}
           />
-          <PrimaryButton loading={busy === "create-list"} onPress={() => void createList()}>
+          <Button loading={busy === "create-list"} size="lg" onPress={() => void createList()}>
             Create shared list
-          </PrimaryButton>
+          </Button>
         </Card>
       )}
 
-      {error ? <InlineError message={error} /> : null}
+      {error ? <ErrorAlert message={error} /> : null}
     </ScrollView>
   );
 }
@@ -321,7 +320,6 @@ const styles = StyleSheet.create({
   tabSelected: { borderColor: colors.green, backgroundColor: colors.surfaceMuted },
   tabText: { color: colors.muted, fontSize: 13, lineHeight: 18, fontWeight: "700" },
   tabTextSelected: { color: colors.forest },
-  listCard: { overflow: "hidden" },
   listHeading: {
     flexDirection: "row",
     alignItems: "center",
@@ -350,30 +348,7 @@ const styles = StyleSheet.create({
   rule: { height: 1, backgroundColor: colors.line, marginLeft: 52 },
   empty: { color: colors.muted, fontSize: 14, lineHeight: 20, padding: 16 },
   addRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  input: {
-    flex: 1,
-    minHeight: 50,
-    borderRadius: 16,
-    borderCurve: "continuous",
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
-    color: colors.ink,
-    fontSize: 15,
-    lineHeight: 21,
-    paddingHorizontal: 15,
-  },
-  addButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 16,
-    borderCurve: "continuous",
-    backgroundColor: colors.green,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  addButtonPressed: { backgroundColor: colors.greenPressed },
   busy: { opacity: 0.55 },
-  createCard: { padding: 18, gap: 12, alignItems: "stretch" },
+  loadingCards: { gap: 12 },
   createTitle: { color: colors.ink, fontSize: 20, lineHeight: 26, fontWeight: "800" },
 });

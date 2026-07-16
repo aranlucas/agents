@@ -9,8 +9,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
   View,
 } from "react-native";
 import {
@@ -35,7 +33,10 @@ import {
   type MessageScrollerHandle,
   useMessageScrollerControls,
 } from "@/components/message-scroller";
-import { InlineError } from "@/components/ui";
+import { ErrorAlert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
+import { Textarea } from "@/components/ui/textarea";
 import { useKrogerConnection } from "@/hooks/use-kroger-connection";
 import type { DisplayMessage } from "@/lib/grocery-state";
 import { suggestionKey } from "@/lib/grocery-suggestions";
@@ -116,12 +117,7 @@ export function GroceryChat() {
           connected={connected}
           isAdding={isRunning && isLatestGroceryList}
           isLatestGroceryList={isLatestGroceryList}
-          isStreaming={
-            message.role === "reasoning" &&
-            isRunning &&
-            message.id === latestReasoning?.id &&
-            message.id === latestMessage?.id
-          }
+          isStreaming={isRunning && message.id === latestMessage?.id}
           message={message}
           onAddToCart={confirmAddToCart}
           onOpenList={openLatestList}
@@ -182,25 +178,26 @@ export function GroceryChat() {
               <View style={styles.sparkle}>
                 <Sparkles color={colors.green} size={26} />
               </View>
-              <Text selectable style={styles.welcomeTitle}>
+              <Text className="text-center text-2xl font-extrabold" selectable variant="h3">
                 What are you shopping for?
               </Text>
-              <Text selectable style={styles.welcomeText}>
+              <Text className="max-w-88 text-center leading-6 text-muted-foreground" selectable>
                 Describe a recipe, a weekly budget, or the meals you need. I’ll turn it into a
                 practical list you control.
               </Text>
               <View style={styles.starters}>
                 {suggestions.map((suggestion) => (
-                  <Pressable
+                  <Button
                     key={suggestionKey(suggestion)}
                     accessibilityLabel={suggestion.title}
-                    accessibilityRole="button"
+                    className="h-auto min-h-12 items-start rounded-2xl px-4 py-3"
                     disabled={suggestion.isLoading || isRunning}
+                    loading={suggestion.isLoading}
                     onPress={() => void sendMessage(suggestion.message)}
-                    style={({ pressed }) => [styles.starter, pressed && styles.starterPressed]}
+                    variant="outline"
                   >
-                    <Text style={styles.starterText}>{suggestion.title}</Text>
-                  </Pressable>
+                    <Text className="text-sm font-semibold text-secondary">{suggestion.title}</Text>
+                  </Button>
                 ))}
               </View>
             </View>
@@ -210,7 +207,7 @@ export function GroceryChat() {
               <KrogerConnectionCard connection={connection} />
               {error ? (
                 <Pressable onPress={clearError}>
-                  <InlineError message={error} />
+                  <ErrorAlert message={error} />
                 </Pressable>
               ) : null}
             </View>
@@ -306,13 +303,12 @@ const ChatComposer = memo(function ChatComposer({
   return (
     <View style={[styles.composerWrap, { paddingBottom: Math.max(bottomInset, 8) }]}>
       <View style={styles.composer}>
-        <TextInput
+        <Textarea
           accessibilityLabel="Ask Grocery Agent"
-          multiline
+          className="max-h-28 min-h-10 border-0 bg-transparent px-1.5 py-1.5 shadow-none"
           maxLength={2000}
+          numberOfLines={4}
           placeholder="Ask for meals or groceries…"
-          placeholderTextColor="#7b847c"
-          style={styles.input}
           value={input}
           onChangeText={setInput}
         />
@@ -331,15 +327,15 @@ const ChatComposer = memo(function ChatComposer({
           >
             <Menu color={colors.ink} size={25} strokeWidth={2.5} />
           </Pressable>
-          <Pressable
+          <Button
             accessibilityLabel="Send"
-            accessibilityRole="button"
+            className="size-10 rounded-full"
             disabled={!input.trim() || isRunning}
             onPress={() => void submit()}
-            style={[styles.send, (!input.trim() || isRunning) && styles.sendDisabled]}
+            size="icon"
           >
             <ArrowUp color={colors.white} size={20} strokeWidth={2.5} />
-          </Pressable>
+          </Button>
         </View>
       </View>
       <Text style={styles.finePrint}>
@@ -420,7 +416,7 @@ const GroceryMessage = memo(
             connected={connected}
           />
         ) : (
-          <NativeMarkdown style={markdownStyle}>
+          <NativeMarkdown isStreaming={isStreaming} style={markdownStyle}>
             {assistantContent ?? message.content}
           </NativeMarkdown>
         )}
@@ -648,32 +644,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceMuted,
     marginBottom: 4,
   },
-  welcomeTitle: {
-    color: colors.ink,
-    fontSize: 25,
-    lineHeight: 31,
-    fontWeight: "800",
-    letterSpacing: -0.6,
-    textAlign: "center",
-  },
-  welcomeText: {
-    color: colors.muted,
-    fontSize: 15,
-    lineHeight: 22,
-    textAlign: "center",
-    maxWidth: 350,
-  },
   starters: { width: "100%", gap: 8, marginTop: 10 },
-  starter: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 16,
-    paddingHorizontal: 15,
-    paddingVertical: 13,
-  },
-  starterPressed: { backgroundColor: colors.surfaceMuted },
-  starterText: { color: colors.forest, fontSize: 14, lineHeight: 20, fontWeight: "600" },
   bubble: {
     maxWidth: "88%",
     borderRadius: 20,
@@ -784,15 +755,6 @@ const styles = StyleSheet.create({
     padding: 9,
     gap: 3,
   },
-  input: {
-    minHeight: 40,
-    maxHeight: 112,
-    color: colors.ink,
-    fontSize: 15,
-    lineHeight: 21,
-    paddingHorizontal: 6,
-    paddingVertical: 6,
-  },
   composerActions: {
     minHeight: 40,
     flexDirection: "row",
@@ -808,15 +770,6 @@ const styles = StyleSheet.create({
   },
   menuButtonOpen: { backgroundColor: colors.surfaceMuted },
   newChatPressed: { backgroundColor: colors.surfaceMuted },
-  send: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.green,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sendDisabled: { backgroundColor: "#a8b2a9" },
   finePrint: { color: colors.muted, fontSize: 10, lineHeight: 14, textAlign: "center" },
 });
 

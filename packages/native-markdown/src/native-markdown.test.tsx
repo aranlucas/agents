@@ -3,9 +3,20 @@ import { isValidElement } from "react";
 import type { ASTNode } from "react-native-markdown-display";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("react-native-markdown-display", () => ({ default: () => null }));
+vi.mock("react-native-markdown-display", async () => {
+  const { default: MarkdownIt } = await import("markdown-it");
+  const textStyleProps = ["color", "fontFamily", "fontSize", "fontWeight", "lineHeight"];
+  return {
+    default: () => null,
+    MarkdownIt,
+    removeTextStyleProps: (style: Record<string, unknown>) =>
+      Object.fromEntries(Object.entries(style).filter(([key]) => !textStyleProps.includes(key))),
+    textStyleProps,
+  };
+});
 
-import { limitMarkdownBlocks, markdownRules } from "./native-markdown";
+import { prepareMarkdownBlocks } from "./native-markdown";
+import { createMarkdownRules, markdownRules } from "./rules";
 
 describe("NativeMarkdown table rendering", () => {
   it("wraps tables in a nested horizontal scroll view", () => {
@@ -20,10 +31,12 @@ describe("NativeMarkdown table rendering", () => {
       children: ReactElement;
       horizontal: boolean;
       nestedScrollEnabled: boolean;
+      style: unknown[];
     }>;
     expect(table.type).toBe("ScrollView");
     expect(table.props.horizontal).toBe(true);
     expect(table.props.nestedScrollEnabled).toBe(true);
+    expect(table.props.style).toContainEqual({ flexGrow: 0 });
     expect(table.props.children.type).toBe("View");
   });
 
@@ -113,11 +126,94 @@ describe("NativeMarkdown table rendering", () => {
       cellDimensions(asciiCell).width as number,
     );
   });
+});
 
-  it("keeps markdown syntax intact when limiting a preview", () => {
-    expect(
-      limitMarkdownBlocks("**Meal Plan**\n\n**Thursday**\n\n- Breakfast\n- Lunch\n\n**Friday**", 2),
-    ).toBe("**Meal Plan**\n\n**Thursday**");
+describe("NativeMarkdown rendering rules", () => {
+  it("makes text selectable by default and supports opting out", () => {
+    const node = astNode("textgroup", "textgroup", "");
+    const selectable = markdownRules.textgroup?.(node, ["Text"], [], { textgroup: {} });
+    const notSelectable = createMarkdownRules(false).textgroup?.(node, ["Text"], [], {
+      textgroup: {},
+    });
+
+    expect(elementProps(selectable).selectable).toBe(true);
+    expect(elementProps(notSelectable).selectable).toBe(false);
+  });
+
+  it("renders checkbox tokens as selectable glyphs", () => {
+    const checked = markdownRules.checkbox?.(astNode("checkbox", "checked", "true"), [], [], {
+      checkbox: {},
+    });
+    const unchecked = markdownRules.checkbox?.(astNode("checkbox", "unchecked", "false"), [], [], {
+      checkbox: {},
+    });
+
+    expect(elementProps(checked).children).toBe("☑ ");
+    expect(elementProps(checked).selectable).toBe(true);
+    expect(elementProps(unchecked).children).toBe("☐ ");
+  });
+
+  it("renders fenced code in a labeled horizontal scroller with split styles", () => {
+    const node = {
+      ...astNode("fence", "fence", "const value = 1;\n"),
+      sourceInfo: "typescript",
+    } as ASTNode;
+    const result = markdownRules.fence?.(node, [], [], {
+      codeLanguage: { fontSize: 12 },
+      codeScroller: { maxWidth: "100%" },
+      fence: { backgroundColor: "gray", fontFamily: "monospace", padding: 10 },
+    });
+    const fence = result as ReactElement<{
+      children: ReactElement<Record<string, unknown>>[];
+      style: Record<string, unknown>;
+    }>;
+    const [label, scroller] = fence.props.children;
+    const code = scroller?.props.children as ReactElement<{
+      children: string;
+      selectable: boolean;
+      style: Record<string, unknown>[];
+    }>;
+
+    expect(fence.type).toBe("View");
+    expect(fence.props.style).toEqual({ backgroundColor: "gray", padding: 10 });
+    expect(label?.type).toBe("Text");
+    expect(label?.props.children).toBe("typescript");
+    expect(scroller?.type).toBe("ScrollView");
+    expect(scroller?.props.horizontal).toBe(true);
+    expect(scroller?.props.nestedScrollEnabled).toBe(true);
+    expect(code.type).toBe("Text");
+    expect(code.props.children).toBe("const value = 1;");
+    expect(code.props.selectable).toBe(true);
+    expect(code.props.style[1]).toEqual({ fontFamily: "monospace" });
+  });
+
+  it("converts ordered-list starts to numbers before adding the item index", () => {
+    const item = astNode("list_item", "item", "");
+    item.index = 0;
+    item.markup = ".";
+    const orderedList = astNode("ordered_list", "ordered", "", [], { start: "2" });
+    const result = markdownRules.list_item?.(item, ["Second"], [orderedList], {
+      _VIEW_SAFE_list_item: {},
+      _VIEW_SAFE_ordered_list_content: {},
+      list_item: {},
+      ordered_list_icon: {},
+    }) as ReactElement<{ children: ReactElement<Record<string, unknown>>[] }>;
+    const icon = result.props.children[0];
+
+    expect(icon?.props.children).toEqual([2, "."]);
+  });
+});
+
+describe("NativeMarkdown streaming preparation", () => {
+  it("applies remend to the last block only while streaming", () => {
+    expect(prepareMarkdownBlocks("**complete**\n\n**partial", undefined, true)).toEqual([
+      "**complete**",
+      "**partial**",
+    ]);
+    expect(prepareMarkdownBlocks("**complete**\n\n**partial", undefined, false)).toEqual([
+      "**complete**",
+      "**partial",
+    ]);
   });
 });
 
@@ -144,4 +240,8 @@ function astNode(
 function cellDimensions(value: unknown): Record<string, unknown> {
   const element = value as ReactElement<{ style: Record<string, unknown>[] }>;
   return element.props.style[1];
+}
+
+function elementProps(value: unknown): Record<string, unknown> {
+  return (value as ReactElement<Record<string, unknown>>).props;
 }

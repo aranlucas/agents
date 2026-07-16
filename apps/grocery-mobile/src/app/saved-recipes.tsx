@@ -1,7 +1,8 @@
 import { useRouter } from "expo-router";
 import { BookMarked } from "lucide-react-native";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { SecondaryButton } from "@/components/ui";
+import { ScrollView, StyleSheet, View } from "react-native";
+import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
 import { colors } from "@/lib/theme";
 
 export default function SavedRecipesScreen() {
@@ -16,13 +17,15 @@ export default function SavedRecipesScreen() {
       <View style={styles.icon}>
         <BookMarked color={colors.green} size={32} strokeWidth={2} />
       </View>
-      <Text selectable style={styles.title}>
+      <Text className="text-center font-extrabold" selectable variant="h3">
         No saved recipes yet
       </Text>
-      <Text selectable style={styles.body}>
+      <Text className="max-w-80 text-center leading-6 text-muted-foreground" selectable>
         Recipes you save will stay here so you can quickly build the grocery list again.
       </Text>
-      <SecondaryButton onPress={() => router.replace("/")}>Plan a recipe</SecondaryButton>
+      <Button size="lg" variant="secondary" onPress={() => router.replace("/")}>
+        Plan a recipe
+      </Button>
     </ScrollView>
   );
 }
@@ -44,14 +47,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: colors.surfaceMuted,
     marginBottom: 4,
-  },
-  title: { color: colors.ink, fontSize: 24, lineHeight: 30, fontWeight: "800" },
-  body: {
-    maxWidth: 330,
-    color: colors.muted,
-    fontSize: 15,
-    lineHeight: 22,
-    textAlign: "center",
-    marginBottom: 8,
   },
 });

@@ -1,6 +1,9 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { ChevronRight, ShoppingCart } from "lucide-react-native";
-import { Card, InlineError } from "@/components/ui";
+import { ErrorAlert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Text } from "@/components/ui/text";
 import { useKrogerConnection } from "@/hooks/use-kroger-connection";
 import { colors } from "@/lib/theme";
 
@@ -15,7 +18,7 @@ export function KrogerConnectionCard({
 
   return (
     <View style={styles.wrap}>
-      <Card style={styles.card}>
+      <Card className="min-h-20 flex-row items-center gap-3 rounded-2xl p-3 shadow-none">
         <View style={styles.icon}>
           {isLoading ? (
             <ActivityIndicator color={colors.green} />
@@ -24,48 +27,34 @@ export function KrogerConnectionCard({
           )}
         </View>
         <View style={styles.copy}>
-          <Text style={styles.title}>Connect Kroger when you’re ready</Text>
-          <Text selectable style={styles.body}>
+          <Text className="text-sm font-extrabold">Connect Kroger when you’re ready</Text>
+          <Text className="text-xs text-muted-foreground" selectable>
             Optional for live products, prices, and cart actions.
           </Text>
         </View>
-        <Pressable
+        <Button
           accessibilityLabel="Connect Kroger"
-          accessibilityRole="button"
-          disabled={isLoading || connecting}
+          className="min-h-10 px-2"
+          disabled={isLoading}
+          loading={connecting}
           onPress={() => {
             clearError();
             void connect();
           }}
-          style={({ pressed }) => [styles.action, pressed && styles.actionPressed]}
+          size="sm"
+          variant="ghost"
         >
-          {connecting ? (
-            <ActivityIndicator color={colors.green} size="small" />
-          ) : (
-            <>
-              <Text style={styles.actionText}>Connect</Text>
-              <ChevronRight color={colors.green} size={19} />
-            </>
-          )}
-        </Pressable>
+          <Text className="text-sm font-extrabold text-primary">Connect</Text>
+          <ChevronRight color={colors.green} size={19} />
+        </Button>
       </Card>
-      {error ? <InlineError message={error} /> : null}
+      {error ? <ErrorAlert message={error} /> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { gap: 8 },
-  card: {
-    minHeight: 82,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 18,
-    boxShadow: "none",
-  },
   icon: {
     width: 42,
     height: 42,
@@ -75,15 +64,4 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   copy: { flex: 1, gap: 2 },
-  title: { color: colors.ink, fontSize: 13, lineHeight: 18, fontWeight: "800" },
-  body: { color: colors.muted, fontSize: 11, lineHeight: 16 },
-  action: {
-    minHeight: 40,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
-    paddingLeft: 8,
-  },
-  actionPressed: { opacity: 0.65 },
-  actionText: { color: colors.green, fontSize: 13, fontWeight: "800" },
 });

@@ -1,6 +1,8 @@
 import { SafeAreaView } from "react-native-safe-area-context";
-import { StyleSheet, Text, View } from "react-native";
-import { BrandMark, Card } from "@/components/ui";
+import { StyleSheet, View } from "react-native";
+import { BrandMark } from "@/components/ui";
+import { Card } from "@/components/ui/card";
+import { Text } from "@/components/ui/text";
 import { colors } from "@/lib/theme";
 
 export function ConfigurationError({ message }: { message: string }) {
@@ -8,12 +10,14 @@ export function ConfigurationError({ message }: { message: string }) {
     <SafeAreaView style={styles.safe}>
       <View style={styles.wrap}>
         <BrandMark size={52} />
-        <Card style={styles.card}>
-          <Text style={styles.eyebrow}>SETUP NEEDED</Text>
-          <Text selectable style={styles.title}>
+        <Card className="gap-2.5 rounded-2xl p-6">
+          <Text className="tracking-wider text-primary" variant="small">
+            SETUP NEEDED
+          </Text>
+          <Text className="text-left font-extrabold" selectable variant="h3">
             This build is not configured yet.
           </Text>
-          <Text selectable style={styles.body}>
+          <Text className="leading-6 text-muted-foreground" selectable>
             {message}
           </Text>
         </Card>
@@ -25,20 +29,4 @@ export function ConfigurationError({ message }: { message: string }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   wrap: { flex: 1, justifyContent: "center", padding: 24, gap: 24 },
-  card: { padding: 24, gap: 10 },
-  eyebrow: {
-    color: colors.green,
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "800",
-    letterSpacing: 1.2,
-  },
-  title: {
-    color: colors.ink,
-    fontSize: 24,
-    lineHeight: 30,
-    fontWeight: "800",
-    letterSpacing: -0.5,
-  },
-  body: { color: colors.muted, fontSize: 15, lineHeight: 22 },
 });

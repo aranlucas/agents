@@ -16,7 +16,7 @@ const Example = () => (
       <ConfirmationTitle>
         <ConfirmationRequest>
           This tool wants to delete the file{" "}
-          <code className="bg-muted rounded px-1.5 py-0.5 text-sm">/tmp/example.txt</code>. Do you
+          <code className="rounded bg-muted px-1.5 py-0.5 text-sm">/tmp/example.txt</code>. Do you
           approve this action?
         </ConfirmationRequest>
         <ConfirmationAccepted>
@@ -24,7 +24,7 @@ const Example = () => (
           <span>You approved this tool execution</span>
         </ConfirmationAccepted>
         <ConfirmationRejected>
-          <XIcon className="text-destructive size-4" />
+          <XIcon className="size-4 text-destructive" />
           <span>You rejected this tool execution</span>
         </ConfirmationRejected>
       </ConfirmationTitle>

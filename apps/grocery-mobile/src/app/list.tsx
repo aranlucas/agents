@@ -1,11 +1,14 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Check, Circle, ShoppingCart, Sparkles, Tag } from "lucide-react-native";
 import { KrogerProductImage } from "@/components/kroger-product-image";
 import { KrogerConnectionCard } from "@/components/kroger-connection-card";
 import { useGroceryAgent } from "@/components/grocery-agent-provider";
-import { Card, InlineError, PrimaryButton, SecondaryButton } from "@/components/ui";
+import { ErrorAlert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Text } from "@/components/ui/text";
 import { useKrogerConnection } from "@/hooks/use-kroger-connection";
 import { cartSubtotal, pantryNames } from "@/lib/grocery-state";
 import { colors } from "@/lib/theme";
@@ -49,7 +52,9 @@ function GroceryListContent() {
         <Text style={styles.emptyText}>
           Ask Grocery Agent for a recipe, meal plan, or budget-friendly list.
         </Text>
-        <SecondaryButton onPress={() => router.back()}>Start planning</SecondaryButton>
+        <Button size="lg" variant="secondary" onPress={() => router.back()}>
+          Start planning
+        </Button>
       </View>
     );
   }
@@ -61,7 +66,7 @@ function GroceryListContent() {
       contentContainerStyle={styles.content}
     >
       {state.meal_plan ? (
-        <Card style={styles.planCard}>
+        <Card className="gap-2.5 rounded-2xl p-4">
           <View style={styles.sectionHeading}>
             <Sparkles color={colors.green} size={19} />
             <Text style={styles.sectionTitle}>Meal plan</Text>
@@ -82,7 +87,7 @@ function GroceryListContent() {
         {subtotal > 0 ? <Text style={styles.subtotal}>${subtotal.toFixed(2)}</Text> : null}
       </View>
 
-      <Card style={styles.listCard}>
+      <Card className="gap-0 overflow-hidden rounded-2xl p-0">
         {(cart.length
           ? cart.map((item) => {
               const match =
@@ -150,7 +155,7 @@ function GroceryListContent() {
       </Card>
 
       {state.weekly_deals ? (
-        <Card style={styles.dealCard}>
+        <Card className="gap-2.5 rounded-2xl p-4">
           <View style={styles.sectionHeading}>
             <Tag color={colors.green} size={19} />
             <Text style={styles.sectionTitle}>Weekly deals</Text>
@@ -161,15 +166,15 @@ function GroceryListContent() {
         </Card>
       ) : null}
 
-      {error ? <InlineError message={error} /> : null}
+      {error ? <ErrorAlert message={error} /> : null}
       {connected ? (
         <>
-          <PrimaryButton loading={isRunning} disabled={!list.length} onPress={confirmAdd}>
+          <Button loading={isRunning} disabled={!list.length} size="lg" onPress={confirmAdd}>
             <View style={styles.buttonContent}>
               <ShoppingCart color={colors.white} size={19} />
               <Text style={styles.buttonText}>Add to Kroger cart</Text>
             </View>
-          </PrimaryButton>
+          </Button>
           <Text selectable style={styles.disclaimer}>
             You are approving this cart action. Kroger prices and availability can change before
             checkout.
@@ -211,7 +216,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 8,
   },
-  planCard: { padding: 17, gap: 10 },
   sectionHeading: { flexDirection: "row", alignItems: "center", gap: 8 },
   sectionTitle: { color: colors.ink, fontSize: 16, lineHeight: 22, fontWeight: "800" },
   body: { color: colors.muted, fontSize: 14, lineHeight: 21 },
@@ -230,7 +234,6 @@ const styles = StyleSheet.create({
   },
   meta: { color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 3 },
   subtotal: { color: colors.forest, fontSize: 20, lineHeight: 26, fontWeight: "800" },
-  listCard: { overflow: "hidden" },
   item: {
     minHeight: 68,
     flexDirection: "row",
@@ -252,7 +255,6 @@ const styles = StyleSheet.create({
   itemNameChecked: { color: colors.muted, textDecorationLine: "line-through" },
   itemDetail: { color: colors.muted, fontSize: 12, lineHeight: 17 },
   rule: { height: 1, backgroundColor: colors.line, marginLeft: 102 },
-  dealCard: { padding: 17, gap: 9 },
   buttonContent: { flexDirection: "row", alignItems: "center", gap: 8 },
   buttonText: { color: colors.white, fontSize: 16, lineHeight: 22, fontWeight: "700" },
   disclaimer: {
