@@ -17,3 +17,8 @@ var TelegramLinks string
 //
 //go:embed 003_fitness_activities.sql
 var FitnessActivities string
+
+// SharedLists is the household and shared grocery-list schema.
+//
+//go:embed 004_shared_lists.sql
+var SharedLists string
