@@ -180,6 +180,42 @@ export function toDisplayMessages(messages: readonly unknown[]): DisplayMessage[
   return items;
 }
 
+const displayMessageRevisionCache = new WeakMap<DisplayMessage, string>();
+
+function displayMessageRevision(message: DisplayMessage): string {
+  const cached = displayMessageRevisionCache.get(message);
+  if (cached !== undefined) return cached;
+
+  const revision =
+    message.role === "tool"
+      ? JSON.stringify([message.name, message.status, message.parameters, message.result])
+      : message.role === "grocery-list"
+        ? JSON.stringify(message.state)
+        : message.content;
+  displayMessageRevisionCache.set(message, revision);
+  return revision;
+}
+
+export function stabilizeDisplayMessages(
+  previous: readonly DisplayMessage[],
+  next: readonly DisplayMessage[],
+): DisplayMessage[] {
+  const previousByIdentity = new Map(
+    previous.map((message) => [`${message.role}:${message.id}`, message]),
+  );
+  const stable = next.map((message) => {
+    const prior = previousByIdentity.get(`${message.role}:${message.id}`);
+    return prior && displayMessageRevision(prior) === displayMessageRevision(message)
+      ? prior
+      : message;
+  });
+
+  return stable.length === previous.length &&
+    stable.every((message, index) => message === previous[index])
+    ? (previous as DisplayMessage[])
+    : stable;
+}
+
 function stringArray(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string")
@@ -237,6 +273,53 @@ export function normalizeGroceryState(value: unknown): GroceryState {
     status: status === "idle" || status === "planning" || status === "ready" ? status : "idle",
     kroger_connected: state.kroger_connected === true,
   };
+}
+
+export function stabilizeGroceryState(previous: GroceryState, next: GroceryState): GroceryState {
+  return previous.status === next.status &&
+    previous.meal_plan === next.meal_plan &&
+    previous.weekly_deals === next.weekly_deals &&
+    previous.notes === next.notes &&
+    previous.review_summary === next.review_summary &&
+    previous.kroger_connected === next.kroger_connected &&
+    arraysEqual(previous.shopping_list, next.shopping_list, (left, right) => left === right) &&
+    arraysEqual(
+      previous.product_matches,
+      next.product_matches,
+      (left, right) =>
+        left.query === right.query &&
+        left.name === right.name &&
+        left.upc === right.upc &&
+        left.image_url === right.image_url &&
+        left.price === right.price &&
+        left.size === right.size,
+    ) &&
+    arraysEqual(
+      previous.cart,
+      next.cart,
+      (left, right) =>
+        left.name === right.name &&
+        left.quantity === right.quantity &&
+        left.price === right.price &&
+        left.upc === right.upc,
+    ) &&
+    arraysEqual(
+      previous.pantry,
+      next.pantry,
+      (left, right) => left.name === right.name && left.quantity === right.quantity,
+    )
+    ? previous
+    : next;
+}
+
+function arraysEqual<Value>(
+  left: readonly Value[] | undefined,
+  right: readonly Value[] | undefined,
+  equals: (left: Value, right: Value) => boolean,
+): boolean {
+  if (left === right) return true;
+  if (!left || !right || left.length !== right.length) return false;
+  return left.every((value, index) => equals(value, right[index] as Value));
 }
 
 export function cartSubtotal(items: readonly CartItem[]): number {

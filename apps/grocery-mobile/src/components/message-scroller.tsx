@@ -1,25 +1,35 @@
 import {
+  useCallback,
   createContext,
   forwardRef,
   useContext,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
-  type ComponentProps,
   type ReactNode,
+  type RefObject,
 } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import {
+  FlatList,
+  type FlatListProps,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+  Pressable,
+  StyleSheet,
+  View,
+} from "react-native";
 import { ArrowDown } from "lucide-react-native";
 import { colors } from "@/lib/theme";
 
 const LIVE_EDGE_THRESHOLD = 48;
 
 type MessageScrollerContextValue = {
-  scrollRef: React.RefObject<ScrollView | null>;
+  scrollRef: React.RefObject<FlatList<unknown> | null>;
   showScrollToLatest: boolean;
   updateLiveEdge: (atLiveEdge: boolean) => void;
-  scrollToLatest: () => void;
+  scrollToLatest: (animated?: boolean) => void;
 };
 
 const MessageScrollerContext = createContext<MessageScrollerContextValue | null>(null);
@@ -32,10 +42,13 @@ function useMessageScrollerContext() {
 
 export function useMessageScrollerControls() {
   const { scrollToLatest, updateLiveEdge } = useMessageScrollerContext();
-  return {
-    releaseFollow: () => updateLiveEdge(false),
-    scrollToLatest,
-  };
+  return useMemo(
+    () => ({
+      releaseFollow: () => updateLiveEdge(false),
+      scrollToLatest,
+    }),
+    [scrollToLatest, updateLiveEdge],
+  );
 }
 
 export type MessageScrollerHandle = {
@@ -51,83 +64,76 @@ export const MessageScroller = forwardRef<
     revision: string | number;
   }
 >(function MessageScroller({ autoScroll = false, children, revision }, ref) {
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<FlatList<unknown>>(null);
   const atLiveEdgeRef = useRef(true);
   const [showScrollToLatest, setShowScrollToLatest] = useState(false);
 
-  const updateLiveEdge = (atLiveEdge: boolean) => {
+  const updateLiveEdge = useCallback((atLiveEdge: boolean) => {
     if (atLiveEdgeRef.current === atLiveEdge) return;
     atLiveEdgeRef.current = atLiveEdge;
     setShowScrollToLatest(!atLiveEdge);
-  };
+  }, []);
 
-  const scrollToLatest = (animated = true) => {
-    updateLiveEdge(true);
-    scrollRef.current?.scrollToEnd({ animated });
-  };
+  const scrollToLatest = useCallback(
+    (animated = true) => {
+      updateLiveEdge(true);
+      scrollRef.current?.scrollToEnd({ animated });
+    },
+    [updateLiveEdge],
+  );
 
   useImperativeHandle(
     ref,
     () => ({
       scrollToStart: (animated = false) => {
         updateLiveEdge(false);
-        scrollRef.current?.scrollTo({ y: 0, animated });
+        scrollRef.current?.scrollToOffset({ offset: 0, animated });
       },
       scrollToEnd: scrollToLatest,
     }),
-    [],
+    [scrollToLatest, updateLiveEdge],
   );
 
   useEffect(() => {
     if (!autoScroll || !atLiveEdgeRef.current) return undefined;
-    const frame = requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
+    const frame = requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: false }));
     return () => cancelAnimationFrame(frame);
   }, [autoScroll, revision]);
 
+  const value = useMemo(
+    () => ({ scrollRef, showScrollToLatest, updateLiveEdge, scrollToLatest }),
+    [scrollToLatest, showScrollToLatest, updateLiveEdge],
+  );
+
   return (
-    <MessageScrollerContext.Provider
-      value={{ scrollRef, showScrollToLatest, updateLiveEdge, scrollToLatest }}
-    >
+    <MessageScrollerContext.Provider value={value}>
       <View style={styles.root}>{children}</View>
     </MessageScrollerContext.Provider>
   );
 });
 
-export function MessageScrollerViewport({
-  children,
-  onScroll,
-  ...props
-}: ComponentProps<typeof ScrollView>) {
+export function MessageScrollerList<Item>({ onScroll, ...props }: FlatListProps<Item>) {
   const { scrollRef, updateLiveEdge } = useMessageScrollerContext();
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+      updateLiveEdge(
+        contentSize.height - layoutMeasurement.height - contentOffset.y <= LIVE_EDGE_THRESHOLD,
+      );
+      onScroll?.(event);
+    },
+    [onScroll, updateLiveEdge],
+  );
+
   return (
-    <ScrollView
+    <FlatList
       {...props}
-      ref={scrollRef}
-      onScroll={(event) => {
-        const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-        updateLiveEdge(
-          contentSize.height - layoutMeasurement.height - contentOffset.y <= LIVE_EDGE_THRESHOLD,
-        );
-        onScroll?.(event);
-      }}
+      ref={scrollRef as RefObject<FlatList<Item> | null>}
+      onScroll={handleScroll}
       scrollEventThrottle={32}
       style={[styles.viewport, props.style]}
-    >
-      {children}
-    </ScrollView>
+    />
   );
-}
-
-export function MessageScrollerContent(props: ComponentProps<typeof View>) {
-  return <View {...props} />;
-}
-
-export function MessageScrollerItem({
-  messageId,
-  scrollAnchor = false,
-  ...props
-}: ComponentProps<typeof View> & { messageId: string; scrollAnchor?: boolean }) {
-  return <View {...props} collapsable={!scrollAnchor} nativeID={messageId} />;
 }
 
 export function MessageScrollerButton() {

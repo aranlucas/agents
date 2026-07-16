@@ -1,21 +1,34 @@
 import { useAuth } from "@clerk/clerk-expo";
 import { useAgent, useCopilotKit } from "@copilotkit/react-native";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { runAuthenticated, readableError } from "@/lib/auth";
-import { normalizeGroceryState, toDisplayMessages } from "@/lib/grocery-state";
+import {
+  normalizeGroceryState,
+  stabilizeDisplayMessages,
+  stabilizeGroceryState,
+  toDisplayMessages,
+  type DisplayMessage,
+} from "@/lib/grocery-state";
 
 export function useGroceryAgentController(onRunComplete: () => void) {
-  const { agent } = useAgent({ agentId: "grocery", throttleMs: 0 });
+  const { agent } = useAgent({ agentId: "grocery", throttleMs: 50 });
   const { copilotkit } = useCopilotKit();
   const { getToken, userId } = useAuth();
   const [error, setError] = useState("");
   const conversationVersion = useRef(0);
   const activeRun = useRef<Promise<unknown> | null>(null);
+  const previousMessages = useRef<DisplayMessage[]>([]);
+  const previousState = useRef(normalizeGroceryState({}));
 
   // CopilotKit mutates the active message while SSE chunks arrive. Derive the
-  // display snapshot on every hook render so each streamed chunk is visible.
-  const messages = toDisplayMessages(agent?.messages ?? []);
-  const state = normalizeGroceryState(agent?.state);
+  // display snapshot after each throttled update so streamed content stays visible.
+  const messages = stabilizeDisplayMessages(
+    previousMessages.current,
+    toDisplayMessages(agent?.messages ?? []),
+  );
+  previousMessages.current = messages;
+  const state = stabilizeGroceryState(previousState.current, normalizeGroceryState(agent?.state));
+  previousState.current = state;
   const isRunning = agent?.isRunning ?? false;
   const clearError = useCallback(() => setError(""), []);
 
@@ -113,15 +126,28 @@ export function useGroceryAgentController(onRunComplete: () => void) {
     [agent, copilotkit, getToken, userId],
   );
 
-  return {
-    activeThreadId: agent?.threadId,
-    state,
-    messages,
-    isRunning,
-    error,
-    clearError,
-    send,
-    startNewChat,
-    openThread,
-  };
+  return useMemo(
+    () => ({
+      activeThreadId: agent?.threadId,
+      state,
+      messages,
+      isRunning,
+      error,
+      clearError,
+      send,
+      startNewChat,
+      openThread,
+    }),
+    [
+      agent?.threadId,
+      state,
+      messages,
+      isRunning,
+      error,
+      clearError,
+      send,
+      startNewChat,
+      openThread,
+    ],
+  );
 }

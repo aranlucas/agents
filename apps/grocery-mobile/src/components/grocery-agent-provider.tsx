@@ -7,13 +7,12 @@ import {
 } from "@copilotkit/react-native";
 import { createContext, type ReactNode, useCallback, useContext, useMemo } from "react";
 import { useGroceryAgentController } from "@/hooks/use-grocery-agent";
-import { uniqueSuggestions } from "@/lib/grocery-suggestions";
+import { GROCERY_SUGGESTION_THEMES, uniqueSuggestions } from "@/lib/grocery-suggestions";
 
 const AGENT_ID = "grocery";
 
 type GroceryAgentContextValue = ReturnType<typeof useGroceryAgentController> & {
   suggestions: Suggestion[];
-  suggestionsLoading: boolean;
   threads: Thread[];
   threadsLoading: boolean;
   threadsError: Error | null;
@@ -31,17 +30,18 @@ export function GroceryAgentProvider({ children }: { children: ReactNode }) {
   const agentController = useGroceryAgentController(threadStore.refetchThreads);
 
   useConfigureSuggestions({
-    instructions:
-      "Generate concise, practical starter prompts for meal planning, grocery lists, store deals, pantry restocking, or healthier substitutions.",
-    minSuggestions: 1,
-    maxSuggestions: 3,
-    providerAgentId: AGENT_ID,
+    suggestions: GROCERY_SUGGESTION_THEMES,
     consumerAgentId: AGENT_ID,
     available: "before-first-message",
   });
   const suggestionStore = useSuggestions({ agentId: AGENT_ID });
   const suggestions = useMemo(
-    () => uniqueSuggestions(suggestionStore.suggestions),
+    () =>
+      uniqueSuggestions<Suggestion>(
+        suggestionStore.suggestions.length > 0
+          ? suggestionStore.suggestions
+          : GROCERY_SUGGESTION_THEMES,
+      ),
     [suggestionStore.suggestions],
   );
   const resetChat = agentController.startNewChat;
@@ -58,7 +58,6 @@ export function GroceryAgentProvider({ children }: { children: ReactNode }) {
       ...agentController,
       startNewChat,
       suggestions,
-      suggestionsLoading: suggestionStore.isLoading,
       threads: threadStore.threads,
       threadsLoading: threadStore.isLoading,
       threadsError: threadStore.listError,
@@ -72,7 +71,6 @@ export function GroceryAgentProvider({ children }: { children: ReactNode }) {
       agentController,
       startNewChat,
       suggestions,
-      suggestionStore.isLoading,
       threadStore.threads,
       threadStore.isLoading,
       threadStore.listError,

@@ -12,7 +12,7 @@ import (
 // LatestMigrationVersion is the newest schema marker reported by migration
 // diagnostics. Readiness requires every marker in migrations. Keep existing
 // version strings stable; append instead of editing or renaming applied work.
-const LatestMigrationVersion = "003_fitness_activities"
+const LatestMigrationVersion = "004_shared_lists"
 
 type migration struct {
 	version string
@@ -22,7 +22,8 @@ type migration struct {
 var migrations = []migration{
 	{version: "001_initial", source: d1migrations.Initial},
 	{version: "002_telegram_links", source: d1migrations.TelegramLinks},
-	{version: LatestMigrationVersion, source: d1migrations.FitnessActivities},
+	{version: "003_fitness_activities", source: d1migrations.FitnessActivities},
+	{version: LatestMigrationVersion, source: d1migrations.SharedLists},
 }
 
 type schemaTable struct {
@@ -42,6 +43,11 @@ var requiredSchemaTables = []schemaTable{
 	{name: "telegram_account_links", columns: []string{"telegram_user_id", "clerk_user_id", "telegram_chat_id", "linked_at", "unlinked_at"}},
 	{name: "fitness_activities", columns: []string{"user_id", "source", "source_activity_id", "name", "sport_type", "start_date", "end_date", "distance_m", "moving_time_s", "elapsed_time_s", "total_elevation_gain_m", "average_heartrate", "perceived_effort", "data_origin", "updated_at"}},
 	{name: "fitness_sync_sources", columns: []string{"user_id", "source", "synced_at", "accepted_count"}},
+	{name: "households", columns: []string{"id", "name", "created_by", "created_at"}},
+	{name: "household_members", columns: []string{"household_id", "clerk_user_id", "role", "joined_at"}},
+	{name: "household_invites", columns: []string{"code", "household_id", "created_by", "expires_at", "max_uses", "used_count"}},
+	{name: "grocery_lists", columns: []string{"id", "household_id", "owner_user_id", "title", "status", "created_at", "updated_at"}},
+	{name: "grocery_list_items", columns: []string{"id", "list_id", "name", "quantity", "note", "position", "added_by", "checked_by", "checked_at", "updated_at"}},
 }
 
 var requiredSchemaIndexes = []string{
@@ -54,6 +60,9 @@ var requiredSchemaIndexes = []string{
 	"telegram_account_links_clerk",
 	"fitness_activities_user_start",
 	"fitness_sync_sources_user_synced",
+	"household_members_user",
+	"grocery_lists_household",
+	"grocery_list_items_list",
 }
 
 func migrationVersions() []string {

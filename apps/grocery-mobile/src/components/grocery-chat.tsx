@@ -1,7 +1,6 @@
 import { useRouter } from "expo-router";
-import { useRef, useState } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Keyboard,
   KeyboardAvoidingView,
@@ -32,14 +31,13 @@ import { KrogerConnectionCard } from "@/components/kroger-connection-card";
 import {
   MessageScroller,
   MessageScrollerButton,
-  MessageScrollerContent,
-  MessageScrollerItem,
-  MessageScrollerViewport,
+  MessageScrollerList,
   type MessageScrollerHandle,
   useMessageScrollerControls,
 } from "@/components/message-scroller";
 import { InlineError } from "@/components/ui";
 import { useKrogerConnection } from "@/hooks/use-kroger-connection";
+import type { DisplayMessage } from "@/lib/grocery-state";
 import { suggestionKey } from "@/lib/grocery-suggestions";
 import { colors } from "@/lib/theme";
 
@@ -47,46 +45,40 @@ export function GroceryChat() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<MessageScrollerHandle>(null);
-  const [input, setInput] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
-  const {
-    state,
-    messages,
-    isRunning,
-    error,
-    clearError,
-    send,
-    startNewChat,
-    suggestions,
-    suggestionsLoading,
-  } = useGroceryAgent();
+  const [composerVersion, setComposerVersion] = useState(0);
+  const { state, messages, isRunning, error, clearError, send, startNewChat, suggestions } =
+    useGroceryAgent();
   const connection = useKrogerConnection();
   const { connected } = connection;
-  const latestAssistant = messages.findLast((message) => message.role === "assistant");
-  const latestReasoning = messages.findLast((message) => message.role === "reasoning");
-  const latestGroceryList = messages.findLast((message) => message.role === "grocery-list");
-  const timelineRevision = `${messages.length}:${messages.reduce(
-    (length, message) => length + ("content" in message ? message.content.length : 0),
-    0,
-  )}:${messages.at(-1)?.id ?? ""}`;
+  const { latestAssistant, latestReasoning, latestGroceryList, timelineRevision } = useMemo(
+    () => ({
+      latestAssistant: messages.findLast((message) => message.role === "assistant"),
+      latestReasoning: messages.findLast((message) => message.role === "reasoning"),
+      latestGroceryList: messages.findLast((message) => message.role === "grocery-list"),
+      timelineRevision: `${messages.length}:${messages.reduce(
+        (length, message) => length + ("content" in message ? message.content.length : 0),
+        0,
+      )}:${messages.at(-1)?.id ?? ""}`,
+    }),
+    [messages],
+  );
 
-  const submit = async (content = input) => {
-    if (await send(content)) setInput("");
-  };
+  const sendMessage = useCallback(
+    async (content: string) => {
+      const message = content.trim();
+      if (!message || isRunning) return false;
+      return send(message);
+    },
+    [isRunning, send],
+  );
+  const toggleMenu = useCallback(() => {
+    Keyboard.dismiss();
+    setMenuOpen((current) => !current);
+  }, []);
 
-  const newChat = async () => {
-    setMenuOpen(false);
-    if (!(await startNewChat())) return;
-    setInput("");
-    scrollRef.current?.scrollToStart();
-  };
-
-  const openMenuRoute = (route: "/saved-recipes" | "/chat-history") => {
-    setMenuOpen(false);
-    router.push(route);
-  };
-
-  const confirmAddToCart = () => {
+  const openLatestList = useCallback(() => router.push("/list"), [router]);
+  const confirmAddToCart = useCallback(() => {
     Alert.alert(
       "Add this list to Kroger?",
       "Grocery Agent will ask Kroger to add the matched items and quantities shown in your plan.",
@@ -95,10 +87,59 @@ export function GroceryChat() {
         {
           text: "Add to cart",
           onPress: () =>
-            void submit("Add every matched item in this grocery list to my Kroger cart now."),
+            void sendMessage("Add every matched item in this grocery list to my Kroger cart now."),
         },
       ],
     );
+  }, [sendMessage]);
+  const renderMessage = useCallback(
+    ({ item: message }: { item: DisplayMessage }) => {
+      const assistantContent =
+        message.role === "assistant" &&
+        message.id === latestAssistant?.id &&
+        state.status === "ready"
+          ? state.review_summary || "Your grocery list is ready to review."
+          : undefined;
+      const isLatestGroceryList =
+        message.role === "grocery-list" && message.id === latestGroceryList?.id;
+      return (
+        <GroceryMessage
+          assistantContent={assistantContent}
+          connected={connected}
+          isAdding={isRunning && isLatestGroceryList}
+          isLatestGroceryList={isLatestGroceryList}
+          isStreaming={
+            message.role === "reasoning" && isRunning && message.id === latestReasoning?.id
+          }
+          message={message}
+          onAddToCart={confirmAddToCart}
+          onOpenList={openLatestList}
+        />
+      );
+    },
+    [
+      connected,
+      confirmAddToCart,
+      isRunning,
+      latestAssistant?.id,
+      latestGroceryList?.id,
+      latestReasoning?.id,
+      openLatestList,
+      state.review_summary,
+      state.status,
+    ],
+  );
+
+  const newChat = async () => {
+    setMenuOpen(false);
+    if (!(await startNewChat())) return;
+    setComposerVersion((current) => current + 1);
+    scrollRef.current?.scrollToStart();
+  };
+
+  const openMenuRoute = (route: "/saved-recipes" | "/chat-history") => {
+    setMenuOpen(false);
+    router.push(route);
   };
 
   return (
@@ -108,111 +149,56 @@ export function GroceryChat() {
       keyboardVerticalOffset={92}
     >
       <MessageScroller ref={scrollRef} autoScroll revision={timelineRevision}>
-        <MessageScrollerViewport
+        <MessageScrollerList
           contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={styles.messageContent}
+          data={messages}
+          initialNumToRender={10}
+          keyExtractor={(message) => message.id}
           keyboardShouldPersistTaps="handled"
-        >
-          <MessageScrollerContent style={styles.messageContent}>
-            {messages.length === 0 ? (
-              <View style={styles.welcome}>
-                <View style={styles.sparkle}>
-                  <Sparkles color={colors.green} size={26} />
-                </View>
-                <Text selectable style={styles.welcomeTitle}>
-                  What are you shopping for?
-                </Text>
-                <Text selectable style={styles.welcomeText}>
-                  Describe a recipe, a weekly budget, or the meals you need. I’ll turn it into a
-                  practical list you control.
-                </Text>
-                <View style={styles.starters}>
-                  {suggestionsLoading && suggestions.length === 0 ? (
-                    <View accessibilityRole="progressbar" style={styles.suggestionLoading}>
-                      <ActivityIndicator color={colors.green} size="small" />
-                      <Text style={styles.suggestionLoadingText}>Finding a few ideas…</Text>
-                    </View>
-                  ) : null}
-                  {suggestions.map((suggestion) => (
-                    <Pressable
-                      key={suggestionKey(suggestion)}
-                      accessibilityLabel={suggestion.title}
-                      accessibilityRole="button"
-                      disabled={suggestion.isLoading || isRunning}
-                      onPress={() => void submit(suggestion.message)}
-                      style={({ pressed }) => [styles.starter, pressed && styles.starterPressed]}
-                    >
-                      <Text style={styles.starterText}>{suggestion.title}</Text>
-                    </Pressable>
-                  ))}
-                </View>
+          maxToRenderPerBatch={8}
+          renderItem={renderMessage}
+          updateCellsBatchingPeriod={50}
+          windowSize={7}
+          ListEmptyComponent={
+            <View style={styles.welcome}>
+              <View style={styles.sparkle}>
+                <Sparkles color={colors.green} size={26} />
               </View>
-            ) : null}
-
-            {messages.map((message) => (
-              <MessageScrollerItem
-                key={message.id}
-                messageId={message.id}
-                scrollAnchor={message.role === "user"}
-                style={[
-                  message.role === "reasoning"
-                    ? styles.reasoning
-                    : message.role === "user" || message.role === "assistant"
-                      ? styles.bubble
-                      : styles.timelineItem,
-                  message.role === "user"
-                    ? styles.userBubble
-                    : message.role === "assistant"
-                      ? styles.agentBubble
-                      : null,
-                ]}
-              >
-                {message.role === "user" ? (
-                  <Text selectable style={[styles.bubbleText, styles.userText]}>
-                    {message.content}
-                  </Text>
-                ) : message.role === "reasoning" ? (
-                  <ReasoningSection
-                    key={isRunning && message.id === latestReasoning?.id ? "streaming" : "complete"}
-                    content={message.content}
-                    isStreaming={isRunning && message.id === latestReasoning?.id}
-                  />
-                ) : message.role === "tool" ? (
-                  <ToolCallSection
-                    name={message.name}
-                    parameters={message.parameters}
-                    result={message.result}
-                    status={message.status}
-                  />
-                ) : message.role === "grocery-list" ? (
-                  <GroceryStateCard
-                    state={message.state}
-                    adding={isRunning && message.id === latestGroceryList?.id}
-                    onOpenList={
-                      message.id === latestGroceryList?.id ? () => router.push("/list") : undefined
-                    }
-                    onAddToCart={
-                      message.id === latestGroceryList?.id ? confirmAddToCart : undefined
-                    }
-                    connected={connected}
-                  />
-                ) : (
-                  <NativeMarkdown style={markdownStyle}>
-                    {message.id === latestAssistant?.id && state.status === "ready"
-                      ? state.review_summary || "Your grocery list is ready to review."
-                      : message.content}
-                  </NativeMarkdown>
-                )}
-              </MessageScrollerItem>
-            ))}
-
-            <KrogerConnectionCard connection={connection} />
-            {error ? (
-              <Pressable onPress={clearError}>
-                <InlineError message={error} />
-              </Pressable>
-            ) : null}
-          </MessageScrollerContent>
-        </MessageScrollerViewport>
+              <Text selectable style={styles.welcomeTitle}>
+                What are you shopping for?
+              </Text>
+              <Text selectable style={styles.welcomeText}>
+                Describe a recipe, a weekly budget, or the meals you need. I’ll turn it into a
+                practical list you control.
+              </Text>
+              <View style={styles.starters}>
+                {suggestions.map((suggestion) => (
+                  <Pressable
+                    key={suggestionKey(suggestion)}
+                    accessibilityLabel={suggestion.title}
+                    accessibilityRole="button"
+                    disabled={suggestion.isLoading || isRunning}
+                    onPress={() => void sendMessage(suggestion.message)}
+                    style={({ pressed }) => [styles.starter, pressed && styles.starterPressed]}
+                  >
+                    <Text style={styles.starterText}>{suggestion.title}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          }
+          ListFooterComponent={
+            <View style={styles.timelineFooter}>
+              <KrogerConnectionCard connection={connection} />
+              {error ? (
+                <Pressable onPress={clearError}>
+                  <InlineError message={error} />
+                </Pressable>
+              ) : null}
+            </View>
+          }
+        />
         <MessageScrollerButton />
       </MessageScroller>
 
@@ -263,54 +249,171 @@ export function GroceryChat() {
         </View>
       </Modal>
 
-      <View style={[styles.composerWrap, { paddingBottom: Math.max(insets.bottom, 8) }]}>
-        <View style={styles.composer}>
-          <TextInput
-            accessibilityLabel="Ask Grocery Agent"
-            multiline
-            maxLength={2000}
-            placeholder="Ask for meals or groceries…"
-            placeholderTextColor="#7b847c"
-            style={styles.input}
-            value={input}
-            onChangeText={setInput}
-          />
-          <View style={styles.composerActions}>
-            <Pressable
-              accessibilityLabel="Chat menu"
-              accessibilityRole="button"
-              accessibilityHint="Opens conversation actions"
-              accessibilityState={{ expanded: menuOpen }}
-              onPress={() => {
-                Keyboard.dismiss();
-                setMenuOpen((current) => !current);
-              }}
-              style={({ pressed }) => [
-                styles.newChat,
-                menuOpen && styles.menuButtonOpen,
-                pressed && styles.newChatPressed,
-              ]}
-            >
-              <Menu color={colors.ink} size={25} strokeWidth={2.5} />
-            </Pressable>
-            <Pressable
-              accessibilityLabel="Send"
-              accessibilityRole="button"
-              disabled={!input.trim() || isRunning}
-              onPress={() => void submit()}
-              style={[styles.send, (!input.trim() || isRunning) && styles.sendDisabled]}
-            >
-              <ArrowUp color={colors.white} size={20} strokeWidth={2.5} />
-            </Pressable>
-          </View>
-        </View>
-        <Text style={styles.finePrint}>
-          AI can make mistakes. Review products, prices, and quantities before adding.
-        </Text>
-      </View>
+      <ChatComposer
+        key={composerVersion}
+        bottomInset={insets.bottom}
+        isRunning={isRunning}
+        menuOpen={menuOpen}
+        onMenuToggle={toggleMenu}
+        onSend={sendMessage}
+      />
     </KeyboardAvoidingView>
   );
 }
+
+const ChatComposer = memo(function ChatComposer({
+  bottomInset,
+  isRunning,
+  menuOpen,
+  onMenuToggle,
+  onSend,
+}: {
+  bottomInset: number;
+  isRunning: boolean;
+  menuOpen: boolean;
+  onMenuToggle: () => void;
+  onSend: (content: string) => Promise<boolean>;
+}) {
+  const [input, setInput] = useState("");
+
+  const submit = useCallback(async () => {
+    const composerContent = input;
+    if (!composerContent.trim() || isRunning) return;
+
+    setInput("");
+    if (!(await onSend(composerContent))) {
+      setInput((current) => current || composerContent);
+    }
+  }, [input, isRunning, onSend]);
+
+  return (
+    <View style={[styles.composerWrap, { paddingBottom: Math.max(bottomInset, 8) }]}>
+      <View style={styles.composer}>
+        <TextInput
+          accessibilityLabel="Ask Grocery Agent"
+          multiline
+          maxLength={2000}
+          placeholder="Ask for meals or groceries…"
+          placeholderTextColor="#7b847c"
+          style={styles.input}
+          value={input}
+          onChangeText={setInput}
+        />
+        <View style={styles.composerActions}>
+          <Pressable
+            accessibilityLabel="Chat menu"
+            accessibilityRole="button"
+            accessibilityHint="Opens conversation actions"
+            accessibilityState={{ expanded: menuOpen }}
+            onPress={onMenuToggle}
+            style={({ pressed }) => [
+              styles.newChat,
+              menuOpen && styles.menuButtonOpen,
+              pressed && styles.newChatPressed,
+            ]}
+          >
+            <Menu color={colors.ink} size={25} strokeWidth={2.5} />
+          </Pressable>
+          <Pressable
+            accessibilityLabel="Send"
+            accessibilityRole="button"
+            disabled={!input.trim() || isRunning}
+            onPress={() => void submit()}
+            style={[styles.send, (!input.trim() || isRunning) && styles.sendDisabled]}
+          >
+            <ArrowUp color={colors.white} size={20} strokeWidth={2.5} />
+          </Pressable>
+        </View>
+      </View>
+      <Text style={styles.finePrint}>
+        AI can make mistakes. Review products, prices, and quantities before adding.
+      </Text>
+    </View>
+  );
+});
+
+type GroceryMessageProps = {
+  assistantContent?: string;
+  connected: boolean;
+  isAdding: boolean;
+  isLatestGroceryList: boolean;
+  isStreaming: boolean;
+  message: DisplayMessage;
+  onAddToCart: () => void;
+  onOpenList: () => void;
+};
+
+const GroceryMessage = memo(
+  function GroceryMessage({
+    assistantContent,
+    connected,
+    isAdding,
+    isLatestGroceryList,
+    isStreaming,
+    message,
+    onAddToCart,
+    onOpenList,
+  }: GroceryMessageProps) {
+    return (
+      <View
+        collapsable={message.role !== "user"}
+        nativeID={message.id}
+        style={[
+          message.role === "reasoning"
+            ? styles.reasoning
+            : message.role === "user" || message.role === "assistant"
+              ? styles.bubble
+              : styles.timelineItem,
+          message.role === "user"
+            ? styles.userBubble
+            : message.role === "assistant"
+              ? styles.agentBubble
+              : null,
+        ]}
+      >
+        {message.role === "user" ? (
+          <Text selectable style={[styles.bubbleText, styles.userText]}>
+            {message.content}
+          </Text>
+        ) : message.role === "reasoning" ? (
+          <ReasoningSection
+            key={isStreaming ? "streaming" : "complete"}
+            content={message.content}
+            isStreaming={isStreaming}
+          />
+        ) : message.role === "tool" ? (
+          <ToolCallSection
+            name={message.name}
+            parameters={message.parameters}
+            result={message.result}
+            status={message.status}
+          />
+        ) : message.role === "grocery-list" ? (
+          <GroceryStateCard
+            state={message.state}
+            adding={isAdding}
+            onOpenList={isLatestGroceryList ? onOpenList : undefined}
+            onAddToCart={isLatestGroceryList ? onAddToCart : undefined}
+            connected={connected}
+          />
+        ) : (
+          <NativeMarkdown style={markdownStyle}>
+            {assistantContent ?? message.content}
+          </NativeMarkdown>
+        )}
+      </View>
+    );
+  },
+  (previous, next) =>
+    previous.message === next.message &&
+    previous.assistantContent === next.assistantContent &&
+    previous.connected === next.connected &&
+    previous.isAdding === next.isAdding &&
+    previous.isLatestGroceryList === next.isLatestGroceryList &&
+    previous.isStreaming === next.isStreaming &&
+    previous.onAddToCart === next.onAddToCart &&
+    previous.onOpenList === next.onOpenList,
+);
 
 function ReasoningSection({ content, isStreaming }: { content: string; isStreaming: boolean }) {
   const { releaseFollow } = useMessageScrollerControls();
@@ -460,6 +563,7 @@ function formatToolValue(value: unknown): string {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   messageContent: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 18, gap: 12 },
+  timelineFooter: { gap: 12 },
   welcome: { alignItems: "center", paddingHorizontal: 12, paddingVertical: 24, gap: 10 },
   sparkle: {
     width: 56,
@@ -496,14 +600,6 @@ const styles = StyleSheet.create({
   },
   starterPressed: { backgroundColor: colors.surfaceMuted },
   starterText: { color: colors.forest, fontSize: 14, lineHeight: 20, fontWeight: "600" },
-  suggestionLoading: {
-    minHeight: 48,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 9,
-  },
-  suggestionLoadingText: { color: colors.muted, fontSize: 13, lineHeight: 18 },
   bubble: {
     maxWidth: "88%",
     borderRadius: 20,

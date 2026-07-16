@@ -520,8 +520,14 @@ func TestRunMigrationsIsIdempotentSQLBatch(t *testing.T) {
 	if err := d1.RunMigrations(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if len(batches) != 6 || len(batches[0]) != len(batches[3]) || len(batches[1]) != len(batches[4]) || len(batches[2]) != len(batches[5]) {
+	migrationCount := len(migrations)
+	if len(batches) != migrationCount*2 {
 		t.Fatalf("migration batches = %#v", batches)
+	}
+	for i := range migrationCount {
+		if len(batches[i]) != len(batches[i+migrationCount]) {
+			t.Fatalf("migration batch %d changed between runs: %#v", i, batches)
+		}
 	}
 	encoded, _ := json.Marshal(batches[0])
 	if !strings.Contains(string(encoded), "CREATE TABLE IF NOT EXISTS sessions") {
@@ -534,6 +540,10 @@ func TestRunMigrationsIsIdempotentSQLBatch(t *testing.T) {
 	fitnessSchema, _ := json.Marshal(batches[2])
 	if !strings.Contains(string(fitnessSchema), "fitness_activities") {
 		t.Fatalf("fitness schema missing: %s", fitnessSchema)
+	}
+	sharedListsSchema, _ := json.Marshal(batches[3])
+	if !strings.Contains(string(sharedListsSchema), "grocery_list_items") {
+		t.Fatalf("shared lists schema missing: %s", sharedListsSchema)
 	}
 	if got := migrations[len(migrations)-1].version; got != LatestMigrationVersion {
 		t.Fatalf("last migration = %q, latest = %q", got, LatestMigrationVersion)

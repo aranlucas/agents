@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { suggestionKey, uniqueSuggestions } from "./grocery-suggestions";
+import { GROCERY_SUGGESTION_THEMES, suggestionKey, uniqueSuggestions } from "./grocery-suggestions";
+
+describe("GROCERY_SUGGESTION_THEMES", () => {
+  it("provides distinct, ready-to-send prompts without generation", () => {
+    expect(GROCERY_SUGGESTION_THEMES).toHaveLength(3);
+    expect(uniqueSuggestions(GROCERY_SUGGESTION_THEMES)).toEqual(GROCERY_SUGGESTION_THEMES);
+    expect(
+      GROCERY_SUGGESTION_THEMES.every(
+        (suggestion) =>
+          suggestion.title.length > 0 && suggestion.message.length > 0 && !suggestion.isLoading,
+      ),
+    ).toBe(true);
+  });
+});
 
 describe("uniqueSuggestions", () => {
   it("removes exact duplicate suggestions", () => {

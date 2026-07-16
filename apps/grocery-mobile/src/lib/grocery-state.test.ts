@@ -3,6 +3,8 @@ import {
   cartSubtotal,
   normalizeGroceryState,
   pantryNames,
+  stabilizeDisplayMessages,
+  stabilizeGroceryState,
   toDisplayMessage,
   toDisplayMessages,
 } from "./grocery-state";
@@ -68,6 +70,27 @@ describe("grocery state", () => {
     expect(toDisplayMessages(messages)[0]).toMatchObject({ content: "Building your list" });
   });
 
+  it("reuses an unchanged normalized state snapshot", () => {
+    const previous = normalizeGroceryState({
+      shopping_list: ["milk"],
+      cart: [{ name: "Milk", quantity: 1, price: 3.5 }],
+      status: "planning",
+    });
+    const equal = normalizeGroceryState({
+      shopping_list: ["milk"],
+      cart: [{ name: "Milk", quantity: 1, price: 3.5 }],
+      status: "planning",
+    });
+    const changed = normalizeGroceryState({
+      shopping_list: ["milk"],
+      cart: [{ name: "Milk", quantity: 2, price: 3.5 }],
+      status: "planning",
+    });
+
+    expect(stabilizeGroceryState(previous, equal)).toBe(previous);
+    expect(stabilizeGroceryState(previous, changed)).toBe(changed);
+  });
+
   it("groups consecutive reasoning steps into one collapsible section", () => {
     expect(
       toDisplayMessages([
@@ -85,6 +108,24 @@ describe("grocery state", () => {
       },
       { id: "a1", role: "assistant", content: "Your plan is ready" },
     ]);
+  });
+
+  it("reuses unchanged display messages across streamed updates", () => {
+    const previous = toDisplayMessages([
+      { id: "u1", role: "user", content: "Plan dinners" },
+      { id: "a1", role: "assistant", content: "Building" },
+    ]);
+    const next = stabilizeDisplayMessages(
+      previous,
+      toDisplayMessages([
+        { id: "u1", role: "user", content: "Plan dinners" },
+        { id: "a1", role: "assistant", content: "Building your list" },
+      ]),
+    );
+
+    expect(next[0]).toBe(previous[0]);
+    expect(next[1]).not.toBe(previous[1]);
+    expect(stabilizeDisplayMessages(next, toDisplayMessages(next))).toBe(next);
   });
 
   it("renders tool calls in message order and pairs their results", () => {
