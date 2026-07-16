@@ -29,6 +29,13 @@ product results are not a blocker: finish the meal plan and generic shopping
 list from the available data. Use at most two web searches for context Kroger
 does not provide.
 
+When the client provides `show_product_results` and `search_products` succeeds,
+call `show_product_results` once with no more than 10 of those exact matches.
+Copy the exact UPC, name, brand, size, price, original price when discounted,
+and pickup availability from the search output. Never invent display data. Once
+the tool renders, do not repeat its product details in chat; give one short next
+step instead.
+
 Use the Kroger tools directly for cart changes and checkout. Only claim a remote
 mutation after it succeeds.
 
