@@ -12,7 +12,7 @@ import {
   View,
 } from "react-native";
 import { useAuth } from "@clerk/clerk-expo";
-import { useAgent, useCopilotKit } from "@copilotkit/react-native";
+import { useAgent, useCopilotKit, useRenderToolRegistry } from "@copilotkit/react-native";
 import { NativeMarkdown, type NativeMarkdownStyle } from "@agents/native-markdown";
 import type { FitnessState, GroceryState, TripState, WellnessState } from "@agents/types";
 import type { AgentId } from "@/utils/agent-config";
@@ -35,17 +35,56 @@ type Props<TState extends AgentState> = {
 };
 
 type DisplayMessage = { id: string; role: "user" | "assistant"; content: string };
+type DisplayToolCall = {
+  id: string;
+  kind: "tool-call";
+  name: string;
+  args: Record<string, unknown>;
+};
+type DisplayItem = DisplayMessage | DisplayToolCall;
 
-function toDisplayMessage(m: unknown, index: number): DisplayMessage | null {
-  if (typeof m !== "object" || m === null) return null;
+function toDisplayItems(m: unknown, index: number): DisplayItem[] {
+  if (typeof m !== "object" || m === null) return [];
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const msg = m as Record<string, unknown>;
   const role = msg.role;
-  if (role !== "user" && role !== "assistant") return null;
+  if (role !== "user" && role !== "assistant") return [];
   const content = msg.content;
-  if (typeof content !== "string" || content.length === 0) return null;
   const id = typeof msg.id === "string" ? msg.id : `${role}-${index}`;
-  return { id, role, content };
+  const items: DisplayItem[] = [];
+  if (typeof content === "string" && content.length > 0) {
+    items.push({ id, role, content });
+  }
+  if (role !== "assistant" || !Array.isArray(msg.toolCalls)) return items;
+  for (const [toolIndex, value] of msg.toolCalls.entries()) {
+    if (typeof value !== "object" || value === null) continue;
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    const toolCall = value as Record<string, unknown>;
+    const fn = toolCall.function;
+    if (typeof fn !== "object" || fn === null) continue;
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    const functionCall = fn as Record<string, unknown>;
+    if (typeof functionCall.name !== "string") continue;
+    let args: Record<string, unknown> = {};
+    if (typeof functionCall.arguments === "string") {
+      try {
+        const parsed: unknown = JSON.parse(functionCall.arguments);
+        if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+          args = parsed as Record<string, unknown>;
+        }
+      } catch {
+        // A streamed or malformed argument string renders the tool's safe empty state.
+      }
+    }
+    items.push({
+      id: typeof toolCall.id === "string" ? toolCall.id : `${id}-tool-${toolIndex}`,
+      kind: "tool-call",
+      name: functionCall.name,
+      args,
+    });
+  }
+  return items;
 }
 
 export function AgentScreen<TState extends AgentState>({ config, initialState }: Props<TState>) {
@@ -53,12 +92,13 @@ export function AgentScreen<TState extends AgentState>({ config, initialState }:
   const scrollRef = useRef<ScrollView>(null);
 
   const { agent } = useAgent({ agentId: config.id });
-  const { copilotkit } = useCopilotKit();
+  const { copilotkit, executingToolCallIds } = useCopilotKit();
+  const toolRenderers = useRenderToolRegistry();
   const { getToken, userId } = useAuth();
 
   const messages = (agent?.messages ?? [])
-    .map(toDisplayMessage)
-    .filter((m): m is DisplayMessage => m !== null);
+    .flatMap(toDisplayItems)
+    .filter((item) => !("kind" in item) || toolRenderers.has(item.name));
 
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const state = (agent?.state ?? initialState) as TState;
@@ -116,20 +156,33 @@ export function AgentScreen<TState extends AgentState>({ config, initialState }:
         contentContainerStyle={styles.messageContent}
         onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
       >
-        {messages.map((m) => (
-          <View
-            key={m.id}
-            style={[styles.bubble, m.role === "user" ? styles.userBubble : styles.agentBubble]}
-          >
-            {m.role === "user" ? (
-              <Text selectable style={[styles.bubbleText, styles.userText]}>
-                {m.content}
-              </Text>
-            ) : (
-              <NativeMarkdown style={markdownStyle}>{m.content}</NativeMarkdown>
-            )}
-          </View>
-        ))}
+        {messages.map((m) => {
+          if ("kind" in m) {
+            const renderTool = toolRenderers.get(m.name);
+            return renderTool ? (
+              <View key={m.id} style={styles.toolCall}>
+                {renderTool({
+                  args: m.args,
+                  status: executingToolCallIds.has(m.id) ? "executing" : "complete",
+                })}
+              </View>
+            ) : null;
+          }
+          return (
+            <View
+              key={m.id}
+              style={[styles.bubble, m.role === "user" ? styles.userBubble : styles.agentBubble]}
+            >
+              {m.role === "user" ? (
+                <Text selectable style={[styles.bubbleText, styles.userText]}>
+                  {m.content}
+                </Text>
+              ) : (
+                <NativeMarkdown style={markdownStyle}>{m.content}</NativeMarkdown>
+              )}
+            </View>
+          );
+        })}
         {isLoading && <ActivityIndicator style={styles.loading} />}
       </ScrollView>
 
@@ -191,6 +244,7 @@ const styles = StyleSheet.create({
   bubbleText: { fontSize: 14, lineHeight: 20 },
   userText: { color: "#fff" },
   loading: { margin: 12 },
+  toolCall: { alignSelf: "stretch", marginVertical: 6 },
   inputRow: {
     flexDirection: "row",
     padding: 12,

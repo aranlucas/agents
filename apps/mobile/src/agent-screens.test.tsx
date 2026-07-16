@@ -9,6 +9,10 @@ Object.defineProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT", {
 });
 
 let currentState: Record<string, unknown> = {};
+let currentMessages: unknown[] = [];
+const providerProps: Array<Record<string, unknown>> = [];
+const frontendTools: Array<Record<string, unknown>> = [];
+const toolRenderers = new Map<string, (props: Record<string, unknown>) => React.ReactElement>();
 
 const addMessage = vi.fn();
 const runAgent = vi.fn(async () => undefined);
@@ -21,10 +25,7 @@ const agent = {
     return false;
   },
   get messages() {
-    return [
-      { id: "user-1", role: "user", content: "Hello" },
-      { id: "assistant-1", role: "assistant", content: "Ready" },
-    ];
+    return currentMessages;
   },
   runAgent,
   get state() {
@@ -46,9 +47,22 @@ vi.mock("@clerk/clerk-expo", () => ({
 }));
 
 vi.mock("@copilotkit/react-native", () => ({
-  CopilotKitProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
+  CopilotKitProvider: ({ children, ...props }: { children: ReactNode }) => {
+    providerProps.push(props);
+    return <>{children}</>;
+  },
   useAgent: () => ({ agent }),
-  useCopilotKit: () => ({ copilotkit }),
+  useCopilotKit: () => ({ copilotkit, executingToolCallIds: new Set<string>() }),
+  useRenderTool: (tool: Record<string, unknown>) => {
+    frontendTools.push(tool);
+    if (typeof tool.name === "string" && typeof tool.render === "function") {
+      toolRenderers.set(
+        tool.name,
+        tool.render as (props: Record<string, unknown>) => React.ReactElement,
+      );
+    }
+  },
+  useRenderToolRegistry: () => toolRenderers,
 }));
 
 vi.mock("expo-constants", () => ({
@@ -120,6 +134,13 @@ async function render(element: React.ReactElement) {
 describe("mobile real feature surface", () => {
   beforeEach(() => {
     currentState = {};
+    currentMessages = [
+      { id: "user-1", role: "user", content: "Hello" },
+      { id: "assistant-1", role: "assistant", content: "Ready" },
+    ];
+    providerProps.length = 0;
+    frontendTools.length = 0;
+    toolRenderers.clear();
     addMessage.mockClear();
     getToken.mockClear();
     runAgent.mockClear();
@@ -135,6 +156,18 @@ describe("mobile real feature surface", () => {
 
     expect(native.root.findAllByType(Tabs.Screen)).toHaveLength(5);
     expect(web.root.findAllByType(Tabs.Screen)).toHaveLength(5);
+    expect(providerProps).toEqual([
+      expect.objectContaining({
+        runtimeUrl: "https://app.example.com/api/copilotkit",
+        useSingleEndpoint: false,
+        defaultThrottleMs: 0,
+      }),
+      expect.objectContaining({
+        runtimeUrl: "https://app.example.com/api/copilotkit",
+        useSingleEndpoint: false,
+        defaultThrottleMs: 0,
+      }),
+    ]);
 
     await act(async () => {
       native.unmount();
@@ -179,6 +212,53 @@ describe("mobile real feature surface", () => {
     const tree = await render(<Index />);
 
     expect(tree.root.findByType("Redirect").props.href).toBe("/travel");
+    await act(async () => tree.unmount());
+  });
+
+  it("declares Kroger product results as a grocery frontend tool", async () => {
+    const { default: GroceryScreen } = await import("./app/grocery");
+    const tree = await render(<GroceryScreen />);
+
+    expect(frontendTools).toEqual([
+      expect.objectContaining({
+        name: "show_product_results",
+        agentId: "grocery",
+        handler: expect.any(Function),
+        render: expect.any(Function),
+      }),
+    ]);
+
+    await act(async () => tree.unmount());
+  });
+
+  it("renders a grocery frontend tool call inline from the streamed assistant message", async () => {
+    currentMessages = [
+      {
+        id: "assistant-products",
+        role: "assistant",
+        toolCalls: [
+          {
+            id: "call-products",
+            type: "function",
+            function: {
+              name: "show_product_results",
+              arguments: JSON.stringify({
+                products: [{ upc: "0009396651300", name: "Organic Whole Milk", price: 5.49 }],
+              }),
+            },
+          },
+        ],
+      },
+    ];
+    const { default: GroceryScreen } = await import("./app/grocery");
+    const tree = await render(<GroceryScreen />);
+
+    expect(
+      tree.root
+        .findAllByType("Text")
+        .some((node) => String(node.props.children).includes("Organic Whole Milk")),
+    ).toBe(true);
+
     await act(async () => tree.unmount());
   });
 });

@@ -1,5 +1,6 @@
 import type { GroceryState } from "@agents/types";
 import { AgentScreen, Field, SummaryCard } from "@/components/agent-screen";
+import { GroceryProductResultsTool } from "@/components/product-results-tool";
 
 const GROCERY_CONFIG = {
   id: "grocery" as const,
@@ -19,5 +20,10 @@ const GROCERY_CONFIG = {
 };
 
 export default function GroceryScreen() {
-  return <AgentScreen<GroceryState> config={GROCERY_CONFIG} initialState={{}} />;
+  return (
+    <>
+      <GroceryProductResultsTool />
+      <AgentScreen<GroceryState> config={GROCERY_CONFIG} initialState={{}} />
+    </>
+  );
 }
