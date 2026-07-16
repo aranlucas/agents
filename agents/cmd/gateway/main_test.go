@@ -429,6 +429,26 @@ func TestOAuthCredentialsSkipRoutesWithoutProviderTools(t *testing.T) {
 	}
 }
 
+func TestOAuthCredentialsStripUntrustedHeaderWhenDisconnected(t *testing.T) {
+	backend := &fakeClerkBackend{}
+	handler := auth.RequireIdentity(nil, withOAuthCredentials(backend, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if token := r.Header.Get("X-Kroger-Access-Token"); token != "" {
+			t.Errorf("untrusted Kroger token forwarded: %q", token)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})), acceptingVerifier{})
+	request := httptest.NewRequest(http.MethodPost, "/grocery/agui", nil)
+	request.Header.Set("Authorization", "Bearer clerk-session")
+	request.Header.Set("X-Kroger-Access-Token", "client-supplied")
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
 func TestOAuthCredentialLookupFailuresStopTheRequest(t *testing.T) {
 	backend := &fakeClerkBackend{err: errors.New("Clerk unavailable")}
 	nextCalled := false

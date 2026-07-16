@@ -26,6 +26,7 @@ import (
 	"agents/internal/common"
 	"agents/internal/config"
 	"agents/internal/fitnessdata"
+	"agents/internal/groceries"
 	"agents/internal/observability"
 	"agents/internal/providerpolicy"
 	"agents/internal/providers/openai"
@@ -89,13 +90,14 @@ func main() {
 	kroger := grocery.NewKroger(common.NewHTTPClient(30*time.Second, 8<<20).Client, krogerEndpoint)
 	loader := common.NewWebLoader(common.NewHTTPClient(20*time.Second, 4<<20), 100_000)
 	fitnessActivities := fitnessdata.NewStore(d1)
+	groceryLists := groceries.NewStore(d1)
 	fitnessAgent, err := fitness.New(model, fitnessActivities, search)
 	must(err)
-	groceryAgent, err := grocery.New(model, kroger, search, loader)
+	groceryAgent, err := grocery.NewWithSharedLists(model, kroger, search, loader, groceryLists)
 	must(err)
 	fitnessTask, err := fitness.NewTask(model, fitnessActivities, search)
 	must(err)
-	groceryTask, err := grocery.NewTask(model, kroger, search, loader)
+	groceryTask, err := grocery.NewTaskWithSharedLists(model, kroger, search, loader, groceryLists)
 	must(err)
 	wellnessAgent, err := wellness.New(wellness.ModelSet{Coordinator: model}, fitnessTask, groceryTask)
 	must(err)

@@ -35,6 +35,7 @@ import (
 	"agents/internal/common"
 	"agents/internal/config"
 	"agents/internal/fitnessdata"
+	"agents/internal/groceries"
 	"agents/internal/observability"
 	"agents/internal/providerpolicy"
 	"agents/internal/providers/openai"
@@ -75,16 +76,17 @@ type healthChecker interface {
 // Production values are built in main(); tests supply fakes so route
 // composition can be exercised without D1, R2, or a real model provider.
 type Dependencies struct {
-	Registry *agentruntime.Registry
-	Sessions session.Service
-	Pending  agui.PendingTools
-	Verifier auth.TokenVerifier
-	D1       healthChecker
-	R2       healthChecker
-	Links    *telegram.LinkStore
-	Clerk    clerk.Backend
-	Fitness  fitnessdata.Repository
-	Now      func() time.Time
+	Registry  *agentruntime.Registry
+	Sessions  session.Service
+	Pending   agui.PendingTools
+	Verifier  auth.TokenVerifier
+	D1        healthChecker
+	R2        healthChecker
+	Links     *telegram.LinkStore
+	Clerk     clerk.Backend
+	Fitness   fitnessdata.Repository
+	Groceries groceries.Repository
+	Now       func() time.Time
 }
 
 // New composes the gateway's HTTP surface: per-agent AG-UI run, state, and
@@ -158,6 +160,9 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 	}
 	if deps.Fitness != nil {
 		mux.HandleFunc("POST /fitness/activities/sync", fitnessSyncHandler(deps.Fitness, deps.Now))
+	}
+	if deps.Groceries != nil {
+		registerGroceryAPI(mux, deps.Groceries, deps.Now)
 	}
 
 	var verifiers []auth.TokenVerifier
@@ -254,6 +259,7 @@ func withOAuthCredentials(backend clerk.Backend, next http.Handler) http.Handler
 
 		clone := r.Clone(r.Context())
 		clone.Header = r.Header.Clone()
+		clone.Header.Del("X-Kroger-Access-Token")
 		if connections.KrogerToken != "" {
 			clone.Header.Set("X-Kroger-Access-Token", connections.KrogerToken)
 		}
@@ -709,6 +715,7 @@ func main() {
 		log.Fatalf("configure fitness fallbacks: %v", err)
 	}
 	fitnessActivities := fitnessdata.NewStore(d1)
+	groceryLists := groceries.NewStore(d1)
 	fitnessAgent, err := fitness.New(fitnessModel, fitnessActivities, braveSearch, agui.NewAGUIToolset(pending))
 	if err != nil {
 		log.Fatalf("build fitness agent: %v", err)
@@ -727,7 +734,7 @@ func main() {
 	}
 	krogerClient := grocery.NewKroger(common.NewHTTPClient(30*time.Second, 8<<20).Client, krogerEndpoint)
 	webLoader := common.NewWebLoader(common.NewHTTPClient(20*time.Second, 4<<20), 100_000)
-	groceryAgent, err := grocery.New(groceryModel, krogerClient, braveSearch, webLoader, agui.NewAGUIToolset(pending))
+	groceryAgent, err := grocery.NewWithSharedLists(groceryModel, krogerClient, braveSearch, webLoader, groceryLists, agui.NewAGUIToolset(pending))
 	if err != nil {
 		log.Fatalf("build grocery agent: %v", err)
 	}
@@ -735,7 +742,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("build wellness fitness task agent: %v", err)
 	}
-	groceryTaskAgent, err := grocery.NewTask(groceryModel, krogerClient, braveSearch, webLoader, agui.NewAGUIToolset(pending))
+	groceryTaskAgent, err := grocery.NewTaskWithSharedLists(groceryModel, krogerClient, braveSearch, webLoader, groceryLists, agui.NewAGUIToolset(pending))
 	if err != nil {
 		log.Fatalf("build wellness grocery task agent: %v", err)
 	}
@@ -821,16 +828,17 @@ func main() {
 	}
 
 	handler, err := New(cfg, Dependencies{
-		Registry: registry,
-		Sessions: sessions,
-		Pending:  pending,
-		Verifier: verifier,
-		D1:       d1,
-		R2:       r2,
-		Links:    telegram.NewLinkStore(d1, time.Now),
-		Clerk:    clerkBackend,
-		Fitness:  fitnessActivities,
-		Now:      time.Now,
+		Registry:  registry,
+		Sessions:  sessions,
+		Pending:   pending,
+		Verifier:  verifier,
+		D1:        d1,
+		R2:        r2,
+		Links:     telegram.NewLinkStore(d1, time.Now),
+		Clerk:     clerkBackend,
+		Fitness:   fitnessActivities,
+		Groceries: groceryLists,
+		Now:       time.Now,
 	})
 	if err != nil {
 		log.Fatalf("build gateway: %v", err)
