@@ -6,14 +6,18 @@ import { AppState } from "react-native";
 import { readableError } from "@/lib/auth";
 import {
   hasKrogerConnection,
+  isKrogerConnection,
   rotatingTokenNonceFromCallback,
-  type ExternalAccountLike,
 } from "@/lib/connections";
+
+type ClerkUser = NonNullable<ReturnType<typeof useUser>["user"]>;
+type ClerkExternalAccount = ClerkUser["externalAccounts"][number];
+type ConnectionAction = "connect" | "reconnect";
 
 export function useKrogerConnection() {
   const { isLoaded, user } = useUser();
   const [refreshing, setRefreshing] = useState(false);
-  const [connecting, setConnecting] = useState(false);
+  const [action, setAction] = useState<ConnectionAction | null>(null);
   const [error, setError] = useState("");
   const initialRefresh = useRef(false);
   const refreshingRef = useRef(false);
@@ -43,17 +47,9 @@ export function useKrogerConnection() {
     return () => subscription.remove();
   }, [refresh]);
 
-  const accounts = (user?.externalAccounts ?? []) as ExternalAccountLike[];
-  const connect = useCallback(async () => {
-    if (!user || connecting) return false;
-    setConnecting(true);
-    setError("");
-    try {
-      const redirectUrl = Linking.createURL("kroger-callback");
-      const externalAccount = await user.createExternalAccount({
-        strategy: "oauth_custom_shopping",
-        redirectUrl,
-      });
+  const accounts = user?.externalAccounts ?? [];
+  const completeAuthorization = useCallback(
+    async (externalAccount: ClerkExternalAccount, redirectUrl: string) => {
       const verificationUrl = externalAccount.verification?.externalVerificationRedirectURL;
       if (!verificationUrl) throw new Error("Kroger did not return a connection page.");
 
@@ -63,26 +59,51 @@ export function useKrogerConnection() {
       const linkedAccount = await externalAccount.reload({
         rotatingTokenNonce: rotatingTokenNonceFromCallback(result.url),
       });
-      await user.reload();
+      await user?.reload();
       if (linkedAccount.verification?.status !== "verified") {
         throw new Error("Kroger returned without completing the account connection.");
       }
       return true;
-    } catch (caught) {
-      setError(readableError(caught));
-      return false;
-    } finally {
-      setConnecting(false);
-    }
-  }, [connecting, user]);
+    },
+    [user],
+  );
+  const authorize = useCallback(
+    async (nextAction: ConnectionAction) => {
+      if (!user || action) return false;
+      setAction(nextAction);
+      setError("");
+      try {
+        const redirectUrl = Linking.createURL("kroger-callback");
+        const currentAccount = user.externalAccounts.find(isKrogerConnection);
+        const externalAccount =
+          nextAction === "reconnect" && currentAccount
+            ? await currentAccount.reauthorize({ redirectUrl })
+            : await user.createExternalAccount({
+                strategy: "oauth_custom_shopping",
+                redirectUrl,
+              });
+        return await completeAuthorization(externalAccount, redirectUrl);
+      } catch (caught) {
+        setError(readableError(caught));
+        return false;
+      } finally {
+        setAction(null);
+      }
+    },
+    [action, completeAuthorization, user],
+  );
+  const connect = useCallback(() => authorize("connect"), [authorize]);
+  const reconnect = useCallback(() => authorize("reconnect"), [authorize]);
 
   return {
     connected: hasKrogerConnection(accounts),
-    isLoading: !isLoaded || !user || refreshing,
-    connecting,
+    isLoading: !isLoaded || !user || refreshing || action !== null,
+    connecting: action !== null,
+    reconnecting: action === "reconnect",
     error,
     clearError: () => setError(""),
     connect,
+    reconnect,
     refresh,
   };
 }

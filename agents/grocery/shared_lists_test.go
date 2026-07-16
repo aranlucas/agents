@@ -53,6 +53,16 @@ func TestSaveListToHouseholdRejectsNonMember(t *testing.T) {
 	}
 }
 
+func TestSaveListToHouseholdDoesNotCreateAnEmptyList(t *testing.T) {
+	repository := &sharedListRepository{households: []groceries.Household{{ID: "hh_1"}}}
+	state := mutableGroceryState{"shopping_list": []string{"  "}, "status": StatusReady}
+
+	result, err := (SharedLists{Repository: repository}).SaveListToHousehold(newSharedListContext(t, "user_1", state), SaveListArgs{Title: "Weekly"})
+	if err != nil || result.Error == nil || result.Error.Code != "shopping_list_not_ready" || repository.createdTitle != "" {
+		t.Fatalf("result/error/created = %#v / %v / %q", result, err, repository.createdTitle)
+	}
+}
+
 func TestSharedListToolIsRegisteredWhenStoreIsConfigured(t *testing.T) {
 	tools, err := groceryTools(nil, nil, &sharedListRepository{})
 	if err != nil {

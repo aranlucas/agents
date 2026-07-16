@@ -37,10 +37,6 @@ export function getMarketingBaseUrl(): string {
   return requiredHttpUrl(extra().marketingBaseUrl, "Grocery website");
 }
 
-export function getWebsiteOrigin(): string {
-  return new URL(getMarketingBaseUrl()).origin;
-}
-
 export function getLegalLinks() {
   const base = getMarketingBaseUrl();
   return {
@@ -48,6 +44,5 @@ export function getLegalLinks() {
     terms: `${base}/terms`,
     support: `${base}/support`,
     deleteAccount: `${base}/delete-account`,
-    accountSettings: `${getWebsiteOrigin()}/console/settings`,
   };
 }

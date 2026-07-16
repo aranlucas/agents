@@ -417,7 +417,7 @@ const GroceryMessage = memo(
 
 function ReasoningSection({ content, isStreaming }: { content: string; isStreaming: boolean }) {
   const { releaseFollow } = useMessageScrollerControls();
-  const [expanded, setExpanded] = useState(isStreaming);
+  const [expanded, setExpanded] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
   return (
@@ -439,7 +439,7 @@ function ReasoningSection({ content, isStreaming }: { content: string; isStreami
             <ChevronRight color={colors.muted} size={16} />
           )}
         </View>
-        <Text style={styles.reasoningLabel}>{isStreaming ? "Working…" : "Worked"}</Text>
+        <Text style={styles.reasoningLabel}>{isStreaming ? "Thinking…" : "Worked"}</Text>
       </Pressable>
       {expanded ? (
         <View style={styles.reasoningContent}>

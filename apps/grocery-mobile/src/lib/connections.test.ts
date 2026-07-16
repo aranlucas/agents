@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { hasKrogerConnection, rotatingTokenNonceFromCallback } from "./connections";
+import {
+  hasKrogerConnection,
+  isKrogerConnection,
+  rotatingTokenNonceFromCallback,
+} from "./connections";
 
 describe("hasKrogerConnection", () => {
   it("accepts both verified Clerk provider names", () => {
@@ -20,6 +24,12 @@ describe("hasKrogerConnection", () => {
         { provider: "oauth_google", verification: { status: "verified" } },
       ]),
     ).toBe(false);
+  });
+
+  it("identifies both Clerk aliases for reconnecting", () => {
+    expect(isKrogerConnection({ provider: "custom_shopping" })).toBe(true);
+    expect(isKrogerConnection({ provider: "oauth_custom_shopping" })).toBe(true);
+    expect(isKrogerConnection({ provider: "oauth_google" })).toBe(false);
   });
 
   it("reads Clerk's rotating nonce from the native OAuth callback", () => {

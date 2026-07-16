@@ -1,27 +1,57 @@
 // @vitest-environment jsdom
-import type { ButtonHTMLAttributes, ReactNode } from "react";
-import { render, waitFor } from "@testing-library/react";
+import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from "react";
+import { fireEvent, render, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const copilotMocks = vi.hoisted(() => ({
-  agent: {
-    addMessage: vi.fn(),
-    abortController: undefined as AbortController | undefined,
-    isRunning: false,
-    messages: [] as unknown[],
-    setMessages: vi.fn(),
-    state: {},
-    threadId: undefined as string | undefined,
-  },
-  connectAgent: vi.fn(async (_options: { agent: { threadId?: string } }) => undefined),
-  runAgent: vi.fn(async () => undefined),
-  stopAgent: vi.fn(),
-  suggestions: [] as Array<{ title: string; message: string; isLoading: boolean }>,
-  runtimeConnectionStatus: "connected",
-  // Widen the mutable mock so the disconnected test can assign undefined.
-  // oxlint-disable-next-line typescript/no-unnecessary-type-assertion
-  runtimeUrl: "/api/copilotkit" as string | undefined,
-}));
+const copilotMocks = vi.hoisted(() => {
+  const connectAgent = vi.fn(async (_options: { agent: { threadId?: string } }) => undefined);
+  const runAgent = vi.fn(async () => undefined);
+  const stopAgent = vi.fn();
+  const runtime: { connectionStatus: string; url: string | undefined } = {
+    connectionStatus: "connected",
+    url: "/api/copilotkit",
+  };
+  const copilotkit = {
+    connectAgent,
+    runAgent,
+    stopAgent,
+    get runtimeConnectionStatus() {
+      return runtime.connectionStatus;
+    },
+    get runtimeUrl() {
+      return runtime.url;
+    },
+  };
+
+  return {
+    agent: {
+      addMessage: vi.fn(),
+      abortController: undefined as AbortController | undefined,
+      isRunning: false,
+      messages: [] as unknown[],
+      setMessages: vi.fn(),
+      state: {},
+      threadId: undefined as string | undefined,
+    },
+    connectAgent,
+    copilotkit,
+    runAgent,
+    stopAgent,
+    suggestions: [] as Array<{ title: string; message: string; isLoading: boolean }>,
+    get runtimeConnectionStatus() {
+      return runtime.connectionStatus;
+    },
+    set runtimeConnectionStatus(value: string) {
+      runtime.connectionStatus = value;
+    },
+    get runtimeUrl() {
+      return runtime.url;
+    },
+    set runtimeUrl(value: string | undefined) {
+      runtime.url = value;
+    },
+  };
+});
 
 vi.mock("@copilotkit/react-core/v2", () => ({
   UseAgentUpdate: {
@@ -30,15 +60,7 @@ vi.mock("@copilotkit/react-core/v2", () => ({
     OnStateChanged: "OnStateChanged",
   },
   useAgent: () => ({ agent: copilotMocks.agent }),
-  useCopilotKit: () => ({
-    copilotkit: {
-      connectAgent: copilotMocks.connectAgent,
-      runAgent: copilotMocks.runAgent,
-      runtimeConnectionStatus: copilotMocks.runtimeConnectionStatus,
-      runtimeUrl: copilotMocks.runtimeUrl,
-      stopAgent: copilotMocks.stopAgent,
-    },
-  }),
+  useCopilotKit: () => ({ copilotkit: copilotMocks.copilotkit }),
   useDefaultRenderTool: vi.fn(),
   useRenderActivityMessage: () => ({
     renderActivityMessage: (message: { id: string }) => (
@@ -64,9 +86,23 @@ vi.mock("@agents/ui", () => ({
 }));
 
 vi.mock("@agents/ui/components/message-scroller", () => ({
-  MessageScrollerProvider: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  MessageScrollerProvider: ({
+    children,
+    scrollPreviousItemPeek,
+  }: {
+    children: ReactNode;
+    scrollPreviousItemPeek?: number;
+  }) => (
+    <div data-testid="message-scroller" data-previous-item-peek={scrollPreviousItemPeek}>
+      {children}
+    </div>
+  ),
   MessageScroller: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  MessageScrollerViewport: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  MessageScrollerViewport: ({ children, ...props }: HTMLAttributes<HTMLDivElement>) => (
+    <div data-testid="message-scroller-viewport" {...props}>
+      {children}
+    </div>
+  ),
   MessageScrollerContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   MessageScrollerItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   MessageScrollerButton: () => null,
@@ -91,7 +127,23 @@ vi.mock("@agents/ui/components/empty", () => ({
 }));
 
 vi.mock("@agents/ui/components/ai-elements/prompt-input", () => ({
-  PromptInput: ({ children }: { children: ReactNode }) => <form>{children}</form>,
+  PromptInput: ({
+    children,
+    onSubmit,
+  }: {
+    children: ReactNode;
+    onSubmit: (message: { text: string; files: [] }) => void;
+  }) => (
+    <form
+      data-testid="prompt-input"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit({ text: "Animate this message", files: [] });
+      }}
+    >
+      {children}
+    </form>
+  ),
   PromptInputBody: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   PromptInputFooter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   PromptInputHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -267,6 +319,33 @@ describe("ChatSurface history replay", () => {
 
     expect(getByText("Assistant answer")).toBeInTheDocument();
     expect(queryByTestId("sparkles")).not.toBeInTheDocument();
+  });
+
+  it("smoothly anchors a submitted user message at the top of the viewport", async () => {
+    const { getByTestId, getByText } = render(
+      <ChatSurface
+        config={getAgentConfig("resume")}
+        threadId="thread-123"
+        onSwitchAgent={() => {}}
+        onOpenArtifact={() => {}}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getByText("Resume is ready")).toBeInTheDocument();
+      expect(getByTestId("message-scroller-viewport")).not.toHaveClass("scroll-smooth");
+    });
+
+    fireEvent.submit(getByTestId("prompt-input"));
+
+    expect(copilotMocks.agent.addMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ role: "user", content: "Animate this message" }),
+    );
+    expect(getByTestId("message-scroller")).toHaveAttribute("data-previous-item-peek", "0");
+    expect(getByTestId("message-scroller-viewport")).toHaveClass(
+      "scroll-smooth",
+      "motion-reduce:scroll-auto",
+    );
   });
 
   it("gives duplicate suggestion titles unique React keys", async () => {

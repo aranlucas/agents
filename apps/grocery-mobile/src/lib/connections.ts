@@ -5,10 +5,13 @@ export type ExternalAccountLike = {
 
 const KROGER_PROVIDERS = new Set(["oauth_custom_shopping", "custom_shopping"]);
 
+export function isKrogerConnection(account: ExternalAccountLike): boolean {
+  return KROGER_PROVIDERS.has(account.provider);
+}
+
 export function hasKrogerConnection(accounts: readonly ExternalAccountLike[]): boolean {
   return accounts.some(
-    (account) =>
-      KROGER_PROVIDERS.has(account.provider) && account.verification?.status === "verified",
+    (account) => isKrogerConnection(account) && account.verification?.status === "verified",
   );
 }
 

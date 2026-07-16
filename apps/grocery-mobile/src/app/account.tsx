@@ -22,18 +22,23 @@ export default function AccountScreen() {
   const router = useRouter();
   const { user } = useUser();
   const { signOut } = useClerk();
-  const { connected, refresh } = useKrogerConnection();
-  const [error, setError] = useState("");
+  const connection = useKrogerConnection();
+  const { connected, isLoading, reconnecting, error: connectionError } = connection;
+  const [pageError, setPageError] = useState("");
   const links = getLegalLinks();
 
-  const open = async (url: string, refreshAfter = false) => {
-    setError("");
+  const open = async (url: string) => {
+    setPageError("");
     try {
       await WebBrowser.openBrowserAsync(url);
-      if (refreshAfter) await refresh();
     } catch {
-      setError("That page could not be opened. Check your connection and try again.");
+      setPageError("That page could not be opened. Check your connection and try again.");
     }
+  };
+
+  const updateKrogerConnection = () => {
+    connection.clearError();
+    void (connected ? connection.reconnect() : connection.connect());
   };
 
   return (
@@ -81,8 +86,12 @@ export default function AccountScreen() {
             </Text>
           </View>
         </View>
-        <SecondaryButton onPress={() => void open(links.accountSettings, true)}>
-          Manage Kroger connection
+        <SecondaryButton disabled={isLoading} onPress={updateKrogerConnection}>
+          {reconnecting
+            ? "Reconnecting Kroger…"
+            : connected
+              ? "Reconnect Kroger"
+              : "Connect Kroger"}
         </SecondaryButton>
       </Card>
 
@@ -113,7 +122,7 @@ export default function AccountScreen() {
         />
       </Card>
 
-      {error ? <InlineError message={error} /> : null}
+      {connectionError || pageError ? <InlineError message={connectionError || pageError} /> : null}
       <SecondaryButton onPress={() => router.push("/report")}>Report a problem</SecondaryButton>
       <PrimaryButton onPress={() => void signOut()}>
         <View style={styles.signOut}>
