@@ -5,6 +5,12 @@ packages:
 
 minimumReleaseAge: 0
 
+syncInjectedDepsAfterScripts:
+  - typecheck
+  - test
+  - lint
+  - fmt
+
 overrides:
   "@modelcontextprotocol/sdk": "1.29.0"
   ws: "8.20.1"
@@ -31,6 +37,7 @@ allowBuilds:
   msw: true
   node-liblzma: true
   workerd: true
+  highlight.js: true
 
 onlyBuiltDependencies:
   - "agents-monorepo"
@@ -48,4 +55,4 @@ onlyBuiltDependencies:
   - "msw"
 
 patchedDependencies:
-  '@copilotkit/react-native': patches/@copilotkit__react-native.patch
+  "@copilotkit/react-native": patches/@copilotkit__react-native.patch
