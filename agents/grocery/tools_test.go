@@ -25,6 +25,29 @@ func TestGroceryShoppingListAndLiveCartRemainDistinct(t *testing.T) {
 	}
 }
 
+func TestGroceryProductMatchesPreserveKrogerImages(t *testing.T) {
+	state := newGroceryState(true)
+	result, err := setProductMatches(&state, ProductMatchesArgs{Items: []ProductMatch{{
+		Query: "milk", Name: "Kroger Whole Milk", UPC: "0001111041700",
+		ImageURL: "https://www.kroger.com/product/images/thumbnail/front/0001111041700",
+		Price:    3.99, Size: "1 gal",
+	}}})
+	if err != nil || !result.OK || len(state.ProductMatches) != 1 || state.ProductMatches[0].ImageURL == "" {
+		t.Fatalf("result/state/error = %#v / %#v / %v", result, state, err)
+	}
+}
+
+func TestGroceryProductMatchesRejectNonKrogerImagesTransactionally(t *testing.T) {
+	state := newGroceryState(true)
+	state.ProductMatches = []ProductMatch{{Query: "eggs", Name: "Eggs", UPC: "0001111000011"}}
+	result, err := setProductMatches(&state, ProductMatchesArgs{Items: []ProductMatch{{
+		Query: "milk", Name: "Milk", UPC: "0001111041700", ImageURL: "https://example.com/milk.jpg",
+	}}})
+	if err != nil || result.OK || result.Error == nil || len(state.ProductMatches) != 1 || state.ProductMatches[0].Query != "eggs" {
+		t.Fatalf("result/state/error = %#v / %#v / %v", result, state, err)
+	}
+}
+
 func TestGroceryRejectsInvalidCartAndPantryDataTransactionally(t *testing.T) {
 	state := newGroceryState(true)
 	badCart, _ := updateCart(&state, CartArgs{Items: []CartItem{{Name: "Milk", Quantity: 0, Price: 1, UPC: "not-a-upc"}}})

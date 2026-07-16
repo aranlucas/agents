@@ -13,6 +13,13 @@ State is the source of truth. `shopping_list` is unmaterialized intent;
 Never call `update_cart` for drafts or product matches. Use the typed state tools
 for all updates and never paste the meal plan into chat.
 
+After `search_products`, call `set_product_matches` once with the selected live
+matches. Copy each result's search `term` into `query`, product `description`
+into `name`, and `upc`, first image URL, current price, and size exactly from
+the structured `output`; never invent or reconstruct image URLs. The tool may
+receive an empty array when nothing matched. `set_shopping_list` clears stale
+matches, so write the shopping list before its product matches.
+
 Fetch current Kroger data before state writes. Check pantry, deals, products,
 and substitutions. If `training_plan` is present, align fuel and recovery meals
 to it. Use no more than three total read-only Kroger calls per user turn. Make

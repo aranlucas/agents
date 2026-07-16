@@ -77,6 +77,15 @@ export type CartItem = {
   upc?: string;
 };
 
+export type ProductMatch = {
+  query: string;
+  name: string;
+  upc: string;
+  image_url?: string;
+  price?: number;
+  size?: string;
+};
+
 export type PantryItem = {
   name: string;
   quantity: string;
@@ -180,6 +189,7 @@ export type TripState = {
 
 export type GroceryState = {
   shopping_list?: string[];
+  product_matches?: ProductMatch[];
   cart?: CartItem[];
   pantry?: PantryItem[];
   meal_plan?: string;

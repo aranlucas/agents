@@ -61,6 +61,14 @@ func groceryTools(search *bravesearch.Client, loader *common.WebLoader) ([]tool.
 		return nil, err
 	}
 
+	setProductMatchesTool, err := functiontool.New(functiontool.Config{
+		Name:        "set_product_matches",
+		Description: "Replace live Kroger product previews using selected products from the latest search_products structured output.",
+	}, SetProductMatches)
+	if err != nil {
+		return nil, err
+	}
+
 	updateCartTool, err := functiontool.New(functiontool.Config{
 		Name:        "update_cart",
 		Description: "Reflect only confirmed live Kroger cart contents in state.",
@@ -111,6 +119,7 @@ func groceryTools(search *bravesearch.Client, loader *common.WebLoader) ([]tool.
 
 	result := []tool.Tool{
 		setShoppingListTool,
+		setProductMatchesTool,
 		updateCartTool,
 		updatePantryTool,
 		setMealPlanTool,

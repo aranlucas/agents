@@ -3,6 +3,7 @@ package grocery
 import (
 	"errors"
 	"math"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -33,6 +34,10 @@ type ShoppingListArgs struct {
 	Items []string `json:"items" jsonschema:"The complete shopping list. Always provide a JSON array of strings; use an empty array when there are no items."`
 }
 
+type ProductMatchesArgs struct {
+	Items []ProductMatch `json:"items" jsonschema:"Selected live Kroger product matches from the latest search_products result. Copy query, name, upc, image_url, price, and size exactly; use an empty array when there are no matches."`
+}
+
 type CartArgs struct {
 	Items []CartItem `json:"items"`
 }
@@ -55,7 +60,50 @@ func SetShoppingList(ctx agent.Context, input ShoppingListArgs) (Result, error) 
 	if err := ctx.State().Set("shopping_list", input.Items); err != nil {
 		return Result{}, err
 	}
+	if err := ctx.State().Set("product_matches", []ProductMatch{}); err != nil {
+		return Result{}, err
+	}
 	return Result{OK: true, Count: len(input.Items)}, nil
+}
+
+func SetProductMatches(ctx agent.Context, input ProductMatchesArgs) (Result, error) {
+	state := readState(ctx.State())
+	result, err := setProductMatches(&state, input)
+	if err != nil || !result.OK {
+		return result, err
+	}
+	if err := ctx.State().Set("product_matches", state.ProductMatches); err != nil {
+		return Result{}, err
+	}
+	return result, nil
+}
+
+func setProductMatches(state *GroceryState, input ProductMatchesArgs) (Result, error) {
+	if !state.KrogerConnected {
+		return Result{}, ErrKrogerDisconnected
+	}
+	if len(input.Items) > 100 {
+		return groceryFailure("product_matches_too_large", "product matches cannot exceed 100 items"), nil
+	}
+	for _, item := range input.Items {
+		if strings.TrimSpace(item.Query) == "" || len(item.Query) > 100 || strings.TrimSpace(item.Name) == "" || len(item.Name) > 500 || !upcPattern.MatchString(item.UPC) || math.IsNaN(item.Price) || math.IsInf(item.Price, 0) || item.Price < 0 || item.Price > 1_000_000 || len(item.Size) > 100 || !validKrogerImageURL(item.ImageURL) {
+			return groceryFailure("invalid_product_match", "product match query, name, UPC, image URL, price, or size is invalid"), nil
+		}
+	}
+	state.ProductMatches = append([]ProductMatch(nil), input.Items...)
+	return Result{OK: true, Count: len(input.Items)}, nil
+}
+
+func validKrogerImageURL(raw string) bool {
+	if raw == "" {
+		return true
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Scheme != "https" || parsed.User != nil {
+		return false
+	}
+	host := strings.ToLower(parsed.Hostname())
+	return host == "kroger.com" || strings.HasSuffix(host, ".kroger.com")
 }
 
 func UpdateCart(ctx agent.Context, input CartArgs) (Result, error) {

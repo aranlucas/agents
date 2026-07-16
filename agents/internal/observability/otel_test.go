@@ -1,9 +1,11 @@
 package observability
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -196,5 +198,56 @@ func TestWrapExtractsParentAndServesRequestsUnchanged(t *testing.T) {
 		if strings.Contains(value.Value.String(), "secret") {
 			t.Fatalf("query value reached server span: %v", value)
 		}
+	}
+}
+
+func TestWrapPreservesIncrementalSSEFlushing(t *testing.T) {
+	release := make(chan struct{})
+	released := false
+	defer func() {
+		if !released {
+			close(release)
+		}
+	}()
+
+	inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.WriteHeader(http.StatusOK)
+		_, _ = fmt.Fprint(w, "data: first\n\n")
+		flusher.Flush()
+		<-release
+		_, _ = fmt.Fprint(w, "data: second\n\n")
+		flusher.Flush()
+	})
+
+	server := httptest.NewServer(Wrap("test-sse", inner))
+	defer server.Close()
+	response, err := http.Get(server.URL) //nolint:gosec // local test server
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = response.Body.Close() }()
+	if response.StatusCode != http.StatusOK || response.Header.Get("Content-Type") != "text/event-stream" {
+		t.Fatalf("status=%d content-type=%q", response.StatusCode, response.Header.Get("Content-Type"))
+	}
+
+	reader := bufio.NewReader(response.Body)
+	if line, err := reader.ReadString('\n'); err != nil || line != "data: first\n" {
+		t.Fatalf("first streamed line=%q err=%v", line, err)
+	}
+	if line, err := reader.ReadString('\n'); err != nil || line != "\n" {
+		t.Fatalf("first frame terminator=%q err=%v", line, err)
+	}
+
+	close(release)
+	released = true
+	if line, err := reader.ReadString('\n'); err != nil || line != "data: second\n" {
+		t.Fatalf("second streamed line=%q err=%v", line, err)
 	}
 }
