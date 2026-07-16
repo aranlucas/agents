@@ -14,7 +14,7 @@ export default function RootLayout() {
 
   return (
     <ClerkProvider publishableKey={publishableKey}>
-      <CopilotKitProvider runtimeUrl={runtimeUrl}>
+      <CopilotKitProvider runtimeUrl={runtimeUrl} useSingleEndpoint={false} defaultThrottleMs={0}>
         <AppTabs />
         <StatusBar style="auto" />
       </CopilotKitProvider>

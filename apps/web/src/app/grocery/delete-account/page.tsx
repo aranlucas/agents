@@ -65,7 +65,7 @@ export default function GroceryDeleteAccountPage() {
       </GroceryDocumentSection>
 
       <GroceryDocumentSection title="Important details">
-        <ul className="list-disc space-y-3 ps-6">
+        <ul className="flex list-disc flex-col gap-3 ps-6">
           <li>
             Deleting or changing the Clerk account does not currently prove that all associated app
             data has also been removed. Use the support path above for that separate request.

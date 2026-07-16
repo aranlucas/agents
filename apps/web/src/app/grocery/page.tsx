@@ -88,7 +88,7 @@ function PhonePreview() {
             <CircleUserRound aria-hidden="true" className="ms-auto size-7" />
           </div>
 
-          <div className="flex-1 space-y-4 overflow-hidden p-4">
+          <div className="flex flex-1 flex-col gap-4 overflow-hidden p-4">
             <div className="flex items-start gap-3">
               <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-success-soft text-grocery">
                 <Sparkles aria-hidden="true" className="size-4" />
@@ -151,7 +151,7 @@ function FlowArrow() {
   return (
     <div
       aria-hidden="true"
-      className="absolute top-1/2 -right-7 z-10 hidden -translate-y-1/2 lg:flex"
+      className="absolute -inset-e-7 top-1/2 z-10 hidden -translate-y-1/2 lg:flex"
     >
       <span className="flex size-12 items-center justify-center rounded-full bg-grocery text-white shadow-md">
         <ArrowRight className="size-6" />
@@ -192,13 +192,16 @@ export default function GroceryPage() {
   return (
     <main className="flex-1 bg-card">
       <section className="relative overflow-hidden border-b border-border bg-linear-to-r from-card via-card to-success-soft/40">
-        <div aria-hidden="true" className="absolute top-4 left-4 hidden space-y-6 lg:block">
+        <div aria-hidden="true" className="absolute inset-s-4 top-4 hidden flex-col gap-6 lg:flex">
           <span className="flex size-24 items-center justify-center rounded-2xl bg-success-soft/50 text-grocery/50">
             <Leaf className="size-12" />
           </span>
           <span className="block size-14 rounded-xl bg-success-soft/30" />
         </div>
-        <div aria-hidden="true" className="absolute bottom-8 left-12 hidden space-y-6 lg:block">
+        <div
+          aria-hidden="true"
+          className="absolute inset-s-12 bottom-8 hidden flex-col gap-6 lg:flex"
+        >
           <span className="flex size-24 items-center justify-center rounded-2xl bg-success-soft/50 text-grocery/50">
             <Apple className="size-12" />
           </span>
@@ -207,7 +210,10 @@ export default function GroceryPage() {
 
         <div className="mx-auto grid max-w-7xl items-center gap-14 px-5 py-14 sm:px-8 sm:py-20 lg:grid-cols-2 lg:gap-20 lg:py-10">
           <div className="mx-auto max-w-xl lg:mx-0 lg:ps-24">
-            <h1 className="text-5xl leading-none font-semibold tracking-tight sm:text-6xl lg:text-7xl">
+            <h1
+              aria-label="Plan dinner. Build the list. Keep the final say."
+              className="text-5xl leading-none font-semibold tracking-tight sm:text-6xl lg:text-7xl"
+            >
               Plan dinner.
               <br />
               Build the list.
@@ -286,7 +292,7 @@ export default function GroceryPage() {
 
             <FlowCard showArrow>
               <h3 className="font-semibold">What you have</h3>
-              <ul className="mt-6 space-y-4">
+              <ul className="mt-6 flex flex-col gap-4">
                 {pantryItems.map((item) => (
                   <PantryRow {...item} key={item.label} />
                 ))}
@@ -320,7 +326,7 @@ export default function GroceryPage() {
             <h2 className="text-4xl font-semibold tracking-tight sm:text-5xl">
               Your list stays yours.
             </h2>
-            <div className="mt-12 space-y-10">
+            <div className="mt-12 flex flex-col gap-10">
               <div className="flex gap-5">
                 <span className="flex size-16 shrink-0 items-center justify-center rounded-2xl border border-grocery/20 bg-success-soft/30 text-grocery">
                   <ShoppingCart aria-hidden="true" className="size-8" />
