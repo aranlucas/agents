@@ -41,6 +41,9 @@ func TestHandlerStreamsResumeGoldenEvents(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status = %d: %s", rr.Code, rr.Body.String())
 	}
+	if rr.Header().Get("Content-Type") != "text/event-stream" || rr.Header().Get("X-Accel-Buffering") != "no" || !rr.Flushed {
+		t.Fatalf("SSE response was not configured for incremental flushing: headers=%v flushed=%t", rr.Header(), rr.Flushed)
+	}
 	assertSSEEqual(t, rr.Body.Bytes(), readFixture(t, "resume-events.jsonl"))
 }
 

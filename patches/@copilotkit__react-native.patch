@@ -1,0 +1,60 @@
+diff --git a/dist/polyfills.cjs b/dist/polyfills.cjs
+index e0015c65977d92c9c12679135c659929ffa6babb..0698f3fc6f4d8c0e332361f148a0f4650693e5c6 100644
+--- a/dist/polyfills.cjs
++++ b/dist/polyfills.cjs
+@@ -29,7 +29,7 @@ function installStreamingFetch() {
+ 			}
+ 			const xhr = new XMLHttpRequest();
+ 			xhr.open(method, url);
+-			xhr.timeout = 6e4;
++			xhr.timeout = 0;
+ 			let headerEntries;
+ 			if (headers instanceof Headers) headerEntries = Array.from(headers.entries());
+ 			else if (Array.isArray(headers)) headerEntries = headers;
+diff --git a/dist/polyfills.mjs b/dist/polyfills.mjs
+index 720bd74b56f177f13520568381aacc0fec9e148c..f87ad8c390aafab019d436c6dc3cb9f09deed6a9 100644
+--- a/dist/polyfills.mjs
++++ b/dist/polyfills.mjs
+@@ -28,7 +28,7 @@ function installStreamingFetch() {
+ 			}
+ 			const xhr = new XMLHttpRequest();
+ 			xhr.open(method, url);
+-			xhr.timeout = 6e4;
++			xhr.timeout = 0;
+ 			let headerEntries;
+ 			if (headers instanceof Headers) headerEntries = Array.from(headers.entries());
+ 			else if (Array.isArray(headers)) headerEntries = headers;
+diff --git a/src/__tests__/streaming-fetch.test.ts b/src/__tests__/streaming-fetch.test.ts
+index f883b0c74cdcdf0a3fe9940cc53adb3ae777a931..885a9cbcfca8e608930c7488e3008e149374947b 100644
+--- a/src/__tests__/streaming-fetch.test.ts
++++ b/src/__tests__/streaming-fetch.test.ts
+@@ -221,9 +221,9 @@ describe("installStreamingFetch", () => {
+       expect(xhr.send).toHaveBeenCalledWith('{"key":"value"}');
+     });
+ 
+-    it("sets XHR timeout to 60 seconds", async () => {
++    it("does not impose a total timeout on SSE streams", async () => {
+       const { xhr } = await fetchAndCapture();
+-      expect(xhr.timeout).toBe(60_000);
++      expect(xhr.timeout).toBe(0);
+     });
+   });
+ 
+diff --git a/src/streaming-fetch.ts b/src/streaming-fetch.ts
+index df5e0beccc89d14c88a6b4e2bc32abee1332bb51..a8b8dec7a72258014c6da5dc76187a8687923c3c 100644
+--- a/src/streaming-fetch.ts
++++ b/src/streaming-fetch.ts
+@@ -107,10 +107,9 @@ export function installStreamingFetch(): void {
+       const xhr = new XMLHttpRequest();
+       xhr.open(method, url);
+ 
+-      // Default 60s timeout to prevent hanging on stalled mobile connections
+-      // (WiFi→cellular transitions, tunnels, serverless cold starts).
+-      // Callers can still use AbortSignal.timeout() for finer control.
+-      xhr.timeout = 60_000;
++      // SSE runs can legitimately outlive a conventional request timeout.
++      // Cancellation remains controlled by the HttpAgent's AbortSignal.
++      xhr.timeout = 0;
+ 
+       let headerEntries: [string, string][];
+       if (headers instanceof Headers) {

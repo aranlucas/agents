@@ -18,26 +18,28 @@ const (
 )
 
 type (
-	CartItem   = common.CartItem
-	PantryItem = common.PantryItem
+	CartItem     = common.CartItem
+	ProductMatch = common.ProductMatch
+	PantryItem   = common.PantryItem
 )
 
 type GroceryState struct {
-	ShoppingList    []string     `json:"shopping_list"`
-	MealPlan        string       `json:"meal_plan"`
-	Cart            []CartItem   `json:"cart"`
-	Pantry          []PantryItem `json:"pantry"`
-	WeeklyDeals     string       `json:"weekly_deals"`
-	WeeklyPlan      string       `json:"weekly_plan"`
-	Status          Status       `json:"status"`
-	Notes           string       `json:"notes"`
-	ReviewSummary   string       `json:"review_summary"`
-	KrogerConnected bool         `json:"kroger_connected"`
-	TrainingPlan    string       `json:"training_plan"`
+	ShoppingList    []string       `json:"shopping_list"`
+	ProductMatches  []ProductMatch `json:"product_matches"`
+	MealPlan        string         `json:"meal_plan"`
+	Cart            []CartItem     `json:"cart"`
+	Pantry          []PantryItem   `json:"pantry"`
+	WeeklyDeals     string         `json:"weekly_deals"`
+	WeeklyPlan      string         `json:"weekly_plan"`
+	Status          Status         `json:"status"`
+	Notes           string         `json:"notes"`
+	ReviewSummary   string         `json:"review_summary"`
+	KrogerConnected bool           `json:"kroger_connected"`
+	TrainingPlan    string         `json:"training_plan"`
 }
 
 func Defaults() GroceryState {
-	return GroceryState{ShoppingList: []string{}, Cart: []CartItem{}, Pantry: []PantryItem{}, Status: StatusIdle}
+	return GroceryState{ShoppingList: []string{}, ProductMatches: []ProductMatch{}, Cart: []CartItem{}, Pantry: []PantryItem{}, Status: StatusIdle}
 }
 
 func StateDefaults() map[string]any {
@@ -61,6 +63,9 @@ func readState(source session.ReadonlyState) GroceryState {
 	}
 	if state.ShoppingList == nil {
 		state.ShoppingList = []string{}
+	}
+	if state.ProductMatches == nil {
+		state.ProductMatches = []ProductMatch{}
 	}
 	if state.Cart == nil {
 		state.Cart = []CartItem{}

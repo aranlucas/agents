@@ -486,6 +486,7 @@ func enumDefinitions() []enumDef {
 func objectDefinitions() []objectDef {
 	return []objectDef{
 		object("CartItem", common.CartItem{}, required("name", "quantity"), optional("price", "upc")),
+		object("ProductMatch", common.ProductMatch{}, required("query", "name", "upc"), optional("image_url", "price", "size")),
 		object("PantryItem", common.PantryItem{}, required("name", "quantity"), optional("expires")),
 		object("FitnessActivity", fitnessdata.Activity{}, required("id", "name"), fields(
 			field("source", `"health_connect" | "healthkit" | "strava" | "strava_import"`, true),
@@ -519,7 +520,7 @@ func objectDefinitions() []objectDef {
 			field("status", "DocStatus", true), field("review_summary", "", true),
 		)),
 		object("GroceryState", grocery.GroceryState{}, stateFields(
-			field("shopping_list", "", true), field("cart", "", true), field("pantry", "", true),
+			field("shopping_list", "", true), field("product_matches", "", true), field("cart", "", true), field("pantry", "", true),
 			field("meal_plan", "", true), field("weekly_deals", "", true),
 			field("status", `"idle" | "planning" | "ready"`, true), field("notes", "", true),
 			field("review_summary", "", true), field("kroger_connected", "", true),

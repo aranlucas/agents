@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { useAuth } from "@clerk/clerk-expo";
 import { useAgent, useCopilotKit } from "@copilotkit/react-native";
+import { NativeMarkdown, type NativeMarkdownStyle } from "@agents/native-markdown";
 import type { FitnessState, GroceryState, TripState, WellnessState } from "@agents/types";
 import type { AgentId } from "@/utils/agent-config";
 import { runWithCurrentClerkToken } from "@/utils/copilotkit-auth";
@@ -120,12 +121,13 @@ export function AgentScreen<TState extends AgentState>({ config, initialState }:
             key={m.id}
             style={[styles.bubble, m.role === "user" ? styles.userBubble : styles.agentBubble]}
           >
-            <Text
-              selectable
-              style={[styles.bubbleText, m.role === "user" ? styles.userText : styles.agentText]}
-            >
-              {m.content}
-            </Text>
+            {m.role === "user" ? (
+              <Text selectable style={[styles.bubbleText, styles.userText]}>
+                {m.content}
+              </Text>
+            ) : (
+              <NativeMarkdown style={markdownStyle}>{m.content}</NativeMarkdown>
+            )}
           </View>
         ))}
         {isLoading && <ActivityIndicator style={styles.loading} />}
@@ -188,7 +190,6 @@ const styles = StyleSheet.create({
   agentBubble: { backgroundColor: "#f0f0f0", alignSelf: "flex-start" },
   bubbleText: { fontSize: 14, lineHeight: 20 },
   userText: { color: "#fff" },
-  agentText: { color: "#111" },
   loading: { margin: 12 },
   inputRow: {
     flexDirection: "row",
@@ -219,3 +220,13 @@ const styles = StyleSheet.create({
   fieldLabel: { color: "#777", fontSize: 11, fontWeight: "700", textTransform: "uppercase" },
   fieldValue: { color: "#111", fontSize: 15, lineHeight: 20 },
 });
+
+const markdownStyle: NativeMarkdownStyle = {
+  body: { color: "#111", fontSize: 14, lineHeight: 20 },
+  table: { borderColor: "#d8d8d8" },
+  thead: { backgroundColor: "#e4e4e4" },
+  tr: { borderColor: "#d8d8d8" },
+  code_inline: { backgroundColor: "#e4e4e4", borderColor: "#d8d8d8" },
+  code_block: { backgroundColor: "#e4e4e4", borderColor: "#d8d8d8" },
+  fence: { backgroundColor: "#e4e4e4", borderColor: "#d8d8d8" },
+};

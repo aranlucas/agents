@@ -7,6 +7,34 @@
         "type": "string"
       }
     },
+    "product_matches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "upc": {
+            "type": "string"
+          },
+          "image_url": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "size": {
+            "type": "string"
+          }
+        },
+        "required": ["query", "name", "upc"],
+        "additionalProperties": false
+      }
+    },
     "cart": {
       "type": "array",
       "items": {

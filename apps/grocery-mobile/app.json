@@ -1,0 +1,70 @@
+{
+  "expo": {
+    "name": "Grocery Agent",
+    "slug": "grocery-agent",
+    "owner": "aranlucas",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "grocery-agent",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#f7f8f2",
+    "icon": "./assets/icon.png",
+    "ios": {
+      "bundleIdentifier": "dev.agents.grocery",
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "dev.agents.grocery",
+      "versionCode": 1,
+      "allowBackup": false,
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": true,
+      "softwareKeyboardLayoutMode": "resize",
+      "permissions": [],
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "com.google.android.gms.permission.AD_ID"
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "monochromeImage": "./assets/monochrome-icon.png",
+        "backgroundColor": "#14532d"
+      }
+    },
+    "web": {
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 176,
+          "resizeMode": "contain",
+          "backgroundColor": "#f7f8f2"
+        }
+      ],
+      "expo-asset",
+      "expo-font",
+      "expo-web-browser",
+      ["expo-system-ui", { "android": { "edgeToEdge": true } }],
+      "expo-secure-store"
+    ],
+    "extra": {
+      "clerkPublishableKey": "",
+      "copilotKitRuntimeUrl": "https://agents-gateway.up.railway.app",
+      "marketingBaseUrl": "https://agents-lucas.vercel.app/grocery",
+      "router": {}
+    },
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

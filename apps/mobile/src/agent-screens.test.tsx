@@ -70,6 +70,10 @@ vi.mock("expo-secure-store", () => ({
 
 vi.mock("expo-status-bar", () => ({ StatusBar: () => null }));
 
+vi.mock("@agents/native-markdown", () => ({
+  NativeMarkdown: ({ children }: { children: ReactNode }) => createElement("Text", null, children),
+}));
+
 function Host({ children }: { children?: ReactNode }) {
   return <>{children}</>;
 }
