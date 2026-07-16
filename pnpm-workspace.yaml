@@ -55,4 +55,4 @@ onlyBuiltDependencies:
   - "msw"
 
 patchedDependencies:
-  "@copilotkit/react-native": patches/@copilotkit__react-native.patch
+  "@copilotkit/react-native@1.63.0": patches/@copilotkit__react-native@1.63.0.patch
