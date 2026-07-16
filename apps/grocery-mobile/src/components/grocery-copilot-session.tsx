@@ -1,18 +1,14 @@
 import { useAuth } from "@clerk/clerk-expo";
 import { CopilotKitProvider } from "@copilotkit/react-native";
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { useQuery } from "@tanstack/react-query";
+import { type ReactNode, useMemo } from "react";
+import { View } from "react-native";
 import { GroceryAgentProvider } from "@/components/grocery-agent-provider";
 import { ErrorAlert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
 import { readableError } from "@/lib/auth";
-import { colors } from "@/lib/theme";
-
-type SessionState =
-  | { status: "loading" }
-  | { status: "error"; message: string }
-  | { status: "ready"; token: string; userId: string };
 
 const EMPTY_HEADERS: Record<string, string> = {};
 
@@ -23,66 +19,47 @@ export function GroceryCopilotSession({
   runtimeUrl: string;
   children: ReactNode;
 }) {
-  const { getToken, userId } = useAuth();
-  const [session, setSession] = useState<SessionState>({ status: "loading" });
-  const getTokenRef = useRef(getToken);
-
-  useEffect(() => {
-    getTokenRef.current = getToken;
-  }, [getToken]);
-
-  const loadSession = useCallback(async (): Promise<SessionState> => {
-    try {
+  const { getToken, isLoaded, userId } = useAuth();
+  const session = useQuery({
+    queryKey: ["clerk-grocery-token", userId],
+    queryFn: async () => {
       if (!userId) throw new Error("Your session has expired. Please sign in again.");
-      const token = await getTokenRef.current();
+      const token = await getToken();
       if (!token) throw new Error("We could not refresh your session. Please sign in again.");
-      return { status: "ready", token, userId };
-    } catch (error) {
-      return { status: "error", message: readableError(error) };
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    let active = true;
-    void loadSession().then((nextSession) => {
-      if (active) setSession(nextSession);
-    });
-    return () => {
-      active = false;
-    };
-  }, [loadSession]);
-
-  const retry = () => {
-    setSession({ status: "loading" });
-    void loadSession().then(setSession);
-  };
+      return { token, userId };
+    },
+    enabled: isLoaded,
+    retry: false,
+    staleTime: 20_000,
+    refetchInterval: 30_000,
+  });
 
   const headers = useMemo<Record<string, string>>(() => {
-    if (session.status !== "ready") return EMPTY_HEADERS;
+    if (!session.data) return EMPTY_HEADERS;
     return {
-      Authorization: `Bearer ${session.token}`,
-      "x-clerk-user-id": session.userId,
+      Authorization: `Bearer ${session.data.token}`,
+      "x-clerk-user-id": session.data.userId,
     };
-  }, [session]);
+  }, [session.data]);
 
-  if (session.status === "loading") {
+  if (!isLoaded || session.isPending) {
     return (
       <View
         accessibilityLabel="Loading Grocery Agent"
         accessibilityRole="progressbar"
-        style={styles.centered}
+        className="flex-1 items-center justify-center gap-3 bg-background p-7"
       >
-        <ActivityIndicator color={colors.green} size="large" />
+        <Spinner size="lg" />
         <Text variant="muted">Loading Grocery Agent…</Text>
       </View>
     );
   }
 
-  if (session.status === "error") {
+  if (session.isError && !session.data) {
     return (
-      <View style={styles.centered}>
-        <ErrorAlert message={session.message} />
-        <Button size="lg" variant="secondary" onPress={retry}>
+      <View className="flex-1 items-center justify-center gap-3 bg-background p-7">
+        <ErrorAlert message={readableError(session.error)} />
+        <Button size="lg" variant="secondary" onPress={() => void session.refetch()}>
           Try again
         </Button>
       </View>
@@ -95,14 +72,3 @@ export function GroceryCopilotSession({
     </CopilotKitProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  centered: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    padding: 28,
-    backgroundColor: colors.background,
-  },
-});

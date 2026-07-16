@@ -1,17 +1,30 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
-import { Check, Circle, ShoppingCart, Sparkles, Tag } from "lucide-react-native";
+import { ScrollView, View } from "react-native";
+import { ShoppingCart, Sparkles, Tag } from "lucide-react-native";
 import { KrogerProductImage } from "@/components/kroger-product-image";
 import { KrogerConnectionCard } from "@/components/kroger-connection-card";
 import { useGroceryAgent } from "@/components/grocery-agent-provider";
 import { ErrorAlert } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useKrogerConnection } from "@/hooks/use-kroger-connection";
 import { cartSubtotal, pantryNames } from "@/lib/grocery-state";
-import { colors } from "@/lib/theme";
+import { cn } from "@/lib/utils";
 
 function GroceryListContent() {
   const router = useRouter();
@@ -19,6 +32,7 @@ function GroceryListContent() {
   const connection = useKrogerConnection();
   const { connected } = connection;
   const [checked, setChecked] = useState<Set<number>>(new Set());
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const list = state.shopping_list ?? [];
   const cart = state.cart ?? [];
   const matches = state.product_matches ?? [];
@@ -29,239 +43,181 @@ function GroceryListContent() {
   const pantry = pantryNames(state.pantry ?? []);
   const subtotal = cartSubtotal(cart);
 
-  const confirmAdd = () => {
-    Alert.alert(
-      "Add these items to Kroger?",
-      "This sends the displayed matches and quantities to your connected Kroger cart.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Add to cart",
-          onPress: () =>
-            void send("Add every matched item in this grocery list to my Kroger cart now."),
-        },
-      ],
-    );
-  };
-
   if (!list.length && !cart.length && !state.meal_plan) {
     return (
-      <View style={styles.empty}>
-        <Sparkles color={colors.green} size={34} />
-        <Text style={styles.emptyTitle}>Your first plan starts in chat.</Text>
-        <Text style={styles.emptyText}>
-          Ask Grocery Agent for a recipe, meal plan, or budget-friendly list.
-        </Text>
-        <Button size="lg" variant="secondary" onPress={() => router.back()}>
-          Start planning
-        </Button>
-      </View>
+      <EmptyState
+        action={{ label: "Start planning", onPress: () => router.replace("/chat") }}
+        className="flex-1 bg-background"
+        description="Ask Grocery Agent for a recipe, meal plan, or budget-friendly list."
+        icon={<Icon as={Sparkles} className="size-9 text-primary" />}
+        title="Your first plan starts in chat."
+      />
     );
   }
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={styles.content}
-    >
-      {state.meal_plan ? (
-        <Card className="gap-2.5 rounded-2xl p-4">
-          <View style={styles.sectionHeading}>
-            <Sparkles color={colors.green} size={19} />
-            <Text style={styles.sectionTitle}>Meal plan</Text>
-          </View>
-          <Text selectable style={styles.body}>
-            {state.meal_plan}
-          </Text>
-        </Card>
-      ) : null}
+    <>
+      <ScrollView
+        className="flex-1 bg-background"
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerClassName="gap-4 p-4.5 pb-9"
+      >
+        {state.meal_plan ? (
+          <Card className="gap-2.5 rounded-2xl p-4">
+            <View className="flex-row items-center gap-2">
+              <Icon as={Sparkles} className="size-5 text-primary" />
+              <Text className="text-base font-extrabold">Meal plan</Text>
+            </View>
+            <Text className="text-sm leading-5 text-muted-foreground" selectable>
+              {state.meal_plan}
+            </Text>
+          </Card>
+        ) : null}
 
-      <View style={styles.headingRow}>
-        <View>
-          <Text style={styles.title}>{list.length || cart.length} grocery items</Text>
-          <Text style={styles.meta}>
-            {checked.size} reviewed · {state.pantry?.length ?? 0} pantry items known
-          </Text>
+        <View className="flex-row items-end justify-between px-0.5">
+          <View>
+            <Text className="text-2xl font-extrabold tracking-tight">
+              {list.length || cart.length} grocery items
+            </Text>
+            <Text className="mt-1 text-xs text-muted-foreground">
+              {checked.size} reviewed · {state.pantry?.length ?? 0} pantry items known
+            </Text>
+          </View>
+          {subtotal > 0 ? (
+            <Text className="text-xl font-extrabold text-secondary">${subtotal.toFixed(2)}</Text>
+          ) : null}
         </View>
-        {subtotal > 0 ? <Text style={styles.subtotal}>${subtotal.toFixed(2)}</Text> : null}
-      </View>
 
-      <Card className="gap-0 overflow-hidden rounded-2xl p-0">
-        {(cart.length
-          ? cart.map((item) => {
-              const match =
-                (item.upc ? matchesByUPC.get(item.upc) : undefined) ??
-                matches.find((candidate) => candidate.name === item.name);
-              return {
-                name: item.name,
-                imageUrl: match?.image_url,
-                detail: `${item.quantity} · ${item.price ? `$${item.price.toFixed(2)}` : "Price at checkout"}`,
-              };
-            })
-          : list.map((name) => {
-              const match = matchesByQuery.get(name.trim().toLocaleLowerCase());
-              const matchDetails = [match?.size, match?.price ? `$${match.price.toFixed(2)}` : null]
-                .filter(Boolean)
-                .join(" · ");
-              return {
-                name: match?.name ?? name,
-                imageUrl: match?.image_url,
-                detail: pantry.has(name.trim().toLocaleLowerCase())
-                  ? "Already in pantry"
-                  : match
-                    ? matchDetails || "Kroger match"
-                    : connected
-                      ? "No live match selected"
-                      : "Suggested item",
-              };
-            })
-        ).map((item, index, array) => {
-          const isChecked = checked.has(index);
-          return (
-            <View key={`${item.name}-${index}`}>
-              <Pressable
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: isChecked }}
-                onPress={() =>
-                  setChecked((current) => {
-                    const next = new Set(current);
-                    if (next.has(index)) next.delete(index);
-                    else next.add(index);
-                    return next;
-                  })
-                }
-                style={styles.item}
-              >
-                {isChecked ? (
-                  <View style={styles.checked}>
-                    <Check color={colors.white} size={15} />
+        <Card className="gap-0 overflow-hidden rounded-2xl p-0">
+          {(cart.length
+            ? cart.map((item) => {
+                const match =
+                  (item.upc ? matchesByUPC.get(item.upc) : undefined) ??
+                  matches.find((candidate) => candidate.name === item.name);
+                return {
+                  name: item.name,
+                  imageUrl: match?.image_url,
+                  detail: `${item.quantity} · ${item.price ? `$${item.price.toFixed(2)}` : "Price at checkout"}`,
+                };
+              })
+            : list.map((name) => {
+                const match = matchesByQuery.get(name.trim().toLocaleLowerCase());
+                const matchDetails = [
+                  match?.size,
+                  match?.price ? `$${match.price.toFixed(2)}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
+                return {
+                  name: match?.name ?? name,
+                  imageUrl: match?.image_url,
+                  detail: pantry.has(name.trim().toLocaleLowerCase())
+                    ? "Already in pantry"
+                    : match
+                      ? matchDetails || "Kroger match"
+                      : connected
+                        ? "No live match selected"
+                        : "Suggested item",
+                };
+              })
+          ).map((item, index, array) => {
+            const isChecked = checked.has(index);
+            return (
+              <View key={`${item.name}-${index}`}>
+                <View className="min-h-17 flex-row items-center gap-1 px-4 py-3">
+                  <Checkbox
+                    accessibilityLabel={`${isChecked ? "Unmark" : "Mark"} ${item.name} reviewed`}
+                    checked={isChecked}
+                    onCheckedChange={() =>
+                      setChecked((current) => {
+                        const next = new Set(current);
+                        if (next.has(index)) next.delete(index);
+                        else next.add(index);
+                        return next;
+                      })
+                    }
+                  />
+                  <KrogerProductImage imageUrl={item.imageUrl} name={item.name} />
+                  <View className="flex-1 gap-0.5">
+                    <Text
+                      className={cn(
+                        "text-sm font-bold",
+                        isChecked && "text-muted-foreground line-through",
+                      )}
+                    >
+                      {item.name}
+                    </Text>
+                    <Text className="text-xs text-muted-foreground">{item.detail}</Text>
                   </View>
-                ) : (
-                  <Circle color={colors.line} size={24} />
-                )}
-                <KrogerProductImage imageUrl={item.imageUrl} name={item.name} />
-                <View style={styles.itemCopy}>
-                  <Text style={[styles.itemName, isChecked && styles.itemNameChecked]}>
-                    {item.name}
-                  </Text>
-                  <Text style={styles.itemDetail}>{item.detail}</Text>
                 </View>
-              </Pressable>
-              {index < array.length - 1 ? <View style={styles.rule} /> : null}
-            </View>
-          );
-        })}
-      </Card>
-
-      {state.weekly_deals ? (
-        <Card className="gap-2.5 rounded-2xl p-4">
-          <View style={styles.sectionHeading}>
-            <Tag color={colors.green} size={19} />
-            <Text style={styles.sectionTitle}>Weekly deals</Text>
-          </View>
-          <Text selectable style={styles.body}>
-            {state.weekly_deals}
-          </Text>
+                {index < array.length - 1 ? <View className="ml-25.5 h-px bg-border" /> : null}
+              </View>
+            );
+          })}
         </Card>
-      ) : null}
 
-      {error ? <ErrorAlert message={error} /> : null}
-      {connected ? (
-        <>
-          <Button loading={isRunning} disabled={!list.length} size="lg" onPress={confirmAdd}>
-            <View style={styles.buttonContent}>
-              <ShoppingCart color={colors.white} size={19} />
-              <Text style={styles.buttonText}>Add to Kroger cart</Text>
+        {state.weekly_deals ? (
+          <Card className="gap-2.5 rounded-2xl p-4">
+            <View className="flex-row items-center gap-2">
+              <Icon as={Tag} className="size-5 text-primary" />
+              <Text className="text-base font-extrabold">Weekly deals</Text>
             </View>
-          </Button>
-          <Text selectable style={styles.disclaimer}>
-            You are approving this cart action. Kroger prices and availability can change before
-            checkout.
-          </Text>
-        </>
-      ) : (
-        <KrogerConnectionCard connection={connection} />
-      )}
-    </ScrollView>
+            <Text className="text-sm leading-5 text-muted-foreground" selectable>
+              {state.weekly_deals}
+            </Text>
+          </Card>
+        ) : null}
+
+        {error ? <ErrorAlert message={error} /> : null}
+        {connected ? (
+          <>
+            <Button
+              loading={isRunning}
+              disabled={!list.length}
+              size="lg"
+              onPress={() => setConfirmOpen(true)}
+            >
+              <View className="flex-row items-center gap-2">
+                <Icon as={ShoppingCart} className="size-5 text-primary-foreground" />
+                <Text className="text-base font-bold text-primary-foreground">
+                  Add to Kroger cart
+                </Text>
+              </View>
+            </Button>
+            <Text className="px-3 text-center text-xs leading-4 text-muted-foreground" selectable>
+              You are approving this cart action. Kroger prices and availability can change before
+              checkout.
+            </Text>
+          </>
+        ) : (
+          <KrogerConnectionCard connection={connection} />
+        )}
+      </ScrollView>
+      <AlertDialog onOpenChange={setConfirmOpen} open={confirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Add these items to Kroger?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This sends the displayed matches and quantities to your connected Kroger cart.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onPress={() => setConfirmOpen(false)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onPress={() => {
+                setConfirmOpen(false);
+                void send("Add every matched item in this grocery list to my Kroger cart now.");
+              }}
+            >
+              Add to cart
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
 export default function GroceryListScreen() {
   return <GroceryListContent />;
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 18, gap: 16, paddingBottom: 36 },
-  empty: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 28,
-    gap: 13,
-    backgroundColor: colors.background,
-  },
-  emptyTitle: {
-    color: colors.ink,
-    fontSize: 24,
-    lineHeight: 30,
-    fontWeight: "800",
-    textAlign: "center",
-  },
-  emptyText: {
-    color: colors.muted,
-    fontSize: 15,
-    lineHeight: 22,
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  sectionHeading: { flexDirection: "row", alignItems: "center", gap: 8 },
-  sectionTitle: { color: colors.ink, fontSize: 16, lineHeight: 22, fontWeight: "800" },
-  body: { color: colors.muted, fontSize: 14, lineHeight: 21 },
-  headingRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-    paddingHorizontal: 2,
-  },
-  title: {
-    color: colors.ink,
-    fontSize: 22,
-    lineHeight: 28,
-    fontWeight: "800",
-    letterSpacing: -0.4,
-  },
-  meta: { color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 3 },
-  subtotal: { color: colors.forest, fontSize: 20, lineHeight: 26, fontWeight: "800" },
-  item: {
-    minHeight: 68,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  checked: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: colors.green,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  itemCopy: { flex: 1, gap: 2 },
-  itemName: { color: colors.ink, fontSize: 15, lineHeight: 20, fontWeight: "700" },
-  itemNameChecked: { color: colors.muted, textDecorationLine: "line-through" },
-  itemDetail: { color: colors.muted, fontSize: 12, lineHeight: 17 },
-  rule: { height: 1, backgroundColor: colors.line, marginLeft: 102 },
-  buttonContent: { flexDirection: "row", alignItems: "center", gap: 8 },
-  buttonText: { color: colors.white, fontSize: 16, lineHeight: 22, fontWeight: "700" },
-  disclaimer: {
-    color: colors.muted,
-    fontSize: 11,
-    lineHeight: 17,
-    textAlign: "center",
-    paddingHorizontal: 12,
-  },
-});

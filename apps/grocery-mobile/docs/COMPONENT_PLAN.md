@@ -9,9 +9,10 @@ dependency.
 ## Decision
 
 - Use AniUI's Uniwind variants and install only the components the app needs.
-- Keep the existing `src/components/ui/` files. They are already owned source
-  and use the same semantic tokens, aliases, `cn()`, and `cva()` conventions as
-  AniUI. Replace one only when the AniUI version provides a concrete benefit.
+- Prefer AniUI whenever its catalog has an equivalent primitive. Vendor it into
+  `src/components/ui/`, normalize it to this app's semantic tokens and Uniwind
+  conventions, then adopt it directly from feature code. Keep local components
+  for Grocery-specific behavior and gaps in the AniUI catalog.
 - Treat AniUI blocks as reference implementations, not drop-in screens. Grocery
   Agent's CopilotKit state, Expo Router navigation, Clerk auth, markdown, and
   product-tool rendering remain authoritative.
@@ -45,6 +46,12 @@ The current worktree already has the foundation AniUI expects:
   `badge`, `separator`, `skeleton`, and `icon` components.
 - Reanimated, Worklets, Gesture Handler, Lucide, `cva`, `clsx`, and
   `tailwind-merge` already installed.
+
+The app currently uses the open-source Uniwind package. Class-driven
+`animate-*`, transition, and `uw-*` entering/exiting utilities require Uniwind
+Pro; keep the few open-source animation implementations isolated inside shared
+primitives such as `Skeleton` and `TypingIndicator`. App screens and domain
+components should remain class-only and must not grow one-off animated styles.
 
 Because this foundation exists, do **not** run `aniui init` in place: it can
 rewrite Metro, theme, utility, and TypeScript configuration. Add the registry
@@ -96,9 +103,9 @@ Keep the current core files and finish replacing the bespoke exports from
 Add components in small, reviewable groups rather than importing the catalog:
 
 1. `chip`, `empty-state`, `spinner`, and `typing-indicator`.
-2. `dropdown-menu`, `alert-dialog`, and `collapsible`.
-3. `checkbox`, `switch`, `avatar`, and `progress` when their owning screens are
-   migrated.
+2. `safe-area`, `keyboard-view`, `header`, and `refresh-control`.
+3. `action-sheet`, `alert-dialog`, `collapsible`, and `checkbox`.
+4. `avatar`, then `switch` and `progress` when their owning screens are migrated.
 
 Concrete replacements:
 
@@ -108,14 +115,34 @@ Concrete replacements:
 | Empty grocery list, recipes, households, and history | `EmptyState`                                                        |
 | Agent waiting state before streamed content arrives  | `TypingIndicator`                                                   |
 | Offline/reconnecting state                           | `ConnectionBanner`, if CopilotKit exposes reliable connection state |
-| Chat overflow menu                                   | `DropdownMenu`                                                      |
+| Chat conversation actions                            | `ActionSheet`                                                       |
+| Chat composer                                        | `PromptInput`                                                       |
 | “Add this list to Kroger?” confirmation              | `AlertDialog`                                                       |
 | Reasoning and tool-call disclosure                   | `Collapsible`                                                       |
 | Shared-list item completion                          | `Checkbox`                                                          |
+| App navigation chrome                                | `Header`                                                            |
+| Signed-in account control                            | `Avatar` with initials fallback                                     |
+| Screen and composer insets                           | `SafeArea`                                                          |
+| Chat and sign-in keyboard handling                   | `KeyboardView`                                                      |
+| Pull-to-refresh screens                              | `RefreshControl`                                                    |
+| Clerk sign-in, sign-up, and verification             | AniUI `Login` block structure with existing auth handlers           |
 
 Overlay components require `PortalHost` from `@rn-primitives/portal` as the
 last child of the root `GestureHandlerRootView`. Add it in the same change as
 the first overlay, not during unrelated primitive work.
+
+Follow AniUI's
+[Android integration guide](https://www.aniui.dev/docs/android#bottom-sheet-action-sheet-select):
+
+- Wrap the entire app in `GestureHandlerRootView`; bottom sheets, action sheets,
+  selects, and gesture-driven overlays depend on it.
+- Keep Android `softwareKeyboardLayoutMode` on `resize`. The shared AniUI
+  `KeyboardView` retains its platform defaults; the chat screen explicitly uses
+  Android `height` because Expo Go does not apply the app-specific activity
+  configuration. Keep its composer `SafeArea` non-growing with `flex-none`.
+- Use `react-native-safe-area-context` for edge-to-edge safe areas.
+- Make dialogs dismiss from Android's hardware back button and test overlays
+  and the composer with the keyboard open.
 
 ## Phase 3 — Chat and commerce patterns
 
@@ -128,15 +155,18 @@ accessibility references only.
   CopilotKit messages, `NativeMarkdown`, reasoning/tool sections, frontend tool
   results, retry/cancel behavior, and history replay; AniUI's simple chat bubble
   does not replace that contract.
-- Evaluate AniUI `PromptInput` only as a composer shell. Adopt it only if it can
-  preserve the existing controlled text, submit, cancel, keyboard, safe-area,
-  and accessibility behavior without adapter-heavy code.
+- Use AniUI `PromptInput` as the controlled composer shell. Map
+  `streaming={isRunning}` and `onStop` to CopilotKit's active run so the send
+  arrow becomes a real stop control while the agent responds.
 - Do not add AniUI `StreamingText`: CopilotKit already owns token streaming and
   `NativeMarkdown` already owns incremental markdown rendering.
 - Reuse AniUI's `Price`, `Rating`, `Badge`, `Card`, `Chip`, and empty/loading
   patterns inside `GroceryStateCard` and product results where they improve the
   existing domain components. Keep `KrogerProductImage` and product actions
   custom.
+- Follow AniUI's [Login block](https://www.aniui.dev/blocks/login) for the
+  sign-in screen hierarchy while retaining Clerk's Google SSO, credential
+  sign-in, account creation, and email verification state machine.
 
 ## Phase 4 — Convergence and cleanup
 

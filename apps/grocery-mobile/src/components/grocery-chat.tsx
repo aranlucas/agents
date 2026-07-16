@@ -1,28 +1,10 @@
 import { useRouter } from "expo-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Alert,
-  Keyboard,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-} from "react-native";
-import {
-  ArrowUp,
-  BookMarked,
-  ChevronDown,
-  ChevronRight,
-  Menu,
-  MessageSquareText,
-  Plus,
-  Sparkles,
-} from "lucide-react-native";
+import { Keyboard, Pressable, ScrollView, View } from "react-native";
+import { ChevronDown, ChevronRight, Menu, Sparkles } from "lucide-react-native";
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeMarkdown, type NativeMarkdownStyle } from "@agents/native-markdown";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useResolveClassNames } from "uniwind";
 import { GroceryStateCard } from "@/components/grocery-state-card";
 import { useGroceryAgent } from "@/components/grocery-agent-provider";
 import { KrogerConnectionCard } from "@/components/kroger-connection-card";
@@ -34,25 +16,66 @@ import {
   useMessageScrollerControls,
 } from "@/components/message-scroller";
 import { ErrorAlert } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ActionSheet } from "@/components/ui/action-sheet";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Icon } from "@/components/ui/icon";
+import { KeyboardView } from "@/components/ui/keyboard-view";
+import {
+  PromptInput,
+  PromptInputButton,
+  PromptInputSend,
+  PromptInputSpacer,
+  PromptInputTextarea,
+  PromptInputToolbar,
+} from "@/components/ui/prompt-input";
+import { SafeArea } from "@/components/ui/safe-area";
 import { Text } from "@/components/ui/text";
-import { Textarea } from "@/components/ui/textarea";
+import { TypingIndicator } from "@/components/ui/typing-indicator";
 import { useKrogerConnection } from "@/hooks/use-kroger-connection";
 import type { DisplayMessage } from "@/lib/grocery-state";
 import { suggestionKey } from "@/lib/grocery-suggestions";
-import { colors } from "@/lib/theme";
+import { cn } from "@/lib/utils";
 
 export function GroceryChat() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const menuSheetRef = useRef<BottomSheetModal>(null);
   const scrollRef = useRef<MessageScrollerHandle>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [cartDialogOpen, setCartDialogOpen] = useState(false);
   const [composerVersion, setComposerVersion] = useState(0);
   const [reasoningDurations, setReasoningDurations] = useState<Record<string, number>>({});
-  const { state, messages, isRunning, error, clearError, send, startNewChat, suggestions } =
+  const { state, messages, isRunning, error, clearError, send, stop, startNewChat, suggestions } =
     useGroceryAgent();
   const connection = useKrogerConnection();
   const { connected } = connection;
+  const foreground = useResolveClassNames("text-foreground").color;
+  const primary = useResolveClassNames("text-primary").color;
+  const muted = useResolveClassNames("bg-muted").backgroundColor;
+  const border = useResolveClassNames("border-border").borderColor;
+  const markdownStyle = useMemo<NativeMarkdownStyle>(
+    () => ({
+      body: { color: foreground, fontSize: 15, lineHeight: 22 },
+      link: { color: primary },
+      blockquote: { backgroundColor: muted, borderColor: border },
+      table: { borderColor: border },
+      thead: { backgroundColor: muted },
+      tr: { borderColor: border },
+      code_inline: { backgroundColor: muted, borderColor: border },
+      code_block: { backgroundColor: muted, borderColor: border },
+      fence: { backgroundColor: muted, borderColor: border },
+    }),
+    [border, foreground, muted, primary],
+  );
   const { latestAssistant, latestReasoning, latestGroceryList, latestMessage, timelineRevision } =
     useMemo(
       () => ({
@@ -76,26 +99,16 @@ export function GroceryChat() {
     },
     [isRunning, send],
   );
-  const toggleMenu = useCallback(() => {
+  const closeMenu = useCallback(() => menuSheetRef.current?.dismiss(), []);
+  const openMenu = useCallback(() => {
     Keyboard.dismiss();
-    setMenuOpen((current) => !current);
+    menuSheetRef.current?.present();
   }, []);
 
   const openLatestList = useCallback(() => router.push("/list"), [router]);
   const confirmAddToCart = useCallback(() => {
-    Alert.alert(
-      "Add this list to Kroger?",
-      "Grocery Agent will ask Kroger to add the matched items and quantities shown in your plan.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Add to cart",
-          onPress: () =>
-            void sendMessage("Add every matched item in this grocery list to my Kroger cart now."),
-        },
-      ],
-    );
-  }, [sendMessage]);
+    setCartDialogOpen(true);
+  }, []);
   const recordReasoningDuration = useCallback((messageId: string, seconds: number) => {
     setReasoningDurations((current) =>
       current[messageId] === seconds ? current : { ...current, [messageId]: seconds },
@@ -118,6 +131,7 @@ export function GroceryChat() {
           isAdding={isRunning && isLatestGroceryList}
           isLatestGroceryList={isLatestGroceryList}
           isStreaming={isRunning && message.id === latestMessage?.id}
+          markdownStyle={markdownStyle}
           message={message}
           onAddToCart={confirmAddToCart}
           onOpenList={openLatestList}
@@ -134,6 +148,7 @@ export function GroceryChat() {
       latestGroceryList?.id,
       latestMessage?.id,
       latestReasoning?.id,
+      markdownStyle,
       openLatestList,
       reasoningDurations,
       recordReasoningDuration,
@@ -143,7 +158,7 @@ export function GroceryChat() {
   );
 
   const newChat = async () => {
-    setMenuOpen(false);
+    closeMenu();
     if (!(await startNewChat())) return;
     setComposerVersion((current) => current + 1);
     setReasoningDurations({});
@@ -151,20 +166,20 @@ export function GroceryChat() {
   };
 
   const openMenuRoute = (route: "/saved-recipes" | "/chat-history") => {
-    setMenuOpen(false);
+    closeMenu();
     router.push(route);
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.screen}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={92}
+    <KeyboardView
+      behavior={process.env.EXPO_OS === "android" ? "height" : "padding"}
+      className="bg-background"
+      offset={process.env.EXPO_OS === "ios" ? 92 : 0}
     >
       <MessageScroller ref={scrollRef} autoScroll revision={timelineRevision}>
         <MessageScrollerList
           contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={styles.messageContent}
+          contentContainerClassName="gap-3 px-4 pt-3.5 pb-4.5"
           data={messages}
           initialNumToRender={10}
           keyExtractor={(message) => message.id}
@@ -174,9 +189,9 @@ export function GroceryChat() {
           updateCellsBatchingPeriod={50}
           windowSize={7}
           ListEmptyComponent={
-            <View style={styles.welcome}>
-              <View style={styles.sparkle}>
-                <Sparkles color={colors.green} size={26} />
+            <View className="items-center gap-2.5 px-3 py-6">
+              <View className="mb-1 size-14 items-center justify-center rounded-2xl bg-muted">
+                <Icon as={Sparkles} className="size-6.5 text-primary" />
               </View>
               <Text className="text-center text-2xl font-extrabold" selectable variant="h3">
                 What are you shopping for?
@@ -185,7 +200,7 @@ export function GroceryChat() {
                 Describe a recipe, a weekly budget, or the meals you need. I’ll turn it into a
                 practical list you control.
               </Text>
-              <View style={styles.starters}>
+              <View className="mt-2.5 w-full gap-2">
                 {suggestions.map((suggestion) => (
                   <Button
                     key={suggestionKey(suggestion)}
@@ -203,7 +218,8 @@ export function GroceryChat() {
             </View>
           }
           ListFooterComponent={
-            <View style={styles.timelineFooter}>
+            <View className="gap-3">
+              {isRunning && latestMessage?.role === "user" ? <TypingIndicator /> : null}
               <KrogerConnectionCard connection={connection} />
               {error ? (
                 <Pressable onPress={clearError}>
@@ -216,132 +232,113 @@ export function GroceryChat() {
         <MessageScrollerButton />
       </MessageScroller>
 
-      <Modal
-        animationType="fade"
-        onRequestClose={() => setMenuOpen(false)}
-        transparent
-        visible={menuOpen}
-      >
-        <View accessibilityViewIsModal style={styles.menuLayer}>
-          <Pressable
-            accessibilityLabel="Close chat menu"
-            onPress={() => setMenuOpen(false)}
-            style={StyleSheet.absoluteFill}
-          />
-          <View accessibilityRole="menu" style={styles.chatMenu}>
-            <Pressable
-              accessibilityHint="Stops the current response and starts a fresh conversation"
-              accessibilityLabel="New chat"
-              accessibilityRole="menuitem"
-              onPress={() => void newChat()}
-              style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
-            >
-              <Plus color={colors.ink} size={28} strokeWidth={2} />
-              <Text style={styles.menuTitle}>New chat</Text>
-            </Pressable>
-            <View style={styles.menuDivider} />
-            <Pressable
-              accessibilityLabel="Saved recipes"
-              accessibilityRole="menuitem"
-              onPress={() => openMenuRoute("/saved-recipes")}
-              style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
-            >
-              <BookMarked color={colors.ink} size={25} strokeWidth={2} />
-              <Text style={styles.menuTitle}>Saved recipes</Text>
-            </Pressable>
-            <View style={styles.menuDivider} />
-            <Pressable
-              accessibilityLabel="Chat history"
-              accessibilityRole="menuitem"
-              onPress={() => openMenuRoute("/chat-history")}
-              style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
-            >
-              <MessageSquareText color={colors.ink} size={25} strokeWidth={2} />
-              <Text style={styles.menuTitle}>Chat history</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-
       <ChatComposer
         key={composerVersion}
-        bottomInset={insets.bottom}
         isRunning={isRunning}
-        menuOpen={menuOpen}
-        onMenuToggle={toggleMenu}
+        onOpenMenu={openMenu}
         onSend={sendMessage}
+        onStop={stop}
       />
-    </KeyboardAvoidingView>
+      <ActionSheet
+        ref={menuSheetRef}
+        actions={[
+          { label: "New chat", onPress: () => void newChat() },
+          { label: "Saved recipes", onPress: () => openMenuRoute("/saved-recipes") },
+          { label: "Chat history", onPress: () => openMenuRoute("/chat-history") },
+        ]}
+        onCancel={closeMenu}
+        title="Conversation"
+      />
+      <AlertDialog onOpenChange={setCartDialogOpen} open={cartDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Add this list to Kroger?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Grocery Agent will ask Kroger to add the matched items and quantities shown in your
+              plan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onPress={() => setCartDialogOpen(false)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onPress={() => {
+                setCartDialogOpen(false);
+                void sendMessage(
+                  "Add every matched item in this grocery list to my Kroger cart now.",
+                );
+              }}
+            >
+              Add to cart
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </KeyboardView>
   );
 }
 
 const ChatComposer = memo(function ChatComposer({
-  bottomInset,
   isRunning,
-  menuOpen,
-  onMenuToggle,
+  onOpenMenu,
   onSend,
+  onStop,
 }: {
-  bottomInset: number;
   isRunning: boolean;
-  menuOpen: boolean;
-  onMenuToggle: () => void;
+  onOpenMenu: () => void;
   onSend: (content: string) => Promise<boolean>;
+  onStop: () => void;
 }) {
   const [input, setInput] = useState("");
 
-  const submit = useCallback(async () => {
-    const composerContent = input;
-    if (!composerContent.trim() || isRunning) return;
+  const submit = useCallback(
+    async (composerContent: string) => {
+      if (!composerContent.trim() || isRunning) return;
 
-    setInput("");
-    if (!(await onSend(composerContent))) {
-      setInput((current) => current || composerContent);
-    }
-  }, [input, isRunning, onSend]);
+      setInput("");
+      if (!(await onSend(composerContent))) {
+        setInput((current) => current || composerContent);
+      }
+    },
+    [isRunning, onSend],
+  );
 
   return (
-    <View style={[styles.composerWrap, { paddingBottom: Math.max(bottomInset, 8) }]}>
-      <View style={styles.composer}>
-        <Textarea
+    <SafeArea
+      className="flex-none gap-1 border-t border-border bg-background px-3 pt-2.5"
+      edges={["bottom"]}
+    >
+      <PromptInput
+        className="min-h-24 p-2.5"
+        clearOnSend={false}
+        onChangeText={setInput}
+        onSend={(content) => void submit(content)}
+        onStop={onStop}
+        streaming={isRunning}
+        value={input}
+      >
+        <PromptInputTextarea
           accessibilityLabel="Ask Grocery Agent"
-          className="max-h-28 min-h-10 border-0 bg-transparent px-1.5 py-1.5 shadow-none"
+          className="px-1.5 py-1.5"
           maxLength={2000}
-          numberOfLines={4}
           placeholder="Ask for meals or groceries…"
-          value={input}
-          onChangeText={setInput}
         />
-        <View style={styles.composerActions}>
-          <Pressable
-            accessibilityLabel="Chat menu"
-            accessibilityRole="button"
+        <PromptInputToolbar className="min-h-10 pt-0">
+          <PromptInputButton
             accessibilityHint="Opens conversation actions"
-            accessibilityState={{ expanded: menuOpen }}
-            onPress={onMenuToggle}
-            style={({ pressed }) => [
-              styles.newChat,
-              menuOpen && styles.menuButtonOpen,
-              pressed && styles.newChatPressed,
-            ]}
+            accessibilityLabel="Chat menu"
+            className="size-10 min-h-10 min-w-10 p-0"
+            onPress={onOpenMenu}
           >
-            <Menu color={colors.ink} size={25} strokeWidth={2.5} />
-          </Pressable>
-          <Button
-            accessibilityLabel="Send"
-            className="size-10 rounded-full"
-            disabled={!input.trim() || isRunning}
-            onPress={() => void submit()}
-            size="icon"
-          >
-            <ArrowUp color={colors.white} size={20} strokeWidth={2.5} />
-          </Button>
-        </View>
-      </View>
-      <Text style={styles.finePrint}>
+            <Icon as={Menu} className="size-6 text-foreground" strokeWidth={2.5} />
+          </PromptInputButton>
+          <PromptInputSpacer />
+          <PromptInputSend className="size-10 rounded-full" />
+        </PromptInputToolbar>
+      </PromptInput>
+      <Text className="text-center text-xs leading-3.5 text-muted-foreground">
         AI can make mistakes. Review products, prices, and quantities before adding.
       </Text>
-    </View>
+    </SafeArea>
   );
 });
 
@@ -351,6 +348,7 @@ type GroceryMessageProps = {
   isAdding: boolean;
   isLatestGroceryList: boolean;
   isStreaming: boolean;
+  markdownStyle: NativeMarkdownStyle;
   message: DisplayMessage;
   onAddToCart: () => void;
   onOpenList: () => void;
@@ -365,6 +363,7 @@ const GroceryMessage = memo(
     isAdding,
     isLatestGroceryList,
     isStreaming,
+    markdownStyle,
     message,
     onAddToCart,
     onOpenList,
@@ -373,23 +372,23 @@ const GroceryMessage = memo(
   }: GroceryMessageProps) {
     return (
       <View
+        className={cn(
+          message.role === "reasoning"
+            ? "w-full gap-1 self-stretch"
+            : message.role === "user" || message.role === "assistant"
+              ? "max-w-88 rounded-3xl px-4 py-3"
+              : "w-full self-stretch",
+          message.role === "user"
+            ? "self-end rounded-br-md bg-secondary"
+            : message.role === "assistant"
+              ? "self-start rounded-bl-md border border-border bg-card"
+              : undefined,
+        )}
         collapsable={message.role !== "user"}
         nativeID={message.id}
-        style={[
-          message.role === "reasoning"
-            ? styles.reasoning
-            : message.role === "user" || message.role === "assistant"
-              ? styles.bubble
-              : styles.timelineItem,
-          message.role === "user"
-            ? styles.userBubble
-            : message.role === "assistant"
-              ? styles.agentBubble
-              : null,
-        ]}
       >
         {message.role === "user" ? (
-          <Text selectable style={[styles.bubbleText, styles.userText]}>
+          <Text className="text-sm leading-5.5 text-secondary-foreground" selectable>
             {message.content}
           </Text>
         ) : message.role === "reasoning" ? (
@@ -430,6 +429,7 @@ const GroceryMessage = memo(
     previous.isAdding === next.isAdding &&
     previous.isLatestGroceryList === next.isLatestGroceryList &&
     previous.isStreaming === next.isStreaming &&
+    previous.markdownStyle === next.markdownStyle &&
     previous.onAddToCart === next.onAddToCart &&
     previous.onOpenList === next.onOpenList &&
     previous.onReasoningDuration === next.onReasoningDuration &&
@@ -491,43 +491,42 @@ function ReasoningSection({
       : `Thought for ${formatReasoningDuration(elapsedSeconds)}`;
 
   return (
-    <View style={styles.reasoning}>
-      <Pressable
+    <Collapsible
+      className="w-full gap-1 self-stretch"
+      onOpenChange={(next) => {
+        releaseFollow();
+        setExpanded(next);
+      }}
+      open={expanded}
+    >
+      <CollapsibleTrigger
         accessibilityLabel={expanded ? "Hide reasoning" : "Show reasoning"}
-        accessibilityRole="button"
-        accessibilityState={{ expanded }}
-        onPress={() => {
-          releaseFollow();
-          setExpanded((current) => !current);
-        }}
-        style={({ pressed }) => [styles.reasoningToggle, pressed && styles.reasoningTogglePressed]}
+        className="flex-row items-center gap-1 self-start py-1 active:opacity-65"
       >
-        <View style={styles.disclosureIcon}>
+        <View className="size-4 items-center justify-center">
           {expanded ? (
-            <ChevronDown color={colors.muted} size={16} />
+            <Icon as={ChevronDown} className="size-4 text-muted-foreground" />
           ) : (
-            <ChevronRight color={colors.muted} size={16} />
+            <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
           )}
         </View>
-        <Text style={styles.reasoningLabel}>{reasoningLabel}</Text>
-      </Pressable>
-      {expanded ? (
-        <View style={styles.reasoningContent}>
-          <ScrollView
-            ref={scrollRef}
-            nestedScrollEnabled
-            onContentSizeChange={() => {
-              if (isStreaming) scrollRef.current?.scrollToEnd({ animated: false });
-            }}
-            showsVerticalScrollIndicator={false}
-          >
-            <Text selectable style={styles.reasoningText}>
-              {content}
-            </Text>
-          </ScrollView>
-        </View>
-      ) : null}
-    </View>
+        <Text className="text-xs font-medium text-muted-foreground">{reasoningLabel}</Text>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="ml-2 h-39 border-l border-border py-1 pl-3.5">
+        <ScrollView
+          ref={scrollRef}
+          nestedScrollEnabled
+          onContentSizeChange={() => {
+            if (isStreaming) scrollRef.current?.scrollToEnd({ animated: false });
+          }}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text className="text-sm leading-5 text-muted-foreground" selectable>
+            {content}
+          </Text>
+        </ScrollView>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -546,52 +545,58 @@ function ToolCallSection({
   const [expanded, setExpanded] = useState(false);
   const label = toolLabel(name);
   return (
-    <View style={styles.toolCall}>
-      <Pressable
+    <Collapsible
+      className="w-full gap-1 self-stretch"
+      onOpenChange={(next) => {
+        releaseFollow();
+        setExpanded(next);
+      }}
+      open={expanded}
+    >
+      <CollapsibleTrigger
         accessibilityLabel={`${expanded ? "Hide" : "Show"} details for ${label}`}
-        accessibilityRole="button"
-        accessibilityState={{ expanded }}
-        onPress={() => {
-          releaseFollow();
-          setExpanded((current) => !current);
-        }}
-        style={({ pressed }) => [styles.toolToggle, pressed && styles.reasoningTogglePressed]}
+        className="min-h-8 flex-row items-center gap-1 py-1 active:opacity-65"
       >
-        <View style={styles.disclosureIcon}>
+        <View className="size-4 items-center justify-center">
           {expanded ? (
-            <ChevronDown color={colors.muted} size={16} />
+            <Icon as={ChevronDown} className="size-4 text-muted-foreground" />
           ) : (
-            <ChevronRight color={colors.muted} size={16} />
+            <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
           )}
         </View>
-        <Text numberOfLines={1} style={styles.toolLabel}>
+        <Text className="shrink text-xs font-semibold" numberOfLines={1}>
           {label}
         </Text>
-        <Text style={[styles.toolStatus, status === "failed" && styles.toolStatusFailed]}>
+        <Text
+          className={cn(
+            "ml-auto text-xs text-muted-foreground",
+            status === "failed" && "text-destructive",
+          )}
+        >
           {status === "running" ? "Running" : status === "failed" ? "Failed" : "Done"}
         </Text>
-      </Pressable>
-      {expanded ? (
-        <ScrollView nestedScrollEnabled style={styles.toolDetails}>
-          <Text selectable style={styles.toolDetailsLabel}>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="ml-2 max-h-39 border-l border-border py-1 pl-3.5">
+        <ScrollView nestedScrollEnabled>
+          <Text className="mb-0.5 text-xs font-bold text-muted-foreground" selectable>
             Input
           </Text>
-          <Text selectable style={styles.toolDetailsText}>
+          <Text className="mb-2 text-xs leading-4.5 text-muted-foreground" selectable>
             {formatToolValue(parameters)}
           </Text>
           {status !== "running" ? (
             <>
-              <Text selectable style={styles.toolDetailsLabel}>
+              <Text className="mb-0.5 text-xs font-bold text-muted-foreground" selectable>
                 Result
               </Text>
-              <Text selectable style={styles.toolDetailsText}>
+              <Text className="mb-2 text-xs leading-4.5 text-muted-foreground" selectable>
                 {formatToolValue(result)}
               </Text>
             </>
           ) : null}
         </ScrollView>
-      ) : null}
-    </View>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -629,158 +634,3 @@ function formatToolValue(value: unknown): string {
     return String(value);
   }
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  messageContent: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 18, gap: 12 },
-  timelineFooter: { gap: 12 },
-  welcome: { alignItems: "center", paddingHorizontal: 12, paddingVertical: 24, gap: 10 },
-  sparkle: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.surfaceMuted,
-    marginBottom: 4,
-  },
-  starters: { width: "100%", gap: 8, marginTop: 10 },
-  bubble: {
-    maxWidth: "88%",
-    borderRadius: 20,
-    borderCurve: "continuous",
-    paddingHorizontal: 15,
-    paddingVertical: 11,
-  },
-  userBubble: { backgroundColor: colors.forest, alignSelf: "flex-end", borderBottomRightRadius: 6 },
-  agentBubble: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.line,
-    alignSelf: "flex-start",
-    borderBottomLeftRadius: 6,
-  },
-  bubbleText: { color: colors.ink, fontSize: 15, lineHeight: 22 },
-  userText: { color: colors.white },
-  timelineItem: { width: "100%", alignSelf: "stretch" },
-  reasoning: { width: "100%", alignSelf: "stretch", gap: 4 },
-  reasoningToggle: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingVertical: 3,
-  },
-  reasoningTogglePressed: { opacity: 0.65 },
-  reasoningLabel: { color: colors.muted, fontSize: 13, lineHeight: 18, fontWeight: "500" },
-  disclosureIcon: { width: 16, height: 16, alignItems: "center", justifyContent: "center" },
-  reasoningContent: {
-    height: 156,
-    borderLeftWidth: 1,
-    borderLeftColor: colors.line,
-    marginLeft: 7,
-    paddingLeft: 13,
-    paddingVertical: 3,
-  },
-  reasoningText: { color: colors.muted, fontSize: 14, lineHeight: 21 },
-  toolCall: { width: "100%", alignSelf: "stretch", gap: 4 },
-  toolToggle: {
-    minHeight: 32,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingVertical: 3,
-  },
-  toolLabel: { color: colors.ink, fontSize: 13, lineHeight: 18, fontWeight: "600", flexShrink: 1 },
-  toolStatus: { color: colors.muted, fontSize: 11, lineHeight: 16, marginLeft: "auto" },
-  toolStatusFailed: { color: colors.danger },
-  toolDetails: {
-    maxHeight: 156,
-    borderLeftWidth: 1,
-    borderLeftColor: colors.line,
-    marginLeft: 7,
-    paddingLeft: 13,
-    paddingVertical: 3,
-  },
-  toolDetailsLabel: {
-    color: colors.muted,
-    fontSize: 11,
-    lineHeight: 16,
-    fontWeight: "700",
-    marginBottom: 2,
-  },
-  toolDetailsText: { color: colors.muted, fontSize: 12, lineHeight: 18, marginBottom: 8 },
-  menuLayer: { flex: 1 },
-  chatMenu: {
-    position: "absolute",
-    left: 20,
-    bottom: 48,
-    width: 244,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 24,
-    borderCurve: "continuous",
-    paddingVertical: 5,
-    overflow: "hidden",
-    boxShadow: "0 8px 28px rgba(15, 35, 21, 0.16)",
-  },
-  menuItem: {
-    minHeight: 60,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 18,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-  },
-  menuItemPressed: { backgroundColor: colors.surfaceMuted },
-  menuDivider: { height: 1, backgroundColor: colors.line },
-  menuTitle: { color: colors.ink, fontSize: 17, lineHeight: 23, fontWeight: "500" },
-  composerWrap: {
-    backgroundColor: colors.background,
-    borderTopWidth: 1,
-    borderTopColor: colors.line,
-    paddingHorizontal: 12,
-    paddingTop: 10,
-    paddingBottom: 8,
-    gap: 5,
-  },
-  composer: {
-    minHeight: 94,
-    backgroundColor: colors.surface,
-    borderRadius: 24,
-    borderCurve: "continuous",
-    borderWidth: 1,
-    borderColor: colors.line,
-    padding: 9,
-    gap: 3,
-  },
-  composerActions: {
-    minHeight: 40,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  newChat: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  menuButtonOpen: { backgroundColor: colors.surfaceMuted },
-  newChatPressed: { backgroundColor: colors.surfaceMuted },
-  finePrint: { color: colors.muted, fontSize: 10, lineHeight: 14, textAlign: "center" },
-});
-
-const markdownStyle: NativeMarkdownStyle = {
-  body: { color: colors.ink, fontSize: 15, lineHeight: 22 },
-  link: { color: colors.green },
-  blockquote: { backgroundColor: colors.surfaceMuted, borderColor: colors.line },
-  table: { borderColor: colors.line },
-  thead: { backgroundColor: colors.surfaceMuted },
-  tr: { borderColor: colors.line },
-  code_inline: { backgroundColor: colors.surfaceMuted, borderColor: colors.line },
-  code_block: { backgroundColor: colors.surfaceMuted, borderColor: colors.line },
-  fence: { backgroundColor: colors.surfaceMuted, borderColor: colors.line },
-};

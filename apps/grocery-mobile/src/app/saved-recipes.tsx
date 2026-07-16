@@ -1,51 +1,25 @@
 import { useRouter } from "expo-router";
 import { BookMarked } from "lucide-react-native";
-import { ScrollView, StyleSheet, View } from "react-native";
-import { Button } from "@/components/ui/button";
-import { Text } from "@/components/ui/text";
-import { colors } from "@/lib/theme";
+import { ScrollView } from "react-native";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
 
 export default function SavedRecipesScreen() {
   const router = useRouter();
 
   return (
     <ScrollView
-      style={styles.screen}
+      className="flex-1 bg-background"
       contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={styles.content}
+      contentContainerClassName="flex-grow items-center justify-center gap-3 p-7"
     >
-      <View style={styles.icon}>
-        <BookMarked color={colors.green} size={32} strokeWidth={2} />
-      </View>
-      <Text className="text-center font-extrabold" selectable variant="h3">
-        No saved recipes yet
-      </Text>
-      <Text className="max-w-80 text-center leading-6 text-muted-foreground" selectable>
-        Recipes you save will stay here so you can quickly build the grocery list again.
-      </Text>
-      <Button size="lg" variant="secondary" onPress={() => router.replace("/")}>
-        Plan a recipe
-      </Button>
+      <EmptyState
+        action={{ label: "Plan a recipe", onPress: () => router.replace("/chat") }}
+        className="p-0"
+        description="Recipes you save will stay here so you can quickly build the grocery list again."
+        icon={<Icon as={BookMarked} className="size-8 text-primary" strokeWidth={2} />}
+        title="No saved recipes yet"
+      />
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: {
-    flexGrow: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 28,
-    gap: 12,
-  },
-  icon: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.surfaceMuted,
-    marginBottom: 4,
-  },
-});

@@ -1,14 +1,17 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { ChevronRight, MessageSquareText } from "lucide-react-native";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from "react-native";
+import { FlatList, Pressable, View } from "react-native";
 import { useGroceryAgent } from "@/components/grocery-agent-provider";
 import { ErrorAlert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
-import { colors } from "@/lib/theme";
+import { cn } from "@/lib/utils";
 
 function activityLabel(value: string): string {
   const date = new Date(value);
@@ -40,8 +43,7 @@ export default function ChatHistoryScreen() {
   const [opening, setOpening] = useState("");
 
   const returnToChat = () => {
-    if (router.canGoBack()) router.back();
-    else router.replace("/");
+    router.dismissTo("/chat");
   };
 
   useFocusEffect(
@@ -62,7 +64,7 @@ export default function ChatHistoryScreen() {
       <View
         accessibilityLabel="Loading your chats"
         accessibilityRole="progressbar"
-        style={styles.loadingList}
+        className="flex-1 gap-3 bg-background p-4.5"
       >
         {[0, 1, 2].map((index) => (
           <Skeleton className="h-20 w-full rounded-2xl" key={index} />
@@ -73,7 +75,7 @@ export default function ChatHistoryScreen() {
 
   if (threadsError && threads.length === 0) {
     return (
-      <View style={styles.centered}>
+      <View className="flex-1 items-center justify-center gap-3 bg-background p-7">
         <ErrorAlert message="Your chat history could not be loaded." />
         <Button size="lg" variant="secondary" onPress={refetchThreads}>
           Try again
@@ -84,9 +86,12 @@ export default function ChatHistoryScreen() {
 
   return (
     <FlatList
-      style={styles.screen}
+      className="flex-1 bg-background"
       contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={[styles.content, threads.length === 0 && styles.emptyContent]}
+      contentContainerClassName={cn(
+        "m-4.5 overflow-hidden rounded-3xl border border-border bg-card",
+        threads.length === 0 && "flex-grow border-0 bg-background",
+      )}
       data={threads}
       keyExtractor={(thread) => thread.id}
       onEndReached={() => {
@@ -103,53 +108,45 @@ export default function ChatHistoryScreen() {
             accessibilityLabel={`Open ${thread.name || "grocery chat"}`}
             accessibilityRole="button"
             accessibilityState={{ disabled: opening !== "", selected }}
+            className={cn(
+              "min-h-19 flex-row items-center gap-3 px-4 py-3 active:bg-muted",
+              selected && "bg-muted",
+            )}
             disabled={opening !== ""}
             onPress={() => void resume(thread.id)}
-            style={({ pressed }) => [
-              styles.row,
-              selected && styles.rowSelected,
-              pressed && styles.rowPressed,
-            ]}
           >
-            <View style={styles.rowIcon}>
+            <View className="size-11 items-center justify-center rounded-2xl bg-muted">
               {opening === thread.id ? (
-                <ActivityIndicator color={colors.green} />
+                <Spinner accessibilityLabel="Opening chat" size="sm" />
               ) : (
-                <MessageSquareText color={colors.forest} size={21} />
+                <Icon as={MessageSquareText} className="size-5 text-secondary" />
               )}
             </View>
-            <View style={styles.rowCopy}>
-              <Text numberOfLines={1} style={styles.rowTitle}>
+            <View className="flex-1 gap-0.5">
+              <Text className="text-sm font-bold" numberOfLines={1}>
                 {thread.name || "Grocery chat"}
               </Text>
-              <Text style={styles.rowMeta}>
+              <Text variant="muted">
                 {activityLabel(thread.lastRunAt || thread.updatedAt)}
                 {selected ? " · Current" : ""}
               </Text>
             </View>
-            <ChevronRight color={colors.muted} size={20} />
+            <Icon as={ChevronRight} className="size-5 text-muted-foreground" />
           </Pressable>
         );
       }}
       ListEmptyComponent={
-        <View style={styles.empty}>
-          <View style={styles.emptyIcon}>
-            <MessageSquareText color={colors.green} size={31} />
-          </View>
-          <Text selectable style={styles.emptyTitle}>
-            No previous chats
-          </Text>
-          <Text selectable style={styles.emptyText}>
-            Your Grocery Agent conversations will appear here after you send a message.
-          </Text>
-          <Button size="lg" variant="secondary" onPress={returnToChat}>
-            Start a chat
-          </Button>
-        </View>
+        <EmptyState
+          action={{ label: "Start a chat", onPress: returnToChat }}
+          className="flex-1 p-2"
+          description="Your Grocery Agent conversations will appear here after you send a message."
+          icon={<Icon as={MessageSquareText} className="size-8 text-primary" />}
+          title="No previous chats"
+        />
       }
       ListFooterComponent={
         replayError || threadsError || fetchMoreThreadsError || isFetchingMoreThreads ? (
-          <View style={styles.footer}>
+          <View className="items-center gap-2.5 p-3.5">
             {replayError ? <ErrorAlert message={replayError} /> : null}
             {threadsError && threads.length > 0 ? (
               <ErrorAlert message="Your chats could not be refreshed." />
@@ -162,79 +159,12 @@ export default function ChatHistoryScreen() {
                 </Button>
               </>
             ) : null}
-            {isFetchingMoreThreads ? <ActivityIndicator color={colors.green} /> : null}
+            {isFetchingMoreThreads ? (
+              <Spinner accessibilityLabel="Loading more chats" size="sm" />
+            ) : null}
           </View>
         ) : null
       }
     />
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: {
-    margin: 18,
-    overflow: "hidden",
-    borderRadius: 22,
-    borderCurve: "continuous",
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
-  },
-  emptyContent: { flexGrow: 1, borderWidth: 0, backgroundColor: colors.background },
-  centered: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    padding: 28,
-    backgroundColor: colors.background,
-  },
-  loadingList: {
-    flex: 1,
-    gap: 12,
-    padding: 18,
-    backgroundColor: colors.background,
-  },
-  row: {
-    minHeight: 76,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-  },
-  rowSelected: { backgroundColor: colors.surfaceMuted },
-  rowPressed: { backgroundColor: colors.surfaceMuted },
-  rowIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.surfaceMuted,
-  },
-  rowCopy: { flex: 1, gap: 2 },
-  rowTitle: { color: colors.ink, fontSize: 15, lineHeight: 21, fontWeight: "700" },
-  rowMeta: { color: colors.muted, fontSize: 12, lineHeight: 17 },
-  empty: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 10 },
-  emptyIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.surfaceMuted,
-    marginBottom: 4,
-  },
-  emptyTitle: { color: colors.ink, fontSize: 24, lineHeight: 30, fontWeight: "800" },
-  emptyText: {
-    maxWidth: 330,
-    color: colors.muted,
-    fontSize: 15,
-    lineHeight: 22,
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  footer: { alignItems: "center", gap: 10, padding: 14 },
-});

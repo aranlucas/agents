@@ -1,8 +1,8 @@
 import { useUser } from "@clerk/clerk-expo";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { AppState } from "react-native";
+import { useCallback } from "react";
 import { readableError } from "@/lib/auth";
 import {
   hasKrogerConnection,
@@ -16,38 +16,22 @@ type ConnectionAction = "connect" | "reconnect";
 
 export function useKrogerConnection() {
   const { isLoaded, user } = useUser();
-  const [refreshing, setRefreshing] = useState(false);
-  const [action, setAction] = useState<ConnectionAction | null>(null);
-  const [error, setError] = useState("");
-  const initialRefresh = useRef(false);
-  const refreshingRef = useRef(false);
+  const queryClient = useQueryClient();
+  const queryKey = ["clerk-user", "kroger-connection", user?.id] as const;
 
-  const refresh = useCallback(async () => {
-    if (!user || refreshingRef.current) return;
-    refreshingRef.current = true;
-    setRefreshing(true);
-    try {
-      await user.reload();
-    } finally {
-      refreshingRef.current = false;
-      setRefreshing(false);
-    }
-  }, [user]);
+  const connection = useQuery({
+    queryKey,
+    queryFn: async () => {
+      if (!user) throw new Error("Your session has expired. Please sign in again.");
+      return user.reload();
+    },
+    enabled: isLoaded && Boolean(user),
+    initialData: user ?? undefined,
+    refetchOnMount: "always",
+    retry: false,
+  });
 
-  useEffect(() => {
-    if (!user || initialRefresh.current) return;
-    initialRefresh.current = true;
-    void refresh();
-  }, [refresh, user]);
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") void refresh();
-    });
-    return () => subscription.remove();
-  }, [refresh]);
-
-  const accounts = user?.externalAccounts ?? [];
+  const accounts = connection.data?.externalAccounts ?? user?.externalAccounts ?? [];
   const completeAuthorization = useCallback(
     async (externalAccount: ClerkExternalAccount, redirectUrl: string) => {
       const verificationUrl = externalAccount.verification?.externalVerificationRedirectURL;
@@ -67,41 +51,52 @@ export function useKrogerConnection() {
     },
     [user],
   );
+  const authorization = useMutation({
+    mutationFn: async (nextAction: ConnectionAction) => {
+      if (!user) throw new Error("Your session has expired. Please sign in again.");
+      const redirectUrl = Linking.createURL("kroger-callback");
+      const currentAccount = user.externalAccounts.find(isKrogerConnection);
+      const externalAccount =
+        nextAction === "reconnect" && currentAccount
+          ? await currentAccount.reauthorize({ redirectUrl })
+          : await user.createExternalAccount({
+              strategy: "oauth_custom_shopping",
+              redirectUrl,
+            });
+      return await completeAuthorization(externalAccount, redirectUrl);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+  });
+  const { isPending: isAuthorizing, mutateAsync, reset: resetAuthorization } = authorization;
+  const { isFetching, refetch } = connection;
   const authorize = useCallback(
     async (nextAction: ConnectionAction) => {
-      if (!user || action) return false;
-      setAction(nextAction);
-      setError("");
+      if (isAuthorizing) return false;
       try {
-        const redirectUrl = Linking.createURL("kroger-callback");
-        const currentAccount = user.externalAccounts.find(isKrogerConnection);
-        const externalAccount =
-          nextAction === "reconnect" && currentAccount
-            ? await currentAccount.reauthorize({ redirectUrl })
-            : await user.createExternalAccount({
-                strategy: "oauth_custom_shopping",
-                redirectUrl,
-              });
-        return await completeAuthorization(externalAccount, redirectUrl);
-      } catch (caught) {
-        setError(readableError(caught));
+        return await mutateAsync(nextAction);
+      } catch {
         return false;
-      } finally {
-        setAction(null);
       }
     },
-    [action, completeAuthorization, user],
+    [isAuthorizing, mutateAsync],
   );
   const connect = useCallback(() => authorize("connect"), [authorize]);
   const reconnect = useCallback(() => authorize("reconnect"), [authorize]);
+  const refresh = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
 
   return {
     connected: hasKrogerConnection(accounts),
-    isLoading: !isLoaded || !user || refreshing || action !== null,
-    connecting: action !== null,
-    reconnecting: action === "reconnect",
-    error,
-    clearError: () => setError(""),
+    isLoading: !isLoaded || !user || isFetching || isAuthorizing,
+    connecting: isAuthorizing,
+    reconnecting: isAuthorizing && authorization.variables === "reconnect",
+    error: authorization.error
+      ? readableError(authorization.error)
+      : connection.error
+        ? readableError(connection.error)
+        : "",
+    clearError: resetAuthorization,
     connect,
     reconnect,
     refresh,

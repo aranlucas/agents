@@ -2,24 +2,23 @@ import { useSignIn, useSignUp, useSSO } from "@clerk/clerk-expo";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ScrollView, View } from "react-native";
 import { BrandMark } from "@/components/ui";
 import { ErrorAlert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { KeyboardView } from "@/components/ui/keyboard-view";
 import { Label } from "@/components/ui/label";
+import { SafeArea } from "@/components/ui/safe-area";
 import { Separator } from "@/components/ui/separator";
 import { Text } from "@/components/ui/text";
 import { readableError } from "@/lib/auth";
-import { colors } from "@/lib/theme";
 
 WebBrowser.maybeCompleteAuthSession();
 
 type Mode = "sign-in" | "sign-up" | "verify";
 
 export function SignInScreen() {
-  const insets = useSafeAreaInsets();
   const { isLoaded: signInLoaded, signIn, setActive: setSignInActive } = useSignIn();
   const { isLoaded: signUpLoaded, signUp, setActive: setSignUpActive } = useSignUp();
   const { startSSOFlow } = useSSO();
@@ -87,121 +86,132 @@ export function SignInScreen() {
     mode === "verify" ? code.trim().length > 0 : email.trim().length > 0 && password.length >= 8;
 
   return (
-    <KeyboardAvoidingView
-      style={styles.screen}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={[
-          styles.content,
-          { paddingTop: insets.top + 34, paddingBottom: insets.bottom + 28 },
-        ]}
-      >
-        <View style={styles.hero}>
-          <BrandMark size={58} />
-          <View style={styles.heroCopy}>
-            <Text className="tracking-wider text-primary" variant="small">
-              GROCERY AGENT
-            </Text>
-            <Text className="text-left text-3xl font-extrabold" selectable variant="h1">
-              Dinner plans, done.
-            </Text>
-            <Text className="leading-6 text-muted-foreground" selectable>
-              Turn a recipe or idea into a practical grocery list. Connect Kroger only when you want
-              live products and cart actions.
-            </Text>
+    <SafeArea>
+      <KeyboardView>
+        <ScrollView
+          contentInsetAdjustmentBehavior="automatic"
+          contentContainerClassName="flex-grow justify-center px-6 py-8"
+          keyboardShouldPersistTaps="handled"
+        >
+          <View className="mb-8 items-center gap-4">
+            <BrandMark size="xl" />
+            <View className="items-center gap-1">
+              <Text className="text-center text-3xl font-bold" selectable variant="h1">
+                {mode === "sign-in"
+                  ? "Welcome back"
+                  : mode === "sign-up"
+                    ? "Create your account"
+                    : "Check your inbox"}
+              </Text>
+              <Text className="text-center leading-6 text-muted-foreground" selectable>
+                {mode === "sign-in"
+                  ? "Sign in to continue planning your groceries."
+                  : mode === "sign-up"
+                    ? "Create an account to save plans and grocery lists."
+                    : `Enter the verification code sent to ${email}.`}
+              </Text>
+            </View>
           </View>
-        </View>
 
-        {mode !== "verify" && (
-          <Button disabled={busy} size="lg" variant="secondary" onPress={authenticateWithGoogle}>
-            Continue with Google
-          </Button>
-        )}
+          <View className="gap-4">
+            {mode !== "verify" ? (
+              <>
+                <View className="gap-1.5">
+                  <Label>Email address</Label>
+                  <Input
+                    accessibilityLabel="Email address"
+                    autoCapitalize="none"
+                    autoComplete="email"
+                    className="min-h-12 rounded-xl bg-card px-4 text-base"
+                    keyboardType="email-address"
+                    placeholder="name@example.com"
+                    value={email}
+                    onChangeText={setEmail}
+                  />
+                </View>
+                <View className="gap-1.5">
+                  <Label>Password</Label>
+                  <Input
+                    accessibilityLabel="Password"
+                    autoCapitalize="none"
+                    autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
+                    className="min-h-12 rounded-xl bg-card px-4 text-base"
+                    placeholder="At least 8 characters"
+                    secureTextEntry
+                    value={password}
+                    onChangeText={setPassword}
+                  />
+                </View>
+              </>
+            ) : (
+              <View className="gap-1.5">
+                <Label>Verification code</Label>
+                <Input
+                  accessibilityLabel="Verification code"
+                  autoComplete="one-time-code"
+                  className="min-h-12 rounded-xl bg-card px-4 text-base"
+                  keyboardType="number-pad"
+                  placeholder="123456"
+                  value={code}
+                  onChangeText={setCode}
+                />
+              </View>
+            )}
 
-        {mode !== "verify" && (
-          <View style={styles.divider}>
-            <Separator className="flex-1" />
-            <Text variant="muted">or use email</Text>
-            <Separator className="flex-1" />
+            {error ? <ErrorAlert message={error} /> : null}
+            <Button
+              className="mt-2 w-full"
+              disabled={!isReady}
+              loading={busy}
+              size="lg"
+              onPress={submitCredentials}
+            >
+              {mode === "sign-in"
+                ? "Sign in"
+                : mode === "sign-up"
+                  ? "Create account"
+                  : "Verify email"}
+            </Button>
           </View>
-        )}
 
-        <View style={styles.form}>
           {mode !== "verify" ? (
             <>
-              <Label>Email</Label>
-              <Input
-                accessibilityLabel="Email"
-                autoCapitalize="none"
-                autoComplete="email"
-                className="min-h-13 rounded-2xl bg-card px-4 text-base"
-                keyboardType="email-address"
-                placeholder="you@example.com"
-                value={email}
-                onChangeText={setEmail}
-              />
-              <Label>Password</Label>
-              <Input
-                accessibilityLabel="Password"
-                autoCapitalize="none"
-                autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
-                className="min-h-13 rounded-2xl bg-card px-4 text-base"
-                placeholder="At least 8 characters"
-                secureTextEntry
-                value={password}
-                onChangeText={setPassword}
-              />
+              <View className="my-6 flex-row items-center gap-3">
+                <Separator className="flex-1" />
+                <Text className="text-muted-foreground" variant="small">
+                  or continue with
+                </Text>
+                <Separator className="flex-1" />
+              </View>
+              <Button
+                className="w-full"
+                disabled={busy}
+                size="lg"
+                variant="outline"
+                onPress={authenticateWithGoogle}
+              >
+                Continue with Google
+              </Button>
             </>
-          ) : (
-            <>
-              <Text className="mb-1.5 leading-6 text-muted-foreground" selectable>
-                We sent a verification code to {email}.
-              </Text>
-              <Label>Verification code</Label>
-              <Input
-                accessibilityLabel="Verification code"
-                autoComplete="one-time-code"
-                className="min-h-13 rounded-2xl bg-card px-4 text-base"
-                keyboardType="number-pad"
-                placeholder="123456"
-                value={code}
-                onChangeText={setCode}
-              />
-            </>
-          )}
+          ) : null}
 
-          {error ? <ErrorAlert message={error} /> : null}
-          <Button disabled={!isReady} loading={busy} size="lg" onPress={submitCredentials}>
-            {mode === "sign-in"
-              ? "Sign in"
-              : mode === "sign-up"
-                ? "Create account"
-                : "Verify email"}
-          </Button>
-        </View>
-
-        <Button
-          className="self-center"
-          onPress={() => {
-            setError("");
-            setMode(mode === "sign-in" ? "sign-up" : "sign-in");
-          }}
-          variant="link"
-        >
-          {mode === "sign-in" ? "New here? Create an account" : "Already have an account? Sign in"}
-        </Button>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          <View className="mt-8 flex-row items-center justify-center gap-1">
+            <Text className="text-muted-foreground" variant="small">
+              {mode === "sign-in" ? "Don’t have an account?" : "Already have an account?"}
+            </Text>
+            <Button
+              className="h-auto p-0"
+              onPress={() => {
+                setError("");
+                setMode(mode === "sign-in" ? "sign-up" : "sign-in");
+              }}
+              variant="link"
+            >
+              {mode === "sign-in" ? "Sign up" : "Sign in"}
+            </Button>
+          </View>
+        </ScrollView>
+      </KeyboardView>
+    </SafeArea>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { flexGrow: 1, justifyContent: "center", paddingHorizontal: 24, gap: 18 },
-  hero: { gap: 22, marginBottom: 10 },
-  heroCopy: { gap: 8 },
-  divider: { flexDirection: "row", alignItems: "center", gap: 12 },
-  form: { gap: 10 },
-});

@@ -1,18 +1,21 @@
 import { useAuth } from "@clerk/clerk-expo";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Check, Copy, Home, Users } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
-import { AppState, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { ErrorAlert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
+import { RefreshControl } from "@/components/ui/refresh-control";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { getRuntimeUrl } from "@/lib/config";
-import { createHouseholdApi, type Household, type HouseholdInvite } from "@/lib/household-api";
-import { colors } from "@/lib/theme";
+import { createHouseholdApi, type HouseholdInvite } from "@/lib/household-api";
 
 export default function HouseholdsScreen() {
   const router = useRouter();
@@ -21,100 +24,82 @@ export default function HouseholdsScreen() {
     () => createHouseholdApi({ baseUrl: getRuntimeUrl(), getToken, userId }),
     [getToken, userId],
   );
-  const [households, setHouseholds] = useState<Household[]>([]);
+  const queryClient = useQueryClient();
+  const queryKey = ["grocery-households", userId] as const;
   const [name, setName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [createdInvites, setCreatedInvites] = useState<Record<string, HouseholdInvite>>({});
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [busy, setBusy] = useState("");
-  const [error, setError] = useState("");
 
-  const load = useCallback(
-    async (showRefresh = false) => {
-      if (showRefresh) setRefreshing(true);
-      try {
-        setHouseholds(await api.listHouseholds());
-        setError("");
-      } catch (reason) {
-        setError(reason instanceof Error ? reason.message : "Households could not be loaded.");
-      } finally {
-        setLoading(false);
-        setRefreshing(false);
-      }
-    },
-    [api],
-  );
+  const householdsQuery = useQuery({
+    queryKey,
+    queryFn: api.listHouseholds,
+    enabled: Boolean(userId),
+    refetchInterval: 30_000,
+  });
+  const { refetch } = householdsQuery;
 
   useFocusEffect(
     useCallback(() => {
-      void load();
-      const interval = setInterval(() => {
-        if (AppState.currentState === "active") void load();
-      }, 30_000);
-      return () => clearInterval(interval);
-    }, [load]),
+      void refetch();
+    }, [refetch]),
   );
 
-  const create = async () => {
-    if (!name.trim()) return;
-    setBusy("create");
-    setError("");
-    try {
-      await api.createHousehold(name.trim());
+  const createHousehold = useMutation({
+    mutationFn: api.createHousehold,
+    onSuccess: async () => {
       setName("");
-      await load();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "The household could not be created.");
-    } finally {
-      setBusy("");
-    }
-  };
+      await queryClient.invalidateQueries({ queryKey });
+    },
+  });
 
-  const join = async () => {
-    const code = inviteCode.trim().toUpperCase();
-    if (!code) return;
-    setBusy("join");
-    setError("");
-    try {
-      await api.joinHousehold(code);
+  const joinHousehold = useMutation({
+    mutationFn: api.joinHousehold,
+    onSuccess: async () => {
       setInviteCode("");
-      await load();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "That invite could not be used.");
-    } finally {
-      setBusy("");
-    }
-  };
+      await queryClient.invalidateQueries({ queryKey });
+    },
+  });
 
-  const createInvite = async (householdId: string) => {
-    setBusy(`invite:${householdId}`);
-    setError("");
-    try {
-      const invite = await api.createInvite(householdId);
+  const createInvite = useMutation({
+    mutationFn: (householdId: string) => api.createInvite(householdId),
+    onSuccess: (invite, householdId) => {
       setCreatedInvites((current) => ({ ...current, [householdId]: invite }));
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "An invite could not be created.");
-    } finally {
-      setBusy("");
-    }
+    },
+  });
+
+  const refresh = async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
   };
+  const households = householdsQuery.data ?? [];
+  const mutationError = createHousehold.error ?? joinHousehold.error ?? createInvite.error;
+  const error = householdsQuery.error ?? mutationError;
+  const errorMessage = error instanceof Error ? error.message : error ? "The request failed." : "";
+  const busy = createHousehold.isPending
+    ? "create"
+    : joinHousehold.isPending
+      ? "join"
+      : createInvite.isPending
+        ? `invite:${createInvite.variables}`
+        : "";
 
   return (
     <ScrollView
-      style={styles.screen}
+      className="flex-1 bg-background"
       contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} />}
+      contentContainerClassName="gap-4 p-4.5 pb-10"
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}
     >
       <Card className="gap-3 rounded-2xl p-4">
-        <View style={styles.cardHeading}>
-          <View style={styles.icon}>
-            <Home color={colors.green} size={21} />
+        <View className="flex-row items-center gap-3">
+          <View className="size-11 items-center justify-center rounded-2xl bg-muted">
+            <Icon as={Home} className="size-5 text-primary" />
           </View>
-          <View style={styles.headingCopy}>
-            <Text style={styles.cardTitle}>Create a household</Text>
-            <Text style={styles.cardBody}>
+          <View className="flex-1 gap-0.5">
+            <Text className="text-base font-extrabold">Create a household</Text>
+            <Text className="text-xs text-muted-foreground">
               Keep one grocery list in sync with the people at home.
             </Text>
           </View>
@@ -124,7 +109,7 @@ export default function HouseholdsScreen() {
           autoCapitalize="words"
           className="min-h-12 rounded-2xl bg-card px-4 text-base"
           onChangeText={setName}
-          onSubmitEditing={() => void create()}
+          onSubmitEditing={() => createHousehold.mutate(name.trim())}
           placeholder="Household name"
           returnKeyType="done"
           value={name}
@@ -133,20 +118,20 @@ export default function HouseholdsScreen() {
           disabled={!name.trim()}
           loading={busy === "create"}
           size="lg"
-          onPress={() => void create()}
+          onPress={() => createHousehold.mutate(name.trim())}
         >
           Create household
         </Button>
       </Card>
 
       <Card className="gap-3 rounded-2xl p-4">
-        <View style={styles.cardHeading}>
-          <View style={styles.icon}>
-            <Users color={colors.green} size={21} />
+        <View className="flex-row items-center gap-3">
+          <View className="size-11 items-center justify-center rounded-2xl bg-muted">
+            <Icon as={Users} className="size-5 text-primary" />
           </View>
-          <View style={styles.headingCopy}>
-            <Text style={styles.cardTitle}>Join with an invite</Text>
-            <Text style={styles.cardBody}>
+          <View className="flex-1 gap-0.5">
+            <Text className="text-base font-extrabold">Join with an invite</Text>
+            <Text className="text-xs text-muted-foreground">
               Paste the eight-character code from a household owner.
             </Text>
           </View>
@@ -158,7 +143,7 @@ export default function HouseholdsScreen() {
           className="min-h-12 rounded-2xl bg-card px-4 text-base font-extrabold tracking-widest"
           maxLength={8}
           onChangeText={setInviteCode}
-          onSubmitEditing={() => void join()}
+          onSubmitEditing={() => joinHousehold.mutate(inviteCode.trim().toUpperCase())}
           placeholder="ABCDEFGH"
           returnKeyType="done"
           value={inviteCode}
@@ -168,16 +153,16 @@ export default function HouseholdsScreen() {
           loading={busy === "join"}
           size="lg"
           variant="secondary"
-          onPress={() => void join()}
+          onPress={() => joinHousehold.mutate(inviteCode.trim().toUpperCase())}
         >
           {busy === "join" ? "Joining…" : "Join household"}
         </Button>
       </Card>
 
-      {error ? <ErrorAlert message={error} /> : null}
+      {errorMessage ? <ErrorAlert message={errorMessage} /> : null}
 
-      <View style={styles.sectionHeading}>
-        <Text style={styles.sectionTitle}>Your households</Text>
+      <View className="flex-row items-center justify-between px-1 pt-1">
+        <Text className="text-xl font-extrabold">Your households</Text>
         <Badge variant="outline">
           <Text className="text-secondary tabular-nums" variant="small">
             {households.length}
@@ -185,32 +170,37 @@ export default function HouseholdsScreen() {
         </Badge>
       </View>
 
-      {loading ? (
+      {householdsQuery.isPending ? (
         <View
           accessibilityLabel="Loading households"
           accessibilityRole="progressbar"
-          style={styles.loadingCards}
+          className="gap-3"
         >
           <Skeleton className="h-28 w-full rounded-2xl" />
           <Skeleton className="h-28 w-full rounded-2xl" />
         </View>
       ) : households.length === 0 ? (
-        <Card className="items-center gap-2 rounded-2xl p-6">
-          <Users color={colors.green} size={28} />
-          <Text style={styles.emptyTitle}>No shared households yet</Text>
-          <Text style={styles.emptyText}>Create one above or join with an invite code.</Text>
+        <Card className="rounded-2xl p-6">
+          <EmptyState
+            className="p-0"
+            description="Create one above or join with an invite code."
+            icon={<Icon as={Users} className="size-7 text-primary" />}
+            title="No shared households yet"
+          />
         </Card>
       ) : (
         households.map((household) => {
           const invite = createdInvites[household.id];
           return (
             <Card className="gap-3.5 rounded-2xl p-4" key={household.id}>
-              <View style={styles.householdRow}>
-                <View style={styles.householdCopy}>
-                  <Text selectable style={styles.householdName}>
+              <View className="flex-row items-center gap-3">
+                <View className="flex-1 gap-0.5">
+                  <Text className="text-lg font-extrabold" selectable>
                     {household.name}
                   </Text>
-                  <Text style={styles.role}>{household.role === "owner" ? "Owner" : "Member"}</Text>
+                  <Text className="text-xs text-muted-foreground capitalize">
+                    {household.role === "owner" ? "Owner" : "Member"}
+                  </Text>
                 </View>
                 <Button
                   className="min-h-10 rounded-xl px-3"
@@ -223,20 +213,23 @@ export default function HouseholdsScreen() {
                   size="sm"
                 >
                   <Text className="text-sm font-extrabold text-primary-foreground">Open list</Text>
-                  <Check color={colors.white} size={17} />
+                  <Icon as={Check} className="size-4 text-primary-foreground" />
                 </Button>
               </View>
               {household.role === "owner" ? (
                 invite ? (
-                  <View style={styles.inviteResult}>
-                    <Copy color={colors.green} size={18} />
-                    <View style={styles.inviteCopy}>
-                      <Text style={styles.inviteLabel}>Invite code</Text>
-                      <Text selectable style={styles.inviteCode}>
+                  <View className="flex-row items-center gap-2.5 rounded-2xl bg-muted p-3">
+                    <Icon as={Copy} className="size-4.5 text-primary" />
+                    <View className="flex-1 gap-0.5">
+                      <Text variant="muted">Invite code</Text>
+                      <Text
+                        className="text-lg font-extrabold tracking-widest text-secondary"
+                        selectable
+                      >
                         {invite.code}
                       </Text>
                     </View>
-                    <Text style={styles.inviteExpiry}>7 days</Text>
+                    <Text variant="muted">7 days</Text>
                   </View>
                 ) : (
                   <Button
@@ -244,7 +237,7 @@ export default function HouseholdsScreen() {
                     loading={busy === `invite:${household.id}`}
                     size="lg"
                     variant="secondary"
-                    onPress={() => void createInvite(household.id)}
+                    onPress={() => createInvite.mutate(household.id)}
                   >
                     {busy === `invite:${household.id}` ? "Creating invite…" : "Create invite code"}
                   </Button>
@@ -257,54 +250,3 @@ export default function HouseholdsScreen() {
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 18, gap: 16, paddingBottom: 40 },
-  cardHeading: { flexDirection: "row", alignItems: "center", gap: 11 },
-  icon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: colors.surfaceMuted,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headingCopy: { flex: 1, gap: 2 },
-  cardTitle: { color: colors.ink, fontSize: 16, lineHeight: 22, fontWeight: "800" },
-  cardBody: { color: colors.muted, fontSize: 12, lineHeight: 17 },
-  sectionHeading: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 3,
-    paddingTop: 4,
-  },
-  sectionTitle: { color: colors.ink, fontSize: 20, lineHeight: 26, fontWeight: "800" },
-  loadingCards: { gap: 12 },
-  emptyTitle: { color: colors.ink, fontSize: 17, lineHeight: 23, fontWeight: "800" },
-  emptyText: { color: colors.muted, fontSize: 14, lineHeight: 20, textAlign: "center" },
-  householdRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  householdCopy: { flex: 1, gap: 2 },
-  householdName: { color: colors.ink, fontSize: 17, lineHeight: 23, fontWeight: "800" },
-  role: { color: colors.muted, fontSize: 12, lineHeight: 17, textTransform: "capitalize" },
-  inviteResult: {
-    borderRadius: 15,
-    borderCurve: "continuous",
-    backgroundColor: colors.surfaceMuted,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    padding: 12,
-  },
-  inviteCopy: { flex: 1, gap: 1 },
-  inviteLabel: { color: colors.muted, fontSize: 11, lineHeight: 15 },
-  inviteCode: {
-    color: colors.forest,
-    fontSize: 17,
-    lineHeight: 22,
-    fontWeight: "800",
-    letterSpacing: 2,
-  },
-  inviteExpiry: { color: colors.muted, fontSize: 11, lineHeight: 15 },
-});

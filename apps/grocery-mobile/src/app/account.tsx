@@ -1,9 +1,8 @@
 import { useClerk, useUser } from "@clerk/clerk-expo";
 import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
-import type { ReactNode } from "react";
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import {
   ChevronRight,
   CircleHelp,
@@ -12,14 +11,17 @@ import {
   Shield,
   ShoppingBasket,
   Trash2,
+  type LucideIcon,
 } from "lucide-react-native";
 import { ErrorAlert } from "@/components/ui/alert";
+import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useKrogerConnection } from "@/hooks/use-kroger-connection";
 import { getLegalLinks } from "@/lib/config";
-import { colors } from "@/lib/theme";
+import { cn } from "@/lib/utils";
 
 export default function AccountScreen() {
   const router = useRouter();
@@ -29,6 +31,13 @@ export default function AccountScreen() {
   const { connected, isLoading, reconnecting, error: connectionError } = connection;
   const [pageError, setPageError] = useState("");
   const links = getLegalLinks();
+  const fallback =
+    [user?.firstName, user?.lastName]
+      .filter(Boolean)
+      .map((part) => part?.charAt(0).toUpperCase())
+      .join("") ||
+    user?.primaryEmailAddress?.emailAddress.charAt(0).toUpperCase() ||
+    "?";
 
   const open = async (url: string) => {
     setPageError("");
@@ -46,44 +55,51 @@ export default function AccountScreen() {
 
   return (
     <ScrollView
-      style={styles.screen}
+      className="flex-1 bg-background"
       contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={styles.content}
+      contentContainerClassName="gap-4 p-4.5 pb-10"
     >
-      <View style={styles.profile}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {(user?.firstName ?? user?.primaryEmailAddress?.emailAddress ?? "G")
-              .slice(0, 1)
-              .toUpperCase()}
-          </Text>
-        </View>
-        <View style={styles.profileCopy}>
-          <Text selectable style={styles.name}>
+      <View className="flex-row items-center gap-3 py-1.5">
+        <Avatar
+          accessibilityLabel={user?.fullName ?? "Account profile"}
+          fallback={fallback}
+          size="lg"
+          src={user?.imageUrl}
+        />
+        <View className="flex-1 gap-0.5">
+          <Text className="text-xl font-extrabold" selectable>
             {user?.fullName ?? "Grocery Agent member"}
           </Text>
-          <Text selectable style={styles.email}>
+          <Text selectable variant="muted">
             {user?.primaryEmailAddress?.emailAddress}
           </Text>
         </View>
       </View>
 
       <Card className="gap-3.5 rounded-2xl p-4">
-        <View style={styles.connectionTop}>
-          <View style={styles.connectionIcon}>
-            <ShoppingBasket color={colors.green} size={22} />
+        <View className="flex-row items-center gap-3">
+          <View className="size-11 items-center justify-center rounded-2xl bg-muted">
+            <Icon as={ShoppingBasket} className="size-5.5 text-primary" />
           </View>
-          <View style={styles.connectionCopy}>
-            <Text style={styles.connectionTitle}>Kroger</Text>
-            <Text style={styles.connectionBody}>
+          <View className="flex-1 gap-0.5">
+            <Text className="text-sm font-extrabold">Kroger</Text>
+            <Text className="text-xs text-muted-foreground">
               {connected
                 ? "Connected for live products and cart actions"
                 : "Optional for live products and cart actions"}
             </Text>
           </View>
-          <View style={[styles.status, connected ? styles.statusOn : styles.statusOff]}>
+          <View
+            className={cn(
+              "rounded-full px-2 py-1",
+              connected ? "bg-muted" : "bg-destructive-surface",
+            )}
+          >
             <Text
-              style={[styles.statusText, connected ? styles.statusTextOn : styles.statusTextOff]}
+              className={cn(
+                "text-xs font-extrabold",
+                connected ? "text-primary" : "text-destructive",
+              )}
             >
               {connected ? "Connected" : "Action needed"}
             </Text>
@@ -98,28 +114,23 @@ export default function AccountScreen() {
         </Button>
       </Card>
 
-      <Text style={styles.groupTitle}>Help and legal</Text>
+      <Text className="mt-1 ml-1 text-xs font-extrabold tracking-wider text-muted-foreground uppercase">
+        Help and legal
+      </Text>
       <Card className="gap-0 overflow-hidden rounded-2xl p-0">
-        <AccountRow
-          icon={<Shield color={colors.green} size={20} />}
-          label="Privacy policy"
-          onPress={() => void open(links.privacy)}
-        />
+        <AccountRow icon={Shield} label="Privacy policy" onPress={() => void open(links.privacy)} />
+        <RowRule />
+        <AccountRow icon={FileText} label="Terms of use" onPress={() => void open(links.terms)} />
         <RowRule />
         <AccountRow
-          icon={<FileText color={colors.green} size={20} />}
-          label="Terms of use"
-          onPress={() => void open(links.terms)}
-        />
-        <RowRule />
-        <AccountRow
-          icon={<CircleHelp color={colors.green} size={20} />}
+          icon={CircleHelp}
           label="Help and support"
           onPress={() => void open(links.support)}
         />
         <RowRule />
         <AccountRow
-          icon={<Trash2 color={colors.danger} size={20} />}
+          destructive
+          icon={Trash2}
           label="Delete account"
           onPress={() => void open(links.deleteAccount)}
         />
@@ -130,12 +141,12 @@ export default function AccountScreen() {
         Report a problem
       </Button>
       <Button size="lg" onPress={() => void signOut()}>
-        <View style={styles.signOut}>
-          <LogOut color={colors.white} size={18} />
-          <Text style={styles.signOutText}>Sign out</Text>
+        <View className="flex-row items-center gap-2">
+          <Icon as={LogOut} className="size-4.5 text-primary-foreground" />
+          <Text className="text-base font-bold text-primary-foreground">Sign out</Text>
         </View>
       </Button>
-      <Text selectable style={styles.version}>
+      <Text className="text-center" selectable variant="muted">
         Grocery Agent 1.0.0
       </Text>
     </ScrollView>
@@ -143,82 +154,31 @@ export default function AccountScreen() {
 }
 
 function AccountRow({
+  destructive = false,
   icon,
   label,
   onPress,
 }: {
-  icon: ReactNode;
+  destructive?: boolean;
+  icon: LucideIcon;
   label: string;
   onPress: () => void;
 }) {
   return (
-    <Pressable accessibilityRole="link" onPress={onPress} style={styles.row}>
-      <View style={styles.rowIcon}>{icon}</View>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <ChevronRight color={colors.muted} size={20} />
+    <Pressable
+      accessibilityRole="link"
+      className="min-h-14 flex-row items-center gap-3 px-4 active:bg-muted"
+      onPress={onPress}
+    >
+      <View className="w-7 items-center">
+        <Icon as={icon} className={cn("size-5 text-primary", destructive && "text-destructive")} />
+      </View>
+      <Text className="flex-1 text-sm font-semibold">{label}</Text>
+      <Icon as={ChevronRight} className="size-5 text-muted-foreground" />
     </Pressable>
   );
 }
 
 function RowRule() {
-  return <View style={styles.rule} />;
+  return <View className="ml-14 h-px bg-border" />;
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 18, gap: 16, paddingBottom: 40 },
-  profile: { flexDirection: "row", alignItems: "center", gap: 13, paddingVertical: 6 },
-  avatar: {
-    width: 54,
-    height: 54,
-    borderRadius: 18,
-    backgroundColor: colors.forest,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarText: { color: colors.white, fontSize: 23, fontWeight: "800" },
-  profileCopy: { flex: 1, gap: 2 },
-  name: { color: colors.ink, fontSize: 19, lineHeight: 25, fontWeight: "800" },
-  email: { color: colors.muted, fontSize: 13, lineHeight: 18 },
-  connectionTop: { flexDirection: "row", alignItems: "center", gap: 11 },
-  connectionIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: colors.surfaceMuted,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  connectionCopy: { flex: 1, gap: 2 },
-  connectionTitle: { color: colors.ink, fontSize: 15, lineHeight: 21, fontWeight: "800" },
-  connectionBody: { color: colors.muted, fontSize: 11, lineHeight: 16 },
-  status: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 5 },
-  statusOn: { backgroundColor: colors.surfaceMuted },
-  statusOff: { backgroundColor: colors.dangerSurface },
-  statusText: { fontSize: 10, fontWeight: "800" },
-  statusTextOn: { color: colors.green },
-  statusTextOff: { color: colors.danger },
-  groupTitle: {
-    color: colors.muted,
-    fontSize: 12,
-    lineHeight: 17,
-    fontWeight: "800",
-    letterSpacing: 0.9,
-    textTransform: "uppercase",
-    marginTop: 5,
-    marginLeft: 3,
-  },
-  row: {
-    minHeight: 58,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 15,
-    gap: 11,
-  },
-  rowIcon: { width: 30, alignItems: "center" },
-  rowLabel: { flex: 1, color: colors.ink, fontSize: 15, lineHeight: 21, fontWeight: "600" },
-  rule: { height: 1, backgroundColor: colors.line, marginLeft: 56 },
-  signOut: { flexDirection: "row", alignItems: "center", gap: 8 },
-  signOutText: { color: colors.white, fontSize: 16, lineHeight: 22, fontWeight: "700" },
-  version: { color: colors.muted, fontSize: 11, textAlign: "center" },
-});

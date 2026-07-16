@@ -1,13 +1,16 @@
 import type { GroceryState } from "@agents/types";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { ArrowRight, Check, ShoppingBasket, ShoppingCart, Sparkles } from "lucide-react-native";
 import { NativeMarkdown, type NativeMarkdownStyle } from "@agents/native-markdown";
+import { useMemo } from "react";
+import { useResolveClassNames } from "uniwind";
 import { KrogerProductImage } from "@/components/kroger-product-image";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { cartSubtotal, pantryNames } from "@/lib/grocery-state";
-import { colors } from "@/lib/theme";
+import { cn } from "@/lib/utils";
 
 export function GroceryStateCard({
   state,
@@ -33,34 +36,44 @@ export function GroceryStateCard({
       ? cart.slice(0, 4).map((item) => ({ name: item.name }))
       : list.slice(0, 4).map((name) => ({ name }));
   const subtotal = cartSubtotal(cart);
+  const foreground = useResolveClassNames("text-foreground").color;
+  const primary = useResolveClassNames("text-primary").color;
+  const planMarkdownStyle = useMemo<NativeMarkdownStyle>(
+    () => ({
+      body: { color: foreground, fontSize: 13, lineHeight: 19 },
+      paragraph: { marginTop: 0, marginBottom: 6 },
+      link: { color: primary },
+    }),
+    [foreground, primary],
+  );
   if (!list.length && !state.meal_plan && !cart.length) return null;
 
   return (
     <Card className="gap-3.5 rounded-2xl p-4">
-      <View style={styles.storeRow}>
-        <View style={styles.storeMark}>
-          <ShoppingBasket color={colors.green} size={22} />
+      <View className="flex-row items-center gap-2.5">
+        <View className="size-11 items-center justify-center rounded-full bg-muted">
+          <Icon as={ShoppingBasket} className="size-5.5 text-primary" />
         </View>
-        <View style={styles.storeCopy}>
-          <Text style={styles.storeName}>
+        <View className="flex-1 gap-0.5">
+          <Text className="text-sm font-extrabold">
             {connected ? "Kroger grocery plan" : "Your grocery plan"}
           </Text>
-          <Text style={styles.storeMeta}>
+          <Text className="text-xs text-muted-foreground">
             {state.status === "ready" ? "Ready to review" : "Building your matches"}
           </Text>
         </View>
         {connected ? (
-          <View style={styles.connected}>
-            <Check size={13} color={colors.green} />
-            <Text style={styles.connectedText}>Connected</Text>
+          <View className="flex-row items-center gap-1 rounded-full bg-muted px-2 py-1">
+            <Icon as={Check} className="size-3.5 text-primary" />
+            <Text className="text-xs font-bold text-primary">Connected</Text>
           </View>
         ) : null}
       </View>
 
       {state.meal_plan ? (
-        <View style={styles.plan}>
-          <Sparkles size={17} color={colors.green} />
-          <View style={styles.planCopy}>
+        <View className="flex-row gap-2 rounded-2xl bg-muted p-3">
+          <Icon as={Sparkles} className="size-4 text-primary" />
+          <View className="min-w-0 flex-1">
             <NativeMarkdown maxBlocks={2} style={planMarkdownStyle}>
               {state.meal_plan}
             </NativeMarkdown>
@@ -68,51 +81,61 @@ export function GroceryStateCard({
         </View>
       ) : null}
 
-      <View style={styles.previewRow}>
+      <View className="flex-row gap-2">
         {preview.map((item, index) => (
-          <View key={`${item.name}-${index}`} style={[styles.product, previewTone(index)]}>
-            <KrogerProductImage imageUrl={item.imageUrl} name={item.name} size={38} />
-            <Text numberOfLines={2} style={styles.productName}>
+          <View
+            className={cn(
+              "min-h-24 min-w-0 flex-1 justify-between rounded-2xl p-2",
+              previewTone(index),
+            )}
+            key={`${item.name}-${index}`}
+          >
+            <KrogerProductImage imageUrl={item.imageUrl} name={item.name} size="compact" />
+            <Text className="text-xs leading-4 font-semibold" numberOfLines={2}>
               {item.name}
             </Text>
           </View>
         ))}
         {list.length > preview.length ? (
-          <View style={[styles.product, styles.more]}>
-            <Text style={styles.moreCount}>+{list.length - preview.length}</Text>
-            <Text style={styles.moreLabel}>more</Text>
+          <View className="min-h-24 min-w-0 flex-1 items-center justify-center rounded-2xl bg-muted p-2">
+            <Text className="text-xl font-extrabold text-secondary">
+              +{list.length - preview.length}
+            </Text>
+            <Text variant="muted">more</Text>
           </View>
         ) : null}
       </View>
 
       <Pressable
         accessibilityRole={onOpenList ? "button" : undefined}
+        className="flex-row items-center justify-between rounded-2xl bg-muted px-3.5 py-3 active:opacity-70"
         disabled={!onOpenList}
         onPress={onOpenList}
-        style={styles.reviewRow}
       >
         <View>
-          <Text style={styles.reviewTitle}>Review {Math.max(list.length, cart.length)} items</Text>
-          <Text style={styles.reviewMeta}>
+          <Text className="text-sm font-extrabold">
+            Review {Math.max(list.length, cart.length)} items
+          </Text>
+          <Text className="mt-0.5 text-xs text-muted-foreground">
             {subtotal > 0
               ? `$${subtotal.toFixed(2)} estimated subtotal`
               : "Check quantities and matches"}
             {skipped.length ? ` · ${skipped.length} in pantry` : ""}
           </Text>
         </View>
-        <ArrowRight size={20} color={colors.forest} />
+        <Icon as={ArrowRight} className="size-5 text-secondary" />
       </Pressable>
 
       {connected && list.length > 0 && onAddToCart ? (
         <Button loading={adding} size="lg" onPress={onAddToCart}>
-          <View style={styles.buttonContent}>
-            <ShoppingCart size={18} color={colors.white} />
-            <Text style={styles.buttonText}>Add to Kroger cart</Text>
+          <View className="flex-row items-center gap-2">
+            <Icon as={ShoppingCart} className="size-4.5 text-primary-foreground" />
+            <Text className="text-base font-bold text-primary-foreground">Add to Kroger cart</Text>
           </View>
         </Button>
       ) : null}
       {connected && onAddToCart ? (
-        <Text selectable style={styles.disclaimer}>
+        <Text className="text-center text-xs leading-4 text-muted-foreground" selectable>
           Nothing changes in your Kroger cart until you approve this action.
         </Text>
       ) : null}
@@ -121,78 +144,5 @@ export function GroceryStateCard({
 }
 
 function previewTone(index: number) {
-  return [styles.productAmber, styles.productViolet, styles.productRose, styles.productLime][
-    index % 4
-  ];
+  return ["bg-muted", "bg-accent/40", "bg-primary/5", "bg-secondary/10"][index % 4];
 }
-
-const styles = StyleSheet.create({
-  storeRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  storeMark: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: colors.surfaceMuted,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  storeCopy: { flex: 1, gap: 2 },
-  storeName: { color: colors.ink, fontSize: 15, lineHeight: 20, fontWeight: "800" },
-  storeMeta: { color: colors.muted, fontSize: 12, lineHeight: 17 },
-  connected: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-  },
-  connectedText: { color: colors.green, fontSize: 11, fontWeight: "700" },
-  plan: {
-    flexDirection: "row",
-    gap: 8,
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 14,
-    padding: 12,
-  },
-  planCopy: { flex: 1, minWidth: 0 },
-  previewRow: { flexDirection: "row", gap: 8 },
-  product: {
-    flex: 1,
-    minWidth: 0,
-    minHeight: 92,
-    backgroundColor: "#f4f5f1",
-    borderRadius: 14,
-    padding: 8,
-    justifyContent: "space-between",
-  },
-  productAmber: { backgroundColor: "#fff6e8" },
-  productViolet: { backgroundColor: "#f5f0ff" },
-  productRose: { backgroundColor: "#fff0f1" },
-  productLime: { backgroundColor: "#f3f7e6" },
-  productName: { color: colors.ink, fontSize: 10, lineHeight: 13, fontWeight: "600" },
-  more: { alignItems: "center", justifyContent: "center" },
-  moreCount: { color: colors.forest, fontSize: 19, fontWeight: "800" },
-  moreLabel: { color: colors.muted, fontSize: 11 },
-  reviewRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  reviewTitle: { color: colors.ink, fontSize: 14, lineHeight: 19, fontWeight: "800" },
-  reviewMeta: { color: colors.muted, fontSize: 11, lineHeight: 16, marginTop: 2 },
-  buttonContent: { flexDirection: "row", alignItems: "center", gap: 8 },
-  buttonText: { color: colors.white, fontSize: 16, lineHeight: 22, fontWeight: "700" },
-  disclaimer: { color: colors.muted, fontSize: 11, lineHeight: 16, textAlign: "center" },
-});
-
-const planMarkdownStyle: NativeMarkdownStyle = {
-  body: { color: colors.ink, fontSize: 13, lineHeight: 19 },
-  paragraph: { marginTop: 0, marginBottom: 6 },
-  link: { color: colors.green },
-};

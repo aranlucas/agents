@@ -17,11 +17,11 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Pressable,
-  StyleSheet,
   View,
 } from "react-native";
 import { ArrowDown } from "lucide-react-native";
-import { colors } from "@/lib/theme";
+import { Icon } from "@/components/ui/icon";
+import { cn } from "@/lib/utils";
 
 const LIVE_EDGE_THRESHOLD = 48;
 
@@ -107,12 +107,12 @@ export const MessageScroller = forwardRef<
 
   return (
     <MessageScrollerContext.Provider value={value}>
-      <View style={styles.root}>{children}</View>
+      <View className="relative flex-1">{children}</View>
     </MessageScrollerContext.Provider>
   );
 });
 
-export function MessageScrollerList<Item>({ onScroll, ...props }: FlatListProps<Item>) {
+export function MessageScrollerList<Item>({ className, onScroll, ...props }: FlatListProps<Item>) {
   const { scrollRef, updateLiveEdge } = useMessageScrollerContext();
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -129,9 +129,9 @@ export function MessageScrollerList<Item>({ onScroll, ...props }: FlatListProps<
     <FlatList
       {...props}
       ref={scrollRef as RefObject<FlatList<Item> | null>}
+      className={cn("flex-1", className)}
       onScroll={handleScroll}
       scrollEventThrottle={32}
-      style={[styles.viewport, props.style]}
     />
   );
 }
@@ -143,30 +143,10 @@ export function MessageScrollerButton() {
     <Pressable
       accessibilityLabel="Scroll to latest message"
       accessibilityRole="button"
+      className="absolute bottom-3 left-1/2 -ml-5 size-10 items-center justify-center rounded-full border border-border bg-card active:bg-muted"
       onPress={() => scrollToLatest()}
-      style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
     >
-      <ArrowDown color={colors.ink} size={19} strokeWidth={2.25} />
+      <Icon as={ArrowDown} className="size-5 text-foreground" strokeWidth={2.25} />
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, position: "relative" },
-  viewport: { flex: 1 },
-  button: {
-    position: "absolute",
-    bottom: 12,
-    left: "50%",
-    width: 40,
-    height: 40,
-    marginLeft: -20,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  buttonPressed: { backgroundColor: colors.surfaceMuted },
-});

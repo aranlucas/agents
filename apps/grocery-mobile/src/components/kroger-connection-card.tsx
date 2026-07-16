@@ -1,11 +1,12 @@
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { View } from "react-native";
 import { ChevronRight, ShoppingCart } from "lucide-react-native";
 import { ErrorAlert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Icon } from "@/components/ui/icon";
+import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
 import { useKrogerConnection } from "@/hooks/use-kroger-connection";
-import { colors } from "@/lib/theme";
 
 export function KrogerConnectionCard({
   connection,
@@ -17,16 +18,16 @@ export function KrogerConnectionCard({
   if (connected) return null;
 
   return (
-    <View style={styles.wrap}>
+    <View className="gap-2">
       <Card className="min-h-20 flex-row items-center gap-3 rounded-2xl p-3 shadow-none">
-        <View style={styles.icon}>
+        <View className="size-11 items-center justify-center rounded-2xl bg-muted">
           {isLoading ? (
-            <ActivityIndicator color={colors.green} />
+            <Spinner size="sm" />
           ) : (
-            <ShoppingCart color={colors.green} size={24} />
+            <Icon as={ShoppingCart} className="size-6 text-primary" />
           )}
         </View>
-        <View style={styles.copy}>
+        <View className="flex-1 gap-0.5">
           <Text className="text-sm font-extrabold">Connect Kroger when you’re ready</Text>
           <Text className="text-xs text-muted-foreground" selectable>
             Optional for live products, prices, and cart actions.
@@ -45,23 +46,10 @@ export function KrogerConnectionCard({
           variant="ghost"
         >
           <Text className="text-sm font-extrabold text-primary">Connect</Text>
-          <ChevronRight color={colors.green} size={19} />
+          <Icon as={ChevronRight} className="size-5 text-primary" />
         </Button>
       </Card>
       {error ? <ErrorAlert message={error} /> : null}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: { gap: 8 },
-  icon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: colors.surfaceMuted,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  copy: { flex: 1, gap: 2 },
-});

@@ -1,6 +1,6 @@
 import { useAuth } from "@clerk/clerk-expo";
 import { useAgent, useCopilotKit } from "@copilotkit/react-native";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { runAuthenticated, readableError } from "@/lib/auth";
 import {
   normalizeGroceryState,
@@ -26,9 +26,11 @@ export function useGroceryAgentController(onRunComplete: () => void) {
     previousMessages.current,
     toDisplayMessages(agent?.messages ?? []),
   );
-  previousMessages.current = messages;
   const state = stabilizeGroceryState(previousState.current, normalizeGroceryState(agent?.state));
-  previousState.current = state;
+  useEffect(() => {
+    previousMessages.current = messages;
+    previousState.current = state;
+  }, [messages, state]);
   const isRunning = agent?.isRunning ?? false;
   const clearError = useCallback(() => setError(""), []);
 
@@ -66,6 +68,12 @@ export function useGroceryAgentController(onRunComplete: () => void) {
     },
     [agent, copilotkit, getToken, isRunning, onRunComplete, userId],
   );
+
+  const stop = useCallback(() => {
+    if (!agent?.isRunning) return;
+    conversationVersion.current += 1;
+    copilotkit.stopAgent({ agent });
+  }, [agent, copilotkit]);
 
   const startNewChat = useCallback(async () => {
     if (!agent) return false;
@@ -135,6 +143,7 @@ export function useGroceryAgentController(onRunComplete: () => void) {
       error,
       clearError,
       send,
+      stop,
       startNewChat,
       openThread,
     }),
@@ -146,6 +155,7 @@ export function useGroceryAgentController(onRunComplete: () => void) {
       error,
       clearError,
       send,
+      stop,
       startNewChat,
       openThread,
     ],

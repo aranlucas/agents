@@ -1,15 +1,14 @@
-import { SafeAreaView } from "react-native-safe-area-context";
-import { StyleSheet, View } from "react-native";
+import { View } from "react-native";
 import { BrandMark } from "@/components/ui";
 import { Card } from "@/components/ui/card";
+import { SafeArea } from "@/components/ui/safe-area";
 import { Text } from "@/components/ui/text";
-import { colors } from "@/lib/theme";
 
 export function ConfigurationError({ message }: { message: string }) {
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.wrap}>
-        <BrandMark size={52} />
+    <SafeArea>
+      <View className="flex-1 justify-center gap-6 p-6">
+        <BrandMark size="lg" />
         <Card className="gap-2.5 rounded-2xl p-6">
           <Text className="tracking-wider text-primary" variant="small">
             SETUP NEEDED
@@ -22,11 +21,6 @@ export function ConfigurationError({ message }: { message: string }) {
           </Text>
         </Card>
       </View>
-    </SafeAreaView>
+    </SafeArea>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  wrap: { flex: 1, justifyContent: "center", padding: 24, gap: 24 },
-});
