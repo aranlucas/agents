@@ -26,7 +26,7 @@ import type { GroceryOperationOutcome } from "@/hooks/use-grocery-agent";
 import { GROCERY_SUGGESTIONS } from "@/lib/grocery-suggestions";
 import { cn } from "@/lib/utils";
 import { ScrollView } from "react-native-gesture-handler";
-import { SafeArea } from "./ui/safe-area";
+import { SafeArea } from "@/components/ui/safe-area";
 
 export function GroceryChat() {
   const router = useRouter();
