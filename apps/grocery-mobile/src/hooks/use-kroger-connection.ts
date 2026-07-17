@@ -2,13 +2,14 @@ import { useUser } from "@clerk/clerk-expo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { readableError } from "@/lib/auth";
 import {
   hasKrogerConnection,
   isKrogerConnection,
   rotatingTokenNonceFromCallback,
 } from "@/lib/connections";
+import { groceryQueryKeys } from "@/lib/query-keys";
 
 type ClerkUser = NonNullable<ReturnType<typeof useUser>["user"]>;
 type ClerkExternalAccount = ClerkUser["externalAccounts"][number];
@@ -17,7 +18,8 @@ type ConnectionAction = "connect" | "reconnect";
 export function useKrogerConnection() {
   const { isLoaded, user } = useUser();
   const queryClient = useQueryClient();
-  const queryKey = ["clerk-user", "kroger-connection", user?.id] as const;
+  const authorizationInFlightRef = useRef(false);
+  const queryKey = groceryQueryKeys.krogerConnection(user?.id);
 
   const connection = useQuery({
     queryKey,
@@ -65,17 +67,22 @@ export function useKrogerConnection() {
             });
       return await completeAuthorization(externalAccount, redirectUrl);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    onSuccess: (connected) => {
+      if (connected) return queryClient.invalidateQueries({ queryKey });
+    },
   });
   const { isPending: isAuthorizing, mutateAsync, reset: resetAuthorization } = authorization;
   const { isFetching, refetch } = connection;
   const authorize = useCallback(
     async (nextAction: ConnectionAction) => {
-      if (isAuthorizing) return false;
+      if (authorizationInFlightRef.current || isAuthorizing) return false;
+      authorizationInFlightRef.current = true;
       try {
         return await mutateAsync(nextAction);
       } catch {
         return false;
+      } finally {
+        authorizationInFlightRef.current = false;
       }
     },
     [isAuthorizing, mutateAsync],

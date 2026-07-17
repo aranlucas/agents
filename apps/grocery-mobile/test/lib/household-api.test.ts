@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createHouseholdApi, HouseholdApiError } from "./household-api";
+import { createHouseholdApi, HouseholdApiError } from "@/lib/household-api";
 
 describe("household API", () => {
   it("authenticates requests with a fresh Clerk token and verified user header", async () => {

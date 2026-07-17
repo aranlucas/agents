@@ -4,7 +4,6 @@ import { ClerkLoaded, ClerkLoading, ClerkProvider, SignedIn, SignedOut } from "@
 import { resourceCache } from "@clerk/clerk-expo/resource-cache";
 import { tokenCache } from "@clerk/clerk-expo/token-cache";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
-import { PortalHost } from "@rn-primitives/portal";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { View } from "react-native";
@@ -93,7 +92,6 @@ export default function RootLayout() {
           )}
         </SafeAreaProvider>
       </BottomSheetModalProvider>
-      <PortalHost />
     </UniwindGestureHandlerRootView>
   );
 }

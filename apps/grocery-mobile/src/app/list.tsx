@@ -21,6 +21,7 @@ import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
+import { Price } from "@/components/ui/price";
 import { Text } from "@/components/ui/text";
 import { useKrogerConnection } from "@/hooks/use-kroger-connection";
 import { cartSubtotal, pantryNames } from "@/lib/grocery-state";
@@ -84,7 +85,7 @@ function GroceryListContent() {
             </Text>
           </View>
           {subtotal > 0 ? (
-            <Text className="text-xl font-extrabold text-secondary">${subtotal.toFixed(2)}</Text>
+            <Price amount={subtotal} textClassName="text-xl font-extrabold text-secondary" />
           ) : null}
         </View>
 
@@ -97,14 +98,14 @@ function GroceryListContent() {
                 return {
                   name: item.name,
                   imageUrl: match?.image_url,
-                  detail: `${item.quantity} · ${item.price ? `$${item.price.toFixed(2)}` : "Price at checkout"}`,
+                  detail: `${item.quantity} · ${item.price !== undefined ? `$${item.price.toFixed(2)}` : "Price at checkout"}`,
                 };
               })
             : list.map((name) => {
                 const match = matchesByQuery.get(name.trim().toLocaleLowerCase());
                 const matchDetails = [
                   match?.size,
-                  match?.price ? `$${match.price.toFixed(2)}` : null,
+                  match?.price !== undefined ? `$${match.price.toFixed(2)}` : null,
                 ]
                   .filter(Boolean)
                   .join(" · ");

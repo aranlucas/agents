@@ -45,10 +45,12 @@ type ChipProps = React.ComponentProps<typeof Pressable> &
   };
 
 function Chip({
+  accessibilityRole,
   accessibilityState,
   children,
   className,
   onClose,
+  role,
   selected = false,
   size,
   textClassName,
@@ -56,6 +58,13 @@ function Chip({
   ...props
 }: ChipProps) {
   const resolvedVariant = selected ? "default" : variant;
+  const resolvedRole = (role ?? accessibilityRole ?? "button") as React.ComponentProps<
+    typeof Pressable
+  >["role"];
+  const resolvedState =
+    resolvedRole === "radio" || resolvedRole === "checkbox"
+      ? { ...accessibilityState, checked: selected }
+      : { ...accessibilityState, selected };
   const iconClassName =
     resolvedVariant === "default"
       ? "text-primary-foreground"
@@ -67,9 +76,9 @@ function Chip({
 
   return (
     <Pressable
+      accessibilityState={resolvedState}
       className={cn(chipVariants({ size, variant: resolvedVariant }), className)}
-      accessibilityState={{ ...accessibilityState, selected }}
-      role="button"
+      role={resolvedRole}
       {...props}
     >
       <Text className={cn(chipTextVariants({ size, variant: resolvedVariant }), textClassName)}>

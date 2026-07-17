@@ -22,7 +22,8 @@
   "exclude": [
     "node_modules",
     "metro.config.js",
-    "vitest.config.ts",
+    "test",
+    "vitest.config.mts",
     "android",
     "ios",
     "**/*.test.ts",

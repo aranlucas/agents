@@ -16,7 +16,7 @@ vi.mock("@copilotkit/react-native", () => ({ useRenderTool: vi.fn() }));
 async function render(element: React.ReactElement) {
   let tree: ReactTestRenderer;
   await act(async () => {
-    tree = create(element);
+    tree = create(element, { unstable_isConcurrent: false });
   });
   return tree!;
 }

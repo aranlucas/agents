@@ -2,7 +2,7 @@ import { useAuth } from "@clerk/clerk-expo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Check, Copy, Home, Users } from "lucide-react-native";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { ErrorAlert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { getRuntimeUrl } from "@/lib/config";
 import { createHouseholdApi, type HouseholdInvite } from "@/lib/household-api";
+import { groceryQueryKeys } from "@/lib/query-keys";
 
 export default function HouseholdsScreen() {
   const router = useRouter();
@@ -25,7 +26,10 @@ export default function HouseholdsScreen() {
     [getToken, userId],
   );
   const queryClient = useQueryClient();
-  const queryKey = ["grocery-households", userId] as const;
+  const queryKey = groceryQueryKeys.households(userId);
+  const createInFlight = useRef(false);
+  const joinInFlight = useRef(false);
+  const [isFocused, setIsFocused] = useState(false);
   const [name, setName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [createdInvites, setCreatedInvites] = useState<Record<string, HouseholdInvite>>({});
@@ -34,15 +38,16 @@ export default function HouseholdsScreen() {
   const householdsQuery = useQuery({
     queryKey,
     queryFn: api.listHouseholds,
-    enabled: Boolean(userId),
-    refetchInterval: 30_000,
+    enabled: isFocused && Boolean(userId),
+    refetchInterval: isFocused ? 30_000 : false,
   });
   const { refetch } = householdsQuery;
 
   useFocusEffect(
     useCallback(() => {
-      void refetch();
-    }, [refetch]),
+      setIsFocused(true);
+      return () => setIsFocused(false);
+    }, []),
   );
 
   const createHousehold = useMutation({
@@ -67,6 +72,32 @@ export default function HouseholdsScreen() {
       setCreatedInvites((current) => ({ ...current, [householdId]: invite }));
     },
   });
+
+  const submitCreateHousehold = async () => {
+    const nextName = name.trim();
+    if (!nextName || createInFlight.current || createHousehold.isPending) return;
+    createInFlight.current = true;
+    try {
+      await createHousehold.mutateAsync(nextName);
+    } catch {
+      // Mutation state owns the user-visible error; keep the submitted input for retry.
+    } finally {
+      createInFlight.current = false;
+    }
+  };
+
+  const submitJoinHousehold = async () => {
+    const code = inviteCode.trim().toUpperCase();
+    if (!code || joinInFlight.current || joinHousehold.isPending) return;
+    joinInFlight.current = true;
+    try {
+      await joinHousehold.mutateAsync(code);
+    } catch {
+      // Mutation state owns the user-visible error; keep the submitted input for retry.
+    } finally {
+      joinInFlight.current = false;
+    }
+  };
 
   const refresh = async () => {
     setRefreshing(true);
@@ -109,7 +140,7 @@ export default function HouseholdsScreen() {
           autoCapitalize="words"
           className="min-h-12 rounded-2xl bg-card px-4 text-base"
           onChangeText={setName}
-          onSubmitEditing={() => createHousehold.mutate(name.trim())}
+          onSubmitEditing={() => void submitCreateHousehold()}
           placeholder="Household name"
           returnKeyType="done"
           value={name}
@@ -118,7 +149,7 @@ export default function HouseholdsScreen() {
           disabled={!name.trim()}
           loading={busy === "create"}
           size="lg"
-          onPress={() => createHousehold.mutate(name.trim())}
+          onPress={() => void submitCreateHousehold()}
         >
           Create household
         </Button>
@@ -143,7 +174,7 @@ export default function HouseholdsScreen() {
           className="min-h-12 rounded-2xl bg-card px-4 text-base font-extrabold tracking-widest"
           maxLength={8}
           onChangeText={setInviteCode}
-          onSubmitEditing={() => joinHousehold.mutate(inviteCode.trim().toUpperCase())}
+          onSubmitEditing={() => void submitJoinHousehold()}
           placeholder="ABCDEFGH"
           returnKeyType="done"
           value={inviteCode}
@@ -153,7 +184,7 @@ export default function HouseholdsScreen() {
           loading={busy === "join"}
           size="lg"
           variant="secondary"
-          onPress={() => joinHousehold.mutate(inviteCode.trim().toUpperCase())}
+          onPress={() => void submitJoinHousehold()}
         >
           {busy === "join" ? "Joining…" : "Join household"}
         </Button>

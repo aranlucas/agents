@@ -5,6 +5,9 @@
   },
   "build": {
     "development": {
+      "ios": {
+        "simulator": true
+      },
       "environment": "development",
       "developmentClient": true,
       "distribution": "internal",
@@ -32,6 +35,12 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      }
+    },
+    "ios-simulator": {
+      "extends": "development",
+      "ios": {
+        "simulator": true
       }
     }
   },

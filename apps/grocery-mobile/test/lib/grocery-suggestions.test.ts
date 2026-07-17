@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { GROCERY_SUGGESTION_THEMES, suggestionKey, uniqueSuggestions } from "./grocery-suggestions";
+import {
+  GROCERY_SUGGESTION_THEMES,
+  suggestionKey,
+  uniqueSuggestions,
+} from "@/lib/grocery-suggestions";
 
 describe("GROCERY_SUGGESTION_THEMES", () => {
   it("provides distinct, ready-to-send prompts without generation", () => {

@@ -6,7 +6,7 @@
     "version": "1.0.1",
     "orientation": "portrait",
     "scheme": "grocery-agent",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "backgroundColor": "#f7f8f2",
     "icon": "./assets/icon.png",
     "ios": {
@@ -60,7 +60,8 @@
           }
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "./plugins/with-expo-dev-launcher-always-run"
     ],
     "extra": {
       "clerkPublishableKey": "",

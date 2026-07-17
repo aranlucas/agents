@@ -1,5 +1,5 @@
 import { useUser } from "@clerk/clerk-expo";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useEffect } from "react";
 import { View } from "react-native";
@@ -7,32 +7,34 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
 import { readableError } from "@/lib/auth";
-import { hasKrogerConnection } from "@/lib/connections";
+import { waitForKrogerConnection } from "@/lib/connections";
+import { groceryQueryKeys } from "@/lib/query-keys";
 
 export default function KrogerCallbackScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { isLoaded, user } = useUser();
   const connection = useQuery({
-    queryKey: ["kroger-connection-callback", user?.id],
-    queryFn: async () => {
+    queryKey: groceryQueryKeys.krogerCallback(user?.id),
+    queryFn: async ({ signal }) => {
       if (!user) throw new Error("Your session has expired. Please sign in again.");
       // The auth-session owner consumes Clerk's one-time nonce. This route only waits for
       // the refreshed external account so both screens cannot race to use the same token.
-      const refreshedUser = await user.reload();
-      if (!hasKrogerConnection(refreshedUser.externalAccounts)) {
-        throw new Error("Kroger returned without completing the account connection.");
-      }
-      return refreshedUser;
+      return waitForKrogerConnection({ reload: () => user.reload(), signal });
     },
     enabled: isLoaded && Boolean(user),
-    retry: 4,
-    retryDelay: (attempt) => [250, 500, 1_000, 1_500, 2_000][attempt] ?? 2_000,
+    retry: false,
+    gcTime: 0,
+    refetchOnMount: "always",
     refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
   useEffect(() => {
-    if (connection.isSuccess) router.replace("/");
-  }, [connection.isSuccess, router]);
+    if (!connection.data || !user) return;
+    queryClient.setQueryData(groceryQueryKeys.krogerConnection(user.id), connection.data);
+    router.replace("/");
+  }, [connection.data, queryClient, router, user]);
 
   const error = connection.error ? readableError(connection.error) : "";
 

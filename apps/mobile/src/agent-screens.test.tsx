@@ -3,11 +3,6 @@ import { createElement } from "react";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-Object.defineProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT", {
-  configurable: true,
-  value: true,
-});
-
 let currentState: Record<string, unknown> = {};
 let currentMessages: unknown[] = [];
 const providerProps: Array<Record<string, unknown>> = [];
@@ -126,7 +121,7 @@ vi.mock("../modules/health-data", () => ({
 async function render(element: React.ReactElement) {
   let tree: ReactTestRenderer;
   await act(async () => {
-    tree = create(element);
+    tree = create(element, { unstable_isConcurrent: false });
   });
   return tree!;
 }
@@ -204,7 +199,9 @@ describe("mobile real feature surface", () => {
     );
     expect(runAgent).toHaveBeenCalled();
 
-    await act(async () => tree.unmount());
+    await act(async () => {
+      tree.unmount();
+    });
   });
 
   it("redirects the root route to travel", async () => {
@@ -212,7 +209,9 @@ describe("mobile real feature surface", () => {
     const tree = await render(<Index />);
 
     expect(tree.root.findByType("Redirect").props.href).toBe("/travel");
-    await act(async () => tree.unmount());
+    await act(async () => {
+      tree.unmount();
+    });
   });
 
   it("declares Kroger product results as a grocery frontend tool", async () => {
@@ -228,7 +227,9 @@ describe("mobile real feature surface", () => {
       }),
     ]);
 
-    await act(async () => tree.unmount());
+    await act(async () => {
+      tree.unmount();
+    });
   });
 
   it("renders a grocery frontend tool call inline from the streamed assistant message", async () => {
@@ -259,6 +260,8 @@ describe("mobile real feature surface", () => {
         .some((node) => String(node.props.children).includes("Organic Whole Milk")),
     ).toBe(true);
 
-    await act(async () => tree.unmount());
+    await act(async () => {
+      tree.unmount();
+    });
   });
 });

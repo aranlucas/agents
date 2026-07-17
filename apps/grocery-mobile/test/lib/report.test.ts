@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildReportMailto } from "./report";
+import { buildReportMailto } from "@/lib/report";
 
 describe("buildReportMailto", () => {
   it("creates an encoded, reviewable support email", () => {

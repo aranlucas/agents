@@ -1,7 +1,7 @@
 import { useUser } from "@clerk/clerk-expo";
-import { useRouter } from "expo-router";
-import { View } from "react-native";
-import { BrandMark } from "@/components/ui";
+import { Link, useRouter } from "expo-router";
+import { Pressable } from "react-native";
+import { BrandMark } from "@/components/brand-mark";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,9 +39,15 @@ export function GroceryHeader({ canGoBack, onBack, routeName, title }: GroceryHe
           {canGoBack ? (
             <HeaderBackButton onPress={onBack} />
           ) : (
-            <View className="min-h-12 min-w-12 items-center justify-center">
-              <BrandMark size="sm" />
-            </View>
+            <Link href="/" asChild>
+              <Pressable
+                accessibilityLabel="Home"
+                accessibilityRole="link"
+                className="min-h-12 min-w-12 items-center justify-center rounded-full active:bg-muted"
+              >
+                <BrandMark size="sm" />
+              </Pressable>
+            </Link>
           )}
         </HeaderLeft>
         <HeaderTitle className="text-center font-extrabold">{title}</HeaderTitle>

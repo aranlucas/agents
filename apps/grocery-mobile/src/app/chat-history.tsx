@@ -1,12 +1,13 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { ChevronRight, MessageSquareText } from "lucide-react-native";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { FlatList, Pressable, View } from "react-native";
 import { useGroceryAgent } from "@/components/grocery-agent-provider";
 import { ErrorAlert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
+import { RefreshControl } from "@/components/ui/refresh-control";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
@@ -41,6 +42,7 @@ export default function ChatHistoryScreen() {
     fetchMoreThreads,
   } = useGroceryAgent();
   const [opening, setOpening] = useState("");
+  const openingRef = useRef("");
 
   const returnToChat = () => {
     router.dismissTo("/chat");
@@ -53,9 +55,13 @@ export default function ChatHistoryScreen() {
   );
 
   const resume = async (threadId: string) => {
+    if (openingRef.current) return;
+    openingRef.current = threadId;
     clearError();
     setOpening(threadId);
-    if (await openThread(threadId)) returnToChat();
+    const outcome = await openThread(threadId);
+    openingRef.current = "";
+    if (outcome.status === "success") returnToChat();
     setOpening("");
   };
 
@@ -98,8 +104,7 @@ export default function ChatHistoryScreen() {
         if (hasMoreThreads && !isFetchingMoreThreads) fetchMoreThreads();
       }}
       onEndReachedThreshold={0.35}
-      onRefresh={refetchThreads}
-      refreshing={threadsLoading}
+      refreshControl={<RefreshControl refreshing={threadsLoading} onRefresh={refetchThreads} />}
       ItemSeparatorComponent={() => <Separator className="ml-16" />}
       renderItem={({ item: thread }) => {
         const selected = thread.id === activeThreadId;

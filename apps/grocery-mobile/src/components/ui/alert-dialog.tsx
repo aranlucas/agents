@@ -35,7 +35,9 @@ function AlertDialog({ open, onOpenChange, children }: AlertDialogProps) {
 function AlertDialogContent({ className, ...props }: React.ComponentProps<typeof View>) {
   return (
     <View
+      aria-modal
       accessibilityRole="alert"
+      accessibilityViewIsModal
       className={cn("mx-6 w-full max-w-80 rounded-2xl bg-card p-6 shadow-xl", className)}
       {...props}
     />

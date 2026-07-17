@@ -2,6 +2,7 @@ import { TextClassContext } from "@/components/ui/text";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
+import * as React from "react";
 import { ActivityIndicator, Platform, Pressable } from "react-native";
 
 const buttonVariants = cva(
@@ -19,7 +20,7 @@ const buttonVariants = cva(
           Platform.select({ web: "hover:bg-primary/90" }),
         ),
         destructive: cn(
-          "bg-destructive shadow-sm shadow-black/5 active:bg-destructive/90 dark:bg-destructive/60",
+          "bg-destructive shadow-sm shadow-black/5 active:bg-destructive/90",
           Platform.select({
             web: "hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
           }),
@@ -44,7 +45,7 @@ const buttonVariants = cva(
         default: cn("h-10 px-4 py-2 sm:h-9", Platform.select({ web: "has-[>svg]:px-3" })),
         sm: cn("h-9 gap-1.5 rounded-md px-3 sm:h-8", Platform.select({ web: "has-[>svg]:px-2.5" })),
         lg: cn("min-h-13 rounded-2xl px-6 py-3", Platform.select({ web: "has-[>svg]:px-4" })),
-        icon: "h-10 w-10 sm:h-9 sm:w-9",
+        icon: "size-10 sm:size-9",
       },
     },
     defaultVariants: {
@@ -64,7 +65,7 @@ const buttonTextVariants = cva(
     variants: {
       variant: {
         default: "text-primary-foreground",
-        destructive: "text-white",
+        destructive: "text-destructive-foreground",
         outline: "",
         secondary: "text-secondary-foreground",
         ghost: "",
@@ -104,8 +105,30 @@ type ButtonProps = React.ComponentProps<typeof Pressable> &
     loading?: boolean;
   };
 
+function textFromChildren(children: React.ReactNode): string {
+  return React.Children.toArray(children)
+    .map((child) => {
+      if (typeof child === "string" || typeof child === "number") return String(child);
+      if (!React.isValidElement<{ children?: React.ReactNode }>(child)) return "";
+      return textFromChildren(child.props.children);
+    })
+    .join(" ")
+    .replace(/\s+/gu, " ")
+    .trim();
+}
+
 function Button({ children, className, loading = false, variant, size, ...props }: ButtonProps) {
-  const disabled = props.disabled || loading;
+  const disabled = Boolean(props.disabled) || loading;
+  const derivedLabel = typeof children === "function" ? "" : textFromChildren(children);
+  const idleLabel = React.useRef(derivedLabel);
+  React.useEffect(() => {
+    if (!loading && derivedLabel) {
+      idleLabel.current = derivedLabel;
+    }
+  }, [derivedLabel, loading]);
+  const accessibilityLabel =
+    props.accessibilityLabel ??
+    (loading ? idleLabel.current || derivedLabel || undefined : undefined);
   const content =
     typeof children === "string" || typeof children === "number" ? (
       <Text>{children}</Text>
@@ -118,6 +141,7 @@ function Button({ children, className, loading = false, variant, size, ...props 
       <Pressable
         className={cn(disabled && "opacity-50", buttonVariants({ variant, size }), className)}
         {...props}
+        accessibilityLabel={accessibilityLabel}
         accessibilityState={{ ...props.accessibilityState, busy: loading, disabled }}
         disabled={disabled}
         role="button"

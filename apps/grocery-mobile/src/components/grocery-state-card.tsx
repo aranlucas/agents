@@ -6,8 +6,10 @@ import { useMemo } from "react";
 import { useResolveClassNames } from "uniwind";
 import { KrogerProductImage } from "@/components/kroger-product-image";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Icon } from "@/components/ui/icon";
+import { Price } from "@/components/ui/price";
 import { Text } from "@/components/ui/text";
 import { cartSubtotal, pantryNames } from "@/lib/grocery-state";
 import { cn } from "@/lib/utils";
@@ -63,10 +65,10 @@ export function GroceryStateCard({
           </Text>
         </View>
         {connected ? (
-          <View className="flex-row items-center gap-1 rounded-full bg-muted px-2 py-1">
-            <Icon as={Check} className="size-3.5 text-primary" />
-            <Text className="text-xs font-bold text-primary">Connected</Text>
-          </View>
+          <Badge variant="secondary">
+            <Icon as={Check} className="size-3.5 text-secondary-foreground" />
+            <Text className="text-xs font-bold">Connected</Text>
+          </Badge>
         ) : null}
       </View>
 
@@ -116,12 +118,20 @@ export function GroceryStateCard({
           <Text className="text-sm font-extrabold">
             Review {Math.max(list.length, cart.length)} items
           </Text>
-          <Text className="mt-0.5 text-xs text-muted-foreground">
-            {subtotal > 0
-              ? `$${subtotal.toFixed(2)} estimated subtotal`
-              : "Check quantities and matches"}
-            {skipped.length ? ` · ${skipped.length} in pantry` : ""}
-          </Text>
+          {subtotal > 0 ? (
+            <Price
+              amount={subtotal}
+              prefix="Estimated subtotal"
+              textClassName="text-xs text-muted-foreground"
+            />
+          ) : (
+            <Text className="mt-0.5 text-xs text-muted-foreground">
+              Check quantities and matches
+            </Text>
+          )}
+          {skipped.length ? (
+            <Text className="text-xs text-muted-foreground">{skipped.length} in pantry</Text>
+          ) : null}
         </View>
         <Icon as={ArrowRight} className="size-5 text-secondary" />
       </Pressable>

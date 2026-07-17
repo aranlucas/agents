@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { use, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { textDeltasFromAguiLines } from "@/lib/resume-introduction";
 
@@ -70,75 +70,126 @@ export function StreamingIntroduction({
 }: {
   stream: Promise<ReadableStream<Uint8Array> | null>;
 }) {
-  const serverStream = use(stream);
+  const [serverStream, setServerStream] = useState<ReadableStream<Uint8Array> | null | undefined>(
+    undefined,
+  );
   const [text, setText] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [failed, setFailed] = useState(false);
-  const mountedRef = useRef(false);
-  const readingStreamRef = useRef<ReadableStream<Uint8Array> | null | undefined>(undefined);
+  const readingStreamRef = useRef<ReadableStream<Uint8Array> | null>(null);
   const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
+  const readEffectIdRef = useRef(0);
 
   useEffect(() => {
-    mountedRef.current = true;
+    let cancelled = false;
+
+    setServerStream(undefined);
+    setText("");
+    setStreaming(false);
+    setFailed(false);
+
+    void Promise.resolve(stream)
+      .then((resolved) => {
+        if (cancelled) {
+          return;
+        }
+
+        setServerStream(resolved);
+      })
+      .catch(() => {
+        if (cancelled) {
+          return;
+        }
+
+        setFailed(true);
+        setServerStream(null);
+      });
+
+    return () => {
+      cancelled = true;
+      if (readerRef.current) {
+        void readerRef.current.cancel();
+      }
+    };
+  }, [stream]);
+
+  useEffect(() => {
+    const currentStream = serverStream;
+    const streamId = ++readEffectIdRef.current;
+    let cleanup: (() => void) | undefined;
 
     async function readStream(
-      currentStream: ReadableStream<Uint8Array>,
+      activeStream: ReadableStream<Uint8Array>,
       reader: ReadableStreamDefaultReader<Uint8Array>,
     ) {
       const decoder = new TextDecoder();
       let buffer = "";
       let generated = "";
+
       while (true) {
         // oxlint-disable-next-line eslint/no-await-in-loop -- stream reads are inherently sequential
         const { value, done } = await reader.read();
+        if (readingStreamRef.current !== activeStream || readEffectIdRef.current !== streamId) {
+          return;
+        }
+
         buffer += decoder.decode(value, { stream: !done });
         const lines = buffer.split("\n");
         buffer = done ? "" : (lines.pop() ?? "");
         const deltas = textDeltasFromAguiLines(lines);
+
         if (deltas.length > 0) {
           generated += deltas.join("");
-          if (mountedRef.current && readingStreamRef.current === currentStream) {
+          if (readingStreamRef.current === activeStream && readEffectIdRef.current === streamId) {
             setStreaming(!done);
             setText(generated);
           }
         }
+
         if (done) break;
       }
-      if (mountedRef.current && readingStreamRef.current === currentStream) {
+
+      if (readingStreamRef.current === activeStream && readEffectIdRef.current === streamId) {
         setStreaming(false);
       }
     }
 
-    if (readingStreamRef.current !== serverStream) {
-      void readerRef.current?.cancel();
-      readerRef.current = null;
-      readingStreamRef.current = serverStream;
-      setText("");
-      setStreaming(false);
-      setFailed(false);
-
-      if (!serverStream) {
-        setFailed(true);
-      } else {
-        const reader = serverStream.getReader();
-        readerRef.current = reader;
-        void readStream(serverStream, reader).catch(() => {
-          if (mountedRef.current && readingStreamRef.current === serverStream) {
-            setStreaming(false);
-            setFailed(true);
-          }
-        });
-      }
+    if (currentStream === undefined) {
+      return cleanup;
     }
 
-    return () => {
-      mountedRef.current = false;
-      queueMicrotask(() => {
-        if (!mountedRef.current && readingStreamRef.current === serverStream) {
-          void readerRef.current?.cancel();
+    if (!currentStream) {
+      setFailed(true);
+      return cleanup;
+    }
+
+    if (readingStreamRef.current !== currentStream) {
+      void readerRef.current?.cancel();
+      readerRef.current = null;
+      readingStreamRef.current = currentStream;
+    }
+
+    if (readerRef.current === null) {
+      const reader = currentStream.getReader();
+      readerRef.current = reader;
+      void readStream(currentStream, reader).catch(() => {
+        if (readingStreamRef.current === currentStream && readEffectIdRef.current === streamId) {
+          setStreaming(false);
+          setFailed(true);
         }
       });
+    }
+
+    cleanup = () => {
+      const activeReader = readerRef.current;
+      if (readEffectIdRef.current === streamId && readingStreamRef.current === currentStream) {
+        void activeReader?.cancel();
+        readerRef.current = null;
+        readingStreamRef.current = null;
+      }
     };
+
+    return cleanup;
   }, [serverStream]);
 
   if (!text && !failed) return <IntroductionSkeleton />;
@@ -157,5 +208,6 @@ export function StreamingIntroduction({
       </p>
     );
   }
+
   return <IntroductionContent text={text} streaming={streaming} />;
 }

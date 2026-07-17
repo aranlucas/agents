@@ -4,12 +4,12 @@ import { Image, View } from "react-native";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 
-const avatarVariants = cva("items-center justify-center rounded-full bg-muted overflow-hidden", {
+const avatarVariants = cva("items-center justify-center overflow-hidden rounded-full bg-muted", {
   variants: {
     size: {
-      sm: "h-8 w-8",
-      md: "h-10 w-10",
-      lg: "h-14 w-14",
+      sm: "size-8",
+      md: "size-10",
+      lg: "size-14",
     },
   },
   defaultVariants: {
@@ -37,16 +37,17 @@ type AvatarProps = React.ComponentPropsWithoutRef<typeof View> &
   };
 
 function Avatar({ size, className, src, fallback, ...props }: AvatarProps) {
-  const [hasError, setHasError] = React.useState(false);
+  const [failedSource, setFailedSource] = React.useState<string | null>(null);
+  const showImage = Boolean(src) && failedSource !== src;
 
   return (
     <View accessibilityRole="image" className={cn(avatarVariants({ size }), className)} {...props}>
-      {src && !hasError ? (
+      {showImage ? (
         <Image
           source={{ uri: src }}
           className="h-full w-full"
           resizeMode="cover"
-          onError={() => setHasError(true)}
+          onError={() => setFailedSource(src ?? null)}
         />
       ) : (
         <Text className={cn(avatarTextVariants({ size }))}>{fallback ?? "?"}</Text>
