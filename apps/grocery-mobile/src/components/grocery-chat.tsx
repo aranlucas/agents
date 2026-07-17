@@ -1,7 +1,7 @@
 import { useRouter } from "expo-router";
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { View } from "react-native";
-import { ChevronDown, ChevronRight, Plus, Sparkles } from "lucide-react-native";
+import { ChevronDown, ChevronRight, Sparkles } from "lucide-react-native";
 import { ADD_TO_CART_MESSAGE, AddToCartDialog } from "@/components/add-to-cart-dialog";
 import { GroceryStateCard } from "@/components/grocery-state-card";
 import { useGroceryAgent } from "@/components/grocery-agent-provider";
@@ -20,13 +20,13 @@ import {
   PromptInputTextarea,
   PromptInputToolbar,
 } from "@/components/ui/prompt-input";
-import { SafeArea } from "@/components/ui/safe-area";
 import { Text } from "@/components/ui/text";
 import { useKrogerConnection } from "@/hooks/use-kroger-connection";
 import type { GroceryOperationOutcome } from "@/hooks/use-grocery-agent";
 import { GROCERY_SUGGESTIONS } from "@/lib/grocery-suggestions";
 import { cn } from "@/lib/utils";
 import { ScrollView } from "react-native-gesture-handler";
+import { SafeArea } from "./ui/safe-area";
 
 export function GroceryChat() {
   const router = useRouter();
@@ -59,8 +59,8 @@ export function GroceryChat() {
     );
   }, []);
   return (
-    <SafeArea edges={["bottom"]}>
-      <KeyboardView className="bg-background" offset={0}>
+    <SafeArea>
+      <KeyboardView behavior="padding">
         <ScrollView
           ref={scrollRef}
           className="flex-1 px-4 py-3"
