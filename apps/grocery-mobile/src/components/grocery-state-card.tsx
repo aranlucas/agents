@@ -144,11 +144,6 @@ export function GroceryStateCard({
           </View>
         </Button>
       ) : null}
-      {connected && onAddToCart ? (
-        <Text className="text-center text-xs leading-4 text-muted-foreground" selectable>
-          Nothing changes in your Kroger cart until you approve this action.
-        </Text>
-      ) : null}
     </Card>
   );
 }

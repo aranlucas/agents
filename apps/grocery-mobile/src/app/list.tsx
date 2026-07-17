@@ -2,37 +2,25 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { ScrollView, View } from "react-native";
 import { ShoppingCart, Sparkles, Tag } from "lucide-react-native";
+import { ADD_TO_CART_MESSAGE, AddToCartDialog } from "@/components/add-to-cart-dialog";
 import { KrogerProductImage } from "@/components/kroger-product-image";
 import { KrogerConnectionCard } from "@/components/kroger-connection-card";
 import { useGroceryAgent } from "@/components/grocery-agent-provider";
 import { ErrorAlert } from "@/components/ui/alert";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
 import { Price } from "@/components/ui/price";
 import { Text } from "@/components/ui/text";
 import { useKrogerConnection } from "@/hooks/use-kroger-connection";
 import { cartSubtotal, pantryNames } from "@/lib/grocery-state";
-import { cn } from "@/lib/utils";
 
 function GroceryListContent() {
   const router = useRouter();
   const { state, isRunning, error, send } = useGroceryAgent();
   const connection = useKrogerConnection();
   const { connected } = connection;
-  const [checked, setChecked] = useState<Set<number>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
   const list = state.shopping_list ?? [];
   const cart = state.cart ?? [];
@@ -81,7 +69,7 @@ function GroceryListContent() {
               {list.length || cart.length} grocery items
             </Text>
             <Text className="mt-1 text-xs text-muted-foreground">
-              {checked.size} reviewed · {state.pantry?.length ?? 0} pantry items known
+              {state.pantry?.length ?? 0} pantry items known
             </Text>
           </View>
           {subtotal > 0 ? (
@@ -121,40 +109,18 @@ function GroceryListContent() {
                         : "Suggested item",
                 };
               })
-          ).map((item, index, array) => {
-            const isChecked = checked.has(index);
-            return (
-              <View key={`${item.name}-${index}`}>
-                <View className="min-h-17 flex-row items-center gap-1 px-4 py-3">
-                  <Checkbox
-                    accessibilityLabel={`${isChecked ? "Unmark" : "Mark"} ${item.name} reviewed`}
-                    checked={isChecked}
-                    onCheckedChange={() =>
-                      setChecked((current) => {
-                        const next = new Set(current);
-                        if (next.has(index)) next.delete(index);
-                        else next.add(index);
-                        return next;
-                      })
-                    }
-                  />
-                  <KrogerProductImage imageUrl={item.imageUrl} name={item.name} />
-                  <View className="flex-1 gap-0.5">
-                    <Text
-                      className={cn(
-                        "text-sm font-bold",
-                        isChecked && "text-muted-foreground line-through",
-                      )}
-                    >
-                      {item.name}
-                    </Text>
-                    <Text className="text-xs text-muted-foreground">{item.detail}</Text>
-                  </View>
+          ).map((item, index, array) => (
+            <View key={`${item.name}-${index}`}>
+              <View className="min-h-17 flex-row items-center gap-3 px-4 py-3">
+                <KrogerProductImage imageUrl={item.imageUrl} name={item.name} />
+                <View className="flex-1 gap-0.5">
+                  <Text className="text-sm font-bold">{item.name}</Text>
+                  <Text className="text-xs text-muted-foreground">{item.detail}</Text>
                 </View>
-                {index < array.length - 1 ? <View className="ml-25.5 h-px bg-border" /> : null}
               </View>
-            );
-          })}
+              {index < array.length - 1 ? <View className="ml-19 h-px bg-border" /> : null}
+            </View>
+          ))}
         </Card>
 
         {state.weekly_deals ? (
@@ -171,50 +137,28 @@ function GroceryListContent() {
 
         {error ? <ErrorAlert message={error} /> : null}
         {connected ? (
-          <>
-            <Button
-              loading={isRunning}
-              disabled={!list.length}
-              size="lg"
-              onPress={() => setConfirmOpen(true)}
-            >
-              <View className="flex-row items-center gap-2">
-                <Icon as={ShoppingCart} className="size-5 text-primary-foreground" />
-                <Text className="text-base font-bold text-primary-foreground">
-                  Add to Kroger cart
-                </Text>
-              </View>
-            </Button>
-            <Text className="px-3 text-center text-xs leading-4 text-muted-foreground" selectable>
-              You are approving this cart action. Kroger prices and availability can change before
-              checkout.
-            </Text>
-          </>
+          <Button
+            loading={isRunning}
+            disabled={!list.length}
+            size="lg"
+            onPress={() => setConfirmOpen(true)}
+          >
+            <View className="flex-row items-center gap-2">
+              <Icon as={ShoppingCart} className="size-5 text-primary-foreground" />
+              <Text className="text-base font-bold text-primary-foreground">
+                Add to Kroger cart
+              </Text>
+            </View>
+          </Button>
         ) : (
           <KrogerConnectionCard connection={connection} />
         )}
       </ScrollView>
-      <AlertDialog onOpenChange={setConfirmOpen} open={confirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Add these items to Kroger?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This sends the displayed matches and quantities to your connected Kroger cart.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onPress={() => setConfirmOpen(false)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onPress={() => {
-                setConfirmOpen(false);
-                void send("Add every matched item in this grocery list to my Kroger cart now.");
-              }}
-            >
-              Add to cart
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <AddToCartDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        onConfirm={() => void send(ADD_TO_CART_MESSAGE)}
+      />
     </>
   );
 }

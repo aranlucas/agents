@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import {
+  BookMarked,
   ChevronRight,
   CircleHelp,
   FileText,
@@ -106,6 +107,25 @@ export default function AccountScreen() {
       </Card>
 
       <Text className="mt-1 ml-1 text-xs font-extrabold tracking-wider text-muted-foreground uppercase">
+        Shopping
+      </Text>
+      <Card className="gap-0 overflow-hidden rounded-2xl p-0">
+        <AccountRow
+          accessibilityRole="button"
+          icon={ShoppingBasket}
+          label="Grocery plan"
+          onPress={() => router.push("/list")}
+        />
+        <RowRule />
+        <AccountRow
+          accessibilityRole="button"
+          icon={BookMarked}
+          label="Saved recipes"
+          onPress={() => router.push("/saved-recipes")}
+        />
+      </Card>
+
+      <Text className="mt-1 ml-1 text-xs font-extrabold tracking-wider text-muted-foreground uppercase">
         Help and legal
       </Text>
       <Card className="gap-0 overflow-hidden rounded-2xl p-0">
@@ -145,11 +165,13 @@ export default function AccountScreen() {
 }
 
 function AccountRow({
+  accessibilityRole = "link",
   destructive = false,
   icon,
   label,
   onPress,
 }: {
+  accessibilityRole?: "link" | "button";
   destructive?: boolean;
   icon: LucideIcon;
   label: string;
@@ -157,7 +179,7 @@ function AccountRow({
 }) {
   return (
     <Pressable
-      accessibilityRole="link"
+      accessibilityRole={accessibilityRole}
       className="min-h-14 flex-row items-center gap-3 px-4 active:bg-muted"
       onPress={onPress}
     >

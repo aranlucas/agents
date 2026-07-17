@@ -123,6 +123,98 @@ export default function HouseholdsScreen() {
       contentContainerClassName="gap-4 p-4.5 pb-10"
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}
     >
+      <View className="flex-row items-center justify-between px-1 pt-1">
+        <Text className="text-xl font-extrabold">Your households</Text>
+        <Badge variant="outline">
+          <Text className="text-secondary tabular-nums" variant="small">
+            {households.length}
+          </Text>
+        </Badge>
+      </View>
+
+      {householdsQuery.isPending ? (
+        <View
+          accessibilityLabel="Loading households"
+          accessibilityRole="progressbar"
+          className="gap-3"
+        >
+          <Skeleton className="h-28 w-full rounded-2xl" />
+          <Skeleton className="h-28 w-full rounded-2xl" />
+        </View>
+      ) : households.length === 0 ? (
+        <Card className="rounded-2xl p-6">
+          <EmptyState
+            className="p-0"
+            description="Create one below or join with an invite code."
+            icon={<Icon as={Users} className="size-7 text-primary" />}
+            title="No shared households yet"
+          />
+        </Card>
+      ) : (
+        households.map((household) => {
+          const invite = createdInvites[household.id];
+          return (
+            <Card className="gap-3.5 rounded-2xl p-4" key={household.id}>
+              <View className="flex-row items-center gap-3">
+                <View className="flex-1 gap-0.5">
+                  <Text className="text-lg font-extrabold" selectable>
+                    {household.name}
+                  </Text>
+                  <Text className="text-xs text-muted-foreground capitalize">
+                    {household.role === "owner" ? "Owner" : "Member"}
+                  </Text>
+                </View>
+                <Button
+                  className="min-h-10 rounded-xl px-3"
+                  onPress={() =>
+                    router.push({
+                      pathname: "/shared-list",
+                      params: { householdId: household.id, householdName: household.name },
+                    })
+                  }
+                  size="sm"
+                >
+                  <Text className="text-sm font-extrabold text-primary-foreground">Open list</Text>
+                  <Icon as={Check} className="size-4 text-primary-foreground" />
+                </Button>
+              </View>
+              {household.role === "owner" ? (
+                invite ? (
+                  <View className="flex-row items-center gap-2.5 rounded-2xl bg-muted p-3">
+                    <Icon as={Copy} className="size-4.5 text-primary" />
+                    <View className="flex-1 gap-0.5">
+                      <Text variant="muted">Invite code</Text>
+                      <Text
+                        className="text-lg font-extrabold tracking-widest text-secondary"
+                        selectable
+                      >
+                        {invite.code}
+                      </Text>
+                    </View>
+                    <Text variant="muted">7 days</Text>
+                  </View>
+                ) : (
+                  <Button
+                    disabled={busy === `invite:${household.id}`}
+                    loading={busy === `invite:${household.id}`}
+                    size="lg"
+                    variant="secondary"
+                    onPress={() => createInvite.mutate(household.id)}
+                  >
+                    {busy === `invite:${household.id}` ? "Creating invite…" : "Create invite code"}
+                  </Button>
+                )
+              ) : null}
+            </Card>
+          );
+        })
+      )}
+
+      {errorMessage ? <ErrorAlert message={errorMessage} /> : null}
+
+      <Text className="mt-2 ml-1 text-xs font-extrabold tracking-wider text-muted-foreground uppercase">
+        Add a household
+      </Text>
       <Card className="gap-3 rounded-2xl p-4">
         <View className="flex-row items-center gap-3">
           <View className="size-11 items-center justify-center rounded-2xl bg-muted">
@@ -189,95 +281,6 @@ export default function HouseholdsScreen() {
           {busy === "join" ? "Joining…" : "Join household"}
         </Button>
       </Card>
-
-      {errorMessage ? <ErrorAlert message={errorMessage} /> : null}
-
-      <View className="flex-row items-center justify-between px-1 pt-1">
-        <Text className="text-xl font-extrabold">Your households</Text>
-        <Badge variant="outline">
-          <Text className="text-secondary tabular-nums" variant="small">
-            {households.length}
-          </Text>
-        </Badge>
-      </View>
-
-      {householdsQuery.isPending ? (
-        <View
-          accessibilityLabel="Loading households"
-          accessibilityRole="progressbar"
-          className="gap-3"
-        >
-          <Skeleton className="h-28 w-full rounded-2xl" />
-          <Skeleton className="h-28 w-full rounded-2xl" />
-        </View>
-      ) : households.length === 0 ? (
-        <Card className="rounded-2xl p-6">
-          <EmptyState
-            className="p-0"
-            description="Create one above or join with an invite code."
-            icon={<Icon as={Users} className="size-7 text-primary" />}
-            title="No shared households yet"
-          />
-        </Card>
-      ) : (
-        households.map((household) => {
-          const invite = createdInvites[household.id];
-          return (
-            <Card className="gap-3.5 rounded-2xl p-4" key={household.id}>
-              <View className="flex-row items-center gap-3">
-                <View className="flex-1 gap-0.5">
-                  <Text className="text-lg font-extrabold" selectable>
-                    {household.name}
-                  </Text>
-                  <Text className="text-xs text-muted-foreground capitalize">
-                    {household.role === "owner" ? "Owner" : "Member"}
-                  </Text>
-                </View>
-                <Button
-                  className="min-h-10 rounded-xl px-3"
-                  onPress={() =>
-                    router.push({
-                      pathname: "/shared-list",
-                      params: { householdId: household.id, householdName: household.name },
-                    })
-                  }
-                  size="sm"
-                >
-                  <Text className="text-sm font-extrabold text-primary-foreground">Open list</Text>
-                  <Icon as={Check} className="size-4 text-primary-foreground" />
-                </Button>
-              </View>
-              {household.role === "owner" ? (
-                invite ? (
-                  <View className="flex-row items-center gap-2.5 rounded-2xl bg-muted p-3">
-                    <Icon as={Copy} className="size-4.5 text-primary" />
-                    <View className="flex-1 gap-0.5">
-                      <Text variant="muted">Invite code</Text>
-                      <Text
-                        className="text-lg font-extrabold tracking-widest text-secondary"
-                        selectable
-                      >
-                        {invite.code}
-                      </Text>
-                    </View>
-                    <Text variant="muted">7 days</Text>
-                  </View>
-                ) : (
-                  <Button
-                    disabled={busy === `invite:${household.id}`}
-                    loading={busy === `invite:${household.id}`}
-                    size="lg"
-                    variant="secondary"
-                    onPress={() => createInvite.mutate(household.id)}
-                  >
-                    {busy === `invite:${household.id}` ? "Creating invite…" : "Create invite code"}
-                  </Button>
-                )
-              ) : null}
-            </Card>
-          );
-        })
-      )}
     </ScrollView>
   );
 }

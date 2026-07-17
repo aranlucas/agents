@@ -120,12 +120,6 @@ export default function GroceryHomeScreen() {
             icon={History}
             title="Chat history"
           />
-          <HomeShortcut
-            description="Reuse favorite meals"
-            href="/saved-recipes"
-            icon={BookMarked}
-            title="Saved recipes"
-          />
         </View>
       </View>
     </ScrollView>

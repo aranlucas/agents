@@ -1,18 +1,10 @@
-import {
-  type Suggestion,
-  type Thread,
-  useConfigureSuggestions,
-  useSuggestions,
-  useThreads,
-} from "@copilotkit/react-native";
-import { createContext, type ReactNode, useCallback, useContext, useMemo } from "react";
+import { type Thread, useThreads } from "@copilotkit/react-native";
+import { createContext, type ReactNode, useContext, useMemo } from "react";
 import { useGroceryAgentController } from "@/hooks/use-grocery-agent";
-import { GROCERY_SUGGESTION_THEMES, uniqueSuggestions } from "@/lib/grocery-suggestions";
 
 const AGENT_ID = "grocery";
 
 type GroceryAgentContextValue = ReturnType<typeof useGroceryAgentController> & {
-  suggestions: Suggestion[];
   threads: Thread[];
   threadsLoading: boolean;
   threadsError: Error | null;
@@ -29,35 +21,9 @@ export function GroceryAgentProvider({ children }: { children: ReactNode }) {
   const threadStore = useThreads({ agentId: AGENT_ID, enabled: true, limit: 25 });
   const agentController = useGroceryAgentController(threadStore.refetchThreads);
 
-  useConfigureSuggestions({
-    suggestions: GROCERY_SUGGESTION_THEMES,
-    consumerAgentId: AGENT_ID,
-    available: "before-first-message",
-  });
-  const suggestionStore = useSuggestions({ agentId: AGENT_ID });
-  const suggestions = useMemo(
-    () =>
-      uniqueSuggestions<Suggestion>(
-        suggestionStore.suggestions.length > 0
-          ? suggestionStore.suggestions
-          : GROCERY_SUGGESTION_THEMES,
-      ),
-    [suggestionStore.suggestions],
-  );
-  const resetChat = agentController.startNewChat;
-  const reloadSuggestions = suggestionStore.reloadSuggestions;
-
-  const startNewChat = useCallback(async () => {
-    const outcome = await resetChat();
-    if (outcome.status === "success") reloadSuggestions();
-    return outcome;
-  }, [reloadSuggestions, resetChat]);
-
   const value = useMemo<GroceryAgentContextValue>(
     () => ({
       ...agentController,
-      startNewChat,
-      suggestions,
       threads: threadStore.threads,
       threadsLoading: threadStore.isLoading,
       threadsError: threadStore.listError,
@@ -69,8 +35,6 @@ export function GroceryAgentProvider({ children }: { children: ReactNode }) {
     }),
     [
       agentController,
-      startNewChat,
-      suggestions,
       threadStore.threads,
       threadStore.isLoading,
       threadStore.listError,

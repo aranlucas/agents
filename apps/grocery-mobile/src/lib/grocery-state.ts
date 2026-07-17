@@ -15,13 +15,7 @@ export type DisplayToolCall = {
   status: "running" | "complete" | "failed";
 };
 
-export type DisplayGroceryList = {
-  id: string;
-  role: "grocery-list";
-  state: GroceryState;
-};
-
-export type DisplayMessage = DisplayTextMessage | DisplayToolCall | DisplayGroceryList;
+export type DisplayMessage = DisplayTextMessage | DisplayToolCall;
 
 type ToolCall = {
   id: string;
@@ -95,34 +89,6 @@ function toolFailed(result: unknown): boolean {
   return record?.ok === false || record?.error != null;
 }
 
-function applyGroceryTool(state: GroceryState, name: string, parameters: unknown): GroceryState {
-  const input = recordValue(parameters);
-  if (!input) return state;
-
-  switch (name) {
-    case "set_shopping_list":
-      return normalizeGroceryState({
-        ...state,
-        shopping_list: stringArray(input.items),
-        product_matches: [],
-      });
-    case "set_product_matches":
-      return normalizeGroceryState({ ...state, product_matches: input.items });
-    case "update_cart":
-      return normalizeGroceryState({ ...state, cart: input.items });
-    case "update_pantry":
-      return normalizeGroceryState({ ...state, pantry: input.items });
-    case "set_meal_plan":
-      return normalizeGroceryState({ ...state, meal_plan: input.plan, status: "planning" });
-    case "set_weekly_deals":
-      return normalizeGroceryState({ ...state, weekly_deals: input.deals });
-    case "mark_list_ready":
-      return normalizeGroceryState({ ...state, review_summary: input.summary, status: "ready" });
-    default:
-      return state;
-  }
-}
-
 export function toDisplayMessages(messages: readonly unknown[]): DisplayMessage[] {
   const records = messages.map(recordValue).filter((message) => message !== null);
   const toolResults = new Map<string, unknown>();
@@ -133,16 +99,12 @@ export function toDisplayMessages(messages: readonly unknown[]): DisplayMessage[
   }
 
   const items: DisplayMessage[] = [];
-  let groceryState = normalizeGroceryState({});
   for (const [index, message] of records.entries()) {
     if (message.role === "assistant") {
       for (const toolCall of messageToolCalls(message)) {
         const hasResult = toolResults.has(toolCall.id);
         const result = toolResults.get(toolCall.id);
         const failed = hasResult && toolFailed(result);
-        if (hasResult && !failed) {
-          groceryState = applyGroceryTool(groceryState, toolCall.name, toolCall.parameters);
-        }
         items.push({
           id: toolCall.id,
           role: "tool",
@@ -151,18 +113,6 @@ export function toDisplayMessages(messages: readonly unknown[]): DisplayMessage[
           ...(hasResult ? { result } : {}),
           status: !hasResult ? "running" : failed ? "failed" : "complete",
         });
-        if (
-          toolCall.name === "mark_list_ready" &&
-          hasResult &&
-          !failed &&
-          (groceryState.shopping_list?.length ?? 0) > 0
-        ) {
-          items.push({
-            id: `${toolCall.id}-grocery-list`,
-            role: "grocery-list",
-            state: normalizeGroceryState(groceryState),
-          });
-        }
       }
     }
 
@@ -189,9 +139,7 @@ function displayMessageRevision(message: DisplayMessage): string {
   const revision =
     message.role === "tool"
       ? JSON.stringify([message.name, message.status, message.parameters, message.result])
-      : message.role === "grocery-list"
-        ? JSON.stringify(message.state)
-        : message.content;
+      : message.content;
   displayMessageRevisionCache.set(message, revision);
   return revision;
 }
@@ -276,50 +224,7 @@ export function normalizeGroceryState(value: unknown): GroceryState {
 }
 
 export function stabilizeGroceryState(previous: GroceryState, next: GroceryState): GroceryState {
-  return previous.status === next.status &&
-    previous.meal_plan === next.meal_plan &&
-    previous.weekly_deals === next.weekly_deals &&
-    previous.notes === next.notes &&
-    previous.review_summary === next.review_summary &&
-    previous.kroger_connected === next.kroger_connected &&
-    arraysEqual(previous.shopping_list, next.shopping_list, (left, right) => left === right) &&
-    arraysEqual(
-      previous.product_matches,
-      next.product_matches,
-      (left, right) =>
-        left.query === right.query &&
-        left.name === right.name &&
-        left.upc === right.upc &&
-        left.image_url === right.image_url &&
-        left.price === right.price &&
-        left.size === right.size,
-    ) &&
-    arraysEqual(
-      previous.cart,
-      next.cart,
-      (left, right) =>
-        left.name === right.name &&
-        left.quantity === right.quantity &&
-        left.price === right.price &&
-        left.upc === right.upc,
-    ) &&
-    arraysEqual(
-      previous.pantry,
-      next.pantry,
-      (left, right) => left.name === right.name && left.quantity === right.quantity,
-    )
-    ? previous
-    : next;
-}
-
-function arraysEqual<Value>(
-  left: readonly Value[] | undefined,
-  right: readonly Value[] | undefined,
-  equals: (left: Value, right: Value) => boolean,
-): boolean {
-  if (left === right) return true;
-  if (!left || !right || left.length !== right.length) return false;
-  return left.every((value, index) => equals(value, right[index] as Value));
+  return previous === next || JSON.stringify(previous) === JSON.stringify(next) ? previous : next;
 }
 
 export function cartSubtotal(items: readonly CartItem[]): number {
