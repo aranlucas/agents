@@ -1,3 +1,4 @@
+import * as React from "react";
 import NetInfo from "@react-native-community/netinfo";
 import { render } from "@testing-library/react-native";
 import { focusManager, onlineManager, useQueryClient } from "@tanstack/react-query";
@@ -7,7 +8,9 @@ import { createGroceryQueryClient, QueryProvider } from "@/components/query-prov
 
 function QueryClientIdentity({ onClient }: { onClient(client: object): void }) {
   const client = useQueryClient();
-  onClient(client);
+  React.useEffect(() => {
+    onClient(client);
+  }, [client, onClient]);
   return <Text>Ready</Text>;
 }
 

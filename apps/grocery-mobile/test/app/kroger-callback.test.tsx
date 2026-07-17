@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { screen, userEvent, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestQueryClient, renderWithQueryClient } from "../render";
@@ -100,7 +100,8 @@ describe("KrogerCallbackScreen", () => {
     await renderWithQueryClient(<KrogerCallbackScreen />);
 
     await screen.findByText("Kroger reload failed");
-    fireEvent.press(screen.getByRole("button", { name: "Back to Grocery Agent" }));
+    const user = userEvent.setup();
+    await user.press(screen.getByRole("button", { name: "Back to Grocery Agent" }));
     expect(mocks.replace).toHaveBeenCalledWith("/");
   });
 });

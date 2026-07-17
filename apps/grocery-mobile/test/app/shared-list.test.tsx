@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { screen, userEvent, waitFor } from "@testing-library/react-native";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestQueryClient, renderWithQueryClient } from "../render";
 import { groceryQueryKeys } from "@/lib/query-keys";
@@ -131,12 +131,17 @@ beforeEach(() => {
 
 describe("SharedListScreen", () => {
   it("owns focused collection/detail queries, radio selection, refresh, and empty states", async () => {
+    const user = userEvent.setup();
     const weekly = list("list_1", "Weekly", [item("item_1", "Milk")]);
     const party = list("list_2", "Party", []);
     mocks.api.listLists.mockResolvedValue([weekly, party]);
     mocks.api.getList.mockImplementation(async (id: string) => (id === weekly.id ? weekly : party));
     const client = createTestQueryClient();
     await renderWithQueryClient(<SharedListScreen />, client);
+    await Promise.resolve();
+    await Promise.resolve();
+    await mocks.focus?.();
+    await waitFor(() => expect(mocks.api.listLists).toHaveBeenCalled());
 
     await screen.findByText("Milk");
     expect(screen.getByLabelText("Grocery list selector").props.accessibilityRole).toBe(
@@ -146,34 +151,36 @@ describe("SharedListScreen", () => {
       true,
     );
 
-    await act(async () => {
-      fireEvent.press(screen.getByRole("radio", { name: "Party" }));
-      await Promise.resolve();
-    });
+    await user.press(screen.getByRole("radio", { name: "Party" }));
+    await Promise.resolve();
     await screen.findByText("No items yet");
     expect(screen.getByRole("radio", { name: "Party" }).props.accessibilityState.checked).toBe(
       true,
     );
 
-    await act(async () => {
-      mocks.onRefresh?.();
-      await Promise.resolve();
-    });
+    mocks.onRefresh?.();
     await waitFor(() => expect(mocks.api.listLists).toHaveBeenCalledTimes(2));
     expect(mocks.api.getList).toHaveBeenCalledTimes(3);
 
-    await act(async () => mocks.blur?.());
-    const listsOptions = client.getQueryCache().find({
-      queryKey: groceryQueryKeys.lists("user_1", "house_1"),
-    })?.options as { enabled?: boolean } | undefined;
-    const detailOptions = client.getQueryCache().find({
-      queryKey: groceryQueryKeys.list("user_1", "list_2"),
-    })?.options as { enabled?: boolean } | undefined;
-    expect(listsOptions?.enabled).toBe(false);
-    expect(detailOptions?.enabled).toBe(false);
+    await mocks.blur?.();
+    await Promise.resolve();
+    await Promise.resolve();
+    await waitFor(() => {
+      const listsOptions = client.getQueryCache().find({
+        queryKey: groceryQueryKeys.lists("user_1", "house_1"),
+      })?.options as { enabled?: boolean } | undefined;
+      expect(listsOptions?.enabled).toBe(false);
+    });
+    await waitFor(() => {
+      const detailOptions = client.getQueryCache().find({
+        queryKey: groceryQueryKeys.list("user_1", "list_2"),
+      })?.options as { enabled?: boolean } | undefined;
+      expect(detailOptions?.enabled).toBe(false);
+    });
   });
 
   it("guards list creation and seeds only the collection and created detail caches", async () => {
+    const user = userEvent.setup();
     const created = list("list_new", "Weekend", []);
     const creating = deferred<any>();
     mocks.api.createList.mockReturnValue(creating.promise);
@@ -181,33 +188,28 @@ describe("SharedListScreen", () => {
     const setQueryData = vi.spyOn(client, "setQueryData");
     await renderWithQueryClient(<SharedListScreen />, client);
     await screen.findByText("Start a shared list");
+    await Promise.resolve();
+    await Promise.resolve();
     const input = screen.getByLabelText("List title");
 
-    await act(async () => {
-      fireEvent.changeText(input, "   ");
-      await Promise.resolve();
-    });
-    await act(async () => fireEvent(input, "submitEditing"));
+    await user.clear(input);
+    await user.type(input, "   ");
+    await user.press(screen.getByRole("button", { name: "Create shared list" }));
     expect(mocks.api.createList).not.toHaveBeenCalled();
 
-    await act(async () => {
-      fireEvent.changeText(input, "  Weekend  ");
-      await Promise.resolve();
-    });
-    await act(async () => {
-      fireEvent(input, "submitEditing");
-      fireEvent(input, "submitEditing");
-      await Promise.resolve();
-    });
-    expect(mocks.api.createList).toHaveBeenCalledOnce();
+    await user.clear(input);
+    await user.type(input, "  Weekend  ");
+    await waitFor(() =>
+      expect(screen.getByLabelText("List title").props.value).toBe("  Weekend  "),
+    );
+    await user.press(screen.getByRole("button", { name: "Create shared list" }));
+    await waitFor(() => expect(mocks.api.createList).toHaveBeenCalledOnce());
     expect(mocks.api.createList).toHaveBeenCalledWith("Weekend", "house_1");
-    expect(screen.getByLabelText("List title").props.value).toBe("  Weekend  ");
 
     mocks.api.getList.mockResolvedValue(created);
-    await act(async () => {
-      creating.resolve(created);
-      await Promise.resolve();
-    });
+    creating.resolve(created);
+    await Promise.resolve();
+    await Promise.resolve();
     await screen.findByText("No items yet");
     expect(screen.queryByLabelText("List title")).toBeNull();
     expect(setQueryData).toHaveBeenCalledWith(
@@ -219,6 +221,7 @@ describe("SharedListScreen", () => {
   });
 
   it("retains failed item input, invalidates only detail on success, and mutates a checkbox once", async () => {
+    const user = userEvent.setup();
     const active = list("list_1", "Weekly", [item("item_1", "Milk")]);
     mocks.api.listLists.mockResolvedValue([active]);
     mocks.api.getList.mockResolvedValue(active);
@@ -229,27 +232,28 @@ describe("SharedListScreen", () => {
     const client = createTestQueryClient();
     const invalidate = vi.spyOn(client, "invalidateQueries");
     await renderWithQueryClient(<SharedListScreen />, client);
+    await mocks.focus?.();
+    await waitFor(() => expect(mocks.api.listLists).toHaveBeenCalled());
     await screen.findByText("Milk");
     const input = screen.getByLabelText("New grocery item");
+    await Promise.resolve();
+    await Promise.resolve();
 
-    await act(async () => {
-      fireEvent.changeText(input, "  Eggs  ");
-      await Promise.resolve();
-    });
-    await act(async () => fireEvent(input, "submitEditing"));
+    await user.clear(input);
+    await user.type(input, "  Eggs  ");
+    await user.press(screen.getByRole("button", { name: "Add item" }));
     await screen.findByText("Could not add item");
-    expect(screen.getByLabelText("New grocery item").props.value).toBe("  Eggs  ");
+    await waitFor(() =>
+      expect(screen.getByLabelText("New grocery item").props.value).toBe("  Eggs  "),
+    );
 
-    await act(async () => fireEvent(input, "submitEditing"));
+    await user.press(screen.getByRole("button", { name: "Add item" }));
     await waitFor(() => expect(screen.getByLabelText("New grocery item").props.value).toBe(""));
     expect(invalidate).toHaveBeenLastCalledWith({
       queryKey: groceryQueryKeys.list("user_1", "list_1"),
     });
 
-    await act(async () => {
-      fireEvent.press(screen.getByRole("checkbox", { name: "Check Milk" }));
-      await Promise.resolve();
-    });
+    await user.press(screen.getByRole("checkbox", { name: "Check Milk" }));
     expect(mocks.api.updateItem).toHaveBeenCalledOnce();
     expect(mocks.api.updateItem).toHaveBeenCalledWith("list_1", "item_1", { checked: true });
   });

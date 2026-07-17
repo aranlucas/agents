@@ -1,4 +1,4 @@
-import { act, render, waitFor } from "@testing-library/react";
+import { render, waitFor } from "@testing-library/react";
 import { hydrateRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -41,10 +41,8 @@ describe("useArtifactPanel hydration", () => {
       expect(serverChatColumn).not.toBeNull();
       expect(serverChatColumn?.classList.contains("max-md:hidden")).toBe(false);
 
-      await act(async () => {
-        root = hydrateRoot(container, <StoredPanelHarness />, {
-          onRecoverableError: (error) => recoverableErrors.push(error),
-        });
+      root = hydrateRoot(container, <StoredPanelHarness />, {
+        onRecoverableError: (error) => recoverableErrors.push(error),
       });
 
       await waitFor(() => {
@@ -58,7 +56,7 @@ describe("useArtifactPanel hydration", () => {
       expect(consoleError).not.toHaveBeenCalled();
     } finally {
       if (root) {
-        await act(async () => root?.unmount());
+        root?.unmount();
       }
       consoleError.mockRestore();
       container.remove();

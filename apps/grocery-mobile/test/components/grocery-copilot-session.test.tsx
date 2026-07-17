@@ -1,4 +1,4 @@
-import { act, fireEvent, screen } from "@testing-library/react-native";
+import { screen, userEvent } from "@testing-library/react-native";
 import { focusManager, onlineManager } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { Text } from "react-native";
@@ -121,9 +121,7 @@ describe("GroceryCopilotSession", () => {
     );
     await screen.findByText("Session ready");
 
-    await act(async () => {
-      await client.refetchQueries({ queryKey: groceryQueryKeys.copilotSession("user_1") });
-    });
+    await client.refetchQueries({ queryKey: groceryQueryKeys.copilotSession("user_1") });
 
     expect(mocks.auth.getToken).toHaveBeenCalledTimes(2);
     expect(screen.getByText("Session ready")).toBeTruthy();
@@ -146,7 +144,8 @@ describe("GroceryCopilotSession", () => {
 
     await screen.findByText("offline");
     expect(mocks.auth.getToken).toHaveBeenCalledOnce();
-    fireEvent.press(screen.getByRole("button", { name: "Try again" }));
+    const user = userEvent.setup();
+    await user.press(screen.getByRole("button", { name: "Try again" }));
 
     await screen.findByText("Session ready");
     expect(mocks.auth.getToken).toHaveBeenCalledTimes(2);
@@ -162,32 +161,22 @@ describe("GroceryCopilotSession", () => {
         <Text>Session ready</Text>
       </GroceryCopilotSession>,
     );
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
+    await Promise.resolve();
+    await Promise.resolve();
     expect(mocks.auth.getToken).toHaveBeenCalledOnce();
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(30_000);
-    });
+    await vi.advanceTimersByTimeAsync(30_000);
     expect(mocks.auth.getToken).toHaveBeenCalledTimes(2);
 
     focusManager.setFocused(false);
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(30_000);
-    });
+    await vi.advanceTimersByTimeAsync(30_000);
     expect(mocks.auth.getToken).toHaveBeenCalledTimes(2);
 
-    await act(async () => {
-      focusManager.setFocused(true);
-      await Promise.resolve();
-    });
+    focusManager.setFocused(true);
+    await Promise.resolve();
     expect(mocks.auth.getToken).toHaveBeenCalledTimes(3);
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(30_000);
-    });
+    await vi.advanceTimersByTimeAsync(30_000);
     expect(mocks.auth.getToken).toHaveBeenCalledTimes(4);
   });
 });

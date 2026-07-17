@@ -45,10 +45,11 @@ const ActionSheet = React.forwardRef<BottomSheetModal, ActionSheetProps>(functio
 
   React.useEffect(() => {
     if (!presented || Platform.OS !== "android") return;
-    return BackHandler.addEventListener("hardwareBackPress", () => {
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
       modalRef.current?.dismiss();
       return true;
-    }).remove;
+    });
+    return subscription.remove;
   }, [presented]);
 
   const renderBackdrop = React.useCallback(

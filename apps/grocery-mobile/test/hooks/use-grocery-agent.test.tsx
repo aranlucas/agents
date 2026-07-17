@@ -1,4 +1,4 @@
-import { act, renderHook, waitFor } from "@testing-library/react-native";
+import { renderHook, waitFor } from "@testing-library/react-native";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useGroceryAgentController } from "@/hooks/use-grocery-agent";
 
@@ -79,20 +79,14 @@ describe("useGroceryAgentController", () => {
     const onRunComplete = vi.fn();
     const hook = await renderHook(() => useGroceryAgentController(onRunComplete));
 
-    let first!: Promise<any>;
-    let second!: Promise<any>;
-    await act(async () => {
-      first = hook.result.current.send("  milk  ");
-      second = hook.result.current.send("bread");
-      await expect(second).resolves.toEqual({ status: "stopped", reason: "busy" });
-    });
+    const first = hook.result.current.send("  milk  ");
+    const second = hook.result.current.send("bread");
+    await expect(second).resolves.toEqual({ status: "stopped", reason: "busy" });
     expect(mocks.auth.getToken).toHaveBeenCalledOnce();
     expect(agent.addMessage).not.toHaveBeenCalled();
 
     token.resolve("token_1");
-    await act(async () => {
-      await expect(first).resolves.toEqual({ status: "success" });
-    });
+    await expect(first).resolves.toEqual({ status: "success" });
     expect(agent.addMessage).toHaveBeenCalledOnce();
     expect(agent.addMessage.mock.calls[0]?.[0]).toMatchObject({ role: "user", content: "milk" });
     expect(copilotkit.runAgent).toHaveBeenCalledOnce();
@@ -117,36 +111,28 @@ describe("useGroceryAgentController", () => {
     const onRunComplete = vi.fn();
     const hook = await renderHook(() => useGroceryAgentController(onRunComplete));
 
-    let outcome: any;
-    await act(async () => {
-      outcome = await hook.result.current.send("  buy milk  ");
-    });
+    const outcome = await hook.result.current.send("  buy milk  ");
 
     expect(outcome).toMatchObject({ status: "failed", error: failure });
     expect(agent.messages).toEqual(snapshot.messages);
     expect(agent.state).toEqual(snapshot.state);
     expect(agent.pendingInterrupts).toEqual(snapshot.pendingInterrupts);
-    expect(hook.result.current.failure).toEqual({
-      operation: "send",
-      message: "agent failed after resolving",
-      input: "buy milk",
-    });
+    await waitFor(() =>
+      expect(hook.result.current.failure).toEqual({
+        operation: "send",
+        message: "agent failed after resolving",
+        input: "buy milk",
+      }),
+    );
     expect(onRunComplete).not.toHaveBeenCalled();
 
     const retryRun = deferred<void>();
     copilotkit.runAgent.mockReturnValueOnce(retryRun.promise);
-    let retry!: Promise<any>;
-    let duplicate!: Promise<any>;
-    await act(async () => {
-      retry = hook.result.current.retry();
-      duplicate = hook.result.current.retry();
-      await expect(duplicate).resolves.toEqual({ status: "stopped", reason: "busy" });
-      await Promise.resolve();
-    });
+    const retry = hook.result.current.retry();
+    const duplicate = hook.result.current.retry();
+    await expect(duplicate).resolves.toEqual({ status: "stopped", reason: "busy" });
     retryRun.resolve();
-    await act(async () => {
-      await expect(retry).resolves.toEqual({ status: "success" });
-    });
+    await expect(retry).resolves.toEqual({ status: "success" });
     expect(agent.addMessage.mock.calls.at(-1)?.[0]).toMatchObject({ content: "buy milk" });
     expect(copilotkit.runAgent).toHaveBeenCalledTimes(2);
     expect(onRunComplete).toHaveBeenCalledOnce();
@@ -159,16 +145,11 @@ describe("useGroceryAgentController", () => {
     const hook = await renderHook(() => useGroceryAgentController(vi.fn()));
 
     const send = hook.result.current.send("milk");
-    let stop!: Promise<any>;
-    await act(async () => {
-      stop = hook.result.current.stop();
-      await Promise.resolve();
-    });
+    const stop = hook.result.current.stop();
+    await Promise.resolve();
     token.resolve("token_1");
-    await act(async () => {
-      await expect(send).resolves.toEqual({ status: "stopped", reason: "cancelled" });
-      await expect(stop).resolves.toEqual({ status: "stopped", reason: "cancelled" });
-    });
+    await expect(send).resolves.toEqual({ status: "stopped", reason: "cancelled" });
+    await expect(stop).resolves.toEqual({ status: "stopped", reason: "cancelled" });
     expect(agent.addMessage).not.toHaveBeenCalled();
     expect(copilotkit.runAgent).not.toHaveBeenCalled();
     expect(copilotkit.stopAgent).not.toHaveBeenCalled();
@@ -186,17 +167,12 @@ describe("useGroceryAgentController", () => {
     const send = hook.result.current.send("milk");
     await waitFor(() => expect(copilotkit.runAgent).toHaveBeenCalledOnce());
 
-    let stop!: Promise<any>;
-    await act(async () => {
-      stop = hook.result.current.stop();
-      await emit("agent_run_failed", new Error("aborted"));
-    });
+    const stop = hook.result.current.stop();
+    await emit("agent_run_failed", new Error("aborted"));
     expect(copilotkit.stopAgent).toHaveBeenCalledOnce();
     run.resolve();
-    await act(async () => {
-      await expect(send).resolves.toEqual({ status: "stopped", reason: "cancelled" });
-      await expect(stop).resolves.toEqual({ status: "stopped", reason: "cancelled" });
-    });
+    await expect(send).resolves.toEqual({ status: "stopped", reason: "cancelled" });
+    await expect(stop).resolves.toEqual({ status: "stopped", reason: "cancelled" });
     expect(agent.messages).toContainEqual({
       id: "partial",
       role: "assistant",
@@ -220,15 +196,13 @@ describe("useGroceryAgentController", () => {
     expect(agent.threadId).toBe(oldThreadId);
 
     run.resolve();
-    await act(async () => {
-      await expect(send).resolves.toEqual({ status: "stopped", reason: "cancelled" });
-      await expect(newChat).resolves.toEqual({ status: "success" });
-    });
+    await expect(send).resolves.toEqual({ status: "stopped", reason: "cancelled" });
+    await expect(newChat).resolves.toEqual({ status: "success" });
     expect(agent.threadId).not.toBe(oldThreadId);
     expect(agent.messages).toEqual([]);
     expect(agent.state).toEqual({});
     expect(agent.pendingInterrupts).toEqual([]);
-    expect(hook.result.current.isRunning).toBe(false);
+    await waitFor(() => expect(hook.result.current.isRunning).toBe(false));
   });
 
   it("fully restores failed thread history and clears the target before retrying it", async () => {
@@ -261,26 +235,24 @@ describe("useGroceryAgentController", () => {
       });
     const hook = await renderHook(() => useGroceryAgentController(vi.fn()));
 
-    await act(async () => {
-      await expect(hook.result.current.openThread("thread_target")).resolves.toMatchObject({
-        status: "failed",
-        error: connectFailure,
-      });
+    await expect(hook.result.current.openThread("thread_target")).resolves.toMatchObject({
+      status: "failed",
+      error: connectFailure,
     });
     expect(agent.threadId).toBe(snapshot.threadId);
     expect(agent.messages).toEqual(snapshot.messages);
     expect(agent.state).toEqual(snapshot.state);
     expect(agent.pendingInterrupts).toEqual(snapshot.pendingInterrupts);
-    expect(hook.result.current.failure).toEqual({
-      operation: "open-thread",
-      message: "history unavailable",
-      threadId: "thread_target",
-    });
+    await waitFor(() =>
+      expect(hook.result.current.failure).toEqual({
+        operation: "open-thread",
+        message: "history unavailable",
+        threadId: "thread_target",
+      }),
+    );
 
-    await act(async () => {
-      await expect(hook.result.current.openThread("thread_target")).resolves.toEqual({
-        status: "success",
-      });
+    await expect(hook.result.current.openThread("thread_target")).resolves.toEqual({
+      status: "success",
     });
     expect(agent.threadId).toBe("thread_target");
     expect(agent.messages).toEqual([

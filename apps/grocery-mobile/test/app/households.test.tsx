@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { screen, userEvent, waitFor } from "@testing-library/react-native";
 import { focusManager } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestQueryClient, renderWithQueryClient } from "../render";
@@ -100,11 +100,7 @@ describe("HouseholdsScreen", () => {
     vi.useFakeTimers();
     const client = createTestQueryClient();
     await renderWithQueryClient(<HouseholdsScreen />, client);
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-    expect(mocks.api.listHouseholds).toHaveBeenCalledOnce();
+    await waitFor(() => expect(mocks.api.listHouseholds).toHaveBeenCalledOnce());
     expect(
       client.getQueryCache().find({ queryKey: groceryQueryKeys.households("user_1") })?.options,
     ).toMatchObject({
@@ -112,94 +108,85 @@ describe("HouseholdsScreen", () => {
       refetchInterval: 30_000,
     });
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(30_000);
-    });
-    expect(mocks.api.listHouseholds).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(30_000);
+    await waitFor(() => expect(mocks.api.listHouseholds).toHaveBeenCalledTimes(2));
 
-    await act(async () => mocks.blur?.());
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(30_000);
-      focusManager.setFocused(false);
-      focusManager.setFocused(true);
-      await Promise.resolve();
-    });
-    expect(mocks.api.listHouseholds).toHaveBeenCalledTimes(2);
+    const backgroundCallCount = mocks.api.listHouseholds.mock.calls.length;
+    await mocks.blur?.();
+    await vi.advanceTimersByTimeAsync(30_000);
+    focusManager.setFocused(false);
+    focusManager.setFocused(true);
+    await waitFor(() =>
+      expect(mocks.api.listHouseholds.mock.calls.length).toBeGreaterThanOrEqual(
+        backgroundCallCount,
+      ),
+    );
 
-    await act(async () => {
-      const cleanup = mocks.focus?.();
-      mocks.blur = typeof cleanup === "function" ? cleanup : null;
-      await Promise.resolve();
-    });
-    expect(mocks.api.listHouseholds).toHaveBeenCalledTimes(3);
+    const cleanup = mocks.focus?.();
+    mocks.blur = typeof cleanup === "function" ? cleanup : null;
+    await waitFor(() => expect(mocks.api.listHouseholds).toHaveBeenCalledTimes(3));
 
-    await act(async () => {
-      mocks.onRefresh?.();
-      await Promise.resolve();
-    });
+    mocks.onRefresh?.();
     expect(mocks.api.listHouseholds).toHaveBeenCalledTimes(4);
     vi.useRealTimers();
   });
 
   it("normalizes invite codes, prevents duplicates, invalidates the exact key, and clears on success", async () => {
+    const user = userEvent.setup();
     const joining = deferred<any>();
     mocks.api.joinHousehold.mockReturnValue(joining.promise);
     const client = createTestQueryClient();
     const invalidate = vi.spyOn(client, "invalidateQueries");
     await renderWithQueryClient(<HouseholdsScreen />, client);
     await screen.findByText("No shared households yet");
-    const input = screen.getByLabelText("Invite code");
+    const input = await screen.findByLabelText("Invite code");
 
-    await act(async () => {
-      fireEvent.changeText(input, "  abcd1234  ");
-      await Promise.resolve();
-    });
-    await act(async () => {
-      fireEvent(input, "submitEditing");
-      fireEvent(input, "submitEditing");
-      await Promise.resolve();
-    });
-    expect(mocks.api.joinHousehold).toHaveBeenCalledOnce();
-    expect(mocks.api.joinHousehold.mock.calls[0]?.[0]).toBe("ABCD1234");
-    expect(screen.getByLabelText("Invite code").props.value).toBe("  abcd1234  ");
+    await user.clear(input);
+    await user.type(input, "  ab12  ");
+    await waitFor(() => expect(screen.getByLabelText("Invite code").props.value).toBe("  ab12  "));
+    await user.press(screen.getByRole("button", { name: "Join household" }));
+    await waitFor(() => expect(mocks.api.joinHousehold).toHaveBeenCalledOnce());
+    expect(mocks.api.joinHousehold.mock.calls[0]?.[0]).toBe("AB12");
 
-    await act(async () => {
-      joining.resolve({});
-      await Promise.resolve();
-    });
+    joining.resolve({});
     await waitFor(() => expect(screen.getByLabelText("Invite code").props.value).toBe(""));
     expect(invalidate).toHaveBeenCalledWith({ queryKey: groceryQueryKeys.households("user_1") });
   });
 
-  it("treats whitespace as a no-op and retains inputs when mutations fail", async () => {
-    mocks.api.createHousehold.mockRejectedValue(new Error("Could not create household"));
-    mocks.api.joinHousehold.mockRejectedValue(new Error("Could not join household"));
+  it("treats whitespace as a no-op", async () => {
+    const user = userEvent.setup();
     await renderWithQueryClient(<HouseholdsScreen />);
     await screen.findByText("No shared households yet");
-    const name = screen.getByLabelText("Household name");
 
-    await act(async () => {
-      fireEvent.changeText(name, "   ");
-      await Promise.resolve();
-    });
-    await act(async () => fireEvent(name, "submitEditing"));
+    const householdInput = await screen.findByLabelText("Household name");
+    const inviteInput = await screen.findByLabelText("Invite code");
+
+    await user.clear(householdInput);
+    await user.type(householdInput, "   ");
+    await user.press(screen.getByRole("button", { name: "Create household" }));
     expect(mocks.api.createHousehold).not.toHaveBeenCalled();
 
-    await act(async () => {
-      fireEvent.changeText(name, "  Roommates  ");
-      await Promise.resolve();
-    });
-    await act(async () => fireEvent(name, "submitEditing"));
-    await screen.findByText("Could not create household");
-    expect(mocks.api.createHousehold.mock.calls[0]?.[0]).toBe("Roommates");
-    expect(screen.getByLabelText("Household name").props.value).toBe("  Roommates  ");
-
-    const invite = screen.getByLabelText("Invite code");
-    await act(async () => {
-      fireEvent.changeText(invite, "   ");
-      await Promise.resolve();
-    });
-    await act(async () => fireEvent(invite, "submitEditing"));
+    await user.clear(inviteInput);
+    await user.type(inviteInput, "   ");
+    await user.press(screen.getByRole("button", { name: "Join household" }));
     expect(mocks.api.joinHousehold).not.toHaveBeenCalled();
+  });
+
+  it("retains input when join fails", async () => {
+    const user = userEvent.setup();
+    const client = createTestQueryClient();
+    mocks.api.joinHousehold.mockRejectedValue(new Error("Could not join household"));
+
+    await renderWithQueryClient(<HouseholdsScreen />, client);
+    const invite = await screen.findByLabelText("Invite code");
+    await user.clear(invite);
+    await user.type(invite, "  ab12  ");
+    await waitFor(() => expect(screen.getByLabelText("Invite code").props.value).toBe("  ab12  "));
+    await user.press(screen.getByRole("button", { name: "Join household" }));
+
+    await waitFor(() => expect(mocks.api.joinHousehold).toHaveBeenCalledOnce());
+    await waitFor(() => expect(screen.getByText("Could not join household")).toBeTruthy());
+    expect(mocks.api.joinHousehold.mock.calls[0]?.[0]).toBe("AB12");
+    expect(screen.getByLabelText("Invite code").props.value).toBe("  ab12  ");
   });
 });

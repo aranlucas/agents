@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { act, render, screen, waitFor } from "@testing-library/react";
 import { StrictMode, Suspense } from "react";
+import { render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -45,33 +45,27 @@ describe("GeneratedIntroduction", () => {
       },
     });
     const streamPromise = Promise.resolve(stream);
-    await act(async () => {
-      render(
-        <Suspense fallback={<IntroductionSkeleton />}>
-          <StreamingIntroduction stream={streamPromise} />
-        </Suspense>,
-      );
-    });
+
+    render(
+      <Suspense fallback={<IntroductionSkeleton />}>
+        <StreamingIntroduction stream={streamPromise} />
+      </Suspense>,
+    );
+
     expect(screen.getByLabelText("Resume agent is writing")).toBeVisible();
 
-    await act(async () => {
-      streamController?.enqueue(
-        new TextEncoder().encode(
-          'data: {"type":"TEXT_MESSAGE_CONTENT","delta":"Fresh introduction"}\n\n',
-        ),
-      );
-    });
-    await waitFor(() => expect(screen.getByText("Fresh introduction")).toBeVisible());
+    streamController?.enqueue(
+      new TextEncoder().encode(
+        'data: {"type":"TEXT_MESSAGE_CONTENT","delta":"Fresh introduction"}\n\n',
+      ),
+    );
+    expect(await screen.findByText("Fresh introduction")).toBeVisible();
 
-    await act(async () => {
-      streamController?.enqueue(
-        new TextEncoder().encode(
-          'data: {"type":"TEXT_MESSAGE_CONTENT","delta":" streams in."}\n\n',
-        ),
-      );
-      streamController?.close();
-    });
-    await waitFor(() => expect(screen.getByText("Fresh introduction streams in.")).toBeVisible());
+    streamController?.enqueue(
+      new TextEncoder().encode('data: {"type":"TEXT_MESSAGE_CONTENT","delta":" streams in."}\n\n'),
+    );
+    streamController?.close();
+    expect(await screen.findByText("Fresh introduction streams in.")).toBeVisible();
   });
 
   it("keeps a final text delta when the stream closes without a trailing newline", async () => {
@@ -86,15 +80,13 @@ describe("GeneratedIntroduction", () => {
       },
     });
 
-    await act(async () => {
-      render(
-        <Suspense fallback={<IntroductionSkeleton />}>
-          <StreamingIntroduction stream={Promise.resolve(stream)} />
-        </Suspense>,
-      );
-    });
+    render(
+      <Suspense fallback={<IntroductionSkeleton />}>
+        <StreamingIntroduction stream={Promise.resolve(stream)} />
+      </Suspense>,
+    );
 
-    await waitFor(() => expect(screen.getByText("Complete introduction")).toBeVisible());
+    expect(await screen.findByText("Complete introduction")).toBeVisible();
     expect(screen.getByRole("status")).toHaveTextContent("Resume introduction ready");
   });
 
@@ -106,25 +98,21 @@ describe("GeneratedIntroduction", () => {
       },
     });
 
-    await act(async () => {
-      render(
-        <StrictMode>
-          <Suspense fallback={<IntroductionSkeleton />}>
-            <StreamingIntroduction stream={Promise.resolve(stream)} />
-          </Suspense>
-        </StrictMode>,
-      );
-    });
+    render(
+      <StrictMode>
+        <Suspense fallback={<IntroductionSkeleton />}>
+          <StreamingIntroduction stream={Promise.resolve(stream)} />
+        </Suspense>
+      </StrictMode>,
+    );
 
-    await act(async () => {
-      streamController?.enqueue(
-        new TextEncoder().encode(
-          'data: {"type":"TEXT_MESSAGE_CONTENT","delta":"Strict-safe introduction"}\n\n',
-        ),
-      );
-      streamController?.close();
-    });
+    streamController?.enqueue(
+      new TextEncoder().encode(
+        'data: {"type":"TEXT_MESSAGE_CONTENT","delta":"Strict-safe introduction"}\n\n',
+      ),
+    );
+    streamController?.close();
 
-    await waitFor(() => expect(screen.getByText("Strict-safe introduction")).toBeVisible());
+    expect(await screen.findByText("Strict-safe introduction")).toBeVisible();
   });
 });

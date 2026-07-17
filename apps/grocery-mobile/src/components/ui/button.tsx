@@ -121,7 +121,11 @@ function Button({ children, className, loading = false, variant, size, ...props 
   const disabled = Boolean(props.disabled) || loading;
   const derivedLabel = typeof children === "function" ? "" : textFromChildren(children);
   const idleLabel = React.useRef(derivedLabel);
-  if (!loading && derivedLabel) idleLabel.current = derivedLabel;
+  React.useEffect(() => {
+    if (!loading && derivedLabel) {
+      idleLabel.current = derivedLabel;
+    }
+  }, [derivedLabel, loading]);
   const accessibilityLabel =
     props.accessibilityLabel ??
     (loading ? idleLabel.current || derivedLabel || undefined : undefined);

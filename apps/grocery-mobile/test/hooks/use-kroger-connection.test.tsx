@@ -1,4 +1,4 @@
-import { act, renderHook, waitFor } from "@testing-library/react-native";
+import { renderHook, waitFor } from "@testing-library/react-native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -75,10 +75,7 @@ describe("useKrogerConnection", () => {
     user.createExternalAccount.mockResolvedValue(account);
     const hook = await renderHook(() => useKrogerConnection(), { wrapper });
 
-    let connected = false;
-    await act(async () => {
-      connected = await hook.result.current.connect();
-    });
+    const connected = await hook.result.current.connect();
 
     expect(connected).toBe(true);
     expect(user.createExternalAccount).toHaveBeenCalledWith({
@@ -106,9 +103,7 @@ describe("useKrogerConnection", () => {
     const { user, wrapper } = setup([current]);
     const hook = await renderHook(() => useKrogerConnection(), { wrapper });
 
-    await act(async () => {
-      await expect(hook.result.current.reconnect()).resolves.toBe(true);
-    });
+    await expect(hook.result.current.reconnect()).resolves.toBe(true);
 
     expect(current.reauthorize).toHaveBeenCalledWith({
       redirectUrl: "grocery-agent://kroger-callback",
@@ -128,20 +123,16 @@ describe("useKrogerConnection", () => {
 
     let first!: Promise<boolean>;
     let second!: Promise<boolean>;
-    await act(async () => {
-      first = hook.result.current.connect();
-      second = hook.result.current.connect();
-      await expect(second).resolves.toBe(false);
-    });
+    first = hook.result.current.connect();
+    second = hook.result.current.connect();
+    await expect(second).resolves.toBe(false);
     expect(user.createExternalAccount).toHaveBeenCalledOnce();
 
     browser.resolve({
       type: "success",
       url: "grocery-agent://kroger-callback?rotating_token_nonce=nonce_3",
     });
-    await act(async () => {
-      await expect(first).resolves.toBe(true);
-    });
+    await expect(first).resolves.toBe(true);
   });
 
   it("treats browser cancellation and unverified completion as failures without success invalidation", async () => {
@@ -151,9 +142,7 @@ describe("useKrogerConnection", () => {
     mocks.openAuthSessionAsync.mockResolvedValueOnce({ type: "cancel" });
     const hook = await renderHook(() => useKrogerConnection(), { wrapper });
 
-    await act(async () => {
-      await expect(hook.result.current.connect()).resolves.toBe(false);
-    });
+    await expect(hook.result.current.connect()).resolves.toBe(false);
     expect(account.reload).not.toHaveBeenCalled();
     expect(invalidate).not.toHaveBeenCalled();
 
@@ -162,9 +151,7 @@ describe("useKrogerConnection", () => {
       url: "grocery-agent://kroger-callback?rotating_token_nonce=nonce_4",
     });
     account.reload.mockResolvedValue(makeAccount("unverified"));
-    await act(async () => {
-      await expect(hook.result.current.connect()).resolves.toBe(false);
-    });
+    await expect(hook.result.current.connect()).resolves.toBe(false);
     await waitFor(() =>
       expect(hook.result.current.error).toBe(
         "Kroger returned without completing the account connection.",
@@ -172,7 +159,7 @@ describe("useKrogerConnection", () => {
     );
     expect(invalidate).not.toHaveBeenCalled();
 
-    await act(async () => hook.result.current.clearError());
+    hook.result.current.clearError();
     await waitFor(() => expect(hook.result.current.error).toBe(""));
   });
 });
