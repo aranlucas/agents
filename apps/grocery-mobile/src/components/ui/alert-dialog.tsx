@@ -1,28 +1,27 @@
-import * as React from "react";
-import { Modal, Pressable, View } from "react-native";
+import React from "react";
+import { View, Pressable, Text, Modal } from "react-native";
 import Animated from "react-native-reanimated";
 import { entering, exiting } from "@/components/ui/animate";
-import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 
-type AlertDialogProps = {
-  children: React.ReactNode;
-  onOpenChange: (open: boolean) => void;
+export interface AlertDialogProps {
   open: boolean;
-};
+  onOpenChange: (open: boolean) => void;
+  children: React.ReactNode;
+}
 
-function AlertDialog({ open, onOpenChange, children }: AlertDialogProps) {
+export function AlertDialog({ open, onOpenChange, children }: AlertDialogProps) {
   return (
     <Modal
+      visible={open}
+      transparent
       animationType="none"
       onRequestClose={() => onOpenChange(false)}
-      transparent
-      visible={open}
     >
       <Animated.View
-        className="flex-1 items-center justify-center bg-black/50"
         entering={entering.fadeIn}
         exiting={exiting.fadeOut}
+        className="flex-1 items-center justify-center bg-black/50"
       >
         <Animated.View entering={entering.zoomIn} exiting={exiting.zoomOut}>
           {children}
@@ -32,48 +31,71 @@ function AlertDialog({ open, onOpenChange, children }: AlertDialogProps) {
   );
 }
 
-function AlertDialogContent({ className, ...props }: React.ComponentProps<typeof View>) {
+export function AlertDialogContent({
+  className,
+  children,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof View> & {
+  className?: string;
+  children?: React.ReactNode;
+}) {
   return (
     <View
-      aria-modal
+      className={cn("mx-6 w-80 rounded-lg bg-card p-6 shadow-xl", className)}
       accessibilityRole="alert"
-      accessibilityViewIsModal
-      className={cn("mx-6 w-full max-w-80 rounded-2xl bg-card p-6 shadow-xl", className)}
       {...props}
-    />
+    >
+      {children}
+    </View>
   );
 }
 
-function AlertDialogHeader({ className, ...props }: React.ComponentProps<typeof View>) {
+export function AlertDialogHeader({
+  className,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof View> & { className?: string }) {
   return <View className={cn("pb-4", className)} {...props} />;
 }
 
-function AlertDialogTitle({ className, ...props }: React.ComponentProps<typeof Text>) {
+export function AlertDialogTitle({
+  className,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof Text> & { className?: string }) {
   return (
     <Text className={cn("text-lg font-semibold text-card-foreground", className)} {...props} />
   );
 }
 
-function AlertDialogDescription({ className, ...props }: React.ComponentProps<typeof Text>) {
+export function AlertDialogDescription({
+  className,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof Text> & { className?: string }) {
   return <Text className={cn("mt-1 text-sm text-muted-foreground", className)} {...props} />;
 }
 
-function AlertDialogFooter({ className, ...props }: React.ComponentProps<typeof View>) {
+export function AlertDialogFooter({
+  className,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof View> & { className?: string }) {
   return <View className={cn("flex-row justify-end gap-3 pt-4", className)} {...props} />;
 }
 
-function AlertDialogAction({
+export function AlertDialogAction({
   className,
   children,
   ...props
-}: React.ComponentProps<typeof Pressable>) {
+}: React.ComponentPropsWithoutRef<typeof Pressable> & {
+  className?: string;
+  children: React.ReactNode;
+}) {
   return (
     <Pressable
-      accessibilityRole="button"
       className={cn(
-        "min-h-12 items-center justify-center rounded-xl bg-primary px-4 py-2.5",
+        "min-h-12 items-center justify-center rounded-md bg-primary px-4 py-2.5",
         className,
       )}
+      accessible={true}
+      accessibilityRole="button"
       {...props}
     >
       {typeof children === "string" ? (
@@ -85,18 +107,22 @@ function AlertDialogAction({
   );
 }
 
-function AlertDialogCancel({
+export function AlertDialogCancel({
   className,
   children,
   ...props
-}: React.ComponentProps<typeof Pressable>) {
+}: React.ComponentPropsWithoutRef<typeof Pressable> & {
+  className?: string;
+  children: React.ReactNode;
+}) {
   return (
     <Pressable
-      accessibilityRole="button"
       className={cn(
-        "min-h-12 items-center justify-center rounded-xl border border-input px-4 py-2.5",
+        "min-h-12 items-center justify-center rounded-md border border-input px-4 py-2.5",
         className,
       )}
+      accessible={true}
+      accessibilityRole="button"
       {...props}
     >
       {typeof children === "string" ? (
@@ -107,15 +133,3 @@ function AlertDialogCancel({
     </Pressable>
   );
 }
-
-export {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-};
-export type { AlertDialogProps };

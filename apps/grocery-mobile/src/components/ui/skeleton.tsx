@@ -1,43 +1,38 @@
-import { cn } from "@/lib/utils";
-import * as React from "react";
+import React, { useEffect } from "react";
+import { View } from "react-native";
 import Animated, {
-  cancelAnimation,
-  useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
+  useAnimatedStyle,
   withRepeat,
   withSequence,
   withTiming,
 } from "react-native-reanimated";
+import { cn } from "@/lib/utils";
 
-function Skeleton({ className, style, ...props }: React.ComponentProps<typeof Animated.View>) {
-  const reduceMotion = useReducedMotion();
+export interface SkeletonProps extends React.ComponentPropsWithoutRef<typeof View> {
+  className?: string;
+}
+
+export function Skeleton({ className, ...props }: SkeletonProps) {
   const opacity = useSharedValue(1);
 
-  React.useEffect(() => {
-    cancelAnimation(opacity);
-    if (reduceMotion) {
-      opacity.value = 0.7;
-      return;
-    }
-
+  useEffect(() => {
     opacity.value = withRepeat(
       withSequence(withTiming(0.4, { duration: 800 }), withTiming(1, { duration: 800 })),
       -1,
       false,
     );
-    return () => cancelAnimation(opacity);
-  }, [opacity, reduceMotion]);
+  }, [opacity]);
 
-  const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
 
   return (
     <Animated.View
-      className={cn("rounded-md bg-accent", className)}
-      style={[animatedStyle, style]}
+      className={cn("rounded-md bg-muted", className)}
+      style={animatedStyle}
       {...props}
     />
   );
 }
-
-export { Skeleton };

@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { type ReactNode, useMemo } from "react";
 import { View } from "react-native";
 import { GroceryAgentProvider } from "@/components/grocery-agent-provider";
-import { ErrorAlert } from "@/components/ui/alert";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
@@ -63,7 +63,7 @@ export function GroceryCopilotSession({
   if (session.isError && !session.data) {
     return (
       <View className="flex-1 items-center justify-center gap-3 bg-background p-7">
-        <ErrorAlert message={readableError(session.error)} />
+        <Alert title={readableError(session.error)} variant="destructive" />
         <Button size="lg" variant="secondary" onPress={() => void session.refetch()}>
           Try again
         </Button>

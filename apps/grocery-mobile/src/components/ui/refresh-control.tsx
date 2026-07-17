@@ -1,21 +1,32 @@
-import * as React from "react";
-import { RefreshControl as NativeRefreshControl } from "react-native";
-import { useResolveClassNames } from "uniwind";
+import React from "react";
+import { RefreshControl as RNRefreshControl, useColorScheme } from "react-native";
 
-type RefreshControlProps = React.ComponentProps<typeof NativeRefreshControl>;
+export interface RefreshControlProps extends React.ComponentPropsWithoutRef<
+  typeof RNRefreshControl
+> {
+  refreshing: boolean;
+  onRefresh: () => void;
+  tintColor?: string;
+  colors?: string[];
+}
 
-function RefreshControl({ colors, tintColor, ...props }: RefreshControlProps) {
-  const primary = useResolveClassNames("text-primary").color;
-  const tint = tintColor ?? primary;
+export function RefreshControl({
+  refreshing,
+  onRefresh,
+  tintColor,
+  colors,
+  ...props
+}: RefreshControlProps) {
+  const dark = useColorScheme() === "dark";
+  const tint = tintColor ?? (dark ? "#fafafa" : "#18181b");
 
   return (
-    <NativeRefreshControl
-      colors={colors ?? (tint ? [tint] : undefined)}
+    <RNRefreshControl
+      refreshing={refreshing}
+      onRefresh={onRefresh}
       tintColor={tint}
+      colors={colors ?? [tint]}
       {...props}
     />
   );
 }
-
-export { RefreshControl };
-export type { RefreshControlProps };

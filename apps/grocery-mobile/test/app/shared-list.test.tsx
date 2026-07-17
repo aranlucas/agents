@@ -41,7 +41,7 @@ vi.mock("@/components/ui/alert", async () => {
   const React = await import("react");
   const { Text } = await import("react-native");
   return {
-    ErrorAlert: ({ message }: { message: string }) => React.createElement(Text, null, message),
+    Alert: ({ title }: { title: string }) => React.createElement(Text, null, title),
   };
 });
 vi.mock("@/components/ui/checkbox", async () => {

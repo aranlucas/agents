@@ -1,9 +1,7 @@
 import { useRouter } from "expo-router";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ScrollView, View } from "react-native";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { Platform, ScrollView, View } from "react-native";
 import { ChevronDown, ChevronRight, History, Sparkles, SquarePen } from "lucide-react-native";
-import { NativeMarkdown, type NativeMarkdownStyle } from "@agents/native-markdown";
-import { useResolveClassNames } from "uniwind";
 import { ADD_TO_CART_MESSAGE, AddToCartDialog } from "@/components/add-to-cart-dialog";
 import { GroceryStateCard } from "@/components/grocery-state-card";
 import { useGroceryAgent } from "@/components/grocery-agent-provider";
@@ -15,12 +13,13 @@ import {
   type MessageScrollerHandle,
   useMessageScrollerControls,
 } from "@/components/message-scroller";
-import { ErrorAlert } from "@/components/ui/alert";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Icon } from "@/components/ui/icon";
 import { KeyboardView } from "@/components/ui/keyboard-view";
+import { MarkdownText } from "@/components/ui/markdown-text";
 import {
   PromptInput,
   PromptInputButton,
@@ -59,24 +58,6 @@ export function GroceryChat() {
   } = useGroceryAgent();
   const connection = useKrogerConnection();
   const { connected } = connection;
-  const foreground = useResolveClassNames("text-foreground").color;
-  const primary = useResolveClassNames("text-primary").color;
-  const muted = useResolveClassNames("bg-muted").backgroundColor;
-  const border = useResolveClassNames("border-border").borderColor;
-  const markdownStyle = useMemo<NativeMarkdownStyle>(
-    () => ({
-      body: { color: foreground, fontSize: 15, lineHeight: 22 },
-      link: { color: primary },
-      blockquote: { backgroundColor: muted, borderColor: border },
-      table: { borderColor: border },
-      thead: { backgroundColor: muted },
-      tr: { borderColor: border },
-      code_inline: { backgroundColor: muted, borderColor: border },
-      code_block: { backgroundColor: muted, borderColor: border },
-      fence: { backgroundColor: muted, borderColor: border },
-    }),
-    [border, foreground, muted, primary],
-  );
   const latestMessage = messages.at(-1);
   const timelineRevision = `${messages.length}:${messages.reduce(
     (length, message) => length + ("content" in message ? message.content.length : 0),
@@ -96,13 +77,12 @@ export function GroceryChat() {
     ({ item: message }: { item: DisplayMessage }) => (
       <GroceryMessage
         isStreaming={isStreaming && message.id === latestMessage?.id}
-        markdownStyle={markdownStyle}
         message={message}
         onReasoningDuration={recordReasoningDuration}
         reasoningDuration={reasoningDurations[message.id]}
       />
     ),
-    [isStreaming, latestMessage?.id, markdownStyle, reasoningDurations, recordReasoningDuration],
+    [isStreaming, latestMessage?.id, reasoningDurations, recordReasoningDuration],
   );
 
   const newChat = useCallback(async () => {
@@ -121,97 +101,99 @@ export function GroceryChat() {
       className="bg-background"
       offset={process.env.EXPO_OS === "ios" ? 92 : 0}
     >
-      <MessageScroller ref={scrollRef} autoScroll revision={timelineRevision}>
-        <MessageScrollerList
-          contentInsetAdjustmentBehavior="automatic"
-          contentContainerClassName="gap-3 px-4 pt-3.5 pb-4.5"
-          data={messages}
-          initialNumToRender={10}
-          keyExtractor={(message) => message.id}
-          keyboardShouldPersistTaps="handled"
-          maxToRenderPerBatch={8}
-          renderItem={renderMessage}
-          updateCellsBatchingPeriod={50}
-          windowSize={7}
-          ListEmptyComponent={
-            <View className="items-center gap-2.5 px-3 py-6">
-              <View className="mb-1 size-14 items-center justify-center rounded-2xl bg-muted">
-                <Icon as={Sparkles} className="size-6.5 text-primary" />
-              </View>
-              <Text className="text-center text-2xl font-extrabold" selectable variant="h3">
-                What are you shopping for?
-              </Text>
-              <Text className="max-w-88 text-center leading-6 text-muted-foreground" selectable>
-                Describe a recipe, a weekly budget, or the meals you need. I’ll turn it into a
-                practical list you control.
-              </Text>
-              <View className="mt-2.5 w-full flex-row flex-wrap justify-center gap-2">
-                {GROCERY_SUGGESTIONS.map((suggestion) => (
-                  <Chip
-                    key={suggestion.title}
-                    accessibilityLabel={suggestion.title}
-                    disabled={isRunning}
-                    onPress={() => void send(suggestion.message)}
-                    textClassName="text-secondary"
-                    variant="outline"
-                  >
-                    {suggestion.title}
-                  </Chip>
-                ))}
-              </View>
-            </View>
-          }
-          ListFooterComponent={
-            <View className="gap-3">
-              {isRunning && latestMessage?.role === "user" ? <TypingIndicator /> : null}
-              <GroceryStateCard
-                state={state}
-                adding={isRunning}
-                connected={connected}
-                onOpenList={openLatestList}
-                onAddToCart={confirmAddToCart}
-              />
-              <KrogerConnectionCard connection={connection} />
-              {error ? (
-                <View className="gap-2">
-                  <ErrorAlert message={error} />
-                  <View className="flex-row justify-end gap-2">
-                    {failedInput ? (
-                      <Button
-                        accessibilityLabel="Retry failed message"
-                        disabled={isRunning}
-                        onPress={() => void retry()}
-                        size="sm"
-                        variant="secondary"
-                      >
-                        Retry
-                      </Button>
-                    ) : null}
-                    <Button
-                      accessibilityLabel="Dismiss chat error"
-                      onPress={clearError}
-                      size="sm"
-                      variant="ghost"
-                    >
-                      Dismiss
-                    </Button>
-                  </View>
+      <View className="w-full max-w-4xl flex-1 self-center">
+        <MessageScroller ref={scrollRef} autoScroll revision={timelineRevision}>
+          <MessageScrollerList
+            contentInsetAdjustmentBehavior="automatic"
+            contentContainerClassName="gap-3 px-4 pt-3.5 pb-4.5"
+            data={messages}
+            initialNumToRender={10}
+            keyExtractor={(message) => message.id}
+            keyboardShouldPersistTaps="handled"
+            maxToRenderPerBatch={8}
+            renderItem={renderMessage}
+            updateCellsBatchingPeriod={50}
+            windowSize={7}
+            ListEmptyComponent={
+              <View className="items-center gap-2.5 px-3 py-6">
+                <View className="mb-1 size-14 items-center justify-center rounded-2xl bg-muted">
+                  <Icon as={Sparkles} className="size-6.5 text-primary" />
                 </View>
-              ) : null}
-            </View>
-          }
-        />
-        <MessageScrollerButton />
-      </MessageScroller>
+                <Text className="text-center font-extrabold" selectable variant="h3">
+                  What are you shopping for?
+                </Text>
+                <Text className="max-w-88 text-center leading-6 text-muted-foreground" selectable>
+                  Describe a recipe, a weekly budget, or the meals you need. I’ll turn it into a
+                  practical list you control.
+                </Text>
+                <View className="mt-2.5 w-full flex-row flex-wrap justify-center gap-2">
+                  {GROCERY_SUGGESTIONS.map((suggestion) => (
+                    <Chip
+                      key={suggestion.title}
+                      accessibilityLabel={suggestion.title}
+                      disabled={isRunning}
+                      onPress={() => void send(suggestion.message)}
+                      textClassName="text-secondary"
+                      variant="outline"
+                    >
+                      {suggestion.title}
+                    </Chip>
+                  ))}
+                </View>
+              </View>
+            }
+            ListFooterComponent={
+              <View className="gap-3">
+                {isRunning && latestMessage?.role === "user" ? <TypingIndicator /> : null}
+                <GroceryStateCard
+                  state={state}
+                  adding={isRunning}
+                  connected={connected}
+                  onOpenList={openLatestList}
+                  onAddToCart={confirmAddToCart}
+                />
+                <KrogerConnectionCard connection={connection} />
+                {error ? (
+                  <View className="gap-2">
+                    <Alert title={error} variant="destructive" />
+                    <View className="flex-row justify-end gap-2">
+                      {failedInput ? (
+                        <Button
+                          accessibilityLabel="Retry failed message"
+                          disabled={isRunning}
+                          onPress={() => void retry()}
+                          size="sm"
+                          variant="secondary"
+                        >
+                          Retry
+                        </Button>
+                      ) : null}
+                      <Button
+                        accessibilityLabel="Dismiss chat error"
+                        onPress={clearError}
+                        size="sm"
+                        variant="ghost"
+                      >
+                        Dismiss
+                      </Button>
+                    </View>
+                  </View>
+                ) : null}
+              </View>
+            }
+          />
+          <MessageScrollerButton />
+        </MessageScroller>
 
-      <ChatComposer
-        key={composerVersion}
-        isRunning={isRunning}
-        onNewChat={handleNewChat}
-        onOpenHistory={openChatHistory}
-        onSend={send}
-        onStop={stop}
-      />
+        <ChatComposer
+          key={composerVersion}
+          isRunning={isRunning}
+          onNewChat={handleNewChat}
+          onOpenHistory={openChatHistory}
+          onSend={send}
+          onStop={stop}
+        />
+      </View>
       <AddToCartDialog
         open={cartDialogOpen}
         onOpenChange={setCartDialogOpen}
@@ -294,9 +276,10 @@ const ChatComposer = memo(function ChatComposer({
   );
 });
 
+const monospaceFont = Platform.select({ ios: "Menlo", default: "monospace" });
+
 type GroceryMessageProps = {
   isStreaming: boolean;
-  markdownStyle: NativeMarkdownStyle;
   message: DisplayMessage;
   onReasoningDuration: (messageId: string, seconds: number) => void;
   reasoningDuration?: number;
@@ -304,33 +287,13 @@ type GroceryMessageProps = {
 
 const GroceryMessage = memo(function GroceryMessage({
   isStreaming,
-  markdownStyle,
   message,
   onReasoningDuration,
   reasoningDuration,
 }: GroceryMessageProps) {
-  return (
-    <View
-      className={cn(
-        message.role === "reasoning"
-          ? "w-full gap-1 self-stretch"
-          : message.role === "user" || message.role === "assistant"
-            ? "max-w-88 rounded-3xl px-4 py-3"
-            : "w-full self-stretch",
-        message.role === "user"
-          ? "self-end rounded-br-md bg-secondary"
-          : message.role === "assistant"
-            ? "self-start rounded-bl-md border border-border bg-card"
-            : undefined,
-      )}
-      collapsable={message.role !== "user"}
-      nativeID={message.id}
-    >
-      {message.role === "user" ? (
-        <Text className="text-sm leading-5.5 text-secondary-foreground" selectable>
-          {message.content}
-        </Text>
-      ) : message.role === "reasoning" ? (
+  if (message.role === "reasoning") {
+    return (
+      <View className="w-full gap-1 self-stretch" collapsable nativeID={message.id}>
         <ReasoningSection
           completedDuration={reasoningDuration}
           content={message.content}
@@ -338,17 +301,40 @@ const GroceryMessage = memo(function GroceryMessage({
           messageId={message.id}
           onDurationComplete={onReasoningDuration}
         />
-      ) : message.role === "tool" ? (
+      </View>
+    );
+  }
+
+  if (message.role === "tool") {
+    return (
+      <View className="w-full self-stretch" collapsable nativeID={message.id}>
         <ToolCallSection
           name={message.name}
           parameters={message.parameters}
           result={message.result}
           status={message.status}
         />
-      ) : (
-        <NativeMarkdown isStreaming={isStreaming} style={markdownStyle}>
+      </View>
+    );
+  }
+
+  const isUser = message.role === "user";
+
+  return (
+    <View
+      className={cn(
+        "max-w-3/4 rounded-2xl px-4 py-2.5",
+        isUser ? "self-end rounded-br-sm bg-primary" : "self-start rounded-bl-sm bg-muted",
+      )}
+      collapsable={!isUser}
+      nativeID={message.id}
+    >
+      {isUser ? (
+        <Text className="text-sm leading-relaxed text-primary-foreground" selectable>
           {message.content}
-        </NativeMarkdown>
+        </Text>
+      ) : (
+        <MarkdownText className="min-w-0" content={message.content} />
       )}
     </View>
   );
@@ -428,7 +414,9 @@ function ReasoningSection({
             <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
           )}
         </View>
-        <Text className="text-xs font-medium text-muted-foreground">{reasoningLabel}</Text>
+        <Text className="text-muted-foreground" variant="small">
+          {reasoningLabel}
+        </Text>
       </CollapsibleTrigger>
       <CollapsibleContent className="ml-2 h-39 border-l border-border py-1 pl-3.5">
         <ScrollView
@@ -439,7 +427,7 @@ function ReasoningSection({
           }}
           showsVerticalScrollIndicator={false}
         >
-          <Text className="text-sm leading-5 text-muted-foreground" selectable>
+          <Text className="leading-5" selectable variant="muted">
             {content}
           </Text>
         </ScrollView>
@@ -482,32 +470,44 @@ function ToolCallSection({
             <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
           )}
         </View>
-        <Text className="shrink text-xs font-semibold" numberOfLines={1}>
+        <Text className="shrink text-muted-foreground" numberOfLines={1} variant="small">
           {label}
         </Text>
         <Text
-          className={cn(
-            "ml-auto text-xs text-muted-foreground",
-            status === "failed" && "text-destructive",
-          )}
+          className={cn("ml-auto text-muted-foreground", status === "failed" && "text-destructive")}
+          variant="small"
         >
           {status === "running" ? "Running" : status === "failed" ? "Failed" : "Done"}
         </Text>
       </CollapsibleTrigger>
       <CollapsibleContent className="ml-2 max-h-39 border-l border-border py-1 pl-3.5">
         <ScrollView nestedScrollEnabled>
-          <Text className="mb-0.5 text-xs font-bold text-muted-foreground" selectable>
+          <Text className="mb-0.5 font-semibold text-muted-foreground" selectable variant="small">
             Input
           </Text>
-          <Text className="mb-2 text-xs leading-4.5 text-muted-foreground" selectable>
+          <Text
+            className="mb-2 leading-4.5"
+            selectable
+            style={{ fontFamily: monospaceFont }}
+            variant="muted"
+          >
             {formatToolValue(parameters)}
           </Text>
           {status !== "running" ? (
             <>
-              <Text className="mb-0.5 text-xs font-bold text-muted-foreground" selectable>
+              <Text
+                className="mb-0.5 font-semibold text-muted-foreground"
+                selectable
+                variant="small"
+              >
                 Result
               </Text>
-              <Text className="mb-2 text-xs leading-4.5 text-muted-foreground" selectable>
+              <Text
+                className="mb-2 leading-4.5"
+                selectable
+                style={{ fontFamily: monospaceFont }}
+                variant="muted"
+              >
                 {formatToolValue(result)}
               </Text>
             </>
@@ -529,18 +529,15 @@ function toolLabel(name: string): string {
     mark_list_ready: "Prepared grocery list",
     get_current_date: "Checked current date",
     get_weekly_deals: "Checked weekly deals",
+    get_shopping_profile: "Checked shopping profile",
+    get_meal_planning_context: "Checked meal planning context",
     search_products: "Searched Kroger products",
     web_search: "Searched the web",
     load_web_page: "Read web page",
   };
-  return (
-    labels[name] ??
-    name
-      .split("_")
-      .filter(Boolean)
-      .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
-      .join(" ")
-  );
+  if (labels[name]) return labels[name];
+  const words = name.split("_").filter(Boolean).join(" ");
+  return `${words.charAt(0).toUpperCase()}${words.slice(1)}`;
 }
 
 function formatToolValue(value: unknown): string {

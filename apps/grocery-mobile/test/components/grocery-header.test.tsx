@@ -1,11 +1,13 @@
 import { render, screen } from "@testing-library/react-native";
 import type { PropsWithChildren } from "react";
+import type { StyleProp, ViewStyle } from "react-native";
 import { describe, expect, it, vi } from "vitest";
 import { GroceryHeader } from "@/components/grocery-header";
 
 const mocks = vi.hoisted(() => ({
   links: [] as string[],
   push: vi.fn(),
+  safeAreaStyles: [] as StyleProp<ViewStyle>[],
 }));
 
 vi.mock("@clerk/clerk-expo", () => ({
@@ -46,17 +48,25 @@ vi.mock("@/components/ui/header", async () => {
     HeaderTitle: ({ children }: PropsWithChildren) => React.createElement(Text, null, children),
   };
 });
-vi.mock("@/components/ui/safe-area", async () => {
+vi.mock("react-native-safe-area-context", async () => {
   const React = await import("react");
   const { View } = await import("react-native");
   return {
-    SafeArea: ({ children }: PropsWithChildren) => React.createElement(View, null, children),
+    SafeAreaView: ({
+      children,
+      style,
+      ...props
+    }: PropsWithChildren<{ style?: StyleProp<ViewStyle> }>) => {
+      mocks.safeAreaStyles.push(style);
+      return React.createElement(View, { ...props, style }, children);
+    },
   };
 });
 
 describe("GroceryHeader", () => {
   it("links the top-left brand mark to home", async () => {
     mocks.links.length = 0;
+    mocks.safeAreaStyles.length = 0;
 
     await render(
       <GroceryHeader canGoBack={false} onBack={vi.fn()} routeName="chat" title="Grocery Agent" />,
@@ -64,5 +74,6 @@ describe("GroceryHeader", () => {
 
     expect(mocks.links).toContain("/");
     expect(screen.getByRole("link", { name: "Home" })).toBeTruthy();
+    expect(mocks.safeAreaStyles).toContainEqual({ flexGrow: 0, flexShrink: 0 });
   });
 });

@@ -3,7 +3,7 @@ import { ChevronRight, MessageSquareText } from "lucide-react-native";
 import { useCallback, useRef, useState } from "react";
 import { FlatList, Pressable, View } from "react-native";
 import { useGroceryAgent } from "@/components/grocery-agent-provider";
-import { ErrorAlert } from "@/components/ui/alert";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
@@ -82,7 +82,7 @@ export default function ChatHistoryScreen() {
   if (threadsError && threads.length === 0) {
     return (
       <View className="flex-1 items-center justify-center gap-3 bg-background p-7">
-        <ErrorAlert message="Your chat history could not be loaded." />
+        <Alert title="Your chat history could not be loaded." variant="destructive" />
         <Button size="lg" variant="secondary" onPress={refetchThreads}>
           Try again
         </Button>
@@ -92,7 +92,7 @@ export default function ChatHistoryScreen() {
 
   return (
     <FlatList
-      className="flex-1 bg-background"
+      className="w-full max-w-3xl flex-1 self-center bg-background"
       contentInsetAdjustmentBehavior="automatic"
       contentContainerClassName={cn(
         "m-4.5 overflow-hidden rounded-3xl border border-border bg-card",
@@ -128,7 +128,7 @@ export default function ChatHistoryScreen() {
               )}
             </View>
             <View className="flex-1 gap-0.5">
-              <Text className="text-sm font-bold" numberOfLines={1}>
+              <Text className="font-bold" numberOfLines={1} variant="large">
                 {thread.name || "Grocery chat"}
               </Text>
               <Text variant="muted">
@@ -152,13 +152,13 @@ export default function ChatHistoryScreen() {
       ListFooterComponent={
         replayError || threadsError || fetchMoreThreadsError || isFetchingMoreThreads ? (
           <View className="items-center gap-2.5 p-3.5">
-            {replayError ? <ErrorAlert message={replayError} /> : null}
+            {replayError ? <Alert title={replayError} variant="destructive" /> : null}
             {threadsError && threads.length > 0 ? (
-              <ErrorAlert message="Your chats could not be refreshed." />
+              <Alert title="Your chats could not be refreshed." variant="destructive" />
             ) : null}
             {fetchMoreThreadsError ? (
               <>
-                <ErrorAlert message="More chats could not be loaded." />
+                <Alert title="More chats could not be loaded." variant="destructive" />
                 <Button size="lg" variant="secondary" onPress={fetchMoreThreads}>
                   Try again
                 </Button>

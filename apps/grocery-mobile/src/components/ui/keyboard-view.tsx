@@ -1,24 +1,23 @@
-import * as React from "react";
-import { KeyboardAvoidingView } from "react-native";
-import { withUniwind } from "uniwind";
+import React from "react";
+import { KeyboardAvoidingView, Platform } from "react-native";
 import { cn } from "@/lib/utils";
 
-const UniwindKeyboardAvoidingView = withUniwind(KeyboardAvoidingView);
-
-type KeyboardViewProps = React.ComponentProps<typeof KeyboardAvoidingView> & {
+export interface KeyboardViewProps extends React.ComponentPropsWithoutRef<
+  typeof KeyboardAvoidingView
+> {
+  className?: string;
   offset?: number;
-};
+}
 
-function KeyboardView({ className, offset, behavior, ...props }: KeyboardViewProps) {
+export function KeyboardView({ className, offset, behavior, ...props }: KeyboardViewProps) {
   return (
-    <UniwindKeyboardAvoidingView
-      behavior={behavior ?? (process.env.EXPO_OS === "ios" ? "padding" : undefined)}
+    <KeyboardAvoidingView
       className={cn("flex-1", className)}
+      // iOS needs "padding"; Android's windowSoftInputMode="adjustResize" already
+      // resizes the window, so no behavior avoids double-shifting the layout.
+      behavior={behavior ?? (Platform.OS === "ios" ? "padding" : undefined)}
       keyboardVerticalOffset={offset}
       {...props}
     />
   );
 }
-
-export { KeyboardView };
-export type { KeyboardViewProps };

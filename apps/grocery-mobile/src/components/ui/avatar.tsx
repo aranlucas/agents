@@ -1,15 +1,14 @@
+import React, { useState } from "react";
+import { View, Image, Text } from "react-native";
 import { cva, type VariantProps } from "class-variance-authority";
-import * as React from "react";
-import { Image, View } from "react-native";
-import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 
-const avatarVariants = cva("items-center justify-center overflow-hidden rounded-full bg-muted", {
+const avatarVariants = cva("items-center justify-center rounded-full bg-muted overflow-hidden", {
   variants: {
     size: {
-      sm: "size-8",
-      md: "size-10",
-      lg: "size-14",
+      sm: "h-8 w-8",
+      md: "h-10 w-10",
+      lg: "h-14 w-14",
     },
   },
   defaultVariants: {
@@ -30,24 +29,24 @@ const avatarTextVariants = cva("font-medium text-muted-foreground", {
   },
 });
 
-type AvatarProps = React.ComponentPropsWithoutRef<typeof View> &
-  VariantProps<typeof avatarVariants> & {
-    fallback?: string;
-    src?: string;
-  };
+export interface AvatarProps
+  extends React.ComponentPropsWithoutRef<typeof View>, VariantProps<typeof avatarVariants> {
+  className?: string;
+  src?: string;
+  fallback?: string;
+}
 
-function Avatar({ size, className, src, fallback, ...props }: AvatarProps) {
-  const [failedSource, setFailedSource] = React.useState<string | null>(null);
-  const showImage = Boolean(src) && failedSource !== src;
+export function Avatar({ size, className, src, fallback, ...props }: AvatarProps) {
+  const [hasError, setHasError] = useState(false);
 
   return (
-    <View accessibilityRole="image" className={cn(avatarVariants({ size }), className)} {...props}>
-      {showImage ? (
+    <View className={cn(avatarVariants({ size }), className)} {...props}>
+      {src && !hasError ? (
         <Image
           source={{ uri: src }}
           className="h-full w-full"
           resizeMode="cover"
-          onError={() => setFailedSource(src ?? null)}
+          onError={() => setHasError(true)}
         />
       ) : (
         <Text className={cn(avatarTextVariants({ size }))}>{fallback ?? "?"}</Text>
@@ -55,6 +54,3 @@ function Avatar({ size, className, src, fallback, ...props }: AvatarProps) {
     </View>
   );
 }
-
-export { Avatar };
-export type { AvatarProps };

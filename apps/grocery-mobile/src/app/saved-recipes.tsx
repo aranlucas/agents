@@ -9,7 +9,7 @@ export default function SavedRecipesScreen() {
 
   return (
     <ScrollView
-      className="flex-1 bg-background"
+      className="w-full max-w-3xl flex-1 self-center bg-background"
       contentInsetAdjustmentBehavior="automatic"
       contentContainerClassName="flex-grow items-center justify-center gap-3 p-7"
     >

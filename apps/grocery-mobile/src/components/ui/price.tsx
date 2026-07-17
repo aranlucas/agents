@@ -1,24 +1,24 @@
-import * as React from "react";
-import { View } from "react-native";
-import { Text } from "@/components/ui/text";
+import React from "react";
+import { View, Text } from "react-native";
 import { cn } from "@/lib/utils";
 
-type PriceProps = React.ComponentPropsWithoutRef<typeof View> & {
+export interface PriceProps extends React.ComponentPropsWithoutRef<typeof View> {
+  className?: string;
   amount: number;
   currency?: string;
   locale?: string;
-  prefix?: string;
   strikethrough?: boolean;
+  prefix?: string;
   textClassName?: string;
-};
+}
 
-function Price({
-  amount,
+export function Price({
   className,
+  amount,
   currency = "USD",
   locale = "en-US",
-  prefix,
   strikethrough,
+  prefix,
   textClassName,
   ...props
 }: PriceProps) {
@@ -26,24 +26,18 @@ function Price({
 
   return (
     <View className={cn("flex-row items-baseline", className)} {...props}>
-      {prefix ? (
-        <Text className={cn("me-1 text-sm text-muted-foreground", textClassName)} selectable>
-          {prefix}
-        </Text>
-      ) : null}
+      {prefix && (
+        <Text className={cn("me-1 text-sm text-muted-foreground", textClassName)}>{prefix}</Text>
+      )}
       <Text
         className={cn(
           "text-lg font-semibold text-foreground",
           strikethrough && "text-muted-foreground line-through",
           textClassName,
         )}
-        selectable
       >
         {formatted}
       </Text>
     </View>
   );
 }
-
-export { Price };
-export type { PriceProps };

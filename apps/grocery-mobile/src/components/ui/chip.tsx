@@ -1,26 +1,24 @@
-import { Icon } from "@/components/ui/icon";
-import { Text } from "@/components/ui/text";
-import { cn } from "@/lib/utils";
+import React from "react";
+import { Text, Pressable, useColorScheme } from "react-native";
 import { cva, type VariantProps } from "class-variance-authority";
 import { X } from "lucide-react-native";
-import * as React from "react";
-import { Pressable } from "react-native";
+import { cn } from "@/lib/utils";
 
-const chipVariants = cva("min-h-8 flex-row items-center rounded-full", {
+const chipVariants = cva("flex-row items-center rounded-full min-h-8", {
   variants: {
     variant: {
       default: "bg-primary",
       secondary: "bg-secondary",
-      outline: "border border-input bg-card",
+      outline: "border border-input bg-transparent",
       destructive: "bg-destructive",
     },
     size: {
-      sm: "gap-1 px-2.5 py-1",
-      md: "gap-1.5 px-3 py-1.5",
-      lg: "gap-2 px-4 py-2",
+      sm: "px-2.5 py-1 gap-1",
+      md: "px-3 py-1.5 gap-1.5",
+      lg: "px-4 py-2 gap-2",
     },
   },
-  defaultVariants: { variant: "outline", size: "md" },
+  defaultVariants: { variant: "default", size: "md" },
 });
 
 const chipTextVariants = cva("font-medium", {
@@ -33,71 +31,63 @@ const chipTextVariants = cva("font-medium", {
     },
     size: { sm: "text-xs", md: "text-sm", lg: "text-base" },
   },
-  defaultVariants: { variant: "outline", size: "md" },
+  defaultVariants: { variant: "default", size: "md" },
 });
 
-type ChipProps = React.ComponentProps<typeof Pressable> &
-  VariantProps<typeof chipVariants> & {
-    children: string;
-    onClose?: () => void;
-    selected?: boolean;
-    textClassName?: string;
-  };
+export interface ChipProps
+  extends React.ComponentPropsWithoutRef<typeof Pressable>, VariantProps<typeof chipVariants> {
+  className?: string;
+  textClassName?: string;
+  children: string;
+  selected?: boolean;
+  onClose?: () => void;
+}
 
-function Chip({
-  accessibilityRole,
-  accessibilityState,
-  children,
-  className,
-  onClose,
-  role,
-  selected = false,
-  size,
-  textClassName,
+export function Chip({
   variant,
+  size,
+  className,
+  textClassName,
+  children,
+  selected,
+  onClose,
   ...props
 }: ChipProps) {
-  const resolvedVariant = selected ? "default" : variant;
-  const resolvedRole = (role ?? accessibilityRole ?? "button") as React.ComponentProps<
-    typeof Pressable
-  >["role"];
-  const resolvedState =
-    resolvedRole === "radio" || resolvedRole === "checkbox"
-      ? { ...accessibilityState, checked: selected }
-      : { ...accessibilityState, selected };
-  const iconClassName =
-    resolvedVariant === "default"
-      ? "text-primary-foreground"
-      : resolvedVariant === "secondary"
-        ? "text-secondary-foreground"
-        : resolvedVariant === "destructive"
-          ? "text-destructive-foreground"
-          : "text-muted-foreground";
-
+  const v = selected ? "default" : (variant ?? "outline");
+  const dark = useColorScheme() === "dark";
+  const closeColor =
+    v === "outline"
+      ? dark
+        ? "#a1a1aa"
+        : "#71717a"
+      : v === "default"
+        ? dark
+          ? "#18181b"
+          : "#fafafa"
+        : v === "secondary"
+          ? dark
+            ? "#fafafa"
+            : "#18181b"
+          : "#fafafa";
   return (
     <Pressable
-      accessibilityState={resolvedState}
-      className={cn(chipVariants({ size, variant: resolvedVariant }), className)}
-      role={resolvedRole}
+      className={cn(chipVariants({ variant: v, size }), className)}
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
       {...props}
     >
-      <Text className={cn(chipTextVariants({ size, variant: resolvedVariant }), textClassName)}>
-        {children}
-      </Text>
-      {onClose ? (
+      <Text className={cn(chipTextVariants({ variant: v, size }), textClassName)}>{children}</Text>
+      {onClose && (
         <Pressable
+          onPress={onClose}
+          accessibilityRole="button"
           accessibilityLabel={`Remove ${children}`}
           className="ms-0.5"
-          hitSlop={8}
-          role="button"
-          onPress={onClose}
         >
-          <Icon as={X} className={iconClassName} size={12} />
+          <X size={12} color={closeColor} />
         </Pressable>
-      ) : null}
+      )}
     </Pressable>
   );
 }
-
-export { Chip, chipTextVariants, chipVariants };
-export type { ChipProps };

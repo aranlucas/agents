@@ -1,40 +1,42 @@
-import { Button } from "@/components/ui/button";
-import { Text } from "@/components/ui/text";
+import React from "react";
+import { View, Text, Pressable } from "react-native";
 import { cn } from "@/lib/utils";
-import * as React from "react";
-import { View } from "react-native";
 
-type EmptyStateProps = React.ComponentProps<typeof View> & {
-  action?: { label: string; onPress: () => void };
-  description?: string;
+export interface EmptyStateProps extends React.ComponentPropsWithoutRef<typeof View> {
+  className?: string;
   icon?: React.ReactNode;
   title: string;
-};
+  description?: string;
+  action?: { label: string; onPress: () => void };
+}
 
-function EmptyState({ action, className, description, icon, title, ...props }: EmptyStateProps) {
+export function EmptyState({
+  className,
+  icon,
+  title,
+  description,
+  action,
+  ...props
+}: EmptyStateProps) {
   return (
-    <View className={cn("items-center justify-center gap-3 px-7 py-10", className)} {...props}>
-      {icon ? (
-        <View className="mb-1 size-16 items-center justify-center rounded-2xl bg-muted">
-          {icon}
-        </View>
-      ) : null}
-      <Text className="text-center font-extrabold" selectable variant="h3">
-        {title}
-      </Text>
-      {description ? (
-        <Text className="max-w-80 text-center leading-6 text-muted-foreground" selectable>
+    <View className={cn("items-center justify-center px-8 py-16", className)} {...props}>
+      {icon && <View className="mb-4">{icon}</View>}
+      <Text className="mb-1 text-center text-lg font-semibold text-foreground">{title}</Text>
+      {description && (
+        <Text className="mb-6 max-w-[280px] text-center text-sm text-muted-foreground">
           {description}
         </Text>
-      ) : null}
-      {action ? (
-        <Button className="mt-1" size="lg" variant="secondary" onPress={action.onPress}>
-          {action.label}
-        </Button>
-      ) : null}
+      )}
+      {action && (
+        <Pressable
+          onPress={action.onPress}
+          className="min-h-12 items-center justify-center rounded-lg bg-primary px-6 py-2.5"
+          accessible={true}
+          accessibilityRole="button"
+        >
+          <Text className="text-sm font-medium text-primary-foreground">{action.label}</Text>
+        </Pressable>
+      )}
     </View>
   );
 }
-
-export { EmptyState };
-export type { EmptyStateProps };

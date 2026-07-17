@@ -1,41 +1,16 @@
+import React from "react";
+import { Text } from "react-native";
 import { cn } from "@/lib/utils";
-import * as LabelPrimitive from "@rn-primitives/label";
-import { Platform } from "react-native";
 
-function Label({
-  className,
-  onPress,
-  onLongPress,
-  onPressIn,
-  onPressOut,
-  disabled,
-  ...props
-}: React.ComponentProps<typeof LabelPrimitive.Text>) {
-  return (
-    <LabelPrimitive.Root
-      className={cn(
-        "flex flex-row items-center gap-2 select-none",
-        Platform.select({
-          web: "cursor-default leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-50",
-        }),
-        disabled && "opacity-50",
-      )}
-      onPress={onPress}
-      onLongPress={onLongPress}
-      onPressIn={onPressIn}
-      onPressOut={onPressOut}
-      disabled={disabled}
-    >
-      <LabelPrimitive.Text
-        className={cn(
-          "text-sm font-medium text-foreground",
-          Platform.select({ web: "leading-none" }),
-          className,
-        )}
-        {...props}
-      />
-    </LabelPrimitive.Root>
-  );
+export interface LabelProps extends React.ComponentPropsWithoutRef<typeof Text> {
+  className?: string;
 }
 
-export { Label };
+export function Label({ className, ...props }: LabelProps) {
+  return (
+    <Text
+      className={cn("mb-2 text-sm leading-none font-medium text-foreground", className)}
+      {...props}
+    />
+  );
+}

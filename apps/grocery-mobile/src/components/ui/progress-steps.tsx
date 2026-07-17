@@ -1,0 +1,86 @@
+import React, { createContext, useContext } from "react";
+import { View, Text, useColorScheme } from "react-native";
+import { Check } from "lucide-react-native";
+import { cn } from "@/lib/utils";
+
+const StepsContext = createContext<{ current: number }>({ current: 0 });
+
+export interface ProgressStepsProps extends React.ComponentPropsWithoutRef<typeof View> {
+  className?: string;
+  current: number;
+  children?: React.ReactNode;
+}
+
+export function ProgressSteps({ current, className, children, ...props }: ProgressStepsProps) {
+  return (
+    <StepsContext.Provider value={{ current }}>
+      <View className={cn("flex-row items-center", className)} accessibilityRole="list" {...props}>
+        {React.Children.map(children, (child, index) => (
+          <>
+            {index > 0 && (
+              <View
+                className={cn("mx-2 h-0.5 flex-1", index <= current ? "bg-primary" : "bg-muted")}
+              />
+            )}
+            {React.isValidElement(child)
+              ? React.cloneElement(child as React.ReactElement<{ _index?: number }>, {
+                  _index: index,
+                })
+              : child}
+          </>
+        ))}
+      </View>
+    </StepsContext.Provider>
+  );
+}
+
+export interface ProgressStepProps extends React.ComponentPropsWithoutRef<typeof View> {
+  className?: string;
+  label?: string;
+  icon?: React.ReactNode;
+  _index?: number;
+}
+
+export function ProgressStep({ label, icon, className, _index = 0, ...props }: ProgressStepProps) {
+  const { current } = useContext(StepsContext);
+  const dark = useColorScheme() === "dark";
+  const isCompleted = _index < current;
+  const isActive = _index === current;
+
+  return (
+    <View className={cn("items-center gap-1", className)} {...props}>
+      <View
+        className={cn(
+          "h-8 w-8 items-center justify-center rounded-full",
+          isCompleted
+            ? "bg-primary"
+            : isActive
+              ? "border-2 border-primary bg-background"
+              : "bg-muted",
+        )}
+      >
+        {icon ??
+          (isCompleted ? (
+            <Check size={14} color={dark ? "#18181b" : "#fafafa"} strokeWidth={3} />
+          ) : (
+            <Text
+              className={cn(
+                "text-sm font-semibold",
+                isActive ? "text-primary" : "text-muted-foreground",
+              )}
+            >
+              {_index + 1}
+            </Text>
+          ))}
+      </View>
+      {label && (
+        <Text
+          className={cn("text-xs", isActive ? "font-medium text-primary" : "text-muted-foreground")}
+          numberOfLines={1}
+        >
+          {label}
+        </Text>
+      )}
+    </View>
+  );
+}

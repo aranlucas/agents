@@ -1,49 +1,54 @@
+import React from "react";
+import { Pressable, View, useColorScheme } from "react-native";
 import * as CheckboxPrimitive from "@rn-primitives/checkbox";
 import { Check } from "lucide-react-native";
-import * as React from "react";
-import { View } from "react-native";
-import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 
-type CheckboxProps = Omit<React.ComponentProps<typeof CheckboxPrimitive.Root>, "children"> & {
-  indicatorClassName?: string;
-};
+export interface CheckboxProps extends Omit<
+  React.ComponentPropsWithoutRef<typeof Pressable>,
+  "disabled"
+> {
+  className?: string;
+  checked?: boolean;
+  onCheckedChange?: (checked: boolean) => void;
+  disabled?: boolean;
+}
 
-function Checkbox({
+export function Checkbox({
   checked = false,
+  onCheckedChange,
   className,
   disabled,
-  indicatorClassName,
-  onCheckedChange,
   ...props
 }: CheckboxProps) {
+  const dark = useColorScheme() === "dark";
   return (
     <CheckboxPrimitive.Root
       checked={checked}
-      className="min-h-12 min-w-12 items-center justify-center"
-      disabled={Boolean(disabled)}
-      onCheckedChange={onCheckedChange ?? (() => undefined)}
-      {...props}
+      onCheckedChange={onCheckedChange ?? (() => {})}
+      disabled={disabled}
+      asChild
     >
-      <View
-        className={cn(
-          "size-6 items-center justify-center rounded-full border",
-          checked ? "border-primary bg-primary" : "border-input bg-background",
-          disabled && "opacity-50",
-          className,
-        )}
+      <Pressable
+        className="min-h-12 min-w-12 items-center justify-center"
+        accessible={true}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked, disabled: !!disabled }}
+        {...props}
       >
-        <CheckboxPrimitive.Indicator>
-          <Icon
-            as={Check}
-            className={cn("size-4 text-primary-foreground", indicatorClassName)}
-            strokeWidth={3}
-          />
-        </CheckboxPrimitive.Indicator>
-      </View>
+        <View
+          className={cn(
+            "h-5 w-5 items-center justify-center rounded border",
+            checked ? "border-primary bg-primary" : "border-input bg-background",
+            disabled && "opacity-50",
+            className,
+          )}
+        >
+          <CheckboxPrimitive.Indicator>
+            <Check size={14} color={dark ? "#18181b" : "#fafafa"} strokeWidth={3} />
+          </CheckboxPrimitive.Indicator>
+        </View>
+      </Pressable>
     </CheckboxPrimitive.Root>
   );
 }
-
-export { Checkbox };
-export type { CheckboxProps };
