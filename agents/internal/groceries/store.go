@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"agents/internal/cloudflare"
+	"google.golang.org/adk/v2/artifact"
 )
 
 var (
@@ -45,14 +46,15 @@ type Invite struct {
 }
 
 type List struct {
-	ID          string  `json:"id"`
-	HouseholdID *string `json:"household_id"`
-	OwnerUserID string  `json:"owner_user_id"`
-	Title       string  `json:"title"`
-	Status      string  `json:"status"`
-	CreatedAt   int64   `json:"created_at"`
-	UpdatedAt   int64   `json:"updated_at"`
-	Items       []Item  `json:"items"`
+	ID              string  `json:"id"`
+	HouseholdID     *string `json:"household_id"`
+	OwnerUserID     string  `json:"owner_user_id"`
+	Title           string  `json:"title"`
+	Status          string  `json:"status"`
+	ArtifactVersion int64   `json:"artifact_version,omitempty"`
+	CreatedAt       int64   `json:"created_at"`
+	UpdatedAt       int64   `json:"updated_at"`
+	Items           []Item  `json:"items"`
 }
 
 type Item struct {
@@ -89,7 +91,6 @@ type Repository interface {
 	CreateInvite(context.Context, string, string, string, int, time.Time) (Invite, error)
 	JoinHousehold(context.Context, string, string, time.Time) (Household, error)
 	CanAccessList(context.Context, string, string) (bool, error)
-	CreateList(context.Context, string, *string, string, time.Time) (List, error)
 	ListLists(context.Context, string, string) ([]List, error)
 	GetList(context.Context, string, string) (List, error)
 	AddItems(context.Context, string, string, []NewItem, time.Time) ([]Item, error)
@@ -102,12 +103,17 @@ type statementRunner interface {
 }
 
 type Store struct {
-	d1    statementRunner
-	newID func(string) (string, error)
+	d1        statementRunner
+	artifacts artifact.Service
+	newID     func(string) (string, error)
 }
 
 func NewStore(d1 *cloudflare.D1) *Store {
 	return &Store{d1: d1, newID: randomID}
+}
+
+func NewStoreWithArtifacts(d1 *cloudflare.D1, artifacts artifact.Service) *Store {
+	return &Store{d1: d1, artifacts: artifacts, newID: randomID}
 }
 
 func (s *Store) CreateHousehold(ctx context.Context, userID, name string, now time.Time) (Household, error) {
@@ -275,45 +281,6 @@ func (s *Store) CanAccessList(ctx context.Context, userID, listID string) (bool,
 		)) LIMIT 1`, listID, userID, userID)
 }
 
-func (s *Store) CreateList(ctx context.Context, userID string, householdID *string, title string, now time.Time) (List, error) {
-	if err := s.ready(); err != nil {
-		return List{}, err
-	}
-	userID, title = strings.TrimSpace(userID), strings.TrimSpace(title)
-	if userID == "" || title == "" || len(title) > 120 {
-		return List{}, ErrInvalid
-	}
-	var household any
-	if householdID != nil {
-		trimmed := strings.TrimSpace(*householdID)
-		if trimmed == "" {
-			return List{}, ErrInvalid
-		}
-		householdID = &trimmed
-		household = trimmed
-	}
-	id, err := s.newID("list")
-	if err != nil {
-		return List{}, err
-	}
-	createdAt := timestamp(now)
-	statement := cloudflare.Statement{
-		SQL: `INSERT INTO grocery_lists (id, household_id, owner_user_id, title, status, created_at, updated_at)
-		      SELECT ?, ?, ?, ?, 'active', ?, ? WHERE ? IS NULL OR EXISTS (
-		        SELECT 1 FROM household_members WHERE household_id = ? AND clerk_user_id = ?
-		      )`,
-		Params: []any{id, household, userID, title, createdAt, createdAt, household, household, userID},
-	}
-	results, err := s.d1.Run(ctx, statement)
-	if err != nil {
-		return List{}, fmt.Errorf("create grocery list: %w", err)
-	}
-	if changed(results) == 0 {
-		return List{}, ErrForbidden
-	}
-	return List{ID: id, HouseholdID: householdID, OwnerUserID: userID, Title: title, Status: "active", CreatedAt: createdAt, UpdatedAt: createdAt, Items: []Item{}}, nil
-}
-
 func (s *Store) ListLists(ctx context.Context, userID, householdID string) ([]List, error) {
 	if err := s.ready(); err != nil {
 		return nil, err
@@ -323,7 +290,8 @@ func (s *Store) ListLists(ctx context.Context, userID, householdID string) ([]Li
 		return nil, ErrInvalid
 	}
 	results, err := s.d1.Run(ctx, cloudflare.Statement{
-		SQL: `SELECT gl.id, gl.household_id, gl.owner_user_id, gl.title, gl.status, gl.created_at, gl.updated_at
+		SQL: `SELECT gl.id, gl.household_id, gl.owner_user_id, gl.title, gl.status, gl.created_at, gl.updated_at,
+		             COALESCE((SELECT version FROM grocery_resource_artifacts gra WHERE gra.resource_type = 'list' AND gra.resource_id = gl.id), 0) AS artifact_version
 		      FROM grocery_lists gl WHERE gl.household_id = ? AND EXISTS (
 		        SELECT 1 FROM household_members hm WHERE hm.household_id = gl.household_id AND hm.clerk_user_id = ?
 		      ) ORDER BY gl.updated_at DESC, gl.id`,
@@ -358,7 +326,8 @@ func (s *Store) GetList(ctx context.Context, userID, listID string) (List, error
 	results, err := s.d1.Run(
 		ctx,
 		cloudflare.Statement{
-			SQL: `SELECT gl.id, gl.household_id, gl.owner_user_id, gl.title, gl.status, gl.created_at, gl.updated_at
+			SQL: `SELECT gl.id, gl.household_id, gl.owner_user_id, gl.title, gl.status, gl.created_at, gl.updated_at,
+			             COALESCE((SELECT version FROM grocery_resource_artifacts gra WHERE gra.resource_type = 'list' AND gra.resource_id = gl.id), 0) AS artifact_version
 			      FROM grocery_lists gl WHERE gl.id = ? AND (gl.owner_user_id = ? OR EXISTS (
 			        SELECT 1 FROM household_members hm WHERE hm.household_id = gl.household_id AND hm.clerk_user_id = ?
 			      )) LIMIT 1`,

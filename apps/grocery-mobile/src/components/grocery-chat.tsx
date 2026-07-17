@@ -90,6 +90,14 @@ export function GroceryChat() {
   );
 
   const openLatestList = useCallback(() => router.push("/list"), [router]);
+  const openListSave = useCallback(
+    () => router.push({ pathname: "/list", params: { save: "1" } }),
+    [router],
+  );
+  const openRecipeSave = useCallback(
+    () => router.push({ pathname: "/saved-recipes", params: { save: "1" } }),
+    [router],
+  );
   const confirmAddToCart = useCallback(() => {
     setCartDialogOpen(true);
   }, []);
@@ -140,6 +148,8 @@ export function GroceryChat() {
               connected={connected}
               onOpenList={openLatestList}
               onAddToCart={confirmAddToCart}
+              onSaveList={openListSave}
+              onSaveRecipe={state.recipe ? openRecipeSave : undefined}
             />
             <KrogerConnectionCard connection={connection} />
             {error ? (

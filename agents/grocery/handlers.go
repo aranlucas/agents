@@ -33,7 +33,18 @@ type Result struct {
 }
 
 type ShoppingListArgs struct {
+	Title string   `json:"title,omitempty" jsonschema:"A short useful title for the complete shopping list."`
 	Items []string `json:"items" jsonschema:"The complete shopping list. Always provide a JSON array of strings; use an empty array when there are no items."`
+}
+
+type RecipeArgs struct {
+	Title       string                  `json:"title"`
+	Description string                  `json:"description,omitempty"`
+	Servings    string                  `json:"servings,omitempty"`
+	Notes       string                  `json:"notes,omitempty"`
+	Ingredients []RecipeDraftIngredient `json:"ingredients"`
+	Steps       []string                `json:"steps"`
+	Tags        []string                `json:"tags,omitempty"`
 }
 
 type ProductMatchesArgs struct {
@@ -59,13 +70,64 @@ type ReadyArgs struct {
 type CurrentDateArgs struct{}
 
 func SetShoppingList(ctx agent.Context, input ShoppingListArgs) (Result, error) {
+	title := strings.TrimSpace(input.Title)
+	if len(title) > 120 {
+		return groceryFailure("invalid_list_title", "the shopping-list title cannot exceed 120 characters"), nil
+	}
 	if err := ctx.State().Set("shopping_list", input.Items); err != nil {
+		return Result{}, err
+	}
+	if err := ctx.State().Set("list_title", title); err != nil {
 		return Result{}, err
 	}
 	if err := ctx.State().Set("product_matches", []ProductMatch{}); err != nil {
 		return Result{}, err
 	}
 	return Result{OK: true, Count: len(input.Items)}, nil
+}
+
+func SetRecipe(ctx agent.Context, input RecipeArgs) (Result, error) {
+	recipe := RecipeDraft(input)
+	if err := normalizeRecipeDraft(&recipe); err != nil {
+		return groceryFailure("invalid_recipe", err.Error()), nil
+	}
+	if err := ctx.State().Set("recipe", &recipe); err != nil {
+		return Result{}, err
+	}
+	return Result{OK: true, Count: len(recipe.Ingredients)}, nil
+}
+
+func normalizeRecipeDraft(recipe *RecipeDraft) error {
+	recipe.Title = strings.TrimSpace(recipe.Title)
+	recipe.Description = strings.TrimSpace(recipe.Description)
+	recipe.Servings = strings.TrimSpace(recipe.Servings)
+	recipe.Notes = strings.TrimSpace(recipe.Notes)
+	if recipe.Title == "" || len(recipe.Title) > 200 || len(recipe.Description) > 4_000 || len(recipe.Servings) > 100 || len(recipe.Notes) > 10_000 || len(recipe.Ingredients) == 0 || len(recipe.Ingredients) > 200 || len(recipe.Steps) == 0 || len(recipe.Steps) > 100 || len(recipe.Tags) > 30 {
+		return errors.New("a recipe needs a title, ingredients, and steps within the allowed size")
+	}
+	for index := range recipe.Ingredients {
+		ingredient := &recipe.Ingredients[index]
+		ingredient.Name = strings.TrimSpace(ingredient.Name)
+		ingredient.Quantity = strings.TrimSpace(ingredient.Quantity)
+		ingredient.Unit = strings.TrimSpace(ingredient.Unit)
+		ingredient.Note = strings.TrimSpace(ingredient.Note)
+		if ingredient.Name == "" || len(ingredient.Name) > 500 || len(ingredient.Quantity) > 100 || len(ingredient.Unit) > 100 || len(ingredient.Note) > 1_000 {
+			return errors.New("every recipe ingredient needs a valid name and bounded details")
+		}
+	}
+	for index, step := range recipe.Steps {
+		recipe.Steps[index] = strings.TrimSpace(step)
+		if recipe.Steps[index] == "" || len(recipe.Steps[index]) > 10_000 {
+			return errors.New("every recipe step must be non-empty")
+		}
+	}
+	for index, tag := range recipe.Tags {
+		recipe.Tags[index] = strings.TrimSpace(tag)
+		if recipe.Tags[index] == "" || len(recipe.Tags[index]) > 100 {
+			return errors.New("recipe tags must be non-empty and at most 100 characters")
+		}
+	}
+	return nil
 }
 
 func SetProductMatches(ctx agent.Context, input ProductMatchesArgs) (Result, error) {

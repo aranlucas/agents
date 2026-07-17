@@ -7,6 +7,9 @@
         "type": "string"
       }
     },
+    "list_title": {
+      "type": "string"
+    },
     "product_matches": {
       "type": "array",
       "items": {
@@ -78,6 +81,59 @@
     },
     "meal_plan": {
       "type": "string"
+    },
+    "recipe": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "servings": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "ingredients": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "quantity": {
+                "type": "string"
+              },
+              "unit": {
+                "type": "string"
+              },
+              "note": {
+                "type": "string"
+              }
+            },
+            "required": ["name", "quantity", "unit", "note"],
+            "additionalProperties": false
+          }
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["title", "description", "servings", "notes", "ingredients", "steps", "tags"],
+      "additionalProperties": false
     },
     "weekly_deals": {
       "type": "string"

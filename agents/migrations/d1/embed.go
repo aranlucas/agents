@@ -22,3 +22,9 @@ var FitnessActivities string
 //
 //go:embed 004_shared_lists.sql
 var SharedLists string
+
+// SavedGroceryResources is the personal/shared list library, recipe library,
+// and ADK artifact reference schema.
+//
+//go:embed 005_saved_grocery_resources.sql
+var SavedGroceryResources string

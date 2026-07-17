@@ -85,7 +85,7 @@ type Dependencies struct {
 	Links     *telegram.LinkStore
 	Clerk     clerk.Backend
 	Fitness   fitnessdata.Repository
-	Groceries groceries.Repository
+	Groceries groceries.LibraryRepository
 	Now       func() time.Time
 }
 
@@ -101,6 +101,9 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 	}
 	if deps.Sessions == nil {
 		return nil, errors.New("session service is required")
+	}
+	if deps.Groceries == nil {
+		return nil, errors.New("grocery library repository is required")
 	}
 	if deps.Now == nil {
 		deps.Now = time.Now
@@ -161,9 +164,7 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 	if deps.Fitness != nil {
 		mux.HandleFunc("POST /fitness/activities/sync", fitnessSyncHandler(deps.Fitness, deps.Now))
 	}
-	if deps.Groceries != nil {
-		registerGroceryAPI(mux, deps.Groceries, deps.Now)
-	}
+	registerGroceryAPI(mux, deps.Groceries, deps.Now)
 
 	var verifiers []auth.TokenVerifier
 	if deps.Verifier != nil {
@@ -715,7 +716,7 @@ func main() {
 		log.Fatalf("configure fitness fallbacks: %v", err)
 	}
 	fitnessActivities := fitnessdata.NewStore(d1)
-	groceryLists := groceries.NewStore(d1)
+	groceryLists := groceries.NewStoreWithArtifacts(d1, cloudflare.NewArtifactService(r2))
 	fitnessAgent, err := fitness.New(fitnessModel, fitnessActivities, braveSearch, agui.NewAGUIToolset(pending))
 	if err != nil {
 		log.Fatalf("build fitness agent: %v", err)
@@ -734,7 +735,7 @@ func main() {
 	}
 	krogerClient := grocery.NewKroger(common.NewHTTPClient(30*time.Second, 8<<20).Client, krogerEndpoint)
 	webLoader := common.NewWebLoader(common.NewHTTPClient(20*time.Second, 4<<20), 100_000)
-	groceryAgent, err := grocery.NewWithSharedLists(groceryModel, krogerClient, braveSearch, webLoader, groceryLists, agui.NewAGUIToolset(pending))
+	groceryAgent, err := grocery.NewWithLibrary(groceryModel, krogerClient, braveSearch, webLoader, groceryLists, agui.NewAGUIToolset(pending))
 	if err != nil {
 		log.Fatalf("build grocery agent: %v", err)
 	}
@@ -742,7 +743,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("build wellness fitness task agent: %v", err)
 	}
-	groceryTaskAgent, err := grocery.NewTaskWithSharedLists(groceryModel, krogerClient, braveSearch, webLoader, groceryLists, agui.NewAGUIToolset(pending))
+	groceryTaskAgent, err := grocery.NewTaskWithLibrary(groceryModel, krogerClient, braveSearch, webLoader, groceryLists, agui.NewAGUIToolset(pending))
 	if err != nil {
 		log.Fatalf("build wellness grocery task agent: %v", err)
 	}

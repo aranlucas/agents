@@ -14,9 +14,9 @@ check-off, polling sync. No realtime infrastructure, no push notifications.
   following the existing gateway handler + `internal/auth` Clerk middleware
   patterns. Identity is the Clerk user id already flowing via
   `x-clerk-user-id`.
-- Agent: one new ADK tool (`save_list_to_household`) registered in
-  `agents/grocery/agent.go`, implemented like the handlers in
-  `agents/grocery/handlers.go`, reviewed against the ADK Go reference.
+- Agent: the required grocery library tools include `save_current_list`,
+  which saves personally by default or to an explicitly selected household,
+  plus list/get/update operations over the same repository as HTTP.
 - Mobile: new Expo Router screens in `apps/grocery-mobile` reusing the
   existing component patterns (`ui.tsx`, theme tokens) — RNR migration
   (COMPONENT_PLAN.md) happens independently; do not block on it.
@@ -67,11 +67,10 @@ check-off attribution.
 
 ## Milestone 3 — Agent integration
 
-1. Tool `save_list_to_household(household_id?, title)`: writes the current
-   thread's `shopping_list` (with quantities from product matches when
-   present) into a new `grocery_lists` row via the store; returns the list
-   id so the agent can tell the user where it went. When the user has
-   exactly one household, default to it; otherwise require the id.
+1. Tool `save_current_list(household_id?, title?)`: writes the current ready
+   `shopping_list` (with quantities from product matches when present) into
+   the library repository and returns the saved record. Omission means the
+   personal library; a household is used only when explicitly selected.
 2. Instructions update in `agents/grocery/instructions.md`: after
    `mark_list_ready`, offer to save to the shared list; when planning,
    mention items already on the active shared list if the user asks.
@@ -99,7 +98,8 @@ check-off attribution.
 - User A creates a household and an invite code; user B joins with the
   code; both add and check off items on the same list from separate
   devices, and each sees the other's changes within one poll interval.
-- Agent can save a ready plan into the household list via chat.
+- Agent can save a ready plan personally or to an explicitly selected
+  household via chat.
 - `pnpm check && pnpm test` and `go test ./...` (workspace) pass; D1
   migration applies cleanly on a fresh database.
 

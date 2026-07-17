@@ -177,6 +177,8 @@ describe("grocery navigation", () => {
 
     expect(stackScreens).toContain("index");
     expect(stackScreens).toContain("chat");
+    expect(stackScreens).toContain("saved-lists");
+    expect(stackScreens).toContain("saved-recipes");
   });
 
   it("uses native stack chrome without custom headers", async () => {
@@ -197,6 +199,8 @@ describe("grocery navigation", () => {
     await render(<GroceryHomeScreen />);
 
     expect(homeLinks).toContain("/chat");
+    expect(homeLinks).toContain("/saved-lists");
+    expect(homeLinks).toContain("/saved-recipes");
   });
 
   it("uses native toolbar buttons for dashboard actions", async () => {

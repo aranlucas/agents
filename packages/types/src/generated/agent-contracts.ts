@@ -92,6 +92,23 @@ export type PantryItem = {
   expires?: string;
 };
 
+export type RecipeDraftIngredient = {
+  name: string;
+  quantity: string;
+  unit: string;
+  note: string;
+};
+
+export type RecipeDraft = {
+  title: string;
+  description: string;
+  servings: string;
+  notes: string;
+  ingredients: RecipeDraftIngredient[];
+  steps: string[];
+  tags: string[];
+};
+
 export type FitnessActivity = {
   id: string;
   name: string;
@@ -189,10 +206,12 @@ export type TripState = {
 
 export type GroceryState = {
   shopping_list?: string[];
+  list_title?: string;
   product_matches?: ProductMatch[];
   cart?: CartItem[];
   pantry?: PantryItem[];
   meal_plan?: string;
+  recipe?: RecipeDraft;
   weekly_deals?: string;
   status?: "idle" | "planning" | "ready";
   notes?: string;
@@ -215,6 +234,8 @@ export type WellnessState = {
   status?: WellnessStatus;
   meal_plan?: string;
   training_plan?: string;
+  list_title?: string;
+  recipe?: RecipeDraft;
   weekly_plan?: string;
   review_summary?: string;
   kroger_connected?: boolean;

@@ -12,7 +12,7 @@ import (
 // LatestMigrationVersion is the newest schema marker reported by migration
 // diagnostics. Readiness requires every marker in migrations. Keep existing
 // version strings stable; append instead of editing or renaming applied work.
-const LatestMigrationVersion = "004_shared_lists"
+const LatestMigrationVersion = "005_saved_grocery_resources"
 
 type migration struct {
 	version string
@@ -23,7 +23,8 @@ var migrations = []migration{
 	{version: "001_initial", source: d1migrations.Initial},
 	{version: "002_telegram_links", source: d1migrations.TelegramLinks},
 	{version: "003_fitness_activities", source: d1migrations.FitnessActivities},
-	{version: LatestMigrationVersion, source: d1migrations.SharedLists},
+	{version: "004_shared_lists", source: d1migrations.SharedLists},
+	{version: LatestMigrationVersion, source: d1migrations.SavedGroceryResources},
 }
 
 type schemaTable struct {
@@ -48,6 +49,11 @@ var requiredSchemaTables = []schemaTable{
 	{name: "household_invites", columns: []string{"code", "household_id", "created_by", "expires_at", "max_uses", "used_count"}},
 	{name: "grocery_lists", columns: []string{"id", "household_id", "owner_user_id", "title", "status", "created_at", "updated_at"}},
 	{name: "grocery_list_items", columns: []string{"id", "list_id", "name", "quantity", "note", "position", "added_by", "checked_by", "checked_at", "updated_at"}},
+	{name: "grocery_resource_artifacts", columns: []string{"resource_type", "resource_id", "scope_user_id", "file_name", "version", "created_at"}},
+	{name: "recipes", columns: []string{"id", "household_id", "owner_user_id", "title", "description", "servings", "notes", "status", "created_at", "updated_at"}},
+	{name: "recipe_ingredients", columns: []string{"id", "recipe_id", "name", "quantity", "unit", "note", "position"}},
+	{name: "recipe_steps", columns: []string{"id", "recipe_id", "instruction", "position"}},
+	{name: "recipe_tags", columns: []string{"recipe_id", "tag", "position"}},
 }
 
 var requiredSchemaIndexes = []string{
@@ -62,7 +68,13 @@ var requiredSchemaIndexes = []string{
 	"fitness_sync_sources_user_synced",
 	"household_members_user",
 	"grocery_lists_household",
+	"grocery_lists_owner",
 	"grocery_list_items_list",
+	"recipes_owner",
+	"recipes_household",
+	"recipe_ingredients_recipe",
+	"recipe_steps_recipe",
+	"recipe_tags_recipe",
 }
 
 func migrationVersions() []string {

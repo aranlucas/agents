@@ -95,10 +95,13 @@ export default function RootLayout() {
                             <Stack.Screen name="index" options={{ title: "Grocery Agent" }} />
                             <Stack.Screen name="chat" options={{ title: "Grocery Agent" }} />
                             <Stack.Screen name="list" options={{ title: "Your grocery plan" }} />
+                            <Stack.Screen name="saved-lists" options={{ title: "Saved lists" }} />
+                            <Stack.Screen name="saved-list" options={{ title: "Edit list" }} />
                             <Stack.Screen
                               name="saved-recipes"
                               options={{ title: "Saved recipes" }}
                             />
+                            <Stack.Screen name="saved-recipe" options={{ title: "Edit recipe" }} />
                             <Stack.Screen
                               name="households"
                               options={{ title: "Shared households" }}

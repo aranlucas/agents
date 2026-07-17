@@ -88,7 +88,7 @@ func newFitnessSyncGateway(t *testing.T, repository fitnessdata.Repository) http
 		t.Fatal(err)
 	}
 	handler, err := New(config.Config{HTTP: config.HTTP{}}, Dependencies{
-		Registry: registry, Sessions: session.InMemoryService(), Verifier: acceptingVerifier{}, Fitness: repository, Now: func() time.Time {
+		Registry: registry, Sessions: session.InMemoryService(), Verifier: acceptingVerifier{}, Fitness: repository, Groceries: &fakeGroceryRepository{}, Now: func() time.Time {
 			return time.Date(2026, 7, 12, 13, 0, 0, 0, time.UTC)
 		},
 	})

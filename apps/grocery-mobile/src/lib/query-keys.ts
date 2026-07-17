@@ -9,4 +9,8 @@ export const groceryQueryKeys = {
     ["grocery-lists", userId, householdId] as const,
   list: (userId: string | null | undefined, listId: string | null | undefined) =>
     ["grocery-list", userId, listId] as const,
+  recipes: (userId: string | null | undefined, householdId?: string | null) =>
+    ["grocery-recipes", userId, householdId ?? "personal"] as const,
+  recipe: (userId: string | null | undefined, recipeId: string | null | undefined) =>
+    ["grocery-recipe", userId, recipeId] as const,
 };

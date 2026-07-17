@@ -75,7 +75,29 @@ func TestGroceryAPICheckOffUsesVerifiedCaller(t *testing.T) {
 	}
 }
 
-func serveGroceryAPI(t *testing.T, repository groceries.Repository, method, path, body string, authenticated bool) *httptest.ResponseRecorder {
+func TestGroceryAPICreatesListsThroughLibraryRepository(t *testing.T) {
+	repository := &fakeGroceryRepository{}
+	recorder := serveGroceryAPI(t, repository, http.MethodPost, "/api/grocery/lists", `{"title":"Weekend","items":[{"name":"Milk","quantity":"1 gal"}]}`, true)
+	if recorder.Code != http.StatusCreated {
+		t.Fatalf("response = %d %s", recorder.Code, recorder.Body.String())
+	}
+	if repository.savedListBy != "clerk-user" || repository.savedList.Title != "Weekend" || len(repository.savedList.Items) != 1 {
+		t.Fatalf("saved list = user %q input %#v", repository.savedListBy, repository.savedList)
+	}
+}
+
+func TestGroceryAPIAlwaysRegistersRecipeLibrary(t *testing.T) {
+	repository := &fakeGroceryRepository{}
+	recorder := serveGroceryAPI(t, repository, http.MethodGet, "/api/grocery/recipes", "", true)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("response = %d %s", recorder.Code, recorder.Body.String())
+	}
+	if repository.listRecipeCalls != 1 {
+		t.Fatalf("list recipe calls = %d", repository.listRecipeCalls)
+	}
+}
+
+func serveGroceryAPI(t *testing.T, repository groceries.LibraryRepository, method, path, body string, authenticated bool) *httptest.ResponseRecorder {
 	t.Helper()
 	mux := http.NewServeMux()
 	registerGroceryAPI(mux, repository, func() time.Time { return time.UnixMilli(2000) })
@@ -90,13 +112,17 @@ func serveGroceryAPI(t *testing.T, repository groceries.Repository, method, path
 }
 
 type fakeGroceryRepository struct {
-	member        bool
-	owner         bool
-	canAccessList bool
-	dataCalls     int
-	joinError     error
-	updatedBy     string
-	updatedPatch  groceries.ItemPatch
+	groceries.LibraryRepository
+	member          bool
+	owner           bool
+	canAccessList   bool
+	dataCalls       int
+	joinError       error
+	updatedBy       string
+	updatedPatch    groceries.ItemPatch
+	savedListBy     string
+	savedList       groceries.SavedListInput
+	listRecipeCalls int
 }
 
 func (f *fakeGroceryRepository) CreateHousehold(context.Context, string, string, time.Time) (groceries.Household, error) {
@@ -131,11 +157,6 @@ func (f *fakeGroceryRepository) CanAccessList(context.Context, string, string) (
 	return f.canAccessList, nil
 }
 
-func (f *fakeGroceryRepository) CreateList(context.Context, string, *string, string, time.Time) (groceries.List, error) {
-	f.dataCalls++
-	return groceries.List{}, nil
-}
-
 func (f *fakeGroceryRepository) ListLists(context.Context, string, string) ([]groceries.List, error) {
 	f.dataCalls++
 	return []groceries.List{}, nil
@@ -162,4 +183,17 @@ func (f *fakeGroceryRepository) UpdateItem(_ context.Context, userID, listID, it
 func (f *fakeGroceryRepository) DeleteItem(context.Context, string, string, string) error {
 	f.dataCalls++
 	return nil
+}
+
+func (f *fakeGroceryRepository) SaveList(_ context.Context, userID string, input groceries.SavedListInput, now time.Time) (groceries.List, error) {
+	f.dataCalls++
+	f.savedListBy = userID
+	f.savedList = input
+	return groceries.List{ID: "list_1", HouseholdID: input.HouseholdID, OwnerUserID: userID, Title: input.Title, Status: "active", CreatedAt: now.UnixMilli(), UpdatedAt: now.UnixMilli(), Items: []groceries.Item{}}, nil
+}
+
+func (f *fakeGroceryRepository) ListRecipes(context.Context, string, *string) ([]groceries.Recipe, error) {
+	f.dataCalls++
+	f.listRecipeCalls++
+	return []groceries.Recipe{}, nil
 }

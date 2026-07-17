@@ -48,6 +48,48 @@ describe("household API", () => {
     );
   });
 
+  it("saves complete personal lists and structured recipes", async () => {
+    const fetcher = vi.fn(async () => Response.json({ id: "saved_1" }));
+    const api = createHouseholdApi({
+      baseUrl: "https://gateway.example.com",
+      getToken: async () => "token",
+      userId: "user_123",
+      fetcher,
+    });
+
+    await api.createList("Weekend", undefined, [{ name: "Milk", quantity: "1" }]);
+    expect(fetcher).toHaveBeenLastCalledWith("https://gateway.example.com/api/grocery/lists", {
+      method: "POST",
+      body: JSON.stringify({ title: "Weekend", items: [{ name: "Milk", quantity: "1" }] }),
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Authorization: "Bearer token",
+        "x-clerk-user-id": "user_123",
+      },
+    });
+
+    await api.createRecipe({
+      title: "Pasta",
+      ingredients: [{ name: "Pasta", quantity: "1", unit: "lb" }],
+      steps: ["Boil pasta"],
+    });
+    expect(fetcher).toHaveBeenLastCalledWith("https://gateway.example.com/api/grocery/recipes", {
+      method: "POST",
+      body: JSON.stringify({
+        title: "Pasta",
+        ingredients: [{ name: "Pasta", quantity: "1", unit: "lb" }],
+        steps: ["Boil pasta"],
+      }),
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Authorization: "Bearer token",
+        "x-clerk-user-id": "user_123",
+      },
+    });
+  });
+
   it("surfaces typed API errors", async () => {
     const api = createHouseholdApi({
       baseUrl: "https://gateway.example.com",

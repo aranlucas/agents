@@ -14,6 +14,15 @@ describe("grocery state", () => {
     expect(
       normalizeGroceryState({
         shopping_list: ["milk", 3, "eggs"],
+        list_title: "Weekend groceries",
+        recipe: {
+          title: "Pasta",
+          description: "Fast dinner",
+          servings: "4",
+          ingredients: [{ name: "Pasta", quantity: "1", unit: "lb", note: "" }],
+          steps: ["Boil pasta"],
+          tags: ["Dinner"],
+        },
         product_matches: [
           {
             query: "milk",
@@ -32,6 +41,16 @@ describe("grocery state", () => {
       }),
     ).toMatchObject({
       shopping_list: ["milk", "eggs"],
+      list_title: "Weekend groceries",
+      recipe: {
+        title: "Pasta",
+        description: "Fast dinner",
+        servings: "4",
+        notes: "",
+        ingredients: [{ name: "Pasta", quantity: "1", unit: "lb", note: "" }],
+        steps: ["Boil pasta"],
+        tags: ["Dinner"],
+      },
       product_matches: [
         {
           query: "milk",

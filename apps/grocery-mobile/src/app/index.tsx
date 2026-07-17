@@ -6,6 +6,7 @@ import {
   ArrowRight,
   BookMarked,
   History,
+  ListChecks,
   MessageSquareText,
   ShoppingBasket,
   Users,
@@ -88,6 +89,12 @@ export default function GroceryHomeScreen() {
             title="Grocery plan"
           />
           <HomeLinkRow
+            description="Reopen and edit personal or household grocery lists."
+            href="/saved-lists"
+            icon={ListChecks}
+            title="Saved lists"
+          />
+          <HomeLinkRow
             description="Create or join a household and open its shared grocery list."
             href="/households"
             icon={Users}
@@ -140,7 +147,7 @@ function HomeLinkRow({
   title,
 }: {
   description: string;
-  href: "/list" | "/households";
+  href: "/list" | "/saved-lists" | "/households";
   icon: LucideIcon;
   title: string;
 }) {
