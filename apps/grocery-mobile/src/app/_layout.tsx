@@ -11,6 +11,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useResolveClassNames, withUniwind } from "uniwind";
 import { ConfigurationError } from "@/components/configuration-error";
+import { GroceryChatHeader } from "@/components/grocery-chat-header";
 import { GroceryCopilotSession } from "@/components/grocery-copilot-session";
 import { GroceryHeader } from "@/components/grocery-header";
 import { QueryProvider } from "@/components/query-provider";
@@ -63,14 +64,25 @@ export default function RootLayout() {
                             <GroceryHeader
                               canGoBack={Boolean(back)}
                               onBack={() => navigation.goBack()}
-                              routeName={route.name}
+                              showAccount={route.name === "index"}
                               title={typeof options.title === "string" ? options.title : route.name}
                             />
                           ),
                         }}
                       >
                         <Stack.Screen name="index" options={{ title: "Grocery Agent" }} />
-                        <Stack.Screen name="chat" options={{ title: "Grocery Agent" }} />
+                        <Stack.Screen
+                          name="chat"
+                          options={{
+                            title: "Grocery Agent",
+                            header: ({ back, navigation }) => (
+                              <GroceryChatHeader
+                                canGoBack={Boolean(back)}
+                                onBack={() => navigation.goBack()}
+                              />
+                            ),
+                          }}
+                        />
                         <Stack.Screen name="list" options={{ title: "Your grocery plan" }} />
                         <Stack.Screen name="saved-recipes" options={{ title: "Saved recipes" }} />
                         <Stack.Screen name="households" options={{ title: "Shared households" }} />

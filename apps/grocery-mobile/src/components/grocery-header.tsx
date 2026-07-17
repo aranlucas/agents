@@ -16,14 +16,13 @@ import {
 type GroceryHeaderProps = {
   canGoBack: boolean;
   onBack: () => void;
-  routeName: string;
+  showAccount?: boolean;
   title: string;
 };
 
-export function GroceryHeader({ canGoBack, onBack, routeName, title }: GroceryHeaderProps) {
+export function GroceryHeader({ canGoBack, onBack, showAccount, title }: GroceryHeaderProps) {
   const router = useRouter();
   const { user } = useUser();
-  const showAccount = routeName === "index" || routeName === "chat";
   const fallback =
     [user?.firstName, user?.lastName]
       .filter(Boolean)
