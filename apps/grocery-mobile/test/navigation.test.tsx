@@ -73,12 +73,27 @@ vi.mock("@/components/query-provider", () => ({
   QueryProvider: ({ children }: PropsWithChildren) => children,
 }));
 vi.mock("@/components/sign-in-screen", () => ({ SignInScreen: () => null }));
-vi.mock("@/components/ui/button", () => ({
-  Button: ({ children }: PropsWithChildren) => children,
-}));
-vi.mock("@/components/ui/card", () => ({
-  Card: ({ children }: PropsWithChildren) => children,
-}));
+vi.mock("@/components/ui/button", async () => {
+  const React = await import("react");
+  const { Text } = await import("react-native");
+  return {
+    Button: ({ children }: PropsWithChildren) => React.createElement(Text, null, children),
+  };
+});
+vi.mock("@/components/ui/card", async () => {
+  const React = await import("react");
+  const { Text, View } = await import("react-native");
+  const Container = ({ children }: PropsWithChildren) => React.createElement(View, null, children);
+  const Label = ({ children }: PropsWithChildren) => React.createElement(Text, null, children);
+  return {
+    Card: Container,
+    CardContent: Container,
+    CardDescription: Label,
+    CardFooter: Container,
+    CardHeader: Container,
+    CardTitle: Label,
+  };
+});
 vi.mock("@/components/ui/icon", () => ({ Icon: () => null }));
 vi.mock("@/components/ui/spinner", () => ({ Spinner: () => null }));
 vi.mock("@/components/ui/text", async () => {

@@ -1,30 +1,46 @@
+import React from "react";
+import { View, TextInput, useColorScheme } from "react-native";
+import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { Platform, TextInput } from "react-native";
 
-function Textarea({
-  className,
-  multiline = true,
-  numberOfLines = Platform.select({ web: 2, native: 8 }), // On web, numberOfLines also determines initial height. On native, it determines the maximum height.
-  placeholderTextColorClassName,
-  ...props
-}: React.ComponentProps<typeof TextInput> & React.RefAttributes<TextInput>) {
-  return (
-    <TextInput
-      className={cn(
-        "flex min-h-16 w-full flex-row rounded-md border border-input bg-transparent px-3 py-2 text-base text-foreground shadow-sm shadow-black/5 md:text-sm dark:bg-input/30",
-        Platform.select({
-          web: "placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive field-sizing-content resize-y outline-none transition-[color,box-shadow] focus-visible:ring-[3px] disabled:cursor-not-allowed",
-        }),
-        props.editable === false && "opacity-50",
-        className,
-      )}
-      placeholderTextColorClassName={cn("accent-muted-foreground", placeholderTextColorClassName)}
-      multiline={multiline}
-      numberOfLines={numberOfLines}
-      textAlignVertical="top"
-      {...props}
-    />
-  );
+// Padding lives on the wrapping View (a raw TextInput doesn't honor `px-*`
+// reliably), so the text inset matches Input and is consistent on all sides —
+// under both NativeWind and Uniwind.
+const textareaVariants = cva("rounded-md border px-4 py-3 min-h-24", {
+  variants: {
+    variant: {
+      default: "border-input bg-background",
+      ghost: "border-transparent bg-transparent",
+    },
+  },
+  defaultVariants: {
+    variant: "default",
+  },
+});
+
+export interface TextareaProps
+  extends React.ComponentPropsWithoutRef<typeof TextInput>, VariantProps<typeof textareaVariants> {
+  className?: string;
 }
 
-export { Textarea };
+export const Textarea = React.forwardRef<React.ElementRef<typeof TextInput>, TextareaProps>(
+  function Textarea({ variant, className, ...props }, ref) {
+    const dark = useColorScheme() === "dark";
+    const caret = dark ? "#fafafa" : "#18181b";
+    return (
+      <View className={cn(textareaVariants({ variant }), className)}>
+        <TextInput
+          ref={ref}
+          className="flex-1 p-0 text-base text-foreground placeholder:text-muted-foreground"
+          placeholderTextColor={dark ? "#a1a1aa" : "#71717a"}
+          keyboardAppearance={dark ? "dark" : "light"}
+          selectionColor={caret}
+          cursorColor={caret}
+          multiline
+          textAlignVertical="top"
+          {...props}
+        />
+      </View>
+    );
+  },
+);

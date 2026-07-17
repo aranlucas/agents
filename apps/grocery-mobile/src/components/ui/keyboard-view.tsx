@@ -1,24 +1,22 @@
-import * as React from "react";
-import { KeyboardAvoidingView } from "react-native";
-import { withUniwind } from "uniwind";
+import type { ComponentPropsWithoutRef } from "react";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { cn } from "@/lib/utils";
 
-const UniwindKeyboardAvoidingView = withUniwind(KeyboardAvoidingView);
-
-type KeyboardViewProps = React.ComponentProps<typeof KeyboardAvoidingView> & {
+export interface KeyboardViewProps extends ComponentPropsWithoutRef<typeof KeyboardAvoidingView> {
+  className?: string;
   offset?: number;
-};
+}
 
-function KeyboardView({ className, offset, behavior, ...props }: KeyboardViewProps) {
+const defaultBehavior = process.env.EXPO_OS === "ios" ? "padding" : undefined;
+
+export function KeyboardView({ className, offset, behavior, ...props }: KeyboardViewProps) {
   return (
-    <UniwindKeyboardAvoidingView
-      behavior={behavior ?? (process.env.EXPO_OS === "ios" ? "padding" : undefined)}
+    <KeyboardAvoidingView
+      automaticOffset
       className={cn("flex-1", className)}
+      behavior={behavior ?? defaultBehavior}
       keyboardVerticalOffset={offset}
       {...props}
     />
   );
 }
-
-export { KeyboardView };
-export type { KeyboardViewProps };

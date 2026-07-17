@@ -31,8 +31,8 @@ vi.mock("lucide-react-native", () => ({
 vi.mock("@/components/ui/icon", () => ({ Icon: () => null }));
 vi.mock("@/components/ui/badge", async () => {
   const React = await import("react");
-  const { View } = await import("react-native");
-  return { Badge: ({ children, ...props }: any) => React.createElement(View, props, children) };
+  const { Text } = await import("react-native");
+  return { Badge: ({ children, ...props }: any) => React.createElement(Text, props, children) };
 });
 vi.mock("@/components/ui/text", async () => {
   const React = await import("react");
@@ -46,7 +46,7 @@ vi.mock("@/components/ui/alert", async () => {
   const React = await import("react");
   const { Text } = await import("react-native");
   return {
-    ErrorAlert: ({ message }: { message: string }) => React.createElement(Text, null, message),
+    Alert: ({ title }: { title: string }) => React.createElement(Text, null, title),
   };
 });
 vi.mock("@/components/ui/refresh-control", async () => {

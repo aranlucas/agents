@@ -1,7 +1,7 @@
 import { useAuth } from "@clerk/clerk-expo";
 import { useState } from "react";
 import { Linking, ScrollView, View } from "react-native";
-import { ErrorAlert } from "@/components/ui/alert";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { Label } from "@/components/ui/label";
@@ -30,13 +30,17 @@ export default function ReportScreen() {
 
   return (
     <ScrollView
-      className="flex-1 bg-background"
+      className="w-full max-w-3xl flex-1 self-center bg-background"
       contentInsetAdjustmentBehavior="automatic"
       keyboardShouldPersistTaps="handled"
       contentContainerClassName="gap-3.5 p-5 pb-10"
     >
       <View className="mb-2 gap-2">
-        <Text className="text-left font-extrabold" selectable variant="h2">
+        <Text
+          className="border-b border-border pb-2 text-left font-extrabold"
+          selectable
+          variant="h2"
+        >
           Tell us what went wrong.
         </Text>
         <Text className="leading-6 text-muted-foreground" selectable>
@@ -76,12 +80,12 @@ export default function ReportScreen() {
       </Text>
 
       <View className="rounded-2xl bg-muted p-3.5">
-        <Text className="text-xs leading-5 text-muted-foreground" selectable>
+        <Text className="leading-5" selectable variant="muted">
           Do not include passwords, payment details, health information, or other sensitive data.
         </Text>
       </View>
-      {error ? <ErrorAlert message={error} /> : null}
-      <Button size="lg" onPress={() => void submit()}>
+      {error ? <Alert title={error} variant="destructive" /> : null}
+      <Button size="lg" variant="secondary" onPress={() => void submit()}>
         Review email report
       </Button>
     </ScrollView>

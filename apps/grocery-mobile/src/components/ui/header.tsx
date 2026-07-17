@@ -1,33 +1,52 @@
+import React from "react";
+import { View, Text, Pressable } from "react-native";
 import { cva, type VariantProps } from "class-variance-authority";
-import { ArrowLeft } from "lucide-react-native";
-import * as React from "react";
-import { Pressable, View } from "react-native";
-import { Icon } from "@/components/ui/icon";
-import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
+import { ArrowLeft } from "lucide-react-native";
 
-const headerVariants = cva("min-h-14 flex-row items-center px-4", {
+const headerVariants = cva("flex-row items-center min-h-14 px-4", {
   variants: {
     variant: {
-      default: "border-b border-border bg-background",
-      primary: "bg-primary",
+      default: "bg-background border-b border-border",
       transparent: "bg-transparent",
+      primary: "bg-primary",
     },
   },
   defaultVariants: { variant: "default" },
 });
 
-type HeaderProps = React.ComponentProps<typeof View> & VariantProps<typeof headerVariants>;
-
-function Header({ variant, className, ...props }: HeaderProps) {
-  return <View className={cn(headerVariants({ variant }), className)} {...props} />;
+export interface HeaderProps
+  extends React.ComponentPropsWithoutRef<typeof View>, VariantProps<typeof headerVariants> {
+  className?: string;
+  children?: React.ReactNode;
 }
 
-function HeaderLeft({ className, ...props }: React.ComponentProps<typeof View>) {
-  return <View className={cn("mr-3 flex-row items-center", className)} {...props} />;
+export function Header({ variant, className, children, ...props }: HeaderProps) {
+  return (
+    <View className={cn(headerVariants({ variant }), className)} {...props}>
+      {children}
+    </View>
+  );
 }
 
-function HeaderTitle({ className, ...props }: React.ComponentProps<typeof Text>) {
+export interface HeaderLeftProps extends React.ComponentPropsWithoutRef<typeof View> {
+  className?: string;
+  children?: React.ReactNode;
+}
+
+export function HeaderLeft({ className, children, ...props }: HeaderLeftProps) {
+  return (
+    <View className={cn("me-3 flex-row items-center", className)} {...props}>
+      {children}
+    </View>
+  );
+}
+
+export interface HeaderTitleProps extends React.ComponentPropsWithoutRef<typeof Text> {
+  className?: string;
+}
+
+export function HeaderTitle({ className, ...props }: HeaderTitleProps) {
   return (
     <Text
       className={cn("flex-1 text-lg font-semibold text-foreground", className)}
@@ -37,28 +56,41 @@ function HeaderTitle({ className, ...props }: React.ComponentProps<typeof Text>)
   );
 }
 
-function HeaderRight({ className, ...props }: React.ComponentProps<typeof View>) {
-  return <View className={cn("ml-3 flex-row items-center gap-2", className)} {...props} />;
+export interface HeaderRightProps extends React.ComponentPropsWithoutRef<typeof View> {
+  className?: string;
+  children?: React.ReactNode;
 }
 
-type HeaderBackButtonProps = React.ComponentProps<typeof Pressable> & {
-  label?: React.ReactNode;
-};
+export function HeaderRight({ className, children, ...props }: HeaderRightProps) {
+  return (
+    <View className={cn("ms-3 flex-row items-center gap-2", className)} {...props}>
+      {children}
+    </View>
+  );
+}
 
-function HeaderBackButton({ className, label, ...props }: HeaderBackButtonProps) {
+export interface HeaderBackButtonProps extends React.ComponentPropsWithoutRef<typeof Pressable> {
+  className?: string;
+  label?: React.ReactNode;
+  onPress: () => void;
+}
+
+export function HeaderBackButton({
+  className,
+  label = <ArrowLeft size={24} color="#71717a" />,
+  onPress,
+  ...props
+}: HeaderBackButtonProps) {
   return (
     <Pressable
-      accessibilityLabel="Go back"
+      onPress={onPress}
+      accessible={true}
       accessibilityRole="button"
-      className={cn(
-        "min-h-12 min-w-12 flex-row items-center justify-center rounded-full active:bg-muted",
-        className,
-      )}
+      accessibilityLabel="Go back"
+      className={cn("min-h-12 min-w-12 flex-row items-center justify-center", className)}
       {...props}
     >
-      {label === undefined ? (
-        <Icon as={ArrowLeft} className="size-6 text-foreground" />
-      ) : typeof label === "string" || typeof label === "number" ? (
+      {typeof label === "string" || typeof label === "number" ? (
         <Text className="text-lg text-primary">{label}</Text>
       ) : (
         label
@@ -66,6 +98,3 @@ function HeaderBackButton({ className, label, ...props }: HeaderBackButtonProps)
     </Pressable>
   );
 }
-
-export { Header, HeaderBackButton, HeaderLeft, HeaderRight, HeaderTitle };
-export type { HeaderBackButtonProps, HeaderProps };

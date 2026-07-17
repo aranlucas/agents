@@ -1,4 +1,3 @@
-import { TextClassContext } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 import type { LucideIcon, LucideProps } from "lucide-react-native";
 import * as React from "react";
@@ -29,8 +28,7 @@ type IconProps = LucideProps & {
  * @param {...LucideProps} ...props - Additional Lucide icon props passed to the "as" icon.
  */
 function Icon({ as: IconComponent, className, size, ...props }: IconProps) {
-  const textClass = React.useContext(TextClassContext);
-  const styles = useResolveClassNames(cn("text-foreground", textClass, className));
+  const styles = useResolveClassNames(cn("text-foreground", className));
   const classSize = typeof styles.width === "number" ? styles.width : undefined;
 
   return (

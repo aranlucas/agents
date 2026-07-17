@@ -1,35 +1,24 @@
+import React from "react";
+import { ActivityIndicator, View, useColorScheme } from "react-native";
 import { cn } from "@/lib/utils";
-import * as React from "react";
-import { ActivityIndicator, View } from "react-native";
 
 const sizeMap = { sm: "small", md: "small", lg: "large" } as const;
 
-type SpinnerProps = React.ComponentProps<typeof View> & {
-  indicatorClassName?: string;
-  size?: keyof typeof sizeMap;
-};
+export interface SpinnerProps extends React.ComponentPropsWithoutRef<typeof View> {
+  className?: string;
+  size?: "sm" | "md" | "lg";
+  color?: string;
+}
 
-function Spinner({
-  accessibilityLabel = "Loading",
-  className,
-  indicatorClassName,
-  size = "md",
-  ...props
-}: SpinnerProps) {
+export function Spinner({ size = "md", color, className, ...props }: SpinnerProps) {
+  const dark = useColorScheme() === "dark";
   return (
-    <View
-      accessibilityLabel={accessibilityLabel}
-      className={cn("items-center justify-center", className)}
-      role="progressbar"
-      {...props}
-    >
+    <View className={cn("items-center justify-center", className)} {...props}>
       <ActivityIndicator
-        colorClassName={cn("accent-primary", indicatorClassName)}
         size={sizeMap[size]}
+        color={color ?? (dark ? "#fafafa" : "#18181b")}
+        accessibilityRole="progressbar"
       />
     </View>
   );
 }
-
-export { Spinner };
-export type { SpinnerProps };

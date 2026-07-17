@@ -1,23 +1,19 @@
-import { cn } from "@/lib/utils";
-import * as React from "react";
+import React, { useEffect } from "react";
 import { View } from "react-native";
 import Animated, {
-  cancelAnimation,
-  useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
-  withDelay,
+  useAnimatedStyle,
   withRepeat,
   withSequence,
   withTiming,
+  withDelay,
 } from "react-native-reanimated";
+import { cn } from "@/lib/utils";
 
 function Dot({ delay }: { delay: number }) {
-  const reduceMotion = useReducedMotion();
   const translateY = useSharedValue(0);
 
-  React.useEffect(() => {
-    if (reduceMotion) return;
+  useEffect(() => {
     translateY.value = withDelay(
       delay,
       withRepeat(
@@ -25,25 +21,25 @@ function Dot({ delay }: { delay: number }) {
         -1,
       ),
     );
-    return () => cancelAnimation(translateY);
-  }, [delay, reduceMotion, translateY]);
+  }, [delay, translateY]);
 
   const style = useAnimatedStyle(() => ({ transform: [{ translateY: translateY.value }] }));
 
-  return <Animated.View className="size-2 rounded-full bg-muted-foreground" style={style} />;
+  return <Animated.View style={style} className="h-2 w-2 rounded-full bg-muted-foreground" />;
 }
 
-type TypingIndicatorProps = React.ComponentProps<typeof View>;
+export interface TypingIndicatorProps extends React.ComponentPropsWithoutRef<typeof View> {
+  className?: string;
+}
 
-function TypingIndicator({ className, ...props }: TypingIndicatorProps) {
+export function TypingIndicator({ className, ...props }: TypingIndicatorProps) {
   return (
     <View
-      accessibilityLabel="Grocery Agent is typing"
       className={cn(
-        "flex-row items-center gap-1 self-start rounded-2xl rounded-bl-sm bg-card px-4 py-2.5",
+        "flex-row items-center gap-1 self-start rounded-2xl rounded-bl-sm bg-secondary px-4 py-2.5",
         className,
       )}
-      role="progressbar"
+      accessibilityLabel="Typing"
       {...props}
     >
       <Dot delay={0} />
@@ -52,6 +48,3 @@ function TypingIndicator({ className, ...props }: TypingIndicatorProps) {
     </View>
   );
 }
-
-export { TypingIndicator };
-export type { TypingIndicatorProps };

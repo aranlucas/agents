@@ -1,23 +1,33 @@
 import { useClerk, useUser } from "@clerk/clerk-expo";
+import Constants from "expo-constants";
 import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import {
+  BookMarked,
   ChevronRight,
   CircleHelp,
   FileText,
+  Flag,
   LogOut,
   Shield,
   ShoppingBasket,
   Trash2,
   type LucideIcon,
 } from "lucide-react-native";
-import { ErrorAlert } from "@/components/ui/alert";
+import { Alert } from "@/components/ui/alert";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useKrogerConnection } from "@/hooks/use-kroger-connection";
@@ -56,7 +66,7 @@ export default function AccountScreen() {
 
   return (
     <ScrollView
-      className="flex-1 bg-background"
+      className="w-full max-w-3xl flex-1 self-center bg-background"
       contentInsetAdjustmentBehavior="automatic"
       contentContainerClassName="gap-4 p-4.5 pb-10"
     >
@@ -68,7 +78,7 @@ export default function AccountScreen() {
           src={user?.imageUrl}
         />
         <View className="flex-1 gap-0.5">
-          <Text className="text-xl font-extrabold" selectable>
+          <Text selectable variant="h4">
             {user?.fullName ?? "Grocery Agent member"}
           </Text>
           <Text selectable variant="muted">
@@ -77,79 +87,119 @@ export default function AccountScreen() {
         </View>
       </View>
 
-      <Card className="gap-3.5 rounded-2xl p-4">
-        <View className="flex-row items-center gap-3">
+      <Card className="rounded-2xl p-0">
+        <CardHeader className="flex-row items-center gap-3 p-4 pb-0">
           <View className="size-11 items-center justify-center rounded-2xl bg-muted">
             <Icon as={ShoppingBasket} className="size-5.5 text-primary" />
           </View>
           <View className="flex-1 gap-0.5">
-            <Text className="text-sm font-extrabold">Kroger</Text>
-            <Text className="text-xs text-muted-foreground">
+            <CardTitle className="text-lg font-extrabold tracking-normal">Kroger</CardTitle>
+            <CardDescription className="leading-5">
               {connected
                 ? "Connected for live products and cart actions"
                 : "Optional for live products and cart actions"}
-            </Text>
+            </CardDescription>
           </View>
           <Badge variant={connected ? "secondary" : "destructive"}>
-            <Text className="text-xs font-extrabold">
-              {connected ? "Connected" : "Action needed"}
-            </Text>
+            {connected ? "Connected" : "Action needed"}
           </Badge>
-        </View>
-        <Button disabled={isLoading} size="lg" variant="secondary" onPress={updateKrogerConnection}>
-          {reconnecting
-            ? "Reconnecting Kroger…"
-            : connected
-              ? "Reconnect Kroger"
-              : "Connect Kroger"}
-        </Button>
+        </CardHeader>
+        <CardFooter className="p-4 pt-3.5">
+          <Button
+            className="flex-1"
+            disabled={isLoading}
+            size="lg"
+            variant="secondary"
+            onPress={updateKrogerConnection}
+          >
+            {reconnecting
+              ? "Reconnecting Kroger…"
+              : connected
+                ? "Reconnect Kroger"
+                : "Connect Kroger"}
+          </Button>
+        </CardFooter>
       </Card>
 
-      <Text className="mt-1 ml-1 text-xs font-extrabold tracking-wider text-muted-foreground uppercase">
-        Help and legal
-      </Text>
-      <Card className="gap-0 overflow-hidden rounded-2xl p-0">
-        <AccountRow icon={Shield} label="Privacy policy" onPress={() => void open(links.privacy)} />
-        <RowRule />
-        <AccountRow icon={FileText} label="Terms of use" onPress={() => void open(links.terms)} />
-        <RowRule />
-        <AccountRow
-          icon={CircleHelp}
-          label="Help and support"
-          onPress={() => void open(links.support)}
-        />
-        <RowRule />
-        <AccountRow
-          destructive
-          icon={Trash2}
-          label="Delete account"
-          onPress={() => void open(links.deleteAccount)}
-        />
+      <Text variant="small">Shopping</Text>
+      <Card className="overflow-hidden rounded-2xl p-0">
+        <CardContent className="p-0">
+          <AccountRow
+            accessibilityRole="button"
+            icon={ShoppingBasket}
+            label="Grocery plan"
+            onPress={() => router.push("/list")}
+          />
+          <RowRule />
+          <AccountRow
+            accessibilityRole="button"
+            icon={BookMarked}
+            label="Saved recipes"
+            onPress={() => router.push("/saved-recipes")}
+          />
+        </CardContent>
       </Card>
 
-      {connectionError || pageError ? <ErrorAlert message={connectionError || pageError} /> : null}
-      <Button size="lg" variant="secondary" onPress={() => router.push("/report")}>
+      <Text variant="small">Help and legal</Text>
+      <Card className="overflow-hidden rounded-2xl p-0">
+        <CardContent className="p-0">
+          <AccountRow
+            icon={Shield}
+            label="Privacy policy"
+            onPress={() => void open(links.privacy)}
+          />
+          <RowRule />
+          <AccountRow icon={FileText} label="Terms of use" onPress={() => void open(links.terms)} />
+          <RowRule />
+          <AccountRow
+            icon={CircleHelp}
+            label="Help and support"
+            onPress={() => void open(links.support)}
+          />
+          <RowRule />
+          <AccountRow
+            destructive
+            icon={Trash2}
+            label="Delete account"
+            onPress={() => void open(links.deleteAccount)}
+          />
+        </CardContent>
+      </Card>
+
+      {connectionError || pageError ? (
+        <Alert title={connectionError || pageError} variant="destructive" />
+      ) : null}
+      <Button
+        icon={<Icon as={Flag} className="size-4.5 text-foreground" />}
+        size="lg"
+        variant="outline"
+        onPress={() => router.push("/report")}
+      >
         Report a problem
       </Button>
-      <Button size="lg" onPress={() => void signOut()}>
-        <View className="flex-row items-center gap-2">
-          <Icon as={LogOut} className="size-4.5 text-primary-foreground" />
-          <Text className="text-base font-bold text-primary-foreground">Sign out</Text>
-        </View>
+      <Button
+        icon={<Icon as={LogOut} className="size-4.5 text-foreground" />}
+        size="lg"
+        variant="outline"
+        onPress={() => void signOut()}
+      >
+        Sign out
       </Button>
       <Text className="text-center" selectable variant="muted">
-        Grocery Agent 1.0.0
+        Grocery Agent {Constants.expoConfig?.version ?? ""}
       </Text>
     </ScrollView>
   );
 }
 
 function AccountRow({
+  accessibilityRole = "link",
   destructive = false,
   icon,
   label,
   onPress,
 }: {
+  accessibilityRole?: "link" | "button";
   destructive?: boolean;
   icon: LucideIcon;
   label: string;
@@ -157,14 +207,16 @@ function AccountRow({
 }) {
   return (
     <Pressable
-      accessibilityRole="link"
+      accessibilityRole={accessibilityRole}
       className="min-h-14 flex-row items-center gap-3 px-4 active:bg-muted"
       onPress={onPress}
     >
       <View className="w-7 items-center">
         <Icon as={icon} className={cn("size-5 text-primary", destructive && "text-destructive")} />
       </View>
-      <Text className="flex-1 text-sm font-semibold">{label}</Text>
+      <Text className="flex-1" variant="large">
+        {label}
+      </Text>
       <Icon as={ChevronRight} className="size-5 text-muted-foreground" />
     </Pressable>
   );

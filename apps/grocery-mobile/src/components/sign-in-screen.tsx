@@ -4,7 +4,7 @@ import * as WebBrowser from "expo-web-browser";
 import { useState } from "react";
 import { ScrollView, View } from "react-native";
 import { BrandMark } from "@/components/brand-mark";
-import { ErrorAlert } from "@/components/ui/alert";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { KeyboardView } from "@/components/ui/keyboard-view";
@@ -89,6 +89,7 @@ export function SignInScreen() {
     <SafeArea>
       <KeyboardView>
         <ScrollView
+          className="w-full max-w-md self-center"
           contentInsetAdjustmentBehavior="automatic"
           contentContainerClassName="flex-grow justify-center px-6 py-8"
           keyboardShouldPersistTaps="handled"
@@ -96,7 +97,7 @@ export function SignInScreen() {
           <View className="mb-8 items-center gap-4">
             <BrandMark size="xl" />
             <View className="items-center gap-1">
-              <Text className="text-center text-3xl font-bold" selectable variant="h1">
+              <Text className="text-center" selectable variant="h2">
                 {mode === "sign-in"
                   ? "Welcome back"
                   : mode === "sign-up"
@@ -158,7 +159,7 @@ export function SignInScreen() {
               </View>
             )}
 
-            {error ? <ErrorAlert message={error} /> : null}
+            {error ? <Alert title={error} variant="destructive" /> : null}
             <Button
               className="mt-2 w-full"
               disabled={!isReady}

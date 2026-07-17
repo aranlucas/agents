@@ -34,8 +34,7 @@ vi.mock("@/components/ui/alert", async () => {
   const React = await import("react");
   const { Text: NativeText } = await import("react-native");
   return {
-    ErrorAlert: ({ message }: { message: string }) =>
-      React.createElement(NativeText, null, message),
+    Alert: ({ title }: { title: string }) => React.createElement(NativeText, null, title),
   };
 });
 vi.mock("@/components/ui/button", async () => {

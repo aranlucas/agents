@@ -4,9 +4,16 @@ import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { ListPlus, Plus, Trash2 } from "lucide-react-native";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
-import { ErrorAlert } from "@/components/ui/alert";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Chip } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -161,19 +168,19 @@ export default function SharedListScreen() {
 
   return (
     <ScrollView
-      className="flex-1 bg-background"
+      className="w-full max-w-3xl flex-1 self-center bg-background"
       contentInsetAdjustmentBehavior="automatic"
       contentContainerClassName="gap-4 p-4.5 pb-10"
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}
     >
       <View className="gap-1 px-0.5">
-        <Text className="text-sm font-extrabold text-primary" selectable>
+        <Text className="font-extrabold text-primary" selectable variant="small">
           {householdName}
         </Text>
-        <Text className="text-2xl font-extrabold">Shared grocery lists</Text>
-        <Text className="text-sm text-muted-foreground">
-          Changes are visible to everyone in this household.
+        <Text className="font-extrabold tracking-normal" variant="h3">
+          Shared grocery lists
         </Text>
+        <Text variant="muted">Changes are visible to everyone in this household.</Text>
       </View>
 
       {lists.length > 1 ? (
@@ -188,6 +195,7 @@ export default function SharedListScreen() {
             const selected = list.id === activeList?.id;
             return (
               <Chip
+                accessibilityState={{ checked: selected }}
                 role="radio"
                 key={list.id}
                 onPress={() => setSelectedListId(list.id)}
@@ -202,86 +210,89 @@ export default function SharedListScreen() {
 
       {activeList ? (
         <>
-          <Card className="gap-0 overflow-hidden rounded-2xl p-0">
-            <View className="flex-row items-center justify-between gap-3 p-4">
+          <Card className="overflow-hidden rounded-2xl p-0">
+            <CardHeader className="flex-row items-center justify-between gap-3 p-4">
               <View className="flex-1 gap-0.5">
-                <Text className="text-lg font-extrabold" selectable>
+                <CardTitle className="text-lg font-extrabold tracking-normal" selectable>
                   {activeList.title}
-                </Text>
-                <Text variant="muted">
+                </CardTitle>
+                <CardDescription>
                   {activeList.items.length} {activeList.items.length === 1 ? "item" : "items"}
-                </Text>
+                </CardDescription>
               </View>
               <Icon as={ListPlus} className="size-5.5 text-primary" />
-            </View>
-            {activeList.items.length ? (
-              activeList.items.map((item, index) => {
-                const checked = Boolean(item.checked_at);
-                const itemBusy = busy === `item:${item.id}`;
-                return (
-                  <View key={item.id}>
-                    <View
-                      className={cn(
-                        "min-h-16 flex-row items-center px-4",
-                        itemBusy && "opacity-50",
-                      )}
-                    >
-                      <Checkbox
-                        accessibilityLabel={`${checked ? "Uncheck" : "Check"} ${item.name}`}
-                        checked={checked}
-                        disabled={itemBusy}
-                        onCheckedChange={(nextChecked) =>
-                          mutateItem.mutate({
-                            type: "toggle",
-                            listId: activeList.id,
-                            itemId: item.id,
-                            checked: nextChecked,
-                          })
-                        }
-                      />
-                      <View className="flex-1 gap-0.5 py-3">
-                        <Text
-                          className={cn(
-                            "text-sm font-bold",
-                            checked && "text-muted-foreground line-through",
-                          )}
-                          selectable
-                        >
-                          {item.name}
-                        </Text>
-                        <Text variant="muted">Quantity {item.quantity}</Text>
-                      </View>
-                      <Pressable
-                        accessibilityLabel={`Remove ${item.name}`}
-                        accessibilityRole="button"
-                        className="p-2.5 active:opacity-60"
-                        disabled={itemBusy}
-                        onPress={() =>
-                          mutateItem.mutate({
-                            type: "delete",
-                            listId: activeList.id,
-                            itemId: item.id,
-                          })
-                        }
-                        hitSlop={10}
+            </CardHeader>
+            <CardContent className="p-0">
+              {activeList.items.length ? (
+                activeList.items.map((item, index) => {
+                  const checked = Boolean(item.checked_at);
+                  const itemBusy = busy === `item:${item.id}`;
+                  return (
+                    <View key={item.id}>
+                      <View
+                        className={cn(
+                          "min-h-16 flex-row items-center px-4",
+                          itemBusy && "opacity-50",
+                        )}
                       >
-                        <Icon as={Trash2} className="size-5 text-muted-foreground" />
-                      </Pressable>
+                        <Checkbox
+                          accessibilityLabel={`${checked ? "Uncheck" : "Check"} ${item.name}`}
+                          checked={checked}
+                          disabled={itemBusy}
+                          onCheckedChange={(nextChecked) =>
+                            mutateItem.mutate({
+                              type: "toggle",
+                              listId: activeList.id,
+                              itemId: item.id,
+                              checked: nextChecked,
+                            })
+                          }
+                        />
+                        <View className="flex-1 gap-0.5 py-3">
+                          <Text
+                            className={cn(
+                              "font-bold",
+                              checked && "text-muted-foreground line-through",
+                            )}
+                            selectable
+                            variant="large"
+                          >
+                            {item.name}
+                          </Text>
+                          <Text variant="muted">Quantity {item.quantity}</Text>
+                        </View>
+                        <Pressable
+                          accessibilityLabel={`Remove ${item.name}`}
+                          accessibilityRole="button"
+                          className="p-2.5 active:opacity-60"
+                          disabled={itemBusy}
+                          onPress={() =>
+                            mutateItem.mutate({
+                              type: "delete",
+                              listId: activeList.id,
+                              itemId: item.id,
+                            })
+                          }
+                          hitSlop={10}
+                        >
+                          <Icon as={Trash2} className="size-5 text-muted-foreground" />
+                        </Pressable>
+                      </View>
+                      {index < activeList.items.length - 1 ? (
+                        <View className="ml-13 h-px bg-border" />
+                      ) : null}
                     </View>
-                    {index < activeList.items.length - 1 ? (
-                      <View className="ml-13 h-px bg-border" />
-                    ) : null}
-                  </View>
-                );
-              })
-            ) : (
-              <EmptyState
-                className="p-4"
-                description="Add the first grocery item below."
-                icon={<Icon as={ListPlus} className="size-6 text-primary" />}
-                title="No items yet"
-              />
-            )}
+                  );
+                })
+              ) : (
+                <EmptyState
+                  className="p-4"
+                  description="Add the first grocery item below."
+                  icon={<Icon as={ListPlus} className="size-6 text-primary" />}
+                  title="No items yet"
+                />
+              )}
+            </CardContent>
           </Card>
 
           <View className="flex-row items-center gap-2.5">
@@ -298,12 +309,11 @@ export default function SharedListScreen() {
               accessibilityLabel="Add item"
               className="size-12 rounded-2xl"
               disabled={!newItemName.trim() || busy === "add-item"}
+              icon={<Icon as={Plus} className="size-5.5 text-primary-foreground" />}
               loading={busy === "add-item"}
               onPress={() => void submitAddItem()}
               size="icon"
-            >
-              <Icon as={Plus} className="size-5.5 text-primary-foreground" />
-            </Button>
+            />
           </View>
         </>
       ) : loading ? (
@@ -316,35 +326,42 @@ export default function SharedListScreen() {
           <Skeleton className="h-12 w-full rounded-2xl" />
         </View>
       ) : (
-        <Card className="items-stretch gap-3 rounded-2xl p-5">
-          <EmptyState
-            className="p-0"
-            description={`Create the first list for ${householdName}.`}
-            icon={<Icon as={ListPlus} className="size-7 text-primary" />}
-            title="Start a shared list"
-          />
-          <Input
-            accessibilityLabel="List title"
-            autoCapitalize="words"
-            className="min-h-12 rounded-2xl bg-card px-4 text-base"
-            onChangeText={setNewListTitle}
-            onSubmitEditing={() => void submitCreateList()}
-            placeholder={`${householdName} groceries`}
-            returnKeyType="done"
-            value={newListTitle}
-          />
-          <Button
-            disabled={!newListTitle.trim() || busy === "create-list"}
-            loading={busy === "create-list"}
-            size="lg"
-            onPress={() => void submitCreateList()}
-          >
-            Create shared list
-          </Button>
+        <Card className="rounded-2xl p-0">
+          <CardHeader className="p-5 pb-0">
+            <EmptyState
+              className="p-0"
+              description={`Create the first list for ${householdName}.`}
+              icon={<Icon as={ListPlus} className="size-7 text-primary" />}
+              title="Start a shared list"
+            />
+          </CardHeader>
+          <CardContent className="p-5">
+            <Input
+              accessibilityLabel="List title"
+              autoCapitalize="words"
+              className="min-h-12 rounded-2xl bg-card px-4 text-base"
+              onChangeText={setNewListTitle}
+              onSubmitEditing={() => void submitCreateList()}
+              placeholder={`${householdName} groceries`}
+              returnKeyType="done"
+              value={newListTitle}
+            />
+          </CardContent>
+          <CardFooter className="p-5 pt-0">
+            <Button
+              className="flex-1"
+              disabled={!newListTitle.trim() || busy === "create-list"}
+              loading={busy === "create-list"}
+              size="lg"
+              onPress={() => void submitCreateList()}
+            >
+              Create shared list
+            </Button>
+          </CardFooter>
         </Card>
       )}
 
-      {errorMessage ? <ErrorAlert message={errorMessage} /> : null}
+      {errorMessage ? <Alert title={errorMessage} variant="destructive" /> : null}
     </ScrollView>
   );
 }

@@ -42,7 +42,9 @@ export default function KrogerCallbackScreen() {
     <View className="flex-1 items-center justify-center gap-3.5 bg-background p-7">
       {error ? (
         <>
-          <Text className="text-center text-xl font-bold">Couldn’t finish connecting Kroger</Text>
+          <Text className="text-center font-bold" variant="h4">
+            Couldn’t finish connecting Kroger
+          </Text>
           <Text className="text-center text-muted-foreground" selectable>
             {error}
           </Text>

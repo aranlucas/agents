@@ -1,82 +1,68 @@
-import { Icon } from "@/components/ui/icon";
-import { Text, TextClassContext } from "@/components/ui/text";
+import React from "react";
+import { View, Text } from "react-native";
+import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import type { LucideIcon } from "lucide-react-native";
-import { CircleAlert } from "lucide-react-native";
-import * as React from "react";
-import { View } from "react-native";
 
-function Alert({
-  className,
+const alertVariants = cva("rounded-lg border p-4", {
+  variants: {
+    variant: {
+      default: "border-border bg-background",
+      destructive: "border-destructive/50 bg-destructive/10",
+      success: "border-green-500/50 bg-green-500/10",
+      warning: "border-yellow-500/50 bg-yellow-500/10",
+    },
+  },
+  defaultVariants: {
+    variant: "default",
+  },
+});
+
+const alertTitleVariants = cva("text-base font-semibold mb-1", {
+  variants: {
+    variant: {
+      default: "text-foreground",
+      destructive: "text-destructive",
+      success: "text-green-600",
+      warning: "text-yellow-600",
+    },
+  },
+  defaultVariants: { variant: "default" },
+});
+
+export interface AlertProps
+  extends React.ComponentPropsWithoutRef<typeof View>, VariantProps<typeof alertVariants> {
+  className?: string;
+  title?: string;
+  titleClassName?: string;
+  children?: React.ReactNode;
+}
+
+export function Alert({
   variant,
+  className,
+  title,
+  titleClassName,
   children,
-  icon,
-  iconClassName,
   ...props
-}: React.ComponentProps<typeof View> &
-  React.RefAttributes<View> & {
-    icon: LucideIcon;
-    variant?: "default" | "destructive";
-    iconClassName?: string;
-  }) {
+}: AlertProps) {
   return (
-    <TextClassContext.Provider
-      value={cn(
-        "text-sm text-foreground",
-        variant === "destructive" && "text-destructive",
-        className,
-      )}
+    <View
+      className={cn(alertVariants({ variant }), className)}
+      accessibilityRole="alert"
+      {...props}
     >
-      <View
-        role="alert"
-        className={cn(
-          "relative w-full rounded-lg border border-border bg-card px-4 pt-3.5 pb-2",
-          variant === "destructive" && "bg-destructive-surface border-destructive/20",
-          className,
-        )}
-        {...props}
-      >
-        <View className="absolute top-3 left-3.5">
-          <Icon
-            as={icon}
-            className={cn("size-4", variant === "destructive" && "text-destructive", iconClassName)}
-          />
-        </View>
-        {children}
-      </View>
-    </TextClassContext.Provider>
-  );
-}
-
-function AlertTitle({ className, ...props }: React.ComponentProps<typeof Text>) {
-  return (
-    <Text
-      className={cn("mb-1 ml-0.5 min-h-4 pl-6 leading-none font-medium tracking-tight", className)}
-      {...props}
-    />
-  );
-}
-
-function AlertDescription({ className, ...props }: React.ComponentProps<typeof Text>) {
-  const textClass = React.useContext(TextClassContext);
-  return (
-    <Text
-      className={cn(
-        "ml-0.5 pb-1.5 pl-6 text-sm leading-relaxed text-muted-foreground",
-        textClass?.includes("text-destructive") && "text-destructive/90",
-        className,
+      {title && (
+        <Text className={cn(alertTitleVariants({ variant }), titleClassName)}>{title}</Text>
       )}
-      {...props}
-    />
+      {children}
+    </View>
   );
 }
 
-function ErrorAlert({ message }: { message: string }) {
-  return (
-    <Alert icon={CircleAlert} variant="destructive">
-      <AlertDescription selectable>{message}</AlertDescription>
-    </Alert>
-  );
+export interface AlertDescriptionProps extends React.ComponentPropsWithoutRef<typeof Text> {
+  className?: string;
 }
 
-export { Alert, AlertDescription, AlertTitle, ErrorAlert };
+export function AlertDescription({ className, ...props }: AlertDescriptionProps) {
+  return <Text className={cn("text-sm text-muted-foreground", className)} {...props} />;
+}

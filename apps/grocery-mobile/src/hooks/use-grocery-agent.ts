@@ -28,7 +28,6 @@ export type GroceryAgentFailure =
 type GroceryOperationKind = "send" | "retry" | "new-chat" | "open-thread";
 
 type ActiveGroceryOperation = {
-  id: number;
   kind: GroceryOperationKind;
   stopRequested: boolean;
   sdkStarted: boolean;
@@ -48,7 +47,6 @@ export function useGroceryAgentController(onRunComplete: () => void) {
   const [failure, setFailure] = useState<GroceryAgentFailure | null>(null);
   const [activeKind, setActiveKind] = useState<GroceryOperationKind | null>(null);
   const activeOperation = useRef<ActiveGroceryOperation | null>(null);
-  const nextOperationId = useRef(0);
   const previousMessages = useRef<DisplayMessage[]>([]);
   const previousState = useRef(normalizeGroceryState({}));
 
@@ -86,7 +84,6 @@ export function useGroceryAgentController(onRunComplete: () => void) {
         pendingInterrupts: [...agent.pendingInterrupts],
       };
       const operation: ActiveGroceryOperation = {
-        id: ++nextOperationId.current,
         kind,
         stopRequested: false,
         sdkStarted: false,
@@ -190,7 +187,6 @@ export function useGroceryAgentController(onRunComplete: () => void) {
       }
 
       const operation: ActiveGroceryOperation = {
-        id: ++nextOperationId.current,
         kind,
         stopRequested: false,
         sdkStarted: false,

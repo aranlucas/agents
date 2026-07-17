@@ -1,60 +1,37 @@
 import { useRouter } from "expo-router";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Keyboard, ScrollView, View } from "react-native";
-import { ChevronDown, ChevronRight, Menu, Sparkles } from "lucide-react-native";
-import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { NativeMarkdown, type NativeMarkdownStyle } from "@agents/native-markdown";
-import { useResolveClassNames } from "uniwind";
+import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { View } from "react-native";
+import { ChevronDown, ChevronRight, Sparkles } from "lucide-react-native";
+import { ADD_TO_CART_MESSAGE, AddToCartDialog } from "@/components/add-to-cart-dialog";
 import { GroceryStateCard } from "@/components/grocery-state-card";
 import { useGroceryAgent } from "@/components/grocery-agent-provider";
 import { KrogerConnectionCard } from "@/components/kroger-connection-card";
-import {
-  MessageScroller,
-  MessageScrollerButton,
-  MessageScrollerList,
-  type MessageScrollerHandle,
-  useMessageScrollerControls,
-} from "@/components/message-scroller";
-import { ErrorAlert } from "@/components/ui/alert";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { ActionSheet } from "@/components/ui/action-sheet";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Icon } from "@/components/ui/icon";
 import { KeyboardView } from "@/components/ui/keyboard-view";
+import { MarkdownText } from "@/components/ui/markdown-text";
 import {
   PromptInput,
-  PromptInputButton,
   PromptInputSend,
   PromptInputSpacer,
   PromptInputTextarea,
   PromptInputToolbar,
 } from "@/components/ui/prompt-input";
-import { SafeArea } from "@/components/ui/safe-area";
 import { Text } from "@/components/ui/text";
-import { TypingIndicator } from "@/components/ui/typing-indicator";
 import { useKrogerConnection } from "@/hooks/use-kroger-connection";
 import type { GroceryOperationOutcome } from "@/hooks/use-grocery-agent";
-import type { DisplayMessage } from "@/lib/grocery-state";
-import { suggestionKey } from "@/lib/grocery-suggestions";
+import { GROCERY_SUGGESTIONS } from "@/lib/grocery-suggestions";
 import { cn } from "@/lib/utils";
+import { ScrollView } from "react-native-gesture-handler";
+import { SafeArea } from "@/components/ui/safe-area";
 
 export function GroceryChat() {
   const router = useRouter();
-  const menuSheetRef = useRef<BottomSheetModal>(null);
-  const scrollRef = useRef<MessageScrollerHandle>(null);
+  const scrollRef = useRef<ScrollView>(null);
   const [cartDialogOpen, setCartDialogOpen] = useState(false);
-  const [composerVersion, setComposerVersion] = useState(0);
   const [reasoningDurations, setReasoningDurations] = useState<Record<string, number>>({});
   const {
     state,
@@ -67,50 +44,10 @@ export function GroceryChat() {
     retry,
     send,
     stop,
-    startNewChat,
-    suggestions,
   } = useGroceryAgent();
   const connection = useKrogerConnection();
   const { connected } = connection;
-  const foreground = useResolveClassNames("text-foreground").color;
-  const primary = useResolveClassNames("text-primary").color;
-  const muted = useResolveClassNames("bg-muted").backgroundColor;
-  const border = useResolveClassNames("border-border").borderColor;
-  const markdownStyle = useMemo<NativeMarkdownStyle>(
-    () => ({
-      body: { color: foreground, fontSize: 15, lineHeight: 22 },
-      link: { color: primary },
-      blockquote: { backgroundColor: muted, borderColor: border },
-      table: { borderColor: border },
-      thead: { backgroundColor: muted },
-      tr: { borderColor: border },
-      code_inline: { backgroundColor: muted, borderColor: border },
-      code_block: { backgroundColor: muted, borderColor: border },
-      fence: { backgroundColor: muted, borderColor: border },
-    }),
-    [border, foreground, muted, primary],
-  );
-  const { latestAssistant, latestReasoning, latestGroceryList, latestMessage, timelineRevision } =
-    useMemo(
-      () => ({
-        latestAssistant: messages.findLast((message) => message.role === "assistant"),
-        latestReasoning: messages.findLast((message) => message.role === "reasoning"),
-        latestGroceryList: messages.findLast((message) => message.role === "grocery-list"),
-        latestMessage: messages.at(-1),
-        timelineRevision: `${messages.length}:${messages.reduce(
-          (length, message) => length + ("content" in message ? message.content.length : 0),
-          0,
-        )}:${messages.at(-1)?.id ?? ""}`,
-      }),
-      [messages],
-    );
-
-  const sendMessage = useCallback(async (content: string) => send(content), [send]);
-  const closeMenu = useCallback(() => menuSheetRef.current?.dismiss(), []);
-  const openMenu = useCallback(() => {
-    Keyboard.dismiss();
-    menuSheetRef.current?.present();
-  }, []);
+  const latestMessage = messages.at(-1);
 
   const openLatestList = useCallback(() => router.push("/list"), [router]);
   const confirmAddToCart = useCallback(() => {
@@ -121,100 +58,34 @@ export function GroceryChat() {
       current[messageId] === seconds ? current : { ...current, [messageId]: seconds },
     );
   }, []);
-  const renderMessage = useCallback(
-    ({ item: message }: { item: DisplayMessage }) => {
-      const assistantContent =
-        message.role === "assistant" &&
-        message.id === latestAssistant?.id &&
-        state.status === "ready"
-          ? state.review_summary || "Your grocery list is ready to review."
-          : undefined;
-      const isLatestGroceryList =
-        message.role === "grocery-list" && message.id === latestGroceryList?.id;
-      return (
-        <GroceryMessage
-          assistantContent={assistantContent}
-          connected={connected}
-          isAdding={isStreaming && isLatestGroceryList}
-          isLatestGroceryList={isLatestGroceryList}
-          isStreaming={isStreaming && message.id === latestMessage?.id}
-          markdownStyle={markdownStyle}
-          message={message}
-          onAddToCart={confirmAddToCart}
-          onOpenList={openLatestList}
-          onReasoningDuration={recordReasoningDuration}
-          reasoningDuration={reasoningDurations[message.id]}
-        />
-      );
-    },
-    [
-      connected,
-      confirmAddToCart,
-      isStreaming,
-      latestAssistant?.id,
-      latestGroceryList?.id,
-      latestMessage?.id,
-      latestReasoning?.id,
-      markdownStyle,
-      openLatestList,
-      reasoningDurations,
-      recordReasoningDuration,
-      state.review_summary,
-      state.status,
-    ],
-  );
-
-  const newChat = async () => {
-    closeMenu();
-    const outcome = await startNewChat();
-    if (outcome.status !== "success") return;
-    setComposerVersion((current) => current + 1);
-    setReasoningDurations({});
-    scrollRef.current?.scrollToStart();
-  };
-
-  const openMenuRoute = (route: "/saved-recipes" | "/chat-history") => {
-    closeMenu();
-    router.push(route);
-  };
-
   return (
-    <KeyboardView
-      behavior={process.env.EXPO_OS === "android" ? "height" : "padding"}
-      className="bg-background"
-      offset={process.env.EXPO_OS === "ios" ? 92 : 0}
-    >
-      <MessageScroller ref={scrollRef} autoScroll revision={timelineRevision}>
-        <MessageScrollerList
-          contentInsetAdjustmentBehavior="automatic"
-          contentContainerClassName="gap-3 px-4 pt-3.5 pb-4.5"
-          data={messages}
-          initialNumToRender={10}
-          keyExtractor={(message) => message.id}
-          keyboardShouldPersistTaps="handled"
-          maxToRenderPerBatch={8}
-          renderItem={renderMessage}
-          updateCellsBatchingPeriod={50}
-          windowSize={7}
-          ListEmptyComponent={
+    <SafeArea>
+      <KeyboardView behavior="padding">
+        <ScrollView
+          ref={scrollRef}
+          className="flex-1 px-4 py-3"
+          showsVerticalScrollIndicator={false}
+          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
+        >
+          {messages.length === 0 ? (
             <View className="items-center gap-2.5 px-3 py-6">
               <View className="mb-1 size-14 items-center justify-center rounded-2xl bg-muted">
                 <Icon as={Sparkles} className="size-6.5 text-primary" />
               </View>
-              <Text className="text-center text-2xl font-extrabold" selectable variant="h3">
+              <Text className="text-center font-extrabold" variant="h3">
                 What are you shopping for?
               </Text>
-              <Text className="max-w-88 text-center leading-6 text-muted-foreground" selectable>
+              <Text className="max-w-88 text-center leading-6 text-muted-foreground">
                 Describe a recipe, a weekly budget, or the meals you need. I’ll turn it into a
                 practical list you control.
               </Text>
               <View className="mt-2.5 w-full flex-row flex-wrap justify-center gap-2">
-                {suggestions.map((suggestion) => (
+                {GROCERY_SUGGESTIONS.map((suggestion) => (
                   <Chip
-                    key={suggestionKey(suggestion)}
+                    key={suggestion.title}
                     accessibilityLabel={suggestion.title}
-                    disabled={suggestion.isLoading || isRunning}
-                    onPress={() => void sendMessage(suggestion.message)}
+                    disabled={isRunning}
+                    onPress={() => void send(suggestion.message)}
                     textClassName="text-secondary"
                     variant="outline"
                   >
@@ -223,96 +94,123 @@ export function GroceryChat() {
                 ))}
               </View>
             </View>
-          }
-          ListFooterComponent={
-            <View className="gap-3">
-              {isRunning && latestMessage?.role === "user" ? <TypingIndicator /> : null}
-              <KrogerConnectionCard connection={connection} />
-              {error ? (
-                <View className="gap-2">
-                  <ErrorAlert message={error} />
-                  <View className="flex-row justify-end gap-2">
-                    {failedInput ? (
-                      <Button
-                        accessibilityLabel="Retry failed message"
-                        disabled={isRunning}
-                        onPress={() => void retry()}
-                        size="sm"
-                        variant="secondary"
-                      >
-                        Retry
-                      </Button>
-                    ) : null}
-                    <Button
-                      accessibilityLabel="Dismiss chat error"
-                      onPress={clearError}
-                      size="sm"
-                      variant="ghost"
-                    >
-                      Dismiss
-                    </Button>
-                  </View>
-                </View>
-              ) : null}
+          ) : (
+            messages.map((message) => {
+              switch (message.role) {
+                case "reasoning":
+                  return (
+                    <AssistantMessage key={message.id} id={message.id}>
+                      <ReasoningSection
+                        completedDuration={reasoningDurations[message.id]}
+                        content={message.content}
+                        isStreaming={isStreaming && message.id === latestMessage?.id}
+                        messageId={message.id}
+                        onDurationComplete={recordReasoningDuration}
+                      />
+                    </AssistantMessage>
+                  );
+                case "tool":
+                  return (
+                    <AssistantMessage key={message.id} id={message.id}>
+                      <ToolCallSection
+                        name={message.name}
+                        parameters={message.parameters}
+                        result={message.result}
+                        status={message.status}
+                      />
+                    </AssistantMessage>
+                  );
+                case "user":
+                  return <UserMessage key={message.id} content={message.content} id={message.id} />;
+                case "assistant":
+                  return (
+                    <AssistantMessage key={message.id} id={message.id}>
+                      <View className="max-w-3/4 rounded-2xl rounded-bl-sm bg-muted px-4 py-2.5">
+                        <MarkdownText className="min-w-0 self-start" content={message.content} />
+                      </View>
+                    </AssistantMessage>
+                  );
+              }
+            })
+          )}
+          <GroceryStateCard
+            state={state}
+            adding={isRunning}
+            connected={connected}
+            onOpenList={openLatestList}
+            onAddToCart={confirmAddToCart}
+          />
+          <KrogerConnectionCard connection={connection} />
+          {error ? (
+            <View className="gap-2">
+              <Alert title={error} variant="destructive" />
+              <View className="flex-row justify-end gap-2">
+                {failedInput ? (
+                  <Button
+                    accessibilityLabel="Retry failed message"
+                    disabled={isRunning}
+                    onPress={() => void retry()}
+                    size="sm"
+                    variant="secondary"
+                  >
+                    Retry
+                  </Button>
+                ) : null}
+                <Button
+                  accessibilityLabel="Dismiss chat error"
+                  onPress={clearError}
+                  size="sm"
+                  variant="ghost"
+                >
+                  Dismiss
+                </Button>
+              </View>
             </View>
-          }
-        />
-        <MessageScrollerButton />
-      </MessageScroller>
-
-      <ChatComposer
-        key={composerVersion}
-        isRunning={isRunning}
-        onOpenMenu={openMenu}
-        onSend={sendMessage}
-        onStop={stop}
+          ) : null}
+        </ScrollView>
+        <View className="gap-2 border-t border-border px-4 py-3">
+          <ChatComposer isRunning={isRunning} onSend={send} onStop={stop} />
+        </View>
+      </KeyboardView>
+      <AddToCartDialog
+        open={cartDialogOpen}
+        onOpenChange={setCartDialogOpen}
+        onConfirm={() => void send(ADD_TO_CART_MESSAGE)}
       />
-      <ActionSheet
-        ref={menuSheetRef}
-        actions={[
-          { label: "New chat", onPress: () => void newChat() },
-          { label: "Saved recipes", onPress: () => openMenuRoute("/saved-recipes") },
-          { label: "Chat history", onPress: () => openMenuRoute("/chat-history") },
-        ]}
-        onCancel={closeMenu}
-        title="Conversation"
-      />
-      <AlertDialog onOpenChange={setCartDialogOpen} open={cartDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Add this list to Kroger?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Grocery Agent will ask Kroger to add the matched items and quantities shown in your
-              plan.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onPress={() => setCartDialogOpen(false)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onPress={() => {
-                setCartDialogOpen(false);
-                void sendMessage(
-                  "Add every matched item in this grocery list to my Kroger cart now.",
-                );
-              }}
-            >
-              Add to cart
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </KeyboardView>
+    </SafeArea>
   );
 }
 
+const UserMessage = memo(function UserMessage({ content, id }: { content: string; id: string }) {
+  return (
+    <View className="mb-3 w-full items-end" nativeID={id}>
+      <View className="max-w-3/4 rounded-2xl rounded-br-sm bg-primary px-4 py-2.5">
+        <Text className="text-end text-sm leading-relaxed text-primary-foreground">{content}</Text>
+      </View>
+    </View>
+  );
+});
+
+const AssistantMessage = memo(function AssistantMessage({
+  children,
+  id,
+}: {
+  children: ReactNode;
+  id: string;
+}) {
+  return (
+    <View className="mb-3 w-full items-start" collapsable nativeID={id}>
+      {children}
+    </View>
+  );
+});
+
 const ChatComposer = memo(function ChatComposer({
   isRunning,
-  onOpenMenu,
   onSend,
   onStop,
 }: {
   isRunning: boolean;
-  onOpenMenu: () => void;
   onSend: (content: string) => Promise<GroceryOperationOutcome>;
   onStop: () => Promise<GroceryOperationOutcome>;
 }) {
@@ -330,140 +228,23 @@ const ChatComposer = memo(function ChatComposer({
     },
     [isRunning, onSend],
   );
-
   return (
-    <SafeArea
-      className="flex-none gap-1 border-t border-border bg-background px-3 pt-2.5"
-      edges={["bottom"]}
+    <PromptInput
+      clearOnSend={false}
+      onChangeText={setInput}
+      onSend={(content) => void submit(content)}
+      onStop={() => void onStop()}
+      streaming={isRunning}
+      value={input}
     >
-      <PromptInput
-        className="min-h-24 p-2.5"
-        clearOnSend={false}
-        onChangeText={setInput}
-        onSend={(content) => void submit(content)}
-        onStop={onStop}
-        streaming={isRunning}
-        value={input}
-      >
-        <PromptInputTextarea
-          accessibilityLabel="Ask Grocery Agent"
-          className="px-1.5 py-1.5"
-          maxLength={2000}
-          placeholder="Ask for meals or groceries…"
-        />
-        <PromptInputToolbar className="min-h-10 pt-0">
-          <PromptInputButton
-            accessibilityHint="Opens conversation actions"
-            accessibilityLabel="Chat menu"
-            className="size-10 min-h-10 min-w-10 p-0"
-            onPress={onOpenMenu}
-          >
-            <Icon as={Menu} className="size-6 text-foreground" strokeWidth={2.5} />
-          </PromptInputButton>
-          <PromptInputSpacer />
-          <PromptInputSend className="size-10 rounded-full" />
-        </PromptInputToolbar>
-      </PromptInput>
-      <Text className="text-center text-xs leading-3.5 text-muted-foreground">
-        AI can make mistakes. Review products, prices, and quantities before adding.
-      </Text>
-    </SafeArea>
+      <PromptInputTextarea />
+      <PromptInputToolbar>
+        <PromptInputSpacer />
+        <PromptInputSend />
+      </PromptInputToolbar>
+    </PromptInput>
   );
 });
-
-type GroceryMessageProps = {
-  assistantContent?: string;
-  connected: boolean;
-  isAdding: boolean;
-  isLatestGroceryList: boolean;
-  isStreaming: boolean;
-  markdownStyle: NativeMarkdownStyle;
-  message: DisplayMessage;
-  onAddToCart: () => void;
-  onOpenList: () => void;
-  onReasoningDuration: (messageId: string, seconds: number) => void;
-  reasoningDuration?: number;
-};
-
-const GroceryMessage = memo(
-  function GroceryMessage({
-    assistantContent,
-    connected,
-    isAdding,
-    isLatestGroceryList,
-    isStreaming,
-    markdownStyle,
-    message,
-    onAddToCart,
-    onOpenList,
-    onReasoningDuration,
-    reasoningDuration,
-  }: GroceryMessageProps) {
-    return (
-      <View
-        className={cn(
-          message.role === "reasoning"
-            ? "w-full gap-1 self-stretch"
-            : message.role === "user" || message.role === "assistant"
-              ? "max-w-88 rounded-3xl px-4 py-3"
-              : "w-full self-stretch",
-          message.role === "user"
-            ? "self-end rounded-br-md bg-secondary"
-            : message.role === "assistant"
-              ? "self-start rounded-bl-md border border-border bg-card"
-              : undefined,
-        )}
-        collapsable={message.role !== "user"}
-        nativeID={message.id}
-      >
-        {message.role === "user" ? (
-          <Text className="text-sm leading-5.5 text-secondary-foreground" selectable>
-            {message.content}
-          </Text>
-        ) : message.role === "reasoning" ? (
-          <ReasoningSection
-            completedDuration={reasoningDuration}
-            content={message.content}
-            isStreaming={isStreaming}
-            messageId={message.id}
-            onDurationComplete={onReasoningDuration}
-          />
-        ) : message.role === "tool" ? (
-          <ToolCallSection
-            name={message.name}
-            parameters={message.parameters}
-            result={message.result}
-            status={message.status}
-          />
-        ) : message.role === "grocery-list" ? (
-          <GroceryStateCard
-            state={message.state}
-            adding={isAdding}
-            onOpenList={isLatestGroceryList ? onOpenList : undefined}
-            onAddToCart={isLatestGroceryList ? onAddToCart : undefined}
-            connected={connected}
-          />
-        ) : (
-          <NativeMarkdown isStreaming={isStreaming} style={markdownStyle}>
-            {assistantContent ?? message.content}
-          </NativeMarkdown>
-        )}
-      </View>
-    );
-  },
-  (previous, next) =>
-    previous.message === next.message &&
-    previous.assistantContent === next.assistantContent &&
-    previous.connected === next.connected &&
-    previous.isAdding === next.isAdding &&
-    previous.isLatestGroceryList === next.isLatestGroceryList &&
-    previous.isStreaming === next.isStreaming &&
-    previous.markdownStyle === next.markdownStyle &&
-    previous.onAddToCart === next.onAddToCart &&
-    previous.onOpenList === next.onOpenList &&
-    previous.onReasoningDuration === next.onReasoningDuration &&
-    previous.reasoningDuration === next.reasoningDuration,
-);
 
 function formatReasoningDuration(seconds: number) {
   const minutes = Math.floor(seconds / 60);
@@ -486,11 +267,9 @@ function ReasoningSection({
   messageId: string;
   onDurationComplete: (messageId: string, seconds: number) => void;
 }) {
-  const { releaseFollow } = useMessageScrollerControls();
   const [expanded, setExpanded] = useState(false);
   const startedAtRef = useRef<number | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState<number | null>(completedDuration ?? null);
-  const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     if (!isStreaming) {
@@ -520,14 +299,7 @@ function ReasoningSection({
       : `Thought for ${formatReasoningDuration(elapsedSeconds)}`;
 
   return (
-    <Collapsible
-      className="w-full gap-1 self-stretch"
-      onOpenChange={(next) => {
-        releaseFollow();
-        setExpanded(next);
-      }}
-      open={expanded}
-    >
+    <Collapsible className="w-full gap-1 self-stretch" onOpenChange={setExpanded} open={expanded}>
       <CollapsibleTrigger
         accessibilityLabel={expanded ? "Hide reasoning" : "Show reasoning"}
         className="flex-row items-center gap-1 self-start py-1 active:opacity-65"
@@ -539,21 +311,14 @@ function ReasoningSection({
             <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
           )}
         </View>
-        <Text className="text-xs font-medium text-muted-foreground">{reasoningLabel}</Text>
+        <Text className="text-muted-foreground" variant="small">
+          {reasoningLabel}
+        </Text>
       </CollapsibleTrigger>
-      <CollapsibleContent className="ml-2 h-39 border-l border-border py-1 pl-3.5">
-        <ScrollView
-          ref={scrollRef}
-          nestedScrollEnabled
-          onContentSizeChange={() => {
-            if (isStreaming) scrollRef.current?.scrollToEnd({ animated: false });
-          }}
-          showsVerticalScrollIndicator={false}
-        >
-          <Text className="text-sm leading-5 text-muted-foreground" selectable>
-            {content}
-          </Text>
-        </ScrollView>
+      <CollapsibleContent className="ml-2 self-start border-l border-border py-1 pl-3.5">
+        <Text className="leading-5" variant="muted">
+          {content}
+        </Text>
       </CollapsibleContent>
     </Collapsible>
   );
@@ -570,18 +335,10 @@ function ToolCallSection({
   result?: unknown;
   status: "running" | "complete" | "failed";
 }) {
-  const { releaseFollow } = useMessageScrollerControls();
   const [expanded, setExpanded] = useState(false);
   const label = toolLabel(name);
   return (
-    <Collapsible
-      className="w-full gap-1 self-stretch"
-      onOpenChange={(next) => {
-        releaseFollow();
-        setExpanded(next);
-      }}
-      open={expanded}
-    >
+    <Collapsible className="w-full gap-1 self-stretch" onOpenChange={setExpanded} open={expanded}>
       <CollapsibleTrigger
         accessibilityLabel={`${expanded ? "Hide" : "Show"} details for ${label}`}
         className="min-h-8 flex-row items-center gap-1 py-1 active:opacity-65"
@@ -593,32 +350,30 @@ function ToolCallSection({
             <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
           )}
         </View>
-        <Text className="shrink text-xs font-semibold" numberOfLines={1}>
+        <Text className="shrink text-muted-foreground" numberOfLines={1} variant="small">
           {label}
         </Text>
         <Text
-          className={cn(
-            "ml-auto text-xs text-muted-foreground",
-            status === "failed" && "text-destructive",
-          )}
+          className={cn("ml-auto text-muted-foreground", status === "failed" && "text-destructive")}
+          variant="small"
         >
           {status === "running" ? "Running" : status === "failed" ? "Failed" : "Done"}
         </Text>
       </CollapsibleTrigger>
       <CollapsibleContent className="ml-2 max-h-39 border-l border-border py-1 pl-3.5">
         <ScrollView nestedScrollEnabled>
-          <Text className="mb-0.5 text-xs font-bold text-muted-foreground" selectable>
+          <Text className="mb-0.5 font-semibold text-muted-foreground" variant="small">
             Input
           </Text>
-          <Text className="mb-2 text-xs leading-4.5 text-muted-foreground" selectable>
+          <Text className="mb-2 leading-4.5" variant="muted">
             {formatToolValue(parameters)}
           </Text>
           {status !== "running" ? (
             <>
-              <Text className="mb-0.5 text-xs font-bold text-muted-foreground" selectable>
+              <Text className="mb-0.5 font-semibold text-muted-foreground" variant="small">
                 Result
               </Text>
-              <Text className="mb-2 text-xs leading-4.5 text-muted-foreground" selectable>
+              <Text className="mb-2 leading-4.5" variant="muted">
                 {formatToolValue(result)}
               </Text>
             </>
@@ -640,18 +395,15 @@ function toolLabel(name: string): string {
     mark_list_ready: "Prepared grocery list",
     get_current_date: "Checked current date",
     get_weekly_deals: "Checked weekly deals",
+    get_shopping_profile: "Checked shopping profile",
+    get_meal_planning_context: "Checked meal planning context",
     search_products: "Searched Kroger products",
     web_search: "Searched the web",
     load_web_page: "Read web page",
   };
-  return (
-    labels[name] ??
-    name
-      .split("_")
-      .filter(Boolean)
-      .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
-      .join(" ")
-  );
+  if (labels[name]) return labels[name];
+  const words = name.split("_").filter(Boolean).join(" ");
+  return `${words.charAt(0).toUpperCase()}${words.slice(1)}`;
 }
 
 function formatToolValue(value: unknown): string {

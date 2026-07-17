@@ -160,7 +160,7 @@ describe("grocery state", () => {
     ]);
   });
 
-  it("places a grocery-list snapshot beside the tool that marks it ready", () => {
+  it("keeps grocery tool calls as plain timeline entries in generation order", () => {
     const items = toDisplayMessages([
       {
         id: "a1",
@@ -193,14 +193,12 @@ describe("grocery state", () => {
       { id: "a3", role: "assistant", content: "Your list is ready." },
     ]);
 
-    expect(items.map((item) => item.role)).toEqual(["tool", "tool", "grocery-list", "assistant"]);
-    expect(items[2]).toMatchObject({
-      id: "ready-grocery-list",
-      state: {
-        shopping_list: ["milk", "eggs"],
-        review_summary: "Two breakfast staples",
-        status: "ready",
-      },
+    expect(items.map((item) => item.role)).toEqual(["tool", "tool", "assistant"]);
+    expect(items[1]).toMatchObject({
+      id: "ready",
+      name: "mark_list_ready",
+      parameters: { summary: "Two breakfast staples" },
+      status: "complete",
     });
   });
 

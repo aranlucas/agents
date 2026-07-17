@@ -1,171 +1,178 @@
+import React, { createContext, useContext, useState } from "react";
+import { View, TextInput, Pressable, useColorScheme } from "react-native";
 import { ArrowUp, Square } from "lucide-react-native";
-import * as React from "react";
-import { Pressable, TextInput, View } from "react-native";
-import { Icon } from "@/components/ui/icon";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
-type PromptInputContextValue = {
-  send: () => void;
-  setText: (text: string) => void;
-  streaming: boolean;
+// Compound composer (ChatGPT/Claude-style): textarea on top, toolbar below.
+// <PromptInput onSend={…}><PromptInputTextarea /><PromptInputToolbar>…</PromptInputToolbar></PromptInput>
+
+type PromptInputCtx = {
   text: string;
+  setText: (t: string) => void;
+  send: () => void;
+  streaming?: boolean;
+  dark: boolean;
 };
+const Ctx = createContext<PromptInputCtx | null>(null);
 
-const PromptInputContext = React.createContext<PromptInputContextValue | null>(null);
-
-function usePromptInput() {
-  const context = React.use(PromptInputContext);
-  if (!context) throw new Error("PromptInput components must be inside PromptInput");
-  return context;
+export function usePromptInput(): PromptInputCtx {
+  const ctx = useContext(Ctx);
+  if (!ctx) throw new Error("PromptInput.* components must be used inside <PromptInput>");
+  return ctx;
 }
 
-type PromptInputProps = React.ComponentProps<typeof View> & {
-  clearOnSend?: boolean;
+export interface PromptInputProps extends React.ComponentPropsWithoutRef<typeof View> {
+  className?: string;
+  value?: string;
   onChangeText?: (text: string) => void;
   onSend?: (text: string) => void;
+  /** While `streaming`, PromptInputSend becomes a stop button firing this. */
   onStop?: () => void;
   streaming?: boolean;
-  value?: string;
-};
+  clearOnSend?: boolean;
+}
 
-function PromptInput({
-  children,
+export function PromptInput({
   className,
-  clearOnSend = true,
+  value,
   onChangeText,
   onSend,
   onStop,
-  streaming = false,
-  value,
+  streaming,
+  clearOnSend = true,
+  children,
   ...props
 }: PromptInputProps) {
-  const [internalText, setInternalText] = React.useState("");
-  const text = value ?? internalText;
-  const setText = React.useCallback(
-    (nextText: string) => {
-      if (value === undefined) setInternalText(nextText);
-      onChangeText?.(nextText);
-    },
-    [onChangeText, value],
-  );
-  const send = React.useCallback(() => {
-    if (streaming) {
-      onStop?.();
-      return;
-    }
-    const message = text.trim();
-    if (!message) return;
-    onSend?.(message);
-    if (clearOnSend && value === undefined) setInternalText("");
-  }, [clearOnSend, onSend, onStop, streaming, text, value]);
-  const context = React.useMemo(
-    () => ({ send, setText, streaming, text }),
-    [send, setText, streaming, text],
-  );
+  const [internal, setInternal] = useState("");
+  const dark = useColorScheme() === "dark";
+  const text = value ?? internal;
+
+  const setText = (t: string) => {
+    if (value === undefined) setInternal(t);
+    onChangeText?.(t);
+  };
+  const send = () => {
+    if (streaming) return onStop?.();
+    const t = text.trim();
+    if (!t) return;
+    onSend?.(t);
+    if (clearOnSend && value === undefined) setInternal("");
+  };
 
   return (
-    <PromptInputContext value={context}>
+    <Ctx.Provider value={{ text, setText, send, streaming, dark }}>
       <View
-        className={cn("rounded-3xl border border-input bg-card px-3 pt-3 pb-2", className)}
+        className={cn("rounded-3xl border border-input bg-background px-3 pt-3 pb-2", className)}
         {...props}
       >
         {children}
       </View>
-    </PromptInputContext>
+    </Ctx.Provider>
   );
 }
 
-type PromptInputTextareaProps = Omit<
-  React.ComponentProps<typeof Textarea>,
-  "multiline" | "onChangeText" | "value"
->;
+export interface PromptInputTextareaProps extends Omit<
+  React.ComponentPropsWithoutRef<typeof TextInput>,
+  "multiline" | "value" | "onChangeText"
+> {
+  className?: string;
+  /** Max height before the textarea scrolls (default 120). */
+  maxHeight?: number;
+}
 
-const PromptInputTextarea = React.forwardRef<TextInput, PromptInputTextareaProps>(
-  function PromptInputTextarea({ className, ...props }, ref) {
-    const { setText, text } = usePromptInput();
-    return (
-      <Textarea
-        ref={ref}
-        className={cn("max-h-28 min-h-10 border-0 bg-transparent p-0 shadow-none", className)}
-        numberOfLines={4}
-        onChangeText={setText}
-        value={text}
-        {...props}
-      />
-    );
-  },
-);
+export const PromptInputTextarea = React.forwardRef<
+  React.ElementRef<typeof TextInput>,
+  PromptInputTextareaProps
+>(function PromptInputTextarea({ className, maxHeight = 120, style, ...props }, ref) {
+  const { text, setText, dark } = usePromptInput();
+  const [height, setHeight] = useState(0);
+  return (
+    <TextInput
+      ref={ref}
+      multiline
+      value={text}
+      onChangeText={setText}
+      onContentSizeChange={(e) => setHeight(e.nativeEvent.contentSize.height)}
+      // Grows with content up to maxHeight, then scrolls. Font size is inline
+      // so the cursor stays centered on iOS (same convention as input.tsx).
+      style={[
+        { fontSize: 16, maxHeight, height: Math.min(Math.max(24, height), maxHeight) },
+        style,
+      ]}
+      className={cn("p-0 text-foreground placeholder:text-muted-foreground", className)}
+      placeholder="How can I help you today?"
+      placeholderTextColor={dark ? "#a1a1aa" : "#71717a"}
+      keyboardAppearance={dark ? "dark" : "light"}
+      selectionColor={dark ? "#fafafa" : "#18181b"}
+      cursorColor={dark ? "#fafafa" : "#18181b"}
+      {...props}
+    />
+  );
+});
 
-function PromptInputToolbar({ className, ...props }: React.ComponentProps<typeof View>) {
+export interface PromptInputToolbarProps extends React.ComponentPropsWithoutRef<typeof View> {
+  className?: string;
+}
+
+/** Bottom action row — put leading tools first, then <PromptInputSpacer />, then trailing tools. */
+export function PromptInputToolbar({ className, ...props }: PromptInputToolbarProps) {
   return <View className={cn("flex-row items-center gap-1 pt-2", className)} {...props} />;
 }
 
-function PromptInputSpacer() {
+export function PromptInputSpacer() {
   return <View className="flex-1" />;
 }
 
-function PromptInputButton({ className, ...props }: React.ComponentProps<typeof Pressable>) {
+export interface PromptInputButtonProps extends React.ComponentPropsWithoutRef<typeof Pressable> {
+  className?: string;
+}
+
+/** Ghost icon button for toolbar actions (+, mic, model selector, …). */
+export function PromptInputButton({ className, ...props }: PromptInputButtonProps) {
   return (
     <Pressable
-      accessibilityRole="button"
       className={cn(
-        "min-h-11 min-w-11 flex-row items-center justify-center gap-1 rounded-full px-2 active:bg-muted",
+        "h-11 min-w-11 flex-row items-center justify-center gap-1 rounded-full px-2 active:bg-muted",
         className,
       )}
+      accessible={true}
+      accessibilityRole="button"
       {...props}
     />
   );
 }
 
-type PromptInputSendProps = React.ComponentProps<typeof Pressable> & {
+export interface PromptInputSendProps extends React.ComponentPropsWithoutRef<typeof Pressable> {
+  className?: string;
+  /** Shown when there is no text (e.g. a voice/waveform button); default hides into the send arrow. */
   emptyFallback?: React.ReactNode;
-};
+}
 
-function PromptInputSend({
-  className,
-  disabled: disabledProp,
-  emptyFallback,
-  ...props
-}: PromptInputSendProps) {
-  const { send, streaming, text } = usePromptInput();
-  const canSend = Boolean(text.trim());
-  const disabled = Boolean(disabledProp) || (!canSend && !streaming);
-  if (!canSend && !streaming && emptyFallback) return emptyFallback;
-
+export function PromptInputSend({ className, emptyFallback, ...props }: PromptInputSendProps) {
+  const { text, send, streaming, dark } = usePromptInput();
+  const canSend = text.trim().length > 0;
+  const fg = dark ? "#18181b" : "#fafafa";
+  if (!canSend && !streaming && emptyFallback) return <>{emptyFallback}</>;
   return (
     <Pressable
-      accessibilityLabel={streaming ? "Stop generating" : "Send message"}
-      accessibilityRole="button"
-      accessibilityState={{ disabled }}
+      onPress={send}
+      disabled={!canSend && !streaming}
       className={cn(
-        "size-11 items-center justify-center rounded-full bg-primary",
-        disabled && "opacity-40",
+        "h-11 w-11 items-center justify-center rounded-full bg-primary",
+        !canSend && !streaming && "opacity-40",
         className,
       )}
-      disabled={disabled}
-      onPress={send}
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel={streaming ? "Stop generating" : "Send message"}
+      accessibilityState={{ disabled: !canSend && !streaming }}
       {...props}
     >
-      <Icon
-        as={streaming ? Square : ArrowUp}
-        className={cn(
-          "text-primary-foreground",
-          streaming ? "size-3.5 fill-primary-foreground" : "size-5",
-        )}
-        strokeWidth={2.5}
-      />
+      {streaming ? (
+        <Square size={14} color={fg} fill={fg} />
+      ) : (
+        <ArrowUp size={20} color={fg} strokeWidth={2.5} />
+      )}
     </Pressable>
   );
 }
-
-export {
-  PromptInput,
-  PromptInputButton,
-  PromptInputSend,
-  PromptInputSpacer,
-  PromptInputTextarea,
-  PromptInputToolbar,
-  usePromptInput,
-};
-export type { PromptInputProps, PromptInputSendProps, PromptInputTextareaProps };
