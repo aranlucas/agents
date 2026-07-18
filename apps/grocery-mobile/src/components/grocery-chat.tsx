@@ -1,6 +1,12 @@
 import { useRouter } from "expo-router";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import { FlatList, View, type ListRenderItem, type NativeScrollEvent } from "react-native";
+import {
+  FlatList,
+  Keyboard,
+  View,
+  type ListRenderItem,
+  type NativeScrollEvent,
+} from "react-native";
 import { ChevronDown, ChevronRight, Sparkles } from "lucide-react-native";
 import { useForm } from "react-hook-form";
 import { ADD_TO_CART_MESSAGE, AddToCartDialog } from "@/components/add-to-cart-dialog";
@@ -312,6 +318,7 @@ const ChatComposer = memo(function ChatComposer({
     const content = message.trim();
     if (!content || isRunning) return;
 
+    Keyboard.dismiss();
     reset();
     const outcome = await onSend(content);
     if (outcome.status === "failed") reset({ message: content });
