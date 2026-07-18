@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { ScrollView, View } from "react-native";
+import { useForm, useWatch } from "react-hook-form";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,7 +13,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Alert } from "@/components/ui/alert";
 import { Chip } from "@/components/ui/chip";
-import { Input } from "@/components/ui/input";
+import { FormInput } from "@/components/ui/form";
 import { Text } from "@/components/ui/text";
 import type { Household } from "@/lib/household-api";
 
@@ -35,16 +36,19 @@ export function SaveResourceDialog({
   open: boolean;
   saving: boolean;
 }) {
-  const [title, setTitle] = useState(defaultTitle);
-  const [householdId, setHouseholdId] = useState<string>();
+  const { control, handleSubmit, reset, setValue } = useForm<{
+    title: string;
+    householdId?: string;
+  }>({ defaultValues: { title: defaultTitle, householdId: undefined } });
+  const householdId = useWatch({ control, name: "householdId" });
 
   useEffect(() => {
     if (!open) return;
-    setTitle(defaultTitle);
-    setHouseholdId(undefined);
-  }, [defaultTitle, open]);
+    reset({ title: defaultTitle, householdId: undefined });
+  }, [defaultTitle, open, reset]);
 
   const resource = kind === "list" ? "grocery list" : "recipe";
+  const submit = handleSubmit(({ title, householdId }) => onConfirm(title.trim(), householdId));
   return (
     <AlertDialog onOpenChange={onOpenChange} open={open}>
       <AlertDialogContent className="w-88 max-w-sm">
@@ -55,12 +59,13 @@ export function SaveResourceDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <View className="gap-3">
-          <Input
+          <FormInput
             accessibilityLabel={`${kind === "list" ? "List" : "Recipe"} title`}
             autoCapitalize="sentences"
-            onChangeText={setTitle}
+            control={control}
+            name="title"
             placeholder={kind === "list" ? "Weekly groceries" : "Recipe title"}
-            value={title}
+            rules={{ validate: (value) => value.trim().length > 0 || "Add a title." }}
           />
           <View className="gap-2">
             <Text className="font-semibold" variant="small">
@@ -71,13 +76,13 @@ export function SaveResourceDialog({
               showsHorizontalScrollIndicator={false}
               contentContainerClassName="gap-2"
             >
-              <Chip onPress={() => setHouseholdId(undefined)} selected={!householdId}>
+              <Chip onPress={() => setValue("householdId", undefined)} selected={!householdId}>
                 Personal
               </Chip>
               {households.map((household) => (
                 <Chip
                   key={household.id}
-                  onPress={() => setHouseholdId(household.id)}
+                  onPress={() => setValue("householdId", household.id)}
                   selected={householdId === household.id}
                 >
                   {household.name}
@@ -91,10 +96,7 @@ export function SaveResourceDialog({
           <AlertDialogCancel disabled={saving} onPress={() => onOpenChange(false)}>
             Cancel
           </AlertDialogCancel>
-          <AlertDialogAction
-            disabled={saving || !title.trim()}
-            onPress={() => onConfirm(title.trim(), householdId)}
-          >
+          <AlertDialogAction disabled={saving} onPress={() => void submit()}>
             {saving ? "Saving…" : "Save"}
           </AlertDialogAction>
         </AlertDialogFooter>

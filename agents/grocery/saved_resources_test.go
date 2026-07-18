@@ -17,14 +17,27 @@ func TestGroceryLibraryToolsRegistersOneListAndRecipeLibrarySurface(t *testing.T
 		t.Fatal(err)
 	}
 	required := map[string]bool{
+		"list_households":   true,
 		"save_current_list": true, "list_saved_lists": true, "get_saved_list": true, "update_saved_list": true,
 		"save_current_recipe": true, "list_saved_recipes": true, "get_saved_recipe": true, "update_saved_recipe": true,
 	}
 	for _, candidate := range tools {
 		delete(required, candidate.Name())
 	}
-	if len(required) != 0 || len(tools) != 8 {
+	if len(required) != 0 || len(tools) != 9 {
 		t.Fatalf("tools = %d, missing = %#v", len(tools), required)
+	}
+}
+
+func TestListHouseholdsMakesSharedLibraryScopesDiscoverable(t *testing.T) {
+	repository := &savedResourcesRepository{
+		households: []groceries.Household{{ID: "household_1", Name: "Casa", Role: "owner"}},
+	}
+	result, err := (SavedResources{Repository: repository}).ListHouseholds(
+		newSavedResourceContext(t, "user_1", mutableGroceryState{}), struct{}{},
+	)
+	if err != nil || result.Error != nil || len(result.Households) != 1 || result.Households[0].ID != "household_1" {
+		t.Fatalf("result/error = %#v / %v", result, err)
 	}
 }
 
@@ -100,6 +113,11 @@ type savedResourcesRepository struct {
 	recipeInput    groceries.SavedRecipeInput
 	replacedListID string
 	replacedItems  []groceries.NewItem
+	households     []groceries.Household
+}
+
+func (r *savedResourcesRepository) ListHouseholds(context.Context, string) ([]groceries.Household, error) {
+	return append([]groceries.Household{}, r.households...), nil
 }
 
 func (r *savedResourcesRepository) SaveList(_ context.Context, userID string, input groceries.SavedListInput, now time.Time) (groceries.List, error) {

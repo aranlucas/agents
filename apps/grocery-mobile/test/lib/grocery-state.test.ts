@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   cartSubtotal,
+  INITIAL_GROCERY_STATE,
   normalizeGroceryState,
   pantryNames,
   stabilizeDisplayMessages,
@@ -10,6 +11,23 @@ import {
 } from "@/lib/grocery-state";
 
 describe("grocery state", () => {
+  it("keeps incomplete client defaults out of the rendered recipe state", () => {
+    expect(normalizeGroceryState(INITIAL_GROCERY_STATE)).toEqual({
+      shopping_list: [],
+      list_title: "",
+      product_matches: [],
+      cart: [],
+      pantry: [],
+      meal_plan: "",
+      recipe: undefined,
+      weekly_deals: "",
+      notes: "",
+      review_summary: "",
+      status: "idle",
+      kroger_connected: false,
+    });
+  });
+
   it("normalizes the streamed grocery contract", () => {
     expect(
       normalizeGroceryState({

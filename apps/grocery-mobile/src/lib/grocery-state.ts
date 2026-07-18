@@ -24,6 +24,29 @@ export type DisplayToolCall = {
 
 export type DisplayMessage = DisplayTextMessage | DisplayToolCall;
 
+export const INITIAL_GROCERY_STATE: GroceryState = {
+  shopping_list: [],
+  list_title: "",
+  product_matches: [],
+  cart: [],
+  pantry: [],
+  meal_plan: "",
+  recipe: {
+    title: "",
+    description: "",
+    servings: "",
+    notes: "",
+    ingredients: [],
+    steps: [],
+    tags: [],
+  },
+  weekly_deals: "",
+  status: "idle",
+  notes: "",
+  review_summary: "",
+  kroger_connected: false,
+};
+
 type ToolCall = {
   id: string;
   name: string;

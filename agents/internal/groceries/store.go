@@ -95,7 +95,7 @@ type Repository interface {
 	GetList(context.Context, string, string) (List, error)
 	AddItems(context.Context, string, string, []NewItem, time.Time) ([]Item, error)
 	UpdateItem(context.Context, string, string, string, ItemPatch, time.Time) (Item, error)
-	DeleteItem(context.Context, string, string, string) error
+	DeleteItem(context.Context, string, string, string, time.Time) error
 }
 
 type statementRunner interface {
@@ -416,6 +416,9 @@ func (s *Store) AddItems(ctx context.Context, userID, listID string, inputs []Ne
 		}
 		items[index].Position = index
 	}
+	if _, err := s.refreshListSnapshot(ctx, userID, listID, now); err != nil {
+		return nil, err
+	}
 	return items, nil
 }
 
@@ -489,10 +492,17 @@ func (s *Store) UpdateItem(ctx context.Context, userID, listID, itemID string, p
 	if len(results) < 2 || results[0].Meta.Changes == 0 || len(results[1].Rows) == 0 {
 		return Item{}, ErrNotFound
 	}
-	return decodeItem(results[1].Rows[0])
+	item, err := decodeItem(results[1].Rows[0])
+	if err != nil {
+		return Item{}, err
+	}
+	if _, err := s.refreshListSnapshot(ctx, userID, listID, now); err != nil {
+		return Item{}, err
+	}
+	return item, nil
 }
 
-func (s *Store) DeleteItem(ctx context.Context, userID, listID, itemID string) error {
+func (s *Store) DeleteItem(ctx context.Context, userID, listID, itemID string, now time.Time) error {
 	if err := s.ready(); err != nil {
 		return err
 	}
@@ -500,18 +510,31 @@ func (s *Store) DeleteItem(ctx context.Context, userID, listID, itemID string) e
 	if userID == "" || listID == "" || itemID == "" {
 		return ErrInvalid
 	}
-	results, err := s.d1.Run(ctx, cloudflare.Statement{
-		SQL: `DELETE FROM grocery_list_items WHERE id = ? AND list_id = ? AND EXISTS (
+	updatedAt := timestamp(now)
+	results, err := s.d1.Run(
+		ctx,
+		cloudflare.Statement{
+			SQL: `DELETE FROM grocery_list_items WHERE id = ? AND list_id = ? AND EXISTS (
 		      SELECT 1 FROM grocery_lists gl WHERE gl.id = grocery_list_items.list_id AND (gl.owner_user_id = ? OR EXISTS (
 		        SELECT 1 FROM household_members hm WHERE hm.household_id = gl.household_id AND hm.clerk_user_id = ?
 		      )))`,
-		Params: []any{itemID, listID, userID, userID},
-	})
+			Params: []any{itemID, listID, userID, userID},
+		},
+		cloudflare.Statement{
+			SQL: `UPDATE grocery_lists SET updated_at = ? WHERE id = ? AND (owner_user_id = ? OR EXISTS (
+			      SELECT 1 FROM household_members hm WHERE hm.household_id = grocery_lists.household_id AND hm.clerk_user_id = ?
+			    ))`,
+			Params: []any{updatedAt, listID, userID, userID},
+		},
+	)
 	if err != nil {
 		return fmt.Errorf("delete grocery list item: %w", err)
 	}
 	if changed(results) == 0 {
 		return ErrNotFound
+	}
+	if _, err := s.refreshListSnapshot(ctx, userID, listID, now); err != nil {
+		return err
 	}
 	return nil
 }

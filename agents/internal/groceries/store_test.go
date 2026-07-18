@@ -67,7 +67,15 @@ func TestJoinHouseholdRejectsExpiredInviteBeforeMutation(t *testing.T) {
 
 func TestUpdateItemAttributesCheckOffToCaller(t *testing.T) {
 	now := time.UnixMilli(2000)
+	requests := 0
 	store := newFixtureStore(t, func(statements []cloudflare.Statement) []cloudflare.Result {
+		requests++
+		if requests == 2 {
+			return []cloudflare.Result{
+				queryResult(t, List{ID: "list_1", OwnerUserID: "user_1", Title: "Groceries", Status: "active", CreatedAt: 1_000, UpdatedAt: 2_000}),
+				queryResult(t),
+			}
+		}
 		if len(statements) != 3 || !strings.Contains(statements[0].SQL, "checked_by = ?") {
 			t.Fatalf("statements = %#v", statements)
 		}

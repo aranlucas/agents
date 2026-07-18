@@ -180,7 +180,7 @@ func (f *fakeGroceryRepository) UpdateItem(_ context.Context, userID, listID, it
 	return groceries.Item{ID: itemID, ListID: listID, Name: "Milk", Quantity: "1", AddedBy: "user_1", CheckedBy: &userID, CheckedAt: &checkedAt, UpdatedAt: checkedAt}, nil
 }
 
-func (f *fakeGroceryRepository) DeleteItem(context.Context, string, string, string) error {
+func (f *fakeGroceryRepository) DeleteItem(context.Context, string, string, string, time.Time) error {
 	f.dataCalls++
 	return nil
 }

@@ -312,7 +312,7 @@ func (api groceryAPI) deleteItem(w http.ResponseWriter, r *http.Request) {
 	if !ok || !api.authorizeList(w, r, userID, listID) {
 		return
 	}
-	if err := api.repository.DeleteItem(r.Context(), userID, listID, r.PathValue("itemId")); err != nil {
+	if err := api.repository.DeleteItem(r.Context(), userID, listID, r.PathValue("itemId"), api.currentTime()); err != nil {
 		writeGroceryAPIError(w, err)
 		return
 	}

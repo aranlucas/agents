@@ -43,7 +43,8 @@ export function GroceryChat() {
   const insets = useSafeAreaInsets();
   const [cartDialogOpen, setCartDialogOpen] = useState(false);
   const [reasoningDurations, setReasoningDurations] = useState<Record<string, number>>({});
-  const { isRunning, error, failedInput, clearError, retry, send, stop } = useGroceryAgent();
+  const { activeThreadId, isRunning, error, failedInput, clearError, retry, send, stop } =
+    useGroceryAgent();
   const state = useGroceryState();
   const { messages, isStreaming } = useGroceryMessages();
   const connection = useKrogerConnection();
@@ -183,7 +184,12 @@ export function GroceryChat() {
       />
       <SafeArea className="flex-none border-t border-border" edges={["bottom"]}>
         <View className="w-full max-w-3xl self-center px-4 py-3 sm:px-6">
-          <ChatComposer isRunning={isRunning} onSend={sendAndFollow} onStop={stop} />
+          <ChatComposer
+            key={activeThreadId ?? "grocery"}
+            isRunning={isRunning}
+            onSend={sendAndFollow}
+            onStop={stop}
+          />
         </View>
       </SafeArea>
       <AddToCartDialog

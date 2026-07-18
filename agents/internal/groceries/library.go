@@ -218,7 +218,7 @@ func (s *Store) UpdateList(ctx context.Context, userID, listID string, patch Lis
 	if changed(results) == 0 {
 		return List{}, ErrNotFound
 	}
-	return s.GetList(ctx, userID, listID)
+	return s.refreshListSnapshot(ctx, userID, listID, now)
 }
 
 func (s *Store) ReplaceListItems(ctx context.Context, userID, listID string, inputs []NewItem, now time.Time) (List, error) {
@@ -252,7 +252,7 @@ func (s *Store) ReplaceListItems(ctx context.Context, userID, listID string, inp
 	if _, err := s.d1.Run(ctx, statements...); err != nil {
 		return List{}, fmt.Errorf("replace grocery list items: %w", err)
 	}
-	return s.GetList(ctx, userID, listID)
+	return s.refreshListSnapshot(ctx, userID, listID, now)
 }
 
 func (s *Store) SaveRecipe(ctx context.Context, userID string, input SavedRecipeInput, now time.Time) (Recipe, error) {
@@ -422,16 +422,15 @@ func (s *Store) UpdateRecipe(ctx context.Context, userID, recipeID string, input
 		{SQL: `DELETE FROM recipe_steps WHERE recipe_id = ?`, Params: []any{recipeID}},
 		{SQL: `DELETE FROM recipe_tags WHERE recipe_id = ?`, Params: []any{recipeID}},
 	}
-	updated, replacement, err := s.materializeRecipe(recipeID, existing.OwnerUserID, existing.HouseholdID, content, updatedAt)
+	_, replacement, err := s.materializeRecipe(recipeID, existing.OwnerUserID, existing.HouseholdID, content, updatedAt)
 	if err != nil {
 		return Recipe{}, err
 	}
-	updated.CreatedAt, updated.ArtifactVersion = existing.CreatedAt, existing.ArtifactVersion
 	statements = append(statements, replacement[1:]...)
 	if _, err := s.d1.Run(ctx, statements...); err != nil {
 		return Recipe{}, fmt.Errorf("update recipe: %w", err)
 	}
-	return updated, nil
+	return s.refreshRecipeSnapshot(ctx, userID, recipeID, now)
 }
 
 const recipeSelect = `SELECT r.id, r.household_id, r.owner_user_id, r.title, r.description, r.servings, r.notes, r.status, r.created_at, r.updated_at,
@@ -570,6 +569,48 @@ func (s *Store) saveSnapshot(ctx context.Context, resourceType, resourceID, user
 	return response.Version, scopeUserID, nil
 }
 
+func (s *Store) refreshListSnapshot(ctx context.Context, userID, listID string, now time.Time) (List, error) {
+	list, err := s.GetList(ctx, userID, listID)
+	if err != nil {
+		return List{}, err
+	}
+	if list.ArtifactVersion == 0 {
+		return list, nil
+	}
+	snapshot := list
+	snapshot.ArtifactVersion = 0
+	version, scopeUserID, err := s.saveSnapshot(ctx, "list", list.ID, list.OwnerUserID, list.HouseholdID, listArtifactName, snapshot)
+	if err != nil {
+		return List{}, err
+	}
+	if _, err := s.d1.Run(ctx, artifactReferenceUpsertStatement("list", list.ID, scopeUserID, listArtifactName, version, timestamp(now))); err != nil {
+		return List{}, fmt.Errorf("update grocery list artifact reference: %w", err)
+	}
+	list.ArtifactVersion = version
+	return list, nil
+}
+
+func (s *Store) refreshRecipeSnapshot(ctx context.Context, userID, recipeID string, now time.Time) (Recipe, error) {
+	recipe, err := s.GetRecipe(ctx, userID, recipeID)
+	if err != nil {
+		return Recipe{}, err
+	}
+	if recipe.ArtifactVersion == 0 {
+		return recipe, nil
+	}
+	snapshot := recipe
+	snapshot.ArtifactVersion = 0
+	version, scopeUserID, err := s.saveSnapshot(ctx, "recipe", recipe.ID, recipe.OwnerUserID, recipe.HouseholdID, recipeArtifactName, snapshot)
+	if err != nil {
+		return Recipe{}, err
+	}
+	if _, err := s.d1.Run(ctx, artifactReferenceUpsertStatement("recipe", recipe.ID, scopeUserID, recipeArtifactName, version, timestamp(now))); err != nil {
+		return Recipe{}, fmt.Errorf("update recipe artifact reference: %w", err)
+	}
+	recipe.ArtifactVersion = version
+	return recipe, nil
+}
+
 func (s *Store) newListItem(listID, userID string, input NewItem, position int, updatedAt int64) (Item, error) {
 	name, quantity := strings.TrimSpace(input.Name), strings.TrimSpace(input.Quantity)
 	if quantity == "" {
@@ -623,6 +664,19 @@ func nullableString(value any) any {
 func artifactReferenceStatement(resourceType, resourceID, scopeUserID, fileName string, version, createdAt int64) cloudflare.Statement {
 	return cloudflare.Statement{
 		SQL:    `INSERT INTO grocery_resource_artifacts (resource_type, resource_id, scope_user_id, file_name, version, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		Params: []any{resourceType, resourceID, scopeUserID, fileName, version, createdAt},
+	}
+}
+
+func artifactReferenceUpsertStatement(resourceType, resourceID, scopeUserID, fileName string, version, createdAt int64) cloudflare.Statement {
+	return cloudflare.Statement{
+		SQL: `INSERT INTO grocery_resource_artifacts (resource_type, resource_id, scope_user_id, file_name, version, created_at)
+		      VALUES (?, ?, ?, ?, ?, ?)
+		      ON CONFLICT(resource_type, resource_id) DO UPDATE SET
+		        scope_user_id = excluded.scope_user_id,
+		        file_name = excluded.file_name,
+		        version = excluded.version,
+		        created_at = excluded.created_at`,
 		Params: []any{resourceType, resourceID, scopeUserID, fileName, version, createdAt},
 	}
 }

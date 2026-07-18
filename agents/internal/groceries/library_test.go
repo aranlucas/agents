@@ -72,3 +72,79 @@ func TestSaveRecipePersistsStructuredRowsAndArtifactReference(t *testing.T) {
 		t.Fatalf("recipe = %#v", recipe)
 	}
 }
+
+func TestRefreshListSnapshotAdvancesR2AndD1Reference(t *testing.T) {
+	requests := 0
+	store := newFixtureStore(t, func(statements []cloudflare.Statement) []cloudflare.Result {
+		requests++
+		switch requests {
+		case 1:
+			return []cloudflare.Result{
+				queryResult(t, List{ID: "list_1", OwnerUserID: "user_1", Title: "Updated list", Status: "active", ArtifactVersion: 1, CreatedAt: 1_000, UpdatedAt: 2_000}),
+				queryResult(t, Item{ID: "item_1", ListID: "list_1", Name: "Milk", Quantity: "1", AddedBy: "user_1", UpdatedAt: 2_000}),
+			}
+		case 2:
+			if len(statements) != 1 || !strings.Contains(statements[0].SQL, "ON CONFLICT(resource_type, resource_id) DO UPDATE") {
+				t.Fatalf("artifact reference statements = %#v", statements)
+			}
+			return []cloudflare.Result{mutationResult(1)}
+		default:
+			t.Fatalf("unexpected D1 request %d: %#v", requests, statements)
+			return nil
+		}
+	})
+	store.artifacts = artifact.InMemoryService()
+	if _, _, err := store.saveSnapshot(t.Context(), "list", "list_1", "user_1", nil, listArtifactName, List{ID: "list_1", OwnerUserID: "user_1", Title: "Old list"}); err != nil {
+		t.Fatal(err)
+	}
+
+	list, err := store.refreshListSnapshot(t.Context(), "user_1", "list_1", time.UnixMilli(2_000))
+	if err != nil || list.ArtifactVersion != 2 {
+		t.Fatalf("list/error = %#v / %v", list, err)
+	}
+	loaded, err := store.artifacts.Load(t.Context(), &artifact.LoadRequest{
+		AppName: groceryLibraryApp, UserID: "user_1", SessionID: "list_1", FileName: listArtifactName,
+	})
+	if err != nil || loaded.Part == nil || loaded.Part.InlineData == nil || !strings.Contains(string(loaded.Part.InlineData.Data), `"title":"Updated list"`) {
+		t.Fatalf("artifact = %#v, err = %v", loaded, err)
+	}
+}
+
+func TestRefreshRecipeSnapshotAdvancesR2AndD1Reference(t *testing.T) {
+	requests := 0
+	store := newFixtureStore(t, func(statements []cloudflare.Statement) []cloudflare.Result {
+		requests++
+		switch requests {
+		case 1:
+			return []cloudflare.Result{
+				queryResult(t, Recipe{ID: "recipe_1", OwnerUserID: "user_1", Title: "Pasta", Notes: "Updated", Status: "active", ArtifactVersion: 1, CreatedAt: 1_000, UpdatedAt: 2_000}),
+				queryResult(t, Ingredient{ID: "ingredient_1", RecipeID: "recipe_1", Name: "Pasta", Quantity: "1", Unit: "lb"}),
+				queryResult(t, RecipeStep{ID: "step_1", RecipeID: "recipe_1", Instruction: "Boil"}),
+				queryResult(t, map[string]string{"tag": "Dinner"}),
+			}
+		case 2:
+			if len(statements) != 1 || !strings.Contains(statements[0].SQL, "ON CONFLICT(resource_type, resource_id) DO UPDATE") {
+				t.Fatalf("artifact reference statements = %#v", statements)
+			}
+			return []cloudflare.Result{mutationResult(1)}
+		default:
+			t.Fatalf("unexpected D1 request %d: %#v", requests, statements)
+			return nil
+		}
+	})
+	store.artifacts = artifact.InMemoryService()
+	if _, _, err := store.saveSnapshot(t.Context(), "recipe", "recipe_1", "user_1", nil, recipeArtifactName, Recipe{ID: "recipe_1", OwnerUserID: "user_1", Title: "Pasta"}); err != nil {
+		t.Fatal(err)
+	}
+
+	recipe, err := store.refreshRecipeSnapshot(t.Context(), "user_1", "recipe_1", time.UnixMilli(2_000))
+	if err != nil || recipe.ArtifactVersion != 2 {
+		t.Fatalf("recipe/error = %#v / %v", recipe, err)
+	}
+	loaded, err := store.artifacts.Load(t.Context(), &artifact.LoadRequest{
+		AppName: groceryLibraryApp, UserID: "user_1", SessionID: "recipe_1", FileName: recipeArtifactName,
+	})
+	if err != nil || loaded.Part == nil || loaded.Part.InlineData == nil || !strings.Contains(string(loaded.Part.InlineData.Data), `"notes":"Updated"`) {
+		t.Fatalf("artifact = %#v, err = %v", loaded, err)
+	}
+}

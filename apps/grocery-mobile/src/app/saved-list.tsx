@@ -2,14 +2,16 @@ import { useAuth } from "@clerk/clerk-expo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
 import { Plus, Save, Trash2 } from "lucide-react-native";
-import { useMemo, useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { useEffect, useMemo } from "react";
+import { Pressable, View } from "react-native";
+import { useForm } from "react-hook-form";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { FormInput } from "@/components/ui/form";
 import { Icon } from "@/components/ui/icon";
-import { Input } from "@/components/ui/input";
+import { Screen } from "@/components/ui/screen";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { getRuntimeUrl } from "@/lib/config";
@@ -35,10 +37,14 @@ export default function SavedListScreen() {
     queryFn: () => api.getList(listId),
     enabled: Boolean(listId),
   });
-  const [newItem, setNewItem] = useState("");
-  const [title, setTitle] = useState("");
+  const { control, getValues, resetField, setValue, trigger } = useForm<{
+    title: string;
+    newItem: string;
+  }>({ defaultValues: { title: "", newItem: "" } });
   const list = listQuery.data;
-  const displayTitle = title || list?.title || "";
+  useEffect(() => {
+    if (list) setValue("title", list.title);
+  }, [list, setValue]);
   const mutateList = useMutation({
     mutationFn: async (
       mutation:
@@ -62,8 +68,7 @@ export default function SavedListScreen() {
       }
     },
     onSuccess: async (_, mutation) => {
-      if (mutation.type === "add") setNewItem("");
-      if (mutation.type === "title") setTitle("");
+      if (mutation.type === "add") resetField("newItem");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: listKey }),
         queryClient.invalidateQueries({
@@ -72,10 +77,20 @@ export default function SavedListScreen() {
       ]);
     },
   });
+  const saveTitle = async () => {
+    if (await trigger("title")) {
+      mutateList.mutate({ type: "title", title: getValues("title").trim() });
+    }
+  };
+  const addItem = async () => {
+    if (await trigger("newItem")) {
+      mutateList.mutate({ type: "add", name: getValues("newItem").trim() });
+    }
+  };
 
   if (listQuery.isPending) {
     return (
-      <View className="w-full max-w-3xl flex-1 gap-4 self-center bg-background p-4.5">
+      <View className="w-full max-w-3xl flex-1 gap-4 self-center bg-background p-4 sm:p-6">
         <Skeleton className="h-14 rounded-2xl" />
         <Skeleton className="h-64 rounded-2xl" />
       </View>
@@ -83,7 +98,7 @@ export default function SavedListScreen() {
   }
   if (listQuery.error instanceof Error || !list) {
     return (
-      <View className="w-full max-w-3xl flex-1 justify-center self-center bg-background p-5">
+      <View className="w-full max-w-3xl flex-1 justify-center self-center bg-background p-4 sm:p-6">
         <Alert
           title={listQuery.error instanceof Error ? listQuery.error.message : "List not found"}
           variant="destructive"
@@ -93,28 +108,26 @@ export default function SavedListScreen() {
   }
 
   return (
-    <ScrollView
-      className="w-full max-w-3xl flex-1 self-center bg-background"
-      contentInsetAdjustmentBehavior="automatic"
-      contentContainerClassName="gap-4 p-4.5 pb-10"
-      keyboardShouldPersistTaps="handled"
-    >
+    <Screen className="bg-background">
       <View className="gap-2">
         <Text className="font-extrabold tracking-normal" variant="h3">
           Edit grocery list
         </Text>
         <View className="flex-row items-center gap-2">
-          <Input
+          <FormInput
             accessibilityLabel="Grocery list title"
             className="flex-1"
-            onChangeText={setTitle}
-            value={displayTitle}
+            containerClassName="flex-1"
+            control={control}
+            name="title"
+            rules={{ validate: (value) => value.trim().length > 0 || "Add a title." }}
           />
           <Button
             accessibilityLabel="Save list title"
-            disabled={!displayTitle.trim() || displayTitle.trim() === list.title}
+            className="size-14"
+            disabled={mutateList.isPending}
             icon={<Icon as={Save} className="size-4.5 text-primary-foreground" />}
-            onPress={() => mutateList.mutate({ type: "title", title: displayTitle.trim() })}
+            onPress={() => void saveTitle()}
             size="icon"
           />
         </View>
@@ -152,7 +165,7 @@ export default function SavedListScreen() {
                   <Pressable
                     accessibilityLabel={`Remove ${item.name}`}
                     accessibilityRole="button"
-                    className="p-2.5 active:opacity-60"
+                    className="min-h-14 min-w-14 items-center justify-center active:opacity-60"
                     onPress={() => mutateList.mutate({ type: "delete", itemId: item.id })}
                   >
                     <Icon as={Trash2} className="size-5 text-muted-foreground" />
@@ -166,22 +179,23 @@ export default function SavedListScreen() {
       </Card>
 
       <View className="flex-row items-center gap-2">
-        <Input
+        <FormInput
           accessibilityLabel="New grocery item"
           className="flex-1"
-          onChangeText={setNewItem}
-          onSubmitEditing={() =>
-            newItem.trim() && mutateList.mutate({ type: "add", name: newItem.trim() })
-          }
+          containerClassName="flex-1"
+          control={control}
+          name="newItem"
+          onSubmitEditing={() => void addItem()}
           placeholder="Add an item"
           returnKeyType="done"
-          value={newItem}
+          rules={{ validate: (value) => value.trim().length > 0 || "Add an item." }}
         />
         <Button
           accessibilityLabel="Add grocery item"
-          disabled={!newItem.trim()}
+          className="size-14"
+          disabled={mutateList.isPending}
           icon={<Icon as={Plus} className="size-5 text-primary-foreground" />}
-          onPress={() => mutateList.mutate({ type: "add", name: newItem.trim() })}
+          onPress={() => void addItem()}
           size="icon"
         />
       </View>
@@ -189,6 +203,6 @@ export default function SavedListScreen() {
       {mutateList.error instanceof Error ? (
         <Alert title={mutateList.error.message} variant="destructive" />
       ) : null}
-    </ScrollView>
+    </Screen>
   );
 }

@@ -9,6 +9,7 @@ import {
   RUN_FATAL_CODES,
 } from "@/lib/copilot-operation";
 import {
+  INITIAL_GROCERY_STATE,
   normalizeGroceryState,
   stabilizeDisplayMessages,
   stabilizeGroceryState,
@@ -59,6 +60,13 @@ export function useGroceryAgentController(onRunComplete: () => void) {
   const activeOperation = useRef<ActiveGroceryOperation | null>(null);
   const isRunning = activeKind !== null || (agent?.isRunning ?? false);
   const clearError = useCallback(() => setFailure(null), []);
+
+  useEffect(() => {
+    if (copilotkit.runtimeConnectionStatus !== "connected") return;
+    if (!agent.state?.recipe) {
+      agent.setState({ ...INITIAL_GROCERY_STATE, ...agent.state });
+    }
+  }, [agent, copilotkit.runtimeConnectionStatus]);
 
   const finishOperation = useCallback((operation: ActiveGroceryOperation) => {
     if (activeOperation.current !== operation) return;
@@ -214,7 +222,7 @@ export function useGroceryAgentController(onRunComplete: () => void) {
       agent.threadId = `grocery_${Date.now()}_${Math.random().toString(36).slice(2)}`;
       agent.pendingInterrupts = [];
       agent.setMessages([]);
-      agent.setState({});
+      agent.setState(INITIAL_GROCERY_STATE);
       setFailure(null);
       return success();
     });
@@ -246,7 +254,7 @@ export function useGroceryAgentController(onRunComplete: () => void) {
         agent.threadId = nextThreadId;
         agent.pendingInterrupts = [];
         agent.setMessages([]);
-        agent.setState({});
+        agent.setState(INITIAL_GROCERY_STATE);
 
         try {
           const emittedError = await runAuthenticated({

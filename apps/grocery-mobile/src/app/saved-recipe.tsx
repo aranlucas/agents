@@ -2,27 +2,36 @@ import { useAuth } from "@clerk/clerk-expo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
 import { Plus, Save, Trash2 } from "lucide-react-native";
-import { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { useMemo } from "react";
+import { Pressable, View } from "react-native";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FormInput, FormTextarea } from "@/components/ui/form";
 import { Icon } from "@/components/ui/icon";
-import { Input } from "@/components/ui/input";
+import { Screen } from "@/components/ui/screen";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
-import { Textarea } from "@/components/ui/textarea";
 import { getRuntimeUrl } from "@/lib/config";
-import {
-  createHouseholdApi,
-  type NewRecipeIngredient,
-  type RecipeContent,
-} from "@/lib/household-api";
+import { createHouseholdApi, type RecipeContent } from "@/lib/household-api";
 import { groceryQueryKeys } from "@/lib/query-keys";
 
 function firstParam(value: string | string[] | undefined): string {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
 }
+
+type RecipeFormValues = Omit<RecipeContent, "tags"> & { tags: string };
+
+const EMPTY_RECIPE_FORM: RecipeFormValues = {
+  title: "",
+  description: "",
+  servings: "",
+  notes: "",
+  ingredients: [],
+  steps: [],
+  tags: "",
+};
 
 export default function SavedRecipeScreen() {
   const recipeId = firstParam(useLocalSearchParams<{ recipeId?: string | string[] }>().recipeId);
@@ -38,12 +47,10 @@ export default function SavedRecipeScreen() {
     queryFn: () => api.getRecipe(recipeId),
     enabled: Boolean(recipeId),
   });
-  const [draft, setDraft] = useState<RecipeContent>();
-
-  useEffect(() => {
+  const values = useMemo<RecipeFormValues>(() => {
     const recipe = recipeQuery.data;
-    if (!recipe) return;
-    setDraft({
+    if (!recipe) return EMPTY_RECIPE_FORM;
+    return {
       title: recipe.title,
       description: recipe.description,
       servings: recipe.servings,
@@ -55,9 +62,12 @@ export default function SavedRecipeScreen() {
         unit,
       })),
       steps: recipe.steps.map((step) => step.instruction),
-      tags: recipe.tags,
-    });
+      tags: recipe.tags.join(", "),
+    };
   }, [recipeQuery.data]);
+  const { control, handleSubmit, setValue } = useForm<RecipeFormValues>({ values });
+  const ingredients = useFieldArray({ control, name: "ingredients" });
+  const steps = useWatch({ control, name: "steps" }) ?? [];
 
   const updateRecipe = useMutation({
     mutationFn: (content: RecipeContent) => api.updateRecipe(recipeId, content),
@@ -68,18 +78,27 @@ export default function SavedRecipeScreen() {
       });
     },
   });
+  const submit = handleSubmit((draft) =>
+    updateRecipe.mutate({
+      ...draft,
+      tags: draft.tags
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean),
+    }),
+  );
 
   if (recipeQuery.error instanceof Error) {
     return (
-      <View className="w-full max-w-3xl flex-1 justify-center self-center bg-background p-5">
+      <View className="w-full max-w-3xl flex-1 justify-center self-center bg-background p-4 sm:p-6">
         <Alert title={recipeQuery.error.message} variant="destructive" />
       </View>
     );
   }
 
-  if (recipeQuery.isPending || !draft) {
+  if (recipeQuery.isPending || !recipeQuery.data) {
     return (
-      <View className="w-full max-w-3xl flex-1 gap-4 self-center bg-background p-4.5">
+      <View className="w-full max-w-3xl flex-1 gap-4 self-center bg-background p-4 sm:p-6">
         <Skeleton className="h-14 rounded-2xl" />
         <Skeleton className="h-48 rounded-2xl" />
         <Skeleton className="h-48 rounded-2xl" />
@@ -87,26 +106,8 @@ export default function SavedRecipeScreen() {
     );
   }
 
-  const updateIngredient = (index: number, patch: Partial<NewRecipeIngredient>) => {
-    setDraft((current) =>
-      current
-        ? {
-            ...current,
-            ingredients: current.ingredients.map((ingredient, currentIndex) =>
-              currentIndex === index ? { ...ingredient, ...patch } : ingredient,
-            ),
-          }
-        : current,
-    );
-  };
-
   return (
-    <ScrollView
-      className="w-full max-w-3xl flex-1 self-center bg-background"
-      contentInsetAdjustmentBehavior="automatic"
-      contentContainerClassName="gap-4 p-4.5 pb-10"
-      keyboardShouldPersistTaps="handled"
-    >
+    <Screen className="bg-background">
       <View className="gap-1 px-0.5">
         <Text className="font-extrabold tracking-normal" variant="h3">
           Edit recipe
@@ -118,43 +119,30 @@ export default function SavedRecipeScreen() {
 
       <Card className="rounded-2xl p-0">
         <CardContent className="gap-3 p-4">
-          <Input
+          <FormInput
             accessibilityLabel="Recipe title"
-            onChangeText={(title) => setDraft((current) => current && { ...current, title })}
+            control={control}
+            name="title"
             placeholder="Recipe title"
-            value={draft.title}
+            rules={{ validate: (value) => value.trim().length > 0 || "Add a recipe title." }}
           />
-          <Textarea
+          <FormTextarea
             accessibilityLabel="Recipe description"
-            onChangeText={(description) =>
-              setDraft((current) => current && { ...current, description })
-            }
+            control={control}
+            name="description"
             placeholder="Short description"
-            value={draft.description}
           />
-          <Input
+          <FormInput
             accessibilityLabel="Recipe servings"
-            onChangeText={(servings) => setDraft((current) => current && { ...current, servings })}
+            control={control}
+            name="servings"
             placeholder="Servings"
-            value={draft.servings}
           />
-          <Input
+          <FormInput
             accessibilityLabel="Recipe tags"
-            onChangeText={(tags) =>
-              setDraft((current) =>
-                current
-                  ? {
-                      ...current,
-                      tags: tags
-                        .split(",")
-                        .map((tag) => tag.trim())
-                        .filter(Boolean),
-                    }
-                  : current,
-              )
-            }
+            control={control}
+            name="tags"
             placeholder="Tags, separated by commas"
-            value={(draft.tags ?? []).join(", ")}
           />
         </CardContent>
       </Card>
@@ -164,13 +152,7 @@ export default function SavedRecipeScreen() {
           <CardTitle className="text-lg font-extrabold tracking-normal">Ingredients</CardTitle>
           <Button
             icon={<Icon as={Plus} className="size-4 text-secondary-foreground" />}
-            onPress={() =>
-              setDraft((current) =>
-                current
-                  ? { ...current, ingredients: [...current.ingredients, { name: "" }] }
-                  : current,
-              )
-            }
+            onPress={() => ingredients.append({ name: "", note: "", quantity: "", unit: "" })}
             size="sm"
             variant="secondary"
           >
@@ -178,50 +160,43 @@ export default function SavedRecipeScreen() {
           </Button>
         </CardHeader>
         <CardContent className="gap-3 p-4 pt-2">
-          {draft.ingredients.map((ingredient, index) => (
-            <View className="gap-2 rounded-2xl bg-muted p-3" key={`ingredient-${index}`}>
+          {ingredients.fields.map((ingredient, index) => (
+            <View className="gap-2 rounded-2xl bg-muted p-3" key={ingredient.id}>
               <View className="flex-row items-center gap-2">
-                <Input
+                <FormInput
                   accessibilityLabel={`Ingredient ${index + 1}`}
                   className="flex-1 bg-card"
-                  onChangeText={(name) => updateIngredient(index, { name })}
+                  containerClassName="flex-1"
+                  control={control}
+                  name={`ingredients.${index}.name`}
                   placeholder="Ingredient"
-                  value={ingredient.name}
+                  rules={{ validate: (value) => value.trim().length > 0 || "Add an ingredient." }}
                 />
                 <Pressable
                   accessibilityLabel={`Remove ingredient ${index + 1}`}
                   accessibilityRole="button"
-                  className="p-2.5 active:opacity-60"
-                  onPress={() =>
-                    setDraft((current) =>
-                      current
-                        ? {
-                            ...current,
-                            ingredients: current.ingredients.filter(
-                              (_, currentIndex) => currentIndex !== index,
-                            ),
-                          }
-                        : current,
-                    )
-                  }
+                  className="min-h-14 min-w-14 items-center justify-center active:opacity-60"
+                  onPress={() => ingredients.remove(index)}
                 >
                   <Icon as={Trash2} className="size-5 text-muted-foreground" />
                 </Pressable>
               </View>
               <View className="flex-row gap-2">
-                <Input
+                <FormInput
                   accessibilityLabel={`Ingredient ${index + 1} quantity`}
                   className="flex-1 bg-card"
-                  onChangeText={(quantity) => updateIngredient(index, { quantity })}
+                  containerClassName="flex-1"
+                  control={control}
+                  name={`ingredients.${index}.quantity`}
                   placeholder="Quantity"
-                  value={ingredient.quantity}
                 />
-                <Input
+                <FormInput
                   accessibilityLabel={`Ingredient ${index + 1} unit`}
                   className="flex-1 bg-card"
-                  onChangeText={(unit) => updateIngredient(index, { unit })}
+                  containerClassName="flex-1"
+                  control={control}
+                  name={`ingredients.${index}.unit`}
                   placeholder="Unit"
-                  value={ingredient.unit}
                 />
               </View>
             </View>
@@ -234,11 +209,7 @@ export default function SavedRecipeScreen() {
           <CardTitle className="text-lg font-extrabold tracking-normal">Steps</CardTitle>
           <Button
             icon={<Icon as={Plus} className="size-4 text-secondary-foreground" />}
-            onPress={() =>
-              setDraft((current) =>
-                current ? { ...current, steps: [...current.steps, ""] } : current,
-              )
-            }
+            onPress={() => setValue("steps", [...steps, ""], { shouldDirty: true })}
             size="sm"
             variant="secondary"
           >
@@ -246,43 +217,31 @@ export default function SavedRecipeScreen() {
           </Button>
         </CardHeader>
         <CardContent className="gap-3 p-4 pt-2">
-          {draft.steps.map((step, index) => (
+          {steps.map((_, index) => (
             <View className="flex-row items-start gap-2" key={`step-${index}`}>
               <View className="mt-2 size-7 items-center justify-center rounded-full bg-muted">
                 <Text className="font-bold" variant="small">
                   {String(index + 1)}
                 </Text>
               </View>
-              <Textarea
+              <FormTextarea
                 accessibilityLabel={`Step ${index + 1}`}
                 className="flex-1"
-                onChangeText={(instruction) =>
-                  setDraft((current) =>
-                    current
-                      ? {
-                          ...current,
-                          steps: current.steps.map((value, currentIndex) =>
-                            currentIndex === index ? instruction : value,
-                          ),
-                        }
-                      : current,
-                  )
-                }
+                containerClassName="flex-1"
+                control={control}
+                name={`steps.${index}`}
                 placeholder="Instruction"
-                value={step}
+                rules={{ validate: (value) => value.trim().length > 0 || "Add an instruction." }}
               />
               <Pressable
                 accessibilityLabel={`Remove step ${index + 1}`}
                 accessibilityRole="button"
-                className="mt-2 p-2 active:opacity-60"
+                className="mt-2 min-h-14 min-w-14 items-center justify-center active:opacity-60"
                 onPress={() =>
-                  setDraft((current) =>
-                    current
-                      ? {
-                          ...current,
-                          steps: current.steps.filter((_, currentIndex) => currentIndex !== index),
-                        }
-                      : current,
+                  setValue(
+                    "steps",
+                    steps.filter((_, currentIndex) => currentIndex !== index),
+                    { shouldDirty: true },
                   )
                 }
               >
@@ -295,11 +254,11 @@ export default function SavedRecipeScreen() {
 
       <Card className="rounded-2xl p-0">
         <CardContent className="p-4">
-          <Textarea
+          <FormTextarea
             accessibilityLabel="Recipe notes"
-            onChangeText={(notes) => setDraft((current) => current && { ...current, notes })}
+            control={control}
+            name="notes"
             placeholder="Notes"
-            value={draft.notes}
           />
         </CardContent>
       </Card>
@@ -311,11 +270,11 @@ export default function SavedRecipeScreen() {
       <Button
         icon={<Icon as={Save} className="size-5 text-primary-foreground" />}
         loading={updateRecipe.isPending}
-        onPress={() => updateRecipe.mutate(draft)}
+        onPress={() => void submit()}
         size="lg"
       >
         Save changes
       </Button>
-    </ScrollView>
+    </Screen>
   );
 }

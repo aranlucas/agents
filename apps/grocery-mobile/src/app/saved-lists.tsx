@@ -3,12 +3,13 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { ChevronRight, ListChecks } from "lucide-react-native";
 import { useMemo } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
+import { Screen } from "@/components/ui/screen";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { getRuntimeUrl } from "@/lib/config";
@@ -54,11 +55,7 @@ export default function SavedListsScreen() {
     householdQueries.find((query) => query.error)?.error;
 
   return (
-    <ScrollView
-      className="w-full max-w-3xl flex-1 self-center bg-background"
-      contentInsetAdjustmentBehavior="automatic"
-      contentContainerClassName="gap-4 p-4.5 pb-10"
-    >
+    <Screen className="bg-background">
       <View className="flex-row items-center justify-between gap-3 px-0.5">
         <View className="flex-1 gap-1">
           <Text className="font-extrabold tracking-normal" variant="h3">
@@ -114,6 +111,6 @@ export default function SavedListsScreen() {
           title="No saved lists yet"
         />
       )}
-    </ScrollView>
+    </Screen>
   );
 }

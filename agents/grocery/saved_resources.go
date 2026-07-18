@@ -48,6 +48,11 @@ type SavedRecipesResult struct {
 	Error   *agentruntime.StructuredError `json:"error,omitempty"`
 }
 
+type GroceryHouseholdsResult struct {
+	Households []groceries.Household         `json:"households,omitempty"`
+	Error      *agentruntime.StructuredError `json:"error,omitempty"`
+}
+
 type SavedResources struct {
 	Repository groceries.LibraryRepository
 	Now        func() time.Time
@@ -60,6 +65,9 @@ func savedResourceTools(repository groceries.LibraryRepository) ([]tool.Tool, er
 		description string
 		build       func() (tool.Tool, error)
 	}{
+		{name: "list_households", description: "List the signed-in user's grocery households so a household name can be resolved to its exact id before saving or retrieving shared resources.", build: func() (tool.Tool, error) {
+			return functiontool.New(functiontool.Config{Name: "list_households", Description: "List the signed-in user's grocery households so a household name can be resolved to its exact id before saving or retrieving shared resources."}, saved.ListHouseholds)
+		}},
 		{name: "save_current_list", description: "Save the current ready list only after the user explicitly asks to save it; omit household_id for the personal library.", build: func() (tool.Tool, error) {
 			return functiontool.New(functiontool.Config{Name: "save_current_list", Description: "Save the current ready list only after the user explicitly asks to save it; omit household_id for the personal library."}, saved.SaveCurrentList)
 		}},
@@ -94,6 +102,16 @@ func savedResourceTools(repository groceries.LibraryRepository) ([]tool.Tool, er
 		tools = append(tools, built)
 	}
 	return tools, nil
+}
+
+func (saved SavedResources) ListHouseholds(ctx agent.Context, _ struct{}) (GroceryHouseholdsResult, error) {
+	households, err := saved.Repository.ListHouseholds(ctx, strings.TrimSpace(ctx.UserID()))
+	if err != nil {
+		return GroceryHouseholdsResult{Error: &agentruntime.StructuredError{
+			Code: "grocery_households_unavailable", Message: "grocery households are unavailable",
+		}}, nil
+	}
+	return GroceryHouseholdsResult{Households: households}, nil
 }
 
 func (saved SavedResources) SaveCurrentList(ctx agent.Context, input SaveCurrentResourceArgs) (SavedListsResult, error) {
