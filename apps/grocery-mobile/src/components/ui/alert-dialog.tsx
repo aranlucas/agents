@@ -47,7 +47,6 @@ export function AlertDialogContent({
   return (
     <View
       accessibilityRole="alert"
-      accessible
       className={cn("w-full max-w-sm rounded-lg bg-card p-6 shadow-xl", className)}
       {...props}
     >

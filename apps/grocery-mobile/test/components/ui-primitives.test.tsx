@@ -117,6 +117,8 @@ describe("shared UI primitive behavior", () => {
     expect(
       view.container.queryAll((node) => node.props.accessibilityViewIsModal === true),
     ).toHaveLength(1);
-    expect(screen.getByRole("alert")).toBeTruthy();
+    expect(
+      view.container.queryAll((node) => node.props.accessibilityRole === "alert"),
+    ).toHaveLength(1);
   });
 });

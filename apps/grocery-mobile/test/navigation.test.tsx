@@ -1,17 +1,27 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
-import type { PropsWithChildren } from "react";
+import { Fragment } from "react";
+import type { PropsWithChildren, ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { homeLinks, push, replace, stackOptions, stackScreenOptions, stackScreens, startNewChat } =
-  vi.hoisted(() => ({
-    homeLinks: [] as string[],
-    push: vi.fn(),
-    replace: vi.fn(),
-    stackOptions: [] as Record<string, unknown>[],
-    stackScreenOptions: {} as Record<string, Record<string, unknown>>,
-    stackScreens: [] as string[],
-    startNewChat: vi.fn(),
-  }));
+const {
+  homeLinks,
+  push,
+  replace,
+  screenOptionCalls,
+  stackOptions,
+  stackScreenOptions,
+  stackScreens,
+  startNewChat,
+} = vi.hoisted(() => ({
+  homeLinks: [] as string[],
+  push: vi.fn(),
+  replace: vi.fn(),
+  screenOptionCalls: [] as Record<string, unknown>[],
+  stackOptions: [] as Record<string, unknown>[],
+  stackScreenOptions: {} as Record<string, Record<string, unknown>>,
+  stackScreens: [] as string[],
+  startNewChat: vi.fn(),
+}));
 
 vi.mock("@clerk/clerk-expo", () => ({
   ClerkLoaded: ({ children }: PropsWithChildren) => children,
@@ -42,9 +52,12 @@ vi.mock("expo-router", async () => {
     return children;
   }
 
-  function Screen({ name, options }: { name: string; options?: Record<string, unknown> }) {
-    stackScreens.push(name);
-    stackScreenOptions[name] = options ?? {};
+  function Screen({ name, options }: { name?: string; options?: Record<string, unknown> }) {
+    screenOptionCalls.push(options ?? {});
+    if (name) {
+      stackScreens.push(name);
+      stackScreenOptions[name] = options ?? {};
+    }
     return null;
   }
 
@@ -164,6 +177,7 @@ import { GroceryChat } from "@/components/grocery-chat";
 describe("grocery navigation", () => {
   beforeEach(() => {
     homeLinks.length = 0;
+    screenOptionCalls.length = 0;
     stackOptions.length = 0;
     for (const name of Object.keys(stackScreenOptions)) delete stackScreenOptions[name];
     stackScreens.length = 0;
@@ -209,6 +223,32 @@ describe("grocery navigation", () => {
     expect(push).toHaveBeenCalledWith("/account");
   });
 
+  it("falls back to header action buttons for dashboard actions on web", async () => {
+    process.env.EXPO_OS = "web";
+    try {
+      await render(<GroceryHomeScreen />);
+
+      const options = screenOptionCalls.at(-1) as {
+        headerLeft: () => ReactElement;
+        headerRight: () => ReactElement;
+      };
+      await render(
+        <Fragment>
+          {options.headerLeft()}
+          {options.headerRight()}
+        </Fragment>,
+      );
+
+      await fireEvent.press(screen.getByRole("button", { name: "Home" }));
+      await fireEvent.press(screen.getByRole("button", { name: "Account" }));
+
+      expect(replace).toHaveBeenCalledWith("/");
+      expect(push).toHaveBeenCalledWith("/account");
+    } finally {
+      process.env.EXPO_OS = "android";
+    }
+  });
+
   it("renders GroceryChat at the chat route", async () => {
     await render(<GroceryChatScreen />);
 
@@ -225,5 +265,25 @@ describe("grocery navigation", () => {
     expect(push).toHaveBeenNthCalledWith(1, "/chat-history");
     expect(startNewChat).toHaveBeenCalledOnce();
     expect(push).toHaveBeenNthCalledWith(2, "/account");
+  });
+
+  it("falls back to header action buttons for chat actions on web", async () => {
+    process.env.EXPO_OS = "web";
+    try {
+      await render(<GroceryChatScreen />);
+
+      const options = screenOptionCalls.at(-1) as { headerRight: () => ReactElement };
+      await render(options.headerRight());
+
+      await fireEvent.press(screen.getByRole("button", { name: "Previous chats" }));
+      await fireEvent.press(screen.getByRole("button", { name: "New chat" }));
+      await fireEvent.press(screen.getByRole("button", { name: "Settings" }));
+
+      expect(push).toHaveBeenNthCalledWith(1, "/chat-history");
+      expect(startNewChat).toHaveBeenCalledOnce();
+      expect(push).toHaveBeenNthCalledWith(2, "/account");
+    } finally {
+      process.env.EXPO_OS = "android";
+    }
   });
 });

@@ -5,6 +5,7 @@ import { Link, Stack, useRouter } from "expo-router";
 import {
   ArrowRight,
   BookMarked,
+  CircleUserRound,
   History,
   MessageSquareText,
   ShoppingBasket,
@@ -12,6 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { Pressable, View } from "react-native";
+import { HeaderActionButton } from "@/components/header-action-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Icon } from "@/components/ui/icon";
@@ -115,20 +117,43 @@ export default function GroceryHomeScreen() {
           </View>
         </View>
       </Screen>
-      <Stack.Toolbar placement="left">
-        <Stack.Toolbar.Button
-          accessibilityLabel="Home"
-          icon={process.env.EXPO_OS === "android" ? ShoppingBasketIcon : "basket.fill"}
-          onPress={() => router.replace("/")}
+      {process.env.EXPO_OS === "web" ? (
+        <Stack.Screen
+          options={{
+            headerLeft: () => (
+              <HeaderActionButton
+                accessibilityLabel="Home"
+                icon={ShoppingBasket}
+                onPress={() => router.replace("/")}
+              />
+            ),
+            headerRight: () => (
+              <HeaderActionButton
+                accessibilityLabel="Account"
+                icon={CircleUserRound}
+                onPress={() => router.push("/account")}
+              />
+            ),
+          }}
         />
-      </Stack.Toolbar>
-      <Stack.Toolbar placement="right">
-        <Stack.Toolbar.Button
-          accessibilityLabel="Account"
-          icon={process.env.EXPO_OS === "android" ? AccountCircle : "person.crop.circle"}
-          onPress={() => router.push("/account")}
-        />
-      </Stack.Toolbar>
+      ) : (
+        <>
+          <Stack.Toolbar placement="left">
+            <Stack.Toolbar.Button
+              accessibilityLabel="Home"
+              icon={process.env.EXPO_OS === "android" ? ShoppingBasketIcon : "basket.fill"}
+              onPress={() => router.replace("/")}
+            />
+          </Stack.Toolbar>
+          <Stack.Toolbar placement="right">
+            <Stack.Toolbar.Button
+              accessibilityLabel="Account"
+              icon={process.env.EXPO_OS === "android" ? AccountCircle : "person.crop.circle"}
+              onPress={() => router.push("/account")}
+            />
+          </Stack.Toolbar>
+        </>
+      )}
     </>
   );
 }
