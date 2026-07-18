@@ -1,10 +1,11 @@
 import React from "react";
-import { Text, Pressable, useColorScheme } from "react-native";
+import { Text, Pressable } from "react-native";
 import { cva, type VariantProps } from "class-variance-authority";
 import { X } from "lucide-react-native";
+import { useThemeColor } from "@/hooks/use-theme-color";
 import { cn } from "@/lib/utils";
 
-const chipVariants = cva("flex-row items-center rounded-full min-h-8", {
+const chipVariants = cva("min-h-12 flex-row items-center rounded-full", {
   variants: {
     variant: {
       default: "bg-primary",
@@ -54,24 +55,20 @@ export function Chip({
   ...props
 }: ChipProps) {
   const v = selected ? "default" : (variant ?? "outline");
-  const dark = useColorScheme() === "dark";
-  const closeColor =
+  const closeColor = useThemeColor(
     v === "outline"
-      ? dark
-        ? "#a1a1aa"
-        : "#71717a"
+      ? "--color-muted-foreground"
       : v === "default"
-        ? dark
-          ? "#18181b"
-          : "#fafafa"
+        ? "--color-primary-foreground"
         : v === "secondary"
-          ? dark
-            ? "#fafafa"
-            : "#18181b"
-          : "#fafafa";
+          ? "--color-secondary-foreground"
+          : "--color-destructive-foreground",
+    "#17201a",
+  );
   return (
     <Pressable
       className={cn(chipVariants({ variant: v, size }), className)}
+      hitSlop={3}
       accessible={true}
       accessibilityRole="button"
       accessibilityState={{ selected }}

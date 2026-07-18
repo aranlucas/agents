@@ -6,8 +6,8 @@ import {
   TextInput,
   Modal,
   ScrollView,
-  Dimensions,
   useColorScheme,
+  useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { cn } from "@/lib/utils";
@@ -43,6 +43,7 @@ export function Select({
   const [search, setSearch] = useState("");
   const triggerRef = useRef<View>(null);
   const dark = useColorScheme() === "dark";
+  const { height: screenH } = useWindowDimensions();
   const caret = dark ? "#fafafa" : "#18181b";
   const [pos, setPos] = useState({ x: 0, y: 0, w: 0, h: 0 });
   const insets = useSafeAreaInsets();
@@ -74,7 +75,6 @@ export function Select({
     close();
   };
 
-  const screenH = Dimensions.get("window").height;
   const triggerY = pos.y + yOffset;
   const belowY = triggerY + pos.h + 4;
   const listH = Math.min(filtered.length * 48, 264);

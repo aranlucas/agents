@@ -17,7 +17,7 @@ const kbdVariants = cva("items-center justify-center rounded-md border border-bo
 const kbdTextVariants = cva("font-mono text-muted-foreground", {
   variants: {
     size: {
-      sm: "text-[10px]",
+      sm: "text-xs",
       md: "text-xs",
       lg: "text-sm",
     },

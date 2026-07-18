@@ -1,5 +1,10 @@
-import { afterEach } from "vitest";
+import { afterEach, vi } from "vitest";
 import { resetAllMocks } from "vitest-native/helpers";
+
+vi.mock("uniwind", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("uniwind")>()),
+  useCSSVariable: () => undefined,
+}));
 
 process.env.EXPO_OS = "android";
 (

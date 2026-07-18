@@ -18,7 +18,7 @@ export function KrogerConnectionCard({
 
   return (
     <View className="gap-2">
-      <Card className="min-h-20 rounded-2xl p-0 shadow-none">
+      <Card className="min-h-20 shadow-none">
         <CardHeader className="flex-row items-center gap-3 p-3">
           <View className="size-11 items-center justify-center rounded-2xl bg-muted">
             {isLoading ? (
@@ -28,10 +28,8 @@ export function KrogerConnectionCard({
             )}
           </View>
           <View className="flex-1 gap-0.5">
-            <CardTitle className="text-lg font-extrabold tracking-normal">
-              Connect Kroger when you’re ready
-            </CardTitle>
-            <CardDescription className="leading-5" selectable>
+            <CardTitle>Connect Kroger when you’re ready</CardTitle>
+            <CardDescription selectable>
               Optional for live products, prices, and cart actions.
             </CardDescription>
           </View>

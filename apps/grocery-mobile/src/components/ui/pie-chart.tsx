@@ -24,13 +24,6 @@ function polarToCartesian(cx: number, cy: number, r: number, deg: number) {
   return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
 }
 
-function arcPath(cx: number, cy: number, r: number, start: number, end: number) {
-  const s = polarToCartesian(cx, cy, r, start);
-  const e = polarToCartesian(cx, cy, r, end);
-  const large = end - start > 180 ? 1 : 0;
-  return `M${s.x},${s.y} A${r},${r} 0 ${large} 1 ${e.x},${e.y}`;
-}
-
 export function PieChart({
   className,
   data,
@@ -78,9 +71,7 @@ export function PieChart({
             const sweep = seg.end - seg.start;
             if (sweep <= 0) return null;
             const safeEnd = sweep >= 360 ? seg.start + 359.99 : seg.end;
-            const outerArc = arcPath(cx, cy, outerR, seg.start, safeEnd);
             if (innerR > 0) {
-              const innerArc = arcPath(cx, cy, innerR, safeEnd, seg.start);
               const s1 = polarToCartesian(cx, cy, outerR, safeEnd);
               const s2 = polarToCartesian(cx, cy, innerR, safeEnd);
               const e2 = polarToCartesian(cx, cy, innerR, seg.start);
@@ -89,7 +80,6 @@ export function PieChart({
               const d = `M${e1.x},${e1.y} A${outerR},${outerR} 0 ${large} 1 ${s1.x},${s1.y} L${s2.x},${s2.y} A${innerR},${innerR} 0 ${large} 0 ${e2.x},${e2.y} Z`;
               return <Path key={i} d={d} fill={seg.color} />;
             }
-            const center = polarToCartesian(cx, cy, 0, 0);
             const s = polarToCartesian(cx, cy, outerR, seg.start);
             const e = polarToCartesian(cx, cy, outerR, safeEnd);
             const large = sweep > 180 ? 1 : 0;

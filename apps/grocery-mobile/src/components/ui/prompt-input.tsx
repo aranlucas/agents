@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState } from "react";
 import { View, TextInput, Pressable, useColorScheme } from "react-native";
 import { ArrowUp, Square } from "lucide-react-native";
+import { useThemeColor } from "@/hooks/use-theme-color";
 import { cn } from "@/lib/utils";
 
 // Compound composer (ChatGPT/Claude-style): textarea on top, toolbar below.
@@ -86,6 +87,8 @@ export const PromptInputTextarea = React.forwardRef<
 >(function PromptInputTextarea({ className, maxHeight = 120, style, ...props }, ref) {
   const { text, setText, dark } = usePromptInput();
   const [height, setHeight] = useState(0);
+  const foreground = useThemeColor("--color-foreground", dark ? "#f7f8f2" : "#17201a");
+  const placeholder = useThemeColor("--color-muted-foreground", dark ? "#a9b4aa" : "#667067");
   return (
     <TextInput
       ref={ref}
@@ -101,10 +104,10 @@ export const PromptInputTextarea = React.forwardRef<
       ]}
       className={cn("p-0 text-foreground placeholder:text-muted-foreground", className)}
       placeholder="How can I help you today?"
-      placeholderTextColor={dark ? "#a1a1aa" : "#71717a"}
+      placeholderTextColor={placeholder}
       keyboardAppearance={dark ? "dark" : "light"}
-      selectionColor={dark ? "#fafafa" : "#18181b"}
-      cursorColor={dark ? "#fafafa" : "#18181b"}
+      selectionColor={foreground}
+      cursorColor={foreground}
       {...props}
     />
   );
@@ -132,7 +135,7 @@ export function PromptInputButton({ className, ...props }: PromptInputButtonProp
   return (
     <Pressable
       className={cn(
-        "h-11 min-w-11 flex-row items-center justify-center gap-1 rounded-full px-2 active:bg-muted",
+        "h-14 min-w-14 flex-row items-center justify-center gap-1 rounded-full px-2 active:bg-muted",
         className,
       )}
       accessible={true}
@@ -149,16 +152,16 @@ export interface PromptInputSendProps extends React.ComponentPropsWithoutRef<typ
 }
 
 export function PromptInputSend({ className, emptyFallback, ...props }: PromptInputSendProps) {
-  const { text, send, streaming, dark } = usePromptInput();
+  const { text, send, streaming } = usePromptInput();
   const canSend = text.trim().length > 0;
-  const fg = dark ? "#18181b" : "#fafafa";
+  const foreground = useThemeColor("--color-primary-foreground", "#ffffff");
   if (!canSend && !streaming && emptyFallback) return <>{emptyFallback}</>;
   return (
     <Pressable
       onPress={send}
       disabled={!canSend && !streaming}
       className={cn(
-        "h-11 w-11 items-center justify-center rounded-full bg-primary",
+        "h-14 w-14 items-center justify-center rounded-full bg-primary",
         !canSend && !streaming && "opacity-40",
         className,
       )}
@@ -169,9 +172,9 @@ export function PromptInputSend({ className, emptyFallback, ...props }: PromptIn
       {...props}
     >
       {streaming ? (
-        <Square size={14} color={fg} fill={fg} />
+        <Square size={14} color={foreground} fill={foreground} />
       ) : (
-        <ArrowUp size={20} color={fg} strokeWidth={2.5} />
+        <ArrowUp size={20} color={foreground} strokeWidth={2.5} />
       )}
     </Pressable>
   );

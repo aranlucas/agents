@@ -1,9 +1,10 @@
 import React from "react";
 import { Pressable, Text, ActivityIndicator } from "react-native";
 import { cva, type VariantProps } from "class-variance-authority";
+import { useThemeColor } from "@/hooks/use-theme-color";
 import { cn } from "@/lib/utils";
 
-const buttonVariants = cva("flex-row items-center justify-center rounded-md min-h-12 min-w-12", {
+const buttonVariants = cva("min-h-14 min-w-14 flex-row items-center justify-center rounded-md", {
   variants: {
     variant: {
       default: "bg-primary",
@@ -22,6 +23,15 @@ const buttonVariants = cva("flex-row items-center justify-center rounded-md min-
   },
   defaultVariants: { variant: "default", size: "md" },
 });
+
+const spinnerColorVariables = {
+  default: "--color-primary-foreground",
+  secondary: "--color-secondary-foreground",
+  outline: "--color-foreground",
+  ghost: "--color-foreground",
+  destructive: "--color-destructive-foreground",
+  link: "--color-primary",
+} as const;
 
 const buttonTextVariants = cva("text-center font-medium", {
   variants: {
@@ -61,7 +71,11 @@ export function Button({
   ...props
 }: ButtonProps) {
   const isDisabled = disabled || loading;
-  const light = variant === "default" || variant === "destructive";
+  const resolvedVariant = variant ?? "default";
+  const spinnerColor = useThemeColor(
+    spinnerColorVariables[resolvedVariant],
+    resolvedVariant === "default" || resolvedVariant === "destructive" ? "#ffffff" : "#17201a",
+  );
 
   return (
     <Pressable
@@ -76,11 +90,7 @@ export function Button({
       disabled={isDisabled}
       {...props}
     >
-      {loading ? (
-        <ActivityIndicator size="small" color={light ? "#fafafa" : "#18181b"} />
-      ) : (
-        (icon ?? null)
-      )}
+      {loading ? <ActivityIndicator size="small" color={spinnerColor} /> : (icon ?? null)}
       {children ? (
         <Text className={cn(buttonTextVariants({ variant, size }), textClassName)}>{children}</Text>
       ) : null}

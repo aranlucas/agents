@@ -79,7 +79,9 @@ export function StreamingText({
   }, [count, text, streaming, onComplete]);
 
   const visible = typewriter ? text.slice(0, count) : text;
-  shown.current = visible;
+  useEffect(() => {
+    shown.current = visible;
+  }, [visible]);
   const done = visible.length >= text.length && !streaming;
 
   return (

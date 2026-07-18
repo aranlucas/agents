@@ -69,7 +69,7 @@ export function TabBarItem({
       )}
       {badge !== undefined && badge > 0 && (
         <View className="absolute end-1/4 -top-1 h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1">
-          <Text className="text-destructive-foreground text-[10px] font-bold">
+          <Text className="text-destructive-foreground text-xs font-bold">
             {badge > 99 ? "99+" : badge}
           </Text>
         </View>

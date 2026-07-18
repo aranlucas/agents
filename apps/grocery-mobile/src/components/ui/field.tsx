@@ -40,7 +40,7 @@ export function FieldLabel({ className, ...props }: FieldLabelProps) {
     <Text
       className={cn(
         "text-sm font-medium text-foreground",
-        orientation === "horizontal" && "min-w-[100px] pt-3",
+        orientation === "horizontal" && "min-w-28 pt-3",
         className,
       )}
       accessibilityRole="text"

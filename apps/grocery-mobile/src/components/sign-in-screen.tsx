@@ -3,12 +3,12 @@ import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { useState } from "react";
 import { ScrollView, View } from "react-native";
+import { useForm, useWatch } from "react-hook-form";
 import { BrandMark } from "@/components/brand-mark";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { FormInput } from "@/components/ui/form";
 import { KeyboardView } from "@/components/ui/keyboard-view";
-import { Label } from "@/components/ui/label";
 import { SafeArea } from "@/components/ui/safe-area";
 import { Separator } from "@/components/ui/separator";
 import { Text } from "@/components/ui/text";
@@ -17,21 +17,34 @@ import { readableError } from "@/lib/auth";
 WebBrowser.maybeCompleteAuthSession();
 
 type Mode = "sign-in" | "sign-up" | "verify";
+type AuthFormValues = { email: string; password: string; code: string };
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
 
 export function SignInScreen() {
   const { isLoaded: signInLoaded, signIn, setActive: setSignInActive } = useSignIn();
   const { isLoaded: signUpLoaded, signUp, setActive: setSignUpActive } = useSignUp();
   const { startSSOFlow } = useSSO();
   const [mode, setMode] = useState<Mode>("sign-in");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [code, setCode] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [oauthBusy, setOauthBusy] = useState(false);
+  const {
+    clearErrors,
+    control,
+    getValues,
+    handleSubmit,
+    reset,
+    setError,
+    formState: { errors, isSubmitting, isValid },
+  } = useForm<AuthFormValues>({
+    defaultValues: { code: "", email: "", password: "" },
+    mode: "onChange",
+  });
+  const email = useWatch({ control, name: "email" });
+  const busy = oauthBusy || isSubmitting;
 
   const authenticateWithGoogle = async () => {
-    setBusy(true);
-    setError("");
+    setOauthBusy(true);
+    clearErrors("root");
     try {
       const result = await startSSOFlow({
         strategy: "oauth_google",
@@ -41,19 +54,21 @@ export function SignInScreen() {
         await result.setActive({ session: result.createdSessionId });
       }
     } catch (caught) {
-      setError(readableError(caught));
+      setError("root.server", { message: readableError(caught) });
     } finally {
-      setBusy(false);
+      setOauthBusy(false);
     }
   };
 
-  const submitCredentials = async () => {
-    setBusy(true);
-    setError("");
+  const submitCredentials = handleSubmit(async (values) => {
+    clearErrors("root");
     try {
       if (mode === "sign-in") {
         if (!signInLoaded) return;
-        const attempt = await signIn.create({ identifier: email.trim(), password });
+        const attempt = await signIn.create({
+          identifier: values.email.trim(),
+          password: values.password,
+        });
         if (attempt.status !== "complete" || !attempt.createdSessionId) {
           throw new Error("Additional verification is required. Try signing in with Google.");
         }
@@ -63,27 +78,25 @@ export function SignInScreen() {
 
       if (mode === "sign-up") {
         if (!signUpLoaded) return;
-        await signUp.create({ emailAddress: email.trim(), password });
+        await signUp.create({ emailAddress: values.email.trim(), password: values.password });
         await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+        clearErrors();
         setMode("verify");
         return;
       }
 
       if (!signUpLoaded) return;
-      const attempt = await signUp.attemptEmailAddressVerification({ code: code.trim() });
+      const attempt = await signUp.attemptEmailAddressVerification({ code: values.code.trim() });
       if (attempt.status !== "complete" || !attempt.createdSessionId) {
         throw new Error("That code could not be verified. Please try again.");
       }
       await setSignUpActive({ session: attempt.createdSessionId });
     } catch (caught) {
-      setError(readableError(caught));
-    } finally {
-      setBusy(false);
+      setError("root.server", { message: readableError(caught) });
     }
-  };
+  });
 
-  const isReady =
-    mode === "verify" ? code.trim().length > 0 : email.trim().length > 0 && password.length >= 8;
+  const isReady = isValid && (mode === "sign-in" ? signInLoaded : signUpLoaded);
 
   return (
     <SafeArea>
@@ -104,7 +117,7 @@ export function SignInScreen() {
                     ? "Create your account"
                     : "Check your inbox"}
               </Text>
-              <Text className="text-center leading-6 text-muted-foreground" selectable>
+              <Text className="text-center text-muted-foreground" selectable>
                 {mode === "sign-in"
                   ? "Sign in to continue planning your groceries."
                   : mode === "sign-up"
@@ -117,55 +130,66 @@ export function SignInScreen() {
           <View className="gap-4">
             {mode !== "verify" ? (
               <>
-                <View className="gap-1.5">
-                  <Label>Email address</Label>
-                  <Input
-                    accessibilityLabel="Email address"
-                    autoCapitalize="none"
-                    autoComplete="email"
-                    className="min-h-12 rounded-xl bg-card px-4 text-base"
-                    keyboardType="email-address"
-                    placeholder="name@example.com"
-                    value={email}
-                    onChangeText={setEmail}
-                  />
-                </View>
-                <View className="gap-1.5">
-                  <Label>Password</Label>
-                  <Input
-                    accessibilityLabel="Password"
-                    autoCapitalize="none"
-                    autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
-                    className="min-h-12 rounded-xl bg-card px-4 text-base"
-                    placeholder="At least 8 characters"
-                    secureTextEntry
-                    value={password}
-                    onChangeText={setPassword}
-                  />
-                </View>
+                <FormInput
+                  control={control}
+                  label="Email address"
+                  name="email"
+                  rules={{
+                    pattern: { message: "Enter a valid email address.", value: EMAIL_PATTERN },
+                    required: "Enter your email address.",
+                  }}
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  className="rounded-xl bg-card"
+                  keyboardType="email-address"
+                  placeholder="name@example.com"
+                  returnKeyType="next"
+                />
+                <FormInput
+                  control={control}
+                  label="Password"
+                  name="password"
+                  rules={{
+                    minLength: { message: "Use at least 8 characters.", value: 8 },
+                    required: "Enter your password.",
+                  }}
+                  autoCapitalize="none"
+                  autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
+                  className="rounded-xl bg-card"
+                  onSubmitEditing={() => void submitCredentials()}
+                  placeholder="At least 8 characters"
+                  returnKeyType="done"
+                  secureTextEntry
+                />
               </>
             ) : (
-              <View className="gap-1.5">
-                <Label>Verification code</Label>
-                <Input
-                  accessibilityLabel="Verification code"
-                  autoComplete="one-time-code"
-                  className="min-h-12 rounded-xl bg-card px-4 text-base"
-                  keyboardType="number-pad"
-                  placeholder="123456"
-                  value={code}
-                  onChangeText={setCode}
-                />
-              </View>
+              <FormInput
+                control={control}
+                label="Verification code"
+                name="code"
+                rules={{
+                  minLength: { message: "Enter the six-digit code.", value: 6 },
+                  required: "Enter the verification code.",
+                }}
+                autoComplete="one-time-code"
+                className="rounded-xl bg-card"
+                keyboardType="number-pad"
+                maxLength={6}
+                onSubmitEditing={() => void submitCredentials()}
+                placeholder="123456"
+                returnKeyType="done"
+              />
             )}
 
-            {error ? <Alert title={error} variant="destructive" /> : null}
+            {errors.root?.server?.message ? (
+              <Alert title={errors.root.server.message} variant="destructive" />
+            ) : null}
             <Button
               className="mt-2 w-full"
               disabled={!isReady}
               loading={busy}
               size="lg"
-              onPress={submitCredentials}
+              onPress={() => void submitCredentials()}
             >
               {mode === "sign-in"
                 ? "Sign in"
@@ -203,8 +227,9 @@ export function SignInScreen() {
             <Button
               className="h-auto p-0"
               onPress={() => {
-                setError("");
-                setMode(mode === "sign-in" ? "sign-up" : "sign-in");
+                const nextMode = mode === "sign-in" ? "sign-up" : "sign-in";
+                reset({ code: "", email: getValues("email"), password: "" });
+                setMode(nextMode);
               }}
               variant="link"
             >

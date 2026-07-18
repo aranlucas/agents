@@ -1,7 +1,8 @@
+import { type Thread } from "@copilotkit/react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { ChevronRight, MessageSquareText } from "lucide-react-native";
-import { useCallback, useRef, useState } from "react";
-import { FlatList, Pressable, View } from "react-native";
+import { memo, useCallback, useRef, useState } from "react";
+import { FlatList, Pressable, View, type ListRenderItem } from "react-native";
 import { useGroceryAgent } from "@/components/grocery-agent-provider";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,68 @@ function activityLabel(value: string): string {
   }).format(date);
 }
 
+function HistorySeparator() {
+  return <Separator className="ml-16" />;
+}
+
+const ChatHistoryRow = memo(function ChatHistoryRow({
+  disabled,
+  opening,
+  onResume,
+  selected,
+  thread,
+}: {
+  disabled: boolean;
+  opening: boolean;
+  onResume: (threadId: string) => Promise<void>;
+  selected: boolean;
+  thread: Thread;
+}) {
+  return (
+    <Pressable
+      accessibilityLabel={`Open ${thread.name || "grocery chat"}`}
+      accessibilityRole="button"
+      accessibilityState={{ disabled, selected }}
+      className={cn(
+        "min-h-19 flex-row items-center gap-3 px-4 py-3 active:bg-muted",
+        selected && "bg-muted",
+      )}
+      disabled={disabled}
+      onPress={() => void onResume(thread.id)}
+    >
+      <View className="size-11 items-center justify-center rounded-2xl bg-muted">
+        {opening ? (
+          <Spinner accessibilityLabel="Opening chat" size="sm" />
+        ) : (
+          <Icon as={MessageSquareText} className="size-5 text-secondary" />
+        )}
+      </View>
+      <View className="flex-1 gap-0.5">
+        <Text numberOfLines={1} variant="large">
+          {thread.name || "Grocery chat"}
+        </Text>
+        <Text variant="muted">
+          {activityLabel(thread.lastRunAt || thread.updatedAt)}
+          {selected ? " · Current" : ""}
+        </Text>
+      </View>
+      <Icon as={ChevronRight} className="size-5 text-muted-foreground" />
+    </Pressable>
+  );
+});
+
+const ChatHistoryEmpty = memo(function ChatHistoryEmpty({ onStart }: { onStart: () => void }) {
+  return (
+    <EmptyState
+      action={{ label: "Start a chat", onPress: onStart }}
+      className="flex-1 p-2"
+      description="Your Grocery Agent conversations will appear here after you send a message."
+      icon={<Icon as={MessageSquareText} className="size-8 text-primary" />}
+      title="No previous chats"
+    />
+  );
+});
+
 export default function ChatHistoryScreen() {
   const router = useRouter();
   const {
@@ -44,9 +107,9 @@ export default function ChatHistoryScreen() {
   const [opening, setOpening] = useState("");
   const openingRef = useRef("");
 
-  const returnToChat = () => {
+  const returnToChat = useCallback(() => {
     router.dismissTo("/chat");
-  };
+  }, [router]);
 
   useFocusEffect(
     useCallback(() => {
@@ -54,16 +117,37 @@ export default function ChatHistoryScreen() {
     }, [refetchThreads]),
   );
 
-  const resume = async (threadId: string) => {
-    if (openingRef.current) return;
-    openingRef.current = threadId;
-    clearError();
-    setOpening(threadId);
-    const outcome = await openThread(threadId);
-    openingRef.current = "";
-    if (outcome.status === "success") returnToChat();
-    setOpening("");
-  };
+  const resume = useCallback(
+    async (threadId: string) => {
+      if (openingRef.current) return;
+      openingRef.current = threadId;
+      clearError();
+      setOpening(threadId);
+      const outcome = await openThread(threadId);
+      openingRef.current = "";
+      if (outcome.status === "success") returnToChat();
+      setOpening("");
+    },
+    [clearError, openThread, returnToChat],
+  );
+
+  const renderItem = useCallback<ListRenderItem<Thread>>(
+    ({ item: thread }) => (
+      <ChatHistoryRow
+        disabled={opening !== ""}
+        opening={opening === thread.id}
+        onResume={resume}
+        selected={thread.id === activeThreadId}
+        thread={thread}
+      />
+    ),
+    [activeThreadId, opening, resume],
+  );
+
+  const renderEmpty = useCallback(
+    () => <ChatHistoryEmpty onStart={returnToChat} />,
+    [returnToChat],
+  );
 
   if (threadsLoading && threads.length === 0) {
     return (
@@ -105,50 +189,9 @@ export default function ChatHistoryScreen() {
       }}
       onEndReachedThreshold={0.35}
       refreshControl={<RefreshControl refreshing={threadsLoading} onRefresh={refetchThreads} />}
-      ItemSeparatorComponent={() => <Separator className="ml-16" />}
-      renderItem={({ item: thread }) => {
-        const selected = thread.id === activeThreadId;
-        return (
-          <Pressable
-            accessibilityLabel={`Open ${thread.name || "grocery chat"}`}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: opening !== "", selected }}
-            className={cn(
-              "min-h-19 flex-row items-center gap-3 px-4 py-3 active:bg-muted",
-              selected && "bg-muted",
-            )}
-            disabled={opening !== ""}
-            onPress={() => void resume(thread.id)}
-          >
-            <View className="size-11 items-center justify-center rounded-2xl bg-muted">
-              {opening === thread.id ? (
-                <Spinner accessibilityLabel="Opening chat" size="sm" />
-              ) : (
-                <Icon as={MessageSquareText} className="size-5 text-secondary" />
-              )}
-            </View>
-            <View className="flex-1 gap-0.5">
-              <Text className="font-bold" numberOfLines={1} variant="large">
-                {thread.name || "Grocery chat"}
-              </Text>
-              <Text variant="muted">
-                {activityLabel(thread.lastRunAt || thread.updatedAt)}
-                {selected ? " · Current" : ""}
-              </Text>
-            </View>
-            <Icon as={ChevronRight} className="size-5 text-muted-foreground" />
-          </Pressable>
-        );
-      }}
-      ListEmptyComponent={
-        <EmptyState
-          action={{ label: "Start a chat", onPress: returnToChat }}
-          className="flex-1 p-2"
-          description="Your Grocery Agent conversations will appear here after you send a message."
-          icon={<Icon as={MessageSquareText} className="size-8 text-primary" />}
-          title="No previous chats"
-        />
-      }
+      ItemSeparatorComponent={HistorySeparator}
+      renderItem={renderItem}
+      ListEmptyComponent={renderEmpty}
       ListFooterComponent={
         replayError || threadsError || fetchMoreThreadsError || isFetchingMoreThreads ? (
           <View className="items-center gap-2.5 p-3.5">

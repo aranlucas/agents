@@ -1,5 +1,6 @@
 import React from "react";
-import { RefreshControl as RNRefreshControl, useColorScheme } from "react-native";
+import { RefreshControl as RNRefreshControl } from "react-native";
+import { useThemeColor } from "@/hooks/use-theme-color";
 
 export interface RefreshControlProps extends React.ComponentPropsWithoutRef<
   typeof RNRefreshControl
@@ -17,8 +18,8 @@ export function RefreshControl({
   colors,
   ...props
 }: RefreshControlProps) {
-  const dark = useColorScheme() === "dark";
-  const tint = tintColor ?? (dark ? "#fafafa" : "#18181b");
+  const primary = useThemeColor("--color-primary", "#15803d");
+  const tint = tintColor ?? primary;
 
   return (
     <RNRefreshControl

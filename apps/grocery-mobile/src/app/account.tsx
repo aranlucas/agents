@@ -3,7 +3,7 @@ import Constants from "expo-constants";
 import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Pressable, View } from "react-native";
 import {
   BookMarked,
   ChevronRight,
@@ -29,8 +29,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Icon } from "@/components/ui/icon";
+import { Screen } from "@/components/ui/screen";
+import { Separator } from "@/components/ui/separator";
 import { Text } from "@/components/ui/text";
 import { useKrogerConnection } from "@/hooks/use-kroger-connection";
+import { userInitials } from "@/lib/auth";
 import { getLegalLinks } from "@/lib/config";
 import { cn } from "@/lib/utils";
 
@@ -42,13 +45,7 @@ export default function AccountScreen() {
   const { connected, isLoading, reconnecting, error: connectionError } = connection;
   const [pageError, setPageError] = useState("");
   const links = getLegalLinks();
-  const fallback =
-    [user?.firstName, user?.lastName]
-      .filter(Boolean)
-      .map((part) => part?.charAt(0).toUpperCase())
-      .join("") ||
-    user?.primaryEmailAddress?.emailAddress.charAt(0).toUpperCase() ||
-    "?";
+  const fallback = userInitials(user);
 
   const open = async (url: string) => {
     setPageError("");
@@ -65,11 +62,7 @@ export default function AccountScreen() {
   };
 
   return (
-    <ScrollView
-      className="w-full max-w-3xl flex-1 self-center bg-background"
-      contentInsetAdjustmentBehavior="automatic"
-      contentContainerClassName="gap-4 p-4.5 pb-10"
-    >
+    <Screen>
       <View className="flex-row items-center gap-3 py-1.5">
         <Avatar
           accessibilityLabel={user?.fullName ?? "Account profile"}
@@ -87,14 +80,14 @@ export default function AccountScreen() {
         </View>
       </View>
 
-      <Card className="rounded-2xl p-0">
-        <CardHeader className="flex-row items-center gap-3 p-4 pb-0">
+      <Card>
+        <CardHeader className="flex-row items-center gap-3 pb-0">
           <View className="size-11 items-center justify-center rounded-2xl bg-muted">
             <Icon as={ShoppingBasket} className="size-5.5 text-primary" />
           </View>
           <View className="flex-1 gap-0.5">
-            <CardTitle className="text-lg font-extrabold tracking-normal">Kroger</CardTitle>
-            <CardDescription className="leading-5">
+            <CardTitle>Kroger</CardTitle>
+            <CardDescription>
               {connected
                 ? "Connected for live products and cart actions"
                 : "Optional for live products and cart actions"}
@@ -104,7 +97,7 @@ export default function AccountScreen() {
             {connected ? "Connected" : "Action needed"}
           </Badge>
         </CardHeader>
-        <CardFooter className="p-4 pt-3.5">
+        <CardFooter className="pt-3.5">
           <Button
             className="flex-1"
             disabled={isLoading}
@@ -121,8 +114,8 @@ export default function AccountScreen() {
         </CardFooter>
       </Card>
 
-      <Text variant="small">Shopping</Text>
-      <Card className="overflow-hidden rounded-2xl p-0">
+      <Text variant="muted">Shopping</Text>
+      <Card className="overflow-hidden">
         <CardContent className="p-0">
           <AccountRow
             accessibilityRole="button"
@@ -140,8 +133,8 @@ export default function AccountScreen() {
         </CardContent>
       </Card>
 
-      <Text variant="small">Help and legal</Text>
-      <Card className="overflow-hidden rounded-2xl p-0">
+      <Text variant="muted">Help and legal</Text>
+      <Card className="overflow-hidden">
         <CardContent className="p-0">
           <AccountRow
             icon={Shield}
@@ -188,7 +181,7 @@ export default function AccountScreen() {
       <Text className="text-center" selectable variant="muted">
         Grocery Agent {Constants.expoConfig?.version ?? ""}
       </Text>
-    </ScrollView>
+    </Screen>
   );
 }
 
@@ -223,5 +216,5 @@ function AccountRow({
 }
 
 function RowRule() {
-  return <View className="ml-14 h-px bg-border" />;
+  return <Separator className="ml-14" />;
 }

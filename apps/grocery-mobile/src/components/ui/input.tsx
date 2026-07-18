@@ -1,6 +1,7 @@
 import React from "react";
 import { View, TextInput, useColorScheme } from "react-native";
 import { cva, type VariantProps } from "class-variance-authority";
+import { useThemeColor } from "@/hooks/use-theme-color";
 import { cn } from "@/lib/utils";
 
 // Padding lives on the wrapping View, never on the raw TextInput — a TextInput
@@ -14,7 +15,7 @@ const inputVariants = cva("flex-row items-center rounded-md border py-2", {
     },
     size: {
       sm: "min-h-9 px-3",
-      md: "min-h-12 px-4",
+      md: "min-h-14 px-4",
       lg: "min-h-14 px-5",
     },
   },
@@ -36,7 +37,8 @@ export interface InputProps
 export const Input = React.forwardRef<React.ElementRef<typeof TextInput>, InputProps>(
   function Input({ variant, size, className, leadingIcon, trailingIcon, style, ...props }, ref) {
     const dark = useColorScheme() === "dark";
-    const caret = dark ? "#fafafa" : "#18181b";
+    const caret = useThemeColor("--color-foreground", dark ? "#f7f8f2" : "#17201a");
+    const placeholder = useThemeColor("--color-muted-foreground", dark ? "#a9b4aa" : "#667067");
     const resolvedSize = size ?? "md";
 
     return (
@@ -51,7 +53,7 @@ export const Input = React.forwardRef<React.ElementRef<typeof TextInput>, InputP
           className="flex-1 self-stretch p-0 text-foreground placeholder:text-muted-foreground"
           style={[{ fontSize: fontSizes[resolvedSize] }, style]}
           textAlignVertical="center"
-          placeholderTextColor={dark ? "#a1a1aa" : "#71717a"}
+          placeholderTextColor={placeholder}
           keyboardAppearance={dark ? "dark" : "light"}
           selectionColor={caret}
           cursorColor={caret}

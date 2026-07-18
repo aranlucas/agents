@@ -6,7 +6,7 @@ import {
   QueryClientProvider,
 } from "@tanstack/react-query";
 import { type ReactNode, useEffect, useState } from "react";
-import { AppState, type AppStateStatus, Platform } from "react-native";
+import { AppState, type AppStateStatus } from "react-native";
 
 function updateFocus(status: AppStateStatus) {
   focusManager.setFocused(status === "active");
@@ -33,7 +33,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
   const [queryClient] = useState(createGroceryQueryClient);
 
   useEffect(() => {
-    if (Platform.OS === "web") return;
+    if (process.env.EXPO_OS === "web") return;
 
     updateFocus(AppState.currentState);
     const appStateSubscription = AppState.addEventListener("change", updateFocus);

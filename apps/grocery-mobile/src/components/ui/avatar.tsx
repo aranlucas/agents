@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { View, Image, Text } from "react-native";
+import { Image } from "expo-image";
+import { View, Text } from "react-native";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
@@ -37,16 +38,19 @@ export interface AvatarProps
 }
 
 export function Avatar({ size, className, src, fallback, ...props }: AvatarProps) {
-  const [hasError, setHasError] = useState(false);
+  const [failedSrc, setFailedSrc] = useState<string>();
+  const showImage = Boolean(src && src !== failedSrc);
 
   return (
     <View className={cn(avatarVariants({ size }), className)} {...props}>
-      {src && !hasError ? (
+      {src && showImage ? (
         <Image
+          cachePolicy="memory-disk"
+          contentFit="cover"
+          onError={() => setFailedSrc(src)}
           source={{ uri: src }}
-          className="h-full w-full"
-          resizeMode="cover"
-          onError={() => setHasError(true)}
+          style={{ height: "100%", width: "100%" }}
+          transition={150}
         />
       ) : (
         <Text className={cn(avatarTextVariants({ size }))}>{fallback ?? "?"}</Text>

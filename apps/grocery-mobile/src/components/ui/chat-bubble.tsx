@@ -4,7 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { Check, CheckCheck } from "lucide-react-native";
 import { cn } from "@/lib/utils";
 
-const bubbleVariants = cva("max-w-[80%] rounded-2xl px-4 py-2.5", {
+const bubbleVariants = cva("max-w-4/5 rounded-2xl px-4 py-2.5", {
   variants: {
     variant: {
       sent: "bg-primary self-end rounded-br-sm",
@@ -54,7 +54,7 @@ export function ChatBubble({
           {timestamp && (
             <Text
               className={cn(
-                "text-[10px]",
+                "text-xs",
                 isSent ? "text-primary-foreground/60" : "text-muted-foreground",
               )}
             >

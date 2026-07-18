@@ -13,7 +13,15 @@ const mocks = vi.hoisted(() => ({
     isLoaded: true,
     userId: "user_1" as string | null,
   },
-  providerProps: [] as Array<{ headers: Record<string, string>; runtimeUrl: string }>,
+  providerProps: [] as Array<{
+    headers: Record<string, string>;
+    onError?: (event: {
+      error: Error;
+      code: string;
+      context: Record<string, unknown>;
+    }) => void | Promise<void>;
+    runtimeUrl: string;
+  }>,
 }));
 
 vi.mock("@clerk/clerk-expo", () => ({ useAuth: () => mocks.auth }));
@@ -21,6 +29,11 @@ vi.mock("@copilotkit/react-native", () => ({
   CopilotKitProvider: (props: {
     children: ReactNode;
     headers: Record<string, string>;
+    onError?: (event: {
+      error: Error;
+      code: string;
+      context: Record<string, unknown>;
+    }) => void | Promise<void>;
     runtimeUrl: string;
   }) => {
     mocks.providerProps.push(props);
@@ -104,6 +117,34 @@ describe("GroceryCopilotSession", () => {
       refetchOnReconnect: true,
       gcTime: 0,
     });
+  });
+
+  it("silences expected run cancellations without hiding real CopilotKit errors", async () => {
+    mocks.auth.getToken.mockResolvedValue("token_1");
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    await renderWithQueryClient(
+      <GroceryCopilotSession runtimeUrl="https://runtime.test">
+        <Text>Session ready</Text>
+      </GroceryCopilotSession>,
+    );
+    await screen.findByText("Session ready");
+    const onError = mocks.providerProps.at(-1)?.onError;
+    expect(onError).toBeTypeOf("function");
+
+    await onError?.({
+      code: "agent_run_error_event",
+      context: { event: { code: "canceled" } },
+      error: new Error("the agent run was canceled"),
+    });
+    expect(consoleError).not.toHaveBeenCalled();
+
+    const error = new Error("runtime unavailable");
+    await onError?.({ code: "agent_run_failed", context: { agentId: "grocery" }, error });
+    expect(consoleError).toHaveBeenCalledWith("[CopilotKit] Error (agent_run_failed):", error, {
+      agentId: "grocery",
+    });
+    consoleError.mockRestore();
   });
 
   it("keeps last-good headers when a recoverable refresh fails", async () => {

@@ -174,7 +174,7 @@ export function Calendar({
                 ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
               ];
               return cells.map((day, i) => {
-                if (day === null) return <View key={`e-${i}`} className="h-9 w-[14.28%]" />;
+                if (day === null) return <View key={`e-${i}`} className="h-9 w-1/7" />;
                 const date = new Date(year, month, day);
                 const sel = selected && same(date, selected);
                 const rs = rangeStart && same(date, rangeStart);
@@ -187,7 +187,7 @@ export function Calendar({
                 const today = same(date, new Date());
                 const off = (min && date < min) || (max && date > max);
                 return (
-                  <View key={day} className="w-[14.28%] items-center">
+                  <View key={day} className="w-1/7 items-center">
                     <Pressable
                       onPress={() => handlePress(day)}
                       disabled={!!off}

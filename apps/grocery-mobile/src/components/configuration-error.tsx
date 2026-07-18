@@ -9,12 +9,12 @@ export function ConfigurationError({ message }: { message: string }) {
     <SafeArea>
       <View className="flex-1 justify-center gap-6 p-6">
         <BrandMark size="lg" />
-        <Card className="rounded-2xl p-0">
+        <Card>
           <CardHeader className="gap-2.5 p-6 pb-0">
             <Text className="tracking-wider text-primary" variant="small">
               SETUP NEEDED
             </Text>
-            <CardTitle className="text-left font-extrabold" selectable>
+            <CardTitle className="text-left text-2xl" selectable>
               This build is not configured yet.
             </CardTitle>
           </CardHeader>

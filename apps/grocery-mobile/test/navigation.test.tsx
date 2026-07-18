@@ -1,11 +1,17 @@
-import { render } from "@testing-library/react-native";
+import { fireEvent, render, screen } from "@testing-library/react-native";
 import type { PropsWithChildren } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { homeLinks, stackScreens } = vi.hoisted(() => ({
-  homeLinks: [] as string[],
-  stackScreens: [] as string[],
-}));
+const { homeLinks, push, replace, stackOptions, stackScreenOptions, stackScreens, startNewChat } =
+  vi.hoisted(() => ({
+    homeLinks: [] as string[],
+    push: vi.fn(),
+    replace: vi.fn(),
+    stackOptions: [] as Record<string, unknown>[],
+    stackScreenOptions: {} as Record<string, Record<string, unknown>>,
+    stackScreens: [] as string[],
+    startNewChat: vi.fn(),
+  }));
 
 vi.mock("@clerk/clerk-expo", () => ({
   ClerkLoaded: ({ children }: PropsWithChildren) => children,
@@ -27,25 +33,55 @@ vi.mock("@gorhom/bottom-sheet", () => ({
   BottomSheetModalProvider: ({ children }: PropsWithChildren) => children,
 }));
 
-vi.mock("@rn-primitives/portal", () => ({ PortalHost: () => null }));
+vi.mock("expo-router", async () => {
+  const React = await import("react");
+  const { Pressable } = await import("react-native");
 
-vi.mock("expo-router", () => {
   function Link({ children, href }: PropsWithChildren<{ href: string }>) {
     homeLinks.push(href);
     return children;
   }
 
-  function Screen({ name }: { name: string }) {
+  function Screen({ name, options }: { name: string; options?: Record<string, unknown> }) {
     stackScreens.push(name);
+    stackScreenOptions[name] = options ?? {};
     return null;
   }
 
-  function Stack({ children }: PropsWithChildren) {
+  function Stack({
+    children,
+    screenOptions,
+  }: PropsWithChildren<{ screenOptions?: Record<string, unknown> }>) {
+    stackOptions.push(screenOptions ?? {});
     return children;
   }
   Stack.Screen = Screen;
 
-  return { Link, Stack };
+  function Toolbar({ children }: PropsWithChildren<{ placement?: string }>) {
+    return children;
+  }
+  Toolbar.Button = ({
+    accessibilityLabel,
+    onPress,
+  }: {
+    accessibilityLabel: string;
+    onPress: () => void;
+  }) =>
+    React.createElement(Pressable, {
+      accessibilityLabel,
+      accessibilityRole: "button",
+      onPress,
+    });
+  Stack.Toolbar = Toolbar;
+
+  return {
+    DarkTheme: { dark: true, colors: {} },
+    DefaultTheme: { dark: false, colors: {} },
+    Link,
+    Stack,
+    ThemeProvider: ({ children }: PropsWithChildren) => children,
+    useRouter: () => ({ push, replace }),
+  };
 });
 
 vi.mock("expo-status-bar", () => ({ StatusBar: () => null }));
@@ -59,16 +95,17 @@ vi.mock("react-native-safe-area-context", () => ({
 }));
 
 vi.mock("uniwind", () => ({
+  useCSSVariable: () => undefined,
   useResolveClassNames: () => ({ backgroundColor: "#ffffff" }),
+  useUniwind: () => ({ hasAdaptiveThemes: true, theme: "light" }),
   withUniwind: <T,>(component: T) => component,
 }));
 
 vi.mock("@/components/configuration-error", () => ({ ConfigurationError: () => null }));
-vi.mock("@/components/grocery-chat", () => ({ GroceryChat: () => null }));
+vi.mock("@/components/grocery-chat", () => ({ GroceryChat: vi.fn(() => null) }));
 vi.mock("@/components/grocery-copilot-session", () => ({
   GroceryCopilotSession: ({ children }: PropsWithChildren) => children,
 }));
-vi.mock("@/components/grocery-header", () => ({ GroceryHeader: () => null }));
 vi.mock("@/components/query-provider", () => ({
   QueryProvider: ({ children }: PropsWithChildren) => children,
 }));
@@ -103,7 +140,13 @@ vi.mock("@/components/ui/text", async () => {
   return { Text };
 });
 vi.mock("@/components/grocery-agent-provider", () => ({
-  useGroceryAgent: () => ({ state: { cart: [], shopping_list: [] } }),
+  useGroceryAgent: () => ({
+    startNewChat,
+    state: { cart: [], shopping_list: [] },
+  }),
+}));
+vi.mock("@/hooks/use-grocery-agent", () => ({
+  useGroceryState: () => ({ cart: [], shopping_list: [] }),
 }));
 
 vi.mock("@/shims/node-crypto", () => ({}));
@@ -121,7 +164,12 @@ import { GroceryChat } from "@/components/grocery-chat";
 describe("grocery navigation", () => {
   beforeEach(() => {
     homeLinks.length = 0;
+    stackOptions.length = 0;
+    for (const name of Object.keys(stackScreenOptions)) delete stackScreenOptions[name];
     stackScreens.length = 0;
+    push.mockReset();
+    replace.mockReset();
+    startNewChat.mockReset();
   });
 
   it("registers the dashboard and chat routes", async () => {
@@ -131,16 +179,51 @@ describe("grocery navigation", () => {
     expect(stackScreens).toContain("chat");
   });
 
+  it("uses native stack chrome without custom headers", async () => {
+    await render(<RootLayout />);
+
+    expect(stackOptions[0]).toMatchObject({
+      headerBackButtonDisplayMode: "minimal",
+      headerTitleAlign: "center",
+    });
+    expect(stackOptions[0]).not.toHaveProperty("header");
+    expect(stackScreenOptions.index).not.toHaveProperty("headerLeft");
+    expect(stackScreenOptions.index).not.toHaveProperty("headerRight");
+    expect(stackScreenOptions.chat).not.toHaveProperty("headerRight");
+    expect(stackScreenOptions.chat).not.toHaveProperty("header");
+  });
+
   it("links the dashboard to the chat route", async () => {
     await render(<GroceryHomeScreen />);
 
     expect(homeLinks).toContain("/chat");
   });
 
+  it("uses native toolbar buttons for dashboard actions", async () => {
+    await render(<GroceryHomeScreen />);
+
+    await fireEvent.press(screen.getByRole("button", { name: "Home" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Account" }));
+
+    expect(replace).toHaveBeenCalledWith("/");
+    expect(push).toHaveBeenCalledWith("/account");
+  });
+
   it("renders GroceryChat at the chat route", async () => {
     await render(<GroceryChatScreen />);
-    const chatRoute = GroceryChatScreen();
 
-    expect(chatRoute.type).toBe(GroceryChat);
+    expect(GroceryChat).toHaveBeenCalled();
+  });
+
+  it("uses native toolbar buttons for chat actions", async () => {
+    await render(<GroceryChatScreen />);
+
+    await fireEvent.press(screen.getByRole("button", { name: "Previous chats" }));
+    await fireEvent.press(screen.getByRole("button", { name: "New chat" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Settings" }));
+
+    expect(push).toHaveBeenNthCalledWith(1, "/chat-history");
+    expect(startNewChat).toHaveBeenCalledOnce();
+    expect(push).toHaveBeenNthCalledWith(2, "/account");
   });
 });

@@ -46,15 +46,13 @@ export function GroceryStateCard({
   if (!list.length && !state.meal_plan && !cart.length) return null;
 
   return (
-    <Card className="rounded-2xl p-0">
-      <CardHeader className="flex-row items-center gap-2.5 p-4 pb-0">
+    <Card>
+      <CardHeader className="flex-row items-center gap-2.5 pb-0">
         <View className="size-11 items-center justify-center rounded-full bg-muted">
           <Icon as={ShoppingBasket} className="size-5.5 text-primary" />
         </View>
         <View className="flex-1 gap-0.5">
-          <CardTitle className="text-lg font-extrabold tracking-normal">
-            {connected ? "Kroger grocery plan" : "Your grocery plan"}
-          </CardTitle>
+          <CardTitle>{connected ? "Kroger grocery plan" : "Your grocery plan"}</CardTitle>
           <CardDescription>
             {state.status === "ready" ? "Ready to review" : "Building your matches"}
           </CardDescription>
@@ -62,7 +60,7 @@ export function GroceryStateCard({
         {connected ? <Badge variant="secondary">Connected</Badge> : null}
       </CardHeader>
 
-      <CardContent className="gap-3.5 p-4">
+      <CardContent className="gap-3.5">
         {state.meal_plan ? (
           <View className="flex-row gap-2 rounded-2xl bg-muted p-3">
             <Icon as={Sparkles} className="size-4 text-primary" />
@@ -89,7 +87,7 @@ export function GroceryStateCard({
           ))}
           {list.length > preview.length ? (
             <View className="min-h-24 min-w-0 flex-1 items-center justify-center rounded-2xl bg-muted p-2">
-              <Text className="font-extrabold text-secondary" variant="h4">
+              <Text className="text-secondary" variant="h4">
                 +{list.length - preview.length}
               </Text>
               <Text variant="muted">more</Text>
@@ -104,9 +102,7 @@ export function GroceryStateCard({
           onPress={onOpenList}
         >
           <View>
-            <Text className="font-extrabold" variant="large">
-              Review {Math.max(list.length, cart.length)} items
-            </Text>
+            <Text variant="large">Review {Math.max(list.length, cart.length)} items</Text>
             {subtotal > 0 ? (
               <Price
                 amount={subtotal}
@@ -125,7 +121,7 @@ export function GroceryStateCard({
       </CardContent>
 
       {connected && list.length > 0 && onAddToCart ? (
-        <CardFooter className="p-4 pt-0">
+        <CardFooter className="pt-0">
           <Button
             className="flex-1"
             icon={<Icon as={ShoppingCart} className="size-4.5 text-primary-foreground" />}
