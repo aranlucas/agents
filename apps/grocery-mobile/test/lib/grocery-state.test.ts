@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   cartSubtotal,
+  INITIAL_GROCERY_STATE,
   normalizeGroceryState,
   pantryNames,
   stabilizeDisplayMessages,
@@ -10,10 +11,36 @@ import {
 } from "@/lib/grocery-state";
 
 describe("grocery state", () => {
+  it("keeps incomplete client defaults out of the rendered recipe state", () => {
+    expect(normalizeGroceryState(INITIAL_GROCERY_STATE)).toEqual({
+      shopping_list: [],
+      list_title: "",
+      product_matches: [],
+      cart: [],
+      pantry: [],
+      meal_plan: "",
+      recipe: undefined,
+      weekly_deals: "",
+      notes: "",
+      review_summary: "",
+      status: "idle",
+      kroger_connected: false,
+    });
+  });
+
   it("normalizes the streamed grocery contract", () => {
     expect(
       normalizeGroceryState({
         shopping_list: ["milk", 3, "eggs"],
+        list_title: "Weekend groceries",
+        recipe: {
+          title: "Pasta",
+          description: "Fast dinner",
+          servings: "4",
+          ingredients: [{ name: "Pasta", quantity: "1", unit: "lb", note: "" }],
+          steps: ["Boil pasta"],
+          tags: ["Dinner"],
+        },
         product_matches: [
           {
             query: "milk",
@@ -32,6 +59,16 @@ describe("grocery state", () => {
       }),
     ).toMatchObject({
       shopping_list: ["milk", "eggs"],
+      list_title: "Weekend groceries",
+      recipe: {
+        title: "Pasta",
+        description: "Fast dinner",
+        servings: "4",
+        notes: "",
+        ingredients: [{ name: "Pasta", quantity: "1", unit: "lb", note: "" }],
+        steps: ["Boil pasta"],
+        tags: ["Dinner"],
+      },
       product_matches: [
         {
           query: "milk",

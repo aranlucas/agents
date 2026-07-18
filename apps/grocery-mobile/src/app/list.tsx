@@ -1,10 +1,14 @@
+import { useAuth } from "@clerk/clerk-expo";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLocalSearchParams } from "expo-router";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { View } from "react-native";
-import { ShoppingCart, Sparkles, Tag } from "lucide-react-native";
+import { Save, ShoppingCart, Sparkles, Tag } from "lucide-react-native";
 import { ADD_TO_CART_MESSAGE, AddToCartDialog } from "@/components/add-to-cart-dialog";
 import { KrogerProductImage } from "@/components/kroger-product-image";
 import { KrogerConnectionCard } from "@/components/kroger-connection-card";
+import { SaveResourceDialog } from "@/components/save-resource-dialog";
 import { useGroceryAgent } from "@/components/grocery-agent-provider";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -18,14 +22,26 @@ import { Text } from "@/components/ui/text";
 import { useGroceryState } from "@/hooks/use-grocery-agent";
 import { useKrogerConnection } from "@/hooks/use-kroger-connection";
 import { cartSubtotal, pantryNames } from "@/lib/grocery-state";
+import { getRuntimeUrl } from "@/lib/config";
+import { createHouseholdApi } from "@/lib/household-api";
+import { groceryQueryKeys } from "@/lib/query-keys";
 
 function GroceryListContent() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ save?: string | string[] }>();
+  const requestSave = Array.isArray(params.save) ? params.save[0] : params.save;
+  const { getToken, userId } = useAuth();
+  const api = useMemo(
+    () => createHouseholdApi({ baseUrl: getRuntimeUrl(), getToken, userId }),
+    [getToken, userId],
+  );
+  const queryClient = useQueryClient();
   const { isRunning, error, send } = useGroceryAgent();
   const state = useGroceryState();
   const connection = useKrogerConnection();
   const { connected } = connection;
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [saveOpen, setSaveOpen] = useState(requestSave === "1");
   const list = useMemo(() => state.shopping_list ?? [], [state.shopping_list]);
   const cart = useMemo(() => state.cart ?? [], [state.cart]);
   const { matchesByName, matchesByQuery, matchesByUPC } = useMemo(() => {
@@ -77,6 +93,33 @@ function GroceryListContent() {
           }),
     [cart, connected, list, matchesByName, matchesByQuery, matchesByUPC, pantry],
   );
+  const householdsQuery = useQuery({
+    queryKey: groceryQueryKeys.households(userId),
+    queryFn: api.listHouseholds,
+    enabled: saveOpen && Boolean(userId),
+  });
+  const saveList = useMutation({
+    mutationFn: ({ title, householdId }: { title: string; householdId?: string }) =>
+      api.createList(
+        title,
+        householdId,
+        list.map((name) => ({
+          name,
+          quantity: matchesByQuery.get(name.trim().toLocaleLowerCase())?.size || "1",
+        })),
+      ),
+    onSuccess: async (saved) => {
+      setSaveOpen(false);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: groceryQueryKeys.lists(userId, null) }),
+        saved.household_id
+          ? queryClient.invalidateQueries({
+              queryKey: groceryQueryKeys.lists(userId, saved.household_id),
+            })
+          : Promise.resolve(),
+      ]);
+    },
+  });
 
   if (!list.length && !cart.length && !state.meal_plan) {
     return (
@@ -147,6 +190,16 @@ function GroceryListContent() {
         ) : null}
 
         {error ? <Alert title={error} variant="destructive" /> : null}
+        {saveList.data ? <Alert title={`${saveList.data.title} saved`} /> : null}
+        <Button
+          icon={<Icon as={Save} className="size-5 text-secondary-foreground" />}
+          disabled={!list.length || isRunning || state.status !== "ready"}
+          size="lg"
+          variant="secondary"
+          onPress={() => setSaveOpen(true)}
+        >
+          Save list
+        </Button>
         {connected ? (
           <Button
             icon={<Icon as={ShoppingCart} className="size-5 text-primary-foreground" />}
@@ -165,6 +218,22 @@ function GroceryListContent() {
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
         onConfirm={() => void send(ADD_TO_CART_MESSAGE)}
+      />
+      <SaveResourceDialog
+        defaultTitle={state.list_title?.trim() || "Grocery list"}
+        error={
+          saveList.error instanceof Error
+            ? saveList.error.message
+            : householdsQuery.error instanceof Error
+              ? householdsQuery.error.message
+              : undefined
+        }
+        households={householdsQuery.data ?? []}
+        kind="list"
+        onConfirm={(title, householdId) => saveList.mutate({ title, householdId })}
+        onOpenChange={setSaveOpen}
+        open={saveOpen}
+        saving={saveList.isPending}
       />
     </>
   );

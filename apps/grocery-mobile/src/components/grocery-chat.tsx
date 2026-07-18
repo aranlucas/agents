@@ -1,6 +1,12 @@
 import { useRouter } from "expo-router";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import { FlatList, View, type ListRenderItem, type NativeScrollEvent } from "react-native";
+import {
+  FlatList,
+  Keyboard,
+  View,
+  type ListRenderItem,
+  type NativeScrollEvent,
+} from "react-native";
 import { ChevronDown, ChevronRight, Sparkles } from "lucide-react-native";
 import { useForm } from "react-hook-form";
 import { ADD_TO_CART_MESSAGE, AddToCartDialog } from "@/components/add-to-cart-dialog";
@@ -43,7 +49,8 @@ export function GroceryChat() {
   const insets = useSafeAreaInsets();
   const [cartDialogOpen, setCartDialogOpen] = useState(false);
   const [reasoningDurations, setReasoningDurations] = useState<Record<string, number>>({});
-  const { isRunning, error, failedInput, clearError, retry, send, stop } = useGroceryAgent();
+  const { activeThreadId, isRunning, error, failedInput, clearError, retry, send, stop } =
+    useGroceryAgent();
   const state = useGroceryState();
   const { messages, isStreaming } = useGroceryMessages();
   const connection = useKrogerConnection();
@@ -90,6 +97,14 @@ export function GroceryChat() {
   );
 
   const openLatestList = useCallback(() => router.push("/list"), [router]);
+  const openListSave = useCallback(
+    () => router.push({ pathname: "/list", params: { save: "1" } }),
+    [router],
+  );
+  const openRecipeSave = useCallback(
+    () => router.push({ pathname: "/saved-recipes", params: { save: "1" } }),
+    [router],
+  );
   const confirmAddToCart = useCallback(() => {
     setCartDialogOpen(true);
   }, []);
@@ -140,6 +155,8 @@ export function GroceryChat() {
               connected={connected}
               onOpenList={openLatestList}
               onAddToCart={confirmAddToCart}
+              onSaveList={openListSave}
+              onSaveRecipe={state.recipe ? openRecipeSave : undefined}
             />
             <KrogerConnectionCard connection={connection} />
             {error ? (
@@ -173,7 +190,12 @@ export function GroceryChat() {
       />
       <SafeArea className="flex-none border-t border-border" edges={["bottom"]}>
         <View className="w-full max-w-3xl self-center px-4 py-3 sm:px-6">
-          <ChatComposer isRunning={isRunning} onSend={sendAndFollow} onStop={stop} />
+          <ChatComposer
+            key={activeThreadId ?? "grocery"}
+            isRunning={isRunning}
+            onSend={sendAndFollow}
+            onStop={stop}
+          />
         </View>
       </SafeArea>
       <AddToCartDialog
@@ -296,6 +318,7 @@ const ChatComposer = memo(function ChatComposer({
     const content = message.trim();
     if (!content || isRunning) return;
 
+    Keyboard.dismiss();
     reset();
     const outcome = await onSend(content);
     if (outcome.status === "failed") reset({ message: content });

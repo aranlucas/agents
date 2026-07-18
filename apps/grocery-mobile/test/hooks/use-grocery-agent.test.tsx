@@ -5,6 +5,7 @@ import {
   useGroceryMessages,
   useGroceryState,
 } from "@/hooks/use-grocery-agent";
+import { INITIAL_GROCERY_STATE } from "@/lib/grocery-state";
 
 const mocks = vi.hoisted(() => ({
   auth: {
@@ -50,6 +51,7 @@ function setupAgent() {
   };
   const copilotkit: any = {
     headers: {} as Record<string, string>,
+    runtimeConnectionStatus: "connected",
     setHeaders: vi.fn((headers: Record<string, string>) => {
       copilotkit.headers = headers;
     }),
@@ -91,6 +93,11 @@ describe("useGroceryAgentController", () => {
     expect(controller.result.current).not.toHaveProperty("messages");
     expect(controller.result.current).not.toHaveProperty("state");
     expect(controller.result.current).not.toHaveProperty("isStreaming");
+    expect(agent.state).toEqual({
+      ...INITIAL_GROCERY_STATE,
+      status: "ready",
+      nested: { value: 1 },
+    });
 
     mocks.useAgent.mockClear();
     const state = await renderHook(() => useGroceryState());
@@ -118,6 +125,23 @@ describe("useGroceryAgentController", () => {
     expect(messages.result.current.isStreaming).toBe(true);
   });
 
+  it("waits for the real runtime agent before applying client defaults", async () => {
+    const { agent, copilotkit } = setupAgent();
+    copilotkit.runtimeConnectionStatus = "connecting";
+    const hook = await renderHook(() => useGroceryAgentController(vi.fn()));
+
+    expect(agent.setState).not.toHaveBeenCalled();
+
+    copilotkit.runtimeConnectionStatus = "connected";
+    await hook.rerender(undefined);
+
+    expect(agent.state).toEqual({
+      ...INITIAL_GROCERY_STATE,
+      status: "ready",
+      nested: { value: 1 },
+    });
+  });
+
   it("reserves Send synchronously before fresh Clerk token acquisition", async () => {
     const token = deferred<string | null>();
     mocks.auth.getToken.mockReturnValue(token.promise);
@@ -142,11 +166,6 @@ describe("useGroceryAgentController", () => {
   it("rolls back an emitted run failure and retries the retained input only once", async () => {
     mocks.auth.getToken.mockResolvedValue("token_1");
     const { agent, copilotkit } = setupAgent();
-    const snapshot = {
-      messages: [...agent.messages],
-      state: structuredClone(agent.state),
-      pendingInterrupts: [...agent.pendingInterrupts],
-    };
     const failure = new Error("agent failed after resolving");
     copilotkit.runAgent.mockImplementationOnce(async () => {
       agent.messages.push({ id: "partial", role: "assistant", content: "Partial" });
@@ -156,6 +175,11 @@ describe("useGroceryAgentController", () => {
     });
     const onRunComplete = vi.fn();
     const hook = await renderHook(() => useGroceryAgentController(onRunComplete));
+    const snapshot = {
+      messages: [...agent.messages],
+      state: structuredClone(agent.state),
+      pendingInterrupts: [...agent.pendingInterrupts],
+    };
 
     const outcome = await hook.result.current.send("  buy milk  ");
 
@@ -246,7 +270,7 @@ describe("useGroceryAgentController", () => {
     await expect(newChat).resolves.toEqual({ status: "success" });
     expect(agent.threadId).not.toBe(oldThreadId);
     expect(agent.messages).toEqual([]);
-    expect(agent.state).toEqual({});
+    expect(agent.state).toEqual(INITIAL_GROCERY_STATE);
     expect(agent.pendingInterrupts).toEqual([]);
     await waitFor(() => expect(hook.result.current.isRunning).toBe(false));
   });
@@ -254,18 +278,12 @@ describe("useGroceryAgentController", () => {
   it("fully restores failed thread history and clears the target before retrying it", async () => {
     mocks.auth.getToken.mockResolvedValue("token_1");
     const { agent, copilotkit } = setupAgent();
-    const snapshot = {
-      threadId: agent.threadId,
-      messages: [...agent.messages],
-      state: structuredClone(agent.state),
-      pendingInterrupts: [...agent.pendingInterrupts],
-    };
     const connectFailure = new Error("history unavailable");
     copilotkit.connectAgent
       .mockImplementationOnce(async () => {
         expect(agent.threadId).toBe("thread_target");
         expect(agent.messages).toEqual([]);
-        expect(agent.state).toEqual({});
+        expect(agent.state).toEqual(INITIAL_GROCERY_STATE);
         expect(agent.pendingInterrupts).toEqual([]);
         agent.messages.push({ id: "stale", role: "assistant", content: "Stale target" });
         agent.state = { status: "shopping" };
@@ -275,11 +293,17 @@ describe("useGroceryAgentController", () => {
       .mockImplementationOnce(async () => {
         expect(agent.threadId).toBe("thread_target");
         expect(agent.messages).toEqual([]);
-        expect(agent.state).toEqual({});
+        expect(agent.state).toEqual(INITIAL_GROCERY_STATE);
         expect(agent.pendingInterrupts).toEqual([]);
         agent.messages.push({ id: "history", role: "assistant", content: "Loaded history" });
       });
     const hook = await renderHook(() => useGroceryAgentController(vi.fn()));
+    const snapshot = {
+      threadId: agent.threadId,
+      messages: [...agent.messages],
+      state: structuredClone(agent.state),
+      pendingInterrupts: [...agent.pendingInterrupts],
+    };
 
     await expect(hook.result.current.openThread("thread_target")).resolves.toMatchObject({
       status: "failed",

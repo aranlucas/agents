@@ -10,6 +10,7 @@ import {
   CircleHelp,
   FileText,
   Flag,
+  ListChecks,
   LogOut,
   Shield,
   ShoppingBasket,
@@ -122,6 +123,13 @@ export default function AccountScreen() {
             icon={ShoppingBasket}
             label="Grocery plan"
             onPress={() => router.push("/list")}
+          />
+          <RowRule />
+          <AccountRow
+            accessibilityRole="button"
+            icon={ListChecks}
+            label="Saved lists"
+            onPress={() => router.push("/saved-lists")}
           />
           <RowRule />
           <AccountRow

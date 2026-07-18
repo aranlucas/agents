@@ -9,9 +9,10 @@ Android polish lives in [PLAN.md](./PLAN.md); store release work lives in
 - Pantry is per-thread agent state (`update_pantry` tool writing
   `GroceryState.pantry`). It resets with every new chat and is invisible
   outside the conversation that created it.
-- Grocery lists are also per-thread artifacts (`set_shopping_list`,
-  `mark_list_ready`). There is no durable, addressable list a second person
-  or a second device can open.
+- Grocery lists and structured recipes begin as reviewable thread state. The
+  user can explicitly save either one to a personal or household library;
+  D1 owns the editable record and the ADK artifact service writes an R2
+  snapshot.
 - Identity is Clerk (`x-clerk-user-id` reaches the Go agent), persistence is
   D1 (`sessions`, `app_states`, `user_states`, `session_events`) plus R2 for
   artifacts. Kroger is connected per user.
@@ -56,9 +57,9 @@ Goal: two people maintain one list and both see updates.
 3. Gateway endpoints (keep Worker names and bindings stable): CRUD for
    households, lists, and items, authorized by Clerk user id and household
    membership.
-4. Agent integration: `save_list_to_household` tool so a chat-produced plan
-   becomes a shared list; the agent can read the active shared list when
-   planning ("add whatever the family list still needs").
+4. Agent integration: `save_current_list` makes a chat-produced plan personal
+   by default or shared when the user selects a household; list/get/update
+   tools let the agent work with the same records as HTTP clients.
 5. Mobile: Lists tab — personal and household lists, item check-off,
    who-added attribution, pull-to-refresh first; lightweight polling (e.g.
    refetch on focus + 30s interval) before any push/realtime work.

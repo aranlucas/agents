@@ -1,4 +1,11 @@
-import type { CartItem, GroceryState, PantryItem, ProductMatch } from "@agents/types";
+import type {
+  CartItem,
+  GroceryState,
+  PantryItem,
+  ProductMatch,
+  RecipeDraft,
+  RecipeDraftIngredient,
+} from "@agents/types";
 
 export type DisplayTextMessage = {
   id: string;
@@ -16,6 +23,29 @@ export type DisplayToolCall = {
 };
 
 export type DisplayMessage = DisplayTextMessage | DisplayToolCall;
+
+export const INITIAL_GROCERY_STATE: GroceryState = {
+  shopping_list: [],
+  list_title: "",
+  product_matches: [],
+  cart: [],
+  pantry: [],
+  meal_plan: "",
+  recipe: {
+    title: "",
+    description: "",
+    servings: "",
+    notes: "",
+    ingredients: [],
+    steps: [],
+    tags: [],
+  },
+  weekly_deals: "",
+  status: "idle",
+  notes: "",
+  review_summary: "",
+  kroger_connected: false,
+};
 
 type ToolCall = {
   id: string;
@@ -206,15 +236,47 @@ function productMatches(value: unknown): ProductMatch[] {
   });
 }
 
+function recipeDraft(value: unknown): RecipeDraft | undefined {
+  const recipe = recordValue(value);
+  if (!recipe || typeof recipe.title !== "string") return undefined;
+  const ingredients = Array.isArray(recipe.ingredients)
+    ? recipe.ingredients.flatMap((value) => {
+        const ingredient = recordValue(value);
+        if (!ingredient || typeof ingredient.name !== "string") return [];
+        return [
+          {
+            name: ingredient.name,
+            quantity: typeof ingredient.quantity === "string" ? ingredient.quantity : "",
+            unit: typeof ingredient.unit === "string" ? ingredient.unit : "",
+            note: typeof ingredient.note === "string" ? ingredient.note : "",
+          } satisfies RecipeDraftIngredient,
+        ];
+      })
+    : [];
+  const steps = stringArray(recipe.steps);
+  if (!ingredients.length || !steps.length) return undefined;
+  return {
+    title: recipe.title,
+    description: typeof recipe.description === "string" ? recipe.description : "",
+    servings: typeof recipe.servings === "string" ? recipe.servings : "",
+    notes: typeof recipe.notes === "string" ? recipe.notes : "",
+    ingredients,
+    steps,
+    tags: stringArray(recipe.tags),
+  };
+}
+
 export function normalizeGroceryState(value: unknown): GroceryState {
   const state = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
   const status = state.status;
   return {
     shopping_list: stringArray(state.shopping_list),
+    list_title: typeof state.list_title === "string" ? state.list_title : undefined,
     product_matches: productMatches(state.product_matches),
     cart: cartItems(state.cart),
     pantry: pantryItems(state.pantry),
     meal_plan: typeof state.meal_plan === "string" ? state.meal_plan : undefined,
+    recipe: recipeDraft(state.recipe),
     weekly_deals: typeof state.weekly_deals === "string" ? state.weekly_deals : undefined,
     notes: typeof state.notes === "string" ? state.notes : undefined,
     review_summary: typeof state.review_summary === "string" ? state.review_summary : undefined,
