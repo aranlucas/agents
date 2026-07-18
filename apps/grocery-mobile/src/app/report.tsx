@@ -55,7 +55,11 @@ export default function ReportScreen() {
         control={control}
         name="category"
         render={({ field }) => (
-          <View accessibilityRole="radiogroup" className="flex-row flex-wrap gap-2">
+          <View
+            accessibilityLabel="What happened?"
+            accessibilityRole="radiogroup"
+            className="flex-row flex-wrap gap-2"
+          >
             {CATEGORIES.map((item) => {
               const selected = item === field.value;
               return (
