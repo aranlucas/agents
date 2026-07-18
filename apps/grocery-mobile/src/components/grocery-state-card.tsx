@@ -166,7 +166,7 @@ export function GroceryStateCard({
       </CardContent>
 
       {list.length > 0 && (onSaveList || (connected && onAddToCart)) ? (
-        <CardFooter className="gap-2 pt-0">
+        <CardFooter className="items-stretch gap-2 pt-0">
           {onSaveList ? (
             <Button
               className="flex-1"
