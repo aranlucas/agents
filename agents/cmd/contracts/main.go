@@ -488,6 +488,8 @@ func objectDefinitions() []objectDef {
 		object("CartItem", common.CartItem{}, required("name", "quantity"), optional("price", "upc")),
 		object("ProductMatch", common.ProductMatch{}, required("query", "name", "upc"), optional("image_url", "price", "size")),
 		object("PantryItem", common.PantryItem{}, required("name", "quantity"), optional("expires")),
+		object("RecipeDraftIngredient", grocery.RecipeDraftIngredient{}, required("name", "quantity", "unit", "note")),
+		object("RecipeDraft", grocery.RecipeDraft{}, required("title", "description", "servings", "notes", "ingredients", "steps", "tags")),
 		object("FitnessActivity", fitnessdata.Activity{}, required("id", "name"), fields(
 			field("source", `"health_connect" | "healthkit" | "strava" | "strava_import"`, true),
 			field("sport_type", "", true), field("start_date", "", true), field("end_date", "", true),
@@ -520,8 +522,8 @@ func objectDefinitions() []objectDef {
 			field("status", "DocStatus", true), field("review_summary", "", true),
 		)),
 		object("GroceryState", grocery.GroceryState{}, stateFields(
-			field("shopping_list", "", true), field("product_matches", "", true), field("cart", "", true), field("pantry", "", true),
-			field("meal_plan", "", true), field("weekly_deals", "", true),
+			field("shopping_list", "", true), field("list_title", "", true), field("product_matches", "", true), field("cart", "", true), field("pantry", "", true),
+			field("meal_plan", "", true), field("recipe", "", true), field("weekly_deals", "", true),
 			field("status", `"idle" | "planning" | "ready"`, true), field("notes", "", true),
 			field("review_summary", "", true), field("kroger_connected", "", true),
 		)),
@@ -532,6 +534,7 @@ func objectDefinitions() []objectDef {
 		)),
 		object("WellnessState", wellness.WellnessState{}, stateFields(
 			field("status", "WellnessStatus", true), field("meal_plan", "", true), field("training_plan", "", true),
+			field("list_title", "", true), field("recipe", "", true),
 			field("weekly_plan", "", true), field("review_summary", "", true), field("kroger_connected", "", true),
 			field("fitness_data_connected", "", true), field("activity_source", "", true),
 		)),

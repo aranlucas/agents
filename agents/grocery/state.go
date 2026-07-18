@@ -25,8 +25,10 @@ type (
 
 type GroceryState struct {
 	ShoppingList    []string       `json:"shopping_list"`
+	ListTitle       string         `json:"list_title"`
 	ProductMatches  []ProductMatch `json:"product_matches"`
 	MealPlan        string         `json:"meal_plan"`
+	Recipe          *RecipeDraft   `json:"recipe"`
 	Cart            []CartItem     `json:"cart"`
 	Pantry          []PantryItem   `json:"pantry"`
 	WeeklyDeals     string         `json:"weekly_deals"`
@@ -36,6 +38,23 @@ type GroceryState struct {
 	ReviewSummary   string         `json:"review_summary"`
 	KrogerConnected bool           `json:"kroger_connected"`
 	TrainingPlan    string         `json:"training_plan"`
+}
+
+type RecipeDraft struct {
+	Title       string                  `json:"title"`
+	Description string                  `json:"description"`
+	Servings    string                  `json:"servings"`
+	Notes       string                  `json:"notes"`
+	Ingredients []RecipeDraftIngredient `json:"ingredients"`
+	Steps       []string                `json:"steps"`
+	Tags        []string                `json:"tags"`
+}
+
+type RecipeDraftIngredient struct {
+	Name     string `json:"name"`
+	Quantity string `json:"quantity"`
+	Unit     string `json:"unit"`
+	Note     string `json:"note"`
 }
 
 func Defaults() GroceryState {
@@ -75,6 +94,17 @@ func readState(source session.ReadonlyState) GroceryState {
 	}
 	if state.Status == "" {
 		state.Status = StatusIdle
+	}
+	if state.Recipe != nil {
+		if state.Recipe.Ingredients == nil {
+			state.Recipe.Ingredients = []RecipeDraftIngredient{}
+		}
+		if state.Recipe.Steps == nil {
+			state.Recipe.Steps = []string{}
+		}
+		if state.Recipe.Tags == nil {
+			state.Recipe.Tags = []string{}
+		}
 	}
 	return state
 }

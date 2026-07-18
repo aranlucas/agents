@@ -17,7 +17,7 @@ import (
 const maxGroceryAPIRequestBody = 256 << 10
 
 type groceryAPI struct {
-	repository groceries.Repository
+	repository groceries.LibraryRepository
 	now        func() time.Time
 	inviteCode func() (string, error)
 }
@@ -31,15 +31,16 @@ type createInviteRequest struct {
 }
 
 type createGroceryListRequest struct {
-	HouseholdID *string `json:"household_id"`
-	Title       string  `json:"title"`
+	HouseholdID *string             `json:"household_id"`
+	Title       string              `json:"title"`
+	Items       []groceries.NewItem `json:"items,omitempty"`
 }
 
 type addGroceryItemsRequest struct {
 	Items []groceries.NewItem `json:"items"`
 }
 
-func registerGroceryAPI(mux *http.ServeMux, repository groceries.Repository, now func() time.Time) {
+func registerGroceryAPI(mux *http.ServeMux, repository groceries.LibraryRepository, now func() time.Time) {
 	api := groceryAPI{repository: repository, now: now, inviteCode: newInviteCode}
 	mux.HandleFunc("POST /api/grocery/households", api.createHousehold)
 	mux.HandleFunc("GET /api/grocery/households", api.listHouseholds)
@@ -48,9 +49,14 @@ func registerGroceryAPI(mux *http.ServeMux, repository groceries.Repository, now
 	mux.HandleFunc("GET /api/grocery/lists", api.listLists)
 	mux.HandleFunc("GET /api/grocery/lists/{id}", api.getList)
 	mux.HandleFunc("POST /api/grocery/lists", api.createList)
+	mux.HandleFunc("PATCH /api/grocery/lists/{id}", api.updateList)
 	mux.HandleFunc("POST /api/grocery/lists/{id}/items", api.addItems)
 	mux.HandleFunc("PATCH /api/grocery/lists/{id}/items/{itemId}", api.updateItem)
 	mux.HandleFunc("DELETE /api/grocery/lists/{id}/items/{itemId}", api.deleteItem)
+	mux.HandleFunc("GET /api/grocery/recipes", api.listRecipes)
+	mux.HandleFunc("GET /api/grocery/recipes/{id}", api.getRecipe)
+	mux.HandleFunc("POST /api/grocery/recipes", api.createRecipe)
+	mux.HandleFunc("PUT /api/grocery/recipes/{id}", api.updateRecipe)
 }
 
 func (api groceryAPI) createHousehold(w http.ResponseWriter, r *http.Request) {
@@ -124,7 +130,19 @@ func (api groceryAPI) joinHousehold(w http.ResponseWriter, r *http.Request) {
 func (api groceryAPI) listLists(w http.ResponseWriter, r *http.Request) {
 	userID, ok := groceryUserID(w, r)
 	householdID := strings.TrimSpace(r.URL.Query().Get("householdId"))
-	if !ok || !api.authorizeHousehold(w, r, userID, householdID, false) {
+	if !ok {
+		return
+	}
+	if householdID == "" {
+		lists, err := api.repository.ListPersonalLists(r.Context(), userID)
+		if err != nil {
+			writeGroceryAPIError(w, err)
+			return
+		}
+		writeGroceryJSON(w, http.StatusOK, lists)
+		return
+	}
+	if !api.authorizeHousehold(w, r, userID, householdID, false) {
 		return
 	}
 	lists, err := api.repository.ListLists(r.Context(), userID, householdID)
@@ -161,12 +179,95 @@ func (api groceryAPI) createList(w http.ResponseWriter, r *http.Request) {
 	if input.HouseholdID != nil && !api.authorizeHousehold(w, r, userID, *input.HouseholdID, false) {
 		return
 	}
-	list, err := api.repository.CreateList(r.Context(), userID, input.HouseholdID, input.Title, api.currentTime())
+	list, err := api.repository.SaveList(r.Context(), userID, groceries.SavedListInput{
+		HouseholdID: input.HouseholdID, Title: input.Title, Items: input.Items,
+	}, api.currentTime())
 	if err != nil {
 		writeGroceryAPIError(w, err)
 		return
 	}
 	writeGroceryJSON(w, http.StatusCreated, list)
+}
+
+func (api groceryAPI) updateList(w http.ResponseWriter, r *http.Request) {
+	userID, ok := groceryUserID(w, r)
+	if !ok {
+		return
+	}
+	patch, ok := decodeGroceryRequest[groceries.ListPatch](w, r)
+	if !ok {
+		return
+	}
+	list, err := api.repository.UpdateList(r.Context(), userID, r.PathValue("id"), patch, api.currentTime())
+	if err != nil {
+		writeGroceryAPIError(w, err)
+		return
+	}
+	writeGroceryJSON(w, http.StatusOK, list)
+}
+
+func (api groceryAPI) listRecipes(w http.ResponseWriter, r *http.Request) {
+	userID, ok := groceryUserID(w, r)
+	if !ok {
+		return
+	}
+	var householdID *string
+	if value := strings.TrimSpace(r.URL.Query().Get("householdId")); value != "" {
+		householdID = &value
+	}
+	recipes, err := api.repository.ListRecipes(r.Context(), userID, householdID)
+	if err != nil {
+		writeGroceryAPIError(w, err)
+		return
+	}
+	writeGroceryJSON(w, http.StatusOK, recipes)
+}
+
+func (api groceryAPI) getRecipe(w http.ResponseWriter, r *http.Request) {
+	userID, ok := groceryUserID(w, r)
+	if !ok {
+		return
+	}
+	recipe, err := api.repository.GetRecipe(r.Context(), userID, r.PathValue("id"))
+	if err != nil {
+		writeGroceryAPIError(w, err)
+		return
+	}
+	writeGroceryJSON(w, http.StatusOK, recipe)
+}
+
+func (api groceryAPI) createRecipe(w http.ResponseWriter, r *http.Request) {
+	userID, ok := groceryUserID(w, r)
+	if !ok {
+		return
+	}
+	input, ok := decodeGroceryRequest[groceries.SavedRecipeInput](w, r)
+	if !ok {
+		return
+	}
+	recipe, err := api.repository.SaveRecipe(r.Context(), userID, input, api.currentTime())
+	if err != nil {
+		writeGroceryAPIError(w, err)
+		return
+	}
+	writeGroceryJSON(w, http.StatusCreated, recipe)
+}
+
+func (api groceryAPI) updateRecipe(w http.ResponseWriter, r *http.Request) {
+	userID, ok := groceryUserID(w, r)
+	if !ok {
+		return
+	}
+	input, ok := decodeGroceryRequest[groceries.RecipeContent](w, r)
+	if !ok {
+		return
+	}
+	recipe, err := api.repository.UpdateRecipe(r.Context(), userID, r.PathValue("id"), input, api.currentTime())
+	if err != nil {
+		writeGroceryAPIError(w, err)
+		return
+	}
+	writeGroceryJSON(w, http.StatusOK, recipe)
 }
 
 func (api groceryAPI) addItems(w http.ResponseWriter, r *http.Request) {
@@ -211,7 +312,7 @@ func (api groceryAPI) deleteItem(w http.ResponseWriter, r *http.Request) {
 	if !ok || !api.authorizeList(w, r, userID, listID) {
 		return
 	}
-	if err := api.repository.DeleteItem(r.Context(), userID, listID, r.PathValue("itemId")); err != nil {
+	if err := api.repository.DeleteItem(r.Context(), userID, listID, r.PathValue("itemId"), api.currentTime()); err != nil {
 		writeGroceryAPIError(w, err)
 		return
 	}
