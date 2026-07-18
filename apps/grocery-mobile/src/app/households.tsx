@@ -3,7 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
 import { ArrowRight, Copy, Home, Users } from "lucide-react-native";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { ScrollView, View } from "react-native";
+import { View } from "react-native";
+import { useForm } from "react-hook-form";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,14 +17,18 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { FormInput } from "@/components/ui/form";
 import { Icon } from "@/components/ui/icon";
-import { Input } from "@/components/ui/input";
 import { RefreshControl } from "@/components/ui/refresh-control";
+import { Screen } from "@/components/ui/screen";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { getRuntimeUrl } from "@/lib/config";
 import { createHouseholdApi, type HouseholdInvite } from "@/lib/household-api";
 import { groceryQueryKeys } from "@/lib/query-keys";
+
+type CreateHouseholdForm = { name: string };
+type JoinHouseholdForm = { inviteCode: string };
 
 export default function HouseholdsScreen() {
   const router = useRouter();
@@ -37,18 +42,21 @@ export default function HouseholdsScreen() {
   const createInFlight = useRef(false);
   const joinInFlight = useRef(false);
   const [isFocused, setIsFocused] = useState(false);
-  const [name, setName] = useState("");
-  const [inviteCode, setInviteCode] = useState("");
   const [createdInvites, setCreatedInvites] = useState<Record<string, HouseholdInvite>>({});
-  const [refreshing, setRefreshing] = useState(false);
+  const createForm = useForm<CreateHouseholdForm>({
+    defaultValues: { name: "" },
+    mode: "onChange",
+  });
+  const joinForm = useForm<JoinHouseholdForm>({
+    defaultValues: { inviteCode: "" },
+    mode: "onChange",
+  });
 
   const householdsQuery = useQuery({
     queryKey,
     queryFn: api.listHouseholds,
     enabled: isFocused && Boolean(userId),
-    refetchInterval: isFocused ? 30_000 : false,
   });
-  const { refetch } = householdsQuery;
 
   useFocusEffect(
     useCallback(() => {
@@ -60,7 +68,7 @@ export default function HouseholdsScreen() {
   const createHousehold = useMutation({
     mutationFn: api.createHousehold,
     onSuccess: async () => {
-      setName("");
+      createForm.reset();
       await queryClient.invalidateQueries({ queryKey });
     },
   });
@@ -68,7 +76,7 @@ export default function HouseholdsScreen() {
   const joinHousehold = useMutation({
     mutationFn: api.joinHousehold,
     onSuccess: async () => {
-      setInviteCode("");
+      joinForm.reset();
       await queryClient.invalidateQueries({ queryKey });
     },
   });
@@ -80,7 +88,7 @@ export default function HouseholdsScreen() {
     },
   });
 
-  const submitCreateHousehold = async () => {
+  const submitCreateHousehold = createForm.handleSubmit(async ({ name }) => {
     const nextName = name.trim();
     if (!nextName || createInFlight.current || createHousehold.isPending) return;
     createInFlight.current = true;
@@ -91,9 +99,9 @@ export default function HouseholdsScreen() {
     } finally {
       createInFlight.current = false;
     }
-  };
+  });
 
-  const submitJoinHousehold = async () => {
+  const submitJoinHousehold = joinForm.handleSubmit(async ({ inviteCode }) => {
     const code = inviteCode.trim().toUpperCase();
     if (!code || joinInFlight.current || joinHousehold.isPending) return;
     joinInFlight.current = true;
@@ -104,13 +112,8 @@ export default function HouseholdsScreen() {
     } finally {
       joinInFlight.current = false;
     }
-  };
+  });
 
-  const refresh = async () => {
-    setRefreshing(true);
-    await refetch();
-    setRefreshing(false);
-  };
   const households = householdsQuery.data ?? [];
   const mutationError = createHousehold.error ?? joinHousehold.error ?? createInvite.error;
   const error = householdsQuery.error ?? mutationError;
@@ -124,16 +127,16 @@ export default function HouseholdsScreen() {
         : "";
 
   return (
-    <ScrollView
-      className="w-full max-w-3xl flex-1 self-center bg-background"
-      contentInsetAdjustmentBehavior="automatic"
-      contentContainerClassName="gap-4 p-4.5 pb-10"
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}
+    <Screen
+      refreshControl={
+        <RefreshControl
+          refreshing={householdsQuery.isRefetching}
+          onRefresh={() => void householdsQuery.refetch()}
+        />
+      }
     >
       <View className="flex-row items-center justify-between px-1 pt-1">
-        <Text className="font-extrabold tracking-normal" variant="h4">
-          Your households
-        </Text>
+        <Text variant="h4">Your households</Text>
         <Badge variant="outline">{String(households.length)}</Badge>
       </View>
 
@@ -147,7 +150,7 @@ export default function HouseholdsScreen() {
           <Skeleton className="h-28 w-full rounded-2xl" />
         </View>
       ) : households.length === 0 ? (
-        <Card className="rounded-2xl p-0">
+        <Card>
           <CardContent className="p-6">
             <EmptyState
               className="p-0"
@@ -161,12 +164,10 @@ export default function HouseholdsScreen() {
         households.map((household) => {
           const invite = createdInvites[household.id];
           return (
-            <Card className="rounded-2xl p-0" key={household.id}>
-              <CardHeader className="flex-row items-center gap-3 p-4">
+            <Card key={household.id}>
+              <CardHeader className="flex-row items-center gap-3">
                 <View className="flex-1 gap-0.5">
-                  <CardTitle className="text-lg font-extrabold tracking-normal" selectable>
-                    {household.name}
-                  </CardTitle>
+                  <CardTitle selectable>{household.name}</CardTitle>
                   <CardDescription className="capitalize">
                     {household.role === "owner" ? "Owner" : "Member"}
                   </CardDescription>
@@ -187,17 +188,13 @@ export default function HouseholdsScreen() {
                 </Button>
               </CardHeader>
               {household.role === "owner" ? (
-                <CardContent className="p-4 pt-0">
+                <CardContent className="pt-0">
                   {invite ? (
                     <View className="flex-row items-center gap-2.5 rounded-2xl bg-muted p-3">
                       <Icon as={Copy} className="size-4.5 text-primary" />
                       <View className="flex-1 gap-0.5">
                         <Text variant="muted">Invite code</Text>
-                        <Text
-                          className="font-extrabold tracking-widest text-secondary"
-                          selectable
-                          variant="large"
-                        >
+                        <Text className="tracking-widest text-secondary" selectable variant="large">
                           {invite.code}
                         </Text>
                       </View>
@@ -225,39 +222,40 @@ export default function HouseholdsScreen() {
 
       {errorMessage ? <Alert title={errorMessage} variant="destructive" /> : null}
 
-      <Text className="mt-2 px-1 font-extrabold tracking-normal" variant="h4">
+      <Text className="mt-2 px-1" variant="h4">
         Add a household
       </Text>
-      <Card className="rounded-2xl p-0">
-        <CardHeader className="flex-row items-center gap-3 p-4 pb-0">
+      <Card>
+        <CardHeader className="flex-row items-center gap-3 pb-0">
           <View className="size-11 items-center justify-center rounded-2xl bg-muted">
             <Icon as={Home} className="size-5 text-primary" />
           </View>
           <View className="flex-1 gap-0.5">
-            <CardTitle className="text-lg font-extrabold tracking-normal">
-              Create a household
-            </CardTitle>
-            <CardDescription className="leading-5">
+            <CardTitle>Create a household</CardTitle>
+            <CardDescription>
               Keep one grocery list in sync with the people at home.
             </CardDescription>
           </View>
         </CardHeader>
-        <CardContent className="p-4">
-          <Input
-            accessibilityLabel="Household name"
+        <CardContent>
+          <FormInput
+            control={createForm.control}
+            label="Household name"
+            name="name"
+            rules={{
+              validate: (value) => value.trim().length > 0 || "Enter a household name.",
+            }}
             autoCapitalize="words"
-            className="min-h-12 rounded-2xl bg-card px-4 text-base"
-            onChangeText={setName}
+            className="rounded-2xl bg-card"
             onSubmitEditing={() => void submitCreateHousehold()}
             placeholder="Household name"
             returnKeyType="done"
-            value={name}
           />
         </CardContent>
-        <CardFooter className="p-4 pt-0">
+        <CardFooter className="pt-0">
           <Button
             className="flex-1"
-            disabled={!name.trim()}
+            disabled={!createForm.formState.isValid}
             loading={busy === "create"}
             size="lg"
             variant="secondary"
@@ -268,38 +266,39 @@ export default function HouseholdsScreen() {
         </CardFooter>
       </Card>
 
-      <Card className="rounded-2xl p-0">
-        <CardHeader className="flex-row items-center gap-3 p-4 pb-0">
+      <Card>
+        <CardHeader className="flex-row items-center gap-3 pb-0">
           <View className="size-11 items-center justify-center rounded-2xl bg-muted">
             <Icon as={Users} className="size-5 text-primary" />
           </View>
           <View className="flex-1 gap-0.5">
-            <CardTitle className="text-lg font-extrabold tracking-normal">
-              Join with an invite
-            </CardTitle>
-            <CardDescription className="leading-5">
+            <CardTitle>Join with an invite</CardTitle>
+            <CardDescription>
               Paste the eight-character code from a household owner.
             </CardDescription>
           </View>
         </CardHeader>
-        <CardContent className="p-4">
-          <Input
-            accessibilityLabel="Invite code"
+        <CardContent>
+          <FormInput
+            control={joinForm.control}
+            label="Invite code"
+            name="inviteCode"
+            rules={{
+              validate: (value) =>
+                value.trim().length === 8 || "Enter the eight-character invite code.",
+            }}
             autoCapitalize="characters"
             autoCorrect={false}
-            className="min-h-12 rounded-2xl bg-card px-4 text-base font-extrabold tracking-widest"
-            maxLength={8}
-            onChangeText={setInviteCode}
+            className="rounded-2xl bg-card font-extrabold tracking-widest"
             onSubmitEditing={() => void submitJoinHousehold()}
             placeholder="ABCDEFGH"
             returnKeyType="done"
-            value={inviteCode}
           />
         </CardContent>
-        <CardFooter className="p-4 pt-0">
+        <CardFooter className="pt-0">
           <Button
             className="flex-1"
-            disabled={!inviteCode.trim()}
+            disabled={!joinForm.formState.isValid}
             loading={busy === "join"}
             size="lg"
             variant="secondary"
@@ -309,6 +308,6 @@ export default function HouseholdsScreen() {
           </Button>
         </CardFooter>
       </Card>
-    </ScrollView>
+    </Screen>
   );
 }

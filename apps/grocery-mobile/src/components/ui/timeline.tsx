@@ -81,12 +81,12 @@ export function TimelineItem({
           >
             {title}
           </Text>
-          {time && <Text className="text-[11px] text-muted-foreground">{time}</Text>}
+          {time && <Text className="text-xs text-muted-foreground">{time}</Text>}
         </View>
         {description && (
           <Text
             className={cn(
-              "mt-1 text-[13px] leading-5",
+              "mt-1 text-sm leading-5",
               variant === "pending" ? "text-muted-foreground/60" : "text-muted-foreground",
             )}
           >

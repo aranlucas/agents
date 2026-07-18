@@ -23,7 +23,12 @@ export function AlertDialog({ open, onOpenChange, children }: AlertDialogProps) 
         exiting={exiting.fadeOut}
         className="flex-1 items-center justify-center bg-black/50"
       >
-        <Animated.View entering={entering.zoomIn} exiting={exiting.zoomOut}>
+        <Animated.View
+          accessibilityViewIsModal
+          className="w-full items-center px-6"
+          entering={entering.zoomIn}
+          exiting={exiting.zoomOut}
+        >
           {children}
         </Animated.View>
       </Animated.View>
@@ -41,8 +46,9 @@ export function AlertDialogContent({
 }) {
   return (
     <View
-      className={cn("mx-6 w-80 rounded-lg bg-card p-6 shadow-xl", className)}
       accessibilityRole="alert"
+      accessible
+      className={cn("w-full max-w-sm rounded-lg bg-card p-6 shadow-xl", className)}
       {...props}
     >
       {children}
@@ -77,7 +83,12 @@ export function AlertDialogFooter({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<typeof View> & { className?: string }) {
-  return <View className={cn("flex-row justify-end gap-3 pt-4", className)} {...props} />;
+  return (
+    <View
+      className={cn("flex-col-reverse gap-3 pt-4 sm:flex-row sm:justify-end", className)}
+      {...props}
+    />
+  );
 }
 
 export function AlertDialogAction({
@@ -91,7 +102,7 @@ export function AlertDialogAction({
   return (
     <Pressable
       className={cn(
-        "min-h-12 items-center justify-center rounded-md bg-primary px-4 py-2.5",
+        "min-h-14 items-center justify-center rounded-md bg-primary px-4 py-2.5",
         className,
       )}
       accessible={true}
@@ -118,7 +129,7 @@ export function AlertDialogCancel({
   return (
     <Pressable
       className={cn(
-        "min-h-12 items-center justify-center rounded-md border border-input px-4 py-2.5",
+        "min-h-14 items-center justify-center rounded-md border border-input px-4 py-2.5",
         className,
       )}
       accessible={true}

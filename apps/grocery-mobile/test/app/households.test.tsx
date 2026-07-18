@@ -96,39 +96,24 @@ beforeEach(() => {
 });
 
 describe("HouseholdsScreen", () => {
-  it("polls and refetches only while focused, including pull-to-refresh", async () => {
-    vi.useFakeTimers();
+  it("refetches when focused and on pull-to-refresh without polling", async () => {
     const client = createTestQueryClient();
     await renderWithQueryClient(<HouseholdsScreen />, client);
     await waitFor(() => expect(mocks.api.listHouseholds).toHaveBeenCalledOnce());
-    expect(
-      client.getQueryCache().find({ queryKey: groceryQueryKeys.households("user_1") })?.options,
-    ).toMatchObject({
-      enabled: true,
-      refetchInterval: 30_000,
-    });
+    const getQueryOptions = () =>
+      client.getQueryCache().find({ queryKey: groceryQueryKeys.households("user_1") })?.options;
+    expect(getQueryOptions()).toMatchObject({ enabled: true });
+    expect(getQueryOptions()).not.toHaveProperty("refetchInterval");
 
-    await vi.advanceTimersByTimeAsync(30_000);
-    await waitFor(() => expect(mocks.api.listHouseholds).toHaveBeenCalledTimes(2));
-
-    const backgroundCallCount = mocks.api.listHouseholds.mock.calls.length;
     await mocks.blur?.();
-    await vi.advanceTimersByTimeAsync(30_000);
-    focusManager.setFocused(false);
-    focusManager.setFocused(true);
-    await waitFor(() =>
-      expect(mocks.api.listHouseholds.mock.calls.length).toBeGreaterThanOrEqual(
-        backgroundCallCount,
-      ),
-    );
+    await waitFor(() => expect(getQueryOptions()).toMatchObject({ enabled: false }));
 
     const cleanup = mocks.focus?.();
     mocks.blur = typeof cleanup === "function" ? cleanup : null;
-    await waitFor(() => expect(mocks.api.listHouseholds).toHaveBeenCalledTimes(3));
+    await waitFor(() => expect(mocks.api.listHouseholds).toHaveBeenCalledTimes(2));
 
     mocks.onRefresh?.();
-    expect(mocks.api.listHouseholds).toHaveBeenCalledTimes(4);
-    vi.useRealTimers();
+    await waitFor(() => expect(mocks.api.listHouseholds).toHaveBeenCalledTimes(3));
   });
 
   it("normalizes invite codes, prevents duplicates, invalidates the exact key, and clears on success", async () => {
@@ -142,11 +127,13 @@ describe("HouseholdsScreen", () => {
     const input = await screen.findByLabelText("Invite code");
 
     await user.clear(input);
-    await user.type(input, "  ab12  ");
-    await waitFor(() => expect(screen.getByLabelText("Invite code").props.value).toBe("  ab12  "));
+    await user.type(input, "  ab12cd34  ");
+    await waitFor(() =>
+      expect(screen.getByLabelText("Invite code").props.value).toBe("  ab12cd34  "),
+    );
     await user.press(screen.getByRole("button", { name: "Join household" }));
     await waitFor(() => expect(mocks.api.joinHousehold).toHaveBeenCalledOnce());
-    expect(mocks.api.joinHousehold.mock.calls[0]?.[0]).toBe("AB12");
+    expect(mocks.api.joinHousehold.mock.calls[0]?.[0]).toBe("AB12CD34");
 
     joining.resolve({});
     await waitFor(() => expect(screen.getByLabelText("Invite code").props.value).toBe(""));
@@ -180,13 +167,15 @@ describe("HouseholdsScreen", () => {
     await renderWithQueryClient(<HouseholdsScreen />, client);
     const invite = await screen.findByLabelText("Invite code");
     await user.clear(invite);
-    await user.type(invite, "  ab12  ");
-    await waitFor(() => expect(screen.getByLabelText("Invite code").props.value).toBe("  ab12  "));
+    await user.type(invite, "  ab12cd34  ");
+    await waitFor(() =>
+      expect(screen.getByLabelText("Invite code").props.value).toBe("  ab12cd34  "),
+    );
     await user.press(screen.getByRole("button", { name: "Join household" }));
 
     await waitFor(() => expect(mocks.api.joinHousehold).toHaveBeenCalledOnce());
     await waitFor(() => expect(screen.getByText("Could not join household")).toBeTruthy());
-    expect(mocks.api.joinHousehold.mock.calls[0]?.[0]).toBe("AB12");
-    expect(screen.getByLabelText("Invite code").props.value).toBe("  ab12  ");
+    expect(mocks.api.joinHousehold.mock.calls[0]?.[0]).toBe("AB12CD34");
+    expect(screen.getByLabelText("Invite code").props.value).toBe("  ab12cd34  ");
   });
 });

@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Pressable, Text, useColorScheme } from "react-native";
+import { View, Pressable, Text } from "react-native";
 import { cn } from "@/lib/utils";
 
 const heights = { sm: 36, md: 44, lg: 56 } as const;
@@ -38,12 +38,6 @@ export function SegmentedControl<T extends string | number = string>({
   onValueChange,
   ...rest
 }: SegmentedControlProps<T>) {
-  const dark = useColorScheme() === "dark";
-  const activeBg = dark ? "#37373a" : "#ffffff";
-  const activeFg = dark ? "#fafafa" : "#09090b";
-  const inactiveFg = dark ? "#a1a1aa" : "#71717a";
-  const disabledFg = dark ? "#52525b" : "#d4d4d8";
-
   const items: SegmentedOption<T>[] = options.map((o, i) =>
     isOptionObject(o)
       ? { value: o.value, label: o.label ?? String(o.value), disabled: o.disabled }
@@ -62,24 +56,12 @@ export function SegmentedControl<T extends string | number = string>({
         return (
           <Pressable
             key={String(v)}
+            className={cn(
+              "flex-1 items-center justify-center rounded-md",
+              active && "bg-card shadow-sm",
+              disabled && "opacity-50",
+            )}
             disabled={disabled}
-            style={{
-              flex: 1,
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: 6,
-              opacity: disabled ? 0.5 : 1,
-              backgroundColor: active ? activeBg : "transparent",
-              ...(active
-                ? {
-                    shadowColor: "#000",
-                    shadowOpacity: dark ? 0.4 : 0.08,
-                    shadowRadius: 2,
-                    shadowOffset: { width: 0, height: 1 },
-                    elevation: 1,
-                  }
-                : {}),
-            }}
             onPress={() => {
               if (!active) onValueChange(v);
             }}
@@ -88,12 +70,11 @@ export function SegmentedControl<T extends string | number = string>({
             accessibilityState={{ selected: active, disabled: !!disabled }}
           >
             <Text
+              className={cn(
+                "text-sm font-medium",
+                active ? "text-card-foreground" : "text-muted-foreground",
+              )}
               numberOfLines={1}
-              style={{
-                fontSize: 14,
-                fontWeight: "500",
-                color: disabled ? disabledFg : active ? activeFg : inactiveFg,
-              }}
             >
               {label}
             </Text>

@@ -1,19 +1,20 @@
-import { Image } from "react-native";
+import { Image } from "expo-image";
 
-const sizeClassName = {
-  sm: "size-9",
-  md: "size-11",
-  lg: "size-13",
-  xl: "size-15",
+const imageSize = {
+  sm: 36,
+  md: 44,
+  lg: 52,
+  xl: 60,
 } as const;
 
-export function BrandMark({ size = "md" }: { size?: keyof typeof sizeClassName }) {
+export function BrandMark({ size = "md" }: { size?: keyof typeof imageSize }) {
+  const dimension = imageSize[size];
   return (
     <Image
       accessibilityLabel="Grocery Agent"
-      className={sizeClassName[size]}
-      resizeMode="contain"
+      contentFit="contain"
       source={require("../../assets/splash-icon.png")}
+      style={{ height: dimension, width: dimension }}
     />
   );
 }

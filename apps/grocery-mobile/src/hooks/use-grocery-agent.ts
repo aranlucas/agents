@@ -1,5 +1,5 @@
 import { useAuth } from "@clerk/clerk-expo";
-import { useAgent, useCopilotKit } from "@copilotkit/react-native";
+import { useAgent, useCopilotKit, type UseAgentUpdate } from "@copilotkit/react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { runAuthenticated, readableError } from "@/lib/auth";
 import {
@@ -13,8 +13,14 @@ import {
   stabilizeDisplayMessages,
   stabilizeGroceryState,
   toDisplayMessages,
-  type DisplayMessage,
 } from "@/lib/grocery-state";
+
+const ON_MESSAGES_CHANGED = "OnMessagesChanged" as UseAgentUpdate;
+const ON_STATE_CHANGED = "OnStateChanged" as UseAgentUpdate;
+const ON_RUN_STATUS_CHANGED = "OnRunStatusChanged" as UseAgentUpdate;
+const RUN_STATUS_UPDATES = [ON_RUN_STATUS_CHANGED];
+const STATE_UPDATES = [ON_STATE_CHANGED];
+const MESSAGE_UPDATES = [ON_MESSAGES_CHANGED, ON_RUN_STATUS_CHANGED];
 
 export type GroceryOperationOutcome =
   | { status: "success" }
@@ -41,29 +47,17 @@ const stopped = (reason: "cancelled" | "busy" | "noop"): GroceryOperationOutcome
 });
 
 export function useGroceryAgentController(onRunComplete: () => void) {
-  const { agent } = useAgent({ agentId: "grocery", throttleMs: 50 });
+  const { agent } = useAgent({
+    agentId: "grocery",
+    updates: RUN_STATUS_UPDATES,
+    throttleMs: 50,
+  });
   const { copilotkit } = useCopilotKit();
   const { getToken, userId } = useAuth();
   const [failure, setFailure] = useState<GroceryAgentFailure | null>(null);
   const [activeKind, setActiveKind] = useState<GroceryOperationKind | null>(null);
   const activeOperation = useRef<ActiveGroceryOperation | null>(null);
-  const previousMessages = useRef<DisplayMessage[]>([]);
-  const previousState = useRef(normalizeGroceryState({}));
-
-  // CopilotKit mutates the active message while SSE chunks arrive. Derive the
-  // display snapshot after each throttled update so streamed content stays visible.
-  const messages = stabilizeDisplayMessages(
-    previousMessages.current,
-    toDisplayMessages(agent?.messages ?? []),
-  );
-  const state = stabilizeGroceryState(previousState.current, normalizeGroceryState(agent?.state));
-  useEffect(() => {
-    previousMessages.current = messages;
-    previousState.current = state;
-  }, [messages, state]);
-
-  const isStreaming = agent?.isRunning ?? false;
-  const isRunning = activeKind !== null || isStreaming;
+  const isRunning = activeKind !== null || (agent?.isRunning ?? false);
   const clearError = useCallback(() => setFailure(null), []);
 
   const finishOperation = useCallback((operation: ActiveGroceryOperation) => {
@@ -293,10 +287,7 @@ export function useGroceryAgentController(onRunComplete: () => void) {
   return useMemo(
     () => ({
       activeThreadId: agent?.threadId,
-      state,
-      messages,
       isRunning,
-      isStreaming,
       failure,
       error: failure?.message ?? "",
       failedInput: failure && failure.operation !== "open-thread" ? failure.input : null,
@@ -307,19 +298,44 @@ export function useGroceryAgentController(onRunComplete: () => void) {
       startNewChat,
       openThread,
     }),
-    [
-      agent?.threadId,
-      state,
-      messages,
-      isRunning,
-      isStreaming,
-      failure,
-      clearError,
-      send,
-      retry,
-      stop,
-      startNewChat,
-      openThread,
-    ],
+    [agent?.threadId, isRunning, failure, clearError, send, retry, stop, startNewChat, openThread],
+  );
+}
+
+export function useGroceryState() {
+  const { agent } = useAgent({
+    agentId: "grocery",
+    updates: STATE_UPDATES,
+    throttleMs: 50,
+  });
+  const previousState = useRef(normalizeGroceryState({}));
+  const state = stabilizeGroceryState(previousState.current, normalizeGroceryState(agent?.state));
+
+  useEffect(() => {
+    previousState.current = state;
+  }, [state]);
+
+  return state;
+}
+
+export function useGroceryMessages() {
+  const { agent } = useAgent({
+    agentId: "grocery",
+    updates: MESSAGE_UPDATES,
+    throttleMs: 50,
+  });
+  const previousMessages = useRef<ReturnType<typeof toDisplayMessages>>([]);
+  const messages = stabilizeDisplayMessages(
+    previousMessages.current,
+    toDisplayMessages(agent?.messages ?? []),
+  );
+
+  useEffect(() => {
+    previousMessages.current = messages;
+  }, [messages]);
+
+  return useMemo(
+    () => ({ messages, isStreaming: agent?.isRunning ?? false }),
+    [agent?.isRunning, messages],
   );
 }

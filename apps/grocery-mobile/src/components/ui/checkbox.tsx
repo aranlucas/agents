@@ -1,12 +1,13 @@
 import React from "react";
-import { Pressable, View, useColorScheme } from "react-native";
+import { View } from "react-native";
 import * as CheckboxPrimitive from "@rn-primitives/checkbox";
 import { Check } from "lucide-react-native";
+import { useThemeColor } from "@/hooks/use-theme-color";
 import { cn } from "@/lib/utils";
 
 export interface CheckboxProps extends Omit<
-  React.ComponentPropsWithoutRef<typeof Pressable>,
-  "disabled"
+  React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>,
+  "checked" | "disabled" | "onCheckedChange"
 > {
   className?: string;
   checked?: boolean;
@@ -21,34 +22,28 @@ export function Checkbox({
   disabled,
   ...props
 }: CheckboxProps) {
-  const dark = useColorScheme() === "dark";
+  const checkColor = useThemeColor("--color-primary-foreground", "#ffffff");
   return (
     <CheckboxPrimitive.Root
+      accessibilityState={{ checked, disabled: Boolean(disabled) }}
+      className="min-h-14 min-w-14 items-center justify-center"
       checked={checked}
-      onCheckedChange={onCheckedChange ?? (() => {})}
       disabled={disabled}
-      asChild
+      onCheckedChange={onCheckedChange ?? (() => {})}
+      {...props}
     >
-      <Pressable
-        className="min-h-12 min-w-12 items-center justify-center"
-        accessible={true}
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked, disabled: !!disabled }}
-        {...props}
+      <View
+        className={cn(
+          "h-5 w-5 items-center justify-center rounded border",
+          checked ? "border-primary bg-primary" : "border-input bg-background",
+          disabled && "opacity-50",
+          className,
+        )}
       >
-        <View
-          className={cn(
-            "h-5 w-5 items-center justify-center rounded border",
-            checked ? "border-primary bg-primary" : "border-input bg-background",
-            disabled && "opacity-50",
-            className,
-          )}
-        >
-          <CheckboxPrimitive.Indicator>
-            <Check size={14} color={dark ? "#18181b" : "#fafafa"} strokeWidth={3} />
-          </CheckboxPrimitive.Indicator>
-        </View>
-      </Pressable>
+        <CheckboxPrimitive.Indicator>
+          <Check size={14} color={checkColor} strokeWidth={3} />
+        </CheckboxPrimitive.Indicator>
+      </View>
     </CheckboxPrimitive.Root>
   );
 }

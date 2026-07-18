@@ -1,18 +1,14 @@
 import { useRouter } from "expo-router";
 import { BookMarked } from "lucide-react-native";
-import { ScrollView } from "react-native";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
+import { Screen } from "@/components/ui/screen";
 
 export default function SavedRecipesScreen() {
   const router = useRouter();
 
   return (
-    <ScrollView
-      className="w-full max-w-3xl flex-1 self-center bg-background"
-      contentInsetAdjustmentBehavior="automatic"
-      contentContainerClassName="flex-grow items-center justify-center gap-3 p-7"
-    >
+    <Screen contentContainerClassName="flex-grow items-center justify-center gap-3">
       <EmptyState
         action={{ label: "Plan a recipe", onPress: () => router.replace("/chat") }}
         className="p-0"
@@ -20,6 +16,6 @@ export default function SavedRecipesScreen() {
         icon={<Icon as={BookMarked} className="size-8 text-primary" strokeWidth={2} />}
         title="No saved recipes yet"
       />
-    </ScrollView>
+    </Screen>
   );
 }

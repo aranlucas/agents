@@ -66,7 +66,7 @@ export function DropdownMenuContent({
         <Animated.View entering={entering.fadeIn} exiting={exiting.fadeOut}>
           <View
             className={cn(
-              "min-w-[180px] rounded-lg border border-border bg-card p-1 shadow-lg",
+              "min-w-52 rounded-lg border border-border bg-card p-1 shadow-lg",
               className,
             )}
             {...props}

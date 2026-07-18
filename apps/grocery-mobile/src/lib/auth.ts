@@ -3,6 +3,23 @@ type HeaderTransport = {
   setHeaders(headers: Record<string, string | null | undefined>): void;
 };
 
+type UserIdentity = {
+  firstName?: string | null;
+  lastName?: string | null;
+  primaryEmailAddress?: { emailAddress: string } | null;
+};
+
+export function userInitials(user: UserIdentity | null | undefined): string {
+  return (
+    [user?.firstName, user?.lastName]
+      .filter(Boolean)
+      .map((part) => part?.charAt(0).toUpperCase())
+      .join("") ||
+    user?.primaryEmailAddress?.emailAddress.charAt(0).toUpperCase() ||
+    "?"
+  );
+}
+
 type AuthenticatedRunOptions<TResult> = {
   transport: HeaderTransport;
   getToken: () => Promise<string | null>;

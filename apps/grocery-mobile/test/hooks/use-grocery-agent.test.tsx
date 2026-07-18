@@ -1,6 +1,10 @@
 import { renderHook, waitFor } from "@testing-library/react-native";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useGroceryAgentController } from "@/hooks/use-grocery-agent";
+import {
+  useGroceryAgentController,
+  useGroceryMessages,
+  useGroceryState,
+} from "@/hooks/use-grocery-agent";
 
 const mocks = vi.hoisted(() => ({
   auth: {
@@ -10,11 +14,12 @@ const mocks = vi.hoisted(() => ({
   agent: null as any,
   copilotkit: null as any,
   onError: undefined as ((event: any) => void | Promise<void>) | undefined,
+  useAgent: vi.fn(),
 }));
 
 vi.mock("@clerk/clerk-expo", () => ({ useAuth: () => mocks.auth }));
 vi.mock("@copilotkit/react-native", () => ({
-  useAgent: () => ({ agent: mocks.agent }),
+  useAgent: mocks.useAgent,
   useCopilotKit: () => ({ copilotkit: mocks.copilotkit }),
 }));
 
@@ -69,9 +74,50 @@ beforeEach(() => {
   mocks.auth.getToken.mockReset();
   mocks.auth.userId = "user_1";
   mocks.onError = undefined;
+  mocks.useAgent.mockReset();
+  mocks.useAgent.mockImplementation(() => ({ agent: mocks.agent }));
 });
 
 describe("useGroceryAgentController", () => {
+  it("subscribes each hook only to the CopilotKit updates it consumes", async () => {
+    const { agent } = setupAgent();
+
+    const controller = await renderHook(() => useGroceryAgentController(vi.fn()));
+    expect(mocks.useAgent).toHaveBeenLastCalledWith({
+      agentId: "grocery",
+      updates: ["OnRunStatusChanged"],
+      throttleMs: 50,
+    });
+    expect(controller.result.current).not.toHaveProperty("messages");
+    expect(controller.result.current).not.toHaveProperty("state");
+    expect(controller.result.current).not.toHaveProperty("isStreaming");
+
+    mocks.useAgent.mockClear();
+    const state = await renderHook(() => useGroceryState());
+    expect(mocks.useAgent).toHaveBeenLastCalledWith({
+      agentId: "grocery",
+      updates: ["OnStateChanged"],
+      throttleMs: 50,
+    });
+    expect(state.result.current.status).toBe("ready");
+
+    mocks.useAgent.mockClear();
+    const messages = await renderHook(() => useGroceryMessages());
+    expect(mocks.useAgent).toHaveBeenLastCalledWith({
+      agentId: "grocery",
+      updates: ["OnMessagesChanged", "OnRunStatusChanged"],
+      throttleMs: 50,
+    });
+    expect(messages.result.current.messages).toEqual([
+      { id: "assistant_1", role: "assistant", content: "Existing answer" },
+    ]);
+    expect(messages.result.current.isStreaming).toBe(false);
+
+    agent.isRunning = true;
+    await messages.rerender(undefined);
+    expect(messages.result.current.isStreaming).toBe(true);
+  });
+
   it("reserves Send synchronously before fresh Clerk token acquisition", async () => {
     const token = deferred<string | null>();
     mocks.auth.getToken.mockReturnValue(token.promise);

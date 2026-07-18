@@ -10,7 +10,6 @@ import {
   ScrollView,
   useColorScheme,
   Keyboard,
-  Platform,
 } from "react-native";
 import { cn } from "@/lib/utils";
 import { X, ChevronDown } from "lucide-react-native";
@@ -95,8 +94,8 @@ export function Combobox({
   // RN Modal doesn't resize for the keyboard on Android (and the sheet is
   // bottom-anchored), so track the keyboard height and pad the sheet up.
   useEffect(() => {
-    const showEvt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-    const hideEvt = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showEvt = process.env.EXPO_OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvt = process.env.EXPO_OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
     const show = Keyboard.addListener(showEvt, (e) => setKbHeight(e.endCoordinates.height));
     const hide = Keyboard.addListener(hideEvt, () => setKbHeight(0));
     return () => {

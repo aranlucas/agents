@@ -1,5 +1,6 @@
 import React from "react";
-import { ActivityIndicator, View, useColorScheme } from "react-native";
+import { ActivityIndicator, View } from "react-native";
+import { useThemeColor } from "@/hooks/use-theme-color";
 import { cn } from "@/lib/utils";
 
 const sizeMap = { sm: "small", md: "small", lg: "large" } as const;
@@ -11,12 +12,12 @@ export interface SpinnerProps extends React.ComponentPropsWithoutRef<typeof View
 }
 
 export function Spinner({ size = "md", color, className, ...props }: SpinnerProps) {
-  const dark = useColorScheme() === "dark";
+  const foreground = useThemeColor("--color-foreground", "#17201a");
   return (
     <View className={cn("items-center justify-center", className)} {...props}>
       <ActivityIndicator
         size={sizeMap[size]}
-        color={color ?? (dark ? "#fafafa" : "#18181b")}
+        color={color ?? foreground}
         accessibilityRole="progressbar"
       />
     </View>

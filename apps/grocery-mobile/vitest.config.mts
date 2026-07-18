@@ -3,6 +3,7 @@ import { reactNative } from "vitest-native";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  assetsInclude: ["**/*.xml"],
   plugins: [
     reactNative({ engine: "native", platform: "android" }),
     {

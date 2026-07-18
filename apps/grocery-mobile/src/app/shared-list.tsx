@@ -4,6 +4,7 @@ import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { ListPlus, Plus, Trash2 } from "lucide-react-native";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
+import { useForm } from "react-hook-form";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,9 +18,11 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Chip } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
+import { FormInput } from "@/components/ui/form";
 import { Icon } from "@/components/ui/icon";
-import { Input } from "@/components/ui/input";
 import { RefreshControl } from "@/components/ui/refresh-control";
+import { Screen } from "@/components/ui/screen";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { getRuntimeUrl } from "@/lib/config";
@@ -35,6 +38,9 @@ type ItemMutation =
   | { type: "add"; listId: string; name: string }
   | { type: "toggle"; listId: string; itemId: string; checked: boolean }
   | { type: "delete"; listId: string; itemId: string };
+
+type CreateListForm = { title: string };
+type AddItemForm = { name: string };
 
 export default function SharedListScreen() {
   const params = useLocalSearchParams<{
@@ -54,9 +60,14 @@ export default function SharedListScreen() {
   const addItemInFlight = useRef(false);
   const [isFocused, setIsFocused] = useState(false);
   const [selectedListId, setSelectedListId] = useState("");
-  const [newListTitle, setNewListTitle] = useState("");
-  const [newItemName, setNewItemName] = useState("");
-  const [refreshing, setRefreshing] = useState(false);
+  const createListForm = useForm<CreateListForm>({
+    defaultValues: { title: "" },
+    mode: "onChange",
+  });
+  const addItemForm = useForm<AddItemForm>({
+    defaultValues: { name: "" },
+    mode: "onChange",
+  });
 
   const listsQuery = useQuery({
     queryKey: listsKey,
@@ -76,8 +87,6 @@ export default function SharedListScreen() {
     enabled: isFocused && Boolean(activeListId),
   });
   const activeList = activeListQuery.data ?? selectedList ?? null;
-  const { refetch: refetchLists } = listsQuery;
-  const { refetch: refetchActiveList } = activeListQuery;
 
   useFocusEffect(
     useCallback(() => {
@@ -89,7 +98,7 @@ export default function SharedListScreen() {
   const createList = useMutation({
     mutationFn: (title: string) => api.createList(title, householdId),
     onSuccess: (created) => {
-      setNewListTitle("");
+      createListForm.reset();
       setSelectedListId(created.id);
       queryClient.setQueryData<GroceryList[]>(listsKey, (current = []) => [created, ...current]);
       queryClient.setQueryData(groceryQueryKeys.list(userId, created.id), created);
@@ -108,15 +117,15 @@ export default function SharedListScreen() {
       }
     },
     onSuccess: async (_, mutation) => {
-      if (mutation.type === "add") setNewItemName("");
+      if (mutation.type === "add") addItemForm.reset();
       await queryClient.invalidateQueries({
         queryKey: groceryQueryKeys.list(userId, mutation.listId),
       });
     },
   });
 
-  const submitCreateList = async () => {
-    const title = newListTitle.trim();
+  const submitCreateList = createListForm.handleSubmit(async ({ title: inputTitle }) => {
+    const title = inputTitle.trim();
     if (!title || !householdId || createListInFlight.current || createList.isPending) return;
     createListInFlight.current = true;
     try {
@@ -126,10 +135,10 @@ export default function SharedListScreen() {
     } finally {
       createListInFlight.current = false;
     }
-  };
+  });
 
-  const submitAddItem = async () => {
-    const name = newItemName.trim();
+  const submitAddItem = addItemForm.handleSubmit(async ({ name: inputName }) => {
+    const name = inputName.trim();
     if (!name || !activeList || addItemInFlight.current || mutateItem.isPending) return;
     addItemInFlight.current = true;
     try {
@@ -139,13 +148,8 @@ export default function SharedListScreen() {
     } finally {
       addItemInFlight.current = false;
     }
-  };
+  });
 
-  const refresh = async () => {
-    setRefreshing(true);
-    await Promise.all([refetchLists(), activeListId ? refetchActiveList() : Promise.resolve()]);
-    setRefreshing(false);
-  };
   const mutationError = createList.error ?? mutateItem.error;
   const error = listsQuery.error ?? activeListQuery.error ?? mutationError;
   const errorMessage = !householdId
@@ -167,19 +171,22 @@ export default function SharedListScreen() {
     (listsQuery.isPending || (Boolean(activeListId) && activeListQuery.isPending));
 
   return (
-    <ScrollView
-      className="w-full max-w-3xl flex-1 self-center bg-background"
-      contentInsetAdjustmentBehavior="automatic"
-      contentContainerClassName="gap-4 p-4.5 pb-10"
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}
+    <Screen
+      refreshControl={
+        <RefreshControl
+          refreshing={listsQuery.isRefetching || activeListQuery.isRefetching}
+          onRefresh={() => {
+            void listsQuery.refetch();
+            if (activeListId) void activeListQuery.refetch();
+          }}
+        />
+      }
     >
       <View className="gap-1 px-0.5">
         <Text className="font-extrabold text-primary" selectable variant="small">
           {householdName}
         </Text>
-        <Text className="font-extrabold tracking-normal" variant="h3">
-          Shared grocery lists
-        </Text>
+        <Text variant="h3">Shared grocery lists</Text>
         <Text variant="muted">Changes are visible to everyone in this household.</Text>
       </View>
 
@@ -210,12 +217,10 @@ export default function SharedListScreen() {
 
       {activeList ? (
         <>
-          <Card className="overflow-hidden rounded-2xl p-0">
-            <CardHeader className="flex-row items-center justify-between gap-3 p-4">
+          <Card className="overflow-hidden">
+            <CardHeader className="flex-row items-center justify-between gap-3">
               <View className="flex-1 gap-0.5">
-                <CardTitle className="text-lg font-extrabold tracking-normal" selectable>
-                  {activeList.title}
-                </CardTitle>
+                <CardTitle selectable>{activeList.title}</CardTitle>
                 <CardDescription>
                   {activeList.items.length} {activeList.items.length === 1 ? "item" : "items"}
                 </CardDescription>
@@ -250,10 +255,7 @@ export default function SharedListScreen() {
                         />
                         <View className="flex-1 gap-0.5 py-3">
                           <Text
-                            className={cn(
-                              "font-bold",
-                              checked && "text-muted-foreground line-through",
-                            )}
+                            className={cn(checked && "text-muted-foreground line-through")}
                             selectable
                             variant="large"
                           >
@@ -278,9 +280,7 @@ export default function SharedListScreen() {
                           <Icon as={Trash2} className="size-5 text-muted-foreground" />
                         </Pressable>
                       </View>
-                      {index < activeList.items.length - 1 ? (
-                        <View className="ml-13 h-px bg-border" />
-                      ) : null}
+                      {index < activeList.items.length - 1 ? <Separator className="ml-13" /> : null}
                     </View>
                   );
                 })
@@ -295,20 +295,22 @@ export default function SharedListScreen() {
             </CardContent>
           </Card>
 
-          <View className="flex-row items-center gap-2.5">
-            <Input
+          <View className="flex-row items-start gap-2.5">
+            <FormInput
+              containerClassName="flex-1"
+              control={addItemForm.control}
+              name="name"
+              rules={{ validate: (value) => value.trim().length > 0 || "Enter an item name." }}
               accessibilityLabel="New grocery item"
-              className="min-h-12 flex-1 rounded-2xl bg-card px-4 text-base"
-              onChangeText={setNewItemName}
+              className="rounded-2xl bg-card"
               onSubmitEditing={() => void submitAddItem()}
               placeholder="Add an item"
               returnKeyType="done"
-              value={newItemName}
             />
             <Button
               accessibilityLabel="Add item"
-              className="size-12 rounded-2xl"
-              disabled={!newItemName.trim() || busy === "add-item"}
+              className="size-14 rounded-2xl"
+              disabled={!addItemForm.formState.isValid || busy === "add-item"}
               icon={<Icon as={Plus} className="size-5.5 text-primary-foreground" />}
               loading={busy === "add-item"}
               onPress={() => void submitAddItem()}
@@ -326,7 +328,7 @@ export default function SharedListScreen() {
           <Skeleton className="h-12 w-full rounded-2xl" />
         </View>
       ) : (
-        <Card className="rounded-2xl p-0">
+        <Card>
           <CardHeader className="p-5 pb-0">
             <EmptyState
               className="p-0"
@@ -336,21 +338,22 @@ export default function SharedListScreen() {
             />
           </CardHeader>
           <CardContent className="p-5">
-            <Input
-              accessibilityLabel="List title"
+            <FormInput
+              control={createListForm.control}
+              label="List title"
+              name="title"
+              rules={{ validate: (value) => value.trim().length > 0 || "Enter a list title." }}
               autoCapitalize="words"
-              className="min-h-12 rounded-2xl bg-card px-4 text-base"
-              onChangeText={setNewListTitle}
+              className="rounded-2xl bg-card"
               onSubmitEditing={() => void submitCreateList()}
               placeholder={`${householdName} groceries`}
               returnKeyType="done"
-              value={newListTitle}
             />
           </CardContent>
           <CardFooter className="p-5 pt-0">
             <Button
               className="flex-1"
-              disabled={!newListTitle.trim() || busy === "create-list"}
+              disabled={!householdId || !createListForm.formState.isValid || busy === "create-list"}
               loading={busy === "create-list"}
               size="lg"
               onPress={() => void submitCreateList()}
@@ -362,6 +365,6 @@ export default function SharedListScreen() {
       )}
 
       {errorMessage ? <Alert title={errorMessage} variant="destructive" /> : null}
-    </ScrollView>
+    </Screen>
   );
 }

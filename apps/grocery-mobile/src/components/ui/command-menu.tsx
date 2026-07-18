@@ -8,7 +8,6 @@ import {
   useColorScheme,
   useWindowDimensions,
   Keyboard,
-  Platform,
 } from "react-native";
 import * as DialogPrimitive from "@rn-primitives/dialog";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
@@ -79,8 +78,8 @@ export function CommandMenu({
   // Android, so the old version's results got covered — rendering via the rn-
   // primitives Portal plus this listener keeps the palette above the keyboard.
   useEffect(() => {
-    const showEvt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-    const hideEvt = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showEvt = process.env.EXPO_OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvt = process.env.EXPO_OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
     const show = Keyboard.addListener(showEvt, (e) => {
       kb.value = withTiming(e.endCoordinates.height, { duration: 160 });
     });
@@ -95,13 +94,18 @@ export function CommandMenu({
 
   // Focus via ref on open (autoFocus is unreliable inside overlays on Android).
   useEffect(() => {
-    if (!open) {
-      setSearch("");
-      return;
-    }
-    const t = setTimeout(() => inputRef.current?.focus(), Platform.OS === "android" ? 150 : 50);
+    if (!open) return;
+    const t = setTimeout(
+      () => inputRef.current?.focus(),
+      process.env.EXPO_OS === "android" ? 150 : 50,
+    );
     return () => clearTimeout(t);
   }, [open]);
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) setSearch("");
+    onOpenChange(nextOpen);
+  };
 
   const cardStyle = useAnimatedStyle(() => ({
     maxHeight: Math.max(180, winH - TOP_OFFSET - kb.value - 24),
@@ -111,11 +115,11 @@ export function CommandMenu({
     if (item.disabled) return;
     item.onSelect?.();
     onSelect?.(item.value);
-    onOpenChange(false);
+    handleOpenChange(false);
   };
 
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+    <DialogPrimitive.Root open={open} onOpenChange={handleOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay closeOnPress className="absolute inset-0 bg-black/50" />
         <DialogPrimitive.Content
@@ -183,9 +187,9 @@ export function CommandMenu({
                       <View className="flex-row items-center gap-0.5">
                         {item.shortcut.split("+").map((key, i) => (
                           <React.Fragment key={i}>
-                            {i > 0 && <Text className="text-[10px] text-muted-foreground">+</Text>}
+                            {i > 0 && <Text className="text-xs text-muted-foreground">+</Text>}
                             <View className="min-h-5 items-center justify-center rounded border border-border bg-muted px-1.5">
-                              <Text className="font-mono text-[10px] text-muted-foreground">
+                              <Text className="font-mono text-xs text-muted-foreground">
                                 {key.trim()}
                               </Text>
                             </View>
