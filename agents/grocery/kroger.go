@@ -29,8 +29,9 @@ func KrogerToken(ctx context.Context) (string, bool) {
 }
 
 type Kroger struct {
-	client   *http.Client
-	endpoint string
+	client         *http.Client
+	endpoint       string
+	nativeShopping bool
 }
 
 func NewKroger(client *http.Client, endpoint string) *Kroger {
@@ -46,6 +47,17 @@ func NewKroger(client *http.Client, endpoint string) *Kroger {
 }
 
 func (*Kroger) Name() string { return "kroger_mcp" }
+
+// withNativeShopping returns a per-agent capability view without mutating the
+// shared Kroger client used to construct the chat and wellness task agents.
+func (k *Kroger) withNativeShopping(enabled bool) *Kroger {
+	if k == nil {
+		return nil
+	}
+	clone := *k
+	clone.nativeShopping = enabled
+	return &clone
+}
 
 func (k *Kroger) Tools(ctx agent.ReadonlyContext) ([]tool.Tool, error) {
 	if k == nil || ctx == nil || ctx.ReadonlyState() == nil {
@@ -76,27 +88,26 @@ func (k *Kroger) Tools(ctx agent.ReadonlyContext) ([]tool.Tool, error) {
 	if err != nil {
 		return nil, err
 	}
-	allowed := map[string]bool{
-		"search_products": true,
-		"get_product":     true,
-		"search_stores":   true,
-		"get_store":       true,
-		// set_preferred_store is native when a shopping repository is present.
-		// Exposing the MCP copy as well would make ADK reject the request with
-		// duplicate tool: the static and dynamic toolsets share this name.
-		"shop_for_items":            true,
-		"create_shopping_list":      true,
-		"add_shopping_list_to_cart": true,
-		"view_cart":                 true,
-		"get_weekly_deals":          true,
+	if !k.nativeShopping {
+		return tools, nil
 	}
 	filtered := make([]tool.Tool, 0, len(tools))
 	for _, candidate := range tools {
-		if candidate != nil && allowed[candidate.Name()] {
+		if candidate != nil && nativeShoppingKrogerTool(candidate.Name()) {
 			filtered = append(filtered, candidate)
 		}
 	}
 	return filtered, nil
+}
+
+func nativeShoppingKrogerTool(name string) bool {
+	switch name {
+	case "search_products", "get_product", "search_stores", "get_store", "shop_for_items",
+		"create_shopping_list", "add_shopping_list_to_cart", "view_cart", "get_weekly_deals":
+		return true
+	default:
+		return false
+	}
 }
 
 type bearerTransport struct {

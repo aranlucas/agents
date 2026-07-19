@@ -69,7 +69,7 @@ func TestKrogerMCPFiltersSupersededInventoryAndProfileTools(t *testing.T) {
 	httpServer := httptest.NewServer(handler)
 	t.Cleanup(httpServer.Close)
 
-	tools, err := NewKroger(httpServer.Client(), httpServer.URL).Tools(groceryReadonlyContext{
+	tools, err := NewKroger(httpServer.Client(), httpServer.URL).withNativeShopping(true).Tools(groceryReadonlyContext{
 		Context: t.Context(), state: groceryState{"temp:kroger_token": "token"},
 	})
 	if err != nil {

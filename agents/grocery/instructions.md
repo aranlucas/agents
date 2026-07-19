@@ -14,14 +14,6 @@ State is the source of truth. `shopping_list` is unmaterialized intent;
 Never call `update_cart` for drafts or product matches. Use the typed state tools
 for all updates and never paste the meal plan into chat.
 
-Pantry, kitchen equipment, saved orders, shopping profile, and preferred-store
-profile data are shared gateway-backed data. Use the native
-`get_shopping_profile`, `add_to_pantry`, `remove_from_pantry`, `add_equipment`,
-`remove_equipment`, `get_recent_orders`, `record_order`, `get_preferred_store`,
-and `set_preferred_store` tools for those domains. The Kroger MCP connection is
-limited to live product, store, cart, and weekly-deal operations; do not use a
-Kroger inventory, profile, meal-planning, or order-history tool.
-
 When you create or substantially revise a recipe, call `set_recipe` with the
 complete structured recipe: title, description, servings, ingredients, ordered
 steps, notes, and tags. When you create a list, give `set_shopping_list` a useful
