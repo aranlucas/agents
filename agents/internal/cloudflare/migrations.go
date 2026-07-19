@@ -12,7 +12,7 @@ import (
 // LatestMigrationVersion is the newest schema marker reported by migration
 // diagnostics. Readiness requires every marker in migrations. Keep existing
 // version strings stable; append instead of editing or renaming applied work.
-const LatestMigrationVersion = "005_saved_grocery_resources"
+const LatestMigrationVersion = "006_shopping_profile"
 
 type migration struct {
 	version string
@@ -24,7 +24,8 @@ var migrations = []migration{
 	{version: "002_telegram_links", source: d1migrations.TelegramLinks},
 	{version: "003_fitness_activities", source: d1migrations.FitnessActivities},
 	{version: "004_shared_lists", source: d1migrations.SharedLists},
-	{version: LatestMigrationVersion, source: d1migrations.SavedGroceryResources},
+	{version: "005_saved_grocery_resources", source: d1migrations.SavedGroceryResources},
+	{version: LatestMigrationVersion, source: d1migrations.ShoppingProfile},
 }
 
 type schemaTable struct {
@@ -54,6 +55,13 @@ var requiredSchemaTables = []schemaTable{
 	{name: "recipe_ingredients", columns: []string{"id", "recipe_id", "name", "quantity", "unit", "note", "position"}},
 	{name: "recipe_steps", columns: []string{"id", "recipe_id", "instruction", "position"}},
 	{name: "recipe_tags", columns: []string{"recipe_id", "tag", "position"}},
+	{name: "pantry_items", columns: []string{"user_id", "name", "name_key", "quantity", "added_at", "expires_at"}},
+	{name: "equipment_items", columns: []string{"user_id", "name", "name_key", "category", "added_at"}},
+	{name: "shopping_orders", columns: []string{"id", "user_id", "total_items", "estimated_total", "placed_at", "location_id", "notes"}},
+	{name: "shopping_order_items", columns: []string{"order_id", "position", "upc", "name", "quantity", "price"}},
+	{name: "preferred_stores", columns: []string{"user_id", "location_id", "name", "address", "chain", "set_at"}},
+	{name: "kroger_account_links", columns: []string{"kroger_sub", "clerk_user_id", "linked_at"}},
+	{name: "grocery_list_item_upcs", columns: []string{"item_id", "upc"}},
 }
 
 var requiredSchemaIndexes = []string{
@@ -75,6 +83,8 @@ var requiredSchemaIndexes = []string{
 	"recipe_ingredients_recipe",
 	"recipe_steps_recipe",
 	"recipe_tags_recipe",
+	"shopping_orders_user",
+	"kroger_account_links_clerk",
 }
 
 func migrationVersions() []string {
