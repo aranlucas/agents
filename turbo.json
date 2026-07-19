@@ -55,6 +55,9 @@
     "contracts:check": {
       "cache": false
     },
+    "api:check": {
+      "cache": false
+    },
     "test": {},
     "coverage": {
       "outputs": ["coverage/**"]
