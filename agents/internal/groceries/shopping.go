@@ -120,7 +120,7 @@ func (s *Store) AddPantryItems(ctx context.Context, userID string, items []Pantr
 	if len(items) == 0 || len(items) > maxBatchItems {
 		return nil, ErrInvalid
 	}
-	addedAt := timestamp(now)
+	addedAt := shoppingTimestamp(now)
 	statements := make([]cloudflare.Statement, 0, len(items))
 	for _, item := range items {
 		name := strings.TrimSpace(item.Name)
@@ -230,7 +230,7 @@ func (s *Store) AddEquipment(ctx context.Context, userID string, items []Equipme
 	if len(items) == 0 || len(items) > maxBatchItems {
 		return nil, ErrInvalid
 	}
-	addedAt := timestamp(now)
+	addedAt := shoppingTimestamp(now)
 	statements := make([]cloudflare.Statement, 0, len(items))
 	for _, item := range items {
 		name := strings.TrimSpace(item.Name)
@@ -306,7 +306,7 @@ func (s *Store) RecordOrder(ctx context.Context, userID string, order Order, now
 		}
 	}
 	if order.PlacedAt == 0 {
-		order.PlacedAt = timestamp(now)
+		order.PlacedAt = shoppingTimestamp(now)
 	}
 	order.LocationID, err = normalizedOptionalString(order.LocationID, 200)
 	if err != nil {
@@ -445,7 +445,7 @@ func (s *Store) SetPreferredStore(ctx context.Context, userID string, store Pref
 	if store.LocationID == "" || len(store.LocationID) > 200 || store.Name == "" || len(store.Name) > 500 || len(store.Address) > 1_000 || len(store.Chain) > 200 {
 		return ErrInvalid
 	}
-	store.SetAt = timestamp(now)
+	store.SetAt = shoppingTimestamp(now)
 	if _, err := s.d1.Run(ctx, cloudflare.Statement{
 		SQL:    `INSERT OR REPLACE INTO preferred_stores (user_id, location_id, name, address, chain, set_at) VALUES (?, ?, ?, ?, ?, ?)`,
 		Params: []any{userID, store.LocationID, store.Name, store.Address, store.Chain, store.SetAt},
@@ -562,7 +562,7 @@ func (s *Store) LinkKrogerAccount(ctx context.Context, krogerSub, clerkUserID st
 	namespacedUserID := "kroger:" + krogerSub
 	statements := []cloudflare.Statement{{
 		SQL:    `INSERT OR REPLACE INTO kroger_account_links (kroger_sub, clerk_user_id, linked_at) VALUES (?, ?, ?)`,
-		Params: []any{krogerSub, clerkUserID, timestamp(now)},
+		Params: []any{krogerSub, clerkUserID, shoppingTimestamp(now)},
 	}}
 	tables := []struct {
 		name       string
@@ -603,6 +603,16 @@ func (s *Store) shoppingUserID(userID string) (string, error) {
 		return "", ErrInvalid
 	}
 	return userID, nil
+}
+
+// shoppingTimestamp is deliberately separate from timestamp in store.go.
+// Legacy household/list/recipe rows use Unix milliseconds; shopping-profile
+// rows are part of the gateway contract and use Unix seconds.
+func shoppingTimestamp(now time.Time) int64 {
+	if now.IsZero() {
+		now = time.Now()
+	}
+	return now.UTC().Unix()
 }
 
 func normalizedOptionalString(value *string, maxLength int) (*string, error) {

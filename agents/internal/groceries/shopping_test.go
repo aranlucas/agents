@@ -21,25 +21,36 @@ func TestAddPantryItemsMergesCaseInsensitiveNames(t *testing.T) {
 			if statements[0].Params[2] != "eggs" {
 				t.Fatalf("name_key = %#v", statements[0].Params[2])
 			}
+			wantAddedAt := int64(1)
+			if requests == 3 {
+				wantAddedAt = 2
+			}
+			if statements[0].Params[4] != float64(wantAddedAt) {
+				t.Fatalf("added_at = %#v, want Unix seconds %d", statements[0].Params[4], wantAddedAt)
+			}
+			if requests == 1 && statements[0].Params[5] != float64(1_700_000_000) {
+				t.Fatalf("expires_at = %#v, want Unix seconds", statements[0].Params[5])
+			}
 			return []cloudflare.Result{mutationResult(1)}
 		case 2:
-			return []cloudflare.Result{queryResult(t, PantryItem{Name: "Eggs", Quantity: 2, AddedAt: 1_000})}
+			return []cloudflare.Result{queryResult(t, PantryItem{Name: "Eggs", Quantity: 2, AddedAt: 1})}
 		case 4:
-			return []cloudflare.Result{queryResult(t, PantryItem{Name: "Eggs", Quantity: 5, AddedAt: 2_000})}
+			return []cloudflare.Result{queryResult(t, PantryItem{Name: "Eggs", Quantity: 5, AddedAt: 2})}
 		default:
 			t.Fatalf("unexpected D1 request %d: %#v", requests, statements)
 			return nil
 		}
 	})
 
-	if _, err := store.AddPantryItems(t.Context(), "user_1", []PantryItem{{Name: "Eggs", Quantity: 2}}, time.UnixMilli(1_000)); err != nil {
+	expiresAt := int64(1_700_000_000)
+	if _, err := store.AddPantryItems(t.Context(), "user_1", []PantryItem{{Name: "Eggs", Quantity: 2, ExpiresAt: &expiresAt}}, time.UnixMilli(1_000)); err != nil {
 		t.Fatal(err)
 	}
 	pantry, err := store.AddPantryItems(t.Context(), "user_1", []PantryItem{{Name: " eggs ", Quantity: 3}}, time.UnixMilli(2_000))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(pantry) != 1 || pantry[0].Name != "Eggs" || pantry[0].Quantity != 5 || pantry[0].AddedAt != 2_000 {
+	if len(pantry) != 1 || pantry[0].Name != "Eggs" || pantry[0].Quantity != 5 || pantry[0].AddedAt != 2 {
 		t.Fatalf("pantry = %#v", pantry)
 	}
 }
@@ -55,6 +66,9 @@ func TestRecordOrderWritesOrderAndItemsInOneBatch(t *testing.T) {
 				!strings.Contains(statements[2].SQL, "INSERT INTO shopping_order_items") {
 				t.Fatalf("record statements = %#v", statements)
 			}
+			if statements[0].Params[4] != float64(1) {
+				t.Fatalf("placed_at = %#v, want Unix seconds", statements[0].Params[4])
+			}
 			return mutationResults(len(statements))
 		case 2:
 			if len(statements) != 2 || !strings.Contains(statements[0].SQL, "ORDER BY placed_at DESC") ||
@@ -64,8 +78,8 @@ func TestRecordOrderWritesOrderAndItemsInOneBatch(t *testing.T) {
 			return []cloudflare.Result{
 				queryResult(
 					t,
-					Order{ID: "order_2", TotalItems: 1, PlacedAt: 2_000},
-					Order{ID: "order_1", TotalItems: 3, PlacedAt: 1_000},
+					Order{ID: "order_2", TotalItems: 1, PlacedAt: 2},
+					Order{ID: "order_1", TotalItems: 3, PlacedAt: 1},
 				),
 				queryResult(
 					t,
@@ -88,7 +102,7 @@ func TestRecordOrderWritesOrderAndItemsInOneBatch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if recorded.ID != "order_1" || recorded.TotalItems != 3 || recorded.PlacedAt != 1_000 {
+	if recorded.ID != "order_1" || recorded.TotalItems != 3 || recorded.PlacedAt != 1 {
 		t.Fatalf("recorded = %#v", recorded)
 	}
 
@@ -150,10 +164,28 @@ func TestLinkKrogerAccountRekeysNamespacedRows(t *testing.T) {
 				t.Fatalf("%s params = %#v / %#v", table.name, update.Params, cleanup.Params)
 			}
 		}
+		if statements[0].Params[2] != float64(1) {
+			t.Fatalf("linked_at = %#v, want Unix seconds", statements[0].Params[2])
+		}
 		return mutationResults(len(statements))
 	})
 
 	if err := store.LinkKrogerAccount(t.Context(), "kroger_sub_1", "user_1", time.UnixMilli(1_000)); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSetPreferredStoreUsesUnixSeconds(t *testing.T) {
+	store := newFixtureStore(t, func(statements []cloudflare.Statement) []cloudflare.Result {
+		if len(statements) != 1 || !strings.Contains(statements[0].SQL, "INSERT OR REPLACE INTO preferred_stores") {
+			t.Fatalf("preferred-store statements = %#v", statements)
+		}
+		if statements[0].Params[5] != float64(1) {
+			t.Fatalf("set_at = %#v, want Unix seconds", statements[0].Params[5])
+		}
+		return mutationResults(1)
+	})
+	if err := store.SetPreferredStore(t.Context(), "user_1", PreferredStore{LocationID: "loc_1", Name: "Kroger"}, time.UnixMilli(1_000)); err != nil {
 		t.Fatal(err)
 	}
 }
