@@ -153,6 +153,17 @@ func (d *D1) SchemaHealth(ctx context.Context) error {
 		},
 		want: len(requiredSchemaIndexes),
 	})
+	triggerParams := make([]any, 0, len(requiredSchemaTriggers))
+	for _, trigger := range requiredSchemaTriggers {
+		triggerParams = append(triggerParams, trigger)
+	}
+	checks = append(checks, check{
+		statement: Statement{
+			SQL:    "SELECT COUNT(*) AS present FROM sqlite_schema WHERE type = 'trigger' AND name IN (" + placeholders(len(requiredSchemaTriggers)) + ")",
+			Params: triggerParams,
+		},
+		want: len(requiredSchemaTriggers),
+	})
 
 	statements := make([]Statement, 0, len(checks))
 	for _, item := range checks {

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"agents/internal/cloudflare"
@@ -21,6 +22,7 @@ var (
 	ErrInviteExpired   = errors.New("household invite expired")
 	ErrInviteExhausted = errors.New("household invite exhausted")
 	ErrInvalid         = errors.New("invalid grocery input")
+	ErrStoreClosed     = errors.New("grocery store is closed")
 )
 
 const (
@@ -108,6 +110,10 @@ type Store struct {
 	d1        statementRunner
 	artifacts artifact.Service
 	newID     func(string) (string, error)
+
+	shoppingSnapshotMu sync.RWMutex
+	shoppingSnapshots  *shoppingProfileSnapshotScheduler
+	shoppingClosed     bool
 }
 
 func NewStore(d1 *cloudflare.D1) *Store {
@@ -115,7 +121,29 @@ func NewStore(d1 *cloudflare.D1) *Store {
 }
 
 func NewStoreWithArtifacts(d1 *cloudflare.D1, artifacts artifact.Service) *Store {
-	return &Store{d1: d1, artifacts: artifacts, newID: randomID}
+	store := &Store{d1: d1, artifacts: artifacts, newID: randomID}
+	store.startShoppingProfileSnapshots()
+	return store
+}
+
+// Close stops background artifact work and permanently closes the store.
+// A Store must not be reused after Close returns.
+func (s *Store) Close() error {
+	if s == nil {
+		return nil
+	}
+	s.shoppingSnapshotMu.Lock()
+	if s.shoppingClosed {
+		s.shoppingSnapshotMu.Unlock()
+		return nil
+	}
+	s.shoppingClosed = true
+	scheduler := s.shoppingSnapshots
+	s.shoppingSnapshotMu.Unlock()
+	if scheduler != nil {
+		scheduler.close()
+	}
+	return nil
 }
 
 func (s *Store) CreateHousehold(ctx context.Context, userID, name string, now time.Time) (Household, error) {
@@ -557,6 +585,12 @@ func (s *Store) DeleteItem(ctx context.Context, userID, listID, itemID string, n
 func (s *Store) ready() error {
 	if s == nil || s.d1 == nil || s.newID == nil {
 		return errors.New("grocery store is required")
+	}
+	s.shoppingSnapshotMu.RLock()
+	closed := s.shoppingClosed
+	s.shoppingSnapshotMu.RUnlock()
+	if closed {
+		return ErrStoreClosed
 	}
 	return nil
 }

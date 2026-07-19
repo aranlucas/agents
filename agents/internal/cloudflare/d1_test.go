@@ -545,6 +545,12 @@ func TestRunMigrationsIsIdempotentSQLBatch(t *testing.T) {
 	if !strings.Contains(string(sharedListsSchema), "grocery_list_items") {
 		t.Fatalf("shared lists schema missing: %s", sharedListsSchema)
 	}
+	shoppingProfileArtifactsSchema, _ := json.Marshal(batches[6])
+	if !strings.Contains(string(shoppingProfileArtifactsSchema), "CREATE TABLE IF NOT EXISTS shopping_profile_artifacts") ||
+		strings.Contains(string(shoppingProfileArtifactsSchema), "DROP TABLE") ||
+		strings.Contains(string(shoppingProfileArtifactsSchema), "ALTER TABLE") {
+		t.Fatalf("shopping profile artifact schema missing: %s", shoppingProfileArtifactsSchema)
+	}
 	if got := migrations[len(migrations)-1].version; got != LatestMigrationVersion {
 		t.Fatalf("last migration = %q, latest = %q", got, LatestMigrationVersion)
 	}
@@ -559,11 +565,9 @@ func TestEmbeddedMigrationsExecuteTwiceAndProduceRequiredSchema(t *testing.T) {
 
 	for range 2 {
 		for _, item := range migrations {
-			for statement := range strings.SplitSeq(item.source, ";") {
-				if statement = strings.TrimSpace(statement); statement != "" {
-					if _, err := db.Exec(statement); err != nil {
-						t.Fatalf("execute migration %s statement %q: %v", item.version, statement, err)
-					}
+			for _, statement := range splitMigrationStatements(item.source) {
+				if _, err := db.Exec(statement); err != nil {
+					t.Fatalf("execute migration %s statement %q: %v", item.version, statement, err)
 				}
 			}
 			if _, err := db.Exec("INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (?, ?)", item.version, int64(1)); err != nil {
@@ -605,6 +609,25 @@ func TestEmbeddedMigrationsExecuteTwiceAndProduceRequiredSchema(t *testing.T) {
 			t.Fatalf("required index %s count = %d (err=%v)", index, count, err)
 		}
 	}
+	for _, trigger := range requiredSchemaTriggers {
+		var count int
+		if err := db.QueryRow("SELECT COUNT(*) FROM sqlite_schema WHERE type = 'trigger' AND name = ?", trigger).Scan(&count); err != nil || count != 1 {
+			t.Fatalf("required trigger %s count = %d (err=%v)", trigger, count, err)
+		}
+	}
+	if _, err := db.Exec(
+		`INSERT INTO shopping_profile_artifacts
+		 (user_id, scope_user_id, file_name, profile_revision, artifact_version, content_sha256, created_at)
+		 VALUES ('user_1', 'user_1', 'shopping-profile.json', 1, 1, 'abc', 1)`,
+	); err != nil {
+		t.Fatalf("insert shopping-profile artifact reference after migrations: %v", err)
+	}
+	if _, err := db.Exec(
+		`INSERT INTO shopping_profile_artifact_versions (user_id, artifact_version, created_at)
+		 VALUES ('invalid_version', 0, 1)`,
+	); err == nil {
+		t.Fatal("invalid shopping-profile artifact version was accepted")
+	}
 }
 
 func TestD1LivenessAndSchemaHealth(t *testing.T) {
@@ -625,7 +648,7 @@ func TestD1LivenessAndSchemaHealth(t *testing.T) {
 			writeEnvelope(t, w, []Result{{Success: true, Rows: rawRows(t, map[string]any{"ok": 1})}})
 			return
 		}
-		if got, want := len(req.Batch), len(requiredSchemaTables)+2; got != want {
+		if got, want := len(req.Batch), len(requiredSchemaTables)+3; got != want {
 			t.Fatalf("schema health statements = %d, want %d", got, want)
 		}
 		markers := req.Batch[0]
@@ -646,11 +669,16 @@ func TestD1LivenessAndSchemaHealth(t *testing.T) {
 			}
 			results = append(results, Result{Success: true, Rows: rawRows(t, map[string]any{"present": len(table.columns)})})
 		}
-		indexes := req.Batch[len(req.Batch)-1]
+		indexes := req.Batch[len(req.Batch)-2]
 		if !strings.Contains(indexes.SQL, "sqlite_schema") || len(indexes.Params) != len(requiredSchemaIndexes) {
 			t.Fatalf("index check = %#v", indexes)
 		}
 		results = append(results, Result{Success: true, Rows: rawRows(t, map[string]any{"present": len(requiredSchemaIndexes)})})
+		triggers := req.Batch[len(req.Batch)-1]
+		if !strings.Contains(triggers.SQL, "type = 'trigger'") || len(triggers.Params) != len(requiredSchemaTriggers) {
+			t.Fatalf("trigger check = %#v", triggers)
+		}
+		results = append(results, Result{Success: true, Rows: rawRows(t, map[string]any{"present": len(requiredSchemaTriggers)})})
 		writeEnvelope(t, w, results)
 	}))
 	defer server.Close()
@@ -702,6 +730,27 @@ func TestD1SchemaHealthRejectsMissingRequiredColumn(t *testing.T) {
 			results = append(results, Result{Success: true, Rows: rawRows(t, map[string]any{"present": present})})
 		}
 		results = append(results, Result{Success: true, Rows: rawRows(t, map[string]any{"present": len(requiredSchemaIndexes)})})
+		results = append(results, Result{Success: true, Rows: rawRows(t, map[string]any{"present": len(requiredSchemaTriggers)})})
+		writeEnvelope(t, w, results)
+	}))
+	defer server.Close()
+	d1, err := newD1(testCloudflare("token"), server.Client(), server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := d1.SchemaHealth(t.Context()); !errors.Is(err, ErrSchemaNotReady) {
+		t.Fatalf("SchemaHealth() error = %v", err)
+	}
+}
+
+func TestD1SchemaHealthRejectsMissingRequiredTrigger(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		results := []Result{{Success: true, Rows: rawRows(t, map[string]any{"present": len(migrations)})}}
+		for _, table := range requiredSchemaTables {
+			results = append(results, Result{Success: true, Rows: rawRows(t, map[string]any{"present": len(table.columns)})})
+		}
+		results = append(results, Result{Success: true, Rows: rawRows(t, map[string]any{"present": len(requiredSchemaIndexes)})})
+		results = append(results, Result{Success: true, Rows: rawRows(t, map[string]any{"present": len(requiredSchemaTriggers) - 1})})
 		writeEnvelope(t, w, results)
 	}))
 	defer server.Close()

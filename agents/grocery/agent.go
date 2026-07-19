@@ -51,7 +51,7 @@ func newAgent(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *c
 	if err != nil {
 		return nil, err
 	}
-	return buildAgent(m, kroger, tools, mode, false, toolsets...)
+	return buildAgent(m, kroger, tools, mode, nil, toolsets...)
 }
 
 func newAgentWithLibrary(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *common.WebLoader, repository groceries.LibraryRepository, mode llmagent.Mode, toolsets ...tool.Toolset) (agent.Agent, error) {
@@ -63,11 +63,12 @@ func newAgentWithLibrary(m model.LLM, kroger *Kroger, search *bravesearch.Client
 	if err != nil {
 		return nil, err
 	}
-	_, nativeShopping := nativeShoppingRepository(repository)
-	return buildAgent(m, kroger, append(tools, libraryTools...), mode, nativeShopping, toolsets...)
+	shoppingRepository, _ := nativeShoppingRepository(repository)
+	return buildAgent(m, kroger, append(tools, libraryTools...), mode, shoppingRepository, toolsets...)
 }
 
-func buildAgent(m model.LLM, kroger *Kroger, tools []tool.Tool, mode llmagent.Mode, nativeShopping bool, toolsets ...tool.Toolset) (agent.Agent, error) {
+func buildAgent(m model.LLM, kroger *Kroger, tools []tool.Tool, mode llmagent.Mode, shoppingRepository groceries.ShoppingRepository, toolsets ...tool.Toolset) (agent.Agent, error) {
+	nativeShopping := shoppingRepository != nil
 	if kroger != nil {
 		toolsets = append(toolsets, kroger.withNativeShopping(nativeShopping))
 	}
@@ -76,6 +77,9 @@ func buildAgent(m model.LLM, kroger *Kroger, tools []tool.Tool, mode llmagent.Mo
 		instruction = strings.TrimSpace(instruction) + "\n\n" + nativeShoppingInstruction
 	}
 	config := llmagent.Config{Name: AppName, Description: "Meal planning, pantry, shopping list, and cart support.", Instruction: instruction, Model: m, Mode: mode, Tools: tools, Toolsets: toolsets, BeforeModelCallbacks: []llmagent.BeforeModelCallback{compactGroceryContext}}
+	if nativeShopping {
+		config.BeforeAgentCallbacks = []agent.BeforeAgentCallback{hydrateShoppingProfileState(shoppingRepository)}
+	}
 	if mode == llmagent.ModeTask {
 		config.DisallowTransferToParent = true
 		config.DisallowTransferToPeers = true

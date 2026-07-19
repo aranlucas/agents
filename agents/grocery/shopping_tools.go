@@ -159,7 +159,7 @@ func (shopping ShoppingResources) currentTime() time.Time {
 }
 
 func (shopping ShoppingResources) GetShoppingProfile(ctx agent.Context, _ struct{}) (ShoppingProfileResult, error) {
-	profile, err := shopping.Repository.ShoppingProfile(ctx, strings.TrimSpace(ctx.UserID()))
+	profile, err := shopping.refreshShoppingProfileState(ctx)
 	if err != nil {
 		return ShoppingProfileResult{Error: shoppingFailure("shopping_profile", err)}, nil
 	}
@@ -183,6 +183,9 @@ func (shopping ShoppingResources) AddToPantry(ctx agent.Context, input AddPantry
 	if err != nil {
 		return PantryResult{Error: shoppingFailure("pantry", err)}, nil
 	}
+	if err := writeShoppingPantryState(ctx, pantry); err != nil {
+		return PantryResult{Items: pantry, Error: shoppingFailure("shopping_profile", err)}, nil
+	}
 	return PantryResult{Items: pantry}, nil
 }
 
@@ -191,11 +194,17 @@ func (shopping ShoppingResources) RemoveFromPantry(ctx agent.Context, input Remo
 		if err := shopping.Repository.ClearPantry(ctx, strings.TrimSpace(ctx.UserID())); err != nil {
 			return PantryResult{Error: shoppingFailure("pantry", err)}, nil
 		}
+		if err := writeShoppingPantryState(ctx, []groceries.PantryItem{}); err != nil {
+			return PantryResult{Items: []groceries.PantryItem{}, Error: shoppingFailure("shopping_profile", err)}, nil
+		}
 		return PantryResult{Items: []groceries.PantryItem{}}, nil
 	}
 	pantry, err := shopping.Repository.RemovePantryItems(ctx, strings.TrimSpace(ctx.UserID()), input.Names)
 	if err != nil {
 		return PantryResult{Error: shoppingFailure("pantry", err)}, nil
+	}
+	if err := writeShoppingPantryState(ctx, pantry); err != nil {
+		return PantryResult{Items: pantry, Error: shoppingFailure("shopping_profile", err)}, nil
 	}
 	return PantryResult{Items: pantry}, nil
 }
@@ -209,6 +218,9 @@ func (shopping ShoppingResources) AddEquipment(ctx agent.Context, input Equipmen
 	if err != nil {
 		return EquipmentResult{Error: shoppingFailure("equipment", err)}, nil
 	}
+	if err := writeShoppingEquipmentState(ctx, equipment); err != nil {
+		return EquipmentResult{Items: equipment, Error: shoppingFailure("shopping_profile", err)}, nil
+	}
 	return EquipmentResult{Items: equipment}, nil
 }
 
@@ -217,11 +229,17 @@ func (shopping ShoppingResources) RemoveEquipment(ctx agent.Context, input Remov
 		if err := shopping.Repository.ClearEquipment(ctx, strings.TrimSpace(ctx.UserID())); err != nil {
 			return EquipmentResult{Error: shoppingFailure("equipment", err)}, nil
 		}
+		if err := writeShoppingEquipmentState(ctx, []groceries.EquipmentItem{}); err != nil {
+			return EquipmentResult{Items: []groceries.EquipmentItem{}, Error: shoppingFailure("shopping_profile", err)}, nil
+		}
 		return EquipmentResult{Items: []groceries.EquipmentItem{}}, nil
 	}
 	equipment, err := shopping.Repository.RemoveEquipment(ctx, strings.TrimSpace(ctx.UserID()), input.Names)
 	if err != nil {
 		return EquipmentResult{Error: shoppingFailure("equipment", err)}, nil
+	}
+	if err := writeShoppingEquipmentState(ctx, equipment); err != nil {
+		return EquipmentResult{Items: equipment, Error: shoppingFailure("shopping_profile", err)}, nil
 	}
 	return EquipmentResult{Items: equipment}, nil
 }
@@ -230,6 +248,9 @@ func (shopping ShoppingResources) GetRecentOrders(ctx agent.Context, input Recen
 	orders, err := shopping.Repository.RecentOrders(ctx, strings.TrimSpace(ctx.UserID()), input.Limit)
 	if err != nil {
 		return OrdersResult{Error: shoppingFailure("orders", err)}, nil
+	}
+	if err := writeShoppingOrdersState(ctx, orders); err != nil {
+		return OrdersResult{Orders: orders, Error: shoppingFailure("shopping_profile", err)}, nil
 	}
 	return OrdersResult{Orders: orders}, nil
 }
@@ -253,6 +274,9 @@ func (shopping ShoppingResources) RecordOrder(ctx agent.Context, input RecordOrd
 	if err != nil {
 		return OrdersResult{Error: shoppingFailure("orders", err)}, nil
 	}
+	if _, err := shopping.refreshShoppingProfileState(ctx); err != nil {
+		return OrdersResult{Order: &order, Error: shoppingFailure("shopping_profile", err)}, nil
+	}
 	return OrdersResult{Order: &order}, nil
 }
 
@@ -260,6 +284,9 @@ func (shopping ShoppingResources) GetPreferredStore(ctx agent.Context, _ struct{
 	store, err := shopping.Repository.PreferredStore(ctx, strings.TrimSpace(ctx.UserID()))
 	if err != nil {
 		return PreferredStoreResult{Error: shoppingFailure("preferred_store", err)}, nil
+	}
+	if err := writeShoppingPreferredStoreState(ctx, store); err != nil {
+		return PreferredStoreResult{Store: store, Error: shoppingFailure("shopping_profile", err)}, nil
 	}
 	return PreferredStoreResult{Store: store}, nil
 }
@@ -273,10 +300,14 @@ func (shopping ShoppingResources) SetPreferredStore(ctx agent.Context, input Pre
 	}
 	now := shopping.currentTime()
 	store.SetAt = now.Unix()
-	if err := shopping.Repository.SetPreferredStore(ctx, strings.TrimSpace(ctx.UserID()), store, now); err != nil {
+	canonical, err := shopping.Repository.SetPreferredStore(ctx, strings.TrimSpace(ctx.UserID()), store, now)
+	if err != nil {
 		return PreferredStoreResult{Error: shoppingFailure("preferred_store", err)}, nil
 	}
-	return PreferredStoreResult{Store: &store}, nil
+	if err := writeShoppingPreferredStoreState(ctx, &canonical); err != nil {
+		return PreferredStoreResult{Store: &canonical, Error: shoppingFailure("shopping_profile", err)}, nil
+	}
+	return PreferredStoreResult{Store: &canonical}, nil
 }
 
 func parseShoppingDate(value *string) (*int64, error) {

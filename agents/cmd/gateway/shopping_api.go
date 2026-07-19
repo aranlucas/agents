@@ -259,11 +259,12 @@ func (api *groceryAPI) SetPreferredStore(ctx context.Context, request groceryapi
 		Chain:      strings.TrimSpace(request.Body.Chain),
 		SetAt:      now.Unix(),
 	}
-	if err := api.shopping.SetPreferredStore(ctx, userID, store, now); err != nil {
+	canonical, err := api.shopping.SetPreferredStore(ctx, userID, store, now)
+	if err != nil {
 		status, body := groceryErrorResponse(err)
 		return groceryapi.SetPreferredStoredefaultJSONResponse{StatusCode: status, Body: body}, nil
 	}
-	return groceryapi.SetPreferredStore200JSONResponse(toAPIPreferredStore(store)), nil
+	return groceryapi.SetPreferredStore200JSONResponse(toAPIPreferredStore(canonical)), nil
 }
 
 func (api *groceryAPI) DeletePreferredStore(ctx context.Context, request groceryapi.DeletePreferredStoreRequestObject) (groceryapi.DeletePreferredStoreResponseObject, error) {

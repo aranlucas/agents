@@ -11,6 +11,11 @@ import (
 	"agents/internal/cloudflare"
 )
 
+const (
+	shoppingProfileArtifactName = "shopping-profile.json"
+	shoppingProfileResourceType = "shopping_profile"
+)
+
 type PantryItem struct {
 	Name      string  `json:"name"`
 	Quantity  float64 `json:"quantity"`
@@ -77,7 +82,7 @@ type ShoppingRepository interface {
 	RecordOrder(ctx context.Context, userID string, order Order, now time.Time) (Order, error)
 	RecentOrders(ctx context.Context, userID string, limit int) ([]Order, error)
 	PreferredStore(ctx context.Context, userID string) (*PreferredStore, error)
-	SetPreferredStore(ctx context.Context, userID string, store PreferredStore, now time.Time) error
+	SetPreferredStore(ctx context.Context, userID string, store PreferredStore, now time.Time) (PreferredStore, error)
 	ClearPreferredStore(ctx context.Context, userID string) error
 	ShoppingProfile(ctx context.Context, userID string) (ShoppingProfile, error)
 	ResolveShopper(ctx context.Context, krogerSub string) (string, error)
@@ -98,11 +103,15 @@ func (s *Store) Pantry(ctx context.Context, userID string) ([]PantryItem, error)
 	if err != nil {
 		return nil, fmt.Errorf("load pantry: %w", err)
 	}
-	items := []PantryItem{}
 	if len(results) == 0 {
-		return items, nil
+		return []PantryItem{}, nil
 	}
-	for _, raw := range results[0].Rows {
+	return decodePantryItems(results[0].Rows)
+}
+
+func decodePantryItems(rows []json.RawMessage) ([]PantryItem, error) {
+	items := []PantryItem{}
+	for _, raw := range rows {
 		var item PantryItem
 		if json.Unmarshal(raw, &item) != nil || strings.TrimSpace(item.Name) == "" || item.Quantity < 0 {
 			return nil, errors.New("decode pantry item")
@@ -139,7 +148,12 @@ func (s *Store) AddPantryItems(ctx context.Context, userID string, items []Pantr
 	if _, err := s.d1.Run(ctx, statements...); err != nil {
 		return nil, fmt.Errorf("add pantry items: %w", err)
 	}
-	return s.Pantry(ctx, userID)
+	pantry, err := s.Pantry(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	s.enqueueShoppingProfileSnapshot(userID)
+	return pantry, nil
 }
 
 func (s *Store) RemovePantryItems(ctx context.Context, userID string, names []string) ([]PantryItem, error) {
@@ -164,7 +178,12 @@ func (s *Store) RemovePantryItems(ctx context.Context, userID string, names []st
 	if _, err := s.d1.Run(ctx, statements...); err != nil {
 		return nil, fmt.Errorf("remove pantry items: %w", err)
 	}
-	return s.Pantry(ctx, userID)
+	pantry, err := s.Pantry(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	s.enqueueShoppingProfileSnapshot(userID)
+	return pantry, nil
 }
 
 func (s *Store) SetPantryQuantity(ctx context.Context, userID, name string, quantity float64) ([]PantryItem, error) {
@@ -176,13 +195,19 @@ func (s *Store) SetPantryQuantity(ctx context.Context, userID, name string, quan
 	if name == "" || len(name) > 500 || quantity < 0 {
 		return nil, ErrInvalid
 	}
-	if _, err := s.d1.Run(ctx, cloudflare.Statement{
-		SQL:    `UPDATE pantry_items SET quantity = ? WHERE user_id = ? AND name_key = ?`,
-		Params: []any{quantity, userID, strings.ToLower(name)},
-	}); err != nil {
+	statements := []cloudflare.Statement{{
+		SQL:    `UPDATE pantry_items SET quantity = ? WHERE user_id = ? AND name_key = ? AND quantity <> ?`,
+		Params: []any{quantity, userID, strings.ToLower(name), quantity},
+	}}
+	if _, err := s.d1.Run(ctx, statements...); err != nil {
 		return nil, fmt.Errorf("set pantry quantity: %w", err)
 	}
-	return s.Pantry(ctx, userID)
+	pantry, err := s.Pantry(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	s.enqueueShoppingProfileSnapshot(userID)
+	return pantry, nil
 }
 
 func (s *Store) ClearPantry(ctx context.Context, userID string) error {
@@ -190,9 +215,11 @@ func (s *Store) ClearPantry(ctx context.Context, userID string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := s.d1.Run(ctx, cloudflare.Statement{SQL: `DELETE FROM pantry_items WHERE user_id = ?`, Params: []any{userID}}); err != nil {
+	statements := []cloudflare.Statement{{SQL: `DELETE FROM pantry_items WHERE user_id = ?`, Params: []any{userID}}}
+	if _, err := s.d1.Run(ctx, statements...); err != nil {
 		return fmt.Errorf("clear pantry: %w", err)
 	}
+	s.enqueueShoppingProfileSnapshot(userID)
 	return nil
 }
 
@@ -208,11 +235,15 @@ func (s *Store) Equipment(ctx context.Context, userID string) ([]EquipmentItem, 
 	if err != nil {
 		return nil, fmt.Errorf("load equipment: %w", err)
 	}
-	items := []EquipmentItem{}
 	if len(results) == 0 {
-		return items, nil
+		return []EquipmentItem{}, nil
 	}
-	for _, raw := range results[0].Rows {
+	return decodeEquipmentItems(results[0].Rows)
+}
+
+func decodeEquipmentItems(rows []json.RawMessage) ([]EquipmentItem, error) {
+	items := []EquipmentItem{}
+	for _, raw := range rows {
 		var item EquipmentItem
 		if json.Unmarshal(raw, &item) != nil || strings.TrimSpace(item.Name) == "" {
 			return nil, errors.New("decode equipment item")
@@ -241,14 +272,20 @@ func (s *Store) AddEquipment(ctx context.Context, userID string, items []Equipme
 		statements = append(statements, cloudflare.Statement{
 			SQL: `INSERT INTO equipment_items (user_id, name, name_key, category, added_at) VALUES (?, ?, ?, ?, ?)
 			      ON CONFLICT(user_id, name_key) DO UPDATE SET
-			        category = COALESCE(excluded.category, equipment_items.category)`,
+			        category = excluded.category
+			      WHERE excluded.category IS NOT NULL AND excluded.category IS NOT equipment_items.category`,
 			Params: []any{userID, name, strings.ToLower(name), nullableString(category), addedAt},
 		})
 	}
 	if _, err := s.d1.Run(ctx, statements...); err != nil {
 		return nil, fmt.Errorf("add equipment: %w", err)
 	}
-	return s.Equipment(ctx, userID)
+	equipment, err := s.Equipment(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	s.enqueueShoppingProfileSnapshot(userID)
+	return equipment, nil
 }
 
 func (s *Store) RemoveEquipment(ctx context.Context, userID string, names []string) ([]EquipmentItem, error) {
@@ -273,7 +310,12 @@ func (s *Store) RemoveEquipment(ctx context.Context, userID string, names []stri
 	if _, err := s.d1.Run(ctx, statements...); err != nil {
 		return nil, fmt.Errorf("remove equipment: %w", err)
 	}
-	return s.Equipment(ctx, userID)
+	equipment, err := s.Equipment(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	s.enqueueShoppingProfileSnapshot(userID)
+	return equipment, nil
 }
 
 func (s *Store) ClearEquipment(ctx context.Context, userID string) error {
@@ -281,9 +323,11 @@ func (s *Store) ClearEquipment(ctx context.Context, userID string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := s.d1.Run(ctx, cloudflare.Statement{SQL: `DELETE FROM equipment_items WHERE user_id = ?`, Params: []any{userID}}); err != nil {
+	statements := []cloudflare.Statement{{SQL: `DELETE FROM equipment_items WHERE user_id = ?`, Params: []any{userID}}}
+	if _, err := s.d1.Run(ctx, statements...); err != nil {
 		return fmt.Errorf("clear equipment: %w", err)
 	}
+	s.enqueueShoppingProfileSnapshot(userID)
 	return nil
 }
 
@@ -340,6 +384,7 @@ func (s *Store) RecordOrder(ctx context.Context, userID string, order Order, now
 	if _, err := s.d1.Run(ctx, statements...); err != nil {
 		return Order{}, fmt.Errorf("record shopping order: %w", err)
 	}
+	s.enqueueShoppingProfileSnapshot(userID)
 	return order, nil
 }
 
@@ -373,12 +418,20 @@ func (s *Store) RecentOrders(ctx context.Context, userID string, limit int) ([]O
 	if err != nil {
 		return nil, fmt.Errorf("load recent shopping orders: %w", err)
 	}
-	orders := []Order{}
 	if len(results) == 0 {
-		return orders, nil
+		return []Order{}, nil
 	}
-	orderIndexes := make(map[string]int, len(results[0].Rows))
-	for _, raw := range results[0].Rows {
+	var itemRows []json.RawMessage
+	if len(results) > 1 {
+		itemRows = results[1].Rows
+	}
+	return decodeRecentOrders(results[0].Rows, itemRows)
+}
+
+func decodeRecentOrders(orderRows, itemRows []json.RawMessage) ([]Order, error) {
+	orders := []Order{}
+	orderIndexes := make(map[string]int, len(orderRows))
+	for _, raw := range orderRows {
 		var order Order
 		if json.Unmarshal(raw, &order) != nil || strings.TrimSpace(order.ID) == "" || order.TotalItems < 0 {
 			return nil, errors.New("decode shopping order")
@@ -387,10 +440,7 @@ func (s *Store) RecentOrders(ctx context.Context, userID string, limit int) ([]O
 		orderIndexes[order.ID] = len(orders)
 		orders = append(orders, order)
 	}
-	if len(results) < 2 {
-		return orders, nil
-	}
-	for _, raw := range results[1].Rows {
+	for _, raw := range itemRows {
 		var row struct {
 			OrderID  string   `json:"order_id"`
 			Position int      `json:"position"`
@@ -426,33 +476,66 @@ func (s *Store) PreferredStore(ctx context.Context, userID string) (*PreferredSt
 	if len(results) == 0 || len(results[0].Rows) == 0 {
 		return nil, nil
 	}
+	return decodePreferredStore(results[0].Rows)
+}
+
+func decodePreferredStore(rows []json.RawMessage) (*PreferredStore, error) {
+	if len(rows) == 0 {
+		return nil, nil
+	}
 	var store PreferredStore
-	if json.Unmarshal(results[0].Rows[0], &store) != nil || strings.TrimSpace(store.LocationID) == "" || strings.TrimSpace(store.Name) == "" {
+	if json.Unmarshal(rows[0], &store) != nil || strings.TrimSpace(store.LocationID) == "" || strings.TrimSpace(store.Name) == "" {
 		return nil, errors.New("decode preferred store")
 	}
 	return &store, nil
 }
 
-func (s *Store) SetPreferredStore(ctx context.Context, userID string, store PreferredStore, now time.Time) error {
+func (s *Store) SetPreferredStore(ctx context.Context, userID string, store PreferredStore, now time.Time) (PreferredStore, error) {
 	userID, err := s.shoppingUserID(userID)
 	if err != nil {
-		return err
+		return PreferredStore{}, err
 	}
 	store.LocationID = strings.TrimSpace(store.LocationID)
 	store.Name = strings.TrimSpace(store.Name)
 	store.Address = strings.TrimSpace(store.Address)
 	store.Chain = strings.TrimSpace(store.Chain)
 	if store.LocationID == "" || len(store.LocationID) > 200 || store.Name == "" || len(store.Name) > 500 || len(store.Address) > 1_000 || len(store.Chain) > 200 {
-		return ErrInvalid
+		return PreferredStore{}, ErrInvalid
 	}
 	store.SetAt = shoppingTimestamp(now)
-	if _, err := s.d1.Run(ctx, cloudflare.Statement{
-		SQL:    `INSERT OR REPLACE INTO preferred_stores (user_id, location_id, name, address, chain, set_at) VALUES (?, ?, ?, ?, ?, ?)`,
+	statements := []cloudflare.Statement{{
+		SQL: `INSERT INTO preferred_stores (user_id, location_id, name, address, chain, set_at) VALUES (?, ?, ?, ?, ?, ?)
+		      ON CONFLICT(user_id) DO UPDATE SET
+		        location_id = excluded.location_id,
+		        name = excluded.name,
+		        address = excluded.address,
+		        chain = excluded.chain,
+		        set_at = excluded.set_at
+		      WHERE preferred_stores.location_id IS NOT excluded.location_id
+		         OR preferred_stores.name IS NOT excluded.name
+		         OR preferred_stores.address IS NOT excluded.address
+		         OR preferred_stores.chain IS NOT excluded.chain`,
 		Params: []any{userID, store.LocationID, store.Name, store.Address, store.Chain, store.SetAt},
-	}); err != nil {
-		return fmt.Errorf("set preferred store: %w", err)
+	}, {
+		SQL:    `SELECT location_id, name, address, chain, set_at FROM preferred_stores WHERE user_id = ? LIMIT 1`,
+		Params: []any{userID},
+	}}
+	results, err := s.d1.Run(ctx, statements...)
+	if err != nil {
+		return PreferredStore{}, fmt.Errorf("set preferred store: %w", err)
 	}
-	return nil
+	if len(results) < 2 {
+		return PreferredStore{}, errors.New("set preferred store: incomplete D1 results")
+	}
+	canonical, err := decodePreferredStore(results[1].Rows)
+	if err != nil || canonical == nil {
+		if err == nil {
+			err = errors.New("preferred store was not persisted")
+		}
+		return PreferredStore{}, err
+	}
+	s.enqueueShoppingProfileSnapshot(userID)
+	return *canonical, nil
 }
 
 func (s *Store) ClearPreferredStore(ctx context.Context, userID string) error {
@@ -460,9 +543,11 @@ func (s *Store) ClearPreferredStore(ctx context.Context, userID string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := s.d1.Run(ctx, cloudflare.Statement{SQL: `DELETE FROM preferred_stores WHERE user_id = ?`, Params: []any{userID}}); err != nil {
+	statements := []cloudflare.Statement{{SQL: `DELETE FROM preferred_stores WHERE user_id = ?`, Params: []any{userID}}}
+	if _, err := s.d1.Run(ctx, statements...); err != nil {
 		return fmt.Errorf("clear preferred store: %w", err)
 	}
+	s.enqueueShoppingProfileSnapshot(userID)
 	return nil
 }
 
@@ -472,20 +557,25 @@ func (s *Store) FrequentItems(ctx context.Context, userID string) ([]FrequentIte
 		return nil, err
 	}
 	results, err := s.d1.Run(ctx, cloudflare.Statement{
-		SQL: `SELECT soi.name, soi.upc, COUNT(DISTINCT soi.order_id) AS orders, SUM(soi.quantity) AS total_quantity
+		SQL: `SELECT MIN(soi.name) AS name, COALESCE(MIN(NULLIF(soi.upc, '')), '') AS upc,
+		             COUNT(DISTINCT soi.order_id) AS orders, SUM(soi.quantity) AS total_quantity
 		      FROM shopping_order_items soi JOIN shopping_orders so ON so.id = soi.order_id
 		      WHERE so.user_id = ? GROUP BY lower(soi.name)
-		      ORDER BY COUNT(DISTINCT soi.order_id) DESC LIMIT 20`,
+		      ORDER BY COUNT(DISTINCT soi.order_id) DESC, lower(soi.name), MIN(soi.name) LIMIT 20`,
 		Params: []any{userID},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("load frequent shopping items: %w", err)
 	}
-	items := []FrequentItem{}
 	if len(results) == 0 {
-		return items, nil
+		return []FrequentItem{}, nil
 	}
-	for _, raw := range results[0].Rows {
+	return decodeFrequentItems(results[0].Rows)
+}
+
+func decodeFrequentItems(rows []json.RawMessage) ([]FrequentItem, error) {
+	items := []FrequentItem{}
+	for _, raw := range rows {
 		var item FrequentItem
 		if json.Unmarshal(raw, &item) != nil || item.Name == "" || item.Orders < 0 || item.TotalQuantity < 0 {
 			return nil, errors.New("decode frequent shopping item")
@@ -500,28 +590,124 @@ func (s *Store) ShoppingProfile(ctx context.Context, userID string) (ShoppingPro
 	if err != nil {
 		return ShoppingProfile{}, err
 	}
+	return s.loadShoppingProfile(ctx, userID)
+}
+
+func (s *Store) loadShoppingProfile(ctx context.Context, userID string) (ShoppingProfile, error) {
+	snapshot, err := s.loadShoppingProfileSnapshot(ctx, userID)
+	if err != nil {
+		return ShoppingProfile{}, err
+	}
+	return snapshot.Profile, nil
+}
+
+type shoppingProfileArtifactReference struct {
+	ProfileRevision int64  `json:"profile_revision"`
+	ArtifactVersion int64  `json:"artifact_version"`
+	ContentSHA256   string `json:"content_sha256"`
+}
+
+type shoppingProfileSnapshot struct {
+	Profile   ShoppingProfile
+	Revision  int64
+	Reference *shoppingProfileArtifactReference
+}
+
+func (s *Store) loadShoppingProfileSnapshot(ctx context.Context, userID string) (shoppingProfileSnapshot, error) {
+	const recentOrderLimit = 50
+	results, err := s.d1.Run(
+		ctx,
+		cloudflare.Statement{
+			SQL:    `SELECT location_id, name, address, chain, set_at FROM preferred_stores WHERE user_id = ? LIMIT 1`,
+			Params: []any{userID},
+		},
+		cloudflare.Statement{
+			SQL:    `SELECT name, quantity, added_at, expires_at FROM pantry_items WHERE user_id = ? ORDER BY name_key, name`,
+			Params: []any{userID},
+		},
+		cloudflare.Statement{
+			SQL:    `SELECT name, category, added_at FROM equipment_items WHERE user_id = ? ORDER BY name_key, name`,
+			Params: []any{userID},
+		},
+		cloudflare.Statement{
+			SQL: `SELECT id, total_items, estimated_total, placed_at, location_id, notes
+			      FROM shopping_orders WHERE user_id = ? ORDER BY placed_at DESC, id DESC LIMIT ?`,
+			Params: []any{userID, recentOrderLimit},
+		},
+		cloudflare.Statement{
+			SQL: `SELECT soi.order_id, soi.position, soi.upc, soi.name, soi.quantity, soi.price
+			      FROM shopping_order_items soi JOIN shopping_orders so ON so.id = soi.order_id
+			      WHERE so.user_id = ? AND soi.order_id IN (
+			        SELECT id FROM shopping_orders WHERE user_id = ? ORDER BY placed_at DESC, id DESC LIMIT ?
+			      ) ORDER BY so.placed_at DESC, soi.position`,
+			Params: []any{userID, userID, recentOrderLimit},
+		},
+		cloudflare.Statement{
+			SQL: `SELECT MIN(soi.name) AS name, COALESCE(MIN(NULLIF(soi.upc, '')), '') AS upc,
+			             COUNT(DISTINCT soi.order_id) AS orders, SUM(soi.quantity) AS total_quantity
+			      FROM shopping_order_items soi JOIN shopping_orders so ON so.id = soi.order_id
+			      WHERE so.user_id = ? GROUP BY lower(soi.name)
+			      ORDER BY COUNT(DISTINCT soi.order_id) DESC, lower(soi.name), MIN(soi.name) LIMIT 20`,
+			Params: []any{userID},
+		},
+		cloudflare.Statement{
+			SQL:    `SELECT revision FROM shopping_profile_revisions WHERE user_id = ? LIMIT 1`,
+			Params: []any{userID},
+		},
+		cloudflare.Statement{
+			SQL: `SELECT profile_revision, artifact_version, content_sha256
+			      FROM shopping_profile_artifacts WHERE user_id = ? LIMIT 1`,
+			Params: []any{userID},
+		},
+	)
+	if err != nil {
+		return shoppingProfileSnapshot{}, fmt.Errorf("load shopping profile: %w", err)
+	}
+	if len(results) != 8 {
+		return shoppingProfileSnapshot{}, errors.New("load shopping profile: incomplete D1 results")
+	}
+
 	profile := ShoppingProfile{}
-	profile.PreferredStore, err = s.PreferredStore(ctx, userID)
+	profile.PreferredStore, err = decodePreferredStore(results[0].Rows)
 	if err != nil {
-		return ShoppingProfile{}, err
+		return shoppingProfileSnapshot{}, err
 	}
-	profile.Pantry, err = s.Pantry(ctx, userID)
+	profile.Pantry, err = decodePantryItems(results[1].Rows)
 	if err != nil {
-		return ShoppingProfile{}, err
+		return shoppingProfileSnapshot{}, err
 	}
-	profile.Equipment, err = s.Equipment(ctx, userID)
+	profile.Equipment, err = decodeEquipmentItems(results[2].Rows)
 	if err != nil {
-		return ShoppingProfile{}, err
+		return shoppingProfileSnapshot{}, err
 	}
-	profile.RecentOrders, err = s.RecentOrders(ctx, userID, 50)
+	profile.RecentOrders, err = decodeRecentOrders(results[3].Rows, results[4].Rows)
 	if err != nil {
-		return ShoppingProfile{}, err
+		return shoppingProfileSnapshot{}, err
 	}
-	profile.FrequentItems, err = s.FrequentItems(ctx, userID)
+	profile.FrequentItems, err = decodeFrequentItems(results[5].Rows)
 	if err != nil {
-		return ShoppingProfile{}, err
+		return shoppingProfileSnapshot{}, err
 	}
-	return profile, nil
+
+	snapshot := shoppingProfileSnapshot{Profile: profile}
+	if len(results[6].Rows) > 0 {
+		var row struct {
+			Revision int64 `json:"revision"`
+		}
+		if json.Unmarshal(results[6].Rows[0], &row) != nil || row.Revision <= 0 {
+			return shoppingProfileSnapshot{}, errors.New("decode shopping profile revision")
+		}
+		snapshot.Revision = row.Revision
+	}
+	if len(results[7].Rows) > 0 {
+		var reference shoppingProfileArtifactReference
+		if json.Unmarshal(results[7].Rows[0], &reference) != nil || reference.ProfileRevision <= 0 ||
+			reference.ArtifactVersion <= 0 || strings.TrimSpace(reference.ContentSHA256) == "" {
+			return shoppingProfileSnapshot{}, errors.New("decode shopping profile artifact reference")
+		}
+		snapshot.Reference = &reference
+	}
+	return snapshot, nil
 }
 
 func (s *Store) ResolveShopper(ctx context.Context, krogerSub string) (string, error) {
@@ -561,7 +747,11 @@ func (s *Store) LinkKrogerAccount(ctx context.Context, krogerSub, clerkUserID st
 	}
 	namespacedUserID := "kroger:" + krogerSub
 	statements := []cloudflare.Statement{{
-		SQL:    `INSERT OR REPLACE INTO kroger_account_links (kroger_sub, clerk_user_id, linked_at) VALUES (?, ?, ?)`,
+		SQL: `INSERT INTO kroger_account_links (kroger_sub, clerk_user_id, linked_at) VALUES (?, ?, ?)
+		      ON CONFLICT(kroger_sub) DO UPDATE SET
+		        clerk_user_id = excluded.clerk_user_id,
+		        linked_at = excluded.linked_at
+		      WHERE kroger_account_links.clerk_user_id <> excluded.clerk_user_id`,
 		Params: []any{krogerSub, clerkUserID, shoppingTimestamp(now)},
 	}}
 	tables := []struct {
@@ -588,9 +778,16 @@ func (s *Store) LinkKrogerAccount(ctx context.Context, krogerSub, clerkUserID st
 			},
 		)
 	}
+	statements = append(
+		statements,
+		cloudflare.Statement{SQL: `DELETE FROM shopping_profile_artifacts WHERE user_id = ?`, Params: []any{namespacedUserID}},
+		cloudflare.Statement{SQL: `DELETE FROM shopping_profile_snapshot_jobs WHERE user_id = ?`, Params: []any{namespacedUserID}},
+		cloudflare.Statement{SQL: `DELETE FROM shopping_profile_revisions WHERE user_id = ?`, Params: []any{namespacedUserID}},
+	)
 	if _, err := s.d1.Run(ctx, statements...); err != nil {
 		return fmt.Errorf("link Kroger account: %w", err)
 	}
+	s.enqueueShoppingProfileSnapshotWithCleanup(clerkUserID, namespacedUserID)
 	return nil
 }
 

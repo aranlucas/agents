@@ -12,7 +12,7 @@ import (
 // LatestMigrationVersion is the newest schema marker reported by migration
 // diagnostics. Readiness requires every marker in migrations. Keep existing
 // version strings stable; append instead of editing or renaming applied work.
-const LatestMigrationVersion = "006_shopping_profile"
+const LatestMigrationVersion = "007_shopping_profile_artifacts"
 
 type migration struct {
 	version string
@@ -25,7 +25,8 @@ var migrations = []migration{
 	{version: "003_fitness_activities", source: d1migrations.FitnessActivities},
 	{version: "004_shared_lists", source: d1migrations.SharedLists},
 	{version: "005_saved_grocery_resources", source: d1migrations.SavedGroceryResources},
-	{version: LatestMigrationVersion, source: d1migrations.ShoppingProfile},
+	{version: "006_shopping_profile", source: d1migrations.ShoppingProfile},
+	{version: LatestMigrationVersion, source: d1migrations.ShoppingProfileArtifacts},
 }
 
 type schemaTable struct {
@@ -51,6 +52,11 @@ var requiredSchemaTables = []schemaTable{
 	{name: "grocery_lists", columns: []string{"id", "household_id", "owner_user_id", "title", "status", "created_at", "updated_at"}},
 	{name: "grocery_list_items", columns: []string{"id", "list_id", "name", "quantity", "note", "position", "added_by", "checked_by", "checked_at", "updated_at"}},
 	{name: "grocery_resource_artifacts", columns: []string{"resource_type", "resource_id", "scope_user_id", "file_name", "version", "created_at"}},
+	{name: "shopping_profile_artifacts", columns: []string{"user_id", "scope_user_id", "file_name", "profile_revision", "artifact_version", "content_sha256", "created_at"}},
+	{name: "shopping_profile_revisions", columns: []string{"user_id", "revision", "updated_at"}},
+	{name: "shopping_profile_snapshot_jobs", columns: []string{"user_id", "target_revision", "lease_token", "lease_until", "attempts", "updated_at"}},
+	{name: "shopping_profile_artifact_versions", columns: []string{"user_id", "artifact_version", "created_at"}},
+	{name: "shopping_profile_artifact_cleanup_jobs", columns: []string{"user_id", "artifact_version", "requested_at"}},
 	{name: "recipes", columns: []string{"id", "household_id", "owner_user_id", "title", "description", "servings", "notes", "status", "created_at", "updated_at"}},
 	{name: "recipe_ingredients", columns: []string{"id", "recipe_id", "name", "quantity", "unit", "note", "position"}},
 	{name: "recipe_steps", columns: []string{"id", "recipe_id", "instruction", "position"}},
@@ -85,6 +91,26 @@ var requiredSchemaIndexes = []string{
 	"recipe_tags_recipe",
 	"shopping_orders_user",
 	"kroger_account_links_clerk",
+	"shopping_profile_snapshot_jobs_ready",
+}
+
+var requiredSchemaTriggers = []string{
+	"pantry_items_profile_revision_insert",
+	"pantry_items_profile_revision_update",
+	"pantry_items_profile_revision_delete",
+	"equipment_items_profile_revision_insert",
+	"equipment_items_profile_revision_update",
+	"equipment_items_profile_revision_delete",
+	"shopping_orders_profile_revision_insert",
+	"shopping_orders_profile_revision_update",
+	"shopping_orders_profile_revision_delete",
+	"preferred_stores_profile_revision_insert",
+	"preferred_stores_profile_revision_update",
+	"preferred_stores_profile_revision_delete",
+	"kroger_account_links_profile_revision_insert",
+	"kroger_account_links_profile_revision_update",
+	"shopping_profile_revisions_snapshot_job_insert",
+	"shopping_profile_revisions_snapshot_job_update",
 }
 
 func migrationVersions() []string {
@@ -106,11 +132,9 @@ func (d *D1) RunMigrations(ctx context.Context) error {
 }
 
 func (d *D1) runMigration(ctx context.Context, version, source string) error {
-	var statements []Statement
-	for sql := range strings.SplitSeq(source, ";") {
-		if sql = strings.TrimSpace(sql); sql != "" {
-			statements = append(statements, Statement{SQL: sql})
-		}
+	statements := make([]Statement, 0)
+	for _, sql := range splitMigrationStatements(source) {
+		statements = append(statements, Statement{SQL: sql})
 	}
 	statements = append(statements, Statement{
 		SQL:    "INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (?, ?)",
@@ -120,4 +144,41 @@ func (d *D1) runMigration(ctx context.Context, version, source string) error {
 		return fmt.Errorf("apply D1 migration %s: %w", version, err)
 	}
 	return nil
+}
+
+// splitMigrationStatements preserves CREATE TRIGGER bodies, whose internal
+// semicolons cannot be split into separate D1 batch statements. Repository
+// migrations keep one top-level statement terminator at the end of a line.
+func splitMigrationStatements(source string) []string {
+	var statements []string
+	var current strings.Builder
+	inTrigger := false
+	flush := func() {
+		statement := strings.TrimSpace(current.String())
+		statement = strings.TrimSpace(strings.TrimSuffix(statement, ";"))
+		if statement != "" {
+			statements = append(statements, statement)
+		}
+		current.Reset()
+	}
+	for line := range strings.SplitSeq(source, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if !inTrigger && strings.HasPrefix(strings.ToUpper(trimmed), "CREATE TRIGGER ") {
+			inTrigger = true
+		}
+		current.WriteString(line)
+		current.WriteByte('\n')
+		if inTrigger {
+			if strings.EqualFold(trimmed, "END;") {
+				flush()
+				inTrigger = false
+			}
+			continue
+		}
+		if strings.HasSuffix(trimmed, ";") {
+			flush()
+		}
+	}
+	flush()
+	return statements
 }

@@ -125,6 +125,31 @@ func TestPreferredStoreUsesServerTimestamp(t *testing.T) {
 	}
 }
 
+func TestPreferredStoreNoOpReturnsCanonicalTimestamp(t *testing.T) {
+	repository := newFakeShoppingRepository()
+	api := newTestShoppingAPI(repository)
+	now := time.Unix(2, 0)
+	api.now = func() time.Time { return now }
+	body := decodeShoppingBody[groceryapi.SetPreferredStoreJSONRequestBody](t, `{
+		"location_id":"store-1","name":"Market","address":"1 Main","chain":"Kroger"
+	}`)
+
+	first, err := api.SetPreferredStore(verifiedGroceryContext(t), groceryapi.SetPreferredStoreRequestObject{Body: &body})
+	if err != nil {
+		t.Fatal(err)
+	}
+	now = time.Unix(3_602, 0)
+	second, err := api.SetPreferredStore(verifiedGroceryContext(t), groceryapi.SetPreferredStoreRequestObject{Body: &body})
+	if err != nil {
+		t.Fatal(err)
+	}
+	firstStored, firstOK := first.(groceryapi.SetPreferredStore200JSONResponse)
+	secondStored, secondOK := second.(groceryapi.SetPreferredStore200JSONResponse)
+	if !firstOK || !secondOK || firstStored.SetAt != 2 || secondStored.SetAt != firstStored.SetAt {
+		t.Fatalf("canonical responses = %#v / %#v", first, second)
+	}
+}
+
 func TestGatewayPublicGroceryRouteAllowsServiceRoundTrip(t *testing.T) {
 	registry, err := agentruntime.NewRegistry()
 	if err != nil {
@@ -478,13 +503,17 @@ func (f *fakeShoppingRepository) PreferredStore(_ context.Context, userID string
 	return &copy, nil
 }
 
-func (f *fakeShoppingRepository) SetPreferredStore(_ context.Context, userID string, store groceries.PreferredStore, now time.Time) error {
+func (f *fakeShoppingRepository) SetPreferredStore(_ context.Context, userID string, store groceries.PreferredStore, now time.Time) (groceries.PreferredStore, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.lastUserID = userID
+	if f.preferred != nil && f.preferred.LocationID == store.LocationID && f.preferred.Name == store.Name &&
+		f.preferred.Address == store.Address && f.preferred.Chain == store.Chain {
+		return *f.preferred, nil
+	}
 	store.SetAt = now.Unix()
 	f.preferred = &store
-	return nil
+	return store, nil
 }
 
 func (f *fakeShoppingRepository) ClearPreferredStore(_ context.Context, userID string) error {

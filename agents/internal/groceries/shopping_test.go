@@ -140,7 +140,7 @@ func TestResolveShopperFallsBackToKrogerNamespace(t *testing.T) {
 
 func TestLinkKrogerAccountRekeysNamespacedRows(t *testing.T) {
 	store := newFixtureStore(t, func(statements []cloudflare.Statement) []cloudflare.Result {
-		if len(statements) != 13 || !strings.Contains(statements[0].SQL, "INSERT OR REPLACE INTO kroger_account_links") {
+		if len(statements) != 16 || !strings.Contains(statements[0].SQL, "ON CONFLICT(kroger_sub) DO UPDATE") {
 			t.Fatalf("statements = %#v", statements)
 		}
 		tables := []struct {
@@ -160,12 +160,11 @@ func TestLinkKrogerAccountRekeysNamespacedRows(t *testing.T) {
 				!strings.Contains(cleanup.SQL, "DELETE FROM "+table.name+" WHERE "+table.column+" = ?") {
 				t.Fatalf("%s statements = %#v / %#v", table.name, update, cleanup)
 			}
-			if update.Params[0] != "user_1" || update.Params[1] != "kroger:kroger_sub_1" || cleanup.Params[0] != "kroger:kroger_sub_1" {
-				t.Fatalf("%s params = %#v / %#v", table.name, update.Params, cleanup.Params)
-			}
 		}
-		if statements[0].Params[2] != float64(1) {
-			t.Fatalf("linked_at = %#v, want Unix seconds", statements[0].Params[2])
+		if !strings.Contains(statements[13].SQL, "DELETE FROM shopping_profile_artifacts") ||
+			!strings.Contains(statements[14].SQL, "DELETE FROM shopping_profile_snapshot_jobs") ||
+			!strings.Contains(statements[15].SQL, "DELETE FROM shopping_profile_revisions") {
+			t.Fatalf("artifact cleanup statements = %#v", statements[13:])
 		}
 		return mutationResults(len(statements))
 	})
@@ -175,18 +174,45 @@ func TestLinkKrogerAccountRekeysNamespacedRows(t *testing.T) {
 	}
 }
 
-func TestSetPreferredStoreUsesUnixSeconds(t *testing.T) {
+func TestSetPreferredStoreWithoutArtifactServiceUsesUnixSeconds(t *testing.T) {
 	store := newFixtureStore(t, func(statements []cloudflare.Statement) []cloudflare.Result {
-		if len(statements) != 1 || !strings.Contains(statements[0].SQL, "INSERT OR REPLACE INTO preferred_stores") {
+		if len(statements) != 2 || !strings.Contains(statements[0].SQL, "ON CONFLICT(user_id) DO UPDATE") {
 			t.Fatalf("preferred-store statements = %#v", statements)
 		}
 		if statements[0].Params[5] != float64(1) {
 			t.Fatalf("set_at = %#v, want Unix seconds", statements[0].Params[5])
 		}
-		return mutationResults(1)
+		return []cloudflare.Result{mutationResult(1), queryResult(t, PreferredStore{LocationID: "loc_1", Name: "Kroger", SetAt: 1})}
 	})
-	if err := store.SetPreferredStore(t.Context(), "user_1", PreferredStore{LocationID: "loc_1", Name: "Kroger"}, time.UnixMilli(1_000)); err != nil {
+	if _, err := store.SetPreferredStore(t.Context(), "user_1", PreferredStore{LocationID: "loc_1", Name: "Kroger"}, time.UnixMilli(1_000)); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestShoppingProfileLoadsCompleteProfileInOneD1Batch(t *testing.T) {
+	category := "appliance"
+	store := newFixtureStore(t, func(statements []cloudflare.Statement) []cloudflare.Result {
+		if len(statements) != 8 || !strings.Contains(statements[5].SQL, "MIN(soi.name)") ||
+			!strings.Contains(statements[5].SQL, "lower(soi.name), MIN(soi.name)") ||
+			!strings.Contains(statements[6].SQL, "shopping_profile_revisions") ||
+			!strings.Contains(statements[7].SQL, "shopping_profile_artifacts") {
+			t.Fatalf("shopping profile statements = %#v", statements)
+		}
+		return []cloudflare.Result{
+			queryResult(t, PreferredStore{LocationID: "loc_1", Name: "Kroger", SetAt: 1}),
+			queryResult(t, PantryItem{Name: "Eggs", Quantity: 12, AddedAt: 1}),
+			queryResult(t, EquipmentItem{Name: "Air fryer", Category: &category, AddedAt: 1}),
+			queryResult(t), queryResult(t),
+			queryResult(t, FrequentItem{Name: "Milk", UPC: "upc_1", Orders: 1, TotalQuantity: 1}),
+			queryResult(t), queryResult(t),
+		}
+	})
+	profile, err := store.ShoppingProfile(t.Context(), "user_1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if profile.PreferredStore == nil || len(profile.Pantry) != 1 || len(profile.Equipment) != 1 || len(profile.FrequentItems) != 1 {
+		t.Fatalf("shopping profile = %#v", profile)
 	}
 }
 

@@ -34,3 +34,9 @@ var SavedGroceryResources string
 //
 //go:embed 006_shopping_profile.sql
 var ShoppingProfile string
+
+// ShoppingProfileArtifacts stores references to versioned user
+// shopping-profile snapshots.
+//
+//go:embed 007_shopping_profile_artifacts.sql
+var ShoppingProfileArtifacts string

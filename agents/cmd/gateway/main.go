@@ -738,6 +738,7 @@ func main() {
 	}
 	fitnessActivities := fitnessdata.NewStore(d1)
 	groceryLists := groceries.NewStoreWithArtifacts(d1, cloudflare.NewArtifactService(r2))
+	defer func() { _ = groceryLists.Close() }()
 	fitnessAgent, err := fitness.New(fitnessModel, fitnessActivities, braveSearch, agui.NewAGUIToolset(pending))
 	if err != nil {
 		log.Fatalf("build fitness agent: %v", err)
@@ -881,7 +882,9 @@ func main() {
 		IdleTimeout:       120 * time.Second,
 	}
 
+	shutdownDone := make(chan struct{})
 	go func() {
+		defer close(shutdownDone)
 		<-ctx.Done()
 		log.Printf("shutting down agents gateway")
 
@@ -893,7 +896,10 @@ func main() {
 	}()
 
 	log.Printf("agents gateway listening on :%s", cfg.HTTP.Port)
-	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		log.Fatalf("gateway server failed: %v", err)
+	serveErr := server.ListenAndServe()
+	stop()
+	<-shutdownDone
+	if serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
+		log.Fatalf("gateway server failed: %v", serveErr)
 	}
 }
