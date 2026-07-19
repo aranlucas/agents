@@ -18,7 +18,7 @@ const buttonVariants = cva("min-h-14 min-w-14 flex-row items-center justify-cent
       sm: "px-3 py-1.5 gap-1.5",
       md: "px-4 py-2.5 gap-2",
       lg: "px-6 py-3.5 gap-2.5",
-      icon: "h-10 w-10 p-0",
+      icon: "p-0",
     },
   },
   defaultVariants: { variant: "default", size: "md" },

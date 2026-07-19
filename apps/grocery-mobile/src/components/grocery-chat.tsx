@@ -7,6 +7,7 @@ import {
   type ListRenderItem,
   type NativeScrollEvent,
 } from "react-native";
+import { ScrollView } from "react-native-gesture-handler";
 import { ChevronDown, ChevronRight, Sparkles } from "lucide-react-native";
 import { useForm } from "react-hook-form";
 import { ADD_TO_CART_MESSAGE, AddToCartDialog } from "@/components/add-to-cart-dialog";
@@ -39,7 +40,6 @@ import { useKrogerConnection } from "@/hooks/use-kroger-connection";
 import type { DisplayMessage } from "@/lib/grocery-state";
 import { GROCERY_SUGGESTIONS } from "@/lib/grocery-suggestions";
 import { cn } from "@/lib/utils";
-import { ScrollView } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const ANDROID_HEADER_HEIGHT = 56;
@@ -134,7 +134,7 @@ export function GroceryChat() {
       <FlatList
         ref={listRef}
         className="w-full max-w-3xl flex-1 self-center"
-        contentContainerClassName="grow px-4 py-3 sm:px-6"
+        contentContainerClassName="grow gap-3 px-4 py-3 sm:px-6"
         contentInsetAdjustmentBehavior="automatic"
         data={messages}
         keyExtractor={messageKey}
@@ -215,7 +215,7 @@ const ChatEmptyState = memo(function ChatEmptyState({
   onSend: (content: string) => Promise<GroceryOperationOutcome>;
 }) {
   return (
-    <View className="items-center gap-2.5 px-3 py-6">
+    <View className="items-center gap-3 px-3 py-6">
       <View className="size-14 items-center justify-center rounded-2xl bg-muted">
         <Icon as={Sparkles} className="size-6.5 text-primary" />
       </View>
@@ -226,15 +226,13 @@ const ChatEmptyState = memo(function ChatEmptyState({
         Describe a recipe, a weekly budget, or the meals you need. I’ll turn it into a practical
         list you control.
       </Text>
-      <View className="mt-2.5 w-full flex-row flex-wrap justify-center gap-2">
+      <View className="w-full flex-row flex-wrap justify-center gap-2">
         {GROCERY_SUGGESTIONS.map((suggestion) => (
           <Chip
             key={suggestion.title}
             accessibilityLabel={suggestion.title}
             disabled={disabled}
             onPress={() => void onSend(suggestion.message)}
-            textClassName="text-secondary"
-            variant="outline"
           >
             {suggestion.title}
           </Chip>
@@ -250,9 +248,11 @@ function messageKey(message: DisplayMessage) {
 
 const UserMessage = memo(function UserMessage({ content, id }: { content: string; id: string }) {
   return (
-    <View className="mb-3 w-full items-end" nativeID={id}>
+    <View className="w-full items-end" nativeID={id}>
       <View className="max-w-3/4 rounded-2xl rounded-br-sm bg-primary px-4 py-2.5">
-        <Text className="text-end text-sm leading-relaxed text-primary-foreground">{content}</Text>
+        <Text className="text-end text-sm leading-relaxed text-primary-foreground" selectable>
+          {content}
+        </Text>
       </View>
     </View>
   );
@@ -274,7 +274,7 @@ const MessageItem = memo(function MessageItem({
   }
 
   return (
-    <View className="mb-3 w-full items-start" collapsable nativeID={message.id}>
+    <View className="w-full items-start" collapsable nativeID={message.id}>
       {message.role === "reasoning" ? (
         <ReasoningSection
           completedDuration={completedReasoningDuration}
@@ -405,7 +405,8 @@ function ReasoningSection({
     <Collapsible className="w-full gap-1 self-stretch" onOpenChange={setExpanded} open={expanded}>
       <CollapsibleTrigger
         accessibilityLabel={expanded ? "Hide reasoning" : "Show reasoning"}
-        className="flex-row items-center gap-1 self-start py-1 active:opacity-65"
+        accessibilityState={{ expanded }}
+        className="min-h-14 flex-row items-center gap-1 self-start active:opacity-65"
       >
         <View className="size-4 items-center justify-center">
           {expanded ? (
@@ -444,7 +445,8 @@ function ToolCallSection({
     <Collapsible className="w-full gap-1 self-stretch" onOpenChange={setExpanded} open={expanded}>
       <CollapsibleTrigger
         accessibilityLabel={`${expanded ? "Hide" : "Show"} details for ${label}`}
-        className="min-h-8 flex-row items-center gap-1 py-1 active:opacity-65"
+        accessibilityState={{ expanded }}
+        className="min-h-14 flex-row items-center gap-1 active:opacity-65"
       >
         <View className="size-4 items-center justify-center">
           {expanded ? (
@@ -463,26 +465,28 @@ function ToolCallSection({
           {status === "running" ? "Running" : status === "failed" ? "Failed" : "Done"}
         </Text>
       </CollapsibleTrigger>
-      <CollapsibleContent className="ml-2 max-h-39 border-l border-border py-1 pl-3.5">
-        <ScrollView nestedScrollEnabled>
-          <Text className="mb-0.5 font-semibold text-muted-foreground" variant="small">
-            Input
-          </Text>
-          <Text className="mb-2 leading-4.5" variant="muted">
-            {formatToolValue(parameters)}
-          </Text>
-          {status !== "running" ? (
-            <>
-              <Text className="mb-0.5 font-semibold text-muted-foreground" variant="small">
-                Result
-              </Text>
-              <Text className="mb-2 leading-4.5" variant="muted">
-                {formatToolValue(result)}
-              </Text>
-            </>
-          ) : null}
-        </ScrollView>
-      </CollapsibleContent>
+      {expanded ? (
+        <CollapsibleContent className="ml-2 max-h-39 border-l border-border py-1 pl-3.5">
+          <ScrollView nestedScrollEnabled>
+            <Text className="mb-0.5 font-semibold text-muted-foreground" variant="small">
+              Input
+            </Text>
+            <Text className="mb-2 leading-4.5" selectable variant="muted">
+              {formatToolValue(parameters)}
+            </Text>
+            {status !== "running" ? (
+              <>
+                <Text className="mb-0.5 font-semibold text-muted-foreground" variant="small">
+                  Result
+                </Text>
+                <Text className="mb-2 leading-4.5" selectable variant="muted">
+                  {formatToolValue(result)}
+                </Text>
+              </>
+            ) : null}
+          </ScrollView>
+        </CollapsibleContent>
+      ) : null}
     </Collapsible>
   );
 }

@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { FormInput } from "@/components/ui/form";
 import { Icon } from "@/components/ui/icon";
 import { Screen } from "@/components/ui/screen";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { getRuntimeUrl } from "@/lib/config";
@@ -88,93 +89,103 @@ export default function SavedListScreen() {
     }
   };
 
+  if (!listId) {
+    return (
+      <Screen contentContainerClassName="flex-grow justify-center">
+        <Alert
+          title="This saved list link is incomplete. Go back and open it again."
+          variant="destructive"
+        />
+      </Screen>
+    );
+  }
   if (listQuery.isPending) {
     return (
-      <View className="w-full max-w-3xl flex-1 gap-4 self-center bg-background p-4 sm:p-6">
+      <Screen>
         <Skeleton className="h-14 rounded-2xl" />
         <Skeleton className="h-64 rounded-2xl" />
-      </View>
+      </Screen>
     );
   }
   if (listQuery.error instanceof Error || !list) {
     return (
-      <View className="w-full max-w-3xl flex-1 justify-center self-center bg-background p-4 sm:p-6">
+      <Screen contentContainerClassName="flex-grow justify-center">
         <Alert
           title={listQuery.error instanceof Error ? listQuery.error.message : "List not found"}
           variant="destructive"
         />
-      </View>
+      </Screen>
     );
   }
 
   return (
-    <Screen className="bg-background">
-      <View className="gap-2">
-        <Text className="font-extrabold tracking-normal" variant="h3">
-          Edit grocery list
-        </Text>
-        <View className="flex-row items-center gap-2">
-          <FormInput
-            accessibilityLabel="Grocery list title"
-            className="flex-1"
-            containerClassName="flex-1"
-            control={control}
-            name="title"
-            rules={{ validate: (value) => value.trim().length > 0 || "Add a title." }}
-          />
-          <Button
-            accessibilityLabel="Save list title"
-            className="size-14"
-            disabled={mutateList.isPending}
-            icon={<Icon as={Save} className="size-4.5 text-primary-foreground" />}
-            onPress={() => void saveTitle()}
-            size="icon"
-          />
-        </View>
+    <Screen>
+      <View className="flex-row items-center gap-2">
+        <FormInput
+          accessibilityLabel="Grocery list title"
+          containerClassName="flex-1"
+          control={control}
+          label="List title"
+          name="title"
+          rules={{ validate: (value) => value.trim().length > 0 || "Add a title." }}
+        />
+        <Button
+          accessibilityLabel="Save list title"
+          disabled={mutateList.isPending}
+          icon={<Icon as={Save} className="size-4.5 text-primary-foreground" />}
+          onPress={() => void saveTitle()}
+          size="icon"
+        />
       </View>
 
-      <Card className="overflow-hidden rounded-2xl p-0">
+      <Card className="overflow-hidden p-0">
         <CardHeader className="p-4">
-          <CardTitle className="text-lg font-extrabold tracking-normal">
+          <CardTitle>
             {list.items.length} {list.items.length === 1 ? "item" : "items"}
           </CardTitle>
           <CardDescription>Changes sync with Grocery Agent and authorized members.</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          {list.items.map((item, index) => {
-            const checked = Boolean(item.checked_at);
-            return (
-              <View key={item.id}>
-                <View className="min-h-16 flex-row items-center px-4">
-                  <Checkbox
-                    accessibilityLabel={`${checked ? "Uncheck" : "Check"} ${item.name}`}
-                    checked={checked}
-                    onCheckedChange={(next) =>
-                      mutateList.mutate({ type: "toggle", itemId: item.id, checked: next })
-                    }
-                  />
-                  <View className="flex-1 gap-0.5 py-3">
-                    <Text
-                      className={cn("font-bold", checked && "text-muted-foreground line-through")}
-                      variant="large"
+          {list.items.length ? (
+            list.items.map((item, index) => {
+              const checked = Boolean(item.checked_at);
+              return (
+                <View key={item.id}>
+                  <View className="min-h-16 flex-row items-center px-4">
+                    <Checkbox
+                      accessibilityLabel={`${checked ? "Uncheck" : "Check"} ${item.name}`}
+                      checked={checked}
+                      onCheckedChange={(next) =>
+                        mutateList.mutate({ type: "toggle", itemId: item.id, checked: next })
+                      }
+                    />
+                    <View className="flex-1 gap-0.5 py-3">
+                      <Text
+                        className={cn(checked && "text-muted-foreground line-through")}
+                        variant="large"
+                      >
+                        {item.name}
+                      </Text>
+                      <Text variant="muted">Quantity {item.quantity}</Text>
+                    </View>
+                    <Pressable
+                      accessibilityLabel={`Remove ${item.name}`}
+                      accessibilityRole="button"
+                      className="min-h-14 min-w-14 items-center justify-center active:opacity-60"
+                      onPress={() => mutateList.mutate({ type: "delete", itemId: item.id })}
                     >
-                      {item.name}
-                    </Text>
-                    <Text variant="muted">Quantity {item.quantity}</Text>
+                      <Icon as={Trash2} className="size-5 text-muted-foreground" />
+                    </Pressable>
                   </View>
-                  <Pressable
-                    accessibilityLabel={`Remove ${item.name}`}
-                    accessibilityRole="button"
-                    className="min-h-14 min-w-14 items-center justify-center active:opacity-60"
-                    onPress={() => mutateList.mutate({ type: "delete", itemId: item.id })}
-                  >
-                    <Icon as={Trash2} className="size-5 text-muted-foreground" />
-                  </Pressable>
+                  {index < list.items.length - 1 ? <Separator className="ml-13 w-auto" /> : null}
                 </View>
-                {index < list.items.length - 1 ? <View className="ml-13 h-px bg-border" /> : null}
-              </View>
-            );
-          })}
+              );
+            })
+          ) : (
+            <Text className="p-4" variant="muted">
+              No items yet. Add the first item below.
+            </Text>
+          )}
         </CardContent>
       </Card>
 
@@ -192,7 +203,6 @@ export default function SavedListScreen() {
         />
         <Button
           accessibilityLabel="Add grocery item"
-          className="size-14"
           disabled={mutateList.isPending}
           icon={<Icon as={Plus} className="size-5 text-primary-foreground" />}
           onPress={() => void addItem()}

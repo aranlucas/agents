@@ -53,23 +53,26 @@ export default function SavedListsScreen() {
     personalQuery.error ??
     householdsQuery.error ??
     householdQueries.find((query) => query.error)?.error;
+  const loading =
+    personalQuery.isPending ||
+    householdsQuery.isPending ||
+    householdQueries.some((query) => query.isPending);
 
   return (
-    <Screen className="bg-background">
-      <View className="flex-row items-center justify-between gap-3 px-0.5">
-        <View className="flex-1 gap-1">
-          <Text className="font-extrabold tracking-normal" variant="h3">
-            Saved grocery lists
-          </Text>
-          <Text variant="muted">Open a personal or household list to edit its items.</Text>
-        </View>
-        <Badge variant="outline">{String(lists.length)}</Badge>
+    <Screen>
+      <View className="flex-row items-center gap-3">
+        <Text className="flex-1" variant="muted">
+          Open a personal or household list to edit its items.
+        </Text>
+        <Badge accessible accessibilityLabel={`${lists.length} saved lists`} variant="outline">
+          {String(lists.length)}
+        </Badge>
       </View>
 
       {queryError instanceof Error ? (
         <Alert title={queryError.message} variant="destructive" />
       ) : null}
-      {personalQuery.isPending || householdsQuery.isPending ? (
+      {loading ? (
         <View accessibilityLabel="Loading saved grocery lists" className="gap-3">
           <Skeleton className="h-24 rounded-2xl" />
           <Skeleton className="h-24 rounded-2xl" />
@@ -77,24 +80,21 @@ export default function SavedListsScreen() {
       ) : lists.length ? (
         lists.map(({ list, location }) => (
           <Pressable
+            accessibilityLabel={`${list.title}, ${location}`}
             accessibilityRole="button"
+            className="active:opacity-80"
             key={list.id}
             onPress={() => router.push({ pathname: "/saved-list", params: { listId: list.id } })}
           >
-            <Card className="rounded-2xl p-0 active:bg-muted">
+            <Card className="p-0">
               <CardHeader className="flex-row items-center gap-3 p-4">
-                <View className="size-11 items-center justify-center rounded-2xl bg-muted">
+                <View className="size-11 items-center justify-center rounded-md bg-muted">
                   <Icon as={ListChecks} className="size-5 text-primary" />
                 </View>
                 <View className="flex-1 gap-1">
-                  <View className="flex-row items-center gap-2">
-                    <CardTitle className="flex-1 text-lg font-extrabold tracking-normal">
-                      {list.title}
-                    </CardTitle>
-                    <Badge variant="outline">{location}</Badge>
-                  </View>
+                  <CardTitle>{list.title}</CardTitle>
                   <CardDescription>
-                    Updated {new Date(list.updated_at).toLocaleDateString()}
+                    {location} · Updated {new Date(list.updated_at).toLocaleDateString()}
                   </CardDescription>
                 </View>
                 <Icon as={ChevronRight} className="size-5 text-muted-foreground" />
@@ -102,7 +102,7 @@ export default function SavedListsScreen() {
             </Card>
           </Pressable>
         ))
-      ) : (
+      ) : queryError instanceof Error ? null : (
         <EmptyState
           action={{ label: "Create a list", onPress: () => router.replace("/chat") }}
           className="min-h-72"

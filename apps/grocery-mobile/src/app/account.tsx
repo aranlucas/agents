@@ -94,8 +94,8 @@ export default function AccountScreen() {
                 : "Optional for live products and cart actions"}
             </CardDescription>
           </View>
-          <Badge variant={connected ? "secondary" : "destructive"}>
-            {connected ? "Connected" : "Action needed"}
+          <Badge variant={connected ? "secondary" : "outline"}>
+            {connected ? "Connected" : "Not connected"}
           </Badge>
         </CardHeader>
         <CardFooter className="pt-3.5">

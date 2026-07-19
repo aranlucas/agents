@@ -25,7 +25,6 @@ export function Drawer({ open, onOpenChange, side = "left", children }: DrawerPr
     if (open) {
       translate.value = withSpring(0, springs.snappy);
       opacity.value = withTiming(0.5, { duration: duration.normal });
-      if (closing) setClosing(false);
       return;
     }
     if (!closing) {
@@ -45,7 +44,7 @@ export function Drawer({ open, onOpenChange, side = "left", children }: DrawerPr
   }));
 
   const close = () => {
-    if (!open || closing) return;
+    if (!open) return;
     setClosing(true);
     onOpenChange(false);
   };

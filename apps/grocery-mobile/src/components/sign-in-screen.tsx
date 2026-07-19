@@ -3,7 +3,7 @@ import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { useState } from "react";
 import { ScrollView, View } from "react-native";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { BrandMark } from "@/components/brand-mark";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -39,8 +39,8 @@ export function SignInScreen() {
     defaultValues: { code: "", email: "", password: "" },
     mode: "onChange",
   });
-  const email = useWatch({ control, name: "email" });
   const busy = oauthBusy || isSubmitting;
+  const verificationEmail = mode === "verify" ? getValues("email") : "";
 
   const authenticateWithGoogle = async () => {
     setOauthBusy(true);
@@ -104,10 +104,10 @@ export function SignInScreen() {
         <ScrollView
           className="w-full max-w-md self-center"
           contentInsetAdjustmentBehavior="automatic"
-          contentContainerClassName="flex-grow justify-center px-6 py-8"
+          contentContainerClassName="flex-grow justify-center gap-6 px-6 py-8"
           keyboardShouldPersistTaps="handled"
         >
-          <View className="mb-8 items-center gap-4">
+          <View className="items-center gap-4">
             <BrandMark size="xl" />
             <View className="items-center gap-1">
               <Text className="text-center" selectable variant="h2">
@@ -122,7 +122,7 @@ export function SignInScreen() {
                   ? "Sign in to continue planning your groceries."
                   : mode === "sign-up"
                     ? "Create an account to save plans and grocery lists."
-                    : `Enter the verification code sent to ${email}.`}
+                    : `Enter the verification code sent to ${verificationEmail}.`}
               </Text>
             </View>
           </View>
@@ -140,7 +140,6 @@ export function SignInScreen() {
                   }}
                   autoCapitalize="none"
                   autoComplete="email"
-                  className="rounded-xl bg-card"
                   keyboardType="email-address"
                   placeholder="name@example.com"
                   returnKeyType="next"
@@ -155,7 +154,6 @@ export function SignInScreen() {
                   }}
                   autoCapitalize="none"
                   autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
-                  className="rounded-xl bg-card"
                   onSubmitEditing={() => void submitCredentials()}
                   placeholder="At least 8 characters"
                   returnKeyType="done"
@@ -172,7 +170,6 @@ export function SignInScreen() {
                   required: "Enter the verification code.",
                 }}
                 autoComplete="one-time-code"
-                className="rounded-xl bg-card"
                 keyboardType="number-pad"
                 maxLength={6}
                 onSubmitEditing={() => void submitCredentials()}
@@ -185,9 +182,8 @@ export function SignInScreen() {
               <Alert title={errors.root.server.message} variant="destructive" />
             ) : null}
             <Button
-              className="mt-2 w-full"
-              disabled={!isReady}
-              loading={busy}
+              disabled={!isReady || oauthBusy}
+              loading={isSubmitting}
               size="lg"
               onPress={() => void submitCredentials()}
             >
@@ -200,8 +196,8 @@ export function SignInScreen() {
           </View>
 
           {mode !== "verify" ? (
-            <>
-              <View className="my-6 flex-row items-center gap-3">
+            <View className="gap-6">
+              <View className="flex-row items-center gap-3">
                 <Separator className="flex-1" />
                 <Text className="text-muted-foreground" variant="small">
                   or continue with
@@ -209,23 +205,23 @@ export function SignInScreen() {
                 <Separator className="flex-1" />
               </View>
               <Button
-                className="w-full"
                 disabled={busy}
+                loading={oauthBusy}
                 size="lg"
                 variant="outline"
                 onPress={authenticateWithGoogle}
               >
                 Continue with Google
               </Button>
-            </>
+            </View>
           ) : null}
 
-          <View className="mt-8 flex-row items-center justify-center gap-1">
+          <View className="flex-row items-center justify-center gap-1">
             <Text className="text-muted-foreground" variant="small">
               {mode === "sign-in" ? "Don’t have an account?" : "Already have an account?"}
             </Text>
             <Button
-              className="h-auto p-0"
+              disabled={busy}
               onPress={() => {
                 const nextMode = mode === "sign-in" ? "sign-up" : "sign-in";
                 reset({ code: "", email: getValues("email"), password: "" });

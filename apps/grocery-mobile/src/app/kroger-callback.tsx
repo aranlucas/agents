@@ -4,6 +4,8 @@ import { useRouter } from "expo-router";
 import { useEffect } from "react";
 import { View } from "react-native";
 import { Button } from "@/components/ui/button";
+import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { SafeArea } from "@/components/ui/safe-area";
 import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
 import { readableError } from "@/lib/auth";
@@ -36,30 +38,37 @@ export default function KrogerCallbackScreen() {
     router.replace("/");
   }, [connection.data, queryClient, router, user]);
 
-  const error = connection.error ? readableError(connection.error) : "";
+  const error =
+    isLoaded && !user
+      ? "Your session has expired. Please sign in again."
+      : connection.error
+        ? readableError(connection.error)
+        : "";
 
   return (
-    <View className="flex-1 items-center justify-center gap-3.5 bg-background p-7">
-      {error ? (
-        <>
-          <Text className="text-center" variant="h4">
-            Couldn’t finish connecting Kroger
-          </Text>
-          <Text className="text-center text-muted-foreground" selectable>
-            {error}
-          </Text>
-          <Button className="mt-2" size="lg" onPress={() => router.replace("/")}>
-            Back to Grocery Agent
-          </Button>
-        </>
-      ) : (
-        <>
-          <Spinner size="lg" />
-          <Text className="text-center text-muted-foreground">
-            Finishing your Kroger connection…
-          </Text>
-        </>
-      )}
-    </View>
+    <SafeArea>
+      <View className="w-full max-w-md flex-1 items-center justify-center gap-4 self-center p-6">
+        {error ? (
+          <Card className="w-full">
+            <CardHeader>
+              <CardTitle selectable>Couldn’t finish connecting Kroger</CardTitle>
+              <CardDescription selectable>{error}</CardDescription>
+            </CardHeader>
+            <CardFooter>
+              <Button className="flex-1" size="lg" onPress={() => router.replace("/")}>
+                Back to Grocery Agent
+              </Button>
+            </CardFooter>
+          </Card>
+        ) : (
+          <View className="items-center gap-3">
+            <Spinner accessibilityLabel="Finishing your Kroger connection" size="lg" />
+            <Text className="text-center" variant="muted">
+              Finishing your Kroger connection…
+            </Text>
+          </View>
+        )}
+      </View>
+    </SafeArea>
   );
 }
