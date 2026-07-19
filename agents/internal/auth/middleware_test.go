@@ -210,6 +210,23 @@ func TestCORSWildcardReflectsAnyOriginForCredentialedRequests(t *testing.T) {
 	}
 }
 
+func TestCORSPreflightAllowsPreferredStorePUT(t *testing.T) {
+	handler := CORS([]string{"https://app.example"}, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	request := httptest.NewRequest(http.MethodOptions, "/api/grocery/preferred-store", nil)
+	request.Header.Set("Origin", "https://app.example")
+	request.Header.Set("Access-Control-Request-Method", http.MethodPut)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("status = %d", recorder.Code)
+	}
+	if got := recorder.Header().Get("Access-Control-Allow-Methods"); got != "GET, POST, PUT, PATCH, DELETE, OPTIONS" {
+		t.Fatalf("allowed methods = %q", got)
+	}
+}
+
 func jwksDocument(kid string, key *rsa.PublicKey) map[string]any {
 	exponent := big.NewInt(int64(key.E)).Bytes()
 	return map[string]any{"keys": []any{map[string]any{"kty": "RSA", "kid": kid, "use": "sig", "alg": "RS256", "n": base64.RawURLEncoding.EncodeToString(key.N.Bytes()), "e": base64.RawURLEncoding.EncodeToString(exponent)}}}

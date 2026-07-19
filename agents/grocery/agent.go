@@ -3,6 +3,7 @@ package grocery
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 
 	"agents/internal/bravesearch"
 	"agents/internal/common"
@@ -50,7 +51,7 @@ func newAgent(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *c
 	if err != nil {
 		return nil, err
 	}
-	return buildAgent(m, kroger, tools, mode, toolsets...)
+	return buildAgent(m, kroger, tools, mode, nil, toolsets...)
 }
 
 func newAgentWithLibrary(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *common.WebLoader, repository groceries.LibraryRepository, mode llmagent.Mode, toolsets ...tool.Toolset) (agent.Agent, error) {
@@ -62,14 +63,23 @@ func newAgentWithLibrary(m model.LLM, kroger *Kroger, search *bravesearch.Client
 	if err != nil {
 		return nil, err
 	}
-	return buildAgent(m, kroger, append(tools, libraryTools...), mode, toolsets...)
+	shoppingRepository, _ := nativeShoppingRepository(repository)
+	return buildAgent(m, kroger, append(tools, libraryTools...), mode, shoppingRepository, toolsets...)
 }
 
-func buildAgent(m model.LLM, kroger *Kroger, tools []tool.Tool, mode llmagent.Mode, toolsets ...tool.Toolset) (agent.Agent, error) {
+func buildAgent(m model.LLM, kroger *Kroger, tools []tool.Tool, mode llmagent.Mode, shoppingRepository groceries.ShoppingRepository, toolsets ...tool.Toolset) (agent.Agent, error) {
+	nativeShopping := shoppingRepository != nil
 	if kroger != nil {
-		toolsets = append(toolsets, kroger)
+		toolsets = append(toolsets, kroger.withNativeShopping(nativeShopping))
 	}
-	config := llmagent.Config{Name: AppName, Description: "Meal planning, pantry, shopping list, and cart support.", Instruction: Instruction, Model: m, Mode: mode, Tools: tools, Toolsets: toolsets, BeforeModelCallbacks: []llmagent.BeforeModelCallback{compactGroceryContext}}
+	instruction := Instruction
+	if nativeShopping {
+		instruction = strings.TrimSpace(instruction) + "\n\n" + nativeShoppingInstruction
+	}
+	config := llmagent.Config{Name: AppName, Description: "Meal planning, pantry, shopping list, and cart support.", Instruction: instruction, Model: m, Mode: mode, Tools: tools, Toolsets: toolsets, BeforeModelCallbacks: []llmagent.BeforeModelCallback{compactGroceryContext}}
+	if nativeShopping {
+		config.BeforeAgentCallbacks = []agent.BeforeAgentCallback{hydrateShoppingProfileState(shoppingRepository)}
+	}
 	if mode == llmagent.ModeTask {
 		config.DisallowTransferToParent = true
 		config.DisallowTransferToPeers = true
@@ -197,8 +207,33 @@ func groceryLibraryTools(repository groceries.LibraryRepository) ([]tool.Tool, e
 	if repository == nil {
 		return nil, errors.New("grocery library repository is required")
 	}
-	return savedResourceTools(repository)
+	tools, err := savedResourceTools(repository)
+	if err != nil {
+		return nil, err
+	}
+	if shoppingRepository, ok := nativeShoppingRepository(repository); ok {
+		shoppingTools, err := shoppingResourceTools(shoppingRepository)
+		if err != nil {
+			return nil, err
+		}
+		tools = append(tools, shoppingTools...)
+	}
+	return tools, nil
 }
+
+func nativeShoppingRepository(repository groceries.LibraryRepository) (groceries.ShoppingRepository, bool) {
+	shoppingRepository, ok := repository.(groceries.ShoppingRepository)
+	return shoppingRepository, ok && shoppingRepository != nil
+}
+
+const nativeShoppingInstruction = "" +
+	"Pantry, kitchen equipment, saved orders, shopping profile, and preferred-store " +
+	"profile data are shared gateway-backed data. Use the native " +
+	"`get_shopping_profile`, `add_to_pantry`, `remove_from_pantry`, `add_equipment`, " +
+	"`remove_equipment`, `get_recent_orders`, `record_order`, `get_preferred_store`, " +
+	"and `set_preferred_store` tools for those domains. The Kroger MCP connection is " +
+	"limited to live product, store, cart, and weekly-deal operations; do not use a " +
+	"Kroger inventory, profile, meal-planning, or order-history tool."
 
 func compactGroceryContext(_ agent.Context, request *model.LLMRequest) (*model.LLMResponse, error) {
 	const maxContents, maxBytes = 40, 512 << 10

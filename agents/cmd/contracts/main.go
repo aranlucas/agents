@@ -488,6 +488,13 @@ func objectDefinitions() []objectDef {
 		object("CartItem", common.CartItem{}, required("name", "quantity"), optional("price", "upc")),
 		object("ProductMatch", common.ProductMatch{}, required("query", "name", "upc"), optional("image_url", "price", "size")),
 		object("PantryItem", common.PantryItem{}, required("name", "quantity"), optional("expires")),
+		object("ShoppingPantryItem", grocery.ShoppingPantryItemState{}, required("name", "quantity", "added_at"), optional("expires_at")),
+		object("ShoppingEquipmentItem", grocery.ShoppingEquipmentItemState{}, required("name", "added_at"), optional("category")),
+		object("ShoppingOrderItem", grocery.ShoppingOrderItemState{}, required("upc", "name", "quantity"), optional("price")),
+		object("ShoppingOrder", grocery.ShoppingOrderState{}, required("id", "items", "total_items", "placed_at"), optional("estimated_total", "location_id", "notes")),
+		object("ShoppingPreferredStore", grocery.ShoppingPreferredStoreState{}, required("location_id", "name", "address", "chain", "set_at")),
+		object("ShoppingFrequentItem", grocery.ShoppingFrequentItemState{}, required("name", "upc", "orders", "total_quantity")),
+		object("ShoppingProfile", grocery.ShoppingProfileState{}, required("pantry", "equipment", "recent_orders", "frequent_items"), optional("preferred_store")),
 		object("RecipeDraftIngredient", grocery.RecipeDraftIngredient{}, required("name", "quantity", "unit", "note")),
 		object("RecipeDraft", grocery.RecipeDraft{}, required("title", "description", "servings", "notes", "ingredients", "steps", "tags")),
 		object("FitnessActivity", fitnessdata.Activity{}, required("id", "name"), fields(
@@ -523,6 +530,7 @@ func objectDefinitions() []objectDef {
 		)),
 		object("GroceryState", grocery.GroceryState{}, stateFields(
 			field("shopping_list", "", true), field("list_title", "", true), field("product_matches", "", true), field("cart", "", true), field("pantry", "", true),
+			field("shopping_profile", "", true),
 			field("meal_plan", "", true), field("recipe", "", true), field("weekly_deals", "", true),
 			field("status", `"idle" | "planning" | "ready"`, true), field("notes", "", true),
 			field("review_summary", "", true), field("kroger_connected", "", true),

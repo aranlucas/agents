@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"agents/internal/cloudflare"
@@ -21,6 +22,7 @@ var (
 	ErrInviteExpired   = errors.New("household invite expired")
 	ErrInviteExhausted = errors.New("household invite exhausted")
 	ErrInvalid         = errors.New("invalid grocery input")
+	ErrStoreClosed     = errors.New("grocery store is closed")
 )
 
 const (
@@ -63,6 +65,7 @@ type Item struct {
 	Name      string  `json:"name"`
 	Quantity  string  `json:"quantity"`
 	Note      *string `json:"note"`
+	Upc       *string `json:"upc,omitempty"`
 	Position  int     `json:"position"`
 	AddedBy   string  `json:"added_by"`
 	CheckedBy *string `json:"checked_by"`
@@ -74,6 +77,7 @@ type NewItem struct {
 	Name     string  `json:"name"`
 	Quantity string  `json:"quantity"`
 	Note     *string `json:"note,omitempty"`
+	Upc      *string `json:"upc,omitempty"`
 }
 
 type ItemPatch struct {
@@ -106,6 +110,10 @@ type Store struct {
 	d1        statementRunner
 	artifacts artifact.Service
 	newID     func(string) (string, error)
+
+	shoppingSnapshotMu sync.RWMutex
+	shoppingSnapshots  *shoppingProfileSnapshotScheduler
+	shoppingClosed     bool
 }
 
 func NewStore(d1 *cloudflare.D1) *Store {
@@ -113,7 +121,29 @@ func NewStore(d1 *cloudflare.D1) *Store {
 }
 
 func NewStoreWithArtifacts(d1 *cloudflare.D1, artifacts artifact.Service) *Store {
-	return &Store{d1: d1, artifacts: artifacts, newID: randomID}
+	store := &Store{d1: d1, artifacts: artifacts, newID: randomID}
+	store.startShoppingProfileSnapshots()
+	return store
+}
+
+// Close stops background artifact work and permanently closes the store.
+// A Store must not be reused after Close returns.
+func (s *Store) Close() error {
+	if s == nil {
+		return nil
+	}
+	s.shoppingSnapshotMu.Lock()
+	if s.shoppingClosed {
+		s.shoppingSnapshotMu.Unlock()
+		return nil
+	}
+	s.shoppingClosed = true
+	scheduler := s.shoppingSnapshots
+	s.shoppingSnapshotMu.Unlock()
+	if scheduler != nil {
+		scheduler.close()
+	}
+	return nil
 }
 
 func (s *Store) CreateHousehold(ctx context.Context, userID, name string, now time.Time) (Household, error) {
@@ -334,8 +364,9 @@ func (s *Store) GetList(ctx context.Context, userID, listID string) (List, error
 			Params: []any{listID, userID, userID},
 		},
 		cloudflare.Statement{
-			SQL: `SELECT id, list_id, name, quantity, note, position, added_by, checked_by, checked_at, updated_at
-			      FROM grocery_list_items WHERE list_id = ? ORDER BY position, id`,
+			SQL: `SELECT gli.id, gli.list_id, gli.name, gli.quantity, gli.note, glu.upc AS upc, gli.position, gli.added_by, gli.checked_by, gli.checked_at, gli.updated_at
+			      FROM grocery_list_items gli LEFT JOIN grocery_list_item_upcs glu ON glu.item_id = gli.id
+			      WHERE gli.list_id = ? ORDER BY gli.position, gli.id`,
 			Params: []any{listID},
 		},
 	)
@@ -378,8 +409,16 @@ func (s *Store) AddItems(ctx context.Context, userID, listID string, inputs []Ne
 		if quantity == "" {
 			quantity = defaultQuantity
 		}
-		if name == "" || len(name) > 500 || len(quantity) > 100 || (input.Note != nil && len(*input.Note) > 1000) {
+		if name == "" || len(name) > 500 || len(quantity) > 100 || (input.Note != nil && len(*input.Note) > 1000) || (input.Upc != nil && len(*input.Upc) > 32) {
 			return nil, ErrInvalid
+		}
+		if input.Upc != nil {
+			trimmed := strings.TrimSpace(*input.Upc)
+			if trimmed == "" {
+				input.Upc = nil
+			} else {
+				input.Upc = &trimmed
+			}
 		}
 		id, err := s.newID("item")
 		if err != nil {
@@ -398,7 +437,10 @@ func (s *Store) AddItems(ctx context.Context, userID, listID string, inputs []Ne
 			      ))`,
 			Params: []any{id, name, quantity, note, userID, updatedAt, listID, userID, userID},
 		})
-		items = append(items, Item{ID: id, ListID: listID, Name: name, Quantity: quantity, Note: stringPointer(note), AddedBy: userID, UpdatedAt: updatedAt})
+		if stmt := upcStatement(id, input.Upc); stmt != nil {
+			statements = append(statements, *stmt)
+		}
+		items = append(items, Item{ID: id, ListID: listID, Name: name, Quantity: quantity, Note: stringPointer(note), Upc: input.Upc, AddedBy: userID, UpdatedAt: updatedAt})
 	}
 	statements = append(statements, cloudflare.Statement{
 		SQL: `UPDATE grocery_lists SET updated_at = ? WHERE id = ? AND (owner_user_id = ? OR EXISTS (
@@ -520,6 +562,7 @@ func (s *Store) DeleteItem(ctx context.Context, userID, listID, itemID string, n
 		      )))`,
 			Params: []any{itemID, listID, userID, userID},
 		},
+		cloudflare.Statement{SQL: `DELETE FROM grocery_list_item_upcs WHERE item_id = ?`, Params: []any{itemID}},
 		cloudflare.Statement{
 			SQL: `UPDATE grocery_lists SET updated_at = ? WHERE id = ? AND (owner_user_id = ? OR EXISTS (
 			      SELECT 1 FROM household_members hm WHERE hm.household_id = grocery_lists.household_id AND hm.clerk_user_id = ?
@@ -542,6 +585,12 @@ func (s *Store) DeleteItem(ctx context.Context, userID, listID, itemID string, n
 func (s *Store) ready() error {
 	if s == nil || s.d1 == nil || s.newID == nil {
 		return errors.New("grocery store is required")
+	}
+	s.shoppingSnapshotMu.RLock()
+	closed := s.shoppingClosed
+	s.shoppingSnapshotMu.RUnlock()
+	if closed {
+		return ErrStoreClosed
 	}
 	return nil
 }
@@ -579,6 +628,16 @@ func decodeItem(raw json.RawMessage) (Item, error) {
 		return Item{}, errors.New("decode grocery list item")
 	}
 	return item, nil
+}
+
+func upcStatement(itemID string, upc *string) *cloudflare.Statement {
+	if upc == nil {
+		return nil
+	}
+	return &cloudflare.Statement{
+		SQL:    `INSERT OR REPLACE INTO grocery_list_item_upcs (item_id, upc) VALUES (?, ?)`,
+		Params: []any{itemID, *upc},
+	}
 }
 
 func changed(results []cloudflare.Result) int64 {

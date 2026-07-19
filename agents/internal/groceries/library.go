@@ -134,6 +134,9 @@ func (s *Store) SaveList(ctx context.Context, userID string, input SavedListInpu
 			SQL:    `INSERT INTO grocery_list_items (id, list_id, name, quantity, note, position, added_by, checked_by, checked_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?)`,
 			Params: []any{item.ID, id, item.Name, item.Quantity, nullableString(item.Note), position, userID, createdAt},
 		})
+		if stmt := upcStatement(item.ID, item.Upc); stmt != nil {
+			statements = append(statements, *stmt)
+		}
 	}
 	version, scopeUserID, err := s.saveSnapshot(ctx, "list", id, userID, householdID, listArtifactName, list)
 	if err != nil {
@@ -237,7 +240,10 @@ func (s *Store) ReplaceListItems(ctx context.Context, userID, listID string, inp
 		return List{}, ErrNotFound
 	}
 	updatedAt := timestamp(now)
-	statements := []cloudflare.Statement{{SQL: `DELETE FROM grocery_list_items WHERE list_id = ?`, Params: []any{listID}}}
+	statements := []cloudflare.Statement{
+		{SQL: `DELETE FROM grocery_list_item_upcs WHERE item_id IN (SELECT id FROM grocery_list_items WHERE list_id = ?)`, Params: []any{listID}},
+		{SQL: `DELETE FROM grocery_list_items WHERE list_id = ?`, Params: []any{listID}},
+	}
 	for position, raw := range inputs {
 		item, itemErr := s.newListItem(listID, userID, raw, position, updatedAt)
 		if itemErr != nil {
@@ -247,6 +253,9 @@ func (s *Store) ReplaceListItems(ctx context.Context, userID, listID string, inp
 			SQL:    `INSERT INTO grocery_list_items (id, list_id, name, quantity, note, position, added_by, checked_by, checked_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?)`,
 			Params: []any{item.ID, listID, item.Name, item.Quantity, nullableString(item.Note), position, userID, updatedAt},
 		})
+		if stmt := upcStatement(item.ID, item.Upc); stmt != nil {
+			statements = append(statements, *stmt)
+		}
 	}
 	statements = append(statements, cloudflare.Statement{SQL: `UPDATE grocery_lists SET updated_at = ? WHERE id = ?`, Params: []any{updatedAt, listID}})
 	if _, err := s.d1.Run(ctx, statements...); err != nil {
@@ -616,7 +625,7 @@ func (s *Store) newListItem(listID, userID string, input NewItem, position int, 
 	if quantity == "" {
 		quantity = defaultQuantity
 	}
-	if name == "" || len(name) > 500 || len(quantity) > 100 {
+	if name == "" || len(name) > 500 || len(quantity) > 100 || (input.Upc != nil && len(*input.Upc) > 32) {
 		return Item{}, ErrInvalid
 	}
 	var note *string
@@ -629,11 +638,18 @@ func (s *Store) newListItem(listID, userID string, input NewItem, position int, 
 			note = &trimmed
 		}
 	}
+	var upc *string
+	if input.Upc != nil {
+		trimmed := strings.TrimSpace(*input.Upc)
+		if trimmed != "" {
+			upc = &trimmed
+		}
+	}
 	id, err := s.newID("item")
 	if err != nil {
 		return Item{}, err
 	}
-	return Item{ID: id, ListID: listID, Name: name, Quantity: quantity, Note: note, Position: position, AddedBy: userID, UpdatedAt: updatedAt}, nil
+	return Item{ID: id, ListID: listID, Name: name, Quantity: quantity, Note: note, Upc: upc, Position: position, AddedBy: userID, UpdatedAt: updatedAt}, nil
 }
 
 func decodeRecipe(raw json.RawMessage) (Recipe, error) {

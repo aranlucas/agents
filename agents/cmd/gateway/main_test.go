@@ -390,7 +390,7 @@ func TestOAuthCredentialsAreResolvedAfterClerkAuthentication(t *testing.T) {
 				}
 				w.WriteHeader(http.StatusNoContent)
 			})
-			handler := auth.RequireIdentity(nil, withOAuthCredentials(backend, next), acceptingVerifier{})
+			handler := auth.RequireIdentity(nil, withOAuthCredentials(backend, nil, next), acceptingVerifier{})
 			request := httptest.NewRequest(http.MethodPost, path, nil)
 			request.Header.Set("Authorization", "Bearer clerk-session")
 			recorder := httptest.NewRecorder()
@@ -411,7 +411,7 @@ func TestOAuthCredentialsSkipRoutesWithoutProviderTools(t *testing.T) {
 	for _, path := range []string{"/travel/agui", "/fitness/agui", "/agent/travel/run"} {
 		t.Run(path, func(t *testing.T) {
 			backend := &fakeClerkBackend{}
-			handler := auth.RequireIdentity(nil, withOAuthCredentials(backend, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			handler := auth.RequireIdentity(nil, withOAuthCredentials(backend, nil, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusNoContent)
 			})), acceptingVerifier{})
 			request := httptest.NewRequest(http.MethodPost, path, nil)
@@ -432,7 +432,7 @@ func TestOAuthCredentialsSkipRoutesWithoutProviderTools(t *testing.T) {
 
 func TestOAuthCredentialsStripUntrustedHeaderWhenDisconnected(t *testing.T) {
 	backend := &fakeClerkBackend{}
-	handler := auth.RequireIdentity(nil, withOAuthCredentials(backend, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := auth.RequireIdentity(nil, withOAuthCredentials(backend, nil, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if token := r.Header.Get("X-Kroger-Access-Token"); token != "" {
 			t.Errorf("untrusted Kroger token forwarded: %q", token)
 		}
@@ -453,7 +453,7 @@ func TestOAuthCredentialsStripUntrustedHeaderWhenDisconnected(t *testing.T) {
 func TestOAuthCredentialLookupFailuresStopTheRequest(t *testing.T) {
 	backend := &fakeClerkBackend{err: errors.New("Clerk unavailable")}
 	nextCalled := false
-	handler := auth.RequireIdentity(nil, withOAuthCredentials(backend, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+	handler := auth.RequireIdentity(nil, withOAuthCredentials(backend, nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		nextCalled = true
 	})), acceptingVerifier{})
 	request := httptest.NewRequest(http.MethodPost, "/grocery/agui", nil)
