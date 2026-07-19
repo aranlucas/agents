@@ -217,9 +217,9 @@ func TestGroceryAPIPreservesJSONWithoutContentType(t *testing.T) {
 	}
 }
 
-func TestGroceryAPIDoesNotExposeShoppingRoutesBeforeTask5(t *testing.T) {
+func TestGroceryAPIShoppingRoutesFailSafelyWithoutRepository(t *testing.T) {
 	recorder := serveGroceryAPI(t, &fakeGroceryRepository{}, http.MethodGet, "/api/grocery/pantry", "", true)
-	if recorder.Code != http.StatusNotFound {
+	if recorder.Code != http.StatusServiceUnavailable || !strings.Contains(recorder.Body.String(), "grocery_api_unavailable") {
 		t.Fatalf("status = %d, body = %s", recorder.Code, recorder.Body.String())
 	}
 }
@@ -267,7 +267,7 @@ func TestGroceryErrorResponse(t *testing.T) {
 func serveGroceryAPI(t *testing.T, repository groceries.LibraryRepository, method, path, body string, authenticated bool) *httptest.ResponseRecorder {
 	t.Helper()
 	mux := http.NewServeMux()
-	if err := registerGroceryAPI(mux, repository, func() time.Time { return time.UnixMilli(2000) }); err != nil {
+	if err := registerGroceryAPI(mux, repository, nil, "", func() time.Time { return time.UnixMilli(2000) }); err != nil {
 		t.Fatalf("register grocery API: %v", err)
 	}
 	handler := auth.RequireIdentity(nil, mux, acceptingVerifier{})
@@ -309,6 +309,8 @@ type fakeGroceryRepository struct {
 	savedListBy        string
 	savedList          groceries.SavedListInput
 	listRecipeCalls    int
+	authorizedUser     string
+	createdInviteBy    string
 }
 
 func (f *fakeGroceryRepository) CreateHousehold(context.Context, string, string, time.Time) (groceries.Household, error) {
@@ -326,13 +328,15 @@ func (f *fakeGroceryRepository) IsMember(context.Context, string, string) (bool,
 	return f.member, nil
 }
 
-func (f *fakeGroceryRepository) IsOwner(context.Context, string, string) (bool, error) {
+func (f *fakeGroceryRepository) IsOwner(_ context.Context, userID, _ string) (bool, error) {
 	f.authorizationCalls++
+	f.authorizedUser = userID
 	return f.owner, nil
 }
 
-func (f *fakeGroceryRepository) CreateInvite(context.Context, string, string, string, int, time.Time) (groceries.Invite, error) {
+func (f *fakeGroceryRepository) CreateInvite(_ context.Context, userID, _, _ string, _ int, _ time.Time) (groceries.Invite, error) {
 	f.dataCalls++
+	f.createdInviteBy = userID
 	return groceries.Invite{}, nil
 }
 
