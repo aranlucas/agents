@@ -8,8 +8,6 @@ const alertVariants = cva("rounded-lg border p-4", {
     variant: {
       default: "border-border bg-background",
       destructive: "border-destructive/50 bg-destructive/10",
-      success: "border-green-500/50 bg-green-500/10",
-      warning: "border-yellow-500/50 bg-yellow-500/10",
     },
   },
   defaultVariants: {
@@ -22,8 +20,6 @@ const alertTitleVariants = cva("text-base font-semibold mb-1", {
     variant: {
       default: "text-foreground",
       destructive: "text-destructive",
-      success: "text-green-600",
-      warning: "text-yellow-600",
     },
   },
   defaultVariants: { variant: "default" },

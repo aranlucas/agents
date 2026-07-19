@@ -88,40 +88,47 @@ export default function SavedRecipeScreen() {
     }),
   );
 
+  if (!recipeId) {
+    return (
+      <Screen contentContainerClassName="flex-grow justify-center">
+        <Alert
+          title="This saved recipe link is incomplete. Go back and open it again."
+          variant="destructive"
+        />
+      </Screen>
+    );
+  }
+
   if (recipeQuery.error instanceof Error) {
     return (
-      <View className="w-full max-w-3xl flex-1 justify-center self-center bg-background p-4 sm:p-6">
+      <Screen contentContainerClassName="flex-grow justify-center">
         <Alert title={recipeQuery.error.message} variant="destructive" />
-      </View>
+      </Screen>
     );
   }
 
   if (recipeQuery.isPending || !recipeQuery.data) {
     return (
-      <View className="w-full max-w-3xl flex-1 gap-4 self-center bg-background p-4 sm:p-6">
+      <Screen>
         <Skeleton className="h-14 rounded-2xl" />
         <Skeleton className="h-48 rounded-2xl" />
         <Skeleton className="h-48 rounded-2xl" />
-      </View>
+      </Screen>
     );
   }
 
   return (
-    <Screen className="bg-background">
-      <View className="gap-1 px-0.5">
-        <Text className="font-extrabold tracking-normal" variant="h3">
-          Edit recipe
-        </Text>
-        <Text variant="muted">
-          Changes are available to Grocery Agent and every authorized household member.
-        </Text>
-      </View>
+    <Screen>
+      <Text selectable variant="muted">
+        Changes are available to Grocery Agent and every authorized household member.
+      </Text>
 
-      <Card className="rounded-2xl p-0">
+      <Card className="p-0">
         <CardContent className="gap-3 p-4">
           <FormInput
             accessibilityLabel="Recipe title"
             control={control}
+            label="Title"
             name="title"
             placeholder="Recipe title"
             rules={{ validate: (value) => value.trim().length > 0 || "Add a recipe title." }}
@@ -129,27 +136,30 @@ export default function SavedRecipeScreen() {
           <FormTextarea
             accessibilityLabel="Recipe description"
             control={control}
+            label="Description"
             name="description"
             placeholder="Short description"
           />
           <FormInput
             accessibilityLabel="Recipe servings"
             control={control}
+            label="Servings"
             name="servings"
             placeholder="Servings"
           />
           <FormInput
             accessibilityLabel="Recipe tags"
             control={control}
+            label="Tags"
             name="tags"
             placeholder="Tags, separated by commas"
           />
         </CardContent>
       </Card>
 
-      <Card className="rounded-2xl p-0">
+      <Card className="p-0">
         <CardHeader className="flex-row items-center justify-between p-4 pb-2">
-          <CardTitle className="text-lg font-extrabold tracking-normal">Ingredients</CardTitle>
+          <CardTitle>Ingredients</CardTitle>
           <Button
             icon={<Icon as={Plus} className="size-4 text-secondary-foreground" />}
             onPress={() => ingredients.append({ name: "", note: "", quantity: "", unit: "" })}
@@ -165,7 +175,6 @@ export default function SavedRecipeScreen() {
               <View className="flex-row items-center gap-2">
                 <FormInput
                   accessibilityLabel={`Ingredient ${index + 1}`}
-                  className="flex-1 bg-card"
                   containerClassName="flex-1"
                   control={control}
                   name={`ingredients.${index}.name`}
@@ -181,32 +190,36 @@ export default function SavedRecipeScreen() {
                   <Icon as={Trash2} className="size-5 text-muted-foreground" />
                 </Pressable>
               </View>
-              <View className="flex-row gap-2">
+              <View className="flex-col gap-2 sm:flex-row">
                 <FormInput
                   accessibilityLabel={`Ingredient ${index + 1} quantity`}
-                  className="flex-1 bg-card"
-                  containerClassName="flex-1"
+                  containerClassName="w-full sm:flex-1"
                   control={control}
                   name={`ingredients.${index}.quantity`}
                   placeholder="Quantity"
                 />
                 <FormInput
                   accessibilityLabel={`Ingredient ${index + 1} unit`}
-                  className="flex-1 bg-card"
-                  containerClassName="flex-1"
+                  containerClassName="w-full sm:flex-1"
                   control={control}
                   name={`ingredients.${index}.unit`}
                   placeholder="Unit"
                 />
               </View>
+              <FormInput
+                accessibilityLabel={`Ingredient ${index + 1} note`}
+                control={control}
+                name={`ingredients.${index}.note`}
+                placeholder="Note (optional)"
+              />
             </View>
           ))}
         </CardContent>
       </Card>
 
-      <Card className="rounded-2xl p-0">
+      <Card className="p-0">
         <CardHeader className="flex-row items-center justify-between p-4 pb-2">
-          <CardTitle className="text-lg font-extrabold tracking-normal">Steps</CardTitle>
+          <CardTitle>Steps</CardTitle>
           <Button
             icon={<Icon as={Plus} className="size-4 text-secondary-foreground" />}
             onPress={() => setValue("steps", [...steps, ""], { shouldDirty: true })}
@@ -252,11 +265,12 @@ export default function SavedRecipeScreen() {
         </CardContent>
       </Card>
 
-      <Card className="rounded-2xl p-0">
+      <Card className="p-0">
         <CardContent className="p-4">
           <FormTextarea
             accessibilityLabel="Recipe notes"
             control={control}
+            label="Notes"
             name="notes"
             placeholder="Notes"
           />

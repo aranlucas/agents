@@ -182,11 +182,10 @@ export default function SharedListScreen() {
         />
       }
     >
-      <View className="gap-1 px-0.5">
+      <View className="gap-1">
         <Text className="font-extrabold text-primary" selectable variant="small">
           {householdName}
         </Text>
-        <Text variant="h3">Shared grocery lists</Text>
         <Text variant="muted">Changes are visible to everyone in this household.</Text>
       </View>
 
@@ -196,7 +195,7 @@ export default function SharedListScreen() {
           accessibilityRole="radiogroup"
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerClassName="gap-2 px-px"
+          contentContainerClassName="gap-2"
         >
           {lists.map((list) => {
             const selected = list.id === activeList?.id;
@@ -266,7 +265,7 @@ export default function SharedListScreen() {
                         <Pressable
                           accessibilityLabel={`Remove ${item.name}`}
                           accessibilityRole="button"
-                          className="p-2.5 active:opacity-60"
+                          className="min-h-14 min-w-14 items-center justify-center active:opacity-60"
                           disabled={itemBusy}
                           onPress={() =>
                             mutateItem.mutate({
@@ -275,7 +274,6 @@ export default function SharedListScreen() {
                               itemId: item.id,
                             })
                           }
-                          hitSlop={10}
                         >
                           <Icon as={Trash2} className="size-5 text-muted-foreground" />
                         </Pressable>
@@ -302,14 +300,12 @@ export default function SharedListScreen() {
               name="name"
               rules={{ validate: (value) => value.trim().length > 0 || "Enter an item name." }}
               accessibilityLabel="New grocery item"
-              className="rounded-2xl bg-card"
               onSubmitEditing={() => void submitAddItem()}
               placeholder="Add an item"
               returnKeyType="done"
             />
             <Button
               accessibilityLabel="Add item"
-              className="size-14 rounded-2xl"
               disabled={!addItemForm.formState.isValid || busy === "add-item"}
               icon={<Icon as={Plus} className="size-5.5 text-primary-foreground" />}
               loading={busy === "add-item"}
@@ -325,7 +321,7 @@ export default function SharedListScreen() {
           className="gap-3"
         >
           <Skeleton className="h-36 w-full rounded-2xl" />
-          <Skeleton className="h-12 w-full rounded-2xl" />
+          <Skeleton className="h-14 w-full rounded-2xl" />
         </View>
       ) : (
         <Card>
@@ -344,7 +340,6 @@ export default function SharedListScreen() {
               name="title"
               rules={{ validate: (value) => value.trim().length > 0 || "Enter a list title." }}
               autoCapitalize="words"
-              className="rounded-2xl bg-card"
               onSubmitEditing={() => void submitCreateList()}
               placeholder={`${householdName} groceries`}
               returnKeyType="done"

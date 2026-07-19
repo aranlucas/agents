@@ -24,6 +24,7 @@ vi.mock("@/lib/config", () => ({ getRuntimeUrl: () => "https://runtime.test" }))
 vi.mock("@/lib/household-api", () => ({ createHouseholdApi: () => mocks.api }));
 vi.mock("lucide-react-native", () => ({
   Check: () => null,
+  ChevronRight: () => null,
   Copy: () => null,
   Home: () => null,
   Users: () => null,
@@ -96,6 +97,21 @@ beforeEach(() => {
 });
 
 describe("HouseholdsScreen", () => {
+  it("opens a shared list from the household header", async () => {
+    const user = userEvent.setup();
+    mocks.api.listHouseholds.mockResolvedValue([
+      { id: "household_1", name: "Lake House", role: "member" },
+    ]);
+
+    await renderWithQueryClient(<HouseholdsScreen />);
+    await user.press(await screen.findByRole("button", { name: "Open Lake House shared list" }));
+
+    expect(mocks.push).toHaveBeenCalledWith({
+      pathname: "/shared-list",
+      params: { householdId: "household_1", householdName: "Lake House" },
+    });
+  });
+
   it("refetches when focused and on pull-to-refresh without polling", async () => {
     const client = createTestQueryClient();
     await renderWithQueryClient(<HouseholdsScreen />, client);

@@ -1,30 +1,30 @@
-import { View } from "react-native";
+import { ScrollView } from "react-native";
 import { BrandMark } from "@/components/brand-mark";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SafeArea } from "@/components/ui/safe-area";
-import { Text } from "@/components/ui/text";
 
 export function ConfigurationError({ message }: { message: string }) {
   return (
     <SafeArea>
-      <View className="flex-1 justify-center gap-6 p-6">
+      <ScrollView
+        className="w-full max-w-md self-center"
+        contentContainerClassName="flex-grow justify-center gap-6 p-6"
+        contentInsetAdjustmentBehavior="automatic"
+      >
         <BrandMark size="lg" />
         <Card>
-          <CardHeader className="gap-2.5 p-6 pb-0">
-            <Text className="tracking-wider text-primary" variant="small">
-              SETUP NEEDED
-            </Text>
-            <CardTitle className="text-left text-2xl" selectable>
-              This build is not configured yet.
-            </CardTitle>
+          <CardHeader className="gap-2.5 pb-0">
+            <Badge className="self-start" variant="outline">
+              Setup needed
+            </Badge>
+            <CardTitle selectable>This build is not configured yet.</CardTitle>
           </CardHeader>
-          <CardContent className="p-6 pt-2.5">
-            <CardDescription className="text-base leading-6" selectable>
-              {message}
-            </CardDescription>
+          <CardContent className="pt-2.5">
+            <CardDescription selectable>{message}</CardDescription>
           </CardContent>
         </Card>
-      </View>
+      </ScrollView>
     </SafeArea>
   );
 }

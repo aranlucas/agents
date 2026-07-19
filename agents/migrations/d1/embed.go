@@ -28,3 +28,15 @@ var SharedLists string
 //
 //go:embed 005_saved_grocery_resources.sql
 var SavedGroceryResources string
+
+// ShoppingProfile is the pantry/equipment/orders/preferred-store schema and
+// the Kroger account-link table.
+//
+//go:embed 006_shopping_profile.sql
+var ShoppingProfile string
+
+// ShoppingProfileArtifacts stores references to versioned user
+// shopping-profile snapshots.
+//
+//go:embed 007_shopping_profile_artifacts.sql
+var ShoppingProfileArtifacts string

@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, userEvent } from "@testing-library/react-native";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
   AlertDialog,
@@ -10,6 +11,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Chip } from "@/components/ui/chip";
+import { Drawer } from "@/components/ui/drawer";
 
 vi.mock("expo-image", async () => {
   const React = await import("react");
@@ -50,9 +52,28 @@ vi.mock("lucide-react-native", () => ({
 }));
 
 vi.mock("@/components/ui/animate", () => ({
+  duration: { normal: 300 },
   entering: { fadeIn: undefined, zoomIn: undefined },
   exiting: { fadeOut: undefined, zoomOut: undefined },
+  springs: { snappy: {} },
 }));
+
+function DrawerHarness({ onOpenChange }: { onOpenChange: (open: boolean) => void }) {
+  const [open, setOpen] = useState(true);
+  const updateOpen = (nextOpen: boolean) => {
+    onOpenChange(nextOpen);
+    setOpen(nextOpen);
+  };
+
+  return (
+    <>
+      <Button onPress={() => setOpen(true)}>Reopen drawer</Button>
+      <Drawer open={open} onOpenChange={updateOpen}>
+        <Button onPress={() => updateOpen(false)}>Close drawer</Button>
+      </Drawer>
+    </>
+  );
+}
 
 describe("shared UI primitive behavior", () => {
   it("uses the checkbox root as the only press and accessibility target", async () => {
@@ -120,5 +141,27 @@ describe("shared UI primitive behavior", () => {
     expect(
       view.container.queryAll((node) => node.props.accessibilityRole === "alert"),
     ).toHaveLength(1);
+  });
+
+  it("can close again after reopening during the close animation", async () => {
+    vi.useFakeTimers();
+    const onOpenChange = vi.fn();
+    const view = await render(<DrawerHarness onOpenChange={onOpenChange} />);
+    try {
+      const drawerModal = () =>
+        view.container.queryAll((node) => typeof node.props.onRequestClose === "function")[0];
+
+      fireEvent(drawerModal()!, "requestClose");
+      expect(onOpenChange).toHaveBeenLastCalledWith(false);
+
+      fireEvent.press(screen.getByRole("button", { name: "Reopen drawer" }));
+      fireEvent(drawerModal()!, "requestClose");
+
+      expect(onOpenChange).toHaveBeenCalledTimes(2);
+      expect(onOpenChange).toHaveBeenLastCalledWith(false);
+    } finally {
+      view.unmount();
+      vi.useRealTimers();
+    }
   });
 });

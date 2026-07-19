@@ -1,0 +1,8 @@
+package: groceryapi
+output: internal/groceryapi/generated.go
+generate:
+  models: true
+  std-http-server: true
+  strict-server: true
+  client: true
+  embedded-spec: true

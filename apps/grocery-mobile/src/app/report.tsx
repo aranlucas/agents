@@ -1,7 +1,7 @@
 import { useAuth } from "@clerk/clerk-expo";
 import { Linking, View } from "react-native";
 import { useForm, useWatch } from "react-hook-form";
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { FormField, FormTextarea } from "@/components/ui/form";
@@ -40,8 +40,8 @@ export default function ReportScreen() {
   });
 
   return (
-    <Screen keyboardShouldPersistTaps="handled" contentContainerClassName="gap-3.5">
-      <View className="mb-2 gap-2">
+    <Screen>
+      <View className="gap-2">
         <Text selectable variant="h3">
           Tell us what went wrong.
         </Text>
@@ -78,23 +78,25 @@ export default function ReportScreen() {
         )}
       />
 
-      <FormTextarea
-        control={control}
-        label="Details"
-        name="details"
-        className="min-h-40 rounded-2xl bg-card p-4 leading-6"
-        maxLength={3000}
-        placeholder="What did you expect, and what happened instead?"
-      />
-      <Text className="-mt-2 text-right tabular-nums" variant="muted">
-        {details.length}/3000
-      </Text>
-
-      <View className="rounded-2xl bg-muted p-3.5">
-        <Text className="leading-5" selectable variant="muted">
-          Do not include passwords, payment details, health information, or other sensitive data.
+      <View className="gap-1">
+        <FormTextarea
+          className="min-h-40"
+          control={control}
+          label="Details"
+          maxLength={3000}
+          name="details"
+          placeholder="What did you expect, and what happened instead?"
+        />
+        <Text className="text-right tabular-nums" variant="muted">
+          {details.length}/3000
         </Text>
       </View>
+
+      <Alert title="Protect your privacy">
+        <AlertDescription selectable>
+          Do not include passwords, payment details, health information, or other sensitive data.
+        </AlertDescription>
+      </Alert>
       {errors.root?.server?.message ? (
         <Alert title={errors.root.server.message} variant="destructive" />
       ) : null}

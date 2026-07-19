@@ -2,9 +2,8 @@ import { View } from "react-native";
 import { ChevronRight, ShoppingCart } from "lucide-react-native";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Icon } from "@/components/ui/icon";
-import { Spinner } from "@/components/ui/spinner";
 import { useKrogerConnection } from "@/hooks/use-kroger-connection";
 
 export function KrogerConnectionCard({
@@ -12,20 +11,16 @@ export function KrogerConnectionCard({
 }: {
   connection: ReturnType<typeof useKrogerConnection>;
 }) {
-  const { connected, isLoading, connecting, error, clearError, connect } = connection;
+  const { connected, isLoading, error, clearError, connect } = connection;
 
   if (connected) return null;
 
   return (
     <View className="gap-2">
-      <Card className="min-h-20 shadow-none">
-        <CardHeader className="flex-row items-center gap-3 p-3">
+      <Card>
+        <CardHeader className="flex-row items-center gap-3 pb-0">
           <View className="size-11 items-center justify-center rounded-2xl bg-muted">
-            {isLoading ? (
-              <Spinner size="sm" />
-            ) : (
-              <Icon as={ShoppingCart} className="size-6 text-primary" />
-            )}
+            <Icon as={ShoppingCart} className="size-6 text-primary" />
           </View>
           <View className="flex-1 gap-0.5">
             <CardTitle>Connect Kroger when you’re ready</CardTitle>
@@ -33,22 +28,23 @@ export function KrogerConnectionCard({
               Optional for live products, prices, and cart actions.
             </CardDescription>
           </View>
+        </CardHeader>
+        <CardFooter>
           <Button
             accessibilityLabel="Connect Kroger"
-            className="min-h-10 px-2"
-            disabled={isLoading}
-            iconAfter={<Icon as={ChevronRight} className="size-5 text-primary" />}
-            loading={connecting}
+            className="flex-1"
+            iconAfter={<Icon as={ChevronRight} className="size-5 text-secondary-foreground" />}
+            loading={isLoading}
             onPress={() => {
               clearError();
               void connect();
             }}
-            size="sm"
-            variant="ghost"
+            size="lg"
+            variant="secondary"
           >
             Connect
           </Button>
-        </CardHeader>
+        </CardFooter>
       </Card>
       {error ? <Alert title={error} variant="destructive" /> : null}
     </View>

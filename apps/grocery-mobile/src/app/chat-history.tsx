@@ -15,15 +15,17 @@ import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 
+const activityDateFormatter = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
 function activityLabel(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Previous chat";
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
+  return activityDateFormatter.format(date);
 }
 
 function HistorySeparator() {
@@ -154,10 +156,10 @@ export default function ChatHistoryScreen() {
       <View
         accessibilityLabel="Loading your chats"
         accessibilityRole="progressbar"
-        className="flex-1 gap-3 bg-background p-4.5"
+        className="w-full max-w-3xl flex-1 gap-3 self-center p-4 sm:p-6"
       >
         {[0, 1, 2].map((index) => (
-          <Skeleton className="h-20 w-full rounded-2xl" key={index} />
+          <Skeleton className="h-20 rounded-2xl" key={index} />
         ))}
       </View>
     );
@@ -165,7 +167,7 @@ export default function ChatHistoryScreen() {
 
   if (threadsError && threads.length === 0) {
     return (
-      <View className="flex-1 items-center justify-center gap-3 bg-background p-7">
+      <View className="w-full max-w-3xl flex-1 items-center justify-center gap-3 self-center p-4 sm:p-6">
         <Alert title="Your chat history could not be loaded." variant="destructive" />
         <Button size="lg" variant="secondary" onPress={refetchThreads}>
           Try again
@@ -179,8 +181,8 @@ export default function ChatHistoryScreen() {
       className="w-full max-w-3xl flex-1 self-center bg-background"
       contentInsetAdjustmentBehavior="automatic"
       contentContainerClassName={cn(
-        "m-4.5 overflow-hidden rounded-3xl border border-border bg-card",
-        threads.length === 0 && "flex-grow border-0 bg-background",
+        "m-4 overflow-hidden rounded-3xl border border-border bg-card sm:m-6",
+        threads.length === 0 && "grow border-0 bg-background",
       )}
       data={threads}
       keyExtractor={(thread) => thread.id}

@@ -86,7 +86,11 @@ type Dependencies struct {
 	Clerk     clerk.Backend
 	Fitness   fitnessdata.Repository
 	Groceries groceries.LibraryRepository
-	Now       func() time.Time
+	Shopping  groceries.ShoppingRepository
+	// KrogerMCPURL is reduced to its origin before the lazy account linker
+	// requests /userinfo; the MCP path itself is never reused as a base path.
+	KrogerMCPURL string
+	Now          func() time.Time
 }
 
 // New composes the gateway's HTTP surface: per-agent AG-UI run, state, and
@@ -108,11 +112,17 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 	if deps.Now == nil {
 		deps.Now = time.Now
 	}
+	if deps.Shopping == nil {
+		deps.Shopping, _ = deps.Groceries.(groceries.ShoppingRepository)
+	}
 
 	stateHandler := agui.StateHandler(deps.Registry, deps.Sessions)
 
 	mux := http.NewServeMux()
-	publicRoutes := map[string]bool{"/health": true, "/live": true, "/ready": true}
+	publicRoutes := map[string]bool{
+		"/health": true, "/live": true, "/ready": true,
+		"/api/grocery/*": true,
+	}
 
 	enabled, chunking, charsPerChunk, delay := parseStreamSmoothingConfigFromEnv()
 	runtime, err := agui.NewCopilotKitRuntime(
@@ -164,7 +174,10 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 	if deps.Fitness != nil {
 		mux.HandleFunc("POST /fitness/activities/sync", fitnessSyncHandler(deps.Fitness, deps.Now))
 	}
-	registerGroceryAPI(mux, deps.Groceries, deps.Now)
+	if err := registerGroceryAPI(mux, deps.Groceries, deps.Shopping, cfg.ShoppingServiceSecret, deps.Now); err != nil {
+		return nil, fmt.Errorf("register grocery API: %w", err)
+	}
+	krogerLinker := newKrogerLinker(deps.Shopping, deps.KrogerMCPURL, nil)
 
 	var verifiers []auth.TokenVerifier
 	if deps.Verifier != nil {
@@ -179,7 +192,7 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 	// before mux ever sees the request. Route unmatched paths straight to
 	// mux (its normal 404) and only push matched paths through the auth
 	// gate.
-	protected := auth.RequireIdentity(publicRoutes, withOAuthCredentials(deps.Clerk, mux), verifiers...)
+	protected := auth.RequireIdentity(publicRoutes, withOAuthCredentials(deps.Clerk, krogerLinker, mux), verifiers...)
 	routed := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if _, pattern := mux.Handler(r); pattern == "" {
 			mux.ServeHTTP(w, r)
@@ -243,7 +256,7 @@ func parseStreamSmoothingConfigFromEnv() (bool, string, int, time.Duration) {
 // Railway process after Clerk authentication. Direct browser-to-AG-UI clients
 // therefore only carry their Clerk session JWT; third-party OAuth tokens never
 // pass through the browser or the Vercel app.
-func withOAuthCredentials(backend clerk.Backend, next http.Handler) http.Handler {
+func withOAuthCredentials(backend clerk.Backend, linker *krogerLinker, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		identity, ok := auth.FromContext(r.Context())
 		if backend == nil || !ok || identity.Public || !routeNeedsOAuth(r.URL.Path) {
@@ -263,6 +276,14 @@ func withOAuthCredentials(backend clerk.Backend, next http.Handler) http.Handler
 		clone.Header.Del("X-Kroger-Access-Token")
 		if connections.KrogerToken != "" {
 			clone.Header.Set("X-Kroger-Access-Token", connections.KrogerToken)
+			if linker != nil {
+				clerkUserID, krogerToken := identity.UserID, connections.KrogerToken
+				go func() {
+					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					defer cancel()
+					linker.Ensure(ctx, clerkUserID, krogerToken)
+				}()
+			}
 		}
 		next.ServeHTTP(w, clone)
 	})
@@ -717,6 +738,7 @@ func main() {
 	}
 	fitnessActivities := fitnessdata.NewStore(d1)
 	groceryLists := groceries.NewStoreWithArtifacts(d1, cloudflare.NewArtifactService(r2))
+	defer func() { _ = groceryLists.Close() }()
 	fitnessAgent, err := fitness.New(fitnessModel, fitnessActivities, braveSearch, agui.NewAGUIToolset(pending))
 	if err != nil {
 		log.Fatalf("build fitness agent: %v", err)
@@ -829,17 +851,19 @@ func main() {
 	}
 
 	handler, err := New(cfg, Dependencies{
-		Registry:  registry,
-		Sessions:  sessions,
-		Pending:   pending,
-		Verifier:  verifier,
-		D1:        d1,
-		R2:        r2,
-		Links:     telegram.NewLinkStore(d1, time.Now),
-		Clerk:     clerkBackend,
-		Fitness:   fitnessActivities,
-		Groceries: groceryLists,
-		Now:       time.Now,
+		Registry:     registry,
+		Sessions:     sessions,
+		Pending:      pending,
+		Verifier:     verifier,
+		D1:           d1,
+		R2:           r2,
+		Links:        telegram.NewLinkStore(d1, time.Now),
+		Clerk:        clerkBackend,
+		Fitness:      fitnessActivities,
+		Groceries:    groceryLists,
+		Shopping:     groceryLists,
+		KrogerMCPURL: krogerEndpoint,
+		Now:          time.Now,
 	})
 	if err != nil {
 		log.Fatalf("build gateway: %v", err)
@@ -858,7 +882,9 @@ func main() {
 		IdleTimeout:       120 * time.Second,
 	}
 
+	shutdownDone := make(chan struct{})
 	go func() {
+		defer close(shutdownDone)
 		<-ctx.Done()
 		log.Printf("shutting down agents gateway")
 
@@ -870,7 +896,10 @@ func main() {
 	}()
 
 	log.Printf("agents gateway listening on :%s", cfg.HTTP.Port)
-	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		log.Fatalf("gateway server failed: %v", err)
+	serveErr := server.ListenAndServe()
+	stop()
+	<-shutdownDone
+	if serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
+		log.Fatalf("gateway server failed: %v", serveErr)
 	}
 }

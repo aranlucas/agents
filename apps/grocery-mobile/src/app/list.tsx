@@ -2,7 +2,7 @@ import { useAuth } from "@clerk/clerk-expo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { View } from "react-native";
 import { Save, ShoppingCart, Sparkles, Tag } from "lucide-react-native";
 import { ADD_TO_CART_MESSAGE, AddToCartDialog } from "@/components/add-to-cart-dialog";
@@ -25,6 +25,33 @@ import { cartSubtotal, pantryNames } from "@/lib/grocery-state";
 import { getRuntimeUrl } from "@/lib/config";
 import { createHouseholdApi } from "@/lib/household-api";
 import { groceryQueryKeys } from "@/lib/query-keys";
+
+type GroceryRow = {
+  detail: string;
+  imageUrl?: string;
+  name: string;
+};
+
+const GroceryItemRow = memo(function GroceryItemRow({
+  isLast,
+  item,
+}: {
+  isLast: boolean;
+  item: GroceryRow;
+}) {
+  return (
+    <View>
+      <View className="min-h-17 flex-row items-center gap-3 px-4 py-3">
+        <KrogerProductImage imageUrl={item.imageUrl} name={item.name} />
+        <View className="flex-1 gap-0.5">
+          <Text variant="large">{item.name}</Text>
+          <Text variant="muted">{item.detail}</Text>
+        </View>
+      </View>
+      {!isLast ? <Separator className="ml-19" /> : null}
+    </View>
+  );
+});
 
 function GroceryListContent() {
   const router = useRouter();
@@ -148,7 +175,7 @@ function GroceryListContent() {
           </Card>
         ) : null}
 
-        <View className="flex-row items-end justify-between px-0.5">
+        <View className="flex-row items-end justify-between">
           <View>
             <Text variant="h3">{list.length || cart.length} grocery items</Text>
             <Text className="mt-1" variant="muted">
@@ -163,16 +190,11 @@ function GroceryListContent() {
         <Card className="overflow-hidden">
           <CardContent className="p-0">
             {rows.map((item, index) => (
-              <View key={`${item.name}-${index}`}>
-                <View className="min-h-17 flex-row items-center gap-3 px-4 py-3">
-                  <KrogerProductImage imageUrl={item.imageUrl} name={item.name} />
-                  <View className="flex-1 gap-0.5">
-                    <Text variant="large">{item.name}</Text>
-                    <Text variant="muted">{item.detail}</Text>
-                  </View>
-                </View>
-                {index < rows.length - 1 ? <Separator className="ml-19" /> : null}
-              </View>
+              <GroceryItemRow
+                isLast={index === rows.length - 1}
+                item={item}
+                key={`${item.name}-${index}`}
+              />
             ))}
           </CardContent>
         </Card>

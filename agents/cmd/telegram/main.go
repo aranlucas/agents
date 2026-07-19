@@ -91,6 +91,7 @@ func main() {
 	loader := common.NewWebLoader(common.NewHTTPClient(20*time.Second, 4<<20), 100_000)
 	fitnessActivities := fitnessdata.NewStore(d1)
 	groceryLists := groceries.NewStoreWithArtifacts(d1, cloudflare.NewArtifactService(r2))
+	defer func() { _ = groceryLists.Close() }()
 	fitnessAgent, err := fitness.New(model, fitnessActivities, search)
 	must(err)
 	groceryAgent, err := grocery.NewWithLibrary(model, kroger, search, loader, groceryLists)

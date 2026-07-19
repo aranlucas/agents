@@ -32,8 +32,8 @@ export default function GroceryHomeScreen() {
   return (
     <>
       <Screen contentContainerClassName="gap-5">
-        <View className="gap-1 px-1">
-          <Text selectable variant="small">
+        <View className="gap-1">
+          <Text selectable variant="muted">
             {firstName ? `Welcome back, ${firstName}` : "Welcome back"}
           </Text>
           <Text selectable variant="h2">
@@ -44,7 +44,7 @@ export default function GroceryHomeScreen() {
           </Text>
         </View>
 
-        <Card className="rounded-3xl border-secondary bg-secondary">
+        <Card className="rounded-3xl border-secondary bg-secondary p-0">
           <CardHeader className="flex-row items-start gap-3 p-5 pb-0">
             <View className="size-12 items-center justify-center rounded-2xl bg-accent">
               <Icon as={MessageSquareText} className="size-6 text-accent-foreground" />
@@ -53,7 +53,7 @@ export default function GroceryHomeScreen() {
               <Text className="font-extrabold tracking-wider text-accent uppercase" variant="small">
                 Start here
               </Text>
-              <CardTitle className="text-2xl text-secondary-foreground" selectable>
+              <CardTitle className="text-secondary-foreground" selectable>
                 What do you need this week?
               </CardTitle>
               <CardDescription className="text-base text-secondary-foreground/80" selectable>
@@ -178,9 +178,9 @@ function HomeLinkRow({
 }) {
   return (
     <Link href={href} asChild>
-      <Pressable accessibilityRole="button">
-        <Card className="active:bg-muted">
-          <CardHeader className="flex-row items-center gap-3">
+      <Pressable accessibilityRole="button" className="active:opacity-80">
+        <Card className="p-0">
+          <CardHeader className="flex-row items-center gap-3 p-4">
             <View className="size-12 items-center justify-center rounded-2xl bg-muted">
               <Icon as={icon} className="size-6 text-primary" />
             </View>
@@ -208,10 +208,10 @@ function HomeShortcut({
   title: string;
 }) {
   return (
-    <Link className="flex-1" href={href} asChild>
-      <Pressable accessibilityRole="button" className="flex-1">
-        <Card className="min-h-36 flex-1 active:bg-muted">
-          <CardHeader className="gap-3">
+    <Link href={href} asChild>
+      <Pressable accessibilityRole="button" className="flex-1 active:opacity-80">
+        <Card className="min-h-36 flex-1 p-0">
+          <CardHeader className="gap-3 p-4">
             <View className="size-10 items-center justify-center rounded-xl bg-muted">
               <Icon as={icon} className="size-5 text-primary" />
             </View>

@@ -1,9 +1,9 @@
 import { useAuth } from "@clerk/clerk-expo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
-import { ArrowRight, Copy, Home, Users } from "lucide-react-native";
+import { ChevronRight, Copy, Home, Users } from "lucide-react-native";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useForm } from "react-hook-form";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +38,7 @@ export default function HouseholdsScreen() {
     [getToken, userId],
   );
   const queryClient = useQueryClient();
-  const queryKey = groceryQueryKeys.households(userId);
+  const queryKey = useMemo(() => groceryQueryKeys.households(userId), [userId]);
   const createInFlight = useRef(false);
   const joinInFlight = useRef(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -146,12 +146,12 @@ export default function HouseholdsScreen() {
           accessibilityRole="progressbar"
           className="gap-3"
         >
-          <Skeleton className="h-28 w-full rounded-2xl" />
-          <Skeleton className="h-28 w-full rounded-2xl" />
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
         </View>
       ) : households.length === 0 ? (
         <Card>
-          <CardContent className="p-6">
+          <CardContent>
             <EmptyState
               className="p-0"
               description="Create one below or join with an invite code."
@@ -165,27 +165,27 @@ export default function HouseholdsScreen() {
           const invite = createdInvites[household.id];
           return (
             <Card key={household.id}>
-              <CardHeader className="flex-row items-center gap-3">
-                <View className="flex-1 gap-0.5">
-                  <CardTitle selectable>{household.name}</CardTitle>
-                  <CardDescription className="capitalize">
-                    {household.role === "owner" ? "Owner" : "Member"}
-                  </CardDescription>
-                </View>
-                <Button
-                  className="min-h-10 rounded-xl px-3"
-                  iconAfter={<Icon as={ArrowRight} className="size-4 text-secondary-foreground" />}
+              <CardHeader>
+                <Pressable
+                  accessibilityHint="Shows this household’s shared grocery list"
+                  accessibilityLabel={`Open ${household.name} shared list`}
+                  accessibilityRole="button"
+                  className="min-h-14 flex-row items-center gap-3 active:opacity-70"
                   onPress={() =>
                     router.push({
                       pathname: "/shared-list",
                       params: { householdId: household.id, householdName: household.name },
                     })
                   }
-                  size="sm"
-                  variant="secondary"
                 >
-                  Open list
-                </Button>
+                  <View className="flex-1 gap-0.5">
+                    <CardTitle selectable>{household.name}</CardTitle>
+                    <CardDescription className="capitalize">
+                      {household.role === "owner" ? "Owner" : "Member"}
+                    </CardDescription>
+                  </View>
+                  <Icon as={ChevronRight} className="size-5 text-muted-foreground" />
+                </Pressable>
               </CardHeader>
               {household.role === "owner" ? (
                 <CardContent className="pt-0">
@@ -194,7 +194,7 @@ export default function HouseholdsScreen() {
                       <Icon as={Copy} className="size-4.5 text-primary" />
                       <View className="flex-1 gap-0.5">
                         <Text variant="muted">Invite code</Text>
-                        <Text className="tracking-widest text-secondary" selectable variant="large">
+                        <Text className="tracking-widest" selectable variant="large">
                           {invite.code}
                         </Text>
                       </View>
@@ -202,7 +202,7 @@ export default function HouseholdsScreen() {
                     </View>
                   ) : (
                     <Button
-                      disabled={busy === `invite:${household.id}`}
+                      disabled={createInvite.isPending}
                       loading={busy === `invite:${household.id}`}
                       size="lg"
                       variant="secondary"
@@ -222,9 +222,7 @@ export default function HouseholdsScreen() {
 
       {errorMessage ? <Alert title={errorMessage} variant="destructive" /> : null}
 
-      <Text className="mt-2 px-1" variant="h4">
-        Add a household
-      </Text>
+      <Text variant="h4">Add a household</Text>
       <Card>
         <CardHeader className="flex-row items-center gap-3 pb-0">
           <View className="size-11 items-center justify-center rounded-2xl bg-muted">
@@ -246,7 +244,6 @@ export default function HouseholdsScreen() {
               validate: (value) => value.trim().length > 0 || "Enter a household name.",
             }}
             autoCapitalize="words"
-            className="rounded-2xl bg-card"
             onSubmitEditing={() => void submitCreateHousehold()}
             placeholder="Household name"
             returnKeyType="done"
@@ -289,7 +286,6 @@ export default function HouseholdsScreen() {
             }}
             autoCapitalize="characters"
             autoCorrect={false}
-            className="rounded-2xl bg-card font-extrabold tracking-widest"
             onSubmitEditing={() => void submitJoinHousehold()}
             placeholder="ABCDEFGH"
             returnKeyType="done"

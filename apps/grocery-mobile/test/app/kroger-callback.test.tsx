@@ -104,4 +104,13 @@ describe("KrogerCallbackScreen", () => {
     await user.press(screen.getByRole("button", { name: "Back to Grocery Agent" }));
     expect(mocks.replace).toHaveBeenCalledWith("/");
   });
+
+  it("shows an expired-session recovery instead of waiting forever", async () => {
+    mocks.clerk.user = null;
+
+    await renderWithQueryClient(<KrogerCallbackScreen />);
+
+    expect(await screen.findByText("Your session has expired. Please sign in again.")).toBeTruthy();
+    expect(mocks.waitForKrogerConnection).not.toHaveBeenCalled();
+  });
 });
