@@ -930,12 +930,13 @@ components:
     NewItem:
       type: object
       additionalProperties: false
-      required: [name, quantity]
+      required: [name]
       properties:
         name:
           type: string
         quantity:
           type: string
+          x-go-type-skip-optional-pointer: true
         note:
           type: string
           nullable: true

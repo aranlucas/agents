@@ -164,7 +164,9 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 	if deps.Fitness != nil {
 		mux.HandleFunc("POST /fitness/activities/sync", fitnessSyncHandler(deps.Fitness, deps.Now))
 	}
-	registerGroceryAPI(mux, deps.Groceries, deps.Now)
+	if err := registerGroceryAPI(mux, deps.Groceries, deps.Now); err != nil {
+		return nil, fmt.Errorf("register grocery API: %w", err)
+	}
 
 	var verifiers []auth.TokenVerifier
 	if deps.Verifier != nil {
