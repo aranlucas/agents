@@ -5,3 +5,4 @@
 - Review Go agent changes against the [ADK Go reference](https://pkg.go.dev/google.golang.org/adk/v2).
 - D1 and R2 are mandatory; do not add alternate persistence. Keep Worker names, bindings, and D1 migration history stable.
 - Keep gateway and Telegram images static, non-root, and free of Node or scripting runtimes.
+- The `/api/grocery/*` contract is spec-canonical: `agents/api/openapi/grocery-gateway.yaml` is hand-authored; `oapi-codegen` generates the Go server/client, and `openapi-typescript` generates the Worker client. Agent runtime-state contracts remain Go-canonical via `cmd/contracts` as a separate system.
