@@ -76,7 +76,27 @@ func (k *Kroger) Tools(ctx agent.ReadonlyContext) ([]tool.Tool, error) {
 	if err != nil {
 		return nil, err
 	}
-	return tools, nil
+	allowed := map[string]bool{
+		"search_products": true,
+		"get_product":     true,
+		"search_stores":   true,
+		"get_store":       true,
+		// set_preferred_store is native when a shopping repository is present.
+		// Exposing the MCP copy as well would make ADK reject the request with
+		// duplicate tool: the static and dynamic toolsets share this name.
+		"shop_for_items":            true,
+		"create_shopping_list":      true,
+		"add_shopping_list_to_cart": true,
+		"view_cart":                 true,
+		"get_weekly_deals":          true,
+	}
+	filtered := make([]tool.Tool, 0, len(tools))
+	for _, candidate := range tools {
+		if candidate != nil && allowed[candidate.Name()] {
+			filtered = append(filtered, candidate)
+		}
+	}
+	return filtered, nil
 }
 
 type bearerTransport struct {

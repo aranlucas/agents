@@ -59,6 +59,27 @@ func TestKrogerToolsetHidesToolsWithoutToken(t *testing.T) {
 	}
 }
 
+func TestKrogerMCPFiltersSupersededInventoryAndProfileTools(t *testing.T) {
+	server := mcp.NewServer(&mcp.Implementation{Name: "kroger-filter-fixture", Version: "1"}, nil)
+	mcp.AddTool(server, &mcp.Tool{Name: "add_to_inventory", Description: "superseded inventory"}, weeklyDeals)
+	mcp.AddTool(server, &mcp.Tool{Name: "get_shopping_profile", Description: "superseded profile"}, weeklyDeals)
+	mcp.AddTool(server, &mcp.Tool{Name: "set_preferred_store", Description: "native duplicate"}, weeklyDeals)
+	mcp.AddTool(server, &mcp.Tool{Name: "get_weekly_deals", Description: "live Kroger deals"}, weeklyDeals)
+	handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return server }, &mcp.StreamableHTTPOptions{JSONResponse: true})
+	httpServer := httptest.NewServer(handler)
+	t.Cleanup(httpServer.Close)
+
+	tools, err := NewKroger(httpServer.Client(), httpServer.URL).Tools(groceryReadonlyContext{
+		Context: t.Context(), state: groceryState{"temp:kroger_token": "token"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tools) != 1 || tools[0].Name() != "get_weekly_deals" {
+		t.Fatalf("filtered tools = %#v", tools)
+	}
+}
+
 type groceryReadonlyContext struct {
 	context.Context
 	state session.ReadonlyState

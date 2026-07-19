@@ -197,7 +197,18 @@ func groceryLibraryTools(repository groceries.LibraryRepository) ([]tool.Tool, e
 	if repository == nil {
 		return nil, errors.New("grocery library repository is required")
 	}
-	return savedResourceTools(repository)
+	tools, err := savedResourceTools(repository)
+	if err != nil {
+		return nil, err
+	}
+	if shoppingRepository, ok := repository.(groceries.ShoppingRepository); ok && shoppingRepository != nil {
+		shoppingTools, err := shoppingResourceTools(shoppingRepository)
+		if err != nil {
+			return nil, err
+		}
+		tools = append(tools, shoppingTools...)
+	}
+	return tools, nil
 }
 
 func compactGroceryContext(_ agent.Context, request *model.LLMRequest) (*model.LLMResponse, error) {
