@@ -53,6 +53,3 @@ onlyBuiltDependencies:
   - "@scarf/scarf"
   - "protobufjs"
   - "msw"
-
-patchedDependencies:
-  "@copilotkit/react-native@1.63.0": patches/@copilotkit__react-native@1.63.0.patch
