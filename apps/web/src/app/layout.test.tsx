@@ -6,6 +6,12 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@agents/ui/globals.css", () => ({}));
 vi.mock("./globals.css", () => ({}));
 
+// next/font is a build-time transform with no runtime implementation.
+vi.mock("next/font/google", () => ({
+  Schibsted_Grotesk: () => ({ variable: "--font-schibsted-grotesk" }),
+  JetBrains_Mono: () => ({ variable: "--font-jetbrains-mono" }),
+}));
+
 vi.mock("@clerk/nextjs", () => ({
   ClerkProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));

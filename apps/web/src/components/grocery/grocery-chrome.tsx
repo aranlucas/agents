@@ -14,7 +14,7 @@ const footerLinks = [
 
 export const groceryPrimaryLinkClassName = cn(
   buttonVariants({ size: "lg" }),
-  "h-12 rounded-xl bg-grocery px-8 text-base font-semibold text-white shadow-sm hover:bg-grocery/90",
+  "h-12 rounded-xl bg-grocery px-8 text-base font-semibold text-grocery-contrast shadow-sm hover:bg-grocery/90",
 );
 
 export const grocerySecondaryLinkClassName = cn(

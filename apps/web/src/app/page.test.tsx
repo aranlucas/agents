@@ -25,14 +25,21 @@ vi.mock("@/components/portfolio/generated-introduction", () => ({
 import Home from "./page";
 
 describe("Portfolio home page", () => {
-  it("opens as a minimal personal index", () => {
+  it("leads with the thesis and the agent-written introduction", () => {
     render(<Home />);
 
-    expect(screen.getByRole("heading", { name: "Hi, I’m Lucas." })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /I build agentic products from idea to launch/ }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "About me" })).toBeVisible();
-    expect(screen.queryByRole("navigation", { name: "Portfolio" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("banner")).not.toBeInTheDocument();
-    expect(screen.queryByRole("contentinfo")).not.toBeInTheDocument();
+  });
+
+  it("frames the page with site chrome", () => {
+    render(<Home />);
+
+    expect(screen.getByRole("banner")).toBeVisible();
+    expect(screen.getByRole("contentinfo")).toBeVisible();
+    expect(screen.getByRole("navigation", { name: "Site" })).toBeVisible();
   });
 
   it("keeps only the three featured agents", () => {
@@ -49,20 +56,26 @@ describe("Portfolio home page", () => {
     render(<Home />);
 
     expect(screen.getByText(/The Resume agent will write this introduction/i)).toBeVisible();
-    expect(screen.getByRole("link", { name: "Resume" })).toHaveAttribute("href", "/console/resume");
+    expect(screen.getByRole("link", { name: /^Resume/ })).toHaveAttribute(
+      "href",
+      "/console/resume",
+    );
   });
 
-  it("folds external links into the closing sentence", () => {
+  it("names what each featured agent is wired to", () => {
     render(<Home />);
 
-    expect(screen.getByRole("link", { name: "GitHub" })).toHaveAttribute(
-      "href",
-      "https://github.com/aranlucas",
-    );
-    expect(screen.getByRole("link", { name: "LinkedIn" })).toHaveAttribute(
-      "href",
-      "https://www.linkedin.com/in/lucasarango/",
-    );
+    expect(screen.getByText("Kroger cart")).toBeVisible();
+    expect(screen.getByText("Google Trends")).toBeVisible();
+  });
+
+  it("links out to GitHub and LinkedIn", () => {
+    render(<Home />);
+
+    const hrefs = screen.getAllByRole("link").map((link) => link.getAttribute("href"));
+
+    expect(hrefs).toContain("https://github.com/aranlucas");
+    expect(hrefs).toContain("https://www.linkedin.com/in/lucasarango/");
   });
 
   it("does not publish an email address", () => {

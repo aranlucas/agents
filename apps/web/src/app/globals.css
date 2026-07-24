@@ -3,8 +3,12 @@
 :root,
 .light,
 .dark {
-  --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+  --font-sans:
+    var(--font-schibsted-grotesk), ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  --font-mono:
+    var(--font-jetbrains-mono), ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+  --font-heading: var(--font-sans);
   --copilot-kit-primary-color: var(--accent);
   --copilot-kit-contrast-color: #ffffff;
   --copilot-kit-background-color: var(--surface);
@@ -54,6 +58,13 @@ body {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Sign-in/up: the page already states what you are signing in to, so Clerk's
+   own card header would say it twice. Clerk's `appearance.elements` overrides
+   are not applied by this version, so the class is dropped here instead. */
+[data-auth-shell] .cl-header {
+  display: none;
 }
 
 /* Oral boards: make the CopilotKit sidebar read-only — hide input toolbar */

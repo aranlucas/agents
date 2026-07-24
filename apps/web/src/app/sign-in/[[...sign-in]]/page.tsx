@@ -1,9 +1,14 @@
 import { SignIn } from "@clerk/nextjs";
 
+import { AuthShell } from "@/components/portfolio/auth-shell";
+
 export default function SignInPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center">
+    <AuthShell
+      title="Sign in to the agent console"
+      description="Your agents keep their own sessions, saved lists, and connected accounts."
+    >
       <SignIn />
-    </main>
+    </AuthShell>
   );
 }

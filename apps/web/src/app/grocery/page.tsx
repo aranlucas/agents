@@ -111,7 +111,7 @@ function PhonePreview() {
               <div className="mt-4">
                 <ProductTiles compact />
               </div>
-              <div className="mt-4 flex h-10 items-center justify-center rounded-lg bg-grocery text-sm font-semibold text-white">
+              <div className="mt-4 flex h-10 items-center justify-center rounded-lg bg-grocery text-sm font-semibold text-grocery-contrast">
                 Review 12 items
               </div>
               <div className="mt-3 flex items-center gap-2 border-t border-neutral-200 pt-3 text-xs text-neutral-600">
@@ -137,7 +137,7 @@ function PhonePreview() {
           <div className="m-3 flex h-12 items-center rounded-full border border-neutral-200 px-4 text-xs text-neutral-500 shadow-sm">
             Ask for meals or a grocery list
             <Paperclip aria-hidden="true" className="ms-auto size-5 text-neutral-800" />
-            <span className="ms-2 flex size-8 items-center justify-center rounded-full bg-grocery text-white">
+            <span className="ms-2 flex size-8 items-center justify-center rounded-full bg-grocery text-grocery-contrast">
               <Send aria-hidden="true" className="size-4" />
             </span>
           </div>
@@ -153,7 +153,7 @@ function FlowArrow() {
       aria-hidden="true"
       className="absolute -inset-e-7 top-1/2 z-10 hidden -translate-y-1/2 lg:flex"
     >
-      <span className="flex size-12 items-center justify-center rounded-full bg-grocery text-white shadow-md">
+      <span className="flex size-12 items-center justify-center rounded-full bg-grocery text-grocery-contrast shadow-md">
         <ArrowRight className="size-6" />
       </span>
     </div>
@@ -312,7 +312,7 @@ export default function GroceryPage() {
               <div className="mt-7">
                 <ProductTiles />
               </div>
-              <div className="mt-7 flex h-11 items-center justify-center rounded-lg bg-grocery font-semibold text-white">
+              <div className="mt-7 flex h-11 items-center justify-center rounded-lg bg-grocery font-semibold text-grocery-contrast">
                 Review 12 items
               </div>
             </FlowCard>
