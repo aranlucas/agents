@@ -408,7 +408,7 @@ export function ChatSurface({
               {items.length === 0 && isAgentConnected ? (
                 <Empty className="border-none">
                   <EmptyMedia>
-                    <SparklesIcon className="size-5 text-muted-foreground" />
+                    <SparklesIcon className="size-5 text-page" />
                   </EmptyMedia>
                   <EmptyHeader>
                     <EmptyTitle>{config.label} is ready</EmptyTitle>

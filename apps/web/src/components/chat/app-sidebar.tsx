@@ -17,11 +17,11 @@ import {
   SidebarMenuItem,
   SidebarMenuSkeleton,
   SidebarRail,
-  SidebarSeparator,
 } from "@agents/ui";
 
 import { getAgentConfig, type AgentId } from "@/components/chat/agents/registry";
 import { useConsoleThreads } from "@/components/chat/console-threads";
+import { cssVars } from "@/lib/css";
 
 export const SETTINGS_PATH = "/console/settings";
 const sessionDate = new Intl.DateTimeFormat("en-US", {
@@ -115,10 +115,17 @@ export function AppSidebar({
   activeThreadId?: string;
 }) {
   const settingsActive = activePath === SETTINGS_PATH;
-  const sidebarName = agentId ? getAgentConfig(agentId).label : "Agents";
+  const config = agentId ? getAgentConfig(agentId) : undefined;
+  const sidebarName = config?.label ?? "Agents";
 
   return (
-    <Sidebar collapsible="icon">
+    // AgentWorkspace sets `--page-color` per agent on the shell above us.
+    // Settings renders this sidebar outside that shell, so it supplies its own
+    // fallback rather than overriding the agent's color.
+    <Sidebar
+      collapsible="icon"
+      style={config ? undefined : cssVars({ "--page-color": "var(--accent)" })}
+    >
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -127,8 +134,8 @@ export function AppSidebar({
               render={<Link href="/" aria-label="All agents" />}
               tooltip="All agents"
             >
-              <div className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
-                A
+              <div className="grid size-8 shrink-0 place-items-center rounded-lg bg-page/15 text-sm font-bold text-page">
+                {sidebarName.charAt(0)}
               </div>
               <div className="grid min-w-0 flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                 <span className="truncate font-semibold">{sidebarName}</span>
@@ -172,10 +179,6 @@ export function AppSidebar({
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-        <SidebarSeparator />
-        <div className="flex items-center justify-center p-2">
-          <div className="size-2.5 rounded-full bg-success" />
-        </div>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

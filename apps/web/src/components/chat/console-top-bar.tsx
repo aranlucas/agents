@@ -43,7 +43,8 @@ export function ConsoleTopBar({
       <Separator orientation="vertical" className="h-4" />
       <Breadcrumb className="min-w-0">
         <BreadcrumbList className="flex-nowrap">
-          <BreadcrumbItem className="min-w-0">
+          <BreadcrumbItem className="min-w-0 gap-2">
+            <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-page" />
             <span className="truncate text-muted-foreground">{config.label}</span>
           </BreadcrumbItem>
           <BreadcrumbSeparator />

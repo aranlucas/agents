@@ -14,14 +14,23 @@ afterEach(() => {
 });
 
 describe("GeneratedIntroduction", () => {
-  it("keeps the same frame height while the server agent writes", () => {
-    render(<IntroductionSkeleton />);
+  it("reserves the same frame height while writing and once ready", () => {
+    const writing = render(<IntroductionSkeleton />).container;
+    const ready = render(<IntroductionContent text="Done." />).container;
 
-    expect(screen.getByLabelText("Resume agent is writing")).toHaveClass(
-      "mt-5",
-      "min-h-80",
-      "sm:min-h-64",
-    );
+    for (const frame of [writing.querySelector(".min-h-80"), ready.querySelector(".min-h-80")]) {
+      expect(frame).toHaveClass("mt-5", "min-h-80", "sm:min-h-64");
+    }
+  });
+
+  it("labels the run that writes the introduction", () => {
+    const writing = render(<IntroductionSkeleton />).container;
+    expect(writing).toHaveTextContent("resume-agent");
+    expect(writing).toHaveTextContent("writing");
+
+    const ready = render(<IntroductionContent text="Done." />).container;
+    expect(ready).toHaveTextContent("resume-agent");
+    expect(ready).toHaveTextContent("ready");
   });
 
   it("renders a generated introduction as paragraphs", () => {

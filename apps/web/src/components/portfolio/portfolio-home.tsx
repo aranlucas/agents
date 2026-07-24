@@ -1,78 +1,49 @@
-import Link from "next/link";
-
+import { AgentRack } from "./agent-rack";
 import { GeneratedIntroduction } from "./generated-introduction";
-
-const externalLinkProps = {
-  target: "_blank",
-  rel: "noreferrer",
-} as const;
-
-const featuredAgents = [
-  {
-    title: "Grocery",
-    description: "plans meals and shops with real tools",
-    href: "/console/grocery",
-  },
-  {
-    title: "Resume",
-    description: "answers questions about my work",
-    href: "/console/resume",
-  },
-  {
-    title: "Trends",
-    description: "explores what people are searching for",
-    href: "/console/trends",
-  },
-] as const;
+import {
+  externalLinkProps,
+  GITHUB_URL,
+  LINKEDIN_URL,
+  proseLinkClassName,
+  SiteFooter,
+  SiteHeader,
+} from "./site-chrome";
 
 export function PortfolioHome() {
   return (
-    <main className="mx-auto min-h-screen max-w-2xl px-5 py-12 font-sans text-lg/8 text-foreground selection:bg-accent sm:px-8 sm:py-16">
-      <h1 className="text-2xl/8 font-medium tracking-tight">Hi, I’m Lucas.</h1>
+    <div className="flex min-h-screen flex-col font-sans text-foreground selection:bg-accent">
+      <SiteHeader />
 
-      <section aria-label="About me">
-        <GeneratedIntroduction />
-      </section>
+      <main className="mx-auto w-full max-w-3xl flex-1 px-5 py-14 text-lg/8 sm:px-8 sm:py-20">
+        <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
+          Software engineer · Seattle
+        </p>
 
-      <section aria-labelledby="agents-heading" className="mt-8">
-        <h2 id="agents-heading" className="text-lg/8 font-normal">
-          Some agents I’ve built:
-        </h2>
-        <ul className="mt-3 flex list-disc flex-col gap-1 ps-5 marker:text-muted-foreground">
-          {featuredAgents.map(({ title, description, href }) => (
-            <li className="ps-1" key={title}>
-              <Link
-                className="rounded-sm font-medium underline decoration-muted-foreground underline-offset-3 transition-colors hover:decoration-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                href={href}
-                target="_top"
-              >
-                {title}
-              </Link>{" "}
-              — {description}
-            </li>
-          ))}
-        </ul>
-      </section>
+        <h1 className="mt-5 text-4xl/tight font-medium tracking-tight text-balance sm:text-5xl/tight">
+          <span className="text-muted-foreground">Hi, I’m Lucas.</span> I build agentic products
+          from idea to launch.
+        </h1>
 
-      <p className="mt-8">
-        You can view my code on{" "}
-        <a
-          className="rounded-sm font-medium underline decoration-muted-foreground underline-offset-3 transition-colors hover:decoration-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-          href="https://github.com/aranlucas"
-          {...externalLinkProps}
-        >
-          GitHub
-        </a>{" "}
-        or connect with me on{" "}
-        <a
-          className="rounded-sm font-medium underline decoration-muted-foreground underline-offset-3 transition-colors hover:decoration-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-          href="https://www.linkedin.com/in/lucasarango/"
-          {...externalLinkProps}
-        >
-          LinkedIn
-        </a>
-        .
-      </p>
-    </main>
+        <section aria-label="About me" className="mt-10">
+          <GeneratedIntroduction />
+        </section>
+
+        <AgentRack />
+
+        <p className="mt-16 sm:mt-20">
+          You can view my code on{" "}
+          <a className={proseLinkClassName} href={GITHUB_URL} {...externalLinkProps}>
+            GitHub
+          </a>{" "}
+          or connect with me on{" "}
+          <a className={proseLinkClassName} href={LINKEDIN_URL} {...externalLinkProps}>
+            LinkedIn
+          </a>
+          .
+        </p>
+      </main>
+
+      <SiteFooter />
+    </div>
   );
 }
