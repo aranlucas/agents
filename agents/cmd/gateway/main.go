@@ -176,7 +176,7 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 	if deps.Fitness != nil {
 		mux.HandleFunc("POST /fitness/activities/sync", fitnessSyncHandler(deps.Fitness, deps.Now))
 	}
-	if err := registerGroceryAPI(mux, deps.Groceries, deps.Shopping, cfg.ShoppingServiceSecret, deps.Now); err != nil {
+	if err := registerGroceryAPI(mux, deps.Groceries, deps.Shopping, deps.Now); err != nil {
 		return nil, fmt.Errorf("register grocery API: %w", err)
 	}
 	krogerLinker := newKrogerLinker(deps.Shopping, deps.KrogerMCPURL, nil)
@@ -195,9 +195,16 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 	// mux (its normal 404) and only push matched paths through the auth
 	// gate.
 	protected := auth.RequireIdentity(publicRoutes, withOAuthCredentials(deps.Clerk, krogerLinker, mux), verifiers...)
+	groceryVerifiers := append([]auth.TokenVerifier{}, verifiers...)
+	groceryVerifiers = append(groceryVerifiers, newKrogerTokenVerifier(deps.Shopping, deps.KrogerMCPURL, nil))
+	groceryProtected := auth.RequireIdentity(nil, mux, groceryVerifiers...)
 	routed := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if _, pattern := mux.Handler(r); pattern == "" {
 			mux.ServeHTTP(w, r)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, "/api/grocery/") {
+			groceryProtected.ServeHTTP(w, r)
 			return
 		}
 		protected.ServeHTTP(w, r)

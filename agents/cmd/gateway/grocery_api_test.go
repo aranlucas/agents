@@ -267,7 +267,7 @@ func TestGroceryErrorResponse(t *testing.T) {
 func serveGroceryAPI(t *testing.T, repository groceries.LibraryRepository, method, path, body string, authenticated bool) *httptest.ResponseRecorder {
 	t.Helper()
 	mux := http.NewServeMux()
-	if err := registerGroceryAPI(mux, repository, nil, "", func() time.Time { return time.UnixMilli(2000) }); err != nil {
+	if err := registerGroceryAPI(mux, repository, nil, func() time.Time { return time.UnixMilli(2000) }); err != nil {
 		t.Fatalf("register grocery API: %v", err)
 	}
 	handler := auth.RequireIdentity(nil, mux, acceptingVerifier{})

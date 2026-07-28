@@ -19,30 +19,35 @@ func FromContext(ctx context.Context) (Identity, bool) {
 // ending in * are prefix matches, used for runtime paths whose final segment is
 // a caller-supplied thread ID. A verifier is optional so construction can fail
 // closed while configuration is assembled; protected requests always return
-// 401 when none is supplied.
+// 401 when none is supplied. When multiple verifiers are supplied, the first
+// one to validate the token determines the immutable request identity.
 func RequireIdentity(publicRoutes map[string]bool, next http.Handler, verifiers ...TokenVerifier) http.Handler {
-	var verifier TokenVerifier
-	if len(verifiers) > 0 {
-		verifier = verifiers[0]
+	configured := make([]TokenVerifier, 0, len(verifiers))
+	for _, verifier := range verifiers {
+		if verifier != nil {
+			configured = append(configured, verifier)
+		}
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		public := isPublicRoute(publicRoutes, r.URL.Path)
 		token, hasToken := bearerToken(r.Header.Get("Authorization"))
-		if public && (!hasToken || verifier == nil) {
+		if public && (!hasToken || len(configured) == 0) {
 			identity := Identity{UserID: "anonymous", Public: true}
 			next.ServeHTTP(w, withIdentity(r, identity))
 			return
 		}
-		if !hasToken || verifier == nil {
+		if !hasToken || len(configured) == 0 {
 			writeUnauthorized(w)
 			return
 		}
-		identity, err := verifier.Verify(r.Context(), token)
-		if err != nil {
-			writeUnauthorized(w)
-			return
+		for _, verifier := range configured {
+			identity, err := verifier.Verify(r.Context(), token)
+			if err == nil {
+				next.ServeHTTP(w, withIdentity(r, identity))
+				return
+			}
 		}
-		next.ServeHTTP(w, withIdentity(r, identity))
+		writeUnauthorized(w)
 	})
 }
 

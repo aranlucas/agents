@@ -245,20 +245,8 @@ type ShoppingProfile struct {
 	RecentOrders   []Order         `json:"recent_orders"`
 }
 
-// ShoppingServiceSecret defines model for ShoppingServiceSecret.
-type ShoppingServiceSecret = string
-
-// ShoppingUserId defines model for ShoppingUserId.
-type ShoppingUserId = string
-
 // GroceryError defines model for GroceryError.
 type GroceryError = Error
-
-// GetEquipmentParams defines parameters for GetEquipment.
-type GetEquipmentParams struct {
-	XShoppingServiceSecret *ShoppingServiceSecret `json:"x-shopping-service-secret,omitempty"`
-	XShoppingUserId        *ShoppingUserId        `json:"x-shopping-user-id,omitempty"`
-}
 
 // AddEquipmentJSONBody defines parameters for AddEquipment.
 type AddEquipmentJSONBody struct {
@@ -268,28 +256,10 @@ type AddEquipmentJSONBody struct {
 	} `json:"items"`
 }
 
-// AddEquipmentParams defines parameters for AddEquipment.
-type AddEquipmentParams struct {
-	XShoppingServiceSecret *ShoppingServiceSecret `json:"x-shopping-service-secret,omitempty"`
-	XShoppingUserId        *ShoppingUserId        `json:"x-shopping-user-id,omitempty"`
-}
-
 // RemoveEquipmentJSONBody defines parameters for RemoveEquipment.
 type RemoveEquipmentJSONBody struct {
 	All   *bool     `json:"all,omitempty"`
 	Names *[]string `json:"names,omitempty"`
-}
-
-// RemoveEquipmentParams defines parameters for RemoveEquipment.
-type RemoveEquipmentParams struct {
-	XShoppingServiceSecret *ShoppingServiceSecret `json:"x-shopping-service-secret,omitempty"`
-	XShoppingUserId        *ShoppingUserId        `json:"x-shopping-user-id,omitempty"`
-}
-
-// ListHouseholdsParams defines parameters for ListHouseholds.
-type ListHouseholdsParams struct {
-	XShoppingServiceSecret *ShoppingServiceSecret `json:"x-shopping-service-secret,omitempty"`
-	XShoppingUserId        *ShoppingUserId        `json:"x-shopping-user-id,omitempty"`
 }
 
 // CreateHouseholdJSONBody defines parameters for CreateHousehold.
@@ -297,34 +267,14 @@ type CreateHouseholdJSONBody struct {
 	Name string `json:"name"`
 }
 
-// CreateHouseholdParams defines parameters for CreateHousehold.
-type CreateHouseholdParams struct {
-	XShoppingServiceSecret *ShoppingServiceSecret `json:"x-shopping-service-secret,omitempty"`
-	XShoppingUserId        *ShoppingUserId        `json:"x-shopping-user-id,omitempty"`
-}
-
 // CreateInviteJSONBody defines parameters for CreateInvite.
 type CreateInviteJSONBody struct {
 	MaxUses *int `json:"max_uses,omitempty"`
 }
 
-// CreateInviteParams defines parameters for CreateInvite.
-type CreateInviteParams struct {
-	XShoppingServiceSecret *ShoppingServiceSecret `json:"x-shopping-service-secret,omitempty"`
-	XShoppingUserId        *ShoppingUserId        `json:"x-shopping-user-id,omitempty"`
-}
-
-// JoinHouseholdParams defines parameters for JoinHousehold.
-type JoinHouseholdParams struct {
-	XShoppingServiceSecret *ShoppingServiceSecret `json:"x-shopping-service-secret,omitempty"`
-	XShoppingUserId        *ShoppingUserId        `json:"x-shopping-user-id,omitempty"`
-}
-
 // ListListsParams defines parameters for ListLists.
 type ListListsParams struct {
-	HouseholdId            *string                `form:"householdId,omitempty" json:"householdId,omitempty"`
-	XShoppingServiceSecret *ShoppingServiceSecret `json:"x-shopping-service-secret,omitempty"`
-	XShoppingUserId        *ShoppingUserId        `json:"x-shopping-user-id,omitempty"`
+	HouseholdId *string `form:"householdId,omitempty" json:"householdId,omitempty"`
 }
 
 // CreateListJSONBody defines parameters for CreateList.
@@ -334,64 +284,14 @@ type CreateListJSONBody struct {
 	Title       string     `json:"title"`
 }
 
-// CreateListParams defines parameters for CreateList.
-type CreateListParams struct {
-	XShoppingServiceSecret *ShoppingServiceSecret `json:"x-shopping-service-secret,omitempty"`
-	XShoppingUserId        *ShoppingUserId        `json:"x-shopping-user-id,omitempty"`
-}
-
-// GetListParams defines parameters for GetList.
-type GetListParams struct {
-	XShoppingServiceSecret *ShoppingServiceSecret `json:"x-shopping-service-secret,omitempty"`
-	XShoppingUserId        *ShoppingUserId        `json:"x-shopping-user-id,omitempty"`
-}
-
-// UpdateListParams defines parameters for UpdateList.
-type UpdateListParams struct {
-	XShoppingServiceSecret *ShoppingServiceSecret `json:"x-shopping-service-secret,omitempty"`
-	XShoppingUserId        *ShoppingUserId        `json:"x-shopping-user-id,omitempty"`
-}
-
 // AddItemsJSONBody defines parameters for AddItems.
 type AddItemsJSONBody struct {
 	Items []NewItem `json:"items"`
 }
 
-// AddItemsParams defines parameters for AddItems.
-type AddItemsParams struct {
-	XShoppingServiceSecret *ShoppingServiceSecret `json:"x-shopping-service-secret,omitempty"`
-	XShoppingUserId        *ShoppingUserId        `json:"x-shopping-user-id,omitempty"`
-}
-
-// DeleteItemParams defines parameters for DeleteItem.
-type DeleteItemParams struct {
-	XShoppingServiceSecret *ShoppingServiceSecret `json:"x-shopping-service-secret,omitempty"`
-	XShoppingUserId        *ShoppingUserId        `json:"x-shopping-user-id,omitempty"`
-}
-
-// UpdateItemParams defines parameters for UpdateItem.
-type UpdateItemParams struct {
-	XShoppingServiceSecret *ShoppingServiceSecret `json:"x-shopping-service-secret,omitempty"`
-	XShoppingUserId        *ShoppingUserId        `json:"x-shopping-user-id,omitempty"`
-}
-
 // GetOrdersParams defines parameters for GetOrders.
 type GetOrdersParams struct {
-	Limit                  *int                   `form:"limit,omitempty" json:"limit,omitempty"`
-	XShoppingServiceSecret *ShoppingServiceSecret `json:"x-shopping-service-secret,omitempty"`
-	XShoppingUserId        *ShoppingUserId        `json:"x-shopping-user-id,omitempty"`
-}
-
-// RecordOrderParams defines parameters for RecordOrder.
-type RecordOrderParams struct {
-	XShoppingServiceSecret *ShoppingServiceSecret `json:"x-shopping-service-secret,omitempty"`
-	XShoppingUserId        *ShoppingUserId        `json:"x-shopping-user-id,omitempty"`
-}
-
-// GetPantryParams defines parameters for GetPantry.
-type GetPantryParams struct {
-	XShoppingServiceSecret *ShoppingServiceSecret `json:"x-shopping-service-secret,omitempty"`
-	XShoppingUserId        *ShoppingUserId        `json:"x-shopping-user-id,omitempty"`
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // AddPantryItemsJSONBody defines parameters for AddPantryItems.
@@ -403,22 +303,10 @@ type AddPantryItemsJSONBody struct {
 	} `json:"items"`
 }
 
-// AddPantryItemsParams defines parameters for AddPantryItems.
-type AddPantryItemsParams struct {
-	XShoppingServiceSecret *ShoppingServiceSecret `json:"x-shopping-service-secret,omitempty"`
-	XShoppingUserId        *ShoppingUserId        `json:"x-shopping-user-id,omitempty"`
-}
-
 // SetPantryItemQuantityJSONBody defines parameters for SetPantryItemQuantity.
 type SetPantryItemQuantityJSONBody struct {
 	Name     string  `json:"name"`
 	Quantity float64 `json:"quantity"`
-}
-
-// SetPantryItemQuantityParams defines parameters for SetPantryItemQuantity.
-type SetPantryItemQuantityParams struct {
-	XShoppingServiceSecret *ShoppingServiceSecret `json:"x-shopping-service-secret,omitempty"`
-	XShoppingUserId        *ShoppingUserId        `json:"x-shopping-user-id,omitempty"`
 }
 
 // RemovePantryItemsJSONBody defines parameters for RemovePantryItems.
@@ -427,59 +315,9 @@ type RemovePantryItemsJSONBody struct {
 	Names *[]string `json:"names,omitempty"`
 }
 
-// RemovePantryItemsParams defines parameters for RemovePantryItems.
-type RemovePantryItemsParams struct {
-	XShoppingServiceSecret *ShoppingServiceSecret `json:"x-shopping-service-secret,omitempty"`
-	XShoppingUserId        *ShoppingUserId        `json:"x-shopping-user-id,omitempty"`
-}
-
-// DeletePreferredStoreParams defines parameters for DeletePreferredStore.
-type DeletePreferredStoreParams struct {
-	XShoppingServiceSecret *ShoppingServiceSecret `json:"x-shopping-service-secret,omitempty"`
-	XShoppingUserId        *ShoppingUserId        `json:"x-shopping-user-id,omitempty"`
-}
-
-// GetPreferredStoreParams defines parameters for GetPreferredStore.
-type GetPreferredStoreParams struct {
-	XShoppingServiceSecret *ShoppingServiceSecret `json:"x-shopping-service-secret,omitempty"`
-	XShoppingUserId        *ShoppingUserId        `json:"x-shopping-user-id,omitempty"`
-}
-
-// SetPreferredStoreParams defines parameters for SetPreferredStore.
-type SetPreferredStoreParams struct {
-	XShoppingServiceSecret *ShoppingServiceSecret `json:"x-shopping-service-secret,omitempty"`
-	XShoppingUserId        *ShoppingUserId        `json:"x-shopping-user-id,omitempty"`
-}
-
-// GetShoppingProfileParams defines parameters for GetShoppingProfile.
-type GetShoppingProfileParams struct {
-	XShoppingServiceSecret *ShoppingServiceSecret `json:"x-shopping-service-secret,omitempty"`
-	XShoppingUserId        *ShoppingUserId        `json:"x-shopping-user-id,omitempty"`
-}
-
 // ListRecipesParams defines parameters for ListRecipes.
 type ListRecipesParams struct {
-	HouseholdId            *string                `form:"householdId,omitempty" json:"householdId,omitempty"`
-	XShoppingServiceSecret *ShoppingServiceSecret `json:"x-shopping-service-secret,omitempty"`
-	XShoppingUserId        *ShoppingUserId        `json:"x-shopping-user-id,omitempty"`
-}
-
-// CreateRecipeParams defines parameters for CreateRecipe.
-type CreateRecipeParams struct {
-	XShoppingServiceSecret *ShoppingServiceSecret `json:"x-shopping-service-secret,omitempty"`
-	XShoppingUserId        *ShoppingUserId        `json:"x-shopping-user-id,omitempty"`
-}
-
-// GetRecipeParams defines parameters for GetRecipe.
-type GetRecipeParams struct {
-	XShoppingServiceSecret *ShoppingServiceSecret `json:"x-shopping-service-secret,omitempty"`
-	XShoppingUserId        *ShoppingUserId        `json:"x-shopping-user-id,omitempty"`
-}
-
-// UpdateRecipeParams defines parameters for UpdateRecipe.
-type UpdateRecipeParams struct {
-	XShoppingServiceSecret *ShoppingServiceSecret `json:"x-shopping-service-secret,omitempty"`
-	XShoppingUserId        *ShoppingUserId        `json:"x-shopping-user-id,omitempty"`
+	HouseholdId *string `form:"householdId,omitempty" json:"householdId,omitempty"`
 }
 
 // AddEquipmentJSONRequestBody defines body for AddEquipment for application/json ContentType.
@@ -602,168 +440,168 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 type ClientInterface interface {
 
 	// GetEquipment performs a GET /api/grocery/equipment (the `GetEquipment` operationId) request.
-	GetEquipment(ctx context.Context, params *GetEquipmentParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetEquipment(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AddEquipmentWithBody performs a POST /api/grocery/equipment (the `AddEquipment` operationId) request,
 	// with any type of body and a specified content type.
-	AddEquipmentWithBody(ctx context.Context, params *AddEquipmentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	AddEquipmentWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AddEquipment performs a POST /api/grocery/equipment (the `AddEquipment` operationId) request.
 	// Takes a body of the `application/json` content type.
-	AddEquipment(ctx context.Context, params *AddEquipmentParams, body AddEquipmentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	AddEquipment(ctx context.Context, body AddEquipmentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RemoveEquipmentWithBody performs a POST /api/grocery/equipment/remove (the `RemoveEquipment` operationId) request,
 	// with any type of body and a specified content type.
-	RemoveEquipmentWithBody(ctx context.Context, params *RemoveEquipmentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RemoveEquipmentWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RemoveEquipment performs a POST /api/grocery/equipment/remove (the `RemoveEquipment` operationId) request.
 	// Takes a body of the `application/json` content type.
-	RemoveEquipment(ctx context.Context, params *RemoveEquipmentParams, body RemoveEquipmentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RemoveEquipment(ctx context.Context, body RemoveEquipmentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListHouseholds performs a GET /api/grocery/households (the `ListHouseholds` operationId) request.
-	ListHouseholds(ctx context.Context, params *ListHouseholdsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListHouseholds(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateHouseholdWithBody performs a POST /api/grocery/households (the `CreateHousehold` operationId) request,
 	// with any type of body and a specified content type.
-	CreateHouseholdWithBody(ctx context.Context, params *CreateHouseholdParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateHouseholdWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateHousehold performs a POST /api/grocery/households (the `CreateHousehold` operationId) request.
 	// Takes a body of the `application/json` content type.
-	CreateHousehold(ctx context.Context, params *CreateHouseholdParams, body CreateHouseholdJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateHousehold(ctx context.Context, body CreateHouseholdJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateInviteWithBody performs a POST /api/grocery/households/{id}/invites (the `CreateInvite` operationId) request,
 	// with any type of body and a specified content type.
-	CreateInviteWithBody(ctx context.Context, id string, params *CreateInviteParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateInviteWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateInvite performs a POST /api/grocery/households/{id}/invites (the `CreateInvite` operationId) request.
 	// Takes a body of the `application/json` content type.
-	CreateInvite(ctx context.Context, id string, params *CreateInviteParams, body CreateInviteJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateInvite(ctx context.Context, id string, body CreateInviteJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// JoinHousehold performs a POST /api/grocery/invites/{code}/join (the `JoinHousehold` operationId) request.
-	JoinHousehold(ctx context.Context, code string, params *JoinHouseholdParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	JoinHousehold(ctx context.Context, code string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListLists performs a GET /api/grocery/lists (the `ListLists` operationId) request.
 	ListLists(ctx context.Context, params *ListListsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateListWithBody performs a POST /api/grocery/lists (the `CreateList` operationId) request,
 	// with any type of body and a specified content type.
-	CreateListWithBody(ctx context.Context, params *CreateListParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateListWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateList performs a POST /api/grocery/lists (the `CreateList` operationId) request.
 	// Takes a body of the `application/json` content type.
-	CreateList(ctx context.Context, params *CreateListParams, body CreateListJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateList(ctx context.Context, body CreateListJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetList performs a GET /api/grocery/lists/{id} (the `GetList` operationId) request.
-	GetList(ctx context.Context, id string, params *GetListParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetList(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateListWithBody performs a PATCH /api/grocery/lists/{id} (the `UpdateList` operationId) request,
 	// with any type of body and a specified content type.
-	UpdateListWithBody(ctx context.Context, id string, params *UpdateListParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateListWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateList performs a PATCH /api/grocery/lists/{id} (the `UpdateList` operationId) request.
 	// Takes a body of the `application/json` content type.
-	UpdateList(ctx context.Context, id string, params *UpdateListParams, body UpdateListJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateList(ctx context.Context, id string, body UpdateListJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AddItemsWithBody performs a POST /api/grocery/lists/{id}/items (the `AddItems` operationId) request,
 	// with any type of body and a specified content type.
-	AddItemsWithBody(ctx context.Context, id string, params *AddItemsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	AddItemsWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AddItems performs a POST /api/grocery/lists/{id}/items (the `AddItems` operationId) request.
 	// Takes a body of the `application/json` content type.
-	AddItems(ctx context.Context, id string, params *AddItemsParams, body AddItemsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	AddItems(ctx context.Context, id string, body AddItemsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteItem performs a DELETE /api/grocery/lists/{id}/items/{itemId} (the `DeleteItem` operationId) request.
-	DeleteItem(ctx context.Context, id string, itemId string, params *DeleteItemParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteItem(ctx context.Context, id string, itemId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateItemWithBody performs a PATCH /api/grocery/lists/{id}/items/{itemId} (the `UpdateItem` operationId) request,
 	// with any type of body and a specified content type.
-	UpdateItemWithBody(ctx context.Context, id string, itemId string, params *UpdateItemParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateItemWithBody(ctx context.Context, id string, itemId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateItem performs a PATCH /api/grocery/lists/{id}/items/{itemId} (the `UpdateItem` operationId) request.
 	// Takes a body of the `application/json` content type.
-	UpdateItem(ctx context.Context, id string, itemId string, params *UpdateItemParams, body UpdateItemJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateItem(ctx context.Context, id string, itemId string, body UpdateItemJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetOrders performs a GET /api/grocery/orders (the `GetOrders` operationId) request.
 	GetOrders(ctx context.Context, params *GetOrdersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RecordOrderWithBody performs a POST /api/grocery/orders (the `RecordOrder` operationId) request,
 	// with any type of body and a specified content type.
-	RecordOrderWithBody(ctx context.Context, params *RecordOrderParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RecordOrderWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RecordOrder performs a POST /api/grocery/orders (the `RecordOrder` operationId) request.
 	// Takes a body of the `application/json` content type.
-	RecordOrder(ctx context.Context, params *RecordOrderParams, body RecordOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RecordOrder(ctx context.Context, body RecordOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetPantry performs a GET /api/grocery/pantry (the `GetPantry` operationId) request.
-	GetPantry(ctx context.Context, params *GetPantryParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetPantry(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AddPantryItemsWithBody performs a POST /api/grocery/pantry (the `AddPantryItems` operationId) request,
 	// with any type of body and a specified content type.
-	AddPantryItemsWithBody(ctx context.Context, params *AddPantryItemsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	AddPantryItemsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AddPantryItems performs a POST /api/grocery/pantry (the `AddPantryItems` operationId) request.
 	// Takes a body of the `application/json` content type.
-	AddPantryItems(ctx context.Context, params *AddPantryItemsParams, body AddPantryItemsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	AddPantryItems(ctx context.Context, body AddPantryItemsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SetPantryItemQuantityWithBody performs a POST /api/grocery/pantry/quantity (the `SetPantryItemQuantity` operationId) request,
 	// with any type of body and a specified content type.
-	SetPantryItemQuantityWithBody(ctx context.Context, params *SetPantryItemQuantityParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SetPantryItemQuantityWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SetPantryItemQuantity performs a POST /api/grocery/pantry/quantity (the `SetPantryItemQuantity` operationId) request.
 	// Takes a body of the `application/json` content type.
-	SetPantryItemQuantity(ctx context.Context, params *SetPantryItemQuantityParams, body SetPantryItemQuantityJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SetPantryItemQuantity(ctx context.Context, body SetPantryItemQuantityJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RemovePantryItemsWithBody performs a POST /api/grocery/pantry/remove (the `RemovePantryItems` operationId) request,
 	// with any type of body and a specified content type.
-	RemovePantryItemsWithBody(ctx context.Context, params *RemovePantryItemsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RemovePantryItemsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RemovePantryItems performs a POST /api/grocery/pantry/remove (the `RemovePantryItems` operationId) request.
 	// Takes a body of the `application/json` content type.
-	RemovePantryItems(ctx context.Context, params *RemovePantryItemsParams, body RemovePantryItemsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RemovePantryItems(ctx context.Context, body RemovePantryItemsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeletePreferredStore performs a DELETE /api/grocery/preferred-store (the `DeletePreferredStore` operationId) request.
-	DeletePreferredStore(ctx context.Context, params *DeletePreferredStoreParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeletePreferredStore(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetPreferredStore performs a GET /api/grocery/preferred-store (the `GetPreferredStore` operationId) request.
-	GetPreferredStore(ctx context.Context, params *GetPreferredStoreParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetPreferredStore(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SetPreferredStoreWithBody performs a PUT /api/grocery/preferred-store (the `SetPreferredStore` operationId) request,
 	// with any type of body and a specified content type.
-	SetPreferredStoreWithBody(ctx context.Context, params *SetPreferredStoreParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SetPreferredStoreWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SetPreferredStore performs a PUT /api/grocery/preferred-store (the `SetPreferredStore` operationId) request.
 	// Takes a body of the `application/json` content type.
-	SetPreferredStore(ctx context.Context, params *SetPreferredStoreParams, body SetPreferredStoreJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SetPreferredStore(ctx context.Context, body SetPreferredStoreJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetShoppingProfile performs a GET /api/grocery/profile (the `GetShoppingProfile` operationId) request.
-	GetShoppingProfile(ctx context.Context, params *GetShoppingProfileParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetShoppingProfile(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListRecipes performs a GET /api/grocery/recipes (the `ListRecipes` operationId) request.
 	ListRecipes(ctx context.Context, params *ListRecipesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateRecipeWithBody performs a POST /api/grocery/recipes (the `CreateRecipe` operationId) request,
 	// with any type of body and a specified content type.
-	CreateRecipeWithBody(ctx context.Context, params *CreateRecipeParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateRecipeWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateRecipe performs a POST /api/grocery/recipes (the `CreateRecipe` operationId) request.
 	// Takes a body of the `application/json` content type.
-	CreateRecipe(ctx context.Context, params *CreateRecipeParams, body CreateRecipeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateRecipe(ctx context.Context, body CreateRecipeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRecipe performs a GET /api/grocery/recipes/{id} (the `GetRecipe` operationId) request.
-	GetRecipe(ctx context.Context, id string, params *GetRecipeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetRecipe(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateRecipeWithBody performs a PUT /api/grocery/recipes/{id} (the `UpdateRecipe` operationId) request,
 	// with any type of body and a specified content type.
-	UpdateRecipeWithBody(ctx context.Context, id string, params *UpdateRecipeParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateRecipeWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateRecipe performs a PUT /api/grocery/recipes/{id} (the `UpdateRecipe` operationId) request.
 	// Takes a body of the `application/json` content type.
-	UpdateRecipe(ctx context.Context, id string, params *UpdateRecipeParams, body UpdateRecipeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateRecipe(ctx context.Context, id string, body UpdateRecipeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 // GetEquipment performs a GET /api/grocery/equipment (the `GetEquipment` operationId) request.
-func (c *Client) GetEquipment(ctx context.Context, params *GetEquipmentParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetEquipmentRequest(c.Server, params)
+func (c *Client) GetEquipment(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetEquipmentRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -776,8 +614,8 @@ func (c *Client) GetEquipment(ctx context.Context, params *GetEquipmentParams, r
 
 // AddEquipmentWithBody performs a POST /api/grocery/equipment (the `AddEquipment` operationId) request,
 // with any type of body and a specified content type.
-func (c *Client) AddEquipmentWithBody(ctx context.Context, params *AddEquipmentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAddEquipmentRequestWithBody(c.Server, params, contentType, body)
+func (c *Client) AddEquipmentWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddEquipmentRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -790,8 +628,8 @@ func (c *Client) AddEquipmentWithBody(ctx context.Context, params *AddEquipmentP
 
 // AddEquipment performs a POST /api/grocery/equipment (the `AddEquipment` operationId) request.
 // Takes a body of the `application/json` content type.
-func (c *Client) AddEquipment(ctx context.Context, params *AddEquipmentParams, body AddEquipmentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAddEquipmentRequest(c.Server, params, body)
+func (c *Client) AddEquipment(ctx context.Context, body AddEquipmentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddEquipmentRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -804,8 +642,8 @@ func (c *Client) AddEquipment(ctx context.Context, params *AddEquipmentParams, b
 
 // RemoveEquipmentWithBody performs a POST /api/grocery/equipment/remove (the `RemoveEquipment` operationId) request,
 // with any type of body and a specified content type.
-func (c *Client) RemoveEquipmentWithBody(ctx context.Context, params *RemoveEquipmentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewRemoveEquipmentRequestWithBody(c.Server, params, contentType, body)
+func (c *Client) RemoveEquipmentWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRemoveEquipmentRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -818,8 +656,8 @@ func (c *Client) RemoveEquipmentWithBody(ctx context.Context, params *RemoveEqui
 
 // RemoveEquipment performs a POST /api/grocery/equipment/remove (the `RemoveEquipment` operationId) request.
 // Takes a body of the `application/json` content type.
-func (c *Client) RemoveEquipment(ctx context.Context, params *RemoveEquipmentParams, body RemoveEquipmentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewRemoveEquipmentRequest(c.Server, params, body)
+func (c *Client) RemoveEquipment(ctx context.Context, body RemoveEquipmentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRemoveEquipmentRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -831,8 +669,8 @@ func (c *Client) RemoveEquipment(ctx context.Context, params *RemoveEquipmentPar
 }
 
 // ListHouseholds performs a GET /api/grocery/households (the `ListHouseholds` operationId) request.
-func (c *Client) ListHouseholds(ctx context.Context, params *ListHouseholdsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListHouseholdsRequest(c.Server, params)
+func (c *Client) ListHouseholds(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListHouseholdsRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -845,8 +683,8 @@ func (c *Client) ListHouseholds(ctx context.Context, params *ListHouseholdsParam
 
 // CreateHouseholdWithBody performs a POST /api/grocery/households (the `CreateHousehold` operationId) request,
 // with any type of body and a specified content type.
-func (c *Client) CreateHouseholdWithBody(ctx context.Context, params *CreateHouseholdParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateHouseholdRequestWithBody(c.Server, params, contentType, body)
+func (c *Client) CreateHouseholdWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateHouseholdRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -859,8 +697,8 @@ func (c *Client) CreateHouseholdWithBody(ctx context.Context, params *CreateHous
 
 // CreateHousehold performs a POST /api/grocery/households (the `CreateHousehold` operationId) request.
 // Takes a body of the `application/json` content type.
-func (c *Client) CreateHousehold(ctx context.Context, params *CreateHouseholdParams, body CreateHouseholdJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateHouseholdRequest(c.Server, params, body)
+func (c *Client) CreateHousehold(ctx context.Context, body CreateHouseholdJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateHouseholdRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -873,8 +711,8 @@ func (c *Client) CreateHousehold(ctx context.Context, params *CreateHouseholdPar
 
 // CreateInviteWithBody performs a POST /api/grocery/households/{id}/invites (the `CreateInvite` operationId) request,
 // with any type of body and a specified content type.
-func (c *Client) CreateInviteWithBody(ctx context.Context, id string, params *CreateInviteParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateInviteRequestWithBody(c.Server, id, params, contentType, body)
+func (c *Client) CreateInviteWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateInviteRequestWithBody(c.Server, id, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -887,8 +725,8 @@ func (c *Client) CreateInviteWithBody(ctx context.Context, id string, params *Cr
 
 // CreateInvite performs a POST /api/grocery/households/{id}/invites (the `CreateInvite` operationId) request.
 // Takes a body of the `application/json` content type.
-func (c *Client) CreateInvite(ctx context.Context, id string, params *CreateInviteParams, body CreateInviteJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateInviteRequest(c.Server, id, params, body)
+func (c *Client) CreateInvite(ctx context.Context, id string, body CreateInviteJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateInviteRequest(c.Server, id, body)
 	if err != nil {
 		return nil, err
 	}
@@ -900,8 +738,8 @@ func (c *Client) CreateInvite(ctx context.Context, id string, params *CreateInvi
 }
 
 // JoinHousehold performs a POST /api/grocery/invites/{code}/join (the `JoinHousehold` operationId) request.
-func (c *Client) JoinHousehold(ctx context.Context, code string, params *JoinHouseholdParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewJoinHouseholdRequest(c.Server, code, params)
+func (c *Client) JoinHousehold(ctx context.Context, code string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewJoinHouseholdRequest(c.Server, code)
 	if err != nil {
 		return nil, err
 	}
@@ -927,8 +765,8 @@ func (c *Client) ListLists(ctx context.Context, params *ListListsParams, reqEdit
 
 // CreateListWithBody performs a POST /api/grocery/lists (the `CreateList` operationId) request,
 // with any type of body and a specified content type.
-func (c *Client) CreateListWithBody(ctx context.Context, params *CreateListParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateListRequestWithBody(c.Server, params, contentType, body)
+func (c *Client) CreateListWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateListRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -941,8 +779,8 @@ func (c *Client) CreateListWithBody(ctx context.Context, params *CreateListParam
 
 // CreateList performs a POST /api/grocery/lists (the `CreateList` operationId) request.
 // Takes a body of the `application/json` content type.
-func (c *Client) CreateList(ctx context.Context, params *CreateListParams, body CreateListJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateListRequest(c.Server, params, body)
+func (c *Client) CreateList(ctx context.Context, body CreateListJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateListRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -954,8 +792,8 @@ func (c *Client) CreateList(ctx context.Context, params *CreateListParams, body 
 }
 
 // GetList performs a GET /api/grocery/lists/{id} (the `GetList` operationId) request.
-func (c *Client) GetList(ctx context.Context, id string, params *GetListParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetListRequest(c.Server, id, params)
+func (c *Client) GetList(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetListRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -968,8 +806,8 @@ func (c *Client) GetList(ctx context.Context, id string, params *GetListParams, 
 
 // UpdateListWithBody performs a PATCH /api/grocery/lists/{id} (the `UpdateList` operationId) request,
 // with any type of body and a specified content type.
-func (c *Client) UpdateListWithBody(ctx context.Context, id string, params *UpdateListParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateListRequestWithBody(c.Server, id, params, contentType, body)
+func (c *Client) UpdateListWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateListRequestWithBody(c.Server, id, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -982,8 +820,8 @@ func (c *Client) UpdateListWithBody(ctx context.Context, id string, params *Upda
 
 // UpdateList performs a PATCH /api/grocery/lists/{id} (the `UpdateList` operationId) request.
 // Takes a body of the `application/json` content type.
-func (c *Client) UpdateList(ctx context.Context, id string, params *UpdateListParams, body UpdateListJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateListRequest(c.Server, id, params, body)
+func (c *Client) UpdateList(ctx context.Context, id string, body UpdateListJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateListRequest(c.Server, id, body)
 	if err != nil {
 		return nil, err
 	}
@@ -996,8 +834,8 @@ func (c *Client) UpdateList(ctx context.Context, id string, params *UpdateListPa
 
 // AddItemsWithBody performs a POST /api/grocery/lists/{id}/items (the `AddItems` operationId) request,
 // with any type of body and a specified content type.
-func (c *Client) AddItemsWithBody(ctx context.Context, id string, params *AddItemsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAddItemsRequestWithBody(c.Server, id, params, contentType, body)
+func (c *Client) AddItemsWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddItemsRequestWithBody(c.Server, id, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1010,8 +848,8 @@ func (c *Client) AddItemsWithBody(ctx context.Context, id string, params *AddIte
 
 // AddItems performs a POST /api/grocery/lists/{id}/items (the `AddItems` operationId) request.
 // Takes a body of the `application/json` content type.
-func (c *Client) AddItems(ctx context.Context, id string, params *AddItemsParams, body AddItemsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAddItemsRequest(c.Server, id, params, body)
+func (c *Client) AddItems(ctx context.Context, id string, body AddItemsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddItemsRequest(c.Server, id, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1023,8 +861,8 @@ func (c *Client) AddItems(ctx context.Context, id string, params *AddItemsParams
 }
 
 // DeleteItem performs a DELETE /api/grocery/lists/{id}/items/{itemId} (the `DeleteItem` operationId) request.
-func (c *Client) DeleteItem(ctx context.Context, id string, itemId string, params *DeleteItemParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteItemRequest(c.Server, id, itemId, params)
+func (c *Client) DeleteItem(ctx context.Context, id string, itemId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteItemRequest(c.Server, id, itemId)
 	if err != nil {
 		return nil, err
 	}
@@ -1037,8 +875,8 @@ func (c *Client) DeleteItem(ctx context.Context, id string, itemId string, param
 
 // UpdateItemWithBody performs a PATCH /api/grocery/lists/{id}/items/{itemId} (the `UpdateItem` operationId) request,
 // with any type of body and a specified content type.
-func (c *Client) UpdateItemWithBody(ctx context.Context, id string, itemId string, params *UpdateItemParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateItemRequestWithBody(c.Server, id, itemId, params, contentType, body)
+func (c *Client) UpdateItemWithBody(ctx context.Context, id string, itemId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateItemRequestWithBody(c.Server, id, itemId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1051,8 +889,8 @@ func (c *Client) UpdateItemWithBody(ctx context.Context, id string, itemId strin
 
 // UpdateItem performs a PATCH /api/grocery/lists/{id}/items/{itemId} (the `UpdateItem` operationId) request.
 // Takes a body of the `application/json` content type.
-func (c *Client) UpdateItem(ctx context.Context, id string, itemId string, params *UpdateItemParams, body UpdateItemJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateItemRequest(c.Server, id, itemId, params, body)
+func (c *Client) UpdateItem(ctx context.Context, id string, itemId string, body UpdateItemJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateItemRequest(c.Server, id, itemId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1078,8 +916,8 @@ func (c *Client) GetOrders(ctx context.Context, params *GetOrdersParams, reqEdit
 
 // RecordOrderWithBody performs a POST /api/grocery/orders (the `RecordOrder` operationId) request,
 // with any type of body and a specified content type.
-func (c *Client) RecordOrderWithBody(ctx context.Context, params *RecordOrderParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewRecordOrderRequestWithBody(c.Server, params, contentType, body)
+func (c *Client) RecordOrderWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRecordOrderRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1092,8 +930,8 @@ func (c *Client) RecordOrderWithBody(ctx context.Context, params *RecordOrderPar
 
 // RecordOrder performs a POST /api/grocery/orders (the `RecordOrder` operationId) request.
 // Takes a body of the `application/json` content type.
-func (c *Client) RecordOrder(ctx context.Context, params *RecordOrderParams, body RecordOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewRecordOrderRequest(c.Server, params, body)
+func (c *Client) RecordOrder(ctx context.Context, body RecordOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRecordOrderRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1105,8 +943,8 @@ func (c *Client) RecordOrder(ctx context.Context, params *RecordOrderParams, bod
 }
 
 // GetPantry performs a GET /api/grocery/pantry (the `GetPantry` operationId) request.
-func (c *Client) GetPantry(ctx context.Context, params *GetPantryParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetPantryRequest(c.Server, params)
+func (c *Client) GetPantry(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetPantryRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -1119,8 +957,8 @@ func (c *Client) GetPantry(ctx context.Context, params *GetPantryParams, reqEdit
 
 // AddPantryItemsWithBody performs a POST /api/grocery/pantry (the `AddPantryItems` operationId) request,
 // with any type of body and a specified content type.
-func (c *Client) AddPantryItemsWithBody(ctx context.Context, params *AddPantryItemsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAddPantryItemsRequestWithBody(c.Server, params, contentType, body)
+func (c *Client) AddPantryItemsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddPantryItemsRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1133,8 +971,8 @@ func (c *Client) AddPantryItemsWithBody(ctx context.Context, params *AddPantryIt
 
 // AddPantryItems performs a POST /api/grocery/pantry (the `AddPantryItems` operationId) request.
 // Takes a body of the `application/json` content type.
-func (c *Client) AddPantryItems(ctx context.Context, params *AddPantryItemsParams, body AddPantryItemsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAddPantryItemsRequest(c.Server, params, body)
+func (c *Client) AddPantryItems(ctx context.Context, body AddPantryItemsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddPantryItemsRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1147,8 +985,8 @@ func (c *Client) AddPantryItems(ctx context.Context, params *AddPantryItemsParam
 
 // SetPantryItemQuantityWithBody performs a POST /api/grocery/pantry/quantity (the `SetPantryItemQuantity` operationId) request,
 // with any type of body and a specified content type.
-func (c *Client) SetPantryItemQuantityWithBody(ctx context.Context, params *SetPantryItemQuantityParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSetPantryItemQuantityRequestWithBody(c.Server, params, contentType, body)
+func (c *Client) SetPantryItemQuantityWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetPantryItemQuantityRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1161,8 +999,8 @@ func (c *Client) SetPantryItemQuantityWithBody(ctx context.Context, params *SetP
 
 // SetPantryItemQuantity performs a POST /api/grocery/pantry/quantity (the `SetPantryItemQuantity` operationId) request.
 // Takes a body of the `application/json` content type.
-func (c *Client) SetPantryItemQuantity(ctx context.Context, params *SetPantryItemQuantityParams, body SetPantryItemQuantityJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSetPantryItemQuantityRequest(c.Server, params, body)
+func (c *Client) SetPantryItemQuantity(ctx context.Context, body SetPantryItemQuantityJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetPantryItemQuantityRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1175,8 +1013,8 @@ func (c *Client) SetPantryItemQuantity(ctx context.Context, params *SetPantryIte
 
 // RemovePantryItemsWithBody performs a POST /api/grocery/pantry/remove (the `RemovePantryItems` operationId) request,
 // with any type of body and a specified content type.
-func (c *Client) RemovePantryItemsWithBody(ctx context.Context, params *RemovePantryItemsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewRemovePantryItemsRequestWithBody(c.Server, params, contentType, body)
+func (c *Client) RemovePantryItemsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRemovePantryItemsRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1189,8 +1027,8 @@ func (c *Client) RemovePantryItemsWithBody(ctx context.Context, params *RemovePa
 
 // RemovePantryItems performs a POST /api/grocery/pantry/remove (the `RemovePantryItems` operationId) request.
 // Takes a body of the `application/json` content type.
-func (c *Client) RemovePantryItems(ctx context.Context, params *RemovePantryItemsParams, body RemovePantryItemsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewRemovePantryItemsRequest(c.Server, params, body)
+func (c *Client) RemovePantryItems(ctx context.Context, body RemovePantryItemsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRemovePantryItemsRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1202,8 +1040,8 @@ func (c *Client) RemovePantryItems(ctx context.Context, params *RemovePantryItem
 }
 
 // DeletePreferredStore performs a DELETE /api/grocery/preferred-store (the `DeletePreferredStore` operationId) request.
-func (c *Client) DeletePreferredStore(ctx context.Context, params *DeletePreferredStoreParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeletePreferredStoreRequest(c.Server, params)
+func (c *Client) DeletePreferredStore(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeletePreferredStoreRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -1215,8 +1053,8 @@ func (c *Client) DeletePreferredStore(ctx context.Context, params *DeletePreferr
 }
 
 // GetPreferredStore performs a GET /api/grocery/preferred-store (the `GetPreferredStore` operationId) request.
-func (c *Client) GetPreferredStore(ctx context.Context, params *GetPreferredStoreParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetPreferredStoreRequest(c.Server, params)
+func (c *Client) GetPreferredStore(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetPreferredStoreRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -1229,8 +1067,8 @@ func (c *Client) GetPreferredStore(ctx context.Context, params *GetPreferredStor
 
 // SetPreferredStoreWithBody performs a PUT /api/grocery/preferred-store (the `SetPreferredStore` operationId) request,
 // with any type of body and a specified content type.
-func (c *Client) SetPreferredStoreWithBody(ctx context.Context, params *SetPreferredStoreParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSetPreferredStoreRequestWithBody(c.Server, params, contentType, body)
+func (c *Client) SetPreferredStoreWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetPreferredStoreRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1243,8 +1081,8 @@ func (c *Client) SetPreferredStoreWithBody(ctx context.Context, params *SetPrefe
 
 // SetPreferredStore performs a PUT /api/grocery/preferred-store (the `SetPreferredStore` operationId) request.
 // Takes a body of the `application/json` content type.
-func (c *Client) SetPreferredStore(ctx context.Context, params *SetPreferredStoreParams, body SetPreferredStoreJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSetPreferredStoreRequest(c.Server, params, body)
+func (c *Client) SetPreferredStore(ctx context.Context, body SetPreferredStoreJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetPreferredStoreRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1256,8 +1094,8 @@ func (c *Client) SetPreferredStore(ctx context.Context, params *SetPreferredStor
 }
 
 // GetShoppingProfile performs a GET /api/grocery/profile (the `GetShoppingProfile` operationId) request.
-func (c *Client) GetShoppingProfile(ctx context.Context, params *GetShoppingProfileParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetShoppingProfileRequest(c.Server, params)
+func (c *Client) GetShoppingProfile(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetShoppingProfileRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -1283,8 +1121,8 @@ func (c *Client) ListRecipes(ctx context.Context, params *ListRecipesParams, req
 
 // CreateRecipeWithBody performs a POST /api/grocery/recipes (the `CreateRecipe` operationId) request,
 // with any type of body and a specified content type.
-func (c *Client) CreateRecipeWithBody(ctx context.Context, params *CreateRecipeParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateRecipeRequestWithBody(c.Server, params, contentType, body)
+func (c *Client) CreateRecipeWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateRecipeRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1297,8 +1135,8 @@ func (c *Client) CreateRecipeWithBody(ctx context.Context, params *CreateRecipeP
 
 // CreateRecipe performs a POST /api/grocery/recipes (the `CreateRecipe` operationId) request.
 // Takes a body of the `application/json` content type.
-func (c *Client) CreateRecipe(ctx context.Context, params *CreateRecipeParams, body CreateRecipeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateRecipeRequest(c.Server, params, body)
+func (c *Client) CreateRecipe(ctx context.Context, body CreateRecipeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateRecipeRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1310,8 +1148,8 @@ func (c *Client) CreateRecipe(ctx context.Context, params *CreateRecipeParams, b
 }
 
 // GetRecipe performs a GET /api/grocery/recipes/{id} (the `GetRecipe` operationId) request.
-func (c *Client) GetRecipe(ctx context.Context, id string, params *GetRecipeParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetRecipeRequest(c.Server, id, params)
+func (c *Client) GetRecipe(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRecipeRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -1324,8 +1162,8 @@ func (c *Client) GetRecipe(ctx context.Context, id string, params *GetRecipePara
 
 // UpdateRecipeWithBody performs a PUT /api/grocery/recipes/{id} (the `UpdateRecipe` operationId) request,
 // with any type of body and a specified content type.
-func (c *Client) UpdateRecipeWithBody(ctx context.Context, id string, params *UpdateRecipeParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateRecipeRequestWithBody(c.Server, id, params, contentType, body)
+func (c *Client) UpdateRecipeWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateRecipeRequestWithBody(c.Server, id, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1338,8 +1176,8 @@ func (c *Client) UpdateRecipeWithBody(ctx context.Context, id string, params *Up
 
 // UpdateRecipe performs a PUT /api/grocery/recipes/{id} (the `UpdateRecipe` operationId) request.
 // Takes a body of the `application/json` content type.
-func (c *Client) UpdateRecipe(ctx context.Context, id string, params *UpdateRecipeParams, body UpdateRecipeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateRecipeRequest(c.Server, id, params, body)
+func (c *Client) UpdateRecipe(ctx context.Context, id string, body UpdateRecipeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateRecipeRequest(c.Server, id, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1351,7 +1189,7 @@ func (c *Client) UpdateRecipe(ctx context.Context, id string, params *UpdateReci
 }
 
 // NewGetEquipmentRequest constructs an http.Request for the GetEquipment method
-func NewGetEquipmentRequest(server string, params *GetEquipmentParams) (*http.Request, error) {
+func NewGetEquipmentRequest(server string) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -1374,48 +1212,22 @@ func NewGetEquipmentRequest(server string, params *GetEquipmentParams) (*http.Re
 		return nil, err
 	}
 
-	if params != nil {
-
-		if params.XShoppingServiceSecret != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-service-secret", *params.XShoppingServiceSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-service-secret", headerParam0)
-		}
-
-		if params.XShoppingUserId != nil {
-			var headerParam1 string
-
-			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-user-id", *params.XShoppingUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-user-id", headerParam1)
-		}
-
-	}
-
 	return req, nil
 }
 
 // NewAddEquipmentRequest calls the generic AddEquipment builder with application/json body
-func NewAddEquipmentRequest(server string, params *AddEquipmentParams, body AddEquipmentJSONRequestBody) (*http.Request, error) {
+func NewAddEquipmentRequest(server string, body AddEquipmentJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewAddEquipmentRequestWithBody(server, params, "application/json", bodyReader)
+	return NewAddEquipmentRequestWithBody(server, "application/json", bodyReader)
 }
 
 // NewAddEquipmentRequestWithBody constructs an http.Request for the AddEquipment method, with any body, and a specified content type
-func NewAddEquipmentRequestWithBody(server string, params *AddEquipmentParams, contentType string, body io.Reader) (*http.Request, error) {
+func NewAddEquipmentRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -1440,48 +1252,22 @@ func NewAddEquipmentRequestWithBody(server string, params *AddEquipmentParams, c
 
 	req.Header.Add("Content-Type", contentType)
 
-	if params != nil {
-
-		if params.XShoppingServiceSecret != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-service-secret", *params.XShoppingServiceSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-service-secret", headerParam0)
-		}
-
-		if params.XShoppingUserId != nil {
-			var headerParam1 string
-
-			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-user-id", *params.XShoppingUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-user-id", headerParam1)
-		}
-
-	}
-
 	return req, nil
 }
 
 // NewRemoveEquipmentRequest calls the generic RemoveEquipment builder with application/json body
-func NewRemoveEquipmentRequest(server string, params *RemoveEquipmentParams, body RemoveEquipmentJSONRequestBody) (*http.Request, error) {
+func NewRemoveEquipmentRequest(server string, body RemoveEquipmentJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewRemoveEquipmentRequestWithBody(server, params, "application/json", bodyReader)
+	return NewRemoveEquipmentRequestWithBody(server, "application/json", bodyReader)
 }
 
 // NewRemoveEquipmentRequestWithBody constructs an http.Request for the RemoveEquipment method, with any body, and a specified content type
-func NewRemoveEquipmentRequestWithBody(server string, params *RemoveEquipmentParams, contentType string, body io.Reader) (*http.Request, error) {
+func NewRemoveEquipmentRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -1506,37 +1292,11 @@ func NewRemoveEquipmentRequestWithBody(server string, params *RemoveEquipmentPar
 
 	req.Header.Add("Content-Type", contentType)
 
-	if params != nil {
-
-		if params.XShoppingServiceSecret != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-service-secret", *params.XShoppingServiceSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-service-secret", headerParam0)
-		}
-
-		if params.XShoppingUserId != nil {
-			var headerParam1 string
-
-			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-user-id", *params.XShoppingUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-user-id", headerParam1)
-		}
-
-	}
-
 	return req, nil
 }
 
 // NewListHouseholdsRequest constructs an http.Request for the ListHouseholds method
-func NewListHouseholdsRequest(server string, params *ListHouseholdsParams) (*http.Request, error) {
+func NewListHouseholdsRequest(server string) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -1559,48 +1319,22 @@ func NewListHouseholdsRequest(server string, params *ListHouseholdsParams) (*htt
 		return nil, err
 	}
 
-	if params != nil {
-
-		if params.XShoppingServiceSecret != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-service-secret", *params.XShoppingServiceSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-service-secret", headerParam0)
-		}
-
-		if params.XShoppingUserId != nil {
-			var headerParam1 string
-
-			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-user-id", *params.XShoppingUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-user-id", headerParam1)
-		}
-
-	}
-
 	return req, nil
 }
 
 // NewCreateHouseholdRequest calls the generic CreateHousehold builder with application/json body
-func NewCreateHouseholdRequest(server string, params *CreateHouseholdParams, body CreateHouseholdJSONRequestBody) (*http.Request, error) {
+func NewCreateHouseholdRequest(server string, body CreateHouseholdJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateHouseholdRequestWithBody(server, params, "application/json", bodyReader)
+	return NewCreateHouseholdRequestWithBody(server, "application/json", bodyReader)
 }
 
 // NewCreateHouseholdRequestWithBody constructs an http.Request for the CreateHousehold method, with any body, and a specified content type
-func NewCreateHouseholdRequestWithBody(server string, params *CreateHouseholdParams, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateHouseholdRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -1625,48 +1359,22 @@ func NewCreateHouseholdRequestWithBody(server string, params *CreateHouseholdPar
 
 	req.Header.Add("Content-Type", contentType)
 
-	if params != nil {
-
-		if params.XShoppingServiceSecret != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-service-secret", *params.XShoppingServiceSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-service-secret", headerParam0)
-		}
-
-		if params.XShoppingUserId != nil {
-			var headerParam1 string
-
-			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-user-id", *params.XShoppingUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-user-id", headerParam1)
-		}
-
-	}
-
 	return req, nil
 }
 
 // NewCreateInviteRequest calls the generic CreateInvite builder with application/json body
-func NewCreateInviteRequest(server string, id string, params *CreateInviteParams, body CreateInviteJSONRequestBody) (*http.Request, error) {
+func NewCreateInviteRequest(server string, id string, body CreateInviteJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateInviteRequestWithBody(server, id, params, "application/json", bodyReader)
+	return NewCreateInviteRequestWithBody(server, id, "application/json", bodyReader)
 }
 
 // NewCreateInviteRequestWithBody constructs an http.Request for the CreateInvite method, with any body, and a specified content type
-func NewCreateInviteRequestWithBody(server string, id string, params *CreateInviteParams, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateInviteRequestWithBody(server string, id string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1698,37 +1406,11 @@ func NewCreateInviteRequestWithBody(server string, id string, params *CreateInvi
 
 	req.Header.Add("Content-Type", contentType)
 
-	if params != nil {
-
-		if params.XShoppingServiceSecret != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-service-secret", *params.XShoppingServiceSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-service-secret", headerParam0)
-		}
-
-		if params.XShoppingUserId != nil {
-			var headerParam1 string
-
-			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-user-id", *params.XShoppingUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-user-id", headerParam1)
-		}
-
-	}
-
 	return req, nil
 }
 
 // NewJoinHouseholdRequest constructs an http.Request for the JoinHousehold method
-func NewJoinHouseholdRequest(server string, code string, params *JoinHouseholdParams) (*http.Request, error) {
+func NewJoinHouseholdRequest(server string, code string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1756,32 +1438,6 @@ func NewJoinHouseholdRequest(server string, code string, params *JoinHouseholdPa
 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
-	}
-
-	if params != nil {
-
-		if params.XShoppingServiceSecret != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-service-secret", *params.XShoppingServiceSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-service-secret", headerParam0)
-		}
-
-		if params.XShoppingUserId != nil {
-			var headerParam1 string
-
-			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-user-id", *params.XShoppingUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-user-id", headerParam1)
-		}
-
 	}
 
 	return req, nil
@@ -1838,48 +1494,22 @@ func NewListListsRequest(server string, params *ListListsParams) (*http.Request,
 		return nil, err
 	}
 
-	if params != nil {
-
-		if params.XShoppingServiceSecret != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-service-secret", *params.XShoppingServiceSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-service-secret", headerParam0)
-		}
-
-		if params.XShoppingUserId != nil {
-			var headerParam1 string
-
-			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-user-id", *params.XShoppingUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-user-id", headerParam1)
-		}
-
-	}
-
 	return req, nil
 }
 
 // NewCreateListRequest calls the generic CreateList builder with application/json body
-func NewCreateListRequest(server string, params *CreateListParams, body CreateListJSONRequestBody) (*http.Request, error) {
+func NewCreateListRequest(server string, body CreateListJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateListRequestWithBody(server, params, "application/json", bodyReader)
+	return NewCreateListRequestWithBody(server, "application/json", bodyReader)
 }
 
 // NewCreateListRequestWithBody constructs an http.Request for the CreateList method, with any body, and a specified content type
-func NewCreateListRequestWithBody(server string, params *CreateListParams, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateListRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -1904,37 +1534,11 @@ func NewCreateListRequestWithBody(server string, params *CreateListParams, conte
 
 	req.Header.Add("Content-Type", contentType)
 
-	if params != nil {
-
-		if params.XShoppingServiceSecret != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-service-secret", *params.XShoppingServiceSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-service-secret", headerParam0)
-		}
-
-		if params.XShoppingUserId != nil {
-			var headerParam1 string
-
-			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-user-id", *params.XShoppingUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-user-id", headerParam1)
-		}
-
-	}
-
 	return req, nil
 }
 
 // NewGetListRequest constructs an http.Request for the GetList method
-func NewGetListRequest(server string, id string, params *GetListParams) (*http.Request, error) {
+func NewGetListRequest(server string, id string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1964,48 +1568,22 @@ func NewGetListRequest(server string, id string, params *GetListParams) (*http.R
 		return nil, err
 	}
 
-	if params != nil {
-
-		if params.XShoppingServiceSecret != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-service-secret", *params.XShoppingServiceSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-service-secret", headerParam0)
-		}
-
-		if params.XShoppingUserId != nil {
-			var headerParam1 string
-
-			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-user-id", *params.XShoppingUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-user-id", headerParam1)
-		}
-
-	}
-
 	return req, nil
 }
 
 // NewUpdateListRequest calls the generic UpdateList builder with application/json body
-func NewUpdateListRequest(server string, id string, params *UpdateListParams, body UpdateListJSONRequestBody) (*http.Request, error) {
+func NewUpdateListRequest(server string, id string, body UpdateListJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateListRequestWithBody(server, id, params, "application/json", bodyReader)
+	return NewUpdateListRequestWithBody(server, id, "application/json", bodyReader)
 }
 
 // NewUpdateListRequestWithBody constructs an http.Request for the UpdateList method, with any body, and a specified content type
-func NewUpdateListRequestWithBody(server string, id string, params *UpdateListParams, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateListRequestWithBody(server string, id string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2037,48 +1615,22 @@ func NewUpdateListRequestWithBody(server string, id string, params *UpdateListPa
 
 	req.Header.Add("Content-Type", contentType)
 
-	if params != nil {
-
-		if params.XShoppingServiceSecret != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-service-secret", *params.XShoppingServiceSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-service-secret", headerParam0)
-		}
-
-		if params.XShoppingUserId != nil {
-			var headerParam1 string
-
-			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-user-id", *params.XShoppingUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-user-id", headerParam1)
-		}
-
-	}
-
 	return req, nil
 }
 
 // NewAddItemsRequest calls the generic AddItems builder with application/json body
-func NewAddItemsRequest(server string, id string, params *AddItemsParams, body AddItemsJSONRequestBody) (*http.Request, error) {
+func NewAddItemsRequest(server string, id string, body AddItemsJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewAddItemsRequestWithBody(server, id, params, "application/json", bodyReader)
+	return NewAddItemsRequestWithBody(server, id, "application/json", bodyReader)
 }
 
 // NewAddItemsRequestWithBody constructs an http.Request for the AddItems method, with any body, and a specified content type
-func NewAddItemsRequestWithBody(server string, id string, params *AddItemsParams, contentType string, body io.Reader) (*http.Request, error) {
+func NewAddItemsRequestWithBody(server string, id string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2110,37 +1662,11 @@ func NewAddItemsRequestWithBody(server string, id string, params *AddItemsParams
 
 	req.Header.Add("Content-Type", contentType)
 
-	if params != nil {
-
-		if params.XShoppingServiceSecret != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-service-secret", *params.XShoppingServiceSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-service-secret", headerParam0)
-		}
-
-		if params.XShoppingUserId != nil {
-			var headerParam1 string
-
-			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-user-id", *params.XShoppingUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-user-id", headerParam1)
-		}
-
-	}
-
 	return req, nil
 }
 
 // NewDeleteItemRequest constructs an http.Request for the DeleteItem method
-func NewDeleteItemRequest(server string, id string, itemId string, params *DeleteItemParams) (*http.Request, error) {
+func NewDeleteItemRequest(server string, id string, itemId string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2177,48 +1703,22 @@ func NewDeleteItemRequest(server string, id string, itemId string, params *Delet
 		return nil, err
 	}
 
-	if params != nil {
-
-		if params.XShoppingServiceSecret != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-service-secret", *params.XShoppingServiceSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-service-secret", headerParam0)
-		}
-
-		if params.XShoppingUserId != nil {
-			var headerParam1 string
-
-			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-user-id", *params.XShoppingUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-user-id", headerParam1)
-		}
-
-	}
-
 	return req, nil
 }
 
 // NewUpdateItemRequest calls the generic UpdateItem builder with application/json body
-func NewUpdateItemRequest(server string, id string, itemId string, params *UpdateItemParams, body UpdateItemJSONRequestBody) (*http.Request, error) {
+func NewUpdateItemRequest(server string, id string, itemId string, body UpdateItemJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateItemRequestWithBody(server, id, itemId, params, "application/json", bodyReader)
+	return NewUpdateItemRequestWithBody(server, id, itemId, "application/json", bodyReader)
 }
 
 // NewUpdateItemRequestWithBody constructs an http.Request for the UpdateItem method, with any body, and a specified content type
-func NewUpdateItemRequestWithBody(server string, id string, itemId string, params *UpdateItemParams, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateItemRequestWithBody(server string, id string, itemId string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2256,32 +1756,6 @@ func NewUpdateItemRequestWithBody(server string, id string, itemId string, param
 	}
 
 	req.Header.Add("Content-Type", contentType)
-
-	if params != nil {
-
-		if params.XShoppingServiceSecret != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-service-secret", *params.XShoppingServiceSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-service-secret", headerParam0)
-		}
-
-		if params.XShoppingUserId != nil {
-			var headerParam1 string
-
-			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-user-id", *params.XShoppingUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-user-id", headerParam1)
-		}
-
-	}
 
 	return req, nil
 }
@@ -2337,48 +1811,22 @@ func NewGetOrdersRequest(server string, params *GetOrdersParams) (*http.Request,
 		return nil, err
 	}
 
-	if params != nil {
-
-		if params.XShoppingServiceSecret != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-service-secret", *params.XShoppingServiceSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-service-secret", headerParam0)
-		}
-
-		if params.XShoppingUserId != nil {
-			var headerParam1 string
-
-			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-user-id", *params.XShoppingUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-user-id", headerParam1)
-		}
-
-	}
-
 	return req, nil
 }
 
 // NewRecordOrderRequest calls the generic RecordOrder builder with application/json body
-func NewRecordOrderRequest(server string, params *RecordOrderParams, body RecordOrderJSONRequestBody) (*http.Request, error) {
+func NewRecordOrderRequest(server string, body RecordOrderJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewRecordOrderRequestWithBody(server, params, "application/json", bodyReader)
+	return NewRecordOrderRequestWithBody(server, "application/json", bodyReader)
 }
 
 // NewRecordOrderRequestWithBody constructs an http.Request for the RecordOrder method, with any body, and a specified content type
-func NewRecordOrderRequestWithBody(server string, params *RecordOrderParams, contentType string, body io.Reader) (*http.Request, error) {
+func NewRecordOrderRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -2403,37 +1851,11 @@ func NewRecordOrderRequestWithBody(server string, params *RecordOrderParams, con
 
 	req.Header.Add("Content-Type", contentType)
 
-	if params != nil {
-
-		if params.XShoppingServiceSecret != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-service-secret", *params.XShoppingServiceSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-service-secret", headerParam0)
-		}
-
-		if params.XShoppingUserId != nil {
-			var headerParam1 string
-
-			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-user-id", *params.XShoppingUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-user-id", headerParam1)
-		}
-
-	}
-
 	return req, nil
 }
 
 // NewGetPantryRequest constructs an http.Request for the GetPantry method
-func NewGetPantryRequest(server string, params *GetPantryParams) (*http.Request, error) {
+func NewGetPantryRequest(server string) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -2456,48 +1878,22 @@ func NewGetPantryRequest(server string, params *GetPantryParams) (*http.Request,
 		return nil, err
 	}
 
-	if params != nil {
-
-		if params.XShoppingServiceSecret != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-service-secret", *params.XShoppingServiceSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-service-secret", headerParam0)
-		}
-
-		if params.XShoppingUserId != nil {
-			var headerParam1 string
-
-			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-user-id", *params.XShoppingUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-user-id", headerParam1)
-		}
-
-	}
-
 	return req, nil
 }
 
 // NewAddPantryItemsRequest calls the generic AddPantryItems builder with application/json body
-func NewAddPantryItemsRequest(server string, params *AddPantryItemsParams, body AddPantryItemsJSONRequestBody) (*http.Request, error) {
+func NewAddPantryItemsRequest(server string, body AddPantryItemsJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewAddPantryItemsRequestWithBody(server, params, "application/json", bodyReader)
+	return NewAddPantryItemsRequestWithBody(server, "application/json", bodyReader)
 }
 
 // NewAddPantryItemsRequestWithBody constructs an http.Request for the AddPantryItems method, with any body, and a specified content type
-func NewAddPantryItemsRequestWithBody(server string, params *AddPantryItemsParams, contentType string, body io.Reader) (*http.Request, error) {
+func NewAddPantryItemsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -2522,48 +1918,22 @@ func NewAddPantryItemsRequestWithBody(server string, params *AddPantryItemsParam
 
 	req.Header.Add("Content-Type", contentType)
 
-	if params != nil {
-
-		if params.XShoppingServiceSecret != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-service-secret", *params.XShoppingServiceSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-service-secret", headerParam0)
-		}
-
-		if params.XShoppingUserId != nil {
-			var headerParam1 string
-
-			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-user-id", *params.XShoppingUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-user-id", headerParam1)
-		}
-
-	}
-
 	return req, nil
 }
 
 // NewSetPantryItemQuantityRequest calls the generic SetPantryItemQuantity builder with application/json body
-func NewSetPantryItemQuantityRequest(server string, params *SetPantryItemQuantityParams, body SetPantryItemQuantityJSONRequestBody) (*http.Request, error) {
+func NewSetPantryItemQuantityRequest(server string, body SetPantryItemQuantityJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewSetPantryItemQuantityRequestWithBody(server, params, "application/json", bodyReader)
+	return NewSetPantryItemQuantityRequestWithBody(server, "application/json", bodyReader)
 }
 
 // NewSetPantryItemQuantityRequestWithBody constructs an http.Request for the SetPantryItemQuantity method, with any body, and a specified content type
-func NewSetPantryItemQuantityRequestWithBody(server string, params *SetPantryItemQuantityParams, contentType string, body io.Reader) (*http.Request, error) {
+func NewSetPantryItemQuantityRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -2588,48 +1958,22 @@ func NewSetPantryItemQuantityRequestWithBody(server string, params *SetPantryIte
 
 	req.Header.Add("Content-Type", contentType)
 
-	if params != nil {
-
-		if params.XShoppingServiceSecret != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-service-secret", *params.XShoppingServiceSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-service-secret", headerParam0)
-		}
-
-		if params.XShoppingUserId != nil {
-			var headerParam1 string
-
-			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-user-id", *params.XShoppingUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-user-id", headerParam1)
-		}
-
-	}
-
 	return req, nil
 }
 
 // NewRemovePantryItemsRequest calls the generic RemovePantryItems builder with application/json body
-func NewRemovePantryItemsRequest(server string, params *RemovePantryItemsParams, body RemovePantryItemsJSONRequestBody) (*http.Request, error) {
+func NewRemovePantryItemsRequest(server string, body RemovePantryItemsJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewRemovePantryItemsRequestWithBody(server, params, "application/json", bodyReader)
+	return NewRemovePantryItemsRequestWithBody(server, "application/json", bodyReader)
 }
 
 // NewRemovePantryItemsRequestWithBody constructs an http.Request for the RemovePantryItems method, with any body, and a specified content type
-func NewRemovePantryItemsRequestWithBody(server string, params *RemovePantryItemsParams, contentType string, body io.Reader) (*http.Request, error) {
+func NewRemovePantryItemsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -2654,37 +1998,11 @@ func NewRemovePantryItemsRequestWithBody(server string, params *RemovePantryItem
 
 	req.Header.Add("Content-Type", contentType)
 
-	if params != nil {
-
-		if params.XShoppingServiceSecret != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-service-secret", *params.XShoppingServiceSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-service-secret", headerParam0)
-		}
-
-		if params.XShoppingUserId != nil {
-			var headerParam1 string
-
-			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-user-id", *params.XShoppingUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-user-id", headerParam1)
-		}
-
-	}
-
 	return req, nil
 }
 
 // NewDeletePreferredStoreRequest constructs an http.Request for the DeletePreferredStore method
-func NewDeletePreferredStoreRequest(server string, params *DeletePreferredStoreParams) (*http.Request, error) {
+func NewDeletePreferredStoreRequest(server string) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -2707,37 +2025,11 @@ func NewDeletePreferredStoreRequest(server string, params *DeletePreferredStoreP
 		return nil, err
 	}
 
-	if params != nil {
-
-		if params.XShoppingServiceSecret != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-service-secret", *params.XShoppingServiceSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-service-secret", headerParam0)
-		}
-
-		if params.XShoppingUserId != nil {
-			var headerParam1 string
-
-			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-user-id", *params.XShoppingUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-user-id", headerParam1)
-		}
-
-	}
-
 	return req, nil
 }
 
 // NewGetPreferredStoreRequest constructs an http.Request for the GetPreferredStore method
-func NewGetPreferredStoreRequest(server string, params *GetPreferredStoreParams) (*http.Request, error) {
+func NewGetPreferredStoreRequest(server string) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -2760,48 +2052,22 @@ func NewGetPreferredStoreRequest(server string, params *GetPreferredStoreParams)
 		return nil, err
 	}
 
-	if params != nil {
-
-		if params.XShoppingServiceSecret != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-service-secret", *params.XShoppingServiceSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-service-secret", headerParam0)
-		}
-
-		if params.XShoppingUserId != nil {
-			var headerParam1 string
-
-			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-user-id", *params.XShoppingUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-user-id", headerParam1)
-		}
-
-	}
-
 	return req, nil
 }
 
 // NewSetPreferredStoreRequest calls the generic SetPreferredStore builder with application/json body
-func NewSetPreferredStoreRequest(server string, params *SetPreferredStoreParams, body SetPreferredStoreJSONRequestBody) (*http.Request, error) {
+func NewSetPreferredStoreRequest(server string, body SetPreferredStoreJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewSetPreferredStoreRequestWithBody(server, params, "application/json", bodyReader)
+	return NewSetPreferredStoreRequestWithBody(server, "application/json", bodyReader)
 }
 
 // NewSetPreferredStoreRequestWithBody constructs an http.Request for the SetPreferredStore method, with any body, and a specified content type
-func NewSetPreferredStoreRequestWithBody(server string, params *SetPreferredStoreParams, contentType string, body io.Reader) (*http.Request, error) {
+func NewSetPreferredStoreRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -2826,37 +2092,11 @@ func NewSetPreferredStoreRequestWithBody(server string, params *SetPreferredStor
 
 	req.Header.Add("Content-Type", contentType)
 
-	if params != nil {
-
-		if params.XShoppingServiceSecret != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-service-secret", *params.XShoppingServiceSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-service-secret", headerParam0)
-		}
-
-		if params.XShoppingUserId != nil {
-			var headerParam1 string
-
-			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-user-id", *params.XShoppingUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-user-id", headerParam1)
-		}
-
-	}
-
 	return req, nil
 }
 
 // NewGetShoppingProfileRequest constructs an http.Request for the GetShoppingProfile method
-func NewGetShoppingProfileRequest(server string, params *GetShoppingProfileParams) (*http.Request, error) {
+func NewGetShoppingProfileRequest(server string) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -2877,32 +2117,6 @@ func NewGetShoppingProfileRequest(server string, params *GetShoppingProfileParam
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
-	}
-
-	if params != nil {
-
-		if params.XShoppingServiceSecret != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-service-secret", *params.XShoppingServiceSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-service-secret", headerParam0)
-		}
-
-		if params.XShoppingUserId != nil {
-			var headerParam1 string
-
-			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-user-id", *params.XShoppingUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-user-id", headerParam1)
-		}
-
 	}
 
 	return req, nil
@@ -2959,48 +2173,22 @@ func NewListRecipesRequest(server string, params *ListRecipesParams) (*http.Requ
 		return nil, err
 	}
 
-	if params != nil {
-
-		if params.XShoppingServiceSecret != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-service-secret", *params.XShoppingServiceSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-service-secret", headerParam0)
-		}
-
-		if params.XShoppingUserId != nil {
-			var headerParam1 string
-
-			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-user-id", *params.XShoppingUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-user-id", headerParam1)
-		}
-
-	}
-
 	return req, nil
 }
 
 // NewCreateRecipeRequest calls the generic CreateRecipe builder with application/json body
-func NewCreateRecipeRequest(server string, params *CreateRecipeParams, body CreateRecipeJSONRequestBody) (*http.Request, error) {
+func NewCreateRecipeRequest(server string, body CreateRecipeJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateRecipeRequestWithBody(server, params, "application/json", bodyReader)
+	return NewCreateRecipeRequestWithBody(server, "application/json", bodyReader)
 }
 
 // NewCreateRecipeRequestWithBody constructs an http.Request for the CreateRecipe method, with any body, and a specified content type
-func NewCreateRecipeRequestWithBody(server string, params *CreateRecipeParams, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateRecipeRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -3025,37 +2213,11 @@ func NewCreateRecipeRequestWithBody(server string, params *CreateRecipeParams, c
 
 	req.Header.Add("Content-Type", contentType)
 
-	if params != nil {
-
-		if params.XShoppingServiceSecret != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-service-secret", *params.XShoppingServiceSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-service-secret", headerParam0)
-		}
-
-		if params.XShoppingUserId != nil {
-			var headerParam1 string
-
-			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-user-id", *params.XShoppingUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-user-id", headerParam1)
-		}
-
-	}
-
 	return req, nil
 }
 
 // NewGetRecipeRequest constructs an http.Request for the GetRecipe method
-func NewGetRecipeRequest(server string, id string, params *GetRecipeParams) (*http.Request, error) {
+func NewGetRecipeRequest(server string, id string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -3085,48 +2247,22 @@ func NewGetRecipeRequest(server string, id string, params *GetRecipeParams) (*ht
 		return nil, err
 	}
 
-	if params != nil {
-
-		if params.XShoppingServiceSecret != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-service-secret", *params.XShoppingServiceSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-service-secret", headerParam0)
-		}
-
-		if params.XShoppingUserId != nil {
-			var headerParam1 string
-
-			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-user-id", *params.XShoppingUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-user-id", headerParam1)
-		}
-
-	}
-
 	return req, nil
 }
 
 // NewUpdateRecipeRequest calls the generic UpdateRecipe builder with application/json body
-func NewUpdateRecipeRequest(server string, id string, params *UpdateRecipeParams, body UpdateRecipeJSONRequestBody) (*http.Request, error) {
+func NewUpdateRecipeRequest(server string, id string, body UpdateRecipeJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateRecipeRequestWithBody(server, id, params, "application/json", bodyReader)
+	return NewUpdateRecipeRequestWithBody(server, id, "application/json", bodyReader)
 }
 
 // NewUpdateRecipeRequestWithBody constructs an http.Request for the UpdateRecipe method, with any body, and a specified content type
-func NewUpdateRecipeRequestWithBody(server string, id string, params *UpdateRecipeParams, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateRecipeRequestWithBody(server string, id string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -3157,32 +2293,6 @@ func NewUpdateRecipeRequestWithBody(server string, id string, params *UpdateReci
 	}
 
 	req.Header.Add("Content-Type", contentType)
-
-	if params != nil {
-
-		if params.XShoppingServiceSecret != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-service-secret", *params.XShoppingServiceSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-service-secret", headerParam0)
-		}
-
-		if params.XShoppingUserId != nil {
-			var headerParam1 string
-
-			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "x-shopping-user-id", *params.XShoppingUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("x-shopping-user-id", headerParam1)
-		}
-
-	}
 
 	return req, nil
 }
@@ -3234,57 +2344,57 @@ type ClientWithResponsesInterface interface {
 	// GetEquipmentWithResponse performs a GET /api/grocery/equipment (the `GetEquipment` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	GetEquipmentWithResponse(ctx context.Context, params *GetEquipmentParams, reqEditors ...RequestEditorFn) (*GetEquipmentResponse, error)
+	GetEquipmentWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetEquipmentResponse, error)
 
 	// AddEquipmentWithBodyWithResponse performs a POST /api/grocery/equipment (the `AddEquipment` operationId) request,
 	// with any type of body and a specified content type.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	AddEquipmentWithBodyWithResponse(ctx context.Context, params *AddEquipmentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddEquipmentResponse, error)
+	AddEquipmentWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddEquipmentResponse, error)
 
 	// AddEquipmentWithResponse performs a POST /api/grocery/equipment (the `AddEquipment` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	AddEquipmentWithResponse(ctx context.Context, params *AddEquipmentParams, body AddEquipmentJSONRequestBody, reqEditors ...RequestEditorFn) (*AddEquipmentResponse, error)
+	AddEquipmentWithResponse(ctx context.Context, body AddEquipmentJSONRequestBody, reqEditors ...RequestEditorFn) (*AddEquipmentResponse, error)
 
 	// RemoveEquipmentWithBodyWithResponse performs a POST /api/grocery/equipment/remove (the `RemoveEquipment` operationId) request,
 	// with any type of body and a specified content type.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	RemoveEquipmentWithBodyWithResponse(ctx context.Context, params *RemoveEquipmentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RemoveEquipmentResponse, error)
+	RemoveEquipmentWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RemoveEquipmentResponse, error)
 
 	// RemoveEquipmentWithResponse performs a POST /api/grocery/equipment/remove (the `RemoveEquipment` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	RemoveEquipmentWithResponse(ctx context.Context, params *RemoveEquipmentParams, body RemoveEquipmentJSONRequestBody, reqEditors ...RequestEditorFn) (*RemoveEquipmentResponse, error)
+	RemoveEquipmentWithResponse(ctx context.Context, body RemoveEquipmentJSONRequestBody, reqEditors ...RequestEditorFn) (*RemoveEquipmentResponse, error)
 
 	// ListHouseholdsWithResponse performs a GET /api/grocery/households (the `ListHouseholds` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	ListHouseholdsWithResponse(ctx context.Context, params *ListHouseholdsParams, reqEditors ...RequestEditorFn) (*ListHouseholdsResponse, error)
+	ListHouseholdsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListHouseholdsResponse, error)
 
 	// CreateHouseholdWithBodyWithResponse performs a POST /api/grocery/households (the `CreateHousehold` operationId) request,
 	// with any type of body and a specified content type.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	CreateHouseholdWithBodyWithResponse(ctx context.Context, params *CreateHouseholdParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateHouseholdResponse, error)
+	CreateHouseholdWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateHouseholdResponse, error)
 
 	// CreateHouseholdWithResponse performs a POST /api/grocery/households (the `CreateHousehold` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	CreateHouseholdWithResponse(ctx context.Context, params *CreateHouseholdParams, body CreateHouseholdJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateHouseholdResponse, error)
+	CreateHouseholdWithResponse(ctx context.Context, body CreateHouseholdJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateHouseholdResponse, error)
 
 	// CreateInviteWithBodyWithResponse performs a POST /api/grocery/households/{id}/invites (the `CreateInvite` operationId) request,
 	// with any type of body and a specified content type.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	CreateInviteWithBodyWithResponse(ctx context.Context, id string, params *CreateInviteParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateInviteResponse, error)
+	CreateInviteWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateInviteResponse, error)
 
 	// CreateInviteWithResponse performs a POST /api/grocery/households/{id}/invites (the `CreateInvite` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	CreateInviteWithResponse(ctx context.Context, id string, params *CreateInviteParams, body CreateInviteJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateInviteResponse, error)
+	CreateInviteWithResponse(ctx context.Context, id string, body CreateInviteJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateInviteResponse, error)
 
 	// JoinHouseholdWithResponse performs a POST /api/grocery/invites/{code}/join (the `JoinHousehold` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	JoinHouseholdWithResponse(ctx context.Context, code string, params *JoinHouseholdParams, reqEditors ...RequestEditorFn) (*JoinHouseholdResponse, error)
+	JoinHouseholdWithResponse(ctx context.Context, code string, reqEditors ...RequestEditorFn) (*JoinHouseholdResponse, error)
 
 	// ListListsWithResponse performs a GET /api/grocery/lists (the `ListLists` operationId) request.
 	//
@@ -3295,51 +2405,51 @@ type ClientWithResponsesInterface interface {
 	// with any type of body and a specified content type.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	CreateListWithBodyWithResponse(ctx context.Context, params *CreateListParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateListResponse, error)
+	CreateListWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateListResponse, error)
 
 	// CreateListWithResponse performs a POST /api/grocery/lists (the `CreateList` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	CreateListWithResponse(ctx context.Context, params *CreateListParams, body CreateListJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateListResponse, error)
+	CreateListWithResponse(ctx context.Context, body CreateListJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateListResponse, error)
 
 	// GetListWithResponse performs a GET /api/grocery/lists/{id} (the `GetList` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	GetListWithResponse(ctx context.Context, id string, params *GetListParams, reqEditors ...RequestEditorFn) (*GetListResponse, error)
+	GetListWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetListResponse, error)
 
 	// UpdateListWithBodyWithResponse performs a PATCH /api/grocery/lists/{id} (the `UpdateList` operationId) request,
 	// with any type of body and a specified content type.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	UpdateListWithBodyWithResponse(ctx context.Context, id string, params *UpdateListParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateListResponse, error)
+	UpdateListWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateListResponse, error)
 
 	// UpdateListWithResponse performs a PATCH /api/grocery/lists/{id} (the `UpdateList` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	UpdateListWithResponse(ctx context.Context, id string, params *UpdateListParams, body UpdateListJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateListResponse, error)
+	UpdateListWithResponse(ctx context.Context, id string, body UpdateListJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateListResponse, error)
 
 	// AddItemsWithBodyWithResponse performs a POST /api/grocery/lists/{id}/items (the `AddItems` operationId) request,
 	// with any type of body and a specified content type.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	AddItemsWithBodyWithResponse(ctx context.Context, id string, params *AddItemsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddItemsResponse, error)
+	AddItemsWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddItemsResponse, error)
 
 	// AddItemsWithResponse performs a POST /api/grocery/lists/{id}/items (the `AddItems` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	AddItemsWithResponse(ctx context.Context, id string, params *AddItemsParams, body AddItemsJSONRequestBody, reqEditors ...RequestEditorFn) (*AddItemsResponse, error)
+	AddItemsWithResponse(ctx context.Context, id string, body AddItemsJSONRequestBody, reqEditors ...RequestEditorFn) (*AddItemsResponse, error)
 
 	// DeleteItemWithResponse performs a DELETE /api/grocery/lists/{id}/items/{itemId} (the `DeleteItem` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	DeleteItemWithResponse(ctx context.Context, id string, itemId string, params *DeleteItemParams, reqEditors ...RequestEditorFn) (*DeleteItemResponse, error)
+	DeleteItemWithResponse(ctx context.Context, id string, itemId string, reqEditors ...RequestEditorFn) (*DeleteItemResponse, error)
 
 	// UpdateItemWithBodyWithResponse performs a PATCH /api/grocery/lists/{id}/items/{itemId} (the `UpdateItem` operationId) request,
 	// with any type of body and a specified content type.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	UpdateItemWithBodyWithResponse(ctx context.Context, id string, itemId string, params *UpdateItemParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateItemResponse, error)
+	UpdateItemWithBodyWithResponse(ctx context.Context, id string, itemId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateItemResponse, error)
 
 	// UpdateItemWithResponse performs a PATCH /api/grocery/lists/{id}/items/{itemId} (the `UpdateItem` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	UpdateItemWithResponse(ctx context.Context, id string, itemId string, params *UpdateItemParams, body UpdateItemJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateItemResponse, error)
+	UpdateItemWithResponse(ctx context.Context, id string, itemId string, body UpdateItemJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateItemResponse, error)
 
 	// GetOrdersWithResponse performs a GET /api/grocery/orders (the `GetOrders` operationId) request.
 	//
@@ -3350,71 +2460,71 @@ type ClientWithResponsesInterface interface {
 	// with any type of body and a specified content type.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	RecordOrderWithBodyWithResponse(ctx context.Context, params *RecordOrderParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RecordOrderResponse, error)
+	RecordOrderWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RecordOrderResponse, error)
 
 	// RecordOrderWithResponse performs a POST /api/grocery/orders (the `RecordOrder` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	RecordOrderWithResponse(ctx context.Context, params *RecordOrderParams, body RecordOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*RecordOrderResponse, error)
+	RecordOrderWithResponse(ctx context.Context, body RecordOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*RecordOrderResponse, error)
 
 	// GetPantryWithResponse performs a GET /api/grocery/pantry (the `GetPantry` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	GetPantryWithResponse(ctx context.Context, params *GetPantryParams, reqEditors ...RequestEditorFn) (*GetPantryResponse, error)
+	GetPantryWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetPantryResponse, error)
 
 	// AddPantryItemsWithBodyWithResponse performs a POST /api/grocery/pantry (the `AddPantryItems` operationId) request,
 	// with any type of body and a specified content type.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	AddPantryItemsWithBodyWithResponse(ctx context.Context, params *AddPantryItemsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddPantryItemsResponse, error)
+	AddPantryItemsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddPantryItemsResponse, error)
 
 	// AddPantryItemsWithResponse performs a POST /api/grocery/pantry (the `AddPantryItems` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	AddPantryItemsWithResponse(ctx context.Context, params *AddPantryItemsParams, body AddPantryItemsJSONRequestBody, reqEditors ...RequestEditorFn) (*AddPantryItemsResponse, error)
+	AddPantryItemsWithResponse(ctx context.Context, body AddPantryItemsJSONRequestBody, reqEditors ...RequestEditorFn) (*AddPantryItemsResponse, error)
 
 	// SetPantryItemQuantityWithBodyWithResponse performs a POST /api/grocery/pantry/quantity (the `SetPantryItemQuantity` operationId) request,
 	// with any type of body and a specified content type.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	SetPantryItemQuantityWithBodyWithResponse(ctx context.Context, params *SetPantryItemQuantityParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetPantryItemQuantityResponse, error)
+	SetPantryItemQuantityWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetPantryItemQuantityResponse, error)
 
 	// SetPantryItemQuantityWithResponse performs a POST /api/grocery/pantry/quantity (the `SetPantryItemQuantity` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	SetPantryItemQuantityWithResponse(ctx context.Context, params *SetPantryItemQuantityParams, body SetPantryItemQuantityJSONRequestBody, reqEditors ...RequestEditorFn) (*SetPantryItemQuantityResponse, error)
+	SetPantryItemQuantityWithResponse(ctx context.Context, body SetPantryItemQuantityJSONRequestBody, reqEditors ...RequestEditorFn) (*SetPantryItemQuantityResponse, error)
 
 	// RemovePantryItemsWithBodyWithResponse performs a POST /api/grocery/pantry/remove (the `RemovePantryItems` operationId) request,
 	// with any type of body and a specified content type.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	RemovePantryItemsWithBodyWithResponse(ctx context.Context, params *RemovePantryItemsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RemovePantryItemsResponse, error)
+	RemovePantryItemsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RemovePantryItemsResponse, error)
 
 	// RemovePantryItemsWithResponse performs a POST /api/grocery/pantry/remove (the `RemovePantryItems` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	RemovePantryItemsWithResponse(ctx context.Context, params *RemovePantryItemsParams, body RemovePantryItemsJSONRequestBody, reqEditors ...RequestEditorFn) (*RemovePantryItemsResponse, error)
+	RemovePantryItemsWithResponse(ctx context.Context, body RemovePantryItemsJSONRequestBody, reqEditors ...RequestEditorFn) (*RemovePantryItemsResponse, error)
 
 	// DeletePreferredStoreWithResponse performs a DELETE /api/grocery/preferred-store (the `DeletePreferredStore` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	DeletePreferredStoreWithResponse(ctx context.Context, params *DeletePreferredStoreParams, reqEditors ...RequestEditorFn) (*DeletePreferredStoreResponse, error)
+	DeletePreferredStoreWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*DeletePreferredStoreResponse, error)
 
 	// GetPreferredStoreWithResponse performs a GET /api/grocery/preferred-store (the `GetPreferredStore` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	GetPreferredStoreWithResponse(ctx context.Context, params *GetPreferredStoreParams, reqEditors ...RequestEditorFn) (*GetPreferredStoreResponse, error)
+	GetPreferredStoreWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetPreferredStoreResponse, error)
 
 	// SetPreferredStoreWithBodyWithResponse performs a PUT /api/grocery/preferred-store (the `SetPreferredStore` operationId) request,
 	// with any type of body and a specified content type.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	SetPreferredStoreWithBodyWithResponse(ctx context.Context, params *SetPreferredStoreParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetPreferredStoreResponse, error)
+	SetPreferredStoreWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetPreferredStoreResponse, error)
 
 	// SetPreferredStoreWithResponse performs a PUT /api/grocery/preferred-store (the `SetPreferredStore` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	SetPreferredStoreWithResponse(ctx context.Context, params *SetPreferredStoreParams, body SetPreferredStoreJSONRequestBody, reqEditors ...RequestEditorFn) (*SetPreferredStoreResponse, error)
+	SetPreferredStoreWithResponse(ctx context.Context, body SetPreferredStoreJSONRequestBody, reqEditors ...RequestEditorFn) (*SetPreferredStoreResponse, error)
 
 	// GetShoppingProfileWithResponse performs a GET /api/grocery/profile (the `GetShoppingProfile` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	GetShoppingProfileWithResponse(ctx context.Context, params *GetShoppingProfileParams, reqEditors ...RequestEditorFn) (*GetShoppingProfileResponse, error)
+	GetShoppingProfileWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetShoppingProfileResponse, error)
 
 	// ListRecipesWithResponse performs a GET /api/grocery/recipes (the `ListRecipes` operationId) request.
 	//
@@ -3425,26 +2535,26 @@ type ClientWithResponsesInterface interface {
 	// with any type of body and a specified content type.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	CreateRecipeWithBodyWithResponse(ctx context.Context, params *CreateRecipeParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateRecipeResponse, error)
+	CreateRecipeWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateRecipeResponse, error)
 
 	// CreateRecipeWithResponse performs a POST /api/grocery/recipes (the `CreateRecipe` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	CreateRecipeWithResponse(ctx context.Context, params *CreateRecipeParams, body CreateRecipeJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateRecipeResponse, error)
+	CreateRecipeWithResponse(ctx context.Context, body CreateRecipeJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateRecipeResponse, error)
 
 	// GetRecipeWithResponse performs a GET /api/grocery/recipes/{id} (the `GetRecipe` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	GetRecipeWithResponse(ctx context.Context, id string, params *GetRecipeParams, reqEditors ...RequestEditorFn) (*GetRecipeResponse, error)
+	GetRecipeWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetRecipeResponse, error)
 
 	// UpdateRecipeWithBodyWithResponse performs a PUT /api/grocery/recipes/{id} (the `UpdateRecipe` operationId) request,
 	// with any type of body and a specified content type.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	UpdateRecipeWithBodyWithResponse(ctx context.Context, id string, params *UpdateRecipeParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateRecipeResponse, error)
+	UpdateRecipeWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateRecipeResponse, error)
 
 	// UpdateRecipeWithResponse performs a PUT /api/grocery/recipes/{id} (the `UpdateRecipe` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	UpdateRecipeWithResponse(ctx context.Context, id string, params *UpdateRecipeParams, body UpdateRecipeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateRecipeResponse, error)
+	UpdateRecipeWithResponse(ctx context.Context, id string, body UpdateRecipeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateRecipeResponse, error)
 }
 
 type GetEquipmentResponse struct {
@@ -4812,8 +3922,8 @@ func (r UpdateRecipeResponse) ContentType() string {
 // GetEquipmentWithResponse performs a GET /api/grocery/equipment (the `GetEquipment` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) GetEquipmentWithResponse(ctx context.Context, params *GetEquipmentParams, reqEditors ...RequestEditorFn) (*GetEquipmentResponse, error) {
-	rsp, err := c.GetEquipment(ctx, params, reqEditors...)
+func (c *ClientWithResponses) GetEquipmentWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetEquipmentResponse, error) {
+	rsp, err := c.GetEquipment(ctx, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -4824,8 +3934,8 @@ func (c *ClientWithResponses) GetEquipmentWithResponse(ctx context.Context, para
 // with any type of body and a specified content type.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) AddEquipmentWithBodyWithResponse(ctx context.Context, params *AddEquipmentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddEquipmentResponse, error) {
-	rsp, err := c.AddEquipmentWithBody(ctx, params, contentType, body, reqEditors...)
+func (c *ClientWithResponses) AddEquipmentWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddEquipmentResponse, error) {
+	rsp, err := c.AddEquipmentWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -4834,8 +3944,8 @@ func (c *ClientWithResponses) AddEquipmentWithBodyWithResponse(ctx context.Conte
 
 // AddEquipmentWithResponse performs a POST /api/grocery/equipment (the `AddEquipment` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) AddEquipmentWithResponse(ctx context.Context, params *AddEquipmentParams, body AddEquipmentJSONRequestBody, reqEditors ...RequestEditorFn) (*AddEquipmentResponse, error) {
-	rsp, err := c.AddEquipment(ctx, params, body, reqEditors...)
+func (c *ClientWithResponses) AddEquipmentWithResponse(ctx context.Context, body AddEquipmentJSONRequestBody, reqEditors ...RequestEditorFn) (*AddEquipmentResponse, error) {
+	rsp, err := c.AddEquipment(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -4846,8 +3956,8 @@ func (c *ClientWithResponses) AddEquipmentWithResponse(ctx context.Context, para
 // with any type of body and a specified content type.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) RemoveEquipmentWithBodyWithResponse(ctx context.Context, params *RemoveEquipmentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RemoveEquipmentResponse, error) {
-	rsp, err := c.RemoveEquipmentWithBody(ctx, params, contentType, body, reqEditors...)
+func (c *ClientWithResponses) RemoveEquipmentWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RemoveEquipmentResponse, error) {
+	rsp, err := c.RemoveEquipmentWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -4856,8 +3966,8 @@ func (c *ClientWithResponses) RemoveEquipmentWithBodyWithResponse(ctx context.Co
 
 // RemoveEquipmentWithResponse performs a POST /api/grocery/equipment/remove (the `RemoveEquipment` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) RemoveEquipmentWithResponse(ctx context.Context, params *RemoveEquipmentParams, body RemoveEquipmentJSONRequestBody, reqEditors ...RequestEditorFn) (*RemoveEquipmentResponse, error) {
-	rsp, err := c.RemoveEquipment(ctx, params, body, reqEditors...)
+func (c *ClientWithResponses) RemoveEquipmentWithResponse(ctx context.Context, body RemoveEquipmentJSONRequestBody, reqEditors ...RequestEditorFn) (*RemoveEquipmentResponse, error) {
+	rsp, err := c.RemoveEquipment(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -4867,8 +3977,8 @@ func (c *ClientWithResponses) RemoveEquipmentWithResponse(ctx context.Context, p
 // ListHouseholdsWithResponse performs a GET /api/grocery/households (the `ListHouseholds` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) ListHouseholdsWithResponse(ctx context.Context, params *ListHouseholdsParams, reqEditors ...RequestEditorFn) (*ListHouseholdsResponse, error) {
-	rsp, err := c.ListHouseholds(ctx, params, reqEditors...)
+func (c *ClientWithResponses) ListHouseholdsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListHouseholdsResponse, error) {
+	rsp, err := c.ListHouseholds(ctx, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -4879,8 +3989,8 @@ func (c *ClientWithResponses) ListHouseholdsWithResponse(ctx context.Context, pa
 // with any type of body and a specified content type.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) CreateHouseholdWithBodyWithResponse(ctx context.Context, params *CreateHouseholdParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateHouseholdResponse, error) {
-	rsp, err := c.CreateHouseholdWithBody(ctx, params, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateHouseholdWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateHouseholdResponse, error) {
+	rsp, err := c.CreateHouseholdWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -4889,8 +3999,8 @@ func (c *ClientWithResponses) CreateHouseholdWithBodyWithResponse(ctx context.Co
 
 // CreateHouseholdWithResponse performs a POST /api/grocery/households (the `CreateHousehold` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) CreateHouseholdWithResponse(ctx context.Context, params *CreateHouseholdParams, body CreateHouseholdJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateHouseholdResponse, error) {
-	rsp, err := c.CreateHousehold(ctx, params, body, reqEditors...)
+func (c *ClientWithResponses) CreateHouseholdWithResponse(ctx context.Context, body CreateHouseholdJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateHouseholdResponse, error) {
+	rsp, err := c.CreateHousehold(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -4901,8 +4011,8 @@ func (c *ClientWithResponses) CreateHouseholdWithResponse(ctx context.Context, p
 // with any type of body and a specified content type.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) CreateInviteWithBodyWithResponse(ctx context.Context, id string, params *CreateInviteParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateInviteResponse, error) {
-	rsp, err := c.CreateInviteWithBody(ctx, id, params, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateInviteWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateInviteResponse, error) {
+	rsp, err := c.CreateInviteWithBody(ctx, id, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -4911,8 +4021,8 @@ func (c *ClientWithResponses) CreateInviteWithBodyWithResponse(ctx context.Conte
 
 // CreateInviteWithResponse performs a POST /api/grocery/households/{id}/invites (the `CreateInvite` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) CreateInviteWithResponse(ctx context.Context, id string, params *CreateInviteParams, body CreateInviteJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateInviteResponse, error) {
-	rsp, err := c.CreateInvite(ctx, id, params, body, reqEditors...)
+func (c *ClientWithResponses) CreateInviteWithResponse(ctx context.Context, id string, body CreateInviteJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateInviteResponse, error) {
+	rsp, err := c.CreateInvite(ctx, id, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -4922,8 +4032,8 @@ func (c *ClientWithResponses) CreateInviteWithResponse(ctx context.Context, id s
 // JoinHouseholdWithResponse performs a POST /api/grocery/invites/{code}/join (the `JoinHousehold` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) JoinHouseholdWithResponse(ctx context.Context, code string, params *JoinHouseholdParams, reqEditors ...RequestEditorFn) (*JoinHouseholdResponse, error) {
-	rsp, err := c.JoinHousehold(ctx, code, params, reqEditors...)
+func (c *ClientWithResponses) JoinHouseholdWithResponse(ctx context.Context, code string, reqEditors ...RequestEditorFn) (*JoinHouseholdResponse, error) {
+	rsp, err := c.JoinHousehold(ctx, code, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -4945,8 +4055,8 @@ func (c *ClientWithResponses) ListListsWithResponse(ctx context.Context, params 
 // with any type of body and a specified content type.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) CreateListWithBodyWithResponse(ctx context.Context, params *CreateListParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateListResponse, error) {
-	rsp, err := c.CreateListWithBody(ctx, params, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateListWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateListResponse, error) {
+	rsp, err := c.CreateListWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -4955,8 +4065,8 @@ func (c *ClientWithResponses) CreateListWithBodyWithResponse(ctx context.Context
 
 // CreateListWithResponse performs a POST /api/grocery/lists (the `CreateList` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) CreateListWithResponse(ctx context.Context, params *CreateListParams, body CreateListJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateListResponse, error) {
-	rsp, err := c.CreateList(ctx, params, body, reqEditors...)
+func (c *ClientWithResponses) CreateListWithResponse(ctx context.Context, body CreateListJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateListResponse, error) {
+	rsp, err := c.CreateList(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -4966,8 +4076,8 @@ func (c *ClientWithResponses) CreateListWithResponse(ctx context.Context, params
 // GetListWithResponse performs a GET /api/grocery/lists/{id} (the `GetList` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) GetListWithResponse(ctx context.Context, id string, params *GetListParams, reqEditors ...RequestEditorFn) (*GetListResponse, error) {
-	rsp, err := c.GetList(ctx, id, params, reqEditors...)
+func (c *ClientWithResponses) GetListWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetListResponse, error) {
+	rsp, err := c.GetList(ctx, id, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -4978,8 +4088,8 @@ func (c *ClientWithResponses) GetListWithResponse(ctx context.Context, id string
 // with any type of body and a specified content type.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) UpdateListWithBodyWithResponse(ctx context.Context, id string, params *UpdateListParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateListResponse, error) {
-	rsp, err := c.UpdateListWithBody(ctx, id, params, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateListWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateListResponse, error) {
+	rsp, err := c.UpdateListWithBody(ctx, id, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -4988,8 +4098,8 @@ func (c *ClientWithResponses) UpdateListWithBodyWithResponse(ctx context.Context
 
 // UpdateListWithResponse performs a PATCH /api/grocery/lists/{id} (the `UpdateList` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) UpdateListWithResponse(ctx context.Context, id string, params *UpdateListParams, body UpdateListJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateListResponse, error) {
-	rsp, err := c.UpdateList(ctx, id, params, body, reqEditors...)
+func (c *ClientWithResponses) UpdateListWithResponse(ctx context.Context, id string, body UpdateListJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateListResponse, error) {
+	rsp, err := c.UpdateList(ctx, id, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -5000,8 +4110,8 @@ func (c *ClientWithResponses) UpdateListWithResponse(ctx context.Context, id str
 // with any type of body and a specified content type.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) AddItemsWithBodyWithResponse(ctx context.Context, id string, params *AddItemsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddItemsResponse, error) {
-	rsp, err := c.AddItemsWithBody(ctx, id, params, contentType, body, reqEditors...)
+func (c *ClientWithResponses) AddItemsWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddItemsResponse, error) {
+	rsp, err := c.AddItemsWithBody(ctx, id, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -5010,8 +4120,8 @@ func (c *ClientWithResponses) AddItemsWithBodyWithResponse(ctx context.Context, 
 
 // AddItemsWithResponse performs a POST /api/grocery/lists/{id}/items (the `AddItems` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) AddItemsWithResponse(ctx context.Context, id string, params *AddItemsParams, body AddItemsJSONRequestBody, reqEditors ...RequestEditorFn) (*AddItemsResponse, error) {
-	rsp, err := c.AddItems(ctx, id, params, body, reqEditors...)
+func (c *ClientWithResponses) AddItemsWithResponse(ctx context.Context, id string, body AddItemsJSONRequestBody, reqEditors ...RequestEditorFn) (*AddItemsResponse, error) {
+	rsp, err := c.AddItems(ctx, id, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -5021,8 +4131,8 @@ func (c *ClientWithResponses) AddItemsWithResponse(ctx context.Context, id strin
 // DeleteItemWithResponse performs a DELETE /api/grocery/lists/{id}/items/{itemId} (the `DeleteItem` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) DeleteItemWithResponse(ctx context.Context, id string, itemId string, params *DeleteItemParams, reqEditors ...RequestEditorFn) (*DeleteItemResponse, error) {
-	rsp, err := c.DeleteItem(ctx, id, itemId, params, reqEditors...)
+func (c *ClientWithResponses) DeleteItemWithResponse(ctx context.Context, id string, itemId string, reqEditors ...RequestEditorFn) (*DeleteItemResponse, error) {
+	rsp, err := c.DeleteItem(ctx, id, itemId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -5033,8 +4143,8 @@ func (c *ClientWithResponses) DeleteItemWithResponse(ctx context.Context, id str
 // with any type of body and a specified content type.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) UpdateItemWithBodyWithResponse(ctx context.Context, id string, itemId string, params *UpdateItemParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateItemResponse, error) {
-	rsp, err := c.UpdateItemWithBody(ctx, id, itemId, params, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateItemWithBodyWithResponse(ctx context.Context, id string, itemId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateItemResponse, error) {
+	rsp, err := c.UpdateItemWithBody(ctx, id, itemId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -5043,8 +4153,8 @@ func (c *ClientWithResponses) UpdateItemWithBodyWithResponse(ctx context.Context
 
 // UpdateItemWithResponse performs a PATCH /api/grocery/lists/{id}/items/{itemId} (the `UpdateItem` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) UpdateItemWithResponse(ctx context.Context, id string, itemId string, params *UpdateItemParams, body UpdateItemJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateItemResponse, error) {
-	rsp, err := c.UpdateItem(ctx, id, itemId, params, body, reqEditors...)
+func (c *ClientWithResponses) UpdateItemWithResponse(ctx context.Context, id string, itemId string, body UpdateItemJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateItemResponse, error) {
+	rsp, err := c.UpdateItem(ctx, id, itemId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -5066,8 +4176,8 @@ func (c *ClientWithResponses) GetOrdersWithResponse(ctx context.Context, params 
 // with any type of body and a specified content type.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) RecordOrderWithBodyWithResponse(ctx context.Context, params *RecordOrderParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RecordOrderResponse, error) {
-	rsp, err := c.RecordOrderWithBody(ctx, params, contentType, body, reqEditors...)
+func (c *ClientWithResponses) RecordOrderWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RecordOrderResponse, error) {
+	rsp, err := c.RecordOrderWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -5076,8 +4186,8 @@ func (c *ClientWithResponses) RecordOrderWithBodyWithResponse(ctx context.Contex
 
 // RecordOrderWithResponse performs a POST /api/grocery/orders (the `RecordOrder` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) RecordOrderWithResponse(ctx context.Context, params *RecordOrderParams, body RecordOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*RecordOrderResponse, error) {
-	rsp, err := c.RecordOrder(ctx, params, body, reqEditors...)
+func (c *ClientWithResponses) RecordOrderWithResponse(ctx context.Context, body RecordOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*RecordOrderResponse, error) {
+	rsp, err := c.RecordOrder(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -5087,8 +4197,8 @@ func (c *ClientWithResponses) RecordOrderWithResponse(ctx context.Context, param
 // GetPantryWithResponse performs a GET /api/grocery/pantry (the `GetPantry` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) GetPantryWithResponse(ctx context.Context, params *GetPantryParams, reqEditors ...RequestEditorFn) (*GetPantryResponse, error) {
-	rsp, err := c.GetPantry(ctx, params, reqEditors...)
+func (c *ClientWithResponses) GetPantryWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetPantryResponse, error) {
+	rsp, err := c.GetPantry(ctx, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -5099,8 +4209,8 @@ func (c *ClientWithResponses) GetPantryWithResponse(ctx context.Context, params 
 // with any type of body and a specified content type.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) AddPantryItemsWithBodyWithResponse(ctx context.Context, params *AddPantryItemsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddPantryItemsResponse, error) {
-	rsp, err := c.AddPantryItemsWithBody(ctx, params, contentType, body, reqEditors...)
+func (c *ClientWithResponses) AddPantryItemsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddPantryItemsResponse, error) {
+	rsp, err := c.AddPantryItemsWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -5109,8 +4219,8 @@ func (c *ClientWithResponses) AddPantryItemsWithBodyWithResponse(ctx context.Con
 
 // AddPantryItemsWithResponse performs a POST /api/grocery/pantry (the `AddPantryItems` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) AddPantryItemsWithResponse(ctx context.Context, params *AddPantryItemsParams, body AddPantryItemsJSONRequestBody, reqEditors ...RequestEditorFn) (*AddPantryItemsResponse, error) {
-	rsp, err := c.AddPantryItems(ctx, params, body, reqEditors...)
+func (c *ClientWithResponses) AddPantryItemsWithResponse(ctx context.Context, body AddPantryItemsJSONRequestBody, reqEditors ...RequestEditorFn) (*AddPantryItemsResponse, error) {
+	rsp, err := c.AddPantryItems(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -5121,8 +4231,8 @@ func (c *ClientWithResponses) AddPantryItemsWithResponse(ctx context.Context, pa
 // with any type of body and a specified content type.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) SetPantryItemQuantityWithBodyWithResponse(ctx context.Context, params *SetPantryItemQuantityParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetPantryItemQuantityResponse, error) {
-	rsp, err := c.SetPantryItemQuantityWithBody(ctx, params, contentType, body, reqEditors...)
+func (c *ClientWithResponses) SetPantryItemQuantityWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetPantryItemQuantityResponse, error) {
+	rsp, err := c.SetPantryItemQuantityWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -5131,8 +4241,8 @@ func (c *ClientWithResponses) SetPantryItemQuantityWithBodyWithResponse(ctx cont
 
 // SetPantryItemQuantityWithResponse performs a POST /api/grocery/pantry/quantity (the `SetPantryItemQuantity` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) SetPantryItemQuantityWithResponse(ctx context.Context, params *SetPantryItemQuantityParams, body SetPantryItemQuantityJSONRequestBody, reqEditors ...RequestEditorFn) (*SetPantryItemQuantityResponse, error) {
-	rsp, err := c.SetPantryItemQuantity(ctx, params, body, reqEditors...)
+func (c *ClientWithResponses) SetPantryItemQuantityWithResponse(ctx context.Context, body SetPantryItemQuantityJSONRequestBody, reqEditors ...RequestEditorFn) (*SetPantryItemQuantityResponse, error) {
+	rsp, err := c.SetPantryItemQuantity(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -5143,8 +4253,8 @@ func (c *ClientWithResponses) SetPantryItemQuantityWithResponse(ctx context.Cont
 // with any type of body and a specified content type.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) RemovePantryItemsWithBodyWithResponse(ctx context.Context, params *RemovePantryItemsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RemovePantryItemsResponse, error) {
-	rsp, err := c.RemovePantryItemsWithBody(ctx, params, contentType, body, reqEditors...)
+func (c *ClientWithResponses) RemovePantryItemsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RemovePantryItemsResponse, error) {
+	rsp, err := c.RemovePantryItemsWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -5153,8 +4263,8 @@ func (c *ClientWithResponses) RemovePantryItemsWithBodyWithResponse(ctx context.
 
 // RemovePantryItemsWithResponse performs a POST /api/grocery/pantry/remove (the `RemovePantryItems` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) RemovePantryItemsWithResponse(ctx context.Context, params *RemovePantryItemsParams, body RemovePantryItemsJSONRequestBody, reqEditors ...RequestEditorFn) (*RemovePantryItemsResponse, error) {
-	rsp, err := c.RemovePantryItems(ctx, params, body, reqEditors...)
+func (c *ClientWithResponses) RemovePantryItemsWithResponse(ctx context.Context, body RemovePantryItemsJSONRequestBody, reqEditors ...RequestEditorFn) (*RemovePantryItemsResponse, error) {
+	rsp, err := c.RemovePantryItems(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -5164,8 +4274,8 @@ func (c *ClientWithResponses) RemovePantryItemsWithResponse(ctx context.Context,
 // DeletePreferredStoreWithResponse performs a DELETE /api/grocery/preferred-store (the `DeletePreferredStore` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) DeletePreferredStoreWithResponse(ctx context.Context, params *DeletePreferredStoreParams, reqEditors ...RequestEditorFn) (*DeletePreferredStoreResponse, error) {
-	rsp, err := c.DeletePreferredStore(ctx, params, reqEditors...)
+func (c *ClientWithResponses) DeletePreferredStoreWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*DeletePreferredStoreResponse, error) {
+	rsp, err := c.DeletePreferredStore(ctx, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -5175,8 +4285,8 @@ func (c *ClientWithResponses) DeletePreferredStoreWithResponse(ctx context.Conte
 // GetPreferredStoreWithResponse performs a GET /api/grocery/preferred-store (the `GetPreferredStore` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) GetPreferredStoreWithResponse(ctx context.Context, params *GetPreferredStoreParams, reqEditors ...RequestEditorFn) (*GetPreferredStoreResponse, error) {
-	rsp, err := c.GetPreferredStore(ctx, params, reqEditors...)
+func (c *ClientWithResponses) GetPreferredStoreWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetPreferredStoreResponse, error) {
+	rsp, err := c.GetPreferredStore(ctx, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -5187,8 +4297,8 @@ func (c *ClientWithResponses) GetPreferredStoreWithResponse(ctx context.Context,
 // with any type of body and a specified content type.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) SetPreferredStoreWithBodyWithResponse(ctx context.Context, params *SetPreferredStoreParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetPreferredStoreResponse, error) {
-	rsp, err := c.SetPreferredStoreWithBody(ctx, params, contentType, body, reqEditors...)
+func (c *ClientWithResponses) SetPreferredStoreWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetPreferredStoreResponse, error) {
+	rsp, err := c.SetPreferredStoreWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -5197,8 +4307,8 @@ func (c *ClientWithResponses) SetPreferredStoreWithBodyWithResponse(ctx context.
 
 // SetPreferredStoreWithResponse performs a PUT /api/grocery/preferred-store (the `SetPreferredStore` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) SetPreferredStoreWithResponse(ctx context.Context, params *SetPreferredStoreParams, body SetPreferredStoreJSONRequestBody, reqEditors ...RequestEditorFn) (*SetPreferredStoreResponse, error) {
-	rsp, err := c.SetPreferredStore(ctx, params, body, reqEditors...)
+func (c *ClientWithResponses) SetPreferredStoreWithResponse(ctx context.Context, body SetPreferredStoreJSONRequestBody, reqEditors ...RequestEditorFn) (*SetPreferredStoreResponse, error) {
+	rsp, err := c.SetPreferredStore(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -5208,8 +4318,8 @@ func (c *ClientWithResponses) SetPreferredStoreWithResponse(ctx context.Context,
 // GetShoppingProfileWithResponse performs a GET /api/grocery/profile (the `GetShoppingProfile` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) GetShoppingProfileWithResponse(ctx context.Context, params *GetShoppingProfileParams, reqEditors ...RequestEditorFn) (*GetShoppingProfileResponse, error) {
-	rsp, err := c.GetShoppingProfile(ctx, params, reqEditors...)
+func (c *ClientWithResponses) GetShoppingProfileWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetShoppingProfileResponse, error) {
+	rsp, err := c.GetShoppingProfile(ctx, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -5231,8 +4341,8 @@ func (c *ClientWithResponses) ListRecipesWithResponse(ctx context.Context, param
 // with any type of body and a specified content type.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) CreateRecipeWithBodyWithResponse(ctx context.Context, params *CreateRecipeParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateRecipeResponse, error) {
-	rsp, err := c.CreateRecipeWithBody(ctx, params, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateRecipeWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateRecipeResponse, error) {
+	rsp, err := c.CreateRecipeWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -5241,8 +4351,8 @@ func (c *ClientWithResponses) CreateRecipeWithBodyWithResponse(ctx context.Conte
 
 // CreateRecipeWithResponse performs a POST /api/grocery/recipes (the `CreateRecipe` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) CreateRecipeWithResponse(ctx context.Context, params *CreateRecipeParams, body CreateRecipeJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateRecipeResponse, error) {
-	rsp, err := c.CreateRecipe(ctx, params, body, reqEditors...)
+func (c *ClientWithResponses) CreateRecipeWithResponse(ctx context.Context, body CreateRecipeJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateRecipeResponse, error) {
+	rsp, err := c.CreateRecipe(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -5252,8 +4362,8 @@ func (c *ClientWithResponses) CreateRecipeWithResponse(ctx context.Context, para
 // GetRecipeWithResponse performs a GET /api/grocery/recipes/{id} (the `GetRecipe` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) GetRecipeWithResponse(ctx context.Context, id string, params *GetRecipeParams, reqEditors ...RequestEditorFn) (*GetRecipeResponse, error) {
-	rsp, err := c.GetRecipe(ctx, id, params, reqEditors...)
+func (c *ClientWithResponses) GetRecipeWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetRecipeResponse, error) {
+	rsp, err := c.GetRecipe(ctx, id, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -5264,8 +4374,8 @@ func (c *ClientWithResponses) GetRecipeWithResponse(ctx context.Context, id stri
 // with any type of body and a specified content type.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) UpdateRecipeWithBodyWithResponse(ctx context.Context, id string, params *UpdateRecipeParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateRecipeResponse, error) {
-	rsp, err := c.UpdateRecipeWithBody(ctx, id, params, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateRecipeWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateRecipeResponse, error) {
+	rsp, err := c.UpdateRecipeWithBody(ctx, id, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -5274,8 +4384,8 @@ func (c *ClientWithResponses) UpdateRecipeWithBodyWithResponse(ctx context.Conte
 
 // UpdateRecipeWithResponse performs a PUT /api/grocery/recipes/{id} (the `UpdateRecipe` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) UpdateRecipeWithResponse(ctx context.Context, id string, params *UpdateRecipeParams, body UpdateRecipeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateRecipeResponse, error) {
-	rsp, err := c.UpdateRecipe(ctx, id, params, body, reqEditors...)
+func (c *ClientWithResponses) UpdateRecipeWithResponse(ctx context.Context, id string, body UpdateRecipeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateRecipeResponse, error) {
+	rsp, err := c.UpdateRecipe(ctx, id, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6218,88 +5328,88 @@ func ParseUpdateRecipeResponse(rsp *http.Response) (*UpdateRecipeResponse, error
 type ServerInterface interface {
 
 	// (GET /api/grocery/equipment)
-	GetEquipment(w http.ResponseWriter, r *http.Request, params GetEquipmentParams)
+	GetEquipment(w http.ResponseWriter, r *http.Request)
 
 	// (POST /api/grocery/equipment)
-	AddEquipment(w http.ResponseWriter, r *http.Request, params AddEquipmentParams)
+	AddEquipment(w http.ResponseWriter, r *http.Request)
 
 	// (POST /api/grocery/equipment/remove)
-	RemoveEquipment(w http.ResponseWriter, r *http.Request, params RemoveEquipmentParams)
+	RemoveEquipment(w http.ResponseWriter, r *http.Request)
 
 	// (GET /api/grocery/households)
-	ListHouseholds(w http.ResponseWriter, r *http.Request, params ListHouseholdsParams)
+	ListHouseholds(w http.ResponseWriter, r *http.Request)
 
 	// (POST /api/grocery/households)
-	CreateHousehold(w http.ResponseWriter, r *http.Request, params CreateHouseholdParams)
+	CreateHousehold(w http.ResponseWriter, r *http.Request)
 
 	// (POST /api/grocery/households/{id}/invites)
-	CreateInvite(w http.ResponseWriter, r *http.Request, id string, params CreateInviteParams)
+	CreateInvite(w http.ResponseWriter, r *http.Request, id string)
 
 	// (POST /api/grocery/invites/{code}/join)
-	JoinHousehold(w http.ResponseWriter, r *http.Request, code string, params JoinHouseholdParams)
+	JoinHousehold(w http.ResponseWriter, r *http.Request, code string)
 
 	// (GET /api/grocery/lists)
 	ListLists(w http.ResponseWriter, r *http.Request, params ListListsParams)
 
 	// (POST /api/grocery/lists)
-	CreateList(w http.ResponseWriter, r *http.Request, params CreateListParams)
+	CreateList(w http.ResponseWriter, r *http.Request)
 
 	// (GET /api/grocery/lists/{id})
-	GetList(w http.ResponseWriter, r *http.Request, id string, params GetListParams)
+	GetList(w http.ResponseWriter, r *http.Request, id string)
 
 	// (PATCH /api/grocery/lists/{id})
-	UpdateList(w http.ResponseWriter, r *http.Request, id string, params UpdateListParams)
+	UpdateList(w http.ResponseWriter, r *http.Request, id string)
 
 	// (POST /api/grocery/lists/{id}/items)
-	AddItems(w http.ResponseWriter, r *http.Request, id string, params AddItemsParams)
+	AddItems(w http.ResponseWriter, r *http.Request, id string)
 
 	// (DELETE /api/grocery/lists/{id}/items/{itemId})
-	DeleteItem(w http.ResponseWriter, r *http.Request, id string, itemId string, params DeleteItemParams)
+	DeleteItem(w http.ResponseWriter, r *http.Request, id string, itemId string)
 
 	// (PATCH /api/grocery/lists/{id}/items/{itemId})
-	UpdateItem(w http.ResponseWriter, r *http.Request, id string, itemId string, params UpdateItemParams)
+	UpdateItem(w http.ResponseWriter, r *http.Request, id string, itemId string)
 
 	// (GET /api/grocery/orders)
 	GetOrders(w http.ResponseWriter, r *http.Request, params GetOrdersParams)
 
 	// (POST /api/grocery/orders)
-	RecordOrder(w http.ResponseWriter, r *http.Request, params RecordOrderParams)
+	RecordOrder(w http.ResponseWriter, r *http.Request)
 
 	// (GET /api/grocery/pantry)
-	GetPantry(w http.ResponseWriter, r *http.Request, params GetPantryParams)
+	GetPantry(w http.ResponseWriter, r *http.Request)
 
 	// (POST /api/grocery/pantry)
-	AddPantryItems(w http.ResponseWriter, r *http.Request, params AddPantryItemsParams)
+	AddPantryItems(w http.ResponseWriter, r *http.Request)
 
 	// (POST /api/grocery/pantry/quantity)
-	SetPantryItemQuantity(w http.ResponseWriter, r *http.Request, params SetPantryItemQuantityParams)
+	SetPantryItemQuantity(w http.ResponseWriter, r *http.Request)
 
 	// (POST /api/grocery/pantry/remove)
-	RemovePantryItems(w http.ResponseWriter, r *http.Request, params RemovePantryItemsParams)
+	RemovePantryItems(w http.ResponseWriter, r *http.Request)
 
 	// (DELETE /api/grocery/preferred-store)
-	DeletePreferredStore(w http.ResponseWriter, r *http.Request, params DeletePreferredStoreParams)
+	DeletePreferredStore(w http.ResponseWriter, r *http.Request)
 
 	// (GET /api/grocery/preferred-store)
-	GetPreferredStore(w http.ResponseWriter, r *http.Request, params GetPreferredStoreParams)
+	GetPreferredStore(w http.ResponseWriter, r *http.Request)
 
 	// (PUT /api/grocery/preferred-store)
-	SetPreferredStore(w http.ResponseWriter, r *http.Request, params SetPreferredStoreParams)
+	SetPreferredStore(w http.ResponseWriter, r *http.Request)
 
 	// (GET /api/grocery/profile)
-	GetShoppingProfile(w http.ResponseWriter, r *http.Request, params GetShoppingProfileParams)
+	GetShoppingProfile(w http.ResponseWriter, r *http.Request)
 
 	// (GET /api/grocery/recipes)
 	ListRecipes(w http.ResponseWriter, r *http.Request, params ListRecipesParams)
 
 	// (POST /api/grocery/recipes)
-	CreateRecipe(w http.ResponseWriter, r *http.Request, params CreateRecipeParams)
+	CreateRecipe(w http.ResponseWriter, r *http.Request)
 
 	// (GET /api/grocery/recipes/{id})
-	GetRecipe(w http.ResponseWriter, r *http.Request, id string, params GetRecipeParams)
+	GetRecipe(w http.ResponseWriter, r *http.Request, id string)
 
 	// (PUT /api/grocery/recipes/{id})
-	UpdateRecipe(w http.ResponseWriter, r *http.Request, id string, params UpdateRecipeParams)
+	UpdateRecipe(w http.ResponseWriter, r *http.Request, id string)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -6314,54 +5424,8 @@ type MiddlewareFunc func(http.Handler) http.Handler
 // GetEquipment operation middleware
 func (siw *ServerInterfaceWrapper) GetEquipment(w http.ResponseWriter, r *http.Request) {
 
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params GetEquipmentParams
-
-	headers := r.Header
-
-	// ------------- Optional header parameter "x-shopping-service-secret" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-service-secret")]; found {
-		var XShoppingServiceSecret ShoppingServiceSecret
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-service-secret", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-service-secret", valueList[0], &XShoppingServiceSecret, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-service-secret", Err: err})
-			return
-		}
-
-		params.XShoppingServiceSecret = &XShoppingServiceSecret
-
-	}
-
-	// ------------- Optional header parameter "x-shopping-user-id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-user-id")]; found {
-		var XShoppingUserId ShoppingUserId
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-user-id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-user-id", valueList[0], &XShoppingUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-user-id", Err: err})
-			return
-		}
-
-		params.XShoppingUserId = &XShoppingUserId
-
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetEquipment(w, r, params)
+		siw.Handler.GetEquipment(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6374,54 +5438,8 @@ func (siw *ServerInterfaceWrapper) GetEquipment(w http.ResponseWriter, r *http.R
 // AddEquipment operation middleware
 func (siw *ServerInterfaceWrapper) AddEquipment(w http.ResponseWriter, r *http.Request) {
 
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params AddEquipmentParams
-
-	headers := r.Header
-
-	// ------------- Optional header parameter "x-shopping-service-secret" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-service-secret")]; found {
-		var XShoppingServiceSecret ShoppingServiceSecret
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-service-secret", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-service-secret", valueList[0], &XShoppingServiceSecret, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-service-secret", Err: err})
-			return
-		}
-
-		params.XShoppingServiceSecret = &XShoppingServiceSecret
-
-	}
-
-	// ------------- Optional header parameter "x-shopping-user-id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-user-id")]; found {
-		var XShoppingUserId ShoppingUserId
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-user-id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-user-id", valueList[0], &XShoppingUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-user-id", Err: err})
-			return
-		}
-
-		params.XShoppingUserId = &XShoppingUserId
-
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.AddEquipment(w, r, params)
+		siw.Handler.AddEquipment(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6434,54 +5452,8 @@ func (siw *ServerInterfaceWrapper) AddEquipment(w http.ResponseWriter, r *http.R
 // RemoveEquipment operation middleware
 func (siw *ServerInterfaceWrapper) RemoveEquipment(w http.ResponseWriter, r *http.Request) {
 
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params RemoveEquipmentParams
-
-	headers := r.Header
-
-	// ------------- Optional header parameter "x-shopping-service-secret" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-service-secret")]; found {
-		var XShoppingServiceSecret ShoppingServiceSecret
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-service-secret", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-service-secret", valueList[0], &XShoppingServiceSecret, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-service-secret", Err: err})
-			return
-		}
-
-		params.XShoppingServiceSecret = &XShoppingServiceSecret
-
-	}
-
-	// ------------- Optional header parameter "x-shopping-user-id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-user-id")]; found {
-		var XShoppingUserId ShoppingUserId
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-user-id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-user-id", valueList[0], &XShoppingUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-user-id", Err: err})
-			return
-		}
-
-		params.XShoppingUserId = &XShoppingUserId
-
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.RemoveEquipment(w, r, params)
+		siw.Handler.RemoveEquipment(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6494,54 +5466,8 @@ func (siw *ServerInterfaceWrapper) RemoveEquipment(w http.ResponseWriter, r *htt
 // ListHouseholds operation middleware
 func (siw *ServerInterfaceWrapper) ListHouseholds(w http.ResponseWriter, r *http.Request) {
 
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params ListHouseholdsParams
-
-	headers := r.Header
-
-	// ------------- Optional header parameter "x-shopping-service-secret" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-service-secret")]; found {
-		var XShoppingServiceSecret ShoppingServiceSecret
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-service-secret", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-service-secret", valueList[0], &XShoppingServiceSecret, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-service-secret", Err: err})
-			return
-		}
-
-		params.XShoppingServiceSecret = &XShoppingServiceSecret
-
-	}
-
-	// ------------- Optional header parameter "x-shopping-user-id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-user-id")]; found {
-		var XShoppingUserId ShoppingUserId
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-user-id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-user-id", valueList[0], &XShoppingUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-user-id", Err: err})
-			return
-		}
-
-		params.XShoppingUserId = &XShoppingUserId
-
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListHouseholds(w, r, params)
+		siw.Handler.ListHouseholds(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6554,54 +5480,8 @@ func (siw *ServerInterfaceWrapper) ListHouseholds(w http.ResponseWriter, r *http
 // CreateHousehold operation middleware
 func (siw *ServerInterfaceWrapper) CreateHousehold(w http.ResponseWriter, r *http.Request) {
 
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params CreateHouseholdParams
-
-	headers := r.Header
-
-	// ------------- Optional header parameter "x-shopping-service-secret" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-service-secret")]; found {
-		var XShoppingServiceSecret ShoppingServiceSecret
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-service-secret", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-service-secret", valueList[0], &XShoppingServiceSecret, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-service-secret", Err: err})
-			return
-		}
-
-		params.XShoppingServiceSecret = &XShoppingServiceSecret
-
-	}
-
-	// ------------- Optional header parameter "x-shopping-user-id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-user-id")]; found {
-		var XShoppingUserId ShoppingUserId
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-user-id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-user-id", valueList[0], &XShoppingUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-user-id", Err: err})
-			return
-		}
-
-		params.XShoppingUserId = &XShoppingUserId
-
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.CreateHousehold(w, r, params)
+		siw.Handler.CreateHousehold(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6626,51 +5506,8 @@ func (siw *ServerInterfaceWrapper) CreateInvite(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	// Parameter object where we will unmarshal all parameters from the context
-	var params CreateInviteParams
-
-	headers := r.Header
-
-	// ------------- Optional header parameter "x-shopping-service-secret" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-service-secret")]; found {
-		var XShoppingServiceSecret ShoppingServiceSecret
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-service-secret", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-service-secret", valueList[0], &XShoppingServiceSecret, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-service-secret", Err: err})
-			return
-		}
-
-		params.XShoppingServiceSecret = &XShoppingServiceSecret
-
-	}
-
-	// ------------- Optional header parameter "x-shopping-user-id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-user-id")]; found {
-		var XShoppingUserId ShoppingUserId
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-user-id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-user-id", valueList[0], &XShoppingUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-user-id", Err: err})
-			return
-		}
-
-		params.XShoppingUserId = &XShoppingUserId
-
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.CreateInvite(w, r, id, params)
+		siw.Handler.CreateInvite(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6695,51 +5532,8 @@ func (siw *ServerInterfaceWrapper) JoinHousehold(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// Parameter object where we will unmarshal all parameters from the context
-	var params JoinHouseholdParams
-
-	headers := r.Header
-
-	// ------------- Optional header parameter "x-shopping-service-secret" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-service-secret")]; found {
-		var XShoppingServiceSecret ShoppingServiceSecret
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-service-secret", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-service-secret", valueList[0], &XShoppingServiceSecret, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-service-secret", Err: err})
-			return
-		}
-
-		params.XShoppingServiceSecret = &XShoppingServiceSecret
-
-	}
-
-	// ------------- Optional header parameter "x-shopping-user-id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-user-id")]; found {
-		var XShoppingUserId ShoppingUserId
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-user-id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-user-id", valueList[0], &XShoppingUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-user-id", Err: err})
-			return
-		}
-
-		params.XShoppingUserId = &XShoppingUserId
-
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.JoinHousehold(w, r, code, params)
+		siw.Handler.JoinHousehold(w, r, code)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6771,46 +5565,6 @@ func (siw *ServerInterfaceWrapper) ListLists(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	headers := r.Header
-
-	// ------------- Optional header parameter "x-shopping-service-secret" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-service-secret")]; found {
-		var XShoppingServiceSecret ShoppingServiceSecret
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-service-secret", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-service-secret", valueList[0], &XShoppingServiceSecret, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-service-secret", Err: err})
-			return
-		}
-
-		params.XShoppingServiceSecret = &XShoppingServiceSecret
-
-	}
-
-	// ------------- Optional header parameter "x-shopping-user-id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-user-id")]; found {
-		var XShoppingUserId ShoppingUserId
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-user-id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-user-id", valueList[0], &XShoppingUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-user-id", Err: err})
-			return
-		}
-
-		params.XShoppingUserId = &XShoppingUserId
-
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListLists(w, r, params)
 	}))
@@ -6825,54 +5579,8 @@ func (siw *ServerInterfaceWrapper) ListLists(w http.ResponseWriter, r *http.Requ
 // CreateList operation middleware
 func (siw *ServerInterfaceWrapper) CreateList(w http.ResponseWriter, r *http.Request) {
 
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params CreateListParams
-
-	headers := r.Header
-
-	// ------------- Optional header parameter "x-shopping-service-secret" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-service-secret")]; found {
-		var XShoppingServiceSecret ShoppingServiceSecret
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-service-secret", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-service-secret", valueList[0], &XShoppingServiceSecret, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-service-secret", Err: err})
-			return
-		}
-
-		params.XShoppingServiceSecret = &XShoppingServiceSecret
-
-	}
-
-	// ------------- Optional header parameter "x-shopping-user-id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-user-id")]; found {
-		var XShoppingUserId ShoppingUserId
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-user-id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-user-id", valueList[0], &XShoppingUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-user-id", Err: err})
-			return
-		}
-
-		params.XShoppingUserId = &XShoppingUserId
-
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.CreateList(w, r, params)
+		siw.Handler.CreateList(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6897,51 +5605,8 @@ func (siw *ServerInterfaceWrapper) GetList(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Parameter object where we will unmarshal all parameters from the context
-	var params GetListParams
-
-	headers := r.Header
-
-	// ------------- Optional header parameter "x-shopping-service-secret" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-service-secret")]; found {
-		var XShoppingServiceSecret ShoppingServiceSecret
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-service-secret", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-service-secret", valueList[0], &XShoppingServiceSecret, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-service-secret", Err: err})
-			return
-		}
-
-		params.XShoppingServiceSecret = &XShoppingServiceSecret
-
-	}
-
-	// ------------- Optional header parameter "x-shopping-user-id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-user-id")]; found {
-		var XShoppingUserId ShoppingUserId
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-user-id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-user-id", valueList[0], &XShoppingUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-user-id", Err: err})
-			return
-		}
-
-		params.XShoppingUserId = &XShoppingUserId
-
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetList(w, r, id, params)
+		siw.Handler.GetList(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6966,51 +5631,8 @@ func (siw *ServerInterfaceWrapper) UpdateList(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// Parameter object where we will unmarshal all parameters from the context
-	var params UpdateListParams
-
-	headers := r.Header
-
-	// ------------- Optional header parameter "x-shopping-service-secret" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-service-secret")]; found {
-		var XShoppingServiceSecret ShoppingServiceSecret
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-service-secret", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-service-secret", valueList[0], &XShoppingServiceSecret, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-service-secret", Err: err})
-			return
-		}
-
-		params.XShoppingServiceSecret = &XShoppingServiceSecret
-
-	}
-
-	// ------------- Optional header parameter "x-shopping-user-id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-user-id")]; found {
-		var XShoppingUserId ShoppingUserId
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-user-id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-user-id", valueList[0], &XShoppingUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-user-id", Err: err})
-			return
-		}
-
-		params.XShoppingUserId = &XShoppingUserId
-
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.UpdateList(w, r, id, params)
+		siw.Handler.UpdateList(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7035,51 +5657,8 @@ func (siw *ServerInterfaceWrapper) AddItems(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Parameter object where we will unmarshal all parameters from the context
-	var params AddItemsParams
-
-	headers := r.Header
-
-	// ------------- Optional header parameter "x-shopping-service-secret" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-service-secret")]; found {
-		var XShoppingServiceSecret ShoppingServiceSecret
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-service-secret", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-service-secret", valueList[0], &XShoppingServiceSecret, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-service-secret", Err: err})
-			return
-		}
-
-		params.XShoppingServiceSecret = &XShoppingServiceSecret
-
-	}
-
-	// ------------- Optional header parameter "x-shopping-user-id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-user-id")]; found {
-		var XShoppingUserId ShoppingUserId
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-user-id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-user-id", valueList[0], &XShoppingUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-user-id", Err: err})
-			return
-		}
-
-		params.XShoppingUserId = &XShoppingUserId
-
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.AddItems(w, r, id, params)
+		siw.Handler.AddItems(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7113,51 +5692,8 @@ func (siw *ServerInterfaceWrapper) DeleteItem(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// Parameter object where we will unmarshal all parameters from the context
-	var params DeleteItemParams
-
-	headers := r.Header
-
-	// ------------- Optional header parameter "x-shopping-service-secret" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-service-secret")]; found {
-		var XShoppingServiceSecret ShoppingServiceSecret
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-service-secret", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-service-secret", valueList[0], &XShoppingServiceSecret, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-service-secret", Err: err})
-			return
-		}
-
-		params.XShoppingServiceSecret = &XShoppingServiceSecret
-
-	}
-
-	// ------------- Optional header parameter "x-shopping-user-id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-user-id")]; found {
-		var XShoppingUserId ShoppingUserId
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-user-id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-user-id", valueList[0], &XShoppingUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-user-id", Err: err})
-			return
-		}
-
-		params.XShoppingUserId = &XShoppingUserId
-
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.DeleteItem(w, r, id, itemId, params)
+		siw.Handler.DeleteItem(w, r, id, itemId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7191,51 +5727,8 @@ func (siw *ServerInterfaceWrapper) UpdateItem(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// Parameter object where we will unmarshal all parameters from the context
-	var params UpdateItemParams
-
-	headers := r.Header
-
-	// ------------- Optional header parameter "x-shopping-service-secret" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-service-secret")]; found {
-		var XShoppingServiceSecret ShoppingServiceSecret
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-service-secret", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-service-secret", valueList[0], &XShoppingServiceSecret, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-service-secret", Err: err})
-			return
-		}
-
-		params.XShoppingServiceSecret = &XShoppingServiceSecret
-
-	}
-
-	// ------------- Optional header parameter "x-shopping-user-id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-user-id")]; found {
-		var XShoppingUserId ShoppingUserId
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-user-id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-user-id", valueList[0], &XShoppingUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-user-id", Err: err})
-			return
-		}
-
-		params.XShoppingUserId = &XShoppingUserId
-
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.UpdateItem(w, r, id, itemId, params)
+		siw.Handler.UpdateItem(w, r, id, itemId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7267,46 +5760,6 @@ func (siw *ServerInterfaceWrapper) GetOrders(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	headers := r.Header
-
-	// ------------- Optional header parameter "x-shopping-service-secret" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-service-secret")]; found {
-		var XShoppingServiceSecret ShoppingServiceSecret
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-service-secret", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-service-secret", valueList[0], &XShoppingServiceSecret, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-service-secret", Err: err})
-			return
-		}
-
-		params.XShoppingServiceSecret = &XShoppingServiceSecret
-
-	}
-
-	// ------------- Optional header parameter "x-shopping-user-id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-user-id")]; found {
-		var XShoppingUserId ShoppingUserId
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-user-id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-user-id", valueList[0], &XShoppingUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-user-id", Err: err})
-			return
-		}
-
-		params.XShoppingUserId = &XShoppingUserId
-
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetOrders(w, r, params)
 	}))
@@ -7321,54 +5774,8 @@ func (siw *ServerInterfaceWrapper) GetOrders(w http.ResponseWriter, r *http.Requ
 // RecordOrder operation middleware
 func (siw *ServerInterfaceWrapper) RecordOrder(w http.ResponseWriter, r *http.Request) {
 
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params RecordOrderParams
-
-	headers := r.Header
-
-	// ------------- Optional header parameter "x-shopping-service-secret" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-service-secret")]; found {
-		var XShoppingServiceSecret ShoppingServiceSecret
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-service-secret", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-service-secret", valueList[0], &XShoppingServiceSecret, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-service-secret", Err: err})
-			return
-		}
-
-		params.XShoppingServiceSecret = &XShoppingServiceSecret
-
-	}
-
-	// ------------- Optional header parameter "x-shopping-user-id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-user-id")]; found {
-		var XShoppingUserId ShoppingUserId
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-user-id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-user-id", valueList[0], &XShoppingUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-user-id", Err: err})
-			return
-		}
-
-		params.XShoppingUserId = &XShoppingUserId
-
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.RecordOrder(w, r, params)
+		siw.Handler.RecordOrder(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7381,54 +5788,8 @@ func (siw *ServerInterfaceWrapper) RecordOrder(w http.ResponseWriter, r *http.Re
 // GetPantry operation middleware
 func (siw *ServerInterfaceWrapper) GetPantry(w http.ResponseWriter, r *http.Request) {
 
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params GetPantryParams
-
-	headers := r.Header
-
-	// ------------- Optional header parameter "x-shopping-service-secret" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-service-secret")]; found {
-		var XShoppingServiceSecret ShoppingServiceSecret
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-service-secret", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-service-secret", valueList[0], &XShoppingServiceSecret, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-service-secret", Err: err})
-			return
-		}
-
-		params.XShoppingServiceSecret = &XShoppingServiceSecret
-
-	}
-
-	// ------------- Optional header parameter "x-shopping-user-id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-user-id")]; found {
-		var XShoppingUserId ShoppingUserId
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-user-id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-user-id", valueList[0], &XShoppingUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-user-id", Err: err})
-			return
-		}
-
-		params.XShoppingUserId = &XShoppingUserId
-
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetPantry(w, r, params)
+		siw.Handler.GetPantry(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7441,54 +5802,8 @@ func (siw *ServerInterfaceWrapper) GetPantry(w http.ResponseWriter, r *http.Requ
 // AddPantryItems operation middleware
 func (siw *ServerInterfaceWrapper) AddPantryItems(w http.ResponseWriter, r *http.Request) {
 
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params AddPantryItemsParams
-
-	headers := r.Header
-
-	// ------------- Optional header parameter "x-shopping-service-secret" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-service-secret")]; found {
-		var XShoppingServiceSecret ShoppingServiceSecret
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-service-secret", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-service-secret", valueList[0], &XShoppingServiceSecret, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-service-secret", Err: err})
-			return
-		}
-
-		params.XShoppingServiceSecret = &XShoppingServiceSecret
-
-	}
-
-	// ------------- Optional header parameter "x-shopping-user-id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-user-id")]; found {
-		var XShoppingUserId ShoppingUserId
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-user-id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-user-id", valueList[0], &XShoppingUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-user-id", Err: err})
-			return
-		}
-
-		params.XShoppingUserId = &XShoppingUserId
-
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.AddPantryItems(w, r, params)
+		siw.Handler.AddPantryItems(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7501,54 +5816,8 @@ func (siw *ServerInterfaceWrapper) AddPantryItems(w http.ResponseWriter, r *http
 // SetPantryItemQuantity operation middleware
 func (siw *ServerInterfaceWrapper) SetPantryItemQuantity(w http.ResponseWriter, r *http.Request) {
 
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params SetPantryItemQuantityParams
-
-	headers := r.Header
-
-	// ------------- Optional header parameter "x-shopping-service-secret" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-service-secret")]; found {
-		var XShoppingServiceSecret ShoppingServiceSecret
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-service-secret", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-service-secret", valueList[0], &XShoppingServiceSecret, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-service-secret", Err: err})
-			return
-		}
-
-		params.XShoppingServiceSecret = &XShoppingServiceSecret
-
-	}
-
-	// ------------- Optional header parameter "x-shopping-user-id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-user-id")]; found {
-		var XShoppingUserId ShoppingUserId
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-user-id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-user-id", valueList[0], &XShoppingUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-user-id", Err: err})
-			return
-		}
-
-		params.XShoppingUserId = &XShoppingUserId
-
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.SetPantryItemQuantity(w, r, params)
+		siw.Handler.SetPantryItemQuantity(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7561,54 +5830,8 @@ func (siw *ServerInterfaceWrapper) SetPantryItemQuantity(w http.ResponseWriter, 
 // RemovePantryItems operation middleware
 func (siw *ServerInterfaceWrapper) RemovePantryItems(w http.ResponseWriter, r *http.Request) {
 
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params RemovePantryItemsParams
-
-	headers := r.Header
-
-	// ------------- Optional header parameter "x-shopping-service-secret" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-service-secret")]; found {
-		var XShoppingServiceSecret ShoppingServiceSecret
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-service-secret", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-service-secret", valueList[0], &XShoppingServiceSecret, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-service-secret", Err: err})
-			return
-		}
-
-		params.XShoppingServiceSecret = &XShoppingServiceSecret
-
-	}
-
-	// ------------- Optional header parameter "x-shopping-user-id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-user-id")]; found {
-		var XShoppingUserId ShoppingUserId
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-user-id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-user-id", valueList[0], &XShoppingUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-user-id", Err: err})
-			return
-		}
-
-		params.XShoppingUserId = &XShoppingUserId
-
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.RemovePantryItems(w, r, params)
+		siw.Handler.RemovePantryItems(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7621,54 +5844,8 @@ func (siw *ServerInterfaceWrapper) RemovePantryItems(w http.ResponseWriter, r *h
 // DeletePreferredStore operation middleware
 func (siw *ServerInterfaceWrapper) DeletePreferredStore(w http.ResponseWriter, r *http.Request) {
 
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params DeletePreferredStoreParams
-
-	headers := r.Header
-
-	// ------------- Optional header parameter "x-shopping-service-secret" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-service-secret")]; found {
-		var XShoppingServiceSecret ShoppingServiceSecret
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-service-secret", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-service-secret", valueList[0], &XShoppingServiceSecret, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-service-secret", Err: err})
-			return
-		}
-
-		params.XShoppingServiceSecret = &XShoppingServiceSecret
-
-	}
-
-	// ------------- Optional header parameter "x-shopping-user-id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-user-id")]; found {
-		var XShoppingUserId ShoppingUserId
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-user-id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-user-id", valueList[0], &XShoppingUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-user-id", Err: err})
-			return
-		}
-
-		params.XShoppingUserId = &XShoppingUserId
-
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.DeletePreferredStore(w, r, params)
+		siw.Handler.DeletePreferredStore(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7681,54 +5858,8 @@ func (siw *ServerInterfaceWrapper) DeletePreferredStore(w http.ResponseWriter, r
 // GetPreferredStore operation middleware
 func (siw *ServerInterfaceWrapper) GetPreferredStore(w http.ResponseWriter, r *http.Request) {
 
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params GetPreferredStoreParams
-
-	headers := r.Header
-
-	// ------------- Optional header parameter "x-shopping-service-secret" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-service-secret")]; found {
-		var XShoppingServiceSecret ShoppingServiceSecret
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-service-secret", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-service-secret", valueList[0], &XShoppingServiceSecret, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-service-secret", Err: err})
-			return
-		}
-
-		params.XShoppingServiceSecret = &XShoppingServiceSecret
-
-	}
-
-	// ------------- Optional header parameter "x-shopping-user-id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-user-id")]; found {
-		var XShoppingUserId ShoppingUserId
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-user-id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-user-id", valueList[0], &XShoppingUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-user-id", Err: err})
-			return
-		}
-
-		params.XShoppingUserId = &XShoppingUserId
-
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetPreferredStore(w, r, params)
+		siw.Handler.GetPreferredStore(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7741,54 +5872,8 @@ func (siw *ServerInterfaceWrapper) GetPreferredStore(w http.ResponseWriter, r *h
 // SetPreferredStore operation middleware
 func (siw *ServerInterfaceWrapper) SetPreferredStore(w http.ResponseWriter, r *http.Request) {
 
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params SetPreferredStoreParams
-
-	headers := r.Header
-
-	// ------------- Optional header parameter "x-shopping-service-secret" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-service-secret")]; found {
-		var XShoppingServiceSecret ShoppingServiceSecret
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-service-secret", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-service-secret", valueList[0], &XShoppingServiceSecret, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-service-secret", Err: err})
-			return
-		}
-
-		params.XShoppingServiceSecret = &XShoppingServiceSecret
-
-	}
-
-	// ------------- Optional header parameter "x-shopping-user-id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-user-id")]; found {
-		var XShoppingUserId ShoppingUserId
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-user-id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-user-id", valueList[0], &XShoppingUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-user-id", Err: err})
-			return
-		}
-
-		params.XShoppingUserId = &XShoppingUserId
-
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.SetPreferredStore(w, r, params)
+		siw.Handler.SetPreferredStore(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7801,54 +5886,8 @@ func (siw *ServerInterfaceWrapper) SetPreferredStore(w http.ResponseWriter, r *h
 // GetShoppingProfile operation middleware
 func (siw *ServerInterfaceWrapper) GetShoppingProfile(w http.ResponseWriter, r *http.Request) {
 
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params GetShoppingProfileParams
-
-	headers := r.Header
-
-	// ------------- Optional header parameter "x-shopping-service-secret" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-service-secret")]; found {
-		var XShoppingServiceSecret ShoppingServiceSecret
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-service-secret", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-service-secret", valueList[0], &XShoppingServiceSecret, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-service-secret", Err: err})
-			return
-		}
-
-		params.XShoppingServiceSecret = &XShoppingServiceSecret
-
-	}
-
-	// ------------- Optional header parameter "x-shopping-user-id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-user-id")]; found {
-		var XShoppingUserId ShoppingUserId
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-user-id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-user-id", valueList[0], &XShoppingUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-user-id", Err: err})
-			return
-		}
-
-		params.XShoppingUserId = &XShoppingUserId
-
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetShoppingProfile(w, r, params)
+		siw.Handler.GetShoppingProfile(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7880,46 +5919,6 @@ func (siw *ServerInterfaceWrapper) ListRecipes(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	headers := r.Header
-
-	// ------------- Optional header parameter "x-shopping-service-secret" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-service-secret")]; found {
-		var XShoppingServiceSecret ShoppingServiceSecret
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-service-secret", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-service-secret", valueList[0], &XShoppingServiceSecret, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-service-secret", Err: err})
-			return
-		}
-
-		params.XShoppingServiceSecret = &XShoppingServiceSecret
-
-	}
-
-	// ------------- Optional header parameter "x-shopping-user-id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-user-id")]; found {
-		var XShoppingUserId ShoppingUserId
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-user-id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-user-id", valueList[0], &XShoppingUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-user-id", Err: err})
-			return
-		}
-
-		params.XShoppingUserId = &XShoppingUserId
-
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListRecipes(w, r, params)
 	}))
@@ -7934,54 +5933,8 @@ func (siw *ServerInterfaceWrapper) ListRecipes(w http.ResponseWriter, r *http.Re
 // CreateRecipe operation middleware
 func (siw *ServerInterfaceWrapper) CreateRecipe(w http.ResponseWriter, r *http.Request) {
 
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params CreateRecipeParams
-
-	headers := r.Header
-
-	// ------------- Optional header parameter "x-shopping-service-secret" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-service-secret")]; found {
-		var XShoppingServiceSecret ShoppingServiceSecret
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-service-secret", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-service-secret", valueList[0], &XShoppingServiceSecret, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-service-secret", Err: err})
-			return
-		}
-
-		params.XShoppingServiceSecret = &XShoppingServiceSecret
-
-	}
-
-	// ------------- Optional header parameter "x-shopping-user-id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-user-id")]; found {
-		var XShoppingUserId ShoppingUserId
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-user-id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-user-id", valueList[0], &XShoppingUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-user-id", Err: err})
-			return
-		}
-
-		params.XShoppingUserId = &XShoppingUserId
-
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.CreateRecipe(w, r, params)
+		siw.Handler.CreateRecipe(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8006,51 +5959,8 @@ func (siw *ServerInterfaceWrapper) GetRecipe(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Parameter object where we will unmarshal all parameters from the context
-	var params GetRecipeParams
-
-	headers := r.Header
-
-	// ------------- Optional header parameter "x-shopping-service-secret" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-service-secret")]; found {
-		var XShoppingServiceSecret ShoppingServiceSecret
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-service-secret", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-service-secret", valueList[0], &XShoppingServiceSecret, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-service-secret", Err: err})
-			return
-		}
-
-		params.XShoppingServiceSecret = &XShoppingServiceSecret
-
-	}
-
-	// ------------- Optional header parameter "x-shopping-user-id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-user-id")]; found {
-		var XShoppingUserId ShoppingUserId
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-user-id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-user-id", valueList[0], &XShoppingUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-user-id", Err: err})
-			return
-		}
-
-		params.XShoppingUserId = &XShoppingUserId
-
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetRecipe(w, r, id, params)
+		siw.Handler.GetRecipe(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8075,51 +5985,8 @@ func (siw *ServerInterfaceWrapper) UpdateRecipe(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	// Parameter object where we will unmarshal all parameters from the context
-	var params UpdateRecipeParams
-
-	headers := r.Header
-
-	// ------------- Optional header parameter "x-shopping-service-secret" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-service-secret")]; found {
-		var XShoppingServiceSecret ShoppingServiceSecret
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-service-secret", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-service-secret", valueList[0], &XShoppingServiceSecret, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-service-secret", Err: err})
-			return
-		}
-
-		params.XShoppingServiceSecret = &XShoppingServiceSecret
-
-	}
-
-	// ------------- Optional header parameter "x-shopping-user-id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("x-shopping-user-id")]; found {
-		var XShoppingUserId ShoppingUserId
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "x-shopping-user-id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "x-shopping-user-id", valueList[0], &XShoppingUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "x-shopping-user-id", Err: err})
-			return
-		}
-
-		params.XShoppingUserId = &XShoppingUserId
-
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.UpdateRecipe(w, r, id, params)
+		siw.Handler.UpdateRecipe(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8284,7 +6151,6 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 type GroceryErrorJSONResponse Error
 
 type GetEquipmentRequestObject struct {
-	Params GetEquipmentParams
 }
 
 type GetEquipmentResponseObject interface {
@@ -8325,8 +6191,7 @@ func (response GetEquipmentdefaultJSONResponse) VisitGetEquipmentResponse(w http
 }
 
 type AddEquipmentRequestObject struct {
-	Params AddEquipmentParams
-	Body   *AddEquipmentJSONRequestBody
+	Body *AddEquipmentJSONRequestBody
 }
 
 type AddEquipmentResponseObject interface {
@@ -8367,8 +6232,7 @@ func (response AddEquipmentdefaultJSONResponse) VisitAddEquipmentResponse(w http
 }
 
 type RemoveEquipmentRequestObject struct {
-	Params RemoveEquipmentParams
-	Body   *RemoveEquipmentJSONRequestBody
+	Body *RemoveEquipmentJSONRequestBody
 }
 
 type RemoveEquipmentResponseObject interface {
@@ -8409,7 +6273,6 @@ func (response RemoveEquipmentdefaultJSONResponse) VisitRemoveEquipmentResponse(
 }
 
 type ListHouseholdsRequestObject struct {
-	Params ListHouseholdsParams
 }
 
 type ListHouseholdsResponseObject interface {
@@ -8448,8 +6311,7 @@ func (response ListHouseholdsdefaultJSONResponse) VisitListHouseholdsResponse(w 
 }
 
 type CreateHouseholdRequestObject struct {
-	Params CreateHouseholdParams
-	Body   *CreateHouseholdJSONRequestBody
+	Body *CreateHouseholdJSONRequestBody
 }
 
 type CreateHouseholdResponseObject interface {
@@ -8488,9 +6350,8 @@ func (response CreateHouseholddefaultJSONResponse) VisitCreateHouseholdResponse(
 }
 
 type CreateInviteRequestObject struct {
-	Id     string `json:"id"`
-	Params CreateInviteParams
-	Body   *CreateInviteJSONRequestBody
+	Id   string `json:"id"`
+	Body *CreateInviteJSONRequestBody
 }
 
 type CreateInviteResponseObject interface {
@@ -8529,8 +6390,7 @@ func (response CreateInvitedefaultJSONResponse) VisitCreateInviteResponse(w http
 }
 
 type JoinHouseholdRequestObject struct {
-	Code   string `json:"code"`
-	Params JoinHouseholdParams
+	Code string `json:"code"`
 }
 
 type JoinHouseholdResponseObject interface {
@@ -8608,8 +6468,7 @@ func (response ListListsdefaultJSONResponse) VisitListListsResponse(w http.Respo
 }
 
 type CreateListRequestObject struct {
-	Params CreateListParams
-	Body   *CreateListJSONRequestBody
+	Body *CreateListJSONRequestBody
 }
 
 type CreateListResponseObject interface {
@@ -8648,8 +6507,7 @@ func (response CreateListdefaultJSONResponse) VisitCreateListResponse(w http.Res
 }
 
 type GetListRequestObject struct {
-	Id     string `json:"id"`
-	Params GetListParams
+	Id string `json:"id"`
 }
 
 type GetListResponseObject interface {
@@ -8688,9 +6546,8 @@ func (response GetListdefaultJSONResponse) VisitGetListResponse(w http.ResponseW
 }
 
 type UpdateListRequestObject struct {
-	Id     string `json:"id"`
-	Params UpdateListParams
-	Body   *UpdateListJSONRequestBody
+	Id   string `json:"id"`
+	Body *UpdateListJSONRequestBody
 }
 
 type UpdateListResponseObject interface {
@@ -8729,9 +6586,8 @@ func (response UpdateListdefaultJSONResponse) VisitUpdateListResponse(w http.Res
 }
 
 type AddItemsRequestObject struct {
-	Id     string `json:"id"`
-	Params AddItemsParams
-	Body   *AddItemsJSONRequestBody
+	Id   string `json:"id"`
+	Body *AddItemsJSONRequestBody
 }
 
 type AddItemsResponseObject interface {
@@ -8772,7 +6628,6 @@ func (response AddItemsdefaultJSONResponse) VisitAddItemsResponse(w http.Respons
 type DeleteItemRequestObject struct {
 	Id     string `json:"id"`
 	ItemId string `json:"itemId"`
-	Params DeleteItemParams
 }
 
 type DeleteItemResponseObject interface {
@@ -8807,7 +6662,6 @@ func (response DeleteItemdefaultJSONResponse) VisitDeleteItemResponse(w http.Res
 type UpdateItemRequestObject struct {
 	Id     string `json:"id"`
 	ItemId string `json:"itemId"`
-	Params UpdateItemParams
 	Body   *UpdateItemJSONRequestBody
 }
 
@@ -8888,8 +6742,7 @@ func (response GetOrdersdefaultJSONResponse) VisitGetOrdersResponse(w http.Respo
 }
 
 type RecordOrderRequestObject struct {
-	Params RecordOrderParams
-	Body   *RecordOrderJSONRequestBody
+	Body *RecordOrderJSONRequestBody
 }
 
 type RecordOrderResponseObject interface {
@@ -8928,7 +6781,6 @@ func (response RecordOrderdefaultJSONResponse) VisitRecordOrderResponse(w http.R
 }
 
 type GetPantryRequestObject struct {
-	Params GetPantryParams
 }
 
 type GetPantryResponseObject interface {
@@ -8969,8 +6821,7 @@ func (response GetPantrydefaultJSONResponse) VisitGetPantryResponse(w http.Respo
 }
 
 type AddPantryItemsRequestObject struct {
-	Params AddPantryItemsParams
-	Body   *AddPantryItemsJSONRequestBody
+	Body *AddPantryItemsJSONRequestBody
 }
 
 type AddPantryItemsResponseObject interface {
@@ -9011,8 +6862,7 @@ func (response AddPantryItemsdefaultJSONResponse) VisitAddPantryItemsResponse(w 
 }
 
 type SetPantryItemQuantityRequestObject struct {
-	Params SetPantryItemQuantityParams
-	Body   *SetPantryItemQuantityJSONRequestBody
+	Body *SetPantryItemQuantityJSONRequestBody
 }
 
 type SetPantryItemQuantityResponseObject interface {
@@ -9053,8 +6903,7 @@ func (response SetPantryItemQuantitydefaultJSONResponse) VisitSetPantryItemQuant
 }
 
 type RemovePantryItemsRequestObject struct {
-	Params RemovePantryItemsParams
-	Body   *RemovePantryItemsJSONRequestBody
+	Body *RemovePantryItemsJSONRequestBody
 }
 
 type RemovePantryItemsResponseObject interface {
@@ -9095,7 +6944,6 @@ func (response RemovePantryItemsdefaultJSONResponse) VisitRemovePantryItemsRespo
 }
 
 type DeletePreferredStoreRequestObject struct {
-	Params DeletePreferredStoreParams
 }
 
 type DeletePreferredStoreResponseObject interface {
@@ -9128,7 +6976,6 @@ func (response DeletePreferredStoredefaultJSONResponse) VisitDeletePreferredStor
 }
 
 type GetPreferredStoreRequestObject struct {
-	Params GetPreferredStoreParams
 }
 
 type GetPreferredStoreResponseObject interface {
@@ -9167,8 +7014,7 @@ func (response GetPreferredStoredefaultJSONResponse) VisitGetPreferredStoreRespo
 }
 
 type SetPreferredStoreRequestObject struct {
-	Params SetPreferredStoreParams
-	Body   *SetPreferredStoreJSONRequestBody
+	Body *SetPreferredStoreJSONRequestBody
 }
 
 type SetPreferredStoreResponseObject interface {
@@ -9207,7 +7053,6 @@ func (response SetPreferredStoredefaultJSONResponse) VisitSetPreferredStoreRespo
 }
 
 type GetShoppingProfileRequestObject struct {
-	Params GetShoppingProfileParams
 }
 
 type GetShoppingProfileResponseObject interface {
@@ -9285,8 +7130,7 @@ func (response ListRecipesdefaultJSONResponse) VisitListRecipesResponse(w http.R
 }
 
 type CreateRecipeRequestObject struct {
-	Params CreateRecipeParams
-	Body   *CreateRecipeJSONRequestBody
+	Body *CreateRecipeJSONRequestBody
 }
 
 type CreateRecipeResponseObject interface {
@@ -9325,8 +7169,7 @@ func (response CreateRecipedefaultJSONResponse) VisitCreateRecipeResponse(w http
 }
 
 type GetRecipeRequestObject struct {
-	Id     string `json:"id"`
-	Params GetRecipeParams
+	Id string `json:"id"`
 }
 
 type GetRecipeResponseObject interface {
@@ -9365,9 +7208,8 @@ func (response GetRecipedefaultJSONResponse) VisitGetRecipeResponse(w http.Respo
 }
 
 type UpdateRecipeRequestObject struct {
-	Id     string `json:"id"`
-	Params UpdateRecipeParams
-	Body   *UpdateRecipeJSONRequestBody
+	Id   string `json:"id"`
+	Body *UpdateRecipeJSONRequestBody
 }
 
 type UpdateRecipeResponseObject interface {
@@ -9533,10 +7375,8 @@ type strictHandler struct {
 }
 
 // GetEquipment operation middleware
-func (sh *strictHandler) GetEquipment(w http.ResponseWriter, r *http.Request, params GetEquipmentParams) {
+func (sh *strictHandler) GetEquipment(w http.ResponseWriter, r *http.Request) {
 	var request GetEquipmentRequestObject
-
-	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetEquipment(ctx, request.(GetEquipmentRequestObject))
@@ -9559,10 +7399,8 @@ func (sh *strictHandler) GetEquipment(w http.ResponseWriter, r *http.Request, pa
 }
 
 // AddEquipment operation middleware
-func (sh *strictHandler) AddEquipment(w http.ResponseWriter, r *http.Request, params AddEquipmentParams) {
+func (sh *strictHandler) AddEquipment(w http.ResponseWriter, r *http.Request) {
 	var request AddEquipmentRequestObject
-
-	request.Params = params
 
 	var body AddEquipmentJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -9592,10 +7430,8 @@ func (sh *strictHandler) AddEquipment(w http.ResponseWriter, r *http.Request, pa
 }
 
 // RemoveEquipment operation middleware
-func (sh *strictHandler) RemoveEquipment(w http.ResponseWriter, r *http.Request, params RemoveEquipmentParams) {
+func (sh *strictHandler) RemoveEquipment(w http.ResponseWriter, r *http.Request) {
 	var request RemoveEquipmentRequestObject
-
-	request.Params = params
 
 	var body RemoveEquipmentJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -9625,10 +7461,8 @@ func (sh *strictHandler) RemoveEquipment(w http.ResponseWriter, r *http.Request,
 }
 
 // ListHouseholds operation middleware
-func (sh *strictHandler) ListHouseholds(w http.ResponseWriter, r *http.Request, params ListHouseholdsParams) {
+func (sh *strictHandler) ListHouseholds(w http.ResponseWriter, r *http.Request) {
 	var request ListHouseholdsRequestObject
-
-	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.ListHouseholds(ctx, request.(ListHouseholdsRequestObject))
@@ -9651,10 +7485,8 @@ func (sh *strictHandler) ListHouseholds(w http.ResponseWriter, r *http.Request, 
 }
 
 // CreateHousehold operation middleware
-func (sh *strictHandler) CreateHousehold(w http.ResponseWriter, r *http.Request, params CreateHouseholdParams) {
+func (sh *strictHandler) CreateHousehold(w http.ResponseWriter, r *http.Request) {
 	var request CreateHouseholdRequestObject
-
-	request.Params = params
 
 	var body CreateHouseholdJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -9684,11 +7516,10 @@ func (sh *strictHandler) CreateHousehold(w http.ResponseWriter, r *http.Request,
 }
 
 // CreateInvite operation middleware
-func (sh *strictHandler) CreateInvite(w http.ResponseWriter, r *http.Request, id string, params CreateInviteParams) {
+func (sh *strictHandler) CreateInvite(w http.ResponseWriter, r *http.Request, id string) {
 	var request CreateInviteRequestObject
 
 	request.Id = id
-	request.Params = params
 
 	var body CreateInviteJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -9718,11 +7549,10 @@ func (sh *strictHandler) CreateInvite(w http.ResponseWriter, r *http.Request, id
 }
 
 // JoinHousehold operation middleware
-func (sh *strictHandler) JoinHousehold(w http.ResponseWriter, r *http.Request, code string, params JoinHouseholdParams) {
+func (sh *strictHandler) JoinHousehold(w http.ResponseWriter, r *http.Request, code string) {
 	var request JoinHouseholdRequestObject
 
 	request.Code = code
-	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.JoinHousehold(ctx, request.(JoinHouseholdRequestObject))
@@ -9771,10 +7601,8 @@ func (sh *strictHandler) ListLists(w http.ResponseWriter, r *http.Request, param
 }
 
 // CreateList operation middleware
-func (sh *strictHandler) CreateList(w http.ResponseWriter, r *http.Request, params CreateListParams) {
+func (sh *strictHandler) CreateList(w http.ResponseWriter, r *http.Request) {
 	var request CreateListRequestObject
-
-	request.Params = params
 
 	var body CreateListJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -9804,11 +7632,10 @@ func (sh *strictHandler) CreateList(w http.ResponseWriter, r *http.Request, para
 }
 
 // GetList operation middleware
-func (sh *strictHandler) GetList(w http.ResponseWriter, r *http.Request, id string, params GetListParams) {
+func (sh *strictHandler) GetList(w http.ResponseWriter, r *http.Request, id string) {
 	var request GetListRequestObject
 
 	request.Id = id
-	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetList(ctx, request.(GetListRequestObject))
@@ -9831,11 +7658,10 @@ func (sh *strictHandler) GetList(w http.ResponseWriter, r *http.Request, id stri
 }
 
 // UpdateList operation middleware
-func (sh *strictHandler) UpdateList(w http.ResponseWriter, r *http.Request, id string, params UpdateListParams) {
+func (sh *strictHandler) UpdateList(w http.ResponseWriter, r *http.Request, id string) {
 	var request UpdateListRequestObject
 
 	request.Id = id
-	request.Params = params
 
 	var body UpdateListJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -9865,11 +7691,10 @@ func (sh *strictHandler) UpdateList(w http.ResponseWriter, r *http.Request, id s
 }
 
 // AddItems operation middleware
-func (sh *strictHandler) AddItems(w http.ResponseWriter, r *http.Request, id string, params AddItemsParams) {
+func (sh *strictHandler) AddItems(w http.ResponseWriter, r *http.Request, id string) {
 	var request AddItemsRequestObject
 
 	request.Id = id
-	request.Params = params
 
 	var body AddItemsJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -9899,12 +7724,11 @@ func (sh *strictHandler) AddItems(w http.ResponseWriter, r *http.Request, id str
 }
 
 // DeleteItem operation middleware
-func (sh *strictHandler) DeleteItem(w http.ResponseWriter, r *http.Request, id string, itemId string, params DeleteItemParams) {
+func (sh *strictHandler) DeleteItem(w http.ResponseWriter, r *http.Request, id string, itemId string) {
 	var request DeleteItemRequestObject
 
 	request.Id = id
 	request.ItemId = itemId
-	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.DeleteItem(ctx, request.(DeleteItemRequestObject))
@@ -9927,12 +7751,11 @@ func (sh *strictHandler) DeleteItem(w http.ResponseWriter, r *http.Request, id s
 }
 
 // UpdateItem operation middleware
-func (sh *strictHandler) UpdateItem(w http.ResponseWriter, r *http.Request, id string, itemId string, params UpdateItemParams) {
+func (sh *strictHandler) UpdateItem(w http.ResponseWriter, r *http.Request, id string, itemId string) {
 	var request UpdateItemRequestObject
 
 	request.Id = id
 	request.ItemId = itemId
-	request.Params = params
 
 	var body UpdateItemJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -9988,10 +7811,8 @@ func (sh *strictHandler) GetOrders(w http.ResponseWriter, r *http.Request, param
 }
 
 // RecordOrder operation middleware
-func (sh *strictHandler) RecordOrder(w http.ResponseWriter, r *http.Request, params RecordOrderParams) {
+func (sh *strictHandler) RecordOrder(w http.ResponseWriter, r *http.Request) {
 	var request RecordOrderRequestObject
-
-	request.Params = params
 
 	var body RecordOrderJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -10021,10 +7842,8 @@ func (sh *strictHandler) RecordOrder(w http.ResponseWriter, r *http.Request, par
 }
 
 // GetPantry operation middleware
-func (sh *strictHandler) GetPantry(w http.ResponseWriter, r *http.Request, params GetPantryParams) {
+func (sh *strictHandler) GetPantry(w http.ResponseWriter, r *http.Request) {
 	var request GetPantryRequestObject
-
-	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetPantry(ctx, request.(GetPantryRequestObject))
@@ -10047,10 +7866,8 @@ func (sh *strictHandler) GetPantry(w http.ResponseWriter, r *http.Request, param
 }
 
 // AddPantryItems operation middleware
-func (sh *strictHandler) AddPantryItems(w http.ResponseWriter, r *http.Request, params AddPantryItemsParams) {
+func (sh *strictHandler) AddPantryItems(w http.ResponseWriter, r *http.Request) {
 	var request AddPantryItemsRequestObject
-
-	request.Params = params
 
 	var body AddPantryItemsJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -10080,10 +7897,8 @@ func (sh *strictHandler) AddPantryItems(w http.ResponseWriter, r *http.Request, 
 }
 
 // SetPantryItemQuantity operation middleware
-func (sh *strictHandler) SetPantryItemQuantity(w http.ResponseWriter, r *http.Request, params SetPantryItemQuantityParams) {
+func (sh *strictHandler) SetPantryItemQuantity(w http.ResponseWriter, r *http.Request) {
 	var request SetPantryItemQuantityRequestObject
-
-	request.Params = params
 
 	var body SetPantryItemQuantityJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -10113,10 +7928,8 @@ func (sh *strictHandler) SetPantryItemQuantity(w http.ResponseWriter, r *http.Re
 }
 
 // RemovePantryItems operation middleware
-func (sh *strictHandler) RemovePantryItems(w http.ResponseWriter, r *http.Request, params RemovePantryItemsParams) {
+func (sh *strictHandler) RemovePantryItems(w http.ResponseWriter, r *http.Request) {
 	var request RemovePantryItemsRequestObject
-
-	request.Params = params
 
 	var body RemovePantryItemsJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -10146,10 +7959,8 @@ func (sh *strictHandler) RemovePantryItems(w http.ResponseWriter, r *http.Reques
 }
 
 // DeletePreferredStore operation middleware
-func (sh *strictHandler) DeletePreferredStore(w http.ResponseWriter, r *http.Request, params DeletePreferredStoreParams) {
+func (sh *strictHandler) DeletePreferredStore(w http.ResponseWriter, r *http.Request) {
 	var request DeletePreferredStoreRequestObject
-
-	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.DeletePreferredStore(ctx, request.(DeletePreferredStoreRequestObject))
@@ -10172,10 +7983,8 @@ func (sh *strictHandler) DeletePreferredStore(w http.ResponseWriter, r *http.Req
 }
 
 // GetPreferredStore operation middleware
-func (sh *strictHandler) GetPreferredStore(w http.ResponseWriter, r *http.Request, params GetPreferredStoreParams) {
+func (sh *strictHandler) GetPreferredStore(w http.ResponseWriter, r *http.Request) {
 	var request GetPreferredStoreRequestObject
-
-	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetPreferredStore(ctx, request.(GetPreferredStoreRequestObject))
@@ -10198,10 +8007,8 @@ func (sh *strictHandler) GetPreferredStore(w http.ResponseWriter, r *http.Reques
 }
 
 // SetPreferredStore operation middleware
-func (sh *strictHandler) SetPreferredStore(w http.ResponseWriter, r *http.Request, params SetPreferredStoreParams) {
+func (sh *strictHandler) SetPreferredStore(w http.ResponseWriter, r *http.Request) {
 	var request SetPreferredStoreRequestObject
-
-	request.Params = params
 
 	var body SetPreferredStoreJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -10231,10 +8038,8 @@ func (sh *strictHandler) SetPreferredStore(w http.ResponseWriter, r *http.Reques
 }
 
 // GetShoppingProfile operation middleware
-func (sh *strictHandler) GetShoppingProfile(w http.ResponseWriter, r *http.Request, params GetShoppingProfileParams) {
+func (sh *strictHandler) GetShoppingProfile(w http.ResponseWriter, r *http.Request) {
 	var request GetShoppingProfileRequestObject
-
-	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetShoppingProfile(ctx, request.(GetShoppingProfileRequestObject))
@@ -10283,10 +8088,8 @@ func (sh *strictHandler) ListRecipes(w http.ResponseWriter, r *http.Request, par
 }
 
 // CreateRecipe operation middleware
-func (sh *strictHandler) CreateRecipe(w http.ResponseWriter, r *http.Request, params CreateRecipeParams) {
+func (sh *strictHandler) CreateRecipe(w http.ResponseWriter, r *http.Request) {
 	var request CreateRecipeRequestObject
-
-	request.Params = params
 
 	var body CreateRecipeJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -10316,11 +8119,10 @@ func (sh *strictHandler) CreateRecipe(w http.ResponseWriter, r *http.Request, pa
 }
 
 // GetRecipe operation middleware
-func (sh *strictHandler) GetRecipe(w http.ResponseWriter, r *http.Request, id string, params GetRecipeParams) {
+func (sh *strictHandler) GetRecipe(w http.ResponseWriter, r *http.Request, id string) {
 	var request GetRecipeRequestObject
 
 	request.Id = id
-	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetRecipe(ctx, request.(GetRecipeRequestObject))
@@ -10343,11 +8145,10 @@ func (sh *strictHandler) GetRecipe(w http.ResponseWriter, r *http.Request, id st
 }
 
 // UpdateRecipe operation middleware
-func (sh *strictHandler) UpdateRecipe(w http.ResponseWriter, r *http.Request, id string, params UpdateRecipeParams) {
+func (sh *strictHandler) UpdateRecipe(w http.ResponseWriter, r *http.Request, id string) {
 	var request UpdateRecipeRequestObject
 
 	request.Id = id
-	request.Params = params
 
 	var body UpdateRecipeJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -10381,46 +8182,44 @@ func (sh *strictHandler) UpdateRecipe(w http.ResponseWriter, r *http.Request, id
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"7Fxfc9u4Ef8qHLZPHcp02ps++O0uTe90zfRcq5k+ZDwamFxJSCiCBkAnGo++e4cA+B8gQVkiFdlPiSUQ",
-	"WOz+drG7+FHPbkC2CYkh5sy9eXYTRNEWOFDx12JDkgTH6wXQJxzAAgIKPPsCx+6NuwEUAnU9N0ZbcG/c",
-	"7zOmxs+YfGDG5BOey4INbFH2KN8l2WDGKY7X7n7vFat8YkDnoc30KQM6w2HnvHvPpcASEjMQe/mVkgDo",
-	"7gOlhGZ/ByTmEIvdoCSJcIA4JrH/hZE4+6yc+M8UVu6N+ye/1JQvv2W+nE0sFgILKE6ySdwbd8FpGvCU",
-	"Quis5cLOz7dzB9T4XHAh2YfHFCdbiPmcw1YYgZIEKMdScBSGEC6RkHRF6Db7n4tj/vefXC/fNY45rIG6",
-	"e88NEIc1obtseJxGEXqIwL3hNAWvqaNctTqjUHhMMYXQvfksR3mlIPfFTOThCwQ8m6nQa114yD/uXkEO",
-	"0837z2yYUTcG+T2X0FBhuK0hTjiKlo8pijnmO/2YNAms9ZKNLVZsTa/b1G8kZbAhUdjeUUAB8UH2Vg88",
-	"7LSKwKH2Y6PiKIksECF8T21fPFGTw6vuQrf/ebymEGLlfnUFDBU4Jlz/RUIYlt6oM7DG/BUlQIATWBpE",
-	"SWPMLVVUTlSoq1hYTaR2UJFXr7EnLPfZgAsJ9bvvgQV8TzAFZg+zTQ5Zk1a26PsyVbFW408MwmVA0pjr",
-	"vm+oTmyqsWQDYBX5K0vX1tGqsSPCGjQVbCD4anZIQ4jNt+a532drMlOf/kU+VZn1wSJON+bo9e0IM748",
-	"1I0OFOUFzqZCbe9ZlSbhkMioc8dcMzpnbHqhV8KiZq4aImpSmQB3i3iwUTgTc6PotoK/FYoYeE2/lmt0",
-	"KOaBkAhQXDVq/3FvZeSGwXoG7zW7/oiZJrIjyvEKBXz5BJQprPSZsQK4GfuKkxlJpAZnCcnGUCnV3ht+",
-	"cDYj2nGdEHPYyvMs/09XHiniUqlJRCnaiTTmWww0i23U5NCMI54y7Vcc8wgMLvdiV2oE57qg+dqFeDXz",
-	"1NbPNXVvgNEhzlPqpBfohY4OQPm/4Vs9kRkg4sB0xt4NzKHWfg59gmP7vC5JvjeoTx3Hx1TcoNh2sIas",
-	"zixbTfyRlQ6a2olxvBV+IkqKmquGJH0QDmYQIU63DzLMHSU+CQlNQSoisna2iqPKUnbemUQoGBLSZelV",
-	"7MgmjsnB9UerCxvtdUzsJhQHcKB9j1DHygK2mRLpdn6LYk53R+lT9FQgPXl1Vypb1UhboQ0F6kv6Sl7Y",
-	"2fW4pbACSiFccEJBqxMKjBkKC4RjfQJfdyj7JJ4BP/BMry7pVRo+Qvpc1mKBflXM4yQdeiZelrJ0OroT",
-	"7YCzz4xrrUyN5k6cORc51YD8uczDNAdUceC024T9+TXQJxyv2dDkm3FI7OWXwFhwSHTyc7SuT9VOY5tP",
-	"nEHqX0VRRY+5OexqgwoWcp0qfZj9632ls28ffTpBb+9sh6C3XkjYA9heKjOKB8zRQnQ/DIcB114WE74b",
-	"cM2hqIORGT/CDW370jhm4qrHFCu7G2Ndjea+fnJ15Z7u8R0EhIYybT3gYH4rRE5ciBxQgyzQE4QSr4eY",
-	"9EjRblgm8BYef+zwmF/U31KywpEmj4X8JtvatvW7b42OVur+dzksTtSujTXTJqKQtZ6uUvfqJstLnyXL",
-	"y8DOyepFozwGsi2Wl9b2sbAtT8PIaqdexTjNBVtabhtfOEmQUsx3i2x5dUsRAf36CyAq21d1CsT77EuH",
-	"AcsqGuf3//3Xc56A4hWG0HnYOWgtNiOAG6PIRynfOGnCOAW0dcjK4RvMHEpSDvQqZ3qIiw+5XiHihvNE",
-	"UjBwvCIC9RL+OeXD+RVx+IYEA8P13KLGct9dXV9dizIggRgl2L1x/3b17uo6C76Ib8QWfZRgX1E4/Bq+",
-	"15IKk+FfnDrzMFsS+IeKnqt0ms96a5ZDfD3dZu9ZP6gYNPv7Bvflr9fXgygvjcxnkOf1eLT26NPgrcWo",
-	"+RfmwQZip7SBGLJCacRNMhVK8GvsnyqahV1qOP58v/ee9/cyd9OY+OcwPBcTP6bA+C8k3A2y7oA0oW36",
-	"IXeYFSbSS5hHuqPoYFCV49RZeXGO8kkW0M7XsR1m7xmipU9hS55kvqB1qTvx/avxKhRFFeg3LvIH5ZD7",
-	"N4xPi/GiAGLGlOAjZvy3ctgPmxRYGbxkNraN3bJiqRUHPSEsKkeHE4dvwBFc37wdPf4h/160JMvdXHhE",
-	"etFpbBNy3h2Ncl1BWAeiHNVTni4e+M843PtY8DaZ+eiTQFP0zslQ5inOfVb2lIx71XKsWraLcT8OVLt4",
-	"pvuJsanM2AlMiYip8Knw6D8HJIS9/4XIW1U9Nn8nOD6DEKgHpyIJD4TnC86/IwSlTN3j2zzCjHenJx/F",
-	"iMkN/JiC6FQpCxexdN79ps8oiY2gtFrkNHnPSSj9TNMasZcLz2iG30wMKmxy8uKAu3dt833qbErCuhvG",
-	"U51VwoVEGtXVbp0WzMdLnE50MtkYeIRolLO46+aTZfylWPCwmNZnPEmAP0Ff58VhQTF1pgsLfhGqjZ36",
-	"eX6Z/lZXDW71H3T+HbEV/+74WZxB5m6ci5kdwQOeGuv+c/bPXJ6IIUQg33mow/4f4nOx1R8b+IZJhAZe",
-	"eMD+1L6vbtnckQoOJz4e3wx58nO2fEtz5HNWxiOL+DPVYVtSUkz59x85h+S8mgcR3mLtD4+UzcLjsiRO",
-	"Qt5Rk9pcid0JSo+T/0aKox6dqNFQYZz+kJ2GHrJ+nU07cs2uoKP50Zma7R0q5Bw/ZpTcOlPMuM05aa+Q",
-	"H9VFJTz4PlxOKjPVCXlR5d7YGzOqi1A/9NdXTveu44WSq07iZTnrJBnR2/TB1a/aXe+OizzMZkr4T/k+",
-	"62vkMRz3neA37E+LfTs24Ss6i14Pn/ByoZ2/EzIrXiHpbu81XiI5o1Ra01orhHXE7sZrrBkLkLPV3vF6",
-	"S83XjDRVQ90sIxQOqSFROSdzHL9hoPtpjJEbjYPBMFXDMSnfLTQ5b/M1xIv03uYmu9o9uc5GNpV8Gb2b",
-	"WXanxrxxy3p//cPmXlKp80x5ZWoflxa+W6/aj9zvzeFhgsNU/Czl/70MralhcfYcrT4DT5SYybrocqx3",
-	"kpugyu8NjZzS9YaFsTK4/f7/AQAA//8=",
+	"7Ftfc6O6Ff8qDO1Th8TZ9k4f8rbdbu/Ndtt1k3b6sJPxyHBsa4MRkUR2PRl/9w6SAAESCMfAZrtPcWwh",
+	"Hf3O7/yTDs9+SPYpSSDhzL9+9imwlCQMxD+/UhICPbynlND8/5AkHBKef0RpGuMQcUySxRdGkvw7Fu5g",
+	"j/JPv6ew8a/93y2qyRfyV7aQsx2Px8CPgIUUp/kk/rV/x2kW8oxC5G3lwt7b5Y0Hanyg5heSvX/McLqH",
+	"hN9w2OdfpJSkQDmWgqMogmiFhKQbQvf5Jx8n/M+/+IHPDynIf2EL1D8Gfog4bAk95MOTLI7ROgb/mtMM",
+	"ytGMU5xs88EJ2kM+sPHDMfApPGaYQuRff5ajgkqQ+3Imsv4CIc9nKnGtCw/F190ryGGmef+WD7NiY5E/",
+	"8AmNgDLtJw0hTjiKV48ZSjjmB/OYLA2dccnHliu2pjdt6jeSMdiROGrvKKSA+CB9qwfWByMQODJ+bQWO",
+	"ktiBETjyg2L74omaHIG+C9P+b5IthQgr86sDMFTghHDzDylhWFqjScEG9WsgQIhTWFlEyRLMHSGqJirh",
+	"KhdWE6kdaPKaEXvCcp8NupDIvPseWsC3FFNg7jTbFZS1obJH31aZ8rUGe2IQrUKSJdz0ewM6sanGkg2C",
+	"afJrS9fWMcLY4WEtSIU7CB/sBmlxscXWAv/bxZZcqG//IJ/SZl07+OnGHL22HWPGV6ea0YmivMDYlKvt",
+	"jVVZGg3xjCZzLJAxGWPTCoOKFjV11RhRk8pGuCXi4U7xTMyN4qXGvw2KGQRNu5ZrdACzJiQGlOhK7Q/3",
+	"TkpuKKxn8NGw64+YGTw7ohxvUMhXT0CZ4kqfGjXCXbAHnF6QVCJ4kZJ8DJVSHYPhgbPp0c5rhJjDXsaz",
+	"4kNXHin8UoUkohQdRBrzNQGa+zZqM2jGEc+Y8SeOeQwWk3uxKTWcc13QYu1SvJp6ausXSN1baHSK8VSY",
+	"9BK9xOgElv8TvtYTmQEiDkxn3M3A7mrd5zAnOK7Pm5Lkewt8KhyfE7hBvu1khJxilisSn/LSwVA7MY73",
+	"wk5ESVEz1Yhka2FgFhGSbL+Wbu4s/klIaHNSMZG1s5MfVZpys840RuEQly5Lr3JHLn5MDq4/qi9s1dc5",
+	"uZtSHMKJ+j1DHSsL2GZKZNr5EiWcHs5yTtFTgfTk1V2prI5IG9AGgOaSXssLO089lhQ2QClEd5xQMGJC",
+	"gTFLYYFwYk7g6wblnsQz4CfGdH3JQDvwEdIXspYL9ENxk6TZ0Jj4Y4FlwuhWHAd895lx7SjTgNzImXOZ",
+	"Uw3In6s8zBCgyoDTPibsz6+BPuFky4Ym34xD6i6/JMYdh9QkP0fb+lTtNLb5xHeQ+uss0nAs1OFWG2hc",
+	"KDBVeNjt6512su/ufTpJ725sp7C3Xki4E9hdKjuLB8zRYnQ/DYcR110WG78bdC2oaKKRnT/CDF3PpXHC",
+	"xFWPzVd2H4x1HTT3nSfrK/ecHt9CSGgk09YTAvPPQmTkQuSEGuQOPUEk+XqKSs/k7YZlAj/d4+t2j3c7",
+	"kqY42S4p2eDYkMdCcZPtrNv63bcBo426/10N8xO1a2PDtKkoZJ2n0+pe02RF6bNiRRnYOVm9aJRhIN9i",
+	"dWnt7gvb8jSUrHYaaMppLthCua18YSRhRjE/3OXLS32vAVGgbzO+a/kU/10M9MFjwPKCxvvw3397hHpM",
+	"Mcj7x7ul9yl/0OPkAZLAewKKNxgib33wKMk4XLAUQrzBobdFHL6ig4cyvoOEq06NS181UYjLECFI5Yp3",
+	"nKeyLQMnGyIsQZpE0Qbi/aomfbu88QO/rLv8N5dXl1eiNEghQSn2r/0/Xb65vModMuI7se0FSvFCtXUs",
+	"apzfgviT24QQ8ibKlwT+voa91pXyx6urQc0ojZxkkE302JoxKBmY0Op1+Tvm4Q4Sr0JCDNmgLOY2mUoQ",
+	"FrW+HJ1n/vXnOsM+3x/vZUZlAPltFNVBfsyA8b+Q6DAI3wEhtA3+kPs9rUvnJV05Jjd9slqrcSqO/HBU",
+	"/Y8sLr2HKSl7DCweY0FhT55kHDWS+lb8PjGvURxr5GtcMw/KcI4/WTYfy8rUnFkD00fM+G/VsBdqwgny",
+	"qvOtDXcLx0o2Dz0hLCoLjxOP70BmEsVx5bSh5p04rqp2MolVvigmuJjdm7M1xWo67tCpp0795rGJxTOO",
+	"jgssuuqY3QFLVavmuzwDpGgPXCTpn599nG8ozwqLW4Dr4pRGhzrQYGtq734S7nS15h1nJovCtpMpUk1z",
+	"EEYRZPEckgiOiy9EXkKZyfKB4ET3Cv1sUY2OA/nyAh99BrPNMZhWCTFmvDuIfRQjzIg/ZiDKXwV56QJu",
+	"In9MpJ2ioeiTcwiERdEqkPgOY6HYxySubPiB46CMsOhJGnClZjxTmzsES2J1E2kOfyoILGJv12mJotM4",
+	"0XYk7+mC+MgGWnRK1vGUxciokJ5m9X1oys7PEUrGFxuOuqKex3AWpSOzHoTdFDdIrzNdPZPLPuPB15vz",
+	"h36LzN3EEzN7oiNtTvItnvM/N9KJRxCD7Lyt8/Cv4nuxzRGYGJgnEWK9MCb80r7LaCnBk7uOZvTorwPZ",
+	"84eG6o2aiUODtFgHC50jPlRXh7ak6lNx1+dQJMV4L95MbCm3Oja4P+u57Sg3n2pSlxPbW3EfWl1Pqkdn",
+	"KKi0Vh1/HANqNQNNXJso5Rnema+h71Eh57RmVLUF2MxoWVynz3Zr0dWLcPKVhZxUJhgzXd9W+2Kv4AJ3",
+	"8AvU472u8IPeAY/C8+JqLp2I72YHs9B1bjaIu8LV5AD8q3odZb6rpvO+WPOTffOxz63tYHJ//P/TePBj",
+	"kqtoa7wouyC7zwYafZAuhXj5iCfWmKYMt6aCPfKfr/Rsdowa8rc6MCOncJklYLUBOX/5YnrPcOKTgMHq",
+	"mONEIK2atG0EbvZzjwhZc6mu8q+QfEKw5Hs13ZfMt2rM67tmVq+dOpw2qz1+h1fMag/j+JTWyzQTH4kU",
+	"CrIpZI6rWmUSvZe1pWJe1XVtH+IzBFCZv40M5yjHido7txNH4l7DmSLwHo//CwAA//8=",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

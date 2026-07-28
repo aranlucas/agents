@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -24,11 +23,10 @@ import (
 const maxGroceryAPIRequestBody = 256 << 10
 
 type groceryAPI struct {
-	repository    groceries.LibraryRepository
-	shopping      groceries.ShoppingRepository
-	serviceSecret string
-	now           func() time.Time
-	inviteCode    func() (string, error)
+	repository groceries.LibraryRepository
+	shopping   groceries.ShoppingRepository
+	now        func() time.Time
+	inviteCode func() (string, error)
 }
 
 var _ groceryapi.StrictServerInterface = (*groceryAPI)(nil)
@@ -79,7 +77,6 @@ func registerGroceryAPI(
 	mux *http.ServeMux,
 	repository groceries.LibraryRepository,
 	shopping groceries.ShoppingRepository,
-	serviceSecret string,
 	now func() time.Time,
 ) error {
 	spec, err := groceryapi.GetSpec()
@@ -91,7 +88,7 @@ func registerGroceryAPI(
 	}
 
 	api := &groceryAPI{
-		repository: repository, shopping: shopping, serviceSecret: strings.TrimSpace(serviceSecret),
+		repository: repository, shopping: shopping,
 		now: now, inviteCode: newInviteCode,
 	}
 	strictHandler := groceryapi.NewStrictHandlerWithOptions(api, nil, groceryapi.StrictHTTPServerOptions{
@@ -136,9 +133,7 @@ func registerGroceryAPI(
 type groceryShopperContextKey struct{}
 
 type groceryShopperContext struct {
-	userID               string
-	serviceAuthenticated bool
-	serviceSubject       string
+	userID string
 }
 
 // authenticateGroceryRequest authenticates before body reads and schema
@@ -147,22 +142,13 @@ type groceryShopperContext struct {
 // caller-controlled context value.
 func (api *groceryAPI) authenticateGroceryRequest(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		serviceSecret := optionalHeader(r.Header, "X-Shopping-Service-Secret")
-		shoppingUserID := optionalHeader(r.Header, "X-Shopping-User-Id")
-		userID, responseError, status := api.shopperID(r.Context(), serviceSecret, shoppingUserID)
+		userID, responseError, status := api.shopperID(r.Context())
 		if responseError != nil {
 			writeGatewayJSONError(w, status, responseError.Error)
 			return
 		}
 
-		shopper := groceryShopperContext{userID: userID}
-		if serviceSecret != nil && strings.TrimSpace(*serviceSecret) != "" {
-			shopper.serviceAuthenticated = true
-			if shoppingUserID != nil {
-				shopper.serviceSubject = strings.TrimSpace(*shoppingUserID)
-			}
-		}
-		ctx := context.WithValue(r.Context(), groceryShopperContextKey{}, shopper)
+		ctx := context.WithValue(r.Context(), groceryShopperContextKey{}, groceryShopperContext{userID: userID})
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -202,23 +188,11 @@ func (api *groceryAPI) preauthorizeGroceryRequest(pattern string, authorization 
 	})
 }
 
-// preauthorizationShopperID reads the raw auth headers before the request body
-// is decoded and reuses the route authentication cache.
+// preauthorizationShopperID checks identity before the request body is decoded
+// and reuses the route authentication cache.
 func (api *groceryAPI) preauthorizationShopperID(r *http.Request) (string, int, *groceryapi.Error) {
-	userID, responseError, status := api.shopperID(
-		r.Context(),
-		optionalHeader(r.Header, "X-Shopping-Service-Secret"),
-		optionalHeader(r.Header, "X-Shopping-User-Id"),
-	)
+	userID, responseError, status := api.shopperID(r.Context())
 	return userID, status, responseError
-}
-
-func optionalHeader(header http.Header, name string) *string {
-	if _, ok := header[http.CanonicalHeaderKey(name)]; !ok {
-		return nil
-	}
-	value := header.Get(name)
-	return &value
 }
 
 func groceryRequestPreauthorized(ctx context.Context, pattern, resourceID, userID string) bool {
@@ -260,7 +234,7 @@ func validateGroceryJSONBody(next http.Handler) http.Handler {
 }
 
 func (api *groceryAPI) CreateHousehold(ctx context.Context, request groceryapi.CreateHouseholdRequestObject) (groceryapi.CreateHouseholdResponseObject, error) {
-	userID, authError, status := api.shopperID(ctx, request.Params.XShoppingServiceSecret, request.Params.XShoppingUserId)
+	userID, authError, status := api.shopperID(ctx)
 	if authError != nil {
 		return groceryapi.CreateHouseholddefaultJSONResponse{StatusCode: status, Body: *authError}, nil
 	}
@@ -273,7 +247,7 @@ func (api *groceryAPI) CreateHousehold(ctx context.Context, request groceryapi.C
 }
 
 func (api *groceryAPI) ListHouseholds(ctx context.Context, request groceryapi.ListHouseholdsRequestObject) (groceryapi.ListHouseholdsResponseObject, error) {
-	userID, authError, status := api.shopperID(ctx, request.Params.XShoppingServiceSecret, request.Params.XShoppingUserId)
+	userID, authError, status := api.shopperID(ctx)
 	if authError != nil {
 		return groceryapi.ListHouseholdsdefaultJSONResponse{StatusCode: status, Body: *authError}, nil
 	}
@@ -286,7 +260,7 @@ func (api *groceryAPI) ListHouseholds(ctx context.Context, request groceryapi.Li
 }
 
 func (api *groceryAPI) CreateInvite(ctx context.Context, request groceryapi.CreateInviteRequestObject) (groceryapi.CreateInviteResponseObject, error) {
-	userID, authError, status := api.shopperID(ctx, request.Params.XShoppingServiceSecret, request.Params.XShoppingUserId)
+	userID, authError, status := api.shopperID(ctx)
 	if authError != nil {
 		return groceryapi.CreateInvitedefaultJSONResponse{StatusCode: status, Body: *authError}, nil
 	}
@@ -315,7 +289,7 @@ func (api *groceryAPI) CreateInvite(ctx context.Context, request groceryapi.Crea
 }
 
 func (api *groceryAPI) JoinHousehold(ctx context.Context, request groceryapi.JoinHouseholdRequestObject) (groceryapi.JoinHouseholdResponseObject, error) {
-	userID, authError, status := api.shopperID(ctx, request.Params.XShoppingServiceSecret, request.Params.XShoppingUserId)
+	userID, authError, status := api.shopperID(ctx)
 	if authError != nil {
 		return groceryapi.JoinHouseholddefaultJSONResponse{StatusCode: status, Body: *authError}, nil
 	}
@@ -328,7 +302,7 @@ func (api *groceryAPI) JoinHousehold(ctx context.Context, request groceryapi.Joi
 }
 
 func (api *groceryAPI) ListLists(ctx context.Context, request groceryapi.ListListsRequestObject) (groceryapi.ListListsResponseObject, error) {
-	userID, authError, status := api.shopperID(ctx, request.Params.XShoppingServiceSecret, request.Params.XShoppingUserId)
+	userID, authError, status := api.shopperID(ctx)
 	if authError != nil {
 		return groceryapi.ListListsdefaultJSONResponse{StatusCode: status, Body: *authError}, nil
 	}
@@ -356,7 +330,7 @@ func (api *groceryAPI) ListLists(ctx context.Context, request groceryapi.ListLis
 }
 
 func (api *groceryAPI) GetList(ctx context.Context, request groceryapi.GetListRequestObject) (groceryapi.GetListResponseObject, error) {
-	userID, authError, status := api.shopperID(ctx, request.Params.XShoppingServiceSecret, request.Params.XShoppingUserId)
+	userID, authError, status := api.shopperID(ctx)
 	if authError != nil {
 		return groceryapi.GetListdefaultJSONResponse{StatusCode: status, Body: *authError}, nil
 	}
@@ -372,7 +346,7 @@ func (api *groceryAPI) GetList(ctx context.Context, request groceryapi.GetListRe
 }
 
 func (api *groceryAPI) CreateList(ctx context.Context, request groceryapi.CreateListRequestObject) (groceryapi.CreateListResponseObject, error) {
-	userID, authError, status := api.shopperID(ctx, request.Params.XShoppingServiceSecret, request.Params.XShoppingUserId)
+	userID, authError, status := api.shopperID(ctx)
 	if authError != nil {
 		return groceryapi.CreateListdefaultJSONResponse{StatusCode: status, Body: *authError}, nil
 	}
@@ -398,7 +372,7 @@ func (api *groceryAPI) CreateList(ctx context.Context, request groceryapi.Create
 }
 
 func (api *groceryAPI) UpdateList(ctx context.Context, request groceryapi.UpdateListRequestObject) (groceryapi.UpdateListResponseObject, error) {
-	userID, authError, status := api.shopperID(ctx, request.Params.XShoppingServiceSecret, request.Params.XShoppingUserId)
+	userID, authError, status := api.shopperID(ctx)
 	if authError != nil {
 		return groceryapi.UpdateListdefaultJSONResponse{StatusCode: status, Body: *authError}, nil
 	}
@@ -414,7 +388,7 @@ func (api *groceryAPI) UpdateList(ctx context.Context, request groceryapi.Update
 }
 
 func (api *groceryAPI) AddItems(ctx context.Context, request groceryapi.AddItemsRequestObject) (groceryapi.AddItemsResponseObject, error) {
-	userID, authError, status := api.shopperID(ctx, request.Params.XShoppingServiceSecret, request.Params.XShoppingUserId)
+	userID, authError, status := api.shopperID(ctx)
 	if authError != nil {
 		return groceryapi.AddItemsdefaultJSONResponse{StatusCode: status, Body: *authError}, nil
 	}
@@ -432,7 +406,7 @@ func (api *groceryAPI) AddItems(ctx context.Context, request groceryapi.AddItems
 }
 
 func (api *groceryAPI) UpdateItem(ctx context.Context, request groceryapi.UpdateItemRequestObject) (groceryapi.UpdateItemResponseObject, error) {
-	userID, authError, status := api.shopperID(ctx, request.Params.XShoppingServiceSecret, request.Params.XShoppingUserId)
+	userID, authError, status := api.shopperID(ctx)
 	if authError != nil {
 		return groceryapi.UpdateItemdefaultJSONResponse{StatusCode: status, Body: *authError}, nil
 	}
@@ -455,7 +429,7 @@ func (api *groceryAPI) UpdateItem(ctx context.Context, request groceryapi.Update
 }
 
 func (api *groceryAPI) DeleteItem(ctx context.Context, request groceryapi.DeleteItemRequestObject) (groceryapi.DeleteItemResponseObject, error) {
-	userID, authError, status := api.shopperID(ctx, request.Params.XShoppingServiceSecret, request.Params.XShoppingUserId)
+	userID, authError, status := api.shopperID(ctx)
 	if authError != nil {
 		return groceryapi.DeleteItemdefaultJSONResponse{StatusCode: status, Body: *authError}, nil
 	}
@@ -470,7 +444,7 @@ func (api *groceryAPI) DeleteItem(ctx context.Context, request groceryapi.Delete
 }
 
 func (api *groceryAPI) ListRecipes(ctx context.Context, request groceryapi.ListRecipesRequestObject) (groceryapi.ListRecipesResponseObject, error) {
-	userID, authError, status := api.shopperID(ctx, request.Params.XShoppingServiceSecret, request.Params.XShoppingUserId)
+	userID, authError, status := api.shopperID(ctx)
 	if authError != nil {
 		return groceryapi.ListRecipesdefaultJSONResponse{StatusCode: status, Body: *authError}, nil
 	}
@@ -489,7 +463,7 @@ func (api *groceryAPI) ListRecipes(ctx context.Context, request groceryapi.ListR
 }
 
 func (api *groceryAPI) GetRecipe(ctx context.Context, request groceryapi.GetRecipeRequestObject) (groceryapi.GetRecipeResponseObject, error) {
-	userID, authError, status := api.shopperID(ctx, request.Params.XShoppingServiceSecret, request.Params.XShoppingUserId)
+	userID, authError, status := api.shopperID(ctx)
 	if authError != nil {
 		return groceryapi.GetRecipedefaultJSONResponse{StatusCode: status, Body: *authError}, nil
 	}
@@ -502,7 +476,7 @@ func (api *groceryAPI) GetRecipe(ctx context.Context, request groceryapi.GetReci
 }
 
 func (api *groceryAPI) CreateRecipe(ctx context.Context, request groceryapi.CreateRecipeRequestObject) (groceryapi.CreateRecipeResponseObject, error) {
-	userID, authError, status := api.shopperID(ctx, request.Params.XShoppingServiceSecret, request.Params.XShoppingUserId)
+	userID, authError, status := api.shopperID(ctx)
 	if authError != nil {
 		return groceryapi.CreateRecipedefaultJSONResponse{StatusCode: status, Body: *authError}, nil
 	}
@@ -515,7 +489,7 @@ func (api *groceryAPI) CreateRecipe(ctx context.Context, request groceryapi.Crea
 }
 
 func (api *groceryAPI) UpdateRecipe(ctx context.Context, request groceryapi.UpdateRecipeRequestObject) (groceryapi.UpdateRecipeResponseObject, error) {
-	userID, authError, status := api.shopperID(ctx, request.Params.XShoppingServiceSecret, request.Params.XShoppingUserId)
+	userID, authError, status := api.shopperID(ctx)
 	if authError != nil {
 		return groceryapi.UpdateRecipedefaultJSONResponse{StatusCode: status, Body: *authError}, nil
 	}
@@ -578,75 +552,16 @@ func (api *groceryAPI) currentTime() time.Time {
 	return api.now()
 }
 
-// shopperID accepts either a verified Clerk identity or the shopping Worker's
-// shared secret plus Kroger subject. Any supplied non-empty service secret is
-// authoritative: an invalid one never falls back to a Clerk identity.
-func (api *groceryAPI) shopperID(
-	ctx context.Context,
-	serviceSecret *groceryapi.ShoppingServiceSecret,
-	shoppingUserID *groceryapi.ShoppingUserId,
-) (string, *groceryapi.Error, int) {
+// shopperID accepts only identities installed by the route's bearer-token
+// verifier. The request-local cache avoids repeating authentication checks.
+func (api *groceryAPI) shopperID(ctx context.Context) (string, *groceryapi.Error, int) {
 	if shopper, ok := ctx.Value(groceryShopperContextKey{}).(groceryShopperContext); ok {
 		userID := strings.TrimSpace(shopper.userID)
 		if userID == "" {
 			body := groceryapi.Error{Error: "grocery_api_unavailable"}
 			return "", &body, http.StatusServiceUnavailable
 		}
-		hasServiceSecret := serviceSecret != nil && strings.TrimSpace(*serviceSecret) != ""
-		if !shopper.serviceAuthenticated {
-			if hasServiceSecret {
-				body := groceryapi.Error{Error: "unauthorized"}
-				return "", &body, http.StatusUnauthorized
-			}
-			return userID, nil, 0
-		}
-		expected := strings.TrimSpace(api.serviceSecret)
-		if !hasServiceSecret || expected == "" || subtle.ConstantTimeCompare([]byte(*serviceSecret), []byte(expected)) != 1 {
-			body := groceryapi.Error{Error: "unauthorized"}
-			return "", &body, http.StatusUnauthorized
-		}
-		subject := ""
-		if shoppingUserID != nil {
-			subject = strings.TrimSpace(*shoppingUserID)
-		}
-		if subject == "" {
-			body := groceryapi.Error{Error: "invalid_grocery_request"}
-			return "", &body, http.StatusBadRequest
-		}
-		if subject != shopper.serviceSubject {
-			body := groceryapi.Error{Error: "unauthorized"}
-			return "", &body, http.StatusUnauthorized
-		}
 		return userID, nil, 0
-	}
-	if serviceSecret != nil && strings.TrimSpace(*serviceSecret) != "" {
-		expected := strings.TrimSpace(api.serviceSecret)
-		if expected == "" || subtle.ConstantTimeCompare([]byte(*serviceSecret), []byte(expected)) != 1 {
-			body := groceryapi.Error{Error: "unauthorized"}
-			return "", &body, http.StatusUnauthorized
-		}
-		subject := ""
-		if shoppingUserID != nil {
-			subject = strings.TrimSpace(*shoppingUserID)
-		}
-		if subject == "" {
-			body := groceryapi.Error{Error: "invalid_grocery_request"}
-			return "", &body, http.StatusBadRequest
-		}
-		if api.shopping == nil {
-			body := groceryapi.Error{Error: "grocery_api_unavailable"}
-			return "", &body, http.StatusServiceUnavailable
-		}
-		userID, err := api.shopping.ResolveShopper(ctx, subject)
-		if err != nil {
-			status, body := groceryErrorResponse(err)
-			return "", &body, status
-		}
-		if strings.TrimSpace(userID) == "" {
-			body := groceryapi.Error{Error: "grocery_api_unavailable"}
-			return "", &body, http.StatusServiceUnavailable
-		}
-		return strings.TrimSpace(userID), nil, 0
 	}
 	identity, ok := auth.FromContext(ctx)
 	if !ok || identity.Public || strings.TrimSpace(identity.UserID) == "" {
