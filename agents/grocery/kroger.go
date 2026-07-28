@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"agents/internal/common"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/session"
@@ -77,7 +78,7 @@ func (k *Kroger) Tools(ctx agent.ReadonlyContext) ([]tool.Tool, error) {
 	if base == nil {
 		base = http.DefaultTransport
 	}
-	client.Transport = &bearerTransport{base: base, token: token}
+	client.Transport = &bearerTransport{base: base, token: token, origin: parsed}
 	inner, err := mcptoolset.New(mcptoolset.Config{Transport: &mcp.StreamableClientTransport{Endpoint: parsed.String(), HTTPClient: &client, MaxRetries: 2, DisableStandaloneSSE: true}})
 	if err != nil {
 		return nil, err
@@ -111,14 +112,22 @@ func nativeShoppingKrogerTool(name string) bool {
 }
 
 type bearerTransport struct {
-	base  http.RoundTripper
-	token string
+	base   http.RoundTripper
+	token  string
+	origin *url.URL
 }
 
 func (t *bearerTransport) RoundTrip(request *http.Request) (*http.Response, error) {
 	clone := request.Clone(request.Context())
 	clone.Header = request.Header.Clone()
-	clone.Header.Set("Authorization", "Bearer "+t.token)
+	if common.SameOrigin(t.origin, clone.URL) {
+		clone.Header.Set("Authorization", "Bearer "+t.token)
+	} else {
+		// net/http removes Authorization on cross-host redirects, but this
+		// transport previously reattached it. Strip it for every origin change,
+		// including scheme downgrades and alternate ports.
+		clone.Header.Del("Authorization")
+	}
 	response, err := t.base.RoundTrip(clone)
 	if err != nil {
 		return nil, err

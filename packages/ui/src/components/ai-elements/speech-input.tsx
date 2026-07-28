@@ -92,19 +92,25 @@ export const SpeechInput = ({
 }: SpeechInputProps) => {
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
   const [mode] = useState<SpeechInputMode>(detectSpeechInputMode);
   const [isRecognitionReady, setIsRecognitionReady] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaRecorderCleanupRef = useRef<(() => void) | null>(null);
+  const mediaRequestGenerationRef = useRef(0);
+  const mediaStartInFlightRef = useRef(false);
+  const mountedRef = useRef(true);
   const streamRef = useRef<MediaStream | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const onTranscriptionChangeRef =
     useRef<SpeechInputProps["onTranscriptionChange"]>(onTranscriptionChange);
   const onAudioRecordedRef = useRef<SpeechInputProps["onAudioRecorded"]>(onAudioRecorded);
 
-  // Keep refs in sync
-  onTranscriptionChangeRef.current = onTranscriptionChange;
-  onAudioRecordedRef.current = onAudioRecorded;
+  useEffect(() => {
+    onTranscriptionChangeRef.current = onTranscriptionChange;
+    onAudioRecordedRef.current = onAudioRecorded;
+  }, [onAudioRecorded, onTranscriptionChange]);
 
   // Initialize Speech Recognition when mode is speech-recognition
   useEffect(() => {
@@ -167,30 +173,59 @@ export const SpeechInput = ({
   }, [mode, lang]);
 
   // Cleanup MediaRecorder and stream on unmount
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    mountedRef.current = true;
+
+    return () => {
+      mountedRef.current = false;
+      mediaRequestGenerationRef.current += 1;
+      mediaStartInFlightRef.current = false;
+
       if (mediaRecorderRef.current?.state === "recording") {
         mediaRecorderRef.current.stop();
       }
+      mediaRecorderCleanupRef.current?.();
+      mediaRecorderCleanupRef.current = null;
+      mediaRecorderRef.current = null;
       if (streamRef.current) {
         for (const track of streamRef.current.getTracks()) {
           track.stop();
         }
+        streamRef.current = null;
       }
-    },
-    [],
-  );
+    };
+  }, []);
 
   // Start MediaRecorder recording
   const startMediaRecorder = useCallback(async () => {
-    if (!onAudioRecordedRef.current) {
+    if (
+      !mountedRef.current ||
+      !onAudioRecordedRef.current ||
+      mediaStartInFlightRef.current ||
+      mediaRecorderRef.current
+    ) {
       return;
     }
 
+    const requestGeneration = mediaRequestGenerationRef.current + 1;
+    mediaRequestGenerationRef.current = requestGeneration;
+    mediaStartInFlightRef.current = true;
+    setIsStarting(true);
+
+    let stream: MediaStream | null = null;
+    let cleanupRecorder: (() => void) | null = null;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-      const mediaRecorder = new MediaRecorder(stream);
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (!mountedRef.current || mediaRequestGenerationRef.current !== requestGeneration) {
+        for (const track of stream.getTracks()) {
+          track.stop();
+        }
+        return;
+      }
+
+      const activeStream = stream;
+      streamRef.current = activeStream;
+      const mediaRecorder = new MediaRecorder(activeStream);
       audioChunksRef.current = [];
 
       const handleDataAvailable = (event: BlobEvent) => {
@@ -200,36 +235,61 @@ export const SpeechInput = ({
       };
 
       const handleStop = async () => {
-        for (const track of stream.getTracks()) {
+        cleanupRecorder?.();
+        for (const track of activeStream.getTracks()) {
           track.stop();
         }
-        streamRef.current = null;
+        if (streamRef.current === activeStream) {
+          streamRef.current = null;
+        }
 
         const audioBlob = new Blob(audioChunksRef.current, {
           type: "audio/webm",
         });
+        audioChunksRef.current = [];
 
         if (audioBlob.size > 0 && onAudioRecordedRef.current) {
-          setIsProcessing(true);
+          if (mountedRef.current) {
+            setIsProcessing(true);
+          }
           try {
             const transcript = await onAudioRecordedRef.current(audioBlob);
-            if (transcript) {
+            if (transcript && mountedRef.current) {
               onTranscriptionChangeRef.current?.(transcript);
             }
           } catch {
             // Error handling delegated to the onAudioRecorded caller
           } finally {
-            setIsProcessing(false);
+            if (mountedRef.current) {
+              setIsProcessing(false);
+            }
           }
         }
       };
 
       const handleError = () => {
-        setIsListening(false);
-        for (const track of stream.getTracks()) {
+        cleanupRecorder?.();
+        if (mountedRef.current) {
+          setIsListening(false);
+        }
+        for (const track of activeStream.getTracks()) {
           track.stop();
         }
-        streamRef.current = null;
+        if (streamRef.current === activeStream) {
+          streamRef.current = null;
+        }
+      };
+
+      cleanupRecorder = () => {
+        mediaRecorder.removeEventListener("dataavailable", handleDataAvailable);
+        mediaRecorder.removeEventListener("stop", handleStop);
+        mediaRecorder.removeEventListener("error", handleError);
+        if (mediaRecorderRef.current === mediaRecorder) {
+          mediaRecorderRef.current = null;
+        }
+        if (mediaRecorderCleanupRef.current === cleanupRecorder) {
+          mediaRecorderCleanupRef.current = null;
+        }
       };
 
       mediaRecorder.addEventListener("dataavailable", handleDataAvailable);
@@ -237,10 +297,31 @@ export const SpeechInput = ({
       mediaRecorder.addEventListener("error", handleError);
 
       mediaRecorderRef.current = mediaRecorder;
+      mediaRecorderCleanupRef.current = cleanupRecorder;
       mediaRecorder.start();
-      setIsListening(true);
+      if (mountedRef.current) {
+        setIsListening(true);
+      }
     } catch {
-      setIsListening(false);
+      cleanupRecorder?.();
+      if (stream) {
+        for (const track of stream.getTracks()) {
+          track.stop();
+        }
+        if (streamRef.current === stream) {
+          streamRef.current = null;
+        }
+      }
+      if (mountedRef.current && mediaRequestGenerationRef.current === requestGeneration) {
+        setIsListening(false);
+      }
+    } finally {
+      if (mediaRequestGenerationRef.current === requestGeneration) {
+        mediaStartInFlightRef.current = false;
+        if (mountedRef.current) {
+          setIsStarting(false);
+        }
+      }
     }
   }, []);
 
@@ -273,7 +354,16 @@ export const SpeechInput = ({
     mode === "none" ||
     (mode === "speech-recognition" && !isRecognitionReady) ||
     (mode === "media-recorder" && !onAudioRecorded) ||
+    isStarting ||
     isProcessing;
+  const isBusy = isStarting || isProcessing;
+  const accessibleLabel = isProcessing
+    ? "Transcribing audio"
+    : isStarting
+      ? "Requesting microphone access"
+      : isListening
+        ? "Stop recording"
+        : "Start voice input";
 
   return (
     <div className="relative inline-flex items-center justify-center">
@@ -292,6 +382,8 @@ export const SpeechInput = ({
 
       {/* Main record button */}
       <Button
+        aria-busy={isBusy}
+        aria-label={accessibleLabel}
         className={cn(
           "relative z-10 rounded-full transition-all duration-300",
           isListening
@@ -303,9 +395,9 @@ export const SpeechInput = ({
         onClick={toggleListening}
         {...props}
       >
-        {isProcessing && <Spinner />}
-        {!isProcessing && isListening && <SquareIcon className="size-4" />}
-        {!(isProcessing || isListening) && <MicIcon className="size-4" />}
+        {isBusy && <Spinner />}
+        {!isBusy && isListening && <SquareIcon className="size-4" />}
+        {!(isBusy || isListening) && <MicIcon className="size-4" />}
       </Button>
     </div>
   );

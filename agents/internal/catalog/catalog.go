@@ -28,6 +28,8 @@ var specs = [...]Spec{
 	{ClientID: "oral-boards", Route: "oralboards", AppName: "oralboards_agent", Timeout: 5 * time.Minute, Telegram: true, Eval: true},
 	{ClientID: "trends", Route: "trends", AppName: "GoogleTrendsAgent", Timeout: 3 * time.Minute, Telegram: true},
 	{ClientID: "resume", Route: "resume", AppName: "resume_agent", Public: true, Timeout: 2 * time.Minute, Telegram: true, Eval: true},
+	{ClientID: "jobs", Route: "jobs", AppName: "jobs_agent", Timeout: 2 * time.Minute},
+	{ClientID: "interview", Route: "interview", AppName: "interview_coach_agent", Timeout: 2 * time.Minute, Eval: true},
 	{ClientID: "research", Route: "research", AppName: "research_canvas_agent", Timeout: 3 * time.Minute, Telegram: true, Eval: true},
 	{ClientID: "spreadsheet", Route: "spreadsheet", AppName: "spreadsheet_agent", Timeout: 2 * time.Minute, Telegram: true, Eval: true},
 	{ClientID: "presentation", Route: "presentation", AppName: "presentation_agent", Timeout: 2 * time.Minute, Telegram: true, Eval: true},

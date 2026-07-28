@@ -5,6 +5,7 @@ import (
 	"iter"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"sync"
 	"testing"
 
@@ -49,6 +50,74 @@ func TestKrogerMCPUsesOnlyRequestScopedToken(t *testing.T) {
 	defer mu.Unlock()
 	if counts["Bearer token-a"] == 0 || counts["Bearer token-b"] == 0 || counts[""] != 0 {
 		t.Fatalf("authorization counts = %#v", counts)
+	}
+}
+
+func TestKrogerBearerTransportStripsTokenFromCrossOriginRedirect(t *testing.T) {
+	var receivedAuthorization string
+	destination := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		receivedAuthorization = request.Header.Get("Authorization")
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	t.Cleanup(destination.Close)
+
+	source := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		http.Redirect(w, request, destination.URL+"/redirected", http.StatusTemporaryRedirect)
+	}))
+	t.Cleanup(source.Close)
+	origin, err := url.Parse(source.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := source.Client()
+	client.Transport = &bearerTransport{base: client.Transport, token: "kroger-secret", origin: origin}
+	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, source.URL+"/start", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := response.Body.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if receivedAuthorization != "" {
+		t.Fatalf("cross-origin Authorization = %q", receivedAuthorization)
+	}
+}
+
+func TestKrogerBearerTransportKeepsTokenOnSameOriginRedirect(t *testing.T) {
+	var receivedAuthorization string
+	mux := http.NewServeMux()
+	mux.HandleFunc("/start", func(w http.ResponseWriter, request *http.Request) {
+		http.Redirect(w, request, "/redirected", http.StatusTemporaryRedirect)
+	})
+	mux.HandleFunc("/redirected", func(w http.ResponseWriter, request *http.Request) {
+		receivedAuthorization = request.Header.Get("Authorization")
+		w.WriteHeader(http.StatusNoContent)
+	})
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+	origin, err := url.Parse(server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := server.Client()
+	client.Transport = &bearerTransport{base: client.Transport, token: "kroger-secret", origin: origin}
+	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, server.URL+"/start", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := response.Body.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if receivedAuthorization != "Bearer kroger-secret" {
+		t.Fatalf("same-origin Authorization = %q", receivedAuthorization)
 	}
 }
 

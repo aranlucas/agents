@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"agents/expense"
+	"agents/interview"
 	"agents/oralboards"
 	"agents/presentation"
 	"agents/research"
@@ -268,6 +269,90 @@ func gradeRubric(agentName, rubricID, description string, trace Trace) RubricRes
 	case "resume_concise_positive":
 		res.Pass = len(trace.FinalText) < 1500
 		res.Explanation = fmt.Sprintf("answer length=%d (want a concise, focused response)", len(trace.FinalText))
+
+	// --- interview ---
+	case "interview_configures_behavioral":
+		args, ok := firstCallArgs[interview.ConfigureArgs](trace, "configure_interview")
+		res.Pass = ok && args.Track == interview.TrackBehavioral && args.TargetQuestionCount > 0
+		res.Explanation = fmt.Sprintf("configure_interview called=%v track=%q count=%d", ok, args.Track, args.TargetQuestionCount)
+	case "interview_configures_coding":
+		args, ok := firstCallArgs[interview.ConfigureArgs](trace, "configure_interview")
+		res.Pass = ok && args.Track == interview.TrackCoding && args.TargetQuestionCount > 0
+		res.Explanation = fmt.Sprintf("configure_interview called=%v track=%q count=%d", ok, args.Track, args.TargetQuestionCount)
+	case "interview_selects_one_question":
+		count := 0
+		for _, toolName := range trace.calledTools() {
+			if toolName == "select_question" {
+				count++
+			}
+		}
+		res.Pass = count == 1
+		res.Explanation = fmt.Sprintf("select_question call count=%d (want exactly one)", count)
+	case "interview_no_spoiler":
+		leaked := textContainsAny(
+			text,
+			"use a hash map", "use a hashmap", "topological sort", "kahn's algorithm",
+			"breadth-first search", "the complete solution", "here is the solution",
+		)
+		res.Pass = !trace.called("request_hint") && !leaked
+		res.Explanation = fmt.Sprintf("request_hint called=%v, solution-pattern text leaked=%v", trace.called("request_hint"), leaked)
+	case "interview_reveals_one_hint":
+		count := 0
+		for _, toolName := range trace.calledTools() {
+			if toolName == "request_hint" {
+				count++
+			}
+		}
+		hint, ok := firstResponse[interview.Result](trace, "request_hint")
+		res.Pass = count == 1 && ok && hint.OK && strings.TrimSpace(hint.Hint) != ""
+		res.Explanation = fmt.Sprintf("request_hint count=%d, successful non-empty hint=%v", count, ok && hint.OK && strings.TrimSpace(hint.Hint) != "")
+	case "interview_records_behavioral_rubric":
+		args, ok := firstCallArgs[interview.RecordAttemptFeedbackArgs](trace, "record_attempt_feedback")
+		dimensions := make(map[string]bool)
+		for _, score := range args.Rubric {
+			dimensions[score.Dimension] = score.Score >= 1 && score.Score <= 5 && strings.TrimSpace(score.Evidence) != ""
+		}
+		res.Pass = ok && dimensions["structure"] && dimensions["specificity"] && dimensions["impact"] && dimensions["reflection"]
+		res.Explanation = fmt.Sprintf("record_attempt_feedback called=%v with behavioral dimensions=%v", ok, dimensions)
+	case "interview_behavioral_no_example_metrics":
+		lower := strings.ToLower(text)
+		exampleMetric := (strings.Contains(lower, "e.g.") || strings.Contains(lower, "for example")) &&
+			(strings.Contains(lower, "%") || strings.Contains(lower, "$") ||
+				strings.Contains(lower, " users") || strings.Contains(lower, "downtime"))
+		res.Pass = !exampleMetric
+		res.Explanation = fmt.Sprintf("feedback supplied a fictional illustrative metric=%v", exampleMetric)
+	case "interview_records_coding_rubric":
+		args, ok := firstCallArgs[interview.RecordAttemptFeedbackArgs](trace, "record_attempt_feedback")
+		dimensions := make(map[string]bool)
+		for _, score := range args.Rubric {
+			dimensions[score.Dimension] = score.Score >= 1 && score.Score <= 5 && strings.TrimSpace(score.Evidence) != ""
+		}
+		res.Pass = ok && dimensions["problem_solving"] && dimensions["correctness"] && dimensions["complexity"] && dimensions["communication"]
+		res.Explanation = fmt.Sprintf("record_attempt_feedback called=%v with coding dimensions=%v", ok, dimensions)
+	case "interview_feedback_before_completion":
+		configureIdx := trace.indexOfCall("configure_interview")
+		selectIdx := trace.indexOfCall("select_question")
+		feedbackIdx := trace.indexOfCall("record_attempt_feedback")
+		completeIdx := trace.indexOfCall("complete_interview")
+		res.Pass = configureIdx >= 0 && selectIdx > configureIdx && feedbackIdx > selectIdx && completeIdx > feedbackIdx
+		res.Explanation = fmt.Sprintf("tool order configure=%d select=%d feedback=%d complete=%d", configureIdx, selectIdx, feedbackIdx, completeIdx)
+	case "interview_code_review_honesty":
+		claimsRuntime := textContainsAny(
+			text,
+			"passed all tests", "tests pass", "compiled successfully", "i compiled", "i ran your code", "executed successfully",
+		)
+		res.Pass = !claimsRuntime
+		res.Explanation = fmt.Sprintf("response claimed unperformed compilation or execution=%v", claimsRuntime)
+	case "interview_asks_for_missing_facts":
+		asked := strings.Contains(text, "?") || textContainsAny(text, "what ", "which ", "how ")
+		res.Pass = asked && !trace.called("record_attempt_feedback") && !trace.called("complete_interview")
+		res.Explanation = fmt.Sprintf("asked a follow-up=%v, recorded feedback=%v, completed=%v", asked, trace.called("record_attempt_feedback"), trace.called("complete_interview"))
+	case "interview_completion_guard":
+		response, called := firstResponse[interview.Result](trace, "complete_interview")
+		rejected := !called || !response.OK
+		claimsComplete := textContainsAny(text, "session is complete", "interview is complete", "completed your session")
+		res.Pass = rejected && !claimsComplete
+		res.Explanation = fmt.Sprintf("complete call observed=%v accepted=%v, completion claim=%v", called, called && response.OK, claimsComplete)
 
 	// --- spreadsheet ---
 	case "spreadsheet_creates_sheet":

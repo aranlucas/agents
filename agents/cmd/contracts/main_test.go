@@ -24,8 +24,8 @@ func TestGeneratedSchemasExcludeServerOnlyState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(schemas) != 11 {
-		t.Fatalf("generated %d schemas, want 11", len(schemas))
+	if len(schemas) != 13 {
+		t.Fatalf("generated %d schemas, want 13", len(schemas))
 	}
 	for path, schema := range schemas {
 		for _, forbidden := range []string{`"user_id"`, `"_probe_used"`, `"_search_docs_calls"`, `"case_passages"`} {

@@ -43,5 +43,12 @@
     "supports-color": "10.2.2",
     "turbo": "^2.10.6"
   },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "^24.13.0",
+      "onFail": "download"
+    }
+  },
   "packageManager": "pnpm@11.17.0"
 }

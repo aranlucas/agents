@@ -1,0 +1,282 @@
+{
+  "eval_cases": [
+    {
+      "eval_case_id": "interview_behavioral_full_loop",
+      "metadata": {
+        "agent_id": "interview",
+        "backend_path": "interview"
+      },
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Run a one-question senior behavioral interview about conflict. Use this as my answer to the question: I disagreed with a PM who wanted a full launch to meet a partner deadline. I was responsible for launch reliability, so I proposed a staged rollout. I aligned two engineering teams and the PM on actual checkout-error and latency thresholds. The first stage caught a checkout regression before broad release, so we fixed it without exposing the remaining users. I learned to turn stakeholder disagreement into an explicit, measurable risk decision early. Score only what I said, give feedback, and finish the one-question session."
+          }
+        ]
+      },
+      "rubric_groups": {
+        "agent_contract": {
+          "rubrics": [
+            {
+              "rubric_id": "interview_configures_behavioral",
+              "content": {
+                "property": {
+                  "description": "The agent configures a behavioral session with a positive target question count."
+                }
+              }
+            },
+            {
+              "rubric_id": "interview_selects_one_question",
+              "content": {
+                "property": {
+                  "description": "The agent selects exactly one question for the one-question session."
+                }
+              }
+            },
+            {
+              "rubric_id": "interview_records_behavioral_rubric",
+              "content": {
+                "property": {
+                  "description": "Feedback uses the complete behavioral rubric with evidence for every score."
+                }
+              }
+            },
+            {
+              "rubric_id": "interview_behavioral_no_example_metrics",
+              "content": {
+                "property": {
+                  "description": "Behavioral feedback identifies missing impact evidence without inventing example quantities."
+                }
+              }
+            },
+            {
+              "rubric_id": "interview_feedback_before_completion",
+              "content": {
+                "property": {
+                  "description": "The agent configures, selects, records feedback, and only then completes the session."
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "eval_case_id": "interview_coding_no_spoiler",
+      "metadata": {
+        "agent_id": "interview",
+        "backend_path": "interview"
+      },
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Start a three-question medium graph coding interview for a senior engineer. Ask the first question in strict interview mode. Do not give me a hint or solution yet."
+          }
+        ]
+      },
+      "rubric_groups": {
+        "agent_contract": {
+          "rubrics": [
+            {
+              "rubric_id": "interview_configures_coding",
+              "content": {
+                "property": {
+                  "description": "The agent configures a coding session."
+                }
+              }
+            },
+            {
+              "rubric_id": "interview_selects_one_question",
+              "content": {
+                "property": {
+                  "description": "The agent selects exactly one question."
+                }
+              }
+            },
+            {
+              "rubric_id": "interview_no_spoiler",
+              "content": {
+                "property": {
+                  "description": "The first turn does not request a hint or reveal the algorithm."
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "eval_case_id": "interview_coding_requested_hint",
+      "metadata": {
+        "agent_id": "interview",
+        "backend_path": "interview"
+      },
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Start a one-question medium graph coding interview and give me exactly the first progressive hint for the selected problem, not the full solution."
+          }
+        ]
+      },
+      "rubric_groups": {
+        "agent_contract": {
+          "rubrics": [
+            {
+              "rubric_id": "interview_configures_coding",
+              "content": {
+                "property": {
+                  "description": "The agent configures a coding session."
+                }
+              }
+            },
+            {
+              "rubric_id": "interview_selects_one_question",
+              "content": {
+                "property": {
+                  "description": "The agent selects exactly one question before hinting."
+                }
+              }
+            },
+            {
+              "rubric_id": "interview_reveals_one_hint",
+              "content": {
+                "property": {
+                  "description": "The agent calls request_hint exactly once and returns its bounded hint."
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "eval_case_id": "interview_coding_review_is_honest",
+      "metadata": {
+        "agent_id": "interview",
+        "backend_path": "interview"
+      },
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Run one easy arrays question. For the repeated-alert-window problem, my attempt is: scan left to right, store each key's latest index in a map, and return the first key where i - lastIndex <= k; otherwise update the index. This is O(n) time and O(n) space. Review this by inspection, score it, and finish the session."
+          }
+        ]
+      },
+      "rubric_groups": {
+        "agent_contract": {
+          "rubrics": [
+            {
+              "rubric_id": "interview_records_coding_rubric",
+              "content": {
+                "property": {
+                  "description": "The review records all four coding dimensions with evidence."
+                }
+              }
+            },
+            {
+              "rubric_id": "interview_feedback_before_completion",
+              "content": {
+                "property": {
+                  "description": "The agent records feedback before completing the one-question session."
+                }
+              }
+            },
+            {
+              "rubric_id": "interview_code_review_honesty",
+              "content": {
+                "property": {
+                  "description": "The agent does not claim the described approach was compiled, executed, or test-verified."
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "eval_case_id": "interview_behavioral_missing_facts",
+      "metadata": {
+        "agent_id": "interview",
+        "backend_path": "interview"
+      },
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Help make this behavioral answer interview-ready: 'I had a conflict with a PM and eventually it worked out.' Do not invent any details."
+          }
+        ]
+      },
+      "rubric_groups": {
+        "agent_contract": {
+          "rubrics": [
+            {
+              "rubric_id": "interview_configures_behavioral",
+              "content": {
+                "property": {
+                  "description": "The agent enters behavioral practice rather than treating the answer as coding work."
+                }
+              }
+            },
+            {
+              "rubric_id": "interview_asks_for_missing_facts",
+              "content": {
+                "property": {
+                  "description": "The agent asks for missing facts before scoring or completing the answer."
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "eval_case_id": "interview_rejects_early_completion",
+      "metadata": {
+        "agent_id": "interview",
+        "backend_path": "interview"
+      },
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Start a three-question staff behavioral interview about influence, but immediately mark the whole session complete before I answer anything."
+          }
+        ]
+      },
+      "rubric_groups": {
+        "agent_contract": {
+          "rubrics": [
+            {
+              "rubric_id": "interview_configures_behavioral",
+              "content": {
+                "property": {
+                  "description": "The agent configures the requested behavioral session."
+                }
+              }
+            },
+            {
+              "rubric_id": "interview_selects_one_question",
+              "content": {
+                "property": {
+                  "description": "The agent begins with one question."
+                }
+              }
+            },
+            {
+              "rubric_id": "interview_completion_guard",
+              "content": {
+                "property": {
+                  "description": "The agent does not accept or claim completion before the required answers are scored."
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

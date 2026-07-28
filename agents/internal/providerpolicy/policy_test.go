@@ -18,16 +18,16 @@ func TestAgentPolicies(t *testing.T) {
 		rpm       int
 		fallbacks []string
 	}{
-		{Expense, "openrouter", "tencent/hy3:free", "", 20, []string{"mistral"}},
-		{Fitness, "groq", "llama-3.3-70b-versatile", "", 30, []string{"mistral", "openrouter"}},
-		{Grocery, "nvidia", "nvidia/nemotron-3-super-120b-a12b", "", 20, []string{"mistral", "openrouter"}},
-		{Presentation, "groq", "llama-3.3-70b-versatile", "", 30, []string{"mistral", "openrouter"}},
-		{Research, "openrouter", "tencent/hy3:free", "", 20, []string{"mistral"}},
-		{Resume, "cerebras", "gpt-oss-120b", "low", 5, []string{"groq", "mistral"}},
-		{Spreadsheet, "groq", "llama-3.3-70b-versatile", "", 30, []string{"mistral", "openrouter"}},
-		{Travel, "openrouter", "tencent/hy3:free", "", 20, []string{"mistral"}},
-		{Trends, "groq", "llama-3.3-70b-versatile", "", 30, []string{"mistral", "openrouter"}},
-		{Wellness, "groq", "llama-3.3-70b-versatile", "", 30, []string{"mistral", "openrouter"}},
+		{Expense, "openrouter", openRouterFreeModel, "", 20, []string{"groq"}},
+		{Fitness, "groq", groqResponsesModel, "", 30, []string{"openrouter"}},
+		{Grocery, "groq", groqResponsesModel, "", 20, []string{"openrouter"}},
+		{Presentation, "groq", groqResponsesModel, "", 30, []string{"openrouter"}},
+		{Research, "openrouter", openRouterFreeModel, "", 20, []string{"groq"}},
+		{Resume, "groq", groqResponsesModel, "low", 5, []string{"openrouter"}},
+		{Spreadsheet, "groq", groqResponsesModel, "", 30, []string{"openrouter"}},
+		{Travel, "openrouter", openRouterFreeModel, "", 20, []string{"groq"}},
+		{Trends, "groq", groqResponsesModel, "", 30, []string{"openrouter"}},
+		{Wellness, "groq", groqResponsesModel, "", 30, []string{"openrouter"}},
 	}
 	for _, test := range tests {
 		test := test
@@ -61,7 +61,7 @@ func TestResolveRequiredFiltersFallbacksAndPreservesOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resolved.Model != "llama-3.3-70b-versatile" || resolved.RequestsPerMinute != 30 {
+	if resolved.Model != groqResponsesModel || resolved.RequestsPerMinute != 30 {
 		t.Fatalf("resolved policy = %#v", resolved)
 	}
 	if want := []string{"openrouter"}; !reflect.DeepEqual(resolved.Fallbacks, want) {
@@ -79,7 +79,6 @@ func TestResolveRequiredFiltersFallbacksAndPreservesOrder(t *testing.T) {
 func TestFallbackProvidersPreservesProductionFallbackModels(t *testing.T) {
 	t.Parallel()
 	providers := map[string]config.Provider{
-		"mistral":    testProvider("mistral"),
 		"groq":       testProvider("groq"),
 		"openrouter": testProvider("openrouter"),
 		"nvidia":     testProvider("nvidia"),
@@ -89,9 +88,8 @@ func TestFallbackProvidersPreservesProductionFallbackModels(t *testing.T) {
 		model string
 		rpm   int
 	}{
-		"mistral":    {"mistral-small-latest", 20},
-		"groq":       {"llama-3.3-70b-versatile", 30},
-		"openrouter": {"tencent/hy3:free", 20},
+		"groq":       {groqResponsesModel, 30},
+		"openrouter": {openRouterFreeModel, 20},
 		"nvidia":     {"", 0},
 	}
 	for name, want := range wants {
@@ -100,8 +98,8 @@ func TestFallbackProvidersPreservesProductionFallbackModels(t *testing.T) {
 			t.Fatalf("FallbackProviders()[%q] = %#v", name, got)
 		}
 	}
-	if providers["mistral"].Model != "" {
-		t.Fatalf("input map mutated: %#v", providers["mistral"])
+	if providers["groq"].Model != "" {
+		t.Fatalf("input map mutated: %#v", providers["groq"])
 	}
 }
 
@@ -112,17 +110,16 @@ func TestResolveEvalPreservesSubstitutionOrderAndLimits(t *testing.T) {
 		t.Fatal(err)
 	}
 	providers := map[string]config.Provider{
-		"mistral":    testProvider("mistral"),
 		"openrouter": testProvider("openrouter"),
 	}
 	resolved, note, err := ResolveEval(providers, policy)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resolved.Name != "openrouter" || resolved.Model != "tencent/hy3:free" || resolved.RequestsPerMinute != 30 {
+	if resolved.Name != "openrouter" || resolved.Model != openRouterFreeModel || resolved.RequestsPerMinute != 30 {
 		t.Fatalf("substitution = %#v", resolved)
 	}
-	if note != "groq unavailable locally; substituted openrouter/tencent/hy3:free for eval" {
+	if note != "groq unavailable locally; substituted openrouter/openrouter/free for eval" {
 		t.Fatalf("note = %q", note)
 	}
 
@@ -135,20 +132,32 @@ func TestResolveEvalPreservesSubstitutionOrderAndLimits(t *testing.T) {
 	if _, _, err := ResolveEval(nil, policy); err == nil || !strings.Contains(err.Error(), "no provider available") {
 		t.Fatalf("empty-provider error = %v", err)
 	}
+
+	delete(providers, "openrouter")
+	delete(providers, "groq")
+	resumePolicy, err := Agent(Resume)
+	if err != nil {
+		t.Fatal(err)
+	}
+	providers["groq"] = testProvider("groq")
+	resolved, note, err = ResolveEval(providers, resumePolicy)
+	if err != nil || note != "" || resolved.Name != "groq" || resolved.Model != groqResponsesModel {
+		t.Fatalf("Groq eval resolution = %#v, %q, %v", resolved, note, err)
+	}
 }
 
 func TestOralBoardsAndTelegramPoliciesStayDistinct(t *testing.T) {
 	t.Parallel()
 	gateway := GatewayOralBoards()
-	if gateway.GeminiModel != "gemini-3.1-flash-lite" || gateway.Questioner.Provider != "openrouter" || gateway.Evaluator.Model != "mistral-large-latest" || gateway.Scorer.Provider != "" || gateway.AllowQuestionerCaseBuilderFallback {
+	if gateway.GeminiModel != "gemini-3.1-flash-lite" || gateway.Questioner.Provider != "openrouter" || gateway.Evaluator.Provider != "groq" || gateway.Evaluator.Model != groqResponsesModel || gateway.Scorer.Provider != "" || gateway.AllowQuestionerCaseBuilderFallback {
 		t.Fatalf("gateway oralboards policy = %#v", gateway)
 	}
 	eval := EvalOralBoards()
-	if eval.Scorer.Provider != "mistral" || eval.Scorer.Model != "mistral-medium-latest" || !eval.AllowQuestionerCaseBuilderFallback {
+	if eval.Scorer.Provider != "groq" || eval.Scorer.Model != groqResponsesModel || !eval.AllowQuestionerCaseBuilderFallback {
 		t.Fatalf("eval oralboards policy = %#v", eval)
 	}
 	telegram := Telegram()
-	if telegram.Provider != "mistral" || telegram.Model != "mistral-medium-latest" || telegram.RequestsPerMinute != 20 || len(telegram.Fallbacks) != 0 {
+	if telegram.Provider != "groq" || telegram.Model != groqResponsesModel || telegram.RequestsPerMinute != 20 || len(telegram.Fallbacks) != 0 {
 		t.Fatalf("telegram policy = %#v", telegram)
 	}
 }

@@ -126,6 +126,110 @@ func TestSessionCreateAndAppendNeverPersistTemporaryState(t *testing.T) {
 	}
 }
 
+func TestSessionCreateReclaimsOnlyExpiredSessionIdentity(t *testing.T) {
+	var cleanup []Statement
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req batchRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatal(err)
+		}
+		if len(req.Batch) != 6 {
+			t.Fatalf("Create statements = %d, want 6", len(req.Batch))
+		}
+		cleanup = append([]Statement(nil), req.Batch[:2]...)
+		writeEnvelope(t, w, []Result{
+			{Success: true},
+			{Success: true},
+			{Success: true},
+			{Success: true},
+			{Success: true},
+			{
+				Success: true,
+				Rows: rawRows(t, map[string]any{
+					"session_id":      "thread-1",
+					"user_id":         "user-1",
+					"state_json":      `{}`,
+					"updated_at":      int64(2_000),
+					"app_state_json":  `{}`,
+					"user_state_json": `{}`,
+				}),
+			},
+		})
+	}))
+	defer server.Close()
+
+	d1, err := newD1(testCloudflare("token"), server.Client(), server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.UnixMilli(2_000).UTC()
+	service := NewSessionService(d1, func() time.Time { return now })
+	if _, err := service.Create(t.Context(), &session.CreateRequest{
+		AppName: "travel_agent", UserID: "user-1", SessionID: "thread-1", State: map[string]any{},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if len(cleanup) != 2 ||
+		!strings.HasPrefix(strings.TrimSpace(cleanup[0].SQL), "DELETE FROM session_events") ||
+		!strings.HasPrefix(strings.TrimSpace(cleanup[1].SQL), "DELETE FROM sessions") {
+		t.Fatalf("cleanup statements = %#v", cleanup)
+	}
+
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+	if _, err := db.Exec(`
+		PRAGMA foreign_keys = OFF;
+		CREATE TABLE sessions (
+			app_name TEXT NOT NULL,
+			user_id TEXT NOT NULL,
+			session_id TEXT NOT NULL,
+			expires_at INTEGER NOT NULL,
+			PRIMARY KEY (app_name, user_id, session_id)
+		);
+		CREATE TABLE session_events (
+			app_name TEXT NOT NULL,
+			user_id TEXT NOT NULL,
+			session_id TEXT NOT NULL,
+			event_id TEXT NOT NULL,
+			PRIMARY KEY (app_name, user_id, session_id, event_id)
+		);
+		INSERT INTO sessions VALUES ('travel_agent', 'user-1', 'thread-1', 1999);
+		INSERT INTO session_events VALUES ('travel_agent', 'user-1', 'thread-1', 'expired-event');
+		INSERT INTO sessions VALUES ('travel_agent', 'user-1', 'active-thread', 2001);
+		INSERT INTO session_events VALUES ('travel_agent', 'user-1', 'active-thread', 'active-event');
+	`); err != nil {
+		t.Fatal(err)
+	}
+	for _, statement := range cleanup {
+		if _, err := db.Exec(statement.SQL, statement.Params...); err != nil {
+			t.Fatalf("execute cleanup %q: %v", statement.SQL, err)
+		}
+	}
+
+	var expiredSessions, expiredEvents, activeSessions, activeEvents int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM sessions WHERE session_id = 'thread-1'`).Scan(&expiredSessions); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.QueryRow(`SELECT COUNT(*) FROM session_events WHERE session_id = 'thread-1'`).Scan(&expiredEvents); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.QueryRow(`SELECT COUNT(*) FROM sessions WHERE session_id = 'active-thread'`).Scan(&activeSessions); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.QueryRow(`SELECT COUNT(*) FROM session_events WHERE session_id = 'active-thread'`).Scan(&activeEvents); err != nil {
+		t.Fatal(err)
+	}
+	if expiredSessions != 0 || expiredEvents != 0 {
+		t.Fatalf("expired identity remained: sessions=%d events=%d", expiredSessions, expiredEvents)
+	}
+	if activeSessions != 1 || activeEvents != 1 {
+		t.Fatalf("active identity was changed: sessions=%d events=%d", activeSessions, activeEvents)
+	}
+}
+
 // TestAppendEventRetainsTempKeysInMemory is a regression test for the
 // production bug where the grocery agent had no MCP tools: the AG-UI handler
 // forwards X-Kroger-Access-Token as a temp: state key via

@@ -25,6 +25,9 @@ const (
 	Travel       Workload = "travel"
 	Trends       Workload = "trends"
 	Wellness     Workload = "wellness"
+
+	groqResponsesModel  = "openai/gpt-oss-120b"
+	openRouterFreeModel = "openrouter/free"
 )
 
 // Policy is one OpenAI-compatible provider selection. Fallbacks are ordered
@@ -42,7 +45,7 @@ type Policy struct {
 
 // OralBoardsPolicy keeps the phase-specific production/eval differences
 // explicit. A zero Scorer means the scorer reuses the Gemini case-builder
-// model; eval instead supplies its distinct Mistral scorer policy.
+// model; eval instead supplies its distinct scorer policy.
 type OralBoardsPolicy struct {
 	GeminiModel                        string
 	Questioner                         Policy
@@ -55,29 +58,29 @@ type OralBoardsPolicy struct {
 func Agent(workload Workload) (Policy, error) {
 	switch workload {
 	case Expense:
-		return openRouterLight("OPENROUTER_API_KEY is required to configure the expense agent", "mistral"), nil
+		return openRouterLight("OPENROUTER_API_KEY is required to configure the expense agent", "groq"), nil
 	case Fitness:
 		return groqStandard("GROQ_API_KEY is required to configure the fitness agent"), nil
 	case Grocery:
 		return Policy{
-			Provider: "nvidia", Model: "nvidia/nemotron-3-super-120b-a12b", RequestsPerMinute: 20,
-			Fallbacks:              []string{"mistral", "openrouter"},
-			missingProviderMessage: "NVIDIA_NIM_API_KEY is required to configure the grocery agent",
+			Provider: "groq", Model: groqResponsesModel, RequestsPerMinute: 20,
+			Fallbacks:              []string{"openrouter"},
+			missingProviderMessage: "GROQ_API_KEY is required to configure the grocery agent",
 		}, nil
 	case Presentation:
 		return groqStandard("GROQ_API_KEY is required to configure the presentation agent"), nil
 	case Research:
-		return openRouterLight("OPENROUTER_API_KEY is required to configure the research agent", "mistral"), nil
+		return openRouterLight("OPENROUTER_API_KEY is required to configure the research agent", "groq"), nil
 	case Resume:
 		return Policy{
-			Provider: "cerebras", Model: "gpt-oss-120b", ReasoningEffort: "low", RequestsPerMinute: 5,
-			Fallbacks:              []string{"groq", "mistral"},
-			missingProviderMessage: "CEREBRAS_API_KEY is required to configure the resume agent",
+			Provider: "groq", Model: groqResponsesModel, ReasoningEffort: "low", RequestsPerMinute: 5,
+			Fallbacks:              []string{"openrouter"},
+			missingProviderMessage: "GROQ_API_KEY is required to configure the resume agent",
 		}, nil
 	case Spreadsheet:
 		return groqStandard("GROQ_API_KEY is required to configure the spreadsheet agent"), nil
 	case Travel:
-		return openRouterLight("OPENROUTER_API_KEY is required to configure the travel agent", "mistral"), nil
+		return openRouterLight("OPENROUTER_API_KEY is required to configure the travel agent", "groq"), nil
 	case Trends:
 		return groqStandard("GROQ_API_KEY is required to configure the trends agent"), nil
 	case Wellness:
@@ -103,34 +106,34 @@ func ResolveAgent(providers map[string]config.Provider, workload Workload) (conf
 func GatewayOralBoards() OralBoardsPolicy {
 	return OralBoardsPolicy{
 		GeminiModel: "gemini-3.1-flash-lite",
-		Questioner:  openRouterLight("OPENROUTER_API_KEY is required to configure oralboards", "mistral"),
+		Questioner:  openRouterLight("OPENROUTER_API_KEY is required to configure oralboards", "groq"),
 		Evaluator: Policy{
-			Provider: "mistral", Model: "mistral-large-latest", RequestsPerMinute: 20,
-			Fallbacks:              []string{"groq", "openrouter"},
-			missingProviderMessage: "MISTRAL_API_KEY is required to configure oralboards",
+			Provider: "groq", Model: groqResponsesModel, RequestsPerMinute: 20,
+			Fallbacks:              []string{"openrouter"},
+			missingProviderMessage: "GROQ_API_KEY is required to configure oralboards",
 		},
 	}
 }
 
 // EvalOralBoards returns local-eval phase policies. Eval preserves its
-// distinct Mistral medium scorer and may reuse the questioner when Gemini is
-// unavailable locally.
+// distinct scorer and may reuse the questioner when Gemini is unavailable
+// locally.
 func EvalOralBoards() OralBoardsPolicy {
 	policy := GatewayOralBoards()
 	policy.Scorer = Policy{
-		Provider: "mistral", Model: "mistral-medium-latest", RequestsPerMinute: 20,
-		missingProviderMessage: "MISTRAL_API_KEY is required to configure oralboards",
+		Provider: "groq", Model: groqResponsesModel, RequestsPerMinute: 20,
+		missingProviderMessage: "GROQ_API_KEY is required to configure oralboards",
 	}
 	policy.AllowQuestionerCaseBuilderFallback = true
 	return policy
 }
 
-// Telegram returns the intentionally separate all-Mistral policy used for
-// every Telegram specialist and the routing orchestrator.
+// Telegram returns the intentionally separate policy used for every Telegram
+// specialist and the routing orchestrator.
 func Telegram() Policy {
 	return Policy{
-		Provider: "mistral", Model: "mistral-medium-latest", RequestsPerMinute: 20,
-		missingProviderMessage: "MISTRAL_API_KEY is required for Telegram",
+		Provider: "groq", Model: groqResponsesModel, RequestsPerMinute: 20,
+		missingProviderMessage: "GROQ_API_KEY is required for Telegram",
 	}
 }
 
@@ -161,16 +164,12 @@ func FallbackProviders(providers map[string]config.Provider) map[string]config.P
 		provider.Fallbacks = append([]string(nil), provider.Fallbacks...)
 		result[name] = provider
 	}
-	if provider, ok := result["mistral"]; ok {
-		provider.Model, provider.RequestsPerMinute = "mistral-small-latest", 20
-		result["mistral"] = provider
-	}
 	if provider, ok := result["groq"]; ok {
-		provider.Model, provider.RequestsPerMinute = "llama-3.3-70b-versatile", 30
+		provider.Model, provider.RequestsPerMinute = groqResponsesModel, 30
 		result["groq"] = provider
 	}
 	if provider, ok := result["openrouter"]; ok {
-		provider.Model, provider.RequestsPerMinute = "tencent/hy3:free", 20
+		provider.Model, provider.RequestsPerMinute = openRouterFreeModel, 20
 		result["openrouter"] = provider
 	}
 	return result
@@ -186,7 +185,7 @@ func ResolveEval(providers map[string]config.Provider, policy Policy) (config.Pr
 		provider.RequestsPerMinute = policy.RequestsPerMinute
 		return provider, "", nil
 	}
-	for _, name := range []string{"openrouter", "mistral", "nvidia", "cerebras"} {
+	for _, name := range []string{"openrouter", "groq"} {
 		if name == policy.Provider {
 			continue
 		}
@@ -204,15 +203,15 @@ func ResolveEval(providers map[string]config.Provider, policy Policy) (config.Pr
 
 func openRouterLight(missingProviderMessage string, fallbacks ...string) Policy {
 	return Policy{
-		Provider: "openrouter", Model: "tencent/hy3:free", RequestsPerMinute: 20,
+		Provider: "openrouter", Model: openRouterFreeModel, RequestsPerMinute: 20,
 		Fallbacks: append([]string(nil), fallbacks...), missingProviderMessage: missingProviderMessage,
 	}
 }
 
 func groqStandard(missingProviderMessage string) Policy {
 	return Policy{
-		Provider: "groq", Model: "llama-3.3-70b-versatile", RequestsPerMinute: 30,
-		Fallbacks: []string{"mistral", "openrouter"}, missingProviderMessage: missingProviderMessage,
+		Provider: "groq", Model: groqResponsesModel, RequestsPerMinute: 30,
+		Fallbacks: []string{"openrouter"}, missingProviderMessage: missingProviderMessage,
 	}
 }
 
@@ -232,13 +231,9 @@ func configuredFallbacks(providers map[string]config.Provider, fallbacks []strin
 func evalDefaultModel(provider string) string {
 	switch provider {
 	case "openrouter":
-		return "tencent/hy3:free"
-	case "mistral":
-		return "mistral-large-latest"
-	case "nvidia":
-		return "nvidia/nemotron-3-super-120b-a12b"
-	case "cerebras":
-		return "gpt-oss-120b"
+		return openRouterFreeModel
+	case "groq":
+		return groqResponsesModel
 	default:
 		return ""
 	}
