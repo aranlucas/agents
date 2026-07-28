@@ -7,11 +7,7 @@ paths:
     post:
       operationId: createHousehold
       security:
-        - clerkBearer: []
-        - {}
-      parameters:
-        - $ref: "#/components/parameters/ShoppingServiceSecret"
-        - $ref: "#/components/parameters/ShoppingUserId"
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -35,11 +31,7 @@ paths:
     get:
       operationId: listHouseholds
       security:
-        - clerkBearer: []
-        - {}
-      parameters:
-        - $ref: "#/components/parameters/ShoppingServiceSecret"
-        - $ref: "#/components/parameters/ShoppingUserId"
+        - bearerAuth: []
       responses:
         "200":
           description: Households available to the shopper
@@ -55,11 +47,8 @@ paths:
     post:
       operationId: createInvite
       security:
-        - clerkBearer: []
-        - {}
+        - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/ShoppingServiceSecret"
-        - $ref: "#/components/parameters/ShoppingUserId"
         - name: id
           in: path
           required: true
@@ -88,11 +77,8 @@ paths:
     post:
       operationId: joinHousehold
       security:
-        - clerkBearer: []
-        - {}
+        - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/ShoppingServiceSecret"
-        - $ref: "#/components/parameters/ShoppingUserId"
         - name: code
           in: path
           required: true
@@ -111,11 +97,8 @@ paths:
     get:
       operationId: listLists
       security:
-        - clerkBearer: []
-        - {}
+        - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/ShoppingServiceSecret"
-        - $ref: "#/components/parameters/ShoppingUserId"
         - name: householdId
           in: query
           required: false
@@ -135,11 +118,7 @@ paths:
     post:
       operationId: createList
       security:
-        - clerkBearer: []
-        - {}
-      parameters:
-        - $ref: "#/components/parameters/ShoppingServiceSecret"
-        - $ref: "#/components/parameters/ShoppingUserId"
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -171,11 +150,8 @@ paths:
     get:
       operationId: getList
       security:
-        - clerkBearer: []
-        - {}
+        - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/ShoppingServiceSecret"
-        - $ref: "#/components/parameters/ShoppingUserId"
         - name: id
           in: path
           required: true
@@ -193,11 +169,8 @@ paths:
     patch:
       operationId: updateList
       security:
-        - clerkBearer: []
-        - {}
+        - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/ShoppingServiceSecret"
-        - $ref: "#/components/parameters/ShoppingUserId"
         - name: id
           in: path
           required: true
@@ -222,11 +195,8 @@ paths:
     post:
       operationId: addItems
       security:
-        - clerkBearer: []
-        - {}
+        - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/ShoppingServiceSecret"
-        - $ref: "#/components/parameters/ShoppingUserId"
         - name: id
           in: path
           required: true
@@ -260,11 +230,8 @@ paths:
     patch:
       operationId: updateItem
       security:
-        - clerkBearer: []
-        - {}
+        - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/ShoppingServiceSecret"
-        - $ref: "#/components/parameters/ShoppingUserId"
         - name: id
           in: path
           required: true
@@ -293,11 +260,8 @@ paths:
     delete:
       operationId: deleteItem
       security:
-        - clerkBearer: []
-        - {}
+        - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/ShoppingServiceSecret"
-        - $ref: "#/components/parameters/ShoppingUserId"
         - name: id
           in: path
           required: true
@@ -317,11 +281,8 @@ paths:
     get:
       operationId: listRecipes
       security:
-        - clerkBearer: []
-        - {}
+        - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/ShoppingServiceSecret"
-        - $ref: "#/components/parameters/ShoppingUserId"
         - name: householdId
           in: query
           required: false
@@ -341,11 +302,7 @@ paths:
     post:
       operationId: createRecipe
       security:
-        - clerkBearer: []
-        - {}
-      parameters:
-        - $ref: "#/components/parameters/ShoppingServiceSecret"
-        - $ref: "#/components/parameters/ShoppingUserId"
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -365,11 +322,8 @@ paths:
     get:
       operationId: getRecipe
       security:
-        - clerkBearer: []
-        - {}
+        - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/ShoppingServiceSecret"
-        - $ref: "#/components/parameters/ShoppingUserId"
         - name: id
           in: path
           required: true
@@ -387,11 +341,8 @@ paths:
     put:
       operationId: updateRecipe
       security:
-        - clerkBearer: []
-        - {}
+        - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/ShoppingServiceSecret"
-        - $ref: "#/components/parameters/ShoppingUserId"
         - name: id
           in: path
           required: true
@@ -416,11 +367,7 @@ paths:
     get:
       operationId: getPantry
       security:
-        - clerkBearer: []
-        - {}
-      parameters:
-        - $ref: "#/components/parameters/ShoppingServiceSecret"
-        - $ref: "#/components/parameters/ShoppingUserId"
+        - bearerAuth: []
       responses:
         "200":
           description: Pantry items
@@ -439,11 +386,7 @@ paths:
     post:
       operationId: addPantryItems
       security:
-        - clerkBearer: []
-        - {}
-      parameters:
-        - $ref: "#/components/parameters/ShoppingServiceSecret"
-        - $ref: "#/components/parameters/ShoppingUserId"
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -487,11 +430,7 @@ paths:
     post:
       operationId: removePantryItems
       security:
-        - clerkBearer: []
-        - {}
-      parameters:
-        - $ref: "#/components/parameters/ShoppingServiceSecret"
-        - $ref: "#/components/parameters/ShoppingUserId"
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -525,11 +464,7 @@ paths:
     post:
       operationId: setPantryItemQuantity
       security:
-        - clerkBearer: []
-        - {}
-      parameters:
-        - $ref: "#/components/parameters/ShoppingServiceSecret"
-        - $ref: "#/components/parameters/ShoppingUserId"
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -563,11 +498,7 @@ paths:
     get:
       operationId: getEquipment
       security:
-        - clerkBearer: []
-        - {}
-      parameters:
-        - $ref: "#/components/parameters/ShoppingServiceSecret"
-        - $ref: "#/components/parameters/ShoppingUserId"
+        - bearerAuth: []
       responses:
         "200":
           description: Kitchen equipment
@@ -586,11 +517,7 @@ paths:
     post:
       operationId: addEquipment
       security:
-        - clerkBearer: []
-        - {}
-      parameters:
-        - $ref: "#/components/parameters/ShoppingServiceSecret"
-        - $ref: "#/components/parameters/ShoppingUserId"
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -630,11 +557,7 @@ paths:
     post:
       operationId: removeEquipment
       security:
-        - clerkBearer: []
-        - {}
-      parameters:
-        - $ref: "#/components/parameters/ShoppingServiceSecret"
-        - $ref: "#/components/parameters/ShoppingUserId"
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -668,11 +591,8 @@ paths:
     get:
       operationId: getOrders
       security:
-        - clerkBearer: []
-        - {}
+        - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/ShoppingServiceSecret"
-        - $ref: "#/components/parameters/ShoppingUserId"
         - name: limit
           in: query
           required: false
@@ -696,11 +616,7 @@ paths:
     post:
       operationId: recordOrder
       security:
-        - clerkBearer: []
-        - {}
-      parameters:
-        - $ref: "#/components/parameters/ShoppingServiceSecret"
-        - $ref: "#/components/parameters/ShoppingUserId"
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -720,11 +636,7 @@ paths:
     get:
       operationId: getPreferredStore
       security:
-        - clerkBearer: []
-        - {}
-      parameters:
-        - $ref: "#/components/parameters/ShoppingServiceSecret"
-        - $ref: "#/components/parameters/ShoppingUserId"
+        - bearerAuth: []
       responses:
         "200":
           description: Preferred store
@@ -737,11 +649,7 @@ paths:
     put:
       operationId: setPreferredStore
       security:
-        - clerkBearer: []
-        - {}
-      parameters:
-        - $ref: "#/components/parameters/ShoppingServiceSecret"
-        - $ref: "#/components/parameters/ShoppingUserId"
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -760,11 +668,7 @@ paths:
     delete:
       operationId: deletePreferredStore
       security:
-        - clerkBearer: []
-        - {}
-      parameters:
-        - $ref: "#/components/parameters/ShoppingServiceSecret"
-        - $ref: "#/components/parameters/ShoppingUserId"
+        - bearerAuth: []
       responses:
         "204":
           description: Preferred store deleted
@@ -774,11 +678,7 @@ paths:
     get:
       operationId: getShoppingProfile
       security:
-        - clerkBearer: []
-        - {}
-      parameters:
-        - $ref: "#/components/parameters/ShoppingServiceSecret"
-        - $ref: "#/components/parameters/ShoppingUserId"
+        - bearerAuth: []
       responses:
         "200":
           description: Shopping profile
@@ -789,19 +689,6 @@ paths:
         default:
           $ref: "#/components/responses/GroceryError"
 components:
-  parameters:
-    ShoppingServiceSecret:
-      name: x-shopping-service-secret
-      in: header
-      required: false
-      schema:
-        type: string
-    ShoppingUserId:
-      name: x-shopping-user-id
-      in: header
-      required: false
-      schema:
-        type: string
   responses:
     GroceryError:
       description: Structured grocery API error
@@ -810,10 +697,10 @@ components:
           schema:
             $ref: "#/components/schemas/Error"
   securitySchemes:
-    clerkBearer:
+    bearerAuth:
       type: http
       scheme: bearer
-      description: Clerk session JWT, verified by agents/internal/auth upstream of this router.
+      description: Clerk session JWT or shopping MCP OAuth token, verified by route-specific gateway authentication.
   schemas:
     Error:
       type: object

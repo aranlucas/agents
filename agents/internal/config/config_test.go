@@ -19,7 +19,6 @@ func TestLoadNormalizesHTTPAndProviderConfiguration(t *testing.T) {
 	env["PORT"] = " 9000 "
 	env["ALLOWED_ORIGINS"] = " https://app.example.com,https://mobile.example.com, https://app.example.com "
 	env["GROQ_API_KEY"] = "secret"
-	env["SHOPPING_SERVICE_SECRET"] = "  worker-secret  "
 
 	cfg, err := Load(func(key string) string { return env[key] })
 	if err != nil {
@@ -30,9 +29,6 @@ func TestLoadNormalizesHTTPAndProviderConfiguration(t *testing.T) {
 	}
 	if cfg.Environment != EnvironmentTest {
 		t.Fatalf("environment = %q", cfg.Environment)
-	}
-	if cfg.ShoppingServiceSecret != "worker-secret" {
-		t.Fatalf("shopping service secret = %q", cfg.ShoppingServiceSecret)
 	}
 	if got := strings.Join(cfg.HTTP.Origins, ","); got != "https://app.example.com,https://mobile.example.com" {
 		t.Fatalf("origins = %q", got)
