@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -69,6 +70,32 @@ func TestPublicRouteUsesVerifiedIdentityWhenBearerTokenIsPresent(t *testing.T) {
 	}), verifier)
 	request := httptest.NewRequest(http.MethodPost, "/resume/agui", nil)
 	request.Header.Set("Authorization", "Bearer session-token")
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("status = %d", recorder.Code)
+	}
+}
+
+func TestProtectedRouteAcceptsFirstSuccessfulVerifier(t *testing.T) {
+	first := tokenVerifierFunc(func(context.Context, string) (Identity, error) {
+		return Identity{}, errors.New("not a Clerk token")
+	})
+	second := tokenVerifierFunc(func(_ context.Context, token string) (Identity, error) {
+		if token != "mcp-token" {
+			return Identity{}, errors.New("not an MCP token")
+		}
+		return Identity{UserID: "kroger:user"}, nil
+	})
+	handler := RequireIdentity(nil, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		identity, ok := FromContext(r.Context())
+		if !ok || identity.UserID != "kroger:user" {
+			t.Fatalf("identity = %#v, %v", identity, ok)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}), first, second)
+	request := httptest.NewRequest(http.MethodGet, "/api/grocery/profile", nil)
+	request.Header.Set("Authorization", "Bearer mcp-token")
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusNoContent {

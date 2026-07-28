@@ -25,6 +25,39 @@ func TestKrogerUserinfoURLUsesMCPOrigin(t *testing.T) {
 	}
 }
 
+func TestKrogerTokenVerifierResolvesVerifiedSubject(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/userinfo" || request.Header.Get("Authorization") != "Bearer mcp-token" {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		_, _ = w.Write([]byte(`{"sub":"kroger-sub"}`))
+	}))
+	defer server.Close()
+	repository := newFakeShoppingRepository()
+	identity, err := newKrogerTokenVerifier(repository, server.URL+"/mcp", server.Client()).Verify(t.Context(), "mcp-token")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if identity.UserID != "clerk-resolved" || repository.resolvedSubject != "kroger-sub" {
+		t.Fatalf("identity = %#v, subject = %q", identity, repository.resolvedSubject)
+	}
+}
+
+func TestKrogerTokenVerifierRejectsUnverifiedToken(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+	}))
+	defer server.Close()
+	repository := newFakeShoppingRepository()
+	if _, err := newKrogerTokenVerifier(repository, server.URL+"/mcp", server.Client()).Verify(t.Context(), "invalid"); err == nil {
+		t.Fatal("invalid token accepted")
+	}
+	if repository.resolveCalls != 0 {
+		t.Fatalf("shopper resolution calls = %d", repository.resolveCalls)
+	}
+}
+
 func TestKrogerLinkerLinksOncePerHour(t *testing.T) {
 	var hits atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {

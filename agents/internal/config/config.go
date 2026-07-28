@@ -67,15 +67,14 @@ func (e Environment) IsProduction() bool { return e == EnvironmentProduction }
 
 // Config is fully validated before the gateway opens a listener.
 type Config struct {
-	Environment           Environment
-	Cloudflare            Cloudflare
-	ClerkJWKS             string
-	ClerkIssuer           string
-	ClerkSecret           string
-	TelegramLinkSecret    string
-	ShoppingServiceSecret string
-	HTTP                  HTTP
-	Providers             map[string]Provider
+	Environment        Environment
+	Cloudflare         Cloudflare
+	ClerkJWKS          string
+	ClerkIssuer        string
+	ClerkSecret        string
+	TelegramLinkSecret string
+	HTTP               HTTP
+	Providers          map[string]Provider
 }
 
 type providerEnv struct {
@@ -119,15 +118,14 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 
 	return Config{
-		Environment:           environment,
-		Cloudflare:            cloudflare,
-		ClerkJWKS:             clerkJWKS,
-		ClerkIssuer:           clerkIssuer,
-		ClerkSecret:           strings.TrimSpace(getenv("CLERK_SECRET_KEY")),
-		TelegramLinkSecret:    strings.TrimSpace(getenv("TELEGRAM_LINK_SECRET")),
-		ShoppingServiceSecret: strings.TrimSpace(getenv("SHOPPING_SERVICE_SECRET")),
-		HTTP:                  HTTP{Port: port, Origins: origins},
-		Providers:             LoadProviders(getenv),
+		Environment:        environment,
+		Cloudflare:         cloudflare,
+		ClerkJWKS:          clerkJWKS,
+		ClerkIssuer:        clerkIssuer,
+		ClerkSecret:        strings.TrimSpace(getenv("CLERK_SECRET_KEY")),
+		TelegramLinkSecret: strings.TrimSpace(getenv("TELEGRAM_LINK_SECRET")),
+		HTTP:               HTTP{Port: port, Origins: origins},
+		Providers:          LoadProviders(getenv),
 	}, nil
 }
 

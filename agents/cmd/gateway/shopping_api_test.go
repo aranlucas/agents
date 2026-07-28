@@ -18,56 +18,9 @@ import (
 	"google.golang.org/adk/v2/session"
 )
 
-func TestShoppingAPIRejectsWrongServiceSecret(t *testing.T) {
-	repository := newFakeShoppingRepository()
-	api := newTestShoppingAPI(repository)
-	response, err := api.GetPantry(context.Background(), groceryapi.GetPantryRequestObject{Params: groceryapi.GetPantryParams{
-		XShoppingServiceSecret: testPointer("wrong-secret"),
-		XShoppingUserId:        testPointer("abc"),
-	}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	assertShoppingError(t, response, http.StatusUnauthorized, "unauthorized")
-	if repository.resolveCalls != 0 {
-		t.Fatalf("resolve calls = %d", repository.resolveCalls)
-	}
-}
-
-func TestShoppingAPIServiceCallResolvesKrogerNamespace(t *testing.T) {
-	repository := newFakeShoppingRepository()
-	api := newTestShoppingAPI(repository)
-	response, err := api.GetPantry(context.Background(), groceryapi.GetPantryRequestObject{Params: groceryapi.GetPantryParams{
-		XShoppingServiceSecret: testPointer("worker-secret"),
-		XShoppingUserId:        testPointer("  abc  "),
-	}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, ok := response.(groceryapi.GetPantry200JSONResponse); !ok {
-		t.Fatalf("response type = %T", response)
-	}
-	if repository.resolvedSubject != "abc" || repository.lastUserID != "clerk-resolved" {
-		t.Fatalf("resolved subject = %q, acting user = %q", repository.resolvedSubject, repository.lastUserID)
-	}
-}
-
-func TestShoppingAPIRejectsAnonymousWithoutSecret(t *testing.T) {
+func TestShoppingAPIRejectsAnonymous(t *testing.T) {
 	api := newTestShoppingAPI(newFakeShoppingRepository())
 	response, err := api.GetPantry(context.Background(), groceryapi.GetPantryRequestObject{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	assertShoppingError(t, response, http.StatusUnauthorized, "unauthorized")
-}
-
-func TestShoppingAPIEmptyConfiguredSecretFailsClosed(t *testing.T) {
-	api := newTestShoppingAPI(newFakeShoppingRepository())
-	api.serviceSecret = "   "
-	response, err := api.GetPantry(context.Background(), groceryapi.GetPantryRequestObject{Params: groceryapi.GetPantryParams{
-		XShoppingServiceSecret: testPointer("worker-secret"),
-		XShoppingUserId:        testPointer("abc"),
-	}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,23 +103,31 @@ func TestPreferredStoreNoOpReturnsCanonicalTimestamp(t *testing.T) {
 	}
 }
 
-func TestGatewayPublicGroceryRouteAllowsServiceRoundTrip(t *testing.T) {
+func TestGatewayGroceryRouteAllowsMCPBearerRoundTrip(t *testing.T) {
 	registry, err := agentruntime.NewRegistry()
 	if err != nil {
 		t.Fatal(err)
 	}
+	userinfo := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/userinfo" || request.Header.Get("Authorization") != "Bearer mcp-token" {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		_, _ = w.Write([]byte(`{"sub":"abc"}`))
+	}))
+	defer userinfo.Close()
 	shopping := newFakeShoppingRepository()
-	handler, err := New(config.Config{ShoppingServiceSecret: "worker-secret"}, Dependencies{
+	handler, err := New(config.Config{}, Dependencies{
 		Registry: registry, Sessions: session.InMemoryService(), Groceries: &fakeGroceryRepository{},
-		Shopping: shopping, Now: func() time.Time { return time.Unix(2, 0) },
+		Shopping: shopping, KrogerMCPURL: userinfo.URL + "/mcp",
+		Now: func() time.Time { return time.Unix(2, 0) },
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	request := httptest.NewRequest(http.MethodPost, "/api/grocery/pantry", strings.NewReader(`{"items":[{"name":"Milk"}]}`))
-	request.Header.Set("X-Shopping-Service-Secret", "worker-secret")
-	request.Header.Set("X-Shopping-User-Id", "abc")
+	request.Header.Set("Authorization", "Bearer mcp-token")
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusOK {
@@ -174,21 +135,23 @@ func TestGatewayPublicGroceryRouteAllowsServiceRoundTrip(t *testing.T) {
 	}
 
 	request = httptest.NewRequest(http.MethodGet, "/api/grocery/pantry", nil)
-	request.Header.Set("X-Shopping-Service-Secret", "worker-secret")
-	request.Header.Set("X-Shopping-User-Id", "abc")
+	request.Header.Set("Authorization", "Bearer mcp-token")
 	recorder = httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"name":"Milk"`) {
 		t.Fatalf("GET response = %d %s", recorder.Code, recorder.Body.String())
 	}
+	if shopping.resolvedSubject != "abc" || shopping.resolveCalls != 2 {
+		t.Fatalf("resolved subject = %q, calls = %d", shopping.resolvedSubject, shopping.resolveCalls)
+	}
 }
 
-func TestGatewayPublicGroceryRouteRejectsAnonymousAtHandler(t *testing.T) {
+func TestGatewayGroceryRouteRejectsAnonymous(t *testing.T) {
 	registry, err := agentruntime.NewRegistry()
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler, err := New(config.Config{ShoppingServiceSecret: "worker-secret"}, Dependencies{
+	handler, err := New(config.Config{}, Dependencies{
 		Registry: registry, Sessions: session.InMemoryService(), Groceries: &fakeGroceryRepository{},
 		Shopping: newFakeShoppingRepository(), Now: time.Now,
 	})
@@ -197,7 +160,7 @@ func TestGatewayPublicGroceryRouteRejectsAnonymousAtHandler(t *testing.T) {
 	}
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/grocery/pantry", nil))
-	if recorder.Code != http.StatusUnauthorized || !strings.Contains(recorder.Body.String(), `"error":"unauthorized"`) {
+	if recorder.Code != http.StatusUnauthorized || !strings.Contains(recorder.Body.String(), `"detail":"Unauthorized"`) {
 		t.Fatalf("response = %d %s", recorder.Code, recorder.Body.String())
 	}
 }
@@ -207,11 +170,14 @@ func TestGroceryHTTPAuthenticatesBeforeBodyValidation(t *testing.T) {
 		"malformed": `{"items":`,
 		"oversized": `{"items":[{"name":"` + strings.Repeat("a", maxGroceryAPIRequestBody) + `"}]}`,
 	}
+	userinfo := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+	}))
+	defer userinfo.Close()
 	for authName, configure := range map[string]func(*http.Request){
 		"missing": func(*http.Request) {},
-		"wrong service secret": func(request *http.Request) {
-			request.Header.Set("X-Shopping-Service-Secret", "wrong-secret")
-			request.Header.Set("X-Shopping-User-Id", "abc")
+		"invalid bearer": func(request *http.Request) {
+			request.Header.Set("Authorization", "Bearer invalid")
 		},
 	} {
 		for bodyName, body := range bodies {
@@ -219,15 +185,15 @@ func TestGroceryHTTPAuthenticatesBeforeBodyValidation(t *testing.T) {
 				shopping := newFakeShoppingRepository()
 				library := &fakeGroceryRepository{}
 				mux := http.NewServeMux()
-				if err := registerGroceryAPI(mux, library, shopping, "worker-secret", time.Now); err != nil {
+				if err := registerGroceryAPI(mux, library, shopping, time.Now); err != nil {
 					t.Fatal(err)
 				}
-				handler := auth.RequireIdentity(map[string]bool{"/api/grocery/*": true}, mux)
+				handler := auth.RequireIdentity(nil, mux, newKrogerTokenVerifier(shopping, userinfo.URL+"/mcp", userinfo.Client()))
 				request := httptest.NewRequest(http.MethodPost, "/api/grocery/pantry", strings.NewReader(body))
 				configure(request)
 				recorder := httptest.NewRecorder()
 				handler.ServeHTTP(recorder, request)
-				if recorder.Code != http.StatusUnauthorized || recorder.Body.String() != "{\"error\":\"unauthorized\"}\n" {
+				if recorder.Code != http.StatusUnauthorized || recorder.Body.String() != "{\"detail\":\"Unauthorized\"}\n" {
 					t.Fatalf("response = %d %s", recorder.Code, recorder.Body.String())
 				}
 				if shopping.resolveCalls != 0 || len(shopping.pantry) != 0 || library.dataCalls != 0 {
@@ -240,13 +206,12 @@ func TestGroceryHTTPAuthenticatesBeforeBodyValidation(t *testing.T) {
 
 func TestGatewayPreferredStoreNotFoundIsStructured404(t *testing.T) {
 	mux := http.NewServeMux()
-	if err := registerGroceryAPI(mux, &fakeGroceryRepository{}, newFakeShoppingRepository(), "worker-secret", time.Now); err != nil {
+	if err := registerGroceryAPI(mux, &fakeGroceryRepository{}, newFakeShoppingRepository(), time.Now); err != nil {
 		t.Fatal(err)
 	}
-	handler := auth.RequireIdentity(map[string]bool{"/api/grocery/*": true}, mux)
+	handler := auth.RequireIdentity(nil, mux, acceptingVerifier{})
 	request := httptest.NewRequest(http.MethodGet, "/api/grocery/preferred-store", nil)
-	request.Header.Set("X-Shopping-Service-Secret", "worker-secret")
-	request.Header.Set("X-Shopping-User-Id", "abc")
+	request.Header.Set("Authorization", "Bearer clerk-token")
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusNotFound || recorder.Body.String() != "{\"error\":\"grocery_not_found\"}\n" {
@@ -254,38 +219,36 @@ func TestGatewayPreferredStoreNotFoundIsStructured404(t *testing.T) {
 	}
 }
 
-func TestExistingGroceryRouteAcceptsServiceIdentity(t *testing.T) {
+func TestExistingGroceryRouteAcceptsVerifiedIdentity(t *testing.T) {
 	shopping := newFakeShoppingRepository()
 	library := &shopperCapturingLibrary{fakeGroceryRepository: &fakeGroceryRepository{}}
 	mux := http.NewServeMux()
-	if err := registerGroceryAPI(mux, library, shopping, "worker-secret", time.Now); err != nil {
+	if err := registerGroceryAPI(mux, library, shopping, time.Now); err != nil {
 		t.Fatal(err)
 	}
-	handler := auth.RequireIdentity(map[string]bool{"/api/grocery/*": true}, mux)
+	handler := auth.RequireIdentity(nil, mux, acceptingVerifier{})
 	request := httptest.NewRequest(http.MethodGet, "/api/grocery/households", nil)
-	request.Header.Set("X-Shopping-Service-Secret", "worker-secret")
-	request.Header.Set("X-Shopping-User-Id", "abc")
+	request.Header.Set("Authorization", "Bearer clerk-token")
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("response = %d %s", recorder.Code, recorder.Body.String())
 	}
-	if library.userID != "clerk-resolved" {
+	if library.userID != "clerk-user" {
 		t.Fatalf("acting user = %q", library.userID)
 	}
 }
 
-func TestServiceIdentityPreauthorizationRunsOnce(t *testing.T) {
+func TestVerifiedIdentityPreauthorizationRunsOnce(t *testing.T) {
 	shopping := newFakeShoppingRepository()
 	library := &fakeGroceryRepository{owner: true}
 	mux := http.NewServeMux()
-	if err := registerGroceryAPI(mux, library, shopping, "worker-secret", func() time.Time { return time.Unix(2, 0) }); err != nil {
+	if err := registerGroceryAPI(mux, library, shopping, func() time.Time { return time.Unix(2, 0) }); err != nil {
 		t.Fatal(err)
 	}
-	handler := auth.RequireIdentity(map[string]bool{"/api/grocery/*": true}, mux)
+	handler := auth.RequireIdentity(nil, mux, acceptingVerifier{})
 	request := httptest.NewRequest(http.MethodPost, "/api/grocery/households/hh-1/invites", strings.NewReader(`{}`))
-	request.Header.Set("X-Shopping-Service-Secret", "worker-secret")
-	request.Header.Set("X-Shopping-User-Id", "abc")
+	request.Header.Set("Authorization", "Bearer clerk-token")
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusCreated {
@@ -294,17 +257,17 @@ func TestServiceIdentityPreauthorizationRunsOnce(t *testing.T) {
 	if library.authorizationCalls != 1 {
 		t.Fatalf("authorization calls = %d", library.authorizationCalls)
 	}
-	if shopping.resolveCalls != 1 {
+	if shopping.resolveCalls != 0 {
 		t.Fatalf("shopper resolution calls = %d", shopping.resolveCalls)
 	}
-	if library.authorizedUser != "clerk-resolved" || library.createdInviteBy != "clerk-resolved" {
+	if library.authorizedUser != "clerk-user" || library.createdInviteBy != "clerk-user" {
 		t.Fatalf("authorized user = %q, mutation user = %q", library.authorizedUser, library.createdInviteBy)
 	}
 }
 
 func newTestShoppingAPI(repository groceries.ShoppingRepository) *groceryAPI {
 	return &groceryAPI{
-		repository: &fakeGroceryRepository{}, shopping: repository, serviceSecret: "worker-secret",
+		repository: &fakeGroceryRepository{}, shopping: repository,
 		now: func() time.Time { return time.Unix(2, 0) }, inviteCode: newInviteCode,
 	}
 }
@@ -334,8 +297,6 @@ func decodeShoppingBody[T any](t *testing.T, source string) T {
 	}
 	return body
 }
-
-func testPointer[T any](value T) *T { return &value }
 
 type shopperCapturingLibrary struct {
 	*fakeGroceryRepository
