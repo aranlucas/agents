@@ -6,6 +6,9 @@ const COLLECTION_LABELS: Record<string, string> = {
   aapd: "AAPD",
   cody: "Prep Course",
 };
+const MAX_SEARCH_QUERY_LENGTH = 256;
+const MAX_SEARCH_TERMS = 16;
+const MAX_SEARCH_TERM_LENGTH = 64;
 
 export interface SearchResult {
   docid: string;
@@ -64,8 +67,43 @@ const GET_BODY_SQL = `
     AND d.active = 1
 `;
 
-function cleanQuery(q: string) {
-  return q.replace(/[*"]/g, " ").trim().replace(/\s+/g, " ");
+export class InvalidSearchQueryError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidSearchQueryError";
+  }
+}
+
+export function buildFtsQuery(query: string): string {
+  const normalized = query.normalize("NFKC").trim();
+  if (!normalized) {
+    throw new InvalidSearchQueryError("Enter at least one search term");
+  }
+  if (normalized.length > MAX_SEARCH_QUERY_LENGTH) {
+    throw new InvalidSearchQueryError(
+      `Search queries must be ${MAX_SEARCH_QUERY_LENGTH} characters or fewer`,
+    );
+  }
+
+  const terms = normalized.match(/[\p{L}\p{N}]+/gu) ?? [];
+  if (terms.length === 0) {
+    throw new InvalidSearchQueryError("Enter at least one letter or number");
+  }
+  if (terms.length > MAX_SEARCH_TERMS) {
+    throw new InvalidSearchQueryError(
+      `Search queries can include at most ${MAX_SEARCH_TERMS} terms`,
+    );
+  }
+  if (terms.some((term) => term.length > MAX_SEARCH_TERM_LENGTH)) {
+    throw new InvalidSearchQueryError(
+      `Each search term must be ${MAX_SEARCH_TERM_LENGTH} characters or fewer`,
+    );
+  }
+
+  // Treat user input as literal tokens, never as FTS5 syntax. Quoted adjacent
+  // phrases retain the existing implicit-AND behavior while punctuation such
+  // as hyphens, parentheses, and question marks cannot become operators.
+  return terms.map((term) => `"${term}"`).join(" ");
 }
 
 function scoreBm25(score: number) {
@@ -91,9 +129,8 @@ export function getStore(): SearchStore {
 
   store = {
     async searchLex(q: string, options: { limit?: number } = {}): Promise<SearchResult[]> {
-      const limit = options.limit ?? 10;
-      const escaped = cleanQuery(q);
-      if (!escaped) return [];
+      const limit = Math.min(Math.max(Math.trunc(options.limit ?? 10), 1), 50);
+      const escaped = buildFtsQuery(q);
 
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
       const rows = ftsStmt.all(escaped, limit) as Array<{

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -142,14 +143,39 @@ func boundedRedirects(request *http.Request, via []*http.Request) error {
 	if len(via) >= 3 {
 		return errors.New("redirect limit reached")
 	}
-	if len(via) > 0 && !sameOrigin(via[0].URL.Hostname(), request.URL.Hostname()) {
+	if len(via) > 0 && !SameOrigin(via[0].URL, request.URL) {
 		request.Header.Del("Authorization")
 		request.Header.Del("X-Subscription-Token")
 	}
 	return nil
 }
 
-func sameOrigin(left, right string) bool { return strings.EqualFold(left, right) }
+// SameOrigin reports whether two HTTP URLs have the same scheme, hostname, and
+// effective port. Credential-bearing redirects must use the full origin rather
+// than hostname alone so HTTPS downgrades and alternate ports fail closed.
+func SameOrigin(left, right *url.URL) bool {
+	if left == nil || right == nil {
+		return false
+	}
+	scheme := strings.ToLower(left.Scheme)
+	if (scheme != "http" && scheme != "https") || !strings.EqualFold(scheme, right.Scheme) {
+		return false
+	}
+	return strings.EqualFold(left.Hostname(), right.Hostname()) && effectivePort(left) == effectivePort(right)
+}
+
+func effectivePort(target *url.URL) string {
+	if port := target.Port(); port != "" {
+		return port
+	}
+	if strings.EqualFold(target.Scheme, "http") {
+		return "80"
+	}
+	if strings.EqualFold(target.Scheme, "https") {
+		return "443"
+	}
+	return ""
+}
 
 func DecodeJSON[T any](ctx context.Context, client *HTTPClient, request *http.Request) (T, error) {
 	var zero T

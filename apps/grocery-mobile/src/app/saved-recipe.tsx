@@ -2,7 +2,7 @@ import { useAuth } from "@clerk/clerk-expo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
 import { Plus, Save, Trash2 } from "lucide-react-native";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Pressable, View } from "react-native";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { Alert } from "@/components/ui/alert";
@@ -14,7 +14,7 @@ import { Screen } from "@/components/ui/screen";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { getRuntimeUrl } from "@/lib/config";
-import { createHouseholdApi, type RecipeContent } from "@/lib/household-api";
+import { createHouseholdApi, type Recipe, type RecipeContent } from "@/lib/household-api";
 import { groceryQueryKeys } from "@/lib/query-keys";
 
 function firstParam(value: string | string[] | undefined): string {
@@ -33,6 +33,25 @@ const EMPTY_RECIPE_FORM: RecipeFormValues = {
   tags: "",
 };
 
+function recipeFormValues(recipe?: Recipe): RecipeFormValues {
+  if (!recipe) return EMPTY_RECIPE_FORM;
+
+  return {
+    title: recipe.title,
+    description: recipe.description,
+    servings: recipe.servings,
+    notes: recipe.notes,
+    ingredients: recipe.ingredients.map(({ name, note, quantity, unit }) => ({
+      name,
+      note,
+      quantity,
+      unit,
+    })),
+    steps: recipe.steps.map((step) => step.instruction),
+    tags: recipe.tags.join(", "),
+  };
+}
+
 export default function SavedRecipeScreen() {
   const recipeId = firstParam(useLocalSearchParams<{ recipeId?: string | string[] }>().recipeId);
   const { getToken, userId } = useAuth();
@@ -47,25 +66,22 @@ export default function SavedRecipeScreen() {
     queryFn: () => api.getRecipe(recipeId),
     enabled: Boolean(recipeId),
   });
-  const values = useMemo<RecipeFormValues>(() => {
-    const recipe = recipeQuery.data;
-    if (!recipe) return EMPTY_RECIPE_FORM;
-    return {
-      title: recipe.title,
-      description: recipe.description,
-      servings: recipe.servings,
-      notes: recipe.notes,
-      ingredients: recipe.ingredients.map(({ name, note, quantity, unit }) => ({
-        name,
-        note,
-        quantity,
-        unit,
-      })),
-      steps: recipe.steps.map((step) => step.instruction),
-      tags: recipe.tags.join(", "),
-    };
-  }, [recipeQuery.data]);
-  const { control, handleSubmit, setValue } = useForm<RecipeFormValues>({ values });
+  const values = useMemo(() => recipeFormValues(recipeQuery.data), [recipeQuery.data]);
+  const {
+    control,
+    formState: { dirtyFields },
+    handleSubmit,
+    reset,
+    setValue,
+  } = useForm<RecipeFormValues>({ defaultValues: EMPTY_RECIPE_FORM });
+  const keepDirtyValues = Object.keys(dirtyFields).length > 0;
+
+  useEffect(() => {
+    if (recipeQuery.data) {
+      reset(values, { keepDirtyValues });
+    }
+  }, [keepDirtyValues, recipeQuery.data, reset, values]);
+
   const ingredients = useFieldArray({ control, name: "ingredients" });
   const steps = useWatch({ control, name: "steps" }) ?? [];
 
@@ -73,6 +89,7 @@ export default function SavedRecipeScreen() {
     mutationFn: (content: RecipeContent) => api.updateRecipe(recipeId, content),
     onSuccess: async (recipe) => {
       queryClient.setQueryData(recipeKey, recipe);
+      reset(recipeFormValues(recipe));
       await queryClient.invalidateQueries({
         queryKey: groceryQueryKeys.recipes(userId, recipe.household_id),
       });

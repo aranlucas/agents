@@ -45,7 +45,7 @@ func TestFrontendAgentIDUsesCatalogIdentity(t *testing.T) {
 }
 
 func TestEveryActiveAgentExposesScopedEndpoints(t *testing.T) {
-	routes := []string{"travel", "trends", "grocery", "fitness", "wellness", "expense", "oralboards", "presentation", "research", "spreadsheet", "resume"}
+	routes := []string{"travel", "trends", "grocery", "fitness", "wellness", "expense", "oralboards", "presentation", "research", "spreadsheet", "resume", "jobs", "interview"}
 	entries := make([]agentruntime.Entry, 0, len(routes))
 	for _, route := range routes {
 		built, err := llmagent.New(llmagent.Config{Name: strings.ReplaceAll(route, "-", "_") + "_contract_agent", Instruction: "contract", Model: fakeResumeModel{}})

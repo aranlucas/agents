@@ -17,6 +17,28 @@ vi.mock("@copilotkit/react-core/v2", () => ({
   UseAgentUpdate: { OnRunStatusChanged: "run-status" },
 }));
 
+// The no-agent sidebar exercised here does not render any of these branches.
+// Keep this DOM contract test isolated from the much larger agent registry and
+// thread-query dependency graphs so it remains reliable under the root test
+// suite's parallel workload.
+vi.mock("@/components/agent-icon", () => ({
+  AgentIcon: () => <svg aria-hidden="true" />,
+}));
+
+vi.mock("@/components/chat/agents/registry", () => ({
+  getAgentConfig: () => undefined,
+}));
+
+vi.mock("@/components/chat/console-threads", () => ({
+  useConsoleThreads: () => ({
+    threads: [],
+    isLoading: false,
+    error: null,
+    refetchThreads: vi.fn(),
+    isAuthenticated: false,
+  }),
+}));
+
 import { AppSidebar } from "./app-sidebar";
 
 describe("AppSidebar", () => {
@@ -27,7 +49,9 @@ describe("AppSidebar", () => {
       </SidebarProvider>,
     );
 
-    expect(screen.getByRole("link", { name: "All agents" })).toHaveAttribute("href", "/");
+    const allAgentsLink = screen.getByLabelText("All agents");
+    expect(allAgentsLink).toBeInstanceOf(HTMLAnchorElement);
+    expect(allAgentsLink).toHaveAttribute("href", "/");
   });
 
   it("provides a visible control that expands the desktop sidebar", () => {

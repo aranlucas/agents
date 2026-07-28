@@ -59,6 +59,9 @@
   --color-expense: var(--expense);
   --color-oral-boards: var(--oral-boards);
   --color-resume: var(--resume);
+  --color-jobs: var(--jobs);
+  --color-interview: var(--interview);
+  --color-interview-contrast: var(--interview-contrast);
   --color-research: var(--research);
   --color-spreadsheet: var(--spreadsheet);
   --color-presentation: var(--presentation);
@@ -180,6 +183,12 @@
   --resume: #4b5d73;
   --resume-soft: #e3e9f0;
   --resume-contrast: #ffffff;
+  --jobs: #8a4b16;
+  --jobs-soft: #f5e4d3;
+  --jobs-contrast: #ffffff;
+  --interview: #4f46a5;
+  --interview-soft: #e8e7f7;
+  --interview-contrast: #ffffff;
   --research: #6b35a8;
   --research-soft: #ede4f7;
   --research-contrast: #ffffff;
@@ -247,6 +256,12 @@
   --resume: #aec0d5;
   --resume-soft: #202b38;
   --resume-contrast: #09111a;
+  --jobs: #f0b879;
+  --jobs-soft: #3b250f;
+  --jobs-contrast: #211105;
+  --interview: #aaa4ff;
+  --interview-soft: #27233f;
+  --interview-contrast: #0f0b22;
   --research: #c9a6f0;
   --research-soft: #2c1e42;
   --research-contrast: #130b21;
@@ -309,6 +324,12 @@
     --resume: #aec0d5;
     --resume-soft: #202b38;
     --resume-contrast: #09111a;
+    --jobs: #f0b879;
+    --jobs-soft: #3b250f;
+    --jobs-contrast: #211105;
+    --interview: #aaa4ff;
+    --interview-soft: #27233f;
+    --interview-contrast: #0f0b22;
     --research: #c9a6f0;
     --research-soft: #2c1e42;
     --research-contrast: #130b21;

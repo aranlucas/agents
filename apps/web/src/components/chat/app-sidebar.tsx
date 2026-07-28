@@ -20,6 +20,7 @@ import {
 } from "@agents/ui";
 
 import { getAgentConfig, type AgentId } from "@/components/chat/agents/registry";
+import { AgentIcon } from "@/components/agent-icon";
 import { useConsoleThreads } from "@/components/chat/console-threads";
 import { cssVars } from "@/lib/css";
 
@@ -123,6 +124,7 @@ export function AppSidebar({
     // Settings renders this sidebar outside that shell, so it supplies its own
     // fallback rather than overriding the agent's color.
     <Sidebar
+      data-agent-sidebar
       collapsible="icon"
       style={config ? undefined : cssVars({ "--page-color": "var(--accent)" })}
     >
@@ -134,12 +136,18 @@ export function AppSidebar({
               render={<Link href="/" aria-label="All agents" />}
               tooltip="All agents"
             >
-              <div className="grid size-8 shrink-0 place-items-center rounded-lg bg-page/15 text-sm font-bold text-page">
-                {sidebarName.charAt(0)}
+              <div className="grid size-8 shrink-0 place-items-center rounded-md bg-page text-background shadow-sm">
+                {agentId ? (
+                  <AgentIcon agentId={agentId} />
+                ) : (
+                  <span className="font-mono text-xs font-semibold">LA</span>
+                )}
               </div>
               <div className="grid min-w-0 flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                 <span className="truncate font-semibold">{sidebarName}</span>
-                <span className="truncate text-xs text-muted-foreground">Agent console</span>
+                <span className="truncate font-mono text-xs tracking-wider text-muted-foreground uppercase">
+                  Agent console
+                </span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>

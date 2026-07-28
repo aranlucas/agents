@@ -13,6 +13,12 @@ var instructionTemplate string
 //go:embed resume.md
 var resumeText string
 
+// SourceText returns the canonical embedded resume used to ground authenticated
+// personal workflows without duplicating a second, drift-prone resume file.
+func SourceText() string {
+	return resumeText
+}
+
 // Instruction is the resume agent's full instruction, with the {{RESUME}}
 // placeholder resolved to the embedded resume content. Mirrors the Python
 // resume agent's INSTRUCTION construction in

@@ -38,14 +38,25 @@ export default function SavedListScreen() {
     queryFn: () => api.getList(listId),
     enabled: Boolean(listId),
   });
-  const { control, getValues, resetField, setValue, trigger } = useForm<{
+  const {
+    control,
+    formState: { dirtyFields },
+    getValues,
+    reset,
+    resetField,
+    trigger,
+  } = useForm<{
     title: string;
     newItem: string;
   }>({ defaultValues: { title: "", newItem: "" } });
   const list = listQuery.data;
+  const keepDirtyValues = Object.keys(dirtyFields).length > 0;
+
   useEffect(() => {
-    if (list) setValue("title", list.title);
-  }, [list, setValue]);
+    if (list) {
+      reset({ title: list.title, newItem: "" }, { keepDirtyValues });
+    }
+  }, [keepDirtyValues, list, reset]);
   const mutateList = useMutation({
     mutationFn: async (
       mutation:
@@ -68,7 +79,11 @@ export default function SavedListScreen() {
           return undefined;
       }
     },
-    onSuccess: async (_, mutation) => {
+    onSuccess: async (updatedList, mutation) => {
+      if (mutation.type === "title" && updatedList) {
+        queryClient.setQueryData(listKey, updatedList);
+        resetField("title", { defaultValue: updatedList.title });
+      }
       if (mutation.type === "add") resetField("newItem");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: listKey }),

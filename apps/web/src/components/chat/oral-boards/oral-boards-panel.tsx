@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Streamdown } from "@agents/ui";
 import {
   AlertCircleIcon,
@@ -566,9 +566,11 @@ function PresentingPane({
   notes: string;
   onNotesChange: React.Dispatch<React.SetStateAction<string>>;
 }) {
-  const recorder = useAnswerRecorder((text) =>
-    onNotesChange((prev) => (prev ? `${prev} ${text}` : text)),
+  const appendTranscript = useCallback(
+    (text: string) => onNotesChange((prev) => (prev ? `${prev} ${text}` : text)),
+    [onNotesChange],
   );
+  const recorder = useAnswerRecorder(appendTranscript);
 
   return (
     <div className="flex h-full flex-col gap-4">
@@ -1015,9 +1017,10 @@ function QuestioningPane({
   const reviewingStatus =
     stage === "scoring" ? "Computing score card…" : loadingStep || "Reviewing your answer…";
 
-  const recorder = useAnswerRecorder((text) => {
+  const appendTranscript = useCallback((text: string) => {
     setAnswerText((prev) => (prev ? `${prev} ${text}` : text));
-  });
+  }, []);
+  const recorder = useAnswerRecorder(appendTranscript);
 
   const handleSubmit = () => {
     const trimmed = answerText.trim();

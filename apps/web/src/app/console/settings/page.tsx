@@ -16,11 +16,19 @@ export default function SettingsPage() {
           <SidebarTrigger />
         </div>
         <ScrollArea className="flex min-w-0 flex-1 flex-col">
-          <div className="mx-auto w-full max-w-225 px-4 py-6">
-            <div className="typeset typeset-site">
-              <h1 className="mb-4">Settings</h1>
+          <div className="mx-auto w-full max-w-225 px-5 py-8 sm:px-8 sm:py-12">
+            <div className="mb-8 border-b border-border pb-7">
+              <p className="font-mono text-xs tracking-widest text-primary uppercase">
+                Console preferences
+              </p>
+              <h1 className="mt-3 text-4xl/10 font-medium tracking-tighter">Settings</h1>
+              <p className="mt-3 max-w-xl text-sm/6 text-muted-foreground">
+                Manage your account, security, and connected profile in one place.
+              </p>
             </div>
-            <UserProfile routing="hash" />
+            <div className="overflow-hidden border border-border bg-card shadow-card">
+              <UserProfile routing="hash" />
+            </div>
           </div>
         </ScrollArea>
       </SidebarInset>

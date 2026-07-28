@@ -75,12 +75,16 @@ vi.mock("@copilotkit/react-core/v2", () => ({
   useSuggestions: () => ({ suggestions: copilotMocks.suggestions }),
 }));
 
-vi.mock("lucide-react", () => ({
-  SparklesIcon: () => <span data-testid="sparkles" />,
-  PaperclipIcon: () => <span data-testid="paperclip" />,
-  FileIcon: () => <span data-testid="file" />,
-  XIcon: () => <span data-testid="x" />,
-}));
+vi.mock("lucide-react", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("lucide-react")>();
+  return {
+    ...actual,
+    SparklesIcon: () => <span data-testid="sparkles" />,
+    PaperclipIcon: () => <span data-testid="paperclip" />,
+    FileIcon: () => <span data-testid="file" />,
+    XIcon: () => <span data-testid="x" />,
+  };
+});
 
 vi.mock("@agents/ui", () => ({
   Button: ({ children, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) => (
@@ -156,7 +160,17 @@ vi.mock("@agents/ui/components/ai-elements/prompt-input", () => ({
   PromptInputFooter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   PromptInputHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   PromptInputProvider: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  PromptInputSubmit: () => <button type="button">submit</button>,
+  PromptInputSubmit: ({
+    disabled,
+  }: {
+    disabled?: boolean;
+    status?: string;
+    onStop?: () => void;
+  }) => (
+    <button type="submit" disabled={disabled}>
+      submit
+    </button>
+  ),
   PromptInputTextarea: () => <textarea />,
   PromptInputTools: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   PromptInputActionMenu: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -283,6 +297,39 @@ describe("ChatSurface history replay", () => {
     );
 
     expect(copilotMocks.connectAgent).not.toHaveBeenCalled();
+  });
+
+  it("keeps a failed connection unavailable until retry succeeds", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    copilotMocks.connectAgent
+      .mockRejectedValueOnce(new Error("gateway unavailable"))
+      .mockResolvedValueOnce(undefined);
+
+    try {
+      const { findByRole, getByRole, getByText, queryByText } = render(
+        <ChatSurface
+          config={getAgentConfig("resume")}
+          threadId="thread-123"
+          onSwitchAgent={() => {}}
+          onOpenArtifact={() => {}}
+        />,
+      );
+
+      const alert = await findByRole("alert");
+      expect(alert).toHaveTextContent("Couldn't connect to Resume. Your draft is safe.");
+      expect(queryByText("Resume is ready")).not.toBeInTheDocument();
+      expect(getByRole("button", { name: "submit" })).toBeDisabled();
+
+      fireEvent.click(getByRole("button", { name: "Retry" }));
+
+      await waitFor(() => {
+        expect(copilotMocks.connectAgent).toHaveBeenCalledTimes(2);
+        expect(getByText("Resume is ready")).toBeInTheDocument();
+      });
+      expect(getByRole("button", { name: "submit" })).toBeEnabled();
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 
   it("renders generic activity messages through CopilotKit's resolver", () => {

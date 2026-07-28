@@ -2,7 +2,9 @@ package telegram
 
 import (
 	"context"
+	"errors"
 	"iter"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -31,6 +33,68 @@ func (c *fakeClient) SendMessage(_ context.Context, input SendMessageRequest) (M
 	return Message{}, nil
 }
 func (*fakeClient) SendChatAction(context.Context, int64, int64, string) error { return nil }
+
+type scriptedPollingClient struct {
+	mu         sync.Mutex
+	updates    []Update
+	failures   map[int64]int
+	offsets    []int64
+	attempts   []int64
+	delivered  []int64
+	completeAt int64
+	completed  chan struct{}
+	once       sync.Once
+}
+
+func newScriptedPollingClient(updates []Update, failures map[int64]int, completeAt int64) *scriptedPollingClient {
+	return &scriptedPollingClient{
+		updates:    updates,
+		failures:   failures,
+		completeAt: completeAt,
+		completed:  make(chan struct{}),
+	}
+}
+
+func (c *scriptedPollingClient) GetUpdates(ctx context.Context, offset int64, _ int) ([]Update, error) {
+	c.mu.Lock()
+	c.offsets = append(c.offsets, offset)
+	if offset >= c.completeAt {
+		c.once.Do(func() { close(c.completed) })
+		c.mu.Unlock()
+		<-ctx.Done()
+		return nil, ctx.Err()
+	}
+	updates := make([]Update, 0, len(c.updates))
+	for _, update := range c.updates {
+		if update.UpdateID >= offset {
+			updates = append(updates, update)
+		}
+	}
+	c.mu.Unlock()
+	return updates, nil
+}
+
+func (c *scriptedPollingClient) SendMessage(_ context.Context, input SendMessageRequest) (Message, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.attempts = append(c.attempts, input.ChatID)
+	if c.failures[input.ChatID] > 0 {
+		c.failures[input.ChatID]--
+		return Message{}, errors.New("temporary Telegram send failure")
+	}
+	c.delivered = append(c.delivered, input.ChatID)
+	return Message{}, nil
+}
+
+func (*scriptedPollingClient) SendChatAction(context.Context, int64, int64, string) error {
+	return nil
+}
+
+func (c *scriptedPollingClient) snapshot() (offsets, attempts, delivered []int64) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return slices.Clone(c.offsets), slices.Clone(c.attempts), slices.Clone(c.delivered)
+}
 
 type fakeExecutor struct {
 	started  chan struct{}
@@ -71,6 +135,84 @@ func newTestRunner(t *testing.T, executor *fakeExecutor) (*Runner, *fakeClient) 
 
 func privateMessage(chatID int64, text string) Message {
 	return Message{Chat: Chat{ID: chatID, Type: "private"}, From: &User{ID: chatID}, Text: text}
+}
+
+func TestRunRetriesFailedUpdateBeforeAdvancingOffset(t *testing.T) {
+	message := privateMessage(1, "/help")
+	client := newScriptedPollingClient(
+		[]Update{{UpdateID: 41, Message: &message}},
+		map[int64]int{message.Chat.ID: 1},
+		42,
+	)
+	runner := newPollingTestRunner(t, client)
+	runPollingTest(t, runner, client.completed)
+
+	offsets, attempts, delivered := client.snapshot()
+	if !slices.Equal(offsets, []int64{0, 41, 42}) {
+		t.Fatalf("poll offsets = %v, want [0 41 42]", offsets)
+	}
+	if !slices.Equal(attempts, []int64{1, 1}) || !slices.Equal(delivered, []int64{1}) {
+		t.Fatalf("send attempts = %v delivered = %v", attempts, delivered)
+	}
+	if runner.offset != 42 {
+		t.Fatalf("final offset = %d, want 42", runner.offset)
+	}
+}
+
+func TestRunKeepsLaterUpdateBehindFailedUpdate(t *testing.T) {
+	first := privateMessage(1, "/help")
+	later := privateMessage(2, "/help")
+	client := newScriptedPollingClient(
+		[]Update{{UpdateID: 10, Message: &first}, {UpdateID: 11, Message: &later}},
+		map[int64]int{first.Chat.ID: 1},
+		12,
+	)
+	runner := newPollingTestRunner(t, client)
+	runPollingTest(t, runner, client.completed)
+
+	offsets, attempts, delivered := client.snapshot()
+	if !slices.Equal(offsets, []int64{0, 10, 12}) {
+		t.Fatalf("poll offsets = %v, want [0 10 12]", offsets)
+	}
+	if !slices.Equal(attempts, []int64{1, 1, 2}) {
+		t.Fatalf("send attempts = %v, want failed update retried before later update", attempts)
+	}
+	if !slices.Equal(delivered, []int64{1, 2}) {
+		t.Fatalf("delivery order = %v, want [1 2]", delivered)
+	}
+}
+
+func newPollingTestRunner(t *testing.T, client Client) *Runner {
+	t.Helper()
+	links := newLinkStore(newMemoryLinkDB(), time.Now)
+	runner, err := NewRunner(client, NewRouter(Config{}, nil), links, &fakeExecutor{}, Config{}, time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runner.retryDelay = 0
+	return runner
+}
+
+func runPollingTest(t *testing.T, runner *Runner, completed <-chan struct{}) {
+	t.Helper()
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan error, 1)
+	go func() { done <- runner.Run(ctx) }()
+	select {
+	case <-completed:
+	case <-time.After(2 * time.Second):
+		cancel()
+		t.Fatal("runner did not reach the completed offset")
+	}
+	cancel()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("runner did not stop after cancellation")
+	}
 }
 
 func TestStopCancelsOnlyCurrentSessionTask(t *testing.T) {

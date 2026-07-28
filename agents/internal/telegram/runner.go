@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/url"
 	"strings"
 	"sync"
@@ -75,6 +76,7 @@ type Runner struct {
 	config      Config
 	timeout     time.Duration
 	pollTimeout int
+	retryDelay  time.Duration
 	offset      int64
 }
 
@@ -85,33 +87,63 @@ func NewRunner(client Client, router *Router, links *LinkStore, executor Executo
 	if timeout <= 0 {
 		timeout = 180 * time.Second
 	}
-	return &Runner{client: client, router: router, links: links, executor: executor, tasks: newTaskSet(), config: cfg, timeout: timeout, pollTimeout: 50}, nil
+	return &Runner{client: client, router: router, links: links, executor: executor, tasks: newTaskSet(), config: cfg, timeout: timeout, pollTimeout: 50, retryDelay: time.Second}, nil
 }
 
 func (r *Runner) Run(ctx context.Context) error {
+poll:
 	for ctx.Err() == nil {
 		updates, err := r.client.GetUpdates(ctx, r.offset, r.pollTimeout)
 		if err != nil {
 			if ctx.Err() != nil {
 				return nil
 			}
-			select {
-			case <-ctx.Done():
+			if !r.waitForRetry(ctx) {
 				return nil
-			case <-time.After(time.Second):
-				continue
 			}
+			continue
 		}
 		for _, update := range updates {
-			if update.UpdateID >= r.offset {
-				r.offset = update.UpdateID + 1
+			if update.UpdateID < r.offset {
+				continue
 			}
 			if update.Message != nil {
-				_ = r.HandleMessage(ctx, *update.Message)
+				// Telegram's offset is the first update to return. Point it at
+				// the update being handled, but do not move past that update
+				// until every handler side effect succeeds.
+				r.offset = update.UpdateID
+				if err := r.HandleMessage(ctx, *update.Message); err != nil {
+					if ctx.Err() != nil {
+						return nil
+					}
+					log.Printf("telegram update handling failed: update=%d err=%v", update.UpdateID, err)
+					if !r.waitForRetry(ctx) {
+						return nil
+					}
+					continue poll
+				}
+				if ctx.Err() != nil {
+					return nil
+				}
 			}
+			r.offset = update.UpdateID + 1
 		}
 	}
 	return nil
+}
+
+func (r *Runner) waitForRetry(ctx context.Context) bool {
+	if r.retryDelay <= 0 {
+		return ctx.Err() == nil
+	}
+	timer := time.NewTimer(r.retryDelay)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return false
+	case <-timer.C:
+		return true
+	}
 }
 
 func (r *Runner) HandleMessage(parent context.Context, message Message) (err error) {

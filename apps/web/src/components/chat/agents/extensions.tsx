@@ -36,6 +36,15 @@ const ResumeArtifact = dynamic(() => import("./resume").then((mod) => mod.Resume
   ssr: false,
 });
 
+const JobsArtifact = dynamic(() => import("./jobs").then((mod) => mod.JobsArtifact), {
+  ssr: false,
+});
+
+const InterviewArtifact = dynamic(
+  () => import("./interview").then((mod) => mod.InterviewArtifact),
+  { ssr: false },
+);
+
 const TrendsArtifact = dynamic(() => import("./trends").then((mod) => mod.TrendsArtifact), {
   ssr: false,
 });
@@ -43,6 +52,8 @@ const TrendsArtifact = dynamic(() => import("./trends").then((mod) => mod.Trends
 const AGENT_EXTENSIONS: Partial<Record<AgentId, AgentExtension>> = {
   "oral-boards": { Mount: OralBoardsExtension },
   resume: { Artifact: ResumeArtifact },
+  jobs: { Artifact: JobsArtifact },
+  interview: { Artifact: InterviewArtifact },
   trends: { Artifact: TrendsArtifact },
 };
 

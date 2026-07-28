@@ -6,6 +6,10 @@ import { PageHeader } from "@/components/page-header";
 import { Badge } from "@agents/ui";
 import { Calendar } from "lucide-react";
 
+// Refresh the date and case selection throughout long-lived deployments
+// without forcing every request through a dynamic render.
+export const revalidate = 3600;
+
 export default function Home() {
   const todaysCase = getCaseOfDay();
 

@@ -13,6 +13,8 @@ interface AgentStatuses {
   "oral-boards": AgentStatus;
   trends: AgentStatus;
   resume: AgentStatus;
+  jobs: AgentStatus;
+  interview: AgentStatus;
   research: AgentStatus;
   spreadsheet: AgentStatus;
   presentation: AgentStatus;
@@ -33,6 +35,8 @@ const FALLBACK: AgentStatuses = {
   "oral-boards": "loading",
   trends: "loading",
   resume: "loading",
+  jobs: "loading",
+  interview: "loading",
   research: "loading",
   spreadsheet: "loading",
   presentation: "loading",

@@ -10,6 +10,25 @@ export type TelegramUser = {
   photo_url?: string;
 };
 
+/**
+ * Telegram recommends checking `auth_date` to prevent outdated Mini App data
+ * from being replayed. This sign-in flow exchanges init data immediately, so a
+ * five-minute lifetime leaves room for normal network delays without allowing
+ * a captured payload to remain useful indefinitely.
+ */
+export const TELEGRAM_INIT_DATA_MAX_AGE_SECONDS = 5 * 60;
+
+/**
+ * Permit a small amount of clock skew, while rejecting timestamps that are
+ * materially ahead of the server clock.
+ */
+export const TELEGRAM_INIT_DATA_MAX_FUTURE_SKEW_SECONDS = 30;
+
+type VerifyInitDataOptions = {
+  /** Returns the current Unix timestamp in seconds. */
+  nowSeconds?: () => number;
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -24,7 +43,17 @@ function isTelegramUser(value: unknown): value is TelegramUser {
   return user.is_premium === undefined || typeof user.is_premium === "boolean";
 }
 
-export function verifyInitData(initData: string, botToken: string): TelegramUser | null {
+function parseAuthDate(value: string | null): number | null {
+  if (!value || !/^\d+$/.test(value)) return null;
+  const timestamp = Number(value);
+  return Number.isSafeInteger(timestamp) ? timestamp : null;
+}
+
+export function verifyInitData(
+  initData: string,
+  botToken: string,
+  { nowSeconds = () => Math.floor(Date.now() / 1000) }: VerifyInitDataOptions = {},
+): TelegramUser | null {
   if (!initData) return null;
 
   const params = new URLSearchParams(initData);
@@ -44,6 +73,17 @@ export function verifyInitData(initData: string, botToken: string): TelegramUser
       return null;
     }
   } catch {
+    return null;
+  }
+
+  const authDate = parseAuthDate(params.get("auth_date"));
+  const now = nowSeconds();
+  if (
+    authDate === null ||
+    !Number.isSafeInteger(now) ||
+    authDate < now - TELEGRAM_INIT_DATA_MAX_AGE_SECONDS ||
+    authDate > now + TELEGRAM_INIT_DATA_MAX_FUTURE_SKEW_SECONDS
+  ) {
     return null;
   }
 

@@ -21,6 +21,8 @@ describe("agent registry", () => {
       "oral-boards",
       "trends",
       "resume",
+      "jobs",
+      "interview",
       "research",
       "spreadsheet",
       "presentation",
@@ -53,6 +55,8 @@ describe("agent registry", () => {
     expect(AGENT_BACKEND_PATHS.expense).toBe("expense");
     expect(AGENT_BACKEND_PATHS["oral-boards"]).toBe("oralboards");
     expect(AGENT_BACKEND_PATHS.resume).toBe("resume");
+    expect(AGENT_BACKEND_PATHS.jobs).toBe("jobs");
+    expect(AGENT_BACKEND_PATHS.interview).toBe("interview");
   });
 
   it("returns undefined for unknown ids", () => {
@@ -79,6 +83,30 @@ describe("agent registry", () => {
       stateField: "fit_summary",
       kind: "document",
       title: "Role fit brief",
+    });
+  });
+
+  it("surfaces the Jobs watchlist, fit, and proposed resume as a review artifact", () => {
+    expect(getAgentConfig("jobs")).toMatchObject({
+      access: "authenticated",
+      placeholder: "Set a job watchlist or share a role…",
+      artifact: {
+        stateField: "workspace_summary",
+        kind: "document",
+        title: "Job brief",
+      },
+    });
+  });
+
+  it("surfaces Interview Coach as a private practice board", () => {
+    expect(getAgentConfig("interview")).toMatchObject({
+      access: "authenticated",
+      placeholder: "Practice a behavioral or coding interview…",
+      artifact: {
+        stateField: "status",
+        kind: "document",
+        title: "Practice board",
+      },
     });
   });
 

@@ -50,7 +50,9 @@ type AgentReport struct {
 
 func main() {
 	var agentsFlag string
+	var caseFlag string
 	flag.StringVar(&agentsFlag, "agents", "all", "comma-separated agent names, or 'all'")
+	flag.StringVar(&caseFlag, "case", "all", "one eval case id, or 'all'")
 	flag.Parse()
 
 	names := allAgents
@@ -65,10 +67,10 @@ func main() {
 	exit := 0
 	for _, name := range names {
 		name = strings.TrimSpace(name)
-		report := runAgentEval(ctx, name, providers)
+		report := runAgentEval(ctx, name, caseFlag, providers)
 		reports = append(reports, report)
 		printReport(report)
-		if report.BuildError != "" || report.RubricsPassed < report.RubricsTotal {
+		if reportFailed(report) {
 			exit = 1
 		}
 	}
@@ -80,7 +82,19 @@ func main() {
 	os.Exit(exit)
 }
 
-func runAgentEval(ctx context.Context, name string, providers map[string]config.Provider) AgentReport {
+func reportFailed(report AgentReport) bool {
+	if report.BuildError != "" || report.RubricsPassed < report.RubricsTotal {
+		return true
+	}
+	for _, evalCase := range report.Cases {
+		if evalCase.RunError != "" {
+			return true
+		}
+	}
+	return false
+}
+
+func runAgentEval(ctx context.Context, name, caseID string, providers map[string]config.Provider) AgentReport {
 	report := AgentReport{Agent: name}
 
 	built, err := buildAgent(ctx, name, providers)
@@ -97,7 +111,12 @@ func runAgentEval(ctx context.Context, name string, providers map[string]config.
 		return report
 	}
 
+	matched := false
 	for _, ec := range ds.EvalCases {
+		if caseID != "all" && ec.EvalCaseID != caseID {
+			continue
+		}
+		matched = true
 		trace := runCase(ctx, built.Agent.Name(), built.Agent, built.StateDefaults, ec.EvalCaseID, ec.Prompt.Text())
 		caseReport := CaseReport{EvalCaseID: ec.EvalCaseID, Prompt: ec.Prompt.Text(), RunError: trace.RunError, Trace: trace}
 		for _, group := range ec.RubricGroups {
@@ -111,6 +130,9 @@ func runAgentEval(ctx context.Context, name string, providers map[string]config.
 			}
 		}
 		report.Cases = append(report.Cases, caseReport)
+	}
+	if !matched {
+		report.BuildError = fmt.Sprintf("eval case %q was not found for agent %q", caseID, name)
 	}
 	return report
 }

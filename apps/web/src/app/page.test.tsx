@@ -56,7 +56,7 @@ describe("Portfolio home page", () => {
     render(<Home />);
 
     expect(screen.getByText(/The Resume agent will write this introduction/i)).toBeVisible();
-    expect(screen.getByRole("link", { name: /^Resume/ })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Ask the Resume agent/i })).toHaveAttribute(
       "href",
       "/console/resume",
     );

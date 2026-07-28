@@ -43,7 +43,8 @@ export function AgentWorkspace({ agentId, threadId }: { agentId: AgentId; thread
 
   return (
     <SidebarProvider
-      defaultOpen={false}
+      defaultOpen
+      data-agent-workspace
       className="h-dvh overflow-hidden"
       style={cssVars({ "--page-color": `var(${config.colorVar})` })}
     >

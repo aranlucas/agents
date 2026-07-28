@@ -1,5 +1,6 @@
 {
   "$schema": "https://www.react.doctor/config.schema.json",
+  "adoptExistingLintConfig": false,
   "warnings": false,
   "rawTextWrapperComponents": ["MenuAction"],
   "ignore": {

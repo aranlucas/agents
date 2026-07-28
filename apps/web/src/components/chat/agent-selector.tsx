@@ -1,6 +1,6 @@
 "use client";
 
-import { Label } from "@agents/ui";
+import { NativeSelect, NativeSelectOption } from "@agents/ui/components/native-select";
 import { cn } from "@agents/ui/lib/utils";
 import { AgentIcon } from "@/components/agent-icon";
 import { AGENT_ORDER, getAgentConfig, isAgentId, type AgentId } from "./agents/registry";
@@ -14,22 +14,23 @@ export function AgentSelector({
 }) {
   const cfg = getAgentConfig(active);
   return (
-    <Label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border px-2.5 py-1.5 font-mono text-xs text-ink-soft">
+    <div className="flex items-center gap-2">
       <AgentIcon agentId={active} className={cn("size-3.5", cfg.colorClass)} />
-      <select
+      <NativeSelect
         aria-label="Active agent"
+        className="max-w-44"
+        size="sm"
         value={active}
         onChange={(e) => {
           if (isAgentId(e.target.value)) onSelect(e.target.value);
         }}
-        className="cursor-pointer bg-transparent outline-none"
       >
         {AGENT_ORDER.map((id) => (
-          <option key={id} value={id}>
+          <NativeSelectOption key={id} value={id}>
             {getAgentConfig(id).label}
-          </option>
+          </NativeSelectOption>
         ))}
-      </select>
-    </Label>
+      </NativeSelect>
+    </div>
   );
 }
