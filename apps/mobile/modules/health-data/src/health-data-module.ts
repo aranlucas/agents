@@ -1,11 +1,11 @@
-import { NativeModule, requireNativeModule } from "expo";
+import { requireOptionalNativeModule } from "expo";
 import type {
   HealthDataActivityPage,
   HealthDataAvailability,
   HealthDataPermissionStatus,
 } from "./health-data.types";
 
-declare class HealthDataModule extends NativeModule<{}> {
+type HealthDataModule = {
   getAvailabilityAsync(): Promise<HealthDataAvailability>;
   getPermissionStatusAsync(): Promise<HealthDataPermissionStatus>;
   requestPermissionsAsync(): Promise<HealthDataPermissionStatus>;
@@ -15,6 +15,23 @@ declare class HealthDataModule extends NativeModule<{}> {
     pageToken: string | null,
     pageSize: number,
   ): Promise<HealthDataActivityPage>;
-}
+};
 
-export default requireNativeModule<HealthDataModule>("HealthData");
+// The local Expo module is Android-only. Keep iOS and Expo Go import-safe so
+// the Fitness route can render its existing unavailable state.
+const unavailableHealthData: HealthDataModule = {
+  async getAvailabilityAsync() {
+    return { status: "unavailable", providerPackage: "" };
+  },
+  async getPermissionStatusAsync() {
+    return { granted: false, grantedPermissions: [], requiredPermissions: [] };
+  },
+  async requestPermissionsAsync() {
+    return { granted: false, grantedPermissions: [], requiredPermissions: [] };
+  },
+  async readActivitiesAsync() {
+    return { activities: [] };
+  },
+};
+
+export default requireOptionalNativeModule<HealthDataModule>("HealthData") ?? unavailableHealthData;

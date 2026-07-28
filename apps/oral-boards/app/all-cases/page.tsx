@@ -111,8 +111,7 @@ export default function AllCasesPage() {
               return (
                 <Card
                   key={caseData.id}
-                  className="cursor-pointer transition hover:shadow-lg active:bg-muted/50"
-                  onClick={() => setSelectedCaseIndex(originalIndex)}
+                  className="relative cursor-pointer transition hover:shadow-lg active:bg-muted/50"
                 >
                   <CardContent className="p-4 sm:p-6">
                     <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -136,7 +135,9 @@ export default function AllCasesPage() {
                     </p>
                     <Button
                       variant="link"
-                      className="mt-2 h-auto p-0 text-indigo-600 hover:text-indigo-800 sm:mt-3"
+                      aria-label={`View full case: ${caseData.title}`}
+                      className="mt-2 h-auto p-0 text-indigo-600 after:absolute after:inset-0 after:cursor-pointer hover:text-indigo-800 sm:mt-3"
+                      onClick={() => setSelectedCaseIndex(originalIndex)}
                     >
                       View Full Case <ChevronRight className="ms-1 size-4" />
                     </Button>

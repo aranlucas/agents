@@ -168,6 +168,42 @@ const AGENTS: Record<AgentId, AgentConfig> = {
       name: "role_fit.md",
     },
   },
+  jobs: {
+    id: "jobs",
+    access: "authenticated",
+    label: "Jobs",
+    colorVar: "--jobs",
+    colorClass: "text-jobs",
+    placeholder: "Set a job watchlist or share a role…",
+    welcome:
+      "Tell me what roles you want to watch, or share a job URL. I’ll research and rank current openings, then assess the fit and propose a truthful tailored resume for the role you choose.",
+    suggestionInstructions:
+      "Generate concise prompts for setting or refreshing a job watchlist, researching a current role, comparing it with Lucas's documented experience, proposing a truthful tailored resume, or drafting specific application answers. Never imply automatic submission or unattended scheduling.",
+    artifact: {
+      stateField: "workspace_summary",
+      kind: "document",
+      title: "Job brief",
+      name: "job-brief.md",
+    },
+  },
+  interview: {
+    id: "interview",
+    access: "authenticated",
+    label: "Interview Coach",
+    colorVar: "--interview",
+    colorClass: "text-interview",
+    placeholder: "Practice a behavioral or coding interview…",
+    welcome:
+      "Choose behavioral or coding practice, your target level, and a focus topic. I’ll interview you one question at a time and coach the attempt.",
+    suggestionInstructions:
+      "Generate concise starter prompts for realistic software-engineering interview practice. Vary behavioral competencies, coding topics, difficulty, target level, guided practice, and strict no-spoiler interview mode.",
+    artifact: {
+      stateField: "status",
+      kind: "document",
+      title: "Practice board",
+      name: "interview-practice.md",
+    },
+  },
   research: {
     id: "research",
     access: "authenticated",

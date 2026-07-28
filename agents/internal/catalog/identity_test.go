@@ -8,6 +8,8 @@ import (
 	"agents/fitness"
 	"agents/grocery"
 	"agents/internal/catalog"
+	"agents/interview"
+	"agents/jobs"
 	"agents/oralboards"
 	"agents/presentation"
 	"agents/research"
@@ -55,6 +57,7 @@ func TestCatalogAppNamesMatchAuthoredAgents(t *testing.T) {
 		"travel": travel.AppName, "grocery": grocery.AppName, "fitness": fitness.AppName,
 		"wellness": wellness.AppName, "expense": expense.AppName, "oralboards": oralboards.AppName,
 		"trends": trends.AppName, "resume": resume.AppName, "research": research.AppName,
+		"jobs": jobs.AppName, "interview": interview.AppName,
 		"spreadsheet": spreadsheet.AppName, "presentation": presentation.AppName,
 	}
 	for _, spec := range catalog.All() {

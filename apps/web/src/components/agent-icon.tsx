@@ -1,7 +1,9 @@
 import type { AgentId } from "@agents/types";
 import { cn } from "@agents/ui/lib/utils";
 import {
+  BrainCircuit,
   Dumbbell,
+  BriefcaseBusiness,
   FileUser,
   HeartPulse,
   Plane,
@@ -24,6 +26,8 @@ const agentIcons = {
   "oral-boards": Stethoscope,
   trends: TrendingUp,
   resume: FileUser,
+  jobs: BriefcaseBusiness,
+  interview: BrainCircuit,
   research: Telescope,
   spreadsheet: Table2,
   presentation: Presentation,

@@ -19,6 +19,8 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./src/test-setup.dom.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
+    // Keep jsdom from exhausting the host while Turbo runs the Go race suite in parallel.
+    maxWorkers: 4,
     // `*.contract.test.tsx` files are compile-time type contracts checked by tsc
     // (they import React components that pull in CSS), not runtime Vitest specs.
     exclude: ["**/node_modules/**", "**/*.contract.test.tsx"],

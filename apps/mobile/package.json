@@ -51,7 +51,7 @@
     "expo-status-bar": "~57.0.1",
     "expo-system-ui": "~57.0.1",
     "expo-web-browser": "~57.0.2",
-    "lucide-react-native": "^1.26.0",
+    "lucide-react-native": "^1.27.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.0",
@@ -67,7 +67,7 @@
   "devDependencies": {
     "@types/react": "~19.2.17",
     "@types/react-test-renderer": "^19.1.0",
-    "concurrently": "^10.0.3",
+    "concurrently": "^10.0.4",
     "pnpm-sync-dependencies-meta-injected": "^0.0.15",
     "react-test-renderer": "^19.2.8",
     "typescript": "6.0.3",

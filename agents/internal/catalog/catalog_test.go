@@ -21,23 +21,26 @@ func TestAllHasUniqueCompleteMetadata(t *testing.T) {
 		seenRoutes[spec.Route] = true
 		seenAppNames[spec.AppName] = true
 	}
-	if len(seenRoutes) != 11 {
-		t.Fatalf("catalog contains %d agents, want 11", len(seenRoutes))
+	if len(seenRoutes) != 13 {
+		t.Fatalf("catalog contains %d agents, want 13", len(seenRoutes))
 	}
 }
 
 func TestSurfaceSelectionsRemainStable(t *testing.T) {
 	telegram := routes(Telegram())
-	if want := routes(All()); !slices.Equal(telegram, want) {
-		t.Fatalf("Telegram routes = %#v, want %#v", telegram, want)
+	if slices.Contains(telegram, "jobs") {
+		t.Fatalf("Telegram routes unexpectedly contain private web-only jobs agent: %#v", telegram)
+	}
+	if len(telegram) != 11 {
+		t.Fatalf("Telegram routes = %#v, want 11 routes", telegram)
 	}
 
 	eval := routes(Eval())
 	if slices.Contains(eval, "trends") {
 		t.Fatalf("Eval routes unexpectedly contain trends: %#v", eval)
 	}
-	if len(eval) != 10 {
-		t.Fatalf("Eval routes = %#v, want 10 routes", eval)
+	if len(eval) != 11 {
+		t.Fatalf("Eval routes = %#v, want 11 routes", eval)
 	}
 }
 

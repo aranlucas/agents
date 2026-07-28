@@ -22,19 +22,36 @@ export function AuthShell({
   return (
     <main
       data-auth-shell
-      className="mx-auto flex min-h-screen w-full max-w-100 flex-col justify-center gap-6 px-5 py-14"
+      data-field-grid
+      className="flex min-h-screen items-center px-5 py-10 sm:px-8"
     >
-      <div className="flex flex-col gap-3">
-        <Link
-          className="w-fit rounded-sm font-mono text-xs font-medium tracking-widest text-muted-foreground uppercase transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-          href="/"
-        >
-          ← Lucas Arango
-        </Link>
-        <h1 className="text-2xl font-medium tracking-tight text-balance">{title}</h1>
-        <p className="text-sm/6 text-balance text-muted-foreground">{description}</p>
+      <div className="mx-auto grid w-full max-w-5xl overflow-hidden border border-border bg-background shadow-2xl md:flex">
+        <aside className="relative hidden min-h-150 flex-col justify-between overflow-hidden bg-primary p-10 text-primary-foreground md:flex md:min-w-0 md:flex-1">
+          <span className="font-mono text-xs tracking-widest uppercase">Lucas Arango · Agents</span>
+          <div>
+            <p className="max-w-sm text-4xl/11 font-medium tracking-tighter text-balance">
+              A focused place for useful work with personal agents.
+            </p>
+            <p className="mt-5 max-w-sm text-sm/6 text-primary-foreground/75">
+              Your sessions, generated artifacts, and connected tools stay attached to your account.
+            </p>
+          </div>
+          <span className="font-mono text-xs tracking-widest uppercase">Secure access — 01</span>
+        </aside>
+        <section className="flex min-h-150 flex-col justify-center gap-7 p-6 sm:p-10 md:w-100 md:shrink-0">
+          <div className="flex flex-col gap-4">
+            <Link
+              className="w-fit rounded-sm font-mono text-xs font-medium tracking-widest text-primary uppercase transition-colors hover:text-primary/75 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              href="/"
+            >
+              ← Lucas Arango
+            </Link>
+            <h1 className="text-3xl/9 font-medium tracking-tight text-balance">{title}</h1>
+            <p className="text-sm/6 text-balance text-muted-foreground">{description}</p>
+          </div>
+          {children}
+        </section>
       </div>
-      {children}
     </main>
   );
 }

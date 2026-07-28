@@ -10,6 +10,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@agents/ui/components/breadcrumb";
+import { AgentIcon } from "@/components/agent-icon";
 import { getAgentConfig, type AgentId } from "@/components/chat/agents/registry";
 import { useConsoleThreads } from "@/components/chat/console-threads";
 
@@ -38,14 +39,16 @@ export function ConsoleTopBar({
   const status = isRunning === undefined ? "Connecting" : isRunning ? "Working" : "Ready";
 
   return (
-    <header className="flex h-10 shrink-0 items-center gap-2 border-b px-2">
+    <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-background/92 px-2 backdrop-blur-sm">
       <SidebarTrigger />
-      <Separator orientation="vertical" className="h-4" />
+      <Separator orientation="vertical" className="h-5" />
       <Breadcrumb className="min-w-0">
-        <BreadcrumbList className="flex-nowrap">
+        <BreadcrumbList className="flex-nowrap font-mono text-xs tracking-wide">
           <BreadcrumbItem className="min-w-0 gap-2">
-            <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-page" />
-            <span className="truncate text-muted-foreground">{config.label}</span>
+            <span className="grid size-6 shrink-0 place-items-center rounded-sm bg-page text-background">
+              <AgentIcon agentId={agentId} className="size-3.5" />
+            </span>
+            <span className="truncate text-foreground">{config.label}</span>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem className="min-w-0">
@@ -53,7 +56,7 @@ export function ConsoleTopBar({
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
-      <Badge variant="outline" className="ms-auto">
+      <Badge variant="outline" className="ms-auto font-mono text-xs tracking-wider uppercase">
         {isRunning === false ? (
           <CircleCheckIcon data-icon="inline-start" />
         ) : (

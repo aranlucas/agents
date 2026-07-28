@@ -41,6 +41,8 @@ import (
 	"agents/internal/providers/openai"
 	"agents/internal/rate"
 	"agents/internal/telegram"
+	"agents/interview"
+	"agents/jobs"
 	"agents/oralboards"
 	"agents/presentation"
 	"agents/research"
@@ -664,6 +666,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("build resume agent: %v", err)
 	}
+	jobsWebLoader := common.NewWebLoader(common.NewHTTPClient(20*time.Second, 4<<20), 100_000)
+	jobsAgent, err := jobs.New(resumeModel, braveSearch, jobsWebLoader, agui.NewAGUIToolset(pending))
+	if err != nil {
+		log.Fatalf("build jobs agent: %v", err)
+	}
+	interviewAgent, err := interview.New(resumeModel, agui.NewAGUIToolset(pending))
+	if err != nil {
+		log.Fatalf("build interview agent: %v", err)
+	}
 	presentationProvider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Presentation)
 	if err != nil {
 		log.Fatalf("configure presentation model: %v", err)
@@ -824,6 +835,8 @@ func main() {
 		OralBoards:   bootstrap.Binding{Agent: oralboardsAgent, StateDefaults: oralboards.StateDefaults},
 		Trends:       bootstrap.Binding{Agent: trendsAgent, StateDefaults: trends.StateDefaults},
 		Resume:       bootstrap.Binding{Agent: resumeAgent, StateDefaults: resume.StateDefaults, Health: resumeHealth(resumeModel)},
+		Jobs:         bootstrap.Binding{Agent: jobsAgent, StateDefaults: jobs.StateDefaults},
+		Interview:    bootstrap.Binding{Agent: interviewAgent, StateDefaults: interview.StateDefaults},
 		Research:     bootstrap.Binding{Agent: researchAgent, StateDefaults: research.StateDefaults},
 		Spreadsheet:  bootstrap.Binding{Agent: spreadsheetAgent, StateDefaults: spreadsheet.StateDefaults},
 		Presentation: bootstrap.Binding{Agent: presentationAgent, StateDefaults: presentation.StateDefaults},

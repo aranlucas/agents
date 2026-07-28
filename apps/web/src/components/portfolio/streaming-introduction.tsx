@@ -15,8 +15,8 @@ const INTRODUCTION_FRAME_CLASS = "min-h-80 sm:min-h-64";
  */
 function RunStrip({ status }: { status: "writing" | "ready" | "unavailable" }) {
   return (
-    <div className="flex items-center gap-3 font-mono text-xs text-muted-foreground">
-      <span className="text-foreground">resume-agent</span>
+    <div className="flex items-center gap-3 font-mono text-xs tracking-wide text-muted-foreground">
+      <span className="text-primary">resume-agent</span>
       <span aria-hidden="true" className="h-px flex-1 bg-border" />
       <span className="flex items-center gap-1.5">
         {status === "writing" ? (
@@ -37,11 +37,19 @@ function RunStrip({ status }: { status: "writing" | "ready" | "unavailable" }) {
 }
 
 /** Prose written by the agent, marked off by a rule the way output is. */
-function IntroductionBody({ children, busy }: { children: React.ReactNode; busy?: boolean }) {
+function IntroductionBody({
+  children,
+  busy,
+  compact = false,
+}: {
+  children: React.ReactNode;
+  busy?: boolean;
+  compact?: boolean;
+}) {
   return (
     <div
       aria-busy={busy}
-      className={`${INTRODUCTION_FRAME_CLASS} mt-5 flex flex-col gap-5 border-s-2 border-border ps-5 text-ink-soft`}
+      className={`${compact ? "min-h-24" : INTRODUCTION_FRAME_CLASS} mt-5 flex flex-col gap-6 border-s border-primary/40 ps-6 text-ink-soft sm:ps-8`}
     >
       {children}
     </div>
@@ -243,7 +251,7 @@ export function StreamingIntroduction({
     return (
       <div>
         <RunStrip status="unavailable" />
-        <IntroductionBody>
+        <IntroductionBody compact>
           <p role="status">
             The introduction did not come back this time. You can still{" "}
             <Link

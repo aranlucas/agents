@@ -127,11 +127,8 @@ const tokensCache = new Map<string, TokenizedCode>();
 // Subscribers for async token updates
 const subscribers = new Map<string, Set<(result: TokenizedCode) => void>>();
 
-const getTokensCacheKey = (code: string, language: BundledLanguage) => {
-  const start = code.slice(0, 100);
-  const end = code.length > 100 ? code.slice(-100) : "";
-  return `${language}:${code.length}:${start}:${end}`;
-};
+const getTokensCacheKey = (code: string, language: BundledLanguage) =>
+  JSON.stringify([language, code]);
 
 const getHighlighter = (
   language: BundledLanguage,
@@ -357,22 +354,21 @@ export const CodeBlockContent = ({
     [code, language, rawTokens],
   );
 
-  // Async highlighting result (populated after shiki loads)
-  const [asyncTokens, setAsyncTokens] = useState<TokenizedCode | null>(null);
-  const asyncKeyRef = useRef({ code, language });
-
-  // Invalidate stale async tokens synchronously during render
-  if (asyncKeyRef.current.code !== code || asyncKeyRef.current.language !== language) {
-    asyncKeyRef.current = { code, language };
-    setAsyncTokens(null);
-  }
+  // Keep the inputs beside the async result. A result from the prior render is
+  // ignored immediately when code or language changes, without mutating refs or
+  // scheduling state during render.
+  const [asyncResult, setAsyncResult] = useState<{
+    code: string;
+    language: BundledLanguage;
+    tokens: TokenizedCode;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     highlightCode(code, language, (result) => {
       if (!cancelled) {
-        setAsyncTokens(result);
+        setAsyncResult({ code, language, tokens: result });
       }
     });
 
@@ -381,7 +377,10 @@ export const CodeBlockContent = ({
     };
   }, [code, language]);
 
-  const tokenized = asyncTokens ?? syncTokens;
+  const tokenized =
+    asyncResult?.code === code && asyncResult.language === language
+      ? asyncResult.tokens
+      : syncTokens;
 
   return (
     <div className="relative overflow-auto">

@@ -16,6 +16,7 @@ import (
 	"agents/expense"
 	"agents/fitness"
 	"agents/grocery"
+	"agents/interview"
 	"agents/oralboards"
 	"agents/presentation"
 	"agents/research"
@@ -96,6 +97,14 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		}
 		built, err := resume.New(m)
 		return Built{Name: name, Agent: built, StateDefaults: resume.StateDefaults, Notes: notes}, err
+
+	case "interview":
+		m, err := newAgentModel(providers, providerpolicy.Resume, &notes)
+		if err != nil {
+			return Built{}, err
+		}
+		built, err := interview.New(m)
+		return Built{Name: name, Agent: built, StateDefaults: interview.StateDefaults, Notes: notes}, err
 
 	case "presentation":
 		m, err := newAgentModel(providers, providerpolicy.Presentation, &notes)

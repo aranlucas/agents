@@ -10,9 +10,10 @@ import {
   useSuggestions,
   UseAgentUpdate,
 } from "@copilotkit/react-core/v2";
-import { FileIcon, PaperclipIcon, SparklesIcon, XIcon } from "lucide-react";
+import { ArrowRightIcon, FileIcon, PaperclipIcon, XIcon } from "lucide-react";
 
 import { Button, Streamdown } from "@agents/ui";
+import { cn } from "@agents/ui/lib/utils";
 import {
   Empty,
   EmptyDescription,
@@ -76,6 +77,7 @@ import { toRenderItems, type AguiMessage, type AguiToolCall } from "./messages";
 import { selectArtifact } from "./artifact";
 import { toToolState } from "./tool-adapter";
 import { AgentSelector } from "./agent-selector";
+import { AgentIcon } from "@/components/agent-icon";
 import { ConnectNotice } from "./connect-notice";
 import { TranscribeButton } from "./transcribe-button";
 import { useRequiredConnections } from "@/hooks/use-required-connections";
@@ -261,8 +263,15 @@ export function ChatSurface({
   // by comparing to the current agent avoids a synchronous setState in the
   // effect body (no-adjust-state-on-prop-change).
   const [connectedAgent, setConnectedAgent] = useState<typeof agent | null>(null);
+  const [connectionFailure, setConnectionFailure] = useState<{
+    agent: typeof agent;
+    message: string;
+  } | null>(null);
+  const [connectionAttempt, setConnectionAttempt] = useState(0);
   const [submittedMessageId, setSubmittedMessageId] = useState<string | null>(null);
   const isAgentConnected = connectedAgent === agent;
+  const currentConnectionFailure =
+    connectionFailure?.agent === agent ? connectionFailure.message : null;
 
   const handleSubmissionScrollStarted = useCallback((messageId: string) => {
     setSubmittedMessageId((currentMessageId) =>
@@ -283,25 +292,36 @@ export function ChatSurface({
       agent.abortController = connectAbortController;
     }
     connectedAgentRef.current = agent;
+    const markConnected = () => {
+      if (detached) return;
+      // Mirror CopilotKit prebuilt: delay one frame so any loaded messages
+      // paint before suggestions appear, avoiding a layout jump.
+      const raf =
+        typeof requestAnimationFrame === "function"
+          ? requestAnimationFrame
+          : (cb: () => void) => setTimeout(cb, 16);
+      raf(() => {
+        if (!detached) {
+          setConnectionFailure(null);
+          setConnectedAgent(agent);
+        }
+      });
+    };
     void copilotkit
       .connectAgent({ agent })
+      .then(markConnected)
       .catch((error: unknown) => {
         if (detached) return;
+        if (error instanceof Error && error.name === "AGUIConnectNotImplementedError") {
+          markConnected();
+          return;
+        }
         connectedAgentRef.current = null;
-        if (error instanceof Error && error.name === "AGUIConnectNotImplementedError") return;
-        console.error("ChatSurface: connectAgent failed", error);
-      })
-      .finally(() => {
-        if (detached) return;
-        // Mirror CopilotKit prebuilt: delay one frame so any loaded messages
-        // paint before suggestions appear, avoiding a layout jump.
-        const raf =
-          typeof requestAnimationFrame === "function"
-            ? requestAnimationFrame
-            : (cb: () => void) => setTimeout(cb, 16);
-        raf(() => {
-          if (!detached) setConnectedAgent(agent);
+        setConnectionFailure({
+          agent,
+          message: `Couldn't connect to ${config.label}. Your draft is safe.`,
         });
+        console.error("ChatSurface: connectAgent failed", error);
       });
 
     return () => {
@@ -311,15 +331,21 @@ export function ChatSurface({
       setConnectedAgent(null);
       void agent.detachActiveRun?.();
     };
-  }, [agent, copilotkit, isRuntimeConnected, threadId]);
+  }, [agent, config.label, connectionAttempt, copilotkit, isRuntimeConnected, threadId]);
+
+  const retryConnection = useCallback(() => {
+    connectedAgentRef.current = null;
+    setConnectionFailure(null);
+    setConnectionAttempt((attempt) => attempt + 1);
+  }, []);
 
   // CopilotKit's public agent message type is looser than the AG-UI runtime
   // shape this renderer consumes; keep that cast at the integration boundary.
   const messages = (agent?.messages ?? []) as AguiMessage[];
   const items = toRenderItems(messages);
   const isRunning = agent?.isRunning ?? false;
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const artifact = selectArtifact(agent?.state as Record<string, unknown>, config);
+  const showCommandSuggestions = items.length === 0;
 
   // The artifact button hangs off the most recent assistant turn.
   let lastAssistantId: string | undefined;
@@ -341,7 +367,6 @@ export function ChatSurface({
   // The resolver's toolCall/toolMessage types are CopilotKit-internal; our Agui*
   // are the structural runtime shapes. Cast at this single boundary.
   const toolCallContent = (tc: AguiToolCall) =>
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     renderToolCall({ toolCall: tc as never, toolMessage: toolMessages.get(tc.id) as never });
 
   const send = useCallback(
@@ -391,7 +416,7 @@ export function ChatSurface({
   }, [agent, copilotkit]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div data-agent-chat-surface className="flex min-h-0 flex-1 flex-col bg-muted/20">
       <ToolRendererRegistration />
       <MessageScrollerProvider
         autoScroll
@@ -404,13 +429,16 @@ export function ChatSurface({
         />
         <MessageScroller className="flex-1">
           <MessageScrollerViewport>
-            <MessageScrollerContent aria-busy={isRunning} className="mx-auto w-full max-w-190 p-4">
+            <MessageScrollerContent
+              aria-busy={isRunning}
+              className="mx-auto w-full max-w-205 p-4 sm:p-6"
+            >
               {items.length === 0 && isAgentConnected ? (
-                <Empty className="border-none">
-                  <EmptyMedia>
-                    <SparklesIcon className="size-5 text-page" />
+                <Empty className="mx-auto max-w-2xl items-start border-none px-0 text-left">
+                  <EmptyMedia variant="icon">
+                    <AgentIcon agentId={config.id} className="text-page" />
                   </EmptyMedia>
-                  <EmptyHeader>
+                  <EmptyHeader className="items-start">
                     <EmptyTitle>{config.label} is ready</EmptyTitle>
                     <EmptyDescription>{config.welcome ?? config.placeholder}</EmptyDescription>
                   </EmptyHeader>
@@ -428,7 +456,6 @@ export function ChatSurface({
                     if (item.kind === "activity") {
                       return (
                         <MessageScrollerItem key={item.id} messageId={item.id}>
-                          {/* oxlint-disable-next-line typescript/no-unsafe-type-assertion */}
                           {activityMessage(item.message as never)}
                         </MessageScrollerItem>
                       );
@@ -500,24 +527,53 @@ export function ChatSurface({
       </MessageScrollerProvider>
 
       <div className="px-4 pb-safe-bottom">
-        <div className="mx-auto w-full max-w-190">
+        <div className="mx-auto w-full max-w-205">
           {gated ? (
             <ConnectNotice agentLabel={config.label} />
           ) : (
             <>
+              {currentConnectionFailure && (
+                <div
+                  role="alert"
+                  className="mb-2 flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm"
+                >
+                  <span>{currentConnectionFailure}</span>
+                  <Button type="button" variant="outline" size="sm" onClick={retryConnection}>
+                    Retry
+                  </Button>
+                </div>
+              )}
               {isAgentConnected && !isRunning && visibleSuggestions.length > 0 && (
-                <Suggestions className="mb-2">
-                  {visibleSuggestions.map((s) => (
+                <Suggestions
+                  data-agent-suggestions
+                  className={cn("mb-2", showCommandSuggestions && "w-full flex-col items-stretch")}
+                >
+                  {visibleSuggestions.map((s, index) => (
                     <Suggestion
                       key={suggestionKey(s)}
+                      className={cn(
+                        showCommandSuggestions &&
+                          "h-auto justify-between rounded-md py-2.5 font-mono",
+                      )}
                       suggestion={s.title}
                       onClick={() => void send(s.message)}
-                    />
+                    >
+                      {showCommandSuggestions ? (
+                        <>
+                          <span className="flex items-center gap-3">
+                            <span className="text-page">{String(index + 1).padStart(2, "0")}</span>
+                            <span>{s.title}</span>
+                          </span>
+                          <ArrowRightIcon data-icon="inline-end" />
+                        </>
+                      ) : null}
+                    </Suggestion>
                   ))}
                 </Suggestions>
               )}
               <PromptInputProvider>
                 <PromptInput
+                  data-agent-composer
                   onSubmitCapture={dismissKeyboard}
                   onSubmit={(message: PromptInputMessage) => {
                     void send(message.text ?? "", message.files);
@@ -541,7 +597,11 @@ export function ChatSurface({
                     </PromptInputTools>
                     <PromptInputTools>
                       <TranscribeButton />
-                      <PromptInputSubmit status={isRunning ? "streaming" : "ready"} onStop={stop} />
+                      <PromptInputSubmit
+                        disabled={!isAgentConnected && !isRunning}
+                        status={isRunning ? "streaming" : "ready"}
+                        onStop={stop}
+                      />
                     </PromptInputTools>
                   </PromptInputFooter>
                 </PromptInput>

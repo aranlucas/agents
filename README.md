@@ -3,9 +3,10 @@
 A production multi-agent workspace with a Go ADK gateway, a Go Telegram worker,
 and web/mobile clients sharing live state over AG-UI.
 
-The gateway exposes 11 agents: travel, grocery, fitness, wellness, expense,
-oral boards, trends, presentation, research, spreadsheet, and the public
-resume assistant. Cloudflare D1 is the sole session/link/rate-limit
+The gateway exposes 13 agents: travel, grocery, fitness, wellness, expense,
+oral boards, trends, presentation, research, spreadsheet, the public resume
+assistant, a private job-matching/application assistant, and a private software
+engineering interview coach. Cloudflare D1 is the sole session/link/rate-limit
 store and R2 is the sole artifact store. There is no local or Postgres fallback.
 
 ## Architecture
@@ -60,12 +61,12 @@ Both Railway services run the same idempotent `/app/migrate` binary before
 starting, expose process-only `/live`, and use schema/D1/R2-aware `/ready` for
 deployment health. Set `APP_ENV=production` on both services. The gateway also
 requires all `CF_*` values, `ALLOWED_ORIGINS` (including `*` for open CORS),
-`CLERK_ISSUER`, and the OpenRouter, Groq, NVIDIA NIM, Mistral, and Gemini keys.
+`CLERK_ISSUER`, and the OpenRouter, Groq, and Gemini keys.
 `ALLOWED_ORIGINS` also accepts local HTTP origins like `http://localhost:3000` in
 production for local debugging.
 It also requires `GOOGLE_APPLICATION_CREDENTIALS_JSON` for the advertised
 Google Trends surface.
-The Telegram service requires all `CF_*` values, `MISTRAL_API_KEY`, and
+The Telegram service requires all `CF_*` values, `GROQ_API_KEY`, and
 `TELEGRAM_BOT_TOKEN`; browser-origin and Clerk-JWT settings are intentionally
 gateway-only. `CLERK_SECRET_KEY` enables OAuth account lookup on either
 runtime where that feature is used.

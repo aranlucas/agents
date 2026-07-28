@@ -99,6 +99,25 @@ func (s *SessionService) Create(ctx context.Context, req *session.CreateRequest)
 	userParams := append([]any{req.AppName, req.UserID, string(userJSON)}, userUpdateParams...)
 	result, err := s.d1.Run(
 		ctx,
+		// Get intentionally hides expired sessions. Reclaim that same identity
+		// before inserting so a client can reopen a thread after its TTL without
+		// colliding with the expired primary-key row. Delete archived events
+		// explicitly as well as through the foreign key because D1 deployments
+		// may not have SQLite foreign-key enforcement enabled.
+		Statement{SQL: `DELETE FROM session_events
+			WHERE app_name = ? AND user_id = ? AND session_id = ?
+			AND EXISTS (
+				SELECT 1 FROM sessions
+				WHERE app_name = session_events.app_name
+				AND user_id = session_events.user_id
+				AND session_id = session_events.session_id
+				AND expires_at <= ?
+			)`, Params: []any{req.AppName, req.UserID, id, now.UnixMilli()}},
+		Statement{
+			SQL: `DELETE FROM sessions
+				WHERE app_name = ? AND user_id = ? AND session_id = ? AND expires_at <= ?`,
+			Params: []any{req.AppName, req.UserID, id, now.UnixMilli()},
+		},
 		Statement{SQL: `INSERT INTO app_states (app_name, state_json) VALUES (?, ?)
 			ON CONFLICT(app_name) DO UPDATE SET state_json = ` + appUpdate, Params: appParams},
 		Statement{SQL: `INSERT INTO user_states (app_name, user_id, state_json) VALUES (?, ?, ?)
@@ -114,13 +133,13 @@ func (s *SessionService) Create(ctx context.Context, req *session.CreateRequest)
 	if err != nil {
 		return nil, fmt.Errorf("create session: %w", err)
 	}
-	if len(result) < 4 {
+	if len(result) < 6 {
 		return nil, errors.New("create session returned no result")
 	}
-	if len(result[3].Rows) == 0 {
+	if len(result[5].Rows) == 0 {
 		return &session.CreateResponse{Session: newStoredSession(id, req.AppName, req.UserID, state, nil, now)}, nil
 	}
-	created, err := decodeStoredSession(result[3].Rows[0], req.AppName, nil)
+	created, err := decodeStoredSession(result[5].Rows[0], req.AppName, nil)
 	if err != nil {
 		return nil, err
 	}

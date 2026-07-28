@@ -20,6 +20,8 @@ import (
 	"agents/internal/catalog"
 	"agents/internal/common"
 	"agents/internal/fitnessdata"
+	"agents/interview"
+	"agents/jobs"
 	"agents/oralboards"
 	"agents/presentation"
 	"agents/research"
@@ -113,6 +115,7 @@ func generateJSONSchemas() (map[string][]byte, error) {
 		"travel": "TripState", "grocery": "GroceryState", "fitness": "FitnessState",
 		"wellness": "WellnessState", "expense": "ExpenseState", "oral-boards": "OralBoardsState",
 		"trends": "TrendsState", "resume": "ResumeState", "research": "ResearchState",
+		"jobs": "JobsState", "interview": "InterviewState",
 		"spreadsheet": "SpreadsheetState", "presentation": "PresentationState",
 	}
 	outputs := make(map[string][]byte, len(stateNames))
@@ -480,6 +483,13 @@ func enumDefinitions() []enumDef {
 		{Name: "PresentationStatus", Values: []string{string(presentation.StatusIdle), string(presentation.StatusDrafting), string(presentation.StatusReady)}},
 		{Name: "TrendsStatus", Values: []string{string(trends.StatusIdle), string(trends.StatusQuerying), string(trends.StatusReady), string(trends.StatusEmpty), string(trends.StatusError)}},
 		{Name: "ResumeStatus", Values: []string{string(resume.StatusIdle), string(resume.StatusAnalyzing), string(resume.StatusReady)}},
+		{Name: "JobsStatus", Values: []string{string(jobs.StatusIdle), string(jobs.StatusResearching), string(jobs.StatusMatching), string(jobs.StatusDrafting), string(jobs.StatusReady)}},
+		{Name: "JobMatchVerdict", Values: []string{string(jobs.VerdictStrongMatch), string(jobs.VerdictMatch), string(jobs.VerdictStretch), string(jobs.VerdictSkip)}},
+		{Name: "JobCandidateStatus", Values: []string{string(jobs.CandidateNew), string(jobs.CandidateShortlisted), string(jobs.CandidateDismissed)}},
+		{Name: "InterviewTrack", Values: []string{string(interview.TrackBehavioral), string(interview.TrackCoding)}},
+		{Name: "InterviewDifficulty", Values: []string{string(interview.DifficultyEasy), string(interview.DifficultyMedium), string(interview.DifficultyHard)}},
+		{Name: "InterviewCoachingStyle", Values: []string{string(interview.StyleInterview), string(interview.StyleGuided)}},
+		{Name: "InterviewStatus", Values: []string{string(interview.StatusIdle), string(interview.StatusPracticing), string(interview.StatusFeedback), string(interview.StatusComplete)}},
 	}
 }
 
@@ -522,6 +532,36 @@ func objectDefinitions() []objectDef {
 			field("id", "", false), field("type", "PresentationSlideType", false), field("heading", "", false),
 			field("body", "", false), field("notes", "", false),
 		)),
+		object("ApplicationProfile", jobs.ApplicationProfile{}, required(
+			"full_name", "email", "phone", "location", "linkedin_url", "github_url", "portfolio_url",
+			"work_authorization", "sponsorship", "remote_preference", "relocation", "salary_expectation",
+			"voice_notes", "additional_facts",
+		)),
+		object("ApplicationAnswer", jobs.ApplicationAnswer{}, required("field", "answer", "evidence", "sensitive")),
+		object("JobResearchSource", jobs.ResearchSource{}, required("title", "url", "summary")),
+		object("JobWatchlist", jobs.JobWatchlist{}, required(
+			"roles", "locations", "remote_only", "company_preferences", "must_have", "exclude",
+			"minimum_salary_usd", "max_results",
+		)),
+		object("JobCandidate", jobs.JobCandidate{}, required(
+			"id", "title", "company", "location", "url", "posted_at", "compensation", "summary",
+			"match_score", "why_match", "concerns", "sources",
+		), fields(
+			field("match_verdict", "JobMatchVerdict", false),
+			field("status", "JobCandidateStatus", false),
+		)),
+		object("InterviewQuestion", interview.Question{}, required(
+			"id", "title", "prompt", "topic", "competency", "examples", "constraints",
+		), fields(
+			field("track", "InterviewTrack", false),
+			field("difficulty", `InterviewDifficulty | ""`, false),
+		)),
+		object("InterviewRubricScore", interview.RubricScore{}, required("dimension", "score", "evidence")),
+		object("InterviewStoryNote", interview.StoryNote{}, required("title", "facts")),
+		object("InterviewQuestionFeedback", interview.QuestionFeedback{}, required(
+			"question_id", "question_title", "attempt_summary", "rubric", "overall_score", "feedback",
+			"strengths", "improvements", "follow_up",
+		), fields(field("story_note", "InterviewStoryNote", true))),
 		object("TripState", travel.TravelState{}, stateFields(
 			field("destination", "", true), field("start_date", "", true), field("end_date", "", true),
 			field("travelers", "", true), field("budget_usd", "", true), field("headline", "", true),
@@ -579,6 +619,30 @@ func objectDefinitions() []objectDef {
 			field("target_role", "", true), field("job_description", "", true), field("fit_summary", "", true),
 			field("gaps", "", true), field("tailored_bullets", "", true), field("status", "ResumeStatus", true),
 			field("review_summary", "", true),
+		)),
+		object("JobsState", jobs.JobsState{}, stateFields(
+			field("profile", "", true), field("watchlist", "", true), field("inbox", "", true),
+			field("inbox_refreshed_at", "", true), field("workspace_summary", "", true),
+			field("target_title", "", true), field("company", "", true),
+			field("job_url", "", true), field("job_description", "", true), field("research_summary", "", true),
+			field("sources", "JobResearchSource[]", true), field("match_score", "", true),
+			field("match_verdict", "JobMatchVerdict", true), field("match_summary", "", true),
+			field("strengths", "", true), field("gaps", "", true), field("tailored_resume", "", true),
+			field("application_draft", "", true),
+			field("answers", "", true), field("status", "JobsStatus", true), field("review_summary", "", true),
+		)),
+		object("InterviewState", interview.State{}, stateFields(
+			field("track", "InterviewTrack", true), field("target_role", "", true),
+			field("target_level", "", true), field("topics", "", true),
+			field("difficulty", `InterviewDifficulty | ""`, true),
+			field("coaching_style", "InterviewCoachingStyle", true),
+			field("target_question_count", "", true),
+			field("current_question", "InterviewQuestion | null", true),
+			field("active_feedback", "InterviewQuestionFeedback | null", true),
+			field("history", "", true), field("hint_level", "", true), field("active_hint", "", true),
+			field("completed_count", "", true), field("average_score", "", true),
+			field("status", "InterviewStatus", true), field("session_summary", "", true),
+			field("next_steps", "", true),
 		)),
 	}
 }

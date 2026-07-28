@@ -16,6 +16,10 @@ import {
 } from "lucide-react";
 import { examTimeline } from "@/data/exam-framework";
 
+// The study plan depends on the current month, so do not leave it pinned to
+// the month in which the deployment was built.
+export const revalidate = 3600;
+
 export default function StudyPlanPage() {
   const currentMonth = new Date().getMonth() + 1; // 1-12
 

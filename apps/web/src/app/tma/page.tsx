@@ -3,6 +3,7 @@
 import { useAuth, useClerk, useSignIn } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Alert, AlertDescription, AlertTitle, Spinner } from "@agents/ui";
 
 type AuthState =
   | { status: "loading" }
@@ -81,15 +82,30 @@ export default function TmaPage() {
 
   if (state.status === "error") {
     return (
-      <main className="typeset typeset-site flex min-h-screen items-center justify-center p-6">
-        <p className="text-sm text-muted-foreground">{state.message}</p>
+      <main
+        data-field-grid
+        className="flex min-h-screen items-center justify-center bg-muted/30 p-6"
+      >
+        <Alert className="max-w-md bg-card shadow-card" variant="destructive">
+          <AlertTitle>Telegram sign-in stopped</AlertTitle>
+          <AlertDescription>{state.message}</AlertDescription>
+        </Alert>
       </main>
     );
   }
 
   return (
-    <main className="typeset typeset-site flex min-h-screen items-center justify-center p-6">
-      <p className="text-sm text-muted-foreground">Signing in…</p>
+    <main data-field-grid className="flex min-h-screen items-center justify-center bg-muted/30 p-6">
+      <div
+        aria-live="polite"
+        className="flex w-full max-w-sm flex-col items-center gap-4 border border-border bg-card p-8 text-center shadow-card"
+      >
+        <Spinner className="text-primary" />
+        <div>
+          <p className="font-medium">Signing in with Telegram</p>
+          <p className="mt-1 text-sm text-muted-foreground">Connecting your secure session…</p>
+        </div>
+      </div>
     </main>
   );
 }

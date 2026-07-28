@@ -9,6 +9,8 @@ export const AGENT_ORDER = [
   "oral-boards",
   "trends",
   "resume",
+  "jobs",
+  "interview",
   "research",
   "spreadsheet",
   "presentation",
@@ -25,6 +27,8 @@ export const AGENT_BACKEND_PATHS = {
   "oral-boards": "oralboards",
   trends: "trends",
   resume: "resume",
+  jobs: "jobs",
+  interview: "interview",
   research: "research",
   spreadsheet: "spreadsheet",
   presentation: "presentation",
@@ -66,6 +70,20 @@ export type PresentationStatus = "idle" | "drafting" | "ready";
 export type TrendsStatus = "idle" | "querying" | "ready" | "empty" | "error";
 
 export type ResumeStatus = "idle" | "analyzing" | "ready";
+
+export type JobsStatus = "idle" | "researching" | "matching" | "drafting" | "ready";
+
+export type JobMatchVerdict = "strong_match" | "match" | "stretch" | "skip";
+
+export type JobCandidateStatus = "new" | "shortlisted" | "dismissed";
+
+export type InterviewTrack = "behavioral" | "coding";
+
+export type InterviewDifficulty = "easy" | "medium" | "hard";
+
+export type InterviewCoachingStyle = "interview" | "guided";
+
+export type InterviewStatus = "idle" | "practicing" | "feedback" | "complete";
 
 export type TrendsCell = string | number | boolean | null;
 export type TrendsRow = Record<string, TrendsCell>;
@@ -243,6 +261,100 @@ export type PresentationSlide = {
   notes: string;
 };
 
+export type ApplicationProfile = {
+  full_name: string;
+  email: string;
+  phone: string;
+  location: string;
+  linkedin_url: string;
+  github_url: string;
+  portfolio_url: string;
+  work_authorization: string;
+  sponsorship: string;
+  remote_preference: string;
+  relocation: string;
+  salary_expectation: string;
+  voice_notes: string;
+  additional_facts: string[];
+};
+
+export type ApplicationAnswer = {
+  field: string;
+  answer: string;
+  evidence: string;
+  sensitive: boolean;
+};
+
+export type JobResearchSource = {
+  title: string;
+  url: string;
+  summary: string;
+};
+
+export type JobWatchlist = {
+  roles: string[];
+  locations: string[];
+  remote_only: boolean;
+  company_preferences: string[];
+  must_have: string[];
+  exclude: string[];
+  minimum_salary_usd: number;
+  max_results: number;
+};
+
+export type JobCandidate = {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  url: string;
+  posted_at: string;
+  compensation: string;
+  summary: string;
+  match_score: number;
+  why_match: string[];
+  concerns: string[];
+  sources: JobResearchSource[];
+  match_verdict: JobMatchVerdict;
+  status: JobCandidateStatus;
+};
+
+export type InterviewQuestion = {
+  id: string;
+  title: string;
+  prompt: string;
+  topic: string;
+  competency: string;
+  examples: string[];
+  constraints: string[];
+  track: InterviewTrack;
+  difficulty: InterviewDifficulty | "";
+};
+
+export type InterviewRubricScore = {
+  dimension: string;
+  score: number;
+  evidence: string;
+};
+
+export type InterviewStoryNote = {
+  title: string;
+  facts: string[];
+};
+
+export type InterviewQuestionFeedback = {
+  question_id: string;
+  question_title: string;
+  attempt_summary: string;
+  rubric: InterviewRubricScore[];
+  overall_score: number;
+  feedback: string;
+  strengths: string[];
+  improvements: string[];
+  follow_up: string;
+  story_note?: InterviewStoryNote;
+};
+
 export type TripState = {
   destination?: string;
   start_date?: string;
@@ -367,4 +479,48 @@ export type ResumeState = {
   tailored_bullets?: string[];
   status?: ResumeStatus;
   review_summary?: string;
+};
+
+export type JobsState = {
+  profile?: ApplicationProfile;
+  watchlist?: JobWatchlist;
+  inbox?: JobCandidate[];
+  inbox_refreshed_at?: string;
+  workspace_summary?: string;
+  target_title?: string;
+  company?: string;
+  job_url?: string;
+  job_description?: string;
+  research_summary?: string;
+  sources?: JobResearchSource[];
+  match_score?: number;
+  match_verdict?: JobMatchVerdict;
+  match_summary?: string;
+  strengths?: string[];
+  gaps?: string[];
+  tailored_resume?: string;
+  application_draft?: string;
+  answers?: ApplicationAnswer[];
+  status?: JobsStatus;
+  review_summary?: string;
+};
+
+export type InterviewState = {
+  track?: InterviewTrack;
+  target_role?: string;
+  target_level?: string;
+  topics?: string[];
+  difficulty?: InterviewDifficulty | "";
+  coaching_style?: InterviewCoachingStyle;
+  target_question_count?: number;
+  current_question?: InterviewQuestion | null;
+  active_feedback?: InterviewQuestionFeedback | null;
+  history?: InterviewQuestionFeedback[];
+  hint_level?: number;
+  active_hint?: string;
+  completed_count?: number;
+  average_score?: number;
+  status?: InterviewStatus;
+  session_summary?: string;
+  next_steps?: string[];
 };
