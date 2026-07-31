@@ -3,7 +3,7 @@ import type MarkdownIt from "markdown-it";
 const TASK_MARKER = /^\[([ xX])\][\t ]+/u;
 
 /** Adds renderable checkbox tokens to GFM-style task list items. */
-export function taskListPlugin(markdownIt: MarkdownIt): void {
+export function taskListPlugin(markdownIt: InstanceType<typeof MarkdownIt>): void {
   markdownIt.core.ruler.after("inline", "native_markdown_task_lists", (state) => {
     let insideListItem = false;
 
