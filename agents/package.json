@@ -4,8 +4,8 @@
   "scripts": {
     "lint": "golangci-lint run ./...",
     "dev": "go run ./cmd/gateway",
-    "fmt": "go run mvdan.cc/gofumpt@v0.10.0 -w .",
-    "fmt:check": "test -z \"$(go run mvdan.cc/gofumpt@v0.10.0 -l .)\"",
+    "fmt": "go run mvdan.cc/gofumpt@v0.11.0 -w .",
+    "fmt:check": "test -z \"$(go run mvdan.cc/gofumpt@v0.11.0 -l .)\"",
     "typecheck": "go vet ./...",
     "build": "CGO_ENABLED=0 go build -mod=readonly -trimpath -o ./bin/gateway ./cmd/gateway && CGO_ENABLED=0 go build -mod=readonly -trimpath -o ./bin/telegram ./cmd/telegram",
     "test": "go test -race ./...",
