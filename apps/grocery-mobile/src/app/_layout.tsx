@@ -19,6 +19,7 @@ import { SignInScreen } from "@/components/sign-in-screen";
 import { Spinner } from "@/components/ui/spinner";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { getClerkPublishableKey, getRuntimeUrl } from "@/lib/config";
+import { Sentry } from "@/lib/sentry";
 
 const UniwindGestureHandlerRootView = withUniwind(GestureHandlerRootView);
 
@@ -30,7 +31,7 @@ function configuration(): { clerkKey: string; runtimeUrl: string } | Error {
   }
 }
 
-export default function RootLayout() {
+function RootLayout() {
   const configured = configuration();
   const { theme } = useUniwind();
   const background = useThemeColor("--color-background", "#f7f8f2");
@@ -129,3 +130,5 @@ export default function RootLayout() {
     </UniwindGestureHandlerRootView>
   );
 }
+
+export default Sentry.wrap(RootLayout);

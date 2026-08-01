@@ -57,10 +57,11 @@ func main() {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	shutdownTelemetry, err := observability.Setup(ctx, observability.Config{
+	telemetryConfig := observability.Config{
 		ServiceName: "agents-telegram", ServiceVersion: os.Getenv("RAILWAY_GIT_COMMIT_SHA"),
 		Environment: string(cfg.Environment),
-	})
+	}
+	shutdownTelemetry, err := observability.Setup(ctx, telemetryConfig)
 	if err != nil {
 		log.Fatalf("configure OpenTelemetry: %v", err)
 	}
@@ -71,6 +72,11 @@ func main() {
 			log.Printf("flush OpenTelemetry: %v", err)
 		}
 	}()
+	flushSentry, err := observability.SetupSentry(telemetryConfig)
+	if err != nil {
+		log.Fatalf("configure Sentry: %v", err)
+	}
+	defer flushSentry()
 	d1, err := cloudflare.NewD1(cfg.Cloudflare, nil)
 	if err != nil {
 		log.Fatalf("configure D1: %v", err)
@@ -151,7 +157,7 @@ func main() {
 	links := telegram.NewLinkStore(d1, time.Now)
 	telegramRunner, err := telegram.NewRunner(bot, telegram.NewRouter(telegramConfig, backend), links, executor, telegramConfig, 180*time.Second)
 	must(err)
-	server := &http.Server{Addr: ":" + cfg.HTTP.Port, Handler: observability.Wrap("agents-telegram-health", healthHandler(d1, r2)), ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 30 * time.Second}
+	server := &http.Server{Addr: ":" + cfg.HTTP.Port, Handler: observability.Wrap("agents-telegram-health", observability.WrapSentry(healthHandler(d1, r2))), ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 30 * time.Second}
 	go func() {
 		if serveErr := server.ListenAndServe(); serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
 			log.Printf("health server: %v", serveErr)
@@ -160,6 +166,7 @@ func main() {
 	}()
 	log.Printf("Telegram worker polling; health on %s", server.Addr)
 	if err := telegramRunner.Run(ctx); err != nil {
+		observability.CaptureError(context.Background(), err)
 		log.Printf("Telegram polling stopped: %v", err)
 	}
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

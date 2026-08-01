@@ -1,7 +1,15 @@
+import * as Sentry from "@sentry/nextjs";
 import { registerOTel } from "@vercel/otel";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 
-export function register() {
+export async function register() {
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    await import("./sentry.server.config");
+  }
+  if (process.env.NEXT_RUNTIME === "edge") {
+    await import("./sentry.edge.config");
+  }
+
   const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
   if (!endpoint) return;
 
@@ -12,3 +20,5 @@ export function register() {
     }),
   });
 }
+
+export const onRequestError = Sentry.captureRequestError;

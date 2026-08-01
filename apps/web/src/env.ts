@@ -15,6 +15,7 @@ export const env = createEnv({
     TELEGRAM_BOT_TOKEN: z.string().optional(),
     OTEL_EXPORTER_OTLP_ENDPOINT: z.string().optional(),
     OTEL_SERVICE_NAME: z.string().default("agents-nextjs"),
+    SENTRY_DSN: z.string().optional(),
     COPILOTKIT_DEBUG: z
       .string()
       .optional()
@@ -23,6 +24,7 @@ export const env = createEnv({
   client: {
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1),
     NEXT_PUBLIC_AGENTS_BASE_URL: z.url().default("https://agents-gateway.up.railway.app"),
+    NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
   },
   skipValidation: process.env.SKIP_ENV_VALIDATION === "1",
   runtimeEnv: {
@@ -39,9 +41,11 @@ export const env = createEnv({
     TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
     OTEL_EXPORTER_OTLP_ENDPOINT: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
     OTEL_SERVICE_NAME: process.env.OTEL_SERVICE_NAME,
+    SENTRY_DSN: process.env.SENTRY_DSN,
     COPILOTKIT_DEBUG: process.env.COPILOTKIT_DEBUG,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     NEXT_PUBLIC_AGENTS_BASE_URL:
       process.env.NEXT_PUBLIC_AGENTS_BASE_URL ?? "https://agents-gateway.up.railway.app",
+    NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
   },
 });

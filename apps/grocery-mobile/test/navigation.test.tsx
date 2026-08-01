@@ -43,6 +43,11 @@ vi.mock("@gorhom/bottom-sheet", () => ({
   BottomSheetModalProvider: ({ children }: PropsWithChildren) => children,
 }));
 
+vi.mock("@sentry/react-native", () => ({
+  init: vi.fn(),
+  wrap: <T,>(component: T) => component,
+}));
+
 vi.mock("expo-router", async () => {
   const React = await import("react");
   const { Pressable } = await import("react-native");

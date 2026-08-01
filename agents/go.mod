@@ -13,6 +13,7 @@ require (
 	github.com/clerk/clerk-sdk-go/v2 v2.7.0
 	github.com/cloudflare/cloudflare-go/v7 v7.8.0
 	github.com/getkin/kin-openapi v0.145.0
+	github.com/getsentry/sentry-go v0.48.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/jsonschema-go v0.4.3
 	github.com/joho/godotenv v1.5.1

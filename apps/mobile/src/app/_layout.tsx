@@ -6,6 +6,7 @@ import * as SecureStore from "expo-secure-store";
 import Constants from "expo-constants";
 import { AppTabs } from "@/components/app-tabs";
 import { getCopilotKitRuntimeUrl } from "@/utils/agent-config";
+import { Sentry } from "@/utils/sentry";
 
 const tokenCache = {
   async getToken(key: string) {
@@ -16,7 +17,7 @@ const tokenCache = {
   },
 };
 
-export default function RootLayout() {
+function RootLayout() {
   const publishableKey =
     Constants.expoConfig?.extra?.clerkPublishableKey ??
     process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ??
@@ -32,3 +33,5 @@ export default function RootLayout() {
     </ClerkProvider>
   );
 }
+
+export default Sentry.wrap(RootLayout);
