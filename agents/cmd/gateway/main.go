@@ -625,10 +625,11 @@ func main() {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	shutdownTelemetry, err := observability.Setup(ctx, observability.Config{
+	telemetryConfig := observability.Config{
 		ServiceName: "agents-gateway", ServiceVersion: os.Getenv("RAILWAY_GIT_COMMIT_SHA"),
 		Environment: string(cfg.Environment),
-	})
+	}
+	shutdownTelemetry, err := observability.Setup(ctx, telemetryConfig)
 	if err != nil {
 		log.Fatalf("configure OpenTelemetry: %v", err)
 	}
@@ -639,6 +640,11 @@ func main() {
 			log.Printf("flush OpenTelemetry: %v", err)
 		}
 	}()
+	flushSentry, err := observability.SetupSentry(telemetryConfig)
+	if err != nil {
+		log.Fatalf("configure Sentry: %v", err)
+	}
+	defer flushSentry()
 
 	d1, err := cloudflare.NewD1(cfg.Cloudflare, nil)
 	if err != nil {
@@ -891,7 +897,7 @@ func main() {
 
 	server := &http.Server{
 		Addr:    ":" + cfg.HTTP.Port,
-		Handler: observability.Wrap("agents-gateway", handler),
+		Handler: observability.Wrap("agents-gateway", observability.WrapSentry(handler)),
 		// Long enough that a slow client filling headers can't hold a
 		// connection open indefinitely, short enough not to mask a hung
 		// upstream. WriteTimeout is generous because AG-UI runs stream SSE
@@ -920,6 +926,9 @@ func main() {
 	stop()
 	<-shutdownDone
 	if serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
+		// log.Fatalf exits before deferred flushes run, so report first.
+		observability.CaptureError(context.Background(), serveErr)
+		flushSentry()
 		log.Fatalf("gateway server failed: %v", serveErr)
 	}
 }
