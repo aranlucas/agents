@@ -102,6 +102,11 @@ vi.mock("expo-router", () => ({
   Tabs,
 }));
 
+vi.mock("@sentry/react-native", () => ({
+  init: vi.fn(),
+  wrap: (component: ComponentType) => component,
+}));
+
 vi.mock("lucide-react-native", () => ({
   Dumbbell: Host,
   HeartPulse: Host,

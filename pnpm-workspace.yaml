@@ -44,6 +44,7 @@ allowBuilds:
   node-liblzma: true
   workerd: true
   highlight.js: true
+  "@sentry/cli": false
 
 onlyBuiltDependencies:
   - "agents-monorepo"

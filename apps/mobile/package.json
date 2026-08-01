@@ -34,6 +34,7 @@
     "@clerk/clerk-expo": "^2.19.42",
     "@copilotkit/react-native": "^1.64.2",
     "@expo/metro-runtime": "~57.0.8",
+    "@sentry/react-native": "~7.11.0",
     "expo": "^57.0.9",
     "expo-asset": "~57.0.8",
     "expo-auth-session": "~57.0.5",
