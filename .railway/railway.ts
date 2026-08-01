@@ -51,9 +51,11 @@ export default defineRailway((ctx) => {
       TELEGRAM_BOT_USERNAME: preserve(),
       TELEGRAM_LINK_SECRET: preserve(),
 
-      // Observability.
+      // Observability. SENTRY_DSN is unset today; listing it keeps the gateway
+      // from planning a delete once it is set in the dashboard.
       OTEL_EXPORTER_OTLP_ENDPOINT: preserve(),
       OTEL_SERVICE_NAME: preserve(),
+      SENTRY_DSN: preserve(),
 
       // Left over from the Python runtime. Nothing under agents/ reads these;
       // delete them here once a destructive plan has been reviewed.
