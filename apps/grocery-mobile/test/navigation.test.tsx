@@ -35,7 +35,7 @@ vi.mock("@clerk/clerk-expo", () => ({
 vi.mock("@clerk/clerk-expo/resource-cache", () => ({ resourceCache: {} }));
 vi.mock("@clerk/clerk-expo/token-cache", () => ({ tokenCache: {} }));
 
-vi.mock("@copilotkit/react-native", () => ({
+vi.mock("@copilotkit/react-native/headless", () => ({
   CopilotKitProvider: ({ children }: PropsWithChildren) => children,
 }));
 

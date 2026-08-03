@@ -1,4 +1,4 @@
-import { type Thread } from "@copilotkit/react-native";
+import { type Thread } from "@copilotkit/react-native/headless";
 import { useFocusEffect, useRouter } from "expo-router";
 import { ChevronRight, MessageSquareText } from "lucide-react-native";
 import { memo, useCallback, useRef, useState } from "react";

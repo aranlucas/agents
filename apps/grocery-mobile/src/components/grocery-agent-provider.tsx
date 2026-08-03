@@ -1,4 +1,4 @@
-import { type Thread, useThreads } from "@copilotkit/react-native";
+import { type Thread, useThreads } from "@copilotkit/react-native/headless";
 import { createContext, type ReactNode, useContext, useMemo } from "react";
 import { useGroceryAgentController } from "@/hooks/use-grocery-agent";
 

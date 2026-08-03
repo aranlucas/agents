@@ -4,10 +4,15 @@ const { withUniwindConfig } = require("uniwind/metro");
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
 
-// CopilotKit imports Node-only Segment telemetry; client bundles do not use it.
+// Segment reaches jose through its Node entry. Resolve only jose against its
+// browser export so Metro keeps React Native conditions for every other module.
 config.resolver.resolveRequest = (context, moduleName, platform) => {
-  if (moduleName === "@segment/analytics-node") {
-    return { type: "empty" };
+  if (moduleName === "jose" || moduleName.startsWith("jose/")) {
+    return context.resolveRequest(
+      { ...context, unstable_conditionNames: ["browser"] },
+      moduleName,
+      platform,
+    );
   }
   return context.resolveRequest(context, moduleName, platform);
 };

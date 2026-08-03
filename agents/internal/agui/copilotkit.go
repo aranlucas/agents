@@ -12,7 +12,7 @@ import (
 
 // CopilotKitRuntimeVersion is the upstream runtime contract version mirrored
 // by this gateway. Keep it aligned with the web/mobile CopilotKit packages.
-const CopilotKitRuntimeVersion = "1.62.3"
+const CopilotKitRuntimeVersion = "1.65.0"
 
 type runtimeCapabilityFlag struct {
 	Streaming bool `json:"streaming"`
