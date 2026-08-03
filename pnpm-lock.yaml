@@ -181,7 +181,7 @@ importers:
         specifier: ^2.19.42
         version: 2.19.42(ee06af915c9cb321216b3bc97dbb26bc)
       '@copilotkit/react-native':
-        specifier: ^1.65.0
+        specifier: 1.65.0
         version: 1.65.0(284e6215cc2c297daf21009083c34cab)
       '@expo/material-symbols':
         specifier: ^0.1.1

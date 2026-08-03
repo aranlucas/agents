@@ -1,5 +1,5 @@
 import { useAuth } from "@clerk/clerk-expo";
-import { CopilotKitProvider } from "@copilotkit/react-native";
+import { CopilotKitProvider } from "@copilotkit/react-native/headless";
 import { useQuery } from "@tanstack/react-query";
 import { type ComponentProps, type ReactNode, useMemo } from "react";
 import { View } from "react-native";

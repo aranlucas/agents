@@ -2,7 +2,7 @@
   "name": "grocery-mobile",
   "version": "1.0.4",
   "private": true,
-  "main": "expo-router/entry",
+  "main": "./index.js",
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
@@ -28,7 +28,7 @@
   "dependencies": {
     "@agents/types": "workspace:*",
     "@clerk/clerk-expo": "^2.19.42",
-    "@copilotkit/react-native": "^1.65.0",
+    "@copilotkit/react-native": "1.65.0",
     "@expo/material-symbols": "^0.1.1",
     "@expo/metro-runtime": "~57.0.8",
     "@gorhom/bottom-sheet": "^5.2.14",

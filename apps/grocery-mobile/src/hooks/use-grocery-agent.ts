@@ -1,5 +1,5 @@
 import { useAuth } from "@clerk/clerk-expo";
-import { useAgent, useCopilotKit, type UseAgentUpdate } from "@copilotkit/react-native";
+import { useAgent, useCopilotKit, type UseAgentUpdate } from "@copilotkit/react-native/headless";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { runAuthenticated, readableError } from "@/lib/auth";
 import {
