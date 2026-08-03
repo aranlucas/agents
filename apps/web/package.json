@@ -20,7 +20,7 @@
     "@agents/types": "workspace:*",
     "@agents/ui": "workspace:*",
     "@clerk/nextjs": "^7.6.4",
-    "@copilotkit/react-core": "^1.64.2",
+    "@copilotkit/react-core": "^1.65.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.221.0",
     "@sentry/nextjs": "^10.69.0",
     "@t3-oss/env-nextjs": "^0.13.11",
