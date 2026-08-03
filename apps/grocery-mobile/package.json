@@ -28,7 +28,7 @@
   "dependencies": {
     "@agents/types": "workspace:*",
     "@clerk/clerk-expo": "^2.19.42",
-    "@copilotkit/react-native": "^1.64.2",
+    "@copilotkit/react-native": "^1.65.0",
     "@expo/material-symbols": "^0.1.1",
     "@expo/metro-runtime": "~57.0.8",
     "@gorhom/bottom-sheet": "^5.2.14",
@@ -71,7 +71,7 @@
     "lucide-react-native": "^1.28.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "react-hook-form": "^7.83.0",
+    "react-hook-form": "^7.84.0",
     "react-native": "0.86.2",
     "react-native-gesture-handler": "~2.32.0",
     "react-native-keyboard-controller": "1.21.9",
@@ -84,7 +84,7 @@
     "react-native-worklets": "0.10.1",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.3",
-    "uniwind": "^1.10.0"
+    "uniwind": "^1.10.1"
   },
   "devDependencies": {
     "@babel/core": "7.29.7",
