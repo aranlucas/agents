@@ -52,29 +52,36 @@ bash agents/scripts/smoke-image.sh agents-gateway-go:local
 bash agents/scripts/smoke-telegram.sh agents-telegram-go:local
 ```
 
-Deployment uses [railway.toml](railway.toml) for the gateway and
-[agents/railway.telegram.toml](agents/railway.telegram.toml) for the worker.
-The web deploys to Vercel, mobile through EAS, and the Kroger shopping MCP from
+Railway infrastructure is defined in code at
+[.railway/railway.ts](.railway/railway.ts); see [.railway/README.md](.railway/README.md)
+for the plan/apply workflow. The `agents` project runs a single `agents-gateway`
+service in its `production` and `development` environments. The web deploys to
+Vercel, mobile through EAS, and the Kroger shopping MCP from
 `apps/ai-shopping-mcp` to the existing `ai-meal-planner-mcp` Cloudflare Worker.
 
-Both Railway services run the same idempotent `/app/migrate` binary before
-starting, expose process-only `/live`, and use schema/D1/R2-aware `/ready` for
-deployment health. Set `APP_ENV=production` on both services. The gateway also
-requires all `CF_*` values, `ALLOWED_ORIGINS` (including `*` for open CORS),
-`CLERK_ISSUER`, and the OpenRouter, Groq, and Gemini keys.
+The gateway runs the idempotent `/app/migrate` binary before starting, exposes
+process-only `/live`, and uses schema/D1/R2-aware `/ready` for deployment
+health. Set `APP_ENV=production` on the service. It also requires all `CF_*`
+values, `ALLOWED_ORIGINS` (including `*` for open CORS), `CLERK_ISSUER`, and the
+OpenRouter, Groq, and Gemini keys.
 `ALLOWED_ORIGINS` also accepts local HTTP origins like `http://localhost:3000` in
 production for local debugging.
 It also requires `GOOGLE_APPLICATION_CREDENTIALS_JSON` for the advertised
 Google Trends surface.
-The Telegram service requires all `CF_*` values, `GROQ_API_KEY`, and
-`TELEGRAM_BOT_TOKEN`; browser-origin and Clerk-JWT settings are intentionally
-gateway-only. `CLERK_SECRET_KEY` enables OAuth account lookup on either
-runtime where that feature is used.
+`CLERK_SECRET_KEY` enables OAuth account lookup where that feature is used.
+
+The Telegram worker (`agents/Dockerfile.telegram`) builds and smoke-tests
+locally but is not currently deployed to Railway. Add an `agents-telegram`
+service to `.railway/railway.ts` when it should be; it needs all `CF_*` values,
+`GROQ_API_KEY`, and `TELEGRAM_BOT_TOKEN`, and browser-origin and Clerk-JWT
+settings stay gateway-only.
 
 Production acceptance requires an authenticated Clerk session token and both
 deployed service URLs. The smoke script health-checks every registered route,
 runs the Resume agent, exercises a client tool and Grocery OAuth headers, and
-checks Telegram readiness before recording Railway's raw RSS samples:
+checks Telegram readiness before recording Railway's raw RSS samples. It still
+requires `TELEGRAM_HEALTH_URL`, so it cannot pass end to end until the Telegram
+worker is deployed:
 
 ```bash
 AGENTS_BASE_URL=https://agents-gateway.example \

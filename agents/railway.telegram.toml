@@ -1,8 +1,0 @@
-[build]
-builder = "DOCKERFILE"
-dockerfilePath = "agents/Dockerfile.telegram"
-
-[deploy]
-preDeployCommand = ["/app/migrate"]
-healthcheckPath = "/ready"
-restartPolicyType = "ON_FAILURE"
