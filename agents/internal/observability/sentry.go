@@ -23,7 +23,7 @@ const sentryFlushTimeout = 2 * time.Second
 // must run during graceful shutdown so buffered events are delivered.
 func SetupSentry(cfg Config) (func(), error) {
 	if strings.TrimSpace(cfg.ServiceName) == "" {
-		return nil, errors.New("Sentry service name is required")
+		return nil, errors.New("sentry service name is required")
 	}
 	dsn := strings.TrimSpace(os.Getenv("SENTRY_DSN"))
 	if dsn == "" {
