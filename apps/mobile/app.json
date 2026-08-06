@@ -23,7 +23,7 @@
     },
     "plugins": [
       "expo-router",
-      "@sentry/react-native",
+      ["@sentry/react-native", { "organization": "lucas-hl", "project": "travel-mobile" }],
       [
         "expo-splash-screen",
         {
