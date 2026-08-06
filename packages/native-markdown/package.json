@@ -22,12 +22,16 @@
   },
   "devDependencies": {
     "@agents/typescript-config": "workspace:*",
+    "@babel/core": "7.29.7",
     "@types/markdown-it": "^14.1.2",
     "@types/react": "~19.2.18",
+    "bufferutil": "4.1.0",
     "markdown-it": "^15.0.0",
-    "react": "19.2.8",
+    "react": "19.2.3",
     "react-native": "0.86.2",
+    "supports-color": "9.4.0",
     "typescript": "7.0.2",
+    "utf-8-validate": "6.0.6",
     "vitest": "^4.1.10"
   },
   "peerDependencies": {
