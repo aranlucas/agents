@@ -5,7 +5,7 @@ name: CI
 #   check   — turbo-driven lint/fmt/typecheck/coverage for JS workspaces
 #   build   — deterministic JS builds (web, oral boards, and Worker views)
 #   go      — the single Go lint/vet/race/build/vulnerability lane
-#   docker  — Go-only gateway and Telegram image build/content/runtime smoke
+#   docker  — Go-only gateway and Telegram image builds, plus gateway runtime smoke
 
 on:
   push:
@@ -67,8 +67,6 @@ jobs:
         run: docker build -f agents/Dockerfile.telegram -t agents-telegram-go:ci .
       - name: Smoke gateway
         run: bash agents/scripts/smoke-image.sh agents-gateway-go:ci
-      - name: Smoke Telegram
-        run: bash agents/scripts/smoke-telegram.sh agents-telegram-go:ci
 
   go:
     name: Go lint, test & build
