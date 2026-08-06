@@ -40,7 +40,7 @@
     },
     "plugins": [
       "expo-router",
-      "@sentry/react-native",
+      ["@sentry/react-native", { "organization": "lucas-hl", "project": "grocery-mobile" }],
       [
         "expo-splash-screen",
         {
