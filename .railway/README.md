@@ -24,6 +24,20 @@ railway link --project agents --environment production
 railway config plan
 ```
 
+## Continuous apply
+
+`.github/workflows/railway.yml` applies this configuration to development and
+then production after the `CI` workflow succeeds on `main`. It can also be run
+manually from GitHub Actions.
+
+The GitHub source has Railway's Wait for CI setting enabled, so a source deploy
+starts only after the repository's push workflows succeed.
+
+The workflow requires a workspace-scoped Railway token in the
+`RAILWAY_API_TOKEN` repository secret so it can manage both environments. It
+does not pass `--confirm-destructive`, so a destructive plan fails safely and
+must be reviewed and applied manually.
+
 Secrets are rendered as `preserve()`, which means "keep whatever is already set in Railway". No secret values live in this repo.
 
 **Every variable the service should keep must be listed in `env`.** A variable that exists in Railway but is missing from `.railway/railway.ts` is planned as a destructive `Delete variable`. Add new variables here at the same time you add them in the dashboard.

@@ -1,0 +1,78 @@
+name: Railway
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: railway-config
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    name: Apply Railway configuration
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    env:
+      RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+      RAILWAY_CLI_VERSION: 5.30.4
+      RAILWAY_IAC_RUNNER: ./node_modules/.bin/railway-iac-ts
+      RAILWAY_PROJECT_ID: cea909d4-f1d8-4bac-b480-c24e98528b5e
+    steps:
+      - name: Require a Railway workspace token
+        run: |
+          if [ -z "${RAILWAY_API_TOKEN:-}" ]; then
+            echo "Add a workspace-scoped Railway token as the RAILWAY_API_TOKEN repository secret." >&2
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          cache: pnpm
+          node-version: 24.19.0
+      - name: Install Railway configuration dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Link development
+        run: >-
+          pnpm dlx @railway/cli@${RAILWAY_CLI_VERSION} link
+          --project ${RAILWAY_PROJECT_ID}
+          --environment development
+          --service agents-gateway
+      - name: Plan development
+        run: >-
+          pnpm dlx @railway/cli@${RAILWAY_CLI_VERSION} config plan
+          --runner ${RAILWAY_IAC_RUNNER}
+      - name: Apply development
+        run: >-
+          pnpm dlx @railway/cli@${RAILWAY_CLI_VERSION} config apply
+          --runner ${RAILWAY_IAC_RUNNER}
+          --yes
+
+      - name: Link production
+        run: >-
+          pnpm dlx @railway/cli@${RAILWAY_CLI_VERSION} link
+          --project ${RAILWAY_PROJECT_ID}
+          --environment production
+          --service agents-gateway
+      - name: Plan production
+        run: >-
+          pnpm dlx @railway/cli@${RAILWAY_CLI_VERSION} config plan
+          --runner ${RAILWAY_IAC_RUNNER}
+      - name: Apply production
+        run: >-
+          pnpm dlx @railway/cli@${RAILWAY_CLI_VERSION} config apply
+          --runner ${RAILWAY_IAC_RUNNER}
+          --yes
