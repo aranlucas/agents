@@ -9,6 +9,7 @@ import (
 
 	"agents/internal/auth"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
+	"google.golang.org/adk/v2/workflow"
 	"google.golang.org/genai"
 )
 
@@ -24,6 +25,40 @@ func TestDecodeRunInputPreservesForwardedPropsRawJSON(t *testing.T) {
 	}
 	if string(raw) != forwardedProps {
 		t.Fatalf("forwardedProps = %s, want %s", raw, forwardedProps)
+	}
+}
+
+func TestRunContentPrefersStandardResumeOverCompatibilityToolMessage(t *testing.T) {
+	input := &types.RunAgentInput{
+		Messages: []types.Message{{
+			Role: types.RoleTool, ToolCallID: "oralboards-answer-1", Content: `{"answer":"compatibility copy"}`,
+		}},
+		Resume: []types.ResumeEntry{{
+			InterruptID: "oralboards-answer-1",
+			Status:      types.ResumeStatusResolved,
+			Payload: map[string]any{
+				"answer":        "Use the standard resume payload.",
+				"_agui_request": map[string]any{"type": "request_info"},
+			},
+		}},
+	}
+
+	content, err := runContent(context.Background(), input, auth.Identity{}, nil, ToolScope{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if content == nil || len(content.Parts) != 1 || content.Parts[0].FunctionResponse == nil {
+		t.Fatalf("resume content = %#v", content)
+	}
+	response := content.Parts[0].FunctionResponse
+	if response.ID != "oralboards-answer-1" || response.Name != workflow.WorkflowInputFunctionCallName {
+		t.Fatalf("function response = %#v", response)
+	}
+	if response.Response["answer"] != "Use the standard resume payload." {
+		t.Fatalf("response payload = %#v", response.Response)
+	}
+	if _, ok := response.Response["_agui_request"]; ok {
+		t.Fatalf("transport metadata reached ADK response: %#v", response.Response)
 	}
 }
 

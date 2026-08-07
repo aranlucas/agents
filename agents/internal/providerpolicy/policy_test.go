@@ -149,11 +149,11 @@ func TestResolveEvalPreservesSubstitutionOrderAndLimits(t *testing.T) {
 func TestOralBoardsAndTelegramPoliciesStayDistinct(t *testing.T) {
 	t.Parallel()
 	gateway := GatewayOralBoards()
-	if gateway.GeminiModel != "gemini-3.1-flash-lite" || gateway.Questioner.Provider != "openrouter" || gateway.Evaluator.Provider != "groq" || gateway.Evaluator.Model != groqResponsesModel || gateway.Scorer.Provider != "" || gateway.AllowQuestionerCaseBuilderFallback {
+	if gateway.GeminiModel != "gemini-3.1-flash-lite" || gateway.Questioner.Provider != "" || gateway.Evaluator.Provider != "" || gateway.Scorer.Provider != "" || gateway.AllowQuestionerCaseBuilderFallback {
 		t.Fatalf("gateway oralboards policy = %#v", gateway)
 	}
 	eval := EvalOralBoards()
-	if eval.Scorer.Provider != "groq" || eval.Scorer.Model != groqResponsesModel || !eval.AllowQuestionerCaseBuilderFallback {
+	if eval.Questioner.Provider != "openrouter" || eval.Evaluator.Provider != "groq" || eval.Evaluator.Model != groqResponsesModel || eval.Scorer.Provider != "groq" || eval.Scorer.Model != groqResponsesModel || !eval.AllowQuestionerCaseBuilderFallback {
 		t.Fatalf("eval oralboards policy = %#v", eval)
 	}
 	telegram := Telegram()

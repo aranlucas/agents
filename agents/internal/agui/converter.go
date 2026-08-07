@@ -41,6 +41,12 @@ type streamConverter struct {
 	// lastFinalText is the most recent assistant text where
 	// event.IsFinalResponse() was true; used to populate RUN_FINISHED.Result.
 	lastFinalText string
+
+	// interrupts collects native ADK RequestInput pauses so the handler can
+	// finish the AG-UI run with the standard interrupt outcome. The synthesized
+	// adk_request_input tool call is still streamed for message-history
+	// compatibility, but it is not itself the terminal protocol signal.
+	interrupts []types.Interrupt
 }
 
 func newStreamConverter(ctx context.Context, ids events.IDGenerator, state stateDocument, pending PendingTools, scope ToolScope, clientToolNames map[string]bool, smoothing streamSmoothing) *streamConverter {
@@ -103,6 +109,9 @@ func (c *streamConverter) convertPartial(content *genai.Content) []events.Event 
 
 func (c *streamConverter) convertFinal(event *session.Event, content *genai.Content) []events.Event {
 	var out []events.Event
+	if event.RequestedInput != nil {
+		c.captureInterrupt(event.RequestedInput)
+	}
 	// Capture whether a lane was already streaming before closing it: model
 	// adapters (see internal/providers/openai) commonly resend the full
 	// cumulative text on the final frame after streaming it incrementally,
@@ -142,6 +151,46 @@ func (c *streamConverter) convertFinal(event *session.Event, content *genai.Cont
 	}
 
 	return out
+}
+
+func (c *streamConverter) captureInterrupt(request *session.RequestInput) {
+	if request == nil || strings.TrimSpace(request.InterruptID) == "" {
+		return
+	}
+
+	var responseSchema map[string]any
+	if request.ResponseSchema != nil {
+		encoded, err := json.Marshal(request.ResponseSchema)
+		if err != nil {
+			log.Printf("convert request input schema: %v", err)
+		} else if err := json.Unmarshal(encoded, &responseSchema); err != nil {
+			log.Printf("decode request input schema: %v", err)
+		}
+	}
+
+	metadata := map[string]any{}
+	if request.Payload != nil {
+		metadata["payload"] = request.Payload
+	}
+	interrupt := types.Interrupt{
+		ID:             request.InterruptID,
+		Reason:         "tool_call",
+		Message:        request.Message,
+		ToolCallID:     request.InterruptID,
+		ResponseSchema: responseSchema,
+		Metadata:       metadata,
+	}
+	for index := range c.interrupts {
+		if c.interrupts[index].ID == interrupt.ID {
+			c.interrupts[index] = interrupt
+			return
+		}
+	}
+	c.interrupts = append(c.interrupts, interrupt)
+}
+
+func (c *streamConverter) Interrupts() []types.Interrupt {
+	return append([]types.Interrupt(nil), c.interrupts...)
 }
 
 // oneShotLanes handles the non-streaming case: a model that never emitted a

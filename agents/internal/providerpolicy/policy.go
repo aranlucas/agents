@@ -44,8 +44,8 @@ type Policy struct {
 }
 
 // OralBoardsPolicy keeps the phase-specific production/eval differences
-// explicit. A zero Scorer means the scorer reuses the Gemini case-builder
-// model; eval instead supplies its distinct scorer policy.
+// explicit. Zero phase policies mean those phases reuse the Gemini model;
+// eval instead supplies distinct provider policies.
 type OralBoardsPolicy struct {
 	GeminiModel                        string
 	Questioner                         Policy
@@ -100,18 +100,12 @@ func ResolveAgent(providers map[string]config.Provider, workload Workload) (conf
 	return ResolveRequired(providers, policy)
 }
 
-// GatewayOralBoards returns the gateway's phase policies. Case construction
-// and scoring share Gemini; the questioner and evaluator use separate
-// OpenAI-compatible chains.
+// GatewayOralBoards returns the gateway's Gemini model selection. Every live
+// phase shares that official model; the graph keeps their conversations
+// isolated even though the client instance is reused.
 func GatewayOralBoards() OralBoardsPolicy {
 	return OralBoardsPolicy{
 		GeminiModel: "gemini-3.1-flash-lite",
-		Questioner:  openRouterLight("OPENROUTER_API_KEY is required to configure oralboards", "groq"),
-		Evaluator: Policy{
-			Provider: "groq", Model: groqResponsesModel, RequestsPerMinute: 20,
-			Fallbacks:              []string{"openrouter"},
-			missingProviderMessage: "GROQ_API_KEY is required to configure oralboards",
-		},
 	}
 }
 
@@ -120,6 +114,12 @@ func GatewayOralBoards() OralBoardsPolicy {
 // locally.
 func EvalOralBoards() OralBoardsPolicy {
 	policy := GatewayOralBoards()
+	policy.Questioner = openRouterLight("OPENROUTER_API_KEY is required to configure oralboards", "groq")
+	policy.Evaluator = Policy{
+		Provider: "groq", Model: groqResponsesModel, RequestsPerMinute: 20,
+		Fallbacks:              []string{"openrouter"},
+		missingProviderMessage: "GROQ_API_KEY is required to configure oralboards",
+	}
 	policy.Scorer = Policy{
 		Provider: "groq", Model: groqResponsesModel, RequestsPerMinute: 20,
 		missingProviderMessage: "GROQ_API_KEY is required to configure oralboards",
