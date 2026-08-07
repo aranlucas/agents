@@ -4,7 +4,7 @@ export default defineRailway((ctx) => {
   const production = ctx.isEnvironment("production");
 
   const agentsGateway = service("agents-gateway", {
-    source: github("aranlucas/agents", { checkSuites: false }),
+    source: github("aranlucas/agents", { checkSuites: true }),
     build: {
       builder: "DOCKERFILE",
       dockerfilePath: "agents/Dockerfile",
@@ -13,8 +13,7 @@ export default defineRailway((ctx) => {
     healthcheck: "/ready",
     replicas: { "us-west2": 1 },
     deploy: {
-      restartPolicyType: "ON_FAILURE",
-      sleepApplication: !production,
+      sleepApplication: production ? undefined : true,
       limitOverride: { containers: { cpu: 1, memoryBytes: 1000000000 } },
     },
     env: {
