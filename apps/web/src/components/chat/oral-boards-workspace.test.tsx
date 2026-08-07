@@ -19,14 +19,19 @@ const copilotMocks = vi.hoisted(() => {
     isRunning: false,
     state: {},
   };
-  return { agent, runAgent: vi.fn(async () => undefined) };
+  return {
+    agent,
+    agentAvailable: true,
+    copilotChat: vi.fn(() => null),
+    runAgent: vi.fn(async () => undefined),
+  };
 });
 
 vi.mock("@copilotkit/react-core/v2", () => ({
   UseAgentUpdate: { OnStateChanged: "OnStateChanged", OnRunStatusChanged: "OnRunStatusChanged" },
-  useAgent: () => ({ agent: copilotMocks.agent }),
+  useAgent: () => ({ agent: copilotMocks.agentAvailable ? copilotMocks.agent : undefined }),
   useCopilotKit: () => ({ copilotkit: { runAgent: copilotMocks.runAgent } }),
-  CopilotSidebar: () => null,
+  CopilotChat: copilotMocks.copilotChat,
 }));
 
 vi.mock("@/hooks/use-agent-warmup", () => ({
@@ -89,8 +94,10 @@ describe("OralBoardsWorkspace", () => {
   beforeEach(() => {
     copilotMocks.agent.state = {};
     copilotMocks.agent.isRunning = false;
+    copilotMocks.agentAvailable = true;
     copilotMocks.agent.addMessage.mockClear();
     copilotMocks.agent.setState.mockClear();
+    copilotMocks.copilotChat.mockClear();
     copilotMocks.runAgent.mockReset().mockResolvedValue(undefined);
     newThreadMocks.startNewThread.mockClear();
     panelMocks.shouldThrow = false;
@@ -100,7 +107,18 @@ describe("OralBoardsWorkspace", () => {
     render(<OralBoardsWorkspace threadId="thread-1" />);
 
     expect(screen.getByRole("button", { name: "Start a case" })).toBeInTheDocument();
+    expect(copilotMocks.copilotChat).toHaveBeenCalled();
     expect(screen.queryByTestId("oral-boards-panel")).not.toBeInTheDocument();
+  });
+
+  it("does not expose case controls until the new thread agent is connected", () => {
+    copilotMocks.agentAvailable = false;
+
+    render(<OralBoardsWorkspace threadId="thread-2" />);
+
+    expect(screen.getByText("Connecting to the examiner…")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Start a case" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Dental trauma" })).not.toBeInTheDocument();
   });
 
   it("renders the exam panel once the agent state has a case", () => {
@@ -109,6 +127,7 @@ describe("OralBoardsWorkspace", () => {
     render(<OralBoardsWorkspace threadId="thread-1" />);
 
     expect(screen.getByTestId("oral-boards-panel")).toBeInTheDocument();
+    expect(screen.getByTestId("oral-boards-panel").parentElement).toHaveClass("w-full", "min-w-0");
     expect(screen.queryByRole("button", { name: "Start a case" })).not.toBeInTheDocument();
   });
 

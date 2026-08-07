@@ -160,9 +160,13 @@ function CitationChips({ sources }: { sources: CaseSource[] }) {
 }
 
 function scoreClasses(score: number): string {
-  if (score >= 3) return "border-emerald-700/40 bg-emerald-950/30 text-emerald-300";
-  if (score === 2) return "border-amber-700/40 bg-amber-950/30 text-amber-300";
-  return "border-red-700/40 bg-red-950/30 text-red-300";
+  if (score >= 3) {
+    return "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-800/60 dark:bg-emerald-950/30 dark:text-emerald-200";
+  }
+  if (score === 2) {
+    return "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-200";
+  }
+  return "border-red-200 bg-red-50 text-red-950 dark:border-red-800/60 dark:bg-red-950/30 dark:text-red-200";
 }
 
 // Blueprint skillset (domain), cognitive skill level, and 1-3 practice score
@@ -298,15 +302,15 @@ function normalizeState(state: OralBoardsState): {
 const OUTCOME_META: Record<OralBoardsOutcome, { label: string; cls: string }> = {
   pass: {
     label: "On track to pass",
-    cls: "border-emerald-700/40 bg-emerald-950/30 text-emerald-300",
+    cls: "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-800/60 dark:bg-emerald-950/30 dark:text-emerald-200",
   },
   borderline: {
     label: "Borderline",
-    cls: "border-amber-700/40 bg-amber-950/30 text-amber-300",
+    cls: "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-200",
   },
   not_yet: {
     label: "Not yet passing",
-    cls: "border-red-700/40 bg-red-950/30 text-red-300",
+    cls: "border-red-200 bg-red-50 text-red-950 dark:border-red-800/60 dark:bg-red-950/30 dark:text-red-200",
   },
 };
 
@@ -326,8 +330,51 @@ function OutcomeBanner({ outcome }: { outcome: OralBoardsOutcome }) {
 }
 
 function ScoreSummaryTable({ summary }: { summary: OralBoardsSkillsetScore[] }) {
+  const isMobile = useIsMobile();
   if (summary.length === 0) return null;
   const scoreRowKeyCounts = new Map<string, number>();
+  const rows = summary.map((row) => {
+    const skillset = safeString(row.skillset) ?? "Unknown skillset";
+    const rationale = safeString(row.rationale);
+    const score = scoreNumber(row.score);
+    const keySeed = `${skillset}-${row.skill ?? "na"}-${score ?? "na"}-${rationale}`;
+    const duplicate = scoreRowKeyCounts.get(keySeed) ?? 0;
+    scoreRowKeyCounts.set(keySeed, duplicate + 1);
+    return {
+      key: `${keySeed}-${duplicate + 1}`,
+      skillset,
+      rationale,
+      score,
+      skillLabel: skillMetaFor(row.skill)?.label ?? "—",
+    };
+  });
+
+  if (isMobile) {
+    return (
+      <div className="flex flex-col gap-2" aria-label="Skillset scores">
+        {rows.map((row) => (
+          <div key={row.key} className="flex flex-col gap-2 rounded-lg border p-3">
+            <div className="flex items-start justify-between gap-3">
+              <p className="min-w-0 text-sm font-medium">{row.skillset}</p>
+              <Badge
+                className={`shrink-0 rounded border font-semibold ${scoreClasses(row.score ?? 0)}`}
+              >
+                {row.score ?? "—"}/3
+              </Badge>
+            </div>
+            <Badge variant="secondary" className="w-fit text-xs">
+              {row.skillLabel}
+            </Badge>
+            {row.rationale && (
+              <p className="line-clamp-3 text-xs leading-relaxed text-muted-foreground">
+                {row.rationale}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="overflow-hidden rounded-lg border">
@@ -340,26 +387,19 @@ function ScoreSummaryTable({ summary }: { summary: OralBoardsSkillsetScore[] }) 
           </TableRow>
         </TableHeader>
         <TableBody>
-          {summary.map((row) => {
-            const skillset = safeString(row.skillset) ?? "Unknown skillset";
-            const rationale = safeString(row.rationale);
-            const score = scoreNumber(row.score);
-            const keySeed = `${skillset}-${row.skill ?? "na"}-${score ?? "na"}-${rationale}`;
-            const duplicate = scoreRowKeyCounts.get(keySeed) ?? 0;
-            scoreRowKeyCounts.set(keySeed, duplicate + 1);
-            const key = `${keySeed}-${duplicate + 1}`;
+          {rows.map((row) => {
             return (
-              <TableRow key={key} className="align-top">
+              <TableRow key={row.key} className="align-top">
                 <TableCell className="px-2.5 py-1.5">
-                  <p className="font-medium">{skillset}</p>
-                  {rationale && <p className="mt-0.5 text-muted-foreground">{rationale}</p>}
+                  <p className="font-medium">{row.skillset}</p>
+                  {row.rationale && <p className="mt-0.5 text-muted-foreground">{row.rationale}</p>}
                 </TableCell>
                 <TableCell className="px-2.5 py-1.5 whitespace-nowrap text-muted-foreground">
-                  {skillMetaFor(row.skill)?.label ?? "—"}
+                  {row.skillLabel}
                 </TableCell>
                 <TableCell className="px-2.5 py-1.5 text-center">
-                  <Badge className={`rounded border font-semibold ${scoreClasses(score ?? 0)}`}>
-                    {score ?? "—"}/3
+                  <Badge className={`rounded border font-semibold ${scoreClasses(row.score ?? 0)}`}>
+                    {row.score ?? "—"}/3
                   </Badge>
                 </TableCell>
               </TableRow>
@@ -456,7 +496,7 @@ function VignettePanel({
   onNotesChange: React.Dispatch<React.SetStateAction<string>>;
 }) {
   return (
-    <ScrollArea className="h-full shrink-0 bg-muted/25 md:border-e">
+    <ScrollArea className="size-full min-w-0 bg-muted/25 md:border-e">
       <div className="mx-auto flex w-full max-w-prose flex-col gap-4 p-4 sm:px-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
@@ -491,6 +531,7 @@ function VignettePanel({
               <CitationChips sources={sources} />
             </div>
           )}
+          <AnswerCoach />
         </div>
       </div>
     </ScrollArea>
@@ -596,7 +637,11 @@ function PresentingPane({
         <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
           Your Notes
         </p>
-        {recorder.micSupported && <CopilotChatAudioRecorder ref={recorder.recorderRef} />}
+        {recorder.micSupported && (
+          <div className="hidden" aria-hidden="true">
+            <CopilotChatAudioRecorder ref={recorder.recorderRef} />
+          </div>
+        )}
         <Textarea
           aria-label="Case notes"
           className="min-h-16 resize-none p-3 text-sm"
@@ -720,7 +765,7 @@ function LiveFeedbackPreview({
 
 function ReviewingAnswer({ answer, loadingStep }: { answer: string; loadingStep: string }) {
   return (
-    <div className="flex shrink-0 flex-col gap-3 rounded-xl border bg-muted/15 p-3">
+    <div className="flex h-full shrink-0 flex-col gap-3 overflow-y-auto rounded-xl border bg-muted/15 p-3 md:h-auto">
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
           Your response
@@ -812,6 +857,83 @@ function TranscriptSection({
   );
 }
 
+function MobileExamProgress({
+  questionNumber,
+  stage,
+  scoredCount,
+}: {
+  questionNumber: number;
+  stage: "question" | "reviewing" | "scoring" | "complete";
+  scoredCount: number;
+}) {
+  const stageLabel =
+    stage === "reviewing"
+      ? "Reviewing answer"
+      : stage === "scoring"
+        ? "Grading"
+        : stage === "complete"
+          ? "Complete"
+          : "Answering";
+
+  return (
+    <div
+      aria-label="Exam progress"
+      className="flex shrink-0 items-center justify-between gap-3 border-b px-3 py-2"
+    >
+      <div className="flex min-w-0 items-baseline gap-2">
+        <p className="truncate text-sm font-medium">Question {questionNumber}</p>
+        <p className="shrink-0 text-xs text-muted-foreground">{scoredCount} scored</p>
+      </div>
+      <Badge variant={stage === "question" ? "outline" : "secondary"}>{stageLabel}</Badge>
+    </div>
+  );
+}
+
+function MobileTranscriptHistory({
+  transcript,
+  isRunning,
+  activeFeedback,
+  activeIdealResponse,
+}: {
+  transcript: OralBoardsExchange[];
+  isRunning: boolean;
+  activeFeedback: string;
+  activeIdealResponse: string;
+}) {
+  const hasLiveFeedback = isRunning && Boolean(activeFeedback.trim());
+  if (transcript.length === 0 && !hasLiveFeedback) return null;
+
+  return (
+    <div className="flex flex-col gap-2">
+      {hasLiveFeedback && (
+        <LiveFeedbackPreview
+          activeFeedback={activeFeedback}
+          activeIdealResponse={activeIdealResponse}
+        />
+      )}
+      {transcript.length > 0 && (
+        <Collapsible className="rounded-lg border">
+          <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-muted">
+            <span className="font-medium">Previous feedback</span>
+            <span className="flex items-center gap-2">
+              <Badge variant="secondary">{transcript.length}</Badge>
+              <ChevronDownIcon className="size-3 text-muted-foreground transition-transform group-data-panel-open:rotate-180" />
+            </span>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="border-t p-2">
+            <TranscriptSection
+              transcript={transcript}
+              isRunning={false}
+              activeFeedback=""
+              activeIdealResponse=""
+            />
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+    </div>
+  );
+}
+
 function ExaminerQuestionCard({
   question,
   probe = "",
@@ -875,14 +997,20 @@ function ExaminerQuestionCard({
 
 // Invisible anchor that keeps the newest exam content in view: scrolls when
 // the feed signal changes, but never on initial mount.
-function ScrollToLatest({ signal }: { signal: string }) {
+function ScrollToLatest({
+  signal,
+  behavior = "smooth",
+}: {
+  signal: string;
+  behavior?: ScrollBehavior;
+}) {
   const ref = useRef<HTMLDivElement | null>(null);
   const previousSignalRef = useRef(signal);
   useEffect(() => {
     if (previousSignalRef.current === signal) return;
     previousSignalRef.current = signal;
-    ref.current?.scrollIntoView({ block: "end", behavior: "smooth" });
-  }, [signal]);
+    ref.current?.scrollIntoView({ block: "end", behavior });
+  }, [behavior, signal]);
   return <div ref={ref} aria-hidden="true" />;
 }
 
@@ -910,7 +1038,7 @@ function ResponseComposer({
   }
   if (isScoring) {
     return (
-      <div className="rounded-xl border bg-muted/15 p-3">
+      <div className="h-full rounded-xl border bg-muted/15 p-3 md:h-auto">
         <p role="status" className="text-sm text-muted-foreground">
           Computing score card…
         </p>
@@ -918,7 +1046,7 @@ function ResponseComposer({
     );
   }
   return (
-    <div className="flex shrink-0 flex-col gap-2 rounded-xl border bg-muted/15 p-3 md:min-h-0 md:flex-1">
+    <div className="flex h-full shrink-0 flex-col gap-2 rounded-xl border bg-muted/15 p-3 md:h-auto md:min-h-0 md:flex-1">
       <div className="flex shrink-0 items-center justify-between">
         <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
           Your response
@@ -926,21 +1054,27 @@ function ResponseComposer({
         <RecordButton recorder={recorder} />
       </div>
 
-      {recorder.micSupported && <CopilotChatAudioRecorder ref={recorder.recorderRef} />}
+      {recorder.micSupported && (
+        <div className="hidden" aria-hidden="true">
+          <CopilotChatAudioRecorder ref={recorder.recorderRef} />
+        </div>
+      )}
 
-      <Textarea
-        aria-label="Your answer"
-        className="h-24 resize-none p-3 text-sm md:h-auto md:min-h-20 md:flex-1"
-        placeholder="Type your answer…"
-        value={answerText}
-        onChange={(e) => setAnswerText(e.target.value)}
-        disabled={isRunning || recorder.recording}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) onSubmit();
-        }}
-      />
+      <div className="min-h-0 flex-1">
+        <Textarea
+          aria-label="Your answer"
+          className="field-sizing-fixed size-full min-h-0 resize-none p-3 text-sm"
+          placeholder="Type your answer…"
+          value={answerText}
+          onChange={(e) => setAnswerText(e.target.value)}
+          disabled={isRunning || recorder.recording}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) onSubmit();
+          }}
+        />
+      </div>
 
-      <div className="flex shrink-0 items-center justify-between">
+      <div aria-label="Answer actions" className="flex shrink-0 items-center justify-between">
         <span className="hidden items-center gap-1 text-xs text-muted-foreground md:flex">
           <Kbd>⌘</Kbd>
           <Kbd>↵</Kbd>
@@ -951,7 +1085,7 @@ function ResponseComposer({
           size="sm"
           disabled={isRunning || !answerText.trim()}
           onClick={onSubmit}
-          className="ms-auto"
+          className="w-full md:ms-auto md:w-auto"
         >
           <SendHorizontalIcon className="size-3.5" />
           Submit
@@ -1000,7 +1134,7 @@ function QuestioningPane({
   const [answerText, setAnswerText] = useState("");
   // A new probe is a new active prompt even though the question is unchanged.
   const activePrompt = JSON.stringify([question, activeProbe]);
-  const [submission, setSubmission] = useState({ prompt: "", answer: "" });
+  const [submission, setSubmission] = useState({ prompt: "", answer: "", questionNumber: 1 });
   const submittedAnswer = submission.prompt === activePrompt ? submission.answer : "";
 
   const isScoring = isRunning && loadingStep === "Computing score card…";
@@ -1011,9 +1145,11 @@ function QuestioningPane({
       : "question";
   const displayedQuestionNumber = isScoring
     ? Math.max(transcript.length, 1)
-    : question
-      ? transcript.length + 1
-      : Math.max(transcript.length, 1);
+    : submittedAnswer && isRunning
+      ? submission.questionNumber
+      : question
+        ? transcript.length + 1
+        : Math.max(transcript.length, 1);
   const reviewingStatus =
     stage === "scoring" ? "Computing score card…" : loadingStep || "Reviewing your answer…";
 
@@ -1025,7 +1161,11 @@ function QuestioningPane({
   const handleSubmit = () => {
     const trimmed = answerText.trim();
     if (!trimmed || isRunning) return;
-    setSubmission({ prompt: activePrompt, answer: trimmed });
+    setSubmission({
+      prompt: activePrompt,
+      answer: trimmed,
+      questionNumber: displayedQuestionNumber,
+    });
     onAnswer(trimmed);
     setAnswerText("");
   };
@@ -1049,7 +1189,7 @@ function QuestioningPane({
   // live on separate tabs, with the composer pinned below the exam scroll.
   if (isMobile) {
     return (
-      <Tabs defaultValue="exam" className="h-full gap-0">
+      <Tabs defaultValue="exam" className="size-full min-w-0 gap-0">
         <div className="shrink-0 border-b px-3 py-2">
           <TabsList className="w-full">
             <TabsTrigger value="case">
@@ -1062,7 +1202,7 @@ function QuestioningPane({
             </TabsTrigger>
           </TabsList>
         </div>
-        <TabsContent value="case" className="min-h-0 flex-1 overflow-hidden">
+        <TabsContent value="case" className="min-h-0 w-full min-w-0 flex-1 overflow-hidden">
           <VignettePanel
             caseBody={caseBody}
             sources={sources}
@@ -1071,15 +1211,19 @@ function QuestioningPane({
           />
         </TabsContent>
         {/* keepMounted so an in-progress recording survives a peek at the case */}
-        <TabsContent value="exam" keepMounted className="flex min-h-0 flex-1 flex-col">
-          <ExamProgressHeader
+        <TabsContent
+          value="exam"
+          keepMounted
+          className="flex min-h-0 w-full min-w-0 flex-1 flex-col"
+        >
+          <MobileExamProgress
             questionNumber={displayedQuestionNumber}
             stage={stage}
-            transcript={transcript}
+            scoredCount={transcript.length}
           />
-          <ScrollArea className="min-h-0 flex-1">
-            <div className="flex flex-col gap-3 p-3">
-              <TranscriptSection
+          <ScrollArea className="min-h-0 w-full flex-1">
+            <div className="flex w-full flex-col gap-3 p-3">
+              <MobileTranscriptHistory
                 transcript={transcript}
                 isRunning={isRunning}
                 activeFeedback={activeFeedback}
@@ -1094,15 +1238,12 @@ function QuestioningPane({
                     isRunning={isRunning}
                     loadingStep={loadingStep}
                   />
-                  <AnswerCoach />
                 </>
               )}
-              <ScrollToLatest
-                signal={`${transcript.length}:${activePrompt}:${activeFeedback.trim() ? "streaming" : ""}`}
-              />
+              <ScrollToLatest signal={activePrompt} behavior="auto" />
+              <div className="h-52">{composer}</div>
             </div>
           </ScrollArea>
-          <div className="shrink-0 border-t bg-background p-3">{composer}</div>
         </TabsContent>
       </Tabs>
     );
@@ -1120,7 +1261,6 @@ function QuestioningPane({
               isRunning={isRunning}
               loadingStep={loadingStep}
             />
-            <AnswerCoach />
           </>
         )}
         {composer}
@@ -1197,41 +1337,81 @@ function FeedbackPane({
   transcript: OralBoardsExchange[];
   onNewCase: () => void;
 }) {
+  const isMobile = useIsMobile();
   const isEmpty = !scoreCard.trim() && scoreSummary.length === 0 && transcript.length === 0;
+  const questionReviewRows = (
+    <div
+      className="flex flex-col gap-2"
+      aria-label={isMobile ? "Question review" : undefined}
+      aria-labelledby={isMobile ? undefined : "question-review-heading"}
+    >
+      {transcript.map((exchange, index) => (
+        <CompletedExchangeRow key={exchange.question || index} exchange={exchange} index={index} />
+      ))}
+    </div>
+  );
+
   return (
-    <div className="flex flex-col gap-4">
-      {outcome && <OutcomeBanner outcome={outcome} />}
-      {scoreSummary.length > 0 && (
-        <p className="text-xs text-muted-foreground">
-          {scoreSummary.length} skillset{scoreSummary.length === 1 ? "" : "s"} assessed · scored
-          independently on the ABPD 1–3 scale
-        </p>
-      )}
-      <ScoreSummaryTable summary={scoreSummary} />
-      {scoreCard.trim() && <Streamdown key={scoreCard}>{scoreCard}</Streamdown>}
-      {transcript.length > 0 && (
-        <div className="flex flex-col gap-3">
-          <h2
-            id="question-review-heading"
-            className="text-xs font-semibold tracking-widest text-muted-foreground uppercase"
-          >
-            Question review
-          </h2>
-          <div className="flex flex-col gap-2" aria-labelledby="question-review-heading">
-            {transcript.map((exchange, index) => (
-              <CompletedExchangeRow
-                key={exchange.question || index}
-                exchange={exchange}
-                index={index}
-              />
+    <div className="flex h-full min-h-0 flex-col">
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="flex flex-col gap-3 p-3 sm:gap-4 sm:p-4">
+          {outcome && <OutcomeBanner outcome={outcome} />}
+          {scoreSummary.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {scoreSummary.length} skillset{scoreSummary.length === 1 ? "" : "s"} assessed · scored
+              independently on the ABPD 1–3 scale
+            </p>
+          )}
+          <ScoreSummaryTable summary={scoreSummary} />
+          {scoreCard.trim() &&
+            (isMobile ? (
+              <Collapsible className="rounded-lg border">
+                <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted">
+                  <span className="font-medium">Examiner summary</span>
+                  <ChevronDownIcon className="size-4 text-muted-foreground transition-transform group-data-panel-open:rotate-180" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="border-t p-3">
+                  <Streamdown className="text-sm leading-relaxed" key={scoreCard}>
+                    {scoreCard}
+                  </Streamdown>
+                </CollapsibleContent>
+              </Collapsible>
+            ) : (
+              <Streamdown key={scoreCard}>{scoreCard}</Streamdown>
             ))}
-          </div>
+          {transcript.length > 0 && (
+            <>
+              {isMobile ? (
+                <Collapsible className="rounded-lg border">
+                  <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted">
+                    <span className="font-medium">Question review</span>
+                    <span className="flex items-center gap-2">
+                      <Badge variant="secondary">{transcript.length}</Badge>
+                      <ChevronDownIcon className="size-4 text-muted-foreground transition-transform group-data-panel-open:rotate-180" />
+                    </span>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="border-t p-2">
+                    {questionReviewRows}
+                  </CollapsibleContent>
+                </Collapsible>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <h2
+                    id="question-review-heading"
+                    className="text-xs font-semibold tracking-widest text-muted-foreground uppercase"
+                  >
+                    Question review
+                  </h2>
+                  {questionReviewRows}
+                </div>
+              )}
+            </>
+          )}
+          {isEmpty && <p className="text-sm text-muted-foreground">No feedback yet.</p>}
         </div>
-      )}
-      {isEmpty ? (
-        <p className="text-sm text-muted-foreground">No feedback yet.</p>
-      ) : (
-        <div className="border-t pt-4">
+      </ScrollArea>
+      {!isEmpty && (
+        <div role="group" aria-label="Case actions" className="shrink-0 border-t bg-background p-3">
           <Button type="button" className="w-full" onClick={onNewCase}>
             <PlayIcon className="size-3.5" />
             Start a new case
@@ -1269,15 +1449,15 @@ export function OralBoardsPanel({
   const isExamActive = (status === "questioning" || status === "feedback") && !showFinalFeedback;
 
   return (
-    <Artifact className="h-full min-h-0 flex-1 rounded-none border-0">
-      <ArtifactHeader>
+    <Artifact className="size-full min-w-0 flex-1 rounded-none border-0">
+      <ArtifactHeader className="px-3 py-2">
         <ArtifactTitle>Oral board</ArtifactTitle>
       </ArtifactHeader>
       <ArtifactContent
         className={
           isExamActive
-            ? "flex overflow-hidden p-0"
-            : status === "presenting"
+            ? "flex w-full min-w-0 overflow-hidden p-0"
+            : status === "presenting" || showFinalFeedback
               ? "flex flex-col overflow-hidden"
               : "flex flex-col gap-4"
         }

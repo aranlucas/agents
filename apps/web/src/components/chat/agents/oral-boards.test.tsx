@@ -3,7 +3,7 @@ import type { ReactElement } from "react";
 import type { RenderToolProps } from "@copilotkit/react-core/v2/headless";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
 import {
@@ -78,8 +78,18 @@ function Harness() {
   );
 }
 
+function interruptConfig() {
+  const config = vi.mocked(useInterrupt).mock.calls.at(-1)?.[0];
+  if (!config) throw new Error("useInterrupt was not registered");
+  return config;
+}
+
 describe("OralBoardsExtension", () => {
-  it("mirrors current_question when a stable agent object receives state updates", () => {
+  beforeEach(() => {
+    stableAgent.state = { current_question: "" };
+  });
+
+  it("mirrors current_question and retains it through the scoring transition", () => {
     const { rerender } = render(<Harness />);
 
     stableAgent.state = {
@@ -90,12 +100,18 @@ describe("OralBoardsExtension", () => {
     expect(screen.getByLabelText("Current question")).toHaveTextContent(
       "What is your immediate management plan?",
     );
+
+    stableAgent.state = { current_question: "" };
+    rerender(<Harness />);
+
+    expect(screen.getByLabelText("Current question")).toHaveTextContent(
+      "What is your immediate management plan?",
+    );
   });
 
   it("registers and resolves a standard AG-UI RequestInput interrupt", async () => {
     render(<Harness />);
-    const config = vi.mocked(useInterrupt).mock.calls.at(-1)?.[0];
-    if (!config) throw new Error("useInterrupt was not registered");
+    const config = interruptConfig();
     const resolve = vi.fn(async () => undefined);
     const cancel = vi.fn(async () => undefined);
     const interrupt = {
@@ -125,6 +141,38 @@ describe("OralBoardsExtension", () => {
     expect(screen.getByLabelText("Pending input")).toHaveTextContent("ready");
     await userEvent.click(screen.getAllByRole("button", { name: "Resolve pending input" }).at(-1)!);
     expect(resolve).toHaveBeenCalledWith({ answer: "ready" }, "oralboards-ready-run-1");
+  });
+
+  it("keeps answer interrupts headless so they cannot cover the exam workspace", () => {
+    render(<Harness />);
+    const config = interruptConfig();
+    const interrupt = {
+      id: "oralboards-answer-0-run-1",
+      reason: "tool_call" as const,
+      message: "What is your diagnosis?",
+      toolCallId: "oralboards-answer-0-run-1",
+      metadata: {
+        payload: { kind: "answer", question: "What is your diagnosis?" },
+      },
+    };
+
+    render(
+      <OralBoardsQuestionProvider>
+        {config.render({
+          event: { name: "on_interrupt", value: interrupt },
+          interrupt,
+          interrupts: [interrupt],
+          result: null,
+          resolve: vi.fn(async () => undefined),
+          cancel: vi.fn(async () => undefined),
+        })}
+        <PendingInputControls />
+      </OralBoardsQuestionProvider>,
+    );
+
+    expect(screen.getByLabelText("Pending input")).toHaveTextContent("answer");
+    expect(screen.queryByText("ask_question")).not.toBeInTheDocument();
+    expect(screen.queryByText("What is your diagnosis?")).not.toBeInTheDocument();
   });
 });
 

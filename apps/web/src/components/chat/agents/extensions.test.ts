@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getAgentExtension } from "./extensions";
+import { AgentExtensionSlot, getAgentExtension } from "./extensions";
 
 describe("agent extensions", () => {
   it("registers the native Trends artifact without restoring A2UI", () => {
@@ -16,5 +16,14 @@ describe("agent extensions", () => {
 
   it("keeps the Oral Boards client-tool mount", () => {
     expect(getAgentExtension("oral-boards")?.Mount).toBeDefined();
+  });
+
+  it("keeps headless mounts out of the workspace layout", () => {
+    const slot = AgentExtensionSlot({ agentId: "oral-boards" });
+
+    expect(slot).not.toBeNull();
+    expect(slot).toMatchObject({
+      props: { className: "hidden", "aria-hidden": "true" },
+    });
   });
 });

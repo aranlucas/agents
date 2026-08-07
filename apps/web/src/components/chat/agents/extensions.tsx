@@ -68,5 +68,14 @@ export function getAgentExtension(agentId: AgentId): AgentExtension | undefined 
  */
 export function AgentExtensionSlot({ agentId }: { agentId: AgentId }) {
   const Mount = AGENT_EXTENSIONS[agentId]?.Mount;
-  return Mount ? <Mount key={agentId} agentId={agentId} /> : null;
+  if (!Mount) return null;
+
+  // Mount extensions are hook/effect registration points, not workspace UI.
+  // Keep the boundary hidden so an accidentally returned renderer cannot join
+  // the surrounding flex layout and displace or cover the product surface.
+  return (
+    <div className="hidden" aria-hidden="true">
+      <Mount key={agentId} agentId={agentId} />
+    </div>
+  );
 }

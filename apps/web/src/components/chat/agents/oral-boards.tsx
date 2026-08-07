@@ -11,7 +11,6 @@ import {
 import type { Interrupt } from "@copilotkit/react-core/v2";
 import { z } from "zod";
 import { Badge, Tool, ToolContent, ToolHeader } from "@agents/ui";
-import { SpeakQuestionToolCall } from "@/components/chat/speak-question-tool-call";
 import { toToolState } from "@/components/chat/tool-adapter";
 import { useOralBoardsQuestion } from "@/lib/copilotkit/oral-boards-question-context";
 import { speakQuestion } from "@/lib/copilotkit/speak-question";
@@ -165,8 +164,11 @@ function RequestInputToolCall({
     return () => clearPendingInput(id);
   }, [id, kind, question, resolve, registerPendingInput, clearPendingInput]);
 
-  if (kind === "ready") return null;
-  return <SpeakQuestionToolCall status="executing" parameters={{ question }} />;
+  // The bespoke exam panel already renders and speaks the active question.
+  // Keep this component headless: AgentExtensionSlot is a direct child of the
+  // flex workspace shell, so returning a Tool card here makes the interrupt
+  // renderer occupy the viewport and cover the mobile answer composer.
+  return null;
 }
 
 /**
@@ -176,28 +178,24 @@ function RequestInputToolCall({
  * and a default fallback for all other agent tool calls.
  */
 export function OralBoardsExtension({ agentId }: { agentId: AgentId }) {
-  const { setCurrentQuestion, clearCurrentQuestion } = useOralBoardsQuestion();
+  const { setCurrentQuestion } = useOralBoardsQuestion();
   const { agent } = useAgent({ agentId, updates: [UseAgentUpdate.OnStateChanged] });
   const lastSpokenQuestion = useRef("");
   const currentQuestion = getCurrentQuestion(agent?.state);
 
   // Seed the in-memory question context from agent state on mount / after
   // refresh, so the exam panel shows the last question without waiting for the
-  // next ask_question tool call. Also clear it when state's current_question
-  // goes empty (e.g. append_exchange resets it while scoring), so the panel
-  // doesn't keep showing an already-answered question.
+  // next ask_question tool call. append_exchange temporarily clears the backend
+  // field while scoring; retain the displayed question through that transition
+  // so the mobile surface does not collapse and rebuild after every answer.
   useEffect(() => {
-    if (!currentQuestion) {
-      clearCurrentQuestion();
-      lastSpokenQuestion.current = "";
-      return;
-    }
+    if (!currentQuestion) return;
     setCurrentQuestion(currentQuestion);
     if (currentQuestion !== lastSpokenQuestion.current) {
       lastSpokenQuestion.current = currentQuestion;
       void speakQuestion(currentQuestion);
     }
-  }, [currentQuestion, setCurrentQuestion, clearCurrentQuestion]);
+  }, [currentQuestion, setCurrentQuestion]);
 
   const interruptElement = useInterrupt({
     agentId,

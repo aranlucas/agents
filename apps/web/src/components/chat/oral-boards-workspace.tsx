@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { CopilotSidebar, useAgent, useCopilotKit, UseAgentUpdate } from "@copilotkit/react-core/v2";
+import { CopilotChat, useAgent, useCopilotKit, UseAgentUpdate } from "@copilotkit/react-core/v2";
 
 import { AlertCircleIcon } from "lucide-react";
 
@@ -65,12 +65,14 @@ function OralBoardsStartPage({
   onStart,
   isGenerating,
   loadingStep,
+  connecting,
   warmingUp,
   warmupError,
 }: {
   onStart: (message: string) => void;
   isGenerating: boolean;
   loadingStep: string;
+  connecting: boolean;
   warmingUp: boolean;
   warmupError: Error | null;
 }) {
@@ -88,6 +90,15 @@ function OralBoardsStartPage({
       <div className="flex h-full flex-col items-center justify-center gap-4">
         <Spinner className="size-8" />
         <p className="text-sm text-muted-foreground">Warming up the search database…</p>
+      </div>
+    );
+  }
+
+  if (connecting) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-4">
+        <Spinner className="size-8" />
+        <p className="text-sm text-muted-foreground">Connecting to the examiner…</p>
       </div>
     );
   }
@@ -175,7 +186,7 @@ function OralBoardsWorkspaceContent({ threadId }: { threadId: string }) {
   const handleStart = useCallback(
     (content: string) =>
       guardedRun(async () => {
-        if (!agent) return;
+        if (!agent) throw new Error("The examiner is still connecting. Please try again.");
         agent.addMessage({ id: crypto.randomUUID(), role: "user", content });
         await copilotkit.runAgent({ agent });
       }),
@@ -208,13 +219,12 @@ function OralBoardsWorkspaceContent({ threadId }: { threadId: string }) {
       style={cssVars({ "--page-color": `var(${config.colorVar})` })}
     >
       <AgentExtensionSlot agentId={AGENT_ID} />
-      <CopilotSidebar
-        defaultOpen={false}
-        labels={{
-          modalHeaderTitle: "Agent reasoning",
-          chatInputPlaceholder: config.placeholder,
-        }}
-      />
+      {/* CopilotChat owns persisted-message hydration and paused-run
+          reconnection. Keep its stock view hidden because the dedicated exam
+          panel already renders every user-facing interaction. */}
+      <div className="hidden" aria-hidden="true">
+        <CopilotChat agentId={AGENT_ID} />
+      </div>
       <AppSidebar
         activePath={`/console/${AGENT_ID}`}
         agentId={AGENT_ID}
@@ -236,7 +246,7 @@ function OralBoardsWorkspaceContent({ threadId }: { threadId: string }) {
               </AlertDescription>
             </Alert>
           )}
-          <div className="min-h-0 flex-1 overflow-hidden">
+          <div className="min-h-0 w-full min-w-0 flex-1 overflow-hidden">
             {hasPanel ? (
               <OralBoardsErrorBoundary onReset={startNewThread}>
                 <OralBoardsPanel
@@ -252,6 +262,7 @@ function OralBoardsWorkspaceContent({ threadId }: { threadId: string }) {
                 onStart={(m) => void handleStart(m)}
                 isGenerating={isGenerating}
                 loadingStep={examState.loading_step ?? ""}
+                connecting={!agent}
                 warmingUp={warmingUp && !hasPanel}
                 warmupError={warmupError}
               />

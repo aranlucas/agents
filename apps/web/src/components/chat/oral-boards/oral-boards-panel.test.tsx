@@ -72,6 +72,7 @@ vi.mock("@agents/ui/hooks/use-mobile", () => ({
 }));
 
 import { OralBoardsPanel } from "./oral-boards-panel";
+import { useIsMobile } from "@agents/ui/hooks/use-mobile";
 
 const noop = () => {};
 
@@ -81,6 +82,10 @@ const baseProps = {
   onAnswer: noop,
   isRunning: false,
 };
+
+afterEach(() => {
+  vi.mocked(useIsMobile).mockReturnValue(false);
+});
 
 describe("OralBoardsPanel — presenting", () => {
   it("renders the vignette and Ready to begin button", () => {
@@ -118,7 +123,7 @@ describe("OralBoardsPanel — presenting", () => {
 });
 
 describe("OralBoardsPanel — questioning", () => {
-  it("fills the available workspace height", () => {
+  it("fills the available workspace without shrink-wrapping", () => {
     const state: OralBoardsState = {
       case: "Case.",
       case_sources: [],
@@ -129,7 +134,7 @@ describe("OralBoardsPanel — questioning", () => {
     render(<OralBoardsPanel state={state} {...baseProps} />);
 
     const panel = screen.getByText("Oral board").parentElement?.parentElement;
-    expect(panel).toHaveClass("h-full");
+    expect(panel).toHaveClass("size-full", "min-w-0");
   });
 
   it("renders the active question from useOralBoardsQuestion (live)", async () => {
@@ -340,7 +345,19 @@ describe("OralBoardsPanel — questioning", () => {
 
     rerender(
       <OralBoardsPanel
-        state={{ ...state, loading_step: "Reviewing your answer…" }}
+        state={{
+          ...state,
+          loading_step: "Reviewing your answer…",
+          transcript: [
+            {
+              question: "What is your diagnosis?",
+              answer: "My diagnosis is reversible pulpitis.",
+              feedback: "Good.",
+              ideal_response: "Reversible pulpitis.",
+              citations: [],
+            },
+          ],
+        }}
         {...baseProps}
         isRunning={true}
         onAnswer={vi.fn()}
@@ -354,7 +371,7 @@ describe("OralBoardsPanel — questioning", () => {
     expect(within(timeline).getByText("Question 1")).toBeInTheDocument();
     expect(within(timeline).getByText("Reviewing")).toHaveAttribute("aria-current", "step");
     expect(within(timeline).getByText("Complete")).toBeInTheDocument();
-    expect(screen.getByText("What is your diagnosis?")).toBeInTheDocument();
+    expect(screen.getAllByText("What is your diagnosis?").length).toBeGreaterThan(0);
     expect(screen.getByText("My diagnosis is reversible pulpitis.")).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Reviewing your answer…");
     expect(screen.queryByRole("textbox", { name: "Your answer" })).not.toBeInTheDocument();
@@ -591,7 +608,15 @@ describe("OralBoardsPanel — mobile questioning", () => {
 
     expect(screen.getByRole("tab", { name: "Case" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Exam" })).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Your answer" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Exam" }).closest('[data-slot="tabs"]')).toHaveClass(
+      "size-full",
+      "min-w-0",
+    );
+    expect(screen.getByRole("textbox", { name: "Your answer" })).toHaveClass("field-sizing-fixed");
+    expect(screen.getByRole("button", { name: "Submit" })).toHaveClass("w-full");
+    expect(
+      screen.getByLabelText("Answer actions").closest('[data-slot="scroll-area"]'),
+    ).not.toBeNull();
     expect(screen.queryByLabelText("Case notes")).not.toBeInTheDocument();
 
     await setMobile(false);
@@ -607,6 +632,60 @@ describe("OralBoardsPanel — mobile questioning", () => {
       screen.getByText("A 4-year-old presents with early childhood caries."),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Case notes")).toBeInTheDocument();
+
+    await setMobile(false);
+  });
+
+  it("preserves a drafted answer while switching to the Case tab and back", async () => {
+    await setMobile(true);
+
+    render(<OralBoardsPanel state={state} {...baseProps} />);
+    const answer = screen.getByRole("textbox", { name: "Your answer" });
+    await userEvent.type(answer, "My in-progress answer");
+    await userEvent.click(screen.getByRole("tab", { name: "Case" }));
+
+    expect(screen.getByLabelText("Case notes")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("tab", { name: "Exam" }));
+    expect(screen.getByRole("textbox", { name: "Your answer" })).toHaveValue(
+      "My in-progress answer",
+    );
+
+    await setMobile(false);
+  });
+
+  it("keeps the active question focused and collapses prior feedback", async () => {
+    await setMobile(true);
+    const stateWithFeedback: OralBoardsState = {
+      ...state,
+      current_question: "How would you manage this patient?",
+      transcript: [
+        {
+          question: "What is your diagnosis?",
+          answer: "Early childhood caries.",
+          feedback: "Correct diagnosis.",
+          ideal_response: "Assess caries risk and extent.",
+          citations: [],
+        },
+      ],
+    };
+
+    render(<OralBoardsPanel state={stateWithFeedback} {...baseProps} />);
+
+    expect(screen.getByLabelText("Exam progress")).toHaveTextContent("Question 2");
+    expect(screen.getByLabelText("Exam progress")).toHaveTextContent("1 scored");
+    expect(screen.getByLabelText("Exam progress")).toHaveTextContent("Answering");
+    expect(screen.getByRole("button", { name: /Previous feedback/ })).toBeInTheDocument();
+    expect(screen.queryByText("Correct diagnosis.")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "How to answer like a 3" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Previous feedback/ }));
+    expect(screen.getByText("Correct diagnosis.")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("tab", { name: "Case" }));
+    expect(screen.getByRole("button", { name: "How to answer like a 3" })).toBeInTheDocument();
 
     await setMobile(false);
   });
@@ -715,6 +794,7 @@ describe("OralBoardsPanel — complete", () => {
     };
 
     render(<OralBoardsPanel state={state} {...baseProps} onClose={onClose} />);
+    expect(screen.getByRole("group", { name: "Case actions" })).toHaveClass("shrink-0", "border-t");
     await userEvent.click(screen.getByRole("button", { name: /Start a new case/ }));
 
     expect(onClose).toHaveBeenCalledOnce();
@@ -785,6 +865,52 @@ describe("OralBoardsPanel — complete", () => {
     expect(
       screen.queryByText("Your answer: I would use local anesthesia."),
     ).not.toBeInTheDocument();
+  });
+
+  it("uses a compact score card and collapsed report sections on mobile", async () => {
+    const { useIsMobile } = await import("@agents/ui/hooks/use-mobile");
+    vi.mocked(useIsMobile).mockReturnValue(true);
+    const state: OralBoardsState = {
+      case: "Case summary text.",
+      case_sources: [],
+      status: "complete",
+      score_card: "## Score\nStrong management reasoning overall.",
+      score_summary: [
+        {
+          skillset: "Behavior Guidance",
+          skill: "analyze_evaluate",
+          score: 2,
+          rationale: "Solid plan; thin on alternatives.",
+        },
+      ],
+      outcome: "borderline",
+      transcript: [
+        {
+          question: "Describe your approach to pain management.",
+          answer: "I would use local anesthesia.",
+          feedback: "Good.",
+          ideal_response: "Use articaine with epinephrine.",
+          citations: [],
+        },
+      ],
+    };
+
+    render(<OralBoardsPanel state={state} {...baseProps} />);
+
+    expect(screen.getByRole("alert")).toHaveClass("bg-amber-50");
+    expect(screen.getByLabelText("Skillset scores")).toHaveTextContent("Behavior Guidance");
+    expect(screen.queryByRole("columnheader")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Examiner summary" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Question review1/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Q1/ })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Examiner summary" }));
+    expect(screen.getByText("Strong management reasoning overall.")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Question review1/ }));
+    expect(screen.getByRole("button", { name: /^Q1/ })).toBeInTheDocument();
+
+    vi.mocked(useIsMobile).mockReturnValue(false);
   });
 
   it("shows an empty-state message when there is no score card, summary, or transcript", () => {
@@ -877,7 +1003,7 @@ describe("OralBoardsPanel — malformed agent state", () => {
 
     render(<OralBoardsPanel state={state} {...baseProps} />);
     const badge = screen.getByText("2/3");
-    expect(badge).toHaveClass("text-amber-300");
+    expect(badge).toHaveClass("text-amber-950");
   });
 
   it("colors a string score correctly in the final score summary table", () => {
@@ -897,7 +1023,7 @@ describe("OralBoardsPanel — malformed agent state", () => {
 
     render(<OralBoardsPanel state={state} {...baseProps} />);
     const badge = screen.getByText("2/3");
-    expect(badge).toHaveClass("text-amber-300");
+    expect(badge).toHaveClass("text-amber-950");
   });
 
   it("falls back to a placeholder skillset label instead of crashing on a non-string skillset", () => {
