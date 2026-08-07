@@ -58,6 +58,7 @@ function GatewayConsoleSession({ agent: agentId, thread, children, loading }: Co
 
   return (
     <CopilotKit
+      key={`${agentId}:${thread ?? ""}`}
       agent={agentId}
       runtimeUrl={AGENTS_BASE_URL}
       headers={agentHeaders}
