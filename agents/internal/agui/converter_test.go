@@ -5,10 +5,48 @@ import (
 	"testing"
 
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
+	"github.com/google/jsonschema-go/jsonschema"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
 )
+
+type interruptResponse struct {
+	Answer string `json:"answer"`
+}
+
+func TestConverterCapturesNativeRequestInputAsStandardInterrupt(t *testing.T) {
+	responseSchema, err := jsonschema.For[interruptResponse](nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, nil, ToolScope{}, nil, streamSmoothing{})
+
+	converter.Convert(&session.Event{RequestedInput: &session.RequestInput{
+		InterruptID:    "oralboards-ready-1",
+		Message:        "Ready to begin?",
+		ResponseSchema: responseSchema,
+		Payload: map[string]any{
+			"kind": "ready", "question": "Ready to begin?",
+		},
+	}})
+
+	interrupts := converter.Interrupts()
+	if len(interrupts) != 1 {
+		t.Fatalf("interrupts = %#v, want one", interrupts)
+	}
+	interrupt := interrupts[0]
+	if interrupt.ID != "oralboards-ready-1" || interrupt.ToolCallID != interrupt.ID || interrupt.Reason != "tool_call" {
+		t.Fatalf("interrupt identity = %#v", interrupt)
+	}
+	payload, ok := interrupt.Metadata["payload"].(map[string]any)
+	if !ok || payload["kind"] != "ready" {
+		t.Fatalf("interrupt metadata = %#v", interrupt.Metadata)
+	}
+	if interrupt.ResponseSchema["type"] != "object" {
+		t.Fatalf("response schema = %#v", interrupt.ResponseSchema)
+	}
+}
 
 // TestConverterRegistersClientToolCallBeforeReturningToolCallEvents proves
 // the ordering half of Finding 1: toolCallEvents registers a client tool

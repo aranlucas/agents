@@ -557,24 +557,8 @@ func trendsBigQueryClient(ctx context.Context) (*bigquery.Client, error) {
 	return client, nil
 }
 
-func oralboardsModels(ctx context.Context, cfg config.Config, availableProviders map[string]config.Provider, limiter *rate.ProviderLimiter) (oralboards.PhaseModels, error) {
+func oralboardsModels(ctx context.Context) (oralboards.PhaseModels, error) {
 	policy := providerpolicy.GatewayOralBoards()
-	openrouter, err := providerpolicy.ResolveRequired(cfg.Providers, policy.Questioner)
-	if err != nil {
-		return oralboards.PhaseModels{}, err
-	}
-	questioner, err := openai.NewMulti(openrouter, availableProviders, nil, limiter)
-	if err != nil {
-		return oralboards.PhaseModels{}, err
-	}
-	mistral, err := providerpolicy.ResolveRequired(cfg.Providers, policy.Evaluator)
-	if err != nil {
-		return oralboards.PhaseModels{}, err
-	}
-	evaluator, err := openai.NewMulti(mistral, availableProviders, nil, limiter)
-	if err != nil {
-		return oralboards.PhaseModels{}, err
-	}
 	key := strings.TrimSpace(os.Getenv("GEMINI_API_KEY"))
 	if key == "" {
 		return oralboards.PhaseModels{}, errors.New("GEMINI_API_KEY is required to configure oralboards case builder")
@@ -583,11 +567,10 @@ func oralboardsModels(ctx context.Context, cfg config.Config, availableProviders
 	if err != nil {
 		return oralboards.PhaseModels{}, err
 	}
-	// Case construction and final scoring are sequential graph phases, so they
-	// can share the official Gemini model without coupling their conversations.
-	// Keeping the scorer off the rate-limited OpenAI-compatible chain also avoids
-	// losing an otherwise-complete examination to an exhausted fallback tier.
-	return oralboards.PhaseModels{CaseBuilder: caseBuilder, Questioner: questioner, Evaluator: evaluator, Scorer: caseBuilder}, nil
+	// Every phase is a separate agent node, so sharing the official Gemini client
+	// does not couple their conversations. A single provider also avoids losing
+	// an in-progress examination to cross-provider response incompatibilities.
+	return oralboards.PhaseModels{CaseBuilder: caseBuilder, Questioner: caseBuilder, Evaluator: caseBuilder, Scorer: caseBuilder}, nil
 }
 
 // resumeHealth reports the resume agent's readiness from local state only
@@ -821,7 +804,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("build trends agent: %v", err)
 	}
-	oralboardsPhaseModels, err := oralboardsModels(ctx, cfg, availableProviders, limiter)
+	oralboardsPhaseModels, err := oralboardsModels(ctx)
 	if err != nil {
 		log.Fatalf("configure oralboards models: %v", err)
 	}

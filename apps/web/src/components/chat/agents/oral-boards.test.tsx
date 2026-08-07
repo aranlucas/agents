@@ -20,7 +20,7 @@ vi.mock("@copilotkit/react-core/v2", () => ({
   UseAgentUpdate: { OnStateChanged: "OnStateChanged" },
   useAgent: () => ({ agent: stableAgent }),
   useDefaultRenderTool: vi.fn(),
-  useHumanInTheLoop: vi.fn(),
+  useInterrupt: vi.fn(() => null),
   useRenderTool: vi.fn(),
 }));
 
@@ -28,7 +28,7 @@ vi.mock("@/lib/copilotkit/speak-question", () => ({
   speakQuestion: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { useRenderTool } from "@copilotkit/react-core/v2";
+import { useInterrupt, useRenderTool } from "@copilotkit/react-core/v2";
 import { OralBoardsExtension } from "./oral-boards";
 
 const searchDocsParameters = z.object({
@@ -57,6 +57,18 @@ function CurrentQuestion() {
   return <output aria-label="Current question">{currentQuestion}</output>;
 }
 
+function PendingInputControls() {
+  const { pendingInputKind, respondToPendingInput } = useOralBoardsQuestion();
+  return (
+    <div>
+      <output aria-label="Pending input">{pendingInputKind ?? "none"}</output>
+      <button type="button" onClick={() => respondToPendingInput("ready")}>
+        Resolve pending input
+      </button>
+    </div>
+  );
+}
+
 function Harness() {
   return (
     <OralBoardsQuestionProvider>
@@ -78,6 +90,41 @@ describe("OralBoardsExtension", () => {
     expect(screen.getByLabelText("Current question")).toHaveTextContent(
       "What is your immediate management plan?",
     );
+  });
+
+  it("registers and resolves a standard AG-UI RequestInput interrupt", async () => {
+    render(<Harness />);
+    const config = vi.mocked(useInterrupt).mock.calls.at(-1)?.[0];
+    if (!config) throw new Error("useInterrupt was not registered");
+    const resolve = vi.fn(async () => undefined);
+    const cancel = vi.fn(async () => undefined);
+    const interrupt = {
+      id: "oralboards-ready-run-1",
+      reason: "tool_call",
+      message: "Start the examination.",
+      toolCallId: "oralboards-ready-run-1",
+      metadata: {
+        payload: { kind: "ready", question: "Ready to begin?" },
+      },
+    };
+
+    render(
+      <OralBoardsQuestionProvider>
+        {config.render({
+          event: { name: "on_interrupt", value: interrupt },
+          interrupt,
+          interrupts: [interrupt],
+          result: null,
+          resolve,
+          cancel,
+        })}
+        <PendingInputControls />
+      </OralBoardsQuestionProvider>,
+    );
+
+    expect(screen.getByLabelText("Pending input")).toHaveTextContent("ready");
+    await userEvent.click(screen.getAllByRole("button", { name: "Resolve pending input" }).at(-1)!);
+    expect(resolve).toHaveBeenCalledWith({ answer: "ready" }, "oralboards-ready-run-1");
   });
 });
 

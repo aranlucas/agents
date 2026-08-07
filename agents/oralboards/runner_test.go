@@ -58,12 +58,16 @@ func (m *sequenceModel) callCount() int {
 }
 
 func (m *sequenceModel) firstRequest() *model.LLMRequest {
+	return m.requestAt(0)
+}
+
+func (m *sequenceModel) requestAt(index int) *model.LLMRequest {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if len(m.requests) == 0 {
+	if index < 0 || index >= len(m.requests) {
 		return nil
 	}
-	return m.requests[0]
+	return m.requests[index]
 }
 
 func requestContainsText(request *model.LLMRequest, text string) bool {
@@ -88,13 +92,21 @@ func toolCall(id, name string, args map[string]any) *model.LLMResponse {
 }
 
 func buildRunner(t *testing.T, seed map[string]any) (*runner.Runner, session.Service) {
+	return buildRunnerWithModels(t, PhaseModels{
+		CaseBuilder: reproModel{"case"},
+		Questioner:  reproModel{"question"},
+		Evaluator:   reproModel{"evaluate"},
+		Scorer:      reproModel{"score"},
+	}, seed)
+}
+
+func buildRunnerWithModels(t *testing.T, models PhaseModels, seed map[string]any) (*runner.Runner, session.Service) {
 	t.Helper()
 	corpus, err := OpenCorpus(filepath.Join("..", "assets", "oralboards", "search.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = corpus.Close() })
-	models := PhaseModels{CaseBuilder: reproModel{"case"}, Questioner: reproModel{"question"}, Evaluator: reproModel{"evaluate"}, Scorer: reproModel{"score"}}
 	built, err := New(models, corpus)
 	if err != nil {
 		t.Fatal(err)
@@ -224,6 +236,30 @@ func TestReadyRequestResumesAtQuestionerAndPersistsQuestion(t *testing.T) {
 	}
 	if state.CurrentQuestion != "hello from question" {
 		t.Fatalf("current_question = %q, want the questioner's text", state.CurrentQuestion)
+	}
+}
+
+func TestQuestionCraftFeedbackDoesNotReenterQuestionerInSameRun(t *testing.T) {
+	questioner := &sequenceModel{responses: []*model.LLMResponse{{
+		Content:      genai.NewContentFromText("What is the prognosis and how would you manage this tooth?", genai.RoleModel),
+		TurnComplete: true,
+	}}}
+	rn, sessions := buildRunnerWithModels(t, PhaseModels{
+		CaseBuilder: reproModel{"case"},
+		Questioner:  questioner,
+		Evaluator:   reproModel{"evaluate"},
+		Scorer:      reproModel{"score"},
+	}, nil)
+	readyID := requestID(t, runTurn(t, rn, "Create a case"), "ready")
+	events := resumeTurn(t, rn, readyID, "ready")
+	requestID(t, events, "answer")
+
+	state := sessionState(t, sessions)
+	if state.CurrentQuestion == "" || state.QuestionCraftFeedback == "" {
+		t.Fatalf("question state = current %q feedback %q", state.CurrentQuestion, state.QuestionCraftFeedback)
+	}
+	if got := questioner.callCount(); got != 1 {
+		t.Fatalf("questioner ran %d times, want one call without a graph cycle", got)
 	}
 }
 
@@ -419,6 +455,9 @@ func TestFullInterviewContinuesThroughSixScoredExchangesBeforeScoring(t *testing
 	}
 	if got := questioner.callCount(); got != MinimumInterviewExchanges {
 		t.Fatalf("questioner ran %d times, want %d", got, MinimumInterviewExchanges)
+	}
+	if request := questioner.requestAt(1); !requestContainsText(request, "Ask the next distinct oral-board question.") {
+		t.Fatal("questioner did not receive the decision node's next-question input")
 	}
 	if got := scorer.callCount(); got != 3 {
 		t.Fatalf("scorer ran %d model turns, want 3", got)

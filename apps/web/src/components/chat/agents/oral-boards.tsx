@@ -3,11 +3,12 @@
 import { useEffect, useRef } from "react";
 import {
   useAgent,
-  useHumanInTheLoop,
+  useInterrupt,
   UseAgentUpdate,
   useDefaultRenderTool,
   useRenderTool,
 } from "@copilotkit/react-core/v2";
+import type { Interrupt } from "@copilotkit/react-core/v2";
 import { z } from "zod";
 import { Badge, Tool, ToolContent, ToolHeader } from "@agents/ui";
 import { SpeakQuestionToolCall } from "@/components/chat/speak-question-tool-call";
@@ -128,34 +129,44 @@ function SetCaseToolCall({ status }: { status: ToolStatus }) {
   );
 }
 
-type RequestInputArgs = {
-  interruptId?: string;
-  message?: string;
-  payload?: { kind?: "ready" | "answer"; question?: string };
-};
+type RequestInputPayload = { kind: "ready" | "answer"; question: string };
+
+function requestInputPayload(value: unknown): RequestInputPayload | null {
+  if (!isRecord(value)) return null;
+  const metadata = value.metadata;
+  if (!isRecord(metadata) || !isRecord(metadata.payload)) return null;
+  const { kind, question } = metadata.payload;
+  if ((kind !== "ready" && kind !== "answer") || typeof question !== "string") return null;
+  return { kind, question };
+}
 
 function RequestInputToolCall({
-  status,
-  args,
-  respond,
+  interrupt,
+  resolve,
 }: {
-  status: ToolStatus;
-  args: RequestInputArgs;
-  respond?: (response: { answer: string }) => void | Promise<void>;
+  interrupt: Interrupt;
+  resolve: (payload?: unknown, interruptId?: string) => Promise<unknown>;
 }) {
   const { registerPendingInput, clearPendingInput } = useOralBoardsQuestion();
-  const id = args.interruptId ?? "oralboards-input";
-  const kind = args.payload?.kind ?? "answer";
-  const question = args.payload?.question ?? args.message ?? "Please respond.";
+  const payload = requestInputPayload(interrupt);
+  const id = interrupt.id;
+  const kind = payload?.kind ?? "answer";
+  const question = payload?.question ?? interrupt.message ?? "Please respond.";
 
   useEffect(() => {
-    if (status !== "executing" || !respond) return undefined;
-    registerPendingInput({ id, kind, question, respond });
+    registerPendingInput({
+      id,
+      kind,
+      question,
+      respond: async (response) => {
+        await resolve(response, id);
+      },
+    });
     return () => clearPendingInput(id);
-  }, [status, respond, id, kind, question, registerPendingInput, clearPendingInput]);
+  }, [id, kind, question, resolve, registerPendingInput, clearPendingInput]);
 
   if (kind === "ready") return null;
-  return <SpeakQuestionToolCall status={status} parameters={{ question }} />;
+  return <SpeakQuestionToolCall status="executing" parameters={{ question }} />;
 }
 
 /**
@@ -188,20 +199,14 @@ export function OralBoardsExtension({ agentId }: { agentId: AgentId }) {
     }
   }, [currentQuestion, setCurrentQuestion, clearCurrentQuestion]);
 
-  useHumanInTheLoop({
-    name: "adk_request_input",
-    description: "Resume the oral-boards ADK graph with the candidate's response.",
-    parameters: z.object({
-      interruptId: z.string(),
-      message: z.string(),
-      payload: z.object({
-        kind: z.enum(["ready", "answer"]),
-        question: z.string(),
-      }),
-    }),
-    render: ({ status, args, respond }) => (
-      <RequestInputToolCall status={status} args={args} respond={respond} />
-    ),
+  const interruptElement = useInterrupt({
+    agentId,
+    renderInChat: false,
+    enabled: (event) => {
+      return requestInputPayload(event.value) !== null;
+    },
+    render: ({ interrupt, resolve }) =>
+      interrupt ? <RequestInputToolCall interrupt={interrupt} resolve={resolve} /> : <></>,
   });
 
   useRenderTool(
@@ -253,5 +258,5 @@ export function OralBoardsExtension({ agentId }: { agentId: AgentId }) {
 
   useDefaultRenderTool(undefined, [agentId]);
 
-  return null;
+  return interruptElement ?? null;
 }

@@ -336,7 +336,11 @@ runLoop:
 		return
 	}
 
-	finished := events.NewRunFinishedEventWithOptions(input.ThreadID, input.RunID, events.WithSuccessOutcome())
+	finishedOutcome := events.WithSuccessOutcome()
+	if interrupts := converter.Interrupts(); len(interrupts) > 0 {
+		finishedOutcome = events.WithInterruptOutcome(interrupts)
+	}
+	finished := events.NewRunFinishedEventWithOptions(input.ThreadID, input.RunID, finishedOutcome)
 	if converter.lastFinalText != "" {
 		finished.Result = converter.lastFinalText
 	}

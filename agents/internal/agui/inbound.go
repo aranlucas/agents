@@ -10,6 +10,7 @@ import (
 
 	"agents/internal/auth"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
+	"google.golang.org/adk/v2/workflow"
 	"google.golang.org/genai"
 )
 
@@ -61,6 +62,9 @@ func decodeRunInput(body io.Reader) (*types.RunAgentInput, error) {
 // always plain user text — a resumed approval or oralboards answer arrives
 // as one or more role:"tool" messages.
 func runContent(ctx context.Context, input *types.RunAgentInput, identity auth.Identity, pending PendingTools, scope ToolScope) (*genai.Content, error) {
+	if len(input.Resume) > 0 {
+		return resumeContent(input.Resume)
+	}
 	if len(input.Messages) == 0 {
 		return nil, nil
 	}
@@ -84,6 +88,49 @@ func runContent(ctx context.Context, input *types.RunAgentInput, identity auth.I
 		content.Parts = append([]*genai.Part{part}, content.Parts...)
 	}
 	return content, nil
+}
+
+// resumeContent translates AG-UI's standard interrupt responses directly to
+// the FunctionResponse shape ADK uses to resume workflow RequestInput nodes.
+// CopilotKit also appends compatibility tool-result messages, but the resume
+// array is authoritative and avoids routing native workflow input through the
+// pending frontend-tool store.
+func resumeContent(entries []types.ResumeEntry) (*genai.Content, error) {
+	parts := make([]*genai.Part, 0, len(entries))
+	seen := make(map[string]bool, len(entries))
+	for _, entry := range entries {
+		interruptID := strings.TrimSpace(entry.InterruptID)
+		if interruptID == "" || seen[interruptID] {
+			return nil, fmt.Errorf("%w: resume interruptId must be unique and non-empty", ErrInvalidRunInput)
+		}
+		seen[interruptID] = true
+
+		var response map[string]any
+		switch entry.Status {
+		case types.ResumeStatusResolved:
+			if object, ok := entry.Payload.(map[string]any); ok && object != nil {
+				response = make(map[string]any, len(object))
+				for key, value := range object {
+					if key != "_agui_request" {
+						response[key] = value
+					}
+				}
+			} else {
+				response = map[string]any{"response": entry.Payload}
+			}
+		case types.ResumeStatusCancelled:
+			response = map[string]any{"status": string(types.ResumeStatusCancelled)}
+		default:
+			return nil, fmt.Errorf("%w: invalid resume status %q", ErrInvalidRunInput, entry.Status)
+		}
+
+		parts = append(parts, &genai.Part{FunctionResponse: &genai.FunctionResponse{
+			ID:       interruptID,
+			Name:     workflow.WorkflowInputFunctionCallName,
+			Response: response,
+		}})
+	}
+	return &genai.Content{Role: genai.RoleUser, Parts: parts}, nil
 }
 
 // contextPart renders the AG-UI request's context entries (frontend-

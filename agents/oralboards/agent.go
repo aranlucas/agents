@@ -64,7 +64,7 @@ func New(models PhaseModels, corpus *Corpus, toolsets ...tool.Toolset) (agent.Ag
 	if err != nil {
 		return nil, err
 	}
-	evaluator, err := buildPhase("evaluator", evaluatorInstruction, models.Evaluator, corpus, []string{"search_docs", "ask_probe", "append_exchange", "set_loading_step", "complete_examination"}, nil, []llmagent.BeforeModelCallback{stopEvaluatorAfterProbe})
+	evaluator, err := buildPhase("evaluator", evaluatorInstruction, nonStreamingModel{models.Evaluator}, corpus, []string{"search_docs", "ask_probe", "append_exchange", "set_loading_step", "complete_examination"}, nil, []llmagent.BeforeModelCallback{stopEvaluatorAfterProbe})
 	if err != nil {
 		return nil, err
 	}
@@ -113,18 +113,13 @@ func newWorkflowAgent(caseBuilderAgent, questionerAgent, evaluatorAgent, scorerA
 	persistQuestion := workflow.NewEmittingFunctionNode("persist_question", func(ctx agent.Context, question string, emit func(*session.Event) error) (any, error) {
 		question = strings.TrimSpace(question)
 		violations := QuestionCraftViolations(question)
-		feedback := ""
-		route := "valid"
-		if len(violations) > 0 {
-			feedback = strings.Join(violations, "; ")
-			route = "retry"
-		}
+		feedback := strings.Join(violations, "; ")
 		if err := emit(questionStateDeltaEvent(ctx, question, feedback)); err != nil {
 			return nil, err
 		}
 		event := session.NewEvent(ctx, ctx.InvocationID())
 		event.Output = question
-		event.Routes = []string{route}
+		event.Routes = []string{"valid"}
 		if err := emit(event); err != nil {
 			return nil, err
 		}
@@ -157,7 +152,10 @@ func newWorkflowAgent(caseBuilderAgent, questionerAgent, evaluatorAgent, scorerA
 		}
 		event := session.NewEvent(ctx, ctx.InvocationID())
 		event.Routes = []string{route}
-		if route == "scorer" {
+		switch route {
+		case "questioner":
+			event.Output = "Ask the next distinct oral-board question."
+		case "scorer":
 			event.Output = "Generate the final score card from the completed exchanges."
 		}
 		return event, nil
@@ -168,7 +166,6 @@ func newWorkflowAgent(caseBuilderAgent, questionerAgent, evaluatorAgent, scorerA
 		{From: waitReady, To: questioner},
 		{From: questioner, To: persistQuestion},
 		{From: persistQuestion, To: waitAnswer, Route: workflow.StringRoute("valid")},
-		{From: persistQuestion, To: questioner, Route: workflow.StringRoute("retry")},
 		{From: waitAnswer, To: evaluator},
 		{From: evaluator, To: decision},
 		{From: decision, To: waitAnswer, Route: workflow.StringRoute("probe")},

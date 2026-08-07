@@ -186,11 +186,9 @@ function OralBoardsWorkspaceContent({ threadId }: { threadId: string }) {
     () =>
       guardedRun(async () => {
         if (pendingInputKind === "ready" && respondToPendingInput("ready")) return;
-        if (!agent) return;
-        agent.addMessage({ id: crypto.randomUUID(), role: "user", content: "ready" });
-        await copilotkit.runAgent({ agent });
+        throw new Error("The examiner is still preparing the first question. Please try again.");
       }),
-    [agent, copilotkit, guardedRun, pendingInputKind, respondToPendingInput],
+    [guardedRun, pendingInputKind, respondToPendingInput],
   );
 
   const handleAnswer = useCallback(
@@ -198,11 +196,9 @@ function OralBoardsWorkspaceContent({ threadId }: { threadId: string }) {
       guardedRun(async () => {
         if (!text.trim()) return;
         if (pendingInputKind === "answer" && respondToPendingInput(text)) return;
-        if (!agent) return;
-        agent.addMessage({ id: crypto.randomUUID(), role: "user", content: text });
-        await copilotkit.runAgent({ agent });
+        throw new Error("The examiner is not ready for an answer yet. Please try again.");
       }),
-    [agent, copilotkit, guardedRun, pendingInputKind, respondToPendingInput],
+    [guardedRun, pendingInputKind, respondToPendingInput],
   );
 
   return (

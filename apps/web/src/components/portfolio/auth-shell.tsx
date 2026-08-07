@@ -3,8 +3,8 @@ import Link from "next/link";
 
 /**
  * Framing shared by /sign-in and /sign-up so the Clerk card arrives inside the
- * site rather than floating on an empty page. `max-w-100` matches Clerk's own
- * 25rem card so both columns share a left edge.
+ * site rather than floating on an empty page. The desktop account column is
+ * 30rem wide so its 2.5rem padding still leaves Clerk's 25rem card unobstructed.
  *
  * The `data-auth-shell` hook lets globals.css drop Clerk's own card header, which
  * otherwise repeats the heading below. Scoping it here rather than on the
@@ -38,7 +38,7 @@ export function AuthShell({
           </div>
           <span className="font-mono text-xs tracking-widest uppercase">Secure access — 01</span>
         </aside>
-        <section className="flex min-h-150 flex-col justify-center gap-7 p-6 sm:p-10 md:w-100 md:shrink-0">
+        <section className="flex min-h-150 min-w-0 flex-col justify-center gap-7 p-6 sm:p-10 md:w-120 md:shrink-0">
           <div className="flex flex-col gap-4">
             <Link
               className="w-fit rounded-sm font-mono text-xs font-medium tracking-widest text-primary uppercase transition-colors hover:text-primary/75 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
@@ -49,7 +49,9 @@ export function AuthShell({
             <h1 className="text-3xl/9 font-medium tracking-tight text-balance">{title}</h1>
             <p className="text-sm/6 text-balance text-muted-foreground">{description}</p>
           </div>
-          {children}
+          <div className="w-full min-w-0 [&_.cl-cardBox]:w-full! [&_.cl-rootBox]:w-full!">
+            {children}
+          </div>
         </section>
       </div>
     </main>
