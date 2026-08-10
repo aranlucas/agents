@@ -563,7 +563,7 @@ func oralboardsModels(ctx context.Context) (oralboards.PhaseModels, error) {
 	if key == "" {
 		return oralboards.PhaseModels{}, errors.New("GEMINI_API_KEY is required to configure oralboards case builder")
 	}
-	caseBuilder, err := gemini.NewModel(ctx, policy.GeminiModel, &genai.ClientConfig{APIKey: key, Backend: genai.BackendGeminiAPI})
+	caseBuilder, err := gemini.NewModel(ctx, policy.GeminiModel, oralboardsGeminiClientConfig(key))
 	if err != nil {
 		return oralboards.PhaseModels{}, err
 	}
@@ -571,6 +571,22 @@ func oralboardsModels(ctx context.Context) (oralboards.PhaseModels, error) {
 	// does not couple their conversations. A single provider also avoids losing
 	// an in-progress examination to cross-provider response incompatibilities.
 	return oralboards.PhaseModels{CaseBuilder: caseBuilder, Questioner: caseBuilder, Evaluator: caseBuilder, Scorer: caseBuilder}, nil
+}
+
+// oralboardsGeminiClientConfig keeps retryable HTTP failures inside the same
+// ADK invocation. If a 503 escapes after an answer resumes RequestInput, the
+// consumed interrupt cannot safely be replayed and the examination wedges.
+// The Gen AI SDK retries 408, 429, and 5xx responses by default when retry
+// options are present; bound the six attempts to an eight-second maximum gap.
+func oralboardsGeminiClientConfig(apiKey string) *genai.ClientConfig {
+	return &genai.ClientConfig{
+		APIKey:  apiKey,
+		Backend: genai.BackendGeminiAPI,
+		HTTPOptions: genai.HTTPOptions{RetryOptions: &genai.HTTPRetryOptions{
+			Attempts: genai.Ptr[int32](6),
+			MaxDelay: genai.Ptr(8.0),
+		}},
+	}
 }
 
 // resumeHealth reports the resume agent's readiness from local state only
