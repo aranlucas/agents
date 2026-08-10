@@ -30,23 +30,39 @@ func TestSearchDocsEnforcesTwoCallBudget(t *testing.T) {
 	}
 }
 
-func TestSearchDocsIncludesEveryCollectionInBroadCandidatePool(t *testing.T) {
-	state := Defaults()
-	result, err := openTestCorpus(t).SearchDocs(t.Context(), &state, "caries", "")
-	if err != nil {
+func TestSearchDocsSupportsEveryCollection(t *testing.T) {
+	corpus := openTestCorpus(t)
+	for _, collection := range []string{"aapd", "abpd", "cody"} {
+		state := Defaults()
+		result, err := corpus.SearchDocs(t.Context(), &state, "caries", collection)
+		if err != nil {
+			t.Fatalf("search %s: %v", collection, err)
+		}
+		if result.Count == 0 {
+			t.Fatalf("search %s returned no results", collection)
+		}
+		for _, item := range result.Results {
+			if item.Collection != collection {
+				t.Fatalf("search %s returned collection %s", collection, item.Collection)
+			}
+			if len(item.Passage) == 0 || len(item.Passage) > 600 {
+				t.Fatalf("invalid passage length %d", len(item.Passage))
+			}
+		}
+	}
+}
+
+func TestCorpusExcludes2018PrepCourse(t *testing.T) {
+	corpus := openTestCorpus(t)
+	var count int
+	if err := corpus.db.QueryRowContext(
+		t.Context(),
+		`SELECT COUNT(*) FROM documents WHERE collection = 'cody' AND path LIKE 'oral-boards-prep-course-2018/%'`,
+	).Scan(&count); err != nil {
 		t.Fatal(err)
 	}
-	found := map[string]bool{}
-	for _, item := range result.Results {
-		found[item.Collection] = true
-		if len(item.Passage) == 0 || len(item.Passage) > 600 {
-			t.Fatalf("invalid passage length %d", len(item.Passage))
-		}
-	}
-	for _, collection := range []string{"aapd", "abpd", "cody"} {
-		if !found[collection] {
-			t.Fatalf("missing %s in %#v", collection, found)
-		}
+	if count != 0 {
+		t.Fatalf("2018 prep-course documents = %d, want 0", count)
 	}
 }
 
