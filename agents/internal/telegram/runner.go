@@ -11,11 +11,7 @@ import (
 	"time"
 
 	"agents/internal/agui"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
-	semconv "go.opentelemetry.io/otel/semconv/v1.41.0"
-	"go.opentelemetry.io/otel/trace"
+	"github.com/getsentry/sentry-go"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/artifact"
 	"google.golang.org/adk/v2/runner"
@@ -148,20 +144,18 @@ func (r *Runner) waitForRetry(ctx context.Context) bool {
 
 func (r *Runner) HandleMessage(parent context.Context, message Message) (err error) {
 	allowed := AllowMessage(r.config, message)
-	parent, span := otel.Tracer("agents/internal/telegram").Start(
+	span := sentry.StartTransaction(
 		parent,
 		"telegram.message.process",
-		trace.WithSpanKind(trace.SpanKindConsumer),
-		trace.WithAttributes(
-			semconv.MessagingSystemKey.String("telegram"),
-			semconv.MessagingOperationTypeProcess,
-			attribute.String("telegram.chat.type", safeChatType(message.Chat.Type)),
-			attribute.Bool("telegram.message.allowed", allowed),
-		),
+		sentry.WithOpName("message.process"),
 	)
+	parent = span.Context()
+	span.SetData("messaging.system", "telegram")
+	span.SetData("telegram.chat.type", safeChatType(message.Chat.Type))
+	span.SetData("telegram.message.allowed", allowed)
 	defer func() {
 		finishSpan(span, err)
-		span.End()
+		span.Finish()
 	}()
 	if !allowed {
 		return nil
@@ -190,24 +184,22 @@ func (r *Runner) HandleMessage(parent context.Context, message Message) (err err
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrLoginRequired):
-			span.SetAttributes(attribute.String("telegram.message.outcome", "login_required"))
+			span.SetData("telegram.message.outcome", "login_required")
 			return r.sendText(ctx, message, "Sign in is required. Send /login to link this Telegram account.")
 		case errors.Is(err, ErrCredentialRequired):
-			span.SetAttributes(attribute.String("telegram.message.outcome", "credential_required"))
+			span.SetData("telegram.message.outcome", "credential_required")
 			return r.sendText(ctx, message, missingCredentialText(route.Missing, r.config.ConnectURL))
 		default:
-			span.SetAttributes(attribute.String("telegram.message.outcome", "routing_failed"))
+			span.SetData("telegram.message.outcome", "routing_failed")
 			return nil
 		}
 	}
 	if route.Kind == RouteCommand {
-		span.SetAttributes(attribute.String("telegram.route.kind", "command"))
+		span.SetData("telegram.route.kind", "command")
 		return r.handleCommand(ctx, message, identity, route.Command)
 	}
-	span.SetAttributes(
-		attribute.String("telegram.route.kind", "agent"),
-		semconv.GenAIAgentName(route.Agent),
-	)
+	span.SetData("telegram.route.kind", "agent")
+	span.SetData("gen_ai.agent.name", route.Agent)
 	_ = r.client.SendChatAction(ctx, message.Chat.ID, message.MessageThreadID, "typing")
 	seenProgress := map[string]bool{}
 	progress := func(progressCtx context.Context, label string) error {
@@ -319,18 +311,16 @@ func NewADKExecutor(sessions session.Service, artifacts artifact.Service, agents
 }
 
 func (e *ADKExecutor) Run(ctx context.Context, identity SessionIdentity, route Route, text string, progress ProgressFunc) (output string, err error) {
-	ctx, span := otel.Tracer("agents/internal/telegram").Start(
+	span := sentry.StartSpan(
 		ctx,
-		"telegram.adk.run",
-		trace.WithSpanKind(trace.SpanKindInternal),
-		trace.WithAttributes(
-			semconv.GenAIOperationNameInvokeAgent,
-			attribute.Bool("telegram.session.shared", identity.Shared),
-		),
+		"gen_ai.invoke_agent",
+		sentry.WithDescription("telegram.adk.run"),
 	)
+	ctx = span.Context()
+	span.SetData("telegram.session.shared", identity.Shared)
 	defer func() {
 		finishSpan(span, err)
-		span.End()
+		span.Finish()
 	}()
 	bound, ok := e.agents[route.Agent]
 	fallback := false
@@ -342,10 +332,8 @@ func (e *ADKExecutor) Run(ctx context.Context, identity SessionIdentity, route R
 		return "", errors.New("telegram route has no agent")
 	}
 	built := bound.agent
-	span.SetAttributes(
-		semconv.GenAIAgentName(built.Name()),
-		attribute.Bool("telegram.route.fallback", fallback),
-	)
+	span.SetData("gen_ai.agent.name", built.Name())
+	span.SetData("telegram.route.fallback", fallback)
 	state := map[string]any{"sender_linked": identity.ClerkUserID != ""}
 	if route.KrogerToken != "" {
 		state[session.KeyPrefixTemp+"kroger_token"] = route.KrogerToken
@@ -386,12 +374,11 @@ func safeChatType(chatType string) string {
 	}
 }
 
-func finishSpan(span trace.Span, err error) {
+func finishSpan(span *sentry.Span, err error) {
 	if err == nil {
 		return
 	}
-	span.SetAttributes(semconv.ErrorTypeOther)
-	span.SetStatus(codes.Error, "operation failed")
+	span.Status = sentry.SpanStatusInternalError
 }
 
 func (e *ADKExecutor) Reset(ctx context.Context, identity SessionIdentity) error {

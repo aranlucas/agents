@@ -61,17 +61,6 @@ func main() {
 		ServiceName: "agents-telegram", ServiceVersion: os.Getenv("RAILWAY_GIT_COMMIT_SHA"),
 		Environment: string(cfg.Environment),
 	}
-	shutdownTelemetry, err := observability.Setup(ctx, telemetryConfig)
-	if err != nil {
-		log.Fatalf("configure OpenTelemetry: %v", err)
-	}
-	defer func() {
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := shutdownTelemetry(shutdownCtx); err != nil {
-			log.Printf("flush OpenTelemetry: %v", err)
-		}
-	}()
 	flushSentry, err := observability.SetupSentry(telemetryConfig)
 	if err != nil {
 		log.Fatalf("configure Sentry: %v", err)
@@ -157,7 +146,7 @@ func main() {
 	links := telegram.NewLinkStore(d1, time.Now)
 	telegramRunner, err := telegram.NewRunner(bot, telegram.NewRouter(telegramConfig, backend), links, executor, telegramConfig, 180*time.Second)
 	must(err)
-	server := &http.Server{Addr: ":" + cfg.HTTP.Port, Handler: observability.Wrap("agents-telegram-health", observability.WrapSentry(healthHandler(d1, r2))), ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 30 * time.Second}
+	server := &http.Server{Addr: ":" + cfg.HTTP.Port, Handler: observability.WrapSentry(healthHandler(d1, r2)), ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 30 * time.Second}
 	go func() {
 		if serveErr := server.ListenAndServe(); serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
 			log.Printf("health server: %v", serveErr)
