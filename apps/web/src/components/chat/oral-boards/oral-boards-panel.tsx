@@ -412,8 +412,20 @@ function ScoreSummaryTable({ summary }: { summary: OralBoardsSkillsetScore[] }) 
 }
 
 function RecordButton({ recorder }: { recorder: UseAnswerRecorder }) {
-  const { recording, transcribing, micSupported, error, clearError, toggle } = recorder;
+  const {
+    recording,
+    transcribing,
+    micSupported,
+    micPermission,
+    error,
+    clearError,
+    requestPermission,
+    toggle,
+  } = recorder;
   if (!micSupported) return null;
+
+  const permissionPending = micPermission === "checking" || micPermission === "requesting";
+  const permissionDenied = micPermission === "denied";
   return (
     <div className="flex items-center gap-2">
       {error && (
@@ -435,12 +447,40 @@ function RecordButton({ recorder }: { recorder: UseAnswerRecorder }) {
         type="button"
         variant="outline"
         size="sm"
-        onClick={() => void toggle()}
-        disabled={transcribing}
+        aria-label={
+          micPermission === "checking"
+            ? "Checking microphone permission"
+            : micPermission === "requesting"
+              ? "Requesting microphone permission"
+              : undefined
+        }
+        onClick={() => {
+          if (micPermission === "prompt") {
+            void requestPermission();
+            return;
+          }
+          void toggle();
+        }}
+        disabled={transcribing || permissionPending || permissionDenied}
         className={recording ? "border-red-500 text-red-500" : ""}
       >
         {transcribing ? (
           <Loader2Icon className="size-3.5 animate-spin" />
+        ) : permissionPending ? (
+          <>
+            <Loader2Icon className="me-1 size-3.5 animate-spin" />
+            {micPermission === "checking" ? "Checking microphone" : "Requesting access"}
+          </>
+        ) : permissionDenied ? (
+          <>
+            <MicIcon className="me-1 size-3.5" />
+            Microphone blocked
+          </>
+        ) : micPermission === "prompt" ? (
+          <>
+            <MicIcon className="me-1 size-3.5" />
+            Enable microphone
+          </>
         ) : recording ? (
           <>
             <span className="me-1.5 inline-block size-2 animate-pulse rounded-full bg-red-500" />

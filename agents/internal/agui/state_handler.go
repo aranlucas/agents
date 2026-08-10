@@ -32,10 +32,11 @@ type stateRequest struct {
 // history reconstructed from persisted ADK session events (see
 // eventsToMessages in messages.go); State carries only non-temporary state.
 type stateResponse struct {
-	ThreadID     string          `json:"threadId"`
-	ThreadExists bool            `json:"threadExists"`
-	State        stateDocument   `json:"state"`
-	Messages     []types.Message `json:"messages"`
+	ThreadID     string            `json:"threadId"`
+	ThreadExists bool              `json:"threadExists"`
+	State        stateDocument     `json:"state"`
+	Messages     []types.Message   `json:"messages"`
+	Interrupts   []types.Interrupt `json:"-"`
 }
 
 func loadThreadState(ctx context.Context, sessions session.Service, entry agentruntime.Entry, identity auth.Identity, threadID string) (stateResponse, error) {
@@ -50,6 +51,7 @@ func loadThreadState(ctx context.Context, sessions session.Service, entry agentr
 			return stateResponse{}, err
 		}
 		response.Messages = eventsToMessages(found.Session.Events())
+		response.Interrupts = unresolvedSessionInterrupts(found.Session.Events())
 		return response, nil
 	case errors.Is(err, ErrSessionNotFound):
 		return response, nil

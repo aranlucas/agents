@@ -12,6 +12,7 @@ import (
 
 	"agents/internal/agentruntime"
 	"agents/internal/auth"
+	"agents/internal/observability"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/encoding/sse"
@@ -167,7 +168,11 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	userID := effectiveUserID(identity, input.ThreadID)
 
-	ctx, cancel := context.WithTimeout(r.Context(), entry.Timeout)
+	// The active run, not the browser's SSE connection, owns execution. A tab
+	// reload may cancel r.Context(), but the model should keep running so the
+	// replacement /connect request can replay and follow it. Explicit /stop and
+	// the catalog timeout still cancel this detached execution context.
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), entry.Timeout)
 	defer cancel()
 	var active *activeRunLease
 	if h.active != nil {
@@ -332,6 +337,18 @@ runLoop:
 			emit(terminalCtx, converted)
 		}
 		log.Printf("run failed: agent=%s thread=%s user=%s run=%s err=%v", entry.AppName, input.ThreadID, userID, input.RunID, runErr)
+		observability.CaptureError(terminalCtx, runErr, observability.ErrorDetails{
+			Operation: "agent.run",
+			Tags: map[string]string{
+				"agent.app_name": entry.AppName,
+				"agent.route":    entry.Route,
+				"error.code":     classifyErrorCode(runErr),
+			},
+			Context: map[string]any{
+				"run_id":    input.RunID,
+				"thread_id": input.ThreadID,
+			},
+		})
 		emit(terminalCtx, sanitizeRunError(input.RunID, runErr))
 		return
 	}

@@ -7,4 +7,5 @@ Sentry.init({
   enabled: Boolean(process.env.SENTRY_DSN),
   environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV,
   skipOpenTelemetrySetup: true,
+  integrations: [Sentry.captureConsoleIntegration({ levels: ["error"] })],
 });

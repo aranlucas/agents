@@ -27,6 +27,39 @@ const copilotMocks = vi.hoisted(() => {
   };
 });
 
+const sentryMocks = vi.hoisted(() => ({ captureException: vi.fn() }));
+vi.mock("@sentry/nextjs", async () => {
+  const React = await import("react");
+  type FallbackData = { error: unknown; resetError: () => void };
+  type BoundaryProps = {
+    children?: React.ReactNode;
+    fallback?: React.ReactElement | ((data: FallbackData) => React.ReactElement);
+    onReset?: () => void;
+  };
+
+  class ErrorBoundary extends React.Component<BoundaryProps, { error: unknown }> {
+    state = { error: null };
+
+    static getDerivedStateFromError(error: unknown) {
+      return { error };
+    }
+
+    render() {
+      if (!this.state.error) return this.props.children;
+      if (typeof this.props.fallback !== "function") return this.props.fallback ?? null;
+      return this.props.fallback({
+        error: this.state.error,
+        resetError: () => {
+          this.props.onReset?.();
+          this.setState({ error: null });
+        },
+      });
+    }
+  }
+
+  return { captureException: sentryMocks.captureException, ErrorBoundary };
+});
+
 vi.mock("@copilotkit/react-core/v2", () => ({
   UseAgentUpdate: { OnStateChanged: "OnStateChanged", OnRunStatusChanged: "OnRunStatusChanged" },
   useAgent: () => ({ agent: copilotMocks.agentAvailable ? copilotMocks.agent : undefined }),
@@ -76,12 +109,21 @@ vi.mock("@/components/chat/agents/extensions", () => ({
 
 const panelMocks = vi.hoisted(() => ({ shouldThrow: false }));
 vi.mock("@/components/chat/oral-boards/oral-boards-panel", () => ({
-  OralBoardsPanel: ({ onClose }: { onClose: () => void }) => {
+  OralBoardsPanel: ({
+    onClose,
+    onAnswer,
+  }: {
+    onClose: () => void;
+    onAnswer: (text: string) => void;
+  }) => {
     if (panelMocks.shouldThrow) throw new Error("panel exploded");
     return (
       <div data-testid="oral-boards-panel">
         <button type="button" onClick={onClose}>
           panel close
+        </button>
+        <button type="button" onClick={() => onAnswer("A clinical answer")}>
+          submit mock answer
         </button>
       </div>
     );
@@ -99,6 +141,7 @@ describe("OralBoardsWorkspace", () => {
     copilotMocks.agent.setState.mockClear();
     copilotMocks.copilotChat.mockClear();
     copilotMocks.runAgent.mockReset().mockResolvedValue(undefined);
+    sentryMocks.captureException.mockClear();
     newThreadMocks.startNewThread.mockClear();
     panelMocks.shouldThrow = false;
   });
@@ -175,5 +218,21 @@ describe("OralBoardsWorkspace", () => {
       expect(screen.queryByText("The examiner ran into a problem")).not.toBeInTheDocument();
     });
     expect(copilotMocks.runAgent).toHaveBeenCalledTimes(2);
+  });
+
+  it("offers reconnect when the saved case has no restored examiner interrupt", async () => {
+    copilotMocks.agent.state = { case: "A case vignette.", status: "questioning" };
+
+    render(<OralBoardsWorkspace threadId="thread-stale" />);
+    await userEvent.click(screen.getByRole("button", { name: "submit mock answer" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Reconnect" })).toBeInTheDocument();
+    });
+    expect(screen.getByText(/examiner is not ready for an answer yet/i)).toBeInTheDocument();
+    expect(sentryMocks.captureException).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringMatching(/not ready for an answer yet/i) }),
+      { tags: { component: "oralboards_workspace", operation: "exam.answer" } },
+    );
   });
 });

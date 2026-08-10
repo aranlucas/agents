@@ -2,6 +2,7 @@
 
 import { useAuth } from "@clerk/nextjs";
 import { CopilotKit, type CopilotKitProps } from "@copilotkit/react-core/v2";
+import * as Sentry from "@sentry/nextjs";
 import { useQuery } from "@tanstack/react-query";
 import { type ReactNode, useMemo } from "react";
 
@@ -25,7 +26,27 @@ export function reportCopilotKitError(event: CopilotKitErrorEvent) {
   const error: unknown = event.error;
   if (error instanceof Error && error.name === "AbortError") return;
 
-  console.error("[CopilotKit] Error:", error, event.context);
+  const reportableError = error instanceof Error ? error : new Error(String(error));
+  const source = typeof event.context.source === "string" ? event.context.source : "unknown";
+  const extra: Record<string, string | number | boolean> = {};
+  for (const key of ["threadId", "runId"] as const) {
+    const value: unknown = event.context[key];
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      extra[key] = value;
+    }
+  }
+  Sentry.captureException(reportableError, {
+    tags: {
+      component: "copilotkit",
+      "copilotkit.event_type": event.type,
+      "copilotkit.source": source,
+      "agent.name": event.context.agent?.name ?? "unknown",
+    },
+    extra,
+  });
+  // Explicitly captured above with sanitized metadata. Avoid console.error here:
+  // CaptureConsole would create a duplicate and attach the full CopilotKit context.
+  console.warn("[CopilotKit] Error:", error);
 }
 
 function GatewayConsoleSession({ agent: agentId, thread, children, loading }: ConsoleSessionProps) {

@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { CopilotChat, useAgent, useCopilotKit, UseAgentUpdate } from "@copilotkit/react-core/v2";
+import * as Sentry from "@sentry/nextjs";
 
 import { AlertCircleIcon } from "lucide-react";
 
@@ -178,6 +179,7 @@ function OralBoardsWorkspaceContent({ threadId }: { threadId: string }) {
   const hasPanel = Boolean(examState.case?.trim());
   const isRunning = agent?.isRunning ?? false;
   const isGenerating = isRunning && !hasPanel;
+  const [reconnectRequired, setReconnectRequired] = useState(false);
 
   // A rejected run surfaces as an inline banner with Retry instead of leaving
   // the exam hanging on "Waiting for the next question…".
@@ -186,6 +188,7 @@ function OralBoardsWorkspaceContent({ threadId }: { threadId: string }) {
   const handleStart = useCallback(
     (content: string) =>
       guardedRun(async () => {
+        setReconnectRequired(false);
         if (!agent) throw new Error("The examiner is still connecting. Please try again.");
         agent.addMessage({ id: crypto.randomUUID(), role: "user", content });
         await copilotkit.runAgent({ agent });
@@ -196,8 +199,16 @@ function OralBoardsWorkspaceContent({ threadId }: { threadId: string }) {
   const handleReady = useCallback(
     () =>
       guardedRun(async () => {
-        if (pendingInputKind === "ready" && respondToPendingInput("ready")) return;
-        throw new Error("The examiner is still preparing the first question. Please try again.");
+        try {
+          if (pendingInputKind === "ready" && (await respondToPendingInput("ready"))) return;
+          throw new Error("The examiner is still preparing the first question. Please try again.");
+        } catch (error) {
+          Sentry.captureException(error, {
+            tags: { component: "oralboards_workspace", operation: "exam.ready" },
+          });
+          setReconnectRequired(true);
+          throw error;
+        }
       }),
     [guardedRun, pendingInputKind, respondToPendingInput],
   );
@@ -206,8 +217,16 @@ function OralBoardsWorkspaceContent({ threadId }: { threadId: string }) {
     (text: string) =>
       guardedRun(async () => {
         if (!text.trim()) return;
-        if (pendingInputKind === "answer" && respondToPendingInput(text)) return;
-        throw new Error("The examiner is not ready for an answer yet. Please try again.");
+        try {
+          if (pendingInputKind === "answer" && (await respondToPendingInput(text))) return;
+          throw new Error("The examiner is not ready for an answer yet. Please try again.");
+        } catch (error) {
+          Sentry.captureException(error, {
+            tags: { component: "oralboards_workspace", operation: "exam.answer" },
+          });
+          setReconnectRequired(true);
+          throw error;
+        }
       }),
     [guardedRun, pendingInputKind, respondToPendingInput],
   );
@@ -240,8 +259,19 @@ function OralBoardsWorkspaceContent({ threadId }: { threadId: string }) {
               <AlertTitle>The examiner ran into a problem</AlertTitle>
               <AlertDescription className="flex w-full items-center justify-between gap-3">
                 <span className="min-w-0 truncate">{runError.message}</span>
-                <Button type="button" size="xs" variant="outline" onClick={() => void retry()}>
-                  Retry
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="outline"
+                  onClick={() => {
+                    if (reconnectRequired) {
+                      window.location.reload();
+                      return;
+                    }
+                    void retry();
+                  }}
+                >
+                  {reconnectRequired ? "Reconnect" : "Retry"}
                 </Button>
               </AlertDescription>
             </Alert>

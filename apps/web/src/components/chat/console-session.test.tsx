@@ -12,8 +12,13 @@ const mocks = vi.hoisted(() => {
     getToken: vi.fn<() => Promise<string | null>>(async () => "clerk-session-token"),
     isLoaded: true,
     useThreads: vi.fn(() => ({ threads: [] })),
+    captureException: vi.fn(),
   };
 });
+
+vi.mock("@sentry/nextjs", () => ({
+  captureException: mocks.captureException,
+}));
 
 vi.mock("@clerk/nextjs", () => ({
   useAuth: () => ({
@@ -54,6 +59,7 @@ describe("ConsoleSession gateway runtime connection", () => {
     mocks.getToken.mockClear();
     mocks.getToken.mockResolvedValue("clerk-session-token");
     mocks.useThreads.mockClear();
+    mocks.captureException.mockClear();
     mocks.isLoaded = true;
   });
 
@@ -161,7 +167,7 @@ describe("ConsoleSession gateway runtime connection", () => {
   });
 
   it("ignores expected abort errors but reports real CopilotKit failures", async () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
@@ -176,23 +182,50 @@ describe("ConsoleSession gateway runtime connection", () => {
 
     expect(await screen.findByText("Conversation ready")).toBeInTheDocument();
     const onError = mocks.copilotProps?.onError as (event: {
+      type: "error" | "request";
+      timestamp: number;
       error: Error;
-      context: Record<string, unknown>;
+      context: {
+        source: "runtime" | "ui" | "agent" | "network";
+        threadId?: string;
+        runId?: string;
+        agent?: { name?: string };
+      };
     }) => void;
     const abortError = new Error("BodyStreamBuffer was aborted");
     abortError.name = "AbortError";
 
-    onError({ error: abortError, context: {} });
-    expect(consoleError).not.toHaveBeenCalled();
+    onError({
+      type: "error",
+      timestamp: Date.now(),
+      error: abortError,
+      context: { source: "network" },
+    });
+    expect(consoleWarn).not.toHaveBeenCalled();
+    expect(mocks.captureException).not.toHaveBeenCalled();
 
     const realError = new Error("connection failed");
-    onError({ error: realError, context: { source: "network" } });
-    expect(consoleError).toHaveBeenCalledWith(
-      "[CopilotKit] Error:",
-      realError,
-      expect.objectContaining({ source: "network" }),
-    );
+    onError({
+      error: realError,
+      type: "error",
+      timestamp: Date.now(),
+      context: {
+        source: "network",
+        agent: { name: "oral-boards" },
+        runId: "run-1",
+      },
+    });
+    expect(mocks.captureException).toHaveBeenCalledWith(realError, {
+      tags: {
+        component: "copilotkit",
+        "copilotkit.event_type": "error",
+        "copilotkit.source": "network",
+        "agent.name": "oral-boards",
+      },
+      extra: { runId: "run-1" },
+    });
+    expect(consoleWarn).toHaveBeenCalledWith("[CopilotKit] Error:", realError);
 
-    consoleError.mockRestore();
+    consoleWarn.mockRestore();
   });
 });

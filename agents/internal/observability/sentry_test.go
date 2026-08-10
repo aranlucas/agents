@@ -6,7 +6,18 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
+
+	"github.com/getsentry/sentry-go"
 )
+
+type captureTransport struct{ events []*sentry.Event }
+
+func (*captureTransport) Configure(sentry.ClientOptions)        {}
+func (*captureTransport) Flush(time.Duration) bool              { return true }
+func (*captureTransport) FlushWithContext(context.Context) bool { return true }
+func (t *captureTransport) SendEvent(event *sentry.Event)       { t.events = append(t.events, event) }
+func (*captureTransport) Close()                                {}
 
 func TestSetupSentryRequiresServiceName(t *testing.T) {
 	if _, err := SetupSentry(Config{}); err == nil {
@@ -53,10 +64,45 @@ func TestWrapSentryRepanicsAndServesNormally(t *testing.T) {
 	panicking.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/health", nil))
 }
 
-func TestCaptureErrorIgnoresNilAndCancellation(t *testing.T) {
+func TestCaptureErrorIgnoresNilAndExplicitCancellation(t *testing.T) {
 	// Without an initialized client these must all be safe no-ops.
 	CaptureError(context.Background(), nil)
 	CaptureError(context.Background(), context.Canceled)
-	CaptureError(context.Background(), context.DeadlineExceeded)
+	CaptureError(context.Background(), context.DeadlineExceeded, ErrorDetails{
+		Operation: "agent.run",
+		Tags:      map[string]string{"agent": "oralboards"},
+		Context:   map[string]any{"run_id": "run-1"},
+	})
 	CaptureError(context.Background(), errors.New("reported"))
+}
+
+func TestCaptureErrorRecordsDeadlineAndOperationalDetails(t *testing.T) {
+	transport := &captureTransport{}
+	client, err := sentry.NewClient(sentry.ClientOptions{
+		Dsn:       "https://public@example.com/1",
+		Transport: transport,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	hub := sentry.NewHub(client, sentry.NewScope())
+	ctx := sentry.SetHubOnContext(context.Background(), hub)
+
+	CaptureError(ctx, context.DeadlineExceeded, ErrorDetails{
+		Operation: "agent.run",
+		Tags:      map[string]string{"agent.route": "oralboards"},
+		Context:   map[string]any{"run_id": "run-1"},
+	})
+	CaptureError(ctx, context.Canceled)
+
+	if len(transport.events) != 1 {
+		t.Fatalf("captured events = %d, want 1", len(transport.events))
+	}
+	event := transport.events[0]
+	if event.Tags["operation"] != "agent.run" || event.Tags["agent.route"] != "oralboards" {
+		t.Fatalf("captured tags = %#v", event.Tags)
+	}
+	if event.Contexts["operation"]["run_id"] != "run-1" {
+		t.Fatalf("captured context = %#v", event.Contexts)
+	}
 }

@@ -3,11 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { OralBoardsErrorBoundary } from "./error-boundary";
-
-function Boom(): never {
-  throw new Error("render exploded");
-}
+import { OralBoardsErrorBoundary, OralBoardsErrorFallback } from "./error-boundary";
 
 describe("OralBoardsErrorBoundary", () => {
   beforeEach(() => {
@@ -31,11 +27,7 @@ describe("OralBoardsErrorBoundary", () => {
 
   it("renders a fallback with a reset action instead of a blank screen", async () => {
     const onReset = vi.fn();
-    render(
-      <OralBoardsErrorBoundary onReset={onReset}>
-        <Boom />
-      </OralBoardsErrorBoundary>,
-    );
+    render(<OralBoardsErrorFallback error={new Error("render exploded")} resetError={onReset} />);
 
     expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
     expect(screen.getByText(/render exploded/)).toBeInTheDocument();

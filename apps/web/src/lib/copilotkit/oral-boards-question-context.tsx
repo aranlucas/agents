@@ -26,7 +26,7 @@ interface OralBoardsQuestionContextValue {
   pendingInputKind: OralBoardsInputKind | null;
   registerPendingInput: (input: PendingInput) => void;
   clearPendingInput: (id: string) => void;
-  respondToPendingInput: (answer: string) => boolean;
+  respondToPendingInput: (answer: string) => Promise<boolean>;
 }
 
 const OralBoardsQuestionContext = createContext<OralBoardsQuestionContextValue | null>(null);
@@ -35,6 +35,7 @@ export function OralBoardsQuestionProvider({ children }: { children: ReactNode }
   const [currentQuestion, setCurrentQuestion] = useState("");
   const [pendingInputKind, setPendingInputKind] = useState<OralBoardsInputKind | null>(null);
   const pendingInputRef = useRef<PendingInput | null>(null);
+  const pendingResponseRef = useRef<{ id: string; promise: Promise<boolean> } | null>(null);
 
   const clearCurrentQuestion = useCallback(() => setCurrentQuestion(""), []);
 
@@ -50,14 +51,34 @@ export function OralBoardsQuestionProvider({ children }: { children: ReactNode }
     setPendingInputKind(null);
   }, []);
 
-  const respondToPendingInput = useCallback((answer: string) => {
+  const respondToPendingInput = useCallback(async (answer: string) => {
     const input = pendingInputRef.current;
     if (!input) return false;
+    if (pendingResponseRef.current?.id === input.id) return pendingResponseRef.current.promise;
 
-    pendingInputRef.current = null;
-    setPendingInputKind(null);
-    void input.respond({ answer });
-    return true;
+    const response = (async () => {
+      try {
+        await input.respond({ answer });
+        if (pendingInputRef.current?.id === input.id) {
+          pendingInputRef.current = null;
+          setPendingInputKind(null);
+        }
+        return true;
+      } catch (error) {
+        // CopilotKit clears its pending interrupt when the resume run rejects.
+        // Retain our exact input metadata so the UI stays actionable and can
+        // offer a reconnect instead of silently claiming the answer succeeded.
+        pendingInputRef.current = input;
+        setPendingInputKind(input.kind);
+        throw error;
+      }
+    })();
+    pendingResponseRef.current = { id: input.id, promise: response };
+    try {
+      return await response;
+    } finally {
+      if (pendingResponseRef.current?.id === input.id) pendingResponseRef.current = null;
+    }
   }, []);
 
   const value = useMemo(

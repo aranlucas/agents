@@ -2,7 +2,7 @@
 import React, { forwardRef, useImperativeHandle } from "react";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type {
   CaseSource,
@@ -45,17 +45,38 @@ vi.mock("@copilotkit/react-core/v2", () => ({
   }),
 }));
 
+const useAnswerRecorderMock = vi.hoisted(() => vi.fn());
+
 vi.mock("@/lib/copilotkit/use-answer-recorder", () => ({
-  useAnswerRecorder: (_onTranscript: (t: string) => void) => ({
+  useAnswerRecorder: useAnswerRecorderMock,
+}));
+
+function mockAnswerRecorder(
+  overrides: Partial<{
+    recording: boolean;
+    transcribing: boolean;
+    micSupported: boolean;
+    micPermission: "checking" | "prompt" | "requesting" | "granted" | "denied";
+    error: string | null;
+    clearError: ReturnType<typeof vi.fn>;
+    requestPermission: ReturnType<typeof vi.fn>;
+    toggle: ReturnType<typeof vi.fn>;
+    recorderRef: { current: null };
+  }> = {},
+) {
+  useAnswerRecorderMock.mockReturnValue({
     recording: false,
     transcribing: false,
     micSupported: false,
+    micPermission: "checking",
     error: null,
     clearError: vi.fn(),
+    requestPermission: vi.fn().mockResolvedValue(false),
     toggle: vi.fn(),
     recorderRef: { current: null },
-  }),
-}));
+    ...overrides,
+  });
+}
 
 vi.mock("@agents/ui", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@agents/ui")>();
@@ -82,6 +103,10 @@ const baseProps = {
   onAnswer: noop,
   isRunning: false,
 };
+
+beforeEach(() => {
+  mockAnswerRecorder();
+});
 
 afterEach(() => {
   vi.mocked(useIsMobile).mockReturnValue(false);
@@ -123,6 +148,45 @@ describe("OralBoardsPanel — presenting", () => {
 });
 
 describe("OralBoardsPanel — questioning", () => {
+  it("requires microphone permission before enabling Record", async () => {
+    const requestPermission = vi.fn().mockResolvedValue(true);
+    const toggle = vi.fn();
+    mockAnswerRecorder({
+      micSupported: true,
+      micPermission: "prompt",
+      requestPermission,
+      toggle,
+    });
+    const state: OralBoardsState = {
+      case: "Case.",
+      case_sources: [],
+      status: "questioning",
+      transcript: [],
+    };
+
+    const { rerender } = render(<OralBoardsPanel state={state} {...baseProps} />);
+
+    expect(screen.queryByRole("button", { name: "Record" })).not.toBeInTheDocument();
+    const enableMicrophone = screen.getByRole("button", { name: "Enable microphone" });
+    expect(enableMicrophone).toBeEnabled();
+    await userEvent.click(enableMicrophone);
+    expect(requestPermission).toHaveBeenCalledOnce();
+    expect(toggle).not.toHaveBeenCalled();
+
+    mockAnswerRecorder({
+      micSupported: true,
+      micPermission: "granted",
+      requestPermission,
+      toggle,
+    });
+    rerender(<OralBoardsPanel state={state} {...baseProps} />);
+
+    const record = screen.getByRole("button", { name: "Record" });
+    expect(record).toBeEnabled();
+    await userEvent.click(record);
+    expect(toggle).toHaveBeenCalledOnce();
+  });
+
   it("fills the available workspace without shrink-wrapping", () => {
     const state: OralBoardsState = {
       case: "Case.",

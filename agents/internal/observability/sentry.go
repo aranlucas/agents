@@ -51,16 +51,37 @@ func WrapSentry(next http.Handler) http.Handler {
 	return sentryhttp.New(sentryhttp.Options{Repanic: true}).Handle(next)
 }
 
-// CaptureError reports err to Sentry unless it is nil or only a context
-// cancellation. It prefers the request-scoped hub bound by WrapSentry and is
-// safe to call before SetupSentry or without a DSN.
-func CaptureError(ctx context.Context, err error) {
-	if err == nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+// ErrorDetails adds low-cardinality operational metadata to one captured
+// exception. Context values must not contain prompts, credentials, or other
+// user-authored content.
+type ErrorDetails struct {
+	Operation string
+	Tags      map[string]string
+	Context   map[string]any
+}
+
+// CaptureError reports err to Sentry unless it is nil or an explicit context
+// cancellation. Deadlines are genuine reliability failures and are reported.
+// It prefers the request-scoped hub bound by WrapSentry and is safe to call
+// before SetupSentry or without a DSN.
+func CaptureError(ctx context.Context, err error, details ...ErrorDetails) {
+	if err == nil || errors.Is(err, context.Canceled) {
 		return
 	}
 	hub := sentry.GetHubFromContext(ctx)
 	if hub == nil {
 		hub = sentry.CurrentHub()
 	}
-	hub.CaptureException(err)
+	hub.WithScope(func(scope *sentry.Scope) {
+		for _, detail := range details {
+			if operation := strings.TrimSpace(detail.Operation); operation != "" {
+				scope.SetTag("operation", operation)
+			}
+			scope.SetTags(detail.Tags)
+			if len(detail.Context) > 0 {
+				scope.SetContext("operation", sentry.Context(detail.Context))
+			}
+		}
+		hub.CaptureException(err)
+	})
 }
