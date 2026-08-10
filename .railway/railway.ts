@@ -4,7 +4,7 @@ export default defineRailway((ctx) => {
   const production = ctx.isEnvironment("production");
 
   const agentsGateway = service("agents-gateway", {
-    source: github("aranlucas/agents", { checkSuites: true }),
+    source: github("aranlucas/agents", { checkSuites: false }),
     build: {
       builder: "DOCKERFILE",
       dockerfilePath: "agents/Dockerfile",
