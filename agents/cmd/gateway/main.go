@@ -573,19 +573,22 @@ func oralboardsModels(ctx context.Context) (oralboards.PhaseModels, error) {
 	return oralboards.PhaseModels{CaseBuilder: caseBuilder, Questioner: caseBuilder, Evaluator: caseBuilder, Scorer: caseBuilder}, nil
 }
 
-// oralboardsGeminiClientConfig keeps retryable HTTP failures inside the same
-// ADK invocation. If a 503 escapes after an answer resumes RequestInput, the
-// consumed interrupt cannot safely be replayed and the examination wedges.
-// The Gen AI SDK retries 408, 429, and 5xx responses by default when retry
-// options are present; bound the six attempts to an eight-second maximum gap.
+// oralboardsGeminiClientConfig keeps transient provider failures inside the
+// model request that encountered them. ADK's workflow RetryConfig reactivates
+// an entire node; that is unsafe for oral-board phases whose agents may already
+// have mutated examination state through tools before a later model call fails.
+//
+// The Gen AI SDK documents HTTPRetryOptions as the request-level retry seam.
+// A non-nil empty policy enables its maintained defaults: five total attempts,
+// an approximately one-second initial delay, exponential backoff with jitter,
+// and retries limited to transport failures plus 408, 429, and selected 5xx
+// responses. Keep those defaults centralized in the provider SDK rather than
+// copying values here and allowing the policies to drift.
 func oralboardsGeminiClientConfig(apiKey string) *genai.ClientConfig {
 	return &genai.ClientConfig{
-		APIKey:  apiKey,
-		Backend: genai.BackendGeminiAPI,
-		HTTPOptions: genai.HTTPOptions{RetryOptions: &genai.HTTPRetryOptions{
-			Attempts: genai.Ptr[int32](6),
-			MaxDelay: genai.Ptr(8.0),
-		}},
+		APIKey:      apiKey,
+		Backend:     genai.BackendGeminiAPI,
+		HTTPOptions: genai.HTTPOptions{RetryOptions: &genai.HTTPRetryOptions{}},
 	}
 }
 
