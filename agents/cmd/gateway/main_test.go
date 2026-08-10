@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -29,9 +30,54 @@ import (
 	"agents/wellness"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
+	"google.golang.org/adk/v2/model/gemini"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
 )
+
+func TestOralboardsGeminiRetriesTemporaryUnavailableResponse(t *testing.T) {
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if calls.Add(1) == 1 {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = io.WriteString(w, `{"error":{"code":503,"message":"This model is currently experiencing high demand.","status":"UNAVAILABLE"}}`)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"candidates":[{"content":{"role":"model","parts":[{"text":"Recovered examiner response"}]},"finishReason":"STOP"}]}`)
+	}))
+	defer server.Close()
+
+	config := oralboardsGeminiClientConfig("test-key")
+	if attempts := config.HTTPOptions.RetryOptions.Attempts; attempts == nil || *attempts != 6 {
+		t.Fatalf("retry attempts = %v, want 6", attempts)
+	}
+	// Keep the integration test immediate while preserving production backoff.
+	config.HTTPOptions.BaseURL = server.URL
+	config.HTTPOptions.RetryOptions.InitialDelay = genai.Ptr(0.0)
+	config.HTTPOptions.RetryOptions.MaxDelay = genai.Ptr(0.0)
+	config.HTTPOptions.RetryOptions.Jitter = genai.Ptr(0.0)
+
+	llm, err := gemini.NewModel(t.Context(), "test-model", config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var responseText string
+	for response, generateErr := range llm.GenerateContent(t.Context(), &model.LLMRequest{
+		Contents: genai.Text("Continue the oral-board examination."),
+	}, false) {
+		if generateErr != nil {
+			t.Fatalf("model call did not recover from 503: %v", generateErr)
+		}
+		if response != nil && response.Content != nil && len(response.Content.Parts) > 0 {
+			responseText = response.Content.Parts[0].Text
+		}
+	}
+	if calls.Load() != 2 || responseText != "Recovered examiner response" {
+		t.Fatalf("calls = %d, response = %q", calls.Load(), responseText)
+	}
+}
 
 func TestFrontendAgentIDUsesCatalogIdentity(t *testing.T) {
 	for _, spec := range catalog.All() {
