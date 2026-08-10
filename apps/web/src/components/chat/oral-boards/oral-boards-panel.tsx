@@ -7,11 +7,15 @@ import {
   BookOpenIcon,
   CheckCircle2Icon,
   ChevronDownIcon,
+  ChevronUpIcon,
+  ClipboardListIcon,
   FileDownIcon,
   FileTextIcon,
   GraduationCapIcon,
   Loader2Icon,
   MicIcon,
+  PanelLeftCloseIcon,
+  PanelLeftOpenIcon,
   PencilIcon,
   PlayIcon,
   SendHorizontalIcon,
@@ -30,6 +34,10 @@ import type {
   OralBoardsState,
 } from "@agents/types";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
   Alert,
   AlertDescription,
   AlertTitle,
@@ -39,6 +47,7 @@ import {
   Button,
   Card,
   CardContent,
+  CardFooter,
   CardHeader,
   Collapsible,
   CollapsibleContent,
@@ -47,10 +56,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
   Kbd,
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
   ScrollArea,
   Table,
   TableBody,
@@ -65,6 +76,16 @@ import {
   Textarea,
 } from "@agents/ui";
 import { useIsMobile } from "@agents/ui/hooks/use-mobile";
+import { cn } from "@agents/ui/lib/utils";
+import { Field, FieldDescription, FieldLabel, FieldTitle } from "@agents/ui/components/field";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@agents/ui/components/drawer";
 import {
   Artifact,
   ArtifactContent,
@@ -141,6 +162,22 @@ function stripMarkdownForSpeech(text: string): string {
     .trim();
 }
 
+// The report gives the score card its own "Examiner summary" heading, so a
+// leading heading written by the model only repeats it. Display-only — the
+// exported report still carries the model's markdown verbatim.
+function withoutLeadingHeading(markdown: string): string {
+  return markdown.replace(/^\s*#{1,6}[^\n]*(\n+|$)/, "");
+}
+
+// Accordion item values are positional: an exchange has no stable id, and the
+// transcript only ever grows at the end.
+function exchangeValue(index: number): string {
+  return `q${index + 1}`;
+}
+
+// The one place hue is load-bearing. The exam surface is deliberately neutral;
+// only the end-of-case report colours scores, where scanning many at once is
+// the point. Keep new call sites off this unless they are on that report.
 function scoreClasses(score: number): string {
   if (score >= 3) {
     return "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-800/60 dark:bg-emerald-950/30 dark:text-emerald-200";
@@ -171,7 +208,7 @@ function SkillsetBadges({ exchange }: { exchange: OralBoardsExchange }) {
         </Badge>
       )}
       {score != null && (
-        <Badge className={`rounded border text-xs font-semibold ${scoreClasses(score)}`}>
+        <Badge variant="outline" className="rounded text-xs font-semibold">
           {score}/3
         </Badge>
       )}
@@ -179,34 +216,20 @@ function SkillsetBadges({ exchange }: { exchange: OralBoardsExchange }) {
   );
 }
 
-// The model answer the candidate should have given — produced by the agent but
-// previously never surfaced in the UI.
-function ModelAnswer({ text }: { text: string }) {
-  if (!text.trim()) return null;
+// What a 3 sounds like. Always the closing block of an exchange so the gap
+// between the candidate's answer and the reference answer reads top-to-bottom.
+// Neutral, like the rest of the exam surface — the label carries the meaning.
+function ModelAnswer({ text }: { text: string | undefined }) {
+  const ideal = asText(text);
+  if (!ideal.trim()) return null;
   return (
-    <div className="rounded border border-dashed border-border/60 px-2.5 py-2">
-      <p className="mb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+    <div className="mt-0.5 rounded-lg border border-dashed bg-muted/40 px-2.5 py-2">
+      <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+        <GraduationCapIcon className="size-3.5" />
         Model answer
       </p>
-      <Streamdown>{text}</Streamdown>
+      <Streamdown>{ideal}</Streamdown>
     </div>
-  );
-}
-
-function FeedbackDetails({ idealResponse }: { idealResponse: string | undefined }) {
-  const ideal = asText(idealResponse);
-  if (!ideal.trim()) return null;
-
-  return (
-    <Collapsible className="rounded-lg border border-dashed">
-      <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left text-xs transition-colors hover:bg-muted">
-        <span className="font-medium">Show model answer</span>
-        <ChevronDownIcon className="size-3 text-muted-foreground transition-transform group-data-panel-open:rotate-180" />
-      </CollapsibleTrigger>
-      <CollapsibleContent className="flex flex-col gap-1.5 border-t px-2.5 py-2">
-        <ModelAnswer text={ideal} />
-      </CollapsibleContent>
-    </Collapsible>
   );
 }
 
@@ -496,8 +519,8 @@ function TtsButton({ text, label = "Listen" }: { text: string; label?: string })
   );
 }
 
-// Permanent left column during questioning — the vignette is always in view,
-// with the candidate's running notes editable beneath it.
+// The case rail during questioning — a stable reference surface the candidate
+// reads from, with their running notes editable beneath it.
 function VignettePanel({
   caseBody,
   notes,
@@ -507,42 +530,52 @@ function VignettePanel({
   notes: string;
   onNotesChange: React.Dispatch<React.SetStateAction<string>>;
 }) {
+  // Only the vignette scrolls. Notes stay docked at the foot of the rail so
+  // jotting something never costs you your place in a long case.
   return (
-    <ScrollArea className="size-full min-w-0 bg-muted/25 md:border-e">
-      <div className="mx-auto flex w-full max-w-prose flex-col gap-4 p-4 sm:px-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <BookOpenIcon className="size-3 text-indigo-400" />
-            <span className="text-xs font-semibold tracking-widest text-indigo-400 uppercase">
-              Case Vignette
-            </span>
+    <div className="flex size-full min-w-0 flex-col bg-muted/25">
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="mx-auto flex w-full max-w-prose flex-col gap-4 p-4 sm:px-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <BookOpenIcon className="size-3 text-muted-foreground" />
+              <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                Case Vignette
+              </span>
+            </div>
+            <TtsButton text={caseBody} label="Listen" />
           </div>
-          <TtsButton text={caseBody} label="Listen" />
+          <Streamdown>{caseBody}</Streamdown>
         </div>
-        <Streamdown>{caseBody}</Streamdown>
+      </ScrollArea>
 
-        <div className="mt-auto flex flex-col gap-3">
-          <div className="border-t pt-3">
-            <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-              <PencilIcon className="size-3" />
-              Your notes
-            </p>
-            <Textarea
-              aria-label="Case notes"
-              className="min-h-14 resize-none p-2.5 text-xs leading-relaxed"
-              placeholder="Jot notes as you reason through the case…"
-              value={notes}
-              onChange={(e) => onNotesChange(e.target.value)}
-            />
-          </div>
-          <AnswerCoach />
-        </div>
+      <div className="flex shrink-0 flex-col gap-3 border-t p-4 sm:px-5">
+        <Field>
+          <FieldLabel
+            htmlFor="oral-boards-notes"
+            className="text-xs tracking-wide text-muted-foreground uppercase"
+          >
+            <PencilIcon className="size-3" />
+            Your notes
+          </FieldLabel>
+          <Textarea
+            id="oral-boards-notes"
+            aria-label="Case notes"
+            className="min-h-14 resize-none bg-background p-2.5 text-xs leading-relaxed"
+            placeholder="Jot notes as you reason through the case…"
+            value={notes}
+            onChange={(e) => onNotesChange(e.target.value)}
+          />
+        </Field>
+        <AnswerCoach />
       </div>
-    </ScrollArea>
+    </div>
   );
 }
 
-function CompletedExchangeRow({
+// One graded exchange as an Accordion item. The parent Accordion decides what
+// is open: everything on the review screen, nothing in the exam drawer.
+function CompletedExchangeItem({
   exchange,
   index,
 }: {
@@ -550,17 +583,19 @@ function CompletedExchangeRow({
   index: number;
 }) {
   return (
-    <Collapsible className="overflow-hidden rounded-lg border">
-      <CollapsibleTrigger className="group flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-muted">
-        <CheckCircle2Icon className="size-3 shrink-0 text-emerald-400" />
-        <span className="font-medium text-emerald-300/90">Q{index + 1}</span>
+    <AccordionItem
+      value={exchangeValue(index)}
+      className="overflow-hidden rounded-lg border not-last:border-b"
+    >
+      <AccordionTrigger className="items-center gap-2 px-3 py-2 text-xs hover:bg-muted hover:no-underline">
+        <CheckCircle2Icon className="size-3 shrink-0 text-muted-foreground" />
+        <span className="font-medium">Q{index + 1}</span>
         <span className="flex-1 truncate text-muted-foreground">
           {truncate(exchange.question ?? "", 52)}
         </span>
         <SkillsetBadges exchange={exchange} />
-        <ChevronDownIcon className="size-3 text-muted-foreground transition-transform group-data-panel-open:rotate-180" />
-      </CollapsibleTrigger>
-      <CollapsibleContent className="flex flex-col gap-1.5 border-t px-3 py-2.5 text-xs">
+      </AccordionTrigger>
+      <AccordionContent className="flex flex-col gap-1.5 border-t px-3 py-2.5 text-xs">
         <p className="text-sm font-medium">{exchange.question}</p>
         {exchange.answer && (
           <p className="text-muted-foreground">
@@ -569,16 +604,16 @@ function CompletedExchangeRow({
           </p>
         )}
         {exchange.feedback && <Streamdown>{exchange.feedback}</Streamdown>}
-        <FeedbackDetails idealResponse={exchange.ideal_response} />
-      </CollapsibleContent>
-    </Collapsible>
+        <ModelAnswer text={exchange.ideal_response} />
+      </AccordionContent>
+    </AccordionItem>
   );
 }
 
 function LastFeedbackCard({ exchange, index }: { exchange: OralBoardsExchange; index: number }) {
   return (
     <div className="flex shrink-0 flex-col gap-1.5 rounded-lg border p-3 text-sm">
-      <p className="text-xs font-semibold tracking-widest text-emerald-400 uppercase">
+      <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
         Q{index + 1} · Feedback
       </p>
       <SkillsetBadges exchange={exchange} />
@@ -587,7 +622,7 @@ function LastFeedbackCard({ exchange, index }: { exchange: OralBoardsExchange; i
         <p className="text-xs text-muted-foreground">Your answer: {exchange.answer}</p>
       )}
       {exchange.feedback && <Streamdown>{exchange.feedback}</Streamdown>}
-      <FeedbackDetails idealResponse={exchange.ideal_response} />
+      <ModelAnswer text={exchange.ideal_response} />
     </div>
   );
 }
@@ -610,7 +645,7 @@ function PresentingPane({
   const recorder = useAnswerRecorder(appendTranscript);
 
   return (
-    <div className="flex h-full flex-col gap-4">
+    <div className="mx-auto flex size-full max-w-3xl flex-col gap-4">
       <div className="flex shrink-0 items-center justify-between">
         <p className="text-xs text-muted-foreground">
           Read and analyze the case. Take notes before beginning.
@@ -697,9 +732,9 @@ function ExamTimeline({
         const isCompleted = step.state === "completed";
         const isActive = step.state === "active";
         const labelClasses = isCompleted
-          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+          ? "border-border bg-muted text-muted-foreground"
           : isActive
-            ? "border-indigo-500/40 bg-indigo-500/10 text-indigo-200"
+            ? "border-foreground/30 bg-background font-medium text-foreground"
             : "border-border/60 bg-muted/30 text-muted-foreground";
 
         return (
@@ -745,28 +780,26 @@ function LiveFeedbackPreview({
   if (!activeFeedback.trim()) return null;
   return (
     <div className="flex shrink-0 flex-col gap-1.5 rounded-lg border border-dashed p-3 text-sm">
-      <p className="text-xs font-semibold tracking-widest text-amber-400 uppercase">
+      <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
         Feedback · generating…
       </p>
       <Streamdown>{activeFeedback}</Streamdown>
-      <FeedbackDetails idealResponse={activeIdealResponse} />
+      <ModelAnswer text={activeIdealResponse} />
     </div>
   );
 }
 
 function ReviewingAnswer({ answer, loadingStep }: { answer: string; loadingStep: string }) {
   return (
-    <div className="flex h-full shrink-0 flex-col gap-3 overflow-y-auto rounded-xl border bg-muted/15 p-3 md:h-auto">
+    <Field className="max-h-56 overflow-y-auto">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-          Your response
-        </p>
+        <FieldTitle>Your response</FieldTitle>
         <p role="status" className="text-xs text-muted-foreground">
           {loadingStep}
         </p>
       </div>
       <p className="text-sm leading-relaxed">{answer}</p>
-    </div>
+    </Field>
   );
 }
 
@@ -774,44 +807,53 @@ function ExamProgressHeader({
   questionNumber,
   stage,
   transcript,
+  caseOpen,
+  onToggleCase,
 }: {
   questionNumber: number;
   stage: "question" | "reviewing" | "scoring" | "complete";
   transcript: OralBoardsExchange[];
+  caseOpen: boolean;
+  onToggleCase: () => void;
 }) {
+  const runningScores = [
+    ...new Set(transcript.map((x) => safeString(x.skillset)).filter((v): v is string => v != null)),
+  ].map((skillset) => {
+    const scores = transcript
+      .filter((x) => x.skillset === skillset)
+      .map((x) => scoreNumber(x.score))
+      .filter((s): s is number => s != null);
+    return {
+      skillset,
+      avg: scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null,
+    };
+  });
+
   return (
-    <div className="shrink-0 border-b px-4 py-2">
-      <div className="flex flex-col gap-2">
-        <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-          Examination
-        </span>
-        <ExamTimeline questionNumber={questionNumber} stage={stage} />
+    <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b px-4 py-2">
+      <ExamTimeline questionNumber={questionNumber} stage={stage} />
+      <div className="flex flex-wrap items-center gap-1">
+        {runningScores.map(({ skillset, avg }) => (
+          <Badge key={skillset} variant="secondary" className="py-0 text-xs">
+            {skillset}
+            {avg != null && <span className="ms-1 font-semibold">{avg.toFixed(1)}</span>}
+          </Badge>
+        ))}
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          onClick={onToggleCase}
+          className="ms-1 text-muted-foreground"
+        >
+          {caseOpen ? (
+            <PanelLeftCloseIcon className="size-3.5" />
+          ) : (
+            <PanelLeftOpenIcon className="size-3.5" />
+          )}
+          {caseOpen ? "Hide case" : "Show case"}
+        </Button>
       </div>
-      {transcript.length > 0 && (
-        <div className="mt-1.5 flex flex-wrap gap-1">
-          {[
-            ...new Set(
-              transcript.map((x) => safeString(x.skillset)).filter((v): v is string => v != null),
-            ),
-          ].map((skillset) => {
-            const scores = transcript
-              .filter((x) => x.skillset === skillset)
-              .map((x) => scoreNumber(x.score))
-              .filter((s): s is number => s != null);
-            const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
-            return (
-              <Badge
-                key={skillset}
-                variant="secondary"
-                className={`py-0 text-xs ${avg != null ? scoreClasses(Math.round(avg)) : ""}`}
-              >
-                {skillset}
-                {avg != null && <span className="ms-1 opacity-70">{avg.toFixed(1)}</span>}
-              </Badge>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }
@@ -834,9 +876,13 @@ function TranscriptSection({
   if (![olderExchanges.length > 0, lastExchange, activeFeedback].some(Boolean)) return null;
   return (
     <div className="flex flex-col gap-1.5">
-      {olderExchanges.map((x, i) => (
-        <CompletedExchangeRow key={x.question || i} exchange={x} index={i} />
-      ))}
+      {olderExchanges.length > 0 && (
+        <Accordion multiple className="flex flex-col gap-1.5">
+          {olderExchanges.map((x, i) => (
+            <CompletedExchangeItem key={x.question || i} exchange={x} index={i} />
+          ))}
+        </Accordion>
+      )}
       {lastExchange && <LastFeedbackCard exchange={lastExchange} index={transcript.length - 1} />}
       {isRunning && (
         <LiveFeedbackPreview
@@ -880,7 +926,11 @@ function MobileExamProgress({
   );
 }
 
-function MobileTranscriptHistory({
+// Grading lives in a drawer under the composer, closed by default: the real
+// OCE gives no feedback between questions, and a graded answer sitting above
+// the live question pulls attention backwards. It is one click away, and the
+// full write-up is waiting on the end-of-case review.
+function FeedbackDrawer({
   transcript,
   isRunning,
   activeFeedback,
@@ -892,36 +942,55 @@ function MobileTranscriptHistory({
   activeIdealResponse: string;
 }) {
   const hasLiveFeedback = isRunning && Boolean(activeFeedback.trim());
+  const [open, setOpen] = useState(false);
+  // Grading lands silently while the drawer is shut, so count what arrived
+  // since it was last read and clear that the moment it is opened.
+  const [readCount, setReadCount] = useState(transcript.length);
+  const unread = open ? 0 : Math.max(transcript.length - readCount, 0);
+  useEffect(() => {
+    if (open) setReadCount(transcript.length);
+  }, [open, transcript.length]);
+
   if (transcript.length === 0 && !hasLiveFeedback) return null;
 
+  // A sheet, not an inline panel: an inline drawer in a full-height column
+  // always ends flush against the window edge, which reads as truncated even
+  // when it scrolls. The sheet gets its own height and a real boundary.
   return (
-    <div className="flex flex-col gap-2">
-      {hasLiveFeedback && (
-        <LiveFeedbackPreview
-          activeFeedback={activeFeedback}
-          activeIdealResponse={activeIdealResponse}
-        />
-      )}
-      {transcript.length > 0 && (
-        <Collapsible className="rounded-lg border">
-          <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-muted">
-            <span className="font-medium">Previous feedback</span>
-            <span className="flex items-center gap-2">
-              <Badge variant="secondary">{transcript.length}</Badge>
-              <ChevronDownIcon className="size-3 text-muted-foreground transition-transform group-data-panel-open:rotate-180" />
-            </span>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="border-t p-2">
+    <Drawer open={open} onOpenChange={setOpen}>
+      <DrawerTrigger asChild>
+        <button
+          type="button"
+          className="flex w-full shrink-0 items-center justify-between gap-2 border-t bg-muted/20 px-4 py-2 text-left text-xs transition-colors hover:bg-muted"
+        >
+          <span className="font-medium">Feedback so far</span>
+          <span className="flex items-center gap-2">
+            {unread > 0 && <Badge>{unread} new</Badge>}
+            <Badge variant="secondary">{transcript.length}</Badge>
+            <ChevronUpIcon className="size-3 text-muted-foreground" />
+          </span>
+        </button>
+      </DrawerTrigger>
+      <DrawerContent>
+        <DrawerHeader className="mx-auto w-full max-w-3xl">
+          <DrawerTitle>Feedback so far</DrawerTitle>
+          <DrawerDescription>
+            Grading for the questions you have already answered. The full write-up is on the score
+            card at the end of the case.
+          </DrawerDescription>
+        </DrawerHeader>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-8">
+          <div className="mx-auto w-full max-w-3xl">
             <TranscriptSection
               transcript={transcript}
-              isRunning={false}
-              activeFeedback=""
-              activeIdealResponse=""
+              isRunning={isRunning}
+              activeFeedback={activeFeedback}
+              activeIdealResponse={activeIdealResponse}
             />
-          </CollapsibleContent>
-        </Collapsible>
-      )}
-    </div>
+          </div>
+        </div>
+      </DrawerContent>
+    </Drawer>
   );
 }
 
@@ -931,12 +1000,16 @@ function ExaminerQuestionCard({
   questionNumber,
   isRunning,
   loadingStep,
+  fill = false,
+  children,
 }: {
   question: string;
   probe?: string;
   questionNumber: number;
   isRunning: boolean;
   loadingStep: string;
+  fill?: boolean;
+  children: React.ReactNode;
 }) {
   // A follow-up probe supersedes the original question as the active prompt.
   // Coerce defensively: both props ultimately trace back to LLM-written
@@ -946,27 +1019,26 @@ function ExaminerQuestionCard({
   const isProbe = Boolean(probeText.trim());
   const activeText = isProbe ? probeText : questionText;
   return (
-    <Card>
-      <CardHeader className="flex-row items-start justify-between gap-2">
+    // Question and answer are one Card, not two panes: the examiner asks in
+    // the body and you reply in the footer, which is how the exchange actually
+    // works. CardFooter's tinted top border does the separating.
+    <Card className={fill ? "min-h-0 flex-1" : undefined}>
+      {/* `flex` (not `flex-row`) so it replaces CardHeader's own `grid` —
+          otherwise justify-between is inert and the Listen button wraps. */}
+      <CardHeader className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2.5">
-          <Avatar
-            className={`size-8 ring-1 ${isProbe ? "ring-amber-500/30" : "ring-indigo-500/30"}`}
-          >
-            <AvatarFallback
-              className={
-                isProbe ? "bg-amber-500/15 text-amber-300" : "bg-indigo-500/15 text-indigo-300"
-              }
-            >
+          <Avatar className="size-8 ring-1 ring-border">
+            <AvatarFallback className="bg-muted text-muted-foreground">
               <StethoscopeIcon className="size-4" />
             </AvatarFallback>
           </Avatar>
           <div className="leading-tight">
-            <p className="text-xs font-semibold tracking-widest text-indigo-300/80 uppercase">
+            <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
               Examiner
             </p>
             <p className="text-xs text-muted-foreground">
               Q{questionNumber}
-              {isProbe && <span className="text-amber-300/90"> · Follow-up</span>}
+              {isProbe && <span className="font-medium text-foreground"> · Follow-up</span>}
             </p>
           </div>
         </div>
@@ -982,6 +1054,9 @@ function ExaminerQuestionCard({
           <ThinkingState isRunning={isRunning} loadingStep={loadingStep} />
         )}
       </CardContent>
+      <CardFooter className={cn("flex-col items-stretch gap-2", fill && "min-h-0 flex-1")}>
+        {children}
+      </CardFooter>
     </Card>
   );
 }
@@ -1029,19 +1104,15 @@ function ResponseComposer({
   }
   if (isScoring) {
     return (
-      <div className="h-full rounded-xl border bg-muted/15 p-3 md:h-auto">
-        <p role="status" className="text-sm text-muted-foreground">
-          Computing score card…
-        </p>
-      </div>
+      <p role="status" className="text-sm text-muted-foreground">
+        Computing score card…
+      </p>
     );
   }
   return (
-    <div className="flex h-full shrink-0 flex-col gap-2 rounded-xl border bg-muted/15 p-3 md:h-auto md:min-h-0 md:flex-1">
-      <div className="flex shrink-0 items-center justify-between">
-        <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-          Your response
-        </p>
+    <Field className="min-h-0 flex-1">
+      <div className="flex shrink-0 items-center justify-between gap-2">
+        <FieldLabel htmlFor="oral-boards-answer">Your response</FieldLabel>
         <RecordButton recorder={recorder} />
       </div>
 
@@ -1051,26 +1122,25 @@ function ResponseComposer({
         </div>
       )}
 
-      <div className="min-h-0 flex-1">
-        <Textarea
-          aria-label="Your answer"
-          className="field-sizing-fixed size-full min-h-0 resize-none p-3 text-sm"
-          placeholder="Type your answer…"
-          value={answerText}
-          onChange={(e) => setAnswerText(e.target.value)}
-          disabled={isRunning || recorder.recording}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) onSubmit();
-          }}
-        />
-      </div>
+      <Textarea
+        id="oral-boards-answer"
+        aria-label="Your answer"
+        className="field-sizing-fixed min-h-32 flex-1 resize-none bg-background p-3 text-sm"
+        placeholder="Type your answer…"
+        value={answerText}
+        onChange={(e) => setAnswerText(e.target.value)}
+        disabled={isRunning || recorder.recording}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) onSubmit();
+        }}
+      />
 
       <div aria-label="Answer actions" className="flex shrink-0 items-center justify-between">
-        <span className="hidden items-center gap-1 text-xs text-muted-foreground md:flex">
+        <FieldDescription className="hidden items-center gap-1 text-xs md:flex">
           <Kbd>⌘</Kbd>
           <Kbd>↵</Kbd>
           <span className="ms-0.5">to submit</span>
-        </span>
+        </FieldDescription>
         <Button
           type="button"
           size="sm"
@@ -1082,7 +1152,7 @@ function ResponseComposer({
           Submit
         </Button>
       </div>
-    </div>
+    </Field>
   );
 }
 
@@ -1121,6 +1191,9 @@ function QuestioningPane({
       : currentQuestion || stateQuestion;
   const isMobile = useIsMobile();
   const [answerText, setAnswerText] = useState("");
+  // The case rail is reference material, not a workspace to arrange — one
+  // toggle replaces the drag handle it used to need.
+  const [caseOpen, setCaseOpen] = useState(true);
   // A new probe is a new active prompt even though the question is unchanged.
   const activePrompt = JSON.stringify([question, activeProbe]);
   const [submission, setSubmission] = useState({ prompt: "", answer: "", questionNumber: 1 });
@@ -1158,8 +1231,6 @@ function QuestioningPane({
     onAnswer(trimmed);
     setAnswerText("");
   };
-
-  const hasHistory = transcript.length > 0 || Boolean(isRunning && activeFeedback.trim());
 
   const composer = (
     <ResponseComposer
@@ -1207,99 +1278,93 @@ function QuestioningPane({
           />
           <ScrollArea className="min-h-0 w-full flex-1">
             <div className="flex w-full flex-col gap-3 p-3">
-              <MobileTranscriptHistory
-                transcript={transcript}
+              <ExaminerQuestionCard
+                question={question}
+                probe={activeProbe}
+                questionNumber={displayedQuestionNumber}
                 isRunning={isRunning}
-                activeFeedback={activeFeedback}
-                activeIdealResponse={activeIdealResponse}
-              />
-              {!isScoring && (
-                <>
-                  <ExaminerQuestionCard
-                    question={question}
-                    probe={activeProbe}
-                    questionNumber={displayedQuestionNumber}
-                    isRunning={isRunning}
-                    loadingStep={loadingStep}
-                  />
-                </>
-              )}
+                loadingStep={loadingStep}
+              >
+                {composer}
+              </ExaminerQuestionCard>
               <ScrollToLatest signal={activePrompt} behavior="auto" />
-              <div className="h-52">{composer}</div>
             </div>
           </ScrollArea>
+          <FeedbackDrawer
+            transcript={transcript}
+            isRunning={isRunning}
+            activeFeedback={activeFeedback}
+            activeIdealResponse={activeIdealResponse}
+          />
         </TabsContent>
       </Tabs>
     );
   }
 
-  const questionAndComposer = (
-    <ScrollArea className="h-full">
-      <div className="flex flex-col gap-3 p-4">
-        {!isScoring && (
-          <>
-            <ExaminerQuestionCard
-              question={question}
-              probe={activeProbe}
-              questionNumber={displayedQuestionNumber}
-              isRunning={isRunning}
-              loadingStep={loadingStep}
-            />
-          </>
-        )}
-        {composer}
-      </div>
-    </ScrollArea>
-  );
-
+  // Desktop: a fixed case rail beside a single exam column. The question and
+  // the response dock own the column; grading waits in the drawer beneath.
   return (
-    <ResizablePanelGroup orientation="horizontal" className="h-full">
-      {/* Left: case vignette — pinned, always in view */}
-      <ResizablePanel defaultSize="42%" minSize="28%" maxSize="60%">
-        <VignettePanel caseBody={caseBody} notes={notes} onNotesChange={onNotesChange} />
-      </ResizablePanel>
-
-      <ResizableHandle withHandle />
-
-      {/* Right: examination Q&A */}
-      <ResizablePanel>
-        <div className="flex h-full flex-col">
-          <ExamProgressHeader
-            questionNumber={displayedQuestionNumber}
-            stage={stage}
-            transcript={transcript}
-          />
-
-          {hasHistory ? (
-            <ResizablePanelGroup orientation="vertical" className="min-h-0 flex-1">
-              <ResizablePanel>
-                <ScrollArea className="h-full border-b">
-                  <div className="px-4 py-3">
-                    <TranscriptSection
-                      transcript={transcript}
-                      isRunning={isRunning}
-                      activeFeedback={activeFeedback}
-                      activeIdealResponse={activeIdealResponse}
-                    />
-                    <ScrollToLatest
-                      signal={`${transcript.length}:${activeFeedback.trim() ? "streaming" : ""}`}
-                    />
-                  </div>
-                </ScrollArea>
-              </ResizablePanel>
-              <ResizableHandle withHandle />
-
-              {/* Active question + response composer */}
-              <ResizablePanel>{questionAndComposer}</ResizablePanel>
-            </ResizablePanelGroup>
-          ) : (
-            // First question: no transcript yet, so give the examiner card and
-            // composer the full column instead of an empty top pane.
-            <div className="min-h-0 flex-1">{questionAndComposer}</div>
-          )}
+    // `size-full`: ArtifactContent is itself a flex row, so without an explicit
+    // width this wrapper sizes to its content and the exam column stops short
+    // of the window edge — most visibly once the case rail is hidden.
+    <div className="flex size-full min-h-0">
+      {caseOpen && (
+        <div className="flex w-80 shrink-0 flex-col border-e lg:w-96">
+          <VignettePanel caseBody={caseBody} notes={notes} onNotesChange={onNotesChange} />
         </div>
-      </ResizablePanel>
-    </ResizablePanelGroup>
+      )}
+
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <ExamProgressHeader
+          questionNumber={displayedQuestionNumber}
+          stage={stage}
+          transcript={transcript}
+          caseOpen={caseOpen}
+          onToggleCase={() => setCaseOpen((open) => !open)}
+        />
+
+        <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col p-4">
+          <ExaminerQuestionCard
+            question={question}
+            probe={activeProbe}
+            questionNumber={displayedQuestionNumber}
+            isRunning={isRunning}
+            loadingStep={loadingStep}
+            fill
+          >
+            {composer}
+          </ExaminerQuestionCard>
+        </div>
+
+        <FeedbackDrawer
+          transcript={transcript}
+          isRunning={isRunning}
+          activeFeedback={activeFeedback}
+          activeIdealResponse={activeIdealResponse}
+        />
+      </div>
+    </div>
+  );
+}
+
+// One rhythm for every section of the report, so the candidate's eye can find
+// the same landmarks in each: rule, eyebrow, optional control on the right.
+function ReviewSectionHeading({
+  children,
+  id,
+  action,
+}: {
+  children: React.ReactNode;
+  id?: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex min-h-7 items-center justify-between gap-2 border-b pb-1.5">
+      <h2 id={id} className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+        {children}
+      </h2>
+      {action}
+    </div>
   );
 }
 
@@ -1321,6 +1386,12 @@ function FeedbackPane({
   const isMobile = useIsMobile();
   const [exporting, setExporting] = useState<OralBoardsExportFormat | null>(null);
   const [exportStatus, setExportStatus] = useState("");
+  // Review opens with every question expanded — reading the answers back is
+  // the point of this screen.
+  const allValues = transcript.map((_exchange, index) => exchangeValue(index));
+  const [openRows, setOpenRows] = useState<string[]>(allValues);
+  const allExpanded = openRows.length === transcript.length;
+  const toggleAllRows = () => setOpenRows(allExpanded ? [] : allValues);
   const isEmpty = !scoreCard.trim() && scoreSummary.length === 0 && transcript.length === 0;
   const handleExport = async (format: OralBoardsExportFormat) => {
     if (exporting) return;
@@ -1345,27 +1416,33 @@ function FeedbackPane({
     }
   };
   const questionReviewRows = (
-    <div
+    <Accordion
+      multiple
+      value={openRows}
+      onValueChange={setOpenRows}
       className="flex flex-col gap-2"
       aria-label={isMobile ? "Question review" : undefined}
       aria-labelledby={isMobile ? undefined : "question-review-heading"}
     >
       {transcript.map((exchange, index) => (
-        <CompletedExchangeRow key={exchange.question || index} exchange={exchange} index={index} />
+        <CompletedExchangeItem key={exchange.question || index} exchange={exchange} index={index} />
       ))}
-    </div>
+    </Accordion>
   );
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <ScrollArea className="min-h-0 flex-1">
-        <div className="flex flex-col gap-3 p-3 sm:gap-4 sm:p-4">
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 p-3 sm:gap-4 sm:p-4">
           {outcome && <OutcomeBanner outcome={outcome} />}
           {scoreSummary.length > 0 && (
-            <p className="text-xs text-muted-foreground">
-              {scoreSummary.length} skillset{scoreSummary.length === 1 ? "" : "s"} assessed · scored
-              independently on the ABPD 1–3 scale
-            </p>
+            <div className="flex flex-col gap-2">
+              {!isMobile && <ReviewSectionHeading>Skillset scores</ReviewSectionHeading>}
+              <p className="text-xs text-muted-foreground">
+                {scoreSummary.length} skillset{scoreSummary.length === 1 ? "" : "s"} assessed ·
+                scored independently on the ABPD 1–3 scale
+              </p>
+            </div>
           )}
           <ScoreSummaryTable summary={scoreSummary} />
           {scoreCard.trim() &&
@@ -1377,12 +1454,19 @@ function FeedbackPane({
                 </CollapsibleTrigger>
                 <CollapsibleContent className="border-t p-3">
                   <Streamdown className="text-sm leading-relaxed" key={scoreCard}>
-                    {scoreCard}
+                    {withoutLeadingHeading(scoreCard)}
                   </Streamdown>
                 </CollapsibleContent>
               </Collapsible>
             ) : (
-              <Streamdown key={scoreCard}>{scoreCard}</Streamdown>
+              // Boxed so the model's own markdown headings read as content
+              // inside a section rather than outranking the page's structure.
+              <section className="flex flex-col gap-2">
+                <ReviewSectionHeading>Examiner summary</ReviewSectionHeading>
+                <div className="rounded-lg border p-3">
+                  <Streamdown key={scoreCard}>{withoutLeadingHeading(scoreCard)}</Streamdown>
+                </div>
+              </section>
             ))}
           {transcript.length > 0 && (
             <>
@@ -1400,19 +1484,41 @@ function FeedbackPane({
                   </CollapsibleContent>
                 </Collapsible>
               ) : (
-                <div className="flex flex-col gap-3">
-                  <h2
+                <section className="flex flex-col gap-2">
+                  <ReviewSectionHeading
                     id="question-review-heading"
-                    className="text-xs font-semibold tracking-widest text-muted-foreground uppercase"
+                    action={
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        onClick={toggleAllRows}
+                        className="text-muted-foreground"
+                      >
+                        {allExpanded ? "Collapse all" : "Expand all"}
+                      </Button>
+                    }
                   >
                     Question review
-                  </h2>
+                  </ReviewSectionHeading>
                   {questionReviewRows}
-                </div>
+                </section>
               )}
             </>
           )}
-          {isEmpty && <p className="text-sm text-muted-foreground">No feedback yet.</p>}
+          {isEmpty && (
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <ClipboardListIcon />
+                </EmptyMedia>
+                <EmptyTitle>No feedback yet.</EmptyTitle>
+                <EmptyDescription>
+                  The examiner writes the score card once the case is complete.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          )}
         </div>
       </ScrollArea>
       {!isEmpty && (
