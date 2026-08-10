@@ -3,6 +3,7 @@ package agui
 import (
 	"context"
 	"encoding/json"
+	"iter"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
+	"google.golang.org/genai"
 )
 
 type runtimeTestVerifier struct{}
@@ -142,6 +144,99 @@ func TestCopilotKitRuntimeRunAndConnectReplayPersistedThread(t *testing.T) {
 	mux.ServeHTTP(connect, httptest.NewRequest(http.MethodPost, "/agent/resume/connect", strings.NewReader(`{"threadId":"thread-replay","runId":"connect-1","messages":[]}`)))
 	if connect.Code != http.StatusOK || !strings.Contains(connect.Body.String(), "MESSAGES_SNAPSHOT") || !strings.Contains(connect.Body.String(), "Here is the answer.") || !strings.Contains(connect.Body.String(), "STATE_SNAPSHOT") {
 		t.Fatalf("connect=%d %s", connect.Code, connect.Body.String())
+	}
+}
+
+func TestCopilotKitRuntimeConnectRestoresUnresolvedRequestInput(t *testing.T) {
+	runtime := testCopilotKitRuntime(t, &fakeReasoningModel{})
+	service := runtime.runner.sessions.(*fakeSessionService)
+	if _, err := service.Create(t.Context(), &session.CreateRequest{
+		AppName: "resume_agent", UserID: "anon:thread-interrupt", SessionID: "thread-interrupt",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	service.seedEvents("resume_agent", "anon:thread-interrupt", "thread-interrupt", &session.Event{
+		RequestedInput: &session.RequestInput{
+			InterruptID: "oralboards-answer-1",
+			Message:     "What is your diagnosis?",
+			Payload:     map[string]any{"kind": "answer", "question": "What is your diagnosis?"},
+		},
+	})
+
+	mux := http.NewServeMux()
+	runtime.Register(mux)
+	connect := httptest.NewRecorder()
+	mux.ServeHTTP(connect, httptest.NewRequest(http.MethodPost, "/agent/resume/connect", strings.NewReader(`{"threadId":"thread-interrupt","runId":"connect-interrupt","messages":[]}`)))
+
+	body := connect.Body.String()
+	if connect.Code != http.StatusOK || !strings.Contains(body, `"type":"interrupt"`) || !strings.Contains(body, `"id":"oralboards-answer-1"`) || !strings.Contains(body, `"kind":"answer"`) {
+		t.Fatalf("connect=%d %s", connect.Code, body)
+	}
+}
+
+type disconnectSurvivalModel struct {
+	contexts chan context.Context
+	release  chan struct{}
+}
+
+func (m *disconnectSurvivalModel) Name() string { return "disconnect-survival-model" }
+
+func (m *disconnectSurvivalModel) GenerateContent(ctx context.Context, _ *model.LLMRequest, _ bool) iter.Seq2[*model.LLMResponse, error] {
+	return func(yield func(*model.LLMResponse, error) bool) {
+		m.contexts <- ctx
+		<-m.release
+		if err := ctx.Err(); err != nil {
+			yield(nil, err)
+			return
+		}
+		yield(&model.LLMResponse{
+			Content:      &genai.Content{Role: "model", Parts: []*genai.Part{{Text: "Run survived reconnect."}}},
+			TurnComplete: true,
+		}, nil)
+	}
+}
+
+func TestCopilotKitRuntimeRequestDisconnectDoesNotCancelActiveRun(t *testing.T) {
+	model := &disconnectSurvivalModel{contexts: make(chan context.Context, 1), release: make(chan struct{})}
+	runtime := testCopilotKitRuntime(t, model)
+	mux := http.NewServeMux()
+	runtime.Register(mux)
+
+	request := httptest.NewRequest(http.MethodPost, "/agent/resume/run", strings.NewReader(`{"threadId":"thread-disconnect","runId":"run-disconnect","messages":[{"id":"user-1","role":"user","content":"wait"}]}`))
+	requestCtx, cancelRequest := context.WithCancel(request.Context())
+	request = request.WithContext(requestCtx)
+	runDone := make(chan *httptest.ResponseRecorder, 1)
+	go func() {
+		recorder := httptest.NewRecorder()
+		mux.ServeHTTP(recorder, request)
+		runDone <- recorder
+	}()
+
+	var runCtx context.Context
+	select {
+	case runCtx = <-model.contexts:
+	case <-time.After(2 * time.Second):
+		t.Fatal("model did not start")
+	}
+	cancelRequest()
+	if err := runCtx.Err(); err != nil {
+		t.Fatalf("request disconnect canceled the active run: %v", err)
+	}
+
+	key := runKey{AgentRoute: "resume", UserID: "anon:thread-disconnect", ThreadID: "thread-disconnect"}
+	if runtime.runner.active.lookup(key) == nil {
+		t.Fatal("active run disappeared after request disconnect")
+	}
+	close(model.release)
+
+	select {
+	case run := <-runDone:
+		body := run.Body.String()
+		if run.Code != http.StatusOK || !strings.Contains(body, "Run survived reconnect.") || !strings.Contains(body, `"outcome":{"type":"success"}`) {
+			t.Fatalf("run=%d %s", run.Code, body)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("detached run did not finish")
 	}
 }
 

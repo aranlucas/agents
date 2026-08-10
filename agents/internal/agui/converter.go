@@ -154,31 +154,9 @@ func (c *streamConverter) convertFinal(event *session.Event, content *genai.Cont
 }
 
 func (c *streamConverter) captureInterrupt(request *session.RequestInput) {
-	if request == nil || strings.TrimSpace(request.InterruptID) == "" {
+	interrupt, ok := requestInputInterrupt(request)
+	if !ok {
 		return
-	}
-
-	var responseSchema map[string]any
-	if request.ResponseSchema != nil {
-		encoded, err := json.Marshal(request.ResponseSchema)
-		if err != nil {
-			log.Printf("convert request input schema: %v", err)
-		} else if err := json.Unmarshal(encoded, &responseSchema); err != nil {
-			log.Printf("decode request input schema: %v", err)
-		}
-	}
-
-	metadata := map[string]any{}
-	if request.Payload != nil {
-		metadata["payload"] = request.Payload
-	}
-	interrupt := types.Interrupt{
-		ID:             request.InterruptID,
-		Reason:         "tool_call",
-		Message:        request.Message,
-		ToolCallID:     request.InterruptID,
-		ResponseSchema: responseSchema,
-		Metadata:       metadata,
 	}
 	for index := range c.interrupts {
 		if c.interrupts[index].ID == interrupt.ID {
@@ -446,6 +424,11 @@ func contentText(content *genai.Content) string {
 func sanitizeRunError(runID string, err error) *events.RunErrorEvent {
 	code, message := classifyError(err)
 	return events.NewRunErrorEvent(message, events.WithErrorCode(code), events.WithRunID(runID))
+}
+
+func classifyErrorCode(err error) string {
+	code, _ := classifyError(err)
+	return code
 }
 
 func classifyError(err error) (code, message string) {

@@ -81,7 +81,11 @@ func (r *D1AgentRunner) connectHandler(agent copilotKitAgent) http.Handler {
 		_ = frame.WriteEvent(ctx, w, events.NewRunStartedEvent(input.ThreadID, input.RunID))
 		_ = frame.WriteEvent(ctx, w, events.NewMessagesSnapshotEvent(state.Messages))
 		_ = frame.WriteEvent(ctx, w, events.NewStateSnapshotEvent(state.State))
-		_ = frame.WriteEvent(ctx, w, events.NewRunFinishedEventWithOptions(input.ThreadID, input.RunID, events.WithSuccessOutcome()))
+		finishedOutcome := events.WithSuccessOutcome()
+		if len(state.Interrupts) > 0 {
+			finishedOutcome = events.WithInterruptOutcome(state.Interrupts)
+		}
+		_ = frame.WriteEvent(ctx, w, events.NewRunFinishedEventWithOptions(input.ThreadID, input.RunID, finishedOutcome))
 	})
 }
 
