@@ -27,7 +27,7 @@ const copilotMocks = vi.hoisted(() => {
   };
 });
 
-const sentryMocks = vi.hoisted(() => ({ captureException: vi.fn() }));
+const sentryMocks = vi.hoisted(() => ({ addBreadcrumb: vi.fn(), captureException: vi.fn() }));
 vi.mock("@sentry/nextjs", async () => {
   const React = await import("react");
   type FallbackData = { error: unknown; resetError: () => void };
@@ -57,7 +57,11 @@ vi.mock("@sentry/nextjs", async () => {
     }
   }
 
-  return { captureException: sentryMocks.captureException, ErrorBoundary };
+  return {
+    addBreadcrumb: sentryMocks.addBreadcrumb,
+    captureException: sentryMocks.captureException,
+    ErrorBoundary,
+  };
 });
 
 vi.mock("@copilotkit/react-core/v2", () => ({
@@ -141,6 +145,7 @@ describe("OralBoardsWorkspace", () => {
     copilotMocks.agent.setState.mockClear();
     copilotMocks.copilotChat.mockClear();
     copilotMocks.runAgent.mockReset().mockResolvedValue(undefined);
+    sentryMocks.addBreadcrumb.mockClear();
     sentryMocks.captureException.mockClear();
     newThreadMocks.startNewThread.mockClear();
     panelMocks.shouldThrow = false;
@@ -230,9 +235,12 @@ describe("OralBoardsWorkspace", () => {
       expect(screen.getByRole("button", { name: "Reconnect" })).toBeInTheDocument();
     });
     expect(screen.getByText(/examiner is not ready for an answer yet/i)).toBeInTheDocument();
-    expect(sentryMocks.captureException).toHaveBeenCalledWith(
-      expect.objectContaining({ message: expect.stringMatching(/not ready for an answer yet/i) }),
-      { tags: { component: "oralboards_workspace", operation: "exam.answer" } },
-    );
+    expect(sentryMocks.captureException).not.toHaveBeenCalled();
+    expect(sentryMocks.addBreadcrumb).toHaveBeenCalledWith({
+      category: "oralboards.exam",
+      level: "warning",
+      message: "Answer submitted without a pending examiner interrupt",
+      data: { operation: "exam.answer", pending_input_kind: "none" },
+    });
   });
 });

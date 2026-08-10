@@ -19,11 +19,13 @@
     "build:production-apk:android": "node ./scripts/android-release.mjs build",
     "publish:production-apk:android": "node ./scripts/android-release.mjs publish",
     "lint": "oxlint .",
-    "fmt": "oxfmt .",
-    "fmt:check": "oxfmt --check .",
+    "fmt": "oxfmt . '!src/lib/grocery-gateway.d.ts'",
+    "fmt:check": "oxfmt --check . '!src/lib/grocery-gateway.d.ts'",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
     "test": "vitest run",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "generate:gateway": "pnpm dlx openapi-typescript@7.13.0 ../../agents/api/openapi/grocery-gateway.yaml -o src/lib/grocery-gateway.d.ts",
+    "api:check": "pnpm generate:gateway && git diff --exit-code -- src/lib/grocery-gateway.d.ts"
   },
   "dependencies": {
     "@agents/types": "workspace:*",
@@ -69,6 +71,7 @@
     "expo-system-ui": "~57.0.2",
     "expo-web-browser": "~57.0.2",
     "lucide-react-native": "^1.28.0",
+    "openapi-fetch": "^0.17.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-hook-form": "^7.84.0",

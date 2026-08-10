@@ -17,10 +17,17 @@ import (
 // events to reach Sentry before giving up.
 const sentryFlushTimeout = 2 * time.Second
 
+// Config identifies one process in exported telemetry.
+type Config struct {
+	ServiceName    string
+	ServiceVersion string
+	Environment    string
+}
+
 // SetupSentry initializes the process-wide Sentry client from SENTRY_DSN.
 // With no DSN it deliberately installs nothing and returns a no-op flush,
-// mirroring how Setup treats a missing OTLP endpoint. The returned flush
-// must run during graceful shutdown so buffered events are delivered.
+// and the returned flush must run during graceful shutdown so buffered events
+// are delivered.
 func SetupSentry(cfg Config) (func(), error) {
 	if strings.TrimSpace(cfg.ServiceName) == "" {
 		return nil, errors.New("sentry service name is required")
@@ -30,11 +37,14 @@ func SetupSentry(cfg Config) (func(), error) {
 		return func() {}, nil
 	}
 	err := sentry.Init(sentry.ClientOptions{
-		Dsn:              dsn,
-		Environment:      strings.TrimSpace(cfg.Environment),
-		Release:          strings.TrimSpace(cfg.ServiceVersion),
-		ServerName:       strings.TrimSpace(cfg.ServiceName),
-		AttachStacktrace: true,
+		Dsn:                dsn,
+		Environment:        strings.TrimSpace(cfg.Environment),
+		Release:            strings.TrimSpace(cfg.ServiceVersion),
+		ServerName:         strings.TrimSpace(cfg.ServiceName),
+		AttachStacktrace:   true,
+		EnableTracing:      true,
+		TracesSampleRate:   1,
+		IgnoreTransactions: []string{`^(GET|HEAD) /(health|ready)$`},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("configure Sentry: %w", err)
@@ -82,6 +92,8 @@ func CaptureError(ctx context.Context, err error, details ...ErrorDetails) {
 				scope.SetContext("operation", sentry.Context(detail.Context))
 			}
 		}
-		hub.CaptureException(err)
+		if client := hub.Client(); client != nil {
+			client.CaptureException(err, &sentry.EventHint{Context: ctx}, hub.Scope())
+		}
 	})
 }

@@ -58,7 +58,7 @@ func (l *WebLoader) Load(ctx context.Context, rawURL string) (WebPage, error) {
 	transport := baseTransport.Clone()
 	transport.Proxy = nil
 	transport.DialContext = l.safeDialContext
-	client.Transport = newTracingTransport(transport)
+	client.Transport = transport
 	previous := client.CheckRedirect
 	client.CheckRedirect = func(next *http.Request, via []*http.Request) error {
 		if previous != nil {
@@ -92,9 +92,6 @@ func (l *WebLoader) Load(ctx context.Context, rawURL string) (WebPage, error) {
 }
 
 func baseHTTPTransport(transport http.RoundTripper) (*http.Transport, bool) {
-	if traced, ok := transport.(*tracingTransport); ok {
-		transport = traced.base
-	}
 	base, ok := transport.(*http.Transport)
 	return base, ok
 }
