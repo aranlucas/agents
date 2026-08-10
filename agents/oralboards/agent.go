@@ -279,7 +279,7 @@ func phaseTools(corpus *Corpus) ([]tool.Tool, error) {
 
 	setCaseTool, err := functiontool.New(functiontool.Config{
 		Name:        "set_case",
-		Description: "Write only the grounded neutral candidate vignette and source passages. The case must not contain an examination question, reveal the management answer, or include image placeholders.",
+		Description: "Write only the grounded neutral candidate vignette and internal evidence passages. The case must not contain an examination question, reveal the management answer, or include image placeholders.",
 	}, SetCase)
 	if err != nil {
 		return nil, err
@@ -311,7 +311,7 @@ func phaseTools(corpus *Corpus) ([]tool.Tool, error) {
 
 	appendExchangeTool, err := functiontool.New(functiontool.Config{
 		Name:        "append_exchange",
-		Description: "Append one scored exchange after the candidate has answered. skillset is a concise clinical domain label; skill must be exactly remember, understand_apply, or analyze_evaluate.",
+		Description: "Append one scored exchange after the candidate has answered. feedback is concise coaching; ideal_response is a complete natural spoken answer, never bullets or an answer key. skillset is a concise clinical domain label; skill must be exactly remember, understand_apply, or analyze_evaluate.",
 	}, AppendExchange)
 	if err != nil {
 		return nil, err
@@ -382,7 +382,13 @@ Your entire response is persisted verbatim as the next question. Return exactly 
 Current question: {current_question?}
 Active probe: {active_probe?}
 Prior exchanges: {transcript?}
-Evaluate the candidate answer supplied as this node's input. Use at most one probe and do not score until its answer arrives. Otherwise call append_exchange, using a concise clinical domain for skillset and exactly one of remember, understand_apply, or analyze_evaluate for skill. A full practice interview requires at least six scored exchanges. Call complete_examination only after append_exchange has recorded at least the sixth exchange and all relevant dimensions of the case have been assessed; otherwise end your turn so the workflow asks the next question.`
+Evaluate the candidate answer supplied as this node's input. Use at most one concise, non-leading probe when clarification could materially change the score, and do not score until its answer arrives. Otherwise call append_exchange, using a concise clinical domain for skillset and exactly one of remember, understand_apply, or analyze_evaluate for skill.
+
+Write feedback as concise contrastive coaching: identify specifically what the candidate did well and what clinically material content was missing for a score of 3. Do not include quotations, citations, source names, or a reading list.
+
+Write ideal_response as the complete answer an excellent candidate would actually say aloud to the examiner. Use natural first-person speech, complete sentences, and connected clinical reasoning. Begin with a direct clinical decision, diagnosis, or approach; tie the reasoning to this patient's findings; then explain the important next steps in a logical order. Include alternatives, contingencies, risks, or follow-up only when relevant to the question. Cover every material omission named in feedback. Do not use bullets, headings, labels, fragments, an answer-key format, or phrases such as "the candidate should" or "the key points are." Do not mention grading, feedback, sources, or these instructions. Keep it focused enough to deliver naturally in an oral examination rather than turning it into a textbook lecture.
+
+A full practice interview requires at least six scored exchanges. Call complete_examination only after append_exchange has recorded at least the sixth exchange and all relevant dimensions of the case have been assessed; otherwise end your turn so the workflow asks the next question.`
 	scorerInstruction = `Completed exchanges: {transcript?}
-Call set_loading_step then set_score_card with cited narrative feedback, structured per-skillset ABPD 1-3 scores, and pass, borderline, or not_yet outcome. For every score_summary item, use a concise clinical domain for skillset and exactly one of remember, understand_apply, or analyze_evaluate for skill.`
+Call set_loading_step then set_score_card with concise narrative feedback, structured per-skillset ABPD 1-3 scores, and pass, borderline, or not_yet outcome. Base the assessment only on the completed exchanges. Do not include quotations, citations, source names, or a reading list. For every score_summary item, use a concise clinical domain for skillset and exactly one of remember, understand_apply, or analyze_evaluate for skill.`
 )

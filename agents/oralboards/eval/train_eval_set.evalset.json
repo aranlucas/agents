@@ -16,7 +16,7 @@
             "role": "user",
             "parts": [
               {
-                "text": "Start a pediatric dentistry oral-board case focused on trauma management. Ground it in the bundled sources and write the case to the UI canvas."
+                "text": "Start a pediatric dentistry oral-board case focused on trauma management. Ground it in the bundled corpus and write the case to the UI canvas."
               }
             ]
           },

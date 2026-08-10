@@ -24,7 +24,7 @@ var (
 )
 
 type SearchResult struct {
-	CaseSource
+	CorpusDocumentRef
 	Snippet string  `json:"snippet"`
 	Score   float64 `json:"score"`
 	Passage string  `json:"passage"`
@@ -37,7 +37,7 @@ type SearchResponse struct {
 }
 
 type Document struct {
-	CaseSource
+	CorpusDocumentRef
 	Body string `json:"body"`
 }
 

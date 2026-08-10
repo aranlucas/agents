@@ -3,7 +3,7 @@
 
 metrics_to_run:
   - grounding_search_before_set_case
-  - set_case_has_sources
+  - set_case_has_internal_evidence
   - loading_step_called
   - case_vignette_length
   - ask_question_tool_called
@@ -34,8 +34,8 @@ custom_metrics:
               return {"score": 1, "explanation": f"search_docs (pos {search_idx}) called before set_case (pos {case_idx}) — grounding satisfied"}
           return {"score": 0, "explanation": f"set_case (pos {case_idx}) called before search_docs (pos {search_idx}) — grounding violated"}
 
-  # Verifies set_case was called with non-empty case_sources.
-  - name: set_case_has_sources
+  # Verifies set_case retained internal evidence for later grading.
+  - name: set_case_has_internal_evidence
     custom_function: |
       def evaluate(instance):
           turns = (instance.get("agent_data") or {}).get("turns", [])
@@ -45,10 +45,10 @@ custom_metrics:
                   fc = part.get("function_call") or {}
                   if fc.get("name") == "set_case":
                       args = fc.get("args") or {}
-                      sources = args.get("case_sources") or []
-                      if sources:
-                          return {"score": 1, "explanation": f"set_case called with {len(sources)} source(s)"}
-                      return {"score": 0, "explanation": "set_case called without case_sources — no provenance"}
+                      passages = args.get("case_passages") or []
+                      if passages:
+                          return {"score": 1, "explanation": f"set_case retained {len(passages)} internal evidence passage(s)"}
+                      return {"score": 0, "explanation": "set_case called without internal evidence passages"}
           return {"score": 0, "explanation": "set_case was never called"}
 
   # Verifies set_loading_step was called (progress feedback to the user).

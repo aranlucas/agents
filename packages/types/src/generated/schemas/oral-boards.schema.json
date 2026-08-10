@@ -4,29 +4,6 @@
     "case": {
       "type": "string"
     },
-    "case_sources": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "docid": {
-            "type": "integer"
-          },
-          "filepath": {
-            "type": "string"
-          },
-          "title": {
-            "type": "string"
-          },
-          "collection": {
-            "type": "string",
-            "enum": ["abpd", "aapd", "cody"]
-          }
-        },
-        "required": ["docid", "filepath", "title", "collection"],
-        "additionalProperties": false
-      }
-    },
     "transcript": {
       "type": "array",
       "items": {
@@ -44,29 +21,6 @@
           "ideal_response": {
             "type": "string"
           },
-          "citations": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "docid": {
-                  "type": "integer"
-                },
-                "filepath": {
-                  "type": "string"
-                },
-                "title": {
-                  "type": "string"
-                },
-                "collection": {
-                  "type": "string",
-                  "enum": ["abpd", "aapd", "cody"]
-                }
-              },
-              "required": ["docid", "filepath", "title", "collection"],
-              "additionalProperties": false
-            }
-          },
           "skillset": {
             "type": "string"
           },
@@ -79,7 +33,7 @@
             "enum": [1, 2, 3]
           }
         },
-        "required": ["question", "answer", "feedback", "ideal_response", "citations"],
+        "required": ["question", "answer", "feedback", "ideal_response"],
         "additionalProperties": false
       }
     },

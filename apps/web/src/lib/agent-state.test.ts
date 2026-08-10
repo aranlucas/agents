@@ -250,11 +250,11 @@ describe("toOralBoardsState", () => {
     expect(
       toOralBoardsState({
         interview_complete: false,
-        case_sources: [{ docid: 1, filepath: "aapd/x.md", title: "X", collection: "aapd" }],
+        active_ideal_response: "I would first evaluate the patient's current findings.",
       }),
     ).toMatchObject({
       interview_complete: false,
-      case_sources: [{ docid: 1, filepath: "aapd/x.md", title: "X", collection: "aapd" }],
+      active_ideal_response: "I would first evaluate the patient's current findings.",
     });
   });
 });

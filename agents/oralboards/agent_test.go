@@ -45,7 +45,7 @@ func TestAgentExposesFourDeterministicPhaseChildren(t *testing.T) {
 
 func TestStateDefaultsUseNonNilCollections(t *testing.T) {
 	defaults := StateDefaults()
-	for _, key := range []string{"case_sources", "transcript", "score_summary"} {
+	for _, key := range []string{"transcript", "score_summary"} {
 		if defaults[key] == nil {
 			t.Fatalf("%s default is nil", key)
 		}
@@ -76,6 +76,20 @@ func TestEvaluatorPromptCannotEndAfterOneQuestion(t *testing.T) {
 		"at least six scored exchanges",
 		"only after append_exchange has recorded at least the sixth exchange",
 		"otherwise end your turn so the workflow asks the next question",
+	} {
+		if !strings.Contains(prompt, required) {
+			t.Fatalf("evaluator prompt missing %q", required)
+		}
+	}
+}
+
+func TestEvaluatorPromptRequiresSpokenModelAnswerWithoutSources(t *testing.T) {
+	prompt := Instruction + "\n\n" + evaluatorInstruction
+	for _, required := range []string{
+		"complete answer an excellent candidate would actually say aloud",
+		"natural first-person speech",
+		"Do not use bullets, headings, labels, fragments, an answer-key format",
+		"Do not include quotations, citations, source names, or a reading list",
 	} {
 		if !strings.Contains(prompt, required) {
 			t.Fatalf("evaluator prompt missing %q", required)
