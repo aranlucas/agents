@@ -10,15 +10,13 @@ import {
 } from "@copilotkit/react-core/v2";
 import type { Interrupt } from "@copilotkit/react-core/v2";
 import { z } from "zod";
-import { Badge, Tool, ToolContent, ToolHeader } from "@agents/ui";
+import { Tool, ToolHeader } from "@agents/ui";
 import { toToolState } from "@/components/chat/tool-adapter";
 import { useOralBoardsQuestion } from "@/lib/copilotkit/oral-boards-question-context";
 import { speakQuestion } from "@/lib/copilotkit/speak-question";
 import type { AgentId } from "./registry";
 
 type ToolStatus = "inProgress" | "executing" | "complete";
-type SearchResult = { title: string; collection: string; snippet: string };
-type SearchOutput = { results?: SearchResult[] };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -27,92 +25,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function getCurrentQuestion(state: unknown) {
   if (!isRecord(state)) return undefined;
   return typeof state.current_question === "string" ? state.current_question : undefined;
-}
-
-function isSearchResult(value: unknown): value is SearchResult {
-  return (
-    isRecord(value) &&
-    typeof value.title === "string" &&
-    typeof value.collection === "string" &&
-    typeof value.snippet === "string"
-  );
-}
-
-function parseSearchOutput(result: string | undefined): SearchOutput {
-  if (!result) return {};
-
-  try {
-    const parsed: unknown = JSON.parse(result);
-    if (!isRecord(parsed) || !Array.isArray(parsed.results)) return {};
-    return { results: parsed.results.filter(isSearchResult) };
-  } catch {
-    return {};
-  }
-}
-
-function SearchDocsToolCall({
-  status,
-  query,
-  collection,
-  results,
-}: {
-  status: ToolStatus;
-  query?: string;
-  collection?: string;
-  results?: Array<{ title: string; collection: string; snippet: string }>;
-}) {
-  const label = [query, collection ? collection.toUpperCase() : ""].filter(Boolean).join(" · ");
-  return (
-    <Tool>
-      <ToolHeader
-        type="dynamic-tool"
-        toolName="search_docs"
-        state={toToolState(status)}
-        title={label || "search_docs"}
-      />
-      {status === "complete" && results && results.length > 0 && (
-        <ToolContent>
-          <div className="flex flex-col gap-1.5 border-t px-3 py-2.5">
-            {results.slice(0, 5).map((r) => {
-              const resultKey = `${r.collection}-${r.title}-${r.snippet}`;
-              return (
-                <div key={resultKey} className="flex flex-col gap-0.5">
-                  <div className="flex items-center gap-1.5">
-                    <Badge variant="secondary" className="font-mono text-xs">
-                      {r.collection.toUpperCase()}
-                    </Badge>
-                    <span className="truncate text-xs font-medium">{r.title}</span>
-                  </div>
-                  {r.snippet && (
-                    <p className="line-clamp-2 ps-0.5 text-xs leading-snug text-muted-foreground">
-                      {r.snippet}
-                    </p>
-                  )}
-                </div>
-              );
-            })}
-            {results.length > 5 && (
-              <p className="text-xs text-muted-foreground">+{results.length - 5} more</p>
-            )}
-          </div>
-        </ToolContent>
-      )}
-    </Tool>
-  );
-}
-
-function ReadDocToolCall({ status, filepath }: { status: ToolStatus; filepath?: string }) {
-  const name = filepath ? (filepath.split("/").pop() ?? filepath) : "document";
-  return (
-    <Tool>
-      <ToolHeader
-        type="dynamic-tool"
-        toolName="read_doc"
-        state={toToolState(status)}
-        title={name}
-      />
-    </Tool>
-  );
 }
 
 function SetCaseToolCall({ status }: { status: ToolStatus }) {
@@ -174,8 +86,8 @@ function RequestInputToolCall({
 /**
  * Oral-boards console wiring. Resolves ADK graph RequestInput pauses and
  * mirrors workflow questions from shared state,
- * plus tool-call renderers for search_docs / read_doc (grounding transparency)
- * and a default fallback for all other agent tool calls.
+ * Internal retrieval calls stay hidden; a default fallback renders the
+ * candidate-facing workflow tools.
  */
 export function OralBoardsExtension({ agentId }: { agentId: AgentId }) {
   const { setCurrentQuestion } = useOralBoardsQuestion();
@@ -215,17 +127,7 @@ export function OralBoardsExtension({ agentId }: { agentId: AgentId }) {
         query: z.string(),
         collection: z.string().optional(),
       }),
-      render: ({ status, parameters, result }) => {
-        const parsed = parseSearchOutput(result);
-        return (
-          <SearchDocsToolCall
-            status={status}
-            query={parameters?.query}
-            collection={parameters?.collection}
-            results={parsed.results}
-          />
-        );
-      },
+      render: () => <></>,
     },
     [agentId],
   );
@@ -237,9 +139,7 @@ export function OralBoardsExtension({ agentId }: { agentId: AgentId }) {
       parameters: z.object({
         filepath: z.string(),
       }),
-      render: ({ status, parameters }) => (
-        <ReadDocToolCall status={status} filepath={parameters?.filepath} />
-      ),
+      render: () => <></>,
     },
     [agentId],
   );
@@ -248,7 +148,7 @@ export function OralBoardsExtension({ agentId }: { agentId: AgentId }) {
     {
       name: "set_case",
       agentId,
-      parameters: z.object({ case: z.string(), case_sources: z.array(z.unknown()).optional() }),
+      parameters: z.object({ case: z.string(), case_passages: z.array(z.string()).optional() }),
       render: ({ status }) => <SetCaseToolCall status={status} />,
     },
     [agentId],

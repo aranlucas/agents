@@ -32,9 +32,8 @@ type Result struct {
 }
 
 type SetCaseArgs struct {
-	Case         string       `json:"case"`
-	CaseSources  []CaseSource `json:"case_sources"`
-	CasePassages []string     `json:"case_passages"`
+	Case         string   `json:"case"`
+	CasePassages []string `json:"case_passages"`
 }
 type SetPhaseArgs struct {
 	Phase Phase `json:"phase"`
@@ -46,14 +45,13 @@ type ProbeArgs struct {
 	Question string `json:"question"`
 }
 type AppendExchangeArgs struct {
-	Question      string       `json:"question"`
-	Answer        string       `json:"answer"`
-	Skillset      string       `json:"skillset"`
-	Skill         Skill        `json:"skill"`
-	Feedback      string       `json:"feedback"`
-	IdealResponse string       `json:"ideal_response"`
-	Score         int          `json:"score"`
-	Citations     []CaseSource `json:"citations"`
+	Question      string `json:"question"`
+	Answer        string `json:"answer"`
+	Skillset      string `json:"skillset"`
+	Skill         Skill  `json:"skill"`
+	Feedback      string `json:"feedback"`
+	IdealResponse string `json:"ideal_response"`
+	Score         int    `json:"score"`
 }
 type ScoreCardArgs struct {
 	Markdown     string          `json:"markdown"`
@@ -69,9 +67,6 @@ func SetCase(ctx agent.Context, in SetCaseArgs) (Result, error) {
 	}
 	if err := ctx.State().Set("case", state.Case); err != nil {
 		return Result{}, fmt.Errorf("set case: %w", err)
-	}
-	if err := ctx.State().Set("case_sources", state.CaseSources); err != nil {
-		return Result{}, fmt.Errorf("set case_sources: %w", err)
 	}
 	if err := ctx.State().Set("case_passages", state.CasePassages); err != nil {
 		return Result{}, fmt.Errorf("set case_passages: %w", err)
@@ -101,14 +96,10 @@ func setCase(state *State, in SetCaseArgs) (Result, error) {
 	if strings.Contains(strings.ToLower(in.Case), "[insert image") {
 		return Result{}, errors.New("case vignette must not contain unrealized image placeholders")
 	}
-	if in.CaseSources == nil {
-		in.CaseSources = []CaseSource{}
-	}
 	if in.CasePassages == nil {
 		in.CasePassages = []string{}
 	}
 	state.Case = in.Case
-	state.CaseSources = in.CaseSources
 	state.CasePassages = strings.Join(in.CasePassages, "\n\n---\n\n")
 	state.InterviewComplete = false
 	state.ProbeUsed = false
@@ -246,10 +237,7 @@ func appendExchange(state *State, probeAskedNow bool, in AppendExchangeArgs) (Re
 	if !validSkill(in.Skill) {
 		return Result{}, fmt.Errorf("invalid skill %q: must be exactly remember, understand_apply, or analyze_evaluate", in.Skill)
 	}
-	if in.Citations == nil {
-		in.Citations = []CaseSource{}
-	}
-	state.Transcript = append(state.Transcript, Exchange{Question: in.Question, Answer: in.Answer, Skillset: in.Skillset, Skill: in.Skill, Feedback: in.Feedback, IdealResponse: in.IdealResponse, Score: in.Score, Citations: in.Citations})
+	state.Transcript = append(state.Transcript, Exchange{Question: in.Question, Answer: in.Answer, Skillset: in.Skillset, Skill: in.Skill, Feedback: in.Feedback, IdealResponse: in.IdealResponse, Score: in.Score})
 	state.Status = PhaseQuestioning
 	state.LoadingStep = ""
 	state.CurrentQuestion, state.ActiveFeedback, state.ActiveIdealResponse, state.ActiveProbe = "", "", "", ""

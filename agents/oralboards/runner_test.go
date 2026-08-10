@@ -303,7 +303,6 @@ func TestEvaluatorProbeReturnsDirectlyToAnswerInterrupt(t *testing.T) {
 			"feedback":       "Correctly integrated the clinical and radiographic findings.",
 			"ideal_response": "Symptomatic irreversible pulpitis with no radiographic evidence of necrosis.",
 			"score":          3,
-			"citations":      []any{},
 		}),
 		toolCall("complete", "complete_examination", map[string]any{}),
 		{Content: genai.NewContentFromText("Feedback recorded.", genai.RoleModel), TurnComplete: true},
@@ -399,7 +398,6 @@ func TestFullInterviewContinuesThroughSixScoredExchangesBeforeScoring(t *testing
 			"feedback":       fmt.Sprintf("Feedback %d", index),
 			"ideal_response": fmt.Sprintf("Ideal response %d", index),
 			"score":          3,
-			"citations":      []any{},
 		}))
 		if index == MinimumInterviewExchanges {
 			evaluator.responses = append(evaluator.responses, toolCall("complete", "complete_examination", map[string]any{}))

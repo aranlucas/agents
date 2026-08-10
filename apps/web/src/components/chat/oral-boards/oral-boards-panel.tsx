@@ -20,7 +20,6 @@ import { CopilotChatAudioRecorder } from "@copilotkit/react-core/v2";
 
 import { OCE_SKILL_LEVELS } from "@agents/types";
 import type {
-  CaseSource,
   OralBoardsExchange,
   OralBoardsOutcome,
   OralBoardsSkill,
@@ -131,34 +130,6 @@ function stripMarkdownForSpeech(text: string): string {
     .trim();
 }
 
-function CitationChips({ sources }: { sources: CaseSource[] }) {
-  if (sources.length === 0) return null;
-  const sourceKeyCounts = new Map<string, number>();
-
-  return (
-    <div className="flex min-w-0 flex-wrap gap-1">
-      {sources.map((s) => {
-        const collection = safeString(s.collection) ?? "src";
-        const docid = typeof s.docid === "number" || typeof s.docid === "string" ? s.docid : "?";
-        const title = safeString(s.title) ?? "Untitled";
-        const keySeed = `${collection}-${docid}-${title}`;
-        const duplicate = sourceKeyCounts.get(keySeed) ?? 0;
-        sourceKeyCounts.set(keySeed, duplicate + 1);
-        const key = `${keySeed}-${duplicate + 1}`;
-        return (
-          <Badge
-            key={key}
-            variant="secondary"
-            className="max-w-full min-w-0 truncate font-mono text-xs"
-          >
-            {collection.toUpperCase()} #{docid} · {title}
-          </Badge>
-        );
-      })}
-    </div>
-  );
-}
-
 function scoreClasses(score: number): string {
   if (score >= 3) {
     return "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-800/60 dark:bg-emerald-950/30 dark:text-emerald-200";
@@ -211,24 +182,18 @@ function ModelAnswer({ text }: { text: string }) {
   );
 }
 
-type FeedbackDetailsProps = {
-  idealResponse: string | undefined;
-  citations: CaseSource[];
-};
-
-function FeedbackDetails({ idealResponse, citations }: FeedbackDetailsProps) {
+function FeedbackDetails({ idealResponse }: { idealResponse: string | undefined }) {
   const ideal = asText(idealResponse);
-  if (!ideal.trim() && citations.length === 0) return null;
+  if (!ideal.trim()) return null;
 
   return (
     <Collapsible className="rounded-lg border border-dashed">
       <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left text-xs transition-colors hover:bg-muted">
-        <span className="font-medium">Show model answer and sources</span>
+        <span className="font-medium">Show model answer</span>
         <ChevronDownIcon className="size-3 text-muted-foreground transition-transform group-data-panel-open:rotate-180" />
       </CollapsibleTrigger>
       <CollapsibleContent className="flex flex-col gap-1.5 border-t px-2.5 py-2">
         <ModelAnswer text={ideal} />
-        <CitationChips sources={citations} />
       </CollapsibleContent>
     </Collapsible>
   );
@@ -282,7 +247,6 @@ function AnswerCoach() {
 function normalizeState(state: OralBoardsState): {
   status: NonNullable<OralBoardsState["status"]>;
   caseBody: string;
-  sources: CaseSource[];
   transcript: OralBoardsExchange[];
   scoreCard: string;
   scoreSummary: OralBoardsSkillsetScore[];
@@ -291,7 +255,6 @@ function normalizeState(state: OralBoardsState): {
   return {
     status: state.status ?? "idle",
     caseBody: asText(state.case),
-    sources: asArray<CaseSource>(state.case_sources),
     transcript: asArray<OralBoardsExchange>(state.transcript),
     scoreCard: asText(state.score_card),
     scoreSummary: asArray<OralBoardsSkillsetScore>(state.score_summary),
@@ -526,12 +489,10 @@ function TtsButton({ text, label = "Listen" }: { text: string; label?: string })
 // with the candidate's running notes editable beneath it.
 function VignettePanel({
   caseBody,
-  sources,
   notes,
   onNotesChange,
 }: {
   caseBody: string;
-  sources: CaseSource[];
   notes: string;
   onNotesChange: React.Dispatch<React.SetStateAction<string>>;
 }) {
@@ -563,14 +524,6 @@ function VignettePanel({
               onChange={(e) => onNotesChange(e.target.value)}
             />
           </div>
-          {sources.length > 0 && (
-            <div className="border-t pt-3">
-              <p className="mb-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                Sources
-              </p>
-              <CitationChips sources={sources} />
-            </div>
-          )}
           <AnswerCoach />
         </div>
       </div>
@@ -605,10 +558,7 @@ function CompletedExchangeRow({
           </p>
         )}
         {exchange.feedback && <Streamdown>{exchange.feedback}</Streamdown>}
-        <FeedbackDetails
-          idealResponse={exchange.ideal_response}
-          citations={asArray<CaseSource>(exchange.citations)}
-        />
+        <FeedbackDetails idealResponse={exchange.ideal_response} />
       </CollapsibleContent>
     </Collapsible>
   );
@@ -626,23 +576,18 @@ function LastFeedbackCard({ exchange, index }: { exchange: OralBoardsExchange; i
         <p className="text-xs text-muted-foreground">Your answer: {exchange.answer}</p>
       )}
       {exchange.feedback && <Streamdown>{exchange.feedback}</Streamdown>}
-      <FeedbackDetails
-        idealResponse={exchange.ideal_response}
-        citations={asArray<CaseSource>(exchange.citations)}
-      />
+      <FeedbackDetails idealResponse={exchange.ideal_response} />
     </div>
   );
 }
 
 function PresentingPane({
   caseBody,
-  sources,
   onReady,
   notes,
   onNotesChange,
 }: {
   caseBody: string;
-  sources: CaseSource[];
   onReady: () => void;
   notes: string;
   onNotesChange: React.Dispatch<React.SetStateAction<string>>;
@@ -665,11 +610,6 @@ function PresentingPane({
       <ScrollArea className="min-h-0 flex-1 rounded-lg border bg-muted/20">
         <div className="p-4 sm:p-5">
           <Streamdown>{caseBody}</Streamdown>
-          {sources.length > 0 && (
-            <div className="mt-4 border-t pt-3">
-              <CitationChips sources={sources} />
-            </div>
-          )}
         </div>
       </ScrollArea>
 
@@ -798,7 +738,7 @@ function LiveFeedbackPreview({
         Feedback · generating…
       </p>
       <Streamdown>{activeFeedback}</Streamdown>
-      <FeedbackDetails idealResponse={activeIdealResponse} citations={[]} />
+      <FeedbackDetails idealResponse={activeIdealResponse} />
     </div>
   );
 }
@@ -1137,7 +1077,6 @@ function ResponseComposer({
 
 function QuestioningPane({
   caseBody,
-  sources,
   transcript,
   onAnswer,
   isRunning,
@@ -1150,7 +1089,6 @@ function QuestioningPane({
   stateQuestion = "",
 }: {
   caseBody: string;
-  sources: CaseSource[];
   transcript: OralBoardsExchange[];
   onAnswer: (text: string) => void;
   isRunning: boolean;
@@ -1243,12 +1181,7 @@ function QuestioningPane({
           </TabsList>
         </div>
         <TabsContent value="case" className="min-h-0 w-full min-w-0 flex-1 overflow-hidden">
-          <VignettePanel
-            caseBody={caseBody}
-            sources={sources}
-            notes={notes}
-            onNotesChange={onNotesChange}
-          />
+          <VignettePanel caseBody={caseBody} notes={notes} onNotesChange={onNotesChange} />
         </TabsContent>
         {/* keepMounted so an in-progress recording survives a peek at the case */}
         <TabsContent
@@ -1312,12 +1245,7 @@ function QuestioningPane({
     <ResizablePanelGroup orientation="horizontal" className="h-full">
       {/* Left: case vignette — pinned, always in view */}
       <ResizablePanel defaultSize="42%" minSize="28%" maxSize="60%">
-        <VignettePanel
-          caseBody={caseBody}
-          sources={sources}
-          notes={notes}
-          onNotesChange={onNotesChange}
-        />
+        <VignettePanel caseBody={caseBody} notes={notes} onNotesChange={onNotesChange} />
       </ResizablePanel>
 
       <ResizableHandle withHandle />
@@ -1475,8 +1403,7 @@ export function OralBoardsPanel({
   onAnswer: (text: string) => void;
   isRunning: boolean;
 }) {
-  const { status, caseBody, sources, transcript, scoreCard, scoreSummary, outcome } =
-    normalizeState(state);
+  const { status, caseBody, transcript, scoreCard, scoreSummary, outcome } = normalizeState(state);
 
   // Scratch notes persist across presenting → questioning so the candidate
   // keeps what they jotted while reading the case.
@@ -1505,7 +1432,6 @@ export function OralBoardsPanel({
         {status === "presenting" && (
           <PresentingPane
             caseBody={caseBody}
-            sources={sources}
             onReady={onReady}
             notes={notes}
             onNotesChange={setNotes}
@@ -1514,7 +1440,6 @@ export function OralBoardsPanel({
         {isExamActive && (
           <QuestioningPane
             caseBody={caseBody}
-            sources={sources}
             transcript={transcript}
             onAnswer={onAnswer}
             isRunning={isRunning}

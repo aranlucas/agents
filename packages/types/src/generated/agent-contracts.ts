@@ -210,19 +210,11 @@ export type ExpenseItem = {
   decision_note?: string;
 };
 
-export type CaseSource = {
-  docid: number;
-  filepath: string;
-  title: string;
-  collection: "abpd" | "aapd" | "cody";
-};
-
 export type OralBoardsExchange = {
   question: string;
   answer: string;
   feedback: string;
   ideal_response: string;
-  citations: CaseSource[];
   skillset?: string;
   skill?: OralBoardsSkill;
   score?: 1 | 2 | 3;
@@ -420,7 +412,6 @@ export type ExpenseState = {
 
 export type OralBoardsState = {
   case?: string;
-  case_sources?: CaseSource[];
   transcript?: OralBoardsExchange[];
   score_card?: string;
   score_summary?: OralBoardsSkillsetScore[];

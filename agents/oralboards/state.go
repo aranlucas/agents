@@ -24,7 +24,7 @@ const (
 	PhaseComplete    Phase = "complete"
 )
 
-type CaseSource struct {
+type CorpusDocumentRef struct {
 	DocID      int64  `json:"docid"`
 	Filepath   string `json:"filepath"`
 	Title      string `json:"title"`
@@ -32,14 +32,13 @@ type CaseSource struct {
 }
 
 type Exchange struct {
-	Question      string       `json:"question"`
-	Answer        string       `json:"answer"`
-	Feedback      string       `json:"feedback"`
-	IdealResponse string       `json:"ideal_response"`
-	Skillset      string       `json:"skillset"`
-	Skill         Skill        `json:"skill"`
-	Score         int          `json:"score"`
-	Citations     []CaseSource `json:"citations"`
+	Question      string `json:"question"`
+	Answer        string `json:"answer"`
+	Feedback      string `json:"feedback"`
+	IdealResponse string `json:"ideal_response"`
+	Skillset      string `json:"skillset"`
+	Skill         Skill  `json:"skill"`
+	Score         int    `json:"score"`
 }
 
 type SkillsetScore struct {
@@ -51,7 +50,6 @@ type SkillsetScore struct {
 
 type State struct {
 	Case                  string          `json:"case"`
-	CaseSources           []CaseSource    `json:"case_sources"`
 	CasePassages          string          `json:"case_passages"`
 	Transcript            []Exchange      `json:"transcript"`
 	ScoreCard             string          `json:"score_card"`
@@ -70,7 +68,7 @@ type State struct {
 }
 
 func Defaults() State {
-	return State{CaseSources: []CaseSource{}, Transcript: []Exchange{}, ScoreSummary: []SkillsetScore{}, Status: PhaseIdle}
+	return State{Transcript: []Exchange{}, ScoreSummary: []SkillsetScore{}, Status: PhaseIdle}
 }
 
 func StateDefaults() map[string]any {
@@ -91,9 +89,6 @@ func readState(source session.ReadonlyState) State {
 	encoded, err := json.Marshal(values)
 	if err == nil {
 		_ = json.Unmarshal(encoded, &state)
-	}
-	if state.CaseSources == nil {
-		state.CaseSources = []CaseSource{}
 	}
 	if state.Transcript == nil {
 		state.Transcript = []Exchange{}

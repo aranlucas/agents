@@ -26,10 +26,10 @@
               }
             },
             {
-              "rubric_id": "oralboards_sets_case_with_sources",
+              "rubric_id": "oralboards_sets_grounded_case",
               "content": {
                 "property": {
-                  "description": "The agent calls set_case with a concise vignette and source chips grounded in the retrieved documents."
+                  "description": "The agent calls set_case with a concise vignette and internal evidence passages grounded in the retrieved corpus."
                 }
               }
             },
@@ -45,7 +45,7 @@
               "rubric_id": "oralboards_no_improvised_clinical_claims",
               "content": {
                 "property": {
-                  "description": "If the local corpus does not cover the requested topic, the agent says so and offers adjacent sourced topics instead of improvising clinical content."
+                  "description": "If the local corpus does not cover the requested topic, the agent says so and offers adjacent grounded topics instead of improvising clinical content."
                 }
               }
             }
@@ -79,10 +79,10 @@
               }
             },
             {
-              "rubric_id": "oralboards_feedback_quotes_sources",
+              "rubric_id": "oralboards_model_answer_is_spoken",
               "content": {
                 "property": {
-                  "description": "Each missing-content point is supported by a direct quotation from a retrieved guideline or course passage with its source identified, not paraphrased from memory."
+                  "description": "The model answer is a complete natural first-person response the candidate could say aloud, using connected clinical reasoning rather than bullets, fragments, headings, or an answer-key summary. It does not expose quotations, citations, source names, or reading lists."
                 }
               }
             },

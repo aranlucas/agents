@@ -26,10 +26,10 @@
               }
             },
             {
-              "rubric_id": "oralboards_sets_case_with_sources",
+              "rubric_id": "oralboards_sets_grounded_case",
               "content": {
                 "property": {
-                  "description": "The agent calls set_case with a concise vignette and source chips grounded in the retrieved documents."
+                  "description": "The agent calls set_case with a concise vignette and internal evidence passages grounded in the retrieved corpus."
                 }
               }
             },
@@ -45,7 +45,7 @@
               "rubric_id": "oralboards_no_improvised_clinical_claims",
               "content": {
                 "property": {
-                  "description": "If the local corpus does not cover the requested topic, the agent says so and offers adjacent sourced topics instead of improvising clinical content."
+                  "description": "If the local corpus does not cover the requested topic, the agent says so and offers adjacent grounded topics instead of improvising clinical content."
                 }
               }
             }

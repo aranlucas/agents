@@ -35,7 +35,6 @@ import type {
   OralBoardsSkill,
   OralBoardsSkillsetScore,
   OralBoardsState,
-  CaseSource,
   PantryItem,
   ResumeState,
   ResumeStatus,
@@ -452,16 +451,6 @@ export function toTrendsState(raw: unknown): TrendsState {
   };
 }
 
-function toCaseSource(raw: unknown): CaseSource {
-  const source = asRecord(raw);
-  return {
-    docid: num(source.docid),
-    filepath: str(source.filepath),
-    title: str(source.title),
-    collection: oneOf(source.collection, ["abpd", "aapd", "cody"] as const, "aapd"),
-  };
-}
-
 function toOralExchange(raw: unknown): OralBoardsExchange {
   const exchange = asRecord(raw);
   const score = num(exchange.score);
@@ -470,7 +459,6 @@ function toOralExchange(raw: unknown): OralBoardsExchange {
     answer: str(exchange.answer),
     feedback: str(exchange.feedback),
     ideal_response: str(exchange.ideal_response),
-    citations: Array.isArray(exchange.citations) ? exchange.citations.map(toCaseSource) : [],
     skillset: optionalStr(exchange.skillset),
     skill: ORAL_SKILLS.find((value) => value === exchange.skill),
     score: score === 1 || score === 2 || score === 3 ? score : undefined,
@@ -493,7 +481,6 @@ export function toOralBoardsState(raw: unknown): OralBoardsState {
   const state = asRecord(raw);
   return {
     case: str(state.case),
-    case_sources: Array.isArray(state.case_sources) ? state.case_sources.map(toCaseSource) : [],
     transcript: Array.isArray(state.transcript) ? state.transcript.map(toOralExchange) : [],
     score_card: str(state.score_card),
     score_summary: Array.isArray(state.score_summary)
