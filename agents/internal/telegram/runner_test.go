@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"iter"
 	"slices"
@@ -10,10 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"go.opentelemetry.io/otel"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/sdk/trace/tracetest"
-	"go.opentelemetry.io/otel/trace"
+	"github.com/getsentry/sentry-go"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
@@ -255,24 +253,21 @@ func TestRunnerSendsProgressThenDeduplicatedFinalText(t *testing.T) {
 }
 
 func TestHandleMessageCreatesSafeProcessingSpan(t *testing.T) {
-	recorder := installTelegramSpanRecorder(t)
+	transport, ctx := installTelegramSentry(t)
 	executor := &fakeExecutor{output: "response-secret"}
 	runner, _ := newTestRunner(t, executor)
 	message := privateMessage(987654321, "prompt-secret")
-	if err := runner.HandleMessage(t.Context(), message); err != nil {
+	if err := runner.HandleMessage(ctx, message); err != nil {
 		t.Fatal(err)
 	}
-	span := findEndedSpan(t, recorder, "telegram.message.process")
-	if span.SpanKind() != trace.SpanKindConsumer {
-		t.Fatalf("span kind = %v", span.SpanKind())
+	event := findTransaction(t, transport, "telegram.message.process")
+	traceData, _ := event.Contexts["trace"]["data"].(map[string]any)
+	if event.Contexts["trace"]["op"] != "message.process" || traceData["messaging.system"] != "telegram" || traceData["telegram.chat.type"] != "private" || traceData["gen_ai.agent.name"] != "orchestrator" {
+		t.Fatalf("trace context = %#v", event.Contexts["trace"])
 	}
-	attributes := spanAttributeStrings(span)
-	if attributes["messaging.system"] != "telegram" || attributes["messaging.operation.type"] != "process" || attributes["telegram.chat.type"] != "private" || attributes["gen_ai.agent.name"] != "orchestrator" {
-		t.Fatalf("attributes = %#v", attributes)
-	}
-	assertSpanExcludes(t, span, "prompt-secret", "response-secret", "987654321")
+	assertEventExcludes(t, event, "prompt-secret", "response-secret", "987654321")
 	for _, key := range []string{"user.id", "user_id", "chat.id", "chat_id", "message.text"} {
-		if _, ok := attributes[key]; ok {
+		if _, ok := traceData[key]; ok {
 			t.Fatalf("sensitive attribute %q recorded", key)
 		}
 	}
@@ -319,7 +314,7 @@ func TestNewADKExecutorRejectsInvalidAgentTreeAtConstruction(t *testing.T) {
 }
 
 func TestADKExecutorCreatesSafeRunSpan(t *testing.T) {
-	recorder := installTelegramSpanRecorder(t)
+	transport, ctx := installTelegramSentry(t)
 	built, err := agent.New(agent.Config{
 		Name: "orchestrator",
 		Run: func(agent.InvocationContext) iter.Seq2[*session.Event, error] {
@@ -340,64 +335,77 @@ func TestADKExecutorCreatesSafeRunSpan(t *testing.T) {
 	}
 	identity := SessionIdentity{SessionID: "chat-id-secret", UserID: "user-id-secret", ClerkUserID: "credential-secret", Shared: true}
 	route := Route{Kind: RouteAgent, Agent: "orchestrator", Text: "prompt-secret", KrogerToken: "kroger-secret"}
-	output, err := executor.Run(t.Context(), identity, route, route.Text, func(context.Context, string) error { return nil })
+	transaction := sentry.StartTransaction(ctx, "telegram.test")
+	output, err := executor.Run(transaction.Context(), identity, route, route.Text, func(context.Context, string) error { return nil })
 	if err != nil {
 		t.Fatal(err)
 	}
+	transaction.Finish()
 	if output != "response-secret" {
 		t.Fatalf("output = %q", output)
 	}
-	span := findEndedSpan(t, recorder, "telegram.adk.run")
-	if span.SpanKind() != trace.SpanKindInternal {
-		t.Fatalf("span kind = %v", span.SpanKind())
+	event := findTransaction(t, transport, "telegram.test")
+	span := findSentrySpan(t, event, "telegram.adk.run")
+	if span.Op != "gen_ai.invoke_agent" || span.Data["gen_ai.agent.name"] != "orchestrator" || span.Data["telegram.session.shared"] != true {
+		t.Fatalf("span = %#v", span)
 	}
-	attributes := spanAttributeStrings(span)
-	if attributes["gen_ai.operation.name"] != "invoke_agent" || attributes["gen_ai.agent.name"] != "orchestrator" || attributes["telegram.session.shared"] != "true" {
-		t.Fatalf("attributes = %#v", attributes)
-	}
-	assertSpanExcludes(t, span, "prompt-secret", "response-secret", "chat-id-secret", "user-id-secret", "credential-secret", "kroger-secret")
+	assertEventExcludes(t, event, "prompt-secret", "response-secret", "chat-id-secret", "user-id-secret", "credential-secret", "kroger-secret")
 }
 
-func installTelegramSpanRecorder(t *testing.T) *tracetest.SpanRecorder {
+type telegramCaptureTransport struct{ events []*sentry.Event }
+
+func (*telegramCaptureTransport) Configure(sentry.ClientOptions)        {}
+func (*telegramCaptureTransport) Flush(time.Duration) bool              { return true }
+func (*telegramCaptureTransport) FlushWithContext(context.Context) bool { return true }
+func (t *telegramCaptureTransport) SendEvent(event *sentry.Event)       { t.events = append(t.events, event) }
+func (*telegramCaptureTransport) Close()                                {}
+
+func installTelegramSentry(t *testing.T) (*telegramCaptureTransport, context.Context) {
 	t.Helper()
-	previous := otel.GetTracerProvider()
-	recorder := tracetest.NewSpanRecorder()
-	provider := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(recorder))
-	otel.SetTracerProvider(provider)
-	t.Cleanup(func() {
-		_ = provider.Shutdown(context.Background())
-		otel.SetTracerProvider(previous)
+	transport := &telegramCaptureTransport{}
+	client, err := sentry.NewClient(sentry.ClientOptions{
+		Dsn:              "https://public@example.com/1",
+		Transport:        transport,
+		EnableTracing:    true,
+		TracesSampleRate: 1,
 	})
-	return recorder
+	if err != nil {
+		t.Fatal(err)
+	}
+	hub := sentry.NewHub(client, sentry.NewScope())
+	return transport, sentry.SetHubOnContext(t.Context(), hub)
 }
 
-func findEndedSpan(t *testing.T, recorder *tracetest.SpanRecorder, name string) sdktrace.ReadOnlySpan {
+func findTransaction(t *testing.T, transport *telegramCaptureTransport, name string) *sentry.Event {
 	t.Helper()
-	for _, span := range recorder.Ended() {
-		if span.Name() == name {
-			return span
+	for _, event := range transport.events {
+		if event.Transaction == name {
+			return event
 		}
 	}
-	t.Fatalf("span %q not found in %d ended spans", name, len(recorder.Ended()))
+	t.Fatalf("transaction %q not found in %d events", name, len(transport.events))
 	return nil
 }
 
-func spanAttributeStrings(span sdktrace.ReadOnlySpan) map[string]string {
-	attributes := make(map[string]string, len(span.Attributes()))
-	for _, value := range span.Attributes() {
-		attributes[string(value.Key)] = value.Value.String()
+func findSentrySpan(t *testing.T, event *sentry.Event, description string) *sentry.Span {
+	t.Helper()
+	for _, span := range event.Spans {
+		if span.Description == description {
+			return span
+		}
 	}
-	return attributes
+	t.Fatalf("span %q not found in %d spans", description, len(event.Spans))
+	return nil
 }
 
-func assertSpanExcludes(t *testing.T, span sdktrace.ReadOnlySpan, values ...string) {
+func assertEventExcludes(t *testing.T, event *sentry.Event, values ...string) {
 	t.Helper()
-	serialized := span.Name() + span.Status().Description
-	for key, value := range spanAttributeStrings(span) {
-		serialized += key + value
+	serialized, err := json.Marshal(event)
+	if err != nil {
+		t.Fatal(err)
 	}
 	for _, value := range values {
-		if strings.Contains(serialized, value) {
+		if strings.Contains(string(serialized), value) {
 			t.Fatalf("sensitive value %q reached span", value)
 		}
 	}

@@ -628,17 +628,6 @@ func main() {
 		ServiceName: "agents-gateway", ServiceVersion: os.Getenv("RAILWAY_GIT_COMMIT_SHA"),
 		Environment: string(cfg.Environment),
 	}
-	shutdownTelemetry, err := observability.Setup(ctx, telemetryConfig)
-	if err != nil {
-		log.Fatalf("configure OpenTelemetry: %v", err)
-	}
-	defer func() {
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := shutdownTelemetry(shutdownCtx); err != nil {
-			log.Printf("flush OpenTelemetry: %v", err)
-		}
-	}()
 	flushSentry, err := observability.SetupSentry(telemetryConfig)
 	if err != nil {
 		log.Fatalf("configure Sentry: %v", err)
@@ -896,7 +885,7 @@ func main() {
 
 	server := &http.Server{
 		Addr:    ":" + cfg.HTTP.Port,
-		Handler: observability.Wrap("agents-gateway", observability.WrapSentry(handler)),
+		Handler: observability.WrapSentry(handler),
 		// Long enough that a slow client filling headers can't hold a
 		// connection open indefinitely, short enough not to mask a hung
 		// upstream. WriteTimeout is generous because AG-UI runs stream SSE

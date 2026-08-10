@@ -206,6 +206,9 @@ func TestCORSAllowsOnlyConfiguredOrigin(t *testing.T) {
 	if recorder.Code != http.StatusNoContent || recorder.Header().Get("Access-Control-Allow-Origin") != "https://app.example" || recorder.Header().Get("Access-Control-Allow-Credentials") != "true" {
 		t.Fatalf("allowed response = %d %#v", recorder.Code, recorder.Header())
 	}
+	if got := recorder.Header().Get("Access-Control-Allow-Headers"); got != "Authorization, Baggage, Content-Type, Sentry-Trace, X-Clerk-User-Id" {
+		t.Fatalf("allowed headers = %q", got)
+	}
 	blocked := httptest.NewRequest(http.MethodOptions, "/travel/agui", nil)
 	blocked.Header.Set("Origin", "https://attacker.example")
 	recorder = httptest.NewRecorder()

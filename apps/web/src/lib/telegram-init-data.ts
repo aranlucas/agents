@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { parse, validate } from "@tma.js/init-data-node";
 
 export type TelegramUser = {
   id: number;
@@ -43,12 +43,6 @@ function isTelegramUser(value: unknown): value is TelegramUser {
   return user.is_premium === undefined || typeof user.is_premium === "boolean";
 }
 
-function parseAuthDate(value: string | null): number | null {
-  if (!value || !/^\d+$/.test(value)) return null;
-  const timestamp = Number(value);
-  return Number.isSafeInteger(timestamp) ? timestamp : null;
-}
-
 export function verifyInitData(
   initData: string,
   botToken: string,
@@ -56,43 +50,28 @@ export function verifyInitData(
 ): TelegramUser | null {
   if (!initData) return null;
 
-  const params = new URLSearchParams(initData);
-  const receivedHash = params.get("hash");
-  if (!receivedHash) return null;
-
-  params.delete("hash");
-  const entries: [string, string][] = Array.from(params.entries());
-  entries.sort(([a], [b]) => a.localeCompare(b));
-  const dataCheckString = entries.map(([k, v]) => `${k}=${v}`).join("\n");
-
-  const secretKey = createHmac("sha256", "WebAppData").update(botToken).digest();
-  const expectedHash = createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
-
   try {
-    if (!timingSafeEqual(Buffer.from(expectedHash, "hex"), Buffer.from(receivedHash, "hex"))) {
+    // The library owns Telegram's signature protocol. Expiry stays explicit
+    // below so tests and the server can share the same injected clock.
+    validate(initData, botToken, { expiresIn: 0 });
+    const params = new URLSearchParams(initData);
+    // Older Telegram payloads omit the third-party `signature` field. The
+    // parser models the current protocol, so normalize that optional legacy
+    // field only after the bot-token signature has been verified.
+    if (!params.has("signature")) params.set("signature", "");
+    const parsed = parse(params);
+    const authDate = Math.floor(parsed.auth_date.getTime() / 1000);
+    const now = nowSeconds();
+    if (
+      !Number.isSafeInteger(authDate) ||
+      !Number.isSafeInteger(now) ||
+      authDate < now - TELEGRAM_INIT_DATA_MAX_AGE_SECONDS ||
+      authDate > now + TELEGRAM_INIT_DATA_MAX_FUTURE_SKEW_SECONDS ||
+      !isTelegramUser(parsed.user)
+    ) {
       return null;
     }
-  } catch {
-    return null;
-  }
-
-  const authDate = parseAuthDate(params.get("auth_date"));
-  const now = nowSeconds();
-  if (
-    authDate === null ||
-    !Number.isSafeInteger(now) ||
-    authDate < now - TELEGRAM_INIT_DATA_MAX_AGE_SECONDS ||
-    authDate > now + TELEGRAM_INIT_DATA_MAX_FUTURE_SKEW_SECONDS
-  ) {
-    return null;
-  }
-
-  const userRaw = params.get("user");
-  if (!userRaw) return null;
-
-  try {
-    const user: unknown = JSON.parse(userRaw);
-    return isTelegramUser(user) ? user : null;
+    return parsed.user;
   } catch {
     return null;
   }

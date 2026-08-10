@@ -4,20 +4,20 @@ package auth
 import (
 	"context"
 	"crypto/rsa"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"math/big"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/clerk/clerk-sdk-go/v2"
+	clerkjwt "github.com/clerk/clerk-sdk-go/v2/jwt"
 )
 
 const (
@@ -38,13 +38,14 @@ type TokenVerifier interface {
 	Verify(context.Context, string) (Identity, error)
 }
 
-// ClerkVerifier caches Clerk RSA keys and validates session JWTs.
+// ClerkVerifier delegates JWT parsing and validation to Clerk's SDK while
+// retaining bounded, rotation-aware caching around the configured JWKS URL.
 type ClerkVerifier struct {
 	url, issuer, audience string
 	client                *http.Client
 	now                   func() time.Time
 	mu                    sync.Mutex
-	keys                  map[string]*rsa.PublicKey
+	keys                  map[string]*clerk.JSONWebKey
 	expires               time.Time
 	refreshed             time.Time
 }
@@ -66,38 +67,49 @@ func NewClerkVerifier(jwksURL, issuer, audience string, client *http.Client) (*C
 	return &ClerkVerifier{url: parsed.String(), issuer: strings.TrimSpace(issuer), audience: strings.TrimSpace(audience), client: client, now: time.Now}, nil
 }
 
-// Verify validates signature, expiry, optional issuer/audience, and subject.
+// Verify validates the session JWT through Clerk's SDK, then projects only the
+// immutable subject into the gateway identity.
 func (v *ClerkVerifier) Verify(ctx context.Context, token string) (Identity, error) {
 	token = strings.TrimSpace(token)
 	if token == "" || len(token) > maximumTokenBytes {
 		return Identity{}, errors.New("invalid bearer token")
 	}
-	options := []jwt.ParserOption{jwt.WithValidMethods([]string{"RS256"}), jwt.WithExpirationRequired(), jwt.WithLeeway(5 * time.Second), jwt.WithTimeFunc(v.now)}
-	if v.issuer != "" {
-		options = append(options, jwt.WithIssuer(v.issuer))
-	}
-	if v.audience != "" {
-		options = append(options, jwt.WithAudience(v.audience))
-	}
-	claims := jwt.MapClaims{}
-	parsed, err := jwt.ParseWithClaims(token, claims, func(parsed *jwt.Token) (any, error) {
-		kid, _ := parsed.Header["kid"].(string)
-		if kid == "" {
-			return nil, errors.New("token has no key ID")
-		}
-		return v.key(ctx, kid)
-	}, options...)
-	if err != nil || !parsed.Valid {
+	decoded, err := clerkjwt.Decode(ctx, &clerkjwt.DecodeParams{Token: token})
+	if err != nil || decoded.KeyID == "" {
 		return Identity{}, errors.New("invalid bearer token")
 	}
-	subject, err := claims.GetSubject()
-	if err != nil || strings.TrimSpace(subject) == "" || len(subject) > 256 {
+	key, err := v.key(ctx, decoded.KeyID)
+	if err != nil {
+		return Identity{}, errors.New("invalid bearer token")
+	}
+	params := &clerkjwt.VerifyParams{
+		Token:  token,
+		JWK:    key,
+		Clock:  clockFunc(v.now),
+		Leeway: 5 * time.Second,
+	}
+	if v.issuer != "" {
+		params.ProxyURL = &v.issuer
+	}
+	claims, err := clerkjwt.Verify(ctx, params)
+	if err != nil || claims.Expiry == nil {
+		return Identity{}, errors.New("invalid bearer token")
+	}
+	if v.audience != "" && !slices.Contains(claims.Audience, v.audience) {
+		return Identity{}, errors.New("invalid bearer token")
+	}
+	subject := strings.TrimSpace(claims.Subject)
+	if subject == "" || len(subject) > 256 {
 		return Identity{}, errors.New("token has no valid subject")
 	}
 	return Identity{UserID: subject}, nil
 }
 
-func (v *ClerkVerifier) key(ctx context.Context, kid string) (*rsa.PublicKey, error) {
+type clockFunc func() time.Time
+
+func (f clockFunc) Now() time.Time { return f() }
+
+func (v *ClerkVerifier) key(ctx context.Context, kid string) (*clerk.JSONWebKey, error) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 	now := v.now()
@@ -138,20 +150,17 @@ func (v *ClerkVerifier) refreshLocked(ctx context.Context, now time.Time) error 
 	if err != nil || len(body) > maximumJWKSBody {
 		return errors.New("invalid JWKS response")
 	}
-	var document struct {
-		Keys []struct{ Kty, Kid, Use, Alg, N, E string } `json:"keys"`
-	}
+	document := clerk.JSONWebKeySet{}
 	if json.Unmarshal(body, &document) != nil {
 		return errors.New("invalid JWKS response")
 	}
-	keys := make(map[string]*rsa.PublicKey)
-	for _, jwk := range document.Keys {
-		if jwk.Kty != "RSA" || jwk.Alg != "RS256" || jwk.Kid == "" || (jwk.Use != "" && jwk.Use != "sig") {
+	keys := make(map[string]*clerk.JSONWebKey)
+	for _, key := range document.Keys {
+		if key == nil || key.KeyID == "" || key.Algorithm != "RS256" || (key.Use != "" && key.Use != "sig") {
 			continue
 		}
-		key, err := decodeRSAKey(jwk.N, jwk.E)
-		if err == nil {
-			keys[jwk.Kid] = key
+		if _, ok := key.Key.(*rsa.PublicKey); ok {
+			keys[key.KeyID] = key
 		}
 	}
 	if len(keys) == 0 {
@@ -161,25 +170,6 @@ func (v *ClerkVerifier) refreshLocked(ctx context.Context, now time.Time) error 
 	v.refreshed = now
 	v.expires = now.Add(cacheMaxAge(resp.Header.Get("Cache-Control")))
 	return nil
-}
-
-func decodeRSAKey(modulus, exponent string) (*rsa.PublicKey, error) {
-	n, err := base64.RawURLEncoding.DecodeString(modulus)
-	if err != nil || len(n) < 128 {
-		return nil, errors.New("invalid RSA modulus")
-	}
-	e, err := base64.RawURLEncoding.DecodeString(exponent)
-	if err != nil || len(e) == 0 || len(e) > 4 {
-		return nil, errors.New("invalid RSA exponent")
-	}
-	exponentValue := 0
-	for _, value := range e {
-		exponentValue = exponentValue<<8 | int(value)
-	}
-	if exponentValue < 3 || exponentValue%2 == 0 {
-		return nil, errors.New("invalid RSA exponent")
-	}
-	return &rsa.PublicKey{N: new(big.Int).SetBytes(n), E: exponentValue}, nil
 }
 
 func cacheMaxAge(value string) time.Duration {

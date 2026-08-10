@@ -1,7 +1,17 @@
 // @vitest-environment jsdom
-import { StrictMode, Suspense } from "react";
-import { render, screen } from "@testing-library/react";
+import { StrictMode } from "react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+const { getToken } = vi.hoisted(() => ({ getToken: vi.fn(async () => "clerk-token") }));
+
+vi.mock("@clerk/nextjs", () => ({
+  useAuth: () => ({ getToken, isLoaded: true }),
+}));
+
+vi.mock("@/env", () => ({
+  env: { NEXT_PUBLIC_AGENTS_BASE_URL: "https://gateway.example" },
+}));
 
 import {
   IntroductionContent,
@@ -9,8 +19,65 @@ import {
   StreamingIntroduction,
 } from "./streaming-introduction";
 
+type RunInput = { threadId: string; runId: string };
+
+function parseRunInput(body: RequestInit["body"]): RunInput {
+  if (typeof body !== "string") throw new Error("Expected a JSON request body");
+  return JSON.parse(body) as RunInput;
+}
+
+function event(input: RunInput, payload: Record<string, unknown>) {
+  return new TextEncoder().encode(`data: ${JSON.stringify(payload)}\n\n`);
+}
+
+function installStreamingResponse() {
+  let controller: ReadableStreamDefaultController<Uint8Array> | undefined;
+  let input: RunInput | undefined;
+  const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+    input = parseRunInput(init.body);
+    return new Response(
+      new ReadableStream<Uint8Array>({
+        start(streamController) {
+          controller = streamController;
+        },
+      }),
+      { headers: { "Content-Type": "text/event-stream" } },
+    );
+  });
+  vi.stubGlobal("fetch", fetch);
+
+  return {
+    fetch,
+    async ready() {
+      await waitFor(() => expect(controller).toBeDefined());
+      return { controller: controller!, input: input! };
+    },
+  };
+}
+
+function enqueueSuccessfulRun(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  input: RunInput,
+  deltas: string[],
+) {
+  const messageId = "introduction-message";
+  controller.enqueue(
+    event(input, { type: "RUN_STARTED", threadId: input.threadId, runId: input.runId }),
+  );
+  controller.enqueue(event(input, { type: "TEXT_MESSAGE_START", messageId, role: "assistant" }));
+  for (const delta of deltas) {
+    controller.enqueue(event(input, { type: "TEXT_MESSAGE_CONTENT", messageId, delta }));
+  }
+  controller.enqueue(event(input, { type: "TEXT_MESSAGE_END", messageId }));
+  controller.enqueue(
+    event(input, { type: "RUN_FINISHED", threadId: input.threadId, runId: input.runId }),
+  );
+  controller.close();
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
+  getToken.mockClear();
 });
 
 describe("GeneratedIntroduction", () => {
@@ -46,81 +113,53 @@ describe("GeneratedIntroduction", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Resume introduction ready");
   });
 
-  it("renders fresh text from the server-provided stream", async () => {
-    let streamController: ReadableStreamDefaultController<Uint8Array> | undefined;
-    const stream = new ReadableStream<Uint8Array>({
-      start(controller) {
-        streamController = controller;
-      },
-    });
-    const streamPromise = Promise.resolve(stream);
-
-    render(
-      <Suspense fallback={<IntroductionSkeleton />}>
-        <StreamingIntroduction stream={streamPromise} />
-      </Suspense>,
-    );
+  it("streams typed HttpAgent text events directly from the gateway", async () => {
+    const request = installStreamingResponse();
+    render(<StreamingIntroduction />);
 
     expect(screen.getByLabelText("Resume agent is writing")).toBeVisible();
-
-    streamController?.enqueue(
-      new TextEncoder().encode(
-        'data: {"type":"TEXT_MESSAGE_CONTENT","delta":"Fresh introduction"}\n\n',
-      ),
+    const { controller, input } = await request.ready();
+    const messageId = "introduction-message";
+    controller.enqueue(
+      event(input, { type: "RUN_STARTED", threadId: input.threadId, runId: input.runId }),
+    );
+    controller.enqueue(event(input, { type: "TEXT_MESSAGE_START", messageId, role: "assistant" }));
+    controller.enqueue(
+      event(input, { type: "TEXT_MESSAGE_CONTENT", messageId, delta: "Fresh introduction" }),
     );
     expect(await screen.findByText("Fresh introduction")).toBeVisible();
 
-    streamController?.enqueue(
-      new TextEncoder().encode('data: {"type":"TEXT_MESSAGE_CONTENT","delta":" streams in."}\n\n'),
+    controller.enqueue(
+      event(input, { type: "TEXT_MESSAGE_CONTENT", messageId, delta: " streams in." }),
     );
-    streamController?.close();
+    controller.enqueue(event(input, { type: "TEXT_MESSAGE_END", messageId }));
+    controller.enqueue(
+      event(input, { type: "RUN_FINISHED", threadId: input.threadId, runId: input.runId }),
+    );
+    controller.close();
+
     expect(await screen.findByText("Fresh introduction streams in.")).toBeVisible();
-  });
-
-  it("keeps a final text delta when the stream closes without a trailing newline", async () => {
-    const stream = new ReadableStream<Uint8Array>({
-      start(controller) {
-        controller.enqueue(
-          new TextEncoder().encode(
-            'data: {"type":"TEXT_MESSAGE_CONTENT","delta":"Complete introduction"}',
-          ),
-        );
-        controller.close();
-      },
-    });
-
-    render(
-      <Suspense fallback={<IntroductionSkeleton />}>
-        <StreamingIntroduction stream={Promise.resolve(stream)} />
-      </Suspense>,
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent("Resume introduction ready"),
     );
-
-    expect(await screen.findByText("Complete introduction")).toBeVisible();
-    expect(screen.getByRole("status")).toHaveTextContent("Resume introduction ready");
+    expect(request.fetch).toHaveBeenCalledWith(
+      "https://gateway.example/agent/resume/suggest",
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: "Bearer clerk-token" }),
+      }),
+    );
   });
 
-  it("does not cancel the stream during the Strict Mode effect probe", async () => {
-    let streamController: ReadableStreamDefaultController<Uint8Array> | undefined;
-    const stream = new ReadableStream<Uint8Array>({
-      start(controller) {
-        streamController = controller;
-      },
-    });
-
+  it("restarts safely during the Strict Mode effect probe", async () => {
+    const request = installStreamingResponse();
     render(
       <StrictMode>
-        <Suspense fallback={<IntroductionSkeleton />}>
-          <StreamingIntroduction stream={Promise.resolve(stream)} />
-        </Suspense>
+        <StreamingIntroduction />
       </StrictMode>,
     );
 
-    streamController?.enqueue(
-      new TextEncoder().encode(
-        'data: {"type":"TEXT_MESSAGE_CONTENT","delta":"Strict-safe introduction"}\n\n',
-      ),
-    );
-    streamController?.close();
+    const { controller, input } = await request.ready();
+    enqueueSuccessfulRun(controller, input, ["Strict-safe introduction"]);
 
     expect(await screen.findByText("Strict-safe introduction")).toBeVisible();
   });

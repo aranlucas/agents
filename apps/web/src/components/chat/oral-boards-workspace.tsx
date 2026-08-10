@@ -203,8 +203,11 @@ function OralBoardsWorkspaceContent({ threadId }: { threadId: string }) {
           if (pendingInputKind === "ready" && (await respondToPendingInput("ready"))) return;
           throw new Error("The examiner is still preparing the first question. Please try again.");
         } catch (error) {
-          Sentry.captureException(error, {
-            tags: { component: "oralboards_workspace", operation: "exam.ready" },
+          Sentry.addBreadcrumb({
+            category: "oralboards.exam",
+            level: "warning",
+            message: "Readiness submitted without a pending examiner interrupt",
+            data: { operation: "exam.ready", pending_input_kind: pendingInputKind ?? "none" },
           });
           setReconnectRequired(true);
           throw error;
@@ -221,8 +224,11 @@ function OralBoardsWorkspaceContent({ threadId }: { threadId: string }) {
           if (pendingInputKind === "answer" && (await respondToPendingInput(text))) return;
           throw new Error("The examiner is not ready for an answer yet. Please try again.");
         } catch (error) {
-          Sentry.captureException(error, {
-            tags: { component: "oralboards_workspace", operation: "exam.answer" },
+          Sentry.addBreadcrumb({
+            category: "oralboards.exam",
+            level: "warning",
+            message: "Answer submitted without a pending examiner interrupt",
+            data: { operation: "exam.answer", pending_input_kind: pendingInputKind ?? "none" },
           });
           setReconnectRequired(true);
           throw error;

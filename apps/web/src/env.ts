@@ -13,8 +13,6 @@ export const env = createEnv({
     GROQ_API_KEY: z.string().min(1),
     TELEGRAM_LINK_SECRET: z.string().optional(),
     TELEGRAM_BOT_TOKEN: z.string().optional(),
-    OTEL_EXPORTER_OTLP_ENDPOINT: z.string().optional(),
-    OTEL_SERVICE_NAME: z.string().default("agents-nextjs"),
     SENTRY_DSN: z.string().optional(),
     COPILOTKIT_DEBUG: z
       .string()
@@ -39,8 +37,6 @@ export const env = createEnv({
     GROQ_API_KEY: process.env.GROQ_API_KEY,
     TELEGRAM_LINK_SECRET: process.env.TELEGRAM_LINK_SECRET,
     TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
-    OTEL_EXPORTER_OTLP_ENDPOINT: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
-    OTEL_SERVICE_NAME: process.env.OTEL_SERVICE_NAME,
     SENTRY_DSN: process.env.SENTRY_DSN,
     COPILOTKIT_DEBUG: process.env.COPILOTKIT_DEBUG,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,

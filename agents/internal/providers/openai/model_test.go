@@ -15,9 +15,6 @@ import (
 	"agents/internal/config"
 	"agents/internal/rate"
 	"github.com/google/jsonschema-go/jsonschema"
-	"go.opentelemetry.io/otel"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/genai"
 )
@@ -184,16 +181,7 @@ func TestGenerateContentStreamsTextReasoningAndToolCall(t *testing.T) {
 	}
 }
 
-func TestNilHTTPClientUsesSharedSafeTracingTransport(t *testing.T) {
-	previousProvider := otel.GetTracerProvider()
-	recorder := tracetest.NewSpanRecorder()
-	provider := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(recorder))
-	otel.SetTracerProvider(provider)
-	t.Cleanup(func() {
-		_ = provider.Shutdown(context.Background())
-		otel.SetTracerProvider(previousProvider)
-	})
-
+func TestNilHTTPClientUsesSharedSafeClient(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, textResponse("complete"))
 	}))
@@ -202,19 +190,6 @@ func TestNilHTTPClientUsesSharedSafeTracingTransport(t *testing.T) {
 	responses, errs := collect(adapter.GenerateContent(t.Context(), &model.LLMRequest{Contents: genai.Text("prompt-secret")}, false))
 	if len(errs) != 0 || len(responses) != 1 {
 		t.Fatalf("responses/errors = %#v/%v", responses, errs)
-	}
-	spans := recorder.Ended()
-	if len(spans) != 1 || spans[0].Name() != "HTTP POST" {
-		t.Fatalf("spans = %#v", spans)
-	}
-	serialized := spans[0].Name()
-	for _, value := range spans[0].Attributes() {
-		serialized += string(value.Key) + value.Value.String()
-	}
-	for _, secret := range []string{"prompt-secret", "provider-secret", "/responses"} {
-		if strings.Contains(serialized, secret) {
-			t.Fatalf("sensitive value %q reached span", secret)
-		}
 	}
 }
 

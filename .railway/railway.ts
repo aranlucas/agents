@@ -52,8 +52,6 @@ export default defineRailway((ctx) => {
 
       // Observability. SENTRY_DSN is unset today; listing it keeps the gateway
       // from planning a delete once it is set in the dashboard.
-      OTEL_EXPORTER_OTLP_ENDPOINT: preserve(),
-      OTEL_SERVICE_NAME: preserve(),
       SENTRY_DSN: preserve(),
 
       // Left over from the Python runtime. Nothing under agents/ reads these;

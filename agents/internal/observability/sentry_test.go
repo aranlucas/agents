@@ -79,14 +79,19 @@ func TestCaptureErrorIgnoresNilAndExplicitCancellation(t *testing.T) {
 func TestCaptureErrorRecordsDeadlineAndOperationalDetails(t *testing.T) {
 	transport := &captureTransport{}
 	client, err := sentry.NewClient(sentry.ClientOptions{
-		Dsn:       "https://public@example.com/1",
-		Transport: transport,
+		Dsn:              "https://public@example.com/1",
+		Transport:        transport,
+		EnableTracing:    true,
+		TracesSampleRate: 1,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	hub := sentry.NewHub(client, sentry.NewScope())
 	ctx := sentry.SetHubOnContext(context.Background(), hub)
+	span := sentry.StartTransaction(ctx, "agent.run")
+	defer span.Finish()
+	ctx = span.Context()
 
 	CaptureError(ctx, context.DeadlineExceeded, ErrorDetails{
 		Operation: "agent.run",
@@ -104,5 +109,8 @@ func TestCaptureErrorRecordsDeadlineAndOperationalDetails(t *testing.T) {
 	}
 	if event.Contexts["operation"]["run_id"] != "run-1" {
 		t.Fatalf("captured context = %#v", event.Contexts)
+	}
+	if event.Contexts["trace"]["trace_id"] != span.TraceID {
+		t.Fatalf("captured trace context = %#v", event.Contexts["trace"])
 	}
 }

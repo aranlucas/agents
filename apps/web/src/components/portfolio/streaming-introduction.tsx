@@ -1,9 +1,11 @@
 "use client";
 
+import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
-import { textDeltasFromAguiLines } from "@/lib/resume-introduction";
+import { env } from "@/env";
+import { runResumeIntroduction } from "@/lib/resume-introduction";
 
 const INTRODUCTION_FRAME_CLASS = "min-h-80 sm:min-h-64";
 
@@ -119,132 +121,65 @@ export function IntroductionContent({
   );
 }
 
-export function StreamingIntroduction({
-  stream,
-}: {
-  stream: Promise<ReadableStream<Uint8Array> | null>;
-}) {
-  const [serverStream, setServerStream] = useState<ReadableStream<Uint8Array> | null | undefined>(
-    undefined,
-  );
+export function StreamingIntroduction() {
+  const { getToken, isLoaded } = useAuth();
   const [text, setText] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [failed, setFailed] = useState(false);
-  const readingStreamRef = useRef<ReadableStream<Uint8Array> | null>(null);
-  const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
-  const readEffectIdRef = useRef(0);
+  const runEffectIdRef = useRef(0);
 
   useEffect(() => {
-    let cancelled = false;
+    if (!isLoaded) return undefined;
 
-    setServerStream(undefined);
+    const effectId = ++runEffectIdRef.current;
+    const abortController = new AbortController();
+    let timedOut = false;
+    const timeout = window.setTimeout(() => {
+      timedOut = true;
+      abortController.abort();
+    }, 20_000);
+
     setText("");
     setStreaming(false);
     setFailed(false);
 
-    void Promise.resolve(stream)
-      .then((resolved) => {
-        if (cancelled) {
-          return;
-        }
-
-        setServerStream(resolved);
-      })
-      .catch(() => {
-        if (cancelled) {
-          return;
-        }
-
-        setFailed(true);
-        setServerStream(null);
-      });
-
-    return () => {
-      cancelled = true;
-      if (readerRef.current) {
-        void readerRef.current.cancel();
+    void (async () => {
+      let token: string | null = null;
+      try {
+        token = await getToken();
+      } catch {
+        // The endpoint is public, so Clerk availability must not prevent the run.
       }
-    };
-  }, [stream]);
 
-  useEffect(() => {
-    const currentStream = serverStream;
-    const streamId = ++readEffectIdRef.current;
-    let cleanup: (() => void) | undefined;
+      if (abortController.signal.aborted || runEffectIdRef.current !== effectId) return;
 
-    async function readStream(
-      activeStream: ReadableStream<Uint8Array>,
-      reader: ReadableStreamDefaultReader<Uint8Array>,
-    ) {
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let generated = "";
-
-      while (true) {
-        // oxlint-disable-next-line eslint/no-await-in-loop -- stream reads are inherently sequential
-        const { value, done } = await reader.read();
-        if (readingStreamRef.current !== activeStream || readEffectIdRef.current !== streamId) {
-          return;
-        }
-
-        buffer += decoder.decode(value, { stream: !done });
-        const lines = buffer.split("\n");
-        buffer = done ? "" : (lines.pop() ?? "");
-        const deltas = textDeltasFromAguiLines(lines);
-
-        if (deltas.length > 0) {
-          generated += deltas.join("");
-          if (readingStreamRef.current === activeStream && readEffectIdRef.current === streamId) {
-            setStreaming(!done);
+      try {
+        await runResumeIntroduction({
+          baseUrl: env.NEXT_PUBLIC_AGENTS_BASE_URL,
+          token,
+          abortController,
+          onDelta(_delta, generated) {
+            if (runEffectIdRef.current !== effectId) return;
+            setStreaming(true);
             setText(generated);
-          }
-        }
-
-        if (done) break;
-      }
-
-      if (readingStreamRef.current === activeStream && readEffectIdRef.current === streamId) {
-        setStreaming(false);
-      }
-    }
-
-    if (currentStream === undefined) {
-      return cleanup;
-    }
-
-    if (!currentStream) {
-      setFailed(true);
-      return cleanup;
-    }
-
-    if (readingStreamRef.current !== currentStream) {
-      void readerRef.current?.cancel();
-      readerRef.current = null;
-      readingStreamRef.current = currentStream;
-    }
-
-    if (readerRef.current === null) {
-      const reader = currentStream.getReader();
-      readerRef.current = reader;
-      void readStream(currentStream, reader).catch(() => {
-        if (readingStreamRef.current === currentStream && readEffectIdRef.current === streamId) {
+          },
+        });
+        if (runEffectIdRef.current === effectId) setStreaming(false);
+      } catch {
+        if (runEffectIdRef.current === effectId && (!abortController.signal.aborted || timedOut)) {
           setStreaming(false);
           setFailed(true);
         }
-      });
-    }
-
-    cleanup = () => {
-      const activeReader = readerRef.current;
-      if (readEffectIdRef.current === streamId && readingStreamRef.current === currentStream) {
-        void activeReader?.cancel();
-        readerRef.current = null;
-        readingStreamRef.current = null;
+      } finally {
+        window.clearTimeout(timeout);
       }
-    };
+    })();
 
-    return cleanup;
-  }, [serverStream]);
+    return () => {
+      window.clearTimeout(timeout);
+      abortController.abort();
+    };
+  }, [getToken, isLoaded]);
 
   if (!text && !failed) return <IntroductionSkeleton />;
   if (!text) {
