@@ -7,12 +7,15 @@ import {
   BookOpenIcon,
   CheckCircle2Icon,
   ChevronDownIcon,
+  FileDownIcon,
+  FileTextIcon,
   GraduationCapIcon,
   Loader2Icon,
   MicIcon,
   PencilIcon,
   PlayIcon,
   SendHorizontalIcon,
+  Share2Icon,
   SquareIcon,
   StethoscopeIcon,
 } from "lucide-react";
@@ -40,6 +43,10 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Kbd,
   ResizableHandle,
   ResizablePanel,
@@ -68,6 +75,10 @@ import { speak, stopSpeaking } from "@/lib/copilotkit/speak-question";
 import { useOralBoardsQuestion } from "@/lib/copilotkit/oral-boards-question-context";
 import { useAnswerRecorder } from "@/lib/copilotkit/use-answer-recorder";
 import type { UseAnswerRecorder } from "@/lib/copilotkit/use-answer-recorder";
+import {
+  exportOralBoardsReport,
+  type OralBoardsExportFormat,
+} from "@/components/chat/oral-boards/oral-boards-export";
 
 function truncate(text: string, len: number): string {
   return text.length <= len ? text : `${text.slice(0, len)}…`;
@@ -1293,12 +1304,14 @@ function QuestioningPane({
 }
 
 function FeedbackPane({
+  caseBody,
   scoreCard,
   scoreSummary,
   outcome,
   transcript,
   onNewCase,
 }: {
+  caseBody: string;
   scoreCard: string;
   scoreSummary: OralBoardsSkillsetScore[];
   outcome?: OralBoardsOutcome;
@@ -1306,7 +1319,31 @@ function FeedbackPane({
   onNewCase: () => void;
 }) {
   const isMobile = useIsMobile();
+  const [exporting, setExporting] = useState<OralBoardsExportFormat | null>(null);
+  const [exportStatus, setExportStatus] = useState("");
   const isEmpty = !scoreCard.trim() && scoreSummary.length === 0 && transcript.length === 0;
+  const handleExport = async (format: OralBoardsExportFormat) => {
+    if (exporting) return;
+    setExporting(format);
+    setExportStatus("");
+    try {
+      const result = await exportOralBoardsReport(format, {
+        caseBody,
+        scoreCard,
+        scoreSummary,
+        outcome,
+        transcript,
+      });
+      if (result !== "cancelled") {
+        const formatLabel = format === "pdf" ? "PDF" : "Markdown";
+        setExportStatus(`${formatLabel} ${result}.`);
+      }
+    } catch {
+      setExportStatus("Could not export the report. Please try again.");
+    } finally {
+      setExporting(null);
+    }
+  };
   const questionReviewRows = (
     <div
       className="flex flex-col gap-2"
@@ -1379,11 +1416,44 @@ function FeedbackPane({
         </div>
       </ScrollArea>
       {!isEmpty && (
-        <div role="group" aria-label="Case actions" className="shrink-0 border-t bg-background p-3">
-          <Button type="button" className="w-full" onClick={onNewCase}>
+        <div
+          role="group"
+          aria-label="Case actions"
+          className="flex shrink-0 flex-col gap-2 border-t bg-background p-3 sm:flex-row"
+        >
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              disabled={Boolean(exporting)}
+              render={(props) => (
+                <Button {...props} type="button" variant="outline" className="w-full sm:flex-1">
+                  {exporting ? (
+                    <Loader2Icon className="size-3.5 animate-spin" />
+                  ) : (
+                    <Share2Icon className="size-3.5" />
+                  )}
+                  {exporting ? "Exporting…" : "Export"}
+                  <ChevronDownIcon className="ms-auto size-3.5" />
+                </Button>
+              )}
+            />
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={() => void handleExport("pdf")}>
+                <FileDownIcon />
+                PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => void handleExport("markdown")}>
+                <FileTextIcon />
+                Markdown
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button type="button" className="w-full sm:flex-1" onClick={onNewCase}>
             <PlayIcon className="size-3.5" />
             Start a new case
           </Button>
+          <p className="sr-only" aria-live="polite">
+            {exportStatus}
+          </p>
         </div>
       )}
     </div>
@@ -1454,6 +1524,7 @@ export function OralBoardsPanel({
         )}
         {showFinalFeedback && (
           <FeedbackPane
+            caseBody={caseBody}
             scoreCard={scoreCard}
             scoreSummary={scoreSummary}
             outcome={outcome}

@@ -45,9 +45,14 @@ vi.mock("@copilotkit/react-core/v2", () => ({
 }));
 
 const useAnswerRecorderMock = vi.hoisted(() => vi.fn());
+const exportOralBoardsReportMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/copilotkit/use-answer-recorder", () => ({
   useAnswerRecorder: useAnswerRecorderMock,
+}));
+
+vi.mock("@/components/chat/oral-boards/oral-boards-export", () => ({
+  exportOralBoardsReport: exportOralBoardsReportMock,
 }));
 
 function mockAnswerRecorder(
@@ -105,6 +110,7 @@ const baseProps = {
 
 beforeEach(() => {
   mockAnswerRecorder();
+  exportOralBoardsReportMock.mockReset().mockResolvedValue("downloaded");
 });
 
 afterEach(() => {
@@ -823,6 +829,47 @@ describe("OralBoardsPanel — complete", () => {
     await userEvent.click(screen.getByRole("button", { name: /Start a new case/ }));
 
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("exports the complete case report as PDF or Markdown", async () => {
+    const state: OralBoardsState = {
+      case: "Case summary text.",
+      status: "complete",
+      score_card: "Strong management reasoning overall.",
+      score_summary: [
+        {
+          skillset: "Behavior Guidance",
+          skill: "analyze_evaluate",
+          score: 2,
+          rationale: "Solid plan; thin on alternatives.",
+        },
+      ],
+      outcome: "borderline",
+      transcript: [
+        {
+          question: "Describe your approach.",
+          answer: "I would assess the patient.",
+          feedback: "Good start.",
+          ideal_response: "I would begin with a complete assessment.",
+        },
+      ],
+    };
+
+    render(<OralBoardsPanel state={state} {...baseProps} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Export" }));
+    expect(await screen.findByRole("menuitem", { name: "PDF" })).toBeInTheDocument();
+    expect(await screen.findByRole("menuitem", { name: "Markdown" })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("menuitem", { name: "Markdown" }));
+
+    expect(exportOralBoardsReportMock).toHaveBeenCalledWith("markdown", {
+      caseBody: "Case summary text.",
+      scoreCard: "Strong management reasoning overall.",
+      scoreSummary: state.score_summary,
+      outcome: "borderline",
+      transcript: state.transcript,
+    });
   });
 
   it("collapses completed question reviews on the final score screen", async () => {
