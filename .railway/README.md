@@ -30,8 +30,8 @@ railway config plan
 then production after the `CI` workflow succeeds on `main`. It can also be run
 manually from GitHub Actions.
 
-The GitHub source has Railway's Wait for CI setting enabled, so a source deploy
-starts only after the repository's push workflows succeed.
+The GitHub source has Railway's Wait for CI setting disabled, so source deploys
+start immediately instead of waiting for every monorepo push workflow.
 
 The workflow requires a workspace-scoped Railway token in the
 `RAILWAY_API_TOKEN` repository secret so it can manage both environments. It
