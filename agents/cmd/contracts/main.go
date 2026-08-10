@@ -518,8 +518,7 @@ func objectDefinitions() []objectDef {
 			field("status", "ExpenseStatus", false), field("risk_level", "ExpenseRiskLevel | null", true),
 			field("risk_summary", "", true), field("recommendation", "", true), field("decision_note", "", true),
 		)),
-		object("CaseSource", oralboards.CaseSource{}, required("docid", "filepath", "title"), fields(field("collection", `"abpd" | "aapd" | "cody"`, false))),
-		object("OralBoardsExchange", oralboards.Exchange{}, required("question", "answer", "feedback", "ideal_response", "citations"), fields(
+		object("OralBoardsExchange", oralboards.Exchange{}, required("question", "answer", "feedback", "ideal_response"), fields(
 			field("skillset", "", true), field("skill", "OralBoardsSkill", true), field("score", "1 | 2 | 3", true),
 		)),
 		object("OralBoardsSkillsetScore", oralboards.SkillsetScore{}, required("skillset"), fields(
@@ -591,7 +590,7 @@ func objectDefinitions() []objectDef {
 			field("status", "ExpenseDeskStatus", true), field("review_summary", "", true), field("review_threshold_usd", "", true),
 		)),
 		object("OralBoardsState", oralboards.State{}, stateFields(
-			field("case", "", true), field("case_sources", "", true),
+			field("case", "", true),
 			field("transcript", "", true), field("score_card", "", true), field("score_summary", "", true),
 			field("outcome", "OralBoardsOutcome", true), field("status", "OralBoardsPhase", true),
 			field("loading_step", "", true), field("interview_complete", "", true), field("active_feedback", "", true),

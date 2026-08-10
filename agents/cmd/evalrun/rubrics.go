@@ -446,10 +446,17 @@ func gradeRubric(agentName, rubricID, description string, trace Trace) RubricRes
 		}
 		res.Pass = ok
 		res.Explanation = fmt.Sprintf("set_loading_step=%d search_docs=%d read_doc=%d(optional) set_case=%d", loadingIdx, searchIdx, trace.indexOfCall("read_doc"), caseIdx)
-	case "oralboards_sets_case_with_sources":
+	case "oralboards_sets_grounded_case":
 		args, ok := firstCallArgs[oralboards.SetCaseArgs](trace, "set_case")
-		res.Pass = ok && strings.TrimSpace(args.Case) != "" && len(args.CaseSources) > 0
-		res.Explanation = fmt.Sprintf("set_case called=%v, case text set=%v, case_sources=%d", ok, strings.TrimSpace(args.Case) != "", len(args.CaseSources))
+		res.Pass = ok && strings.TrimSpace(args.Case) != "" && len(args.CasePassages) > 0
+		res.Explanation = fmt.Sprintf("set_case called=%v, case text set=%v, internal evidence passages=%d", ok, strings.TrimSpace(args.Case) != "", len(args.CasePassages))
+	case "oralboards_model_answer_is_spoken":
+		args, ok := firstCallArgs[oralboards.AppendExchangeArgs](trace, "append_exchange")
+		ideal := strings.TrimSpace(args.IdealResponse)
+		hasListFormatting := strings.HasPrefix(ideal, "-") || strings.HasPrefix(ideal, "*") || strings.Contains(ideal, "\n-") || strings.Contains(ideal, "\n*")
+		thirdPerson := textContainsAny(ideal, "the candidate should", "the key points are")
+		res.Pass = ok && ideal != "" && !hasListFormatting && !thirdPerson
+		res.Explanation = fmt.Sprintf("append_exchange called=%v, model answer present=%v, list formatting=%v, third-person answer-key language=%v", ok, ideal != "", hasListFormatting, thirdPerson)
 	case "oralboards_presenting_phase_only":
 		args, _ := firstCallArgs[oralboards.SetPhaseArgs](trace, "set_phase")
 		asked := trace.called("ask_probe")
