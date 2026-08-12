@@ -10,3 +10,8 @@ Sentry.init({
   tracesSampleRate: 1,
   tracePropagationTargets: ["localhost", /^\//, ...(agentGateway ? [agentGateway] : [])],
 });
+
+// oxlint resolves @sentry/nextjs through its server export condition here,
+// while Next.js compiles this client-only entrypoint against the client export.
+// oxlint-disable-next-line import/namespace
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
