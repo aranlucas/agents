@@ -21,6 +21,7 @@ import (
 	"agents/internal/auth"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
+	"github.com/getsentry/sentry-go"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
@@ -137,6 +138,28 @@ type getOverrideSessionService struct {
 	createCalls int
 }
 
+type handlerCaptureTransport struct{ events []*sentry.Event }
+
+func (*handlerCaptureTransport) Configure(sentry.ClientOptions)        {}
+func (*handlerCaptureTransport) Flush(time.Duration) bool              { return true }
+func (*handlerCaptureTransport) FlushWithContext(context.Context) bool { return true }
+func (t *handlerCaptureTransport) SendEvent(event *sentry.Event)       { t.events = append(t.events, event) }
+func (*handlerCaptureTransport) Close()                                {}
+
+func requestWithSentryHub(t *testing.T, req *http.Request) (*http.Request, *handlerCaptureTransport) {
+	t.Helper()
+	transport := &handlerCaptureTransport{}
+	client, err := sentry.NewClient(sentry.ClientOptions{
+		Dsn:       "https://public@example.com/1",
+		Transport: transport,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	hub := sentry.NewHub(client, sentry.NewScope())
+	return req.WithContext(sentry.SetHubOnContext(req.Context(), hub)), transport
+}
+
 func (s *getOverrideSessionService) Get(context.Context, *session.GetRequest) (*session.GetResponse, error) {
 	return nil, s.getErr
 }
@@ -196,6 +219,7 @@ func TestHandlerReturns500OnSessionGetFailure(t *testing.T) {
 	}
 	body := `{"threadId":"thread-error","runId":"run-error","messages":[]}`
 	req := httptest.NewRequest(http.MethodPost, "/resume/agui", strings.NewReader(body))
+	req, transport := requestWithSentryHub(t, req)
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 
@@ -210,6 +234,60 @@ func TestHandlerReturns500OnSessionGetFailure(t *testing.T) {
 	}
 	if captured.request() != nil {
 		t.Fatal("model was invoked after session restore failure")
+	}
+	if len(transport.events) != 1 {
+		t.Fatalf("captured events = %d, want 1", len(transport.events))
+	}
+	event := transport.events[0]
+	if event.Tags["operation"] != "session.restore" || event.Tags["agent.app_name"] != "resume_agent" || event.Tags["agent.route"] != "resume" || event.Tags["error.code"] != "session_unavailable" {
+		t.Fatalf("captured tags = %#v", event.Tags)
+	}
+	if event.Contexts["operation"]["run_id"] != "run-error" || event.Contexts["operation"]["thread_id"] != "thread-error" {
+		t.Fatalf("captured context = %#v", event.Contexts["operation"])
+	}
+}
+
+func TestHandlerCapturesSessionSnapshotFailure(t *testing.T) {
+	sessions := newFakeSessionService()
+	_, err := sessions.Create(t.Context(), &session.CreateRequest{
+		AppName: "resume_agent", UserID: "anon:thread-state-error", SessionID: "thread-state-error",
+		State: map[string]any{"invalid": make(chan int)},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	captured := &fakeCapturingModel{}
+	a, err := llmagent.New(llmagent.Config{Name: "resume_agent", Instruction: "test", Model: captured})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler, err := NewEntryHandler(agentruntime.Entry{
+		Route: "resume", AppName: "resume_agent", Agent: a, Public: true, Timeout: time.Second,
+	}, sessions)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := `{"threadId":"thread-state-error","runId":"run-state-error","messages":[]}`
+	req := httptest.NewRequest(http.MethodPost, "/resume/agui", strings.NewReader(body))
+	req, transport := requestWithSentryHub(t, req)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusInternalServerError || rr.Body.String() != "{\"error\":\"session_unavailable\"}\n" {
+		t.Fatalf("response = %d %q", rr.Code, rr.Body.String())
+	}
+	if captured.request() != nil {
+		t.Fatal("model was invoked after session snapshot failure")
+	}
+	if len(transport.events) != 1 {
+		t.Fatalf("captured events = %d, want 1", len(transport.events))
+	}
+	event := transport.events[0]
+	if event.Tags["operation"] != "session.snapshot" || event.Tags["agent.app_name"] != "resume_agent" || event.Tags["agent.route"] != "resume" || event.Tags["error.code"] != "session_unavailable" {
+		t.Fatalf("captured tags = %#v", event.Tags)
+	}
+	if event.Contexts["operation"]["run_id"] != "run-state-error" || event.Contexts["operation"]["thread_id"] != "thread-state-error" {
+		t.Fatalf("captured context = %#v", event.Contexts["operation"])
 	}
 }
 
