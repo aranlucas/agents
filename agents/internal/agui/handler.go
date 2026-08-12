@@ -210,6 +210,7 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		log.Printf("run: session restore failed: agent=%s thread=%s user=%s err=%v", entry.AppName, input.ThreadID, userID, err)
+		captureSessionError(ctx, err, entry, input, "session.restore")
 		writeJSONError(w, http.StatusInternalServerError, "session_unavailable")
 		return
 	}
@@ -258,6 +259,7 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	snapshot, err := persistentSnapshot(sess.State())
 	if err != nil {
 		log.Printf("run: session state encode failed: agent=%s thread=%s err=%v", entry.AppName, input.ThreadID, err)
+		captureSessionError(ctx, err, entry, input, "session.snapshot")
 		writeJSONError(w, http.StatusInternalServerError, "session_unavailable")
 		return
 	}
@@ -362,6 +364,21 @@ runLoop:
 		finished.Result = converter.lastFinalText
 	}
 	emit(ctx, finished)
+}
+
+func captureSessionError(ctx context.Context, err error, entry agentruntime.Entry, input *types.RunAgentInput, operation string) {
+	observability.CaptureError(ctx, err, observability.ErrorDetails{
+		Operation: operation,
+		Tags: map[string]string{
+			"agent.app_name": entry.AppName,
+			"agent.route":    entry.Route,
+			"error.code":     "session_unavailable",
+		},
+		Context: map[string]any{
+			"run_id":    input.RunID,
+			"thread_id": input.ThreadID,
+		},
+	})
 }
 
 // restoreSession fetches the existing (app, user, thread) session or
