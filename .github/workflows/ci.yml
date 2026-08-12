@@ -11,13 +11,100 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+  pull-requests: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  scope:
+    name: Determine required checks
+    runs-on: ubuntu-latest
+    outputs:
+      run_ci: ${{ steps.scope.outputs.run_ci }}
+      js: ${{ steps.scope.outputs.js }}
+      go: ${{ steps.scope.outputs.go }}
+    steps:
+      - name: Detect merged PRs and changed areas
+        id: scope
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          REPOSITORY: ${{ github.repository }}
+          HEAD_SHA: ${{ github.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          run_ci=true
+          js=false
+          go=false
+
+          # A merged PR was already checked at its head SHA. Do not repeat the
+          # three expensive lanes for the merge commit. Direct pushes still run.
+          if [ "$EVENT_NAME" = "push" ]; then
+            merged_pr="$(
+              gh api "/repos/$REPOSITORY/commits/$HEAD_SHA/pulls" \
+                --jq "[.[] | select(.base.ref == \"main\" and .merged_at != null and .merge_commit_sha == \"$HEAD_SHA\")][0].number // empty"
+            )"
+            if [ -n "$merged_pr" ]; then
+              run_ci=false
+              echo "Skipping duplicate post-merge checks already covered by PR #$merged_pr."
+            fi
+          fi
+
+          if [ "$run_ci" = "true" ]; then
+            if [ "$EVENT_NAME" = "pull_request" ]; then
+              files="$(
+                gh api --paginate "/repos/$REPOSITORY/pulls/$PR_NUMBER/files?per_page=100" \
+                  --jq '.[].filename'
+              )"
+            elif [ -z "$BEFORE_SHA" ] || [[ "$BEFORE_SHA" =~ ^0+$ ]]; then
+              # A missing comparison base is unusual on main. Run everything
+              # rather than risk accepting an unchecked direct push.
+              js=true
+              go=true
+              files=""
+            else
+              files="$(
+                gh api "/repos/$REPOSITORY/compare/$BEFORE_SHA...$HEAD_SHA" \
+                  --jq '.files[].filename'
+              )"
+            fi
+
+            while IFS= read -r file; do
+              [ -n "$file" ] || continue
+
+              case "$file" in
+                .github/workflows/ci.yml|apps/*|packages/*|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|turbo.json|.node-version|.oxfmtrc.json|.lintstagedrc.json|doctor.config.json|agents/api/openapi/*|agents/cmd/contracts/*)
+                  js=true
+                  ;;
+              esac
+
+              case "$file" in
+                .github/workflows/ci.yml|agents/*|go.work|go.work.sum)
+                  go=true
+                  ;;
+              esac
+            done <<< "$files"
+          fi
+
+          {
+            echo "run_ci=$run_ci"
+            echo "js=$js"
+            echo "go=$go"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "run-ci=$run_ci js=$js go=$go"
+
   check:
     name: JS lint, typecheck & test
+    needs: scope
+    if: needs.scope.outputs.run_ci == 'true' && needs.scope.outputs.js == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -32,6 +119,8 @@ jobs:
 
   build:
     name: Build JS applications
+    needs: scope
+    if: needs.scope.outputs.run_ci == 'true' && needs.scope.outputs.js == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -56,6 +145,8 @@ jobs:
 
   go:
     name: Go lint, test & build
+    needs: scope
+    if: needs.scope.outputs.run_ci == 'true' && needs.scope.outputs.go == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

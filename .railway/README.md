@@ -27,8 +27,9 @@ railway config plan
 ## Continuous apply
 
 `.github/workflows/railway.yml` applies this configuration to development and
-then production after the `CI` workflow succeeds on `main`. It can also be run
-manually from GitHub Actions.
+then production when `.railway/**` or the workflow itself changes on `main`.
+It can also be run manually from GitHub Actions. Ordinary application commits
+do not reapply unchanged infrastructure configuration.
 
 The GitHub source has Railway's Wait for CI setting disabled, so source deploys
 start immediately instead of waiting for every monorepo push workflow.
