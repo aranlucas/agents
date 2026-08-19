@@ -37,10 +37,14 @@ type Error struct {
 
 // FrequentItem defines model for FrequentItem.
 type FrequentItem struct {
-	Name          string `json:"name"`
-	Orders        int    `json:"orders"`
-	TotalQuantity int    `json:"total_quantity"`
-	Upc           string `json:"upc"`
+	Name          string            `json:"name"`
+	Orders        int               `json:"orders"`
+	Product       *ProductReference `json:"product,omitempty"`
+	TotalQuantity int               `json:"total_quantity"`
+
+	// Upc Legacy Kroger-only identifier. Use product instead.
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+	Upc *string `json:"upc,omitempty"`
 }
 
 // Household defines model for Household.
@@ -75,15 +79,19 @@ type Invite struct {
 
 // Item defines model for Item.
 type Item struct {
-	AddedBy   string  `json:"added_by"`
-	CheckedAt *int64  `json:"checked_at"`
-	CheckedBy *string `json:"checked_by"`
-	Id        string  `json:"id"`
-	ListId    string  `json:"list_id"`
-	Name      string  `json:"name"`
-	Note      *string `json:"note"`
-	Position  int     `json:"position"`
-	Quantity  string  `json:"quantity"`
+	AddedBy   string            `json:"added_by"`
+	CheckedAt *int64            `json:"checked_at"`
+	CheckedBy *string           `json:"checked_by"`
+	Id        string            `json:"id"`
+	ListId    string            `json:"list_id"`
+	Name      string            `json:"name"`
+	Note      *string           `json:"note"`
+	Position  int               `json:"position"`
+	Product   *ProductReference `json:"product,omitempty"`
+	Quantity  string            `json:"quantity"`
+
+	// Upc Legacy Kroger-only identifier. Use product instead.
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	Upc       *string `json:"upc,omitempty"`
 	UpdatedAt int64   `json:"updated_at"`
 }
@@ -125,10 +133,14 @@ type NewIngredient struct {
 
 // NewItem defines model for NewItem.
 type NewItem struct {
-	Name     string  `json:"name"`
-	Note     *string `json:"note,omitempty"`
-	Quantity string  `json:"quantity,omitempty"`
-	Upc      *string `json:"upc,omitempty"`
+	Name     string            `json:"name"`
+	Note     *string           `json:"note,omitempty"`
+	Product  *ProductReference `json:"product,omitempty"`
+	Quantity string            `json:"quantity,omitempty"`
+
+	// Upc Legacy Kroger-only identifier. Use product instead.
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+	Upc *string `json:"upc,omitempty"`
 }
 
 // Order defines model for Order.
@@ -144,10 +156,14 @@ type Order struct {
 
 // OrderItem defines model for OrderItem.
 type OrderItem struct {
-	Name     string   `json:"name"`
-	Price    *float64 `json:"price,omitempty"`
-	Quantity int      `json:"quantity"`
-	Upc      string   `json:"upc"`
+	Name     string            `json:"name"`
+	Price    *float64          `json:"price,omitempty"`
+	Product  *ProductReference `json:"product,omitempty"`
+	Quantity int               `json:"quantity"`
+
+	// Upc Legacy Kroger-only identifier. Use product instead.
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+	Upc *string `json:"upc,omitempty"`
 }
 
 // PantryItem defines model for PantryItem.
@@ -164,6 +180,7 @@ type PreferredStore struct {
 	Chain      string `json:"chain"`
 	LocationId string `json:"location_id"`
 	Name       string `json:"name"`
+	Provider   string `json:"provider"`
 	SetAt      int64  `json:"set_at"`
 }
 
@@ -173,7 +190,16 @@ type PreferredStoreInput struct {
 	Chain      string `json:"chain"`
 	LocationId string `json:"location_id"`
 	Name       string `json:"name"`
-	SetAt      *int64 `json:"set_at,omitempty"`
+
+	// Provider Catalog provider. Omitted legacy requests are treated as Kroger.
+	Provider *string `json:"provider,omitempty"`
+	SetAt    *int64  `json:"set_at,omitempty"`
+}
+
+// ProductReference Provider-scoped product identity. The id is opaque outside its provider.
+type ProductReference struct {
+	Id       string `json:"id"`
+	Provider string `json:"provider"`
 }
 
 // Recipe defines model for Recipe.
@@ -8182,44 +8208,48 @@ func (sh *strictHandler) UpdateRecipe(w http.ResponseWriter, r *http.Request, id
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

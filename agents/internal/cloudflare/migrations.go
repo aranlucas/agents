@@ -12,7 +12,7 @@ import (
 // LatestMigrationVersion is the newest schema marker reported by migration
 // diagnostics. Readiness requires every marker in migrations. Keep existing
 // version strings stable; append instead of editing or renaming applied work.
-const LatestMigrationVersion = "007_shopping_profile_artifacts"
+const LatestMigrationVersion = "008_universal_product_references"
 
 type migration struct {
 	version string
@@ -26,7 +26,8 @@ var migrations = []migration{
 	{version: "004_shared_lists", source: d1migrations.SharedLists},
 	{version: "005_saved_grocery_resources", source: d1migrations.SavedGroceryResources},
 	{version: "006_shopping_profile", source: d1migrations.ShoppingProfile},
-	{version: LatestMigrationVersion, source: d1migrations.ShoppingProfileArtifacts},
+	{version: "007_shopping_profile_artifacts", source: d1migrations.ShoppingProfileArtifacts},
+	{version: LatestMigrationVersion, source: d1migrations.UniversalProductReferences},
 }
 
 type schemaTable struct {
@@ -68,6 +69,9 @@ var requiredSchemaTables = []schemaTable{
 	{name: "preferred_stores", columns: []string{"user_id", "location_id", "name", "address", "chain", "set_at"}},
 	{name: "kroger_account_links", columns: []string{"kroger_sub", "clerk_user_id", "linked_at"}},
 	{name: "grocery_list_item_upcs", columns: []string{"item_id", "upc"}},
+	{name: "grocery_list_item_product_refs", columns: []string{"item_id", "provider", "product_id"}},
+	{name: "shopping_order_item_product_refs", columns: []string{"order_id", "position", "provider", "product_id"}},
+	{name: "preferred_store_providers", columns: []string{"user_id", "provider"}},
 }
 
 var requiredSchemaIndexes = []string{
@@ -107,6 +111,7 @@ var requiredSchemaTriggers = []string{
 	"preferred_stores_profile_revision_insert",
 	"preferred_stores_profile_revision_update",
 	"preferred_stores_profile_revision_delete",
+	"preferred_store_providers_profile_revision_update",
 	"kroger_account_links_profile_revision_insert",
 	"kroger_account_links_profile_revision_update",
 	"shopping_profile_revisions_snapshot_job_insert",

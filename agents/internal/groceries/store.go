@@ -59,25 +59,34 @@ type List struct {
 	Items           []Item  `json:"items"`
 }
 
+// ProductReference is the universal identity shared by catalog providers.
+// ID is opaque and only meaningful within Provider.
+type ProductReference struct {
+	Provider string `json:"provider"`
+	ID       string `json:"id"`
+}
+
 type Item struct {
-	ID        string  `json:"id"`
-	ListID    string  `json:"list_id"`
-	Name      string  `json:"name"`
-	Quantity  string  `json:"quantity"`
-	Note      *string `json:"note"`
-	Upc       *string `json:"upc,omitempty"`
-	Position  int     `json:"position"`
-	AddedBy   string  `json:"added_by"`
-	CheckedBy *string `json:"checked_by"`
-	CheckedAt *int64  `json:"checked_at"`
-	UpdatedAt int64   `json:"updated_at"`
+	ID        string            `json:"id"`
+	ListID    string            `json:"list_id"`
+	Name      string            `json:"name"`
+	Quantity  string            `json:"quantity"`
+	Note      *string           `json:"note"`
+	Upc       *string           `json:"upc,omitempty"`
+	Product   *ProductReference `json:"product,omitempty"`
+	Position  int               `json:"position"`
+	AddedBy   string            `json:"added_by"`
+	CheckedBy *string           `json:"checked_by"`
+	CheckedAt *int64            `json:"checked_at"`
+	UpdatedAt int64             `json:"updated_at"`
 }
 
 type NewItem struct {
-	Name     string  `json:"name"`
-	Quantity string  `json:"quantity"`
-	Note     *string `json:"note,omitempty"`
-	Upc      *string `json:"upc,omitempty"`
+	Name     string            `json:"name"`
+	Quantity string            `json:"quantity"`
+	Note     *string           `json:"note,omitempty"`
+	Upc      *string           `json:"upc,omitempty"`
+	Product  *ProductReference `json:"product,omitempty"`
 }
 
 type ItemPatch struct {
@@ -364,8 +373,12 @@ func (s *Store) GetList(ctx context.Context, userID, listID string) (List, error
 			Params: []any{listID, userID, userID},
 		},
 		cloudflare.Statement{
-			SQL: `SELECT gli.id, gli.list_id, gli.name, gli.quantity, gli.note, glu.upc AS upc, gli.position, gli.added_by, gli.checked_by, gli.checked_at, gli.updated_at
-			      FROM grocery_list_items gli LEFT JOIN grocery_list_item_upcs glu ON glu.item_id = gli.id
+			SQL: `SELECT gli.id, gli.list_id, gli.name, gli.quantity, gli.note, glu.upc AS upc,
+			             gpr.provider AS product_provider, gpr.product_id AS product_id,
+			             gli.position, gli.added_by, gli.checked_by, gli.checked_at, gli.updated_at
+			      FROM grocery_list_items gli
+			      LEFT JOIN grocery_list_item_upcs glu ON glu.item_id = gli.id
+			      LEFT JOIN grocery_list_item_product_refs gpr ON gpr.item_id = gli.id
 			      WHERE gli.list_id = ? ORDER BY gli.position, gli.id`,
 			Params: []any{listID},
 		},
@@ -409,17 +422,14 @@ func (s *Store) AddItems(ctx context.Context, userID, listID string, inputs []Ne
 		if quantity == "" {
 			quantity = defaultQuantity
 		}
-		if name == "" || len(name) > 500 || len(quantity) > 100 || (input.Note != nil && len(*input.Note) > 1000) || (input.Upc != nil && len(*input.Upc) > 32) {
+		if name == "" || len(name) > 500 || len(quantity) > 100 || (input.Note != nil && len(*input.Note) > 1000) {
 			return nil, ErrInvalid
 		}
-		if input.Upc != nil {
-			trimmed := strings.TrimSpace(*input.Upc)
-			if trimmed == "" {
-				input.Upc = nil
-			} else {
-				input.Upc = &trimmed
-			}
+		product, upc, productErr := normalizeProductReference(input.Product, input.Upc)
+		if productErr != nil {
+			return nil, productErr
 		}
+		input.Product, input.Upc = product, upc
 		id, err := s.newID("item")
 		if err != nil {
 			return nil, err
@@ -437,10 +447,10 @@ func (s *Store) AddItems(ctx context.Context, userID, listID string, inputs []Ne
 			      ))`,
 			Params: []any{id, name, quantity, note, userID, updatedAt, listID, userID, userID},
 		})
-		if stmt := upcStatement(id, input.Upc); stmt != nil {
+		if stmt := productReferenceStatement(id, input.Product); stmt != nil {
 			statements = append(statements, *stmt)
 		}
-		items = append(items, Item{ID: id, ListID: listID, Name: name, Quantity: quantity, Note: stringPointer(note), Upc: input.Upc, AddedBy: userID, UpdatedAt: updatedAt})
+		items = append(items, Item{ID: id, ListID: listID, Name: name, Quantity: quantity, Note: stringPointer(note), Upc: input.Upc, Product: input.Product, AddedBy: userID, UpdatedAt: updatedAt})
 	}
 	statements = append(statements, cloudflare.Statement{
 		SQL: `UPDATE grocery_lists SET updated_at = ? WHERE id = ? AND (owner_user_id = ? OR EXISTS (
@@ -522,8 +532,13 @@ func (s *Store) UpdateItem(ctx context.Context, userID, listID, itemID string, p
 			Params: params,
 		},
 		cloudflare.Statement{
-			SQL: `SELECT id, list_id, name, quantity, note, position, added_by, checked_by, checked_at, updated_at
-			      FROM grocery_list_items WHERE id = ? AND list_id = ?`,
+			SQL: `SELECT gli.id, gli.list_id, gli.name, gli.quantity, gli.note, glu.upc AS upc,
+			             gpr.provider AS product_provider, gpr.product_id AS product_id,
+			             gli.position, gli.added_by, gli.checked_by, gli.checked_at, gli.updated_at
+			      FROM grocery_list_items gli
+			      LEFT JOIN grocery_list_item_upcs glu ON glu.item_id = gli.id
+			      LEFT JOIN grocery_list_item_product_refs gpr ON gpr.item_id = gli.id
+			      WHERE gli.id = ? AND gli.list_id = ?`,
 			Params: []any{itemID, listID},
 		},
 		cloudflare.Statement{SQL: `UPDATE grocery_lists SET updated_at = ? WHERE id = ?`, Params: []any{updatedAt, listID}},
@@ -563,6 +578,7 @@ func (s *Store) DeleteItem(ctx context.Context, userID, listID, itemID string, n
 			Params: []any{itemID, listID, userID, userID},
 		},
 		cloudflare.Statement{SQL: `DELETE FROM grocery_list_item_upcs WHERE item_id = ?`, Params: []any{itemID}},
+		cloudflare.Statement{SQL: `DELETE FROM grocery_list_item_product_refs WHERE item_id = ?`, Params: []any{itemID}},
 		cloudflare.Statement{
 			SQL: `UPDATE grocery_lists SET updated_at = ? WHERE id = ? AND (owner_user_id = ? OR EXISTS (
 			      SELECT 1 FROM household_members hm WHERE hm.household_id = grocery_lists.household_id AND hm.clerk_user_id = ?
@@ -623,20 +639,64 @@ func decodeList(raw json.RawMessage) (List, error) {
 }
 
 func decodeItem(raw json.RawMessage) (Item, error) {
-	var item Item
-	if json.Unmarshal(raw, &item) != nil || item.ID == "" || item.ListID == "" || item.Name == "" || item.Quantity == "" {
+	var row struct {
+		Item
+		ProductProvider *string `json:"product_provider"`
+		ProductID       *string `json:"product_id"`
+	}
+	if json.Unmarshal(raw, &row) != nil || row.ID == "" || row.ListID == "" || row.Name == "" || row.Quantity == "" {
 		return Item{}, errors.New("decode grocery list item")
 	}
-	return item, nil
+	if row.ProductProvider != nil && row.ProductID != nil {
+		row.Product = &ProductReference{Provider: *row.ProductProvider, ID: *row.ProductID}
+		if row.Upc == nil && row.Product.Provider == "kroger" {
+			row.Upc = &row.Product.ID
+		}
+	}
+	return row.Item, nil
 }
 
-func upcStatement(itemID string, upc *string) *cloudflare.Statement {
-	if upc == nil {
+func normalizeProductReference(product *ProductReference, upc *string) (*ProductReference, *string, error) {
+	if product == nil && upc != nil {
+		trimmed := strings.TrimSpace(*upc)
+		if trimmed != "" {
+			product = &ProductReference{Provider: "kroger", ID: trimmed}
+		}
+	}
+	if product == nil {
+		return nil, nil, nil
+	}
+	provider, id := strings.TrimSpace(product.Provider), strings.TrimSpace(product.ID)
+	if !validProviderID(provider) || id == "" || len(id) > 255 {
+		return nil, nil, ErrInvalid
+	}
+	normalized := &ProductReference{Provider: provider, ID: id}
+	if provider == "kroger" {
+		return normalized, &normalized.ID, nil
+	}
+	return normalized, nil, nil
+}
+
+func validProviderID(provider string) bool {
+	if provider == "" || len(provider) > 64 || provider[0] < 'a' || provider[0] > 'z' {
+		return false
+	}
+	for index := 1; index < len(provider); index++ {
+		character := provider[index]
+		if (character < 'a' || character > 'z') && (character < '0' || character > '9') && character != '_' {
+			return false
+		}
+	}
+	return true
+}
+
+func productReferenceStatement(itemID string, product *ProductReference) *cloudflare.Statement {
+	if product == nil {
 		return nil
 	}
 	return &cloudflare.Statement{
-		SQL:    `INSERT OR REPLACE INTO grocery_list_item_upcs (item_id, upc) VALUES (?, ?)`,
-		Params: []any{itemID, *upc},
+		SQL:    `INSERT OR REPLACE INTO grocery_list_item_product_refs (item_id, provider, product_id) VALUES (?, ?, ?)`,
+		Params: []any{itemID, product.Provider, product.ID},
 	}
 }
 
