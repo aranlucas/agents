@@ -252,7 +252,12 @@ func (api *groceryAPI) SetPreferredStore(ctx context.Context, request groceryapi
 		return groceryapi.SetPreferredStoredefaultJSONResponse{StatusCode: http.StatusBadRequest, Body: groceryapi.Error{Error: "invalid_grocery_request"}}, nil
 	}
 	now := api.currentShoppingTime()
+	provider := "kroger"
+	if request.Body.Provider != nil {
+		provider = strings.TrimSpace(*request.Body.Provider)
+	}
 	store := groceries.PreferredStore{
+		Provider:   provider,
 		LocationID: strings.TrimSpace(request.Body.LocationId),
 		Name:       strings.TrimSpace(request.Body.Name),
 		Address:    strings.TrimSpace(request.Body.Address),
@@ -352,7 +357,11 @@ func toAPIOrderItems(values []groceries.OrderItem) []groceryapi.OrderItem {
 	}
 	items := make([]groceryapi.OrderItem, len(values))
 	for index, value := range values {
-		items[index] = groceryapi.OrderItem{Upc: value.UPC, Name: value.Name, Quantity: value.Quantity, Price: value.Price}
+		var upc *string
+		if value.UPC != "" {
+			upc = &value.UPC
+		}
+		items[index] = groceryapi.OrderItem{Product: toAPIProductReference(value.Product), Upc: upc, Name: value.Name, Quantity: value.Quantity, Price: value.Price}
 	}
 	return items
 }
@@ -363,14 +372,18 @@ func toGroceryOrderItems(values []groceryapi.OrderItem) []groceries.OrderItem {
 	}
 	items := make([]groceries.OrderItem, len(values))
 	for index, value := range values {
-		items[index] = groceries.OrderItem{UPC: value.Upc, Name: value.Name, Quantity: value.Quantity, Price: value.Price}
+		var upc string
+		if value.Upc != nil {
+			upc = *value.Upc
+		}
+		items[index] = groceries.OrderItem{Product: toGroceryProductReference(value.Product), UPC: upc, Name: value.Name, Quantity: value.Quantity, Price: value.Price}
 	}
 	return items
 }
 
 func toAPIPreferredStore(value groceries.PreferredStore) groceryapi.PreferredStore {
 	return groceryapi.PreferredStore{
-		LocationId: value.LocationID, Name: value.Name, Address: value.Address, Chain: value.Chain, SetAt: value.SetAt,
+		Provider: value.Provider, LocationId: value.LocationID, Name: value.Name, Address: value.Address, Chain: value.Chain, SetAt: value.SetAt,
 	}
 }
 
@@ -382,7 +395,11 @@ func toAPIShoppingProfile(value groceries.ShoppingProfile) groceryapi.ShoppingPr
 	}
 	frequentItems := make([]groceryapi.FrequentItem, len(value.FrequentItems))
 	for index, item := range value.FrequentItems {
-		frequentItems[index] = groceryapi.FrequentItem{Name: item.Name, Upc: item.UPC, Orders: item.Orders, TotalQuantity: item.TotalQuantity}
+		var upc *string
+		if item.UPC != "" {
+			upc = &item.UPC
+		}
+		frequentItems[index] = groceryapi.FrequentItem{Name: item.Name, Product: toAPIProductReference(item.Product), Upc: upc, Orders: item.Orders, TotalQuantity: item.TotalQuantity}
 	}
 	if value.FrequentItems == nil {
 		frequentItems = nil

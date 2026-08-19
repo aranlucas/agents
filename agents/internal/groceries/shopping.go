@@ -30,10 +30,11 @@ type EquipmentItem struct {
 }
 
 type OrderItem struct {
-	UPC      string   `json:"upc"`
-	Name     string   `json:"name"`
-	Quantity int      `json:"quantity"`
-	Price    *float64 `json:"price,omitempty"`
+	Product  *ProductReference `json:"product,omitempty"`
+	UPC      string            `json:"upc,omitempty"`
+	Name     string            `json:"name"`
+	Quantity int               `json:"quantity"`
+	Price    *float64          `json:"price,omitempty"`
 }
 
 type Order struct {
@@ -47,6 +48,7 @@ type Order struct {
 }
 
 type PreferredStore struct {
+	Provider   string `json:"provider"`
 	LocationID string `json:"location_id"`
 	Name       string `json:"name"`
 	Address    string `json:"address"`
@@ -55,10 +57,11 @@ type PreferredStore struct {
 }
 
 type FrequentItem struct {
-	Name          string `json:"name"`
-	UPC           string `json:"upc"`
-	Orders        int    `json:"orders"`
-	TotalQuantity int    `json:"total_quantity"`
+	Name          string            `json:"name"`
+	Product       *ProductReference `json:"product,omitempty"`
+	UPC           string            `json:"upc,omitempty"`
+	Orders        int               `json:"orders"`
+	TotalQuantity int               `json:"total_quantity"`
 }
 
 type ShoppingProfile struct {
@@ -363,7 +366,21 @@ func (s *Store) RecordOrder(ctx context.Context, userID string, order Order, now
 	order.TotalItems = 0
 	for index := range order.Items {
 		item := &order.Items[index]
-		item.UPC, item.Name = strings.TrimSpace(item.UPC), strings.TrimSpace(item.Name)
+		item.Name = strings.TrimSpace(item.Name)
+		var upc *string
+		if strings.TrimSpace(item.UPC) != "" {
+			trimmed := strings.TrimSpace(item.UPC)
+			upc = &trimmed
+		}
+		product, normalizedUPC, productErr := normalizeProductReference(item.Product, upc)
+		if productErr != nil {
+			return Order{}, productErr
+		}
+		item.Product = product
+		item.UPC = ""
+		if normalizedUPC != nil {
+			item.UPC = *normalizedUPC
+		}
 		if item.Name == "" || len(item.Name) > 500 || item.Quantity < 0 {
 			return Order{}, ErrInvalid
 		}
@@ -380,6 +397,12 @@ func (s *Store) RecordOrder(ctx context.Context, userID string, order Order, now
 			SQL:    `INSERT INTO shopping_order_items (order_id, position, upc, name, quantity, price) VALUES (?, ?, ?, ?, ?, ?)`,
 			Params: []any{order.ID, position, item.UPC, item.Name, item.Quantity, nullableFloat64(item.Price)},
 		})
+		if item.Product != nil {
+			statements = append(statements, cloudflare.Statement{
+				SQL:    `INSERT OR REPLACE INTO shopping_order_item_product_refs (order_id, position, provider, product_id) VALUES (?, ?, ?, ?)`,
+				Params: []any{order.ID, position, item.Product.Provider, item.Product.ID},
+			})
+		}
 	}
 	if _, err := s.d1.Run(ctx, statements...); err != nil {
 		return Order{}, fmt.Errorf("record shopping order: %w", err)
@@ -407,8 +430,10 @@ func (s *Store) RecentOrders(ctx context.Context, userID string, limit int) ([]O
 			Params: []any{userID, limit},
 		},
 		cloudflare.Statement{
-			SQL: `SELECT soi.order_id, soi.position, soi.upc, soi.name, soi.quantity, soi.price
+			SQL: `SELECT soi.order_id, soi.position, soi.upc, soi.name, soi.quantity, soi.price,
+			             opr.provider AS product_provider, opr.product_id AS product_id
 			      FROM shopping_order_items soi JOIN shopping_orders so ON so.id = soi.order_id
+			      LEFT JOIN shopping_order_item_product_refs opr ON opr.order_id = soi.order_id AND opr.position = soi.position
 			      WHERE so.user_id = ? AND soi.order_id IN (
 			        SELECT id FROM shopping_orders WHERE user_id = ? ORDER BY placed_at DESC, id DESC LIMIT ?
 			      ) ORDER BY so.placed_at DESC, soi.position`,
@@ -442,12 +467,14 @@ func decodeRecentOrders(orderRows, itemRows []json.RawMessage) ([]Order, error) 
 	}
 	for _, raw := range itemRows {
 		var row struct {
-			OrderID  string   `json:"order_id"`
-			Position int      `json:"position"`
-			UPC      string   `json:"upc"`
-			Name     string   `json:"name"`
-			Quantity int      `json:"quantity"`
-			Price    *float64 `json:"price"`
+			OrderID         string   `json:"order_id"`
+			Position        int      `json:"position"`
+			UPC             string   `json:"upc"`
+			Name            string   `json:"name"`
+			Quantity        int      `json:"quantity"`
+			Price           *float64 `json:"price"`
+			ProductProvider *string  `json:"product_provider"`
+			ProductID       *string  `json:"product_id"`
 		}
 		if json.Unmarshal(raw, &row) != nil || row.OrderID == "" || row.Name == "" || row.Quantity < 0 || row.Position < 0 {
 			return nil, errors.New("decode shopping order item")
@@ -456,7 +483,11 @@ func decodeRecentOrders(orderRows, itemRows []json.RawMessage) ([]Order, error) 
 		if !ok {
 			continue
 		}
-		orders[index].Items = append(orders[index].Items, OrderItem{UPC: row.UPC, Name: row.Name, Quantity: row.Quantity, Price: row.Price})
+		var product *ProductReference
+		if row.ProductProvider != nil && row.ProductID != nil {
+			product = &ProductReference{Provider: *row.ProductProvider, ID: *row.ProductID}
+		}
+		orders[index].Items = append(orders[index].Items, OrderItem{Product: product, UPC: row.UPC, Name: row.Name, Quantity: row.Quantity, Price: row.Price})
 	}
 	return orders, nil
 }
@@ -467,7 +498,11 @@ func (s *Store) PreferredStore(ctx context.Context, userID string) (*PreferredSt
 		return nil, err
 	}
 	results, err := s.d1.Run(ctx, cloudflare.Statement{
-		SQL:    `SELECT location_id, name, address, chain, set_at FROM preferred_stores WHERE user_id = ? LIMIT 1`,
+		SQL: `SELECT COALESCE(psp.provider, 'kroger') AS provider,
+		             ps.location_id, ps.name, ps.address, ps.chain, ps.set_at
+		      FROM preferred_stores ps
+		      LEFT JOIN preferred_store_providers psp ON psp.user_id = ps.user_id
+		      WHERE ps.user_id = ? LIMIT 1`,
 		Params: []any{userID},
 	})
 	if err != nil {
@@ -496,10 +531,14 @@ func (s *Store) SetPreferredStore(ctx context.Context, userID string, store Pref
 		return PreferredStore{}, err
 	}
 	store.LocationID = strings.TrimSpace(store.LocationID)
+	store.Provider = strings.TrimSpace(store.Provider)
+	if store.Provider == "" {
+		store.Provider = "kroger"
+	}
 	store.Name = strings.TrimSpace(store.Name)
 	store.Address = strings.TrimSpace(store.Address)
 	store.Chain = strings.TrimSpace(store.Chain)
-	if store.LocationID == "" || len(store.LocationID) > 200 || store.Name == "" || len(store.Name) > 500 || len(store.Address) > 1_000 || len(store.Chain) > 200 {
+	if !validProviderID(store.Provider) || store.LocationID == "" || len(store.LocationID) > 200 || store.Name == "" || len(store.Name) > 500 || len(store.Address) > 1_000 || len(store.Chain) > 200 {
 		return PreferredStore{}, ErrInvalid
 	}
 	store.SetAt = shoppingTimestamp(now)
@@ -517,17 +556,25 @@ func (s *Store) SetPreferredStore(ctx context.Context, userID string, store Pref
 		         OR preferred_stores.chain IS NOT excluded.chain`,
 		Params: []any{userID, store.LocationID, store.Name, store.Address, store.Chain, store.SetAt},
 	}, {
-		SQL:    `SELECT location_id, name, address, chain, set_at FROM preferred_stores WHERE user_id = ? LIMIT 1`,
+		SQL: `INSERT INTO preferred_store_providers (user_id, provider) VALUES (?, ?)
+		      ON CONFLICT(user_id) DO UPDATE SET provider = excluded.provider`,
+		Params: []any{userID, store.Provider},
+	}, {
+		SQL: `SELECT COALESCE(psp.provider, 'kroger') AS provider,
+		             ps.location_id, ps.name, ps.address, ps.chain, ps.set_at
+		      FROM preferred_stores ps
+		      LEFT JOIN preferred_store_providers psp ON psp.user_id = ps.user_id
+		      WHERE ps.user_id = ? LIMIT 1`,
 		Params: []any{userID},
 	}}
 	results, err := s.d1.Run(ctx, statements...)
 	if err != nil {
 		return PreferredStore{}, fmt.Errorf("set preferred store: %w", err)
 	}
-	if len(results) < 2 {
+	if len(results) < 3 {
 		return PreferredStore{}, errors.New("set preferred store: incomplete D1 results")
 	}
-	canonical, err := decodePreferredStore(results[1].Rows)
+	canonical, err := decodePreferredStore(results[2].Rows)
 	if err != nil || canonical == nil {
 		if err == nil {
 			err = errors.New("preferred store was not persisted")
@@ -543,7 +590,10 @@ func (s *Store) ClearPreferredStore(ctx context.Context, userID string) error {
 	if err != nil {
 		return err
 	}
-	statements := []cloudflare.Statement{{SQL: `DELETE FROM preferred_stores WHERE user_id = ?`, Params: []any{userID}}}
+	statements := []cloudflare.Statement{
+		{SQL: `DELETE FROM preferred_store_providers WHERE user_id = ?`, Params: []any{userID}},
+		{SQL: `DELETE FROM preferred_stores WHERE user_id = ?`, Params: []any{userID}},
+	}
 	if _, err := s.d1.Run(ctx, statements...); err != nil {
 		return fmt.Errorf("clear preferred store: %w", err)
 	}
@@ -558,10 +608,14 @@ func (s *Store) FrequentItems(ctx context.Context, userID string) ([]FrequentIte
 	}
 	results, err := s.d1.Run(ctx, cloudflare.Statement{
 		SQL: `SELECT MIN(soi.name) AS name, COALESCE(MIN(NULLIF(soi.upc, '')), '') AS upc,
+		             MIN(opr.provider) AS product_provider, MIN(opr.product_id) AS product_id,
 		             COUNT(DISTINCT soi.order_id) AS orders, SUM(soi.quantity) AS total_quantity
 		      FROM shopping_order_items soi JOIN shopping_orders so ON so.id = soi.order_id
-		      WHERE so.user_id = ? GROUP BY lower(soi.name)
-		      ORDER BY COUNT(DISTINCT soi.order_id) DESC, lower(soi.name), MIN(soi.name) LIMIT 20`,
+		      LEFT JOIN shopping_order_item_product_refs opr ON opr.order_id = soi.order_id AND opr.position = soi.position
+		      WHERE so.user_id = ?
+		      GROUP BY opr.provider, opr.product_id,
+		        CASE WHEN opr.provider IS NULL OR opr.product_id IS NULL THEN lower(soi.name) ELSE '' END
+		      ORDER BY COUNT(DISTINCT soi.order_id) DESC, lower(MIN(soi.name)), MIN(soi.name) LIMIT 20`,
 		Params: []any{userID},
 	})
 	if err != nil {
@@ -576,11 +630,18 @@ func (s *Store) FrequentItems(ctx context.Context, userID string) ([]FrequentIte
 func decodeFrequentItems(rows []json.RawMessage) ([]FrequentItem, error) {
 	items := []FrequentItem{}
 	for _, raw := range rows {
-		var item FrequentItem
-		if json.Unmarshal(raw, &item) != nil || item.Name == "" || item.Orders < 0 || item.TotalQuantity < 0 {
+		var row struct {
+			FrequentItem
+			ProductProvider *string `json:"product_provider"`
+			ProductID       *string `json:"product_id"`
+		}
+		if json.Unmarshal(raw, &row) != nil || row.Name == "" || row.Orders < 0 || row.TotalQuantity < 0 {
 			return nil, errors.New("decode frequent shopping item")
 		}
-		items = append(items, item)
+		if row.ProductProvider != nil && row.ProductID != nil {
+			row.Product = &ProductReference{Provider: *row.ProductProvider, ID: *row.ProductID}
+		}
+		items = append(items, row.FrequentItem)
 	}
 	return items, nil
 }
@@ -618,7 +679,11 @@ func (s *Store) loadShoppingProfileSnapshot(ctx context.Context, userID string) 
 	results, err := s.d1.Run(
 		ctx,
 		cloudflare.Statement{
-			SQL:    `SELECT location_id, name, address, chain, set_at FROM preferred_stores WHERE user_id = ? LIMIT 1`,
+			SQL: `SELECT COALESCE(psp.provider, 'kroger') AS provider,
+			             ps.location_id, ps.name, ps.address, ps.chain, ps.set_at
+			      FROM preferred_stores ps
+			      LEFT JOIN preferred_store_providers psp ON psp.user_id = ps.user_id
+			      WHERE ps.user_id = ? LIMIT 1`,
 			Params: []any{userID},
 		},
 		cloudflare.Statement{
@@ -635,8 +700,10 @@ func (s *Store) loadShoppingProfileSnapshot(ctx context.Context, userID string) 
 			Params: []any{userID, recentOrderLimit},
 		},
 		cloudflare.Statement{
-			SQL: `SELECT soi.order_id, soi.position, soi.upc, soi.name, soi.quantity, soi.price
+			SQL: `SELECT soi.order_id, soi.position, soi.upc, soi.name, soi.quantity, soi.price,
+			             opr.provider AS product_provider, opr.product_id AS product_id
 			      FROM shopping_order_items soi JOIN shopping_orders so ON so.id = soi.order_id
+			      LEFT JOIN shopping_order_item_product_refs opr ON opr.order_id = soi.order_id AND opr.position = soi.position
 			      WHERE so.user_id = ? AND soi.order_id IN (
 			        SELECT id FROM shopping_orders WHERE user_id = ? ORDER BY placed_at DESC, id DESC LIMIT ?
 			      ) ORDER BY so.placed_at DESC, soi.position`,
@@ -644,10 +711,14 @@ func (s *Store) loadShoppingProfileSnapshot(ctx context.Context, userID string) 
 		},
 		cloudflare.Statement{
 			SQL: `SELECT MIN(soi.name) AS name, COALESCE(MIN(NULLIF(soi.upc, '')), '') AS upc,
+			             MIN(opr.provider) AS product_provider, MIN(opr.product_id) AS product_id,
 			             COUNT(DISTINCT soi.order_id) AS orders, SUM(soi.quantity) AS total_quantity
 			      FROM shopping_order_items soi JOIN shopping_orders so ON so.id = soi.order_id
-			      WHERE so.user_id = ? GROUP BY lower(soi.name)
-			      ORDER BY COUNT(DISTINCT soi.order_id) DESC, lower(soi.name), MIN(soi.name) LIMIT 20`,
+			      LEFT JOIN shopping_order_item_product_refs opr ON opr.order_id = soi.order_id AND opr.position = soi.position
+			      WHERE so.user_id = ?
+			      GROUP BY opr.provider, opr.product_id,
+			        CASE WHEN opr.provider IS NULL OR opr.product_id IS NULL THEN lower(soi.name) ELSE '' END
+			      ORDER BY COUNT(DISTINCT soi.order_id) DESC, lower(MIN(soi.name)), MIN(soi.name) LIMIT 20`,
 			Params: []any{userID},
 		},
 		cloudflare.Statement{

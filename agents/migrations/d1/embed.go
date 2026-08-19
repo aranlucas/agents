@@ -40,3 +40,9 @@ var ShoppingProfile string
 //
 //go:embed 007_shopping_profile_artifacts.sql
 var ShoppingProfileArtifacts string
+
+// UniversalProductReferences stores provider-scoped product and store identities
+// without changing the history of already-applied shopping migrations.
+//
+//go:embed 008_universal_product_references.sql
+var UniversalProductReferences string
