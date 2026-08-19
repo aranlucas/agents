@@ -70,10 +70,10 @@ func TestPreferredStoreUsesServerTimestamp(t *testing.T) {
 		t.Fatal(err)
 	}
 	stored, ok := response.(groceryapi.SetPreferredStore200JSONResponse)
-	if !ok || stored.SetAt != 2 {
+	if !ok || stored.SetAt != 2 || stored.Provider != "kroger" {
 		t.Fatalf("response = %#v (%T)", response, response)
 	}
-	if repository.preferred == nil || repository.preferred.SetAt != 2 {
+	if repository.preferred == nil || repository.preferred.SetAt != 2 || repository.preferred.Provider != "kroger" {
 		t.Fatalf("stored preferred store = %#v", repository.preferred)
 	}
 }
@@ -468,7 +468,7 @@ func (f *fakeShoppingRepository) SetPreferredStore(_ context.Context, userID str
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.lastUserID = userID
-	if f.preferred != nil && f.preferred.LocationID == store.LocationID && f.preferred.Name == store.Name &&
+	if f.preferred != nil && f.preferred.Provider == store.Provider && f.preferred.LocationID == store.LocationID && f.preferred.Name == store.Name &&
 		f.preferred.Address == store.Address && f.preferred.Chain == store.Chain {
 		return *f.preferred, nil
 	}

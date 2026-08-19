@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Grocery Gateway API
-  version: "1.0.0"
+  version: "1.1.0"
 paths:
   /api/grocery/households:
     post:
@@ -708,6 +708,19 @@ components:
       properties:
         error:
           type: string
+    ProductReference:
+      type: object
+      additionalProperties: false
+      description: Provider-scoped product identity. The id is opaque outside its provider.
+      required: [provider, id]
+      properties:
+        provider:
+          type: string
+          pattern: "^[a-z][a-z0-9_]{0,63}$"
+        id:
+          type: string
+          minLength: 1
+          maxLength: 255
     Household:
       type: object
       required: [id, name, role, created_by, created_at]
@@ -798,6 +811,12 @@ components:
         upc:
           type: string
           nullable: true
+          deprecated: true
+          description: Legacy Kroger-only identifier. Use product instead.
+        product:
+          allOf:
+            - $ref: "#/components/schemas/ProductReference"
+          nullable: true
         position:
           type: integer
         added_by:
@@ -829,6 +848,12 @@ components:
           nullable: true
         upc:
           type: string
+          nullable: true
+          deprecated: true
+          description: Legacy Kroger-only identifier. Use product instead.
+        product:
+          allOf:
+            - $ref: "#/components/schemas/ProductReference"
           nullable: true
     ItemPatch:
       type: object
@@ -1051,10 +1076,16 @@ components:
     OrderItem:
       type: object
       additionalProperties: false
-      required: [upc, name, quantity]
+      required: [name, quantity]
       properties:
         upc:
           type: string
+          deprecated: true
+          description: Legacy Kroger-only identifier. Use product instead.
+        product:
+          allOf:
+            - $ref: "#/components/schemas/ProductReference"
+          nullable: true
         name:
           type: string
         quantity:
@@ -1116,8 +1147,11 @@ components:
           nullable: true
     PreferredStore:
       type: object
-      required: [location_id, name, address, chain, set_at]
+      required: [provider, location_id, name, address, chain, set_at]
       properties:
+        provider:
+          type: string
+          pattern: "^[a-z][a-z0-9_]{0,63}$"
         location_id:
           type: string
         name:
@@ -1134,6 +1168,10 @@ components:
       additionalProperties: false
       required: [location_id, name, address, chain]
       properties:
+        provider:
+          type: string
+          pattern: "^[a-z][a-z0-9_]{0,63}$"
+          description: Catalog provider. Omitted legacy requests are treated as Kroger.
         location_id:
           type: string
         name:
@@ -1147,12 +1185,18 @@ components:
           format: int64
     FrequentItem:
       type: object
-      required: [name, upc, orders, total_quantity]
+      required: [name, orders, total_quantity]
       properties:
         name:
           type: string
         upc:
           type: string
+          deprecated: true
+          description: Legacy Kroger-only identifier. Use product instead.
+        product:
+          allOf:
+            - $ref: "#/components/schemas/ProductReference"
+          nullable: true
         orders:
           type: integer
         total_quantity:

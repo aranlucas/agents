@@ -134,7 +134,7 @@ func (s *Store) SaveList(ctx context.Context, userID string, input SavedListInpu
 			SQL:    `INSERT INTO grocery_list_items (id, list_id, name, quantity, note, position, added_by, checked_by, checked_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?)`,
 			Params: []any{item.ID, id, item.Name, item.Quantity, nullableString(item.Note), position, userID, createdAt},
 		})
-		if stmt := upcStatement(item.ID, item.Upc); stmt != nil {
+		if stmt := productReferenceStatement(item.ID, item.Product); stmt != nil {
 			statements = append(statements, *stmt)
 		}
 	}
@@ -242,6 +242,7 @@ func (s *Store) ReplaceListItems(ctx context.Context, userID, listID string, inp
 	updatedAt := timestamp(now)
 	statements := []cloudflare.Statement{
 		{SQL: `DELETE FROM grocery_list_item_upcs WHERE item_id IN (SELECT id FROM grocery_list_items WHERE list_id = ?)`, Params: []any{listID}},
+		{SQL: `DELETE FROM grocery_list_item_product_refs WHERE item_id IN (SELECT id FROM grocery_list_items WHERE list_id = ?)`, Params: []any{listID}},
 		{SQL: `DELETE FROM grocery_list_items WHERE list_id = ?`, Params: []any{listID}},
 	}
 	for position, raw := range inputs {
@@ -253,7 +254,7 @@ func (s *Store) ReplaceListItems(ctx context.Context, userID, listID string, inp
 			SQL:    `INSERT INTO grocery_list_items (id, list_id, name, quantity, note, position, added_by, checked_by, checked_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?)`,
 			Params: []any{item.ID, listID, item.Name, item.Quantity, nullableString(item.Note), position, userID, updatedAt},
 		})
-		if stmt := upcStatement(item.ID, item.Upc); stmt != nil {
+		if stmt := productReferenceStatement(item.ID, item.Product); stmt != nil {
 			statements = append(statements, *stmt)
 		}
 	}
@@ -625,7 +626,7 @@ func (s *Store) newListItem(listID, userID string, input NewItem, position int, 
 	if quantity == "" {
 		quantity = defaultQuantity
 	}
-	if name == "" || len(name) > 500 || len(quantity) > 100 || (input.Upc != nil && len(*input.Upc) > 32) {
+	if name == "" || len(name) > 500 || len(quantity) > 100 {
 		return Item{}, ErrInvalid
 	}
 	var note *string
@@ -638,18 +639,15 @@ func (s *Store) newListItem(listID, userID string, input NewItem, position int, 
 			note = &trimmed
 		}
 	}
-	var upc *string
-	if input.Upc != nil {
-		trimmed := strings.TrimSpace(*input.Upc)
-		if trimmed != "" {
-			upc = &trimmed
-		}
+	product, upc, productErr := normalizeProductReference(input.Product, input.Upc)
+	if productErr != nil {
+		return Item{}, productErr
 	}
 	id, err := s.newID("item")
 	if err != nil {
 		return Item{}, err
 	}
-	return Item{ID: id, ListID: listID, Name: name, Quantity: quantity, Note: note, Upc: upc, Position: position, AddedBy: userID, UpdatedAt: updatedAt}, nil
+	return Item{ID: id, ListID: listID, Name: name, Quantity: quantity, Note: note, Upc: upc, Product: product, Position: position, AddedBy: userID, UpdatedAt: updatedAt}, nil
 }
 
 func decodeRecipe(raw json.RawMessage) (Recipe, error) {

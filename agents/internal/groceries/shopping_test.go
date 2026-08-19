@@ -61,10 +61,16 @@ func TestRecordOrderWritesOrderAndItemsInOneBatch(t *testing.T) {
 		requests++
 		switch requests {
 		case 1:
-			if len(statements) != 3 || !strings.Contains(statements[0].SQL, "INSERT INTO shopping_orders") ||
+			if len(statements) != 5 || !strings.Contains(statements[0].SQL, "INSERT INTO shopping_orders") ||
 				!strings.Contains(statements[1].SQL, "INSERT INTO shopping_order_items") ||
-				!strings.Contains(statements[2].SQL, "INSERT INTO shopping_order_items") {
+				!strings.Contains(statements[2].SQL, "INSERT OR REPLACE INTO shopping_order_item_product_refs") ||
+				!strings.Contains(statements[3].SQL, "INSERT INTO shopping_order_items") ||
+				!strings.Contains(statements[4].SQL, "INSERT OR REPLACE INTO shopping_order_item_product_refs") {
 				t.Fatalf("record statements = %#v", statements)
+			}
+			if statements[2].Params[2] != "kroger" || statements[2].Params[3] != "upc_1" ||
+				statements[4].Params[2] != "trader_joes" || statements[4].Params[3] != "sku_2" {
+				t.Fatalf("product reference statements = %#v / %#v", statements[2], statements[4])
 			}
 			if statements[0].Params[4] != float64(1) {
 				t.Fatalf("placed_at = %#v, want Unix seconds", statements[0].Params[4])
@@ -83,9 +89,9 @@ func TestRecordOrderWritesOrderAndItemsInOneBatch(t *testing.T) {
 				),
 				queryResult(
 					t,
-					map[string]any{"order_id": "order_2", "position": 0, "upc": "upc_3", "name": "Bread", "quantity": 1},
-					map[string]any{"order_id": "order_1", "position": 0, "upc": "upc_1", "name": "Milk", "quantity": 1},
-					map[string]any{"order_id": "order_1", "position": 1, "upc": "upc_2", "name": "Eggs", "quantity": 2},
+					map[string]any{"order_id": "order_2", "position": 0, "upc": "upc_3", "name": "Bread", "quantity": 1, "product_provider": "kroger", "product_id": "upc_3"},
+					map[string]any{"order_id": "order_1", "position": 0, "upc": "upc_1", "name": "Milk", "quantity": 1, "product_provider": "kroger", "product_id": "upc_1"},
+					map[string]any{"order_id": "order_1", "position": 1, "upc": "", "name": "Eggs", "quantity": 2, "product_provider": "trader_joes", "product_id": "sku_2"},
 				),
 			}
 		default:
@@ -97,7 +103,7 @@ func TestRecordOrderWritesOrderAndItemsInOneBatch(t *testing.T) {
 
 	recorded, err := store.RecordOrder(t.Context(), "user_1", Order{Items: []OrderItem{
 		{UPC: "upc_1", Name: "Milk", Quantity: 1},
-		{UPC: "upc_2", Name: "Eggs", Quantity: 2},
+		{Product: &ProductReference{Provider: "trader_joes", ID: "sku_2"}, Name: "Eggs", Quantity: 2},
 	}}, time.UnixMilli(1_000))
 	if err != nil {
 		t.Fatal(err)
@@ -110,7 +116,8 @@ func TestRecordOrderWritesOrderAndItemsInOneBatch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(orders) != 2 || orders[0].ID != "order_2" || len(orders[1].Items) != 2 || orders[1].Items[1].Name != "Eggs" {
+	if len(orders) != 2 || orders[0].ID != "order_2" || len(orders[1].Items) != 2 || orders[1].Items[1].Name != "Eggs" ||
+		orders[1].Items[1].Product == nil || orders[1].Items[1].Product.Provider != "trader_joes" || orders[1].Items[1].UPC != "" {
 		t.Fatalf("orders = %#v", orders)
 	}
 }
@@ -176,16 +183,26 @@ func TestLinkKrogerAccountRekeysNamespacedRows(t *testing.T) {
 
 func TestSetPreferredStoreWithoutArtifactServiceUsesUnixSeconds(t *testing.T) {
 	store := newFixtureStore(t, func(statements []cloudflare.Statement) []cloudflare.Result {
-		if len(statements) != 2 || !strings.Contains(statements[0].SQL, "ON CONFLICT(user_id) DO UPDATE") {
+		if len(statements) != 3 || !strings.Contains(statements[0].SQL, "ON CONFLICT(user_id) DO UPDATE") ||
+			!strings.Contains(statements[1].SQL, "INSERT INTO preferred_store_providers") ||
+			statements[1].Params[1] != "trader_joes" {
 			t.Fatalf("preferred-store statements = %#v", statements)
 		}
 		if statements[0].Params[5] != float64(1) {
 			t.Fatalf("set_at = %#v, want Unix seconds", statements[0].Params[5])
 		}
-		return []cloudflare.Result{mutationResult(1), queryResult(t, PreferredStore{LocationID: "loc_1", Name: "Kroger", SetAt: 1})}
+		return []cloudflare.Result{
+			mutationResult(1),
+			mutationResult(1),
+			queryResult(t, PreferredStore{Provider: "trader_joes", LocationID: "loc_1", Name: "Trader Joe's", SetAt: 1}),
+		}
 	})
-	if _, err := store.SetPreferredStore(t.Context(), "user_1", PreferredStore{LocationID: "loc_1", Name: "Kroger"}, time.UnixMilli(1_000)); err != nil {
+	stored, err := store.SetPreferredStore(t.Context(), "user_1", PreferredStore{Provider: "trader_joes", LocationID: "loc_1", Name: "Trader Joe's"}, time.UnixMilli(1_000))
+	if err != nil {
 		t.Fatal(err)
+	}
+	if stored.Provider != "trader_joes" {
+		t.Fatalf("stored preferred store = %#v", stored)
 	}
 }
 
@@ -193,13 +210,13 @@ func TestShoppingProfileLoadsCompleteProfileInOneD1Batch(t *testing.T) {
 	category := "appliance"
 	store := newFixtureStore(t, func(statements []cloudflare.Statement) []cloudflare.Result {
 		if len(statements) != 8 || !strings.Contains(statements[5].SQL, "MIN(soi.name)") ||
-			!strings.Contains(statements[5].SQL, "lower(soi.name), MIN(soi.name)") ||
+			!strings.Contains(statements[5].SQL, "GROUP BY opr.provider, opr.product_id") ||
 			!strings.Contains(statements[6].SQL, "shopping_profile_revisions") ||
 			!strings.Contains(statements[7].SQL, "shopping_profile_artifacts") {
 			t.Fatalf("shopping profile statements = %#v", statements)
 		}
 		return []cloudflare.Result{
-			queryResult(t, PreferredStore{LocationID: "loc_1", Name: "Kroger", SetAt: 1}),
+			queryResult(t, PreferredStore{Provider: "kroger", LocationID: "loc_1", Name: "Kroger", SetAt: 1}),
 			queryResult(t, PantryItem{Name: "Eggs", Quantity: 12, AddedAt: 1}),
 			queryResult(t, EquipmentItem{Name: "Air fryer", Category: &category, AddedAt: 1}),
 			queryResult(t), queryResult(t),
@@ -216,25 +233,26 @@ func TestShoppingProfileLoadsCompleteProfileInOneD1Batch(t *testing.T) {
 	}
 }
 
-func TestSaveListPersistsItemUPC(t *testing.T) {
+func TestSaveListPersistsProductReference(t *testing.T) {
 	requests := 0
 	store := newFixtureStore(t, func(statements []cloudflare.Statement) []cloudflare.Result {
 		requests++
 		switch requests {
 		case 1:
 			if len(statements) != 4 || !strings.Contains(statements[1].SQL, "INSERT INTO grocery_list_items") ||
-				!strings.Contains(statements[2].SQL, "INSERT OR REPLACE INTO grocery_list_item_upcs") || statements[2].Params[1] != "0001111041700" {
+				!strings.Contains(statements[2].SQL, "INSERT OR REPLACE INTO grocery_list_item_product_refs") ||
+				statements[2].Params[1] != "trader_joes" || statements[2].Params[2] != "sku_1700" {
 				t.Fatalf("save statements = %#v", statements)
 			}
 			return mutationResults(len(statements))
 		case 2:
-			if len(statements) != 2 || !strings.Contains(statements[1].SQL, "LEFT JOIN grocery_list_item_upcs glu ON glu.item_id = gli.id") ||
-				!strings.Contains(statements[1].SQL, "glu.upc AS upc") {
+			if len(statements) != 2 || !strings.Contains(statements[1].SQL, "LEFT JOIN grocery_list_item_product_refs gpr ON gpr.item_id = gli.id") ||
+				!strings.Contains(statements[1].SQL, "gpr.provider AS product_provider") {
 				t.Fatalf("get statements = %#v", statements)
 			}
 			return []cloudflare.Result{
 				queryResult(t, List{ID: "list_1", OwnerUserID: "user_1", Title: "Weekend", Status: "active", CreatedAt: 1_000, UpdatedAt: 1_000}),
-				queryResult(t, Item{ID: "item_1", ListID: "list_1", Name: "Milk", Quantity: "1", Upc: testStringPointer("0001111041700"), AddedBy: "user_1", UpdatedAt: 1_000}),
+				queryResult(t, map[string]any{"id": "item_1", "list_id": "list_1", "name": "Milk", "quantity": "1", "added_by": "user_1", "updated_at": 1_000, "product_provider": "trader_joes", "product_id": "sku_1700"}),
 			}
 		default:
 			t.Fatalf("unexpected D1 request %d: %#v", requests, statements)
@@ -249,13 +267,13 @@ func TestSaveListPersistsItemUPC(t *testing.T) {
 		return id, nil
 	}
 
-	upc := "0001111041700"
-	saved, err := store.SaveList(t.Context(), "user_1", SavedListInput{Title: "Weekend", Items: []NewItem{{Name: "Milk", Upc: &upc}}}, time.UnixMilli(1_000))
-	if err != nil || saved.Items[0].Upc == nil || *saved.Items[0].Upc != upc {
+	product := ProductReference{Provider: "trader_joes", ID: "sku_1700"}
+	saved, err := store.SaveList(t.Context(), "user_1", SavedListInput{Title: "Weekend", Items: []NewItem{{Name: "Milk", Product: &product}}}, time.UnixMilli(1_000))
+	if err != nil || saved.Items[0].Product == nil || *saved.Items[0].Product != product || saved.Items[0].Upc != nil {
 		t.Fatalf("saved/error = %#v / %v", saved, err)
 	}
 	loaded, err := store.GetList(t.Context(), "user_1", "list_1")
-	if err != nil || len(loaded.Items) != 1 || loaded.Items[0].Upc == nil || *loaded.Items[0].Upc != upc {
+	if err != nil || len(loaded.Items) != 1 || loaded.Items[0].Product == nil || *loaded.Items[0].Product != product || loaded.Items[0].Upc != nil {
 		t.Fatalf("loaded/error = %#v / %v", loaded, err)
 	}
 }
@@ -266,8 +284,9 @@ func TestDeleteItemRemovesUPCRow(t *testing.T) {
 		requests++
 		switch requests {
 		case 1:
-			if len(statements) != 3 || !strings.Contains(statements[0].SQL, "DELETE FROM grocery_list_items") ||
-				statements[1].SQL != "DELETE FROM grocery_list_item_upcs WHERE item_id = ?" || statements[1].Params[0] != "item_1" {
+			if len(statements) != 4 || !strings.Contains(statements[0].SQL, "DELETE FROM grocery_list_items") ||
+				statements[1].SQL != "DELETE FROM grocery_list_item_upcs WHERE item_id = ?" || statements[1].Params[0] != "item_1" ||
+				statements[2].SQL != "DELETE FROM grocery_list_item_product_refs WHERE item_id = ?" || statements[2].Params[0] != "item_1" {
 				t.Fatalf("delete statements = %#v", statements)
 			}
 			return mutationResults(len(statements))
@@ -287,7 +306,7 @@ func TestDeleteItemRemovesUPCRow(t *testing.T) {
 	}
 }
 
-func TestReplaceListItemsCleansUpOrphanedUPCRows(t *testing.T) {
+func TestReplaceListItemsCleansUpOrphanedProductReferenceRows(t *testing.T) {
 	requests := 0
 	store := newFixtureStore(t, func(statements []cloudflare.Statement) []cloudflare.Result {
 		requests++
@@ -295,16 +314,17 @@ func TestReplaceListItemsCleansUpOrphanedUPCRows(t *testing.T) {
 		case 1:
 			return []cloudflare.Result{queryResult(t, map[string]int{"present": 1})}
 		case 2:
-			if len(statements) != 5 || statements[0].SQL != "DELETE FROM grocery_list_item_upcs WHERE item_id IN (SELECT id FROM grocery_list_items WHERE list_id = ?)" ||
-				!strings.Contains(statements[1].SQL, "DELETE FROM grocery_list_items") ||
-				!strings.Contains(statements[3].SQL, "INSERT OR REPLACE INTO grocery_list_item_upcs") {
+			if len(statements) != 6 || statements[0].SQL != "DELETE FROM grocery_list_item_upcs WHERE item_id IN (SELECT id FROM grocery_list_items WHERE list_id = ?)" ||
+				!strings.Contains(statements[1].SQL, "DELETE FROM grocery_list_item_product_refs") ||
+				!strings.Contains(statements[2].SQL, "DELETE FROM grocery_list_items") ||
+				!strings.Contains(statements[4].SQL, "INSERT OR REPLACE INTO grocery_list_item_product_refs") {
 				t.Fatalf("replacement statements = %#v", statements)
 			}
 			return mutationResults(len(statements))
 		case 3:
 			return []cloudflare.Result{
 				queryResult(t, List{ID: "list_1", OwnerUserID: "user_1", Title: "Weekend", Status: "active", CreatedAt: 1_000, UpdatedAt: 2_000}),
-				queryResult(t, Item{ID: "item_new", ListID: "list_1", Name: "Bread", Quantity: "1", Upc: testStringPointer("upc_new"), AddedBy: "user_1", UpdatedAt: 2_000}),
+				queryResult(t, map[string]any{"id": "item_new", "list_id": "list_1", "name": "Bread", "quantity": "1", "added_by": "user_1", "updated_at": 2_000, "product_provider": "kroger", "product_id": "upc_new"}),
 			}
 		default:
 			t.Fatalf("unexpected D1 request %d: %#v", requests, statements)
@@ -315,31 +335,33 @@ func TestReplaceListItemsCleansUpOrphanedUPCRows(t *testing.T) {
 	upc := "upc_new"
 
 	list, err := store.ReplaceListItems(t.Context(), "user_1", "list_1", []NewItem{{Name: "Bread", Upc: &upc}}, time.UnixMilli(2_000))
-	if err != nil || len(list.Items) != 1 || list.Items[0].Upc == nil || *list.Items[0].Upc != upc {
+	if err != nil || len(list.Items) != 1 || list.Items[0].Upc == nil || *list.Items[0].Upc != upc ||
+		list.Items[0].Product == nil || list.Items[0].Product.Provider != "kroger" || list.Items[0].Product.ID != upc {
 		t.Fatalf("list/error = %#v / %v", list, err)
 	}
 }
 
-func TestAddItemsPersistsUPC(t *testing.T) {
+func TestAddItemsPersistsLegacyUPCAsKrogerProductReference(t *testing.T) {
 	requests := 0
 	store := newFixtureStore(t, func(statements []cloudflare.Statement) []cloudflare.Result {
 		requests++
 		switch requests {
 		case 1:
 			if len(statements) != 3 || !strings.Contains(statements[0].SQL, "INSERT INTO grocery_list_items") ||
-				!strings.Contains(statements[1].SQL, "INSERT OR REPLACE INTO grocery_list_item_upcs") || statements[1].Params[1] != "upc_1" {
+				!strings.Contains(statements[1].SQL, "INSERT OR REPLACE INTO grocery_list_item_product_refs") ||
+				statements[1].Params[1] != "kroger" || statements[1].Params[2] != "upc_1" {
 				t.Fatalf("add statements = %#v", statements)
 			}
 			return mutationResults(len(statements))
 		case 2:
 			return []cloudflare.Result{
 				queryResult(t, List{ID: "list_1", OwnerUserID: "user_1", Title: "Weekend", Status: "active", CreatedAt: 1_000, UpdatedAt: 2_000}),
-				queryResult(t, Item{ID: "item_1", ListID: "list_1", Name: "Milk", Quantity: "1", Upc: testStringPointer("upc_1"), AddedBy: "user_1", UpdatedAt: 2_000}),
+				queryResult(t, map[string]any{"id": "item_1", "list_id": "list_1", "name": "Milk", "quantity": "1", "added_by": "user_1", "updated_at": 2_000, "product_provider": "kroger", "product_id": "upc_1"}),
 			}
 		case 3:
 			return []cloudflare.Result{
 				queryResult(t, List{ID: "list_1", OwnerUserID: "user_1", Title: "Weekend", Status: "active", CreatedAt: 1_000, UpdatedAt: 2_000}),
-				queryResult(t, Item{ID: "item_1", ListID: "list_1", Name: "Milk", Quantity: "1", Upc: testStringPointer("upc_1"), AddedBy: "user_1", UpdatedAt: 2_000}),
+				queryResult(t, map[string]any{"id": "item_1", "list_id": "list_1", "name": "Milk", "quantity": "1", "added_by": "user_1", "updated_at": 2_000, "product_provider": "kroger", "product_id": "upc_1"}),
 			}
 		default:
 			t.Fatalf("unexpected D1 request %d: %#v", requests, statements)
@@ -350,11 +372,13 @@ func TestAddItemsPersistsUPC(t *testing.T) {
 	upc := "upc_1"
 
 	items, err := store.AddItems(t.Context(), "user_1", "list_1", []NewItem{{Name: "Milk", Upc: &upc}}, time.UnixMilli(2_000))
-	if err != nil || len(items) != 1 || items[0].Upc == nil || *items[0].Upc != upc {
+	if err != nil || len(items) != 1 || items[0].Upc == nil || *items[0].Upc != upc ||
+		items[0].Product == nil || items[0].Product.Provider != "kroger" || items[0].Product.ID != upc {
 		t.Fatalf("items/error = %#v / %v", items, err)
 	}
 	list, err := store.GetList(t.Context(), "user_1", "list_1")
-	if err != nil || len(list.Items) != 1 || list.Items[0].Upc == nil || *list.Items[0].Upc != upc {
+	if err != nil || len(list.Items) != 1 || list.Items[0].Upc == nil || *list.Items[0].Upc != upc ||
+		list.Items[0].Product == nil || list.Items[0].Product.Provider != "kroger" || list.Items[0].Product.ID != upc {
 		t.Fatalf("list/error = %#v / %v", list, err)
 	}
 }
@@ -365,8 +389,4 @@ func mutationResults(count int) []cloudflare.Result {
 		results[index] = mutationResult(1)
 	}
 	return results
-}
-
-func testStringPointer(value string) *string {
-	return &value
 }

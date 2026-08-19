@@ -630,7 +630,7 @@ func toAPILists(values []groceries.List) []groceryapi.List {
 func toAPIItem(value groceries.Item) groceryapi.Item {
 	return groceryapi.Item{
 		Id: value.ID, ListId: value.ListID, Name: value.Name, Quantity: value.Quantity,
-		Note: value.Note, Upc: value.Upc, Position: value.Position, AddedBy: value.AddedBy,
+		Note: value.Note, Upc: value.Upc, Product: toAPIProductReference(value.Product), Position: value.Position, AddedBy: value.AddedBy,
 		CheckedBy: value.CheckedBy, CheckedAt: value.CheckedAt, UpdatedAt: value.UpdatedAt,
 	}
 }
@@ -652,9 +652,23 @@ func toGroceryNewItems(values []groceryapi.NewItem) []groceries.NewItem {
 	}
 	result := make([]groceries.NewItem, len(values))
 	for index, value := range values {
-		result[index] = groceries.NewItem{Name: value.Name, Quantity: value.Quantity, Note: value.Note, Upc: value.Upc}
+		result[index] = groceries.NewItem{Name: value.Name, Quantity: value.Quantity, Note: value.Note, Upc: value.Upc, Product: toGroceryProductReference(value.Product)}
 	}
 	return result
+}
+
+func toAPIProductReference(value *groceries.ProductReference) *groceryapi.ProductReference {
+	if value == nil {
+		return nil
+	}
+	return &groceryapi.ProductReference{Provider: value.Provider, Id: value.ID}
+}
+
+func toGroceryProductReference(value *groceryapi.ProductReference) *groceries.ProductReference {
+	if value == nil {
+		return nil
+	}
+	return &groceries.ProductReference{Provider: value.Provider, ID: value.Id}
 }
 
 func toAPIRecipe(value groceries.Recipe) groceryapi.Recipe {

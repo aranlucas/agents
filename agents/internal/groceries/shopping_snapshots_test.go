@@ -275,6 +275,70 @@ func TestSamePreferredStoreCreatesNoRevisionJobOrArtifact(t *testing.T) {
 	}
 }
 
+func TestPreferredStoreProviderChangeCreatesRevisionAndArtifact(t *testing.T) {
+	counting := &countingArtifactService{Service: newExplicitArtifactService()}
+	runner := newShoppingSnapshotSQLiteRunner(t)
+	store := newShoppingSnapshotTestStore(t, runner, counting)
+	preferred := PreferredStore{Provider: "kroger", LocationID: "loc_1", Name: "Market", Address: "1 Main", Chain: "Market"}
+
+	if _, err := store.SetPreferredStore(t.Context(), "user_1", preferred, time.Unix(1, 0)); err != nil {
+		t.Fatal(err)
+	}
+	waitForShoppingProfileSnapshots(t, store)
+	firstSaves := counting.saveCount()
+	var firstRevision int64
+	if err := runner.db.QueryRow(`SELECT revision FROM shopping_profile_revisions WHERE user_id = 'user_1'`).Scan(&firstRevision); err != nil {
+		t.Fatal(err)
+	}
+
+	preferred.Provider = "trader_joes"
+	stored, err := store.SetPreferredStore(t.Context(), "user_1", preferred, time.Unix(2, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitForShoppingProfileSnapshots(t, store)
+	var secondRevision int64
+	if err := runner.db.QueryRow(`SELECT revision FROM shopping_profile_revisions WHERE user_id = 'user_1'`).Scan(&secondRevision); err != nil {
+		t.Fatal(err)
+	}
+	if stored.Provider != "trader_joes" || secondRevision != firstRevision+1 || counting.saveCount() != firstSaves+1 {
+		t.Fatalf("provider change = store %#v, revisions %d/%d, saves %d/%d", stored, firstRevision, secondRevision, firstSaves, counting.saveCount())
+	}
+}
+
+func TestFrequentItemsKeepSameNamedProductsSeparateByProvider(t *testing.T) {
+	runner := newShoppingSnapshotSQLiteRunner(t)
+	store := &Store{d1: runner, newID: randomID}
+
+	orders := []Order{
+		{ID: "order_kroger", Items: []OrderItem{{Product: &ProductReference{Provider: "kroger", ID: "upc_1"}, Name: "Whole Milk", Quantity: 1}}},
+		{ID: "order_trader_joes", Items: []OrderItem{{Product: &ProductReference{Provider: "trader_joes", ID: "sku_1"}, Name: "Whole Milk", Quantity: 2}}},
+	}
+	for index, order := range orders {
+		if _, err := store.RecordOrder(t.Context(), "user_1", order, time.Unix(int64(index+1), 0)); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	items, err := store.FrequentItems(t.Context(), "user_1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 2 {
+		t.Fatalf("frequent items = %#v", items)
+	}
+	seen := map[string]int{}
+	for _, item := range items {
+		if item.Product == nil {
+			t.Fatalf("frequent item has no product reference: %#v", item)
+		}
+		seen[item.Product.Provider+":"+item.Product.ID] = item.TotalQuantity
+	}
+	if seen["kroger:upc_1"] != 1 || seen["trader_joes:sku_1"] != 2 {
+		t.Fatalf("provider-scoped frequent items = %#v", seen)
+	}
+}
+
 func TestSamePantryQuantityAndEquipmentCreateNoRevisionOrArtifact(t *testing.T) {
 	counting := &countingArtifactService{Service: newExplicitArtifactService()}
 	runner := newShoppingSnapshotSQLiteRunner(t)
@@ -657,6 +721,7 @@ func newShoppingSnapshotSQLiteRunner(t *testing.T) *shoppingSnapshotSQLiteRunner
 		d1migrations.SavedGroceryResources,
 		d1migrations.ShoppingProfile,
 		d1migrations.ShoppingProfileArtifacts,
+		d1migrations.UniversalProductReferences,
 	} {
 		for _, statement := range splitShoppingSnapshotTestSQL(source) {
 			if _, err := db.Exec(statement); err != nil {
