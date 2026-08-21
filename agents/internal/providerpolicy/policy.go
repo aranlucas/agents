@@ -27,7 +27,7 @@ const (
 	Wellness     Workload = "wellness"
 
 	groqResponsesModel  = "openai/gpt-oss-120b"
-	openRouterFreeModel = "openrouter/free"
+	openRouterFreeModel = "stealth/ox-alpha"
 )
 
 // Policy is one OpenAI-compatible provider selection. Fallbacks are ordered
