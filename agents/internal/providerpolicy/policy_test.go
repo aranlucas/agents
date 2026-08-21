@@ -119,7 +119,7 @@ func TestResolveEvalPreservesSubstitutionOrderAndLimits(t *testing.T) {
 	if resolved.Name != "openrouter" || resolved.Model != openRouterFreeModel || resolved.RequestsPerMinute != 30 {
 		t.Fatalf("substitution = %#v", resolved)
 	}
-	if note != "groq unavailable locally; substituted openrouter/openrouter/free for eval" {
+	if note != "groq unavailable locally; substituted openrouter/stealth/ox-alpha for eval" {
 		t.Fatalf("note = %q", note)
 	}
 
