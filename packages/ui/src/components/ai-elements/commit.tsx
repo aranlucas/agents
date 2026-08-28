@@ -28,7 +28,7 @@ export const CommitHeader = ({ className, children, ...props }: CommitHeaderProp
     render={
       <div
         className={cn(
-          "group flex cursor-pointer items-center justify-between gap-4 p-3 text-left transition-colors hover:opacity-80",
+          "group flex cursor-pointer items-center justify-between gap-4 p-3 text-start transition-colors hover:opacity-80",
           className,
         )}
       />
@@ -114,15 +114,7 @@ const formatRelativeDate = (date: Date) => {
 };
 
 export const CommitTimestamp = ({ date, className, children, ...props }: CommitTimestampProps) => {
-  const [formatted, setFormatted] = useState("");
-
-  const updateFormatted = useCallback(() => {
-    setFormatted(formatRelativeDate(date));
-  }, [date]);
-
-  useEffect(() => {
-    updateFormatted();
-  }, [updateFormatted]);
+  const formatted = formatRelativeDate(date);
 
   return (
     <time className={cn("text-xs", className)} dateTime={date.toISOString()} {...props}>

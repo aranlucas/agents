@@ -1,4 +1,4 @@
-import { useAuth } from "@clerk/clerk-expo";
+import { useAuth } from "@clerk/expo";
 import { fetch } from "expo/fetch";
 import * as SecureStore from "expo-secure-store";
 import { useCallback, useEffect, useState } from "react";
@@ -71,7 +71,13 @@ export function useHealthDataSync() {
         return;
       }
 
-      const token = await getToken();
+      let token: string | null = null;
+      try {
+        token = await getToken();
+      } catch {
+        // Clerk Core 3 throws ClerkOfflineError instead of returning null.
+        throw new Error("You appear to be offline. Check your connection and try again.");
+      }
       if (!token) throw new Error("Sign in before syncing fitness data.");
       const before = new Date();
       const after = new Date(before.getTime() - INITIAL_SYNC_DAYS * 24 * 60 * 60 * 1000);

@@ -23,17 +23,17 @@ const {
   startNewChat: vi.fn(),
 }));
 
-vi.mock("@clerk/clerk-expo", () => ({
+vi.mock("@clerk/expo", () => ({
   ClerkLoaded: ({ children }: PropsWithChildren) => children,
   ClerkLoading: () => null,
   ClerkProvider: ({ children }: PropsWithChildren) => children,
-  SignedIn: ({ children }: PropsWithChildren) => children,
-  SignedOut: () => null,
+  Show: ({ children, when }: PropsWithChildren & { when: string }) =>
+    when === "signed-in" ? children : null,
   useUser: () => ({ user: { firstName: "Taylor" } }),
 }));
 
-vi.mock("@clerk/clerk-expo/resource-cache", () => ({ resourceCache: {} }));
-vi.mock("@clerk/clerk-expo/token-cache", () => ({ tokenCache: {} }));
+vi.mock("@clerk/expo/resource-cache", () => ({ resourceCache: {} }));
+vi.mock("@clerk/expo/token-cache", () => ({ tokenCache: {} }));
 
 vi.mock("@copilotkit/react-native/headless", () => ({
   CopilotKitProvider: ({ children }: PropsWithChildren) => children,

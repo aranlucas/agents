@@ -132,6 +132,8 @@ export const InlineCitationCarouselIndex = ({
       return;
     }
 
+    // Embla exposes its current snap state imperatively after initialization.
+    // oxlint-disable-next-line react/set-state-in-effect
     syncState();
 
     api.on("select", syncState);

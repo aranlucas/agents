@@ -1,5 +1,5 @@
-import { ClerkProvider } from "@clerk/clerk-expo";
-import { CopilotKitProvider } from "@copilotkit/react-native";
+import { ClerkProvider } from "@clerk/expo";
+import { CopilotKitProvider } from "@copilotkit/react-native/headless";
 import Constants from "expo-constants";
 import { StatusBar } from "expo-status-bar";
 import { AppTabs } from "@/components/app-tabs";

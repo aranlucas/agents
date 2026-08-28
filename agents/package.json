@@ -13,7 +13,7 @@
     "vulncheck": "go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./...",
     "contracts:generate": "go run ./cmd/contracts",
     "contracts:check": "go run ./cmd/contracts -check",
-    "api:generate": "go tool oapi-codegen -config internal/groceryapi/oapi-codegen.yaml api/openapi/grocery-gateway.yaml",
+    "api:generate": "GOTOOLCHAIN=go1.26.5 go tool oapi-codegen -config internal/groceryapi/oapi-codegen.yaml api/openapi/grocery-gateway.yaml",
     "api:check": "pnpm run api:generate && git diff --exit-code -- internal/groceryapi/generated.go"
   }
 }

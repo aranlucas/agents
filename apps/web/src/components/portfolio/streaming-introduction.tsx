@@ -139,10 +139,6 @@ export function StreamingIntroduction() {
       abortController.abort();
     }, 20_000);
 
-    setText("");
-    setStreaming(false);
-    setFailed(false);
-
     void (async () => {
       let token: string | null = null;
       try {

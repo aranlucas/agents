@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useRenderTool } from "@copilotkit/react-native";
+import { ToolCallStatus, useRenderTool } from "@copilotkit/react-native/headless";
 import { z } from "zod";
 
 export const PRODUCT_RESULTS_TOOL_NAME = "show_product_results";
@@ -124,7 +124,7 @@ export function GroceryProductResultsTool() {
       parameters: productResultsSchema,
       handler: async ({ products }) => ({ displayed: products.length }),
       render: ({ args, status }) => (
-        <ProductResultsCard args={args} loading={status === "executing"} />
+        <ProductResultsCard args={args} loading={status === ToolCallStatus.Executing} />
       ),
     },
     [],

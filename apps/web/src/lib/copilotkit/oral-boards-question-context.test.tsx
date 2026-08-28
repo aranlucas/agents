@@ -128,7 +128,12 @@ describe("OralBoardsQuestionProvider", () => {
     function DuplicateHarness() {
       const { pendingInputKind, registerPendingInput, respondToPendingInput } =
         useOralBoardsQuestion();
-      submit = respondToPendingInput;
+      React.useEffect(() => {
+        submit = respondToPendingInput;
+        return () => {
+          submit = undefined;
+        };
+      }, [respondToPendingInput]);
       return (
         <div>
           <output>{pendingInputKind ?? "none"}</output>

@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
   openAuthSessionAsync: vi.fn(),
 }));
 
-vi.mock("@clerk/clerk-expo", () => ({ useUser: () => mocks.clerk }));
+vi.mock("@clerk/expo", () => ({ useUser: () => mocks.clerk }));
 vi.mock("expo-linking", () => ({ createURL: mocks.createURL }));
 vi.mock("expo-web-browser", () => ({ openAuthSessionAsync: mocks.openAuthSessionAsync }));
 

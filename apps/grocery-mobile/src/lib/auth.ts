@@ -34,7 +34,13 @@ export async function runAuthenticated<TResult>({
   run,
 }: AuthenticatedRunOptions<TResult>): Promise<TResult> {
   if (!userId) throw new Error("Your session has expired. Please sign in again.");
-  const token = await getToken();
+  let token: string | null = null;
+  try {
+    token = await getToken();
+  } catch {
+    // Clerk Core 3 throws ClerkOfflineError instead of returning null.
+    throw new Error("You appear to be offline. Check your connection and try again.");
+  }
   if (!token) throw new Error("We could not refresh your session. Please sign in again.");
 
   transport.setHeaders({
@@ -51,6 +57,10 @@ export function readableError(error: unknown): string {
     const errors = (error as { errors?: Array<{ longMessage?: string; message?: string }> }).errors;
     const first = errors?.[0];
     if (first?.longMessage || first?.message) return first.longMessage ?? first.message ?? "";
+  }
+  if (error instanceof Error && "clerkError" in error) {
+    const clerkError = error as Error & { longMessage?: string };
+    if (clerkError.longMessage) return clerkError.longMessage;
   }
   return error instanceof Error ? error.message : "Something went wrong. Please try again.";
 }

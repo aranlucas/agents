@@ -287,6 +287,9 @@ export function ChatSurface({
       return undefined;
     }
 
+    // CopilotKit's imperative connection API requires configuring the mutable
+    // agent instance returned by useAgent before passing it to connectAgent.
+    // oxlint-disable-next-line react/immutability
     agent.threadId = threadId;
     if ("abortController" in agent) {
       agent.abortController = connectAbortController;
@@ -434,7 +437,7 @@ export function ChatSurface({
               className="mx-auto w-full max-w-205 p-4 sm:p-6"
             >
               {items.length === 0 && isAgentConnected ? (
-                <Empty className="mx-auto max-w-2xl items-start border-none px-0 text-left">
+                <Empty className="mx-auto max-w-2xl items-start border-none px-0 text-start">
                   <EmptyMedia variant="icon">
                     <AgentIcon agentId={config.id} className="text-page" />
                   </EmptyMedia>
