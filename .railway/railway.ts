@@ -34,7 +34,6 @@ export default defineRailway((ctx) => {
       CLERK_SECRET_KEY: preserve(),
 
       // Model providers.
-      CEREBRAS_API_KEY: preserve(),
       GEMINI_API_KEY: preserve(),
       GROQ_API_KEY: preserve(),
       MISTRAL_API_KEY: preserve(),

@@ -82,7 +82,6 @@ type providerEnv struct {
 }
 
 var providerEnvs = []providerEnv{
-	{name: "cerebras", key: "CEREBRAS_API_KEY", baseURL: "https://api.cerebras.ai/v1"},
 	{name: "groq", key: "GROQ_API_KEY", baseURL: "https://api.groq.com/openai/v1"},
 	{name: "nvidia", key: "NVIDIA_NIM_API_KEY", baseURL: "https://integrate.api.nvidia.com/v1"},
 	{name: "mistral", key: "MISTRAL_API_KEY", baseURL: "https://api.mistral.ai/v1"},

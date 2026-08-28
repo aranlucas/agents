@@ -140,7 +140,6 @@ export type ModelSelectorLogoProps = Omit<ComponentProps<"img">, "src" | "alt"> 
     | "llama"
     | "scaleway"
     | "amazon-bedrock"
-    | "cerebras"
     | (string & {});
 };
 

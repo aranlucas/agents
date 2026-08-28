@@ -91,7 +91,6 @@ docker run -d --name "$runtime_name" -p "${port}:8000" \
   -e CF_R2_BUCKET_NAME=smoke-fake-bucket \
   -e CF_R2_ACCESS_KEY_ID=smoke-fake-access-key \
   -e CF_R2_SECRET_ACCESS_KEY=smoke-fake-secret-key \
-  -e CEREBRAS_API_KEY=smoke-fake-cerebras-key \
   -e OPENROUTER_API_KEY=smoke-fake-openrouter-key \
   -e GROQ_API_KEY=smoke-fake-groq-key \
   -e NVIDIA_NIM_API_KEY=smoke-fake-nvidia-key \
