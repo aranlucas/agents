@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => ({
   useAgent: vi.fn(),
 }));
 
-vi.mock("@clerk/clerk-expo", () => ({ useAuth: () => mocks.auth }));
+vi.mock("@clerk/expo", () => ({ useAuth: () => mocks.auth }));
 vi.mock("@copilotkit/react-native/headless", () => ({
   useAgent: mocks.useAgent,
   useCopilotKit: () => ({ copilotkit: mocks.copilotkit }),

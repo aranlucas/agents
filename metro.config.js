@@ -4,13 +4,9 @@ const path = require("node:path");
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
 
-// Node-only packages pulled in by CopilotKit that should never execute in app
-// bundles. @segment/analytics-node drags jose's Node build into the bundle;
-// on web, static SSR evaluates it against the node:crypto shim below and
-// crashes on promisify(crypto.verify).
-const STUB_EVERYWHERE = new Set(["@segment/analytics-node"]);
-// Node builtins stay real on web (static SSR resolves them to Node itself).
-const STUB_NATIVE_ONLY = new Set([
+// Node-only packages pulled in by CopilotKit that should never run on native.
+const NODE_ONLY_STUBS = new Set([
+  "@segment/analytics-node",
   "node:buffer",
   "node:crypto",
   "node:events",
@@ -27,10 +23,7 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
       filePath: path.resolve(__dirname, "src/shims/node-crypto.ts"),
     };
   }
-  if (STUB_EVERYWHERE.has(moduleName)) {
-    return { type: "empty" };
-  }
-  if (platform !== "web" && STUB_NATIVE_ONLY.has(moduleName)) {
+  if (platform !== "web" && NODE_ONLY_STUBS.has(moduleName)) {
     return { type: "empty" };
   }
   if (innerResolveRequest) {

@@ -20,7 +20,7 @@ const mocks = vi.hoisted(() => ({
   onRefresh: null as null | (() => void),
 }));
 
-vi.mock("@clerk/clerk-expo", () => ({ useAuth: () => mocks.auth }));
+vi.mock("@clerk/expo", () => ({ useAuth: () => mocks.auth }));
 vi.mock("@/lib/config", () => ({ getRuntimeUrl: () => "https://runtime.test" }));
 vi.mock("@/lib/household-api", () => ({ createHouseholdApi: () => mocks.api }));
 vi.mock("lucide-react-native", () => ({

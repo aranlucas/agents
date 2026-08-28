@@ -7,7 +7,6 @@ let currentState: Record<string, unknown> = {};
 let currentMessages: unknown[] = [];
 const providerProps: Array<Record<string, unknown>> = [];
 const frontendTools: Array<Record<string, unknown>> = [];
-const toolRenderers = new Map<string, (props: Record<string, unknown>) => React.ReactElement>();
 
 const addMessage = vi.fn();
 const runAgent = vi.fn(async () => undefined);
@@ -30,18 +29,25 @@ const agent = {
 
 const copilotkit = {
   headers: { "x-client-version": "1" },
+  renderToolCalls: [] as Array<{
+    name: string;
+    agentId?: string;
+    render: ComponentType<Record<string, unknown>>;
+  }>,
   runAgent,
   setHeaders,
+  subscribe: (_subscriber: unknown) => ({ unsubscribe: () => undefined }),
 };
 
 vi.mock("@/shims/node-crypto", () => ({}));
 
-vi.mock("@clerk/clerk-expo", () => ({
+vi.mock("@clerk/expo", () => ({
   ClerkProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
   useAuth: () => ({ getToken, userId: "user-123" }),
 }));
 
-vi.mock("@copilotkit/react-native", () => ({
+vi.mock("@copilotkit/react-native/headless", () => ({
+  ToolCallStatus: { InProgress: "inProgress", Executing: "executing", Complete: "complete" },
   CopilotKitProvider: ({ children, ...props }: { children: ReactNode }) => {
     providerProps.push(props);
     return <>{children}</>;
@@ -50,14 +56,32 @@ vi.mock("@copilotkit/react-native", () => ({
   useCopilotKit: () => ({ copilotkit, executingToolCallIds: new Set<string>() }),
   useRenderTool: (tool: Record<string, unknown>) => {
     frontendTools.push(tool);
-    if (typeof tool.name === "string" && typeof tool.render === "function") {
-      toolRenderers.set(
-        tool.name,
-        tool.render as (props: Record<string, unknown>) => React.ReactElement,
-      );
+    if (typeof tool.name === "string") {
+      copilotkit.renderToolCalls.push({
+        name: tool.name,
+        agentId: tool.agentId as string | undefined,
+        render: tool.render as ComponentType<Record<string, unknown>>,
+      });
     }
   },
-  useRenderToolRegistry: () => toolRenderers,
+  useRenderToolCall:
+    () =>
+    ({ toolCall }: { toolCall: { id: string; function: { name: string; arguments: string } } }) => {
+      const entry = copilotkit.renderToolCalls.find((rc) => rc.name === toolCall.function.name);
+      if (!entry) return null;
+      let args: Record<string, unknown> = {};
+      try {
+        args = JSON.parse(toolCall.function.arguments) as Record<string, unknown>;
+      } catch {
+        args = {};
+      }
+      return createElement(entry.render, {
+        name: toolCall.function.name,
+        toolCallId: toolCall.id,
+        args,
+        status: "complete",
+      });
+    },
 }));
 
 vi.mock("expo-constants", () => ({
@@ -140,7 +164,7 @@ describe("mobile real feature surface", () => {
     ];
     providerProps.length = 0;
     frontendTools.length = 0;
-    toolRenderers.clear();
+    copilotkit.renderToolCalls.length = 0;
     addMessage.mockClear();
     getToken.mockClear();
     runAgent.mockClear();

@@ -38,11 +38,14 @@ const ShimmerComponent = ({
   duration = 2,
   spread = 2,
 }: TextShimmerProps) => {
+  // Components are cached by intrinsic tag at module scope; repeated renders
+  // reuse the same motion component and preserve its state.
   const MotionComponent = getMotionComponent(Component as keyof JSX.IntrinsicElements);
 
   const dynamicSpread = useMemo(() => (children?.length ?? 0) * spread, [children, spread]);
 
   return (
+    // oxlint-disable-next-line react/static-components
     <MotionComponent
       animate={{ backgroundPosition: "0% center" }}
       className={cn(

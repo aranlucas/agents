@@ -1,4 +1,4 @@
-import { useSignIn, useSignUp, useSSO } from "@clerk/clerk-expo";
+import { useSignIn, useSignUp, useSSO } from "@clerk/expo";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { useState } from "react";
@@ -22,8 +22,8 @@ type AuthFormValues = { email: string; password: string; code: string };
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
 
 export function SignInScreen() {
-  const { isLoaded: signInLoaded, signIn, setActive: setSignInActive } = useSignIn();
-  const { isLoaded: signUpLoaded, signUp, setActive: setSignUpActive } = useSignUp();
+  const { signIn } = useSignIn();
+  const { signUp } = useSignUp();
   const { startSSOFlow } = useSSO();
   const [mode, setMode] = useState<Mode>("sign-in");
   const [oauthBusy, setOauthBusy] = useState(false);
@@ -64,39 +64,45 @@ export function SignInScreen() {
     clearErrors("root");
     try {
       if (mode === "sign-in") {
-        if (!signInLoaded) return;
-        const attempt = await signIn.create({
+        const created = await signIn.create({
           identifier: values.email.trim(),
           password: values.password,
         });
-        if (attempt.status !== "complete" || !attempt.createdSessionId) {
+        if (created.error) throw created.error;
+        if (signIn.status !== "complete") {
           throw new Error("Additional verification is required. Try signing in with Google.");
         }
-        await setSignInActive({ session: attempt.createdSessionId });
+        const finalized = await signIn.finalize();
+        if (finalized.error) throw finalized.error;
         return;
       }
 
       if (mode === "sign-up") {
-        if (!signUpLoaded) return;
-        await signUp.create({ emailAddress: values.email.trim(), password: values.password });
-        await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+        const created = await signUp.create({
+          emailAddress: values.email.trim(),
+          password: values.password,
+        });
+        if (created.error) throw created.error;
+        const sent = await signUp.verifications.sendEmailCode();
+        if (sent.error) throw sent.error;
         clearErrors();
         setMode("verify");
         return;
       }
 
-      if (!signUpLoaded) return;
-      const attempt = await signUp.attemptEmailAddressVerification({ code: values.code.trim() });
-      if (attempt.status !== "complete" || !attempt.createdSessionId) {
+      const verified = await signUp.verifications.verifyEmailCode({ code: values.code.trim() });
+      if (verified.error) throw verified.error;
+      if (signUp.status !== "complete" || !signUp.createdSessionId) {
         throw new Error("That code could not be verified. Please try again.");
       }
-      await setSignUpActive({ session: attempt.createdSessionId });
+      const finalized = await signUp.finalize();
+      if (finalized.error) throw finalized.error;
     } catch (caught) {
       setError("root.server", { message: readableError(caught) });
     }
   });
 
-  const isReady = isValid && (mode === "sign-in" ? signInLoaded : signUpLoaded);
+  const isReady = isValid;
 
   return (
     <SafeArea>

@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
   waitForKrogerConnection: vi.fn(),
 }));
 
-vi.mock("@clerk/clerk-expo", () => ({ useUser: () => mocks.clerk }));
+vi.mock("@clerk/expo", () => ({ useUser: () => mocks.clerk }));
 vi.mock("expo-router", () => ({ useRouter: () => ({ replace: mocks.replace }) }));
 vi.mock("@/lib/connections", () => ({
   waitForKrogerConnection: mocks.waitForKrogerConnection,

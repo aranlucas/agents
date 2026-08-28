@@ -88,11 +88,14 @@ function Carousel({
 
   React.useEffect(() => {
     if (!api || !setApi) return;
+    // Expose the imperative Embla instance once the hook initializes it.
     setApi(api);
   }, [api, setApi]);
 
   React.useEffect(() => {
     if (!api) return undefined;
+    // Embla exposes its selected state only after the instance initializes.
+    // oxlint-disable-next-line react/set-state-in-effect
     onSelect(api);
     api.on("reInit", onSelect);
     api.on("select", onSelect);

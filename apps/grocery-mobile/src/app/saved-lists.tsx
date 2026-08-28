@@ -1,4 +1,4 @@
-import { useAuth } from "@clerk/clerk-expo";
+import { useAuth } from "@clerk/expo";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { ChevronRight, ListChecks } from "lucide-react-native";

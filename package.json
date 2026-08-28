@@ -13,7 +13,7 @@
     "dev:agents": "docker compose up --build",
     "lint": "turbo lint",
     "lint:fix": "turbo lint:fix",
-    "check": "turbo run lint typecheck fmt:check contracts:check api:check",
+    "check": "turbo run lint typecheck fmt:check contracts:check api:check --concurrency=2",
     "test": "turbo test --concurrency=2",
     "coverage": "turbo coverage",
     "fmt": "turbo fmt",
@@ -31,20 +31,20 @@
     "doctor": "react-doctor"
   },
   "devDependencies": {
-    "@babel/core": "^8.0.1",
+    "@babel/core": "^7.29.7",
     "@tailwindcss/typography": "^0.5.20",
-    "concurrently": "^10.0.4",
+    "concurrently": "^10.0.5",
     "husky": "^9.1.7",
-    "lint-staged": "^17.3.0",
-    "oxfmt": "^0.62.0",
-    "oxlint": "^1.77.0",
-    "oxlint-tailwindcss": "1.3.5",
+    "lint-staged": "^17.4.1",
+    "oxfmt": "^0.65.0",
+    "oxlint": "^1.80.0",
+    "oxlint-tailwindcss": "1.10.0",
     "oxlint-tsgolint": "^7.0.2001",
-    "railway": "^3.8.1",
-    "react-doctor": "^0.9.5",
+    "railway": "^3.11.0",
+    "react-doctor": "^0.9.12",
     "supports-color": "11.0.0",
     "tailwindcss": "^4.3.3",
-    "turbo": "^2.10.8"
+    "turbo": "^2.10.12"
   },
   "packageManager": "pnpm@11.20.0"
 }

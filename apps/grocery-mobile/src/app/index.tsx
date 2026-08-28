@@ -1,4 +1,4 @@
-import { useUser } from "@clerk/clerk-expo";
+import { useUser } from "@clerk/expo";
 import AccountCircle from "@expo/material-symbols/account_circle.xml";
 import ShoppingBasketIcon from "@expo/material-symbols/shopping_basket.xml";
 import { Link, Stack, useRouter } from "expo-router";

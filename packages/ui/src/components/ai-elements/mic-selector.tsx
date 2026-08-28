@@ -105,7 +105,9 @@ export const useAudioDevices = () => {
   }, [loading]);
 
   useEffect(() => {
-    loadDevicesWithoutPermission();
+    // Device enumeration is the external synchronization this effect owns.
+    // oxlint-disable-next-line react/set-state-in-effect
+    void loadDevicesWithoutPermission();
   }, [loadDevicesWithoutPermission]);
 
   useEffect(() => {
@@ -319,7 +321,7 @@ export const MicSelectorValue = ({ className, ...props }: MicSelectorValueProps)
 
   if (!currentDevice) {
     return (
-      <span className={cn("flex-1 text-left", className)} {...props}>
+      <span className={cn("flex-1 text-start", className)} {...props}>
         Select microphone...
       </span>
     );
@@ -327,7 +329,7 @@ export const MicSelectorValue = ({ className, ...props }: MicSelectorValueProps)
 
   return (
     <MicSelectorLabel
-      className={cn("flex-1 text-left", className)}
+      className={cn("flex-1 text-start", className)}
       device={currentDevice}
       {...props}
     />

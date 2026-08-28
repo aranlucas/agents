@@ -239,7 +239,7 @@ function ModelAnswer({ text }: { text: string | undefined }) {
 function AnswerCoach() {
   return (
     <Collapsible className="rounded-lg border border-dashed">
-      <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left text-xs transition-colors hover:bg-muted">
+      <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 px-2.5 py-2 text-start text-xs transition-colors hover:bg-muted">
         <span className="flex items-center gap-1.5 font-medium">
           <GraduationCapIcon className="size-3.5 text-muted-foreground" />
           How to answer like a 3
@@ -408,7 +408,9 @@ function ScoreSummaryTable({ summary }: { summary: OralBoardsSkillsetScore[] }) 
   );
 }
 
-function RecordButton({ recorder }: { recorder: UseAnswerRecorder }) {
+type AnswerRecorderControls = Omit<UseAnswerRecorder, "recorderRef">;
+
+function RecordButton({ recorder }: { recorder: AnswerRecorderControls }) {
   const {
     recording,
     transcribing,
@@ -642,7 +644,7 @@ function PresentingPane({
     (text: string) => onNotesChange((prev) => (prev ? `${prev} ${text}` : text)),
     [onNotesChange],
   );
-  const recorder = useAnswerRecorder(appendTranscript);
+  const { recorderRef, ...recorder } = useAnswerRecorder(appendTranscript);
 
   return (
     <div className="mx-auto flex size-full max-w-3xl flex-col gap-4">
@@ -665,7 +667,7 @@ function PresentingPane({
         </p>
         {recorder.micSupported && (
           <div className="hidden" aria-hidden="true">
-            <CopilotChatAudioRecorder ref={recorder.recorderRef} />
+            <CopilotChatAudioRecorder ref={recorderRef} />
           </div>
         )}
         <Textarea
@@ -947,9 +949,10 @@ function FeedbackDrawer({
   // since it was last read and clear that the moment it is opened.
   const [readCount, setReadCount] = useState(transcript.length);
   const unread = open ? 0 : Math.max(transcript.length - readCount, 0);
-  useEffect(() => {
-    if (open) setReadCount(transcript.length);
-  }, [open, transcript.length]);
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (nextOpen) setReadCount(transcript.length);
+  };
 
   if (transcript.length === 0 && !hasLiveFeedback) return null;
 
@@ -957,11 +960,11 @@ function FeedbackDrawer({
   // always ends flush against the window edge, which reads as truncated even
   // when it scrolls. The sheet gets its own height and a real boundary.
   return (
-    <Drawer open={open} onOpenChange={setOpen}>
+    <Drawer open={open} onOpenChange={handleOpenChange}>
       <DrawerTrigger asChild>
         <button
           type="button"
-          className="flex w-full shrink-0 items-center justify-between gap-2 border-t bg-muted/20 px-4 py-2 text-left text-xs transition-colors hover:bg-muted"
+          className="flex w-full shrink-0 items-center justify-between gap-2 border-t bg-muted/20 px-4 py-2 text-start text-xs transition-colors hover:bg-muted"
         >
           <span className="font-medium">Feedback so far</span>
           <span className="flex items-center gap-2">
@@ -1088,6 +1091,7 @@ function ResponseComposer({
   answerText,
   setAnswerText,
   recorder,
+  recorderRef,
   onSubmit,
 }: {
   submittedAnswer: string;
@@ -1096,7 +1100,8 @@ function ResponseComposer({
   reviewingStatus: string;
   answerText: string;
   setAnswerText: React.Dispatch<React.SetStateAction<string>>;
-  recorder: UseAnswerRecorder;
+  recorder: AnswerRecorderControls;
+  recorderRef: UseAnswerRecorder["recorderRef"];
   onSubmit: () => void;
 }) {
   if (submittedAnswer && isRunning) {
@@ -1118,7 +1123,7 @@ function ResponseComposer({
 
       {recorder.micSupported && (
         <div className="hidden" aria-hidden="true">
-          <CopilotChatAudioRecorder ref={recorder.recorderRef} />
+          <CopilotChatAudioRecorder ref={recorderRef} />
         </div>
       )}
 
@@ -1218,7 +1223,7 @@ function QuestioningPane({
   const appendTranscript = useCallback((text: string) => {
     setAnswerText((prev) => (prev ? `${prev} ${text}` : text));
   }, []);
-  const recorder = useAnswerRecorder(appendTranscript);
+  const { recorderRef, ...recorder } = useAnswerRecorder(appendTranscript);
 
   const handleSubmit = () => {
     const trimmed = answerText.trim();
@@ -1241,6 +1246,7 @@ function QuestioningPane({
       answerText={answerText}
       setAnswerText={setAnswerText}
       recorder={recorder}
+      recorderRef={recorderRef}
       onSubmit={handleSubmit}
     />
   );
@@ -1448,7 +1454,7 @@ function FeedbackPane({
           {scoreCard.trim() &&
             (isMobile ? (
               <Collapsible className="rounded-lg border">
-                <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted">
+                <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 px-3 py-2.5 text-start text-sm transition-colors hover:bg-muted">
                   <span className="font-medium">Examiner summary</span>
                   <ChevronDownIcon className="size-4 text-muted-foreground transition-transform group-data-panel-open:rotate-180" />
                 </CollapsibleTrigger>
@@ -1472,7 +1478,7 @@ function FeedbackPane({
             <>
               {isMobile ? (
                 <Collapsible className="rounded-lg border">
-                  <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted">
+                  <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 px-3 py-2.5 text-start text-sm transition-colors hover:bg-muted">
                     <span className="font-medium">Question review</span>
                     <span className="flex items-center gap-2">
                       <Badge variant="secondary">{transcript.length}</Badge>

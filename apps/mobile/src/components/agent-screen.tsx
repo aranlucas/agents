@@ -11,8 +11,13 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useAuth } from "@clerk/clerk-expo";
-import { useAgent, useCopilotKit, useRenderToolRegistry } from "@copilotkit/react-native";
+import { useAuth } from "@clerk/expo";
+import {
+  useAgent,
+  useCopilotKit,
+  useRenderToolCall,
+  type ToolCall,
+} from "@copilotkit/react-native/headless";
 import { NativeMarkdown, type NativeMarkdownStyle } from "@agents/native-markdown";
 import type { FitnessState, GroceryState, TripState, WellnessState } from "@agents/types";
 import type { AgentId } from "@/utils/agent-config";
@@ -38,8 +43,7 @@ type DisplayMessage = { id: string; role: "user" | "assistant"; content: string 
 type DisplayToolCall = {
   id: string;
   kind: "tool-call";
-  name: string;
-  args: Record<string, unknown>;
+  toolCall: ToolCall;
 };
 type DisplayItem = DisplayMessage | DisplayToolCall;
 
@@ -65,24 +69,19 @@ function toDisplayItems(m: unknown, index: number): DisplayItem[] {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     const functionCall = fn as Record<string, unknown>;
     if (typeof functionCall.name !== "string") continue;
-    let args: Record<string, unknown> = {};
-    if (typeof functionCall.arguments === "string") {
-      try {
-        const parsed: unknown = JSON.parse(functionCall.arguments);
-        if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
-          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-          args = parsed as Record<string, unknown>;
-        }
-      } catch {
-        // A streamed or malformed argument string renders the tool's safe empty state.
-      }
-    }
-    items.push({
-      id: typeof toolCall.id === "string" ? toolCall.id : `${id}-tool-${toolIndex}`,
-      kind: "tool-call",
-      name: functionCall.name,
-      args,
-    });
+    const callId = typeof toolCall.id === "string" ? toolCall.id : `${id}-tool-${toolIndex}`;
+    // Arguments stay raw here; useRenderToolCall parses them and tolerates the
+    // partial JSON a streaming response produces.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    const raw = {
+      id: callId,
+      type: "function",
+      function: {
+        name: functionCall.name,
+        arguments: typeof functionCall.arguments === "string" ? functionCall.arguments : "{}",
+      },
+    } as ToolCall;
+    items.push({ id: callId, kind: "tool-call", toolCall: raw });
   }
   return items;
 }
@@ -92,13 +91,11 @@ export function AgentScreen<TState extends AgentState>({ config, initialState }:
   const scrollRef = useRef<ScrollView>(null);
 
   const { agent } = useAgent({ agentId: config.id });
-  const { copilotkit, executingToolCallIds } = useCopilotKit();
-  const toolRenderers = useRenderToolRegistry();
+  const { copilotkit } = useCopilotKit();
+  const renderToolCall = useRenderToolCall();
   const { getToken, userId } = useAuth();
 
-  const messages = (agent?.messages ?? [])
-    .flatMap(toDisplayItems)
-    .filter((item) => !("kind" in item) || toolRenderers.has(item.name));
+  const messages = (agent?.messages ?? []).flatMap(toDisplayItems);
 
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const state = (agent?.state ?? initialState) as TState;
@@ -158,13 +155,10 @@ export function AgentScreen<TState extends AgentState>({ config, initialState }:
       >
         {messages.map((m, index) => {
           if ("kind" in m) {
-            const renderTool = toolRenderers.get(m.name);
-            return renderTool ? (
+            const rendered = renderToolCall({ toolCall: m.toolCall });
+            return rendered ? (
               <View key={m.id} style={styles.toolCall}>
-                {renderTool({
-                  args: m.args,
-                  status: executingToolCallIds.has(m.id) ? "executing" : "complete",
-                })}
+                {rendered}
               </View>
             ) : null;
           }

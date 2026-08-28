@@ -1,7 +1,7 @@
 import "@/global.css";
-import { ClerkLoaded, ClerkLoading, ClerkProvider, SignedIn, SignedOut } from "@clerk/clerk-expo";
-import { resourceCache } from "@clerk/clerk-expo/resource-cache";
-import { tokenCache } from "@clerk/clerk-expo/token-cache";
+import { ClerkLoaded, ClerkLoading, ClerkProvider, Show } from "@clerk/expo";
+import { resourceCache } from "@clerk/expo/resource-cache";
+import { tokenCache } from "@clerk/expo/token-cache";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -76,10 +76,10 @@ function RootLayout() {
                     </View>
                   </ClerkLoading>
                   <ClerkLoaded>
-                    <SignedOut>
+                    <Show when="signed-out">
                       <SignInScreen />
-                    </SignedOut>
-                    <SignedIn>
+                    </Show>
+                    <Show when="signed-in">
                       <GroceryCopilotSession runtimeUrl={configured.runtimeUrl}>
                         <ThemeProvider value={navigationTheme}>
                           <Stack
@@ -118,7 +118,7 @@ function RootLayout() {
                           </Stack>
                         </ThemeProvider>
                       </GroceryCopilotSession>
-                    </SignedIn>
+                    </Show>
                   </ClerkLoaded>
                 </QueryProvider>
               </ClerkProvider>

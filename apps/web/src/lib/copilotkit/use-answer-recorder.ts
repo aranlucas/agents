@@ -1,7 +1,7 @@
 "use client";
 import type { ElementRef, RefObject } from "react";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { CopilotChatAudioRecorder } from "@copilotkit/react-core/v2";
 import * as Sentry from "@sentry/nextjs";
 
@@ -20,11 +20,24 @@ export interface UseAnswerRecorder {
   recorderRef: RefObject<AnswerRecorderRef | null>;
 }
 
+function subscribeToMicrophoneSupport(): () => void {
+  return () => undefined;
+}
+
+function getMicrophoneSupportSnapshot(): boolean {
+  return typeof navigator.mediaDevices?.getUserMedia === "function";
+}
+
 export function useAnswerRecorder(onTranscript: (text: string) => void): UseAnswerRecorder {
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
-  const [micSupported, setMicSupported] = useState(false);
-  const [micPermission, setMicPermission] = useState<MicrophonePermissionState>("checking");
+  const micSupported = useSyncExternalStore(
+    subscribeToMicrophoneSupport,
+    getMicrophoneSupportSnapshot,
+    () => false,
+  );
+  const [permissionState, setMicPermission] = useState<MicrophonePermissionState>("checking");
+  const micPermission = micSupported ? permissionState : "denied";
   const [error, setError] = useState<string | null>(null);
   const recorderRef = useRef<AnswerRecorderRef | null>(null);
   const recordingRef = useRef(false);
@@ -38,17 +51,14 @@ export function useAnswerRecorder(onTranscript: (text: string) => void): UseAnsw
 
   useEffect(() => {
     mountedRef.current = true;
-    const supported = typeof navigator.mediaDevices?.getUserMedia === "function";
-    setMicSupported(supported);
-    if (!supported) {
-      setMicPermission("denied");
+    if (!micSupported) {
       return () => {
         mountedRef.current = false;
       };
     }
 
-    void navigator.permissions
-      ?.query({ name: "microphone" })
+    const permission = navigator.permissions?.query({ name: "microphone" });
+    void (permission ?? Promise.resolve({ state: "prompt" as const }))
       .then((status) => {
         if (!mountedRef.current) return;
         setMicPermission(status.state === "granted" ? "granted" : status.state);
@@ -56,12 +66,11 @@ export function useAnswerRecorder(onTranscript: (text: string) => void): UseAnsw
       .catch(() => {
         if (mountedRef.current) setMicPermission("prompt");
       });
-    if (!navigator.permissions?.query) setMicPermission("prompt");
 
     return () => {
       mountedRef.current = false;
     };
-  }, []);
+  }, [micSupported]);
 
   const requestPermission = useCallback(async () => {
     if (!micSupported || micPermission === "denied") return false;

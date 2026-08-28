@@ -24,7 +24,7 @@ const mocks = vi.hoisted(() => ({
   }>,
 }));
 
-vi.mock("@clerk/clerk-expo", () => ({ useAuth: () => mocks.auth }));
+vi.mock("@clerk/expo", () => ({ useAuth: () => mocks.auth }));
 vi.mock("@copilotkit/react-native/headless", () => ({
   CopilotKitProvider: (props: {
     children: ReactNode;
