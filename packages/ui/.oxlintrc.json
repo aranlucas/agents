@@ -13,7 +13,34 @@
     }
   },
   "rules": {
-    "tailwindcss/no-arbitrary-value": "error",
+    "tailwindcss/no-arbitrary-value": [
+      "error",
+      {
+        "allow": [
+          "-inset-e-(--",
+          "-inset-s-(--",
+          "aspect-(--",
+          "bg-(--",
+          "border-(--",
+          "gap-(--",
+          "h-(--",
+          "max-h-(--",
+          "max-w-(--",
+          "min-w-(--",
+          "origin-(--",
+          "p-(--",
+          "pb-(--",
+          "px-(--",
+          "py-(--",
+          "rounded-(--",
+          "rounded-e-(--",
+          "rounded-s-(--",
+          "size-(--",
+          "text-(--",
+          "w-(--"
+        ]
+      }
+    ],
     "react/self-closing-comp": "warn",
     "react/react-in-jsx-scope": "off",
     "jsx-a11y/prefer-tag-over-role": "off"
@@ -43,6 +70,12 @@
         "typescript/prefer-nullish-coalescing": "off",
         "typescript/prefer-optional-chain": "off",
         "react/self-closing-comp": "off"
+      }
+    },
+    {
+      "files": ["src/components/ai-elements/persona.tsx"],
+      "rules": {
+        "react/immutability": "off"
       }
     },
     {

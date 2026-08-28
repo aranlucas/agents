@@ -7,10 +7,6 @@ import {
   CollapsibleTrigger,
 } from "@agents/ui/components/collapsible";
 import { cn } from "@agents/ui/lib/utils";
-import { cjk } from "@streamdown/cjk";
-import { code } from "@streamdown/code";
-import { math } from "@streamdown/math";
-import { mermaid } from "@streamdown/mermaid";
 import { BrainIcon, ChevronDownIcon } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
 import {
@@ -24,6 +20,7 @@ import {
   useState,
 } from "react";
 import { Streamdown } from "streamdown";
+import { streamdownPlugins } from "./streamdown";
 
 import { Shimmer } from "./shimmer";
 
@@ -191,8 +188,6 @@ export const ReasoningTrigger = memo(
 export type ReasoningContentProps = ComponentProps<typeof CollapsibleContent> & {
   children: string;
 };
-
-const streamdownPlugins = { cjk, code, math, mermaid };
 
 export const ReasoningContent = memo(({ className, children, ...props }: ReasoningContentProps) => (
   <CollapsibleContent

@@ -20,7 +20,7 @@ export type NodeProps = ComponentProps<typeof Card> & {
 
 export const Node = ({ handles, className, ...props }: NodeProps) => (
   <Card
-    className={cn("node-container relative size-full h-auto w-sm gap-0 rounded-md p-0", className)}
+    className={cn("node-container relative h-auto w-sm gap-0 rounded-md p-0", className)}
     {...props}
   >
     {handles.target && <Handle position={Position.Left} type="target" />}

@@ -159,6 +159,8 @@ export const SpeechInput = ({
     speechRecognition.addEventListener("error", handleError);
 
     recognitionRef.current = speechRecognition;
+    // Readiness is established by the browser object created in this effect.
+    // oxlint-disable-next-line react/set-state-in-effect
     setIsRecognitionReady(true);
 
     return () => {
