@@ -3,6 +3,7 @@ package agui
 import (
 	"context"
 	json "encoding/json/v2"
+	"errors"
 	"iter"
 	"net/http"
 	"net/http/httptest"
@@ -193,6 +194,63 @@ func (m *disconnectSurvivalModel) GenerateContent(ctx context.Context, _ *model.
 			Content:      &genai.Content{Role: "model", Parts: []*genai.Part{{Text: "Run survived reconnect."}}},
 			TurnComplete: true,
 		}, nil)
+	}
+}
+
+type disconnectCancellationModel struct {
+	contexts chan context.Context
+}
+
+func (*disconnectCancellationModel) Name() string { return "disconnect-cancellation-model" }
+
+func (m *disconnectCancellationModel) GenerateContent(ctx context.Context, _ *model.LLMRequest, _ bool) iter.Seq2[*model.LLMResponse, error] {
+	return func(yield func(*model.LLMResponse, error) bool) {
+		m.contexts <- ctx
+		<-ctx.Done()
+		yield(nil, ctx.Err())
+	}
+}
+
+func TestCopilotKitRuntimeSuggestionDisconnectCancelsRun(t *testing.T) {
+	model := &disconnectCancellationModel{contexts: make(chan context.Context, 1)}
+	runtime := testCopilotKitRuntime(t, model)
+	mux := http.NewServeMux()
+	runtime.Register(mux)
+
+	request := httptest.NewRequest(http.MethodPost, "/agent/resume/suggest", strings.NewReader(`{"threadId":"thread-suggest-disconnect","runId":"run-suggest-disconnect","messages":[{"id":"user-1","role":"user","content":"suggest"}]}`))
+	requestCtx, cancelRequest := context.WithCancel(request.Context())
+	request = request.WithContext(requestCtx)
+	runDone := make(chan *httptest.ResponseRecorder, 1)
+	go func() {
+		recorder := httptest.NewRecorder()
+		mux.ServeHTTP(recorder, request)
+		runDone <- recorder
+	}()
+
+	var runCtx context.Context
+	select {
+	case runCtx = <-model.contexts:
+	case <-time.After(2 * time.Second):
+		t.Fatal("suggestion model did not start")
+	}
+	cancelRequest()
+
+	select {
+	case <-runCtx.Done():
+		if !errors.Is(runCtx.Err(), context.Canceled) {
+			t.Fatalf("suggestion context error = %v, want canceled", runCtx.Err())
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("request disconnect did not cancel suggestion run")
+	}
+
+	select {
+	case run := <-runDone:
+		if run.Code != http.StatusOK || strings.Contains(run.Body.String(), "RUN_ERROR") {
+			t.Fatalf("suggestion run=%d %s", run.Code, run.Body.String())
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("canceled suggestion run did not finish")
 	}
 }
 

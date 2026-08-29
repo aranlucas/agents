@@ -16,6 +16,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -337,6 +338,45 @@ func TestStatelessHandlerUsesEphemeralSession(t *testing.T) {
 	}
 	if len(listed.Sessions) != 0 {
 		t.Fatalf("ephemeral sessions remaining = %d, want 0", len(listed.Sessions))
+	}
+}
+
+type failedSSEWriter struct {
+	header http.Header
+	writes int
+}
+
+func (w *failedSSEWriter) Header() http.Header {
+	return w.header
+}
+
+func (*failedSSEWriter) WriteHeader(int) {}
+
+func (w *failedSSEWriter) Write([]byte) (int, error) {
+	w.writes++
+	return 0, syscall.EPIPE
+}
+
+func (*failedSSEWriter) Flush() {}
+
+func TestStatelessHandlerStopsWritingAfterClientDisconnect(t *testing.T) {
+	a, err := llmagent.New(llmagent.Config{Name: "resume_agent", Instruction: "test", Model: &fakeCapturingModel{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler, err := NewStatelessEntryHandler(agentruntime.Entry{
+		Route: "resume", AppName: "resume_agent", Agent: a, Public: true, Timeout: time.Second,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequest(http.MethodPost, "/resume/agui", strings.NewReader(`{"threadId":"thread-write-failure","runId":"run-write-failure","messages":[{"id":"user-1","role":"user","content":"suggest"}]}`))
+	response := &failedSSEWriter{header: make(http.Header)}
+
+	handler.ServeHTTP(response, request)
+
+	if response.writes != 1 {
+		t.Fatalf("response writes = %d, want one attempted write", response.writes)
 	}
 }
 

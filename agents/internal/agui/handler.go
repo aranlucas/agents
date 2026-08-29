@@ -6,9 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"log/slog"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"agents/internal/agentruntime"
@@ -172,11 +175,16 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	userID := effectiveUserID(identity, input.ThreadID)
 
-	// The active run, not the browser's SSE connection, owns execution. A tab
-	// reload may cancel r.Context(), but the model should keep running so the
-	// replacement /connect request can replay and follow it. Explicit /stop and
-	// the catalog timeout still cancel this detached execution context.
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), entry.Timeout)
+	// A stateful active run, not the browser's SSE connection, owns execution.
+	// A tab reload may cancel r.Context(), but the model should keep running so
+	// the replacement /connect request can replay and follow it. Stateless
+	// suggestions have no active-run replay path, so cancel them with the request
+	// instead of spending provider work after their only client disconnects.
+	executionCtx := r.Context()
+	if !h.stateless {
+		executionCtx = context.WithoutCancel(executionCtx)
+	}
+	ctx, cancel := context.WithTimeout(executionCtx, entry.Timeout)
 	defer cancel()
 	var active *activeRunLease
 	if h.active != nil {
@@ -274,10 +282,25 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Accel-Buffering", "no")
 	w.WriteHeader(http.StatusOK)
 
-	frame := sse.NewSSEWriter()
+	// The SDK logs every failed write at error level before returning it. Own
+	// that logging here so expected client disconnects stay quiet and genuine
+	// encoding or transport failures are reported once.
+	frame := sse.NewSSEWriter().WithLogger(slog.New(slog.DiscardHandler))
+	writeFailed := false
 	emit := func(writeCtx context.Context, event events.Event) {
 		active.publish(event)
-		_ = frame.WriteEvent(writeCtx, w, event)
+		if writeFailed {
+			return
+		}
+		if err := frame.WriteEvent(writeCtx, w, event); err != nil {
+			writeFailed = true
+			if h.stateless {
+				cancel()
+			}
+			if !isClientDisconnect(err) {
+				log.Printf("write SSE event failed: event_type=%s err=%v", event.Type(), err)
+			}
+		}
 	}
 	emit(ctx, events.NewRunStartedEvent(input.ThreadID, input.RunID))
 
@@ -334,6 +357,11 @@ runLoop:
 	}
 
 	if runErr != nil {
+		// A stateless suggestion has no reconnect consumer. Its request ending or
+		// response becoming unwritable is normal cancellation, not an agent error.
+		if h.stateless && errors.Is(runErr, context.Canceled) && (writeFailed || r.Context().Err() != nil) {
+			return
+		}
 		// SSE encoding checks ctx.Err before it writes. The per-entry execution
 		// context is intentionally canceled on timeout, so use a non-cancelable
 		// derivative for the best-effort terminal flush and RUN_ERROR frame.
@@ -357,6 +385,13 @@ runLoop:
 		finished.Result = converter.lastFinalText
 	}
 	emit(ctx, finished)
+}
+
+func isClientDisconnect(err error) bool {
+	return errors.Is(err, context.Canceled) ||
+		errors.Is(err, net.ErrClosed) ||
+		errors.Is(err, syscall.EPIPE) ||
+		errors.Is(err, syscall.ECONNRESET)
 }
 
 func agentRunErrorDetails(err error, entry agentruntime.Entry, input *types.RunAgentInput) observability.ErrorDetails {
