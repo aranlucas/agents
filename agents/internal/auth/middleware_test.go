@@ -5,7 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/base64"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"math/big"
 	"net/http"
@@ -118,7 +118,7 @@ func TestVerifiedSubjectOverridesSpoofedHeaderAndCachesJWKS(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		requests.Add(1)
 		w.Header().Set("Cache-Control", "public, max-age=300")
-		_ = json.NewEncoder(w).Encode(jwksDocument("key-1", &privateKey.PublicKey))
+		_ = json.MarshalWrite(w, jwksDocument("key-1", &privateKey.PublicKey))
 	}))
 	defer server.Close()
 	verifier, err := NewClerkVerifier(server.URL, "https://clerk.example", "", server.Client())
@@ -151,7 +151,7 @@ func TestVerifiedSubjectOverridesSpoofedHeaderAndCachesJWKS(t *testing.T) {
 func TestVerifierRejectsExpiredWrongIssuerAndUnknownAlgorithm(t *testing.T) {
 	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_ = json.NewEncoder(w).Encode(jwksDocument("key", &privateKey.PublicKey))
+		_ = json.MarshalWrite(w, jwksDocument("key", &privateKey.PublicKey))
 	}))
 	defer server.Close()
 	verifier, err := NewClerkVerifier(server.URL, "issuer", "", server.Client())
@@ -175,7 +175,7 @@ func TestUnknownKeyIDCannotAmplifyJWKSRequests(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		requests.Add(1)
 		w.Header().Set("Cache-Control", "max-age=300")
-		_ = json.NewEncoder(w).Encode(jwksDocument("known", &privateKey.PublicKey))
+		_ = json.MarshalWrite(w, jwksDocument("known", &privateKey.PublicKey))
 	}))
 	defer server.Close()
 	verifier, err := NewClerkVerifier(server.URL, "issuer", "", server.Client())

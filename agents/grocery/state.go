@@ -1,7 +1,7 @@
 package grocery
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"maps"
 
 	"agents/internal/common"

@@ -2,7 +2,8 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -449,10 +450,10 @@ func TestRuntimeInfoAdvertisesConcreteAgents(t *testing.T) {
 	newGateway(t).ServeHTTP(recorder, request)
 
 	var response struct {
-		Version                       string                     `json:"version"`
-		Agents                        map[string]json.RawMessage `json:"agents"`
-		AudioFileTranscriptionEnabled bool                       `json:"audioFileTranscriptionEnabled"`
-		Mode                          string                     `json:"mode"`
+		Version                       string                    `json:"version"`
+		Agents                        map[string]jsontext.Value `json:"agents"`
+		AudioFileTranscriptionEnabled bool                      `json:"audioFileTranscriptionEnabled"`
+		Mode                          string                    `json:"mode"`
 		ThreadEndpoints               struct {
 			List             bool `json:"list"`
 			Inspect          bool `json:"inspect"`
@@ -579,7 +580,7 @@ func TestOAuthCredentialLookupFailuresStopTheRequest(t *testing.T) {
 
 	handler.ServeHTTP(recorder, request)
 
-	if recorder.Code != http.StatusServiceUnavailable || recorder.Body.String() != "{\"error\":\"oauth_credentials_unavailable\"}\n" {
+	if recorder.Code != http.StatusServiceUnavailable || recorder.Body.String() != "{\"error\":\"oauth_credentials_unavailable\"}" {
 		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
 	}
 	if nextCalled {

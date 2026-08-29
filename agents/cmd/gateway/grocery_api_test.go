@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -144,6 +144,7 @@ func TestGroceryAPIRejectsInvalidJSONBeforeDataAccess(t *testing.T) {
 		body string
 	}{
 		{name: "unknown field", body: `{"name":"Home","unexpected":true}`},
+		{name: "duplicate field", body: `{"name":"Home","name":"Other"}`},
 		{name: "trailing document", body: `{"name":"Home"} {}`},
 		{name: "malformed document", body: `{"name":`},
 		{name: "body too large", body: `{"name":"` + strings.Repeat("a", maxGroceryAPIRequestBody) + `"}`},

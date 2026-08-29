@@ -3,7 +3,7 @@ package agui
 import (
 	"cmp"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"log"
 	"net/http"
 	"slices"
@@ -102,5 +102,5 @@ func (r *D1AgentRunner) listThreads(w http.ResponseWriter, request *http.Request
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(runtimeThreadsResponse{Threads: threads})
+	_ = json.MarshalWrite(w, runtimeThreadsResponse{Threads: threads})
 }

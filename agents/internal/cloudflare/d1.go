@@ -3,7 +3,8 @@ package cloudflare
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"strings"
@@ -31,8 +32,8 @@ type Statement struct {
 
 // Result contains rows and mutation metadata returned for a statement.
 type Result struct {
-	Rows    []json.RawMessage `json:"results"`
-	Success bool              `json:"success"`
+	Rows    []jsontext.Value `json:"results"`
+	Success bool             `json:"success"`
 	Meta    struct {
 		Changes int64 `json:"changes"`
 	} `json:"meta"`

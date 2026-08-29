@@ -9,7 +9,8 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"flag"
 	"fmt"
 	"os"
@@ -152,7 +153,7 @@ func writeReports(reports []AgentReport) error {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return err
 		}
-		encoded, err := json.MarshalIndent(r, "", "  ")
+		encoded, err := json.Marshal(r, json.Deterministic(true), jsontext.Multiline(true), jsontext.WithIndent("  "))
 		if err != nil {
 			return err
 		}

@@ -4,7 +4,8 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"flag"
 	"fmt"
@@ -132,7 +133,7 @@ func generateJSONSchemas() (map[string][]byte, error) {
 		if err := projectObjectSchema(schema, object, objectsByType); err != nil {
 			return nil, err
 		}
-		encoded, err := json.MarshalIndent(schema, "", "  ")
+		encoded, err := json.Marshal(schema, json.Deterministic(true), jsontext.Multiline(true), jsontext.WithIndent("  "))
 		if err != nil {
 			return nil, fmt.Errorf("encode %s schema: %w", object.Name, err)
 		}

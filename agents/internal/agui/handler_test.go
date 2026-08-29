@@ -3,7 +3,8 @@ package agui
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"iter"
@@ -228,7 +229,7 @@ func TestHandlerReturns500OnSessionGetFailure(t *testing.T) {
 	if rr.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d: %s", rr.Code, rr.Body.String())
 	}
-	if rr.Body.String() != "{\"error\":\"session_unavailable\"}\n" {
+	if rr.Body.String() != "{\"error\":\"session_unavailable\"}" {
 		t.Fatalf("body = %q", rr.Body.String())
 	}
 	if sessions.createCalls != 0 {
@@ -275,7 +276,7 @@ func TestHandlerCapturesSessionSnapshotFailure(t *testing.T) {
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 
-	if rr.Code != http.StatusInternalServerError || rr.Body.String() != "{\"error\":\"session_unavailable\"}\n" {
+	if rr.Code != http.StatusInternalServerError || rr.Body.String() != "{\"error\":\"session_unavailable\"}" {
 		t.Fatalf("response = %d %q", rr.Code, rr.Body.String())
 	}
 	if captured.request() != nil {
@@ -390,7 +391,7 @@ func TestHandlerResumesFromPendingClientToolResult(t *testing.T) {
 	h := newTestGateway(t, &fakeResumeModel{}, ids, WithPendingTools(pending))
 
 	scope := ToolScope{AppName: "resume_agent", UserID: "anon:thread-resume", ThreadID: "thread-resume"}
-	if err := pending.Register(context.Background(), scope, "call-9", "remember_fact", json.RawMessage(`{"note":"blue"}`)); err != nil {
+	if err := pending.Register(context.Background(), scope, "call-9", "remember_fact", jsontext.Value(`{"note":"blue"}`)); err != nil {
 		t.Fatalf("register pending: %v", err)
 	}
 
@@ -947,34 +948,34 @@ func hasFunctionResponse(contents []*genai.Content) bool {
 
 type fakePendingRecord struct {
 	name string
-	args json.RawMessage
+	args jsontext.Value
 }
 
 type fakePending struct {
 	mu       sync.Mutex
 	pending  map[string]fakePendingRecord
-	resolved map[string]json.RawMessage
+	resolved map[string]jsontext.Value
 }
 
 func newFakePending() *fakePending {
-	return &fakePending{pending: make(map[string]fakePendingRecord), resolved: make(map[string]json.RawMessage)}
+	return &fakePending{pending: make(map[string]fakePendingRecord), resolved: make(map[string]jsontext.Value)}
 }
 
-func (p *fakePending) Register(ctx context.Context, scope ToolScope, callID, toolName string, args json.RawMessage) error {
+func (p *fakePending) Register(ctx context.Context, scope ToolScope, callID, toolName string, args jsontext.Value) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	p.pending[key(scope, callID)] = fakePendingRecord{name: toolName, args: append(json.RawMessage(nil), args...)}
+	p.pending[key(scope, callID)] = fakePendingRecord{name: toolName, args: append(jsontext.Value(nil), args...)}
 	return nil
 }
 
-func (p *fakePending) Resolve(ctx context.Context, identity auth.Identity, app, thread, callID string, result json.RawMessage) error {
+func (p *fakePending) Resolve(ctx context.Context, identity auth.Identity, app, thread, callID string, result jsontext.Value) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	k := app + "\x00" + thread + "\x00" + callID
 	if _, ok := p.pending[k]; !ok {
 		return ErrPendingToolNotFound
 	}
-	p.resolved[k] = append(json.RawMessage(nil), result...)
+	p.resolved[k] = append(jsontext.Value(nil), result...)
 	return nil
 }
 

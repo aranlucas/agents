@@ -2,7 +2,7 @@ package common
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"io"
 	"net"
@@ -69,7 +69,7 @@ func effectivePort(target *url.URL) string {
 	return ""
 }
 
-func DecodeJSON[T any](ctx context.Context, client *HTTPClient, request *http.Request) (T, error) {
+func (client *HTTPClient) DecodeJSON[T any](ctx context.Context, request *http.Request) (T, error) {
 	var zero T
 	if client == nil || client.Client == nil || request == nil {
 		return zero, errors.New("HTTP client and request are required")

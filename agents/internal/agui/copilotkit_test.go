@@ -2,7 +2,7 @@ package agui
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"iter"
 	"net/http"
 	"net/http/httptest"

@@ -3,7 +3,7 @@ package groceries
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"slices"

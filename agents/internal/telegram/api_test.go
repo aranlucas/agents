@@ -1,7 +1,7 @@
 package telegram
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -29,7 +29,7 @@ func TestTelegramResultDecodesConcreteTypeWithoutNetwork(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	message, err := telegramResult[Message](client, request)
+	message, err := client.result[Message](request)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func TestTelegramResultRejectsMissingNullOrWrongTypeWithoutNetwork(t *testing.T)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if result, err := telegramResult[Message](client, request); err == nil {
+			if result, err := client.result[Message](request); err == nil {
 				t.Fatalf("telegramResult() = %#v, want error", result)
 			}
 		})
@@ -76,7 +76,7 @@ func TestGetUpdatesUsesLongPollTimeoutAndOffset(t *testing.T) {
 		if request.Form.Get("timeout") != "50" || request.Form.Get("offset") != "101" || request.Form.Get("allowed_updates") != `["message"]` {
 			t.Fatalf("form=%#v", request.Form)
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "result": []any{
+		_ = json.MarshalWrite(w, map[string]any{"ok": true, "result": []any{
 			map[string]any{"update_id": 1, "message": map[string]any{"message_id": 2, "chat": map[string]any{"id": 3, "type": "private"}, "text": "hello"}},
 			map[string]any{"update_id": 2, "edited_message": map[string]any{"text": "ignored"}},
 		}})

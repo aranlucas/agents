@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
 	"testing"
 
 	"agents/expense"
@@ -11,7 +11,7 @@ import (
 func TestFirstCallArgsDecodesTheRegisteredToolType(t *testing.T) {
 	valid := Trace{Steps: []Step{{
 		FunctionCall:     "submit_expense",
-		FunctionCallArgs: json.RawMessage(`{"amount":42.5,"submitter":"Ada","category":"travel","date":"2026-07-12"}`),
+		FunctionCallArgs: jsontext.Value(`{"amount":42.5,"submitter":"Ada","category":"travel","date":"2026-07-12"}`),
 	}}}
 	args, ok := firstCallArgs[expense.SubmitExpenseArgs](valid, "submit_expense")
 	if !ok || args.Amount != 42.5 || args.Submitter != "Ada" {
@@ -20,7 +20,7 @@ func TestFirstCallArgsDecodesTheRegisteredToolType(t *testing.T) {
 
 	invalid := Trace{Steps: []Step{{
 		FunctionCall:     "submit_expense",
-		FunctionCallArgs: json.RawMessage(`{"amount":"forty two"}`),
+		FunctionCallArgs: jsontext.Value(`{"amount":"forty two"}`),
 	}}}
 	if _, ok := firstCallArgs[expense.SubmitExpenseArgs](invalid, "submit_expense"); ok {
 		t.Fatal("argument object with the wrong field type was accepted")
@@ -38,11 +38,11 @@ func TestFirstResponseDecodesTheRegisteredToolResult(t *testing.T) {
 func TestInterviewRubricsRequireSequentialStateToolsAndGroundedFeedback(t *testing.T) {
 	trace := Trace{
 		Steps: []Step{
-			{FunctionCall: "configure_interview", FunctionCallArgs: json.RawMessage(`{"track":"behavioral","target_question_count":1}`)},
+			{FunctionCall: "configure_interview", FunctionCallArgs: jsontext.Value(`{"track":"behavioral","target_question_count":1}`)},
 			functionResponseStep("configure_interview", `{"ok":true,"status":"practicing"}`),
-			{FunctionCall: "select_question", FunctionCallArgs: json.RawMessage(`{}`)},
+			{FunctionCall: "select_question", FunctionCallArgs: jsontext.Value(`{}`)},
 			functionResponseStep("select_question", `{"ok":true,"status":"practicing"}`),
-			{FunctionCall: "record_attempt_feedback", FunctionCallArgs: json.RawMessage(`{
+			{FunctionCall: "record_attempt_feedback", FunctionCallArgs: jsontext.Value(`{
 				"attempt_summary":"I proposed a staged rollout.",
 				"rubric":[
 					{"dimension":"structure","score":3,"evidence":"Clear sequence."},
@@ -55,7 +55,7 @@ func TestInterviewRubricsRequireSequentialStateToolsAndGroundedFeedback(t *testi
 				"improvements":["Add the real outcome"]
 			}`)},
 			functionResponseStep("record_attempt_feedback", `{"ok":true,"status":"feedback"}`),
-			{FunctionCall: "complete_interview", FunctionCallArgs: json.RawMessage(`{"session_summary":"One answer scored.","next_steps":["Add the real outcome"]}`)},
+			{FunctionCall: "complete_interview", FunctionCallArgs: jsontext.Value(`{"session_summary":"One answer scored.","next_steps":["Add the real outcome"]}`)},
 			functionResponseStep("complete_interview", `{"ok":true,"status":"complete"}`),
 			{Text: "Session complete. Ask what impact was actually measured."},
 		},
@@ -81,5 +81,5 @@ func TestInterviewRubricsRequireSequentialStateToolsAndGroundedFeedback(t *testi
 }
 
 func functionResponseStep(name, value string) Step {
-	return Step{FunctionResponse: name, FunctionResponseValue: json.RawMessage(value)}
+	return Step{FunctionResponse: name, FunctionResponseValue: jsontext.Value(value)}
 }

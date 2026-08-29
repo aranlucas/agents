@@ -2,7 +2,7 @@ package agui
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"log"
@@ -492,11 +492,11 @@ func routeAgent(path string) string {
 func writeJSONError(w http.ResponseWriter, status int, code string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(map[string]string{"error": code})
+	_ = json.MarshalWrite(w, map[string]string{"error": code})
 }
 
 func writeJSONErrorMessage(w http.ResponseWriter, status int, code, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(map[string]string{"error": code, "message": message})
+	_ = json.MarshalWrite(w, map[string]string{"error": code, "message": message})
 }

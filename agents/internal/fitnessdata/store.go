@@ -3,7 +3,8 @@ package fitnessdata
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"strings"
@@ -195,7 +196,7 @@ func (s *Store) Snapshot(ctx context.Context, userID string, limit int) (Snapsho
 	return snapshot, nil
 }
 
-func decodeActivity(raw json.RawMessage) (Activity, error) {
+func decodeActivity(raw jsontext.Value) (Activity, error) {
 	var row activityRow
 	if err := json.Unmarshal(raw, &row); err != nil {
 		return Activity{}, errors.New("decode fitness activity")

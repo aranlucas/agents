@@ -2,7 +2,8 @@ package groceries
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"strings"
@@ -650,7 +651,7 @@ func (s *Store) newListItem(listID, userID string, input NewItem, position int, 
 	return Item{ID: id, ListID: listID, Name: name, Quantity: quantity, Note: note, Upc: upc, Product: product, Position: position, AddedBy: userID, UpdatedAt: updatedAt}, nil
 }
 
-func decodeRecipe(raw json.RawMessage) (Recipe, error) {
+func decodeRecipe(raw jsontext.Value) (Recipe, error) {
 	var recipe Recipe
 	if json.Unmarshal(raw, &recipe) != nil || recipe.ID == "" || recipe.OwnerUserID == "" || recipe.Title == "" {
 		return Recipe{}, errors.New("decode recipe")

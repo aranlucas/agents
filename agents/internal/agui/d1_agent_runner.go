@@ -2,7 +2,7 @@ package agui
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"log"
@@ -108,13 +108,13 @@ func (r *D1AgentRunner) stopHandler(agent copilotKitAgent) http.Handler {
 
 		w.Header().Set("Content-Type", "application/json")
 		if !stopped {
-			_ = json.NewEncoder(w).Encode(map[string]any{
+			_ = json.MarshalWrite(w, map[string]any{
 				"stopped": false,
 				"message": fmt.Sprintf("No active run for thread '%s'.", threadID),
 			})
 			return
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{
+		_ = json.MarshalWrite(w, map[string]any{
 			"stopped": true,
 			"interrupt": map[string]string{
 				"type": "RUN_ERROR", "message": "Run stopped by user", "code": "STOPPED",

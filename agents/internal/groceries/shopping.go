@@ -2,7 +2,8 @@ package groceries
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"strings"
@@ -112,7 +113,7 @@ func (s *Store) Pantry(ctx context.Context, userID string) ([]PantryItem, error)
 	return decodePantryItems(results[0].Rows)
 }
 
-func decodePantryItems(rows []json.RawMessage) ([]PantryItem, error) {
+func decodePantryItems(rows []jsontext.Value) ([]PantryItem, error) {
 	items := []PantryItem{}
 	for _, raw := range rows {
 		var item PantryItem
@@ -244,7 +245,7 @@ func (s *Store) Equipment(ctx context.Context, userID string) ([]EquipmentItem, 
 	return decodeEquipmentItems(results[0].Rows)
 }
 
-func decodeEquipmentItems(rows []json.RawMessage) ([]EquipmentItem, error) {
+func decodeEquipmentItems(rows []jsontext.Value) ([]EquipmentItem, error) {
 	items := []EquipmentItem{}
 	for _, raw := range rows {
 		var item EquipmentItem
@@ -446,14 +447,14 @@ func (s *Store) RecentOrders(ctx context.Context, userID string, limit int) ([]O
 	if len(results) == 0 {
 		return []Order{}, nil
 	}
-	var itemRows []json.RawMessage
+	var itemRows []jsontext.Value
 	if len(results) > 1 {
 		itemRows = results[1].Rows
 	}
 	return decodeRecentOrders(results[0].Rows, itemRows)
 }
 
-func decodeRecentOrders(orderRows, itemRows []json.RawMessage) ([]Order, error) {
+func decodeRecentOrders(orderRows, itemRows []jsontext.Value) ([]Order, error) {
 	orders := []Order{}
 	orderIndexes := make(map[string]int, len(orderRows))
 	for _, raw := range orderRows {
@@ -514,7 +515,7 @@ func (s *Store) PreferredStore(ctx context.Context, userID string) (*PreferredSt
 	return decodePreferredStore(results[0].Rows)
 }
 
-func decodePreferredStore(rows []json.RawMessage) (*PreferredStore, error) {
+func decodePreferredStore(rows []jsontext.Value) (*PreferredStore, error) {
 	if len(rows) == 0 {
 		return nil, nil
 	}
@@ -627,7 +628,7 @@ func (s *Store) FrequentItems(ctx context.Context, userID string) ([]FrequentIte
 	return decodeFrequentItems(results[0].Rows)
 }
 
-func decodeFrequentItems(rows []json.RawMessage) ([]FrequentItem, error) {
+func decodeFrequentItems(rows []jsontext.Value) ([]FrequentItem, error) {
 	items := []FrequentItem{}
 	for _, raw := range rows {
 		var row struct {

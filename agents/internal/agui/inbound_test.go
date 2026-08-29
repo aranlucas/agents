@@ -2,7 +2,7 @@ package agui
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"strings"
 	"testing"
@@ -19,9 +19,9 @@ func TestDecodeRunInputPreservesForwardedPropsRawJSON(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	raw, ok := input.ForwardedProps.(json.RawMessage)
+	raw, ok := input.ForwardedProps.(jsontext.Value)
 	if !ok {
-		t.Fatalf("forwardedProps type = %T, want json.RawMessage", input.ForwardedProps)
+		t.Fatalf("forwardedProps type = %T, want jsontext.Value", input.ForwardedProps)
 	}
 	if string(raw) != forwardedProps {
 		t.Fatalf("forwardedProps = %s, want %s", raw, forwardedProps)
@@ -113,11 +113,11 @@ type rejectingPendingTools struct {
 	takeCalled bool
 }
 
-func (*rejectingPendingTools) Register(context.Context, ToolScope, string, string, json.RawMessage) error {
+func (*rejectingPendingTools) Register(context.Context, ToolScope, string, string, jsontext.Value) error {
 	return nil
 }
 
-func (*rejectingPendingTools) Resolve(context.Context, auth.Identity, string, string, string, json.RawMessage) error {
+func (*rejectingPendingTools) Resolve(context.Context, auth.Identity, string, string, string, jsontext.Value) error {
 	return ErrPendingToolNotFound
 }
 

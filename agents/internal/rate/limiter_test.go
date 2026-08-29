@@ -2,7 +2,7 @@ package rate
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -24,7 +24,7 @@ func TestProviderLimiterRejectsWindowOverflowAndResets(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		var env batchEnvelope
-		if err := json.NewDecoder(r.Body).Decode(&env); err != nil || len(env.Batch) == 0 {
+		if err := json.UnmarshalRead(r.Body, &env); err != nil || len(env.Batch) == 0 {
 			t.Fatal("bad batch envelope")
 		}
 		statements := env.Batch
@@ -38,7 +38,7 @@ func TestProviderLimiterRejectsWindowOverflowAndResets(t *testing.T) {
 		if count <= maximum {
 			rows = append(rows, map[string]any{"request_count": count})
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "result": []any{
+		_ = json.MarshalWrite(w, map[string]any{"success": true, "result": []any{
 			map[string]any{"success": true, "results": []any{}, "meta": map[string]any{"changes": 0}},
 			map[string]any{"success": true, "results": rows, "meta": map[string]any{"changes": 1}},
 		}})

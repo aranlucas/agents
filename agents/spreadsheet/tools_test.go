@@ -1,7 +1,7 @@
 package spreadsheet
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"testing"
 )
 

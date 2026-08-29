@@ -3,7 +3,8 @@ package cloudflare
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -25,14 +26,14 @@ type batchRequest struct {
 func writeEnvelope(t *testing.T, w http.ResponseWriter, results []Result) {
 	t.Helper()
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(map[string]any{"success": true, "result": results}); err != nil {
+	if err := json.MarshalWrite(w, map[string]any{"success": true, "result": results}); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func rawRows(t *testing.T, rows ...any) []json.RawMessage {
+func rawRows(t *testing.T, rows ...any) []jsontext.Value {
 	t.Helper()
-	encoded := make([]json.RawMessage, len(rows))
+	encoded := make([]jsontext.Value, len(rows))
 	for i, row := range rows {
 		data, err := json.Marshal(row)
 		if err != nil {
@@ -68,7 +69,7 @@ func TestSessionCreateAndAppendNeverPersistTemporaryState(t *testing.T) {
 	var batches [][]Statement
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req batchRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := json.UnmarshalRead(r.Body, &req); err != nil {
 			t.Fatal(err)
 		}
 		mu.Lock()
@@ -130,7 +131,7 @@ func TestSessionCreateReclaimsOnlyExpiredSessionIdentity(t *testing.T) {
 	var cleanup []Statement
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req batchRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := json.UnmarshalRead(r.Body, &req); err != nil {
 			t.Fatal(err)
 		}
 		if len(req.Batch) != 6 {
@@ -244,7 +245,7 @@ func TestAppendEventRetainsTempKeysInMemory(t *testing.T) {
 	var batches [][]Statement
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req batchRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := json.UnmarshalRead(r.Body, &req); err != nil {
 			t.Fatal(err)
 		}
 		mu.Lock()
@@ -305,7 +306,7 @@ func TestAppendEventRetainsTempKeysInMemory(t *testing.T) {
 func TestSessionAppendEventPreservesTemporaryStateOnTheEventItself(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req batchRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := json.UnmarshalRead(r.Body, &req); err != nil {
 			t.Fatal(err)
 		}
 		results := make([]Result, len(req.Batch))
@@ -357,7 +358,7 @@ func TestSessionGetScopesEveryQueryAndReturnsEventsChronologically(t *testing.T)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req batchRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := json.UnmarshalRead(r.Body, &req); err != nil {
 			t.Fatal(err)
 		}
 		if len(req.Batch) != 2 {
@@ -410,7 +411,7 @@ func TestSessionGetScopesEveryQueryAndReturnsEventsChronologically(t *testing.T)
 func TestSessionListSupportsOfficialAppWideShape(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req batchRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := json.UnmarshalRead(r.Body, &req); err != nil {
 			t.Fatal(err)
 		}
 		if len(req.Batch) != 1 || strings.Contains(req.Batch[0].SQL, "user_id = ?") {
@@ -504,7 +505,7 @@ func TestTypedSessionRowsRejectMissingOrWrongColumns(t *testing.T) {
 func TestAppendEventDeletesNilFromLiveSession(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req batchRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := json.UnmarshalRead(r.Body, &req); err != nil {
 			t.Fatal(err)
 		}
 		if strings.HasPrefix(strings.TrimSpace(req.Batch[2].SQL), "UPDATE sessions") && !strings.Contains(req.Batch[2].SQL, "json_remove(") {
@@ -545,7 +546,7 @@ func TestAppendEventRejectsStaleSessionWithoutApplyingLiveDelta(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests++
 		var req batchRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := json.UnmarshalRead(r.Body, &req); err != nil {
 			t.Fatal(err)
 		}
 		if requests == 1 {
@@ -603,7 +604,7 @@ func TestRunMigrationsIsIdempotentSQLBatch(t *testing.T) {
 	var batches [][]Statement
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req batchRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := json.UnmarshalRead(r.Body, &req); err != nil {
 			t.Fatal(err)
 		}
 		batches = append(batches, req.Batch)
@@ -739,7 +740,7 @@ func TestD1LivenessAndSchemaHealth(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests++
 		var req batchRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := json.UnmarshalRead(r.Body, &req); err != nil {
 			t.Fatal(err)
 		}
 		if requests == 1 {
@@ -799,7 +800,7 @@ func TestD1LivenessAndSchemaHealth(t *testing.T) {
 }
 
 func TestD1SchemaHealthFailsClosed(t *testing.T) {
-	for name, rows := range map[string][]json.RawMessage{
+	for name, rows := range map[string][]jsontext.Value{
 		"missing marker or table": nil,
 		"malformed result":        rawRows(t, map[string]any{"ready": "yes"}),
 		"not ready":               rawRows(t, map[string]any{"ready": 0}),

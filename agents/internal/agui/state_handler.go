@@ -2,7 +2,7 @@ package agui
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"io"
 	"log"
@@ -107,6 +107,6 @@ func StateHandler(registry *agentruntime.Registry, sessions session.Service) htt
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(response)
+		_ = json.MarshalWrite(w, response)
 	})
 }

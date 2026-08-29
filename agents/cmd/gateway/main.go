@@ -7,10 +7,9 @@ package main
 import (
 	"context"
 	"crypto/subtle"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"maps"
 	"net/http"
@@ -378,12 +377,8 @@ func telegramLinkConsumeHandler(secret string, links *telegram.LinkStore) http.H
 			return
 		}
 		var input telegramLinkConsumeRequest
-		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10))
-		decoder.DisallowUnknownFields()
-		decodeErr := decoder.Decode(&input)
-		var trailing struct{}
-		trailingErr := decoder.Decode(&trailing)
-		if decodeErr != nil || !errors.Is(trailingErr, io.EOF) || strings.TrimSpace(input.Token) == "" || strings.TrimSpace(input.ClerkUserID) == "" {
+		decodeErr := json.UnmarshalRead(http.MaxBytesReader(w, r.Body, 8<<10), &input, json.RejectUnknownMembers(true))
+		if decodeErr != nil || strings.TrimSpace(input.Token) == "" || strings.TrimSpace(input.ClerkUserID) == "" {
 			writeGatewayJSONError(w, http.StatusBadRequest, "invalid_link_request")
 			return
 		}
@@ -393,7 +388,7 @@ func telegramLinkConsumeHandler(secret string, links *telegram.LinkStore) http.H
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(telegramLinkConsumeResponse{OK: true, TelegramUserID: link.TelegramUserID})
+		_ = json.MarshalWrite(w, telegramLinkConsumeResponse{OK: true, TelegramUserID: link.TelegramUserID})
 	}
 }
 
@@ -404,12 +399,8 @@ func telegramLinkResolveHandler(secret string, links telegramLinkLookup) http.Ha
 			return
 		}
 		var input telegramLinkResolveRequest
-		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10))
-		decoder.DisallowUnknownFields()
-		decodeErr := decoder.Decode(&input)
-		var trailing struct{}
-		trailingErr := decoder.Decode(&trailing)
-		if decodeErr != nil || !errors.Is(trailingErr, io.EOF) || input.TelegramUserID <= 0 {
+		decodeErr := json.UnmarshalRead(http.MaxBytesReader(w, r.Body, 8<<10), &input, json.RejectUnknownMembers(true))
+		if decodeErr != nil || input.TelegramUserID <= 0 {
 			writeGatewayJSONError(w, http.StatusBadRequest, "invalid_link_request")
 			return
 		}
@@ -423,7 +414,7 @@ func telegramLinkResolveHandler(secret string, links telegramLinkLookup) http.Ha
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(telegramLinkResolveResponse{ClerkUserID: link.ClerkUserID})
+		_ = json.MarshalWrite(w, telegramLinkResolveResponse{ClerkUserID: link.ClerkUserID})
 	}
 }
 
@@ -434,7 +425,7 @@ func validTelegramLinkSecret(provided, expected string) bool {
 func writeGatewayJSONError(w http.ResponseWriter, status int, code string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(map[string]string{"error": code})
+	_ = json.MarshalWrite(w, map[string]string{"error": code})
 }
 
 // capabilitiesHandler advertises only the AG-UI features the Go runtime's
@@ -445,7 +436,7 @@ func writeGatewayJSONError(w http.ResponseWriter, status int, code string) {
 func capabilitiesHandler(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(capabilitiesResponse{
+	_ = json.MarshalWrite(w, capabilitiesResponse{
 		Transport: capabilityFlag{Streaming: true},
 		State:     stateCapabilities{Snapshots: true, Deltas: true, PersistentState: true},
 		Reasoning: reasoningCapabilities{Supported: true, Streaming: true},
@@ -468,7 +459,7 @@ func agentHealthHandler(entry agentruntime.Entry) http.HandlerFunc {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(code)
-		_ = json.NewEncoder(w).Encode(agentHealthResponse{Status: status, Agent: entry.AppName})
+		_ = json.MarshalWrite(w, agentHealthResponse{Status: status, Agent: entry.AppName})
 	}
 }
 
@@ -478,7 +469,7 @@ func agentHealthHandler(entry agentruntime.Entry) http.HandlerFunc {
 func livenessHandler(deps Dependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(livenessResponse{
+		_ = json.MarshalWrite(w, livenessResponse{
 			Status: "ok", Service: "agents-gateway", Time: deps.Now().UTC().Format(time.RFC3339),
 		})
 	}
@@ -496,7 +487,6 @@ func rootHealthHandler(deps Dependencies) http.HandlerFunc {
 		var mu sync.Mutex
 		var wg sync.WaitGroup
 		record := func(name string, checker healthChecker) {
-			defer wg.Done()
 			status := "unconfigured"
 			if checker != nil {
 				status = "ok"
@@ -508,9 +498,8 @@ func rootHealthHandler(deps Dependencies) http.HandlerFunc {
 			checks[name] = status
 			mu.Unlock()
 		}
-		wg.Add(2)
-		go record("d1", deps.D1)
-		go record("r2", deps.R2)
+		wg.Go(func() { record("d1", deps.D1) })
+		wg.Go(func() { record("r2", deps.R2) })
 		wg.Wait()
 
 		status, code := "ok", http.StatusOK
@@ -522,7 +511,7 @@ func rootHealthHandler(deps Dependencies) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(code)
-		_ = json.NewEncoder(w).Encode(rootHealthResponse{
+		_ = json.MarshalWrite(w, rootHealthResponse{
 			Status: status, Service: "agents-gateway",
 			Time: deps.Now().UTC().Format(time.RFC3339), Checks: checks,
 		})

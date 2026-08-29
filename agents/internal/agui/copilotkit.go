@@ -1,7 +1,7 @@
 package agui
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"strings"
@@ -187,7 +187,7 @@ func (r *CopilotKitRuntime) info(w http.ResponseWriter, _ *http.Request) {
 		}
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(runtimeInfoResponse{
+	_ = json.MarshalWrite(w, runtimeInfoResponse{
 		Version:         CopilotKitRuntimeVersion,
 		Agents:          agents,
 		Mode:            "sse",

@@ -5,7 +5,8 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"strings"
@@ -630,7 +631,7 @@ func (s *Store) hasRow(ctx context.Context, sql string, values ...string) (bool,
 	return len(results) > 0 && len(results[0].Rows) > 0, nil
 }
 
-func decodeList(raw json.RawMessage) (List, error) {
+func decodeList(raw jsontext.Value) (List, error) {
 	var list List
 	if json.Unmarshal(raw, &list) != nil || list.ID == "" || list.Title == "" || list.OwnerUserID == "" {
 		return List{}, errors.New("decode grocery list")
@@ -638,7 +639,7 @@ func decodeList(raw json.RawMessage) (List, error) {
 	return list, nil
 }
 
-func decodeItem(raw json.RawMessage) (Item, error) {
+func decodeItem(raw jsontext.Value) (Item, error) {
 	var row struct {
 		Item
 		ProductProvider *string `json:"product_provider"`

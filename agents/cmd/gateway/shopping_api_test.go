@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -193,7 +193,7 @@ func TestGroceryHTTPAuthenticatesBeforeBodyValidation(t *testing.T) {
 				configure(request)
 				recorder := httptest.NewRecorder()
 				handler.ServeHTTP(recorder, request)
-				if recorder.Code != http.StatusUnauthorized || recorder.Body.String() != "{\"detail\":\"Unauthorized\"}\n" {
+				if recorder.Code != http.StatusUnauthorized || recorder.Body.String() != "{\"detail\":\"Unauthorized\"}" {
 					t.Fatalf("response = %d %s", recorder.Code, recorder.Body.String())
 				}
 				if shopping.resolveCalls != 0 || len(shopping.pantry) != 0 || library.dataCalls != 0 {

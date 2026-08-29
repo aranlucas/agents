@@ -3,7 +3,8 @@ package cloudflare
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"strings"
@@ -35,17 +36,17 @@ func (r pendingToolRow) functionResponse(callID string) (*genai.FunctionResponse
 	if r.ToolName == "" || r.ArgsJSON == "" || r.ResultJSON == "" {
 		return nil, errors.New("invalid pending client tool record")
 	}
-	resultJSON := json.RawMessage(r.ResultJSON)
-	if !json.Valid(resultJSON) {
+	resultJSON := jsontext.Value(r.ResultJSON)
+	if !resultJSON.IsValid() {
 		return nil, errors.New("invalid pending client tool result")
 	}
 	var response map[string]any
 	if json.Unmarshal(resultJSON, &response) != nil || response == nil {
 		response = map[string]any{"result": resultJSON}
 	}
-	arguments := json.RawMessage(r.ArgsJSON)
+	arguments := jsontext.Value(r.ArgsJSON)
 	trimmedArguments := bytes.TrimSpace(arguments)
-	if !json.Valid(arguments) || len(trimmedArguments) == 0 || trimmedArguments[0] != '{' {
+	if !arguments.IsValid() || len(trimmedArguments) == 0 || trimmedArguments[0] != '{' {
 		return nil, errors.New("invalid pending client tool arguments")
 	}
 	// This reserved server-authored field lets downstream policy bind an
@@ -70,7 +71,7 @@ func NewPendingStore(d1 *D1, now func() time.Time) *PendingStore {
 
 var _ agui.PendingTools = (*PendingStore)(nil)
 
-func (p *PendingStore) Register(ctx context.Context, scope agui.ToolScope, callID, toolName string, args json.RawMessage) error {
+func (p *PendingStore) Register(ctx context.Context, scope agui.ToolScope, callID, toolName string, args jsontext.Value) error {
 	if p == nil || p.d1 == nil {
 		return errors.New("D1 pending tool store is required")
 	}
@@ -81,7 +82,7 @@ func (p *PendingStore) Register(ctx context.Context, scope agui.ToolScope, callI
 	if len(encoded) == 0 || bytes.Equal(encoded, []byte("null")) {
 		encoded = []byte("{}")
 	}
-	if !json.Valid(encoded) || encoded[0] != '{' || len(encoded) > maximumToolArgs {
+	if !jsontext.Value(encoded).IsValid() || encoded[0] != '{' || len(encoded) > maximumToolArgs {
 		return errors.New("invalid client tool arguments")
 	}
 	now := p.now().UTC()
@@ -99,7 +100,7 @@ func (p *PendingStore) Register(ctx context.Context, scope agui.ToolScope, callI
 	return nil
 }
 
-func (p *PendingStore) Resolve(ctx context.Context, identity auth.Identity, app, thread, callID string, result json.RawMessage) error {
+func (p *PendingStore) Resolve(ctx context.Context, identity auth.Identity, app, thread, callID string, result jsontext.Value) error {
 	if p == nil || p.d1 == nil {
 		return errors.New("D1 pending tool store is required")
 	}
@@ -125,7 +126,7 @@ func (p *PendingStore) Resolve(ctx context.Context, identity auth.Identity, app,
 		return errors.New("invalid pending client tool record")
 	}
 	encoded := bytes.TrimSpace(result)
-	if len(encoded) == 0 || len(encoded) > maximumToolResult || !json.Valid(encoded) || encoded[0] != '{' {
+	if len(encoded) == 0 || len(encoded) > maximumToolResult || !jsontext.Value(encoded).IsValid() || encoded[0] != '{' {
 		return errors.New("invalid client tool result")
 	}
 	if resolution.Status == "resolved" {

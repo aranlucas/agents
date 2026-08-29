@@ -1,7 +1,7 @@
 package agui
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 	"iter"
 	"net/http/httptest"
@@ -85,7 +85,7 @@ func TestPersistentSnapshotValidatesValuesAndOmitsInternalState(t *testing.T) {
 }
 
 func TestStatePatchAddReplaceRemoveAndEscaping(t *testing.T) {
-	state := stateDocument{"count": json.RawMessage("1")}
+	state := stateDocument{"count": jsontext.Value("1")}
 
 	t.Run("add with JSON Pointer escaping", func(t *testing.T) {
 		patches, err := statePatch(state, map[string]any{"profile/name": "new", "a~b": true})
@@ -129,7 +129,7 @@ func TestStatePatchAddReplaceRemoveAndEscaping(t *testing.T) {
 	})
 
 	t.Run("typed nil delta also emits remove", func(t *testing.T) {
-		state["typed-nil"] = json.RawMessage(`"present"`)
+		state["typed-nil"] = jsontext.Value(`"present"`)
 		var deleted *string
 		patches, err := statePatch(state, map[string]any{"typed-nil": deleted})
 		if err != nil {

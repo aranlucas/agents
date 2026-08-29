@@ -3,7 +3,7 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"log"
@@ -227,7 +227,7 @@ func healthHandler(d1, r2 healthChecker) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /live", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(healthResponse{Status: "ok", Service: "agents-telegram"})
+		_ = json.MarshalWrite(w, healthResponse{Status: "ok", Service: "agents-telegram"})
 	})
 	ready := func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
@@ -248,7 +248,7 @@ func healthHandler(d1, r2 healthChecker) http.Handler {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(code)
-		_ = json.NewEncoder(w).Encode(healthResponse{Status: status, Service: "agents-telegram", Checks: checks})
+		_ = json.MarshalWrite(w, healthResponse{Status: status, Service: "agents-telegram", Checks: checks})
 	}
 	mux.HandleFunc("GET /ready", ready)
 	mux.HandleFunc("GET /health", ready)
