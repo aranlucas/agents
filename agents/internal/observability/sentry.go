@@ -68,6 +68,9 @@ type ErrorDetails struct {
 	Operation string
 	Tags      map[string]string
 	Context   map[string]any
+	// Fingerprint replaces Sentry's stack-only grouping for error families that
+	// have a stable, low-cardinality operational identity.
+	Fingerprint []string
 }
 
 // CaptureError reports err to Sentry unless it is nil or an explicit context
@@ -90,6 +93,9 @@ func CaptureError(ctx context.Context, err error, details ...ErrorDetails) {
 			scope.SetTags(detail.Tags)
 			if len(detail.Context) > 0 {
 				scope.SetContext("operation", sentry.Context(detail.Context))
+			}
+			if len(detail.Fingerprint) > 0 {
+				scope.SetFingerprint(detail.Fingerprint)
 			}
 		}
 		if client := hub.Client(); client != nil {

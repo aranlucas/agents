@@ -15,6 +15,7 @@ import (
 
 	"agents/internal/common"
 	"agents/internal/config"
+	"agents/internal/providererrors"
 	"agents/internal/rate"
 	sdkopenai "github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
@@ -36,21 +37,24 @@ type Limiter interface {
 }
 
 // ProviderError contains safe classification without credentials or prompts.
-type ProviderErrorKind string
+type ProviderErrorKind = providererrors.Kind
 
 const (
-	ProviderErrorRateLimit      ProviderErrorKind = "rate_limit"
-	ProviderErrorRequestSchema  ProviderErrorKind = "request_schema"
-	ProviderErrorResponseSchema ProviderErrorKind = "response_schema"
-	ProviderErrorEmptyResponse  ProviderErrorKind = "empty_response"
-	ProviderErrorHTTP           ProviderErrorKind = "http"
-	ProviderErrorNetwork        ProviderErrorKind = "network"
-	ProviderErrorConfiguration  ProviderErrorKind = "configuration"
-	ProviderErrorCircuitOpen    ProviderErrorKind = "circuit_open"
+	ProviderErrorRateLimit      = providererrors.RateLimit
+	ProviderErrorRequestSchema  = providererrors.RequestSchema
+	ProviderErrorResponseSchema = providererrors.ResponseSchema
+	ProviderErrorEmptyResponse  = providererrors.EmptyResponse
+	ProviderErrorHTTP           = providererrors.HTTP
+	ProviderErrorNotFound       = providererrors.NotFound
+	ProviderErrorAuthentication = providererrors.Authentication
+	ProviderErrorNetwork        = providererrors.Network
+	ProviderErrorConfiguration  = providererrors.Configuration
+	ProviderErrorCircuitOpen    = providererrors.CircuitOpen
 )
 
 type ProviderError struct {
 	Provider  string
+	Model     string
 	Status    int
 	Retryable bool
 	Kind      ProviderErrorKind
@@ -58,12 +62,38 @@ type ProviderError struct {
 }
 
 func (e *ProviderError) Error() string {
-	if e.Status != 0 {
-		return fmt.Sprintf("provider %s failed with HTTP %d (%s)", e.Provider, e.Status, e.Kind)
-	}
-	return fmt.Sprintf("provider %s failed (%s)", e.Provider, e.Kind)
+	return providerErrorSummary(providererrors.Metadata{
+		Provider: e.Provider, Model: e.Model, Status: e.Status,
+		Retryable: e.Retryable, Kind: e.Kind,
+	})
 }
 func (e *ProviderError) Unwrap() error { return e.cause }
+
+func (e *ProviderError) ProviderFailure() providererrors.Metadata {
+	return providererrors.Metadata{
+		Provider: e.Provider, Model: e.Model, Status: e.Status,
+		Retryable: e.Retryable, Kind: e.Kind,
+	}
+}
+
+func providerErrorSummary(a providererrors.Metadata) string {
+	model := strings.TrimSpace(a.Model)
+	switch a.Kind {
+	case ProviderErrorRateLimit:
+		if a.Status != 0 {
+			return fmt.Sprintf("provider %s rate limited model %s (HTTP %d)", a.Provider, model, a.Status)
+		}
+		return fmt.Sprintf("provider %s rate limit reached for model %s", a.Provider, model)
+	case ProviderErrorNotFound:
+		return fmt.Sprintf("provider %s could not find model %s (HTTP %d)", a.Provider, model, a.Status)
+	case ProviderErrorAuthentication:
+		return fmt.Sprintf("provider %s authentication failed for model %s (HTTP %d)", a.Provider, model, a.Status)
+	case ProviderErrorHTTP:
+		return fmt.Sprintf("provider %s returned HTTP %d for model %s", a.Provider, a.Status, model)
+	default:
+		return fmt.Sprintf("provider %s failed for model %s (%s)", a.Provider, model, a.Kind)
+	}
+}
 
 type circuitState struct {
 	failures  int
@@ -148,7 +178,7 @@ func (m *Model) GenerateContent(ctx context.Context, req *model.LLMRequest, stre
 		}
 		var last error
 		for _, pc := range m.providers {
-			if err := m.circuitAvailable(pc.config.Name); err != nil {
+			if err := m.circuitAvailable(pc.config); err != nil {
 				last = err
 				continue
 			}
@@ -177,16 +207,16 @@ func (m *Model) runProvider(ctx context.Context, pc providerClient, req *model.L
 		return false, err
 	}
 	if pc.err != nil || pc.model == nil {
-		return false, &ProviderError{Provider: pc.config.Name, Kind: ProviderErrorConfiguration, cause: pc.err}
+		return false, &ProviderError{Provider: pc.config.Name, Model: pc.config.Model, Kind: ProviderErrorConfiguration, cause: pc.err}
 	}
 	if err := m.limiter.Acquire(ctx, pc.config.Name, pc.config.RequestsPerMinute); err != nil {
-		return false, &ProviderError{Provider: pc.config.Name, Retryable: errors.Is(err, rate.ErrLimitReached), Kind: ProviderErrorRateLimit, cause: err}
+		return false, &ProviderError{Provider: pc.config.Name, Model: pc.config.Model, Retryable: errors.Is(err, rate.ErrLimitReached), Kind: ProviderErrorRateLimit, cause: err}
 	}
 	request := sanitizeRequest(req, pc.config.Model)
 	emitted := false
 	for response, err := range pc.model.GenerateContent(ctx, request, stream) {
 		if err != nil {
-			return emitted, providerError(pc.config.Name, err)
+			return emitted, providerError(pc.config.Name, pc.config.Model, err)
 		}
 		if response == nil {
 			continue
@@ -197,44 +227,52 @@ func (m *Model) runProvider(ctx context.Context, pc providerClient, req *model.L
 		}
 	}
 	if !emitted {
-		return false, &ProviderError{Provider: pc.config.Name, Retryable: true, Kind: ProviderErrorEmptyResponse}
+		return false, &ProviderError{Provider: pc.config.Name, Model: pc.config.Model, Retryable: true, Kind: ProviderErrorEmptyResponse}
 	}
 	return true, nil
 }
 
-func providerError(provider string, err error) error {
-	var apiErr *sdkopenai.Error
-	if errors.As(err, &apiErr) {
+func providerError(provider, modelName string, err error) error {
+	if apiErr, ok := errors.AsType[*sdkopenai.Error](err); ok {
 		retryable := apiErr.StatusCode == http.StatusRequestTimeout ||
 			apiErr.StatusCode == http.StatusRequestEntityTooLarge ||
 			apiErr.StatusCode == http.StatusTooManyRequests ||
 			apiErr.StatusCode >= http.StatusInternalServerError
+		kind := ProviderErrorHTTP
+		switch apiErr.StatusCode {
+		case http.StatusUnauthorized, http.StatusForbidden:
+			kind = ProviderErrorAuthentication
+		case http.StatusNotFound:
+			kind = ProviderErrorNotFound
+		case http.StatusTooManyRequests:
+			kind = ProviderErrorRateLimit
+		}
 		return &ProviderError{
 			Provider:  provider,
+			Model:     modelName,
 			Status:    apiErr.StatusCode,
 			Retryable: retryable,
-			Kind:      ProviderErrorHTTP,
+			Kind:      kind,
 			cause:     err,
 		}
 	}
-	var networkErr net.Error
-	if errors.As(err, &networkErr) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-		return &ProviderError{Provider: provider, Retryable: true, Kind: ProviderErrorNetwork, cause: err}
+	if _, ok := errors.AsType[net.Error](err); ok || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+		return &ProviderError{Provider: provider, Model: modelName, Retryable: true, Kind: ProviderErrorNetwork, cause: err}
 	}
 	switch {
 	case errors.Is(err, openaimodel.ErrEmptyResponse),
 		errors.Is(err, openaimodel.ErrNoOutputItems),
 		errors.Is(err, openaimodel.ErrNoTextOrToolContent):
-		return &ProviderError{Provider: provider, Retryable: true, Kind: ProviderErrorEmptyResponse, cause: err}
+		return &ProviderError{Provider: provider, Model: modelName, Retryable: true, Kind: ProviderErrorEmptyResponse, cause: err}
 	case errors.Is(err, openaimodel.ErrUnsupportedMessageContentType),
 		errors.Is(err, openaimodel.ErrUnsupportedOutputItemType),
 		strings.Contains(err.Error(), "parse function call args"),
 		strings.Contains(err.Error(), "parse streamed function args"),
 		strings.Contains(err.Error(), "openai response failed"),
 		strings.Contains(err.Error(), "openai stream error"):
-		return &ProviderError{Provider: provider, Kind: ProviderErrorResponseSchema, cause: err}
+		return &ProviderError{Provider: provider, Model: modelName, Kind: ProviderErrorResponseSchema, cause: err}
 	default:
-		return &ProviderError{Provider: provider, Kind: ProviderErrorRequestSchema, cause: err}
+		return &ProviderError{Provider: provider, Model: modelName, Kind: ProviderErrorRequestSchema, cause: err}
 	}
 }
 
@@ -279,29 +317,29 @@ func sanitizeRequest(req *model.LLMRequest, modelName string) *model.LLMRequest 
 func validateProvider(provider config.Provider) error {
 	parsed, err := url.Parse(provider.BaseURL)
 	if err != nil || parsed.Host == "" {
-		return &ProviderError{Provider: provider.Name, Kind: ProviderErrorConfiguration}
+		return &ProviderError{Provider: provider.Name, Model: provider.Model, Kind: ProviderErrorConfiguration}
 	}
 	loopback := parsed.Hostname() == "127.0.0.1" || parsed.Hostname() == "localhost" || parsed.Hostname() == "::1"
 	if parsed.Scheme != "https" && (parsed.Scheme != "http" || !loopback) {
-		return &ProviderError{Provider: provider.Name, Kind: ProviderErrorConfiguration}
+		return &ProviderError{Provider: provider.Name, Model: provider.Model, Kind: ProviderErrorConfiguration}
 	}
 	if provider.Name == "" || provider.APIKey == "" || provider.RequestsPerMinute <= 0 {
-		return &ProviderError{Provider: provider.Name, Kind: ProviderErrorConfiguration}
+		return &ProviderError{Provider: provider.Name, Model: provider.Model, Kind: ProviderErrorConfiguration}
 	}
 	return nil
 }
 
 func isRetryable(err error) bool {
-	var providerError *ProviderError
-	return errors.As(err, &providerError) && providerError.Retryable
+	providerError, ok := errors.AsType[*ProviderError](err)
+	return ok && providerError.Retryable
 }
 
-func (m *Model) circuitAvailable(name string) error {
+func (m *Model) circuitAvailable(provider config.Provider) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	state := m.circuits[name]
+	state := m.circuits[provider.Name]
 	if m.now().Before(state.openUntil) {
-		return &ProviderError{Provider: name, Retryable: true, Kind: ProviderErrorCircuitOpen}
+		return &ProviderError{Provider: provider.Name, Model: provider.Model, Retryable: true, Kind: ProviderErrorCircuitOpen}
 	}
 	return nil
 }

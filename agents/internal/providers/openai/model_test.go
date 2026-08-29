@@ -323,6 +323,31 @@ func TestGenerateContentRejectsMalformedToolArguments(t *testing.T) {
 	}
 }
 
+func TestGenerateContentClassifiesProviderNotFound(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		writeJSON(w, map[string]any{"error": map[string]any{
+			"message": "model slug is unavailable", "type": "invalid_request_error", "code": "model_not_found",
+		}})
+	}))
+	defer server.Close()
+
+	_, errs := collect(New(testProvider("openrouter", server.URL), server.Client(), allowLimiter{}).GenerateContent(t.Context(), &model.LLMRequest{Contents: genai.Text("hello")}, false))
+	if len(errs) != 1 {
+		t.Fatalf("errors = %#v, want one", errs)
+	}
+	providerError, ok := errors.AsType[*ProviderError](errs[0])
+	if !ok {
+		t.Fatalf("error = %T, want ProviderError", errs[0])
+	}
+	if providerError.Provider != "openrouter" || providerError.Model != "test-model" || providerError.Status != http.StatusNotFound || providerError.Kind != ProviderErrorNotFound || providerError.Retryable {
+		t.Fatalf("provider error = %#v", providerError)
+	}
+	if got := providerError.Error(); got != "provider openrouter could not find model test-model (HTTP 404)" {
+		t.Fatalf("error text = %q", got)
+	}
+}
+
 func TestSanitizeRequestDropsThoughtArtifacts(t *testing.T) {
 	request := &model.LLMRequest{
 		Model: "upstream-model",

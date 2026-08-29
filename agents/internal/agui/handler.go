@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"agents/internal/agentruntime"
 	"agents/internal/auth"
 	"agents/internal/observability"
+	"agents/internal/providererrors"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/encoding/sse"
@@ -339,18 +341,7 @@ runLoop:
 			emit(terminalCtx, converted)
 		}
 		log.Printf("run failed: agent=%s thread=%s user=%s run=%s err=%v", entry.AppName, input.ThreadID, userID, input.RunID, runErr)
-		observability.CaptureError(terminalCtx, runErr, observability.ErrorDetails{
-			Operation: "agent.run",
-			Tags: map[string]string{
-				"agent.app_name": entry.AppName,
-				"agent.route":    entry.Route,
-				"error.code":     classifyErrorCode(runErr),
-			},
-			Context: map[string]any{
-				"run_id":    input.RunID,
-				"thread_id": input.ThreadID,
-			},
-		})
+		observability.CaptureError(terminalCtx, runErr, agentRunErrorDetails(runErr, entry, input))
 		emit(terminalCtx, sanitizeRunError(input.RunID, runErr))
 		return
 	}
@@ -364,6 +355,38 @@ runLoop:
 		finished.Result = converter.lastFinalText
 	}
 	emit(ctx, finished)
+}
+
+func agentRunErrorDetails(err error, entry agentruntime.Entry, input *types.RunAgentInput) observability.ErrorDetails {
+	details := observability.ErrorDetails{
+		Operation: "agent.run",
+		Tags: map[string]string{
+			"agent.app_name": entry.AppName,
+			"agent.route":    entry.Route,
+			"error.code":     classifyErrorCode(err),
+		},
+		Context: map[string]any{
+			"run_id":    input.RunID,
+			"thread_id": input.ThreadID,
+		},
+	}
+
+	providerError, ok := providererrors.Details(err)
+	if !ok {
+		return details
+	}
+	details.Tags["provider.name"] = providerError.Provider
+	details.Tags["provider.model"] = providerError.Model
+	details.Tags["provider.error_kind"] = string(providerError.Kind)
+	details.Tags["provider.retryable"] = strconv.FormatBool(providerError.Retryable)
+	if providerError.Status != 0 {
+		details.Tags["provider.status_code"] = strconv.Itoa(providerError.Status)
+	}
+	details.Fingerprint = []string{
+		"agent.run", entry.Route, "provider",
+		providerError.Provider, providerError.Model, string(providerError.Kind), strconv.Itoa(providerError.Status),
+	}
+	return details
 }
 
 func captureSessionError(ctx context.Context, err error, entry agentruntime.Entry, input *types.RunAgentInput, operation string) {

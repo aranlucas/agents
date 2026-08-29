@@ -662,10 +662,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("configure resume model: %v", err)
 	}
-	resumeModel, err := openai.NewMulti(resumeProvider, availableProviders, nil, limiter)
-	if err != nil {
-		log.Fatalf("build resume model chain: %v", err)
-	}
+	resumeModel := openai.New(resumeProvider, nil, limiter)
 	resumeAgent, err := resume.New(resumeModel, agui.NewAGUIToolset(pending))
 	if err != nil {
 		log.Fatalf("build resume agent: %v", err)

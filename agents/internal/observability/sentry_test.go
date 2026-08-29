@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 	"time"
 
@@ -94,9 +95,10 @@ func TestCaptureErrorRecordsDeadlineAndOperationalDetails(t *testing.T) {
 	ctx = span.Context()
 
 	CaptureError(ctx, context.DeadlineExceeded, ErrorDetails{
-		Operation: "agent.run",
-		Tags:      map[string]string{"agent.route": "oralboards"},
-		Context:   map[string]any{"run_id": "run-1"},
+		Operation:   "agent.run",
+		Tags:        map[string]string{"agent.route": "oralboards"},
+		Context:     map[string]any{"run_id": "run-1"},
+		Fingerprint: []string{"agent.run", "oralboards", "timeout"},
 	})
 	CaptureError(ctx, context.Canceled)
 
@@ -112,5 +114,8 @@ func TestCaptureErrorRecordsDeadlineAndOperationalDetails(t *testing.T) {
 	}
 	if event.Contexts["trace"]["trace_id"] != span.TraceID {
 		t.Fatalf("captured trace context = %#v", event.Contexts["trace"])
+	}
+	if want := []string{"agent.run", "oralboards", "timeout"}; !slices.Equal(event.Fingerprint, want) {
+		t.Fatalf("captured fingerprint = %#v, want %#v", event.Fingerprint, want)
 	}
 }
