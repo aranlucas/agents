@@ -11,9 +11,9 @@ import (
 	"agents/internal/agentruntime"
 	"agents/internal/auth"
 	"agents/internal/common"
+	"agents/internal/observability"
 
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
-	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/encoding/sse"
 	"google.golang.org/adk/v2/session"
 )
 
@@ -58,11 +58,28 @@ func (r *D1AgentRunner) connectHandler(agent copilotKitAgent) http.Handler {
 		}
 
 		writeSSEHeaders(w)
-		frame := sse.NewSSEWriter()
+		emitter := newReplayAwareEmitter(w, nil)
+		defer func() {
+			recovered := recover()
+			if recovered == nil {
+				return
+			}
+			panicErr := fmt.Errorf("AG-UI connect panic: %v", recovered)
+			terminalCtx := context.WithoutCancel(request.Context())
+			log.Printf("CopilotKit connect panicked: agent=%s thread=%s", agent.id, input.ThreadID)
+			observability.CaptureError(terminalCtx, panicErr, observability.ErrorDetails{
+				Operation: "agent.connect",
+				Tags:      map[string]string{"agent.app_name": agent.entry.AppName, "agent.route": agent.entry.Route},
+				Context:   map[string]any{"run_id": input.RunID, "thread_id": input.ThreadID},
+			})
+			if err := emitter.Emit(terminalCtx, sanitizeRunError(input.RunID, panicErr)); err != nil && !errors.Is(err, errEventAfterTerminal) {
+				log.Printf("CopilotKit connect: panic terminal emission failed for agent=%s thread=%s: %v", agent.id, input.ThreadID, err)
+			}
+		}()
 		if active := r.active.lookup(key); active != nil {
 			w.WriteHeader(http.StatusOK)
-			if err := active.replay(request.Context(), func(event events.Event) error {
-				return frame.WriteEvent(request.Context(), w, event)
+			if err := active.replay(request.Context(), func(encoded []byte) error {
+				return emitter.emitEncoded(request.Context(), encoded)
 			}); err != nil && request.Context().Err() == nil {
 				log.Printf("CopilotKit connect: active replay failed for agent=%s thread=%s: %v", agent.id, input.ThreadID, err)
 			}
@@ -79,14 +96,25 @@ func (r *D1AgentRunner) connectHandler(agent copilotKitAgent) http.Handler {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		_ = frame.WriteEvent(ctx, w, events.NewRunStartedEvent(input.ThreadID, input.RunID))
-		_ = frame.WriteEvent(ctx, w, events.NewMessagesSnapshotEvent(state.Messages))
-		_ = frame.WriteEvent(ctx, w, events.NewStateSnapshotEvent(state.State))
+		if err := emitter.Emit(ctx, events.NewRunStartedEvent(input.ThreadID, input.RunID)); err != nil {
+			log.Printf("CopilotKit connect: RUN_STARTED emission failed for agent=%s thread=%s: %v", agent.id, input.ThreadID, err)
+			return
+		}
+		if err := emitter.Emit(ctx, events.NewMessagesSnapshotEvent(state.Messages)); err != nil {
+			log.Printf("CopilotKit connect: messages snapshot emission failed for agent=%s thread=%s: %v", agent.id, input.ThreadID, err)
+			return
+		}
+		if err := emitter.Emit(ctx, events.NewStateSnapshotEvent(state.State)); err != nil {
+			log.Printf("CopilotKit connect: state snapshot emission failed for agent=%s thread=%s: %v", agent.id, input.ThreadID, err)
+			return
+		}
 		finishedOutcome := events.WithSuccessOutcome()
 		if len(state.Interrupts) > 0 {
 			finishedOutcome = events.WithInterruptOutcome(state.Interrupts)
 		}
-		_ = frame.WriteEvent(ctx, w, events.NewRunFinishedEventWithOptions(input.ThreadID, input.RunID, finishedOutcome))
+		if err := emitter.Emit(ctx, events.NewRunFinishedEventWithOptions(input.ThreadID, input.RunID, finishedOutcome)); err != nil {
+			log.Printf("CopilotKit connect: RUN_FINISHED emission failed for agent=%s thread=%s: %v", agent.id, input.ThreadID, err)
+		}
 	})
 }
 

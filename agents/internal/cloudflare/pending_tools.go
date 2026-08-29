@@ -22,9 +22,11 @@ const (
 )
 
 type pendingToolRow struct {
+	CallID     string `json:"call_id"`
 	ToolName   string `json:"tool_name"`
 	ArgsJSON   string `json:"args_json"`
 	ResultJSON string `json:"result_json"`
+	Status     string `json:"status"`
 }
 
 type pendingToolResolution struct {
@@ -178,6 +180,97 @@ func (p *PendingStore) Take(ctx context.Context, identity auth.Identity, app, th
 		return nil, errors.New("invalid pending client tool record")
 	}
 	return row.functionResponse(callID)
+}
+
+// ClaimBatch atomically authorizes, resolves, and consumes every result. One
+// DELETE ... RETURNING statement is the claim: its count guard makes a missing,
+// malformed-scope, conflicting, or already-consumed row delete nothing, while
+// SQLite's statement transaction prevents concurrent duplicate claims from
+// both succeeding.
+func (p *PendingStore) ClaimBatch(ctx context.Context, identity auth.Identity, scope agui.ToolScope, submitted []agui.PendingToolResult) ([]*genai.FunctionResponse, error) {
+	if p == nil || p.d1 == nil || identity.Public || identity.UserID != scope.UserID || !validScope(scope) || len(submitted) == 0 {
+		return nil, agui.ErrPendingToolNotFound
+	}
+
+	resultsByCall := make(map[string]jsontext.Value, len(submitted))
+	for _, result := range submitted {
+		encoded := bytes.TrimSpace(result.Payload)
+		if !agui.ClientCallID.MatchString(result.CallID) || len(encoded) == 0 || len(encoded) > maximumToolResult || !jsontext.Value(encoded).IsValid() || encoded[0] != '{' {
+			return nil, errors.New("invalid client tool result")
+		}
+		if _, duplicate := resultsByCall[result.CallID]; duplicate {
+			return nil, errors.New("duplicate client tool result")
+		}
+		resultsByCall[result.CallID] = append(jsontext.Value(nil), encoded...)
+	}
+
+	now := p.now().UTC().UnixMilli()
+	callPlaceholders := placeholders(len(submitted))
+	var retryConditions strings.Builder
+	conditionParams := make([]any, 0, len(submitted)*2)
+	callParams := make([]any, 0, len(submitted))
+	for index, result := range submitted {
+		if index > 0 {
+			retryConditions.WriteString(" OR ")
+		}
+		retryConditions.WriteString("(call_id = ? AND (status = 'pending' OR (status = 'resolved' AND result_json = ?)))")
+		callParams = append(callParams, result.CallID)
+		conditionParams = append(conditionParams, result.CallID, string(resultsByCall[result.CallID]))
+	}
+
+	params := []any{scope.AppName, scope.UserID, scope.ThreadID, now}
+	params = append(params, callParams...)
+	params = append(params, conditionParams...)
+	params = append(params, len(submitted), scope.AppName, scope.UserID, scope.ThreadID, now)
+	params = append(params, callParams...)
+	params = append(params, conditionParams...)
+
+	statement := Statement{
+		SQL: `DELETE FROM pending_client_tools
+			WHERE app_name = ? AND user_id = ? AND thread_id = ? AND expires_at > ?
+			AND call_id IN (` + callPlaceholders + `)
+			AND (` + retryConditions.String() + `)
+			AND ? = (SELECT COUNT(*) FROM pending_client_tools
+				WHERE app_name = ? AND user_id = ? AND thread_id = ? AND expires_at > ?
+				AND call_id IN (` + callPlaceholders + `)
+				AND (` + retryConditions.String() + `))
+			RETURNING call_id, tool_name, args_json, result_json, status`,
+		Params: params,
+	}
+	claimed, err := p.d1.Run(ctx, statement)
+	if err != nil {
+		return nil, fmt.Errorf("claim pending client tools: %w", err)
+	}
+	if len(claimed) != 1 || len(claimed[0].Rows) != len(submitted) || claimed[0].Meta.Changes != int64(len(submitted)) {
+		return nil, agui.ErrPendingToolNotFound
+	}
+
+	rowsByCall := make(map[string]pendingToolRow, len(claimed[0].Rows))
+	for _, encoded := range claimed[0].Rows {
+		var row pendingToolRow
+		if err := json.Unmarshal(encoded, &row); err != nil || !agui.ClientCallID.MatchString(row.CallID) {
+			return nil, errors.New("invalid pending client tool record")
+		}
+		rowsByCall[row.CallID] = row
+	}
+	responses := make([]*genai.FunctionResponse, 0, len(submitted))
+	for _, result := range submitted {
+		row, ok := rowsByCall[result.CallID]
+		if !ok {
+			return nil, errors.New("invalid pending client tool claim")
+		}
+		if row.Status == "pending" {
+			row.ResultJSON = string(resultsByCall[result.CallID])
+		} else if row.Status != "resolved" || row.ResultJSON != string(resultsByCall[result.CallID]) {
+			return nil, errors.New("invalid pending client tool resolution")
+		}
+		response, err := row.functionResponse(result.CallID)
+		if err != nil {
+			return nil, err
+		}
+		responses = append(responses, response)
+	}
+	return responses, nil
 }
 
 func validScope(scope agui.ToolScope) bool {

@@ -1,9 +1,11 @@
 package agui
 
 import (
+	"bytes"
 	"context"
 	json "encoding/json/v2"
 	"errors"
+	"io"
 	"iter"
 	"net/http"
 	"net/http/httptest"
@@ -27,6 +29,28 @@ type headerSignalRecorder struct {
 	once        sync.Once
 	wroteHeader chan struct{}
 }
+
+type failingStreamWriter struct {
+	header    http.Header
+	body      bytes.Buffer
+	status    int
+	writes    int
+	failAfter int
+}
+
+func (w *failingStreamWriter) Header() http.Header { return w.header }
+func (w *failingStreamWriter) WriteHeader(status int) {
+	w.status = status
+}
+
+func (w *failingStreamWriter) Write(payload []byte) (int, error) {
+	w.writes++
+	if w.writes > w.failAfter {
+		return 0, io.ErrClosedPipe
+	}
+	return w.body.Write(payload)
+}
+func (*failingStreamWriter) Flush() {}
 
 func (r *headerSignalRecorder) WriteHeader(statusCode int) {
 	r.once.Do(func() { close(r.wroteHeader) })
@@ -285,6 +309,18 @@ func TestCopilotKitRuntimeRequestDisconnectDoesNotCancelActiveRun(t *testing.T) 
 	if runtime.runner.active.lookup(key) == nil {
 		t.Fatal("active run disappeared after request disconnect")
 	}
+	connectStarted := make(chan struct{})
+	connectDone := make(chan *httptest.ResponseRecorder, 1)
+	go func() {
+		recorder := httptest.NewRecorder()
+		mux.ServeHTTP(&headerSignalRecorder{ResponseRecorder: recorder, wroteHeader: connectStarted}, httptest.NewRequest(http.MethodPost, "/agent/resume/connect", strings.NewReader(`{"threadId":"thread-disconnect","runId":"connect-disconnect","messages":[]}`)))
+		connectDone <- recorder
+	}()
+	select {
+	case <-connectStarted:
+	case <-time.After(2 * time.Second):
+		t.Fatal("replacement connect did not start")
+	}
 	close(model.release)
 
 	select {
@@ -295,6 +331,73 @@ func TestCopilotKitRuntimeRequestDisconnectDoesNotCancelActiveRun(t *testing.T) 
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("detached run did not finish")
+	}
+	select {
+	case connect := <-connectDone:
+		frames := parseSSEFrames(t, connect.Body.Bytes())
+		assertStrictAGUISequence(t, frames)
+		if !strings.Contains(connect.Body.String(), "Run survived reconnect.") {
+			t.Fatalf("connect did not replay the successful detached run: %s", connect.Body.String())
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("replacement connect did not finish")
+	}
+}
+
+func TestCopilotKitRuntimeTransportFailureReconnectsAndFollowsActiveRun(t *testing.T) {
+	model := &disconnectSurvivalModel{contexts: make(chan context.Context, 1), release: make(chan struct{})}
+	runtime := testCopilotKitRuntime(t, model)
+	mux := http.NewServeMux()
+	runtime.Register(mux)
+
+	original := &failingStreamWriter{header: make(http.Header), failAfter: 2}
+	runDone := make(chan struct{})
+	go func() {
+		mux.ServeHTTP(original, httptest.NewRequest(http.MethodPost, "/agent/resume/run", strings.NewReader(`{"threadId":"thread-transport","runId":"run-transport","messages":[{"id":"user-1","role":"user","content":"wait"}]}`)))
+		close(runDone)
+	}()
+	var runCtx context.Context
+	select {
+	case runCtx = <-model.contexts:
+	case <-time.After(2 * time.Second):
+		t.Fatal("model did not start")
+	}
+
+	connectStarted := make(chan struct{})
+	connectDone := make(chan *httptest.ResponseRecorder, 1)
+	go func() {
+		recorder := httptest.NewRecorder()
+		mux.ServeHTTP(&headerSignalRecorder{ResponseRecorder: recorder, wroteHeader: connectStarted}, httptest.NewRequest(http.MethodPost, "/agent/resume/connect", strings.NewReader(`{"threadId":"thread-transport","runId":"connect-transport","messages":[]}`)))
+		connectDone <- recorder
+	}()
+	select {
+	case <-connectStarted:
+	case <-time.After(2 * time.Second):
+		t.Fatal("connect did not attach")
+	}
+	if err := runCtx.Err(); err != nil {
+		t.Fatalf("active execution was canceled before reconnect follow: %v", err)
+	}
+	close(model.release)
+
+	select {
+	case <-runDone:
+	case <-time.After(2 * time.Second):
+		t.Fatal("detached run did not finish after original transport failed")
+	}
+	if original.writes <= original.failAfter {
+		t.Fatalf("original transport did not fail: writes=%d", original.writes)
+	}
+	select {
+	case connect := <-connectDone:
+		frames := parseSSEFrames(t, connect.Body.Bytes())
+		assertStrictAGUISequence(t, frames)
+		body := connect.Body.String()
+		if !strings.Contains(body, "RUN_STARTED") || !strings.Contains(body, "Run survived reconnect.") || !strings.Contains(body, "RUN_FINISHED") {
+			t.Fatalf("connect did not replay and follow successful run: %s", body)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("connect did not reach terminal event")
 	}
 }
 

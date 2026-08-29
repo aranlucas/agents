@@ -494,6 +494,31 @@ func TestHandlerStreamsReasoningText(t *testing.T) {
 	}
 }
 
+func TestHandlerRecoversStreamingPanicAsSanitizedTerminalRunError(t *testing.T) {
+	h := newTestGateway(t, &fakePanicModel{}, &fakeIDs{}, WithStreamSmoothing(streamSmoothing{enabled: false}))
+	body := `{"threadId":"thread-panic","runId":"run-panic","messages":[{"id":"user-1","role":"user","content":"start"}]}`
+	recorder := httptest.NewRecorder()
+	request, transport := requestWithSentryHub(t, httptest.NewRequest(http.MethodPost, "/resume/agui", strings.NewReader(body)))
+	h.ServeHTTP(recorder, request)
+
+	frames := parseSSEFrames(t, recorder.Body.Bytes())
+	assertStrictAGUISequence(t, frames)
+	out := recorder.Body.String()
+	if recorder.Code != http.StatusOK || !strings.Contains(out, "RUN_ERROR") || strings.Contains(out, "RUN_FINISHED") {
+		t.Fatalf("panic stream = %d %s", recorder.Code, out)
+	}
+	if strings.Contains(out, "panic-secret-value") || strings.Contains(out, "goroutine") {
+		t.Fatalf("panic details leaked to client: %s", out)
+	}
+	if len(transport.events) != 1 {
+		t.Fatalf("captured panic events = %d, want 1", len(transport.events))
+	}
+	captured := transport.events[0]
+	if captured.Tags["operation"] != "agent.run" || captured.Tags["agent.route"] != "resume" || captured.Tags["error.code"] != "internal_error" {
+		t.Fatalf("captured panic tags = %#v", captured.Tags)
+	}
+}
+
 // ---- sanitized RUN_ERROR -------------------------------------------------
 
 func TestHandlerEndsWithSanitizedRunErrorOnUpstreamFailure(t *testing.T) {
@@ -878,6 +903,17 @@ func (m *fakeErrorModel) GenerateContent(ctx context.Context, req *model.LLMRequ
 	}
 }
 
+type fakePanicModel struct{}
+
+func (*fakePanicModel) Name() string { return "fake-panic" }
+
+func (*fakePanicModel) GenerateContent(context.Context, *model.LLMRequest, bool) iter.Seq2[*model.LLMResponse, error] {
+	return func(yield func(*model.LLMResponse, error) bool) {
+		yield(&model.LLMResponse{Content: &genai.Content{Role: "model", Parts: []*genai.Part{{Text: "started"}}}, Partial: true}, nil)
+		panic("panic-secret-value")
+	}
+}
+
 type fakeProviderError struct{ metadata providererrors.Metadata }
 
 func (*fakeProviderError) Error() string { return "safe provider failure" }
@@ -993,13 +1029,12 @@ type fakePendingRecord struct {
 }
 
 type fakePending struct {
-	mu       sync.Mutex
-	pending  map[string]fakePendingRecord
-	resolved map[string]jsontext.Value
+	mu      sync.Mutex
+	pending map[string]fakePendingRecord
 }
 
 func newFakePending() *fakePending {
-	return &fakePending{pending: make(map[string]fakePendingRecord), resolved: make(map[string]jsontext.Value)}
+	return &fakePending{pending: make(map[string]fakePendingRecord)}
 }
 
 func (p *fakePending) Register(ctx context.Context, scope ToolScope, callID, toolName string, args jsontext.Value) error {
@@ -1009,33 +1044,26 @@ func (p *fakePending) Register(ctx context.Context, scope ToolScope, callID, too
 	return nil
 }
 
-func (p *fakePending) Resolve(ctx context.Context, identity auth.Identity, app, thread, callID string, result jsontext.Value) error {
+func (p *fakePending) ClaimBatch(_ context.Context, _ auth.Identity, scope ToolScope, results []PendingToolResult) ([]*genai.FunctionResponse, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	k := app + "\x00" + thread + "\x00" + callID
-	if _, ok := p.pending[k]; !ok {
-		return ErrPendingToolNotFound
+	responses := make([]*genai.FunctionResponse, 0, len(results))
+	for _, result := range results {
+		record, ok := p.pending[key(scope, result.CallID)]
+		if !ok {
+			return nil, ErrPendingToolNotFound
+		}
+		var response map[string]any
+		if json.Unmarshal(result.Payload, &response) != nil || response == nil {
+			return nil, ErrPendingToolNotFound
+		}
+		response["_agui_request"] = record.args
+		responses = append(responses, &genai.FunctionResponse{ID: result.CallID, Name: record.name, Response: response})
 	}
-	p.resolved[k] = append(jsontext.Value(nil), result...)
-	return nil
-}
-
-func (p *fakePending) Take(ctx context.Context, identity auth.Identity, app, thread, callID string) (*genai.FunctionResponse, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	k := app + "\x00" + thread + "\x00" + callID
-	record, ok := p.pending[k]
-	result, resolvedOK := p.resolved[k]
-	if !ok || !resolvedOK {
-		return nil, ErrPendingToolNotFound
+	for _, result := range results {
+		delete(p.pending, key(scope, result.CallID))
 	}
-	delete(p.pending, k)
-	delete(p.resolved, k)
-	var response map[string]any
-	if json.Unmarshal(result, &response) != nil || response == nil {
-		return nil, ErrPendingToolNotFound
-	}
-	return &genai.FunctionResponse{ID: callID, Name: record.name, Response: response}, nil
+	return responses, nil
 }
 
 func key(scope ToolScope, callID string) string {

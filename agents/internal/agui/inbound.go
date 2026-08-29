@@ -203,50 +203,50 @@ func toolResultContent(ctx context.Context, messages []types.Message, identity a
 	for start > 0 && messages[start-1].Role == types.RoleTool {
 		start--
 	}
-	parts := make([]*genai.Part, 0, end-start)
+	results := make([]PendingToolResult, 0, end-start)
+	seen := make(map[string]bool, end-start)
 	for _, msg := range messages[start:end] {
-		response, err := resolveFunctionResponse(ctx, msg, messages, identity, pending, scope)
+		callID := strings.TrimSpace(msg.ToolCallID)
+		if !ClientCallID.MatchString(callID) || seen[callID] {
+			return nil, fmt.Errorf("%w: tool result call IDs must be valid and unique", ErrInvalidRunInput)
+		}
+		seen[callID] = true
+		payload, err := toolResponsePayload(msg)
 		if err != nil {
 			return nil, err
 		}
+		results = append(results, PendingToolResult{CallID: callID, Payload: payload})
+	}
+
+	var responses []*genai.FunctionResponse
+	if pending != nil {
+		claimed, err := pending.ClaimBatch(ctx, identity, scope, results)
+		if err != nil {
+			return nil, fmt.Errorf("%w: pending tool results were rejected", ErrInvalidRunInput)
+		}
+		responses = claimed
+	} else {
+		responses = make([]*genai.FunctionResponse, 0, len(results))
+		for _, result := range results {
+			name := toolNameFromHistory(messages, result.CallID)
+			if !ClientToolName.MatchString(name) {
+				return nil, fmt.Errorf("%w: tool result %q has no valid matching tool call", ErrInvalidRunInput, result.CallID)
+			}
+			var response map[string]any
+			if err := json.Unmarshal(result.Payload, &response); err != nil || response == nil {
+				return nil, fmt.Errorf("%w: tool result content must be an object", ErrInvalidRunInput)
+			}
+			responses = append(responses, &genai.FunctionResponse{ID: result.CallID, Name: name, Response: response})
+		}
+	}
+	if len(responses) != len(results) {
+		return nil, fmt.Errorf("%w: pending tool results were incomplete", ErrInvalidRunInput)
+	}
+	parts := make([]*genai.Part, 0, len(responses))
+	for _, response := range responses {
 		parts = append(parts, &genai.Part{FunctionResponse: response})
 	}
 	return &genai.Content{Role: genai.RoleUser, Parts: parts}, nil
-}
-
-// resolveFunctionResponse converts one tool-result message into a
-// genai.FunctionResponse. When a PendingTools store is configured, the
-// call's name and content are resolved server-side (Resolve then Take) so a
-// client can never spoof a tool name or replay a call across users/threads.
-// Otherwise the tool name is resolved from the assistant tool-call message
-// earlier in the same request's history.
-func resolveFunctionResponse(ctx context.Context, msg types.Message, history []types.Message, identity auth.Identity, pending PendingTools, scope ToolScope) (*genai.FunctionResponse, error) {
-	if strings.TrimSpace(msg.ToolCallID) == "" {
-		return nil, fmt.Errorf("%w: tool result message has no toolCallId", ErrInvalidRunInput)
-	}
-	payload, err := toolResponsePayload(msg)
-	if err != nil {
-		return nil, err
-	}
-	if pending != nil {
-		if err := pending.Resolve(ctx, identity, scope.AppName, scope.ThreadID, msg.ToolCallID, payload); err != nil {
-			return nil, fmt.Errorf("%w: pending tool result was rejected", ErrInvalidRunInput)
-		}
-		response, err := pending.Take(ctx, identity, scope.AppName, scope.ThreadID, msg.ToolCallID)
-		if err != nil {
-			return nil, fmt.Errorf("%w: pending tool result was unavailable", ErrInvalidRunInput)
-		}
-		return response, nil
-	}
-	name := toolNameFromHistory(history, msg.ToolCallID)
-	if name == "" {
-		return nil, fmt.Errorf("%w: tool result %q has no matching tool call", ErrInvalidRunInput, msg.ToolCallID)
-	}
-	var response map[string]any
-	if err := json.Unmarshal(payload, &response); err != nil || response == nil {
-		return nil, fmt.Errorf("%w: tool result content must be an object", ErrInvalidRunInput)
-	}
-	return &genai.FunctionResponse{ID: msg.ToolCallID, Name: name, Response: response}, nil
 }
 
 func toolNameFromHistory(history []types.Message, callID string) string {

@@ -3,8 +3,6 @@ package agui
 import (
 	"context"
 	"sync"
-
-	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 )
 
 type runKey struct {
@@ -23,11 +21,12 @@ type activeRuns struct {
 }
 
 type activeRun struct {
-	mu      sync.Mutex
-	cancel  context.CancelFunc
-	events  []events.Event
-	changed chan struct{}
-	done    bool
+	mu       sync.Mutex
+	cancel   context.CancelFunc
+	events   [][]byte
+	changed  chan struct{}
+	done     bool
+	terminal bool
 }
 
 type activeRunLease struct {
@@ -75,16 +74,17 @@ func (r *activeRuns) stop(key runKey) bool {
 	return true
 }
 
-func (l *activeRunLease) publish(event events.Event) {
-	if l == nil || event == nil {
+func (l *activeRunLease) publish(encoded []byte, terminal bool) {
+	if l == nil || len(encoded) == 0 {
 		return
 	}
 	l.run.mu.Lock()
 	defer l.run.mu.Unlock()
-	if l.run.done {
+	if l.run.done || l.run.terminal {
 		return
 	}
-	l.run.events = append(l.run.events, event)
+	l.run.events = append(l.run.events, append([]byte(nil), encoded...))
+	l.run.terminal = terminal
 	close(l.run.changed)
 	l.run.changed = make(chan struct{})
 }
@@ -109,18 +109,21 @@ func (l *activeRunLease) finish() {
 
 // replay streams every event already emitted by the run, then follows new
 // events until the run finishes or the connecting request is canceled.
-func (r *activeRun) replay(ctx context.Context, emit func(events.Event) error) error {
+func (r *activeRun) replay(ctx context.Context, emit func([]byte) error) error {
 	cursor := 0
 	for {
 		r.mu.Lock()
-		pending := append([]events.Event(nil), r.events[cursor:]...)
+		pending := make([][]byte, len(r.events[cursor:]))
+		for index, encoded := range r.events[cursor:] {
+			pending[index] = append([]byte(nil), encoded...)
+		}
 		cursor = len(r.events)
 		done := r.done
 		changed := r.changed
 		r.mu.Unlock()
 
-		for _, event := range pending {
-			if err := emit(event); err != nil {
+		for _, encoded := range pending {
+			if err := emit(encoded); err != nil {
 				return err
 			}
 		}

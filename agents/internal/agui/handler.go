@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"log/slog"
 	"net"
 	"net/http"
 	"strconv"
@@ -22,7 +21,6 @@ import (
 
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
-	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/encoding/sse"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/runner"
 	"google.golang.org/adk/v2/session"
@@ -282,31 +280,69 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Accel-Buffering", "no")
 	w.WriteHeader(http.StatusOK)
 
-	// The SDK logs every failed write at error level before returning it. Own
-	// that logging here so expected client disconnects stay quiet and genuine
-	// encoding or transport failures are reported once.
-	frame := sse.NewSSEWriter().WithLogger(slog.New(slog.DiscardHandler))
-	writeFailed := false
-	emit := func(writeCtx context.Context, event events.Event) {
-		active.publish(event)
-		if writeFailed {
-			return
-		}
-		if err := frame.WriteEvent(writeCtx, w, event); err != nil {
-			writeFailed = true
+	emitter := newReplayAwareEmitter(w, active)
+	transportFailureLogged := false
+	transportFailed := false
+	emit := func(writeCtx context.Context, event events.Event) error {
+		err := emitter.Emit(writeCtx, event)
+		var transportErr *eventTransportError
+		if errors.As(err, &transportErr) {
+			transportFailed = true
 			if h.stateless {
 				cancel()
 			}
-			if !isClientDisconnect(err) {
-				log.Printf("write SSE event failed: event_type=%s err=%v", event.Type(), err)
+			if !transportFailureLogged && !isClientDisconnect(err) {
+				log.Printf("run: original SSE response detached after transport failure: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, err)
+				transportFailureLogged = true
 			}
+			return nil
 		}
+		return err
 	}
-	emit(ctx, events.NewRunStartedEvent(input.ThreadID, input.RunID))
+	var converter *streamConverter
+	defer func() {
+		recovered := recover()
+		if recovered == nil {
+			return
+		}
+		// Recovery is itself guarded: a broken converter or writer must not
+		// re-panic through the outer net/http/Sentry boundary after SSE began.
+		func() {
+			defer func() {
+				if secondary := recover(); secondary != nil {
+					log.Printf("run: panic recovery failed: agent=%s thread=%s run=%s", entry.AppName, input.ThreadID, input.RunID)
+				}
+			}()
+			panicErr := fmt.Errorf("agent stream panic: %v", recovered)
+			terminalCtx := context.WithoutCancel(ctx)
+			if converter != nil {
+				for _, converted := range converter.Flush() {
+					if err := emit(terminalCtx, converted); err != nil {
+						log.Printf("run: panic lane flush failed: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, err)
+						break
+					}
+				}
+			}
+			log.Printf("run panicked: agent=%s thread=%s user=%s run=%s", entry.AppName, input.ThreadID, userID, input.RunID)
+			observability.CaptureError(terminalCtx, panicErr, agentRunErrorDetails(panicErr, entry, input))
+			if err := emit(terminalCtx, sanitizeRunError(input.RunID, panicErr)); err != nil && !errors.Is(err, errEventAfterTerminal) {
+				log.Printf("run: panic terminal emission failed: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, err)
+			}
+		}()
+	}()
+	if err := emit(ctx, events.NewRunStartedEvent(input.ThreadID, input.RunID)); err != nil {
+		log.Printf("run: RUN_STARTED emission failed: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, err)
+		return
+	}
 
-	emit(ctx, events.NewStateSnapshotEvent(snapshot))
+	if err := emit(ctx, events.NewStateSnapshotEvent(snapshot)); err != nil {
+		log.Printf("run: state snapshot emission failed: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, err)
+		return
+	}
 	if content == nil {
-		emit(ctx, events.NewRunFinishedEventWithOptions(input.ThreadID, input.RunID, events.WithSuccessOutcome()))
+		if err := emit(ctx, events.NewRunFinishedEventWithOptions(input.ThreadID, input.RunID, events.WithSuccessOutcome())); err != nil {
+			log.Printf("run: terminal emission failed: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, err)
+		}
 		return
 	}
 
@@ -327,7 +363,7 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		runOpts = append(runOpts, runner.WithStateDelta(overlay))
 	}
 
-	converter := newStreamConverter(ctx, h.ids, snapshot, h.pending, scope, clientToolNames, h.smoothing)
+	converter = newStreamConverter(ctx, h.ids, snapshot, h.pending, scope, clientToolNames, h.smoothing)
 	var runErr error
 	lastWasTextContent := false
 runLoop:
@@ -336,7 +372,12 @@ runLoop:
 			runErr = evErr
 			break
 		}
-		for _, converted := range converter.Convert(event) {
+		convertedEvents, convertErr := converter.Convert(event)
+		if convertErr != nil {
+			runErr = convertErr
+			break
+		}
+		for _, converted := range convertedEvents {
 			if h.smoothing.enabled && h.smoothing.chunkDelay > 0 && converted.Type() == events.EventTypeTextMessageContent && lastWasTextContent {
 				select {
 				case <-time.After(h.smoothing.chunkDelay):
@@ -345,7 +386,10 @@ runLoop:
 					break runLoop
 				}
 			}
-			emit(ctx, converted)
+			if err := emit(ctx, converted); err != nil {
+				runErr = err
+				break runLoop
+			}
 			lastWasTextContent = converted.Type() == events.EventTypeTextMessageContent
 		}
 	}
@@ -359,20 +403,25 @@ runLoop:
 	if runErr != nil {
 		// A stateless suggestion has no reconnect consumer. Its request ending or
 		// response becoming unwritable is normal cancellation, not an agent error.
-		if h.stateless && errors.Is(runErr, context.Canceled) && (writeFailed || r.Context().Err() != nil) {
+		if h.stateless && errors.Is(runErr, context.Canceled) && (transportFailed || r.Context().Err() != nil) {
 			return
 		}
-		// SSE encoding checks ctx.Err before it writes. The per-entry execution
-		// context is intentionally canceled on timeout, so use a non-cancelable
-		// derivative for the best-effort terminal flush and RUN_ERROR frame.
+		// The per-entry execution context may be canceled on timeout. Use a
+		// non-cancelable derivative for the best-effort terminal lane closure and
+		// RUN_ERROR publication without extending agent execution.
 		// This does not extend agent execution; it only closes the protocol stream.
 		terminalCtx := context.WithoutCancel(ctx)
 		for _, converted := range converter.Flush() {
-			emit(terminalCtx, converted)
+			if err := emit(terminalCtx, converted); err != nil {
+				log.Printf("run: terminal lane flush failed: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, err)
+				break
+			}
 		}
 		log.Printf("run failed: agent=%s thread=%s user=%s run=%s err=%v", entry.AppName, input.ThreadID, userID, input.RunID, runErr)
 		observability.CaptureError(terminalCtx, runErr, agentRunErrorDetails(runErr, entry, input))
-		emit(terminalCtx, sanitizeRunError(input.RunID, runErr))
+		if err := emit(terminalCtx, sanitizeRunError(input.RunID, runErr)); err != nil {
+			log.Printf("run: RUN_ERROR emission failed: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, err)
+		}
 		return
 	}
 
@@ -384,7 +433,9 @@ runLoop:
 	if converter.lastFinalText != "" {
 		finished.Result = converter.lastFinalText
 	}
-	emit(ctx, finished)
+	if err := emit(ctx, finished); err != nil {
+		log.Printf("run: RUN_FINISHED emission failed: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, err)
+	}
 }
 
 func isClientDisconnect(err error) bool {

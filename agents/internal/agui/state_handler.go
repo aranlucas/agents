@@ -52,7 +52,10 @@ func loadThreadState(ctx context.Context, sessions session.Service, entry agentr
 		if err != nil {
 			return stateResponse{}, err
 		}
-		response.Messages = eventsToMessages(found.Session.Events())
+		response.Messages, err = eventsToMessages(found.Session.Events())
+		if err != nil {
+			return stateResponse{}, err
+		}
 		response.Interrupts = unresolvedSessionInterrupts(found.Session.Events())
 		return response, nil
 	case errors.Is(err, ErrSessionNotFound):

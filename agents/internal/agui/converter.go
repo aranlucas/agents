@@ -4,6 +4,7 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
+	"fmt"
 	"log"
 	"strings"
 	"unicode"
@@ -75,9 +76,9 @@ func newStreamConverter(ctx context.Context, ids events.IDGenerator, state state
 // event contract: Partial is set only for incremental plain-text/reasoning
 // deltas, while function calls, function responses, and state deltas always
 // arrive on a final (non-partial) event.
-func (c *streamConverter) Convert(event *session.Event) []events.Event {
+func (c *streamConverter) Convert(event *session.Event) ([]events.Event, error) {
 	if event == nil {
-		return nil
+		return nil, nil
 	}
 	content := event.Content
 
@@ -87,9 +88,9 @@ func (c *streamConverter) Convert(event *session.Event) []events.Event {
 	return c.convertFinal(event, content)
 }
 
-func (c *streamConverter) convertPartial(content *genai.Content) []events.Event {
+func (c *streamConverter) convertPartial(content *genai.Content) ([]events.Event, error) {
 	if content == nil {
-		return nil
+		return nil, nil
 	}
 	var out []events.Event
 	for _, part := range content.Parts {
@@ -98,17 +99,19 @@ func (c *streamConverter) convertPartial(content *genai.Content) []events.Event 
 		}
 		switch {
 		case part.Thought && part.Text != "":
+			out = append(out, c.closeText()...)
 			out = append(out, c.openReasoning()...)
 			out = append(out, events.NewReasoningMessageContentEvent(c.reasoningMessageID, part.Text))
 		case !part.Thought && part.Text != "":
+			out = append(out, c.closeReasoning()...)
 			out = append(out, c.openText()...)
 			out = append(out, c.textContentEvents(c.textMessageID, part.Text)...)
 		}
 	}
-	return out
+	return out, nil
 }
 
-func (c *streamConverter) convertFinal(event *session.Event, content *genai.Content) []events.Event {
+func (c *streamConverter) convertFinal(event *session.Event, content *genai.Content) ([]events.Event, error) {
 	var out []events.Event
 	if event.RequestedInput != nil {
 		c.captureInterrupt(event.RequestedInput)
@@ -124,18 +127,40 @@ func (c *streamConverter) convertFinal(event *session.Event, content *genai.Cont
 	out = append(out, c.closeText()...)
 
 	if content != nil {
-		out = append(out, c.oneShotLanes(content, hadText, hadReasoning)...)
+		var toolEvents []events.Event
+		var registrations []pendingRegistration
 		for _, part := range content.Parts {
 			if part == nil {
 				continue
 			}
 			if part.FunctionCall != nil {
-				out = append(out, c.toolCallEvents(part.FunctionCall)...)
+				converted, registration, err := c.toolCallEvents(part.FunctionCall)
+				if err != nil {
+					return nil, err
+				}
+				toolEvents = append(toolEvents, converted...)
+				if registration != nil {
+					registrations = append(registrations, *registration)
+				}
 			}
 			if part.FunctionResponse != nil {
-				out = append(out, c.toolResultEvents(part.FunctionResponse)...)
+				converted, err := c.toolResultEvents(part.FunctionResponse)
+				if err != nil {
+					return nil, err
+				}
+				toolEvents = append(toolEvents, converted...)
 			}
 		}
+		// Only persist client calls after every tool call/result in this ADK
+		// event is known to be protocol-valid and encodable. A malformed later
+		// part therefore cannot leave an invisible orphaned pending call.
+		for _, registration := range registrations {
+			if err := c.pending.Register(c.ctx, c.scope, registration.id, registration.name, registration.args); err != nil {
+				return nil, fmt.Errorf("register model client tool call: %w", err)
+			}
+		}
+		out = append(out, c.oneShotLanes(content, hadText, hadReasoning)...)
+		out = append(out, toolEvents...)
 	}
 
 	delta, err := statePatch(c.state, event.Actions.StateDelta)
@@ -151,7 +176,7 @@ func (c *streamConverter) convertFinal(event *session.Event, content *genai.Cont
 		}
 	}
 
-	return out
+	return out, nil
 }
 
 func (c *streamConverter) captureInterrupt(request *session.RequestInput) {
@@ -177,43 +202,24 @@ func (c *streamConverter) Interrupts() []types.Interrupt {
 // event. Streaming models close an already-open lane above instead of
 // re-emitting content here.
 func (c *streamConverter) oneShotLanes(content *genai.Content, hadText, hadReasoning bool) []events.Event {
-	var reasoningText, plainText strings.Builder
+	var out []events.Event
 	for _, part := range content.Parts {
 		if part == nil {
 			continue
 		}
 		switch {
-		case part.Thought && part.Text != "":
-			reasoningText.WriteString(part.Text)
-		case !part.Thought && part.Text != "":
-			plainText.WriteString(part.Text)
+		case part.Thought && part.Text != "" && !hadReasoning:
+			out = append(out, c.closeText()...)
+			out = append(out, c.openReasoning()...)
+			out = append(out, events.NewReasoningMessageContentEvent(c.reasoningMessageID, part.Text))
+		case !part.Thought && part.Text != "" && !hadText:
+			out = append(out, c.closeReasoning()...)
+			out = append(out, c.openText()...)
+			out = append(out, c.textContentEvents(c.textMessageID, part.Text)...)
 		}
 	}
-
-	var out []events.Event
-	if reasoningText.Len() > 0 && !hadReasoning {
-		id := c.ids.GenerateMessageID()
-		out = append(
-			out,
-			events.NewReasoningStartEvent(id),
-			events.NewReasoningMessageStartEvent(id, "assistant"),
-			events.NewReasoningMessageContentEvent(id, reasoningText.String()),
-			events.NewReasoningMessageEndEvent(id),
-			events.NewReasoningEndEvent(id),
-		)
-	}
-	if plainText.Len() > 0 && !hadText {
-		id := c.ids.GenerateMessageID()
-		out = append(
-			out,
-			events.NewTextMessageStartEvent(id, events.WithRole("assistant")),
-		)
-		out = append(out, c.textContentEvents(id, plainText.String())...)
-		out = append(
-			out,
-			events.NewTextMessageEndEvent(id),
-		)
-	}
+	out = append(out, c.closeReasoning()...)
+	out = append(out, c.closeText()...)
 	return out
 }
 
@@ -346,50 +352,67 @@ func (c *streamConverter) closeReasoning() []events.Event {
 	}
 }
 
-func (c *streamConverter) toolCallEvents(call *genai.FunctionCall) []events.Event {
+type pendingRegistration struct {
+	id   string
+	name string
+	args []byte
+}
+
+func (c *streamConverter) toolCallEvents(call *genai.FunctionCall) ([]events.Event, *pendingRegistration, error) {
+	if call == nil || !ClientToolName.MatchString(call.Name) {
+		return nil, nil, errors.New("invalid model tool call name")
+	}
 	id := call.ID
 	if id == "" {
 		id = c.ids.GenerateToolCallID()
+	}
+	if !ClientCallID.MatchString(id) {
+		return nil, nil, errors.New("invalid model tool call ID")
 	}
 	args := call.Args
 	if args == nil {
 		args = map[string]any{}
 	}
 	encoded, err := json.Marshal(args)
-	if c.pending != nil && c.clientToolNames[call.Name] && err == nil {
-		// Best-effort pre-registration: client_tools.go's proxy tool
+	if err != nil {
+		return nil, nil, errors.New("encode model tool call arguments")
+	}
+	var registration *pendingRegistration
+	if c.pending != nil && c.clientToolNames[call.Name] {
+		// Stage pre-registration: client_tools.go's proxy tool
 		// tool closure is the authoritative Register call (it runs with
 		// ctx.FunctionCallID(), inside the tool execution ADK drives
 		// after this event is yielded — see ADK-Go's base_flow.go, which
 		// yields the model-response event containing this FunctionCall
-		// *before* invoking the tool). Registering here too, before any
+		// *before* invoking the tool). convertFinal commits this only after all
+		// calls/results in the model event validate, and before any
 		// TOOL_CALL_* frame is written to the SSE response, closes that
 		// gap: PendingStore.Register is idempotent (ON CONFLICT DO
 		// NOTHING), so the tool's later call is a harmless no-op.
-		_ = c.pending.Register(c.ctx, c.scope, id, call.Name, encoded)
-	}
-	if err != nil {
-		encoded = []byte("{}")
+		registration = &pendingRegistration{id: id, name: call.Name, args: encoded}
 	}
 	return []events.Event{
 		events.NewToolCallStartEvent(id, call.Name),
 		events.NewToolCallArgsEvent(id, string(encoded)),
 		events.NewToolCallEndEvent(id),
-	}
+	}, registration, nil
 }
 
-func (c *streamConverter) toolResultEvents(response *genai.FunctionResponse) []events.Event {
+func (c *streamConverter) toolResultEvents(response *genai.FunctionResponse) ([]events.Event, error) {
+	if response == nil || !ClientCallID.MatchString(response.ID) {
+		return nil, errors.New("invalid model tool result ID")
+	}
 	payload := response.Response
 	if payload == nil {
 		payload = map[string]any{}
 	}
 	encoded, err := json.Marshal(payload)
 	if err != nil {
-		encoded = []byte("{}")
+		return nil, errors.New("encode model tool result")
 	}
 	return []events.Event{
 		events.NewToolCallResultEvent(c.ids.GenerateMessageID(), response.ID, string(encoded)),
-	}
+	}, nil
 }
 
 // Flush closes any dangling open text/reasoning lane. Called before an

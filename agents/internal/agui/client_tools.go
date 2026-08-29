@@ -42,12 +42,20 @@ var (
 type ToolScope struct{ AppName, UserID, ThreadID string }
 
 // PendingTools persists frontend calls until a scoped result resumes them.
-// Handler depends only on this interface — never on a concrete store — so
-// any backend (D1, or otherwise) can be plugged in via WithPendingTools.
+// The gateway supplies the mandatory D1 implementation; the interface keeps
+// protocol conversion independently testable without weakening that runtime
+// persistence requirement.
 type PendingTools interface {
 	Register(context.Context, ToolScope, string, string, jsontext.Value) error
-	Resolve(context.Context, auth.Identity, string, string, string, jsontext.Value) error
-	Take(context.Context, auth.Identity, string, string, string) (*genai.FunctionResponse, error)
+	ClaimBatch(context.Context, auth.Identity, ToolScope, []PendingToolResult) ([]*genai.FunctionResponse, error)
+}
+
+// PendingToolResult is one already-validated client result in an atomic resume
+// claim. Payload is retained as raw JSON so large numbers cross the boundary
+// without float64 coercion.
+type PendingToolResult struct {
+	CallID  string
+	Payload jsontext.Value
 }
 
 type clientToolStatus string

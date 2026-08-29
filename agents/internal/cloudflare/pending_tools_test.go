@@ -196,6 +196,99 @@ func TestResolveIsIdempotentUntilTheResultIsConsumed(t *testing.T) {
 	}
 }
 
+func TestClaimBatchValidatesEveryPayloadBeforeConsumingAnyCall(t *testing.T) {
+	store := newPendingFixture(t)
+	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
+	pending := NewPendingStore(store.d1, func() time.Time { return now })
+	scope := agui.ToolScope{AppName: "travel", UserID: "user-a", ThreadID: "thread-a"}
+	for _, callID := range []string{"call-1", "call-2"} {
+		if err := pending.Register(t.Context(), scope, callID, "confirm_booking", jsontext.Value(`{"trip":"one"}`)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	identity := auth.Identity{UserID: scope.UserID}
+	malformed := []agui.PendingToolResult{
+		{CallID: "call-1", Payload: jsontext.Value(`{"approved":true}`)},
+		{CallID: "call-2", Payload: jsontext.Value(`[]`)},
+	}
+	if _, err := pending.ClaimBatch(t.Context(), identity, scope, malformed); err == nil {
+		t.Fatal("ClaimBatch accepted malformed second payload")
+	}
+	valid := []agui.PendingToolResult{
+		{CallID: "call-1", Payload: jsontext.Value(`{"approved":true}`)},
+		{CallID: "call-2", Payload: jsontext.Value(`{"approved":false}`)},
+	}
+	responses, err := pending.ClaimBatch(t.Context(), identity, scope, valid)
+	if err != nil || len(responses) != 2 {
+		t.Fatalf("ClaimBatch after malformed retry = %#v, %v", responses, err)
+	}
+}
+
+func TestClaimBatchAcceptsIdenticalResolvedRetryAndRejectsWrongScope(t *testing.T) {
+	store := newPendingFixture(t)
+	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
+	pending := NewPendingStore(store.d1, func() time.Time { return now })
+	scope := agui.ToolScope{AppName: "travel", UserID: "user-a", ThreadID: "thread-a"}
+	if err := pending.Register(t.Context(), scope, "call-1", "confirm_booking", jsontext.Value(`{"trip":"one"}`)); err != nil {
+		t.Fatal(err)
+	}
+	result := jsontext.Value(`{"approved":true}`)
+	identity := auth.Identity{UserID: scope.UserID}
+	if err := pending.Resolve(t.Context(), identity, scope.AppName, scope.ThreadID, "call-1", result); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pending.ClaimBatch(t.Context(), auth.Identity{UserID: "user-b"}, scope, []agui.PendingToolResult{{CallID: "call-1", Payload: result}}); !errors.Is(err, agui.ErrPendingToolNotFound) {
+		t.Fatalf("cross-user ClaimBatch error = %v", err)
+	}
+	responses, err := pending.ClaimBatch(t.Context(), identity, scope, []agui.PendingToolResult{{CallID: "call-1", Payload: result}})
+	if err != nil || len(responses) != 1 || responses[0].Response["approved"] != true {
+		t.Fatalf("identical resolved ClaimBatch = %#v, %v", responses, err)
+	}
+}
+
+func TestConcurrentDuplicateBatchClaimsOnlyOneSucceeds(t *testing.T) {
+	store := newPendingFixture(t)
+	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
+	pending := NewPendingStore(store.d1, func() time.Time { return now })
+	scope := agui.ToolScope{AppName: "travel", UserID: "user-a", ThreadID: "thread-a"}
+	for _, callID := range []string{"call-1", "call-2"} {
+		if err := pending.Register(t.Context(), scope, callID, "confirm_booking", jsontext.Value(`{"trip":"one"}`)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	submitted := []agui.PendingToolResult{
+		{CallID: "call-1", Payload: jsontext.Value(`{"approved":true}`)},
+		{CallID: "call-2", Payload: jsontext.Value(`{"approved":false}`)},
+	}
+	start := make(chan struct{})
+	errorsByAttempt := make(chan error, 2)
+	var group sync.WaitGroup
+	for range 2 {
+		group.Go(func() {
+			<-start
+			_, err := pending.ClaimBatch(t.Context(), auth.Identity{UserID: scope.UserID}, scope, submitted)
+			errorsByAttempt <- err
+		})
+	}
+	close(start)
+	group.Wait()
+	close(errorsByAttempt)
+	successes, rejected := 0, 0
+	for err := range errorsByAttempt {
+		switch {
+		case err == nil:
+			successes++
+		case errors.Is(err, agui.ErrPendingToolNotFound):
+			rejected++
+		default:
+			t.Fatalf("unexpected ClaimBatch error: %v", err)
+		}
+	}
+	if successes != 1 || rejected != 1 {
+		t.Fatalf("concurrent batch outcomes: successes=%d rejected=%d", successes, rejected)
+	}
+}
+
 type pendingRecord struct {
 	app, user, thread, call, name, args, result, status string
 	expires                                             int64
@@ -271,6 +364,41 @@ func (f *pendingFixture) handle(w http.ResponseWriter, r *http.Request) {
 			now := int64(statement.Params[4].(float64))
 			if ok && record.status == "resolved" && record.expires > now {
 				rows = append(rows, map[string]any{"tool_name": record.name, "args_json": record.args, "result_json": record.result})
+			}
+		case strings.HasPrefix(sql, "DELETE FROM pending_client_tools") && strings.Contains(sql, "RETURNING call_id"):
+			app, user, thread := textParam(statement.Params[0]), textParam(statement.Params[1]), textParam(statement.Params[2])
+			now := int64(statement.Params[3].(float64))
+			countIndex := 4
+			for countIndex < len(statement.Params) {
+				if _, ok := statement.Params[countIndex].(float64); ok {
+					break
+				}
+				countIndex++
+			}
+			count := int(statement.Params[countIndex].(float64))
+			callIDs := make([]string, count)
+			payloads := make(map[string]string, count)
+			for callIndex := range count {
+				callIDs[callIndex] = textParam(statement.Params[4+callIndex])
+				conditionIndex := 4 + count + callIndex*2
+				payloads[textParam(statement.Params[conditionIndex])] = textParam(statement.Params[conditionIndex+1])
+			}
+			valid := true
+			for _, callID := range callIDs {
+				record, ok := f.records[recordKey(app, user, thread, callID)]
+				if !ok || record.expires <= now || (record.status != "pending" && (record.status != "resolved" || record.result != payloads[callID])) {
+					valid = false
+					break
+				}
+			}
+			if valid {
+				for _, callID := range callIDs {
+					key := recordKey(app, user, thread, callID)
+					record := f.records[key]
+					rows = append(rows, map[string]any{"call_id": record.call, "tool_name": record.name, "args_json": record.args, "result_json": record.result, "status": record.status})
+					delete(f.records, key)
+					changes++
+				}
 			}
 		case strings.HasPrefix(sql, "DELETE FROM pending_client_tools") && strings.Contains(sql, "call_id"):
 			key := recordKey(textParam(statement.Params[0]), textParam(statement.Params[1]), textParam(statement.Params[2]), textParam(statement.Params[3]))
