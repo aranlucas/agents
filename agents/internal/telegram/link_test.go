@@ -2,7 +2,8 @@ package telegram
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"strings"
 	"sync"
@@ -12,7 +13,7 @@ import (
 	"agents/internal/cloudflare"
 )
 
-func rawRow(value any) json.RawMessage {
+func rawRow(value any) jsontext.Value {
 	data, err := json.Marshal(value)
 	if err != nil {
 		panic(err)
@@ -43,11 +44,11 @@ func (d *memoryLinkDB) Run(_ context.Context, statements ...cloudflare.Statement
 			d.tokens[statement.Params[0].(string)] = map[string]any{"telegram_user_id": statement.Params[1], "telegram_chat_id": statement.Params[2], "expires_at": statement.Params[3], "consumed_at": nil}
 		case strings.HasPrefix(statement.SQL, "SELECT telegram_user_id") && strings.Contains(statement.SQL, "FROM telegram_link_tokens"):
 			if row, ok := d.tokens[statement.Params[0].(string)]; ok {
-				result.Rows = []json.RawMessage{rawRow(row)}
+				result.Rows = []jsontext.Value{rawRow(row)}
 			}
 		case strings.HasPrefix(statement.SQL, "SELECT telegram_user_id") && strings.Contains(statement.SQL, "FROM telegram_account_links"):
 			if link, ok := d.links[statement.Params[0].(int64)]; ok {
-				result.Rows = []json.RawMessage{rawRow(link)}
+				result.Rows = []jsontext.Value{rawRow(link)}
 			}
 		case strings.HasPrefix(statement.SQL, "UPDATE telegram_link_tokens"):
 			row := d.tokens[statement.Params[1].(string)]

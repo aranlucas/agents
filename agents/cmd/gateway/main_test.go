@@ -2,7 +2,8 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -29,6 +30,7 @@ import (
 	"agents/travel"
 	"agents/trends"
 	"agents/wellness"
+
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/model/gemini"
@@ -381,7 +383,7 @@ func newGateway(t *testing.T) http.Handler {
 	// isn't agui.ErrSessionNotFound (only the production
 	// cloudflare.SessionService returns that), so relying on the not-found
 	// branch here would instead hit StateHandler's genuine-error 500 path.
-	if _, err := sessions.Create(context.Background(), &session.CreateRequest{
+	if _, err := sessions.Create(t.Context(), &session.CreateRequest{
 		AppName: resume.AppName, UserID: "anon:route-test-thread", SessionID: "route-test-thread",
 	}); err != nil {
 		t.Fatalf("seed route-test-thread session: %v", err)
@@ -449,10 +451,10 @@ func TestRuntimeInfoAdvertisesConcreteAgents(t *testing.T) {
 	newGateway(t).ServeHTTP(recorder, request)
 
 	var response struct {
-		Version                       string                     `json:"version"`
-		Agents                        map[string]json.RawMessage `json:"agents"`
-		AudioFileTranscriptionEnabled bool                       `json:"audioFileTranscriptionEnabled"`
-		Mode                          string                     `json:"mode"`
+		Version                       string                    `json:"version"`
+		Agents                        map[string]jsontext.Value `json:"agents"`
+		AudioFileTranscriptionEnabled bool                      `json:"audioFileTranscriptionEnabled"`
+		Mode                          string                    `json:"mode"`
 		ThreadEndpoints               struct {
 			List             bool `json:"list"`
 			Inspect          bool `json:"inspect"`
@@ -579,7 +581,7 @@ func TestOAuthCredentialLookupFailuresStopTheRequest(t *testing.T) {
 
 	handler.ServeHTTP(recorder, request)
 
-	if recorder.Code != http.StatusServiceUnavailable || recorder.Body.String() != "{\"error\":\"oauth_credentials_unavailable\"}\n" {
+	if recorder.Code != http.StatusServiceUnavailable || recorder.Body.String() != "{\"error\":\"oauth_credentials_unavailable\"}" {
 		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
 	}
 	if nextCalled {
@@ -597,7 +599,7 @@ func TestGatewayPresentationAGUIRoute(t *testing.T) {
 		t.Fatal(err)
 	}
 	sessions := session.InMemoryService()
-	if _, err := sessions.Create(context.Background(), &session.CreateRequest{AppName: presentation.AppName, UserID: "clerk-user", SessionID: "presentation-thread", State: presentation.StateDefaults()}); err != nil {
+	if _, err := sessions.Create(t.Context(), &session.CreateRequest{AppName: presentation.AppName, UserID: "clerk-user", SessionID: "presentation-thread", State: presentation.StateDefaults()}); err != nil {
 		t.Fatal(err)
 	}
 	handler, err := New(config.Config{HTTP: config.HTTP{}}, Dependencies{Registry: registry, Sessions: sessions, Verifier: acceptingVerifier{}, Groceries: &fakeGroceryRepository{}, Now: time.Now})

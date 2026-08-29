@@ -1,12 +1,14 @@
 package agui
 
 import (
-	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
 	"agents/internal/agentruntime"
+	"agents/internal/common"
+
 	"google.golang.org/adk/v2/session"
 )
 
@@ -186,12 +188,13 @@ func (r *CopilotKitRuntime) info(w http.ResponseWriter, _ *http.Request) {
 			Capabilities: capabilities,
 		}
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(runtimeInfoResponse{
+	if err := common.WriteJSON(w, http.StatusOK, runtimeInfoResponse{
 		Version:         CopilotKitRuntimeVersion,
 		Agents:          agents,
 		Mode:            "sse",
 		ThreadEndpoints: runtimeThreadEndpoints{List: true},
 		Suggestions:     true,
-	})
+	}); err != nil {
+		log.Printf("write JSON response: %v", err)
+	}
 }

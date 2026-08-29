@@ -67,6 +67,148 @@
       "required": ["title", "description", "servings", "notes", "ingredients", "steps", "tags"],
       "additionalProperties": false
     },
+    "shopping_profile": {
+      "type": "object",
+      "properties": {
+        "pantry": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "quantity": {
+                "type": "number"
+              },
+              "added_at": {
+                "type": "integer"
+              },
+              "expires_at": {
+                "type": "integer"
+              }
+            },
+            "required": ["name", "quantity", "added_at"],
+            "additionalProperties": false
+          }
+        },
+        "equipment": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "added_at": {
+                "type": "integer"
+              },
+              "category": {
+                "type": "string"
+              }
+            },
+            "required": ["name", "added_at"],
+            "additionalProperties": false
+          }
+        },
+        "recent_orders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "upc": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "quantity": {
+                      "type": "integer"
+                    },
+                    "price": {
+                      "type": "number"
+                    }
+                  },
+                  "required": ["upc", "name", "quantity"],
+                  "additionalProperties": false
+                }
+              },
+              "total_items": {
+                "type": "integer"
+              },
+              "placed_at": {
+                "type": "integer"
+              },
+              "estimated_total": {
+                "type": "number"
+              },
+              "location_id": {
+                "type": "string"
+              },
+              "notes": {
+                "type": "string"
+              }
+            },
+            "required": ["id", "items", "total_items", "placed_at"],
+            "additionalProperties": false
+          }
+        },
+        "frequent_items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "upc": {
+                "type": "string"
+              },
+              "orders": {
+                "type": "integer"
+              },
+              "total_quantity": {
+                "type": "integer"
+              }
+            },
+            "required": ["name", "upc", "orders", "total_quantity"],
+            "additionalProperties": false
+          }
+        },
+        "preferred_store": {
+          "type": "object",
+          "properties": {
+            "location_id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "address": {
+              "type": "string"
+            },
+            "chain": {
+              "type": "string"
+            },
+            "set_at": {
+              "type": "integer"
+            }
+          },
+          "required": ["location_id", "name", "address", "chain", "set_at"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["pantry", "equipment", "recent_orders", "frequent_items"],
+      "additionalProperties": false
+    },
     "weekly_plan": {
       "type": "string"
     },

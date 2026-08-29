@@ -1,13 +1,14 @@
 package grocery
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"strings"
 
 	"agents/internal/bravesearch"
 	"agents/internal/common"
 	"agents/internal/groceries"
+
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
@@ -112,14 +113,6 @@ func groceryTools(search *bravesearch.Client, loader *common.WebLoader) ([]tool.
 		return nil, err
 	}
 
-	updatePantryTool, err := functiontool.New(functiontool.Config{
-		Name:        "update_pantry",
-		Description: "Replace validated pantry state.",
-	}, UpdatePantry)
-	if err != nil {
-		return nil, err
-	}
-
 	setMealPlanTool, err := functiontool.New(functiontool.Config{
 		Name:        "set_meal_plan",
 		Description: "Write the meal plan to streamed state.",
@@ -164,7 +157,6 @@ func groceryTools(search *bravesearch.Client, loader *common.WebLoader) ([]tool.
 		setShoppingListTool,
 		setProductMatchesTool,
 		updateCartTool,
-		updatePantryTool,
 		setMealPlanTool,
 		setRecipeTool,
 		setWeeklyDealsTool,

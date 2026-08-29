@@ -4,7 +4,8 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"flag"
 	"fmt"
@@ -31,6 +32,7 @@ import (
 	"agents/travel"
 	"agents/trends"
 	"agents/wellness"
+
 	"github.com/google/jsonschema-go/jsonschema"
 )
 
@@ -132,7 +134,7 @@ func generateJSONSchemas() (map[string][]byte, error) {
 		if err := projectObjectSchema(schema, object, objectsByType); err != nil {
 			return nil, err
 		}
-		encoded, err := json.MarshalIndent(schema, "", "  ")
+		encoded, err := json.Marshal(schema, json.Deterministic(true), jsontext.Multiline(true), jsontext.WithIndent("  "))
 		if err != nil {
 			return nil, fmt.Errorf("encode %s schema: %w", object.Name, err)
 		}
@@ -496,7 +498,6 @@ func objectDefinitions() []objectDef {
 	return []objectDef{
 		object("CartItem", common.CartItem{}, required("name", "quantity"), optional("price", "upc")),
 		object("ProductMatch", common.ProductMatch{}, required("query", "name", "upc"), optional("image_url", "price", "size")),
-		object("PantryItem", common.PantryItem{}, required("name", "quantity"), optional("expires")),
 		object("ShoppingPantryItem", grocery.ShoppingPantryItemState{}, required("name", "quantity", "added_at"), optional("expires_at")),
 		object("ShoppingEquipmentItem", grocery.ShoppingEquipmentItemState{}, required("name", "added_at"), optional("category")),
 		object("ShoppingOrderItem", grocery.ShoppingOrderItemState{}, required("upc", "name", "quantity"), optional("price")),
@@ -567,7 +568,7 @@ func objectDefinitions() []objectDef {
 			field("status", "DocStatus", true), field("review_summary", "", true),
 		)),
 		object("GroceryState", grocery.GroceryState{}, stateFields(
-			field("shopping_list", "", true), field("list_title", "", true), field("product_matches", "", true), field("cart", "", true), field("pantry", "", true),
+			field("shopping_list", "", true), field("list_title", "", true), field("product_matches", "", true), field("cart", "", true),
 			field("shopping_profile", "", true),
 			field("meal_plan", "", true), field("recipe", "", true), field("weekly_deals", "", true),
 			field("status", `"idle" | "planning" | "ready"`, true), field("notes", "", true),
@@ -581,6 +582,7 @@ func objectDefinitions() []objectDef {
 		object("WellnessState", wellness.WellnessState{}, stateFields(
 			field("status", "WellnessStatus", true), field("meal_plan", "", true), field("training_plan", "", true),
 			field("list_title", "", true), field("recipe", "", true),
+			field("shopping_profile", "", true),
 			field("weekly_plan", "", true), field("review_summary", "", true), field("kroger_connected", "", true),
 			field("fitness_data_connected", "", true), field("activity_source", "", true),
 		)),

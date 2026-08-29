@@ -5,7 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/base64"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"math/big"
 	"net/http"
@@ -118,7 +118,7 @@ func TestVerifiedSubjectOverridesSpoofedHeaderAndCachesJWKS(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		requests.Add(1)
 		w.Header().Set("Cache-Control", "public, max-age=300")
-		_ = json.NewEncoder(w).Encode(jwksDocument("key-1", &privateKey.PublicKey))
+		_ = json.MarshalWrite(w, jwksDocument("key-1", &privateKey.PublicKey))
 	}))
 	defer server.Close()
 	verifier, err := NewClerkVerifier(server.URL, "https://clerk.example", "", server.Client())
@@ -151,7 +151,7 @@ func TestVerifiedSubjectOverridesSpoofedHeaderAndCachesJWKS(t *testing.T) {
 func TestVerifierRejectsExpiredWrongIssuerAndUnknownAlgorithm(t *testing.T) {
 	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_ = json.NewEncoder(w).Encode(jwksDocument("key", &privateKey.PublicKey))
+		_ = json.MarshalWrite(w, jwksDocument("key", &privateKey.PublicKey))
 	}))
 	defer server.Close()
 	verifier, err := NewClerkVerifier(server.URL, "issuer", "", server.Client())
@@ -163,7 +163,7 @@ func TestVerifierRejectsExpiredWrongIssuerAndUnknownAlgorithm(t *testing.T) {
 		signedToken(t, privateKey, "key", "user", "wrong", time.Now().Add(time.Hour)),
 		unsignedToken(t),
 	} {
-		if _, err := verifier.Verify(context.Background(), token); err == nil {
+		if _, err := verifier.Verify(t.Context(), token); err == nil {
 			t.Fatal("invalid token accepted")
 		}
 	}
@@ -175,7 +175,7 @@ func TestUnknownKeyIDCannotAmplifyJWKSRequests(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		requests.Add(1)
 		w.Header().Set("Cache-Control", "max-age=300")
-		_ = json.NewEncoder(w).Encode(jwksDocument("known", &privateKey.PublicKey))
+		_ = json.MarshalWrite(w, jwksDocument("known", &privateKey.PublicKey))
 	}))
 	defer server.Close()
 	verifier, err := NewClerkVerifier(server.URL, "issuer", "", server.Client())
@@ -183,12 +183,12 @@ func TestUnknownKeyIDCannotAmplifyJWKSRequests(t *testing.T) {
 		t.Fatal(err)
 	}
 	known := signedToken(t, privateKey, "known", "user", "issuer", time.Now().Add(time.Hour))
-	if _, err := verifier.Verify(context.Background(), known); err != nil {
+	if _, err := verifier.Verify(t.Context(), known); err != nil {
 		t.Fatal(err)
 	}
 	unknown := signedToken(t, privateKey, "attacker-controlled", "user", "issuer", time.Now().Add(time.Hour))
 	for range 2 {
-		if _, err := verifier.Verify(context.Background(), unknown); err == nil {
+		if _, err := verifier.Verify(t.Context(), unknown); err == nil {
 			t.Fatal("unknown key accepted")
 		}
 	}

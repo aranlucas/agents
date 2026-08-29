@@ -1,7 +1,7 @@
 package wellness
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"maps"
 
 	"agents/fitness"
@@ -22,28 +22,31 @@ const (
 )
 
 type WellnessState struct {
-	Status               Status               `json:"status"`
-	MealPlan             string               `json:"meal_plan"`
-	WeeklyPlan           string               `json:"weekly_plan"`
-	ReviewSummary        string               `json:"review_summary"`
-	KrogerConnected      bool                 `json:"kroger_connected"`
-	FitnessDataConnected bool                 `json:"fitness_data_connected"`
-	ActivitySource       string               `json:"activity_source"`
-	ShoppingList         []string             `json:"shopping_list"`
-	ListTitle            string               `json:"list_title"`
-	Recipe               *grocery.RecipeDraft `json:"recipe"`
-	Cart                 []common.CartItem    `json:"cart"`
-	Pantry               []common.PantryItem  `json:"pantry"`
-	WeeklyDeals          string               `json:"weekly_deals"`
-	Notes                string               `json:"notes"`
-	Activities           []fitness.Activity   `json:"activities"`
-	ActivitiesSyncedAt   string               `json:"activities_synced_at"`
-	ObjectiveResearch    string               `json:"objective_research"`
-	TrainingPlan         string               `json:"training_plan"`
+	Status               Status                       `json:"status"`
+	MealPlan             string                       `json:"meal_plan"`
+	WeeklyPlan           string                       `json:"weekly_plan"`
+	ReviewSummary        string                       `json:"review_summary"`
+	KrogerConnected      bool                         `json:"kroger_connected"`
+	FitnessDataConnected bool                         `json:"fitness_data_connected"`
+	ActivitySource       string                       `json:"activity_source"`
+	ShoppingList         []string                     `json:"shopping_list"`
+	ListTitle            string                       `json:"list_title"`
+	Recipe               *grocery.RecipeDraft         `json:"recipe"`
+	Cart                 []common.CartItem            `json:"cart"`
+	ShoppingProfile      grocery.ShoppingProfileState `json:"shopping_profile"`
+	WeeklyDeals          string                       `json:"weekly_deals"`
+	Notes                string                       `json:"notes"`
+	Activities           []fitness.Activity           `json:"activities"`
+	ActivitiesSyncedAt   string                       `json:"activities_synced_at"`
+	ObjectiveResearch    string                       `json:"objective_research"`
+	TrainingPlan         string                       `json:"training_plan"`
 }
 
 func Defaults() WellnessState {
-	return WellnessState{Status: StatusIdle, ShoppingList: []string{}, Cart: []common.CartItem{}, Pantry: []common.PantryItem{}, Activities: []fitness.Activity{}}
+	return WellnessState{
+		Status: StatusIdle, ShoppingList: []string{}, Cart: []common.CartItem{},
+		ShoppingProfile: grocery.Defaults().ShoppingProfile, Activities: []fitness.Activity{},
+	}
 }
 
 func StateDefaults() map[string]any {
@@ -68,8 +71,22 @@ func readState(source session.ReadonlyState) WellnessState {
 	if state.Cart == nil {
 		state.Cart = []common.CartItem{}
 	}
-	if state.Pantry == nil {
-		state.Pantry = []common.PantryItem{}
+	if state.ShoppingProfile.Pantry == nil {
+		state.ShoppingProfile.Pantry = []grocery.ShoppingPantryItemState{}
+	}
+	if state.ShoppingProfile.Equipment == nil {
+		state.ShoppingProfile.Equipment = []grocery.ShoppingEquipmentItemState{}
+	}
+	if state.ShoppingProfile.RecentOrders == nil {
+		state.ShoppingProfile.RecentOrders = []grocery.ShoppingOrderState{}
+	}
+	for index := range state.ShoppingProfile.RecentOrders {
+		if state.ShoppingProfile.RecentOrders[index].Items == nil {
+			state.ShoppingProfile.RecentOrders[index].Items = []grocery.ShoppingOrderItemState{}
+		}
+	}
+	if state.ShoppingProfile.FrequentItems == nil {
+		state.ShoppingProfile.FrequentItems = []grocery.ShoppingFrequentItemState{}
 	}
 	if state.Activities == nil {
 		state.Activities = []fitness.Activity{}

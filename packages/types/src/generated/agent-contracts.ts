@@ -104,12 +104,6 @@ export type ProductMatch = {
   size?: string;
 };
 
-export type PantryItem = {
-  name: string;
-  quantity: string;
-  expires?: string;
-};
-
 export type ShoppingPantryItem = {
   name: string;
   quantity: number;
@@ -366,7 +360,6 @@ export type GroceryState = {
   list_title?: string;
   product_matches?: ProductMatch[];
   cart?: CartItem[];
-  pantry?: PantryItem[];
   shopping_profile?: ShoppingProfile;
   meal_plan?: string;
   recipe?: RecipeDraft;
@@ -394,6 +387,7 @@ export type WellnessState = {
   training_plan?: string;
   list_title?: string;
   recipe?: RecipeDraft;
+  shopping_profile?: ShoppingProfile;
   weekly_plan?: string;
   review_summary?: string;
   kroger_connected?: boolean;

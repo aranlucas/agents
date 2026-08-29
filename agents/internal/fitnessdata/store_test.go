@@ -2,7 +2,8 @@ package fitnessdata
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"strings"
 	"testing"
 	"time"
@@ -10,9 +11,9 @@ import (
 	"agents/internal/cloudflare"
 )
 
-func rawRows(t *testing.T, rows ...any) []json.RawMessage {
+func rawRows(t *testing.T, rows ...any) []jsontext.Value {
 	t.Helper()
-	encoded := make([]json.RawMessage, len(rows))
+	encoded := make([]jsontext.Value, len(rows))
 	for i, row := range rows {
 		data, err := json.Marshal(row)
 		if err != nil {

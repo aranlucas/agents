@@ -3,7 +3,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -40,6 +39,7 @@ import (
 	"agents/travel"
 	"agents/trends"
 	"agents/wellness"
+
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/tool"
@@ -226,8 +226,9 @@ type healthResponse struct {
 func healthHandler(d1, r2 healthChecker) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /live", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(healthResponse{Status: "ok", Service: "agents-telegram"})
+		if err := common.WriteJSON(w, http.StatusOK, healthResponse{Status: "ok", Service: "agents-telegram"}); err != nil {
+			log.Printf("write JSON response: %v", err)
+		}
 	})
 	ready := func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
@@ -246,9 +247,9 @@ func healthHandler(d1, r2 healthChecker) http.Handler {
 		if checks["d1"] != "ok" || checks["r2"] != "ok" {
 			status, code = "degraded", http.StatusServiceUnavailable
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(code)
-		_ = json.NewEncoder(w).Encode(healthResponse{Status: status, Service: "agents-telegram", Checks: checks})
+		if err := common.WriteJSON(w, code, healthResponse{Status: status, Service: "agents-telegram", Checks: checks}); err != nil {
+			log.Printf("write JSON response: %v", err)
+		}
 	}
 	mux.HandleFunc("GET /ready", ready)
 	mux.HandleFunc("GET /health", ready)

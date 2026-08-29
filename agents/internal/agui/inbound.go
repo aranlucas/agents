@@ -2,7 +2,8 @@ package agui
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -38,7 +39,7 @@ func decodeRunInput(body io.Reader) (*types.RunAgentInput, error) {
 	// that extension value from the original document so forwarding does not
 	// round large JSON numbers through float64.
 	var rawInput struct {
-		ForwardedProps json.RawMessage `json:"forwardedProps"`
+		ForwardedProps jsontext.Value `json:"forwardedProps"`
 	}
 	if err := json.Unmarshal(payload, &rawInput); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrInvalidRunInput, err)
@@ -263,16 +264,16 @@ type textToolResponse struct {
 	Result string `json:"result"`
 }
 
-func toolResponsePayload(msg types.Message) (json.RawMessage, error) {
+func toolResponsePayload(msg types.Message) (jsontext.Value, error) {
 	text, ok := msg.ContentString()
 	if !ok {
 		return nil, fmt.Errorf("%w: tool result content must be a string", ErrInvalidRunInput)
 	}
 	if strings.TrimSpace(text) == "" {
-		return json.RawMessage(`{}`), nil
+		return jsontext.Value(`{}`), nil
 	}
-	payload := json.RawMessage(strings.TrimSpace(text))
-	if json.Valid(payload) && len(payload) > 0 && payload[0] == '{' {
+	payload := jsontext.Value(strings.TrimSpace(text))
+	if payload.IsValid() && len(payload) > 0 && payload[0] == '{' {
 		return payload, nil
 	}
 	payload, err := json.Marshal(textToolResponse{Result: text})

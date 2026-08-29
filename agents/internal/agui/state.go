@@ -2,7 +2,8 @@ package agui
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"maps"
 	"net/http"
@@ -25,7 +26,7 @@ var ErrSessionNotFound = errors.New("agui: session not found")
 // are intentionally open at the session boundary, but the client-facing
 // document is stricter: every retained value has already been validated and
 // encoded as JSON.
-type stateDocument map[string]json.RawMessage
+type stateDocument map[string]jsontext.Value
 
 // requestStateOverlay extracts the request-scoped Kroger bearer token for the
 // routes that use Kroger tools. The temp: key is stripped before persistence;

@@ -1,8 +1,7 @@
 package rate
 
 import (
-	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -24,7 +23,7 @@ func TestProviderLimiterRejectsWindowOverflowAndResets(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		var env batchEnvelope
-		if err := json.NewDecoder(r.Body).Decode(&env); err != nil || len(env.Batch) == 0 {
+		if err := json.UnmarshalRead(r.Body, &env); err != nil || len(env.Batch) == 0 {
 			t.Fatal("bad batch envelope")
 		}
 		statements := env.Batch
@@ -38,7 +37,7 @@ func TestProviderLimiterRejectsWindowOverflowAndResets(t *testing.T) {
 		if count <= maximum {
 			rows = append(rows, map[string]any{"request_count": count})
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "result": []any{
+		_ = json.MarshalWrite(w, map[string]any{"success": true, "result": []any{
 			map[string]any{"success": true, "results": []any{}, "meta": map[string]any{"changes": 0}},
 			map[string]any{"success": true, "results": rows, "meta": map[string]any{"changes": 1}},
 		}})
@@ -49,28 +48,28 @@ func TestProviderLimiterRejectsWindowOverflowAndResets(t *testing.T) {
 	now := time.Date(2026, 7, 10, 12, 0, 20, 0, time.UTC)
 	limiter := NewProviderLimiter(d1, func() time.Time { return now })
 	for range 2 {
-		if err := limiter.Acquire(context.Background(), "groq", 2); err != nil {
+		if err := limiter.Acquire(t.Context(), "groq", 2); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := limiter.Acquire(context.Background(), "groq", 2); !errors.Is(err, ErrLimitReached) {
+	if err := limiter.Acquire(t.Context(), "groq", 2); !errors.Is(err, ErrLimitReached) {
 		t.Fatalf("Acquire() error = %v", err)
 	}
 	now = now.Add(time.Minute)
-	if err := limiter.Acquire(context.Background(), "groq", 2); err != nil {
+	if err := limiter.Acquire(t.Context(), "groq", 2); err != nil {
 		t.Fatalf("new window Acquire() error = %v", err)
 	}
 }
 
 func TestProviderLimiterRejectsInvalidOrUnavailableConfiguration(t *testing.T) {
 	limiter := NewProviderLimiter(nil, time.Now)
-	if err := limiter.Acquire(context.Background(), "groq", 1); err == nil {
+	if err := limiter.Acquire(t.Context(), "groq", 1); err == nil {
 		t.Fatal("missing D1 accepted")
 	}
-	if err := limiter.Acquire(context.Background(), "", 1); err == nil {
+	if err := limiter.Acquire(t.Context(), "", 1); err == nil {
 		t.Fatal("empty provider accepted")
 	}
-	if err := limiter.Acquire(context.Background(), "groq", 0); err == nil {
+	if err := limiter.Acquire(t.Context(), "groq", 0); err == nil {
 		t.Fatal("zero limit accepted")
 	}
 }

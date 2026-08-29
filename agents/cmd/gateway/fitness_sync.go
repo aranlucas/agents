@@ -1,15 +1,15 @@
 package main
 
 import (
-	"encoding/json"
-	"errors"
-	"io"
+	json "encoding/json/v2"
+	"log"
 	"math"
 	"net/http"
 	"strings"
 	"time"
 
 	"agents/internal/auth"
+	"agents/internal/common"
 	"agents/internal/fitnessdata"
 )
 
@@ -30,12 +30,8 @@ func fitnessSyncHandler(repository fitnessdata.Repository, now func() time.Time)
 			return
 		}
 		var input fitnessSyncRequest
-		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxFitnessSyncBody))
-		decoder.DisallowUnknownFields()
-		decodeErr := decoder.Decode(&input)
-		var trailing struct{}
-		trailingErr := decoder.Decode(&trailing)
-		if decodeErr != nil || !errors.Is(trailingErr, io.EOF) || len(input.Activities) > maxFitnessSyncActivities {
+		decodeErr := json.UnmarshalRead(http.MaxBytesReader(w, r.Body, maxFitnessSyncBody), &input, json.RejectUnknownMembers(true))
+		if decodeErr != nil || len(input.Activities) > maxFitnessSyncActivities {
 			writeGatewayJSONError(w, http.StatusBadRequest, "invalid_fitness_sync")
 			return
 		}
@@ -53,8 +49,9 @@ func fitnessSyncHandler(repository fitnessdata.Repository, now func() time.Time)
 			writeGatewayJSONError(w, http.StatusServiceUnavailable, "fitness_sync_unavailable")
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(result)
+		if err := common.WriteJSON(w, http.StatusOK, result); err != nil {
+			log.Printf("write JSON response: %v", err)
+		}
 	}
 }
 

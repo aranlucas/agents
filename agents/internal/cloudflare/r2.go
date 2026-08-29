@@ -6,7 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -444,19 +444,19 @@ func artifactObjectName(fileName string, version int64) (string, error) {
 }
 
 func parseArtifactObjectName(name string) (string, int64, bool) {
-	if !strings.HasSuffix(name, artifactSuffix) {
+	name, ok := strings.CutSuffix(name, artifactSuffix)
+	if !ok {
 		return "", 0, false
 	}
-	name = strings.TrimSuffix(name, artifactSuffix)
-	separator := strings.LastIndex(name, ".v")
-	if separator <= 0 {
+	encodedFile, rawVersion, ok := strings.CutLast(name, ".v")
+	if !ok || encodedFile == "" {
 		return "", 0, false
 	}
-	decoded, err := base64.RawURLEncoding.DecodeString(name[:separator])
+	decoded, err := base64.RawURLEncoding.DecodeString(encodedFile)
 	if err != nil {
 		return "", 0, false
 	}
-	version, err := strconv.ParseInt(name[separator+2:], 10, 64)
+	version, err := strconv.ParseInt(rawVersion, 10, 64)
 	if err != nil || version <= 0 {
 		return "", 0, false
 	}
