@@ -1,5 +1,5 @@
 {
-  "*.{js,jsx,ts,tsx,mjs,cjs}": ["oxlint --fix --fix-suggestions", "oxfmt --write"],
+  "!(*.d).{js,jsx,ts,tsx,mjs,cjs}": ["oxlint --fix --fix-suggestions", "oxfmt --write"],
   "*.{json,jsonc,css,md,mdx,yml,yaml}": "oxfmt --write",
   "*.py": [
     "uv run ruff check --fix agents",
