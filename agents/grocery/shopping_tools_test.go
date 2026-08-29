@@ -5,6 +5,7 @@ import (
 	"iter"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -315,9 +316,9 @@ func TestSetPreferredStoreNoOpKeepsCanonicalTimestampInState(t *testing.T) {
 }
 
 func TestShoppingToolRunnerPersistsToolStateDelta(t *testing.T) {
-	repository := &fakeLibraryShoppingRepository{fakeShoppingRepository: fakeShoppingRepository{profile: groceries.ShoppingProfile{
+	repository := &fakeLibraryShoppingRepository{profile: groceries.ShoppingProfile{
 		Pantry: []groceries.PantryItem{{Name: "Eggs", Quantity: 1, AddedAt: 10}},
-	}}}
+	}}
 	built, err := NewWithLibrary(&shoppingToolModel{}, nil, nil, nil, repository)
 	if err != nil {
 		t.Fatal(err)
@@ -363,10 +364,10 @@ func TestShoppingToolRunnerPersistsToolStateDelta(t *testing.T) {
 
 func TestShoppingProfileHydratesBeforeAgentAcrossSessions(t *testing.T) {
 	expires := time.Date(2026, 7, 20, 0, 0, 0, 0, time.UTC).Unix()
-	repository := &fakeLibraryShoppingRepository{fakeShoppingRepository: fakeShoppingRepository{profile: groceries.ShoppingProfile{
+	repository := &fakeLibraryShoppingRepository{profile: groceries.ShoppingProfile{
 		Pantry:    []groceries.PantryItem{{Name: "Eggs", Quantity: 2, AddedAt: 10, ExpiresAt: &expires}},
 		Equipment: []groceries.EquipmentItem{{Name: "Oven", AddedAt: 11}},
-	}}}
+	}}
 	captured := &captureShoppingModel{}
 	built, err := NewWithLibrary(captured, nil, nil, nil, repository)
 	if err != nil {
@@ -427,12 +428,7 @@ func (state *trackingShoppingState) Set(key string, value any) error {
 }
 
 func (state *trackingShoppingState) wrote(key string) bool {
-	for _, written := range state.writes {
-		if written == key {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(state.writes, key)
 }
 
 // shoppingContext overrides identity and session state while StrictContextMock

@@ -27,8 +27,8 @@ type Result struct {
 	OK      bool   `json:"ok"`
 	Status  string `json:"status"`
 	Message string `json:"message,omitempty"`
-	Count   int    `json:"count,omitempty"`
-	Length  int    `json:"length,omitempty"`
+	Count   int    `json:"count,omitzero"`
+	Length  int    `json:"length,omitzero"`
 }
 
 type SetCaseArgs struct {
@@ -336,7 +336,7 @@ func QuestionCraftViolations(question string) []string {
 func questionStemCount(question string) int {
 	stems := map[string]bool{"what": true, "how": true, "why": true, "which": true, "when": true, "where": true}
 	count := 0
-	for _, word := range strings.Fields(question) {
+	for word := range strings.FieldsSeq(question) {
 		word = strings.Trim(word, "\"'()[]{}.,:;!?")
 		if stems[word] {
 			count++

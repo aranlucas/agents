@@ -4,7 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 	"strings"
 	"time"
 
@@ -65,11 +66,7 @@ func (r *Registry) Entries() []Entry {
 	if r == nil {
 		return nil
 	}
-	routes := make([]string, 0, len(r.entries))
-	for route := range r.entries {
-		routes = append(routes, route)
-	}
-	sort.Strings(routes)
+	routes := slices.Sorted(maps.Keys(r.entries))
 	entries := make([]Entry, 0, len(routes))
 	for _, route := range routes {
 		entry, _ := r.Lookup(route)

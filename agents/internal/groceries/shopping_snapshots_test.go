@@ -162,7 +162,7 @@ func TestShoppingProfileSnapshotIsDetachedFromMutationResponse(t *testing.T) {
 	runner := newShoppingSnapshotSQLiteRunner(t)
 	store := newShoppingSnapshotTestStore(t, runner, blocking)
 
-	requestCtx, cancelRequest := context.WithCancel(context.Background())
+	requestCtx, cancelRequest := context.WithCancel(t.Context())
 	mutationDone := make(chan error, 1)
 	go func() {
 		_, err := store.SetPreferredStore(
@@ -645,7 +645,7 @@ func TestStoreCloseCancelsActiveShoppingProfileSaveAndCannotRestart(t *testing.T
 		t.Fatal(err)
 	}
 	store.enqueueShoppingProfileSnapshot("user_1")
-	waitCtx, cancel := context.WithTimeout(context.Background(), time.Second)
+	waitCtx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
 	if err := store.waitShoppingProfileSnapshots(waitCtx); err != nil {
 		t.Fatalf("closed scheduler did not remain idle: %v", err)
@@ -827,7 +827,7 @@ func profileArtifactPart(t *testing.T, profile ShoppingProfile) *genai.Part {
 
 func waitForShoppingProfileSnapshots(t *testing.T, store *Store) {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 	if err := store.waitShoppingProfileSnapshots(ctx); err != nil {
 		t.Fatal(err)

@@ -13,8 +13,8 @@ const maxFitnessDocument = 1 << 20
 
 type Result struct {
 	OK         bool                          `json:"ok"`
-	Length     int                           `json:"length,omitempty"`
-	Count      int                           `json:"count,omitempty"`
+	Length     int                           `json:"length,omitzero"`
+	Count      int                           `json:"count,omitzero"`
 	SyncedAt   string                        `json:"synced_at,omitempty"`
 	Activities []Activity                    `json:"activities,omitempty"`
 	Date       string                        `json:"date,omitempty"`
@@ -24,7 +24,7 @@ type Result struct {
 }
 
 type FetchActivitiesArgs struct {
-	Limit int `json:"limit,omitempty"`
+	Limit int `json:"limit,omitzero"`
 }
 type ResearchArgs struct {
 	Research string `json:"research"`

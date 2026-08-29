@@ -140,9 +140,9 @@ func newImmediateRetryGeminiModel(t *testing.T, baseURL string) model.LLM {
 	t.Helper()
 	config := oralboardsGeminiClientConfig("test-key")
 	config.HTTPOptions.BaseURL = baseURL
-	config.HTTPOptions.RetryOptions.InitialDelay = genai.Ptr(0.0)
-	config.HTTPOptions.RetryOptions.MaxDelay = genai.Ptr(0.0)
-	config.HTTPOptions.RetryOptions.Jitter = genai.Ptr(0.0)
+	config.HTTPOptions.RetryOptions.InitialDelay = new(0.0)
+	config.HTTPOptions.RetryOptions.MaxDelay = new(0.0)
+	config.HTTPOptions.RetryOptions.Jitter = new(0.0)
 	llm, err := gemini.NewModel(t.Context(), "test-model", config)
 	if err != nil {
 		t.Fatal(err)

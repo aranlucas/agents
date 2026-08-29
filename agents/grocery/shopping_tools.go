@@ -30,7 +30,7 @@ type AddPantryArgs struct {
 
 type RemovePantryArgs struct {
 	Names []string `json:"names,omitempty" jsonschema:"Pantry item names to remove, matched case-insensitively."`
-	All   bool     `json:"all,omitempty" jsonschema:"Clear the entire pantry instead of removing named items."`
+	All   bool     `json:"all,omitzero" jsonschema:"Clear the entire pantry instead of removing named items."`
 }
 
 type EquipmentItemInput struct {
@@ -44,18 +44,18 @@ type EquipmentArgs struct {
 
 type RemoveEquipmentArgs struct {
 	Names []string `json:"names,omitempty" jsonschema:"Equipment names to remove, matched case-insensitively."`
-	All   bool     `json:"all,omitempty" jsonschema:"Clear all kitchen equipment instead of removing named items."`
+	All   bool     `json:"all,omitzero" jsonschema:"Clear all kitchen equipment instead of removing named items."`
 }
 
 type RecentOrdersArgs struct {
-	Limit int `json:"limit,omitempty" jsonschema:"Maximum number of recent orders; defaults to 10 and is capped at 50."`
+	Limit int `json:"limit,omitzero" jsonschema:"Maximum number of recent orders; defaults to 10 and is capped at 50."`
 }
 
 type RecordOrderArgs struct {
 	ID             string                `json:"id,omitempty" jsonschema:"Optional idempotency/order id."`
 	Items          []groceries.OrderItem `json:"items" jsonschema:"Items that were actually purchased in the completed order."`
 	EstimatedTotal *float64              `json:"estimated_total,omitempty" jsonschema:"Optional total paid or estimated total."`
-	PlacedAt       int64                 `json:"placed_at,omitempty" jsonschema:"Optional Unix timestamp; defaults to now."`
+	PlacedAt       int64                 `json:"placed_at,omitzero" jsonschema:"Optional Unix timestamp; defaults to now."`
 	LocationID     *string               `json:"location_id,omitempty" jsonschema:"Optional preferred-store location id."`
 	Notes          *string               `json:"notes,omitempty" jsonschema:"Optional order notes."`
 }

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -98,9 +99,7 @@ func generatedOutputs() (map[string][]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	for path, content := range schemas {
-		outputs[path] = content
-	}
+	maps.Copy(outputs, schemas)
 	return outputs, nil
 }
 
@@ -414,7 +413,7 @@ func renderObject(out *bytes.Buffer, object objectDef, names map[reflect.Type]st
 func findJSONField(goType reflect.Type, name string) (reflect.StructField, bool) {
 	for i := range goType.NumField() {
 		field := goType.Field(i)
-		jsonName := strings.Split(field.Tag.Get("json"), ",")[0]
+		jsonName, _, _ := strings.Cut(field.Tag.Get("json"), ",")
 		if jsonName == "" {
 			jsonName = field.Name
 		}

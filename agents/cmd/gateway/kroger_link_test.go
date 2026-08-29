@@ -127,7 +127,7 @@ func TestKrogerLinkerHonorsContextTimeout(t *testing.T) {
 	defer server.Close()
 	repository := newFakeShoppingRepository()
 	linker := newKrogerLinker(repository, server.URL+"/mcp", server.Client())
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
 	defer cancel()
 	linker.Ensure(ctx, "clerk-user", "kroger-token")
 	select {
@@ -159,7 +159,7 @@ func TestOAuthLinkingIsDetachedAndDoesNotBlockRequest(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})), acceptingVerifier{})
 
-	requestContext, cancelRequest := context.WithCancel(context.Background())
+	requestContext, cancelRequest := context.WithCancel(t.Context())
 	request := httptest.NewRequest(http.MethodPost, "/grocery/agui", nil).WithContext(requestContext)
 	request.Header.Set("Authorization", "Bearer clerk-session")
 	recorder := httptest.NewRecorder()

@@ -17,7 +17,7 @@ type Result struct {
 	Title     string                        `json:"title,omitempty"`
 	SectionID string                        `json:"section_id,omitempty"`
 	SourceID  string                        `json:"source_id,omitempty"`
-	Length    int                           `json:"length,omitempty"`
+	Length    int                           `json:"length,omitzero"`
 	Error     *agentruntime.StructuredError `json:"error,omitempty"`
 }
 type SetQueryArgs struct {

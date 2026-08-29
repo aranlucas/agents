@@ -12,7 +12,7 @@ const maxWellnessDocument = 1 << 20
 
 type Result struct {
 	OK      bool                          `json:"ok"`
-	Length  int                           `json:"length,omitempty"`
+	Length  int                           `json:"length,omitzero"`
 	Date    string                        `json:"date,omitempty"`
 	Weekday string                        `json:"weekday,omitempty"`
 	Month   string                        `json:"month,omitempty"`

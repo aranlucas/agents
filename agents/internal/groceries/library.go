@@ -54,7 +54,7 @@ type Recipe struct {
 	Servings        string       `json:"servings"`
 	Notes           string       `json:"notes"`
 	Status          string       `json:"status"`
-	ArtifactVersion int64        `json:"artifact_version,omitempty"`
+	ArtifactVersion int64        `json:"artifact_version,omitzero"`
 	CreatedAt       int64        `json:"created_at"`
 	UpdatedAt       int64        `json:"updated_at"`
 	Ingredients     []Ingredient `json:"ingredients"`

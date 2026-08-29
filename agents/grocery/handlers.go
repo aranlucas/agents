@@ -22,8 +22,8 @@ const maxGroceryDocument = 1 << 20
 
 type Result struct {
 	OK          bool                          `json:"ok"`
-	Count       int                           `json:"count,omitempty"`
-	Length      int                           `json:"length,omitempty"`
+	Count       int                           `json:"count,omitzero"`
+	Length      int                           `json:"length,omitzero"`
 	Date        string                        `json:"date,omitempty"`
 	Weekday     string                        `json:"weekday,omitempty"`
 	Month       string                        `json:"month,omitempty"`

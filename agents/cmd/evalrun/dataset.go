@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 )
 
 // Dataset mirrors the rubric-based EvaluationDataset schema restored from
@@ -45,14 +46,14 @@ type Content struct {
 }
 
 func (c Content) Text() string {
-	out := ""
+	var out strings.Builder
 	for i, p := range c.Parts {
 		if i > 0 {
-			out += " "
+			out.WriteString(" ")
 		}
-		out += p.Text
+		out.WriteString(p.Text)
 	}
-	return out
+	return out.String()
 }
 
 func loadDataset(path string) (Dataset, error) {
