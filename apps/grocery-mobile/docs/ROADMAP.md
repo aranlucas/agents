@@ -6,9 +6,9 @@ Android polish lives in [PLAN.md](./PLAN.md); store release work lives in
 
 ## Where we are today
 
-- Pantry is per-thread agent state (`update_pantry` tool writing
-  `GroceryState.pantry`). It resets with every new chat and is invisible
-  outside the conversation that created it.
+- Pantry is durable per-user data in D1. The grocery agent reads and mutates it
+  with the shopping-profile tools, then publishes the complete canonical
+  `GroceryState.shopping_profile` projection to clients.
 - Grocery lists and structured recipes begin as reviewable thread state. The
   user can explicitly save either one to a personal or household library;
   D1 owns the editable record and the ADK artifact service writes an R2
@@ -17,7 +17,7 @@ Android polish lives in [PLAN.md](./PLAN.md); store release work lives in
   D1 (`sessions`, `app_states`, `user_states`, `session_events`) plus R2 for
   artifacts. Kroger is connected per user.
 
-## Phase 1 — Durable per-user pantry
+## Phase 1 — Durable per-user pantry (delivered)
 
 Goal: the pantry survives across chats and devices, and the agent plans
 around it automatically.
@@ -26,10 +26,9 @@ around it automatically.
    `pantry_items` table keyed by Clerk user id — name, normalized name,
    quantity, unit, category, updated_at, source (`manual` | `agent` |
    `order`).
-2. Go agent tools: `get_pantry`, `add_pantry_items`, `remove_pantry_items`
-   backed by D1 instead of thread state. Keep `update_pantry` emitting the
-   same client-visible state so the mobile UI keeps working during the
-   transition.
+2. Go agent tools: `get_shopping_profile`, `add_to_pantry`, and
+   `remove_from_pantry`, backed by D1. Every mutation emits the complete
+   `shopping_profile` state projection consumed by mobile and web clients.
 3. Agent instructions: consult the pantry before building a shopping list;
    subtract owned items; propose depletion updates after a confirmed cart
    add ("you bought rice 2 weeks ago — still stocked?").

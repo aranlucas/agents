@@ -62,11 +62,10 @@ func TestAddDayReplacesExistingDayInsteadOfDuplicatingIt(t *testing.T) {
 	}
 }
 
-func TestLegacyStringInterestsDecodeAsStrongList(t *testing.T) {
+func TestStringInterestsAreRejected(t *testing.T) {
 	state := StateDefaults()
-	state["interests"] = "food, museums, food"
-	decoded := readState(travelState(state))
-	if len(decoded.Interests) != 2 || decoded.Interests[0] != "food" || decoded.Interests[1] != "museums" {
+	state["interests"] = "food, museums"
+	if decoded := readState(travelState(state)); len(decoded.Interests) != 0 {
 		t.Fatalf("interests = %#v", decoded.Interests)
 	}
 }

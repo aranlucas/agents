@@ -83,7 +83,10 @@ function GroceryListContent() {
     }
     return { matchesByName: byName, matchesByQuery: byQuery, matchesByUPC: byUPC };
   }, [state.product_matches]);
-  const pantry = useMemo(() => pantryNames(state.pantry ?? []), [state.pantry]);
+  const pantry = useMemo(
+    () => pantryNames(state.shopping_profile?.pantry ?? []),
+    [state.shopping_profile?.pantry],
+  );
   const subtotal = useMemo(() => cartSubtotal(cart), [cart]);
   const rows = useMemo(
     () =>
@@ -179,7 +182,7 @@ function GroceryListContent() {
           <View>
             <Text variant="h3">{list.length || cart.length} grocery items</Text>
             <Text className="mt-1" variant="muted">
-              {state.pantry?.length ?? 0} pantry items known
+              {state.shopping_profile?.pantry.length ?? 0} pantry items known
             </Text>
           </View>
           {subtotal > 0 ? (

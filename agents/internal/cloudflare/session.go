@@ -5,7 +5,8 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"iter"
@@ -437,7 +438,7 @@ func stateUpdateExpression(column string, delta map[string]any) (string, []any, 
 	return expression, append(setParams, removeParams...), nil
 }
 
-func encodeStateValue(value any) (json.RawMessage, bool, error) {
+func encodeStateValue(value any) (jsontext.Value, bool, error) {
 	encoded, err := json.Marshal(value)
 	if err != nil {
 		return nil, false, err
@@ -450,7 +451,7 @@ func isStateDeletion(value any) bool {
 	return err == nil && deletion
 }
 
-func decodeStoredSession(raw json.RawMessage, appName string, events []*session.Event) (*storedSession, error) {
+func decodeStoredSession(raw jsontext.Value, appName string, events []*session.Event) (*storedSession, error) {
 	var row storedSessionRow
 	if err := json.Unmarshal(raw, &row); err != nil || !validIdentity(row.SessionID) || !validIdentity(row.UserID) || row.UpdatedAt <= 0 {
 		return nil, errors.New("decode session row")
@@ -480,7 +481,7 @@ func decodeStateJSON(raw string) (map[string]any, error) {
 	return state, nil
 }
 
-func decodeEvents(rows []json.RawMessage) ([]*session.Event, error) {
+func decodeEvents(rows []jsontext.Value) ([]*session.Event, error) {
 	events := make([]*session.Event, 0, len(rows))
 	for _, raw := range rows {
 		var row storedEventRow

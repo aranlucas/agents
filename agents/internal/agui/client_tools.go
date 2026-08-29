@@ -3,7 +3,8 @@ package agui
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"regexp"
@@ -44,8 +45,8 @@ type ToolScope struct{ AppName, UserID, ThreadID string }
 // Handler depends only on this interface — never on a concrete store — so
 // any backend (D1, or otherwise) can be plugged in via WithPendingTools.
 type PendingTools interface {
-	Register(context.Context, ToolScope, string, string, json.RawMessage) error
-	Resolve(context.Context, auth.Identity, string, string, string, json.RawMessage) error
+	Register(context.Context, ToolScope, string, string, jsontext.Value) error
+	Resolve(context.Context, auth.Identity, string, string, string, jsontext.Value) error
 	Take(context.Context, auth.Identity, string, string, string) (*genai.FunctionResponse, error)
 }
 
@@ -74,7 +75,7 @@ func buildClientTools(input []types.Tool, pending PendingTools) ([]tool.Tool, er
 			return nil, fmt.Errorf("client tool %q schema: %w", definition.Name, err)
 		}
 		name := definition.Name
-		wrapped, err := functiontool.New[map[string]json.RawMessage, clientToolPendingResult](functiontool.Config{Name: name, Description: definition.Description, InputSchema: schema, IsLongRunning: true}, func(ctx agent.Context, args map[string]json.RawMessage) (clientToolPendingResult, error) {
+		wrapped, err := functiontool.New[map[string]jsontext.Value, clientToolPendingResult](functiontool.Config{Name: name, Description: definition.Description, InputSchema: schema, IsLongRunning: true}, func(ctx agent.Context, args map[string]jsontext.Value) (clientToolPendingResult, error) {
 			scope := ToolScope{AppName: ctx.AppName(), UserID: ctx.UserID(), ThreadID: ctx.SessionID()}
 			encoded, err := json.Marshal(args)
 			if err != nil {

@@ -78,10 +78,14 @@ func (s *Client) Search(ctx context.Context, query string, count int) ([]Result,
 	request.Header.Set("X-Subscription-Token", s.apiKey)
 	type braveResponse struct {
 		Web struct {
-			Results []struct{ Title, URL, Description string } `json:"results"`
+			Results []struct {
+				Title       string `json:"title"`
+				URL         string `json:"url"`
+				Description string `json:"description"`
+			} `json:"results"`
 		} `json:"web"`
 	}
-	response, err := common.DecodeJSON[braveResponse](ctx, s.client, request)
+	response, err := s.client.DecodeJSON[braveResponse](ctx, request)
 	if err != nil {
 		return nil, err
 	}

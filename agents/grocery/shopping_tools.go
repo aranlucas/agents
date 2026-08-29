@@ -7,6 +7,7 @@ import (
 
 	"agents/internal/agentruntime"
 	"agents/internal/groceries"
+
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/tool"
 	"google.golang.org/adk/v2/tool/functiontool"
@@ -21,9 +22,7 @@ type PantryItemInput struct {
 	ExpiresAt *string  `json:"expires_at,omitempty" jsonschema:"RFC3339 date, optional."`
 }
 
-// AddPantryArgs is the model-facing input for add_to_pantry. PantryArgs is
-// already used by the state-only update_pantry tool, so this distinct Go name
-// preserves that existing API while keeping the native JSON contract exact.
+// AddPantryArgs is the model-facing input for add_to_pantry.
 type AddPantryArgs struct {
 	Items []PantryItemInput `json:"items" jsonschema:"Pantry items to add; duplicate names merge case-insensitively."`
 }

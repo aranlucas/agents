@@ -1,7 +1,7 @@
 package groceries
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -103,7 +103,7 @@ func newFixtureStore(t *testing.T, respond func([]cloudflare.Statement) []cloudf
 	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var envelope d1Batch
-		if err := json.NewDecoder(r.Body).Decode(&envelope); err != nil {
+		if err := json.UnmarshalRead(r.Body, &envelope); err != nil {
 			t.Fatal(err)
 		}
 		results := respond(envelope.Batch)
@@ -120,7 +120,7 @@ func newFixtureStore(t *testing.T, respond func([]cloudflare.Statement) []cloudf
 			payload[index] = map[string]any{"success": true, "results": rows, "meta": map[string]any{"changes": result.Meta.Changes}}
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "result": payload})
+		_ = json.MarshalWrite(w, map[string]any{"success": true, "result": payload})
 	}))
 	t.Cleanup(server.Close)
 	client := server.Client()

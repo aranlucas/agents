@@ -46,7 +46,7 @@ export function GroceryStateCard({
   const list = state.shopping_list ?? [];
   const cart = state.cart ?? [];
   const matches = state.product_matches ?? [];
-  const pantry = pantryNames(state.pantry ?? []);
+  const pantry = pantryNames(state.shopping_profile?.pantry ?? []);
   const skipped = list.filter((item) => pantry.has(item.trim().toLocaleLowerCase()));
   const preview: Array<{ name: string; imageUrl?: string }> = matches.length
     ? matches.slice(0, 4).map((item) => ({ name: item.name, imageUrl: item.image_url }))

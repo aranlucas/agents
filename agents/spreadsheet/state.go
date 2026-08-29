@@ -1,7 +1,7 @@
 package spreadsheet
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"maps"
 
 	"google.golang.org/adk/v2/session"

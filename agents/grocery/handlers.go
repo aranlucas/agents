@@ -6,10 +6,10 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
-	"time"
 
 	"agents/internal/agentruntime"
 	"agents/internal/common"
+
 	"google.golang.org/adk/v2/agent"
 )
 
@@ -53,9 +53,6 @@ type ProductMatchesArgs struct {
 
 type CartArgs struct {
 	Items []CartItem `json:"items"`
-}
-type PantryArgs struct {
-	Items []PantryItem `json:"items"`
 }
 
 type MealPlanArgs struct {
@@ -190,36 +187,6 @@ func updateCart(state *GroceryState, input CartArgs) (Result, error) {
 		return groceryFailure("invalid_cart", err.Error()), nil
 	}
 	state.Cart = append([]CartItem(nil), input.Items...)
-	return Result{OK: true, Count: len(input.Items)}, nil
-}
-
-func UpdatePantry(ctx agent.Context, input PantryArgs) (Result, error) {
-	state := readState(ctx.State())
-	result, err := updatePantry(&state, input)
-	if err != nil || !result.OK {
-		return result, err
-	}
-	if err := ctx.State().Set("pantry", state.Pantry); err != nil {
-		return Result{}, err
-	}
-	return result, nil
-}
-
-func updatePantry(state *GroceryState, input PantryArgs) (Result, error) {
-	if len(input.Items) > 500 {
-		return groceryFailure("pantry_too_large", "pantry cannot exceed 500 items"), nil
-	}
-	for _, item := range input.Items {
-		if strings.TrimSpace(item.Name) == "" || len(item.Name) > 500 || strings.TrimSpace(item.Quantity) == "" || len(item.Quantity) > 100 {
-			return groceryFailure("invalid_pantry_item", "pantry item name and quantity are required within bounds"), nil
-		}
-		if item.Expires != nil {
-			if _, err := time.Parse(time.DateOnly, *item.Expires); err != nil {
-				return groceryFailure("invalid_expiry", "pantry expiry must use YYYY-MM-DD"), nil
-			}
-		}
-	}
-	state.Pantry = append([]PantryItem(nil), input.Items...)
 	return Result{OK: true, Count: len(input.Items)}, nil
 }
 

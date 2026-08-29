@@ -2,9 +2,11 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
+
+	"agents/internal/common"
 )
 
 type identityContextKey struct{}
@@ -81,9 +83,9 @@ func bearerToken(header string) (string, bool) {
 }
 
 func writeUnauthorized(w http.ResponseWriter) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusUnauthorized)
-	_ = json.NewEncoder(w).Encode(map[string]string{"detail": "Unauthorized"})
+	if err := common.WriteJSON(w, http.StatusUnauthorized, map[string]string{"detail": "Unauthorized"}); err != nil {
+		log.Printf("write JSON response: %v", err)
+	}
 }
 
 // CORS emits credentialed browser headers for configured exact origins. A

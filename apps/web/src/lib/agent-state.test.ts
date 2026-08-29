@@ -101,7 +101,12 @@ describe("toGroceryState", () => {
     const result = toGroceryState({
       shopping_list: ["milk", 5, "eggs"],
       cart: [{ name: "milk", quantity: 2, price: 3.5 }, "junk"],
-      pantry: [{ name: "rice", quantity: "1kg" }],
+      shopping_profile: {
+        pantry: [{ name: "rice", quantity: 1.5, added_at: 10 }],
+        equipment: [],
+        recent_orders: [],
+        frequent_items: [],
+      },
       status: "ready",
       kroger_connected: true,
     });
@@ -110,7 +115,9 @@ describe("toGroceryState", () => {
       { name: "milk", quantity: 2, price: 3.5, upc: undefined },
       { name: "", quantity: 0, price: undefined, upc: undefined },
     ]);
-    expect(result.pantry).toEqual([{ name: "rice", quantity: "1kg", expires: undefined }]);
+    expect(result.shopping_profile?.pantry).toEqual([
+      { name: "rice", quantity: 1.5, added_at: 10, expires_at: undefined },
+    ]);
     expect(result.status).toBe("ready");
     expect(result.kroger_connected).toBe(true);
   });
@@ -119,7 +126,7 @@ describe("toGroceryState", () => {
     const result = toGroceryState({});
     expect(result.shopping_list).toEqual([]);
     expect(result.cart).toEqual([]);
-    expect(result.pantry).toEqual([]);
+    expect(result.shopping_profile?.pantry).toEqual([]);
     expect(result.status).toBe("idle");
     expect(result.kroger_connected).toBe(false);
   });

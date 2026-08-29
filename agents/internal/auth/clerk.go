@@ -4,7 +4,7 @@ package auth
 import (
 	"context"
 	"crypto/rsa"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"

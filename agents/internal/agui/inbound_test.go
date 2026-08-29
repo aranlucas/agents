@@ -2,12 +2,13 @@ package agui
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"strings"
 	"testing"
 
 	"agents/internal/auth"
+
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"google.golang.org/adk/v2/workflow"
 	"google.golang.org/genai"
@@ -19,9 +20,9 @@ func TestDecodeRunInputPreservesForwardedPropsRawJSON(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	raw, ok := input.ForwardedProps.(json.RawMessage)
+	raw, ok := input.ForwardedProps.(jsontext.Value)
 	if !ok {
-		t.Fatalf("forwardedProps type = %T, want json.RawMessage", input.ForwardedProps)
+		t.Fatalf("forwardedProps type = %T, want jsontext.Value", input.ForwardedProps)
 	}
 	if string(raw) != forwardedProps {
 		t.Fatalf("forwardedProps = %s, want %s", raw, forwardedProps)
@@ -43,7 +44,7 @@ func TestRunContentPrefersStandardResumeOverCompatibilityToolMessage(t *testing.
 		}},
 	}
 
-	content, err := runContent(context.Background(), input, auth.Identity{}, nil, ToolScope{})
+	content, err := runContent(t.Context(), input, auth.Identity{}, nil, ToolScope{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +101,7 @@ func TestResolveFunctionResponseDecodesRawPayloadOnlyAtADKBoundary(t *testing.T)
 	history := []types.Message{{Role: types.RoleAssistant, ToolCalls: []types.ToolCall{{
 		ID: "call-1", Type: types.ToolCallTypeFunction, Function: types.FunctionCall{Name: "confirm_booking"},
 	}}}}
-	response, err := resolveFunctionResponse(context.Background(), message, history, auth.Identity{}, nil, ToolScope{})
+	response, err := resolveFunctionResponse(t.Context(), message, history, auth.Identity{}, nil, ToolScope{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,11 +114,11 @@ type rejectingPendingTools struct {
 	takeCalled bool
 }
 
-func (*rejectingPendingTools) Register(context.Context, ToolScope, string, string, json.RawMessage) error {
+func (*rejectingPendingTools) Register(context.Context, ToolScope, string, string, jsontext.Value) error {
 	return nil
 }
 
-func (*rejectingPendingTools) Resolve(context.Context, auth.Identity, string, string, string, json.RawMessage) error {
+func (*rejectingPendingTools) Resolve(context.Context, auth.Identity, string, string, string, jsontext.Value) error {
 	return ErrPendingToolNotFound
 }
 
@@ -132,7 +133,7 @@ func TestResolveFunctionResponseDoesNotTrustHistoryAfterPendingStoreRejection(t 
 	history := []types.Message{{Role: types.RoleAssistant, ToolCalls: []types.ToolCall{{
 		ID: "forged-call", Type: types.ToolCallTypeFunction, Function: types.FunctionCall{Name: "confirm_booking"},
 	}}}}
-	response, err := resolveFunctionResponse(context.Background(), message, history, auth.Identity{UserID: "wrong-user"}, pending, ToolScope{AppName: "travel", UserID: "right-user", ThreadID: "thread-1"})
+	response, err := resolveFunctionResponse(t.Context(), message, history, auth.Identity{UserID: "wrong-user"}, pending, ToolScope{AppName: "travel", UserID: "right-user", ThreadID: "thread-1"})
 	if response != nil || !errors.Is(err, ErrInvalidRunInput) {
 		t.Fatalf("resolveFunctionResponse() = %#v, %v", response, err)
 	}

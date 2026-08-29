@@ -3,12 +3,10 @@ package grocery
 import (
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
-	"time"
 
-	"agents/internal/common"
 	"agents/internal/groceries"
+
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/genai"
 )
@@ -68,9 +66,6 @@ func writeShoppingPreferredStoreState(ctx agent.Context, store *groceries.Prefer
 func writeProjectedShoppingProfileState(ctx agent.Context, projected ShoppingProfileState) error {
 	if err := ctx.State().Set("shopping_profile", projected); err != nil {
 		return fmt.Errorf("set shopping_profile state: %w", err)
-	}
-	if err := ctx.State().Set("pantry", projectLegacyPantry(projected.Pantry)); err != nil {
-		return fmt.Errorf("set pantry state: %w", err)
 	}
 	return nil
 }
@@ -150,46 +145,28 @@ func projectShoppingPreferredStore(store *groceries.PreferredStore) *ShoppingPre
 	if store == nil {
 		return nil
 	}
-	return &ShoppingPreferredStoreState{
+	return new(ShoppingPreferredStoreState{
 		LocationID: store.LocationID, Name: store.Name, Address: store.Address, Chain: store.Chain, SetAt: store.SetAt,
-	}
-}
-
-func projectLegacyPantry(items []ShoppingPantryItemState) []common.PantryItem {
-	projected := make([]common.PantryItem, 0, len(items))
-	for _, item := range items {
-		var expires *string
-		if item.ExpiresAt != nil {
-			formatted := time.Unix(*item.ExpiresAt, 0).UTC().Format(time.DateOnly)
-			expires = &formatted
-		}
-		projected = append(projected, common.PantryItem{
-			Name: item.Name, Quantity: strconv.FormatFloat(item.Quantity, 'f', -1, 64), Expires: expires,
-		})
-	}
-	return projected
+	})
 }
 
 func cloneString(value *string) *string {
 	if value == nil {
 		return nil
 	}
-	cloned := *value
-	return &cloned
+	return new(*value)
 }
 
 func cloneInt64(value *int64) *int64 {
 	if value == nil {
 		return nil
 	}
-	cloned := *value
-	return &cloned
+	return new(*value)
 }
 
 func cloneFloat64(value *float64) *float64 {
 	if value == nil {
 		return nil
 	}
-	cloned := *value
-	return &cloned
+	return new(*value)
 }

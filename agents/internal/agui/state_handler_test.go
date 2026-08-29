@@ -2,7 +2,7 @@ package agui
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"agents/internal/agentruntime"
+
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/session"
@@ -34,7 +35,7 @@ func testResumeRegistry(t *testing.T) *agentruntime.Registry {
 
 func TestStateHandlerReturnsPersistedStateForExistingThread(t *testing.T) {
 	sessions := newFakeSessionService()
-	_, err := sessions.Create(context.Background(), &session.CreateRequest{
+	_, err := sessions.Create(t.Context(), &session.CreateRequest{
 		AppName: "resume_agent", UserID: "anon:thread-state", SessionID: "thread-state",
 		State: map[string]any{"favorite_color": "blue"},
 	})
@@ -111,7 +112,7 @@ func TestStateHandlerNeverLeaksTemporaryState(t *testing.T) {
 	// does not strip temp: keys at write time, so this exercises
 	// StateHandler's own persistentSnapshot filtering rather than relying on
 	// the store to have already dropped the key.
-	_, err := sessions.Create(context.Background(), &session.CreateRequest{
+	_, err := sessions.Create(t.Context(), &session.CreateRequest{
 		AppName: "resume_agent", UserID: "anon:thread-temp", SessionID: "thread-temp",
 		State: map[string]any{"favorite_color": "blue", "temp:oauth": "never-store"},
 	})
@@ -182,7 +183,7 @@ func TestStateHandlerReturns500OnUnexpectedSessionError(t *testing.T) {
 
 func TestStateHandlerReturnsMessagesFromSessionEvents(t *testing.T) {
 	sessions := newFakeSessionService()
-	_, err := sessions.Create(context.Background(), &session.CreateRequest{
+	_, err := sessions.Create(t.Context(), &session.CreateRequest{
 		AppName: "resume_agent", UserID: "anon:thread-messages", SessionID: "thread-messages",
 	})
 	if err != nil {

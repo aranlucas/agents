@@ -5,7 +5,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"log"
@@ -54,8 +55,7 @@ func newShoppingProfileSnapshotScheduler(store *Store) *shoppingProfileSnapshotS
 		pending: map[string]bool{}, running: map[string]bool{},
 	}
 	for range shoppingProfileSnapshotWorkers {
-		scheduler.workers.Add(1)
-		go scheduler.worker()
+		scheduler.workers.Go(scheduler.worker)
 	}
 	go scheduler.poller()
 	return scheduler
@@ -158,7 +158,6 @@ func (s *shoppingProfileSnapshotScheduler) enqueue(userID string) {
 }
 
 func (s *shoppingProfileSnapshotScheduler) worker() {
-	defer s.workers.Done()
 	for {
 		select {
 		case <-s.stop:
@@ -609,7 +608,7 @@ func (s *Store) finalizeUnchangedShoppingProfileSnapshot(ctx context.Context, us
 	return len(results) >= 5 && (len(results[1].Rows) > 0 || changed([]cloudflare.Result{results[3]}) > 0 || len(results[4].Rows) > 0), nil
 }
 
-func decodeShoppingProfileArtifactVersion(raw json.RawMessage) (int64, error) {
+func decodeShoppingProfileArtifactVersion(raw jsontext.Value) (int64, error) {
 	var row struct {
 		ArtifactVersion int64 `json:"artifact_version"`
 	}

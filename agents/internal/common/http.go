@@ -2,7 +2,7 @@ package common
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"io"
 	"net"
@@ -17,6 +17,15 @@ const defaultMaxBody = 2 << 20
 type HTTPClient struct {
 	Client  *http.Client
 	MaxBody int64
+}
+
+// WriteJSON writes one JSON response with a consistent content type and status.
+// Any returned error means the response could not be fully delivered; callers
+// should log it because the HTTP status may already be committed.
+func WriteJSON(w http.ResponseWriter, status int, value any) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	return json.MarshalWrite(w, value)
 }
 
 func NewHTTPClient(timeout time.Duration, maxBody int64) *HTTPClient {
@@ -69,7 +78,7 @@ func effectivePort(target *url.URL) string {
 	return ""
 }
 
-func DecodeJSON[T any](ctx context.Context, client *HTTPClient, request *http.Request) (T, error) {
+func (client *HTTPClient) DecodeJSON[T any](ctx context.Context, request *http.Request) (T, error) {
 	var zero T
 	if client == nil || client.Client == nil || request == nil {
 		return zero, errors.New("HTTP client and request are required")

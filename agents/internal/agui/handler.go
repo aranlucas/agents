@@ -2,7 +2,7 @@ package agui
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"log"
@@ -13,8 +13,10 @@ import (
 
 	"agents/internal/agentruntime"
 	"agents/internal/auth"
+	"agents/internal/common"
 	"agents/internal/observability"
 	"agents/internal/providererrors"
+
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/encoding/sse"
@@ -490,13 +492,13 @@ func routeAgent(path string) string {
 }
 
 func writeJSONError(w http.ResponseWriter, status int, code string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(map[string]string{"error": code})
+	if err := common.WriteJSON(w, status, map[string]string{"error": code}); err != nil {
+		log.Printf("write JSON response: %v", err)
+	}
 }
 
 func writeJSONErrorMessage(w http.ResponseWriter, status int, code, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(map[string]string{"error": code, "message": message})
+	if err := common.WriteJSON(w, status, map[string]string{"error": code, "message": message}); err != nil {
+		log.Printf("write JSON response: %v", err)
+	}
 }

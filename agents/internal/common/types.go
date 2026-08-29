@@ -15,9 +15,3 @@ type ProductMatch struct {
 	Price    float64 `json:"price,omitzero"`
 	Size     string  `json:"size,omitempty"`
 }
-
-type PantryItem struct {
-	Name     string  `json:"name"`
-	Quantity string  `json:"quantity"`
-	Expires  *string `json:"expires,omitempty"`
-}

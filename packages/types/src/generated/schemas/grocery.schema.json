@@ -60,25 +60,6 @@
         "additionalProperties": false
       }
     },
-    "pantry": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "quantity": {
-            "type": "string"
-          },
-          "expires": {
-            "type": "string"
-          }
-        },
-        "required": ["name", "quantity"],
-        "additionalProperties": false
-      }
-    },
     "shopping_profile": {
       "type": "object",
       "properties": {

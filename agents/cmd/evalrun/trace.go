@@ -2,7 +2,8 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 
 	"google.golang.org/adk/v2/agent"
@@ -14,12 +15,12 @@ import (
 // Step is one normalized unit of an agent run: a model text chunk, a tool
 // call, or a tool result.
 type Step struct {
-	Author                string          `json:"author"`
-	Text                  string          `json:"text,omitempty"`
-	FunctionCall          string          `json:"function_call,omitempty"`
-	FunctionCallArgs      json.RawMessage `json:"function_call_args,omitempty"`
-	FunctionResponse      string          `json:"function_response,omitempty"`
-	FunctionResponseValue json.RawMessage `json:"function_response_value,omitempty"`
+	Author                string         `json:"author"`
+	Text                  string         `json:"text,omitempty"`
+	FunctionCall          string         `json:"function_call,omitempty"`
+	FunctionCallArgs      jsontext.Value `json:"function_call_args,omitempty"`
+	FunctionResponse      string         `json:"function_response,omitempty"`
+	FunctionResponseValue jsontext.Value `json:"function_response_value,omitempty"`
 }
 
 // Trace is the full normalized record of one eval case's run, used as

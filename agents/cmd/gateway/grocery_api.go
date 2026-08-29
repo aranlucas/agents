@@ -5,7 +5,8 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -213,14 +214,8 @@ func validateGroceryJSONBody(next http.Handler) http.Handler {
 		r.ContentLength = int64(len(body))
 
 		if len(body) != 0 {
-			decoder := json.NewDecoder(bytes.NewReader(body))
-			var document json.RawMessage
-			if err := decoder.Decode(&document); err != nil {
-				writeGatewayJSONError(w, http.StatusBadRequest, "invalid_grocery_request")
-				return
-			}
-			var trailing json.RawMessage
-			if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
+			var document jsontext.Value
+			if err := json.UnmarshalRead(bytes.NewReader(body), &document); err != nil {
 				writeGatewayJSONError(w, http.StatusBadRequest, "invalid_grocery_request")
 				return
 			}

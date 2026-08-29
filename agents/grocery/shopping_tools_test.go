@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"agents/internal/groceries"
+
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
@@ -203,7 +204,7 @@ func TestAddToPantryUsesGatewayRepositoryAndDefaultsQuantity(t *testing.T) {
 		t.Fatalf("repository call = %#v", repository)
 	}
 	state := readState(ctx.ReadonlyState())
-	if len(state.Pantry) != 1 || state.Pantry[0].Quantity != "4" || len(state.ShoppingProfile.Pantry) != 1 || state.ShoppingProfile.Pantry[0].Quantity != 4 {
+	if len(state.ShoppingProfile.Pantry) != 1 || state.ShoppingProfile.Pantry[0].Quantity != 4 {
 		t.Fatalf("projected state = %#v", state)
 	}
 }
@@ -274,7 +275,7 @@ func TestNativeShoppingToolsEmitCompleteProfileState(t *testing.T) {
 			if err != nil || !ok {
 				t.Fatalf("invoke ok/error = %v / %v", ok, err)
 			}
-			if !state.wrote("shopping_profile") || !state.wrote("pantry") {
+			if !state.wrote("shopping_profile") || state.wrote("pantry") {
 				t.Fatalf("state writes = %#v", state.writes)
 			}
 			wantProfileCalls := 0
@@ -345,19 +346,19 @@ func TestShoppingToolRunnerPersistsToolStateDelta(t *testing.T) {
 			if part != nil && part.FunctionResponse != nil && part.FunctionResponse.Name == "add_to_pantry" {
 				_, hasProfile := event.Actions.StateDelta["shopping_profile"]
 				_, hasPantry := event.Actions.StateDelta["pantry"]
-				sawToolDelta = hasProfile && hasPantry
+				sawToolDelta = hasProfile && !hasPantry
 			}
 		}
 	}
 	if !sawToolDelta {
-		t.Fatal("add_to_pantry tool response did not emit shopping_profile and pantry state deltas")
+		t.Fatal("add_to_pantry tool response did not emit only the shopping_profile state delta")
 	}
 	stored, err := sessions.Get(t.Context(), &session.GetRequest{AppName: AppName, UserID: "user_1", SessionID: "thread_1"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	state := readState(stored.Session.State())
-	if len(state.Pantry) != 1 || state.Pantry[0].Quantity != "3" || len(state.ShoppingProfile.Pantry) != 1 || state.ShoppingProfile.Pantry[0].Quantity != 3 {
+	if len(state.ShoppingProfile.Pantry) != 1 || state.ShoppingProfile.Pantry[0].Quantity != 3 {
 		t.Fatalf("persisted state = %#v", state)
 	}
 }
@@ -399,11 +400,11 @@ func TestShoppingProfileHydratesBeforeAgentAcrossSessions(t *testing.T) {
 		return readState(stored.Session.State())
 	}
 	first := runTurn("thread_1")
-	if len(first.Pantry) != 1 || first.Pantry[0].Quantity != "2" || first.Pantry[0].Expires == nil || *first.Pantry[0].Expires != "2026-07-20" || len(first.ShoppingProfile.Equipment) != 1 {
+	if len(first.ShoppingProfile.Pantry) != 1 || first.ShoppingProfile.Pantry[0].Quantity != 2 || first.ShoppingProfile.Pantry[0].ExpiresAt == nil || *first.ShoppingProfile.Pantry[0].ExpiresAt != expires || len(first.ShoppingProfile.Equipment) != 1 {
 		t.Fatalf("initial hydrated state = %#v", first)
 	}
 	if instruction := shoppingInstructionText(captured.request); !strings.Contains(instruction, "Eggs") || strings.Contains(instruction, "{pantry}") {
-		t.Fatalf("model instruction did not receive hydrated legacy pantry: %q", instruction)
+		t.Fatalf("model instruction did not receive hydrated pantry: %q", instruction)
 	}
 	repository.profile.Pantry = []groceries.PantryItem{{Name: "Milk", Quantity: 1.5, AddedAt: 20}}
 	repository.profile.Equipment = []groceries.EquipmentItem{{Name: "Blender", AddedAt: 21}}
@@ -411,7 +412,7 @@ func TestShoppingProfileHydratesBeforeAgentAcrossSessions(t *testing.T) {
 	updated := runTurn("thread_1")
 	secondSession := runTurn("thread_2")
 	for name, state := range map[string]GroceryState{"updated session": updated, "new session": secondSession} {
-		if len(state.Pantry) != 1 || state.Pantry[0].Name != "Milk" || state.Pantry[0].Quantity != "1.5" || len(state.ShoppingProfile.Equipment) != 1 || state.ShoppingProfile.Equipment[0].Name != "Blender" {
+		if len(state.ShoppingProfile.Pantry) != 1 || state.ShoppingProfile.Pantry[0].Name != "Milk" || state.ShoppingProfile.Pantry[0].Quantity != 1.5 || len(state.ShoppingProfile.Equipment) != 1 || state.ShoppingProfile.Equipment[0].Name != "Blender" {
 			t.Fatalf("%s did not converge: %#v", name, state)
 		}
 	}

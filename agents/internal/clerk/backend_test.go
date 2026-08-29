@@ -1,7 +1,7 @@
 package clerk
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -15,9 +15,9 @@ func TestBackendResolvesOAuthConnections(t *testing.T) {
 		}
 		switch {
 		case strings.Contains(request.URL.Path, "oauth_custom_shopping"):
-			_ = json.NewEncoder(w).Encode(map[string]any{"data": []any{map[string]any{"token": "redacted"}}, "total_count": 1})
+			_ = json.MarshalWrite(w, map[string]any{"data": []any{map[string]any{"token": "redacted"}}, "total_count": 1})
 		default:
-			_ = json.NewEncoder(w).Encode(map[string]any{"data": []any{}, "total_count": 0})
+			_ = json.MarshalWrite(w, map[string]any{"data": []any{}, "total_count": 0})
 		}
 	}))
 	defer server.Close()
@@ -59,7 +59,7 @@ func TestBackendReturnsOAuthLookupErrorsWhenNoAliasResolves(t *testing.T) {
 func TestBackendTreatsMissingOAuthGrantAsDisconnected(t *testing.T) {
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(map[string]any{
+		_ = json.MarshalWrite(w, map[string]any{
 			"errors": []any{map[string]any{
 				"code":         "oauth_token_retrieval_error",
 				"message":      "Token retrieval failed",
@@ -90,13 +90,14 @@ func TestBackendStillReturnsOperationalFailureAfterMissingGrant(t *testing.T) {
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		if strings.Contains(request.URL.Path, "oauth_custom_shopping") {
 			w.WriteHeader(http.StatusBadRequest)
-			_ = json.NewEncoder(w).Encode(map[string]any{
+			_ = json.MarshalWrite(w, map[string]any{
 				"errors": []any{map[string]any{
 					"code": "oauth_token_retrieval_error",
 					"meta": map[string]any{"provider_error": `oauth2: "invalid_grant" "Grant not found"`},
 				}},
 				"status": http.StatusBadRequest,
 			})
+
 			return
 		}
 		http.Error(w, "Clerk unavailable", http.StatusServiceUnavailable)
@@ -118,7 +119,7 @@ func TestBackendUsesWorkingOAuthAliasAfterAnotherAliasFails(t *testing.T) {
 			http.Error(w, "alias unavailable", http.StatusServiceUnavailable)
 			return
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"data": []any{map[string]any{"token": "redacted"}}, "total_count": 1})
+		_ = json.MarshalWrite(w, map[string]any{"data": []any{map[string]any{"token": "redacted"}}, "total_count": 1})
 	}))
 	defer server.Close()
 	backend, err := NewBackend(server.Client(), server.URL, "secret")

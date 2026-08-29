@@ -496,7 +496,6 @@ function toolLabel(name: string): string {
     set_shopping_list: "Created shopping list",
     set_product_matches: "Matched Kroger products",
     update_cart: "Updated Kroger cart",
-    update_pantry: "Updated pantry",
     set_meal_plan: "Created meal plan",
     set_weekly_deals: "Saved weekly deals",
     mark_list_ready: "Prepared grocery list",
