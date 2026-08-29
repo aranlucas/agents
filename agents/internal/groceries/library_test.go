@@ -60,11 +60,11 @@ func TestSaveRecipePersistsStructuredRowsAndArtifactReference(t *testing.T) {
 		return id, nil
 	}
 
-	recipe, err := store.SaveRecipe(t.Context(), "user_1", SavedRecipeInput{RecipeContent: RecipeContent{
+	recipe, err := store.SaveRecipe(t.Context(), "user_1", SavedRecipeInput{
 		Title: "Pasta", Description: "Fast dinner", Servings: "4",
 		Ingredients: []NewIngredient{{Name: "Pasta", Quantity: "1", Unit: "lb"}},
 		Steps:       []string{"Boil the pasta"}, Tags: []string{"Dinner", "Quick", "quick"},
-	}}, time.UnixMilli(2_000))
+	}, time.UnixMilli(2_000))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -20,9 +20,9 @@ type Result struct {
 	OK               bool                          `json:"ok"`
 	SheetIndex       *int                          `json:"sheet_index,omitempty"`
 	ActiveSheetIndex *int                          `json:"active_sheet_index,omitempty"`
-	TotalRows        int                           `json:"total_rows,omitempty"`
-	RemainingSheets  int                           `json:"remaining_sheets,omitempty"`
-	Length           int                           `json:"length,omitempty"`
+	TotalRows        int                           `json:"total_rows,omitzero"`
+	RemainingSheets  int                           `json:"remaining_sheets,omitzero"`
+	Length           int                           `json:"length,omitzero"`
 	Error            *agentruntime.StructuredError `json:"error,omitempty"`
 }
 type CreateSheetArgs struct {

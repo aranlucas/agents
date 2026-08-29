@@ -1,10 +1,10 @@
 module agents
 
-go 1.26.5
+go 1.27.0
 
 require (
 	cloud.google.com/go/bigquery v1.82.0
-	github.com/ag-ui-protocol/ag-ui/sdks/community/go v0.0.0-20260827180639-a0d5a7f93866
+	github.com/ag-ui-protocol/ag-ui/sdks/community/go v0.0.0-20260828164858-1d85ef42caef
 	github.com/aws/aws-sdk-go-v2 v1.45.1
 	github.com/aws/aws-sdk-go-v2/config v1.33.1
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.1
@@ -12,7 +12,7 @@ require (
 	github.com/aws/smithy-go v1.28.1
 	github.com/clerk/clerk-sdk-go/v2 v2.7.0
 	github.com/cloudflare/cloudflare-go/v7 v7.9.0
-	github.com/getkin/kin-openapi v0.148.0
+	github.com/getkin/kin-openapi v0.149.0
 	github.com/getsentry/sentry-go v0.49.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/jsonschema-go v0.4.3
@@ -20,19 +20,13 @@ require (
 	github.com/modelcontextprotocol/go-sdk v1.7.0
 	github.com/oapi-codegen/nethttp-middleware v1.2.0
 	github.com/oapi-codegen/runtime v1.7.0
-	github.com/openai/openai-go/v3 v3.49.0
+	github.com/openai/openai-go/v3 v3.53.0
 	github.com/wI2L/jsondiff v0.7.1
 	golang.org/x/net v0.58.0
-	google.golang.org/adk/v2 v2.2.0
-	google.golang.org/api v0.294.0
+	google.golang.org/adk/v2 v2.2.1-0.20260828152217-0da17d5183cc
+	google.golang.org/api v0.295.0
 	google.golang.org/genai v1.70.0
 	modernc.org/sqlite v1.57.0
-)
-
-require (
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.71.0 // indirect
-	go.opentelemetry.io/otel v1.46.0 // indirect
-	go.opentelemetry.io/otel/trace v1.46.0 // indirect
 )
 
 require (
@@ -98,8 +92,11 @@ require (
 	github.com/zeebo/xxh3 v1.1.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.71.0 // indirect
-	go.opentelemetry.io/otel/log v0.20.0 // indirect; required by the current ADK telemetry API
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.71.0 // indirect
+	go.opentelemetry.io/otel v1.46.0 // indirect
+	go.opentelemetry.io/otel/log v0.22.0 // indirect; required by the current ADK telemetry API
 	go.opentelemetry.io/otel/metric v1.46.0 // indirect
+	go.opentelemetry.io/otel/trace v1.46.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/crypto v0.55.0 // indirect
 	golang.org/x/exp v0.0.0-20260824195058-e88cd73687aa // indirect
@@ -107,7 +104,7 @@ require (
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/telemetry v0.0.0-20260827144034-9400fedf0e0c // indirect
+	golang.org/x/telemetry v0.0.0-20260828145429-86cb5733f5b7 // indirect
 	golang.org/x/text v0.41.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	golang.org/x/tools v0.49.0 // indirect

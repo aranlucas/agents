@@ -72,7 +72,7 @@ func NewR2(cfg config.Cloudflare) (*R2, error) {
 	if err != nil {
 		return nil, errors.New("configure R2 client")
 	}
-	client := s3.NewFromConfig(loaded, func(options *s3.Options) { options.BaseEndpoint = aws.String(endpoint) })
+	client := s3.NewFromConfig(loaded, func(options *s3.Options) { options.BaseEndpoint = new(endpoint) })
 	return &R2{client: client, bucket: cfg.R2Bucket}, nil
 }
 
@@ -104,16 +104,15 @@ func (r *R2) putKey(ctx context.Context, key string, data []byte, contentType st
 	}
 	digest := sha256.Sum256(data)
 	input := &s3.PutObjectInput{
-		Bucket: aws.String(r.bucket), Key: aws.String(key), Body: bytes.NewReader(data),
-		ContentLength: aws.Int64(int64(len(data))), ContentType: aws.String(contentType),
+		Bucket: new(r.bucket), Key: new(key), Body: bytes.NewReader(data),
+		ContentLength: new(int64(len(data))), ContentType: new(contentType),
 		Metadata: map[string]string{"sha256": hex.EncodeToString(digest[:])},
 	}
 	if createOnly {
-		input.IfNoneMatch = aws.String("*")
+		input.IfNoneMatch = new("*")
 	}
 	if _, err := r.client.PutObject(ctx, input); err != nil {
-		var apiError smithy.APIError
-		if errors.As(err, &apiError) && (apiError.ErrorCode() == "PreconditionFailed" || apiError.ErrorCode() == "ConditionalRequestConflict") {
+		if apiError, ok := errors.AsType[smithy.APIError](err); ok && (apiError.ErrorCode() == "PreconditionFailed" || apiError.ErrorCode() == "ConditionalRequestConflict") {
 			return errArtifactVersionConflict
 		}
 		return errors.New("write R2 artifact")
@@ -131,7 +130,7 @@ func (r *R2) Get(ctx context.Context, app, user, thread, name string) ([]byte, m
 }
 
 func (r *R2) getKey(ctx context.Context, key string) ([]byte, map[string]string, error) {
-	output, err := r.client.GetObject(ctx, &s3.GetObjectInput{Bucket: aws.String(r.bucket), Key: aws.String(key)})
+	output, err := r.client.GetObject(ctx, &s3.GetObjectInput{Bucket: new(r.bucket), Key: new(key)})
 	if err != nil {
 		return nil, nil, errors.New("read R2 artifact")
 	}
@@ -161,7 +160,7 @@ func (r *R2) getKey(ctx context.Context, key string) ([]byte, map[string]string,
 // reads or writes object data, so it is safe to call on every gateway
 // health check without touching tenant artifacts.
 func (r *R2) Health(ctx context.Context) error {
-	_, err := r.client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{Bucket: aws.String(r.bucket), MaxKeys: aws.Int32(1)})
+	_, err := r.client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{Bucket: new(r.bucket), MaxKeys: new(int32(1))})
 	if err != nil {
 		return errors.New("R2 health check failed")
 	}
@@ -174,7 +173,7 @@ func (r *R2) Delete(ctx context.Context, app, user, thread, name string) error {
 	if err != nil {
 		return err
 	}
-	_, err = r.client.DeleteObject(ctx, &s3.DeleteObjectInput{Bucket: aws.String(r.bucket), Key: aws.String(key)})
+	_, err = r.client.DeleteObject(ctx, &s3.DeleteObjectInput{Bucket: new(r.bucket), Key: new(key)})
 	if err != nil {
 		return errors.New("delete R2 artifact")
 	}
@@ -186,7 +185,7 @@ func (r *R2) listKeys(ctx context.Context, prefix string) ([]types.Object, error
 	var continuation *string
 	for range maxListPages {
 		output, err := r.client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
-			Bucket: aws.String(r.bucket), Prefix: aws.String(prefix), ContinuationToken: continuation, MaxKeys: aws.Int32(1000),
+			Bucket: new(r.bucket), Prefix: new(prefix), ContinuationToken: continuation, MaxKeys: new(int32(1000)),
 		})
 		if err != nil {
 			return nil, errors.New("list R2 artifacts")
@@ -246,7 +245,7 @@ func (s *ArtifactService) Save(ctx context.Context, req *artifact.SaveRequest) (
 	if req.Part.InlineData != nil && req.Part.InlineData.MIMEType != "" {
 		mimeType = req.Part.InlineData.MIMEType
 	}
-	for attempt := 0; attempt < maxVersionAttempts; attempt++ {
+	for range maxVersionAttempts {
 		version := req.Version
 		if version == 0 {
 			versions, err := s.versions(ctx, req.AppName, req.UserID, req.SessionID, req.FileName)

@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"encoding/json"
+	"maps"
 
 	"google.golang.org/adk/v2/session"
 )
@@ -154,9 +155,7 @@ func readState(source session.ReadonlyState) JobsState {
 	state := Defaults()
 	values := make(map[string]any)
 	if source != nil {
-		for key, value := range source.All() {
-			values[key] = value
-		}
+		maps.Insert(values, source.All())
 	}
 	for _, key := range []string{"profile", "watchlist", "inbox", "inbox_refreshed_at"} {
 		if value, ok := values[session.KeyPrefixUser+key]; ok {

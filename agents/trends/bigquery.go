@@ -96,8 +96,7 @@ func (e *BigQueryExecutor) ExecuteBigQuery(ctx context.Context, sql string) (Col
 }
 
 func classifyBigQueryError(err error) error {
-	var apiError *googleapi.Error
-	if errors.As(err, &apiError) {
+	if apiError, ok := errors.AsType[*googleapi.Error](err); ok {
 		for _, detail := range apiError.Errors {
 			if detail.Reason == "bytesBilledLimitExceeded" {
 				return errBigQueryBytesLimitExceeded

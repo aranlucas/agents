@@ -3,6 +3,7 @@ package wellness
 import (
 	"context"
 	"iter"
+	"maps"
 	"strings"
 	"sync"
 	"testing"
@@ -145,9 +146,6 @@ func connectedWellnessState() map[string]any {
 }
 
 func agentStateMap(state session.ReadonlyState) map[string]any {
-	result := make(map[string]any)
-	for key, value := range state.All() {
-		result[key] = value
-	}
+	result := maps.Collect(state.All())
 	return result
 }

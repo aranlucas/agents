@@ -30,7 +30,6 @@ func TestAgentPolicies(t *testing.T) {
 		{Wellness, "groq", groqResponsesModel, "", 30, []string{"openrouter"}},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(string(test.workload), func(t *testing.T) {
 			t.Parallel()
 			policy, err := Agent(test.workload)

@@ -308,10 +308,7 @@ func splitIntoRuneChunks(text string, chunkSize int) []string {
 	}
 	out := make([]string, 0, (len(parts)+chunkSize-1)/chunkSize)
 	for i := 0; i < len(parts); i += chunkSize {
-		j := i + chunkSize
-		if j > len(parts) {
-			j = len(parts)
-		}
+		j := min(i+chunkSize, len(parts))
 		out = append(out, string(parts[i:j]))
 	}
 	return out

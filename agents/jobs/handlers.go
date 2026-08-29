@@ -1,11 +1,12 @@
 package jobs
 
 import (
+	"cmp"
 	"crypto/sha256"
 	"fmt"
 	"net/mail"
 	"net/url"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
@@ -749,11 +750,11 @@ func cleanCandidates(candidates, existing []JobCandidate) ([]JobCandidate, Resul
 		}
 		cleaned = append(cleaned, candidate)
 	}
-	sort.SliceStable(cleaned, func(i, j int) bool {
-		if cleaned[i].MatchScore == cleaned[j].MatchScore {
-			return cleaned[i].Company < cleaned[j].Company
+	slices.SortStableFunc(cleaned, func(a, b JobCandidate) int {
+		if a.MatchScore == b.MatchScore {
+			return cmp.Compare(a.Company, b.Company)
 		}
-		return cleaned[i].MatchScore > cleaned[j].MatchScore
+		return cmp.Compare(b.MatchScore, a.MatchScore)
 	})
 	return cleaned, Result{OK: true}
 }

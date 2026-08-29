@@ -3,6 +3,7 @@ package interview
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 
 	"agents/internal/agentruntime"
@@ -440,12 +441,7 @@ func writeState(ctx agent.Context, state State) error {
 }
 
 func oneOf(value string, allowed ...string) bool {
-	for _, candidate := range allowed {
-		if value == candidate {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(allowed, value)
 }
 
 func fail(code, message string) Result {

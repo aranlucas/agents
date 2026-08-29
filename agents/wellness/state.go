@@ -2,6 +2,7 @@ package wellness
 
 import (
 	"encoding/json"
+	"maps"
 
 	"agents/fitness"
 	"agents/grocery"
@@ -56,9 +57,7 @@ func readState(source session.ReadonlyState) WellnessState {
 	state := Defaults()
 	values := make(map[string]any)
 	if source != nil {
-		for key, value := range source.All() {
-			values[key] = value
-		}
+		maps.Insert(values, source.All())
 		if encoded, err := json.Marshal(values); err == nil {
 			_ = json.Unmarshal(encoded, &state)
 		}

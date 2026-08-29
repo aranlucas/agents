@@ -21,7 +21,7 @@ var (
 
 type Result struct {
 	OK     bool                          `json:"ok"`
-	Length int                           `json:"length,omitempty"`
+	Length int                           `json:"length,omitzero"`
 	Date   string                        `json:"date,omitempty"`
 	Error  *agentruntime.StructuredError `json:"error,omitempty"`
 }

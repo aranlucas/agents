@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"maps"
 	"net/http"
 	"os"
 	"os/signal"
@@ -138,9 +139,7 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 		return nil, fmt.Errorf("build CopilotKit runtime: %w", err)
 	}
 	runtime.Register(mux)
-	for path, public := range runtime.PublicRoutes() {
-		publicRoutes[path] = public
-	}
+	maps.Copy(publicRoutes, runtime.PublicRoutes())
 
 	for _, entry := range deps.Registry.Entries() {
 		base := "/" + entry.Route

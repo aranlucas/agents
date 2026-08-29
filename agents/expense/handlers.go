@@ -17,7 +17,7 @@ type Result struct {
 	OK        bool                          `json:"ok"`
 	ExpenseID string                        `json:"expense_id,omitempty"`
 	Status    ExpenseStatus                 `json:"status,omitempty"`
-	Length    int                           `json:"length,omitempty"`
+	Length    int                           `json:"length,omitzero"`
 	Error     *agentruntime.StructuredError `json:"error,omitempty"`
 }
 type SubmitExpenseArgs struct {

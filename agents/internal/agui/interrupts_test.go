@@ -3,7 +3,6 @@ package agui
 import (
 	"testing"
 
-	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
 )
@@ -20,9 +19,9 @@ func TestUnresolvedSessionInterruptsTracksRequestsUntilTheirResponse(t *testing.
 			Message:     "How would you treat it?",
 			Payload:     map[string]any{"kind": "answer", "question": "How would you treat it?"},
 		}},
-		{LLMResponse: model.LLMResponse{Content: &genai.Content{Parts: []*genai.Part{{
+		{Content: &genai.Content{Parts: []*genai.Part{{
 			FunctionResponse: &genai.FunctionResponse{ID: "question-1", Name: "adk_request_input"},
-		}}}}},
+		}}}},
 	}}).Events()
 
 	interrupts := unresolvedSessionInterrupts(events)
