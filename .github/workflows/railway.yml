@@ -21,8 +21,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
-      RAILWAY_CLI_VERSION: 5.30.4
-      RAILWAY_IAC_RUNNER: ./node_modules/.bin/railway-iac-ts
       RAILWAY_PROJECT_ID: cea909d4-f1d8-4bac-b480-c24e98528b5e
     steps:
       - name: Require a Railway workspace token
@@ -43,32 +41,28 @@ jobs:
 
       - name: Link development
         run: >-
-          pnpm dlx @railway/cli@${RAILWAY_CLI_VERSION} link
+          pnpm dlx @railway/cli@latest link
           --project ${RAILWAY_PROJECT_ID}
           --environment development
           --service agents-gateway
       - name: Plan development
         run: >-
-          pnpm dlx @railway/cli@${RAILWAY_CLI_VERSION} config plan
-          --runner ${RAILWAY_IAC_RUNNER}
+          pnpm dlx @railway/cli@latest config plan
       - name: Apply development
         run: >-
-          pnpm dlx @railway/cli@${RAILWAY_CLI_VERSION} config apply
-          --runner ${RAILWAY_IAC_RUNNER}
+          pnpm dlx @railway/cli@latest config apply
           --yes
 
       - name: Link production
         run: >-
-          pnpm dlx @railway/cli@${RAILWAY_CLI_VERSION} link
+          pnpm dlx @railway/cli@latest link
           --project ${RAILWAY_PROJECT_ID}
           --environment production
           --service agents-gateway
       - name: Plan production
         run: >-
-          pnpm dlx @railway/cli@${RAILWAY_CLI_VERSION} config plan
-          --runner ${RAILWAY_IAC_RUNNER}
+          pnpm dlx @railway/cli@latest config plan
       - name: Apply production
         run: >-
-          pnpm dlx @railway/cli@${RAILWAY_CLI_VERSION} config apply
-          --runner ${RAILWAY_IAC_RUNNER}
+          pnpm dlx @railway/cli@latest config apply
           --yes
