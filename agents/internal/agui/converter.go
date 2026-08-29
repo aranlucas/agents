@@ -8,6 +8,7 @@ import (
 	"strings"
 	"unicode"
 
+	"agents/internal/providererrors"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"google.golang.org/adk/v2/session"
@@ -443,7 +444,22 @@ func classifyError(err error) (code, message string) {
 		return "session_not_found", "the session could not be found"
 	case errors.Is(err, ErrInvalidRunInput):
 		return "invalid_input", "the request could not be processed"
-	default:
-		return "internal_error", "the agent run failed"
 	}
+	if providerError, ok := providererrors.Details(err); ok {
+		switch providerError.Kind {
+		case providererrors.RateLimit, providererrors.CircuitOpen:
+			return providerErrorCode(providerError.Kind), "the agent is busy; try again shortly"
+		case providererrors.NotFound,
+			providererrors.Authentication,
+			providererrors.Configuration:
+			return providerErrorCode(providerError.Kind), "the agent's model is temporarily unavailable"
+		default:
+			return providerErrorCode(providerError.Kind), "the model provider is unavailable; try again shortly"
+		}
+	}
+	return "internal_error", "the agent run failed"
+}
+
+func providerErrorCode(kind providererrors.Kind) string {
+	return "provider_" + string(kind)
 }

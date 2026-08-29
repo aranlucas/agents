@@ -19,6 +19,7 @@ import (
 
 	"agents/internal/agentruntime"
 	"agents/internal/auth"
+	"agents/internal/providererrors"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"github.com/getsentry/sentry-go"
@@ -484,6 +485,46 @@ func TestHandlerEndsWithSanitizedRunErrorOnUpstreamFailure(t *testing.T) {
 	}
 }
 
+func TestHandlerCapturesActionableProviderFailure(t *testing.T) {
+	providerError := &fakeProviderError{
+		metadata: providererrors.Metadata{Provider: "openrouter", Model: "openrouter/free", Status: http.StatusNotFound, Kind: providererrors.NotFound},
+	}
+	h := newTestGateway(t, &fakeErrorModel{err: providerError}, &fakeIDs{})
+	body := `{
+		"threadId": "thread-provider-error",
+		"runId": "run-provider-error",
+		"state": {},
+		"messages": [{"id": "user-1", "role": "user", "content": "Hello"}],
+		"tools": [],
+		"context": [],
+		"forwardedProps": null
+	}`
+	req := httptest.NewRequest(http.MethodPost, "/resume/agui", strings.NewReader(body))
+	req, transport := requestWithSentryHub(t, req)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	frames := parseSSEFrames(t, rr.Body.Bytes())
+	last, ok := frames[len(frames)-1].(map[string]any)
+	if !ok || last["type"] != "RUN_ERROR" || last["code"] != "provider_not_found" || last["message"] != "the agent's model is temporarily unavailable" {
+		t.Fatalf("last frame = %#v; body=%s", frames[len(frames)-1], rr.Body.String())
+	}
+	if len(transport.events) != 1 {
+		t.Fatalf("captured events = %d, want one", len(transport.events))
+	}
+	event := transport.events[0]
+	if event.Tags["error.code"] != "provider_not_found" || event.Tags["provider.name"] != "openrouter" ||
+		event.Tags["provider.model"] != "openrouter/free" || event.Tags["provider.status_code"] != "404" {
+		t.Fatalf("captured tags = %#v", event.Tags)
+	}
+	wantFingerprint := []string{
+		"agent.run", "resume", "provider", "openrouter", "openrouter/free", "not_found", "404",
+	}
+	if !reflect.DeepEqual(event.Fingerprint, wantFingerprint) {
+		t.Fatalf("fingerprint = %#v, want %#v", event.Fingerprint, wantFingerprint)
+	}
+}
+
 func TestHandlerTimeoutStillEmitsOneTerminalRunError(t *testing.T) {
 	ids := &fakeIDs{}
 	h := newTestGatewayWithTimeout(t, &fakeTimeoutModel{}, ids, 20*time.Millisecond)
@@ -793,6 +834,12 @@ func (m *fakeErrorModel) GenerateContent(ctx context.Context, req *model.LLMRequ
 		yield(nil, m.err)
 	}
 }
+
+type fakeProviderError struct{ metadata providererrors.Metadata }
+
+func (*fakeProviderError) Error() string { return "safe provider failure" }
+
+func (e *fakeProviderError) ProviderFailure() providererrors.Metadata { return e.metadata }
 
 // fakeTimeoutModel waits for the handler's per-entry execution deadline and
 // then returns that context error. The handler must use a separate terminal
