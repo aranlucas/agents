@@ -105,6 +105,29 @@ func TestRegisterRejectsControlCharacterCallID(t *testing.T) {
 	}
 }
 
+func TestRegisterBatchConflictLeavesEveryNewCallUnregistered(t *testing.T) {
+	store := newPendingFixture(t)
+	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
+	pending := NewPendingStore(store.d1, func() time.Time { return now })
+	scope := agui.ToolScope{AppName: "travel", UserID: "user-a", ThreadID: "thread-a"}
+	if err := pending.Register(t.Context(), scope, "call-existing", "approve", jsontext.Value(`{"value":1}`)); err != nil {
+		t.Fatal(err)
+	}
+	err := pending.RegisterBatch(t.Context(), scope, []agui.PendingToolCall{
+		{CallID: "call-new", ToolName: "approve", Args: jsontext.Value(`{"value":2}`)},
+		{CallID: "call-existing", ToolName: "approve", Args: jsontext.Value(`{"value":3}`)},
+	})
+	if err == nil {
+		t.Fatal("conflicting batch registration succeeded")
+	}
+	store.mu.Lock()
+	_, orphaned := store.records[recordKey(scope.AppName, scope.UserID, scope.ThreadID, "call-new")]
+	store.mu.Unlock()
+	if orphaned {
+		t.Fatal("earlier call from conflicting batch remained registered")
+	}
+}
+
 func TestPendingToolRowKeepsOriginalRequestAsValidatedJSON(t *testing.T) {
 	response, err := (pendingToolRow{
 		ToolName:   "request_user_approval",
@@ -337,6 +360,31 @@ func (f *pendingFixture) handle(w http.ResponseWriter, r *http.Request) {
 		changes := int64(0)
 		sql := strings.TrimSpace(statement.SQL)
 		switch {
+		case strings.HasPrefix(sql, "WITH incoming") && strings.Contains(sql, "INSERT INTO pending_client_tools"):
+			count := int(statement.Params[len(statement.Params)-1].(float64))
+			incoming := make([]pendingRecord, 0, count)
+			compatible := true
+			for callIndex := range count {
+				offset := callIndex * 8
+				record := pendingRecord{
+					app: textParam(statement.Params[offset]), user: textParam(statement.Params[offset+1]), thread: textParam(statement.Params[offset+2]),
+					call: textParam(statement.Params[offset+3]), name: textParam(statement.Params[offset+4]), args: textParam(statement.Params[offset+5]),
+					status: "pending", expires: int64(statement.Params[offset+7].(float64)),
+				}
+				incoming = append(incoming, record)
+				if existing, ok := f.records[recordKey(record.app, record.user, record.thread, record.call)]; ok && (existing.name != record.name || existing.args != record.args || existing.status != "pending") {
+					compatible = false
+				}
+			}
+			if compatible {
+				for _, record := range incoming {
+					key := recordKey(record.app, record.user, record.thread, record.call)
+					if _, exists := f.records[key]; !exists {
+						f.records[key] = record
+						changes++
+					}
+				}
+			}
 		case strings.HasPrefix(sql, "INSERT INTO pending_client_tools"):
 			key := recordKey(textParam(statement.Params[0]), textParam(statement.Params[1]), textParam(statement.Params[2]), textParam(statement.Params[3]))
 			f.records[key] = pendingRecord{app: textParam(statement.Params[0]), user: textParam(statement.Params[1]), thread: textParam(statement.Params[2]), call: textParam(statement.Params[3]), name: textParam(statement.Params[4]), args: textParam(statement.Params[5]), status: "pending", expires: int64(statement.Params[7].(float64))}
@@ -364,6 +412,14 @@ func (f *pendingFixture) handle(w http.ResponseWriter, r *http.Request) {
 			now := int64(statement.Params[4].(float64))
 			if ok && record.status == "resolved" && record.expires > now {
 				rows = append(rows, map[string]any{"tool_name": record.name, "args_json": record.args, "result_json": record.result})
+			}
+		case strings.HasPrefix(sql, "SELECT call_id, tool_name, args_json, status"):
+			app, user, thread := textParam(statement.Params[0]), textParam(statement.Params[1]), textParam(statement.Params[2])
+			for _, value := range statement.Params[3:] {
+				callID := textParam(value)
+				if record, ok := f.records[recordKey(app, user, thread, callID)]; ok {
+					rows = append(rows, map[string]any{"call_id": record.call, "tool_name": record.name, "args_json": record.args, "status": record.status})
+				}
 			}
 		case strings.HasPrefix(sql, "DELETE FROM pending_client_tools") && strings.Contains(sql, "RETURNING call_id"):
 			app, user, thread := textParam(statement.Params[0]), textParam(statement.Params[1]), textParam(statement.Params[2])

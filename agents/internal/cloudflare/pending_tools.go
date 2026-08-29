@@ -74,30 +74,103 @@ func NewPendingStore(d1 *D1, now func() time.Time) *PendingStore {
 var _ agui.PendingTools = (*PendingStore)(nil)
 
 func (p *PendingStore) Register(ctx context.Context, scope agui.ToolScope, callID, toolName string, args jsontext.Value) error {
+	return p.RegisterBatch(ctx, scope, []agui.PendingToolCall{{CallID: callID, ToolName: toolName, Args: args}})
+}
+
+// RegisterBatch atomically admits every call from one ADK model event. The
+// conditional INSERT writes all missing calls only when every existing row is
+// an identical pending registration; a conflicting later call therefore
+// cannot leave earlier calls orphaned.
+func (p *PendingStore) RegisterBatch(ctx context.Context, scope agui.ToolScope, calls []agui.PendingToolCall) error {
 	if p == nil || p.d1 == nil {
 		return errors.New("D1 pending tool store is required")
 	}
-	if !validScope(scope) || !agui.ClientCallID.MatchString(callID) || !agui.ClientToolName.MatchString(toolName) {
+	if !validScope(scope) || len(calls) == 0 {
 		return errors.New("invalid pending tool identity")
 	}
-	encoded := bytes.TrimSpace(args)
-	if len(encoded) == 0 || bytes.Equal(encoded, []byte("null")) {
-		encoded = []byte("{}")
+
+	type preparedCall struct {
+		callID   string
+		toolName string
+		args     string
 	}
-	if !jsontext.Value(encoded).IsValid() || encoded[0] != '{' || len(encoded) > maximumToolArgs {
-		return errors.New("invalid client tool arguments")
+	prepared := make([]preparedCall, 0, len(calls))
+	seen := make(map[string]bool, len(calls))
+	for _, call := range calls {
+		if !agui.ClientCallID.MatchString(call.CallID) || !agui.ClientToolName.MatchString(call.ToolName) || seen[call.CallID] {
+			return errors.New("invalid pending tool identity")
+		}
+		seen[call.CallID] = true
+		encoded := bytes.TrimSpace(call.Args)
+		if len(encoded) == 0 || bytes.Equal(encoded, []byte("null")) {
+			encoded = []byte("{}")
+		}
+		if !jsontext.Value(encoded).IsValid() || encoded[0] != '{' || len(encoded) > maximumToolArgs {
+			return errors.New("invalid client tool arguments")
+		}
+		prepared = append(prepared, preparedCall{callID: call.CallID, toolName: call.ToolName, args: string(encoded)})
 	}
+
 	now := p.now().UTC()
-	_, err := p.d1.Run(
+	var values strings.Builder
+	params := make([]any, 0, len(prepared)*8+1)
+	for index, call := range prepared {
+		if index > 0 {
+			values.WriteString(", ")
+		}
+		values.WriteString("(?, ?, ?, ?, ?, ?, ?, ?)")
+		params = append(params, scope.AppName, scope.UserID, scope.ThreadID, call.callID, call.toolName, call.args, now.UnixMilli(), now.Add(pendingToolTTL).UnixMilli())
+	}
+	params = append(params, len(prepared))
+
+	insert := Statement{SQL: `WITH incoming(app_name, user_id, thread_id, call_id, tool_name, args_json, created_at, expires_at) AS
+			(VALUES ` + values.String() + `),
+		compatible AS (
+			SELECT COUNT(*) AS count
+			FROM incoming AS i
+			LEFT JOIN pending_client_tools AS p
+				ON p.app_name = i.app_name AND p.user_id = i.user_id AND p.thread_id = i.thread_id AND p.call_id = i.call_id
+			WHERE p.call_id IS NULL OR (p.tool_name = i.tool_name AND p.args_json = i.args_json AND p.status = 'pending')
+		)
+		INSERT INTO pending_client_tools
+			(app_name, user_id, thread_id, call_id, tool_name, args_json, status, created_at, expires_at)
+			SELECT app_name, user_id, thread_id, call_id, tool_name, args_json, 'pending', created_at, expires_at
+			FROM incoming WHERE (SELECT count FROM compatible) = ?
+			ON CONFLICT(app_name, user_id, thread_id, call_id) DO NOTHING`, Params: params}
+
+	results, err := p.d1.Run(
 		ctx,
 		Statement{SQL: "DELETE FROM pending_client_tools WHERE expires_at <= ?", Params: []any{now.UnixMilli()}},
-		Statement{SQL: `INSERT INTO pending_client_tools
-			(app_name, user_id, thread_id, call_id, tool_name, args_json, status, created_at, expires_at)
-			VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)
-			ON CONFLICT(app_name, user_id, thread_id, call_id) DO NOTHING`, Params: []any{scope.AppName, scope.UserID, scope.ThreadID, callID, toolName, string(encoded), now.UnixMilli(), now.Add(pendingToolTTL).UnixMilli()}},
+		insert,
+		Statement{SQL: `SELECT call_id, tool_name, args_json, status FROM pending_client_tools
+			WHERE app_name = ? AND user_id = ? AND thread_id = ? AND call_id IN (` + placeholders(len(prepared)) + `)`, Params: append([]any{scope.AppName, scope.UserID, scope.ThreadID}, func() []any {
+			ids := make([]any, 0, len(prepared))
+			for _, call := range prepared {
+				ids = append(ids, call.callID)
+			}
+			return ids
+		}()...)},
 	)
 	if err != nil {
-		return fmt.Errorf("register pending client tool: %w", err)
+		return fmt.Errorf("register pending client tools: %w", err)
+	}
+	if len(results) != 3 || len(results[2].Rows) != len(prepared) {
+		return errors.New("conflicting pending client tool registration")
+	}
+	matched := make(map[string]bool, len(prepared))
+	for _, encoded := range results[2].Rows {
+		var row pendingToolRow
+		if json.Unmarshal(encoded, &row) != nil || row.Status != "pending" {
+			return errors.New("invalid pending client tool record")
+		}
+		for _, call := range prepared {
+			if row.CallID == call.callID && row.ToolName == call.toolName && row.ArgsJSON == call.args {
+				matched[call.callID] = true
+			}
+		}
+	}
+	if len(matched) != len(prepared) {
+		return errors.New("conflicting pending client tool registration")
 	}
 	return nil
 }

@@ -2,13 +2,74 @@ package agui
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 	"github.com/google/jsonschema-go/jsonschema"
+	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
 )
+
+func TestConverterTreatsADKErrorAndInterruptionEventsAsFailures(t *testing.T) {
+	converter := newStreamConverter(t.Context(), &fakeIDs{}, nil, nil, ToolScope{}, nil, streamSmoothing{})
+	for name, event := range map[string]*session.Event{
+		"error":       {LLMResponse: model.LLMResponse{ErrorCode: "429", ErrorMessage: "secret provider response"}},
+		"interrupted": {LLMResponse: model.LLMResponse{Interrupted: true}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			converted, err := converter.Convert(event)
+			if err == nil || len(converted) != 0 {
+				t.Fatalf("Convert() = %#v, %v", converted, err)
+			}
+			if _, ok := errors.AsType[*adkResponseError](err); !ok {
+				t.Fatalf("Convert() error type = %T", err)
+			}
+		})
+	}
+}
+
+func TestConverterRejectsUnencodableStateDelta(t *testing.T) {
+	converter := newStreamConverter(t.Context(), &fakeIDs{}, nil, nil, ToolScope{}, nil, streamSmoothing{})
+	converted, err := converter.Convert(&session.Event{Actions: session.EventActions{StateDelta: map[string]any{"bad": make(chan int)}}})
+	if err == nil || len(converted) != 0 {
+		t.Fatalf("Convert() = %#v, %v", converted, err)
+	}
+}
+
+func TestConverterUsesOnlyRootAgentFinalTextAsRunResult(t *testing.T) {
+	converter := newStreamConverter(t.Context(), &fakeIDs{}, nil, nil, ToolScope{}, nil, streamSmoothing{}, "root")
+	mustConvert(t, converter, &session.Event{Author: "child", Content: &genai.Content{Parts: []*genai.Part{{Text: "child result"}}}})
+	if converter.lastFinalText != "" {
+		t.Fatalf("child final became run result: %q", converter.lastFinalText)
+	}
+	mustConvert(t, converter, &session.Event{Author: "root", Content: &genai.Content{Parts: []*genai.Part{{Text: "root result"}}}})
+	if converter.lastFinalText != "root result" {
+		t.Fatalf("root final result = %q", converter.lastFinalText)
+	}
+}
+
+func TestConverterLinksToolCallToTextMessageFromSameADKEvent(t *testing.T) {
+	converter := newStreamConverter(t.Context(), &fakeIDs{}, nil, nil, ToolScope{}, nil, streamSmoothing{enabled: false})
+	converted := mustConvert(t, converter, &session.Event{Content: &genai.Content{Parts: []*genai.Part{
+		{Text: "I will check."},
+		{FunctionCall: &genai.FunctionCall{ID: "call-1", Name: "lookup", Args: map[string]any{"id": 1}}},
+	}}})
+	var textID string
+	var parent *string
+	for _, event := range converted {
+		switch typed := event.(type) {
+		case *events.TextMessageStartEvent:
+			textID = typed.MessageID
+		case *events.ToolCallStartEvent:
+			parent = typed.ParentMessageID
+		}
+	}
+	if textID == "" || parent == nil || *parent != textID {
+		t.Fatalf("text ID=%q tool parent=%v", textID, parent)
+	}
+}
 
 type interruptResponse struct {
 	Answer string `json:"answer"`
@@ -132,6 +193,26 @@ func TestConverterDoesNotRegisterEarlierClientCallWhenLaterCallIsInvalid(t *test
 	}
 	if len(pending.pending) != 0 {
 		t.Fatalf("pending registrations after invalid multi-call event = %#v", pending.pending)
+	}
+}
+
+func TestConverterDoesNotRegisterClientCallWhenLaterStateDeltaIsInvalid(t *testing.T) {
+	pending := newFakePending()
+	scope := ToolScope{AppName: "resume_agent", UserID: "anon:thread-1", ThreadID: "thread-1"}
+	converter := newStreamConverter(t.Context(), &fakeIDs{}, nil, pending, scope, map[string]bool{"highlight_row": true}, streamSmoothing{})
+	event := &session.Event{
+		Content: &genai.Content{Parts: []*genai.Part{{
+			FunctionCall: &genai.FunctionCall{ID: "call-valid", Name: "highlight_row", Args: map[string]any{"row": 42}},
+		}}},
+		Actions: session.EventActions{StateDelta: map[string]any{"bad": make(chan int)}},
+	}
+
+	converted, err := converter.Convert(event)
+	if err == nil || len(converted) != 0 {
+		t.Fatalf("Convert() = %#v, %v", converted, err)
+	}
+	if len(pending.pending) != 0 {
+		t.Fatalf("pending registrations after invalid state delta = %#v", pending.pending)
 	}
 }
 

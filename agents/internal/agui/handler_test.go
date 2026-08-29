@@ -553,6 +553,20 @@ func TestHandlerEndsWithSanitizedRunErrorOnUpstreamFailure(t *testing.T) {
 	}
 }
 
+func TestHandlerTurnsADKResponseErrorIntoSanitizedTerminalRunError(t *testing.T) {
+	const secret = "provider-secret-message"
+	h := newTestGateway(t, &fakeADKResponseErrorModel{message: secret}, &fakeIDs{})
+	req := httptest.NewRequest(http.MethodPost, "/resume/agui", strings.NewReader(`{"threadId":"thread-adk-error","runId":"run-adk-error","messages":[{"id":"user-1","role":"user","content":"hello"}]}`))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	frames := parseSSEFrames(t, rr.Body.Bytes())
+	assertStrictAGUISequence(t, frames)
+	body := rr.Body.String()
+	if strings.Contains(body, secret) || strings.Contains(body, "RUN_FINISHED") || !strings.Contains(body, "RUN_ERROR") {
+		t.Fatalf("ADK response error stream was not sanitized and terminal: %s", body)
+	}
+}
+
 func TestHandlerCapturesActionableProviderFailure(t *testing.T) {
 	providerError := &fakeProviderError{
 		metadata: providererrors.Metadata{Provider: "openrouter", Model: "openrouter/free", Status: http.StatusNotFound, Kind: providererrors.NotFound},
@@ -903,6 +917,16 @@ func (m *fakeErrorModel) GenerateContent(ctx context.Context, req *model.LLMRequ
 	}
 }
 
+type fakeADKResponseErrorModel struct{ message string }
+
+func (*fakeADKResponseErrorModel) Name() string { return "fake-adk-response-error" }
+
+func (m *fakeADKResponseErrorModel) GenerateContent(context.Context, *model.LLMRequest, bool) iter.Seq2[*model.LLMResponse, error] {
+	return func(yield func(*model.LLMResponse, error) bool) {
+		yield(&model.LLMResponse{ErrorCode: "429", ErrorMessage: m.message}, nil)
+	}
+}
+
 type fakePanicModel struct{}
 
 func (*fakePanicModel) Name() string { return "fake-panic" }
@@ -1041,6 +1065,15 @@ func (p *fakePending) Register(ctx context.Context, scope ToolScope, callID, too
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.pending[key(scope, callID)] = fakePendingRecord{name: toolName, args: append(jsontext.Value(nil), args...)}
+	return nil
+}
+
+func (p *fakePending) RegisterBatch(ctx context.Context, scope ToolScope, calls []PendingToolCall) error {
+	for _, call := range calls {
+		if err := p.Register(ctx, scope, call.CallID, call.ToolName, call.Args); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

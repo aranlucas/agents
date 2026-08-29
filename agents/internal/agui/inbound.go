@@ -177,13 +177,10 @@ func userContent(msg types.Message) (*genai.Content, error) {
 	if fragments, ok := msg.ContentInputContents(); ok {
 		parts := make([]*genai.Part, 0, len(fragments))
 		for _, fragment := range fragments {
-			// Only text fragments are converted here; binary/image/audio/
-			// video InputContent fragments in a mixed multimodal user
-			// message are silently dropped rather than converted or
-			// erroring. No agent ported so far sends multimodal input to
-			// this handler — revisit before wiring a vision-capable agent
-			// (see task-7-report.md "Concerns").
-			if fragment.Type == types.InputContentTypeText && fragment.Text != "" {
+			if fragment.Type != types.InputContentTypeText {
+				return nil, fmt.Errorf("%w: multimodal user content is not supported", ErrInvalidRunInput)
+			}
+			if fragment.Text != "" {
 				parts = append(parts, &genai.Part{Text: fragment.Text})
 			}
 		}

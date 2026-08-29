@@ -24,11 +24,7 @@ func validateStrictAGUISequence(frames []any) error {
 	if len(frames) == 0 {
 		return errors.New("AG-UI stream is empty")
 	}
-	activeText := make(map[string]bool)
-	activeReasoning := make(map[string]bool)
-	activeReasoningMessages := make(map[string]bool)
-	activeTools := make(map[string]bool)
-	activeSteps := make(map[string]bool)
+	guard := newSequenceGuard()
 
 	for index, frame := range frames {
 		object, ok := frame.(map[string]any)
@@ -43,104 +39,17 @@ func validateStrictAGUISequence(frames []any) error {
 		if err != nil || event.Validate() != nil {
 			return fmt.Errorf("frame %d is not schema-valid", index)
 		}
-		typeName := string(event.Type())
-		if index == 0 && typeName != string(events.EventTypeRunStarted) && typeName != string(events.EventTypeRunError) {
-			return errors.New("first AG-UI frame must be RUN_STARTED or RUN_ERROR")
+		if err := guard.admit(encoded); err != nil {
+			return fmt.Errorf("frame %d violates AG-UI sequence: %w", index, err)
 		}
-		if isTerminalEvent(event) && index != len(frames)-1 {
-			return fmt.Errorf("terminal %s at frame %d is followed by another event", typeName, index)
-		}
-
-		switch event.Type() {
-		case events.EventTypeTextMessageStart:
-			id := stringField(object, "messageId")
-			if activeText[id] {
-				return fmt.Errorf("text message %q already active", id)
-			}
-			activeText[id] = true
-		case events.EventTypeTextMessageContent:
-			if id := stringField(object, "messageId"); !activeText[id] {
-				return fmt.Errorf("text content has no active message %q", id)
-			}
-		case events.EventTypeTextMessageEnd:
-			id := stringField(object, "messageId")
-			if !activeText[id] {
-				return fmt.Errorf("text end has no active message %q", id)
-			}
-			delete(activeText, id)
-		case events.EventTypeReasoningStart:
-			id := stringField(object, "messageId")
-			if activeReasoning[id] {
-				return fmt.Errorf("reasoning %q already active", id)
-			}
-			activeReasoning[id] = true
-		case events.EventTypeReasoningMessageStart:
-			id := stringField(object, "messageId")
-			if activeReasoningMessages[id] {
-				return fmt.Errorf("reasoning message %q already active", id)
-			}
-			activeReasoningMessages[id] = true
-		case events.EventTypeReasoningMessageContent:
-			if id := stringField(object, "messageId"); !activeReasoningMessages[id] {
-				return fmt.Errorf("reasoning content has no active message %q", id)
-			}
-		case events.EventTypeReasoningMessageEnd:
-			id := stringField(object, "messageId")
-			if !activeReasoningMessages[id] {
-				return fmt.Errorf("reasoning end has no active message %q", id)
-			}
-			delete(activeReasoningMessages, id)
-		case events.EventTypeReasoningEnd:
-			id := stringField(object, "messageId")
-			if !activeReasoning[id] {
-				return fmt.Errorf("reasoning end has no active lane %q", id)
-			}
-			delete(activeReasoning, id)
-		case events.EventTypeToolCallStart:
-			id := stringField(object, "toolCallId")
-			if activeTools[id] {
-				return fmt.Errorf("tool call %q already active", id)
-			}
-			activeTools[id] = true
-		case events.EventTypeToolCallArgs:
-			if id := stringField(object, "toolCallId"); !activeTools[id] {
-				return fmt.Errorf("tool args have no active call %q", id)
-			}
-		case events.EventTypeToolCallEnd:
-			id := stringField(object, "toolCallId")
-			if !activeTools[id] {
-				return fmt.Errorf("tool end has no active call %q", id)
-			}
-			delete(activeTools, id)
-		case events.EventTypeStepStarted:
-			name := stringField(object, "stepName")
-			if activeSteps[name] {
-				return fmt.Errorf("step %q already active", name)
-			}
-			activeSteps[name] = true
-		case events.EventTypeStepFinished:
-			name := stringField(object, "stepName")
-			if !activeSteps[name] {
-				return fmt.Errorf("step %q was not active", name)
-			}
-			delete(activeSteps, name)
-		case events.EventTypeRunFinished:
-			if len(activeText)+len(activeReasoning)+len(activeReasoningMessages)+len(activeTools)+len(activeSteps) != 0 {
-				return errors.New("RUN_FINISHED has open protocol lanes")
-			}
+		if guard.terminal && index != len(frames)-1 {
+			return fmt.Errorf("terminal %s at frame %d is followed by another event", event.Type(), index)
 		}
 	}
-	last := frames[len(frames)-1].(map[string]any)
-	lastType := stringField(last, "type")
-	if lastType != string(events.EventTypeRunFinished) && lastType != string(events.EventTypeRunError) {
+	if !guard.terminal {
 		return errors.New("AG-UI stream has no terminal final frame")
 	}
 	return nil
-}
-
-func stringField(object map[string]any, key string) string {
-	value, _ := object[key].(string)
-	return value
 }
 
 func TestStrictSequenceRejectsEventsAfterEitherTerminal(t *testing.T) {

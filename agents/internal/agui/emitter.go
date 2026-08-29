@@ -3,16 +3,18 @@ package agui
 import (
 	"context"
 	"encoding/json/jsontext"
-	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 )
 
 var errEventAfterTerminal = errors.New("AG-UI event follows terminal event")
+
+const sseWriteTimeout = 5 * time.Second
 
 // eventEncodingError means an event was rejected before it became observable
 // on either the live response or the active-run replay stream.
@@ -42,13 +44,14 @@ type replayAwareEmitter struct {
 	active          *activeRunLease
 	transportFailed bool
 	terminal        bool
+	sequence        *sequenceGuard
 }
 
 func newReplayAwareEmitter(writer io.Writer, active *activeRunLease) *replayAwareEmitter {
-	return &replayAwareEmitter{writer: writer, active: active}
+	return &replayAwareEmitter{writer: writer, active: active, sequence: newSequenceGuard()}
 }
 
-func (e *replayAwareEmitter) Emit(_ context.Context, event events.Event) error {
+func (e *replayAwareEmitter) Emit(ctx context.Context, event events.Event) error {
 	if e.terminal {
 		return errEventAfterTerminal
 	}
@@ -56,10 +59,17 @@ func (e *replayAwareEmitter) Emit(_ context.Context, event events.Event) error {
 	if err != nil {
 		return err
 	}
+	nextSequence := e.sequence.clone()
+	if err := nextSequence.admit(encoded); err != nil {
+		return &eventEncodingError{stage: "sequence validation", err: err}
+	}
 	terminal := isTerminalEvent(event)
 	if e.active != nil {
-		e.active.publish(encoded, terminal)
+		if err := e.active.publish(ctx, encoded, terminal); err != nil {
+			return &eventEncodingError{stage: "replay admission", err: err}
+		}
 	}
+	e.sequence = nextSequence
 	e.terminal = terminal
 
 	if e.transportFailed || e.writer == nil {
@@ -73,18 +83,24 @@ func (e *replayAwareEmitter) Emit(_ context.Context, event events.Event) error {
 }
 
 // emitEncoded is only for immutable bytes previously admitted by Emit through
-// activeRun.publish. It intentionally does not revalidate trusted replay data.
+// activeRun.publish or its D1 mirror. It defensively revalidates those bytes and
+// advances a fresh sequence guard before writing them to a reconnect response.
+// The context is retained to match replay callbacks; transport writes are
+// bounded by a per-frame response deadline instead of request cancellation.
 func (e *replayAwareEmitter) emitEncoded(_ context.Context, encoded []byte) error {
 	if e.terminal {
 		return errEventAfterTerminal
 	}
-	var envelope struct {
-		Type events.EventType `json:"type"`
+	encoded, err := validateEncodedReplayEvent(encoded)
+	if err != nil {
+		return err
 	}
-	if err := json.Unmarshal(encoded, &envelope); err != nil {
-		return &eventEncodingError{stage: "replay decoding", err: err}
+	nextSequence := e.sequence.clone()
+	if err := nextSequence.admit(encoded); err != nil {
+		return &eventEncodingError{stage: "replay sequence validation", err: err}
 	}
-	e.terminal = envelope.Type == events.EventTypeRunError || envelope.Type == events.EventTypeRunFinished
+	e.sequence = nextSequence
+	e.terminal = nextSequence.terminal
 	if e.transportFailed || e.writer == nil {
 		return nil
 	}
@@ -98,6 +114,12 @@ func (e *replayAwareEmitter) emitEncoded(_ context.Context, encoded []byte) erro
 type errorFlusher interface{ Flush() error }
 
 func writeSSEFrame(writer io.Writer, encoded []byte) error {
+	if responseWriter, ok := writer.(http.ResponseWriter); ok {
+		controller := http.NewResponseController(responseWriter)
+		if err := controller.SetWriteDeadline(time.Now().Add(sseWriteTimeout)); err == nil {
+			defer controller.SetWriteDeadline(time.Time{}) //nolint:errcheck // best-effort deadline cleanup after a completed frame
+		}
+	}
 	frame := make([]byte, 0, len(encoded)+8)
 	frame = append(frame, "data: "...)
 	frame = append(frame, encoded...)
@@ -132,10 +154,25 @@ func encodeReplayEvent(event events.Event) ([]byte, error) {
 	if err != nil {
 		return nil, &eventEncodingError{stage: "encoding", err: err}
 	}
-	if len(encoded) == 0 || !jsontext.Value(encoded).IsValid() {
+	return validateEncodedReplayEvent(encoded)
+}
+
+func validateEncodedReplayEvent(encoded []byte) ([]byte, error) {
+	value := jsontext.Value(encoded).Clone()
+	if len(value) == 0 || !value.IsValid() {
 		return nil, &eventEncodingError{stage: "encoding", err: errors.New("event produced invalid JSON")}
 	}
-	return encoded, nil
+	if err := value.Compact(); err != nil {
+		return nil, &eventEncodingError{stage: "encoding", err: errors.New("event produced invalid JSON")}
+	}
+	decoded, err := events.EventFromJSON(value)
+	if err != nil {
+		return nil, &eventEncodingError{stage: "replay decoding", err: err}
+	}
+	if err := decoded.Validate(); err != nil {
+		return nil, &eventEncodingError{stage: "replay validation", err: err}
+	}
+	return value, nil
 }
 
 func isTerminalEvent(event events.Event) bool {

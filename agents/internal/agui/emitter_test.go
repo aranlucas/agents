@@ -5,7 +5,10 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net/http"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 )
@@ -22,6 +25,20 @@ type flushErrorWriter struct {
 	flushes int
 }
 
+type deadlineWriter struct {
+	bytes.Buffer
+	header    http.Header
+	deadlines []time.Time
+}
+
+func (w *deadlineWriter) Header() http.Header { return w.header }
+func (*deadlineWriter) WriteHeader(int)       {}
+func (*deadlineWriter) Flush()                {}
+func (w *deadlineWriter) SetWriteDeadline(deadline time.Time) error {
+	w.deadlines = append(w.deadlines, deadline)
+	return nil
+}
+
 func (w *flushErrorWriter) Flush() error {
 	w.flushes++
 	return errors.New("flush failed")
@@ -35,13 +52,19 @@ type invalidJSONEvent struct{ *events.BaseEvent }
 
 func (*invalidJSONEvent) ToJSON() ([]byte, error) { return []byte(`{"type":`), nil }
 
+type prettyJSONEvent struct{ *events.BaseEvent }
+
+func (*prettyJSONEvent) ToJSON() ([]byte, error) {
+	return []byte("{\n  \"type\": \"CUSTOM\",\n  \"name\": \"pretty\",\n  \"value\": true\n}"), nil
+}
+
 func TestEmitterRejectsMalformedAndUnencodableEventsBeforeReplayAdmission(t *testing.T) {
 	active := newActiveRuns()
 	lease, ok := active.start(runKey{AgentRoute: "resume", UserID: "user", ThreadID: "thread"}, func() {})
 	if !ok {
 		t.Fatal("active run did not start")
 	}
-	defer lease.finish()
+	defer func() { _ = lease.finish() }()
 	emitter := newReplayAwareEmitter(io.Discard, lease)
 
 	if err := emitter.Emit(t.Context(), events.NewRunStartedEvent("thread", "run")); err != nil {
@@ -63,13 +86,69 @@ func TestEmitterRejectsMalformedAndUnencodableEventsBeforeReplayAdmission(t *tes
 	}
 }
 
+func TestEmitterCompactsValidMultilineJSONBeforeSSEFraming(t *testing.T) {
+	var output bytes.Buffer
+	emitter := newReplayAwareEmitter(&output, nil)
+	if err := emitter.Emit(t.Context(), events.NewRunStartedEvent("thread", "run")); err != nil {
+		t.Fatal(err)
+	}
+	if err := emitter.Emit(t.Context(), &prettyJSONEvent{BaseEvent: events.NewBaseEvent(events.EventTypeCustom)}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(output.String(), "\n  \"") || !strings.Contains(output.String(), `data: {"type":"CUSTOM","name":"pretty","value":true}`) {
+		t.Fatalf("multiline JSON was not compacted: %q", output.String())
+	}
+}
+
+func TestEmitterRejectsInvalidLifecycleBeforeReplayAdmission(t *testing.T) {
+	active := newActiveRuns()
+	lease, ok := active.start(runKey{AgentRoute: "resume", UserID: "user", ThreadID: "thread"}, func() {})
+	if !ok {
+		t.Fatal("active run did not start")
+	}
+	defer func() { _ = lease.finish() }()
+	emitter := newReplayAwareEmitter(io.Discard, lease)
+	if err := emitter.Emit(t.Context(), events.NewRunStartedEvent("thread", "run")); err != nil {
+		t.Fatal(err)
+	}
+	if err := emitter.Emit(t.Context(), events.NewTextMessageContentEvent("missing", "content")); err == nil {
+		t.Fatal("content without TEXT_MESSAGE_START was accepted")
+	}
+	if len(lease.run.events) != 1 {
+		t.Fatalf("invalid sequence entered replay: %d events", len(lease.run.events))
+	}
+}
+
+func TestEmitterBoundsActiveReplayAndStillAdmitsTerminalError(t *testing.T) {
+	active := newActiveRuns()
+	lease, ok := active.start(runKey{AgentRoute: "resume", UserID: "user", ThreadID: "thread"}, func() {})
+	if !ok {
+		t.Fatal("active run did not start")
+	}
+	defer func() { _ = lease.finish() }()
+	emitter := newReplayAwareEmitter(io.Discard, lease)
+	if err := emitter.Emit(t.Context(), events.NewRunStartedEvent("thread", "run")); err != nil {
+		t.Fatal(err)
+	}
+	err := emitter.Emit(t.Context(), events.NewCustomEvent("oversized", events.WithValue(strings.Repeat("x", maximumActiveReplayBytes))))
+	if !errors.Is(err, errActiveReplayLimit) {
+		t.Fatalf("oversized replay error = %v", err)
+	}
+	if err := emitter.Emit(t.Context(), sanitizeRunError("run", err)); err != nil {
+		t.Fatalf("terminal RUN_ERROR did not fit reserved replay capacity: %v", err)
+	}
+	if len(lease.run.events) != 2 || !lease.run.terminal {
+		t.Fatalf("bounded replay state = events:%d terminal:%t", len(lease.run.events), lease.run.terminal)
+	}
+}
+
 func TestEmitterTransportFailuresDetachSinkButRetainReplay(t *testing.T) {
 	active := newActiveRuns()
 	lease, ok := active.start(runKey{AgentRoute: "resume", UserID: "user", ThreadID: "thread"}, func() {})
 	if !ok {
 		t.Fatal("active run did not start")
 	}
-	defer lease.finish()
+	defer func() { _ = lease.finish() }()
 	broken := &shortWriter{}
 	emitter := newReplayAwareEmitter(broken, lease)
 
@@ -101,6 +180,16 @@ func TestEmitterReportsFlushFailureAsTransportFailure(t *testing.T) {
 	}
 }
 
+func TestEmitterBoundsSupportedHTTPResponseWritesWithDeadline(t *testing.T) {
+	writer := &deadlineWriter{header: make(http.Header)}
+	if err := newReplayAwareEmitter(writer, nil).Emit(t.Context(), events.NewRunStartedEvent("thread", "run")); err != nil {
+		t.Fatal(err)
+	}
+	if len(writer.deadlines) != 2 || writer.deadlines[0].IsZero() || !writer.deadlines[1].IsZero() {
+		t.Fatalf("write deadlines = %#v", writer.deadlines)
+	}
+}
+
 func TestActiveReplayFollowsAfterOriginalTransportDisconnect(t *testing.T) {
 	active := newActiveRuns()
 	lease, ok := active.start(runKey{AgentRoute: "resume", UserID: "user", ThreadID: "thread"}, func() {})
@@ -126,7 +215,9 @@ func TestActiveReplayFollowsAfterOriginalTransportDisconnect(t *testing.T) {
 	if err := original.Emit(t.Context(), events.NewRunFinishedEvent("thread", "run")); err != nil {
 		t.Fatal(err)
 	}
-	lease.finish()
+	if err := lease.finish(); err != nil {
+		t.Fatal(err)
+	}
 	if err := <-done; err != nil {
 		t.Fatal(err)
 	}

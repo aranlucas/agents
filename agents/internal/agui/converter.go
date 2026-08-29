@@ -5,7 +5,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"log"
+	"maps"
 	"strings"
 	"unicode"
 
@@ -43,6 +43,8 @@ type streamConverter struct {
 	// lastFinalText is the most recent assistant text where
 	// event.IsFinalResponse() was true; used to populate RUN_FINISHED.Result.
 	lastFinalText string
+	rootAuthor    string
+	turnTextID    string
 
 	// interrupts collects native ADK RequestInput pauses so the handler can
 	// finish the AG-UI run with the standard interrupt outcome. The synthesized
@@ -51,7 +53,7 @@ type streamConverter struct {
 	interrupts []types.Interrupt
 }
 
-func newStreamConverter(ctx context.Context, ids events.IDGenerator, state stateDocument, pending PendingTools, scope ToolScope, clientToolNames map[string]bool, smoothing streamSmoothing) *streamConverter {
+func newStreamConverter(ctx context.Context, ids events.IDGenerator, state stateDocument, pending PendingTools, scope ToolScope, clientToolNames map[string]bool, smoothing streamSmoothing, rootAuthor ...string) *streamConverter {
 	if ids == nil {
 		ids = events.NewDefaultIDGenerator()
 	}
@@ -67,7 +69,24 @@ func newStreamConverter(ctx context.Context, ids events.IDGenerator, state state
 	if smoothing.chunkDelay < 0 {
 		smoothing.chunkDelay = 0
 	}
-	return &streamConverter{ctx: ctx, ids: ids, state: state, pending: pending, scope: scope, clientToolNames: clientToolNames, smoothing: smoothing}
+	root := ""
+	if len(rootAuthor) > 0 {
+		root = rootAuthor[0]
+	}
+	return &streamConverter{ctx: ctx, ids: ids, state: state, pending: pending, scope: scope, clientToolNames: clientToolNames, smoothing: smoothing, rootAuthor: root}
+}
+
+type adkResponseError struct {
+	code        string
+	message     string
+	interrupted bool
+}
+
+func (e *adkResponseError) Error() string {
+	if e.interrupted {
+		return "ADK model response was interrupted"
+	}
+	return "ADK model response failed"
 }
 
 // Convert converts one ADK session event into zero or more ordered AG-UI
@@ -79,6 +98,12 @@ func newStreamConverter(ctx context.Context, ids events.IDGenerator, state state
 func (c *streamConverter) Convert(event *session.Event) ([]events.Event, error) {
 	if event == nil {
 		return nil, nil
+	}
+	if event.ErrorCode != "" || event.ErrorMessage != "" {
+		return nil, &adkResponseError{code: event.ErrorCode, message: event.ErrorMessage}
+	}
+	if event.Interrupted {
+		return nil, &adkResponseError{code: "interrupted", interrupted: true}
 	}
 	content := event.Content
 
@@ -112,23 +137,13 @@ func (c *streamConverter) convertPartial(content *genai.Content) ([]events.Event
 }
 
 func (c *streamConverter) convertFinal(event *session.Event, content *genai.Content) ([]events.Event, error) {
-	var out []events.Event
-	if event.RequestedInput != nil {
-		c.captureInterrupt(event.RequestedInput)
-	}
-	// Capture whether a lane was already streaming before closing it: model
-	// adapters (see internal/providers/openai) commonly resend the full
-	// cumulative text on the final frame after streaming it incrementally,
-	// so a lane that was already open must only be closed, never re-emitted
-	// as a duplicate one-shot message.
-	hadText := c.textMessageID != ""
-	hadReasoning := c.reasoningMessageID != ""
-	out = append(out, c.closeReasoning()...)
-	out = append(out, c.closeText()...)
-
+	// Prepare every fallible part before mutating converter state or registering
+	// client calls. If a later tool result or state value is malformed, Convert
+	// emits nothing, Flush can still close lanes already visible to the client,
+	// and no invisible pending call remains in D1.
+	var toolEvents []events.Event
+	var registrations []pendingRegistration
 	if content != nil {
-		var toolEvents []events.Event
-		var registrations []pendingRegistration
 		for _, part := range content.Parts {
 			if part == nil {
 				continue
@@ -151,30 +166,61 @@ func (c *streamConverter) convertFinal(event *session.Event, content *genai.Cont
 				toolEvents = append(toolEvents, converted...)
 			}
 		}
-		// Only persist client calls after every tool call/result in this ADK
-		// event is known to be protocol-valid and encodable. A malformed later
-		// part therefore cannot leave an invisible orphaned pending call.
-		for _, registration := range registrations {
-			if err := c.pending.Register(c.ctx, c.scope, registration.id, registration.name, registration.args); err != nil {
-				return nil, fmt.Errorf("register model client tool call: %w", err)
-			}
-		}
-		out = append(out, c.oneShotLanes(content, hadText, hadReasoning)...)
-		out = append(out, toolEvents...)
 	}
 
-	delta, err := statePatch(c.state, event.Actions.StateDelta)
+	stagedState := maps.Clone(c.state)
+	delta, err := statePatch(stagedState, event.Actions.StateDelta)
 	if err != nil {
-		log.Printf("convert state delta: %v", err)
-	} else if len(delta) > 0 {
+		return nil, fmt.Errorf("convert state delta: %w", err)
+	}
+	if len(registrations) > 0 {
+		batch := make([]PendingToolCall, 0, len(registrations))
+		for _, registration := range registrations {
+			batch = append(batch, PendingToolCall{CallID: registration.id, ToolName: registration.name, Args: registration.args})
+		}
+		if err := c.pending.RegisterBatch(c.ctx, c.scope, batch); err != nil {
+			return nil, fmt.Errorf("register model client tool calls: %w", err)
+		}
+	}
+
+	// All remaining work is infallible. Commit the staged converter state, then
+	// construct the ordered event slice.
+	clear(c.state)
+	maps.Copy(c.state, stagedState)
+	if event.RequestedInput != nil {
+		c.captureInterrupt(event.RequestedInput)
+	}
+	// Capture whether a lane was already streaming before closing it: model
+	// adapters (see internal/providers/openai) commonly resend the full
+	// cumulative text on the final frame after streaming it incrementally,
+	// so a lane that was already open must only be closed, never re-emitted
+	// as a duplicate one-shot message.
+	hadText := c.textMessageID != ""
+	hadReasoning := c.reasoningMessageID != ""
+	var out []events.Event
+	out = append(out, c.closeReasoning()...)
+	out = append(out, c.closeText()...)
+	if content != nil {
+		out = append(out, c.oneShotLanes(content, hadText, hadReasoning)...)
+		if c.turnTextID != "" {
+			for _, converted := range toolEvents {
+				if started, ok := converted.(*events.ToolCallStartEvent); ok {
+					started.ParentMessageID = new(c.turnTextID)
+				}
+			}
+		}
+		out = append(out, toolEvents...)
+	}
+	if len(delta) > 0 {
 		out = append(out, events.NewStateDeltaEvent(delta))
 	}
 
 	if event.IsFinalResponse() {
-		if text := contentText(content); text != "" {
+		if text := contentText(content); text != "" && (c.rootAuthor == "" || event.Author == c.rootAuthor) {
 			c.lastFinalText = text
 		}
 	}
+	c.turnTextID = ""
 
 	return out, nil
 }
@@ -228,6 +274,7 @@ func (c *streamConverter) openText() []events.Event {
 		return nil
 	}
 	c.textMessageID = c.ids.GenerateMessageID()
+	c.turnTextID = c.textMessageID
 	return []events.Event{events.NewTextMessageStartEvent(c.textMessageID, events.WithRole("assistant"))}
 }
 
@@ -453,6 +500,12 @@ func classifyErrorCode(err error) string {
 }
 
 func classifyError(err error) (code, message string) {
+	if responseErr, ok := errors.AsType[*adkResponseError](err); ok {
+		if responseErr.interrupted {
+			return "canceled", "the agent run was canceled"
+		}
+		return "provider_error", "the model provider is unavailable; try again shortly"
+	}
 	switch {
 	case err == nil:
 		return "internal_error", "the agent run failed"

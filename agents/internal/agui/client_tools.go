@@ -19,7 +19,10 @@ import (
 	"google.golang.org/genai"
 )
 
-const maximumToolSchema = 64 << 10
+const (
+	maximumClientTools = 64
+	maximumToolSchema  = 64 << 10
+)
 
 var (
 	ErrPendingToolNotFound = errors.New("pending client tool not found")
@@ -47,7 +50,16 @@ type ToolScope struct{ AppName, UserID, ThreadID string }
 // persistence requirement.
 type PendingTools interface {
 	Register(context.Context, ToolScope, string, string, jsontext.Value) error
+	RegisterBatch(context.Context, ToolScope, []PendingToolCall) error
 	ClaimBatch(context.Context, auth.Identity, ToolScope, []PendingToolResult) ([]*genai.FunctionResponse, error)
+}
+
+// PendingToolCall is one fully validated model-requested client tool call.
+// Args stays as raw JSON so registration never changes numeric semantics.
+type PendingToolCall struct {
+	CallID   string
+	ToolName string
+	Args     jsontext.Value
 }
 
 // PendingToolResult is one already-validated client result in an atomic resume
@@ -71,13 +83,11 @@ func buildClientTools(input []types.Tool, pending PendingTools) ([]tool.Tool, er
 	if pending == nil {
 		return nil, errors.New("pending client tool store is required")
 	}
+	if err := validateClientToolDefinitions(input); err != nil {
+		return nil, err
+	}
 	tools := make([]tool.Tool, 0, len(input))
-	seen := make(map[string]bool)
 	for _, definition := range input {
-		if !ClientToolName.MatchString(definition.Name) || seen[definition.Name] {
-			return nil, fmt.Errorf("invalid or duplicate client tool %q", definition.Name)
-		}
-		seen[definition.Name] = true
 		schema, err := clientSchema(definition.Parameters)
 		if err != nil {
 			return nil, fmt.Errorf("client tool %q schema: %w", definition.Name, err)
@@ -100,6 +110,23 @@ func buildClientTools(input []types.Tool, pending PendingTools) ([]tool.Tool, er
 		tools = append(tools, wrapped)
 	}
 	return tools, nil
+}
+
+func validateClientToolDefinitions(input []types.Tool) error {
+	if len(input) > maximumClientTools {
+		return errors.New("too many client tools")
+	}
+	seen := make(map[string]bool, len(input))
+	for _, definition := range input {
+		if !ClientToolName.MatchString(definition.Name) || seen[definition.Name] {
+			return fmt.Errorf("invalid or duplicate client tool %q", definition.Name)
+		}
+		seen[definition.Name] = true
+		if _, err := clientSchema(definition.Parameters); err != nil {
+			return fmt.Errorf("client tool %q schema: %w", definition.Name, err)
+		}
+	}
+	return nil
 }
 
 // ClientToolsStateKey is the temp: state key the AG-UI handler overlays

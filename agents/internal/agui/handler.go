@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"syscall"
@@ -186,14 +187,27 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	var active *activeRunLease
 	if h.active != nil {
-		key := runKey{AgentRoute: entry.Route, UserID: userID, ThreadID: input.ThreadID}
-		var started bool
-		active, started = h.active.start(key, cancel)
-		if !started {
-			writeJSONErrorMessage(w, http.StatusInternalServerError, "Failed to run agent", "Thread already running")
+		key := runKey{AppName: entry.AppName, AgentRoute: entry.Route, UserID: userID, ThreadID: input.ThreadID}
+		active, err = h.active.startDurable(ctx, key, input.RunID, time.Now().Add(entry.Timeout+activeRunLeaseGrace), cancel)
+		if err != nil {
+			log.Printf("run: active lease failed: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, err)
+			if errors.Is(err, ErrActiveRunExists) {
+				writeJSONErrorMessage(w, http.StatusInternalServerError, "Failed to run agent", "Thread already running")
+				return
+			}
+			captureSessionError(ctx, err, entry, input, "active_run.begin")
+			writeJSONError(w, http.StatusInternalServerError, "session_unavailable")
 			return
 		}
-		defer active.finish()
+		defer func() {
+			if finishErr := active.finish(context.WithoutCancel(ctx)); finishErr != nil {
+				log.Printf("run: active lease cleanup failed: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, finishErr)
+				captureSessionError(context.WithoutCancel(ctx), finishErr, entry, input, "active_run.finish")
+			}
+		}()
+		if h.active.store != nil {
+			go monitorDurableStop(ctx, h.active.store, active.run.key, input.RunID, cancel)
+		}
 	}
 
 	var sess session.Session
@@ -249,6 +263,11 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, "client_tools_unsupported")
 		return
 	}
+	if err := validateClientToolDefinitions(clientTools); err != nil {
+		log.Printf("run: invalid client tools: agent=%s thread=%s err=%v", entry.AppName, input.ThreadID, err)
+		writeJSONError(w, http.StatusBadRequest, "invalid_agui_input")
+		return
+	}
 	clientToolNames := make(map[string]bool, len(clientTools))
 	for _, definition := range clientTools {
 		clientToolNames[definition.Name] = true
@@ -300,6 +319,25 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return err
 	}
 	var converter *streamConverter
+	emitFailure := func(runErr error) {
+		// The per-entry execution context may be canceled on timeout. Use a
+		// non-cancelable derivative only for best-effort protocol closure and
+		// terminal publication; agent execution remains bounded by ctx.
+		terminalCtx := context.WithoutCancel(ctx)
+		if converter != nil {
+			for _, converted := range converter.Flush() {
+				if err := emit(terminalCtx, converted); err != nil {
+					log.Printf("run: terminal lane flush failed: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, err)
+					break
+				}
+			}
+		}
+		log.Printf("run failed: agent=%s thread=%s user=%s run=%s err=%v", entry.AppName, input.ThreadID, userID, input.RunID, runErr)
+		observability.CaptureError(terminalCtx, runErr, agentRunErrorDetails(runErr, entry, input))
+		if err := emit(terminalCtx, sanitizeRunError(input.RunID, runErr)); err != nil && !errors.Is(err, errEventAfterTerminal) {
+			log.Printf("run: RUN_ERROR emission failed: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, err)
+		}
+	}
 	defer func() {
 		recovered := recover()
 		if recovered == nil {
@@ -324,7 +362,9 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			log.Printf("run panicked: agent=%s thread=%s user=%s run=%s", entry.AppName, input.ThreadID, userID, input.RunID)
-			observability.CaptureError(terminalCtx, panicErr, agentRunErrorDetails(panicErr, entry, input))
+			details := agentRunErrorDetails(panicErr, entry, input)
+			details.Context["panic_stack"] = string(debug.Stack())
+			observability.CaptureError(terminalCtx, panicErr, details)
 			if err := emit(terminalCtx, sanitizeRunError(input.RunID, panicErr)); err != nil && !errors.Is(err, errEventAfterTerminal) {
 				log.Printf("run: panic terminal emission failed: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, err)
 			}
@@ -332,16 +372,19 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}()
 	if err := emit(ctx, events.NewRunStartedEvent(input.ThreadID, input.RunID)); err != nil {
 		log.Printf("run: RUN_STARTED emission failed: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, err)
+		emitFailure(err)
 		return
 	}
 
 	if err := emit(ctx, events.NewStateSnapshotEvent(snapshot)); err != nil {
 		log.Printf("run: state snapshot emission failed: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, err)
+		emitFailure(err)
 		return
 	}
 	if content == nil {
 		if err := emit(ctx, events.NewRunFinishedEventWithOptions(input.ThreadID, input.RunID, events.WithSuccessOutcome())); err != nil {
 			log.Printf("run: terminal emission failed: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, err)
+			emitFailure(err)
 		}
 		return
 	}
@@ -363,7 +406,7 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		runOpts = append(runOpts, runner.WithStateDelta(overlay))
 	}
 
-	converter = newStreamConverter(ctx, h.ids, snapshot, h.pending, scope, clientToolNames, h.smoothing)
+	converter = newStreamConverter(ctx, h.ids, snapshot, h.pending, scope, clientToolNames, h.smoothing, entry.Agent.Name())
 	var runErr error
 	lastWasTextContent := false
 runLoop:
@@ -406,22 +449,7 @@ runLoop:
 		if h.stateless && errors.Is(runErr, context.Canceled) && (transportFailed || r.Context().Err() != nil) {
 			return
 		}
-		// The per-entry execution context may be canceled on timeout. Use a
-		// non-cancelable derivative for the best-effort terminal lane closure and
-		// RUN_ERROR publication without extending agent execution.
-		// This does not extend agent execution; it only closes the protocol stream.
-		terminalCtx := context.WithoutCancel(ctx)
-		for _, converted := range converter.Flush() {
-			if err := emit(terminalCtx, converted); err != nil {
-				log.Printf("run: terminal lane flush failed: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, err)
-				break
-			}
-		}
-		log.Printf("run failed: agent=%s thread=%s user=%s run=%s err=%v", entry.AppName, input.ThreadID, userID, input.RunID, runErr)
-		observability.CaptureError(terminalCtx, runErr, agentRunErrorDetails(runErr, entry, input))
-		if err := emit(terminalCtx, sanitizeRunError(input.RunID, runErr)); err != nil {
-			log.Printf("run: RUN_ERROR emission failed: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, err)
-		}
+		emitFailure(runErr)
 		return
 	}
 
@@ -435,6 +463,30 @@ runLoop:
 	}
 	if err := emit(ctx, finished); err != nil {
 		log.Printf("run: RUN_FINISHED emission failed: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, err)
+		emitFailure(err)
+	}
+}
+
+func monitorDurableStop(ctx context.Context, store ActiveRunStore, key ActiveRunKey, runID string, cancel context.CancelFunc) {
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+		snapshot, err := store.LoadActiveRun(ctx, key, runID, -1)
+		if err != nil {
+			if errors.Is(err, ErrActiveRunNotFound) {
+				return
+			}
+			continue
+		}
+		if snapshot.StopRequested {
+			cancel()
+			return
+		}
 	}
 }
 
@@ -457,6 +509,10 @@ func agentRunErrorDetails(err error, entry agentruntime.Entry, input *types.RunA
 			"run_id":    input.RunID,
 			"thread_id": input.ThreadID,
 		},
+	}
+	if responseErr, ok := errors.AsType[*adkResponseError](err); ok {
+		details.Context["adk_error_code"] = responseErr.code
+		details.Context["adk_error_message"] = responseErr.message
 	}
 
 	providerError, ok := providererrors.Details(err)

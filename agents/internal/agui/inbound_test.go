@@ -29,6 +29,17 @@ func TestDecodeRunInputPreservesForwardedPropsRawJSON(t *testing.T) {
 	}
 }
 
+func TestUserContentRejectsUnsupportedMultimodalFragmentsWithoutDroppingThem(t *testing.T) {
+	message := types.Message{Role: types.RoleUser, Content: []types.InputContent{
+		{Type: types.InputContentTypeText, Text: "describe this"},
+		{Type: "binary", MimeType: "image/png", Data: "AA=="},
+	}}
+	content, err := userContent(message)
+	if content != nil || !errors.Is(err, ErrInvalidRunInput) {
+		t.Fatalf("userContent() = %#v, %v", content, err)
+	}
+}
+
 func TestRunContentPrefersStandardResumeOverCompatibilityToolMessage(t *testing.T) {
 	input := &types.RunAgentInput{
 		Messages: []types.Message{{
@@ -116,6 +127,10 @@ type rejectingPendingTools struct {
 }
 
 func (*rejectingPendingTools) Register(context.Context, ToolScope, string, string, jsontext.Value) error {
+	return nil
+}
+
+func (*rejectingPendingTools) RegisterBatch(context.Context, ToolScope, []PendingToolCall) error {
 	return nil
 }
 
