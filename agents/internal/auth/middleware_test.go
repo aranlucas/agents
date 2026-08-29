@@ -163,7 +163,7 @@ func TestVerifierRejectsExpiredWrongIssuerAndUnknownAlgorithm(t *testing.T) {
 		signedToken(t, privateKey, "key", "user", "wrong", time.Now().Add(time.Hour)),
 		unsignedToken(t),
 	} {
-		if _, err := verifier.Verify(context.Background(), token); err == nil {
+		if _, err := verifier.Verify(t.Context(), token); err == nil {
 			t.Fatal("invalid token accepted")
 		}
 	}
@@ -183,12 +183,12 @@ func TestUnknownKeyIDCannotAmplifyJWKSRequests(t *testing.T) {
 		t.Fatal(err)
 	}
 	known := signedToken(t, privateKey, "known", "user", "issuer", time.Now().Add(time.Hour))
-	if _, err := verifier.Verify(context.Background(), known); err != nil {
+	if _, err := verifier.Verify(t.Context(), known); err != nil {
 		t.Fatal(err)
 	}
 	unknown := signedToken(t, privateKey, "attacker-controlled", "user", "issuer", time.Now().Add(time.Hour))
 	for range 2 {
-		if _, err := verifier.Verify(context.Background(), unknown); err == nil {
+		if _, err := verifier.Verify(t.Context(), unknown); err == nil {
 			t.Fatal("unknown key accepted")
 		}
 	}

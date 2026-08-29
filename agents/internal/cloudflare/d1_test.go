@@ -1,7 +1,6 @@
 package cloudflare
 
 import (
-	"context"
 	"database/sql"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
@@ -15,6 +14,7 @@ import (
 	"time"
 
 	"agents/internal/config"
+
 	"google.golang.org/adk/v2/session"
 	_ "modernc.org/sqlite"
 )
@@ -58,7 +58,7 @@ func TestD1UsesBoundedAuthenticatedRequestsAndRedactsToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = d1.Run(context.Background(), Statement{SQL: "SELECT 1"})
+	_, err = d1.Run(t.Context(), Statement{SQL: "SELECT 1"})
 	if err == nil || strings.Contains(err.Error(), secret) {
 		t.Fatalf("Run() error = %v", err)
 	}
@@ -90,7 +90,7 @@ func TestSessionCreateAndAppendNeverPersistTemporaryState(t *testing.T) {
 	}
 	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
 	service := NewSessionService(d1, func() time.Time { return now })
-	created, err := service.Create(context.Background(), &session.CreateRequest{
+	created, err := service.Create(t.Context(), &session.CreateRequest{
 		AppName: "travel_agent", UserID: "user-1", SessionID: "thread-1",
 		State: map[string]any{"destination": "Paris", "temp:oauth": "never-store"},
 	})
@@ -99,7 +99,7 @@ func TestSessionCreateAndAppendNeverPersistTemporaryState(t *testing.T) {
 	}
 	event := session.NewEvent(t.Context(), "invocation-1")
 	event.Actions.StateDelta = map[string]any{"status": "ready", "temp:token": "also-never-store"}
-	if err := service.AppendEvent(context.Background(), created.Session, event); err != nil {
+	if err := service.AppendEvent(t.Context(), created.Session, event); err != nil {
 		t.Fatal(err)
 	}
 
@@ -266,7 +266,7 @@ func TestAppendEventRetainsTempKeysInMemory(t *testing.T) {
 	}
 	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
 	service := NewSessionService(d1, func() time.Time { return now })
-	created, err := service.Create(context.Background(), &session.CreateRequest{
+	created, err := service.Create(t.Context(), &session.CreateRequest{
 		AppName: "grocery_agent", UserID: "user-1", SessionID: "thread-1", State: map[string]any{},
 	})
 	if err != nil {
@@ -277,7 +277,7 @@ func TestAppendEventRetainsTempKeysInMemory(t *testing.T) {
 		"temp:kroger_token": "oauth-bearer-secret",
 		"kroger_connected":  true,
 	}
-	if err := service.AppendEvent(context.Background(), created.Session, event); err != nil {
+	if err := service.AppendEvent(t.Context(), created.Session, event); err != nil {
 		t.Fatal(err)
 	}
 
@@ -324,7 +324,7 @@ func TestSessionAppendEventPreservesTemporaryStateOnTheEventItself(t *testing.T)
 	}
 	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
 	service := NewSessionService(d1, func() time.Time { return now })
-	created, err := service.Create(context.Background(), &session.CreateRequest{
+	created, err := service.Create(t.Context(), &session.CreateRequest{
 		AppName: "trends_agent", UserID: "user-1", SessionID: "thread-1", State: map[string]any{},
 	})
 	if err != nil {
@@ -335,7 +335,7 @@ func TestSessionAppendEventPreservesTemporaryStateOnTheEventItself(t *testing.T)
 		"status":         "ready",
 		"temp:ephemeral": map[string]any{"value": "available during the run"},
 	}
-	if err := service.AppendEvent(context.Background(), created.Session, event); err != nil {
+	if err := service.AppendEvent(t.Context(), created.Session, event); err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := event.Actions.StateDelta["temp:ephemeral"]; !ok {
@@ -390,7 +390,7 @@ func TestSessionGetScopesEveryQueryAndReturnsEventsChronologically(t *testing.T)
 		t.Fatal(err)
 	}
 	service := NewSessionService(d1, func() time.Time { return time.UnixMilli(3000).UTC() })
-	response, err := service.Get(context.Background(), &session.GetRequest{AppName: "travel_agent", UserID: "user-1", SessionID: "thread-1"})
+	response, err := service.Get(t.Context(), &session.GetRequest{AppName: "travel_agent", UserID: "user-1", SessionID: "thread-1"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -592,7 +592,7 @@ func TestPartialEventIsNotSentToD1(t *testing.T) {
 	current := newStoredSession("thread", "app", "user", map[string]any{}, nil, time.Now())
 	event := session.NewEvent(t.Context(), "inv")
 	event.Partial = true
-	if err := service.AppendEvent(context.Background(), current, event); err != nil {
+	if err := service.AppendEvent(t.Context(), current, event); err != nil {
 		t.Fatal(err)
 	}
 	if requests != 0 {
@@ -619,10 +619,10 @@ func TestRunMigrationsIsIdempotentSQLBatch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := d1.RunMigrations(context.Background()); err != nil {
+	if err := d1.RunMigrations(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if err := d1.RunMigrations(context.Background()); err != nil {
+	if err := d1.RunMigrations(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	migrationCount := len(migrations)

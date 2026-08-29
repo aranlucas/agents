@@ -15,12 +15,13 @@ import (
 	"agents/internal/config"
 	"agents/internal/groceries"
 	"agents/internal/groceryapi"
+
 	"google.golang.org/adk/v2/session"
 )
 
 func TestShoppingAPIRejectsAnonymous(t *testing.T) {
 	api := newTestShoppingAPI(newFakeShoppingRepository())
-	response, err := api.GetPantry(context.Background(), groceryapi.GetPantryRequestObject{})
+	response, err := api.GetPantry(t.Context(), groceryapi.GetPantryRequestObject{})
 	if err != nil {
 		t.Fatal(err)
 	}

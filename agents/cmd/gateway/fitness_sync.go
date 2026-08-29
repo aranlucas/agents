@@ -2,12 +2,14 @@ package main
 
 import (
 	json "encoding/json/v2"
+	"log"
 	"math"
 	"net/http"
 	"strings"
 	"time"
 
 	"agents/internal/auth"
+	"agents/internal/common"
 	"agents/internal/fitnessdata"
 )
 
@@ -47,8 +49,9 @@ func fitnessSyncHandler(repository fitnessdata.Repository, now func() time.Time)
 			writeGatewayJSONError(w, http.StatusServiceUnavailable, "fitness_sync_unavailable")
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.MarshalWrite(w, result)
+		if err := common.WriteJSON(w, http.StatusOK, result); err != nil {
+			log.Printf("write JSON response: %v", err)
+		}
 	}
 }
 

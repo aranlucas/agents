@@ -35,7 +35,7 @@ Current wellness state:
 - Activity Source: {activity_source}
 - Shopping List: {shopping_list}
 - Live Kroger Cart: {cart}
-- Pantry: {pantry}
+- Shopping Profile: {shopping_profile}
 - Weekly Deals: {weekly_deals}
 - Notes: {notes}
 - Activities: {activities}

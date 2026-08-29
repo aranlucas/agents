@@ -51,6 +51,7 @@ import (
 	"agents/travel"
 	"agents/trends"
 	"agents/wellness"
+
 	"cloud.google.com/go/bigquery"
 	"github.com/joho/godotenv"
 	"google.golang.org/adk/v2/model"
@@ -387,8 +388,9 @@ func telegramLinkConsumeHandler(secret string, links *telegram.LinkStore) http.H
 			writeGatewayJSONError(w, http.StatusBadRequest, "invalid_or_expired_link_token")
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.MarshalWrite(w, telegramLinkConsumeResponse{OK: true, TelegramUserID: link.TelegramUserID})
+		if err := common.WriteJSON(w, http.StatusOK, telegramLinkConsumeResponse{OK: true, TelegramUserID: link.TelegramUserID}); err != nil {
+			log.Printf("write JSON response: %v", err)
+		}
 	}
 }
 
@@ -413,8 +415,9 @@ func telegramLinkResolveHandler(secret string, links telegramLinkLookup) http.Ha
 			writeGatewayJSONError(w, http.StatusNotFound, "telegram_account_not_linked")
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.MarshalWrite(w, telegramLinkResolveResponse{ClerkUserID: link.ClerkUserID})
+		if err := common.WriteJSON(w, http.StatusOK, telegramLinkResolveResponse{ClerkUserID: link.ClerkUserID}); err != nil {
+			log.Printf("write JSON response: %v", err)
+		}
 	}
 }
 
@@ -423,9 +426,9 @@ func validTelegramLinkSecret(provided, expected string) bool {
 }
 
 func writeGatewayJSONError(w http.ResponseWriter, status int, code string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.MarshalWrite(w, map[string]string{"error": code})
+	if err := common.WriteJSON(w, status, map[string]string{"error": code}); err != nil {
+		log.Printf("write JSON response: %v", err)
+	}
 }
 
 // capabilitiesHandler advertises only the AG-UI features the Go runtime's
@@ -434,14 +437,14 @@ func writeGatewayJSONError(w http.ResponseWriter, status int, code string) {
 // message events. tools.supported is false because no agent built via this
 // vertical slice attaches static or request-scoped client tools yet.
 func capabilitiesHandler(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.MarshalWrite(w, capabilitiesResponse{
+	if err := common.WriteJSON(w, http.StatusOK, capabilitiesResponse{
 		Transport: capabilityFlag{Streaming: true},
 		State:     stateCapabilities{Snapshots: true, Deltas: true, PersistentState: true},
 		Reasoning: reasoningCapabilities{Supported: true, Streaming: true},
 		Tools:     toolCapabilities{Supported: true, ClientProvided: true},
-	})
+	}); err != nil {
+		log.Printf("write JSON response: %v", err)
+	}
 }
 
 // agentHealthHandler reports one agent's readiness via entry.Health, which
@@ -457,9 +460,9 @@ func agentHealthHandler(entry agentruntime.Entry) http.HandlerFunc {
 				status, code = "degraded", http.StatusServiceUnavailable
 			}
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(code)
-		_ = json.MarshalWrite(w, agentHealthResponse{Status: status, Agent: entry.AppName})
+		if err := common.WriteJSON(w, code, agentHealthResponse{Status: status, Agent: entry.AppName}); err != nil {
+			log.Printf("write JSON response: %v", err)
+		}
 	}
 }
 
@@ -468,10 +471,11 @@ func agentHealthHandler(entry agentruntime.Entry) http.HandlerFunc {
 // dead to operators or image smokes.
 func livenessHandler(deps Dependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.MarshalWrite(w, livenessResponse{
+		if err := common.WriteJSON(w, http.StatusOK, livenessResponse{
 			Status: "ok", Service: "agents-gateway", Time: deps.Now().UTC().Format(time.RFC3339),
-		})
+		}); err != nil {
+			log.Printf("write JSON response: %v", err)
+		}
 	}
 }
 
@@ -509,12 +513,12 @@ func rootHealthHandler(deps Dependencies) http.HandlerFunc {
 			}
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(code)
-		_ = json.MarshalWrite(w, rootHealthResponse{
+		if err := common.WriteJSON(w, code, rootHealthResponse{
 			Status: status, Service: "agents-gateway",
 			Time: deps.Now().UTC().Format(time.RFC3339), Checks: checks,
-		})
+		}); err != nil {
+			log.Printf("write JSON response: %v", err)
+		}
 	}
 }
 

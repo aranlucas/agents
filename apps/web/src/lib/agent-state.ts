@@ -35,9 +35,15 @@ import type {
   OralBoardsSkill,
   OralBoardsSkillsetScore,
   OralBoardsState,
-  PantryItem,
   ResumeState,
   ResumeStatus,
+  ShoppingEquipmentItem,
+  ShoppingFrequentItem,
+  ShoppingOrder,
+  ShoppingOrderItem,
+  ShoppingPantryItem,
+  ShoppingPreferredStore,
+  ShoppingProfile,
   TrendsRow,
   TrendsState,
   TrendsStatus,
@@ -161,12 +167,80 @@ function toCartItem(raw: unknown): CartItem {
   };
 }
 
-function toPantryItem(raw: unknown): PantryItem {
+function toShoppingPantryItem(raw: unknown): ShoppingPantryItem {
   const s = asRecord(raw);
   return {
     name: str(s.name),
-    quantity: str(s.quantity),
-    expires: optionalStr(s.expires),
+    quantity: num(s.quantity),
+    added_at: num(s.added_at),
+    expires_at: optionalNum(s.expires_at),
+  };
+}
+
+function toShoppingEquipmentItem(raw: unknown): ShoppingEquipmentItem {
+  const s = asRecord(raw);
+  return {
+    name: str(s.name),
+    category: optionalStr(s.category),
+    added_at: num(s.added_at),
+  };
+}
+
+function toShoppingOrderItem(raw: unknown): ShoppingOrderItem {
+  const s = asRecord(raw);
+  return {
+    upc: str(s.upc),
+    name: str(s.name),
+    quantity: num(s.quantity),
+    price: optionalNum(s.price),
+  };
+}
+
+function toShoppingOrder(raw: unknown): ShoppingOrder {
+  const s = asRecord(raw);
+  return {
+    id: str(s.id),
+    items: Array.isArray(s.items) ? s.items.map(toShoppingOrderItem) : [],
+    total_items: num(s.total_items),
+    placed_at: num(s.placed_at),
+    estimated_total: optionalNum(s.estimated_total),
+    location_id: optionalStr(s.location_id),
+    notes: optionalStr(s.notes),
+  };
+}
+
+function toShoppingFrequentItem(raw: unknown): ShoppingFrequentItem {
+  const s = asRecord(raw);
+  return {
+    name: str(s.name),
+    upc: str(s.upc),
+    orders: num(s.orders),
+    total_quantity: num(s.total_quantity),
+  };
+}
+
+function toShoppingPreferredStore(raw: unknown): ShoppingPreferredStore | undefined {
+  if (!isRecord(raw)) return undefined;
+  return {
+    location_id: str(raw.location_id),
+    name: str(raw.name),
+    address: str(raw.address),
+    chain: str(raw.chain),
+    set_at: num(raw.set_at),
+  };
+}
+
+function toShoppingProfile(raw: unknown): ShoppingProfile {
+  const s = asRecord(raw);
+  const preferredStore = toShoppingPreferredStore(s.preferred_store);
+  return {
+    pantry: Array.isArray(s.pantry) ? s.pantry.map(toShoppingPantryItem) : [],
+    equipment: Array.isArray(s.equipment) ? s.equipment.map(toShoppingEquipmentItem) : [],
+    recent_orders: Array.isArray(s.recent_orders) ? s.recent_orders.map(toShoppingOrder) : [],
+    frequent_items: Array.isArray(s.frequent_items)
+      ? s.frequent_items.map(toShoppingFrequentItem)
+      : [],
+    ...(preferredStore ? { preferred_store: preferredStore } : {}),
   };
 }
 
@@ -175,7 +249,7 @@ export function toGroceryState(raw: unknown): GroceryState {
   return {
     shopping_list: strArray(s.shopping_list),
     cart: Array.isArray(s.cart) ? s.cart.map(toCartItem) : [],
-    pantry: Array.isArray(s.pantry) ? s.pantry.map(toPantryItem) : [],
+    shopping_profile: toShoppingProfile(s.shopping_profile),
     meal_plan: str(s.meal_plan),
     weekly_deals: str(s.weekly_deals),
     status: oneOf(s.status, GROCERY_STATUSES, "idle"),
@@ -229,6 +303,7 @@ export function toWellnessState(raw: unknown): WellnessState {
     kroger_connected: bool(s.kroger_connected),
     fitness_data_connected: bool(s.fitness_data_connected),
     activity_source: optionalStr(s.activity_source),
+    shopping_profile: toShoppingProfile(s.shopping_profile),
   };
 }
 

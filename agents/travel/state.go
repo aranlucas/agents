@@ -3,7 +3,6 @@ package travel
 import (
 	json "encoding/json/v2"
 	"maps"
-	"strings"
 
 	"google.golang.org/adk/v2/session"
 )
@@ -26,40 +25,7 @@ const (
 	TransportRoadTrip TransportMode = "road_trip"
 )
 
-// Interests is strongly typed while remaining compatible with legacy sessions
-// that stored the preference as either a JSON array or a comma-delimited string.
 type Interests []string
-
-func (i *Interests) UnmarshalJSON(data []byte) error {
-	var values []string
-	if err := json.Unmarshal(data, &values); err == nil {
-		*i = cleanInterests(values)
-		return nil
-	}
-	var legacy string
-	if err := json.Unmarshal(data, &legacy); err != nil {
-		return err
-	}
-	if strings.TrimSpace(legacy) == "" {
-		*i = Interests{}
-		return nil
-	}
-	*i = cleanInterests(strings.Split(legacy, ","))
-	return nil
-}
-
-func cleanInterests(values []string) Interests {
-	result := make(Interests, 0, len(values))
-	seen := make(map[string]bool, len(values))
-	for _, value := range values {
-		value = strings.TrimSpace(value)
-		if value != "" && len(value) <= 100 && !seen[value] && len(result) < 50 {
-			seen[value] = true
-			result = append(result, value)
-		}
-	}
-	return result
-}
 
 type TravelState struct {
 	Destination   string        `json:"destination"`

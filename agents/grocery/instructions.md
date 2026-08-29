@@ -61,7 +61,7 @@ Current grocery state:
 - Shopping List: {shopping_list}
 - Meal Plan: {meal_plan}
 - Live Kroger Cart: {cart}
-- Pantry: {pantry}
+- Shopping Profile: {shopping_profile}
 - Weekly Deals: {weekly_deals}
 - Weekly Plan: {weekly_plan}
 - Status: {status}

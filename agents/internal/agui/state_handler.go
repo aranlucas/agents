@@ -11,6 +11,8 @@ import (
 
 	"agents/internal/agentruntime"
 	"agents/internal/auth"
+	"agents/internal/common"
+
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"google.golang.org/adk/v2/session"
 )
@@ -105,8 +107,8 @@ func StateHandler(registry *agentruntime.Registry, sessions session.Service) htt
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.MarshalWrite(w, response)
+		if err := common.WriteJSON(w, http.StatusOK, response); err != nil {
+			log.Printf("write JSON response: %v", err)
+		}
 	})
 }

@@ -48,13 +48,11 @@ func TestGroceryProductMatchesRejectNonKrogerImagesTransactionally(t *testing.T)
 	}
 }
 
-func TestGroceryRejectsInvalidCartAndPantryDataTransactionally(t *testing.T) {
+func TestGroceryRejectsInvalidCartDataTransactionally(t *testing.T) {
 	state := newGroceryState(true)
 	badCart, _ := updateCart(&state, CartArgs{Items: []CartItem{{Name: "Milk", Quantity: 0, Price: 1, UPC: "not-a-upc"}}})
-	expiry := "07/10/2026"
-	badPantry, _ := updatePantry(&state, PantryArgs{Items: []PantryItem{{Name: "Milk", Quantity: "1", Expires: &expiry}}})
-	if badCart.OK || badCart.Error == nil || badPantry.OK || badPantry.Error == nil || len(state.Cart) != 0 || len(state.Pantry) != 0 {
-		t.Fatalf("results/state = %#v / %#v / %#v", badCart, badPantry, state)
+	if badCart.OK || badCart.Error == nil || len(state.Cart) != 0 {
+		t.Fatalf("result/state = %#v / %#v", badCart, state)
 	}
 }
 

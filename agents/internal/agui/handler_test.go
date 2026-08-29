@@ -22,6 +22,7 @@ import (
 	"agents/internal/agentruntime"
 	"agents/internal/auth"
 	"agents/internal/providererrors"
+
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"github.com/getsentry/sentry-go"
@@ -391,7 +392,7 @@ func TestHandlerResumesFromPendingClientToolResult(t *testing.T) {
 	h := newTestGateway(t, &fakeResumeModel{}, ids, WithPendingTools(pending))
 
 	scope := ToolScope{AppName: "resume_agent", UserID: "anon:thread-resume", ThreadID: "thread-resume"}
-	if err := pending.Register(context.Background(), scope, "call-9", "remember_fact", jsontext.Value(`{"note":"blue"}`)); err != nil {
+	if err := pending.Register(t.Context(), scope, "call-9", "remember_fact", jsontext.Value(`{"note":"blue"}`)); err != nil {
 		t.Fatalf("register pending: %v", err)
 	}
 

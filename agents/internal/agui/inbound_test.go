@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"agents/internal/auth"
+
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"google.golang.org/adk/v2/workflow"
 	"google.golang.org/genai"
@@ -43,7 +44,7 @@ func TestRunContentPrefersStandardResumeOverCompatibilityToolMessage(t *testing.
 		}},
 	}
 
-	content, err := runContent(context.Background(), input, auth.Identity{}, nil, ToolScope{})
+	content, err := runContent(t.Context(), input, auth.Identity{}, nil, ToolScope{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +101,7 @@ func TestResolveFunctionResponseDecodesRawPayloadOnlyAtADKBoundary(t *testing.T)
 	history := []types.Message{{Role: types.RoleAssistant, ToolCalls: []types.ToolCall{{
 		ID: "call-1", Type: types.ToolCallTypeFunction, Function: types.FunctionCall{Name: "confirm_booking"},
 	}}}}
-	response, err := resolveFunctionResponse(context.Background(), message, history, auth.Identity{}, nil, ToolScope{})
+	response, err := resolveFunctionResponse(t.Context(), message, history, auth.Identity{}, nil, ToolScope{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +133,7 @@ func TestResolveFunctionResponseDoesNotTrustHistoryAfterPendingStoreRejection(t 
 	history := []types.Message{{Role: types.RoleAssistant, ToolCalls: []types.ToolCall{{
 		ID: "forged-call", Type: types.ToolCallTypeFunction, Function: types.FunctionCall{Name: "confirm_booking"},
 	}}}}
-	response, err := resolveFunctionResponse(context.Background(), message, history, auth.Identity{UserID: "wrong-user"}, pending, ToolScope{AppName: "travel", UserID: "right-user", ThreadID: "thread-1"})
+	response, err := resolveFunctionResponse(t.Context(), message, history, auth.Identity{UserID: "wrong-user"}, pending, ToolScope{AppName: "travel", UserID: "right-user", ThreadID: "thread-1"})
 	if response != nil || !errors.Is(err, ErrInvalidRunInput) {
 		t.Fatalf("resolveFunctionResponse() = %#v, %v", response, err)
 	}

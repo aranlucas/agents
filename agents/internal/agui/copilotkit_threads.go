@@ -3,7 +3,6 @@ package agui
 import (
 	"cmp"
 	"context"
-	json "encoding/json/v2"
 	"log"
 	"net/http"
 	"slices"
@@ -12,6 +11,8 @@ import (
 
 	"agents/internal/agentruntime"
 	"agents/internal/auth"
+	"agents/internal/common"
+
 	"google.golang.org/adk/v2/session"
 )
 
@@ -101,6 +102,7 @@ func (r *D1AgentRunner) listThreads(w http.ResponseWriter, request *http.Request
 		return strings.Compare(left.ID, right.ID)
 	})
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.MarshalWrite(w, runtimeThreadsResponse{Threads: threads})
+	if err := common.WriteJSON(w, http.StatusOK, runtimeThreadsResponse{Threads: threads}); err != nil {
+		log.Printf("write JSON response: %v", err)
+	}
 }

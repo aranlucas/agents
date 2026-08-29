@@ -1,7 +1,6 @@
 package rate
 
 import (
-	"context"
 	json "encoding/json/v2"
 	"errors"
 	"net/http"
@@ -49,28 +48,28 @@ func TestProviderLimiterRejectsWindowOverflowAndResets(t *testing.T) {
 	now := time.Date(2026, 7, 10, 12, 0, 20, 0, time.UTC)
 	limiter := NewProviderLimiter(d1, func() time.Time { return now })
 	for range 2 {
-		if err := limiter.Acquire(context.Background(), "groq", 2); err != nil {
+		if err := limiter.Acquire(t.Context(), "groq", 2); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := limiter.Acquire(context.Background(), "groq", 2); !errors.Is(err, ErrLimitReached) {
+	if err := limiter.Acquire(t.Context(), "groq", 2); !errors.Is(err, ErrLimitReached) {
 		t.Fatalf("Acquire() error = %v", err)
 	}
 	now = now.Add(time.Minute)
-	if err := limiter.Acquire(context.Background(), "groq", 2); err != nil {
+	if err := limiter.Acquire(t.Context(), "groq", 2); err != nil {
 		t.Fatalf("new window Acquire() error = %v", err)
 	}
 }
 
 func TestProviderLimiterRejectsInvalidOrUnavailableConfiguration(t *testing.T) {
 	limiter := NewProviderLimiter(nil, time.Now)
-	if err := limiter.Acquire(context.Background(), "groq", 1); err == nil {
+	if err := limiter.Acquire(t.Context(), "groq", 1); err == nil {
 		t.Fatal("missing D1 accepted")
 	}
-	if err := limiter.Acquire(context.Background(), "", 1); err == nil {
+	if err := limiter.Acquire(t.Context(), "", 1); err == nil {
 		t.Fatal("empty provider accepted")
 	}
-	if err := limiter.Acquire(context.Background(), "groq", 0); err == nil {
+	if err := limiter.Acquire(t.Context(), "groq", 0); err == nil {
 		t.Fatal("zero limit accepted")
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"maps"
 
 	"agents/internal/common"
+
 	"google.golang.org/adk/v2/session"
 )
 
@@ -21,7 +22,6 @@ const (
 type (
 	CartItem     = common.CartItem
 	ProductMatch = common.ProductMatch
-	PantryItem   = common.PantryItem
 )
 
 type GroceryState struct {
@@ -31,7 +31,6 @@ type GroceryState struct {
 	MealPlan        string               `json:"meal_plan"`
 	Recipe          *RecipeDraft         `json:"recipe"`
 	Cart            []CartItem           `json:"cart"`
-	Pantry          []PantryItem         `json:"pantry"`
 	ShoppingProfile ShoppingProfileState `json:"shopping_profile"`
 	WeeklyDeals     string               `json:"weekly_deals"`
 	WeeklyPlan      string               `json:"weekly_plan"`
@@ -43,8 +42,7 @@ type GroceryState struct {
 }
 
 // ShoppingProfileState is the durable shopping profile projected into ADK
-// session state. Pantry remains separately projected through GroceryState.Pantry
-// with its legacy string quantity shape for existing clients.
+// session state and is the sole client-visible pantry contract.
 type ShoppingProfileState struct {
 	PreferredStore *ShoppingPreferredStoreState `json:"preferred_store,omitempty"`
 	Pantry         []ShoppingPantryItemState    `json:"pantry"`
@@ -117,7 +115,7 @@ type RecipeDraftIngredient struct {
 
 func Defaults() GroceryState {
 	return GroceryState{
-		ShoppingList: []string{}, ProductMatches: []ProductMatch{}, Cart: []CartItem{}, Pantry: []PantryItem{},
+		ShoppingList: []string{}, ProductMatches: []ProductMatch{}, Cart: []CartItem{},
 		ShoppingProfile: emptyShoppingProfileState(), Status: StatusIdle,
 	}
 }
@@ -154,9 +152,6 @@ func readState(source session.ReadonlyState) GroceryState {
 	}
 	if state.Cart == nil {
 		state.Cart = []CartItem{}
-	}
-	if state.Pantry == nil {
-		state.Pantry = []PantryItem{}
 	}
 	if state.ShoppingProfile.Pantry == nil {
 		state.ShoppingProfile.Pantry = []ShoppingPantryItemState{}

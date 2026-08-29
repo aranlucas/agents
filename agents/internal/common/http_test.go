@@ -1,10 +1,37 @@
 package common
 
 import (
+	"errors"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 )
+
+type failingResponseWriter struct {
+	header http.Header
+}
+
+func (w *failingResponseWriter) Header() http.Header { return w.header }
+func (*failingResponseWriter) WriteHeader(int)       {}
+func (*failingResponseWriter) Write([]byte) (int, error) {
+	return 0, errors.New("write failed")
+}
+
+func TestWriteJSONSetsMetadataAndReturnsWriterErrors(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	if err := WriteJSON(recorder, http.StatusCreated, map[string]bool{"ok": true}); err != nil {
+		t.Fatal(err)
+	}
+	if recorder.Code != http.StatusCreated || recorder.Header().Get("Content-Type") != "application/json" || recorder.Body.String() != `{"ok":true}` {
+		t.Fatalf("response = code:%d header:%q body:%q", recorder.Code, recorder.Header().Get("Content-Type"), recorder.Body.String())
+	}
+
+	failing := &failingResponseWriter{header: http.Header{}}
+	if err := WriteJSON(failing, http.StatusOK, map[string]bool{"ok": true}); err == nil {
+		t.Fatal("WriteJSON succeeded with a failing response writer")
+	}
+}
 
 func TestNewHTTPClientUsesConfiguredTransport(t *testing.T) {
 	client := NewHTTPClient(time.Second, 1024)

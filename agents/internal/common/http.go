@@ -19,6 +19,15 @@ type HTTPClient struct {
 	MaxBody int64
 }
 
+// WriteJSON writes one JSON response with a consistent content type and status.
+// Any returned error means the response could not be fully delivered; callers
+// should log it because the HTTP status may already be committed.
+func WriteJSON(w http.ResponseWriter, status int, value any) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	return json.MarshalWrite(w, value)
+}
+
 func NewHTTPClient(timeout time.Duration, maxBody int64) *HTTPClient {
 	if timeout <= 0 {
 		timeout = 20 * time.Second

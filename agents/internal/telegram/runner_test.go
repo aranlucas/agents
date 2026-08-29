@@ -216,13 +216,13 @@ func TestStopCancelsOnlyCurrentSessionTask(t *testing.T) {
 	executor := &fakeExecutor{started: make(chan struct{}), block: true}
 	runner, _ := newTestRunner(t, executor)
 	done := make(chan error, 1)
-	go func() { done <- runner.HandleMessage(context.Background(), privateMessage(1, "hello")) }()
+	go func() { done <- runner.HandleMessage(t.Context(), privateMessage(1, "hello")) }()
 	select {
 	case <-executor.started:
 	case <-time.After(time.Second):
 		t.Fatal("task did not start")
 	}
-	if err := runner.HandleMessage(context.Background(), privateMessage(1, "/stop")); err != nil {
+	if err := runner.HandleMessage(t.Context(), privateMessage(1, "/stop")); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -276,7 +276,7 @@ func TestBusySessionDoesNotLeakTaskEntries(t *testing.T) {
 	executor := &fakeExecutor{started: make(chan struct{}), block: true}
 	runner, _ := newTestRunner(t, executor)
 	done := make(chan error, 1)
-	go func() { done <- runner.HandleMessage(context.Background(), privateMessage(2, "hello")) }()
+	go func() { done <- runner.HandleMessage(t.Context(), privateMessage(2, "hello")) }()
 	<-executor.started
 	if err := runner.HandleMessage(t.Context(), privateMessage(2, "another")); err != nil {
 		t.Fatal(err)

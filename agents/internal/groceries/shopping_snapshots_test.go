@@ -14,6 +14,7 @@ import (
 
 	"agents/internal/cloudflare"
 	d1migrations "agents/migrations/d1"
+
 	"google.golang.org/adk/v2/artifact"
 	"google.golang.org/genai"
 	_ "modernc.org/sqlite"
@@ -29,7 +30,7 @@ func TestConcurrentShoppingProfilePublishCannotMakeStaleRevisionLatest(t *testin
 	setPreferredStoreRow(t, runner, "First")
 	firstDone := make(chan error, 1)
 	go func() {
-		_, err := storeA.publishPendingShoppingProfileSnapshot(context.Background(), "user_1")
+		_, err := storeA.publishPendingShoppingProfileSnapshot(t.Context(), "user_1")
 		firstDone <- err
 	}()
 	<-blocking.started
@@ -92,7 +93,7 @@ func TestDelayedDuplicateFinalizeCannotDeleteUnchangedReferencedArtifact(t *test
 		err  error
 	}, 1)
 	go func() {
-		more, err := delayedStore.publishPendingShoppingProfileSnapshot(context.Background(), "user_1")
+		more, err := delayedStore.publishPendingShoppingProfileSnapshot(t.Context(), "user_1")
 		delayedDone <- struct {
 			more bool
 			err  error

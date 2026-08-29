@@ -1,10 +1,15 @@
 import type {
   CartItem,
   GroceryState,
-  PantryItem,
   ProductMatch,
   RecipeDraft,
   RecipeDraftIngredient,
+  ShoppingEquipmentItem,
+  ShoppingFrequentItem,
+  ShoppingOrder,
+  ShoppingPantryItem,
+  ShoppingPreferredStore,
+  ShoppingProfile,
 } from "@agents/types";
 
 export type DisplayTextMessage = {
@@ -29,7 +34,12 @@ export const INITIAL_GROCERY_STATE: GroceryState = {
   list_title: "",
   product_matches: [],
   cart: [],
-  pantry: [],
+  shopping_profile: {
+    pantry: [],
+    equipment: [],
+    recent_orders: [],
+    frequent_items: [],
+  },
   meal_plan: "",
   recipe: {
     title: "",
@@ -209,13 +219,99 @@ function cartItems(value: unknown): CartItem[] {
   });
 }
 
-function pantryItems(value: unknown): PantryItem[] {
+function pantryItems(value: unknown): ShoppingPantryItem[] {
   if (!Array.isArray(value)) return [];
-  return value.filter((item): item is PantryItem => {
+  return value.filter((item): item is ShoppingPantryItem => {
     if (!item || typeof item !== "object") return false;
     const record = item as Record<string, unknown>;
-    return typeof record.name === "string" && typeof record.quantity === "string";
+    return (
+      typeof record.name === "string" &&
+      typeof record.quantity === "number" &&
+      typeof record.added_at === "number" &&
+      (record.expires_at === undefined || typeof record.expires_at === "number")
+    );
   });
+}
+
+function equipmentItems(value: unknown): ShoppingEquipmentItem[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is ShoppingEquipmentItem => {
+    const record = recordValue(item);
+    return (
+      record !== null &&
+      typeof record.name === "string" &&
+      typeof record.added_at === "number" &&
+      (record.category === undefined || typeof record.category === "string")
+    );
+  });
+}
+
+function shoppingOrders(value: unknown): ShoppingOrder[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is ShoppingOrder => {
+    const record = recordValue(item);
+    return (
+      record !== null &&
+      typeof record.id === "string" &&
+      Array.isArray(record.items) &&
+      record.items.every((orderItem) => {
+        const entry = recordValue(orderItem);
+        return (
+          entry !== null &&
+          typeof entry.upc === "string" &&
+          typeof entry.name === "string" &&
+          typeof entry.quantity === "number" &&
+          (entry.price === undefined || typeof entry.price === "number")
+        );
+      }) &&
+      typeof record.total_items === "number" &&
+      typeof record.placed_at === "number" &&
+      (record.estimated_total === undefined || typeof record.estimated_total === "number") &&
+      (record.location_id === undefined || typeof record.location_id === "string") &&
+      (record.notes === undefined || typeof record.notes === "string")
+    );
+  });
+}
+
+function frequentItems(value: unknown): ShoppingFrequentItem[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is ShoppingFrequentItem => {
+    const record = recordValue(item);
+    return (
+      record !== null &&
+      typeof record.name === "string" &&
+      typeof record.upc === "string" &&
+      typeof record.orders === "number" &&
+      typeof record.total_quantity === "number"
+    );
+  });
+}
+
+function preferredStore(value: unknown): ShoppingPreferredStore | undefined {
+  const store = recordValue(value);
+  if (
+    !store ||
+    typeof store.location_id !== "string" ||
+    typeof store.name !== "string" ||
+    typeof store.address !== "string" ||
+    typeof store.chain !== "string" ||
+    typeof store.set_at !== "number"
+  ) {
+    return undefined;
+  }
+  return store as ShoppingPreferredStore;
+}
+
+function shoppingProfile(value: unknown): ShoppingProfile {
+  const profile = recordValue(value);
+  const store = preferredStore(profile?.preferred_store);
+  return {
+    pantry: pantryItems(profile?.pantry),
+    equipment: equipmentItems(profile?.equipment),
+    recent_orders: shoppingOrders(profile?.recent_orders),
+    frequent_items: frequentItems(profile?.frequent_items),
+    ...(store ? { preferred_store: store } : {}),
+  };
 }
 
 function productMatches(value: unknown): ProductMatch[] {
@@ -274,7 +370,7 @@ export function normalizeGroceryState(value: unknown): GroceryState {
     list_title: typeof state.list_title === "string" ? state.list_title : undefined,
     product_matches: productMatches(state.product_matches),
     cart: cartItems(state.cart),
-    pantry: pantryItems(state.pantry),
+    shopping_profile: shoppingProfile(state.shopping_profile),
     meal_plan: typeof state.meal_plan === "string" ? state.meal_plan : undefined,
     recipe: recipeDraft(state.recipe),
     weekly_deals: typeof state.weekly_deals === "string" ? state.weekly_deals : undefined,
@@ -293,6 +389,6 @@ export function cartSubtotal(items: readonly CartItem[]): number {
   return items.reduce((total, item) => total + (item.price ?? 0) * item.quantity, 0);
 }
 
-export function pantryNames(items: readonly PantryItem[]): Set<string> {
+export function pantryNames(items: readonly ShoppingPantryItem[]): Set<string> {
   return new Set(items.map((item) => item.name.trim().toLocaleLowerCase()));
 }

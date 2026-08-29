@@ -2,7 +2,6 @@ package agui
 
 import (
 	"context"
-	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"log"
@@ -11,6 +10,8 @@ import (
 
 	"agents/internal/agentruntime"
 	"agents/internal/auth"
+	"agents/internal/common"
+
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/encoding/sse"
 	"google.golang.org/adk/v2/session"
@@ -106,20 +107,23 @@ func (r *D1AgentRunner) stopHandler(agent copilotKitAgent) http.Handler {
 			ThreadID:   threadID,
 		})
 
-		w.Header().Set("Content-Type", "application/json")
 		if !stopped {
-			_ = json.MarshalWrite(w, map[string]any{
+			if err := common.WriteJSON(w, http.StatusOK, map[string]any{
 				"stopped": false,
 				"message": fmt.Sprintf("No active run for thread '%s'.", threadID),
-			})
+			}); err != nil {
+				log.Printf("write JSON response: %v", err)
+			}
 			return
 		}
-		_ = json.MarshalWrite(w, map[string]any{
+		if err := common.WriteJSON(w, http.StatusOK, map[string]any{
 			"stopped": true,
 			"interrupt": map[string]string{
 				"type": "RUN_ERROR", "message": "Run stopped by user", "code": "STOPPED",
 			},
-		})
+		}); err != nil {
+			log.Printf("write JSON response: %v", err)
+		}
 	})
 }
 
