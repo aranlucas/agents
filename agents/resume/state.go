@@ -2,6 +2,7 @@ package resume
 
 import (
 	"encoding/json"
+	"maps"
 
 	"google.golang.org/adk/v2/session"
 )
@@ -43,9 +44,7 @@ func readState(source session.ReadonlyState) ResumeState {
 	state := Defaults()
 	values := make(map[string]any)
 	if source != nil {
-		for key, value := range source.All() {
-			values[key] = value
-		}
+		maps.Insert(values, source.All())
 	}
 	encoded, err := json.Marshal(values)
 	if err == nil {

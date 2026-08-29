@@ -3,6 +3,7 @@ package trends
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"strings"
 
 	"agents/internal/agentruntime"
@@ -79,7 +80,7 @@ type Result struct {
 	OK       bool                          `json:"ok"`
 	SQL      string                        `json:"sql,omitempty"`
 	Status   Status                        `json:"status,omitempty"`
-	RowCount int                           `json:"row_count,omitempty"`
+	RowCount int                           `json:"row_count,omitzero"`
 	Columns  []string                      `json:"columns,omitempty"`
 	Rows     []Row                         `json:"rows,omitempty"`
 	Error    *agentruntime.StructuredError `json:"error,omitempty"`
@@ -93,9 +94,7 @@ func readState(source session.ReadonlyState) TrendsState {
 	state := Defaults()
 	values := make(map[string]any)
 	if source != nil {
-		for key, value := range source.All() {
-			values[key] = value
-		}
+		maps.Insert(values, source.All())
 	}
 	encoded, err := json.Marshal(values)
 	if err == nil {

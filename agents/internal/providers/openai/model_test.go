@@ -317,8 +317,8 @@ func TestGenerateContentRejectsMalformedToolArguments(t *testing.T) {
 	if len(responses) != 0 || len(errs) != 1 {
 		t.Fatalf("responses/errors = %#v/%v", responses, errs)
 	}
-	var providerErr *ProviderError
-	if !errors.As(errs[0], &providerErr) || providerErr.Kind != ProviderErrorResponseSchema {
+	providerErr, ok := errors.AsType[*ProviderError](errs[0])
+	if !ok || providerErr.Kind != ProviderErrorResponseSchema {
 		t.Fatalf("error = %#v", errs[0])
 	}
 }

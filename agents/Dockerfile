@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM golang:1.26.5-bookworm AS build
+FROM golang:1.27.0-bookworm AS build
 WORKDIR /src/agents
 COPY agents/go.mod agents/go.sum ./
 RUN --mount=type=cache,id=s/418259b7-9f18-4ba2-81fc-04c1e712b318-/go/pkg/mod,target=/go/pkg/mod \

@@ -13,7 +13,6 @@ import (
 
 	"github.com/getsentry/sentry-go"
 	"google.golang.org/adk/v2/agent"
-	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
 )
@@ -320,8 +319,8 @@ func TestADKExecutorCreatesSafeRunSpan(t *testing.T) {
 		Run: func(agent.InvocationContext) iter.Seq2[*session.Event, error] {
 			return func(yield func(*session.Event, error) bool) {
 				yield(&session.Event{
-					LLMResponse: model.LLMResponse{Content: genai.NewContentFromText("response-secret", genai.RoleModel)},
-					Author:      "orchestrator",
+					Content: genai.NewContentFromText("response-secret", genai.RoleModel),
+					Author:  "orchestrator",
 				}, nil)
 			}
 		},

@@ -19,8 +19,8 @@ type Result struct {
 	SlideIDs          []string                      `json:"slide_ids,omitempty"`
 	UpdatedSlideIDs   []string                      `json:"updated_slide_ids,omitempty"`
 	DeletedSlideIDs   []string                      `json:"deleted_slide_ids,omitempty"`
-	SlideCount        int                           `json:"slide_count,omitempty"`
-	UpdatedSlideCount int                           `json:"updated_slide_count,omitempty"`
+	SlideCount        int                           `json:"slide_count,omitzero"`
+	UpdatedSlideCount int                           `json:"updated_slide_count,omitzero"`
 	Status            Status                        `json:"status,omitempty"`
 	Error             *agentruntime.StructuredError `json:"error,omitempty"`
 }
@@ -66,7 +66,7 @@ type RevisePresentationArgs struct {
 	SlideIDs           []string          `json:"slide_ids,omitempty"`
 	MarkReady          bool              `json:"mark_ready"`
 	Summary            string            `json:"summary,omitempty"`
-	ExpectedSlideCount int               `json:"expected_slide_count,omitempty"`
+	ExpectedSlideCount int               `json:"expected_slide_count,omitzero"`
 }
 
 func setMeta(state *PresentationState, input SetMetaArgs) (Result, error) {

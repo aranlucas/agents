@@ -12,7 +12,7 @@ type ProductMatch struct {
 	Name     string  `json:"name"`
 	UPC      string  `json:"upc"`
 	ImageURL string  `json:"image_url,omitempty"`
-	Price    float64 `json:"price,omitempty"`
+	Price    float64 `json:"price,omitzero"`
 	Size     string  `json:"size,omitempty"`
 }
 

@@ -34,7 +34,7 @@ func TestGroceryAgentBuildsWithAuthContract(t *testing.T) {
 
 func TestGroceryContextCompactionKeepsRecentSafeTurnBoundary(t *testing.T) {
 	request := &model.LLMRequest{}
-	for index := 0; index < 60; index++ {
+	for range 60 {
 		request.Contents = append(
 			request.Contents,
 			&genai.Content{Role: genai.RoleUser, Parts: []*genai.Part{{Text: strings.Repeat("u", 100)}}},

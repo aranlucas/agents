@@ -47,14 +47,14 @@ func NewBackend(client *http.Client, baseURL, secret string) (*SDKBackend, error
 	}
 
 	config := &clerksdk.ClientConfig{}
-	config.Key = clerksdk.String(strings.TrimSpace(secret))
+	config.Key = new(strings.TrimSpace(secret))
 	config.HTTPClient = client
 	if strings.TrimSpace(baseURL) != "" {
 		parsed, err := url.Parse(strings.TrimRight(baseURL, "/"))
 		if err != nil || parsed.Host == "" || !secureBackendURL(parsed) {
 			return nil, errors.New("invalid Clerk backend URL")
 		}
-		config.URL = clerksdk.String(parsed.String())
+		config.URL = new(parsed.String())
 	}
 
 	return &SDKBackend{users: user.NewClient(config)}, nil
@@ -100,8 +100,8 @@ func (b *SDKBackend) OAuthConnections(ctx context.Context, clerkUserID string) (
 }
 
 func isDisconnectedOAuthGrant(err error) bool {
-	var response *clerksdk.APIErrorResponse
-	if !errors.As(err, &response) || response.HTTPStatusCode != http.StatusBadRequest {
+	response, ok := errors.AsType[*clerksdk.APIErrorResponse](err)
+	if !ok || response.HTTPStatusCode != http.StatusBadRequest {
 		return false
 	}
 	for _, clerkError := range response.Errors {

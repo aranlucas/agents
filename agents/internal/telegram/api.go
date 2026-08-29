@@ -31,7 +31,7 @@ type Chat struct {
 }
 type Message struct {
 	MessageID       int64    `json:"message_id"`
-	MessageThreadID int64    `json:"message_thread_id,omitempty"`
+	MessageThreadID int64    `json:"message_thread_id,omitzero"`
 	From            *User    `json:"from,omitempty"`
 	Chat            Chat     `json:"chat"`
 	Date            int64    `json:"date"`
@@ -106,10 +106,10 @@ func (c *HTTPClient) GetUpdates(ctx context.Context, offset int64, timeout int) 
 
 type SendMessageRequest struct {
 	ChatID                int64  `json:"chat_id"`
-	MessageThreadID       int64  `json:"message_thread_id,omitempty"`
+	MessageThreadID       int64  `json:"message_thread_id,omitzero"`
 	Text                  string `json:"text"`
 	ParseMode             string `json:"parse_mode,omitempty"`
-	DisableWebPagePreview bool   `json:"disable_web_page_preview,omitempty"`
+	DisableWebPagePreview bool   `json:"disable_web_page_preview,omitzero"`
 }
 
 func (c *HTTPClient) SendMessage(ctx context.Context, input SendMessageRequest) (Message, error) {
@@ -129,7 +129,7 @@ func (c *HTTPClient) SendChatAction(ctx context.Context, chatID, threadID int64,
 	}
 	request, err := telegramJSONRequest(c, ctx, "sendChatAction", struct {
 		ChatID          int64  `json:"chat_id"`
-		MessageThreadID int64  `json:"message_thread_id,omitempty"`
+		MessageThreadID int64  `json:"message_thread_id,omitzero"`
 		Action          string `json:"action"`
 	}{chatID, threadID, action})
 	if err != nil {

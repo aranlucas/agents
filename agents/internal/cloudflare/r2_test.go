@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"sort"
+	"maps"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -103,9 +104,7 @@ func TestArtifactServiceConcurrentSavesAllocateDistinctVersions(t *testing.T) {
 	errors := make(chan error, workers)
 	var wait sync.WaitGroup
 	for index := range workers {
-		wait.Add(1)
-		go func() {
-			defer wait.Done()
+		wait.Go(func() {
 			response, err := service.Save(context.Background(), &artifact.SaveRequest{
 				AppName: "travel", UserID: "user-a", SessionID: "thread-a", FileName: "plan.md", Part: &genai.Part{Text: string(rune('a' + index))},
 			})
@@ -114,7 +113,7 @@ func TestArtifactServiceConcurrentSavesAllocateDistinctVersions(t *testing.T) {
 				return
 			}
 			versions <- response.Version
-		}()
+		})
 	}
 	wait.Wait()
 	close(errors)
@@ -218,7 +217,7 @@ func (m *memoryS3) GetObject(_ context.Context, input *s3.GetObjectInput, _ ...f
 		return nil, &fakeAPIError{code: "NoSuchKey"}
 	}
 	data := append([]byte(nil), object.data...)
-	return &s3.GetObjectOutput{Body: io.NopCloser(bytes.NewReader(data)), ContentLength: aws.Int64(int64(len(data))), ContentType: aws.String(string(object.contentType)), Metadata: cloneMetadata(object.metadata), LastModified: aws.Time(object.created)}, nil
+	return &s3.GetObjectOutput{Body: io.NopCloser(bytes.NewReader(data)), ContentLength: new(int64(len(data))), ContentType: new(string(object.contentType)), Metadata: cloneMetadata(object.metadata), LastModified: new(object.created)}, nil
 }
 
 func (m *memoryS3) DeleteObject(_ context.Context, input *s3.DeleteObjectInput, _ ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
@@ -237,20 +236,18 @@ func (m *memoryS3) ListObjectsV2(_ context.Context, input *s3.ListObjectsV2Input
 			keys = append(keys, key)
 		}
 	}
-	sort.Strings(keys)
+	slices.Sort(keys)
 	output := &s3.ListObjectsV2Output{}
 	for _, key := range keys {
 		object := m.objects[key]
-		output.Contents = append(output.Contents, types.Object{Key: aws.String(key), Size: aws.Int64(int64(len(object.data))), LastModified: aws.Time(object.created)})
+		output.Contents = append(output.Contents, types.Object{Key: new(key), Size: new(int64(len(object.data))), LastModified: new(object.created)})
 	}
 	return output, nil
 }
 
 func cloneMetadata(input map[string]string) map[string]string {
 	output := map[string]string{}
-	for key, value := range input {
-		output[key] = value
-	}
+	maps.Copy(output, input)
 	return output
 }
 

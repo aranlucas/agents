@@ -11,7 +11,6 @@ import (
 	"iter"
 	"maps"
 	"slices"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -409,11 +408,7 @@ func stateUpdateExpression(column string, delta map[string]any) (string, []any, 
 	if len(delta) == 0 {
 		return column, nil, nil
 	}
-	keys := make([]string, 0, len(delta))
-	for key := range delta {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
+	keys := slices.Sorted(maps.Keys(delta))
 	expression := column
 	setArgs := []string{column}
 	setParams := make([]any, 0, len(keys)*2)

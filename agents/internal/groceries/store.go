@@ -53,7 +53,7 @@ type List struct {
 	OwnerUserID     string  `json:"owner_user_id"`
 	Title           string  `json:"title"`
 	Status          string  `json:"status"`
-	ArtifactVersion int64   `json:"artifact_version,omitempty"`
+	ArtifactVersion int64   `json:"artifact_version,omitzero"`
 	CreatedAt       int64   `json:"created_at"`
 	UpdatedAt       int64   `json:"updated_at"`
 	Items           []Item  `json:"items"`

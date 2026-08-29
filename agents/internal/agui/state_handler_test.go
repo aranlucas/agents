@@ -13,7 +13,6 @@ import (
 	"agents/internal/agentruntime"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"google.golang.org/adk/v2/agent/llmagent"
-	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
 )
@@ -194,27 +193,27 @@ func TestStateHandlerReturnsMessagesFromSessionEvents(t *testing.T) {
 		"resume_agent", "anon:thread-messages", "thread-messages",
 		&session.Event{
 			ID: "ev-user", Author: "user",
-			LLMResponse: model.LLMResponse{Content: &genai.Content{Parts: []*genai.Part{
+			Content: &genai.Content{Parts: []*genai.Part{
 				{Text: "What experience do you have?"},
-			}}},
+			}},
 		},
 		&session.Event{
 			ID: "ev-call", Author: "resume_agent",
-			LLMResponse: model.LLMResponse{Content: &genai.Content{Parts: []*genai.Part{
+			Content: &genai.Content{Parts: []*genai.Part{
 				{FunctionCall: &genai.FunctionCall{ID: "call-1", Name: "lookup_resume", Args: map[string]any{"query": "experience"}}},
-			}}},
+			}},
 		},
 		&session.Event{
 			ID: "ev-result", Author: "resume_agent",
-			LLMResponse: model.LLMResponse{Content: &genai.Content{Parts: []*genai.Part{
+			Content: &genai.Content{Parts: []*genai.Part{
 				{FunctionResponse: &genai.FunctionResponse{ID: "call-1", Name: "lookup_resume", Response: map[string]any{"years": float64(5)}}},
-			}}},
+			}},
 		},
 		&session.Event{
 			ID: "ev-assistant", Author: "resume_agent",
-			LLMResponse: model.LLMResponse{Content: &genai.Content{Parts: []*genai.Part{
+			Content: &genai.Content{Parts: []*genai.Part{
 				{Text: "Five years of experience."},
-			}}},
+			}},
 		},
 	)
 

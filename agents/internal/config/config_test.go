@@ -1,6 +1,7 @@
 package config
 
 import (
+	"maps"
 	"strings"
 	"testing"
 )
@@ -227,9 +228,7 @@ func TestLoadD1RequiresOnlyMigrationDependencies(t *testing.T) {
 
 func mapsClone(source map[string]string) map[string]string {
 	clone := make(map[string]string, len(source))
-	for key, value := range source {
-		clone[key] = value
-	}
+	maps.Copy(clone, source)
 	return clone
 }
 

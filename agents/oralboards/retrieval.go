@@ -1,6 +1,7 @@
 package oralboards
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"errors"
@@ -8,7 +9,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"regexp"
-	"sort"
+	"slices"
 	"strings"
 
 	_ "modernc.org/sqlite"
@@ -153,7 +154,7 @@ func cleanQuery(value string) string {
 
 func anchorPassage(body, snippet, query string, maxChars int) string {
 	fragments := strings.Split(strings.ReplaceAll(strings.ReplaceAll(snippet, "«", ""), "»", ""), " … ")
-	sort.SliceStable(fragments, func(i, j int) bool { return len(fragments[i]) > len(fragments[j]) })
+	slices.SortStableFunc(fragments, func(a, b string) int { return cmp.Compare(len(b), len(a)) })
 	for _, fragment := range fragments {
 		fragment = strings.TrimSpace(fragment)
 		if len(fragment) < 8 {
@@ -164,7 +165,7 @@ func anchorPassage(body, snippet, query string, maxChars int) string {
 		}
 	}
 	lower := strings.ToLower(body)
-	for _, word := range strings.Fields(query) {
+	for word := range strings.FieldsSeq(query) {
 		if len(word) > 4 {
 			if position := strings.Index(lower, strings.ToLower(word)); position >= 0 {
 				return boundedPassage(body, position, maxChars)

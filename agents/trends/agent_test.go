@@ -3,6 +3,7 @@ package trends
 import (
 	"context"
 	"iter"
+	"maps"
 	"strings"
 	"sync"
 	"testing"
@@ -177,10 +178,7 @@ func TestTrendsAgentPipelineWritesVerifiedState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	state := make(map[string]any)
-	for key, value := range loaded.Session.State().All() {
-		state[key] = value
-	}
+	state := maps.Collect(loaded.Session.State().All())
 	if state["status"] != StatusReady || state["generated_sql"] != generatedSQL {
 		t.Fatalf("state = %#v", state)
 	}

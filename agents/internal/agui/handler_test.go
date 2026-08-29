@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -1008,9 +1009,7 @@ type fakeState struct {
 
 func newFakeState(initial map[string]any) *fakeState {
 	values := make(map[string]any, len(initial))
-	for k, v := range initial {
-		values[k] = v
-	}
+	maps.Copy(values, initial)
 	return &fakeState{values: values}
 }
 
@@ -1035,9 +1034,7 @@ func (s *fakeState) All() iter.Seq2[string, any] {
 	return func(yield func(string, any) bool) {
 		s.mu.RLock()
 		copied := make(map[string]any, len(s.values))
-		for k, v := range s.values {
-			copied[k] = v
-		}
+		maps.Copy(copied, s.values)
 		s.mu.RUnlock()
 		for k, v := range copied {
 			if !yield(k, v) {
@@ -1126,9 +1123,7 @@ func (f *fakeSessionService) Create(ctx context.Context, req *session.CreateRequ
 	}
 	k := sessionKey(req.AppName, req.UserID, id)
 	state := make(map[string]any, len(req.State))
-	for key, value := range req.State {
-		state[key] = value
-	}
+	maps.Copy(state, req.State)
 	f.persisted[k] = state
 	sess := &fakeSession{id: id, appName: req.AppName, userID: req.UserID, state: newFakeState(state), updated: time.Now()}
 	return &session.CreateResponse{Session: sess}, nil
@@ -1270,13 +1265,13 @@ func assertSSEEqual(t *testing.T, actual, expected []byte) {
 func parseSSEFrames(t *testing.T, data []byte) []any {
 	t.Helper()
 	var frames []any
-	for _, chunk := range bytes.Split(data, []byte("\n\n")) {
+	for chunk := range bytes.SplitSeq(data, []byte("\n\n")) {
 		chunk = bytes.TrimSpace(chunk)
 		if len(chunk) == 0 {
 			continue
 		}
 		var payload []byte
-		for _, line := range bytes.Split(chunk, []byte("\n")) {
+		for line := range bytes.SplitSeq(chunk, []byte("\n")) {
 			if candidate, ok := bytes.CutPrefix(line, []byte("data: ")); ok {
 				payload = candidate
 				break
@@ -1297,7 +1292,7 @@ func parseSSEFrames(t *testing.T, data []byte) []any {
 func parseJSONLFrames(t *testing.T, data []byte) []any {
 	t.Helper()
 	var frames []any
-	for _, line := range bytes.Split(data, []byte("\n")) {
+	for line := range bytes.SplitSeq(data, []byte("\n")) {
 		line = bytes.TrimSpace(line)
 		if len(line) == 0 {
 			continue
