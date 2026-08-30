@@ -1,9 +1,11 @@
 package agui
 
 import (
+	"bytes"
 	"context"
 	json "encoding/json/v2"
 	"errors"
+	"io"
 	"iter"
 	"net/http"
 	"net/http/httptest"
@@ -28,6 +30,28 @@ type headerSignalRecorder struct {
 	wroteHeader chan struct{}
 }
 
+type failingStreamWriter struct {
+	header    http.Header
+	body      bytes.Buffer
+	status    int
+	writes    int
+	failAfter int
+}
+
+func (w *failingStreamWriter) Header() http.Header { return w.header }
+func (w *failingStreamWriter) WriteHeader(status int) {
+	w.status = status
+}
+
+func (w *failingStreamWriter) Write(payload []byte) (int, error) {
+	w.writes++
+	if w.writes > w.failAfter {
+		return 0, io.ErrClosedPipe
+	}
+	return w.body.Write(payload)
+}
+func (*failingStreamWriter) Flush() {}
+
 func (r *headerSignalRecorder) WriteHeader(statusCode int) {
 	r.once.Do(func() { close(r.wroteHeader) })
 	r.ResponseRecorder.WriteHeader(statusCode)
@@ -38,6 +62,10 @@ func (runtimeTestVerifier) Verify(context.Context, string) (auth.Identity, error
 }
 
 func testCopilotKitRuntime(t *testing.T, llm model.LLM) *CopilotKitRuntime {
+	return testCopilotKitRuntimeWithSessions(t, llm, newFakeSessionService())
+}
+
+func testCopilotKitRuntimeWithSessions(t *testing.T, llm model.LLM, sessions session.Service) *CopilotKitRuntime {
 	t.Helper()
 	agent, err := llmagent.New(llmagent.Config{Name: "resume_agent", Instruction: "test", Model: llm})
 	if err != nil {
@@ -49,11 +77,102 @@ func testCopilotKitRuntime(t *testing.T, llm model.LLM) *CopilotKitRuntime {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtime, err := NewCopilotKitRuntime(registry, newFakeSessionService(), func(string) string { return "resume" }, WithTextStreamSmoothing(false, "word", 0, 64))
+	runtime, err := NewCopilotKitRuntime(registry, sessions, func(string) string { return "resume" }, WithTextStreamSmoothing(false, "word", 0, 64))
 	if err != nil {
 		t.Fatal(err)
 	}
 	return runtime
+}
+
+type sharedActiveRunStore struct {
+	mu   sync.Mutex
+	runs map[ActiveRunKey]*ActiveRunSnapshot
+}
+
+func newSharedActiveRunStore() *sharedActiveRunStore {
+	return &sharedActiveRunStore{runs: make(map[ActiveRunKey]*ActiveRunSnapshot)}
+}
+
+func (s *sharedActiveRunStore) BeginActiveRun(_ context.Context, key ActiveRunKey, runID string, _ time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if existing := s.runs[key]; existing != nil && !existing.Finished {
+		return ErrActiveRunExists
+	}
+	s.runs[key] = &ActiveRunSnapshot{RunID: runID}
+	return nil
+}
+
+func (s *sharedActiveRunStore) AppendActiveRunEvent(_ context.Context, key ActiveRunKey, runID string, index int64, encoded []byte, terminal bool) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	run := s.runs[key]
+	if run == nil || run.RunID != runID || run.Finished || int64(len(run.Events)) != index {
+		return ErrActiveRunNotFound
+	}
+	run.Events = append(run.Events, bytes.Clone(encoded))
+	run.Finished = terminal
+	return nil
+}
+
+func (s *sharedActiveRunStore) CurrentActiveRun(_ context.Context, key ActiveRunKey) (*ActiveRunSnapshot, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	run := s.runs[key]
+	if run == nil || run.Finished {
+		return nil, ErrActiveRunNotFound
+	}
+	return cloneActiveRunSnapshot(run), nil
+}
+
+func (s *sharedActiveRunStore) LoadActiveRun(_ context.Context, key ActiveRunKey, runID string, fromEvent int64) (*ActiveRunSnapshot, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	run := s.runs[key]
+	if run == nil || run.RunID != runID {
+		return nil, ErrActiveRunNotFound
+	}
+	cloned := cloneActiveRunSnapshot(run)
+	if fromEvent < 0 {
+		cloned.Events = nil
+	} else if fromEvent <= int64(len(cloned.Events)) {
+		cloned.Events = cloned.Events[fromEvent:]
+	}
+	return cloned, nil
+}
+
+func (s *sharedActiveRunStore) FinishActiveRun(_ context.Context, key ActiveRunKey, runID string, _ time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if run := s.runs[key]; run != nil && run.RunID == runID {
+		run.Finished = true
+	}
+	return nil
+}
+
+func (s *sharedActiveRunStore) RequestActiveRunStop(_ context.Context, key ActiveRunKey) (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	run := s.runs[key]
+	if run == nil || run.Finished {
+		return false, nil
+	}
+	run.StopRequested = true
+	return true, nil
+}
+
+func cloneActiveRunSnapshot(run *ActiveRunSnapshot) *ActiveRunSnapshot {
+	cloned := *run
+	cloned.Events = make([][]byte, len(run.Events))
+	for index, encoded := range run.Events {
+		cloned.Events[index] = bytes.Clone(encoded)
+	}
+	return &cloned
+}
+
+type durableTestSessions struct {
+	session.Service
+	*sharedActiveRunStore
 }
 
 func TestCopilotKitRuntimeInfoAdvertisesBoundAgents(t *testing.T) {
@@ -281,9 +400,21 @@ func TestCopilotKitRuntimeRequestDisconnectDoesNotCancelActiveRun(t *testing.T) 
 		t.Fatalf("request disconnect canceled the active run: %v", err)
 	}
 
-	key := runKey{AgentRoute: "resume", UserID: "anon:thread-disconnect", ThreadID: "thread-disconnect"}
+	key := runKey{AppName: "resume_agent", AgentRoute: "resume", UserID: "anon:thread-disconnect", ThreadID: "thread-disconnect"}
 	if runtime.runner.active.lookup(key) == nil {
 		t.Fatal("active run disappeared after request disconnect")
+	}
+	connectStarted := make(chan struct{})
+	connectDone := make(chan *httptest.ResponseRecorder, 1)
+	go func() {
+		recorder := httptest.NewRecorder()
+		mux.ServeHTTP(&headerSignalRecorder{ResponseRecorder: recorder, wroteHeader: connectStarted}, httptest.NewRequest(http.MethodPost, "/agent/resume/connect", strings.NewReader(`{"threadId":"thread-disconnect","runId":"connect-disconnect","messages":[]}`)))
+		connectDone <- recorder
+	}()
+	select {
+	case <-connectStarted:
+	case <-time.After(2 * time.Second):
+		t.Fatal("replacement connect did not start")
 	}
 	close(model.release)
 
@@ -295,6 +426,190 @@ func TestCopilotKitRuntimeRequestDisconnectDoesNotCancelActiveRun(t *testing.T) 
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("detached run did not finish")
+	}
+	select {
+	case connect := <-connectDone:
+		frames := parseSSEFrames(t, connect.Body.Bytes())
+		assertStrictAGUISequence(t, frames)
+		if !strings.Contains(connect.Body.String(), "Run survived reconnect.") {
+			t.Fatalf("connect did not replay the successful detached run: %s", connect.Body.String())
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("replacement connect did not finish")
+	}
+}
+
+func TestCopilotKitRuntimeConnectReplaysAndFollowsRunOwnedByAnotherReplica(t *testing.T) {
+	model := &disconnectSurvivalModel{contexts: make(chan context.Context, 1), release: make(chan struct{})}
+	sessions := &durableTestSessions{Service: newFakeSessionService(), sharedActiveRunStore: newSharedActiveRunStore()}
+	owner := testCopilotKitRuntimeWithSessions(t, model, sessions)
+	follower := testCopilotKitRuntimeWithSessions(t, model, sessions)
+	ownerMux, followerMux := http.NewServeMux(), http.NewServeMux()
+	owner.Register(ownerMux)
+	follower.Register(followerMux)
+
+	runDone := make(chan *httptest.ResponseRecorder, 1)
+	go func() {
+		recorder := httptest.NewRecorder()
+		ownerMux.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/agent/resume/run", strings.NewReader(`{"threadId":"thread-cross-replica","runId":"run-cross-replica","messages":[{"id":"user-1","role":"user","content":"wait"}]}`)))
+		runDone <- recorder
+	}()
+	select {
+	case <-model.contexts:
+	case <-time.After(2 * time.Second):
+		t.Fatal("owner model did not start")
+	}
+	key := runKey{AppName: "resume_agent", AgentRoute: "resume", UserID: "anon:thread-cross-replica", ThreadID: "thread-cross-replica"}
+	if follower.runner.active.lookup(key) != nil {
+		t.Fatal("follower replica unexpectedly owned the run in process")
+	}
+
+	connectStarted := make(chan struct{})
+	connectDone := make(chan *httptest.ResponseRecorder, 1)
+	go func() {
+		recorder := httptest.NewRecorder()
+		followerMux.ServeHTTP(&headerSignalRecorder{ResponseRecorder: recorder, wroteHeader: connectStarted}, httptest.NewRequest(http.MethodPost, "/agent/resume/connect", strings.NewReader(`{"threadId":"thread-cross-replica","runId":"connect-cross-replica","messages":[]}`)))
+		connectDone <- recorder
+	}()
+	select {
+	case <-connectStarted:
+	case <-time.After(2 * time.Second):
+		t.Fatal("cross-replica connect did not start")
+	}
+	close(model.release)
+
+	select {
+	case run := <-runDone:
+		if run.Code != http.StatusOK {
+			t.Fatalf("owner run = %d %s", run.Code, run.Body.String())
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("owner run did not finish")
+	}
+	select {
+	case connect := <-connectDone:
+		frames := parseSSEFrames(t, connect.Body.Bytes())
+		assertStrictAGUISequence(t, frames)
+		if !strings.Contains(connect.Body.String(), "Run survived reconnect.") || !strings.Contains(connect.Body.String(), "RUN_FINISHED") {
+			t.Fatalf("cross-replica replay = %s", connect.Body.String())
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("cross-replica connect did not reach terminal event")
+	}
+}
+
+type cancellationObservingModel struct {
+	started  chan struct{}
+	canceled chan struct{}
+}
+
+func (*cancellationObservingModel) Name() string { return "cancellation-observing-model" }
+
+func (m *cancellationObservingModel) GenerateContent(ctx context.Context, _ *model.LLMRequest, _ bool) iter.Seq2[*model.LLMResponse, error] {
+	return func(yield func(*model.LLMResponse, error) bool) {
+		close(m.started)
+		<-ctx.Done()
+		close(m.canceled)
+		yield(nil, ctx.Err())
+	}
+}
+
+func TestCopilotKitRuntimeStopCancelsRunOwnedByAnotherReplica(t *testing.T) {
+	model := &cancellationObservingModel{started: make(chan struct{}), canceled: make(chan struct{})}
+	sessions := &durableTestSessions{Service: newFakeSessionService(), sharedActiveRunStore: newSharedActiveRunStore()}
+	owner := testCopilotKitRuntimeWithSessions(t, model, sessions)
+	controller := testCopilotKitRuntimeWithSessions(t, model, sessions)
+	ownerMux, controllerMux := http.NewServeMux(), http.NewServeMux()
+	owner.Register(ownerMux)
+	controller.Register(controllerMux)
+
+	runDone := make(chan *httptest.ResponseRecorder, 1)
+	go func() {
+		recorder := httptest.NewRecorder()
+		ownerMux.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/agent/resume/run", strings.NewReader(`{"threadId":"thread-cross-stop","runId":"run-cross-stop","messages":[{"id":"user-1","role":"user","content":"wait"}]}`)))
+		runDone <- recorder
+	}()
+	select {
+	case <-model.started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("owner model did not start")
+	}
+	stop := httptest.NewRecorder()
+	controllerMux.ServeHTTP(stop, httptest.NewRequest(http.MethodPost, "/agent/resume/stop/thread-cross-stop", nil))
+	if stop.Code != http.StatusOK || !strings.Contains(stop.Body.String(), `"stopped":true`) {
+		t.Fatalf("cross-replica stop = %d %s", stop.Code, stop.Body.String())
+	}
+	select {
+	case <-model.canceled:
+	case <-time.After(2 * time.Second):
+		t.Fatal("durable stop was not observed by owner replica")
+	}
+	select {
+	case run := <-runDone:
+		frames := parseSSEFrames(t, run.Body.Bytes())
+		assertStrictAGUISequence(t, frames)
+		if !strings.Contains(run.Body.String(), "RUN_ERROR") {
+			t.Fatalf("stopped run = %s", run.Body.String())
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("stopped owner run did not finish")
+	}
+}
+
+func TestCopilotKitRuntimeTransportFailureReconnectsAndFollowsActiveRun(t *testing.T) {
+	model := &disconnectSurvivalModel{contexts: make(chan context.Context, 1), release: make(chan struct{})}
+	runtime := testCopilotKitRuntime(t, model)
+	mux := http.NewServeMux()
+	runtime.Register(mux)
+
+	original := &failingStreamWriter{header: make(http.Header), failAfter: 2}
+	runDone := make(chan struct{})
+	go func() {
+		mux.ServeHTTP(original, httptest.NewRequest(http.MethodPost, "/agent/resume/run", strings.NewReader(`{"threadId":"thread-transport","runId":"run-transport","messages":[{"id":"user-1","role":"user","content":"wait"}]}`)))
+		close(runDone)
+	}()
+	var runCtx context.Context
+	select {
+	case runCtx = <-model.contexts:
+	case <-time.After(2 * time.Second):
+		t.Fatal("model did not start")
+	}
+
+	connectStarted := make(chan struct{})
+	connectDone := make(chan *httptest.ResponseRecorder, 1)
+	go func() {
+		recorder := httptest.NewRecorder()
+		mux.ServeHTTP(&headerSignalRecorder{ResponseRecorder: recorder, wroteHeader: connectStarted}, httptest.NewRequest(http.MethodPost, "/agent/resume/connect", strings.NewReader(`{"threadId":"thread-transport","runId":"connect-transport","messages":[]}`)))
+		connectDone <- recorder
+	}()
+	select {
+	case <-connectStarted:
+	case <-time.After(2 * time.Second):
+		t.Fatal("connect did not attach")
+	}
+	if err := runCtx.Err(); err != nil {
+		t.Fatalf("active execution was canceled before reconnect follow: %v", err)
+	}
+	close(model.release)
+
+	select {
+	case <-runDone:
+	case <-time.After(2 * time.Second):
+		t.Fatal("detached run did not finish after original transport failed")
+	}
+	if original.writes <= original.failAfter {
+		t.Fatalf("original transport did not fail: writes=%d", original.writes)
+	}
+	select {
+	case connect := <-connectDone:
+		frames := parseSSEFrames(t, connect.Body.Bytes())
+		assertStrictAGUISequence(t, frames)
+		body := connect.Body.String()
+		if !strings.Contains(body, "RUN_STARTED") || !strings.Contains(body, "Run survived reconnect.") || !strings.Contains(body, "RUN_FINISHED") {
+			t.Fatalf("connect did not replay and follow successful run: %s", body)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("connect did not reach terminal event")
 	}
 }
 
@@ -310,7 +625,7 @@ func TestCopilotKitRuntimeStopCancelsAndConnectFollowsActiveRun(t *testing.T) {
 		runDone <- recorder
 	}()
 
-	key := runKey{AgentRoute: "resume", UserID: "anon:thread-active", ThreadID: "thread-active"}
+	key := runKey{AppName: "resume_agent", AgentRoute: "resume", UserID: "anon:thread-active", ThreadID: "thread-active"}
 	deadline := time.Now().Add(2 * time.Second)
 	for runtime.runner.active.lookup(key) == nil && time.Now().Before(deadline) {
 		time.Sleep(time.Millisecond)

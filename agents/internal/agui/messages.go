@@ -32,24 +32,28 @@ import (
 //     the agent's own name. Any Part.Thought text is split into a
 //     preceding role:"reasoning" Message, and function calls become
 //     ToolCalls on a role:"assistant" Message.
-func eventsToMessages(events session.Events) []types.Message {
+func eventsToMessages(events session.Events) ([]types.Message, error) {
 	messages := []types.Message{}
 	if events == nil {
-		return messages
+		return messages, nil
 	}
 	for event := range events.All() {
-		messages = append(messages, eventToMessages(event)...)
+		converted, err := eventToMessages(event)
+		if err != nil {
+			return nil, err
+		}
+		messages = append(messages, converted...)
 	}
-	return messages
+	return messages, nil
 }
 
-func eventToMessages(event *session.Event) []types.Message {
+func eventToMessages(event *session.Event) ([]types.Message, error) {
 	if event == nil || event.Partial {
-		return nil
+		return nil, nil
 	}
 	content := event.Content
 	if content == nil || len(content.Parts) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	var text, thinking strings.Builder
@@ -77,21 +81,25 @@ func eventToMessages(event *session.Event) []types.Message {
 	if len(responses) > 0 {
 		out := make([]types.Message, 0, len(responses))
 		for index, response := range responses {
-			out = append(out, toolResultMessage(event.ID, index, response))
+			message, err := toolResultMessage(event.ID, index, response)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, message)
 		}
-		return out
+		return out, nil
 	}
 
 	textContent, thinkingContent := text.String(), thinking.String()
 	if textContent == "" && thinkingContent == "" && len(calls) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	if event.Author == "user" {
 		if textContent == "" {
-			return nil
+			return nil, nil
 		}
-		return []types.Message{{ID: event.ID, Role: types.RoleUser, Content: textContent}}
+		return []types.Message{{ID: event.ID, Role: types.RoleUser, Content: textContent}}, nil
 	}
 
 	var out []types.Message
@@ -99,7 +107,10 @@ func eventToMessages(event *session.Event) []types.Message {
 		out = append(out, types.Message{ID: event.ID + "-reasoning", Role: types.RoleReasoning, Content: thinkingContent})
 	}
 
-	toolCalls := toAGUIToolCalls(calls)
+	toolCalls, err := toAGUIToolCalls(calls)
+	if err != nil {
+		return nil, err
+	}
 	if textContent != "" || len(toolCalls) > 0 {
 		assistant := types.Message{ID: event.ID, Role: types.RoleAssistant, ToolCalls: toolCalls}
 		if textContent != "" {
@@ -114,58 +125,67 @@ func eventToMessages(event *session.Event) []types.Message {
 		}
 		out = append(out, assistant)
 	}
-	return out
+	return out, nil
 }
 
-// toAGUIToolCalls mirrors converter.go's toolCallEvents argument encoding
-// (json.Marshal, falling back to "{}" on error) so a session's replayed
-// history and its live SSE stream serialize tool arguments identically.
-func toAGUIToolCalls(calls []*genai.FunctionCall) []types.ToolCall {
+// toAGUIToolCalls mirrors converter.go's strict tool identity and argument
+// encoding so replayed history cannot silently diverge from the live stream.
+func toAGUIToolCalls(calls []*genai.FunctionCall) ([]types.ToolCall, error) {
 	if len(calls) == 0 {
-		return nil
+		return nil, nil
 	}
 	out := make([]types.ToolCall, 0, len(calls))
 	for _, call := range calls {
+		if call == nil || !ClientCallID.MatchString(call.ID) || !ClientToolName.MatchString(call.Name) {
+			return nil, fmt.Errorf("invalid persisted tool call")
+		}
+		arguments, err := encodeToolArgs(call.Args)
+		if err != nil {
+			return nil, err
+		}
 		out = append(out, types.ToolCall{
 			ID:   call.ID,
 			Type: "function",
 			Function: types.FunctionCall{
 				Name:      call.Name,
-				Arguments: encodeToolArgs(call.Args),
+				Arguments: arguments,
 			},
 		})
 	}
-	return out
+	return out, nil
 }
 
 // toolResultMessage mirrors converter.go's toolResultEvents payload
 // encoding. The message ID is synthesized from the owning event's ID
 // (unlike the Python reference's random uuid4) so replaying the same
 // session twice yields byte-identical output.
-func toolResultMessage(eventID string, index int, response *genai.FunctionResponse) types.Message {
+func toolResultMessage(eventID string, index int, response *genai.FunctionResponse) (types.Message, error) {
+	if response == nil || !ClientCallID.MatchString(response.ID) {
+		return types.Message{}, fmt.Errorf("invalid persisted tool result")
+	}
 	payload := response.Response
 	if payload == nil {
 		payload = map[string]any{}
 	}
 	encoded, err := json.Marshal(payload)
 	if err != nil {
-		encoded = []byte("{}")
+		return types.Message{}, fmt.Errorf("encode persisted tool result: %w", err)
 	}
 	return types.Message{
 		ID:         fmt.Sprintf("%s-tool-%d", eventID, index),
 		Role:       types.RoleTool,
 		Content:    string(encoded),
 		ToolCallID: response.ID,
-	}
+	}, nil
 }
 
-func encodeToolArgs(args map[string]any) string {
+func encodeToolArgs(args map[string]any) (string, error) {
 	if args == nil {
-		return "{}"
+		return "{}", nil
 	}
 	encoded, err := json.Marshal(args)
 	if err != nil {
-		return "{}"
+		return "", fmt.Errorf("encode persisted tool arguments: %w", err)
 	}
-	return string(encoded)
+	return string(encoded), nil
 }

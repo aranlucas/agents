@@ -78,7 +78,8 @@ type copilotKitAgent struct {
 
 // CopilotKitRuntime exposes the fetch-native v2 runtime's concrete SSE surface
 // directly from the Go gateway. D1-backed ADK sessions provide durable connect
-// replay; activeRuns adds only process-local live replay and cancellation.
+// replay; activeRuns adds low-latency local replay while D1 coordinates active
+// ownership, replay, and cancellation across gateway replicas.
 type CopilotKitRuntime struct {
 	runner  *D1AgentRunner
 	agents  []copilotKitAgent

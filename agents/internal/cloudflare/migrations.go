@@ -12,7 +12,7 @@ import (
 // LatestMigrationVersion is the newest schema marker reported by migration
 // diagnostics. Readiness requires every marker in migrations. Keep existing
 // version strings stable; append instead of editing or renaming applied work.
-const LatestMigrationVersion = "008_universal_product_references"
+const LatestMigrationVersion = "009_agui_active_runs"
 
 type migration struct {
 	version string
@@ -27,7 +27,8 @@ var migrations = []migration{
 	{version: "005_saved_grocery_resources", source: d1migrations.SavedGroceryResources},
 	{version: "006_shopping_profile", source: d1migrations.ShoppingProfile},
 	{version: "007_shopping_profile_artifacts", source: d1migrations.ShoppingProfileArtifacts},
-	{version: LatestMigrationVersion, source: d1migrations.UniversalProductReferences},
+	{version: "008_universal_product_references", source: d1migrations.UniversalProductReferences},
+	{version: LatestMigrationVersion, source: d1migrations.AGUIActiveRuns},
 }
 
 type schemaTable struct {
@@ -43,6 +44,8 @@ var requiredSchemaTables = []schemaTable{
 	{name: "schema_migrations", columns: []string{"version", "applied_at"}},
 	{name: "provider_limits", columns: []string{"provider", "minute_window", "request_count", "expires_at"}},
 	{name: "pending_client_tools", columns: []string{"app_name", "user_id", "thread_id", "call_id", "tool_name", "args_json", "result_json", "status", "created_at", "expires_at"}},
+	{name: "agui_active_runs", columns: []string{"app_name", "user_id", "thread_id", "run_id", "status", "stop_requested", "created_at", "updated_at", "expires_at"}},
+	{name: "agui_active_run_events", columns: []string{"app_name", "user_id", "thread_id", "run_id", "event_index", "event_json", "created_at"}},
 	{name: "telegram_link_tokens", columns: []string{"token_hash", "telegram_user_id", "telegram_chat_id", "expires_at", "consumed_at", "created_at"}},
 	{name: "telegram_account_links", columns: []string{"telegram_user_id", "clerk_user_id", "telegram_chat_id", "linked_at", "unlinked_at"}},
 	{name: "fitness_activities", columns: []string{"user_id", "source", "source_activity_id", "name", "sport_type", "start_date", "end_date", "distance_m", "moving_time_s", "elapsed_time_s", "total_elevation_gain_m", "average_heartrate", "perceived_effort", "data_origin", "updated_at"}},
@@ -80,6 +83,8 @@ var requiredSchemaIndexes = []string{
 	"session_events_order",
 	"provider_limits_expiry",
 	"pending_client_tools_expiry",
+	"agui_active_runs_expiry",
+	"agui_active_run_events_order",
 	"telegram_link_tokens_expiry",
 	"telegram_account_links_clerk",
 	"fitness_activities_user_start",
