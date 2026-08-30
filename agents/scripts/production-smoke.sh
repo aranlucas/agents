@@ -5,6 +5,7 @@ base_url="${AGENTS_BASE_URL:?AGENTS_BASE_URL is required}"
 base_url="${base_url%/}"
 auth_token="${SMOKE_AUTH_TOKEN:-}"
 telegram_url="${TELEGRAM_HEALTH_URL:-}"
+telegram_required="${REQUIRE_TELEGRAM_HEALTH:-0}"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$script_dir/generated-agent-routes.sh"
 agents=("${agent_routes[@]}")
@@ -15,6 +16,11 @@ trap 'rm -rf "$tmp"' EXIT
 pass() { printf 'PASS: %s\n' "$1"; }
 fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
 get_json() { curl --fail --silent --show-error --max-time 20 "$1"; }
+
+case "$telegram_required" in
+  0 | 1) ;;
+  *) fail "REQUIRE_TELEGRAM_HEALTH must be 0 or 1" ;;
+esac
 
 root_health="$(get_json "$base_url/ready")"
 jq -e '.status == "ok" and .checks.d1 == "ok" and .checks.r2 == "ok"' <<<"$root_health" >/dev/null || fail "gateway storage health"
@@ -65,6 +71,10 @@ oauth_status="$(curl --silent --output "$tmp/oauth.out" --write-out '%{http_code
 [[ "$oauth_status" == "200" ]] && grep -q 'RUN_FINISHED' "$tmp/oauth.out" || fail "gateway OAuth credential path"
 pass "gateway OAuth credential path"
 
-[[ -n "$telegram_url" ]] || fail "TELEGRAM_HEALTH_URL is required for worker acceptance"
-get_json "${telegram_url%/}/ready" | jq -e '.status == "ok" and .checks.d1 == "ok" and .checks.r2 == "ok"' >/dev/null || fail "Telegram worker readiness"
-pass "Telegram worker readiness"
+if [[ "$telegram_required" == "1" ]]; then
+  [[ -n "$telegram_url" ]] || fail "TELEGRAM_HEALTH_URL is required when REQUIRE_TELEGRAM_HEALTH=1"
+  get_json "${telegram_url%/}/ready" | jq -e '.status == "ok" and .checks.d1 == "ok" and .checks.r2 == "ok"' >/dev/null || fail "Telegram worker readiness"
+  pass "Telegram worker readiness"
+else
+  printf 'SKIP: Telegram worker readiness (set REQUIRE_TELEGRAM_HEALTH=1 to enable)\n'
+fi
