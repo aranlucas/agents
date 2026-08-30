@@ -42,7 +42,7 @@ func requestInputInterrupt(request *session.RequestInput) (types.Interrupt, bool
 
 // unresolvedSessionInterrupts reconstructs the human-input requests that are
 // still open in durable ADK history. A browser reconnect can therefore restore
-// useInterrupt even after the process-local active-run replay window has ended.
+// useInterrupt even after the active-run replay window has ended.
 func unresolvedSessionInterrupts(events session.Events) []types.Interrupt {
 	if events == nil {
 		return nil

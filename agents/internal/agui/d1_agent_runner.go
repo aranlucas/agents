@@ -7,31 +7,35 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"agents/internal/agentruntime"
 	"agents/internal/auth"
 	"agents/internal/common"
+	"agents/internal/observability"
 
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
-	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/encoding/sse"
 	"google.golang.org/adk/v2/session"
 )
 
 // D1AgentRunner is the gateway's concrete CopilotKit runner. ADK's D1-backed
-// session service owns durable state and event history; activeRuns owns only
-// process-local execution locking, live replay, and cancellation. Unlike
-// IntelligenceAgentRunner, it does not claim cross-instance coordination or
-// realtime metadata subscriptions.
+// session service owns durable state and event history; activeRuns adds a
+// low-latency local path while the optional ActiveRunStore implemented by the
+// D1 session service coordinates ownership, replay, and stop across replicas.
+// Unlike IntelligenceAgentRunner, it does not require a managed control plane
+// or realtime metadata subscription.
 type D1AgentRunner struct {
 	sessions session.Service
 	active   *activeRuns
+	store    ActiveRunStore
 }
 
 func NewD1AgentRunner(sessions session.Service) (*D1AgentRunner, error) {
 	if sessions == nil {
 		return nil, errors.New("session service is required")
 	}
-	return &D1AgentRunner{sessions: sessions, active: newActiveRuns()}, nil
+	store, _ := sessions.(ActiveRunStore)
+	return &D1AgentRunner{sessions: sessions, active: newActiveRuns(store), store: store}, nil
 }
 
 func (r *D1AgentRunner) newRunHandler(entry agentruntime.Entry, opts ...Option) (http.Handler, error) {
@@ -52,42 +56,146 @@ func (r *D1AgentRunner) connectHandler(agent copilotKitAgent) http.Handler {
 			identity = auth.Identity{UserID: "anonymous", Public: true}
 		}
 		key := runKey{
+			AppName:    agent.entry.AppName,
 			AgentRoute: agent.entry.Route,
 			UserID:     effectiveUserID(identity, input.ThreadID),
 			ThreadID:   input.ThreadID,
 		}
 
+		local := r.active.lookup(key)
+		var durableKey ActiveRunKey
+		var stored *ActiveRunSnapshot
+		if local == nil && r.store != nil {
+			durableKey = ActiveRunKey{AppName: key.AppName, UserID: key.UserID, ThreadID: key.ThreadID}
+			stored, err = r.store.CurrentActiveRun(request.Context(), durableKey)
+			if err != nil && !errors.Is(err, ErrActiveRunNotFound) {
+				log.Printf("CopilotKit connect: active-run lookup failed for agent=%s thread=%s: %v", agent.id, input.ThreadID, err)
+				writeJSONError(w, http.StatusInternalServerError, "state_unavailable")
+				return
+			}
+			if errors.Is(err, ErrActiveRunNotFound) {
+				stored = nil
+			}
+		}
+
+		var state stateResponse
+		ctx := request.Context()
+		if local == nil && stored == nil {
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithTimeout(request.Context(), agent.entry.Timeout)
+			defer cancel()
+			state, err = loadThreadState(ctx, r.sessions, agent.entry, identity, input.ThreadID)
+			if err != nil {
+				log.Printf("CopilotKit connect: session lookup failed for agent=%s thread=%s: %v", agent.id, input.ThreadID, err)
+				writeJSONError(w, http.StatusInternalServerError, "state_unavailable")
+				return
+			}
+		}
+
 		writeSSEHeaders(w)
-		frame := sse.NewSSEWriter()
-		if active := r.active.lookup(key); active != nil {
-			w.WriteHeader(http.StatusOK)
-			if err := active.replay(request.Context(), func(event events.Event) error {
-				return frame.WriteEvent(request.Context(), w, event)
+		w.WriteHeader(http.StatusOK)
+		emitter := newReplayAwareEmitter(w, nil)
+		emitFailure := func(streamErr error) {
+			var transportErr *eventTransportError
+			if errors.As(streamErr, &transportErr) {
+				return
+			}
+			terminalCtx := context.WithoutCancel(request.Context())
+			log.Printf("CopilotKit connect failed: agent=%s thread=%s: %v", agent.id, input.ThreadID, streamErr)
+			observability.CaptureError(terminalCtx, streamErr, observability.ErrorDetails{
+				Operation: "agent.connect",
+				Tags:      map[string]string{"agent.app_name": agent.entry.AppName, "agent.route": agent.entry.Route},
+				Context:   map[string]any{"run_id": input.RunID, "thread_id": input.ThreadID},
+			})
+			if err := emitter.Emit(terminalCtx, sanitizeRunError(input.RunID, streamErr)); err != nil && !errors.Is(err, errEventAfterTerminal) {
+				log.Printf("CopilotKit connect: terminal emission failed for agent=%s thread=%s: %v", agent.id, input.ThreadID, err)
+			}
+		}
+		defer func() {
+			recovered := recover()
+			if recovered == nil {
+				return
+			}
+			panicErr := fmt.Errorf("AG-UI connect panic: %v", recovered)
+			terminalCtx := context.WithoutCancel(request.Context())
+			log.Printf("CopilotKit connect panicked: agent=%s thread=%s", agent.id, input.ThreadID)
+			observability.CaptureError(terminalCtx, panicErr, observability.ErrorDetails{
+				Operation: "agent.connect",
+				Tags:      map[string]string{"agent.app_name": agent.entry.AppName, "agent.route": agent.entry.Route},
+				Context:   map[string]any{"run_id": input.RunID, "thread_id": input.ThreadID},
+			})
+			if err := emitter.Emit(terminalCtx, sanitizeRunError(input.RunID, panicErr)); err != nil && !errors.Is(err, errEventAfterTerminal) {
+				log.Printf("CopilotKit connect: panic terminal emission failed for agent=%s thread=%s: %v", agent.id, input.ThreadID, err)
+			}
+		}()
+		if local != nil {
+			if err := local.replay(request.Context(), func(encoded []byte) error {
+				return emitter.emitEncoded(request.Context(), encoded)
 			}); err != nil && request.Context().Err() == nil {
-				log.Printf("CopilotKit connect: active replay failed for agent=%s thread=%s: %v", agent.id, input.ThreadID, err)
+				emitFailure(err)
+			}
+			return
+		}
+		if stored != nil {
+			if err := r.replayDurableRun(request.Context(), durableKey, stored, emitter); err != nil && request.Context().Err() == nil {
+				emitFailure(err)
 			}
 			return
 		}
 
-		ctx, cancel := context.WithTimeout(request.Context(), agent.entry.Timeout)
-		defer cancel()
-		state, err := loadThreadState(ctx, r.sessions, agent.entry, identity, input.ThreadID)
-		if err != nil {
-			log.Printf("CopilotKit connect: session lookup failed for agent=%s thread=%s: %v", agent.id, input.ThreadID, err)
-			writeJSONError(w, http.StatusInternalServerError, "state_unavailable")
+		if err := emitter.Emit(ctx, events.NewRunStartedEvent(input.ThreadID, input.RunID)); err != nil {
+			emitFailure(err)
 			return
 		}
-
-		w.WriteHeader(http.StatusOK)
-		_ = frame.WriteEvent(ctx, w, events.NewRunStartedEvent(input.ThreadID, input.RunID))
-		_ = frame.WriteEvent(ctx, w, events.NewMessagesSnapshotEvent(state.Messages))
-		_ = frame.WriteEvent(ctx, w, events.NewStateSnapshotEvent(state.State))
+		if err := emitter.Emit(ctx, events.NewMessagesSnapshotEvent(state.Messages)); err != nil {
+			emitFailure(err)
+			return
+		}
+		if err := emitter.Emit(ctx, events.NewStateSnapshotEvent(state.State)); err != nil {
+			emitFailure(err)
+			return
+		}
 		finishedOutcome := events.WithSuccessOutcome()
 		if len(state.Interrupts) > 0 {
 			finishedOutcome = events.WithInterruptOutcome(state.Interrupts)
 		}
-		_ = frame.WriteEvent(ctx, w, events.NewRunFinishedEventWithOptions(input.ThreadID, input.RunID, finishedOutcome))
+		if err := emitter.Emit(ctx, events.NewRunFinishedEventWithOptions(input.ThreadID, input.RunID, finishedOutcome)); err != nil {
+			emitFailure(err)
+		}
 	})
+}
+
+func (r *D1AgentRunner) replayDurableRun(ctx context.Context, key ActiveRunKey, snapshot *ActiveRunSnapshot, emitter *replayAwareEmitter) error {
+	if snapshot == nil || snapshot.RunID == "" {
+		return ErrActiveRunNotFound
+	}
+	cursor := int64(0)
+	for {
+		for _, encoded := range snapshot.Events {
+			if err := emitter.emitEncoded(ctx, encoded); err != nil {
+				return err
+			}
+			cursor++
+		}
+		if snapshot.Finished {
+			if emitter.terminal {
+				return nil
+			}
+			return emitter.Emit(context.WithoutCancel(ctx), sanitizeRunError(snapshot.RunID, errors.New("durable AG-UI run finished without a terminal event")))
+		}
+		timer := time.NewTimer(250 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		case <-timer.C:
+		}
+		loaded, err := r.store.LoadActiveRun(ctx, key, snapshot.RunID, cursor)
+		if err != nil {
+			return err
+		}
+		snapshot = loaded
+	}
 }
 
 func (r *D1AgentRunner) stopHandler(agent copilotKitAgent) http.Handler {
@@ -101,11 +209,17 @@ func (r *D1AgentRunner) stopHandler(agent copilotKitAgent) http.Handler {
 		if !ok {
 			identity = auth.Identity{UserID: "anonymous", Public: true}
 		}
-		stopped := r.active.stop(runKey{
+		stopped, stopErr := r.active.requestStop(request.Context(), runKey{
+			AppName:    agent.entry.AppName,
 			AgentRoute: agent.entry.Route,
 			UserID:     effectiveUserID(identity, threadID),
 			ThreadID:   threadID,
 		})
+		if stopErr != nil {
+			log.Printf("CopilotKit stop: D1 request failed for agent=%s thread=%s: %v", agent.id, threadID, stopErr)
+			writeJSONError(w, http.StatusInternalServerError, "state_unavailable")
+			return
+		}
 
 		if !stopped {
 			if err := common.WriteJSON(w, http.StatusOK, map[string]any{

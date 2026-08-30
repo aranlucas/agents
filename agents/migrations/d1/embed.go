@@ -46,3 +46,8 @@ var ShoppingProfileArtifacts string
 //
 //go:embed 008_universal_product_references.sql
 var UniversalProductReferences string
+
+// AGUIActiveRuns contains the cross-replica AG-UI execution lease and replay journal.
+//
+//go:embed 009_agui_active_runs.sql
+var AGUIActiveRuns string

@@ -105,6 +105,29 @@ func TestRegisterRejectsControlCharacterCallID(t *testing.T) {
 	}
 }
 
+func TestRegisterBatchConflictLeavesEveryNewCallUnregistered(t *testing.T) {
+	store := newPendingFixture(t)
+	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
+	pending := NewPendingStore(store.d1, func() time.Time { return now })
+	scope := agui.ToolScope{AppName: "travel", UserID: "user-a", ThreadID: "thread-a"}
+	if err := pending.Register(t.Context(), scope, "call-existing", "approve", jsontext.Value(`{"value":1}`)); err != nil {
+		t.Fatal(err)
+	}
+	err := pending.RegisterBatch(t.Context(), scope, []agui.PendingToolCall{
+		{CallID: "call-new", ToolName: "approve", Args: jsontext.Value(`{"value":2}`)},
+		{CallID: "call-existing", ToolName: "approve", Args: jsontext.Value(`{"value":3}`)},
+	})
+	if err == nil {
+		t.Fatal("conflicting batch registration succeeded")
+	}
+	store.mu.Lock()
+	_, orphaned := store.records[recordKey(scope.AppName, scope.UserID, scope.ThreadID, "call-new")]
+	store.mu.Unlock()
+	if orphaned {
+		t.Fatal("earlier call from conflicting batch remained registered")
+	}
+}
+
 func TestPendingToolRowKeepsOriginalRequestAsValidatedJSON(t *testing.T) {
 	response, err := (pendingToolRow{
 		ToolName:   "request_user_approval",
@@ -196,6 +219,99 @@ func TestResolveIsIdempotentUntilTheResultIsConsumed(t *testing.T) {
 	}
 }
 
+func TestClaimBatchValidatesEveryPayloadBeforeConsumingAnyCall(t *testing.T) {
+	store := newPendingFixture(t)
+	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
+	pending := NewPendingStore(store.d1, func() time.Time { return now })
+	scope := agui.ToolScope{AppName: "travel", UserID: "user-a", ThreadID: "thread-a"}
+	for _, callID := range []string{"call-1", "call-2"} {
+		if err := pending.Register(t.Context(), scope, callID, "confirm_booking", jsontext.Value(`{"trip":"one"}`)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	identity := auth.Identity{UserID: scope.UserID}
+	malformed := []agui.PendingToolResult{
+		{CallID: "call-1", Payload: jsontext.Value(`{"approved":true}`)},
+		{CallID: "call-2", Payload: jsontext.Value(`[]`)},
+	}
+	if _, err := pending.ClaimBatch(t.Context(), identity, scope, malformed); err == nil {
+		t.Fatal("ClaimBatch accepted malformed second payload")
+	}
+	valid := []agui.PendingToolResult{
+		{CallID: "call-1", Payload: jsontext.Value(`{"approved":true}`)},
+		{CallID: "call-2", Payload: jsontext.Value(`{"approved":false}`)},
+	}
+	responses, err := pending.ClaimBatch(t.Context(), identity, scope, valid)
+	if err != nil || len(responses) != 2 {
+		t.Fatalf("ClaimBatch after malformed retry = %#v, %v", responses, err)
+	}
+}
+
+func TestClaimBatchAcceptsIdenticalResolvedRetryAndRejectsWrongScope(t *testing.T) {
+	store := newPendingFixture(t)
+	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
+	pending := NewPendingStore(store.d1, func() time.Time { return now })
+	scope := agui.ToolScope{AppName: "travel", UserID: "user-a", ThreadID: "thread-a"}
+	if err := pending.Register(t.Context(), scope, "call-1", "confirm_booking", jsontext.Value(`{"trip":"one"}`)); err != nil {
+		t.Fatal(err)
+	}
+	result := jsontext.Value(`{"approved":true}`)
+	identity := auth.Identity{UserID: scope.UserID}
+	if err := pending.Resolve(t.Context(), identity, scope.AppName, scope.ThreadID, "call-1", result); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pending.ClaimBatch(t.Context(), auth.Identity{UserID: "user-b"}, scope, []agui.PendingToolResult{{CallID: "call-1", Payload: result}}); !errors.Is(err, agui.ErrPendingToolNotFound) {
+		t.Fatalf("cross-user ClaimBatch error = %v", err)
+	}
+	responses, err := pending.ClaimBatch(t.Context(), identity, scope, []agui.PendingToolResult{{CallID: "call-1", Payload: result}})
+	if err != nil || len(responses) != 1 || responses[0].Response["approved"] != true {
+		t.Fatalf("identical resolved ClaimBatch = %#v, %v", responses, err)
+	}
+}
+
+func TestConcurrentDuplicateBatchClaimsOnlyOneSucceeds(t *testing.T) {
+	store := newPendingFixture(t)
+	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
+	pending := NewPendingStore(store.d1, func() time.Time { return now })
+	scope := agui.ToolScope{AppName: "travel", UserID: "user-a", ThreadID: "thread-a"}
+	for _, callID := range []string{"call-1", "call-2"} {
+		if err := pending.Register(t.Context(), scope, callID, "confirm_booking", jsontext.Value(`{"trip":"one"}`)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	submitted := []agui.PendingToolResult{
+		{CallID: "call-1", Payload: jsontext.Value(`{"approved":true}`)},
+		{CallID: "call-2", Payload: jsontext.Value(`{"approved":false}`)},
+	}
+	start := make(chan struct{})
+	errorsByAttempt := make(chan error, 2)
+	var group sync.WaitGroup
+	for range 2 {
+		group.Go(func() {
+			<-start
+			_, err := pending.ClaimBatch(t.Context(), auth.Identity{UserID: scope.UserID}, scope, submitted)
+			errorsByAttempt <- err
+		})
+	}
+	close(start)
+	group.Wait()
+	close(errorsByAttempt)
+	successes, rejected := 0, 0
+	for err := range errorsByAttempt {
+		switch {
+		case err == nil:
+			successes++
+		case errors.Is(err, agui.ErrPendingToolNotFound):
+			rejected++
+		default:
+			t.Fatalf("unexpected ClaimBatch error: %v", err)
+		}
+	}
+	if successes != 1 || rejected != 1 {
+		t.Fatalf("concurrent batch outcomes: successes=%d rejected=%d", successes, rejected)
+	}
+}
+
 type pendingRecord struct {
 	app, user, thread, call, name, args, result, status string
 	expires                                             int64
@@ -244,6 +360,31 @@ func (f *pendingFixture) handle(w http.ResponseWriter, r *http.Request) {
 		changes := int64(0)
 		sql := strings.TrimSpace(statement.SQL)
 		switch {
+		case strings.HasPrefix(sql, "WITH incoming") && strings.Contains(sql, "INSERT INTO pending_client_tools"):
+			count := int(statement.Params[len(statement.Params)-1].(float64))
+			incoming := make([]pendingRecord, 0, count)
+			compatible := true
+			for callIndex := range count {
+				offset := callIndex * 8
+				record := pendingRecord{
+					app: textParam(statement.Params[offset]), user: textParam(statement.Params[offset+1]), thread: textParam(statement.Params[offset+2]),
+					call: textParam(statement.Params[offset+3]), name: textParam(statement.Params[offset+4]), args: textParam(statement.Params[offset+5]),
+					status: "pending", expires: int64(statement.Params[offset+7].(float64)),
+				}
+				incoming = append(incoming, record)
+				if existing, ok := f.records[recordKey(record.app, record.user, record.thread, record.call)]; ok && (existing.name != record.name || existing.args != record.args || existing.status != "pending") {
+					compatible = false
+				}
+			}
+			if compatible {
+				for _, record := range incoming {
+					key := recordKey(record.app, record.user, record.thread, record.call)
+					if _, exists := f.records[key]; !exists {
+						f.records[key] = record
+						changes++
+					}
+				}
+			}
 		case strings.HasPrefix(sql, "INSERT INTO pending_client_tools"):
 			key := recordKey(textParam(statement.Params[0]), textParam(statement.Params[1]), textParam(statement.Params[2]), textParam(statement.Params[3]))
 			f.records[key] = pendingRecord{app: textParam(statement.Params[0]), user: textParam(statement.Params[1]), thread: textParam(statement.Params[2]), call: textParam(statement.Params[3]), name: textParam(statement.Params[4]), args: textParam(statement.Params[5]), status: "pending", expires: int64(statement.Params[7].(float64))}
@@ -271,6 +412,49 @@ func (f *pendingFixture) handle(w http.ResponseWriter, r *http.Request) {
 			now := int64(statement.Params[4].(float64))
 			if ok && record.status == "resolved" && record.expires > now {
 				rows = append(rows, map[string]any{"tool_name": record.name, "args_json": record.args, "result_json": record.result})
+			}
+		case strings.HasPrefix(sql, "SELECT call_id, tool_name, args_json, status"):
+			app, user, thread := textParam(statement.Params[0]), textParam(statement.Params[1]), textParam(statement.Params[2])
+			for _, value := range statement.Params[3:] {
+				callID := textParam(value)
+				if record, ok := f.records[recordKey(app, user, thread, callID)]; ok {
+					rows = append(rows, map[string]any{"call_id": record.call, "tool_name": record.name, "args_json": record.args, "status": record.status})
+				}
+			}
+		case strings.HasPrefix(sql, "DELETE FROM pending_client_tools") && strings.Contains(sql, "RETURNING call_id"):
+			app, user, thread := textParam(statement.Params[0]), textParam(statement.Params[1]), textParam(statement.Params[2])
+			now := int64(statement.Params[3].(float64))
+			countIndex := 4
+			for countIndex < len(statement.Params) {
+				if _, ok := statement.Params[countIndex].(float64); ok {
+					break
+				}
+				countIndex++
+			}
+			count := int(statement.Params[countIndex].(float64))
+			callIDs := make([]string, count)
+			payloads := make(map[string]string, count)
+			for callIndex := range count {
+				callIDs[callIndex] = textParam(statement.Params[4+callIndex])
+				conditionIndex := 4 + count + callIndex*2
+				payloads[textParam(statement.Params[conditionIndex])] = textParam(statement.Params[conditionIndex+1])
+			}
+			valid := true
+			for _, callID := range callIDs {
+				record, ok := f.records[recordKey(app, user, thread, callID)]
+				if !ok || record.expires <= now || (record.status != "pending" && (record.status != "resolved" || record.result != payloads[callID])) {
+					valid = false
+					break
+				}
+			}
+			if valid {
+				for _, callID := range callIDs {
+					key := recordKey(app, user, thread, callID)
+					record := f.records[key]
+					rows = append(rows, map[string]any{"call_id": record.call, "tool_name": record.name, "args_json": record.args, "result_json": record.result, "status": record.status})
+					delete(f.records, key)
+					changes++
+				}
 			}
 		case strings.HasPrefix(sql, "DELETE FROM pending_client_tools") && strings.Contains(sql, "call_id"):
 			key := recordKey(textParam(statement.Params[0]), textParam(statement.Params[1]), textParam(statement.Params[2]), textParam(statement.Params[3]))
