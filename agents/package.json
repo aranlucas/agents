@@ -8,7 +8,7 @@
     "fmt:check": "test -z \"$(go run mvdan.cc/gofumpt@v0.11.0 -l .)\"",
     "typecheck": "go vet ./...",
     "build": "CGO_ENABLED=0 go build -mod=readonly -trimpath -o ./bin/gateway ./cmd/gateway && CGO_ENABLED=0 go build -mod=readonly -trimpath -o ./bin/telegram ./cmd/telegram",
-    "test": "go test -race ./...",
+    "test": "go test -race ./... && bash scripts/test-production-smoke.sh",
     "coverage": "go test -race -coverprofile=coverage.out ./...",
     "vulncheck": "go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./...",
     "contracts:generate": "go run ./cmd/contracts",

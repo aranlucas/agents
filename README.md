@@ -76,20 +76,32 @@ service to `.railway/railway.ts` when it should be; it needs all `CF_*` values,
 `GROQ_API_KEY`, and `TELEGRAM_BOT_TOKEN`, and browser-origin and Clerk-JWT
 settings stay gateway-only.
 
-Production acceptance requires an authenticated Clerk session token and both
-deployed service URLs. The smoke script health-checks every registered route,
-runs the Resume agent, exercises a client tool and Grocery OAuth headers, and
-checks Telegram readiness before recording Railway's raw RSS samples. It still
-requires `TELEGRAM_HEALTH_URL`, so it cannot pass end to end until the Telegram
-worker is deployed:
+Production gateway acceptance requires an authenticated Clerk session token and
+the deployed gateway URL. By default, the smoke script health-checks every
+registered route, runs the Resume agent, and exercises a client tool and
+Grocery OAuth headers. This default matches the currently deployed
+`agents-gateway` service.
 
 ```bash
 AGENTS_BASE_URL=https://agents-gateway.example \
 SMOKE_AUTH_TOKEN="$CLERK_SESSION_TOKEN" \
-TELEGRAM_HEALTH_URL=https://agents-telegram.example \
   bash agents/scripts/production-smoke.sh
 bash agents/scripts/measure-rss.sh agents-gateway production 15m
 ```
+
+When the Telegram worker is deployed, opt into its readiness check explicitly
+with `REQUIRE_TELEGRAM_HEALTH=1`:
+
+```bash
+AGENTS_BASE_URL=https://agents-gateway.example \
+SMOKE_AUTH_TOKEN="$CLERK_SESSION_TOKEN" \
+REQUIRE_TELEGRAM_HEALTH=1 \
+TELEGRAM_HEALTH_URL=https://agents-telegram.example \
+  bash agents/scripts/production-smoke.sh
+```
+
+The Telegram check is skipped unless that flag is set; supplying a Telegram URL
+alone does not change the gateway-only default.
 
 The RSS check fails unless Railway returns at least one sample and the peak is
 strictly below 0.4 GB.
