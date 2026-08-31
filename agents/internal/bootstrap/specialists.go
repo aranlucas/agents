@@ -74,8 +74,16 @@ func (s Specialists) BindingFor(route string) (Binding, bool) {
 
 // Registry builds gateway runtime entries from canonical catalog metadata.
 func (s Specialists) Registry() (*agentruntime.Registry, error) {
-	entries := make([]agentruntime.Entry, 0, len(catalog.All()))
-	for _, spec := range catalog.All() {
+	return s.RegistryFor(catalog.All())
+}
+
+// RegistryFor builds entries for one explicitly selected catalog surface.
+// This lets a process expose a latency-critical public agent before optional
+// private agents finish hydrating, while preserving the same canonical
+// metadata and binding validation as Registry.
+func (s Specialists) RegistryFor(specs []catalog.Spec) (*agentruntime.Registry, error) {
+	entries := make([]agentruntime.Entry, 0, len(specs))
+	for _, spec := range specs {
 		binding, err := s.require(spec)
 		if err != nil {
 			return nil, err

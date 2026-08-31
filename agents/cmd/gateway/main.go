@@ -12,12 +12,14 @@ import (
 	"fmt"
 	"log"
 	"maps"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -54,6 +56,7 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"github.com/joho/godotenv"
+	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/model/gemini"
 	"google.golang.org/adk/v2/session"
@@ -67,6 +70,103 @@ const (
 	defaultStreamChunkDelayMs  = 18
 	defaultStreamChunking      = "word"
 )
+
+type startupTimer struct {
+	enabled bool
+	start   time.Time
+	last    time.Time
+}
+
+func newStartupTimer() startupTimer {
+	start := time.Now()
+	return startupTimer{
+		enabled: strings.EqualFold(strings.TrimSpace(os.Getenv("STARTUP_TRACE")), "true"),
+		start:   start,
+		last:    start,
+	}
+}
+
+func (timer *startupTimer) mark(phase string) {
+	if !timer.enabled {
+		return
+	}
+	now := time.Now()
+	log.Printf("startup phase=%s elapsed=%s delta=%s", phase, now.Sub(timer.start), now.Sub(timer.last))
+	timer.last = now
+}
+
+type startupGroup struct {
+	wg   sync.WaitGroup
+	once sync.Once
+	err  error
+}
+
+func (group *startupGroup) Go(label string, build func() error) {
+	group.wg.Go(func() {
+		if err := build(); err != nil {
+			group.once.Do(func() { group.err = fmt.Errorf("%s: %w", label, err) })
+		}
+	})
+}
+
+func (group *startupGroup) Wait() error {
+	group.wg.Wait()
+	return group.err
+}
+
+type handlerState struct {
+	handler http.Handler
+}
+
+// handlerSwitcher publishes the public Resume surface first, then atomically
+// swaps in the complete gateway once the remaining agents have hydrated.
+// Requests never observe a partially-built mux.
+type handlerSwitcher struct {
+	current                 atomic.Pointer[handlerState]
+	startNonResumeHydrate   func()
+	nonResumeHydrationReady <-chan struct{}
+	firstNonResumeRequest   sync.Once
+}
+
+func newHandlerSwitcher(initial http.Handler) *handlerSwitcher {
+	switcher := &handlerSwitcher{}
+	switcher.Swap(initial)
+	return switcher
+}
+
+func (switcher *handlerSwitcher) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if switcher.startNonResumeHydrate != nil && !resumeCriticalPath(r.URL.Path) {
+		switcher.firstNonResumeRequest.Do(switcher.startNonResumeHydrate)
+		<-switcher.nonResumeHydrationReady
+	}
+	state := switcher.current.Load()
+	if state == nil || state.handler == nil {
+		http.Error(w, "gateway is initializing", http.StatusServiceUnavailable)
+		return
+	}
+	state.handler.ServeHTTP(w, r)
+}
+
+func (switcher *handlerSwitcher) Swap(next http.Handler) {
+	if next == nil {
+		return
+	}
+	switcher.current.Store(&handlerState{handler: next})
+}
+
+func (switcher *handlerSwitcher) startOnNonResumeRequest(start func(), ready <-chan struct{}) {
+	switcher.startNonResumeHydrate = start
+	switcher.nonResumeHydrationReady = ready
+}
+
+func resumeCriticalPath(path string) bool {
+	switch path {
+	case "/live", "/ready", "/health", "/agent/resume", "/resume":
+		return true
+	default:
+		return strings.HasPrefix(path, "/agent/resume/") || strings.HasPrefix(path, "/resume/")
+	}
+}
 
 // healthChecker is satisfied by *cloudflare.D1 and *cloudflare.R2. It is
 // declared here (not in cloudflare) so Dependencies can be exercised with
@@ -102,6 +202,8 @@ type Dependencies struct {
 // marked Public), and the configured browser-origin policy. It mounts the
 // one prebuilt AG-UI handler per entry and a shared state handler. Binding
 // the agent at construction validates and reuses its ADK runner across runs.
+// The grocery REST surface is optional so a latency-critical partial surface
+// can be assembled without loading its OpenAPI validator or background store.
 func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 	if deps.Registry == nil {
 		return nil, errors.New("agent registry is required")
@@ -109,13 +211,10 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 	if deps.Sessions == nil {
 		return nil, errors.New("session service is required")
 	}
-	if deps.Groceries == nil {
-		return nil, errors.New("grocery library repository is required")
-	}
 	if deps.Now == nil {
 		deps.Now = time.Now
 	}
-	if deps.Shopping == nil {
+	if deps.Groceries != nil && deps.Shopping == nil {
 		deps.Shopping, _ = deps.Groceries.(groceries.ShoppingRepository)
 	}
 
@@ -175,10 +274,15 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 	if deps.Fitness != nil {
 		mux.HandleFunc("POST /fitness/activities/sync", fitnessSyncHandler(deps.Fitness, deps.Now))
 	}
-	if err := registerGroceryAPI(mux, deps.Groceries, deps.Shopping, deps.Now); err != nil {
-		return nil, fmt.Errorf("register grocery API: %w", err)
+	if deps.Groceries != nil {
+		if err := registerGroceryAPI(mux, deps.Groceries, deps.Shopping, deps.Now); err != nil {
+			return nil, fmt.Errorf("register grocery API: %w", err)
+		}
 	}
-	krogerLinker := newKrogerLinker(deps.Shopping, deps.KrogerMCPURL, nil)
+	var krogerLinker *krogerLinker
+	if deps.Shopping != nil {
+		krogerLinker = newKrogerLinker(deps.Shopping, deps.KrogerMCPURL, nil)
+	}
 
 	var verifiers []auth.TokenVerifier
 	if deps.Verifier != nil {
@@ -194,15 +298,18 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 	// mux (its normal 404) and only push matched paths through the auth
 	// gate.
 	protected := auth.RequireIdentity(publicRoutes, withOAuthCredentials(deps.Clerk, krogerLinker, mux), verifiers...)
-	groceryVerifiers := append([]auth.TokenVerifier{}, verifiers...)
-	groceryVerifiers = append(groceryVerifiers, newKrogerTokenVerifier(deps.Shopping, deps.KrogerMCPURL, nil))
-	groceryProtected := auth.RequireIdentity(nil, mux, groceryVerifiers...)
+	var groceryProtected http.Handler
+	if deps.Groceries != nil {
+		groceryVerifiers := append([]auth.TokenVerifier{}, verifiers...)
+		groceryVerifiers = append(groceryVerifiers, newKrogerTokenVerifier(deps.Shopping, deps.KrogerMCPURL, nil))
+		groceryProtected = auth.RequireIdentity(nil, mux, groceryVerifiers...)
+	}
 	routed := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if _, pattern := mux.Handler(r); pattern == "" {
 			mux.ServeHTTP(w, r)
 			return
 		}
-		if strings.HasPrefix(r.URL.Path, "/api/grocery/") {
+		if groceryProtected != nil && strings.HasPrefix(r.URL.Path, "/api/grocery/") {
 			groceryProtected.ServeHTTP(w, r)
 			return
 		}
@@ -601,6 +708,8 @@ func resumeHealth(m model.LLM) func(context.Context) error {
 }
 
 func main() {
+	startup := newStartupTimer()
+	startup.mark("process")
 	// Load local development values without overriding explicitly exported env vars.
 	for _, path := range []string{".env", "../.env"} {
 		if err := godotenv.Load(path); err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -617,6 +726,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("load configuration: %v", err)
 	}
+	startup.mark("config")
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	telemetryConfig := observability.Config{
@@ -627,6 +737,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("configure Sentry: %v", err)
 	}
+	startup.mark("sentry")
 	defer flushSentry()
 
 	d1, err := cloudflare.NewD1(cfg.Cloudflare, nil)
@@ -637,247 +748,54 @@ func main() {
 	if err != nil {
 		log.Fatalf("configure R2: %v", err)
 	}
+	startup.mark("persistence")
 
 	sessions := cloudflare.NewSessionService(d1, time.Now)
 	pending := cloudflare.NewPendingStore(d1, time.Now)
 	limiter := rate.NewProviderLimiter(d1, time.Now)
-	availableProviders := providerpolicy.FallbackProviders(cfg.Providers)
-	var braveSearch *bravesearch.Client
-	if braveKey := strings.TrimSpace(os.Getenv("BRAVE_API_KEY")); braveKey != "" {
-		braveSearch, err = bravesearch.New(common.NewHTTPClient(15*time.Second, 4<<20).Client, "https://api.search.brave.com/res/v1/web/search", braveKey, 10)
-		if err != nil {
-			log.Fatalf("configure Brave search: %v", err)
-		}
-	}
+	modelHTTPClient := common.NewHTTPClient(180*time.Second, 32<<20).Client
+	agentToolset := agui.NewAGUIToolset(pending)
+	startup.mark("shared")
 
 	resumeProvider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Resume)
 	if err != nil {
 		log.Fatalf("configure resume model: %v", err)
 	}
-	resumeModel := openai.New(resumeProvider, nil, limiter)
-	resumeAgent, err := resume.New(resumeModel, agui.NewAGUIToolset(pending))
+	resumeModel := openai.New(resumeProvider, modelHTTPClient, limiter)
+	resumeAgent, err := resume.New(resumeModel, agentToolset)
 	if err != nil {
 		log.Fatalf("build resume agent: %v", err)
 	}
-	jobsWebLoader := common.NewWebLoader(common.NewHTTPClient(20*time.Second, 4<<20), 100_000)
-	jobsAgent, err := jobs.New(resumeModel, braveSearch, jobsWebLoader, agui.NewAGUIToolset(pending))
-	if err != nil {
-		log.Fatalf("build jobs agent: %v", err)
-	}
-	interviewAgent, err := interview.New(resumeModel, agui.NewAGUIToolset(pending))
-	if err != nil {
-		log.Fatalf("build interview agent: %v", err)
-	}
-	presentationProvider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Presentation)
-	if err != nil {
-		log.Fatalf("configure presentation model: %v", err)
-	}
-	presentationModel, err := openai.NewMulti(presentationProvider, availableProviders, nil, limiter)
-	if err != nil {
-		log.Fatalf("configure presentation fallbacks: %v", err)
-	}
-	presentationAgent, err := presentation.New(presentationModel, braveSearch, agui.NewAGUIToolset(pending))
-	if err != nil {
-		log.Fatalf("build presentation agent: %v", err)
-	}
-	researchProvider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Research)
-	if err != nil {
-		log.Fatalf("configure research model: %v", err)
-	}
-	researchModel, err := openai.NewMulti(researchProvider, availableProviders, nil, limiter)
-	if err != nil {
-		log.Fatalf("configure research fallbacks: %v", err)
-	}
-	researchAgent, err := research.New(researchModel, agui.NewAGUIToolset(pending))
-	if err != nil {
-		log.Fatalf("build research agent: %v", err)
-	}
-	spreadsheetProvider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Spreadsheet)
-	if err != nil {
-		log.Fatalf("configure spreadsheet model: %v", err)
-	}
-	spreadsheetModel, err := openai.NewMulti(spreadsheetProvider, availableProviders, nil, limiter)
-	if err != nil {
-		log.Fatalf("configure spreadsheet fallbacks: %v", err)
-	}
-	spreadsheetAgent, err := spreadsheet.New(spreadsheetModel, agui.NewAGUIToolset(pending))
-	if err != nil {
-		log.Fatalf("build spreadsheet agent: %v", err)
-	}
-	expenseProvider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Expense)
-	if err != nil {
-		log.Fatalf("configure expense model: %v", err)
-	}
-	expenseModel, err := openai.NewMulti(expenseProvider, availableProviders, nil, limiter)
-	if err != nil {
-		log.Fatalf("configure expense fallbacks: %v", err)
-	}
-	expenseAgent, err := expense.New(expenseModel, agui.NewAGUIToolset(pending))
-	if err != nil {
-		log.Fatalf("build expense agent: %v", err)
-	}
-	travelProvider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Travel)
-	if err != nil {
-		log.Fatalf("configure travel model: %v", err)
-	}
-	travelModel, err := openai.NewMulti(travelProvider, availableProviders, nil, limiter)
-	if err != nil {
-		log.Fatalf("configure travel fallbacks: %v", err)
-	}
-	trvlEndpoint := strings.TrimSpace(os.Getenv("TRVL_MCP_URL"))
-	if trvlEndpoint == "" {
-		trvlEndpoint = "https://trvl-production.up.railway.app/mcp"
-	}
-	travelAgent, err := travel.New(travelModel, agui.NewAGUIToolset(pending), travel.NewTRVL(trvlEndpoint, &http.Client{Timeout: 20 * time.Second}))
-	if err != nil {
-		log.Fatalf("build travel agent: %v", err)
-	}
-	fitnessProvider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Fitness)
-	if err != nil {
-		log.Fatalf("configure fitness model: %v", err)
-	}
-	fitnessModel, err := openai.NewMulti(fitnessProvider, availableProviders, nil, limiter)
-	if err != nil {
-		log.Fatalf("configure fitness fallbacks: %v", err)
-	}
-	fitnessActivities := fitnessdata.NewStore(d1)
-	groceryLists := groceries.NewStoreWithArtifacts(d1, cloudflare.NewArtifactService(r2))
-	defer func() { _ = groceryLists.Close() }()
-	fitnessAgent, err := fitness.New(fitnessModel, fitnessActivities, braveSearch, agui.NewAGUIToolset(pending))
-	if err != nil {
-		log.Fatalf("build fitness agent: %v", err)
-	}
-	groceryProvider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Grocery)
-	if err != nil {
-		log.Fatalf("configure grocery model: %v", err)
-	}
-	groceryModel, err := openai.NewMulti(groceryProvider, availableProviders, nil, limiter)
-	if err != nil {
-		log.Fatalf("configure grocery fallbacks: %v", err)
-	}
-	krogerEndpoint := strings.TrimSpace(os.Getenv("KROGER_MCP_URL"))
-	if krogerEndpoint == "" {
-		krogerEndpoint = "https://ai-meal-planner-mcp.aranlucas.workers.dev/mcp"
-	}
-	krogerClient := grocery.NewKroger(common.NewHTTPClient(30*time.Second, 8<<20).Client, krogerEndpoint)
-	webLoader := common.NewWebLoader(common.NewHTTPClient(20*time.Second, 4<<20), 100_000)
-	groceryAgent, err := grocery.NewWithLibrary(groceryModel, krogerClient, braveSearch, webLoader, groceryLists, agui.NewAGUIToolset(pending))
-	if err != nil {
-		log.Fatalf("build grocery agent: %v", err)
-	}
-	fitnessTaskAgent, err := fitness.NewTask(fitnessModel, fitnessActivities, braveSearch, agui.NewAGUIToolset(pending))
-	if err != nil {
-		log.Fatalf("build wellness fitness task agent: %v", err)
-	}
-	groceryTaskAgent, err := grocery.NewTaskWithLibrary(groceryModel, krogerClient, braveSearch, webLoader, groceryLists, agui.NewAGUIToolset(pending))
-	if err != nil {
-		log.Fatalf("build wellness grocery task agent: %v", err)
-	}
-	wellnessAgent, err := wellness.New(wellness.ModelSet{Coordinator: fitnessModel}, fitnessTaskAgent, groceryTaskAgent, agui.NewAGUIToolset(pending))
-	if err != nil {
-		log.Fatalf("build wellness agent: %v", err)
-	}
-	trendsProvider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Trends)
-	if err != nil {
-		log.Fatalf("configure trends model: %v", err)
-	}
-	trendsModel, err := openai.NewMulti(trendsProvider, availableProviders, nil, limiter)
-	if err != nil {
-		log.Fatalf("configure trends fallbacks: %v", err)
-	}
-	trendsBigQuery, err := trendsBigQueryClient(ctx)
-	if err != nil {
-		log.Fatalf("configure trends BigQuery client: %v", err)
-	}
-	trendsExecutor, err := trends.NewBigQueryExecutor(trendsBigQuery, "bigquery-public-data", "google_trends", trends.DefaultMaxBytesBilled, 30*time.Second)
-	if err != nil {
-		log.Fatalf("configure trends BigQuery executor: %v", err)
-	}
-	trendsGenerator, err := trends.NewGenerator(trendsModel)
-	if err != nil {
-		log.Fatalf("build trends generator agent: %v", err)
-	}
-	trendsAgent, err := trends.New(trendsModel, trendsGenerator, trendsExecutor, braveSearch, agui.NewAGUIToolset(pending))
-	if err != nil {
-		log.Fatalf("build trends agent: %v", err)
-	}
-	oralboardsPhaseModels, err := oralboardsModels(ctx)
-	if err != nil {
-		log.Fatalf("configure oralboards models: %v", err)
-	}
-	corpusPath := strings.TrimSpace(os.Getenv("ORALBOARDS_CORPUS_PATH"))
-	if corpusPath == "" {
-		corpusPath = "assets/oralboards/search.sqlite"
-	}
-	oralboardsCorpus, err := oralboards.OpenCorpus(corpusPath)
-	if err != nil {
-		log.Fatalf("configure oralboards corpus: %v", err)
-	}
-	oralboardsAgent, err := oralboards.New(oralboardsPhaseModels, oralboardsCorpus, agui.NewAGUIToolset(pending))
-	if err != nil {
-		log.Fatalf("build oralboards agent: %v", err)
-	}
-	defer func() { _ = oralboardsCorpus.Close() }()
 
-	specialists := bootstrap.Specialists{
-		Travel:       bootstrap.Binding{Agent: travelAgent, StateDefaults: travel.StateDefaults},
-		Grocery:      bootstrap.Binding{Agent: groceryAgent, StateDefaults: grocery.StateDefaults},
-		Fitness:      bootstrap.Binding{Agent: fitnessAgent, StateDefaults: fitness.StateDefaults},
-		Wellness:     bootstrap.Binding{Agent: wellnessAgent, StateDefaults: wellness.StateDefaults},
-		Expense:      bootstrap.Binding{Agent: expenseAgent, StateDefaults: expense.StateDefaults},
-		OralBoards:   bootstrap.Binding{Agent: oralboardsAgent, StateDefaults: oralboards.StateDefaults},
-		Trends:       bootstrap.Binding{Agent: trendsAgent, StateDefaults: trends.StateDefaults},
-		Resume:       bootstrap.Binding{Agent: resumeAgent, StateDefaults: resume.StateDefaults, Health: resumeHealth(resumeModel)},
-		Jobs:         bootstrap.Binding{Agent: jobsAgent, StateDefaults: jobs.StateDefaults},
-		Interview:    bootstrap.Binding{Agent: interviewAgent, StateDefaults: interview.StateDefaults},
-		Research:     bootstrap.Binding{Agent: researchAgent, StateDefaults: research.StateDefaults},
-		Spreadsheet:  bootstrap.Binding{Agent: spreadsheetAgent, StateDefaults: spreadsheet.StateDefaults},
-		Presentation: bootstrap.Binding{Agent: presentationAgent, StateDefaults: presentation.StateDefaults},
+	resumeSpec, ok := catalog.ByRoute("resume")
+	if !ok {
+		log.Fatalf("build Resume registry: catalog route is missing")
 	}
-	registry, err := specialists.Registry()
+	resumeRegistry, err := (bootstrap.Specialists{
+		Resume: bootstrap.Binding{Agent: resumeAgent, StateDefaults: resume.StateDefaults, Health: resumeHealth(resumeModel)},
+	}).RegistryFor([]catalog.Spec{resumeSpec})
 	if err != nil {
-		log.Fatalf("build agent registry: %v", err)
+		log.Fatalf("build Resume registry: %v", err)
 	}
+	startup.mark("resume")
 
-	var verifier auth.TokenVerifier
-	var clerkBackend clerk.Backend
-	if cfg.ClerkSecret != "" {
-		configured, clerkErr := clerk.NewBackend(common.NewHTTPClient(15*time.Second, 1<<20).Client, "", cfg.ClerkSecret)
-		if clerkErr != nil {
-			log.Fatalf("configure Clerk backend: %v", clerkErr)
-		}
-		clerkBackend = configured
-	}
-	if cfg.ClerkJWKS != "" {
-		clerkVerifier, err := auth.NewClerkVerifier(cfg.ClerkJWKS, cfg.ClerkIssuer, "", nil)
-		if err != nil {
-			log.Fatalf("configure Clerk verifier: %v", err)
-		}
-		verifier = clerkVerifier
-	}
-
-	handler, err := New(cfg, Dependencies{
-		Registry:     registry,
-		Sessions:     sessions,
-		Pending:      pending,
-		Verifier:     verifier,
-		D1:           d1,
-		R2:           r2,
-		Links:        telegram.NewLinkStore(d1, time.Now),
-		Clerk:        clerkBackend,
-		Fitness:      fitnessActivities,
-		Groceries:    groceryLists,
-		Shopping:     groceryLists,
-		KrogerMCPURL: krogerEndpoint,
-		Now:          time.Now,
+	resumeHandler, err := New(cfg, Dependencies{
+		Registry: resumeRegistry,
+		Sessions: sessions,
+		Pending:  pending,
+		D1:       d1,
+		R2:       r2,
+		Now:      time.Now,
 	})
 	if err != nil {
-		log.Fatalf("build gateway: %v", err)
+		log.Fatalf("build Resume gateway: %v", err)
 	}
+	startup.mark("handler")
+	switcher := newHandlerSwitcher(resumeHandler)
 
 	server := &http.Server{
 		Addr:    ":" + cfg.HTTP.Port,
-		Handler: observability.WrapSentry(handler),
+		Handler: observability.WrapSentry(switcher),
 		// Long enough that a slow client filling headers can't hold a
 		// connection open indefinitely, short enough not to mask a hung
 		// upstream. WriteTimeout is generous because AG-UI runs stream SSE
@@ -886,6 +804,324 @@ func main() {
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      5 * time.Minute,
 		IdleTimeout:       120 * time.Second,
+	}
+	listener, err := net.Listen("tcp", server.Addr)
+	if err != nil {
+		observability.CaptureError(context.Background(), err)
+		flushSentry()
+		log.Fatalf("gateway listener failed: %v", err)
+	}
+
+	hydrateReady := make(chan struct{})
+	hydrate := func() {
+		readySignaled := false
+		defer func() {
+			if !readySignaled {
+				close(hydrateReady)
+			}
+		}()
+		availableProviders := providerpolicy.FallbackProviders(cfg.Providers)
+		groceryLists := groceries.NewStoreWithArtifacts(d1, cloudflare.NewArtifactService(r2))
+		defer func() { _ = groceryLists.Close() }()
+		krogerEndpoint := strings.TrimSpace(os.Getenv("KROGER_MCP_URL"))
+		if krogerEndpoint == "" {
+			krogerEndpoint = "https://ai-meal-planner-mcp.aranlucas.workers.dev/mcp"
+		}
+		var braveSearch *bravesearch.Client
+		if braveKey := strings.TrimSpace(os.Getenv("BRAVE_API_KEY")); braveKey != "" {
+			configured, err := bravesearch.New(common.NewHTTPClient(15*time.Second, 4<<20).Client, "https://api.search.brave.com/res/v1/web/search", braveKey, 10)
+			if err != nil {
+				log.Printf("deferred gateway hydration failed: configure Brave search: %v", err)
+				return
+			}
+			braveSearch = configured
+		}
+		jobsWebLoader := common.NewWebLoader(common.NewHTTPClient(20*time.Second, 4<<20), 100_000)
+		trvlEndpoint := strings.TrimSpace(os.Getenv("TRVL_MCP_URL"))
+		if trvlEndpoint == "" {
+			trvlEndpoint = "https://trvl-production.up.railway.app/mcp"
+		}
+		fitnessActivities := fitnessdata.NewStore(d1)
+		krogerClient := grocery.NewKroger(common.NewHTTPClient(30*time.Second, 8<<20).Client, krogerEndpoint)
+		webLoader := common.NewWebLoader(common.NewHTTPClient(20*time.Second, 4<<20), 100_000)
+
+		var (
+			jobsAgent, interviewAgent                          agent.Agent
+			presentationAgent, researchAgent, spreadsheetAgent agent.Agent
+			expenseAgent, travelAgent                          agent.Agent
+			fitnessAgent, fitnessTaskAgent, groceryAgent       agent.Agent
+			groceryTaskAgent, trendsAgent, oralboardsAgent     agent.Agent
+			fitnessModel                                       model.LLM
+			oralboardsCorpus                                   *oralboards.Corpus
+			verifier                                           auth.TokenVerifier
+			clerkBackend                                       clerk.Backend
+		)
+		var builds startupGroup
+		builds.Go("Clerk auth", func() error {
+			if cfg.ClerkSecret != "" {
+				configured, err := clerk.NewBackend(common.NewHTTPClient(15*time.Second, 1<<20).Client, "", cfg.ClerkSecret)
+				if err != nil {
+					return fmt.Errorf("configure Clerk backend: %w", err)
+				}
+				clerkBackend = configured
+			}
+			if cfg.ClerkJWKS != "" {
+				configured, err := auth.NewClerkVerifier(cfg.ClerkJWKS, cfg.ClerkIssuer, "", nil)
+				if err != nil {
+					return fmt.Errorf("configure Clerk verifier: %w", err)
+				}
+				verifier = configured
+			}
+			return nil
+		})
+		builds.Go("jobs agent", func() error {
+			var err error
+			jobsAgent, err = jobs.New(resumeModel, braveSearch, jobsWebLoader, agentToolset)
+			if err != nil {
+				return fmt.Errorf("build jobs agent: %w", err)
+			}
+			return nil
+		})
+		builds.Go("interview agent", func() error {
+			var err error
+			interviewAgent, err = interview.New(resumeModel, agentToolset)
+			if err != nil {
+				return fmt.Errorf("build interview agent: %w", err)
+			}
+			return nil
+		})
+		builds.Go("presentation agent", func() error {
+			provider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Presentation)
+			if err != nil {
+				return fmt.Errorf("configure presentation model: %w", err)
+			}
+			model, err := openai.NewMulti(provider, availableProviders, modelHTTPClient, limiter)
+			if err != nil {
+				return fmt.Errorf("configure presentation fallbacks: %w", err)
+			}
+			presentationAgent, err = presentation.New(model, braveSearch, agentToolset)
+			if err != nil {
+				return fmt.Errorf("build presentation agent: %w", err)
+			}
+			return nil
+		})
+		builds.Go("research agent", func() error {
+			provider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Research)
+			if err != nil {
+				return fmt.Errorf("configure research model: %w", err)
+			}
+			model, err := openai.NewMulti(provider, availableProviders, modelHTTPClient, limiter)
+			if err != nil {
+				return fmt.Errorf("configure research fallbacks: %w", err)
+			}
+			researchAgent, err = research.New(model, agentToolset)
+			if err != nil {
+				return fmt.Errorf("build research agent: %w", err)
+			}
+			return nil
+		})
+		builds.Go("spreadsheet agent", func() error {
+			provider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Spreadsheet)
+			if err != nil {
+				return fmt.Errorf("configure spreadsheet model: %w", err)
+			}
+			model, err := openai.NewMulti(provider, availableProviders, modelHTTPClient, limiter)
+			if err != nil {
+				return fmt.Errorf("configure spreadsheet fallbacks: %w", err)
+			}
+			spreadsheetAgent, err = spreadsheet.New(model, agentToolset)
+			if err != nil {
+				return fmt.Errorf("build spreadsheet agent: %w", err)
+			}
+			return nil
+		})
+		builds.Go("expense agent", func() error {
+			provider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Expense)
+			if err != nil {
+				return fmt.Errorf("configure expense model: %w", err)
+			}
+			model, err := openai.NewMulti(provider, availableProviders, modelHTTPClient, limiter)
+			if err != nil {
+				return fmt.Errorf("configure expense fallbacks: %w", err)
+			}
+			expenseAgent, err = expense.New(model, agentToolset)
+			if err != nil {
+				return fmt.Errorf("build expense agent: %w", err)
+			}
+			return nil
+		})
+		builds.Go("travel agent", func() error {
+			provider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Travel)
+			if err != nil {
+				return fmt.Errorf("configure travel model: %w", err)
+			}
+			model, err := openai.NewMulti(provider, availableProviders, modelHTTPClient, limiter)
+			if err != nil {
+				return fmt.Errorf("configure travel fallbacks: %w", err)
+			}
+			travelAgent, err = travel.New(model, agentToolset, travel.NewTRVL(trvlEndpoint, &http.Client{Timeout: 20 * time.Second}))
+			if err != nil {
+				return fmt.Errorf("build travel agent: %w", err)
+			}
+			return nil
+		})
+		builds.Go("fitness agents", func() error {
+			provider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Fitness)
+			if err != nil {
+				return fmt.Errorf("configure fitness model: %w", err)
+			}
+			fitnessModel, err = openai.NewMulti(provider, availableProviders, modelHTTPClient, limiter)
+			if err != nil {
+				return fmt.Errorf("configure fitness fallbacks: %w", err)
+			}
+			fitnessAgent, err = fitness.New(fitnessModel, fitnessActivities, braveSearch, agentToolset)
+			if err != nil {
+				return fmt.Errorf("build fitness agent: %w", err)
+			}
+			fitnessTaskAgent, err = fitness.NewTask(fitnessModel, fitnessActivities, braveSearch, agentToolset)
+			if err != nil {
+				return fmt.Errorf("build wellness fitness task agent: %w", err)
+			}
+			return nil
+		})
+		builds.Go("grocery agents", func() error {
+			provider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Grocery)
+			if err != nil {
+				return fmt.Errorf("configure grocery model: %w", err)
+			}
+			model, err := openai.NewMulti(provider, availableProviders, modelHTTPClient, limiter)
+			if err != nil {
+				return fmt.Errorf("configure grocery fallbacks: %w", err)
+			}
+			groceryAgent, err = grocery.NewWithLibrary(model, krogerClient, braveSearch, webLoader, groceryLists, agentToolset)
+			if err != nil {
+				return fmt.Errorf("build grocery agent: %w", err)
+			}
+			groceryTaskAgent, err = grocery.NewTaskWithLibrary(model, krogerClient, braveSearch, webLoader, groceryLists, agentToolset)
+			if err != nil {
+				return fmt.Errorf("build wellness grocery task agent: %w", err)
+			}
+			return nil
+		})
+		builds.Go("trends agent", func() error {
+			provider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Trends)
+			if err != nil {
+				return fmt.Errorf("configure trends model: %w", err)
+			}
+			model, err := openai.NewMulti(provider, availableProviders, modelHTTPClient, limiter)
+			if err != nil {
+				return fmt.Errorf("configure trends fallbacks: %w", err)
+			}
+			bigQueryClient, err := trendsBigQueryClient(ctx)
+			if err != nil {
+				return fmt.Errorf("configure trends BigQuery client: %w", err)
+			}
+			executor, err := trends.NewBigQueryExecutor(bigQueryClient, "bigquery-public-data", "google_trends", trends.DefaultMaxBytesBilled, 30*time.Second)
+			if err != nil {
+				return fmt.Errorf("configure trends BigQuery executor: %w", err)
+			}
+			generator, err := trends.NewGenerator(model)
+			if err != nil {
+				return fmt.Errorf("build trends generator agent: %w", err)
+			}
+			trendsAgent, err = trends.New(model, generator, executor, braveSearch, agentToolset)
+			if err != nil {
+				return fmt.Errorf("build trends agent: %w", err)
+			}
+			return nil
+		})
+		builds.Go("oralboards agent", func() error {
+			phaseModels, err := oralboardsModels(ctx)
+			if err != nil {
+				return fmt.Errorf("configure oralboards models: %w", err)
+			}
+			corpusPath := strings.TrimSpace(os.Getenv("ORALBOARDS_CORPUS_PATH"))
+			if corpusPath == "" {
+				corpusPath = "assets/oralboards/search.sqlite"
+			}
+			oralboardsCorpus, err = oralboards.OpenCorpus(corpusPath)
+			if err != nil {
+				return fmt.Errorf("configure oralboards corpus: %w", err)
+			}
+			oralboardsAgent, err = oralboards.New(phaseModels, oralboardsCorpus, agentToolset)
+			if err != nil {
+				return fmt.Errorf("build oralboards agent: %w", err)
+			}
+			return nil
+		})
+		if err := builds.Wait(); err != nil {
+			if oralboardsCorpus != nil {
+				_ = oralboardsCorpus.Close()
+			}
+			log.Printf("deferred gateway hydration failed: %v", err)
+			return
+		}
+
+		wellnessAgent, err := wellness.New(wellness.ModelSet{Coordinator: fitnessModel}, fitnessTaskAgent, groceryTaskAgent, agentToolset)
+		if err != nil {
+			if oralboardsCorpus != nil {
+				_ = oralboardsCorpus.Close()
+			}
+			log.Printf("deferred gateway hydration failed: build wellness agent: %v", err)
+			return
+		}
+
+		specialists := bootstrap.Specialists{
+			Travel:       bootstrap.Binding{Agent: travelAgent, StateDefaults: travel.StateDefaults},
+			Grocery:      bootstrap.Binding{Agent: groceryAgent, StateDefaults: grocery.StateDefaults},
+			Fitness:      bootstrap.Binding{Agent: fitnessAgent, StateDefaults: fitness.StateDefaults},
+			Wellness:     bootstrap.Binding{Agent: wellnessAgent, StateDefaults: wellness.StateDefaults},
+			Expense:      bootstrap.Binding{Agent: expenseAgent, StateDefaults: expense.StateDefaults},
+			OralBoards:   bootstrap.Binding{Agent: oralboardsAgent, StateDefaults: oralboards.StateDefaults},
+			Trends:       bootstrap.Binding{Agent: trendsAgent, StateDefaults: trends.StateDefaults},
+			Resume:       bootstrap.Binding{Agent: resumeAgent, StateDefaults: resume.StateDefaults, Health: resumeHealth(resumeModel)},
+			Jobs:         bootstrap.Binding{Agent: jobsAgent, StateDefaults: jobs.StateDefaults},
+			Interview:    bootstrap.Binding{Agent: interviewAgent, StateDefaults: interview.StateDefaults},
+			Research:     bootstrap.Binding{Agent: researchAgent, StateDefaults: research.StateDefaults},
+			Spreadsheet:  bootstrap.Binding{Agent: spreadsheetAgent, StateDefaults: spreadsheet.StateDefaults},
+			Presentation: bootstrap.Binding{Agent: presentationAgent, StateDefaults: presentation.StateDefaults},
+		}
+		registry, err := specialists.Registry()
+		if err != nil {
+			if oralboardsCorpus != nil {
+				_ = oralboardsCorpus.Close()
+			}
+			log.Printf("deferred gateway hydration failed: build agent registry: %v", err)
+			return
+		}
+
+		completeHandler, err := New(cfg, Dependencies{
+			Registry:     registry,
+			Sessions:     sessions,
+			Pending:      pending,
+			Verifier:     verifier,
+			D1:           d1,
+			R2:           r2,
+			Links:        telegram.NewLinkStore(d1, time.Now),
+			Clerk:        clerkBackend,
+			Fitness:      fitnessActivities,
+			Groceries:    groceryLists,
+			Shopping:     groceryLists,
+			KrogerMCPURL: krogerEndpoint,
+			Now:          time.Now,
+		})
+		if err != nil {
+			if oralboardsCorpus != nil {
+				_ = oralboardsCorpus.Close()
+			}
+			log.Printf("deferred gateway hydration failed: build gateway: %v", err)
+			return
+		}
+		switcher.Swap(completeHandler)
+		close(hydrateReady)
+		readySignaled = true
+		if startup.enabled {
+			log.Printf("startup phase=full-surface-ready elapsed=%s", time.Since(startup.start))
+		}
+		<-ctx.Done()
+		if oralboardsCorpus != nil {
+			_ = oralboardsCorpus.Close()
+		}
 	}
 
 	shutdownDone := make(chan struct{})
@@ -901,10 +1137,35 @@ func main() {
 		}
 	}()
 
+	hydrateDone := make(chan struct{})
+	hydrationStarted := make(chan struct{})
+	var hydrateOnce sync.Once
+	startHydrate := func() {
+		hydrateOnce.Do(func() {
+			close(hydrationStarted)
+			go func() {
+				defer close(hydrateDone)
+				hydrate()
+			}()
+		})
+	}
+	switcher.startOnNonResumeRequest(startHydrate, hydrateReady)
 	log.Printf("agents gateway listening on :%s", cfg.HTTP.Port)
-	serveErr := server.ListenAndServe()
+	startup.mark("listening")
+	serveErr := server.Serve(listener)
 	stop()
 	<-shutdownDone
+	select {
+	case <-hydrationStarted:
+		select {
+		case <-hydrateDone:
+		case <-time.After(5 * time.Second):
+			log.Printf("gateway hydration did not finish before shutdown")
+		}
+	default:
+		close(hydrateReady)
+		close(hydrateDone)
+	}
 	if serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
 		// log.Fatalf exits before deferred flushes run, so report first.
 		observability.CaptureError(context.Background(), serveErr)

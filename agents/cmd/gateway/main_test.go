@@ -163,6 +163,43 @@ func TestFrontendAgentIDUsesCatalogIdentity(t *testing.T) {
 	}
 }
 
+func TestHandlerSwitcherKeepsResumeCriticalRequestsOnInitialSurface(t *testing.T) {
+	initial := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "resume")
+	})
+	complete := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "complete")
+	})
+	switcher := newHandlerSwitcher(initial)
+	ready := make(chan struct{})
+	var starts atomic.Int32
+	switcher.startOnNonResumeRequest(func() {
+		starts.Add(1)
+		switcher.Swap(complete)
+		close(ready)
+	}, ready)
+
+	for _, path := range []string{"/live", "/agent/resume/suggest", "/resume/health"} {
+		recorder := httptest.NewRecorder()
+		switcher.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
+		if recorder.Code != http.StatusOK || recorder.Body.String() != "resume" {
+			t.Fatalf("%s = %d %q", path, recorder.Code, recorder.Body.String())
+		}
+	}
+	if starts.Load() != 0 {
+		t.Fatalf("Resume requests started full hydration %d times", starts.Load())
+	}
+
+	recorder := httptest.NewRecorder()
+	switcher.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/info", nil))
+	if recorder.Code != http.StatusOK || recorder.Body.String() != "complete" {
+		t.Fatalf("/info = %d %q", recorder.Code, recorder.Body.String())
+	}
+	if starts.Load() != 1 {
+		t.Fatalf("full hydration starts = %d, want 1", starts.Load())
+	}
+}
+
 func TestEveryActiveAgentExposesScopedEndpoints(t *testing.T) {
 	routes := []string{"travel", "trends", "grocery", "fitness", "wellness", "expense", "oralboards", "presentation", "research", "spreadsheet", "resume", "jobs", "interview"}
 	entries := make([]agentruntime.Entry, 0, len(routes))
@@ -391,12 +428,11 @@ func newGateway(t *testing.T) http.Handler {
 
 	cfg := config.Config{HTTP: config.HTTP{Origins: []string{"http://localhost:3000"}}}
 	handler, err := New(cfg, Dependencies{
-		Registry:  registry,
-		Sessions:  sessions,
-		D1:        fakeHealth{},
-		R2:        fakeHealth{},
-		Groceries: &fakeGroceryRepository{},
-		Now:       time.Now,
+		Registry: registry,
+		Sessions: sessions,
+		D1:       fakeHealth{},
+		R2:       fakeHealth{},
+		Now:      time.Now,
 	})
 	if err != nil {
 		t.Fatalf("build gateway: %v", err)
