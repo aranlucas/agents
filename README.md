@@ -1,107 +1,25 @@
-# Agents Monorepo — CopilotKit x ADK-Go
+# Agents
 
-A production multi-agent workspace with a Go ADK gateway, a Go Telegram worker,
-and web/mobile clients sharing live state over AG-UI.
+Agents is a multi-agent workspace with a Go gateway, Telegram worker, and web/mobile clients connected through AG-UI. It uses Cloudflare D1 for sessions and R2 for artifacts.
 
-The gateway exposes 13 agents: travel, grocery, fitness, wellness, expense,
-oral boards, trends, presentation, research, spreadsheet, the public resume
-assistant, a private job-matching/application assistant, and a private software
-engineering interview coach. Cloudflare D1 is the sole session/link/rate-limit
-store and R2 is the sole artifact store. There is no local or Postgres fallback.
+## Develop
 
-## Architecture
-
-```text
-apps/web    -> CopilotKit runtime -> Go gateway /<agent>/agui
-apps/mobile -> CopilotKit runtime -> Go gateway /<agent>/agui
-Telegram    -> Go long poller    -> ADK-Go specialist agents
-                                -> D1 sessions + R2 artifacts
-Go gateway  -> MCP client        -> Cloudflare Kroger shopping Worker
-```
-
-State is the source of truth: agents write typed state through tools and the
-clients render state snapshots/deltas. Clerk protects every agent except
-`resume`; OAuth credentials are overlaid only for the current invocation.
-
-## Local development
-
-Prerequisites: pnpm, Go 1.27.0, Docker, and the credentials documented in
-[.env.example](.env.example).
+Requires pnpm, Go 1.27+, Docker, and the credentials in [`.env.example`](.env.example).
 
 ```bash
 cp .env.example .env
 pnpm install
-pnpm dev                 # web + Go gateway + Go Telegram worker
-pnpm dev:web             # web only
-pnpm dev:agents          # gateway and Telegram containers
-pnpm dev:mobile
+pnpm dev
 ```
 
-The web app uses port 3000, the gateway 8000, and Telegram health 8082.
+Use `pnpm dev:web`, `pnpm dev:agents`, or `pnpm dev:mobile` to run one surface.
 
-## Verification
+## Verify
 
 ```bash
 pnpm check
 pnpm test
-pnpm --filter agents contracts:check
-cd agents && golangci-lint run ./... && go test -race ./... && go vet ./...
-docker build -f agents/Dockerfile -t agents-gateway-go:local .
-docker build -f agents/Dockerfile.telegram -t agents-telegram-go:local .
-bash agents/scripts/smoke-image.sh agents-gateway-go:local
-bash agents/scripts/smoke-telegram.sh agents-telegram-go:local
+cd agents && go test -race ./... && go vet ./...
 ```
 
-Railway infrastructure is defined in code at
-[.railway/railway.ts](.railway/railway.ts); see [.railway/README.md](.railway/README.md)
-for the plan/apply workflow. The `agents` project runs a single `agents-gateway`
-service in its `production` and `development` environments. The web deploys to
-Vercel, mobile through EAS, and the Kroger shopping MCP from
-`apps/ai-shopping-mcp` to the existing `ai-meal-planner-mcp` Cloudflare Worker.
-
-The gateway runs the idempotent `/app/migrate` binary before starting, exposes
-process-only `/live`, and uses schema/D1/R2-aware `/ready` for deployment
-health. Set `APP_ENV=production` on the service. It also requires all `CF_*`
-values, `ALLOWED_ORIGINS` (including `*` for open CORS), `CLERK_ISSUER`, and the
-OpenRouter, Groq, and Gemini keys.
-`ALLOWED_ORIGINS` also accepts local HTTP origins like `http://localhost:3000` in
-production for local debugging.
-It also requires `GOOGLE_APPLICATION_CREDENTIALS_JSON` for the advertised
-Google Trends surface.
-`CLERK_SECRET_KEY` enables OAuth account lookup where that feature is used.
-
-The Telegram worker (`agents/Dockerfile.telegram`) builds and smoke-tests
-locally but is not currently deployed to Railway. Add an `agents-telegram`
-service to `.railway/railway.ts` when it should be; it needs all `CF_*` values,
-`GROQ_API_KEY`, and `TELEGRAM_BOT_TOKEN`, and browser-origin and Clerk-JWT
-settings stay gateway-only.
-
-Production gateway acceptance requires an authenticated Clerk session token and
-the deployed gateway URL. By default, the smoke script health-checks every
-registered route, runs the Resume agent, and exercises a client tool and
-Grocery OAuth headers. This default matches the currently deployed
-`agents-gateway` service.
-
-```bash
-AGENTS_BASE_URL=https://agents-gateway.example \
-SMOKE_AUTH_TOKEN="$CLERK_SESSION_TOKEN" \
-  bash agents/scripts/production-smoke.sh
-bash agents/scripts/measure-rss.sh agents-gateway production 15m
-```
-
-When the Telegram worker is deployed, opt into its readiness check explicitly
-with `REQUIRE_TELEGRAM_HEALTH=1`:
-
-```bash
-AGENTS_BASE_URL=https://agents-gateway.example \
-SMOKE_AUTH_TOKEN="$CLERK_SESSION_TOKEN" \
-REQUIRE_TELEGRAM_HEALTH=1 \
-TELEGRAM_HEALTH_URL=https://agents-telegram.example \
-  bash agents/scripts/production-smoke.sh
-```
-
-The Telegram check is skipped unless that flag is set; supplying a Telegram URL
-alone does not change the gateway-only default.
-
-The RSS check fails unless Railway returns at least one sample and the peak is
-strictly below 0.4 GB.
+Railway infrastructure is defined in [`.railway/railway.ts`](.railway/railway.ts). The web client deploys to Vercel and the services deploy from the `agents/` directory.
