@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"slices"
 	"strings"
+	"sync"
 
 	"agents/internal/agentruntime"
 	"agents/internal/common"
@@ -73,7 +75,7 @@ type copilotKitAgent struct {
 	id         string
 	entry      agentruntime.Entry
 	run        http.Handler
-	suggestion http.Handler
+	suggestion func() http.Handler
 }
 
 // CopilotKitRuntime exposes the fetch-native v2 runtime's concrete SSE surface
@@ -87,9 +89,11 @@ type CopilotKitRuntime struct {
 	byRoute map[string]copilotKitAgent
 }
 
-// NewCopilotKitRuntime binds every registry entry once and reuses the same ADK
-// handler for the raw /<route>/agui endpoint and CopilotKit's
-// /agent/<id>/run endpoint.
+// NewCopilotKitRuntime eagerly binds each registry entry's run handler and
+// reuses it for the raw /<route>/agui endpoint and CopilotKit's
+// /agent/<id>/run endpoint. Suggestions are lazy for private agents, while
+// public suggestions are eager so the public Resume homepage pays no handler
+// construction cost on its first request.
 func NewCopilotKitRuntime(registry *agentruntime.Registry, sessions session.Service, clientID func(string) string, opts ...Option) (*CopilotKitRuntime, error) {
 	if registry == nil {
 		return nil, fmt.Errorf("agent registry is required")
@@ -110,28 +114,80 @@ func NewCopilotKitRuntime(registry *agentruntime.Registry, sessions session.Serv
 		byID:    make(map[string]copilotKitAgent),
 		byRoute: make(map[string]copilotKitAgent),
 	}
-	seenIDs := make(map[string]bool)
-	for _, entry := range registry.Entries() {
+	entries := registry.Entries()
+	ids := make([]string, len(entries))
+	seenIDs := make(map[string]bool, len(entries))
+	for index, entry := range entries {
 		id := strings.TrimSpace(clientID(entry.Route))
 		if id == "" || strings.Contains(id, "/") || seenIDs[id] {
 			return nil, fmt.Errorf("invalid or duplicate CopilotKit agent id %q", id)
 		}
 		seenIDs[id] = true
+		ids[index] = id
+	}
 
-		run, err := runtime.runner.newRunHandler(entry, opts...)
-		if err != nil {
-			return nil, fmt.Errorf("build CopilotKit run handler for %s: %w", entry.Route, err)
+	runHandlers := make([]http.Handler, len(entries))
+	runErrors := make([]error, len(entries))
+	suggestionHandlers := make([]func() http.Handler, len(entries))
+	suggestionErrors := make([]error, len(entries))
+	var builds sync.WaitGroup
+	for index, entry := range entries {
+		builds.Go(func() {
+			var err error
+			runHandlers[index], err = runtime.runner.newRunHandler(entry, opts...)
+			if err != nil {
+				runErrors[index] = fmt.Errorf("build CopilotKit run handler for %s: %w", entry.Route, err)
+			}
+		})
+		if entry.Public {
+			builds.Go(func() {
+				handler, err := NewStatelessEntryHandler(entry, opts...)
+				if err != nil {
+					suggestionErrors[index] = fmt.Errorf("build CopilotKit suggestion handler for %s: %w", entry.Route, err)
+					return
+				}
+				suggestionHandlers[index] = func() http.Handler { return handler }
+			})
+		} else {
+			suggestionHandlers[index] = lazySuggestionHandler(entry, opts...)
 		}
-		suggestion, err := NewStatelessEntryHandler(entry, opts...)
-		if err != nil {
-			return nil, fmt.Errorf("build CopilotKit suggestion handler for %s: %w", entry.Route, err)
+	}
+	builds.Wait()
+	for index := range entries {
+		if err := runErrors[index]; err != nil {
+			return nil, err
 		}
-		agent := copilotKitAgent{id: id, entry: entry, run: run, suggestion: suggestion}
+		if err := suggestionErrors[index]; err != nil {
+			return nil, err
+		}
+	}
+
+	for index, entry := range entries {
+		agent := copilotKitAgent{
+			id: ids[index], entry: entry, run: runHandlers[index],
+			suggestion: suggestionHandlers[index],
+		}
 		runtime.agents = append(runtime.agents, agent)
-		runtime.byID[id] = agent
+		runtime.byID[ids[index]] = agent
 		runtime.byRoute[entry.Route] = agent
 	}
 	return runtime, nil
+}
+
+func lazySuggestionHandler(entry agentruntime.Entry, opts ...Option) func() http.Handler {
+	// The runtime is long-lived, so retain the caller's construction options
+	// without retaining a mutable slice that could be changed after startup.
+	constructionOptions := slices.Clone(opts)
+	return sync.OnceValue(func() http.Handler {
+		handler, err := NewStatelessEntryHandler(entry, constructionOptions...)
+		if err == nil {
+			return handler
+		}
+		log.Printf("build CopilotKit suggestion handler for %s: %v", entry.Route, err)
+		return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONErrorMessage(w, http.StatusInternalServerError, "Suggestion handler unavailable", "The suggestion handler could not be initialized.")
+		})
+	})
 }
 
 // EntryHandler returns the shared handler mounted at /<route>/agui.
@@ -147,10 +203,16 @@ func (r *CopilotKitRuntime) Register(mux *http.ServeMux) {
 	for _, agent := range r.agents {
 		base := "/agent/" + agent.id
 		mux.Handle("POST "+base+"/run", agent.run)
-		mux.Handle("POST "+base+"/suggest", agent.suggestion)
+		mux.Handle("POST "+base+"/suggest", lazyHandler(agent.suggestion))
 		mux.Handle("POST "+base+"/connect", r.runner.connectHandler(agent))
 		mux.Handle("POST "+base+"/stop/{threadId}", r.runner.stopHandler(agent))
 	}
+}
+
+func lazyHandler(load func() http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		load().ServeHTTP(w, r)
+	})
 }
 
 // PublicRoutes returns exact paths plus trailing-* prefixes understood by the
