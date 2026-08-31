@@ -35,6 +35,28 @@ func TestSpecialistsDriveRegistryAndSurfaceMapsFromCatalog(t *testing.T) {
 	}
 }
 
+func TestSpecialistsRegistryForBuildsSelectedSurface(t *testing.T) {
+	specialists := testSpecialists(t)
+	resume, ok := catalog.ByRoute("resume")
+	if !ok {
+		t.Fatal("resume catalog entry is missing")
+	}
+	registry, err := specialists.RegistryFor([]catalog.Spec{resume})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := len(registry.Entries()); got != 1 {
+		t.Fatalf("selected registry entries = %d, want 1", got)
+	}
+	entry, err := registry.Lookup("resume")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if entry.AppName != resume.AppName || !entry.Public || entry.Timeout != resume.Timeout {
+		t.Fatalf("selected resume entry = %#v, spec = %#v", entry, resume)
+	}
+}
+
 func TestSpecialistsRejectMissingOrMismatchedBindings(t *testing.T) {
 	specialists := testSpecialists(t)
 	specialists.Travel.Agent = nil
