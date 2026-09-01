@@ -64,3 +64,4 @@ onlyBuiltDependencies:
   - "@scarf/scarf"
   - "protobufjs"
   - "msw"
+pmOnFail: ignore
