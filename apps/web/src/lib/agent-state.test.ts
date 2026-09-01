@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import {
   asDocStatus,
-  isRecord,
   oneOf,
   toFitnessState,
   toGroceryState,
@@ -12,21 +11,6 @@ import {
   toTripState,
   toWellnessState,
 } from "./agent-state";
-
-describe("isRecord", () => {
-  it("accepts plain objects", () => {
-    expect(isRecord({})).toBe(true);
-    expect(isRecord({ a: 1 })).toBe(true);
-  });
-
-  it("rejects null, arrays, and primitives", () => {
-    expect(isRecord(null)).toBe(false);
-    expect(isRecord([])).toBe(false);
-    expect(isRecord("x")).toBe(false);
-    expect(isRecord(42)).toBe(false);
-    expect(isRecord(undefined)).toBe(false);
-  });
-});
 
 describe("oneOf", () => {
   const colors = ["red", "green", "blue"] as const;

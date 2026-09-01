@@ -1,8 +1,10 @@
-// Coercion helpers that turn an agent's untyped (`any`) shared state into the
+// Zod-backed parsers that turn an agent's untyped shared state into the
 // strongly-typed state shapes the UI renders. ADK streams partial deltas, so we
 // read each field defensively and fall back to sensible defaults rather than
 // asserting the raw value into a typed object. Keeping these pure makes them
 // trivially testable and keeps `as` casts out of the page components.
+
+import { z } from "zod";
 
 import type {
   CartItem,
@@ -52,13 +54,16 @@ import type {
   WellnessStatus,
 } from "@agents/types";
 
-/** Type guard for a plain object. Avoids an `as` cast when narrowing `unknown`. */
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+const stateObjectSchema = z.record(z.string(), z.unknown());
+
+function parseState(value: unknown): Record<string, unknown> {
+  const parsed = stateObjectSchema.safeParse(value);
+  return parsed.success ? parsed.data : {};
 }
 
-function asRecord(value: unknown): Record<string, unknown> {
-  return isRecord(value) ? value : {};
+function parseOptionalState(value: unknown): Record<string, unknown> | undefined {
+  const parsed = stateObjectSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
 }
 
 function str(value: unknown, fallback = ""): string {
@@ -141,7 +146,7 @@ export function asDocStatus(value: unknown): DocStatus {
 }
 
 export function toTripState(raw: unknown): TripState {
-  const s = asRecord(raw);
+  const s = parseState(raw);
   return {
     destination: str(s.destination),
     start_date: str(s.start_date),
@@ -158,7 +163,7 @@ export function toTripState(raw: unknown): TripState {
 }
 
 function toCartItem(raw: unknown): CartItem {
-  const s = asRecord(raw);
+  const s = parseState(raw);
   return {
     name: str(s.name),
     quantity: num(s.quantity),
@@ -168,7 +173,7 @@ function toCartItem(raw: unknown): CartItem {
 }
 
 function toShoppingPantryItem(raw: unknown): ShoppingPantryItem {
-  const s = asRecord(raw);
+  const s = parseState(raw);
   return {
     name: str(s.name),
     quantity: num(s.quantity),
@@ -178,7 +183,7 @@ function toShoppingPantryItem(raw: unknown): ShoppingPantryItem {
 }
 
 function toShoppingEquipmentItem(raw: unknown): ShoppingEquipmentItem {
-  const s = asRecord(raw);
+  const s = parseState(raw);
   return {
     name: str(s.name),
     category: optionalStr(s.category),
@@ -187,7 +192,7 @@ function toShoppingEquipmentItem(raw: unknown): ShoppingEquipmentItem {
 }
 
 function toShoppingOrderItem(raw: unknown): ShoppingOrderItem {
-  const s = asRecord(raw);
+  const s = parseState(raw);
   return {
     upc: str(s.upc),
     name: str(s.name),
@@ -197,7 +202,7 @@ function toShoppingOrderItem(raw: unknown): ShoppingOrderItem {
 }
 
 function toShoppingOrder(raw: unknown): ShoppingOrder {
-  const s = asRecord(raw);
+  const s = parseState(raw);
   return {
     id: str(s.id),
     items: Array.isArray(s.items) ? s.items.map(toShoppingOrderItem) : [],
@@ -210,7 +215,7 @@ function toShoppingOrder(raw: unknown): ShoppingOrder {
 }
 
 function toShoppingFrequentItem(raw: unknown): ShoppingFrequentItem {
-  const s = asRecord(raw);
+  const s = parseState(raw);
   return {
     name: str(s.name),
     upc: str(s.upc),
@@ -220,18 +225,19 @@ function toShoppingFrequentItem(raw: unknown): ShoppingFrequentItem {
 }
 
 function toShoppingPreferredStore(raw: unknown): ShoppingPreferredStore | undefined {
-  if (!isRecord(raw)) return undefined;
+  const state = parseOptionalState(raw);
+  if (!state) return undefined;
   return {
-    location_id: str(raw.location_id),
-    name: str(raw.name),
-    address: str(raw.address),
-    chain: str(raw.chain),
-    set_at: num(raw.set_at),
+    location_id: str(state.location_id),
+    name: str(state.name),
+    address: str(state.address),
+    chain: str(state.chain),
+    set_at: num(state.set_at),
   };
 }
 
 function toShoppingProfile(raw: unknown): ShoppingProfile {
-  const s = asRecord(raw);
+  const s = parseState(raw);
   const preferredStore = toShoppingPreferredStore(s.preferred_store);
   return {
     pantry: Array.isArray(s.pantry) ? s.pantry.map(toShoppingPantryItem) : [],
@@ -245,7 +251,7 @@ function toShoppingProfile(raw: unknown): ShoppingProfile {
 }
 
 export function toGroceryState(raw: unknown): GroceryState {
-  const s = asRecord(raw);
+  const s = parseState(raw);
   return {
     shopping_list: strArray(s.shopping_list),
     cart: Array.isArray(s.cart) ? s.cart.map(toCartItem) : [],
@@ -260,7 +266,7 @@ export function toGroceryState(raw: unknown): GroceryState {
 }
 
 function toFitnessActivity(raw: unknown): FitnessActivity {
-  const s = asRecord(raw);
+  const s = parseState(raw);
   return {
     id: str(s.id),
     source: FITNESS_SOURCES.find((source) => source === s.source),
@@ -279,7 +285,7 @@ function toFitnessActivity(raw: unknown): FitnessActivity {
 }
 
 export function toFitnessState(raw: unknown): FitnessState {
-  const s = asRecord(raw);
+  const s = parseState(raw);
   return {
     fitness_data_connected: bool(s.fitness_data_connected),
     activity_source: optionalStr(s.activity_source),
@@ -293,7 +299,7 @@ export function toFitnessState(raw: unknown): FitnessState {
 }
 
 export function toWellnessState(raw: unknown): WellnessState {
-  const s = asRecord(raw);
+  const s = parseState(raw);
   return {
     status: oneOf(s.status, WELLNESS_STATUSES, "idle"),
     meal_plan: str(s.meal_plan),
@@ -308,7 +314,7 @@ export function toWellnessState(raw: unknown): WellnessState {
 }
 
 export function toResumeState(raw: unknown): ResumeState {
-  const state = asRecord(raw);
+  const state = parseState(raw);
   return {
     target_role: str(state.target_role),
     job_description: str(state.job_description),
@@ -321,7 +327,7 @@ export function toResumeState(raw: unknown): ResumeState {
 }
 
 function toApplicationProfile(raw: unknown): ApplicationProfile {
-  const state = asRecord(raw);
+  const state = parseState(raw);
   return {
     full_name: str(state.full_name),
     email: str(state.email),
@@ -341,7 +347,7 @@ function toApplicationProfile(raw: unknown): ApplicationProfile {
 }
 
 function toApplicationAnswer(raw: unknown): ApplicationAnswer {
-  const state = asRecord(raw);
+  const state = parseState(raw);
   return {
     field: str(state.field),
     answer: str(state.answer),
@@ -351,7 +357,7 @@ function toApplicationAnswer(raw: unknown): ApplicationAnswer {
 }
 
 function toJobResearchSource(raw: unknown): JobResearchSource {
-  const state = asRecord(raw);
+  const state = parseState(raw);
   return {
     title: str(state.title),
     url: str(state.url),
@@ -360,7 +366,7 @@ function toJobResearchSource(raw: unknown): JobResearchSource {
 }
 
 function toJobWatchlist(raw: unknown): JobWatchlist {
-  const state = asRecord(raw);
+  const state = parseState(raw);
   return {
     roles: strArray(state.roles),
     locations: strArray(state.locations),
@@ -374,7 +380,7 @@ function toJobWatchlist(raw: unknown): JobWatchlist {
 }
 
 function toJobCandidate(raw: unknown): JobCandidate {
-  const state = asRecord(raw);
+  const state = parseState(raw);
   return {
     id: str(state.id),
     title: str(state.title),
@@ -394,7 +400,7 @@ function toJobCandidate(raw: unknown): JobCandidate {
 }
 
 export function toJobsState(raw: unknown): JobsState {
-  const state = asRecord(raw);
+  const state = parseState(raw);
   return {
     profile: toApplicationProfile(state.profile),
     watchlist: toJobWatchlist(state.watchlist),
@@ -421,7 +427,7 @@ export function toJobsState(raw: unknown): JobsState {
 }
 
 function toInterviewQuestion(raw: unknown): InterviewQuestion {
-  const state = asRecord(raw);
+  const state = parseState(raw);
   return {
     id: str(state.id),
     title: str(state.title),
@@ -436,7 +442,7 @@ function toInterviewQuestion(raw: unknown): InterviewQuestion {
 }
 
 function toInterviewRubricScore(raw: unknown): InterviewRubricScore {
-  const state = asRecord(raw);
+  const state = parseState(raw);
   return {
     dimension: str(state.dimension),
     score: num(state.score),
@@ -445,17 +451,16 @@ function toInterviewRubricScore(raw: unknown): InterviewRubricScore {
 }
 
 function toInterviewStoryNote(raw: unknown): InterviewStoryNote | undefined {
-  if (!isRecord(raw)) {
-    return undefined;
-  }
+  const state = parseOptionalState(raw);
+  if (!state) return undefined;
   return {
-    title: str(raw.title),
-    facts: strArray(raw.facts),
+    title: str(state.title),
+    facts: strArray(state.facts),
   };
 }
 
 function toInterviewQuestionFeedback(raw: unknown): InterviewQuestionFeedback {
-  const state = asRecord(raw);
+  const state = parseState(raw);
   return {
     question_id: str(state.question_id),
     question_title: str(state.question_title),
@@ -471,7 +476,7 @@ function toInterviewQuestionFeedback(raw: unknown): InterviewQuestionFeedback {
 }
 
 export function toInterviewState(raw: unknown): InterviewState {
-  const state = asRecord(raw);
+  const state = parseState(raw);
   return {
     track: INTERVIEW_TRACKS.find((track) => track === state.track),
     target_role: str(state.target_role),
@@ -480,10 +485,10 @@ export function toInterviewState(raw: unknown): InterviewState {
     difficulty: oneOf(state.difficulty, INTERVIEW_DIFFICULTIES, ""),
     coaching_style: INTERVIEW_STYLES.find((style) => style === state.coaching_style),
     target_question_count: num(state.target_question_count),
-    current_question: isRecord(state.current_question)
+    current_question: parseOptionalState(state.current_question)
       ? toInterviewQuestion(state.current_question)
       : null,
-    active_feedback: isRecord(state.active_feedback)
+    active_feedback: parseOptionalState(state.active_feedback)
       ? toInterviewQuestionFeedback(state.active_feedback)
       : null,
     history: Array.isArray(state.history) ? state.history.map(toInterviewQuestionFeedback) : [],
@@ -498,7 +503,7 @@ export function toInterviewState(raw: unknown): InterviewState {
 }
 
 function toTrendsRow(raw: unknown): TrendsRow {
-  const source = asRecord(raw);
+  const source = parseState(raw);
   const row: TrendsRow = {};
   for (const [key, value] of Object.entries(source)) {
     if (
@@ -514,7 +519,7 @@ function toTrendsRow(raw: unknown): TrendsRow {
 }
 
 export function toTrendsState(raw: unknown): TrendsState {
-  const state = asRecord(raw);
+  const state = parseState(raw);
   return {
     query: str(state.query),
     generated_sql: str(state.generated_sql),
@@ -527,7 +532,7 @@ export function toTrendsState(raw: unknown): TrendsState {
 }
 
 function toOralExchange(raw: unknown): OralBoardsExchange {
-  const exchange = asRecord(raw);
+  const exchange = parseState(raw);
   const score = num(exchange.score);
   return {
     question: str(exchange.question),
@@ -541,7 +546,7 @@ function toOralExchange(raw: unknown): OralBoardsExchange {
 }
 
 function toSkillsetScore(raw: unknown): OralBoardsSkillsetScore | undefined {
-  const score = asRecord(raw);
+  const score = parseState(raw);
   const value = num(score.score);
   if (value !== 1 && value !== 2 && value !== 3) return undefined;
   return {
@@ -553,7 +558,7 @@ function toSkillsetScore(raw: unknown): OralBoardsSkillsetScore | undefined {
 }
 
 export function toOralBoardsState(raw: unknown): OralBoardsState {
-  const state = asRecord(raw);
+  const state = parseState(raw);
   return {
     case: str(state.case),
     transcript: Array.isArray(state.transcript) ? state.transcript.map(toOralExchange) : [],

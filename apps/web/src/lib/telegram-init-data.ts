@@ -1,4 +1,5 @@
 import { parse, validate } from "@tma.js/init-data-node";
+import { z } from "zod";
 
 export type TelegramUser = {
   id: number;
@@ -29,19 +30,15 @@ type VerifyInitDataOptions = {
   nowSeconds?: () => number;
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function isTelegramUser(value: unknown): value is TelegramUser {
-  if (!isRecord(value)) return false;
-  const user = value;
-  if (!Number.isSafeInteger(user.id) || typeof user.first_name !== "string") return false;
-  for (const field of ["last_name", "username", "language_code", "photo_url"] as const) {
-    if (user[field] !== undefined && typeof user[field] !== "string") return false;
-  }
-  return user.is_premium === undefined || typeof user.is_premium === "boolean";
-}
+const telegramUserSchema = z.object({
+  id: z.number().int().safe(),
+  first_name: z.string(),
+  last_name: z.string().optional(),
+  username: z.string().optional(),
+  language_code: z.string().optional(),
+  is_premium: z.boolean().optional(),
+  photo_url: z.string().optional(),
+}) satisfies z.ZodType<TelegramUser>;
 
 export function verifyInitData(
   initData: string,
@@ -60,6 +57,7 @@ export function verifyInitData(
     // field only after the bot-token signature has been verified.
     if (!params.has("signature")) params.set("signature", "");
     const parsed = parse(params);
+    const user = telegramUserSchema.safeParse(parsed.user);
     const authDate = Math.floor(parsed.auth_date.getTime() / 1000);
     const now = nowSeconds();
     if (
@@ -67,11 +65,11 @@ export function verifyInitData(
       !Number.isSafeInteger(now) ||
       authDate < now - TELEGRAM_INIT_DATA_MAX_AGE_SECONDS ||
       authDate > now + TELEGRAM_INIT_DATA_MAX_FUTURE_SKEW_SECONDS ||
-      !isTelegramUser(parsed.user)
+      !user.success
     ) {
       return null;
     }
-    return parsed.user;
+    return user.data;
   } catch {
     return null;
   }
