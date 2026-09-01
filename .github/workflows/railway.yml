@@ -31,7 +31,10 @@ jobs:
           fi
 
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2
+        with:
+          version: 12.2.1
+          install: false
       - uses: actions/setup-node@v7
         with:
           cache: pnpm

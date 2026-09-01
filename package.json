@@ -27,7 +27,7 @@
     "build": "turbo build --filter='!mobile'",
     "update": "pnpm update:js && pnpm update:expo",
     "update:js": "pnpm up -r --latest",
-    "update:expo": "cd apps/mobile && pnpx expo@latest install expo@latest && pnpx expo@latest install --fix && pnpx expo-doctor",
+    "update:expo": "cd apps/mobile && pnpm dlx expo@latest install expo@latest && pnpm dlx expo@latest install --fix && pnpm dlx expo-doctor",
     "doctor": "react-doctor"
   },
   "devDependencies": {
@@ -46,5 +46,5 @@
     "tailwindcss": "^4.3.3",
     "turbo": "^2.10.12"
   },
-  "packageManager": "pnpm@11.24.0"
+  "packageManager": "pnpm@12.2.1"
 }
