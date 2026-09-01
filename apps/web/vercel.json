@@ -1,5 +1,5 @@
 {
   "buildCommand": "cd ../.. && pnpm --filter web build",
-  "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
+  "installCommand": "cd ../.. && npx --yes pnpm@12.2.1 install --frozen-lockfile",
   "outputDirectory": ".next"
 }
