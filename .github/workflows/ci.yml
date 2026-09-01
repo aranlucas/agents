@@ -132,7 +132,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Check Worker bindings
         working-directory: apps/ai-shopping-mcp
-        run: pnpm exec wrangler types --check
+        run: pnpm cf-typegen
       - name: Build
         # Legacy apps/mobile uses credentialed native release commands, so CI excludes
         # it. Grocery Mobile exposes a deterministic Expo export through `build`.
