@@ -3,6 +3,7 @@
 import * as React from "react";
 import * as RechartsPrimitive from "recharts";
 import type { TooltipValueType } from "recharts";
+import { z } from "zod";
 
 import { cn } from "@agents/ui/lib/utils";
 
@@ -15,6 +16,7 @@ const THEME_ENTRIES: Array<[keyof typeof THEMES, string]> = [
 
 const INITIAL_DIMENSION = { width: 320, height: 200 } as const;
 type TooltipNameType = number | string;
+const chartDatumSchema = z.record(z.string(), z.unknown());
 
 export type ChartConfig = Record<
   string,
@@ -149,7 +151,9 @@ function ChartTooltipContent({
 
     const [item] = payload;
     const key = labelKey ?? String(item?.dataKey ?? item?.name ?? "value");
-    const itemConfig = getPayloadConfigFromPayload(config, item, key);
+    const chartDatum = chartDatumSchema.safeParse(item?.payload);
+    const datumKey = chartDatum.success ? z.string().safeParse(chartDatum.data[key]) : undefined;
+    const itemConfig = config[datumKey?.success ? datumKey.data : key];
     const value =
       !labelKey && typeof label === "string" ? (config[label]?.label ?? label) : itemConfig?.label;
 
@@ -185,7 +189,11 @@ function ChartTooltipContent({
           .filter((item) => item.type !== "none")
           .map((item, index) => {
             const key = nameKey ?? String(item.name ?? item.dataKey ?? "value");
-            const itemConfig = getPayloadConfigFromPayload(config, item, key);
+            const chartDatum = chartDatumSchema.safeParse(item.payload);
+            const datumKey = chartDatum.success
+              ? z.string().safeParse(chartDatum.data[key])
+              : undefined;
+            const itemConfig = config[datumKey?.success ? datumKey.data : key];
             const indicatorColor = color ?? item.payload?.fill ?? item.color;
             const itemKey = String(item.dataKey ?? item.name ?? item.value ?? key);
 
@@ -284,7 +292,11 @@ function ChartLegendContent({
         .filter((item) => item.type !== "none")
         .map((item) => {
           const key = nameKey ?? String(item.dataKey ?? "value");
-          const itemConfig = getPayloadConfigFromPayload(config, item, key);
+          const chartDatum = chartDatumSchema.safeParse(item.payload);
+          const datumKey = chartDatum.success
+            ? z.string().safeParse(chartDatum.data[key])
+            : undefined;
+          const itemConfig = config[datumKey?.success ? datumKey.data : key];
           const itemKey =
             toKeyPart(item.dataKey) ??
             toKeyPart(item.value) ??
@@ -317,42 +329,12 @@ function ChartLegendContent({
   );
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function getStringProperty(source: Record<string, unknown>, key: string) {
-  const value = source[key];
-  return typeof value === "string" ? value : undefined;
-}
-
 function toKeyPart(value: unknown) {
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
     return String(value);
   }
 
   return undefined;
-}
-
-function getPayloadConfigFromPayload(config: ChartConfig, payload: unknown, key: string) {
-  if (!isRecord(payload)) {
-    return undefined;
-  }
-
-  const payloadPayload = isRecord(payload.payload) ? payload.payload : undefined;
-
-  let configLabelKey: string = key;
-
-  const payloadLabel = getStringProperty(payload, key);
-  const nestedPayloadLabel = payloadPayload ? getStringProperty(payloadPayload, key) : undefined;
-
-  if (payloadLabel) {
-    configLabelKey = payloadLabel;
-  } else if (nestedPayloadLabel) {
-    configLabelKey = nestedPayloadLabel;
-  }
-
-  return configLabelKey in config ? config[configLabelKey] : config[key];
 }
 
 export {

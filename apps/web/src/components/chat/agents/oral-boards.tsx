@@ -18,13 +18,19 @@ import type { AgentId } from "./registry";
 
 type ToolStatus = "inProgress" | "executing" | "complete";
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
+const oralBoardsStateSchema = z.object({ current_question: z.string().optional() });
+
+const requestInputSchema = z.object({
+  metadata: z.object({
+    payload: z.object({
+      kind: z.enum(["ready", "answer"]),
+      question: z.string(),
+    }),
+  }),
+});
 
 function getCurrentQuestion(state: unknown) {
-  if (!isRecord(state)) return undefined;
-  return typeof state.current_question === "string" ? state.current_question : undefined;
+  return oralBoardsStateSchema.safeParse(state).data?.current_question;
 }
 
 function SetCaseToolCall({ status }: { status: ToolStatus }) {
@@ -43,12 +49,8 @@ function SetCaseToolCall({ status }: { status: ToolStatus }) {
 type RequestInputPayload = { kind: "ready" | "answer"; question: string };
 
 function requestInputPayload(value: unknown): RequestInputPayload | null {
-  if (!isRecord(value)) return null;
-  const metadata = value.metadata;
-  if (!isRecord(metadata) || !isRecord(metadata.payload)) return null;
-  const { kind, question } = metadata.payload;
-  if ((kind !== "ready" && kind !== "answer") || typeof question !== "string") return null;
-  return { kind, question };
+  const parsed = requestInputSchema.safeParse(value);
+  return parsed.success ? parsed.data.metadata.payload : null;
 }
 
 function RequestInputToolCall({
