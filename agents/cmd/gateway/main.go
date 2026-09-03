@@ -135,7 +135,7 @@ func newHandlerSwitcher(initial http.Handler) *handlerSwitcher {
 }
 
 func (switcher *handlerSwitcher) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if switcher.startNonResumeHydrate != nil && !resumeCriticalPath(r.URL.Path) {
+	if switcher.startNonResumeHydrate != nil && fullGatewayPath(r.URL.Path) {
 		switcher.firstNonResumeRequest.Do(switcher.startNonResumeHydrate)
 		<-switcher.nonResumeHydrationReady
 	}
@@ -145,6 +145,26 @@ func (switcher *handlerSwitcher) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	state.handler.ServeHTTP(w, r)
+}
+
+var fullGatewayPrefixes = func() []string {
+	prefixes := []string{"/info", "/threads", "/api/grocery", "/fitness/activities", "/telegram/link"}
+	for _, spec := range catalog.All() {
+		if spec.Route == "resume" {
+			continue
+		}
+		prefixes = append(prefixes, "/"+spec.Route, "/agent/"+spec.ClientID)
+	}
+	return prefixes
+}()
+
+func fullGatewayPath(path string) bool {
+	for _, prefix := range fullGatewayPrefixes {
+		if path == prefix || strings.HasPrefix(path, prefix+"/") {
+			return true
+		}
+	}
+	return false
 }
 
 func (switcher *handlerSwitcher) Swap(next http.Handler) {
@@ -157,15 +177,6 @@ func (switcher *handlerSwitcher) Swap(next http.Handler) {
 func (switcher *handlerSwitcher) startOnNonResumeRequest(start func(), ready <-chan struct{}) {
 	switcher.startNonResumeHydrate = start
 	switcher.nonResumeHydrationReady = ready
-}
-
-func resumeCriticalPath(path string) bool {
-	switch path {
-	case "/live", "/ready", "/health", "/agent/resume", "/resume":
-		return true
-	default:
-		return strings.HasPrefix(path, "/agent/resume/") || strings.HasPrefix(path, "/resume/")
-	}
 }
 
 // healthChecker is satisfied by *cloudflare.D1 and *cloudflare.R2. It is

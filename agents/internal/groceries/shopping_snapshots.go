@@ -24,7 +24,10 @@ const (
 	shoppingProfileSnapshotQueueSize = 256
 	shoppingProfileSnapshotTimeout   = 20 * time.Second
 	shoppingProfileSnapshotLease     = 45 * time.Second
-	shoppingProfileSnapshotPoll      = 30 * time.Second
+	// Keep the durable recovery sweep outside Railway's 5-10 minute idle
+	// detection window. Local mutations enqueue immediately, and a process
+	// restart performs an eager sweep before this slower safety interval.
+	shoppingProfileSnapshotPoll      = 15 * time.Minute
 	shoppingProfileArtifactRetention = 32
 	shoppingProfileCleanupBatch      = 64
 )
@@ -212,6 +215,24 @@ func (s *shoppingProfileSnapshotScheduler) worker() {
 
 func (s *shoppingProfileSnapshotScheduler) poller() {
 	defer close(s.done)
+	poll := func() {
+		ctx, cancel := context.WithTimeout(s.ctx, shoppingProfileSnapshotTimeout)
+		userIDs, err := s.store.pendingShoppingProfileWork(ctx, shoppingProfileSnapshotQueueSize)
+		cancel()
+		if err != nil {
+			if s.ctx.Err() == nil {
+				log.Printf("poll shopping profile snapshot jobs: %v", err)
+			}
+			return
+		}
+		for _, userID := range userIDs {
+			s.enqueue(userID)
+		}
+	}
+
+	// Recover durable work immediately after startup. Subsequent mutations are
+	// placed directly on the in-process queue and do not wait for the ticker.
+	poll()
 	ticker := time.NewTicker(shoppingProfileSnapshotPoll)
 	defer ticker.Stop()
 	for {
@@ -219,16 +240,7 @@ func (s *shoppingProfileSnapshotScheduler) poller() {
 		case <-s.stop:
 			return
 		case <-ticker.C:
-			ctx, cancel := context.WithTimeout(s.ctx, shoppingProfileSnapshotTimeout)
-			userIDs, err := s.store.pendingShoppingProfileWork(ctx, shoppingProfileSnapshotQueueSize)
-			cancel()
-			if err != nil {
-				log.Printf("poll shopping profile snapshot jobs: %v", err)
-				continue
-			}
-			for _, userID := range userIDs {
-				s.enqueue(userID)
-			}
+			poll()
 		}
 	}
 }

@@ -179,7 +179,7 @@ func TestHandlerSwitcherKeepsResumeCriticalRequestsOnInitialSurface(t *testing.T
 		close(ready)
 	}, ready)
 
-	for _, path := range []string{"/live", "/agent/resume/suggest", "/resume/health"} {
+	for _, path := range []string{"/live", "/agent/resume/suggest", "/resume/health", "/robots.txt", "/unknown"} {
 		recorder := httptest.NewRecorder()
 		switcher.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
 		if recorder.Code != http.StatusOK || recorder.Body.String() != "resume" {
@@ -187,7 +187,7 @@ func TestHandlerSwitcherKeepsResumeCriticalRequestsOnInitialSurface(t *testing.T
 		}
 	}
 	if starts.Load() != 0 {
-		t.Fatalf("Resume requests started full hydration %d times", starts.Load())
+		t.Fatalf("lightweight requests started full hydration %d times", starts.Load())
 	}
 
 	recorder := httptest.NewRecorder()
@@ -197,6 +197,24 @@ func TestHandlerSwitcherKeepsResumeCriticalRequestsOnInitialSurface(t *testing.T
 	}
 	if starts.Load() != 1 {
 		t.Fatalf("full hydration starts = %d, want 1", starts.Load())
+	}
+}
+
+func TestFullGatewayPathRecognizesOnlyMountedFullSurface(t *testing.T) {
+	for _, path := range []string{
+		"/info", "/threads", "/api/grocery/lists", "/fitness/activities/sync",
+		"/telegram/link/consume", "/grocery/health", "/agent/oral-boards/run",
+	} {
+		if !fullGatewayPath(path) {
+			t.Errorf("fullGatewayPath(%q) = false", path)
+		}
+	}
+	for _, path := range []string{
+		"/", "/live", "/ready", "/robots.txt", "/unknown", "/resume/health", "/agent/resume/suggest",
+	} {
+		if fullGatewayPath(path) {
+			t.Errorf("fullGatewayPath(%q) = true", path)
+		}
 	}
 }
 
