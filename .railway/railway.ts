@@ -1,8 +1,6 @@
 import { defineRailway, github, preserve, project, service } from "railway/iac";
 
-export default defineRailway((ctx) => {
-  const production = ctx.isEnvironment("production");
-
+export default defineRailway(() => {
   const agentsGateway = service("agents-gateway", {
     source: github("aranlucas/agents", { checkSuites: false }),
     build: {
@@ -13,7 +11,9 @@ export default defineRailway((ctx) => {
     healthcheck: "/ready",
     replicas: { "us-west2": 1 },
     deploy: {
-      sleepApplication: production ? undefined : true,
+      // The gateway is idle most of the time. Serverless keeps the public
+      // endpoint available while avoiding continuous CPU and memory charges.
+      sleepApplication: true,
       limitOverride: { containers: { cpu: 1, memoryBytes: 1000000000 } },
     },
     env: {

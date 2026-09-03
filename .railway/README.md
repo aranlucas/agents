@@ -14,10 +14,10 @@ The `agents` project has one service, `agents-gateway`, in two environments:
 
 | Environment   | Notes                                        |
 | ------------- | -------------------------------------------- |
-| `production`  | Always on (`sleepApplication: false`).       |
+| `production`  | Sleeps when idle (`sleepApplication: true`). |
 | `development` | Sleeps when idle (`sleepApplication: true`). |
 
-Everything else is identical, so `.railway/railway.ts` branches on `ctx.isEnvironment("production")` rather than keeping two files. Plan and apply target one environment at a time — run both.
+Both environments use the same configuration. Plan and apply target one environment at a time — run both.
 
 ```bash
 railway link --project agents --environment production
