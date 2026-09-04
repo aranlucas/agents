@@ -22,8 +22,8 @@ closed.
       clearly user-authored generic lists and pantry data. See Kroger's
       [public Cart overview](https://developer.kroger.com/documentation/api-products/public/cart/overview).
 - [ ] Make product/location caching honor Kroger's response cache headers. The
-      current middleware in `apps/ai-shopping-mcp/src/services/kroger/client.ts`
-      uses a fixed ten-minute TTL.
+      current middleware in [ai-shopping-mcp](https://github.com/aranlucas/ai-shopping-mcp)
+      `src/services/kroger/client.ts` uses a fixed ten-minute TTL.
 - [ ] Remove or obtain permission for weekly-deal/site-content republishing;
       the public API catalog does not provide a general deals API.
 
