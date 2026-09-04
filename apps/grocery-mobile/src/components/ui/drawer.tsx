@@ -51,11 +51,7 @@ export function Drawer({ open, onOpenChange, side = "left", children }: DrawerPr
 
   return (
     <Modal visible={open || closing} transparent animationType="none" onRequestClose={close}>
-      <Pressable
-        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
-        onPress={close}
-        accessible={false}
-      >
+      <Pressable className="absolute inset-0" onPress={close} accessible={false}>
         <Animated.View style={[{ flex: 1, backgroundColor: "#000000" }, overlayStyle]} />
       </Pressable>
       <Animated.View

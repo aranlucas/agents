@@ -19,7 +19,13 @@ function FormHarness({ onSubmit }: { onSubmit: (values: Values) => void }) {
         name="name"
         rules={{ validate: (value) => value.trim().length > 0 || "Enter a list name." }}
       />
-      <Pressable accessibilityLabel="Submit form" accessibilityRole="button" onPress={submit}>
+      <Pressable
+        accessibilityLabel="Submit form"
+        accessibilityRole="button"
+        onPress={() => {
+          void submit();
+        }}
+      >
         <Text>Submit</Text>
       </Pressable>
     </>

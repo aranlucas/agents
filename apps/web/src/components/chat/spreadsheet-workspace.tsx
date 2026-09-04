@@ -83,7 +83,7 @@ function SpreadsheetTable({ rows }: { rows: string[][] }) {
             {columns.map((column) => (
               <th
                 key={column.key}
-                className="border border-border px-3 py-2 text-left font-semibold text-foreground"
+                className="border border-border px-3 py-2 text-start font-semibold text-foreground"
               >
                 {column.value}
               </th>

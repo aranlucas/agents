@@ -143,7 +143,7 @@ export function AppSidebar({
                   <span className="font-mono text-xs font-semibold">LA</span>
                 )}
               </div>
-              <div className="grid min-w-0 flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+              <div className="grid min-w-0 flex-1 text-start text-sm leading-tight group-data-[collapsible=icon]:hidden">
                 <span className="truncate font-semibold">{sidebarName}</span>
                 <span className="truncate font-mono text-xs tracking-wider text-muted-foreground uppercase">
                   Agent console

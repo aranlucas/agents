@@ -165,7 +165,7 @@ function ComparisonChart({ rows, columns }: { rows: TrendsRow[]; columns: string
           <div key={item.label} className="grid grid-cols-4 gap-3">
             <div className="col-span-3 min-w-0">
               <div className="mb-1.5 flex items-baseline gap-2 text-sm">
-                <span className="w-5 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
+                <span className="w-5 shrink-0 text-end text-xs text-muted-foreground tabular-nums">
                   {index + 1}
                 </span>
                 <span className="truncate font-medium" title={item.label}>
@@ -180,7 +180,7 @@ function ComparisonChart({ rows, columns }: { rows: TrendsRow[]; columns: string
                 />
               </div>
             </div>
-            <span className="pt-0.5 text-right text-sm font-semibold tabular-nums">
+            <span className="pt-0.5 text-end text-sm font-semibold tabular-nums">
               {formatMetric(item.value, metric)}
             </span>
           </div>

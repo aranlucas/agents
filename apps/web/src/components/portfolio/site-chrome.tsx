@@ -32,6 +32,9 @@ export function SiteHeader() {
           Lucas Arango
         </Link>
         <nav aria-label="Site" className="flex items-center gap-5 sm:gap-6">
+          <Link className={navLinkClassName} href="/resume">
+            Resume
+          </Link>
           <Link className={navLinkClassName} href="#agents">
             Agents
           </Link>

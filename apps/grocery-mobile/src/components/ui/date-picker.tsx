@@ -26,11 +26,7 @@ function PickerShell({
   return (
     <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable className="flex-1 items-center justify-center bg-black/50" onPress={onClose}>
-        <Pressable
-          onPress={() => {}}
-          className="mx-6 rounded-xl bg-card p-2 shadow-xl"
-          style={{ minHeight: 360 }}
-        >
+        <Pressable onPress={() => {}} className="mx-6 min-h-90 rounded-xl bg-card p-2 shadow-xl">
           <View style={{ minHeight: 310 }}>{children}</View>
           <Pressable
             onPress={onClose}

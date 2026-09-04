@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { toRenderItems, type AguiMessage } from "./messages";
+import type { Message } from "@ag-ui/client";
+import { toRenderItems } from "./messages";
 
-const msgs: AguiMessage[] = [
+const msgs: Message[] = [
   { id: "u1", role: "user", content: "plan tokyo" },
   // Reasoning arrives as its own message, rendered in place as a standalone block.
   { id: "r1", role: "reasoning", content: "think…" },
@@ -128,7 +129,12 @@ describe("toRenderItems", () => {
   });
 
   it("passes activity messages through as standalone items carrying the raw message", () => {
-    const activity: AguiMessage = { id: "act1", role: "activity", content: "surface" };
+    const activity: Message = {
+      id: "act1",
+      role: "activity",
+      activityType: "surface",
+      content: {},
+    };
     const items = toRenderItems([{ id: "u1", role: "user", content: "hi" }, activity]);
     expect(items.map((i) => i.kind)).toEqual(["user", "activity"]);
     const item = items[1];
@@ -137,7 +143,7 @@ describe("toRenderItems", () => {
   });
 
   it("preserves activity metadata for the custom chat renderer", () => {
-    const message: AguiMessage = {
+    const message: Message = {
       id: "surface-1",
       role: "activity",
       activityType: "progress",

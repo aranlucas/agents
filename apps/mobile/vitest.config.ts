@@ -12,10 +12,21 @@ export default defineConfig({
       },
       { find: "expo/fetch", replacement: resolve(__dirname, "./test/expo-fetch-stub.ts") },
       { find: "react-native", replacement: resolve(__dirname, "./test/react-native-stub.ts") },
+      // Deprecated CJS polyfill (see test/text-encoding-stub.ts): no ESM named
+      // exports for Node to bind. Redirected to node:util globals.
+      { find: /^text-encoding$/, replacement: resolve(__dirname, "./test/text-encoding-stub.ts") },
       { find: "@", replacement: resolve(__dirname, "./src") },
     ],
   },
   test: {
+    server: {
+      // Inline the whole chain down to the broken package (vitest docs): the
+      // real CopilotKit package whose polyfills import the deprecated
+      // `text-encoding` CJS, which Node cannot bind ESM names from. Inlined
+      // modules go through Vite, where the alias above redirects it to the
+      // node:util stub. `react-native` itself stays stubbed via its alias.
+      deps: { inline: [/@copilotkit\/react-native/, "text-encoding"] },
+    },
     environment: "node",
     testTimeout: 30_000,
     include: ["src/**/*.test.{ts,tsx}", "test/**/*.test.{ts,tsx}"],

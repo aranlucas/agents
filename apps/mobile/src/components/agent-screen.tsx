@@ -72,7 +72,6 @@ function toDisplayItems(m: unknown, index: number): DisplayItem[] {
     const callId = typeof toolCall.id === "string" ? toolCall.id : `${id}-tool-${toolIndex}`;
     // Arguments stay raw here; useRenderToolCall parses them and tolerates the
     // partial JSON a streaming response produces.
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     const raw = {
       id: callId,
       type: "function",
