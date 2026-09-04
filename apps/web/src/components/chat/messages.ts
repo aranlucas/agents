@@ -1,37 +1,24 @@
-// Mirrors the @ag-ui/core message shapes we consume. Assistant carries optional
-// toolCalls; reasoning arrives as its own `role: "reasoning"` message rendered
-// in place (a standalone "Thinking" block), the same way CopilotKit's
-// CopilotChatMessageView renders reasoning messages.
-export type AguiToolCall = {
-  id: string;
-  type?: string;
-  function: { name: string; arguments: string };
-};
+import type { ActivityMessage, Message, ToolCall } from "@ag-ui/client";
 
-export type AguiMessage = {
-  id: string;
-  role: string;
-  content?: unknown;
-  activityType?: string;
-  toolCalls?: AguiToolCall[];
-  /** Present on `role: "tool"` result messages — links the result to its call. */
-  toolCallId?: string;
-};
-
+// Message roles beyond plain chat are first-class AG-UI protocol types
+// (same `Message` union CopilotKit v2 itself consumes): reasoning arrives as
+// its own `role: "reasoning"` message rendered in place as a standalone
+// "Thinking" block, the same way CopilotKit's CopilotChatMessageView renders
+// reasoning messages.
 export type RenderItem =
   | { kind: "user"; id: string; text: string }
-  | { kind: "assistant"; id: string; text: string; toolCalls: AguiToolCall[] }
+  | { kind: "assistant"; id: string; text: string; toolCalls: ToolCall[] }
   // Reasoning renders as its own standalone block in message order.
   | { kind: "reasoning"; id: string; text: string }
   // Activity messages are rendered standalone via the
   // `useRenderActivityMessage` resolver; we carry the raw message through.
-  | { kind: "activity"; id: string; message: AguiMessage };
+  | { kind: "activity"; id: string; message: ActivityMessage };
 
 // Mirrors CopilotKit's `deduplicateMessages`: collapse messages that share an id,
 // merging two assistant messages so streamed content/toolCalls aren't lost when a
 // snapshot re-sends the same id.
-function dedupeById(messages: AguiMessage[]): AguiMessage[] {
-  const acc = new Map<string, AguiMessage>();
+function dedupeById(messages: Message[]): Message[] {
+  const acc = new Map<string, Message>();
   for (const m of messages) {
     const existing = acc.get(m.id);
     if (existing && m.role === "assistant" && existing.role === "assistant") {
@@ -70,7 +57,7 @@ function extractText(content: unknown): string {
     .join("");
 }
 
-export function toRenderItems(messages: AguiMessage[]): RenderItem[] {
+export function toRenderItems(messages: Message[]): RenderItem[] {
   const items: RenderItem[] = [];
   // Tracks the previous reasoning text within the current turn. ag-ui-adk re-emits
   // the final aggregated thought as a *second* reasoning message with a different

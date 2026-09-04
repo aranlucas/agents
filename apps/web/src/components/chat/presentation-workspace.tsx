@@ -31,7 +31,7 @@ function SlideThumbnail({
       type="button"
       onClick={onClick}
       className={cn(
-        "w-full rounded border p-2 text-left transition-all",
+        "w-full rounded border p-2 text-start transition-all",
         active ? "border-page bg-page/10" : "border-border hover:border-muted-foreground/40",
       )}
     >

@@ -14,6 +14,7 @@ import { ArrowRightIcon, FileIcon, PaperclipIcon, XIcon } from "lucide-react";
 
 import { Button, Streamdown } from "@agents/ui";
 import { cn } from "@agents/ui/lib/utils";
+import type { ToolCall, ToolMessage } from "@ag-ui/client";
 import {
   Empty,
   EmptyDescription,
@@ -73,7 +74,7 @@ import {
 } from "@agents/ui/components/attachment";
 
 import type { AgentConfig, AgentId } from "./agents/registry";
-import { toRenderItems, type AguiMessage, type AguiToolCall } from "./messages";
+import { toRenderItems } from "./messages";
 import { selectArtifact } from "./artifact";
 import { toToolState } from "./tool-adapter";
 import { AgentSelector } from "./agent-selector";
@@ -282,6 +283,9 @@ export function ChatSurface({
   useEffect(() => {
     let detached = false;
     const connectAbortController = new AbortController();
+    // connectionAttempt is a manual retry counter: retryConnection clears the
+    // ref above and bumps it to re-run this effect after a failed connect.
+    const attempt = connectionAttempt;
 
     if (!agent || connectedAgentRef.current === agent || !isRuntimeConnected) {
       return undefined;
@@ -324,7 +328,7 @@ export function ChatSurface({
           agent,
           message: `Couldn't connect to ${config.label}. Your draft is safe.`,
         });
-        console.error("ChatSurface: connectAgent failed", error);
+        console.error(`ChatSurface: connectAgent failed (attempt ${attempt + 1})`, error);
       });
 
     return () => {
@@ -342,12 +346,12 @@ export function ChatSurface({
     setConnectionAttempt((attempt) => attempt + 1);
   }, []);
 
-  // CopilotKit's public agent message type is looser than the AG-UI runtime
-  // shape this renderer consumes; keep that cast at the integration boundary.
-  const messages = (agent?.messages ?? []) as AguiMessage[];
+  // `agent.messages` is already the canonical AG-UI `Message[]` — the same
+  // union `toRenderItems` consumes, so role narrowing needs no casts.
+  const messages = agent?.messages ?? [];
   const items = toRenderItems(messages);
   const isRunning = agent?.isRunning ?? false;
-  const artifact = selectArtifact(agent?.state as Record<string, unknown>, config);
+  const artifact = selectArtifact(agent?.state, config);
   const showCommandSuggestions = items.length === 0;
 
   // The artifact button hangs off the most recent assistant turn.
@@ -362,15 +366,16 @@ export function ChatSurface({
 
   // Pair each tool call with its result message (role: "tool") so the resolver
   // can render the completed state instead of a perpetual "Pending".
-  const toolMessages = new Map<string, AguiMessage>();
+  // `role` discriminates the AG-UI `Message` union, so no cast is needed.
+  const toolMessages = new Map<string, ToolMessage>();
   for (const m of messages) {
     if (m.role === "tool" && m.toolCallId) toolMessages.set(m.toolCallId, m);
   }
 
-  // The resolver's toolCall/toolMessage types are CopilotKit-internal; our Agui*
-  // are the structural runtime shapes. Cast at this single boundary.
-  const toolCallContent = (tc: AguiToolCall) =>
-    renderToolCall({ toolCall: tc as never, toolMessage: toolMessages.get(tc.id) as never });
+  // The resolver takes the canonical AG-UI `ToolCall`/`ToolMessage` — the same
+  // types `toRenderItems` carries through, so this passes straight through.
+  const toolCallContent = (tc: ToolCall) =>
+    renderToolCall({ toolCall: tc, toolMessage: toolMessages.get(tc.id) });
 
   const send = useCallback(
     async (text: string, files: PromptInputMessage["files"] = []) => {
@@ -459,7 +464,7 @@ export function ChatSurface({
                     if (item.kind === "activity") {
                       return (
                         <MessageScrollerItem key={item.id} messageId={item.id}>
-                          {activityMessage(item.message as never)}
+                          {activityMessage(item.message)}
                         </MessageScrollerItem>
                       );
                     }

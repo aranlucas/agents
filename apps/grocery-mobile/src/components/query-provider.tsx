@@ -8,6 +8,16 @@ import {
 import { type ReactNode, useEffect, useState } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 
+function isAppStateStatus(status: string | null | undefined): status is AppStateStatus {
+  return (
+    status === "active" ||
+    status === "background" ||
+    status === "inactive" ||
+    status === "extension" ||
+    status === "unknown"
+  );
+}
+
 function updateFocus(status: AppStateStatus) {
   focusManager.setFocused(status === "active");
 }
@@ -35,7 +45,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (process.env.EXPO_OS === "web") return;
 
-    updateFocus(AppState.currentState);
+    updateFocus(isAppStateStatus(AppState.currentState) ? AppState.currentState : "active");
     const appStateSubscription = AppState.addEventListener("change", updateFocus);
     onlineManager.setEventListener((setOnline) =>
       NetInfo.addEventListener((state) => {

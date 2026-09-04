@@ -35,16 +35,39 @@
           "src/app/api/telegram/auth/**",
           "src/app/console/[agent]/**",
           "src/app/grocery/**",
+          "src/app/resume/**",
           "src/app/sign-in/**",
           "src/app/sign-up/**",
           "src/app/tma/**"
         ]
       }
     ],
-    "react/self-closing-comp": "warn",
+    "react/self-closing-comp": "error",
     "react/react-in-jsx-scope": "off",
     "react-hooks/exhaustive-deps": "warn",
+    "react/exhaustive-effect-dependencies": "error",
     "jsx-a11y/prefer-tag-over-role": "off",
+    // Strictness: warns exit 0 so CI never catches them — they rot. Everything
+    // below is at zero violations; errors keep it there. (Deliberately still
+    // warn: prefer-theme-tokens and no-dark-without-light are judgment calls,
+    // max-class-count and line-wrapping are thresholds, unicorn/prefer-* are taste.)
+    "tailwindcss/enforce-shorthand": "error",
+    "tailwindcss/enforce-logical": "error",
+    "tailwindcss/enforce-canonical": "error",
+    "tailwindcss/enforce-sort-order": "error",
+    "tailwindcss/no-contradicting-variants": "error",
+    "tailwindcss/consistent-variant-order": "error",
+    "tailwindcss/no-unnecessary-arbitrary-value": "error",
+    "tailwindcss/enforce-consistent-important-position": "error",
+    "tailwindcss/enforce-negative-arbitrary-values": "error",
+    "tailwindcss/enforce-consistent-variable-syntax": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-unsafe-type-assertion": "error",
+    "typescript/no-floating-promises": "error",
+    "typescript/no-unnecessary-type-assertion": "error",
+    "typescript/prefer-nullish-coalescing": "error",
+    "typescript/prefer-optional-chain": "error",
+    "import/no-cycle": "error",
     "no-restricted-imports": [
       "error",
       {
@@ -57,14 +80,5 @@
       }
     ]
   },
-  "overrides": [
-    {
-      "files": ["**/*.test.{ts,tsx}", "**/test/**"],
-      "rules": {
-        "jsx-a11y/aria-role": "off",
-        "jsx-a11y/heading-has-content": "off"
-      }
-    }
-  ],
   "ignorePatterns": [".next/**"]
 }

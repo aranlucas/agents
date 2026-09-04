@@ -42,7 +42,7 @@ export function InfiniteList<T>({
               accessibilityRole="progressbar"
             />
           </View>
-        ) : null
+        ) : undefined
       }
       {...props}
     />

@@ -124,7 +124,7 @@ export function ExpenseDesk({ state, isRunning, onDecision, onPrompt }: ExpenseD
                       type="button"
                       aria-label={`Select ${expense.description}`}
                       onClick={() => setLocalSelected(expense.id)}
-                      className={`w-full rounded-md border p-3 text-left transition ${
+                      className={`w-full rounded-md border p-3 text-start transition ${
                         expense.id === selectedId
                           ? "border-blue-400 bg-zinc-800"
                           : "border-white/10 bg-zinc-900 hover:border-white/20"
@@ -160,7 +160,7 @@ export function ExpenseDesk({ state, isRunning, onDecision, onPrompt }: ExpenseD
                   <h1 className="mt-1">{selected.description}</h1>
                   <p className="mt-1 text-sm text-zinc-300">{selected.submitter}</p>
                 </div>
-                <div className="text-right">
+                <div className="text-end">
                   <p className="font-mono text-2xl">{formatMoney(selected.amount)}</p>
                   <p className="text-xs tracking-widest text-zinc-400 uppercase">
                     {statusLabel(selected.status)}

@@ -1,5 +1,20 @@
 {
-  "buildCommand": "cd ../.. && npx --yes pnpm@12.2.1 --filter web build",
-  "installCommand": "cd ../.. && npx --yes pnpm@12.2.1 install --frozen-lockfile",
-  "outputDirectory": ".next"
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "buildCommand": "cd ../.. && npx --yes pnpm@12.3.1 --filter web build",
+  "installCommand": "cd ../.. && npx --yes pnpm@12.3.1 install --frozen-lockfile",
+  "outputDirectory": ".next",
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "headers": [
+    {
+      "source": "/resume",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, s-maxage=3600, stale-while-revalidate=86400"
+        }
+      ]
+    }
+  ]
 }

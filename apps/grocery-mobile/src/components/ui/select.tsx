@@ -41,7 +41,7 @@ export function Select({
 }: SelectProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const triggerRef = useRef<View>(null);
+  const triggerRef = useRef<React.ComponentRef<typeof Pressable>>(null);
   const dark = useColorScheme() === "dark";
   const { height: screenH } = useWindowDimensions();
   const caret = dark ? "#fafafa" : "#18181b";
@@ -111,10 +111,7 @@ export function Select({
         statusBarTranslucent
       >
         {/* Backdrop */}
-        <Pressable
-          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
-          onPress={close}
-        />
+        <Pressable className="absolute inset-0" onPress={close} />
 
         {/* Dropdown */}
         <View

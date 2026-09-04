@@ -12,10 +12,6 @@ syncInjectedDepsAfterScripts:
   - fmt
 
 overrides:
-  "@ag-ui/client": "0.0.59"
-  "@ag-ui/core": "0.0.59"
-  "@ag-ui/encoder": "0.0.59"
-  "@ag-ui/proto": "0.0.59"
   "@huggingface/transformers>sharp": "0.35.3"
   "@modelcontextprotocol/sdk": "1.30.0"
   "ansi-to-react>linkify-it": "5.0.2"

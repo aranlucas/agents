@@ -213,7 +213,7 @@ export default function ChatHistoryScreen() {
               <Spinner accessibilityLabel="Loading more chats" size="sm" />
             ) : null}
           </View>
-        ) : null
+        ) : undefined
       }
     />
   );

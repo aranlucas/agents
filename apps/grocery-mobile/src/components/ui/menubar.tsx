@@ -31,7 +31,7 @@ export interface MenubarMenuProps {
 export function MenubarMenu({ trigger, className, children }: MenubarMenuProps) {
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState({ x: 0, y: 0 });
-  const ref = useRef<View>(null);
+  const ref = useRef<React.ComponentRef<typeof Pressable>>(null);
 
   const openMenu = () => {
     // Open immediately so the menu never depends on a measure callback firing;
@@ -58,7 +58,7 @@ export function MenubarMenu({ trigger, className, children }: MenubarMenuProps) 
         )}
       </Pressable>
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <Pressable style={{ flex: 1 }} onPress={() => setOpen(false)} accessible={false}>
+        <Pressable className="flex-1" onPress={() => setOpen(false)} accessible={false}>
           <View
             className={cn("min-w-40 rounded-md border border-border bg-card p-1", className)}
             style={{ position: "absolute", left: anchor.x, top: anchor.y }}
