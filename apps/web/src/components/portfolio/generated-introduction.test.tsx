@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import { StrictMode } from "react";
+import { renderToString } from "react-dom/server";
 import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const { getToken } = vi.hoisted(() => ({ getToken: vi.fn(async () => "clerk-token") }));
-
 vi.mock("@clerk/nextjs", () => ({
-  useAuth: () => ({ getToken, isLoaded: true }),
+  useAuth: () => {
+    throw new Error("The public introduction must not depend on Clerk");
+  },
 }));
 
 vi.mock("@/env", () => ({
@@ -77,10 +78,27 @@ function enqueueSuccessfulRun(
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  getToken.mockClear();
 });
 
 describe("GeneratedIntroduction", () => {
+  it("includes the gateway connection hint in the initial HTML", () => {
+    const html = renderToString(<StreamingIntroduction />);
+    expect(html).toContain('rel="preconnect"');
+    expect(html).toContain('href="https://gateway.example"');
+    expect(html).toContain('crossorigin=""');
+  });
+
+  it("cancels the request when the homepage unmounts", async () => {
+    const request = installStreamingResponse();
+    const view = render(<StreamingIntroduction />);
+    const { controller } = await request.ready();
+    const signal = request.fetch.mock.calls[0][1].signal;
+    expect(signal?.aborted).toBe(false);
+    view.unmount();
+    expect(signal?.aborted).toBe(true);
+    controller.close();
+  });
+
   it("reserves the same frame height while writing and once ready", () => {
     const writing = render(<IntroductionSkeleton />).container;
     const ready = render(<IntroductionContent text="Done." />).container;
@@ -111,6 +129,16 @@ describe("GeneratedIntroduction", () => {
     expect(screen.getByText("I build products from idea to launch.")).toBeVisible();
     expect(screen.getByText("Outside work, I build agents and climb.")).toBeVisible();
     expect(screen.getByRole("status")).toHaveTextContent("Resume introduction ready");
+  });
+
+  it("preserves paragraph DOM nodes as tokens arrive", () => {
+    const view = render(<IntroductionContent text="First" streaming />);
+    const paragraph = view.container.querySelector("p");
+    view.rerender(<IntroductionContent text={"First paragraph.\n\nSecond"} streaming />);
+    expect(view.container.querySelector("p")).toBe(paragraph);
+    const secondParagraph = view.container.querySelectorAll("p")[1];
+    view.rerender(<IntroductionContent text={"First paragraph.\n\nSecond paragraph."} />);
+    expect(view.container.querySelectorAll("p")[1]).toBe(secondParagraph);
   });
 
   it("streams typed HttpAgent text events directly from the gateway", async () => {
@@ -145,7 +173,7 @@ describe("GeneratedIntroduction", () => {
     expect(request.fetch).toHaveBeenCalledWith(
       "https://gateway.example/agent/resume/suggest",
       expect.objectContaining({
-        headers: expect.objectContaining({ Authorization: "Bearer clerk-token" }),
+        headers: expect.not.objectContaining({ Authorization: expect.anything() }),
       }),
     );
   });
@@ -159,6 +187,7 @@ describe("GeneratedIntroduction", () => {
     );
 
     const { controller, input } = await request.ready();
+    expect(request.fetch).toHaveBeenCalledTimes(1);
     enqueueSuccessfulRun(controller, input, ["Strict-safe introduction"]);
 
     expect(await screen.findByText("Strict-safe introduction")).toBeVisible();

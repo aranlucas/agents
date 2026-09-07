@@ -149,6 +149,12 @@ func newEntryHandler(entry agentruntime.Entry, sessions session.Service, statele
 		return nil, fmt.Errorf("create ADK runner: %w", err)
 	}
 	cfg := &handlerConfig{ids: events.NewDefaultIDGenerator(), smoothing: defaultStreamSmoothing}
+	if stateless {
+		// Suggestions and the homepage introduction should arrive at provider
+		// speed, without the conversational typewriter pacing.
+		cfg.smoothing.enabled = false
+		cfg.smoothing.chunkDelay = 0
+	}
 	for _, opt := range opts {
 		opt(cfg)
 	}

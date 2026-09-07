@@ -5,7 +5,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes";
-import { TooltipProvider } from "@agents/ui";
+import { TooltipProvider } from "@agents/ui/components/tooltip";
 
 /**
  * Clerk renders its own island and cannot read our Tailwind theme, so the
