@@ -296,6 +296,38 @@ func TestHandlerCapturesSessionSnapshotFailure(t *testing.T) {
 	}
 }
 
+func TestStatelessHandlerStreamsWithoutArtificialPacing(t *testing.T) {
+	a, err := llmagent.New(llmagent.Config{
+		Name: "resume_agent", Instruction: "test", Model: &fakeSuggestionToolModel{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry := agentruntime.Entry{Route: "resume", AppName: "resume_agent", Agent: a, Public: true}
+	stateless, err := NewStatelessEntryHandler(entry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stateless.smoothing.enabled || stateless.smoothing.chunkDelay != 0 {
+		t.Fatal("stateless streams must not add typewriter pacing")
+	}
+	conversational, err := NewEntryHandler(entry, session.InMemoryService())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if conversational.smoothing != defaultStreamSmoothing {
+		t.Fatal("conversational pacing changed")
+	}
+	custom := streamSmoothing{enabled: true, chunking: streamChunkingWord, charsPerChunk: 32, chunkDelay: time.Millisecond}
+	overridden, err := NewStatelessEntryHandler(entry, WithStreamSmoothing(custom))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if overridden.smoothing != custom {
+		t.Fatal("explicit pacing option was ignored")
+	}
+}
+
 func TestStatelessHandlerUsesEphemeralSession(t *testing.T) {
 	pending := newFakePending()
 	a, err := llmagent.New(llmagent.Config{

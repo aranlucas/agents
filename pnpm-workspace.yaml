@@ -5,10 +5,9 @@ packages:
 
 minimumReleaseAge: 0
 
+# Read-only checks must not rewrite injected dependencies while Turbo runs them
+# concurrently. Only formatting changes the source exported by workspace packages.
 syncInjectedDepsAfterScripts:
-  - typecheck
-  - test
-  - lint
   - fmt
 
 overrides:

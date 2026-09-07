@@ -1,8 +1,8 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { preconnect } from "react-dom";
 
 import { env } from "@/env";
 import { runResumeIntroduction } from "@/lib/resume-introduction";
@@ -103,7 +103,8 @@ export function IntroductionContent({
       <RunStrip status={streaming ? "writing" : "ready"} />
       <IntroductionBody busy={streaming}>
         {paragraphs.map((paragraph, index) => (
-          <p key={paragraph}>
+          // oxlint-disable-next-line react/no-array-index-key -- streamed paragraphs only grow or append; text keys remount on every token.
+          <p key={index}>
             {paragraph}
             {streaming && index === paragraphs.length - 1 ? (
               <span
@@ -122,16 +123,13 @@ export function IntroductionContent({
 }
 
 export function StreamingIntroduction() {
-  const { getToken, isLoaded } = useAuth();
+  preconnect(new URL(env.NEXT_PUBLIC_AGENTS_BASE_URL).origin, { crossOrigin: "anonymous" });
   const [text, setText] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [failed, setFailed] = useState(false);
-  const runEffectIdRef = useRef(0);
 
   useEffect(() => {
-    if (!isLoaded) return undefined;
-
-    const effectId = ++runEffectIdRef.current;
+    let active = true;
     const abortController = new AbortController();
     let timedOut = false;
     const timeout = window.setTimeout(() => {
@@ -140,29 +138,26 @@ export function StreamingIntroduction() {
     }, 20_000);
 
     void (async () => {
-      let token: string | null = null;
-      try {
-        token = await getToken();
-      } catch {
-        // The endpoint is public, so Clerk availability must not prevent the run.
-      }
+      // Let Strict Mode finish its synchronous setup/cleanup probe before POSTing.
+      await Promise.resolve();
 
-      if (abortController.signal.aborted || runEffectIdRef.current !== effectId) return;
+      if (abortController.signal.aborted || !active) return;
 
       try {
         await runResumeIntroduction({
           baseUrl: env.NEXT_PUBLIC_AGENTS_BASE_URL,
-          token,
+          // This stateless public run has no user-specific content or auth dependency.
+          token: null,
           abortController,
           onDelta(_delta, generated) {
-            if (runEffectIdRef.current !== effectId) return;
+            if (abortController.signal.aborted || !active) return;
             setStreaming(true);
             setText(generated);
           },
         });
-        if (runEffectIdRef.current === effectId) setStreaming(false);
+        if (active) setStreaming(false);
       } catch {
-        if (runEffectIdRef.current === effectId && (!abortController.signal.aborted || timedOut)) {
+        if (active && (!abortController.signal.aborted || timedOut)) {
           setStreaming(false);
           setFailed(true);
         }
@@ -173,9 +168,10 @@ export function StreamingIntroduction() {
 
     return () => {
       window.clearTimeout(timeout);
+      active = false;
       abortController.abort();
     };
-  }, [getToken, isLoaded]);
+  }, []);
 
   if (!text && !failed) return <IntroductionSkeleton />;
   if (!text) {
