@@ -23,7 +23,7 @@ func TestAgentPolicies(t *testing.T) {
 		{Grocery, "groq", groqResponsesModel, "", 20, []string{"openrouter"}},
 		{Presentation, "groq", groqResponsesModel, "", 30, []string{"openrouter"}},
 		{Research, "openrouter", openRouterFreeModel, "", 20, []string{"groq"}},
-		{Resume, "openrouter", openRouterFreeModel, "", 20, nil},
+		{Resume, "openrouter", openRouterFreeModel, "", 20, []string{"groq"}},
 		{Spreadsheet, "groq", groqResponsesModel, "", 30, []string{"openrouter"}},
 		{Travel, "openrouter", openRouterFreeModel, "", 20, []string{"groq"}},
 		{Trends, "groq", groqResponsesModel, "", 30, []string{"openrouter"}},
