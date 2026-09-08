@@ -19,6 +19,8 @@ export default defineConfig({
     ],
   },
   test: {
+    // Bound memory and CPU use when running validation on a development machine.
+    maxWorkers: 1,
     server: {
       // Inline the whole chain down to the broken package (vitest docs): the
       // real CopilotKit package whose polyfills import the deprecated

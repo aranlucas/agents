@@ -10,10 +10,10 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "lint": "oxlint .",
-    "fmt": "oxfmt .",
-    "fmt:check": "oxfmt --check .",
-    "typecheck": "tsc --noEmit",
+    "lint": "oxlint --threads=2 .",
+    "fmt": "oxfmt --threads=2 .",
+    "fmt:check": "oxfmt --threads=2 --check .",
+    "typecheck": "GOMAXPROCS=2 tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
@@ -22,11 +22,12 @@
   },
   "devDependencies": {
     "@agents/typescript-config": "workspace:*",
-    "@babel/core": "7.29.7",
+    "@babel/core": "^7.29.7",
+    "@react-native/metro-config": "0.86.3",
     "@types/react": "~19.2.18",
     "bufferutil": "4.1.0",
     "markdown-it": "^15.0.1",
-    "react": "19.2.8",
+    "react": "19.2.3",
     "react-native": "0.86.3",
     "supports-color": "11.0.0",
     "typescript": "7.0.2",
