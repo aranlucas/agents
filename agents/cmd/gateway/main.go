@@ -772,7 +772,20 @@ func main() {
 	if err != nil {
 		log.Fatalf("configure resume model: %v", err)
 	}
-	resumeModel := openai.New(resumeProvider, modelHTTPClient, limiter)
+	resumeFallbacks := providerpolicy.FallbackProviders(cfg.Providers)
+	if len(resumeProvider.Fallbacks) > 0 {
+		// Keep OpenRouter primary, but do not let reasoning-only streams hold
+		// the public introduction's loading state until its browser timeout.
+		resumeProvider.FirstContentTimeout = 2 * time.Second
+	}
+	if groq, ok := resumeFallbacks["groq"]; ok {
+		groq.ReasoningEffort = "low"
+		resumeFallbacks["groq"] = groq
+	}
+	resumeModel, err := openai.NewMulti(resumeProvider, resumeFallbacks, modelHTTPClient, limiter)
+	if err != nil {
+		log.Fatalf("configure resume fallback: %v", err)
+	}
 	resumeAgent, err := resume.New(resumeModel, agentToolset)
 	if err != nil {
 		log.Fatalf("build resume agent: %v", err)
@@ -867,6 +880,12 @@ func main() {
 			verifier                                           auth.TokenVerifier
 			clerkBackend                                       clerk.Backend
 		)
+		// These longer conversations share the OpenRouter model, but not the
+		// public Resume startup deadline or overflow policy.
+		careerProvider := resumeProvider
+		careerProvider.FirstContentTimeout = 0
+		careerProvider.Fallbacks = nil
+		careerModel := openai.New(careerProvider, modelHTTPClient, limiter)
 		var builds startupGroup
 		builds.Go("Clerk auth", func() error {
 			if cfg.ClerkSecret != "" {
@@ -887,7 +906,7 @@ func main() {
 		})
 		builds.Go("jobs agent", func() error {
 			var err error
-			jobsAgent, err = jobs.New(resumeModel, braveSearch, jobsWebLoader, agentToolset)
+			jobsAgent, err = jobs.New(careerModel, braveSearch, jobsWebLoader, agentToolset)
 			if err != nil {
 				return fmt.Errorf("build jobs agent: %w", err)
 			}
@@ -895,7 +914,7 @@ func main() {
 		})
 		builds.Go("interview agent", func() error {
 			var err error
-			interviewAgent, err = interview.New(resumeModel, agentToolset)
+			interviewAgent, err = interview.New(careerModel, agentToolset)
 			if err != nil {
 				return fmt.Errorf("build interview agent: %w", err)
 			}

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"agents/internal/config"
 	"agents/internal/rate"
@@ -291,6 +292,7 @@ func TestStreamErrorDoesNotFallbackAfterEmission(t *testing.T) {
 	defer fallback.Close()
 	first := testProvider("primary", primary.URL)
 	first.Fallbacks = []string{"fallback"}
+	first.FirstContentTimeout = time.Second
 	adapter, _ := NewMulti(first, map[string]config.Provider{"fallback": testProvider("fallback", fallback.URL)}, primary.Client(), allowLimiter{})
 	responses, errs := collect(adapter.GenerateContent(t.Context(), &model.LLMRequest{Contents: genai.Text("hello")}, true))
 	if len(responses) != 1 || len(errs) != 1 || fallbackCalls.Load() != 0 {
@@ -412,4 +414,94 @@ func collect(sequence iter.Seq2[*model.LLMResponse, error]) ([]*model.LLMRespons
 		}
 	}
 	return responses, errs
+}
+
+// scriptedModel exercises startup cancellation without depending on network timing.
+type scriptedModel func(context.Context) iter.Seq2[*model.LLMResponse, error]
+
+func (scriptedModel) Name() string { return "scripted" }
+
+func (s scriptedModel) GenerateContent(ctx context.Context, _ *model.LLMRequest, _ bool) iter.Seq2[*model.LLMResponse, error] {
+	return s(ctx)
+}
+
+func TestFirstContentTimeoutFallsBackWithoutLeakingReasoning(t *testing.T) {
+	for _, reasoning := range []bool{false, true} {
+		t.Run(fmt.Sprint("reasoning=", reasoning), func(t *testing.T) {
+			primary := testProvider("primary", "https://example.invalid")
+			primary.FirstContentTimeout = 20 * time.Millisecond
+			adapter := newModel([]config.Provider{primary, testProvider("fallback", "https://example.invalid")}, nil, allowLimiter{})
+			adapter.providers[0].model = scriptedModel(func(ctx context.Context) iter.Seq2[*model.LLMResponse, error] {
+				return func(yield func(*model.LLMResponse, error) bool) {
+					if reasoning && !yield(&model.LLMResponse{Content: &genai.Content{Parts: []*genai.Part{{Text: "thinking", Thought: true}}}}, nil) {
+						return
+					}
+					<-ctx.Done()
+					yield(nil, ctx.Err())
+				}
+			})
+			adapter.providers[1].model = scriptedModel(func(context.Context) iter.Seq2[*model.LLMResponse, error] {
+				return func(yield func(*model.LLMResponse, error) bool) {
+					yield(&model.LLMResponse{Content: genai.NewContentFromText("fallback", genai.RoleModel)}, nil)
+				}
+			})
+			responses, errs := collect(adapter.GenerateContent(t.Context(), &model.LLMRequest{Contents: genai.Text("hello")}, true))
+			if len(errs) != 0 || len(responses) != 1 || responses[0].Content.Parts[0].Text != "fallback" {
+				t.Fatalf("responses/errors = %#v/%v", responses, errs)
+			}
+		})
+	}
+}
+
+func TestFirstContentDeadlineStopsAfterTextOrTool(t *testing.T) {
+	for _, part := range []*genai.Part{{Text: "hello"}, {FunctionCall: &genai.FunctionCall{Name: "lookup"}}} {
+		t.Run(fmt.Sprint("tool=", part.FunctionCall != nil), func(t *testing.T) {
+			provider := testProvider("primary", "https://example.invalid")
+			provider.FirstContentTimeout = 100 * time.Millisecond
+			adapter := New(provider, nil, allowLimiter{})
+			adapter.providers[0].model = scriptedModel(func(ctx context.Context) iter.Seq2[*model.LLMResponse, error] {
+				return func(yield func(*model.LLMResponse, error) bool) {
+					if !yield(&model.LLMResponse{Content: &genai.Content{Parts: []*genai.Part{{Text: "thinking", Thought: true}}}}, nil) {
+						return
+					}
+					if !yield(&model.LLMResponse{Content: &genai.Content{Parts: []*genai.Part{part}}}, nil) {
+						return
+					}
+					select {
+					case <-ctx.Done():
+						yield(nil, ctx.Err())
+					case <-time.After(2 * provider.FirstContentTimeout):
+						yield(&model.LLMResponse{TurnComplete: true}, nil)
+					}
+				}
+			})
+			responses, errs := collect(adapter.GenerateContent(t.Context(), &model.LLMRequest{Contents: genai.Text("hello")}, true))
+			if len(errs) != 0 || len(responses) != 3 || !responses[2].TurnComplete {
+				t.Fatalf("responses/errors = %#v/%v", responses, errs)
+			}
+		})
+	}
+}
+
+func TestFirstContentTimeoutDoesNotFallbackOnCallerCancellation(t *testing.T) {
+	primary := testProvider("primary", "https://example.invalid")
+	primary.FirstContentTimeout = time.Second
+	adapter := newModel([]config.Provider{primary, testProvider("fallback", "https://example.invalid")}, nil, allowLimiter{})
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	adapter.providers[0].model = scriptedModel(func(ctx context.Context) iter.Seq2[*model.LLMResponse, error] {
+		return func(yield func(*model.LLMResponse, error) bool) {
+			cancel()
+			<-ctx.Done()
+			yield(nil, ctx.Err())
+		}
+	})
+	adapter.providers[1].model = scriptedModel(func(context.Context) iter.Seq2[*model.LLMResponse, error] {
+		t.Fatal("fallback called after cancellation")
+		return nil
+	})
+	responses, errs := collect(adapter.GenerateContent(ctx, &model.LLMRequest{Contents: genai.Text("hello")}, true))
+	if len(responses) != 0 || len(errs) != 1 || !errors.Is(errs[0], context.Canceled) {
+		t.Fatalf("responses/errors = %#v/%v", responses, errs)
+	}
 }

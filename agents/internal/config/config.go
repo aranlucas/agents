@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const (
@@ -43,6 +44,9 @@ type Provider struct {
 	ReasoningEffort   string
 	RequestsPerMinute int
 	Fallbacks         []string
+	// FirstContentTimeout bounds the wait for text or a tool call, not reasoning.
+	// Zero preserves the normal request deadline.
+	FirstContentTimeout time.Duration
 }
 
 // HTTP contains listener and browser-origin policy.

@@ -118,6 +118,8 @@ type Model struct {
 
 var _ model.LLM = (*Model)(nil)
 
+var errFirstContentTimeout = errors.New("provider did not produce content before the startup deadline")
+
 // New constructs a single-provider adapter.
 func New(provider config.Provider, client *http.Client, limiter Limiter) *Model {
 	return newModel([]config.Provider{provider}, client, limiter)
@@ -213,12 +215,46 @@ func (m *Model) runProvider(ctx context.Context, pc providerClient, req *model.L
 		return false, &ProviderError{Provider: pc.config.Name, Model: pc.config.Model, Retryable: errors.Is(err, rate.ErrLimitReached), Kind: ProviderErrorRateLimit, cause: err}
 	}
 	request := sanitizeRequest(req, pc.config.Model)
+	providerCtx, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
+	var timer *time.Timer
+	if pc.config.FirstContentTimeout > 0 {
+		timer = time.AfterFunc(pc.config.FirstContentTimeout, func() { cancel(errFirstContentTimeout) })
+		defer timer.Stop()
+	}
+	timeoutError := func() error {
+		return &ProviderError{Provider: pc.config.Name, Model: pc.config.Model, Retryable: true, Kind: ProviderErrorNetwork, cause: errFirstContentTimeout}
+	}
+	var pending []*model.LLMResponse
 	emitted := false
-	for response, err := range pc.model.GenerateContent(ctx, request, stream) {
+	for response, err := range pc.model.GenerateContent(providerCtx, request, stream) {
+		if errors.Is(context.Cause(providerCtx), errFirstContentTimeout) {
+			return emitted, timeoutError()
+		}
 		if err != nil {
 			return emitted, providerError(pc.config.Name, pc.config.Model, err)
 		}
 		if response == nil {
+			continue
+		}
+		if timer != nil {
+			// Reasoning is not usable output. Hold it until this provider wins
+			// so a fallback never combines responses from different models.
+			pending = append(pending, response)
+			if !hasUsableContent(response) {
+				continue
+			}
+			if !timer.Stop() {
+				return false, timeoutError()
+			}
+			timer = nil
+			emitted = true
+			for _, buffered := range pending {
+				if !yield(buffered, nil) {
+					return true, nil
+				}
+			}
+			pending = nil
 			continue
 		}
 		emitted = true
@@ -226,10 +262,25 @@ func (m *Model) runProvider(ctx context.Context, pc providerClient, req *model.L
 			return true, nil
 		}
 	}
+	if errors.Is(context.Cause(providerCtx), errFirstContentTimeout) {
+		return emitted, timeoutError()
+	}
 	if !emitted {
 		return false, &ProviderError{Provider: pc.config.Name, Model: pc.config.Model, Retryable: true, Kind: ProviderErrorEmptyResponse}
 	}
 	return true, nil
+}
+
+func hasUsableContent(response *model.LLMResponse) bool {
+	if response.Content == nil {
+		return false
+	}
+	for _, part := range response.Content.Parts {
+		if part != nil && !part.Thought && (strings.TrimSpace(part.Text) != "" || part.FunctionCall != nil || part.InlineData != nil) {
+			return true
+		}
+	}
+	return false
 }
 
 func providerError(provider, modelName string, err error) error {
