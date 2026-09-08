@@ -18,6 +18,8 @@ export default defineConfig({
     },
   },
   test: {
+    // Bound memory and CPU use when running validation on a development machine.
+    maxWorkers: 1,
     globals: true,
     environment: "node",
     include: ["test/**/*.test.{ts,tsx}"],

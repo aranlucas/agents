@@ -1,6 +1,9 @@
 {
-  "!(*.d).{js,jsx,ts,tsx,mjs,cjs}": ["oxlint --fix --fix-suggestions", "oxfmt --write"],
-  "*.{json,jsonc,css,md,mdx,yml,yaml}": "oxfmt --write",
+  "!(*.d).{js,jsx,ts,tsx,mjs,cjs}": [
+    "oxlint --threads=2 --fix --fix-suggestions",
+    "oxfmt --threads=2 --write"
+  ],
+  "*.{json,jsonc,css,md,mdx,yml,yaml}": "oxfmt --threads=2 --write",
   "*.py": [
     "uv run ruff check --fix agents",
     "uv run ruff format agents",

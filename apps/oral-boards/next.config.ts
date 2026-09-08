@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 import path from "node:path";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    cpus: 2,
+  },
   reactCompiler: true,
   typescript: {
     // TS 7.0 RC (Go native) has no JS API — type checking runs via `tsc --noEmit` separately
