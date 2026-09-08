@@ -772,6 +772,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("configure resume model: %v", err)
 	}
+	// Ask the free router to skip reasoning for the public introduction.
+	resumeProvider.ReasoningEffort = "none"
 	resumeFallbacks := providerpolicy.FallbackProviders(cfg.Providers)
 	if len(resumeProvider.Fallbacks) > 0 {
 		// Keep OpenRouter primary, but do not let reasoning-only streams hold
@@ -883,6 +885,7 @@ func main() {
 		// These longer conversations share the OpenRouter model, but not the
 		// public Resume startup deadline or overflow policy.
 		careerProvider := resumeProvider
+		careerProvider.ReasoningEffort = ""
 		careerProvider.FirstContentTimeout = 0
 		careerProvider.Fallbacks = nil
 		careerModel := openai.New(careerProvider, modelHTTPClient, limiter)

@@ -505,3 +505,24 @@ func TestFirstContentTimeoutDoesNotFallbackOnCallerCancellation(t *testing.T) {
 		t.Fatalf("responses/errors = %#v/%v", responses, errs)
 	}
 }
+
+func TestGenerateContentRequestsNoReasoning(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var request map[string]any
+		if err := json.UnmarshalRead(r.Body, &request); err != nil {
+			t.Fatal(err)
+		}
+		reasoning, _ := request["reasoning"].(map[string]any)
+		if reasoning["effort"] != "none" || reasoning["exclude"] == true {
+			t.Fatalf("reasoning = %#v; want reasoning disabled, not hidden", reasoning)
+		}
+		writeJSON(w, textResponse("hello"))
+	}))
+	defer server.Close()
+	provider := testProvider("openrouter", server.URL)
+	provider.ReasoningEffort = "none"
+	responses, errs := collect(New(provider, server.Client(), allowLimiter{}).GenerateContent(t.Context(), &model.LLMRequest{Contents: genai.Text("hello")}, false))
+	if len(errs) != 0 || len(responses) != 1 {
+		t.Fatalf("responses/errors = %#v/%v", responses, errs)
+	}
+}
