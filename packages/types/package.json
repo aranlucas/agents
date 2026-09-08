@@ -6,10 +6,10 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "lint": "oxlint .",
-    "fmt": "oxfmt .",
-    "fmt:check": "oxfmt --check .",
-    "typecheck": "tsc --noEmit"
+    "lint": "oxlint --threads=2 .",
+    "fmt": "oxfmt --threads=2 .",
+    "fmt:check": "oxfmt --threads=2 --check .",
+    "typecheck": "GOMAXPROCS=2 tsc --noEmit"
   },
   "devDependencies": {
     "@agents/typescript-config": "workspace:*",
