@@ -3,10 +3,5 @@
     "oxlint --threads=2 --fix --fix-suggestions",
     "oxfmt --threads=2 --write"
   ],
-  "*.{json,jsonc,css,md,mdx,yml,yaml}": "oxfmt --threads=2 --write",
-  "*.py": [
-    "uv run ruff check --fix agents",
-    "uv run ruff format agents",
-    "bash -c 'uv run pyright'"
-  ]
+  "*.{json,jsonc,css,md,mdx,yml,yaml}": "oxfmt --threads=2 --write"
 }

@@ -1,4 +1,3 @@
-import { useAuth } from "@clerk/expo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
 import { ChevronRight, Copy, Home, Users } from "lucide-react-native";
@@ -23,8 +22,8 @@ import { RefreshControl } from "@/components/ui/refresh-control";
 import { Screen } from "@/components/ui/screen";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
-import { getRuntimeUrl } from "@/lib/config";
-import { createHouseholdApi, type HouseholdInvite } from "@/lib/household-api";
+import { useHouseholdApi } from "@/hooks/use-household-api";
+import { type HouseholdInvite } from "@/lib/household-api";
 import { groceryQueryKeys } from "@/lib/query-keys";
 
 type CreateHouseholdForm = { name: string };
@@ -32,11 +31,7 @@ type JoinHouseholdForm = { inviteCode: string };
 
 export default function HouseholdsScreen() {
   const router = useRouter();
-  const { getToken, userId } = useAuth();
-  const api = useMemo(
-    () => createHouseholdApi({ baseUrl: getRuntimeUrl(), getToken, userId }),
-    [getToken, userId],
-  );
+  const { api, userId } = useHouseholdApi();
   const queryClient = useQueryClient();
   const queryKey = useMemo(() => groceryQueryKeys.households(userId), [userId]);
   const createInFlight = useRef(false);

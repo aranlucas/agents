@@ -1,4 +1,3 @@
-import { useAuth } from "@clerk/expo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
 import { useRouter } from "expo-router";
@@ -20,10 +19,9 @@ import { Screen } from "@/components/ui/screen";
 import { Separator } from "@/components/ui/separator";
 import { Text } from "@/components/ui/text";
 import { useGroceryState } from "@/hooks/use-grocery-agent";
+import { useHouseholdApi } from "@/hooks/use-household-api";
 import { useKrogerConnection } from "@/hooks/use-kroger-connection";
 import { cartSubtotal, pantryNames } from "@/lib/grocery-state";
-import { getRuntimeUrl } from "@/lib/config";
-import { createHouseholdApi } from "@/lib/household-api";
 import { groceryQueryKeys } from "@/lib/query-keys";
 
 type GroceryRow = {
@@ -57,11 +55,7 @@ function GroceryListContent() {
   const router = useRouter();
   const params = useLocalSearchParams<{ save?: string | string[] }>();
   const requestSave = Array.isArray(params.save) ? params.save[0] : params.save;
-  const { getToken, userId } = useAuth();
-  const api = useMemo(
-    () => createHouseholdApi({ baseUrl: getRuntimeUrl(), getToken, userId }),
-    [getToken, userId],
-  );
+  const { api, userId } = useHouseholdApi();
   const queryClient = useQueryClient();
   const { isRunning, error, send } = useGroceryAgent();
   const state = useGroceryState();

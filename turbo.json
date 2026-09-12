@@ -19,17 +19,9 @@
         "NEXT_PUBLIC_AGENTS_BASE_URL",
         "CLERK_SECRET_KEY",
         "AGENTS_BASE_URL",
-        "TRVL_MCP_URL",
-        "KROGER_MCP_URL",
-        "MISTRAL_API_KEY",
-        "OPENROUTER_API_KEY",
-        "HUGGING_FACE_API_KEY",
         "GROQ_API_KEY",
         "TELEGRAM_LINK_SECRET",
-        "TELEGRAM_BOT_TOKEN",
-        "OTEL_EXPORTER_OTLP_ENDPOINT",
-        "OTEL_SERVICE_NAME",
-        "COPILOTKIT_DEBUG"
+        "TELEGRAM_BOT_TOKEN"
       ]
     },
     "oral-boards#build": {

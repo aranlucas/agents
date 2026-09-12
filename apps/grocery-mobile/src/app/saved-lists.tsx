@@ -1,8 +1,5 @@
-import { useAuth } from "@clerk/expo";
-import { useQueries, useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { ChevronRight, ListChecks } from "lucide-react-native";
-import { useMemo } from "react";
 import { Pressable, View } from "react-native";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -12,51 +9,19 @@ import { Icon } from "@/components/ui/icon";
 import { Screen } from "@/components/ui/screen";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
-import { getRuntimeUrl } from "@/lib/config";
-import { createHouseholdApi } from "@/lib/household-api";
+import { useSavedResources } from "@/hooks/use-saved-resources";
 import { groceryQueryKeys } from "@/lib/query-keys";
 
 export default function SavedListsScreen() {
   const router = useRouter();
-  const { getToken, userId } = useAuth();
-  const api = useMemo(
-    () => createHouseholdApi({ baseUrl: getRuntimeUrl(), getToken, userId }),
-    [getToken, userId],
-  );
-  const personalQuery = useQuery({
-    queryKey: groceryQueryKeys.lists(userId, null),
-    queryFn: () => api.listLists(),
-    enabled: Boolean(userId),
+  const {
+    resources: lists,
+    queryError,
+    loading,
+  } = useSavedResources({
+    queryKey: groceryQueryKeys.lists,
+    load: (api, householdId) => api.listLists(householdId),
   });
-  const householdsQuery = useQuery({
-    queryKey: groceryQueryKeys.households(userId),
-    queryFn: api.listHouseholds,
-    enabled: Boolean(userId),
-  });
-  const householdQueries = useQueries({
-    queries: (householdsQuery.data ?? []).map((household) => ({
-      queryKey: groceryQueryKeys.lists(userId, household.id),
-      queryFn: () => api.listLists(household.id),
-      enabled: Boolean(userId),
-    })),
-  });
-  const lists = [
-    ...(personalQuery.data ?? []).map((list) => ({ list, location: "Personal" })),
-    ...householdQueries.flatMap((query, index) =>
-      (query.data ?? []).map((list) => ({
-        list,
-        location: householdsQuery.data?.[index]?.name ?? "Household",
-      })),
-    ),
-  ];
-  const queryError =
-    personalQuery.error ??
-    householdsQuery.error ??
-    householdQueries.find((query) => query.error)?.error;
-  const loading =
-    personalQuery.isPending ||
-    householdsQuery.isPending ||
-    householdQueries.some((query) => query.isPending);
 
   return (
     <Screen>
@@ -78,7 +43,7 @@ export default function SavedListsScreen() {
           <Skeleton className="h-24 rounded-2xl" />
         </View>
       ) : lists.length ? (
-        lists.map(({ list, location }) => (
+        lists.map(({ resource: list, location }) => (
           <Pressable
             accessibilityLabel={`${list.title}, ${location}`}
             accessibilityRole="button"

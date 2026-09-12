@@ -1,17 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { CopilotSidebar, useAgent, UseAgentUpdate } from "@copilotkit/react-core/v2";
+import { useAgent, UseAgentUpdate } from "@copilotkit/react-core/v2";
 
 import type { SpreadsheetState } from "@agents/types";
-import { cn, ScrollArea } from "@agents/ui";
-import { SidebarInset, SidebarProvider } from "@agents/ui";
-import { Streamdown } from "@agents/ui";
-import { getAgentConfig } from "@/components/chat/agents/registry";
-import { AppSidebar } from "@/components/chat/app-sidebar";
-import { ConsoleTopBar } from "@/components/chat/console-top-bar";
-import { useNewThread } from "@/components/chat/use-new-thread";
-import { cssVars } from "@/lib/css";
+import { cn, ScrollArea, Streamdown } from "@agents/ui";
+
+import { CopilotWorkspace } from "@/components/chat/copilot-workspace";
 
 const AGENT_ID = "spreadsheet" as const;
 
@@ -110,12 +105,10 @@ function SpreadsheetTable({ rows }: { rows: string[][] }) {
 }
 
 export function SpreadsheetWorkspace({ threadId }: { threadId: string }) {
-  const config = getAgentConfig(AGENT_ID);
   const { agent } = useAgent({
     agentId: AGENT_ID,
     updates: [UseAgentUpdate.OnStateChanged, UseAgentUpdate.OnRunStatusChanged],
   });
-  const startNewThread = useNewThread(AGENT_ID);
 
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const state = (agent?.state ?? {}) as SpreadsheetState;
@@ -131,76 +124,59 @@ export function SpreadsheetWorkspace({ threadId }: { threadId: string }) {
   const activeSheet = sheets[activeIndex];
 
   return (
-    <SidebarProvider
-      defaultOpen={false}
-      className="h-dvh overflow-hidden"
-      style={cssVars({ "--page-color": `var(${config.colorVar})` })}
+    <CopilotWorkspace
+      agentId={AGENT_ID}
+      threadId={threadId}
+      isRunning={agent?.isRunning}
+      chatTitle="Spreadsheet chat"
     >
-      <CopilotSidebar
-        defaultOpen={false}
-        labels={{
-          modalHeaderTitle: "Spreadsheet chat",
-          chatInputPlaceholder: config.placeholder,
-        }}
-      />
-      <AppSidebar
-        activePath={`/console/${AGENT_ID}`}
-        agentId={AGENT_ID}
-        activeThreadId={threadId}
-        onNewThread={startNewThread}
-      />
-      <SidebarInset className="min-h-0 overflow-hidden">
-        <ConsoleTopBar agentId={AGENT_ID} threadId={threadId} isRunning={agent?.isRunning} />
-        <div className="flex min-h-0 flex-1 flex-col bg-background">
-          {/* Sheet tabs */}
-          <div className="flex shrink-0 items-end border-b px-4 pt-2">
-            {sheets.length === 0 ? (
-              <span className="pb-2 text-xs text-muted-foreground">
-                No sheets yet — ask in chat
-              </span>
-            ) : (
-              sheets.map((sheet, i) => (
-                <SheetTab
-                  key={sheet.title || `sheet-${i}`}
-                  title={sheet.title}
-                  active={i === activeIndex}
-                  onClick={() => setLocalActiveIndex(i)}
-                />
-              ))
-            )}
-          </div>
-
-          {/* Sheet content */}
-          <div className="min-h-0 flex-1">
-            <ScrollArea className="h-full p-4">
-              {activeSheet ? (
-                <SpreadsheetTable rows={activeSheet.rows} />
-              ) : (
-                <div className="flex h-full min-h-72 flex-col items-center justify-center gap-3 text-center text-muted-foreground">
-                  <p className="text-4xl">📊</p>
-                  <p className="text-sm">
-                    Ask me to create a spreadsheet in the chat.
-                    <br />
-                    Try: &ldquo;Create a monthly budget tracker&rdquo;
-                  </p>
-                </div>
-              )}
-            </ScrollArea>
-          </div>
-
-          {/* Summary strip */}
-          {state.summary && (
-            <div className="shrink-0 border-t px-4 py-3">
-              <p className="mb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                Analysis
-              </p>
-              <div>
-                <Streamdown>{state.summary}</Streamdown>
-              </div>
-            </div>
+      <div className="flex min-h-0 flex-1 flex-col bg-background">
+        {/* Sheet tabs */}
+        <div className="flex shrink-0 items-end border-b px-4 pt-2">
+          {sheets.length === 0 ? (
+            <span className="pb-2 text-xs text-muted-foreground">No sheets yet — ask in chat</span>
+          ) : (
+            sheets.map((sheet, i) => (
+              <SheetTab
+                key={sheet.title || `sheet-${i}`}
+                title={sheet.title}
+                active={i === activeIndex}
+                onClick={() => setLocalActiveIndex(i)}
+              />
+            ))
           )}
         </div>
-      </SidebarInset>
-    </SidebarProvider>
+
+        {/* Sheet content */}
+        <div className="min-h-0 flex-1">
+          <ScrollArea className="h-full p-4">
+            {activeSheet ? (
+              <SpreadsheetTable rows={activeSheet.rows} />
+            ) : (
+              <div className="flex h-full min-h-72 flex-col items-center justify-center gap-3 text-center text-muted-foreground">
+                <p className="text-4xl">📊</p>
+                <p className="text-sm">
+                  Ask me to create a spreadsheet in the chat.
+                  <br />
+                  Try: &ldquo;Create a monthly budget tracker&rdquo;
+                </p>
+              </div>
+            )}
+          </ScrollArea>
+        </div>
+
+        {/* Summary strip */}
+        {state.summary && (
+          <div className="shrink-0 border-t px-4 py-3">
+            <p className="mb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              Analysis
+            </p>
+            <div>
+              <Streamdown>{state.summary}</Streamdown>
+            </div>
+          </div>
+        )}
+      </div>
+    </CopilotWorkspace>
   );
 }

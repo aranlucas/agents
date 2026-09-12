@@ -73,17 +73,7 @@
       }
     },
     {
-      "files": ["src/components/ai-elements/persona.tsx"],
-      "rules": {
-        "react/immutability": "off"
-      }
-    },
-    {
-      "files": [
-        "src/components/pagination.tsx",
-        "src/components/label.tsx",
-        "src/components/input-group.tsx"
-      ],
+      "files": ["src/components/label.tsx", "src/components/input-group.tsx"],
       "rules": {
         "jsx-a11y/anchor-has-content": "off",
         "jsx-a11y/label-has-associated-control": "off",

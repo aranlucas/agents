@@ -17,13 +17,6 @@ import (
 	"google.golang.org/genai"
 )
 
-type SearchArgs struct {
-	Query string `json:"query"`
-	Count int    `json:"count"`
-}
-type SearchResult struct {
-	Results []bravesearch.Result `json:"results"`
-}
 type LoadPageArgs struct {
 	URL string `json:"url"`
 }
@@ -32,43 +25,40 @@ type LoadPageResult struct {
 }
 
 func New(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *common.WebLoader, toolsets ...tool.Toolset) (agent.Agent, error) {
-	return newAgent(m, kroger, search, loader, llmagent.ModeChat, toolsets...)
+	return newAgent(m, kroger, search, loader, llmagent.ModeChat, nil, toolsets...)
 }
 
 func NewWithLibrary(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *common.WebLoader, repository groceries.LibraryRepository, toolsets ...tool.Toolset) (agent.Agent, error) {
-	return newAgentWithLibrary(m, kroger, search, loader, repository, llmagent.ModeChat, toolsets...)
+	if repository == nil {
+		return nil, errors.New("grocery library repository is required")
+	}
+	return newAgent(m, kroger, search, loader, llmagent.ModeChat, repository, toolsets...)
 }
 
 func NewTask(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *common.WebLoader, toolsets ...tool.Toolset) (agent.Agent, error) {
-	return newAgent(m, kroger, search, loader, llmagent.ModeTask, toolsets...)
+	return newAgent(m, kroger, search, loader, llmagent.ModeTask, nil, toolsets...)
 }
 
 func NewTaskWithLibrary(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *common.WebLoader, repository groceries.LibraryRepository, toolsets ...tool.Toolset) (agent.Agent, error) {
-	return newAgentWithLibrary(m, kroger, search, loader, repository, llmagent.ModeTask, toolsets...)
+	if repository == nil {
+		return nil, errors.New("grocery library repository is required")
+	}
+	return newAgent(m, kroger, search, loader, llmagent.ModeTask, repository, toolsets...)
 }
 
-func newAgent(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *common.WebLoader, mode llmagent.Mode, toolsets ...tool.Toolset) (agent.Agent, error) {
+func newAgent(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *common.WebLoader, mode llmagent.Mode, repository groceries.LibraryRepository, toolsets ...tool.Toolset) (agent.Agent, error) {
 	tools, err := groceryTools(search, loader)
 	if err != nil {
 		return nil, err
 	}
-	return buildAgent(m, kroger, tools, mode, nil, toolsets...)
-}
-
-func newAgentWithLibrary(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *common.WebLoader, repository groceries.LibraryRepository, mode llmagent.Mode, toolsets ...tool.Toolset) (agent.Agent, error) {
-	tools, err := groceryTools(search, loader)
-	if err != nil {
-		return nil, err
-	}
-	libraryTools, err := groceryLibraryTools(repository)
-	if err != nil {
-		return nil, err
+	if repository != nil {
+		libraryTools, err := groceryLibraryTools(repository)
+		if err != nil {
+			return nil, err
+		}
+		tools = append(tools, libraryTools...)
 	}
 	shoppingRepository, _ := nativeShoppingRepository(repository)
-	return buildAgent(m, kroger, append(tools, libraryTools...), mode, shoppingRepository, toolsets...)
-}
-
-func buildAgent(m model.LLM, kroger *Kroger, tools []tool.Tool, mode llmagent.Mode, shoppingRepository groceries.ShoppingRepository, toolsets ...tool.Toolset) (agent.Agent, error) {
 	nativeShopping := shoppingRepository != nil
 	if kroger != nil {
 		toolsets = append(toolsets, kroger.withNativeShopping(nativeShopping))
@@ -165,13 +155,7 @@ func groceryTools(search *bravesearch.Client, loader *common.WebLoader) ([]tool.
 	}
 
 	if search != nil {
-		webSearchTool, err := functiontool.New(functiontool.Config{
-			Name:        "web_search",
-			Description: "Search current public web results with the limited Brave budget.",
-		}, func(ctx agent.Context, input SearchArgs) (SearchResult, error) {
-			results, err := search.Search(ctx, input.Query, input.Count)
-			return SearchResult{Results: results}, err
-		})
+		webSearchTool, err := search.SearchTool("Search current public web results with the limited Brave budget.")
 		if err != nil {
 			return nil, err
 		}

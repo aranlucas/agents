@@ -1,4 +1,3 @@
-import { useAuth } from "@clerk/expo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
 import { Plus, Save, Trash2 } from "lucide-react-native";
@@ -13,8 +12,8 @@ import { Icon } from "@/components/ui/icon";
 import { Screen } from "@/components/ui/screen";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
-import { getRuntimeUrl } from "@/lib/config";
-import { createHouseholdApi, type Recipe, type RecipeContent } from "@/lib/household-api";
+import { useHouseholdApi } from "@/hooks/use-household-api";
+import { type Recipe, type RecipeContent } from "@/lib/household-api";
 import { groceryQueryKeys } from "@/lib/query-keys";
 
 function firstParam(value: string | string[] | undefined): string {
@@ -54,11 +53,7 @@ function recipeFormValues(recipe?: Recipe): RecipeFormValues {
 
 export default function SavedRecipeScreen() {
   const recipeId = firstParam(useLocalSearchParams<{ recipeId?: string | string[] }>().recipeId);
-  const { getToken, userId } = useAuth();
-  const api = useMemo(
-    () => createHouseholdApi({ baseUrl: getRuntimeUrl(), getToken, userId }),
-    [getToken, userId],
-  );
+  const { api, userId } = useHouseholdApi();
   const queryClient = useQueryClient();
   const recipeKey = groceryQueryKeys.recipe(userId, recipeId);
   const recipeQuery = useQuery({

@@ -1,8 +1,7 @@
-import { useAuth } from "@clerk/expo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
 import { Plus, Save, Trash2 } from "lucide-react-native";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { Pressable, View } from "react-native";
 import { useForm } from "react-hook-form";
 import { Alert } from "@/components/ui/alert";
@@ -15,8 +14,7 @@ import { Screen } from "@/components/ui/screen";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
-import { getRuntimeUrl } from "@/lib/config";
-import { createHouseholdApi } from "@/lib/household-api";
+import { useHouseholdApi } from "@/hooks/use-household-api";
 import { groceryQueryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 
@@ -26,11 +24,7 @@ function firstParam(value: string | string[] | undefined): string {
 
 export default function SavedListScreen() {
   const listId = firstParam(useLocalSearchParams<{ listId?: string | string[] }>().listId);
-  const { getToken, userId } = useAuth();
-  const api = useMemo(
-    () => createHouseholdApi({ baseUrl: getRuntimeUrl(), getToken, userId }),
-    [getToken, userId],
-  );
+  const { api, userId } = useHouseholdApi();
   const queryClient = useQueryClient();
   const listKey = groceryQueryKeys.list(userId, listId);
   const listQuery = useQuery({

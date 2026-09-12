@@ -1,27 +1,21 @@
 "use client";
 
 import { useCallback } from "react";
-import { CopilotSidebar, useAgent, useCopilotKit, UseAgentUpdate } from "@copilotkit/react-core/v2";
+import { useAgent, useCopilotKit, UseAgentUpdate } from "@copilotkit/react-core/v2";
 
 import type { ExpenseState } from "@agents/types";
-import { SidebarInset, SidebarProvider } from "@agents/ui";
-import { getAgentConfig } from "@/components/chat/agents/registry";
-import { AppSidebar } from "@/components/chat/app-sidebar";
-import { ConsoleTopBar } from "@/components/chat/console-top-bar";
 import { ExpenseDesk } from "@/components/chat/expense/expense-desk";
-import { useNewThread } from "@/components/chat/use-new-thread";
-import { cssVars } from "@/lib/css";
+
+import { CopilotWorkspace } from "@/components/chat/copilot-workspace";
 
 const AGENT_ID = "expense" as const;
 
 export function ExpenseWorkspace({ threadId }: { threadId: string }) {
-  const config = getAgentConfig(AGENT_ID);
   const { agent } = useAgent({
     agentId: AGENT_ID,
     updates: [UseAgentUpdate.OnStateChanged, UseAgentUpdate.OnRunStatusChanged],
   });
   const { copilotkit } = useCopilotKit();
-  const startNewThread = useNewThread(AGENT_ID);
 
   // CopilotKit agent state is dynamic at the protocol boundary.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
@@ -44,35 +38,20 @@ export function ExpenseWorkspace({ threadId }: { threadId: string }) {
   );
 
   return (
-    <SidebarProvider
-      defaultOpen={false}
-      className="h-dvh overflow-hidden"
-      style={cssVars({ "--page-color": `var(${config.colorVar})` })}
+    <CopilotWorkspace
+      agentId={AGENT_ID}
+      threadId={threadId}
+      isRunning={agent?.isRunning}
+      chatTitle="Expense Desk chat"
     >
-      <CopilotSidebar
-        defaultOpen={false}
-        labels={{
-          modalHeaderTitle: "Expense Desk chat",
-          chatInputPlaceholder: config.placeholder,
-        }}
-      />
-      <AppSidebar
-        activePath={`/console/${AGENT_ID}`}
-        agentId={AGENT_ID}
-        activeThreadId={threadId}
-        onNewThread={startNewThread}
-      />
-      <SidebarInset className="min-h-0 overflow-hidden">
-        <ConsoleTopBar agentId={AGENT_ID} threadId={threadId} isRunning={agent?.isRunning} />
-        <div className="min-h-0 flex-1">
-          <ExpenseDesk
-            state={expenseState}
-            isRunning={agent?.isRunning ?? false}
-            onDecision={handleDecision}
-            onPrompt={sendPrompt}
-          />
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+      <div className="min-h-0 flex-1">
+        <ExpenseDesk
+          state={expenseState}
+          isRunning={agent?.isRunning ?? false}
+          onDecision={handleDecision}
+          onPrompt={sendPrompt}
+        />
+      </div>
+    </CopilotWorkspace>
   );
 }
