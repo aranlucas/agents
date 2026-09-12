@@ -11,6 +11,10 @@ import (
 	"time"
 
 	"agents/internal/common"
+
+	"google.golang.org/adk/v2/agent"
+	"google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool/functiontool"
 )
 
 const defaultMaxBody = 2 << 20
@@ -23,16 +27,29 @@ type Result struct {
 	Description string `json:"description"`
 }
 
+// SearchToolArgs and SearchToolResult are the shared ADK boundary for the
+// web_search tool exposed by agents that use Brave.
+type SearchToolArgs struct {
+	Query string `json:"query"`
+	Count int    `json:"count"`
+}
+
+type SearchToolResult struct {
+	Results []Result `json:"results"`
+}
+
 type Client struct {
-	client           *common.HTTPClient
-	endpoint, apiKey string
-	maximum          int
+	client   *common.HTTPClient
+	endpoint *url.URL
+	apiKey   string
+	maximum  int
 }
 
 func New(client *http.Client, endpoint, apiKey string, maximum int) (*Client, error) {
 	if client == nil {
 		client = common.NewHTTPClient(15*time.Second, defaultMaxBody).Client
 	}
+	endpoint = strings.TrimRight(endpoint, "/")
 	parsed, err := url.Parse(endpoint)
 	if err != nil || parsed.Host == "" || !secureOrLoopback(parsed) {
 		return nil, errors.New("invalid Brave endpoint")
@@ -45,13 +62,16 @@ func New(client *http.Client, endpoint, apiKey string, maximum int) (*Client, er
 	}
 	return &Client{
 		client:   &common.HTTPClient{Client: client, MaxBody: defaultMaxBody},
-		endpoint: strings.TrimRight(endpoint, "/"),
+		endpoint: parsed,
 		apiKey:   apiKey,
 		maximum:  maximum,
 	}, nil
 }
 
 func (s *Client) Search(ctx context.Context, query string, count int) ([]Result, error) {
+	if s == nil || s.endpoint == nil {
+		return nil, errors.New("brave search endpoint is not configured")
+	}
 	query = strings.TrimSpace(query)
 	if query == "" {
 		return nil, ErrEmptyQuery
@@ -65,7 +85,7 @@ func (s *Client) Search(ctx context.Context, query string, count int) ([]Result,
 	if count > s.maximum {
 		count = s.maximum
 	}
-	parsed, _ := url.Parse(s.endpoint)
+	parsed := s.endpoint.Clone()
 	values := parsed.Query()
 	values.Set("q", query)
 	values.Set("count", strconv.Itoa(count))
@@ -101,6 +121,23 @@ func (s *Client) Search(ctx context.Context, query string, count int) ([]Result,
 		results = append(results, Result{Title: result.Title, URL: result.URL, Description: result.Description})
 	}
 	return results, nil
+}
+
+// SearchTool adapts this client's bounded search operation to an ADK function
+// tool. Keeping the adapter here gives every agent the same input/output
+// schema and error propagation while callers retain control of the tool
+// description shown to the model.
+func (s *Client) SearchTool(description string) (tool.Tool, error) {
+	if s == nil {
+		return nil, errors.New("brave search client is required")
+	}
+	return functiontool.New(functiontool.Config{
+		Name:        "web_search",
+		Description: description,
+	}, func(ctx agent.Context, input SearchToolArgs) (SearchToolResult, error) {
+		results, err := s.Search(ctx, input.Query, input.Count)
+		return SearchToolResult{Results: results}, err
+	})
 }
 
 func secureOrLoopback(parsed *url.URL) bool {

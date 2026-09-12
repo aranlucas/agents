@@ -46,26 +46,11 @@ func presentationTools(search *bravesearch.Client) ([]tool.Tool, error) {
 		revisePresentationTool,
 	}
 	if search != nil {
-		webSearchTool, err := functiontool.New(functiontool.Config{
-			Name:        "web_search",
-			Description: "Search current public web results with the limited Brave budget.",
-		}, func(ctx agent.Context, input SearchArgs) (SearchResult, error) {
-			results, err := search.Search(ctx, input.Query, input.Count)
-			return SearchResult{Results: results}, err
-		})
+		webSearchTool, err := search.SearchTool("Search current public web results with the limited Brave budget.")
 		if err != nil {
 			return nil, err
 		}
 		result = append(result, webSearchTool)
 	}
 	return result, nil
-}
-
-type SearchArgs struct {
-	Query string `json:"query"`
-	Count int    `json:"count"`
-}
-
-type SearchResult struct {
-	Results []bravesearch.Result `json:"results"`
 }

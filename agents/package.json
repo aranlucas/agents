@@ -7,7 +7,7 @@
     "fmt": "GOMAXPROCS=2 GOFLAGS=-p=1 go run mvdan.cc/gofumpt@v0.11.0 -w .",
     "fmt:check": "test -z \"$(GOMAXPROCS=2 GOFLAGS=-p=1 go run mvdan.cc/gofumpt@v0.11.0 -l .)\"",
     "typecheck": "GOMAXPROCS=2 GOFLAGS=-p=1 go vet ./...",
-    "build": "CGO_ENABLED=0 GOMAXPROCS=2 GOFLAGS=-p=1 go build -mod=readonly -trimpath -o ./bin/gateway ./cmd/gateway && CGO_ENABLED=0 GOMAXPROCS=2 GOFLAGS=-p=1 go build -mod=readonly -trimpath -o ./bin/telegram ./cmd/telegram",
+    "build": "CGO_ENABLED=0 GOMAXPROCS=2 GOFLAGS=-p=1 go build -mod=readonly -trimpath -o ./bin/ ./cmd/gateway ./cmd/telegram ./cmd/migrate",
     "test": "GOMAXPROCS=2 GOFLAGS=-p=1 go test -parallel=2 -race ./... && bash scripts/test-production-smoke.sh",
     "coverage": "GOMAXPROCS=2 GOFLAGS=-p=1 go test -parallel=2 -race -coverprofile=coverage.out ./...",
     "vulncheck": "GOMAXPROCS=2 GOFLAGS=-p=1 go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...",

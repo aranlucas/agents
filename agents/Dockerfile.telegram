@@ -4,8 +4,7 @@ WORKDIR /src/agents
 COPY agents/go.mod agents/go.sum ./
 RUN go mod download
 COPY agents/ ./
-RUN CGO_ENABLED=0 go build -mod=readonly -trimpath -ldflags='-s -w' -o /out/telegram ./cmd/telegram && \
-    CGO_ENABLED=0 go build -mod=readonly -trimpath -ldflags='-s -w' -o /out/migrate ./cmd/migrate
+RUN CGO_ENABLED=0 go build -mod=readonly -trimpath -ldflags='-s -w' -o /out/ ./cmd/telegram ./cmd/migrate
 
 FROM gcr.io/distroless/static-debian12:nonroot
 WORKDIR /app
