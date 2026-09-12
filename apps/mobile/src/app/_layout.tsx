@@ -5,12 +5,9 @@ import "@/shims/node-crypto";
 // first-writer race against the package's Math.random fallback.
 // oxlint-disable-next-line import/no-unassigned-import
 import "@copilotkit/react-native/polyfills";
-import { CopilotKitProvider } from "@copilotkit/react-native/headless";
-import { ClerkProvider } from "@clerk/expo";
 import * as SecureStore from "expo-secure-store";
-import Constants from "expo-constants";
+import { AppProviders } from "@/components/app-providers";
 import { AppTabs } from "@/components/app-tabs";
-import { getCopilotKitRuntimeUrl } from "@/utils/agent-config";
 import { Sentry } from "@/utils/sentry";
 
 const tokenCache = {
@@ -23,19 +20,10 @@ const tokenCache = {
 };
 
 function RootLayout() {
-  const publishableKey =
-    Constants.expoConfig?.extra?.clerkPublishableKey ??
-    process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ??
-    "";
-
-  const runtimeUrl = getCopilotKitRuntimeUrl();
-
   return (
-    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <CopilotKitProvider runtimeUrl={runtimeUrl} useSingleEndpoint={false} defaultThrottleMs={0}>
-        <AppTabs />
-      </CopilotKitProvider>
-    </ClerkProvider>
+    <AppProviders tokenCache={tokenCache}>
+      <AppTabs />
+    </AppProviders>
   );
 }
 

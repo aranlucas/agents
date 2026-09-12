@@ -110,13 +110,7 @@ func rootTools(executor *BigQueryExecutor, search *bravesearch.Client) ([]tool.T
 	}
 
 	if search != nil {
-		webSearchTool, err := functiontool.New(functiontool.Config{
-			Name:        "web_search",
-			Description: "Search current public web results with the limited Brave budget.",
-		}, func(ctx agent.Context, input SearchArgs) (SearchResult, error) {
-			results, err := search.Search(ctx, input.Query, input.Count)
-			return SearchResult{Results: results}, err
-		})
+		webSearchTool, err := search.SearchTool("Search current public web results with the limited Brave budget.")
 		if err != nil {
 			return nil, err
 		}
@@ -160,13 +154,4 @@ func bigQueryExecutionFailure(err error) Result {
 		return failure("bigquery_bytes_limit_exceeded", "This Trends query exceeds the configured BigQuery processing limit.")
 	}
 	return failure("bigquery_query_failed", "BigQuery query failed.")
-}
-
-type SearchArgs struct {
-	Query string `json:"query"`
-	Count int    `json:"count"`
-}
-
-type SearchResult struct {
-	Results []bravesearch.Result `json:"results"`
 }

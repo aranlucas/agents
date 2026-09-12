@@ -24,7 +24,7 @@
     "typecheck": "GOMAXPROCS=2 tsc --noEmit -p tsconfig.json && GOMAXPROCS=2 tsc --noEmit -p tsconfig.test.json",
     "test": "vitest run",
     "coverage": "vitest run --coverage",
-    "generate:gateway": "pnpm dlx openapi-typescript@7.13.0 ../../agents/api/openapi/grocery-gateway.yaml -o src/lib/grocery-gateway.d.ts",
+    "generate:gateway": "openapi-typescript ../../agents/api/openapi/grocery-gateway.yaml -o src/lib/grocery-gateway.d.ts",
     "api:check": "pnpm generate:gateway && pnpm exec oxfmt --threads=2 src/lib/grocery-gateway.d.ts && git diff --exit-code -- src/lib/grocery-gateway.d.ts"
   },
   "dependencies": {
@@ -43,7 +43,6 @@
     "@rn-primitives/hover-card": "^1.5.2",
     "@rn-primitives/label": "^1.5.2",
     "@rn-primitives/popover": "^1.5.2",
-    "@rn-primitives/portal": "^1.5.3",
     "@rn-primitives/progress": "^1.5.2",
     "@rn-primitives/radio-group": "^1.5.2",
     "@rn-primitives/separator": "^1.5.2",

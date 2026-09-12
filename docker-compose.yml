@@ -13,7 +13,6 @@ services:
     environment:
       APP_ENV: development
       PORT: "8000"
-      OTEL_SERVICE_NAME: agents-gateway
       RAILWAY_ENVIRONMENT_ID: ""
       RAILWAY_ENVIRONMENT_NAME: ""
       RAILWAY_PROJECT_ID: ""
@@ -33,7 +32,6 @@ services:
     environment:
       APP_ENV: development
       PORT: "8080"
-      OTEL_SERVICE_NAME: agents-telegram
       RAILWAY_ENVIRONMENT_ID: ""
       RAILWAY_ENVIRONMENT_NAME: ""
       RAILWAY_PROJECT_ID: ""

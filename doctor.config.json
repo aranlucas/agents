@@ -4,16 +4,6 @@
   "warnings": false,
   "rawTextWrapperComponents": ["MenuAction"],
   "ignore": {
-    "rules": ["react-hooks-js/immutability", "react-hooks-js/refs", "react-hooks-js/todo"],
-    "overrides": [
-      {
-        "files": [
-          "src/components/ai-elements/mic-selector.tsx",
-          "src/components/ai-elements/persona.tsx",
-          "src/components/ai-elements/speech-input.tsx"
-        ],
-        "rules": ["react-doctor/no-adjust-state-on-prop-change"]
-      }
-    ]
+    "rules": ["react-hooks-js/immutability", "react-hooks-js/refs", "react-hooks-js/todo"]
   }
 }

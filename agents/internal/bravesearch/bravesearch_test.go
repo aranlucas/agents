@@ -44,3 +44,28 @@ func TestSearchRedactsSecretOnRemoteError(t *testing.T) {
 		t.Fatalf("error = %v", err)
 	}
 }
+
+func TestConcurrentSearchesKeepIndependentQueries(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/search" || request.URL.Query().Get("country") != "us" {
+			t.Errorf("configured endpoint was not preserved: %s", request.URL)
+		}
+		_, _ = fmt.Fprintf(w, `{"web":{"results":[{"title":%q,"url":"https://example.com/result"}]}}`, request.URL.Query().Get("q"))
+	}))
+	t.Cleanup(server.Close)
+	search, err := New(server.Client(), server.URL+"/search?country=us", "test-key", 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, query := range []string{"first query", "second query"} {
+		t.Run(query, func(t *testing.T) {
+			t.Parallel()
+			for range 10 {
+				results, err := search.Search(t.Context(), query, 1)
+				if err != nil || len(results) != 1 || results[0].Title != query {
+					t.Fatalf("Search(%q) = %#v, %v", query, results, err)
+				}
+			}
+		})
+	}
+}

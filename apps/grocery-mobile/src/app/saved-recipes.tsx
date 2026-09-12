@@ -1,8 +1,7 @@
-import { useAuth } from "@clerk/expo";
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { BookMarked, ChevronRight, Plus, Save } from "lucide-react-native";
-import { memo, useMemo, useState } from "react";
+import { memo, useState } from "react";
 import { Pressable, View } from "react-native";
 import { useGroceryAgent } from "@/components/grocery-agent-provider";
 import { SaveResourceDialog } from "@/components/save-resource-dialog";
@@ -16,8 +15,8 @@ import { Screen } from "@/components/ui/screen";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { useGroceryState } from "@/hooks/use-grocery-agent";
-import { getRuntimeUrl } from "@/lib/config";
-import { createHouseholdApi, type Recipe } from "@/lib/household-api";
+import { useSavedResources } from "@/hooks/use-saved-resources";
+import type { Recipe } from "@/lib/household-api";
 import { groceryQueryKeys } from "@/lib/query-keys";
 
 export default function SavedRecipesScreen() {
@@ -27,40 +26,19 @@ export default function SavedRecipesScreen() {
   const { isRunning } = useGroceryAgent();
   const state = useGroceryState();
   const draft = state.recipe;
-  const { getToken, userId } = useAuth();
-  const api = useMemo(
-    () => createHouseholdApi({ baseUrl: getRuntimeUrl(), getToken, userId }),
-    [getToken, userId],
-  );
+  const {
+    api,
+    households,
+    queryError,
+    loading,
+    resources: recipes,
+    userId,
+  } = useSavedResources({
+    queryKey: groceryQueryKeys.recipes,
+    load: (api, householdId) => api.listRecipes(householdId),
+  });
   const queryClient = useQueryClient();
   const [saveOpen, setSaveOpen] = useState(requestSave === "1" && Boolean(draft));
-  const personalKey = groceryQueryKeys.recipes(userId);
-  const personalQuery = useQuery({
-    queryKey: personalKey,
-    queryFn: () => api.listRecipes(),
-    enabled: Boolean(userId),
-  });
-  const householdsQuery = useQuery({
-    queryKey: groceryQueryKeys.households(userId),
-    queryFn: api.listHouseholds,
-    enabled: Boolean(userId),
-  });
-  const householdQueries = useQueries({
-    queries: (householdsQuery.data ?? []).map((household) => ({
-      queryKey: groceryQueryKeys.recipes(userId, household.id),
-      queryFn: () => api.listRecipes(household.id),
-      enabled: Boolean(userId),
-    })),
-  });
-  const recipes = [
-    ...(personalQuery.data ?? []).map((recipe) => ({ recipe, location: "Personal" })),
-    ...householdQueries.flatMap((query, index) =>
-      (query.data ?? []).map((recipe) => ({
-        recipe,
-        location: householdsQuery.data?.[index]?.name ?? "Household",
-      })),
-    ),
-  ];
   const saveRecipe = useMutation({
     mutationFn: ({ title, householdId }: { title: string; householdId?: string }) => {
       if (!draft) throw new Error("There is no recipe draft to save.");
@@ -84,14 +62,6 @@ export default function SavedRecipesScreen() {
       });
     },
   });
-  const queryError =
-    personalQuery.error ??
-    householdsQuery.error ??
-    householdQueries.find((query) => query.error)?.error;
-  const loading =
-    personalQuery.isPending ||
-    householdsQuery.isPending ||
-    householdQueries.some((query) => query.isPending);
 
   return (
     <>
@@ -144,7 +114,7 @@ export default function SavedRecipesScreen() {
             <Skeleton className="h-28 rounded-2xl" />
           </View>
         ) : recipes.length ? (
-          recipes.map(({ recipe, location }) => (
+          recipes.map(({ resource: recipe, location }) => (
             <RecipeCard key={recipe.id} location={location} recipe={recipe} />
           ))
         ) : queryError instanceof Error ? null : (
@@ -169,7 +139,7 @@ export default function SavedRecipesScreen() {
       <SaveResourceDialog
         defaultTitle={draft?.title ?? "Recipe"}
         error={saveRecipe.error instanceof Error ? saveRecipe.error.message : undefined}
-        households={householdsQuery.data ?? []}
+        households={households}
         kind="recipe"
         onConfirm={(title, householdId) => saveRecipe.mutate({ title, householdId })}
         onOpenChange={setSaveOpen}

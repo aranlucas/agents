@@ -17,15 +17,6 @@ type ReadJobPostingArgs struct {
 	URL string `json:"url"`
 }
 
-type SearchArgs struct {
-	Query string `json:"query"`
-	Count int    `json:"count"`
-}
-
-type SearchResult struct {
-	Results []bravesearch.Result `json:"results"`
-}
-
 // New builds the authenticated job-matching and application-drafting agent.
 func New(m model.LLM, search *bravesearch.Client, loader *common.WebLoader, toolsets ...tool.Toolset) (agent.Agent, error) {
 	tools, err := jobsTools(search, loader)
@@ -131,13 +122,7 @@ func jobsTools(search *bravesearch.Client, loader *common.WebLoader) ([]tool.Too
 		markReadyTool,
 	}
 	if search != nil {
-		webSearchTool, toolErr := functiontool.New(functiontool.Config{
-			Name:        "web_search",
-			Description: "Search current public web results for company, role, product, and interview context.",
-		}, func(ctx agent.Context, input SearchArgs) (SearchResult, error) {
-			results, searchErr := search.Search(ctx, input.Query, input.Count)
-			return SearchResult{Results: results}, searchErr
-		})
+		webSearchTool, toolErr := search.SearchTool("Search current public web results for company, role, product, and interview context.")
 		if toolErr != nil {
 			return nil, toolErr
 		}

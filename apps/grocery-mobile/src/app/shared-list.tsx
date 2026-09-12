@@ -1,8 +1,7 @@
-import { useAuth } from "@clerk/expo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { ListPlus, Plus, Trash2 } from "lucide-react-native";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { useForm } from "react-hook-form";
 import { Alert } from "@/components/ui/alert";
@@ -25,8 +24,8 @@ import { Screen } from "@/components/ui/screen";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
-import { getRuntimeUrl } from "@/lib/config";
-import { createHouseholdApi, type GroceryList } from "@/lib/household-api";
+import { useHouseholdApi } from "@/hooks/use-household-api";
+import { type GroceryList } from "@/lib/household-api";
 import { groceryQueryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 
@@ -49,11 +48,7 @@ export default function SharedListScreen() {
   }>();
   const householdId = firstParam(params.householdId);
   const householdName = firstParam(params.householdName) || "Household";
-  const { getToken, userId } = useAuth();
-  const api = useMemo(
-    () => createHouseholdApi({ baseUrl: getRuntimeUrl(), getToken, userId }),
-    [getToken, userId],
-  );
+  const { api, userId } = useHouseholdApi();
   const queryClient = useQueryClient();
   const listsKey = groceryQueryKeys.lists(userId, householdId);
   const createListInFlight = useRef(false);

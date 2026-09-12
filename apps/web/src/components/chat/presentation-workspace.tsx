@@ -1,17 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { CopilotSidebar, useAgent, UseAgentUpdate } from "@copilotkit/react-core/v2";
+import { useAgent, UseAgentUpdate } from "@copilotkit/react-core/v2";
 
 import type { PresentationSlide, PresentationState } from "@agents/types";
-import { cn, ScrollArea } from "@agents/ui";
-import { SidebarInset, SidebarProvider } from "@agents/ui";
-import { Streamdown } from "@agents/ui";
-import { getAgentConfig } from "@/components/chat/agents/registry";
-import { AppSidebar } from "@/components/chat/app-sidebar";
-import { ConsoleTopBar } from "@/components/chat/console-top-bar";
-import { useNewThread } from "@/components/chat/use-new-thread";
-import { cssVars } from "@/lib/css";
+import { cn, ScrollArea, Streamdown } from "@agents/ui";
+
+import { CopilotWorkspace } from "@/components/chat/copilot-workspace";
 
 const AGENT_ID = "presentation" as const;
 
@@ -105,12 +100,10 @@ function SlidePreview({
 }
 
 export function PresentationWorkspace({ threadId }: { threadId: string }) {
-  const config = getAgentConfig(AGENT_ID);
   const { agent } = useAgent({
     agentId: AGENT_ID,
     updates: [UseAgentUpdate.OnStateChanged, UseAgentUpdate.OnRunStatusChanged],
   });
-  const startNewThread = useNewThread(AGENT_ID);
 
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const state = (agent?.state ?? {}) as PresentationState;
@@ -127,109 +120,94 @@ export function PresentationWorkspace({ threadId }: { threadId: string }) {
   const activeSlide = slides[activeIndex];
 
   return (
-    <SidebarProvider
-      defaultOpen={false}
-      className="h-dvh overflow-hidden"
-      style={cssVars({ "--page-color": `var(${config.colorVar})` })}
+    <CopilotWorkspace
+      agentId={AGENT_ID}
+      threadId={threadId}
+      isRunning={agent?.isRunning}
+      chatTitle="Presentation chat"
     >
-      <CopilotSidebar
-        defaultOpen={false}
-        labels={{
-          modalHeaderTitle: "Presentation chat",
-          chatInputPlaceholder: config.placeholder,
-        }}
-      />
-      <AppSidebar
-        activePath={`/console/${AGENT_ID}`}
-        agentId={AGENT_ID}
-        activeThreadId={threadId}
-        onNewThread={startNewThread}
-      />
-      <SidebarInset className="min-h-0 overflow-hidden">
-        <ConsoleTopBar agentId={AGENT_ID} threadId={threadId} isRunning={agent?.isRunning} />
-        <div className="flex min-h-0 flex-1 bg-background">
-          {/* Slide list sidebar */}
-          <aside className="flex w-48 shrink-0 flex-col border-e">
-            {/* Deck title */}
-            <div className="shrink-0 border-b p-3">
-              <p className="mb-0.5 text-xs tracking-wide text-muted-foreground uppercase">
-                {slides.length} slide{slides.length !== 1 ? "s" : ""}
-              </p>
-              <p className="truncate text-sm font-semibold">{state.title ?? "New presentation"}</p>
-            </div>
-            {/* Thumbnails */}
-            <ScrollArea className="flex-1 p-2">
-              {slides.length === 0 ? (
-                <p className="p-2 text-xs text-muted-foreground">
-                  No slides yet. Ask in chat to build your deck.
-                </p>
-              ) : (
-                <div className="flex flex-col gap-1">
-                  {slides.map((slide, i) => (
-                    <SlideThumbnail
-                      key={slide.id}
-                      slide={slide}
-                      index={i}
-                      active={i === activeIndex}
-                      onClick={() => setLocalActiveIndex(i)}
-                    />
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </aside>
-
-          {/* Slide preview */}
-          <div className="flex min-h-0 flex-1 flex-col">
-            {activeSlide ? (
-              <div className="flex min-h-0 flex-1 items-center justify-center p-8">
-                <div className="aspect-video w-full max-w-3xl">
-                  <SlidePreview
-                    slide={activeSlide}
-                    index={activeIndex}
-                    total={slides.length}
-                    theme={theme}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center text-muted-foreground">
-                <p className="text-5xl">🎞</p>
-                <p className="text-sm">
-                  Ask me to build a presentation in the chat.
-                  <br />
-                  Try: &ldquo;Create a 10-slide pitch deck for a SaaS startup&rdquo;
-                </p>
-              </div>
-            )}
-
-            {/* Navigation arrows */}
-            {slides.length > 1 && (
-              <div className="flex shrink-0 items-center justify-center gap-4 border-t py-3">
-                <button
-                  type="button"
-                  disabled={activeIndex === 0}
-                  onClick={() => setLocalActiveIndex(activeIndex - 1)}
-                  className="rounded px-3 py-1 text-sm transition-colors hover:bg-muted disabled:opacity-30"
-                >
-                  ← Prev
-                </button>
-                <span className="text-xs text-muted-foreground">
-                  {activeIndex + 1} / {slides.length}
-                </span>
-                <button
-                  type="button"
-                  disabled={activeIndex === slides.length - 1}
-                  onClick={() => setLocalActiveIndex(activeIndex + 1)}
-                  className="rounded px-3 py-1 text-sm transition-colors hover:bg-muted disabled:opacity-30"
-                >
-                  Next →
-                </button>
-              </div>
-            )}
+      <div className="flex min-h-0 flex-1 bg-background">
+        {/* Slide list sidebar */}
+        <aside className="flex w-48 shrink-0 flex-col border-e">
+          {/* Deck title */}
+          <div className="shrink-0 border-b p-3">
+            <p className="mb-0.5 text-xs tracking-wide text-muted-foreground uppercase">
+              {slides.length} slide{slides.length !== 1 ? "s" : ""}
+            </p>
+            <p className="truncate text-sm font-semibold">{state.title ?? "New presentation"}</p>
           </div>
+          {/* Thumbnails */}
+          <ScrollArea className="flex-1 p-2">
+            {slides.length === 0 ? (
+              <p className="p-2 text-xs text-muted-foreground">
+                No slides yet. Ask in chat to build your deck.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-1">
+                {slides.map((slide, i) => (
+                  <SlideThumbnail
+                    key={slide.id}
+                    slide={slide}
+                    index={i}
+                    active={i === activeIndex}
+                    onClick={() => setLocalActiveIndex(i)}
+                  />
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </aside>
+
+        {/* Slide preview */}
+        <div className="flex min-h-0 flex-1 flex-col">
+          {activeSlide ? (
+            <div className="flex min-h-0 flex-1 items-center justify-center p-8">
+              <div className="aspect-video w-full max-w-3xl">
+                <SlidePreview
+                  slide={activeSlide}
+                  index={activeIndex}
+                  total={slides.length}
+                  theme={theme}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center text-muted-foreground">
+              <p className="text-5xl">🎞</p>
+              <p className="text-sm">
+                Ask me to build a presentation in the chat.
+                <br />
+                Try: &ldquo;Create a 10-slide pitch deck for a SaaS startup&rdquo;
+              </p>
+            </div>
+          )}
+
+          {/* Navigation arrows */}
+          {slides.length > 1 && (
+            <div className="flex shrink-0 items-center justify-center gap-4 border-t py-3">
+              <button
+                type="button"
+                disabled={activeIndex === 0}
+                onClick={() => setLocalActiveIndex(activeIndex - 1)}
+                className="rounded px-3 py-1 text-sm transition-colors hover:bg-muted disabled:opacity-30"
+              >
+                ← Prev
+              </button>
+              <span className="text-xs text-muted-foreground">
+                {activeIndex + 1} / {slides.length}
+              </span>
+              <button
+                type="button"
+                disabled={activeIndex === slides.length - 1}
+                onClick={() => setLocalActiveIndex(activeIndex + 1)}
+                className="rounded px-3 py-1 text-sm transition-colors hover:bg-muted disabled:opacity-30"
+              >
+                Next →
+              </button>
+            </div>
+          )}
         </div>
-      </SidebarInset>
-    </SidebarProvider>
+      </div>
+    </CopilotWorkspace>
   );
 }
