@@ -22,7 +22,6 @@ import (
 
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
-	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/runner"
 	"google.golang.org/adk/v2/session"
 )
@@ -174,6 +173,31 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	entry := h.entry
 
+	// Reject malformed declarations before leasing runs or mutating sessions.
+	clientTools := input.Tools
+	if err := validateClientToolDefinitions(clientTools); err != nil {
+		log.Printf("run: invalid client tools: agent=%s thread=%s err=%v", entry.AppName, input.ThreadID, err)
+		writeJSONError(w, http.StatusBadRequest, "invalid_agui_input")
+		return
+	}
+	clientToolNames := make(map[string]bool, len(clientTools))
+	for _, definition := range clientTools {
+		clientToolNames[definition.Name] = true
+	}
+	// Encode client tools before any header is written: json.Marshal
+	// failing here must still produce a normal 4xx, which is impossible
+	// once the SSE response has started.
+	var clientToolsJSON string
+	if len(clientTools) > 0 {
+		encoded, err := json.Marshal(clientTools)
+		if err != nil {
+			log.Printf("run: client tools encode failed: agent=%s thread=%s err=%v", entry.AppName, input.ThreadID, err)
+			writeJSONError(w, http.StatusBadRequest, "invalid_agui_input")
+			return
+		}
+		clientToolsJSON = string(encoded)
+	}
+
 	identity, ok := auth.FromContext(r.Context())
 	if !ok {
 		identity = auth.Identity{UserID: "anonymous", Public: true}
@@ -263,33 +287,10 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// A model run with AG-UI client tools requires a PendingTools store to
 	// persist the call until a tool-result message resumes it; without one,
 	// a request that declares tools would silently run without them.
-	clientTools := input.Tools
 	if content != nil && len(clientTools) > 0 && h.pending == nil {
 		log.Printf("run: client tools declared but pending store unavailable: agent=%s thread=%s", entry.AppName, input.ThreadID)
 		writeJSONError(w, http.StatusBadRequest, "client_tools_unsupported")
 		return
-	}
-	if err := validateClientToolDefinitions(clientTools); err != nil {
-		log.Printf("run: invalid client tools: agent=%s thread=%s err=%v", entry.AppName, input.ThreadID, err)
-		writeJSONError(w, http.StatusBadRequest, "invalid_agui_input")
-		return
-	}
-	clientToolNames := make(map[string]bool, len(clientTools))
-	for _, definition := range clientTools {
-		clientToolNames[definition.Name] = true
-	}
-	// Encode client tools before any header is written: json.Marshal
-	// failing here must still produce a normal 4xx, which is impossible
-	// once the SSE response has started.
-	var clientToolsJSON string
-	if content != nil && len(clientTools) > 0 {
-		encoded, err := json.Marshal(clientTools)
-		if err != nil {
-			log.Printf("run: client tools encode failed: agent=%s thread=%s err=%v", entry.AppName, input.ThreadID, err)
-			writeJSONError(w, http.StatusBadRequest, "invalid_agui_input")
-			return
-		}
-		clientToolsJSON = string(encoded)
 	}
 	snapshot, err := persistentSnapshot(sess.State())
 	if err != nil {
@@ -297,6 +298,26 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		captureSessionError(ctx, err, entry, input, "session.snapshot")
 		writeJSONError(w, http.StatusInternalServerError, "session_unavailable")
 		return
+	}
+
+	overlay := requestStateOverlay(r, entry.Route)
+	if clientToolsJSON != "" {
+		// Overlaid via runner.WithStateDelta, which lands on the session
+		// before the agent's Toolsets are resolved for this invocation
+		// (see AGUIToolset in client_tools.go) — this is
+		// how the request's AG-UI tool declarations reach the running
+		// agent as callable tools.
+		if overlay == nil {
+			overlay = make(map[string]any)
+		}
+		overlay[ClientToolsStateKey] = clientToolsJSON
+	}
+	execution := runExecution{
+		runner: h.runner, input: input, userID: userID, content: content,
+		stateDelta: overlay, snapshot: snapshot, smoothing: h.smoothing,
+	}
+	if content != nil {
+		execution.converter = newStreamConverter(ctx, h.ids, snapshot, h.pending, scope, clientToolNames, h.smoothing, entry.Agent.Name())
 	}
 
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -324,22 +345,20 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		return err
 	}
-	var converter *streamConverter
-	emitFailure := func(runErr error) {
+	emitFailure := func(runErr error, stack []byte) {
 		// The per-entry execution context may be canceled on timeout. Use a
 		// non-cancelable derivative only for best-effort protocol closure and
 		// terminal publication; agent execution remains bounded by ctx.
 		terminalCtx := context.WithoutCancel(ctx)
-		if converter != nil {
-			for _, converted := range converter.Flush() {
-				if err := emit(terminalCtx, converted); err != nil {
-					log.Printf("run: terminal lane flush failed: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, err)
-					break
-				}
-			}
+		if err := execution.flush(terminalCtx, emit); err != nil {
+			log.Printf("run: terminal lane flush failed: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, err)
 		}
 		log.Printf("run failed: agent=%s thread=%s user=%s run=%s err=%v", entry.AppName, input.ThreadID, userID, input.RunID, runErr)
-		observability.CaptureError(terminalCtx, runErr, agentRunErrorDetails(runErr, entry, input))
+		details := agentRunErrorDetails(runErr, entry, input)
+		if len(stack) > 0 {
+			details.Context["panic_stack"] = string(stack)
+		}
+		observability.CaptureError(terminalCtx, runErr, details)
 		if err := emit(terminalCtx, sanitizeRunError(input.RunID, runErr)); err != nil && !errors.Is(err, errEventAfterTerminal) {
 			log.Printf("run: RUN_ERROR emission failed: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, err)
 		}
@@ -357,119 +376,15 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					log.Printf("run: panic recovery failed: agent=%s thread=%s run=%s", entry.AppName, input.ThreadID, input.RunID)
 				}
 			}()
-			panicErr := fmt.Errorf("agent stream panic: %v", recovered)
-			terminalCtx := context.WithoutCancel(ctx)
-			if converter != nil {
-				for _, converted := range converter.Flush() {
-					if err := emit(terminalCtx, converted); err != nil {
-						log.Printf("run: panic lane flush failed: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, err)
-						break
-					}
-				}
-			}
-			log.Printf("run panicked: agent=%s thread=%s user=%s run=%s", entry.AppName, input.ThreadID, userID, input.RunID)
-			details := agentRunErrorDetails(panicErr, entry, input)
-			details.Context["panic_stack"] = string(debug.Stack())
-			observability.CaptureError(terminalCtx, panicErr, details)
-			if err := emit(terminalCtx, sanitizeRunError(input.RunID, panicErr)); err != nil && !errors.Is(err, errEventAfterTerminal) {
-				log.Printf("run: panic terminal emission failed: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, err)
-			}
+			emitFailure(fmt.Errorf("agent stream panic: %v", recovered), debug.Stack())
 		}()
 	}()
-	if err := emit(ctx, events.NewRunStartedEvent(input.ThreadID, input.RunID)); err != nil {
-		log.Printf("run: RUN_STARTED emission failed: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, err)
-		emitFailure(err)
-		return
-	}
-
-	if err := emit(ctx, events.NewStateSnapshotEvent(snapshot)); err != nil {
-		log.Printf("run: state snapshot emission failed: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, err)
-		emitFailure(err)
-		return
-	}
-	if content == nil {
-		if err := emit(ctx, events.NewRunFinishedEventWithOptions(input.ThreadID, input.RunID, events.WithSuccessOutcome())); err != nil {
-			log.Printf("run: terminal emission failed: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, err)
-			emitFailure(err)
-		}
-		return
-	}
-
-	overlay := requestStateOverlay(r, entry.Route)
-	if clientToolsJSON != "" {
-		// Overlaid via runner.WithStateDelta, which lands on the session
-		// before the agent's Toolsets are resolved for this invocation
-		// (see AGUIToolset in client_tools.go) — this is
-		// how the request's AG-UI tool declarations reach the running
-		// agent as callable tools.
-		if overlay == nil {
-			overlay = make(map[string]any)
-		}
-		overlay[ClientToolsStateKey] = clientToolsJSON
-	}
-	var runOpts []runner.RunOption
-	if overlay != nil {
-		runOpts = append(runOpts, runner.WithStateDelta(overlay))
-	}
-
-	converter = newStreamConverter(ctx, h.ids, snapshot, h.pending, scope, clientToolNames, h.smoothing, entry.Agent.Name())
-	var runErr error
-	lastWasTextContent := false
-runLoop:
-	for event, evErr := range h.runner.Run(ctx, userID, input.ThreadID, content, agent.RunConfig{StreamingMode: agent.StreamingModeSSE}, runOpts...) {
-		if evErr != nil {
-			runErr = evErr
-			break
-		}
-		convertedEvents, convertErr := converter.Convert(event)
-		if convertErr != nil {
-			runErr = convertErr
-			break
-		}
-		for _, converted := range convertedEvents {
-			if h.smoothing.enabled && h.smoothing.chunkDelay > 0 && converted.Type() == events.EventTypeTextMessageContent && lastWasTextContent {
-				select {
-				case <-time.After(h.smoothing.chunkDelay):
-				case <-ctx.Done():
-					runErr = ctx.Err()
-					break runLoop
-				}
-			}
-			if err := emit(ctx, converted); err != nil {
-				runErr = err
-				break runLoop
-			}
-			lastWasTextContent = converted.Type() == events.EventTypeTextMessageContent
-		}
-	}
-	// Runner implementations may stop iteration when their context expires
-	// without yielding the context error. Treat an expired execution context as
-	// the run failure so every started stream still receives a terminal event.
-	if runErr == nil {
-		runErr = ctx.Err()
-	}
-
-	if runErr != nil {
-		// A stateless suggestion has no reconnect consumer. Its request ending or
-		// response becoming unwritable is normal cancellation, not an agent error.
+	if runErr := execution.execute(ctx, emit); runErr != nil {
+		// Stateless suggestions have no reconnect consumer after disconnection.
 		if h.stateless && errors.Is(runErr, context.Canceled) && (transportFailed || r.Context().Err() != nil) {
 			return
 		}
-		emitFailure(runErr)
-		return
-	}
-
-	finishedOutcome := events.WithSuccessOutcome()
-	if interrupts := converter.Interrupts(); len(interrupts) > 0 {
-		finishedOutcome = events.WithInterruptOutcome(interrupts)
-	}
-	finished := events.NewRunFinishedEventWithOptions(input.ThreadID, input.RunID, finishedOutcome)
-	if converter.lastFinalText != "" {
-		finished.Result = converter.lastFinalText
-	}
-	if err := emit(ctx, finished); err != nil {
-		log.Printf("run: RUN_FINISHED emission failed: agent=%s thread=%s run=%s err=%v", entry.AppName, input.ThreadID, input.RunID, err)
-		emitFailure(err)
+		emitFailure(runErr, nil)
 	}
 }
 
