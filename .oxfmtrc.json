@@ -15,9 +15,5 @@
     "preserveWhitespace": false,
     "stylesheet": "./packages/ui/src/styles/globals.css"
   },
-  "ignorePatterns": [
-    "apps/grocery-mobile/src/uniwind-types.d.ts",
-    "apps/mobile/uniwind-types.d.ts",
-    "pnpm-lock.yaml"
-  ]
+  "ignorePatterns": ["pnpm-lock.yaml"]
 }

@@ -7,7 +7,6 @@
     "dev:web": "pnpm --filter web dev",
     "dev:telegram": "docker compose up --build telegram",
     "dev:oral-boards": "pnpm --filter oral-boards dev",
-    "dev:mobile": "pnpm --filter mobile start",
     "dev:railway": "pnpm env:railway && pnpm dev",
     "env:railway": "railway variables --json | jq -r 'to_entries[] | \"\\(.key)=\\(.value|@sh)\"' > .env.local",
     "dev:agents": "docker compose up --build",
@@ -24,10 +23,9 @@
     "api:generate": "pnpm --filter agents api:generate",
     "api:check": "nice -n 10 turbo api:check --concurrency=1",
     "graph": "turbo graph",
-    "build": "nice -n 10 turbo build --filter='!mobile' --concurrency=1",
-    "update": "pnpm update:js && pnpm update:expo",
+    "build": "nice -n 10 turbo build --concurrency=1",
+    "update": "pnpm update:js",
     "update:js": "pnpm up -r --latest",
-    "update:expo": "cd apps/mobile && pnpm dlx expo@latest install expo@latest && pnpm dlx expo@latest install --fix && pnpm dlx expo-doctor",
     "doctor": "react-doctor"
   },
   "devDependencies": {
