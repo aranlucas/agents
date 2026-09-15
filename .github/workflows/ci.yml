@@ -135,9 +135,7 @@ jobs:
       - name: Install JS dependencies
         run: pnpm install --frozen-lockfile
       - name: Build
-        # Legacy apps/mobile uses credentialed native release commands, so CI excludes
-        # it. Grocery Mobile exposes a deterministic Expo export through `build`.
-        run: pnpm exec turbo build --filter='!agents' --filter='!mobile'
+        run: pnpm exec turbo build --filter='!agents'
         env:
           SKIP_ENV_VALIDATION: "1"
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2xlcmsuZXhhbXBsZS5jb20k
