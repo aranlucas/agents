@@ -82,7 +82,7 @@ function ResultCard({ result, query }: { result: SearchResult; query: string }) 
       <div className="flex items-stretch">
         <button
           onClick={() => setExpanded((value) => !value)}
-          className="flex min-w-0 flex-1 items-start gap-3 p-4 pe-2 text-left"
+          className="flex min-w-0 flex-1 items-start gap-3 p-4 pe-2 text-start"
         >
           <FileText className="mt-0.5 size-4 shrink-0 text-indigo-500" />
           <div className="min-w-0 flex-1">

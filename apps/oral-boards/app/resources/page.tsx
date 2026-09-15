@@ -131,7 +131,7 @@ export default function ResourcesPage() {
           <CollapsibleTrigger className="w-full">
             <CardHeader className="cursor-pointer transition-colors hover:bg-blue-100/50 hover:dark:bg-blue-900/20">
               <div className="flex items-center justify-between gap-2">
-                <div className="flex-1 text-left">
+                <div className="flex-1 text-start">
                   <div className="mb-1 flex flex-wrap items-center gap-2">
                     <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                       <Download className="size-4 text-blue-600 sm:size-5" />
@@ -248,7 +248,7 @@ export default function ResourcesPage() {
               <CollapsibleTrigger className="w-full">
                 <CardHeader className="cursor-pointer pb-3 transition-colors hover:bg-indigo-50 sm:pb-4 hover:dark:bg-indigo-950/30">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 text-left">
+                    <div className="flex-1 text-start">
                       <div className="mb-1 flex flex-wrap items-center gap-2 sm:mb-2">
                         <CardTitle className="flex items-center gap-2 text-base text-indigo-900 sm:text-lg dark:text-indigo-100">
                           <GraduationCap className="size-4 text-indigo-600 sm:size-5" />

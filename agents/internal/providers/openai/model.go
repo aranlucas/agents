@@ -190,9 +190,15 @@ func (m *Model) GenerateContent(ctx context.Context, req *model.LLMRequest, stre
 				return
 			}
 			last = err
+			// A caller abandoning a run is not evidence of provider failure.
+			// Do not open the circuit for subsequent, independent requests.
+			if ctx.Err() != nil {
+				yield(nil, err)
+				return
+			}
 			retryable := isRetryable(err)
 			m.recordFailure(pc.config.Name, retryable)
-			if emitted || !retryable || ctx.Err() != nil {
+			if emitted || !retryable {
 				yield(nil, err)
 				return
 			}
@@ -212,7 +218,12 @@ func (m *Model) runProvider(ctx context.Context, pc providerClient, req *model.L
 		return false, &ProviderError{Provider: pc.config.Name, Model: pc.config.Model, Kind: ProviderErrorConfiguration, cause: pc.err}
 	}
 	if err := m.limiter.Acquire(ctx, pc.config.Name, pc.config.RequestsPerMinute); err != nil {
-		return false, &ProviderError{Provider: pc.config.Name, Model: pc.config.Model, Retryable: errors.Is(err, rate.ErrLimitReached), Kind: ProviderErrorRateLimit, cause: err}
+		if errors.Is(err, rate.ErrLimitReached) {
+			return false, &ProviderError{Provider: pc.config.Name, Model: pc.config.Model, Retryable: true, Kind: ProviderErrorRateLimit, cause: err}
+		}
+		// The limiter depends on D1. A storage failure must remain a storage
+		// failure and must not retry a possibly committed quota increment.
+		return false, fmt.Errorf("check provider limit: %w", err)
 	}
 	request := sanitizeRequest(req, pc.config.Model)
 	providerCtx, cancel := context.WithCancelCause(ctx)

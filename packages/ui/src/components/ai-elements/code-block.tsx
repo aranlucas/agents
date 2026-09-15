@@ -72,7 +72,7 @@ const LINE_NUMBER_CLASSES = cn(
   "before:inline-block",
   "before:w-8",
   "before:me-4",
-  "before:text-right",
+  "before:text-end",
   "before:text-muted-foreground/50",
   "before:font-mono",
   "before:select-none",
