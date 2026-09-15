@@ -274,6 +274,34 @@ func TestLimiterOverflowUsesFallback(t *testing.T) {
 	}
 }
 
+func TestLimiterFailuresRemainStorageOrContextErrors(t *testing.T) {
+	for _, cause := range []error{errors.New("D1 query failed (HTTP 503)"), context.Canceled, context.DeadlineExceeded} {
+		t.Run(cause.Error(), func(t *testing.T) {
+			limiterError := fmt.Errorf("acquire provider limit: %w", cause)
+			adapter := newModel([]config.Provider{
+				testProvider("primary", "https://example.invalid"),
+				testProvider("fallback", "https://example.invalid"),
+			}, nil, failingLimiter{limiterError})
+			for i := range adapter.providers {
+				adapter.providers[i].model = scriptedModel(func(context.Context) iter.Seq2[*model.LLMResponse, error] {
+					t.Fatal("model called without acquiring a quota slot")
+					return nil
+				})
+			}
+			responses, errs := collect(adapter.GenerateContent(t.Context(), &model.LLMRequest{Contents: genai.Text("hello")}, false))
+			if len(responses) != 0 || len(errs) != 1 || !errors.Is(errs[0], cause) {
+				t.Fatalf("responses/errors = %#v/%v", responses, errs)
+			}
+			if _, ok := errors.AsType[*ProviderError](errs[0]); ok {
+				t.Fatalf("limiter failure incorrectly classified as a provider error: %v", errs[0])
+			}
+			if len(adapter.circuits) != 0 {
+				t.Fatalf("limiter failure changed provider circuits: %#v", adapter.circuits)
+			}
+		})
+	}
+}
+
 func TestStreamErrorDoesNotFallbackAfterEmission(t *testing.T) {
 	var fallbackCalls atomic.Int32
 	primary := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -393,6 +421,10 @@ type allowLimiter struct{}
 
 func (allowLimiter) Acquire(context.Context, string, int) error { return nil }
 
+type failingLimiter struct{ err error }
+
+func (l failingLimiter) Acquire(context.Context, string, int) error { return l.err }
+
 type selectiveLimiter struct{}
 
 func (selectiveLimiter) Acquire(_ context.Context, provider string, _ int) error {
@@ -503,6 +535,9 @@ func TestFirstContentTimeoutDoesNotFallbackOnCallerCancellation(t *testing.T) {
 	responses, errs := collect(adapter.GenerateContent(ctx, &model.LLMRequest{Contents: genai.Text("hello")}, true))
 	if len(responses) != 0 || len(errs) != 1 || !errors.Is(errs[0], context.Canceled) {
 		t.Fatalf("responses/errors = %#v/%v", responses, errs)
+	}
+	if len(adapter.circuits) != 0 {
+		t.Fatalf("caller cancellation changed provider circuits: %#v", adapter.circuits)
 	}
 }
 

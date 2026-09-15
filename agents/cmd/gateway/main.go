@@ -718,6 +718,25 @@ func resumeHealth(m model.LLM) func(context.Context) error {
 	}
 }
 
+// resumeProviders keeps the public introduction's startup policy compatible
+// with the dynamic free router, whose selected model may require reasoning.
+func resumeProviders(providers map[string]config.Provider) (config.Provider, map[string]config.Provider, error) {
+	primary, err := providerpolicy.ResolveAgent(providers, providerpolicy.Resume)
+	if err != nil {
+		return config.Provider{}, nil, err
+	}
+	fallbacks := providerpolicy.FallbackProviders(providers)
+	if len(primary.Fallbacks) > 0 {
+		// Bound time to usable content without disabling mandatory reasoning.
+		primary.FirstContentTimeout = 2 * time.Second
+	}
+	if groq, ok := fallbacks["groq"]; ok {
+		groq.ReasoningEffort = "low"
+		fallbacks["groq"] = groq
+	}
+	return primary, fallbacks, nil
+}
+
 func main() {
 	startup := newStartupTimer()
 	startup.mark("process")
@@ -768,21 +787,9 @@ func main() {
 	agentToolset := agui.NewAGUIToolset(pending)
 	startup.mark("shared")
 
-	resumeProvider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Resume)
+	resumeProvider, resumeFallbacks, err := resumeProviders(cfg.Providers)
 	if err != nil {
 		log.Fatalf("configure resume model: %v", err)
-	}
-	// Ask the free router to skip reasoning for the public introduction.
-	resumeProvider.ReasoningEffort = "none"
-	resumeFallbacks := providerpolicy.FallbackProviders(cfg.Providers)
-	if len(resumeProvider.Fallbacks) > 0 {
-		// Keep OpenRouter primary, but do not let reasoning-only streams hold
-		// the public introduction's loading state until its browser timeout.
-		resumeProvider.FirstContentTimeout = 2 * time.Second
-	}
-	if groq, ok := resumeFallbacks["groq"]; ok {
-		groq.ReasoningEffort = "low"
-		resumeFallbacks["groq"] = groq
 	}
 	resumeModel, err := openai.NewMulti(resumeProvider, resumeFallbacks, modelHTTPClient, limiter)
 	if err != nil {

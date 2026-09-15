@@ -6,6 +6,8 @@ import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
+	"fmt"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -82,9 +84,7 @@ func (d *D1) Run(ctx context.Context, statements ...Statement) ([]Result, error)
 		Body:      d1.DatabaseQueryParamsBody{Batch: cfapi.F[any](statements)},
 	})
 	if err != nil {
-		// The SDK error can include the response body. Do not risk reflecting
-		// provider-controlled content or credentials into gateway logs.
-		return nil, errors.New("D1 query failed")
+		return nil, safeD1QueryError(err)
 	}
 	results := make([]Result, len(page.Result))
 	for i, sdkResult := range page.Result {
@@ -99,6 +99,30 @@ func (d *D1) Run(ctx context.Context, statements ...Statement) ([]Result, error)
 		results[i].Meta.Changes = int64(sdkResult.Meta.Changes)
 	}
 	return results, nil
+}
+
+// safeD1QueryError preserves cancellation and safe failure metadata without
+// retaining SDK errors, which can expose SQL, credentials, or response bodies.
+func safeD1QueryError(err error) error {
+	switch {
+	case errors.Is(err, context.Canceled):
+		return fmt.Errorf("D1 query canceled: %w", context.Canceled)
+	case errors.Is(err, context.DeadlineExceeded):
+		return fmt.Errorf("D1 query timed out: %w", context.DeadlineExceeded)
+	}
+	if apiErr, ok := errors.AsType[*cfapi.Error](err); ok {
+		if len(apiErr.Errors) > 0 {
+			return fmt.Errorf("D1 query failed (HTTP %d, code %d)", apiErr.StatusCode, apiErr.Errors[0].Code)
+		}
+		return fmt.Errorf("D1 query failed (HTTP %d)", apiErr.StatusCode)
+	}
+	if networkErr, ok := errors.AsType[net.Error](err); ok {
+		if networkErr.Timeout() {
+			return fmt.Errorf("D1 query timed out: %w", context.DeadlineExceeded)
+		}
+		return errors.New("D1 query failed (network)")
+	}
+	return errors.New("D1 query failed")
 }
 
 // Liveness verifies that the configured D1 database accepts a bounded query.

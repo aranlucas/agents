@@ -1,7 +1,7 @@
 {
   "$schema": "../../node_modules/oxlint/configuration_schema.json",
   "extends": ["../oxlint-config/base.json", "../oxlint-config/tailwind.json"],
-  "jsPlugins": ["oxlint-tailwindcss"],
+  "jsPlugins": ["oxlint-tailwindcss", "@shadcn/lint"],
   "plugins": ["import", "jsx-a11y", "react", "typescript", "unicorn"],
   "settings": {
     "react": {
