@@ -6,6 +6,7 @@
   ],
   "jsPlugins": [
     "oxlint-tailwindcss",
+    "@shadcn/lint",
     {
       "name": "@clerk/next",
       "specifier": "@clerk/eslint-plugin/next"

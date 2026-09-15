@@ -164,8 +164,8 @@ export default function ExamFramework() {
             <table className="w-full text-sm">
               <thead className="bg-indigo-50 dark:bg-indigo-950">
                 <tr>
-                  <th className="p-2 text-left font-semibold">Score</th>
-                  <th className="p-2 text-left font-semibold">ABPD Descriptor</th>
+                  <th className="p-2 text-start font-semibold">Score</th>
+                  <th className="p-2 text-start font-semibold">ABPD Descriptor</th>
                 </tr>
               </thead>
               <tbody>
@@ -227,7 +227,7 @@ export default function ExamFramework() {
               <CollapsibleTrigger className="w-full">
                 <CardHeader className="cursor-pointer transition-colors hover:bg-indigo-50 hover:dark:bg-indigo-950">
                   <div className="flex items-start justify-between">
-                    <div className="flex-1 text-left">
+                    <div className="flex-1 text-start">
                       <div className="mb-2 flex items-center gap-2">
                         <CardTitle className="text-indigo-900 dark:text-indigo-100">
                           {domain.name}
