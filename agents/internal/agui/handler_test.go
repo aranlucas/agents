@@ -318,6 +318,9 @@ func TestStatelessHandlerStreamsWithoutArtificialPacing(t *testing.T) {
 	if conversational.smoothing != defaultStreamSmoothing {
 		t.Fatal("conversational pacing changed")
 	}
+	if defaultStreamSmoothing.charsPerChunk != DefaultStreamCharsPerChunk || defaultStreamSmoothing.chunkDelay != DefaultStreamChunkDelay || defaultStreamSmoothing.chunking != DefaultStreamChunking {
+		t.Fatal("exported stream defaults drifted from handler defaults")
+	}
 	custom := streamSmoothing{enabled: true, chunking: streamChunkingWord, charsPerChunk: 32, chunkDelay: time.Millisecond}
 	overridden, err := NewStatelessEntryHandler(entry, WithStreamSmoothing(custom))
 	if err != nil {
@@ -325,6 +328,26 @@ func TestStatelessHandlerStreamsWithoutArtificialPacing(t *testing.T) {
 	}
 	if overridden.smoothing != custom {
 		t.Fatal("explicit pacing option was ignored")
+	}
+}
+
+func TestStreamSmoothingFromEnvUsesExportedDefaults(t *testing.T) {
+	t.Setenv("AGUI_STREAM_SMOOTHING", "")
+	t.Setenv("AGUI_STREAM_CHUNKING", "")
+	t.Setenv("AGUI_STREAM_CHUNK_SIZE", "")
+	t.Setenv("AGUI_STREAM_CHUNK_DELAY_MS", "")
+	enabled, chunking, charsPerChunk, delay := StreamSmoothingFromEnv()
+	if !enabled || chunking != DefaultStreamChunking || charsPerChunk != DefaultStreamCharsPerChunk || delay != DefaultStreamChunkDelay {
+		t.Fatalf("defaults = %v %q %d %s", enabled, chunking, charsPerChunk, delay)
+	}
+
+	t.Setenv("AGUI_STREAM_SMOOTHING", "false")
+	t.Setenv("AGUI_STREAM_CHUNKING", "line")
+	t.Setenv("AGUI_STREAM_CHUNK_SIZE", "32")
+	t.Setenv("AGUI_STREAM_CHUNK_DELAY_MS", "5")
+	enabled, chunking, charsPerChunk, delay = StreamSmoothingFromEnv()
+	if enabled || chunking != "line" || charsPerChunk != 32 || delay != 5*time.Millisecond {
+		t.Fatalf("overrides = %v %q %d %s", enabled, chunking, charsPerChunk, delay)
 	}
 }
 

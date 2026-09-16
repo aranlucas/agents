@@ -20,10 +20,6 @@ var (
 	ErrLinkTokenExpired = errors.New("telegram link token expired")
 )
 
-type d1Runner interface {
-	Run(context.Context, ...cloudflare.Statement) ([]cloudflare.Result, error)
-}
-
 type AccountLink struct {
 	TelegramUserID int64  `json:"telegram_user_id"`
 	TelegramChatID int64  `json:"telegram_chat_id"`
@@ -39,13 +35,13 @@ type linkTokenRow struct {
 }
 
 type LinkStore struct {
-	db  d1Runner
+	db  cloudflare.StatementRunner
 	now func() time.Time
 }
 
 func NewLinkStore(db *cloudflare.D1, now func() time.Time) *LinkStore { return newLinkStore(db, now) }
 
-func newLinkStore(db d1Runner, now func() time.Time) *LinkStore {
+func newLinkStore(db cloudflare.StatementRunner, now func() time.Time) *LinkStore {
 	if now == nil {
 		now = time.Now
 	}

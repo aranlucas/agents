@@ -406,7 +406,7 @@ func (fakeResumeModel) GenerateContent(_ context.Context, _ *model.LLMRequest, _
 	}
 }
 
-// fakeHealth is a healthChecker double so tests never touch real D1/R2.
+// fakeHealth is a common.HealthChecker double so tests never touch real D1/R2.
 type fakeHealth struct{ err error }
 
 func (f fakeHealth) Health(context.Context) error { return f.err }

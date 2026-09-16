@@ -512,7 +512,7 @@ func TestShoppingProfileRetentionSchedulesAndDrainsBoundedBatchesWithoutMutation
 	counting := &countingArtifactService{Service: base}
 	failing := &failOnceDeleteArtifactService{Service: counting}
 	runner := newShoppingSnapshotSQLiteRunner(t)
-	recording := &recordingStatementRunner{statementRunner: runner}
+	recording := &recordingStatementRunner{StatementRunner: runner}
 	store := newShoppingSnapshotTestStore(t, recording, failing)
 	setPreferredStoreRow(t, runner, "Kroger")
 
@@ -685,7 +685,7 @@ type shoppingSnapshotSQLiteRunner struct {
 }
 
 type recordingStatementRunner struct {
-	statementRunner
+	cloudflare.StatementRunner
 	mu        sync.Mutex
 	schedules []cloudflare.Statement
 }
@@ -700,7 +700,7 @@ func (r *recordingStatementRunner) Run(ctx context.Context, statements ...cloudf
 		}
 	}
 	r.mu.Unlock()
-	return r.statementRunner.Run(ctx, statements...)
+	return r.StatementRunner.Run(ctx, statements...)
 }
 
 func (r *recordingStatementRunner) cleanupSchedules() []cloudflare.Statement {
@@ -797,7 +797,7 @@ func (r *shoppingSnapshotSQLiteRunner) Run(ctx context.Context, statements ...cl
 	return results, nil
 }
 
-func newShoppingSnapshotTestStore(t *testing.T, runner statementRunner, service artifact.Service) *Store {
+func newShoppingSnapshotTestStore(t *testing.T, runner cloudflare.StatementRunner, service artifact.Service) *Store {
 	t.Helper()
 	store := &Store{d1: runner, artifacts: service, newID: randomID}
 	t.Cleanup(store.stopShoppingProfileSnapshots)

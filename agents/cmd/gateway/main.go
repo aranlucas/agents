@@ -16,7 +16,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -65,11 +64,6 @@ import (
 )
 
 const healthCheckTimeout = 3 * time.Second
-const (
-	defaultStreamCharsPerChunk = 64
-	defaultStreamChunkDelayMs  = 18
-	defaultStreamChunking      = "word"
-)
 
 type startupTimer struct {
 	enabled bool
@@ -179,13 +173,6 @@ func (switcher *handlerSwitcher) startOnNonResumeRequest(start func(), ready <-c
 	switcher.nonResumeHydrationReady = ready
 }
 
-// healthChecker is satisfied by *cloudflare.D1 and *cloudflare.R2. It is
-// declared here (not in cloudflare) so Dependencies can be exercised with
-// lightweight fakes in tests without touching real Cloudflare credentials.
-type healthChecker interface {
-	Health(context.Context) error
-}
-
 // Dependencies are the gateway's externally-constructed collaborators.
 // Production values are built in main(); tests supply fakes so route
 // composition can be exercised without D1, R2, or a real model provider.
@@ -194,8 +181,8 @@ type Dependencies struct {
 	Sessions  session.Service
 	Pending   agui.PendingTools
 	Verifier  auth.TokenVerifier
-	D1        healthChecker
-	R2        healthChecker
+	D1        common.HealthChecker
+	R2        common.HealthChecker
 	Links     *telegram.LinkStore
 	Clerk     clerk.Backend
 	Fitness   fitnessdata.Repository
@@ -237,7 +224,7 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 		"/api/grocery/*": true,
 	}
 
-	enabled, chunking, charsPerChunk, delay := parseStreamSmoothingConfigFromEnv()
+	enabled, chunking, charsPerChunk, delay := agui.StreamSmoothingFromEnv()
 	runtime, err := agui.NewCopilotKitRuntime(
 		deps.Registry,
 		deps.Sessions,
@@ -336,48 +323,6 @@ func frontendAgentID(route string) string {
 	return route
 }
 
-func parseStreamSmoothingConfigFromEnv() (bool, string, int, time.Duration) {
-	chunking := defaultStreamChunking
-	if rawChunking := strings.TrimSpace(strings.ToLower(os.Getenv("AGUI_STREAM_CHUNKING"))); rawChunking != "" {
-		chunking = rawChunking
-	}
-	enabled := true
-	if rawEnabled := strings.TrimSpace(os.Getenv("AGUI_STREAM_SMOOTHING")); rawEnabled != "" {
-		parsed, err := strconv.ParseBool(rawEnabled)
-		if err != nil {
-			log.Printf("invalid AGUI_STREAM_SMOOTHING=%q, defaulting to true", rawEnabled)
-		} else {
-			enabled = parsed
-		}
-	}
-
-	charsPerChunk := defaultStreamCharsPerChunk
-	if rawChunkSize := strings.TrimSpace(os.Getenv("AGUI_STREAM_CHUNK_SIZE")); rawChunkSize != "" {
-		parsed, err := strconv.Atoi(rawChunkSize)
-		if err != nil {
-			log.Printf("invalid AGUI_STREAM_CHUNK_SIZE=%q, defaulting to %d", rawChunkSize, charsPerChunk)
-		} else if parsed > 0 {
-			charsPerChunk = parsed
-		} else {
-			log.Printf("AGUI_STREAM_CHUNK_SIZE=%d must be >0, using %d", parsed, charsPerChunk)
-		}
-	}
-
-	chunkDelay := time.Duration(defaultStreamChunkDelayMs) * time.Millisecond
-	if rawDelay := strings.TrimSpace(os.Getenv("AGUI_STREAM_CHUNK_DELAY_MS")); rawDelay != "" {
-		parsed, err := strconv.Atoi(rawDelay)
-		if err != nil {
-			log.Printf("invalid AGUI_STREAM_CHUNK_DELAY_MS=%q, defaulting to %dms", rawDelay, defaultStreamChunkDelayMs)
-		} else if parsed >= 0 {
-			chunkDelay = time.Duration(parsed) * time.Millisecond
-		} else {
-			log.Printf("AGUI_STREAM_CHUNK_DELAY_MS=%d is negative, using %dms", parsed, defaultStreamChunkDelayMs)
-		}
-	}
-
-	return enabled, chunking, charsPerChunk, chunkDelay
-}
-
 // withOAuthCredentials resolves provider access tokens inside the trusted
 // Railway process after Clerk authentication. Direct browser-to-AG-UI clients
 // therefore only carry their Clerk session JWT; third-party OAuth tokens never
@@ -442,33 +387,6 @@ type telegramLinkResolveResponse struct {
 
 type telegramLinkLookup interface {
 	Lookup(context.Context, int64) (telegram.AccountLink, bool, error)
-}
-
-type capabilityFlag struct {
-	Streaming bool `json:"streaming"`
-}
-
-type stateCapabilities struct {
-	Snapshots       bool `json:"snapshots"`
-	Deltas          bool `json:"deltas"`
-	PersistentState bool `json:"persistentState"`
-}
-
-type reasoningCapabilities struct {
-	Supported bool `json:"supported"`
-	Streaming bool `json:"streaming"`
-}
-
-type toolCapabilities struct {
-	Supported      bool `json:"supported"`
-	ClientProvided bool `json:"clientProvided"`
-}
-
-type capabilitiesResponse struct {
-	Transport capabilityFlag        `json:"transport"`
-	State     stateCapabilities     `json:"state"`
-	Reasoning reasoningCapabilities `json:"reasoning"`
-	Tools     toolCapabilities      `json:"tools"`
 }
 
 type agentHealthResponse struct {
@@ -555,12 +473,7 @@ func writeGatewayJSONError(w http.ResponseWriter, status int, code string) {
 // message events. tools.supported is false because no agent built via this
 // vertical slice attaches static or request-scoped client tools yet.
 func capabilitiesHandler(w http.ResponseWriter, _ *http.Request) {
-	if err := common.WriteJSON(w, http.StatusOK, capabilitiesResponse{
-		Transport: capabilityFlag{Streaming: true},
-		State:     stateCapabilities{Snapshots: true, Deltas: true, PersistentState: true},
-		Reasoning: reasoningCapabilities{Supported: true, Streaming: true},
-		Tools:     toolCapabilities{Supported: true, ClientProvided: true},
-	}); err != nil {
+	if err := common.WriteJSON(w, http.StatusOK, agui.DefaultAgentCapabilities()); err != nil {
 		log.Printf("write JSON response: %v", err)
 	}
 }
@@ -605,24 +518,7 @@ func rootHealthHandler(deps Dependencies) http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(r.Context(), healthCheckTimeout)
 		defer cancel()
 
-		checks := map[string]string{}
-		var mu sync.Mutex
-		var wg sync.WaitGroup
-		record := func(name string, checker healthChecker) {
-			status := "unconfigured"
-			if checker != nil {
-				status = "ok"
-				if err := checker.Health(ctx); err != nil {
-					status = "unavailable"
-				}
-			}
-			mu.Lock()
-			checks[name] = status
-			mu.Unlock()
-		}
-		wg.Go(func() { record("d1", deps.D1) })
-		wg.Go(func() { record("r2", deps.R2) })
-		wg.Wait()
+		checks := common.ReadyChecks(ctx, map[string]common.HealthChecker{"d1": deps.D1, "r2": deps.R2})
 
 		status, code := "ok", http.StatusOK
 		for _, value := range checks {

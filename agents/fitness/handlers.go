@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"agents/internal/agentruntime"
-	"agents/internal/common"
 	"agents/internal/fitnessdata"
 	"google.golang.org/adk/v2/agent"
 )
@@ -17,9 +16,6 @@ type Result struct {
 	Count      int                           `json:"count,omitzero"`
 	SyncedAt   string                        `json:"synced_at,omitempty"`
 	Activities []Activity                    `json:"activities,omitempty"`
-	Date       string                        `json:"date,omitempty"`
-	Weekday    string                        `json:"weekday,omitempty"`
-	Month      string                        `json:"month,omitempty"`
 	Error      *agentruntime.StructuredError `json:"error,omitempty"`
 }
 
@@ -35,7 +31,6 @@ type TrainingPlanArgs struct {
 type ReadyArgs struct {
 	Summary string `json:"summary"`
 }
-type CurrentDateArgs struct{}
 
 // FetchActivities loads the authenticated user's provider-neutral D1 snapshot
 // and publishes the bounded activity context used by the planning agent.
@@ -153,11 +148,6 @@ func markPlanReady(state *FitnessState, input ReadyArgs) (Result, error) {
 	}
 	state.Status, state.ReviewSummary = StatusReady, strings.TrimSpace(input.Summary)
 	return Result{OK: true}, nil
-}
-
-func GetCurrentDate(_ agent.Context, _ CurrentDateArgs) (Result, error) {
-	date := common.DateDetails(nil)
-	return Result{OK: true, Date: date.Date, Weekday: date.Weekday, Month: date.Month}, nil
 }
 
 func fitnessFailure(code, message string) Result {

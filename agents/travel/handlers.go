@@ -22,7 +22,6 @@ var (
 type Result struct {
 	OK     bool                          `json:"ok"`
 	Length int                           `json:"length,omitzero"`
-	Date   string                        `json:"date,omitempty"`
 	Error  *agentruntime.StructuredError `json:"error,omitempty"`
 }
 
@@ -50,8 +49,6 @@ type AddDayArgs struct {
 type ReadyArgs struct {
 	Summary string `json:"summary"`
 }
-
-type CurrentDateArgs struct{}
 
 func SetTripMeta(ctx agent.Context, input SetTripMetaArgs) (Result, error) {
 	state := readState(ctx.State())
@@ -201,10 +198,6 @@ func markReadyToBook(state *TravelState, input ReadyArgs) (Result, error) {
 	}
 	state.Status, state.ReviewSummary = StatusReadyToBook, strings.TrimSpace(input.Summary)
 	return Result{OK: true}, nil
-}
-
-func GetCurrentDate(_ agent.Context, _ CurrentDateArgs) (Result, error) {
-	return Result{OK: true, Date: time.Now().UTC().Format(time.DateOnly)}, nil
 }
 
 func validateItinerary(body string) error {
