@@ -26,7 +26,11 @@
     },
     "oral-boards#build": {
       "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        ".env*",
+        "../../agents/assets/oralboards/search.sqlite"
+      ],
       "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**"]
     },
     "agents#build": {
