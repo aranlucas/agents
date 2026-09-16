@@ -1,5 +1,4 @@
 {
-  "buildCommand": "cd ../.. && npx --yes pnpm@12.2.1 --filter oral-boards build",
-  "installCommand": "cd ../.. && npx --yes pnpm@12.2.1 install --frozen-lockfile",
+  "buildCommand": "cd ../.. && pnpm --filter oral-boards build",
   "outputDirectory": ".next"
 }
