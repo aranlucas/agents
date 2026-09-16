@@ -16,6 +16,8 @@ Use `pnpm dev:web` or `pnpm dev:agents` to run one surface.
 
 ## Verify
 
+The full gate is `pnpm check && pnpm test` (see AGENTS.md). Husky `pre-push` is a faster subset: `pnpm build` plus compiling Go tests (`go test -race -count=0`). Run the full gate before opening a PR.
+
 ```bash
 pnpm check
 pnpm test
