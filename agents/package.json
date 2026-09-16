@@ -2,7 +2,7 @@
   "name": "agents",
   "private": true,
   "scripts": {
-    "lint": "GOMAXPROCS=2 golangci-lint run --concurrency=2 ./...",
+    "lint": "GOMAXPROCS=2 golangci-lint run --config=.golangci.yml --concurrency=2 ./...",
     "dev": "go run ./cmd/gateway",
     "fmt": "GOMAXPROCS=2 GOFLAGS=-p=1 go run mvdan.cc/gofumpt@v0.11.0 -w .",
     "fmt:check": "test -z \"$(GOMAXPROCS=2 GOFLAGS=-p=1 go run mvdan.cc/gofumpt@v0.11.0 -l .)\"",
