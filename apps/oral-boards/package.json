@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "copy:search": "cp ../../agents/assets/oralboards/search.sqlite ./search.sqlite",
+    "predev": "pnpm copy:search",
+    "prebuild": "pnpm copy:search",
+    "pretest": "pnpm copy:search",
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
