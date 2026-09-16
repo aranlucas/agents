@@ -157,6 +157,7 @@ jobs:
         with:
           version: v2.13.1
           working-directory: agents
+          args: --config=.golangci.yml
       - name: Format check
         working-directory: agents
         run: |
@@ -169,6 +170,11 @@ jobs:
       - name: Generated contract drift
         working-directory: agents
         run: go run ./cmd/contracts -check
+      - name: Generated grocery API drift
+        working-directory: agents
+        run: |
+          go tool oapi-codegen -config internal/groceryapi/oapi-codegen.yaml api/openapi/grocery-gateway.yaml
+          git diff --exit-code -- internal/groceryapi/generated.go
       - name: Vet
         working-directory: agents
         run: go vet ./...
