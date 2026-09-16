@@ -7,12 +7,6 @@
 import { z } from "zod";
 
 import type {
-  CartItem,
-  DocStatus,
-  FitnessActivity,
-  FitnessState,
-  FitnessStatus,
-  GroceryState,
   JobsState,
   JobsStatus,
   JobCandidate,
@@ -39,19 +33,9 @@ import type {
   OralBoardsState,
   ResumeState,
   ResumeStatus,
-  ShoppingEquipmentItem,
-  ShoppingFrequentItem,
-  ShoppingOrder,
-  ShoppingOrderItem,
-  ShoppingPantryItem,
-  ShoppingPreferredStore,
-  ShoppingProfile,
   TrendsRow,
   TrendsState,
   TrendsStatus,
-  TripState,
-  WellnessState,
-  WellnessStatus,
 } from "@agents/types";
 
 const stateObjectSchema = z.record(z.string(), z.unknown());
@@ -78,10 +62,6 @@ function num(value: unknown, fallback = 0): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
-function optionalNum(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
-}
-
 function bool(value: unknown, fallback = false): boolean {
   return typeof value === "boolean" ? value : fallback;
 }
@@ -97,11 +77,6 @@ export function oneOf<T extends string>(value: unknown, allowed: readonly T[], f
   return allowed.find((candidate) => candidate === value) ?? fallback;
 }
 
-const DOC_STATUSES: readonly DocStatus[] = ["idle", "drafting", "ready_to_book", "booked"];
-const GROCERY_STATUSES = ["idle", "planning", "ready"] as const;
-const FITNESS_STATUSES: readonly FitnessStatus[] = ["idle", "syncing", "planning", "ready"];
-const FITNESS_SOURCES = ["health_connect", "healthkit", "strava", "strava_import"] as const;
-const WELLNESS_STATUSES: readonly WellnessStatus[] = ["idle", "delegating", "planning", "ready"];
 const ORAL_PHASES: readonly OralBoardsPhase[] = [
   "idle",
   "presenting",
@@ -140,178 +115,6 @@ const INTERVIEW_STATUSES: readonly InterviewStatus[] = [
   "complete",
 ];
 const TRENDS_STATUSES: readonly TrendsStatus[] = ["idle", "querying", "ready", "empty", "error"];
-
-export function asDocStatus(value: unknown): DocStatus {
-  return oneOf(value, DOC_STATUSES, "idle");
-}
-
-export function toTripState(raw: unknown): TripState {
-  const s = parseState(raw);
-  return {
-    destination: str(s.destination),
-    start_date: str(s.start_date),
-    end_date: str(s.end_date),
-    travelers: num(s.travelers),
-    budget_usd: num(s.budget_usd),
-    headline: str(s.headline),
-    summary: str(s.summary),
-    itinerary: str(s.itinerary),
-    flights: str(s.flights),
-    status: asDocStatus(s.status),
-    review_summary: optionalStr(s.review_summary),
-  };
-}
-
-function toCartItem(raw: unknown): CartItem {
-  const s = parseState(raw);
-  return {
-    name: str(s.name),
-    quantity: num(s.quantity),
-    price: optionalNum(s.price),
-    upc: optionalStr(s.upc),
-  };
-}
-
-function toShoppingPantryItem(raw: unknown): ShoppingPantryItem {
-  const s = parseState(raw);
-  return {
-    name: str(s.name),
-    quantity: num(s.quantity),
-    added_at: num(s.added_at),
-    expires_at: optionalNum(s.expires_at),
-  };
-}
-
-function toShoppingEquipmentItem(raw: unknown): ShoppingEquipmentItem {
-  const s = parseState(raw);
-  return {
-    name: str(s.name),
-    category: optionalStr(s.category),
-    added_at: num(s.added_at),
-  };
-}
-
-function toShoppingOrderItem(raw: unknown): ShoppingOrderItem {
-  const s = parseState(raw);
-  return {
-    upc: str(s.upc),
-    name: str(s.name),
-    quantity: num(s.quantity),
-    price: optionalNum(s.price),
-  };
-}
-
-function toShoppingOrder(raw: unknown): ShoppingOrder {
-  const s = parseState(raw);
-  return {
-    id: str(s.id),
-    items: Array.isArray(s.items) ? s.items.map(toShoppingOrderItem) : [],
-    total_items: num(s.total_items),
-    placed_at: num(s.placed_at),
-    estimated_total: optionalNum(s.estimated_total),
-    location_id: optionalStr(s.location_id),
-    notes: optionalStr(s.notes),
-  };
-}
-
-function toShoppingFrequentItem(raw: unknown): ShoppingFrequentItem {
-  const s = parseState(raw);
-  return {
-    name: str(s.name),
-    upc: str(s.upc),
-    orders: num(s.orders),
-    total_quantity: num(s.total_quantity),
-  };
-}
-
-function toShoppingPreferredStore(raw: unknown): ShoppingPreferredStore | undefined {
-  const state = parseOptionalState(raw);
-  if (!state) return undefined;
-  return {
-    location_id: str(state.location_id),
-    name: str(state.name),
-    address: str(state.address),
-    chain: str(state.chain),
-    set_at: num(state.set_at),
-  };
-}
-
-function toShoppingProfile(raw: unknown): ShoppingProfile {
-  const s = parseState(raw);
-  const preferredStore = toShoppingPreferredStore(s.preferred_store);
-  return {
-    pantry: Array.isArray(s.pantry) ? s.pantry.map(toShoppingPantryItem) : [],
-    equipment: Array.isArray(s.equipment) ? s.equipment.map(toShoppingEquipmentItem) : [],
-    recent_orders: Array.isArray(s.recent_orders) ? s.recent_orders.map(toShoppingOrder) : [],
-    frequent_items: Array.isArray(s.frequent_items)
-      ? s.frequent_items.map(toShoppingFrequentItem)
-      : [],
-    ...(preferredStore ? { preferred_store: preferredStore } : {}),
-  };
-}
-
-export function toGroceryState(raw: unknown): GroceryState {
-  const s = parseState(raw);
-  return {
-    shopping_list: strArray(s.shopping_list),
-    cart: Array.isArray(s.cart) ? s.cart.map(toCartItem) : [],
-    shopping_profile: toShoppingProfile(s.shopping_profile),
-    meal_plan: str(s.meal_plan),
-    weekly_deals: str(s.weekly_deals),
-    status: oneOf(s.status, GROCERY_STATUSES, "idle"),
-    notes: str(s.notes),
-    review_summary: optionalStr(s.review_summary),
-    kroger_connected: bool(s.kroger_connected),
-  };
-}
-
-function toFitnessActivity(raw: unknown): FitnessActivity {
-  const s = parseState(raw);
-  return {
-    id: str(s.id),
-    source: FITNESS_SOURCES.find((source) => source === s.source),
-    name: str(s.name),
-    sport_type: optionalStr(s.sport_type),
-    start_date: optionalStr(s.start_date),
-    end_date: optionalStr(s.end_date),
-    distance_m: optionalNum(s.distance_m),
-    moving_time_s: optionalNum(s.moving_time_s),
-    elapsed_time_s: optionalNum(s.elapsed_time_s),
-    total_elevation_gain_m: optionalNum(s.total_elevation_gain_m),
-    average_heartrate: optionalNum(s.average_heartrate),
-    perceived_effort: optionalNum(s.perceived_effort),
-    data_origin: optionalStr(s.data_origin),
-  };
-}
-
-export function toFitnessState(raw: unknown): FitnessState {
-  const s = parseState(raw);
-  return {
-    fitness_data_connected: bool(s.fitness_data_connected),
-    activity_source: optionalStr(s.activity_source),
-    activities: Array.isArray(s.activities) ? s.activities.map(toFitnessActivity) : [],
-    activities_synced_at: optionalStr(s.activities_synced_at),
-    objective_research: str(s.objective_research),
-    training_plan: str(s.training_plan),
-    status: oneOf(s.status, FITNESS_STATUSES, "idle"),
-    review_summary: optionalStr(s.review_summary),
-  };
-}
-
-export function toWellnessState(raw: unknown): WellnessState {
-  const s = parseState(raw);
-  return {
-    status: oneOf(s.status, WELLNESS_STATUSES, "idle"),
-    meal_plan: str(s.meal_plan),
-    training_plan: str(s.training_plan),
-    weekly_plan: str(s.weekly_plan),
-    review_summary: optionalStr(s.review_summary),
-    kroger_connected: bool(s.kroger_connected),
-    fitness_data_connected: bool(s.fitness_data_connected),
-    activity_source: optionalStr(s.activity_source),
-    shopping_profile: toShoppingProfile(s.shopping_profile),
-  };
-}
 
 export function toResumeState(raw: unknown): ResumeState {
   const state = parseState(raw);

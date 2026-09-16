@@ -2,6 +2,7 @@ package fitness
 
 import (
 	"agents/internal/bravesearch"
+	"agents/internal/common"
 	"agents/internal/fitnessdata"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
@@ -36,10 +37,7 @@ func newAgent(m model.LLM, activities fitnessdata.Repository, search *bravesearc
 }
 
 func staticTools(search *bravesearch.Client) ([]tool.Tool, error) {
-	getCurrentDateTool, err := functiontool.New(functiontool.Config{
-		Name:        "get_current_date",
-		Description: "Return the current UTC date.",
-	}, GetCurrentDate)
+	getCurrentDateTool, err := common.CurrentDateTool()
 	if err != nil {
 		return nil, err
 	}

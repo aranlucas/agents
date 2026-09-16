@@ -105,26 +105,11 @@ function truncate(text: string, len: number): string {
   return text.length <= len ? text : `${text.slice(0, len)}…`;
 }
 
-// --- LLM-written state guards ---------------------------------------------
-// OralBoardsState is written by an LLM tool call at runtime, so every typed
-// field can arrive missing, null, or the wrong shape even though the
-// declared type says otherwise. These helpers coerce defensively instead of
-// trusting the type at the point of use.
-
-function asText(value: unknown): string {
-  return typeof value === "string" ? value : "";
-}
-
 // A non-empty string, or undefined — for `{x && <Badge>{x}</Badge>}`-style
 // conditional rendering where a non-string value would crash React as a
 // child (e.g. an object) instead of just rendering oddly.
 function safeString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value : undefined;
-}
-
-function asArray<T>(value: unknown): T[] {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Array.isArray narrows to any[]
-  return Array.isArray(value) ? (value as T[]) : [];
 }
 
 // `score` fields are typed `1 | 2 | 3` but an LLM can write a string, null,
@@ -146,9 +131,7 @@ function skillMetaFor(
 }
 
 function stripMarkdownForSpeech(text: string): string {
-  // Defense in depth: TtsButton's `text` prop is typed string, but every
-  // call site ultimately traces back to LLM-written state.
-  return asText(text)
+  return text
     .replace(/^#{1,6}\s+/gm, "")
     .replace(/\*{1,3}([^*]+)\*{1,3}/g, "$1")
     .replace(/_{1,3}([^_]+)_{1,3}/g, "$1")
@@ -220,7 +203,7 @@ function SkillsetBadges({ exchange }: { exchange: OralBoardsExchange }) {
 // between the candidate's answer and the reference answer reads top-to-bottom.
 // Neutral, like the rest of the exam surface — the label carries the meaning.
 function ModelAnswer({ text }: { text: string | undefined }) {
-  const ideal = asText(text);
+  const ideal = text ?? "";
   if (!ideal.trim()) return null;
   return (
     <div className="mt-0.5 rounded-lg border border-dashed bg-muted/40 px-2.5 py-2">
@@ -272,28 +255,6 @@ function AnswerCoach() {
       </CollapsibleContent>
     </Collapsible>
   );
-}
-
-// Top-level shape guard for the whole exam state: collects every "?? []" /
-// "?? \"\"" default in one place instead of scattering them, and — unlike a
-// bare `?? []` — also covers the case where the LLM wrote a non-array/
-// non-string value instead of omitting the field entirely.
-function normalizeState(state: OralBoardsState): {
-  status: NonNullable<OralBoardsState["status"]>;
-  caseBody: string;
-  transcript: OralBoardsExchange[];
-  scoreCard: string;
-  scoreSummary: OralBoardsSkillsetScore[];
-  outcome: OralBoardsOutcome | undefined;
-} {
-  return {
-    status: state.status ?? "idle",
-    caseBody: asText(state.case),
-    transcript: asArray<OralBoardsExchange>(state.transcript),
-    scoreCard: asText(state.score_card),
-    scoreSummary: asArray<OralBoardsSkillsetScore>(state.score_summary),
-    outcome: state.outcome,
-  };
 }
 
 const OUTCOME_META: Record<OralBoardsOutcome, { label: string; cls: string }> = {
@@ -1015,12 +976,8 @@ function ExaminerQuestionCard({
   children: React.ReactNode;
 }) {
   // A follow-up probe supersedes the original question as the active prompt.
-  // Coerce defensively: both props ultimately trace back to LLM-written
-  // state, which can carry a non-string value despite the declared type.
-  const probeText = asText(probe);
-  const questionText = asText(question);
-  const isProbe = Boolean(probeText.trim());
-  const activeText = isProbe ? probeText : questionText;
+  const isProbe = Boolean(probe.trim());
+  const activeText = isProbe ? probe : question;
   return (
     // Question and answer are one Card, not two panes: the examiner asks in
     // the body and you reply in the footer, which is how the exchange actually
@@ -1048,8 +1005,8 @@ function ExaminerQuestionCard({
         {activeText && <TtsButton text={activeText} label="Listen" />}
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
-        {isProbe && questionText && (
-          <p className="text-xs leading-relaxed text-muted-foreground">{questionText}</p>
+        {isProbe && question && (
+          <p className="text-xs leading-relaxed text-muted-foreground">{question}</p>
         )}
         {activeText ? (
           <p className="text-base leading-relaxed font-medium text-pretty">{activeText}</p>
@@ -1585,14 +1542,19 @@ export function OralBoardsPanel({
   onAnswer: (text: string) => void;
   isRunning: boolean;
 }) {
-  const { status, caseBody, transcript, scoreCard, scoreSummary, outcome } = normalizeState(state);
+  const status = state.status ?? "idle";
+  const caseBody = state.case ?? "";
+  const transcript = state.transcript ?? [];
+  const scoreCard = state.score_card ?? "";
+  const scoreSummary = state.score_summary ?? [];
+  const outcome = state.outcome;
 
   // Scratch notes persist across presenting → questioning so the candidate
   // keeps what they jotted while reading the case.
   const [notes, setNotes] = useState("");
-  const loadingStep = asText(state.loading_step);
-  const activeFeedback = asText(state.active_feedback);
-  const activeIdealResponse = asText(state.active_ideal_response);
+  const loadingStep = state.loading_step ?? "";
+  const activeFeedback = state.active_feedback ?? "";
+  const activeIdealResponse = state.active_ideal_response ?? "";
 
   const showFinalFeedback = status === "complete" || Boolean(scoreCard.trim());
   const isExamActive = (status === "questioning" || status === "feedback") && !showFinalFeedback;
@@ -1630,8 +1592,8 @@ export function OralBoardsPanel({
             onNotesChange={setNotes}
             activeFeedback={activeFeedback}
             activeIdealResponse={activeIdealResponse}
-            activeProbe={asText(state.active_probe)}
-            stateQuestion={asText(state.current_question)}
+            activeProbe={state.active_probe ?? ""}
+            stateQuestion={state.current_question ?? ""}
           />
         )}
         {showFinalFeedback && (

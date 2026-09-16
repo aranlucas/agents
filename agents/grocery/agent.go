@@ -135,10 +135,7 @@ func groceryTools(search *bravesearch.Client, loader *common.WebLoader) ([]tool.
 		return nil, err
 	}
 
-	getCurrentDateTool, err := functiontool.New(functiontool.Config{
-		Name:        "get_current_date",
-		Description: "Return the current UTC date.",
-	}, GetCurrentDate)
+	getCurrentDateTool, err := common.CurrentDateTool()
 	if err != nil {
 		return nil, err
 	}

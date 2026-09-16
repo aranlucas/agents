@@ -35,7 +35,6 @@
     "concurrently": "^10.0.5",
     "husky": "^9.1.7",
     "lint-staged": "^17.5.0",
-    "openapi-typescript": "7.13.0",
     "oxfmt": "^0.67.0",
     "oxlint": "^1.82.0",
     "oxlint-tailwindcss": "1.10.2",
@@ -46,5 +45,5 @@
     "tailwindcss": "^4.3.3",
     "turbo": "^2.10.12"
   },
-  "packageManager": "pnpm@12.3.4"
+  "packageManager": "pnpm@12.4.2"
 }

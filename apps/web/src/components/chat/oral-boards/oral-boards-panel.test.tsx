@@ -86,6 +86,7 @@ vi.mock("@agents/ui/hooks/use-mobile", () => ({
   useIsMobile: vi.fn().mockReturnValue(false),
 }));
 
+import { toOralBoardsState } from "@/lib/agent-state";
 import { OralBoardsPanel } from "./oral-boards-panel";
 import { useIsMobile } from "@agents/ui/hooks/use-mobile";
 
@@ -1154,20 +1155,20 @@ describe("OralBoardsPanel — malformed agent state", () => {
     expect(screen.getByText("Unknown skillset")).toBeInTheDocument();
   });
 
-  it("survives a non-array transcript and score_summary", () => {
-    const state = {
+  it("survives a non-array transcript and score_summary once normalized", () => {
+    const state = toOralBoardsState({
       case: "Case.",
       status: "complete",
       transcript: "not-an-array",
       score_summary: "also-not-an-array",
       score_card: "Done.",
-    } as unknown as OralBoardsState;
+    });
 
     expect(() => render(<OralBoardsPanel state={state} {...baseProps} />)).not.toThrow();
   });
 
-  it("survives a non-string ideal_response inside feedback details", async () => {
-    const state: OralBoardsState = {
+  it("survives a non-string ideal_response inside feedback details once normalized", async () => {
+    const state = toOralBoardsState({
       case: "Case.",
       status: "questioning",
       transcript: [
@@ -1175,21 +1176,21 @@ describe("OralBoardsPanel — malformed agent state", () => {
           question: "Q1",
           answer: "A1",
           feedback: "F1",
-          ideal_response: 42 as unknown as string,
+          ideal_response: 42,
         },
       ],
-    };
+    });
 
     expect(() => render(<OralBoardsPanel state={state} {...baseProps} />)).not.toThrow();
   });
 
-  it("ignores a non-string active_probe instead of crashing on .trim()", () => {
-    const state: OralBoardsState = {
+  it("ignores a non-string active_probe instead of crashing on .trim() once normalized", () => {
+    const state = toOralBoardsState({
       case: "Case.",
       status: "questioning",
       transcript: [],
-      active_probe: 42 as unknown as string,
-    };
+      active_probe: 42,
+    });
 
     expect(() => render(<OralBoardsPanel state={state} {...baseProps} />)).not.toThrow();
     expect(screen.queryByText(/follow-up/i)).not.toBeInTheDocument();

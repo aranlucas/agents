@@ -5,6 +5,7 @@ import (
 
 	"agents/fitness"
 	"agents/grocery"
+	"agents/internal/common"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
@@ -33,10 +34,7 @@ func New(models ModelSet, fitnessAgent, groceryAgent agent.Agent, toolsets ...to
 }
 
 func wellnessTools() ([]tool.Tool, error) {
-	getCurrentDateTool, err := functiontool.New(functiontool.Config{
-		Name:        "get_current_date",
-		Description: "Return the current UTC date.",
-	}, GetCurrentDate)
+	getCurrentDateTool, err := common.CurrentDateTool()
 	if err != nil {
 		return nil, err
 	}
