@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"agents/internal/agentruntime"
-	"agents/internal/common"
 
 	"google.golang.org/adk/v2/agent"
 )
@@ -24,9 +23,6 @@ type Result struct {
 	OK          bool                          `json:"ok"`
 	Count       int                           `json:"count,omitzero"`
 	Length      int                           `json:"length,omitzero"`
-	Date        string                        `json:"date,omitempty"`
-	Weekday     string                        `json:"weekday,omitempty"`
-	Month       string                        `json:"month,omitempty"`
 	ListID      string                        `json:"list_id,omitempty"`
 	HouseholdID string                        `json:"household_id,omitempty"`
 	Error       *agentruntime.StructuredError `json:"error,omitempty"`
@@ -64,7 +60,6 @@ type DealsArgs struct {
 type ReadyArgs struct {
 	Summary string `json:"summary"`
 }
-type CurrentDateArgs struct{}
 
 func SetShoppingList(ctx agent.Context, input ShoppingListArgs) (Result, error) {
 	title := strings.TrimSpace(input.Title)
@@ -257,11 +252,6 @@ func markListReady(state *GroceryState, input ReadyArgs) (Result, error) {
 	}
 	state.Status, state.ReviewSummary = StatusReady, strings.TrimSpace(input.Summary)
 	return Result{OK: true}, nil
-}
-
-func GetCurrentDate(_ agent.Context, _ CurrentDateArgs) (Result, error) {
-	date := common.DateDetails(nil)
-	return Result{OK: true, Date: date.Date, Weekday: date.Weekday, Month: date.Month}, nil
 }
 
 func validateCart(items []CartItem) error {

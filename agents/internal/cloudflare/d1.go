@@ -41,6 +41,11 @@ type Result struct {
 	} `json:"meta"`
 }
 
+// StatementRunner is the D1 batch-query seam used by stores and tests.
+type StatementRunner interface {
+	Run(context.Context, ...Statement) ([]Result, error)
+}
+
 // D1 is a bounded client for Cloudflare's D1 SQL API.
 type D1 struct {
 	client     *cfapi.Client
@@ -73,6 +78,8 @@ func newD1(cfg config.Cloudflare, client *http.Client, baseURL string) (*D1, err
 	}
 	return &D1{client: cfapi.NewClient(opts...), accountID: cfg.AccountID, databaseID: cfg.D1DatabaseID}, nil
 }
+
+var _ StatementRunner = (*D1)(nil)
 
 // Run executes one or more parameterized statements as a single D1 request.
 func (d *D1) Run(ctx context.Context, statements ...Statement) ([]Result, error) {

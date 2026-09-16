@@ -64,7 +64,7 @@ func newStreamConverter(ctx context.Context, ids events.IDGenerator, state state
 		smoothing.enabled = false
 	}
 	if smoothing.charsPerChunk <= 0 {
-		smoothing.charsPerChunk = 64
+		smoothing.charsPerChunk = DefaultStreamCharsPerChunk
 	}
 	if smoothing.chunkDelay < 0 {
 		smoothing.chunkDelay = 0

@@ -18,31 +18,40 @@ import (
 // by this gateway. Keep it aligned with the web/mobile CopilotKit packages.
 const CopilotKitRuntimeVersion = "1.65.0"
 
-type runtimeCapabilityFlag struct {
+type CapabilityFlag struct {
 	Streaming bool `json:"streaming"`
 }
 
-type runtimeStateCapabilities struct {
+type StateCapabilities struct {
 	Snapshots       bool `json:"snapshots"`
 	Deltas          bool `json:"deltas"`
 	PersistentState bool `json:"persistentState"`
 }
 
-type runtimeReasoningCapabilities struct {
+type ReasoningCapabilities struct {
 	Supported bool `json:"supported"`
 	Streaming bool `json:"streaming"`
 }
 
-type runtimeToolCapabilities struct {
+type ToolCapabilities struct {
 	Supported      bool `json:"supported"`
 	ClientProvided bool `json:"clientProvided"`
 }
 
-type runtimeAgentCapabilities struct {
-	Transport runtimeCapabilityFlag        `json:"transport"`
-	State     runtimeStateCapabilities     `json:"state"`
-	Reasoning runtimeReasoningCapabilities `json:"reasoning"`
-	Tools     runtimeToolCapabilities      `json:"tools"`
+type AgentCapabilities struct {
+	Transport CapabilityFlag        `json:"transport"`
+	State     StateCapabilities     `json:"state"`
+	Reasoning ReasoningCapabilities `json:"reasoning"`
+	Tools     ToolCapabilities      `json:"tools"`
+}
+
+func DefaultAgentCapabilities() AgentCapabilities {
+	return AgentCapabilities{
+		Transport: CapabilityFlag{Streaming: true},
+		State:     StateCapabilities{Snapshots: true, Deltas: true, PersistentState: true},
+		Reasoning: ReasoningCapabilities{Supported: true, Streaming: true},
+		Tools:     ToolCapabilities{Supported: true, ClientProvided: true},
+	}
 }
 
 type runtimeThreadEndpoints struct {
@@ -53,10 +62,10 @@ type runtimeThreadEndpoints struct {
 }
 
 type runtimeAgentDescription struct {
-	Name         string                   `json:"name"`
-	ClassName    string                   `json:"className"`
-	Description  string                   `json:"description"`
-	Capabilities runtimeAgentCapabilities `json:"capabilities"`
+	Name         string            `json:"name"`
+	ClassName    string            `json:"className"`
+	Description  string            `json:"description"`
+	Capabilities AgentCapabilities `json:"capabilities"`
 }
 
 type runtimeInfoResponse struct {
@@ -234,14 +243,7 @@ func (r *CopilotKitRuntime) PublicRoutes() map[string]bool {
 }
 
 func (r *CopilotKitRuntime) info(w http.ResponseWriter, _ *http.Request) {
-	capabilities := runtimeAgentCapabilities{
-		Transport: runtimeCapabilityFlag{Streaming: true},
-		State: runtimeStateCapabilities{
-			Snapshots: true, Deltas: true, PersistentState: true,
-		},
-		Reasoning: runtimeReasoningCapabilities{Supported: true, Streaming: true},
-		Tools:     runtimeToolCapabilities{Supported: true, ClientProvided: true},
-	}
+	capabilities := DefaultAgentCapabilities()
 	agents := make(map[string]runtimeAgentDescription, len(r.agents))
 	for _, agent := range r.agents {
 		agents[agent.id] = runtimeAgentDescription{

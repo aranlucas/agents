@@ -4,19 +4,15 @@ import (
 	"strings"
 
 	"agents/internal/agentruntime"
-	"agents/internal/common"
 	"google.golang.org/adk/v2/agent"
 )
 
 const maxWellnessDocument = 1 << 20
 
 type Result struct {
-	OK      bool                          `json:"ok"`
-	Length  int                           `json:"length,omitzero"`
-	Date    string                        `json:"date,omitempty"`
-	Weekday string                        `json:"weekday,omitempty"`
-	Month   string                        `json:"month,omitempty"`
-	Error   *agentruntime.StructuredError `json:"error,omitempty"`
+	OK     bool                          `json:"ok"`
+	Length int                           `json:"length,omitzero"`
+	Error  *agentruntime.StructuredError `json:"error,omitempty"`
 }
 
 type PlanArgs struct {
@@ -25,7 +21,6 @@ type PlanArgs struct {
 type ReadyArgs struct {
 	Summary string `json:"summary"`
 }
-type CurrentDateArgs struct{}
 
 func SetWeeklyWellnessPlan(ctx agent.Context, input PlanArgs) (Result, error) {
 	state := readState(ctx.State())
@@ -82,11 +77,6 @@ func markPlanReady(state *WellnessState, input ReadyArgs) (Result, error) {
 	}
 	state.Status, state.ReviewSummary = StatusReady, strings.TrimSpace(input.Summary)
 	return Result{OK: true}, nil
-}
-
-func GetCurrentDate(_ agent.Context, _ CurrentDateArgs) (Result, error) {
-	date := common.DateDetails(nil)
-	return Result{OK: true, Date: date.Date, Weekday: date.Weekday, Month: date.Month}, nil
 }
 
 func specialistPolicy(state WellnessState, toolName string) *agentruntime.StructuredError {

@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -68,13 +69,61 @@ const (
 	streamChunkingLine  = "line"
 	streamChunkingChar  = "char"
 	sessionNameStateKey = "session_name"
+
+	DefaultStreamCharsPerChunk = 64
+	DefaultStreamChunkDelay    = 18 * time.Millisecond
+	DefaultStreamChunking      = streamChunkingWord
 )
 
 var defaultStreamSmoothing = streamSmoothing{
 	enabled:       true,
-	chunking:      streamChunkingWord,
-	charsPerChunk: 64,
-	chunkDelay:    18 * time.Millisecond,
+	chunking:      DefaultStreamChunking,
+	charsPerChunk: DefaultStreamCharsPerChunk,
+	chunkDelay:    DefaultStreamChunkDelay,
+}
+
+// StreamSmoothingFromEnv reads AGUI_STREAM_* overrides once. Invalid values
+// keep the exported defaults.
+func StreamSmoothingFromEnv() (enabled bool, chunking string, charsPerChunk int, chunkDelay time.Duration) {
+	chunking = DefaultStreamChunking
+	if rawChunking := strings.TrimSpace(strings.ToLower(os.Getenv("AGUI_STREAM_CHUNKING"))); rawChunking != "" {
+		chunking = rawChunking
+	}
+	enabled = true
+	if rawEnabled := strings.TrimSpace(os.Getenv("AGUI_STREAM_SMOOTHING")); rawEnabled != "" {
+		parsed, err := strconv.ParseBool(rawEnabled)
+		if err != nil {
+			log.Printf("invalid AGUI_STREAM_SMOOTHING=%q, defaulting to true", rawEnabled)
+		} else {
+			enabled = parsed
+		}
+	}
+
+	charsPerChunk = DefaultStreamCharsPerChunk
+	if rawChunkSize := strings.TrimSpace(os.Getenv("AGUI_STREAM_CHUNK_SIZE")); rawChunkSize != "" {
+		parsed, err := strconv.Atoi(rawChunkSize)
+		if err != nil {
+			log.Printf("invalid AGUI_STREAM_CHUNK_SIZE=%q, defaulting to %d", rawChunkSize, charsPerChunk)
+		} else if parsed > 0 {
+			charsPerChunk = parsed
+		} else {
+			log.Printf("AGUI_STREAM_CHUNK_SIZE=%d must be >0, using %d", parsed, charsPerChunk)
+		}
+	}
+
+	chunkDelay = DefaultStreamChunkDelay
+	if rawDelay := strings.TrimSpace(os.Getenv("AGUI_STREAM_CHUNK_DELAY_MS")); rawDelay != "" {
+		parsed, err := strconv.Atoi(rawDelay)
+		if err != nil {
+			log.Printf("invalid AGUI_STREAM_CHUNK_DELAY_MS=%q, defaulting to %s", rawDelay, chunkDelay)
+		} else if parsed >= 0 {
+			chunkDelay = time.Duration(parsed) * time.Millisecond
+		} else {
+			log.Printf("AGUI_STREAM_CHUNK_DELAY_MS=%d is negative, using %s", parsed, DefaultStreamChunkDelay)
+		}
+	}
+
+	return enabled, chunking, charsPerChunk, chunkDelay
 }
 
 // WithStreamSmoothing overrides the converter's pacing behavior.

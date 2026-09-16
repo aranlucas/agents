@@ -1,6 +1,7 @@
 package travel
 
 import (
+	"agents/internal/common"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
@@ -56,10 +57,7 @@ func travelTools() ([]tool.Tool, error) {
 		return nil, err
 	}
 
-	getCurrentDateTool, err := functiontool.New(functiontool.Config{
-		Name:        "get_current_date",
-		Description: "Return the current UTC calendar date.",
-	}, GetCurrentDate)
+	getCurrentDateTool, err := common.CurrentDateTool()
 	if err != nil {
 		return nil, err
 	}
