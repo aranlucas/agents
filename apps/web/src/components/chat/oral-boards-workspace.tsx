@@ -6,7 +6,6 @@ import * as Sentry from "@sentry/nextjs";
 
 import { AlertCircleIcon } from "lucide-react";
 
-import type { OralBoardsState } from "@agents/types";
 import {
   Alert,
   AlertDescription,
@@ -23,6 +22,7 @@ import { AppSidebar } from "@/components/chat/app-sidebar";
 import { ConsoleTopBar } from "@/components/chat/console-top-bar";
 import { OralBoardsErrorBoundary } from "@/components/chat/oral-boards/error-boundary";
 import { OralBoardsPanel } from "@/components/chat/oral-boards/oral-boards-panel";
+import { toOralBoardsState } from "@/lib/agent-state";
 import {
   OralBoardsQuestionProvider,
   useOralBoardsQuestion,
@@ -174,8 +174,7 @@ function OralBoardsWorkspaceContent({ threadId }: { threadId: string }) {
   const warmupError =
     statuses[AGENT_ID] === "error" && !warmingUp ? new Error("Agent backend is unreachable") : null;
 
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  const examState = (agent?.state ?? {}) as OralBoardsState;
+  const examState = toOralBoardsState(agent?.state);
   const hasPanel = Boolean(examState.case?.trim());
   const isRunning = agent?.isRunning ?? false;
   const isGenerating = isRunning && !hasPanel;
