@@ -3,7 +3,7 @@ name: CI
 # Lints, typechecks, and tests the monorepo on every push to main and every
 # pull request. Parallel jobs cut the critical path:
 #   check   — turbo-driven lint/fmt/typecheck/coverage for JS workspaces
-#   build   — deterministic JS builds (web, oral boards, and Worker views)
+#   build   — deterministic JS builds (web and oral boards)
 #   go      — the single Go lint/vet/race/build/vulnerability lane
 
 on:
