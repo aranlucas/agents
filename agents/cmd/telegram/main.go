@@ -213,17 +213,13 @@ func must(err error) {
 	}
 }
 
-type healthChecker interface {
-	Health(context.Context) error
-}
-
 type healthResponse struct {
 	Status  string            `json:"status"`
 	Service string            `json:"service"`
 	Checks  map[string]string `json:"checks,omitempty"`
 }
 
-func healthHandler(d1, r2 healthChecker) http.Handler {
+func healthHandler(d1, r2 common.HealthChecker) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /live", func(w http.ResponseWriter, _ *http.Request) {
 		if err := common.WriteJSON(w, http.StatusOK, healthResponse{Status: "ok", Service: "agents-telegram"}); err != nil {
@@ -233,16 +229,7 @@ func healthHandler(d1, r2 healthChecker) http.Handler {
 	ready := func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 		defer cancel()
-		checks := map[string]string{"d1": "unconfigured", "r2": "unconfigured"}
-		for name, checker := range map[string]healthChecker{"d1": d1, "r2": r2} {
-			if checker == nil {
-				continue
-			}
-			checks[name] = "ok"
-			if err := checker.Health(ctx); err != nil {
-				checks[name] = "unavailable"
-			}
-		}
+		checks := common.ReadyChecks(ctx, map[string]common.HealthChecker{"d1": d1, "r2": r2})
 		status, code := "ok", http.StatusOK
 		if checks["d1"] != "ok" || checks["r2"] != "ok" {
 			status, code = "degraded", http.StatusServiceUnavailable

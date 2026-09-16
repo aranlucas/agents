@@ -75,11 +75,7 @@ type Repository interface {
 	Snapshot(context.Context, string, int) (Snapshot, error)
 }
 
-type statementRunner interface {
-	Run(context.Context, ...cloudflare.Statement) ([]cloudflare.Result, error)
-}
-
-type Store struct{ d1 statementRunner }
+type Store struct{ d1 cloudflare.StatementRunner }
 
 func NewStore(d1 *cloudflare.D1) *Store { return &Store{d1: d1} }
 

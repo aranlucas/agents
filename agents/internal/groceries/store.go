@@ -112,12 +112,8 @@ type Repository interface {
 	DeleteItem(context.Context, string, string, string, time.Time) error
 }
 
-type statementRunner interface {
-	Run(context.Context, ...cloudflare.Statement) ([]cloudflare.Result, error)
-}
-
 type Store struct {
-	d1        statementRunner
+	d1        cloudflare.StatementRunner
 	artifacts artifact.Service
 	newID     func(string) (string, error)
 
