@@ -13,12 +13,6 @@ import (
 	"google.golang.org/adk/v2/session"
 )
 
-// ErrSessionNotFound is retained for existing gateway callers.
-// Session services return ADK's sentinel directly or wrapped for errors.Is.
-//
-// Deprecated: use session.ErrNotFound.
-var ErrSessionNotFound = session.ErrNotFound
-
 // stateDocument is the JSON document sent to AG-UI clients. ADK state values
 // are intentionally open at the session boundary, but the client-facing
 // document is stricter: every retained value has already been validated and

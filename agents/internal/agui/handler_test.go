@@ -1302,7 +1302,7 @@ func (f *fakeSessionService) Get(ctx context.Context, req *session.GetRequest) (
 	key := sessionKey(req.AppName, req.UserID, req.SessionID)
 	state, ok := f.persisted[key]
 	if !ok {
-		return nil, ErrSessionNotFound
+		return nil, session.ErrNotFound
 	}
 	events := append([]*session.Event(nil), f.events[key]...)
 	sess := &fakeSession{id: req.SessionID, appName: req.AppName, userID: req.UserID, state: newFakeState(state), events: events, updated: time.Now()}
@@ -1347,7 +1347,7 @@ func (f *fakeSessionService) AppendEvent(ctx context.Context, curSession session
 	persisted, ok := f.persisted[sessKey]
 	f.mu.Unlock()
 	if !ok {
-		return ErrSessionNotFound
+		return session.ErrNotFound
 	}
 	for key, value := range event.Actions.StateDelta {
 		_ = fs.state.Set(key, value)
