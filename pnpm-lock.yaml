@@ -122,7 +122,7 @@ importers:
         version: 8.0.1
       '@shadcn/lint':
         specifier: 0.1.0
-        version: 0.1.0(eslint@10.9.1(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)(typescript@7.0.2)
+        version: 0.1.0(eslint@10.9.1(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)(typescript@5.9.3)
       '@tailwindcss/typography':
         specifier: ^0.5.20
         version: 0.5.20(tailwindcss@4.3.3)
@@ -183,8 +183,8 @@ importers:
         specifier: ^13.0.3
         version: 13.0.3
       lucide-react:
-        specifier: ^1.42.0
-        version: 1.42.0(react@19.2.8)
+        specifier: ^1.45.0
+        version: 1.45.0(react@19.2.8)
       next:
         specifier: ^16.3.4
         version: 16.3.4(@babel/core@7.29.7(supports-color@11.0.0))(@opentelemetry/api@1.9.1)(@types/node@26.5.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -271,8 +271,8 @@ importers:
         specifier: ^1.2.1
         version: 1.2.1(@types/node@26.5.0)
       lucide-react:
-        specifier: ^1.42.0
-        version: 1.42.0(react@19.2.8)
+        specifier: ^1.45.0
+        version: 1.45.0(react@19.2.8)
       next:
         specifier: ^16.3.4
         version: 16.3.4(@babel/core@8.0.1)(@opentelemetry/api@1.9.1)(@types/node@26.5.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -381,8 +381,8 @@ importers:
         specifier: ^0.2.6
         version: 0.2.6
       lucide-react:
-        specifier: ^1.42.0
-        version: 1.42.0(react@19.2.8)
+        specifier: ^1.45.0
+        version: 1.45.0(react@19.2.8)
       motion:
         specifier: ^13.2.0
         version: 13.2.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -5544,8 +5544,8 @@ packages:
     peerDependencies:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
-  lucide-react@1.42.0:
-    resolution: {integrity: sha512-b3jprplnoLS8n5etw1z8xODe3hF/yjKATrTitsrKrnjUhCef5BdDct6Ppv3zVvzFwmtfWgLO6XNM3C9fAD93ug==}
+  lucide-react@1.45.0:
+    resolution: {integrity: sha512-yH1ubCAduho9UR7oJhRXIQXogksRILBiTuZC4/bQIGeB9JOkxMlSuEHyyZpo1Z3S0yWJO2KTSUZbjiNvVxeOUw==}
     peerDependencies:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
@@ -9686,10 +9686,10 @@ snapshots:
       - rollup
       - supports-color
 
-  '@shadcn/lint@0.1.0(eslint@10.9.1(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)(typescript@7.0.2)':
+  '@shadcn/lint@0.1.0(eslint@10.9.1(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)(typescript@5.9.3)':
     dependencies:
       '@eslint/core': 0.17.0
-      '@typescript-eslint/parser': 8.70.0(eslint@10.9.1(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)(typescript@7.0.2)
+      '@typescript-eslint/parser': 8.70.0(eslint@10.9.1(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)(typescript@5.9.3)
       cn: 0.2.6
     optionalDependencies:
       eslint: 10.9.1(jiti@2.7.0)(supports-color@11.0.0)
@@ -10222,24 +10222,24 @@ snapshots:
 
   '@types/validate-npm-package-name@4.0.2': {}
 
-  '@typescript-eslint/parser@8.70.0(eslint@10.9.1(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)(typescript@7.0.2)':
+  '@typescript-eslint/parser@8.70.0(eslint@10.9.1(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)(typescript@5.9.3)':
     dependencies:
       '@typescript-eslint/scope-manager': 8.70.0
       '@typescript-eslint/types': 8.70.0
-      '@typescript-eslint/typescript-estree': 8.70.0(supports-color@11.0.0)(typescript@7.0.2)
+      '@typescript-eslint/typescript-estree': 8.70.0(supports-color@11.0.0)(typescript@5.9.3)
       '@typescript-eslint/visitor-keys': 8.70.0
       debug: 4.4.3(supports-color@11.0.0)
       eslint: 10.9.1(jiti@2.7.0)(supports-color@11.0.0)
-      typescript: 7.0.2
+      typescript: 5.9.3
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/project-service@8.70.0(supports-color@11.0.0)(typescript@7.0.2)':
+  '@typescript-eslint/project-service@8.70.0(supports-color@11.0.0)(typescript@5.9.3)':
     dependencies:
-      '@typescript-eslint/tsconfig-utils': 8.70.0(typescript@7.0.2)
+      '@typescript-eslint/tsconfig-utils': 8.70.0(typescript@5.9.3)
       '@typescript-eslint/types': 8.70.0
       debug: 4.4.3(supports-color@11.0.0)
-      typescript: 7.0.2
+      typescript: 5.9.3
     transitivePeerDependencies:
       - supports-color
 
@@ -10248,24 +10248,24 @@ snapshots:
       '@typescript-eslint/types': 8.70.0
       '@typescript-eslint/visitor-keys': 8.70.0
 
-  '@typescript-eslint/tsconfig-utils@8.70.0(typescript@7.0.2)':
+  '@typescript-eslint/tsconfig-utils@8.70.0(typescript@5.9.3)':
     dependencies:
-      typescript: 7.0.2
+      typescript: 5.9.3
 
   '@typescript-eslint/types@8.70.0': {}
 
-  '@typescript-eslint/typescript-estree@8.70.0(supports-color@11.0.0)(typescript@7.0.2)':
+  '@typescript-eslint/typescript-estree@8.70.0(supports-color@11.0.0)(typescript@5.9.3)':
     dependencies:
-      '@typescript-eslint/project-service': 8.70.0(supports-color@11.0.0)(typescript@7.0.2)
-      '@typescript-eslint/tsconfig-utils': 8.70.0(typescript@7.0.2)
+      '@typescript-eslint/project-service': 8.70.0(supports-color@11.0.0)(typescript@5.9.3)
+      '@typescript-eslint/tsconfig-utils': 8.70.0(typescript@5.9.3)
       '@typescript-eslint/types': 8.70.0
       '@typescript-eslint/visitor-keys': 8.70.0
       debug: 4.4.3(supports-color@11.0.0)
       minimatch: 10.2.6
       semver: 7.8.5
       tinyglobby: 0.2.17
-      ts-api-utils: 2.5.0(typescript@7.0.2)
-      typescript: 7.0.2
+      ts-api-utils: 2.5.0(typescript@5.9.3)
+      typescript: 5.9.3
     transitivePeerDependencies:
       - supports-color
 
@@ -12210,7 +12210,7 @@ snapshots:
     dependencies:
       react: 19.2.8
 
-  lucide-react@1.42.0(react@19.2.8):
+  lucide-react@1.45.0(react@19.2.8):
     dependencies:
       react: 19.2.8
 
@@ -14357,9 +14357,9 @@ snapshots:
 
   trough@2.2.0: {}
 
-  ts-api-utils@2.5.0(typescript@7.0.2):
+  ts-api-utils@2.5.0(typescript@5.9.3):
     dependencies:
-      typescript: 7.0.2
+      typescript: 5.9.3
 
   ts-dedent@2.3.0: {}
 
