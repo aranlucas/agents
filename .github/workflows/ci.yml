@@ -7,6 +7,7 @@ name: CI
 #   go      — the single Go lint/vet/race/build/vulnerability lane
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
   pull_request:
@@ -55,6 +56,11 @@ jobs:
               run_ci=false
               echo "Skipping duplicate post-merge checks already covered by PR #$merged_pr."
             fi
+          fi
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            js=true
+            go=true
           fi
 
           if [ "$run_ci" = "true" ]; then
