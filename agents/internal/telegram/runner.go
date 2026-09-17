@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"agents/internal/agui"
 	"github.com/getsentry/sentry-go"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/artifact"
@@ -384,7 +383,7 @@ func finishSpan(span *sentry.Span, err error) {
 func (e *ADKExecutor) Reset(ctx context.Context, identity SessionIdentity) error {
 	for _, bound := range e.agents {
 		err := e.sessions.Delete(ctx, &session.DeleteRequest{AppName: bound.agent.Name(), UserID: identity.UserID, SessionID: identity.SessionID})
-		if err != nil && !errors.Is(err, agui.ErrSessionNotFound) {
+		if err != nil && !errors.Is(err, session.ErrNotFound) {
 			return err
 		}
 	}

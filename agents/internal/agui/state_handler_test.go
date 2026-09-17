@@ -136,7 +136,7 @@ func TestStateHandlerNeverLeaksTemporaryState(t *testing.T) {
 	}
 }
 
-// erroringSessionService always fails Get with a non-ErrSessionNotFound
+// erroringSessionService always fails Get with a non-session.ErrNotFound
 // error, standing in for a genuine D1 outage or decode failure — the
 // branch StateHandler must distinguish from "no session yet".
 type erroringSessionService struct{ err error }

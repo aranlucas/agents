@@ -4,7 +4,7 @@ go 1.27.0
 
 require (
 	cloud.google.com/go/bigquery v1.83.0
-	github.com/ag-ui-protocol/ag-ui/sdks/community/go v0.0.0-20260907120946-bb34bb684cec
+	github.com/ag-ui-protocol/ag-ui/sdks/community/go v0.0.0-20260917163019-df59acace7d6
 	github.com/aws/aws-sdk-go-v2 v1.47.0
 	github.com/aws/aws-sdk-go-v2/config v1.33.3
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.3
@@ -20,10 +20,10 @@ require (
 	github.com/modelcontextprotocol/go-sdk v1.8.0
 	github.com/oapi-codegen/nethttp-middleware v1.2.0
 	github.com/oapi-codegen/runtime v1.7.0
-	github.com/openai/openai-go/v3 v3.56.0
+	github.com/openai/openai-go/v3 v3.56.0 // ADK v2.4.0 requires ResponseFunctionCallArgumentsDoneEvent.Name.
 	github.com/wI2L/jsondiff v0.7.1
 	golang.org/x/net v0.58.0
-	google.golang.org/adk/v2 v2.3.1-0.20260901113840-8a94a728e693 // OpenAI SDK compatibility fix: google/adk-go#1449
+	google.golang.org/adk/v2 v2.4.0
 	google.golang.org/api v0.297.0
 	google.golang.org/genai v1.71.0
 	modernc.org/sqlite v1.58.0

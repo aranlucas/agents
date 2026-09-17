@@ -178,10 +178,7 @@ func (r *D1AgentRunner) replayDurableRun(ctx context.Context, key ActiveRunKey, 
 			cursor++
 		}
 		if snapshot.Finished {
-			if emitter.terminal {
-				return nil
-			}
-			return emitter.Emit(context.WithoutCancel(ctx), sanitizeRunError(snapshot.RunID, errors.New("durable AG-UI run finished without a terminal event")))
+			return nil
 		}
 		timer := time.NewTimer(250 * time.Millisecond)
 		select {

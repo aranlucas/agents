@@ -871,3 +871,19 @@ func TestD1SchemaHealthRejectsMissingRequiredTrigger(t *testing.T) {
 func testCloudflare(token string) config.Cloudflare {
 	return config.Cloudflare{AccountID: "account", APIToken: token, D1DatabaseID: "database"}
 }
+
+func TestSessionMissingUsesADKSentinel(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		writeEnvelope(t, w, []Result{{Success: true}, {Success: true}})
+	}))
+	t.Cleanup(server.Close)
+	d1, err := newD1(testCloudflare("token"), server.Client(), server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := NewSessionService(d1, time.Now)
+	_, err = service.Get(t.Context(), &session.GetRequest{AppName: "app", UserID: "user", SessionID: "missing"})
+	if !errors.Is(err, session.ErrNotFound) {
+		t.Fatalf("Get error = %v", err)
+	}
+}

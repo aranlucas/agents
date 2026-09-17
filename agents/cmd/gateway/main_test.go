@@ -434,10 +434,7 @@ func newGateway(t *testing.T) http.Handler {
 	// anonymous identity, so the D1-shaped user ID is "anon:<threadId>",
 	// see effectiveUserID in internal/agui/handler.go) so
 	// /resume/agents/state exercises its normal "thread exists" path
-	// instead of a lookup error. session.InMemoryService's not-found error
-	// isn't agui.ErrSessionNotFound (only the production
-	// cloudflare.SessionService returns that), so relying on the not-found
-	// branch here would instead hit StateHandler's genuine-error 500 path.
+	// instead of the missing-thread defaults path.
 	if _, err := sessions.Create(t.Context(), &session.CreateRequest{
 		AppName: resume.AppName, UserID: "anon:route-test-thread", SessionID: "route-test-thread",
 	}); err != nil {
