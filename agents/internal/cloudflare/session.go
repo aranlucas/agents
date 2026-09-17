@@ -16,7 +16,6 @@ import (
 	"sync"
 	"time"
 
-	"agents/internal/agui"
 	"google.golang.org/adk/v2/session"
 )
 
@@ -163,7 +162,7 @@ func (s *SessionService) Get(ctx context.Context, req *session.GetRequest) (*ses
 		return nil, fmt.Errorf("get session: %w", err)
 	}
 	if len(results) < 2 || len(results[0].Rows) == 0 {
-		return nil, agui.ErrSessionNotFound
+		return nil, session.ErrNotFound
 	}
 	events, err := decodeEvents(results[1].Rows)
 	if err != nil {
@@ -311,7 +310,7 @@ func (s *SessionService) AppendEvent(ctx context.Context, current session.Sessio
 			}
 			return ErrStaleSession
 		}
-		return agui.ErrSessionNotFound
+		return session.ErrNotFound
 	}
 	stored.state.applyDelta(event.Actions.StateDelta)
 	stored.append(event, time.UnixMilli(updatedMillis).UTC())

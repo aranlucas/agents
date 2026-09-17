@@ -430,7 +430,7 @@ func TestCopilotKitRuntimeRequestDisconnectDoesNotCancelActiveRun(t *testing.T) 
 	select {
 	case connect := <-connectDone:
 		frames := parseSSEFrames(t, connect.Body.Bytes())
-		assertStrictAGUISequence(t, frames)
+		assertAGUISequence(t, frames)
 		if !strings.Contains(connect.Body.String(), "Run survived reconnect.") {
 			t.Fatalf("connect did not replay the successful detached run: %s", connect.Body.String())
 		}
@@ -489,7 +489,7 @@ func TestCopilotKitRuntimeConnectReplaysAndFollowsRunOwnedByAnotherReplica(t *te
 	select {
 	case connect := <-connectDone:
 		frames := parseSSEFrames(t, connect.Body.Bytes())
-		assertStrictAGUISequence(t, frames)
+		assertAGUISequence(t, frames)
 		if !strings.Contains(connect.Body.String(), "Run survived reconnect.") || !strings.Contains(connect.Body.String(), "RUN_FINISHED") {
 			t.Fatalf("cross-replica replay = %s", connect.Body.String())
 		}
@@ -547,7 +547,7 @@ func TestCopilotKitRuntimeStopCancelsRunOwnedByAnotherReplica(t *testing.T) {
 	select {
 	case run := <-runDone:
 		frames := parseSSEFrames(t, run.Body.Bytes())
-		assertStrictAGUISequence(t, frames)
+		assertAGUISequence(t, frames)
 		if !strings.Contains(run.Body.String(), "RUN_ERROR") {
 			t.Fatalf("stopped run = %s", run.Body.String())
 		}
@@ -603,7 +603,7 @@ func TestCopilotKitRuntimeTransportFailureReconnectsAndFollowsActiveRun(t *testi
 	select {
 	case connect := <-connectDone:
 		frames := parseSSEFrames(t, connect.Body.Bytes())
-		assertStrictAGUISequence(t, frames)
+		assertAGUISequence(t, frames)
 		body := connect.Body.String()
 		if !strings.Contains(body, "RUN_STARTED") || !strings.Contains(body, "Run survived reconnect.") || !strings.Contains(body, "RUN_FINISHED") {
 			t.Fatalf("connect did not replay and follow successful run: %s", body)

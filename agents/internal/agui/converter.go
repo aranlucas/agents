@@ -513,7 +513,7 @@ func classifyError(err error) (code, message string) {
 		return "timeout", "the agent run timed out"
 	case errors.Is(err, context.Canceled):
 		return "canceled", "the agent run was canceled"
-	case errors.Is(err, ErrSessionNotFound):
+	case errors.Is(err, session.ErrNotFound):
 		return "session_not_found", "the session could not be found"
 	case errors.Is(err, ErrInvalidRunInput):
 		return "invalid_input", "the request could not be processed"

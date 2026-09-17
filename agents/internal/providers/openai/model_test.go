@@ -112,7 +112,15 @@ func TestGenerateContentUsesADKResponsesProvider(t *testing.T) {
 		}}},
 	)
 
+	originalConfig, err := json.Marshal(request.Config, json.Deterministic(true))
+	if err != nil {
+		t.Fatal(err)
+	}
 	responses, errs := collect(New(provider, server.Client(), allowLimiter{}).GenerateContent(t.Context(), request, false))
+	afterConfig, err := json.Marshal(request.Config, json.Deterministic(true))
+	if err != nil || string(afterConfig) != string(originalConfig) {
+		t.Fatalf("provider mutated caller-owned config: before=%s after=%s err=%v", originalConfig, afterConfig, err)
+	}
 	if len(errs) != 0 || len(responses) != 1 {
 		t.Fatalf("responses/errors = %#v/%v", responses, errs)
 	}

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
-	"errors"
 	"maps"
 	"net/http"
 	"strings"
@@ -13,14 +12,6 @@ import (
 	"github.com/wI2L/jsondiff"
 	"google.golang.org/adk/v2/session"
 )
-
-// ErrSessionNotFound is the error an injected session.Service must return
-// (directly, or wrapped so errors.Is still matches) from Get/AppendEvent
-// when the requested app/user/thread identity does not address a live
-// session. Handler and StateHandler depend only on this value and the
-// session.Service interface — never on a concrete backend package — so any
-// session.Service implementation can be plugged in.
-var ErrSessionNotFound = errors.New("agui: session not found")
 
 // stateDocument is the JSON document sent to AG-UI clients. ADK state values
 // are intentionally open at the session boundary, but the client-facing
