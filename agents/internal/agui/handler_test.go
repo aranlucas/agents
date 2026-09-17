@@ -183,7 +183,7 @@ func TestRestoreSessionCreatesOnlyWhenNotFound(t *testing.T) {
 	t.Run("wrapped not found", func(t *testing.T) {
 		sessions := &getOverrideSessionService{
 			Service: newFakeSessionService(),
-			getErr:  fmt.Errorf("D1 lookup: %w", ErrSessionNotFound),
+			getErr:  fmt.Errorf("D1 lookup: %w", session.ErrNotFound),
 		}
 		handler := &ADKHandler{sessions: sessions}
 		created, err := handler.restoreSession(t.Context(), entry, "user-1", "thread-1", &types.RunAgentInput{})
@@ -192,6 +192,18 @@ func TestRestoreSessionCreatesOnlyWhenNotFound(t *testing.T) {
 		}
 		if created.ID() != "thread-1" || sessions.createCalls != 1 {
 			t.Fatalf("session = %q, create calls = %d", created.ID(), sessions.createCalls)
+		}
+	})
+
+	t.Run("ADK session service", func(t *testing.T) {
+		sessions := session.InMemoryService()
+		handler := &ADKHandler{sessions: sessions}
+		created, err := handler.restoreSession(t.Context(), entry, "user-1", "thread-1", &types.RunAgentInput{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if created.ID() != "thread-1" {
+			t.Fatalf("session = %q", created.ID())
 		}
 	})
 
@@ -557,7 +569,7 @@ func TestHandlerRecoversStreamingPanicAsSanitizedTerminalRunError(t *testing.T) 
 	h.ServeHTTP(recorder, request)
 
 	frames := parseSSEFrames(t, recorder.Body.Bytes())
-	assertStrictAGUISequence(t, frames)
+	assertAGUISequence(t, frames)
 	out := recorder.Body.String()
 	if recorder.Code != http.StatusOK || !strings.Contains(out, "RUN_ERROR") || strings.Contains(out, "RUN_FINISHED") {
 		t.Fatalf("panic stream = %d %s", recorder.Code, out)
@@ -615,7 +627,7 @@ func TestHandlerTurnsADKResponseErrorIntoSanitizedTerminalRunError(t *testing.T)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	frames := parseSSEFrames(t, rr.Body.Bytes())
-	assertStrictAGUISequence(t, frames)
+	assertAGUISequence(t, frames)
 	body := rr.Body.String()
 	if strings.Contains(body, secret) || strings.Contains(body, "RUN_FINISHED") || !strings.Contains(body, "RUN_ERROR") {
 		t.Fatalf("ADK response error stream was not sanitized and terminal: %s", body)
@@ -1242,12 +1254,9 @@ func (e *fakeEvents) At(i int) *session.Event {
 	return e.events[i]
 }
 
-// fakeSessionService is an in-memory session.Service double. Unlike
-// session.InMemoryService (bundled with ADK-Go), it returns ErrSessionNotFound
-// from Get/AppendEvent like the production cloudflare.SessionService does, so
-// tests can exercise StateHandler's threadExists branch and converter.go's
-// session_not_found error classification. It also keeps a strict separation
-// between the persisted backing state and the in-flight session's state so a
+// fakeSessionService is an in-memory session.Service double. It returns ADK's
+// not-found sentinel like the production cloudflare.SessionService. It separates
+// the persisted backing state from the in-flight session's state so a
 // temp: key applied mid-invocation never leaks into a later Get.
 type fakeSessionService struct {
 	mu        sync.Mutex

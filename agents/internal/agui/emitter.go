@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
+	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/encoding/sse"
 )
 
 var errEventAfterTerminal = errors.New("AG-UI event follows terminal event")
@@ -43,25 +44,17 @@ type replayAwareEmitter struct {
 	writer          io.Writer
 	active          *activeRunLease
 	transportFailed bool
-	terminal        bool
-	sequence        *sequenceGuard
+	sse             *sse.SSEWriter
 }
 
 func newReplayAwareEmitter(writer io.Writer, active *activeRunLease) *replayAwareEmitter {
-	return &replayAwareEmitter{writer: writer, active: active, sequence: newSequenceGuard()}
+	return &replayAwareEmitter{writer: writer, active: active, sse: sse.NewSSEWriter()}
 }
 
 func (e *replayAwareEmitter) Emit(ctx context.Context, event events.Event) error {
-	if e.terminal {
-		return errEventAfterTerminal
-	}
 	encoded, err := encodeReplayEvent(event)
 	if err != nil {
 		return err
-	}
-	nextSequence := e.sequence.clone()
-	if err := nextSequence.admit(encoded); err != nil {
-		return &eventEncodingError{stage: "sequence validation", err: err}
 	}
 	terminal := isTerminalEvent(event)
 	if e.active != nil {
@@ -69,13 +62,11 @@ func (e *replayAwareEmitter) Emit(ctx context.Context, event events.Event) error
 			return &eventEncodingError{stage: "replay admission", err: err}
 		}
 	}
-	e.sequence = nextSequence
-	e.terminal = terminal
 
 	if e.transportFailed || e.writer == nil {
 		return nil
 	}
-	if err := writeSSEFrame(e.writer, encoded); err != nil {
+	if err := e.write(ctx, encoded); err != nil {
 		e.transportFailed = true
 		return &eventTransportError{err: err}
 	}
@@ -84,27 +75,18 @@ func (e *replayAwareEmitter) Emit(ctx context.Context, event events.Event) error
 
 // emitEncoded is only for immutable bytes previously admitted by Emit through
 // activeRun.publish or its D1 mirror. It defensively revalidates those bytes and
-// advances a fresh sequence guard before writing them to a reconnect response.
+// writes them to a reconnect response.
 // The context is retained to match replay callbacks; transport writes are
 // bounded by a per-frame response deadline instead of request cancellation.
-func (e *replayAwareEmitter) emitEncoded(_ context.Context, encoded []byte) error {
-	if e.terminal {
-		return errEventAfterTerminal
-	}
+func (e *replayAwareEmitter) emitEncoded(ctx context.Context, encoded []byte) error {
 	encoded, err := validateEncodedReplayEvent(encoded)
 	if err != nil {
 		return err
 	}
-	nextSequence := e.sequence.clone()
-	if err := nextSequence.admit(encoded); err != nil {
-		return &eventEncodingError{stage: "replay sequence validation", err: err}
-	}
-	e.sequence = nextSequence
-	e.terminal = nextSequence.terminal
 	if e.transportFailed || e.writer == nil {
 		return nil
 	}
-	if err := writeSSEFrame(e.writer, encoded); err != nil {
+	if err := e.write(ctx, encoded); err != nil {
 		e.transportFailed = true
 		return &eventTransportError{err: err}
 	}
@@ -113,31 +95,33 @@ func (e *replayAwareEmitter) emitEncoded(_ context.Context, encoded []byte) erro
 
 type errorFlusher interface{ Flush() error }
 
-func writeSSEFrame(writer io.Writer, encoded []byte) error {
-	if responseWriter, ok := writer.(http.ResponseWriter); ok {
+func (e *replayAwareEmitter) write(ctx context.Context, encoded []byte) error {
+	if responseWriter, ok := e.writer.(http.ResponseWriter); ok {
 		controller := http.NewResponseController(responseWriter)
 		if err := controller.SetWriteDeadline(time.Now().Add(sseWriteTimeout)); err == nil {
 			defer controller.SetWriteDeadline(time.Time{}) //nolint:errcheck // best-effort deadline cleanup after a completed frame
 		}
 	}
-	frame := make([]byte, 0, len(encoded)+8)
-	frame = append(frame, "data: "...)
-	frame = append(frame, encoded...)
-	frame = append(frame, '\n', '\n')
-	n, err := writer.Write(frame)
-	if err != nil {
-		return fmt.Errorf("write SSE frame: %w", err)
+	return e.sse.WriteBytes(ctx, checkedStreamWriter{e.writer}, encoded)
+}
+
+// checkedStreamWriter enforces io.Writer's short-write contract at the SDK
+// boundary while preserving the response's flushing behavior.
+type checkedStreamWriter struct{ io.Writer }
+
+func (w checkedStreamWriter) Write(p []byte) (int, error) {
+	n, err := w.Writer.Write(p)
+	if err == nil && n != len(p) {
+		err = io.ErrShortWrite
 	}
-	if n != len(frame) {
-		return fmt.Errorf("write SSE frame: %w", io.ErrShortWrite)
+	return n, err
+}
+
+func (w checkedStreamWriter) Flush() error {
+	if flusher, ok := w.Writer.(errorFlusher); ok {
+		return flusher.Flush()
 	}
-	if flusher, ok := writer.(errorFlusher); ok {
-		if err := flusher.Flush(); err != nil {
-			return fmt.Errorf("flush SSE frame: %w", err)
-		}
-		return nil
-	}
-	if flusher, ok := writer.(http.Flusher); ok {
+	if flusher, ok := w.Writer.(http.Flusher); ok {
 		flusher.Flush()
 	}
 	return nil

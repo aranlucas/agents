@@ -520,7 +520,7 @@ func captureSessionError(ctx context.Context, err error, entry agentruntime.Entr
 
 // restoreSession fetches the existing (app, user, thread) session or
 // creates one seeded with the agent's declared state defaults. Only
-// ErrSessionNotFound means creation is safe; storage outages and decode
+// session.ErrNotFound means creation is safe; storage outages and decode
 // failures must propagate instead of being mistaken for a missing row.
 // Create must seed entry.StateDefaults, so this cannot rely on the runner's
 // automatic session creation.
@@ -529,7 +529,7 @@ func (h *ADKHandler) restoreSession(ctx context.Context, entry agentruntime.Entr
 	if err == nil {
 		return response.Session, nil
 	}
-	if !errors.Is(err, ErrSessionNotFound) {
+	if !errors.Is(err, session.ErrNotFound) {
 		return nil, fmt.Errorf("get session: %w", err)
 	}
 	name := sessionNameFromInput(input, entry.Route)

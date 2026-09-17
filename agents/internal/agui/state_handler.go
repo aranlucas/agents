@@ -58,7 +58,7 @@ func loadThreadState(ctx context.Context, sessions session.Service, entry agentr
 		}
 		response.Interrupts = unresolvedSessionInterrupts(found.Session.Events())
 		return response, nil
-	case errors.Is(err, ErrSessionNotFound):
+	case errors.Is(err, session.ErrNotFound):
 		return response, nil
 	default:
 		return stateResponse{}, err
@@ -69,7 +69,7 @@ func loadThreadState(ctx context.Context, sessions session.Service, entry agentr
 // endpoint: on-demand retrieval of a thread's persisted, non-temporary state
 // and message history without starting a new agent run.
 //
-// A session that genuinely does not exist yet (ErrSessionNotFound)
+// A session that genuinely does not exist yet (session.ErrNotFound)
 // is reported as threadExists: false with a 200 — that is an expected,
 // unremarkable outcome for a thread the client hasn't started. Any other
 // sessions.Get failure (a D1 outage, a decode error, ...) is a real backend

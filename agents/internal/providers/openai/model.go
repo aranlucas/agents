@@ -328,9 +328,9 @@ func providerError(provider, modelName string, err error) error {
 		return &ProviderError{Provider: provider, Model: modelName, Retryable: true, Kind: ProviderErrorEmptyResponse, cause: err}
 	case errors.Is(err, openaimodel.ErrUnsupportedMessageContentType),
 		errors.Is(err, openaimodel.ErrUnsupportedOutputItemType),
-		strings.Contains(err.Error(), "parse function call args"),
+		errors.Is(err, openaimodel.ErrFunctionCallArgs),
+		errors.Is(err, openaimodel.ErrResponseFailed),
 		strings.Contains(err.Error(), "parse streamed function args"),
-		strings.Contains(err.Error(), "openai response failed"),
 		strings.Contains(err.Error(), "openai stream error"):
 		return &ProviderError{Provider: provider, Model: modelName, Kind: ProviderErrorResponseSchema, cause: err}
 	default:

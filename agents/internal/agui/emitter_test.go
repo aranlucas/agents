@@ -100,7 +100,7 @@ func TestEmitterCompactsValidMultilineJSONBeforeSSEFraming(t *testing.T) {
 	}
 }
 
-func TestEmitterRejectsInvalidLifecycleBeforeReplayAdmission(t *testing.T) {
+func TestEmitterUsesSDKEventValidationWithoutExtraLifecycleRules(t *testing.T) {
 	active := newActiveRuns()
 	lease, ok := active.start(runKey{AgentRoute: "resume", UserID: "user", ThreadID: "thread"}, func() {})
 	if !ok {
@@ -111,11 +111,11 @@ func TestEmitterRejectsInvalidLifecycleBeforeReplayAdmission(t *testing.T) {
 	if err := emitter.Emit(t.Context(), events.NewRunStartedEvent("thread", "run")); err != nil {
 		t.Fatal(err)
 	}
-	if err := emitter.Emit(t.Context(), events.NewTextMessageContentEvent("missing", "content")); err == nil {
-		t.Fatal("content without TEXT_MESSAGE_START was accepted")
+	if err := emitter.Emit(t.Context(), events.NewTextMessageContentEvent("missing", "content")); err != nil {
+		t.Fatalf("schema-valid event was rejected: %v", err)
 	}
-	if len(lease.run.events) != 1 {
-		t.Fatalf("invalid sequence entered replay: %d events", len(lease.run.events))
+	if len(lease.run.events) != 2 {
+		t.Fatalf("replay events = %d, want both schema-valid events", len(lease.run.events))
 	}
 }
 
@@ -222,5 +222,5 @@ func TestActiveReplayFollowsAfterOriginalTransportDisconnect(t *testing.T) {
 		t.Fatal(err)
 	}
 	frames := parseSSEFrames(t, reconnected.Bytes())
-	assertStrictAGUISequence(t, frames)
+	assertAGUISequence(t, frames)
 }
