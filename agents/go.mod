@@ -24,7 +24,7 @@ require (
 	github.com/wI2L/jsondiff v0.7.1
 	golang.org/x/net v0.59.0
 	google.golang.org/adk/v2 v2.4.0
-	google.golang.org/api v0.297.0
+	google.golang.org/api v0.298.0
 	google.golang.org/genai v1.71.0
 	modernc.org/sqlite v1.59.0
 )
