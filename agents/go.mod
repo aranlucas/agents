@@ -20,7 +20,7 @@ require (
 	github.com/modelcontextprotocol/go-sdk v1.8.0
 	github.com/oapi-codegen/nethttp-middleware v1.2.0
 	github.com/oapi-codegen/runtime v1.7.0
-	github.com/openai/openai-go/v3 v3.56.0 // ADK v2.4.0 requires ResponseFunctionCallArgumentsDoneEvent.Name.
+	github.com/openai/openai-go/v3 v3.63.1 // ADK v2.4.0 requires ResponseFunctionCallArgumentsDoneEvent.Name.
 	github.com/wI2L/jsondiff v0.7.1
 	golang.org/x/net v0.59.0
 	google.golang.org/adk/v2 v2.4.0
@@ -51,6 +51,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.43.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.51.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/coder/websocket v1.8.15 // indirect
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
