@@ -3,7 +3,7 @@ module agents
 go 1.27.0
 
 require (
-	cloud.google.com/go/bigquery v1.83.0
+	cloud.google.com/go/bigquery v1.84.0
 	github.com/ag-ui-protocol/ag-ui/sdks/community/go v0.0.0-20260917163019-df59acace7d6
 	github.com/aws/aws-sdk-go-v2 v1.47.0
 	github.com/aws/aws-sdk-go-v2/config v1.33.5
