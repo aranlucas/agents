@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@agents/ui": "workspace:*",
-    "@sentry/nextjs": "10.73.0",
+    "@sentry/nextjs": "10.75.0",
     "@tanstack/react-query": "^5.102.8",
     "@types/better-sqlite3": "^9.6.0",
     "better-sqlite3": "^13.0.3",
