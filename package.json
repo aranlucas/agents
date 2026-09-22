@@ -29,7 +29,7 @@
     "doctor": "react-doctor"
   },
   "devDependencies": {
-    "@babel/core": "^8.0.1",
+    "@babel/core": "^8.0.5",
     "@shadcn/lint": "0.1.0",
     "@tailwindcss/typography": "^0.5.20",
     "concurrently": "^10.0.5",
