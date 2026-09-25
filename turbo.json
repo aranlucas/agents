@@ -9,28 +9,9 @@
       "inputs": ["$TURBO_DEFAULT$"],
       "outputs": ["dist/**"]
     },
-    "web#build": {
-      "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**"],
-      "env": [
-        "SKIP_ENV_VALIDATION",
-        "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
-        "NEXT_PUBLIC_AGENTS_BASE_URL",
-        "CLERK_SECRET_KEY",
-        "AGENTS_BASE_URL",
-        "GROQ_API_KEY",
-        "TELEGRAM_LINK_SECRET",
-        "TELEGRAM_BOT_TOKEN"
-      ]
-    },
     "oral-boards#build": {
       "dependsOn": ["^build"],
-      "inputs": [
-        "$TURBO_DEFAULT$",
-        ".env*",
-        "../../agents/assets/oralboards/search.sqlite"
-      ],
+      "inputs": ["$TURBO_DEFAULT$", ".env*", "../../agents/assets/oralboards/search.sqlite"],
       "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**"]
     },
     "agents#build": {

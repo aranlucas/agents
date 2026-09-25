@@ -3,8 +3,7 @@
   "private": true,
   "scripts": {
     "prepare": "husky",
-    "dev": "concurrently \"pnpm --filter web dev\" \"docker compose up --build agents telegram\" --names web,runtimes --prefix-colors blue,green --kill-others",
-    "dev:web": "pnpm --filter web dev",
+    "dev": "docker compose up --build agents telegram",
     "dev:telegram": "docker compose up --build telegram",
     "dev:oral-boards": "pnpm --filter oral-boards dev",
     "dev:railway": "pnpm env:railway && pnpm dev",
@@ -32,7 +31,6 @@
     "@babel/core": "^8.0.5",
     "@shadcn/lint": "0.1.0",
     "@tailwindcss/typography": "^0.5.20",
-    "concurrently": "^10.0.5",
     "husky": "^9.1.7",
     "lint-staged": "^17.5.0",
     "oxfmt": "^0.67.0",
