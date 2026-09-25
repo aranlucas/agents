@@ -24,15 +24,15 @@ pnpm test
 cd agents && go test -race ./... && go vet ./...
 ```
 
-Railway infrastructure is defined in [`.railway/railway.ts`](.railway/railway.ts). The web client deploys to Vercel and the services deploy from the `agents/` directory.
+Railway infrastructure is defined in [`.railway/railway.ts`](.railway/railway.ts). The services deploy from the `agents/` directory.
 
 ### Design-system linting
 
-`@shadcn/lint` is registered with Oxlint for `web`, `oral-boards`, and `@agents/ui`. Run the existing workspace commands:
+`@shadcn/lint` is registered with Oxlint for `oral-boards` and `@agents/ui`. Run the existing workspace commands:
 
 ```bash
 pnpm lint
-pnpm --filter web lint
+pnpm --filter oral-boards lint
 pnpm --filter @agents/ui lint
 ```
 

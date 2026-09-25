@@ -1,7 +1,6 @@
 @import "./primitives.css";
 @import "./typeset.css";
 @import "streamdown/styles.css";
-@source "../../../apps/web/**/*.{ts,tsx}";
 @source "../**/*.{ts,tsx}";
 @source "../../node_modules/streamdown/dist/*.js";
 
