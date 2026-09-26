@@ -81,6 +81,8 @@ github.com/cloudflare/cloudflare-go/v7 v7.11.0 h1:haUt51prTC03PcorFOvhlWj9q58XCI
 github.com/cloudflare/cloudflare-go/v7 v7.11.0/go.mod h1:9zcoIAtu6cmcoPszCNISvqYMXs8wObtVGXE1qGFMrNU=
 github.com/cncf/xds/go v0.0.0-20260202195803-dba9d589def2 h1:aBangftG7EVZoUb69Os8IaYg++6uMOdKK83QtkkvJik=
 github.com/cncf/xds/go v0.0.0-20260202195803-dba9d589def2/go.mod h1:qwXFYgsP6T7XnJtbKlf1HP8AjxZZyzxMmc+Lq5GjlU4=
+github.com/coder/websocket v1.8.15 h1:6B2JPeOGlpff2Uz6vOEH1Vzpi0iUz20A+lPVhPHtNUA=
+github.com/coder/websocket v1.8.15/go.mod h1:NX3SzP+inril6yawo5CQXx8+fk145lPDC6pumgx0mVg=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dlclark/regexp2 v1.11.4 h1:rPYF9/LECdNymJufQKmri9gV604RvvABwgOA8un7yAo=
@@ -216,8 +218,8 @@ github.com/onsi/gomega v1.10.1/go.mod h1:iN09h71vgCQne3DLsj+A5owkum+a2tYe+TOCB1y
 github.com/onsi/gomega v1.17.0/go.mod h1:HnhC7FXeEQY45zxNK3PPoIUhzk/80Xly9PcubAlGdZY=
 github.com/onsi/gomega v1.19.0 h1:4ieX6qQjPP/BfC3mpsAtIGGlxTWPeA3Inl/7DtXw1tw=
 github.com/onsi/gomega v1.19.0/go.mod h1:LY+I3pBVzYsTBU1AnDwOSxaYi9WoWiqgwooUqq9yPro=
-github.com/openai/openai-go/v3 v3.56.0 h1:Xb+gsS7Gsb5dx+Uat9BHTWhifAOvQjU+pQNWT/HXeWQ=
-github.com/openai/openai-go/v3 v3.56.0/go.mod h1:ufI1+K+t0ijRB3gk8eztiw1crcDpsBuxRQL4sbLIrts=
+github.com/openai/openai-go/v3 v3.66.0 h1:hykUFik2rqpkKf8O2bc41OpSZuVA1lGFUu+UfjvYn1k=
+github.com/openai/openai-go/v3 v3.66.0/go.mod h1:+dSPa+nbX+dNoXg1jecMnVpgRP+E/5IBA6Jiz9Pc8WM=
 github.com/pierrec/lz4/v4 v4.1.30 h1:cchX8N2DVP668WkElI9QMwVyoNabLkq1LofDHFeIrdg=
 github.com/pierrec/lz4/v4 v4.1.30/go.mod h1:EoQMVJgeeEOMsCqCzqFm2O0cJvljX2nGZjcRIPL34O4=
 github.com/pingcap/errors v0.11.4 h1:lFuQV/oaUMGcD2tqt+01ROSmJs75VG1ToEOkZIZ4nE4=
