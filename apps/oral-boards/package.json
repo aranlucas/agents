@@ -19,12 +19,12 @@
   },
   "dependencies": {
     "@agents/ui": "workspace:*",
-    "@sentry/nextjs": "10.73.0",
-    "@tanstack/react-query": "^5.102.8",
+    "@sentry/nextjs": "11.0.0",
+    "@tanstack/react-query": "^5.104.0",
     "@types/better-sqlite3": "^9.6.0",
     "better-sqlite3": "^13.0.3",
-    "lucide-react": "^1.45.0",
-    "next": "^16.3.5",
+    "lucide-react": "^1.48.0",
+    "next": "^16.3.6",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-markdown": "^10.1.0",
@@ -33,11 +33,12 @@
   "devDependencies": {
     "@agents/typescript-config": "workspace:*",
     "@tailwindcss/postcss": "^4.3.3",
-    "@types/node": "^26.5.0",
+    "@types/node": "^26.6.3",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "babel-plugin-react-compiler": "^1.0.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.2"
   }
 }
