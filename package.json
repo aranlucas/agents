@@ -28,20 +28,20 @@
     "doctor": "react-doctor"
   },
   "devDependencies": {
-    "@babel/core": "^8.0.5",
-    "@shadcn/lint": "0.1.0",
+    "@babel/core": "^8.0.6",
+    "@shadcn/lint": "0.2.0",
     "@tailwindcss/typography": "^0.5.20",
     "husky": "^9.1.7",
-    "lint-staged": "^17.5.0",
-    "oxfmt": "^0.67.0",
-    "oxlint": "^1.82.0",
-    "oxlint-tailwindcss": "1.10.2",
-    "oxlint-tsgolint": "^7.0.2001",
+    "lint-staged": "^17.6.0",
+    "oxfmt": "^0.70.0",
+    "oxlint": "^1.85.0",
+    "oxlint-tailwindcss": "1.13.0",
+    "oxlint-tsgolint": "^7.0.2003",
     "railway": "^3.11.0",
-    "react-doctor": "^0.9.13",
+    "react-doctor": "^0.9.14",
     "supports-color": "11.0.0",
     "tailwindcss": "^4.3.3",
-    "turbo": "^2.10.12"
+    "turbo": "^2.11.4"
   },
-  "packageManager": "pnpm@12.4.2"
+  "packageManager": "pnpm@12.6.0"
 }
