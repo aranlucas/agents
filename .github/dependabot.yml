@@ -25,6 +25,9 @@ updates:
     open-pull-requests-limit: 5
   - package-ecosystem: gomod
     directory: /agents
+    ignore:
+      # Keep OpenAI SDK updates coordinated with ADK compatibility.
+      - dependency-name: github.com/openai/openai-go/v3
     schedule:
       interval: weekly
       day: thursday
