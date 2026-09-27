@@ -30,7 +30,7 @@ func TestJobsAgentIsResumeGroundedAndPrivateByInstruction(t *testing.T) {
 		t.Fatalf("name = %q", built.Name())
 	}
 	for _, required := range []string{
-		"Ask DoorDash",
+		"There is no built-in candidate profile",
 		"save_application_profile",
 		"save_job_watchlist",
 		"write_ranked_job_inbox",

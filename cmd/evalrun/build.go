@@ -16,7 +16,6 @@ import (
 	"github.com/aranlucas/agents/internal/agents/fitness"
 	"github.com/aranlucas/agents/internal/agents/grocery"
 	"github.com/aranlucas/agents/internal/agents/interview"
-	"github.com/aranlucas/agents/internal/agents/oralboards"
 	"github.com/aranlucas/agents/internal/agents/presentation"
 	"github.com/aranlucas/agents/internal/agents/research"
 	"github.com/aranlucas/agents/internal/agents/spreadsheet"
@@ -24,9 +23,6 @@ import (
 	"github.com/aranlucas/agents/internal/agents/wellness"
 
 	"google.golang.org/adk/v2/agent"
-	"google.golang.org/adk/v2/model"
-	"google.golang.org/adk/v2/model/gemini"
-	"google.golang.org/genai"
 )
 
 // Built is one constructed agent ready for eval, plus any provider
@@ -152,41 +148,6 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		built, err := wellness.New(wellness.ModelSet{Coordinator: fm}, fitnessTask, groceryTask)
 		return Built{Name: name, Agent: built, StateDefaults: wellness.StateDefaults, Notes: notes}, err
 
-	case "oralboards":
-		policy := providerpolicy.EvalOralBoards()
-		questioner, err := newModel(providers, policy.Questioner, &notes)
-		if err != nil {
-			return Built{}, err
-		}
-		evaluator, err := newModel(providers, policy.Evaluator, &notes)
-		if err != nil {
-			return Built{}, err
-		}
-		scorer, err := newModel(providers, policy.Scorer, &notes)
-		if err != nil {
-			return Built{}, err
-		}
-		var caseBuilder model.LLM = questioner
-		if key := integrations.GeminiAPIKey; key != "" {
-			gm, err := gemini.NewModel(ctx, policy.GeminiModel, &genai.ClientConfig{APIKey: key, Backend: genai.BackendGeminiAPI})
-			if err != nil {
-				return Built{}, err
-			}
-			caseBuilder = gm
-		} else if policy.AllowQuestionerCaseBuilderFallback {
-			notes = append(notes, "GEMINI_API_KEY unavailable locally; substituted questioner's provider for oralboards' case builder")
-		} else {
-			return Built{}, fmt.Errorf("GEMINI_API_KEY is required to configure oralboards case builder")
-		}
-		// Gateway and evaluation tools resolve assets from the repository root.
-		corpus, err := oralboards.OpenCorpus(integrations.OralBoardsCorpusPath)
-		if err != nil {
-			return Built{}, err
-		}
-		built, err := oralboards.New(oralboards.PhaseModels{
-			CaseBuilder: caseBuilder, Questioner: questioner, Evaluator: evaluator, Scorer: scorer,
-		}, corpus)
-		return Built{Name: name, Agent: built, StateDefaults: oralboards.StateDefaults, Notes: notes}, err
 	}
 	return Built{}, fmt.Errorf("unknown agent %q", name)
 }

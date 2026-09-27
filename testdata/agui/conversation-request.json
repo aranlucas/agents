@@ -1,0 +1,15 @@
+{
+  "threadId": "thread-1",
+  "runId": "run-1",
+  "state": {},
+  "messages": [
+    {
+      "id": "user-msg-1",
+      "role": "user",
+      "content": "Please remember that blue is my favorite color."
+    }
+  ],
+  "tools": [],
+  "context": [],
+  "forwardedProps": null
+}

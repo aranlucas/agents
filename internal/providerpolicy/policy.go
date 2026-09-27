@@ -44,17 +44,6 @@ type Policy struct {
 	missingProviderMessage string
 }
 
-// OralBoardsPolicy keeps the phase-specific production/eval differences
-// explicit. Zero phase policies mean those phases reuse the Gemini model;
-// eval instead supplies distinct provider policies.
-type OralBoardsPolicy struct {
-	GeminiModel                        string
-	Questioner                         Policy
-	Evaluator                          Policy
-	Scorer                             Policy
-	AllowQuestionerCaseBuilderFallback bool
-}
-
 // Agent returns the gateway policy for an authored workload.
 func Agent(workload Workload) (Policy, error) {
 	switch workload {
@@ -95,34 +84,6 @@ func ResolveAgent(providers map[string]config.Provider, workload Workload) (conf
 		return config.Provider{}, err
 	}
 	return ResolveRequired(providers, policy)
-}
-
-// GatewayOralBoards returns the gateway's Gemini model selection. Every live
-// phase shares that official model; the graph keeps their conversations
-// isolated even though the client instance is reused.
-func GatewayOralBoards() OralBoardsPolicy {
-	return OralBoardsPolicy{
-		GeminiModel: "gemini-3.1-flash-lite",
-	}
-}
-
-// EvalOralBoards returns local-eval phase policies. Eval preserves its
-// distinct scorer and may reuse the questioner when Gemini is unavailable
-// locally.
-func EvalOralBoards() OralBoardsPolicy {
-	policy := GatewayOralBoards()
-	policy.Questioner = openRouterLight("OPENROUTER_API_KEY is required to configure oralboards", "groq")
-	policy.Evaluator = Policy{
-		Provider: "groq", Model: groqResponsesModel, RequestsPerMinute: 20,
-		Fallbacks:              []string{"openrouter"},
-		missingProviderMessage: "GROQ_API_KEY is required to configure oralboards",
-	}
-	policy.Scorer = Policy{
-		Provider: "groq", Model: groqResponsesModel, RequestsPerMinute: 20,
-		missingProviderMessage: "GROQ_API_KEY is required to configure oralboards",
-	}
-	policy.AllowQuestionerCaseBuilderFallback = true
-	return policy
 }
 
 // Telegram returns the intentionally separate policy used for every Telegram

@@ -57,7 +57,6 @@ func Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer func() { _ = built.Close() }()
 	specialists, err := built.Agents(catalog.Telegram())
 	if err != nil {
 		return err

@@ -55,9 +55,6 @@
         "CLERK_SECRET_KEY": {
           "type": "preserve"
         },
-        "GEMINI_API_KEY": {
-          "type": "preserve"
-        },
         "GROQ_API_KEY": {
           "type": "preserve"
         },

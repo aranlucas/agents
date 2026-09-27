@@ -82,7 +82,6 @@ func TestLoadProductionFailsClosed(t *testing.T) {
 	base["CLERK_ISSUER"] = "https://clerk.example.com"
 
 	for name, mutate := range map[string]func(map[string]string){
-		"missing Gemini key": func(env map[string]string) { delete(env, "GEMINI_API_KEY") },
 		"missing Google key": func(env map[string]string) { delete(env, "GOOGLE_APPLICATION_CREDENTIALS_JSON") },
 		"missing origins":    func(env map[string]string) { delete(env, "ALLOWED_ORIGINS") },
 		"HTTP origin":        func(env map[string]string) { env["ALLOWED_ORIGINS"] = "http://agents.example.com" },
@@ -208,7 +207,7 @@ func TestLoadDatabaseDefaultsToLocalDataFile(t *testing.T) {
 
 func TestLoadIntegrationsDefaultsAndValidation(t *testing.T) {
 	integrations, err := LoadIntegrations(func(string) string { return "" })
-	if err != nil || integrations.KrogerMCPURL != defaultKrogerMCPURL || integrations.TRVLMCPURL != defaultTRVLMCPURL || integrations.OralBoardsCorpusPath != defaultCorpusPath {
+	if err != nil || integrations.KrogerMCPURL != defaultKrogerMCPURL || integrations.TRVLMCPURL != defaultTRVLMCPURL {
 		t.Fatalf("defaults = %#v, %v", integrations, err)
 	}
 	env := map[string]string{"GOOGLE_APPLICATION_CREDENTIALS_JSON": `{"project_id":"billing-project"}`}

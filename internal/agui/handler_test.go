@@ -40,7 +40,7 @@ import (
 
 func TestHandlerStreamsResumeGoldenEvents(t *testing.T) {
 	h := newGatewayWithFakeResumeModel(t)
-	req := httptest.NewRequest(http.MethodPost, "/resume/agui", bytes.NewReader(readFixture(t, "resume-request.json")))
+	req := httptest.NewRequest(http.MethodPost, "/resume/agui", bytes.NewReader(readFixture(t, "conversation-request.json")))
 	req.Header.Set("Accept", "text/event-stream")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -50,7 +50,7 @@ func TestHandlerStreamsResumeGoldenEvents(t *testing.T) {
 	if rr.Header().Get("Content-Type") != "text/event-stream" || rr.Header().Get("X-Accel-Buffering") != "no" || !rr.Flushed {
 		t.Fatalf("SSE response was not configured for incremental flushing: headers=%v flushed=%t", rr.Header(), rr.Flushed)
 	}
-	assertSSEEqual(t, rr.Body.Bytes(), readFixture(t, "resume-events.jsonl"))
+	assertSSEEqual(t, rr.Body.Bytes(), readFixture(t, "conversation-events.jsonl"))
 }
 
 // ---- malformed input --------------------------------------------------

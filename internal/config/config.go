@@ -20,7 +20,6 @@ const (
 	defaultDatabasePath   = ".data/agents.db"
 	defaultKrogerMCPURL   = "https://ai-meal-planner-mcp.aranlucas.workers.dev/mcp"
 	defaultTRVLMCPURL     = "https://trvl-production.up.railway.app/mcp"
-	defaultCorpusPath     = "assets/oralboards/search.sqlite"
 	defaultTelegramAPIURL = "https://api.telegram.org"
 	developmentJWKS       = "https://logical-viper-33.clerk.accounts.dev/.well-known/jwks.json"
 	developmentIssuer     = "https://logical-viper-33.clerk.accounts.dev"
@@ -44,7 +43,6 @@ var Keys = []Key{
 	{Name: "CLERK_ISSUER", Railway: true},
 	{Name: "CLERK_JWKS_URL", Railway: true},
 	{Name: "CLERK_SECRET_KEY", Railway: true},
-	{Name: "GEMINI_API_KEY", Railway: true},
 	{Name: "GROQ_API_KEY", Railway: true},
 	{Name: "MISTRAL_API_KEY", Railway: true},
 	{Name: "NVIDIA_NIM_API_KEY", Railway: true},
@@ -53,7 +51,6 @@ var Keys = []Key{
 	{Name: "GOOGLE_APPLICATION_CREDENTIALS_JSON", Railway: true},
 	{Name: "KROGER_MCP_URL"},
 	{Name: "TRVL_MCP_URL"},
-	{Name: "ORALBOARDS_CORPUS_PATH"},
 	{Name: "TELEGRAM_BOT_TOKEN", Railway: true},
 	{Name: "TELEGRAM_BOT_USERNAME", Railway: true},
 	{Name: "TELEGRAM_LINK_SECRET", Railway: true},
@@ -97,15 +94,13 @@ type HTTP struct {
 
 // Integrations holds third-party endpoints and credentials used by agents.
 type Integrations struct {
-	GeminiAPIKey string
-	BraveAPIKey  string
+	BraveAPIKey string
 	// GoogleCredentialsJSON is a service-account key; GoogleProjectID is its
 	// project_id, which bills the trends agent's BigQuery queries.
 	GoogleCredentialsJSON string
 	GoogleProjectID       string
 	KrogerMCPURL          string
 	TRVLMCPURL            string
-	OralBoardsCorpusPath  string
 }
 
 // Telegram holds the long-poll worker's bot settings.
@@ -178,7 +173,6 @@ func Load(getenv func(string) string) (Config, error) {
 	cfg.TelegramLinkSecret = env(getenv, "TELEGRAM_LINK_SECRET")
 	if cfg.Environment.IsProduction() {
 		for _, required := range []struct{ name, value string }{
-			{"GEMINI_API_KEY", cfg.Integrations.GeminiAPIKey},
 			{"GOOGLE_APPLICATION_CREDENTIALS_JSON", cfg.Integrations.GoogleCredentialsJSON},
 		} {
 			if required.value == "" {
@@ -259,12 +253,10 @@ func LoadIntegrations(getenv func(string) string) (Integrations, error) {
 
 func loadIntegrations(getenv func(string) string) (Integrations, error) {
 	result := Integrations{
-		GeminiAPIKey:          env(getenv, "GEMINI_API_KEY"),
 		BraveAPIKey:           env(getenv, "BRAVE_API_KEY"),
 		GoogleCredentialsJSON: env(getenv, "GOOGLE_APPLICATION_CREDENTIALS_JSON"),
 		KrogerMCPURL:          envDefault(getenv, "KROGER_MCP_URL", defaultKrogerMCPURL),
 		TRVLMCPURL:            envDefault(getenv, "TRVL_MCP_URL", defaultTRVLMCPURL),
-		OralBoardsCorpusPath:  envDefault(getenv, "ORALBOARDS_CORPUS_PATH", defaultCorpusPath),
 	}
 	if result.GoogleCredentialsJSON != "" {
 		var account struct {

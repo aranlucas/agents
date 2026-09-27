@@ -11,7 +11,7 @@ func Railway() railway.Project {
 		// Wait for GitHub CI so a failing main never deploys.
 		"source": railway.Github("aranlucas/agents", map[string]any{"checkSuites": true}),
 		// Railpack builds cmd/agents into /app/out and starts ./out.
-		// The runtime image includes assets/ and migrations run at startup,
+		// Migrations run at startup,
 		// since volumes are unavailable during pre-deploy.
 		"build":        map[string]any{"builder": "RAILPACK"},
 		"volumeMounts": map[string]any{"/app/.data": data},
@@ -34,7 +34,6 @@ func Railway() railway.Project {
 			"CLERK_SECRET_KEY": railway.Preserve(),
 
 			// Model providers.
-			"GEMINI_API_KEY":     railway.Preserve(),
 			"GROQ_API_KEY":       railway.Preserve(),
 			"MISTRAL_API_KEY":    railway.Preserve(),
 			"NVIDIA_NIM_API_KEY": railway.Preserve(),

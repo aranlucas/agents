@@ -145,16 +145,8 @@ func TestResolveEvalPreservesSubstitutionOrderAndLimits(t *testing.T) {
 	}
 }
 
-func TestOralBoardsAndTelegramPoliciesStayDistinct(t *testing.T) {
+func TestTelegramPolicy(t *testing.T) {
 	t.Parallel()
-	gateway := GatewayOralBoards()
-	if gateway.GeminiModel != "gemini-3.1-flash-lite" || gateway.Questioner.Provider != "" || gateway.Evaluator.Provider != "" || gateway.Scorer.Provider != "" || gateway.AllowQuestionerCaseBuilderFallback {
-		t.Fatalf("gateway oralboards policy = %#v", gateway)
-	}
-	eval := EvalOralBoards()
-	if eval.Questioner.Provider != "openrouter" || eval.Evaluator.Provider != "groq" || eval.Evaluator.Model != groqResponsesModel || eval.Scorer.Provider != "groq" || eval.Scorer.Model != groqResponsesModel || !eval.AllowQuestionerCaseBuilderFallback {
-		t.Fatalf("eval oralboards policy = %#v", eval)
-	}
 	telegram := Telegram()
 	if telegram.Provider != "groq" || telegram.Model != groqResponsesModel || telegram.RequestsPerMinute != 20 || len(telegram.Fallbacks) != 0 {
 		t.Fatalf("telegram policy = %#v", telegram)

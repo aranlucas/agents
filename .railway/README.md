@@ -1,6 +1,6 @@
 # Railway infrastructure
 
-The Go service deploys from the repository root with Railpack defaults: it builds the first command under `cmd/` (`cmd/agents`, kept first by a test) into `/app/out`, starts `./out` (which serves), and keeps the whole build directory in the runtime image, so `assets/` is present. The gateway health check is `/ready`, which requires a migrated database and reports whether the lazily built agent surface is `pending`, `ok`, or `failed`.
+The Go service deploys from the repository root with Railpack defaults: it builds the first command under `cmd/` (`cmd/agents`, kept first by a test) into `/app/out`, starts `./out` (which serves), and keeps the whole build directory in the runtime image. The gateway health check is `/ready`, which requires a migrated database and reports whether the lazily built agent surface is `pending`, `ok`, or `failed`.
 
 SQLite lives on the `agents-data` volume mounted at `/app/.data`, explicitly kept at 5000 MB in `us-west2`. Railway does not mount volumes during pre-deploy, so there is no pre-deploy command: `agents serve` applies migrations at startup. A volume attaches to one service and one replica, so keep the gateway at a single replica. Railpack's runtime image runs as root, so the root-owned volume is writable.
 

@@ -24,8 +24,8 @@ func TestGeneratedSchemasExcludeServerOnlyState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(schemas) != 12 {
-		t.Fatalf("generated %d schemas, want 12", len(schemas))
+	if len(schemas) != 11 {
+		t.Fatalf("generated %d schemas, want 11", len(schemas))
 	}
 	for path, schema := range schemas {
 		for _, forbidden := range []string{`"user_id"`, `"_probe_used"`, `"_search_docs_calls"`, `"case_passages"`} {
@@ -79,8 +79,8 @@ func TestGeneratedCatalogUsesClientAndBackendIdentities(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := string(generated)
-	if !strings.Contains(text, `"oral-boards": "oralboards"`) {
-		t.Fatalf("generated catalog is missing oral-boards backend mapping:\n%s", text)
+	if !strings.Contains(text, `grocery: "grocery"`) {
+		t.Fatalf("generated catalog is missing grocery backend mapping:\n%s", text)
 	}
 	if strings.Count(text, "export type AgentId") != 1 {
 		t.Fatalf("generated AgentId declaration count is not one")

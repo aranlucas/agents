@@ -21,8 +21,8 @@ func TestAllHasUniqueCompleteMetadata(t *testing.T) {
 		seenRoutes[spec.Route] = true
 		seenAppNames[spec.AppName] = true
 	}
-	if len(seenRoutes) != 12 {
-		t.Fatalf("catalog contains %d agents, want 12", len(seenRoutes))
+	if len(seenRoutes) != 11 {
+		t.Fatalf("catalog contains %d agents, want 11", len(seenRoutes))
 	}
 }
 
@@ -31,23 +31,22 @@ func TestSurfaceSelectionsRemainStable(t *testing.T) {
 	if slices.Contains(telegram, "jobs") {
 		t.Fatalf("Telegram routes unexpectedly contain private web-only jobs agent: %#v", telegram)
 	}
-	if len(telegram) != 10 {
-		t.Fatalf("Telegram routes = %#v, want 10 routes", telegram)
+	if len(telegram) != 9 {
+		t.Fatalf("Telegram routes = %#v, want 9 routes", telegram)
 	}
 
 	eval := routes(Eval())
 	if slices.Contains(eval, "trends") {
 		t.Fatalf("Eval routes unexpectedly contain trends: %#v", eval)
 	}
-	if len(eval) != 10 {
-		t.Fatalf("Eval routes = %#v, want 10 routes", eval)
+	if len(eval) != 9 {
+		t.Fatalf("Eval routes = %#v, want 9 routes", eval)
 	}
 }
 
 func TestByRoute(t *testing.T) {
-	oralBoards, ok := ByRoute("oralboards")
-	if !ok || oralBoards.ClientID != "oral-boards" || oralBoards.AppName != "oralboards_agent" {
-		t.Fatalf("ByRoute(oralboards) = %#v, %v", oralBoards, ok)
+	if _, ok := ByRoute("oralboards"); ok {
+		t.Fatal("removed oralboards route is still registered")
 	}
 	if _, ok := ByRoute("unknown"); ok {
 		t.Fatal("ByRoute(unknown) succeeded")

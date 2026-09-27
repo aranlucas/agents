@@ -138,12 +138,8 @@ func runAgentEval(ctx context.Context, name, caseID string, providers map[string
 	return report
 }
 
-// datasetFileName maps an agent name to its restored dataset file — the
-// oralboards file uses a hyphen, everything else matches the agent name.
+// datasetFileName maps an agent name to its dataset file.
 func datasetFileName(name string) string {
-	if name == "oralboards" {
-		return "oral-boards.json"
-	}
 	return name + ".json"
 }
 

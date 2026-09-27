@@ -77,3 +77,10 @@ bin/
 build/
 .pnpm-store/
 
+
+# Private captures, user databases and personal career documents
+*.har
+*.sqlite
+*.sqlite3
+*.db
+resume.md

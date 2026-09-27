@@ -33,7 +33,7 @@ The root `go.mod` declares `github.com/aranlucas/agents`. Commands live in `cmd/
 
 ## Persistence
 
-SQLite is the only application persistence. The database is one file at `DATABASE_PATH` (default `.data/agents.db`, which is git-ignored). `agents serve` applies migrations at startup, so a fresh checkout needs no setup. Migrations in `migrations/sqlite` apply in file-name order; each file name is its permanent version, so only ever append new files. The bundled SQLite file under `assets/oralboards` is a separate, read-only reference corpus.
+SQLite is the only application persistence. The database is one file at `DATABASE_PATH` (default `.data/agents.db`, which is git-ignored). `agents serve` applies migrations at startup, so a fresh checkout needs no setup. Migrations in `migrations/sqlite` apply in file-name order; each file name is its permanent version, so only ever append new files.
 
 ## Contracts
 
@@ -48,3 +48,7 @@ make railway-plan ENV=production                          # preview config chang
 make railway-apply ENV=production CONFIRM_DESTRUCTIVE=1   # apply a reviewed plan
 make railway-up ENV=production                            # deploy the local checkout
 ```
+
+## License
+
+The source code is available under the [MIT License](LICENSE). Career profiles and credentials belong in user input or private runtime configuration, not the repository.

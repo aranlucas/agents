@@ -43,9 +43,9 @@ func TestStateDefaultsUseStableCollections(t *testing.T) {
 func TestReadStateHydratesUserScopedApplicationProfile(t *testing.T) {
 	state := readState(readonlyState{
 		"profile":      ApplicationProfile{},
-		"user:profile": ApplicationProfile{FullName: "Lucas Arango", VoiceNotes: "Direct and concrete."},
+		"user:profile": ApplicationProfile{FullName: "Example Candidate", VoiceNotes: "Direct and concrete."},
 	})
-	if state.Profile.FullName != "Lucas Arango" || state.Profile.VoiceNotes != "Direct and concrete." {
+	if state.Profile.FullName != "Example Candidate" || state.Profile.VoiceNotes != "Direct and concrete." {
 		t.Fatalf("user-scoped profile was not hydrated: %#v", state.Profile)
 	}
 }
@@ -206,14 +206,14 @@ func TestMatchAndApplicationWorkflowReachesReady(t *testing.T) {
 	result := writeMatchAssessment(&state, WriteMatchAssessmentArgs{
 		MatchScore: 88, MatchVerdict: VerdictStrongMatch,
 		MatchSummary: "Direct evidence of zero-to-one AI product leadership.",
-		Strengths:    []string{"Pitched and led Ask DoorDash.", "Pitched and led Ask DoorDash."},
+		Strengths:    []string{"Led a documented product launch.", "Led a documented product launch."},
 		Gaps:         []string{"No model-training ownership documented."},
 	})
 	if !result.OK || state.Status != StatusDrafting || len(state.Strengths) != 1 {
 		t.Fatalf("writeMatchAssessment() = %#v; state = %#v", result, state)
 	}
 	result = writeTailoredResume(&state, WriteTailoredResumeArgs{
-		TailoredResume: "# Lucas Arango\n\n## Experience\n\n- Pitched and led Ask DoorDash.",
+		TailoredResume: "# Example Candidate\n\n## Experience\n\n- Led a documented product launch.",
 	})
 	if !result.OK {
 		t.Fatal(result)
@@ -244,7 +244,7 @@ func TestApplicationAnswersRequireUniqueAuditableFields(t *testing.T) {
 		MatchScore: 50, MatchVerdict: VerdictStretch, MatchSummary: "Some fit.",
 		Strengths: []string{"Software delivery."},
 	})
-	_ = writeTailoredResume(&state, WriteTailoredResumeArgs{TailoredResume: "# Lucas Arango"})
+	_ = writeTailoredResume(&state, WriteTailoredResumeArgs{TailoredResume: "# Example Candidate"})
 	result := writeApplicationDraft(&state, WriteApplicationDraftArgs{Answers: []ApplicationAnswer{
 		{Field: "Email", Answer: "lucas@example.com", Evidence: "User profile email", Sensitive: true},
 		{Field: " email ", Answer: "other@example.com", Evidence: "User profile email", Sensitive: true},
@@ -268,7 +268,7 @@ func TestReadyRequiresProposedResumeButNotApplicationAnswers(t *testing.T) {
 	if result.OK || result.Error == nil || result.Error.Code != "tailored_resume_required" {
 		t.Fatalf("missing resume result = %#v", result)
 	}
-	_ = writeTailoredResume(&state, WriteTailoredResumeArgs{TailoredResume: "# Lucas Arango"})
+	_ = writeTailoredResume(&state, WriteTailoredResumeArgs{TailoredResume: "# Example Candidate"})
 	result = markReady(&state, MarkReadyArgs{ReviewSummary: "Review the proposal."})
 	if !result.OK || state.Status != StatusReady || len(state.Answers) != 0 {
 		t.Fatalf("resume-only ready result = %#v; state = %#v", result, state)

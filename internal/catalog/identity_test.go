@@ -9,7 +9,6 @@ import (
 	"github.com/aranlucas/agents/internal/agents/grocery"
 	"github.com/aranlucas/agents/internal/agents/interview"
 	"github.com/aranlucas/agents/internal/agents/jobs"
-	"github.com/aranlucas/agents/internal/agents/oralboards"
 	"github.com/aranlucas/agents/internal/agents/presentation"
 	"github.com/aranlucas/agents/internal/agents/research"
 	"github.com/aranlucas/agents/internal/agents/spreadsheet"
@@ -54,7 +53,7 @@ func TestCatalogIdentityAndRuntimeInvariants(t *testing.T) {
 func TestCatalogAppNamesMatchAuthoredAgents(t *testing.T) {
 	appNames := map[string]string{
 		"travel": travel.AppName, "grocery": grocery.AppName, "fitness": fitness.AppName,
-		"wellness": wellness.AppName, "expense": expense.AppName, "oralboards": oralboards.AppName,
+		"wellness": wellness.AppName, "expense": expense.AppName,
 		"trends": trends.AppName, "research": research.AppName,
 		"jobs": jobs.AppName, "interview": interview.AppName,
 		"spreadsheet": spreadsheet.AppName, "presentation": presentation.AppName,

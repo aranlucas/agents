@@ -25,7 +25,7 @@ func New(m model.LLM, search *bravesearch.Client, loader *common.WebLoader, tool
 	}
 	return llmagent.New(llmagent.Config{
 		Name:        AppName,
-		Description: "Research and rank current jobs, assess fit, and propose truthful tailored resumes for Lucas.",
+		Description: "Research and rank current jobs, assess fit, and propose truthful tailored resumes for the authenticated user.",
 		Instruction: Instruction,
 		Model:       m,
 		GenerateContentConfig: &genai.GenerateContentConfig{

@@ -7,7 +7,6 @@ import (
 
 	"github.com/aranlucas/agents/internal/agents/expense"
 	"github.com/aranlucas/agents/internal/agents/interview"
-	"github.com/aranlucas/agents/internal/agents/oralboards"
 	"github.com/aranlucas/agents/internal/agents/presentation"
 	"github.com/aranlucas/agents/internal/agents/research"
 	"github.com/aranlucas/agents/internal/agents/spreadsheet"
@@ -416,43 +415,6 @@ func gradeRubric(agentName, rubricID, description string, trace Trace) RubricRes
 		blocked := len(trace.calledTools()) == 0 && textContainsAny(text, "kroger")
 		res.Pass = trace.called("set_weekly_wellness_plan") || blocked
 		res.Explanation = fmt.Sprintf("set_weekly_wellness_plan called=%v, or cleanly blocked upfront=%v", trace.called("set_weekly_wellness_plan"), blocked)
-
-	// --- oralboards ---
-	case "oralboards_search_before_content":
-		// read_doc ("read one corpus document by exact path") is an
-		// optional deep-read for when a search_docs snippet is not
-		// enough — the current Go corpus search already returns full
-		// passage text, so a case grounded straight from search_docs
-		// results (no read_doc call) is not a grounding gap.
-		loadingIdx, searchIdx := trace.indexOfCall("set_loading_step"), trace.indexOfCall("search_docs")
-		caseIdx := trace.indexOfCall("set_case")
-		ok := loadingIdx >= 0 && searchIdx >= 0
-		if ok && caseIdx >= 0 {
-			ok = loadingIdx < caseIdx && searchIdx < caseIdx
-		}
-		res.Pass = ok
-		res.Explanation = fmt.Sprintf("set_loading_step=%d search_docs=%d read_doc=%d(optional) set_case=%d", loadingIdx, searchIdx, trace.indexOfCall("read_doc"), caseIdx)
-	case "oralboards_sets_grounded_case":
-		args, ok := trace.firstCallArgs[oralboards.SetCaseArgs]("set_case")
-		res.Pass = ok && strings.TrimSpace(args.Case) != "" && len(args.CasePassages) > 0
-		res.Explanation = fmt.Sprintf("set_case called=%v, case text set=%v, internal evidence passages=%d", ok, strings.TrimSpace(args.Case) != "", len(args.CasePassages))
-	case "oralboards_model_answer_is_spoken":
-		args, ok := trace.firstCallArgs[oralboards.AppendExchangeArgs]("append_exchange")
-		ideal := strings.TrimSpace(args.IdealResponse)
-		hasListFormatting := strings.HasPrefix(ideal, "-") || strings.HasPrefix(ideal, "*") || strings.Contains(ideal, "\n-") || strings.Contains(ideal, "\n*")
-		thirdPerson := textContainsAny(ideal, "the candidate should", "the key points are")
-		res.Pass = ok && ideal != "" && !hasListFormatting && !thirdPerson
-		res.Explanation = fmt.Sprintf("append_exchange called=%v, model answer present=%v, list formatting=%v, third-person answer-key language=%v", ok, ideal != "", hasListFormatting, thirdPerson)
-	case "oralboards_presenting_phase_only":
-		args, _ := trace.firstCallArgs[oralboards.SetPhaseArgs]("set_phase")
-		asked := trace.called("ask_probe")
-		res.Pass = args.Phase == oralboards.PhasePresenting && !asked
-		res.Explanation = fmt.Sprintf("set_phase phase=%q, ask_probe called=%v (must not be, yet)", args.Phase, asked)
-	case "oralboards_no_improvised_clinical_claims":
-		caseSet := trace.called("set_case")
-		disclosed := textContainsAny(text, "don't have", "doesn't cover", "adjacent", "couldn't find")
-		res.Pass = caseSet || disclosed
-		res.Explanation = fmt.Sprintf("set_case called=%v, or disclosed a corpus gap=%v", caseSet, disclosed)
 
 	default:
 		res.Pass = false

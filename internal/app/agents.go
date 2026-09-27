@@ -12,7 +12,6 @@ import (
 	"github.com/aranlucas/agents/internal/agents/grocery"
 	"github.com/aranlucas/agents/internal/agents/interview"
 	"github.com/aranlucas/agents/internal/agents/jobs"
-	"github.com/aranlucas/agents/internal/agents/oralboards"
 	"github.com/aranlucas/agents/internal/agents/presentation"
 	"github.com/aranlucas/agents/internal/agents/research"
 	"github.com/aranlucas/agents/internal/agents/spreadsheet"
@@ -28,25 +27,14 @@ import (
 	"cloud.google.com/go/bigquery"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/model"
-	"google.golang.org/adk/v2/model/gemini"
 	"google.golang.org/adk/v2/tool"
 	"google.golang.org/api/option"
-	"google.golang.org/genai"
 )
 
 // Specialists holds every built agent plus resources that must be released
 // when the process stops.
 type Specialists struct {
 	bootstrap.Specialists
-	corpus *oralboards.Corpus
-}
-
-// Close releases the oral-boards corpus.
-func (s *Specialists) Close() error {
-	if s == nil || s.corpus == nil {
-		return nil
-	}
-	return s.corpus.Close()
 }
 
 // BuildSpecialists builds every agent concurrently. The toolsets (for example
@@ -83,9 +71,8 @@ func BuildSpecialists(ctx context.Context, rt *Runtime, toolsets ...tool.Toolset
 		jobsAgent, interviewAgent, presentationAgent, researchAgent agent.Agent
 		spreadsheetAgent, expenseAgent, travelAgent, fitnessAgent   agent.Agent
 		fitnessTaskAgent, groceryAgent, groceryTaskAgent            agent.Agent
-		trendsAgent, oralboardsAgent                                agent.Agent
+		trendsAgent                                                 agent.Agent
 		fitnessModel                                                model.LLM
-		corpus                                                      *oralboards.Corpus
 	)
 	var builds buildGroup
 	builds.Go("jobs agent", func() (err error) {
@@ -180,27 +167,13 @@ func BuildSpecialists(ctx context.Context, rt *Runtime, toolsets ...tool.Toolset
 		trendsAgent, err = trends.New(m, generator, executor, rt.Brave, toolsets...)
 		return err
 	})
-	builds.Go("oralboards agent", func() error {
-		phaseModels, err := oralboardsModels(ctx, integrations.GeminiAPIKey)
-		if err != nil {
-			return err
-		}
-		if corpus, err = oralboards.OpenCorpus(integrations.OralBoardsCorpusPath); err != nil {
-			return fmt.Errorf("open oralboards corpus: %w", err)
-		}
-		oralboardsAgent, err = oralboards.New(phaseModels, corpus, toolsets...)
-		return err
-	})
 	err = builds.Wait()
-	// Read corpus only after Wait: the oralboards goroutine assigns it.
-	result := &Specialists{corpus: corpus}
+	result := &Specialists{}
 	if err != nil {
-		_ = result.Close()
 		return nil, err
 	}
 	wellnessAgent, err := wellness.New(wellness.ModelSet{Coordinator: fitnessModel}, fitnessTaskAgent, groceryTaskAgent, toolsets...)
 	if err != nil {
-		_ = result.Close()
 		return nil, fmt.Errorf("build wellness agent: %w", err)
 	}
 	result.Specialists = bootstrap.Specialists{
@@ -209,7 +182,6 @@ func BuildSpecialists(ctx context.Context, rt *Runtime, toolsets ...tool.Toolset
 		Fitness:      bootstrap.Binding{Agent: fitnessAgent, StateDefaults: fitness.StateDefaults},
 		Wellness:     bootstrap.Binding{Agent: wellnessAgent, StateDefaults: wellness.StateDefaults},
 		Expense:      bootstrap.Binding{Agent: expenseAgent, StateDefaults: expense.StateDefaults},
-		OralBoards:   bootstrap.Binding{Agent: oralboardsAgent, StateDefaults: oralboards.StateDefaults},
 		Trends:       bootstrap.Binding{Agent: trendsAgent, StateDefaults: trends.StateDefaults},
 		Jobs:         bootstrap.Binding{Agent: jobsAgent, StateDefaults: jobs.StateDefaults},
 		Interview:    bootstrap.Binding{Agent: interviewAgent, StateDefaults: interview.StateDefaults},
@@ -254,37 +226,4 @@ func trendsBigQueryClient(ctx context.Context, integrations config.Integrations)
 		return nil, fmt.Errorf("configure BigQuery client: %w", err)
 	}
 	return client, nil
-}
-
-func oralboardsModels(ctx context.Context, apiKey string) (oralboards.PhaseModels, error) {
-	if apiKey == "" {
-		return oralboards.PhaseModels{}, errors.New("GEMINI_API_KEY is required to configure oralboards case builder")
-	}
-	caseBuilder, err := gemini.NewModel(ctx, providerpolicy.GatewayOralBoards().GeminiModel, oralboardsGeminiClientConfig(apiKey))
-	if err != nil {
-		return oralboards.PhaseModels{}, err
-	}
-	// Every phase is a separate agent node, so sharing the official Gemini client
-	// does not couple their conversations. A single provider also avoids losing
-	// an in-progress examination to cross-provider response incompatibilities.
-	return oralboards.PhaseModels{CaseBuilder: caseBuilder, Questioner: caseBuilder, Evaluator: caseBuilder, Scorer: caseBuilder}, nil
-}
-
-// oralboardsGeminiClientConfig keeps transient provider failures inside the
-// model request that encountered them. ADK's workflow RetryConfig reactivates
-// an entire node; that is unsafe for oral-board phases whose agents may already
-// have mutated examination state through tools before a later model call fails.
-//
-// The Gen AI SDK documents HTTPRetryOptions as the request-level retry seam.
-// A non-nil empty policy enables its maintained defaults: five total attempts,
-// an approximately one-second initial delay, exponential backoff with jitter,
-// and retries limited to transport failures plus 408, 429, and selected 5xx
-// responses. Keep those defaults centralized in the provider SDK rather than
-// copying values here and allowing the policies to drift.
-func oralboardsGeminiClientConfig(apiKey string) *genai.ClientConfig {
-	return &genai.ClientConfig{
-		APIKey:      apiKey,
-		Backend:     genai.BackendGeminiAPI,
-		HTTPOptions: genai.HTTPOptions{RetryOptions: &genai.HTTPRetryOptions{}},
-	}
 }

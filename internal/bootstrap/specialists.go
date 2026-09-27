@@ -28,7 +28,6 @@ type Specialists struct {
 	Fitness      Binding
 	Wellness     Binding
 	Expense      Binding
-	OralBoards   Binding
 	Trends       Binding
 	Jobs         Binding
 	Interview    Binding
@@ -50,8 +49,6 @@ func (s Specialists) BindingFor(route string) (Binding, bool) {
 		return s.Wellness, true
 	case "expense":
 		return s.Expense, true
-	case "oralboards":
-		return s.OralBoards, true
 	case "trends":
 		return s.Trends, true
 	case "jobs":

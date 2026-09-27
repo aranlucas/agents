@@ -8,23 +8,8 @@ updates:
       time: "06:00"
       timezone: America/Los_Angeles
     open-pull-requests-limit: 5
-  - package-ecosystem: npm
-    directory: /
-    groups:
-      react:
-        patterns:
-          - react
-          - react-dom
-          - "@types/react"
-          - "@types/react-dom"
-    schedule:
-      interval: weekly
-      day: thursday
-      time: "06:00"
-      timezone: America/Los_Angeles
-    open-pull-requests-limit: 5
   - package-ecosystem: gomod
-    directory: /agents
+    directory: /
     ignore:
       # Keep OpenAI SDK updates coordinated with ADK compatibility.
       - dependency-name: github.com/openai/openai-go/v3

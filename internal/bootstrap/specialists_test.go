@@ -89,7 +89,7 @@ func testSpecialists(t *testing.T) Specialists {
 	}
 	return Specialists{
 		Travel: bindings["travel"], Grocery: bindings["grocery"], Fitness: bindings["fitness"],
-		Wellness: bindings["wellness"], Expense: bindings["expense"], OralBoards: bindings["oralboards"],
+		Wellness: bindings["wellness"], Expense: bindings["expense"],
 		Trends: bindings["trends"], Research: bindings["research"],
 		Jobs: bindings["jobs"], Interview: bindings["interview"],
 		Spreadsheet: bindings["spreadsheet"], Presentation: bindings["presentation"],

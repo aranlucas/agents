@@ -21,7 +21,6 @@ import (
 	"github.com/aranlucas/agents/internal/agents/grocery"
 	"github.com/aranlucas/agents/internal/agents/interview"
 	"github.com/aranlucas/agents/internal/agents/jobs"
-	"github.com/aranlucas/agents/internal/agents/oralboards"
 	"github.com/aranlucas/agents/internal/agents/presentation"
 	"github.com/aranlucas/agents/internal/agents/research"
 	"github.com/aranlucas/agents/internal/agents/spreadsheet"
@@ -120,7 +119,7 @@ func generateJSONSchemas() (map[string][]byte, error) {
 	}
 	stateNames := map[string]string{
 		"travel": "TripState", "grocery": "GroceryState", "fitness": "FitnessState",
-		"wellness": "WellnessState", "expense": "ExpenseState", "oral-boards": "OralBoardsState",
+		"wellness": "WellnessState", "expense": "ExpenseState",
 		"trends": "TrendsState", "research": "ResearchState",
 		"jobs": "JobsState", "interview": "InterviewState",
 		"spreadsheet": "SpreadsheetState", "presentation": "PresentationState",
@@ -481,9 +480,6 @@ func enumDefinitions() []enumDef {
 		{Name: "ExpenseStatus", Values: []string{string(expense.StatusSubmitted), string(expense.StatusAutoApproved), string(expense.StatusNeedsReview), string(expense.StatusApproved), string(expense.StatusRejected)}},
 		{Name: "ExpenseRiskLevel", Values: []string{string(expense.RiskLow), string(expense.RiskMedium), string(expense.RiskHigh)}},
 		{Name: "ExpenseDeskStatus", Values: []string{"idle", "reviewing", "needs_approval", "ready"}},
-		{Name: "OralBoardsPhase", Values: []string{string(oralboards.PhaseIdle), string(oralboards.PhasePresenting), string(oralboards.PhaseQuestioning), string(oralboards.PhaseFeedback), string(oralboards.PhaseComplete)}},
-		{Name: "OralBoardsSkill", Values: []string{string(oralboards.SkillRemember), string(oralboards.SkillUnderstandApply), string(oralboards.SkillAnalyzeEvaluate)}},
-		{Name: "OralBoardsOutcome", Values: []string{"pass", "borderline", "not_yet"}},
 		{Name: "ResearchStatus", Values: []string{string(research.StatusIdle), string(research.StatusDrafting), string(research.StatusReady)}},
 		{Name: "PresentationSlideType", Values: []string{"title", "content", "bullets", "two-column"}},
 		{Name: "PresentationTheme", Values: []string{"light", "dark", "minimal"}},
@@ -523,12 +519,7 @@ func objectDefinitions() []objectDef {
 			field("status", "ExpenseStatus", false), field("risk_level", "ExpenseRiskLevel | null", true),
 			field("risk_summary", "", true), field("recommendation", "", true), field("decision_note", "", true),
 		)),
-		object("OralBoardsExchange", oralboards.Exchange{}, required("question", "answer", "feedback", "ideal_response"), fields(
-			field("skillset", "", true), field("skill", "OralBoardsSkill", true), field("score", "1 | 2 | 3", true),
-		)),
-		object("OralBoardsSkillsetScore", oralboards.SkillsetScore{}, required("skillset"), fields(
-			field("skill", "OralBoardsSkill", true), field("score", "1 | 2 | 3", false), field("rationale", "", false),
-		)),
+
 		object("ResearchSection", research.Section{}, required("id", "title", "content")),
 		object("ResearchSource", research.Source{}, required("id", "title", "url", "snippet")),
 		object("SpreadsheetSheet", spreadsheet.Sheet{}, required("title", "rows")),
@@ -595,13 +586,7 @@ func objectDefinitions() []objectDef {
 			field("expenses", "", true), field("selected_expense_id", "", true), field("expense_report", "", true),
 			field("status", "ExpenseDeskStatus", true), field("review_summary", "", true), field("review_threshold_usd", "", true),
 		)),
-		object("OralBoardsState", oralboards.State{}, stateFields(
-			field("case", "", true),
-			field("transcript", "", true), field("score_card", "", true), field("score_summary", "", true),
-			field("outcome", "OralBoardsOutcome", true), field("status", "OralBoardsPhase", true),
-			field("loading_step", "", true), field("interview_complete", "", true), field("active_feedback", "", true),
-			field("active_ideal_response", "", true), field("current_question", "", true), field("active_probe", "", true),
-		)),
+
 		object("ResearchState", research.ResearchState{}, stateFields(
 			field("title", "", true), field("query", "", true), field("report", "", true),
 			field("sections", "", true), field("sources", "", true), field("status", "ResearchStatus", true),

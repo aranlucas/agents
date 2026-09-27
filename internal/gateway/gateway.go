@@ -470,7 +470,6 @@ func Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer func() { _ = specialists.Close() }()
 	registry, err := specialists.Registry()
 	if err != nil {
 		return fmt.Errorf("build agent registry: %w", err)
