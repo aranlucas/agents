@@ -2,7 +2,7 @@
 
 Go ADK service with an HTTP gateway, an optional Telegram worker mode, and SQLite persistence. The study app lives in [aranlucas/oral-boards](https://github.com/aranlucas/oral-boards).
 
-Requires Go 1.27+, Make, and golangci-lint 2.13.1 for checks. Shell smoke tests require bash, curl, jq, and Docker. The service and image do not require Node.js or CGO.
+Requires Go 1.27+, Make, and golangci-lint 2.13.1 for checks. Shell smoke tests require bash, curl, and jq. The service does not require Node.js or CGO; the Railway targets need the Railway CLI.
 
 ```sh
 cp .env.example .env
@@ -41,4 +41,10 @@ The hand-authored grocery API spec remains canonical in `api/openapi/grocery-gat
 
 ## Deployment
 
-Railway deployment configuration is isolated in [`.railway`](.railway/README.md). The service mounts a volume at `/app/.data` for the database and runs a single replica.
+Railway builds the service with Railpack (no Dockerfile) and mounts a volume at `/app/.data` for the database; it runs a single replica. Configuration is isolated in [`.railway`](.railway/README.md).
+
+```sh
+make railway-plan ENV=production                          # preview config changes
+make railway-apply ENV=production CONFIRM_DESTRUCTIVE=1   # apply a reviewed plan
+make railway-up ENV=production                            # deploy the local checkout
+```

@@ -29,13 +29,13 @@ const (
 // Key describes one environment variable the service reads.
 type Key struct {
 	Name string
-	// Railway marks variables that must be declared in .railway/railway.ts
+	// Railway marks variables that must be declared in .railway/railway.go
 	// because production reads a value that Railway, not a default, supplies.
 	Railway bool
 }
 
 // Keys is the complete inventory of environment variables read by config.
-// A test keeps .railway/railway.ts consistent with it.
+// A test keeps .railway/railway.go consistent with it.
 var Keys = []Key{
 	{Name: "APP_ENV", Railway: true},
 	{Name: "PORT"},
