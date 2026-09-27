@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aranlucas/agents/internal/groceries"
+	"github.com/aranlucas/agents/internal/grocerystore"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"google.golang.org/adk/v2/agent"
@@ -190,7 +190,7 @@ func TestAgentShoppingCapabilityControlsNativeAndMCPTools(t *testing.T) {
 
 func TestAddToPantryUsesGatewayRepositoryAndDefaultsQuantity(t *testing.T) {
 	expires := "2026-07-20T00:00:00Z"
-	repository := &fakeShoppingRepository{pantry: []groceries.PantryItem{{Name: "Eggs", Quantity: 3}}}
+	repository := &fakeShoppingRepository{pantry: []grocerystore.PantryItem{{Name: "Eggs", Quantity: 3}}}
 	resources := ShoppingResources{Repository: repository, Now: func() time.Time { return time.Unix(100, 0) }}
 	ctx := &shoppingContext{StrictContextMock: agent.NewStrictContextMock(t.Context()), userID: "user_1"}
 	result, err := resources.AddToPantry(ctx, AddPantryArgs{Items: []PantryItemInput{{Name: "Eggs", ExpiresAt: &expires}}})
@@ -210,16 +210,16 @@ func TestAddToPantryUsesGatewayRepositoryAndDefaultsQuantity(t *testing.T) {
 }
 
 func TestNativeShoppingToolsEmitCompleteProfileState(t *testing.T) {
-	store := &groceries.PreferredStore{LocationID: "store_1", Name: "QFC", Address: "1 Main", Chain: "QFC", SetAt: 50}
-	baseline := groceries.ShoppingProfile{
+	store := &grocerystore.PreferredStore{LocationID: "store_1", Name: "QFC", Address: "1 Main", Chain: "QFC", SetAt: 50}
+	baseline := grocerystore.ShoppingProfile{
 		PreferredStore: store,
-		Pantry:         []groceries.PantryItem{{Name: "Eggs", Quantity: 2, AddedAt: 10}},
-		Equipment:      []groceries.EquipmentItem{{Name: "Oven", AddedAt: 11}},
-		RecentOrders: []groceries.Order{
-			{ID: "order_2", Items: []groceries.OrderItem{{UPC: "2", Name: "Milk", Quantity: 1}}, TotalItems: 1, PlacedAt: 20},
-			{ID: "order_1", Items: []groceries.OrderItem{{UPC: "1", Name: "Bread", Quantity: 1}}, TotalItems: 1, PlacedAt: 10},
+		Pantry:         []grocerystore.PantryItem{{Name: "Eggs", Quantity: 2, AddedAt: 10}},
+		Equipment:      []grocerystore.EquipmentItem{{Name: "Oven", AddedAt: 11}},
+		RecentOrders: []grocerystore.Order{
+			{ID: "order_2", Items: []grocerystore.OrderItem{{UPC: "2", Name: "Milk", Quantity: 1}}, TotalItems: 1, PlacedAt: 20},
+			{ID: "order_1", Items: []grocerystore.OrderItem{{UPC: "1", Name: "Bread", Quantity: 1}}, TotalItems: 1, PlacedAt: 10},
 		},
-		FrequentItems: []groceries.FrequentItem{{Name: "Milk", UPC: "2", Orders: 2, TotalQuantity: 2}},
+		FrequentItems: []grocerystore.FrequentItem{{Name: "Milk", UPC: "2", Orders: 2, TotalQuantity: 2}},
 	}
 	tests := []struct {
 		name   string
@@ -250,7 +250,7 @@ func TestNativeShoppingToolsEmitCompleteProfileState(t *testing.T) {
 			return result.Error == nil, err
 		}},
 		{name: "record_order", invoke: func(resources ShoppingResources, ctx agent.Context) (bool, error) {
-			result, err := resources.RecordOrder(ctx, RecordOrderArgs{Items: []groceries.OrderItem{{UPC: "3", Name: "Apples", Quantity: 2}}})
+			result, err := resources.RecordOrder(ctx, RecordOrderArgs{Items: []grocerystore.OrderItem{{UPC: "3", Name: "Apples", Quantity: 2}}})
 			return result.Error == nil, err
 		}},
 		{name: "get_preferred_store", invoke: func(resources ShoppingResources, ctx agent.Context) (bool, error) {
@@ -317,8 +317,8 @@ func TestSetPreferredStoreNoOpKeepsCanonicalTimestampInState(t *testing.T) {
 }
 
 func TestShoppingToolRunnerPersistsToolStateDelta(t *testing.T) {
-	repository := &fakeLibraryShoppingRepository{profile: groceries.ShoppingProfile{
-		Pantry: []groceries.PantryItem{{Name: "Eggs", Quantity: 1, AddedAt: 10}},
+	repository := &fakeLibraryShoppingRepository{profile: grocerystore.ShoppingProfile{
+		Pantry: []grocerystore.PantryItem{{Name: "Eggs", Quantity: 1, AddedAt: 10}},
 	}}
 	built, err := NewWithLibrary(&shoppingToolModel{}, nil, nil, nil, repository)
 	if err != nil {
@@ -365,9 +365,9 @@ func TestShoppingToolRunnerPersistsToolStateDelta(t *testing.T) {
 
 func TestShoppingProfileHydratesBeforeAgentAcrossSessions(t *testing.T) {
 	expires := time.Date(2026, 7, 20, 0, 0, 0, 0, time.UTC).Unix()
-	repository := &fakeLibraryShoppingRepository{profile: groceries.ShoppingProfile{
-		Pantry:    []groceries.PantryItem{{Name: "Eggs", Quantity: 2, AddedAt: 10, ExpiresAt: &expires}},
-		Equipment: []groceries.EquipmentItem{{Name: "Oven", AddedAt: 11}},
+	repository := &fakeLibraryShoppingRepository{profile: grocerystore.ShoppingProfile{
+		Pantry:    []grocerystore.PantryItem{{Name: "Eggs", Quantity: 2, AddedAt: 10, ExpiresAt: &expires}},
+		Equipment: []grocerystore.EquipmentItem{{Name: "Oven", AddedAt: 11}},
 	}}
 	captured := &captureShoppingModel{}
 	built, err := NewWithLibrary(captured, nil, nil, nil, repository)
@@ -406,8 +406,8 @@ func TestShoppingProfileHydratesBeforeAgentAcrossSessions(t *testing.T) {
 	if instruction := shoppingInstructionText(captured.request); !strings.Contains(instruction, "Eggs") || strings.Contains(instruction, "{pantry}") {
 		t.Fatalf("model instruction did not receive hydrated pantry: %q", instruction)
 	}
-	repository.profile.Pantry = []groceries.PantryItem{{Name: "Milk", Quantity: 1.5, AddedAt: 20}}
-	repository.profile.Equipment = []groceries.EquipmentItem{{Name: "Blender", AddedAt: 21}}
+	repository.profile.Pantry = []grocerystore.PantryItem{{Name: "Milk", Quantity: 1.5, AddedAt: 20}}
+	repository.profile.Equipment = []grocerystore.EquipmentItem{{Name: "Blender", AddedAt: 21}}
 	repository.pantry = nil
 	updated := runTurn("thread_1")
 	secondSession := runTurn("thread_2")
@@ -451,20 +451,20 @@ func (c *shoppingContext) State() session.State {
 func (c *shoppingContext) ReadonlyState() session.ReadonlyState { return c.State() }
 
 type fakeShoppingRepository struct {
-	groceries.ShoppingRepository
-	profile      groceries.ShoppingProfile
-	pantry       []groceries.PantryItem
-	added        []groceries.PantryItem
+	grocerystore.ShoppingRepository
+	profile      grocerystore.ShoppingProfile
+	pantry       []grocerystore.PantryItem
+	added        []grocerystore.PantryItem
 	userID       string
 	addNow       time.Time
 	profileCalls int
 }
 
-func (f *fakeShoppingRepository) AddPantryItems(_ context.Context, userID string, items []groceries.PantryItem, now time.Time) ([]groceries.PantryItem, error) {
+func (f *fakeShoppingRepository) AddPantryItems(_ context.Context, userID string, items []grocerystore.PantryItem, now time.Time) ([]grocerystore.PantryItem, error) {
 	f.userID, f.addNow = userID, now
-	f.added = append([]groceries.PantryItem(nil), items...)
+	f.added = append([]grocerystore.PantryItem(nil), items...)
 	if f.pantry == nil {
-		f.pantry = append([]groceries.PantryItem(nil), f.profile.Pantry...)
+		f.pantry = append([]grocerystore.PantryItem(nil), f.profile.Pantry...)
 	}
 	for _, added := range items {
 		merged := false
@@ -481,16 +481,16 @@ func (f *fakeShoppingRepository) AddPantryItems(_ context.Context, userID string
 			f.pantry = append(f.pantry, added)
 		}
 	}
-	f.profile.Pantry = append([]groceries.PantryItem(nil), f.pantry...)
+	f.profile.Pantry = append([]grocerystore.PantryItem(nil), f.pantry...)
 	return f.pantry, nil
 }
 
-func (f *fakeShoppingRepository) RemovePantryItems(_ context.Context, userID string, names []string) ([]groceries.PantryItem, error) {
+func (f *fakeShoppingRepository) RemovePantryItems(_ context.Context, userID string, names []string) ([]grocerystore.PantryItem, error) {
 	f.userID = userID
 	if f.pantry == nil {
-		f.pantry = append([]groceries.PantryItem(nil), f.profile.Pantry...)
+		f.pantry = append([]grocerystore.PantryItem(nil), f.profile.Pantry...)
 	}
-	remaining := make([]groceries.PantryItem, 0, len(f.pantry))
+	remaining := make([]grocerystore.PantryItem, 0, len(f.pantry))
 	for _, item := range f.pantry {
 		remove := false
 		for _, name := range names {
@@ -501,29 +501,29 @@ func (f *fakeShoppingRepository) RemovePantryItems(_ context.Context, userID str
 		}
 	}
 	f.pantry = remaining
-	f.profile.Pantry = append([]groceries.PantryItem(nil), remaining...)
-	return append([]groceries.PantryItem(nil), remaining...), nil
+	f.profile.Pantry = append([]grocerystore.PantryItem(nil), remaining...)
+	return append([]grocerystore.PantryItem(nil), remaining...), nil
 }
 
 func (f *fakeShoppingRepository) ClearPantry(_ context.Context, userID string) error {
 	f.userID = userID
-	f.pantry = []groceries.PantryItem{}
-	f.profile.Pantry = []groceries.PantryItem{}
+	f.pantry = []grocerystore.PantryItem{}
+	f.profile.Pantry = []grocerystore.PantryItem{}
 	return nil
 }
 
-func (f *fakeShoppingRepository) AddEquipment(_ context.Context, userID string, items []groceries.EquipmentItem, now time.Time) ([]groceries.EquipmentItem, error) {
+func (f *fakeShoppingRepository) AddEquipment(_ context.Context, userID string, items []grocerystore.EquipmentItem, now time.Time) ([]grocerystore.EquipmentItem, error) {
 	f.userID = userID
 	for _, item := range items {
 		item.AddedAt = now.Unix()
 		f.profile.Equipment = append(f.profile.Equipment, item)
 	}
-	return append([]groceries.EquipmentItem(nil), f.profile.Equipment...), nil
+	return append([]grocerystore.EquipmentItem(nil), f.profile.Equipment...), nil
 }
 
-func (f *fakeShoppingRepository) RemoveEquipment(_ context.Context, userID string, names []string) ([]groceries.EquipmentItem, error) {
+func (f *fakeShoppingRepository) RemoveEquipment(_ context.Context, userID string, names []string) ([]grocerystore.EquipmentItem, error) {
 	f.userID = userID
-	remaining := make([]groceries.EquipmentItem, 0, len(f.profile.Equipment))
+	remaining := make([]grocerystore.EquipmentItem, 0, len(f.profile.Equipment))
 	for _, item := range f.profile.Equipment {
 		remove := false
 		for _, name := range names {
@@ -534,25 +534,25 @@ func (f *fakeShoppingRepository) RemoveEquipment(_ context.Context, userID strin
 		}
 	}
 	f.profile.Equipment = remaining
-	return append([]groceries.EquipmentItem(nil), remaining...), nil
+	return append([]grocerystore.EquipmentItem(nil), remaining...), nil
 }
 
 func (f *fakeShoppingRepository) ClearEquipment(_ context.Context, userID string) error {
 	f.userID = userID
-	f.profile.Equipment = []groceries.EquipmentItem{}
+	f.profile.Equipment = []grocerystore.EquipmentItem{}
 	return nil
 }
 
-func (f *fakeShoppingRepository) RecentOrders(_ context.Context, userID string, limit int) ([]groceries.Order, error) {
+func (f *fakeShoppingRepository) RecentOrders(_ context.Context, userID string, limit int) ([]grocerystore.Order, error) {
 	f.userID = userID
 	if limit <= 0 {
 		limit = 10
 	}
 	limit = min(limit, len(f.profile.RecentOrders))
-	return append([]groceries.Order(nil), f.profile.RecentOrders[:limit]...), nil
+	return append([]grocerystore.Order(nil), f.profile.RecentOrders[:limit]...), nil
 }
 
-func (f *fakeShoppingRepository) RecordOrder(_ context.Context, userID string, order groceries.Order, now time.Time) (groceries.Order, error) {
+func (f *fakeShoppingRepository) RecordOrder(_ context.Context, userID string, order grocerystore.Order, now time.Time) (grocerystore.Order, error) {
 	f.userID = userID
 	if order.ID == "" {
 		order.ID = "order_recorded"
@@ -563,16 +563,16 @@ func (f *fakeShoppingRepository) RecordOrder(_ context.Context, userID string, o
 	for _, item := range order.Items {
 		order.TotalItems += item.Quantity
 	}
-	f.profile.RecentOrders = append([]groceries.Order{order}, f.profile.RecentOrders...)
+	f.profile.RecentOrders = append([]grocerystore.Order{order}, f.profile.RecentOrders...)
 	if len(order.Items) > 0 {
-		f.profile.FrequentItems = []groceries.FrequentItem{{
+		f.profile.FrequentItems = []grocerystore.FrequentItem{{
 			Name: order.Items[0].Name, UPC: order.Items[0].UPC, Orders: 1, TotalQuantity: order.Items[0].Quantity,
 		}}
 	}
 	return order, nil
 }
 
-func (f *fakeShoppingRepository) PreferredStore(_ context.Context, userID string) (*groceries.PreferredStore, error) {
+func (f *fakeShoppingRepository) PreferredStore(_ context.Context, userID string) (*grocerystore.PreferredStore, error) {
 	f.userID = userID
 	if f.profile.PreferredStore == nil {
 		return nil, nil
@@ -581,7 +581,7 @@ func (f *fakeShoppingRepository) PreferredStore(_ context.Context, userID string
 	return &store, nil
 }
 
-func (f *fakeShoppingRepository) SetPreferredStore(_ context.Context, userID string, store groceries.PreferredStore, _ time.Time) (groceries.PreferredStore, error) {
+func (f *fakeShoppingRepository) SetPreferredStore(_ context.Context, userID string, store grocerystore.PreferredStore, _ time.Time) (grocerystore.PreferredStore, error) {
 	f.userID = userID
 	if f.profile.PreferredStore != nil && f.profile.PreferredStore.LocationID == store.LocationID &&
 		f.profile.PreferredStore.Name == store.Name && f.profile.PreferredStore.Address == store.Address &&
@@ -592,35 +592,35 @@ func (f *fakeShoppingRepository) SetPreferredStore(_ context.Context, userID str
 	return store, nil
 }
 
-func (f *fakeShoppingRepository) ShoppingProfile(_ context.Context, userID string) (groceries.ShoppingProfile, error) {
+func (f *fakeShoppingRepository) ShoppingProfile(_ context.Context, userID string) (grocerystore.ShoppingProfile, error) {
 	f.userID = userID
 	f.profileCalls++
 	profile := f.profile
 	if f.pantry != nil {
-		profile.Pantry = append([]groceries.PantryItem(nil), f.pantry...)
+		profile.Pantry = append([]grocerystore.PantryItem(nil), f.pantry...)
 	}
 	if profile.Pantry == nil {
-		profile.Pantry = []groceries.PantryItem{}
+		profile.Pantry = []grocerystore.PantryItem{}
 	}
 	if profile.Equipment == nil {
-		profile.Equipment = []groceries.EquipmentItem{}
+		profile.Equipment = []grocerystore.EquipmentItem{}
 	}
 	if profile.RecentOrders == nil {
-		profile.RecentOrders = []groceries.Order{}
+		profile.RecentOrders = []grocerystore.Order{}
 	}
 	if profile.FrequentItems == nil {
-		profile.FrequentItems = []groceries.FrequentItem{}
+		profile.FrequentItems = []grocerystore.FrequentItem{}
 	}
 	return profile, nil
 }
 
 type fakeLibraryShoppingRepository struct {
-	groceries.LibraryRepository
+	grocerystore.LibraryRepository
 	fakeShoppingRepository
 }
 
 type fakeLibraryRepository struct {
-	groceries.LibraryRepository
+	grocerystore.LibraryRepository
 }
 
 type captureShoppingModel struct {

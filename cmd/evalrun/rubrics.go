@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/aranlucas/agents/internal/expense"
-	"github.com/aranlucas/agents/internal/interview"
-	"github.com/aranlucas/agents/internal/oralboards"
-	"github.com/aranlucas/agents/internal/presentation"
-	"github.com/aranlucas/agents/internal/research"
-	"github.com/aranlucas/agents/internal/spreadsheet"
-	"github.com/aranlucas/agents/internal/travel"
+	"github.com/aranlucas/agents/internal/agents/expense"
+	"github.com/aranlucas/agents/internal/agents/interview"
+	"github.com/aranlucas/agents/internal/agents/oralboards"
+	"github.com/aranlucas/agents/internal/agents/presentation"
+	"github.com/aranlucas/agents/internal/agents/research"
+	"github.com/aranlucas/agents/internal/agents/spreadsheet"
+	"github.com/aranlucas/agents/internal/agents/travel"
 )
 
 // RubricResult is the outcome of one local structural check.
@@ -255,20 +255,6 @@ func gradeRubric(agentName, rubricID, description string, trace Trace) RubricRes
 		args, ok := trace.firstCallArgs[research.ReadyArgs]("mark_research_ready")
 		res.Pass = ok && strings.TrimSpace(args.Summary) != ""
 		res.Explanation = fmt.Sprintf("mark_research_ready called=%v with summary set=%v", ok, strings.TrimSpace(args.Summary) != "")
-
-	// --- resume ---
-	case "resume_grounded_in_resume":
-		res.Pass = textContainsAny(text, "doordash")
-		res.Explanation = "answer references DoorDash (current employer in the resume)"
-	case "resume_ai_agent_relevance":
-		res.Pass = textContainsAny(text, "agent", "ai")
-		res.Explanation = "answer mentions agent/AI work"
-	case "resume_no_invention":
-		res.Pass = true
-		res.Explanation = "no local heuristic can prove absence of invented facts; requires manual read of the trace"
-	case "resume_concise_positive":
-		res.Pass = len(trace.FinalText) < 1500
-		res.Explanation = fmt.Sprintf("answer length=%d (want a concise, focused response)", len(trace.FinalText))
 
 	// --- interview ---
 	case "interview_configures_behavioral":

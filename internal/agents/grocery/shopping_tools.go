@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/aranlucas/agents/internal/agentruntime"
-	"github.com/aranlucas/agents/internal/groceries"
+	"github.com/aranlucas/agents/internal/grocerystore"
 
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/tool"
@@ -51,12 +51,12 @@ type RecentOrdersArgs struct {
 }
 
 type RecordOrderArgs struct {
-	ID             string                `json:"id,omitempty" jsonschema:"Optional idempotency/order id."`
-	Items          []groceries.OrderItem `json:"items" jsonschema:"Items that were actually purchased in the completed order."`
-	EstimatedTotal *float64              `json:"estimated_total,omitempty" jsonschema:"Optional total paid or estimated total."`
-	PlacedAt       int64                 `json:"placed_at,omitzero" jsonschema:"Optional Unix timestamp; defaults to now."`
-	LocationID     *string               `json:"location_id,omitempty" jsonschema:"Optional preferred-store location id."`
-	Notes          *string               `json:"notes,omitempty" jsonschema:"Optional order notes."`
+	ID             string                   `json:"id,omitempty" jsonschema:"Optional idempotency/order id."`
+	Items          []grocerystore.OrderItem `json:"items" jsonschema:"Items that were actually purchased in the completed order."`
+	EstimatedTotal *float64                 `json:"estimated_total,omitempty" jsonschema:"Optional total paid or estimated total."`
+	PlacedAt       int64                    `json:"placed_at,omitzero" jsonschema:"Optional Unix timestamp; defaults to now."`
+	LocationID     *string                  `json:"location_id,omitempty" jsonschema:"Optional preferred-store location id."`
+	Notes          *string                  `json:"notes,omitempty" jsonschema:"Optional order notes."`
 }
 
 type PreferredStoreArgs struct {
@@ -67,28 +67,28 @@ type PreferredStoreArgs struct {
 }
 
 type PantryResult struct {
-	Items []groceries.PantryItem        `json:"items,omitempty"`
+	Items []grocerystore.PantryItem     `json:"items,omitempty"`
 	Error *agentruntime.StructuredError `json:"error,omitempty"`
 }
 
 type EquipmentResult struct {
-	Items []groceries.EquipmentItem     `json:"items,omitempty"`
+	Items []grocerystore.EquipmentItem  `json:"items,omitempty"`
 	Error *agentruntime.StructuredError `json:"error,omitempty"`
 }
 
 type OrdersResult struct {
-	Orders []groceries.Order             `json:"orders,omitempty"`
-	Order  *groceries.Order              `json:"order,omitempty"`
+	Orders []grocerystore.Order          `json:"orders,omitempty"`
+	Order  *grocerystore.Order           `json:"order,omitempty"`
 	Error  *agentruntime.StructuredError `json:"error,omitempty"`
 }
 
 type PreferredStoreResult struct {
-	Store *groceries.PreferredStore     `json:"store,omitempty"`
+	Store *grocerystore.PreferredStore  `json:"store,omitempty"`
 	Error *agentruntime.StructuredError `json:"error,omitempty"`
 }
 
 type ShoppingProfileResult struct {
-	Profile *groceries.ShoppingProfile    `json:"profile,omitempty"`
+	Profile *grocerystore.ShoppingProfile `json:"profile,omitempty"`
 	Error   *agentruntime.StructuredError `json:"error,omitempty"`
 }
 
@@ -97,11 +97,11 @@ type ShoppingProfileResult struct {
 // deterministic in tests without putting time concerns in the repository
 // interface.
 type ShoppingResources struct {
-	Repository groceries.ShoppingRepository
+	Repository grocerystore.ShoppingRepository
 	Now        func() time.Time
 }
 
-func shoppingResourceTools(repository groceries.ShoppingRepository) ([]tool.Tool, error) {
+func shoppingResourceTools(repository grocerystore.ShoppingRepository) ([]tool.Tool, error) {
 	if repository == nil {
 		return nil, errors.New("grocery shopping repository is required")
 	}
@@ -166,7 +166,7 @@ func (shopping ShoppingResources) GetShoppingProfile(ctx agent.Context, _ struct
 }
 
 func (shopping ShoppingResources) AddToPantry(ctx agent.Context, input AddPantryArgs) (PantryResult, error) {
-	items := make([]groceries.PantryItem, 0, len(input.Items))
+	items := make([]grocerystore.PantryItem, 0, len(input.Items))
 	for _, item := range input.Items {
 		quantity := float64(1)
 		if item.Quantity != nil {
@@ -176,7 +176,7 @@ func (shopping ShoppingResources) AddToPantry(ctx agent.Context, input AddPantry
 		if err != nil {
 			return PantryResult{Error: &agentruntime.StructuredError{Code: "invalid_pantry_item", Message: "expires_at must be an RFC3339 timestamp"}}, nil
 		}
-		items = append(items, groceries.PantryItem{Name: item.Name, Quantity: quantity, ExpiresAt: expiresAt})
+		items = append(items, grocerystore.PantryItem{Name: item.Name, Quantity: quantity, ExpiresAt: expiresAt})
 	}
 	pantry, err := shopping.Repository.AddPantryItems(ctx, strings.TrimSpace(ctx.UserID()), items, shopping.currentTime())
 	if err != nil {
@@ -193,10 +193,10 @@ func (shopping ShoppingResources) RemoveFromPantry(ctx agent.Context, input Remo
 		if err := shopping.Repository.ClearPantry(ctx, strings.TrimSpace(ctx.UserID())); err != nil {
 			return PantryResult{Error: shoppingFailure("pantry", err)}, nil
 		}
-		if err := writeShoppingPantryState(ctx, []groceries.PantryItem{}); err != nil {
-			return PantryResult{Items: []groceries.PantryItem{}, Error: shoppingFailure("shopping_profile", err)}, nil
+		if err := writeShoppingPantryState(ctx, []grocerystore.PantryItem{}); err != nil {
+			return PantryResult{Items: []grocerystore.PantryItem{}, Error: shoppingFailure("shopping_profile", err)}, nil
 		}
-		return PantryResult{Items: []groceries.PantryItem{}}, nil
+		return PantryResult{Items: []grocerystore.PantryItem{}}, nil
 	}
 	pantry, err := shopping.Repository.RemovePantryItems(ctx, strings.TrimSpace(ctx.UserID()), input.Names)
 	if err != nil {
@@ -209,9 +209,9 @@ func (shopping ShoppingResources) RemoveFromPantry(ctx agent.Context, input Remo
 }
 
 func (shopping ShoppingResources) AddEquipment(ctx agent.Context, input EquipmentArgs) (EquipmentResult, error) {
-	items := make([]groceries.EquipmentItem, 0, len(input.Items))
+	items := make([]grocerystore.EquipmentItem, 0, len(input.Items))
 	for _, item := range input.Items {
-		items = append(items, groceries.EquipmentItem{Name: item.Name, Category: item.Category})
+		items = append(items, grocerystore.EquipmentItem{Name: item.Name, Category: item.Category})
 	}
 	equipment, err := shopping.Repository.AddEquipment(ctx, strings.TrimSpace(ctx.UserID()), items, shopping.currentTime())
 	if err != nil {
@@ -228,10 +228,10 @@ func (shopping ShoppingResources) RemoveEquipment(ctx agent.Context, input Remov
 		if err := shopping.Repository.ClearEquipment(ctx, strings.TrimSpace(ctx.UserID())); err != nil {
 			return EquipmentResult{Error: shoppingFailure("equipment", err)}, nil
 		}
-		if err := writeShoppingEquipmentState(ctx, []groceries.EquipmentItem{}); err != nil {
-			return EquipmentResult{Items: []groceries.EquipmentItem{}, Error: shoppingFailure("shopping_profile", err)}, nil
+		if err := writeShoppingEquipmentState(ctx, []grocerystore.EquipmentItem{}); err != nil {
+			return EquipmentResult{Items: []grocerystore.EquipmentItem{}, Error: shoppingFailure("shopping_profile", err)}, nil
 		}
-		return EquipmentResult{Items: []groceries.EquipmentItem{}}, nil
+		return EquipmentResult{Items: []grocerystore.EquipmentItem{}}, nil
 	}
 	equipment, err := shopping.Repository.RemoveEquipment(ctx, strings.TrimSpace(ctx.UserID()), input.Names)
 	if err != nil {
@@ -267,7 +267,7 @@ func (shopping ShoppingResources) RecordOrder(ctx agent.Context, input RecordOrd
 			estimatedTotal = &total
 		}
 	}
-	order, err := shopping.Repository.RecordOrder(ctx, strings.TrimSpace(ctx.UserID()), groceries.Order{
+	order, err := shopping.Repository.RecordOrder(ctx, strings.TrimSpace(ctx.UserID()), grocerystore.Order{
 		ID: input.ID, Items: input.Items, EstimatedTotal: estimatedTotal, PlacedAt: input.PlacedAt, LocationID: input.LocationID, Notes: input.Notes,
 	}, shopping.currentTime())
 	if err != nil {
@@ -291,7 +291,7 @@ func (shopping ShoppingResources) GetPreferredStore(ctx agent.Context, _ struct{
 }
 
 func (shopping ShoppingResources) SetPreferredStore(ctx agent.Context, input PreferredStoreArgs) (PreferredStoreResult, error) {
-	store := groceries.PreferredStore{
+	store := grocerystore.PreferredStore{
 		LocationID: strings.TrimSpace(input.LocationID),
 		Name:       strings.TrimSpace(input.Name),
 		Address:    strings.TrimSpace(input.Address),
@@ -324,7 +324,7 @@ func parseShoppingDate(value *string) (*int64, error) {
 func shoppingFailure(scope string, err error) *agentruntime.StructuredError {
 	code := scope + "_unavailable"
 	message := "shopping data is unavailable"
-	if errors.Is(err, groceries.ErrInvalid) {
+	if errors.Is(err, grocerystore.ErrInvalid) {
 		code, message = "invalid_shopping_request", "shopping values are invalid"
 	}
 	return &agentruntime.StructuredError{Code: code, Message: message}

@@ -8,8 +8,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/aranlucas/agents/internal/fitness"
-	"github.com/aranlucas/agents/internal/grocery"
+	"github.com/aranlucas/agents/internal/agents/fitness"
+	"github.com/aranlucas/agents/internal/agents/grocery"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/runner"

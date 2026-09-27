@@ -12,17 +12,16 @@ import (
 	"github.com/aranlucas/agents/internal/providerpolicy"
 	"github.com/aranlucas/agents/internal/providers/openai"
 
-	"github.com/aranlucas/agents/internal/expense"
-	"github.com/aranlucas/agents/internal/fitness"
-	"github.com/aranlucas/agents/internal/grocery"
-	"github.com/aranlucas/agents/internal/interview"
-	"github.com/aranlucas/agents/internal/oralboards"
-	"github.com/aranlucas/agents/internal/presentation"
-	"github.com/aranlucas/agents/internal/research"
-	"github.com/aranlucas/agents/internal/resume"
-	"github.com/aranlucas/agents/internal/spreadsheet"
-	"github.com/aranlucas/agents/internal/travel"
-	"github.com/aranlucas/agents/internal/wellness"
+	"github.com/aranlucas/agents/internal/agents/expense"
+	"github.com/aranlucas/agents/internal/agents/fitness"
+	"github.com/aranlucas/agents/internal/agents/grocery"
+	"github.com/aranlucas/agents/internal/agents/interview"
+	"github.com/aranlucas/agents/internal/agents/oralboards"
+	"github.com/aranlucas/agents/internal/agents/presentation"
+	"github.com/aranlucas/agents/internal/agents/research"
+	"github.com/aranlucas/agents/internal/agents/spreadsheet"
+	"github.com/aranlucas/agents/internal/agents/travel"
+	"github.com/aranlucas/agents/internal/agents/wellness"
 
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/model"
@@ -89,16 +88,8 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		built, err := travel.New(m, travel.NewTRVL(integrations.TRVLMCPURL, &http.Client{Timeout: 20 * time.Second}))
 		return Built{Name: name, Agent: built, StateDefaults: travel.StateDefaults, Notes: notes}, err
 
-	case "resume":
-		m, err := newAgentModel(providers, providerpolicy.Resume, &notes)
-		if err != nil {
-			return Built{}, err
-		}
-		built, err := resume.New(m)
-		return Built{Name: name, Agent: built, StateDefaults: resume.StateDefaults, Notes: notes}, err
-
 	case "interview":
-		m, err := newAgentModel(providers, providerpolicy.Resume, &notes)
+		m, err := newAgentModel(providers, providerpolicy.Career, &notes)
 		if err != nil {
 			return Built{}, err
 		}

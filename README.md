@@ -26,8 +26,10 @@ The root `go.mod` declares `github.com/aranlucas/agents`. Commands live in `cmd/
 - `cmd/agents` dispatches `serve`, `migrate`, and `telegram`; each mode is a `func(context.Context) error`.
 - `internal/config` is the only package that reads the environment. `config.Keys` lists every variable.
 - `internal/app` is the shared composition root: it opens the database and builds every agent for both the gateway and the Telegram worker.
+- `internal/agents/<name>` holds each authored ADK agent (instructions, tools, state).
+- `internal/grocerystore` persists households, grocery lists, recipes, and the shopping profile; `internal/groceryapi` is the generated `/api/grocery/*` server.
 - `internal/storage` owns SQLite: application tables through `Statement` batches (one transaction per batch), ADK sessions through ADK's `session/database` service, and versioned ADK artifacts.
-- `cmd/contracts` and `cmd/evalrun` are development tools and are not shipped in the service image. Evaluation datasets live beside their agent under `internal/<agent>/eval/datasets`; reports go to `artifacts/<agent>/grade_results`.
+- `cmd/contracts` and `cmd/evalrun` are development tools and are not shipped in the service image. Evaluation datasets live beside their agent under `internal/agents/<agent>/eval/datasets`; reports go to `artifacts/<agent>/grade_results`.
 
 ## Persistence
 

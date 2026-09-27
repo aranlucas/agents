@@ -16,22 +16,21 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/aranlucas/agents/internal/agents/expense"
+	"github.com/aranlucas/agents/internal/agents/fitness"
+	"github.com/aranlucas/agents/internal/agents/grocery"
+	"github.com/aranlucas/agents/internal/agents/interview"
+	"github.com/aranlucas/agents/internal/agents/jobs"
+	"github.com/aranlucas/agents/internal/agents/oralboards"
+	"github.com/aranlucas/agents/internal/agents/presentation"
+	"github.com/aranlucas/agents/internal/agents/research"
+	"github.com/aranlucas/agents/internal/agents/spreadsheet"
+	"github.com/aranlucas/agents/internal/agents/travel"
+	"github.com/aranlucas/agents/internal/agents/trends"
+	"github.com/aranlucas/agents/internal/agents/wellness"
 	"github.com/aranlucas/agents/internal/catalog"
 	"github.com/aranlucas/agents/internal/common"
-	"github.com/aranlucas/agents/internal/expense"
-	"github.com/aranlucas/agents/internal/fitness"
 	"github.com/aranlucas/agents/internal/fitnessdata"
-	"github.com/aranlucas/agents/internal/grocery"
-	"github.com/aranlucas/agents/internal/interview"
-	"github.com/aranlucas/agents/internal/jobs"
-	"github.com/aranlucas/agents/internal/oralboards"
-	"github.com/aranlucas/agents/internal/presentation"
-	"github.com/aranlucas/agents/internal/research"
-	"github.com/aranlucas/agents/internal/resume"
-	"github.com/aranlucas/agents/internal/spreadsheet"
-	"github.com/aranlucas/agents/internal/travel"
-	"github.com/aranlucas/agents/internal/trends"
-	"github.com/aranlucas/agents/internal/wellness"
 
 	"github.com/google/jsonschema-go/jsonschema"
 )
@@ -122,7 +121,7 @@ func generateJSONSchemas() (map[string][]byte, error) {
 	stateNames := map[string]string{
 		"travel": "TripState", "grocery": "GroceryState", "fitness": "FitnessState",
 		"wellness": "WellnessState", "expense": "ExpenseState", "oral-boards": "OralBoardsState",
-		"trends": "TrendsState", "resume": "ResumeState", "research": "ResearchState",
+		"trends": "TrendsState", "research": "ResearchState",
 		"jobs": "JobsState", "interview": "InterviewState",
 		"spreadsheet": "SpreadsheetState", "presentation": "PresentationState",
 	}
@@ -490,7 +489,6 @@ func enumDefinitions() []enumDef {
 		{Name: "PresentationTheme", Values: []string{"light", "dark", "minimal"}},
 		{Name: "PresentationStatus", Values: []string{string(presentation.StatusIdle), string(presentation.StatusDrafting), string(presentation.StatusReady)}},
 		{Name: "TrendsStatus", Values: []string{string(trends.StatusIdle), string(trends.StatusQuerying), string(trends.StatusReady), string(trends.StatusEmpty), string(trends.StatusError)}},
-		{Name: "ResumeStatus", Values: []string{string(resume.StatusIdle), string(resume.StatusAnalyzing), string(resume.StatusReady)}},
 		{Name: "JobsStatus", Values: []string{string(jobs.StatusIdle), string(jobs.StatusResearching), string(jobs.StatusMatching), string(jobs.StatusDrafting), string(jobs.StatusReady)}},
 		{Name: "JobMatchVerdict", Values: []string{string(jobs.VerdictStrongMatch), string(jobs.VerdictMatch), string(jobs.VerdictStretch), string(jobs.VerdictSkip)}},
 		{Name: "JobCandidateStatus", Values: []string{string(jobs.CandidateNew), string(jobs.CandidateShortlisted), string(jobs.CandidateDismissed)}},
@@ -621,11 +619,6 @@ func objectDefinitions() []objectDef {
 			field("query", "", true), field("generated_sql", "", true), field("columns", "", true),
 			field("rows", "TrendsRow[]", true), field("insights", "", true), field("status", "TrendsStatus", true),
 			field("error", "", true),
-		)),
-		object("ResumeState", resume.ResumeState{}, stateFields(
-			field("target_role", "", true), field("job_description", "", true), field("fit_summary", "", true),
-			field("gaps", "", true), field("tailored_bullets", "", true), field("status", "ResumeStatus", true),
-			field("review_summary", "", true),
 		)),
 		object("JobsState", jobs.JobsState{}, stateFields(
 			field("profile", "", true), field("watchlist", "", true), field("inbox", "", true),

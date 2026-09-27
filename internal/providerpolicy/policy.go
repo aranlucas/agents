@@ -20,11 +20,12 @@ const (
 	Grocery      Workload = "grocery"
 	Presentation Workload = "presentation"
 	Research     Workload = "research"
-	Resume       Workload = "resume"
-	Spreadsheet  Workload = "spreadsheet"
-	Travel       Workload = "travel"
-	Trends       Workload = "trends"
-	Wellness     Workload = "wellness"
+	// Career is shared by the jobs and interview agents.
+	Career      Workload = "career"
+	Spreadsheet Workload = "spreadsheet"
+	Travel      Workload = "travel"
+	Trends      Workload = "trends"
+	Wellness    Workload = "wellness"
 
 	groqResponsesModel  = "openai/gpt-oss-120b"
 	openRouterFreeModel = "openrouter/free"
@@ -71,8 +72,8 @@ func Agent(workload Workload) (Policy, error) {
 		return groqStandard("GROQ_API_KEY is required to configure the presentation agent"), nil
 	case Research:
 		return openRouterLight("OPENROUTER_API_KEY is required to configure the research agent", "groq"), nil
-	case Resume:
-		return openRouterLight("OPENROUTER_API_KEY is required to configure the resume agent", "groq"), nil
+	case Career:
+		return openRouterLight("OPENROUTER_API_KEY is required to configure the jobs and interview agents", "groq"), nil
 	case Spreadsheet:
 		return groqStandard("GROQ_API_KEY is required to configure the spreadsheet agent"), nil
 	case Travel:

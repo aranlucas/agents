@@ -7,7 +7,7 @@ import (
 
 	"github.com/aranlucas/agents/internal/bravesearch"
 	"github.com/aranlucas/agents/internal/common"
-	"github.com/aranlucas/agents/internal/groceries"
+	"github.com/aranlucas/agents/internal/grocerystore"
 
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
@@ -28,7 +28,7 @@ func New(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *common
 	return newAgent(m, kroger, search, loader, llmagent.ModeChat, nil, toolsets...)
 }
 
-func NewWithLibrary(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *common.WebLoader, repository groceries.LibraryRepository, toolsets ...tool.Toolset) (agent.Agent, error) {
+func NewWithLibrary(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *common.WebLoader, repository grocerystore.LibraryRepository, toolsets ...tool.Toolset) (agent.Agent, error) {
 	if repository == nil {
 		return nil, errors.New("grocery library repository is required")
 	}
@@ -39,14 +39,14 @@ func NewTask(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *co
 	return newAgent(m, kroger, search, loader, llmagent.ModeTask, nil, toolsets...)
 }
 
-func NewTaskWithLibrary(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *common.WebLoader, repository groceries.LibraryRepository, toolsets ...tool.Toolset) (agent.Agent, error) {
+func NewTaskWithLibrary(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *common.WebLoader, repository grocerystore.LibraryRepository, toolsets ...tool.Toolset) (agent.Agent, error) {
 	if repository == nil {
 		return nil, errors.New("grocery library repository is required")
 	}
 	return newAgent(m, kroger, search, loader, llmagent.ModeTask, repository, toolsets...)
 }
 
-func newAgent(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *common.WebLoader, mode llmagent.Mode, repository groceries.LibraryRepository, toolsets ...tool.Toolset) (agent.Agent, error) {
+func newAgent(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *common.WebLoader, mode llmagent.Mode, repository grocerystore.LibraryRepository, toolsets ...tool.Toolset) (agent.Agent, error) {
 	tools, err := groceryTools(search, loader)
 	if err != nil {
 		return nil, err
@@ -176,7 +176,7 @@ func groceryTools(search *bravesearch.Client, loader *common.WebLoader) ([]tool.
 	return result, nil
 }
 
-func groceryLibraryTools(repository groceries.LibraryRepository) ([]tool.Tool, error) {
+func groceryLibraryTools(repository grocerystore.LibraryRepository) ([]tool.Tool, error) {
 	if repository == nil {
 		return nil, errors.New("grocery library repository is required")
 	}
@@ -194,8 +194,8 @@ func groceryLibraryTools(repository groceries.LibraryRepository) ([]tool.Tool, e
 	return tools, nil
 }
 
-func nativeShoppingRepository(repository groceries.LibraryRepository) (groceries.ShoppingRepository, bool) {
-	shoppingRepository, ok := repository.(groceries.ShoppingRepository)
+func nativeShoppingRepository(repository grocerystore.LibraryRepository) (grocerystore.ShoppingRepository, bool) {
+	shoppingRepository, ok := repository.(grocerystore.ShoppingRepository)
 	return shoppingRepository, ok && shoppingRepository != nil
 }
 

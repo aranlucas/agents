@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/aranlucas/agents/internal/agentruntime"
-	"github.com/aranlucas/agents/internal/groceries"
+	"github.com/aranlucas/agents/internal/grocerystore"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/tool"
 	"google.golang.org/adk/v2/tool/functiontool"
@@ -26,39 +26,39 @@ type SaveCurrentResourceArgs struct {
 }
 
 type UpdateSavedListArgs struct {
-	ID    string               `json:"id" jsonschema:"The exact saved list id."`
-	Title *string              `json:"title,omitempty" jsonschema:"Optional replacement title."`
-	Items *[]groceries.NewItem `json:"items,omitempty" jsonschema:"Optional complete replacement item set. Omit to leave items unchanged; use an empty array to clear the list."`
+	ID    string                  `json:"id" jsonschema:"The exact saved list id."`
+	Title *string                 `json:"title,omitempty" jsonschema:"Optional replacement title."`
+	Items *[]grocerystore.NewItem `json:"items,omitempty" jsonschema:"Optional complete replacement item set. Omit to leave items unchanged; use an empty array to clear the list."`
 }
 
 type UpdateSavedRecipeArgs struct {
 	ID string `json:"id" jsonschema:"The exact saved recipe id."`
-	groceries.RecipeContent
+	grocerystore.RecipeContent
 }
 
 type SavedListsResult struct {
-	Lists []groceries.List              `json:"lists,omitempty"`
-	List  *groceries.List               `json:"list,omitempty"`
+	Lists []grocerystore.List           `json:"lists,omitempty"`
+	List  *grocerystore.List            `json:"list,omitempty"`
 	Error *agentruntime.StructuredError `json:"error,omitempty"`
 }
 
 type SavedRecipesResult struct {
-	Recipes []groceries.Recipe            `json:"recipes,omitempty"`
-	Recipe  *groceries.Recipe             `json:"recipe,omitempty"`
+	Recipes []grocerystore.Recipe         `json:"recipes,omitempty"`
+	Recipe  *grocerystore.Recipe          `json:"recipe,omitempty"`
 	Error   *agentruntime.StructuredError `json:"error,omitempty"`
 }
 
 type GroceryHouseholdsResult struct {
-	Households []groceries.Household         `json:"households,omitempty"`
+	Households []grocerystore.Household      `json:"households,omitempty"`
 	Error      *agentruntime.StructuredError `json:"error,omitempty"`
 }
 
 type SavedResources struct {
-	Repository groceries.LibraryRepository
+	Repository grocerystore.LibraryRepository
 	Now        func() time.Time
 }
 
-func savedResourceTools(repository groceries.LibraryRepository) ([]tool.Tool, error) {
+func savedResourceTools(repository grocerystore.LibraryRepository) ([]tool.Tool, error) {
 	saved := SavedResources{Repository: repository}
 	definitions := []struct {
 		name        string
@@ -126,7 +126,7 @@ func (saved SavedResources) SaveCurrentList(ctx agent.Context, input SaveCurrent
 	if title == "" {
 		title = "Grocery list"
 	}
-	list, err := saved.Repository.SaveList(ctx, strings.TrimSpace(ctx.UserID()), groceries.SavedListInput{
+	list, err := saved.Repository.SaveList(ctx, strings.TrimSpace(ctx.UserID()), grocerystore.SavedListInput{
 		HouseholdID: input.HouseholdID, Title: title, Items: groceryListItems(state),
 	}, saved.currentTime())
 	if err != nil {
@@ -138,7 +138,7 @@ func (saved SavedResources) SaveCurrentList(ctx agent.Context, input SaveCurrent
 func (saved SavedResources) ListSavedLists(ctx agent.Context, input SavedResourceScopeArgs) (SavedListsResult, error) {
 	userID := strings.TrimSpace(ctx.UserID())
 	var (
-		lists []groceries.List
+		lists []grocerystore.List
 		err   error
 	)
 	if input.HouseholdID == nil {
@@ -166,11 +166,11 @@ func (saved SavedResources) UpdateSavedList(ctx agent.Context, input UpdateSaved
 		return savedListFailure("invalid_saved_list", "provide a saved list id and at least one title or item change"), nil
 	}
 	var (
-		list groceries.List
+		list grocerystore.List
 		err  error
 	)
 	if input.Title != nil {
-		list, err = saved.Repository.UpdateList(ctx, userID, listID, groceries.ListPatch{Title: input.Title}, saved.currentTime())
+		list, err = saved.Repository.UpdateList(ctx, userID, listID, grocerystore.ListPatch{Title: input.Title}, saved.currentTime())
 		if err != nil {
 			return savedListRepositoryFailure(err), nil
 		}
@@ -193,7 +193,7 @@ func (saved SavedResources) SaveCurrentRecipe(ctx agent.Context, input SaveCurre
 	if title := strings.TrimSpace(input.Title); title != "" {
 		content.Title = title
 	}
-	recipe, err := saved.Repository.SaveRecipe(ctx, strings.TrimSpace(ctx.UserID()), groceries.SavedRecipeInput{
+	recipe, err := saved.Repository.SaveRecipe(ctx, strings.TrimSpace(ctx.UserID()), grocerystore.SavedRecipeInput{
 		HouseholdID: input.HouseholdID, RecipeContent: content,
 	}, saved.currentTime())
 	if err != nil {
@@ -233,20 +233,20 @@ func (saved SavedResources) currentTime() time.Time {
 	return time.Now()
 }
 
-func recipeContent(recipe RecipeDraft) groceries.RecipeContent {
-	ingredients := make([]groceries.NewIngredient, 0, len(recipe.Ingredients))
+func recipeContent(recipe RecipeDraft) grocerystore.RecipeContent {
+	ingredients := make([]grocerystore.NewIngredient, 0, len(recipe.Ingredients))
 	for _, ingredient := range recipe.Ingredients {
-		ingredients = append(ingredients, groceries.NewIngredient{
+		ingredients = append(ingredients, grocerystore.NewIngredient{
 			Name: ingredient.Name, Quantity: ingredient.Quantity, Unit: ingredient.Unit, Note: ingredient.Note,
 		})
 	}
-	return groceries.RecipeContent{
+	return grocerystore.RecipeContent{
 		Title: recipe.Title, Description: recipe.Description, Servings: recipe.Servings, Notes: recipe.Notes,
 		Ingredients: ingredients, Steps: append([]string(nil), recipe.Steps...), Tags: append([]string(nil), recipe.Tags...),
 	}
 }
 
-func groceryListItems(state GroceryState) []groceries.NewItem {
+func groceryListItems(state GroceryState) []grocerystore.NewItem {
 	matches := make(map[string]ProductMatch, len(state.ProductMatches))
 	for _, match := range state.ProductMatches {
 		query := strings.ToLower(strings.TrimSpace(match.Query))
@@ -254,7 +254,7 @@ func groceryListItems(state GroceryState) []groceries.NewItem {
 			matches[query] = match
 		}
 	}
-	items := make([]groceries.NewItem, 0, len(state.ShoppingList))
+	items := make([]grocerystore.NewItem, 0, len(state.ShoppingList))
 	for _, raw := range state.ShoppingList {
 		name := strings.TrimSpace(raw)
 		if name == "" {
@@ -264,18 +264,18 @@ func groceryListItems(state GroceryState) []groceries.NewItem {
 		if match, ok := matches[strings.ToLower(name)]; ok && strings.TrimSpace(match.Size) != "" {
 			quantity = strings.TrimSpace(match.Size)
 		}
-		items = append(items, groceries.NewItem{Name: name, Quantity: quantity})
+		items = append(items, grocerystore.NewItem{Name: name, Quantity: quantity})
 	}
 	return items
 }
 
 func savedListRepositoryFailure(err error) SavedListsResult {
 	switch {
-	case errors.Is(err, groceries.ErrForbidden):
+	case errors.Is(err, grocerystore.ErrForbidden):
 		return savedListFailure("saved_list_forbidden", "you do not have access to that list or household")
-	case errors.Is(err, groceries.ErrNotFound):
+	case errors.Is(err, grocerystore.ErrNotFound):
 		return savedListFailure("saved_list_not_found", "the saved list no longer exists")
-	case errors.Is(err, groceries.ErrInvalid):
+	case errors.Is(err, grocerystore.ErrInvalid):
 		return savedListFailure("invalid_saved_list", "the saved list values are invalid")
 	default:
 		return savedListFailure("saved_list_unavailable", "the saved-list library is unavailable")
@@ -284,11 +284,11 @@ func savedListRepositoryFailure(err error) SavedListsResult {
 
 func savedRecipeRepositoryFailure(err error) SavedRecipesResult {
 	switch {
-	case errors.Is(err, groceries.ErrForbidden):
+	case errors.Is(err, grocerystore.ErrForbidden):
 		return savedRecipeFailure("saved_recipe_forbidden", "you do not have access to that recipe or household")
-	case errors.Is(err, groceries.ErrNotFound):
+	case errors.Is(err, grocerystore.ErrNotFound):
 		return savedRecipeFailure("saved_recipe_not_found", "the saved recipe no longer exists")
-	case errors.Is(err, groceries.ErrInvalid):
+	case errors.Is(err, grocerystore.ErrInvalid):
 		return savedRecipeFailure("invalid_saved_recipe", "the saved recipe values are invalid")
 	default:
 		return savedRecipeFailure("saved_recipe_unavailable", "the saved-recipe library is unavailable")

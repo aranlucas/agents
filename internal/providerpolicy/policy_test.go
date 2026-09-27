@@ -23,7 +23,7 @@ func TestAgentPolicies(t *testing.T) {
 		{Grocery, "groq", groqResponsesModel, "", 20, []string{"openrouter"}},
 		{Presentation, "groq", groqResponsesModel, "", 30, []string{"openrouter"}},
 		{Research, "openrouter", openRouterFreeModel, "", 20, []string{"groq"}},
-		{Resume, "openrouter", openRouterFreeModel, "", 20, []string{"groq"}},
+		{Career, "openrouter", openRouterFreeModel, "", 20, []string{"groq"}},
 		{Spreadsheet, "groq", groqResponsesModel, "", 30, []string{"openrouter"}},
 		{Travel, "openrouter", openRouterFreeModel, "", 20, []string{"groq"}},
 		{Trends, "groq", groqResponsesModel, "", 30, []string{"openrouter"}},
@@ -134,12 +134,12 @@ func TestResolveEvalPreservesSubstitutionOrderAndLimits(t *testing.T) {
 
 	delete(providers, "openrouter")
 	delete(providers, "groq")
-	resumePolicy, err := Agent(Resume)
+	careerPolicy, err := Agent(Career)
 	if err != nil {
 		t.Fatal(err)
 	}
 	providers["groq"] = testProvider("groq")
-	resolved, note, err = ResolveEval(providers, resumePolicy)
+	resolved, note, err = ResolveEval(providers, careerPolicy)
 	if err != nil || note != "openrouter unavailable locally; substituted groq/openai/gpt-oss-120b for eval" || resolved.Name != "groq" || resolved.Model != groqResponsesModel {
 		t.Fatalf("Groq eval resolution = %#v, %q, %v", resolved, note, err)
 	}

@@ -1,7 +1,6 @@
 // Command gateway is the single deployable Go ADK HTTP service: it mounts
-// every registered agent's AG-UI routes behind Clerk auth (except the
-// public /resume slice), persists sessions, pending client-tool calls, and artifacts in
-// SQLite. See README.md.
+// every registered agent's AG-UI routes behind Clerk auth, and persists
+// sessions, pending client-tool calls, and artifacts in SQLite. See README.md.
 package gateway
 
 import (
@@ -16,21 +15,18 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/aranlucas/agents/internal/agentruntime"
 	"github.com/aranlucas/agents/internal/agui"
 	"github.com/aranlucas/agents/internal/app"
 	"github.com/aranlucas/agents/internal/auth"
-	"github.com/aranlucas/agents/internal/bootstrap"
 	"github.com/aranlucas/agents/internal/catalog"
 	"github.com/aranlucas/agents/internal/clerk"
 	"github.com/aranlucas/agents/internal/common"
 	"github.com/aranlucas/agents/internal/config"
 	"github.com/aranlucas/agents/internal/fitnessdata"
-	"github.com/aranlucas/agents/internal/groceries"
+	"github.com/aranlucas/agents/internal/grocerystore"
 	"github.com/aranlucas/agents/internal/observability"
 	"github.com/aranlucas/agents/internal/telegram"
 
@@ -61,135 +57,6 @@ func (timer *startupTimer) mark(phase string) {
 	timer.last = now
 }
 
-type handlerState struct {
-	handler http.Handler
-}
-
-// handlerSwitcher publishes the public Resume surface first, then atomically
-// swaps in the complete gateway once the remaining agents have been built.
-// Requests never observe a partially-built mux. The build starts on the first
-// request for a non-Resume route; if it fails, those routes answer 503 and
-// /ready reports the failure instead of silently serving 404s.
-type handlerSwitcher struct {
-	current atomic.Pointer[handlerState]
-
-	mu      sync.Mutex
-	hydrate func()
-	started bool
-	done    chan struct{}
-	failed  atomic.Bool
-}
-
-func newHandlerSwitcher(initial http.Handler) *handlerSwitcher {
-	switcher := &handlerSwitcher{}
-	switcher.Swap(initial)
-	return switcher
-}
-
-func (switcher *handlerSwitcher) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if switcher.hydrate != nil && fullGatewayPath(r.URL.Path) {
-		switcher.start()
-		select {
-		case <-switcher.done:
-		case <-r.Context().Done():
-			return
-		}
-		if switcher.failed.Load() {
-			writeGatewayJSONError(w, http.StatusServiceUnavailable, "agents_unavailable")
-			return
-		}
-	}
-	state := switcher.current.Load()
-	if state == nil || state.handler == nil {
-		http.Error(w, "gateway is initializing", http.StatusServiceUnavailable)
-		return
-	}
-	state.handler.ServeHTTP(w, r)
-}
-
-// hydrateOnDemand registers the build for the full surface. The returned
-// channel closes when the build finishes or when stop cancels a build that
-// never started.
-func (switcher *handlerSwitcher) hydrateOnDemand(build func()) <-chan struct{} {
-	switcher.hydrate = build
-	switcher.done = make(chan struct{})
-	return switcher.done
-}
-
-func (switcher *handlerSwitcher) start() {
-	switcher.mu.Lock()
-	defer switcher.mu.Unlock()
-	if switcher.started {
-		return
-	}
-	switcher.started = true
-	go func() {
-		defer close(switcher.done)
-		switcher.hydrate()
-	}()
-}
-
-// stop prevents a build from starting during shutdown.
-func (switcher *handlerSwitcher) stop() {
-	switcher.mu.Lock()
-	defer switcher.mu.Unlock()
-	if switcher.hydrate != nil && !switcher.started {
-		switcher.started = true
-		close(switcher.done)
-	}
-}
-
-func (switcher *handlerSwitcher) fail() { switcher.failed.Store(true) }
-
-// status reports the full surface for /ready: "pending" until the first
-// non-Resume request builds it, then "ok" or "failed".
-func (switcher *handlerSwitcher) status() string {
-	if switcher == nil || switcher.hydrate == nil {
-		return "ok"
-	}
-	select {
-	case <-switcher.done:
-		if switcher.failed.Load() {
-			return "failed"
-		}
-		switcher.mu.Lock()
-		defer switcher.mu.Unlock()
-		if !switcher.started {
-			return "pending"
-		}
-		return "ok"
-	default:
-		return "pending"
-	}
-}
-
-var fullGatewayPrefixes = func() []string {
-	prefixes := []string{"/info", "/threads", "/api/grocery", "/fitness/activities", "/telegram/link"}
-	for _, spec := range catalog.All() {
-		if spec.Route == "resume" {
-			continue
-		}
-		prefixes = append(prefixes, "/"+spec.Route, "/agent/"+spec.ClientID)
-	}
-	return prefixes
-}()
-
-func fullGatewayPath(path string) bool {
-	for _, prefix := range fullGatewayPrefixes {
-		if path == prefix || strings.HasPrefix(path, prefix+"/") {
-			return true
-		}
-	}
-	return false
-}
-
-func (switcher *handlerSwitcher) Swap(next http.Handler) {
-	if next == nil {
-		return
-	}
-	switcher.current.Store(&handlerState{handler: next})
-}
-
 // Dependencies are the gateway's externally-constructed collaborators.
 // Production values are built in main(); tests supply fakes so route
 // composition can be exercised without a database or a real model provider.
@@ -199,16 +66,13 @@ type Dependencies struct {
 	Pending  agui.PendingTools
 	Verifier auth.TokenVerifier
 	// Database gates /ready on the migrated schema.
-	Database common.HealthChecker
-	// AgentsStatus reports the lazily built agent surface ("pending", "ok",
-	// or "failed"); nil means the surface is always complete.
-	AgentsStatus func() string
-	Stream       agui.StreamSmoothing
-	Links        *telegram.LinkStore
-	Clerk        clerk.Backend
-	Fitness      fitnessdata.Repository
-	Groceries    groceries.LibraryRepository
-	Shopping     groceries.ShoppingRepository
+	Database  common.HealthChecker
+	Stream    agui.StreamSmoothing
+	Links     *telegram.LinkStore
+	Clerk     clerk.Backend
+	Fitness   fitnessdata.Repository
+	Groceries grocerystore.LibraryRepository
+	Shopping  grocerystore.ShoppingRepository
 	// KrogerMCPURL is reduced to its origin before the lazy account linker
 	// requests /userinfo; the MCP path itself is never reused as a base path.
 	KrogerMCPURL string
@@ -221,8 +85,8 @@ type Dependencies struct {
 // marked Public), and the configured browser-origin policy. It mounts the
 // one prebuilt AG-UI handler per entry and a shared state handler. Binding
 // the agent at construction validates and reuses its ADK runner across runs.
-// The grocery REST surface is optional so a latency-critical partial surface
-// can be assembled without loading its OpenAPI validator or background store.
+// The grocery REST surface is optional so tests can compose the agent routes
+// without its OpenAPI validator or background store.
 func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 	if deps.Registry == nil {
 		return nil, errors.New("agent registry is required")
@@ -234,7 +98,7 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 		deps.Now = time.Now
 	}
 	if deps.Groceries != nil && deps.Shopping == nil {
-		deps.Shopping, _ = deps.Groceries.(groceries.ShoppingRepository)
+		deps.Shopping, _ = deps.Groceries.(grocerystore.ShoppingRepository)
 	}
 
 	stateHandler := agui.StateHandler(deps.Registry, deps.Sessions)
@@ -503,7 +367,7 @@ func capabilitiesHandler(w http.ResponseWriter, _ *http.Request) {
 }
 
 // agentHealthHandler reports one agent's readiness via entry.Health, which
-// must never call a model provider (see resumeHealth). A nil Health always
+// must never call a model provider. A nil Health always
 // reports healthy.
 func agentHealthHandler(entry agentruntime.Entry) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -534,23 +398,18 @@ func livenessHandler(deps Dependencies) http.HandlerFunc {
 	}
 }
 
-// rootHealthHandler checks the database schema through healthCheckTimeout and
-// reports the agent surface. A surface that is still pending (built on first
-// use) is healthy; one that failed to build is not. It never calls a model
-// provider or echoes credentials.
+// rootHealthHandler checks the database schema through healthCheckTimeout. It
+// never calls a model provider or echoes credentials.
 func rootHealthHandler(deps Dependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), healthCheckTimeout)
 		defer cancel()
 
 		checks := common.ReadyChecks(ctx, map[string]common.HealthChecker{"database": deps.Database})
-		if deps.AgentsStatus != nil {
-			checks["agents"] = deps.AgentsStatus()
-		}
 
 		status, code := "ok", http.StatusOK
 		for _, value := range checks {
-			if value != "ok" && value != "pending" {
+			if value != "ok" {
 				status, code = "degraded", http.StatusServiceUnavailable
 			}
 		}
@@ -564,9 +423,9 @@ func rootHealthHandler(deps Dependencies) http.HandlerFunc {
 	}
 }
 
-// Run serves the gateway until ctx is canceled. It publishes the public Resume
-// surface first and builds the remaining agents on the first request that
-// needs them, so a sleeping Railway service wakes quickly for Resume visitors.
+// Run serves the gateway until ctx is canceled. Every agent is built before
+// the listener opens, so a construction failure fails the deploy instead of
+// the first request that needs that agent.
 func Run(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -607,37 +466,43 @@ func Run(ctx context.Context) error {
 	defer func() { _ = rt.Close() }()
 	startup.mark("database")
 
-	agentToolset := agui.NewAGUIToolset(rt.Pending)
-	resumeBinding, err := app.BuildResume(rt, agentToolset)
+	specialists, err := app.BuildSpecialists(ctx, rt, agui.NewAGUIToolset(rt.Pending))
 	if err != nil {
 		return err
 	}
-	resumeSpec, ok := catalog.ByRoute("resume")
-	if !ok {
-		return errors.New("build Resume registry: catalog route is missing")
-	}
-	resumeRegistry, err := (bootstrap.Specialists{Resume: resumeBinding}).RegistryFor([]catalog.Spec{resumeSpec})
+	defer func() { _ = specialists.Close() }()
+	registry, err := specialists.Registry()
 	if err != nil {
-		return fmt.Errorf("build Resume registry: %w", err)
+		return fmt.Errorf("build agent registry: %w", err)
 	}
-	startup.mark("resume")
+	startup.mark("agents")
 
-	var switcher *handlerSwitcher
-	agentsStatus := func() string { return switcher.status() }
-	stream := agui.StreamSmoothingFromEnv(os.Getenv)
-	resumeHandler, err := New(cfg, Dependencies{
-		Registry: resumeRegistry, Sessions: rt.Sessions, Pending: rt.Pending,
-		Database: rt.DB, AgentsStatus: agentsStatus, Stream: stream, Now: time.Now,
+	var verifier auth.TokenVerifier
+	if cfg.ClerkJWKS != "" {
+		if verifier, err = auth.NewClerkVerifier(cfg.ClerkJWKS, cfg.ClerkIssuer, "", nil); err != nil {
+			return fmt.Errorf("configure Clerk verifier: %w", err)
+		}
+	}
+	var clerkBackend clerk.Backend
+	if cfg.ClerkSecret != "" {
+		if clerkBackend, err = clerk.NewBackend(common.NewHTTPClient(15*time.Second, 1<<20).Client, "", cfg.ClerkSecret); err != nil {
+			return fmt.Errorf("configure Clerk backend: %w", err)
+		}
+	}
+	handler, err := New(cfg, Dependencies{
+		Registry: registry, Sessions: rt.Sessions, Pending: rt.Pending, Verifier: verifier,
+		Database: rt.DB, Links: rt.Links, Clerk: clerkBackend,
+		Fitness: rt.Fitness, Groceries: rt.Groceries, Shopping: rt.Groceries,
+		KrogerMCPURL: cfg.Integrations.KrogerMCPURL, Stream: agui.StreamSmoothingFromEnv(os.Getenv), Now: time.Now,
 	})
 	if err != nil {
-		return fmt.Errorf("build Resume gateway: %w", err)
+		return fmt.Errorf("build gateway: %w", err)
 	}
-	switcher = newHandlerSwitcher(resumeHandler)
 	startup.mark("handler")
 
 	server := &http.Server{
 		Addr:    ":" + cfg.HTTP.Port,
-		Handler: observability.WrapSentry(switcher),
+		Handler: observability.WrapSentry(handler),
 		// Long enough that a slow client filling headers can't hold a
 		// connection open indefinitely, short enough not to mask a hung
 		// upstream. WriteTimeout is generous because AG-UI runs stream SSE
@@ -651,54 +516,6 @@ func Run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("gateway listener failed: %w", err)
 	}
-
-	var specialists *app.Specialists
-	hydrate := func() error {
-		built, err := app.BuildSpecialists(ctx, rt, resumeBinding, agentToolset)
-		if err != nil {
-			return err
-		}
-		specialists = built
-		registry, err := built.Registry()
-		if err != nil {
-			return fmt.Errorf("build agent registry: %w", err)
-		}
-		var verifier auth.TokenVerifier
-		if cfg.ClerkJWKS != "" {
-			if verifier, err = auth.NewClerkVerifier(cfg.ClerkJWKS, cfg.ClerkIssuer, "", nil); err != nil {
-				return fmt.Errorf("configure Clerk verifier: %w", err)
-			}
-		}
-		var clerkBackend clerk.Backend
-		if cfg.ClerkSecret != "" {
-			if clerkBackend, err = clerk.NewBackend(common.NewHTTPClient(15*time.Second, 1<<20).Client, "", cfg.ClerkSecret); err != nil {
-				return fmt.Errorf("configure Clerk backend: %w", err)
-			}
-		}
-		complete, err := New(cfg, Dependencies{
-			Registry: registry, Sessions: rt.Sessions, Pending: rt.Pending, Verifier: verifier,
-			Database: rt.DB, AgentsStatus: agentsStatus, Links: rt.Links, Clerk: clerkBackend,
-			Fitness: rt.Fitness, Groceries: rt.Groceries, Shopping: rt.Groceries,
-			KrogerMCPURL: cfg.Integrations.KrogerMCPURL, Stream: stream, Now: time.Now,
-		})
-		if err != nil {
-			return fmt.Errorf("build gateway: %w", err)
-		}
-		switcher.Swap(complete)
-		if startup.enabled {
-			log.Printf("startup phase=full-surface-ready elapsed=%s", time.Since(startup.start))
-		}
-		return nil
-	}
-	hydrateDone := switcher.hydrateOnDemand(func() {
-		if err := hydrate(); err != nil {
-			observability.CaptureError(context.Background(), err)
-			log.Printf("agent hydration failed: %v", err)
-			switcher.fail()
-		}
-	})
-	defer func() { _ = specialists.Close() }()
-
 	shutdownDone := make(chan struct{})
 	go func() {
 		defer close(shutdownDone)
@@ -715,12 +532,6 @@ func Run(ctx context.Context) error {
 	serveErr := server.Serve(listener)
 	cancel()
 	<-shutdownDone
-	switcher.stop()
-	select {
-	case <-hydrateDone:
-	case <-time.After(5 * time.Second):
-		log.Printf("gateway hydration did not finish before shutdown")
-	}
 	if serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
 		observability.CaptureError(context.Background(), serveErr)
 		return fmt.Errorf("gateway server failed: %w", serveErr)
