@@ -14,8 +14,8 @@ import (
 // Message objects, mirroring ag_ui_adk's adk_events_to_messages
 // (event_translator.py in the Python reference):
 //
-//   - Partial events are skipped. In practice the D1-backed
-//     cloudflare.SessionService never persists a Partial event (see
+//   - Partial events are skipped. In practice the SQLite-backed
+//     storage.SessionService never persists a Partial event (see
 //     SessionService.AppendEvent), so this is defense in depth for any other
 //     session.Service implementation.
 //   - An event carrying one or more FunctionResponse parts becomes one

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aranlucas/agents/internal/cloudflare"
+	"github.com/aranlucas/agents/internal/storage"
 	"google.golang.org/adk/v2/artifact"
 	"google.golang.org/genai"
 )
@@ -120,8 +120,8 @@ func (s *Store) SaveList(ctx context.Context, userID string, input SavedListInpu
 	}
 	createdAt := timestamp(now)
 	list := List{ID: id, HouseholdID: householdID, OwnerUserID: userID, Title: title, Status: "active", CreatedAt: createdAt, UpdatedAt: createdAt, Items: make([]Item, 0, len(input.Items))}
-	statements := make([]cloudflare.Statement, 0, len(input.Items)+2)
-	statements = append(statements, cloudflare.Statement{
+	statements := make([]storage.Statement, 0, len(input.Items)+2)
+	statements = append(statements, storage.Statement{
 		SQL:    `INSERT INTO grocery_lists (id, household_id, owner_user_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, 'active', ?, ?)`,
 		Params: []any{id, nullableString(householdID), userID, title, createdAt, createdAt},
 	})
@@ -131,7 +131,7 @@ func (s *Store) SaveList(ctx context.Context, userID string, input SavedListInpu
 			return List{}, itemErr
 		}
 		list.Items = append(list.Items, item)
-		statements = append(statements, cloudflare.Statement{
+		statements = append(statements, storage.Statement{
 			SQL:    `INSERT INTO grocery_list_items (id, list_id, name, quantity, note, position, added_by, checked_by, checked_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?)`,
 			Params: []any{item.ID, id, item.Name, item.Quantity, nullableString(item.Note), position, userID, createdAt},
 		})
@@ -145,7 +145,7 @@ func (s *Store) SaveList(ctx context.Context, userID string, input SavedListInpu
 	}
 	list.ArtifactVersion = version
 	statements = append(statements, artifactReferenceStatement("list", id, scopeUserID, listArtifactName, version, createdAt))
-	if _, err := s.d1.Run(ctx, statements...); err != nil {
+	if _, err := s.db.Run(ctx, statements...); err != nil {
 		return List{}, fmt.Errorf("save grocery list: %w", err)
 	}
 	return list, nil
@@ -159,7 +159,7 @@ func (s *Store) ListPersonalLists(ctx context.Context, userID string) ([]List, e
 	if userID == "" {
 		return nil, ErrInvalid
 	}
-	results, err := s.d1.Run(ctx, cloudflare.Statement{
+	results, err := s.db.Run(ctx, storage.Statement{
 		SQL: `SELECT gl.id, gl.household_id, gl.owner_user_id, gl.title, gl.status, gl.created_at, gl.updated_at,
 		             COALESCE((SELECT version FROM grocery_resource_artifacts gra WHERE gra.resource_type = 'list' AND gra.resource_id = gl.id), 0) AS artifact_version
 		      FROM grocery_lists gl WHERE gl.owner_user_id = ? AND gl.household_id IS NULL
@@ -210,7 +210,7 @@ func (s *Store) UpdateList(ctx context.Context, userID, listID string, patch Lis
 	}
 	sets, params = append(sets, "updated_at = ?"), append(params, timestamp(now))
 	params = append(params, listID, userID, userID)
-	results, err := s.d1.Run(ctx, cloudflare.Statement{
+	results, err := s.db.Run(ctx, storage.Statement{
 		SQL: `UPDATE grocery_lists SET ` + strings.Join(sets, ", ") + ` WHERE id = ? AND (owner_user_id = ? OR EXISTS (
 		      SELECT 1 FROM household_members hm WHERE hm.household_id = grocery_lists.household_id AND hm.clerk_user_id = ?
 		    ))`,
@@ -241,7 +241,7 @@ func (s *Store) ReplaceListItems(ctx context.Context, userID, listID string, inp
 		return List{}, ErrNotFound
 	}
 	updatedAt := timestamp(now)
-	statements := []cloudflare.Statement{
+	statements := []storage.Statement{
 		{SQL: `DELETE FROM grocery_list_item_upcs WHERE item_id IN (SELECT id FROM grocery_list_items WHERE list_id = ?)`, Params: []any{listID}},
 		{SQL: `DELETE FROM grocery_list_item_product_refs WHERE item_id IN (SELECT id FROM grocery_list_items WHERE list_id = ?)`, Params: []any{listID}},
 		{SQL: `DELETE FROM grocery_list_items WHERE list_id = ?`, Params: []any{listID}},
@@ -251,7 +251,7 @@ func (s *Store) ReplaceListItems(ctx context.Context, userID, listID string, inp
 		if itemErr != nil {
 			return List{}, itemErr
 		}
-		statements = append(statements, cloudflare.Statement{
+		statements = append(statements, storage.Statement{
 			SQL:    `INSERT INTO grocery_list_items (id, list_id, name, quantity, note, position, added_by, checked_by, checked_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?)`,
 			Params: []any{item.ID, listID, item.Name, item.Quantity, nullableString(item.Note), position, userID, updatedAt},
 		})
@@ -259,8 +259,8 @@ func (s *Store) ReplaceListItems(ctx context.Context, userID, listID string, inp
 			statements = append(statements, *stmt)
 		}
 	}
-	statements = append(statements, cloudflare.Statement{SQL: `UPDATE grocery_lists SET updated_at = ? WHERE id = ?`, Params: []any{updatedAt, listID}})
-	if _, err := s.d1.Run(ctx, statements...); err != nil {
+	statements = append(statements, storage.Statement{SQL: `UPDATE grocery_lists SET updated_at = ? WHERE id = ?`, Params: []any{updatedAt, listID}})
+	if _, err := s.db.Run(ctx, statements...); err != nil {
 		return List{}, fmt.Errorf("replace grocery list items: %w", err)
 	}
 	return s.refreshListSnapshot(ctx, userID, listID, now)
@@ -294,7 +294,7 @@ func (s *Store) SaveRecipe(ctx context.Context, userID string, input SavedRecipe
 	}
 	recipe.ArtifactVersion = version
 	statements = append(statements, artifactReferenceStatement("recipe", id, scopeUserID, recipeArtifactName, version, createdAt))
-	if _, err := s.d1.Run(ctx, statements...); err != nil {
+	if _, err := s.db.Run(ctx, statements...); err != nil {
 		return Recipe{}, fmt.Errorf("save recipe: %w", err)
 	}
 	return recipe, nil
@@ -308,9 +308,9 @@ func (s *Store) ListRecipes(ctx context.Context, userID string, householdID *str
 	if userID == "" {
 		return nil, ErrInvalid
 	}
-	var statement cloudflare.Statement
+	var statement storage.Statement
 	if householdID == nil {
-		statement = cloudflare.Statement{
+		statement = storage.Statement{
 			SQL:    recipeSelect + ` WHERE r.owner_user_id = ? AND r.household_id IS NULL ORDER BY r.updated_at DESC, r.id`,
 			Params: []any{userID},
 		}
@@ -326,12 +326,12 @@ func (s *Store) ListRecipes(ctx context.Context, userID string, householdID *str
 		if !member {
 			return nil, ErrForbidden
 		}
-		statement = cloudflare.Statement{
+		statement = storage.Statement{
 			SQL:    recipeSelect + ` WHERE r.household_id = ? ORDER BY r.updated_at DESC, r.id`,
 			Params: []any{household},
 		}
 	}
-	results, err := s.d1.Run(ctx, statement)
+	results, err := s.db.Run(ctx, statement)
 	if err != nil {
 		return nil, fmt.Errorf("list recipes: %w", err)
 	}
@@ -358,17 +358,17 @@ func (s *Store) GetRecipe(ctx context.Context, userID, recipeID string) (Recipe,
 	if userID == "" || recipeID == "" {
 		return Recipe{}, ErrInvalid
 	}
-	results, err := s.d1.Run(
+	results, err := s.db.Run(
 		ctx,
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: recipeSelect + ` WHERE r.id = ? AND (r.owner_user_id = ? OR EXISTS (
 			      SELECT 1 FROM household_members hm WHERE hm.household_id = r.household_id AND hm.clerk_user_id = ?
 			    )) LIMIT 1`,
 			Params: []any{recipeID, userID, userID},
 		},
-		cloudflare.Statement{SQL: `SELECT id, recipe_id, name, quantity, unit, note, position FROM recipe_ingredients WHERE recipe_id = ? ORDER BY position, id`, Params: []any{recipeID}},
-		cloudflare.Statement{SQL: `SELECT id, recipe_id, instruction, position FROM recipe_steps WHERE recipe_id = ? ORDER BY position, id`, Params: []any{recipeID}},
-		cloudflare.Statement{SQL: `SELECT tag FROM recipe_tags WHERE recipe_id = ? ORDER BY position, tag`, Params: []any{recipeID}},
+		storage.Statement{SQL: `SELECT id, recipe_id, name, quantity, unit, note, position FROM recipe_ingredients WHERE recipe_id = ? ORDER BY position, id`, Params: []any{recipeID}},
+		storage.Statement{SQL: `SELECT id, recipe_id, instruction, position FROM recipe_steps WHERE recipe_id = ? ORDER BY position, id`, Params: []any{recipeID}},
+		storage.Statement{SQL: `SELECT tag FROM recipe_tags WHERE recipe_id = ? ORDER BY position, tag`, Params: []any{recipeID}},
 	)
 	if err != nil {
 		return Recipe{}, fmt.Errorf("load recipe: %w", err)
@@ -427,7 +427,7 @@ func (s *Store) UpdateRecipe(ctx context.Context, userID, recipeID string, input
 		return Recipe{}, err
 	}
 	updatedAt := timestamp(now)
-	statements := []cloudflare.Statement{
+	statements := []storage.Statement{
 		{SQL: `UPDATE recipes SET title = ?, description = ?, servings = ?, notes = ?, updated_at = ? WHERE id = ?`, Params: []any{content.Title, content.Description, content.Servings, content.Notes, updatedAt, recipeID}},
 		{SQL: `DELETE FROM recipe_ingredients WHERE recipe_id = ?`, Params: []any{recipeID}},
 		{SQL: `DELETE FROM recipe_steps WHERE recipe_id = ?`, Params: []any{recipeID}},
@@ -438,7 +438,7 @@ func (s *Store) UpdateRecipe(ctx context.Context, userID, recipeID string, input
 		return Recipe{}, err
 	}
 	statements = append(statements, replacement[1:]...)
-	if _, err := s.d1.Run(ctx, statements...); err != nil {
+	if _, err := s.db.Run(ctx, statements...); err != nil {
 		return Recipe{}, fmt.Errorf("update recipe: %w", err)
 	}
 	return s.refreshRecipeSnapshot(ctx, userID, recipeID, now)
@@ -448,13 +448,13 @@ const recipeSelect = `SELECT r.id, r.household_id, r.owner_user_id, r.title, r.d
        COALESCE((SELECT version FROM grocery_resource_artifacts gra WHERE gra.resource_type = 'recipe' AND gra.resource_id = r.id), 0) AS artifact_version
        FROM recipes r`
 
-func (s *Store) materializeRecipe(id, userID string, householdID *string, content RecipeContent, updatedAt int64) (Recipe, []cloudflare.Statement, error) {
+func (s *Store) materializeRecipe(id, userID string, householdID *string, content RecipeContent, updatedAt int64) (Recipe, []storage.Statement, error) {
 	recipe := Recipe{
 		ID: id, HouseholdID: householdID, OwnerUserID: userID, Title: content.Title, Description: content.Description,
 		Servings: content.Servings, Notes: content.Notes, Status: "active", CreatedAt: updatedAt, UpdatedAt: updatedAt,
 		Ingredients: make([]Ingredient, 0, len(content.Ingredients)), Steps: make([]RecipeStep, 0, len(content.Steps)), Tags: append([]string(nil), content.Tags...),
 	}
-	statements := []cloudflare.Statement{{
+	statements := []storage.Statement{{
 		SQL:    `INSERT INTO recipes (id, household_id, owner_user_id, title, description, servings, notes, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`,
 		Params: []any{id, nullableString(householdID), userID, content.Title, content.Description, content.Servings, content.Notes, updatedAt, updatedAt},
 	}}
@@ -465,7 +465,7 @@ func (s *Store) materializeRecipe(id, userID string, householdID *string, conten
 		}
 		ingredient := Ingredient{ID: ingredientID, RecipeID: id, Name: input.Name, Quantity: input.Quantity, Unit: input.Unit, Note: input.Note, Position: position}
 		recipe.Ingredients = append(recipe.Ingredients, ingredient)
-		statements = append(statements, cloudflare.Statement{
+		statements = append(statements, storage.Statement{
 			SQL:    `INSERT INTO recipe_ingredients (id, recipe_id, name, quantity, unit, note, position) VALUES (?, ?, ?, ?, ?, ?, ?)`,
 			Params: []any{ingredientID, id, input.Name, input.Quantity, input.Unit, input.Note, position},
 		})
@@ -477,13 +477,13 @@ func (s *Store) materializeRecipe(id, userID string, householdID *string, conten
 		}
 		step := RecipeStep{ID: stepID, RecipeID: id, Instruction: instruction, Position: position}
 		recipe.Steps = append(recipe.Steps, step)
-		statements = append(statements, cloudflare.Statement{
+		statements = append(statements, storage.Statement{
 			SQL:    `INSERT INTO recipe_steps (id, recipe_id, instruction, position) VALUES (?, ?, ?, ?)`,
 			Params: []any{stepID, id, instruction, position},
 		})
 	}
 	for position, tag := range content.Tags {
-		statements = append(statements, cloudflare.Statement{
+		statements = append(statements, storage.Statement{
 			SQL:    `INSERT INTO recipe_tags (recipe_id, tag, position) VALUES (?, ?, ?)`,
 			Params: []any{id, tag, position},
 		})
@@ -594,7 +594,7 @@ func (s *Store) refreshListSnapshot(ctx context.Context, userID, listID string, 
 	if err != nil {
 		return List{}, err
 	}
-	if _, err := s.d1.Run(ctx, artifactReferenceUpsertStatement("list", list.ID, scopeUserID, listArtifactName, version, timestamp(now))); err != nil {
+	if _, err := s.db.Run(ctx, artifactReferenceUpsertStatement("list", list.ID, scopeUserID, listArtifactName, version, timestamp(now))); err != nil {
 		return List{}, fmt.Errorf("update grocery list artifact reference: %w", err)
 	}
 	list.ArtifactVersion = version
@@ -615,7 +615,7 @@ func (s *Store) refreshRecipeSnapshot(ctx context.Context, userID, recipeID stri
 	if err != nil {
 		return Recipe{}, err
 	}
-	if _, err := s.d1.Run(ctx, artifactReferenceUpsertStatement("recipe", recipe.ID, scopeUserID, recipeArtifactName, version, timestamp(now))); err != nil {
+	if _, err := s.db.Run(ctx, artifactReferenceUpsertStatement("recipe", recipe.ID, scopeUserID, recipeArtifactName, version, timestamp(now))); err != nil {
 		return Recipe{}, fmt.Errorf("update recipe artifact reference: %w", err)
 	}
 	recipe.ArtifactVersion = version
@@ -676,15 +676,15 @@ func nullableString(value any) any {
 	}
 }
 
-func artifactReferenceStatement(resourceType, resourceID, scopeUserID, fileName string, version, createdAt int64) cloudflare.Statement {
-	return cloudflare.Statement{
+func artifactReferenceStatement(resourceType, resourceID, scopeUserID, fileName string, version, createdAt int64) storage.Statement {
+	return storage.Statement{
 		SQL:    `INSERT INTO grocery_resource_artifacts (resource_type, resource_id, scope_user_id, file_name, version, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
 		Params: []any{resourceType, resourceID, scopeUserID, fileName, version, createdAt},
 	}
 }
 
-func artifactReferenceUpsertStatement(resourceType, resourceID, scopeUserID, fileName string, version, createdAt int64) cloudflare.Statement {
-	return cloudflare.Statement{
+func artifactReferenceUpsertStatement(resourceType, resourceID, scopeUserID, fileName string, version, createdAt int64) storage.Statement {
+	return storage.Statement{
 		SQL: `INSERT INTO grocery_resource_artifacts (resource_type, resource_id, scope_user_id, file_name, version, created_at)
 		      VALUES (?, ?, ?, ?, ?, ?)
 		      ON CONFLICT(resource_type, resource_id) DO UPDATE SET

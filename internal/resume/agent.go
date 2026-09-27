@@ -9,9 +9,9 @@ import (
 	"google.golang.org/genai"
 )
 
-// AppName is the ADK app name resume sessions and D1 rows are scoped under.
-// It must match the Python resume agent's app name so evaluation datasets
-// and D1 rows stay comparable across the migration.
+// AppName is the ADK app name resume sessions are scoped under. It must
+// match the Python resume agent's app name so evaluation datasets stay
+// comparable across the migration.
 const AppName = "resume_agent"
 
 // New builds the public resume assistant, using m for inference. It preserves

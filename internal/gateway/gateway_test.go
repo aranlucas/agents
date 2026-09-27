@@ -5,7 +5,6 @@ import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
-	"fmt"
 	"io"
 	"iter"
 	"net/http"
@@ -18,6 +17,7 @@ import (
 
 	"github.com/aranlucas/agents/internal/agentruntime"
 	"github.com/aranlucas/agents/internal/agui"
+	"github.com/aranlucas/agents/internal/app"
 	"github.com/aranlucas/agents/internal/auth"
 	"github.com/aranlucas/agents/internal/catalog"
 	"github.com/aranlucas/agents/internal/clerk"
@@ -33,124 +33,9 @@ import (
 
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
-	"google.golang.org/adk/v2/model/gemini"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
 )
-
-func TestOralboardsGeminiRetryPolicyMatchesProviderGuidance(t *testing.T) {
-	retry := oralboardsGeminiClientConfig("test-key").HTTPOptions.RetryOptions
-	if retry == nil {
-		t.Fatal("retry options are nil")
-	}
-	if retry.Attempts != nil || retry.InitialDelay != nil || retry.MaxDelay != nil || retry.ExpBase != nil || retry.Jitter != nil || len(retry.HTTPStatusCodes) != 0 {
-		t.Fatalf("retry options override provider defaults: %#v", retry)
-	}
-}
-
-func TestOralboardsGeminiRetriesTemporaryUnavailableResponse(t *testing.T) {
-	for _, status := range []int{408, 429, 500, 502, 503, 504} {
-		for _, stream := range []bool{false, true} {
-			name := fmt.Sprintf("%d/%s", status, map[bool]string{false: "unary", true: "streaming"}[stream])
-			t.Run(name, func(t *testing.T) {
-				var calls atomic.Int32
-				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-					if calls.Add(1) == 1 {
-						w.Header().Set("Content-Type", "application/json")
-						w.WriteHeader(status)
-						_, _ = fmt.Fprintf(w, `{"error":{"code":%d,"message":"Temporary provider failure.","status":"UNAVAILABLE"}}`, status)
-						return
-					}
-					response := `{"candidates":[{"content":{"role":"model","parts":[{"text":"Recovered examiner response"}]},"finishReason":"STOP"}]}`
-					if stream {
-						w.Header().Set("Content-Type", "text/event-stream")
-						_, _ = io.WriteString(w, "data: "+response+"\n\n")
-						return
-					}
-					w.Header().Set("Content-Type", "application/json")
-					_, _ = io.WriteString(w, response)
-				}))
-				defer server.Close()
-
-				llm := newImmediateRetryGeminiModel(t, server.URL)
-				var responseText string
-				for response, generateErr := range llm.GenerateContent(t.Context(), &model.LLMRequest{
-					Contents: genai.Text("Continue the oral-board examination."),
-				}, stream) {
-					if generateErr != nil {
-						t.Fatalf("model call did not recover from HTTP %d: %v", status, generateErr)
-					}
-					if response != nil && response.Content != nil && len(response.Content.Parts) > 0 {
-						responseText = response.Content.Parts[0].Text
-					}
-				}
-				if calls.Load() != 2 || responseText != "Recovered examiner response" {
-					t.Fatalf("calls = %d, response = %q", calls.Load(), responseText)
-				}
-			})
-		}
-	}
-}
-
-func TestOralboardsGeminiDoesNotRetryPermanentResponse(t *testing.T) {
-	var calls atomic.Int32
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		calls.Add(1)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = io.WriteString(w, `{"error":{"code":400,"message":"Invalid request.","status":"INVALID_ARGUMENT"}}`)
-	}))
-	defer server.Close()
-
-	llm := newImmediateRetryGeminiModel(t, server.URL)
-	var modelErr error
-	for _, err := range llm.GenerateContent(t.Context(), &model.LLMRequest{Contents: genai.Text("invalid")}, false) {
-		modelErr = err
-	}
-	if modelErr == nil {
-		t.Fatal("permanent response returned no error")
-	}
-	if calls.Load() != 1 {
-		t.Fatalf("permanent response calls = %d, want 1", calls.Load())
-	}
-}
-
-func TestOralboardsGeminiStopsAfterDocumentedAttemptLimit(t *testing.T) {
-	var calls atomic.Int32
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		calls.Add(1)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusServiceUnavailable)
-		_, _ = io.WriteString(w, `{"error":{"code":503,"message":"High demand.","status":"UNAVAILABLE"}}`)
-	}))
-	defer server.Close()
-
-	llm := newImmediateRetryGeminiModel(t, server.URL)
-	var modelErr error
-	for _, err := range llm.GenerateContent(t.Context(), &model.LLMRequest{Contents: genai.Text("retry")}, false) {
-		modelErr = err
-	}
-	if modelErr == nil {
-		t.Fatal("exhausted retry response returned no error")
-	}
-	if calls.Load() != 5 {
-		t.Fatalf("exhausted retry calls = %d, want 5", calls.Load())
-	}
-}
-
-func newImmediateRetryGeminiModel(t *testing.T, baseURL string) model.LLM {
-	t.Helper()
-	config := oralboardsGeminiClientConfig("test-key")
-	config.HTTPOptions.BaseURL = baseURL
-	config.HTTPOptions.RetryOptions.InitialDelay = new(0.0)
-	config.HTTPOptions.RetryOptions.MaxDelay = new(0.0)
-	config.HTTPOptions.RetryOptions.Jitter = new(0.0)
-	llm, err := gemini.NewModel(t.Context(), "test-model", config)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return llm
-}
 
 func TestFrontendAgentIDUsesCatalogIdentity(t *testing.T) {
 	for _, spec := range catalog.All() {
@@ -171,13 +56,11 @@ func TestHandlerSwitcherKeepsResumeCriticalRequestsOnInitialSurface(t *testing.T
 		_, _ = io.WriteString(w, "complete")
 	})
 	switcher := newHandlerSwitcher(initial)
-	ready := make(chan struct{})
 	var starts atomic.Int32
-	switcher.startOnNonResumeRequest(func() {
+	done := switcher.hydrateOnDemand(func() {
 		starts.Add(1)
 		switcher.Swap(complete)
-		close(ready)
-	}, ready)
+	})
 
 	for _, path := range []string{"/live", "/agent/resume/suggest", "/resume/health", "/robots.txt", "/unknown"} {
 		recorder := httptest.NewRecorder()
@@ -186,18 +69,42 @@ func TestHandlerSwitcherKeepsResumeCriticalRequestsOnInitialSurface(t *testing.T
 			t.Fatalf("%s = %d %q", path, recorder.Code, recorder.Body.String())
 		}
 	}
-	if starts.Load() != 0 {
-		t.Fatalf("lightweight requests started full hydration %d times", starts.Load())
+	if starts.Load() != 0 || switcher.status() != "pending" {
+		t.Fatalf("lightweight requests started full hydration %d times (status %s)", starts.Load(), switcher.status())
 	}
 
+	for range 2 {
+		recorder := httptest.NewRecorder()
+		switcher.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/info", nil))
+		if recorder.Code != http.StatusOK || recorder.Body.String() != "complete" {
+			t.Fatalf("/info = %d %q", recorder.Code, recorder.Body.String())
+		}
+	}
+	<-done
+	if starts.Load() != 1 || switcher.status() != "ok" {
+		t.Fatalf("full hydration starts = %d (status %s), want 1", starts.Load(), switcher.status())
+	}
+}
+
+func TestHandlerSwitcherReportsFailedHydration(t *testing.T) {
+	switcher := newHandlerSwitcher(http.NotFoundHandler())
+	switcher.hydrateOnDemand(switcher.fail)
 	recorder := httptest.NewRecorder()
-	switcher.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/info", nil))
-	if recorder.Code != http.StatusOK || recorder.Body.String() != "complete" {
-		t.Fatalf("/info = %d %q", recorder.Code, recorder.Body.String())
+	switcher.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/travel/agui", nil))
+	if recorder.Code != http.StatusServiceUnavailable || !strings.Contains(recorder.Body.String(), "agents_unavailable") {
+		t.Fatalf("failed hydration = %d %q", recorder.Code, recorder.Body.String())
 	}
-	if starts.Load() != 1 {
-		t.Fatalf("full hydration starts = %d, want 1", starts.Load())
+	if switcher.status() != "failed" {
+		t.Fatalf("status = %q", switcher.status())
 	}
+}
+
+func TestHandlerSwitcherStopCancelsUnstartedHydration(t *testing.T) {
+	switcher := newHandlerSwitcher(http.NotFoundHandler())
+	done := switcher.hydrateOnDemand(func() { t.Error("hydration started after stop") })
+	switcher.stop()
+	<-done
+	switcher.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/info", nil))
 }
 
 func TestFullGatewayPathRecognizesOnlyMountedFullSurface(t *testing.T) {
@@ -375,7 +282,7 @@ func TestLinkResolveFailsClosed(t *testing.T) {
 		{name: "invalid identity", secret: "correct", body: `{"telegram_user_id":0}`, want: http.StatusBadRequest},
 		{name: "unknown field", secret: "correct", body: `{"telegram_user_id":42,"extra":true}`, want: http.StatusBadRequest},
 		{name: "not linked", secret: "correct", body: `{"telegram_user_id":42}`, want: http.StatusNotFound},
-		{name: "D1 unavailable", secret: "correct", body: `{"telegram_user_id":42}`, lookup: fakeTelegramLinkLookup{err: errors.New("D1 unavailable")}, want: http.StatusServiceUnavailable},
+		{name: "database unavailable", secret: "correct", body: `{"telegram_user_id":42}`, lookup: fakeTelegramLinkLookup{err: errors.New("database unavailable")}, want: http.StatusServiceUnavailable},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -406,7 +313,7 @@ func (fakeResumeModel) GenerateContent(_ context.Context, _ *model.LLMRequest, _
 	}
 }
 
-// fakeHealth is a common.HealthChecker double so tests never touch real D1/R2.
+// fakeHealth is a common.HealthChecker double so tests never touch a real database.
 type fakeHealth struct{ err error }
 
 func (f fakeHealth) Health(context.Context) error { return f.err }
@@ -423,7 +330,7 @@ func newGateway(t *testing.T) http.Handler {
 		Agent:   resumeAgent,
 		Public:  true,
 		Timeout: 5 * time.Second,
-		Health:  resumeHealth(fakeResumeModel{}),
+		Health:  app.ResumeHealth(fakeResumeModel{}),
 	})
 	if err != nil {
 		t.Fatalf("build registry: %v", err)
@@ -431,7 +338,7 @@ func newGateway(t *testing.T) http.Handler {
 	sessions := session.InMemoryService()
 	// assertRoute's POST fixture body always carries threadId
 	// "route-test-thread"; pre-create the matching session (public/
-	// anonymous identity, so the D1-shaped user ID is "anon:<threadId>",
+	// anonymous identity, so the session user ID is "anon:<threadId>",
 	// see effectiveUserID in internal/agui/handler.go) so
 	// /resume/agents/state exercises its normal "thread exists" path
 	// instead of the missing-thread defaults path.
@@ -445,8 +352,7 @@ func newGateway(t *testing.T) http.Handler {
 	handler, err := New(cfg, Dependencies{
 		Registry: registry,
 		Sessions: sessions,
-		D1:       fakeHealth{},
-		R2:       fakeHealth{},
+		Database: fakeHealth{},
 		Now:      time.Now,
 	})
 	if err != nil {
@@ -773,7 +679,7 @@ func TestGatewayWellnessRouteUsesExistingAGUIContract(t *testing.T) {
 	}
 }
 
-func TestGatewayRootHealthChecksD1AndR2WithoutCredentials(t *testing.T) {
+func TestGatewayRootHealthChecksDatabaseWithoutCredentials(t *testing.T) {
 	h := newGateway(t)
 	req := httptest.NewRequest(http.MethodGet, "/ready", nil)
 	rr := httptest.NewRecorder()
@@ -786,7 +692,7 @@ func TestGatewayRootHealthChecksD1AndR2WithoutCredentials(t *testing.T) {
 		t.Fatal(err)
 	}
 	checks, ok := got["checks"].(map[string]any)
-	if !ok || checks["d1"] != "ok" || checks["r2"] != "ok" {
+	if !ok || checks["database"] != "ok" {
 		t.Fatalf("checks = %#v", got["checks"])
 	}
 	for _, forbidden := range []string{"token", "secret", "key", "credential"} {
@@ -812,7 +718,7 @@ func TestGatewayRootHealthReportsDegradedOnFailingCheck(t *testing.T) {
 	cfg := config.Config{HTTP: config.HTTP{Origins: nil}}
 	handler, err := New(cfg, Dependencies{
 		Registry: registry, Sessions: session.InMemoryService(),
-		D1: fakeHealth{err: context.DeadlineExceeded}, R2: fakeHealth{}, Groceries: &fakeGroceryRepository{}, Now: time.Now,
+		Database: fakeHealth{err: context.DeadlineExceeded}, Groceries: &fakeGroceryRepository{}, Now: time.Now,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -820,6 +726,17 @@ func TestGatewayRootHealthReportsDegradedOnFailingCheck(t *testing.T) {
 	assertRoute(t, handler, http.MethodGet, "/ready", http.StatusServiceUnavailable)
 	assertRoute(t, handler, http.MethodGet, "/health", http.StatusServiceUnavailable)
 	assertRoute(t, handler, http.MethodGet, "/live", http.StatusOK)
+
+	for status, want := range map[string]int{"pending": http.StatusOK, "ok": http.StatusOK, "failed": http.StatusServiceUnavailable} {
+		handler, err := New(cfg, Dependencies{
+			Registry: registry, Sessions: session.InMemoryService(), Database: fakeHealth{},
+			AgentsStatus: func() string { return status }, Now: time.Now,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		assertRoute(t, handler, http.MethodGet, "/ready", want)
+	}
 }
 
 func assertRoute(t *testing.T, h http.Handler, method, path string, want int) {

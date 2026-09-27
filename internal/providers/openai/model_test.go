@@ -283,7 +283,7 @@ func TestLimiterOverflowUsesFallback(t *testing.T) {
 }
 
 func TestLimiterFailuresRemainStorageOrContextErrors(t *testing.T) {
-	for _, cause := range []error{errors.New("D1 query failed (HTTP 503)"), context.Canceled, context.DeadlineExceeded} {
+	for _, cause := range []error{errors.New("database query failed"), context.Canceled, context.DeadlineExceeded} {
 		t.Run(cause.Error(), func(t *testing.T) {
 			limiterError := fmt.Errorf("acquire provider limit: %w", cause)
 			adapter := newModel([]config.Provider{

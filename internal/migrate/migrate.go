@@ -1,59 +1,52 @@
-// Command migrate applies the embedded D1 migration history and verifies the
-// resulting schema before a gateway or Telegram deployment is started.
+// Package migrate applies the embedded SQLite migrations and verifies the
+// resulting schema. `agents serve` also migrates at startup; this command
+// exists for inspecting or preparing a database file directly.
 package migrate
 
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
-	"github.com/aranlucas/agents/internal/cloudflare"
 	"github.com/aranlucas/agents/internal/config"
+	"github.com/aranlucas/agents/internal/storage"
 )
 
 const migrationTimeout = 2 * time.Minute
 
 type migrator interface {
-	RunMigrations(context.Context) error
+	Migrate(context.Context) error
 	SchemaHealth(context.Context) error
+	Close() error
 }
 
-type migratorFactory func(config.Cloudflare) (migrator, error)
+type migratorFactory func(path string) (migrator, error)
 
-func Run() {
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-	if err := run(ctx, os.Getenv, func(cfg config.Cloudflare) (migrator, error) {
-		return cloudflare.NewD1(cfg, nil)
-	}); err != nil {
-		log.Fatalf("migrate D1: %v", err)
-	}
-	log.Printf("D1 schema is ready at %s", cloudflare.LatestMigrationVersion)
+// Run migrates the database named by DATABASE_PATH.
+func Run(ctx context.Context) error {
+	return run(ctx, os.Getenv, func(path string) (migrator, error) { return storage.Open(path) })
 }
 
-func run(ctx context.Context, getenv func(string) string, newMigrator migratorFactory) error {
-	if newMigrator == nil {
-		return fmt.Errorf("migrator factory is required")
-	}
-	_, cloudflareConfig, err := config.LoadD1(getenv)
+func run(ctx context.Context, getenv func(string) string, open migratorFactory) error {
+	_, path, err := config.LoadDatabase(getenv)
 	if err != nil {
 		return fmt.Errorf("load configuration: %w", err)
 	}
-	client, err := newMigrator(cloudflareConfig)
+	db, err := open(path)
 	if err != nil {
-		return fmt.Errorf("configure D1: %w", err)
+		return fmt.Errorf("open database: %w", err)
 	}
-	migrationCtx, cancel := context.WithTimeout(ctx, migrationTimeout)
+	defer func() { _ = db.Close() }()
+	ctx, cancel := context.WithTimeout(ctx, migrationTimeout)
 	defer cancel()
-	if err := client.RunMigrations(migrationCtx); err != nil {
+	if err := db.Migrate(ctx); err != nil {
 		return fmt.Errorf("apply migrations: %w", err)
 	}
-	if err := client.SchemaHealth(migrationCtx); err != nil {
-		return fmt.Errorf("verify schema %s: %w", cloudflare.LatestMigrationVersion, err)
+	if err := db.SchemaHealth(ctx); err != nil {
+		return fmt.Errorf("verify schema %s: %w", storage.LatestMigrationVersion, err)
 	}
+	slog.Info("database schema is ready", "path", path, "version", storage.LatestMigrationVersion)
 	return nil
 }

@@ -2,18 +2,12 @@ package config
 
 import (
 	"maps"
+	"os"
+	"regexp"
+	"slices"
 	"strings"
 	"testing"
 )
-
-func TestLoadRequiresCloudflarePersistence(t *testing.T) {
-	_, err := Load(func(key string) string {
-		return map[string]string{"APP_ENV": "test", "PORT": "8000"}[key]
-	})
-	if err == nil || !strings.Contains(err.Error(), "CF_ACCOUNT_ID") {
-		t.Fatalf("Load() error = %v, want missing Cloudflare configuration", err)
-	}
-}
 
 func TestLoadNormalizesHTTPAndProviderConfiguration(t *testing.T) {
 	env := requiredEnv()
@@ -90,11 +84,11 @@ func TestLoadProductionFailsClosed(t *testing.T) {
 	base["CLERK_ISSUER"] = "https://clerk.example.com"
 
 	for name, mutate := range map[string]func(map[string]string){
-		"missing D1 database": func(env map[string]string) { delete(env, "CF_D1_DATABASE_ID") },
-		"missing R2 bucket":   func(env map[string]string) { delete(env, "CF_R2_BUCKET_NAME") },
-		"missing origins":     func(env map[string]string) { delete(env, "ALLOWED_ORIGINS") },
-		"HTTP origin":         func(env map[string]string) { env["ALLOWED_ORIGINS"] = "http://agents.example.com" },
-		"missing Clerk JWKS":  func(env map[string]string) { delete(env, "CLERK_JWKS_URL") },
+		"missing Gemini key": func(env map[string]string) { delete(env, "GEMINI_API_KEY") },
+		"missing Google key": func(env map[string]string) { delete(env, "GOOGLE_APPLICATION_CREDENTIALS_JSON") },
+		"missing origins":    func(env map[string]string) { delete(env, "ALLOWED_ORIGINS") },
+		"HTTP origin":        func(env map[string]string) { env["ALLOWED_ORIGINS"] = "http://agents.example.com" },
+		"missing Clerk JWKS": func(env map[string]string) { delete(env, "CLERK_JWKS_URL") },
 		"missing Clerk issuer": func(env map[string]string) {
 			delete(env, "CLERK_ISSUER")
 		},
@@ -181,48 +175,106 @@ func TestLoadTelegramRequiresWorkerDependenciesOnly(t *testing.T) {
 	env["APP_ENV"] = "production"
 	env["RAILWAY_SERVICE_ID"] = "telegram-service"
 	env["MISTRAL_API_KEY"] = "mistral-key"
+	env["TELEGRAM_BOT_TOKEN"] = "bot-token"
+	env["TELEGRAM_ALLOWED_CHAT_IDS"] = "1, -100"
 
 	cfg, err := LoadTelegram(func(key string) string { return env[key] })
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !cfg.Environment.IsProduction() || cfg.HTTP.Port != "8080" || cfg.Cloudflare.R2Bucket != "artifacts" || cfg.Providers["mistral"].APIKey != "mistral-key" {
+	if !cfg.Environment.IsProduction() || cfg.HTTP.Port != "8080" || cfg.Providers["mistral"].APIKey != "mistral-key" ||
+		!slices.Equal(cfg.Telegram.AllowedChatIDs, []int64{1, -100}) || cfg.Telegram.APIBaseURL != defaultTelegramAPIURL {
 		t.Fatalf("Telegram config = %#v", cfg)
 	}
 	if cfg.ClerkJWKS != "" || cfg.ClerkIssuer != "" || len(cfg.HTTP.Origins) != 0 {
 		t.Fatalf("Telegram loaded gateway-only config = %#v", cfg)
 	}
 
-	delete(env, "CF_R2_BUCKET_NAME")
-	if _, err := LoadTelegram(func(key string) string { return env[key] }); err == nil || !strings.Contains(err.Error(), "CF_R2_BUCKET_NAME") {
+	delete(env, "TELEGRAM_BOT_TOKEN")
+	if _, err := LoadTelegram(func(key string) string { return env[key] }); err == nil || !strings.Contains(err.Error(), "TELEGRAM_BOT_TOKEN") {
 		t.Fatalf("LoadTelegram() error = %v", err)
 	}
 }
 
-func TestLoadD1RequiresOnlyMigrationDependencies(t *testing.T) {
-	env := map[string]string{
-		"APP_ENV":                 "production",
-		"RAILWAY_SERVICE_ID":      "gateway-service",
-		"CF_ACCOUNT_ID":           "account",
-		"CF_API_TOKEN":            "token",
-		"CF_D1_DATABASE_ID":       "database",
-		"CF_R2_BUCKET_NAME":       "",
-		"CLERK_JWKS_URL":          "",
-		"CLERK_ISSUER":            "",
-		"ALLOWED_ORIGINS":         "",
-		"CF_R2_ACCESS_KEY_ID":     "",
-		"CF_R2_SECRET_ACCESS_KEY": "",
+func TestLoadDatabaseDefaultsToLocalDataFile(t *testing.T) {
+	env := map[string]string{"APP_ENV": "production", "RAILWAY_SERVICE_ID": "gateway-service"}
+	environment, path, err := LoadDatabase(func(key string) string { return env[key] })
+	if err != nil || !environment.IsProduction() || path != ".data/agents.db" {
+		t.Fatalf("LoadDatabase() = %q, %q, %v", environment, path, err)
 	}
-	environment, cloudflare, err := LoadD1(func(key string) string { return env[key] })
+	env["DATABASE_PATH"] = " /data/agents.db "
+	if _, path, _ := LoadDatabase(func(key string) string { return env[key] }); path != "/data/agents.db" {
+		t.Fatalf("DATABASE_PATH override = %q", path)
+	}
+}
+
+func TestLoadIntegrationsDefaultsAndValidation(t *testing.T) {
+	integrations, err := LoadIntegrations(func(string) string { return "" })
+	if err != nil || integrations.KrogerMCPURL != defaultKrogerMCPURL || integrations.TRVLMCPURL != defaultTRVLMCPURL || integrations.OralBoardsCorpusPath != defaultCorpusPath {
+		t.Fatalf("defaults = %#v, %v", integrations, err)
+	}
+	env := map[string]string{"GOOGLE_APPLICATION_CREDENTIALS_JSON": `{"project_id":"billing-project"}`}
+	integrations, err = LoadIntegrations(func(key string) string { return env[key] })
+	if err != nil || integrations.GoogleProjectID != "billing-project" {
+		t.Fatalf("service account = %#v, %v", integrations, err)
+	}
+	for name, bad := range map[string][2]string{
+		"credentials without project": {"GOOGLE_APPLICATION_CREDENTIALS_JSON", `{}`},
+		"credentials not JSON":        {"GOOGLE_APPLICATION_CREDENTIALS_JSON", `nope`},
+		"plain HTTP MCP":              {"KROGER_MCP_URL", "http://example.com/mcp"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := LoadIntegrations(func(key string) string { return map[string]string{bad[0]: bad[1]}[key] }); err == nil {
+				t.Fatal("LoadIntegrations() succeeded")
+			}
+		})
+	}
+}
+
+// TestRailwayDeclaresEveryProductionVariable keeps .railway/railway.ts and
+// Keys in step: Railway plans a delete for any variable the IaC omits, and a
+// variable the service never reads is stale configuration.
+func TestRailwayDeclaresEveryProductionVariable(t *testing.T) {
+	source, err := os.ReadFile("../../.railway/railway.ts")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !environment.IsProduction() || cloudflare.D1DatabaseID != "database" || cloudflare.R2Bucket != "" {
-		t.Fatalf("migration config = environment:%q cloudflare:%#v", environment, cloudflare)
+	declared := map[string]bool{}
+	for _, match := range regexp.MustCompile(`(?m)^\s+([A-Z][A-Z0-9_]+):`).FindAllStringSubmatch(string(source), -1) {
+		declared[match[1]] = true
 	}
-	delete(env, "CF_D1_DATABASE_ID")
-	if _, _, err := LoadD1(func(key string) string { return env[key] }); err == nil || !strings.Contains(err.Error(), "CF_D1_DATABASE_ID") {
-		t.Fatalf("LoadD1() error = %v", err)
+	known := map[string]bool{}
+	for _, key := range Keys {
+		known[key.Name] = true
+		if key.Railway && !declared[key.Name] {
+			t.Errorf("%s is read in production but not declared in .railway/railway.ts", key.Name)
+		}
+	}
+	for name := range declared {
+		if !known[name] && !strings.HasPrefix(name, "RAILWAY_") {
+			t.Errorf(".railway/railway.ts declares %s, which the service never reads", name)
+		}
+	}
+}
+
+func TestParseChatIDs(t *testing.T) {
+	got, err := parseChatIDs("1, -100")
+	if err != nil || !slices.Equal(got, []int64{1, -100}) {
+		t.Fatalf("ids=%#v err=%v", got, err)
+	}
+	got, err = parseChatIDs("")
+	if err != nil || got != nil {
+		t.Fatalf("empty ids=%#v err=%v", got, err)
+	}
+}
+
+func TestParseChatIDsRejectsMalformedConfiguration(t *testing.T) {
+	for _, raw := range []string{"1, nope", "1,,2", "0"} {
+		t.Run(raw, func(t *testing.T) {
+			if ids, err := parseChatIDs(raw); err == nil || ids != nil {
+				t.Fatalf("ids=%#v err=%v", ids, err)
+			}
+		})
 	}
 }
 
@@ -234,12 +286,8 @@ func mapsClone(source map[string]string) map[string]string {
 
 func requiredEnv() map[string]string {
 	return map[string]string{
-		"APP_ENV":                 "test",
-		"CF_ACCOUNT_ID":           "account",
-		"CF_API_TOKEN":            "token",
-		"CF_D1_DATABASE_ID":       "database",
-		"CF_R2_BUCKET_NAME":       "artifacts",
-		"CF_R2_ACCESS_KEY_ID":     "access",
-		"CF_R2_SECRET_ACCESS_KEY": "secret",
+		"APP_ENV":                             "test",
+		"GEMINI_API_KEY":                      "gemini",
+		"GOOGLE_APPLICATION_CREDENTIALS_JSON": `{"project_id":"project"}`,
 	}
 }

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aranlucas/agents/internal/cloudflare"
+	"github.com/aranlucas/agents/internal/storage"
 )
 
 const (
@@ -20,7 +20,7 @@ const (
 )
 
 // Activity is the normalized workout contract shared by native sources,
-// D1 persistence, and the fitness agent.
+// database persistence, and the fitness agent.
 type Activity struct {
 	ID                  string   `json:"id"`
 	Source              string   `json:"source"`
@@ -75,12 +75,12 @@ type Repository interface {
 	Snapshot(context.Context, string, int) (Snapshot, error)
 }
 
-type Store struct{ d1 cloudflare.StatementRunner }
+type Store struct{ db storage.StatementRunner }
 
-func NewStore(d1 *cloudflare.D1) *Store { return &Store{d1: d1} }
+func NewStore(db *storage.DB) *Store { return &Store{db: db} }
 
 func (s *Store) Sync(ctx context.Context, userID, source string, activities []Activity, now time.Time) (SyncResult, error) {
-	if s == nil || s.d1 == nil {
+	if s == nil || s.db == nil {
 		return SyncResult{}, errors.New("fitness activity store is required")
 	}
 	userID, source = strings.TrimSpace(userID), strings.TrimSpace(source)
@@ -92,13 +92,13 @@ func (s *Store) Sync(ctx context.Context, userID, source string, activities []Ac
 	}
 	syncedAt := now.UTC().Format(time.RFC3339)
 	updatedAt := now.UTC().UnixMilli()
-	statements := make([]cloudflare.Statement, 0, len(activities)+1)
+	statements := make([]storage.Statement, 0, len(activities)+1)
 	for _, activity := range activities {
 		startDate := ""
 		if activity.StartDate != nil {
 			startDate = strings.TrimSpace(*activity.StartDate)
 		}
-		statements = append(statements, cloudflare.Statement{
+		statements = append(statements, storage.Statement{
 			SQL: `INSERT INTO fitness_activities (
                 user_id, source, source_activity_id, name, sport_type, start_date, end_date,
                 distance_m, moving_time_s, elapsed_time_s, total_elevation_gain_m,
@@ -124,7 +124,7 @@ func (s *Store) Sync(ctx context.Context, userID, source string, activities []Ac
 			},
 		})
 	}
-	statements = append(statements, cloudflare.Statement{
+	statements = append(statements, storage.Statement{
 		SQL: `INSERT INTO fitness_sync_sources (user_id, source, synced_at, accepted_count)
               VALUES (?, ?, ?, ?)
               ON CONFLICT(user_id, source) DO UPDATE SET
@@ -132,14 +132,14 @@ func (s *Store) Sync(ctx context.Context, userID, source string, activities []Ac
                 accepted_count = excluded.accepted_count`,
 		Params: []any{userID, source, syncedAt, len(activities)},
 	})
-	if _, err := s.d1.Run(ctx, statements...); err != nil {
+	if _, err := s.db.Run(ctx, statements...); err != nil {
 		return SyncResult{}, fmt.Errorf("sync fitness activities: %w", err)
 	}
 	return SyncResult{Accepted: len(activities), SyncedAt: syncedAt}, nil
 }
 
 func (s *Store) Snapshot(ctx context.Context, userID string, limit int) (Snapshot, error) {
-	if s == nil || s.d1 == nil {
+	if s == nil || s.db == nil {
 		return Snapshot{}, errors.New("fitness activity store is required")
 	}
 	userID = strings.TrimSpace(userID)
@@ -152,13 +152,13 @@ func (s *Store) Snapshot(ctx context.Context, userID string, limit int) (Snapsho
 	if limit > MaxListLimit {
 		limit = MaxListLimit
 	}
-	results, err := s.d1.Run(
+	results, err := s.db.Run(
 		ctx,
-		cloudflare.Statement{
+		storage.Statement{
 			SQL:    `SELECT source, synced_at FROM fitness_sync_sources WHERE user_id = ? ORDER BY synced_at DESC LIMIT 1`,
 			Params: []any{userID},
 		},
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `SELECT source_activity_id, source, name, sport_type, start_date, end_date,
                     distance_m, moving_time_s, elapsed_time_s, total_elevation_gain_m,
                     average_heartrate, perceived_effort, data_origin

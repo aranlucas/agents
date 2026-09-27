@@ -140,7 +140,7 @@ func (c *streamConverter) convertFinal(event *session.Event, content *genai.Cont
 	// Prepare every fallible part before mutating converter state or registering
 	// client calls. If a later tool result or state value is malformed, Convert
 	// emits nothing, Flush can still close lanes already visible to the client,
-	// and no invisible pending call remains in D1.
+	// and no invisible pending call remains in the database.
 	var toolEvents []events.Event
 	var registrations []pendingRegistration
 	if content != nil {

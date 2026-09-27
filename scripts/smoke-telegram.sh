@@ -40,13 +40,21 @@ done
 echo "OK: static agents binary, non-root image, no scripting runtimes"
 
 runtime_name="agents-telegram-smoke-$$"
+# The worker builds the same agents as the gateway, including the trends
+# BigQuery client, so it needs an ephemeral service-account key.
+private_key="$(openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 2>/dev/null)"
+google_credentials="$(jq -nc --arg private_key "$private_key" '{
+  type: "service_account", project_id: "smoke-project", private_key_id: "smoke",
+  private_key: $private_key, client_email: "smoke@smoke-project.iam.gserviceaccount.com",
+  token_uri: "https://oauth2.googleapis.com/token"
+}')"
 docker run -d --rm --name "$runtime_name" -p "${port}:8080" \
   -e APP_ENV=development \
   -e PORT=8080 \
-  -e CF_ACCOUNT_ID=smoke-fake-account -e CF_API_TOKEN=smoke-fake-token \
-  -e CF_D1_DATABASE_ID=smoke-fake-database -e CF_R2_BUCKET_NAME=smoke-fake-bucket \
-  -e CF_R2_ACCESS_KEY_ID=smoke-fake-access -e CF_R2_SECRET_ACCESS_KEY=smoke-fake-secret \
-  -e MISTRAL_API_KEY=smoke-fake-mistral -e TELEGRAM_BOT_TOKEN=smoke:fake-token \
+  -e OPENROUTER_API_KEY=smoke-fake-openrouter -e GROQ_API_KEY=smoke-fake-groq \
+  -e NVIDIA_NIM_API_KEY=smoke-fake-nvidia -e MISTRAL_API_KEY=smoke-fake-mistral \
+  -e GEMINI_API_KEY=smoke-fake-gemini -e GOOGLE_APPLICATION_CREDENTIALS_JSON="$google_credentials" \
+  -e TELEGRAM_BOT_TOKEN=smoke:fake-token \
   "$image" telegram >/dev/null
 
 for _ in $(seq 1 30); do

@@ -1,4 +1,4 @@
-package cloudflare
+package storage
 
 import (
 	"bytes"
@@ -57,18 +57,18 @@ func (r pendingToolRow) functionResponse(callID string) (*genai.FunctionResponse
 	return &genai.FunctionResponse{ID: callID, Name: r.ToolName, Response: response}, nil
 }
 
-// PendingStore is a D1-backed single-consumption implementation of
+// PendingStore is a SQLite-backed single-consumption implementation of
 // agui.PendingTools.
 type PendingStore struct {
-	d1  *D1
+	db  StatementRunner
 	now func() time.Time
 }
 
-func NewPendingStore(d1 *D1, now func() time.Time) *PendingStore {
+func NewPendingStore(db StatementRunner, now func() time.Time) *PendingStore {
 	if now == nil {
 		now = time.Now
 	}
-	return &PendingStore{d1: d1, now: now}
+	return &PendingStore{db: db, now: now}
 }
 
 var _ agui.PendingTools = (*PendingStore)(nil)
@@ -82,8 +82,8 @@ func (p *PendingStore) Register(ctx context.Context, scope agui.ToolScope, callI
 // an identical pending registration; a conflicting later call therefore
 // cannot leave earlier calls orphaned.
 func (p *PendingStore) RegisterBatch(ctx context.Context, scope agui.ToolScope, calls []agui.PendingToolCall) error {
-	if p == nil || p.d1 == nil {
-		return errors.New("D1 pending tool store is required")
+	if p == nil || p.db == nil {
+		return errors.New("database pending tool store is required")
 	}
 	if !validScope(scope) || len(calls) == 0 {
 		return errors.New("invalid pending tool identity")
@@ -138,7 +138,7 @@ func (p *PendingStore) RegisterBatch(ctx context.Context, scope agui.ToolScope, 
 			FROM incoming WHERE (SELECT count FROM compatible) = ?
 			ON CONFLICT(app_name, user_id, thread_id, call_id) DO NOTHING`, Params: params}
 
-	results, err := p.d1.Run(
+	results, err := p.db.Run(
 		ctx,
 		Statement{SQL: "DELETE FROM pending_client_tools WHERE expires_at <= ?", Params: []any{now.UnixMilli()}},
 		insert,
@@ -176,14 +176,14 @@ func (p *PendingStore) RegisterBatch(ctx context.Context, scope agui.ToolScope, 
 }
 
 func (p *PendingStore) Resolve(ctx context.Context, identity auth.Identity, app, thread, callID string, result jsontext.Value) error {
-	if p == nil || p.d1 == nil {
-		return errors.New("D1 pending tool store is required")
+	if p == nil || p.db == nil {
+		return errors.New("database pending tool store is required")
 	}
 	if identity.Public || !validScope(agui.ToolScope{AppName: app, UserID: identity.UserID, ThreadID: thread}) || !agui.ClientCallID.MatchString(callID) {
 		return agui.ErrPendingToolNotFound
 	}
 	now := p.now().UTC()
-	authorized, err := p.d1.Run(
+	authorized, err := p.db.Run(
 		ctx,
 		Statement{SQL: "DELETE FROM pending_client_tools WHERE expires_at <= ?", Params: []any{now.UnixMilli()}},
 		Statement{SQL: `SELECT status, result_json FROM pending_client_tools
@@ -213,7 +213,7 @@ func (p *PendingStore) Resolve(ctx context.Context, identity auth.Identity, app,
 	if resolution.Status != "pending" {
 		return errors.New("invalid pending client tool status")
 	}
-	results, err := p.d1.Run(
+	results, err := p.db.Run(
 		ctx,
 		Statement{
 			SQL: `UPDATE pending_client_tools SET result_json = ?, status = 'resolved'
@@ -231,11 +231,11 @@ func (p *PendingStore) Resolve(ctx context.Context, identity auth.Identity, app,
 }
 
 func (p *PendingStore) Take(ctx context.Context, identity auth.Identity, app, thread, callID string) (*genai.FunctionResponse, error) {
-	if p == nil || p.d1 == nil || identity.Public || !validScope(agui.ToolScope{AppName: app, UserID: identity.UserID, ThreadID: thread}) || !agui.ClientCallID.MatchString(callID) {
+	if p == nil || p.db == nil || identity.Public || !validScope(agui.ToolScope{AppName: app, UserID: identity.UserID, ThreadID: thread}) || !agui.ClientCallID.MatchString(callID) {
 		return nil, agui.ErrPendingToolNotFound
 	}
 	now := p.now().UTC()
-	results, err := p.d1.Run(
+	results, err := p.db.Run(
 		ctx,
 		Statement{SQL: `SELECT tool_name, args_json, result_json FROM pending_client_tools
 			WHERE app_name = ? AND user_id = ? AND thread_id = ? AND call_id = ? AND status = 'resolved' AND expires_at > ?`, Params: []any{app, identity.UserID, thread, callID, now.UnixMilli()}},
@@ -261,7 +261,7 @@ func (p *PendingStore) Take(ctx context.Context, identity auth.Identity, app, th
 // SQLite's statement transaction prevents concurrent duplicate claims from
 // both succeeding.
 func (p *PendingStore) ClaimBatch(ctx context.Context, identity auth.Identity, scope agui.ToolScope, submitted []agui.PendingToolResult) ([]*genai.FunctionResponse, error) {
-	if p == nil || p.d1 == nil || identity.Public || identity.UserID != scope.UserID || !validScope(scope) || len(submitted) == 0 {
+	if p == nil || p.db == nil || identity.Public || identity.UserID != scope.UserID || !validScope(scope) || len(submitted) == 0 {
 		return nil, agui.ErrPendingToolNotFound
 	}
 
@@ -310,7 +310,7 @@ func (p *PendingStore) ClaimBatch(ctx context.Context, identity auth.Identity, s
 			RETURNING call_id, tool_name, args_json, result_json, status`,
 		Params: params,
 	}
-	claimed, err := p.d1.Run(ctx, statement)
+	claimed, err := p.db.Run(ctx, statement)
 	if err != nil {
 		return nil, fmt.Errorf("claim pending client tools: %w", err)
 	}

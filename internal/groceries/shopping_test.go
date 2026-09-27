@@ -5,13 +5,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aranlucas/agents/internal/cloudflare"
+	"github.com/aranlucas/agents/internal/storage"
 	"google.golang.org/adk/v2/artifact"
 )
 
 func TestAddPantryItemsMergesCaseInsensitiveNames(t *testing.T) {
 	requests := 0
-	store := newFixtureStore(t, func(statements []cloudflare.Statement) []cloudflare.Result {
+	store := newFixtureStore(t, func(statements []storage.Statement) []storage.Result {
 		requests++
 		switch requests {
 		case 1, 3:
@@ -31,13 +31,13 @@ func TestAddPantryItemsMergesCaseInsensitiveNames(t *testing.T) {
 			if requests == 1 && statements[0].Params[5] != float64(1_700_000_000) {
 				t.Fatalf("expires_at = %#v, want Unix seconds", statements[0].Params[5])
 			}
-			return []cloudflare.Result{mutationResult(1)}
+			return []storage.Result{mutationResult(1)}
 		case 2:
-			return []cloudflare.Result{queryResult(t, PantryItem{Name: "Eggs", Quantity: 2, AddedAt: 1})}
+			return []storage.Result{queryResult(t, PantryItem{Name: "Eggs", Quantity: 2, AddedAt: 1})}
 		case 4:
-			return []cloudflare.Result{queryResult(t, PantryItem{Name: "Eggs", Quantity: 5, AddedAt: 2})}
+			return []storage.Result{queryResult(t, PantryItem{Name: "Eggs", Quantity: 5, AddedAt: 2})}
 		default:
-			t.Fatalf("unexpected D1 request %d: %#v", requests, statements)
+			t.Fatalf("unexpected database request %d: %#v", requests, statements)
 			return nil
 		}
 	})
@@ -57,7 +57,7 @@ func TestAddPantryItemsMergesCaseInsensitiveNames(t *testing.T) {
 
 func TestRecordOrderWritesOrderAndItemsInOneBatch(t *testing.T) {
 	requests := 0
-	store := newFixtureStore(t, func(statements []cloudflare.Statement) []cloudflare.Result {
+	store := newFixtureStore(t, func(statements []storage.Statement) []storage.Result {
 		requests++
 		switch requests {
 		case 1:
@@ -81,7 +81,7 @@ func TestRecordOrderWritesOrderAndItemsInOneBatch(t *testing.T) {
 				!strings.Contains(statements[1].SQL, "ORDER BY so.placed_at DESC, soi.position") {
 				t.Fatalf("recent-order statements = %#v", statements)
 			}
-			return []cloudflare.Result{
+			return []storage.Result{
 				queryResult(
 					t,
 					Order{ID: "order_2", TotalItems: 1, PlacedAt: 2},
@@ -95,7 +95,7 @@ func TestRecordOrderWritesOrderAndItemsInOneBatch(t *testing.T) {
 				),
 			}
 		default:
-			t.Fatalf("unexpected D1 request %d: %#v", requests, statements)
+			t.Fatalf("unexpected database request %d: %#v", requests, statements)
 			return nil
 		}
 	})
@@ -124,15 +124,15 @@ func TestRecordOrderWritesOrderAndItemsInOneBatch(t *testing.T) {
 
 func TestResolveShopperFallsBackToKrogerNamespace(t *testing.T) {
 	requests := 0
-	store := newFixtureStore(t, func(statements []cloudflare.Statement) []cloudflare.Result {
+	store := newFixtureStore(t, func(statements []storage.Statement) []storage.Result {
 		requests++
 		if len(statements) != 1 || !strings.Contains(statements[0].SQL, "FROM kroger_account_links") {
 			t.Fatalf("statements = %#v", statements)
 		}
 		if requests == 1 {
-			return []cloudflare.Result{queryResult(t)}
+			return []storage.Result{queryResult(t)}
 		}
-		return []cloudflare.Result{queryResult(t, map[string]string{"clerk_user_id": "user_1"})}
+		return []storage.Result{queryResult(t, map[string]string{"clerk_user_id": "user_1"})}
 	})
 
 	userID, err := store.ResolveShopper(t.Context(), "kroger_sub_1")
@@ -146,7 +146,7 @@ func TestResolveShopperFallsBackToKrogerNamespace(t *testing.T) {
 }
 
 func TestLinkKrogerAccountRekeysNamespacedRows(t *testing.T) {
-	store := newFixtureStore(t, func(statements []cloudflare.Statement) []cloudflare.Result {
+	store := newFixtureStore(t, func(statements []storage.Statement) []storage.Result {
 		if len(statements) != 16 || !strings.Contains(statements[0].SQL, "ON CONFLICT(kroger_sub) DO UPDATE") {
 			t.Fatalf("statements = %#v", statements)
 		}
@@ -182,7 +182,7 @@ func TestLinkKrogerAccountRekeysNamespacedRows(t *testing.T) {
 }
 
 func TestSetPreferredStoreWithoutArtifactServiceUsesUnixSeconds(t *testing.T) {
-	store := newFixtureStore(t, func(statements []cloudflare.Statement) []cloudflare.Result {
+	store := newFixtureStore(t, func(statements []storage.Statement) []storage.Result {
 		if len(statements) != 3 || !strings.Contains(statements[0].SQL, "ON CONFLICT(user_id) DO UPDATE") ||
 			!strings.Contains(statements[1].SQL, "INSERT INTO preferred_store_providers") ||
 			statements[1].Params[1] != "trader_joes" {
@@ -191,7 +191,7 @@ func TestSetPreferredStoreWithoutArtifactServiceUsesUnixSeconds(t *testing.T) {
 		if statements[0].Params[5] != float64(1) {
 			t.Fatalf("set_at = %#v, want Unix seconds", statements[0].Params[5])
 		}
-		return []cloudflare.Result{
+		return []storage.Result{
 			mutationResult(1),
 			mutationResult(1),
 			queryResult(t, PreferredStore{Provider: "trader_joes", LocationID: "loc_1", Name: "Trader Joe's", SetAt: 1}),
@@ -208,14 +208,14 @@ func TestSetPreferredStoreWithoutArtifactServiceUsesUnixSeconds(t *testing.T) {
 
 func TestShoppingProfileLoadsCompleteProfileInOneD1Batch(t *testing.T) {
 	category := "appliance"
-	store := newFixtureStore(t, func(statements []cloudflare.Statement) []cloudflare.Result {
+	store := newFixtureStore(t, func(statements []storage.Statement) []storage.Result {
 		if len(statements) != 8 || !strings.Contains(statements[5].SQL, "MIN(soi.name)") ||
 			!strings.Contains(statements[5].SQL, "GROUP BY opr.provider, opr.product_id") ||
 			!strings.Contains(statements[6].SQL, "shopping_profile_revisions") ||
 			!strings.Contains(statements[7].SQL, "shopping_profile_artifacts") {
 			t.Fatalf("shopping profile statements = %#v", statements)
 		}
-		return []cloudflare.Result{
+		return []storage.Result{
 			queryResult(t, PreferredStore{Provider: "kroger", LocationID: "loc_1", Name: "Kroger", SetAt: 1}),
 			queryResult(t, PantryItem{Name: "Eggs", Quantity: 12, AddedAt: 1}),
 			queryResult(t, EquipmentItem{Name: "Air fryer", Category: &category, AddedAt: 1}),
@@ -235,7 +235,7 @@ func TestShoppingProfileLoadsCompleteProfileInOneD1Batch(t *testing.T) {
 
 func TestSaveListPersistsProductReference(t *testing.T) {
 	requests := 0
-	store := newFixtureStore(t, func(statements []cloudflare.Statement) []cloudflare.Result {
+	store := newFixtureStore(t, func(statements []storage.Statement) []storage.Result {
 		requests++
 		switch requests {
 		case 1:
@@ -250,12 +250,12 @@ func TestSaveListPersistsProductReference(t *testing.T) {
 				!strings.Contains(statements[1].SQL, "gpr.provider AS product_provider") {
 				t.Fatalf("get statements = %#v", statements)
 			}
-			return []cloudflare.Result{
+			return []storage.Result{
 				queryResult(t, List{ID: "list_1", OwnerUserID: "user_1", Title: "Weekend", Status: "active", CreatedAt: 1_000, UpdatedAt: 1_000}),
 				queryResult(t, map[string]any{"id": "item_1", "list_id": "list_1", "name": "Milk", "quantity": "1", "added_by": "user_1", "updated_at": 1_000, "product_provider": "trader_joes", "product_id": "sku_1700"}),
 			}
 		default:
-			t.Fatalf("unexpected D1 request %d: %#v", requests, statements)
+			t.Fatalf("unexpected database request %d: %#v", requests, statements)
 			return nil
 		}
 	})
@@ -280,7 +280,7 @@ func TestSaveListPersistsProductReference(t *testing.T) {
 
 func TestDeleteItemRemovesUPCRow(t *testing.T) {
 	requests := 0
-	store := newFixtureStore(t, func(statements []cloudflare.Statement) []cloudflare.Result {
+	store := newFixtureStore(t, func(statements []storage.Statement) []storage.Result {
 		requests++
 		switch requests {
 		case 1:
@@ -291,12 +291,12 @@ func TestDeleteItemRemovesUPCRow(t *testing.T) {
 			}
 			return mutationResults(len(statements))
 		case 2:
-			return []cloudflare.Result{
+			return []storage.Result{
 				queryResult(t, List{ID: "list_1", OwnerUserID: "user_1", Title: "Weekend", Status: "active", CreatedAt: 1_000, UpdatedAt: 2_000}),
 				queryResult(t),
 			}
 		default:
-			t.Fatalf("unexpected D1 request %d: %#v", requests, statements)
+			t.Fatalf("unexpected database request %d: %#v", requests, statements)
 			return nil
 		}
 	})
@@ -308,11 +308,11 @@ func TestDeleteItemRemovesUPCRow(t *testing.T) {
 
 func TestReplaceListItemsCleansUpOrphanedProductReferenceRows(t *testing.T) {
 	requests := 0
-	store := newFixtureStore(t, func(statements []cloudflare.Statement) []cloudflare.Result {
+	store := newFixtureStore(t, func(statements []storage.Statement) []storage.Result {
 		requests++
 		switch requests {
 		case 1:
-			return []cloudflare.Result{queryResult(t, map[string]int{"present": 1})}
+			return []storage.Result{queryResult(t, map[string]int{"present": 1})}
 		case 2:
 			if len(statements) != 6 || statements[0].SQL != "DELETE FROM grocery_list_item_upcs WHERE item_id IN (SELECT id FROM grocery_list_items WHERE list_id = ?)" ||
 				!strings.Contains(statements[1].SQL, "DELETE FROM grocery_list_item_product_refs") ||
@@ -322,12 +322,12 @@ func TestReplaceListItemsCleansUpOrphanedProductReferenceRows(t *testing.T) {
 			}
 			return mutationResults(len(statements))
 		case 3:
-			return []cloudflare.Result{
+			return []storage.Result{
 				queryResult(t, List{ID: "list_1", OwnerUserID: "user_1", Title: "Weekend", Status: "active", CreatedAt: 1_000, UpdatedAt: 2_000}),
 				queryResult(t, map[string]any{"id": "item_new", "list_id": "list_1", "name": "Bread", "quantity": "1", "added_by": "user_1", "updated_at": 2_000, "product_provider": "kroger", "product_id": "upc_new"}),
 			}
 		default:
-			t.Fatalf("unexpected D1 request %d: %#v", requests, statements)
+			t.Fatalf("unexpected database request %d: %#v", requests, statements)
 			return nil
 		}
 	})
@@ -343,7 +343,7 @@ func TestReplaceListItemsCleansUpOrphanedProductReferenceRows(t *testing.T) {
 
 func TestAddItemsPersistsLegacyUPCAsKrogerProductReference(t *testing.T) {
 	requests := 0
-	store := newFixtureStore(t, func(statements []cloudflare.Statement) []cloudflare.Result {
+	store := newFixtureStore(t, func(statements []storage.Statement) []storage.Result {
 		requests++
 		switch requests {
 		case 1:
@@ -354,17 +354,17 @@ func TestAddItemsPersistsLegacyUPCAsKrogerProductReference(t *testing.T) {
 			}
 			return mutationResults(len(statements))
 		case 2:
-			return []cloudflare.Result{
+			return []storage.Result{
 				queryResult(t, List{ID: "list_1", OwnerUserID: "user_1", Title: "Weekend", Status: "active", CreatedAt: 1_000, UpdatedAt: 2_000}),
 				queryResult(t, map[string]any{"id": "item_1", "list_id": "list_1", "name": "Milk", "quantity": "1", "added_by": "user_1", "updated_at": 2_000, "product_provider": "kroger", "product_id": "upc_1"}),
 			}
 		case 3:
-			return []cloudflare.Result{
+			return []storage.Result{
 				queryResult(t, List{ID: "list_1", OwnerUserID: "user_1", Title: "Weekend", Status: "active", CreatedAt: 1_000, UpdatedAt: 2_000}),
 				queryResult(t, map[string]any{"id": "item_1", "list_id": "list_1", "name": "Milk", "quantity": "1", "added_by": "user_1", "updated_at": 2_000, "product_provider": "kroger", "product_id": "upc_1"}),
 			}
 		default:
-			t.Fatalf("unexpected D1 request %d: %#v", requests, statements)
+			t.Fatalf("unexpected database request %d: %#v", requests, statements)
 			return nil
 		}
 	})
@@ -383,8 +383,8 @@ func TestAddItemsPersistsLegacyUPCAsKrogerProductReference(t *testing.T) {
 	}
 }
 
-func mutationResults(count int) []cloudflare.Result {
-	results := make([]cloudflare.Result, count)
+func mutationResults(count int) []storage.Result {
+	results := make([]storage.Result, count)
 	for index := range results {
 		results[index] = mutationResult(1)
 	}

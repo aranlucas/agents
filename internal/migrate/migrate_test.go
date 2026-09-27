@@ -6,8 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aranlucas/agents/internal/cloudflare"
-	"github.com/aranlucas/agents/internal/config"
+	"github.com/aranlucas/agents/internal/storage"
 )
 
 type fakeMigrator struct {
@@ -15,7 +14,9 @@ type fakeMigrator struct {
 	migrations, health    int
 }
 
-func (f *fakeMigrator) RunMigrations(context.Context) error {
+func (f *fakeMigrator) Close() error { return nil }
+
+func (f *fakeMigrator) Migrate(context.Context) error {
 	f.migrations++
 	return f.migrateErr
 }
@@ -28,9 +29,9 @@ func (f *fakeMigrator) SchemaHealth(context.Context) error {
 func TestRunMigratesThenVerifiesSchema(t *testing.T) {
 	env := migrationEnv()
 	fake := &fakeMigrator{}
-	err := run(t.Context(), func(key string) string { return env[key] }, func(cfg config.Cloudflare) (migrator, error) {
-		if cfg.D1DatabaseID != "database" || cfg.R2Bucket != "" {
-			t.Fatalf("Cloudflare config = %#v", cfg)
+	err := run(t.Context(), func(key string) string { return env[key] }, func(path string) (migrator, error) {
+		if path != "/data/agents.db" {
+			t.Fatalf("database path = %q", path)
 		}
 		return fake, nil
 	})
@@ -49,11 +50,11 @@ func TestRunFailsClosed(t *testing.T) {
 		healthCalls int
 	}{
 		"migration failure": {fake: &fakeMigrator{migrateErr: errors.New("unavailable")}, want: "apply migrations", healthCalls: 0},
-		"schema failure":    {fake: &fakeMigrator{healthErr: cloudflare.ErrSchemaNotReady}, want: cloudflare.LatestMigrationVersion, healthCalls: 1},
+		"schema failure":    {fake: &fakeMigrator{healthErr: storage.ErrSchemaNotReady}, want: storage.LatestMigrationVersion, healthCalls: 1},
 	} {
 		t.Run(name, func(t *testing.T) {
 			env := migrationEnv()
-			err := run(t.Context(), func(key string) string { return env[key] }, func(config.Cloudflare) (migrator, error) {
+			err := run(t.Context(), func(key string) string { return env[key] }, func(string) (migrator, error) {
 				return testCase.fake, nil
 			})
 			if err == nil || !strings.Contains(err.Error(), testCase.want) {
@@ -68,7 +69,7 @@ func TestRunFailsClosed(t *testing.T) {
 
 func TestRunValidatesConfigurationBeforeBuildingClient(t *testing.T) {
 	called := false
-	err := run(t.Context(), func(string) string { return "" }, func(config.Cloudflare) (migrator, error) {
+	err := run(t.Context(), func(string) string { return "" }, func(string) (migrator, error) {
 		called = true
 		return &fakeMigrator{}, nil
 	})
@@ -79,9 +80,7 @@ func TestRunValidatesConfigurationBeforeBuildingClient(t *testing.T) {
 
 func migrationEnv() map[string]string {
 	return map[string]string{
-		"APP_ENV":           "test",
-		"CF_ACCOUNT_ID":     "account",
-		"CF_API_TOKEN":      "token",
-		"CF_D1_DATABASE_ID": "database",
+		"APP_ENV":       "test",
+		"DATABASE_PATH": "/data/agents.db",
 	}
 }

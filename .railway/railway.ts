@@ -1,13 +1,20 @@
-import { defineRailway, github, preserve, project, service } from "railway/iac";
+import { defineRailway, github, preserve, project, service, volume } from "railway/iac";
 
 export default defineRailway(() => {
+  // SQLite lives on this volume. Railway volumes attach to one service and
+  // one replica, so the gateway must stay at a single replica.
+  const data = volume("agents-data");
+
   const agentsGateway = service("agents-gateway", {
-    source: github("aranlucas/agents", { checkSuites: false }),
+    // Wait for the GitHub CI check suite so a failing main never deploys.
+    source: github("aranlucas/agents", { checkSuites: true }),
     build: {
       builder: "DOCKERFILE",
       dockerfilePath: "Dockerfile",
     },
-    preDeploy: ["/app/agents migrate"],
+    // Volumes are not mounted during pre-deploy, so `agents serve` applies
+    // migrations itself before listening.
+    volumeMounts: { "/app/.data": data },
     healthcheck: "/ready",
     replicas: { "us-west2": 1 },
     deploy: {
@@ -19,13 +26,8 @@ export default defineRailway(() => {
     env: {
       APP_ENV: preserve(),
 
-      // Cloudflare D1 and R2 are the only persistence layers.
-      CF_ACCOUNT_ID: preserve(),
-      CF_API_TOKEN: preserve(),
-      CF_D1_DATABASE_ID: preserve(),
-      CF_R2_ACCESS_KEY_ID: preserve(),
-      CF_R2_BUCKET_NAME: preserve(),
-      CF_R2_SECRET_ACCESS_KEY: preserve(),
+      // The image runs as a non-root user; Railway volumes are root-owned.
+      RAILWAY_RUN_UID: "0",
 
       // Browser origins and Clerk-issued JWT verification.
       ALLOWED_ORIGINS: preserve(),
@@ -52,24 +54,10 @@ export default defineRailway(() => {
       // Observability. SENTRY_DSN is unset today; listing it keeps the gateway
       // from planning a delete once it is set in the dashboard.
       SENTRY_DSN: preserve(),
-
-      // Left over from the Python runtime. The Go service does not read these;
-      // delete them here once a destructive plan has been reviewed.
-      AGENT_DIR: preserve(),
-      AGENT_MODULE: preserve(),
-      DATABASE_PUBLIC_URL: preserve(),
-      DATABASE_URL: preserve(),
-      GOOGLE_API_USE_CLIENT_CERTIFICATE: preserve(),
-      LITELLM_LOCAL_MODEL_COST_MAP: preserve(),
-      LITELLM_MODE: preserve(),
-      LITELLM_SUPPRESS_DEBUG_INFO: preserve(),
-      MALLOC_CONF: preserve(),
-      PYTHONUNBUFFERED: preserve(),
-      PYTHON_JIT: preserve(),
     },
   });
 
   return project("agents", {
-    resources: [agentsGateway],
+    resources: [data, agentsGateway],
   });
 });

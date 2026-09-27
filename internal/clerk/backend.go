@@ -16,7 +16,7 @@ import (
 )
 
 // Backend is the narrow Clerk boundary for credential routing. Telegram
-// account links are persisted exclusively in D1 by telegram.LinkStore.
+// account links are persisted in the database by telegram.LinkStore.
 type Backend interface {
 	OAuthConnections(context.Context, string) (ConnectionState, error)
 }
