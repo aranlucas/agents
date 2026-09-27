@@ -77,7 +77,7 @@ func TestFitnessSyncRejectsUnauthenticatedAndInvalidActivities(t *testing.T) {
 
 func newFitnessSyncGateway(t *testing.T, repository fitnessdata.Repository) http.Handler {
 	t.Helper()
-	built, err := fitness.New(fakeResumeModel{}, repository, nil)
+	built, err := fitness.New(fakeModel{}, repository, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

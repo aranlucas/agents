@@ -19,7 +19,6 @@ import (
 	"github.com/aranlucas/agents/internal/oralboards"
 	"github.com/aranlucas/agents/internal/presentation"
 	"github.com/aranlucas/agents/internal/research"
-	"github.com/aranlucas/agents/internal/resume"
 	"github.com/aranlucas/agents/internal/spreadsheet"
 	"github.com/aranlucas/agents/internal/travel"
 	"github.com/aranlucas/agents/internal/wellness"
@@ -89,16 +88,8 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		built, err := travel.New(m, travel.NewTRVL(integrations.TRVLMCPURL, &http.Client{Timeout: 20 * time.Second}))
 		return Built{Name: name, Agent: built, StateDefaults: travel.StateDefaults, Notes: notes}, err
 
-	case "resume":
-		m, err := newAgentModel(providers, providerpolicy.Resume, &notes)
-		if err != nil {
-			return Built{}, err
-		}
-		built, err := resume.New(m)
-		return Built{Name: name, Agent: built, StateDefaults: resume.StateDefaults, Notes: notes}, err
-
 	case "interview":
-		m, err := newAgentModel(providers, providerpolicy.Resume, &notes)
+		m, err := newAgentModel(providers, providerpolicy.Career, &notes)
 		if err != nil {
 			return Built{}, err
 		}

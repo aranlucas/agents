@@ -20,7 +20,7 @@ func TestProductionSmokeProfiles(t *testing.T) {
 		path := r.URL.Path
 		switch {
 		case strings.HasSuffix(path, "/ready"):
-			_, _ = fmt.Fprint(w, `{"status":"ok","checks":{"database":"ok","agents":"ok"}}`)
+			_, _ = fmt.Fprint(w, `{"status":"ok","checks":{"database":"ok"}}`)
 		case strings.HasSuffix(path, "/health"):
 			_, _ = fmt.Fprint(w, `{"status":"ok"}`)
 		case strings.HasSuffix(path, "/agui/capabilities"):
@@ -32,7 +32,7 @@ func TestProductionSmokeProfiles(t *testing.T) {
 				return
 			}
 			_, _ = fmt.Fprint(w, `{"threadId":"smoke-protected"}`)
-		case path == "/resume/agents/state":
+		case path == "/research/agents/state":
 			raw, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 			if err != nil {
 				http.Error(w, "body", http.StatusBadRequest)
@@ -58,7 +58,7 @@ func TestProductionSmokeProfiles(t *testing.T) {
 				return
 			}
 			w.Header().Set("content-type", "text/event-stream")
-			if strings.Contains(string(body), "highlight_resume_section") {
+			if strings.Contains(string(body), "highlight_section") {
 				_, _ = fmt.Fprint(w, "TOOL_CALL_START\n")
 			} else {
 				_, _ = fmt.Fprint(w, "RUN_STARTED\nRUN_FINISHED\n")
@@ -102,7 +102,7 @@ func TestProductionSmokeProfiles(t *testing.T) {
 			if !strings.Contains(string(output), tc.want) {
 				t.Fatalf("missing %q:\n%s", tc.want, output)
 			}
-			if !tc.fails && !strings.Contains(string(output), "PASS: all 13 registered AG-UI routes") {
+			if !tc.fails && !strings.Contains(string(output), "PASS: all 12 registered AG-UI routes") {
 				t.Fatalf("routes not checked:\n%s", output)
 			}
 		})

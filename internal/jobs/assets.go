@@ -5,14 +5,15 @@ package jobs
 import (
 	_ "embed"
 	"strings"
-
-	"github.com/aranlucas/agents/internal/resume"
 )
 
 //go:embed instructions.md
 var instructionTemplate string
 
-// Instruction is grounded in the same canonical resume as the public Resume
-// agent, but the Jobs agent is authenticated and may also use user-supplied
-// private application-profile state.
-var Instruction = strings.ReplaceAll(instructionTemplate, "{{RESUME}}", resume.SourceText())
+//go:embed resume.md
+var resumeText string
+
+// Instruction is grounded in Lucas's canonical resume. The agent is
+// authenticated and may also use user-supplied private application-profile
+// state.
+var Instruction = strings.ReplaceAll(instructionTemplate, "{{RESUME}}", resumeText)

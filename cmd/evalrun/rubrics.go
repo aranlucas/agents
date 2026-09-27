@@ -256,20 +256,6 @@ func gradeRubric(agentName, rubricID, description string, trace Trace) RubricRes
 		res.Pass = ok && strings.TrimSpace(args.Summary) != ""
 		res.Explanation = fmt.Sprintf("mark_research_ready called=%v with summary set=%v", ok, strings.TrimSpace(args.Summary) != "")
 
-	// --- resume ---
-	case "resume_grounded_in_resume":
-		res.Pass = textContainsAny(text, "doordash")
-		res.Explanation = "answer references DoorDash (current employer in the resume)"
-	case "resume_ai_agent_relevance":
-		res.Pass = textContainsAny(text, "agent", "ai")
-		res.Explanation = "answer mentions agent/AI work"
-	case "resume_no_invention":
-		res.Pass = true
-		res.Explanation = "no local heuristic can prove absence of invented facts; requires manual read of the trace"
-	case "resume_concise_positive":
-		res.Pass = len(trace.FinalText) < 1500
-		res.Explanation = fmt.Sprintf("answer length=%d (want a concise, focused response)", len(trace.FinalText))
-
 	// --- interview ---
 	case "interview_configures_behavioral":
 		args, ok := trace.firstCallArgs[interview.ConfigureArgs]("configure_interview")

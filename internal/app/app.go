@@ -97,11 +97,8 @@ func (rt *Runtime) Close() error {
 // configured provider keys without any network call, so a missing key fails
 // startup instead of the first request that needs that agent.
 func ValidateProviders(providers map[string]config.Provider) error {
-	if _, _, err := resumeProviders(providers); err != nil {
-		return fmt.Errorf("resume: %w", err)
-	}
 	for _, workload := range []providerpolicy.Workload{
-		providerpolicy.Presentation, providerpolicy.Research, providerpolicy.Spreadsheet,
+		providerpolicy.Career, providerpolicy.Presentation, providerpolicy.Research, providerpolicy.Spreadsheet,
 		providerpolicy.Expense, providerpolicy.Travel, providerpolicy.Fitness,
 		providerpolicy.Grocery, providerpolicy.Trends,
 	} {

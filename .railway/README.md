@@ -1,6 +1,6 @@
 # Railway infrastructure
 
-The Go service deploys from the repository root using `Dockerfile` and one `/app/agents` executable. The gateway health check is `/ready`, which requires a migrated database and reports whether the lazily built agent surface is `pending`, `ok`, or `failed`.
+The Go service deploys from the repository root using `Dockerfile` and one `/app/agents` executable. The gateway builds every agent before it listens, so a misconfigured agent fails the deploy. The health check is `/ready`, which requires a migrated database.
 
 SQLite lives on the `agents-data` volume mounted at `/app/.data`. Railway does not mount volumes during pre-deploy, so there is no pre-deploy command: `agents serve` applies migrations at startup. A volume attaches to one service and one replica, so keep the gateway at a single replica. The image runs as a non-root user and the volume is root-owned, so `RAILWAY_RUN_UID=0` is set.
 

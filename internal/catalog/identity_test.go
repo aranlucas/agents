@@ -13,7 +13,6 @@ import (
 	"github.com/aranlucas/agents/internal/oralboards"
 	"github.com/aranlucas/agents/internal/presentation"
 	"github.com/aranlucas/agents/internal/research"
-	"github.com/aranlucas/agents/internal/resume"
 	"github.com/aranlucas/agents/internal/spreadsheet"
 	"github.com/aranlucas/agents/internal/travel"
 	"github.com/aranlucas/agents/internal/trends"
@@ -56,7 +55,7 @@ func TestCatalogAppNamesMatchAuthoredAgents(t *testing.T) {
 	appNames := map[string]string{
 		"travel": travel.AppName, "grocery": grocery.AppName, "fitness": fitness.AppName,
 		"wellness": wellness.AppName, "expense": expense.AppName, "oralboards": oralboards.AppName,
-		"trends": trends.AppName, "resume": resume.AppName, "research": research.AppName,
+		"trends": trends.AppName, "research": research.AppName,
 		"jobs": jobs.AppName, "interview": interview.AppName,
 		"spreadsheet": spreadsheet.AppName, "presentation": presentation.AppName,
 	}
