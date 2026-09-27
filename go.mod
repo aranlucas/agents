@@ -13,7 +13,7 @@ require (
 	github.com/google/jsonschema-go v0.4.3
 	github.com/joho/godotenv v1.5.1
 	github.com/modelcontextprotocol/go-sdk v1.8.0
-	github.com/openai/openai-go/v3 v3.56.0 // ADK v2.4.0 requires ResponseFunctionCallArgumentsDoneEvent.Name.
+	github.com/openai/openai-go/v3 v3.56.0 // Pin for ADK v2.4.0: OpenAI v3.66.0 removes ResponseFunctionCallArgumentsDoneEvent.Name.
 	github.com/railwayapp/railway-go-sdk v0.2.0
 	github.com/wI2L/jsondiff v0.7.1
 	golang.org/x/net v0.59.0
