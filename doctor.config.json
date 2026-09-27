@@ -1,9 +1,0 @@
-{
-  "$schema": "https://www.react.doctor/config.schema.json",
-  "adoptExistingLintConfig": false,
-  "warnings": false,
-  "rawTextWrapperComponents": ["MenuAction"],
-  "ignore": {
-    "rules": ["react-hooks-js/immutability", "react-hooks-js/refs", "react-hooks-js/todo"]
-  }
-}

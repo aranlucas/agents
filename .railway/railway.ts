@@ -5,9 +5,9 @@ export default defineRailway(() => {
     source: github("aranlucas/agents", { checkSuites: false }),
     build: {
       builder: "DOCKERFILE",
-      dockerfilePath: "agents/Dockerfile",
+      dockerfilePath: "Dockerfile",
     },
-    preDeploy: ["/app/migrate"],
+    preDeploy: ["/app/agents migrate"],
     healthcheck: "/ready",
     replicas: { "us-west2": 1 },
     deploy: {
@@ -53,7 +53,7 @@ export default defineRailway(() => {
       // from planning a delete once it is set in the dashboard.
       SENTRY_DSN: preserve(),
 
-      // Left over from the Python runtime. Nothing under agents/ reads these;
+      // Left over from the Python runtime. The Go service does not read these;
       // delete them here once a destructive plan has been reviewed.
       AGENT_DIR: preserve(),
       AGENT_MODULE: preserve(),

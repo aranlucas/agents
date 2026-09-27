@@ -29,3 +29,8 @@ node_modules
 docs/
 apps/
 packages/
+
+.railway
+.agents
+.codex
+Makefile

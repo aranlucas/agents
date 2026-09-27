@@ -1,4 +1,0 @@
-# Fast pre-push gate only — not `pnpm check && pnpm test` (see AGENTS.md).
-# Builds JS apps and compiles Go tests with -race (`-count=0` does not run them).
-pnpm build
-cd agents && GOMAXPROCS=2 GOFLAGS=-p=1 go test -race -parallel=2 -count=0 ./...
