@@ -1,7 +1,0 @@
-{
-  "!(*.d).{js,jsx,ts,tsx,mjs,cjs}": [
-    "oxlint --threads=2 --fix --fix-suggestions",
-    "oxfmt --threads=2 --write"
-  ],
-  "*.{json,jsonc,css,md,mdx,yml,yaml}": "oxfmt --threads=2 --write"
-}

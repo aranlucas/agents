@@ -1,4 +1,0 @@
-{
-  "buildCommand": "cd ../.. && pnpm --filter oral-boards build",
-  "outputDirectory": ".next"
-}

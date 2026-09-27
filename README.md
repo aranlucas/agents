@@ -1,41 +1,28 @@
 # Agents
 
-Agents is a multi-agent workspace with a Go gateway, Telegram worker, and web client connected through AG-UI. It uses Cloudflare D1 for sessions and R2 for artifacts.
+Go ADK service with an HTTP gateway, optional Telegram worker mode, Cloudflare D1 sessions, and R2 artifacts. The study app lives in [aranlucas/oral-boards](https://github.com/aranlucas/oral-boards).
 
-## Develop
+Requires Go 1.27+, Make, and golangci-lint 2.13.1 for checks. Shell smoke tests require bash, curl, and jq. The service and image do not require Node.js. Development and validation use Make.
 
-Requires pnpm, Go 1.27+, Docker, and the credentials in [`.env.example`](.env.example).
-
-```bash
+```sh
 cp .env.example .env
-pnpm install
-pnpm dev
+make dev
 ```
 
-Use `pnpm dev:web` or `pnpm dev:agents` to run one surface.
+The single deployable executable is built with `make build` as `bin/agents`. It defaults to `serve`; `agents migrate` applies the unchanged embedded D1 migrations, and `agents telegram` runs the optional long-poll worker. Configuration comes from the environment and `.env`; never commit credentials.
 
-## Verify
-
-The full gate is `pnpm check && pnpm test` (see AGENTS.md). Husky `pre-push` is a faster subset: `pnpm build` plus compiling Go tests (`go test -race -count=0`). Run the full gate before opening a PR.
-
-```bash
-pnpm check
-pnpm test
-cd agents && go test -race ./... && go vet ./...
+```sh
+make check
+make test
+make build
 ```
 
-Railway infrastructure is defined in [`.railway/railway.ts`](.railway/railway.ts). The services deploy from the `agents/` directory.
+Validation runs sequentially with `GOMAXPROCS=2`, `GOFLAGS=-p=1`, two test parallel slots, and two lint workers. `docker compose up --build agents` runs the gateway. `docker compose --profile telegram up --build` also starts the optional worker using the same image and executable.
 
-### Design-system linting
+The root `go.mod` declares `github.com/aranlucas/agents`. Commands live in `cmd/`; server implementations and domain agents live in `internal/`, following the [Go server layout guidance](https://go.dev/doc/modules/layout#server-project). `cmd/contracts` and `cmd/evalrun` are development tools and are not shipped in the service image. Evaluation datasets live beside their agent under `internal/<agent>/eval/datasets`; reports go to `artifacts/<agent>/grade_results`.
 
-`@shadcn/lint` is registered with Oxlint for `oral-boards` and `@agents/ui`. Run the existing workspace commands:
+The hand-authored grocery API spec remains canonical in `api/openapi/grocery-gateway.yaml`; `make api` generates its Go server/client. Runtime-state contracts remain Go-canonical through `cmd/contracts`: `make contracts` writes JSON schemas to `api/contracts` and the shell route catalog to `scripts/generated-agent-routes.sh`. External TypeScript clients can export a projection explicitly with `go run ./cmd/contracts -typescript-output /absolute/path/agent-contracts.ts`.
 
-```bash
-pnpm lint
-pnpm --filter oral-boards lint
-pnpm --filter @agents/ui lint
-```
+D1 and R2 remain the only application persistence layers. The bundled SQLite file under `assets/oralboards` is an immutable reference corpus. Worker names, bindings, and D1 migration contents and versions are unchanged.
 
-No `shadcn/*` rules are enabled yet. To choose rules, use the [available rules](https://github.com/shadcn-ui/lint/blob/main/docs/rules.md) and [configuration examples](https://github.com/shadcn-ui/lint/blob/main/docs/adoption.md).
-
-Add shared web/UI rules to the `rules` object in [`packages/oxlint-config/tailwind.json`](packages/oxlint-config/tailwind.json). Add app-specific rules to that app's `.oxlintrc.json`. Component and theme discovery use each workspace's `components.json` where present. Oral Boards recognizes the `@agents/ui` package through `settings.shadcn.ui` and discovers its own theme.
+Railway deployment configuration is isolated in [`.railway`](.railway/README.md). It points to the root Dockerfile and uses `/app/agents migrate` before deployment. Existing cloud deployments are not modified by this local restructuring.
