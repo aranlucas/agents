@@ -1,0 +1,40 @@
+name: Railway plan
+
+# Plans .railway/ changes on pull requests and uploads the pinned plan that
+# railway-apply.yml applies after merge. See docs.railway.com/infrastructure-as-code.
+on:
+  pull_request:
+    paths:
+      - ".railway/**"
+      - ".github/workflows/railway-*.yml"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  plan:
+    name: Plan Railway configuration (${{ matrix.environment }})
+    # Fork and Dependabot pull requests don't receive repository secrets.
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [development, production]
+    steps:
+      - uses: actions/checkout@v7
+      # The CLI evaluates .railway/railway.go with go run.
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+          cache-dependency-path: go.sum
+      - uses: railwayapp/config@v1.2.0
+        with:
+          command: plan
+          railway-token: ${{ matrix.environment == 'production' && secrets.RAILWAY_TOKEN_PRODUCTION || secrets.RAILWAY_TOKEN_DEVELOPMENT }}
+          cli-version: 5.62.1
+          artifact-name: railway-plan-${{ matrix.environment }}
+          plan-path: railway-plan-${{ matrix.environment }}.json
+          # Both environments share one PR comment; show production's plan.
+          comment: ${{ matrix.environment == 'production' }}

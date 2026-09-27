@@ -1,0 +1,51 @@
+name: Railway apply
+
+# Applies the plan pinned on the merged pull request; it never re-plans. If
+# the environment or .railway/ changed since that plan, apply fails: re-plan
+# in a new pull request. Destructive changes are marked in the plan comment,
+# so merging approves them.
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".railway/**"
+
+concurrency:
+  group: railway-config
+  cancel-in-progress: false
+
+# pull-requests: read resolves the merged PR, and actions: read its plan.
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+jobs:
+  development:
+    name: Apply Railway configuration (development)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: railwayapp/config@v1.2.0
+        with:
+          command: apply
+          railway-token: ${{ secrets.RAILWAY_TOKEN_DEVELOPMENT }}
+          cli-version: 5.62.1
+          artifact-name: railway-plan-development
+          plan-path: railway-plan-development.json
+
+  production:
+    name: Apply Railway configuration (production)
+    needs: development
+    runs-on: ubuntu-latest
+    # Add required reviewers to this GitHub environment to gate production.
+    environment: railway-production
+    steps:
+      - uses: actions/checkout@v7
+      - uses: railwayapp/config@v1.2.0
+        with:
+          command: apply
+          railway-token: ${{ secrets.RAILWAY_TOKEN_PRODUCTION }}
+          cli-version: 5.62.1
+          artifact-name: railway-plan-production
+          plan-path: railway-plan-production.json
