@@ -6,7 +6,7 @@ SQLite lives on the `agents-data` volume mounted at `/app/.data`, explicitly kep
 
 Infrastructure is authored in `.railway/railway.go` using Railway’s beta Go SDK, pinned in the repository root `go.mod`. The CLI evaluates `Railway()` with its own temporary entry point; Go resolves dependencies from the parent module, so there is no nested module or JavaScript package. Planning and applying require Go and the Railway CLI. CI installs the CLI through npm; pnpm is no longer needed.
 
-`make check` and `make test` explicitly include `.railway`, since Go’s `./...` skips directories beginning with a dot. The graph fixture in `testdata/project.json` records the previous TypeScript configuration plus the existing volume region and capacity to verify the intended infrastructure settings. Update it when intentionally changing infrastructure.
+`make check` and `make test` explicitly include `.railway`, since Go’s `./...` skips directories beginning with a dot. For the same reason `go mod tidy` cannot see the SDK import here; `internal/railwaysdk` imports it behind a `tidy` build tag so tidy keeps it. The graph fixture in `testdata/project.json` records the previous TypeScript configuration plus the existing volume region and capacity to verify the intended infrastructure settings. Update it when intentionally changing infrastructure.
 
 ```sh
 make railway-plan ENV=production
