@@ -28,8 +28,8 @@
         "sleepApplication": true,
         "limitOverride": {
           "containers": {
-            "cpu": 1,
-            "memoryBytes": 1000000000
+            "cpu": 0.5,
+            "memoryBytes": 500000000
           }
         },
         "healthcheckPath": "/ready",

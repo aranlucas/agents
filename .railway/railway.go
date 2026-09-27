@@ -21,7 +21,7 @@ func Railway() railway.Project {
 			// Serverless keeps the idle gateway's public endpoint available.
 			"sleepApplication": true,
 			"limitOverride": map[string]any{
-				"containers": map[string]any{"cpu": 1, "memoryBytes": 1000000000},
+				"containers": map[string]any{"cpu": 0.5, "memoryBytes": 500000000},
 			},
 		},
 		"env": map[string]any{
