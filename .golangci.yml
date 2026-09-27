@@ -6,3 +6,7 @@ linters:
   default: standard
   enable:
     - unused
+
+formatters:
+  enable:
+    - gofumpt
