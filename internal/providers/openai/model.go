@@ -221,7 +221,7 @@ func (m *Model) runProvider(ctx context.Context, pc providerClient, req *model.L
 		if errors.Is(err, rate.ErrLimitReached) {
 			return false, &ProviderError{Provider: pc.config.Name, Model: pc.config.Model, Retryable: true, Kind: ProviderErrorRateLimit, cause: err}
 		}
-		// The limiter depends on D1. A storage failure must remain a storage
+		// The limiter depends on the database. A storage failure must remain a storage
 		// failure and must not retry a possibly committed quota increment.
 		return false, fmt.Errorf("check provider limit: %w", err)
 	}

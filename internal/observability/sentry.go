@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -22,9 +21,11 @@ type Config struct {
 	ServiceName    string
 	ServiceVersion string
 	Environment    string
+	// DSN enables reporting; empty installs nothing.
+	DSN string
 }
 
-// SetupSentry initializes the process-wide Sentry client from SENTRY_DSN.
+// SetupSentry initializes the process-wide Sentry client from cfg.DSN.
 // With no DSN it deliberately installs nothing and returns a no-op flush,
 // and the returned flush must run during graceful shutdown so buffered events
 // are delivered.
@@ -32,7 +33,7 @@ func SetupSentry(cfg Config) (func(), error) {
 	if strings.TrimSpace(cfg.ServiceName) == "" {
 		return nil, errors.New("sentry service name is required")
 	}
-	dsn := strings.TrimSpace(os.Getenv("SENTRY_DSN"))
+	dsn := strings.TrimSpace(cfg.DSN)
 	if dsn == "" {
 		return func() {}, nil
 	}

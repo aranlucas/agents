@@ -20,7 +20,7 @@ func TestProductionSmokeProfiles(t *testing.T) {
 		path := r.URL.Path
 		switch {
 		case strings.HasSuffix(path, "/ready"):
-			_, _ = fmt.Fprint(w, `{"status":"ok","checks":{"d1":"ok","r2":"ok"}}`)
+			_, _ = fmt.Fprint(w, `{"status":"ok","checks":{"database":"ok","agents":"ok"}}`)
 		case strings.HasSuffix(path, "/health"):
 			_, _ = fmt.Fprint(w, `{"status":"ok"}`)
 		case strings.HasSuffix(path, "/agui/capabilities"):

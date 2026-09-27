@@ -6,7 +6,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"slices"
 	"testing"
 )
 
@@ -15,7 +14,7 @@ type stubHealthChecker struct{ err error }
 func (checker stubHealthChecker) Health(context.Context) error { return checker.err }
 
 func TestHealthHandlerSeparatesLivenessAndReadiness(t *testing.T) {
-	handler := healthHandler(stubHealthChecker{}, stubHealthChecker{})
+	handler := healthHandler(stubHealthChecker{})
 
 	for _, path := range []string{"/live", "/ready", "/health"} {
 		t.Run(path, func(t *testing.T) {
@@ -30,7 +29,7 @@ func TestHealthHandlerSeparatesLivenessAndReadiness(t *testing.T) {
 			}
 			if path != "/live" {
 				response := decodeHealthResponse(t, recorder)
-				if response.Status != "ok" || response.Service != "agents-telegram" || response.Checks["d1"] != "ok" || response.Checks["r2"] != "ok" {
+				if response.Status != "ok" || response.Service != "agents-telegram" || response.Checks["database"] != "ok" {
 					t.Fatalf("response=%#v", response)
 				}
 			}
@@ -39,12 +38,12 @@ func TestHealthHandlerSeparatesLivenessAndReadiness(t *testing.T) {
 }
 
 func TestHealthHandlerKeepsLivenessHealthyWhenDependencyIsDown(t *testing.T) {
-	handler := healthHandler(stubHealthChecker{err: errors.New("D1 unavailable")}, stubHealthChecker{})
+	handler := healthHandler(stubHealthChecker{err: errors.New("database unavailable")})
 
 	ready := httptest.NewRecorder()
 	handler.ServeHTTP(ready, httptest.NewRequest(http.MethodGet, "/ready", nil))
 	readyResponse := decodeHealthResponse(t, ready)
-	if ready.Code != http.StatusServiceUnavailable || readyResponse.Status != "degraded" || readyResponse.Service != "agents-telegram" || readyResponse.Checks["d1"] != "unavailable" || readyResponse.Checks["r2"] != "ok" {
+	if ready.Code != http.StatusServiceUnavailable || readyResponse.Status != "degraded" || readyResponse.Service != "agents-telegram" || readyResponse.Checks["database"] != "unavailable" {
 		t.Fatalf("ready status=%d body=%s", ready.Code, ready.Body.String())
 	}
 
@@ -63,25 +62,4 @@ func decodeHealthResponse(t *testing.T, recorder *httptest.ResponseRecorder) hea
 		t.Fatalf("decode health response: %v", err)
 	}
 	return response
-}
-
-func TestParseChatIDs(t *testing.T) {
-	got, err := parseChatIDs("1, -100")
-	if err != nil || !slices.Equal(got, []int64{1, -100}) {
-		t.Fatalf("ids=%#v err=%v", got, err)
-	}
-	got, err = parseChatIDs("  ")
-	if err != nil || got != nil {
-		t.Fatalf("empty ids=%#v err=%v", got, err)
-	}
-}
-
-func TestParseChatIDsRejectsMalformedConfiguration(t *testing.T) {
-	for _, raw := range []string{"1, nope", "1,,2", "0"} {
-		t.Run(raw, func(t *testing.T) {
-			if ids, err := parseChatIDs(raw); err == nil || ids != nil {
-				t.Fatalf("ids=%#v err=%v", ids, err)
-			}
-		})
-	}
 }

@@ -26,7 +26,7 @@ type runKey struct {
 
 // activeRuns owns process-local execution control and the low-latency replay
 // path. When configured, ActiveRunStore mirrors ownership and validated events
-// to D1 so other gateway replicas can connect or request cancellation.
+// to the database so other gateway processes can connect or request cancellation.
 type activeRuns struct {
 	mu    sync.Mutex
 	runs  map[runKey]*activeRun

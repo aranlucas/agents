@@ -29,7 +29,7 @@ var (
 	// ClientToolName validates a frontend tool name. These come from our own
 	// AG-UI client tool declarations, so they're required to look like
 	// identifiers. Exported so PendingTools implementations outside this
-	// package (e.g. a D1-backed store) can apply the same contract without
+	// package (e.g. a SQLite-backed store) can apply the same contract without
 	// depending on this package.
 	ClientToolName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_.:-]{0,63}$`)
 	// ClientCallID validates a tool-call identity token. Unlike
@@ -45,7 +45,7 @@ var (
 type ToolScope struct{ AppName, UserID, ThreadID string }
 
 // PendingTools persists frontend calls until a scoped result resumes them.
-// The gateway supplies the mandatory D1 implementation; the interface keeps
+// The gateway supplies the SQLite implementation; the interface keeps
 // protocol conversion independently testable without weakening that runtime
 // persistence requirement.
 type PendingTools interface {

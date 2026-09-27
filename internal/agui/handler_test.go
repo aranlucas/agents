@@ -183,7 +183,7 @@ func TestRestoreSessionCreatesOnlyWhenNotFound(t *testing.T) {
 	t.Run("wrapped not found", func(t *testing.T) {
 		sessions := &getOverrideSessionService{
 			Service: newFakeSessionService(),
-			getErr:  fmt.Errorf("D1 lookup: %w", session.ErrNotFound),
+			getErr:  fmt.Errorf("database lookup: %w", session.ErrNotFound),
 		}
 		handler := &ADKHandler{sessions: sessions}
 		created, err := handler.restoreSession(t.Context(), entry, "user-1", "thread-1", &types.RunAgentInput{})
@@ -208,7 +208,7 @@ func TestRestoreSessionCreatesOnlyWhenNotFound(t *testing.T) {
 	})
 
 	t.Run("storage failure", func(t *testing.T) {
-		backendErr := errors.New("D1 unavailable")
+		backendErr := errors.New("database unavailable")
 		sessions := &getOverrideSessionService{Service: newFakeSessionService(), getErr: backendErr}
 		handler := &ADKHandler{sessions: sessions}
 		if _, err := handler.restoreSession(t.Context(), entry, "user-1", "thread-1", &types.RunAgentInput{}); !errors.Is(err, backendErr) {
@@ -221,7 +221,7 @@ func TestRestoreSessionCreatesOnlyWhenNotFound(t *testing.T) {
 }
 
 func TestHandlerReturns500OnSessionGetFailure(t *testing.T) {
-	backendErr := errors.New("D1 unavailable")
+	backendErr := errors.New("database unavailable")
 	sessions := &getOverrideSessionService{Service: newFakeSessionService(), getErr: backendErr}
 	captured := &fakeCapturingModel{}
 	a, err := llmagent.New(llmagent.Config{Name: "resume_agent", Instruction: "test", Model: captured})
@@ -344,22 +344,16 @@ func TestStatelessHandlerStreamsWithoutArtificialPacing(t *testing.T) {
 }
 
 func TestStreamSmoothingFromEnvUsesExportedDefaults(t *testing.T) {
-	t.Setenv("AGUI_STREAM_SMOOTHING", "")
-	t.Setenv("AGUI_STREAM_CHUNKING", "")
-	t.Setenv("AGUI_STREAM_CHUNK_SIZE", "")
-	t.Setenv("AGUI_STREAM_CHUNK_DELAY_MS", "")
-	enabled, chunking, charsPerChunk, delay := StreamSmoothingFromEnv()
-	if !enabled || chunking != DefaultStreamChunking || charsPerChunk != DefaultStreamCharsPerChunk || delay != DefaultStreamChunkDelay {
-		t.Fatalf("defaults = %v %q %d %s", enabled, chunking, charsPerChunk, delay)
+	if got := StreamSmoothingFromEnv(func(string) string { return "" }); got != DefaultStreamSmoothing() || !got.Enabled {
+		t.Fatalf("defaults = %+v", got)
 	}
-
-	t.Setenv("AGUI_STREAM_SMOOTHING", "false")
-	t.Setenv("AGUI_STREAM_CHUNKING", "line")
-	t.Setenv("AGUI_STREAM_CHUNK_SIZE", "32")
-	t.Setenv("AGUI_STREAM_CHUNK_DELAY_MS", "5")
-	enabled, chunking, charsPerChunk, delay = StreamSmoothingFromEnv()
-	if enabled || chunking != "line" || charsPerChunk != 32 || delay != 5*time.Millisecond {
-		t.Fatalf("overrides = %v %q %d %s", enabled, chunking, charsPerChunk, delay)
+	overrides := map[string]string{
+		"AGUI_STREAM_SMOOTHING": "false", "AGUI_STREAM_CHUNKING": "line",
+		"AGUI_STREAM_CHUNK_SIZE": "32", "AGUI_STREAM_CHUNK_DELAY_MS": "5",
+	}
+	got := StreamSmoothingFromEnv(func(key string) string { return overrides[key] })
+	if got != (StreamSmoothing{Enabled: false, Chunking: "line", CharsPerChunk: 32, ChunkDelay: 5 * time.Millisecond}) {
+		t.Fatalf("overrides = %+v", got)
 	}
 }
 
@@ -1255,7 +1249,7 @@ func (e *fakeEvents) At(i int) *session.Event {
 }
 
 // fakeSessionService is an in-memory session.Service double. It returns ADK's
-// not-found sentinel like the production cloudflare.SessionService. It separates
+// not-found sentinel like the production storage.SessionService. It separates
 // the persisted backing state from the in-flight session's state so a
 // temp: key applied mid-invocation never leaks into a later Get.
 type fakeSessionService struct {

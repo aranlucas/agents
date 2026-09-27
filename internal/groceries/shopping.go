@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aranlucas/agents/internal/cloudflare"
+	"github.com/aranlucas/agents/internal/storage"
 )
 
 const (
@@ -100,7 +100,7 @@ func (s *Store) Pantry(ctx context.Context, userID string) ([]PantryItem, error)
 	if err != nil {
 		return nil, err
 	}
-	results, err := s.d1.Run(ctx, cloudflare.Statement{
+	results, err := s.db.Run(ctx, storage.Statement{
 		SQL:    `SELECT name, quantity, added_at, expires_at FROM pantry_items WHERE user_id = ? ORDER BY name_key, name`,
 		Params: []any{userID},
 	})
@@ -134,13 +134,13 @@ func (s *Store) AddPantryItems(ctx context.Context, userID string, items []Pantr
 		return nil, ErrInvalid
 	}
 	addedAt := shoppingTimestamp(now)
-	statements := make([]cloudflare.Statement, 0, len(items))
+	statements := make([]storage.Statement, 0, len(items))
 	for _, item := range items {
 		name := strings.TrimSpace(item.Name)
 		if name == "" || len(name) > 500 || item.Quantity < 0 {
 			return nil, ErrInvalid
 		}
-		statements = append(statements, cloudflare.Statement{
+		statements = append(statements, storage.Statement{
 			SQL: `INSERT INTO pantry_items (user_id, name, name_key, quantity, added_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)
 			      ON CONFLICT(user_id, name_key) DO UPDATE SET
 			        quantity = pantry_items.quantity + excluded.quantity,
@@ -149,7 +149,7 @@ func (s *Store) AddPantryItems(ctx context.Context, userID string, items []Pantr
 			Params: []any{userID, name, strings.ToLower(name), item.Quantity, addedAt, nullableInt64(item.ExpiresAt)},
 		})
 	}
-	if _, err := s.d1.Run(ctx, statements...); err != nil {
+	if _, err := s.db.Run(ctx, statements...); err != nil {
 		return nil, fmt.Errorf("add pantry items: %w", err)
 	}
 	pantry, err := s.Pantry(ctx, userID)
@@ -168,18 +168,18 @@ func (s *Store) RemovePantryItems(ctx context.Context, userID string, names []st
 	if len(names) == 0 || len(names) > maxBatchItems {
 		return nil, ErrInvalid
 	}
-	statements := make([]cloudflare.Statement, 0, len(names))
+	statements := make([]storage.Statement, 0, len(names))
 	for _, raw := range names {
 		name := strings.TrimSpace(raw)
 		if name == "" || len(name) > 500 {
 			return nil, ErrInvalid
 		}
-		statements = append(statements, cloudflare.Statement{
+		statements = append(statements, storage.Statement{
 			SQL:    `DELETE FROM pantry_items WHERE user_id = ? AND name_key = ?`,
 			Params: []any{userID, strings.ToLower(name)},
 		})
 	}
-	if _, err := s.d1.Run(ctx, statements...); err != nil {
+	if _, err := s.db.Run(ctx, statements...); err != nil {
 		return nil, fmt.Errorf("remove pantry items: %w", err)
 	}
 	pantry, err := s.Pantry(ctx, userID)
@@ -199,11 +199,11 @@ func (s *Store) SetPantryQuantity(ctx context.Context, userID, name string, quan
 	if name == "" || len(name) > 500 || quantity < 0 {
 		return nil, ErrInvalid
 	}
-	statements := []cloudflare.Statement{{
+	statements := []storage.Statement{{
 		SQL:    `UPDATE pantry_items SET quantity = ? WHERE user_id = ? AND name_key = ? AND quantity <> ?`,
 		Params: []any{quantity, userID, strings.ToLower(name), quantity},
 	}}
-	if _, err := s.d1.Run(ctx, statements...); err != nil {
+	if _, err := s.db.Run(ctx, statements...); err != nil {
 		return nil, fmt.Errorf("set pantry quantity: %w", err)
 	}
 	pantry, err := s.Pantry(ctx, userID)
@@ -219,8 +219,8 @@ func (s *Store) ClearPantry(ctx context.Context, userID string) error {
 	if err != nil {
 		return err
 	}
-	statements := []cloudflare.Statement{{SQL: `DELETE FROM pantry_items WHERE user_id = ?`, Params: []any{userID}}}
-	if _, err := s.d1.Run(ctx, statements...); err != nil {
+	statements := []storage.Statement{{SQL: `DELETE FROM pantry_items WHERE user_id = ?`, Params: []any{userID}}}
+	if _, err := s.db.Run(ctx, statements...); err != nil {
 		return fmt.Errorf("clear pantry: %w", err)
 	}
 	s.enqueueShoppingProfileSnapshot(userID)
@@ -232,7 +232,7 @@ func (s *Store) Equipment(ctx context.Context, userID string) ([]EquipmentItem, 
 	if err != nil {
 		return nil, err
 	}
-	results, err := s.d1.Run(ctx, cloudflare.Statement{
+	results, err := s.db.Run(ctx, storage.Statement{
 		SQL:    `SELECT name, category, added_at FROM equipment_items WHERE user_id = ? ORDER BY name_key, name`,
 		Params: []any{userID},
 	})
@@ -266,14 +266,14 @@ func (s *Store) AddEquipment(ctx context.Context, userID string, items []Equipme
 		return nil, ErrInvalid
 	}
 	addedAt := shoppingTimestamp(now)
-	statements := make([]cloudflare.Statement, 0, len(items))
+	statements := make([]storage.Statement, 0, len(items))
 	for _, item := range items {
 		name := strings.TrimSpace(item.Name)
 		category, categoryErr := normalizedOptionalString(item.Category, 200)
 		if name == "" || len(name) > 500 || categoryErr != nil {
 			return nil, ErrInvalid
 		}
-		statements = append(statements, cloudflare.Statement{
+		statements = append(statements, storage.Statement{
 			SQL: `INSERT INTO equipment_items (user_id, name, name_key, category, added_at) VALUES (?, ?, ?, ?, ?)
 			      ON CONFLICT(user_id, name_key) DO UPDATE SET
 			        category = excluded.category
@@ -281,7 +281,7 @@ func (s *Store) AddEquipment(ctx context.Context, userID string, items []Equipme
 			Params: []any{userID, name, strings.ToLower(name), nullableString(category), addedAt},
 		})
 	}
-	if _, err := s.d1.Run(ctx, statements...); err != nil {
+	if _, err := s.db.Run(ctx, statements...); err != nil {
 		return nil, fmt.Errorf("add equipment: %w", err)
 	}
 	equipment, err := s.Equipment(ctx, userID)
@@ -300,18 +300,18 @@ func (s *Store) RemoveEquipment(ctx context.Context, userID string, names []stri
 	if len(names) == 0 || len(names) > maxBatchItems {
 		return nil, ErrInvalid
 	}
-	statements := make([]cloudflare.Statement, 0, len(names))
+	statements := make([]storage.Statement, 0, len(names))
 	for _, raw := range names {
 		name := strings.TrimSpace(raw)
 		if name == "" || len(name) > 500 {
 			return nil, ErrInvalid
 		}
-		statements = append(statements, cloudflare.Statement{
+		statements = append(statements, storage.Statement{
 			SQL:    `DELETE FROM equipment_items WHERE user_id = ? AND name_key = ?`,
 			Params: []any{userID, strings.ToLower(name)},
 		})
 	}
-	if _, err := s.d1.Run(ctx, statements...); err != nil {
+	if _, err := s.db.Run(ctx, statements...); err != nil {
 		return nil, fmt.Errorf("remove equipment: %w", err)
 	}
 	equipment, err := s.Equipment(ctx, userID)
@@ -327,8 +327,8 @@ func (s *Store) ClearEquipment(ctx context.Context, userID string) error {
 	if err != nil {
 		return err
 	}
-	statements := []cloudflare.Statement{{SQL: `DELETE FROM equipment_items WHERE user_id = ?`, Params: []any{userID}}}
-	if _, err := s.d1.Run(ctx, statements...); err != nil {
+	statements := []storage.Statement{{SQL: `DELETE FROM equipment_items WHERE user_id = ?`, Params: []any{userID}}}
+	if _, err := s.db.Run(ctx, statements...); err != nil {
 		return fmt.Errorf("clear equipment: %w", err)
 	}
 	s.enqueueShoppingProfileSnapshot(userID)
@@ -387,25 +387,25 @@ func (s *Store) RecordOrder(ctx context.Context, userID string, order Order, now
 		}
 		order.TotalItems += item.Quantity
 	}
-	statements := make([]cloudflare.Statement, 0, len(order.Items)+1)
-	statements = append(statements, cloudflare.Statement{
+	statements := make([]storage.Statement, 0, len(order.Items)+1)
+	statements = append(statements, storage.Statement{
 		SQL: `INSERT INTO shopping_orders (id, user_id, total_items, estimated_total, placed_at, location_id, notes)
 		      VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		Params: []any{order.ID, userID, order.TotalItems, nullableFloat64(order.EstimatedTotal), order.PlacedAt, nullableString(order.LocationID), nullableString(order.Notes)},
 	})
 	for position, item := range order.Items {
-		statements = append(statements, cloudflare.Statement{
+		statements = append(statements, storage.Statement{
 			SQL:    `INSERT INTO shopping_order_items (order_id, position, upc, name, quantity, price) VALUES (?, ?, ?, ?, ?, ?)`,
 			Params: []any{order.ID, position, item.UPC, item.Name, item.Quantity, nullableFloat64(item.Price)},
 		})
 		if item.Product != nil {
-			statements = append(statements, cloudflare.Statement{
+			statements = append(statements, storage.Statement{
 				SQL:    `INSERT OR REPLACE INTO shopping_order_item_product_refs (order_id, position, provider, product_id) VALUES (?, ?, ?, ?)`,
 				Params: []any{order.ID, position, item.Product.Provider, item.Product.ID},
 			})
 		}
 	}
-	if _, err := s.d1.Run(ctx, statements...); err != nil {
+	if _, err := s.db.Run(ctx, statements...); err != nil {
 		return Order{}, fmt.Errorf("record shopping order: %w", err)
 	}
 	s.enqueueShoppingProfileSnapshot(userID)
@@ -423,14 +423,14 @@ func (s *Store) RecentOrders(ctx context.Context, userID string, limit int) ([]O
 	if limit > 50 {
 		limit = 50
 	}
-	results, err := s.d1.Run(
+	results, err := s.db.Run(
 		ctx,
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `SELECT id, total_items, estimated_total, placed_at, location_id, notes
 			      FROM shopping_orders WHERE user_id = ? ORDER BY placed_at DESC, id DESC LIMIT ?`,
 			Params: []any{userID, limit},
 		},
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `SELECT soi.order_id, soi.position, soi.upc, soi.name, soi.quantity, soi.price,
 			             opr.provider AS product_provider, opr.product_id AS product_id
 			      FROM shopping_order_items soi JOIN shopping_orders so ON so.id = soi.order_id
@@ -498,7 +498,7 @@ func (s *Store) PreferredStore(ctx context.Context, userID string) (*PreferredSt
 	if err != nil {
 		return nil, err
 	}
-	results, err := s.d1.Run(ctx, cloudflare.Statement{
+	results, err := s.db.Run(ctx, storage.Statement{
 		SQL: `SELECT COALESCE(psp.provider, 'kroger') AS provider,
 		             ps.location_id, ps.name, ps.address, ps.chain, ps.set_at
 		      FROM preferred_stores ps
@@ -543,7 +543,7 @@ func (s *Store) SetPreferredStore(ctx context.Context, userID string, store Pref
 		return PreferredStore{}, ErrInvalid
 	}
 	store.SetAt = shoppingTimestamp(now)
-	statements := []cloudflare.Statement{{
+	statements := []storage.Statement{{
 		SQL: `INSERT INTO preferred_stores (user_id, location_id, name, address, chain, set_at) VALUES (?, ?, ?, ?, ?, ?)
 		      ON CONFLICT(user_id) DO UPDATE SET
 		        location_id = excluded.location_id,
@@ -568,12 +568,12 @@ func (s *Store) SetPreferredStore(ctx context.Context, userID string, store Pref
 		      WHERE ps.user_id = ? LIMIT 1`,
 		Params: []any{userID},
 	}}
-	results, err := s.d1.Run(ctx, statements...)
+	results, err := s.db.Run(ctx, statements...)
 	if err != nil {
 		return PreferredStore{}, fmt.Errorf("set preferred store: %w", err)
 	}
 	if len(results) < 3 {
-		return PreferredStore{}, errors.New("set preferred store: incomplete D1 results")
+		return PreferredStore{}, errors.New("set preferred store: incomplete database results")
 	}
 	canonical, err := decodePreferredStore(results[2].Rows)
 	if err != nil || canonical == nil {
@@ -591,11 +591,11 @@ func (s *Store) ClearPreferredStore(ctx context.Context, userID string) error {
 	if err != nil {
 		return err
 	}
-	statements := []cloudflare.Statement{
+	statements := []storage.Statement{
 		{SQL: `DELETE FROM preferred_store_providers WHERE user_id = ?`, Params: []any{userID}},
 		{SQL: `DELETE FROM preferred_stores WHERE user_id = ?`, Params: []any{userID}},
 	}
-	if _, err := s.d1.Run(ctx, statements...); err != nil {
+	if _, err := s.db.Run(ctx, statements...); err != nil {
 		return fmt.Errorf("clear preferred store: %w", err)
 	}
 	s.enqueueShoppingProfileSnapshot(userID)
@@ -607,7 +607,7 @@ func (s *Store) FrequentItems(ctx context.Context, userID string) ([]FrequentIte
 	if err != nil {
 		return nil, err
 	}
-	results, err := s.d1.Run(ctx, cloudflare.Statement{
+	results, err := s.db.Run(ctx, storage.Statement{
 		SQL: `SELECT MIN(soi.name) AS name, COALESCE(MIN(NULLIF(soi.upc, '')), '') AS upc,
 		             MIN(opr.provider) AS product_provider, MIN(opr.product_id) AS product_id,
 		             COUNT(DISTINCT soi.order_id) AS orders, SUM(soi.quantity) AS total_quantity
@@ -677,9 +677,9 @@ type shoppingProfileSnapshot struct {
 
 func (s *Store) loadShoppingProfileSnapshot(ctx context.Context, userID string) (shoppingProfileSnapshot, error) {
 	const recentOrderLimit = 50
-	results, err := s.d1.Run(
+	results, err := s.db.Run(
 		ctx,
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `SELECT COALESCE(psp.provider, 'kroger') AS provider,
 			             ps.location_id, ps.name, ps.address, ps.chain, ps.set_at
 			      FROM preferred_stores ps
@@ -687,20 +687,20 @@ func (s *Store) loadShoppingProfileSnapshot(ctx context.Context, userID string) 
 			      WHERE ps.user_id = ? LIMIT 1`,
 			Params: []any{userID},
 		},
-		cloudflare.Statement{
+		storage.Statement{
 			SQL:    `SELECT name, quantity, added_at, expires_at FROM pantry_items WHERE user_id = ? ORDER BY name_key, name`,
 			Params: []any{userID},
 		},
-		cloudflare.Statement{
+		storage.Statement{
 			SQL:    `SELECT name, category, added_at FROM equipment_items WHERE user_id = ? ORDER BY name_key, name`,
 			Params: []any{userID},
 		},
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `SELECT id, total_items, estimated_total, placed_at, location_id, notes
 			      FROM shopping_orders WHERE user_id = ? ORDER BY placed_at DESC, id DESC LIMIT ?`,
 			Params: []any{userID, recentOrderLimit},
 		},
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `SELECT soi.order_id, soi.position, soi.upc, soi.name, soi.quantity, soi.price,
 			             opr.provider AS product_provider, opr.product_id AS product_id
 			      FROM shopping_order_items soi JOIN shopping_orders so ON so.id = soi.order_id
@@ -710,7 +710,7 @@ func (s *Store) loadShoppingProfileSnapshot(ctx context.Context, userID string) 
 			      ) ORDER BY so.placed_at DESC, soi.position`,
 			Params: []any{userID, userID, recentOrderLimit},
 		},
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `SELECT MIN(soi.name) AS name, COALESCE(MIN(NULLIF(soi.upc, '')), '') AS upc,
 			             MIN(opr.provider) AS product_provider, MIN(opr.product_id) AS product_id,
 			             COUNT(DISTINCT soi.order_id) AS orders, SUM(soi.quantity) AS total_quantity
@@ -722,11 +722,11 @@ func (s *Store) loadShoppingProfileSnapshot(ctx context.Context, userID string) 
 			      ORDER BY COUNT(DISTINCT soi.order_id) DESC, lower(MIN(soi.name)), MIN(soi.name) LIMIT 20`,
 			Params: []any{userID},
 		},
-		cloudflare.Statement{
+		storage.Statement{
 			SQL:    `SELECT revision FROM shopping_profile_revisions WHERE user_id = ? LIMIT 1`,
 			Params: []any{userID},
 		},
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `SELECT profile_revision, artifact_version, content_sha256
 			      FROM shopping_profile_artifacts WHERE user_id = ? LIMIT 1`,
 			Params: []any{userID},
@@ -736,7 +736,7 @@ func (s *Store) loadShoppingProfileSnapshot(ctx context.Context, userID string) 
 		return shoppingProfileSnapshot{}, fmt.Errorf("load shopping profile: %w", err)
 	}
 	if len(results) != 8 {
-		return shoppingProfileSnapshot{}, errors.New("load shopping profile: incomplete D1 results")
+		return shoppingProfileSnapshot{}, errors.New("load shopping profile: incomplete database results")
 	}
 
 	profile := ShoppingProfile{}
@@ -790,7 +790,7 @@ func (s *Store) ResolveShopper(ctx context.Context, krogerSub string) (string, e
 	if krogerSub == "" {
 		return "", ErrInvalid
 	}
-	results, err := s.d1.Run(ctx, cloudflare.Statement{
+	results, err := s.db.Run(ctx, storage.Statement{
 		SQL:    `SELECT clerk_user_id FROM kroger_account_links WHERE kroger_sub = ? LIMIT 1`,
 		Params: []any{krogerSub},
 	})
@@ -818,7 +818,7 @@ func (s *Store) LinkKrogerAccount(ctx context.Context, krogerSub, clerkUserID st
 		return ErrInvalid
 	}
 	namespacedUserID := "kroger:" + krogerSub
-	statements := []cloudflare.Statement{{
+	statements := []storage.Statement{{
 		SQL: `INSERT INTO kroger_account_links (kroger_sub, clerk_user_id, linked_at) VALUES (?, ?, ?)
 		      ON CONFLICT(kroger_sub) DO UPDATE SET
 		        clerk_user_id = excluded.clerk_user_id,
@@ -840,11 +840,11 @@ func (s *Store) LinkKrogerAccount(ctx context.Context, krogerSub, clerkUserID st
 	for _, table := range tables {
 		statements = append(
 			statements,
-			cloudflare.Statement{
+			storage.Statement{
 				SQL:    fmt.Sprintf("UPDATE OR IGNORE %s SET %s = ? WHERE %s = ?", table.name, table.userColumn, table.userColumn),
 				Params: []any{clerkUserID, namespacedUserID},
 			},
-			cloudflare.Statement{
+			storage.Statement{
 				SQL:    fmt.Sprintf("DELETE FROM %s WHERE %s = ?", table.name, table.userColumn),
 				Params: []any{namespacedUserID},
 			},
@@ -852,11 +852,11 @@ func (s *Store) LinkKrogerAccount(ctx context.Context, krogerSub, clerkUserID st
 	}
 	statements = append(
 		statements,
-		cloudflare.Statement{SQL: `DELETE FROM shopping_profile_artifacts WHERE user_id = ?`, Params: []any{namespacedUserID}},
-		cloudflare.Statement{SQL: `DELETE FROM shopping_profile_snapshot_jobs WHERE user_id = ?`, Params: []any{namespacedUserID}},
-		cloudflare.Statement{SQL: `DELETE FROM shopping_profile_revisions WHERE user_id = ?`, Params: []any{namespacedUserID}},
+		storage.Statement{SQL: `DELETE FROM shopping_profile_artifacts WHERE user_id = ?`, Params: []any{namespacedUserID}},
+		storage.Statement{SQL: `DELETE FROM shopping_profile_snapshot_jobs WHERE user_id = ?`, Params: []any{namespacedUserID}},
+		storage.Statement{SQL: `DELETE FROM shopping_profile_revisions WHERE user_id = ?`, Params: []any{namespacedUserID}},
 	)
-	if _, err := s.d1.Run(ctx, statements...); err != nil {
+	if _, err := s.db.Run(ctx, statements...); err != nil {
 		return fmt.Errorf("link Kroger account: %w", err)
 	}
 	s.enqueueShoppingProfileSnapshotWithCleanup(clerkUserID, namespacedUserID)

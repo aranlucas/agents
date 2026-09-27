@@ -27,7 +27,6 @@ func TestSetupSentryRequiresServiceName(t *testing.T) {
 }
 
 func TestSetupSentryWithoutDSNIsNoop(t *testing.T) {
-	t.Setenv("SENTRY_DSN", "")
 	flush, err := SetupSentry(Config{ServiceName: "agents-test", Environment: "test"})
 	if err != nil {
 		t.Fatal(err)
@@ -36,8 +35,7 @@ func TestSetupSentryWithoutDSNIsNoop(t *testing.T) {
 }
 
 func TestSetupSentryRejectsInvalidDSN(t *testing.T) {
-	t.Setenv("SENTRY_DSN", "not-a-dsn")
-	if _, err := SetupSentry(Config{ServiceName: "agents-test", Environment: "test"}); err == nil {
+	if _, err := SetupSentry(Config{ServiceName: "agents-test", Environment: "test", DSN: "not-a-dsn"}); err == nil {
 		t.Fatal("expected error for invalid DSN")
 	}
 }

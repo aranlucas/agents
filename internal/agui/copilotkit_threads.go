@@ -17,7 +17,7 @@ import (
 )
 
 // runtimeThread mirrors the public, read-only portion of CopilotKit's v2
-// ThreadRecord. D1-backed ADK sessions are the durable source of truth. The
+// ThreadRecord. SQLite-backed ADK sessions are the durable source of truth. The
 // managed Intelligence-only fields remain deliberately unavailable.
 type runtimeThread struct {
 	ID             string  `json:"id"`
@@ -36,7 +36,7 @@ type runtimeThreadsResponse struct {
 }
 
 // listThreads ports the OSS CopilotKit runner's GET /threads contract onto the
-// gateway's existing D1 ADK session service. It intentionally exposes only
+// gateway's existing ADK session service. It intentionally exposes only
 // authenticated, per-user discovery; rename/archive/delete and realtime
 // metadata subscriptions remain managed Intelligence capabilities.
 func (r *CopilotKitRuntime) listThreads(w http.ResponseWriter, request *http.Request) {
@@ -49,7 +49,7 @@ func (r *CopilotKitRuntime) listThreads(w http.ResponseWriter, request *http.Req
 	r.runner.listThreads(w, request, agentID, agent.entry)
 }
 
-func (r *D1AgentRunner) listThreads(w http.ResponseWriter, request *http.Request, agentID string, entry agentruntime.Entry) {
+func (r *SessionAgentRunner) listThreads(w http.ResponseWriter, request *http.Request, agentID string, entry agentruntime.Entry) {
 	identity, ok := auth.FromContext(request.Context())
 	if !ok || identity.Public || strings.TrimSpace(identity.UserID) == "" {
 		writeJSONError(w, http.StatusUnauthorized, "unauthorized")

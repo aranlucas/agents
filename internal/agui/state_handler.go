@@ -72,7 +72,7 @@ func loadThreadState(ctx context.Context, sessions session.Service, entry agentr
 // A session that genuinely does not exist yet (session.ErrNotFound)
 // is reported as threadExists: false with a 200 — that is an expected,
 // unremarkable outcome for a thread the client hasn't started. Any other
-// sessions.Get failure (a D1 outage, a decode error, ...) is a real backend
+// sessions.Get failure (a database outage, a decode error, ...) is a real backend
 // problem: it is logged server-side and reported as a 500 with a sanitized
 // error code, mirroring ag_ui_adk's endpoint, which returns a 500 with an
 // error field on unexpected exceptions instead of silently downgrading them

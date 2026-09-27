@@ -1,6 +1,8 @@
 # Railway infrastructure
 
-The Go service deploys from the repository root using `Dockerfile` and one `/app/agents` executable. The predeploy command is `/app/agents migrate`; the gateway health check is `/ready`. The existing `agents-gateway` service, two environments, region, scale, preserved environment variables, and GitHub source are unchanged.
+The Go service deploys from the repository root using `Dockerfile` and one `/app/agents` executable. The gateway health check is `/ready`, which requires a migrated database and reports whether the lazily built agent surface is `pending`, `ok`, or `failed`.
+
+SQLite lives on the `agents-data` volume mounted at `/app/.data`. Railway does not mount volumes during pre-deploy, so there is no pre-deploy command: `agents serve` applies migrations at startup. A volume attaches to one service and one replica, so keep the gateway at a single replica. The image runs as a non-root user and the volume is root-owned, so `RAILWAY_RUN_UID=0` is set.
 
 Railway supports infrastructure configuration only through TypeScript. `.railway/railway.ts` is deployment tooling, isolated from the Go module and runtime image; it has its own package manifest and lockfile. It is not an application workspace.
 
@@ -10,8 +12,10 @@ railway link --project agents --environment production --service agents-gateway
 railway config plan
 ```
 
-Apply a reviewed plan with `railway config apply`. Repeat for development. The GitHub infrastructure workflow installs this isolated package before planning and applying both environments; it requires the existing `RAILWAY_API_TOKEN` repository secret. No live infrastructure is changed by editing these files.
+Apply a reviewed plan with `railway config apply`. Repeat for development. Removing variables is destructive and needs `railway config apply --confirm-destructive`, which the GitHub workflow never passes; apply those plans locally. The workflow applies development first and production second, and the production job runs in the `railway-production` GitHub environment, so adding required reviewers there gates it. It requires the existing `RAILWAY_API_TOKEN` repository secret.
 
-Keep each preserved environment variable listed in the IaC source: omitted variables can be planned for deletion. D1 and R2 names/bindings are managed separately in `cloudflare/wrangler.toml` and must remain stable. Do not add `railway.json` or `railway.toml` alongside the existing IaC configuration.
+The service source waits for the GitHub CI check suite (`checkSuites: true`), so a failing `main` does not deploy.
 
-Telegram is optional and is not currently deployed. If needed, configure a worker with the same Dockerfile and `/app/agents telegram`; it does not require a second image or binary.
+Keep each preserved environment variable listed in the IaC source: omitted variables are planned for deletion. `internal/config` lists every variable the service reads in `config.Keys`, and a Go test fails if a production variable is missing here or if this file declares one the service never reads.
+
+Telegram is optional and not deployed. The worker needs the same database file, so it cannot run as a separate Railway service with its own volume; run it in the gateway's container if it is ever needed.

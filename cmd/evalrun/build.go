@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/aranlucas/agents/internal/common"
@@ -61,6 +60,10 @@ func newAgentModel(providers map[string]config.Provider, workload providerpolicy
 
 func buildAgent(ctx context.Context, name string, providers map[string]config.Provider) (Built, error) {
 	var notes []string
+	integrations, err := config.LoadIntegrations(os.Getenv)
+	if err != nil {
+		return Built{}, err
+	}
 	switch name {
 	case "expense":
 		m, err := newAgentModel(providers, providerpolicy.Expense, &notes)
@@ -83,11 +86,7 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		if err != nil {
 			return Built{}, err
 		}
-		trvlEndpoint := strings.TrimSpace(os.Getenv("TRVL_MCP_URL"))
-		if trvlEndpoint == "" {
-			trvlEndpoint = "https://trvl-production.up.railway.app/mcp"
-		}
-		built, err := travel.New(m, travel.NewTRVL(trvlEndpoint, &http.Client{Timeout: 20 * time.Second}))
+		built, err := travel.New(m, travel.NewTRVL(integrations.TRVLMCPURL, &http.Client{Timeout: 20 * time.Second}))
 		return Built{Name: name, Agent: built, StateDefaults: travel.StateDefaults, Notes: notes}, err
 
 	case "resume":
@@ -135,11 +134,7 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		if err != nil {
 			return Built{}, err
 		}
-		krogerEndpoint := strings.TrimSpace(os.Getenv("KROGER_MCP_URL"))
-		if krogerEndpoint == "" {
-			krogerEndpoint = "https://ai-meal-planner-mcp.aranlucas.workers.dev/mcp"
-		}
-		kroger := grocery.NewKroger(common.NewHTTPClient(30*time.Second, 8<<20).Client, krogerEndpoint)
+		kroger := grocery.NewKroger(common.NewHTTPClient(30*time.Second, 8<<20).Client, integrations.KrogerMCPURL)
 		loader := common.NewWebLoader(common.NewHTTPClient(20*time.Second, 4<<20), 100_000)
 		built, err := grocery.New(m, kroger, nil, loader)
 		return Built{Name: name, Agent: built, StateDefaults: grocery.StateDefaults, Notes: notes}, err
@@ -157,11 +152,7 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		if err != nil {
 			return Built{}, err
 		}
-		krogerEndpoint := strings.TrimSpace(os.Getenv("KROGER_MCP_URL"))
-		if krogerEndpoint == "" {
-			krogerEndpoint = "https://ai-meal-planner-mcp.aranlucas.workers.dev/mcp"
-		}
-		kroger := grocery.NewKroger(common.NewHTTPClient(30*time.Second, 8<<20).Client, krogerEndpoint)
+		kroger := grocery.NewKroger(common.NewHTTPClient(30*time.Second, 8<<20).Client, integrations.KrogerMCPURL)
 		loader := common.NewWebLoader(common.NewHTTPClient(20*time.Second, 4<<20), 100_000)
 		groceryTask, err := grocery.NewTask(gm, kroger, nil, loader)
 		if err != nil {
@@ -185,7 +176,7 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 			return Built{}, err
 		}
 		var caseBuilder model.LLM = questioner
-		if key := strings.TrimSpace(os.Getenv("GEMINI_API_KEY")); key != "" {
+		if key := integrations.GeminiAPIKey; key != "" {
 			gm, err := gemini.NewModel(ctx, policy.GeminiModel, &genai.ClientConfig{APIKey: key, Backend: genai.BackendGeminiAPI})
 			if err != nil {
 				return Built{}, err
@@ -196,12 +187,8 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		} else {
 			return Built{}, fmt.Errorf("GEMINI_API_KEY is required to configure oralboards case builder")
 		}
-		corpusPath := strings.TrimSpace(os.Getenv("ORALBOARDS_CORPUS_PATH"))
-		if corpusPath == "" {
-			// Gateway and evaluation tools resolve assets from the repository root.
-			corpusPath = "assets/oralboards/search.sqlite"
-		}
-		corpus, err := oralboards.OpenCorpus(corpusPath)
+		// Gateway and evaluation tools resolve assets from the repository root.
+		corpus, err := oralboards.OpenCorpus(integrations.OralBoardsCorpusPath)
 		if err != nil {
 			return Built{}, err
 		}

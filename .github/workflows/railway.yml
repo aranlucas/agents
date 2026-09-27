@@ -15,13 +15,16 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+  RAILWAY_PROJECT_ID: cea909d4-f1d8-4bac-b480-c24e98528b5e
+  # railway/iac needs CLI 5.42.1 or newer; pin it like the package lockfile.
+  RAILWAY_CLI: "@railway/cli@5.62.1"
+
 jobs:
-  apply:
-    name: Apply Railway configuration
+  development:
+    name: Apply Railway configuration (development)
     runs-on: ubuntu-latest
-    env:
-      RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
-      RAILWAY_PROJECT_ID: cea909d4-f1d8-4bac-b480-c24e98528b5e
     steps:
       - name: Require a Railway workspace token
         run: |
@@ -29,7 +32,6 @@ jobs:
             echo "Add a workspace-scoped Railway token as the RAILWAY_API_TOKEN repository secret." >&2
             exit 1
           fi
-
       - uses: actions/checkout@v7
       - uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
         with:
@@ -42,31 +44,37 @@ jobs:
           node-version: 24.19.0
       - name: Install Railway configuration dependencies
         run: pnpm --dir .railway install --frozen-lockfile
-
       - name: Link development
-        run: >-
-          pnpm dlx @railway/cli@latest link
-          --project ${RAILWAY_PROJECT_ID}
-          --environment development
-          --service agents-gateway
+        run: pnpm dlx "$RAILWAY_CLI" link --project "$RAILWAY_PROJECT_ID" --environment development --service agents-gateway
       - name: Plan development
-        run: >-
-          pnpm dlx @railway/cli@latest config plan
+        run: pnpm dlx "$RAILWAY_CLI" config plan
+      # --yes never confirms destructive changes; those need a reviewed local
+      # `railway config apply --confirm-destructive`.
       - name: Apply development
-        run: >-
-          pnpm dlx @railway/cli@latest config apply
-          --yes
+        run: pnpm dlx "$RAILWAY_CLI" config apply --yes
 
+  production:
+    name: Apply Railway configuration (production)
+    needs: development
+    runs-on: ubuntu-latest
+    # Add required reviewers to this GitHub environment to gate production.
+    environment: railway-production
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
+        with:
+          version: 12.6.0
+          install: false
+      - uses: actions/setup-node@v7
+        with:
+          cache: pnpm
+          cache-dependency-path: .railway/pnpm-lock.yaml
+          node-version: 24.19.0
+      - name: Install Railway configuration dependencies
+        run: pnpm --dir .railway install --frozen-lockfile
       - name: Link production
-        run: >-
-          pnpm dlx @railway/cli@latest link
-          --project ${RAILWAY_PROJECT_ID}
-          --environment production
-          --service agents-gateway
+        run: pnpm dlx "$RAILWAY_CLI" link --project "$RAILWAY_PROJECT_ID" --environment production --service agents-gateway
       - name: Plan production
-        run: >-
-          pnpm dlx @railway/cli@latest config plan
+        run: pnpm dlx "$RAILWAY_CLI" config plan
       - name: Apply production
-        run: >-
-          pnpm dlx @railway/cli@latest config apply
-          --yes
+        run: pnpm dlx "$RAILWAY_CLI" config apply --yes

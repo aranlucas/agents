@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aranlucas/agents/internal/cloudflare"
+	"github.com/aranlucas/agents/internal/storage"
 	"google.golang.org/adk/v2/artifact"
 )
 
@@ -113,7 +113,7 @@ type Repository interface {
 }
 
 type Store struct {
-	d1        cloudflare.StatementRunner
+	db        storage.StatementRunner
 	artifacts artifact.Service
 	newID     func(string) (string, error)
 
@@ -122,12 +122,12 @@ type Store struct {
 	shoppingClosed     bool
 }
 
-func NewStore(d1 *cloudflare.D1) *Store {
-	return &Store{d1: d1, newID: randomID}
+func NewStore(db storage.StatementRunner) *Store {
+	return &Store{db: db, newID: randomID}
 }
 
-func NewStoreWithArtifacts(d1 *cloudflare.D1, artifacts artifact.Service) *Store {
-	store := &Store{d1: d1, artifacts: artifacts, newID: randomID}
+func NewStoreWithArtifacts(db storage.StatementRunner, artifacts artifact.Service) *Store {
+	store := &Store{db: db, artifacts: artifacts, newID: randomID}
 	store.startShoppingProfileSnapshots()
 	return store
 }
@@ -165,10 +165,10 @@ func (s *Store) CreateHousehold(ctx context.Context, userID, name string, now ti
 		return Household{}, err
 	}
 	createdAt := timestamp(now)
-	_, err = s.d1.Run(
+	_, err = s.db.Run(
 		ctx,
-		cloudflare.Statement{SQL: `INSERT INTO households (id, name, created_by, created_at) VALUES (?, ?, ?, ?)`, Params: []any{id, name, userID, createdAt}},
-		cloudflare.Statement{SQL: `INSERT INTO household_members (household_id, clerk_user_id, role, joined_at) VALUES (?, ?, 'owner', ?)`, Params: []any{id, userID, createdAt}},
+		storage.Statement{SQL: `INSERT INTO households (id, name, created_by, created_at) VALUES (?, ?, ?, ?)`, Params: []any{id, name, userID, createdAt}},
+		storage.Statement{SQL: `INSERT INTO household_members (household_id, clerk_user_id, role, joined_at) VALUES (?, ?, 'owner', ?)`, Params: []any{id, userID, createdAt}},
 	)
 	if err != nil {
 		return Household{}, fmt.Errorf("create household: %w", err)
@@ -184,7 +184,7 @@ func (s *Store) ListHouseholds(ctx context.Context, userID string) ([]Household,
 	if userID == "" {
 		return nil, ErrInvalid
 	}
-	results, err := s.d1.Run(ctx, cloudflare.Statement{
+	results, err := s.db.Run(ctx, storage.Statement{
 		SQL: `SELECT h.id, h.name, hm.role, h.created_by, h.created_at
 		      FROM household_members hm JOIN households h ON h.id = hm.household_id
 		      WHERE hm.clerk_user_id = ? ORDER BY h.created_at, h.id`,
@@ -225,7 +225,7 @@ func (s *Store) CreateInvite(ctx context.Context, userID, householdID, code stri
 	}
 	createdAt := timestamp(now)
 	expiresAt := createdAt + int64((7*24*time.Hour)/time.Millisecond)
-	results, err := s.d1.Run(ctx, cloudflare.Statement{
+	results, err := s.db.Run(ctx, storage.Statement{
 		SQL: `INSERT INTO household_invites (code, household_id, created_by, expires_at, max_uses, used_count)
 		      SELECT ?, ?, ?, ?, ?, 0 FROM household_members
 		      WHERE household_id = ? AND clerk_user_id = ? AND role = 'owner'`,
@@ -249,7 +249,7 @@ func (s *Store) JoinHousehold(ctx context.Context, userID, code string, now time
 		return Household{}, ErrInvalid
 	}
 	nowMillis := timestamp(now)
-	lookup, err := s.d1.Run(ctx, cloudflare.Statement{
+	lookup, err := s.db.Run(ctx, storage.Statement{
 		SQL: `SELECT h.id, h.name, h.created_by, h.created_at, i.expires_at, i.max_uses, i.used_count,
 		             EXISTS(SELECT 1 FROM household_members hm WHERE hm.household_id = h.id AND hm.clerk_user_id = ?) AS already_member
 		      FROM household_invites i JOIN households h ON h.id = i.household_id WHERE i.code = ? LIMIT 1`,
@@ -284,15 +284,15 @@ func (s *Store) JoinHousehold(ctx context.Context, userID, code string, now time
 	if row.UsedCount >= row.MaxUses {
 		return Household{}, ErrInviteExhausted
 	}
-	results, err := s.d1.Run(
+	results, err := s.db.Run(
 		ctx,
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `INSERT OR IGNORE INTO household_members (household_id, clerk_user_id, role, joined_at)
 			      SELECT household_id, ?, 'member', ? FROM household_invites
 			      WHERE code = ? AND expires_at >= ? AND used_count < max_uses`,
 			Params: []any{userID, nowMillis, code, nowMillis},
 		},
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `UPDATE household_invites SET used_count = used_count + 1
 			      WHERE code = ? AND used_count < max_uses AND EXISTS (
 			        SELECT 1 FROM household_members WHERE household_id = household_invites.household_id
@@ -325,7 +325,7 @@ func (s *Store) ListLists(ctx context.Context, userID, householdID string) ([]Li
 	if userID == "" || householdID == "" {
 		return nil, ErrInvalid
 	}
-	results, err := s.d1.Run(ctx, cloudflare.Statement{
+	results, err := s.db.Run(ctx, storage.Statement{
 		SQL: `SELECT gl.id, gl.household_id, gl.owner_user_id, gl.title, gl.status, gl.created_at, gl.updated_at,
 		             COALESCE((SELECT version FROM grocery_resource_artifacts gra WHERE gra.resource_type = 'list' AND gra.resource_id = gl.id), 0) AS artifact_version
 		      FROM grocery_lists gl WHERE gl.household_id = ? AND EXISTS (
@@ -359,9 +359,9 @@ func (s *Store) GetList(ctx context.Context, userID, listID string) (List, error
 	if userID == "" || listID == "" {
 		return List{}, ErrInvalid
 	}
-	results, err := s.d1.Run(
+	results, err := s.db.Run(
 		ctx,
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `SELECT gl.id, gl.household_id, gl.owner_user_id, gl.title, gl.status, gl.created_at, gl.updated_at,
 			             COALESCE((SELECT version FROM grocery_resource_artifacts gra WHERE gra.resource_type = 'list' AND gra.resource_id = gl.id), 0) AS artifact_version
 			      FROM grocery_lists gl WHERE gl.id = ? AND (gl.owner_user_id = ? OR EXISTS (
@@ -369,7 +369,7 @@ func (s *Store) GetList(ctx context.Context, userID, listID string) (List, error
 			      )) LIMIT 1`,
 			Params: []any{listID, userID, userID},
 		},
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `SELECT gli.id, gli.list_id, gli.name, gli.quantity, gli.note, glu.upc AS upc,
 			             gpr.provider AS product_provider, gpr.product_id AS product_id,
 			             gli.position, gli.added_by, gli.checked_by, gli.checked_at, gli.updated_at
@@ -412,7 +412,7 @@ func (s *Store) AddItems(ctx context.Context, userID, listID string, inputs []Ne
 		return nil, ErrInvalid
 	}
 	updatedAt := timestamp(now)
-	statements := make([]cloudflare.Statement, 0, len(inputs)+1)
+	statements := make([]storage.Statement, 0, len(inputs)+1)
 	items := make([]Item, 0, len(inputs))
 	for _, input := range inputs {
 		name, quantity := strings.TrimSpace(input.Name), strings.TrimSpace(input.Quantity)
@@ -436,7 +436,7 @@ func (s *Store) AddItems(ctx context.Context, userID, listID string, inputs []Ne
 			trimmed := strings.TrimSpace(*input.Note)
 			note = trimmed
 		}
-		statements = append(statements, cloudflare.Statement{
+		statements = append(statements, storage.Statement{
 			SQL: `INSERT INTO grocery_list_items (id, list_id, name, quantity, note, position, added_by, checked_by, checked_at, updated_at)
 			      SELECT ?, gl.id, ?, ?, ?, COALESCE((SELECT MAX(position) + 1 FROM grocery_list_items WHERE list_id = gl.id), 0), ?, NULL, NULL, ?
 			      FROM grocery_lists gl WHERE gl.id = ? AND (gl.owner_user_id = ? OR EXISTS (
@@ -449,13 +449,13 @@ func (s *Store) AddItems(ctx context.Context, userID, listID string, inputs []Ne
 		}
 		items = append(items, Item{ID: id, ListID: listID, Name: name, Quantity: quantity, Note: stringPointer(note), Upc: input.Upc, Product: input.Product, AddedBy: userID, UpdatedAt: updatedAt})
 	}
-	statements = append(statements, cloudflare.Statement{
+	statements = append(statements, storage.Statement{
 		SQL: `UPDATE grocery_lists SET updated_at = ? WHERE id = ? AND (owner_user_id = ? OR EXISTS (
 		      SELECT 1 FROM household_members hm WHERE hm.household_id = grocery_lists.household_id AND hm.clerk_user_id = ?
 		    ))`,
 		Params: []any{updatedAt, listID, userID, userID},
 	})
-	results, err := s.d1.Run(ctx, statements...)
+	results, err := s.db.Run(ctx, statements...)
 	if err != nil {
 		return nil, fmt.Errorf("add grocery list items: %w", err)
 	}
@@ -519,16 +519,16 @@ func (s *Store) UpdateItem(ctx context.Context, userID, listID, itemID string, p
 	}
 	sets, params = append(sets, "updated_at = ?"), append(params, updatedAt)
 	params = append(params, itemID, listID, userID, userID)
-	results, err := s.d1.Run(
+	results, err := s.db.Run(
 		ctx,
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `UPDATE grocery_list_items SET ` + strings.Join(sets, ", ") + ` WHERE id = ? AND list_id = ? AND EXISTS (
 			      SELECT 1 FROM grocery_lists gl WHERE gl.id = grocery_list_items.list_id AND (gl.owner_user_id = ? OR EXISTS (
 			        SELECT 1 FROM household_members hm WHERE hm.household_id = gl.household_id AND hm.clerk_user_id = ?
 			      )))`,
 			Params: params,
 		},
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `SELECT gli.id, gli.list_id, gli.name, gli.quantity, gli.note, glu.upc AS upc,
 			             gpr.provider AS product_provider, gpr.product_id AS product_id,
 			             gli.position, gli.added_by, gli.checked_by, gli.checked_at, gli.updated_at
@@ -538,7 +538,7 @@ func (s *Store) UpdateItem(ctx context.Context, userID, listID, itemID string, p
 			      WHERE gli.id = ? AND gli.list_id = ?`,
 			Params: []any{itemID, listID},
 		},
-		cloudflare.Statement{SQL: `UPDATE grocery_lists SET updated_at = ? WHERE id = ?`, Params: []any{updatedAt, listID}},
+		storage.Statement{SQL: `UPDATE grocery_lists SET updated_at = ? WHERE id = ?`, Params: []any{updatedAt, listID}},
 	)
 	if err != nil {
 		return Item{}, fmt.Errorf("update grocery list item: %w", err)
@@ -565,18 +565,18 @@ func (s *Store) DeleteItem(ctx context.Context, userID, listID, itemID string, n
 		return ErrInvalid
 	}
 	updatedAt := timestamp(now)
-	results, err := s.d1.Run(
+	results, err := s.db.Run(
 		ctx,
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `DELETE FROM grocery_list_items WHERE id = ? AND list_id = ? AND EXISTS (
 		      SELECT 1 FROM grocery_lists gl WHERE gl.id = grocery_list_items.list_id AND (gl.owner_user_id = ? OR EXISTS (
 		        SELECT 1 FROM household_members hm WHERE hm.household_id = gl.household_id AND hm.clerk_user_id = ?
 		      )))`,
 			Params: []any{itemID, listID, userID, userID},
 		},
-		cloudflare.Statement{SQL: `DELETE FROM grocery_list_item_upcs WHERE item_id = ?`, Params: []any{itemID}},
-		cloudflare.Statement{SQL: `DELETE FROM grocery_list_item_product_refs WHERE item_id = ?`, Params: []any{itemID}},
-		cloudflare.Statement{
+		storage.Statement{SQL: `DELETE FROM grocery_list_item_upcs WHERE item_id = ?`, Params: []any{itemID}},
+		storage.Statement{SQL: `DELETE FROM grocery_list_item_product_refs WHERE item_id = ?`, Params: []any{itemID}},
+		storage.Statement{
 			SQL: `UPDATE grocery_lists SET updated_at = ? WHERE id = ? AND (owner_user_id = ? OR EXISTS (
 			      SELECT 1 FROM household_members hm WHERE hm.household_id = grocery_lists.household_id AND hm.clerk_user_id = ?
 			    ))`,
@@ -596,7 +596,7 @@ func (s *Store) DeleteItem(ctx context.Context, userID, listID, itemID string, n
 }
 
 func (s *Store) ready() error {
-	if s == nil || s.d1 == nil || s.newID == nil {
+	if s == nil || s.db == nil || s.newID == nil {
 		return errors.New("grocery store is required")
 	}
 	s.shoppingSnapshotMu.RLock()
@@ -620,7 +620,7 @@ func (s *Store) hasRow(ctx context.Context, sql string, values ...string) (bool,
 		}
 		params[index] = value
 	}
-	results, err := s.d1.Run(ctx, cloudflare.Statement{SQL: sql, Params: params})
+	results, err := s.db.Run(ctx, storage.Statement{SQL: sql, Params: params})
 	if err != nil {
 		return false, err
 	}
@@ -687,17 +687,17 @@ func validProviderID(provider string) bool {
 	return true
 }
 
-func productReferenceStatement(itemID string, product *ProductReference) *cloudflare.Statement {
+func productReferenceStatement(itemID string, product *ProductReference) *storage.Statement {
 	if product == nil {
 		return nil
 	}
-	return &cloudflare.Statement{
+	return &storage.Statement{
 		SQL:    `INSERT OR REPLACE INTO grocery_list_item_product_refs (item_id, provider, product_id) VALUES (?, ?, ?)`,
 		Params: []any{itemID, product.Provider, product.ID},
 	}
 }
 
-func changed(results []cloudflare.Result) int64 {
+func changed(results []storage.Result) int64 {
 	if len(results) == 0 {
 		return 0
 	}

@@ -5,19 +5,16 @@ import (
 	"database/sql"
 	json "encoding/json/v2"
 	"errors"
-	"fmt"
 	"slices"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/aranlucas/agents/internal/cloudflare"
-	d1migrations "github.com/aranlucas/agents/migrations/d1"
+	"github.com/aranlucas/agents/internal/storage"
 
 	"google.golang.org/adk/v2/artifact"
 	"google.golang.org/genai"
-	_ "modernc.org/sqlite"
 )
 
 func TestConcurrentShoppingProfilePublishCannotMakeStaleRevisionLatest(t *testing.T) {
@@ -309,7 +306,7 @@ func TestPreferredStoreProviderChangeCreatesRevisionAndArtifact(t *testing.T) {
 
 func TestFrequentItemsKeepSameNamedProductsSeparateByProvider(t *testing.T) {
 	runner := newShoppingSnapshotSQLiteRunner(t)
-	store := &Store{d1: runner, newID: randomID}
+	store := &Store{db: runner, newID: randomID}
 
 	orders := []Order{
 		{ID: "order_kroger", Items: []OrderItem{{Product: &ProductReference{Provider: "kroger", ID: "upc_1"}, Name: "Whole Milk", Quantity: 1}}},
@@ -680,17 +677,20 @@ func TestShoppingProfilePublishRecoversSaveBeforeReference(t *testing.T) {
 	}
 }
 
+// shoppingSnapshotSQLiteRunner is the production SQLite store with direct
+// access for seeding and assertions.
 type shoppingSnapshotSQLiteRunner struct {
+	*storage.DB
 	db *sql.DB
 }
 
 type recordingStatementRunner struct {
-	cloudflare.StatementRunner
+	storage.StatementRunner
 	mu        sync.Mutex
-	schedules []cloudflare.Statement
+	schedules []storage.Statement
 }
 
-func (r *recordingStatementRunner) Run(ctx context.Context, statements ...cloudflare.Statement) ([]cloudflare.Result, error) {
+func (r *recordingStatementRunner) Run(ctx context.Context, statements ...storage.Statement) ([]storage.Result, error) {
 	r.mu.Lock()
 	for _, statement := range statements {
 		if strings.Contains(statement.SQL, "INSERT OR IGNORE INTO shopping_profile_artifact_cleanup_jobs") &&
@@ -703,103 +703,28 @@ func (r *recordingStatementRunner) Run(ctx context.Context, statements ...cloudf
 	return r.StatementRunner.Run(ctx, statements...)
 }
 
-func (r *recordingStatementRunner) cleanupSchedules() []cloudflare.Statement {
+func (r *recordingStatementRunner) cleanupSchedules() []storage.Statement {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return append([]cloudflare.Statement(nil), r.schedules...)
+	return append([]storage.Statement(nil), r.schedules...)
 }
 
 func newShoppingSnapshotSQLiteRunner(t *testing.T) *shoppingSnapshotSQLiteRunner {
 	t.Helper()
-	db, err := sql.Open("sqlite", ":memory:")
+	db, err := storage.Open(":memory:")
 	if err != nil {
 		t.Fatal(err)
 	}
-	db.SetMaxOpenConns(1)
-	for _, source := range []string{
-		d1migrations.Initial,
-		d1migrations.SharedLists,
-		d1migrations.SavedGroceryResources,
-		d1migrations.ShoppingProfile,
-		d1migrations.ShoppingProfileArtifacts,
-		d1migrations.UniversalProductReferences,
-	} {
-		for _, statement := range splitShoppingSnapshotTestSQL(source) {
-			if _, err := db.Exec(statement); err != nil {
-				_ = db.Close()
-				t.Fatalf("execute test migration statement %q: %v", statement, err)
-			}
-		}
-	}
 	t.Cleanup(func() { _ = db.Close() })
-	return &shoppingSnapshotSQLiteRunner{db: db}
+	if err := db.Migrate(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	return &shoppingSnapshotSQLiteRunner{DB: db, db: db.SQL()}
 }
 
-func (r *shoppingSnapshotSQLiteRunner) Run(ctx context.Context, statements ...cloudflare.Statement) ([]cloudflare.Result, error) {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = tx.Rollback() }()
-	results := make([]cloudflare.Result, 0, len(statements))
-	for _, statement := range statements {
-		result := cloudflare.Result{Success: true}
-		upperSQL := strings.ToUpper(strings.TrimSpace(statement.SQL))
-		if strings.HasPrefix(upperSQL, "SELECT ") || strings.Contains(upperSQL, " RETURNING ") {
-			rows, err := tx.QueryContext(ctx, statement.SQL, statement.Params...)
-			if err != nil {
-				return nil, fmt.Errorf("query %q: %w", statement.SQL, err)
-			}
-			columns, err := rows.Columns()
-			if err != nil {
-				_ = rows.Close()
-				return nil, err
-			}
-			for rows.Next() {
-				values := make([]any, len(columns))
-				pointers := make([]any, len(columns))
-				for index := range values {
-					pointers[index] = &values[index]
-				}
-				if err := rows.Scan(pointers...); err != nil {
-					_ = rows.Close()
-					return nil, err
-				}
-				row := map[string]any{}
-				for index, column := range columns {
-					if bytes, ok := values[index].([]byte); ok {
-						values[index] = string(bytes)
-					}
-					row[column] = values[index]
-				}
-				encoded, err := json.Marshal(row)
-				if err != nil {
-					_ = rows.Close()
-					return nil, err
-				}
-				result.Rows = append(result.Rows, encoded)
-			}
-			if err := rows.Close(); err != nil {
-				return nil, err
-			}
-		} else {
-			executed, err := tx.ExecContext(ctx, statement.SQL, statement.Params...)
-			if err != nil {
-				return nil, fmt.Errorf("exec %q: %w", statement.SQL, err)
-			}
-			result.Meta.Changes, _ = executed.RowsAffected()
-		}
-		results = append(results, result)
-	}
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
-	return results, nil
-}
-
-func newShoppingSnapshotTestStore(t *testing.T, runner cloudflare.StatementRunner, service artifact.Service) *Store {
+func newShoppingSnapshotTestStore(t *testing.T, runner storage.StatementRunner, service artifact.Service) *Store {
 	t.Helper()
-	store := &Store{d1: runner, artifacts: service, newID: randomID}
+	store := &Store{db: runner, artifacts: service, newID: randomID}
 	t.Cleanup(store.stopShoppingProfileSnapshots)
 	return store
 }
@@ -1062,38 +987,4 @@ func (s *countingArtifactService) deletedVersions() []int64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return append([]int64(nil), s.deleted...)
-}
-
-func splitShoppingSnapshotTestSQL(source string) []string {
-	var statements []string
-	var current strings.Builder
-	inTrigger := false
-	flush := func() {
-		statement := strings.TrimSpace(current.String())
-		statement = strings.TrimSpace(strings.TrimSuffix(statement, ";"))
-		if statement != "" {
-			statements = append(statements, statement)
-		}
-		current.Reset()
-	}
-	for line := range strings.SplitSeq(source, "\n") {
-		trimmed := strings.TrimSpace(line)
-		if !inTrigger && strings.HasPrefix(strings.ToUpper(trimmed), "CREATE TRIGGER ") {
-			inTrigger = true
-		}
-		current.WriteString(line)
-		current.WriteByte('\n')
-		if inTrigger {
-			if strings.EqualFold(trimmed, "END;") {
-				flush()
-				inTrigger = false
-			}
-			continue
-		}
-		if strings.HasSuffix(trimmed, ";") {
-			flush()
-		}
-	}
-	flush()
-	return statements
 }

@@ -23,8 +23,8 @@ case "$telegram_required" in
 esac
 
 root_health="$(get_json "$base_url/ready")"
-jq -e '.status == "ok" and .checks.d1 == "ok" and .checks.r2 == "ok"' <<<"$root_health" >/dev/null || fail "gateway storage health"
-pass "gateway storage health"
+jq -e '.status == "ok" and .checks.database == "ok"' <<<"$root_health" >/dev/null || fail "gateway database health"
+pass "gateway database health"
 
 for agent in "${agents[@]}"; do
   get_json "$base_url/$agent/health" | jq -e '.status == "ok"' >/dev/null || fail "$agent health"
@@ -73,7 +73,7 @@ pass "gateway OAuth credential path"
 
 if [[ "$telegram_required" == "1" ]]; then
   [[ -n "$telegram_url" ]] || fail "TELEGRAM_HEALTH_URL is required when REQUIRE_TELEGRAM_HEALTH=1"
-  get_json "${telegram_url%/}/ready" | jq -e '.status == "ok" and .checks.d1 == "ok" and .checks.r2 == "ok"' >/dev/null || fail "Telegram worker readiness"
+  get_json "${telegram_url%/}/ready" | jq -e '.status == "ok" and .checks.database == "ok"' >/dev/null || fail "Telegram worker readiness"
   pass "Telegram worker readiness"
 else
   printf 'SKIP: Telegram worker readiness (set REQUIRE_TELEGRAM_HEALTH=1 to enable)\n'

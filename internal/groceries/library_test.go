@@ -5,16 +5,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aranlucas/agents/internal/cloudflare"
+	"github.com/aranlucas/agents/internal/storage"
 	"google.golang.org/adk/v2/artifact"
 )
 
 func TestSaveListCreatesVersionedArtifactBeforeD1Record(t *testing.T) {
-	store := newFixtureStore(t, func(statements []cloudflare.Statement) []cloudflare.Result {
+	store := newFixtureStore(t, func(statements []storage.Statement) []storage.Result {
 		if len(statements) != 4 || !strings.Contains(statements[0].SQL, "INSERT INTO grocery_lists") || !strings.Contains(statements[3].SQL, "grocery_resource_artifacts") {
 			t.Fatalf("statements = %#v", statements)
 		}
-		return []cloudflare.Result{mutationResult(1), mutationResult(1), mutationResult(1), mutationResult(1)}
+		return []storage.Result{mutationResult(1), mutationResult(1), mutationResult(1), mutationResult(1)}
 	})
 	store.artifacts = artifact.InMemoryService()
 	ids := []string{"list_1", "item_1", "item_2"}
@@ -42,11 +42,11 @@ func TestSaveListCreatesVersionedArtifactBeforeD1Record(t *testing.T) {
 }
 
 func TestSaveRecipePersistsStructuredRowsAndArtifactReference(t *testing.T) {
-	store := newFixtureStore(t, func(statements []cloudflare.Statement) []cloudflare.Result {
+	store := newFixtureStore(t, func(statements []storage.Statement) []storage.Result {
 		if len(statements) != 6 || !strings.Contains(statements[0].SQL, "INSERT INTO recipes") || !strings.Contains(statements[1].SQL, "recipe_ingredients") || !strings.Contains(statements[2].SQL, "recipe_steps") || !strings.Contains(statements[5].SQL, "grocery_resource_artifacts") {
 			t.Fatalf("statements = %#v", statements)
 		}
-		results := make([]cloudflare.Result, len(statements))
+		results := make([]storage.Result, len(statements))
 		for index := range results {
 			results[index] = mutationResult(1)
 		}
@@ -75,11 +75,11 @@ func TestSaveRecipePersistsStructuredRowsAndArtifactReference(t *testing.T) {
 
 func TestRefreshListSnapshotAdvancesR2AndD1Reference(t *testing.T) {
 	requests := 0
-	store := newFixtureStore(t, func(statements []cloudflare.Statement) []cloudflare.Result {
+	store := newFixtureStore(t, func(statements []storage.Statement) []storage.Result {
 		requests++
 		switch requests {
 		case 1:
-			return []cloudflare.Result{
+			return []storage.Result{
 				queryResult(t, List{ID: "list_1", OwnerUserID: "user_1", Title: "Updated list", Status: "active", ArtifactVersion: 1, CreatedAt: 1_000, UpdatedAt: 2_000}),
 				queryResult(t, Item{ID: "item_1", ListID: "list_1", Name: "Milk", Quantity: "1", AddedBy: "user_1", UpdatedAt: 2_000}),
 			}
@@ -87,9 +87,9 @@ func TestRefreshListSnapshotAdvancesR2AndD1Reference(t *testing.T) {
 			if len(statements) != 1 || !strings.Contains(statements[0].SQL, "ON CONFLICT(resource_type, resource_id) DO UPDATE") {
 				t.Fatalf("artifact reference statements = %#v", statements)
 			}
-			return []cloudflare.Result{mutationResult(1)}
+			return []storage.Result{mutationResult(1)}
 		default:
-			t.Fatalf("unexpected D1 request %d: %#v", requests, statements)
+			t.Fatalf("unexpected database request %d: %#v", requests, statements)
 			return nil
 		}
 	})
@@ -112,11 +112,11 @@ func TestRefreshListSnapshotAdvancesR2AndD1Reference(t *testing.T) {
 
 func TestRefreshRecipeSnapshotAdvancesR2AndD1Reference(t *testing.T) {
 	requests := 0
-	store := newFixtureStore(t, func(statements []cloudflare.Statement) []cloudflare.Result {
+	store := newFixtureStore(t, func(statements []storage.Statement) []storage.Result {
 		requests++
 		switch requests {
 		case 1:
-			return []cloudflare.Result{
+			return []storage.Result{
 				queryResult(t, Recipe{ID: "recipe_1", OwnerUserID: "user_1", Title: "Pasta", Notes: "Updated", Status: "active", ArtifactVersion: 1, CreatedAt: 1_000, UpdatedAt: 2_000}),
 				queryResult(t, Ingredient{ID: "ingredient_1", RecipeID: "recipe_1", Name: "Pasta", Quantity: "1", Unit: "lb"}),
 				queryResult(t, RecipeStep{ID: "step_1", RecipeID: "recipe_1", Instruction: "Boil"}),
@@ -126,9 +126,9 @@ func TestRefreshRecipeSnapshotAdvancesR2AndD1Reference(t *testing.T) {
 			if len(statements) != 1 || !strings.Contains(statements[0].SQL, "ON CONFLICT(resource_type, resource_id) DO UPDATE") {
 				t.Fatalf("artifact reference statements = %#v", statements)
 			}
-			return []cloudflare.Result{mutationResult(1)}
+			return []storage.Result{mutationResult(1)}
 		default:
-			t.Fatalf("unexpected D1 request %d: %#v", requests, statements)
+			t.Fatalf("unexpected database request %d: %#v", requests, statements)
 			return nil
 		}
 	})

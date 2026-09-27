@@ -32,7 +32,7 @@ type ReadyArgs struct {
 	Summary string `json:"summary"`
 }
 
-// FetchActivities loads the authenticated user's provider-neutral D1 snapshot
+// FetchActivities loads the authenticated user's provider-neutral stored snapshot
 // and publishes the bounded activity context used by the planning agent.
 func FetchActivities(ctx agent.Context, input FetchActivitiesArgs, repository fitnessdata.Repository) (Result, error) {
 	if repository == nil {

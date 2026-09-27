@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aranlucas/agents/internal/cloudflare"
+	"github.com/aranlucas/agents/internal/storage"
 )
 
 func rawRow(value any) jsontext.Value {
@@ -25,20 +25,20 @@ type memoryLinkDB struct {
 	mu     sync.Mutex
 	tokens map[string]map[string]any
 	links  map[int64]AccountLink
-	sql    []cloudflare.Statement
+	sql    []storage.Statement
 }
 
 func newMemoryLinkDB() *memoryLinkDB {
 	return &memoryLinkDB{tokens: map[string]map[string]any{}, links: map[int64]AccountLink{}}
 }
 
-func (d *memoryLinkDB) Run(_ context.Context, statements ...cloudflare.Statement) ([]cloudflare.Result, error) {
+func (d *memoryLinkDB) Run(_ context.Context, statements ...storage.Statement) ([]storage.Result, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	results := make([]cloudflare.Result, 0, len(statements))
+	results := make([]storage.Result, 0, len(statements))
 	for _, statement := range statements {
 		d.sql = append(d.sql, statement)
-		result := cloudflare.Result{Success: true}
+		result := storage.Result{Success: true}
 		switch {
 		case strings.HasPrefix(statement.SQL, "INSERT INTO telegram_link_tokens"):
 			d.tokens[statement.Params[0].(string)] = map[string]any{"telegram_user_id": statement.Params[1], "telegram_chat_id": statement.Params[2], "expires_at": statement.Params[3], "consumed_at": nil}

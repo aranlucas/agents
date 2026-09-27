@@ -74,7 +74,7 @@ func (e *replayAwareEmitter) Emit(ctx context.Context, event events.Event) error
 }
 
 // emitEncoded is only for immutable bytes previously admitted by Emit through
-// activeRun.publish or its D1 mirror. It defensively revalidates those bytes and
+// activeRun.publish or its database mirror. It defensively revalidates those bytes and
 // writes them to a reconnect response.
 // The context is retained to match replay callbacks; transport writes are
 // bounded by a per-frame response deadline instead of request cancellation.
