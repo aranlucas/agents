@@ -1,6 +1,6 @@
 // Package app is the composition root shared by every process mode. It opens
 // persistence once and builds the authored agents from one validated
-// config.Config, so the gateway and the Telegram worker cannot drift apart.
+// config.Config for the HTTP gateway.
 package app
 
 import (
@@ -18,7 +18,6 @@ import (
 	"github.com/aranlucas/agents/internal/providerpolicy"
 	"github.com/aranlucas/agents/internal/rate"
 	"github.com/aranlucas/agents/internal/storage"
-	"github.com/aranlucas/agents/internal/telegram"
 
 	"google.golang.org/adk/v2/artifact"
 	"google.golang.org/adk/v2/session"
@@ -34,7 +33,6 @@ type Runtime struct {
 	Limiter   *rate.ProviderLimiter
 	Groceries *grocerystore.Store
 	Fitness   *fitnessdata.Store
-	Links     *telegram.LinkStore
 	// ModelHTTP is shared by every OpenAI-compatible model client.
 	ModelHTTP *http.Client
 	// Brave is nil when BRAVE_API_KEY is unset; agents degrade to no search.
@@ -82,7 +80,6 @@ func newRuntime(ctx context.Context, cfg config.Config, db *storage.DB) (*Runtim
 		Limiter:   rate.NewProviderLimiter(db, time.Now),
 		Groceries: grocerystore.NewStoreWithArtifacts(db, artifacts),
 		Fitness:   fitnessdata.NewStore(db),
-		Links:     telegram.NewLinkStore(db, time.Now),
 		ModelHTTP: common.NewHTTPClient(180*time.Second, 32<<20).Client,
 		Brave:     brave,
 	}, nil

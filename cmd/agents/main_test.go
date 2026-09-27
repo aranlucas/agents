@@ -18,7 +18,6 @@ func TestDispatch(t *testing.T) {
 		{name: "default", command: "serve"},
 		{name: "serve", args: []string{"serve"}, command: "serve"},
 		{name: "migrate", args: []string{"migrate"}, command: "migrate"},
-		{name: "telegram", args: []string{"telegram"}, command: "telegram"},
 		{name: "help", args: []string{"--help"}},
 		{name: "unknown", args: []string{"unknown"}, status: 2},
 		{name: "extra argument", args: []string{"serve", "unexpected"}, status: 2},
@@ -26,7 +25,7 @@ func TestDispatch(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			called := ""
 			commands := make(map[string]command)
-			for _, name := range []string{"serve", "migrate", "telegram"} {
+			for _, name := range []string{"serve", "migrate"} {
 				commands[name] = func(context.Context) error { called = name; return nil }
 			}
 			var output bytes.Buffer

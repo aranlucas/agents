@@ -1,4 +1,4 @@
-// Command agents runs the HTTP gateway, with migration and Telegram worker modes.
+// Command agents runs the HTTP gateway, with a migration mode.
 package main
 
 import (
@@ -13,10 +13,9 @@ import (
 
 	"github.com/aranlucas/agents/internal/gateway"
 	"github.com/aranlucas/agents/internal/migrate"
-	"github.com/aranlucas/agents/internal/telegramworker"
 )
 
-const usage = "usage: agents [serve|migrate|telegram]"
+const usage = "usage: agents [serve|migrate]"
 
 type command func(context.Context) error
 
@@ -29,9 +28,8 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	status := dispatch(ctx, os.Args[1:], os.Stderr, map[string]command{
-		"serve":    gateway.Run,
-		"migrate":  migrate.Run,
-		"telegram": telegramworker.Run,
+		"serve":   gateway.Run,
+		"migrate": migrate.Run,
 	})
 	stop()
 	os.Exit(status)

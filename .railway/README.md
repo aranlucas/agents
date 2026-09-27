@@ -20,5 +20,3 @@ Removing variables is destructive and needs `CONFIRM_DESTRUCTIVE=1` (`--confirm-
 The service source waits for the GitHub CI check suite (`checkSuites: true`), so a failing `main` does not deploy. If GitHub Actions cannot run (for example a billing hold), pushes are not deployed; use `make railway-up`.
 
 Keep each preserved environment variable listed in the IaC source: omitted variables are planned for deletion. `internal/config` lists every variable the service reads in `config.Keys`, and a Go test fails if a production variable is missing here or if this file declares one the service never reads.
-
-Telegram is optional and not deployed. The worker needs the same database file, so it cannot run as a separate Railway service with its own volume; run it in the gateway's container if it is ever needed.

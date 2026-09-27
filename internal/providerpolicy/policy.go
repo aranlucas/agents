@@ -86,15 +86,6 @@ func ResolveAgent(providers map[string]config.Provider, workload Workload) (conf
 	return ResolveRequired(providers, policy)
 }
 
-// Telegram returns the intentionally separate policy used for every Telegram
-// specialist and the routing orchestrator.
-func Telegram() Policy {
-	return Policy{
-		Provider: "groq", Model: groqResponsesModel, RequestsPerMinute: 20,
-		missingProviderMessage: "GROQ_API_KEY is required for Telegram",
-	}
-}
-
 // ResolveRequired applies a production policy to configured providers. Its
 // fallback list is filtered without reordering so optional provider keys stay
 // optional and openai.NewMulti never receives an unavailable fallback name.

@@ -8,7 +8,7 @@ import (
 	"google.golang.org/adk/v2/agent"
 )
 
-func TestSpecialistsDriveRegistryAndSurfaceMapsFromCatalog(t *testing.T) {
+func TestSpecialistsDriveRegistryFromCatalog(t *testing.T) {
 	specialists := testSpecialists(t)
 	registry, err := specialists.Registry()
 	if err != nil {
@@ -16,13 +16,6 @@ func TestSpecialistsDriveRegistryAndSurfaceMapsFromCatalog(t *testing.T) {
 	}
 	if got, want := len(registry.Entries()), len(catalog.All()); got != want {
 		t.Fatalf("registry entries = %d, want %d", got, want)
-	}
-	telegram, err := specialists.Agents(catalog.Telegram())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got, want := len(telegram), len(catalog.Telegram()); got != want {
-		t.Fatalf("Telegram agents = %d, want %d", got, want)
 	}
 	for _, spec := range catalog.All() {
 		entry, err := registry.Lookup(spec.Route)
@@ -74,10 +67,6 @@ func TestSpecialistsRejectMissingOrMismatchedBindings(t *testing.T) {
 	specialists.Grocery.StateDefaults = nil
 	if _, err := specialists.Registry(); err == nil || !strings.Contains(err.Error(), "state defaults") {
 		t.Fatalf("missing grocery state defaults error = %v", err)
-	}
-	// Non-gateway surfaces only need the typed ADK agent binding.
-	if _, err := specialists.Agents(catalog.Telegram()); err != nil {
-		t.Fatalf("Telegram agents rejected nil state defaults: %v", err)
 	}
 }
 

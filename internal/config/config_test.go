@@ -2,7 +2,6 @@ package config
 
 import (
 	"maps"
-	"slices"
 	"strings"
 	"testing"
 )
@@ -167,32 +166,6 @@ func TestLoadRejectsNonLocalHTTPOriginInProduction(t *testing.T) {
 	}
 }
 
-func TestLoadTelegramRequiresWorkerDependenciesOnly(t *testing.T) {
-	env := requiredEnv()
-	env["APP_ENV"] = "production"
-	env["RAILWAY_SERVICE_ID"] = "telegram-service"
-	env["MISTRAL_API_KEY"] = "mistral-key"
-	env["TELEGRAM_BOT_TOKEN"] = "bot-token"
-	env["TELEGRAM_ALLOWED_CHAT_IDS"] = "1, -100"
-
-	cfg, err := LoadTelegram(func(key string) string { return env[key] })
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !cfg.Environment.IsProduction() || cfg.HTTP.Port != "8080" || cfg.Providers["mistral"].APIKey != "mistral-key" ||
-		!slices.Equal(cfg.Telegram.AllowedChatIDs, []int64{1, -100}) || cfg.Telegram.APIBaseURL != defaultTelegramAPIURL {
-		t.Fatalf("Telegram config = %#v", cfg)
-	}
-	if cfg.ClerkJWKS != "" || cfg.ClerkIssuer != "" || len(cfg.HTTP.Origins) != 0 {
-		t.Fatalf("Telegram loaded gateway-only config = %#v", cfg)
-	}
-
-	delete(env, "TELEGRAM_BOT_TOKEN")
-	if _, err := LoadTelegram(func(key string) string { return env[key] }); err == nil || !strings.Contains(err.Error(), "TELEGRAM_BOT_TOKEN") {
-		t.Fatalf("LoadTelegram() error = %v", err)
-	}
-}
-
 func TestLoadDatabaseDefaultsToLocalDataFile(t *testing.T) {
 	env := map[string]string{"APP_ENV": "production", "RAILWAY_SERVICE_ID": "gateway-service"}
 	environment, path, err := LoadDatabase(func(key string) string { return env[key] })
@@ -223,27 +196,6 @@ func TestLoadIntegrationsDefaultsAndValidation(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			if _, err := LoadIntegrations(func(key string) string { return map[string]string{bad[0]: bad[1]}[key] }); err == nil {
 				t.Fatal("LoadIntegrations() succeeded")
-			}
-		})
-	}
-}
-
-func TestParseChatIDs(t *testing.T) {
-	got, err := parseChatIDs("1, -100")
-	if err != nil || !slices.Equal(got, []int64{1, -100}) {
-		t.Fatalf("ids=%#v err=%v", got, err)
-	}
-	got, err = parseChatIDs("")
-	if err != nil || got != nil {
-		t.Fatalf("empty ids=%#v err=%v", got, err)
-	}
-}
-
-func TestParseChatIDsRejectsMalformedConfiguration(t *testing.T) {
-	for _, raw := range []string{"1, nope", "1,,2", "0"} {
-		t.Run(raw, func(t *testing.T) {
-			if ids, err := parseChatIDs(raw); err == nil || ids != nil {
-				t.Fatalf("ids=%#v err=%v", ids, err)
 			}
 		})
 	}

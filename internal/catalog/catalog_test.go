@@ -27,14 +27,6 @@ func TestAllHasUniqueCompleteMetadata(t *testing.T) {
 }
 
 func TestSurfaceSelectionsRemainStable(t *testing.T) {
-	telegram := routes(Telegram())
-	if slices.Contains(telegram, "jobs") {
-		t.Fatalf("Telegram routes unexpectedly contain private web-only jobs agent: %#v", telegram)
-	}
-	if len(telegram) != 9 {
-		t.Fatalf("Telegram routes = %#v, want 9 routes", telegram)
-	}
-
 	eval := routes(Eval())
 	if slices.Contains(eval, "trends") {
 		t.Fatalf("Eval routes unexpectedly contain trends: %#v", eval)

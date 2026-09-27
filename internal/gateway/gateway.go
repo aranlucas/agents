@@ -5,8 +5,6 @@ package gateway
 
 import (
 	"context"
-	"crypto/subtle"
-	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"log"
@@ -28,7 +26,6 @@ import (
 	"github.com/aranlucas/agents/internal/fitnessdata"
 	"github.com/aranlucas/agents/internal/grocerystore"
 	"github.com/aranlucas/agents/internal/observability"
-	"github.com/aranlucas/agents/internal/telegram"
 
 	"github.com/joho/godotenv"
 	"google.golang.org/adk/v2/session"
@@ -68,7 +65,6 @@ type Dependencies struct {
 	// Database gates /ready on the migrated schema.
 	Database  common.HealthChecker
 	Stream    agui.StreamSmoothing
-	Links     *telegram.LinkStore
 	Clerk     clerk.Backend
 	Fitness   fitnessdata.Repository
 	Groceries grocerystore.LibraryRepository
@@ -151,12 +147,6 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 	mux.HandleFunc("GET /ready", rootHealthHandler(deps))
 	// Keep /health as a readiness alias for existing monitors and clients.
 	mux.HandleFunc("GET /health", rootHealthHandler(deps))
-	if deps.Links != nil && cfg.TelegramLinkSecret != "" {
-		mux.HandleFunc("POST /telegram/link/consume", telegramLinkConsumeHandler(cfg.TelegramLinkSecret, deps.Links))
-		mux.HandleFunc("POST /telegram/link/resolve", telegramLinkResolveHandler(cfg.TelegramLinkSecret, deps.Links))
-		publicRoutes["/telegram/link/consume"] = true
-		publicRoutes["/telegram/link/resolve"] = true
-	}
 	if deps.Fitness != nil {
 		mux.HandleFunc("POST /fitness/activities/sync", fitnessSyncHandler(deps.Fitness, deps.Now))
 	}
@@ -255,28 +245,6 @@ func routeNeedsOAuth(path string) bool {
 		strings.HasPrefix(path, "/agent/wellness/")
 }
 
-type telegramLinkConsumeRequest struct {
-	Token       string `json:"token"`
-	ClerkUserID string `json:"clerk_user_id"`
-}
-
-type telegramLinkConsumeResponse struct {
-	OK             bool  `json:"ok"`
-	TelegramUserID int64 `json:"telegram_user_id"`
-}
-
-type telegramLinkResolveRequest struct {
-	TelegramUserID int64 `json:"telegram_user_id"`
-}
-
-type telegramLinkResolveResponse struct {
-	ClerkUserID string `json:"clerk_user_id"`
-}
-
-type telegramLinkLookup interface {
-	Lookup(context.Context, int64) (telegram.AccountLink, bool, error)
-}
-
 type agentHealthResponse struct {
 	Status string `json:"status"`
 	Agent  string `json:"agent"`
@@ -293,60 +261,6 @@ type livenessResponse struct {
 	Status  string `json:"status"`
 	Service string `json:"service"`
 	Time    string `json:"time"`
-}
-
-func telegramLinkConsumeHandler(secret string, links *telegram.LinkStore) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if !validTelegramLinkSecret(r.Header.Get("x-telegram-link-secret"), secret) {
-			writeGatewayJSONError(w, http.StatusUnauthorized, "invalid_link_secret")
-			return
-		}
-		var input telegramLinkConsumeRequest
-		decodeErr := json.UnmarshalRead(http.MaxBytesReader(w, r.Body, 8<<10), &input, json.RejectUnknownMembers(true))
-		if decodeErr != nil || strings.TrimSpace(input.Token) == "" || strings.TrimSpace(input.ClerkUserID) == "" {
-			writeGatewayJSONError(w, http.StatusBadRequest, "invalid_link_request")
-			return
-		}
-		link, err := links.Consume(r.Context(), input.Token, input.ClerkUserID)
-		if err != nil {
-			writeGatewayJSONError(w, http.StatusBadRequest, "invalid_or_expired_link_token")
-			return
-		}
-		if err := common.WriteJSON(w, http.StatusOK, telegramLinkConsumeResponse{OK: true, TelegramUserID: link.TelegramUserID}); err != nil {
-			log.Printf("write JSON response: %v", err)
-		}
-	}
-}
-
-func telegramLinkResolveHandler(secret string, links telegramLinkLookup) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if !validTelegramLinkSecret(r.Header.Get("x-telegram-link-secret"), secret) {
-			writeGatewayJSONError(w, http.StatusUnauthorized, "invalid_link_secret")
-			return
-		}
-		var input telegramLinkResolveRequest
-		decodeErr := json.UnmarshalRead(http.MaxBytesReader(w, r.Body, 8<<10), &input, json.RejectUnknownMembers(true))
-		if decodeErr != nil || input.TelegramUserID <= 0 {
-			writeGatewayJSONError(w, http.StatusBadRequest, "invalid_link_request")
-			return
-		}
-		link, linked, err := links.Lookup(r.Context(), input.TelegramUserID)
-		if err != nil {
-			writeGatewayJSONError(w, http.StatusServiceUnavailable, "link_lookup_failed")
-			return
-		}
-		if !linked {
-			writeGatewayJSONError(w, http.StatusNotFound, "telegram_account_not_linked")
-			return
-		}
-		if err := common.WriteJSON(w, http.StatusOK, telegramLinkResolveResponse{ClerkUserID: link.ClerkUserID}); err != nil {
-			log.Printf("write JSON response: %v", err)
-		}
-	}
-}
-
-func validTelegramLinkSecret(provided, expected string) bool {
-	return expected != "" && len(provided) == len(expected) && subtle.ConstantTimeCompare([]byte(provided), []byte(expected)) == 1
 }
 
 func writeGatewayJSONError(w http.ResponseWriter, status int, code string) {
@@ -490,7 +404,7 @@ func Run(ctx context.Context) error {
 	}
 	handler, err := New(cfg, Dependencies{
 		Registry: registry, Sessions: rt.Sessions, Pending: rt.Pending, Verifier: verifier,
-		Database: rt.DB, Links: rt.Links, Clerk: clerkBackend,
+		Database: rt.DB, Clerk: clerkBackend,
 		Fitness: rt.Fitness, Groceries: rt.Groceries, Shopping: rt.Groceries,
 		KrogerMCPURL: cfg.Integrations.KrogerMCPURL, Stream: agui.StreamSmoothingFromEnv(os.Getenv), Now: time.Now,
 	})

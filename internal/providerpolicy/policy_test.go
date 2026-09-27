@@ -145,14 +145,6 @@ func TestResolveEvalPreservesSubstitutionOrderAndLimits(t *testing.T) {
 	}
 }
 
-func TestTelegramPolicy(t *testing.T) {
-	t.Parallel()
-	telegram := Telegram()
-	if telegram.Provider != "groq" || telegram.Model != groqResponsesModel || telegram.RequestsPerMinute != 20 || len(telegram.Fallbacks) != 0 {
-		t.Fatalf("telegram policy = %#v", telegram)
-	}
-}
-
 func testProvider(name string) config.Provider {
 	return config.Provider{Name: name, BaseURL: "https://" + name + ".example/v1", APIKey: "key"}
 }

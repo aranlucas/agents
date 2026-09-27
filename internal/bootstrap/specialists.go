@@ -94,19 +94,6 @@ func (s Specialists) RegistryFor(specs []catalog.Spec) (*agentruntime.Registry, 
 	return agentruntime.NewRegistry(entries...)
 }
 
-// Agents returns the agents enabled for a surface, keyed by canonical route.
-func (s Specialists) Agents(specs []catalog.Spec) (map[string]agent.Agent, error) {
-	result := make(map[string]agent.Agent, len(specs))
-	for _, spec := range specs {
-		binding, err := s.require(spec)
-		if err != nil {
-			return nil, err
-		}
-		result[spec.Route] = binding.Agent
-	}
-	return result, nil
-}
-
 func (s Specialists) require(spec catalog.Spec) (Binding, error) {
 	binding, ok := s.BindingFor(spec.Route)
 	if !ok || binding.Agent == nil {
