@@ -1,6 +1,6 @@
 # Agents
 
-Go [ADK](https://pkg.go.dev/google.golang.org/adk/v2) service: one gateway serving every agent over AG-UI, backed by SQLite. The study app lives in [aranlucas/oral-boards](https://github.com/aranlucas/oral-boards).
+Go [ADK](https://pkg.go.dev/google.golang.org/adk/v2) service: one gateway serving every agent over AG-UI, backed by SQLite.
 
 ## Development
 
