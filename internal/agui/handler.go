@@ -388,8 +388,7 @@ func (h *ADKHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	transportFailed := false
 	emit := func(writeCtx context.Context, event events.Event) error {
 		err := emitter.Emit(writeCtx, event)
-		var transportErr *eventTransportError
-		if errors.As(err, &transportErr) {
+		if _, ok := errors.AsType[*eventTransportError](err); ok {
 			transportFailed = true
 			if h.stateless {
 				cancel()

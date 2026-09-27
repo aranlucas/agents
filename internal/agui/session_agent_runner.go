@@ -96,8 +96,7 @@ func (r *SessionAgentRunner) connectHandler(agent copilotKitAgent) http.Handler 
 		w.WriteHeader(http.StatusOK)
 		emitter := newReplayAwareEmitter(w, nil)
 		emitFailure := func(streamErr error) {
-			var transportErr *eventTransportError
-			if errors.As(streamErr, &transportErr) {
+			if _, ok := errors.AsType[*eventTransportError](streamErr); ok {
 				return
 			}
 			terminalCtx := context.WithoutCancel(request.Context())

@@ -76,8 +76,7 @@ func TestEmitterRejectsMalformedAndUnencodableEventsBeforeReplayAdmission(t *tes
 		&invalidJSONEvent{BaseEvent: events.NewBaseEvent(events.EventTypeCustom)},
 	} {
 		err := emitter.Emit(t.Context(), event)
-		var encodingErr *eventEncodingError
-		if !errors.As(err, &encodingErr) {
+		if _, ok := errors.AsType[*eventEncodingError](err); !ok {
 			t.Fatalf("Emit(%s) error = %v, want eventEncodingError", event.Type(), err)
 		}
 	}
@@ -153,8 +152,7 @@ func TestEmitterTransportFailuresDetachSinkButRetainReplay(t *testing.T) {
 	emitter := newReplayAwareEmitter(broken, lease)
 
 	err := emitter.Emit(t.Context(), events.NewRunStartedEvent("thread", "run"))
-	var transportErr *eventTransportError
-	if !errors.As(err, &transportErr) || !errors.Is(err, io.ErrShortWrite) {
+	if _, ok := errors.AsType[*eventTransportError](err); !ok || !errors.Is(err, io.ErrShortWrite) {
 		t.Fatalf("short write error = %v, want transport io.ErrShortWrite", err)
 	}
 	if err := emitter.Emit(t.Context(), events.NewStateSnapshotEvent(map[string]any{"ready": true})); err != nil {
@@ -174,8 +172,7 @@ func TestEmitterTransportFailuresDetachSinkButRetainReplay(t *testing.T) {
 func TestEmitterReportsFlushFailureAsTransportFailure(t *testing.T) {
 	writer := &flushErrorWriter{}
 	err := newReplayAwareEmitter(writer, nil).Emit(t.Context(), events.NewRunStartedEvent("thread", "run"))
-	var transportErr *eventTransportError
-	if !errors.As(err, &transportErr) || writer.flushes != 1 {
+	if _, ok := errors.AsType[*eventTransportError](err); !ok || writer.flushes != 1 {
 		t.Fatalf("flush error = %v, flushes=%d", err, writer.flushes)
 	}
 }
