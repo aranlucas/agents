@@ -44,7 +44,7 @@ func TestStateHandlerReturnsPersistedStateForExistingThread(t *testing.T) {
 	}
 
 	h := StateHandler(testResumeRegistry(t), sessions)
-	req := httptest.NewRequest(http.MethodPost, "/resume/agents/state", strings.NewReader(`{"threadId":"thread-state"}`))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/resume/agents/state", strings.NewReader(`{"threadId":"thread-state"}`))
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {
@@ -64,7 +64,7 @@ func TestStateHandlerReturnsPersistedStateForExistingThread(t *testing.T) {
 
 func TestStateHandlerReportsMissingThreadWithoutError(t *testing.T) {
 	h := StateHandler(testResumeRegistry(t), newFakeSessionService())
-	req := httptest.NewRequest(http.MethodPost, "/resume/agents/state", strings.NewReader(`{"threadId":"missing-thread"}`))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/resume/agents/state", strings.NewReader(`{"threadId":"missing-thread"}`))
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {
@@ -81,7 +81,7 @@ func TestStateHandlerReportsMissingThreadWithoutError(t *testing.T) {
 
 func TestStateHandlerRejectsMissingThreadID(t *testing.T) {
 	h := StateHandler(testResumeRegistry(t), newFakeSessionService())
-	req := httptest.NewRequest(http.MethodPost, "/resume/agents/state", strings.NewReader(`{}`))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/resume/agents/state", strings.NewReader(`{}`))
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusBadRequest {
@@ -96,7 +96,7 @@ func TestStateHandlerRejectsMultipleOrOversizedJSONDocuments(t *testing.T) {
 		"oversized":          `{"threadId":"thread-state"}` + strings.Repeat(" ", maximumStateRequestBytes),
 	} {
 		t.Run(name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodPost, "/resume/agents/state", strings.NewReader(body))
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/resume/agents/state", strings.NewReader(body))
 			rr := httptest.NewRecorder()
 			h.ServeHTTP(rr, req)
 			if rr.Code != http.StatusBadRequest {
@@ -121,7 +121,7 @@ func TestStateHandlerNeverLeaksTemporaryState(t *testing.T) {
 	}
 
 	h := StateHandler(testResumeRegistry(t), sessions)
-	req := httptest.NewRequest(http.MethodPost, "/resume/agents/state", strings.NewReader(`{"threadId":"thread-temp"}`))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/resume/agents/state", strings.NewReader(`{"threadId":"thread-temp"}`))
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if strings.Contains(rr.Body.String(), "never-store") {
@@ -162,7 +162,7 @@ func (e *erroringSessionService) AppendEvent(context.Context, session.Session, *
 func TestStateHandlerReturns500OnUnexpectedSessionError(t *testing.T) {
 	sessions := &erroringSessionService{err: errors.New("database request failed for token sk-live-abc123")}
 	h := StateHandler(testResumeRegistry(t), sessions)
-	req := httptest.NewRequest(http.MethodPost, "/resume/agents/state", strings.NewReader(`{"threadId":"thread-error"}`))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/resume/agents/state", strings.NewReader(`{"threadId":"thread-error"}`))
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 
@@ -219,7 +219,7 @@ func TestStateHandlerReturnsMessagesFromSessionEvents(t *testing.T) {
 	)
 
 	h := StateHandler(testResumeRegistry(t), sessions)
-	req := httptest.NewRequest(http.MethodPost, "/resume/agents/state", strings.NewReader(`{"threadId":"thread-messages"}`))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/resume/agents/state", strings.NewReader(`{"threadId":"thread-messages"}`))
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {

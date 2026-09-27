@@ -1,6 +1,7 @@
 package agui
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -105,10 +106,10 @@ type CopilotKitRuntime struct {
 // construction cost on its first request.
 func NewCopilotKitRuntime(registry *agentruntime.Registry, sessions session.Service, clientID func(string) string, opts ...Option) (*CopilotKitRuntime, error) {
 	if registry == nil {
-		return nil, fmt.Errorf("agent registry is required")
+		return nil, errors.New("agent registry is required")
 	}
 	if sessions == nil {
-		return nil, fmt.Errorf("session service is required")
+		return nil, errors.New("session service is required")
 	}
 	if clientID == nil {
 		clientID = func(route string) string { return route }

@@ -5,7 +5,68 @@ version: "2"
 linters:
   default: standard
   enable:
-    - unused
+    - bodyclose
+    - copyloopvar
+    - errname
+    - errorlint
+    - exhaustive
+    - fatcontext
+    - forcetypeassert
+    - gocritic
+    - gosec
+    - intrange
+    - misspell
+    - modernize
+    - noctx
+    - nolintlint
+    - perfsprint
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - unconvert
+    - usestdlibvars
+    - usetesting
+    - wastedassign
+  settings:
+    exhaustive:
+      default-signifies-exhaustive: true
+    gosec:
+      excludes:
+        # Taint analysis flags structured slog fields and configured URLs.
+        - G704
+        - G705
+        - G706
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+        - shadow
+    staticcheck:
+      # Doc comments are written where they help, not on every export.
+      checks: ["all", "-ST1000", "-ST1020", "-ST1021", "-ST1022"]
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
+        - name: unused-parameter
+          disabled: true
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+  exclusions:
+    rules:
+      # Tests may panic on unexpected shapes and use fixture credentials.
+      - path: _test\.go
+        linters: [forcetypeassert]
+      - path: _test\.go
+        text: "G(101|304):"
+        linters: [gosec]
+      # Developer tools read and write repository files by design.
+      - path: ^cmd/(contracts|evalrun)/
+        text: "G30[146]:"
+        linters: [gosec]
 
 formatters:
   enable:

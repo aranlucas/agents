@@ -378,7 +378,7 @@ func Run(ctx context.Context) error {
 		WriteTimeout:      5 * time.Minute,
 		IdleTimeout:       120 * time.Second,
 	}
-	listener, err := net.Listen("tcp", server.Addr)
+	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", server.Addr)
 	if err != nil {
 		return fmt.Errorf("gateway listener failed: %w", err)
 	}
@@ -387,7 +387,7 @@ func Run(ctx context.Context) error {
 		defer close(shutdownDone)
 		<-ctx.Done()
 		log.Printf("shutting down agents gateway")
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()
 		if err := server.Shutdown(shutdownCtx); err != nil {
 			log.Printf("gateway server shutdown failed: %v", err)

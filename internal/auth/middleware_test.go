@@ -20,7 +20,7 @@ import (
 func TestStateRouteRejectsUnauthenticatedRequest(t *testing.T) {
 	handler := RequireIdentity(map[string]bool{"/resume/agui": true}, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) }))
 	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/travel/agents/state", nil))
+	handler.ServeHTTP(recorder, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/travel/agents/state", nil))
 	if recorder.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d", recorder.Code)
 	}
@@ -35,7 +35,7 @@ func TestPublicRouteUsesAnonymousIdentity(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/resume/agui", nil))
+	handler.ServeHTTP(recorder, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/resume/agui", nil))
 	if recorder.Code != http.StatusNoContent {
 		t.Fatalf("status = %d", recorder.Code)
 	}
@@ -51,7 +51,7 @@ func TestPublicRoutePrefixUsesAnonymousIdentity(t *testing.T) {
 	}))
 
 	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/agent/resume/stop/thread-123", nil))
+	handler.ServeHTTP(recorder, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/agent/resume/stop/thread-123", nil))
 	if recorder.Code != http.StatusNoContent {
 		t.Fatalf("status = %d", recorder.Code)
 	}
@@ -68,7 +68,7 @@ func TestPublicRouteUsesVerifiedIdentityWhenBearerTokenIsPresent(t *testing.T) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}), verifier)
-	request := httptest.NewRequest(http.MethodPost, "/resume/agui", nil)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/resume/agui", nil)
 	request.Header.Set("Authorization", "Bearer session-token")
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
@@ -94,7 +94,7 @@ func TestProtectedRouteAcceptsFirstSuccessfulVerifier(t *testing.T) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}), first, second)
-	request := httptest.NewRequest(http.MethodGet, "/agent/grocery/run", nil)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/agent/grocery/run", nil)
 	request.Header.Set("Authorization", "Bearer mcp-token")
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
@@ -134,7 +134,7 @@ func TestVerifiedSubjectOverridesSpoofedHeaderAndCachesJWKS(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	}), verifier)
 	for range 2 {
-		req := httptest.NewRequest(http.MethodPost, "/travel/agui", nil)
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/travel/agui", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("x-clerk-user-id", "attacker")
 		recorder := httptest.NewRecorder()
@@ -199,7 +199,7 @@ func TestUnknownKeyIDCannotAmplifyJWKSRequests(t *testing.T) {
 
 func TestCORSAllowsOnlyConfiguredOrigin(t *testing.T) {
 	handler := CORS([]string{"https://app.example"}, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) }))
-	allowed := httptest.NewRequest(http.MethodOptions, "/travel/agui", nil)
+	allowed := httptest.NewRequestWithContext(t.Context(), http.MethodOptions, "/travel/agui", nil)
 	allowed.Header.Set("Origin", "https://app.example")
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, allowed)
@@ -209,7 +209,7 @@ func TestCORSAllowsOnlyConfiguredOrigin(t *testing.T) {
 	if got := recorder.Header().Get("Access-Control-Allow-Headers"); got != "Authorization, Baggage, Content-Type, Sentry-Trace, X-Clerk-User-Id" {
 		t.Fatalf("allowed headers = %q", got)
 	}
-	blocked := httptest.NewRequest(http.MethodOptions, "/travel/agui", nil)
+	blocked := httptest.NewRequestWithContext(t.Context(), http.MethodOptions, "/travel/agui", nil)
 	blocked.Header.Set("Origin", "https://attacker.example")
 	recorder = httptest.NewRecorder()
 	handler.ServeHTTP(recorder, blocked)
@@ -222,7 +222,7 @@ func TestCORSWildcardReflectsAnyOriginForCredentialedRequests(t *testing.T) {
 	handler := CORS([]string{"*"}, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) }))
 
 	for _, method := range []string{http.MethodOptions, http.MethodPost} {
-		request := httptest.NewRequest(method, "/grocery/agui", nil)
+		request := httptest.NewRequestWithContext(t.Context(), method, "/grocery/agui", nil)
 		request.Header.Set("Origin", "https://agents-lucas.vercel.app")
 		recorder := httptest.NewRecorder()
 
@@ -244,7 +244,7 @@ func TestCORSPreflightAllowsPreferredStorePUT(t *testing.T) {
 	handler := CORS([]string{"https://app.example"}, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
-	request := httptest.NewRequest(http.MethodOptions, "/grocery/agui", nil)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodOptions, "/grocery/agui", nil)
 	request.Header.Set("Origin", "https://app.example")
 	request.Header.Set("Access-Control-Request-Method", http.MethodPut)
 	recorder := httptest.NewRecorder()

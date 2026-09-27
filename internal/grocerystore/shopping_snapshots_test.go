@@ -34,10 +34,10 @@ func TestConcurrentShoppingProfilePublishCannotMakeStaleRevisionLatest(t *testin
 
 	setPreferredStoreRow(t, runner, "Second")
 	var canonicalName string
-	if err := runner.db.QueryRow(`SELECT name FROM preferred_stores WHERE user_id = 'user_1'`).Scan(&canonicalName); err != nil || canonicalName != "Second" {
+	if err := runner.db.QueryRowContext(t.Context(), `SELECT name FROM preferred_stores WHERE user_id = 'user_1'`).Scan(&canonicalName); err != nil || canonicalName != "Second" {
 		t.Fatalf("canonical preferred store = %q, err = %v", canonicalName, err)
 	}
-	if _, err := runner.db.Exec(`UPDATE shopping_profile_snapshot_jobs SET lease_token = NULL, lease_until = 0 WHERE user_id = 'user_1'`); err != nil {
+	if _, err := runner.db.ExecContext(t.Context(), `UPDATE shopping_profile_snapshot_jobs SET lease_token = NULL, lease_until = 0 WHERE user_id = 'user_1'`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := storeB.publishPendingShoppingProfileSnapshot(t.Context(), "user_1"); err != nil {
@@ -66,7 +66,7 @@ func TestConcurrentShoppingProfilePublishCannotMakeStaleRevisionLatest(t *testin
 		t.Fatalf("latest profile store = %q", name)
 	}
 	var profileRevision, artifactVersion int64
-	if err := runner.db.QueryRow(
+	if err := runner.db.QueryRowContext(t.Context(),
 		`SELECT profile_revision, artifact_version FROM shopping_profile_artifacts WHERE user_id = 'user_1'`,
 	).Scan(&profileRevision, &artifactVersion); err != nil {
 		t.Fatal(err)
@@ -102,7 +102,7 @@ func TestDelayedDuplicateFinalizeCannotDeleteUnchangedReferencedArtifact(t *test
 		t.Fatal("delayed artifact save did not start")
 	}
 
-	if _, err := runner.db.Exec(
+	if _, err := runner.db.ExecContext(t.Context(),
 		`UPDATE shopping_profile_snapshot_jobs SET lease_token = NULL, lease_until = 0 WHERE user_id = 'user_1'`,
 	); err != nil {
 		t.Fatal(err)
@@ -110,14 +110,14 @@ func TestDelayedDuplicateFinalizeCannotDeleteUnchangedReferencedArtifact(t *test
 	if _, err := currentStore.publishPendingShoppingProfileSnapshot(t.Context(), "user_1"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := runner.db.Exec(`UPDATE shopping_profile_revisions SET revision = 2 WHERE user_id = 'user_1'`); err != nil {
+	if _, err := runner.db.ExecContext(t.Context(), `UPDATE shopping_profile_revisions SET revision = 2 WHERE user_id = 'user_1'`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := currentStore.publishPendingShoppingProfileSnapshot(t.Context(), "user_1"); err != nil {
 		t.Fatal(err)
 	}
 	var profileRevision, artifactVersion int64
-	if err := runner.db.QueryRow(
+	if err := runner.db.QueryRowContext(t.Context(),
 		`SELECT profile_revision, artifact_version FROM shopping_profile_artifacts WHERE user_id = 'user_1'`,
 	).Scan(&profileRevision, &artifactVersion); err != nil {
 		t.Fatal(err)
@@ -132,7 +132,7 @@ func TestDelayedDuplicateFinalizeCannotDeleteUnchangedReferencedArtifact(t *test
 		t.Fatalf("delayed finalize more = %v, err = %v", delayed.more, delayed.err)
 	}
 	var cleanupJobs int
-	if err := runner.db.QueryRow(
+	if err := runner.db.QueryRowContext(t.Context(),
 		`SELECT COUNT(*) FROM shopping_profile_artifact_cleanup_jobs WHERE user_id = 'user_1' AND artifact_version = 1`,
 	).Scan(&cleanupJobs); err != nil {
 		t.Fatal(err)
@@ -201,7 +201,7 @@ func TestLinkKrogerAccountDeletesOldArtifactsAndSuppressesUnchangedRelink(t *tes
 		}); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := runner.db.Exec(
+		if _, err := runner.db.ExecContext(t.Context(),
 			`INSERT INTO shopping_profile_artifact_versions (user_id, artifact_version, created_at) VALUES (?, ?, ?)`,
 			oldUserID, version, version,
 		); err != nil {
@@ -251,7 +251,7 @@ func TestSamePreferredStoreCreatesNoRevisionJobOrArtifact(t *testing.T) {
 	waitForShoppingProfileSnapshots(t, store)
 	firstSaves := counting.saveCount()
 	var firstRevision int64
-	if err := runner.db.QueryRow(`SELECT revision FROM shopping_profile_revisions WHERE user_id = 'user_1'`).Scan(&firstRevision); err != nil {
+	if err := runner.db.QueryRowContext(t.Context(), `SELECT revision FROM shopping_profile_revisions WHERE user_id = 'user_1'`).Scan(&firstRevision); err != nil {
 		t.Fatal(err)
 	}
 
@@ -261,14 +261,14 @@ func TestSamePreferredStoreCreatesNoRevisionJobOrArtifact(t *testing.T) {
 	}
 	waitForShoppingProfileSnapshots(t, store)
 	var secondRevision int64
-	if err := runner.db.QueryRow(`SELECT revision FROM shopping_profile_revisions WHERE user_id = 'user_1'`).Scan(&secondRevision); err != nil {
+	if err := runner.db.QueryRowContext(t.Context(), `SELECT revision FROM shopping_profile_revisions WHERE user_id = 'user_1'`).Scan(&secondRevision); err != nil {
 		t.Fatal(err)
 	}
 	if firstStored.SetAt != secondStored.SetAt || firstStored.SetAt != 1 || firstRevision != secondRevision || counting.saveCount() != firstSaves {
 		t.Fatalf("no-op preferred store = set_at %d/%d, revisions %d/%d, saves %d/%d", firstStored.SetAt, secondStored.SetAt, firstRevision, secondRevision, firstSaves, counting.saveCount())
 	}
 	var jobs int
-	if err := runner.db.QueryRow(`SELECT COUNT(*) FROM shopping_profile_snapshot_jobs WHERE user_id = 'user_1'`).Scan(&jobs); err != nil || jobs != 0 {
+	if err := runner.db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM shopping_profile_snapshot_jobs WHERE user_id = 'user_1'`).Scan(&jobs); err != nil || jobs != 0 {
 		t.Fatalf("snapshot jobs = %d, err = %v", jobs, err)
 	}
 }
@@ -285,7 +285,7 @@ func TestPreferredStoreProviderChangeCreatesRevisionAndArtifact(t *testing.T) {
 	waitForShoppingProfileSnapshots(t, store)
 	firstSaves := counting.saveCount()
 	var firstRevision int64
-	if err := runner.db.QueryRow(`SELECT revision FROM shopping_profile_revisions WHERE user_id = 'user_1'`).Scan(&firstRevision); err != nil {
+	if err := runner.db.QueryRowContext(t.Context(), `SELECT revision FROM shopping_profile_revisions WHERE user_id = 'user_1'`).Scan(&firstRevision); err != nil {
 		t.Fatal(err)
 	}
 
@@ -296,7 +296,7 @@ func TestPreferredStoreProviderChangeCreatesRevisionAndArtifact(t *testing.T) {
 	}
 	waitForShoppingProfileSnapshots(t, store)
 	var secondRevision int64
-	if err := runner.db.QueryRow(`SELECT revision FROM shopping_profile_revisions WHERE user_id = 'user_1'`).Scan(&secondRevision); err != nil {
+	if err := runner.db.QueryRowContext(t.Context(), `SELECT revision FROM shopping_profile_revisions WHERE user_id = 'user_1'`).Scan(&secondRevision); err != nil {
 		t.Fatal(err)
 	}
 	if stored.Provider != "trader_joes" || secondRevision != firstRevision+1 || counting.saveCount() != firstSaves+1 {
@@ -351,7 +351,7 @@ func TestSamePantryQuantityAndEquipmentCreateNoRevisionOrArtifact(t *testing.T) 
 	}
 	waitForShoppingProfileSnapshots(t, store)
 	var firstRevision int64
-	if err := runner.db.QueryRow(`SELECT revision FROM shopping_profile_revisions WHERE user_id = 'user_1'`).Scan(&firstRevision); err != nil {
+	if err := runner.db.QueryRowContext(t.Context(), `SELECT revision FROM shopping_profile_revisions WHERE user_id = 'user_1'`).Scan(&firstRevision); err != nil {
 		t.Fatal(err)
 	}
 	firstSaves := counting.saveCount()
@@ -364,7 +364,7 @@ func TestSamePantryQuantityAndEquipmentCreateNoRevisionOrArtifact(t *testing.T) 
 	}
 	waitForShoppingProfileSnapshots(t, store)
 	var secondRevision int64
-	if err := runner.db.QueryRow(`SELECT revision FROM shopping_profile_revisions WHERE user_id = 'user_1'`).Scan(&secondRevision); err != nil {
+	if err := runner.db.QueryRowContext(t.Context(), `SELECT revision FROM shopping_profile_revisions WHERE user_id = 'user_1'`).Scan(&secondRevision); err != nil {
 		t.Fatal(err)
 	}
 	if firstRevision != secondRevision || counting.saveCount() != firstSaves {
@@ -386,14 +386,14 @@ func TestShoppingProfileRetentionUsesExactDeletesWithoutVersionScan(t *testing.T
 		}); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := runner.db.Exec(
+		if _, err := runner.db.ExecContext(t.Context(),
 			`INSERT INTO shopping_profile_artifact_versions (user_id, artifact_version, created_at) VALUES ('user_1', ?, ?)`,
 			version, version,
 		); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if _, err := runner.db.Exec(`UPDATE shopping_profile_revisions SET revision = 1000 WHERE user_id = 'user_1'`); err != nil {
+	if _, err := runner.db.ExecContext(t.Context(), `UPDATE shopping_profile_revisions SET revision = 1000 WHERE user_id = 'user_1'`); err != nil {
 		t.Fatal(err)
 	}
 	more, err := store.publishPendingShoppingProfileSnapshot(t.Context(), "user_1")
@@ -441,14 +441,14 @@ func TestShoppingProfileRetentionRetriesDurableCleanupWithoutNewMutation(t *test
 		}); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := runner.db.Exec(
+		if _, err := runner.db.ExecContext(t.Context(),
 			`INSERT INTO shopping_profile_artifact_versions (user_id, artifact_version, created_at) VALUES ('user_1', ?, ?)`,
 			version, version,
 		); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if _, err := runner.db.Exec(`UPDATE shopping_profile_revisions SET revision = 2 WHERE user_id = 'user_1'`); err != nil {
+	if _, err := runner.db.ExecContext(t.Context(), `UPDATE shopping_profile_revisions SET revision = 2 WHERE user_id = 'user_1'`); err != nil {
 		t.Fatal(err)
 	}
 
@@ -457,10 +457,10 @@ func TestShoppingProfileRetentionRetriesDurableCleanupWithoutNewMutation(t *test
 		t.Fatalf("unchanged publish more = %v, err = %v", more, err)
 	}
 	var jobs, cleanup int
-	if err := runner.db.QueryRow(`SELECT COUNT(*) FROM shopping_profile_snapshot_jobs WHERE user_id = 'user_1'`).Scan(&jobs); err != nil {
+	if err := runner.db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM shopping_profile_snapshot_jobs WHERE user_id = 'user_1'`).Scan(&jobs); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.db.QueryRow(`SELECT COUNT(*) FROM shopping_profile_artifact_cleanup_jobs WHERE user_id = 'user_1'`).Scan(&cleanup); err != nil {
+	if err := runner.db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM shopping_profile_artifact_cleanup_jobs WHERE user_id = 'user_1'`).Scan(&cleanup); err != nil {
 		t.Fatal(err)
 	}
 	if jobs != 0 || cleanup != 0 {
@@ -474,7 +474,7 @@ func TestShoppingProfileRetentionRetriesDurableCleanupWithoutNewMutation(t *test
 	if _, err := store.processShoppingProfileSnapshotWork(t.Context(), "user_1"); err == nil {
 		t.Fatal("first cleanup unexpectedly succeeded")
 	}
-	if err := runner.db.QueryRow(`SELECT COUNT(*) FROM shopping_profile_artifact_cleanup_jobs WHERE user_id = 'user_1'`).Scan(&cleanup); err != nil || cleanup != 6 {
+	if err := runner.db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM shopping_profile_artifact_cleanup_jobs WHERE user_id = 'user_1'`).Scan(&cleanup); err != nil || cleanup != 6 {
 		t.Fatalf("durable cleanup after failure = %d, err = %v", cleanup, err)
 	}
 	pending, err = store.pendingShoppingProfileWork(t.Context(), 10)
@@ -487,7 +487,7 @@ func TestShoppingProfileRetentionRetriesDurableCleanupWithoutNewMutation(t *test
 		t.Fatalf("retry cleanup more = %v, err = %v", more, err)
 	}
 	var tracked int
-	if err := runner.db.QueryRow(`SELECT COUNT(*) FROM shopping_profile_artifact_versions WHERE user_id = 'user_1'`).Scan(&tracked); err != nil {
+	if err := runner.db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM shopping_profile_artifact_versions WHERE user_id = 'user_1'`).Scan(&tracked); err != nil {
 		t.Fatal(err)
 	}
 	versions, err := base.Versions(t.Context(), &artifact.VersionsRequest{
@@ -528,14 +528,14 @@ func TestShoppingProfileRetentionSchedulesAndDrainsBoundedBatchesWithoutMutation
 		}); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := runner.db.Exec(
+		if _, err := runner.db.ExecContext(t.Context(),
 			`INSERT INTO shopping_profile_artifact_versions (user_id, artifact_version, created_at) VALUES ('user_1', ?, ?)`,
 			version, version,
 		); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if _, err := runner.db.Exec(`UPDATE shopping_profile_revisions SET revision = 2 WHERE user_id = 'user_1'`); err != nil {
+	if _, err := runner.db.ExecContext(t.Context(), `UPDATE shopping_profile_revisions SET revision = 2 WHERE user_id = 'user_1'`); err != nil {
 		t.Fatal(err)
 	}
 	more, err := store.publishPendingShoppingProfileSnapshot(t.Context(), "user_1")
@@ -543,11 +543,11 @@ func TestShoppingProfileRetentionSchedulesAndDrainsBoundedBatchesWithoutMutation
 		t.Fatalf("unchanged publish more = %v, err = %v", more, err)
 	}
 	var jobs int
-	if err := runner.db.QueryRow(`SELECT COUNT(*) FROM shopping_profile_snapshot_jobs WHERE user_id = 'user_1'`).Scan(&jobs); err != nil || jobs != 0 {
+	if err := runner.db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM shopping_profile_snapshot_jobs WHERE user_id = 'user_1'`).Scan(&jobs); err != nil || jobs != 0 {
 		t.Fatalf("snapshot jobs after ack = %d, err = %v", jobs, err)
 	}
 	var cleanup int
-	if err := runner.db.QueryRow(`SELECT COUNT(*) FROM shopping_profile_artifact_cleanup_jobs WHERE user_id = 'user_1'`).Scan(&cleanup); err != nil || cleanup != 0 {
+	if err := runner.db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM shopping_profile_artifact_cleanup_jobs WHERE user_id = 'user_1'`).Scan(&cleanup); err != nil || cleanup != 0 {
 		t.Fatalf("cleanup jobs before bounded scheduling = %d, err = %v", cleanup, err)
 	}
 	pending, err := store.pendingShoppingProfileWork(t.Context(), 10)
@@ -558,7 +558,7 @@ func TestShoppingProfileRetentionSchedulesAndDrainsBoundedBatchesWithoutMutation
 	if _, err := store.processShoppingProfileSnapshotWork(t.Context(), "user_1"); err == nil {
 		t.Fatal("first bounded cleanup unexpectedly succeeded")
 	}
-	if err := runner.db.QueryRow(`SELECT COUNT(*) FROM shopping_profile_artifact_cleanup_jobs WHERE user_id = 'user_1'`).Scan(&cleanup); err != nil || cleanup != shoppingProfileCleanupBatch {
+	if err := runner.db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM shopping_profile_artifact_cleanup_jobs WHERE user_id = 'user_1'`).Scan(&cleanup); err != nil || cleanup != shoppingProfileCleanupBatch {
 		t.Fatalf("durable bounded cleanup = %d, err = %v", cleanup, err)
 	}
 	pending, err = store.pendingShoppingProfileWork(t.Context(), 10)
@@ -592,7 +592,7 @@ func TestShoppingProfileRetentionSchedulesAndDrainsBoundedBatchesWithoutMutation
 		t.Fatalf("cleanup schedule statements = %d, want multiple bounded batches", len(schedules))
 	}
 	var tracked int
-	if err := runner.db.QueryRow(`SELECT COUNT(*) FROM shopping_profile_artifact_versions WHERE user_id = 'user_1'`).Scan(&tracked); err != nil {
+	if err := runner.db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM shopping_profile_artifact_versions WHERE user_id = 'user_1'`).Scan(&tracked); err != nil {
 		t.Fatal(err)
 	}
 	versions, err := base.Versions(t.Context(), &artifact.VersionsRequest{
@@ -672,7 +672,7 @@ func TestShoppingProfilePublishRecoversSaveBeforeReference(t *testing.T) {
 		t.Fatal(err)
 	}
 	var version int64
-	if err := runner.db.QueryRow(`SELECT artifact_version FROM shopping_profile_artifacts WHERE user_id = 'user_1'`).Scan(&version); err != nil || version != snapshot.Revision {
+	if err := runner.db.QueryRowContext(t.Context(), `SELECT artifact_version FROM shopping_profile_artifacts WHERE user_id = 'user_1'`).Scan(&version); err != nil || version != snapshot.Revision {
 		t.Fatalf("recovered reference version = %d, err = %v", version, err)
 	}
 }
@@ -731,7 +731,7 @@ func newShoppingSnapshotTestStore(t *testing.T, runner storage.StatementRunner, 
 
 func setPreferredStoreRow(t *testing.T, runner *shoppingSnapshotSQLiteRunner, name string) {
 	t.Helper()
-	_, err := runner.db.Exec(
+	_, err := runner.db.ExecContext(t.Context(),
 		`INSERT INTO preferred_stores (user_id, location_id, name, address, chain, set_at)
 		 VALUES ('user_1', 'loc_1', ?, '1 Main', 'Kroger', 1)
 		 ON CONFLICT(user_id) DO UPDATE SET name = excluded.name WHERE preferred_stores.name IS NOT excluded.name`,

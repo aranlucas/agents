@@ -318,7 +318,7 @@ func newPendingFixture(t *testing.T) *pendingFixture {
 func (f *pendingFixture) registered(t *testing.T, scope agui.ToolScope, callID string) bool {
 	t.Helper()
 	var count int
-	err := f.db.SQL().QueryRow(`SELECT COUNT(*) FROM pending_client_tools WHERE app_name = ? AND user_id = ? AND thread_id = ? AND call_id = ?`,
+	err := f.db.SQL().QueryRowContext(t.Context(), `SELECT COUNT(*) FROM pending_client_tools WHERE app_name = ? AND user_id = ? AND thread_id = ? AND call_id = ?`,
 		scope.AppName, scope.UserID, scope.ThreadID, callID).Scan(&count)
 	if err != nil {
 		t.Fatal(err)

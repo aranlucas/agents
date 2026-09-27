@@ -190,7 +190,7 @@ func NewStatelessEntryHandler(entry agentruntime.Entry, opts ...Option) (*ADKHan
 
 func newEntryHandler(entry agentruntime.Entry, sessions session.Service, stateless bool, opts ...Option) (*ADKHandler, error) {
 	if sessions == nil {
-		return nil, fmt.Errorf("session service is required")
+		return nil, errors.New("session service is required")
 	}
 	registry, err := agentruntime.NewRegistry(entry)
 	if err != nil {

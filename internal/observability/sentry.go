@@ -93,7 +93,7 @@ func CaptureError(ctx context.Context, err error, details ...ErrorDetails) {
 			}
 			scope.SetTags(detail.Tags)
 			if len(detail.Context) > 0 {
-				scope.SetContext("operation", sentry.Context(detail.Context))
+				scope.SetContext("operation", detail.Context)
 			}
 			if len(detail.Fingerprint) > 0 {
 				scope.SetFingerprint(detail.Fingerprint)

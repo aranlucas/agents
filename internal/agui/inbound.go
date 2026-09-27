@@ -33,7 +33,7 @@ func decodeRunInput(body io.Reader) (*types.RunAgentInput, error) {
 	}
 	var input types.RunAgentInput
 	if err := json.Unmarshal(payload, &input); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrInvalidRunInput, err)
+		return nil, fmt.Errorf("%w: %w", ErrInvalidRunInput, err)
 	}
 	// RunAgentInput intentionally leaves forwardedProps open-ended. Preserve
 	// that extension value from the original document so forwarding does not
@@ -42,7 +42,7 @@ func decodeRunInput(body io.Reader) (*types.RunAgentInput, error) {
 		ForwardedProps jsontext.Value `json:"forwardedProps"`
 	}
 	if err := json.Unmarshal(payload, &rawInput); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrInvalidRunInput, err)
+		return nil, fmt.Errorf("%w: %w", ErrInvalidRunInput, err)
 	}
 	if len(rawInput.ForwardedProps) > 0 {
 		input.ForwardedProps = rawInput.ForwardedProps

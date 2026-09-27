@@ -47,7 +47,7 @@ func TestWrapSentryRepanicsAndServesNormally(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/health", nil))
+	handler.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/health", nil))
 	if !served || rec.Code != http.StatusNoContent {
 		t.Fatalf("served = %v, code = %d", served, rec.Code)
 	}
@@ -60,7 +60,7 @@ func TestWrapSentryRepanicsAndServesNormally(t *testing.T) {
 			t.Fatal("expected panic to propagate through WrapSentry")
 		}
 	}()
-	panicking.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/health", nil))
+	panicking.ServeHTTP(httptest.NewRecorder(), httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/health", nil))
 }
 
 func TestCaptureErrorIgnoresNilAndExplicitCancellation(t *testing.T) {

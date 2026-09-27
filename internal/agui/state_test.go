@@ -4,6 +4,7 @@ import (
 	"encoding/json/jsontext"
 	"fmt"
 	"iter"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -12,13 +13,13 @@ import (
 )
 
 func TestKrogerHeaderBecomesRouteScopedFlagWithoutChangingTokenName(t *testing.T) {
-	request := httptest.NewRequest("POST", "/grocery/agui", nil)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/grocery/agui", nil)
 	request.Header.Set("X-Kroger-Access-Token", "kroger-secret")
 	overlay := requestStateOverlay(request, "grocery")
 	if overlay["temp:kroger_token"] != "kroger-secret" || overlay["kroger_connected"] != true {
 		t.Fatalf("overlay = %#v", overlay)
 	}
-	disconnected := requestStateOverlay(httptest.NewRequest("POST", "/grocery/agui", nil), "grocery")
+	disconnected := requestStateOverlay(httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/grocery/agui", nil), "grocery")
 	if disconnected["kroger_connected"] != false {
 		t.Fatalf("disconnected overlay = %#v", disconnected)
 	}
@@ -30,13 +31,13 @@ func TestKrogerHeaderBecomesRouteScopedFlagWithoutChangingTokenName(t *testing.T
 		t.Fatalf("persistent snapshot = %#v", persisted)
 	}
 
-	fitnessRequest := httptest.NewRequest("POST", "/fitness/agui", nil)
+	fitnessRequest := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/fitness/agui", nil)
 	fitnessRequest.Header.Set("X-Kroger-Access-Token", "ignored")
 	if fitness := requestStateOverlay(fitnessRequest, "fitness"); fitness != nil {
 		t.Fatalf("fitness overlay = %#v", fitness)
 	}
 
-	wellnessRequest := httptest.NewRequest("POST", "/wellness/agui", nil)
+	wellnessRequest := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/wellness/agui", nil)
 	wellnessRequest.Header.Set("X-Kroger-Access-Token", "kroger-secret")
 	wellness := requestStateOverlay(wellnessRequest, "wellness")
 	if wellness["temp:kroger_token"] != "kroger-secret" || wellness["kroger_connected"] != true {
