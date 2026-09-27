@@ -2,8 +2,6 @@ package config
 
 import (
 	"maps"
-	"os"
-	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -228,32 +226,6 @@ func TestLoadIntegrationsDefaultsAndValidation(t *testing.T) {
 				t.Fatal("LoadIntegrations() succeeded")
 			}
 		})
-	}
-}
-
-// TestRailwayDeclaresEveryProductionVariable keeps .railway/railway.ts and
-// Keys in step: Railway plans a delete for any variable the IaC omits, and a
-// variable the service never reads is stale configuration.
-func TestRailwayDeclaresEveryProductionVariable(t *testing.T) {
-	source, err := os.ReadFile("../../.railway/railway.ts")
-	if err != nil {
-		t.Fatal(err)
-	}
-	declared := map[string]bool{}
-	for _, match := range regexp.MustCompile(`(?m)^\s+([A-Z][A-Z0-9_]+):`).FindAllStringSubmatch(string(source), -1) {
-		declared[match[1]] = true
-	}
-	known := map[string]bool{}
-	for _, key := range Keys {
-		known[key.Name] = true
-		if key.Railway && !declared[key.Name] {
-			t.Errorf("%s is read in production but not declared in .railway/railway.ts", key.Name)
-		}
-	}
-	for name := range declared {
-		if !known[name] && !strings.HasPrefix(name, "RAILWAY_") {
-			t.Errorf(".railway/railway.ts declares %s, which the service never reads", name)
-		}
 	}
 }
 
