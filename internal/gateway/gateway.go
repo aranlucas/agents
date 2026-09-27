@@ -26,7 +26,7 @@ import (
 	"github.com/aranlucas/agents/internal/common"
 	"github.com/aranlucas/agents/internal/config"
 	"github.com/aranlucas/agents/internal/fitnessdata"
-	"github.com/aranlucas/agents/internal/groceries"
+	"github.com/aranlucas/agents/internal/grocerystore"
 	"github.com/aranlucas/agents/internal/observability"
 	"github.com/aranlucas/agents/internal/telegram"
 
@@ -71,8 +71,8 @@ type Dependencies struct {
 	Links     *telegram.LinkStore
 	Clerk     clerk.Backend
 	Fitness   fitnessdata.Repository
-	Groceries groceries.LibraryRepository
-	Shopping  groceries.ShoppingRepository
+	Groceries grocerystore.LibraryRepository
+	Shopping  grocerystore.ShoppingRepository
 	// KrogerMCPURL is reduced to its origin before the lazy account linker
 	// requests /userinfo; the MCP path itself is never reused as a base path.
 	KrogerMCPURL string
@@ -98,7 +98,7 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 		deps.Now = time.Now
 	}
 	if deps.Groceries != nil && deps.Shopping == nil {
-		deps.Shopping, _ = deps.Groceries.(groceries.ShoppingRepository)
+		deps.Shopping, _ = deps.Groceries.(grocerystore.ShoppingRepository)
 	}
 
 	stateHandler := agui.StateHandler(deps.Registry, deps.Sessions)

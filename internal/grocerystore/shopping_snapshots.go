@@ -1,4 +1,4 @@
-package groceries
+package grocerystore
 
 import (
 	"bytes"

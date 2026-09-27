@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/aranlucas/agents/internal/agentruntime"
+	"github.com/aranlucas/agents/internal/agents/fitness"
 	"github.com/aranlucas/agents/internal/config"
-	"github.com/aranlucas/agents/internal/fitness"
 	"github.com/aranlucas/agents/internal/fitnessdata"
 	"google.golang.org/adk/v2/session"
 )

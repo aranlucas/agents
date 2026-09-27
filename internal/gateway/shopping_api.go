@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aranlucas/agents/internal/groceries"
 	"github.com/aranlucas/agents/internal/groceryapi"
+	"github.com/aranlucas/agents/internal/grocerystore"
 )
 
 func (api *groceryAPI) GetPantry(ctx context.Context, request groceryapi.GetPantryRequestObject) (groceryapi.GetPantryResponseObject, error) {
@@ -37,13 +37,13 @@ func (api *groceryAPI) AddPantryItems(ctx context.Context, request groceryapi.Ad
 	if request.Body == nil {
 		return groceryapi.AddPantryItemsdefaultJSONResponse{StatusCode: http.StatusBadRequest, Body: groceryapi.Error{Error: "invalid_grocery_request"}}, nil
 	}
-	items := make([]groceries.PantryItem, len(request.Body.Items))
+	items := make([]grocerystore.PantryItem, len(request.Body.Items))
 	for index, item := range request.Body.Items {
 		quantity := 1.0
 		if item.Quantity != nil {
 			quantity = *item.Quantity
 		}
-		items[index] = groceries.PantryItem{Name: item.Name, Quantity: quantity, ExpiresAt: item.ExpiresAt}
+		items[index] = grocerystore.PantryItem{Name: item.Name, Quantity: quantity, ExpiresAt: item.ExpiresAt}
 	}
 	stored, err := api.shopping.AddPantryItems(ctx, userID, items, api.currentShoppingTime())
 	if err != nil {
@@ -129,9 +129,9 @@ func (api *groceryAPI) AddEquipment(ctx context.Context, request groceryapi.AddE
 	if request.Body == nil {
 		return groceryapi.AddEquipmentdefaultJSONResponse{StatusCode: http.StatusBadRequest, Body: groceryapi.Error{Error: "invalid_grocery_request"}}, nil
 	}
-	items := make([]groceries.EquipmentItem, len(request.Body.Items))
+	items := make([]grocerystore.EquipmentItem, len(request.Body.Items))
 	for index, item := range request.Body.Items {
-		items[index] = groceries.EquipmentItem{Name: item.Name, Category: item.Category}
+		items[index] = grocerystore.EquipmentItem{Name: item.Name, Category: item.Category}
 	}
 	stored, err := api.shopping.AddEquipment(ctx, userID, items, api.currentShoppingTime())
 	if err != nil {
@@ -202,7 +202,7 @@ func (api *groceryAPI) RecordOrder(ctx context.Context, request groceryapi.Recor
 	if request.Body == nil {
 		return groceryapi.RecordOrderdefaultJSONResponse{StatusCode: http.StatusBadRequest, Body: groceryapi.Error{Error: "invalid_grocery_request"}}, nil
 	}
-	order := groceries.Order{
+	order := grocerystore.Order{
 		Items:          toGroceryOrderItems(request.Body.Items),
 		TotalItems:     request.Body.TotalItems,
 		EstimatedTotal: request.Body.EstimatedTotal,
@@ -256,7 +256,7 @@ func (api *groceryAPI) SetPreferredStore(ctx context.Context, request groceryapi
 	if request.Body.Provider != nil {
 		provider = strings.TrimSpace(*request.Body.Provider)
 	}
-	store := groceries.PreferredStore{
+	store := grocerystore.PreferredStore{
 		Provider:   provider,
 		LocationID: strings.TrimSpace(request.Body.LocationId),
 		Name:       strings.TrimSpace(request.Body.Name),
@@ -311,7 +311,7 @@ func (api *groceryAPI) currentShoppingTime() time.Time {
 	return now.UTC()
 }
 
-func toAPIPantryItems(values []groceries.PantryItem) []groceryapi.PantryItem {
+func toAPIPantryItems(values []grocerystore.PantryItem) []groceryapi.PantryItem {
 	if values == nil {
 		return nil
 	}
@@ -322,7 +322,7 @@ func toAPIPantryItems(values []groceries.PantryItem) []groceryapi.PantryItem {
 	return items
 }
 
-func toAPIEquipmentItems(values []groceries.EquipmentItem) []groceryapi.EquipmentItem {
+func toAPIEquipmentItems(values []grocerystore.EquipmentItem) []groceryapi.EquipmentItem {
 	if values == nil {
 		return nil
 	}
@@ -333,14 +333,14 @@ func toAPIEquipmentItems(values []groceries.EquipmentItem) []groceryapi.Equipmen
 	return items
 }
 
-func toAPIOrder(value groceries.Order) groceryapi.Order {
+func toAPIOrder(value grocerystore.Order) groceryapi.Order {
 	return groceryapi.Order{
 		Id: value.ID, Items: toAPIOrderItems(value.Items), TotalItems: value.TotalItems,
 		EstimatedTotal: value.EstimatedTotal, PlacedAt: value.PlacedAt, LocationId: value.LocationID, Notes: value.Notes,
 	}
 }
 
-func toAPIOrders(values []groceries.Order) []groceryapi.Order {
+func toAPIOrders(values []grocerystore.Order) []groceryapi.Order {
 	if values == nil {
 		return nil
 	}
@@ -351,7 +351,7 @@ func toAPIOrders(values []groceries.Order) []groceryapi.Order {
 	return orders
 }
 
-func toAPIOrderItems(values []groceries.OrderItem) []groceryapi.OrderItem {
+func toAPIOrderItems(values []grocerystore.OrderItem) []groceryapi.OrderItem {
 	if values == nil {
 		return nil
 	}
@@ -366,28 +366,28 @@ func toAPIOrderItems(values []groceries.OrderItem) []groceryapi.OrderItem {
 	return items
 }
 
-func toGroceryOrderItems(values []groceryapi.OrderItem) []groceries.OrderItem {
+func toGroceryOrderItems(values []groceryapi.OrderItem) []grocerystore.OrderItem {
 	if values == nil {
 		return nil
 	}
-	items := make([]groceries.OrderItem, len(values))
+	items := make([]grocerystore.OrderItem, len(values))
 	for index, value := range values {
 		var upc string
 		if value.Upc != nil {
 			upc = *value.Upc
 		}
-		items[index] = groceries.OrderItem{Product: toGroceryProductReference(value.Product), UPC: upc, Name: value.Name, Quantity: value.Quantity, Price: value.Price}
+		items[index] = grocerystore.OrderItem{Product: toGroceryProductReference(value.Product), UPC: upc, Name: value.Name, Quantity: value.Quantity, Price: value.Price}
 	}
 	return items
 }
 
-func toAPIPreferredStore(value groceries.PreferredStore) groceryapi.PreferredStore {
+func toAPIPreferredStore(value grocerystore.PreferredStore) groceryapi.PreferredStore {
 	return groceryapi.PreferredStore{
 		Provider: value.Provider, LocationId: value.LocationID, Name: value.Name, Address: value.Address, Chain: value.Chain, SetAt: value.SetAt,
 	}
 }
 
-func toAPIShoppingProfile(value groceries.ShoppingProfile) groceryapi.ShoppingProfile {
+func toAPIShoppingProfile(value grocerystore.ShoppingProfile) groceryapi.ShoppingProfile {
 	var preferredStore *groceryapi.PreferredStore
 	if value.PreferredStore != nil {
 		converted := toAPIPreferredStore(*value.PreferredStore)

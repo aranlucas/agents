@@ -14,7 +14,7 @@ import (
 	"github.com/aranlucas/agents/internal/common"
 	"github.com/aranlucas/agents/internal/config"
 	"github.com/aranlucas/agents/internal/fitnessdata"
-	"github.com/aranlucas/agents/internal/groceries"
+	"github.com/aranlucas/agents/internal/grocerystore"
 	"github.com/aranlucas/agents/internal/providerpolicy"
 	"github.com/aranlucas/agents/internal/rate"
 	"github.com/aranlucas/agents/internal/storage"
@@ -32,7 +32,7 @@ type Runtime struct {
 	Artifacts artifact.Service
 	Pending   *storage.PendingStore
 	Limiter   *rate.ProviderLimiter
-	Groceries *groceries.Store
+	Groceries *grocerystore.Store
 	Fitness   *fitnessdata.Store
 	Links     *telegram.LinkStore
 	// ModelHTTP is shared by every OpenAI-compatible model client.
@@ -80,7 +80,7 @@ func newRuntime(ctx context.Context, cfg config.Config, db *storage.DB) (*Runtim
 		Artifacts: artifacts,
 		Pending:   storage.NewPendingStore(db, time.Now),
 		Limiter:   rate.NewProviderLimiter(db, time.Now),
-		Groceries: groceries.NewStoreWithArtifacts(db, artifacts),
+		Groceries: grocerystore.NewStoreWithArtifacts(db, artifacts),
 		Fitness:   fitnessdata.NewStore(db),
 		Links:     telegram.NewLinkStore(db, time.Now),
 		ModelHTTP: common.NewHTTPClient(180*time.Second, 32<<20).Client,

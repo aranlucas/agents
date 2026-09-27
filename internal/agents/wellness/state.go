@@ -4,9 +4,9 @@ import (
 	json "encoding/json/v2"
 	"maps"
 
+	"github.com/aranlucas/agents/internal/agents/fitness"
+	"github.com/aranlucas/agents/internal/agents/grocery"
 	"github.com/aranlucas/agents/internal/common"
-	"github.com/aranlucas/agents/internal/fitness"
-	"github.com/aranlucas/agents/internal/grocery"
 	"google.golang.org/adk/v2/session"
 )
 

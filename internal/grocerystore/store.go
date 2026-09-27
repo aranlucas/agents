@@ -1,5 +1,5 @@
-// Package groceries owns household and shared grocery-list persistence.
-package groceries
+// Package grocerystore owns household and shared grocery-list persistence.
+package grocerystore
 
 import (
 	"context"

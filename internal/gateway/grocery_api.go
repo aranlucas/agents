@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/aranlucas/agents/internal/auth"
-	"github.com/aranlucas/agents/internal/groceries"
 	"github.com/aranlucas/agents/internal/groceryapi"
+	"github.com/aranlucas/agents/internal/grocerystore"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	nethttpmiddleware "github.com/oapi-codegen/nethttp-middleware"
 )
@@ -24,8 +24,8 @@ import (
 const maxGroceryAPIRequestBody = 256 << 10
 
 type groceryAPI struct {
-	repository groceries.LibraryRepository
-	shopping   groceries.ShoppingRepository
+	repository grocerystore.LibraryRepository
+	shopping   grocerystore.ShoppingRepository
 	now        func() time.Time
 	inviteCode func() (string, error)
 }
@@ -76,8 +76,8 @@ var groceryAPIRoutes = [...]struct {
 
 func registerGroceryAPI(
 	mux *http.ServeMux,
-	repository groceries.LibraryRepository,
-	shopping groceries.ShoppingRepository,
+	repository grocerystore.LibraryRepository,
+	shopping grocerystore.ShoppingRepository,
 	now func() time.Time,
 ) error {
 	spec, err := groceryapi.GetSpec()
@@ -350,11 +350,11 @@ func (api *groceryAPI) CreateList(ctx context.Context, request groceryapi.Create
 			return groceryapi.CreateListdefaultJSONResponse{StatusCode: status, Body: *body}, nil
 		}
 	}
-	var items []groceries.NewItem
+	var items []grocerystore.NewItem
 	if request.Body.Items != nil {
 		items = toGroceryNewItems(*request.Body.Items)
 	}
-	list, err := api.repository.SaveList(ctx, userID, groceries.SavedListInput{
+	list, err := api.repository.SaveList(ctx, userID, grocerystore.SavedListInput{
 		HouseholdID: request.Body.HouseholdId,
 		Title:       request.Body.Title,
 		Items:       items,
@@ -371,7 +371,7 @@ func (api *groceryAPI) UpdateList(ctx context.Context, request groceryapi.Update
 	if authError != nil {
 		return groceryapi.UpdateListdefaultJSONResponse{StatusCode: status, Body: *authError}, nil
 	}
-	list, err := api.repository.UpdateList(ctx, userID, request.Id, groceries.ListPatch{
+	list, err := api.repository.UpdateList(ctx, userID, request.Id, grocerystore.ListPatch{
 		Title:  request.Body.Title,
 		Status: request.Body.Status,
 	}, api.currentTime())
@@ -410,7 +410,7 @@ func (api *groceryAPI) UpdateItem(ctx context.Context, request groceryapi.Update
 			return groceryapi.UpdateItemdefaultJSONResponse{StatusCode: status, Body: *body}, nil
 		}
 	}
-	item, err := api.repository.UpdateItem(ctx, userID, request.Id, request.ItemId, groceries.ItemPatch{
+	item, err := api.repository.UpdateItem(ctx, userID, request.Id, request.ItemId, grocerystore.ItemPatch{
 		Name:     request.Body.Name,
 		Quantity: request.Body.Quantity,
 		Note:     request.Body.Note,
@@ -570,25 +570,25 @@ func groceryErrorResponse(err error) (int, groceryapi.Error) {
 	status := http.StatusServiceUnavailable
 	code := "grocery_api_unavailable"
 	switch {
-	case errors.Is(err, groceries.ErrInvalid):
+	case errors.Is(err, grocerystore.ErrInvalid):
 		status, code = http.StatusBadRequest, "invalid_grocery_request"
-	case errors.Is(err, groceries.ErrForbidden):
+	case errors.Is(err, grocerystore.ErrForbidden):
 		status, code = http.StatusForbidden, "grocery_forbidden"
-	case errors.Is(err, groceries.ErrNotFound):
+	case errors.Is(err, grocerystore.ErrNotFound):
 		status, code = http.StatusNotFound, "grocery_not_found"
-	case errors.Is(err, groceries.ErrInviteExpired):
+	case errors.Is(err, grocerystore.ErrInviteExpired):
 		status, code = http.StatusGone, "grocery_invite_expired"
-	case errors.Is(err, groceries.ErrInviteExhausted):
+	case errors.Is(err, grocerystore.ErrInviteExhausted):
 		status, code = http.StatusConflict, "grocery_invite_exhausted"
 	}
 	return status, groceryapi.Error{Error: code}
 }
 
-func toAPIHousehold(value groceries.Household) groceryapi.Household {
+func toAPIHousehold(value grocerystore.Household) groceryapi.Household {
 	return groceryapi.Household{Id: value.ID, Name: value.Name, Role: value.Role, CreatedBy: value.CreatedBy, CreatedAt: value.CreatedAt}
 }
 
-func toAPIHouseholds(values []groceries.Household) []groceryapi.Household {
+func toAPIHouseholds(values []grocerystore.Household) []groceryapi.Household {
 	if values == nil {
 		return nil
 	}
@@ -599,11 +599,11 @@ func toAPIHouseholds(values []groceries.Household) []groceryapi.Household {
 	return result
 }
 
-func toAPIInvite(value groceries.Invite) groceryapi.Invite {
+func toAPIInvite(value grocerystore.Invite) groceryapi.Invite {
 	return groceryapi.Invite{Code: value.Code, HouseholdId: value.HouseholdID, CreatedBy: value.CreatedBy, ExpiresAt: value.ExpiresAt, MaxUses: value.MaxUses, UsedCount: value.UsedCount}
 }
 
-func toAPIList(value groceries.List) groceryapi.List {
+func toAPIList(value grocerystore.List) groceryapi.List {
 	return groceryapi.List{
 		Id: value.ID, HouseholdId: value.HouseholdID, OwnerUserId: value.OwnerUserID,
 		Title: value.Title, Status: value.Status, ArtifactVersion: value.ArtifactVersion,
@@ -611,7 +611,7 @@ func toAPIList(value groceries.List) groceryapi.List {
 	}
 }
 
-func toAPILists(values []groceries.List) []groceryapi.List {
+func toAPILists(values []grocerystore.List) []groceryapi.List {
 	if values == nil {
 		return nil
 	}
@@ -622,7 +622,7 @@ func toAPILists(values []groceries.List) []groceryapi.List {
 	return result
 }
 
-func toAPIItem(value groceries.Item) groceryapi.Item {
+func toAPIItem(value grocerystore.Item) groceryapi.Item {
 	return groceryapi.Item{
 		Id: value.ID, ListId: value.ListID, Name: value.Name, Quantity: value.Quantity,
 		Note: value.Note, Upc: value.Upc, Product: toAPIProductReference(value.Product), Position: value.Position, AddedBy: value.AddedBy,
@@ -630,7 +630,7 @@ func toAPIItem(value groceries.Item) groceryapi.Item {
 	}
 }
 
-func toAPIItems(values []groceries.Item) []groceryapi.Item {
+func toAPIItems(values []grocerystore.Item) []groceryapi.Item {
 	if values == nil {
 		return nil
 	}
@@ -641,32 +641,32 @@ func toAPIItems(values []groceries.Item) []groceryapi.Item {
 	return result
 }
 
-func toGroceryNewItems(values []groceryapi.NewItem) []groceries.NewItem {
+func toGroceryNewItems(values []groceryapi.NewItem) []grocerystore.NewItem {
 	if values == nil {
 		return nil
 	}
-	result := make([]groceries.NewItem, len(values))
+	result := make([]grocerystore.NewItem, len(values))
 	for index, value := range values {
-		result[index] = groceries.NewItem{Name: value.Name, Quantity: value.Quantity, Note: value.Note, Upc: value.Upc, Product: toGroceryProductReference(value.Product)}
+		result[index] = grocerystore.NewItem{Name: value.Name, Quantity: value.Quantity, Note: value.Note, Upc: value.Upc, Product: toGroceryProductReference(value.Product)}
 	}
 	return result
 }
 
-func toAPIProductReference(value *groceries.ProductReference) *groceryapi.ProductReference {
+func toAPIProductReference(value *grocerystore.ProductReference) *groceryapi.ProductReference {
 	if value == nil {
 		return nil
 	}
 	return &groceryapi.ProductReference{Provider: value.Provider, Id: value.ID}
 }
 
-func toGroceryProductReference(value *groceryapi.ProductReference) *groceries.ProductReference {
+func toGroceryProductReference(value *groceryapi.ProductReference) *grocerystore.ProductReference {
 	if value == nil {
 		return nil
 	}
-	return &groceries.ProductReference{Provider: value.Provider, ID: value.Id}
+	return &grocerystore.ProductReference{Provider: value.Provider, ID: value.Id}
 }
 
-func toAPIRecipe(value groceries.Recipe) groceryapi.Recipe {
+func toAPIRecipe(value grocerystore.Recipe) groceryapi.Recipe {
 	ingredients := make([]groceryapi.Ingredient, len(value.Ingredients))
 	for index, ingredient := range value.Ingredients {
 		ingredients[index] = groceryapi.Ingredient{
@@ -692,7 +692,7 @@ func toAPIRecipe(value groceries.Recipe) groceryapi.Recipe {
 	}
 }
 
-func toAPIRecipes(values []groceries.Recipe) []groceryapi.Recipe {
+func toAPIRecipes(values []grocerystore.Recipe) []groceryapi.Recipe {
 	if values == nil {
 		return nil
 	}
@@ -703,22 +703,22 @@ func toAPIRecipes(values []groceries.Recipe) []groceryapi.Recipe {
 	return result
 }
 
-func toGroceryRecipeContent(value groceryapi.RecipeContent) groceries.RecipeContent {
-	ingredients := make([]groceries.NewIngredient, len(value.Ingredients))
+func toGroceryRecipeContent(value groceryapi.RecipeContent) grocerystore.RecipeContent {
+	ingredients := make([]grocerystore.NewIngredient, len(value.Ingredients))
 	for index, ingredient := range value.Ingredients {
-		ingredients[index] = groceries.NewIngredient{Name: ingredient.Name, Quantity: ingredient.Quantity, Unit: ingredient.Unit, Note: ingredient.Note}
+		ingredients[index] = grocerystore.NewIngredient{Name: ingredient.Name, Quantity: ingredient.Quantity, Unit: ingredient.Unit, Note: ingredient.Note}
 	}
 	if value.Ingredients == nil {
 		ingredients = nil
 	}
-	return groceries.RecipeContent{
+	return grocerystore.RecipeContent{
 		Title: value.Title, Description: value.Description, Servings: value.Servings,
 		Notes: value.Notes, Ingredients: ingredients, Steps: value.Steps, Tags: value.Tags,
 	}
 }
 
-func toGrocerySavedRecipeInput(value groceryapi.SavedRecipeInput) groceries.SavedRecipeInput {
-	return groceries.SavedRecipeInput{HouseholdID: value.HouseholdId, RecipeContent: toGroceryRecipeContent(groceryapi.RecipeContent{
+func toGrocerySavedRecipeInput(value groceryapi.SavedRecipeInput) grocerystore.SavedRecipeInput {
+	return grocerystore.SavedRecipeInput{HouseholdID: value.HouseholdId, RecipeContent: toGroceryRecipeContent(groceryapi.RecipeContent{
 		Title: value.Title, Description: value.Description, Servings: value.Servings, Notes: value.Notes,
 		Ingredients: value.Ingredients, Steps: value.Steps, Tags: value.Tags,
 	})}
