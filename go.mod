@@ -2,8 +2,6 @@ module github.com/aranlucas/agents
 
 go 1.27.0
 
-toolchain go1.27.1
-
 require (
 	cloud.google.com/go/bigquery v1.85.0
 	github.com/ag-ui-protocol/ag-ui/sdks/community/go v0.0.0-20260925054016-b8ebd02c84a3

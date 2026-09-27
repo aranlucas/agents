@@ -19,9 +19,10 @@ jobs:
         targets: [check, test, build vuln]
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - id: go
+        uses: actions/setup-go@v7
         with:
-          go-version-file: go.mod
+          go-version: stable
           cache: false
       # Each target builds different artifacts, so each keeps its own Go
       # cache. Only main saves; pull requests restore main's copy.
@@ -32,8 +33,8 @@ jobs:
             ~/go/pkg/mod
             ~/.cache/go-build
             ~/.cache/golangci-lint
-          key: go-${{ runner.os }}-${{ matrix.targets }}-${{ hashFiles('go.mod', 'go.sum') }}
-          restore-keys: go-${{ runner.os }}-${{ matrix.targets }}-
+          key: go${{ steps.go.outputs.go-version }}-${{ runner.os }}-${{ matrix.targets }}-${{ hashFiles('go.mod', 'go.sum') }}
+          restore-keys: go${{ steps.go.outputs.go-version }}-${{ runner.os }}-${{ matrix.targets }}-
       - if: matrix.targets == 'check'
         uses: golangci/golangci-lint-action@v9
         with:
