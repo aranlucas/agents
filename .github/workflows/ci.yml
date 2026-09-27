@@ -11,24 +11,40 @@ concurrency:
   cancel-in-progress: true
 jobs:
   go:
-    name: Go checks, race tests and binary build
+    name: make ${{ matrix.targets }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        targets: [check, test, build vuln]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-          cache-dependency-path: go.sum
-      - uses: golangci/golangci-lint-action@v9
+          cache: false
+      # Each target builds different artifacts, so each keeps its own Go
+      # cache. Only main saves; pull requests restore main's copy.
+      - id: cache
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+            ~/.cache/golangci-lint
+          key: go-${{ runner.os }}-${{ matrix.targets }}-${{ hashFiles('go.mod', 'go.sum') }}
+          restore-keys: go-${{ runner.os }}-${{ matrix.targets }}-
+      - if: matrix.targets == 'check'
+        uses: golangci/golangci-lint-action@v9
         with:
           version: v2.13.1
-          args: --config=.golangci.yml ./... ./.railway
-      - name: Check formatting and contracts
-        run: |
-          test -z "$(go run mvdan.cc/gofumpt@v0.11.0 -l cmd internal migrations .railway)"
-          go vet ./... ./.railway
-          go run ./cmd/contracts -check
-      - run: make test
-      - run: make build
-      - name: Vulnerability check
-        run: go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
+          install-only: true
+      - run: make ${{ matrix.targets }}
+      - if: github.ref == 'refs/heads/main' && steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+            ~/.cache/golangci-lint
+          key: ${{ steps.cache.outputs.cache-primary-key }}

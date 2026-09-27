@@ -6,7 +6,7 @@ TEST_FLAGS ?= -parallel=2
 LINT_FLAGS ?= --concurrency=2
 endif
 
-.PHONY: check test build fmt contracts dev railway-link railway-plan railway-apply railway-up
+.PHONY: check test build vuln fmt contracts dev railway-link railway-plan railway-apply railway-up
 
 # Railway environment for the railway-* targets: development or production.
 ENV ?= development
@@ -16,8 +16,6 @@ RAILWAY_SERVICE := agents-gateway
 
 check:
 	golangci-lint run --config=.golangci.yml $(LINT_FLAGS) ./... ./.railway
-	test -z "$$(go run mvdan.cc/gofumpt@v0.11.0 -l cmd internal migrations .railway)"
-	go vet ./... ./.railway
 	go run ./cmd/contracts -check
 
 test:
@@ -26,8 +24,11 @@ test:
 build:
 	CGO_ENABLED=0 go build -mod=readonly -trimpath -o bin/agents ./cmd/agents
 
+vuln:
+	go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
+
 fmt:
-	go run mvdan.cc/gofumpt@v0.11.0 -w cmd internal migrations .railway
+	golangci-lint fmt --config=.golangci.yml ./... ./.railway
 
 contracts:
 	go run ./cmd/contracts
