@@ -8,10 +8,10 @@ export default defineRailway(() => {
   const agentsGateway = service("agents-gateway", {
     // Wait for the GitHub CI check suite so a failing main never deploys.
     source: github("aranlucas/agents", { checkSuites: true }),
-    build: {
-      builder: "DOCKERFILE",
-      dockerfilePath: "Dockerfile",
-    },
+    // Railpack defaults: it builds the first command under cmd/ (cmd/agents)
+    // into /app/out, starts ./out (which serves), and ships the whole build
+    // directory, so assets/ (the oral-boards corpus) is present.
+    build: { builder: "RAILPACK" },
     // Volumes are not mounted during pre-deploy, so `agents serve` applies
     // migrations itself before listening.
     volumeMounts: { "/app/.data": data },
@@ -25,9 +25,6 @@ export default defineRailway(() => {
     },
     env: {
       APP_ENV: preserve(),
-
-      // The image runs as a non-root user; Railway volumes are root-owned.
-      RAILWAY_RUN_UID: "0",
 
       // Browser origins and Clerk-issued JWT verification.
       ALLOWED_ORIGINS: preserve(),
