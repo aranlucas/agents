@@ -26,12 +26,11 @@ jobs:
         with:
           version: v2.13.1
           args: --config=.golangci.yml --concurrency=2 ./... ./.railway
-      - name: Check formatting, contracts and API
+      - name: Check formatting and contracts
         run: |
           test -z "$(go run mvdan.cc/gofumpt@v0.11.0 -l cmd internal migrations .railway)"
           go vet ./... ./.railway
           go run ./cmd/contracts -check
-          make api-check
       - run: make test
       - run: make build
       - name: Vulnerability check

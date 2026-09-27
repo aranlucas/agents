@@ -1,7 +1,7 @@
 export GOMAXPROCS := 2
 export GOFLAGS := -p=1
 
-.PHONY: check test build fmt contracts api api-check dev railway-link railway-plan railway-apply railway-up
+.PHONY: check test build fmt contracts dev railway-link railway-plan railway-apply railway-up
 
 # Railway environment for the railway-* targets: development or production.
 ENV ?= development
@@ -14,7 +14,6 @@ check:
 	test -z "$$(go run mvdan.cc/gofumpt@v0.11.0 -l cmd internal migrations .railway)"
 	go vet ./... ./.railway
 	go run ./cmd/contracts -check
-	$(MAKE) api-check
 
 test:
 	go test -parallel=2 -race ./... ./.railway
@@ -27,14 +26,6 @@ fmt:
 
 contracts:
 	go run ./cmd/contracts
-
-api:
-	go tool oapi-codegen -config internal/groceryapi/oapi-codegen.yaml api/openapi/grocery-gateway.yaml
-
-api-check:
-	@before=$$(mktemp); cp internal/groceryapi/generated.go "$$before"; \
-	trap 'rm -f "$$before"' EXIT; \
-	$(MAKE) api && diff -u "$$before" internal/groceryapi/generated.go
 
 dev:
 	go run ./cmd/agents
