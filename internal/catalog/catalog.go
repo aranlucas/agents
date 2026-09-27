@@ -8,29 +8,28 @@ import "time"
 // Spec is deployment-independent metadata for one authored agent.
 //
 // ClientID is the stable identity exposed by @agents/types. Route is the
-// backend path mounted by the gateway and used by Telegram/eval tooling.
+// backend path mounted by the gateway and used by eval tooling.
 type Spec struct {
 	ClientID string
 	Route    string
 	AppName  string
 	Public   bool
 	Timeout  time.Duration
-	Telegram bool
 	Eval     bool
 }
 
 var specs = [...]Spec{
-	{ClientID: "travel", Route: "travel", AppName: "collab_trip_agent", Timeout: 3 * time.Minute, Telegram: true, Eval: true},
-	{ClientID: "grocery", Route: "grocery", AppName: "grocery_agent", Timeout: 3 * time.Minute, Telegram: true, Eval: true},
-	{ClientID: "fitness", Route: "fitness", AppName: "fitness_agent", Timeout: 3 * time.Minute, Telegram: true, Eval: true},
-	{ClientID: "wellness", Route: "wellness", AppName: "wellness_agent", Timeout: 5 * time.Minute, Telegram: true, Eval: true},
-	{ClientID: "expense", Route: "expense", AppName: "expense_desk_agent", Timeout: 2 * time.Minute, Telegram: true, Eval: true},
-	{ClientID: "trends", Route: "trends", AppName: "GoogleTrendsAgent", Timeout: 3 * time.Minute, Telegram: true},
+	{ClientID: "travel", Route: "travel", AppName: "collab_trip_agent", Timeout: 3 * time.Minute, Eval: true},
+	{ClientID: "grocery", Route: "grocery", AppName: "grocery_agent", Timeout: 3 * time.Minute, Eval: true},
+	{ClientID: "fitness", Route: "fitness", AppName: "fitness_agent", Timeout: 3 * time.Minute, Eval: true},
+	{ClientID: "wellness", Route: "wellness", AppName: "wellness_agent", Timeout: 5 * time.Minute, Eval: true},
+	{ClientID: "expense", Route: "expense", AppName: "expense_desk_agent", Timeout: 2 * time.Minute, Eval: true},
+	{ClientID: "trends", Route: "trends", AppName: "GoogleTrendsAgent", Timeout: 3 * time.Minute},
 	{ClientID: "jobs", Route: "jobs", AppName: "jobs_agent", Timeout: 2 * time.Minute},
 	{ClientID: "interview", Route: "interview", AppName: "interview_coach_agent", Timeout: 2 * time.Minute, Eval: true},
-	{ClientID: "research", Route: "research", AppName: "research_canvas_agent", Timeout: 3 * time.Minute, Telegram: true, Eval: true},
-	{ClientID: "spreadsheet", Route: "spreadsheet", AppName: "spreadsheet_agent", Timeout: 2 * time.Minute, Telegram: true, Eval: true},
-	{ClientID: "presentation", Route: "presentation", AppName: "presentation_agent", Timeout: 2 * time.Minute, Telegram: true, Eval: true},
+	{ClientID: "research", Route: "research", AppName: "research_canvas_agent", Timeout: 3 * time.Minute, Eval: true},
+	{ClientID: "spreadsheet", Route: "spreadsheet", AppName: "spreadsheet_agent", Timeout: 2 * time.Minute, Eval: true},
+	{ClientID: "presentation", Route: "presentation", AppName: "presentation_agent", Timeout: 2 * time.Minute, Eval: true},
 }
 
 // All returns every authored agent in stable client display order.
@@ -46,11 +45,6 @@ func ByRoute(route string) (Spec, bool) {
 		}
 	}
 	return Spec{}, false
-}
-
-// Telegram returns the specialists exposed through the Telegram orchestrator.
-func Telegram() []Spec {
-	return filter(func(spec Spec) bool { return spec.Telegram })
 }
 
 // Eval returns agents supported by the Go-native dataset evaluator. Trends is

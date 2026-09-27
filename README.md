@@ -1,6 +1,6 @@
 # Agents
 
-Go ADK service with an HTTP gateway, an optional Telegram worker mode, and SQLite persistence. The study app lives in [aranlucas/oral-boards](https://github.com/aranlucas/oral-boards).
+Go ADK service with an HTTP gateway and SQLite persistence. The study app lives in [aranlucas/oral-boards](https://github.com/aranlucas/oral-boards).
 
 Requires Go 1.27+, Make, and golangci-lint 2.13.1 for checks. Shell smoke tests require bash, curl, and jq. The service does not require Node.js or CGO; the Railway targets need the Railway CLI.
 
@@ -9,7 +9,7 @@ cp .env.example .env
 make dev
 ```
 
-The single deployable executable is built with `make build` as `bin/agents`. It defaults to `serve`; `agents migrate` applies the embedded migrations to `DATABASE_PATH` without serving, and `agents telegram` runs the optional long-poll worker. Configuration comes from the environment and `.env`; never commit credentials.
+The single deployable executable is built with `make build` as `bin/agents`. It defaults to `serve`; `agents migrate` applies the embedded migrations to `DATABASE_PATH` without serving. Configuration comes from the environment and `.env`; never commit credentials.
 
 ```sh
 make check
@@ -23,9 +23,9 @@ Validation runs sequentially with `GOMAXPROCS=2`, `GOFLAGS=-p=1`, two test paral
 
 The root `go.mod` declares `github.com/aranlucas/agents`. Commands live in `cmd/`; server implementations and domain agents live in `internal/`, following the [Go server layout guidance](https://go.dev/doc/modules/layout#server-project).
 
-- `cmd/agents` dispatches `serve`, `migrate`, and `telegram`; each mode is a `func(context.Context) error`.
+- `cmd/agents` dispatches `serve` and `migrate`; each mode is a `func(context.Context) error`.
 - `internal/config` is the only package that reads the environment. `config.Keys` lists every variable.
-- `internal/app` is the shared composition root: it opens the database and builds every agent for both the gateway and the Telegram worker.
+- `internal/app` is the shared composition root: it opens the database and builds every agent for the gateway.
 - `internal/agents/<name>` holds each authored ADK agent (instructions, tools, state).
 - `internal/grocerystore` persists households, grocery lists, recipes, and the shopping profile; `internal/groceryapi` is the generated `/api/grocery/*` server.
 - `internal/storage` owns SQLite: application tables through `Statement` batches (one transaction per batch), ADK sessions through ADK's `session/database` service, and versioned ADK artifacts.

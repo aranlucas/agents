@@ -26,7 +26,6 @@ import (
 	"github.com/aranlucas/agents/internal/catalog"
 	"github.com/aranlucas/agents/internal/clerk"
 	"github.com/aranlucas/agents/internal/config"
-	"github.com/aranlucas/agents/internal/telegram"
 	"google.golang.org/adk/v2/agent"
 
 	"google.golang.org/adk/v2/agent/llmagent"
@@ -126,95 +125,6 @@ func TestEveryActiveAgentExposesScopedEndpoints(t *testing.T) {
 	handler.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusNotFound {
 		t.Fatalf("removed sessions endpoint=%d", recorder.Code)
-	}
-}
-
-func TestLinkConsumeRejectsWrongSharedSecret(t *testing.T) {
-	handler := telegramLinkConsumeHandler("correct", nil)
-	request := httptest.NewRequest(http.MethodPost, "/telegram/link/consume", strings.NewReader(`{"token":"raw","clerk_user_id":"user"}`))
-	request.Header.Set("x-telegram-link-secret", "wrong")
-	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, request)
-	if recorder.Code != http.StatusUnauthorized {
-		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
-	}
-}
-
-func TestLinkConsumeRejectsMultipleOrOversizedJSONDocuments(t *testing.T) {
-	handler := telegramLinkConsumeHandler("correct", nil)
-	for name, body := range map[string]string{
-		"multiple documents": `{"token":"raw","clerk_user_id":"user"}{}`,
-		"oversized":          `{"token":"raw","clerk_user_id":"user"}` + strings.Repeat(" ", 8<<10),
-	} {
-		t.Run(name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodPost, "/telegram/link/consume", strings.NewReader(body))
-			request.Header.Set("x-telegram-link-secret", "correct")
-			recorder := httptest.NewRecorder()
-			handler.ServeHTTP(recorder, request)
-			if recorder.Code != http.StatusBadRequest {
-				t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
-			}
-		})
-	}
-}
-
-type fakeTelegramLinkLookup struct {
-	link   telegram.AccountLink
-	linked bool
-	err    error
-}
-
-func (f fakeTelegramLinkLookup) Lookup(context.Context, int64) (telegram.AccountLink, bool, error) {
-	return f.link, f.linked, f.err
-}
-
-func TestLinkResolveUsesD1AccountLink(t *testing.T) {
-	handler := telegramLinkResolveHandler("correct", fakeTelegramLinkLookup{
-		link: telegram.AccountLink{
-			TelegramUserID: 42,
-			TelegramChatID: 42,
-			ClerkUserID:    "user_real_123",
-			LinkedAt:       time.Now().UnixMilli(),
-		},
-		linked: true,
-	})
-	request := httptest.NewRequest(http.MethodPost, "/telegram/link/resolve", strings.NewReader(`{"telegram_user_id":42}`))
-	request.Header.Set("x-telegram-link-secret", "correct")
-	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, request)
-	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"clerk_user_id":"user_real_123"`) {
-		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
-	}
-}
-
-func TestLinkResolveFailsClosed(t *testing.T) {
-	tests := []struct {
-		name   string
-		secret string
-		body   string
-		lookup fakeTelegramLinkLookup
-		want   int
-	}{
-		{name: "wrong secret", secret: "wrong", body: `{"telegram_user_id":42}`, want: http.StatusUnauthorized},
-		{name: "invalid identity", secret: "correct", body: `{"telegram_user_id":0}`, want: http.StatusBadRequest},
-		{name: "unknown field", secret: "correct", body: `{"telegram_user_id":42,"extra":true}`, want: http.StatusBadRequest},
-		{name: "not linked", secret: "correct", body: `{"telegram_user_id":42}`, want: http.StatusNotFound},
-		{name: "database unavailable", secret: "correct", body: `{"telegram_user_id":42}`, lookup: fakeTelegramLinkLookup{err: errors.New("database unavailable")}, want: http.StatusServiceUnavailable},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			handler := telegramLinkResolveHandler("correct", test.lookup)
-			request := httptest.NewRequest(http.MethodPost, "/telegram/link/resolve", strings.NewReader(test.body))
-			request.Header.Set("x-telegram-link-secret", test.secret)
-			recorder := httptest.NewRecorder()
-			handler.ServeHTTP(recorder, request)
-			if recorder.Code != test.want {
-				t.Fatalf("status=%d want=%d body=%s", recorder.Code, test.want, recorder.Body.String())
-			}
-			if strings.Contains(recorder.Body.String(), "clerk_user_id") {
-				t.Fatalf("failure leaked linked identity: %s", recorder.Body.String())
-			}
-		})
 	}
 }
 

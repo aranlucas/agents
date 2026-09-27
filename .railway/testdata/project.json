@@ -73,15 +73,6 @@
         "GOOGLE_APPLICATION_CREDENTIALS_JSON": {
           "type": "preserve"
         },
-        "TELEGRAM_BOT_TOKEN": {
-          "type": "preserve"
-        },
-        "TELEGRAM_BOT_USERNAME": {
-          "type": "preserve"
-        },
-        "TELEGRAM_LINK_SECRET": {
-          "type": "preserve"
-        },
         "SENTRY_DSN": {
           "type": "preserve"
         }

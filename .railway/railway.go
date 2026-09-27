@@ -43,11 +43,6 @@ func Railway() railway.Project {
 			"BRAVE_API_KEY":                       railway.Preserve(),
 			"GOOGLE_APPLICATION_CREDENTIALS_JSON": railway.Preserve(),
 
-			// Telegram account linking served by the gateway.
-			"TELEGRAM_BOT_TOKEN":    railway.Preserve(),
-			"TELEGRAM_BOT_USERNAME": railway.Preserve(),
-			"TELEGRAM_LINK_SECRET":  railway.Preserve(),
-
 			// Observability. SENTRY_DSN is unset today; listing it keeps the gateway
 			// from planning a delete once it is set in the dashboard.
 			"SENTRY_DSN": railway.Preserve(),

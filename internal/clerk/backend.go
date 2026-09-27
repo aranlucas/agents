@@ -15,8 +15,7 @@ import (
 	"github.com/clerk/clerk-sdk-go/v2/user"
 )
 
-// Backend is the narrow Clerk boundary for credential routing. Telegram
-// account links are persisted in the database by telegram.LinkStore.
+// Backend is the narrow Clerk boundary for credential routing.
 type Backend interface {
 	OAuthConnections(context.Context, string) (ConnectionState, error)
 }
