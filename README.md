@@ -17,8 +17,6 @@ make test
 make build
 ```
 
-Local validation runs sequentially with `GOMAXPROCS=2`, `GOFLAGS=-p=1`, two test parallel slots, and two lint workers. CI uses the tools' default concurrency to use all available runner CPUs; race detection remains enabled.
-
 ## Layout
 
 The root `go.mod` declares `github.com/aranlucas/agents`. Commands live in `cmd/`; server implementations and domain agents live in `internal/`, following the [Go server layout guidance](https://go.dev/doc/modules/layout#server-project).
