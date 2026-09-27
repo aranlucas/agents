@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aranlucas/agents/internal/jobs"
+	"github.com/aranlucas/agents/internal/agents/jobs"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/genai"
 )

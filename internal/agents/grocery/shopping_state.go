@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/aranlucas/agents/internal/groceries"
+	"github.com/aranlucas/agents/internal/grocerystore"
 
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/genai"
 )
 
-func hydrateShoppingProfileState(repository groceries.ShoppingRepository) agent.BeforeAgentCallback {
+func hydrateShoppingProfileState(repository grocerystore.ShoppingRepository) agent.BeforeAgentCallback {
 	shopping := ShoppingResources{Repository: repository}
 	return func(ctx agent.Context) (*genai.Content, error) {
 		if _, err := shopping.refreshShoppingProfileState(ctx); err != nil {
@@ -21,43 +21,43 @@ func hydrateShoppingProfileState(repository groceries.ShoppingRepository) agent.
 	}
 }
 
-func (shopping ShoppingResources) refreshShoppingProfileState(ctx agent.Context) (groceries.ShoppingProfile, error) {
+func (shopping ShoppingResources) refreshShoppingProfileState(ctx agent.Context) (grocerystore.ShoppingProfile, error) {
 	if shopping.Repository == nil {
-		return groceries.ShoppingProfile{}, errors.New("grocery shopping repository is required")
+		return grocerystore.ShoppingProfile{}, errors.New("grocery shopping repository is required")
 	}
 	profile, err := shopping.Repository.ShoppingProfile(ctx, strings.TrimSpace(ctx.UserID()))
 	if err != nil {
-		return groceries.ShoppingProfile{}, err
+		return grocerystore.ShoppingProfile{}, err
 	}
 	if err := writeShoppingProfileState(ctx, profile); err != nil {
-		return groceries.ShoppingProfile{}, err
+		return grocerystore.ShoppingProfile{}, err
 	}
 	return profile, nil
 }
 
-func writeShoppingProfileState(ctx agent.Context, profile groceries.ShoppingProfile) error {
+func writeShoppingProfileState(ctx agent.Context, profile grocerystore.ShoppingProfile) error {
 	return writeProjectedShoppingProfileState(ctx, projectShoppingProfileState(profile))
 }
 
-func writeShoppingPantryState(ctx agent.Context, pantry []groceries.PantryItem) error {
+func writeShoppingPantryState(ctx agent.Context, pantry []grocerystore.PantryItem) error {
 	profile := readState(ctx.ReadonlyState()).ShoppingProfile
 	profile.Pantry = projectShoppingPantry(pantry)
 	return writeProjectedShoppingProfileState(ctx, profile)
 }
 
-func writeShoppingEquipmentState(ctx agent.Context, equipment []groceries.EquipmentItem) error {
+func writeShoppingEquipmentState(ctx agent.Context, equipment []grocerystore.EquipmentItem) error {
 	profile := readState(ctx.ReadonlyState()).ShoppingProfile
 	profile.Equipment = projectShoppingEquipment(equipment)
 	return writeProjectedShoppingProfileState(ctx, profile)
 }
 
-func writeShoppingOrdersState(ctx agent.Context, orders []groceries.Order) error {
+func writeShoppingOrdersState(ctx agent.Context, orders []grocerystore.Order) error {
 	profile := readState(ctx.ReadonlyState()).ShoppingProfile
 	profile.RecentOrders = mergeShoppingOrders(projectShoppingOrders(orders), profile.RecentOrders)
 	return writeProjectedShoppingProfileState(ctx, profile)
 }
 
-func writeShoppingPreferredStoreState(ctx agent.Context, store *groceries.PreferredStore) error {
+func writeShoppingPreferredStoreState(ctx agent.Context, store *grocerystore.PreferredStore) error {
 	profile := readState(ctx.ReadonlyState()).ShoppingProfile
 	profile.PreferredStore = projectShoppingPreferredStore(store)
 	return writeProjectedShoppingProfileState(ctx, profile)
@@ -70,7 +70,7 @@ func writeProjectedShoppingProfileState(ctx agent.Context, projected ShoppingPro
 	return nil
 }
 
-func projectShoppingProfileState(profile groceries.ShoppingProfile) ShoppingProfileState {
+func projectShoppingProfileState(profile grocerystore.ShoppingProfile) ShoppingProfileState {
 	projected := emptyShoppingProfileState()
 	if profile.PreferredStore != nil {
 		projected.PreferredStore = projectShoppingPreferredStore(profile.PreferredStore)
@@ -87,7 +87,7 @@ func projectShoppingProfileState(profile groceries.ShoppingProfile) ShoppingProf
 	return projected
 }
 
-func projectShoppingPantry(pantry []groceries.PantryItem) []ShoppingPantryItemState {
+func projectShoppingPantry(pantry []grocerystore.PantryItem) []ShoppingPantryItemState {
 	projected := make([]ShoppingPantryItemState, 0, len(pantry))
 	for _, item := range pantry {
 		projected = append(projected, ShoppingPantryItemState{
@@ -97,7 +97,7 @@ func projectShoppingPantry(pantry []groceries.PantryItem) []ShoppingPantryItemSt
 	return projected
 }
 
-func projectShoppingEquipment(equipment []groceries.EquipmentItem) []ShoppingEquipmentItemState {
+func projectShoppingEquipment(equipment []grocerystore.EquipmentItem) []ShoppingEquipmentItemState {
 	projected := make([]ShoppingEquipmentItemState, 0, len(equipment))
 	for _, item := range equipment {
 		projected = append(projected, ShoppingEquipmentItemState{
@@ -107,7 +107,7 @@ func projectShoppingEquipment(equipment []groceries.EquipmentItem) []ShoppingEqu
 	return projected
 }
 
-func projectShoppingOrders(orders []groceries.Order) []ShoppingOrderState {
+func projectShoppingOrders(orders []grocerystore.Order) []ShoppingOrderState {
 	projected := make([]ShoppingOrderState, 0, len(orders))
 	for _, order := range orders {
 		items := make([]ShoppingOrderItemState, 0, len(order.Items))
@@ -141,7 +141,7 @@ func mergeShoppingOrders(current, hydrated []ShoppingOrderState) []ShoppingOrder
 	return merged
 }
 
-func projectShoppingPreferredStore(store *groceries.PreferredStore) *ShoppingPreferredStoreState {
+func projectShoppingPreferredStore(store *grocerystore.PreferredStore) *ShoppingPreferredStoreState {
 	if store == nil {
 		return nil
 	}

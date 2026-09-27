@@ -13,8 +13,8 @@ import (
 	"github.com/aranlucas/agents/internal/agentruntime"
 	"github.com/aranlucas/agents/internal/auth"
 	"github.com/aranlucas/agents/internal/config"
-	"github.com/aranlucas/agents/internal/groceries"
 	"github.com/aranlucas/agents/internal/groceryapi"
+	"github.com/aranlucas/agents/internal/grocerystore"
 
 	"google.golang.org/adk/v2/session"
 )
@@ -266,7 +266,7 @@ func TestVerifiedIdentityPreauthorizationRunsOnce(t *testing.T) {
 	}
 }
 
-func newTestShoppingAPI(repository groceries.ShoppingRepository) *groceryAPI {
+func newTestShoppingAPI(repository grocerystore.ShoppingRepository) *groceryAPI {
 	return &groceryAPI{
 		repository: &fakeGroceryRepository{}, shopping: repository,
 		now: func() time.Time { return time.Unix(2, 0) }, inviteCode: newInviteCode,
@@ -304,9 +304,9 @@ type shopperCapturingLibrary struct {
 	userID string
 }
 
-func (f *shopperCapturingLibrary) ListHouseholds(_ context.Context, userID string) ([]groceries.Household, error) {
+func (f *shopperCapturingLibrary) ListHouseholds(_ context.Context, userID string) ([]grocerystore.Household, error) {
 	f.userID = userID
-	return []groceries.Household{}, nil
+	return []grocerystore.Household{}, nil
 }
 
 type fakeShoppingRepository struct {
@@ -315,10 +315,10 @@ type fakeShoppingRepository struct {
 	resolvedSubject string
 	resolveCalls    int
 	lastUserID      string
-	pantry          []groceries.PantryItem
-	equipment       []groceries.EquipmentItem
-	orders          []groceries.Order
-	preferred       *groceries.PreferredStore
+	pantry          []grocerystore.PantryItem
+	equipment       []grocerystore.EquipmentItem
+	orders          []grocerystore.Order
+	preferred       *grocerystore.PreferredStore
 
 	linkedSubject string
 	linkedUserID  string
@@ -339,14 +339,14 @@ func (f *fakeShoppingRepository) ResolveShopper(_ context.Context, subject strin
 	return "clerk-resolved", nil
 }
 
-func (f *fakeShoppingRepository) Pantry(_ context.Context, userID string) ([]groceries.PantryItem, error) {
+func (f *fakeShoppingRepository) Pantry(_ context.Context, userID string) ([]grocerystore.PantryItem, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.lastUserID = userID
-	return append([]groceries.PantryItem(nil), f.pantry...), nil
+	return append([]grocerystore.PantryItem(nil), f.pantry...), nil
 }
 
-func (f *fakeShoppingRepository) AddPantryItems(_ context.Context, userID string, items []groceries.PantryItem, now time.Time) ([]groceries.PantryItem, error) {
+func (f *fakeShoppingRepository) AddPantryItems(_ context.Context, userID string, items []grocerystore.PantryItem, now time.Time) ([]grocerystore.PantryItem, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.lastUserID = userID
@@ -354,10 +354,10 @@ func (f *fakeShoppingRepository) AddPantryItems(_ context.Context, userID string
 		items[index].AddedAt = now.Unix()
 	}
 	f.pantry = append(f.pantry, items...)
-	return append([]groceries.PantryItem(nil), f.pantry...), nil
+	return append([]grocerystore.PantryItem(nil), f.pantry...), nil
 }
 
-func (f *fakeShoppingRepository) RemovePantryItems(_ context.Context, userID string, names []string) ([]groceries.PantryItem, error) {
+func (f *fakeShoppingRepository) RemovePantryItems(_ context.Context, userID string, names []string) ([]grocerystore.PantryItem, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.lastUserID = userID
@@ -372,10 +372,10 @@ func (f *fakeShoppingRepository) RemovePantryItems(_ context.Context, userID str
 		}
 	}
 	f.pantry = remaining
-	return append([]groceries.PantryItem(nil), f.pantry...), nil
+	return append([]grocerystore.PantryItem(nil), f.pantry...), nil
 }
 
-func (f *fakeShoppingRepository) SetPantryQuantity(_ context.Context, userID, name string, quantity float64) ([]groceries.PantryItem, error) {
+func (f *fakeShoppingRepository) SetPantryQuantity(_ context.Context, userID, name string, quantity float64) ([]grocerystore.PantryItem, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.lastUserID = userID
@@ -384,7 +384,7 @@ func (f *fakeShoppingRepository) SetPantryQuantity(_ context.Context, userID, na
 			f.pantry[index].Quantity = quantity
 		}
 	}
-	return append([]groceries.PantryItem(nil), f.pantry...), nil
+	return append([]grocerystore.PantryItem(nil), f.pantry...), nil
 }
 
 func (f *fakeShoppingRepository) ClearPantry(_ context.Context, userID string) error {
@@ -395,14 +395,14 @@ func (f *fakeShoppingRepository) ClearPantry(_ context.Context, userID string) e
 	return nil
 }
 
-func (f *fakeShoppingRepository) Equipment(_ context.Context, userID string) ([]groceries.EquipmentItem, error) {
+func (f *fakeShoppingRepository) Equipment(_ context.Context, userID string) ([]grocerystore.EquipmentItem, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.lastUserID = userID
-	return append([]groceries.EquipmentItem(nil), f.equipment...), nil
+	return append([]grocerystore.EquipmentItem(nil), f.equipment...), nil
 }
 
-func (f *fakeShoppingRepository) AddEquipment(_ context.Context, userID string, items []groceries.EquipmentItem, now time.Time) ([]groceries.EquipmentItem, error) {
+func (f *fakeShoppingRepository) AddEquipment(_ context.Context, userID string, items []grocerystore.EquipmentItem, now time.Time) ([]grocerystore.EquipmentItem, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.lastUserID = userID
@@ -410,15 +410,15 @@ func (f *fakeShoppingRepository) AddEquipment(_ context.Context, userID string, 
 		items[index].AddedAt = now.Unix()
 	}
 	f.equipment = append(f.equipment, items...)
-	return append([]groceries.EquipmentItem(nil), f.equipment...), nil
+	return append([]grocerystore.EquipmentItem(nil), f.equipment...), nil
 }
 
-func (f *fakeShoppingRepository) RemoveEquipment(_ context.Context, userID string, _ []string) ([]groceries.EquipmentItem, error) {
+func (f *fakeShoppingRepository) RemoveEquipment(_ context.Context, userID string, _ []string) ([]grocerystore.EquipmentItem, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.lastUserID = userID
 	f.equipment = nil
-	return []groceries.EquipmentItem{}, nil
+	return []grocerystore.EquipmentItem{}, nil
 }
 
 func (f *fakeShoppingRepository) ClearEquipment(_ context.Context, userID string) error {
@@ -429,7 +429,7 @@ func (f *fakeShoppingRepository) ClearEquipment(_ context.Context, userID string
 	return nil
 }
 
-func (f *fakeShoppingRepository) RecordOrder(_ context.Context, userID string, order groceries.Order, now time.Time) (groceries.Order, error) {
+func (f *fakeShoppingRepository) RecordOrder(_ context.Context, userID string, order grocerystore.Order, now time.Time) (grocerystore.Order, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.lastUserID = userID
@@ -443,18 +443,18 @@ func (f *fakeShoppingRepository) RecordOrder(_ context.Context, userID string, o
 	return order, nil
 }
 
-func (f *fakeShoppingRepository) RecentOrders(_ context.Context, userID string, limit int) ([]groceries.Order, error) {
+func (f *fakeShoppingRepository) RecentOrders(_ context.Context, userID string, limit int) ([]grocerystore.Order, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.lastUserID = userID
-	orders := append([]groceries.Order(nil), f.orders...)
+	orders := append([]grocerystore.Order(nil), f.orders...)
 	if limit > 0 && limit < len(orders) {
 		orders = orders[:limit]
 	}
 	return orders, nil
 }
 
-func (f *fakeShoppingRepository) PreferredStore(_ context.Context, userID string) (*groceries.PreferredStore, error) {
+func (f *fakeShoppingRepository) PreferredStore(_ context.Context, userID string) (*grocerystore.PreferredStore, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.lastUserID = userID
@@ -465,7 +465,7 @@ func (f *fakeShoppingRepository) PreferredStore(_ context.Context, userID string
 	return &copy, nil
 }
 
-func (f *fakeShoppingRepository) SetPreferredStore(_ context.Context, userID string, store groceries.PreferredStore, now time.Time) (groceries.PreferredStore, error) {
+func (f *fakeShoppingRepository) SetPreferredStore(_ context.Context, userID string, store grocerystore.PreferredStore, now time.Time) (grocerystore.PreferredStore, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.lastUserID = userID
@@ -486,14 +486,14 @@ func (f *fakeShoppingRepository) ClearPreferredStore(_ context.Context, userID s
 	return nil
 }
 
-func (f *fakeShoppingRepository) ShoppingProfile(_ context.Context, userID string) (groceries.ShoppingProfile, error) {
+func (f *fakeShoppingRepository) ShoppingProfile(_ context.Context, userID string) (grocerystore.ShoppingProfile, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.lastUserID = userID
-	return groceries.ShoppingProfile{
-		PreferredStore: f.preferred, Pantry: append([]groceries.PantryItem(nil), f.pantry...),
-		Equipment: append([]groceries.EquipmentItem(nil), f.equipment...), RecentOrders: append([]groceries.Order(nil), f.orders...),
-		FrequentItems: []groceries.FrequentItem{},
+	return grocerystore.ShoppingProfile{
+		PreferredStore: f.preferred, Pantry: append([]grocerystore.PantryItem(nil), f.pantry...),
+		Equipment: append([]grocerystore.EquipmentItem(nil), f.equipment...), RecentOrders: append([]grocerystore.Order(nil), f.orders...),
+		FrequentItems: []grocerystore.FrequentItem{},
 	}, nil
 }
 

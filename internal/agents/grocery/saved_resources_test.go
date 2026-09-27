@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aranlucas/agents/internal/groceries"
+	"github.com/aranlucas/agents/internal/grocerystore"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/session"
 )
@@ -31,7 +31,7 @@ func TestGroceryLibraryToolsRegistersOneListAndRecipeLibrarySurface(t *testing.T
 
 func TestListHouseholdsMakesSharedLibraryScopesDiscoverable(t *testing.T) {
 	repository := &savedResourcesRepository{
-		households: []groceries.Household{{ID: "household_1", Name: "Casa", Role: "owner"}},
+		households: []grocerystore.Household{{ID: "household_1", Name: "Casa", Role: "owner"}},
 	}
 	result, err := (SavedResources{Repository: repository}).ListHouseholds(
 		newSavedResourceContext(t, "user_1", mutableGroceryState{}), struct{}{},
@@ -93,7 +93,7 @@ func TestSaveCurrentListPreservesGeneratedTitleAndMatchedQuantities(t *testing.T
 
 func TestUpdateSavedListCanExplicitlyClearAllItems(t *testing.T) {
 	repository := &savedResourcesRepository{}
-	empty := []groceries.NewItem{}
+	empty := []grocerystore.NewItem{}
 	result, err := (SavedResources{Repository: repository}).UpdateSavedList(
 		newSavedResourceContext(t, "user_1", mutableGroceryState{}),
 		UpdateSavedListArgs{ID: "list_1", Items: &empty},
@@ -107,33 +107,33 @@ func TestUpdateSavedListCanExplicitlyClearAllItems(t *testing.T) {
 }
 
 type savedResourcesRepository struct {
-	groceries.LibraryRepository
-	listInput      groceries.SavedListInput
+	grocerystore.LibraryRepository
+	listInput      grocerystore.SavedListInput
 	recipeUserID   string
-	recipeInput    groceries.SavedRecipeInput
+	recipeInput    grocerystore.SavedRecipeInput
 	replacedListID string
-	replacedItems  []groceries.NewItem
-	households     []groceries.Household
+	replacedItems  []grocerystore.NewItem
+	households     []grocerystore.Household
 }
 
-func (r *savedResourcesRepository) ListHouseholds(context.Context, string) ([]groceries.Household, error) {
-	return append([]groceries.Household{}, r.households...), nil
+func (r *savedResourcesRepository) ListHouseholds(context.Context, string) ([]grocerystore.Household, error) {
+	return append([]grocerystore.Household{}, r.households...), nil
 }
 
-func (r *savedResourcesRepository) SaveList(_ context.Context, userID string, input groceries.SavedListInput, now time.Time) (groceries.List, error) {
+func (r *savedResourcesRepository) SaveList(_ context.Context, userID string, input grocerystore.SavedListInput, now time.Time) (grocerystore.List, error) {
 	r.listInput = input
-	return groceries.List{ID: "list_1", HouseholdID: input.HouseholdID, OwnerUserID: userID, Title: input.Title, Status: "active", CreatedAt: now.UnixMilli(), UpdatedAt: now.UnixMilli(), Items: []groceries.Item{}}, nil
+	return grocerystore.List{ID: "list_1", HouseholdID: input.HouseholdID, OwnerUserID: userID, Title: input.Title, Status: "active", CreatedAt: now.UnixMilli(), UpdatedAt: now.UnixMilli(), Items: []grocerystore.Item{}}, nil
 }
 
-func (r *savedResourcesRepository) SaveRecipe(_ context.Context, userID string, input groceries.SavedRecipeInput, now time.Time) (groceries.Recipe, error) {
+func (r *savedResourcesRepository) SaveRecipe(_ context.Context, userID string, input grocerystore.SavedRecipeInput, now time.Time) (grocerystore.Recipe, error) {
 	r.recipeUserID, r.recipeInput = userID, input
-	return groceries.Recipe{ID: "recipe_1", OwnerUserID: userID, Title: input.Title, Status: "active", CreatedAt: now.UnixMilli(), UpdatedAt: now.UnixMilli()}, nil
+	return grocerystore.Recipe{ID: "recipe_1", OwnerUserID: userID, Title: input.Title, Status: "active", CreatedAt: now.UnixMilli(), UpdatedAt: now.UnixMilli()}, nil
 }
 
-func (r *savedResourcesRepository) ReplaceListItems(_ context.Context, _ string, listID string, items []groceries.NewItem, now time.Time) (groceries.List, error) {
+func (r *savedResourcesRepository) ReplaceListItems(_ context.Context, _ string, listID string, items []grocerystore.NewItem, now time.Time) (grocerystore.List, error) {
 	r.replacedListID = listID
-	r.replacedItems = append([]groceries.NewItem{}, items...)
-	return groceries.List{ID: listID, OwnerUserID: "user_1", Title: "Weekend", Status: "active", UpdatedAt: now.UnixMilli(), Items: []groceries.Item{}}, nil
+	r.replacedItems = append([]grocerystore.NewItem{}, items...)
+	return grocerystore.List{ID: listID, OwnerUserID: "user_1", Title: "Weekend", Status: "active", UpdatedAt: now.UnixMilli(), Items: []grocerystore.Item{}}, nil
 }
 
 type mutableGroceryState map[string]any

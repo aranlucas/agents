@@ -13,7 +13,7 @@ import (
 )
 
 // Dataset mirrors the rubric-based EvaluationDataset schema restored from
-// internal/<name>/eval/datasets/<name>.json.
+// internal/agents/<name>/eval/datasets/<name>.json.
 type Dataset struct {
 	EvalCases []EvalCase `json:"eval_cases"`
 }

@@ -8,7 +8,7 @@ import (
 
 func openTestCorpus(t *testing.T) *Corpus {
 	t.Helper()
-	corpus, err := OpenCorpus(filepath.Join("..", "..", "assets", "oralboards", "search.sqlite"))
+	corpus, err := OpenCorpus(filepath.Join("..", "..", "..", "assets", "oralboards", "search.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/aranlucas/agents/internal/auth"
-	"github.com/aranlucas/agents/internal/groceries"
+	"github.com/aranlucas/agents/internal/grocerystore"
 )
 
 const (
@@ -24,12 +24,12 @@ const (
 )
 
 type krogerTokenVerifier struct {
-	repo        groceries.ShoppingRepository
+	repo        grocerystore.ShoppingRepository
 	userinfoURL string
 	client      *http.Client
 }
 
-func newKrogerTokenVerifier(repo groceries.ShoppingRepository, krogerMCPURL string, client *http.Client) *krogerTokenVerifier {
+func newKrogerTokenVerifier(repo grocerystore.ShoppingRepository, krogerMCPURL string, client *http.Client) *krogerTokenVerifier {
 	if client == nil {
 		client = &http.Client{Timeout: 10 * time.Second}
 	} else if client.Timeout <= 0 {
@@ -65,7 +65,7 @@ func (v *krogerTokenVerifier) Verify(ctx context.Context, token string) (auth.Id
 // deliberately best-effort: Ensure logs and drops every failure so it cannot
 // fail the chat request that discovered the Kroger connection.
 type krogerLinker struct {
-	repo        groceries.ShoppingRepository
+	repo        grocerystore.ShoppingRepository
 	userinfoURL string
 	client      *http.Client
 	now         func() time.Time
@@ -74,7 +74,7 @@ type krogerLinker struct {
 	linked map[string]time.Time
 }
 
-func newKrogerLinker(repo groceries.ShoppingRepository, krogerMCPURL string, client *http.Client) *krogerLinker {
+func newKrogerLinker(repo grocerystore.ShoppingRepository, krogerMCPURL string, client *http.Client) *krogerLinker {
 	if client == nil {
 		client = &http.Client{Timeout: 10 * time.Second}
 	} else if client.Timeout <= 0 {

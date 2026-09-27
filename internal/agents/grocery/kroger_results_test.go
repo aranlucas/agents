@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aranlucas/agents/internal/travel"
+	"github.com/aranlucas/agents/internal/agents/travel"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/tool"

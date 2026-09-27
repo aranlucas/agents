@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/aranlucas/agents/internal/expense"
-	"github.com/aranlucas/agents/internal/interview"
-	"github.com/aranlucas/agents/internal/oralboards"
-	"github.com/aranlucas/agents/internal/presentation"
-	"github.com/aranlucas/agents/internal/research"
-	"github.com/aranlucas/agents/internal/spreadsheet"
-	"github.com/aranlucas/agents/internal/travel"
+	"github.com/aranlucas/agents/internal/agents/expense"
+	"github.com/aranlucas/agents/internal/agents/interview"
+	"github.com/aranlucas/agents/internal/agents/oralboards"
+	"github.com/aranlucas/agents/internal/agents/presentation"
+	"github.com/aranlucas/agents/internal/agents/research"
+	"github.com/aranlucas/agents/internal/agents/spreadsheet"
+	"github.com/aranlucas/agents/internal/agents/travel"
 )
 
 // RubricResult is the outcome of one local structural check.

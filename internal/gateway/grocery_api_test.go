@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/aranlucas/agents/internal/auth"
-	"github.com/aranlucas/agents/internal/groceries"
 	"github.com/aranlucas/agents/internal/groceryapi"
+	"github.com/aranlucas/agents/internal/grocerystore"
 )
 
 func TestGroceryAPIAuthorizationRejectsNonMembersBeforeDataAccess(t *testing.T) {
@@ -52,7 +52,7 @@ func TestGroceryAPIRequiresClerkIdentity(t *testing.T) {
 }
 
 func TestGroceryAPIReportsExpiredInvite(t *testing.T) {
-	repository := &fakeGroceryRepository{joinError: groceries.ErrInviteExpired}
+	repository := &fakeGroceryRepository{joinError: grocerystore.ErrInviteExpired}
 	recorder := serveGroceryAPI(t, repository, http.MethodPost, "/api/grocery/invites/ABCDEFGH/join", "", true)
 	if recorder.Code != http.StatusGone || !strings.Contains(recorder.Body.String(), "grocery_invite_expired") {
 		t.Fatalf("response = %d %s", recorder.Code, recorder.Body.String())
@@ -68,7 +68,7 @@ func TestGroceryAPICheckOffUsesVerifiedCaller(t *testing.T) {
 	if repository.updatedBy != "clerk-user" || repository.updatedPatch.Checked == nil || !*repository.updatedPatch.Checked {
 		t.Fatalf("update = user %q patch %#v", repository.updatedBy, repository.updatedPatch)
 	}
-	var item groceries.Item
+	var item grocerystore.Item
 	if err := json.Unmarshal(recorder.Body.Bytes(), &item); err != nil {
 		t.Fatal(err)
 	}
@@ -226,7 +226,7 @@ func TestGroceryAPIShoppingRoutesFailSafelyWithoutRepository(t *testing.T) {
 }
 
 func TestGroceryStrictMethodReturnsTypedResponse(t *testing.T) {
-	repository := &fakeGroceryRepository{joinError: groceries.ErrInviteExpired}
+	repository := &fakeGroceryRepository{joinError: grocerystore.ErrInviteExpired}
 	api := &groceryAPI{repository: repository, now: func() time.Time { return time.UnixMilli(2000) }}
 	response, err := api.JoinHousehold(verifiedGroceryContext(t), groceryapi.JoinHouseholdRequestObject{Code: "ABCDEFGH"})
 	if err != nil {
@@ -248,11 +248,11 @@ func TestGroceryErrorResponse(t *testing.T) {
 		status int
 		code   string
 	}{
-		{name: "invalid", err: groceries.ErrInvalid, status: http.StatusBadRequest, code: "invalid_grocery_request"},
-		{name: "forbidden", err: groceries.ErrForbidden, status: http.StatusForbidden, code: "grocery_forbidden"},
-		{name: "not found", err: groceries.ErrNotFound, status: http.StatusNotFound, code: "grocery_not_found"},
-		{name: "invite expired", err: groceries.ErrInviteExpired, status: http.StatusGone, code: "grocery_invite_expired"},
-		{name: "invite exhausted", err: groceries.ErrInviteExhausted, status: http.StatusConflict, code: "grocery_invite_exhausted"},
+		{name: "invalid", err: grocerystore.ErrInvalid, status: http.StatusBadRequest, code: "invalid_grocery_request"},
+		{name: "forbidden", err: grocerystore.ErrForbidden, status: http.StatusForbidden, code: "grocery_forbidden"},
+		{name: "not found", err: grocerystore.ErrNotFound, status: http.StatusNotFound, code: "grocery_not_found"},
+		{name: "invite expired", err: grocerystore.ErrInviteExpired, status: http.StatusGone, code: "grocery_invite_expired"},
+		{name: "invite exhausted", err: grocerystore.ErrInviteExhausted, status: http.StatusConflict, code: "grocery_invite_exhausted"},
 		{name: "unavailable", err: errors.New("backend unavailable"), status: http.StatusServiceUnavailable, code: "grocery_api_unavailable"},
 	}
 	for _, test := range tests {
@@ -265,7 +265,7 @@ func TestGroceryErrorResponse(t *testing.T) {
 	}
 }
 
-func serveGroceryAPI(t *testing.T, repository groceries.LibraryRepository, method, path, body string, authenticated bool) *httptest.ResponseRecorder {
+func serveGroceryAPI(t *testing.T, repository grocerystore.LibraryRepository, method, path, body string, authenticated bool) *httptest.ResponseRecorder {
 	t.Helper()
 	mux := http.NewServeMux()
 	if err := registerGroceryAPI(mux, repository, nil, func() time.Time { return time.UnixMilli(2000) }); err != nil {
@@ -297,7 +297,7 @@ func verifiedGroceryContext(t *testing.T) context.Context {
 }
 
 type fakeGroceryRepository struct {
-	groceries.LibraryRepository
+	grocerystore.LibraryRepository
 	member             bool
 	owner              bool
 	canAccessList      bool
@@ -305,23 +305,23 @@ type fakeGroceryRepository struct {
 	dataCalls          int
 	joinError          error
 	updatedBy          string
-	updatedPatch       groceries.ItemPatch
-	addedItems         []groceries.NewItem
+	updatedPatch       grocerystore.ItemPatch
+	addedItems         []grocerystore.NewItem
 	savedListBy        string
-	savedList          groceries.SavedListInput
+	savedList          grocerystore.SavedListInput
 	listRecipeCalls    int
 	authorizedUser     string
 	createdInviteBy    string
 }
 
-func (f *fakeGroceryRepository) CreateHousehold(context.Context, string, string, time.Time) (groceries.Household, error) {
+func (f *fakeGroceryRepository) CreateHousehold(context.Context, string, string, time.Time) (grocerystore.Household, error) {
 	f.dataCalls++
-	return groceries.Household{}, nil
+	return grocerystore.Household{}, nil
 }
 
-func (f *fakeGroceryRepository) ListHouseholds(context.Context, string) ([]groceries.Household, error) {
+func (f *fakeGroceryRepository) ListHouseholds(context.Context, string) ([]grocerystore.Household, error) {
 	f.dataCalls++
-	return []groceries.Household{}, nil
+	return []grocerystore.Household{}, nil
 }
 
 func (f *fakeGroceryRepository) IsMember(context.Context, string, string) (bool, error) {
@@ -335,15 +335,15 @@ func (f *fakeGroceryRepository) IsOwner(_ context.Context, userID, _ string) (bo
 	return f.owner, nil
 }
 
-func (f *fakeGroceryRepository) CreateInvite(_ context.Context, userID, _, _ string, _ int, _ time.Time) (groceries.Invite, error) {
+func (f *fakeGroceryRepository) CreateInvite(_ context.Context, userID, _, _ string, _ int, _ time.Time) (grocerystore.Invite, error) {
 	f.dataCalls++
 	f.createdInviteBy = userID
-	return groceries.Invite{}, nil
+	return grocerystore.Invite{}, nil
 }
 
-func (f *fakeGroceryRepository) JoinHousehold(context.Context, string, string, time.Time) (groceries.Household, error) {
+func (f *fakeGroceryRepository) JoinHousehold(context.Context, string, string, time.Time) (grocerystore.Household, error) {
 	f.dataCalls++
-	return groceries.Household{}, f.joinError
+	return grocerystore.Household{}, f.joinError
 }
 
 func (f *fakeGroceryRepository) CanAccessList(context.Context, string, string) (bool, error) {
@@ -351,28 +351,28 @@ func (f *fakeGroceryRepository) CanAccessList(context.Context, string, string) (
 	return f.canAccessList, nil
 }
 
-func (f *fakeGroceryRepository) ListLists(context.Context, string, string) ([]groceries.List, error) {
+func (f *fakeGroceryRepository) ListLists(context.Context, string, string) ([]grocerystore.List, error) {
 	f.dataCalls++
-	return []groceries.List{}, nil
+	return []grocerystore.List{}, nil
 }
 
-func (f *fakeGroceryRepository) GetList(context.Context, string, string) (groceries.List, error) {
+func (f *fakeGroceryRepository) GetList(context.Context, string, string) (grocerystore.List, error) {
 	f.dataCalls++
-	return groceries.List{}, nil
+	return grocerystore.List{}, nil
 }
 
-func (f *fakeGroceryRepository) AddItems(_ context.Context, _ string, _ string, items []groceries.NewItem, _ time.Time) ([]groceries.Item, error) {
+func (f *fakeGroceryRepository) AddItems(_ context.Context, _ string, _ string, items []grocerystore.NewItem, _ time.Time) ([]grocerystore.Item, error) {
 	f.dataCalls++
 	f.addedItems = items
-	return []groceries.Item{}, nil
+	return []grocerystore.Item{}, nil
 }
 
-func (f *fakeGroceryRepository) UpdateItem(_ context.Context, userID, listID, itemID string, patch groceries.ItemPatch, now time.Time) (groceries.Item, error) {
+func (f *fakeGroceryRepository) UpdateItem(_ context.Context, userID, listID, itemID string, patch grocerystore.ItemPatch, now time.Time) (grocerystore.Item, error) {
 	f.dataCalls++
 	f.updatedBy = userID
 	f.updatedPatch = patch
 	checkedAt := now.UnixMilli()
-	return groceries.Item{ID: itemID, ListID: listID, Name: "Milk", Quantity: "1", AddedBy: "user_1", CheckedBy: &userID, CheckedAt: &checkedAt, UpdatedAt: checkedAt}, nil
+	return grocerystore.Item{ID: itemID, ListID: listID, Name: "Milk", Quantity: "1", AddedBy: "user_1", CheckedBy: &userID, CheckedAt: &checkedAt, UpdatedAt: checkedAt}, nil
 }
 
 func (f *fakeGroceryRepository) DeleteItem(context.Context, string, string, string, time.Time) error {
@@ -380,15 +380,15 @@ func (f *fakeGroceryRepository) DeleteItem(context.Context, string, string, stri
 	return nil
 }
 
-func (f *fakeGroceryRepository) SaveList(_ context.Context, userID string, input groceries.SavedListInput, now time.Time) (groceries.List, error) {
+func (f *fakeGroceryRepository) SaveList(_ context.Context, userID string, input grocerystore.SavedListInput, now time.Time) (grocerystore.List, error) {
 	f.dataCalls++
 	f.savedListBy = userID
 	f.savedList = input
-	return groceries.List{ID: "list_1", HouseholdID: input.HouseholdID, OwnerUserID: userID, Title: input.Title, Status: "active", CreatedAt: now.UnixMilli(), UpdatedAt: now.UnixMilli(), Items: []groceries.Item{}}, nil
+	return grocerystore.List{ID: "list_1", HouseholdID: input.HouseholdID, OwnerUserID: userID, Title: input.Title, Status: "active", CreatedAt: now.UnixMilli(), UpdatedAt: now.UnixMilli(), Items: []grocerystore.Item{}}, nil
 }
 
-func (f *fakeGroceryRepository) ListRecipes(context.Context, string, *string) ([]groceries.Recipe, error) {
+func (f *fakeGroceryRepository) ListRecipes(context.Context, string, *string) ([]grocerystore.Recipe, error) {
 	f.dataCalls++
 	f.listRecipeCalls++
-	return []groceries.Recipe{}, nil
+	return []grocerystore.Recipe{}, nil
 }

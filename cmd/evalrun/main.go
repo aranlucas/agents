@@ -1,7 +1,7 @@
 // Command evalrun is a Go-native replacement for the deleted Python
 // run_inference.py / run_grade.py scripts: it builds each restored agent
 // in-process with whatever inference providers are available locally,
-// runs it over internal/<name>/eval/datasets/<name>.json, and grades the
+// runs it over internal/agents/<name>/eval/datasets/<name>.json, and grades the
 // resulting trace with local structural checks — no GCP project or ADC
 // required. See AGENTS.md; this keeps the eval loop framework-agnostic
 // and Go-only, matching the rest of the repo.
@@ -105,7 +105,7 @@ func runAgentEval(ctx context.Context, name, caseID string, providers map[string
 	}
 	report.ProviderNotes = built.Notes
 
-	datasetPath := filepath.Join("internal", name, "eval", "datasets", datasetFileName(name))
+	datasetPath := filepath.Join("internal", "agents", name, "eval", "datasets", datasetFileName(name))
 	ds, err := loadDataset(datasetPath)
 	if err != nil {
 		report.BuildError = err.Error()
