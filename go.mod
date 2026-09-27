@@ -1,6 +1,6 @@
 module github.com/aranlucas/agents
 
-go 1.27.0
+go 1.27.1
 
 require (
 	cloud.google.com/go/bigquery v1.85.0
@@ -14,6 +14,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/modelcontextprotocol/go-sdk v1.8.0
 	github.com/openai/openai-go/v3 v3.56.0 // ADK v2.4.0 requires ResponseFunctionCallArgumentsDoneEvent.Name.
+	github.com/railwayapp/railway-go-sdk v0.2.0
 	github.com/wI2L/jsondiff v0.7.1
 	golang.org/x/net v0.59.0
 	google.golang.org/adk/v2 v2.4.0
@@ -51,7 +52,6 @@ require (
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.30 // indirect
-	github.com/railwayapp/railway-go-sdk v0.2.0
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/segmentio/asm v1.2.1 // indirect
 	github.com/segmentio/encoding v0.5.4 // indirect

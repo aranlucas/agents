@@ -1,0 +1,4 @@
+[tools]
+# Railway (Railpack) and local shells install Go through mise; go.mod
+# only sets the minimum version.
+go = "latest"
