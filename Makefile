@@ -1,7 +1,12 @@
 export GOMAXPROCS := 2
 export GOFLAGS := -p=1
 
-.PHONY: check test build fmt contracts api api-check dev
+.PHONY: check test build fmt contracts api api-check dev railway-link railway-plan railway-apply railway-up
+
+# Railway environment for the railway-* targets: development or production.
+ENV ?= development
+RAILWAY_PROJECT := cea909d4-f1d8-4bac-b480-c24e98528b5e
+RAILWAY_SERVICE := agents-gateway
 .NOTPARALLEL:
 
 check:
@@ -33,3 +38,23 @@ api-check:
 
 dev:
 	go run ./cmd/agents
+
+# railway/iac checks the CLI version by running `$$_ --version`; under make,
+# $$_ is make itself, so point it at the Railway CLI.
+RAILWAY := env _="$$(command -v railway)" railway
+
+railway-link:
+	$(RAILWAY) link --project $(RAILWAY_PROJECT) --environment $(ENV) --service $(RAILWAY_SERVICE)
+
+railway-plan: railway-link
+	pnpm --dir .railway install --frozen-lockfile
+	$(RAILWAY) config plan
+
+# Deleting variables needs CONFIRM_DESTRUCTIVE=1 after reviewing the plan.
+railway-apply: railway-link
+	pnpm --dir .railway install --frozen-lockfile
+	$(RAILWAY) config apply $(RAILWAY_APPLY_FLAGS) $(if $(CONFIRM_DESTRUCTIVE),--confirm-destructive)
+
+# Builds and deploys the local checkout, bypassing the GitHub CI wait.
+railway-up: railway-link
+	$(RAILWAY) up --service $(RAILWAY_SERVICE) --environment $(ENV) --detach

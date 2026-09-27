@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"os"
 	"testing"
 )
 
@@ -44,4 +45,23 @@ func TestDispatchReturnsFailureStatus(t *testing.T) {
 	if got := dispatch(t.Context(), []string{"migrate"}, &bytes.Buffer{}, commands); got != 1 {
 		t.Fatalf("status = %d, want 1", got)
 	}
+}
+
+// Railway builds with Railpack defaults, which compile the first directory
+// under cmd/. A new command that sorts before "agents" would silently change
+// what production runs.
+func TestAgentsIsRailpacksDefaultCommand(t *testing.T) {
+	entries, err := os.ReadDir("..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			if entry.Name() != "agents" {
+				t.Fatalf("first cmd/ directory is %q; Railpack would build it instead of cmd/agents", entry.Name())
+			}
+			return
+		}
+	}
+	t.Fatal("cmd/ has no command directories")
 }
