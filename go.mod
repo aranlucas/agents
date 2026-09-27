@@ -1,6 +1,6 @@
 module github.com/aranlucas/agents
 
-go 1.27.0
+go 1.27.1
 
 require (
 	cloud.google.com/go/bigquery v1.85.0
