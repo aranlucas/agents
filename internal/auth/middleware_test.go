@@ -94,7 +94,7 @@ func TestProtectedRouteAcceptsFirstSuccessfulVerifier(t *testing.T) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}), first, second)
-	request := httptest.NewRequest(http.MethodGet, "/api/grocery/profile", nil)
+	request := httptest.NewRequest(http.MethodGet, "/agent/grocery/run", nil)
 	request.Header.Set("Authorization", "Bearer mcp-token")
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
@@ -244,7 +244,7 @@ func TestCORSPreflightAllowsPreferredStorePUT(t *testing.T) {
 	handler := CORS([]string{"https://app.example"}, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
-	request := httptest.NewRequest(http.MethodOptions, "/api/grocery/preferred-store", nil)
+	request := httptest.NewRequest(http.MethodOptions, "/grocery/agui", nil)
 	request.Header.Set("Origin", "https://app.example")
 	request.Header.Set("Access-Control-Request-Method", http.MethodPut)
 	recorder := httptest.NewRecorder()

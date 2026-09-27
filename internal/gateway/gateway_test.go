@@ -79,7 +79,7 @@ func TestEveryActiveAgentExposesScopedEndpoints(t *testing.T) {
 			}
 		}
 	}
-	handler, err := New(config.Config{HTTP: config.HTTP{}}, Dependencies{Registry: registry, Sessions: sessions, Verifier: acceptingVerifier{}, Groceries: &fakeGroceryRepository{}, Now: time.Now})
+	handler, err := New(config.Config{HTTP: config.HTTP{}}, Dependencies{Registry: registry, Sessions: sessions, Verifier: acceptingVerifier{}, Now: time.Now})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -217,7 +217,7 @@ func TestGatewayRejectsUnauthenticatedNonPublicRoute(t *testing.T) {
 		t.Fatalf("build registry: %v", err)
 	}
 	cfg := config.Config{HTTP: config.HTTP{Origins: []string{"http://localhost:3000"}}}
-	handler, err := New(cfg, Dependencies{Registry: registry, Sessions: session.InMemoryService(), Groceries: &fakeGroceryRepository{}, Now: time.Now})
+	handler, err := New(cfg, Dependencies{Registry: registry, Sessions: session.InMemoryService(), Now: time.Now})
 	if err != nil {
 		t.Fatalf("build gateway: %v", err)
 	}
@@ -297,7 +297,7 @@ func TestOAuthCredentialsAreResolvedAfterClerkAuthentication(t *testing.T) {
 				}
 				w.WriteHeader(http.StatusNoContent)
 			})
-			handler := auth.RequireIdentity(nil, withOAuthCredentials(backend, nil, next), acceptingVerifier{})
+			handler := auth.RequireIdentity(nil, withOAuthCredentials(backend, next), acceptingVerifier{})
 			request := httptest.NewRequest(http.MethodPost, path, nil)
 			request.Header.Set("Authorization", "Bearer clerk-session")
 			recorder := httptest.NewRecorder()
@@ -318,7 +318,7 @@ func TestOAuthCredentialsSkipRoutesWithoutProviderTools(t *testing.T) {
 	for _, path := range []string{"/travel/agui", "/fitness/agui", "/agent/travel/run"} {
 		t.Run(path, func(t *testing.T) {
 			backend := &fakeClerkBackend{}
-			handler := auth.RequireIdentity(nil, withOAuthCredentials(backend, nil, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			handler := auth.RequireIdentity(nil, withOAuthCredentials(backend, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusNoContent)
 			})), acceptingVerifier{})
 			request := httptest.NewRequest(http.MethodPost, path, nil)
@@ -339,7 +339,7 @@ func TestOAuthCredentialsSkipRoutesWithoutProviderTools(t *testing.T) {
 
 func TestOAuthCredentialsStripUntrustedHeaderWhenDisconnected(t *testing.T) {
 	backend := &fakeClerkBackend{}
-	handler := auth.RequireIdentity(nil, withOAuthCredentials(backend, nil, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := auth.RequireIdentity(nil, withOAuthCredentials(backend, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if token := r.Header.Get("X-Kroger-Access-Token"); token != "" {
 			t.Errorf("untrusted Kroger token forwarded: %q", token)
 		}
@@ -360,7 +360,7 @@ func TestOAuthCredentialsStripUntrustedHeaderWhenDisconnected(t *testing.T) {
 func TestOAuthCredentialLookupFailuresStopTheRequest(t *testing.T) {
 	backend := &fakeClerkBackend{err: errors.New("Clerk unavailable")}
 	nextCalled := false
-	handler := auth.RequireIdentity(nil, withOAuthCredentials(backend, nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+	handler := auth.RequireIdentity(nil, withOAuthCredentials(backend, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		nextCalled = true
 	})), acceptingVerifier{})
 	request := httptest.NewRequest(http.MethodPost, "/grocery/agui", nil)
@@ -390,7 +390,7 @@ func TestGatewayPresentationAGUIRoute(t *testing.T) {
 	if _, err := sessions.Create(t.Context(), &session.CreateRequest{AppName: presentation.AppName, UserID: "clerk-user", SessionID: "presentation-thread", State: presentation.StateDefaults()}); err != nil {
 		t.Fatal(err)
 	}
-	handler, err := New(config.Config{HTTP: config.HTTP{}}, Dependencies{Registry: registry, Sessions: sessions, Verifier: acceptingVerifier{}, Groceries: &fakeGroceryRepository{}, Now: time.Now})
+	handler, err := New(config.Config{HTTP: config.HTTP{}}, Dependencies{Registry: registry, Sessions: sessions, Verifier: acceptingVerifier{}, Now: time.Now})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -412,7 +412,7 @@ func TestGatewayTravelRouteUsesExistingAGUIContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler, err := New(config.Config{HTTP: config.HTTP{}}, Dependencies{Registry: registry, Sessions: session.InMemoryService(), Verifier: acceptingVerifier{}, Groceries: &fakeGroceryRepository{}, Now: time.Now})
+	handler, err := New(config.Config{HTTP: config.HTTP{}}, Dependencies{Registry: registry, Sessions: session.InMemoryService(), Verifier: acceptingVerifier{}, Now: time.Now})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -440,7 +440,7 @@ func TestGatewayFitnessAndGroceryRoutesUseExistingAGUIContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler, err := New(config.Config{HTTP: config.HTTP{}}, Dependencies{Registry: registry, Sessions: session.InMemoryService(), Verifier: acceptingVerifier{}, Groceries: &fakeGroceryRepository{}, Now: time.Now})
+	handler, err := New(config.Config{HTTP: config.HTTP{}}, Dependencies{Registry: registry, Sessions: session.InMemoryService(), Verifier: acceptingVerifier{}, Now: time.Now})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -469,7 +469,7 @@ func TestGatewayTrendsRouteUsesExistingAGUIContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler, err := New(config.Config{HTTP: config.HTTP{}}, Dependencies{Registry: registry, Sessions: session.InMemoryService(), Verifier: acceptingVerifier{}, Groceries: &fakeGroceryRepository{}, Now: time.Now})
+	handler, err := New(config.Config{HTTP: config.HTTP{}}, Dependencies{Registry: registry, Sessions: session.InMemoryService(), Verifier: acceptingVerifier{}, Now: time.Now})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -498,7 +498,7 @@ func TestGatewayWellnessRouteUsesExistingAGUIContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler, err := New(config.Config{HTTP: config.HTTP{}}, Dependencies{Registry: registry, Sessions: session.InMemoryService(), Verifier: acceptingVerifier{}, Groceries: &fakeGroceryRepository{}, Now: time.Now})
+	handler, err := New(config.Config{HTTP: config.HTTP{}}, Dependencies{Registry: registry, Sessions: session.InMemoryService(), Verifier: acceptingVerifier{}, Now: time.Now})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -545,7 +545,7 @@ func TestGatewayRootHealthReportsDegradedOnFailingCheck(t *testing.T) {
 	cfg := config.Config{HTTP: config.HTTP{Origins: nil}}
 	handler, err := New(cfg, Dependencies{
 		Registry: registry, Sessions: session.InMemoryService(),
-		Database: fakeHealth{err: context.DeadlineExceeded}, Groceries: &fakeGroceryRepository{}, Now: time.Now,
+		Database: fakeHealth{err: context.DeadlineExceeded}, Now: time.Now,
 	})
 	if err != nil {
 		t.Fatal(err)

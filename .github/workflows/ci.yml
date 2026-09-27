@@ -13,9 +13,6 @@ jobs:
   go:
     name: Go checks, race tests and binary build
     runs-on: ubuntu-latest
-    env:
-      GOMAXPROCS: "2"
-      GOFLAGS: "-p=1"
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -25,13 +22,12 @@ jobs:
       - uses: golangci/golangci-lint-action@v9
         with:
           version: v2.13.1
-          args: --config=.golangci.yml --concurrency=2 ./... ./.railway
-      - name: Check formatting, contracts and API
+          args: --config=.golangci.yml ./... ./.railway
+      - name: Check formatting and contracts
         run: |
           test -z "$(go run mvdan.cc/gofumpt@v0.11.0 -l cmd internal migrations .railway)"
           go vet ./... ./.railway
           go run ./cmd/contracts -check
-          make api-check
       - run: make test
       - run: make build
       - name: Vulnerability check

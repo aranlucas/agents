@@ -23,8 +23,6 @@ import (
 	"github.com/aranlucas/agents/internal/clerk"
 	"github.com/aranlucas/agents/internal/common"
 	"github.com/aranlucas/agents/internal/config"
-	"github.com/aranlucas/agents/internal/fitnessdata"
-	"github.com/aranlucas/agents/internal/grocerystore"
 	"github.com/aranlucas/agents/internal/observability"
 
 	"github.com/joho/godotenv"
@@ -63,16 +61,10 @@ type Dependencies struct {
 	Pending  agui.PendingTools
 	Verifier auth.TokenVerifier
 	// Database gates /ready on the migrated schema.
-	Database  common.HealthChecker
-	Stream    agui.StreamSmoothing
-	Clerk     clerk.Backend
-	Fitness   fitnessdata.Repository
-	Groceries grocerystore.LibraryRepository
-	Shopping  grocerystore.ShoppingRepository
-	// KrogerMCPURL is reduced to its origin before the lazy account linker
-	// requests /userinfo; the MCP path itself is never reused as a base path.
-	KrogerMCPURL string
-	Now          func() time.Time
+	Database common.HealthChecker
+	Stream   agui.StreamSmoothing
+	Clerk    clerk.Backend
+	Now      func() time.Time
 }
 
 // New composes the gateway's HTTP surface: per-agent AG-UI run, state, and
@@ -81,8 +73,6 @@ type Dependencies struct {
 // marked Public), and the configured browser-origin policy. It mounts the
 // one prebuilt AG-UI handler per entry and a shared state handler. Binding
 // the agent at construction validates and reuses its ADK runner across runs.
-// The grocery REST surface is optional so tests can compose the agent routes
-// without its OpenAPI validator or background store.
 func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 	if deps.Registry == nil {
 		return nil, errors.New("agent registry is required")
@@ -93,16 +83,11 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 	if deps.Now == nil {
 		deps.Now = time.Now
 	}
-	if deps.Groceries != nil && deps.Shopping == nil {
-		deps.Shopping, _ = deps.Groceries.(grocerystore.ShoppingRepository)
-	}
-
 	stateHandler := agui.StateHandler(deps.Registry, deps.Sessions)
 
 	mux := http.NewServeMux()
 	publicRoutes := map[string]bool{
 		"/health": true, "/live": true, "/ready": true,
-		"/api/grocery/*": true,
 	}
 
 	stream := deps.Stream
@@ -147,19 +132,6 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 	mux.HandleFunc("GET /ready", rootHealthHandler(deps))
 	// Keep /health as a readiness alias for existing monitors and clients.
 	mux.HandleFunc("GET /health", rootHealthHandler(deps))
-	if deps.Fitness != nil {
-		mux.HandleFunc("POST /fitness/activities/sync", fitnessSyncHandler(deps.Fitness, deps.Now))
-	}
-	if deps.Groceries != nil {
-		if err := registerGroceryAPI(mux, deps.Groceries, deps.Shopping, deps.Now); err != nil {
-			return nil, fmt.Errorf("register grocery API: %w", err)
-		}
-	}
-	var krogerLinker *krogerLinker
-	if deps.Shopping != nil {
-		krogerLinker = newKrogerLinker(deps.Shopping, deps.KrogerMCPURL, nil)
-	}
-
 	var verifiers []auth.TokenVerifier
 	if deps.Verifier != nil {
 		verifiers = append(verifiers, deps.Verifier)
@@ -173,20 +145,10 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 	// before mux ever sees the request. Route unmatched paths straight to
 	// mux (its normal 404) and only push matched paths through the auth
 	// gate.
-	protected := auth.RequireIdentity(publicRoutes, withOAuthCredentials(deps.Clerk, krogerLinker, mux), verifiers...)
-	var groceryProtected http.Handler
-	if deps.Groceries != nil {
-		groceryVerifiers := append([]auth.TokenVerifier{}, verifiers...)
-		groceryVerifiers = append(groceryVerifiers, newKrogerTokenVerifier(deps.Shopping, deps.KrogerMCPURL, nil))
-		groceryProtected = auth.RequireIdentity(nil, mux, groceryVerifiers...)
-	}
+	protected := auth.RequireIdentity(publicRoutes, withOAuthCredentials(deps.Clerk, mux), verifiers...)
 	routed := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if _, pattern := mux.Handler(r); pattern == "" {
 			mux.ServeHTTP(w, r)
-			return
-		}
-		if groceryProtected != nil && strings.HasPrefix(r.URL.Path, "/api/grocery/") {
-			groceryProtected.ServeHTTP(w, r)
 			return
 		}
 		protected.ServeHTTP(w, r)
@@ -205,7 +167,7 @@ func frontendAgentID(route string) string {
 // Railway process after Clerk authentication. Direct browser-to-AG-UI clients
 // therefore only carry their Clerk session JWT; third-party OAuth tokens never
 // pass through the browser or the Vercel app.
-func withOAuthCredentials(backend clerk.Backend, linker *krogerLinker, next http.Handler) http.Handler {
+func withOAuthCredentials(backend clerk.Backend, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		identity, ok := auth.FromContext(r.Context())
 		if backend == nil || !ok || identity.Public || !routeNeedsOAuth(r.URL.Path) {
@@ -225,14 +187,6 @@ func withOAuthCredentials(backend clerk.Backend, linker *krogerLinker, next http
 		clone.Header.Del("X-Kroger-Access-Token")
 		if connections.KrogerToken != "" {
 			clone.Header.Set("X-Kroger-Access-Token", connections.KrogerToken)
-			if linker != nil {
-				clerkUserID, krogerToken := identity.UserID, connections.KrogerToken
-				go func() {
-					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-					defer cancel()
-					linker.Ensure(ctx, clerkUserID, krogerToken)
-				}()
-			}
 		}
 		next.ServeHTTP(w, clone)
 	})
@@ -405,8 +359,7 @@ func Run(ctx context.Context) error {
 	handler, err := New(cfg, Dependencies{
 		Registry: registry, Sessions: rt.Sessions, Pending: rt.Pending, Verifier: verifier,
 		Database: rt.DB, Clerk: clerkBackend,
-		Fitness: rt.Fitness, Groceries: rt.Groceries, Shopping: rt.Groceries,
-		KrogerMCPURL: cfg.Integrations.KrogerMCPURL, Stream: agui.StreamSmoothingFromEnv(os.Getenv), Now: time.Now,
+		Stream: agui.StreamSmoothingFromEnv(os.Getenv), Now: time.Now,
 	})
 	if err != nil {
 		return fmt.Errorf("build gateway: %w", err)

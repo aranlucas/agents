@@ -1,7 +1,12 @@
-export GOMAXPROCS := 2
-export GOFLAGS := -p=1
+# GitHub Actions sets CI=true; let its tools use all available CPUs.
+ifneq ($(CI),true)
+export GOMAXPROCS ?= 2
+export GOFLAGS ?= -p=1
+TEST_FLAGS ?= -parallel=2
+LINT_FLAGS ?= --concurrency=2
+endif
 
-.PHONY: check test build fmt contracts api api-check dev railway-link railway-plan railway-apply railway-up
+.PHONY: check test build fmt contracts dev railway-link railway-plan railway-apply railway-up
 
 # Railway environment for the railway-* targets: development or production.
 ENV ?= development
@@ -10,14 +15,13 @@ RAILWAY_SERVICE := agents-gateway
 .NOTPARALLEL:
 
 check:
-	golangci-lint run --config=.golangci.yml --concurrency=2 ./... ./.railway
+	golangci-lint run --config=.golangci.yml $(LINT_FLAGS) ./... ./.railway
 	test -z "$$(go run mvdan.cc/gofumpt@v0.11.0 -l cmd internal migrations .railway)"
 	go vet ./... ./.railway
 	go run ./cmd/contracts -check
-	$(MAKE) api-check
 
 test:
-	go test -parallel=2 -race ./... ./.railway
+	go test $(TEST_FLAGS) -race ./... ./.railway
 
 build:
 	CGO_ENABLED=0 go build -mod=readonly -trimpath -o bin/agents ./cmd/agents
@@ -27,14 +31,6 @@ fmt:
 
 contracts:
 	go run ./cmd/contracts
-
-api:
-	go tool oapi-codegen -config internal/groceryapi/oapi-codegen.yaml api/openapi/grocery-gateway.yaml
-
-api-check:
-	@before=$$(mktemp); cp internal/groceryapi/generated.go "$$before"; \
-	trap 'rm -f "$$before"' EXIT; \
-	$(MAKE) api && diff -u "$$before" internal/groceryapi/generated.go
 
 dev:
 	go run ./cmd/agents

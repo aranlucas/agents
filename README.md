@@ -17,8 +17,6 @@ make test
 make build
 ```
 
-Validation runs sequentially with `GOMAXPROCS=2`, `GOFLAGS=-p=1`, two test parallel slots, and two lint workers.
-
 ## Layout
 
 The root `go.mod` declares `github.com/aranlucas/agents`. Commands live in `cmd/`; server implementations and domain agents live in `internal/`, following the [Go server layout guidance](https://go.dev/doc/modules/layout#server-project).
@@ -27,7 +25,7 @@ The root `go.mod` declares `github.com/aranlucas/agents`. Commands live in `cmd/
 - `internal/config` is the only package that reads the environment. `config.Keys` lists every variable.
 - `internal/app` is the shared composition root: it opens the database and builds every agent for the gateway.
 - `internal/agents/<name>` holds each authored ADK agent (instructions, tools, state).
-- `internal/grocerystore` persists households, grocery lists, recipes, and the shopping profile; `internal/groceryapi` is the generated `/api/grocery/*` server.
+- `internal/grocerystore` persists households, grocery lists, recipes, and the shopping profile for agent tools.
 - `internal/storage` owns SQLite: application tables through `Statement` batches (one transaction per batch), ADK sessions through ADK's `session/database` service, and versioned ADK artifacts.
 - `cmd/contracts` and `cmd/evalrun` are development tools and are not shipped in the service image. Evaluation datasets live beside their agent under `internal/agents/<agent>/eval/datasets`; reports go to `artifacts/<agent>/grade_results`.
 
@@ -37,7 +35,7 @@ SQLite is the only application persistence. The database is one file at `DATABAS
 
 ## Contracts
 
-The hand-authored grocery API spec remains canonical in `api/openapi/grocery-gateway.yaml`; `make api` generates its Go server/client. Runtime-state contracts remain Go-canonical through `cmd/contracts`: `make contracts` writes JSON schemas to `api/contracts` and the shell route catalog to `scripts/generated-agent-routes.sh`. External TypeScript clients can export a projection explicitly with `go run ./cmd/contracts -typescript-output /absolute/path/agent-contracts.ts`.
+The HTTP surface exposes AG-UI, agent runtime, and deployment health endpoints. Runtime-state contracts remain Go-canonical through `cmd/contracts`: `make contracts` writes JSON schemas to `api/contracts` and the shell route catalog to `scripts/generated-agent-routes.sh`. External TypeScript clients can export a projection explicitly with `go run ./cmd/contracts -typescript-output /absolute/path/agent-contracts.ts`.
 
 ## Deployment
 
