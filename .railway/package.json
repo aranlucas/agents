@@ -1,0 +1,9 @@
+{
+  "name": "agents-infrastructure",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.6.0",
+  "dependencies": {
+    "railway": "3.11.0"
+  }
+}
