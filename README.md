@@ -17,7 +17,7 @@ make test
 make build
 ```
 
-Validation runs sequentially with `GOMAXPROCS=2`, `GOFLAGS=-p=1`, two test parallel slots, and two lint workers.
+Local validation runs sequentially with `GOMAXPROCS=2`, `GOFLAGS=-p=1`, two test parallel slots, and two lint workers. CI uses the tools' default concurrency to use all available runner CPUs; race detection remains enabled.
 
 ## Layout
 

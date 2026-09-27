@@ -1,5 +1,10 @@
-export GOMAXPROCS := 2
-export GOFLAGS := -p=1
+# GitHub Actions sets CI=true; let its tools use all available CPUs.
+ifneq ($(CI),true)
+export GOMAXPROCS ?= 2
+export GOFLAGS ?= -p=1
+TEST_FLAGS ?= -parallel=2
+LINT_FLAGS ?= --concurrency=2
+endif
 
 .PHONY: check test build fmt contracts dev railway-link railway-plan railway-apply railway-up
 
@@ -10,13 +15,13 @@ RAILWAY_SERVICE := agents-gateway
 .NOTPARALLEL:
 
 check:
-	golangci-lint run --config=.golangci.yml --concurrency=2 ./... ./.railway
+	golangci-lint run --config=.golangci.yml $(LINT_FLAGS) ./... ./.railway
 	test -z "$$(go run mvdan.cc/gofumpt@v0.11.0 -l cmd internal migrations .railway)"
 	go vet ./... ./.railway
 	go run ./cmd/contracts -check
 
 test:
-	go test -parallel=2 -race ./... ./.railway
+	go test $(TEST_FLAGS) -race ./... ./.railway
 
 build:
 	CGO_ENABLED=0 go build -mod=readonly -trimpath -o bin/agents ./cmd/agents
