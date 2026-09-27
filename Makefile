@@ -10,20 +10,20 @@ RAILWAY_SERVICE := agents-gateway
 .NOTPARALLEL:
 
 check:
-	golangci-lint run --config=.golangci.yml --concurrency=2 ./...
-	test -z "$$(go run mvdan.cc/gofumpt@v0.11.0 -l cmd internal migrations)"
-	go vet ./...
+	golangci-lint run --config=.golangci.yml --concurrency=2 ./... ./.railway
+	test -z "$$(go run mvdan.cc/gofumpt@v0.11.0 -l cmd internal migrations .railway)"
+	go vet ./... ./.railway
 	go run ./cmd/contracts -check
 	$(MAKE) api-check
 
 test:
-	go test -parallel=2 -race ./...
+	go test -parallel=2 -race ./... ./.railway
 
 build:
 	CGO_ENABLED=0 go build -mod=readonly -trimpath -o bin/agents ./cmd/agents
 
 fmt:
-	go run mvdan.cc/gofumpt@v0.11.0 -w cmd internal migrations
+	go run mvdan.cc/gofumpt@v0.11.0 -w cmd internal migrations .railway
 
 contracts:
 	go run ./cmd/contracts
@@ -39,20 +39,16 @@ api-check:
 dev:
 	go run ./cmd/agents
 
-# railway/iac checks the CLI version by running `$$_ --version`; under make,
-# $$_ is make itself, so point it at the Railway CLI.
-RAILWAY := env _="$$(command -v railway)" railway
+RAILWAY := railway
 
 railway-link:
 	$(RAILWAY) link --project $(RAILWAY_PROJECT) --environment $(ENV) --service $(RAILWAY_SERVICE)
 
 railway-plan: railway-link
-	pnpm --dir .railway install --frozen-lockfile
 	$(RAILWAY) config plan
 
 # Deleting variables needs CONFIRM_DESTRUCTIVE=1 after reviewing the plan.
 railway-apply: railway-link
-	pnpm --dir .railway install --frozen-lockfile
 	$(RAILWAY) config apply $(RAILWAY_APPLY_FLAGS) $(if $(CONFIRM_DESTRUCTIVE),--confirm-destructive)
 
 # Builds and deploys the local checkout, bypassing the GitHub CI wait.

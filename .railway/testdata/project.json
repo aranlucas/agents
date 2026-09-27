@@ -1,0 +1,105 @@
+{
+  "name": "agents",
+  "resources": [
+    {
+      "address": "volume.agents-data",
+      "type": "volume",
+      "name": "agents-data",
+      "config": {
+        "region": "us-west2",
+        "sizeMB": 5000
+      }
+    },
+    {
+      "address": "service.agents-gateway",
+      "type": "service",
+      "kind": "github",
+      "name": "agents-gateway",
+      "source": {
+        "type": "github",
+        "repo": "aranlucas/agents",
+        "branch": "main",
+        "checkSuites": true
+      },
+      "build": {
+        "builder": "RAILPACK"
+      },
+      "deploy": {
+        "sleepApplication": true,
+        "limitOverride": {
+          "containers": {
+            "cpu": 1,
+            "memoryBytes": 1000000000
+          }
+        },
+        "healthcheckPath": "/ready",
+        "multiRegionConfig": {
+          "us-west2": {
+            "numReplicas": 1
+          }
+        }
+      },
+      "variables": {
+        "APP_ENV": {
+          "type": "preserve"
+        },
+        "ALLOWED_ORIGINS": {
+          "type": "preserve"
+        },
+        "CLERK_ISSUER": {
+          "type": "preserve"
+        },
+        "CLERK_JWKS_URL": {
+          "type": "preserve"
+        },
+        "CLERK_SECRET_KEY": {
+          "type": "preserve"
+        },
+        "GEMINI_API_KEY": {
+          "type": "preserve"
+        },
+        "GROQ_API_KEY": {
+          "type": "preserve"
+        },
+        "MISTRAL_API_KEY": {
+          "type": "preserve"
+        },
+        "NVIDIA_NIM_API_KEY": {
+          "type": "preserve"
+        },
+        "OPENROUTER_API_KEY": {
+          "type": "preserve"
+        },
+        "BRAVE_API_KEY": {
+          "type": "preserve"
+        },
+        "GOOGLE_APPLICATION_CREDENTIALS_JSON": {
+          "type": "preserve"
+        },
+        "TELEGRAM_BOT_TOKEN": {
+          "type": "preserve"
+        },
+        "TELEGRAM_BOT_USERNAME": {
+          "type": "preserve"
+        },
+        "TELEGRAM_LINK_SECRET": {
+          "type": "preserve"
+        },
+        "SENTRY_DSN": {
+          "type": "preserve"
+        }
+      },
+      "volumeMounts": {},
+      "volumeAttachments": {
+        "agents-data": {
+          "volume": "volume.agents-data",
+          "mountPath": "/app/.data",
+          "volumeConfig": {
+            "region": "us-west2",
+            "sizeMB": 5000
+          }
+        }
+      }
+    }
+  ]
+}

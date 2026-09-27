@@ -2,7 +2,7 @@
 
 Go ADK service with an HTTP gateway, an optional Telegram worker mode, and SQLite persistence. The study app lives in [aranlucas/oral-boards](https://github.com/aranlucas/oral-boards).
 
-Requires Go 1.27+, Make, and golangci-lint 2.13.1 for checks. Shell smoke tests require bash, curl, and jq. The service does not require Node.js or CGO; the Railway targets need the Railway CLI and pnpm.
+Requires Go 1.27+, Make, and golangci-lint 2.13.1 for checks. Shell smoke tests require bash, curl, and jq. The service does not require Node.js or CGO; the Railway targets need the Railway CLI.
 
 ```sh
 cp .env.example .env
