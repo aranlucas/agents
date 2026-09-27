@@ -53,11 +53,7 @@ func Run(ctx context.Context) error {
 	}
 	defer func() { _ = rt.Close() }()
 
-	resumeBinding, err := app.BuildResume(rt)
-	if err != nil {
-		return err
-	}
-	built, err := app.BuildSpecialists(ctx, rt, resumeBinding)
+	built, err := app.BuildSpecialists(ctx, rt)
 	if err != nil {
 		return err
 	}

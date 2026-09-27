@@ -4,8 +4,8 @@ import (
 	"encoding/json/jsontext"
 	"testing"
 
-	"github.com/aranlucas/agents/internal/expense"
-	"github.com/aranlucas/agents/internal/presentation"
+	"github.com/aranlucas/agents/internal/agents/expense"
+	"github.com/aranlucas/agents/internal/agents/presentation"
 )
 
 func TestFirstCallArgsDecodesTheRegisteredToolType(t *testing.T) {

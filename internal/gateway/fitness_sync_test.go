@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/aranlucas/agents/internal/agentruntime"
+	"github.com/aranlucas/agents/internal/agents/fitness"
 	"github.com/aranlucas/agents/internal/config"
-	"github.com/aranlucas/agents/internal/fitness"
 	"github.com/aranlucas/agents/internal/fitnessdata"
 	"google.golang.org/adk/v2/session"
 )
@@ -77,7 +77,7 @@ func TestFitnessSyncRejectsUnauthenticatedAndInvalidActivities(t *testing.T) {
 
 func newFitnessSyncGateway(t *testing.T, repository fitnessdata.Repository) http.Handler {
 	t.Helper()
-	built, err := fitness.New(fakeResumeModel{}, repository, nil)
+	built, err := fitness.New(fakeModel{}, repository, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

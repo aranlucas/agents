@@ -490,7 +490,7 @@ func TestHandlerCompletesWithoutModelInput(t *testing.T) {
 func TestHandlerResumesFromPendingClientToolResult(t *testing.T) {
 	pending := newFakePending()
 	ids := &fakeIDs{}
-	h := newTestGateway(t, &fakeResumeModel{}, ids, WithPendingTools(pending))
+	h := newTestGateway(t, &fakeModel{}, ids, WithPendingTools(pending))
 
 	scope := ToolScope{AppName: "resume_agent", UserID: "anon:thread-resume", ThreadID: "thread-resume"}
 	if err := pending.Register(t.Context(), scope, "call-9", "remember_fact", jsontext.Value(`{"note":"blue"}`)); err != nil {
@@ -838,7 +838,7 @@ func TestHandlerForwardsAGUIContextToModel(t *testing.T) {
 
 func newGatewayWithFakeResumeModel(t *testing.T) http.Handler {
 	t.Helper()
-	return newTestGateway(t, &fakeResumeModel{}, &fakeIDs{})
+	return newTestGateway(t, &fakeModel{}, &fakeIDs{})
 }
 
 func newTestGateway(t *testing.T, m model.LLM, ids events.IDGenerator, opts ...Option) http.Handler {
@@ -918,15 +918,15 @@ func rememberTool(t *testing.T) tool.Tool {
 
 // ---- fake models ------------------------------------------------------------
 
-// fakeResumeModel simulates a two-turn tool round trip: the first call
+// fakeModel simulates a two-turn tool round trip: the first call
 // (fresh contents, no FunctionResponse yet) asks to call remember_fact; the
 // second call (contents include a FunctionResponse) streams a short
 // confirmation.
-type fakeResumeModel struct{}
+type fakeModel struct{}
 
-func (m *fakeResumeModel) Name() string { return "fake-resume-model" }
+func (m *fakeModel) Name() string { return "fake-resume-model" }
 
-func (m *fakeResumeModel) GenerateContent(ctx context.Context, req *model.LLMRequest, stream bool) iter.Seq2[*model.LLMResponse, error] {
+func (m *fakeModel) GenerateContent(ctx context.Context, req *model.LLMRequest, stream bool) iter.Seq2[*model.LLMResponse, error] {
 	return func(yield func(*model.LLMResponse, error) bool) {
 		if hasFunctionResponse(req.Contents) {
 			if !yield(&model.LLMResponse{Content: &genai.Content{Role: "model", Parts: []*genai.Part{{Text: "Got it"}}}, Partial: true}, nil) {
@@ -1023,7 +1023,7 @@ func (*fakeTimeoutModel) GenerateContent(ctx context.Context, _ *model.LLMReques
 // static ADK tool — only an AGUIToolset resolving the
 // request's AG-UI tool declarations can make this callable. Used to prove
 // input.Tools actually reaches the running agent (Finding 1a). Mirrors
-// fakeResumeModel's two-turn shape: the wrapped client proxy tool
+// fakeModel's two-turn shape: the wrapped client proxy tool
 // returns a non-nil {"status":"pending",...} acknowledgment immediately
 // (see client_tools.go), so the *next* LLM turn already has a
 // FunctionResponse in its contents — a well-behaved model responds to the

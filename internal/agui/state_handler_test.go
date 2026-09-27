@@ -20,7 +20,7 @@ import (
 
 func testResumeRegistry(t *testing.T) *agentruntime.Registry {
 	t.Helper()
-	a, err := llmagent.New(llmagent.Config{Name: "resume_agent", Instruction: "test resume agent", Model: &fakeResumeModel{}})
+	a, err := llmagent.New(llmagent.Config{Name: "resume_agent", Instruction: "test resume agent", Model: &fakeModel{}})
 	if err != nil {
 		t.Fatalf("build agent: %v", err)
 	}

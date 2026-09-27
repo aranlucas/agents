@@ -11,25 +11,23 @@ import (
 	"net/http/httptest"
 	"slices"
 	"strings"
-	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/aranlucas/agents/internal/agentruntime"
+	"github.com/aranlucas/agents/internal/agents/fitness"
+	"github.com/aranlucas/agents/internal/agents/grocery"
+	"github.com/aranlucas/agents/internal/agents/presentation"
+	"github.com/aranlucas/agents/internal/agents/travel"
+	"github.com/aranlucas/agents/internal/agents/trends"
+	"github.com/aranlucas/agents/internal/agents/wellness"
 	"github.com/aranlucas/agents/internal/agui"
-	"github.com/aranlucas/agents/internal/app"
 	"github.com/aranlucas/agents/internal/auth"
 	"github.com/aranlucas/agents/internal/catalog"
 	"github.com/aranlucas/agents/internal/clerk"
 	"github.com/aranlucas/agents/internal/config"
-	"github.com/aranlucas/agents/internal/fitness"
-	"github.com/aranlucas/agents/internal/grocery"
-	"github.com/aranlucas/agents/internal/presentation"
-	"github.com/aranlucas/agents/internal/resume"
 	"github.com/aranlucas/agents/internal/telegram"
-	"github.com/aranlucas/agents/internal/travel"
-	"github.com/aranlucas/agents/internal/trends"
-	"github.com/aranlucas/agents/internal/wellness"
+	"google.golang.org/adk/v2/agent"
 
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
@@ -48,92 +46,15 @@ func TestFrontendAgentIDUsesCatalogIdentity(t *testing.T) {
 	}
 }
 
-func TestHandlerSwitcherKeepsResumeCriticalRequestsOnInitialSurface(t *testing.T) {
-	initial := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = io.WriteString(w, "resume")
-	})
-	complete := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = io.WriteString(w, "complete")
-	})
-	switcher := newHandlerSwitcher(initial)
-	var starts atomic.Int32
-	done := switcher.hydrateOnDemand(func() {
-		starts.Add(1)
-		switcher.Swap(complete)
-	})
-
-	for _, path := range []string{"/live", "/agent/resume/suggest", "/resume/health", "/robots.txt", "/unknown"} {
-		recorder := httptest.NewRecorder()
-		switcher.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
-		if recorder.Code != http.StatusOK || recorder.Body.String() != "resume" {
-			t.Fatalf("%s = %d %q", path, recorder.Code, recorder.Body.String())
-		}
-	}
-	if starts.Load() != 0 || switcher.status() != "pending" {
-		t.Fatalf("lightweight requests started full hydration %d times (status %s)", starts.Load(), switcher.status())
-	}
-
-	for range 2 {
-		recorder := httptest.NewRecorder()
-		switcher.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/info", nil))
-		if recorder.Code != http.StatusOK || recorder.Body.String() != "complete" {
-			t.Fatalf("/info = %d %q", recorder.Code, recorder.Body.String())
-		}
-	}
-	<-done
-	if starts.Load() != 1 || switcher.status() != "ok" {
-		t.Fatalf("full hydration starts = %d (status %s), want 1", starts.Load(), switcher.status())
-	}
-}
-
-func TestHandlerSwitcherReportsFailedHydration(t *testing.T) {
-	switcher := newHandlerSwitcher(http.NotFoundHandler())
-	switcher.hydrateOnDemand(switcher.fail)
-	recorder := httptest.NewRecorder()
-	switcher.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/travel/agui", nil))
-	if recorder.Code != http.StatusServiceUnavailable || !strings.Contains(recorder.Body.String(), "agents_unavailable") {
-		t.Fatalf("failed hydration = %d %q", recorder.Code, recorder.Body.String())
-	}
-	if switcher.status() != "failed" {
-		t.Fatalf("status = %q", switcher.status())
-	}
-}
-
-func TestHandlerSwitcherStopCancelsUnstartedHydration(t *testing.T) {
-	switcher := newHandlerSwitcher(http.NotFoundHandler())
-	done := switcher.hydrateOnDemand(func() { t.Error("hydration started after stop") })
-	switcher.stop()
-	<-done
-	switcher.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/info", nil))
-}
-
-func TestFullGatewayPathRecognizesOnlyMountedFullSurface(t *testing.T) {
-	for _, path := range []string{
-		"/info", "/threads", "/api/grocery/lists", "/fitness/activities/sync",
-		"/telegram/link/consume", "/grocery/health", "/agent/oral-boards/run",
-	} {
-		if !fullGatewayPath(path) {
-			t.Errorf("fullGatewayPath(%q) = false", path)
-		}
-	}
-	for _, path := range []string{
-		"/", "/live", "/ready", "/robots.txt", "/unknown", "/resume/health", "/agent/resume/suggest",
-	} {
-		if fullGatewayPath(path) {
-			t.Errorf("fullGatewayPath(%q) = true", path)
-		}
-	}
-}
-
 func TestEveryActiveAgentExposesScopedEndpoints(t *testing.T) {
-	routes := []string{"travel", "trends", "grocery", "fitness", "wellness", "expense", "oralboards", "presentation", "research", "spreadsheet", "resume", "jobs", "interview"}
+	routes := []string{"travel", "trends", "grocery", "fitness", "wellness", "expense", "oralboards", "presentation", "research", "spreadsheet", "jobs", "interview"}
 	entries := make([]agentruntime.Entry, 0, len(routes))
 	for _, route := range routes {
-		built, err := llmagent.New(llmagent.Config{Name: strings.ReplaceAll(route, "-", "_") + "_contract_agent", Instruction: "contract", Model: fakeResumeModel{}})
+		built, err := llmagent.New(llmagent.Config{Name: strings.ReplaceAll(route, "-", "_") + "_contract_agent", Instruction: "contract", Model: fakeModel{}})
 		if err != nil {
 			t.Fatal(err)
 		}
-		entries = append(entries, agentruntime.Entry{Route: route, AppName: built.Name(), Agent: built, Public: route == "resume", Health: func(context.Context) error { return nil }})
+		entries = append(entries, agentruntime.Entry{Route: route, AppName: built.Name(), Agent: built, Health: func(context.Context) error { return nil }})
 	}
 	registry, err := agentruntime.NewRegistry(entries...)
 	if err != nil {
@@ -180,18 +101,14 @@ func TestEveryActiveAgentExposesScopedEndpoints(t *testing.T) {
 			t.Fatalf("POST /%s/agents/state=%d %s", route, recorder.Code, recorder.Body.String())
 		}
 		request = httptest.NewRequest(http.MethodPost, "/agent/"+frontendAgentID(route)+"/suggest", strings.NewReader(`{"threadId":"suggestion-thread","runId":"suggestion-run","messages":[]}`))
-		if route != "resume" {
-			request.Header.Set("Authorization", "Bearer test")
-		}
+		request.Header.Set("Authorization", "Bearer test")
 		recorder = httptest.NewRecorder()
 		handler.ServeHTTP(recorder, request)
 		if recorder.Code != http.StatusOK {
 			t.Fatalf("POST /agent/%s/suggest=%d %s", frontendAgentID(route), recorder.Code, recorder.Body.String())
 		}
 		request = httptest.NewRequest(http.MethodPost, "/agent/"+frontendAgentID(route)+"/run", strings.NewReader(`{"threadId":"contract-thread","runId":"runtime-run","messages":[]}`))
-		if route != "resume" {
-			request.Header.Set("Authorization", "Bearer test")
-		}
+		request.Header.Set("Authorization", "Bearer test")
 		recorder = httptest.NewRecorder()
 		handler.ServeHTTP(recorder, request)
 		if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), "RUN_FINISHED") {
@@ -301,13 +218,13 @@ func TestLinkResolveFailsClosed(t *testing.T) {
 	}
 }
 
-// fakeResumeModel is a minimal model.LLM double satisfying resume.New's
-// signature; the routing tests below never trigger a model call.
-type fakeResumeModel struct{}
+// fakeModel is a minimal model.LLM double; the routing tests below only need
+// a model that answers "ok".
+type fakeModel struct{}
 
-func (fakeResumeModel) Name() string { return "fake-resume-model" }
+func (fakeModel) Name() string { return "fake-model" }
 
-func (fakeResumeModel) GenerateContent(_ context.Context, _ *model.LLMRequest, _ bool) iter.Seq2[*model.LLMResponse, error] {
+func (fakeModel) GenerateContent(_ context.Context, _ *model.LLMRequest, _ bool) iter.Seq2[*model.LLMResponse, error] {
 	return func(yield func(*model.LLMResponse, error) bool) {
 		yield(&model.LLMResponse{Content: &genai.Content{Role: "model", Parts: []*genai.Part{{Text: "ok"}}}, TurnComplete: true}, nil)
 	}
@@ -318,19 +235,27 @@ type fakeHealth struct{ err error }
 
 func (f fakeHealth) Health(context.Context) error { return f.err }
 
+// publicAppName is the stub agent that exercises the gateway's public
+// (unauthenticated) route handling.
+const publicAppName = "public_agent"
+
+func newStubAgent(t *testing.T, name string) agent.Agent {
+	t.Helper()
+	built, err := llmagent.New(llmagent.Config{Name: name, Instruction: "test", Model: fakeModel{}})
+	if err != nil {
+		t.Fatalf("build %s: %v", name, err)
+	}
+	return built
+}
+
 func newGateway(t *testing.T) http.Handler {
 	t.Helper()
-	resumeAgent, err := resume.New(fakeResumeModel{})
-	if err != nil {
-		t.Fatalf("build resume agent: %v", err)
-	}
 	registry, err := agentruntime.NewRegistry(agentruntime.Entry{
-		Route:   "resume",
-		AppName: resume.AppName,
-		Agent:   resumeAgent,
+		Route:   "public",
+		AppName: publicAppName,
+		Agent:   newStubAgent(t, publicAppName),
 		Public:  true,
 		Timeout: 5 * time.Second,
-		Health:  app.ResumeHealth(fakeResumeModel{}),
 	})
 	if err != nil {
 		t.Fatalf("build registry: %v", err)
@@ -340,10 +265,10 @@ func newGateway(t *testing.T) http.Handler {
 	// "route-test-thread"; pre-create the matching session (public/
 	// anonymous identity, so the session user ID is "anon:<threadId>",
 	// see effectiveUserID in internal/agui/handler.go) so
-	// /resume/agents/state exercises its normal "thread exists" path
+	// /public/agents/state exercises its normal "thread exists" path
 	// instead of the missing-thread defaults path.
 	if _, err := sessions.Create(t.Context(), &session.CreateRequest{
-		AppName: resume.AppName, UserID: "anon:route-test-thread", SessionID: "route-test-thread",
+		AppName: publicAppName, UserID: "anon:route-test-thread", SessionID: "route-test-thread",
 	}); err != nil {
 		t.Fatalf("seed route-test-thread session: %v", err)
 	}
@@ -364,23 +289,19 @@ func newGateway(t *testing.T) http.Handler {
 func TestGatewayRegistersOnlyScopedStateRoutes(t *testing.T) {
 	h := newGateway(t)
 	assertRoute(t, h, http.MethodGet, "/info", http.StatusOK)
-	assertRoute(t, h, http.MethodGet, "/resume/health", http.StatusOK)
-	assertRoute(t, h, http.MethodGet, "/resume/agui/capabilities", http.StatusOK)
-	assertSuggestionRoute(t, h, "/agent/resume/run", "", http.StatusOK)
-	assertSuggestionRoute(t, h, "/agent/resume/connect", "", http.StatusOK)
-	assertRoute(t, h, http.MethodPost, "/agent/resume/stop/route-test-thread", http.StatusOK)
-	assertSuggestionRoute(t, h, "/agent/resume/suggest", "", http.StatusOK)
-	assertRoute(t, h, http.MethodPost, "/resume/agents/state", http.StatusOK)
+	assertRoute(t, h, http.MethodGet, "/public/health", http.StatusOK)
+	assertRoute(t, h, http.MethodGet, "/public/agui/capabilities", http.StatusOK)
+	assertSuggestionRoute(t, h, "/agent/public/run", "", http.StatusOK)
+	assertSuggestionRoute(t, h, "/agent/public/connect", "", http.StatusOK)
+	assertRoute(t, h, http.MethodPost, "/agent/public/stop/route-test-thread", http.StatusOK)
+	assertSuggestionRoute(t, h, "/agent/public/suggest", "", http.StatusOK)
+	assertRoute(t, h, http.MethodPost, "/public/agents/state", http.StatusOK)
 	assertRoute(t, h, http.MethodPost, "/agents/state", http.StatusNotFound)
 }
 
 func TestGatewayRejectsUnauthenticatedNonPublicRoute(t *testing.T) {
-	resumeAgent, err := resume.New(fakeResumeModel{})
-	if err != nil {
-		t.Fatalf("build resume agent: %v", err)
-	}
 	registry, err := agentruntime.NewRegistry(agentruntime.Entry{
-		Route: "travel", AppName: "travel_agent", Agent: resumeAgent, Public: false, Timeout: 5 * time.Second,
+		Route: "travel", AppName: "travel_agent", Agent: newStubAgent(t, "travel_agent"), Public: false, Timeout: 5 * time.Second,
 	})
 	if err != nil {
 		t.Fatalf("build registry: %v", err)
@@ -426,7 +347,7 @@ func TestRuntimeInfoAdvertisesConcreteAgents(t *testing.T) {
 	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
 		t.Fatal(err)
 	}
-	if recorder.Code != http.StatusOK || response.Version != agui.CopilotKitRuntimeVersion || !response.Suggestions || response.Mode != "sse" || len(response.Agents) != 1 || response.Agents["resume"] == nil {
+	if recorder.Code != http.StatusOK || response.Version != agui.CopilotKitRuntimeVersion || !response.Suggestions || response.Mode != "sse" || len(response.Agents) != 1 || response.Agents["public"] == nil {
 		t.Fatalf("response = %d %#v", recorder.Code, response)
 	}
 	if !response.ThreadEndpoints.List || response.ThreadEndpoints.Inspect || response.ThreadEndpoints.Mutations || response.ThreadEndpoints.RealtimeMetadata {
@@ -547,7 +468,7 @@ func TestOAuthCredentialLookupFailuresStopTheRequest(t *testing.T) {
 }
 
 func TestGatewayPresentationAGUIRoute(t *testing.T) {
-	presentationAgent, err := presentation.New(fakeResumeModel{}, nil)
+	presentationAgent, err := presentation.New(fakeModel{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -573,7 +494,7 @@ func TestGatewayPresentationAGUIRoute(t *testing.T) {
 }
 
 func TestGatewayTravelRouteUsesExistingAGUIContract(t *testing.T) {
-	travelAgent, err := travel.New(fakeResumeModel{})
+	travelAgent, err := travel.New(fakeModel{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -594,11 +515,11 @@ func TestGatewayTravelRouteUsesExistingAGUIContract(t *testing.T) {
 }
 
 func TestGatewayFitnessAndGroceryRoutesUseExistingAGUIContract(t *testing.T) {
-	fitnessAgent, err := fitness.New(fakeResumeModel{}, nil, nil)
+	fitnessAgent, err := fitness.New(fakeModel{}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	groceryAgent, err := grocery.New(fakeResumeModel{}, nil, nil, nil)
+	groceryAgent, err := grocery.New(fakeModel{}, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -624,11 +545,11 @@ func TestGatewayFitnessAndGroceryRoutesUseExistingAGUIContract(t *testing.T) {
 }
 
 func TestGatewayTrendsRouteUsesExistingAGUIContract(t *testing.T) {
-	generatorAgent, err := trends.NewGenerator(fakeResumeModel{})
+	generatorAgent, err := trends.NewGenerator(fakeModel{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	trendsAgent, err := trends.New(fakeResumeModel{}, generatorAgent, nil, nil, nil)
+	trendsAgent, err := trends.New(fakeModel{}, generatorAgent, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -651,15 +572,15 @@ func TestGatewayTrendsRouteUsesExistingAGUIContract(t *testing.T) {
 }
 
 func TestGatewayWellnessRouteUsesExistingAGUIContract(t *testing.T) {
-	fitnessAgent, err := fitness.NewTask(fakeResumeModel{}, nil, nil)
+	fitnessAgent, err := fitness.NewTask(fakeModel{}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	groceryAgent, err := grocery.NewTask(fakeResumeModel{}, nil, nil, nil)
+	groceryAgent, err := grocery.NewTask(fakeModel{}, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	wellnessAgent, err := wellness.New(wellness.ModelSet{Coordinator: fakeResumeModel{}}, fitnessAgent, groceryAgent)
+	wellnessAgent, err := wellness.New(wellness.ModelSet{Coordinator: fakeModel{}}, fitnessAgent, groceryAgent)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -705,12 +626,8 @@ func TestGatewayRootHealthChecksDatabaseWithoutCredentials(t *testing.T) {
 }
 
 func TestGatewayRootHealthReportsDegradedOnFailingCheck(t *testing.T) {
-	resumeAgent, err := resume.New(fakeResumeModel{})
-	if err != nil {
-		t.Fatal(err)
-	}
 	registry, err := agentruntime.NewRegistry(agentruntime.Entry{
-		Route: "resume", AppName: resume.AppName, Agent: resumeAgent, Public: true, Timeout: 5 * time.Second,
+		Route: "public", AppName: publicAppName, Agent: newStubAgent(t, publicAppName), Public: true, Timeout: 5 * time.Second,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -726,17 +643,6 @@ func TestGatewayRootHealthReportsDegradedOnFailingCheck(t *testing.T) {
 	assertRoute(t, handler, http.MethodGet, "/ready", http.StatusServiceUnavailable)
 	assertRoute(t, handler, http.MethodGet, "/health", http.StatusServiceUnavailable)
 	assertRoute(t, handler, http.MethodGet, "/live", http.StatusOK)
-
-	for status, want := range map[string]int{"pending": http.StatusOK, "ok": http.StatusOK, "failed": http.StatusServiceUnavailable} {
-		handler, err := New(cfg, Dependencies{
-			Registry: registry, Sessions: session.InMemoryService(), Database: fakeHealth{},
-			AgentsStatus: func() string { return status }, Now: time.Now,
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		assertRoute(t, handler, http.MethodGet, "/ready", want)
-	}
 }
 
 func assertRoute(t *testing.T, h http.Handler, method, path string, want int) {

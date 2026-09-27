@@ -37,23 +37,23 @@ func TestSpecialistsDriveRegistryAndSurfaceMapsFromCatalog(t *testing.T) {
 
 func TestSpecialistsRegistryForBuildsSelectedSurface(t *testing.T) {
 	specialists := testSpecialists(t)
-	resume, ok := catalog.ByRoute("resume")
+	travel, ok := catalog.ByRoute("travel")
 	if !ok {
-		t.Fatal("resume catalog entry is missing")
+		t.Fatal("travel catalog entry is missing")
 	}
-	registry, err := specialists.RegistryFor([]catalog.Spec{resume})
+	registry, err := specialists.RegistryFor([]catalog.Spec{travel})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got := len(registry.Entries()); got != 1 {
 		t.Fatalf("selected registry entries = %d, want 1", got)
 	}
-	entry, err := registry.Lookup("resume")
+	entry, err := registry.Lookup("travel")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if entry.AppName != resume.AppName || !entry.Public || entry.Timeout != resume.Timeout {
-		t.Fatalf("selected resume entry = %#v, spec = %#v", entry, resume)
+	if entry.AppName != travel.AppName || entry.Public || entry.Timeout != travel.Timeout {
+		t.Fatalf("selected travel entry = %#v, spec = %#v", entry, travel)
 	}
 }
 
@@ -65,9 +65,9 @@ func TestSpecialistsRejectMissingOrMismatchedBindings(t *testing.T) {
 	}
 
 	specialists = testSpecialists(t)
-	specialists.Resume.Agent = namedAgent(t, "wrong_name")
-	if _, err := specialists.Registry(); err == nil || !strings.Contains(err.Error(), "resume_agent") {
-		t.Fatalf("mismatched resume error = %v", err)
+	specialists.Jobs.Agent = namedAgent(t, "wrong_name")
+	if _, err := specialists.Registry(); err == nil || !strings.Contains(err.Error(), "jobs_agent") {
+		t.Fatalf("mismatched jobs error = %v", err)
 	}
 
 	specialists = testSpecialists(t)
@@ -90,7 +90,7 @@ func testSpecialists(t *testing.T) Specialists {
 	return Specialists{
 		Travel: bindings["travel"], Grocery: bindings["grocery"], Fitness: bindings["fitness"],
 		Wellness: bindings["wellness"], Expense: bindings["expense"], OralBoards: bindings["oralboards"],
-		Trends: bindings["trends"], Resume: bindings["resume"], Research: bindings["research"],
+		Trends: bindings["trends"], Research: bindings["research"],
 		Jobs: bindings["jobs"], Interview: bindings["interview"],
 		Spreadsheet: bindings["spreadsheet"], Presentation: bindings["presentation"],
 	}

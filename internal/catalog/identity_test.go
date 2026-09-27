@@ -4,20 +4,19 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/aranlucas/agents/internal/agents/expense"
+	"github.com/aranlucas/agents/internal/agents/fitness"
+	"github.com/aranlucas/agents/internal/agents/grocery"
+	"github.com/aranlucas/agents/internal/agents/interview"
+	"github.com/aranlucas/agents/internal/agents/jobs"
+	"github.com/aranlucas/agents/internal/agents/oralboards"
+	"github.com/aranlucas/agents/internal/agents/presentation"
+	"github.com/aranlucas/agents/internal/agents/research"
+	"github.com/aranlucas/agents/internal/agents/spreadsheet"
+	"github.com/aranlucas/agents/internal/agents/travel"
+	"github.com/aranlucas/agents/internal/agents/trends"
+	"github.com/aranlucas/agents/internal/agents/wellness"
 	"github.com/aranlucas/agents/internal/catalog"
-	"github.com/aranlucas/agents/internal/expense"
-	"github.com/aranlucas/agents/internal/fitness"
-	"github.com/aranlucas/agents/internal/grocery"
-	"github.com/aranlucas/agents/internal/interview"
-	"github.com/aranlucas/agents/internal/jobs"
-	"github.com/aranlucas/agents/internal/oralboards"
-	"github.com/aranlucas/agents/internal/presentation"
-	"github.com/aranlucas/agents/internal/research"
-	"github.com/aranlucas/agents/internal/resume"
-	"github.com/aranlucas/agents/internal/spreadsheet"
-	"github.com/aranlucas/agents/internal/travel"
-	"github.com/aranlucas/agents/internal/trends"
-	"github.com/aranlucas/agents/internal/wellness"
 )
 
 func TestCatalogIdentityAndRuntimeInvariants(t *testing.T) {
@@ -56,7 +55,7 @@ func TestCatalogAppNamesMatchAuthoredAgents(t *testing.T) {
 	appNames := map[string]string{
 		"travel": travel.AppName, "grocery": grocery.AppName, "fitness": fitness.AppName,
 		"wellness": wellness.AppName, "expense": expense.AppName, "oralboards": oralboards.AppName,
-		"trends": trends.AppName, "resume": resume.AppName, "research": research.AppName,
+		"trends": trends.AppName, "research": research.AppName,
 		"jobs": jobs.AppName, "interview": interview.AppName,
 		"spreadsheet": spreadsheet.AppName, "presentation": presentation.AppName,
 	}
