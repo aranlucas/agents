@@ -6,6 +6,7 @@ on:
     paths:
       - ".railway/**"
       - ".github/workflows/railway.yml"
+      - "Makefile"
   workflow_dispatch:
 
 concurrency:
@@ -17,7 +18,6 @@ permissions:
 
 env:
   RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
-  RAILWAY_PROJECT_ID: cea909d4-f1d8-4bac-b480-c24e98528b5e
   # railway/iac needs CLI 5.42.1 or newer; pin it like the package lockfile.
   RAILWAY_CLI: "@railway/cli@5.62.1"
 
@@ -42,16 +42,14 @@ jobs:
           cache: pnpm
           cache-dependency-path: .railway/pnpm-lock.yaml
           node-version: 24.19.0
-      - name: Install Railway configuration dependencies
-        run: pnpm --dir .railway install --frozen-lockfile
-      - name: Link development
-        run: pnpm dlx "$RAILWAY_CLI" link --project "$RAILWAY_PROJECT_ID" --environment development --service agents-gateway
+      - name: Install the Railway CLI
+        run: npm install --global "$RAILWAY_CLI"
       - name: Plan development
-        run: pnpm dlx "$RAILWAY_CLI" config plan
-      # --yes never confirms destructive changes; those need a reviewed local
-      # `railway config apply --confirm-destructive`.
+        run: make railway-plan ENV=development
+      # Never confirms destructive changes; apply those locally with
+      # make railway-apply ENV=development CONFIRM_DESTRUCTIVE=1.
       - name: Apply development
-        run: pnpm dlx "$RAILWAY_CLI" config apply --yes
+        run: make railway-apply ENV=development RAILWAY_APPLY_FLAGS=--yes
 
   production:
     name: Apply Railway configuration (production)
@@ -70,11 +68,11 @@ jobs:
           cache: pnpm
           cache-dependency-path: .railway/pnpm-lock.yaml
           node-version: 24.19.0
-      - name: Install Railway configuration dependencies
-        run: pnpm --dir .railway install --frozen-lockfile
-      - name: Link production
-        run: pnpm dlx "$RAILWAY_CLI" link --project "$RAILWAY_PROJECT_ID" --environment production --service agents-gateway
+      - name: Install the Railway CLI
+        run: npm install --global "$RAILWAY_CLI"
       - name: Plan production
-        run: pnpm dlx "$RAILWAY_CLI" config plan
+        run: make railway-plan ENV=production
+      # Never confirms destructive changes; apply those locally with
+      # make railway-apply ENV=production CONFIRM_DESTRUCTIVE=1.
       - name: Apply production
-        run: pnpm dlx "$RAILWAY_CLI" config apply --yes
+        run: make railway-apply ENV=production RAILWAY_APPLY_FLAGS=--yes
