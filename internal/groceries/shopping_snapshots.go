@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aranlucas/agents/internal/cloudflare"
+	"github.com/aranlucas/agents/internal/storage"
 	"google.golang.org/adk/v2/artifact"
 	"google.golang.org/genai"
 )
@@ -287,18 +287,18 @@ func (s *shoppingProfileSnapshotScheduler) close() {
 }
 
 func (s *Store) pendingShoppingProfileWork(ctx context.Context, limit int) ([]string, error) {
-	results, err := s.d1.Run(
+	results, err := s.db.Run(
 		ctx,
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `SELECT user_id FROM shopping_profile_snapshot_jobs
 			      WHERE lease_until IS NULL OR lease_until <= ? ORDER BY updated_at, user_id LIMIT ?`,
 			Params: []any{time.Now().UTC().UnixMilli(), limit},
 		},
-		cloudflare.Statement{
+		storage.Statement{
 			SQL:    `SELECT DISTINCT user_id FROM shopping_profile_artifact_cleanup_jobs ORDER BY user_id LIMIT ?`,
 			Params: []any{limit},
 		},
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `SELECT versions.user_id
 			      FROM shopping_profile_artifact_versions AS versions
 			      JOIN shopping_profile_artifacts AS current ON current.user_id = versions.user_id
@@ -307,7 +307,7 @@ func (s *Store) pendingShoppingProfileWork(ctx context.Context, limit int) ([]st
 			      ORDER BY versions.user_id LIMIT ?`,
 			Params: []any{shoppingProfileArtifactRetention - 1, limit},
 		},
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `SELECT DISTINCT versions.user_id
 			      FROM shopping_profile_artifact_versions AS versions
 			      LEFT JOIN shopping_profile_artifacts AS current ON current.user_id = versions.user_id
@@ -354,9 +354,9 @@ func (s *Store) processShoppingProfileSnapshotWork(ctx context.Context, userID s
 
 func (s *Store) scheduleShoppingProfileArtifactCleanup(ctx context.Context, userID string) error {
 	now := time.Now().UTC().UnixMilli()
-	_, err := s.d1.Run(
+	_, err := s.db.Run(
 		ctx,
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `INSERT OR IGNORE INTO shopping_profile_artifact_cleanup_jobs
 			        (user_id, artifact_version, requested_at)
 			      SELECT versions.user_id, versions.artifact_version, ?
@@ -366,7 +366,7 @@ func (s *Store) scheduleShoppingProfileArtifactCleanup(ctx context.Context, user
 			      ORDER BY versions.artifact_version DESC LIMIT ? OFFSET ?`,
 			Params: []any{now, userID, shoppingProfileCleanupBatch, shoppingProfileArtifactRetention - 1},
 		},
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `INSERT OR IGNORE INTO shopping_profile_artifact_cleanup_jobs
 			        (user_id, artifact_version, requested_at)
 			      SELECT versions.user_id, versions.artifact_version, ?
@@ -382,7 +382,7 @@ func (s *Store) scheduleShoppingProfileArtifactCleanup(ctx context.Context, user
 }
 
 func (s *Store) cleanupShoppingProfileArtifacts(ctx context.Context, userID string) (bool, error) {
-	results, err := s.d1.Run(ctx, cloudflare.Statement{
+	results, err := s.db.Run(ctx, storage.Statement{
 		SQL: `SELECT artifact_version FROM shopping_profile_artifact_cleanup_jobs
 		      WHERE user_id = ? ORDER BY artifact_version LIMIT ?`,
 		Params: []any{userID, shoppingProfileCleanupBatch},
@@ -404,13 +404,13 @@ func (s *Store) cleanupShoppingProfileArtifacts(ctx context.Context, userID stri
 		}); err != nil {
 			return false, fmt.Errorf("delete old shopping profile artifact: %w", err)
 		}
-		if _, err := s.d1.Run(
+		if _, err := s.db.Run(
 			ctx,
-			cloudflare.Statement{
+			storage.Statement{
 				SQL:    `DELETE FROM shopping_profile_artifact_cleanup_jobs WHERE user_id = ? AND artifact_version = ?`,
 				Params: []any{userID, version},
 			},
-			cloudflare.Statement{
+			storage.Statement{
 				SQL:    `DELETE FROM shopping_profile_artifact_versions WHERE user_id = ? AND artifact_version = ?`,
 				Params: []any{userID, version},
 			},
@@ -427,7 +427,7 @@ func (s *Store) publishPendingShoppingProfileSnapshot(ctx context.Context, userI
 		return false, err
 	}
 	now := time.Now().UTC()
-	results, err := s.d1.Run(ctx, cloudflare.Statement{
+	results, err := s.db.Run(ctx, storage.Statement{
 		SQL: `UPDATE shopping_profile_snapshot_jobs
 		      SET lease_token = ?, lease_until = ?, attempts = attempts + 1
 		      WHERE user_id = ? AND (lease_until IS NULL OR lease_until <= ?)
@@ -513,9 +513,9 @@ func (s *Store) shoppingProfileArtifactMatches(ctx context.Context, userID strin
 }
 
 func (s *Store) finalizeShoppingProfileSnapshot(ctx context.Context, userID, leaseToken string, revision int64, digest string, now time.Time) (bool, error) {
-	results, err := s.d1.Run(
+	results, err := s.db.Run(
 		ctx,
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `INSERT INTO shopping_profile_artifacts
 			        (user_id, scope_user_id, file_name, profile_revision, artifact_version, content_sha256, created_at)
 			      SELECT ?, ?, ?, ?, ?, ?, ?
@@ -532,7 +532,7 @@ func (s *Store) finalizeShoppingProfileSnapshot(ctx context.Context, userID, lea
 			      WHERE excluded.profile_revision > shopping_profile_artifacts.profile_revision`,
 			Params: []any{userID, userID, shoppingProfileArtifactName, revision, revision, digest, now.UnixMilli(), userID, revision},
 		},
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `INSERT OR IGNORE INTO shopping_profile_artifact_versions (user_id, artifact_version, created_at)
 			      SELECT ?, ?, ? WHERE EXISTS (
 			        SELECT 1 FROM shopping_profile_artifacts
@@ -540,7 +540,7 @@ func (s *Store) finalizeShoppingProfileSnapshot(ctx context.Context, userID, lea
 			      )`,
 			Params: []any{userID, revision, now.UnixMilli(), userID, revision, revision},
 		},
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `INSERT OR IGNORE INTO shopping_profile_artifact_cleanup_jobs
 			        (user_id, artifact_version, requested_at)
 			      SELECT ?, ?, ? WHERE NOT EXISTS (
@@ -549,7 +549,7 @@ func (s *Store) finalizeShoppingProfileSnapshot(ctx context.Context, userID, lea
 			      )`,
 			Params: []any{userID, revision, now.UnixMilli(), userID, revision},
 		},
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `SELECT 1 AS overflow
 			      FROM shopping_profile_artifact_versions AS versions
 			      JOIN shopping_profile_artifacts AS current ON current.user_id = versions.user_id
@@ -557,17 +557,17 @@ func (s *Store) finalizeShoppingProfileSnapshot(ctx context.Context, userID, lea
 			      ORDER BY versions.artifact_version DESC LIMIT 1 OFFSET ?`,
 			Params: []any{userID, shoppingProfileArtifactRetention - 1},
 		},
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `DELETE FROM shopping_profile_snapshot_jobs
 			      WHERE user_id = ? AND lease_token = ? AND target_revision <= ?`,
 			Params: []any{userID, leaseToken, revision},
 		},
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `UPDATE shopping_profile_snapshot_jobs SET lease_token = NULL, lease_until = NULL
 			      WHERE user_id = ? AND lease_token = ?`,
 			Params: []any{userID, leaseToken},
 		},
-		cloudflare.Statement{
+		storage.Statement{
 			SQL:    `SELECT 1 AS pending FROM shopping_profile_artifact_cleanup_jobs WHERE user_id = ? LIMIT 1`,
 			Params: []any{userID},
 		},
@@ -575,14 +575,14 @@ func (s *Store) finalizeShoppingProfileSnapshot(ctx context.Context, userID, lea
 	if err != nil {
 		return false, err
 	}
-	more := len(results) >= 7 && (len(results[3].Rows) > 0 || changed([]cloudflare.Result{results[5]}) > 0 || len(results[6].Rows) > 0)
+	more := len(results) >= 7 && (len(results[3].Rows) > 0 || changed([]storage.Result{results[5]}) > 0 || len(results[6].Rows) > 0)
 	return more, nil
 }
 
 func (s *Store) finalizeUnchangedShoppingProfileSnapshot(ctx context.Context, userID, leaseToken string, revision int64, digest string, now time.Time) (bool, error) {
-	results, err := s.d1.Run(
+	results, err := s.db.Run(
 		ctx,
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `UPDATE shopping_profile_artifacts
 			      SET profile_revision = ?, created_at = ?
 			      WHERE user_id = ? AND content_sha256 = ? AND profile_revision < ?
@@ -591,7 +591,7 @@ func (s *Store) finalizeUnchangedShoppingProfileSnapshot(ctx context.Context, us
 			        )`,
 			Params: []any{revision, now.UnixMilli(), userID, digest, revision, userID, revision},
 		},
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `SELECT 1 AS overflow
 			      FROM shopping_profile_artifact_versions AS versions
 			      JOIN shopping_profile_artifacts AS current ON current.user_id = versions.user_id
@@ -599,17 +599,17 @@ func (s *Store) finalizeUnchangedShoppingProfileSnapshot(ctx context.Context, us
 			      ORDER BY versions.artifact_version DESC LIMIT 1 OFFSET ?`,
 			Params: []any{userID, shoppingProfileArtifactRetention - 1},
 		},
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `DELETE FROM shopping_profile_snapshot_jobs
 			      WHERE user_id = ? AND lease_token = ? AND target_revision <= ?`,
 			Params: []any{userID, leaseToken, revision},
 		},
-		cloudflare.Statement{
+		storage.Statement{
 			SQL: `UPDATE shopping_profile_snapshot_jobs SET lease_token = NULL, lease_until = NULL
 			      WHERE user_id = ? AND lease_token = ?`,
 			Params: []any{userID, leaseToken},
 		},
-		cloudflare.Statement{
+		storage.Statement{
 			SQL:    `SELECT 1 AS pending FROM shopping_profile_artifact_cleanup_jobs WHERE user_id = ? LIMIT 1`,
 			Params: []any{userID},
 		},
@@ -617,7 +617,7 @@ func (s *Store) finalizeUnchangedShoppingProfileSnapshot(ctx context.Context, us
 	if err != nil {
 		return false, err
 	}
-	return len(results) >= 5 && (len(results[1].Rows) > 0 || changed([]cloudflare.Result{results[3]}) > 0 || len(results[4].Rows) > 0), nil
+	return len(results) >= 5 && (len(results[1].Rows) > 0 || changed([]storage.Result{results[3]}) > 0 || len(results[4].Rows) > 0), nil
 }
 
 func decodeShoppingProfileArtifactVersion(raw jsontext.Value) (int64, error) {

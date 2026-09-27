@@ -18,33 +18,33 @@ import (
 	"google.golang.org/adk/v2/session"
 )
 
-// D1AgentRunner is the gateway's concrete CopilotKit runner. ADK's D1-backed
+// SessionAgentRunner is the gateway's concrete CopilotKit runner. ADK's SQLite-backed
 // session service owns durable state and event history; activeRuns adds a
 // low-latency local path while the optional ActiveRunStore implemented by the
-// D1 session service coordinates ownership, replay, and stop across replicas.
+// session service coordinates ownership, replay, and stop across replicas.
 // Unlike IntelligenceAgentRunner, it does not require a managed control plane
 // or realtime metadata subscription.
-type D1AgentRunner struct {
+type SessionAgentRunner struct {
 	sessions session.Service
 	active   *activeRuns
 	store    ActiveRunStore
 }
 
-func NewD1AgentRunner(sessions session.Service) (*D1AgentRunner, error) {
+func NewSessionAgentRunner(sessions session.Service) (*SessionAgentRunner, error) {
 	if sessions == nil {
 		return nil, errors.New("session service is required")
 	}
 	store, _ := sessions.(ActiveRunStore)
-	return &D1AgentRunner{sessions: sessions, active: newActiveRuns(store), store: store}, nil
+	return &SessionAgentRunner{sessions: sessions, active: newActiveRuns(store), store: store}, nil
 }
 
-func (r *D1AgentRunner) newRunHandler(entry agentruntime.Entry, opts ...Option) (http.Handler, error) {
+func (r *SessionAgentRunner) newRunHandler(entry agentruntime.Entry, opts ...Option) (http.Handler, error) {
 	runOptions := append([]Option(nil), opts...)
 	runOptions = append(runOptions, withActiveRuns(r.active))
 	return NewEntryHandler(entry, r.sessions, runOptions...)
 }
 
-func (r *D1AgentRunner) connectHandler(agent copilotKitAgent) http.Handler {
+func (r *SessionAgentRunner) connectHandler(agent copilotKitAgent) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		input, err := decodeRunInput(request.Body)
 		if err != nil {
@@ -165,7 +165,7 @@ func (r *D1AgentRunner) connectHandler(agent copilotKitAgent) http.Handler {
 	})
 }
 
-func (r *D1AgentRunner) replayDurableRun(ctx context.Context, key ActiveRunKey, snapshot *ActiveRunSnapshot, emitter *replayAwareEmitter) error {
+func (r *SessionAgentRunner) replayDurableRun(ctx context.Context, key ActiveRunKey, snapshot *ActiveRunSnapshot, emitter *replayAwareEmitter) error {
 	if snapshot == nil || snapshot.RunID == "" {
 		return ErrActiveRunNotFound
 	}
@@ -195,7 +195,7 @@ func (r *D1AgentRunner) replayDurableRun(ctx context.Context, key ActiveRunKey, 
 	}
 }
 
-func (r *D1AgentRunner) stopHandler(agent copilotKitAgent) http.Handler {
+func (r *SessionAgentRunner) stopHandler(agent copilotKitAgent) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		threadID := strings.TrimSpace(request.PathValue("threadId"))
 		if threadID == "" {
@@ -213,7 +213,7 @@ func (r *D1AgentRunner) stopHandler(agent copilotKitAgent) http.Handler {
 			ThreadID:   threadID,
 		})
 		if stopErr != nil {
-			log.Printf("CopilotKit stop: D1 request failed for agent=%s thread=%s: %v", agent.id, threadID, stopErr)
+			log.Printf("CopilotKit stop: database request failed for agent=%s thread=%s: %v", agent.id, threadID, stopErr)
 			writeJSONError(w, http.StatusInternalServerError, "state_unavailable")
 			return
 		}

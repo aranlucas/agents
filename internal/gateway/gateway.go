@@ -1,7 +1,7 @@
 // Command gateway is the single deployable Go ADK HTTP service: it mounts
 // every registered agent's AG-UI routes behind Clerk auth (except the
-// public /resume slice), persists sessions and pending client-tool calls in
-// D1, and serves artifacts from R2. See README.md.
+// public /resume slice), persists sessions, pending client-tool calls, and artifacts in
+// SQLite. See README.md.
 package gateway
 
 import (
@@ -15,52 +15,27 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/signal"
 	"strings"
 	"sync"
 	"sync/atomic"
-	"syscall"
 	"time"
 
 	"github.com/aranlucas/agents/internal/agentruntime"
 	"github.com/aranlucas/agents/internal/agui"
+	"github.com/aranlucas/agents/internal/app"
 	"github.com/aranlucas/agents/internal/auth"
 	"github.com/aranlucas/agents/internal/bootstrap"
-	"github.com/aranlucas/agents/internal/bravesearch"
 	"github.com/aranlucas/agents/internal/catalog"
 	"github.com/aranlucas/agents/internal/clerk"
-	"github.com/aranlucas/agents/internal/cloudflare"
 	"github.com/aranlucas/agents/internal/common"
 	"github.com/aranlucas/agents/internal/config"
-	"github.com/aranlucas/agents/internal/expense"
-	"github.com/aranlucas/agents/internal/fitness"
 	"github.com/aranlucas/agents/internal/fitnessdata"
 	"github.com/aranlucas/agents/internal/groceries"
-	"github.com/aranlucas/agents/internal/grocery"
-	"github.com/aranlucas/agents/internal/interview"
-	"github.com/aranlucas/agents/internal/jobs"
 	"github.com/aranlucas/agents/internal/observability"
-	"github.com/aranlucas/agents/internal/oralboards"
-	"github.com/aranlucas/agents/internal/presentation"
-	"github.com/aranlucas/agents/internal/providerpolicy"
-	"github.com/aranlucas/agents/internal/providers/openai"
-	"github.com/aranlucas/agents/internal/rate"
-	"github.com/aranlucas/agents/internal/research"
-	"github.com/aranlucas/agents/internal/resume"
-	"github.com/aranlucas/agents/internal/spreadsheet"
 	"github.com/aranlucas/agents/internal/telegram"
-	"github.com/aranlucas/agents/internal/travel"
-	"github.com/aranlucas/agents/internal/trends"
-	"github.com/aranlucas/agents/internal/wellness"
 
-	"cloud.google.com/go/bigquery"
 	"github.com/joho/godotenv"
-	"google.golang.org/adk/v2/agent"
-	"google.golang.org/adk/v2/model"
-	"google.golang.org/adk/v2/model/gemini"
 	"google.golang.org/adk/v2/session"
-	"google.golang.org/api/option"
-	"google.golang.org/genai"
 )
 
 const healthCheckTimeout = 3 * time.Second
@@ -73,11 +48,8 @@ type startupTimer struct {
 
 func newStartupTimer() startupTimer {
 	start := time.Now()
-	return startupTimer{
-		enabled: strings.EqualFold(strings.TrimSpace(os.Getenv("STARTUP_TRACE")), "true"),
-		start:   start,
-		last:    start,
-	}
+	// Tracing is enabled from config.Config.StartupTrace once it is loaded.
+	return startupTimer{start: start, last: start}
 }
 
 func (timer *startupTimer) mark(phase string) {
@@ -89,37 +61,23 @@ func (timer *startupTimer) mark(phase string) {
 	timer.last = now
 }
 
-type startupGroup struct {
-	wg   sync.WaitGroup
-	once sync.Once
-	err  error
-}
-
-func (group *startupGroup) Go(label string, build func() error) {
-	group.wg.Go(func() {
-		if err := build(); err != nil {
-			group.once.Do(func() { group.err = fmt.Errorf("%s: %w", label, err) })
-		}
-	})
-}
-
-func (group *startupGroup) Wait() error {
-	group.wg.Wait()
-	return group.err
-}
-
 type handlerState struct {
 	handler http.Handler
 }
 
 // handlerSwitcher publishes the public Resume surface first, then atomically
-// swaps in the complete gateway once the remaining agents have hydrated.
-// Requests never observe a partially-built mux.
+// swaps in the complete gateway once the remaining agents have been built.
+// Requests never observe a partially-built mux. The build starts on the first
+// request for a non-Resume route; if it fails, those routes answer 503 and
+// /ready reports the failure instead of silently serving 404s.
 type handlerSwitcher struct {
-	current                 atomic.Pointer[handlerState]
-	startNonResumeHydrate   func()
-	nonResumeHydrationReady <-chan struct{}
-	firstNonResumeRequest   sync.Once
+	current atomic.Pointer[handlerState]
+
+	mu      sync.Mutex
+	hydrate func()
+	started bool
+	done    chan struct{}
+	failed  atomic.Bool
 }
 
 func newHandlerSwitcher(initial http.Handler) *handlerSwitcher {
@@ -129,9 +87,17 @@ func newHandlerSwitcher(initial http.Handler) *handlerSwitcher {
 }
 
 func (switcher *handlerSwitcher) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if switcher.startNonResumeHydrate != nil && fullGatewayPath(r.URL.Path) {
-		switcher.firstNonResumeRequest.Do(switcher.startNonResumeHydrate)
-		<-switcher.nonResumeHydrationReady
+	if switcher.hydrate != nil && fullGatewayPath(r.URL.Path) {
+		switcher.start()
+		select {
+		case <-switcher.done:
+		case <-r.Context().Done():
+			return
+		}
+		if switcher.failed.Load() {
+			writeGatewayJSONError(w, http.StatusServiceUnavailable, "agents_unavailable")
+			return
+		}
 	}
 	state := switcher.current.Load()
 	if state == nil || state.handler == nil {
@@ -139,6 +105,62 @@ func (switcher *handlerSwitcher) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	state.handler.ServeHTTP(w, r)
+}
+
+// hydrateOnDemand registers the build for the full surface. The returned
+// channel closes when the build finishes or when stop cancels a build that
+// never started.
+func (switcher *handlerSwitcher) hydrateOnDemand(build func()) <-chan struct{} {
+	switcher.hydrate = build
+	switcher.done = make(chan struct{})
+	return switcher.done
+}
+
+func (switcher *handlerSwitcher) start() {
+	switcher.mu.Lock()
+	defer switcher.mu.Unlock()
+	if switcher.started {
+		return
+	}
+	switcher.started = true
+	go func() {
+		defer close(switcher.done)
+		switcher.hydrate()
+	}()
+}
+
+// stop prevents a build from starting during shutdown.
+func (switcher *handlerSwitcher) stop() {
+	switcher.mu.Lock()
+	defer switcher.mu.Unlock()
+	if switcher.hydrate != nil && !switcher.started {
+		switcher.started = true
+		close(switcher.done)
+	}
+}
+
+func (switcher *handlerSwitcher) fail() { switcher.failed.Store(true) }
+
+// status reports the full surface for /ready: "pending" until the first
+// non-Resume request builds it, then "ok" or "failed".
+func (switcher *handlerSwitcher) status() string {
+	if switcher == nil || switcher.hydrate == nil {
+		return "ok"
+	}
+	select {
+	case <-switcher.done:
+		if switcher.failed.Load() {
+			return "failed"
+		}
+		switcher.mu.Lock()
+		defer switcher.mu.Unlock()
+		if !switcher.started {
+			return "pending"
+		}
+		return "ok"
+	default:
+		return "pending"
+	}
 }
 
 var fullGatewayPrefixes = func() []string {
@@ -168,26 +190,25 @@ func (switcher *handlerSwitcher) Swap(next http.Handler) {
 	switcher.current.Store(&handlerState{handler: next})
 }
 
-func (switcher *handlerSwitcher) startOnNonResumeRequest(start func(), ready <-chan struct{}) {
-	switcher.startNonResumeHydrate = start
-	switcher.nonResumeHydrationReady = ready
-}
-
 // Dependencies are the gateway's externally-constructed collaborators.
 // Production values are built in main(); tests supply fakes so route
-// composition can be exercised without D1, R2, or a real model provider.
+// composition can be exercised without a database or a real model provider.
 type Dependencies struct {
-	Registry  *agentruntime.Registry
-	Sessions  session.Service
-	Pending   agui.PendingTools
-	Verifier  auth.TokenVerifier
-	D1        common.HealthChecker
-	R2        common.HealthChecker
-	Links     *telegram.LinkStore
-	Clerk     clerk.Backend
-	Fitness   fitnessdata.Repository
-	Groceries groceries.LibraryRepository
-	Shopping  groceries.ShoppingRepository
+	Registry *agentruntime.Registry
+	Sessions session.Service
+	Pending  agui.PendingTools
+	Verifier auth.TokenVerifier
+	// Database gates /ready on the migrated schema.
+	Database common.HealthChecker
+	// AgentsStatus reports the lazily built agent surface ("pending", "ok",
+	// or "failed"); nil means the surface is always complete.
+	AgentsStatus func() string
+	Stream       agui.StreamSmoothing
+	Links        *telegram.LinkStore
+	Clerk        clerk.Backend
+	Fitness      fitnessdata.Repository
+	Groceries    groceries.LibraryRepository
+	Shopping     groceries.ShoppingRepository
 	// KrogerMCPURL is reduced to its origin before the lazy account linker
 	// requests /userinfo; the MCP path itself is never reused as a base path.
 	KrogerMCPURL string
@@ -224,13 +245,16 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 		"/api/grocery/*": true,
 	}
 
-	enabled, chunking, charsPerChunk, delay := agui.StreamSmoothingFromEnv()
+	stream := deps.Stream
+	if stream == (agui.StreamSmoothing{}) {
+		stream = agui.DefaultStreamSmoothing()
+	}
 	runtime, err := agui.NewCopilotKitRuntime(
 		deps.Registry,
 		deps.Sessions,
 		frontendAgentID,
 		agui.WithPendingTools(deps.Pending),
-		agui.WithTextStreamSmoothing(enabled, chunking, delay, charsPerChunk),
+		agui.WithTextStreamSmoothing(stream.Enabled, stream.Chunking, stream.ChunkDelay, stream.CharsPerChunk),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("build CopilotKit runtime: %w", err)
@@ -497,7 +521,7 @@ func agentHealthHandler(entry agentruntime.Entry) http.HandlerFunc {
 	}
 }
 
-// livenessHandler reports only process responsiveness. Remote D1/R2/schema
+// livenessHandler reports only process responsiveness. Database and agent
 // checks belong to /ready so an upstream outage does not make the process look
 // dead to operators or image smokes.
 func livenessHandler(deps Dependencies) http.HandlerFunc {
@@ -510,19 +534,23 @@ func livenessHandler(deps Dependencies) http.HandlerFunc {
 	}
 }
 
-// rootHealthHandler checks D1 and R2 once each through healthCheckTimeout,
-// and never calls a model provider or echoes credentials: the response
-// contains only status strings and process metadata.
+// rootHealthHandler checks the database schema through healthCheckTimeout and
+// reports the agent surface. A surface that is still pending (built on first
+// use) is healthy; one that failed to build is not. It never calls a model
+// provider or echoes credentials.
 func rootHealthHandler(deps Dependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), healthCheckTimeout)
 		defer cancel()
 
-		checks := common.ReadyChecks(ctx, map[string]common.HealthChecker{"d1": deps.D1, "r2": deps.R2})
+		checks := common.ReadyChecks(ctx, map[string]common.HealthChecker{"database": deps.Database})
+		if deps.AgentsStatus != nil {
+			checks["agents"] = deps.AgentsStatus()
+		}
 
 		status, code := "ok", http.StatusOK
 		for _, value := range checks {
-			if value != "ok" {
+			if value != "ok" && value != "pending" {
 				status, code = "degraded", http.StatusServiceUnavailable
 			}
 		}
@@ -536,111 +564,16 @@ func rootHealthHandler(deps Dependencies) http.HandlerFunc {
 	}
 }
 
-// trendsBigQueryClient builds the official Go BigQuery client billed to
-// GOOGLE_CLOUD_PROJECT (the project of the trends agent's own GCP service
-// account), authenticated from GOOGLE_APPLICATION_CREDENTIALS_JSON when set
-// or Application Default Credentials otherwise — the same two-variable
-// contract the Python port's _credentials.py bootstrapped, minus the temp
-// file: cloud.google.com/go/bigquery accepts service-account JSON directly.
-// The queried dataset itself (bigquery-public-data.google_trends) is a
-// separate, hardcoded allowlist enforced by trends.NewBigQueryExecutor, not
-// this billing project.
-func trendsBigQueryClient(ctx context.Context) (*bigquery.Client, error) {
-	credentials := strings.TrimSpace(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON"))
-	if credentials == "" {
-		return nil, errors.New("GOOGLE_APPLICATION_CREDENTIALS_JSON is required to configure the trends agent's BigQuery client")
-	}
-	var sa struct {
-		ProjectID string `json:"project_id"`
-	}
-	if json.Unmarshal([]byte(credentials), &sa) != nil || sa.ProjectID == "" {
-		return nil, errors.New("GOOGLE_APPLICATION_CREDENTIALS_JSON must contain a valid service account with project_id")
-	}
-	client, err := bigquery.NewClient(ctx, sa.ProjectID, option.WithAuthCredentialsJSON(option.ServiceAccount, []byte(credentials)))
-	if err != nil {
-		return nil, fmt.Errorf("configure BigQuery client: %w", err)
-	}
-	return client, nil
-}
-
-func oralboardsModels(ctx context.Context) (oralboards.PhaseModels, error) {
-	policy := providerpolicy.GatewayOralBoards()
-	key := strings.TrimSpace(os.Getenv("GEMINI_API_KEY"))
-	if key == "" {
-		return oralboards.PhaseModels{}, errors.New("GEMINI_API_KEY is required to configure oralboards case builder")
-	}
-	caseBuilder, err := gemini.NewModel(ctx, policy.GeminiModel, oralboardsGeminiClientConfig(key))
-	if err != nil {
-		return oralboards.PhaseModels{}, err
-	}
-	// Every phase is a separate agent node, so sharing the official Gemini client
-	// does not couple their conversations. A single provider also avoids losing
-	// an in-progress examination to cross-provider response incompatibilities.
-	return oralboards.PhaseModels{CaseBuilder: caseBuilder, Questioner: caseBuilder, Evaluator: caseBuilder, Scorer: caseBuilder}, nil
-}
-
-// oralboardsGeminiClientConfig keeps transient provider failures inside the
-// model request that encountered them. ADK's workflow RetryConfig reactivates
-// an entire node; that is unsafe for oral-board phases whose agents may already
-// have mutated examination state through tools before a later model call fails.
-//
-// The Gen AI SDK documents HTTPRetryOptions as the request-level retry seam.
-// A non-nil empty policy enables its maintained defaults: five total attempts,
-// an approximately one-second initial delay, exponential backoff with jitter,
-// and retries limited to transport failures plus 408, 429, and selected 5xx
-// responses. Keep those defaults centralized in the provider SDK rather than
-// copying values here and allowing the policies to drift.
-func oralboardsGeminiClientConfig(apiKey string) *genai.ClientConfig {
-	return &genai.ClientConfig{
-		APIKey:      apiKey,
-		Backend:     genai.BackendGeminiAPI,
-		HTTPOptions: genai.HTTPOptions{RetryOptions: &genai.HTTPRetryOptions{}},
-	}
-}
-
-// resumeHealth reports the resume agent's readiness from local state only
-// (embedded grounding present, model wired at startup) — it never issues a
-// model request, so GET /resume/health cannot burn provider quota or block
-// on an upstream outage.
-func resumeHealth(m model.LLM) func(context.Context) error {
-	return func(context.Context) error {
-		if strings.TrimSpace(resume.Instruction) == "" {
-			return errors.New("resume instruction is empty")
-		}
-		if m == nil || strings.TrimSpace(m.Name()) == "" {
-			return errors.New("resume model is not configured")
-		}
-		return nil
-	}
-}
-
-// resumeProviders keeps the public introduction's startup policy compatible
-// with the dynamic free router, whose selected model may require reasoning.
-func resumeProviders(providers map[string]config.Provider) (config.Provider, map[string]config.Provider, error) {
-	primary, err := providerpolicy.ResolveAgent(providers, providerpolicy.Resume)
-	if err != nil {
-		return config.Provider{}, nil, err
-	}
-	fallbacks := providerpolicy.FallbackProviders(providers)
-	if len(primary.Fallbacks) > 0 {
-		// Bound time to usable content without disabling mandatory reasoning.
-		primary.FirstContentTimeout = 2 * time.Second
-	}
-	if groq, ok := fallbacks["groq"]; ok {
-		groq.ReasoningEffort = "low"
-		fallbacks["groq"] = groq
-	}
-	return primary, fallbacks, nil
-}
-
-func Run() {
+// Run serves the gateway until ctx is canceled. It publishes the public Resume
+// surface first and builds the remaining agents on the first request that
+// needs them, so a sleeping Railway service wakes quickly for Resume visitors.
+func Run(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	startup := newStartupTimer()
-	startup.mark("process")
 	// Load local development values without overriding explicitly exported env vars.
-	for _, path := range []string{".env"} {
-		if err := godotenv.Load(path); err != nil && !errors.Is(err, os.ErrNotExist) {
-			log.Printf("load %s: %v", path, err)
-		}
+	if err := godotenv.Load(".env"); err != nil && !errors.Is(err, os.ErrNotExist) {
+		log.Printf("load .env: %v", err)
 	}
 	if strings.EqualFold(strings.TrimSpace(os.Getenv("APP_ENV")), "development") {
 		for _, key := range []string{"RAILWAY_ENVIRONMENT_ID", "RAILWAY_ENVIRONMENT_NAME", "RAILWAY_PROJECT_ID", "RAILWAY_SERVICE_ID"} {
@@ -650,77 +583,57 @@ func Run() {
 
 	cfg, err := config.Load(os.Getenv)
 	if err != nil {
-		log.Fatalf("load configuration: %v", err)
+		return fmt.Errorf("load configuration: %w", err)
 	}
+	if err := app.ValidateProviders(cfg.Providers); err != nil {
+		return fmt.Errorf("validate model providers: %w", err)
+	}
+	startup.enabled = cfg.StartupTrace
 	startup.mark("config")
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-	telemetryConfig := observability.Config{
-		ServiceName: "agents-gateway", ServiceVersion: os.Getenv("RAILWAY_GIT_COMMIT_SHA"),
-		Environment: string(cfg.Environment),
-	}
-	flushSentry, err := observability.SetupSentry(telemetryConfig)
+	flushSentry, err := observability.SetupSentry(observability.Config{
+		ServiceName: "agents-gateway", ServiceVersion: cfg.Version,
+		Environment: string(cfg.Environment), DSN: cfg.SentryDSN,
+	})
 	if err != nil {
-		log.Fatalf("configure Sentry: %v", err)
+		return fmt.Errorf("configure Sentry: %w", err)
 	}
-	startup.mark("sentry")
 	defer flushSentry()
+	startup.mark("sentry")
 
-	d1, err := cloudflare.NewD1(cfg.Cloudflare, nil)
+	rt, err := app.Open(ctx, cfg)
 	if err != nil {
-		log.Fatalf("configure D1: %v", err)
+		return err
 	}
-	r2, err := cloudflare.NewR2(cfg.Cloudflare)
-	if err != nil {
-		log.Fatalf("configure R2: %v", err)
-	}
-	startup.mark("persistence")
+	defer func() { _ = rt.Close() }()
+	startup.mark("database")
 
-	sessions := cloudflare.NewSessionService(d1, time.Now)
-	pending := cloudflare.NewPendingStore(d1, time.Now)
-	limiter := rate.NewProviderLimiter(d1, time.Now)
-	modelHTTPClient := common.NewHTTPClient(180*time.Second, 32<<20).Client
-	agentToolset := agui.NewAGUIToolset(pending)
-	startup.mark("shared")
-
-	resumeProvider, resumeFallbacks, err := resumeProviders(cfg.Providers)
+	agentToolset := agui.NewAGUIToolset(rt.Pending)
+	resumeBinding, err := app.BuildResume(rt, agentToolset)
 	if err != nil {
-		log.Fatalf("configure resume model: %v", err)
+		return err
 	}
-	resumeModel, err := openai.NewMulti(resumeProvider, resumeFallbacks, modelHTTPClient, limiter)
-	if err != nil {
-		log.Fatalf("configure resume fallback: %v", err)
-	}
-	resumeAgent, err := resume.New(resumeModel, agentToolset)
-	if err != nil {
-		log.Fatalf("build resume agent: %v", err)
-	}
-
 	resumeSpec, ok := catalog.ByRoute("resume")
 	if !ok {
-		log.Fatalf("build Resume registry: catalog route is missing")
+		return errors.New("build Resume registry: catalog route is missing")
 	}
-	resumeRegistry, err := (bootstrap.Specialists{
-		Resume: bootstrap.Binding{Agent: resumeAgent, StateDefaults: resume.StateDefaults, Health: resumeHealth(resumeModel)},
-	}).RegistryFor([]catalog.Spec{resumeSpec})
+	resumeRegistry, err := (bootstrap.Specialists{Resume: resumeBinding}).RegistryFor([]catalog.Spec{resumeSpec})
 	if err != nil {
-		log.Fatalf("build Resume registry: %v", err)
+		return fmt.Errorf("build Resume registry: %w", err)
 	}
 	startup.mark("resume")
 
+	var switcher *handlerSwitcher
+	agentsStatus := func() string { return switcher.status() }
+	stream := agui.StreamSmoothingFromEnv(os.Getenv)
 	resumeHandler, err := New(cfg, Dependencies{
-		Registry: resumeRegistry,
-		Sessions: sessions,
-		Pending:  pending,
-		D1:       d1,
-		R2:       r2,
-		Now:      time.Now,
+		Registry: resumeRegistry, Sessions: rt.Sessions, Pending: rt.Pending,
+		Database: rt.DB, AgentsStatus: agentsStatus, Stream: stream, Now: time.Now,
 	})
 	if err != nil {
-		log.Fatalf("build Resume gateway: %v", err)
+		return fmt.Errorf("build Resume gateway: %w", err)
 	}
+	switcher = newHandlerSwitcher(resumeHandler)
 	startup.mark("handler")
-	switcher := newHandlerSwitcher(resumeHandler)
 
 	server := &http.Server{
 		Addr:    ":" + cfg.HTTP.Port,
@@ -736,376 +649,81 @@ func Run() {
 	}
 	listener, err := net.Listen("tcp", server.Addr)
 	if err != nil {
-		observability.CaptureError(context.Background(), err)
-		flushSentry()
-		log.Fatalf("gateway listener failed: %v", err)
+		return fmt.Errorf("gateway listener failed: %w", err)
 	}
 
-	hydrateReady := make(chan struct{})
-	hydrate := func() {
-		readySignaled := false
-		defer func() {
-			if !readySignaled {
-				close(hydrateReady)
-			}
-		}()
-		availableProviders := providerpolicy.FallbackProviders(cfg.Providers)
-		groceryLists := groceries.NewStoreWithArtifacts(d1, cloudflare.NewArtifactService(r2))
-		defer func() { _ = groceryLists.Close() }()
-		krogerEndpoint := strings.TrimSpace(os.Getenv("KROGER_MCP_URL"))
-		if krogerEndpoint == "" {
-			krogerEndpoint = "https://ai-meal-planner-mcp.aranlucas.workers.dev/mcp"
-		}
-		var braveSearch *bravesearch.Client
-		if braveKey := strings.TrimSpace(os.Getenv("BRAVE_API_KEY")); braveKey != "" {
-			configured, err := bravesearch.New(common.NewHTTPClient(15*time.Second, 4<<20).Client, "https://api.search.brave.com/res/v1/web/search", braveKey, 10)
-			if err != nil {
-				log.Printf("deferred gateway hydration failed: configure Brave search: %v", err)
-				return
-			}
-			braveSearch = configured
-		}
-		jobsWebLoader := common.NewWebLoader(common.NewHTTPClient(20*time.Second, 4<<20), 100_000)
-		trvlEndpoint := strings.TrimSpace(os.Getenv("TRVL_MCP_URL"))
-		if trvlEndpoint == "" {
-			trvlEndpoint = "https://trvl-production.up.railway.app/mcp"
-		}
-		fitnessActivities := fitnessdata.NewStore(d1)
-		krogerClient := grocery.NewKroger(common.NewHTTPClient(30*time.Second, 8<<20).Client, krogerEndpoint)
-		webLoader := common.NewWebLoader(common.NewHTTPClient(20*time.Second, 4<<20), 100_000)
-
-		var (
-			jobsAgent, interviewAgent                          agent.Agent
-			presentationAgent, researchAgent, spreadsheetAgent agent.Agent
-			expenseAgent, travelAgent                          agent.Agent
-			fitnessAgent, fitnessTaskAgent, groceryAgent       agent.Agent
-			groceryTaskAgent, trendsAgent, oralboardsAgent     agent.Agent
-			fitnessModel                                       model.LLM
-			oralboardsCorpus                                   *oralboards.Corpus
-			verifier                                           auth.TokenVerifier
-			clerkBackend                                       clerk.Backend
-		)
-		// These longer conversations share the OpenRouter model, but not the
-		// public Resume startup deadline or overflow policy.
-		careerProvider := resumeProvider
-		careerProvider.ReasoningEffort = ""
-		careerProvider.FirstContentTimeout = 0
-		careerProvider.Fallbacks = nil
-		careerModel := openai.New(careerProvider, modelHTTPClient, limiter)
-		var builds startupGroup
-		builds.Go("Clerk auth", func() error {
-			if cfg.ClerkSecret != "" {
-				configured, err := clerk.NewBackend(common.NewHTTPClient(15*time.Second, 1<<20).Client, "", cfg.ClerkSecret)
-				if err != nil {
-					return fmt.Errorf("configure Clerk backend: %w", err)
-				}
-				clerkBackend = configured
-			}
-			if cfg.ClerkJWKS != "" {
-				configured, err := auth.NewClerkVerifier(cfg.ClerkJWKS, cfg.ClerkIssuer, "", nil)
-				if err != nil {
-					return fmt.Errorf("configure Clerk verifier: %w", err)
-				}
-				verifier = configured
-			}
-			return nil
-		})
-		builds.Go("jobs agent", func() error {
-			var err error
-			jobsAgent, err = jobs.New(careerModel, braveSearch, jobsWebLoader, agentToolset)
-			if err != nil {
-				return fmt.Errorf("build jobs agent: %w", err)
-			}
-			return nil
-		})
-		builds.Go("interview agent", func() error {
-			var err error
-			interviewAgent, err = interview.New(careerModel, agentToolset)
-			if err != nil {
-				return fmt.Errorf("build interview agent: %w", err)
-			}
-			return nil
-		})
-		builds.Go("presentation agent", func() error {
-			provider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Presentation)
-			if err != nil {
-				return fmt.Errorf("configure presentation model: %w", err)
-			}
-			model, err := openai.NewMulti(provider, availableProviders, modelHTTPClient, limiter)
-			if err != nil {
-				return fmt.Errorf("configure presentation fallbacks: %w", err)
-			}
-			presentationAgent, err = presentation.New(model, braveSearch, agentToolset)
-			if err != nil {
-				return fmt.Errorf("build presentation agent: %w", err)
-			}
-			return nil
-		})
-		builds.Go("research agent", func() error {
-			provider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Research)
-			if err != nil {
-				return fmt.Errorf("configure research model: %w", err)
-			}
-			model, err := openai.NewMulti(provider, availableProviders, modelHTTPClient, limiter)
-			if err != nil {
-				return fmt.Errorf("configure research fallbacks: %w", err)
-			}
-			researchAgent, err = research.New(model, agentToolset)
-			if err != nil {
-				return fmt.Errorf("build research agent: %w", err)
-			}
-			return nil
-		})
-		builds.Go("spreadsheet agent", func() error {
-			provider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Spreadsheet)
-			if err != nil {
-				return fmt.Errorf("configure spreadsheet model: %w", err)
-			}
-			model, err := openai.NewMulti(provider, availableProviders, modelHTTPClient, limiter)
-			if err != nil {
-				return fmt.Errorf("configure spreadsheet fallbacks: %w", err)
-			}
-			spreadsheetAgent, err = spreadsheet.New(model, agentToolset)
-			if err != nil {
-				return fmt.Errorf("build spreadsheet agent: %w", err)
-			}
-			return nil
-		})
-		builds.Go("expense agent", func() error {
-			provider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Expense)
-			if err != nil {
-				return fmt.Errorf("configure expense model: %w", err)
-			}
-			model, err := openai.NewMulti(provider, availableProviders, modelHTTPClient, limiter)
-			if err != nil {
-				return fmt.Errorf("configure expense fallbacks: %w", err)
-			}
-			expenseAgent, err = expense.New(model, agentToolset)
-			if err != nil {
-				return fmt.Errorf("build expense agent: %w", err)
-			}
-			return nil
-		})
-		builds.Go("travel agent", func() error {
-			provider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Travel)
-			if err != nil {
-				return fmt.Errorf("configure travel model: %w", err)
-			}
-			model, err := openai.NewMulti(provider, availableProviders, modelHTTPClient, limiter)
-			if err != nil {
-				return fmt.Errorf("configure travel fallbacks: %w", err)
-			}
-			travelAgent, err = travel.New(model, agentToolset, travel.NewTRVL(trvlEndpoint, &http.Client{Timeout: 20 * time.Second}))
-			if err != nil {
-				return fmt.Errorf("build travel agent: %w", err)
-			}
-			return nil
-		})
-		builds.Go("fitness agents", func() error {
-			provider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Fitness)
-			if err != nil {
-				return fmt.Errorf("configure fitness model: %w", err)
-			}
-			fitnessModel, err = openai.NewMulti(provider, availableProviders, modelHTTPClient, limiter)
-			if err != nil {
-				return fmt.Errorf("configure fitness fallbacks: %w", err)
-			}
-			fitnessAgent, err = fitness.New(fitnessModel, fitnessActivities, braveSearch, agentToolset)
-			if err != nil {
-				return fmt.Errorf("build fitness agent: %w", err)
-			}
-			fitnessTaskAgent, err = fitness.NewTask(fitnessModel, fitnessActivities, braveSearch, agentToolset)
-			if err != nil {
-				return fmt.Errorf("build wellness fitness task agent: %w", err)
-			}
-			return nil
-		})
-		builds.Go("grocery agents", func() error {
-			provider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Grocery)
-			if err != nil {
-				return fmt.Errorf("configure grocery model: %w", err)
-			}
-			model, err := openai.NewMulti(provider, availableProviders, modelHTTPClient, limiter)
-			if err != nil {
-				return fmt.Errorf("configure grocery fallbacks: %w", err)
-			}
-			groceryAgent, err = grocery.NewWithLibrary(model, krogerClient, braveSearch, webLoader, groceryLists, agentToolset)
-			if err != nil {
-				return fmt.Errorf("build grocery agent: %w", err)
-			}
-			groceryTaskAgent, err = grocery.NewTaskWithLibrary(model, krogerClient, braveSearch, webLoader, groceryLists, agentToolset)
-			if err != nil {
-				return fmt.Errorf("build wellness grocery task agent: %w", err)
-			}
-			return nil
-		})
-		builds.Go("trends agent", func() error {
-			provider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Trends)
-			if err != nil {
-				return fmt.Errorf("configure trends model: %w", err)
-			}
-			model, err := openai.NewMulti(provider, availableProviders, modelHTTPClient, limiter)
-			if err != nil {
-				return fmt.Errorf("configure trends fallbacks: %w", err)
-			}
-			bigQueryClient, err := trendsBigQueryClient(ctx)
-			if err != nil {
-				return fmt.Errorf("configure trends BigQuery client: %w", err)
-			}
-			executor, err := trends.NewBigQueryExecutor(bigQueryClient, "bigquery-public-data", "google_trends", trends.DefaultMaxBytesBilled, 30*time.Second)
-			if err != nil {
-				return fmt.Errorf("configure trends BigQuery executor: %w", err)
-			}
-			generator, err := trends.NewGenerator(model)
-			if err != nil {
-				return fmt.Errorf("build trends generator agent: %w", err)
-			}
-			trendsAgent, err = trends.New(model, generator, executor, braveSearch, agentToolset)
-			if err != nil {
-				return fmt.Errorf("build trends agent: %w", err)
-			}
-			return nil
-		})
-		builds.Go("oralboards agent", func() error {
-			phaseModels, err := oralboardsModels(ctx)
-			if err != nil {
-				return fmt.Errorf("configure oralboards models: %w", err)
-			}
-			corpusPath := strings.TrimSpace(os.Getenv("ORALBOARDS_CORPUS_PATH"))
-			if corpusPath == "" {
-				corpusPath = "assets/oralboards/search.sqlite"
-			}
-			oralboardsCorpus, err = oralboards.OpenCorpus(corpusPath)
-			if err != nil {
-				return fmt.Errorf("configure oralboards corpus: %w", err)
-			}
-			oralboardsAgent, err = oralboards.New(phaseModels, oralboardsCorpus, agentToolset)
-			if err != nil {
-				return fmt.Errorf("build oralboards agent: %w", err)
-			}
-			return nil
-		})
-		if err := builds.Wait(); err != nil {
-			if oralboardsCorpus != nil {
-				_ = oralboardsCorpus.Close()
-			}
-			log.Printf("deferred gateway hydration failed: %v", err)
-			return
-		}
-
-		wellnessAgent, err := wellness.New(wellness.ModelSet{Coordinator: fitnessModel}, fitnessTaskAgent, groceryTaskAgent, agentToolset)
+	var specialists *app.Specialists
+	hydrate := func() error {
+		built, err := app.BuildSpecialists(ctx, rt, resumeBinding, agentToolset)
 		if err != nil {
-			if oralboardsCorpus != nil {
-				_ = oralboardsCorpus.Close()
-			}
-			log.Printf("deferred gateway hydration failed: build wellness agent: %v", err)
-			return
+			return err
 		}
-
-		specialists := bootstrap.Specialists{
-			Travel:       bootstrap.Binding{Agent: travelAgent, StateDefaults: travel.StateDefaults},
-			Grocery:      bootstrap.Binding{Agent: groceryAgent, StateDefaults: grocery.StateDefaults},
-			Fitness:      bootstrap.Binding{Agent: fitnessAgent, StateDefaults: fitness.StateDefaults},
-			Wellness:     bootstrap.Binding{Agent: wellnessAgent, StateDefaults: wellness.StateDefaults},
-			Expense:      bootstrap.Binding{Agent: expenseAgent, StateDefaults: expense.StateDefaults},
-			OralBoards:   bootstrap.Binding{Agent: oralboardsAgent, StateDefaults: oralboards.StateDefaults},
-			Trends:       bootstrap.Binding{Agent: trendsAgent, StateDefaults: trends.StateDefaults},
-			Resume:       bootstrap.Binding{Agent: resumeAgent, StateDefaults: resume.StateDefaults, Health: resumeHealth(resumeModel)},
-			Jobs:         bootstrap.Binding{Agent: jobsAgent, StateDefaults: jobs.StateDefaults},
-			Interview:    bootstrap.Binding{Agent: interviewAgent, StateDefaults: interview.StateDefaults},
-			Research:     bootstrap.Binding{Agent: researchAgent, StateDefaults: research.StateDefaults},
-			Spreadsheet:  bootstrap.Binding{Agent: spreadsheetAgent, StateDefaults: spreadsheet.StateDefaults},
-			Presentation: bootstrap.Binding{Agent: presentationAgent, StateDefaults: presentation.StateDefaults},
-		}
-		registry, err := specialists.Registry()
+		specialists = built
+		registry, err := built.Registry()
 		if err != nil {
-			if oralboardsCorpus != nil {
-				_ = oralboardsCorpus.Close()
-			}
-			log.Printf("deferred gateway hydration failed: build agent registry: %v", err)
-			return
+			return fmt.Errorf("build agent registry: %w", err)
 		}
-
-		completeHandler, err := New(cfg, Dependencies{
-			Registry:     registry,
-			Sessions:     sessions,
-			Pending:      pending,
-			Verifier:     verifier,
-			D1:           d1,
-			R2:           r2,
-			Links:        telegram.NewLinkStore(d1, time.Now),
-			Clerk:        clerkBackend,
-			Fitness:      fitnessActivities,
-			Groceries:    groceryLists,
-			Shopping:     groceryLists,
-			KrogerMCPURL: krogerEndpoint,
-			Now:          time.Now,
+		var verifier auth.TokenVerifier
+		if cfg.ClerkJWKS != "" {
+			if verifier, err = auth.NewClerkVerifier(cfg.ClerkJWKS, cfg.ClerkIssuer, "", nil); err != nil {
+				return fmt.Errorf("configure Clerk verifier: %w", err)
+			}
+		}
+		var clerkBackend clerk.Backend
+		if cfg.ClerkSecret != "" {
+			if clerkBackend, err = clerk.NewBackend(common.NewHTTPClient(15*time.Second, 1<<20).Client, "", cfg.ClerkSecret); err != nil {
+				return fmt.Errorf("configure Clerk backend: %w", err)
+			}
+		}
+		complete, err := New(cfg, Dependencies{
+			Registry: registry, Sessions: rt.Sessions, Pending: rt.Pending, Verifier: verifier,
+			Database: rt.DB, AgentsStatus: agentsStatus, Links: rt.Links, Clerk: clerkBackend,
+			Fitness: rt.Fitness, Groceries: rt.Groceries, Shopping: rt.Groceries,
+			KrogerMCPURL: cfg.Integrations.KrogerMCPURL, Stream: stream, Now: time.Now,
 		})
 		if err != nil {
-			if oralboardsCorpus != nil {
-				_ = oralboardsCorpus.Close()
-			}
-			log.Printf("deferred gateway hydration failed: build gateway: %v", err)
-			return
+			return fmt.Errorf("build gateway: %w", err)
 		}
-		switcher.Swap(completeHandler)
-		close(hydrateReady)
-		readySignaled = true
+		switcher.Swap(complete)
 		if startup.enabled {
 			log.Printf("startup phase=full-surface-ready elapsed=%s", time.Since(startup.start))
 		}
-		<-ctx.Done()
-		if oralboardsCorpus != nil {
-			_ = oralboardsCorpus.Close()
-		}
+		return nil
 	}
+	hydrateDone := switcher.hydrateOnDemand(func() {
+		if err := hydrate(); err != nil {
+			observability.CaptureError(context.Background(), err)
+			log.Printf("agent hydration failed: %v", err)
+			switcher.fail()
+		}
+	})
+	defer func() { _ = specialists.Close() }()
 
 	shutdownDone := make(chan struct{})
 	go func() {
 		defer close(shutdownDone)
 		<-ctx.Done()
 		log.Printf("shutting down agents gateway")
-
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := server.Shutdown(shutdownCtx); err != nil {
 			log.Printf("gateway server shutdown failed: %v", err)
 		}
 	}()
-
-	hydrateDone := make(chan struct{})
-	hydrationStarted := make(chan struct{})
-	var hydrateOnce sync.Once
-	startHydrate := func() {
-		hydrateOnce.Do(func() {
-			close(hydrationStarted)
-			go func() {
-				defer close(hydrateDone)
-				hydrate()
-			}()
-		})
-	}
-	switcher.startOnNonResumeRequest(startHydrate, hydrateReady)
 	log.Printf("agents gateway listening on :%s", cfg.HTTP.Port)
 	startup.mark("listening")
 	serveErr := server.Serve(listener)
-	stop()
+	cancel()
 	<-shutdownDone
+	switcher.stop()
 	select {
-	case <-hydrationStarted:
-		select {
-		case <-hydrateDone:
-		case <-time.After(5 * time.Second):
-			log.Printf("gateway hydration did not finish before shutdown")
-		}
-	default:
-		close(hydrateReady)
-		close(hydrateDone)
+	case <-hydrateDone:
+	case <-time.After(5 * time.Second):
+		log.Printf("gateway hydration did not finish before shutdown")
 	}
 	if serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
-		// log.Fatalf exits before deferred flushes run, so report first.
 		observability.CaptureError(context.Background(), serveErr)
-		flushSentry()
-		log.Fatalf("gateway server failed: %v", serveErr)
+		return fmt.Errorf("gateway server failed: %w", serveErr)
 	}
+	return nil
 }

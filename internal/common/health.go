@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-// HealthChecker is satisfied by *cloudflare.D1 and *cloudflare.R2.
+// HealthChecker is satisfied by *storage.DB.
 type HealthChecker interface {
 	Health(context.Context) error
 }

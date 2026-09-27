@@ -4,10 +4,8 @@
 #
 #   1. image policy — the runtime binaries are statically linked, the image
 #      runs as non-root, and no shell or scripting runtime is present.
-#   2. runtime check — the image boots and serves process-only GET /live over
-#      fake Cloudflare and provider credentials. The point of this script is
-#      "binary starts, serves HTTP, contains no scripting runtime"; production
-#      readiness is covered separately against real D1 and R2 bindings.
+#   2. runtime check — the image boots with fake provider credentials, creates
+#      and migrates its SQLite database under /app/.data, and reports ready.
 #
 # Usage: smoke-image.sh <image>
 set -euo pipefail
@@ -62,7 +60,7 @@ for binary in agents; do
 done
 echo "OK: static agents binary, non-root image, no scripting runtimes"
 
-echo "== runtime liveness check (fake Cloudflare credentials) =="
+echo "== runtime readiness check (fake provider credentials) =="
 runtime_name="agents-go-smoke-$$"
 # The gateway validates BigQuery credentials at startup. Generate an ephemeral
 # service-account key so the smoke exercises the production startup path
@@ -84,12 +82,6 @@ google_credentials="$(jq -nc --arg private_key "$private_key" '{
 docker run -d --name "$runtime_name" -p "${port}:8000" \
   -e APP_ENV=development \
   -e PORT=8000 \
-  -e CF_ACCOUNT_ID=smoke-fake-account \
-  -e CF_API_TOKEN=smoke-fake-token \
-  -e CF_D1_DATABASE_ID=smoke-fake-database \
-  -e CF_R2_BUCKET_NAME=smoke-fake-bucket \
-  -e CF_R2_ACCESS_KEY_ID=smoke-fake-access-key \
-  -e CF_R2_SECRET_ACCESS_KEY=smoke-fake-secret-key \
   -e OPENROUTER_API_KEY=smoke-fake-openrouter-key \
   -e GROQ_API_KEY=smoke-fake-groq-key \
   -e NVIDIA_NIM_API_KEY=smoke-fake-nvidia-key \
@@ -101,7 +93,7 @@ docker run -d --name "$runtime_name" -p "${port}:8000" \
 status=""
 body=""
 for _ in $(seq 1 30); do
-  if response="$(curl -sS --max-time 2 -w '\n%{http_code}' "http://localhost:${port}/live" 2>/dev/null)"; then
+  if response="$(curl -sS --max-time 2 -w '\n%{http_code}' "http://localhost:${port}/ready" 2>/dev/null)"; then
     status="${response##*$'\n'}"
     body="${response%$'\n'*}"
     break
@@ -110,7 +102,7 @@ for _ in $(seq 1 30); do
 done
 
 if [[ -z "$status" ]]; then
-  echo "FAIL: gateway never responded on /live" >&2
+  echo "FAIL: gateway never responded on /ready" >&2
   docker logs "$runtime_name" >&2 || true
   exit 1
 fi
@@ -118,17 +110,17 @@ fi
 case "$status" in
   2??) ;;
   *)
-    echo "FAIL: unexpected /live status $status" >&2
+    echo "FAIL: unexpected /ready status $status" >&2
     echo "body: $body" >&2
     docker logs "$runtime_name" >&2 || true
     exit 1
     ;;
 esac
 
-if ! grep -q '"service":"agents-gateway"' <<<"$body"; then
-  echo "FAIL: unexpected /live body: $body" >&2
+if ! jq -e '.service == "agents-gateway" and .checks.database == "ok"' <<<"$body" >/dev/null; then
+  echo "FAIL: unexpected /ready body: $body" >&2
   exit 1
 fi
 
-echo "OK: /live responded HTTP $status against fake D1/R2 credentials"
+echo "OK: /ready responded HTTP $status with a migrated SQLite database"
 echo "SMOKE PASS"

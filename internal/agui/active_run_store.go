@@ -19,7 +19,7 @@ type ActiveRunKey struct {
 	ThreadID string
 }
 
-// ActiveRunSnapshot is an immutable view of one D1-journaled live run.
+// ActiveRunSnapshot is an immutable view of one SQLite-journaled live run.
 type ActiveRunSnapshot struct {
 	RunID         string
 	Events        [][]byte
@@ -29,7 +29,7 @@ type ActiveRunSnapshot struct {
 
 // ActiveRunStore coordinates execution ownership and replay across gateway
 // replicas. The production session service implements it using the same
-// mandatory D1 database as ADK session persistence.
+// SQLite database as ADK session persistence.
 type ActiveRunStore interface {
 	BeginActiveRun(context.Context, ActiveRunKey, string, time.Time) error
 	AppendActiveRunEvent(context.Context, ActiveRunKey, string, int64, []byte, bool) error

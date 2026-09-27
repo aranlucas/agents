@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aranlucas/agents/internal/cloudflare"
+	"github.com/aranlucas/agents/internal/storage"
 )
 
 var (
@@ -35,13 +35,13 @@ type linkTokenRow struct {
 }
 
 type LinkStore struct {
-	db  cloudflare.StatementRunner
+	db  storage.StatementRunner
 	now func() time.Time
 }
 
-func NewLinkStore(db *cloudflare.D1, now func() time.Time) *LinkStore { return newLinkStore(db, now) }
+func NewLinkStore(db *storage.DB, now func() time.Time) *LinkStore { return newLinkStore(db, now) }
 
-func newLinkStore(db cloudflare.StatementRunner, now func() time.Time) *LinkStore {
+func newLinkStore(db storage.StatementRunner, now func() time.Time) *LinkStore {
 	if now == nil {
 		now = time.Now
 	}
@@ -50,7 +50,7 @@ func newLinkStore(db cloudflare.StatementRunner, now func() time.Time) *LinkStor
 
 func (s *LinkStore) CreateForChat(ctx context.Context, telegramUserID, telegramChatID int64, ttl time.Duration) (string, error) {
 	if s == nil || s.db == nil || telegramUserID <= 0 || telegramChatID == 0 {
-		return "", errors.New("valid Telegram identity and D1 store are required")
+		return "", errors.New("valid Telegram identity and database store are required")
 	}
 	if ttl <= 0 || ttl > time.Hour {
 		ttl = 10 * time.Minute
@@ -61,7 +61,7 @@ func (s *LinkStore) CreateForChat(ctx context.Context, telegramUserID, telegramC
 	}
 	raw := base64.RawURLEncoding.EncodeToString(random)
 	now := s.now().UTC().UnixMilli()
-	_, err := s.db.Run(ctx, cloudflare.Statement{SQL: `INSERT INTO telegram_link_tokens
+	_, err := s.db.Run(ctx, storage.Statement{SQL: `INSERT INTO telegram_link_tokens
 (token_hash, telegram_user_id, telegram_chat_id, expires_at, consumed_at, created_at) VALUES (?, ?, ?, ?, NULL, ?)`, Params: []any{hashToken(raw), telegramUserID, telegramChatID, now + ttl.Milliseconds(), now}})
 	if err != nil {
 		return "", errors.New("store Telegram link token")
@@ -74,7 +74,7 @@ func (s *LinkStore) Consume(ctx context.Context, rawToken, clerkUserID string) (
 		return AccountLink{}, ErrLinkTokenInvalid
 	}
 	hash := hashToken(rawToken)
-	selected, err := s.db.Run(ctx, cloudflare.Statement{SQL: `SELECT telegram_user_id, telegram_chat_id, expires_at, consumed_at FROM telegram_link_tokens WHERE token_hash = ?`, Params: []any{hash}})
+	selected, err := s.db.Run(ctx, storage.Statement{SQL: `SELECT telegram_user_id, telegram_chat_id, expires_at, consumed_at FROM telegram_link_tokens WHERE token_hash = ?`, Params: []any{hash}})
 	if err != nil {
 		return AccountLink{}, errors.New("read Telegram link token")
 	}
@@ -92,14 +92,14 @@ func (s *LinkStore) Consume(ctx context.Context, rawToken, clerkUserID string) (
 	if row.ExpiresAt < now {
 		return AccountLink{}, ErrLinkTokenExpired
 	}
-	updated, err := s.db.Run(ctx, cloudflare.Statement{SQL: `UPDATE telegram_link_tokens SET consumed_at = ? WHERE token_hash = ? AND consumed_at IS NULL AND expires_at >= ?`, Params: []any{now, hash, now}})
+	updated, err := s.db.Run(ctx, storage.Statement{SQL: `UPDATE telegram_link_tokens SET consumed_at = ? WHERE token_hash = ? AND consumed_at IS NULL AND expires_at >= ?`, Params: []any{now, hash, now}})
 	if err != nil {
 		return AccountLink{}, errors.New("consume Telegram link token")
 	}
 	if len(updated) != 1 || updated[0].Meta.Changes != 1 {
 		return AccountLink{}, ErrLinkTokenUsed
 	}
-	_, err = s.db.Run(ctx, cloudflare.Statement{SQL: `INSERT INTO telegram_account_links
+	_, err = s.db.Run(ctx, storage.Statement{SQL: `INSERT INTO telegram_account_links
 (telegram_user_id, clerk_user_id, telegram_chat_id, linked_at, unlinked_at) VALUES (?, ?, ?, ?, NULL)
 ON CONFLICT(telegram_user_id) DO UPDATE SET clerk_user_id=excluded.clerk_user_id, telegram_chat_id=excluded.telegram_chat_id, linked_at=excluded.linked_at, unlinked_at=NULL`, Params: []any{row.TelegramUserID, clerkUserID, row.TelegramChatID, now}})
 	if err != nil {
@@ -112,7 +112,7 @@ func (s *LinkStore) Lookup(ctx context.Context, telegramUserID int64) (AccountLi
 	if s == nil || s.db == nil || telegramUserID <= 0 {
 		return AccountLink{}, false, nil
 	}
-	results, err := s.db.Run(ctx, cloudflare.Statement{SQL: `SELECT telegram_user_id, telegram_chat_id, clerk_user_id, linked_at FROM telegram_account_links WHERE telegram_user_id=? AND unlinked_at IS NULL`, Params: []any{telegramUserID}})
+	results, err := s.db.Run(ctx, storage.Statement{SQL: `SELECT telegram_user_id, telegram_chat_id, clerk_user_id, linked_at FROM telegram_account_links WHERE telegram_user_id=? AND unlinked_at IS NULL`, Params: []any{telegramUserID}})
 	if err != nil {
 		return AccountLink{}, false, errors.New("lookup Telegram account link")
 	}
@@ -131,7 +131,7 @@ func (s *LinkStore) Unlink(ctx context.Context, telegramUserID int64) (bool, err
 		return false, nil
 	}
 	now := s.now().UTC().UnixMilli()
-	results, err := s.db.Run(ctx, cloudflare.Statement{SQL: `UPDATE telegram_account_links SET unlinked_at=? WHERE telegram_user_id=? AND unlinked_at IS NULL`, Params: []any{now, telegramUserID}})
+	results, err := s.db.Run(ctx, storage.Statement{SQL: `UPDATE telegram_account_links SET unlinked_at=? WHERE telegram_user_id=? AND unlinked_at IS NULL`, Params: []any{now, telegramUserID}})
 	if err != nil {
 		return false, errors.New("unlink Telegram account")
 	}

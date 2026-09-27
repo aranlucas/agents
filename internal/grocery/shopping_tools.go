@@ -92,7 +92,7 @@ type ShoppingProfileResult struct {
 	Error   *agentruntime.StructuredError `json:"error,omitempty"`
 }
 
-// ShoppingResources adapts the D1-backed repository to native ADK tools.
+// ShoppingResources adapts the SQLite-backed repository to native ADK tools.
 // Keeping the clock here mirrors SavedResources and makes tool behavior
 // deterministic in tests without putting time concerns in the repository
 // interface.

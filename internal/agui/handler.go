@@ -8,7 +8,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"os"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -37,7 +36,7 @@ type handlerConfig struct {
 	active    *activeRuns
 }
 
-// WithPendingTools wires the D1-backed pending client-tool store used to
+// WithPendingTools wires the SQLite-backed pending client-tool store used to
 // resolve tool-result messages that resume a client tool call.
 func WithPendingTools(pending PendingTools) Option {
 	return func(c *handlerConfig) { c.pending = pending }
@@ -82,48 +81,57 @@ var defaultStreamSmoothing = streamSmoothing{
 	chunkDelay:    DefaultStreamChunkDelay,
 }
 
+// StreamSmoothing is the text-stream pacing policy.
+type StreamSmoothing struct {
+	Enabled       bool
+	Chunking      string
+	CharsPerChunk int
+	ChunkDelay    time.Duration
+}
+
+// DefaultStreamSmoothing is the pacing used when nothing overrides it.
+func DefaultStreamSmoothing() StreamSmoothing {
+	return StreamSmoothing{Enabled: true, Chunking: DefaultStreamChunking, CharsPerChunk: DefaultStreamCharsPerChunk, ChunkDelay: DefaultStreamChunkDelay}
+}
+
 // StreamSmoothingFromEnv reads AGUI_STREAM_* overrides once. Invalid values
 // keep the exported defaults.
-func StreamSmoothingFromEnv() (enabled bool, chunking string, charsPerChunk int, chunkDelay time.Duration) {
-	chunking = DefaultStreamChunking
-	if rawChunking := strings.TrimSpace(strings.ToLower(os.Getenv("AGUI_STREAM_CHUNKING"))); rawChunking != "" {
-		chunking = rawChunking
+func StreamSmoothingFromEnv(getenv func(string) string) StreamSmoothing {
+	result := DefaultStreamSmoothing()
+	if rawChunking := strings.TrimSpace(strings.ToLower(getenv("AGUI_STREAM_CHUNKING"))); rawChunking != "" {
+		result.Chunking = rawChunking
 	}
-	enabled = true
-	if rawEnabled := strings.TrimSpace(os.Getenv("AGUI_STREAM_SMOOTHING")); rawEnabled != "" {
+	if rawEnabled := strings.TrimSpace(getenv("AGUI_STREAM_SMOOTHING")); rawEnabled != "" {
 		parsed, err := strconv.ParseBool(rawEnabled)
 		if err != nil {
 			log.Printf("invalid AGUI_STREAM_SMOOTHING=%q, defaulting to true", rawEnabled)
 		} else {
-			enabled = parsed
+			result.Enabled = parsed
 		}
 	}
-
-	charsPerChunk = DefaultStreamCharsPerChunk
-	if rawChunkSize := strings.TrimSpace(os.Getenv("AGUI_STREAM_CHUNK_SIZE")); rawChunkSize != "" {
+	if rawChunkSize := strings.TrimSpace(getenv("AGUI_STREAM_CHUNK_SIZE")); rawChunkSize != "" {
 		parsed, err := strconv.Atoi(rawChunkSize)
-		if err != nil {
-			log.Printf("invalid AGUI_STREAM_CHUNK_SIZE=%q, defaulting to %d", rawChunkSize, charsPerChunk)
-		} else if parsed > 0 {
-			charsPerChunk = parsed
-		} else {
-			log.Printf("AGUI_STREAM_CHUNK_SIZE=%d must be >0, using %d", parsed, charsPerChunk)
+		switch {
+		case err != nil:
+			log.Printf("invalid AGUI_STREAM_CHUNK_SIZE=%q, defaulting to %d", rawChunkSize, result.CharsPerChunk)
+		case parsed > 0:
+			result.CharsPerChunk = parsed
+		default:
+			log.Printf("AGUI_STREAM_CHUNK_SIZE=%d must be >0, using %d", parsed, result.CharsPerChunk)
 		}
 	}
-
-	chunkDelay = DefaultStreamChunkDelay
-	if rawDelay := strings.TrimSpace(os.Getenv("AGUI_STREAM_CHUNK_DELAY_MS")); rawDelay != "" {
+	if rawDelay := strings.TrimSpace(getenv("AGUI_STREAM_CHUNK_DELAY_MS")); rawDelay != "" {
 		parsed, err := strconv.Atoi(rawDelay)
-		if err != nil {
-			log.Printf("invalid AGUI_STREAM_CHUNK_DELAY_MS=%q, defaulting to %s", rawDelay, chunkDelay)
-		} else if parsed >= 0 {
-			chunkDelay = time.Duration(parsed) * time.Millisecond
-		} else {
+		switch {
+		case err != nil:
+			log.Printf("invalid AGUI_STREAM_CHUNK_DELAY_MS=%q, defaulting to %s", rawDelay, result.ChunkDelay)
+		case parsed >= 0:
+			result.ChunkDelay = time.Duration(parsed) * time.Millisecond
+		default:
 			log.Printf("AGUI_STREAM_CHUNK_DELAY_MS=%d is negative, using %s", parsed, DefaultStreamChunkDelay)
 		}
 	}
-
-	return enabled, chunking, charsPerChunk, chunkDelay
+	return result
 }
 
 // WithStreamSmoothing overrides the converter's pacing behavior.
@@ -585,10 +593,10 @@ func firstUserMessage(input *types.RunAgentInput) string {
 	return ""
 }
 
-// effectiveUserID returns the D1 session-key user ID. The verified Clerk
+// effectiveUserID returns the session-key user ID. The verified Clerk
 // subject is used when present; a public (e.g. /resume) request never trusts
 // a client-supplied identity and instead derives a stable per-thread
-// anonymous ID so unrelated public callers never collide on the same D1 row.
+// anonymous ID so unrelated public callers never collide on the same session row.
 func effectiveUserID(identity auth.Identity, threadID string) string {
 	if !identity.Public && strings.TrimSpace(identity.UserID) != "" {
 		return identity.UserID

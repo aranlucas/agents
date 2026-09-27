@@ -108,7 +108,7 @@ func TestStateHandlerRejectsMultipleOrOversizedJSONDocuments(t *testing.T) {
 
 func TestStateHandlerNeverLeaksTemporaryState(t *testing.T) {
 	sessions := newFakeSessionService()
-	// fakeSessionService.Create (unlike the production cloudflare.SessionService)
+	// fakeSessionService.Create (unlike the production storage.SessionService)
 	// does not strip temp: keys at write time, so this exercises
 	// StateHandler's own persistentSnapshot filtering rather than relying on
 	// the store to have already dropped the key.
@@ -137,7 +137,7 @@ func TestStateHandlerNeverLeaksTemporaryState(t *testing.T) {
 }
 
 // erroringSessionService always fails Get with a non-session.ErrNotFound
-// error, standing in for a genuine D1 outage or decode failure — the
+// error, standing in for a genuine database outage or decode failure — the
 // branch StateHandler must distinguish from "no session yet".
 type erroringSessionService struct{ err error }
 
@@ -160,7 +160,7 @@ func (e *erroringSessionService) AppendEvent(context.Context, session.Session, *
 }
 
 func TestStateHandlerReturns500OnUnexpectedSessionError(t *testing.T) {
-	sessions := &erroringSessionService{err: errors.New("D1 request returned HTTP 500 for token sk-live-abc123")}
+	sessions := &erroringSessionService{err: errors.New("database request failed for token sk-live-abc123")}
 	h := StateHandler(testResumeRegistry(t), sessions)
 	req := httptest.NewRequest(http.MethodPost, "/resume/agents/state", strings.NewReader(`{"threadId":"thread-error"}`))
 	rr := httptest.NewRecorder()
@@ -169,7 +169,7 @@ func TestStateHandlerReturns500OnUnexpectedSessionError(t *testing.T) {
 	if rr.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d: %s", rr.Code, rr.Body.String())
 	}
-	if strings.Contains(rr.Body.String(), "sk-live-abc123") || strings.Contains(rr.Body.String(), "D1 request") {
+	if strings.Contains(rr.Body.String(), "sk-live-abc123") || strings.Contains(rr.Body.String(), "database request") {
 		t.Fatalf("raw backend error leaked to client: %s", rr.Body.String())
 	}
 	var got map[string]string
