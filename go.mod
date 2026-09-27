@@ -8,7 +8,7 @@ require (
 	github.com/clerk/clerk-sdk-go/v2 v2.7.0
 	github.com/getkin/kin-openapi v0.149.0
 	github.com/getsentry/sentry-go v0.49.0
-	github.com/glebarez/go-sqlite v1.21.2
+	github.com/glebarez/go-sqlite v1.23.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/jsonschema-go v0.4.3
@@ -17,7 +17,6 @@ require (
 	github.com/oapi-codegen/nethttp-middleware v1.2.0
 	github.com/oapi-codegen/runtime v1.7.0
 	github.com/openai/openai-go/v3 v3.56.0 // ADK v2.4.0 requires ResponseFunctionCallArgumentsDoneEvent.Name.
-	github.com/railwayapp/railway-go-sdk v0.2.0
 	github.com/wI2L/jsondiff v0.7.1
 	golang.org/x/net v0.59.0
 	google.golang.org/adk/v2 v2.4.0
