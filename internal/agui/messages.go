@@ -2,6 +2,7 @@ package agui
 
 import (
 	json "encoding/json/v2"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -137,7 +138,7 @@ func toAGUIToolCalls(calls []*genai.FunctionCall) ([]types.ToolCall, error) {
 	out := make([]types.ToolCall, 0, len(calls))
 	for _, call := range calls {
 		if call == nil || !ClientCallID.MatchString(call.ID) || !ClientToolName.MatchString(call.Name) {
-			return nil, fmt.Errorf("invalid persisted tool call")
+			return nil, errors.New("invalid persisted tool call")
 		}
 		arguments, err := encodeToolArgs(call.Args)
 		if err != nil {
@@ -161,7 +162,7 @@ func toAGUIToolCalls(calls []*genai.FunctionCall) ([]types.ToolCall, error) {
 // session twice yields byte-identical output.
 func toolResultMessage(eventID string, index int, response *genai.FunctionResponse) (types.Message, error) {
 	if response == nil || !ClientCallID.MatchString(response.ID) {
-		return types.Message{}, fmt.Errorf("invalid persisted tool result")
+		return types.Message{}, errors.New("invalid persisted tool result")
 	}
 	payload := response.Response
 	if payload == nil {

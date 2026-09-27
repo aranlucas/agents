@@ -41,7 +41,7 @@ func TestNewHTTPClientUsesConfiguredTransport(t *testing.T) {
 }
 
 func TestBoundedRedirectsKeepsCredentialsOnlyWithinExactOrigin(t *testing.T) {
-	initial, err := http.NewRequest(http.MethodGet, "https://api.example.test/start", nil)
+	initial, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://api.example.test/start", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestBoundedRedirectsKeepsCredentialsOnlyWithinExactOrigin(t *testing.T) {
 		{name: "different host", target: "https://other.example.test/next"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			redirect, err := http.NewRequest(http.MethodGet, test.target, nil)
+			redirect, err := http.NewRequestWithContext(t.Context(), http.MethodGet, test.target, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

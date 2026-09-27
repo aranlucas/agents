@@ -56,7 +56,7 @@ func TestInvalidClientToolsRejectedBeforeRunResources(t *testing.T) {
 		handler := &ADKHandler{}
 		body := `{"threadId":"thread","runId":"run","messages":[],"tools":` + tools + `}`
 		response := httptest.NewRecorder()
-		handler.ServeHTTP(response, httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body)))
+		handler.ServeHTTP(response, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", strings.NewReader(body)))
 		if response.Code != http.StatusBadRequest || !strings.Contains(response.Body.String(), "invalid_agui_input") {
 			t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
 		}

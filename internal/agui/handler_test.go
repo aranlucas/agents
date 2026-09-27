@@ -40,7 +40,7 @@ import (
 
 func TestHandlerStreamsResumeGoldenEvents(t *testing.T) {
 	h := newGatewayWithFakeResumeModel(t)
-	req := httptest.NewRequest(http.MethodPost, "/resume/agui", bytes.NewReader(readFixture(t, "conversation-request.json")))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/resume/agui", bytes.NewReader(readFixture(t, "conversation-request.json")))
 	req.Header.Set("Accept", "text/event-stream")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -67,7 +67,7 @@ func TestHandlerRejectsMalformedInput(t *testing.T) {
 	}
 	for name, body := range cases {
 		t.Run(name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodPost, "/resume/agui", strings.NewReader(body))
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/resume/agui", strings.NewReader(body))
 			rr := httptest.NewRecorder()
 			h.ServeHTTP(rr, req)
 			if rr.Code != http.StatusBadRequest {
@@ -235,7 +235,7 @@ func TestHandlerReturns500OnSessionGetFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := `{"threadId":"thread-error","runId":"run-error","messages":[]}`
-	req := httptest.NewRequest(http.MethodPost, "/resume/agui", strings.NewReader(body))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/resume/agui", strings.NewReader(body))
 	req, transport := requestWithSentryHub(t, req)
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
@@ -285,7 +285,7 @@ func TestHandlerCapturesSessionSnapshotFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := `{"threadId":"thread-state-error","runId":"run-state-error","messages":[]}`
-	req := httptest.NewRequest(http.MethodPost, "/resume/agui", strings.NewReader(body))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/resume/agui", strings.NewReader(body))
 	req, transport := requestWithSentryHub(t, req)
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
@@ -381,7 +381,7 @@ func TestStatelessHandlerUsesEphemeralSession(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	req := httptest.NewRequest(http.MethodPost, "/resume/agui", bytes.NewReader(payload))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/resume/agui", bytes.NewReader(payload))
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 
@@ -431,7 +431,7 @@ func TestStatelessHandlerStopsWritingAfterClientDisconnect(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := httptest.NewRequest(http.MethodPost, "/resume/agui", strings.NewReader(`{"threadId":"thread-write-failure","runId":"run-write-failure","messages":[{"id":"user-1","role":"user","content":"suggest"}]}`))
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/resume/agui", strings.NewReader(`{"threadId":"thread-write-failure","runId":"run-write-failure","messages":[{"id":"user-1","role":"user","content":"suggest"}]}`))
 	response := &failedSSEWriter{header: make(http.Header)}
 
 	handler.ServeHTTP(response, request)
@@ -461,7 +461,7 @@ func TestHandlerCompletesWithoutModelInput(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			req := httptest.NewRequest(http.MethodPost, "/resume/agui", bytes.NewReader(payload))
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/resume/agui", bytes.NewReader(payload))
 			rr := httptest.NewRecorder()
 			handler.ServeHTTP(rr, req)
 
@@ -508,7 +508,7 @@ func TestHandlerResumesFromPendingClientToolResult(t *testing.T) {
 		"context": [],
 		"forwardedProps": null
 	}`
-	req := httptest.NewRequest(http.MethodPost, "/resume/agui", strings.NewReader(body))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/resume/agui", strings.NewReader(body))
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {
@@ -541,7 +541,7 @@ func TestHandlerStreamsReasoningText(t *testing.T) {
 		"context": [],
 		"forwardedProps": null
 	}`
-	req := httptest.NewRequest(http.MethodPost, "/resume/agui", strings.NewReader(body))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/resume/agui", strings.NewReader(body))
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {
@@ -559,7 +559,7 @@ func TestHandlerRecoversStreamingPanicAsSanitizedTerminalRunError(t *testing.T) 
 	h := newTestGateway(t, &fakePanicModel{}, &fakeIDs{}, WithStreamSmoothing(streamSmoothing{enabled: false}))
 	body := `{"threadId":"thread-panic","runId":"run-panic","messages":[{"id":"user-1","role":"user","content":"start"}]}`
 	recorder := httptest.NewRecorder()
-	request, transport := requestWithSentryHub(t, httptest.NewRequest(http.MethodPost, "/resume/agui", strings.NewReader(body)))
+	request, transport := requestWithSentryHub(t, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/resume/agui", strings.NewReader(body)))
 	h.ServeHTTP(recorder, request)
 
 	frames := parseSSEFrames(t, recorder.Body.Bytes())
@@ -596,7 +596,7 @@ func TestHandlerEndsWithSanitizedRunErrorOnUpstreamFailure(t *testing.T) {
 		"context": [],
 		"forwardedProps": null
 	}`
-	req := httptest.NewRequest(http.MethodPost, "/resume/agui", strings.NewReader(body))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/resume/agui", strings.NewReader(body))
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {
@@ -617,7 +617,7 @@ func TestHandlerEndsWithSanitizedRunErrorOnUpstreamFailure(t *testing.T) {
 func TestHandlerTurnsADKResponseErrorIntoSanitizedTerminalRunError(t *testing.T) {
 	const secret = "provider-secret-message"
 	h := newTestGateway(t, &fakeADKResponseErrorModel{message: secret}, &fakeIDs{})
-	req := httptest.NewRequest(http.MethodPost, "/resume/agui", strings.NewReader(`{"threadId":"thread-adk-error","runId":"run-adk-error","messages":[{"id":"user-1","role":"user","content":"hello"}]}`))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/resume/agui", strings.NewReader(`{"threadId":"thread-adk-error","runId":"run-adk-error","messages":[{"id":"user-1","role":"user","content":"hello"}]}`))
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	frames := parseSSEFrames(t, rr.Body.Bytes())
@@ -642,7 +642,7 @@ func TestHandlerCapturesActionableProviderFailure(t *testing.T) {
 		"context": [],
 		"forwardedProps": null
 	}`
-	req := httptest.NewRequest(http.MethodPost, "/resume/agui", strings.NewReader(body))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/resume/agui", strings.NewReader(body))
 	req, transport := requestWithSentryHub(t, req)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -681,7 +681,7 @@ func TestHandlerTimeoutStillEmitsOneTerminalRunError(t *testing.T) {
 		"context": [],
 		"forwardedProps": null
 	}`
-	req := httptest.NewRequest(http.MethodPost, "/resume/agui", strings.NewReader(body))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/resume/agui", strings.NewReader(body))
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {
@@ -732,7 +732,7 @@ func TestHandlerWiresRequestClientToolsIntoRunningAgent(t *testing.T) {
 		"context": [],
 		"forwardedProps": null
 	}`
-	req := httptest.NewRequest(http.MethodPost, "/resume/agui", strings.NewReader(body))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/resume/agui", strings.NewReader(body))
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {
@@ -776,7 +776,7 @@ func TestHandlerRejectsClientToolsWithoutPendingStore(t *testing.T) {
 		"context": [],
 		"forwardedProps": null
 	}`
-	req := httptest.NewRequest(http.MethodPost, "/resume/agui", strings.NewReader(body))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/resume/agui", strings.NewReader(body))
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusBadRequest {
@@ -805,7 +805,7 @@ func TestHandlerForwardsAGUIContextToModel(t *testing.T) {
 		"context": [{"description": "current_page", "value": "/dashboard/settings"}],
 		"forwardedProps": null
 	}`
-	req := httptest.NewRequest(http.MethodPost, "/resume/agui", strings.NewReader(body))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/resume/agui", strings.NewReader(body))
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {

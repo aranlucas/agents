@@ -31,9 +31,9 @@ func (t Trace) calledTools() []string {
 	return names
 }
 
-func (trace Trace) firstCallArgs[T any](name string) (T, bool) {
+func (t Trace) firstCallArgs[T any](name string) (T, bool) {
 	var args T
-	for _, s := range trace.Steps {
+	for _, s := range t.Steps {
 		if s.FunctionCall == name {
 			if len(s.FunctionCallArgs) == 0 || json.Unmarshal(s.FunctionCallArgs, &args) != nil {
 				return args, false
@@ -44,9 +44,9 @@ func (trace Trace) firstCallArgs[T any](name string) (T, bool) {
 	return args, false
 }
 
-func (trace Trace) firstResponse[T any](name string) (T, bool) {
+func (t Trace) firstResponse[T any](name string) (T, bool) {
 	var response T
-	for _, step := range trace.Steps {
+	for _, step := range t.Steps {
 		if step.FunctionResponse == name {
 			if len(step.FunctionResponseValue) == 0 || json.Unmarshal(step.FunctionResponseValue, &response) != nil {
 				return response, false

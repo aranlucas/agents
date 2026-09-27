@@ -180,7 +180,7 @@ func TestCopilotKitRuntimeInfoAdvertisesBoundAgents(t *testing.T) {
 	mux := http.NewServeMux()
 	runtime.Register(mux)
 	recorder := httptest.NewRecorder()
-	mux.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/info", nil))
+	mux.ServeHTTP(recorder, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/info", nil))
 
 	var response runtimeInfoResponse
 	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
@@ -222,7 +222,7 @@ func TestCopilotKitRuntimeListsD1BackedThreads(t *testing.T) {
 	mux := http.NewServeMux()
 	runtime.Register(mux)
 	handler := auth.RequireIdentity(map[string]bool{}, mux, runtimeTestVerifier{})
-	request := httptest.NewRequest(http.MethodGet, "/threads?agentId=resume", nil)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/threads?agentId=resume", nil)
 	request.Header.Set("Authorization", "Bearer test")
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
@@ -255,13 +255,13 @@ func TestCopilotKitRuntimeRunAndConnectReplayPersistedThread(t *testing.T) {
 	runtime.Register(mux)
 
 	run := httptest.NewRecorder()
-	mux.ServeHTTP(run, httptest.NewRequest(http.MethodPost, "/agent/resume/run", strings.NewReader(`{"threadId":"thread-replay","runId":"run-1","messages":[{"id":"user-1","role":"user","content":"hello"}]}`)))
+	mux.ServeHTTP(run, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/agent/resume/run", strings.NewReader(`{"threadId":"thread-replay","runId":"run-1","messages":[{"id":"user-1","role":"user","content":"hello"}]}`)))
 	if run.Code != http.StatusOK || !strings.Contains(run.Body.String(), "Here is the answer.") || !strings.Contains(run.Body.String(), `"outcome":{"type":"success"}`) {
 		t.Fatalf("run=%d %s", run.Code, run.Body.String())
 	}
 
 	connect := httptest.NewRecorder()
-	mux.ServeHTTP(connect, httptest.NewRequest(http.MethodPost, "/agent/resume/connect", strings.NewReader(`{"threadId":"thread-replay","runId":"connect-1","messages":[]}`)))
+	mux.ServeHTTP(connect, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/agent/resume/connect", strings.NewReader(`{"threadId":"thread-replay","runId":"connect-1","messages":[]}`)))
 	if connect.Code != http.StatusOK || !strings.Contains(connect.Body.String(), "MESSAGES_SNAPSHOT") || !strings.Contains(connect.Body.String(), "Here is the answer.") || !strings.Contains(connect.Body.String(), "STATE_SNAPSHOT") {
 		t.Fatalf("connect=%d %s", connect.Code, connect.Body.String())
 	}
@@ -286,7 +286,7 @@ func TestCopilotKitRuntimeConnectRestoresUnresolvedRequestInput(t *testing.T) {
 	mux := http.NewServeMux()
 	runtime.Register(mux)
 	connect := httptest.NewRecorder()
-	mux.ServeHTTP(connect, httptest.NewRequest(http.MethodPost, "/agent/resume/connect", strings.NewReader(`{"threadId":"thread-interrupt","runId":"connect-interrupt","messages":[]}`)))
+	mux.ServeHTTP(connect, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/agent/resume/connect", strings.NewReader(`{"threadId":"thread-interrupt","runId":"connect-interrupt","messages":[]}`)))
 
 	body := connect.Body.String()
 	if connect.Code != http.StatusOK || !strings.Contains(body, `"type":"interrupt"`) || !strings.Contains(body, `"id":"oralboards-answer-1"`) || !strings.Contains(body, `"kind":"answer"`) {
@@ -336,7 +336,7 @@ func TestCopilotKitRuntimeSuggestionDisconnectCancelsRun(t *testing.T) {
 	mux := http.NewServeMux()
 	runtime.Register(mux)
 
-	request := httptest.NewRequest(http.MethodPost, "/agent/resume/suggest", strings.NewReader(`{"threadId":"thread-suggest-disconnect","runId":"run-suggest-disconnect","messages":[{"id":"user-1","role":"user","content":"suggest"}]}`))
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/agent/resume/suggest", strings.NewReader(`{"threadId":"thread-suggest-disconnect","runId":"run-suggest-disconnect","messages":[{"id":"user-1","role":"user","content":"suggest"}]}`))
 	requestCtx, cancelRequest := context.WithCancel(request.Context())
 	request = request.WithContext(requestCtx)
 	runDone := make(chan *httptest.ResponseRecorder, 1)
@@ -379,7 +379,7 @@ func TestCopilotKitRuntimeRequestDisconnectDoesNotCancelActiveRun(t *testing.T) 
 	mux := http.NewServeMux()
 	runtime.Register(mux)
 
-	request := httptest.NewRequest(http.MethodPost, "/agent/resume/run", strings.NewReader(`{"threadId":"thread-disconnect","runId":"run-disconnect","messages":[{"id":"user-1","role":"user","content":"wait"}]}`))
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/agent/resume/run", strings.NewReader(`{"threadId":"thread-disconnect","runId":"run-disconnect","messages":[{"id":"user-1","role":"user","content":"wait"}]}`))
 	requestCtx, cancelRequest := context.WithCancel(request.Context())
 	request = request.WithContext(requestCtx)
 	runDone := make(chan *httptest.ResponseRecorder, 1)
@@ -408,7 +408,7 @@ func TestCopilotKitRuntimeRequestDisconnectDoesNotCancelActiveRun(t *testing.T) 
 	connectDone := make(chan *httptest.ResponseRecorder, 1)
 	go func() {
 		recorder := httptest.NewRecorder()
-		mux.ServeHTTP(&headerSignalRecorder{ResponseRecorder: recorder, wroteHeader: connectStarted}, httptest.NewRequest(http.MethodPost, "/agent/resume/connect", strings.NewReader(`{"threadId":"thread-disconnect","runId":"connect-disconnect","messages":[]}`)))
+		mux.ServeHTTP(&headerSignalRecorder{ResponseRecorder: recorder, wroteHeader: connectStarted}, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/agent/resume/connect", strings.NewReader(`{"threadId":"thread-disconnect","runId":"connect-disconnect","messages":[]}`)))
 		connectDone <- recorder
 	}()
 	select {
@@ -451,7 +451,7 @@ func TestCopilotKitRuntimeConnectReplaysAndFollowsRunOwnedByAnotherReplica(t *te
 	runDone := make(chan *httptest.ResponseRecorder, 1)
 	go func() {
 		recorder := httptest.NewRecorder()
-		ownerMux.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/agent/resume/run", strings.NewReader(`{"threadId":"thread-cross-replica","runId":"run-cross-replica","messages":[{"id":"user-1","role":"user","content":"wait"}]}`)))
+		ownerMux.ServeHTTP(recorder, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/agent/resume/run", strings.NewReader(`{"threadId":"thread-cross-replica","runId":"run-cross-replica","messages":[{"id":"user-1","role":"user","content":"wait"}]}`)))
 		runDone <- recorder
 	}()
 	select {
@@ -468,7 +468,7 @@ func TestCopilotKitRuntimeConnectReplaysAndFollowsRunOwnedByAnotherReplica(t *te
 	connectDone := make(chan *httptest.ResponseRecorder, 1)
 	go func() {
 		recorder := httptest.NewRecorder()
-		followerMux.ServeHTTP(&headerSignalRecorder{ResponseRecorder: recorder, wroteHeader: connectStarted}, httptest.NewRequest(http.MethodPost, "/agent/resume/connect", strings.NewReader(`{"threadId":"thread-cross-replica","runId":"connect-cross-replica","messages":[]}`)))
+		followerMux.ServeHTTP(&headerSignalRecorder{ResponseRecorder: recorder, wroteHeader: connectStarted}, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/agent/resume/connect", strings.NewReader(`{"threadId":"thread-cross-replica","runId":"connect-cross-replica","messages":[]}`)))
 		connectDone <- recorder
 	}()
 	select {
@@ -526,7 +526,7 @@ func TestCopilotKitRuntimeStopCancelsRunOwnedByAnotherReplica(t *testing.T) {
 	runDone := make(chan *httptest.ResponseRecorder, 1)
 	go func() {
 		recorder := httptest.NewRecorder()
-		ownerMux.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/agent/resume/run", strings.NewReader(`{"threadId":"thread-cross-stop","runId":"run-cross-stop","messages":[{"id":"user-1","role":"user","content":"wait"}]}`)))
+		ownerMux.ServeHTTP(recorder, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/agent/resume/run", strings.NewReader(`{"threadId":"thread-cross-stop","runId":"run-cross-stop","messages":[{"id":"user-1","role":"user","content":"wait"}]}`)))
 		runDone <- recorder
 	}()
 	select {
@@ -535,7 +535,7 @@ func TestCopilotKitRuntimeStopCancelsRunOwnedByAnotherReplica(t *testing.T) {
 		t.Fatal("owner model did not start")
 	}
 	stop := httptest.NewRecorder()
-	controllerMux.ServeHTTP(stop, httptest.NewRequest(http.MethodPost, "/agent/resume/stop/thread-cross-stop", nil))
+	controllerMux.ServeHTTP(stop, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/agent/resume/stop/thread-cross-stop", nil))
 	if stop.Code != http.StatusOK || !strings.Contains(stop.Body.String(), `"stopped":true`) {
 		t.Fatalf("cross-replica stop = %d %s", stop.Code, stop.Body.String())
 	}
@@ -565,7 +565,7 @@ func TestCopilotKitRuntimeTransportFailureReconnectsAndFollowsActiveRun(t *testi
 	original := &failingStreamWriter{header: make(http.Header), failAfter: 2}
 	runDone := make(chan struct{})
 	go func() {
-		mux.ServeHTTP(original, httptest.NewRequest(http.MethodPost, "/agent/resume/run", strings.NewReader(`{"threadId":"thread-transport","runId":"run-transport","messages":[{"id":"user-1","role":"user","content":"wait"}]}`)))
+		mux.ServeHTTP(original, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/agent/resume/run", strings.NewReader(`{"threadId":"thread-transport","runId":"run-transport","messages":[{"id":"user-1","role":"user","content":"wait"}]}`)))
 		close(runDone)
 	}()
 	var runCtx context.Context
@@ -579,7 +579,7 @@ func TestCopilotKitRuntimeTransportFailureReconnectsAndFollowsActiveRun(t *testi
 	connectDone := make(chan *httptest.ResponseRecorder, 1)
 	go func() {
 		recorder := httptest.NewRecorder()
-		mux.ServeHTTP(&headerSignalRecorder{ResponseRecorder: recorder, wroteHeader: connectStarted}, httptest.NewRequest(http.MethodPost, "/agent/resume/connect", strings.NewReader(`{"threadId":"thread-transport","runId":"connect-transport","messages":[]}`)))
+		mux.ServeHTTP(&headerSignalRecorder{ResponseRecorder: recorder, wroteHeader: connectStarted}, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/agent/resume/connect", strings.NewReader(`{"threadId":"thread-transport","runId":"connect-transport","messages":[]}`)))
 		connectDone <- recorder
 	}()
 	select {
@@ -621,7 +621,7 @@ func TestCopilotKitRuntimeStopCancelsAndConnectFollowsActiveRun(t *testing.T) {
 	runDone := make(chan *httptest.ResponseRecorder, 1)
 	go func() {
 		recorder := httptest.NewRecorder()
-		mux.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/agent/resume/run", strings.NewReader(`{"threadId":"thread-active","runId":"run-active","messages":[{"id":"user-1","role":"user","content":"wait"}]}`)))
+		mux.ServeHTTP(recorder, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/agent/resume/run", strings.NewReader(`{"threadId":"thread-active","runId":"run-active","messages":[{"id":"user-1","role":"user","content":"wait"}]}`)))
 		runDone <- recorder
 	}()
 
@@ -638,7 +638,7 @@ func TestCopilotKitRuntimeStopCancelsAndConnectFollowsActiveRun(t *testing.T) {
 	connectDone := make(chan *httptest.ResponseRecorder, 1)
 	go func() {
 		recorder := httptest.NewRecorder()
-		mux.ServeHTTP(&headerSignalRecorder{ResponseRecorder: recorder, wroteHeader: connectStarted}, httptest.NewRequest(http.MethodPost, "/agent/resume/connect", strings.NewReader(`{"threadId":"thread-active","runId":"connect-active","messages":[]}`)))
+		mux.ServeHTTP(&headerSignalRecorder{ResponseRecorder: recorder, wroteHeader: connectStarted}, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/agent/resume/connect", strings.NewReader(`{"threadId":"thread-active","runId":"connect-active","messages":[]}`)))
 		connectDone <- recorder
 	}()
 	select {
@@ -648,7 +648,7 @@ func TestCopilotKitRuntimeStopCancelsAndConnectFollowsActiveRun(t *testing.T) {
 	}
 
 	stop := httptest.NewRecorder()
-	stopRequest := httptest.NewRequest(http.MethodPost, "/agent/resume/stop/thread-active", nil)
+	stopRequest := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/agent/resume/stop/thread-active", nil)
 	mux.ServeHTTP(stop, stopRequest)
 	if stop.Code != http.StatusOK || !strings.Contains(stop.Body.String(), `"stopped":true`) {
 		t.Fatalf("stop=%d %s", stop.Code, stop.Body.String())

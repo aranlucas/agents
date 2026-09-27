@@ -41,7 +41,7 @@ func TestAgentBuildsWithInterviewSafetyRules(t *testing.T) {
 		"STRICTLY SEQUENTIAL TOOLING",
 		"If any tool response has ok false",
 	} {
-		if !strings.Contains(interview.Instruction, required) {
+		if !strings.Contains(interview.Instruction, required) { //nolint:gocritic // the instruction is the haystack
 			t.Errorf("instruction is missing %q", required)
 		}
 	}

@@ -85,7 +85,7 @@ func TestArtifactServiceRejectsPathLikeScopesAndTampering(t *testing.T) {
 	if _, err := service.Save(t.Context(), &artifact.SaveRequest{AppName: "app", UserID: "u", SessionID: "s", FileName: "f", Part: genai.NewPartFromText("x")}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.SQL().Exec(`UPDATE artifacts SET part_json = '{"text":"forged"}'`); err != nil {
+	if _, err := db.SQL().ExecContext(t.Context(), `UPDATE artifacts SET part_json = '{"text":"forged"}'`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := service.Load(t.Context(), &artifact.LoadRequest{AppName: "app", UserID: "u", SessionID: "s", FileName: "f"}); err == nil {

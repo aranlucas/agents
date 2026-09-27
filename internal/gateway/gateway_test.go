@@ -85,28 +85,28 @@ func TestEveryActiveAgentExposesScopedEndpoints(t *testing.T) {
 	}
 	for _, route := range routes {
 		for _, suffix := range []string{"/health", "/agui/capabilities"} {
-			request := httptest.NewRequest(http.MethodGet, "/"+route+suffix, nil)
+			request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/"+route+suffix, nil)
 			recorder := httptest.NewRecorder()
 			handler.ServeHTTP(recorder, request)
 			if recorder.Code != http.StatusOK {
 				t.Fatalf("GET /%s%s=%d %s", route, suffix, recorder.Code, recorder.Body.String())
 			}
 		}
-		request := httptest.NewRequest(http.MethodPost, "/"+route+"/agents/state", strings.NewReader(`{"threadId":"contract-thread"}`))
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/"+route+"/agents/state", strings.NewReader(`{"threadId":"contract-thread"}`))
 		request.Header.Set("Authorization", "Bearer test")
 		recorder := httptest.NewRecorder()
 		handler.ServeHTTP(recorder, request)
 		if recorder.Code != http.StatusOK {
 			t.Fatalf("POST /%s/agents/state=%d %s", route, recorder.Code, recorder.Body.String())
 		}
-		request = httptest.NewRequest(http.MethodPost, "/agent/"+frontendAgentID(route)+"/suggest", strings.NewReader(`{"threadId":"suggestion-thread","runId":"suggestion-run","messages":[]}`))
+		request = httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/agent/"+frontendAgentID(route)+"/suggest", strings.NewReader(`{"threadId":"suggestion-thread","runId":"suggestion-run","messages":[]}`))
 		request.Header.Set("Authorization", "Bearer test")
 		recorder = httptest.NewRecorder()
 		handler.ServeHTTP(recorder, request)
 		if recorder.Code != http.StatusOK {
 			t.Fatalf("POST /agent/%s/suggest=%d %s", frontendAgentID(route), recorder.Code, recorder.Body.String())
 		}
-		request = httptest.NewRequest(http.MethodPost, "/agent/"+frontendAgentID(route)+"/run", strings.NewReader(`{"threadId":"contract-thread","runId":"runtime-run","messages":[]}`))
+		request = httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/agent/"+frontendAgentID(route)+"/run", strings.NewReader(`{"threadId":"contract-thread","runId":"runtime-run","messages":[]}`))
 		request.Header.Set("Authorization", "Bearer test")
 		recorder = httptest.NewRecorder()
 		handler.ServeHTTP(recorder, request)
@@ -114,13 +114,13 @@ func TestEveryActiveAgentExposesScopedEndpoints(t *testing.T) {
 			t.Fatalf("POST /agent/%s/run=%d %s", frontendAgentID(route), recorder.Code, recorder.Body.String())
 		}
 	}
-	request := httptest.NewRequest(http.MethodPost, "/agents/state", strings.NewReader(`{"threadId":"contract-thread"}`))
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/agents/state", strings.NewReader(`{"threadId":"contract-thread"}`))
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusNotFound {
 		t.Fatalf("root state endpoint=%d", recorder.Code)
 	}
-	request = httptest.NewRequest(http.MethodGet, "/travel/agents/sessions", nil)
+	request = httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/travel/agents/sessions", nil)
 	recorder = httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusNotFound {
@@ -234,7 +234,7 @@ func TestGatewayRejectsUnauthenticatedNonPublicRoute(t *testing.T) {
 }
 
 func TestRuntimeInfoAdvertisesConcreteAgents(t *testing.T) {
-	request := httptest.NewRequest(http.MethodGet, "/info", nil)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/info", nil)
 	recorder := httptest.NewRecorder()
 	newGateway(t).ServeHTTP(recorder, request)
 
@@ -298,7 +298,7 @@ func TestOAuthCredentialsAreResolvedAfterClerkAuthentication(t *testing.T) {
 				w.WriteHeader(http.StatusNoContent)
 			})
 			handler := auth.RequireIdentity(nil, withOAuthCredentials(backend, next), acceptingVerifier{})
-			request := httptest.NewRequest(http.MethodPost, path, nil)
+			request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, path, nil)
 			request.Header.Set("Authorization", "Bearer clerk-session")
 			recorder := httptest.NewRecorder()
 
@@ -321,7 +321,7 @@ func TestOAuthCredentialsSkipRoutesWithoutProviderTools(t *testing.T) {
 			handler := auth.RequireIdentity(nil, withOAuthCredentials(backend, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusNoContent)
 			})), acceptingVerifier{})
-			request := httptest.NewRequest(http.MethodPost, path, nil)
+			request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, path, nil)
 			request.Header.Set("Authorization", "Bearer clerk-session")
 			recorder := httptest.NewRecorder()
 
@@ -345,7 +345,7 @@ func TestOAuthCredentialsStripUntrustedHeaderWhenDisconnected(t *testing.T) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})), acceptingVerifier{})
-	request := httptest.NewRequest(http.MethodPost, "/grocery/agui", nil)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/grocery/agui", nil)
 	request.Header.Set("Authorization", "Bearer clerk-session")
 	request.Header.Set("X-Kroger-Access-Token", "client-supplied")
 	recorder := httptest.NewRecorder()
@@ -363,7 +363,7 @@ func TestOAuthCredentialLookupFailuresStopTheRequest(t *testing.T) {
 	handler := auth.RequireIdentity(nil, withOAuthCredentials(backend, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		nextCalled = true
 	})), acceptingVerifier{})
-	request := httptest.NewRequest(http.MethodPost, "/grocery/agui", nil)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/grocery/agui", nil)
 	request.Header.Set("Authorization", "Bearer clerk-session")
 	recorder := httptest.NewRecorder()
 
@@ -394,7 +394,7 @@ func TestGatewayPresentationAGUIRoute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := httptest.NewRequest(http.MethodPost, "/presentation/agui", strings.NewReader(`{"threadId":"presentation-thread","runId":"run-1","state":{},"messages":[{"id":"m1","role":"user","content":"Build a deck"}],"tools":[],"context":[],"forwardedProps":{}}`))
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/presentation/agui", strings.NewReader(`{"threadId":"presentation-thread","runId":"run-1","state":{},"messages":[{"id":"m1","role":"user","content":"Build a deck"}],"tools":[],"context":[],"forwardedProps":{}}`))
 	request.Header.Set("Authorization", "Bearer test")
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
@@ -416,7 +416,7 @@ func TestGatewayTravelRouteUsesExistingAGUIContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := httptest.NewRequest(http.MethodGet, "/travel/agui/capabilities", nil)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/travel/agui/capabilities", nil)
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"persistentState":true`) || !strings.Contains(recorder.Body.String(), `"clientProvided":true`) {
@@ -445,7 +445,7 @@ func TestGatewayFitnessAndGroceryRoutesUseExistingAGUIContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, route := range []string{"fitness", "grocery"} {
-		request := httptest.NewRequest(http.MethodGet, "/"+route+"/agui/capabilities", nil)
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/"+route+"/agui/capabilities", nil)
 		recorder := httptest.NewRecorder()
 		handler.ServeHTTP(recorder, request)
 		if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"persistentState":true`) || !strings.Contains(recorder.Body.String(), `"clientProvided":true`) {
@@ -473,7 +473,7 @@ func TestGatewayTrendsRouteUsesExistingAGUIContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := httptest.NewRequest(http.MethodGet, "/trends/agui/capabilities", nil)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/trends/agui/capabilities", nil)
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"persistentState":true`) || !strings.Contains(recorder.Body.String(), `"clientProvided":true`) {
@@ -502,7 +502,7 @@ func TestGatewayWellnessRouteUsesExistingAGUIContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := httptest.NewRequest(http.MethodGet, "/wellness/agui/capabilities", nil)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/wellness/agui/capabilities", nil)
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"persistentState":true`) || !strings.Contains(recorder.Body.String(), `"clientProvided":true`) {
@@ -512,7 +512,7 @@ func TestGatewayWellnessRouteUsesExistingAGUIContract(t *testing.T) {
 
 func TestGatewayRootHealthChecksDatabaseWithoutCredentials(t *testing.T) {
 	h := newGateway(t)
-	req := httptest.NewRequest(http.MethodGet, "/ready", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/ready", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {
@@ -561,7 +561,7 @@ func assertRoute(t *testing.T, h http.Handler, method, path string, want int) {
 	if method == http.MethodPost {
 		body = strings.NewReader(`{"threadId":"route-test-thread"}`)
 	}
-	req := httptest.NewRequest(method, path, body)
+	req := httptest.NewRequestWithContext(t.Context(), method, path, body)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != want {
@@ -571,7 +571,7 @@ func assertRoute(t *testing.T, h http.Handler, method, path string, want int) {
 
 func assertSuggestionRoute(t *testing.T, h http.Handler, path, token string, want int) {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"threadId":"route-test-thread","runId":"route-test-run","messages":[]}`))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, path, strings.NewReader(`{"threadId":"route-test-thread","runId":"route-test-run","messages":[]}`))
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
