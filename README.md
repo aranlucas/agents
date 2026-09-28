@@ -1,58 +1,63 @@
-# Agents
+# A team of focused AI agents, behind one gateway
 
-Go [ADK](https://pkg.go.dev/google.golang.org/adk/v2) service: one gateway serving every agent over AG-UI, backed by SQLite.
+[![CI](https://github.com/aranlucas/agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/aranlucas/agents/actions/workflows/ci.yml)
+[![MIT License](https://img.shields.io/github/license/aranlucas/agents)](LICENSE)
+![Go](https://img.shields.io/badge/Go-1.27-00ADD8?logo=go&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-one_database-003B57?logo=sqlite&logoColor=white)
 
-## Development
+![Illustration of specialist AI workflows connected through one shared gateway](docs/images/readme-cover.png)
 
-Needs Go (latest stable; `mise.toml` installs it, `go.mod` sets the minimum), Make, and golangci-lint 2.13.1. No Node.js or CGO.
+*Concept artwork for the agent platform; it does not show the running application.*
 
-```sh
+
+Give each job to the agent built for it, and give every client one place to connect. This Go service hosts focused workflows for grocery planning, travel, fitness, research, job search, spreadsheets, and more through AG-UI and agent-runtime endpoints. Google's ADK powers the agents; a single SQLite database stores their sessions and application data.
+
+> “Help me plan meals for the week” goes to Grocery. “Build me a weekend itinerary” goes to Travel. The gateway handles the shared runtime and persistence around them.
+
+## One gateway, many workflows
+
+The current catalog includes agents for expense tracking, fitness, grocery planning, interviews, job search, presentations, research, spreadsheets, travel, trends, and wellness. The separate Oral Boards web app is maintained in [its own repository](https://github.com/aranlucas/oral-boards).
+
+~~~mermaid
+flowchart LR
+  Client[Web or mobile client] --> Gateway[Go gateway]
+  Gateway --> Agents[Focused ADK agents]
+  Agents --> Store[(SQLite sessions and app data)]
+  Gateway --> Health[Live and ready checks]
+~~~
+
+## Run the gateway locally
+
+Requirements: Go 1.27.1 or a compatible toolchain and Make. The `mise.toml` file pins the Go toolchain.
+
+~~~sh
 cp .env.example .env
-make dev      # serves on :8000; migrates .data/agents.db on startup
-```
+make dev
+~~~
 
-| Target | Does |
-|---|---|
-| `make check` | golangci-lint (includes govet and gofumpt) and the contracts check |
-| `make test` | race tests |
-| `make build` | `bin/agents` (static, `CGO_ENABLED=0`) |
-| `make vuln` | govulncheck |
-| `make fmt` | `golangci-lint fmt` |
-| `make contracts` | regenerates `api/contracts` and `scripts/generated-agent-routes.sh` |
+The server listens on port `8000` and applies pending SQLite migrations at startup. The database file defaults to `.data/agents.db`; set `DATABASE_PATH` in `.env` to use another path. Add the provider or service credentials needed by the workflows you want to run.
 
-CI runs `make check`, `make test`, and `make build vuln` as parallel jobs.
+| Command | Why you might use it |
+| --- | --- |
+| `make check` | Run lint and verify generated runtime contracts. |
+| `make test` | Run the Go race-enabled test suite. |
+| `make build` | Build the static gateway binary at `bin/agents`. |
+| `make vuln` | Run govulncheck against the Go packages. |
+| `make contracts` | Regenerate API contracts and agent route scripts. |
 
-## Layout
+## Find your way around
 
-- `cmd/agents` is the only deployable: `agents serve` (default) or `agents migrate`.
-- `cmd/contracts` and `cmd/evalrun` are developer tools. Eval datasets live in `internal/agents/<agent>/eval/datasets`; reports go to `artifacts/<agent>/grade_results`.
-- `internal/config` is the only package that reads the environment; `config.Keys` lists every variable.
-- `internal/app` composes the database and every agent for `internal/gateway`.
-- `internal/agents/<name>` holds each agent: expense, fitness, grocery, interview, jobs, presentation, research, spreadsheet, travel, trends, wellness.
-- `internal/storage` owns SQLite: application tables, ADK sessions (`session/database`), and ADK artifacts.
+- `cmd/agents` contains the deployable server and migration commands.
+- `internal/app` assembles configuration, persistence, and the gateway.
+- `internal/agents/<name>` contains agent workflows and their evaluations.
+- `internal/gateway` exposes AG-UI, agent-runtime, and health endpoints.
+- `internal/config` is the single reader for environment variables.
+- `internal/storage` owns SQLite tables, ADK sessions, and artifacts.
+- `migrations/sqlite` contains append-only, filename-ordered migrations.
+- `api/contracts` and `cmd/contracts` define and verify runtime-state contracts.
 
-## Persistence
+The `/live` endpoint reports process health. `/ready` checks database migrations and agent build state.
 
-One SQLite file at `DATABASE_PATH` (default `.data/agents.db`). Migrations in `migrations/sqlite` apply in file-name order at startup; they are append-only.
+## Deploy
 
-## HTTP surface
-
-Per-agent AG-UI endpoints at `/<agent>/agui`, the agent runtime, and health checks: `/live` (process) and `/ready` (migrated database and agent build state). Runtime-state contracts are Go-canonical via `cmd/contracts`.
-
-## Deployment
-
-Railway builds `cmd/agents` with Railpack, mounts a volume at `/app/.data`, and runs one replica. A push to `main` deploys only after every GitHub check on that commit passes; a skipped deploy is not retried, so fix the check and push again (or `make railway-up`).
-
-Infrastructure is code in [`.railway/railway.go`](.railway/README.md). Change it through a pull request: CI plans development and production and comments the diff; merging applies exactly that plan. Locally:
-
-```sh
-make railway-plan ENV=production
-make railway-apply ENV=production CONFIRM_DESTRUCTIVE=1   # only when removing variables
-make railway-up ENV=production                            # deploy the local checkout
-```
-
-`scripts/production-smoke.sh` checks a deployed gateway (`AGENTS_BASE_URL`, optional `SMOKE_AUTH_TOKEN`; needs bash, curl, jq).
-
-## License
-
-[MIT](LICENSE).
+Railway builds `cmd/agents` and mounts persistent storage at `/app/.data`. Infrastructure configuration is in [`.railway/`](.railway/README.md). GitHub checks must pass before the service is updated.
