@@ -42,8 +42,9 @@ type SavedListInput struct {
 }
 
 type ListPatch struct {
-	Title  *string `json:"title,omitempty"`
-	Status *string `json:"status,omitempty"`
+	Title  *string    `json:"title,omitempty"`
+	Status *string    `json:"status,omitempty"`
+	Items  *[]NewItem `json:"items,omitempty"`
 }
 
 type Recipe struct {
@@ -184,6 +185,8 @@ func (s *Store) ListPersonalLists(ctx context.Context, userID string) ([]List, e
 	return lists, nil
 }
 
+// UpdateList validates and commits canonical list fields and items in one batch.
+// A nil Items leaves the item set unchanged; an empty slice clears it.
 func (s *Store) UpdateList(ctx context.Context, userID, listID string, patch ListPatch, now time.Time) (List, error) {
 	if err := s.ready(); err != nil {
 		return List{}, err
@@ -205,17 +208,58 @@ func (s *Store) UpdateList(ctx context.Context, userID, listID string, patch Lis
 		}
 		sets, params = append(sets, "status = ?"), append(params, status)
 	}
-	if userID == "" || listID == "" || len(sets) == 0 {
+	if userID == "" || listID == "" || (len(sets) == 0 && patch.Items == nil) {
 		return List{}, ErrInvalid
 	}
-	sets, params = append(sets, "updated_at = ?"), append(params, timestamp(now))
-	params = append(params, listID, userID, userID)
-	results, err := s.db.Run(ctx, storage.Statement{
-		SQL: `UPDATE grocery_lists SET ` + strings.Join(sets, ", ") + ` WHERE id = ? AND (owner_user_id = ? OR EXISTS (
-		      SELECT 1 FROM household_members hm WHERE hm.household_id = grocery_lists.household_id AND hm.clerk_user_id = ?
-		    ))`,
+	updatedAt := timestamp(now)
+	var items []Item
+	if patch.Items != nil {
+		if len(*patch.Items) > maxBatchItems {
+			return List{}, ErrInvalid
+		}
+		items = make([]Item, 0, len(*patch.Items))
+		for position, raw := range *patch.Items {
+			item, err := s.newListItem(listID, userID, raw, position, updatedAt)
+			if err != nil {
+				return List{}, err
+			}
+			items = append(items, item)
+		}
+	}
+	// Repeat the same authorization predicate in every write, inside the
+	// transaction, so a failed authorization can never delete or insert items.
+	accessSQL := `SELECT gl.id FROM grocery_lists gl WHERE gl.id = ? AND (gl.owner_user_id = ? OR EXISTS (
+	      SELECT 1 FROM household_members hm WHERE hm.household_id = gl.household_id AND hm.clerk_user_id = ?
+	    ))`
+	accessParams := []any{listID, userID, userID}
+	sets, params = append(sets, "updated_at = ?"), append(params, updatedAt)
+	params = append(params, accessParams...)
+	statements := []storage.Statement{{
+		SQL:    `UPDATE grocery_lists SET ` + strings.Join(sets, ", ") + ` WHERE id IN (` + accessSQL + `)`,
 		Params: params,
-	})
+	}}
+	if patch.Items != nil {
+		statements = append(statements,
+			storage.Statement{SQL: `DELETE FROM grocery_list_item_upcs WHERE item_id IN (SELECT id FROM grocery_list_items WHERE list_id IN (` + accessSQL + `))`, Params: accessParams},
+			storage.Statement{SQL: `DELETE FROM grocery_list_item_product_refs WHERE item_id IN (SELECT id FROM grocery_list_items WHERE list_id IN (` + accessSQL + `))`, Params: accessParams},
+			storage.Statement{SQL: `DELETE FROM grocery_list_items WHERE list_id IN (` + accessSQL + `)`, Params: accessParams},
+		)
+		for _, item := range items {
+			statements = append(statements, storage.Statement{
+				SQL: `INSERT INTO grocery_list_items (id, list_id, name, quantity, note, position, added_by, checked_by, checked_at, updated_at)
+				      SELECT ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ? WHERE EXISTS (` + accessSQL + `)`,
+				Params: append([]any{item.ID, listID, item.Name, item.Quantity, nullableString(item.Note), item.Position, userID, updatedAt}, accessParams...),
+			})
+			if item.Product != nil {
+				statements = append(statements, storage.Statement{
+					SQL: `INSERT INTO grocery_list_item_product_refs (item_id, provider, product_id)
+					      SELECT ?, ?, ? WHERE EXISTS (` + accessSQL + `)`,
+					Params: append([]any{item.ID, item.Product.Provider, item.Product.ID}, accessParams...),
+				})
+			}
+		}
+	}
+	results, err := s.db.Run(ctx, statements...)
 	if err != nil {
 		return List{}, fmt.Errorf("update grocery list: %w", err)
 	}
@@ -226,44 +270,7 @@ func (s *Store) UpdateList(ctx context.Context, userID, listID string, patch Lis
 }
 
 func (s *Store) ReplaceListItems(ctx context.Context, userID, listID string, inputs []NewItem, now time.Time) (List, error) {
-	if err := s.ready(); err != nil {
-		return List{}, err
-	}
-	userID, listID = strings.TrimSpace(userID), strings.TrimSpace(listID)
-	if userID == "" || listID == "" || len(inputs) > maxBatchItems {
-		return List{}, ErrInvalid
-	}
-	allowed, err := s.CanAccessList(ctx, userID, listID)
-	if err != nil {
-		return List{}, err
-	}
-	if !allowed {
-		return List{}, ErrNotFound
-	}
-	updatedAt := timestamp(now)
-	statements := []storage.Statement{
-		{SQL: `DELETE FROM grocery_list_item_upcs WHERE item_id IN (SELECT id FROM grocery_list_items WHERE list_id = ?)`, Params: []any{listID}},
-		{SQL: `DELETE FROM grocery_list_item_product_refs WHERE item_id IN (SELECT id FROM grocery_list_items WHERE list_id = ?)`, Params: []any{listID}},
-		{SQL: `DELETE FROM grocery_list_items WHERE list_id = ?`, Params: []any{listID}},
-	}
-	for position, raw := range inputs {
-		item, itemErr := s.newListItem(listID, userID, raw, position, updatedAt)
-		if itemErr != nil {
-			return List{}, itemErr
-		}
-		statements = append(statements, storage.Statement{
-			SQL:    `INSERT INTO grocery_list_items (id, list_id, name, quantity, note, position, added_by, checked_by, checked_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?)`,
-			Params: []any{item.ID, listID, item.Name, item.Quantity, nullableString(item.Note), position, userID, updatedAt},
-		})
-		if stmt := productReferenceStatement(item.ID, item.Product); stmt != nil {
-			statements = append(statements, *stmt)
-		}
-	}
-	statements = append(statements, storage.Statement{SQL: `UPDATE grocery_lists SET updated_at = ? WHERE id = ?`, Params: []any{updatedAt, listID}})
-	if _, err := s.db.Run(ctx, statements...); err != nil {
-		return List{}, fmt.Errorf("replace grocery list items: %w", err)
-	}
-	return s.refreshListSnapshot(ctx, userID, listID, now)
+	return s.UpdateList(ctx, userID, listID, ListPatch{Items: &inputs}, now)
 }
 
 func (s *Store) SaveRecipe(ctx context.Context, userID string, input SavedRecipeInput, now time.Time) (Recipe, error) {
