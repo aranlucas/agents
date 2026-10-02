@@ -41,7 +41,10 @@ func (s *SessionService) BeginActiveRun(ctx context.Context, key agui.ActiveRunK
 	if err != nil {
 		return fmt.Errorf("begin AG-UI active run: %w", err)
 	}
-	if len(results) != 3 || len(results[2].Rows) != 1 {
+	// Matching a client-supplied run ID is not proof of ownership: another
+	// runtime may already own that ID. Only the caller that inserted the row
+	// can start execution. Idempotent retries belong on the replay path.
+	if len(results) != 3 || results[1].Meta.Changes != 1 || len(results[2].Rows) != 1 {
 		return agui.ErrActiveRunExists
 	}
 	var row activeRunRow

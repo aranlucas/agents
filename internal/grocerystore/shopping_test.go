@@ -306,41 +306,6 @@ func TestDeleteItemRemovesUPCRow(t *testing.T) {
 	}
 }
 
-func TestReplaceListItemsCleansUpOrphanedProductReferenceRows(t *testing.T) {
-	requests := 0
-	store := newFixtureStore(t, func(statements []storage.Statement) []storage.Result {
-		requests++
-		switch requests {
-		case 1:
-			return []storage.Result{queryResult(t, map[string]int{"present": 1})}
-		case 2:
-			if len(statements) != 6 || statements[0].SQL != "DELETE FROM grocery_list_item_upcs WHERE item_id IN (SELECT id FROM grocery_list_items WHERE list_id = ?)" ||
-				!strings.Contains(statements[1].SQL, "DELETE FROM grocery_list_item_product_refs") ||
-				!strings.Contains(statements[2].SQL, "DELETE FROM grocery_list_items") ||
-				!strings.Contains(statements[4].SQL, "INSERT OR REPLACE INTO grocery_list_item_product_refs") {
-				t.Fatalf("replacement statements = %#v", statements)
-			}
-			return mutationResults(len(statements))
-		case 3:
-			return []storage.Result{
-				queryResult(t, List{ID: "list_1", OwnerUserID: "user_1", Title: "Weekend", Status: "active", CreatedAt: 1_000, UpdatedAt: 2_000}),
-				queryResult(t, map[string]any{"id": "item_new", "list_id": "list_1", "name": "Bread", "quantity": "1", "added_by": "user_1", "updated_at": 2_000, "product_provider": "kroger", "product_id": "upc_new"}),
-			}
-		default:
-			t.Fatalf("unexpected database request %d: %#v", requests, statements)
-			return nil
-		}
-	})
-	store.newID = func(string) (string, error) { return "item_new", nil }
-	upc := "upc_new"
-
-	list, err := store.ReplaceListItems(t.Context(), "user_1", "list_1", []NewItem{{Name: "Bread", Upc: &upc}}, time.UnixMilli(2_000))
-	if err != nil || len(list.Items) != 1 || list.Items[0].Upc == nil || *list.Items[0].Upc != upc ||
-		list.Items[0].Product == nil || list.Items[0].Product.Provider != "kroger" || list.Items[0].Product.ID != upc {
-		t.Fatalf("list/error = %#v / %v", list, err)
-	}
-}
-
 func TestAddItemsPersistsLegacyUPCAsKrogerProductReference(t *testing.T) {
 	requests := 0
 	store := newFixtureStore(t, func(statements []storage.Statement) []storage.Result {

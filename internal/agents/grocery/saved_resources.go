@@ -165,21 +165,11 @@ func (saved SavedResources) UpdateSavedList(ctx agent.Context, input UpdateSaved
 	if userID == "" || listID == "" || (input.Title == nil && input.Items == nil) {
 		return savedListFailure("invalid_saved_list", "provide a saved list id and at least one title or item change"), nil
 	}
-	var (
-		list grocerystore.List
-		err  error
-	)
-	if input.Title != nil {
-		list, err = saved.Repository.UpdateList(ctx, userID, listID, grocerystore.ListPatch{Title: input.Title}, saved.currentTime())
-		if err != nil {
-			return savedListRepositoryFailure(err), nil
-		}
-	}
-	if input.Items != nil {
-		list, err = saved.Repository.ReplaceListItems(ctx, userID, listID, *input.Items, saved.currentTime())
-		if err != nil {
-			return savedListRepositoryFailure(err), nil
-		}
+	list, err := saved.Repository.UpdateList(ctx, userID, listID, grocerystore.ListPatch{
+		Title: input.Title, Items: input.Items,
+	}, saved.currentTime())
+	if err != nil {
+		return savedListRepositoryFailure(err), nil
 	}
 	return SavedListsResult{List: &list}, nil
 }

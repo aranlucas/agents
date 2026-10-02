@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/aranlucas/agents/internal/grocerystore"
+	"github.com/aranlucas/agents/internal/storage"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/session"
 )
@@ -101,19 +102,20 @@ func TestUpdateSavedListCanExplicitlyClearAllItems(t *testing.T) {
 	if err != nil || result.Error != nil || result.List == nil {
 		t.Fatalf("result/error = %#v / %v", result, err)
 	}
-	if repository.replacedListID != "list_1" || repository.replacedItems == nil || len(repository.replacedItems) != 0 {
-		t.Fatalf("replacement = list %q items %#v", repository.replacedListID, repository.replacedItems)
+	if repository.updatedListID != "list_1" || repository.listPatch.Items == nil || len(*repository.listPatch.Items) != 0 {
+		t.Fatalf("replacement = list %q items %#v", repository.updatedListID, repository.listPatch.Items)
 	}
 }
 
 type savedResourcesRepository struct {
 	grocerystore.LibraryRepository
-	listInput      grocerystore.SavedListInput
-	recipeUserID   string
-	recipeInput    grocerystore.SavedRecipeInput
-	replacedListID string
-	replacedItems  []grocerystore.NewItem
-	households     []grocerystore.Household
+	listInput     grocerystore.SavedListInput
+	recipeUserID  string
+	recipeInput   grocerystore.SavedRecipeInput
+	updatedListID string
+	listPatch     grocerystore.ListPatch
+	updateCalls   int
+	households    []grocerystore.Household
 }
 
 func (r *savedResourcesRepository) ListHouseholds(context.Context, string) ([]grocerystore.Household, error) {
@@ -130,10 +132,27 @@ func (r *savedResourcesRepository) SaveRecipe(_ context.Context, userID string, 
 	return grocerystore.Recipe{ID: "recipe_1", OwnerUserID: userID, Title: input.Title, Status: "active", CreatedAt: now.UnixMilli(), UpdatedAt: now.UnixMilli()}, nil
 }
 
-func (r *savedResourcesRepository) ReplaceListItems(_ context.Context, _ string, listID string, items []grocerystore.NewItem, now time.Time) (grocerystore.List, error) {
-	r.replacedListID = listID
-	r.replacedItems = append([]grocerystore.NewItem{}, items...)
+func (r *savedResourcesRepository) UpdateList(_ context.Context, _ string, listID string, patch grocerystore.ListPatch, now time.Time) (grocerystore.List, error) {
+	r.updatedListID = listID
+	r.listPatch = patch
+	r.updateCalls++
 	return grocerystore.List{ID: listID, OwnerUserID: "user_1", Title: "Weekend", Status: "active", UpdatedAt: now.UnixMilli(), Items: []grocerystore.Item{}}, nil
+}
+
+func TestUpdateSavedListSendsTitleAndItemsAsOneEdit(t *testing.T) {
+	repository := &savedResourcesRepository{}
+	title := "New title"
+	items := []grocerystore.NewItem{{Name: "Bread"}}
+	result, err := (SavedResources{Repository: repository}).UpdateSavedList(
+		newSavedResourceContext(t, "user_1", mutableGroceryState{}),
+		UpdateSavedListArgs{ID: "list_1", Title: &title, Items: &items},
+	)
+	if err != nil || result.Error != nil || result.List == nil {
+		t.Fatalf("result/error = %#v / %v", result, err)
+	}
+	if repository.updateCalls != 1 || repository.updatedListID != "list_1" || repository.listPatch.Title != &title || repository.listPatch.Items != &items {
+		t.Fatalf("repository edit = %#v", repository)
+	}
 }
 
 type mutableGroceryState map[string]any
@@ -175,3 +194,34 @@ func newSavedResourceContext(t *testing.T, userID string, state mutableGrocerySt
 func (ctx *savedResourceContext) UserID() string                       { return ctx.userID }
 func (ctx *savedResourceContext) State() session.State                 { return ctx.state }
 func (ctx *savedResourceContext) ReadonlyState() session.ReadonlyState { return ctx.state }
+
+func TestUpdateSavedListInvalidItemsDoNotRenamePersistedList(t *testing.T) {
+	db, err := storage.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	if err := db.Migrate(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Run(t.Context(), storage.Statement{
+		SQL: `INSERT INTO grocery_lists (id, owner_user_id, title, status, created_at, updated_at)
+		      VALUES ('list_1', 'user_1', 'Original', 'active', 1000, 1000)`,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	repository := grocerystore.NewStore(db)
+	title := "New title"
+	items := []grocerystore.NewItem{{Name: ""}}
+	result, err := (SavedResources{Repository: repository}).UpdateSavedList(
+		newSavedResourceContext(t, "user_1", mutableGroceryState{}),
+		UpdateSavedListArgs{ID: "list_1", Title: &title, Items: &items},
+	)
+	if err != nil || result.Error == nil || result.Error.Code != "invalid_saved_list" {
+		t.Fatalf("tool result/error = %#v / %v", result, err)
+	}
+	list, err := repository.GetList(t.Context(), "user_1", "list_1")
+	if err != nil || list.Title != "Original" || list.UpdatedAt != 1000 {
+		t.Fatalf("invalid tool edit changed persisted list: %#v, %v", list, err)
+	}
+}
