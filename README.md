@@ -58,6 +58,8 @@ The server listens on port `8000` and applies pending SQLite migrations at start
 
 The `/live` endpoint reports process health. `/ready` checks database migrations and agent build state.
 
+See [ADK runtime choices](docs/adk-runtime.md) for the pinned upstream revision, provider APIs, conversation compaction, and MCP tracing and connection lifetime.
+
 ## Deploy
 
 Railway builds `cmd/agents` and mounts persistent storage at `/app/.data`. Infrastructure configuration is in [`.railway/`](.railway/README.md). GitHub checks must pass before the service is updated.

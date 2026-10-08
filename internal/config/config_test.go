@@ -31,6 +31,18 @@ func TestLoadNormalizesHTTPAndProviderConfiguration(t *testing.T) {
 	}
 }
 
+func TestProviderAPIsAreSharedByGatewayAndEval(t *testing.T) {
+	providers := LoadProviders(func(string) string { return "fixture-key" })
+	for name, api := range map[string]ModelAPI{
+		"groq": ResponsesAPI, "nvidia": ChatCompletionsAPI,
+		"mistral": ChatCompletionsAPI, "openrouter": ChatCompletionsAPI,
+	} {
+		if providers[name].API != api {
+			t.Errorf("%s API = %q, want %q", name, providers[name].API, api)
+		}
+	}
+}
+
 func TestLoadAcceptsWildcardOrigin(t *testing.T) {
 	env := requiredEnv()
 	env["ALLOWED_ORIGINS"] = "*"

@@ -67,6 +67,7 @@ var Keys = []Key{
 type Provider struct {
 	Name              string
 	BaseURL           string
+	API               ModelAPI
 	APIKey            string
 	Model             string
 	ReasoningEffort   string
@@ -76,6 +77,14 @@ type Provider struct {
 	// Zero preserves the normal request deadline.
 	FirstContentTimeout time.Duration
 }
+
+// ModelAPI selects the provider's OpenAI-compatible HTTP surface.
+type ModelAPI string
+
+const (
+	ResponsesAPI       ModelAPI = "responses"
+	ChatCompletionsAPI ModelAPI = "chat_completions"
+)
 
 // HTTP contains listener and browser-origin policy.
 type HTTP struct {
@@ -126,13 +135,14 @@ type Config struct {
 
 type providerEnv struct {
 	name, key, baseURL string
+	api                ModelAPI
 }
 
 var providerEnvs = []providerEnv{
-	{name: "groq", key: "GROQ_API_KEY", baseURL: "https://api.groq.com/openai/v1"},
-	{name: "nvidia", key: "NVIDIA_NIM_API_KEY", baseURL: "https://integrate.api.nvidia.com/v1"},
-	{name: "mistral", key: "MISTRAL_API_KEY", baseURL: "https://api.mistral.ai/v1"},
-	{name: "openrouter", key: "OPENROUTER_API_KEY", baseURL: "https://openrouter.ai/api/v1"},
+	{name: "groq", key: "GROQ_API_KEY", baseURL: "https://api.groq.com/openai/v1", api: ResponsesAPI},
+	{name: "nvidia", key: "NVIDIA_NIM_API_KEY", baseURL: "https://integrate.api.nvidia.com/v1", api: ChatCompletionsAPI},
+	{name: "mistral", key: "MISTRAL_API_KEY", baseURL: "https://api.mistral.ai/v1", api: ChatCompletionsAPI},
+	{name: "openrouter", key: "OPENROUTER_API_KEY", baseURL: "https://openrouter.ai/api/v1", api: ChatCompletionsAPI},
 }
 
 // Load reads and validates the gateway's configuration. Production requires
@@ -254,7 +264,7 @@ func LoadProviders(getenv func(string) string) map[string]Provider {
 	}
 	for _, item := range providerEnvs {
 		if key := env(getenv, item.key); key != "" {
-			providers[item.name] = Provider{Name: item.name, BaseURL: item.baseURL, APIKey: key}
+			providers[item.name] = Provider{Name: item.name, BaseURL: item.baseURL, API: item.api, APIKey: key}
 		}
 	}
 	return providers

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/aranlucas/agents/internal/common"
+	"github.com/aranlucas/agents/internal/mcpruntime"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/session"
@@ -79,7 +80,12 @@ func (k *Kroger) Tools(ctx agent.ReadonlyContext) ([]tool.Tool, error) {
 		base = http.DefaultTransport
 	}
 	client.Transport = &bearerTransport{base: base, token: token, origin: parsed}
-	inner, err := mcptoolset.New(mcptoolset.Config{Transport: &mcp.StreamableClientTransport{Endpoint: parsed.String(), HTTPClient: &client, MaxRetries: 2, DisableStandaloneSSE: true}})
+	inner, err := mcpruntime.Toolset(ctx, "kroger:"+parsed.String()+":"+token, func() (tool.Toolset, error) {
+		return mcptoolset.New(mcptoolset.Config{
+			Transport:        &mcp.StreamableClientTransport{Endpoint: parsed.String(), HTTPClient: &client, MaxRetries: 2, DisableStandaloneSSE: true},
+			MetadataProvider: mcpruntime.Metadata,
+		})
+	})
 	if err != nil {
 		return nil, err
 	}

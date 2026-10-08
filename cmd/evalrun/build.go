@@ -32,6 +32,14 @@ type Built struct {
 	Agent         agent.Agent
 	StateDefaults func() map[string]any
 	Notes         []string
+	close         func() error
+}
+
+func (b Built) Close() error {
+	if b.close != nil {
+		return b.close()
+	}
+	return nil
 }
 
 func newModel(providers map[string]config.Provider, policy providerpolicy.Policy, notes *[]string) (*openai.Model, error) {
@@ -81,8 +89,12 @@ func buildAgent(ctx context.Context, name string, providers map[string]config.Pr
 		if err != nil {
 			return Built{}, err
 		}
-		built, err := travel.New(m, travel.NewTRVL(integrations.TRVLMCPURL, &http.Client{Timeout: 20 * time.Second}))
-		return Built{Name: name, Agent: built, StateDefaults: travel.StateDefaults, Notes: notes}, err
+		trvl := travel.NewTRVL(integrations.TRVLMCPURL, &http.Client{Timeout: 20 * time.Second})
+		built, err := travel.New(m, trvl)
+		if err != nil {
+			_ = trvl.Close()
+		}
+		return Built{Name: name, Agent: built, StateDefaults: travel.StateDefaults, Notes: notes, close: trvl.Close}, err
 
 	case "interview":
 		m, err := newAgentModel(providers, providerpolicy.Career, &notes)

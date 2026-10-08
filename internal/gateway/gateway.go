@@ -27,6 +27,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"google.golang.org/adk/v2/session"
+	"google.golang.org/adk/v2/session/compaction"
 )
 
 const healthCheckTimeout = 3 * time.Second
@@ -56,10 +57,11 @@ func (timer *startupTimer) mark(phase string) {
 // Production values are built in main(); tests supply fakes so route
 // composition can be exercised without a database or a real model provider.
 type Dependencies struct {
-	Registry *agentruntime.Registry
-	Sessions session.Service
-	Pending  agui.PendingTools
-	Verifier auth.TokenVerifier
+	Compaction *compaction.Config
+	Registry   *agentruntime.Registry
+	Sessions   session.Service
+	Pending    agui.PendingTools
+	Verifier   auth.TokenVerifier
 	// Database gates /ready on the migrated schema.
 	Database common.HealthChecker
 	Stream   agui.StreamSmoothing
@@ -99,6 +101,7 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 		deps.Sessions,
 		frontendAgentID,
 		agui.WithPendingTools(deps.Pending),
+		agui.WithContextCompaction(deps.Compaction),
 		agui.WithTextStreamSmoothing(stream.Enabled, stream.Chunking, stream.ChunkDelay, stream.CharsPerChunk),
 	)
 	if err != nil {
@@ -338,6 +341,11 @@ func Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err := specialists.Close(); err != nil {
+			log.Printf("close specialist MCP connections: %v", err)
+		}
+	}()
 	registry, err := specialists.Registry()
 	if err != nil {
 		return fmt.Errorf("build agent registry: %w", err)
@@ -357,7 +365,8 @@ func Run(ctx context.Context) error {
 		}
 	}
 	handler, err := New(cfg, Dependencies{
-		Registry: registry, Sessions: rt.Sessions, Pending: rt.Pending, Verifier: verifier,
+		Compaction: agentruntime.DefaultCompaction(),
+		Registry:   registry, Sessions: rt.Sessions, Pending: rt.Pending, Verifier: verifier,
 		Database: rt.DB, Clerk: clerkBackend,
 		Stream: agui.StreamSmoothingFromEnv(os.Getenv), Now: time.Now,
 	})

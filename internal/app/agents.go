@@ -35,6 +35,15 @@ import (
 // when the process stops.
 type Specialists struct {
 	bootstrap.Specialists
+	close func() error
+}
+
+// Close releases the shared MCP connection after gateway requests finish.
+func (s *Specialists) Close() error {
+	if s.close != nil {
+		return s.close()
+	}
+	return nil
 }
 
 // BuildSpecialists builds every agent concurrently. The toolsets (for example
@@ -46,6 +55,13 @@ func BuildSpecialists(ctx context.Context, rt *Runtime, toolsets ...tool.Toolset
 	jobsWebLoader := common.NewWebLoader(common.NewHTTPClient(20*time.Second, 4<<20), 100_000)
 	webLoader := common.NewWebLoader(common.NewHTTPClient(20*time.Second, 4<<20), 100_000)
 	krogerClient := grocery.NewKroger(common.NewHTTPClient(30*time.Second, 8<<20).Client, integrations.KrogerMCPURL)
+	trvl := travel.NewTRVL(integrations.TRVLMCPURL, common.NewHTTPClient(20*time.Second, 8<<20).Client)
+	complete := false
+	defer func() {
+		if !complete {
+			_ = trvl.Close()
+		}
+	}()
 
 	// Jobs and interview share one model for their longer conversations.
 	careerProvider, err := providerpolicy.ResolveAgent(cfg.Providers, providerpolicy.Career)
@@ -120,7 +136,6 @@ func BuildSpecialists(ctx context.Context, rt *Runtime, toolsets ...tool.Toolset
 		if err != nil {
 			return err
 		}
-		trvl := travel.NewTRVL(integrations.TRVLMCPURL, common.NewHTTPClient(20*time.Second, 8<<20).Client)
 		travelAgent, err = travel.New(m, append(append([]tool.Toolset{}, toolsets...), trvl)...)
 		return err
 	})
@@ -168,7 +183,7 @@ func BuildSpecialists(ctx context.Context, rt *Runtime, toolsets ...tool.Toolset
 		return err
 	})
 	err = builds.Wait()
-	result := &Specialists{}
+	result := &Specialists{close: trvl.Close}
 	if err != nil {
 		return nil, err
 	}
@@ -189,6 +204,7 @@ func BuildSpecialists(ctx context.Context, rt *Runtime, toolsets ...tool.Toolset
 		Spreadsheet:  bootstrap.Binding{Agent: spreadsheetAgent, StateDefaults: spreadsheet.StateDefaults},
 		Presentation: bootstrap.Binding{Agent: presentationAgent, StateDefaults: presentation.StateDefaults},
 	}
+	complete = true
 	return result, nil
 }
 

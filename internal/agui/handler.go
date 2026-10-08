@@ -24,16 +24,24 @@ import (
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"google.golang.org/adk/v2/runner"
 	"google.golang.org/adk/v2/session"
+	"google.golang.org/adk/v2/session/compaction"
 )
 
 // Option configures an ADKHandler.
 type Option func(*handlerConfig)
 
 type handlerConfig struct {
-	pending   PendingTools
-	ids       events.IDGenerator
-	smoothing streamSmoothing
-	active    *activeRuns
+	compaction *compaction.Config
+	pending    PendingTools
+	ids        events.IDGenerator
+	smoothing  streamSmoothing
+	active     *activeRuns
+}
+
+// WithContextCompaction enables ADK summarization for durable conversations.
+// Stateless suggestions do not retain history and always disable compaction.
+func WithContextCompaction(cfg *compaction.Config) Option {
+	return func(c *handlerConfig) { c.compaction = cfg }
 }
 
 // WithPendingTools wires the SQLite-backed pending client-tool store used to
@@ -200,10 +208,6 @@ func newEntryHandler(entry agentruntime.Entry, sessions session.Service, statele
 	if err != nil {
 		return nil, err
 	}
-	rn, err := runner.New(runner.Config{AppName: entry.AppName, Agent: entry.Agent, SessionService: sessions, AutoCreateSession: true})
-	if err != nil {
-		return nil, fmt.Errorf("create ADK runner: %w", err)
-	}
 	cfg := &handlerConfig{ids: events.NewDefaultIDGenerator(), smoothing: defaultStreamSmoothing}
 	if stateless {
 		// Suggestions and the homepage introduction should arrive at provider
@@ -213,6 +217,13 @@ func newEntryHandler(entry agentruntime.Entry, sessions session.Service, statele
 	}
 	for _, opt := range opts {
 		opt(cfg)
+	}
+	if stateless {
+		cfg.compaction = nil
+	}
+	rn, err := runner.New(runner.Config{AppName: entry.AppName, Agent: entry.Agent, SessionService: sessions, AutoCreateSession: true, Compaction: cfg.compaction})
+	if err != nil {
+		return nil, fmt.Errorf("create ADK runner: %w", err)
 	}
 	return &ADKHandler{
 		entry: entry, runner: rn, sessions: sessions, stateless: stateless,

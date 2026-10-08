@@ -700,7 +700,7 @@ func runShoppingAgent(t *testing.T, built agent.Agent, captured *captureShopping
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, runErr := range run.Run(t.Context(), "user_1", "thread_1", genai.NewContentFromText("show my pantry", genai.RoleUser), agent.RunConfig{}) {
+	for _, runErr := range run.Run(scopedMCPContext(t), "user_1", "thread_1", genai.NewContentFromText("show my pantry", genai.RoleUser), agent.RunConfig{}) {
 		if runErr != nil {
 			t.Fatal(runErr)
 		}
@@ -732,7 +732,7 @@ func runShoppingTaskAgent(t *testing.T, task agent.Agent, captured *captureShopp
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, runErr := range run.Run(t.Context(), "user_1", "thread_1", genai.NewContentFromText("show my pantry", genai.RoleUser), agent.RunConfig{}) {
+	for _, runErr := range run.Run(scopedMCPContext(t), "user_1", "thread_1", genai.NewContentFromText("show my pantry", genai.RoleUser), agent.RunConfig{}) {
 		if runErr != nil {
 			t.Fatal(runErr)
 		}

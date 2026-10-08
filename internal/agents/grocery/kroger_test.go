@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/aranlucas/agents/internal/mcpruntime"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
@@ -39,9 +40,15 @@ func TestKrogerMCPUsesOnlyRequestScopedToken(t *testing.T) {
 	}))
 	t.Cleanup(httpServer.Close)
 	kroger := NewKroger(httpServer.Client(), httpServer.URL)
+	ctx, closeMCP := mcpruntime.WithScope(t.Context())
+	t.Cleanup(func() {
+		if err := closeMCP(); err != nil {
+			t.Error(err)
+		}
+	})
 	for _, token := range []string{"token-a", "token-b"} {
 		state := groceryState{"temp:kroger_token": token}
-		tools, err := kroger.Tools(groceryReadonlyContext{Context: t.Context(), state: state})
+		tools, err := kroger.Tools(groceryReadonlyContext{Context: ctx, state: state})
 		if err != nil || len(tools) != 1 || tools[0].Name() != "get_weekly_deals" {
 			t.Fatalf("Tools(%s) = %#v, %v", token, tools, err)
 		}
@@ -137,9 +144,10 @@ func TestKrogerMCPFiltersSupersededInventoryAndProfileTools(t *testing.T) {
 	handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return server }, &mcp.StreamableHTTPOptions{JSONResponse: true})
 	httpServer := httptest.NewServer(handler)
 	t.Cleanup(httpServer.Close)
+	ctx := scopedMCPContext(t)
 
 	tools, err := NewKroger(httpServer.Client(), httpServer.URL).withNativeShopping(true).Tools(groceryReadonlyContext{
-		Context: t.Context(), state: groceryState{"temp:kroger_token": "token"},
+		Context: ctx, state: groceryState{"temp:kroger_token": "token"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -152,6 +160,17 @@ func TestKrogerMCPFiltersSupersededInventoryAndProfileTools(t *testing.T) {
 type groceryReadonlyContext struct {
 	context.Context
 	state session.ReadonlyState
+}
+
+func scopedMCPContext(t *testing.T) context.Context {
+	t.Helper()
+	ctx, closeRun := mcpruntime.WithScope(t.Context())
+	t.Cleanup(func() {
+		if err := closeRun(); err != nil {
+			t.Error(err)
+		}
+	})
+	return ctx
 }
 
 type groceryState map[string]any
