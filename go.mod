@@ -19,7 +19,7 @@ require (
 	golang.org/x/net v0.59.0
 	google.golang.org/adk/v2 v2.5.0
 	google.golang.org/api v0.299.0
-	google.golang.org/genai v1.71.0
+	google.golang.org/genai v1.72.0
 	gorm.io/gorm v1.31.2
 )
 
