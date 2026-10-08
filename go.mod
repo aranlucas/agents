@@ -21,7 +21,7 @@ require (
 	golang.org/x/net v0.59.0
 	golang.org/x/sync v0.23.0
 	google.golang.org/adk/v2 v2.5.1-0.20261008104020-49904c0d856e
-	google.golang.org/api v0.299.0
+	google.golang.org/api v0.300.0
 	google.golang.org/genai v1.72.0
 	gorm.io/gorm v1.31.2
 )
