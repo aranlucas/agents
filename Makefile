@@ -6,7 +6,7 @@ TEST_FLAGS ?= -parallel=2
 LINT_FLAGS ?= --concurrency=2
 endif
 
-.PHONY: check test build vuln fmt contracts dev railway-link railway-plan railway-apply railway-up
+.PHONY: check test build vuln fmt contracts dev recall railway-link railway-plan railway-apply railway-up
 
 # Railway environment for the railway-* targets: development or production.
 ENV ?= development
@@ -35,6 +35,10 @@ contracts:
 
 dev:
 	go run ./cmd/agents
+
+# Live provider evaluation; uses synthetic facts and writes artifacts/recall.
+recall:
+	go run ./cmd/evalrun -recall $(RECALL_FLAGS)
 
 RAILWAY := railway
 

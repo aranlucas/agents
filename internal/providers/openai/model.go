@@ -148,11 +148,20 @@ func newModel(providers []config.Provider, httpClient *http.Client, limiter Limi
 	}
 	pcs := make([]providerClient, len(providers))
 	for i, p := range providers {
+		api := openaimodel.APIResponses
+		if p.API == config.ChatCompletionsAPI {
+			api = openaimodel.APIChatCompletions
+		}
 		options := []option.RequestOption{option.WithMaxRetries(0)}
 		if p.ReasoningEffort != "" {
-			options = append(options, option.WithJSONSet("reasoning.effort", p.ReasoningEffort))
+			field := "reasoning.effort"
+			if api == openaimodel.APIChatCompletions {
+				field = "reasoning_effort"
+			}
+			options = append(options, option.WithJSONSet(field, p.ReasoningEffort))
 		}
 		llm, err := openaimodel.NewModel(context.Background(), p.Model, &openaimodel.ClientConfig{
+			API:        api,
 			APIKey:     p.APIKey,
 			BaseURL:    p.BaseURL,
 			HTTPClient: httpClient,
@@ -323,6 +332,7 @@ func providerError(provider, modelName string, err error) error {
 	}
 	switch {
 	case errors.Is(err, openaimodel.ErrEmptyResponse),
+		errors.Is(err, openaimodel.ErrNoChoices),
 		errors.Is(err, openaimodel.ErrNoOutputItems),
 		errors.Is(err, openaimodel.ErrNoTextOrToolContent):
 		return &ProviderError{Provider: provider, Model: modelName, Retryable: true, Kind: ProviderErrorEmptyResponse, cause: err}
@@ -377,6 +387,9 @@ func sanitizeRequest(req *model.LLMRequest, modelName string) *model.LLMRequest 
 }
 
 func validateProvider(provider config.Provider) error {
+	if provider.API != "" && provider.API != config.ResponsesAPI && provider.API != config.ChatCompletionsAPI {
+		return &ProviderError{Provider: provider.Name, Model: provider.Model, Kind: ProviderErrorConfiguration}
+	}
 	parsed, err := url.Parse(provider.BaseURL)
 	if err != nil || parsed.Host == "" {
 		return &ProviderError{Provider: provider.Name, Model: provider.Model, Kind: ProviderErrorConfiguration}

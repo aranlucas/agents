@@ -14,7 +14,6 @@ import (
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/tool"
 	"google.golang.org/adk/v2/tool/functiontool"
-	"google.golang.org/genai"
 )
 
 type LoadPageArgs struct {
@@ -67,7 +66,7 @@ func newAgent(m model.LLM, kroger *Kroger, search *bravesearch.Client, loader *c
 	if nativeShopping {
 		instruction = strings.TrimSpace(instruction) + "\n\n" + nativeShoppingInstruction
 	}
-	config := llmagent.Config{Name: AppName, Description: "Meal planning, pantry, shopping list, and cart support.", Instruction: instruction, Model: m, Mode: mode, Tools: tools, Toolsets: toolsets, BeforeModelCallbacks: []llmagent.BeforeModelCallback{compactGroceryContext}}
+	config := llmagent.Config{Name: AppName, Description: "Meal planning, pantry, shopping list, and cart support.", Instruction: instruction, Model: m, Mode: mode, Tools: tools, Toolsets: toolsets, BeforeModelCallbacks: []llmagent.BeforeModelCallback{validateGroceryContext}}
 	if nativeShopping {
 		config.BeforeAgentCallbacks = []agent.BeforeAgentCallback{hydrateShoppingProfileState(shoppingRepository)}
 	}
@@ -208,38 +207,16 @@ const nativeShoppingInstruction = "" +
 	"limited to live product, store, cart, and weekly-deal operations; do not use a " +
 	"Kroger inventory, profile, meal-planning, or order-history tool."
 
-func compactGroceryContext(_ agent.Context, request *model.LLMRequest) (*model.LLMResponse, error) {
-	const maxContents, maxBytes = 40, 512 << 10
-	start := max(0, len(request.Contents)-maxContents)
-	for start < len(request.Contents)-1 && !safeContextBoundary(request.Contents[start]) {
-		start++
+// ADK's runner owns history compaction. Keep a byte limit for oversized
+// context without silently dropping user constraints in this callback.
+func validateGroceryContext(_ agent.Context, request *model.LLMRequest) (*model.LLMResponse, error) {
+	const maxBytes = 512 << 10
+	encoded, err := json.Marshal(request.Contents)
+	if err != nil {
+		return nil, err
 	}
-	request.Contents = request.Contents[start:]
-	for len(request.Contents) > 1 {
-		encoded, _ := json.Marshal(request.Contents)
-		if len(encoded) <= maxBytes {
-			break
-		}
-		request.Contents = request.Contents[1:]
-		for len(request.Contents) > 1 && !safeContextBoundary(request.Contents[0]) {
-			request.Contents = request.Contents[1:]
-		}
-	}
-	encoded, _ := json.Marshal(request.Contents)
 	if len(encoded) > maxBytes {
 		return nil, errors.New("grocery model context exceeds the allowed size")
 	}
 	return nil, nil
-}
-
-func safeContextBoundary(content *genai.Content) bool {
-	if content == nil || content.Role != genai.RoleUser {
-		return false
-	}
-	for _, part := range content.Parts {
-		if part.FunctionResponse != nil {
-			return false
-		}
-	}
-	return true
 }

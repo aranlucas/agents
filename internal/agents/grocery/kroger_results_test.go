@@ -2,6 +2,7 @@ package grocery
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -17,6 +18,8 @@ import (
 type mcpResultContext struct{ agent.StrictContextMock }
 
 func (*mcpResultContext) ToolConfirmation() *toolconfirmation.ToolConfirmation { return nil }
+func (*mcpResultContext) InvocationID() string                                 { return "fixture-invocation" }
+func (*mcpResultContext) AgentName() string                                    { return AppName }
 
 // Both production toolsets must preserve framework-rendered results, including
 // empty successes and resource/media content that older ADK versions discarded.
@@ -42,7 +45,10 @@ func TestMCPFrameworkResults(t *testing.T) {
 				"travel": travel.NewTRVL(httpServer.URL, httpServer.Client()),
 			} {
 				t.Run(name, func(t *testing.T) {
-					discovered, err := toolset.Tools(groceryReadonlyContext{Context: t.Context(), state: groceryState{"temp:kroger_token": "fixture-token"}})
+					if closer, ok := toolset.(io.Closer); ok {
+						t.Cleanup(func() { _ = closer.Close() })
+					}
+					discovered, err := toolset.Tools(groceryReadonlyContext{Context: scopedMCPContext(t), state: groceryState{"temp:kroger_token": "fixture-token"}})
 					if err != nil || len(discovered) != 1 {
 						t.Fatalf("tools = %#v, %v", discovered, err)
 					}

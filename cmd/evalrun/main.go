@@ -11,14 +11,17 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/aranlucas/agents/internal/catalog"
 	"github.com/aranlucas/agents/internal/config"
+	"github.com/joho/godotenv"
 )
 
 var allAgents = evalAgentRoutes()
@@ -52,9 +55,37 @@ type AgentReport struct {
 func main() {
 	var agentsFlag string
 	var caseFlag string
+	var recallFlag bool
+	var recallProvider string
+	var recallStrategy string
 	flag.StringVar(&agentsFlag, "agents", "all", "comma-separated agent names, or 'all'")
 	flag.StringVar(&caseFlag, "case", "all", "one eval case id, or 'all'")
+	flag.BoolVar(&recallFlag, "recall", false, "run the live multi-turn compaction recall evaluation")
+	flag.StringVar(&recallProvider, "recall-provider", "groq", "recall provider: groq or openrouter")
+	flag.StringVar(&recallStrategy, "recall-strategy", "sliding", "recall compaction strategy: sliding or rolling")
 	flag.Parse()
+	if recallFlag {
+		if err := godotenv.Load(".env"); err != nil && !errors.Is(err, os.ErrNotExist) {
+			fmt.Fprintf(os.Stderr, "load local environment: %v\n", err)
+			os.Exit(1)
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+		report, err := runRecall(ctx, loadEvalProviders(), recallProvider, recallStrategy)
+		cancel()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "recall evaluation: %v\n", err)
+			os.Exit(1)
+		}
+		if err := saveRecallReport(report); err != nil {
+			fmt.Fprintf(os.Stderr, "save recall evaluation: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("recall: %d/%d facts retained across %d summaries (%s)\n", report.FactsRetained, report.FactsTotal, report.Summaries, report.Provider)
+		if !report.Passed {
+			os.Exit(1)
+		}
+		return
+	}
 
 	names := allAgents
 	if agentsFlag != "all" {
@@ -95,8 +126,8 @@ func reportFailed(report AgentReport) bool {
 	return false
 }
 
-func runAgentEval(ctx context.Context, name, caseID string, providers map[string]config.Provider) AgentReport {
-	report := AgentReport{Agent: name}
+func runAgentEval(ctx context.Context, name, caseID string, providers map[string]config.Provider) (report AgentReport) {
+	report = AgentReport{Agent: name}
 
 	built, err := buildAgent(ctx, name, providers)
 	if err != nil {
@@ -104,6 +135,11 @@ func runAgentEval(ctx context.Context, name, caseID string, providers map[string
 		return report
 	}
 	report.ProviderNotes = built.Notes
+	defer func() {
+		if err := built.Close(); err != nil {
+			report.BuildError = fmt.Sprintf("close MCP connections: %v", err)
+		}
+	}()
 
 	datasetPath := filepath.Join("internal", "agents", name, "eval", "datasets", datasetFileName(name))
 	ds, err := loadDataset(datasetPath)

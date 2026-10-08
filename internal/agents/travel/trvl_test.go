@@ -2,9 +2,11 @@ package travel
 
 import (
 	"context"
+	"errors"
 	"iter"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -33,6 +35,11 @@ func TestTRVLDiscoversToolsThroughBoundedStreamableHTTP(t *testing.T) {
 	client := httpServer.Client()
 	client.Timeout = 2 * time.Second
 	toolset := NewTRVL(httpServer.URL, client)
+	t.Cleanup(func() {
+		if err := toolset.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	tools, err := toolset.Tools(testReadonlyContext{Context: t.Context()})
 	if err != nil || len(tools) != 1 || tools[0].Name() != "destination_info" {
 		t.Fatalf("Tools() = %#v, %v", tools, err)
@@ -48,6 +55,53 @@ func TestTRVLRejectsNonTLSRemoteEndpoint(t *testing.T) {
 	_, err := NewTRVL("http://example.com/mcp", nil).Tools(testReadonlyContext{Context: t.Context()})
 	if err == nil {
 		t.Fatal("non-TLS remote endpoint accepted")
+	}
+}
+
+func TestTRVLDiscoveryWaitHonorsCancellationAndClose(t *testing.T) {
+	started, release := make(chan struct{}), make(chan struct{})
+	var once sync.Once
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		once.Do(func() { close(started) })
+		<-release
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer server.Close()
+	set := NewTRVL(server.URL, server.Client())
+	defer func() { _ = set.Close() }()
+	owner, cancelOwner := context.WithCancel(t.Context())
+	defer cancelOwner()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_, _ = set.Tools(testReadonlyContext{Context: owner})
+	}()
+	select {
+	case <-started:
+	case <-time.After(2 * time.Second):
+		close(release)
+		t.Fatal("discovery did not start")
+	}
+	waiter, cancelWaiter := context.WithTimeout(t.Context(), 30*time.Millisecond)
+	defer cancelWaiter()
+	returned := make(chan error, 1)
+	go func() { _, err := set.Tools(testReadonlyContext{Context: waiter}); returned <- err }()
+	select {
+	case err := <-returned:
+		if !errors.Is(err, context.DeadlineExceeded) {
+			t.Errorf("wait error = %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Error("waiter remained blocked behind another discovery")
+	}
+	cancelOwner()
+	close(release)
+	<-done
+	if err := set.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := set.Tools(testReadonlyContext{Context: t.Context()}); !errors.Is(err, mcp.ErrConnectionClosed) {
+		t.Fatalf("closed cache returned tools: %v", err)
 	}
 }
 

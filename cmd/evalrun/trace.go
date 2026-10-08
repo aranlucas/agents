@@ -4,11 +4,17 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
+	"errors"
 	"fmt"
+	"log"
+
+	"github.com/aranlucas/agents/internal/agentruntime"
+	"github.com/aranlucas/agents/internal/mcpruntime"
 
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/runner"
 	"google.golang.org/adk/v2/session"
+	"google.golang.org/adk/v2/session/compaction"
 	"google.golang.org/genai"
 )
 
@@ -35,8 +41,14 @@ type Trace struct {
 
 // runCase executes one turn of built against a fresh in-memory session
 // seeded from stateDefaults, and returns the normalized trace.
-func runCase(ctx context.Context, appName string, built agent.Agent, stateDefaults func() map[string]any, caseID, prompt string) Trace {
-	trace := Trace{CaseID: caseID, Prompt: prompt}
+func runCase(ctx context.Context, appName string, built agent.Agent, stateDefaults func() map[string]any, caseID, prompt string) (trace Trace) {
+	trace = Trace{CaseID: caseID, Prompt: prompt}
+	ctx, closeMCP := mcpruntime.WithScope(ctx)
+	defer func() {
+		if err := closeMCP(); err != nil {
+			trace.RunError = fmt.Sprintf("close MCP connections: %v", err)
+		}
+	}()
 
 	sessions := session.InMemoryService()
 	userID, threadID := "eval_user", "eval_thread_"+caseID
@@ -44,7 +56,7 @@ func runCase(ctx context.Context, appName string, built agent.Agent, stateDefaul
 		trace.RunError = fmt.Sprintf("create session: %v", err)
 		return trace
 	}
-	rn, err := runner.New(runner.Config{AppName: appName, Agent: built, SessionService: sessions, AutoCreateSession: true})
+	rn, err := runner.New(runner.Config{AppName: appName, Agent: built, SessionService: sessions, AutoCreateSession: true, Compaction: agentruntime.DefaultCompaction()})
 	if err != nil {
 		trace.RunError = fmt.Sprintf("build runner: %v", err)
 		return trace
@@ -53,6 +65,10 @@ func runCase(ctx context.Context, appName string, built agent.Agent, stateDefaul
 	content := genai.NewContentFromText(prompt, genai.RoleUser)
 	for event, err := range rn.Run(ctx, userID, threadID, content, agent.RunConfig{StreamingMode: agent.StreamingModeSSE}) {
 		if err != nil {
+			if errors.Is(err, compaction.ErrCompaction) {
+				log.Printf("eval context compaction failed: %v", err)
+				continue
+			}
 			trace.RunError = fmt.Sprintf("run: %v", err)
 			return trace
 		}

@@ -2,12 +2,18 @@ package agui
 
 import (
 	"context"
+	"errors"
+	"log"
 	"time"
+
+	"github.com/aranlucas/agents/internal/mcpruntime"
+	"github.com/aranlucas/agents/internal/observability"
 
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/runner"
+	"google.golang.org/adk/v2/session/compaction"
 	"google.golang.org/genai"
 )
 
@@ -35,6 +41,13 @@ func (e *runExecution) execute(ctx context.Context, emit func(context.Context, e
 	if e.content == nil {
 		return emit(ctx, events.NewRunFinishedEventWithOptions(e.input.ThreadID, e.input.RunID, events.WithSuccessOutcome()))
 	}
+	ctx, closeMCP := mcpruntime.WithScope(ctx)
+	defer func() {
+		if err := closeMCP(); err != nil {
+			observability.CaptureError(ctx, err, observability.ErrorDetails{Operation: "mcp.close"})
+			log.Printf("close run MCP connections: %v", err)
+		}
+	}()
 	var opts []runner.RunOption
 	if e.stateDelta != nil {
 		opts = append(opts, runner.WithStateDelta(e.stateDelta))
@@ -42,6 +55,11 @@ func (e *runExecution) execute(ctx context.Context, emit func(context.Context, e
 	lastWasTextContent := false
 	for event, err := range e.runner.Run(ctx, e.userID, e.input.ThreadID, e.content, agent.RunConfig{StreamingMode: agent.StreamingModeSSE}, opts...) {
 		if err != nil {
+			if errors.Is(err, compaction.ErrCompaction) {
+				observability.CaptureError(ctx, err, observability.ErrorDetails{Operation: "agent.compaction"})
+				log.Printf("context compaction failed: %v", err)
+				continue
+			}
 			return err
 		}
 		convertedEvents, err := e.converter.Convert(event)

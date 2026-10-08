@@ -32,7 +32,7 @@ func TestGroceryAgentBuildsWithAuthContract(t *testing.T) {
 	}
 }
 
-func TestGroceryContextCompactionKeepsRecentSafeTurnBoundary(t *testing.T) {
+func TestGroceryContextValidationPreservesOlderConstraints(t *testing.T) {
 	request := &model.LLMRequest{}
 	for range 60 {
 		request.Contents = append(
@@ -42,17 +42,17 @@ func TestGroceryContextCompactionKeepsRecentSafeTurnBoundary(t *testing.T) {
 		)
 	}
 	last := request.Contents[len(request.Contents)-1]
-	if _, err := compactGroceryContext(nil, request); err != nil {
+	if _, err := validateGroceryContext(nil, request); err != nil {
 		t.Fatal(err)
 	}
-	if len(request.Contents) > 40 || request.Contents[0].Role != genai.RoleUser || request.Contents[len(request.Contents)-1] != last {
-		t.Fatalf("compacted contents = %d, first=%q", len(request.Contents), request.Contents[0].Role)
+	if len(request.Contents) != 120 || request.Contents[len(request.Contents)-1] != last {
+		t.Fatalf("history was truncated: %d contents", len(request.Contents))
 	}
 }
 
-func TestGroceryContextCompactionRejectsOversizedSingleTurn(t *testing.T) {
+func TestGroceryContextValidationRejectsOversizedSingleTurn(t *testing.T) {
 	request := &model.LLMRequest{Contents: []*genai.Content{{Role: genai.RoleUser, Parts: []*genai.Part{{Text: strings.Repeat("x", (512<<10)+1)}}}}}
-	if _, err := compactGroceryContext(nil, request); err == nil {
+	if _, err := validateGroceryContext(nil, request); err == nil {
 		t.Fatal("oversized single turn accepted")
 	}
 }
