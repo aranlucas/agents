@@ -17,7 +17,7 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-      # Uses .golangci.yml; unlike `make check`, does not lint ./.railway.
+      # ./.railway is linted in railway-plan.yml.
       - uses: golangci/golangci-lint-action@v9
       - run: make test
       - run: make build

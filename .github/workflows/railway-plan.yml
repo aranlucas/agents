@@ -13,6 +13,18 @@ permissions:
   pull-requests: write
 
 jobs:
+  lint:
+    name: Lint Railway configuration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          args: ./.railway
+
   plan:
     name: Plan Railway configuration (${{ matrix.environment }})
     # Fork and Dependabot pull requests don't receive repository secrets.
@@ -27,8 +39,7 @@ jobs:
       # The CLI evaluates .railway/railway.go with go run.
       - uses: actions/setup-go@v7
         with:
-          go-version: stable
-          cache-dependency-path: go.sum
+          go-version-file: go.mod
       - uses: railwayapp/config@v1.2.0
         with:
           command: plan
