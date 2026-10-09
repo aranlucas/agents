@@ -1,21 +1,18 @@
 version: 2
+# One weekly PR for every Go module and GitHub Action update.
+multi-ecosystem-groups:
+  dependencies:
+    schedule:
+      interval: weekly
+      day: thursday
+      time: "06:00"
+      timezone: America/Los_Angeles
 updates:
   - package-ecosystem: github-actions
     directory: /
-    schedule:
-      interval: weekly
-      day: thursday
-      time: "06:00"
-      timezone: America/Los_Angeles
-    open-pull-requests-limit: 5
+    patterns: ["*"]
+    multi-ecosystem-group: dependencies
   - package-ecosystem: gomod
     directory: /
-    ignore:
-      # Keep OpenAI SDK updates coordinated with ADK compatibility.
-      - dependency-name: github.com/openai/openai-go/v3
-    schedule:
-      interval: weekly
-      day: thursday
-      time: "06:00"
-      timezone: America/Los_Angeles
-    open-pull-requests-limit: 5
+    patterns: ["*"]
+    multi-ecosystem-group: dependencies

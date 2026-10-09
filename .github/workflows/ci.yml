@@ -11,41 +11,14 @@ concurrency:
   cancel-in-progress: true
 jobs:
   go:
-    name: make ${{ matrix.targets }}
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        targets: [check, test, build vuln]
     steps:
       - uses: actions/checkout@v7
-      - id: go
-        uses: actions/setup-go@v7
+      - uses: actions/setup-go@v7
         with:
-          go-version: stable
-          cache: false
-      # Each target builds different artifacts, so each keeps its own Go
-      # cache. Only main saves; pull requests restore main's copy.
-      - id: cache
-        uses: actions/cache/restore@v6
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-            ~/.cache/golangci-lint
-          key: go${{ steps.go.outputs.go-version }}-${{ runner.os }}-${{ matrix.targets }}-${{ hashFiles('go.mod', 'go.sum') }}
-          restore-keys: go${{ steps.go.outputs.go-version }}-${{ runner.os }}-${{ matrix.targets }}-
-      - if: matrix.targets == 'check'
-        uses: golangci/golangci-lint-action@v9
-        with:
-          version: v2.13.1
-          install-only: true
-      - run: make ${{ matrix.targets }}
-      - if: github.ref == 'refs/heads/main' && steps.cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-            ~/.cache/golangci-lint
-          key: ${{ steps.cache.outputs.cache-primary-key }}
+          go-version-file: go.mod
+      # Uses .golangci.yml; unlike `make check`, does not lint ./.railway.
+      - uses: golangci/golangci-lint-action@v9
+      - run: make test
+      - run: make build
+      - run: make vuln

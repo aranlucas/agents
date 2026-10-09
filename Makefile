@@ -6,7 +6,7 @@ TEST_FLAGS ?= -parallel=2
 LINT_FLAGS ?= --concurrency=2
 endif
 
-.PHONY: check test build vuln fmt contracts dev recall railway-link railway-plan railway-apply railway-up
+.PHONY: check test build vuln fmt dev recall railway-link railway-plan railway-apply railway-up
 
 # Railway environment for the railway-* targets: development or production.
 ENV ?= development
@@ -16,7 +16,6 @@ RAILWAY_SERVICE := agents-gateway
 
 check:
 	golangci-lint run --config=.golangci.yml $(LINT_FLAGS) ./... ./.railway
-	go run ./cmd/contracts -check
 
 test:
 	go test $(TEST_FLAGS) -race ./... ./.railway
@@ -29,9 +28,6 @@ vuln:
 
 fmt:
 	golangci-lint fmt --config=.golangci.yml ./... ./.railway
-
-contracts:
-	go run ./cmd/contracts
 
 dev:
 	portless run --name agents go run ./cmd/agents

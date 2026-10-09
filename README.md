@@ -39,11 +39,10 @@ make dev
 
 | Command | Why you might use it |
 | --- | --- |
-| `make check` | Run lint and verify generated runtime contracts. |
+| `make check` | Run golangci-lint. |
 | `make test` | Run the Go race-enabled test suite. |
 | `make build` | Build the static gateway binary at `bin/agents`. |
 | `make vuln` | Run govulncheck against the Go packages. |
-| `make contracts` | Regenerate API contracts and agent route scripts. |
 
 ## Find your way around
 
@@ -54,7 +53,6 @@ make dev
 - `internal/config` is the single reader for environment variables.
 - `internal/storage` owns SQLite tables, ADK sessions, and artifacts.
 - `migrations/sqlite` contains append-only, filename-ordered migrations.
-- `api/contracts` and `cmd/contracts` define and verify runtime-state contracts.
 
 The `/live` endpoint reports process health. `/ready` checks database migrations and agent build state.
 
