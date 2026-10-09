@@ -34,7 +34,7 @@ contracts:
 	go run ./cmd/contracts
 
 dev:
-	go run ./cmd/agents
+	portless run --name agents go run ./cmd/agents
 
 # Live provider evaluation; uses synthetic facts and writes artifacts/recall.
 recall:

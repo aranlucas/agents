@@ -35,7 +35,7 @@ cp .env.example .env
 make dev
 ~~~
 
-The server listens on port `8000` and applies pending SQLite migrations at startup. The database file defaults to `.data/agents.db`; set `DATABASE_PATH` in `.env` to use another path. Add the provider or service credentials needed by the workflows you want to run.
+`make dev` serves the gateway at `https://agents.localhost` through [Portless](https://github.com/vercel-labs/portless) (`npm install -g portless`); its first run may ask for `sudo` to bind port 443 and trust a local certificate. The server applies pending SQLite migrations at startup. The database file defaults to `.data/agents.db`; set `DATABASE_PATH` in `.env` to use another path. Add the provider or service credentials needed by the workflows you want to run.
 
 | Command | Why you might use it |
 | --- | --- |
