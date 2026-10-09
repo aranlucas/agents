@@ -26,14 +26,10 @@ jobs:
           args: ./.railway
 
   plan:
-    name: Plan Railway configuration (${{ matrix.environment }})
+    name: Plan Railway configuration
     # Fork and Dependabot pull requests don't receive repository secrets.
     if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        environment: [development, production]
     steps:
       - uses: actions/checkout@v7
       # The CLI evaluates .railway/railway.go with go run.
@@ -43,9 +39,17 @@ jobs:
       - uses: railwayapp/config@v1.2.0
         with:
           command: plan
-          railway-token: ${{ matrix.environment == 'production' && secrets.RAILWAY_TOKEN_PRODUCTION || secrets.RAILWAY_TOKEN_DEVELOPMENT }}
+          railway-token: ${{ secrets.RAILWAY_TOKEN_DEVELOPMENT }}
           cli-version: 5.62.1
-          artifact-name: railway-plan-${{ matrix.environment }}
-          plan-path: railway-plan-${{ matrix.environment }}.json
-          # Both environments share one PR comment; show production's plan.
-          comment: ${{ matrix.environment == 'production' }}
+          artifact-name: railway-plan-development
+          plan-path: railway-plan-development.json
+          comment: false
+      # Both environments share one PR comment; show production's plan.
+      - uses: railwayapp/config@v1.2.0
+        with:
+          command: plan
+          railway-token: ${{ secrets.RAILWAY_TOKEN_PRODUCTION }}
+          cli-version: 5.62.1
+          artifact-name: railway-plan-production
+          plan-path: railway-plan-production.json
+          comment: true
