@@ -45,6 +45,35 @@ The server listens on port `8000` and applies pending SQLite migrations at start
 | `make vuln` | Run govulncheck against the Go packages. |
 | `make contracts` | Regenerate API contracts and agent route scripts. |
 
+### Named local URL (optional)
+
+Install [Portless](https://github.com/vercel-labs/portless/tree/v0.15.7) once with Node.js 24 or newer:
+
+```bash
+npm install -g portless@0.15.7
+```
+
+After configuring the same provider credentials as `make dev`, run:
+
+```bash
+make dev-portless
+```
+
+The gateway is available at `https://agents.localhost`, including `/live` and
+`/ready`. Portless assigns the backend port through the existing `PORT` setting.
+The regular `make dev` command still uses the normal configuration.
+
+A linked Git worktree gets a branch-prefixed hostname, such as
+`https://fix-ui.agents.localhost`. Worktrees still need separate `DATABASE_PATH`
+values if you want isolated application data. For a browser client on a different
+origin, include that exact frontend origin in `ALLOWED_ORIGINS`; a named URL does
+not change the gateway's authentication or CORS policy.
+
+Portless starts a shared HTTPS proxy and may request local administrator access on
+first use to bind port 443 and trust its development certificate. Use the URL it
+prints if your proxy uses a custom port or domain. Stop the command with Ctrl+C;
+`portless doctor` checks local proxy, certificate, and DNS setup.
+
 ## Find your way around
 
 - `cmd/agents` contains the deployable server and migration commands.
