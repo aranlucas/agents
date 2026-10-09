@@ -28,15 +28,14 @@ flowchart LR
 
 ## Run the gateway locally
 
-Requirements: Go 1.27.1 or a compatible toolchain, Make, and Node.js 24 or newer for [Portless](https://github.com/vercel-labs/portless/tree/v0.15.7). The `mise.toml` file pins the Go toolchain.
+Requirements: Go 1.27.1 or a compatible toolchain and Make. The `mise.toml` file pins the Go toolchain.
 
 ~~~sh
-npm install -g portless@0.15.7
 cp .env.example .env
 make dev
 ~~~
 
-The gateway is available at `https://agents.localhost`, including `/live` and `/ready`. Portless assigns the backend port through the existing `PORT` setting. The server applies pending SQLite migrations at startup. The database file defaults to `.data/agents.db`; set `DATABASE_PATH` in `.env` to use another path. Add the provider or service credentials needed by the workflows you want to run.
+`make dev` serves the gateway at `https://agents.localhost` through [Portless](https://github.com/vercel-labs/portless) (`npm install -g portless`); its first run may ask for `sudo` to bind port 443 and trust a local certificate. The server applies pending SQLite migrations at startup. The database file defaults to `.data/agents.db`; set `DATABASE_PATH` in `.env` to use another path. Add the provider or service credentials needed by the workflows you want to run.
 
 | Command | Why you might use it |
 | --- | --- |
@@ -45,20 +44,6 @@ The gateway is available at `https://agents.localhost`, including `/live` and `/
 | `make build` | Build the static gateway binary at `bin/agents`. |
 | `make vuln` | Run govulncheck against the Go packages. |
 | `make contracts` | Regenerate API contracts and agent route scripts. |
-
-### Local development URLs
-
-`make dev` runs the gateway through Portless on its assigned backend port.
-
-A linked Git worktree gets a branch-prefixed hostname, such as
-`https://fix-ui.agents.localhost`. Worktrees still need separate `DATABASE_PATH`
-values for isolated application data. For a browser client on a different
-origin, include that exact frontend origin in `ALLOWED_ORIGINS`.
-
-Portless starts a shared HTTPS proxy and may request local administrator access on
-first use to bind port 443 and trust its development certificate. Use the URL it
-prints if your proxy uses a custom port or domain. Stop the command with Ctrl+C;
-`portless doctor` checks local proxy, certificate, and DNS setup.
 
 ## Find your way around
 
