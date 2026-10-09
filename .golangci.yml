@@ -1,5 +1,4 @@
-# Pin golangci-lint to v2.13.1 — same version as
-# .github/workflows/ci.yml (`golangci/golangci-lint-action` `version:`).
+# Keep golangci-lint in sync with .github/workflows/ci.yml (`version: v2.14`).
 version: "2"
 
 linters:
@@ -64,7 +63,7 @@ linters:
         text: "G(101|304):"
         linters: [gosec]
       # Developer tools read and write repository files by design.
-      - path: ^cmd/(contracts|evalrun)/
+      - path: ^cmd/evalrun/
         text: "G30[146]:"
         linters: [gosec]
 
