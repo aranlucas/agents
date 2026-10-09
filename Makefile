@@ -6,7 +6,7 @@ TEST_FLAGS ?= -parallel=2
 LINT_FLAGS ?= --concurrency=2
 endif
 
-.PHONY: check test build vuln fmt contracts dev dev-direct recall railway-link railway-plan railway-apply railway-up
+.PHONY: check test build vuln fmt contracts dev recall railway-link railway-plan railway-apply railway-up
 
 # Railway environment for the railway-* targets: development or production.
 ENV ?= development
@@ -34,11 +34,7 @@ contracts:
 	go run ./cmd/contracts
 
 dev:
-	portless run --name agents $(MAKE) dev-direct
-
-# Direct loopback development without the proxy.
-dev-direct:
-	go run ./cmd/agents
+	portless run --name agents go run ./cmd/agents
 
 # Live provider evaluation; uses synthetic facts and writes artifacts/recall.
 recall:

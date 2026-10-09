@@ -46,10 +46,9 @@ The gateway is available at `https://agents.localhost`, including `/live` and `/
 | `make vuln` | Run govulncheck against the Go packages. |
 | `make contracts` | Regenerate API contracts and agent route scripts. |
 
-### Local URLs and direct development
+### Local development URLs
 
-`make dev` runs the gateway through Portless. Use `make dev-direct` to run the
-original Go command directly, with the usual port 8000 default.
+`make dev` runs the gateway through Portless on its assigned backend port.
 
 A linked Git worktree gets a branch-prefixed hostname, such as
 `https://fix-ui.agents.localhost`. Worktrees still need separate `DATABASE_PATH`
