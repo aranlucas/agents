@@ -2,3 +2,7 @@
 # Railway (Railpack) and local shells install Go through mise; go.mod
 # only sets the minimum version.
 go = "latest"
+
+[settings]
+# Don't read go.mod's `go` directive as a version file.
+idiomatic_version_file_enable_tools = []
