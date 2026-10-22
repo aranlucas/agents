@@ -14,7 +14,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/modelcontextprotocol/go-sdk v1.8.0
 	github.com/openai/openai-go/v3 v3.85.0 // ADK v2.5.0 sources streamed function names from output_item.added; verified with v3.68.0.
-	github.com/railwayapp/railway-go-sdk v0.4.0
+	github.com/railwayapp/railway-go-sdk v0.6.0
 	github.com/wI2L/jsondiff v0.7.1
 	go.opentelemetry.io/otel v1.47.0
 	go.opentelemetry.io/otel/trace v1.47.0
