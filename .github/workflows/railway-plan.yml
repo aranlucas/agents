@@ -7,7 +7,7 @@ on:
     paths:
       - ".railway/**"
       - ".github/workflows/railway-*.yml"
-    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
