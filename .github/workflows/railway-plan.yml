@@ -7,13 +7,19 @@ on:
     paths:
       - ".railway/**"
       - ".github/workflows/railway-*.yml"
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
 
 permissions:
   contents: read
   pull-requests: write
 
+concurrency:
+  group: railway-plan-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   lint:
+    if: ${{ github.event.pull_request.draft != true }}
     name: Lint Railway configuration
     runs-on: ubuntu-latest
     steps:
@@ -28,7 +34,7 @@ jobs:
   plan:
     name: Plan Railway configuration (${{ matrix.environment }})
     # Fork and Dependabot pull requests don't receive repository secrets.
-    if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+    if: ${{ (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') && github.event.pull_request.draft != true }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
