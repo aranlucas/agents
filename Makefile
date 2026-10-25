@@ -38,6 +38,11 @@ recall:
 
 RAILWAY := railway
 
+RAILWAY_CONFIRM_DESTRUCTIVE :=
+ifeq "$(CONFIRM_DESTRUCTIVE)" "1"
+RAILWAY_CONFIRM_DESTRUCTIVE := --confirm-destructive
+endif
+
 railway-link:
 	$(RAILWAY) link --project $(RAILWAY_PROJECT) --environment $(ENV) --service $(RAILWAY_SERVICE)
 
@@ -46,7 +51,7 @@ railway-plan: railway-link
 
 # Deleting variables needs CONFIRM_DESTRUCTIVE=1 after reviewing the plan.
 railway-apply: railway-link
-	$(RAILWAY) config apply $(RAILWAY_APPLY_FLAGS) $(if $(CONFIRM_DESTRUCTIVE),--confirm-destructive)
+	$(RAILWAY) config apply $(RAILWAY_APPLY_FLAGS) $(RAILWAY_CONFIRM_DESTRUCTIVE)
 
 # Builds and deploys the local checkout, bypassing the GitHub CI wait.
 railway-up: railway-link
