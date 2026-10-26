@@ -26,6 +26,7 @@ import (
 	"github.com/aranlucas/agents/internal/observability"
 
 	"github.com/joho/godotenv"
+	"google.golang.org/adk/v2/artifact"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/adk/v2/session/compaction"
 )
@@ -60,8 +61,11 @@ type Dependencies struct {
 	Compaction *compaction.Config
 	Registry   *agentruntime.Registry
 	Sessions   session.Service
-	Pending    agui.PendingTools
-	Verifier   auth.TokenVerifier
+	// Artifacts, when set, exposes the shared SQLite artifact service to
+	// every agent's tools and callbacks through the ADK runner.
+	Artifacts artifact.Service
+	Pending   agui.PendingTools
+	Verifier  auth.TokenVerifier
 	// Database gates /ready on the migrated schema.
 	Database common.HealthChecker
 	Stream   agui.StreamSmoothing
@@ -102,6 +106,7 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 		frontendAgentID,
 		agui.WithPendingTools(deps.Pending),
 		agui.WithContextCompaction(deps.Compaction),
+		agui.WithArtifacts(deps.Artifacts),
 		agui.WithTextStreamSmoothing(stream.Enabled, stream.Chunking, stream.ChunkDelay, stream.CharsPerChunk),
 	)
 	if err != nil {
@@ -366,7 +371,7 @@ func Run(ctx context.Context) error {
 	}
 	handler, err := New(cfg, Dependencies{
 		Compaction: agentruntime.DefaultCompaction(),
-		Registry:   registry, Sessions: rt.Sessions, Pending: rt.Pending, Verifier: verifier,
+		Registry:   registry, Sessions: rt.Sessions, Artifacts: rt.Artifacts, Pending: rt.Pending, Verifier: verifier,
 		Database: rt.DB, Clerk: clerkBackend,
 		Stream: agui.StreamSmoothingFromEnv(os.Getenv), Now: time.Now,
 	})

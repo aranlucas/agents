@@ -22,6 +22,7 @@ import (
 
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
+	"google.golang.org/adk/v2/artifact"
 	"google.golang.org/adk/v2/runner"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/adk/v2/session/compaction"
@@ -32,6 +33,7 @@ type Option func(*handlerConfig)
 
 type handlerConfig struct {
 	compaction *compaction.Config
+	artifacts  artifact.Service
 	pending    PendingTools
 	ids        events.IDGenerator
 	smoothing  streamSmoothing
@@ -42,6 +44,13 @@ type handlerConfig struct {
 // Stateless suggestions do not retain history and always disable compaction.
 func WithContextCompaction(cfg *compaction.Config) Option {
 	return func(c *handlerConfig) { c.compaction = cfg }
+}
+
+// WithArtifacts wires the SQLite-backed artifact service into the ADK runner,
+// exposing artifact save, list, and load to tools and callbacks through the
+// invocation context.
+func WithArtifacts(artifacts artifact.Service) Option {
+	return func(c *handlerConfig) { c.artifacts = artifacts }
 }
 
 // WithPendingTools wires the SQLite-backed pending client-tool store used to
@@ -220,8 +229,12 @@ func newEntryHandler(entry agentruntime.Entry, sessions session.Service, statele
 	}
 	if stateless {
 		cfg.compaction = nil
+		// Artifacts are scoped to the synthetic suggestion session, which is
+		// deleted when the stream ends; saving them would orphan rows in the
+		// artifacts table.
+		cfg.artifacts = nil
 	}
-	rn, err := runner.New(runner.Config{AppName: entry.AppName, Agent: entry.Agent, SessionService: sessions, AutoCreateSession: true, Compaction: cfg.compaction})
+	rn, err := runner.New(runner.Config{AppName: entry.AppName, Agent: entry.Agent, SessionService: sessions, ArtifactService: cfg.artifacts, AutoCreateSession: true, Compaction: cfg.compaction})
 	if err != nil {
 		return nil, fmt.Errorf("create ADK runner: %w", err)
 	}
