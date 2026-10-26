@@ -226,7 +226,10 @@ func toolResultContent(ctx context.Context, messages []types.Message, identity a
 		responses = make([]*genai.FunctionResponse, 0, len(results))
 		for _, result := range results {
 			name := toolNameFromHistory(messages, result.CallID)
-			if !ClientToolName.MatchString(name) {
+			// The history match itself is the binding; the name only has to
+			// exist, not look like an identifier (see converter.go's
+			// toolCallEvents for the name contract).
+			if name == "" {
 				return nil, fmt.Errorf("%w: tool result %q has no valid matching tool call", ErrInvalidRunInput, result.CallID)
 			}
 			var response map[string]any

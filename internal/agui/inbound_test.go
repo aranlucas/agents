@@ -122,6 +122,22 @@ func TestToolResultContentDecodesRawPayloadOnlyAtADKBoundary(t *testing.T) {
 	}
 }
 
+// Server-side names need not look like identifiers; the history match itself
+// is the binding for a resumed result.
+func TestToolResultContentAcceptsServerToolNamesFromHistory(t *testing.T) {
+	message := types.Message{Role: types.RoleTool, Content: "{}", ToolCallID: "call-1"}
+	history := []types.Message{{Role: types.RoleAssistant, ToolCalls: []types.ToolCall{{
+		ID: "call-1", Type: types.ToolCallTypeFunction, Function: types.FunctionCall{Name: "mcp:products/search v2"},
+	}}}}
+	content, err := toolResultContent(t.Context(), append(history, message), auth.Identity{}, nil, ToolScope{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if content.Parts[0].FunctionResponse.Name != "mcp:products/search v2" {
+		t.Fatalf("response = %#v", content.Parts[0].FunctionResponse)
+	}
+}
+
 type rejectingPendingTools struct {
 	claimCalled bool
 }
