@@ -178,6 +178,36 @@ func TestConverterDoesNotRegisterNonClientToolCalls(t *testing.T) {
 	}
 }
 
+// TestConverterStreamsServerToolNamesOutsideFrontendContract proves the
+// converter no longer aborts a run over tool-name shape: MCP toolsets and
+// agenttool may expose names that fail ClientToolName, while the AG-UI SDK
+// only requires a name to be non-empty (ToolCallStartEvent.Validate). Only
+// a nameless call is structural.
+func TestConverterStreamsServerToolNamesOutsideFrontendContract(t *testing.T) {
+	pending := newFakePending()
+	scope := ToolScope{AppName: "resume_agent", UserID: "anon:thread-1", ThreadID: "thread-1"}
+	converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, pending, scope, map[string]bool{"highlight_row": true}, streamSmoothing{})
+
+	event := &session.Event{
+		Content: &genai.Content{Parts: []*genai.Part{{
+			FunctionCall: &genai.FunctionCall{ID: "call-mcp-1", Name: "mcp:products/search v2", Args: map[string]any{"q": "milk"}},
+		}}},
+		TurnComplete: true,
+	}
+
+	out := mustConvert(t, converter, event)
+	if len(out) != 3 {
+		t.Fatalf("expected TOOL_CALL_START/ARGS/END, got %#v", out)
+	}
+	start, ok := out[0].(*events.ToolCallStartEvent)
+	if !ok || start.ToolCallName != "mcp:products/search v2" {
+		t.Fatalf("start event = %#v", out[0])
+	}
+	if _, ok := pending.pending[key(scope, "call-mcp-1")]; ok {
+		t.Fatal("non-identifier names cannot be client declarations and must not register")
+	}
+}
+
 func TestConverterDoesNotRegisterEarlierClientCallWhenLaterCallIsInvalid(t *testing.T) {
 	pending := newFakePending()
 	scope := ToolScope{AppName: "resume_agent", UserID: "anon:thread-1", ThreadID: "thread-1"}
@@ -313,7 +343,6 @@ func TestConverterRejectsInvalidToolOutputWithoutSemanticFallback(t *testing.T) 
 	converter := newStreamConverter(t.Context(), &fakeIDs{}, nil, nil, ToolScope{}, nil, streamSmoothing{})
 	for name, part := range map[string]*genai.Part{
 		"empty name":         {FunctionCall: &genai.FunctionCall{ID: "call-1", Args: map[string]any{}}},
-		"invalid name":       {FunctionCall: &genai.FunctionCall{ID: "call-1", Name: "bad name", Args: map[string]any{}}},
 		"invalid ID":         {FunctionCall: &genai.FunctionCall{ID: "bad\ncall", Name: "tool", Args: map[string]any{}}},
 		"unencodable args":   {FunctionCall: &genai.FunctionCall{ID: "call-1", Name: "tool", Args: map[string]any{"bad": make(chan int)}}},
 		"unencodable result": {FunctionResponse: &genai.FunctionResponse{ID: "call-1", Response: map[string]any{"bad": make(chan int)}}},

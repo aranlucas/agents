@@ -137,7 +137,10 @@ func toAGUIToolCalls(calls []*genai.FunctionCall) ([]types.ToolCall, error) {
 	}
 	out := make([]types.ToolCall, 0, len(calls))
 	for _, call := range calls {
-		if call == nil || !ClientCallID.MatchString(call.ID) || !ClientToolName.MatchString(call.Name) {
+		// Mirrors converter.go's toolCallEvents: any non-empty name streams
+		// live, so any non-empty name must replay. Only emptiness and call-ID
+		// shape are structural failures.
+		if call == nil || !ClientCallID.MatchString(call.ID) || call.Name == "" {
 			return nil, errors.New("invalid persisted tool call")
 		}
 		arguments, err := encodeToolArgs(call.Args)

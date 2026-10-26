@@ -406,7 +406,13 @@ type pendingRegistration struct {
 }
 
 func (c *streamConverter) toolCallEvents(call *genai.FunctionCall) ([]events.Event, *pendingRegistration, error) {
-	if call == nil || !ClientToolName.MatchString(call.Name) {
+	// Model-echoed names only need the AG-UI SDK's contract, which requires a
+	// name to be non-empty and nothing more (ToolCallStartEvent.Validate).
+	// ClientToolName stays an input-side contract for frontend declarations
+	// (validateClientToolDefinitions): MCP toolsets and agenttool may expose
+	// names outside it, and failing the run over name shape would abort
+	// otherwise-valid turns.
+	if call == nil || call.Name == "" {
 		return nil, nil, errors.New("invalid model tool call name")
 	}
 	id := call.ID
