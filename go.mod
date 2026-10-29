@@ -3,7 +3,7 @@ module github.com/aranlucas/agents
 go 1.27.3
 
 require (
-	cloud.google.com/go/bigquery v1.85.0
+	cloud.google.com/go/bigquery v1.86.0
 	github.com/ag-ui-protocol/ag-ui/sdks/community/go v0.0.0-20261021183439-85a427d0558d
 	github.com/clerk/clerk-sdk-go/v2 v2.7.0
 	github.com/getsentry/sentry-go v0.50.0
@@ -13,7 +13,7 @@ require (
 	github.com/google/jsonschema-go v0.4.3
 	github.com/joho/godotenv v1.5.1
 	github.com/modelcontextprotocol/go-sdk v1.8.0
-	github.com/openai/openai-go/v3 v3.85.0 // ADK v2.5.0 sources streamed function names from output_item.added; verified with v3.68.0.
+	github.com/openai/openai-go/v3 v3.86.0 // ADK v2.5.0 sources streamed function names from output_item.added; verified with v3.68.0.
 	github.com/railwayapp/railway-go-sdk v0.6.0
 	github.com/wI2L/jsondiff v0.7.1
 	go.opentelemetry.io/otel v1.47.0
@@ -21,8 +21,8 @@ require (
 	golang.org/x/net v0.61.0
 	golang.org/x/sync v0.24.0
 	google.golang.org/adk/v2 v2.6.0
-	google.golang.org/api v0.307.0
-	google.golang.org/genai v1.75.0
+	google.golang.org/api v0.308.0
+	google.golang.org/genai v1.76.0
 	gorm.io/gorm v1.31.2
 )
 
