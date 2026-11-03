@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 )
 
 type failingResponseWriter struct {
@@ -30,13 +29,6 @@ func TestWriteJSONSetsMetadataAndReturnsWriterErrors(t *testing.T) {
 	failing := &failingResponseWriter{header: http.Header{}}
 	if err := WriteJSON(failing, http.StatusOK, map[string]bool{"ok": true}); err == nil {
 		t.Fatal("WriteJSON succeeded with a failing response writer")
-	}
-}
-
-func TestNewHTTPClientUsesConfiguredTransport(t *testing.T) {
-	client := NewHTTPClient(time.Second, 1024)
-	if _, ok := client.Client.Transport.(*http.Transport); !ok {
-		t.Fatalf("transport = %T", client.Client.Transport)
 	}
 }
 

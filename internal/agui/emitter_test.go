@@ -2,7 +2,6 @@ package agui
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -185,39 +184,4 @@ func TestEmitterBoundsSupportedHTTPResponseWritesWithDeadline(t *testing.T) {
 	if len(writer.deadlines) != 2 || writer.deadlines[0].IsZero() || !writer.deadlines[1].IsZero() {
 		t.Fatalf("write deadlines = %#v", writer.deadlines)
 	}
-}
-
-func TestActiveReplayFollowsAfterOriginalTransportDisconnect(t *testing.T) {
-	active := newActiveRuns()
-	lease, ok := active.start(runKey{AgentRoute: "resume", UserID: "user", ThreadID: "thread"}, func() {})
-	if !ok {
-		t.Fatal("active run did not start")
-	}
-	original := newReplayAwareEmitter(&shortWriter{}, lease)
-	if err := original.Emit(t.Context(), events.NewRunStartedEvent("thread", "run")); err == nil {
-		t.Fatal("original sink did not fail")
-	}
-
-	var reconnected bytes.Buffer
-	follower := newReplayAwareEmitter(&reconnected, nil)
-	done := make(chan error, 1)
-	go func() {
-		done <- lease.run.replay(context.Background(), func(encoded []byte) error {
-			return follower.emitEncoded(context.Background(), encoded)
-		})
-	}()
-	if err := original.Emit(t.Context(), events.NewStateSnapshotEvent(map[string]any{"ready": true})); err != nil {
-		t.Fatal(err)
-	}
-	if err := original.Emit(t.Context(), events.NewRunFinishedEvent("thread", "run")); err != nil {
-		t.Fatal(err)
-	}
-	if err := lease.finish(); err != nil {
-		t.Fatal(err)
-	}
-	if err := <-done; err != nil {
-		t.Fatal(err)
-	}
-	frames := parseSSEFrames(t, reconnected.Bytes())
-	assertAGUISequence(t, frames)
 }

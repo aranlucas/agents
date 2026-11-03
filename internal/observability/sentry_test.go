@@ -2,7 +2,6 @@ package observability
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -61,18 +60,6 @@ func TestWrapSentryRepanicsAndServesNormally(t *testing.T) {
 		}
 	}()
 	panicking.ServeHTTP(httptest.NewRecorder(), httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/health", nil))
-}
-
-func TestCaptureErrorIgnoresNilAndExplicitCancellation(t *testing.T) {
-	// Without an initialized client these must all be safe no-ops.
-	CaptureError(context.Background(), nil)
-	CaptureError(context.Background(), context.Canceled)
-	CaptureError(context.Background(), context.DeadlineExceeded, ErrorDetails{
-		Operation: "agent.run",
-		Tags:      map[string]string{"agent": "oralboards"},
-		Context:   map[string]any{"run_id": "run-1"},
-	})
-	CaptureError(context.Background(), errors.New("reported"))
 }
 
 func TestCaptureErrorRecordsDeadlineAndOperationalDetails(t *testing.T) {

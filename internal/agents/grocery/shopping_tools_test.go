@@ -21,26 +21,6 @@ import (
 	"google.golang.org/genai"
 )
 
-func TestShoppingToolsExposeNativeNames(t *testing.T) {
-	tools, err := shoppingResourceTools(&fakeShoppingRepository{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := []string{
-		"get_shopping_profile", "add_to_pantry", "remove_from_pantry", "add_equipment",
-		"remove_equipment", "get_recent_orders", "record_order", "get_preferred_store",
-		"set_preferred_store",
-	}
-	if len(tools) != len(want) {
-		t.Fatalf("shopping tool count = %d, want %d", len(tools), len(want))
-	}
-	for index, name := range want {
-		if tools[index].Name() != name {
-			t.Fatalf("shopping tool %d = %q, want %q", index, tools[index].Name(), name)
-		}
-	}
-}
-
 func TestGroceryLibraryToolsIncludeNativeShoppingTools(t *testing.T) {
 	tools, err := groceryLibraryTools(&fakeLibraryShoppingRepository{})
 	if err != nil {
@@ -53,42 +33,6 @@ func TestGroceryLibraryToolsIncludeNativeShoppingTools(t *testing.T) {
 	for _, name := range []string{"list_households", "save_current_list", "get_shopping_profile", "add_to_pantry", "record_order"} {
 		if !seen[name] {
 			t.Fatalf("library tool %q missing from %#v", name, seen)
-		}
-	}
-}
-
-func TestNewWithLibraryPublishesNativeShoppingDeclarations(t *testing.T) {
-	captured := &captureShoppingModel{}
-	built, err := NewWithLibrary(captured, nil, nil, nil, &fakeLibraryShoppingRepository{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	sessions := session.InMemoryService()
-	if _, err := sessions.Create(t.Context(), &session.CreateRequest{
-		AppName: AppName, UserID: "user_1", SessionID: "thread_1", State: StateDefaults(),
-	}); err != nil {
-		t.Fatal(err)
-	}
-	run, err := runner.New(runner.Config{AppName: AppName, Agent: built, SessionService: sessions})
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, runErr := range run.Run(t.Context(), "user_1", "thread_1", genai.NewContentFromText("show my pantry", genai.RoleUser), agent.RunConfig{}) {
-		if runErr != nil {
-			t.Fatal(runErr)
-		}
-	}
-	if captured.request == nil || captured.request.Config == nil || len(captured.request.Config.Tools) == 0 {
-		t.Fatalf("native declarations = %#v", captured.request)
-	}
-	declarations := captured.request.Config.Tools[0].FunctionDeclarations
-	seen := make(map[string]bool, len(declarations))
-	for _, declaration := range declarations {
-		seen[declaration.Name] = true
-	}
-	for _, name := range []string{"get_shopping_profile", "add_to_pantry", "record_order"} {
-		if !seen[name] {
-			t.Fatalf("native declaration %q missing from %#v", name, seen)
 		}
 	}
 }

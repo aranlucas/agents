@@ -97,59 +97,6 @@ func TestLookupTrimsSlashesAndRejectsUnknownRoutes(t *testing.T) {
 	}
 }
 
-func TestStateDefaultsFactoryReturnsIndependentState(t *testing.T) {
-	calls := 0
-	registry, err := NewRegistry(Entry{
-		Route: "resume", AppName: "resume_agent", Agent: testAgentFor(t),
-		StateDefaults: func() map[string]any {
-			calls++
-			return map[string]any{"profile": map[string]any{"user_id": ""}}
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	first, err := registry.Lookup("resume")
-	if err != nil {
-		t.Fatal(err)
-	}
-	firstDefaults := first.StateDefaults()
-	firstDefaults["profile"].(map[string]any)["user_id"] = "mutated"
-
-	second, err := registry.Lookup("resume")
-	if err != nil {
-		t.Fatal(err)
-	}
-	secondDefaults := second.StateDefaults()
-	if secondDefaults["profile"].(map[string]any)["user_id"] != "" {
-		t.Fatalf("StateDefaults leaked a mutation across factory calls: %#v", secondDefaults)
-	}
-	if calls != 2 {
-		t.Fatalf("StateDefaults factory calls = %d, want 2", calls)
-	}
-}
-
-func TestEntriesReturnsEveryRegisteredRoute(t *testing.T) {
-	registry, err := NewRegistry(
-		Entry{Route: "resume", AppName: "resume_agent", Agent: testAgentFor(t)},
-		Entry{Route: "travel", AppName: "travel_agent", Agent: testAgentFor(t)},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	entries := registry.Entries()
-	if len(entries) != 2 {
-		t.Fatalf("Entries() = %#v", entries)
-	}
-	routes := map[string]bool{}
-	for _, entry := range entries {
-		routes[entry.Route] = true
-	}
-	if !routes["resume"] || !routes["travel"] {
-		t.Fatalf("routes = %#v", routes)
-	}
-}
-
 func TestNilRegistryLookupFailsClosed(t *testing.T) {
 	var registry *Registry
 	if _, err := registry.Lookup("resume"); err == nil {

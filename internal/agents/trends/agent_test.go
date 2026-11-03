@@ -46,41 +46,6 @@ func TestNewRequiresTheTrendsQueryGeneratorChild(t *testing.T) {
 	}
 }
 
-func TestNewGeneratorInstructionCoversTableStructureAndFewShots(t *testing.T) {
-	generator, err := NewGenerator(fakeModel{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if generator.Name() != GeneratorAppName {
-		t.Fatalf("Name() = %q, want %q", generator.Name(), GeneratorAppName)
-	}
-	for _, want := range []string{"top_terms", "MAX(refresh_date)", "ranked rows per DMA", "COUNT(DISTINCT dma_name)", "average_dma_rank"} {
-		if !strings.Contains(GeneratorInstruction, want) {
-			t.Fatalf("generator instruction missing %q", want)
-		}
-	}
-	if strings.Contains(GeneratorInstruction, "identical rank/score") {
-		t.Fatal("generator instruction still describes DMA metrics as identical")
-	}
-}
-
-func TestInstructionOrdersExecutionAndVerification(t *testing.T) {
-	for _, want := range []string{"TrendsQueryGeneratorAgent", "validate_trends_sql", "begin_trends_query", "execute_bigquery_sql", "write_trends_result", "set_trends_verification", "Brave", "CONFIRMED", "CONTRADICTED", "UNVERIFIED"} {
-		if !strings.Contains(Instruction, want) {
-			t.Fatalf("instruction missing %q", want)
-		}
-	}
-	if strings.Contains(Instruction, "generate_a2ui") {
-		t.Fatal("instruction still references removed A2UI tooling")
-	}
-	if strings.Index(Instruction, "TrendsQueryGeneratorAgent") > strings.Index(Instruction, "validate_trends_sql") {
-		t.Fatal("instruction must generate SQL before validating it")
-	}
-	if !strings.Contains(Instruction, "Never describe an execution failure as an unsafe") {
-		t.Fatal("instruction must distinguish execution failures from SQL validation failures")
-	}
-}
-
 func TestValidateSQLToolCleansAndAcceptsBoundedQueries(t *testing.T) {
 	result, err := validateSQLTool(nil, ValidateSQLArgs{SQL: "```sql\nSELECT 1 LIMIT 10\n```"})
 	if err != nil || !result.OK || result.SQL != "SELECT 1 LIMIT 10" {

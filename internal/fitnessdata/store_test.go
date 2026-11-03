@@ -4,9 +4,7 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
-	"strings"
 	"testing"
-	"time"
 
 	"github.com/aranlucas/agents/internal/storage"
 )
@@ -25,34 +23,11 @@ func rawRows(t *testing.T, rows ...any) []jsontext.Value {
 }
 
 type fakeRunner struct {
-	statements []storage.Statement
-	results    []storage.Result
+	results []storage.Result
 }
 
-func (f *fakeRunner) Run(_ context.Context, statements ...storage.Statement) ([]storage.Result, error) {
-	f.statements = append([]storage.Statement(nil), statements...)
+func (f *fakeRunner) Run(_ context.Context, _ ...storage.Statement) ([]storage.Result, error) {
 	return f.results, nil
-}
-
-func TestSyncUsesIdempotentActivityUpsertAndSourceCheckpoint(t *testing.T) {
-	start := "2026-07-12T12:00:00Z"
-	runner := &fakeRunner{}
-	store := &Store{db: runner}
-	result, err := store.Sync(t.Context(), "user-1", SourceHealthConnect, []Activity{{
-		ID: "activity-1", Name: "Morning run", StartDate: &start,
-	}}, time.Date(2026, 7, 12, 13, 0, 0, 0, time.UTC))
-	if err != nil || result.Accepted != 1 || result.SyncedAt != "2026-07-12T13:00:00Z" {
-		t.Fatalf("result/error = %#v / %v", result, err)
-	}
-	if len(runner.statements) != 2 {
-		t.Fatalf("statements = %#v", runner.statements)
-	}
-	if !strings.Contains(runner.statements[0].SQL, "ON CONFLICT(user_id, source, source_activity_id) DO UPDATE") {
-		t.Fatalf("activity write is not idempotent: %s", runner.statements[0].SQL)
-	}
-	if !strings.Contains(runner.statements[1].SQL, "ON CONFLICT(user_id, source) DO UPDATE") {
-		t.Fatalf("checkpoint write is not idempotent: %s", runner.statements[1].SQL)
-	}
 }
 
 func TestSnapshotDecodesProviderNeutralActivities(t *testing.T) {

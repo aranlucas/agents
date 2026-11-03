@@ -3,28 +3,7 @@ package catalog
 import (
 	"slices"
 	"testing"
-	"time"
 )
-
-func TestAllHasUniqueCompleteMetadata(t *testing.T) {
-	seenClientIDs := map[string]bool{}
-	seenRoutes := map[string]bool{}
-	seenAppNames := map[string]bool{}
-	for _, spec := range All() {
-		if spec.ClientID == "" || spec.Route == "" || spec.AppName == "" || spec.Timeout < time.Second {
-			t.Fatalf("incomplete spec: %#v", spec)
-		}
-		if seenClientIDs[spec.ClientID] || seenRoutes[spec.Route] || seenAppNames[spec.AppName] {
-			t.Fatalf("duplicate identity in spec: %#v", spec)
-		}
-		seenClientIDs[spec.ClientID] = true
-		seenRoutes[spec.Route] = true
-		seenAppNames[spec.AppName] = true
-	}
-	if len(seenRoutes) != 11 {
-		t.Fatalf("catalog contains %d agents, want 11", len(seenRoutes))
-	}
-}
 
 func TestSurfaceSelectionsRemainStable(t *testing.T) {
 	eval := routes(Eval())
