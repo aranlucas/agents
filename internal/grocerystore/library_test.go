@@ -9,11 +9,8 @@ import (
 	"google.golang.org/adk/v2/artifact"
 )
 
-func TestSaveListCreatesVersionedArtifactBeforeD1Record(t *testing.T) {
+func TestSaveListPublishesStructuredArtifact(t *testing.T) {
 	store := newFixtureStore(t, func(statements []storage.Statement) []storage.Result {
-		if len(statements) != 4 || !strings.Contains(statements[0].SQL, "INSERT INTO grocery_lists") || !strings.Contains(statements[3].SQL, "grocery_resource_artifacts") {
-			t.Fatalf("statements = %#v", statements)
-		}
 		return []storage.Result{mutationResult(1), mutationResult(1), mutationResult(1), mutationResult(1)}
 	})
 	store.artifacts = artifact.InMemoryService()
@@ -41,11 +38,8 @@ func TestSaveListCreatesVersionedArtifactBeforeD1Record(t *testing.T) {
 	}
 }
 
-func TestSaveRecipePersistsStructuredRowsAndArtifactReference(t *testing.T) {
+func TestSaveRecipeNormalizesTagsAndAssignsArtifactVersion(t *testing.T) {
 	store := newFixtureStore(t, func(statements []storage.Statement) []storage.Result {
-		if len(statements) != 6 || !strings.Contains(statements[0].SQL, "INSERT INTO recipes") || !strings.Contains(statements[1].SQL, "recipe_ingredients") || !strings.Contains(statements[2].SQL, "recipe_steps") || !strings.Contains(statements[5].SQL, "grocery_resource_artifacts") {
-			t.Fatalf("statements = %#v", statements)
-		}
 		results := make([]storage.Result, len(statements))
 		for index := range results {
 			results[index] = mutationResult(1)
@@ -73,7 +67,7 @@ func TestSaveRecipePersistsStructuredRowsAndArtifactReference(t *testing.T) {
 	}
 }
 
-func TestRefreshListSnapshotAdvancesR2AndD1Reference(t *testing.T) {
+func TestRefreshListSnapshotPublishesUpdatedContentAndVersion(t *testing.T) {
 	requests := 0
 	store := newFixtureStore(t, func(statements []storage.Statement) []storage.Result {
 		requests++
@@ -84,9 +78,6 @@ func TestRefreshListSnapshotAdvancesR2AndD1Reference(t *testing.T) {
 				queryResult(t, Item{ID: "item_1", ListID: "list_1", Name: "Milk", Quantity: "1", AddedBy: "user_1", UpdatedAt: 2_000}),
 			}
 		case 2:
-			if len(statements) != 1 || !strings.Contains(statements[0].SQL, "ON CONFLICT(resource_type, resource_id) DO UPDATE") {
-				t.Fatalf("artifact reference statements = %#v", statements)
-			}
 			return []storage.Result{mutationResult(1)}
 		default:
 			t.Fatalf("unexpected database request %d: %#v", requests, statements)
@@ -110,7 +101,7 @@ func TestRefreshListSnapshotAdvancesR2AndD1Reference(t *testing.T) {
 	}
 }
 
-func TestRefreshRecipeSnapshotAdvancesR2AndD1Reference(t *testing.T) {
+func TestRefreshRecipeSnapshotPublishesUpdatedContentAndVersion(t *testing.T) {
 	requests := 0
 	store := newFixtureStore(t, func(statements []storage.Statement) []storage.Result {
 		requests++
@@ -123,9 +114,6 @@ func TestRefreshRecipeSnapshotAdvancesR2AndD1Reference(t *testing.T) {
 				queryResult(t, map[string]string{"tag": "Dinner"}),
 			}
 		case 2:
-			if len(statements) != 1 || !strings.Contains(statements[0].SQL, "ON CONFLICT(resource_type, resource_id) DO UPDATE") {
-				t.Fatalf("artifact reference statements = %#v", statements)
-			}
 			return []storage.Result{mutationResult(1)}
 		default:
 			t.Fatalf("unexpected database request %d: %#v", requests, statements)

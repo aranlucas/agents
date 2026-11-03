@@ -4,7 +4,6 @@ import (
 	"context"
 	"iter"
 	"maps"
-	"strings"
 	"sync"
 	"testing"
 
@@ -16,36 +15,6 @@ import (
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
 )
-
-type fakeModel struct{}
-
-func (fakeModel) Name() string { return "fake" }
-func (fakeModel) GenerateContent(context.Context, *model.LLMRequest, bool) iter.Seq2[*model.LLMResponse, error] {
-	return func(func(*model.LLMResponse, error) bool) {}
-}
-
-func TestWellnessAgentUsesFitnessThenGroceryTaskChildren(t *testing.T) {
-	fitnessAgent, err := fitness.NewTask(fakeModel{}, nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	groceryAgent, err := grocery.NewTask(fakeModel{}, nil, nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	built, err := New(ModelSet{Coordinator: fakeModel{}}, fitnessAgent, groceryAgent)
-	if err != nil {
-		t.Fatal(err)
-	}
-	children := built.SubAgents()
-	if len(children) != 2 || children[0].Name() != fitness.AppName || children[1].Name() != grocery.AppName {
-		t.Fatalf("children = %#v", children)
-	}
-	fitnessIndex, groceryIndex := strings.Index(Instruction, "Call `fitness_agent` first"), strings.Index(Instruction, "call `grocery_agent`")
-	if fitnessIndex < 0 || groceryIndex <= fitnessIndex {
-		t.Fatal("instruction does not enforce specialist ordering")
-	}
-}
 
 func TestWellnessTaskAgentsShareStateInRequiredOrder(t *testing.T) {
 	fitnessModel := &scriptedModel{responses: []*model.LLMResponse{

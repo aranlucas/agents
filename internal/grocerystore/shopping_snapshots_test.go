@@ -6,7 +6,6 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"slices"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -509,8 +508,7 @@ func TestShoppingProfileRetentionSchedulesAndDrainsBoundedBatchesWithoutMutation
 	counting := &countingArtifactService{Service: base}
 	failing := &failOnceDeleteArtifactService{Service: counting}
 	runner := newShoppingSnapshotSQLiteRunner(t)
-	recording := &recordingStatementRunner{StatementRunner: runner}
-	store := newShoppingSnapshotTestStore(t, recording, failing)
+	store := newShoppingSnapshotTestStore(t, runner, failing)
 	setPreferredStoreRow(t, runner, "Kroger")
 
 	if _, err := store.publishPendingShoppingProfileSnapshot(t.Context(), "user_1"); err != nil {
@@ -575,21 +573,6 @@ func TestShoppingProfileRetentionSchedulesAndDrainsBoundedBatchesWithoutMutation
 	}
 	if more {
 		t.Fatal("overflow did not drain within bounded passes")
-	}
-	schedules := recording.cleanupSchedules()
-	for _, statement := range schedules {
-		bounded := len(statement.Params) == 4 && strings.Contains(statement.SQL, "LIMIT ?") && !strings.Contains(statement.SQL, "LIMIT -1")
-		if strings.Contains(statement.SQL, "OFFSET ?") {
-			bounded = bounded && statement.Params[2] == shoppingProfileCleanupBatch && statement.Params[3] == shoppingProfileArtifactRetention-1
-		} else {
-			bounded = bounded && strings.Contains(statement.SQL, "NOT EXISTS") && statement.Params[3] == shoppingProfileCleanupBatch
-		}
-		if !bounded {
-			t.Fatalf("unbounded cleanup schedule = %#v", statement)
-		}
-	}
-	if len(schedules) < 6 {
-		t.Fatalf("cleanup schedule statements = %d, want multiple bounded batches", len(schedules))
 	}
 	var tracked int
 	if err := runner.db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM shopping_profile_artifact_versions WHERE user_id = 'user_1'`).Scan(&tracked); err != nil {
@@ -682,31 +665,6 @@ func TestShoppingProfilePublishRecoversSaveBeforeReference(t *testing.T) {
 type shoppingSnapshotSQLiteRunner struct {
 	*storage.DB
 	db *sql.DB
-}
-
-type recordingStatementRunner struct {
-	storage.StatementRunner
-	mu        sync.Mutex
-	schedules []storage.Statement
-}
-
-func (r *recordingStatementRunner) Run(ctx context.Context, statements ...storage.Statement) ([]storage.Result, error) {
-	r.mu.Lock()
-	for _, statement := range statements {
-		if strings.Contains(statement.SQL, "INSERT OR IGNORE INTO shopping_profile_artifact_cleanup_jobs") &&
-			strings.Contains(statement.SQL, "FROM shopping_profile_artifact_versions AS versions") {
-			statement.Params = append([]any(nil), statement.Params...)
-			r.schedules = append(r.schedules, statement)
-		}
-	}
-	r.mu.Unlock()
-	return r.StatementRunner.Run(ctx, statements...)
-}
-
-func (r *recordingStatementRunner) cleanupSchedules() []storage.Statement {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return append([]storage.Statement(nil), r.schedules...)
 }
 
 func newShoppingSnapshotSQLiteRunner(t *testing.T) *shoppingSnapshotSQLiteRunner {

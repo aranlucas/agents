@@ -18,3 +18,11 @@ Use maintained libraries for general-purpose code, preferring existing dependenc
 - HTTP routing and clients: `net/http`.
 - JSON: `encoding/json/v2` and `encoding/json/jsontext`.
 - Clerk JWT verification: `github.com/clerk/clerk-sdk-go/v2/jwt`.
+
+## Tests
+
+- Before adding a test, identify the observable behavior, a credible mistake it should catch, and an expected result justified independently of the implementation.
+- Prefer small, fast, reliable tests whose failures identify the broken behavior. Use integration or E2E tests for interactions that isolated tests cannot establish.
+- Do not reproduce implementation logic in assertions or mocks. Protect contracts rather than incidental internal structure.
+- Distinguish temporary development scaffolding from checks worth maintaining. Retain tests only when they add meaningful protection beyond the retained suite.
+- Never delete or weaken a failing test merely to make the suite pass; record pre-existing failures and investigate new failures as possible product bugs.

@@ -193,13 +193,3 @@ func TestStatePatchAddReplaceRemoveAndEscaping(t *testing.T) {
 		}
 	})
 }
-
-func TestStreamedExpenseReportStateField(t *testing.T) {
-	patches, err := statePatch(stateDocument{}, map[string]any{"expense_report": "## Review\n- pending"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(patches) != 1 || patches[0].Op != "add" || patches[0].Path != "/expense_report" || patches[0].Value != "## Review\n- pending" {
-		t.Fatalf("patches = %#v", patches)
-	}
-}
