@@ -483,11 +483,11 @@ func (s *Store) publishPendingShoppingProfileSnapshot(ctx context.Context, userI
 }
 
 func (s *Store) saveShoppingProfileArtifact(ctx context.Context, userID string, version int64, data []byte) error {
-	_, err := s.artifacts.Save(ctx, &artifact.SaveRequest{
+	_, err := s.artifacts.SaveVersion(ctx, &artifact.SaveRequest{
 		AppName: groceryLibraryApp, UserID: userID, SessionID: userID,
-		FileName: shoppingProfileArtifactName, Version: version,
-		Part: &genai.Part{InlineData: &genai.Blob{Data: data, MIMEType: "application/json"}},
-	})
+		FileName: shoppingProfileArtifactName,
+		Part:     &genai.Part{InlineData: &genai.Blob{Data: data, MIMEType: "application/json"}},
+	}, version)
 	if err == nil {
 		return nil
 	}

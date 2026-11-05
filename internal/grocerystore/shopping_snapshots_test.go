@@ -17,9 +17,9 @@ import (
 )
 
 func TestConcurrentShoppingProfilePublishCannotMakeStaleRevisionLatest(t *testing.T) {
-	base := newExplicitArtifactService()
-	blocking := newBlockingArtifactService(base, 1)
 	runner := newShoppingSnapshotSQLiteRunner(t)
+	base := storage.NewArtifactService(runner)
+	blocking := newBlockingArtifactService(base, 1)
 	storeA := newShoppingSnapshotTestStore(t, runner, blocking)
 	storeB := newShoppingSnapshotTestStore(t, runner, blocking)
 
@@ -76,10 +76,10 @@ func TestConcurrentShoppingProfilePublishCannotMakeStaleRevisionLatest(t *testin
 }
 
 func TestDelayedDuplicateFinalizeCannotDeleteUnchangedReferencedArtifact(t *testing.T) {
-	base := newExplicitArtifactService()
-	counting := &countingArtifactService{Service: base}
-	blocking := newBlockingArtifactService(counting, 1)
 	runner := newShoppingSnapshotSQLiteRunner(t)
+	base := storage.NewArtifactService(runner)
+	counting := &countingArtifactService{ArtifactService: base}
+	blocking := newBlockingArtifactService(counting, 1)
 	delayedStore := newShoppingSnapshotTestStore(t, runner, blocking)
 	currentStore := newShoppingSnapshotTestStore(t, runner, counting)
 	setPreferredStoreRow(t, runner, "Kroger")
@@ -188,16 +188,16 @@ func TestShoppingProfileSnapshotIsDetachedFromMutationResponse(t *testing.T) {
 
 func TestLinkKrogerAccountDeletesOldArtifactsAndSuppressesUnchangedRelink(t *testing.T) {
 	base := newExplicitArtifactService()
-	counting := &countingArtifactService{Service: base}
+	counting := &countingArtifactService{ArtifactService: base}
 	runner := newShoppingSnapshotSQLiteRunner(t)
 	store := newShoppingSnapshotTestStore(t, runner, counting)
 	oldUserID := "kroger:kroger_sub_1"
 
 	for version := int64(1); version <= 3; version++ {
-		if _, err := base.Save(t.Context(), &artifact.SaveRequest{
+		if _, err := base.SaveVersion(t.Context(), &artifact.SaveRequest{
 			AppName: groceryLibraryApp, UserID: oldUserID, SessionID: oldUserID,
-			FileName: shoppingProfileArtifactName, Version: version, Part: profileArtifactPart(t, ShoppingProfile{}),
-		}); err != nil {
+			FileName: shoppingProfileArtifactName, Part: profileArtifactPart(t, ShoppingProfile{}),
+		}, version); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := runner.db.ExecContext(t.Context(),
@@ -238,7 +238,7 @@ func TestLinkKrogerAccountDeletesOldArtifactsAndSuppressesUnchangedRelink(t *tes
 }
 
 func TestSamePreferredStoreCreatesNoRevisionJobOrArtifact(t *testing.T) {
-	counting := &countingArtifactService{Service: newExplicitArtifactService()}
+	counting := &countingArtifactService{ArtifactService: newExplicitArtifactService()}
 	runner := newShoppingSnapshotSQLiteRunner(t)
 	store := newShoppingSnapshotTestStore(t, runner, counting)
 	preferred := PreferredStore{LocationID: "loc_1", Name: "Kroger", Address: "1 Main", Chain: "Kroger"}
@@ -273,7 +273,7 @@ func TestSamePreferredStoreCreatesNoRevisionJobOrArtifact(t *testing.T) {
 }
 
 func TestPreferredStoreProviderChangeCreatesRevisionAndArtifact(t *testing.T) {
-	counting := &countingArtifactService{Service: newExplicitArtifactService()}
+	counting := &countingArtifactService{ArtifactService: newExplicitArtifactService()}
 	runner := newShoppingSnapshotSQLiteRunner(t)
 	store := newShoppingSnapshotTestStore(t, runner, counting)
 	preferred := PreferredStore{Provider: "kroger", LocationID: "loc_1", Name: "Market", Address: "1 Main", Chain: "Market"}
@@ -337,7 +337,7 @@ func TestFrequentItemsKeepSameNamedProductsSeparateByProvider(t *testing.T) {
 }
 
 func TestSamePantryQuantityAndEquipmentCreateNoRevisionOrArtifact(t *testing.T) {
-	counting := &countingArtifactService{Service: newExplicitArtifactService()}
+	counting := &countingArtifactService{ArtifactService: newExplicitArtifactService()}
 	runner := newShoppingSnapshotSQLiteRunner(t)
 	store := newShoppingSnapshotTestStore(t, runner, counting)
 	category := "appliance"
@@ -373,16 +373,16 @@ func TestSamePantryQuantityAndEquipmentCreateNoRevisionOrArtifact(t *testing.T) 
 
 func TestShoppingProfileRetentionUsesExactDeletesWithoutVersionScan(t *testing.T) {
 	base := newExplicitArtifactService()
-	counting := &countingArtifactService{Service: base}
+	counting := &countingArtifactService{ArtifactService: base}
 	runner := newShoppingSnapshotSQLiteRunner(t)
 	store := newShoppingSnapshotTestStore(t, runner, counting)
 	setPreferredStoreRow(t, runner, "Kroger")
 
 	for version := int64(1); version <= shoppingProfileArtifactRetention+5; version++ {
-		if _, err := base.Save(t.Context(), &artifact.SaveRequest{
+		if _, err := base.SaveVersion(t.Context(), &artifact.SaveRequest{
 			AppName: groceryLibraryApp, UserID: "user_1", SessionID: "user_1",
-			FileName: shoppingProfileArtifactName, Version: version, Part: profileArtifactPart(t, ShoppingProfile{}),
-		}); err != nil {
+			FileName: shoppingProfileArtifactName, Part: profileArtifactPart(t, ShoppingProfile{}),
+		}, version); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := runner.db.ExecContext(t.Context(),
@@ -421,7 +421,7 @@ func TestShoppingProfileRetentionUsesExactDeletesWithoutVersionScan(t *testing.T
 
 func TestShoppingProfileRetentionRetriesDurableCleanupWithoutNewMutation(t *testing.T) {
 	base := newExplicitArtifactService()
-	failing := &failOnceDeleteArtifactService{Service: base}
+	failing := &failOnceDeleteArtifactService{ArtifactService: base}
 	runner := newShoppingSnapshotSQLiteRunner(t)
 	store := newShoppingSnapshotTestStore(t, runner, failing)
 	setPreferredStoreRow(t, runner, "Kroger")
@@ -434,10 +434,10 @@ func TestShoppingProfileRetentionRetriesDurableCleanupWithoutNewMutation(t *test
 		t.Fatal(err)
 	}
 	for version := int64(2); version <= shoppingProfileArtifactRetention+6; version++ {
-		if _, err := base.Save(t.Context(), &artifact.SaveRequest{
+		if _, err := base.SaveVersion(t.Context(), &artifact.SaveRequest{
 			AppName: groceryLibraryApp, UserID: "user_1", SessionID: "user_1",
-			FileName: shoppingProfileArtifactName, Version: version, Part: profileArtifactPart(t, snapshot.Profile),
-		}); err != nil {
+			FileName: shoppingProfileArtifactName, Part: profileArtifactPart(t, snapshot.Profile),
+		}, version); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := runner.db.ExecContext(t.Context(),
@@ -505,8 +505,8 @@ func TestShoppingProfileRetentionRetriesDurableCleanupWithoutNewMutation(t *test
 
 func TestShoppingProfileRetentionSchedulesAndDrainsBoundedBatchesWithoutMutation(t *testing.T) {
 	base := newExplicitArtifactService()
-	counting := &countingArtifactService{Service: base}
-	failing := &failOnceDeleteArtifactService{Service: counting}
+	counting := &countingArtifactService{ArtifactService: base}
+	failing := &failOnceDeleteArtifactService{ArtifactService: counting}
 	runner := newShoppingSnapshotSQLiteRunner(t)
 	store := newShoppingSnapshotTestStore(t, runner, failing)
 	setPreferredStoreRow(t, runner, "Kroger")
@@ -520,10 +520,10 @@ func TestShoppingProfileRetentionSchedulesAndDrainsBoundedBatchesWithoutMutation
 	}
 	lastVersion := int64(shoppingProfileArtifactRetention + 2*shoppingProfileCleanupBatch + 5)
 	for version := int64(2); version <= lastVersion; version++ {
-		if _, err := base.Save(t.Context(), &artifact.SaveRequest{
+		if _, err := base.SaveVersion(t.Context(), &artifact.SaveRequest{
 			AppName: groceryLibraryApp, UserID: "user_1", SessionID: "user_1",
-			FileName: shoppingProfileArtifactName, Version: version, Part: profileArtifactPart(t, snapshot.Profile),
-		}); err != nil {
+			FileName: shoppingProfileArtifactName, Part: profileArtifactPart(t, snapshot.Profile),
+		}, version); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := runner.db.ExecContext(t.Context(),
@@ -637,18 +637,18 @@ func TestStoreCloseCancelsActiveShoppingProfileSaveAndCannotRestart(t *testing.T
 }
 
 func TestShoppingProfilePublishRecoversSaveBeforeReference(t *testing.T) {
-	base := newExplicitArtifactService()
 	runner := newShoppingSnapshotSQLiteRunner(t)
+	base := storage.NewArtifactService(runner)
 	store := newShoppingSnapshotTestStore(t, runner, base)
 	setPreferredStoreRow(t, runner, "Kroger")
 	snapshot, err := store.loadShoppingProfileSnapshot(t.Context(), "user_1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := base.Save(t.Context(), &artifact.SaveRequest{
+	if _, err := base.SaveVersion(t.Context(), &artifact.SaveRequest{
 		AppName: groceryLibraryApp, UserID: "user_1", SessionID: "user_1",
-		FileName: shoppingProfileArtifactName, Version: snapshot.Revision, Part: profileArtifactPart(t, snapshot.Profile),
-	}); err != nil {
+		FileName: shoppingProfileArtifactName, Part: profileArtifactPart(t, snapshot.Profile),
+	}, snapshot.Revision); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := store.publishPendingShoppingProfileSnapshot(t.Context(), "user_1"); err != nil {
@@ -680,7 +680,7 @@ func newShoppingSnapshotSQLiteRunner(t *testing.T) *shoppingSnapshotSQLiteRunner
 	return &shoppingSnapshotSQLiteRunner{DB: db, db: db.SQL()}
 }
 
-func newShoppingSnapshotTestStore(t *testing.T, runner storage.StatementRunner, service artifact.Service) *Store {
+func newShoppingSnapshotTestStore(t *testing.T, runner storage.StatementRunner, service ArtifactService) *Store {
 	t.Helper()
 	store := &Store{db: runner, artifacts: service, newID: randomID}
 	t.Cleanup(store.stopShoppingProfileSnapshots)
@@ -719,21 +719,21 @@ func waitForShoppingProfileSnapshots(t *testing.T, store *Store) {
 }
 
 type blockingArtifactService struct {
-	artifact.Service
+	ArtifactService
 	blockVersion int64
 	started      chan struct{}
 	release      chan struct{}
 	once         sync.Once
 }
 
-func newBlockingArtifactService(service artifact.Service, version int64) *blockingArtifactService {
+func newBlockingArtifactService(service ArtifactService, version int64) *blockingArtifactService {
 	return &blockingArtifactService{
-		Service: service, blockVersion: version, started: make(chan struct{}), release: make(chan struct{}),
+		ArtifactService: service, blockVersion: version, started: make(chan struct{}), release: make(chan struct{}),
 	}
 }
 
-func (s *blockingArtifactService) Save(ctx context.Context, request *artifact.SaveRequest) (*artifact.SaveResponse, error) {
-	if request.Version == s.blockVersion {
+func (s *blockingArtifactService) SaveVersion(ctx context.Context, request *artifact.SaveRequest, version int64) (*artifact.SaveResponse, error) {
+	if version == s.blockVersion {
 		s.once.Do(func() { close(s.started) })
 		select {
 		case <-ctx.Done():
@@ -741,11 +741,11 @@ func (s *blockingArtifactService) Save(ctx context.Context, request *artifact.Sa
 		case <-s.release:
 		}
 	}
-	return s.Service.Save(ctx, request)
+	return s.ArtifactService.SaveVersion(ctx, request, version)
 }
 
 type countingArtifactService struct {
-	artifact.Service
+	ArtifactService
 	mu       sync.Mutex
 	saves    int
 	versions int
@@ -753,7 +753,7 @@ type countingArtifactService struct {
 }
 
 type failOnceDeleteArtifactService struct {
-	artifact.Service
+	ArtifactService
 	mu     sync.Mutex
 	failed bool
 }
@@ -766,7 +766,7 @@ func (s *failOnceDeleteArtifactService) Delete(ctx context.Context, request *art
 		return errors.New("injected artifact delete failure")
 	}
 	s.mu.Unlock()
-	return s.Service.Delete(ctx, request)
+	return s.ArtifactService.Delete(ctx, request)
 }
 
 type explicitArtifactKey struct {
@@ -782,7 +782,11 @@ func newExplicitArtifactService() *explicitArtifactService {
 	return &explicitArtifactService{artifacts: map[explicitArtifactKey]map[int64]*genai.Part{}}
 }
 
-func (s *explicitArtifactService) Save(_ context.Context, request *artifact.SaveRequest) (*artifact.SaveResponse, error) {
+func (s *explicitArtifactService) Save(ctx context.Context, request *artifact.SaveRequest) (*artifact.SaveResponse, error) {
+	return s.SaveVersion(ctx, request, 0)
+}
+
+func (s *explicitArtifactService) SaveVersion(_ context.Context, request *artifact.SaveRequest, version int64) (*artifact.SaveResponse, error) {
 	if request == nil {
 		return nil, errors.New("save request is required")
 	}
@@ -797,7 +801,6 @@ func (s *explicitArtifactService) Save(_ context.Context, request *artifact.Save
 		versions = map[int64]*genai.Part{}
 		s.artifacts[key] = versions
 	}
-	version := request.Version
 	if version == 0 {
 		version = 1
 		for candidate := range versions {
@@ -908,25 +911,25 @@ func (s *explicitArtifactService) GetArtifactVersion(_ context.Context, request 
 	return &artifact.GetArtifactVersionResponse{ArtifactVersion: &artifact.ArtifactVersion{Version: request.Version}}, nil
 }
 
-func (s *countingArtifactService) Save(ctx context.Context, request *artifact.SaveRequest) (*artifact.SaveResponse, error) {
+func (s *countingArtifactService) SaveVersion(ctx context.Context, request *artifact.SaveRequest, version int64) (*artifact.SaveResponse, error) {
 	s.mu.Lock()
 	s.saves++
 	s.mu.Unlock()
-	return s.Service.Save(ctx, request)
+	return s.ArtifactService.SaveVersion(ctx, request, version)
 }
 
 func (s *countingArtifactService) Versions(ctx context.Context, request *artifact.VersionsRequest) (*artifact.VersionsResponse, error) {
 	s.mu.Lock()
 	s.versions++
 	s.mu.Unlock()
-	return s.Service.Versions(ctx, request)
+	return s.ArtifactService.Versions(ctx, request)
 }
 
 func (s *countingArtifactService) Delete(ctx context.Context, request *artifact.DeleteRequest) error {
 	s.mu.Lock()
 	s.deleted = append(s.deleted, request.Version)
 	s.mu.Unlock()
-	return s.Service.Delete(ctx, request)
+	return s.ArtifactService.Delete(ctx, request)
 }
 
 func (s *countingArtifactService) saveCount() int {

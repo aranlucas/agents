@@ -13,10 +13,17 @@ func TestArtifactServiceVersionsAndScopes(t *testing.T) {
 	service := NewArtifactService(db)
 	ctx := t.Context()
 	save := func(text string, version int64) (int64, error) {
-		response, err := service.Save(ctx, &artifact.SaveRequest{
+		request := &artifact.SaveRequest{
 			AppName: "grocery_agent", UserID: "user-1", SessionID: "thread-1", FileName: "list.json",
-			Part: genai.NewPartFromText(text), Version: version,
-		})
+			Part: genai.NewPartFromText(text),
+		}
+		var response *artifact.SaveResponse
+		var err error
+		if version == 0 {
+			response, err = service.Save(ctx, request)
+		} else {
+			response, err = service.SaveVersion(ctx, request, version)
+		}
 		if err != nil {
 			return 0, err
 		}
@@ -90,5 +97,36 @@ func TestArtifactServiceRejectsPathLikeScopesAndTampering(t *testing.T) {
 	}
 	if _, err := service.Load(t.Context(), &artifact.LoadRequest{AppName: "app", UserID: "u", SessionID: "s", FileName: "f"}); err == nil {
 		t.Fatal("tampered artifact loaded")
+	}
+}
+
+func TestArtifactServiceExplicitVersionsPreserveRevisionOrder(t *testing.T) {
+	service := NewArtifactService(newTestDB(t))
+	request := &artifact.SaveRequest{
+		AppName: "grocery_agent", UserID: "user-1", SessionID: "user-1", FileName: "profile.json",
+		Part: genai.NewPartFromText("newer"),
+	}
+	for _, version := range []int64{0, -1} {
+		if _, err := service.SaveVersion(t.Context(), request, version); err == nil {
+			t.Fatalf("accepted explicit version %d", version)
+		}
+	}
+	response, err := service.SaveVersion(t.Context(), request, 10)
+	if err != nil || response.Version != 10 {
+		t.Fatalf("save revision 10 = %+v, %v", response, err)
+	}
+	request.Part = genai.NewPartFromText("older")
+	if _, err := service.SaveVersion(t.Context(), request, 3); err != nil {
+		t.Fatal(err)
+	}
+	latest, err := service.Load(t.Context(), &artifact.LoadRequest{
+		AppName: request.AppName, UserID: request.UserID, SessionID: request.SessionID, FileName: request.FileName,
+	})
+	if err != nil || latest.Part.Text != "newer" {
+		t.Fatalf("latest after delayed revision 3 = %+v, %v", latest, err)
+	}
+	response, err = service.Save(t.Context(), request)
+	if err != nil || response.Version != 11 {
+		t.Fatalf("automatic version after revision 10 = %+v, %v", response, err)
 	}
 }
