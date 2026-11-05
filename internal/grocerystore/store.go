@@ -112,9 +112,16 @@ type Repository interface {
 	DeleteItem(context.Context, string, string, string, time.Time) error
 }
 
+// ArtifactService adds immutable, revision-addressed saves for shopping profiles
+// to the ADK artifact service. Ordinary ADK saves allocate their own versions.
+type ArtifactService interface {
+	artifact.Service
+	SaveVersion(context.Context, *artifact.SaveRequest, int64) (*artifact.SaveResponse, error)
+}
+
 type Store struct {
 	db        storage.StatementRunner
-	artifacts artifact.Service
+	artifacts ArtifactService
 	newID     func(string) (string, error)
 
 	shoppingSnapshotMu sync.RWMutex
@@ -126,7 +133,7 @@ func NewStore(db storage.StatementRunner) *Store {
 	return &Store{db: db, newID: randomID}
 }
 
-func NewStoreWithArtifacts(db storage.StatementRunner, artifacts artifact.Service) *Store {
+func NewStoreWithArtifacts(db storage.StatementRunner, artifacts ArtifactService) *Store {
 	store := &Store{db: db, artifacts: artifacts, newID: randomID}
 	store.startShoppingProfileSnapshots()
 	return store

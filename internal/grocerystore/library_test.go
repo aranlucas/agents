@@ -13,7 +13,7 @@ func TestSaveListPublishesStructuredArtifact(t *testing.T) {
 	store := newFixtureStore(t, func(statements []storage.Statement) []storage.Result {
 		return []storage.Result{mutationResult(1), mutationResult(1), mutationResult(1), mutationResult(1)}
 	})
-	store.artifacts = artifact.InMemoryService()
+	store.artifacts = newExplicitArtifactService()
 	ids := []string{"list_1", "item_1", "item_2"}
 	store.newID = func(string) (string, error) {
 		id := ids[0]
@@ -46,7 +46,7 @@ func TestSaveRecipeNormalizesTagsAndAssignsArtifactVersion(t *testing.T) {
 		}
 		return results
 	})
-	store.artifacts = artifact.InMemoryService()
+	store.artifacts = newExplicitArtifactService()
 	ids := []string{"recipe_1", "ingredient_1", "step_1"}
 	store.newID = func(string) (string, error) {
 		id := ids[0]
@@ -84,7 +84,7 @@ func TestRefreshListSnapshotPublishesUpdatedContentAndVersion(t *testing.T) {
 			return nil
 		}
 	})
-	store.artifacts = artifact.InMemoryService()
+	store.artifacts = newExplicitArtifactService()
 	if _, _, err := store.saveSnapshot(t.Context(), "list", "list_1", "user_1", nil, listArtifactName, List{ID: "list_1", OwnerUserID: "user_1", Title: "Old list"}); err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +120,7 @@ func TestRefreshRecipeSnapshotPublishesUpdatedContentAndVersion(t *testing.T) {
 			return nil
 		}
 	})
-	store.artifacts = artifact.InMemoryService()
+	store.artifacts = newExplicitArtifactService()
 	if _, _, err := store.saveSnapshot(t.Context(), "recipe", "recipe_1", "user_1", nil, recipeArtifactName, Recipe{ID: "recipe_1", OwnerUserID: "user_1", Title: "Pasta"}); err != nil {
 		t.Fatal(err)
 	}

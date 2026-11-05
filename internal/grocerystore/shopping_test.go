@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/aranlucas/agents/internal/storage"
-	"google.golang.org/adk/v2/artifact"
 )
 
 func TestRecordOrderCountsItemsAndRecentOrdersGroupProducts(t *testing.T) {
@@ -115,7 +114,7 @@ func TestSaveListPreservesProviderNeutralProductIdentity(t *testing.T) {
 			return nil
 		}
 	})
-	store.artifacts = artifact.InMemoryService()
+	store.artifacts = newExplicitArtifactService()
 	ids := []string{"list_1", "item_1"}
 	store.newID = func(string) (string, error) {
 		id := ids[0]

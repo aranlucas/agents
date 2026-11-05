@@ -30,7 +30,7 @@ type ArtifactService struct {
 var _ artifact.Service = (*ArtifactService)(nil)
 
 // NewArtifactService constructs the SQLite-backed ADK artifact service.
-func NewArtifactService(db StatementRunner) artifact.Service {
+func NewArtifactService(db StatementRunner) *ArtifactService {
 	return &ArtifactService{db: db, now: time.Now}
 }
 
@@ -43,6 +43,20 @@ type artifactRow struct {
 }
 
 func (s *ArtifactService) Save(ctx context.Context, req *artifact.SaveRequest) (*artifact.SaveResponse, error) {
+	return s.save(ctx, req, 0)
+}
+
+// SaveVersion inserts an explicit positive version without overwriting an
+// existing one. Shopping profiles use their durable revision to prevent delayed
+// publishers from making an older snapshot the latest artifact.
+func (s *ArtifactService) SaveVersion(ctx context.Context, req *artifact.SaveRequest, version int64) (*artifact.SaveResponse, error) {
+	if version <= 0 {
+		return nil, errors.New("artifact version must be positive")
+	}
+	return s.save(ctx, req, version)
+}
+
+func (s *ArtifactService) save(ctx context.Context, req *artifact.SaveRequest, requestedVersion int64) (*artifact.SaveResponse, error) {
 	if req == nil {
 		return nil, errors.New("save request is required")
 	}
@@ -51,9 +65,6 @@ func (s *ArtifactService) Save(ctx context.Context, req *artifact.SaveRequest) (
 	}
 	if err := validArtifactScope(req.AppName, req.UserID, req.SessionID, req.FileName); err != nil {
 		return nil, err
-	}
-	if req.Version < 0 {
-		return nil, errors.New("artifact version cannot be negative")
 	}
 	data, err := json.Marshal(req.Part)
 	if err != nil {
@@ -70,8 +81,8 @@ func (s *ArtifactService) Save(ctx context.Context, req *artifact.SaveRequest) (
 	scope := []any{req.AppName, req.UserID, req.SessionID, req.FileName}
 	// The version is allocated inside the same transaction as the insert, and
 	// an explicit version never overwrites an existing one.
-	version := any(req.Version)
-	if req.Version == 0 {
+	version := any(requestedVersion)
+	if requestedVersion == 0 {
 		version = nil
 	}
 	results, err := s.db.Run(ctx, Statement{
