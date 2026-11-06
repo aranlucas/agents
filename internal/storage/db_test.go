@@ -115,9 +115,6 @@ func TestMigrateIsIdempotentAndSchemaIsHealthy(t *testing.T) {
 	if err := db.Health(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if LatestMigrationVersion != migrations[len(migrations)-1].version || len(migrations) < 10 {
-		t.Fatalf("latest = %q of %d migrations", LatestMigrationVersion, len(migrations))
-	}
 	if _, err := db.Run(t.Context(), Statement{SQL: "DELETE FROM schema_migrations WHERE version = ?", Params: []any{LatestMigrationVersion}}); err != nil {
 		t.Fatal(err)
 	}

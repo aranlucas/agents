@@ -17,6 +17,7 @@ import (
 	"github.com/aranlucas/agents/internal/agentruntime"
 	"github.com/aranlucas/agents/internal/auth"
 	"github.com/aranlucas/agents/internal/common"
+	"github.com/aranlucas/agents/internal/config"
 	"github.com/aranlucas/agents/internal/observability"
 	"github.com/aranlucas/agents/internal/providererrors"
 
@@ -36,7 +37,7 @@ type handlerConfig struct {
 	artifacts  artifact.Service
 	pending    PendingTools
 	ids        events.IDGenerator
-	smoothing  streamSmoothing
+	smoothing  config.StreamSmoothing
 	active     *activeRuns
 }
 
@@ -70,111 +71,10 @@ func withActiveRuns(active *activeRuns) Option {
 	return func(c *handlerConfig) { c.active = active }
 }
 
-// streamSmoothing controls optional server-side pacing for AG-UI text
-// streaming. The default is enabled and keeps short turns intact while
-// splitting long turns into small chunks with a delay between each chunk.
-type streamSmoothing struct {
-	enabled       bool
-	chunking      string
-	charsPerChunk int
-	chunkDelay    time.Duration
-}
+const sessionNameStateKey = "session_name"
 
-const (
-	streamChunkingWord  = "word"
-	streamChunkingLine  = "line"
-	streamChunkingChar  = "char"
-	sessionNameStateKey = "session_name"
-
-	DefaultStreamCharsPerChunk = 64
-	DefaultStreamChunkDelay    = 18 * time.Millisecond
-	DefaultStreamChunking      = streamChunkingWord
-)
-
-var defaultStreamSmoothing = streamSmoothing{
-	enabled:       true,
-	chunking:      DefaultStreamChunking,
-	charsPerChunk: DefaultStreamCharsPerChunk,
-	chunkDelay:    DefaultStreamChunkDelay,
-}
-
-// StreamSmoothing is the text-stream pacing policy.
-type StreamSmoothing struct {
-	Enabled       bool
-	Chunking      string
-	CharsPerChunk int
-	ChunkDelay    time.Duration
-}
-
-// DefaultStreamSmoothing is the pacing used when nothing overrides it.
-func DefaultStreamSmoothing() StreamSmoothing {
-	return StreamSmoothing{Enabled: true, Chunking: DefaultStreamChunking, CharsPerChunk: DefaultStreamCharsPerChunk, ChunkDelay: DefaultStreamChunkDelay}
-}
-
-// StreamSmoothingFromEnv reads AGUI_STREAM_* overrides once. Invalid values
-// keep the exported defaults.
-func StreamSmoothingFromEnv(getenv func(string) string) StreamSmoothing {
-	result := DefaultStreamSmoothing()
-	if rawChunking := strings.TrimSpace(strings.ToLower(getenv("AGUI_STREAM_CHUNKING"))); rawChunking != "" {
-		result.Chunking = rawChunking
-	}
-	if rawEnabled := strings.TrimSpace(getenv("AGUI_STREAM_SMOOTHING")); rawEnabled != "" {
-		parsed, err := strconv.ParseBool(rawEnabled)
-		if err != nil {
-			log.Printf("invalid AGUI_STREAM_SMOOTHING=%q, defaulting to true", rawEnabled)
-		} else {
-			result.Enabled = parsed
-		}
-	}
-	if rawChunkSize := strings.TrimSpace(getenv("AGUI_STREAM_CHUNK_SIZE")); rawChunkSize != "" {
-		parsed, err := strconv.Atoi(rawChunkSize)
-		switch {
-		case err != nil:
-			log.Printf("invalid AGUI_STREAM_CHUNK_SIZE=%q, defaulting to %d", rawChunkSize, result.CharsPerChunk)
-		case parsed > 0:
-			result.CharsPerChunk = parsed
-		default:
-			log.Printf("AGUI_STREAM_CHUNK_SIZE=%d must be >0, using %d", parsed, result.CharsPerChunk)
-		}
-	}
-	if rawDelay := strings.TrimSpace(getenv("AGUI_STREAM_CHUNK_DELAY_MS")); rawDelay != "" {
-		parsed, err := strconv.Atoi(rawDelay)
-		switch {
-		case err != nil:
-			log.Printf("invalid AGUI_STREAM_CHUNK_DELAY_MS=%q, defaulting to %s", rawDelay, result.ChunkDelay)
-		case parsed >= 0:
-			result.ChunkDelay = time.Duration(parsed) * time.Millisecond
-		default:
-			log.Printf("AGUI_STREAM_CHUNK_DELAY_MS=%d is negative, using %s", parsed, DefaultStreamChunkDelay)
-		}
-	}
-	return result
-}
-
-// WithStreamSmoothing overrides the converter's pacing behavior.
-func WithStreamSmoothing(cfg streamSmoothing) Option {
-	switch strings.ToLower(cfg.chunking) {
-	case "", streamChunkingWord:
-		cfg.chunking = streamChunkingWord
-	case streamChunkingLine, streamChunkingChar:
-		cfg.chunking = strings.ToLower(cfg.chunking)
-	default:
-		cfg.chunking = streamChunkingWord
-	}
-	if cfg.charsPerChunk <= 0 {
-		cfg.charsPerChunk = defaultStreamSmoothing.charsPerChunk
-	}
-	if cfg.chunkDelay < 0 {
-		cfg.chunkDelay = 0
-	}
-	return func(c *handlerConfig) { c.smoothing = cfg }
-}
-
-// WithTextStreamSmoothing is the public builder for text pacing settings.
-// Use it from gateway/main.go (or other assembly points) to mirror ai-sdk-like
-// behavior without leaking internals.
-func WithTextStreamSmoothing(enabled bool, chunking string, chunkDelay time.Duration, charsPerChunk int) Option {
-	return WithStreamSmoothing(streamSmoothing{enabled: enabled, chunking: chunking, charsPerChunk: charsPerChunk, chunkDelay: chunkDelay})
+func WithStreamSmoothing(cfg config.StreamSmoothing) Option {
+	return func(c *handlerConfig) { c.smoothing = cfg.Normalize() }
 }
 
 // ADKHandler binds one ADK agent and session service to an AG-UI HTTP
@@ -187,7 +87,7 @@ type ADKHandler struct {
 	stateless bool
 	pending   PendingTools
 	ids       events.IDGenerator
-	smoothing streamSmoothing
+	smoothing config.StreamSmoothing
 	active    *activeRuns
 }
 
@@ -217,12 +117,12 @@ func newEntryHandler(entry agentruntime.Entry, sessions session.Service, statele
 	if err != nil {
 		return nil, err
 	}
-	cfg := &handlerConfig{ids: events.NewDefaultIDGenerator(), smoothing: defaultStreamSmoothing}
+	cfg := &handlerConfig{ids: events.NewDefaultIDGenerator(), smoothing: config.DefaultStreamSmoothing()}
 	if stateless {
 		// Suggestions and the homepage introduction should arrive at provider
 		// speed, without the conversational typewriter pacing.
-		cfg.smoothing.enabled = false
-		cfg.smoothing.chunkDelay = 0
+		cfg.smoothing.Enabled = false
+		cfg.smoothing.ChunkDelay = 0
 	}
 	for _, opt := range opts {
 		opt(cfg)

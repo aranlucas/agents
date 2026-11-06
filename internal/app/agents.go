@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/aranlucas/agents/internal/agents/expense"
@@ -25,6 +24,7 @@ import (
 	"github.com/aranlucas/agents/internal/providers/openai"
 
 	"cloud.google.com/go/bigquery"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/tool"
@@ -52,7 +52,6 @@ func BuildSpecialists(ctx context.Context, rt *Runtime, toolsets ...tool.Toolset
 	cfg := rt.Config
 	integrations := cfg.Integrations
 	availableProviders := providerpolicy.FallbackProviders(cfg.Providers)
-	jobsWebLoader := common.NewWebLoader(common.NewHTTPClient(20*time.Second, 4<<20), 100_000)
 	webLoader := common.NewWebLoader(common.NewHTTPClient(20*time.Second, 4<<20), 100_000)
 	krogerClient := grocery.NewKroger(common.NewHTTPClient(30*time.Second, 8<<20).Client, integrations.KrogerMCPURL)
 	trvl := travel.NewTRVL(integrations.TRVLMCPURL, common.NewHTTPClient(20*time.Second, 8<<20).Client)
@@ -90,16 +89,24 @@ func BuildSpecialists(ctx context.Context, rt *Runtime, toolsets ...tool.Toolset
 		trendsAgent                                                 agent.Agent
 		fitnessModel                                                model.LLM
 	)
-	var builds buildGroup
-	builds.Go("jobs agent", func() (err error) {
-		jobsAgent, err = jobs.New(careerModel, rt.Brave, jobsWebLoader, toolsets...)
+	var builds errgroup.Group
+	build := func(label string, constructor func() error) {
+		builds.Go(func() error {
+			if err := constructor(); err != nil {
+				return fmt.Errorf("build %s: %w", label, err)
+			}
+			return nil
+		})
+	}
+	build("jobs agent", func() (err error) {
+		jobsAgent, err = jobs.New(careerModel, rt.Brave, webLoader, toolsets...)
 		return err
 	})
-	builds.Go("interview agent", func() (err error) {
+	build("interview agent", func() (err error) {
 		interviewAgent, err = interview.New(careerModel, toolsets...)
 		return err
 	})
-	builds.Go("presentation agent", func() error {
+	build("presentation agent", func() error {
 		m, err := agentModel(providerpolicy.Presentation)
 		if err != nil {
 			return err
@@ -107,7 +114,7 @@ func BuildSpecialists(ctx context.Context, rt *Runtime, toolsets ...tool.Toolset
 		presentationAgent, err = presentation.New(m, rt.Brave, toolsets...)
 		return err
 	})
-	builds.Go("research agent", func() error {
+	build("research agent", func() error {
 		m, err := agentModel(providerpolicy.Research)
 		if err != nil {
 			return err
@@ -115,7 +122,7 @@ func BuildSpecialists(ctx context.Context, rt *Runtime, toolsets ...tool.Toolset
 		researchAgent, err = research.New(m, toolsets...)
 		return err
 	})
-	builds.Go("spreadsheet agent", func() error {
+	build("spreadsheet agent", func() error {
 		m, err := agentModel(providerpolicy.Spreadsheet)
 		if err != nil {
 			return err
@@ -123,7 +130,7 @@ func BuildSpecialists(ctx context.Context, rt *Runtime, toolsets ...tool.Toolset
 		spreadsheetAgent, err = spreadsheet.New(m, toolsets...)
 		return err
 	})
-	builds.Go("expense agent", func() error {
+	build("expense agent", func() error {
 		m, err := agentModel(providerpolicy.Expense)
 		if err != nil {
 			return err
@@ -131,7 +138,7 @@ func BuildSpecialists(ctx context.Context, rt *Runtime, toolsets ...tool.Toolset
 		expenseAgent, err = expense.New(m, toolsets...)
 		return err
 	})
-	builds.Go("travel agent", func() error {
+	build("travel agent", func() error {
 		m, err := agentModel(providerpolicy.Travel)
 		if err != nil {
 			return err
@@ -139,7 +146,7 @@ func BuildSpecialists(ctx context.Context, rt *Runtime, toolsets ...tool.Toolset
 		travelAgent, err = travel.New(m, append(append([]tool.Toolset{}, toolsets...), trvl)...)
 		return err
 	})
-	builds.Go("fitness agents", func() error {
+	build("fitness agents", func() error {
 		m, err := agentModel(providerpolicy.Fitness)
 		if err != nil {
 			return err
@@ -151,7 +158,7 @@ func BuildSpecialists(ctx context.Context, rt *Runtime, toolsets ...tool.Toolset
 		fitnessTaskAgent, err = fitness.NewTask(m, rt.Fitness, rt.Brave, toolsets...)
 		return err
 	})
-	builds.Go("grocery agents", func() error {
+	build("grocery agents", func() error {
 		m, err := agentModel(providerpolicy.Grocery)
 		if err != nil {
 			return err
@@ -162,7 +169,7 @@ func BuildSpecialists(ctx context.Context, rt *Runtime, toolsets ...tool.Toolset
 		groceryTaskAgent, err = grocery.NewTaskWithLibrary(m, krogerClient, rt.Brave, webLoader, rt.Groceries, toolsets...)
 		return err
 	})
-	builds.Go("trends agent", func() error {
+	build("trends agent", func() error {
 		m, err := agentModel(providerpolicy.Trends)
 		if err != nil {
 			return err
@@ -206,27 +213,6 @@ func BuildSpecialists(ctx context.Context, rt *Runtime, toolsets ...tool.Toolset
 	}
 	complete = true
 	return result, nil
-}
-
-// buildGroup runs independent constructors concurrently and keeps the first
-// error, labelled with the component that failed.
-type buildGroup struct {
-	wg   sync.WaitGroup
-	once sync.Once
-	err  error
-}
-
-func (group *buildGroup) Go(label string, build func() error) {
-	group.wg.Go(func() {
-		if err := build(); err != nil {
-			group.once.Do(func() { group.err = fmt.Errorf("build %s: %w", label, err) })
-		}
-	})
-}
-
-func (group *buildGroup) Wait() error {
-	group.wg.Wait()
-	return group.err
 }
 
 // trendsBigQueryClient builds the BigQuery client billed to the service

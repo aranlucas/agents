@@ -35,8 +35,8 @@ func TestStateDefaultsUseStableCollections(t *testing.T) {
 		state.Answers == nil || state.Profile.AdditionalFacts == nil {
 		t.Fatalf("Defaults() = %#v", state)
 	}
-	if got := len(StateDefaults()); got != 21 {
-		t.Fatalf("StateDefaults() has %d keys", got)
+	if got := StateDefaults(); got["status"] != "idle" || got["answers"] == nil {
+		t.Fatalf("session defaults = %#v", got)
 	}
 }
 

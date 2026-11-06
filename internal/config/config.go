@@ -124,6 +124,7 @@ type Config struct {
 	ClerkJWKS    string
 	ClerkIssuer  string
 	ClerkSecret  string
+	Stream       StreamSmoothing
 	HTTP         HTTP
 	Providers    map[string]Provider
 	Integrations Integrations
@@ -203,6 +204,7 @@ func loadCommon(getenv func(string) string, defaultPort string) (Config, error) 
 		DatabasePath: databasePath,
 		ClerkSecret:  env(getenv, "CLERK_SECRET_KEY"),
 		HTTP:         HTTP{Port: port},
+		Stream:       loadStreamSmoothing(getenv),
 		Providers:    LoadProviders(getenv),
 		Integrations: integrations,
 		SentryDSN:    env(getenv, "SENTRY_DSN"),

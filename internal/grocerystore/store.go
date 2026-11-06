@@ -421,40 +421,28 @@ func (s *Store) AddItems(ctx context.Context, userID, listID string, inputs []Ne
 	updatedAt := timestamp(now)
 	statements := make([]storage.Statement, 0, len(inputs)+1)
 	items := make([]Item, 0, len(inputs))
+	insertIndexes := make([]int, 0, len(inputs))
 	for _, input := range inputs {
-		name, quantity := strings.TrimSpace(input.Name), strings.TrimSpace(input.Quantity)
-		if quantity == "" {
-			quantity = defaultQuantity
-		}
-		if name == "" || len(name) > 500 || len(quantity) > 100 || (input.Note != nil && len(*input.Note) > 1000) {
+		if input.Note != nil && len(*input.Note) > 1000 {
 			return nil, ErrInvalid
 		}
-		product, upc, productErr := normalizeProductReference(input.Product, input.Upc)
-		if productErr != nil {
-			return nil, productErr
-		}
-		input.Product, input.Upc = product, upc
-		id, err := s.newID("item")
+		item, err := s.newListItem(listID, userID, input, 0, updatedAt)
 		if err != nil {
 			return nil, err
 		}
-		var note any
-		if input.Note != nil && strings.TrimSpace(*input.Note) != "" {
-			trimmed := strings.TrimSpace(*input.Note)
-			note = trimmed
-		}
+		insertIndexes = append(insertIndexes, len(statements))
 		statements = append(statements, storage.Statement{
 			SQL: `INSERT INTO grocery_list_items (id, list_id, name, quantity, note, position, added_by, checked_by, checked_at, updated_at)
 			      SELECT ?, gl.id, ?, ?, ?, COALESCE((SELECT MAX(position) + 1 FROM grocery_list_items WHERE list_id = gl.id), 0), ?, NULL, NULL, ?
 			      FROM grocery_lists gl WHERE gl.id = ? AND (gl.owner_user_id = ? OR EXISTS (
 			        SELECT 1 FROM household_members hm WHERE hm.household_id = gl.household_id AND hm.clerk_user_id = ?
 			      ))`,
-			Params: []any{id, name, quantity, note, userID, updatedAt, listID, userID, userID},
+			Params: []any{item.ID, item.Name, item.Quantity, nullableString(item.Note), userID, updatedAt, listID, userID, userID},
 		})
-		if stmt := productReferenceStatement(id, input.Product); stmt != nil {
+		if stmt := productReferenceStatement(item.ID, item.Product); stmt != nil {
 			statements = append(statements, *stmt)
 		}
-		items = append(items, Item{ID: id, ListID: listID, Name: name, Quantity: quantity, Note: stringPointer(note), Upc: input.Upc, Product: input.Product, AddedBy: userID, UpdatedAt: updatedAt})
+		items = append(items, item)
 	}
 	statements = append(statements, storage.Statement{
 		SQL: `UPDATE grocery_lists SET updated_at = ? WHERE id = ? AND (owner_user_id = ? OR EXISTS (
@@ -466,14 +454,21 @@ func (s *Store) AddItems(ctx context.Context, userID, listID string, inputs []Ne
 	if err != nil {
 		return nil, fmt.Errorf("add grocery list items: %w", err)
 	}
-	for index := range inputs {
+	for _, index := range insertIndexes {
 		if index >= len(results) || results[index].Meta.Changes == 0 {
 			return nil, ErrForbidden
 		}
-		items[index].Position = index
 	}
-	if _, err := s.refreshListSnapshot(ctx, userID, listID, now); err != nil {
+	list, err := s.refreshListSnapshot(ctx, userID, listID, now)
+	if err != nil {
 		return nil, err
+	}
+	positions := make(map[string]int, len(list.Items))
+	for _, item := range list.Items {
+		positions[item.ID] = item.Position
+	}
+	for index := range items {
+		items[index].Position = positions[items[index].ID]
 	}
 	return items, nil
 }
@@ -724,12 +719,4 @@ func randomID(prefix string) (string, error) {
 		return "", errors.New("generate grocery identifier")
 	}
 	return prefix + "_" + hex.EncodeToString(bytes), nil
-}
-
-func stringPointer(value any) *string {
-	text, ok := value.(string)
-	if !ok {
-		return nil
-	}
-	return &text
 }

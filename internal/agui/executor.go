@@ -6,6 +6,8 @@ import (
 	"log"
 	"time"
 
+	"github.com/aranlucas/agents/internal/config"
+
 	"github.com/aranlucas/agents/internal/mcpruntime"
 	"github.com/aranlucas/agents/internal/observability"
 
@@ -28,7 +30,7 @@ type runExecution struct {
 	stateDelta map[string]any
 	snapshot   stateDocument
 	converter  *streamConverter
-	smoothing  streamSmoothing
+	smoothing  config.StreamSmoothing
 }
 
 func (e *runExecution) execute(ctx context.Context, emit func(context.Context, events.Event) error) error {
@@ -67,8 +69,8 @@ func (e *runExecution) execute(ctx context.Context, emit func(context.Context, e
 			return err
 		}
 		for _, converted := range convertedEvents {
-			if e.smoothing.enabled && e.smoothing.chunkDelay > 0 && converted.Type() == events.EventTypeTextMessageContent && lastWasTextContent {
-				timer := time.NewTimer(e.smoothing.chunkDelay)
+			if e.smoothing.Enabled && e.smoothing.ChunkDelay > 0 && converted.Type() == events.EventTypeTextMessageContent && lastWasTextContent {
+				timer := time.NewTimer(e.smoothing.ChunkDelay)
 				select {
 				case <-timer.C:
 				case <-ctx.Done():

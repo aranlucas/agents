@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/aranlucas/agents/internal/config"
+
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 	"github.com/google/jsonschema-go/jsonschema"
 	"google.golang.org/adk/v2/model"
@@ -13,7 +15,7 @@ import (
 )
 
 func TestConverterTreatsADKErrorAndInterruptionEventsAsFailures(t *testing.T) {
-	converter := newStreamConverter(t.Context(), &fakeIDs{}, nil, nil, ToolScope{}, nil, streamSmoothing{})
+	converter := newStreamConverter(t.Context(), &fakeIDs{}, nil, nil, ToolScope{}, nil, config.StreamSmoothing{})
 	for name, event := range map[string]*session.Event{
 		"error":       {LLMResponse: model.LLMResponse{ErrorCode: "429", ErrorMessage: "secret provider response"}},
 		"interrupted": {LLMResponse: model.LLMResponse{Interrupted: true}},
@@ -31,7 +33,7 @@ func TestConverterTreatsADKErrorAndInterruptionEventsAsFailures(t *testing.T) {
 }
 
 func TestConverterRejectsUnencodableStateDelta(t *testing.T) {
-	converter := newStreamConverter(t.Context(), &fakeIDs{}, nil, nil, ToolScope{}, nil, streamSmoothing{})
+	converter := newStreamConverter(t.Context(), &fakeIDs{}, nil, nil, ToolScope{}, nil, config.StreamSmoothing{})
 	converted, err := converter.Convert(&session.Event{Actions: session.EventActions{StateDelta: map[string]any{"bad": make(chan int)}}})
 	if err == nil || len(converted) != 0 {
 		t.Fatalf("Convert() = %#v, %v", converted, err)
@@ -39,7 +41,7 @@ func TestConverterRejectsUnencodableStateDelta(t *testing.T) {
 }
 
 func TestConverterUsesOnlyRootAgentFinalTextAsRunResult(t *testing.T) {
-	converter := newStreamConverter(t.Context(), &fakeIDs{}, nil, nil, ToolScope{}, nil, streamSmoothing{}, "root")
+	converter := newStreamConverter(t.Context(), &fakeIDs{}, nil, nil, ToolScope{}, nil, config.StreamSmoothing{}, "root")
 	mustConvert(t, converter, &session.Event{Author: "child", Content: &genai.Content{Parts: []*genai.Part{{Text: "child result"}}}})
 	if converter.lastFinalText != "" {
 		t.Fatalf("child final became run result: %q", converter.lastFinalText)
@@ -51,7 +53,7 @@ func TestConverterUsesOnlyRootAgentFinalTextAsRunResult(t *testing.T) {
 }
 
 func TestConverterLinksToolCallToTextMessageFromSameADKEvent(t *testing.T) {
-	converter := newStreamConverter(t.Context(), &fakeIDs{}, nil, nil, ToolScope{}, nil, streamSmoothing{enabled: false})
+	converter := newStreamConverter(t.Context(), &fakeIDs{}, nil, nil, ToolScope{}, nil, config.StreamSmoothing{Enabled: false})
 	converted := mustConvert(t, converter, &session.Event{Content: &genai.Content{Parts: []*genai.Part{
 		{Text: "I will check."},
 		{FunctionCall: &genai.FunctionCall{ID: "call-1", Name: "lookup", Args: map[string]any{"id": 1}}},
@@ -80,7 +82,7 @@ func TestConverterCapturesNativeRequestInputAsStandardInterrupt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, nil, ToolScope{}, nil, streamSmoothing{})
+	converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, nil, ToolScope{}, nil, config.StreamSmoothing{})
 
 	converted, err := converter.Convert(&session.Event{RequestedInput: &session.RequestInput{
 		InterruptID:    "oralboards-ready-1",
@@ -126,7 +128,7 @@ func TestConverterCapturesNativeRequestInputAsStandardInterrupt(t *testing.T) {
 func TestConverterRegistersClientToolCallBeforeReturningToolCallEvents(t *testing.T) {
 	pending := newFakePending()
 	scope := ToolScope{AppName: "resume_agent", UserID: "anon:thread-1", ThreadID: "thread-1"}
-	converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, pending, scope, map[string]bool{"highlight_row": true}, streamSmoothing{})
+	converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, pending, scope, map[string]bool{"highlight_row": true}, config.StreamSmoothing{})
 
 	event := &session.Event{
 		Content: &genai.Content{Parts: []*genai.Part{{
@@ -156,7 +158,7 @@ func TestConverterRegistersClientToolCallBeforeReturningToolCallEvents(t *testin
 func TestConverterDoesNotRegisterNonClientToolCalls(t *testing.T) {
 	pending := newFakePending()
 	scope := ToolScope{AppName: "resume_agent", UserID: "anon:thread-1", ThreadID: "thread-1"}
-	converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, pending, scope, map[string]bool{"highlight_row": true}, streamSmoothing{})
+	converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, pending, scope, map[string]bool{"highlight_row": true}, config.StreamSmoothing{})
 
 	event := &session.Event{
 		Content: &genai.Content{Parts: []*genai.Part{{
@@ -186,7 +188,7 @@ func TestConverterDoesNotRegisterNonClientToolCalls(t *testing.T) {
 func TestConverterStreamsServerToolNamesOutsideFrontendContract(t *testing.T) {
 	pending := newFakePending()
 	scope := ToolScope{AppName: "resume_agent", UserID: "anon:thread-1", ThreadID: "thread-1"}
-	converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, pending, scope, map[string]bool{"highlight_row": true}, streamSmoothing{})
+	converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, pending, scope, map[string]bool{"highlight_row": true}, config.StreamSmoothing{})
 
 	event := &session.Event{
 		Content: &genai.Content{Parts: []*genai.Part{{
@@ -211,7 +213,7 @@ func TestConverterStreamsServerToolNamesOutsideFrontendContract(t *testing.T) {
 func TestConverterDoesNotRegisterEarlierClientCallWhenLaterCallIsInvalid(t *testing.T) {
 	pending := newFakePending()
 	scope := ToolScope{AppName: "resume_agent", UserID: "anon:thread-1", ThreadID: "thread-1"}
-	converter := newStreamConverter(t.Context(), &fakeIDs{}, nil, pending, scope, map[string]bool{"highlight_row": true}, streamSmoothing{})
+	converter := newStreamConverter(t.Context(), &fakeIDs{}, nil, pending, scope, map[string]bool{"highlight_row": true}, config.StreamSmoothing{})
 	event := &session.Event{Content: &genai.Content{Parts: []*genai.Part{
 		{FunctionCall: &genai.FunctionCall{ID: "call-valid", Name: "highlight_row", Args: map[string]any{"row": 42}}},
 		{FunctionCall: &genai.FunctionCall{ID: "call-invalid", Name: "", Args: map[string]any{}}},
@@ -229,7 +231,7 @@ func TestConverterDoesNotRegisterEarlierClientCallWhenLaterCallIsInvalid(t *test
 func TestConverterDoesNotRegisterClientCallWhenLaterStateDeltaIsInvalid(t *testing.T) {
 	pending := newFakePending()
 	scope := ToolScope{AppName: "resume_agent", UserID: "anon:thread-1", ThreadID: "thread-1"}
-	converter := newStreamConverter(t.Context(), &fakeIDs{}, nil, pending, scope, map[string]bool{"highlight_row": true}, streamSmoothing{})
+	converter := newStreamConverter(t.Context(), &fakeIDs{}, nil, pending, scope, map[string]bool{"highlight_row": true}, config.StreamSmoothing{})
 	event := &session.Event{
 		Content: &genai.Content{Parts: []*genai.Part{{
 			FunctionCall: &genai.FunctionCall{ID: "call-valid", Name: "highlight_row", Args: map[string]any{"row": 42}},
@@ -249,7 +251,7 @@ func TestConverterDoesNotRegisterClientCallWhenLaterStateDeltaIsInvalid(t *testi
 func TestConverterSplitsPartialTextIntoChunks(t *testing.T) {
 	pending := newFakePending()
 	scope := ToolScope{AppName: "resume_agent", UserID: "anon:thread-1", ThreadID: "thread-1"}
-	converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, pending, scope, map[string]bool{}, streamSmoothing{enabled: true, charsPerChunk: 4, chunking: streamChunkingChar})
+	converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, pending, scope, map[string]bool{}, config.StreamSmoothing{Enabled: true, CharsPerChunk: 4, Chunking: "char"})
 
 	event := &session.Event{Partial: true, Content: &genai.Content{Parts: []*genai.Part{{Text: "hello world"}}}}
 
@@ -263,7 +265,7 @@ func TestConverterSplitsPartialTextIntoChunks(t *testing.T) {
 func TestConverterSkipsChunkingWhenDisabled(t *testing.T) {
 	pending := newFakePending()
 	scope := ToolScope{AppName: "resume_agent", UserID: "anon:thread-1", ThreadID: "thread-1"}
-	converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, pending, scope, map[string]bool{}, streamSmoothing{enabled: false, charsPerChunk: 4, chunking: streamChunkingChar})
+	converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, pending, scope, map[string]bool{}, config.StreamSmoothing{Enabled: false, CharsPerChunk: 4, Chunking: "char"})
 
 	event := &session.Event{Partial: true, Content: &genai.Content{Parts: []*genai.Part{{Text: "hello world"}}}}
 
@@ -277,7 +279,7 @@ func TestConverterSkipsChunkingWhenDisabled(t *testing.T) {
 func TestConverterCanSplitTextByWords(t *testing.T) {
 	pending := newFakePending()
 	scope := ToolScope{AppName: "resume_agent", UserID: "anon:thread-1", ThreadID: "thread-1"}
-	converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, pending, scope, map[string]bool{}, streamSmoothing{enabled: true, chunking: streamChunkingWord})
+	converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, pending, scope, map[string]bool{}, config.StreamSmoothing{Enabled: true, Chunking: "word"})
 
 	event := &session.Event{Partial: true, Content: &genai.Content{Parts: []*genai.Part{{Text: "Hello  world"}}}}
 
@@ -293,7 +295,7 @@ func TestConverterCanSplitTextByWords(t *testing.T) {
 func TestConverterCanSplitTextByLines(t *testing.T) {
 	pending := newFakePending()
 	scope := ToolScope{AppName: "resume_agent", UserID: "anon:thread-1", ThreadID: "thread-1"}
-	converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, pending, scope, map[string]bool{}, streamSmoothing{enabled: true, chunking: streamChunkingLine})
+	converter := newStreamConverter(context.Background(), &fakeIDs{}, nil, pending, scope, map[string]bool{}, config.StreamSmoothing{Enabled: true, Chunking: "line"})
 
 	event := &session.Event{Partial: true, Content: &genai.Content{Parts: []*genai.Part{{Text: "line1\nline2\nline3"}}}}
 
@@ -305,7 +307,7 @@ func TestConverterCanSplitTextByLines(t *testing.T) {
 }
 
 func TestConverterSwitchesReasoningTextReasoningWithFreshIDs(t *testing.T) {
-	converter := newStreamConverter(t.Context(), &fakeIDs{}, nil, nil, ToolScope{}, nil, streamSmoothing{enabled: false})
+	converter := newStreamConverter(t.Context(), &fakeIDs{}, nil, nil, ToolScope{}, nil, config.StreamSmoothing{Enabled: false})
 	var converted []events.Event
 	for _, part := range []*genai.Part{
 		{Thought: true, Text: "first thought"},
@@ -340,7 +342,7 @@ func TestConverterSwitchesReasoningTextReasoningWithFreshIDs(t *testing.T) {
 }
 
 func TestConverterRejectsInvalidToolOutputWithoutSemanticFallback(t *testing.T) {
-	converter := newStreamConverter(t.Context(), &fakeIDs{}, nil, nil, ToolScope{}, nil, streamSmoothing{})
+	converter := newStreamConverter(t.Context(), &fakeIDs{}, nil, nil, ToolScope{}, nil, config.StreamSmoothing{})
 	for name, part := range map[string]*genai.Part{
 		"empty name":         {FunctionCall: &genai.FunctionCall{ID: "call-1", Args: map[string]any{}}},
 		"invalid ID":         {FunctionCall: &genai.FunctionCall{ID: "bad\ncall", Name: "tool", Args: map[string]any{}}},
@@ -357,7 +359,7 @@ func TestConverterRejectsInvalidToolOutputWithoutSemanticFallback(t *testing.T) 
 }
 
 func TestConverterOneShotLanesPreserveReasoningTextReasoningOrder(t *testing.T) {
-	converter := newStreamConverter(t.Context(), &fakeIDs{}, nil, nil, ToolScope{}, nil, streamSmoothing{enabled: false})
+	converter := newStreamConverter(t.Context(), &fakeIDs{}, nil, nil, ToolScope{}, nil, config.StreamSmoothing{Enabled: false})
 	converted := mustConvert(t, converter, &session.Event{Content: &genai.Content{Parts: []*genai.Part{
 		{Thought: true, Text: "first"}, {Text: "answer"}, {Thought: true, Text: "second"},
 	}}})

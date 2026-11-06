@@ -51,7 +51,7 @@ func (l *WebLoader) Load(ctx context.Context, rawURL string) (WebPage, error) {
 	request.Header.Set("Accept", "text/html,text/plain;q=0.9")
 	request.Header.Set("User-Agent", "agents-go/1.0")
 	client := *l.client.Client
-	baseTransport, ok := baseHTTPTransport(client.Transport)
+	baseTransport, ok := client.Transport.(*http.Transport)
 	if !ok {
 		return WebPage{}, errors.New("web loader requires a safe HTTP transport")
 	}
@@ -89,11 +89,6 @@ func (l *WebLoader) Load(ctx context.Context, rawURL string) (WebPage, error) {
 		text = truncateUTF8(text, l.maxText)
 	}
 	return WebPage{URL: response.Request.URL.String(), Title: title, Text: strings.TrimSpace(text), Truncated: truncated}, nil
-}
-
-func baseHTTPTransport(transport http.RoundTripper) (*http.Transport, bool) {
-	base, ok := transport.(*http.Transport)
-	return base, ok
 }
 
 func (l *WebLoader) validateHost(ctx context.Context, host string) error {

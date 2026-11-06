@@ -68,7 +68,6 @@ type Dependencies struct {
 	Verifier  auth.TokenVerifier
 	// Database gates /ready on the migrated schema.
 	Database common.HealthChecker
-	Stream   agui.StreamSmoothing
 	Clerk    clerk.Backend
 	Now      func() time.Time
 }
@@ -96,9 +95,9 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 		"/health": true, "/live": true, "/ready": true,
 	}
 
-	stream := deps.Stream
-	if stream == (agui.StreamSmoothing{}) {
-		stream = agui.DefaultStreamSmoothing()
+	stream := cfg.Stream
+	if stream == (config.StreamSmoothing{}) {
+		stream = config.DefaultStreamSmoothing()
 	}
 	runtime, err := agui.NewCopilotKitRuntime(
 		deps.Registry,
@@ -107,7 +106,7 @@ func New(cfg config.Config, deps Dependencies) (http.Handler, error) {
 		agui.WithPendingTools(deps.Pending),
 		agui.WithContextCompaction(deps.Compaction),
 		agui.WithArtifacts(deps.Artifacts),
-		agui.WithTextStreamSmoothing(stream.Enabled, stream.Chunking, stream.ChunkDelay, stream.CharsPerChunk),
+		agui.WithStreamSmoothing(stream),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("build CopilotKit runtime: %w", err)
@@ -373,7 +372,7 @@ func Run(ctx context.Context) error {
 		Compaction: agentruntime.DefaultCompaction(),
 		Registry:   registry, Sessions: rt.Sessions, Artifacts: rt.Artifacts, Pending: rt.Pending, Verifier: verifier,
 		Database: rt.DB, Clerk: clerkBackend,
-		Stream: agui.StreamSmoothingFromEnv(os.Getenv), Now: time.Now,
+		Now: time.Now,
 	})
 	if err != nil {
 		return fmt.Errorf("build gateway: %w", err)
