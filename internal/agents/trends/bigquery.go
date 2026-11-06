@@ -62,6 +62,27 @@ func (e *BigQueryExecutor) ExecuteBigQuery(ctx context.Context, sql string) (Col
 	query.DefaultProjectID, query.DefaultDatasetID = e.project, e.dataset
 	query.MaxBytesBilled, query.JobTimeout = e.maxBytesBilled, e.timeout
 	query.UseLegacySQL = false
+	query.DryRun = true
+	job, err := query.Run(ctx)
+	if err != nil {
+		return ColumnsRows{}, classifyBigQueryError(err)
+	}
+	status := job.LastStatus()
+	if status == nil || status.Statistics == nil {
+		return ColumnsRows{}, ErrUnsafeSQL
+	}
+	statistics, ok := status.Statistics.Details.(*bigquery.QueryStatistics)
+	// BigQuery may omit table references for queries referencing more than 50
+	// tables. Reject the boundary too, since completeness cannot be established.
+	if !ok || statistics.StatementType != "SELECT" || len(statistics.ReferencedTables) >= 50 {
+		return ColumnsRows{}, ErrUnsafeSQL
+	}
+	for _, table := range statistics.ReferencedTables {
+		if table == nil || table.ProjectID != e.project || table.DatasetID != e.dataset {
+			return ColumnsRows{}, ErrUnsafeSQL
+		}
+	}
+	query.DryRun = false
 	rows, err := query.Read(ctx)
 	if err != nil {
 		log.Printf("trends BigQuery query failed: %v", err)

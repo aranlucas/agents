@@ -19,9 +19,30 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
       - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
-      - run: make test
+      - name: Prove audit regressions fail on the audited baseline
+        shell: bash
+        run: |
+          cp internal/common/web.go /tmp/audit-web.go
+          cp internal/agents/trends/bigquery.go /tmp/audit-bigquery.go
+          trap 'cp /tmp/audit-web.go internal/common/web.go; cp /tmp/audit-bigquery.go internal/agents/trends/bigquery.go' EXIT
+          git show 9c1b969a:internal/common/web.go > internal/common/web.go
+          git show 9c1b969a:internal/agents/trends/bigquery.go > internal/agents/trends/bigquery.go
+          if make test TEST_FLAGS='-run=TestWebLoaderReleasesConnections/success -count=1' > /tmp/audit-web.log 2>&1; then
+            cat /tmp/audit-web.log
+            exit 1
+          fi
+          cat /tmp/audit-web.log
+          grep -q 'Load left its connection open' /tmp/audit-web.log
+          if make test TEST_FLAGS='-run=TestBigQueryRejectsUnverifiedDatasetBeforeExecution/outside_dataset -count=1' > /tmp/audit-bigquery.log 2>&1; then
+            cat /tmp/audit-bigquery.log
+            exit 1
+          fi
+          cat /tmp/audit-bigquery.log
+          grep -q 'want unsafe SQL, 1, 0' /tmp/audit-bigquery.log
+      - run: make check && make test
       - run: make build
