@@ -8,9 +8,7 @@ import (
 	"google.golang.org/genai"
 )
 
-const fullSolutionMarkerCount = 12
-
-var codingSolutionMarkers = []string{
+var fullSolutionMarkers = []string{
 	"```",
 	"reference implementation",
 	"complete implementation",
@@ -23,6 +21,9 @@ var codingSolutionMarkers = []string{
 	"def solution",
 	"class solution",
 	"func solution",
+}
+
+var algorithmHintMarkers = []string{
 	"use a hash map",
 	"use a hashmap",
 	"topological sort",
@@ -88,9 +89,11 @@ func guardedReplacement(state State, text string) string {
 
 func looksLikeCodingSolutionLeak(text string) bool {
 	normalized := strings.ToLower(text)
-	for _, marker := range codingSolutionMarkers {
-		if strings.Contains(normalized, marker) {
-			return true
+	for _, markers := range [][]string{fullSolutionMarkers, algorithmHintMarkers} {
+		for _, marker := range markers {
+			if strings.Contains(normalized, marker) {
+				return true
+			}
 		}
 	}
 	return false
@@ -105,7 +108,7 @@ func isRequestedHintNarration(text, activeHint string) bool {
 	if len(normalizedText) > len(normalizedHint)+80 {
 		return false
 	}
-	for _, marker := range codingSolutionMarkers[:fullSolutionMarkerCount] {
+	for _, marker := range fullSolutionMarkers {
 		if strings.Contains(normalizedText, marker) {
 			return false
 		}

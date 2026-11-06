@@ -20,6 +20,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aranlucas/agents/internal/config"
+
 	"github.com/aranlucas/agents/internal/agentruntime"
 	"github.com/aranlucas/agents/internal/auth"
 	"github.com/aranlucas/agents/internal/providererrors"
@@ -320,40 +322,23 @@ func TestStatelessHandlerStreamsWithoutArtificialPacing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stateless.smoothing.enabled || stateless.smoothing.chunkDelay != 0 {
+	if stateless.smoothing.Enabled || stateless.smoothing.ChunkDelay != 0 {
 		t.Fatal("stateless streams must not add typewriter pacing")
 	}
 	conversational, err := NewEntryHandler(entry, session.InMemoryService())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if conversational.smoothing != defaultStreamSmoothing {
+	if conversational.smoothing != config.DefaultStreamSmoothing() {
 		t.Fatal("conversational pacing changed")
 	}
-	if defaultStreamSmoothing.charsPerChunk != DefaultStreamCharsPerChunk || defaultStreamSmoothing.chunkDelay != DefaultStreamChunkDelay || defaultStreamSmoothing.chunking != DefaultStreamChunking {
-		t.Fatal("exported stream defaults drifted from handler defaults")
-	}
-	custom := streamSmoothing{enabled: true, chunking: streamChunkingWord, charsPerChunk: 32, chunkDelay: time.Millisecond}
+	custom := config.StreamSmoothing{Enabled: true, Chunking: "word", CharsPerChunk: 32, ChunkDelay: time.Millisecond}
 	overridden, err := NewStatelessEntryHandler(entry, WithStreamSmoothing(custom))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if overridden.smoothing != custom {
 		t.Fatal("explicit pacing option was ignored")
-	}
-}
-
-func TestStreamSmoothingFromEnvUsesExportedDefaults(t *testing.T) {
-	if got := StreamSmoothingFromEnv(func(string) string { return "" }); got != DefaultStreamSmoothing() || !got.Enabled {
-		t.Fatalf("defaults = %+v", got)
-	}
-	overrides := map[string]string{
-		"AGUI_STREAM_SMOOTHING": "false", "AGUI_STREAM_CHUNKING": "line",
-		"AGUI_STREAM_CHUNK_SIZE": "32", "AGUI_STREAM_CHUNK_DELAY_MS": "5",
-	}
-	got := StreamSmoothingFromEnv(func(key string) string { return overrides[key] })
-	if got != (StreamSmoothing{Enabled: false, Chunking: "line", CharsPerChunk: 32, ChunkDelay: 5 * time.Millisecond}) {
-		t.Fatalf("overrides = %+v", got)
 	}
 }
 
@@ -556,7 +541,7 @@ func TestHandlerStreamsReasoningText(t *testing.T) {
 }
 
 func TestHandlerRecoversStreamingPanicAsSanitizedTerminalRunError(t *testing.T) {
-	h := newTestGateway(t, &fakePanicModel{}, &fakeIDs{}, WithStreamSmoothing(streamSmoothing{enabled: false}))
+	h := newTestGateway(t, &fakePanicModel{}, &fakeIDs{}, WithStreamSmoothing(config.StreamSmoothing{Enabled: false}))
 	body := `{"threadId":"thread-panic","runId":"run-panic","messages":[{"id":"user-1","role":"user","content":"start"}]}`
 	recorder := httptest.NewRecorder()
 	request, transport := requestWithSentryHub(t, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/resume/agui", strings.NewReader(body)))
@@ -881,7 +866,7 @@ func newTestGatewayWithToolsetsAndTimeout(t *testing.T, m model.LLM, ids events.
 		Timeout: timeout,
 	}
 	sessions := newFakeSessionService()
-	allOpts := append([]Option{WithIDGenerator(ids), WithTextStreamSmoothing(false, streamChunkingWord, 0, 0)}, opts...)
+	allOpts := append([]Option{WithIDGenerator(ids), WithStreamSmoothing(config.StreamSmoothing{Enabled: false})}, opts...)
 	handler, err := NewEntryHandler(entry, sessions, allOpts...)
 	if err != nil {
 		t.Fatalf("build AG-UI handler: %v", err)

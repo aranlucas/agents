@@ -69,3 +69,17 @@ func newGroceryState(connected bool) GroceryState {
 	state.KrogerConnected = connected
 	return state
 }
+
+func TestReadStateNormalizesNullShoppingCollections(t *testing.T) {
+	state := readState(groceryState{
+		"shopping_list": nil,
+		"shopping_profile": map[string]any{
+			"pantry": nil, "equipment": nil, "frequent_items": nil,
+			"recent_orders": []any{map[string]any{"id": "order", "items": nil}},
+		},
+	})
+	profile := state.ShoppingProfile
+	if state.ShoppingList == nil || profile.Pantry == nil || profile.Equipment == nil || profile.FrequentItems == nil || len(profile.RecentOrders) != 1 || profile.RecentOrders[0].Items == nil {
+		t.Fatalf("null collections were not normalized: %#v", state)
+	}
+}

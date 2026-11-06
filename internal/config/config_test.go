@@ -4,6 +4,7 @@ import (
 	"maps"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestLoadNormalizesHTTPAndProviderConfiguration(t *testing.T) {
@@ -224,5 +225,35 @@ func requiredEnv() map[string]string {
 		"APP_ENV":                             "test",
 		"GEMINI_API_KEY":                      "gemini",
 		"GOOGLE_APPLICATION_CREDENTIALS_JSON": `{"project_id":"project"}`,
+	}
+}
+
+// The environment contract is independently specified by the documented
+// defaults and overrides; invalid inputs must not change valid pacing policy.
+func TestLoadStreamSmoothing(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		values map[string]string
+		want   StreamSmoothing
+	}{
+		{name: "defaults", want: StreamSmoothing{Enabled: true, Chunking: "word", CharsPerChunk: 64, ChunkDelay: 18 * time.Millisecond}},
+		{name: "overrides", values: map[string]string{"AGUI_STREAM_SMOOTHING": "false", "AGUI_STREAM_CHUNKING": " LINE ", "AGUI_STREAM_CHUNK_SIZE": "32", "AGUI_STREAM_CHUNK_DELAY_MS": "5"}, want: StreamSmoothing{Enabled: false, Chunking: "line", CharsPerChunk: 32, ChunkDelay: 5 * time.Millisecond}},
+		{name: "invalid", values: map[string]string{"AGUI_STREAM_SMOOTHING": "bad", "AGUI_STREAM_CHUNKING": "bad", "AGUI_STREAM_CHUNK_SIZE": "0", "AGUI_STREAM_CHUNK_DELAY_MS": "-1"}, want: StreamSmoothing{Enabled: true, Chunking: "word", CharsPerChunk: 64, ChunkDelay: 18 * time.Millisecond}},
+		{name: "malformed numbers", values: map[string]string{"AGUI_STREAM_CHUNK_SIZE": "bad", "AGUI_STREAM_CHUNK_DELAY_MS": "bad"}, want: StreamSmoothing{Enabled: true, Chunking: "word", CharsPerChunk: 64, ChunkDelay: 18 * time.Millisecond}},
+		{name: "zero delay", values: map[string]string{"AGUI_STREAM_CHUNK_DELAY_MS": "0", "AGUI_STREAM_CHUNKING": "char"}, want: StreamSmoothing{Enabled: true, Chunking: "char", CharsPerChunk: 64}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			values := requiredEnv()
+			for key, value := range tt.values {
+				values[key] = value
+			}
+			got, err := Load(func(key string) string { return values[key] })
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.Stream != tt.want {
+				t.Fatalf("stream = %+v, want %+v", got.Stream, tt.want)
+			}
+		})
 	}
 }

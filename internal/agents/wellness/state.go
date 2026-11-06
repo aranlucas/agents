@@ -1,8 +1,7 @@
 package wellness
 
 import (
-	json "encoding/json/v2"
-	"maps"
+	"github.com/aranlucas/agents/internal/agentruntime"
 
 	"github.com/aranlucas/agents/internal/agents/fitness"
 	"github.com/aranlucas/agents/internal/agents/grocery"
@@ -50,44 +49,18 @@ func Defaults() WellnessState {
 }
 
 func StateDefaults() map[string]any {
-	encoded, _ := json.Marshal(Defaults())
-	var values map[string]any
-	_ = json.Unmarshal(encoded, &values)
-	return values
+	return agentruntime.StateMap(Defaults())
 }
 
 func readState(source session.ReadonlyState) WellnessState {
-	state := Defaults()
-	values := make(map[string]any)
-	if source != nil {
-		maps.Insert(values, source.All())
-		if encoded, err := json.Marshal(values); err == nil {
-			_ = json.Unmarshal(encoded, &state)
-		}
-	}
+	state := agentruntime.ReadState(source, Defaults())
 	if state.ShoppingList == nil {
 		state.ShoppingList = []string{}
 	}
 	if state.Cart == nil {
 		state.Cart = []common.CartItem{}
 	}
-	if state.ShoppingProfile.Pantry == nil {
-		state.ShoppingProfile.Pantry = []grocery.ShoppingPantryItemState{}
-	}
-	if state.ShoppingProfile.Equipment == nil {
-		state.ShoppingProfile.Equipment = []grocery.ShoppingEquipmentItemState{}
-	}
-	if state.ShoppingProfile.RecentOrders == nil {
-		state.ShoppingProfile.RecentOrders = []grocery.ShoppingOrderState{}
-	}
-	for index := range state.ShoppingProfile.RecentOrders {
-		if state.ShoppingProfile.RecentOrders[index].Items == nil {
-			state.ShoppingProfile.RecentOrders[index].Items = []grocery.ShoppingOrderItemState{}
-		}
-	}
-	if state.ShoppingProfile.FrequentItems == nil {
-		state.ShoppingProfile.FrequentItems = []grocery.ShoppingFrequentItemState{}
-	}
+	state.ShoppingProfile.Normalize()
 	if state.Activities == nil {
 		state.Activities = []fitness.Activity{}
 	}

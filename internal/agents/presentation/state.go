@@ -1,8 +1,7 @@
 package presentation
 
 import (
-	json "encoding/json/v2"
-	"maps"
+	"github.com/aranlucas/agents/internal/agentruntime"
 
 	"google.golang.org/adk/v2/session"
 )
@@ -39,23 +38,11 @@ func Defaults() PresentationState {
 }
 
 func StateDefaults() map[string]any {
-	state := Defaults()
-	encoded, _ := json.Marshal(state)
-	var values map[string]any
-	_ = json.Unmarshal(encoded, &values)
-	return values
+	return agentruntime.StateMap(Defaults())
 }
 
 func readState(source session.ReadonlyState) PresentationState {
-	state := Defaults()
-	values := make(map[string]any)
-	if source != nil {
-		maps.Insert(values, source.All())
-	}
-	encoded, err := json.Marshal(values)
-	if err == nil {
-		_ = json.Unmarshal(encoded, &state)
-	}
+	state := agentruntime.ReadState(source, Defaults())
 	if state.Theme == "" {
 		state.Theme = "light"
 	}

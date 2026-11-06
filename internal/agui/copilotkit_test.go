@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aranlucas/agents/internal/config"
+
 	"github.com/aranlucas/agents/internal/agentruntime"
 	"github.com/aranlucas/agents/internal/auth"
 	"google.golang.org/adk/v2/agent/llmagent"
@@ -77,7 +79,7 @@ func testCopilotKitRuntimeWithSessions(t *testing.T, llm model.LLM, sessions ses
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtime, err := NewCopilotKitRuntime(registry, sessions, func(string) string { return "resume" }, WithTextStreamSmoothing(false, "word", 0, 64))
+	runtime, err := NewCopilotKitRuntime(registry, sessions, func(string) string { return "resume" }, WithStreamSmoothing(config.StreamSmoothing{Enabled: false, CharsPerChunk: 64}))
 	if err != nil {
 		t.Fatal(err)
 	}

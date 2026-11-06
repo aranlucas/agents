@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aranlucas/agents/internal/config"
+
 	"github.com/aranlucas/agents/internal/agentruntime"
 
 	"google.golang.org/adk/v2/agent"
@@ -111,7 +113,7 @@ func TestHandlerWiresArtifactServiceIntoRunner(t *testing.T) {
 		Public: true, Timeout: 5 * time.Second,
 	}, newFakeSessionService(),
 		WithIDGenerator(&fakeIDs{}),
-		WithTextStreamSmoothing(false, streamChunkingWord, 0, 0),
+		WithStreamSmoothing(config.StreamSmoothing{Enabled: false}),
 		WithArtifacts(artifacts))
 	if err != nil {
 		t.Fatal(err)

@@ -859,7 +859,7 @@ func (s *Store) LinkKrogerAccount(ctx context.Context, krogerSub, clerkUserID st
 	if _, err := s.db.Run(ctx, statements...); err != nil {
 		return fmt.Errorf("link Kroger account: %w", err)
 	}
-	s.enqueueShoppingProfileSnapshotWithCleanup(clerkUserID, namespacedUserID)
+	s.enqueueShoppingProfileSnapshot(namespacedUserID, clerkUserID)
 	return nil
 }
 

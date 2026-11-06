@@ -105,3 +105,31 @@ func TestUpdateListCanClearItemsWhileRenaming(t *testing.T) {
 		t.Fatalf("cleared list = %#v, %v", list, err)
 	}
 }
+
+func TestAddMixedItemsReturnsPersistedPositions(t *testing.T) {
+	store, _ := newLibraryEditStore(t)
+	t.Cleanup(func() { _ = store.Close() })
+	items, err := store.AddItems(t.Context(), "owner", "list_1", []NewItem{
+		{Name: "Bread", Product: &ProductReference{Provider: "kroger", ID: "bread"}},
+		{Name: "Eggs"},
+		{Name: "Rice", Product: &ProductReference{Provider: "other", ID: "rice"}},
+	}, time.UnixMilli(2000))
+	if err != nil {
+		t.Fatal(err)
+	}
+	list, err := store.GetList(t.Context(), "owner", "list_1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 3 || len(list.Items) != 4 {
+		t.Fatalf("items = %#v, list = %#v", items, list)
+	}
+	for i, item := range items {
+		if item.Position != i+1 || item.ID != list.Items[i+1].ID {
+			t.Fatalf("item %d = %#v, persisted = %#v", i, item, list.Items[i+1])
+		}
+	}
+	if items[0].Product == nil || items[0].Product.ID != "bread" || items[1].Product != nil || items[2].Product == nil || items[2].Product.Provider != "other" {
+		t.Fatalf("identities = %#v", items)
+	}
+}

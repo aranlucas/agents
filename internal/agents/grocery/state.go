@@ -1,8 +1,7 @@
 package grocery
 
 import (
-	json "encoding/json/v2"
-	"maps"
+	"github.com/aranlucas/agents/internal/agentruntime"
 
 	"github.com/aranlucas/agents/internal/common"
 
@@ -128,22 +127,11 @@ func emptyShoppingProfileState() ShoppingProfileState {
 }
 
 func StateDefaults() map[string]any {
-	encoded, _ := json.Marshal(Defaults())
-	var values map[string]any
-	_ = json.Unmarshal(encoded, &values)
-	return values
+	return agentruntime.StateMap(Defaults())
 }
 
 func readState(source session.ReadonlyState) GroceryState {
-	state := Defaults()
-	values := make(map[string]any)
-	if source != nil {
-		maps.Insert(values, source.All())
-	}
-	encoded, err := json.Marshal(values)
-	if err == nil {
-		_ = json.Unmarshal(encoded, &state)
-	}
+	state := agentruntime.ReadState(source, Defaults())
 	if state.ShoppingList == nil {
 		state.ShoppingList = []string{}
 	}
@@ -153,23 +141,7 @@ func readState(source session.ReadonlyState) GroceryState {
 	if state.Cart == nil {
 		state.Cart = []CartItem{}
 	}
-	if state.ShoppingProfile.Pantry == nil {
-		state.ShoppingProfile.Pantry = []ShoppingPantryItemState{}
-	}
-	if state.ShoppingProfile.Equipment == nil {
-		state.ShoppingProfile.Equipment = []ShoppingEquipmentItemState{}
-	}
-	if state.ShoppingProfile.RecentOrders == nil {
-		state.ShoppingProfile.RecentOrders = []ShoppingOrderState{}
-	}
-	for index := range state.ShoppingProfile.RecentOrders {
-		if state.ShoppingProfile.RecentOrders[index].Items == nil {
-			state.ShoppingProfile.RecentOrders[index].Items = []ShoppingOrderItemState{}
-		}
-	}
-	if state.ShoppingProfile.FrequentItems == nil {
-		state.ShoppingProfile.FrequentItems = []ShoppingFrequentItemState{}
-	}
+	state.ShoppingProfile.Normalize()
 	if state.Status == "" {
 		state.Status = StatusIdle
 	}
@@ -185,4 +157,25 @@ func readState(source session.ReadonlyState) GroceryState {
 		}
 	}
 	return state
+}
+
+// Normalize keeps the shared shopping profile's collection fields JSON arrays.
+func (profile *ShoppingProfileState) Normalize() {
+	if profile.Pantry == nil {
+		profile.Pantry = []ShoppingPantryItemState{}
+	}
+	if profile.Equipment == nil {
+		profile.Equipment = []ShoppingEquipmentItemState{}
+	}
+	if profile.RecentOrders == nil {
+		profile.RecentOrders = []ShoppingOrderState{}
+	}
+	for index := range profile.RecentOrders {
+		if profile.RecentOrders[index].Items == nil {
+			profile.RecentOrders[index].Items = []ShoppingOrderItemState{}
+		}
+	}
+	if profile.FrequentItems == nil {
+		profile.FrequentItems = []ShoppingFrequentItemState{}
+	}
 }

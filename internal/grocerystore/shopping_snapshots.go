@@ -76,7 +76,7 @@ func (s *Store) startShoppingProfileSnapshots() {
 	s.shoppingSnapshots = newShoppingProfileSnapshotScheduler(s)
 }
 
-func (s *Store) enqueueShoppingProfileSnapshot(userID string) {
+func (s *Store) enqueueShoppingProfileSnapshot(userIDs ...string) {
 	s.startShoppingProfileSnapshots()
 	if s == nil {
 		return
@@ -87,22 +87,9 @@ func (s *Store) enqueueShoppingProfileSnapshot(userID string) {
 	if scheduler == nil || closed {
 		return
 	}
-	scheduler.enqueue(userID)
-}
-
-func (s *Store) enqueueShoppingProfileSnapshotWithCleanup(userID, cleanupUserID string) {
-	s.startShoppingProfileSnapshots()
-	if s == nil {
-		return
+	for _, userID := range userIDs {
+		scheduler.enqueue(userID)
 	}
-	s.shoppingSnapshotMu.RLock()
-	scheduler, closed := s.shoppingSnapshots, s.shoppingClosed
-	s.shoppingSnapshotMu.RUnlock()
-	if scheduler == nil || closed {
-		return
-	}
-	scheduler.enqueue(cleanupUserID)
-	scheduler.enqueue(userID)
 }
 
 func (s *Store) waitShoppingProfileSnapshots(ctx context.Context) error {
@@ -116,10 +103,6 @@ func (s *Store) waitShoppingProfileSnapshots(ctx context.Context) error {
 		return nil
 	}
 	return scheduler.waitIdle(ctx)
-}
-
-func (s *Store) stopShoppingProfileSnapshots() {
-	_ = s.Close()
 }
 
 func (s *shoppingProfileSnapshotScheduler) enqueue(userID string) {

@@ -1,9 +1,7 @@
 package trends
 
 import (
-	json "encoding/json/v2"
 	"fmt"
-	"maps"
 	"strings"
 
 	"github.com/aranlucas/agents/internal/agentruntime"
@@ -45,10 +43,7 @@ func Defaults() TrendsState {
 }
 
 func StateDefaults() map[string]any {
-	raw, _ := json.Marshal(Defaults())
-	var result map[string]any
-	_ = json.Unmarshal(raw, &result)
-	return result
+	return agentruntime.StateMap(Defaults())
 }
 
 type TrendsResult struct {
@@ -65,8 +60,6 @@ type ColumnsRows struct {
 	Rows    []Row    `json:"rows"`
 }
 
-// Status values mirror the Python port's tools/*.py state machine exactly:
-// idle -> querying -> (ready | empty | error).
 const (
 	StatusIdle     Status = "idle"
 	StatusQuerying Status = "querying"
@@ -91,15 +84,7 @@ func failure(code, message string) Result {
 }
 
 func readState(source session.ReadonlyState) TrendsState {
-	state := Defaults()
-	values := make(map[string]any)
-	if source != nil {
-		maps.Insert(values, source.All())
-	}
-	encoded, err := json.Marshal(values)
-	if err == nil {
-		_ = json.Unmarshal(encoded, &state)
-	}
+	state := agentruntime.ReadState(source, Defaults())
 	if state.Columns == nil {
 		state.Columns = []string{}
 	}
@@ -112,14 +97,11 @@ func readState(source session.ReadonlyState) TrendsState {
 	return state
 }
 
-// BeginQueryArgs is begin_trends_query's tool input: the analytical question
-// and the validated SQL about to run.
 type BeginQueryArgs struct {
 	Query string `json:"query"`
 	SQL   string `json:"sql"`
 }
 
-// BeginTrendsQuery is the ADK-facing tool handler for begin_trends_query.
 func BeginTrendsQuery(ctx agent.Context, input BeginQueryArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := beginTrendsQuery(&state, input)
@@ -153,10 +135,6 @@ func BeginTrendsQuery(ctx agent.Context, input BeginQueryArgs) (Result, error) {
 	return result, nil
 }
 
-// beginTrendsQuery clears any previous result and marks the state
-// "querying" before BigQuery execution starts, matching
-// tools/begin_trends_query.py. Inputs are validated before any state
-// mutation: a rejected call leaves the prior state entirely untouched.
 func beginTrendsQuery(state *TrendsState, input BeginQueryArgs) (Result, error) {
 	query := strings.TrimSpace(input.Query)
 	if query == "" || len(query) > maxTrendsQueryLength {
@@ -176,7 +154,6 @@ func beginTrendsQuery(state *TrendsState, input BeginQueryArgs) (Result, error) 
 	return Result{OK: true, Status: state.Status}, nil
 }
 
-// WriteResultArgs is write_trends_result's tool input.
 type WriteResultArgs struct {
 	Query    string   `json:"query"`
 	SQL      string   `json:"sql"`
@@ -186,7 +163,6 @@ type WriteResultArgs struct {
 	Error    string   `json:"error,omitempty"`
 }
 
-// WriteTrendsResult is the ADK-facing tool handler for write_trends_result.
 func WriteTrendsResult(ctx agent.Context, input WriteResultArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := writeTrendsResult(&state, input)
@@ -220,11 +196,6 @@ func WriteTrendsResult(ctx agent.Context, input WriteResultArgs) (Result, error)
 	return result, nil
 }
 
-// writeTrendsResult persists the final (or failed) query outcome, deriving
-// status the same way tools/write_trends_result.py does: an explicit error
-// always wins over an empty row set, which in turn wins over "ready".
-// Inputs are validated before any state mutation: a rejected call leaves the
-// prior state entirely untouched.
 func writeTrendsResult(state *TrendsState, input WriteResultArgs) (Result, error) {
 	query := strings.TrimSpace(input.Query)
 	if query == "" || len(query) > maxTrendsQueryLength {
@@ -275,13 +246,10 @@ func writeTrendsResult(state *TrendsState, input WriteResultArgs) (Result, error
 	return Result{OK: input.Error == "", Status: status, RowCount: len(state.Rows)}, nil
 }
 
-// VerificationArgs is set_trends_verification's tool input.
 type VerificationArgs struct {
 	Verification string `json:"verification"`
 }
 
-// SetTrendsVerification is the ADK-facing tool handler for
-// set_trends_verification.
 func SetTrendsVerification(ctx agent.Context, input VerificationArgs) (Result, error) {
 	state := readState(ctx.State())
 	result, err := setTrendsVerification(&state, input)
@@ -300,10 +268,6 @@ func SetTrendsVerification(ctx agent.Context, input VerificationArgs) (Result, e
 	return result, nil
 }
 
-// setTrendsVerification appends a web-search verification note to insights
-// and marks the state ready, matching tools/set_trends_verification.py.
-// Inputs are validated before any state mutation: a rejected call leaves the
-// prior state entirely untouched.
 func setTrendsVerification(state *TrendsState, input VerificationArgs) (Result, error) {
 	verification := strings.TrimSpace(input.Verification)
 	if verification == "" || len(verification) > maxTrendsVerificationLength {

@@ -683,7 +683,7 @@ func newShoppingSnapshotSQLiteRunner(t *testing.T) *shoppingSnapshotSQLiteRunner
 func newShoppingSnapshotTestStore(t *testing.T, runner storage.StatementRunner, service ArtifactService) *Store {
 	t.Helper()
 	store := &Store{db: runner, artifacts: service, newID: randomID}
-	t.Cleanup(store.stopShoppingProfileSnapshots)
+	t.Cleanup(func() { _ = store.Close() })
 	return store
 }
 

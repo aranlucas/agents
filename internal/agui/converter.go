@@ -9,6 +9,8 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/aranlucas/agents/internal/config"
+
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/events"
 	"github.com/ag-ui-protocol/ag-ui/sdks/community/go/pkg/core/types"
 	"github.com/aranlucas/agents/internal/providererrors"
@@ -22,7 +24,7 @@ import (
 type streamConverter struct {
 	ctx       context.Context
 	ids       events.IDGenerator
-	smoothing streamSmoothing
+	smoothing config.StreamSmoothing
 
 	state stateDocument
 
@@ -53,22 +55,14 @@ type streamConverter struct {
 	interrupts []types.Interrupt
 }
 
-func newStreamConverter(ctx context.Context, ids events.IDGenerator, state stateDocument, pending PendingTools, scope ToolScope, clientToolNames map[string]bool, smoothing streamSmoothing, rootAuthor ...string) *streamConverter {
+func newStreamConverter(ctx context.Context, ids events.IDGenerator, state stateDocument, pending PendingTools, scope ToolScope, clientToolNames map[string]bool, smoothing config.StreamSmoothing, rootAuthor ...string) *streamConverter {
 	if ids == nil {
 		ids = events.NewDefaultIDGenerator()
 	}
 	if state == nil {
 		state = make(stateDocument)
 	}
-	if !smoothing.enabled {
-		smoothing.enabled = false
-	}
-	if smoothing.charsPerChunk <= 0 {
-		smoothing.charsPerChunk = DefaultStreamCharsPerChunk
-	}
-	if smoothing.chunkDelay < 0 {
-		smoothing.chunkDelay = 0
-	}
+	smoothing = smoothing.Normalize()
 	root := ""
 	if len(rootAuthor) > 0 {
 		root = rootAuthor[0]
@@ -282,7 +276,7 @@ func (c *streamConverter) textContentEvents(messageID, text string) []events.Eve
 	if text == "" {
 		return nil
 	}
-	if !c.smoothing.enabled || c.smoothing.charsPerChunk <= 0 {
+	if !c.smoothing.Enabled || c.smoothing.CharsPerChunk <= 0 {
 		return []events.Event{events.NewTextMessageContentEvent(messageID, text)}
 	}
 
@@ -294,13 +288,13 @@ func (c *streamConverter) textContentEvents(messageID, text string) []events.Eve
 	return out
 }
 
-func splitTextChunks(text string, cfg streamSmoothing) []string {
-	switch cfg.chunking {
-	case streamChunkingLine:
+func splitTextChunks(text string, cfg config.StreamSmoothing) []string {
+	switch cfg.Chunking {
+	case "line":
 		return splitByLine(text)
-	case streamChunkingChar:
-		return splitIntoRuneChunks(text, cfg.charsPerChunk)
-	case streamChunkingWord:
+	case "char":
+		return splitIntoRuneChunks(text, cfg.CharsPerChunk)
+	case "word":
 		fallthrough
 	default:
 		return splitByWord(text)
