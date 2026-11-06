@@ -244,9 +244,7 @@ func TestLoadStreamSmoothing(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			values := requiredEnv()
-			for key, value := range tt.values {
-				values[key] = value
-			}
+			maps.Copy(values, tt.values)
 			got, err := Load(func(key string) string { return values[key] })
 			if err != nil {
 				t.Fatal(err)
