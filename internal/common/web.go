@@ -56,6 +56,7 @@ func (l *WebLoader) Load(ctx context.Context, rawURL string) (WebPage, error) {
 		return WebPage{}, errors.New("web loader requires a safe HTTP transport")
 	}
 	transport := baseTransport.Clone()
+	defer transport.CloseIdleConnections()
 	transport.Proxy = nil
 	transport.DialContext = l.safeDialContext
 	client.Transport = transport
