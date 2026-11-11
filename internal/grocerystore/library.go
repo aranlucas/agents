@@ -33,6 +33,19 @@ type LibraryRepository interface {
 	ListRecipes(context.Context, string, *string) ([]Recipe, error)
 	GetRecipe(context.Context, string, string) (Recipe, error)
 	UpdateRecipe(context.Context, string, string, RecipeContent, time.Time) (Recipe, error)
+	SetRecipeStatus(context.Context, string, string, string, time.Time) (Recipe, error)
+}
+
+// Saved lists and recipes are archived rather than deleted: an archived
+// resource leaves the default library listing but stays restorable, which
+// matters for household resources other members also rely on.
+const (
+	StatusActive   = "active"
+	StatusArchived = "archived"
+)
+
+func validResourceStatus(status string) bool {
+	return status == StatusActive || status == StatusArchived
 }
 
 type SavedListInput struct {
@@ -120,7 +133,7 @@ func (s *Store) SaveList(ctx context.Context, userID string, input SavedListInpu
 		return List{}, err
 	}
 	createdAt := timestamp(now)
-	list := List{ID: id, HouseholdID: householdID, OwnerUserID: userID, Title: title, Status: "active", CreatedAt: createdAt, UpdatedAt: createdAt, Items: make([]Item, 0, len(input.Items))}
+	list := List{ID: id, HouseholdID: householdID, OwnerUserID: userID, Title: title, Status: StatusActive, CreatedAt: createdAt, UpdatedAt: createdAt, Items: make([]Item, 0, len(input.Items))}
 	statements := make([]storage.Statement, 0, len(input.Items)+2)
 	statements = append(statements, storage.Statement{
 		SQL:    `INSERT INTO grocery_lists (id, household_id, owner_user_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, 'active', ?, ?)`,
@@ -203,7 +216,7 @@ func (s *Store) UpdateList(ctx context.Context, userID, listID string, patch Lis
 	}
 	if patch.Status != nil {
 		status := strings.TrimSpace(*patch.Status)
-		if status != "active" && status != "archived" {
+		if !validResourceStatus(status) {
 			return List{}, ErrInvalid
 		}
 		sets, params = append(sets, "status = ?"), append(params, status)
@@ -451,6 +464,33 @@ func (s *Store) UpdateRecipe(ctx context.Context, userID, recipeID string, input
 	return s.refreshRecipeSnapshot(ctx, userID, recipeID, now)
 }
 
+// SetRecipeStatus archives or restores a saved recipe. The owner or any member
+// of the recipe's household may change it; the access predicate runs inside
+// the write so an unauthorized caller changes nothing and sees ErrNotFound.
+func (s *Store) SetRecipeStatus(ctx context.Context, userID, recipeID, status string, now time.Time) (Recipe, error) {
+	if err := s.ready(); err != nil {
+		return Recipe{}, err
+	}
+	userID, recipeID, status = strings.TrimSpace(userID), strings.TrimSpace(recipeID), strings.TrimSpace(status)
+	if userID == "" || recipeID == "" || !validResourceStatus(status) {
+		return Recipe{}, ErrInvalid
+	}
+	results, err := s.db.Run(ctx, storage.Statement{
+		SQL: `UPDATE recipes SET status = ?, updated_at = ? WHERE id IN (
+		      SELECT r.id FROM recipes r WHERE r.id = ? AND (r.owner_user_id = ? OR EXISTS (
+		        SELECT 1 FROM household_members hm WHERE hm.household_id = r.household_id AND hm.clerk_user_id = ?
+		      )))`,
+		Params: []any{status, timestamp(now), recipeID, userID, userID},
+	})
+	if err != nil {
+		return Recipe{}, fmt.Errorf("set recipe status: %w", err)
+	}
+	if changed(results) == 0 {
+		return Recipe{}, ErrNotFound
+	}
+	return s.refreshRecipeSnapshot(ctx, userID, recipeID, now)
+}
+
 const recipeSelect = `SELECT r.id, r.household_id, r.owner_user_id, r.title, r.description, r.servings, r.notes, r.status, r.created_at, r.updated_at,
        COALESCE((SELECT version FROM grocery_resource_artifacts gra WHERE gra.resource_type = 'recipe' AND gra.resource_id = r.id), 0) AS artifact_version
        FROM recipes r`
@@ -458,7 +498,7 @@ const recipeSelect = `SELECT r.id, r.household_id, r.owner_user_id, r.title, r.d
 func (s *Store) materializeRecipe(id, userID string, householdID *string, content RecipeContent, updatedAt int64) (Recipe, []storage.Statement, error) {
 	recipe := Recipe{
 		ID: id, HouseholdID: householdID, OwnerUserID: userID, Title: content.Title, Description: content.Description,
-		Servings: content.Servings, Notes: content.Notes, Status: "active", CreatedAt: updatedAt, UpdatedAt: updatedAt,
+		Servings: content.Servings, Notes: content.Notes, Status: StatusActive, CreatedAt: updatedAt, UpdatedAt: updatedAt,
 		Ingredients: make([]Ingredient, 0, len(content.Ingredients)), Steps: make([]RecipeStep, 0, len(content.Steps)), Tags: append([]string(nil), content.Tags...),
 	}
 	statements := []storage.Statement{{

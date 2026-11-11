@@ -2,6 +2,7 @@ package grocery
 
 import (
 	"errors"
+	"slices"
 	"strings"
 	"time"
 
@@ -13,7 +14,8 @@ import (
 )
 
 type SavedResourceScopeArgs struct {
-	HouseholdID *string `json:"household_id,omitempty" jsonschema:"Optional household id. Omit to use the signed-in user's personal library."`
+	HouseholdID     *string `json:"household_id,omitempty" jsonschema:"Optional household id. Omit to use the signed-in user's personal library."`
+	IncludeArchived bool    `json:"include_archived,omitempty" jsonschema:"Set true only when the user asks for archived resources, for example to restore one. Archived resources are omitted by default."`
 }
 
 type SavedResourceIDArgs struct {
@@ -23,6 +25,11 @@ type SavedResourceIDArgs struct {
 type SaveCurrentResourceArgs struct {
 	HouseholdID *string `json:"household_id,omitempty" jsonschema:"Optional destination household id. Omit to save to the signed-in user's personal library."`
 	Title       string  `json:"title,omitempty" jsonschema:"Optional title override. Omit to keep the generated title."`
+}
+
+type ArchiveSavedResourceArgs struct {
+	ID      string `json:"id" jsonschema:"The exact saved resource id returned by a list or get tool."`
+	Restore bool   `json:"restore,omitempty" jsonschema:"Set true to return an archived resource to the library instead of archiving it."`
 }
 
 type UpdateSavedListArgs struct {
@@ -58,6 +65,11 @@ type SavedResources struct {
 	Now        func() time.Time
 }
 
+const (
+	archiveSavedListDescription   = "Archive an accessible saved list only after the user explicitly asks to remove or delete it and the exact id is confirmed; archived lists leave the library listing but stay restorable with restore=true."
+	archiveSavedRecipeDescription = "Archive an accessible saved recipe only after the user explicitly asks to remove or delete it and the exact id is confirmed; archived recipes leave the library listing but stay restorable with restore=true."
+)
+
 func savedResourceTools(repository grocerystore.LibraryRepository) ([]tool.Tool, error) {
 	saved := SavedResources{Repository: repository}
 	definitions := []struct {
@@ -80,6 +92,9 @@ func savedResourceTools(repository grocerystore.LibraryRepository) ([]tool.Tool,
 		{name: "update_saved_list", description: "Rename an accessible saved list and/or replace its complete item set after confirming the target id.", build: func() (tool.Tool, error) {
 			return functiontool.New(functiontool.Config{Name: "update_saved_list", Description: "Rename an accessible saved list and/or replace its complete item set after confirming the target id."}, saved.UpdateSavedList)
 		}},
+		{name: "archive_saved_list", description: archiveSavedListDescription, build: func() (tool.Tool, error) {
+			return functiontool.New(functiontool.Config{Name: "archive_saved_list", Description: archiveSavedListDescription}, saved.ArchiveSavedList)
+		}},
 		{name: "save_current_recipe", description: "Save the current structured recipe only after the user explicitly asks to save it; omit household_id for the personal library.", build: func() (tool.Tool, error) {
 			return functiontool.New(functiontool.Config{Name: "save_current_recipe", Description: "Save the current structured recipe only after the user explicitly asks to save it; omit household_id for the personal library."}, saved.SaveCurrentRecipe)
 		}},
@@ -91,6 +106,9 @@ func savedResourceTools(repository grocerystore.LibraryRepository) ([]tool.Tool,
 		}},
 		{name: "update_saved_recipe", description: "Replace the editable content of an accessible saved recipe after confirming the target id.", build: func() (tool.Tool, error) {
 			return functiontool.New(functiontool.Config{Name: "update_saved_recipe", Description: "Replace the editable content of an accessible saved recipe after confirming the target id."}, saved.UpdateSavedRecipe)
+		}},
+		{name: "archive_saved_recipe", description: archiveSavedRecipeDescription, build: func() (tool.Tool, error) {
+			return functiontool.New(functiontool.Config{Name: "archive_saved_recipe", Description: archiveSavedRecipeDescription}, saved.ArchiveSavedRecipe)
 		}},
 	}
 	tools := make([]tool.Tool, 0, len(definitions))
@@ -149,6 +167,9 @@ func (saved SavedResources) ListSavedLists(ctx agent.Context, input SavedResourc
 	if err != nil {
 		return savedListRepositoryFailure(err), nil
 	}
+	if !input.IncludeArchived {
+		lists = slices.DeleteFunc(lists, func(list grocerystore.List) bool { return list.Status == grocerystore.StatusArchived })
+	}
 	return SavedListsResult{Lists: lists}, nil
 }
 
@@ -168,6 +189,19 @@ func (saved SavedResources) UpdateSavedList(ctx agent.Context, input UpdateSaved
 	list, err := saved.Repository.UpdateList(ctx, userID, listID, grocerystore.ListPatch{
 		Title: input.Title, Items: input.Items,
 	}, saved.currentTime())
+	if err != nil {
+		return savedListRepositoryFailure(err), nil
+	}
+	return SavedListsResult{List: &list}, nil
+}
+
+func (saved SavedResources) ArchiveSavedList(ctx agent.Context, input ArchiveSavedResourceArgs) (SavedListsResult, error) {
+	userID, listID := strings.TrimSpace(ctx.UserID()), strings.TrimSpace(input.ID)
+	if userID == "" || listID == "" {
+		return savedListFailure("invalid_saved_list", "provide the exact saved list id to archive or restore"), nil
+	}
+	status := archiveStatus(input.Restore)
+	list, err := saved.Repository.UpdateList(ctx, userID, listID, grocerystore.ListPatch{Status: &status}, saved.currentTime())
 	if err != nil {
 		return savedListRepositoryFailure(err), nil
 	}
@@ -197,6 +231,9 @@ func (saved SavedResources) ListSavedRecipes(ctx agent.Context, input SavedResou
 	if err != nil {
 		return savedRecipeRepositoryFailure(err), nil
 	}
+	if !input.IncludeArchived {
+		recipes = slices.DeleteFunc(recipes, func(recipe grocerystore.Recipe) bool { return recipe.Status == grocerystore.StatusArchived })
+	}
 	return SavedRecipesResult{Recipes: recipes}, nil
 }
 
@@ -214,6 +251,25 @@ func (saved SavedResources) UpdateSavedRecipe(ctx agent.Context, input UpdateSav
 		return savedRecipeRepositoryFailure(err), nil
 	}
 	return SavedRecipesResult{Recipe: &recipe}, nil
+}
+
+func (saved SavedResources) ArchiveSavedRecipe(ctx agent.Context, input ArchiveSavedResourceArgs) (SavedRecipesResult, error) {
+	userID, recipeID := strings.TrimSpace(ctx.UserID()), strings.TrimSpace(input.ID)
+	if userID == "" || recipeID == "" {
+		return savedRecipeFailure("invalid_saved_recipe", "provide the exact saved recipe id to archive or restore"), nil
+	}
+	recipe, err := saved.Repository.SetRecipeStatus(ctx, userID, recipeID, archiveStatus(input.Restore), saved.currentTime())
+	if err != nil {
+		return savedRecipeRepositoryFailure(err), nil
+	}
+	return SavedRecipesResult{Recipe: &recipe}, nil
+}
+
+func archiveStatus(restore bool) string {
+	if restore {
+		return grocerystore.StatusActive
+	}
+	return grocerystore.StatusArchived
 }
 
 func (saved SavedResources) currentTime() time.Time {
