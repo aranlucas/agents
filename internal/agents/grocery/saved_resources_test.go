@@ -3,6 +3,7 @@ package grocery
 import (
 	"context"
 	"iter"
+	"slices"
 	"testing"
 	"time"
 
@@ -19,13 +20,13 @@ func TestGroceryLibraryToolsRegistersOneListAndRecipeLibrarySurface(t *testing.T
 	}
 	required := map[string]bool{
 		"list_households":   true,
-		"save_current_list": true, "list_saved_lists": true, "get_saved_list": true, "update_saved_list": true,
-		"save_current_recipe": true, "list_saved_recipes": true, "get_saved_recipe": true, "update_saved_recipe": true,
+		"save_current_list": true, "list_saved_lists": true, "get_saved_list": true, "update_saved_list": true, "archive_saved_list": true,
+		"save_current_recipe": true, "list_saved_recipes": true, "get_saved_recipe": true, "update_saved_recipe": true, "archive_saved_recipe": true,
 	}
 	for _, candidate := range tools {
 		delete(required, candidate.Name())
 	}
-	if len(required) != 0 || len(tools) != 9 {
+	if len(required) != 0 || len(tools) != 11 {
 		t.Fatalf("tools = %d, missing = %#v", len(tools), required)
 	}
 }
@@ -223,5 +224,117 @@ func TestUpdateSavedListInvalidItemsDoNotRenamePersistedList(t *testing.T) {
 	list, err := repository.GetList(t.Context(), "user_1", "list_1")
 	if err != nil || list.Title != "Original" || list.UpdatedAt != 1000 {
 		t.Fatalf("invalid tool edit changed persisted list: %#v, %v", list, err)
+	}
+}
+
+func newSavedResourceStore(t *testing.T) *grocerystore.Store {
+	t.Helper()
+	db, err := storage.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	if err := db.Migrate(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Run(t.Context(),
+		storage.Statement{SQL: `INSERT INTO grocery_lists (id, owner_user_id, title, status, created_at, updated_at)
+		      VALUES ('list_old', 'user_1', 'Thanksgiving', 'active', 1000, 1000), ('list_keep', 'user_1', 'Weekly', 'active', 1000, 1000)`},
+		storage.Statement{SQL: `INSERT INTO recipes (id, owner_user_id, title, status, created_at, updated_at)
+		      VALUES ('recipe_old', 'user_1', 'Stuffing', 'active', 1000, 1000), ('recipe_keep', 'user_1', 'Pasta', 'active', 1000, 1000)`},
+	); err != nil {
+		t.Fatal(err)
+	}
+	return grocerystore.NewStore(db)
+}
+
+func savedListIDs(result SavedListsResult) []string {
+	ids := []string{}
+	for _, list := range result.Lists {
+		ids = append(ids, list.ID)
+	}
+	slices.Sort(ids)
+	return ids
+}
+
+func savedRecipeIDs(result SavedRecipesResult) []string {
+	ids := []string{}
+	for _, recipe := range result.Recipes {
+		ids = append(ids, recipe.ID)
+	}
+	slices.Sort(ids)
+	return ids
+}
+
+func TestArchivedSavedListLeavesLibraryUntilRestored(t *testing.T) {
+	saved := SavedResources{Repository: newSavedResourceStore(t), Now: func() time.Time { return time.UnixMilli(2_000) }}
+	ctx := newSavedResourceContext(t, "user_1", mutableGroceryState{})
+
+	archived, err := saved.ArchiveSavedList(ctx, ArchiveSavedResourceArgs{ID: "list_old"})
+	if err != nil || archived.Error != nil || archived.List == nil || archived.List.Status != grocerystore.StatusArchived {
+		t.Fatalf("archive result/error = %#v / %v", archived, err)
+	}
+	listed, err := saved.ListSavedLists(ctx, SavedResourceScopeArgs{})
+	if err != nil || listed.Error != nil || !slices.Equal(savedListIDs(listed), []string{"list_keep"}) {
+		t.Fatalf("default listing = %v (%#v / %v)", savedListIDs(listed), listed.Error, err)
+	}
+	listed, err = saved.ListSavedLists(ctx, SavedResourceScopeArgs{IncludeArchived: true})
+	if err != nil || listed.Error != nil || !slices.Equal(savedListIDs(listed), []string{"list_keep", "list_old"}) {
+		t.Fatalf("archived listing = %v (%#v / %v)", savedListIDs(listed), listed.Error, err)
+	}
+
+	restored, err := saved.ArchiveSavedList(ctx, ArchiveSavedResourceArgs{ID: "list_old", Restore: true})
+	if err != nil || restored.Error != nil || restored.List == nil || restored.List.Status != grocerystore.StatusActive {
+		t.Fatalf("restore result/error = %#v / %v", restored, err)
+	}
+	listed, err = saved.ListSavedLists(ctx, SavedResourceScopeArgs{})
+	if err != nil || !slices.Equal(savedListIDs(listed), []string{"list_keep", "list_old"}) {
+		t.Fatalf("listing after restore = %v (%v)", savedListIDs(listed), err)
+	}
+}
+
+func TestArchivedSavedRecipeLeavesLibraryUntilRestored(t *testing.T) {
+	saved := SavedResources{Repository: newSavedResourceStore(t), Now: func() time.Time { return time.UnixMilli(2_000) }}
+	ctx := newSavedResourceContext(t, "user_1", mutableGroceryState{})
+
+	archived, err := saved.ArchiveSavedRecipe(ctx, ArchiveSavedResourceArgs{ID: "recipe_old"})
+	if err != nil || archived.Error != nil || archived.Recipe == nil || archived.Recipe.Status != grocerystore.StatusArchived {
+		t.Fatalf("archive result/error = %#v / %v", archived, err)
+	}
+	listed, err := saved.ListSavedRecipes(ctx, SavedResourceScopeArgs{})
+	if err != nil || listed.Error != nil || !slices.Equal(savedRecipeIDs(listed), []string{"recipe_keep"}) {
+		t.Fatalf("default listing = %v (%#v / %v)", savedRecipeIDs(listed), listed.Error, err)
+	}
+	listed, err = saved.ListSavedRecipes(ctx, SavedResourceScopeArgs{IncludeArchived: true})
+	if err != nil || !slices.Equal(savedRecipeIDs(listed), []string{"recipe_keep", "recipe_old"}) {
+		t.Fatalf("archived listing = %v (%v)", savedRecipeIDs(listed), err)
+	}
+
+	restored, err := saved.ArchiveSavedRecipe(ctx, ArchiveSavedResourceArgs{ID: "recipe_old", Restore: true})
+	if err != nil || restored.Error != nil || restored.Recipe == nil || restored.Recipe.Status != grocerystore.StatusActive {
+		t.Fatalf("restore result/error = %#v / %v", restored, err)
+	}
+}
+
+func TestArchiveSavedResourcesReportStructuredErrors(t *testing.T) {
+	saved := SavedResources{Repository: newSavedResourceStore(t)}
+	owner := newSavedResourceContext(t, "user_1", mutableGroceryState{})
+	stranger := newSavedResourceContext(t, "user_2", mutableGroceryState{})
+
+	if result, err := saved.ArchiveSavedList(owner, ArchiveSavedResourceArgs{ID: "  "}); err != nil || result.Error == nil || result.Error.Code != "invalid_saved_list" {
+		t.Fatalf("blank list id = %#v / %v", result, err)
+	}
+	if result, err := saved.ArchiveSavedRecipe(owner, ArchiveSavedResourceArgs{}); err != nil || result.Error == nil || result.Error.Code != "invalid_saved_recipe" {
+		t.Fatalf("blank recipe id = %#v / %v", result, err)
+	}
+	if result, err := saved.ArchiveSavedList(stranger, ArchiveSavedResourceArgs{ID: "list_old"}); err != nil || result.Error == nil || result.Error.Code != "saved_list_not_found" {
+		t.Fatalf("stranger list archive = %#v / %v", result, err)
+	}
+	if result, err := saved.ArchiveSavedRecipe(stranger, ArchiveSavedResourceArgs{ID: "recipe_old"}); err != nil || result.Error == nil || result.Error.Code != "saved_recipe_not_found" {
+		t.Fatalf("stranger recipe archive = %#v / %v", result, err)
+	}
+	listed, err := saved.ListSavedLists(owner, SavedResourceScopeArgs{})
+	if err != nil || len(listed.Lists) != 2 {
+		t.Fatalf("rejected archives changed the owner's library: %v (%v)", savedListIDs(listed), err)
 	}
 }

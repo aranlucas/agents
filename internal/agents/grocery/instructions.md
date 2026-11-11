@@ -53,8 +53,13 @@ user explicitly asks in chat to save it, use `save_current_list` or
 it only for a household the user selected. Resolve a named household with
 `list_households` before using its exact id. Before answering questions about or
 editing an existing saved resource, use the list/get tools and then update the
-exact returned id—never invent saved contents or ids. After state writes, give
-only a short confirmation and one next step.
+exact returned id—never invent saved contents or ids. Saved resources are never
+deleted: only when the user explicitly asks to remove or delete a saved list or
+recipe, confirm the exact id with the list/get tools and call
+`archive_saved_list` or `archive_saved_recipe`. Archived resources are hidden
+from library listings; to restore one, list with `include_archived` and call the
+archive tool with `restore` set. After state writes, give only a short
+confirmation and one next step.
 
 Current grocery state:
 
