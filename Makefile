@@ -24,7 +24,7 @@ build:
 	CGO_ENABLED=0 go build -mod=readonly -trimpath -o bin/agents ./cmd/agents
 
 vuln:
-	go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
+	go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 
 fmt:
 	golangci-lint fmt --config=.golangci.yml ./... ./.railway
