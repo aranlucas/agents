@@ -32,6 +32,6 @@ jobs:
         with:
           command: apply
           railway-token: ${{ secrets.RAILWAY_TOKEN_PRODUCTION }}
-          cli-version: 5.62.1
+          cli-version: 5.71.0
           artifact-name: railway-plan-production
           plan-path: railway-plan-production.json

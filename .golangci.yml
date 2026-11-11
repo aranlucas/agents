@@ -1,4 +1,4 @@
-# Keep golangci-lint in sync with .github/workflows/ci.yml (`version: v2.14`).
+# Keep golangci-lint in sync with the `version: v2.15.0` pins in .github/workflows.
 version: "2"
 
 linters:
