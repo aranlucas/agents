@@ -5,7 +5,7 @@ go 1.27.3
 require (
 	cloud.google.com/go/bigquery v1.86.2
 	github.com/ag-ui-protocol/ag-ui/sdks/community/go v0.0.0-20261110152320-deefd3833c15
-	github.com/clerk/clerk-sdk-go/v2 v2.8.0
+	github.com/clerk/clerk-sdk-go/v2 v2.9.0
 	github.com/getsentry/sentry-go v0.50.0
 	github.com/glebarez/go-sqlite v1.23.0
 	github.com/glebarez/sqlite v1.11.0
@@ -13,7 +13,7 @@ require (
 	github.com/google/jsonschema-go v0.4.3
 	github.com/joho/godotenv v1.5.1
 	github.com/modelcontextprotocol/go-sdk v1.8.0
-	github.com/openai/openai-go/v3 v3.98.0
+	github.com/openai/openai-go/v3 v3.99.0
 	github.com/railwayapp/railway-go-sdk v0.6.0
 	github.com/wI2L/jsondiff v0.7.1
 	go.opentelemetry.io/otel v1.47.0
@@ -21,7 +21,7 @@ require (
 	golang.org/x/net v0.62.0
 	golang.org/x/sync v0.25.0
 	google.golang.org/adk/v2 v2.7.1
-	google.golang.org/api v0.312.0
+	google.golang.org/api v0.315.0
 	google.golang.org/genai v1.77.0
 	gorm.io/gorm v1.31.2
 )
